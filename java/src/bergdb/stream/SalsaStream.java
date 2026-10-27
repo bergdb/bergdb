@@ -86,27 +86,32 @@ public class SalsaStream implements AppendOnlyStream {
         return stream.getFirstPos();
     }
 
+    /**
+     * Reads and decrypts. The read below comes before the lock (2026-10-27, bergdb 005-46),
+     * which only guards the shared decrypting Salsa object: under it, a read waited for every
+     * other read's I/O, and for what that one waited for, such as the writer's force.
+     */
     public void read(long position, byte[] dest, int destOffset, int length) throws IOException {
+        long blockPos = (position / Salsa.BLOCK_SIZE) * Salsa.BLOCK_SIZE;
+        long blockOffset = position % Salsa.BLOCK_SIZE;
+        long lengthToRead = blockOffset + length;
+        if (lengthToRead > Integer.MAX_VALUE) {
+            throw new Error("lengthToRead is too large: " + lengthToRead + ".");
+        }
+        
+        byte[] b = new byte[(int) lengthToRead];  // Should be fast stack allocation.
+        stream.read(blockPos, b, 0, b.length);
+        
         synchronized (readLock) {
-            long blockPos = (position / Salsa.BLOCK_SIZE) * Salsa.BLOCK_SIZE;
-            long blockOffset = position % Salsa.BLOCK_SIZE;
-            long lengthToRead = blockOffset + length;
-            if (lengthToRead > Integer.MAX_VALUE) {
-                throw new Error("lengthToRead is too large: " + lengthToRead + ".");
-            }
-            
-            byte[] b = new byte[(int) lengthToRead];  // Should be fast stack allocation.
-            stream.read(blockPos, b, 0, b.length);
-            
             decrypt.setupBlockCounter(blockPos / Salsa.BLOCK_SIZE);
             decrypt.append(b, 0, b, 0, b.length);     // in-place decryption
-            
-            assert length <= b.length;
-            assert position >= blockPos;
-            
-            int diff = (int) (position - blockPos);
-            System.arraycopy(b, diff, dest, destOffset, length);
         }
+            
+        assert length <= b.length;
+        assert position >= blockPos;
+            
+        int diff = (int) (position - blockPos);
+        System.arraycopy(b, diff, dest, destOffset, length);
     }
 
     /**

@@ -33,6 +33,14 @@ import bergdb.pubimp.IndexManager;
  * A read whose lookup time has expired throws LookupTimeNotAvailableException instead, and
  * the database goes on (see getFirstAvailableLookupTime()).</p>
  * 
+ * <p>Interrupts (bergdb 005-46). An interrupt of the calling thread never fails the
+ * database. Three calls only wait, and an interrupt ends the wait: sync() throws a
+ * DbException, and the transaction stays committed; a Job's join() returns the job's
+ * status; and a transaction that waits to run again after a conflict throws a DbException,
+ * not run. Every other call ignores an interrupt until it is done. Either way, the
+ * thread's interrupt flag is set when the call returns or throws, if it was set before or
+ * during the call.</p>
+ * 
  * @author Frans Lundberg
  */
 public interface Database {
@@ -93,7 +101,10 @@ public interface Database {
      * durability rules.
      * 
      * @throws DbException
-     *             if the database is faulty.
+     *             if the database is faulty, or if the thread is interrupted while it waits
+     *             (a StreamIoException whose cause is an InterruptedIOException): the
+     *             transaction stays committed, the database goes on, and the thread's interrupt
+     *             flag is set (bergdb 005-46).
      * @throws DbFailedException
      *             If the storage has failed: the database fails (see above).
      */
@@ -104,7 +115,8 @@ public interface Database {
      * specified sync level.
      * 
      * @throws DbException
-     *             if the database is faulty.
+     *             if the database is faulty, or if the thread is interrupted while it waits,
+     *             as for sync().
      * @throws DbFailedException
      *             If the storage has failed: the database fails (see above).
      */

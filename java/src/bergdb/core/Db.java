@@ -2373,6 +2373,16 @@ public class Db {
         /** Eviction at transaction boundaries; see Eviction. */
         public Eviction eviction() { return eviction; }
 
+        /**
+         * The writer's waits for room in the main stream's write buffer since the last call,
+         * as a line, for test reports; see BufferedStream.takeRoomWaits() (bergdb 005-46).
+         */
+        public String takeWriteBufferWaits() {
+            AppendOnlyStream main = storageManager.getMainStream();
+            return main instanceof BufferedStream ? ((BufferedStream) main).takeRoomWaits()
+                    : "(no write buffer)";
+        }
+        
         /** The cache's figures now, for tools; see CacheStats (bergdb item 009, step 1a). */
         public CacheStats cacheStats() {
             long[] e = eviction.figures();

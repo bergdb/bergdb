@@ -4,7 +4,7 @@
 # 2026-10-20); run it after larger changes.
 #
 # Usage: java/stress/level3.sh [quick]
-#   full (default): about 4 minutes on 10 cores. quick: about 1 minute.
+#   full (default): about 5 minutes on 10 cores. quick: about 1 minute.
 #
 # Builds with ../java/build.sh, then runs, stopping at the first failure:
 #   1. The unit tests (bergdb.dev.Unit), which include the reclaim tests in
@@ -45,6 +45,11 @@
 #      decides, the touch assumptions, and the probes after restarts from the
 #      cut stream. It needs the checker (cd ../lean && lake build, Lean 4
 #      v4.34.1), which the step builds.
+#   9. InterruptStress (bergdb 005-46): a writer with syncs, readers, reclaim's
+#      cuts, eviction and restarts on a FileStream, while a thread interrupts
+#      them at random every 100 microseconds and the storage threads every
+#      100 ms. No interrupt may fail or hang the database, and every call keeps
+#      the thread's interrupt flag. 10 s quick, 60 s full.
 # Logs go to build/level3/. Set JAVA_HOME or PATH for the JDK; the build
 # needs javac too.
 
@@ -55,10 +60,10 @@ if [ -n "$JAVA_HOME" ]; then JAVA=$JAVA_HOME/bin/java; fi
 
 if [ "$1" = quick ]; then
     QUICK=1; ROUNDS=40; INV_N=800; CRASH_ROUNDS=4; READER_ROUNDS=3; POWER_ROUNDS=1; POWER_TRANS=600; POWER_EVENTS=1
-    CONF_SEEDS=2
+    CONF_SEEDS=2; INTERRUPT_SEC=10
 else
     QUICK=0; ROUNDS=200; INV_N=2000; CRASH_ROUNDS=20; READER_ROUNDS=12; POWER_ROUNDS=8; POWER_TRANS=1500; POWER_EVENTS=3
-    CONF_SEEDS=5
+    CONF_SEEDS=5; INTERRUPT_SEC=60
 fi
 
 CP=build/bergdb.jar:build/stress
@@ -163,5 +168,11 @@ echo "8. Conformance with the Lean model, with reclaim"
 sh stress/conformance.sh reclaim $CONF_SEEDS > $LOG/conformance.txt 2>&1
 grep -q '^CONFORMANCE OK' $LOG/conformance.txt || fail "conformance.sh reclaim" $LOG/conformance.txt
 echo "   conformance: $(grep '^   traces:' $LOG/conformance.txt | sed 's/^ *//'); C-CUT $(grep '^   C-CUT:' $LOG/conformance.txt | sed 's/^ *C-CUT: //')"
+
+echo "9. InterruptStress, interrupts everywhere"
+$JAVA -ea -Xmx2g -cp $CP bergdb.core.InterruptStress $INTERRUPT_SEC build/level3/interruptstress \
+    > $LOG/interrupt.txt 2>&1
+grep -q '^INTERRUPT STRESS OK' $LOG/interrupt.txt || fail "InterruptStress" $LOG/interrupt.txt
+echo "   $(grep '^InterruptStress:' $LOG/interrupt.txt)"
 
 echo "LEVEL 3 OK"

@@ -30,6 +30,7 @@ public class Pack implements IPack {
         KvToObjectImp.class,
         Pack.class,
         PubKeys.class,
+        PubInterruptTester.class,
         PubTester.class,
         PubTesterComposite.class,
         PubTesterIndex.class,

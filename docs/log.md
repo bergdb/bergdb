@@ -1215,3 +1215,29 @@ and a meta block without a size, as every database written before has,
 with a `VersioningStreamException`. Records unchanged (StreamDigest with
 its new `metamask=44:2`); tests; `before-commit.sh` and `level2.sh quick`
 pass.
+
+2026-10-27. 005-46 done in the code, by Claude (Opus 5.5, Claude Code), at
+Frans's request: no read waits for the stream's writer. A read of
+`FileStream` takes no lock: positional reads (`pread`) on a read channel of
+the file's own, and a list of files that the writer replaces, never
+changes. Before, a read of the last file waited for the writer's append and
+its force (seconds on s1's disk, the longest waits left there with handles,
+009-03), and every read for a new file's forces and a physical cut's
+deletes (up to 171 ms in P4's soak, 009-04). A new file is made outside the
+stream's monitor; a cut only takes its files off the list, and a thread of
+its own deletes them in the same order as before, a directory force after
+each; a failed delete fails the stream at its next operation (Frans).
+`SalsaStream` reads before its lock, so an encrypted database's reads no
+longer wait for each other. And interrupts, by Frans's rule A: none fails
+the database or hangs it; `sync()`, a job's `join()` and the Pub API's
+wait before a rerun end on one, every other call ignores it, and the
+thread's interrupt flag is kept. Before, an interrupt failed the database
+in a commit that made a cut or waited for room in the write buffer, hung it
+when it reached the storage thread, made `close()` return before the
+storage was closed, a new `FileStream` throw, and a job's `join()` throw an
+`Error`. The test reports (`PauseProbe`, `Soak`) give the writer's waits
+for room in the write buffer and the disk's forces; such waits are the
+disk's and do not count against item 009's pause target (Frans). Tests,
+`InterruptStress` (level 3); `before-commit.sh`, `level3.sh` full and
+`flush-order.sh` pass. The measurements on s1 and P4's soak are still to
+run.

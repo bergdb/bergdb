@@ -478,7 +478,8 @@ public class StorageManager implements AppendOnlyStream {
                     d1Lock.wait(500);
                 } catch (InterruptedException e) {
                     // Not an IOException of the storage, which fails the database (bergdb
-                    // 005-30, Db.sync).
+                    // 005-30, Db.sync). The interrupt flag is set again (bergdb 005-46).
+                    Thread.currentThread().interrupt();
                     throw new InterruptedIOException("Thread was interrupted while waiting " +
                     		"for D1 size " + length + ".");
                 }
@@ -499,7 +500,9 @@ public class StorageManager implements AppendOnlyStream {
                 try {
                     d2Lock.wait(500);
                 } catch (InterruptedException e) {
-                    // Not an IOException of the storage (bergdb 005-30).
+                    // Not an IOException of the storage (bergdb 005-30); the flag is set again
+                    // (bergdb 005-46).
+                    Thread.currentThread().interrupt();
                     throw new InterruptedIOException("Thread was interrupted while waiting " +
                             "for D2 size " + length + ".");
                 }

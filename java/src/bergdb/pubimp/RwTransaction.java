@@ -10,6 +10,7 @@ import bergdb.core.Trans;
 import bergdb.pub.Action;
 import bergdb.pub.Time;
 import bergdb.pub.Transaction;
+import bergdb.pub.util.DbException;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 
@@ -126,7 +127,11 @@ public class RwTransaction implements Transaction {
                         sleepTime = sleepTime * 2;
                     }
                 } catch (InterruptedException e1) {
-                    throw new RuntimeException(e1);
+                    // A refusal: the transaction was not run, and the database goes on. The
+                    // interrupt flag is set again (2026-10-27, bergdb 005-46).
+                    Thread.currentThread().interrupt();
+                    throw new DbException("The transaction was not run: the thread was "
+                            + "interrupted while it waited to run it again after a conflict.", e1);
                 }
             }
         }

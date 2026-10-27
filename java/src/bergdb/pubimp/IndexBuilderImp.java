@@ -281,8 +281,9 @@ public class IndexBuilderImp implements IndexBuilder {
                 try {
                     thread.join(ms);
                 } catch (InterruptedException e) {
-                    throw new Error("Internal database thread unexpectedly interruped. thread: " 
-                            + thread);
+                    // The caller was interrupted: the wait ends, the job goes on (2026-10-27,
+                    // bergdb 005-46). It threw an Error.
+                    Thread.currentThread().interrupt();
                 }
                 return createState.getJobStatus();
             }
@@ -361,7 +362,7 @@ public class IndexBuilderImp implements IndexBuilder {
         try {
             Thread.sleep(msToSleep, nanosToSleep);
         } catch (InterruptedException e) {
-            throw new Error("Internal thread was interrupted.");
+            // BergDB's own thread goes on (2026-10-27, bergdb 005-46). It threw an Error.
         }
     }
     

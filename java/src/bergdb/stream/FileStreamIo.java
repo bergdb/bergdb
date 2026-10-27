@@ -33,6 +33,14 @@ public class FileStreamIo {
         handle.getChannel().force(true);
     }
 
+    /**
+     * Opens a file's read channel; reads are positional reads on it (bergdb 005-46). A test
+     * can give a channel that is slow, fails, or is closed under its readers.
+     */
+    protected FileChannel openRead(File file) throws IOException {
+        return FileChannel.open(file.toPath(), StandardOpenOption.READ);
+    }
+
     protected void forceDirectory(File directory) throws IOException {
         try (FileChannel channel = FileChannel.open(directory.toPath(), StandardOpenOption.READ)) {
             channel.force(true);

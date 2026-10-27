@@ -15,7 +15,7 @@ CLASSES=$(mktemp -d)
 mkdir -p "$WORK" "$OUT"
 javac --release 17 -Xlint:-options -cp "$JAR:$STRESS" -d "$CLASSES" \
     "$HERE/StreamWaitProbe.java" "$HERE/ReadPathProbe.java" "$HERE/SlowForceProbe.java" \
-    "$HERE/InterruptCutProbe.java"
+    "$HERE/InterruptCutProbe.java" "$HERE/InterruptProbe.java"
 CP="$JAR:$STRESS:$CLASSES"
 sw() { java -cp "$CP" StreamWaitProbe "$@"; }
 rp() { java -cp "$CP" ReadPathProbe "$@"; }
@@ -44,6 +44,7 @@ rp() { java -cp "$CP" ReadPathProbe "$@"; }
     echo "== a write buffer of 10,000,000 bytes, no interrupts"
     java -ea -Dnointerrupt=true -cp "$CP" bergdb.core.InterruptCutProbe 10000000
 } > "$OUT/interrupt-db.txt" 2>&1
+java -ea -cp "$CP" bergdb.core.InterruptProbe > "$OUT/interrupt-calls.txt" 2>&1
 for d in 0 1000; do
     java -XX:+UseZGC -Xms2g -Xmx2g -Dforcedelay=$d -Devery=100 -Dkeys=1000000 -Dbudget=20 \
         -Dreaders=2 -Dseconds=20 -Dtsize=1,1000 -Ddir="$WORK/pp" -cp "$CP" \

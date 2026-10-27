@@ -1,5 +1,5 @@
-005-46. Fix: reads wait for the stream's forces, new files and cuts
-===================================================================
+005-46. Fix: reads wait for the stream's writer, and interrupts fail the database
+=================================================================================
 
 Status: open. Kind: fix. Created 2026-10-26.
 
@@ -17,6 +17,21 @@ Document your findings. Don't implement it yet, but propose a
 solution."): the sections from "Where a read waits" on. The options of the
 first version are weighed in "Alternatives". The probes and their output
 are in [46-stream-file-lock/](46-stream-file-lock/). No change to `java/`.
+
+Decided by Frans on 2026-10-27, on the investigation's five questions ("1.
+as proposed. 2. Yes. 3. Include in this item. 4. Please elaborate in this
+one. 5. no, but such conditions are worth noting in test reports."): the
+cut's files are deleted on a thread of their own; a failed delete fails
+the stream at its next operation; `SalsaStream` is part of this entry, and
+so are interrupts, in the section "Interrupts", added the same day by
+Claude (Opus 5.5, Claude Code); a writer's wait for room in the write
+buffer does not count against item 009's target 2, and the test reports
+note it (change 7). One by one in "Decisions".
+
+Implemented on 2026-10-27 by Claude (Opus 5.5, Claude Code), at Frans's
+request ("Decision: A. When possible, implement this and commit it."), in
+one commit: changes 1 to 7 and their tests, in "Implemented". Still open:
+the measurements on s1 and P4's soak of "Done when".
 
 
 The fault
@@ -252,8 +267,8 @@ Found on the way
    buffer fails the database too**: `BufferedStream.append` turns the
    `InterruptedException` into an `IOException`, and
    `StorageManager.append` takes any `IOException` of the main stream as
-   its failure. Not this entry's; with point 2, a question for an entry of
-   its own (question 4).
+   its failure. With point 2, part of the section "Interrupts" (decision
+   4), which has the other calls an interrupt breaks.
 4. **Encrypted databases read one at a time** (the fourth wait): no two
    reads of an encrypted database run at once, whatever their files.
 5. **The reads of one file wait for each other**, on its monitor, and
@@ -265,8 +280,9 @@ The fix, proposed
 -----------------
 
 No read takes a lock that the writer holds during I/O, and the writer's
-I/O, and its order on disk, stay as they are. Four changes in
-`FileStream`, one in `SalsaStream`.
+I/O, and its order on disk, stay as they are: four changes in
+`FileStream`, one in `SalsaStream`. Then the interrupts (change 6) and the
+test reports (change 7).
 
 1. **Positional reads, without a lock.** Each file (`DbFile`) gets a read
    channel of its own, `FileChannel.open(path, READ)`, opened with the
@@ -325,7 +341,8 @@ I/O, and its order on disk, stay as they are. Four changes in
    `newFile` creates the new file and forces it and the directory before it
    takes the monitor, and takes it only to publish the list: no read needs
    the new file before an append to it has returned.
-4. **The cut's deletes on a thread of their own.** `pretruncate`, under
+4. **The cut's deletes on a thread of their own** (decision 1).
+   `pretruncate`, under
    the stream's monitor, only takes the files off the list: it marks them
    deleted, publishes the list with the new first position, queues the
    files, and starts the cut's thread if it is not running. The thread
@@ -345,15 +362,28 @@ I/O, and its order on disk, stay as they are. Four changes in
    * A failed delete or directory force stops the thread, which keeps the
      exception as the stream's failure, as `pretruncate` does today: the
      next read, append or cut throws it, and so does `close()`. Today the
-     commit that makes the cut throws it at once.
+     commit that makes the cut throws it at once (decision 2).
    * The first position moves when the files leave the list, at the moment
      it moves today: `PHYSCUT` in the traces (`TraceExport`) and the
      conformance check of it, and the soak's count of physical cuts, are
      unchanged. The disk gets the space back a little later.
-5. **`SalsaStream` reads before it locks.** `read` reads the encrypted
-   bytes into its own array before it takes `readLock`, and holds the lock
-   only to decrypt with the shared `Salsa` object, CPU work only. Two lines
-   move.
+5. **`SalsaStream` reads before it locks** (decision 3). `read` reads the
+   encrypted bytes into its own array before it takes `readLock`, and holds
+   the lock only to decrypt with the shared `Salsa` object, CPU work only.
+   Two lines move.
+6. **Interrupts**: the rule and the changes of the section "Interrupts"
+   (decision 4).
+7. **The test reports note the disk's waits** (decision 5).
+   `BufferedStream` counts its writer's waits for room in the write
+   buffer: how many, how long in all, the longest, and the JVM uptimes of
+   the five longest, as the pause probe keeps its own; `Db.internal()`
+   gives them, as it gives the cache's statistics. The tools time the
+   forces themselves, through a `FileStreamIo` of their own, as this
+   entry's probes do (file forces, directory forces, deletes; the five
+   longest with their uptimes), so `FileStream` keeps no statistics for it.
+   `PauseProbe`, `Soak` and ScaleBench print both for each phase, and a
+   report sets a long commit or get beside them, as 009-03 sets them
+   beside collections and batches.
 
 For the tests:
 
@@ -367,7 +397,107 @@ For the tests:
 * `FileStreamPowerLossTester.testPendingCutForceFailureDoesNotAcknowledgeFlush`
   changes with change 4: the flush's bytes are forced and acknowledged,
   and the failed directory force fails the storage at its next operation
-  (question 2).
+  (decision 2).
+
+
+Interrupts
+----------
+
+Part of this entry since 2026-10-27 (decision 4). An interrupt is how a
+Java application asks a thread to stop what it does: `Future.cancel(true)`,
+`ExecutorService.shutdownNow()`, a server that gives up on a request. A
+thread may call BergDB with its interrupt flag already set, or get it set
+during a call. `Object.wait`, `Thread.sleep` and `Thread.join` then throw
+`InterruptedException`, and a `FileChannel` closes itself, for every
+thread, when the thread that uses it is interrupted
+(`ClosedByInterruptException`; `ReadPathProbe`). A `RandomAccessFile` and
+`synchronized` ignore interrupts.
+
+What each call does today, by `InterruptProbe`
+([interrupt-calls.txt](46-stream-file-lock/out/interrupt-calls.txt)),
+`InterruptCutProbe`
+([interrupt-db.txt](46-stream-file-lock/out/interrupt-db.txt)) and the
+code; "the flag" is the thread's interrupt flag:
+
+| A call, its thread interrupted | Today | Proposed |
+|---|---|---|
+| A read: a get, a scan, `getTrans`, a commit's loads | works; the flag kept | the same, with positional reads (change 1) |
+| A commit | works; the flag kept | the same |
+| A commit that waits for room in the write buffer | fails the database: `BufferedStream.append` turns the `InterruptedException` into an `IOException` ("Thread interrupted while appending."), which fails the main stream | waits on (a) |
+| A commit that makes a physical cut | fails the database: `ClosedByInterruptException` in `forceDirectory` | works: the cut's thread does the I/O (change 4) |
+| `sync()` | throws a `StreamIoException` (an `InterruptedIOException`), and the database goes on (005-30); the flag cleared | the same, the flag kept (d) |
+| `Db.close()`, the first close | returns at once, after 0.3 ms with transactions in the buffer, before they are written and the files closed; the storage thread stays, waking every 5 ms, its file open | waits until the storage is closed (b) |
+| `Db.stop()`, `Database.stop()`, a `Db.close()` beside another | works: the close runs on a thread of its own, or the wait ignores interrupts (005-35) | the same |
+| A new `FileStream`: the builder's `dir()` and `replica()`, `addReplica` | throws `ClosedByInterruptException`, in a `StreamIoException` from `dir()`: the directory's force | works (c) |
+| `Db.start()`, the stream made before | works; the flag kept. A replica's `seekFirstPos` at the start, or a full write buffer, would fail it as above | works (a, c) |
+| A job's `join()`: `addReplica`, the index jobs | throws `java.lang.Error` ("Internal thread unexpectedly interrupted."); the flag cleared | returns the job's status (e) |
+| The Pub API's wait before it runs a transaction again after a conflict (`RwTransaction`) | throws a `RuntimeException`, the transaction not run; the flag cleared (the code; not probed) | throws a `DbException`, a refusal; the flag kept (f) |
+| BergDB's storage thread, interrupted by the application (`ThreadGroup.interrupt()`) | ends with a `Bug` ("consumer thread interrupted and stop==false"); a commit and a sync then wait for ever: the database hangs | goes on (g) |
+
+**The rule, proposed.** An interrupt never fails the database or its
+storage, never hangs it, and never cuts short a call that must complete.
+Three calls only wait, and can stop waiting with no effect on the
+database: `sync()`, a job's `join()`, and the Pub API's wait before a
+transaction's rerun; an interrupt ends them, as today. Every other call
+ignores an interrupt until it is done, as file I/O in `java.io` and
+`synchronized` do, and as `Db.close()` does already when another close
+runs (`waitUntilClosed`, 005-35). If the flag was set when a call began, or
+got set during it, it is set when the call returns or throws: BergDB never
+swallows an interrupt. BergDB's own threads go on when something
+interrupts them.
+
+**The changes**, beyond changes 1 and 4:
+
+* **(a)** `BufferedStream.append`'s wait for room: on an
+  `InterruptedException` it notes it and waits on, and sets the flag again
+  before it returns. It still throws when the stream has stopped (005-35).
+  The wait comes after the transaction's go point, where nothing may throw
+  (005-01).
+* **(b)** `BufferedStream.close`'s two waits, for the last flush and for
+  the storage thread to end: the same, so that `close()` returns when the
+  stream is written and closed, as its Javadoc says, and leaves no thread.
+* **(c)** The forces on an application thread: those of a new
+  `FileStream` (`createDirIfNeeded`, and `openForRw` of the last file, or
+  of the first in an empty directory) and those of a replica's
+  `seekFirstPos` at the start (`deleteAllFiles`, `newFile`). `FileStream`
+  clears the flag before them and sets it again after. A force that an
+  interrupt during it closes anyway is made again: a directory's on a new
+  channel, as `forceDirectory` opens one for each force; a file's after
+  `openForRw` has opened the file again, as the close of a channel from a
+  `RandomAccessFile` closes the file too. On the storage thread and the
+  cut's thread, which nothing interrupts, nothing changes, and
+  `FileStreamIo` and the power-loss model stay as they are.
+* **(d)** `StorageManager.sync` and `syncStrong` set the flag again before
+  they throw the `InterruptedIOException`.
+* **(e)** A job's `join()` (`IndexBuilderImp`, `IndexManager`,
+  `DatabaseImp`, `DbHelper`): an interrupt ends the wait, and `join()`
+  returns the job's status, the flag set; no `Error`.
+* **(f)** `RwTransaction`'s wait before a rerun: an interrupt ends it with
+  a `DbException` that says the transaction was not run (a refusal, in
+  `DbException`'s terms: nothing changed, and the database goes on), the
+  flag set.
+* **(g)** BergDB's own threads go on when interrupted: the storage thread
+  (`BufferedStream.runConsumer`), the cut's thread, and the index jobs'
+  threads (`IndexBuilderImp`'s pause between steps throws an `Error`
+  today). The eviction thread ends, as today, and the next load starts
+  another.
+* **(h)** The Pub API says it: `Database`'s class Javadoc states the rule;
+  `sync()`'s, that an interrupt ends its wait with a `DbException` (a
+  `StreamIoException` with an `InterruptedIOException` as its cause) and
+  the transaction stays committed; `Job.join()`'s, that an interrupt ends
+  the wait.
+
+**Tests.** A unit test for each row of the table, with the flag set before
+the call; those of the rows that are wrong today fail today. The commit
+that waits for room uses a small buffer and a `FileStreamIo` whose force
+waits on a latch; the cut is made as in `InterruptCutProbe`. And a stress,
+`InterruptStress` in `java/stress`: readers, scans, a writer with syncs,
+reclaim's cuts and eviction on a `FileStream`, and a restart, while a
+thread interrupts the workers at random, about every 100 µs, and now and
+then the storage thread. It checks that the database never fails or
+hangs, that every value read is right, that only a sync throws for an
+interrupt, and that a call that began with the flag set, or got it, ends
+with it set. In `level3.sh`, which makes the cuts.
 
 
 What it does not fix
@@ -376,9 +506,10 @@ What it does not fix
 * **A writer that fills the write buffer waits for the disk.** During a
   force of seconds, a writer that commits more than the disk takes fills
   the 10 MB buffer and then waits for room, whatever the locks: the
-  device's throughput, not BergDB's code. On s1, with transactions of
-  1,000 puts, that may be part of the commits' waits; the pause probe on
-  s1 will tell (question 5).
+  device's throughput, not BergDB's code. It does not count against
+  target 2 (decision 5), and the test reports show it apart (change 7). On
+  s1, with transactions of 1,000 puts, it may be part of the commits'
+  waits; the pause probe there will tell how much.
 * **The device and the OS.** A read that misses the OS's cache waits for
   the device. On APFS a read can wait a few milliseconds for a write to the
   same file (`ReadPathProbe`). Linux's ext4 takes no lock for a buffered
@@ -416,26 +547,108 @@ The three options of the first version are among them.
   it, but each read goes to a thread of its pool and back. No.
 
 
-Questions
+Decisions
 ---------
 
-1. The cut's deletes on a thread of their own (proposed), or on
-   `BufferedStream`'s consumer, with the flushes and syncs waiting behind
-   them?
-2. A failed delete fails the stream at its next operation, and the flush
-   before it stays acknowledged, its bytes forced (change 4). Today a
-   failed pending cut keeps the flush from being acknowledged (011-07;
-   `docs/levels.md`, section 8: "the failures of deferred cuts passed
-   on"). Accept the change?
-3. `SalsaStream` in this entry (proposed: two lines, tested with the
-   rest), or an entry of its own?
-4. Interrupts (found on the way, points 2 and 3): an entry of its own, on
-   whether an interrupt of an application thread may fail the database at
-   all? This entry removes the cut's case and keeps the reads safe.
-5. On a slow disk a writer that fills the write buffer still waits for
-   the force. Count that against target 2, or not? Either way the pause
-   probe could count a commit's waits for room in the buffer apart from
-   the others.
+Frans, 2026-10-27, on the investigation's questions:
+
+1. "as proposed": the cut's files are deleted on a thread of their own
+   (change 4), not on `BufferedStream`'s consumer, where the flushes and
+   syncs would wait behind them.
+2. "Yes": a failed delete or directory force fails the stream at its next
+   operation, and the flush before it stays acknowledged, its bytes
+   forced. 011-07's rule, that a failed pending cut keeps the flush from
+   being acknowledged, goes; `docs/levels.md`, section 8 ("the failures of
+   deferred cuts passed on"), is to say so when the change is made.
+3. "Include in this item": `SalsaStream` is part of this entry (change 5).
+4. "Please elaborate in this one": interrupts are part of this entry (the
+   section "Interrupts"), not an entry of their own.
+5. "no, but such conditions are worth noting in test reports": a writer's
+   wait for room in the write buffer, the disk's limit, does not count
+   against target 2; the test reports note it, and the forces (change 7).
+
+
+6. The rule for interrupts, decided on 2026-10-27 after Frans asked for
+   more ("I have limited knowledge here. So, please tell me more before we
+   make the decision about the rule.") and was given two options: A, as
+   proposed in "Interrupts" (the three calls that only wait, `sync()`, a
+   job's `join()` and the Pub API's wait before a rerun, end on an
+   interrupt; every other call ignores it until it is done; the flag is
+   always kept; BergDB's own threads go on), or B, every call ignores
+   interrupts, simpler to state, but no thread waiting in `sync()` or
+   `join(0)` could be cancelled. Frans: "Decision: A. When possible,
+   implement this and commit it."
+
+
+Implemented
+-----------
+
+2026-10-27, as proposed, in one commit:
+
+* **`FileStream`** (changes 1 to 4). A file's reads are positional reads on
+  a read channel of its own (`FileStreamIo.openRead`), without a lock;
+  `DbFile.read` clears the interrupt flag, sets it again after, and opens
+  the channel again when an interrupt closed it. The list of files is a
+  `volatile` array, replaced, never changed; `findFile` and `getFirstPos`
+  take no lock. `newFile` forces the new file and the directory before it
+  takes the stream's monitor, and the old last file keeps its read channel
+  (`closeWriter`). `pretruncate` only takes the files off the list; the
+  thread `FileStream-cut` deletes them, oldest first, with a directory
+  force after each, and ends when nothing is left; `close()` waits for it;
+  `awaitDeletes()` waits for it and throws its failure, for tests. The
+  forces on an application thread (`DbFile.force`, `forceDirectory`) clear
+  the flag and force again after an interrupt closed their channel. One
+  thing found in the tests: `FileChannel.size()` is interruptible too, so
+  `openForR` takes the file's length from `File.length()`.
+* **`SalsaStream`** (change 5) reads before it takes `readLock`.
+* **Interrupts** (change 6): `BufferedStream`'s wait for room and its
+  `close()` ignore interrupts and keep the flag, and its storage thread
+  goes on when interrupted; `StorageManager.sync` and `syncStrong` set the
+  flag again before they throw; a job's `join()` returns on an interrupt
+  (`IndexBuilderImp`, `IndexManager`, `DatabaseImp`, `DbHelper`), and
+  `IndexBuilderImp`'s own pause goes on; `RwTransaction`'s wait before a
+  rerun throws a `DbException`, the flag set. The rule in `Database`'s class
+  Javadoc, and in `sync()`'s and `Job.join()`'s.
+* **Test reports** (change 7): `BufferedStream` counts the writer's waits
+  for room (`takeRoomWaits()`, through `Db.Internal.takeWriteBufferWaits()`);
+  `java/stress/TimedIo.java` times the file and directory forces and the
+  deletes; `PauseProbe` prints both after the load and each phase, and
+  `Soak` puts them in its result (`disk_waits`). ScaleBench, which lives in
+  `releases/2026.1/`, is not changed.
+* **Tests**: in `FileStream`, a read of the last file while its force is
+  held, a read of the first file while a new file's directory force is
+  held, a cut on its own thread (reads go on, `close()` waits for it), a
+  failed delete of a cut, reads and interrupts (the flag kept, a channel
+  closed under the reads), a cut and a new `FileStream` by an interrupted
+  thread, and an f-test of four readers, one of them always interrupted,
+  beside a writer and cuts. In `BufferedStream`, the wait for room, `close()`
+  and the storage thread, each interrupted. `InterruptTester` (core):
+  commits that make cuts, a commit that waits for room, `sync()`, a start,
+  commits and `close()`, and the storage thread, each interrupted.
+  `PubInterruptTester`: the builder's `dir()` and a job's `join()`.
+  `FileStreamPowerLossTester` waits for the cut's thread where it counts
+  deletes, and its trace after each transaction, so that the images stay
+  deterministic; its test of a failed pending cut now expects the flush
+  acknowledged and the stream failed at its next operation (decision 2).
+  `InterruptStress` (`java/stress`, step 9 of `level3.sh`): a writer with
+  syncs, readers, cuts, eviction and restarts, interrupted at random every
+  100 µs and the storage threads every 100 ms; 20 s: about 4 million calls,
+  150,000 of them interrupted, the flag kept by all, 9,900 syncs ended by
+  an interrupt. On the jar from before, it fails in seconds: the storage
+  thread ends with a `Bug`, and a call loses the flag.
+* **Gates**: `java/before-commit.sh` (1,042 unit tests and 72 f-tests),
+  `level3.sh` in full (its new step 9: 60 s, 10.6 million calls, 457,702
+  of them interrupted, the flag kept by all, 31,191 syncs ended by an
+  interrupt, 15 restarts; `ReclaimReaders` on `FileStream` and the
+  power-loss traces, 440 cold recoveries, as before), and `flush-order.sh`
+  (4 writes, 9 file forces, 12 directory forces and 2 deletes in the
+  required order, as in 011-07). `level2.sh` and `level4.sh` were left
+  out, at Frans's word ("Yes, commit sooner."): `before-commit.sh` is the
+  only requirement (AGENTS.md); they run in `night.sh`.
+
+Left from "Done when": the probes of this entry again on the new code, the
+pause probe on s1 (s1 was busy with another session's runs), P4's soak,
+and Props and ScaleBench from the OS's cache.
 
 
 Done when
@@ -455,6 +668,13 @@ Done when
   after it is deleted, and the stream's next read, append and `close()`
   throw it.
 * `SalsaStream`: a read of one file does not wait for a read of another.
+* Interrupts: the unit tests of the section "Interrupts", one for each
+  row of its table, and `InterruptStress`; `InterruptProbe` and
+  `InterruptCutProbe` again: no call fails the database or hangs it, and
+  the flag is kept. The Pub API's Javadoc says the rule.
+* The test reports (change 7): `PauseProbe`, `Soak` and ScaleBench print
+  the writer's waits for room in the buffer and the forces, each with the
+  five longest and their uptimes.
 * The probes of this entry again: no reader's longest read follows the
   forces, the new files or the cut, and in `SlowForceProbe` no get and no
   single-put commit waits for a slow force.
@@ -462,9 +682,10 @@ Done when
   on `FileStream`, the power-loss traces, conformance); `level2.sh` and
   `level4.sh` quick, as every read takes the new path; `flush-order.sh`,
   the native order of writes, forces and deletes, now from two threads.
-* The pause probe on s1 (009-03's `run-pp2.sh`): no get waits for a force.
-  P4's soak under ZGC: the cuts are no longer its slowest commits and
-  reads (009-04, section 7.3).
+* The pause probe on s1 (009-03's `run-pp2.sh`): no get waits for a force,
+  and its report sets the longest commits beside the writer's waits for
+  room and the forces. P4's soak under ZGC: the cuts are no longer its
+  slowest commits and reads (009-04, section 7.3).
 * No fewer reads a second: Props (CORE), and 009-03's ScaleBench block
   from the OS's cache (C) on F53.
 
@@ -474,14 +695,21 @@ First step
 
 The unit tests that fail today, with latches in a `FileStreamIo`: a read
 while a force is held, while a new file's forces are held and while a
-cut's directory force is held, and a cut by an interrupted thread.
+cut's directory force is held; and those of the interrupts: a commit that
+waits for room, a commit that makes a cut, the first `close()`, a new
+`FileStream`, a job's `join()` and the storage thread, each with the flag
+set.
 
 
 Size and order
 --------------
 
-M: in `FileStream` the read path, the file list, `newFile`, and
-`pretruncate` with the cut's thread, about 200 lines; `SalsaStream` two;
-the tests about 250 lines. Independent of the other open entries; before
-005-47, whose option A changes the forces of the same class. Item 009
-waits for it.
+M to L, in three steps that can be committed one by one: the reads, the
+file list, `newFile` and the cut's thread in `FileStream`, about 200
+lines, and `SalsaStream`'s two, with their tests, about 250; the
+interrupts, about 100 lines in `BufferedStream`, `StorageManager`,
+`FileStream` and `pubimp`, the Javadoc, their unit tests and
+`InterruptStress`, about 400; the test reports, about 100. Independent of
+the other open entries; before 005-47, whose option A changes the forces
+of the same class. Item 009 waits for the first step and the last: the
+pause probe on s1 needs the reports.

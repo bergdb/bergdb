@@ -333,8 +333,9 @@ public class DatabaseImp implements Database {
                 try {
                     thread.join(millis);
                 } catch (InterruptedException e) {
-                    throw new Error("Unexpected interrupt of internal thread: " 
-                            + thread.toString() + ".");
+                    // The caller was interrupted: the wait ends, the job goes on (2026-10-27,
+                    // bergdb 005-46). It threw an Error.
+                    Thread.currentThread().interrupt();
                 }
                 return getStatus();
             }

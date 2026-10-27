@@ -57,6 +57,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     private AppendListener appendListener;
     private volatile boolean appendHasBeenCalled = false;
     private boolean idle = false;   // the consumer waits without a timeout, see runConsumer()
+    private final Waits roomWaits = new Waits();    // the writer's, for test reports (005-46)
 
     /**
      * Creates a new buffered stream with default buffer size and buffer time.
@@ -157,10 +158,11 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 } catch (InterruptedException e) {
                     if (stop) {
                         return;
-                    } else {
-                        throw new Bug("Should not happen, consumer thread interrupted "
-                                + "and stop==" + stop + ".");
                     }
+                    // 2026-10-27 (bergdb 005-46): BergDB's own thread goes on. An interrupt
+                    // from outside, such as ThreadGroup.interrupt(), threw a Bug here, the
+                    // thread ended, and the database hung: commits and syncs waited for ever.
+                    continue;
                 }
 
                 // 2026-10-21 (005-14): the count stops at waitsBeforeFlush. It counted every
@@ -442,38 +444,65 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
      */
     public void append(byte[] source, int sourceOffset, int length) throws IOException {
         this.appendHasBeenCalled = true;
+        boolean interrupted = false;
+        long waitStart = 0;
 
-        synchronized (this) {
-            if (this.exception != null) {
-                throw exception;
-            }
+        try {
+            synchronized (this) {
+                if (this.exception != null) {
+                    throw exception;
+                }
 
-            while (length > 0) {
-                int available = availableBufferSize();
-                if (available < length && available < tenPercentOfBufferCapacity) {
-                    // The thread that makes room has stopped: after stop() or a failed flush
-                    // (2026-10-24, bergdb 005-35). The writer waited here for ever, with the
-                    // database's write lock, so a failing disk hung the database.
-                    if (stop) {
-                        throw new IOException("The stream has stopped while an append waited "
-                                + "for room in its buffer.", failure);
+                while (length > 0) {
+                    int available = availableBufferSize();
+                    if (available < length && available < tenPercentOfBufferCapacity) {
+                        // The thread that makes room has stopped: after stop() or a failed flush
+                        // (2026-10-24, bergdb 005-35). The writer waited here for ever, with the
+                        // database's write lock, so a failing disk hung the database.
+                        if (stop) {
+                            throw new IOException("The stream has stopped while an append waited "
+                                    + "for room in its buffer.", failure);
+                        }
+                        if (waitStart == 0) {
+                            waitStart = System.nanoTime();
+                        }
+                        try {
+                            wait(); // wait for consumer to write to output stream
+                        } catch (InterruptedException e) {
+                            // 2026-10-27 (bergdb 005-46): not interruptible. The interrupt threw
+                            // an IOException, which failed the storage, and so the database: the
+                            // wait comes after the transaction's go point.
+                            interrupted = true;
+                        }
+                    } else {
+                        int len = length <= available ? length : available;
+                        appendToBuffer(source, sourceOffset, len);
+                        if (idle) {
+                            notifyAll();    // Wakes the consumer (005-14).
+                        }
+                        length -= len;
+                        sourceOffset += len;
                     }
-                    try {
-                        wait(); // wait for consumer to write to output stream
-                    } catch (InterruptedException e) {
-                        throw new IOException("Thread interrupted while appending.");
-                    }
-                } else {
-                    int len = length <= available ? length : available;
-                    appendToBuffer(source, sourceOffset, len);
-                    if (idle) {
-                        notifyAll();    // Wakes the consumer (005-14).
-                    }
-                    length -= len;
-                    sourceOffset += len;
+                }
+                if (waitStart != 0) {
+                    roomWaits.add(System.nanoTime() - waitStart);
                 }
             }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
+    }
+    
+    /**
+     * The writer's waits for room in the buffer since the last call, as a line for test
+     * reports, and starts counting again (2026-10-27, bergdb 005-46). Such a wait is the
+     * disk's limit, not BergDB's: it does not count against item 009's pause target, but a
+     * report notes it (Frans, 2026-10-27).
+     */
+    public String takeRoomWaits() {
+        return roomWaits.take();
     }
 
     private void appendToBuffer(byte[] source, int offset, int len) {
@@ -564,6 +593,10 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
      * @throws IOException  If a flush failed, or the close of the underlying stream.
      */
     public void close() throws IOException {
+        // Not interruptible (2026-10-27, bergdb 005-46): an interrupt returned at once, before
+        // the buffer was written and the stream closed, and the consumer thread stayed, waking
+        // every wait time, with its files open. The interrupt flag is set again at the end.
+        boolean interrupted = false;
         synchronized (this) {
             this.flushAndClose = true;
             notifyAll();    // Wakes an idle consumer (005-14).
@@ -575,8 +608,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 try {
                     wait(); // Waiting for consumer to flush to output stream
                 } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return;
+                    interrupted = true;
                 }
             }
         }
@@ -586,12 +618,17 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         // The thread closes the stream as it ends. Not from the thread itself: the listener
         // of a failed flush closes this stream (StorageManager.handleStreamException).
         if (Thread.currentThread() != consumer) {
-            try {
-                consumer.join();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return;
+            while (true) {
+                try {
+                    consumer.join();
+                    break;
+                } catch (InterruptedException e) {
+                    interrupted = true;
+                }
             }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
         }
 
         stream.close();
@@ -617,6 +654,50 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             }
             this.stop = true;
             notifyAll();    // Wakes an idle consumer (005-14).
+        }
+    }
+    
+    /**
+     * Waits for test reports (bergdb 005-46): how many, in all, the longest, and the five
+     * longest with the JVM uptime at their end. Thread-safe.
+     */
+    static final class Waits {
+        private long count, totalNanos;
+        private final long[] longest = new long[5];         // nanoseconds, longest first
+        private final long[] longestUptime = new long[5];   // milliseconds
+
+        synchronized void add(long nanos) {
+            count++;
+            totalNanos += nanos;
+            for (int i = 0; i < longest.length; i++) {
+                if (nanos > longest[i]) {
+                    System.arraycopy(longest, i, longest, i + 1, longest.length - i - 1);
+                    System.arraycopy(longestUptime, i, longestUptime, i + 1, longest.length - i - 1);
+                    longest[i] = nanos;
+                    longestUptime[i] = java.lang.management.ManagementFactory.getRuntimeMXBean()
+                            .getUptime();
+                    break;
+                }
+            }
+        }
+
+        /** A line, and the count starts again. */
+        synchronized String take() {
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format("waits for room in the write buffer %d, %.1f ms in all",
+                    count, totalNanos / 1e6));
+            if (count > 0) {
+                sb.append("; longest at uptime");
+                for (int i = 0; i < longest.length && longest[i] > 0; i++) {
+                    sb.append(String.format(" %.3fs (%.1f ms)", longestUptime[i] / 1e3,
+                            longest[i] / 1e6));
+                }
+            }
+            count = 0;
+            totalNanos = 0;
+            java.util.Arrays.fill(longest, 0);
+            java.util.Arrays.fill(longestUptime, 0);
+            return sb.toString();
         }
     }
     
@@ -1032,6 +1113,128 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         
         public void close() {
             inner.close();
+        }
+    }
+    
+    /** A stream whose appends wait while 'hold' is set; for the interrupt tests (005-46). */
+    private static class HeldStream extends FailingStream {
+        volatile java.util.concurrent.CountDownLatch hold;
+        final java.util.concurrent.CountDownLatch held = new java.util.concurrent.CountDownLatch(1);
+        
+        public void append(byte[] source, int sourceOffset, int length) throws IOException {
+            java.util.concurrent.CountDownLatch h = hold;
+            if (h != null) {
+                held.countDown();
+                try {
+                    h.await();
+                } catch (InterruptedException e) {
+                    throw new IOException(e);
+                }
+            }
+            super.append(source, sourceOffset, length);
+        }
+    }
+    
+    /**
+     * Regression test for bergdb 005-46: a writer that waited for room in the buffer threw an
+     * IOException when its thread was interrupted, which failed the storage and the database.
+     * Now the wait goes on, the append completes, and the interrupt flag is set after it.
+     */
+    @Nano
+    public static void testAppendWaitIgnoresInterrupt() throws Exception {
+        HeldStream m = new HeldStream();
+        m.hold = new java.util.concurrent.CountDownLatch(1);
+        final BufferedStream b = new BufferedStream(m, 1000, 10);
+        b.start();
+        try {
+            b.append(new byte[900], 0, 900);
+            Assert.assertTrue(m.held.await(5, java.util.concurrent.TimeUnit.SECONDS));
+            final Throwable[] failure = new Throwable[1];
+            final boolean[] flag = new boolean[1];
+            Thread writer = new Thread(new Runnable() {
+                public void run() {
+                    Thread.currentThread().interrupt();
+                    try {
+                        b.append(new byte[900], 0, 900);
+                    } catch (Throwable e) {
+                        failure[0] = e;
+                    }
+                    flag[0] = Thread.interrupted();
+                }
+            });
+            writer.start();
+            Thread.sleep(100);
+            Assert.assertTrue("the writer did not wait for room", writer.isAlive());
+            m.hold.countDown();
+            writer.join(5000);
+            Assert.assertTrue(failure[0] == null);
+            Assert.assertTrue("the interrupt flag was lost", flag[0]);
+            Assert.assertTrue(b.takeRoomWaits().startsWith("waits for room in the write buffer 1,"));
+        } finally {
+            m.hold.countDown();
+            b.close();
+        }
+        Assert.assertEquals(1800, m.getLength());
+    }
+    
+    /**
+     * Regression test for bergdb 005-46: close() by an interrupted thread returned at once,
+     * before the buffer was written and the stream closed, and the consumer thread stayed.
+     * Now close() waits, and the interrupt flag is set after it.
+     */
+    @Nano
+    public static void testCloseIgnoresInterrupt() throws Exception {
+        HeldStream m = new HeldStream();
+        m.hold = new java.util.concurrent.CountDownLatch(1);
+        BufferedStream b = new BufferedStream(m, 1000, 10);
+        b.start();
+        b.append(new byte[500], 0, 500);
+        Assert.assertTrue(m.held.await(5, java.util.concurrent.TimeUnit.SECONDS));
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    // empty
+                }
+                m.hold.countDown();
+            }
+        }).start();
+        Thread.currentThread().interrupt();
+        try {
+            b.close();
+            Assert.assertTrue("the interrupt flag was lost", Thread.currentThread().isInterrupted());
+        } finally {
+            Thread.interrupted();
+        }
+        Assert.assertEquals(500, m.getLength());
+        Assert.assertTrue("the consumer thread stayed", !b.consumer.isAlive());
+    }
+    
+    /**
+     * Regression test for bergdb 005-46: an interrupt of the consumer thread from outside
+     * (ThreadGroup.interrupt()) threw a Bug there, the thread ended, and the stream hung. Now
+     * the thread goes on.
+     */
+    @Nano
+    public static void testConsumerIgnoresInterrupt() throws Exception {
+        MemoryStream m = new MemoryStream();
+        BufferedStream b = new BufferedStream(m, 1000, 10);
+        b.start();
+        try {
+            for (int i = 0; i < 20; i++) {
+                b.consumer.interrupt();
+                b.append(new byte[] {(byte) i}, 0, 1);
+                Thread.sleep(2);
+            }
+            long t0 = System.nanoTime();
+            while (m.getLength() < 20) {
+                Assert.assertTrue("not written in 2 s", System.nanoTime() - t0 < 2000000000L);
+                Thread.sleep(1);
+            }
+            Assert.assertTrue(b.consumer.isAlive());
+        } finally {
+            b.close();
         }
     }
 }

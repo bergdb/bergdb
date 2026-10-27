@@ -94,11 +94,18 @@ environment has failed, or that has a bug, does not run on.
   `LookupTimeNotAvailableException` (section 6), and so does `getTrans` of
   a transaction that reclaim has removed; the database goes on. A read or a
   sync while the database stops throws as it did.
-* An interrupt of the application's thread fails the database when its
-  commit waits for room in the write buffer (`BufferedStream.append`), or
-  makes a physical cut of reclaim (`FileStream.pretruncate` forces the
-  directory through a `FileChannel`, which the interrupt closes); 005-46.
-  A sync whose thread is interrupted throws, and the database goes on.
+* Interrupts (since 2026-10-27, 005-46): an interrupt never fails the
+  database or hangs it. Three calls only wait, and an interrupt ends the
+  wait: `sync()` throws a `StreamIoException` with an
+  `InterruptedIOException` as its cause, and the transaction stays
+  committed; a job's `join()` returns its status; the Pub API's wait to run
+  a transaction again after a conflict throws a `DbException`, the
+  transaction not run. Every other call ignores an interrupt until it is
+  done, and BergDB's own threads go on when interrupted. The thread's
+  interrupt flag stays set. Before, an interrupt failed the database in a
+  commit that waited for room in the write buffer or made a physical cut,
+  and hung it when it reached the storage thread (005-46, "Interrupts";
+  `InterruptTester`, `InterruptStress` in `level3.sh`).
 * The application restarts the database. The stream holds whole records
   only, so the restart rebuilds the state as after a crash at the failure:
   without the failed transaction, or with it if its record was appended
@@ -339,13 +346,18 @@ Limits:
   P4's soak with an 8 GB heap; not run at 10M keys; 009-04, section 7).
   Generational Shenandoah stopped for 821 ms in P4's soak with an 8 GB
   heap, its old generation full of garbage it had not reclaimed (009-04).
-* A reader's read of the stream's last file waits for the writer's append
-  and its force, which takes seconds on a slow disk; every read from the
-  stream waits while a new file of the stream is forced, and while a
-  physical cut deletes files, up to 171 ms in P4's soak under every
-  collector; and in an encrypted database every read waits for any other
-  (005-46; 009-04, section 7.3). These waits are BergDB's own: item 009's
-  pause target is not met until 005-46 is done.
+* No read waits for the stream's writer since 2026-10-27 (005-46): a read
+  takes no lock (positional reads on a channel of the file's own, the list
+  of files replaced, never changed), a new file is made outside the
+  stream's monitor, and a cut's files are deleted by a thread of their own;
+  an encrypted database's reads no longer wait for each other. Before, a
+  read of the last file waited for the writer's append and its force,
+  seconds on a slow disk, and every read for a new file's forces and a
+  cut's deletes, up to 171 ms in P4's soak (009-04, section 7.3). Not yet
+  measured again: the pause probe on s1 and P4's soak (005-46, "Done
+  when"). A writer that fills the write buffer still waits for the disk;
+  that does not count against item 009's pause target (Frans,
+  2026-10-27), and the test reports show it apart.
 * Loads in memory, with no eviction, are 8 to 20 percent slower than before
   handles.
 * D, which cannot be evicted, is bounded only loosely by the startup
@@ -379,6 +391,14 @@ Limits:
   when the transactions must be durable when it returns.
 * An idle database does not wake: when nothing has been buffered for a
   buffer time, the storage thread waits for the next append (005-14).
+* A physical cut only takes its files off the stream's list; a thread of
+  the stream's own, which runs only while there is something to delete,
+  deletes them in the same order, each followed by a directory force
+  (005-46). A crash before it has deleted them leaves them, and the next
+  start cuts again. A failed delete fails the stream at its next operation;
+  the flushes before it, whose bytes are forced, stay acknowledged (Frans,
+  2026-10-27), where until then a failed pending cut kept its flush from
+  being acknowledged (011-07).
 * Open: group commit (005-48), and a durability of "written, not forced"
   (005-47).
 

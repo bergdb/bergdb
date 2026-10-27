@@ -1,0 +1,23 @@
+new FileStream(dir), a directory that does not exist: threw java.nio.channels.ClosedByInterruptException; the flag still set
+new FileStream(dir), an existing directory: threw java.nio.channels.ClosedByInterruptException; the flag still set
+Db.start(), an existing database: returned; the flag still set
+a get, the value read from the stream: returned; the flag still set
+a commit of one put: returned; the flag still set
+sync(): threw bergdb.storage.StreamIoException: Thread was interrupted while waiting for D1 size 188160.; the cause: java.io.InterruptedIOException: Thread was interrupted while waiting for D1 size 188160.; the flag cleared
+  then the database works
+Db.close(), the first close, transactions in the write buffer: returned; the flag still set
+  it returned after 0.3 ms
+  2 s later, the storage threads still there: BufferedStream-consumer-29 (TIMED_WAITING)
+  started again: the last transaction is there
+Factory.database().dir(dir): threw bergdb.storage.StreamIoException; the cause: java.nio.channels.ClosedByInterruptException; the flag still set
+Job.join(), of addReplica: threw java.lang.Error: Internal thread unexpectedly interrupted.; the flag cleared
+Exception in thread "BufferedStream-consumer-29" Exception in thread "BufferedStream-consumer-36" bergdb.common.Bug: Should not happen, consumer thread interrupted and stop==false.
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:161)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:118)
+	at java.base/java.lang.Thread.run(Thread.java:1527)
+bergdb.common.Bug: Should not happen, consumer thread interrupted and stop==false.
+	at bergdb.storage.BufferedStream.runConsumer(BufferedStream.java:161)
+	at bergdb.storage.BufferedStream$1.run(BufferedStream.java:118)
+	at java.base/java.lang.Thread.run(Thread.java:1527)
+the storage thread interrupted: before BufferedStream-consumer-36 (TIMED_WAITING), BufferedStream-consumer-29 (TIMED_WAITING); after none
+  then a commit and a sync: the sync still waits after 3 s

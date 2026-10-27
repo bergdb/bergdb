@@ -247,6 +247,7 @@ public class FileStreamPowerLossTester {
             Arrays.fill(replacement, (byte) 2);
             stream.append(replacement, 0, replacement.length);
             stream.pretruncate(400000);
+            stream.awaitDeletes();      // The cut's thread deletes (bergdb 005-46).
             Assert.assertTrue("deletion did not survive", io.deletes >= 2);
             Assert.assertTrue("model incorrectly made replacements durable at cut",
                     io.image("power loss").end() < stream.getLength());
@@ -263,6 +264,7 @@ public class FileStreamPowerLossTester {
             io.omitDirectoryForce = true;
             stream.append(new byte[100], 0, 100);
             stream.pretruncate(200000);
+            stream.awaitDeletes();
             Assert.assertTrue("replacement name should be lost", io.durableFiles().isEmpty());
         } finally { stream.close(); remove(dir); }
     }
@@ -342,7 +344,11 @@ public class FileStreamPowerLossTester {
     }
 
     @Nano("f")
-    public static void testPendingCutForceFailureDoesNotAcknowledgeFlush() throws Exception {
+    public static void testPendingCutForceFailureFailsTheStream() throws Exception {
+        // Since 2026-10-27 (bergdb 005-46) the cut's thread deletes; a failed delete or
+        // directory force fails the stream at its next operation, and the flush before it,
+        // whose bytes are forced, stays acknowledged (Frans: "Yes"). Before, the failure kept
+        // that flush from being acknowledged (bergdb 011-07).
         File dir = Files.createTempDirectory("bergdb-power-pending-cut-").toFile();
         final CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
         ModelIo io = new ModelIo(dir, 7, 1) {
@@ -367,8 +373,9 @@ public class FileStreamPowerLossTester {
             }
         };
         Object lock = new Object();
+        FileStream stream = new FileStream(dir, io);
         StorageManager manager = new StorageManager.Builder(lock)
-                .stream("main", new FileStream(dir, io), 500000, 10).build();
+                .stream("main", stream, 500000, 10).build();
         try {
             synchronized (lock) {
                 manager.syncStreams(new NullProgressListener());
@@ -377,10 +384,17 @@ public class FileStreamPowerLossTester {
             Assert.assertTrue("append force not reached", entered.await(5, TimeUnit.SECONDS));
             synchronized (lock) { manager.pretruncate(200000); }
             release.countDown();
-            try { manager.sync(200100); throw new AssertionError("failed pending cut acknowledged"); }
+            manager.sync(200100);
+            Assert.assertEquals(200100, manager.getDurableLength());
+            try { stream.awaitDeletes(); throw new AssertionError("failed cut not passed on"); }
             catch (IOException expected) { }
-            Assert.assertEquals(0, manager.getDurableLength());
             Assert.assertEquals(1, io.deletes);
+            try {
+                synchronized (lock) { manager.append(new byte[100], 0, 100); }
+                manager.sync(200200);
+                throw new AssertionError("the stream went on after a failed cut");
+            } catch (IOException expected) { }
+            Assert.assertEquals(200100, manager.getDurableLength());
         } finally { release.countDown(); manager.stop(); remove(dir); }
     }
 
@@ -394,7 +408,9 @@ public class FileStreamPowerLossTester {
         try {
             stream.append(data, 0, data.length);
             io.failDeleteAt = 2;
-            try { stream.pretruncate(800000); throw new AssertionError("delete should fail"); }
+            // The cut's thread deletes; its failure is the stream's (bergdb 005-46).
+            stream.pretruncate(800000);
+            try { stream.awaitDeletes(); throw new AssertionError("delete should fail"); }
             catch (IOException expected) { }
             Image crash = io.image("partial deletion");
             Assert.assertEquals(1, io.deletes);
@@ -414,7 +430,8 @@ public class FileStreamPowerLossTester {
         try {
             stream.append(data, 0, data.length);
             io.failDirectoryForce = true;
-            try { stream.pretruncate(800000); throw new AssertionError("directory force should fail"); }
+            stream.pretruncate(800000);
+            try { stream.awaitDeletes(); throw new AssertionError("directory force should fail"); }
             catch (IOException expected) { }
             Assert.assertEquals("deletion continued after failed namespace force", 1, io.deletes);
             Assert.assertEquals(1000000, io.image("directory failure").end());
@@ -431,6 +448,7 @@ public class FileStreamPowerLossTester {
             stream.append(data, 0, data.length);
             io.recording = true;
             stream.pretruncate(800000);
+            stream.awaitDeletes();
             Assert.assertEquals(4, io.deletes);
             Assert.assertEquals(1, io.maxDeleteBatch);
             for (Image image : io.snapshots()) {
@@ -453,6 +471,7 @@ public class FileStreamPowerLossTester {
             stream.append(new byte[1000000], 0, 1000000);
             io.recording = true; io.omitDirectoryForce = true;
             stream.pretruncate(800000);
+            stream.awaitDeletes();
             boolean caught = false;
             for (Image image : io.images.get("unordered_delete")) {
                 File recovered = image.restore();
@@ -555,7 +574,8 @@ public class FileStreamPowerLossTester {
         File dir = Files.createTempDirectory("bergdb-power-trace-").toFile();
         ModelIo io = new ModelIo(dir, seed, perEvent);
         CoreTestClock clock = new CoreTestClock(); clock.setTime(SEC);
-        Db db = start(new FileStream(dir, io), clock);
+        FileStream stream = new FileStream(dir, io);
+        Db db = start(stream, clock);
         Random random = new Random(seed);
         List<Change> changes = new ArrayList<Change>();
         long previousIteration = 0, previousStartup = 0;
@@ -575,6 +595,9 @@ public class FileStreamPowerLossTester {
                     transaction = db.trans().put(key, value).build();
                 }
                 db.execute(transaction);
+                // The cut's thread deletes after the commit (bergdb 005-46); waiting for it
+                // keeps the order of the trace's events, and so its images, deterministic.
+                stream.awaitDeletes();
                 changes.add(new Change(transaction.tt, key, value));
                 long iteration = db.getReclaimIterationCount();
                 long startup = db.internal().getStartupPosForEvict();

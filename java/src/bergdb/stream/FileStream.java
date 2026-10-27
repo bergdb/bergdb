@@ -5,6 +5,11 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.ClosedByInterruptException;
+import java.nio.channels.ClosedChannelException;
+import java.nio.channels.FileChannel;
+import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.ArrayList;
@@ -40,6 +45,19 @@ import bergdb.pub.util.BadFormatException;
  * buffer is full. So there is one force per chunk, not one
  * per transaction, and a transaction waits for a force only when it asks for a sync.
  * 
+ * Reads wait for no write (2026-10-27, bergdb 005-46). A read takes no lock: it reads
+ * with positional reads on a channel of the file's own, and finds its file in a list
+ * that the writer replaces, never changes. The writer, its append and force, a new file
+ * with its forces, and a cut, holds no lock that a read takes; a cut only takes its files
+ * off the list, and a thread of its own deletes them, in the same order as before. Before,
+ * a read of the last file waited for the writer's append and force, and every read for a
+ * new file's forces and a cut's deletes; on a slow disk for seconds.
+ * 
+ * Interrupts (bergdb 005-46). No method of this class is interruptible: an interrupt of
+ * the calling thread neither ends nor fails it, and the thread's interrupt flag is set
+ * again when it returns. A channel that an interrupt closes during a read or a force
+ * (FileChannel is interruptible) is opened again.
+ * 
  * @author Frans Lundberg
  */
 public class FileStream implements AppendOnlyStream {
@@ -71,17 +89,23 @@ public class FileStream implements AppendOnlyStream {
     
     private final File dir;
     private final FileStreamIo io;
-    private long firstPos = 0;
-    private long length = 0;
+    private volatile long firstPos = 0;
+    private volatile long length = 0;
     private int fileSizeIndex = 0;
     private boolean renameAsDelete = false;
     private boolean max2G = false;
     
-    /** First spos of each file in 'files'. Protected by this. */
-    private long[] dbFilePositions;
+    /**
+     * The .bergdb files of the stream, in order. Replaced under this, never changed, so that
+     * a read takes it without a lock (bergdb 005-46). A file's first position is its spos.
+     */
+    private volatile DbFile[] dbFiles;
     
-    /** The .bergdb files of the directory. Protected by this. */
-    private DbFile[] dbFiles;
+    /** The files a cut took off the list, to be deleted in order by the cut's thread. Under this. */
+    private final ArrayDeque<DbFile> cutFiles = new ArrayDeque<DbFile>();
+    
+    /** The cut's thread while it runs, or null. Under this. */
+    private Thread cutThread = null;
     
     /** If not null, this stream should be considered faulty and not used any further. */
     private volatile IOException ioException = null;
@@ -137,8 +161,9 @@ public class FileStream implements AppendOnlyStream {
     
     public void read(long spos, byte[] dest, int destOffset, int length) throws IOException {
         //
-        // Sync comments. Multiple concurrent reads are allowed, but only if made from different
-        // files (needed since we use RandomAccessFile.seek()).
+        // Sync comments. Reads take no lock and run beside each other and beside the writer
+        // (bergdb 005-46). Before, reads of a file waited for each other (RandomAccessFile.seek())
+        // and for the writer's append to it.
         //
         checkIOException();
         
@@ -199,19 +224,26 @@ public class FileStream implements AppendOnlyStream {
         }
     }
 
-    public synchronized long getLength() {
+    public long getLength() {
         return length;
     }
 
+    /**
+     * Closes the files, after the cut's thread has deleted what the cuts so far took off
+     * (bergdb 005-46). Throws the stream's failure, such as a failed delete of a cut.
+     */
     public void close() throws IOException {
+        awaitCutThread();
         // An I/O failure must not prevent release of the remaining handles,
         // including handles left after a partially completed pretruncate.
         IOException failure = ioException;
         synchronized (this) {
-            for (int i = 0; i < dbFiles.length; i++) {
-                if (!dbFiles[i].isClosed) {
+            List<DbFile> all = new ArrayList<DbFile>(Arrays.asList(dbFiles));
+            all.addAll(cutFiles);       // Left by a failed cut.
+            for (DbFile file : all) {
+                if (!file.isClosed) {
                     try {
-                        dbFiles[i].close();
+                        file.close();
                     } catch (IOException e) {
                         if (failure == null) failure = e;
                         else if (failure != e) failure.addSuppressed(e);
@@ -220,6 +252,32 @@ public class FileStream implements AppendOnlyStream {
             }
         }
         if (failure != null) throw failure;
+    }
+    
+    /**
+     * Waits until the cut's thread has deleted the files of every cut so far, and throws the
+     * stream's failure if there is one, such as a failed delete. For tests: pretruncate()
+     * returns before the files are deleted (bergdb 005-46). Not interruptible.
+     */
+    public void awaitDeletes() throws IOException {
+        awaitCutThread();
+        checkIOException();
+    }
+    
+    private void awaitCutThread() {
+        boolean interrupted = false;
+        synchronized (this) {
+            while (cutThread != null) {
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                    interrupted = true;
+                }
+            }
+        }
+        if (interrupted) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     /**
@@ -240,7 +298,7 @@ public class FileStream implements AppendOnlyStream {
         }
     }
     
-    public synchronized long getFirstPos() {
+    public long getFirstPos() {
         return firstPos;
     }
 
@@ -259,16 +317,25 @@ public class FileStream implements AppendOnlyStream {
                     + ") is not a multiple of " + SMALLEST_FILE_SIZE + ".");
         }
         
+        awaitCutThread();
         deleteAllFiles();
         
         this.length = pos;
         this.firstPos = pos;
         
         dbFiles = new DbFile[0];
-        dbFilePositions = new long[0];
         newFile();
     }
 
+    /**
+     * Takes the files before 'pos' off the stream and returns; the cut's thread deletes them
+     * (2026-10-27, bergdb 005-46). Before, this method deleted them, forcing the directory
+     * after each, under the stream's monitor, which every read takes to find its file, and on
+     * the thread of the commit that made the cut: every read and commit waited for the
+     * whole cut, 88 to 171 ms in P4's soak (bergdb 009-04, section 7.3). A read of a file
+     * taken off throws ReadBelowFirstPosException, as one of a deleted file did. A failed
+     * delete is the stream's failure: the next read, append or cut throws it, and close().
+     */
     public synchronized void pretruncate(long pos) throws IOException {
         checkIOException();
         
@@ -279,8 +346,9 @@ public class FileStream implements AppendOnlyStream {
             throw new IllegalArgumentException("pos > length of stream (" + len + ").");
         }
         
-        for (int i = 0; i < dbFiles.length; i++) {
-            DbFile k = dbFiles[i];
+        DbFile[] files = dbFiles;
+        for (int i = 0; i < files.length; i++) {
+            DbFile k = files[i];
             if (k.spos + k.fileLength - 1 < pos) {
                 index = i;
             } else {
@@ -289,34 +357,69 @@ public class FileStream implements AppendOnlyStream {
         }
         
         if (index != -1) {
-            try {
-                for (int i = 0; i <= index; i++) {
-                    dbFiles[i].delete();
-                    // Persist each prefix removal before the next one. A crash
-                    // must not retain an older file while losing a newer one,
-                    // which would leave a hole before recovery can read the cut table.
-                    io.forceDirectory(dir);
-                }
-            } catch (IOException e) {
-                ioException = e;
-                throw e;
-            }
-            
-            int newSize = dbFiles.length - (index + 1);
+            int newSize = files.length - (index + 1);
             if (newSize < 1) {
                 throw new Bug("Unexpected newSize: " + newSize + ". pos=" + pos 
-                        + ", kfiles.length=" + dbFiles.length);
+                        + ", kfiles.length=" + files.length);
             }
             
             DbFile[] newFiles = new DbFile[newSize];
-            long[] newPositions = new long[newSize];
+            System.arraycopy(files, index + 1, newFiles, 0, newSize);
+            for (int i = 0; i <= index; i++) {
+                files[i].isDeleted = true;      // A read that holds it throws (see DbFile.read).
+                cutFiles.addLast(files[i]);
+            }
             
-            System.arraycopy(dbFiles, index + 1, newFiles, 0, newSize);
-            System.arraycopy(dbFilePositions, index + 1, newPositions, 0, newSize);
-            
+            this.firstPos = newFiles[0].spos;
             this.dbFiles = newFiles;
-            this.dbFilePositions = newPositions;
-            this.firstPos = dbFiles[0].spos;
+            
+            if (cutThread == null) {
+                cutThread = new Thread(new Runnable() {
+                    public void run() {
+                        runCuts();
+                    }
+                });
+                cutThread.setName("FileStream-cut");
+                cutThread.setDaemon(true);
+                cutThread.start();
+            }
+        }
+    }
+    
+    /**
+     * The cut's thread: deletes the files that cuts took off, oldest first, and forces the
+     * directory after each, as pretruncate() did (bergdb 005-46). Each removal of a prefix
+     * is persisted before the next one: a crash must not retain an older file while losing
+     * a newer one, which would leave a hole before recovery can read the cut table. A crash
+     * before a file is deleted leaves it, and the next start cuts again (Reclaim). It ends
+     * when nothing is left to delete, or at a failure, which it keeps as the stream's.
+     */
+    private void runCuts() {
+        while (true) {
+            DbFile k;
+            synchronized (this) {
+                k = cutFiles.peekFirst();
+                if (k == null || ioException != null) {
+                    cutThread = null;
+                    notifyAll();
+                    return;
+                }
+            }
+            
+            try {
+                k.delete();
+                forceDirectory(dir);
+            } catch (IOException e) {
+                ioException = e;
+            } catch (RuntimeException | Error e) {
+                ioException = new IOException("The delete of a cut failed (the cause).", e);
+            }
+            
+            synchronized (this) {
+                if (ioException == null) {
+                    cutFiles.removeFirst();
+                }
+            }
         }
     }
 
@@ -345,7 +448,7 @@ public class FileStream implements AppendOnlyStream {
         
         if (exists) {
             File parent = dir.getAbsoluteFile().getParentFile();
-            if (parent != null) io.forceDirectory(parent);
+            if (parent != null) forceDirectory(parent);
             return;
         }
 
@@ -367,10 +470,10 @@ public class FileStream implements AppendOnlyStream {
                     + " could not be created because of a SecurityException; " + e.getMessage());
         }
         for (File f : missing) {
-            io.forceDirectory(f);
+            forceDirectory(f);
             File parent = f.getParentFile();
             if (parent != null) {
-                io.forceDirectory(parent);
+                forceDirectory(parent);
             }
         }
     }
@@ -390,10 +493,9 @@ public class FileStream implements AppendOnlyStream {
 
     private void createDbFileObjects(File[] bergdbFiles, long currentSpos) throws IOException,
             BadDirStateException {
-        // Creates this.dbFiles, this.dbFilePositions. Sets this.length.
+        // Creates this.dbFiles. Sets this.length.
         
         dbFiles = new DbFile[bergdbFiles.length];
-        dbFilePositions = new long[bergdbFiles.length];
         
         if (bergdbFiles.length == 0) {
             // Special case, no bergdb files, create one.
@@ -421,8 +523,6 @@ public class FileStream implements AppendOnlyStream {
                 currentSpos = index * BYTES_PER_INDEX_UNIT;
                 this.firstPos = currentSpos;
             }
-            
-            dbFilePositions[i] = currentSpos;
             
             if (i == bergdbFiles.length - 1) {
                 dbFiles[i] = openForRw(currentSpos, f, FILE_SIZES[fileSizeIndex]);
@@ -586,7 +686,7 @@ public class FileStream implements AppendOnlyStream {
         try {
             for (int i = 0; i < dbFiles.length; i++) {
                 dbFiles[i].delete();
-                io.forceDirectory(dir);
+                forceDirectory(dir);
             }
         } catch (IOException e) {
             ioException = e;
@@ -605,43 +705,43 @@ public class FileStream implements AppendOnlyStream {
         }
     }
 
+    /**
+     * Makes a new last file; the writer's (append's, seekFirstPos', the constructor's). It
+     * creates and forces the file and the directory before it takes the stream's monitor, and
+     * takes it only to publish the new list (2026-10-27, bergdb 005-46): every read waited for
+     * the forces. No read needs the new file before an append to it has returned.
+     */
     private void newFile() throws IOException {
+        if (this.length % BYTES_PER_INDEX_UNIT != 0) {
+            throw new Bug("Illegal state, length = " + length);
+        }
+        
+        DbFile[] files = dbFiles;
+        if (files.length > 0) {
+            // The last file takes no more appends; its read channel stays.
+            files[files.length - 1].closeWriter();
+        }
+        
+        long index = this.length / BYTES_PER_INDEX_UNIT;
+        File file = new File(dir, indexToString(index) + SUFFIX);
+        
+        applyFileSizeChangeRules();
+        
+        DbFile newFile = openForRw(length, file, FILE_SIZES[fileSizeIndex]);
+        
+        // To make sure no-one just created the file and wrote to it.
+        long newFileLength = newFile.file.length();
+        if (newFileLength != 0) {
+            throw new IOException("File " + newFile.file.getPath() 
+                    + " already exists and has length " + newFileLength + ".");
+        }
+        
         synchronized (this) {
-            if (this.length % BYTES_PER_INDEX_UNIT != 0) {
-                throw new Bug("Illegal state, length = " + length);
-            }
-            
-            if (dbFiles.length > 0) {
-                // last file is opened for RW, close and reopen for read only.
-                DbFile k = dbFiles[dbFiles.length - 1];
-                reopenForReadOnly(k);
-            }
-            
-            long index = this.length / BYTES_PER_INDEX_UNIT;
-            File file = new File(dir, indexToString(index) + SUFFIX);
-            
-            applyFileSizeChangeRules();
-            
-            DbFile newFile = openForRw(length, file, FILE_SIZES[fileSizeIndex]);
-            
-            // To make sure no-one just created the file and wrote to it.
-            long newFileLength = newFile.file.length();
-            if (newFileLength != 0) {
-                throw new IOException("File " + newFile.file.getPath() 
-                        + " already exists and has length " + newFileLength + ".");
-            }
-            
-            DbFile[] newKFiles = new DbFile[dbFiles.length + 1];
-            System.arraycopy(dbFiles, 0, newKFiles, 0, dbFiles.length);
+            files = dbFiles;    // A cut may have taken files off meanwhile, never the last.
+            DbFile[] newKFiles = new DbFile[files.length + 1];
+            System.arraycopy(files, 0, newKFiles, 0, files.length);
             newKFiles[newKFiles.length - 1] = newFile;
             dbFiles = newKFiles;
-            
-            long[] newPositions = new long[dbFiles.length];
-            System.arraycopy(dbFilePositions, 0, newPositions, 0, dbFilePositions.length);
-            newPositions[newPositions.length - 1] = length;
-            this.dbFilePositions = newPositions;
-            
-            assert dbFilePositions.length == dbFiles.length : dbFilePositions.length + " != " + dbFiles.length;
         }
     }
 
@@ -700,18 +800,14 @@ public class FileStream implements AppendOnlyStream {
         // Yes, we use linear search. Likely faster in this case then an O(log N) data structure
         // since number of files should not exceed 100.
         
+        // No lock (bergdb 005-46): dbFiles is replaced, never changed.
         DbFile result = null;
-        assert dbFilePositions.length == dbFiles.length :
-                dbFilePositions.length + " != " + dbFiles.length;
-        
-        synchronized (this) {
-            for (int i = 0; i < dbFilePositions.length; i++) {
-                long p = dbFilePositions[i];
-                if (p <= spos) {
-                    result = dbFiles[i];
-                } else {
-                    break;
-                }
+        DbFile[] files = dbFiles;
+        for (int i = 0; i < files.length; i++) {
+            if (files[i].spos <= spos) {
+                result = files[i];
+            } else {
+                break;
             }
         }
         
@@ -719,16 +815,19 @@ public class FileStream implements AppendOnlyStream {
     }
     
     private DbFile findLastFile() {        
-        synchronized (this) {
-            assert dbFiles.length > 0;
-            return dbFiles[dbFiles.length - 1];
-        }
+        DbFile[] files = dbFiles;
+        assert files.length > 0;
+        return files[files.length - 1];
     }
     
     private DbFile openForR(long spos, File file) throws IOException {
         DbFile k = new DbFile(spos, file, 0);
-        k.rfile = new RandomAccessFile(file, "r");
-        k.fileLength = k.rfile.length();
+        k.channel = io.openRead(file);
+        k.fileLength = file.length();     // Not channel.size(), which an interrupt fails.
+        if (k.fileLength == 0 && !file.exists()) {
+            k.channel.close();
+            throw new IOException("File " + file.getPath() + " not found.");
+        }
         k.isRw = false;
         synchronized (k) {}
         return k;
@@ -740,9 +839,10 @@ public class FileStream implements AppendOnlyStream {
         try {
             // Persist both the file and its directory entry before it can
             // contribute to StorageManager's confirmed (durable) length.
-            io.forceFile(file, k.rfile);
-            io.forceDirectory(dir);
+            k.force();
+            forceDirectory(dir);
             k.fileLength = k.rfile.length();
+            k.channel = io.openRead(file);
         } catch (IOException e) {
             try {
                 k.rfile.close();
@@ -758,25 +858,49 @@ public class FileStream implements AppendOnlyStream {
         return k;
     }
     
-    private void reopenForReadOnly(DbFile dbFile) throws IOException {
-        synchronized (dbFile) {
-            dbFile.close();
-            dbFile.rfile = new RandomAccessFile(dbFile.file, "r");
-            dbFile.isRw = false;
-            dbFile.isClosed = false;
+    /**
+     * Forces a directory through FileStreamIo. Not interruptible (bergdb 005-46): it clears
+     * the thread's interrupt flag first and sets it again after, and if an interrupt during
+     * the force closes its channel anyway, forces again (forceDirectory opens a channel for
+     * each force). Before, a cut or a new FileStream by an interrupted thread failed with
+     * ClosedByInterruptException, and the cut failed the database.
+     */
+    private void forceDirectory(File directory) throws IOException {
+        boolean interrupted = Thread.interrupted();
+        try {
+            while (true) {
+                try {
+                    io.forceDirectory(directory);
+                    return;
+                } catch (ClosedByInterruptException e) {
+                    Thread.interrupted();
+                    interrupted = true;
+                }
+            }
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
     
     /**
      * Cached information about a particular *.bergdb file.
-     * This class is not thread-safe.
+     * 
+     * Reads take no lock (bergdb 005-46): they read with positional reads on 'channel', the
+     * file's read channel, and check 'fileLength', 'isDeleted' and 'isClosed', which are
+     * volatile. The writer's handle, 'rfile', and append() are under this object's monitor,
+     * which no read takes. The channel is replaced, under 'channelLock', only when an
+     * interrupt closed it; a cut and close() close it under the same lock.
      */
     private class DbFile {
-        private File file;
-        private RandomAccessFile rfile = null;
-        private long fileLength;   // current length of the file
+        private final File file;
+        private RandomAccessFile rfile = null;      // the writer's handle; null when not rw
+        private volatile FileChannel channel;       // the read channel
+        private final Object channelLock = new Object();
+        private volatile long fileLength;   // current length of the file
         private boolean isRw = false;
-        private long spos;    // spos of first byte in file
+        private final long spos;    // spos of first byte in file
         private long maxSize;
         private volatile boolean isClosed = false;
         private volatile boolean isDeleted = false;     // by pretruncate; see read()
@@ -799,23 +923,50 @@ public class FileStream implements AppendOnlyStream {
             return file.getPath() + ", isRw:" + isRw + ", spos:" + spos + ", maxSize:" + maxSize;
         }
         
+        /** Closes the writer's handle and the read channel. */
         synchronized void close() throws IOException {
-            if (rfile == null) {
-                throw new Bug("Cannot close file, not open, " + file.getPath());
+            IOException failure = null;
+            if (rfile != null) {
+                try {
+                    rfile.close();
+                } catch (IOException e) {
+                    failure = e;
+                }
+                rfile = null;
+                isRw = false;
             }
-            
-            try {
-                rfile.close();
-            } catch (IOException e) {
-                ioException = e;
-                throw e;
+            synchronized (channelLock) {
+                isClosed = true;
+                if (channel != null) {
+                    try {
+                        channel.close();    // Waits for the reads in progress on it.
+                    } catch (IOException e) {
+                        if (failure == null) failure = e;
+                    }
+                }
             }
+            if (failure != null) {
+                ioException = failure;
+                throw failure;
+            }
+        }
             
-            isClosed = true;
+        /** The writer is done with the file, which takes no more appends; reads go on. */
+        synchronized void closeWriter() throws IOException {
+            if (rfile != null) {
+                try {
+                    rfile.close();
+                } catch (IOException e) {
+                    ioException = e;
+                    throw e;
+                }
+                rfile = null;
+            }
+            isRw = false;
         }
         
         /**
-         * Closes and deletes a file. 
+         * Closes and deletes a file; the cut's thread. 
          * If option renameAsDelete has been set, the file will be renamed instead of deleted.
          * 
          * @throws IOException
@@ -841,19 +992,25 @@ public class FileStream implements AppendOnlyStream {
         
         /**
          * Reads bytes from the file, returns number of bytes actually read.
+         * No lock and not interruptible (bergdb 005-46): it clears the thread's interrupt
+         * flag first and sets it again after, and reads again on a new channel if an
+         * interrupt during the read closed the channel; FileChannel is interruptible, and an
+         * interrupted read closes it for every thread. Before, under the file's monitor,
+         * which the writer held during its append and force.
          */
-        synchronized int read(long spos, byte[] dest, int destOffset, int lengthToRead) throws IOException {
+        int read(long spos, byte[] dest, int destOffset, int lengthToRead) throws IOException {
             if (isDeleted) {
                 // 2026-10-13 (bergdb 011-04, W1): a reader found this file
                 // just before pretruncate() deleted it. Only this read fails.
-                throw new ReadBelowFirstPosException("Cannot read at spos " + spos
-                        + ", the file " + file.getPath() + " has been deleted by pretruncate.");
+                throw deletedException(spos);
             }
 
             if (isClosed) {
                 ioException = new IOException("File closed, " + file.getPath() + ".");
                 throw ioException;
             }
+            
+            final long fileLength = this.fileLength;
             
             if (spos < this.spos) {
                 throw new IllegalArgumentException("Cannot read from spos " + spos 
@@ -872,26 +1029,93 @@ public class FileStream implements AppendOnlyStream {
             assert actualLengthToRead <= Integer.MAX_VALUE;
             int actualLengthToReadInt = (int) actualLengthToRead;
             
+            ByteBuffer buffer = ByteBuffer.wrap(dest, destOffset, actualLengthToReadInt);
+            boolean interrupted = Thread.interrupted();
             try {
-                rfile.seek(fileOffset);
-                rfile.readFully(dest, destOffset, actualLengthToReadInt);
-            } catch (EOFException e) {          
-                String message = "EOF when reading from " + file.getPath() 
-                        + ". fileOffset: " + fileOffset 
-                        + ". destOffset: " + destOffset
-                        + ". lengthToRead: " + lengthToRead
-                        + ". file.length(): " + file.length()
-                        + ". rfile.length(): " + rfile.length()
-                        + ". dest.length: " + dest.length
-                        + ". Original EOFException message: " + e.getMessage();
-                ioException = new EOFException(message);
-                throw ioException;
-            } catch (IOException e) {
-                ioException = e;
-                throw e;
+                while (buffer.hasRemaining()) {
+                    FileChannel ch = channel;
+                    try {
+                        int n = ch.read(buffer, fileOffset + buffer.position() - destOffset);
+                        if (n < 0) {
+                            String message = "EOF when reading from " + file.getPath() 
+                                    + ". fileOffset: " + fileOffset 
+                                    + ". destOffset: " + destOffset
+                                    + ". lengthToRead: " + lengthToRead
+                                    + ". file.length(): " + file.length()
+                                    + ". dest.length: " + dest.length;
+                            ioException = new EOFException(message);
+                            throw ioException;
+                        }
+                    } catch (ClosedChannelException e) {
+                        if (Thread.interrupted()) {
+                            interrupted = true;
+                        }
+                        reopenChannel(ch, spos);
+                    } catch (IOException e) {
+                        if (e != ioException) {
+                            ioException = e;
+                        }
+                        throw e;
+                    }
+                }
+            } finally {
+                if (interrupted) {
+                    Thread.currentThread().interrupt();
+                }
             }
             
             return actualLengthToReadInt;
+        }
+        
+        /**
+         * Opens the read channel again after an interrupt closed it (bergdb 005-46), unless
+         * another read did, or the file was deleted or closed: then this read fails as one
+         * of a deleted or a closed file.
+         */
+        private void reopenChannel(FileChannel closed, long spos) throws IOException {
+            synchronized (channelLock) {
+                if (isDeleted) {
+                    throw deletedException(spos);
+                }
+                if (isClosed) {
+                    ioException = new IOException("File closed, " + file.getPath() + ".");
+                    throw ioException;
+                }
+                if (channel == closed) {
+                    channel = io.openRead(file);
+                }
+            }
+        }
+        
+        private ReadBelowFirstPosException deletedException(long spos) {
+            return new ReadBelowFirstPosException("Cannot read at spos " + spos
+                    + ", the file " + file.getPath() + " has been deleted by pretruncate.");
+        }
+        
+        /**
+         * Forces the file through FileStreamIo; under this object's monitor. Not
+         * interruptible (bergdb 005-46): it clears the thread's interrupt flag first and sets
+         * it again after. If an interrupt during the force closes the channel anyway, which
+         * closes 'rfile' too, its parent, it opens the file again and forces again.
+         */
+        void force() throws IOException {
+            boolean interrupted = Thread.interrupted();
+            try {
+                while (true) {
+                    try {
+                        io.forceFile(file, rfile);
+                        return;
+                    } catch (ClosedByInterruptException e) {
+                        Thread.interrupted();
+                        interrupted = true;
+                        rfile = io.open(file);
+                    }
+                }
+            } finally {
+                if (interrupted) {
+                    Thread.currentThread().interrupt();
+                }
+            }
         }
         
         /**
@@ -930,8 +1154,9 @@ public class FileStream implements AppendOnlyStream {
                 rfile.seek(this.fileLength);
                 if (toAppend > 0) {
                     io.write(file, rfile, bytes, offset, toAppend);
-                    io.forceFile(file, rfile);
+                    force();
                 }
+                // Published to reads after the force (volatile).
                 fileLength += toAppend;
                 assert fileLength == rfile.length() : fileLength + " != " + rfile.length();
             } catch (IOException e) {
@@ -1283,6 +1508,332 @@ public class FileStream implements AppendOnlyStream {
         Assert.assertEquals(200*1000, f.dbFiles[0].fileLength);
         Assert.assertEquals(1000*1000, f.dbFiles[f.dbFiles.length - 1].fileLength);
         
+        f.close();
+    }
+    
+    // ---- bergdb 005-46: reads that wait for no write, and interrupts ----
+    
+    /**
+     * A FileStreamIo whose file force, directory force and delete can be held on a latch,
+     * and that counts the read channels it opens (bergdb 005-46).
+     */
+    static class HeldIo extends FileStreamIo {
+        volatile java.util.concurrent.CountDownLatch holdForce, holdDirectoryForce, holdDelete;
+        final java.util.concurrent.CountDownLatch held = new java.util.concurrent.CountDownLatch(1);
+        final java.util.concurrent.atomic.AtomicInteger readOpens =
+                new java.util.concurrent.atomic.AtomicInteger();
+        volatile FileChannel lastRead;
+        volatile int failDeleteAt = 0;
+        int deletes = 0;
+        
+        private void hold(java.util.concurrent.CountDownLatch latch) throws IOException {
+            if (latch == null) return;
+            held.countDown();
+            try {
+                if (!latch.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                    throw new IOException("held for 10 s");
+                }
+            } catch (InterruptedException e) {
+                throw new IOException(e);
+            }
+        }
+        
+        protected void forceFile(File file, RandomAccessFile handle) throws IOException {
+            hold(holdForce);
+            super.forceFile(file, handle);
+        }
+        
+        protected void forceDirectory(File directory) throws IOException {
+            hold(holdDirectoryForce);
+            super.forceDirectory(directory);
+        }
+        
+        protected boolean delete(File file) throws IOException {
+            hold(holdDelete);
+            if (++deletes == failDeleteAt) {
+                throw new IOException("injected delete failure");
+            }
+            return super.delete(file);
+        }
+        
+        protected FileChannel openRead(File file) throws IOException {
+            readOpens.incrementAndGet();
+            return lastRead = super.openRead(file);
+        }
+    }
+    
+    /** Runs 'r' in a new thread, started; its failure is rethrown by join(). */
+    static final class Run extends Thread {
+        private final Callable r;
+        volatile Throwable failure;
+        
+        interface Callable {
+            void call() throws Exception;
+        }
+        
+        Run(Callable r) {
+            this.r = r;
+            setDaemon(true);
+            start();
+        }
+        
+        public void run() {
+            try {
+                r.call();
+            } catch (Throwable e) {
+                failure = e;
+            }
+        }
+        
+        void finish() throws Exception {
+            join(10000);
+            Assert.assertTrue("still running after 10 s", !isAlive());
+            if (failure != null) throw new AssertionError("failed", failure);
+        }
+    }
+    
+    /** Reads 'n' bytes at 'pos' and checks them against 'expected', which starts at 0. */
+    private static void readAndCheck(FileStream f, long pos, int n, byte[] expected)
+            throws IOException {
+        byte[] dest = new byte[n];
+        f.read(pos, dest, 0, n);
+        for (int i = 0; i < n; i++) {
+            Assert.assertEquals(expected[(int) pos + i], dest[i]);
+        }
+    }
+    
+    /**
+     * Regression test for bergdb 005-46: a read of the last file waited for the writer's
+     * append and its force (the file's monitor). Now it reads while the force is held.
+     */
+    @Nano
+    public static void testReadOfLastFileDuringForce(TestEnvironment c) throws Exception {
+        HeldIo io = new HeldIo();
+        final FileStream f = new FileStream(c.createTempDir(), io);
+        final byte[] bytes = new byte[100 * 1000];
+        new Random(4).nextBytes(bytes);
+        f.append(bytes, 0, 50 * 1000);
+        io.holdForce = new java.util.concurrent.CountDownLatch(1);
+        Run writer = new Run(() -> f.append(bytes, 50 * 1000, 1000));
+        Assert.assertTrue(io.held.await(10, java.util.concurrent.TimeUnit.SECONDS));
+        long t0 = System.nanoTime();
+        readAndCheck(f, 49 * 1000, 1000, bytes);       // The last file, while its force waits.
+        Assert.assertTrue("the read waited", System.nanoTime() - t0 < 2000000000L);
+        io.holdForce.countDown();
+        writer.finish();
+        readAndCheck(f, 50 * 1000, 1000, bytes);
+        f.close();
+    }
+    
+    /**
+     * Regression test for bergdb 005-46: a new file held the stream's monitor while it forced
+     * the file and the directory, and every read, of any file, waited. Now a read of the first
+     * file reads while the new file's directory force is held.
+     */
+    @Nano
+    public static void testReadDuringNewFile(TestEnvironment c) throws Exception {
+        HeldIo io = new HeldIo();
+        final FileStream f = new FileStream(c.createTempDir(), io);
+        final byte[] bytes = new byte[300 * 1000];
+        new Random(5).nextBytes(bytes);
+        f.append(bytes, 0, 150 * 1000);
+        io.holdDirectoryForce = new java.util.concurrent.CountDownLatch(1);
+        Run writer = new Run(() -> f.append(bytes, 150 * 1000, 100 * 1000));   // A new file.
+        Assert.assertTrue(io.held.await(10, java.util.concurrent.TimeUnit.SECONDS));
+        long t0 = System.nanoTime();
+        readAndCheck(f, 1000, 1000, bytes);
+        readAndCheck(f, 140 * 1000, 1000, bytes);
+        Assert.assertTrue("the read waited", System.nanoTime() - t0 < 2000000000L);
+        io.holdDirectoryForce.countDown();
+        writer.finish();
+        readAndCheck(f, 210 * 1000, 1000, bytes);
+        f.close();
+    }
+    
+    /**
+     * Regression test for bergdb 005-46: a cut deleted its files and forced the directory
+     * under the stream's monitor, on the caller's thread; every read waited, and the commit
+     * that made the cut too. Now pretruncate() returns at once, reads of the files it keeps
+     * go on while the cut's thread is held, and close() waits for that thread.
+     */
+    @Nano
+    public static void testCutOnItsOwnThread(TestEnvironment c) throws Exception {
+        HeldIo io = new HeldIo();
+        File dir = c.createTempDir();
+        final FileStream f = new FileStream(dir, io);
+        final byte[] bytes = new byte[1000 * 1000];
+        new Random(6).nextBytes(bytes);
+        f.append(bytes, 0, bytes.length);
+        int files = dir.list().length;
+        io.holdDirectoryForce = new java.util.concurrent.CountDownLatch(1);
+        long t0 = System.nanoTime();
+        f.pretruncate(800 * 1000);
+        Assert.assertTrue(io.held.await(10, java.util.concurrent.TimeUnit.SECONDS));
+        readAndCheck(f, 850 * 1000, 1000, bytes);
+        Assert.assertTrue("the cut or the read waited", System.nanoTime() - t0 < 2000000000L);
+        Assert.assertEquals(800 * 1000, f.getFirstPos());
+        try {
+            f.read(100, new byte[10], 0, 10);
+            throw new AssertionError("a read of a file the cut took off succeeded");
+        } catch (ReadBelowFirstPosException e) {
+            // Expected.
+        }
+        Run closer = new Run(() -> f.close());
+        Thread.sleep(100);
+        Assert.assertTrue("close() did not wait for the cut's thread", closer.isAlive());
+        io.holdDirectoryForce.countDown();
+        closer.finish();
+        Assert.assertEquals(files - 4, dir.list().length);
+    }
+    
+    /**
+     * bergdb 005-46: a failed delete of a cut is the stream's failure; no file after it is
+     * deleted, and the next read, cut and close() throw it.
+     */
+    @Nano
+    public static void testFailedDeleteOfACut(TestEnvironment c) throws Exception {
+        HeldIo io = new HeldIo();
+        io.failDeleteAt = 2;
+        File dir = c.createTempDir();
+        FileStream f = new FileStream(dir, io);
+        byte[] bytes = new byte[1000 * 1000];
+        f.append(bytes, 0, bytes.length);
+        f.pretruncate(800 * 1000);
+        try {
+            f.awaitDeletes();
+            throw new AssertionError("a failed delete was not passed on");
+        } catch (IOException e) {
+            Assert.assertEquals("injected delete failure", e.getMessage());
+        }
+        Assert.assertEquals(2, io.deletes);
+        Assert.assertTrue(new File(dir, indexToString(2) + SUFFIX).exists());   // The second.
+        Assert.assertTrue(!new File(dir, indexToString(0) + SUFFIX).exists());  // The first.
+        try {
+            f.read(850 * 1000, new byte[10], 0, 10);
+            throw new AssertionError("a read after a failed cut succeeded");
+        } catch (IOException e) {
+            // Expected.
+        }
+        try {
+            f.close();
+            throw new AssertionError("close() after a failed cut did not throw");
+        } catch (IOException e) {
+            // Expected.
+        }
+    }
+    
+    /**
+     * bergdb 005-46: a read by a thread whose interrupt flag is set reads, and leaves the
+     * flag set; a FileChannel would have closed itself. And a read that finds the channel
+     * closed, as an interrupt during a read of another thread closes it, opens it again.
+     */
+    @Nano
+    public static void testReadsAndInterrupts(TestEnvironment c) throws Exception {
+        HeldIo io = new HeldIo();
+        FileStream f = new FileStream(c.createTempDir(), io);
+        byte[] bytes = new byte[100 * 1000];
+        new Random(7).nextBytes(bytes);
+        f.append(bytes, 0, bytes.length);
+        int opens = io.readOpens.get();
+        
+        Thread.currentThread().interrupt();
+        try {
+            readAndCheck(f, 1000, 1000, bytes);
+            Assert.assertTrue("the interrupt flag was lost", Thread.currentThread().isInterrupted());
+        } finally {
+            Thread.interrupted();
+        }
+        Assert.assertEquals(opens, io.readOpens.get());
+        
+        io.lastRead.close();        // As an interrupt during a read would.
+        readAndCheck(f, 2000, 1000, bytes);
+        Assert.assertEquals(opens + 1, io.readOpens.get());
+        f.append(bytes, 0, 10);
+        readAndCheck(f, 3000, 1000, bytes);
+        f.close();
+    }
+    
+    /**
+     * bergdb 005-46: a cut and a new FileStream by a thread whose interrupt flag is set work,
+     * and leave the flag set. Their directory forces closed their FileChannel, and the
+     * stream failed with ClosedByInterruptException; the cut failed the database.
+     */
+    @Nano
+    public static void testCutAndOpenByInterruptedThread(TestEnvironment c) throws Exception {
+        File dir = c.createTempDir();
+        FileStream f = new FileStream(dir);
+        byte[] bytes = new byte[1000 * 1000];
+        f.append(bytes, 0, bytes.length);
+        Thread.currentThread().interrupt();
+        try {
+            f.pretruncate(800 * 1000);
+            f.awaitDeletes();
+            f.append(bytes, 0, 100 * 1000);         // Forces, and a new file.
+            readAndCheck(f, 900 * 1000, 1000, bytes);
+            f.close();
+            FileStream f2 = new FileStream(dir);
+            f2.close();
+            FileStream f3 = new FileStream(new File(c.createTempDir(), "new"));
+            f3.close();
+            Assert.assertTrue("the interrupt flag was lost", Thread.currentThread().isInterrupted());
+        } finally {
+            Thread.interrupted();
+        }
+    }
+    
+    /**
+     * bergdb 005-46: reads beside a writer and cuts, from several threads, read what was
+     * written; a read of bytes a cut removed throws ReadBelowFirstPosException only.
+     */
+    @Nano("f")
+    public static void testReadersBesideWriterAndCuts(TestEnvironment c) throws Exception {
+        final FileStream f = new FileStream(c.createTempDir());
+        final byte[] pattern = new byte[1000 * 1000];
+        new Random(8).nextBytes(pattern);
+        final java.util.concurrent.atomic.AtomicLong published =
+                new java.util.concurrent.atomic.AtomicLong();
+        final java.util.concurrent.atomic.AtomicBoolean stop =
+                new java.util.concurrent.atomic.AtomicBoolean();
+        Run[] readers = new Run[4];
+        for (int i = 0; i < readers.length; i++) {
+            final int seed = i;
+            readers[i] = new Run(() -> {
+                Random r = new Random(seed);
+                byte[] dest = new byte[500];
+                while (!stop.get()) {
+                    long end = published.get();
+                    long first = f.getFirstPos();
+                    if (end - first < dest.length) continue;
+                    long pos = first + (long) (r.nextDouble() * (end - first - dest.length));
+                    if (seed == 0) Thread.currentThread().interrupt();
+                    try {
+                        f.read(pos, dest, 0, dest.length);
+                    } catch (ReadBelowFirstPosException e) {
+                        continue;
+                    } finally {
+                        if (seed == 0) Assert.assertTrue(Thread.interrupted());
+                    }
+                    for (int j = 0; j < dest.length; j++) {
+                        Assert.assertEquals(pattern[(int) ((pos + j) % pattern.length)], dest[j]);
+                    }
+                }
+            });
+        }
+        byte[] chunk = new byte[37 * 1000];
+        long length = 0;
+        for (int i = 0; i < 300; i++) {
+            for (int j = 0; j < chunk.length; j++) {
+                chunk[j] = pattern[(int) ((length + j) % pattern.length)];
+            }
+            f.append(chunk, 0, chunk.length);
+            length += chunk.length;
+            published.set(length);
+            if (i % 20 == 19) {
+                f.pretruncate(Math.max(0, length - 2 * 1000 * 1000));
+            }
+        }
+        stop.set(true);
+        for (Run r : readers) r.finish();
         f.close();
     }
 }

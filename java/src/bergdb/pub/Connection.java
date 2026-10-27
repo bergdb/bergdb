@@ -251,7 +251,8 @@ public interface Connection extends ReadInterface {
      * Waits until ordinary durability has been achieved for the last
      * transaction started with this connection.
      * 
-     * @throws DbException if the database is faulty.
+     * @throws DbException if the database is faulty, or if the thread is interrupted while
+     *             it waits: the transaction stays committed (see Database.sync()).
      * @throws DbFailedException
      *             If the storage has failed: the database fails. See Database.
      */

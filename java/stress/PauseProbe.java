@@ -41,6 +41,8 @@ public class PauseProbe {
     final int seconds = Integer.getInteger("seconds", 60);
     final int[] tsizes = parse(System.getProperty("tsize", "1,1000"));
     Db db;
+    /** The disk's waits for the report (bergdb 005-46). */
+    final TimedIo io = new TimedIo();
     volatile boolean stop = false;
     volatile Throwable failure = null;
 
@@ -156,7 +158,7 @@ public class PauseProbe {
         dir.mkdirs();
         File[] fs = dir.listFiles();
         if (fs != null) for (File f : fs) f.delete();
-        Db d = Db.builder().stream("main", new FileStream(dir)).testId()
+        Db d = Db.builder().stream("main", new FileStream(dir, io)).testId()
                 .cacheSizeIndicator(budget).evictionSchedule(Eviction.Schedule.BUDGET, 1).build();
         d.start();
         return d;
@@ -202,6 +204,17 @@ public class PauseProbe {
                 keys, (System.nanoTime() - s) / 1e9, from / 1e3, to / 1e3));
         System.out.println("  " + commits.line("commits"));
         System.out.println("  " + evictionFigures());
+        diskWaits();
+    }
+
+    /**
+     * The disk's waits since the last call (bergdb 005-46): the writer's for room in the write
+     * buffer, the file and directory forces, the deletes. Not BergDB's, but a long get or
+     * commit at the same uptime is the disk's.
+     */
+    void diskWaits() {
+        System.out.println("  " + TimedIo.writeBufferWaits(db));
+        for (String line : io.take().split("\n")) System.out.println("  " + line);
     }
 
     void phase(final int tsize) throws Exception {
@@ -263,6 +276,7 @@ public class PauseProbe {
         System.out.println("  " + gets.line("gets"));
         System.out.println("  " + commits.line("commits"));
         System.out.println("  " + evictionFigures());
+        diskWaits();
     }
 
     void run() throws Exception {

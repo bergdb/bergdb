@@ -107,6 +107,9 @@ public class Soak {
     final int extendSec = pi("extend", 3600);
     final int restarts = pi("restarts", 3);
     final int minCuts = pi("mincuts", 10);
+    /** The disk's waits, for the report (bergdb 005-46): forces, deletes, the write buffer's. */
+    final TimedIo io = new TimedIo();
+    final List<Object> diskWaits = new ArrayList<Object>();
     final int durableEvery = pi("durable", Math.max(1, rate));   // every k-th measured commit is synced
     final int sampleMs = pi("samplems", 1000);
     final int dirtyEverySec = pi("dirtyevery", 60);   // the dirty nodes are counted (0: never)
@@ -388,7 +391,7 @@ public class Soak {
     }
 
     Db openDb() throws IOException {
-        FileStream s = new FileStream(dir);    // (FileStream reads its own files only, not the marker.)
+        FileStream s = new FileStream(dir, io);   // (FileStream reads its own files only, not the marker.)
         DbBuilder b = Db.builder().stream("main", s).systemClock().noEvict().retainForever().testId();
         if (sd > 0) b.startupDistance(sd);
         if (maxnode == 8) b.maxNodeSize8();
@@ -948,6 +951,7 @@ public class Soak {
             harvestStats(index - 1);
             long t0 = System.nanoTime();
             db.sync(SyncLevel.STRONG);
+            diskWaits.add(TimedIo.writeBufferWaits(db));
             db.close();
             closeSec = 1e-9 * (System.nanoTime() - t0);
             long t1 = System.nanoTime();
@@ -1246,6 +1250,7 @@ public class Soak {
         harvestStats(restartsDone);
         long t0 = System.nanoTime();
         db.sync(SyncLevel.STRONG);
+        diskWaits.add(TimedIo.writeBufferWaits(db));
         db.close();
         phases.put("close", 1e-9 * (System.nanoTime() - t0));
 
@@ -1357,6 +1362,10 @@ public class Soak {
         // The capacity controller (bergdb item 001, WP P4): its summary for the last database object.
         String eviction = db.internal().eviction().summary();
         result.put("eviction", eviction + "; resident at most " + Math.round(sampler.residentMax) + " MB");
+        // The disk's waits (bergdb 005-46): not BergDB's, but a long commit or read beside one
+        // is the disk's. The write buffer's for each database object, then the forces and deletes.
+        diskWaits.add(io.take());
+        result.put("disk_waits", diskWaits);
         result.put("histograms_sparse", hists);
         File out = new File(outDir);
         out.mkdirs();

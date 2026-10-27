@@ -29,7 +29,7 @@ Open
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10). For release 2026.1: kept, documented as experimental | open |
-| [005-46](46-stream-file-lock.md) | Fix | A read of the stream's last file waits for the writer's append and its `fsync` (`FileStream.DbFile`, one monitor for both): seconds on s1's disk, the longest waits left there with handles (009-03); and every read waits while reclaim's physical cut deletes files (`FileStream.pretruncate`, the stream's monitor): up to 171 ms in P4's soak on F53, under every collector (009-04). Investigated 2026-10-27, with probes: every read also waits while a new file is forced (`newFile`), an encrypted database's reads wait for each other, and a commit by an interrupted thread that makes a physical cut fails the database. Proposed: positional reads on a channel of each file's own, safe from interrupts; the file list without a lock; a new file made, and a cut's files deleted on a thread of their own, outside the stream's monitor. Item 009's target 2 waits for it | open |
+| [005-46](46-stream-file-lock.md) | Fix | A read of the stream's last file waits for the writer's append and its `fsync` (`FileStream.DbFile`, one monitor for both): seconds on s1's disk, the longest waits left there with handles (009-03); and every read waits while reclaim's physical cut deletes files (`FileStream.pretruncate`, the stream's monitor): up to 171 ms in P4's soak on F53, under every collector (009-04). Investigated 2026-10-27, with probes: every read also waits while a new file is forced (`newFile`), an encrypted database's reads wait for each other, and a commit by an interrupted thread that makes a physical cut fails the database. Proposed: positional reads on a channel of each file's own, safe from interrupts; the file list without a lock; a new file made, and a cut's files deleted on a thread of their own, outside the stream's monitor. Decided 2026-10-27: as proposed; `SalsaStream` and interrupts in this entry (today an interrupt can fail the database, a commit that waits for room in the write buffer or makes a cut, or hang it, the storage thread interrupted; a rule proposed, one question open); the test reports note a writer's waits for room, which do not count against item 009's target 2. Implemented 2026-10-27, rule A for interrupts; still open: the measurements on s1 and P4's soak. Item 009's target 2 waits for them | open |
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
 | [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits starts the flush, instead of waiting for `BufferedStream`'s timer; one thread's durable commit from 35 ms to about one force (005-13's question 5) | open |
 | [005-49](49-smooth-index-writes.md) | Investigate | Smooth index writes: at large startup distances the index is written in bursts (10M keys, 1000 MB: windows of 70 to 1,100 bytes a put); a commit's index writes should follow its own size. Before 007-03's step 3 (005-38) | open |
@@ -983,6 +983,24 @@ cold on s1 from 214 and 210 s to about 46 and 51 s, warm on F53 0.7 to
 0.9 s less. Part 1 alone moves its reads into the time after the start.
 Four questions for Frans. No change to `java/`.
 
+2026-10-27. 005-46 decided, at Frans's word ("1. as proposed. 2. Yes. 3.
+Include in this item. 4. Please elaborate in this one. 5. no, but such
+conditions are worth noting in test reports."): the cut's files deleted on
+a thread of their own; a failed delete fails the stream at its next
+operation; `SalsaStream` and interrupts are part of the entry; a writer's
+wait for room in the write buffer does not count against item 009's
+target 2, and the test reports note it, with the forces (change 7). By
+Claude (Opus 5.5, Claude Code): the section "Interrupts", with
+`InterruptProbe`: today an interrupt fails the database in a commit that
+waits for room or makes a cut, hangs it when it reaches the storage
+thread (a `Bug` ends the thread, and syncs wait for ever), makes the first
+`Db.close()` return before the storage is closed (its thread stays, waking
+every 5 ms), makes a new `FileStream` (`dir()`) throw, and a job's
+`join()` throw an `Error`. Proposed: an interrupt never fails or hangs the
+database; `sync()`, a job's `join()` and the Pub API's wait before a rerun
+end on it, every other call ignores it until done, and the flag is always
+kept. One question for Frans. No change to `java/`.
+
 2026-10-27. 005-50 done, by Claude (Opus 5.5, Claude Code), at Frans's
 request, after his decision on the proposal ("No need to consider "today's
 databases". There are none."; a `StreamFormatException`; 1 or 2 bytes):
@@ -992,3 +1010,17 @@ meta block has none, written before, with a `VersioningStreamException`,
 before recovery writes. The meta block's version stays 154. Tests;
 `before-commit.sh` and `level2.sh quick` pass; StreamDigest identical but
 for the two bytes (`metamask=44:2`, new).
+
+2026-10-27. 005-46 implemented and committed, at Frans's request
+("Decision: A. When possible, implement this and commit it."; on the
+gates, "Yes, commit sooner."), by Claude (Opus 5.5, Claude Code): reads
+without a lock (positional reads on a channel of each file's own, a list
+of files replaced, never changed), a new file made outside the stream's
+monitor, a cut's files deleted by a thread of their own, `SalsaStream`
+reading before its lock; rule A for interrupts (decided by Frans after two
+options were laid out: `sync()`, a job's `join()` and the Pub API's wait
+before a rerun end on an interrupt, every other call ignores it, the flag
+is kept, BergDB's own threads go on); the writer's waits for room and the
+forces in the test reports. Tests, `InterruptStress` in `level3.sh`;
+`before-commit.sh`, `level3.sh` full and `flush-order.sh` pass. Still
+open: the measurements on s1 and P4's soak (005-46, "Implemented").
