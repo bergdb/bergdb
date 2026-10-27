@@ -1,0 +1,23 @@
+--- a/java/src/bergdb/core/TransSeq.java	2026-10-27 16:54:42
++++ b/java/src/bergdb/core/TransSeq.java	2026-10-27 19:20:25
+@@ -24,6 +24,9 @@
+  * @author Frans Lundberg
+  */
+ public class TransSeq implements PosOfTransBeforeFunction {
++    /** bergdb 007-06, a probe: if positive, the deadline's distance instead of 2 sd. */
++    public static volatile long deadlineDistance;
++
+     private TransInfo first;     // Head of linked list, may be null.
+     private TransInfo last;      // Last set of linked list, may be null.
+     private int size;
+@@ -139,7 +142,9 @@
+         }
+         
+         final long sd = Math.max(1, startupDistance);
+-        final long hardSp = streamLength - 2L * sd;
++        // bergdb 007-06, a probe: a deadline distance of its own while the distance comes down.
++        final long dl = deadlineDistance;
++        final long hardSp = streamLength - (dl > 0 ? dl : 2L * sd);
+         // The share: the section's got-dirty nodes, times this record's part of the own
+         // bytes of the section's records, times the section's length over sd.
+         final double share = ownBytes == 0 ? 0 : (double) dirtyCount * recordOwnBytes 

@@ -32,6 +32,11 @@ Files
   startup time against the section, warm on F53 and cold on s1, with the
   reads by phase; the tool, the night's scripts, the outputs and the
   analysis in [05-startup-time/](05-startup-time/). Ran 2026-10-27.
+* [06-debt-test.md](06-debt-test.md). 007-06, step 2 of 007-03, the test
+  that drives the debt up: updates, deletes, single puts and decreases of
+  the startup distance on today's take, on 005-49's paced take and on
+  007-07's patch, at 10M keys; two ways of doing D4's option B; the tool,
+  scripts and summaries in [06-debt-test/](06-debt-test/).
 * [07-step3-paced-take.md](07-step3-paced-take.md). 007-07, step 3 of
   007-03 as a patch for Frans's review: 005-49's paced take with the
   deadline at 2 sd in `TransSeq.take`, its tests, gates and StreamDigest,
@@ -150,3 +155,14 @@ at max effort) at Frans's choice (006-09: "007-03 step 3 as a patch"):
 decide. Its review found a bias in the prototype's hash (replaced by the
 SplitMix64 finalizer). level2's step 6 (BryanRepro) fails on main itself
 since 005-46, found on the way.
+
+2026-10-27. 007-06, step 2 of 007-03, by Claude (Opus 5.5, Claude Code) at
+Frans's choice (006-09: "007-03 step 2: debt test"): 50 runs at 10M keys.
+On today's take 007-01's hypothesis holds (the largest section matches the
+largest debt within 0.09 sd); single puts give the worst bursts (1.6 MB of
+index nodes for one put). The paced take holds the section at 1.14 sd at
+most, also on deletes and single puts, and so does 007-07's patch. For
+D4's option B: the pace should use a new startup distance at once, and the
+deadline come down with the lag ("pace"); a deadline that jumps to the new
+2 sd writes records of 86 to 490 MB. Left: 50M keys, a longer delete run,
+D4:B on 007-07's patch.

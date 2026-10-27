@@ -1,0 +1,506 @@
+== head-del-sd1000.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 706849160 bytes, 70.7 B/key, 31.2 s
+updates: 8000000 delete, 1000 a transaction
+updates: 8000000, stream 1430079440 bytes, 178.8 B/update, 39.3 s
+updates: largest record 2342752 bytes, largest index bytes 2279104, largest startup lag 1107 MB (1.11 sd)
+debt: 207 exact walks, largest drift 5664880 bytes (0.5965 of the debt), largest debt 958 MB; after the load 5664880 bytes (0.0114); startup pos not at a record: 0
+total: 10000000 keys, stream 2136928600 bytes, 213.7 B/key, 70.9 s
+WRITEBENCH OK
+== head-del-sd200.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 1866269400 bytes, 186.6 B/key, 46.9 s
+updates: 8000000 delete, 1000 a transaction
+updates: 8000000, stream 2288480288 bytes, 286.1 B/update, 52.6 s
+updates: largest record 2779440 bytes, largest index bytes 2651320, largest startup lag 370 MB (1.85 sd)
+debt: 1576 exact walks, largest drift 960096 bytes (0.3881 of the debt), largest debt 359 MB; after the load 722768 bytes (0.0027); startup pos not at a record: 0
+total: 10000000 keys, stream 4154749688 bytes, 415.5 B/key, 99.8 s
+WRITEBENCH OK
+== head-del-sd50.txt
+WriteBench: 10000000 keys key24 random, sd 50000000, tx 1000, node 30
+load: 10000000 keys, stream 4094275496 bytes, 409.4 B/key, 73.2 s
+updates: 8000000 delete, 1000 a transaction
+updates: 8000000, stream 4641253104 bytes, 580.2 B/update, 81.7 s
+updates: largest record 3786128 bytes, largest index bytes 3632832, largest startup lag 136 MB (2.72 sd)
+debt: 6298 exact walks, largest drift 264992 bytes (0.1658 of the debt), largest debt 134 MB; after the load 99568 bytes (0.0009); startup pos not at a record: 0
+total: 10000000 keys, stream 8735528600 bytes, 873.6 B/key, 155.2 s
+WRITEBENCH OK
+== head-low1000-100-once-t.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 706849160 bytes, 70.7 B/key, 30.1 s
+updates: 30000000 put, 1000 a transaction
+lower: after 20000000 update puts, at stream 4219873040, sd 1000000000 -> 100000000, step 0
+lower: 1 calls, 420648 stream bytes
+updates: 30000000, stream 9566287744 bytes, 318.9 B/update, 223.1 s
+updates: largest record 7064520 bytes, largest index bytes 6822800, largest startup lag 1279 MB (1.28 sd)
+debt: 3719 exact walks, largest drift 4718688 bytes (0.5965 of the debt), largest debt 985 MB; after the load 4714896 bytes (0.0083); startup pos not at a record: 0
+total: 10000000 keys, stream 10273136904 bytes, 1027.3 B/key, 253.2 s
+WRITEBENCH OK
+== head-low1000-100-once-w.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 706849160 bytes, 70.7 B/key, 31.7 s
+updates: 38123000 put, 1000 a transaction
+lower: after 28123000 update puts, at stream 4950676512, sd 1000000000 -> 100000000, step 0
+lower: 1 calls, 1918536 stream bytes
+updates: 38123000, stream 10494347656 bytes, 275.3 B/update, 268.4 s
+updates: largest record 3683352 bytes, largest index bytes 3535720, largest startup lag 1308 MB (1.31 sd)
+debt: 3884 exact walks, largest drift 4718688 bytes (0.5965 of the debt), largest debt 1016 MB; after the load 4714896 bytes (0.0083); startup pos not at a record: 0
+total: 10000000 keys, stream 11201196816 bytes, 1120.1 B/key, 300.1 s
+WRITEBENCH OK
+== head-low1000-100-steps-t.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 706849160 bytes, 70.7 B/key, 30.4 s
+updates: 30000000 put, 1000 a transaction
+lower: after 20000000 update puts, at stream 4219873040, sd 1000000000 -> 100000000, step 10000000
+lower: 90 calls, 62891152 stream bytes
+updates: 30000000, stream 9582151512 bytes, 319.4 B/update, 224.2 s
+updates: largest record 4510592 bytes, largest index bytes 4333808, largest startup lag 1279 MB (1.28 sd)
+debt: 3733 exact walks, largest drift 4718688 bytes (0.5965 of the debt), largest debt 985 MB; after the load 4714896 bytes (0.0083); startup pos not at a record: 0
+total: 10000000 keys, stream 10289000672 bytes, 1028.9 B/key, 254.6 s
+WRITEBENCH OK
+== head-low1000-100-steps-w.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 706849160 bytes, 70.7 B/key, 30.6 s
+updates: 38123000 put, 1000 a transaction
+lower: after 28123000 update puts, at stream 4950676512, sd 1000000000 -> 100000000, step 10000000
+lower: 90 calls, 96653600 stream bytes
+updates: 38123000, stream 10551363296 bytes, 276.8 B/update, 272.5 s
+updates: largest record 3499344 bytes, largest index bytes 3355552, largest startup lag 1324 MB (1.32 sd)
+debt: 3891 exact walks, largest drift 4718688 bytes (0.5965 of the debt), largest debt 1016 MB; after the load 4714896 bytes (0.0083); startup pos not at a record: 0
+total: 10000000 keys, stream 11258212456 bytes, 1125.8 B/key, 303.1 s
+WRITEBENCH OK
+== head-low200-50-once-t.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 1866269400 bytes, 186.6 B/key, 46.5 s
+updates: 30000000 put, 1000 a transaction
+lower: after 20000000 update puts, at stream 9235287600, sd 200000000 -> 50000000, step 0
+lower: 1 calls, 1253464 stream bytes
+updates: 30000000, stream 14515677576 bytes, 483.9 B/update, 286.1 s
+updates: largest record 5470080 bytes, largest index bytes 5294608, largest startup lag 379 MB (1.90 sd)
+debt: 7728 exact walks, largest drift 960096 bytes (0.3881 of the debt), largest debt 372 MB; after the load 591856 bytes (0.0022); startup pos not at a record: 0
+total: 10000000 keys, stream 16381946976 bytes, 1638.2 B/key, 332.6 s
+WRITEBENCH OK
+== head-low200-50-once-w.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 1866269400 bytes, 186.6 B/key, 47.9 s
+updates: 20877000 put, 1000 a transaction
+lower: after 10877000 update puts, at stream 5536396864, sd 200000000 -> 50000000, step 0
+lower: 1 calls, 1059832 stream bytes
+updates: 20877000, stream 10932992160 bytes, 523.7 B/update, 215.0 s
+updates: largest record 4869064 bytes, largest index bytes 4682296, largest startup lag 379 MB (1.90 sd)
+debt: 6499 exact walks, largest drift 960096 bytes (0.3881 of the debt), largest debt 372 MB; after the load 591856 bytes (0.0022); startup pos not at a record: 0
+total: 10000000 keys, stream 12799261560 bytes, 1279.9 B/key, 262.9 s
+WRITEBENCH OK
+== head-low200-50-steps-t.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 1866269400 bytes, 186.6 B/key, 45.2 s
+updates: 30000000 put, 1000 a transaction
+lower: after 20000000 update puts, at stream 9235287600, sd 200000000 -> 50000000, step 10000000
+lower: 15 calls, 30307896 stream bytes
+updates: 30000000, stream 14526071064 bytes, 484.2 B/update, 288.9 s
+updates: largest record 5274784 bytes, largest index bytes 5102064, largest startup lag 379 MB (1.90 sd)
+debt: 7751 exact walks, largest drift 960096 bytes (0.3881 of the debt), largest debt 372 MB; after the load 591856 bytes (0.0022); startup pos not at a record: 0
+total: 10000000 keys, stream 16392340464 bytes, 1639.2 B/key, 334.1 s
+WRITEBENCH OK
+== head-low200-50-steps-w.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 1866269400 bytes, 186.6 B/key, 45.7 s
+updates: 20877000 put, 1000 a transaction
+lower: after 10877000 update puts, at stream 5536396864, sd 200000000 -> 50000000, step 10000000
+lower: 15 calls, 15776440 stream bytes
+updates: 20877000, stream 10905520536 bytes, 522.4 B/update, 207.6 s
+updates: largest record 4966184 bytes, largest index bytes 4778840, largest startup lag 381 MB (1.91 sd)
+debt: 6501 exact walks, largest drift 960096 bytes (0.3881 of the debt), largest debt 372 MB; after the load 591856 bytes (0.0022); startup pos not at a record: 0
+total: 10000000 keys, stream 12771789936 bytes, 1277.2 B/key, 253.4 s
+WRITEBENCH OK
+== head-one-sd200.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 1866269400 bytes, 186.6 B/key, 46.7 s
+updates: 6000000 put, 1 a transaction
+updates: 6000000, stream 2590582840 bytes, 431.8 B/update, 82.2 s
+updates: largest record 1535200 bytes, largest index bytes 1495024, largest startup lag 317 MB (1.58 sd)
+debt: 2018 exact walks, largest drift 960096 bytes (0.3881 of the debt), largest debt 298 MB; after the load 466688 bytes (0.0020); startup pos not at a record: 0
+total: 10000000 keys, stream 4456852240 bytes, 445.7 B/key, 128.9 s
+WRITEBENCH OK
+== head-one-sd50.txt
+WriteBench: 10000000 keys key24 random, sd 50000000, tx 1000, node 30
+load: 10000000 keys, stream 4094275496 bytes, 409.4 B/key, 72.3 s
+updates: 6000000 put, 1 a transaction
+updates: 6000000, stream 4428740056 bytes, 738.1 B/update, 137.5 s
+updates: largest record 1649872 bytes, largest index bytes 1608352, largest startup lag 104 MB (2.08 sd)
+debt: 11680 exact walks, largest drift 264992 bytes (0.1658 of the debt), largest debt 112 MB; after the load 40400 bytes (0.0006); startup pos not at a record: 0
+total: 10000000 keys, stream 8523015552 bytes, 852.3 B/key, 209.7 s
+WRITEBENCH OK
+== head-upd-sd1000.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 706849160 bytes, 70.7 B/key, 30.8 s
+updates: 30000000 put, 1000 a transaction
+updates: 30000000, stream 5397933032 bytes, 179.9 B/update, 158.4 s
+updates: largest record 2562512 bytes, largest index bytes 2485904, largest startup lag 1313 MB (1.31 sd)
+debt: 585 exact walks, largest drift 4718688 bytes (0.5965 of the debt), largest debt 1016 MB; after the load 4714896 bytes (0.0083); startup pos not at a record: 0
+total: 10000000 keys, stream 6104782192 bytes, 610.5 B/key, 189.2 s
+WRITEBENCH OK
+== head-upd-sd200.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 1866269400 bytes, 186.6 B/key, 48.5 s
+updates: 30000000 put, 1000 a transaction
+updates: 30000000, stream 11197956416 bytes, 373.3 B/update, 242.0 s
+updates: largest record 4419536 bytes, largest index bytes 4233024, largest startup lag 379 MB (1.90 sd)
+debt: 4673 exact walks, largest drift 960096 bytes (0.3881 of the debt), largest debt 372 MB; after the load 591856 bytes (0.0022); startup pos not at a record: 0
+total: 10000000 keys, stream 13064225816 bytes, 1306.4 B/key, 290.5 s
+WRITEBENCH OK
+== head-upd-sd50.txt
+WriteBench: 10000000 keys key24 random, sd 50000000, tx 1000, node 30
+load: 10000000 keys, stream 4094275496 bytes, 409.4 B/key, 83.6 s
+updates: 30000000 put, 1000 a transaction
+updates: 30000000, stream 20440432304 bytes, 681.3 B/update, 392.4 s
+updates: largest record 5101680 bytes, largest index bytes 4897008, largest startup lag 138 MB (2.75 sd)
+debt: 16062 exact walks, largest drift 264992 bytes (0.1658 of the debt), largest debt 134 MB; after the load 86496 bytes (0.0008); startup pos not at a record: 0
+total: 10000000 keys, stream 24534707800 bytes, 2453.5 B/key, 476.1 s
+WRITEBENCH OK
+== paced-del-sd1000.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 1001485152 bytes, 100.1 B/key, 32.0 s
+updates: 8000000 delete, 1000 a transaction
+updates: 8000000, stream 941355608 bytes, 117.7 B/update, 30.3 s
+updates: largest record 232848 bytes, largest index bytes 173728, largest startup lag 1032 MB (1.03 sd)
+debt: 193 exact walks, largest drift 4718720 bytes (0.5965 of the debt), largest debt 469 MB; after the load 3154768 bytes (0.0074); startup pos not at a record: 0
+total: 10000000 keys, stream 1942840760 bytes, 194.3 B/key, 62.6 s
+WRITEBENCH OK
+== paced-del-sd200.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 2310243664 bytes, 231.0 B/key, 49.3 s
+updates: 8000000 delete, 1000 a transaction
+updates: 8000000, stream 3298163040 bytes, 412.3 B/update, 61.1 s
+updates: largest record 971488 bytes, largest index bytes 888864, largest startup lag 215 MB (1.07 sd)
+debt: 2567 exact walks, largest drift 955904 bytes (0.3573 of the debt), largest debt 180 MB; after the load 150144 bytes (0.0009); startup pos not at a record: 0
+total: 10000000 keys, stream 5608406704 bytes, 560.8 B/key, 110.7 s
+WRITEBENCH OK
+== paced-del-sd50.txt
+WriteBench: 10000000 keys key24 random, sd 50000000, tx 1000, node 30
+load: 10000000 keys, stream 5199991304 bytes, 520.0 B/key, 84.6 s
+updates: 8000000 delete, 1000 a transaction
+updates: 8000000, stream 6091259624 bytes, 761.4 B/update, 94.1 s
+updates: largest record 1806672 bytes, largest index bytes 1698288, largest startup lag 57 MB (1.15 sd)
+debt: 14770 exact walks, largest drift 260400 bytes (0.1658 of the debt), largest debt 52 MB; after the load 27184 bytes (0.0006); startup pos not at a record: 0
+total: 10000000 keys, stream 11291250928 bytes, 1129.1 B/key, 179.0 s
+WRITEBENCH OK
+== paced-low1000-100-once-t.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 1001485152 bytes, 100.1 B/key, 35.0 s
+updates: 30000000 put, 1000 a transaction
+lower: after 20000000 update puts, at stream 4266524224, sd 1000000000 -> 100000000, step 0
+lower: 1 calls, 462128528 stream bytes
+updates: 30000000, stream 10337616984 bytes, 344.6 B/update, 219.3 s
+updates: largest record 161305192 bytes, largest index bytes 161051448, largest startup lag 1096 MB (1.10 sd)
+debt: 5194 exact walks, largest drift 4718720 bytes (0.5965 of the debt), largest debt 607 MB; after the load 2653504 bytes (0.0062); startup pos not at a record: 0
+total: 10000000 keys, stream 11339102136 bytes, 1133.9 B/key, 254.2 s
+WRITEBENCH OK
+== paced-low1000-100-once-w.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 1001485152 bytes, 100.1 B/key, 35.6 s
+updates: 22318000 put, 1000 a transaction
+lower: after 12318000 update puts, at stream 2850473320, sd 1000000000 -> 100000000, step 0
+lower: 1 calls, 489800680 stream bytes
+updates: 22318000, stream 9023157592 bytes, 404.3 B/update, 197.1 s
+updates: largest record 144671464 bytes, largest index bytes 144434424, largest startup lag 1033 MB (1.03 sd)
+debt: 5046 exact walks, largest drift 4718720 bytes (0.5965 of the debt), largest debt 607 MB; after the load 2653504 bytes (0.0062); startup pos not at a record: 0
+total: 10000000 keys, stream 10024642744 bytes, 1002.5 B/key, 232.7 s
+WRITEBENCH OK
+== paced-low1000-100-steps-t.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 1001485152 bytes, 100.1 B/key, 32.4 s
+updates: 30000000 put, 1000 a transaction
+lower: after 20000000 update puts, at stream 4266524224, sd 1000000000 -> 100000000, step 10000000
+lower: 90 calls, 666309072 stream bytes
+updates: 30000000, stream 10682601472 bytes, 356.1 B/update, 240.2 s
+updates: largest record 3173504 bytes, largest index bytes 3056272, largest startup lag 1096 MB (1.10 sd)
+debt: 5308 exact walks, largest drift 4718720 bytes (0.5965 of the debt), largest debt 607 MB; after the load 2653504 bytes (0.0062); startup pos not at a record: 0
+total: 10000000 keys, stream 11684086624 bytes, 1168.4 B/key, 272.6 s
+WRITEBENCH OK
+== paced-low1000-100-steps-w.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 1001485152 bytes, 100.1 B/key, 35.7 s
+updates: 22318000 put, 1000 a transaction
+lower: after 12318000 update puts, at stream 2850473320, sd 1000000000 -> 100000000, step 10000000
+lower: 90 calls, 675924120 stream bytes
+updates: 22318000, stream 9227823304 bytes, 413.5 B/update, 187.2 s
+updates: largest record 2331616 bytes, largest index bytes 2196032, largest startup lag 1033 MB (1.03 sd)
+debt: 5158 exact walks, largest drift 4718720 bytes (0.5965 of the debt), largest debt 607 MB; after the load 2653504 bytes (0.0062); startup pos not at a record: 0
+total: 10000000 keys, stream 10229308456 bytes, 1022.9 B/key, 222.9 s
+WRITEBENCH OK
+== paced-low200-50-once-t.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 2310243664 bytes, 231.0 B/key, 55.5 s
+updates: 30000000 put, 1000 a transaction
+lower: after 20000000 update puts, at stream 12304858088, sd 200000000 -> 50000000, step 0
+lower: 1 calls, 85862968 stream bytes
+updates: 30000000, stream 18523182680 bytes, 617.4 B/update, 354.5 s
+updates: largest record 69931208 bytes, largest index bytes 69463368, largest startup lag 207 MB (1.03 sd)
+debt: 14774 exact walks, largest drift 955904 bytes (0.3573 of the debt), largest debt 177 MB; after the load 112640 bytes (0.0007); startup pos not at a record: 0
+total: 10000000 keys, stream 20833426344 bytes, 2083.3 B/key, 410.1 s
+WRITEBENCH OK
+== paced-low200-50-once-w.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 2310243664 bytes, 231.0 B/key, 56.4 s
+updates: 33646000 put, 1000 a transaction
+lower: after 23646000 update puts, at stream 14198057544, sd 200000000 -> 50000000, step 0
+lower: 1 calls, 87385584 stream bytes
+updates: 33646000, stream 20593728136 bytes, 612.1 B/update, 414.0 s
+updates: largest record 73311920 bytes, largest index bytes 72853872, largest startup lag 207 MB (1.03 sd)
+debt: 15591 exact walks, largest drift 955904 bytes (0.3573 of the debt), largest debt 177 MB; after the load 112640 bytes (0.0007); startup pos not at a record: 0
+total: 10000000 keys, stream 22903971800 bytes, 2290.4 B/key, 470.3 s
+WRITEBENCH OK
+== paced-low200-50-steps-t.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 2310243664 bytes, 231.0 B/key, 54.8 s
+updates: 30000000 put, 1000 a transaction
+lower: after 20000000 update puts, at stream 12304858088, sd 200000000 -> 50000000, step 10000000
+lower: 15 calls, 191592096 stream bytes
+updates: 30000000, stream 18640340256 bytes, 621.3 B/update, 351.0 s
+updates: largest record 11133912 bytes, largest index bytes 10980008, largest startup lag 207 MB (1.03 sd)
+debt: 14673 exact walks, largest drift 955904 bytes (0.3573 of the debt), largest debt 177 MB; after the load 112640 bytes (0.0007); startup pos not at a record: 0
+total: 10000000 keys, stream 20950583920 bytes, 2095.1 B/key, 405.8 s
+WRITEBENCH OK
+== paced-low200-50-steps-w.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 2310243664 bytes, 231.0 B/key, 52.5 s
+updates: 33646000 put, 1000 a transaction
+lower: after 23646000 update puts, at stream 14198057544, sd 200000000 -> 50000000, step 10000000
+lower: 15 calls, 196606264 stream bytes
+updates: 33646000, stream 20671035824 bytes, 614.4 B/update, 369.8 s
+updates: largest record 11205968 bytes, largest index bytes 11065776, largest startup lag 207 MB (1.03 sd)
+debt: 15564 exact walks, largest drift 955904 bytes (0.3573 of the debt), largest debt 177 MB; after the load 112640 bytes (0.0007); startup pos not at a record: 0
+total: 10000000 keys, stream 22981279488 bytes, 2298.1 B/key, 422.3 s
+WRITEBENCH OK
+== paced-one-sd200.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 2310243664 bytes, 231.0 B/key, 50.2 s
+updates: 6000000 put, 1 a transaction
+updates: 6000000, stream 3173875248 bytes, 529.0 B/update, 85.2 s
+updates: largest record 494496 bytes, largest index bytes 484288, largest startup lag 203 MB (1.01 sd)
+debt: 2652 exact walks, largest drift 955904 bytes (0.3573 of the debt), largest debt 164 MB; after the load 84832 bytes (0.0006); startup pos not at a record: 0
+total: 10000000 keys, stream 5484118912 bytes, 548.4 B/key, 135.3 s
+WRITEBENCH OK
+== paced-one-sd50.txt
+WriteBench: 10000000 keys key24 random, sd 50000000, tx 1000, node 30
+load: 10000000 keys, stream 5199991304 bytes, 520.0 B/key, 97.2 s
+updates: 6000000 put, 1 a transaction
+updates: 6000000, stream 4907262408 bytes, 817.9 B/update, 129.9 s
+updates: largest record 758768 bytes, largest index bytes 744176, largest startup lag 57 MB (1.14 sd)
+debt: 16853 exact walks, largest drift 260400 bytes (0.1658 of the debt), largest debt 50 MB; after the load 11968 bytes (0.0003); startup pos not at a record: 0
+total: 10000000 keys, stream 10107253712 bytes, 1010.7 B/key, 227.0 s
+WRITEBENCH OK
+== paced-upd-sd1000.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 1001485152 bytes, 100.1 B/key, 35.0 s
+updates: 30000000 put, 1000 a transaction
+updates: 30000000, stream 5186284152 bytes, 172.9 B/update, 156.0 s
+updates: largest record 346048 bytes, largest index bytes 272768, largest startup lag 1096 MB (1.10 sd)
+debt: 613 exact walks, largest drift 4718720 bytes (0.5965 of the debt), largest debt 607 MB; after the load 2653504 bytes (0.0062); startup pos not at a record: 0
+total: 10000000 keys, stream 6187769304 bytes, 618.8 B/key, 191.0 s
+WRITEBENCH OK
+== paced-upd-sd200.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 2310243664 bytes, 231.0 B/key, 51.1 s
+updates: 30000000 put, 1000 a transaction
+updates: 30000000, stream 15226132448 bytes, 507.5 B/update, 283.6 s
+updates: largest record 1095840 bytes, largest index bytes 998048, largest startup lag 207 MB (1.03 sd)
+debt: 7827 exact walks, largest drift 955904 bytes (0.3573 of the debt), largest debt 177 MB; after the load 112640 bytes (0.0007); startup pos not at a record: 0
+total: 10000000 keys, stream 17536376112 bytes, 1753.6 B/key, 334.8 s
+WRITEBENCH OK
+== paced-upd-sd50.txt
+WriteBench: 10000000 keys key24 random, sd 50000000, tx 1000, node 30
+load: 10000000 keys, stream 5199991304 bytes, 520.0 B/key, 86.4 s
+updates: 30000000 put, 1000 a transaction
+updates: 30000000, stream 25469949968 bytes, 849.0 B/update, 442.9 s
+updates: largest record 2026688 bytes, largest index bytes 1902736, largest startup lag 57 MB (1.14 sd)
+debt: 35346 exact walks, largest drift 260400 bytes (0.1658 of the debt), largest debt 52 MB; after the load 22352 bytes (0.0005); startup pos not at a record: 0
+total: 10000000 keys, stream 30669941272 bytes, 3067.0 B/key, 529.3 s
+WRITEBENCH OK
+== paced2-low1000-100-follow-t.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 1001485152 bytes, 100.1 B/key, 32.6 s
+updates: 30000000 put, 1000 a transaction
+follow: from 1000000000 after 20000000 update puts, at stream 4266524224, gap 10
+follow: at 100000000 after 22970000 update puts, at stream 5883148344
+updates: 30000000, stream 9826148368 bytes, 327.5 B/update, 202.9 s
+updates: largest record 2077712 bytes, largest index bytes 1954912, largest startup lag 1096 MB (1.10 sd)
+debt: 4347 exact walks, largest drift 4718720 bytes (0.5965 of the debt), largest debt 607 MB; after the load 2653504 bytes (0.0062); startup pos not at a record: 0
+total: 10000000 keys, stream 10827633520 bytes, 1082.8 B/key, 235.4 s
+WRITEBENCH OK
+== paced2-low1000-100-follow-w.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 1001485152 bytes, 100.1 B/key, 32.0 s
+updates: 22318000 put, 1000 a transaction
+follow: from 1000000000 after 12318000 update puts, at stream 2850473320, gap 10
+follow: at 100000000 after 15758000 update puts, at stream 4560084640
+updates: 22318000, stream 8198030840 bytes, 367.3 B/update, 162.4 s
+updates: largest record 2037712 bytes, largest index bytes 1911696, largest startup lag 1033 MB (1.03 sd)
+debt: 4016 exact walks, largest drift 4718720 bytes (0.5965 of the debt), largest debt 607 MB; after the load 2653504 bytes (0.0062); startup pos not at a record: 0
+total: 10000000 keys, stream 9199515992 bytes, 920.0 B/key, 194.5 s
+WRITEBENCH OK
+== paced2-low200-50-follow-t.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 2310243664 bytes, 231.0 B/key, 50.5 s
+updates: 30000000 put, 1000 a transaction
+follow: from 200000000 after 20000000 update puts, at stream 12304858088, gap 10
+follow: at 50000000 after 20190000 update puts, at stream 12603982584
+updates: 30000000, stream 18817315408 bytes, 627.2 B/update, 327.3 s
+updates: largest record 2749104 bytes, largest index bytes 2610928, largest startup lag 207 MB (1.03 sd)
+debt: 14845 exact walks, largest drift 955904 bytes (0.3573 of the debt), largest debt 177 MB; after the load 112640 bytes (0.0007); startup pos not at a record: 0
+total: 10000000 keys, stream 21127559072 bytes, 2112.8 B/key, 377.8 s
+WRITEBENCH OK
+== paced2-low200-50-follow-w.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 2310243664 bytes, 231.0 B/key, 51.5 s
+updates: 33646000 put, 1000 a transaction
+follow: from 200000000 after 23646000 update puts, at stream 14198057544, gap 10
+follow: at 50000000 after 23866000 update puts, at stream 14526419128
+updates: 33646000, stream 20712369744 bytes, 615.6 B/update, 377.6 s
+updates: largest record 2576800 bytes, largest index bytes 2444576, largest startup lag 207 MB (1.03 sd)
+debt: 15632 exact walks, largest drift 955904 bytes (0.3573 of the debt), largest debt 177 MB; after the load 112640 bytes (0.0007); startup pos not at a record: 0
+total: 10000000 keys, stream 23022613408 bytes, 2302.3 B/key, 429.1 s
+WRITEBENCH OK
+== paced3-low1000-100-pace-t.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 1001485152 bytes, 100.1 B/key, 33.8 s
+updates: 30000000 put, 1000 a transaction
+lower: after 20000000 update puts, at stream 4266524224, sd 1000000000 -> 100000000, step 0
+lower: 1 calls, 3606552 stream bytes
+pace: deadline at 2 sd after 20590000 update puts, at stream 5087765312
+updates: 30000000, stream 10667765384 bytes, 355.6 B/update, 218.3 s
+updates: largest record 3113552 bytes, largest index bytes 2988096, largest startup lag 1096 MB (1.10 sd)
+debt: 5625 exact walks, largest drift 4718720 bytes (0.5965 of the debt), largest debt 607 MB; after the load 2653504 bytes (0.0062); startup pos not at a record: 0
+total: 10000000 keys, stream 11669250536 bytes, 1166.9 B/key, 252.1 s
+WRITEBENCH OK
+== paced3-low1000-100-pace-w.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 1001485152 bytes, 100.1 B/key, 35.0 s
+updates: 22318000 put, 1000 a transaction
+lower: after 12318000 update puts, at stream 2850473320, sd 1000000000 -> 100000000, step 0
+lower: 1 calls, 3292728 stream bytes
+pace: deadline at 2 sd after 12998000 update puts, at stream 3695147936
+updates: 22318000, stream 9191163776 bytes, 411.8 B/update, 181.3 s
+updates: largest record 3209312 bytes, largest index bytes 3078128, largest startup lag 1033 MB (1.03 sd)
+debt: 5493 exact walks, largest drift 4718720 bytes (0.5965 of the debt), largest debt 607 MB; after the load 2653504 bytes (0.0062); startup pos not at a record: 0
+total: 10000000 keys, stream 10192648928 bytes, 1019.3 B/key, 216.3 s
+WRITEBENCH OK
+== paced3-low200-50-pace-t.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 2310243664 bytes, 231.0 B/key, 49.5 s
+updates: 30000000 put, 1000 a transaction
+lower: after 20000000 update puts, at stream 12304858088, sd 200000000 -> 50000000, step 0
+lower: 1 calls, 5571896 stream bytes
+pace: deadline at 2 sd after 20110000 update puts, at stream 12573549960
+updates: 30000000, stream 18816040640 bytes, 627.2 B/update, 325.3 s
+updates: largest record 3870832 bytes, largest index bytes 3726352, largest startup lag 207 MB (1.03 sd)
+debt: 14723 exact walks, largest drift 955904 bytes (0.3573 of the debt), largest debt 177 MB; after the load 112640 bytes (0.0007); startup pos not at a record: 0
+total: 10000000 keys, stream 21126284304 bytes, 2112.6 B/key, 374.8 s
+WRITEBENCH OK
+== paced3-low200-50-pace-w.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 2310243664 bytes, 231.0 B/key, 49.8 s
+updates: 33646000 put, 1000 a transaction
+lower: after 23646000 update puts, at stream 14198057544, sd 200000000 -> 50000000, step 0
+lower: 1 calls, 5361240 stream bytes
+pace: deadline at 2 sd after 23756000 update puts, at stream 14466662848
+updates: 33646000, stream 20721555296 bytes, 615.9 B/update, 359.5 s
+updates: largest record 3949056 bytes, largest index bytes 3812304, largest startup lag 207 MB (1.03 sd)
+debt: 15617 exact walks, largest drift 955904 bytes (0.3573 of the debt), largest debt 177 MB; after the load 112640 bytes (0.0007); startup pos not at a record: 0
+total: 10000000 keys, stream 23031798960 bytes, 2303.2 B/key, 409.3 s
+WRITEBENCH OK
+== step3-del-sd1000.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 1007950992 bytes, 100.8 B/key, 32.0 s
+updates: 8000000 delete, 1000 a transaction
+updates: 8000000, stream 934841056 bytes, 116.9 B/update, 30.4 s
+updates: largest record 231728 bytes, largest index bytes 172256, largest startup lag 1025 MB (1.03 sd)
+debt: 192 exact walks, largest drift 4718752 bytes (0.5965 of the debt), largest debt 471 MB; after the load 3251744 bytes (0.0078); startup pos not at a record: 0
+total: 10000000 keys, stream 1942792048 bytes, 194.3 B/key, 62.6 s
+WRITEBENCH OK
+== step3-del-sd200.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 2313315096 bytes, 231.3 B/key, 49.1 s
+updates: 8000000 delete, 1000 a transaction
+updates: 8000000, stream 3313332504 bytes, 414.2 B/update, 61.2 s
+updates: largest record 880992 bytes, largest index bytes 800752, largest startup lag 211 MB (1.06 sd)
+debt: 2576 exact walks, largest drift 956640 bytes (0.3881 of the debt), largest debt 177 MB; after the load 132784 bytes (0.0008); startup pos not at a record: 0
+total: 10000000 keys, stream 5626647600 bytes, 562.7 B/key, 110.6 s
+WRITEBENCH OK
+== step3-del-sd50.txt
+WriteBench: 10000000 keys key24 random, sd 50000000, tx 1000, node 30
+load: 10000000 keys, stream 5210697672 bytes, 521.1 B/key, 83.2 s
+updates: 8000000 delete, 1000 a transaction
+updates: 8000000, stream 6089405448 bytes, 761.2 B/update, 91.7 s
+updates: largest record 1721344 bytes, largest index bytes 1617088, largest startup lag 57 MB (1.15 sd)
+debt: 14604 exact walks, largest drift 259168 bytes (0.1658 of the debt), largest debt 52 MB; after the load 29968 bytes (0.0006); startup pos not at a record: 0
+total: 10000000 keys, stream 11300103120 bytes, 1130.0 B/key, 175.2 s
+WRITEBENCH OK
+== step3-low1000-100-once-w.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 1007950992 bytes, 100.8 B/key, 32.0 s
+updates: 22181000 put, 1000 a transaction
+lower: after 12181000 update puts, at stream 2839198992, sd 1000000000 -> 100000000, step 0
+lower: 1 calls, 485924208 stream bytes
+updates: 22181000, stream 9015529072 bytes, 406.5 B/update, 174.8 s
+updates: largest record 144578440 bytes, largest index bytes 144340616, largest startup lag 1024 MB (1.02 sd)
+debt: 5066 exact walks, largest drift 4718752 bytes (0.5965 of the debt), largest debt 603 MB; after the load 2627136 bytes (0.0063); startup pos not at a record: 0
+total: 10000000 keys, stream 10023480064 bytes, 1002.3 B/key, 206.8 s
+WRITEBENCH OK
+== step3-low200-50-once-w.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 2313315096 bytes, 231.3 B/key, 49.2 s
+updates: 24585000 put, 1000 a transaction
+lower: after 14585000 update puts, at stream 9468199288, sd 200000000 -> 50000000, step 0
+lower: 1 calls, 86730816 stream bytes
+updates: 24585000, stream 15879345760 bytes, 645.9 B/update, 265.2 s
+updates: largest record 72159272 bytes, largest index bytes 71759328, largest startup lag 206 MB (1.03 sd)
+debt: 13515 exact walks, largest drift 956640 bytes (0.3881 of the debt), largest debt 176 MB; after the load 114288 bytes (0.0007); startup pos not at a record: 0
+total: 10000000 keys, stream 18192660856 bytes, 1819.3 B/key, 314.4 s
+WRITEBENCH OK
+== step3-one-sd200.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 2313315096 bytes, 231.3 B/key, 49.2 s
+updates: 6000000 put, 1 a transaction
+updates: 6000000, stream 3160481792 bytes, 526.7 B/update, 83.3 s
+updates: largest record 480192 bytes, largest index bytes 469904, largest startup lag 207 MB (1.03 sd)
+debt: 2646 exact walks, largest drift 956640 bytes (0.3881 of the debt), largest debt 164 MB; after the load 110416 bytes (0.0007); startup pos not at a record: 0
+total: 10000000 keys, stream 5473796888 bytes, 547.4 B/key, 132.4 s
+WRITEBENCH OK
+== step3-one-sd50.txt
+WriteBench: 10000000 keys key24 random, sd 50000000, tx 1000, node 30
+load: 10000000 keys, stream 5210697672 bytes, 521.1 B/key, 82.1 s
+updates: 6000000 put, 1 a transaction
+updates: 6000000, stream 5070091424 bytes, 845.0 B/update, 120.8 s
+updates: largest record 807584 bytes, largest index bytes 792208, largest startup lag 56 MB (1.11 sd)
+debt: 17137 exact walks, largest drift 259168 bytes (0.1658 of the debt), largest debt 48 MB; after the load 9808 bytes (0.0003); startup pos not at a record: 0
+total: 10000000 keys, stream 10280789096 bytes, 1028.1 B/key, 202.9 s
+WRITEBENCH OK
+== step3-upd-sd1000.txt
+WriteBench: 10000000 keys key24 random, sd 1000000000, tx 1000, node 30
+load: 10000000 keys, stream 1007950992 bytes, 100.8 B/key, 32.3 s
+updates: 30000000 put, 1000 a transaction
+updates: 30000000, stream 5185968600 bytes, 172.9 B/update, 141.2 s
+updates: largest record 336800 bytes, largest index bytes 262912, largest startup lag 1090 MB (1.09 sd)
+debt: 614 exact walks, largest drift 4718752 bytes (0.5965 of the debt), largest debt 603 MB; after the load 2627136 bytes (0.0063); startup pos not at a record: 0
+total: 10000000 keys, stream 6193919592 bytes, 619.4 B/key, 173.5 s
+WRITEBENCH OK
+== step3-upd-sd200.txt
+WriteBench: 10000000 keys key24 random, sd 200000000, tx 1000, node 30
+load: 10000000 keys, stream 2313315096 bytes, 231.3 B/key, 49.1 s
+updates: 30000000 put, 1000 a transaction
+updates: 30000000, stream 15240388664 bytes, 508.0 B/update, 271.6 s
+updates: largest record 1124656 bytes, largest index bytes 1025136, largest startup lag 206 MB (1.03 sd)
+debt: 7816 exact walks, largest drift 956640 bytes (0.3881 of the debt), largest debt 176 MB; after the load 114288 bytes (0.0007); startup pos not at a record: 0
+total: 10000000 keys, stream 17553703760 bytes, 1755.4 B/key, 320.7 s
+WRITEBENCH OK
+== step3-upd-sd50.txt
+WriteBench: 10000000 keys key24 random, sd 50000000, tx 1000, node 30
+load: 10000000 keys, stream 5210697672 bytes, 521.1 B/key, 82.2 s
+updates: 30000000 put, 1000 a transaction
+updates: 30000000, stream 25462838328 bytes, 848.8 B/update, 391.4 s
+updates: largest record 1939984 bytes, largest index bytes 1819296, largest startup lag 58 MB (1.15 sd)
+debt: 35297 exact walks, largest drift 259168 bytes (0.1658 of the debt), largest debt 52 MB; after the load 29584 bytes (0.0006); startup pos not at a record: 0
+total: 10000000 keys, stream 30673536000 bytes, 3067.4 B/key, 473.6 s
+WRITEBENCH OK

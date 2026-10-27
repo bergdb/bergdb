@@ -1,0 +1,120 @@
+2026-10-27 16:53:01 start smoke-low: head -Dwb.keys=200000 -Dwb.window=200000 -Dwb.ring=200000000 -Dwb.updates=1000000 -Dwb.sd=5000000 -Dwb.lowerAt=500000 -Dwb.lowerTo=1000000 -Dwb.lowerStep=1000000
+2026-10-27 16:53:09 end smoke-low: WRITEBENCH OK
+2026-10-27 16:53:09 start smoke-del: head -Dwb.keys=200000 -Dwb.window=200000 -Dwb.ring=200000000 -Dwb.updates=100000 -Dwb.sd=5000000 -Dwb.op=delete
+2026-10-27 16:53:11 end smoke-del: WRITEBENCH OK
+2026-10-27 16:53:11 start smoke-one: head -Dwb.keys=200000 -Dwb.window=200000 -Dwb.ring=200000000 -Dwb.updates=300000 -Dwb.sd=5000000 -Dwb.utx=1
+2026-10-27 16:53:14 end smoke-one: WRITEBENCH OK
+2026-10-27 16:53:27 start smoke-low: head -Dwb.keys=200000 -Dwb.window=200000 -Dwb.ring=200000000 -Dwb.updates=1000000 -Dwb.sd=5000000 -Dwb.lowerAt=500000 -Dwb.lowerTo=1000000 -Dwb.lowerStep=1000000
+2026-10-27 16:53:35 end smoke-low: WRITEBENCH OK
+2026-10-27 16:54:37 start head-upd-sd50: head -Dwb.sd=50000000
+2026-10-27 16:55:08 start smoke-plow: paced -Dwb.keys=200000 -Dwb.window=200000 -Dwb.ring=200000000 -Dwb.updates=1000000 -Dwb.sd=5000000 -Dwb.lowerAt=500000 -Dwb.lowerTo=1000000
+2026-10-27 16:55:18 end smoke-plow: WRITEBENCH OK
+2026-10-27 17:02:34 end head-upd-sd50: WRITEBENCH OK
+2026-10-27 17:02:34 start head-upd-sd200: head -Dwb.sd=200000000
+2026-10-27 17:07:25 end head-upd-sd200: WRITEBENCH OK
+2026-10-27 17:07:25 start head-upd-sd1000: head -Dwb.sd=1000000000
+2026-10-27 17:10:35 end head-upd-sd1000: WRITEBENCH OK
+2026-10-27 17:10:35 start head-del-sd50: head -Dwb.sd=50000000 -Dwb.op=delete -Dwb.updates=8000000
+2026-10-27 17:13:10 end head-del-sd50: WRITEBENCH OK
+2026-10-27 17:13:10 start head-del-sd200: head -Dwb.sd=200000000 -Dwb.op=delete -Dwb.updates=8000000
+2026-10-27 17:14:50 end head-del-sd200: WRITEBENCH OK
+2026-10-27 17:14:50 start head-del-sd1000: head -Dwb.sd=1000000000 -Dwb.op=delete -Dwb.updates=8000000
+2026-10-27 17:16:02 end head-del-sd1000: WRITEBENCH OK
+2026-10-27 17:16:02 start head-one-sd50: head -Dwb.sd=50000000 -Dwb.utx=1 -Dwb.updates=6000000
+2026-10-27 17:19:32 end head-one-sd50: WRITEBENCH OK
+2026-10-27 17:19:32 start head-one-sd200: head -Dwb.sd=200000000 -Dwb.utx=1 -Dwb.updates=6000000
+2026-10-27 17:21:42 end head-one-sd200: WRITEBENCH OK
+2026-10-27 17:21:42 QUEUE1 DONE
+2026-10-27 17:21:43 start head-low1000-100-once-w: head -Dwb.sd=1000000000 -Dwb.updates=38123000 -Dwb.lowerAt=28123000 -Dwb.lowerTo=100000000
+2026-10-27 17:26:43 end head-low1000-100-once-w: WRITEBENCH OK
+2026-10-27 17:26:43 start head-low1000-100-steps-w: head -Dwb.sd=1000000000 -Dwb.updates=38123000 -Dwb.lowerAt=28123000 -Dwb.lowerTo=100000000 -Dwb.lowerStep=10000000
+2026-10-27 17:31:47 end head-low1000-100-steps-w: WRITEBENCH OK
+2026-10-27 17:31:47 start head-low200-50-once-w: head -Dwb.sd=200000000 -Dwb.updates=20877000 -Dwb.lowerAt=10877000 -Dwb.lowerTo=50000000
+2026-10-27 17:36:11 end head-low200-50-once-w: WRITEBENCH OK
+2026-10-27 17:36:11 start head-low200-50-steps-w: head -Dwb.sd=200000000 -Dwb.updates=20877000 -Dwb.lowerAt=10877000 -Dwb.lowerTo=50000000 -Dwb.lowerStep=10000000
+2026-10-27 17:40:25 end head-low200-50-steps-w: WRITEBENCH OK
+2026-10-27 17:40:25 start head-low1000-100-once-t: head -Dwb.sd=1000000000 -Dwb.updates=30000000 -Dwb.lowerAt=20000000 -Dwb.lowerTo=100000000
+2026-10-27 17:44:38 end head-low1000-100-once-t: WRITEBENCH OK
+2026-10-27 17:44:38 start head-low1000-100-steps-t: head -Dwb.sd=1000000000 -Dwb.updates=30000000 -Dwb.lowerAt=20000000 -Dwb.lowerTo=100000000 -Dwb.lowerStep=10000000
+2026-10-27 17:48:53 end head-low1000-100-steps-t: WRITEBENCH OK
+2026-10-27 17:48:53 start head-low200-50-once-t: head -Dwb.sd=200000000 -Dwb.updates=30000000 -Dwb.lowerAt=20000000 -Dwb.lowerTo=50000000
+2026-10-27 17:54:27 end head-low200-50-once-t: WRITEBENCH OK
+2026-10-27 17:54:27 start head-low200-50-steps-t: head -Dwb.sd=200000000 -Dwb.updates=30000000 -Dwb.lowerAt=20000000 -Dwb.lowerTo=50000000 -Dwb.lowerStep=10000000
+2026-10-27 18:00:01 end head-low200-50-steps-t: WRITEBENCH OK
+2026-10-27 18:00:01 QUEUE2 HEAD DONE
+2026-10-27 18:00:01 start paced-upd-sd1000: paced -Dwb.sd=1000000000
+2026-10-27 18:03:13 end paced-upd-sd1000: WRITEBENCH OK
+2026-10-27 18:03:13 start paced-upd-sd200: paced -Dwb.sd=200000000
+2026-10-27 18:08:48 end paced-upd-sd200: WRITEBENCH OK
+2026-10-27 18:08:48 start paced-upd-sd50: paced -Dwb.sd=50000000
+2026-10-27 18:17:38 end paced-upd-sd50: WRITEBENCH OK
+2026-10-27 18:17:38 start paced-low1000-100-once-w: paced -Dwb.sd=1000000000 -Dwb.updates=22318000 -Dwb.lowerAt=12318000 -Dwb.lowerTo=100000000
+2026-10-27 18:21:32 end paced-low1000-100-once-w: WRITEBENCH OK
+2026-10-27 18:21:32 start paced-low1000-100-steps-w: paced -Dwb.sd=1000000000 -Dwb.updates=22318000 -Dwb.lowerAt=12318000 -Dwb.lowerTo=100000000 -Dwb.lowerStep=10000000
+2026-10-27 18:25:15 end paced-low1000-100-steps-w: WRITEBENCH OK
+2026-10-27 18:25:15 start paced-low200-50-once-w: paced -Dwb.sd=200000000 -Dwb.updates=33646000 -Dwb.lowerAt=23646000 -Dwb.lowerTo=50000000
+2026-10-27 18:26:15 start smoke-follow: paced2 -Dwb.keys=200000 -Dwb.window=200000 -Dwb.ring=200000000 -Dwb.updates=1000000 -Dwb.sd=20000000 -Dwb.lowerAt=500000 -Dwb.lowerTo=2000000 -Dwb.lowerGap=5
+2026-10-27 18:26:23 end smoke-follow: WRITEBENCH OK
+2026-10-27 18:33:06 end paced-low200-50-once-w: WRITEBENCH OK
+2026-10-27 18:33:06 start paced-low200-50-steps-w: paced -Dwb.sd=200000000 -Dwb.updates=33646000 -Dwb.lowerAt=23646000 -Dwb.lowerTo=50000000 -Dwb.lowerStep=10000000
+2026-10-27 18:40:09 end paced-low200-50-steps-w: WRITEBENCH OK
+2026-10-27 18:40:09 start paced-low1000-100-once-t: paced -Dwb.sd=1000000000 -Dwb.updates=30000000 -Dwb.lowerAt=20000000 -Dwb.lowerTo=100000000
+2026-10-27 18:44:24 end paced-low1000-100-once-t: WRITEBENCH OK
+2026-10-27 18:44:24 start paced-low1000-100-steps-t: paced -Dwb.sd=1000000000 -Dwb.updates=30000000 -Dwb.lowerAt=20000000 -Dwb.lowerTo=100000000 -Dwb.lowerStep=10000000
+2026-10-27 18:48:57 end paced-low1000-100-steps-t: WRITEBENCH OK
+2026-10-27 18:48:57 start paced-low200-50-once-t: paced -Dwb.sd=200000000 -Dwb.updates=30000000 -Dwb.lowerAt=20000000 -Dwb.lowerTo=50000000
+2026-10-27 18:55:48 end paced-low200-50-once-t: WRITEBENCH OK
+2026-10-27 18:55:48 start paced-low200-50-steps-t: paced -Dwb.sd=200000000 -Dwb.updates=30000000 -Dwb.lowerAt=20000000 -Dwb.lowerTo=50000000 -Dwb.lowerStep=10000000
+2026-10-27 19:02:35 end paced-low200-50-steps-t: WRITEBENCH OK
+2026-10-27 19:02:35 start paced-one-sd50: paced -Dwb.sd=50000000 -Dwb.utx=1 -Dwb.updates=6000000
+2026-10-27 19:06:22 end paced-one-sd50: WRITEBENCH OK
+2026-10-27 19:06:22 start paced-one-sd200: paced -Dwb.sd=200000000 -Dwb.utx=1 -Dwb.updates=6000000
+2026-10-27 19:08:38 end paced-one-sd200: WRITEBENCH OK
+2026-10-27 19:08:38 start paced-del-sd50: paced -Dwb.sd=50000000 -Dwb.op=delete -Dwb.updates=8000000
+2026-10-27 19:11:38 end paced-del-sd50: WRITEBENCH OK
+2026-10-27 19:11:38 start paced-del-sd200: paced -Dwb.sd=200000000 -Dwb.op=delete -Dwb.updates=8000000
+2026-10-27 19:13:29 end paced-del-sd200: WRITEBENCH OK
+2026-10-27 19:13:29 start paced-del-sd1000: paced -Dwb.sd=1000000000 -Dwb.op=delete -Dwb.updates=8000000
+2026-10-27 19:14:32 end paced-del-sd1000: WRITEBENCH OK
+2026-10-27 19:14:32 QUEUE2 DONE
+2026-10-27 19:14:39 start paced2-low1000-100-follow-w: paced2 -Dwb.sd=1000000000 -Dwb.updates=22318000 -Dwb.lowerAt=12318000 -Dwb.lowerTo=100000000 -Dwb.lowerGap=10
+2026-10-27 19:17:54 end paced2-low1000-100-follow-w: WRITEBENCH OK
+2026-10-27 19:17:54 start paced2-low200-50-follow-w: paced2 -Dwb.sd=200000000 -Dwb.updates=33646000 -Dwb.lowerAt=23646000 -Dwb.lowerTo=50000000 -Dwb.lowerGap=10
+2026-10-27 19:20:48 start smoke-pace: paced3 -Dwb.keys=200000 -Dwb.window=200000 -Dwb.ring=200000000 -Dwb.updates=1000000 -Dwb.sd=20000000 -Dwb.lowerAt=500000 -Dwb.lowerTo=2000000 -Dwb.lowerGap=5 -Dwb.lowerPace=true
+2026-10-27 19:20:56 end smoke-pace: WRITEBENCH OK
+2026-10-27 19:25:04 end paced2-low200-50-follow-w: WRITEBENCH OK
+2026-10-27 19:25:04 start paced2-low1000-100-follow-t: paced2 -Dwb.sd=1000000000 -Dwb.updates=30000000 -Dwb.lowerAt=20000000 -Dwb.lowerTo=100000000 -Dwb.lowerGap=10
+2026-10-27 19:29:00 end paced2-low1000-100-follow-t: WRITEBENCH OK
+2026-10-27 19:29:00 start paced2-low200-50-follow-t: paced2 -Dwb.sd=200000000 -Dwb.updates=30000000 -Dwb.lowerAt=20000000 -Dwb.lowerTo=50000000 -Dwb.lowerGap=10
+2026-10-27 19:35:18 end paced2-low200-50-follow-t: WRITEBENCH OK
+2026-10-27 19:35:18 QUEUE3 DONE
+2026-10-27 19:35:28 start paced3-low1000-100-pace-w: paced3 -Dwb.sd=1000000000 -Dwb.updates=22318000 -Dwb.lowerAt=12318000 -Dwb.lowerTo=100000000 -Dwb.lowerGap=10 -Dwb.lowerPace=true
+2026-10-27 19:39:05 end paced3-low1000-100-pace-w: WRITEBENCH OK
+2026-10-27 19:39:05 start paced3-low200-50-pace-w: paced3 -Dwb.sd=200000000 -Dwb.updates=33646000 -Dwb.lowerAt=23646000 -Dwb.lowerTo=50000000 -Dwb.lowerGap=10 -Dwb.lowerPace=true
+2026-10-27 19:45:55 end paced3-low200-50-pace-w: WRITEBENCH OK
+2026-10-27 19:45:55 start paced3-low1000-100-pace-t: paced3 -Dwb.sd=1000000000 -Dwb.updates=30000000 -Dwb.lowerAt=20000000 -Dwb.lowerTo=100000000 -Dwb.lowerGap=10 -Dwb.lowerPace=true
+2026-10-27 19:50:07 end paced3-low1000-100-pace-t: WRITEBENCH OK
+2026-10-27 19:50:07 start paced3-low200-50-pace-t: paced3 -Dwb.sd=200000000 -Dwb.updates=30000000 -Dwb.lowerAt=20000000 -Dwb.lowerTo=50000000 -Dwb.lowerGap=10 -Dwb.lowerPace=true
+2026-10-27 19:56:23 end paced3-low200-50-pace-t: WRITEBENCH OK
+2026-10-27 19:56:23 QUEUE4 DONE
+2026-10-27 20:00:57 start step3-upd-sd1000: step3 -Dwb.sd=1000000000
+2026-10-27 20:03:51 end step3-upd-sd1000: WRITEBENCH OK
+2026-10-27 20:03:51 start step3-upd-sd200: step3 -Dwb.sd=200000000
+2026-10-27 20:09:13 end step3-upd-sd200: WRITEBENCH OK
+2026-10-27 20:09:13 start step3-upd-sd50: step3 -Dwb.sd=50000000
+2026-10-27 20:17:07 end step3-upd-sd50: WRITEBENCH OK
+2026-10-27 20:17:07 start step3-one-sd50: step3 -Dwb.sd=50000000 -Dwb.utx=1 -Dwb.updates=6000000
+2026-10-27 20:20:30 end step3-one-sd50: WRITEBENCH OK
+2026-10-27 20:20:30 start step3-one-sd200: step3 -Dwb.sd=200000000 -Dwb.utx=1 -Dwb.updates=6000000
+2026-10-27 20:22:43 end step3-one-sd200: WRITEBENCH OK
+2026-10-27 20:22:43 start step3-low1000-100-once-w: step3 -Dwb.sd=1000000000 -Dwb.updates=22181000 -Dwb.lowerAt=12181000 -Dwb.lowerTo=100000000
+2026-10-27 20:26:11 end step3-low1000-100-once-w: WRITEBENCH OK
+2026-10-27 20:26:11 start step3-low200-50-once-w: step3 -Dwb.sd=200000000 -Dwb.updates=24585000 -Dwb.lowerAt=14585000 -Dwb.lowerTo=50000000
+2026-10-27 20:31:26 end step3-low200-50-once-w: WRITEBENCH OK
+2026-10-27 20:31:26 start step3-del-sd50: step3 -Dwb.sd=50000000 -Dwb.op=delete -Dwb.updates=8000000
+2026-10-27 20:34:21 end step3-del-sd50: WRITEBENCH OK
+2026-10-27 20:34:21 start step3-del-sd200: step3 -Dwb.sd=200000000 -Dwb.op=delete -Dwb.updates=8000000
+2026-10-27 20:36:12 end step3-del-sd200: WRITEBENCH OK
+2026-10-27 20:36:12 start step3-del-sd1000: step3 -Dwb.sd=1000000000 -Dwb.op=delete -Dwb.updates=8000000
+2026-10-27 20:37:16 end step3-del-sd1000: WRITEBENCH OK
+2026-10-27 20:37:16 QUEUE5 DONE
