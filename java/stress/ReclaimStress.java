@@ -278,12 +278,14 @@ public class ReclaimStress {
             if (stopBeforeRestart) db.stop();
             stream = stream.copy();
             sessionCount++;
+            Db before = db;
             try {
                 db = start();
             } catch (RuntimeException e) {
                 throw new RuntimeException("restart after session " + s + " (cut "
                         + stream.getCut() + "): startup failed: " + e, e);
             }
+            if (!stopBeforeRestart) before.close();     // nothing else closes it (bergdb 005-55)
             long sum2 = DbUtil.checksum(db);
             if (sum1 != sum2) {
                 throw new AssertionError("restart " + s + ": checksum differs");

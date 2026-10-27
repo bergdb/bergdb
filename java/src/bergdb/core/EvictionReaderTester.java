@@ -146,6 +146,8 @@ public class EvictionReaderTester {
         }
         Assert.assertTrue("pointers checked", checked >= 3);
         assertSameReads(ref, db, 30, new ArrayList<Long>());
+        ref.close();
+        db.close();
     }
 
     /**
@@ -209,6 +211,12 @@ public class EvictionReaderTester {
             assertSameReads(ref, db, keys, times);
             Assert.assertEquals(auditFailures, Audit.failures());
         }
+
+        /** Closes both databases. */
+        void close() {
+            ref.close();
+            db.close();
+        }
     }
 
     /**
@@ -251,6 +259,7 @@ public class EvictionReaderTester {
             assertSameReads(w.ref, w.db, w.keys, w.times);
             w.goOn();
             if (pResident) done++;
+            w.close();
         }
         Assert.assertTrue("a pinned parent's pointer (" + done + ")", done > 0);
     }
@@ -299,6 +308,7 @@ public class EvictionReaderTester {
         List<String> audit = Audit.check(w.db);
         Assert.assertTrue(audit.toString(), audit.isEmpty());
         w.goOn();
+        w.close();
     }
 
     /**
@@ -327,7 +337,10 @@ public class EvictionReaderTester {
         for (int attempt = 0; attempt < 8 && tries < maxTries; attempt++) {
             final Pair w = new Pair(attempt);
             List<Object[]> cs = candidates(w.db);
-            if (cs.isEmpty()) continue;
+            if (cs.isEmpty()) {
+                w.close();
+                continue;
+            }
             Object[] cand = cs.get(attempt % cs.size());
             final Node p = (Node) cand[0];
             final int i = (Integer) cand[1];
@@ -385,6 +398,7 @@ public class EvictionReaderTester {
             List<String> audit = Audit.check(w.db);
             Assert.assertTrue(audit.toString(), audit.isEmpty());
             w.goOn();
+            w.close();
         }
         Assert.assertTrue("tried", tries > 0);
     }
@@ -445,6 +459,8 @@ public class EvictionReaderTester {
             Assert.assertTrue("value " + j, Arrays.equals(all.result.get(j).value, chunks.get(j).value));
         }
         Assert.assertTrue("rounds", round >= 5);
+        ref.close();
+        db.close();
     }
 
     /**
@@ -551,5 +567,6 @@ public class EvictionReaderTester {
         if (budget) {
             Assert.assertTrue("batches after loads", db.internal().eviction().sweepCounts()[1] > 0);
         }
+        db.close();
     }
 }

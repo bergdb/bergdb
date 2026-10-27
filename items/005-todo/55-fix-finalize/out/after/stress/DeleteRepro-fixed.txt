@@ -1,0 +1,5 @@
+restart OK; /a=x, /b=y
+second restart OK; /c=z
+suite bergdb.core.DeleteRepro done in 0 s
+  at the end: heap used 7 MB, threads {BufferedStream-consumer=1, Common-Cleaner=1, Notification Thread=1, Reference Handler=1, Signal Dispatcher=1, main=1}
+  after 20 collections: heap used 3 MB, threads {BufferedStream-consumer=1, Common-Cleaner=1, Notification Thread=1, Reference Handler=1, Signal Dispatcher=1, main=1}

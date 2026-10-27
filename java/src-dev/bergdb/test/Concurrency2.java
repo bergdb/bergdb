@@ -71,6 +71,7 @@ public class Concurrency2 {
             stop = true;
             reader.join();
             writer.join();
+            db.close();
         }
         
         if (this.exception != null) {

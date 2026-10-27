@@ -366,9 +366,11 @@ public class Trans {
             db.execute(t);
         }
         
+        db.close();
         db = Db.builder().testSetup().start();
         for (int i0 = 0; i0 < 1; i0++) {
             db.execute(t);
         }
+        db.close();
     }
 }

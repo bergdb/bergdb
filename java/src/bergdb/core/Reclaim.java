@@ -1251,6 +1251,7 @@ public class Reclaim implements Db.TransactionListener {
             g.startKey = null;
             db.getMany(g);
             Assert.assertTrue(g.result.size() == size || g.result.size() == size + 1);
+            db.close();
         }
         
         @Nano
@@ -1290,6 +1291,7 @@ public class Reclaim implements Db.TransactionListener {
             db.sync(SyncLevel.STRONG);    // A cut in bytes not yet flushed waits for the flush.
             Assert.assertTrue("" + ints[0], ints[0] > 0);
             Assert.assertTrue("" + ints[1], ints[1] > value.length);
+            db.close();
         }
         
         @Nano

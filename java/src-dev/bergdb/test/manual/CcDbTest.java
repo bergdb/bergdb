@@ -75,11 +75,15 @@ public class CcDbTest {
         
         createDb();
         
-        addCardsIfNeeded();
-        
-        measurePerformance();
-        
-        count();
+        try {
+            addCardsIfNeeded();
+            
+            measurePerformance();
+            
+            count();
+        } finally {
+            database.stop();
+        }
     }
 
     private void createDb() {
@@ -142,10 +146,6 @@ public class CcDbTest {
                 counter, time, time / counter * 1000.0);
     }
 
-    protected void finalize() {
-        database.stop();
-    }
-    
     private void addCardsIfNeeded() {
         final int existingCardCount = getCardCount();
         int toAdd = n - existingCardCount;

@@ -52,7 +52,7 @@ public class DbTesterRestart {
         long tt = trans.tt;
         stream = stream.copy();
         
-        db = null;
+        db.close();
         Db db2 = Db.builder().testSetup().mainStream(stream).start();
         
         value = DbUtil.get(db2, Long.MAX_VALUE, "admin1");
@@ -63,6 +63,7 @@ public class DbTesterRestart {
         
         value = DbUtil.get(db2, tt, "admin1");
         Assert.assertArrayEquals(StringUtil.toBytes("Sanna"), value);
+        db2.close();
     }
     
 
@@ -78,12 +79,13 @@ public class DbTesterRestart {
         
         stream = stream.copy();
         
-        db = null;
+        db.close();
         Db db2 = Db.builder().testSetup().mainStream(stream).start();
         
         long c2 = DbUtil.checksum(db2);
         
         Assert.assertEquals(c1, c2);
+        db2.close();
     }
     
     @Nano
@@ -145,9 +147,11 @@ public class DbTesterRestart {
         stream = stream.copy();
         Assert.assertTrue(stream.getLength() > RecoverableStream.META_BLOCK_SIZE);
         
+        db.close();
         db = Db.builder().mainStream(stream).start();
         
         Assert.assertEquals("after restart", startupDistance, db.getStartupDistance());
+        db.close();
     }
     
     /**
@@ -167,12 +171,14 @@ public class DbTesterRestart {
         // Restart
         
         stream = stream.copy();
+        db.close();
         db = Db.builder()
                 .mainStream(stream)
                 .clock(clock)
                 .start();
         
         Assert.assertEquals("after restart", startupDistance, db.getStartupDistance());
+        db.close();
     }
     
     /** A builder with maximum node size 'size', 8, 14, 30 or 62. */
@@ -283,7 +289,7 @@ public class DbTesterRestart {
     
     /** Simplest possible delete-and-restart test. */
     @Nano private static void testDelete1() {
-        AppendOnlyStream s = new MemoryStream();
+        MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(s).clock(clock).start();
         
@@ -297,17 +303,18 @@ public class DbTesterRestart {
         //db.printGraph(System.out);
         //db.getStream().print(System.out);
         
-        db = null;
+        db.close();
         
         // Restart
         
-        Db db2 = Db.builder().testSetup(s).start();        
+        Db db2 = Db.builder().testSetup(s.copy()).start();
         //db2.printGraph(System.out);
         
         byte[] v1 = DbUtil.get(db2, 15, "k1");
         Assert.assertArrayEquals(StringUtil.toBytes("k1-value"), v1);
         v1 = DbUtil.get(db2, 25, "k1");
         Assert.assertNull(v1);
+        db2.close();
     }
     
     /** Multiple deletes in a single transaction. */
@@ -324,6 +331,7 @@ public class DbTesterRestart {
         
         long sum1 = DbUtil.checksum(db);
         db.sync(SyncLevel.ORDINARY);
+        db.close();
         
         // Restart
         
@@ -331,6 +339,7 @@ public class DbTesterRestart {
         long sum2 = DbUtil.checksum(db2);
         
         Assert.assertEquals(sum1, sum2);
+        db2.close();
     }
 
     /**
@@ -428,6 +437,7 @@ public class DbTesterRestart {
         
         Assert.assertTrue("startup pos moved", db.internal().x().startupPos.get() 
                 > RecoverableStream.META_BLOCK_SIZE);
+        db.close();
     }
     
     /**
@@ -614,6 +624,7 @@ public class DbTesterRestart {
             }
             
             db.sync(SyncLevel.STRONG);
+            db.close();
         }
         
         /** Checks every key at the latest time and at ten earlier times. */
@@ -674,6 +685,7 @@ public class DbTesterRestart {
         db = Db.builder().testSetup(s.copy()).clock(clock).start();
         Assert.assertEquals("after restart", lastTpos, 
                 db.internal().nodeStream().getMetaBlock().getLastTransSpos());
+        db.close();
     }
     
     /**
@@ -713,6 +725,7 @@ public class DbTesterRestart {
                 clock.setTime(time++);
                 db.execute(db.trans().put("/k/" + round, "v" + round).build());
             }
+            db.close();
         }
     }
 
@@ -753,6 +766,7 @@ public class DbTesterRestart {
             n++;
         }
         Assert.assertEquals("the next top node", superRoot + 1, db.internal().superRoot().topNodeId);
+        db.close();
     }
 
     /**

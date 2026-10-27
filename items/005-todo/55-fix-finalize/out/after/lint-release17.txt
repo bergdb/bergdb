@@ -1,0 +1,4 @@
+src/bergdb/core/StoredTrans.java:134: warning: [dep-ann] deprecated item is not annotated with @Deprecated
+    public ValueNode getValueNode(long[] key) {
+                     ^
+1 warning

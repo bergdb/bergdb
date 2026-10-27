@@ -1,7 +1,12 @@
 package bergdb.dev;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.WeakHashMap;
 
 import bergdb.common.AssertStatus;
 import bergdb.common.Util;
@@ -21,11 +26,23 @@ public class NanotestForBergDB {
     private final String[] args;
     private final Set<Class<?>> classes;
     private final Set<String> groups;
+    private boolean checkStopped = false;
     
     public NanotestForBergDB(String[] args, IPack[] ipacks, Set<String> groups) {
         this.args = args;
         this.classes = createSetOfClasses(ipacks);
         this.groups = groups;
+    }
+    
+    /**
+     * Makes go() check, after the tests, that every database a test started has been
+     * stopped (bergdb 005-55); Unit, F and Night use it. Nothing stops a database that is
+     * dropped, as Db has no finalize(): a test that does not stop or close its database
+     * leaves its storage threads, its open files and its memory until the JVM exits. See
+     * StoppedCheck.
+     */
+    public void checkDatabasesStopped() {
+        checkStopped = true;
     }
     
     public void go() {
@@ -41,7 +58,7 @@ public class NanotestForBergDB {
             return;
         }
         
-        ConsoleUI ui = new ConsoleUI();
+        ConsoleUI ui = checkStopped ? new StoppedCheck() : new ConsoleUI();
         ui.applyOptions(c);
         
         System.out.print(getHeader());
@@ -125,5 +142,79 @@ public class NanotestForBergDB {
             }
         }
         return classes;
+    }
+    
+    /**
+     * The check of checkDatabasesStopped() (bergdb 005-55). After each test it notes the
+     * storage threads (BufferedStream's consumers, "BufferedStream-consumer-N") and eviction
+     * threads ("bergdb-evictor") that are alive, each with the test after which it was first
+     * seen. At the end, before the report, it waits at most 5 seconds for the closes that
+     * stop() started (bergdb 005-35), then fails a last test, databasesStopped, if any of
+     * those threads is still alive, with the tests that left them.
+     */
+    private static class StoppedCheck extends ConsoleUI {
+        private static final long WAIT_MILLIS = 5000;
+        private final Map<Thread, String> testOf = new WeakHashMap<Thread, String>();
+        private String test;
+        
+        public void testAboutToRun(String longMethodName) {
+            test = longMethodName;
+            super.testAboutToRun(longMethodName);
+        }
+        
+        public void testDone(Throwable t) {
+            for (Thread th : storageThreads()) {
+                if (!testOf.containsKey(th)) {
+                    testOf.put(th, test);
+                }
+            }
+            super.testDone(t);
+        }
+        
+        public void done() {
+            classAboutToRun(NanotestForBergDB.class);
+            testAboutToRun(NanotestForBergDB.class.getName() + ".databasesStopped");
+            testDone(databasesStopped());
+            classDone();
+            super.done();
+        }
+        
+        /** Null if no storage or eviction thread is alive within WAIT_MILLIS. */
+        private Throwable databasesStopped() {
+            long end = System.currentTimeMillis() + WAIT_MILLIS;
+            List<Thread> alive = storageThreads();
+            while (!alive.isEmpty() && System.currentTimeMillis() < end) {
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    return e;
+                }
+                alive = storageThreads();
+            }
+            
+            if (alive.isEmpty()) {
+                return null;
+            }
+            
+            Map<String, Integer> byTest = new TreeMap<String, Integer>();
+            for (Thread th : alive) {
+                String name = testOf.get(th) == null ? "no test" : testOf.get(th);
+                Integer count = byTest.get(name);
+                byTest.put(name, count == null ? 1 : count + 1);
+            }
+            return new AssertionError(alive.size() + " storage or eviction threads alive after "
+                    + "the tests: databases not stopped, by the test that left them: " + byTest);
+        }
+        
+        private static List<Thread> storageThreads() {
+            List<Thread> list = new ArrayList<Thread>();
+            for (Thread th : Thread.getAllStackTraces().keySet()) {
+                String name = th.getName();
+                if (name.startsWith("BufferedStream-consumer-") || name.equals("bergdb-evictor")) {
+                    list.add(th);
+                }
+            }
+            return list;
+        }
     }
 }

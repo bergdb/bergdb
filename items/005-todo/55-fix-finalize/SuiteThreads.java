@@ -1,20 +1,23 @@
+import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Probe for bergdb 005-55: runs a test suite (bergdb.dev.Unit or bergdb.dev.F), then
+ * Probe for bergdb 005-55: runs a test suite (bergdb.dev.Unit or bergdb.dev.F), or any other
+ * main class with the arguments after its name (since 2026-10-27, for the stress programs), then
  * collects garbage and counts the BergDB threads still alive: one BufferedStream consumer
  * per stream of a database that was not stopped and not finalized, and an eviction thread
  * per such database whose eviction thread had started.
  *
  * Usage: java -ea -cp build/bergdb.jar:. SuiteThreads bergdb.dev.Unit
+ *        java -ea -cp build/bergdb.jar:build/stress:. SuiteThreads RestartStress 1 40
  * Run it once with finalization on (the default) and once with --finalization=disabled.
  */
 public class SuiteThreads {
     public static void main(String[] args) throws Exception {
         long t0 = System.nanoTime();
         Class.forName(args[0]).getMethod("main", String[].class).invoke(null,
-                (Object) new String[0]);
+                (Object) Arrays.copyOfRange(args, 1, args.length));
         System.out.format("suite %s done in %.0f s%n", args[0], (System.nanoTime() - t0) * 1e-9);
         report("at the end");
         for (int i = 0; i < 20; i++) {

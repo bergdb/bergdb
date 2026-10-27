@@ -73,6 +73,7 @@ public class Bug130924 {
         
         Assert.assertEquals(count, total);
         Assert.assertEquals(sum, total);
+        database.stop();
     }
     
     /**
@@ -103,6 +104,7 @@ public class Bug130924 {
         }
         
         Assert.assertEquals(count, total);
+        db.close();
     }
     
     /**

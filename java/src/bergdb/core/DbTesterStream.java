@@ -30,6 +30,7 @@ public class DbTesterStream {
     public static void test1() {
         Db db = Db.builder().testSetup().build();
         db.start();
+        db.close();
     }
     
     public static void test2() {
@@ -39,6 +40,7 @@ public class DbTesterStream {
         db.execute(db.trans().put("admin1", "Sanna").build());
         byte[] value = DbUtil.get(db, 99, "admin1");
         Assert.assertArrayEquals(StringUtil.toBytes("Sanna"), value);
+        db.close();
     }
     
     public static void testSimpleRestart1() {
@@ -338,15 +340,16 @@ public class DbTesterStream {
         }
         
         db.sync(SyncLevel.ORDINARY);
-        db = null;
+        db.close();
         
-        Db db2 = Db.builder().testSetup().mainStream(stream).start();
+        Db db2 = Db.builder().testSetup().mainStream(stream.copy()).start();
         
         for (int i = 0; i < n; i++) {
             int k = i + 100;
             String valueString = StringUtil.toString(DbUtil.get(db2, n * 10 + 9999, "" + k));
             Assert.assertEquals("v" + k, valueString);
         }   
+        db2.close();
     }
     
     public static void testDbOnMemStream() throws IOException {
@@ -388,7 +391,7 @@ public class DbTesterStream {
             clock.setTime(10);
             db.execute(db.trans().put("k", "k-value"));
             db.sync(SyncLevel.ORDINARY);
-            db = null;
+            db.close();
             s = null;
             
             AppendOnlyStream s2 = new OneFileStream(f);
@@ -399,6 +402,7 @@ public class DbTesterStream {
             
             value = DbUtil.get(db2, 5, StringUtil.toBytes("k"));
             Assert.assertNull(value);
+            db2.close();
         } finally {
             f.delete();
         }
@@ -422,7 +426,7 @@ public class DbTesterStream {
         clock.setTime(20);
         db.execute(db.trans().put("admin2", "Sanna2").build());
         db.sync(SyncLevel.ORDINARY);
-        db = null;
+        db.close();
         s = null;
         
         AppendOnlyStream s2 = new OneFileStream(f);
@@ -438,6 +442,7 @@ public class DbTesterStream {
         value = DbUtil.get(db2, 15, "admin2");
         Assert.assertNull(value);
         
+        db2.close();
         f.delete();
     }
     
@@ -455,7 +460,7 @@ public class DbTesterStream {
         clock.setTime(10);
         db.execute(db.trans().put("k", "k-value"));
         db.sync(SyncLevel.ORDINARY);
-        db = null;
+        db.close();
         
         File file = new File(dir, "created.txt");
         Assert.assertTrue(file.exists());
@@ -465,7 +470,7 @@ public class DbTesterStream {
     }
     
     public static void testOverwriteAndRestart() {
-        AppendOnlyStream s = new MemoryStream();
+        MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup(s).clock(clock).start();
         
@@ -478,9 +483,9 @@ public class DbTesterStream {
         clock.setTime(30);
         db.execute(db.trans().put("k2", "k2-value-b"));
         db.sync(SyncLevel.ORDINARY);
-        db = null;
+        db.close();
         
-        Db db2 = Db.builder().testSetup(s).start();
+        Db db2 = Db.builder().testSetup(s.copy()).start();
         
         // t = 15
         
@@ -505,11 +510,12 @@ public class DbTesterStream {
         
         value = DbUtil.get(db2, 35, "k2");
         Assert.assertEquals("k2-value-b", StringUtil.toString(value));
+        db2.close();
     }
 
     @Nano
     public static void testTwoKvsInOneTransaction() {
-        AppendOnlyStream s = new MemoryStream();
+        MemoryStream s = new MemoryStream();
         TestClock clock = new TestClock();
         Db db = Db.builder().testSetup(s).clock(clock).start();
         int n = 2;
@@ -541,7 +547,7 @@ public class DbTesterStream {
         
         // Now, let's create a new Db from stream.
         
-        db = Db.builder().testSetup(s).start();
+        db = Db.builder().testSetup(s.copy()).start();
         
         for (int i = 0; i < n; i++) {
             byte[] key = KeyFactory.intKey(n - i);
@@ -551,24 +557,26 @@ public class DbTesterStream {
             int valueInt = Bytes.bytesToIntLE(value, 0);
             Assert.assertEquals(i, valueInt);
         }
+        db.close();
     }
     
     @Nano("f")     // Too slow to be "unit".
     public static void testLargeTransaction() {
-        AppendOnlyStream s = new MemoryStream();
+        MemoryStream s = new MemoryStream();
         int n = 2;
         int valueSize = 20*1000*1000;
         Db db = createRandomDb(n, s);  // Make sure we have some data
         
         db.execute(db.trans().put("/large", new byte[valueSize]));
         db.sync(SyncLevel.ORDINARY);
-        db = null;
+        db.close();
         
-        db = Db.builder().testSetup().mainStream(s).start();
+        db = Db.builder().testSetup().mainStream(s.copy()).start();
         checkRandomDb(db, n);
         byte[] value = DbUtil.get(db, Long.MAX_VALUE, Keys.toBytes("/large"));
         Assert.assertTrue(value != null);
         Assert.assertEquals(valueSize, value.length);
+        db.close();
     }
     
     @Nano("f")    // Too slow to be "unit".
@@ -587,7 +595,7 @@ public class DbTesterStream {
         db.execute(db.trans().put("/small2", "v-small2"));
         db.sync(SyncLevel.ORDINARY);
         
-        db = null;
+        db.close();
         
         // ---- Restart
         
@@ -602,6 +610,7 @@ public class DbTesterStream {
             byte[] value = DbUtil.get(db, Long.MAX_VALUE, Keys.toBytes("/large-" + i));
             Assert.assertEquals(valueSize + i, value.length);
         }
+        db.close();
     }
     
     @Nano

@@ -1,0 +1,7 @@
+Done: 40 rounds, 0 failures, 22 s.
+suite RestartStress done in 23 s
+  at the end: heap used 273 MB, threads {Common-Cleaner=1, Notification Thread=1, Reference Handler=1, Signal Dispatcher=1, main=1}
+  after 20 collections: heap used 2 MB, threads {Common-Cleaner=1, Notification Thread=1, Reference Handler=1, Signal Dispatcher=1, main=1}
+real 24.75
+user 15.15
+sys 0.44

@@ -60,6 +60,7 @@ public class ScenarioTester {
         // Restart
         
         stream = stream.copy();
+        db.close();
         db = Db.builder()
                 .mainStream(stream)
                 .clock(clock)
@@ -69,6 +70,7 @@ public class ScenarioTester {
         Assert.assertEquals(startupDistance, db.getStartupDistance());
         long checksum2 = DbUtil.checksum(db);  
         Assert.assertEquals(checksum1, checksum2);
+        db.close();
     }
 
     /**
@@ -101,6 +103,7 @@ public class ScenarioTester {
         db.getMany(g);
         
         Assert.assertTrue(g.result.size() == n);
+        db.close();
     }
     
     private static String key101(int i) {
@@ -132,7 +135,7 @@ public class ScenarioTester {
         
         //System.out.println("==== printGraph");
         //db.printGraph(System.out);
-        db = null;
+        db.close();
         
         // Restart
         stream = stream.copy();
@@ -143,6 +146,7 @@ public class ScenarioTester {
         
         assertEquals(100*1000, db.getStartupDistance());
         assertEquals(sum1, sum2);
+        db.close();
         
         //System.out.println("==== printGraph after restart");
         //db.printGraph(System.out);
@@ -171,7 +175,7 @@ public class ScenarioTester {
         long sum1 = DbUtil.checksum(db, Long.MAX_VALUE, true, true);
         db.sync(SyncLevel.STRONG);
         
-        db = null;
+        db.close();
         
         // Restart
         stream = stream.copy();
@@ -180,6 +184,7 @@ public class ScenarioTester {
         long sum2 = DbUtil.checksum(db, Long.MAX_VALUE, true, true);
         
         assertEquals(sum1, sum2);
+        db.close();
     }
     
     /**

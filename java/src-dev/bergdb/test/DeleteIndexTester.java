@@ -144,6 +144,7 @@ public class DeleteIndexTester {
         g.stopCondition = new GetMany.PrefixN(g.startKey, 10);
         db.getMany(g);
         Assert.assertEquals("time2", 0, g.result.size());
+        database.stop();
     }
     
     public static void main(String[] args) throws InterruptedException {

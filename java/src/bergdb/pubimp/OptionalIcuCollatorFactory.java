@@ -34,11 +34,9 @@ public class OptionalIcuCollatorFactory implements CollatorFactory {
             Object factoryObject;
             
             try {
-                factoryObject = clazz.newInstance();
+                factoryObject = clazz.getDeclaredConstructor().newInstance();
                 factory = (CollatorFactory) factoryObject;
-            } catch (InstantiationException e) {
-                throw new Bug("Should not happen, " + e.toString());
-            } catch (IllegalAccessException e) {
+            } catch (ReflectiveOperationException e) {
                 throw new Bug("Should not happen, " + e.toString());
             } catch (ClassCastException e) {
                 throw new Bug("Class " + className + " does not implement CollatorFactory.");

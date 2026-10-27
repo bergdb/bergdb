@@ -89,6 +89,7 @@ public class PayTest {
             // ---- Iterate based on memory stream ----
             
             MemoryStream mem2 = mem.copy();
+            database.stop();
             mem = null;
             System.gc();
             
@@ -120,6 +121,7 @@ public class PayTest {
             
             Assert.assertEquals(count, total);
             Assert.assertEquals(sum, total);
+            database.stop();
         }
     }
     

@@ -128,6 +128,7 @@ public class DbScan {
         DbScan.Result r = scan.scan();
         
         Assert.assertEquals(c1, r.checksum);
+        db.close();
     }
     
     @Nano private static void checkKvCount() {
@@ -139,5 +140,6 @@ public class DbScan {
         DbScan.Result r = scan.scan();
         
         Assert.assertEquals(2, r.kvCount);
+        db.close();
     }
 }

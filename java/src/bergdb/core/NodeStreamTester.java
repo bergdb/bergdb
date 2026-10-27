@@ -29,7 +29,7 @@ public class NodeStreamTester {
     
     @Nano
     public static void testSimpleRestart() {
-        AppendOnlyStream mstream = new MemoryStream();
+        MemoryStream mstream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(mstream).startupDistance(10000).clock(clock).build();
         db.start();
@@ -40,9 +40,9 @@ public class NodeStreamTester {
         value = DbUtil.get(db, 99, "admin1");
         Assert.assertArrayEquals(StringUtil.toBytes("Sanna"), value);
         db.sync(SyncLevel.ORDINARY);
-        db = null;
+        db.close();
         
-        Db db2 = Db.builder().testSetup().mainStream(mstream).build();
+        Db db2 = Db.builder().testSetup().mainStream(mstream.copy()).build();
         db2.start();
         
         value = DbUtil.get(db2, 99, "admin1");
@@ -50,6 +50,7 @@ public class NodeStreamTester {
         
         value = DbUtil.get(db2, 5, "admin1");
         Assert.assertNull(value);
+        db2.close();
     }
     
     @Nano
@@ -58,7 +59,7 @@ public class NodeStreamTester {
         // Like testSimpleRestart, but 2-segment key
         //
         byte[] value;
-        AppendOnlyStream mstream = new MemoryStream();
+        MemoryStream mstream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(mstream).clock(clock).build();
         db.start();
@@ -68,9 +69,9 @@ public class NodeStreamTester {
         value = DbUtil.get(db, 99, "admin10");
         Assert.assertArrayEquals(StringUtil.toBytes("Sanna"), value);
         db.sync(SyncLevel.ORDINARY);
-        db = null;
+        db.close();
         
-        Db db2 = Db.builder().testSetup().mainStream(mstream).build();
+        Db db2 = Db.builder().testSetup().mainStream(mstream.copy()).build();
         db2.start();
         
         value = DbUtil.get(db2, 99, "admin10");
@@ -78,11 +79,12 @@ public class NodeStreamTester {
         
         value = DbUtil.get(db2, 5, "admin10");
         Assert.assertNull(value);
+        db2.close();
     }
     
     @Nano
     public static void testRestartWithMultipleTransactions() {
-        AppendOnlyStream s = new MemoryStream();
+        MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = Db.builder().testSetup().mainStream(s).clock(clock).build();
         db.start();
@@ -91,9 +93,9 @@ public class NodeStreamTester {
         clock.setTime(20);
         db.execute(db.trans().put("admin2", "Sanna2").build());
         db.sync(SyncLevel.ORDINARY);
-        db = null;
+        db.close();
         
-        Db db2 = Db.builder().testSetup().mainStream(s).build();
+        Db db2 = Db.builder().testSetup().mainStream(s.copy()).build();
         db2.start();
         byte[] value;
         
@@ -106,6 +108,7 @@ public class NodeStreamTester {
         Assert.assertArrayEquals(StringUtil.toBytes("Sanna2"), value);
         value = DbUtil.get(db2, 15, "admin2");
         Assert.assertNull(value);
+        db2.close();
     }
     
     @Nano
@@ -126,6 +129,7 @@ public class NodeStreamTester {
         Assert.assertTrue(stored.nodes[0] instanceof StoredValueNode);
         StoredValueNode storedValue = (StoredValueNode) stored.nodes[0];
         Assert.assertEquals("a1", new String(storedValue.getNode().getValue(), "UTF-8"));
+        db.close();
     }
     
     private static NodeStream createTestNodeStream() {

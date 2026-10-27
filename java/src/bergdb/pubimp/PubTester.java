@@ -68,7 +68,8 @@ public class PubTester {
     
     @Nano
     public static void testRw1() {
-        Connection c = Factory.database().memory().start().connection();
+        Database database = Factory.database().memory().start();
+        Connection c = database.connection();
         c.w().put("/key1", "value1").put("/key2", "value2..").execute();
         
         c.rw(new Action() { 
@@ -82,6 +83,7 @@ public class PubTester {
         Assert.assertEquals("value1", v1);
         Assert.assertEquals("value2..", v2);
         Assert.assertEquals("14", c.get("/length", String.class));
+        database.stop();
     }
     
     @Nano
@@ -457,6 +459,7 @@ public class PubTester {
         MyDouble myDouble = c.get("/myDouble", MyDouble.class);
         
         Assert.assertEquals(12.3, myDouble.value, 0.00001);
+        d.stop();
     }
     
     @Nano
@@ -464,10 +467,13 @@ public class PubTester {
         MyDouble a = new MyDouble(1.2);
         a.key = "/a";
         
-        // One-liner with database creation.
-        Factory.database().memory().start().connection().w().put(a).execute();
+        // With database creation, and a stop when the database is no longer used.
+        Database database = Factory.database().memory().start();
+        database.connection().w().put(a).execute();
+        database.stop();
         
-        Connection c = Factory.database().memory().start().connection();
+        database = Factory.database().memory().start();
+        Connection c = database.connection();
         
         // Given connection, it is a short one-liner to store an object (assumes key field).
         c.w().put(a).execute();
@@ -484,6 +490,7 @@ public class PubTester {
                 env.put(a);
             }
         });
+        database.stop();
     }
     
     @Nano
@@ -500,6 +507,7 @@ public class PubTester {
         t.sync();
         
         assertThatTransWrittenCompletely(d, t);
+        d.stop();
     }
 
     private static void assertThatTransWrittenCompletely(Database d, Transaction t) {
@@ -522,6 +530,7 @@ public class PubTester {
         t.sync(SyncLevel.STRONG);
      
         assertThatTransWrittenCompletely(d, t);
+        d.stop();
     }
     
     @Nano
@@ -538,6 +547,7 @@ public class PubTester {
         c.sync();
         
         assertThatTransWrittenCompletely(d, t);
+        d.stop();
     }
     
     @Nano
@@ -554,6 +564,7 @@ public class PubTester {
         c.sync(SyncLevel.STRONG);
         
         assertThatTransWrittenCompletely(d, t);
+        d.stop();
     }
     
     @Nano
@@ -570,6 +581,7 @@ public class PubTester {
         d.sync();
         
         assertThatTransWrittenCompletely(d, t);
+        d.stop();
     }
     
     @Nano
@@ -586,6 +598,7 @@ public class PubTester {
         d.sync(SyncLevel.STRONG);
         
         assertThatTransWrittenCompletely(d, t);
+        d.stop();
     }
     
     @Nano
@@ -649,6 +662,7 @@ public class PubTester {
         A a1 = d.connection().get("/a", A.class);
         Assert.assertEquals("Saltis", a1.name);
         Assert.assertEquals("/a", a1.key);
+        d.stop();
     }
     
     @Nano
@@ -664,6 +678,7 @@ public class PubTester {
         A2 a1 = d.connection().get("/a", A2.class);
         Assert.assertEquals("Saltis", a1.name);
         Assert.assertEquals("/a", a1.key);
+        d.stop();
     }
     
     @Nano
@@ -680,6 +695,7 @@ public class PubTester {
         A a1 = d.connection().get("/a", A.class);
         Assert.assertEquals("Saltis", a1.name);
         Assert.assertEquals("/a", a1.key);
+        d.stop();
     }
     
     
@@ -1129,6 +1145,7 @@ public class PubTester {
         
         Assert.assertEquals("berg", magic);
         Assert.assertFalse(Util.areEqual(firstUnencryptedBytes, firstEncryptedBytes));
+        database.stop();
     }
     
     @Nano
@@ -1161,6 +1178,7 @@ public class PubTester {
         String s = database2.connection().get("/s1", String.class);
         
         Assert.assertEquals("Hej!", s);
+        database2.stop();
     }
     
     @Nano

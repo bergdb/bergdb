@@ -93,7 +93,7 @@ public class StartupDistanceTester {
         
         MemoryStream origStream = stream;
         MemoryStream stream = origStream.copy();
-            // copy() needed to avoid db closing stream when garbage collected.
+            // copy() needed: the stopped db closes its stream.
         stream.assertOk();
         
         Assert.assertEquals(origStream.getLength(), stream.getLength());

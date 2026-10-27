@@ -37,7 +37,6 @@ Open
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API sets it only at start (`cacheSizeInMb`), against 010-P6; the core has `Eviction.setBudget` (also through JMX). The cache should converge gradually to the new size, with no disruption | open |
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
-| [005-55](55-fix-finalize.md) | Fix | The note of deprecated API that every build prints: `finalize()` (six uses) and `Class.newInstance()` (two). `Db.finalize()` stops a database that the application drops without `stop()`, as the Pub API promises. Decided 2026-10-27: no safety net, an application must call `stop()` or `close()`, and the tests stop their databases; no `@SuppressWarnings` (Frans: "finalize() need to go"). Found with it: a dropped database whose eviction thread has started is never collected, as the thread holds the `Db` (009's step 3b) | open |
 | [005-56](56-package-dependencies.md) | Investigate | Package dependencies: how the packages depend on each other, and whether that follows their `package.html` files; Frans's question. A first look: four of `java/src`'s nine packages used packages their lists leave out; after 006-08's fixes of `stream` and `dag`, two remain (`pub` uses `core` and `pubimp`, `pubimp` uses `dag` and `storage`), and nothing checks the lists | open |
 | [005-57](57-startup-header-reads.md) | Investigate | Startup without rule 4's header reads: a cold start at 10M keys took minutes on s1, three quarters of it rule 4's reads of a header for each stream pointer of D's nodes (007-05). Investigated 2026-10-27: no read is needed (the section's `posToId` and the canonical objects' positions give every link, by the reconciliation's argument); the writer's `resolvePointers` reads the same kind of header and needs none either (part 2). Prototypes checked against today's code by id in the gates; on s1 a cold start at 50 MB from 214 s to about 46 s. The change waits for Frans | open |
 
@@ -47,6 +46,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-55](55-fix-finalize.md) | Fix | The note of deprecated API that every build printed: `finalize()` (six uses) and `Class.newInstance()` (two). `Db.finalize()` stopped a database that the application dropped without `stop()`, as the Pub API promised. Decided 2026-10-27: no safety net. Now `stop()` or `close()` is required (the Javadoc of `Db` and of `Database.stop()`), the 188 unit and f-tests that left a database running stop it, and so do two night tests and two stress programs, which ran out of memory without `finalize()`; `bergdb.dev.Unit`, `F` and `Night` fail when a test leaves one; `ValueNodeTotalMem` deleted, `newInstance()` replaced; `build.sh` prints no note (Frans: "finalize() need to go") | done | 2026-10-27 |
 | [005-50](50-fix-node-size-start.md) | Fix | A start with another node size than the stream was written with failed with what looked like a corrupt stream (`StreamFormatException: startup error, node ... not found`), or started, and could then leave a stream that no start opened, with either size. Now the size is in every meta block, 2 bytes at offset 44 that were reserved (so no new version: release 2026.1 starts a new database), and a start refuses another size with a `StreamFormatException` that says what to do, and a database without one, written before, with a `VersioningStreamException`, before recovery writes (005-38) | done | 2026-10-27 |
 | [005-38](38-writes-at-scale.md) | Investigate | Writes at scale: the stream grew to about 1.1 KB per key at 100M random keys (004-02); the cause was its startup distance of 10 MB. At 200 to 1000 MB a put costs 180 to 670 bytes at 10M and 50M keys; the fix is a startup distance that suits the database. Node size 30 stays. Bursts of index writes at large startup distances found | done | 2026-10-26 |
 | [005-45](45-fix-two-leftovers.md) | Fix | Two faults found on the way in 005-40 and 005-41: `SalsaStream.getLength()` did not count what it appended (BergDB's own stack did not meet it), and `WTransaction.sync(SyncLevel)` waited for the database's last transaction, not for its own; now the length is the underlying stream's, and the sync waits for its own transaction, as `sync()` does | done | 2026-10-25 |
@@ -107,9 +107,9 @@ is done, which 005-33's change needed; 005-33 is decided, A, and done. 005-35,
 005-36 and 005-37 are done, and so are 005-39, 005-40, 005-43 and 005-44.
 005-41 is decided: not now. 005-42 is decided, A1 and B2, and done, and so
 is 005-45. 005-11 is kept as it is for release 2026.1, documented as
-experimental; its decision waits for Frans. 005-55 is decided, no safety
-net; as recommended there it does not change the eviction thread, and is
-then independent of 005-51. 005-57 is investigated;
+experimental; its decision waits for Frans. 005-55 is done; it did not
+change the eviction thread, so 005-51 does not depend on it. 005-57 is
+investigated;
 its change, item 007's step 6 (007-03), waits for Frans.
 
 
@@ -267,9 +267,10 @@ Files
 * [54-open-bounds.md](54-open-bounds.md). 005-54, the bounds still open in
   the problem statement (011-01): Q1, Q2, Q3, Q5 and Q8; open.
 * [55-fix-finalize.md](55-fix-finalize.md). 005-55, the deprecated API in
-  the build, `finalize()` first: what `Db.finalize()` is for, the probes,
-  decided: no safety net (a `Cleaner` not chosen); open; the probes, the
-  lint script and their output in [55-fix-finalize/](55-fix-finalize/).
+  the build, `finalize()` first: what `Db.finalize()` was for, the probes,
+  the decision (no safety net; a `Cleaner` not chosen), the outcome; done.
+  The probes, the lint script, the per-test leak finder and their output
+  in [55-fix-finalize/](55-fix-finalize/).
 * [56-package-dependencies.md](56-package-dependencies.md). 005-56, the
   package dependencies against the `package.html` files: Frans's question,
   a first look, the older rules of 2012 and 2015; open.
@@ -1024,3 +1025,18 @@ is kept, BergDB's own threads go on); the writer's waits for room and the
 forces in the test reports. Tests, `InterruptStress` in `level3.sh`;
 `before-commit.sh`, `level3.sh` full and `flush-order.sh` pass. Still
 open: the measurements on s1 and P4's soak (005-46, "Implemented").
+
+2026-10-27. 005-55 done, by Claude (Opus 5.5, Claude Code), at Frans's
+request ("Yes, fine to delete it. Implement this. If successful, commit
+the changes."), as decided, with questions 3 and 5 as recommended:
+`Db.finalize()` is gone and `stop()` or `close()` is required (`Db`'s and
+`Database.stop()`'s Javadoc). The 188 unit and f-tests in 21 classes that
+left a database running stop it, found by a per-test leak finder
+(`55-fix-finalize/LeakFinder.java`); `DbTester`'s three `testFinalize` are
+gone. Found on the way: two night tests (`KvComparison`'s restarted copy,
+`PayTest`) and two stress programs (`RestartStress`, `ReclaimStress`, their
+restarts without a stop) ran out of memory without `finalize()`; they stop
+theirs now. `bergdb.dev.Unit`, `F` and `Night` check that no test leaves a
+database running. `ValueNodeTotalMem` deleted; `Class.newInstance()`
+replaced. `build.sh` prints no note; `before-commit.sh` and `level1.sh`
+pass.

@@ -1,0 +1,7 @@
+Done: 10 rounds, 0 failures, 10 rounds with a cut, 10 s, 140 exhaustive verifications.
+suite bergdb.core.ReclaimStress done in 10 s
+  at the end: heap used 237 MB, threads {BufferedStream-consumer=85, Common-Cleaner=1, Notification Thread=1, Reference Handler=1, Signal Dispatcher=1, main=1}
+  after 20 collections: heap used 141 MB, threads {BufferedStream-consumer=85, Common-Cleaner=1, Notification Thread=1, Reference Handler=1, Signal Dispatcher=1, main=1}
+real 12.46
+user 8.54
+sys 0.24

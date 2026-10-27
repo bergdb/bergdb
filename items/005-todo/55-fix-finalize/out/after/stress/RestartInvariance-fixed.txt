@@ -1,0 +1,8 @@
+KV CHECKSUM: 0 of 12 checkpoints differ
+IDENTITY A (no restarts): 0 of 12 checkpoints violate
+IDENTITY B (restarts): 0 of 12 checkpoints violate
+LOOKUP A (no restarts): 0 of 12 checkpoints violate
+LOOKUP B (restarts): 0 of 12 checkpoints violate
+suite bergdb.core.RestartInvariance done in 1 s
+  at the end: heap used 20 MB, threads {BufferedStream-consumer=2, Common-Cleaner=1, Notification Thread=1, Reference Handler=1, Signal Dispatcher=1, main=1}
+  after 20 collections: heap used 9 MB, threads {BufferedStream-consumer=2, Common-Cleaner=1, Notification Thread=1, Reference Handler=1, Signal Dispatcher=1, main=1}

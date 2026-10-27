@@ -45,11 +45,15 @@ public class CcDbNightTest {
         //Db db = ((DatabaseImp) database).getDb();
         //evictor = CacheInterface.TestAccess.evictor(db.internal().cache());
         
-        addCards();
-        
-        //out.format("evictCount: %d.\n", evictor.getEvictCount());
-        
-        checkCount();
+        try {
+            addCards();
+            
+            //out.format("evictCount: %d.\n", evictor.getEvictCount());
+            
+            checkCount();
+        } finally {
+            database.stop();
+        }
     }
 
     private void computePermutation() {
@@ -163,10 +167,6 @@ public class CcDbNightTest {
         if (counter != n) {
             throw new AssertionError("Missing cards, found " + counter + " cards out of " + n + ".");
         }
-    }
-
-    protected void finalize() {
-        database.stop();
     }
 
     /** Database key string of a card with given index. */

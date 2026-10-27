@@ -115,7 +115,7 @@ public class TestRunner {
         
         try {
             if (isJunit) {
-                object = m.getDeclaringClass().newInstance();
+                object = m.getDeclaringClass().getDeclaredConstructor().newInstance();
             } else {
                 Class<?>[] paramTypes = m.getParameterTypes();
                 if (paramTypes.length == 1) {

@@ -1,0 +1,27 @@
+LEAK 1 bergdb.core.DbTester.testWithMoreRandomData: BufferedStream-consumer
+LEAK 2 bergdb.core.DbTesterRestart.testLevel2RestartsKeepAllValuesF: BufferedStream-consumer BufferedStream-consumer
+LEAK 2 bergdb.core.DbTesterRestart.testLevel2SameStreamWithRestartsF: BufferedStream-consumer BufferedStream-consumer
+LEAK 1 bergdb.core.DbTesterRestart.testRestartAfterManyTopNodes: BufferedStream-consumer
+LEAK 2 bergdb.core.DbTesterStream.testLargeTransaction: BufferedStream-consumer BufferedStream-consumer
+LEAK 2 bergdb.core.DbTesterStream.testLargeTransactions: BufferedStream-consumer BufferedStream-consumer
+LEAK 2 bergdb.core.DbTesterStream.testMoreData2: BufferedStream-consumer BufferedStream-consumer
+LEAK 10 bergdb.core.Eviction.testHistoricalParentsAndLongKeysF: BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer
+LEAK 10 bergdb.core.Eviction.testOldSnapshotAndNewerCanonicalF: BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer
+LEAK 10 bergdb.core.Eviction.testReclaimWithMissesF: BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer
+LEAK 10 bergdb.core.Eviction.testSharedChildF: BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer
+LEAK 10 bergdb.core.Eviction.testSplitsAndRootChangesF: BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer
+LEAK 10 bergdb.core.Eviction.testStartupUpdatesWriteoutEvictionF: BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer
+LEAK 12 bergdb.core.Eviction.testValuesF: BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer
+LEAK 6 bergdb.core.EvictionReaderTester.testReaderPausedInsideAFollowF: BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer BufferedStream-consumer
+LEAK 2 bergdb.core.EvictionReaderTester.testReadersUnderTheCapacityControllerF: bergdb-evictor BufferedStream-consumer
+LEAK 1 bergdb.core.EvictionReaderTester.testReadersWhileSlotsAlternateF: BufferedStream-consumer
+LEAK 1 bergdb.test.BigDbWithDeletes.test100MB1000KV: BufferedStream-consumer
+LEAK 1 bergdb.test.BigDbWithDeletes.test100MB100KV: BufferedStream-consumer
+LEAK 1 bergdb.test.BigDbWithDeletes.test100MB10KV: BufferedStream-consumer
+LEAK 1 bergdb.test.Concurrency2.test1: BufferedStream-consumer
+LEAK 2 bergdb.test.Crazy.run: BufferedStream-consumer BufferedStream-consumer
+LEAK 1 bergdb.test.CreateIndexTester.createIndexWhileAddingMore: BufferedStream-consumer
+LEAK 1 bergdb.test.CreateIndexTester.testRestart: BufferedStream-consumer
+LEAK 1 bergdb.test.DeleteIndexTester.deleteIndexWhileAddingMore: BufferedStream-consumer
+SUCCESS, 71 successful tests in 121.1 s.
+LEAKED TOTAL 102

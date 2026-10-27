@@ -72,11 +72,13 @@ public interface Database {
      * effect (idempotent method).
      * </p>
      * 
-     * <p>It is not a requirement that stop() is called once the Database is not longer used. If there
-     * are no references to this Database object or to any Connection or Transaction object created
-     * with this Database, the Database will be stopped automatically when garbage collected.
-     * However, since the programmer has little control over when Java garbage collection actually
-     * occurs, it may be beneficial to call stop() to free resources sooner.
+     * <p>stop() must be called once the Database is no longer used, as close() for a file or a
+     * socket: nothing else stops it (2026-10-27, bergdb 005-55; until then the garbage
+     * collector stopped a Database that nothing referred to). A Database that is not stopped
+     * keeps its storage threads, its open files, its write buffer and its memory until the JVM
+     * exits. What it has committed is still written within the buffer time, as after any
+     * commit; at the exit of the JVM, what is buffered and not yet written is lost, as in a
+     * crash, which the database tolerates.
      * </p>
      */
     public void stop();

@@ -1241,3 +1241,20 @@ disk's and do not count against item 009's pause target (Frans). Tests,
 `InterruptStress` (level 3); `before-commit.sh`, `level3.sh` full and
 `flush-order.sh` pass. The measurements on s1 and P4's soak are still to
 run.
+
+2026-10-27. 005-55 done, by Claude (Opus 5.5, Claude Code), at Frans's
+request, after his decision ("I think no safety net is reasonable. [...]
+Calling close() is a reasonable requirement. And the database is
+crash-tolerant anyways."): `Db.finalize()` is gone, with nothing in its
+place. `stop()` or `close()` is required, as `Db`'s class Javadoc and
+`Database.stop()`'s now say; a database that is not stopped keeps its
+storage threads, open files and memory until the JVM exits, and what it
+has committed is still written within the buffer time. The 188 unit and
+f-tests that left a database running stop it, and so do two night tests
+and two stress programs (`RestartStress`, `ReclaimStress`), which without
+`finalize()` ran out of memory. `bergdb.dev.Unit`, `F` and `Night` fail
+when a test leaves a database running
+(`NanotestForBergDB.checkDatabasesStopped()`, a last test
+`databasesStopped`). `ValueNodeTotalMem` deleted, `Class.newInstance()`
+replaced: `build.sh` prints no note of deprecated API. `before-commit.sh`
+(1,040 unit tests, 73 f-tests) and `level1.sh` pass.

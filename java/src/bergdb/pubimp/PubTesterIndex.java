@@ -294,6 +294,7 @@ public class PubTesterIndex {
         Assert.assertEquals(12.3, p15b.amount);
         t = it.next();
         Assert.assertEquals("1009", t.getString("to"));
+        db.stop();
     }
     
     @Nano
@@ -758,6 +759,7 @@ public class PubTesterIndex {
         Assert.assertEquals(21.1f, (float) it.next().getDouble("amount"));
         Assert.assertEquals(1e6f, (float) it.next().getDouble("amount"));
         Assert.assertEquals(2e6, it.next().getDouble("amount"));
+        d.stop();
     }
     
     @Nano
@@ -801,6 +803,7 @@ public class PubTesterIndex {
         Assert.assertEquals(21, it.next().getLong("amount"));
         Assert.assertEquals(1000, it.next().getLong("amount"));
         Assert.assertEquals(2000, it.next().getInt("amount"));
+        d.stop();
     }
     
     static class MyString {

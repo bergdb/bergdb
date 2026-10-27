@@ -12,6 +12,7 @@ public class Unit {
     public static void main(String[] args) {
         NanotestForBergDB nano = new NanotestForBergDB(args, TestClasses.getIPacksStatic(), 
                 Create.set("unit"));
+        nano.checkDatabasesStopped();
         nano.go();
     }
 }

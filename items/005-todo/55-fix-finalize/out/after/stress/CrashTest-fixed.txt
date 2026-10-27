@@ -1,0 +1,4 @@
+Done: 4 rounds, 0 failures, 7 s. Cuts where a transaction ends at a meta block's position: 0.
+suite bergdb.core.CrashTest done in 8 s
+  at the end: heap used 106 MB, threads {Common-Cleaner=1, Notification Thread=1, Reference Handler=1, Signal Dispatcher=1, main=1}
+  after 20 collections: heap used 2 MB, threads {Common-Cleaner=1, Notification Thread=1, Reference Handler=1, Signal Dispatcher=1, main=1}

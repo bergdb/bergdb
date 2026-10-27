@@ -236,6 +236,8 @@ public class DbUtil {
         long c2 = DbUtil.checksum(db2, t, true, true);
         
         Assert.assertEquals(c1, c2);
+        db1.close();
+        db2.close();
     }
     
     @Nano
@@ -251,6 +253,8 @@ public class DbUtil {
         long c2 = DbUtil.checksum(db2, t, true, true);
         
         Assert.assertEquals(c1, c2);
+        db1.close();
+        db2.close();
     }
     
     @Nano
@@ -266,6 +270,8 @@ public class DbUtil {
         long c2 = DbUtil.checksum(db2, t, true, true);
         
         Assert.assertTrue(c1 != c2);
+        db1.close();
+        db2.close();
     }
     
     @Nano
@@ -281,6 +287,8 @@ public class DbUtil {
         long c2 = DbUtil.checksum(db2, t, true, true);
         
         Assert.assertTrue(c1 != c2);
+        db1.close();
+        db2.close();
     }
     
     @Nano
@@ -296,6 +304,8 @@ public class DbUtil {
         long c2 = DbUtil.checksum(db2, t, true, false);
         
         Assert.assertTrue(c1 != c2);
+        db1.close();
+        db2.close();
     }
     
     @Nano
@@ -313,6 +323,8 @@ public class DbUtil {
         long c2 = DbUtil.checksum(db2, t, false, true);
         
         Assert.assertTrue(c1 == c2);
+        db1.close();
+        db2.close();
     }
     
     @Nano
@@ -329,6 +341,8 @@ public class DbUtil {
         long c2 = DbUtil.checksum(db2, t, true, true);
         
         Assert.assertTrue(c1 == c2);
+        db1.close();
+        db2.close();
     }
     
     @Nano 
@@ -345,6 +359,7 @@ public class DbUtil {
         long c2 = DbUtil.checksumOfRange(db1, t, true, true, from, to);
         
         Assert.assertEquals(c1, c2);
+        db1.close();
     }
     
     @Nano 
@@ -365,6 +380,7 @@ public class DbUtil {
                 Keys.toBytes("/key10"), Keys.toBytes("/key30"));
         
         Assert.assertEquals(c1, c2);
+        db1.close();
     }
     
     @Nano
@@ -378,6 +394,7 @@ public class DbUtil {
         long c2 = DbUtil.checksum(db, Long.MAX_VALUE, false, false);
         
         Assert.assertEquals(c1, c2);
+        db.close();
     }
     
     @Nano
@@ -386,6 +403,7 @@ public class DbUtil {
         List<Node> nodes = DbUtil.getNodesOnPathToKv(db, "dummy");
         Assert.assertTrue(nodes.get(0).isTopNode());
         Assert.assertTrue(nodes.get(1).isKeyNode());
+        db.close();
     }
     
     @Nano
@@ -399,5 +417,6 @@ public class DbUtil {
         Assert.assertTrue(nodes.get(2).isKeyNode());
         Assert.assertTrue(nodes.get(3).isValueNode());
         Assert.assertArrayEquals(StringUtil.toBytes("value"), ((ValueNode) nodes.get(3)).value);
+        db.close();
     }
 }

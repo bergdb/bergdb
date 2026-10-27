@@ -325,6 +325,7 @@ public class PubTesterPrimary {
             Assert.assertEquals(expected[i], it.next().name);
         }
         
+        db.stop();
     }
     
     @Nano
@@ -356,6 +357,7 @@ public class PubTesterPrimary {
         Assert.assertEquals(12, ((byte[]) obj)[0]);
         obj = it.next();
         Assert.assertEquals("p30", ((DbObject) obj).getString("name"));
+        db.stop();
     }
     
     @Nano
@@ -377,6 +379,7 @@ public class PubTesterPrimary {
         Assert.assertEquals(1.2, obj.getDouble("value"));
         obj = it.next();
         Assert.assertEquals("30", obj.getString("name"));
+        db.stop();
     }
     
     @Nano
@@ -410,6 +413,7 @@ public class PubTesterPrimary {
         bytes = it.next();
         Assert.assertEquals(2, bytes.length);
         Assert.assertEquals(1, bytes[0]);
+        db.stop();
     }
     
     static class MyDouble {
@@ -443,6 +447,7 @@ public class PubTesterPrimary {
             Assert.assertEquals(expected[i], kv.key());
             i++;
         }
+        db.stop();
     }
     
     @Nano

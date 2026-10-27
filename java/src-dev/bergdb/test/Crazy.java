@@ -157,10 +157,9 @@ public class Crazy {
         
         // ---- Restarting 
         
-        db = null;
-        System.gc();
+        db.close();
         s = s.copy();    
-            // Makes sure we do not use a stream that may be closed soon (when db garbage collected).
+            // Makes sure we do not use the closed stream: a closed MemoryStream refuses appends.
         
         out.println("Restarting database");
         db = Db.builder().clock(clock).startupDistance(10*1000000).mainStream(s).build();
@@ -175,5 +174,6 @@ public class Crazy {
             value = DbUtil.get(db, Long.MAX_VALUE, KeyFactory.crazyKey(i));
             Assert.assertEquals("i=" + i, "v" + i, StringUtil.toString(value));
         }
+        db.close();
     }
 }

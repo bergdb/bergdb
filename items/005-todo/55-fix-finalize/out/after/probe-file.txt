@@ -1,0 +1,5 @@
+case file, Java 27
+  before the start: open files 6, threads []
+  after the start: open files 10, threads [BufferedStream-consumer-28]
+  after 50 collections: open files 10, threads [BufferedStream-consumer-28]
+  Database still reachable: false, its Db still reachable: false

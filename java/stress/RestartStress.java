@@ -217,7 +217,9 @@ public class RestartStress {
             if (!RESTART) continue;
             if (stopBeforeRestart) db.stop();
             if (!FILE) memStream = memStream.copy();    // Without stop: like a crash after sync.
+            Db before = db;
             db = start(false);
+            if (!stopBeforeRestart) before.close();     // nothing else closes it (bergdb 005-55)
             long sum2 = DbUtil.checksum(db);
             if (sum1 != sum2) {
                 throw new AssertionError("restart " + s + ": checksum differs " + sum1 + " != " + sum2);

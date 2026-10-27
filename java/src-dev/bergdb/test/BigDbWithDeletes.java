@@ -145,7 +145,7 @@ public class BigDbWithDeletes {
             }
         }
         
-        db2 = null;
+        db2.close();
         ms = null;
         System.gc();
     }

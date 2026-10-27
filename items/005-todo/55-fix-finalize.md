@@ -1,14 +1,15 @@
 005-55. Fix: the deprecated API in the build; finalize() goes
 =============================================================
 
-Status: open; decided 2026-10-27, no safety net. Kind: fix. Created
-2026-10-26.
+Status: done (2026-10-27; see Outcome). Kind: fix. Created 2026-10-26.
 
 Found on 2026-10-26 by Claude (Opus 5.5, Claude Code), from the note that
 every build prints (Frans: "Why the warning?"); registered at Frans's
 request (2026-10-26: "Add a Fix item to 005. I want a real fix for this,
 not SuppressWarnings. finalize() need to go. In the item, propose a
-solution, but do not implement it."). The probes and their output are in
+solution, but do not implement it."). Decided by Frans on 2026-10-27
+(Decision), and made as decided, with questions 3 and 5 as recommended
+(Outcome). The probes and their output are in
 [55-fix-finalize/](55-fix-finalize/).
 
 
@@ -25,6 +26,12 @@ So question 1 is decided, for the alternative of 2026-10-26:
 goes with it. "The fix" below is the fix as decided; the `Cleaner`
 proposed on 2026-10-26 is kept, not chosen, under "Not chosen: a
 `Cleaner`".
+
+Later the same morning, on point 6 (`ValueNodeTotalMem`, which Claude
+proposed to delete instead): "Yes, fine to delete it. Implement this. If
+successful, commit the changes. Of course, ensure before-commit.sh is
+successful before commit." Questions 3 and 5 were then taken as
+recommended.
 
 The issue
 ---------
@@ -168,7 +175,7 @@ is affected), and the tests must stop their databases (point 4).
    not a requirement that stop() is called ..." becomes the requirement,
    with what a database that is not stopped keeps (point 1). Noted for
    the release (item 008) as a change of the API.
-3. **The eviction thread: unchanged here (recommended, question 3).**
+3. **The eviction thread: unchanged here (question 3, as recommended).**
    The `Cleaner` proposal changed the eviction thread so that a dropped
    `Db` can be collected. With no safety net, a dropped database keeps its threads,
    files and write buffer whether its `Db` is collected or not;
@@ -179,12 +186,13 @@ is affected), and the tests must stop their databases (point 4).
    This corrects the entry of 2026-10-26, which said that no safety net
    needs that change too.
 4. **The tests stop their databases.** Every unit test and f-test that
-   starts a database stops it, in a `finally` (or `close()`, which waits
-   for the close). Today, with finalization disabled, the unit tests leave
-   211 storage threads and 1,083 MB of heap, the f-tests 101 and 716 MB
-   ("What the probes found"). `CcDbTest` and `CcDbNightTest` stop their
-   database at the end of `go()`, in a `finally`.
-5. **A check that they keep doing so (question 5).** At the end of
+   starts a database stops it (as made: at its end, with `close()`, which
+   waits for the close; see Outcome). Until then, with finalization
+   disabled, the unit tests left 211 storage threads and 1,083 MB of heap,
+   the f-tests 101 and 716 MB ("What the probes found"). `CcDbTest` and
+   `CcDbNightTest` stop their database at the end of `go()`, in a
+   `finally`.
+5. **A check that they keep doing so (question 5, as recommended).** At the end of
    `bergdb.dev.Unit` and `bergdb.dev.F`, the suite counts the threads
    `BufferedStream-consumer-*` and `bergdb-evictor`, after a bounded wait
    (a few seconds) for the closes that `stop()` started (005-35); any
@@ -192,11 +200,13 @@ is affected), and the tests must stop their databases (point 4).
    Without the check nothing notices a new test that forgets: no
    finalizer cleans up after it, and the suites slowly grow in threads
    and memory.
-6. **`ValueNodeTotalMem`** registers each node with a `Cleaner` whose
-   action reports the node's size (it holds the listener and the size,
-   not the node): the same experiment by the current means (005-10's C1:
-   the manual tests are kept). A measurement in a manual experiment, not
-   a safety net.
+6. **`ValueNodeTotalMem` is deleted** (Frans, 2026-10-27: "Yes, fine to
+   delete it."). A manual experiment in `src-dev`, not of BergDB's code:
+   a running estimate of the memory of value nodes, from their
+   finalization, an idea BergDB never used, which depends on the
+   collector as `finalize()` did. 005-10 kept the manual tests (its C1);
+   this one goes. (Proposed on the morning of 2026-10-27: a `Cleaner` for
+   each node, the same experiment by the current means.)
 7. **`Class.newInstance()`** becomes
    `getDeclaredConstructor().newInstance()`, which wraps a constructor's
    exception in an `InvocationTargetException`: in
@@ -224,12 +234,12 @@ Questions
 1. Keep the Pub API's promise, or drop it? Decided 2026-10-27: drop it,
    no safety net (the decision).
 2. The `Cleaner`'s thread and its wake-up once a minute. Moot: no
-   `Cleaner` in `Db`. The one in `ValueNodeTotalMem` (the fix, point 6)
-   is in a manual experiment.
+   `Cleaner` in `Db`, and `ValueNodeTotalMem` is deleted (the fix,
+   point 6).
 3. The eviction thread's `WeakReference` (in the `Cleaner` proposal), with
-   005-51 or before it? Recommended now: not at all (the fix, point 3).
+   005-51 or before it? Recommended: not at all (the fix, point 3).
    005-55 then does not touch the eviction thread and is independent of
-   005-51.
+   005-51. Decided 2026-10-27, as recommended.
 4. Beyond this entry: at `--release 27`, javac 27 finds 15 more uses:
    `Thread.getId()` (6), `new Long(long)` in src-dev's memory experiments
    (6), and `setPerformancePreferences` of `Socket` and `ServerSocket` in
@@ -242,8 +252,8 @@ Questions
    of the note.
 5. The suites' check for databases not stopped (the fix, point 5)?
    Recommended: yes; it is a few lines, and it is what keeps point 4
-   true.
-6. Beyond this entry: should `Db` and `Database` implement
+   true. Decided 2026-10-27, as recommended.
+6. Open, beyond this entry: should `Db` and `Database` implement
    `AutoCloseable`, for try-with-resources and for the warnings of IDEs
    about a resource not closed? `Db` has `close()` already; `Database`
    has only `stop()` and would get a `close()`, the same as `stop()` or
@@ -287,3 +297,108 @@ S to M: a few lines in `Db`, `Database` and the two `newInstance` calls;
 most of the work is in the tests that leave the 211 storage threads (one
 per stream, so fewer databases), and the suites' check. Independent of
 005-51 with question 3 as recommended, and of the rest.
+
+
+Outcome
+-------
+
+2026-10-27, by Claude (Opus 5.5, Claude Code), as decided, at Frans's
+request, with questions 3 and 5 as recommended; in a clone on `bf19075`
+(005-50), and at the end on `eaec93e` (005-46).
+
+* `Db` has no `finalize()`. Its class Javadoc ("Db shutdown") says that
+  `stop()` or `close()` is required and what a database that is not
+  stopped keeps; the note on garbage collection at the end of `Db.java` is
+  gone. `Database.stop()`'s Javadoc says the same for the Pub API: the
+  paragraph that promised a stop by the collector is the requirement now.
+  The eviction thread is unchanged (point 3). The change of the API is for
+  the next release's notes; no item holds them yet.
+* `ValueNodeTotalMem` is deleted (point 6). `CcDbTest` and
+  `CcDbNightTest` have no `finalize()` and stop their database at the end
+  of `go()`, in a `finally`. `Class.newInstance()` is
+  `getDeclaredConstructor().newInstance()` in `OptionalIcuCollatorFactory`
+  and `TestRunner` (point 7). `StartupDistanceTester`'s comment on its
+  `copy()` no longer names the collector.
+* The unit and f-tests (point 4).
+  [LeakFinder.java](55-fix-finalize/LeakFinder.java), by
+  [leaks.sh](55-fix-finalize/leaks.sh), runs a test group with
+  finalization disabled and prints, after each test, the storage and
+  eviction threads it left alive. At `bfa2942`: 188 tests in 21 classes,
+  211 threads in the unit tests and 102 in the f-tests
+  ([out/before/](55-fix-finalize/out/before/)). Each of them now stops its
+  databases at its end:
+  * `close()` in the core's tests, which waits, so that a test leaves
+    nothing running when it returns; `stop()` in the Pub API's, its only
+    way. `Eviction`'s `Twin` and `EvictionReaderTester`'s `Pair`, which
+    hold two databases each, have a `close()` of both.
+  * A test that dropped a database (`db = null`) and started another on
+    its stream closes it first. On a `MemoryStream` the restart then uses
+    a copy (`s.copy()`, as other restarts in the tests do), since a closed
+    `MemoryStream` refuses appends; on a file it opens the file again.
+  * `DbTester.testFinalize1` to `3`, which only started a database and
+    dropped it for the collector, are deleted. `PubTester.testRw1` and
+    `minimalCodeToStoreObject` keep their database in a variable, to stop
+    it.
+* The night tests and the stress programs, found after the above: they
+  are not part of the item's scope as written, but the night run (02:10)
+  depends on them, and without `finalize()` they ran out of memory.
+  * LeakFinder on the night tests, with the change so far: FAILURE, 2 of
+    7, both `OutOfMemoryError`. `Issue150420` compares the database
+    after each transaction with a restarted copy
+    (`KvComparison.comparisonWithRestarted`), whose database nothing
+    stopped: 680 were running when it ran out of memory. `PayTest`
+    restarted its database without stopping the first, and dropped its
+    stream for the collector. Now `KvComparison.compare()`
+    closes the restarted database, as `DagComparison` already stopped its
+    own, and `PayTest` stops both of its databases.
+  * `RestartStress` (level 1) and `ReclaimStress` (levels 3 and 4) restart
+    without a stop in half of their rounds, "like a crash after sync", and
+    left that database running; many rounds run in one JVM. With
+    finalization disabled, at `bf19075`, 40 rounds of `RestartStress` left
+    276 storage threads and 1,359 MB of heap, 10 rounds of `ReclaimStress`
+    85 threads and 141 MB; now each closes the dropped database after the
+    restart (it writes to the stream that was copied, not to the copy):
+    none left, 2 MB, and 0 failures as before
+    ([out/after/stress/](55-fix-finalize/out/after/stress/)).
+    `CrashTest`, `ReclaimReaders`, `StreamDigest`, `TraceExport` and the
+    others stop their databases in their loops; `RestartInvariance`,
+    `EvictionInvariance` and `DeleteRepro` leave at most a few, once per
+    JVM, which exits.
+* The check (point 5): `NanotestForBergDB.checkDatabasesStopped()`, which
+  `bergdb.dev.Unit`, `F` and, after the above, `Night` call. After each
+  test it notes the threads `BufferedStream-consumer-N` and
+  `bergdb-evictor` that are alive, with the test after which each was
+  first seen; at the end it waits at most 5 seconds for the closes that
+  `stop()` started, then runs a last test,
+  `bergdb.dev.NanotestForBergDB.databasesStopped`, which fails if one of
+  them is still alive and names the tests that left them. So the suites
+  have one test more each: 1,040 unit tests (1,042 at `eaec93e`, less the
+  three `testFinalize`, plus the check) and 73 f-tests. Checked with the
+  `close()` of `DbTester.test1` taken out: the unit tests fail with "1
+  storage or eviction threads alive after the tests: databases not
+  stopped, by the test that left them: {bergdb.core.DbTester.test1=1}".
+  `Perf` does not check.
+* The `java/` diff: 37 files, one deleted. The main code is about 20
+  lines (`Db`, `Database`, `OptionalIcuCollatorFactory`, `TestRunner`,
+  `KvComparison`), the check about 90; the rest is tests and the two
+  stress programs.
+
+Checks ([out/after/](55-fix-finalize/out/after/)), on `eaec93e` unless
+noted:
+
+* `build.sh` prints no note. `lint.sh` at `--release 17` finds no use of
+  deprecated API (eight before); the one `@deprecated` without
+  `@Deprecated` remains; at `--release 27`, the 15 uses of question 4.
+* LeakFinder, with finalization disabled: none left by any unit test,
+  f-test or night test (005-46's new tests too), and all pass
+  (`leaks-*.txt`).
+* `run.sh`, on `bf19075`: `SuiteThreads` finds no storage or eviction
+  thread after the unit tests and the f-tests, with finalization on and
+  disabled, and 7 and 5 MB of heap after the collections (1,083 and 716 MB
+  before, disabled). `FinalizeProbe`: in all three cases the dropped
+  database keeps its thread and its files, as decided.
+* `before-commit.sh`: BEFORE COMMIT OK, 1,040 unit tests and 73 f-tests
+  ([before-commit.txt](55-fix-finalize/out/after/before-commit.txt)).
+* `level1.sh` (full): LEVEL 1 OK, `RestartStress` with 0 failures in all
+  its runs ([level1.txt](55-fix-finalize/out/after/level1.txt)). Levels 3
+  and 4, which run `ReclaimStress`, run in tonight's night run.

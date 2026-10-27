@@ -13,6 +13,7 @@ public class Night {
     public static void main(String[] args) {
         NanotestForBergDB nano = new NanotestForBergDB(args, TestClasses.getIPacksStatic(), 
                 Create.set("night"));
+        nano.checkDatabasesStopped();
         nano.go();
     }
 }

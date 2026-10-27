@@ -97,6 +97,7 @@ public class CreateIndexTester {
         }
         
         coll.out().println("Done, checks OK.");
+        database.stop();
     }
     
     @Nano("f")
@@ -175,6 +176,7 @@ public class CreateIndexTester {
         
         c.setLookupTime(Time.MAX);
         c.useIndex("e-salary", Employee.class);
+        database.stop();
     }
     
     public static class Employee {

@@ -75,13 +75,16 @@ import bergdb.stream.SalsaStream;
  * should not be offered by this class.</p>
  * 
  * <p>Db shutdown. The Db typically has allocated resources besides memory: 
- * open files, running threads, open sockets for example. These resources are guaranteed
- * to be *eventually released* without any action from the Db user as the Db object
- * is garbage collected. 
- * The finalize() method makes sure that the resources are released.
- * The Db user can call stop() to request the eventual release of resources before it
- * is garbage collected or close() to stop the database and wait until all resources
- * have been released.</p>
+ * open files, running threads, open sockets for example. The Db user must call stop() or
+ * close() once the Db is no longer used, as for a file or a socket: stop() requests the
+ * release of the resources and returns at once, close() also waits until they are released.
+ * Nothing else releases them (2026-10-27, bergdb 005-55: finalize() is gone, with no
+ * safety net in its place). A Db that is not stopped keeps its storage threads (one per
+ * stream), its open files, its write buffer and its memory until the JVM exits. What it has
+ * committed is still written within the buffer time (for the main stream 20 ms by
+ * default), as after any commit; the storage threads are daemon threads, so they do not
+ * keep the JVM alive, and at its exit what is buffered and not yet written is lost, as in
+ * a crash, which the database tolerates.</p>
  * 
  * @author Frans Lundberg
  */
@@ -1275,14 +1278,6 @@ public class Db {
         if (interrupted) {
             Thread.currentThread().interrupt();
         }
-    }
-    
-    /**
-     * Used by JVM garbage collector; this method calls stop().
-     */
-    protected void finalize() throws Throwable {
-        stop();
-        super.finalize();
     }
     
     /**
@@ -2631,14 +2626,6 @@ public class Db {
 
 
 /*
-
-======== Note on garbage collection of Db objects ========
-
-There must be no reference (direct or indirect) to a Db object from 
-a thread started by the database. Otherwise, the Db object will never
-be available for garbage collection. Threads are considered "top-level"
-objects to the garbage collector.
-
 
 ======== Concurrency ========
  

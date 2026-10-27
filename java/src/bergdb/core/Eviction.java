@@ -846,6 +846,12 @@ public final class Eviction {
         long released() {
             return sub.internal().eviction().released;
         }
+
+        /** Closes both databases. */
+        void close() {
+            ref.close();
+            sub.close();
+        }
     }
 
     private static boolean sameBytes(bergdb.stream.CutStream s1, bergdb.stream.CutStream s2) {
@@ -899,6 +905,7 @@ public final class Eviction {
             w.check(true);
             Assert.assertTrue("released", w.released() > 0);
             shared += w.sharedIndex;
+            w.close();
         }
         Assert.assertTrue("an index object named by two slots", shared > 0);
     }
@@ -928,6 +935,7 @@ public final class Eviction {
                 w.check(i % 5 == 4);
             }
             w.check(true);
+            w.close();
         }
     }
 
@@ -955,6 +963,7 @@ public final class Eviction {
             }
             w.restart();
             w.check(true);
+            w.close();
         }
     }
 
@@ -989,6 +998,7 @@ public final class Eviction {
                 w.check(i % 20 == 18);
             }
             w.check(true);
+            w.close();
         }
     }
 
@@ -1027,6 +1037,7 @@ public final class Eviction {
             w.read(old);
             w.trans("p1=z");
             w.check(true);
+            w.close();
         }
     }
 
@@ -1059,6 +1070,7 @@ public final class Eviction {
             }
             w.check(true);
             if (w.s2.getCut() > 0) cuts++;
+            w.close();
         }
         Assert.assertEquals("a cut in every run", (long) schedules.length, cuts);
     }
@@ -1148,6 +1160,7 @@ public final class Eviction {
             if (i == 20) w.restart();
             w.check(i % 10 == 9);
         }
+        w.close();
         int shared = 0;
         for (int s : schedules) {
             Twin r = twin(s, quick);
@@ -1157,6 +1170,7 @@ public final class Eviction {
             }
             r.check(true);
             shared += r.sharedValues;
+            r.close();
         }
         // Until bergdb item 009, step 3a: a value named by two slots (shared > 0). Values
         // are no longer in the node table, so two leaves that load a value get a copy each;

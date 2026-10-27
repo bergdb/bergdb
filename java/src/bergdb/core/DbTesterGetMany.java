@@ -36,6 +36,7 @@ public class DbTesterGetMany {
         db.getMany(d);
         
         assertResultValues(d.result, "1", "2", "3");
+        db.close();
     }
     
     @Nano
@@ -59,6 +60,7 @@ public class DbTesterGetMany {
         Assert.assertEquals("1", StringUtil.toString(kvt.value));
         Assert.assertTrue(kvt.time >= 30 || kvt.time < 35);
         Assert.assertEquals("a", Keys.toString(kvt.key));
+        db.close();
     }
     
     @Nano
@@ -84,6 +86,7 @@ public class DbTesterGetMany {
         Kvt kvt = d.result.get(2);
         Assert.assertTrue(kvt.time >= 30 || kvt.time < 35);
         Assert.assertEquals("c", Keys.toString(kvt.key));
+        db.close();
     }
     
     @Nano
@@ -106,6 +109,7 @@ public class DbTesterGetMany {
         Assert.assertEquals("1", StringUtil.toString(kvt.value));
         Assert.assertTrue(kvt.time >= 30 || kvt.time < 35);
         Assert.assertEquals("a", Keys.toString(kvt.key));
+        db.close();
     }
     
     @Nano
@@ -139,6 +143,7 @@ public class DbTesterGetMany {
         db.getMany(d);
         
         assertResultValues(d.result, "1", "2", "3");
+        db.close();
     }
     
     @Nano
@@ -175,6 +180,7 @@ public class DbTesterGetMany {
         db.getMany(d);
         
         assertResultValues(d.result, "3", "2", "1");
+        db.close();
     }
     
     @Nano
@@ -195,9 +201,9 @@ public class DbTesterGetMany {
         db.execute(db.trans().put("a", "1"));
         
         db.sync(0, SyncLevel.ORDINARY);
-        db = null;
+        db.close();
         
-        db = Db.builder().testSetup().clock(clock).mainStream(stream).start();
+        db = Db.builder().testSetup().clock(clock).mainStream(stream.copy()).start();
         
         GetMany d = db.newGetMany();
         d.startKey = null;
@@ -210,6 +216,7 @@ public class DbTesterGetMany {
         Kvt kvt = d.result.get(2);
         Assert.assertTrue(kvt.time >= 30 || kvt.time < 35);
         Assert.assertEquals("c", Keys.toString(kvt.key));
+        db.close();
     }
     
     public static void testStopCondition1() {
@@ -233,6 +240,7 @@ public class DbTesterGetMany {
         db.getMany(d);
         
         assertResultValues(d.result, "1", "2");
+        db.close();
     }
     
     @Nano
@@ -258,6 +266,7 @@ public class DbTesterGetMany {
         db.getMany(d);
         
         assertResultValues(d.result, "1");
+        db.close();
     }
     
     @Nano
@@ -275,6 +284,7 @@ public class DbTesterGetMany {
         db.getMany(d);
         
         assertResultValues(d.result, "1", "2", "3", "4");
+        db.close();
     }
     
     @Nano
@@ -288,6 +298,7 @@ public class DbTesterGetMany {
         db.getMany(d);
         
         Assert.assertEquals(0, d.result.size());
+        db.close();
     }
     
     @Nano
@@ -315,6 +326,7 @@ public class DbTesterGetMany {
         db.getMany(d);
         
         assertResultValues(d.result, "3");
+        db.close();
     }
     
     @Nano
@@ -352,6 +364,7 @@ public class DbTesterGetMany {
             long[] k2 = d.result.get(i).key;
             Assert.assertEquals(0, Keys.compareKeys(k1, k2));
         }
+        db.close();
     }
     
     @Nano
@@ -387,6 +400,7 @@ public class DbTesterGetMany {
             Kvt kvt = d.result.get(i);
             Assert.assertEquals("" + (i + 1), StringUtil.toString(kvt.value));
         }
+        db.close();
     }
     
     @Nano
@@ -404,6 +418,7 @@ public class DbTesterGetMany {
         db.getMany(d);
         
         assertResultValues(d.result, "2", "3");
+        db.close();
     }
     
     @Nano
@@ -437,6 +452,7 @@ public class DbTesterGetMany {
         Assert.assertEquals("2", StringUtil.toString(kvt.value));
         kvt = d.result.get(1);
         Assert.assertEquals("1", StringUtil.toString(kvt.value));
+        db.close();
     }
     
     @Nano
@@ -464,6 +480,7 @@ public class DbTesterGetMany {
         Assert.assertEquals(2, d.result.size());
         assertValueEquals("2", d.result.get(0).value);
         assertValueEquals("3", d.result.get(1).value);
+        db.close();
     }
     
     @Nano
@@ -481,6 +498,7 @@ public class DbTesterGetMany {
         db.getMany(d);
         
         Assert.assertEquals(3, d.result.size());
+        db.close();
     }
     
     @Nano
@@ -498,6 +516,7 @@ public class DbTesterGetMany {
         db.getMany(d);
         
         Assert.assertEquals(0, d.result.size());
+        db.close();
     }
     
     @Nano
@@ -526,6 +545,7 @@ public class DbTesterGetMany {
         db.getMany(g);
         
         Assert.assertEquals(15, g.result.size());
+        db.close();
     }
     
     @Nano
@@ -551,6 +571,7 @@ public class DbTesterGetMany {
         Assert.assertTrue(Keys.areEqual(
                 Keys.toSegments("directory/30"), d.result.get(1).key));
         Assert.assertEquals("30", StringUtil.toString(d.result.get(1).value));
+        db.close();
     }
     
     @Nano
@@ -582,6 +603,7 @@ public class DbTesterGetMany {
         Assert.assertEquals(0, Keys.compareKeys(
                 Keys.toSegments("directory/30"), d.result.get(1).key));
         Assert.assertEquals("30", StringUtil.toString(d.result.get(1).value));
+        db.close();
     }
     
     @Nano
@@ -603,6 +625,7 @@ public class DbTesterGetMany {
             long[] k2 = d.result.get(i).key;
             Assert.assertEquals(0, Keys.compareKeys(k1, k2));
         }
+        db.close();
     }
 
     private static ArrayList<long[]> putCrazyKeys(Db db, int size) {
@@ -658,6 +681,7 @@ public class DbTesterGetMany {
             long[] k2 = d.result.get(i - 5).key;
             Assert.assertEquals("i=" + i, 0, Keys.compareKeys(k1, k2));
         }
+        db.close();
     }
     
     @Nano
@@ -677,6 +701,7 @@ public class DbTesterGetMany {
         g.inclusive = true;
         db.getMany(g);
         Assert.assertEquals(10, g.result.size());
+        db.close();
     }
     
     /**
@@ -877,6 +902,7 @@ public class DbTesterGetMany {
             Assert.assertEquals(1, g.result.size());
             Assert.assertEquals(keys[0], Keys.toString(g.result.get(0).key));
         }
+        db.close();
     }
 
     /**
@@ -1059,6 +1085,7 @@ public class DbTesterGetMany {
         db.getMany(g);
         
         Assert.assertEquals(4, g.getOpCount);
+        db.close();
     }
     
     // ======== Helpers ========
