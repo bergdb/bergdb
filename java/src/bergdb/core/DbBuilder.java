@@ -157,21 +157,38 @@ public class DbBuilder {
         return this;
     }
 
+    /**
+     * Maximum node size 8. It must stay the same for a database: it is in the stream from
+     * the creation, and a start with another size is refused (bergdb 005-50).
+     */
     public DbBuilder maxNodeSize8() {
         this.maxNodeSize = 8;
         return this;
     }
 
+    /**
+     * Maximum node size 14. It must stay the same for a database: it is in the stream from
+     * the creation, and a start with another size is refused (bergdb 005-50).
+     */
     public DbBuilder maxNodeSize14() {
         this.maxNodeSize = 16 - 2;
         return this;
     }
 
+    /**
+     * Maximum node size 30, the default and the Pub API's. It must stay the same for a
+     * database: it is in the stream from the creation, and a start with another size is
+     * refused (bergdb 005-50).
+     */
     public DbBuilder maxNodeSize30() {
         this.maxNodeSize = 32 - 2;
         return this;
     }
 
+    /**
+     * Maximum node size 62. It must stay the same for a database: it is in the stream from
+     * the creation, and a start with another size is refused (bergdb 005-50).
+     */
     public DbBuilder maxNodeSize62() {
         this.maxNodeSize = 64 - 2;
         return this;

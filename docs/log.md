@@ -1198,3 +1198,20 @@ was until today as 011-04, and `lean/References/` beside 011-08. The code and
 the items cite documents by ID now (`bergdb 001-08, section 5.5`), and every
 link to a moved file is fixed. The open questions of the problem statement
 that had no home are 005-54.
+
+2026-10-27. 005-50 done, by Claude (Opus 5.5, Claude Code), at Frans's
+request. A database starts only with the maximum node size it was written
+with (`DbBuilder.maxNodeSize8()` to `62()`; 30 by default, and always in
+the Pub API), and the size was not in the stream: a start with another
+size failed with what looked like a corrupt stream ("startup error, node
+... not found"), or it started, and could then leave a stream that no
+start opened, with either size (005-50's `MixedNodeSize`: written with
+62, started with 8, 14 or 30). Now the size is in every meta block, two
+bytes at offset 44 that were reserved, so the meta block's version stays
+154 and release 2026.1 still starts a new database. A start reads it with
+the last valid meta block, before recovery writes, and refuses another
+size with a `StreamFormatException` that names both sizes and what to do,
+and a meta block without a size, as every database written before has,
+with a `VersioningStreamException`. Records unchanged (StreamDigest with
+its new `metamask=44:2`); tests; `before-commit.sh` and `level2.sh quick`
+pass.

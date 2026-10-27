@@ -38,6 +38,7 @@ import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.storage.BufferedStream;
 import bergdb.storage.RecoverableStream;
+import bergdb.storage.StreamFormatException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;
 import bergdb.stream.MemoryStream;
@@ -1281,6 +1282,29 @@ public class PubTester {
             Assert.assertEquals("v", d.connection().get("/k", String.class));
             ((DatabaseImp) d).getDb().close();
         }
+    }
+    
+    /**
+     * Bergdb 005-50: the Pub API, which uses maximum node size 30, refuses a database that
+     * the core API created with another size, with the core's StreamFormatException, which
+     * says what to do, and writes nothing.
+     */
+    @Nano
+    private static void testOtherNodeSizeRefused() {
+        MemoryStream m = new MemoryStream();
+        Db db = Db.builder().testSetup(m).maxNodeSize8().start();
+        db.execute(db.trans().put("key", "value"));
+        db.sync(SyncLevel.STRONG);
+        db.close();
+        final long length = m.getLength();
+        try {
+            builderOn(m, null).start();
+            throw new AssertionError("started with node size 30, created with 8");
+        } catch (StreamFormatException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains(
+                    "maximum node size is 8, and this start uses 30."));
+        }
+        Assert.assertEquals("the stream as it was", length, m.getLength());
     }
     
     /** A builder of a database on the stream m, with the crypto key unless it is null. */

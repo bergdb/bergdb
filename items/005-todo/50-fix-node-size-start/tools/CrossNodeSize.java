@@ -14,7 +14,7 @@ import bergdb.stream.FileStream;
  *                            100 a transaction, and a value of 200,000 bytes, which takes
  *                            the stream past a meta block; sync, close
  *   start DIR SIZE N         start with SIZE, read keys [0, N) back, close
- *   meta DIR                 the node size field (offset 44) of every meta block
+ *   meta DIR                 the node size field (2 bytes at offset 44) of every meta block
  *
  * It uses only API that release 2026.1 has.
  */
@@ -66,10 +66,10 @@ public class CrossNodeSize {
             } else if (args[0].equals("meta")) {
                 FileStream s = new FileStream(dir);
                 StringBuilder r = new StringBuilder(what + ":");
-                byte[] b = new byte[4];
+                byte[] b = new byte[2];
                 for (long pos = 0; pos + 128 <= s.getLength(); pos += 200000) {
-                    s.read(pos + 44, b, 0, 4);
-                    r.append(" " + ((b[0] & 0xff) | (b[1] & 0xff) << 8 | (b[2] & 0xff) << 16 | (b[3] & 0xff) << 24));
+                    s.read(pos + 44, b, 0, 2);
+                    r.append(" " + ((b[0] & 0xff) | (b[1] & 0xff) << 8));
                 }
                 s.close();
                 System.out.println(r);

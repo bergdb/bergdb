@@ -1,0 +1,4 @@
+DIFFERENT l3-node14 plain:
+  runs/digest-head-mask.txt: DIGEST l3-node14 plain length=1327208 firstPos=1000000 firstAvailablePos=1188296 firstAvailableTime=2024600011 sha256all=5b083b5c3735f8c0d7bf0959ef5c903e446298ae946e32b2811ac350f174170a sha256=1dd165e9616b1487d9d10fc1d11b6f3f6872574510541e583c6fb4c428df476d
+  runs/digest-proto-mask.txt: DIGEST l3-node14 plain length=1327208 firstPos=0 firstAvailablePos=1188296 firstAvailableTime=2024600011 sha256all=2fbba8668eaf3c40f1b99312b301167fdaf4a0815de5886d8084f9de8a87823d sha256=1dd165e9616b1487d9d10fc1d11b6f3f6872574510541e583c6fb4c428df476d
+DIGESTS DIFFER (1 of 36)

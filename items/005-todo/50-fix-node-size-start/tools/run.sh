@@ -1,13 +1,13 @@
 #!/bin/sh
-# bergdb 005-50: the probes, on the code before the fix (head) and with prototype.diff
-# (proto). Usage: sh run.sh SCRATCH, where SCRATCH has
-#   jars/head.jar    java/build.sh's jar of the commit that prototype.diff applies to;
-#   jars/proto.jar   the same with prototype.diff applied;
+# bergdb 005-50: the probes, on the code before the fix (head) and with it (proto).
+# Usage: sh run.sh SCRATCH, where SCRATCH has
+#   jars/head.jar    java/build.sh's jar of the commit before the fix;
+#   jars/proto.jar   the jar with the fix;
 #   jars/rel.jar     releases/2026.1/bergdb-2026.1.jar;
-#   stress-proto/    the prototype's java/build/stress (StreamDigest with metamask).
+#   stress-proto/    java/build/stress with the fix (StreamDigest with metamask).
 # Writes SCRATCH/runs/: restart-*.txt (005-38's RestartNodeSize), mixed-*.txt
 # (MixedNodeSize, -ea in the -ea files), cross.txt (cross.sh) and digest-*.txt (StreamDigest
-# all, with metamask=44:4 in the -mask files, and the two comparisons). About 4 minutes on F53.
+# all, with metamask=44:2 in the -mask files, and the two comparisons). About 4 minutes on F53.
 set -u
 S=$1
 T=$(cd "$(dirname "$0")" && pwd)
@@ -25,7 +25,7 @@ sh "$T/cross.sh" "$S" > "$S/runs/cross.txt" 2>&1
 D="java -Xmx4g -cp"
 for v in head proto; do
     $D "$S/jars/$v.jar:$S/stress-proto" bergdb.core.StreamDigest all > "$S/runs/digest-$v.txt" 2>&1
-    $D "$S/jars/$v.jar:$S/stress-proto" -Dmetamask=44:4 bergdb.core.StreamDigest all > "$S/runs/digest-$v-mask.txt" 2>&1
+    $D "$S/jars/$v.jar:$S/stress-proto" -Dmetamask=44:2 bergdb.core.StreamDigest all > "$S/runs/digest-$v-mask.txt" 2>&1
 done
 cd "$S" || exit 1
 $D jars/proto.jar:stress-proto bergdb.core.StreamDigest compare \

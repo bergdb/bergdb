@@ -1,7 +1,7 @@
 005-50. Fix the start with another node size
 =============================================
 
-Status: open; fix proposed 2026-10-27. Kind: fix. Created 2026-10-26.
+Status: done (2026-10-27; see Outcome). Kind: fix. Created 2026-10-26.
 
 Found in 005-38 ([report](38-writes-at-scale/report.md), section 6), by a
 subagent (Claude, Opus 5.5) measuring node sizes; registered at Frans's
@@ -11,10 +11,41 @@ interesting, but later and in some other item.").
 
 The fix proposed on 2026-10-27 by Claude (Opus 5.5, Claude Code), at
 Frans's request ("Propose a solution were the node size is stored in the
-MetaBlock."): the size in four of the meta block's reserved bytes, checked
-before recovery writes (The fix, proposed). The prototype, the probes and
-their runs are in [50-fix-node-size-start/](50-fix-node-size-start/). No
-change to `java/`.
+MetaBlock."): the size in the meta block's reserved bytes, checked before
+recovery writes. Decided by Frans the same morning (Decision), and made as
+decided (Outcome). The probes and their runs are in
+[50-fix-node-size-start/](50-fix-node-size-start/).
+
+
+Decision
+--------
+
+2026-10-27, Frans, on the proposal: "No need to consider "today's
+databases". There are none." And two questions: "Would StreamFormatException
+be a good choice as an exception. Currently, we only really support node
+size 30, and that is expected in the stream we open." "Why not use 1 or 2
+bytes for the node size. We never test with larger sizes than 64, really."
+Answered yes to both, with 2 bytes; then Frans: "Go ahead. If things turn
+out ok, also implement this and commit the changes."
+
+So the fix (below) differs from the proposal in three points:
+
+1. A `StreamFormatException`, not a `DbException`. It is what a start
+   throws for a stream that this BergDB does not read, beside
+   `BadMagicBytes` and `VersioningStreamException`, its subclasses; no code
+   on the start path catches it, and it is a `DbException`, as the Pub
+   API's `DatabaseBuilder.start()` declares.
+2. Two bytes, an unsigned short, not four: as `KeyNode.size`, a `short`,
+   so the field never limits the size. The reserved bytes are 46 to 126.
+3. A meta block without a size, 0, as in every database written before the
+   fix, is refused like another size, with a `VersioningStreamException`
+   (a stream of an older version of BergDB, which that class is for). The
+   proposal started such a stream unchecked and recorded the size from its
+   next meta block on; that line, its test and the cross-version case of it
+   are gone.
+
+[prototype.diff](50-fix-node-size-start/prototype.diff) is the proposal's
+prototype, before the decision.
 
 
 The issue
@@ -58,23 +89,22 @@ Questions
    Which needs a new `MetaBlock` version (005-40's `VersioningStreamException`)
    and which does not?
 
-   Proposed: in the meta block, at offset 44, an int (4 bytes,
-   little-endian, as the startup distance at 40). It needs no new version:
-   the code before the fix neither checks nor reads the reserved bytes and
-   passes them on, and the fixed code reads 0 in a block written before it
-   (The fix, proposed, points 1 and 2). A record could hold it in the three
-   unused bytes of its header, also without a new format; but a start
-   reaches a record only in recovery, which writes, or after it, and the
-   size would be repeated in every record. The meta block is what a start
-   reads first, and it holds the database's other constants, its ID and
-   its startup distance.
+   Decided: in the meta block, at offset 44, 2 bytes (Decision). It needs
+   no new version: the code before the fix neither checks nor reads the
+   reserved bytes and passes them on (The fix, point 2). A record could
+   hold it in the three unused bytes of its header, also without a new
+   format; but a start reaches a record only in recovery, which writes, or
+   after it, and the size would be repeated in every record. The meta block
+   is what a start reads first, and it holds the database's other
+   constants, its ID and its startup distance. Streams written before the
+   fix are refused (Decision, point 3).
 2. The error's type: a new exception, or `DbException` with a message;
    what the Pub API (`DatabaseBuilder`) shows.
 
-   Proposed: `DbException` with a message, no class of its own (The fix,
-   proposed, point 5). The Pub API shows the same exception:
-   `DatabaseBuilder.start()` passes it on, under its `@throws
-   DbException`.
+   Decided: a `StreamFormatException` with a message, and for a meta block
+   without a size a `VersioningStreamException` (Decision). The Pub API
+   shows the same exception: `DatabaseBuilder.start()` passes it on, under
+   its `@throws DbException`.
 3. Is a start with another size ever safe today (a startup section with no
    splits)? The fix refuses it anyway, if the size is known.
 
@@ -123,155 +153,103 @@ What the probes found
    smaller size than written can succeed and leave a database that BergDB
    cannot start again.
 3. **Small databases start with any size today.** The fix's three tests of
-   a start (The fix, proposed, point 7), run on `167597a` without the fix,
-   fail because the start succeeds: a database just created with 8,
-   started with 14; two keys written with 14 (one value of 200 KB),
-   started with 30; one key written with 8 through the core API, started
-   by the Pub API, with 30
+   a start (The fix, point 6), run on `167597a` without the fix, fail
+   because the start succeeds: a database just created with 8, started
+   with 14; one key written with 30, its meta block's two bytes at 44
+   zeroed, started with 8; one key written with 8 through the core API,
+   started by the Pub API, with 30
    ([runs/tests-only.txt](50-fix-node-size-start/runs/tests-only.txt)).
    Such a database then runs with the other size.
 
 
-The fix, proposed
------------------
+The fix
+-------
 
-1. **The size in the meta block.** `MetaBlock` gets `maxNodeSize` at
-   offset 44, an int of 4 bytes, little-endian (`getMaxNodeSize()`,
-   `setMaxNodeSize()`); the reserved bytes become 48 to 126. 0 means not
-   recorded, and every meta block written before the fix has 0 there: a
-   new block is zero but for its fields (`initBlock`), and a start copies
-   the last valid block whole. The creation writes the size into the first
-   meta block (`Db.writePrimordialTransaction`, beside the ID and the
-   startup distance); a running database writes its own block at every
-   meta block position, so every later block has the size too, and so does
-   a replica, a copy of the stream. One exception to the zeros: a meta
-   block that a start with a wrong crypto key filled out after a crash,
-   before 005-40's fix of 2026-10-25, and that came out valid (1 time in
-   256, 005-40) has garbage from the cut on, so perhaps in bytes 44 to 47,
-   and a start would be refused with a garbage size. Only a database
-   written between 2026-10-15 (today's record format) and 2026-10-25 can
-   have one; none is known.
+As decided (Decision):
+
+1. **The size in the meta block.** `MetaBlock` has `maxNodeSize` at offset
+   44, an unsigned short, little-endian (`getMaxNodeSize()`,
+   `setMaxNodeSize()`); the reserved bytes are 46 to 126. Every meta block
+   written before the fix has 0 there: a new block is zero but for its
+   fields (`initBlock`), and a start copies the last valid block whole. The
+   creation writes the size into the first meta block
+   (`Db.writePrimordialTransaction`, beside the ID and the startup
+   distance); a running database writes its own block at every meta block
+   position, so every later block has the size, and so has a replica, a
+   copy of the stream.
 2. **No new version.** The meta block's version stays 154. The code before
    the fix, release 2026.1 among it, neither checks nor reads the reserved
    bytes (`MetaBlock.checkFormat` checks the magic bytes, the last
    transaction and the time; `RecoverableStream.readMetaBlock` the magic
    bytes and the version) and copies a block whole, so it starts a
    database of the fixed code as before, and the meta blocks it writes
-   keep the size (the prototype, cross X2). A new version would, by
-   005-40's rule (new databases only), refuse today's databases, against
-   "a stream written before the fix starts as today", or need two versions
-   read; and release 2026.1 could not start a database of the fixed code,
-   while the comparisons of versions start one database with several jars
-   (005-57's `f53-57.sh`). The Javadoc of `MetaBlock.CURRENT_VERSION` gets
-   the rule: a new field in the reserved bytes, whose 0 means "not
-   recorded", keeps the number.
+   keep the size (cross X2). So release 2026.1 and the code after the fix
+   can still be compared on one database, made by the fixed code. The
+   Javadoc of `MetaBlock.CURRENT_VERSION` has the rule: a new field in the
+   reserved bytes, which an older version can ignore, keeps the number.
 3. **The check, before recovery writes.** `Db.startInner` calls
    `refuseOtherNodeSize()` just before `nodeStream.recover()`, in the same
    `try`, so that a wrong crypto key still gives `BadCryptoKey`. It reads
    the last valid meta block, as recovery does first since 005-40
    (`NodeStream.readLastValidMetaBlock()`, new, which only reads), and
-   throws if the block's size is neither 0 nor the builder's. So a refused
-   start writes nothing: not recovery's fill of a cut meta block or of a
-   torn last record (the tests check this), nor anything of the startup.
-   Its cost is a second read of that block, 6 and 128 bytes. A stream with
-   no valid meta block is left to `recover()`, which refuses it as before.
-4. **A stream written before the fix** has 0 in its meta blocks and starts
-   as today, unchecked: with its own size it starts; with another it fails
-   as today, or starts (question 3). After recovery the start puts the size
-   it runs with in the database's meta block, so that the meta blocks it
-   writes have it, and the stream is checked from the first of them on,
-   after at most 200 KB of writes (the prototype, cross X1). That is the
-   size the database runs with from then on, so the only one that a later
-   start can succeed with. Not proposed: the size only at creation, one
-   line less, which leaves today's databases unchecked for good.
-5. **The error (question 2): a `DbException`**, with the message
+   refuses a size of 0 with a `VersioningStreamException`, and another size
+   than the builder's with a `StreamFormatException`. So a refused start
+   writes nothing: not recovery's fill of a cut meta block or of a torn
+   last record (the tests check this), nor anything of the startup. Its
+   cost is a second read of that block, 6 and 128 bytes. A stream with no
+   valid meta block is left to `recover()`, which refuses it as before.
+4. **The messages.** Another size:
 
        The database's maximum node size is 8, and this start uses 30. A
        database must be started with the node size it was created with: 8,
        DbBuilder.maxNodeSize8() (the Pub API uses 30). The start has
        written nothing (bergdb 005-50).
 
-   No class of its own: only the core API sets a node size (`DbBuilder`);
-   the Pub API always uses 30 and has no setting for it. So no program
-   needs to tell this failure from others, and the person who reads the
-   message learns what to do. A class would be API for a case that the
-   later item may remove (the size from the stream, which the builder then
-   need not set). The Pub API passes the exception on, as
+   No size:
+
+       The database's meta block has no maximum node size: it was written
+       by a version of BergDB before 2026-10-27, which this one does not
+       start (bergdb 005-50). The start has written nothing.
+
+   Only the core API sets a node size (`DbBuilder`); the Pub API always
+   uses 30. The Pub API passes the exceptions on, as
    `DatabaseBuilder.start()`'s `@throws DbException`, "If a functioning
-   database could not be started", covers; a Pub API user meets it only
-   with a database that the core API created with another size than 30.
-6. **Javadoc.** The four `DbBuilder.maxNodeSize*()` methods: the size must
+   database could not be started", covers.
+5. **Javadoc.** The four `DbBuilder.maxNodeSize*()` methods: the size must
    stay the same for a database, as it is in the stream from the creation
-   and a start with another size is refused. `Db.start()`: `@throws
-   DbException`. `MetaBlock`'s format table: the field.
+   and a start with another size is refused. `Db.start()`: under `@throws
+   StreamFormatException`. `MetaBlock`'s format table: the field.
    `doc-files/stream-format.txt` leaves the layout to `MetaBlock`;
    unchanged.
-7. **Tests**, unit tests. The first three fail without the fix (What the
+6. **Tests**, unit tests. The first three fail without the fix (What the
    probes found, 3):
    * `DbTesterRestart.testOtherNodeSizeRefused`: every pair of 8, 14, 30
      and 62, on a database as created and on one of 300 transactions whose
      last record a crash has torn, which recovery would fill: a
-     `DbException` that names both sizes, and the stream as it was, byte
-     for byte; then the database's own size starts it, without the torn
-     transaction.
-   * `DbTesterRestart.testNodeSizeOfOldStream`: a stream whose meta block
-     has 0, as before the fix, starts unchecked with its size; after a
-     transaction that takes it past a meta block, a start with another
-     size is refused, and one with its size reads the data.
+     `StreamFormatException` that names both sizes, and the stream as it
+     was, byte for byte; then the database's own size starts it, without
+     the torn transaction.
+   * `DbTesterRestart.testNoNodeSizeRefused`: a database whose meta block
+     has 0, as before the fix, is refused with a
+     `VersioningStreamException`, with 8 and with 30, and the stream is as
+     it was.
    * `PubTester.testOtherNodeSizeRefused`: the Pub API on a database that
-     the core API created with 8: the `DbException`, and the stream as it
-     was.
-   * `MetaBlock.Tester.maxNodeSize`: offset 44; 0 until set; the reserved
-     bytes after it zero.
-8. **`StreamDigest`** gets a property, `metamask=O:N`: the digests take
-   bytes O to O+N−1 of every meta block as zero. With `metamask=44:4`,
+     the core API created with 8: the `StreamFormatException`, and the
+     stream as it was.
+   * `MetaBlock.Tester.maxNodeSize`: two bytes at offset 44; 0 until set;
+     the bytes after it zero.
+7. **`StreamDigest`** has a property, `metamask=O:N`: the digests take
+   bytes O to O+N−1 of every meta block as zero. With `metamask=44:2`,
    "identical but for the bytes that hold the size" is a check.
 
 What a start then does:
 
 | A start of | with | gives |
 |---|---|---|
-| a database created by the fixed code | its size | a start, as today |
-| a database created by the fixed code | another size | the `DbException`; nothing written |
-| a database written before the fix | its size | a start, as today; its next meta block gets the size |
-| a database written before the fix | another size | as today: a failure, or a start (question 3) |
-| a database written before the fix, with the size in its last meta block | another size | the `DbException`; nothing written |
+| a database of the fixed code | its size | a start, as before |
+| a database of the fixed code | another size | a `StreamFormatException`; nothing written |
+| a database written before the fix | any size | a `VersioningStreamException`; nothing written |
 | a database of the fixed code, by release 2026.1 | its size | a start; its meta blocks keep the size |
-
-
-The prototype
--------------
-
-[prototype.diff](50-fix-node-size-start/prototype.diff), on `167597a`
-(`6260106` has the same `java/`): seven files, 271 lines added. About 25
-of them are code: the check and the size after recovery in `Db`, the field
-in `MetaBlock`, a method in `NodeStream`; the rest is Javadoc and tests
-(140 lines in `DbTesterRestart` and `PubTester`), and 32 lines in
-`StreamDigest`. The checks, in a clone
-([runs/](50-fix-node-size-start/runs/), by
-[tools/run.sh](50-fix-node-size-start/tools/run.sh), about 4 minutes on
-F53, and `before-commit.sh`):
-
-* `before-commit.sh`: BEFORE COMMIT OK, 1,027 unit tests and 71 f-tests
-  ([runs/before-commit.txt](50-fix-node-size-start/runs/before-commit.txt)).
-* `RestartNodeSize`: the 12 starts with another size are refused with the
-  message; the 4 others read the 20,000 keys back; the streams are as long
-  as without the fix (`restart-proto.txt`).
-* `MixedNodeSize`, with and without `-ea`: the 12 are refused at the
-  start; the controls as before (`mixed-proto.txt`, `mixed-proto-ea.txt`).
-* [tools/cross.sh](50-fix-node-size-start/tools/cross.sh) (`CrossNodeSize`:
-  release 2026.1 and the prototype on databases in directories, each step
-  in a JVM of its own; `cross.txt`). X1, a database of 2026.1, 0 in its 7
-  meta blocks: the prototype starts it with 30, and with 8 fails as today;
-  after the prototype has written 200 KB more, the new meta block has 30,
-  the prototype refuses 8 and 62, and 2026.1 still starts it. X2, a
-  database of the prototype, 30 in its 7 meta blocks: 2026.1 starts it
-  and writes, and its new meta block has 30 too; then the prototype
-  refuses 8 and starts it with 30.
-* `StreamDigest all`, the prototype's class against the jars of `167597a`
-  and of the prototype: with `metamask=44:4` DIGESTS IDENTICAL (36 of 36);
-  without it every digest differs, as every stream has the size in its
-  meta blocks (`digest-*.txt`).
 
 
 Done when
@@ -279,12 +257,11 @@ Done when
 
 A start with another node size fails with the clear error before it
 writes anything (as 005-40's checks), with a test for every pair of sizes;
-a stream written before the fix starts as today; `before-commit.sh`;
-StreamDigest identical on the standard sets but for the bytes that hold
-the size, if any (with the fix as proposed: `metamask=44:4`); the Javadoc
-of the `maxNodeSize` methods says that the size must stay the same for a
-database. With the fix as proposed, also: release 2026.1 starts a database
-of the fixed code (`tools/cross.sh`).
+a stream written before the fix starts as today (dropped by the decision:
+it is refused); `before-commit.sh`; StreamDigest identical on the standard
+sets but for the bytes that hold the size, if any (`metamask=44:2`); the
+Javadoc of the `maxNodeSize` methods says that the size must stay the same
+for a database.
 
 
 First step
@@ -298,10 +275,59 @@ rerun, to answer question 1. Done 2026-10-27 (What the probes found, 1).
 Size and order
 --------------
 
-S. Independent of the others. With the prototype, the fix is to apply
-`prototype.diff` and run `before-commit.sh` and `tools/run.sh`. 005-57's
-prototypes (not applied) change other parts of `Db` (from line 1077) and
-`DbStarter`, so no overlap. The later item that makes the size a property
-of the stream builds on the field: a start that is given no size would
-take the stream's, as it takes the startup distance
-(`Db.handleStartParams`).
+S. Independent of the others. 005-57's prototypes change other parts of
+`Db` and `DbStarter`. The later item that makes the size a property of the
+stream builds on the field: a start that is given no size would take the
+stream's, as it takes the startup distance (`Db.handleStartParams`).
+
+
+Outcome
+-------
+
+2026-10-27, by Claude (Opus 5.5, Claude Code), as decided, at Frans's
+request; in a clone on `bfa2942`. In `java/src`: `MetaBlock` (the field,
+its test, the format table and the version rule), `Db` (the check, the
+size at creation, the Javadoc of `start()`), `NodeStream`
+(`readLastValidMetaBlock()`), the Javadoc of `DbBuilder`'s four
+`maxNodeSize*()`, and the tests in `DbTesterRestart` and `PubTester`; in
+`java/stress`, `StreamDigest`'s `metamask`. About 25 lines of code; the
+rest is Javadoc and tests.
+
+Checks ([runs/](50-fix-node-size-start/runs/); the probes by
+[tools/run.sh](50-fix-node-size-start/tools/run.sh)):
+
+* `before-commit.sh`: BEFORE COMMIT OK, 1,027 unit tests and 71 f-tests
+  ([runs/before-commit.txt](50-fix-node-size-start/runs/before-commit.txt)).
+* `level2.sh quick`: LEVEL 2 OK, as the start is level 2's
+  ([runs/level2-quick.txt](50-fix-node-size-start/runs/level2-quick.txt)).
+* The three new tests of a start fail without the fix, as the starts
+  succeed (`tests-only.txt`).
+* `RestartNodeSize`: the 12 starts with another size are refused with the
+  message; the 4 others read the 20,000 keys back; the streams are as long
+  as without the fix (`restart-proto.txt`).
+* `MixedNodeSize`, with and without `-ea`: the 12 are refused at the
+  start; the controls as before (`mixed-proto.txt`, `mixed-proto-ea.txt`).
+* [tools/cross.sh](50-fix-node-size-start/tools/cross.sh)
+  (`CrossNodeSize`: release 2026.1 and the fix on databases in
+  directories, each step in a JVM of its own; `cross.txt`). X1, a database
+  of 2026.1, 0 in its 7 meta blocks: the fix refuses it, with 30 and with
+  8, with the `VersioningStreamException`, and writes nothing, as 2026.1
+  then starts it as before. X2, a database of the fix, 30 in its 7 meta
+  blocks: 2026.1 starts it and writes, and its new meta block has 30 too;
+  then the fix refuses 8 and starts it with 30.
+* `StreamDigest all`, with the fix's class, against the jars of `167597a`
+  (the same `java/` as `bfa2942`) and of the fix: with `metamask=44:2`
+  DIGESTS IDENTICAL (36 of 36); without it every digest differs, as every
+  stream has the size in its meta blocks (`digest-*.txt`). A first run
+  with the mask, beside the gates, differed in one line of 36
+  (`digest-*-mask-1.txt`): `l3-node14 plain` of the jar before the fix
+  had its physical cut at 1,000,000, where three runs since of each jar
+  have none (0), as the fix's had; the digest from the decided cut was the
+  same. The physical cut waits for durability, so its timing may differ
+  (`StreamDigest`'s Javadoc).
+
+Every database written before the fix is refused by the code after it
+(Frans: "There are none."). Among them the bench databases of 007-05
+(`~/fl/bench/007-05/data`, made at `851acdf`, and s1's): a measurement of
+a build after the fix makes them again, about 1.5 minutes each at 10M keys
+on F53 (the 005-57 session notes it in 005-57).

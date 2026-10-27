@@ -1,6 +1,5 @@
 Note: Some input files use or override a deprecated API.
 Note: Recompile with -Xlint:deprecation for details.
-Unit: SUCCESS, 1027 successful tests in 9.0 s.
-F:    SUCCESS, 71 successful tests in 120.1 s.
-BEFORE COMMIT OK (125 s)
-sh before-commit.sh  120.07s user 8.33s system 103% cpu 2:04.29 total
+Unit: SUCCESS, 1027 successful tests in 8.9 s.
+F:    SUCCESS, 71 successful tests in 123.0 s.
+BEFORE COMMIT OK (129 s)

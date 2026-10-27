@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 import bergdb.pub.util.Clock;
+import bergdb.storage.RecoverableStream;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -53,6 +54,9 @@ import bergdb.stream.MemoryStream;
  *              exits with 1 if they differ.
  * Properties:
  *   modes=M,M  the modes to run (default plain,reads,restarts).
+ *   metamask=O:N  the digests take bytes O to O+N-1 of every meta block as zero: for a
+ *              change that writes a field there and nothing else, compared with the build
+ *              before it (bergdb 005-50: metamask=44:2, the node size).
  */
 public class StreamDigest {
     static final byte[] DELETED = null;
@@ -226,7 +230,29 @@ public class StreamDigest {
         return count;
     }
 
-    /** SHA-256 of the stream from position 'from' to its end, in hex. */
+    /** The bytes of every meta block that the digests take as zero: offset and count, or null. */
+    static final int[] MASK = parseMask(System.getProperty("metamask"));
+
+    static int[] parseMask(String prop) {
+        if (prop == null) return null;
+        String[] on = prop.split(":");
+        return new int[] {Integer.parseInt(on[0]), Integer.parseInt(on[1])};
+    }
+
+    /** Zeroes the bytes of MASK in the meta blocks that buf holds: chunk bytes from pos. */
+    static void mask(byte[] buf, long pos, int chunk) {
+        if (MASK == null) return;
+        final long d = RecoverableStream.META_BLOCK_DISTANCE;
+        for (long block = pos / d * d; block < pos + chunk; block += d) {
+            long from = Math.max(pos, block + MASK[0]);
+            long to = Math.min(pos + chunk, block + MASK[0] + MASK[1]);
+            for (long p = from; p < to; p++) {
+                buf[(int) (p - pos)] = 0;
+            }
+        }
+    }
+
+    /** SHA-256 of the stream from position 'from' to its end, in hex; see MASK. */
     static String digest(MemoryStream s, long from) {
         MessageDigest md;
         try {
@@ -240,6 +266,7 @@ public class StreamDigest {
             for (long pos = from; pos < len; pos += buf.length) {
                 int chunk = (int) Math.min(buf.length, len - pos);
                 s.read(pos, buf, 0, chunk);
+                mask(buf, pos, chunk);
                 md.update(buf, 0, chunk);
             }
         } catch (IOException e) {
@@ -300,6 +327,9 @@ public class StreamDigest {
         }
         Set<String> wanted = new LinkedHashSet<String>(Arrays.asList(args));
         String[] modes = System.getProperty("modes", "plain,reads,restarts").split(",");
+        if (MASK != null) {
+            System.out.println("METAMASK " + MASK[0] + ":" + MASK[1]);
+        }
         int configs = 0, modeDiffs = 0;
         for (String[] c : CONFIGS) {
             boolean take = wanted.contains("all") || wanted.contains(c[0])

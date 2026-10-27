@@ -33,7 +33,6 @@ Open
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
 | [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits starts the flush, instead of waiting for `BufferedStream`'s timer; one thread's durable commit from 35 ms to about one force (005-13's question 5) | open |
 | [005-49](49-smooth-index-writes.md) | Investigate | Smooth index writes: at large startup distances the index is written in bursts (10M keys, 1000 MB: windows of 70 to 1,100 bytes a put); a commit's index writes should follow its own size. Before 007-03's step 3 (005-38) | open |
-| [005-50](50-fix-node-size-start.md) | Fix | A start with another node size than the stream was written with fails with what looks like a corrupt stream (`StreamFormatException: startup error, node ... not found`), or starts, and can then leave a stream that no start opens; it should fail with a clear error. Only that (005-38). Proposed 2026-10-27: the size in the meta block's reserved bytes (offset 44, no new version), checked before recovery writes, a `DbException`; a stream written before starts as today | open |
 | [005-51](51-eviction-on-calls.md) | Fix | Eviction only in response to the calls: the eviction thread wakes once a second while the database is open, also when idle (`evictorLock.wait(1000)`), against 010-P3, calm when not used | open |
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API sets it only at start (`cacheSizeInMb`), against 010-P6; the core has `Eviction.setBudget` (also through JMX). The cache should converge gradually to the new size, with no disruption | open |
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
@@ -48,6 +47,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-50](50-fix-node-size-start.md) | Fix | A start with another node size than the stream was written with failed with what looked like a corrupt stream (`StreamFormatException: startup error, node ... not found`), or started, and could then leave a stream that no start opened, with either size. Now the size is in every meta block, 2 bytes at offset 44 that were reserved (so no new version: release 2026.1 starts a new database), and a start refuses another size with a `StreamFormatException` that says what to do, and a database without one, written before, with a `VersioningStreamException`, before recovery writes (005-38) | done | 2026-10-27 |
 | [005-38](38-writes-at-scale.md) | Investigate | Writes at scale: the stream grew to about 1.1 KB per key at 100M random keys (004-02); the cause was its startup distance of 10 MB. At 200 to 1000 MB a put costs 180 to 670 bytes at 10M and 50M keys; the fix is a startup distance that suits the database. Node size 30 stays. Bursts of index writes at large startup distances found | done | 2026-10-26 |
 | [005-45](45-fix-two-leftovers.md) | Fix | Two faults found on the way in 005-40 and 005-41: `SalsaStream.getLength()` did not count what it appended (BergDB's own stack did not meet it), and `WTransaction.sync(SyncLevel)` waited for the database's last transaction, not for its own; now the length is the underlying stream's, and the sync waits for its own transaction, as `sync()` does | done | 2026-10-25 |
 | [005-42](42-transaction-info.md) | Decide | `Connection.transactionInfo()` gave internal KVs, whose `key()` threw (an index entry, reclaim's row), and for a value that reclaim had rewritten, reclaim's transaction and its time; from a TODO of 2016 (006-05). Decided A1 and B2: the internal KVs are left out, and a value that reclaim has rewritten gives `LookupTimeNotAvailableException` | done | 2026-10-25 |
@@ -260,9 +260,10 @@ Files
 * [49-smooth-index-writes.md](49-smooth-index-writes.md). 005-49, smooth
   index writes: the bursts found in 005-38, the cause, the questions; open.
 * [50-fix-node-size-start.md](50-fix-node-size-start.md). 005-50, a start
-  with another node size fails with a clear error; found in 005-38; open;
-  the fix proposed, the size in the meta block; its prototype, probes and
-  runs in [50-fix-node-size-start/](50-fix-node-size-start/).
+  with another node size fails with a clear error; found in 005-38; the
+  size in the meta block, proposed, decided and done; the probes, their
+  runs and the first prototype in
+  [50-fix-node-size-start/](50-fix-node-size-start/).
 * [54-open-bounds.md](54-open-bounds.md). 005-54, the bounds still open in
   the problem statement (011-01): Q1, Q2, Q3, Q5 and Q8; open.
 * [55-fix-finalize.md](55-fix-finalize.md). 005-55, the deprecated API in
@@ -981,3 +982,13 @@ level4.sh (full), and on 007-05's databases: no difference. Two scenarios,
 cold on s1 from 214 and 210 s to about 46 and 51 s, warm on F53 0.7 to
 0.9 s less. Part 1 alone moves its reads into the time after the start.
 Four questions for Frans. No change to `java/`.
+
+2026-10-27. 005-50 done, by Claude (Opus 5.5, Claude Code), at Frans's
+request, after his decision on the proposal ("No need to consider "today's
+databases". There are none."; a `StreamFormatException`; 1 or 2 bytes):
+the node size is in every meta block, 2 bytes at offset 44, and a start
+refuses another size with a `StreamFormatException`, and a database whose
+meta block has none, written before, with a `VersioningStreamException`,
+before recovery writes. The meta block's version stays 154. Tests;
+`before-commit.sh` and `level2.sh quick` pass; StreamDigest identical but
+for the two bytes (`metamask=44:2`, new).

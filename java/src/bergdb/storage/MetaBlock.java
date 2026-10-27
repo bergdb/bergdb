@@ -21,7 +21,11 @@ import bergdb.nanotest.Nano;
  *                 before the meta block.
  * 24     16       Database ID. 128 random bits, used as unique database ID.
  * 40      4       startupDistance in bytes. Typically 20M.
- * 44     83       Reserved, must be set to zero.
+ * 44      2       maxNodeSize, the maximum node size of the database, an unsigned short
+ *                 (DbBuilder.maxNodeSize8() to maxNodeSize62()); a start with another size
+ *                 is refused, and so is a stream whose meta block has 0, as those written
+ *                 before 2026-10-27 have (bergdb 005-50).
+ * 46     81       Reserved, must be set to zero.
  * 127     1       META_BLOCK_LAST_BYTE. 1 is used to indicate that the block is valid.
  * </pre>
  */
@@ -37,7 +41,10 @@ public class MetaBlock {
      * change of these changes this number, which recovery checks in each meta block it reads,
      * before it writes anything (2026-10-25, bergdb 005-40). What a record holds has a
      * version of its own, StoredTrans.RECORD_FORMAT. New databases only: a stream of another
-     * version is refused.
+     * version is refused. A new field in the reserved bytes, which an older version can
+     * ignore, keeps the number, as maxNodeSize at offset 44 did (2026-10-27, bergdb 005-50):
+     * an older version neither checks nor reads those bytes, and it copies a block it read
+     * whole, so it starts such a stream as before and passes the field on.
      */
     private static final int CURRENT_VERSION = VERSION_154;
     
@@ -212,6 +219,22 @@ public class MetaBlock {
     }
     
     /**
+     * The maximum node size of the database, from its creation, or 0 in a block written
+     * before it was recorded (2026-10-27, bergdb 005-50). A start refuses another size, and
+     * 0 (Db.refuseOtherNodeSize).
+     */
+    public int getMaxNodeSize() {
+        return Bytes.bytesToUShortLE(block, 44);
+    }
+    
+    /**
+     * @throws IllegalArgumentException  if 'maxNodeSize' does not fit in an unsigned short
+     */
+    public void setMaxNodeSize(int maxNodeSize) {
+        Bytes.ushortToBytesLE(maxNodeSize, block, 44);
+    }
+    
+    /**
      * Returns true if the last byte is META_BLOCK_LAST_BYTE.
      */
     public boolean isValid() {
@@ -271,6 +294,21 @@ public class MetaBlock {
             MetaBlock b = new MetaBlock();
             b.setStartupDistance(10*1000000);
             Assert.assertEquals(10*1000000, b.getStartupDistance());
+        }
+        
+        /** Bergdb 005-50: the node size, 2 bytes at offset 44; 0 until it is set. */
+        @Nano
+        public static void maxNodeSize() {
+            MetaBlock b = new MetaBlock();
+            Assert.assertEquals(0, b.getMaxNodeSize());
+            b.setMaxNodeSize(62);
+            Assert.assertEquals(62, b.getMaxNodeSize());
+            Assert.assertEquals(62, b.getBlock()[44]);
+            for (int i = 45; i < RecoverableStream.META_BLOCK_SIZE - 1; i++) {
+                Assert.assertEquals("byte " + i, 0, b.getBlock()[i]);
+            }
+            b.setMaxNodeSize(65535);
+            Assert.assertEquals(65535, b.getMaxNodeSize());
         }
     }
 }

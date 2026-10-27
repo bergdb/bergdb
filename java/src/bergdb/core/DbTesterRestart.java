@@ -1,5 +1,6 @@
 package bergdb.core;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -22,6 +23,8 @@ import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.DbException;
 import bergdb.storage.RecoverableStream;
+import bergdb.storage.StreamFormatException;
+import bergdb.storage.VersioningStreamException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;
 import bergdb.stream.MemoryStream;
@@ -170,6 +173,112 @@ public class DbTesterRestart {
                 .start();
         
         Assert.assertEquals("after restart", startupDistance, db.getStartupDistance());
+    }
+    
+    /** A builder with maximum node size 'size', 8, 14, 30 or 62. */
+    private static DbBuilder nodeSize(DbBuilder b, int size) {
+        switch (size) {
+        case 8: return b.maxNodeSize8();
+        case 14: return b.maxNodeSize14();
+        case 30: return b.maxNodeSize30();
+        case 62: return b.maxNodeSize62();
+        default: throw new IllegalArgumentException("node size " + size);
+        }
+    }
+    
+    /** The bytes of a stream, from its first position. */
+    private static byte[] bytesOf(MemoryStream s) throws IOException {
+        byte[] bytes = new byte[(int) (s.getLength() - s.getFirstPos())];
+        s.read(s.getFirstPos(), bytes, 0, bytes.length);
+        return bytes;
+    }
+    
+    /**
+     * Bergdb 005-50: a start with another maximum node size than the database was created
+     * with is refused, with a StreamFormatException that names both sizes, and writes
+     * nothing; then a start with the database's size succeeds. Every pair of 8, 14, 30 and
+     * 62, on a database as created, and on one of 300 transactions whose last record a crash
+     * has torn, which recovery fills out. Before, the start reran the startup section with
+     * the other size, and failed with "startup error, node ... not found", after recovery's
+     * fill, or started.
+     */
+    @Nano
+    private static void testOtherNodeSizeRefused() throws IOException {
+        final int[] sizes = {8, 14, 30, 62};
+        for (int a : sizes) {
+            CoreTestClock clock = new CoreTestClock();
+            MemoryStream created = new MemoryStream();
+            Db db = nodeSize(Db.builder().testSetup(created).clock(clock), a).start();
+            db.sync(SyncLevel.STRONG);
+            db.close();
+            
+            MemoryStream torn = new MemoryStream();
+            db = nodeSize(Db.builder().testSetup(torn).clock(clock), a).start();
+            for (int i = 0; i < 300; i++) {
+                clock.setTime(10 + i);
+                db.execute(db.trans().put("key" + i, "value" + i));
+            }
+            db.sync(SyncLevel.STRONG);
+            db.close();
+            torn.truncate(torn.getLength() - 3);
+            
+            for (MemoryStream s : new MemoryStream[] {created, torn}) {
+                for (int b : sizes) {
+                    if (b == a) {
+                        continue;
+                    }
+                    MemoryStream m = s.copy();
+                    try {
+                        nodeSize(Db.builder().testSetup(m).clock(clock), b).start();
+                        throw new AssertionError("started with node size " + b
+                                + ", created with " + a);
+                    } catch (StreamFormatException e) {
+                        Assert.assertEquals(StreamFormatException.class, e.getClass());
+                        Assert.assertTrue(e.getMessage(), e.getMessage().contains(
+                                "maximum node size is " + a + ", and this start uses " + b + "."));
+                    }
+                    Assert.assertArrayEquals("the stream as it was", bytesOf(s), bytesOf(m));
+                }
+                
+                Db d = nodeSize(Db.builder().testSetup(s.copy()).clock(clock), a).start();
+                if (s == torn) {
+                    Assert.assertArrayEquals(StringUtil.toBytes("value298"),
+                            DbUtil.get(d, Long.MAX_VALUE, "key298"));
+                    Assert.assertNull(DbUtil.get(d, Long.MAX_VALUE, "key299"));     // Torn.
+                }
+                d.close();
+            }
+        }
+    }
+    
+    /**
+     * Bergdb 005-50: a database whose meta block has no maximum node size (0), as one written
+     * before 2026-10-27, is refused with a VersioningStreamException, whatever size the start
+     * uses, and the start writes nothing.
+     */
+    @Nano
+    private static void testNoNodeSizeRefused() throws IOException {
+        CoreTestClock clock = new CoreTestClock();
+        MemoryStream s = new MemoryStream();
+        Db db = Db.builder().testSetup(s).clock(clock).start();
+        clock.setTime(10);
+        db.execute(db.trans().put("key1", "value1"));
+        db.sync(SyncLevel.STRONG);
+        db.close();
+        Assert.assertTrue("one meta block", s.getLength() < RecoverableStream.META_BLOCK_DISTANCE);
+        MemoryStream.TestAccess.write(s, new byte[2], 44);      // As before 005-50.
+        
+        for (int size : new int[] {8, 30}) {
+            MemoryStream m = s.copy();
+            try {
+                nodeSize(Db.builder().testSetup(m).clock(clock), size).start();
+                throw new AssertionError("started a database without a node size");
+            } catch (VersioningStreamException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains(
+                        "meta block has no maximum node size"));
+            }
+            Assert.assertArrayEquals("the stream as it was", bytesOf(s), bytesOf(m));
+        }
     }
     
     /** Simplest possible delete-and-restart test. */

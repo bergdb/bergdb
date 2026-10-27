@@ -110,6 +110,14 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     public final long getLastTransPosOfLastValidMetaBlock() {
         return rstream.getLastTransSposOfLastValidMetaBlock();
     }
+    
+    /**
+     * The stream's last valid meta block, which recovery starts from, or null if there is
+     * none. It reads the stream and writes nothing (bergdb 005-50).
+     */
+    public MetaBlock readLastValidMetaBlock() {
+        return rstream.readLastValidMetaBlock();
+    }
 
     public final long getNextPos() {
         return rstream.getNextSpos();

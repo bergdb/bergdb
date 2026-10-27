@@ -44,6 +44,7 @@ import bergdb.storage.StorageManager;
 import bergdb.storage.StreamException;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
+import bergdb.storage.VersioningStreamException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.ReadBelowFirstPosException;
 import bergdb.stream.SalsaStream;
@@ -503,6 +504,9 @@ public class Db {
      * 
      * @throws StreamIoException
      * @throws StreamFormatException
+     *             Among others, if the database has another maximum node size than this
+     *             start, or none, as one written before 2026-10-27 (bergdb 005-50); the
+     *             start then writes nothing.
      * @throws DatabaseNotCreatedException
      *             If the stream holds a creation that did not complete, and no committed
      *             transaction (bergdb 005-33). The start writes nothing.
@@ -533,6 +537,9 @@ public class Db {
      *          Used for testing, normally set to StartParams.NULL as default.
      * @throws StreamIoException
      * @throws StreamFormatException
+     *          Among others, if the database has another maximum node size than this
+     *          start, or none, as one written before 2026-10-27 (bergdb 005-50); the start
+     *          then writes nothing.
      * @throws DatabaseNotCreatedException
      *          If the stream holds a creation that did not complete, and no committed
      *          transaction (bergdb 005-33). The start writes nothing.
@@ -605,6 +612,7 @@ public class Db {
         refuseIncompleteCreation();
         
         try {
+            refuseOtherNodeSize();
             nodeStream.recover();
         } catch (BadMagicBytes e) {
             // 2026-10-25 (bergdb 005-33): without a crypto key, the message said that the
@@ -895,6 +903,38 @@ public class Db {
         }
     }
     
+    /**
+     * Refuses a start with another maximum node size than the database's, and a database
+     * whose meta block has none, before recovery writes anything (2026-10-27, bergdb 005-50).
+     * The size is in every meta block from the creation on; this reads the last valid one,
+     * as recovery does first. Before, a start with another size reran the startup section
+     * with it, which splits nodes otherwise, and failed with what looked like a corrupt
+     * stream ("node ... not found"); or it started, and the stream it then wrote could not
+     * be started again, with either size (bergdb 005-50, question 3).
+     *
+     * @throws StreamFormatException
+     * @throws VersioningStreamException  no size: a database written before 2026-10-27
+     */
+    private void refuseOtherNodeSize() {
+        MetaBlock last = nodeStream.readLastValidMetaBlock();
+        if (last == null) {
+            return;     // recover() refuses it.
+        }
+        final int size = last.getMaxNodeSize();
+        if (size == 0) {
+            throw new VersioningStreamException("The database's meta block has no maximum node "
+                    + "size: it was written by a version of BergDB before 2026-10-27, which "
+                    + "this one does not start (bergdb 005-50). The start has written nothing.");
+        }
+        if (size != maxNodeSize) {
+            throw new StreamFormatException("The database's maximum node size is " + size
+                    + ", and this start uses " + maxNodeSize + ". A database must be started "
+                    + "with the node size it was created with: " + size + ", DbBuilder."
+                    + "maxNodeSize" + size + "() (the Pub API uses 30). The start has written "
+                    + "nothing (bergdb 005-50).");
+        }
+    }
+    
     private void determineDatabaseId() {
         if (databaseIdFromBuilder.isCreateLaterMarker()) {
             databaseId = DatabaseId.createRandom();
@@ -934,6 +974,7 @@ public class Db {
         MetaBlock meta = nodeStream.getMetaBlock();
         meta.setId(databaseId.getBytes());
         meta.setStartupDistance(startupDistance);
+        meta.setMaxNodeSize(maxNodeSize);       // bergdb 005-50
         meta.setTime(tt);
         
         Trans trans = this.trans().build();
