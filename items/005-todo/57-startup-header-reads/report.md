@@ -231,8 +231,11 @@ this search").
 * **D closed upward and Rule A** (001-08, 5.4), with TREE and A6', which the
   gates check on every transaction (005-04).
 
-The argument is not a Lean theorem. The prototype checks it on every
-startup it makes (section 5).
+Since 2026-10-27 it is a theorem of the Lean model, for the model's
+startup (005-58): `Rule4_positions` (a pointer that is not a vpos names a
+position of (b) or (c)) and `Rule4Pos_handles` (rule 4 by position links
+what rule 4 by node id links). The prototype checks it on every startup it
+makes (section 5).
 
 
 # 3. The writer reads the same headers (part 2)

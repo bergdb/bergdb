@@ -1,0 +1,1273 @@
+diff --git a/lean/README.md b/lean/README.md
+index 496d3f7..071300f 100644
+--- a/lean/README.md
++++ b/lean/README.md
+@@ -46,6 +46,16 @@ reference (SIS/Handle.lean's header, choices 1 and 7). Java's handle state
+ is checked against the invariants of SIS/HandleTheorems.lean by the trace
+ checker's C-H (step 4c, 2026-10-26).
+ 
++Since bergdb 005-58 (2026-10-27) the model also has Java's rule 4 by position
++(bergdb 005-57): `HMem.linkDPos` finds the node that a pointer of D names from
++the startup section's `posToId` and the canonical objects' positions, without
++reading the stream; `handleStartupPos` and `runHandlesPos` are the startup and
++the run with it. Proved: a pointer that rule 4 links names a version of the
++section, the version before its node's first version there, or its node's
++canonical object's (`rule4_positions`), so rule 4 by position links what rule 4
++by node id links (`rule4Pos_handles`), and the runs are the same
++(`runPos_handles`); SIS/Proof/HandleLinkPos.lean.
++
+ 
+ Build and run
+ =============
+@@ -103,11 +113,15 @@ their proofs are checked the same way, each printing
+ `[propext, Classical.choice, Quot.sound]`:
+ 
+     import SIS.Proof.HandlePin
++    import SIS.Proof.HandleLinkPos
+     #print axioms SIS.tc_handles
+     #print axioms SIS.tr_handles
+     #print axioms SIS.t2_handles
+     #print axioms SIS.tr_handles_restarts
+     #print axioms SIS.tp_handles
++    #print axioms SIS.rule4_positions
++    #print axioms SIS.rule4Pos_handles
++    #print axioms SIS.runPos_handles
+ 
+ The equalities of the checker's fast paths (Check/Fast.lean,
+ Check/R4.lean) are checked the same way:
+@@ -138,8 +152,8 @@ its section in sis-model.md.
+ | SIS/Theorems.lean | T1 (`T1_recovery`, `T1_crash`, `T1_nodes`), T2 (`T2_restart`), T13 (`T13_markExact`) | 9 |
+ | SIS/Phys.lean | The physical layer, what Java holds in memory (bergdb item 001, WPs L1 and L3): objects (`Obj`), their slots (`Slot`), the memory with the node table (`Mem`); Java's first touch (`Mem.follow`: Rule R, the table, the version read, cut back in the section); reads (`Mem.read`); the lazy startup (`lazyStartup`); a version cut back to a time (`Version.cutTo`); the operations after startup (`Op`, `Mem.step`, admissible: `OpsOK`); the assumptions of the physical layer (`PhysStep`, `PhysRunOK`); the writer after a lazy startup (WP L4: its view through the physical layer, `Mem.view`; its transaction, `lazyTrans`, with the record of `stepWith`, `step` with its change given) and a run with lazy restarts (`runLazy`); the writer's paths reach the touched nodes too (`pathOf`, WP R3) | — (011-11, 13) |
+ | SIS/Evict.lean | The physical layer, part 2, with eviction (bergdb item 001, WP E2; 001-08, section 5): the pinned objects (`Mem.pinned`), unswizzling (`Mem.unswizzle`) and release (`Mem.release`); the Level 4 loader (`Mem.follow4`: the canonical object, or exactly the version a slot names after Rule R) and reads through it (`Mem.read4`); the writer's path (`Mem.reachOnPath4`) and the change (`Mem.applyChange4`, `Mem.newSlot4`); startup with rule 4 (`evictStartup`, `Mem.linkD`); the physical writer (`Mem.refOf`, `Mem.writeNode`) and its transaction (`evictTrans`); cache schedules (`CacheOp`) and runs (`runEvict`); the assumptions of stage 2 (`EvictStep`: TREE, `treeAt`, and A6', `adoptAt`; A-COPY, `CopyStep`; `EvictRunOK`) | — (001-08, 5) |
+-| SIS/Handle.lean | The physical layer with handles (bergdb item 009, phase 2, 2a; aligned with Java's step 3a; ../items/009-handles/02-implementation-plan.md, section 4): objects by address (`HObj`), pointers with a reference and a handle (`HPtr`), handles (`Handle`: node, object, written position, dead), the table from node to live handle (`HMem`); following a pointer (`HMem.followR`: the fast path's test, else the reference after Rule R raised to the held handle's written position and written back, `HMem.setRef`, the live handle, `HMem.resolve`, and the load, `HMem.load`; `HMem.follow`, with the writer's `HMem.promote`); reads (`HMem.read`); the writer's walk and change (`HMem.reachOnPath`, `HMem.newPtr`, `HMem.applyChange`); the record rule (`HMem.ptrRef`, `HMem.refOf`) and the physical writer (`HMem.writeNode`, with `resolvePointers`; `handleTrans`); eviction (`HMem.evictable`, `HMem.evict`); startup with rule 4 by handles (`handleStartup`, `Mem.toH`, `HMem.linkD`); reads and evictions between transactions (`HCacheOp`) and runs (`runHandles`). The file's header lists the choices where the plan is vague | — (../items/009-handles/02-implementation-plan.md, 4) |
+-| SIS/HandleTheorems.lean | The statements over handles (bergdb item 009, 2c): the invariants (`HTableOK`, `HCanOK`, `HSnapOK`, `HSlotOK` for the record rule, `HRuleROK`, `HLiveWrittenOK` and `HFastOK` for the fast path's test, `HWrittenOK`); T-CACHE (`TC_handles`, proved: `tc_handles`), T2-C (`T2_handles`, with restarts), T-READ (`TR_handles`; with restarts, `TR_handles_restarts`), T-PIN (`TP_handles`); all proved in SIS/Proof/ (`tc_handles`, `t2_handles`, `tr_handles`, `tr_handles_restarts`, `tp_handles`) | — (../items/009-handles/02-implementation-plan.md, 5, phase 2) |
++| SIS/Handle.lean | The physical layer with handles (bergdb item 009, phase 2, 2a; aligned with Java's step 3a; ../items/009-handles/02-implementation-plan.md, section 4): objects by address (`HObj`), pointers with a reference and a handle (`HPtr`), handles (`Handle`: node, object, written position, dead), the table from node to live handle (`HMem`); following a pointer (`HMem.followR`: the fast path's test, else the reference after Rule R raised to the held handle's written position and written back, `HMem.setRef`, the live handle, `HMem.resolve`, and the load, `HMem.load`; `HMem.follow`, with the writer's `HMem.promote`); reads (`HMem.read`); the writer's walk and change (`HMem.reachOnPath`, `HMem.newPtr`, `HMem.applyChange`); the record rule (`HMem.ptrRef`, `HMem.refOf`) and the physical writer (`HMem.writeNode`, with `resolvePointers`; `handleTrans`); eviction (`HMem.evictable`, `HMem.evict`); startup with rule 4 by handles (`handleStartup`, `Mem.toH`, `HMem.linkD`); rule 4 by position, Java's since bergdb 005-57 (`inPosToId` for Java's `posToId`, `HMem.byPos`, `HMem.linkDPos`, `handleStartupPos`); reads and evictions between transactions (`HCacheOp`) and runs (`runHandles`; with rule 4 by position, `runHandlesPos`). The file's header lists the choices where the plan is vague | — (../items/009-handles/02-implementation-plan.md, 4) |
++| SIS/HandleTheorems.lean | The statements over handles (bergdb item 009, 2c): the invariants (`HTableOK`, `HCanOK`, `HSnapOK`, `HSlotOK` for the record rule, `HRuleROK`, `HLiveWrittenOK` and `HFastOK` for the fast path's test, `HWrittenOK`); T-CACHE (`TC_handles`, proved: `tc_handles`), T2-C (`T2_handles`, with restarts), T-READ (`TR_handles`; with restarts, `TR_handles_restarts`), T-PIN (`TP_handles`); rule 4 by position (bergdb 005-58): the positions of the pointers that rule 4 links (`Rule4_positions`), rule 4 by position is rule 4 by node id (`Rule4Pos_handles`), and so are the runs (`RunPos_handles`); all proved in SIS/Proof/ (`tc_handles`, `t2_handles`, `tr_handles`, `tr_handles_restarts`, `tp_handles`, `rule4_positions`, `rule4Pos_handles`, `runPos_handles`) | — (../items/009-handles/02-implementation-plan.md, 5, phase 2) |
+ | SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`); T1-L (`T1_lazy`): after the lazy startup from the stream of a run, or of a prefix of it (a crash), and any reads and writer follows, a read at any time up to the last record gives P at that time; CC (`CC_canonical`): in a run with lazy restarts, every canonical object holds its node's whole history; T2-L (`T2_lazy`): such a run appends the records of the run without restarts; `step_eq_stepWith`; stage 2 (bergdb item 001, WP E3): D closed upward (`T15_closed`), and T-CACHE (`TC_records`): in a run with eviction and any cache schedule, without restarts, every transaction of the physical writer appends the model's record and leaves the model's D, and INV-CAN, INV-SNAP and INV-SLOT hold; T-READ (`TR_view`, WP E4): in such a run, a read through the Level 4 loader at any time up to the last record gives P at that time; T2-C (`T2_cache`, WP E5): with restarts too, the records and D stay the model's, and the invariants hold for the stream of the last startup; and T-READ with restarts (`TR_view_restarts`, WP E5); T-PIN (`TP_pins`, WP E6): in such runs, every object outside the pinned set may be evicted | 5.1, 9; 001-08, 5.3 to 5.6 |
+ | SIS/Reclaim.lean | Level 3, reclaim (bergdb item 001, WP R3): what a cut leaves of a version (`Version.stub`) and of a record (`Record.cut`); the stream after a cut (`cutStream`); the versions that a lookup at a time may read (`ReadsAt`, WP R7); when a cut is safe (`CutOK`); the same lookups from f on (`SameFrom`); policies that a cut does not change (`PolicyCutOK`); a virtual root seen only through its live children (`ExecRootOK`), whose live children are those of its last entry (`VirtLiveOK`, WP R4); runs that restart from cut streams (`runRestartsCut`, `cutMax`; with eviction, `runEvictCut`) | — (001-07, 5) |
+ | SIS/ReclaimTheorems.lean | T13' (`T13_markTouch`, WP R3): with touches, step 3 gives exactly the index nodes not in D (and not a virtual root) that are dirty or touched; T8 (`T8_recoverCut`, WP R4): after a safe cut, startup from the cut stream gives the same lookups at every time from the first available time on (`SameFrom`), and the same D; T9 (`T9_readCut`, WP R4): in a run with eviction as in T2-C, after a safe cut, a read through the Level 4 loader in the running process at any time from the first available time on gives the same on the cut stream as on the whole stream, and gives P; T12 (`T12_restartCut`, WP R5): a run that restarts from safe cut streams appends the records of the run without restarts (its stream is that run's, cut at the largest cut), with that run's D and lookups from the first available time on; T12 with eviction (`T12_evictCut`, WP R5): so does the run with eviction (`runEvictCut`), with any cache schedules whose reads are from the first available time on and the Level 4 startup at each restart | — (001-07, 2.2, 2.9, 2.10) |
+@@ -183,7 +197,7 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
+ | EvictStepInv, EvictTrans, EvictRun, EvictInit | The memory after the record has the next state's invariant (`AInv.final_ok`); one transaction (`EInv.evictTrans_ok`); runs (`TC_run`); the startup from R(0) (`einv_init`); the invariant in the terms of `TC_records` (`EInv.tc_facts`) |
+ | EvictHist, EvictHistTrans, EvictReadT | Stage 2 (WP E4): the invariant for reads at earlier times (`HInv`: every slot of a canonical object for a live child at a time t names an object or a version good for t, or, by INV-SLOT's second half, a node of D), kept by the cache operations and every transaction (`HInv.evictTrans_ok`) and in every run (`HInv.run`); a read at any time up to the last record gives P (`EInv.read4T_ok`) |
+ | EvictKeys, EvictPin | Stage 2 (WP E6): no object has two slots for the same pointee, in every memory of every run (`SlotsND`, `slotsND_runEvict`); unswizzling every memory slot to an object, then releasing it, removes it (`Mem.evict_ok`); an object outside the pinned set has been written (`EInv.detachable_of_unpinned`) |
+-| EvictRerun, EvictRestart | Stage 2 (WP E5): the startup from the stream after T(k): its rerun keeps `RInv` (every object canonical, every stream slot naming its pointee's latest version after Rule R and naming a version, a slot for each pointee; `rinv_lazyStartup`), and after the positions and rule 4 the memory has the invariant and the invariant for reads at earlier times (`einv_hinv_startup`; with what T9's invariant needs, `einv_hinv_startup_facts`); the physical writer depends on P only through its nodes (`evictTrans_congr`); runs with restarts (`EvictInvR`, `evictInvR_all`) |
++| EvictRerun, EvictRestart | Stage 2 (WP E5): the startup from the stream after T(k): its rerun keeps `RInv` (every object canonical, every stream slot naming its pointee's latest version after Rule R and naming a version, a slot for each pointee; since bergdb 005-58 also: no version of a stream slot's pointee between it and the section, `RInv.near`, and every slot for a pointee, `RInv.keys`; `rinv_lazyStartup`), and after the positions and rule 4 the memory has the invariant and the invariant for reads at earlier times (`einv_hinv_startup`; with what T9's invariant needs, `einv_hinv_startup_facts`); the physical writer depends on P only through its nodes (`evictTrans_congr`); runs with restarts (`EvictInvR`, `evictInvR_all`) |
+ | HandleMem, HandleInv | Bergdb item 009, 2d, T-CACHE over handles: the memory's operations; the fast path's test with a pointer's own reference agrees with the slow path's (`hFastOK_of`); evicting a handle changes no pointer's record (`HMem.ptrRef_evict_of`); the invariant with handles (`HEInv`: the table and the handles, INV-CAN, INV-SNAP, INV-SLOT for the record rule, the live pointers of current canonical objects, the snapshots against Rule R, live handles without a written position, references that name versions), and an eviction keeps it (`HEInv.evict`) |
+ | HandleFollow, HandleRead | The readers' follow keeps it (`HEInv.followR_ok`: the fast path; the slow path's write-back, live handle and load; and, for reads at earlier times, what the pointers give, `HMem.KeepPtrs`), so reads and any operations between transactions do (`HEInv.cacheOps`); a read at the last time gives P, the writer's view (`HEInv.view_ok`) |
+ | HandleWalk, HandleApply, HandleApplyInv | The writer's promote and its walk (`HEInv.follow_writer`, `HEInv.reachPath_ok`); the change applied, with TREE and A-COPY (`HEInv.applyChange_ok`, `HAInv`) |
+@@ -191,6 +205,7 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
+ | HandleTrans, HandleInit, HandleRecords | One transaction (`HEInv.handleTrans_ok`); runs (`TC_runH`); the startup with handles from R(0) (`heinv_init`, from E3's `einv_lazyBase`: `EInv.toH`, and rule 4, `HEInv.linkD`); T-CACHE over handles (`TC_handles_records`, `tc_handles`) |
+ | HandleHist, HandleHistTrans, HandleReadT | Bergdb item 009, phase 4a, T-READ over handles: the invariant for reads at earlier times (`HInvH`: the pointer of a canonical object for a live child at a time t holds a canonical object, or its slow path's reference names a version good for t, or, by INV-SLOT's second half, a node of D), kept by reads (`HInvH.followR`), evictions (`HInvH.evict`: a pointer whose handle held the evicted canonical object then has its node's latest version, clean, as its slow path's reference), every transaction (`HInvH.handleTrans_ok`) and in every run (`HInvH.run`); a read at any time up to the last record gives P (`HEInv.readT_ok`, `tr_handles`) |
+ | HandleRestart, HandlePin | The startup with handles from the stream after T(k) has both invariants (`heinv_hinvH_startup`: E5's Level 4 startup taken to handles, `EInv.toH` and `HInv.toH`, and the pointers that rule 4 links, `HEInv.relinkH`); the physical writer with handles depends on P only through its nodes (`handleTrans_congr`); runs with restarts (`HandleInvR`, `handleInvR_all`); T2-C and T-READ with restarts over handles (`t2_handles`, `tr_handles_restarts`); a live handle whose object is not pinned may be evicted (`HEInv.evictable_of_unpinned`), T-PIN (`tp_handles`) |
++| HandleLinkPos | Bergdb 005-58, rule 4 by position: a pointer that holds no handle in the memory before rule 4 is a stream slot of the lazy startup's memory (`before_ptr`), so `RInv` says what it names (`before_ptr_facts`); a canonical object there is at its node's latest position (`before_canon`); the positions (`rule4_positions`); rule 4 by position is rule 4 by node id where each pointer it leaves is in `posToId` or at the canonical object's position (`HMem.linkDPos_eq_linkD`), which the startup's memories meet, with the first version of a node in the section (`first_version`), A4 and a data node's one version (`rule4Pos_handles`); runs (`runPos_handles`; `runHandlesPos` is `runHandles` but for its startups, `runHandlesPos_of_startup`) |
+ | CutStream, CutRead | Stage 3 (WP R4): the stream after a cut (its records, `versionAt`, `newest`, the last record); a pointer followed, or a read from a version, on a stream cut at or before the startup pos gives what it gives on the whole stream if it reads no record before the cut (`follow_cut`, `readFrom_cut`); a read from a version that a lookup may read reaches only such versions (`readFrom_readsAt`); a version a lookup may read, a physical read may follow (`ReadsAt.phys`, WP R6) |
+ | CutAgree, CutRerun | Structures that agree for lookups from f on (`CutAgree`); a transaction's change is the same on both (`exec_cutAgree`, with `ExecRootOK`), and so is the rerun of the startup section (`rerun_cutAgree`, with `VirtLiveOK`), which keeps every node it starts with the run's (`rerun_cutAgree_nodes`, WP R5) |
+ | CutBase, CutTops, CutStart | Startup's reads of a stream cut safely at the times from f to s: without a virtual root, the whole stream's (`Inv.readAt_cut_nv`); with one, the whole stream's but for the root's version, which startup rebuilds from the root children it can read: the root children live from f on are read at their latest versions (`Inv.topsRead_cut_all`), so the rebuilt root has the root's live children from f on (`Inv.cutRoot_live`, `Inv.readAt_cut_v`) |
+@@ -259,9 +274,10 @@ Not trusted, tests only:
+   and D are the model's, reads give P, the invariants hold; reads at earlier
+   times also before reads at the last time), and the trusted run
+   `runHandles`; counts that show the runs reach the cases of the plan's open
+-  points (`pointCounts`); three small examples: open point 1, the written
+-  position that the slow path writes back into the pointer, and the slow
+-  path's test against it.
++  points (`pointCounts`); the pointers that rule 4 links, by the record they
++  name and by how rule 4 by position finds them (`rule4Counts`, bergdb
++  005-58); three small examples: open point 1, the written position that the
++  slow path writes back into the pointer, and the slow path's test against it.
+ * SIS/ReclaimExample.lean and ReclaimTest.lean (bergdb item 001, WP R3):
+   reclaim by running. Example 4, F1-008-07's reclaim example adapted to
+   BergDB: example 3's virtual root and top nodes, one value per leaf, reclaim
+@@ -1044,6 +1060,29 @@ version at its position (a snapshot); a HOBJ line without a hash is checked
+ by the number of entries only. On the evict set (3 seeds) every object's
+ history is compared.
+ 
++2026-10-27. Rule 4 by position (bergdb 005-58), Java's since bergdb 005-57
++(`07b6375`). Changes to the trusted part: new definitions in SIS/Handle.lean,
++`inPosToId` (Java's `posToId` as a test), `HMem.byPos`, `HMem.linkDPos`,
++`handleStartupPos` and `runHandlesPos`; new statements in
++SIS/HandleTheorems.lean, `Rule4_positions`, `Rule4Pos_handles` and
++`RunPos_handles`. No definition changed. All three are proved
++(`rule4_positions`, `rule4Pos_handles`, `runPos_handles`;
++SIS/Proof/HandleLinkPos.lean). The proof rests on two more facts of E5's rerun
++invariant (`RInv.near`, `RInv.keys`, SIS/Proof/EvictRerun.lean): a stream slot's
++reference comes from a version of the section, with Rule R or as it is (the
++record rule), or from the latest version of a node that has no version in the
++section and is current and clean when the rerun's walk loads it (in the
++section, so its references name the latest versions then), or is a copy of
++one of those; so no version of its pointee lies between it and the section.
++The memory before rule 4 is the model's startup's, which applies Rule R by node
++id to the slots of the objects it makes from versions (`canonOfVersion`), where
++Java can apply it only where `posToId` gives the node: on the example runs
++(SIS/HandleExample.lean, `rule4Counts`) every pointer that rule 4 links is at
++its node's canonical object's position, and none needs `posToId` or the header
++read that Java does for a top node's pointer (bergdb 005-58, Outcome).
++`lake build` passes with no warnings and no `sorry`; `#print axioms` shows only
++Lean's standard axioms.
++
+ Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),
+ T1-L (`T1_lazy`, L3), CC and T2-L (`CC_canonical`, `T2_lazy`, L4) are proved,
+ and Java's first touches after restarts are checked against the model's rule
+diff --git a/lean/SIS.lean b/lean/SIS.lean
+index 5a03ea2..72edd69 100644
+--- a/lean/SIS.lean
++++ b/lean/SIS.lean
+@@ -15,6 +15,7 @@ import SIS.HandleTheorems
+ import SIS.HandleExample
+ import SIS.Proof.HandleRecords
+ import SIS.Proof.HandlePin
++import SIS.Proof.HandleLinkPos
+ import SIS.Reclaim
+ import SIS.ReclaimTheorems
+ import SIS.ReclaimExample
+diff --git a/lean/SIS/Handle.lean b/lean/SIS/Handle.lean
+index 25d8850..e79b8cf 100644
+--- a/lean/SIS/Handle.lean
++++ b/lean/SIS/Handle.lean
+@@ -38,7 +38,9 @@ The operations, each mirroring one of Evict.lean and one of Java's:
+   writer (`HMem.writeNode`, `HMem.writeNodes`, `handleTrans`);
+ * eviction (02, 4.7; `HMem.evictable`, `HMem.evict`);
+ * startup (02, 4.9; `handleStartup`): stage 1's reads unchanged, then rule 4,
+-  D's pointers resolved to handles by node id (`HMem.linkD`);
++  D's pointers resolved to handles by node id (`HMem.linkD`); and Java's rule 4
++  since bergdb 005-57, by position (`HMem.linkDPos`, `handleStartupPos`), which
++  bergdb 005-58 proves the same (`Rule4Pos_handles`, HandleTheorems.lean);
+ * runs with reads and evictions between transactions (`HCacheOp`,
+   `runHandles`).
+ 
+@@ -707,6 +709,71 @@ startup) and the root's object. -/
+ def handleStartup (sp : Spec V T) (S : Stream V T) : HMem V :=
+   (((lazyStartup sp S).sectionPos S).toH).linkD (startup sp S).D
+ 
++/-! ## Rule 4 by position (bergdb 005-57 and 005-58) -/
++
++/-- Java's `posToId` (`DbStarter.createMaps`) as a test, for a pointer to node y
++that names record r. Java's map holds the position of each index node version of
++R(s), ..., R(k), and of the version before each key node version there (its
++`prevPos`; top node versions have none, bergdb 011-03, G3), to the node's id. A
++Java position names one version; here a record holds at most one version of each
++node and a pointer names its node, so the test is whether the version of y at r
++is such a position: some record f of R(s), ..., R(k) holds a version w of y that
++is an index node version, and r is f, or w is a key node version
++(`isKeyLevel`) and r is the record of w's previous version, y's latest version in
++the records before f. -/
++def inPosToId (sp : Spec V T) (S : Stream V T) (s : Nat) (y : NodeId) (r : Nat) : Bool :=
++  (List.range' s (S.length - s)).any (fun f =>
++    match S.versionAt f y with
++    | some w => !w.isData && (f == r ||
++        (isKeyLevel sp w.isData w.level && (Stream.lv (S.take f) y).map (·.recNo) == some r))
++    | none => false)
++
++/-- Java's `byPos` (`DbStarter.linkD`, since bergdb 005-57): the live handle of
++each canonical object, by the position of its version. For a pointer to node y
++that names record r: y's live handle, if y's canonical object is the version of y
++at r. -/
++def HMem.byPos (m : HMem V) (y : NodeId) (r : Nat) : Option Nat :=
++  match m.canonicalOf y with
++  | some b => if (m.obj? b).bind (·.pos) == some r then m.tableOf y else none
++  | none => none
++
++/-- Rule 4 by position (bergdb 005-57; Java's `DbStarter.linkD` and
++`NodeCollection.linkToCanonical` since then): the pointers of `HMem.linkD`, of the
++same pinned objects, but the node a pointer names is found from what the startup
++knows, without reading the stream. For a pointer that holds no handle: a vpos is
++its node's id; a record in `posToId` (`inPosToId`) gives the id; with the id, the
++node's live handle if it holds a canonical object, as by node id (`byId`).
++Otherwise the canonical object whose version is at the record (`HMem.byPos`). A
++pointer that neither finds is left as it is, except a top node's (an object that
++is not on a key level, `isKeyLevel`: with a virtual root, a root child, or the
++root, which stands for Java's TopDs and which `HMem.linkD` links too), which
++Java resolves by reading the header at its position: by node id.
++Java links pointers to index nodes only; here values have handles (choice 5 of
++the header) and `HMem.linkD` links them, so this does too: a value's one version
++is its canonical object's, which `byPos` finds. (Java also leaves a pointer below
++the stream's first position, cut by reclaim, as it is; this model has no cuts.)
++That it links what `HMem.linkD` links is `Rule4Pos_handles` (HandleTheorems.lean). -/
++def HMem.linkDPos (sp : Spec V T) (S : Stream V T) (m : HMem V) (D : Dirty) : HMem V :=
++  { m with objs := m.objs.map (fun p =>
++      if !(p.2.canonical && (inD D p.2.node || p.1 == m.root)) then p else
++      (p.1, { p.2 with ptrs := p.2.ptrs.map (fun q =>
++        let byId : NodeId × HPtr := match m.canonicalOf q.1 with
++          | some _ => (q.1, { q.2 with handle := m.tableOf q.1 })
++          | none => q
++        match q.2.handle, q.2.ref with
++        | some _, _ => q
++        | none, none => byId
++        | none, some r =>
++          if inPosToId sp S m.s q.1 r then byId else
++          match m.byPos q.1 r with
++          | some n => (q.1, { q.2 with handle := some n })
++          | none => if isKeyLevel sp p.2.isData p.2.level then q else byId) })) }
++
++/-- Java's startup from S with handles and rule 4 by position (bergdb 005-57):
++`handleStartup` with `HMem.linkDPos` in place of `HMem.linkD`. -/
++def handleStartupPos (sp : Spec V T) (S : Stream V T) : HMem V :=
++  (((lazyStartup sp S).sectionPos S).toH).linkDPos sp S (startup sp S).D
++
+ /-! ## Cache operations and runs -/
+ 
+ /-- An operation between transactions, with handles: a read at time t, or the
+@@ -734,4 +801,17 @@ def runHandles (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List HCa
+     (r.1, p.2.2.foldl (HMem.cacheOp sp acc.2.2 r.1.S r.1.D) r.2, acc.2.2))
+     (init sp, handleStartup sp (init sp).S, (init sp).S)
+ 
++/-- A run with handles and rule 4 by position (bergdb 005-57, Java's since then):
++`runHandles` with `handleStartupPos` in place of `handleStartup`, at R(0) and at
++every restart, and nothing else changed (`runHandlesPos_of_startup`,
++SIS/Proof/HandleLinkPos.lean: were the two startups the same function, it would
++be `runHandles`). -/
++def runHandlesPos (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List HCacheOp)) :
++    DB V T × HMem V × Stream V T :=
++  ts.foldl (fun (acc : DB V T × HMem V × Stream V T) p =>
++    let r := handleTrans sp al acc.2.2 acc.1 acc.2.1 p.1
++    if p.2.1 then (startup sp r.1.S, handleStartupPos sp r.1.S, r.1.S) else
++    (r.1, p.2.2.foldl (HMem.cacheOp sp acc.2.2 r.1.S r.1.D) r.2, acc.2.2))
++    (init sp, handleStartupPos sp (init sp).S, (init sp).S)
++
+ end SIS
+diff --git a/lean/SIS/HandleExample.lean b/lean/SIS/HandleExample.lean
+index 01506e8..853b5a5 100644
+--- a/lean/SIS/HandleExample.lean
++++ b/lean/SIS/HandleExample.lean
+@@ -337,6 +337,72 @@ def runCounts [DecidableEq T] (sp : Spec Val T) (al : Algo Val T) (ts : List (T
+ #guard runCounts spec5 al5 (randomTs5 1 40) 2 1 == (0, 0, 20, 27)
+ #guard checkHandles spec5 al5 (randomTs5 1 40) 2 1 == (40, 0)
+ 
++/-! ## Rule 4 by position (bergdb 005-58), by running
++
++`rule4Pos_handles` (SIS/Proof/HandleLinkPos.lean) proves that rule 4 by
++position (`HMem.linkDPos`) links what rule 4 by node id (`HMem.linkD`) links, at
++the startup from the stream after any transaction of a run that meets the
++assumptions. Here, on such runs, the pointers that rule 4 links, counted by the
++record they name (`Rule4_positions`) and by how rule 4 by position finds them. -/
++
++/-- At the startup from S, the pointers of the pinned objects that hold no
++handle and are for a node with a canonical object, which rule 4 links: [all;
++those that name a vpos; a version of the startup section; the version before
++the node's first version there, and not the former; the version of the node's
++canonical object, and neither of the former; none of these (none, by
++`Rule4_positions`); those that rule 4 by position finds by `posToId`; by
++`byPos`; by node id, as Java reads the header for a top node's pointer; and not
++at all (none, by `Rule4Pos_handles`)]. -/
++def rule4Counts (sp : Spec Val T) (S : SIS.Stream Val T) : List Nat :=
++  let s := lastSp S
++  let m := ((lazyStartup sp S).sectionPos S).toH
++  let D := (startup sp S).D
++  let add := fun (l : List Nat) (i : Nat) => l.set i (l.getD i 0 + 1)
++  m.objs.foldl (fun acc p =>
++    if !(p.2.canonical && (inD D p.2.node || p.1 == m.root)) then acc else
++    p.2.ptrs.foldl (fun acc q =>
++      match q.2.handle, m.canonicalOf q.1 with
++      | none, some b =>
++        let acc := add acc 0
++        match q.2.ref with
++        | none => add acc 1
++        | some r =>
++          let i := if decide (s ≤ r) && (S.versionAt r q.1).isSome then 2
++            else if (newest S s q.1).isSome && (Stream.lv (S.take s) q.1).map (·.recNo) == some r then 3
++            else if (m.obj? b).bind (·.pos) == some r then 4 else 5
++          let j := if inPosToId sp S m.s q.1 r then 6 else if (m.byPos q.1 r).isSome then 7
++            else if !isKeyLevel sp p.2.isData p.2.level then 8 else 9
++          add (add acc i) j
++      | _, _ => acc) acc)
++    (List.replicate 10 0)
++
++/-- `rule4Counts` summed over the startups from R(0) and from the stream after
++each transaction of ts. -/
++def runRule4Counts [DecidableEq T] (sp : Spec Val T) (al : Algo Val T) (ts : List T) : List Nat :=
++  (List.range (ts.length + 1)).foldl (fun acc k =>
++    (acc.zip (rule4Counts sp (run sp al (ts.take k)).S)).map (fun (a, b) => a + b))
++    (List.replicate 10 0)
++
++-- Two runs that meet the assumptions, of examples 5 and 3 (41 startups each).
++-- Every pointer that rule 4 links names its node's canonical object's version,
++-- which `byPos` finds. None names a version of the section or the version
++-- before the node's first version there, and no top node's pointer needs its
++-- header: the model's startup raises the slots of the objects it makes from the
++-- section's versions to the newest version there by Rule R (`canonOfVersion`)
++-- and links them (`Mem.linkCanonical`), which Java can do only where `posToId`
++-- gives the node (bergdb 005-58, Outcome). The same in 20 runs of 1,060
++-- startups (example 5, seeds 1 to 12, 60 transactions; example 3, seeds 1 to 8,
++-- 40 transactions: 434 pointers); in example 2 (a written root) rule 4 found
++-- nothing to link in six runs.
++#guard runOKB spec5 al5 ((randomTs5 3 40).map (·.1)) &&
++  physRunOKB spec5 al5 ((randomTs5 3 40).map (·.1)) &&
++  evictRunOKB spec5 al5 ((randomTs5 3 40).map (·.1))
++#guard runRule4Counts spec5 al5 ((randomTs5 3 40).map (·.1)) == [32, 0, 0, 0, 32, 0, 0, 32, 0, 0]
++#guard runOKB spec3 al3 ((randomTs3 4 40).map (·.1)) &&
++  physRunOKB spec3 al3 ((randomTs3 4 40).map (·.1)) &&
++  evictRunOKB spec3 al3 ((randomTs3 4 40).map (·.1))
++#guard runRule4Counts spec3 al3 ((randomTs3 4 40).map (·.1)) == [33, 0, 0, 0, 33, 0, 0, 33, 0, 0]
++
+ /-! ## Three small examples
+ 
+ Node 5 has a version in R(0) and a newer one in R(2): `vY0`, `vY2` and the
+diff --git a/lean/SIS/HandleTheorems.lean b/lean/SIS/HandleTheorems.lean
+index d926c34..9a08299 100644
+--- a/lean/SIS/HandleTheorems.lean
++++ b/lean/SIS/HandleTheorems.lean
+@@ -7,7 +7,10 @@ assumed or left unproved. All are proved for every `sp` and `al`:
+ `TR_handles` (`tr_handles`, SIS/Proof/HandleReadT.lean), `T2_handles` and
+ `TR_handles_restarts` (`t2_handles`, `tr_handles_restarts`,
+ SIS/Proof/HandleRestart.lean), and `TP_handles` (`tp_handles`,
+-SIS/Proof/HandlePin.lean); the last four in phase 4a.
++SIS/Proof/HandlePin.lean); the last four in phase 4a. And rule 4 by position
++(bergdb 005-58): `Rule4_positions`, `Rule4Pos_handles` and `RunPos_handles`
++(`rule4_positions`, `rule4Pos_handles`, `runPos_handles`,
++SIS/Proof/HandleLinkPos.lean).
+ 
+ They mirror PhysTheorems.lean's `TC_records` (T-CACHE), `TR_view` (T-READ),
+ `TP_pins` (T-PIN), and `T2_cache` (T2-C) and `TR_view_restarts`, the forms
+@@ -236,4 +239,71 @@ def TP_handles (sp : Spec V T) (al : Algo V T) : Prop :=
+         (m.cacheOp sp r.2.2 r.1.S r.1.D (.evict n)).obj? a = none ∧
+         ((m.cacheOp sp r.2.2 r.1.S r.1.D (.evict n)).handle? n).map (·.dead) = some true
+ 
++/-! ## Rule 4 by position (bergdb 005-58) -/
++
++/-- The positions of rule 4 (bergdb 005-58, question 1; the argument of 005-57's
++report, section 2). In a run of BergDB's algorithm with marking that meets the
++assumptions, as in `T2_handles`, take the startup with handles from the stream S
++after any transaction k, just before rule 4: m, the memory that `handleStartup`
++gives `HMem.linkD`, with s the startup pos. Every pointer of a pinned object (the
++canonical object of a node of D, or the root's object) that holds no handle and
++names a record r, to a node y that has a canonical object b, names (1) a version
++of y in the startup section, R(s), ..., R(k); or (2) y's latest version before
++it, in R(0), ..., R(s - 1), when y has a version in the section: the version just
++before y's first version there (Java's `prevPos`); or (3) the version of b, b's
++position. A pointer that names a vpos (`p.ref = none`) is left out: Java takes a
++vpos as its node's id. So Java's rule 4 by position (`HMem.linkDPos`) finds the
++pointer's node (`Rule4Pos_handles`): by `posToId` in (1), and in (2) when y is a
++key node, whose versions name their `prevPos`; by `byPos` in (3) and for a data
++node. In (2) for a top node y, the pointer is a top node's or the root's, which
++`HMem.linkDPos` takes by node id, as Java reads the header for a top node's.
++Proved: `rule4_positions` (SIS/Proof/HandleLinkPos.lean). -/
++def Rule4_positions (sp : Spec V T) (al : Algo V T) : Prop :=
++  ∀ ts : List T, RunOK sp al ts → PhysRunOK sp al ts → EvictRunOK sp al ts →
++    al.stillDirty = javaTest sp → al.mark = true →
++    ∀ k ≤ ts.length,
++      let S := (run sp al (ts.take k)).S
++      let s := lastSp S
++      let m := ((lazyStartup sp S).sectionPos S).toH
++      ∀ a o y p r b, m.obj? a = some o → o.canonical = true →
++        (inD (startup sp S).D o.node = true ∨ a = m.root) →
++        (y, p) ∈ o.ptrs → p.handle = none → p.ref = some r →
++        m.canonicalOf y = some b →
++        (s ≤ r ∧ (S.versionAt r y).isSome) ∨
++        ((newest S s y).isSome ∧ (Stream.lv (S.take s) y).map (·.recNo) = some r) ∨
++        (m.obj? b).bind (·.pos) = some r
++
++/-- Rule 4 by position is rule 4 by node id (bergdb 005-58, question 4). In a
++run as in `Rule4_positions`, the startup with handles and rule 4 by position
++(`handleStartupPos`, Java's since bergdb 005-57) from the stream after any
++transaction k gives the same memory as the startup with rule 4 by node id
++(`handleStartup`). Every startup of `runHandles` is from such a stream (T2-C:
++its stream is the run's), so the theorems over handles with restarts hold with
++rule 4 by position too (`RunPos_handles`). The memory before rule 4 is the
++model's startup's, which applies Rule R by node id to the slots of the canonical
++objects it makes from versions, of the section and for the nodes of D
++(`canonOfVersion`); Java's startup can apply it only where `posToId` gives the
++pointer's node. So a pointer that reaches Java's rule 4 with no handle may be
++raised by Rule R or linked here before it: a top node's pointer to a top node's
++version before the section, whose header Java reads (bergdb 005-58, Outcome).
++Proved: `rule4Pos_handles` (SIS/Proof/HandleLinkPos.lean). -/
++def Rule4Pos_handles (sp : Spec V T) (al : Algo V T) : Prop :=
++  ∀ ts : List T, RunOK sp al ts → PhysRunOK sp al ts → EvictRunOK sp al ts →
++    al.stillDirty = javaTest sp → al.mark = true →
++    ∀ k ≤ ts.length,
++      handleStartupPos sp (run sp al (ts.take k)).S = handleStartup sp (run sp al (ts.take k)).S
++
++/-- Runs with rule 4 by position are runs with rule 4 by node id (bergdb 005-58).
++In a run as in `T2_handles`, the run with handles and rule 4 by position at every
++startup (`runHandlesPos`) is the same as the run with rule 4 by node id
++(`runHandles`) after every transaction and its operations or its restart: the
++same state, memory and stream of the last startup. So `T2_handles`,
++`TR_handles_restarts` and `TP_handles` hold for it as they are. Proved:
++`runPos_handles` (SIS/Proof/HandleLinkPos.lean). -/
++def RunPos_handles (sp : Spec V T) (al : Algo V T) : Prop :=
++  ∀ ts : List (T × Bool × List HCacheOp),
++    RunOK sp al (ts.map (·.1)) → PhysRunOK sp al (ts.map (·.1)) →
++    EvictRunOK sp al (ts.map (·.1)) → al.stillDirty = javaTest sp → al.mark = true →
++    ∀ j ≤ ts.length, runHandlesPos sp al (ts.take j) = runHandles sp al (ts.take j)
++
+ end SIS
+diff --git a/lean/SIS/Proof/EvictRerun.lean b/lean/SIS/Proof/EvictRerun.lean
+index 64a0c3c..44311f6 100644
+--- a/lean/SIS/Proof/EvictRerun.lean
++++ b/lean/SIS/Proof/EvictRerun.lean
+@@ -96,6 +96,33 @@ theorem fresh_clean (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp) (h
+   intro hzn
+   rw [href, htake, lv_take (fun r' hr' => (newest_eq_none_iff _ _ z).mp hzn r' (by omega))]
+ 
++/-- As `fresh_clean`, without Rule R: such a node's latest version names, for
++each pointee, its latest version in the stream after T(j) (bergdb 005-58). -/
++theorem clean_ref_lvAt (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true)
++    (hev : EvictRunOK sp al ts) {j k : Nat} (hjk : j ≤ k) (hk : k ≤ ts.length)
++    (hsj : lastSp (st sp al ts k).S ≤ j) {x : NodeId}
++    (hnew : newest (st sp al ts k).S (lastSp (st sp al ts k).S) x = none)
++    (hr : reachable sp (st sp al ts j).P j x = true) (hxD : inD (st sp al ts j).D x = false)
++    (hxw : written sp x = true) {v : Version V} (hv : (st sp al ts k).S.lv x = some v) :
++    ∀ z ∈ pointees sp v.hist, v.ref? z = ((st sp al ts j).S.lv z).map (·.recNo) := by
++  have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
++  have hinvj := inv_st sp al ts hok hst j (by omega)
++  have hlog := evLogic_st sp al ts hok hj hmk hev j (by omega)
++  have htake := st_S_take hok hst hjk hk
++  have hnone := (newest_eq_none_iff (st sp al ts k).S (lastSp (st sp al ts k).S) x).mp hnew
++  have hvj : (st sp al ts j).S.lv x = some v := by
++    rw [htake, lv_take (fun r' hr' => hnone r' (by omega))]; exact hv
++  obtain ⟨n, hn⟩ := Option.isSome_iff_exists.mp (Reach.isSome ((reachable_iff _ _ _ _).mp hr))
++  obtain ⟨v', hv', hvh, -, -⟩ := hinvj.lv_whole hn hxw hxD hr
++  rw [hvj, Option.some.injEq] at hv'
++  subst hv'
++  intro z hz
++  have hz' : z ∈ pointees sp n.hist := by rw [← hvh]; exact hz
++  obtain ⟨-, v'', hv'', href⟩ := hlog.clean x n hxw hr hn hxD z hz'
++  rw [hvj, Option.some.injEq] at hv''
++  subst hv''
++  exact href
++
+ /-- A node whose D entry predates the section has a version in it: so a node
+ without a version in the section, current after T(j) for j in it, is not in D
+ then, but by a got-dirty entry of the section. -/
+@@ -132,12 +159,88 @@ theorem ruleRRef_idem (S : Stream V T) (s : Nat) (y : NodeId) (r : Option Nat) :
+       · simp [h]
+       · simp only [h, ↓reduceIte]
+ 
++/-! ## Near the section (bergdb 005-58) -/
++
++/-- No version of y is in a record strictly between r and s: a reference to
++record r, for pointee y, names a version of y in R(s), ..., or y's latest
++version before R(s) (bergdb 005-58). -/
++def NearSec (S : Stream V T) (s : Nat) (y : NodeId) (r : Nat) : Prop :=
++  ∀ r', r < r' → r' < s → S.versionAt r' y = none
++
++section Near
++
++variable {sp : Spec V T} {db : DB V T} {k : Nat}
++
++/-- A reference to y's latest version is near every section. -/
++theorem Inv.nearSec_of_lv (hinv : Inv sp db k) {y : NodeId} {r : Nat}
++    (h : (db.S.lv y).map (·.recNo) = some r) (s : Nat) : NearSec db.S s y r := by
++  intro r' hr' _
++  cases hl : db.S.lv y with
++  | none => rw [hl] at h; cases h
++  | some u =>
++    rw [hl, Option.map_some, Option.some.injEq] at h
++    obtain ⟨r0, h0, hlast⟩ := (lv_eq_some_iff db.S y u).mp hl
++    obtain ⟨-, hrec, -⟩ := hinv.version_node h0
++    exact hlast r' (by omega)
++
++/-- A reference of a version in record i names its pointee's latest version at
++that record (the record rule), so it is near every section that starts at or
++before i. -/
++theorem Inv.nearSec_of_ref (hinv : Inv sp db k) {i : Nat} {x : NodeId} {v : Version V}
++    (hv : db.S.versionAt i x = some v) {s : Nat} (hsi : s ≤ i) {y : NodeId} {r1 : Nat}
++    (h1 : v.ref? y = some r1) : NearSec db.S s y r1 := by
++  intro r' hr1 hrs
++  obtain ⟨R, hR, hvR, -⟩ := versionAt_spec hv
++  have hi : i < db.S.length := (List.getElem?_eq_some_iff.mp hR).1
++  obtain ⟨pre, hpre, href⟩ := hinv.ref i R hR v hvR
++  rw [href y] at h1
++  split at h1
++  · cases hl : (Stream.building (db.S.take i) pre).lv y with
++    | none => rw [hl] at h1; cases h1
++    | some u =>
++      rw [hl] at h1
++      simp only [Option.map_some, Option.some.injEq] at h1
++      obtain ⟨r0, hr0, hlast⟩ := (lv_eq_some_iff _ y u).mp hl
++      obtain ⟨-, hur, -⟩ := hinv.version_node ((sext_building_take hR hpre).versionAt hr0)
++      have h2 := hlast r' (by omega)
++      rw [versionAt_building_lt (by simp only [List.length_take]; omega), versionAt_take] at h2
++      simpa [show r' < i by omega] using h2
++  · cases h1
++
++/-- A reference of a version names a pointee of its history. -/
++theorem Inv.ref_mem_pointees (hinv : Inv sp db k) {i : Nat} {x : NodeId} {v : Version V}
++    (hv : db.S.versionAt i x = some v) {y : NodeId} {r1 : Nat} (h1 : v.ref? y = some r1) :
++    y ∈ pointees sp v.hist := by
++  obtain ⟨R, hR, hvR, -⟩ := versionAt_spec hv
++  obtain ⟨pre, -, href⟩ := hinv.ref i R hR v hvR
++  rw [href y] at h1
++  split at h1
++  · assumption
++  · cases h1
++
++/-- A reference to y's latest version in R(0), ..., R(K) is near a section that
++starts at or before K. -/
++theorem Inv.nearSec_of_lvAt (hinv : Inv sp db k) {K s : Nat} (hsK : s ≤ K) {y : NodeId}
++    {u : Version V} (hl : Stream.lv (db.S.take (K + 1)) y = some u) : NearSec db.S s y u.recNo := by
++  intro r' hr' hrs
++  obtain ⟨r0, h0, hlast⟩ := (lv_eq_some_iff _ y u).mp hl
++  rw [versionAt_take] at h0
++  split at h0
++  · obtain ⟨-, hrec, -⟩ := hinv.version_node h0
++    have h2 := hlast r' (by omega)
++    rw [versionAt_take] at h2
++    simpa [show r' < K + 1 by omega] using h2
++  · cases h0
++
++end Near
++
+ /-- The invariant of the startup's memory, against the stream S after T(k), all
+ through the rerun: every object is canonical; every stream slot names, after
+ Rule R of S's section, its pointee's latest version; every memory slot names an
+ object of its pointee; an object of a node without a version in the section is
+-at the node's latest version; every object has a slot for each pointee; and
+-every stream slot names a version. -/
++at the node's latest version; every object has a slot for each pointee; every
++stream slot names a version, and no version of its pointee lies between that one
++and the section; and every slot is for a pointee (the last two, bergdb 005-58). -/
+ structure RInv (sp : Spec V T) (S : Stream V T) (m : Mem V) : Prop where
+   canon : ∀ h o, m.obj? h = some o → o.canonical = true
+   fresh : ∀ h o, m.obj? h = some o → ∀ y r, o.slot? y = some (Slot.stream r) →
+@@ -151,6 +254,12 @@ structure RInv (sp : Spec V T) (S : Stream V T) (m : Mem V) : Prop where
+   /-- Every stream slot's reference names a version of its pointee. -/
+   ver : ∀ h o, m.obj? h = some o → ∀ y r, o.slot? y = some (Slot.stream (some r)) →
+     ∃ u, S.versionAt r y = some u
++  /-- No version of a stream slot's pointee is in a record between the slot's and
++  the section (bergdb 005-58). -/
++  near : ∀ h o, m.obj? h = some o → ∀ y r, o.slot? y = some (Slot.stream (some r)) →
++    NearSec S (lastSp S) y r
++  /-- Every slot is for a pointee of its object's history (bergdb 005-58). -/
++  keys : ∀ h o, m.obj? h = some o → ∀ y, (o.slot? y).isSome → y ∈ pointees sp o.hist
+ 
+ /-- The stream slot of the object startup makes from version w names, after Rule
+ R, what w's reference does. -/
+@@ -275,8 +384,25 @@ theorem rinv_lazyBase (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp)
+       exact ⟨w, hinv.lv_at hlv⟩
+     · subst hoe
+       exact hcv u (fun r' y' h' => hinv.ref_versionAt (hinv.lv_at hu) h') hsl
++  -- The stream slots of the objects before the memory slots are Rule R's of a
++  -- reference, so Rule R leaves them (bergdb 005-58).
++  have hfix2 : ∀ h o2, (lazyRoot sp (st sp al ts k).S (lazySec sp (st sp al ts k).S)).obj? h = some o2 →
++      ∀ y r, o2.slot? y = some (Slot.stream r) →
++      ruleRRef (st sp al ts k).S (lastSp (st sp al ts k).S) y r = r := by
++    intro h o2 ho2 y r hsl
++    obtain ⟨-, -, hsrc⟩ := hb.obj h o2 ho2
++    have hcv : ∀ w : Version V, (canonOfVersion sp (st sp al ts k).S (lastSp (st sp al ts k).S) w).slot? y =
++        some (Slot.stream r) → ruleRRef (st sp al ts k).S (lastSp (st sp al ts k).S) y r = r := by
++      intro w hs
++      have := canonOfVersion_slot_eq hs
++      simp only [Slot.stream.injEq] at this
++      rw [this, ruleRRef_idem]
++    rcases hsrc with ⟨w, -, -, -, hoe, -⟩ | ⟨-, hoe⟩ | ⟨-, u, -, -, -, hoe⟩
++    · subst hoe; exact hcv w hsl
++    · subst hoe; exact hcv _ hsl
++    · subst hoe; exact hcv u hsl
+   refine ⟨fun h o ho => ?_, fun h o ho y r hsl => ?_, fun h o ho y h' hsl => ?_, fun h o ho hn => ?_,
+-    fun h o ho y hy => ?_, fun h o ho y r hsl => ?_⟩
++    fun h o ho y hy => ?_, fun h o ho y r hsl => ?_, fun h o ho y r hsl => ?_, fun h o ho y hy => ?_⟩
+   · unfold lazyBase at ho
+     rw [linkCanonical_obj?] at ho
+     obtain ⟨o2, ho2, rfl⟩ := Option.map_eq_some_iff.mp ho
+@@ -377,6 +503,57 @@ theorem rinv_lazyBase (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest sp)
+       subst hq
+       exact hver2 h o2 ho2 y r hsl2
+     · rw [he] at hq; cases hq
++  · -- a stream slot names its pointee's latest version, so nothing lies between
++    unfold lazyBase at ho
++    rw [linkCanonical_obj?] at ho
++    obtain ⟨o2, ho2, rfl⟩ := Option.map_eq_some_iff.mp ho
++    obtain ⟨-, hc2, -⟩ := hb.obj h o2 ho2
++    rw [linkObj_slot? _ hc2] at hsl
++    obtain ⟨sl2, hsl2, hq⟩ := Option.map_eq_some_iff.mp hsl
++    rcases linkQ_cases (lazyRoot sp (st sp al ts k).S (lazySec sp (st sp al ts k).S)) y sl2 with
++      he | ⟨h0, o0, -, -, -, he⟩
++    · rw [he] at hq
++      subst hq
++      have hfr := hfresh2 h o2 ho2 y (some r) hsl2
++      rw [hfix2 h o2 ho2 y (some r) hsl2] at hfr
++      exact hinv.nearSec_of_lv hfr.symm _
++    · rw [he] at hq; cases hq
++  · -- every slot is for a pointee of the history read
++    unfold lazyBase at ho
++    rw [linkCanonical_obj?] at ho
++    obtain ⟨o2, ho2, rfl⟩ := Option.map_eq_some_iff.mp ho
++    obtain ⟨-, hc2, hsrc⟩ := hb.obj h o2 ho2
++    rw [linkObj_slot? _ hc2, Option.isSome_map] at hy
++    rw [(linkObj_fields _ o2).2.2.2.1]
++    rcases hsrc with ⟨w, -, -, -, hoe, -⟩ | ⟨-, hoe⟩ | ⟨-, u, -, -, -, hoe⟩
++    · subst hoe
++      rw [(canonOfVersion_fields sp _ _ w).2.2.2.1]
++      rw [canonOfVersion_slot?] at hy
++      by_cases hmem : y ∈ pointees sp (cutHist w (if isKeyLevel sp w.isData w.level then
++          some (lastSp (st sp al ts k).S) else none))
++      · exact hmem
++      · simp [hmem] at hy
++    · subst hoe
++      have hy' : ((canonOfVersion sp (st sp al ts k).S (lastSp (st sp al ts k).S)
++          (rootVersion sp (lastSp (st sp al ts k).S)
++            (topsRead sp (st sp al ts k).S (lastSp (st sp al ts k).S) true))).slot? y).isSome := hy
++      rw [canonOfVersion_slot?] at hy'
++      generalize hrv : rootVersion sp (lastSp (st sp al ts k).S)
++        (topsRead sp (st sp al ts k).S (lastSp (st sp al ts k).S) true) = rv at hy'
++      show y ∈ pointees sp (rootVersion sp (lastSp (st sp al ts k).S)
++        (topsRead sp (st sp al ts k).S (lastSp (st sp al ts k).S) true)).hist
++      rw [hrv]
++      by_cases hmem : y ∈ pointees sp (cutHist rv (if isKeyLevel sp rv.isData rv.level then
++          some (lastSp (st sp al ts k).S) else none))
++      · exact pointees_cutHist hmem
++      · simp [hmem] at hy'
++    · subst hoe
++      rw [(canonOfVersion_fields sp _ _ u).2.2.2.1]
++      rw [canonOfVersion_slot?] at hy
++      by_cases hmem : y ∈ pointees sp (cutHist u (if isKeyLevel sp u.isData u.level then
++          some (lastSp (st sp al ts k).S) else none))
++      · exact hmem
++      · simp [hmem] at hy
+ 
+ end Base
+ 
+@@ -553,8 +730,40 @@ theorem RInv.reachOnPath (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest s
+                         obtain ⟨hsd, R, hR, hxR, hdK⟩ := notD_of_newest_none hok hj (Nat.le_of_lt hKk) hk hsK hnw hd'
+                         exact hm.coverGd d R x hsd hdK hR hxR hcx
+                     exact (fresh_clean hok hj hmk hev (Nat.le_of_lt hKk) hk hsK hnw hrx hxD hxw hlv).2 z hz
++                -- No version of a pointee lies between the new object's references and the
++                -- section (bergdb 005-58): a version of the section names the latest versions
++                -- at its record; x, current and clean at K, names the latest versions at K.
++                have hnearw : ∀ z r', w.ref? z = some r' →
++                    NearSec (st sp al ts k).S (lastSp (st sp al ts k).S) z r' := by
++                  intro z r' hz
++                  cases hnw : newest (st sp al ts k).S (lastSp (st sp al ts k).S) x with
++                  | some u =>
++                    obtain ⟨r0, hr0, hu0⟩ := newest_some hnw
++                    have hu := newest_lv hnw
++                    rw [hlv, Option.some.injEq] at hu
++                    subst hu
++                    exact hinvk.nearSec_of_ref hu0 hr0 hz
++                  | none =>
++                    have hxD : inD (st sp al ts K).D x = false := by
++                      cases hd : inD (st sp al ts K).D x with
++                      | false => rfl
++                      | true =>
++                        exfalso
++                        obtain ⟨d, hd'⟩ := (inD_iff _ _).mp hd
++                        obtain ⟨hsd, R, hR, hxR, hdK⟩ := notD_of_newest_none hok hj (Nat.le_of_lt hKk) hk hsK hnw hd'
++                        exact hm.coverGd d R x hsd hdK hR hxR hcx
++                    have href := clean_ref_lvAt hok hj hmk hev (Nat.le_of_lt hKk) hk hsK hnw hrx hxD hxw hlv z
++                      (hinvk.ref_mem_pointees hw hz)
++                    rw [hz, st_S_take hok hst (Nat.le_of_lt hKk) hk] at href
++                    cases hl : Stream.lv ((st sp al ts k).S.take (K + 1)) z with
++                    | none => rw [hl] at href; cases href
++                    | some u =>
++                      rw [hl, Option.map_some, Option.some.injEq] at href
++                      rw [href]
++                      exact hinvk.nearSec_of_lvAt hsK hl
+                 refine ⟨fun h' o' ho' => ?_, fun h' o' ho' z r' hz => ?_, fun h' o' ho' z h'' hz => ?_,
+-                  fun h' o' ho' hn => ?_, fun h' o' ho' z hz => ?_, fun h' o' ho' z r' hz => ?_⟩
++                  fun h' o' ho' hn => ?_, fun h' o' ho' z hz => ?_, fun h' o' ho' z r' hz => ?_,
++                  fun h' o' ho' z r' hz => ?_, fun h' o' ho' z hz => ?_⟩
+                 · rw [hobj] at ho'
+                   split at ho'
+                   · simp only [Option.some.injEq] at ho'; subst ho'; exact hco
+@@ -646,6 +855,39 @@ theorem RInv.reachOnPath (hok : RunOK sp al ts) (hj : al.stillDirty = javaTest s
+                       simp only [Slot.stream.injEq] at hze
+                       exact hinvk.ref_versionAt hw hze.symm
+                     · exact hr.ver h' o' ho' z r' hz
++                · -- no version between a stream slot's and the section
++                  rw [hobj] at ho'
++                  split at ho'
++                  · simp only [Option.some.injEq] at ho'; subst ho'
++                    rw [slot?_setSlot_of hsl] at hz
++                    split at hz
++                    · cases hz
++                    · exact hr.near hp op hop z r' hz
++                  · split at ho'
++                    · simp only [Option.some.injEq] at ho'; subst ho'
++                      obtain ⟨-, hze⟩ := hslot1 z _ hz
++                      simp only [Slot.stream.injEq] at hze
++                      exact hnearw z r' hze.symm
++                    · exact hr.near h' o' ho' z r' hz
++                · -- every slot is for a pointee
++                  rw [hobj] at ho'
++                  split at ho'
++                  · simp only [Option.some.injEq] at ho'; subst ho'
++                    rw [slot?_setSlot_of hsl] at hz
++                    show z ∈ pointees sp op.hist
++                    split at hz
++                    · rename_i hzx; subst hzx; exact hr.keys hp op hop _ (by rw [hsl]; rfl)
++                    · exact hr.keys hp op hop z hz
++                  · split at ho'
++                    · simp only [Option.some.injEq] at ho'; subst ho'
++                      show z ∈ pointees sp (Obj.ofVersion sp w cut).hist
++                      have hz' : ((Obj.ofVersion sp w cut).slot? z).isSome := hz
++                      rw [Obj.ofVersion_slot?] at hz'
++                      rw [f4]
++                      split at hz'
++                      · assumption
++                      · cases hz'
++                    · exact hr.keys h' o' ho' z hz
+ 
+ end Walk
+ 
+@@ -748,7 +990,7 @@ theorem RInv.applyChange {m : Mem V} (hr : RInv sp S m) (hfr : ∀ h, m.next ≤
+               exact hsrc q (List.mem_of_find?_eq_some hfd) z _ hz
+     · exact hsrc (h, o1) (mem_objs_of_obj? ho1) z _ hz
+   refine ⟨fun h o3 ho3 => ?_, fun h o3 ho3 z r hz => ?_, fun h o3 ho3 z h' hz => ?_, fun h o3 ho3 hn => ?_,
+-    fun h o3 ho3 z hz => ?_, fun h o3 ho3 z r hz => ?_⟩
++    fun h o3 ho3 z hz => ?_, fun h o3 ho3 z r hz => ?_, fun h o3 ho3 z r hz => ?_, fun h o3 ho3 z hz => ?_⟩
+   · obtain ⟨o1, L, ho1, rfl⟩ := hobj h o3 ho3
+     rw [(updAll_core sp P j _ L o1).2.2.2.2.1]
+     rcases hcls h o1 ho1 with ⟨-, h2⟩ | ⟨-, nn, -, hon, -⟩
+@@ -873,6 +1115,20 @@ theorem RInv.applyChange {m : Mem V} (hr : RInv sp S m) (hfr : ∀ h, m.next ≤
+         exact hnot (List.mem_flatMap.mpr ⟨a, ha, hze⟩)
+   · obtain ⟨h2, o2, ho2, hs2⟩ := hstr h o3 ho3 z (some r) hz
+     exact hr.ver h2 o2 ho2 z r hs2
++  · obtain ⟨h2, o2, ho2, hs2⟩ := hstr h o3 ho3 z (some r) hz
++    exact hr.near h2 o2 ho2 z r hs2
++  · -- a slot is an old one, for a pointee of the old history, or one for a new entry
++    obtain ⟨o1, L, ho1, rfl⟩ := hobj h o3 ho3
++    rw [(updAll_core sp P j _ L o1).2.2.2.1]
++    rw [updAll_slot] at hz
++    split at hz
++    · rename_i hmem
++      obtain ⟨a, ha, hza⟩ := List.mem_flatMap.mp hmem
++      exact (mem_pointees sp _ z).mpr ⟨⟨j, a.2⟩, List.mem_append_right _ (List.mem_map.mpr ⟨a, ha, rfl⟩), hza⟩
++    · rcases hcls h o1 ho1 with ⟨-, h2⟩ | ⟨-, nn, -, hon, -⟩
++      · obtain ⟨e, he, hze⟩ := (mem_pointees sp _ z).mp (hr.keys h o1 h2 z hz)
++        exact (mem_pointees sp _ z).mpr ⟨e, List.mem_append_left _ he, hze⟩
++      · rw [hon] at hz; simp [newObj, Obj.slot?] at hz
+ 
+ end Apply
+ 
+diff --git a/lean/SIS/Proof/HandleLinkPos.lean b/lean/SIS/Proof/HandleLinkPos.lean
+new file mode 100644
+index 0000000..6bde86a
+--- /dev/null
++++ b/lean/SIS/Proof/HandleLinkPos.lean
+@@ -0,0 +1,537 @@
++/-
++Proofs about rule 4 by position (bergdb 005-58): `Rule4_positions`,
++`Rule4Pos_handles` and `RunPos_handles` of SIS/HandleTheorems.lean. The memory
++that the startup with handles gives rule 4 holds the objects of the lazy
++startup's memory, taken to handles; a pointer that holds no handle there is a
++stream slot of that memory, which the rerun's invariant describes (`RInv`,
++SIS/Proof/EvictRerun.lean): it names a version of its pointee, its pointee's
++latest version after Rule R, and no version of its pointee lies between it and
++the startup section (`RInv.near`). So such a pointer names a version of the
++section, its pointee's latest version before the section, or, when the pointee
++has no version in the section, the pointee's latest version, its canonical
++object's position (`rule4_positions`). Rule 4 by position (`HMem.linkDPos`) then
++finds what rule 4 by node id finds (`rule4Pos_handles`): in the second case, for
++a key node's pointer, by the `prevPos` of the pointee's first version in the
++section, which is a key node version, since a key node points only to key nodes
++and data nodes (A4); a top node's pointer that neither map finds goes by node
++id; a data node has one version, its canonical object's. Every startup of a run
++with handles is from the run's stream (T2-C), so the run with rule 4 by position
++is the run with rule 4 by node id (`runPos_handles`).
++-/
++import SIS.Proof.HandleRestart
++import SIS.Proof.EvictKeys
++
++set_option linter.unusedSectionVars false
++
++namespace SIS
++
++variable {V T : Type} [DecidableEq V]
++
++/-! ## The memory before rule 4 -/
++
++/-- The positions of the section leave the node table and the canonical objects. -/
++theorem Mem.sectionPos_canonicalOf (m : Mem V) (S : Stream V T) (y : NodeId) :
++    (m.sectionPos S).canonicalOf y = m.canonicalOf y := by
++  unfold Mem.canonicalOf
++  rw [show (m.sectionPos S).tableOf y = m.tableOf y from rfl]
++  cases m.tableOf y with
++  | none => rfl
++  | some h =>
++    simp only
++    rw [Mem.sectionPos_obj?]
++    cases ho : m.obj? h with
++    | none => rfl
++    | some o =>
++      simp only [Option.map_some]
++      cases hc : o.canonical
++      · simp [hc]
++      · cases newest S m.s o.node <;> simp [hc]
++
++/-- The positions change only an object's position. -/
++theorem sectionPosObj_fields (S : Stream V T) (s : Nat) (o : Obj V) :
++    (if !o.canonical then o else match newest S s o.node with
++      | some w => { o with pos := some w.recNo }
++      | none => o).node = o.node ∧
++    (if !o.canonical then o else match newest S s o.node with
++      | some w => { o with pos := some w.recNo }
++      | none => o).level = o.level ∧
++    (if !o.canonical then o else match newest S s o.node with
++      | some w => { o with pos := some w.recNo }
++      | none => o).isData = o.isData ∧
++    (if !o.canonical then o else match newest S s o.node with
++      | some w => { o with pos := some w.recNo }
++      | none => o).hist = o.hist ∧
++    (if !o.canonical then o else match newest S s o.node with
++      | some w => { o with pos := some w.recNo }
++      | none => o).slots = o.slots := by
++  cases o.canonical
++  · simp
++  · cases newest S s o.node <;> simp
++
++/-- An object of the memory before rule 4 is an object of the lazy startup's
++memory, held by the node table, with its pointers made from its slots. -/
++theorem before_obj {m0 : Mem V} {S : Stream V T} {a : Nat} {o : HObj V}
++    (ho : ((m0.sectionPos S).toH).obj? a = some o) :
++    ∃ o0, m0.obj? a = some o0 ∧ o.node = o0.node ∧ o.level = o0.level ∧ o.isData = o0.isData ∧
++      o.hist = o0.hist ∧ o.ptrs = o0.slots.map (m0.sectionPos S).ptrOfH := by
++  rw [Mem.toH_obj?] at ho
++  split at ho
++  · obtain ⟨o1, ho1, rfl⟩ := Option.map_eq_some_iff.mp ho
++    rw [Mem.sectionPos_obj?] at ho1
++    obtain ⟨o0, ho0, rfl⟩ := Option.map_eq_some_iff.mp ho1
++    obtain ⟨f1, f2, f3, f4, f5⟩ := sectionPosObj_fields S m0.s o0
++    exact ⟨o0, ho0, f1, f2, f3, f4, congrArg (List.map (m0.sectionPos S).ptrOfH) f5⟩
++  · cases ho
++
++section Before
++
++variable {sp : Spec V T} {al : Algo V T} {ts : List T}
++
++/-- A pointer that holds no handle and names record r, of an object of the memory
++before rule 4 (startup from the stream after T(k)), is a stream slot with record
++r of the lazy startup's object. -/
++theorem before_ptr (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hj : al.stillDirty = javaTest sp)
++    (hmk : al.mark = true) (hev : EvictRunOK sp al ts) {k : Nat} (hk : k ≤ ts.length) {a : Nat}
++    {o : HObj V}
++    (ho : (((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).toH).obj? a = some o)
++    {y : NodeId} {p : HPtr} (hmem : (y, p) ∈ o.ptrs) (hh : p.handle = none) {r : Nat}
++    (hr : p.ref = some r) :
++    ∃ o0, (lazyStartup sp (st sp al ts k).S).obj? a = some o0 ∧
++      o0.slot? y = some (Slot.stream (some r)) ∧ o.node = o0.node ∧ o.level = o0.level ∧
++      o.hist = o0.hist := by
++  obtain ⟨hri, hm⟩ := rinv_lazyStartup hok hph hj hmk hev hk
++  obtain ⟨o0, ho0, hn, hl, -, hh0, hp⟩ := before_obj ho
++  refine ⟨o0, ho0, ?_, hn, hl, hh0⟩
++  rw [hp] at hmem
++  obtain ⟨q, hq, hqe⟩ := List.mem_map.mp hmem
++  have hq1 : q.1 = y := by
++    have := congrArg Prod.fst hqe
++    rw [Mem.ptrOfH_fst] at this
++    exact this
++  have hnd := (slotsND_lazyStartup sp (st sp al ts k).S).obj ho0
++  have hsl : o0.slot? y = some q.2 := by
++    rw [← hq1]; exact lookup_of_mem o0.slots hnd q hq
++  obtain ⟨y', sl⟩ := q
++  simp only at hq1 hsl
++  subst hq1
++  cases sl with
++  | mem a' =>
++    exfalso
++    -- A memory slot names the node table's object, all canonical, so its pointer holds it.
++    obtain ⟨o', ho', -, hor⟩ := hm.memSlot a o0 y' a' ho0 hsl
++    have hta : (lazyStartup sp (st sp al ts k).S).tableOf y' = some a' := by
++      rcases hor with h1 | ⟨hc, -⟩
++      · exact h1
++      · rw [hri.canon a' o' ho'] at hc; cases hc
++    have hheld : ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).table.any
++        (fun e => e.2 == a') = true := by
++      apply List.any_eq_true.mpr
++      exact ⟨(y', a'), mem_of_lookup _ y' a' hta, by simp⟩
++    unfold Mem.ptrOfH at hqe
++    simp only [hheld, ↓reduceIte, Prod.mk.injEq] at hqe
++    rw [← hqe.2] at hh
++    cases hh
++  | stream r0 =>
++    unfold Mem.ptrOfH at hqe
++    simp only [Prod.mk.injEq] at hqe
++    rw [← hqe.2] at hr
++    simp only at hr
++    rw [hr] at hsl
++    exact hsl
++
++/-- A canonical object of the memory before rule 4 is the node table's, at its
++node's latest position. -/
++theorem before_canon (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hj : al.stillDirty = javaTest sp)
++    (hmk : al.mark = true) (hev : EvictRunOK sp al ts) {k : Nat} (hk : k ≤ ts.length) {y : NodeId}
++    {b : Nat}
++    (hb : (((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).toH).canonicalOf y = some b) :
++    ((((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).toH).obj? b).bind (·.pos) =
++      ((st sp al ts k).S.lv y).map (·.recNo) ∧
++    (((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).toH).tableOf y = some b := by
++  obtain ⟨hri, hm⟩ := rinv_lazyStartup hok hph hj hmk hev hk
++  have hnd0 := tblND_lazyStartup sp (st sp al ts k).S
++  generalize hm0 : lazyStartup sp (st sp al ts k).S = m0 at hri hm hnd0 hb ⊢
++  have hs0 : m0.s = lastSp (st sp al ts k).S := hm.sEq
++  have htbl1 : ∀ z a, (m0.sectionPos (st sp al ts k).S).tableOf z = some a →
++      ∃ o, (m0.sectionPos (st sp al ts k).S).obj? a = some o ∧ o.node = z := by
++    intro z a ht
++    obtain ⟨o, ho, hon⟩ := hm.tbl z a ht
++    refine ⟨_, by rw [Mem.sectionPos_obj?, ho]; rfl, ?_⟩
++    exact (sectionPosObj_fields (st sp al ts k).S m0.s o).1.trans hon
++  rw [Mem.toH_canonicalOf (m := m0.sectionPos (st sp al ts k).S) hnd0 htbl1,
++    Mem.sectionPos_canonicalOf] at hb
++  obtain ⟨ht, ob, hob, hcb⟩ := (m0.canonicalOf_eq_some y b).mp hb
++  obtain ⟨ob', hob', hnb⟩ := hm.tbl y b ht
++  rw [hob, Option.some.injEq] at hob'
++  subst hob'
++  refine ⟨?_, ht⟩
++  have hheld : (m0.sectionPos (st sp al ts k).S).heldA b = true := by
++    unfold Mem.heldA
++    apply List.any_eq_true.mpr
++    exact ⟨(y, b), mem_of_lookup _ y b ht, by simp⟩
++  rw [Mem.toH_obj?, hheld, Mem.sectionPos_obj?, hob]
++  simp only [↓reduceIte, Option.map_some, Option.bind_some, hcb, Bool.not_true, Bool.false_eq_true]
++  rw [hs0, hnb]
++  cases hn : newest (st sp al ts k).S (lastSp (st sp al ts k).S) y with
++  | some u =>
++    simp only [Mem.objH]
++    rw [newest_lv hn]; rfl
++  | none =>
++    simp only [Mem.objH]
++    rw [hri.pos b ob hob (by rw [hnb]; exact hn), hnb]
++
++end Before
++
++/-! ## The positions (question 1) -/
++
++/-- The first record at or after s with a version of y, below a bound. -/
++theorem first_version {S : Stream V T} {s : Nat} {y : NodeId} :
++    ∀ n f0 w0, f0 < s + n → s ≤ f0 → S.versionAt f0 y = some w0 →
++      ∃ f w, s ≤ f ∧ S.versionAt f y = some w ∧ ∀ f', s ≤ f' → f' < f → S.versionAt f' y = none := by
++  intro n
++  induction n with
++  | zero => intro f0 w0 h1 h2; exfalso; omega
++  | succ n ih =>
++    intro f0 w0 h1 h2 h0
++    by_cases hex : ∃ f', s ≤ f' ∧ f' < f0 ∧ (S.versionAt f' y).isSome
++    · obtain ⟨f', h3, h4, h5⟩ := hex
++      obtain ⟨w', hw'⟩ := Option.isSome_iff_exists.mp h5
++      exact ih f' w' (by omega) h3 hw'
++    · refine ⟨f0, w0, h2, h0, fun f' h3 h4 => ?_⟩
++      cases hv : S.versionAt f' y with
++      | none => rfl
++      | some _ => exact absurd ⟨f', h3, h4, by rw [hv]; rfl⟩ hex
++
++section Pos
++
++variable {sp : Spec V T} {al : Algo V T} {ts : List T}
++
++/-- What a pointer of the memory before rule 4 names, by `RInv`: a pointer that
++holds no handle and names record r, to node y, names a version of y; Rule R takes
++it to y's latest version; no version of y lies between r and the section; and y
++is a pointee of its object's history, which is its node's, on its node's level. -/
++theorem before_ptr_facts (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hj : al.stillDirty = javaTest sp)
++    (hmk : al.mark = true) (hev : EvictRunOK sp al ts) {k : Nat} (hk : k ≤ ts.length) {a : Nat}
++    {o : HObj V}
++    (ho : (((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).toH).obj? a = some o)
++    {y : NodeId} {p : HPtr} (hmem : (y, p) ∈ o.ptrs) (hh : p.handle = none) {r : Nat}
++    (hr : p.ref = some r) :
++    (∃ u, (st sp al ts k).S.versionAt r y = some u) ∧
++    ruleRRef (st sp al ts k).S (lastSp (st sp al ts k).S) y (some r) =
++      ((st sp al ts k).S.lv y).map (·.recNo) ∧
++    NearSec (st sp al ts k).S (lastSp (st sp al ts k).S) y r ∧
++    y ∈ pointees sp o.hist ∧
++    ∃ n, (st sp al ts k).P.get? o.node = some n ∧ o.hist = n.hist ∧ o.level = n.level := by
++  have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
++  have hinv := inv_st sp al ts hok hst k hk
++  obtain ⟨hri, hm⟩ := rinv_lazyStartup hok hph hj hmk hev hk
++  obtain ⟨o0, ho0, hsl, hn, hl, hh0⟩ := before_ptr hok hph hj hmk hev hk ho hmem hh hr
++  obtain ⟨-, ⟨n, hnn, hnh, hnl, -⟩, -⟩ := hm.canon a o0 ho0 (hri.canon a o0 ho0)
++  refine ⟨hri.ver a o0 ho0 y r hsl, hri.fresh a o0 ho0 y (some r) hsl, hri.near a o0 ho0 y r hsl,
++    by rw [hh0]; exact hri.keys a o0 ho0 y (by rw [hsl]; rfl), n, by rw [hn]; exact hnn, ?_, ?_⟩
++  · rw [hh0, hnh]; exact upTo_of_forall _ _ (hinv.times _ n hnn)
++  · rw [hl, hnl]
++
++/-- `Rule4_positions`: a pointer of a pinned object that holds no handle, to a node
++with a canonical object, names a version of the section, the version before the
++pointee's first version there, or the canonical object's own. -/
++theorem rule4_positions (sp : Spec V T) (al : Algo V T) : Rule4_positions sp al := by
++  intro ts hok hph hev hj hmk k hk
++  dsimp only
++  rw [show run sp al (ts.take k) = st sp al ts k from rfl]
++  intro a o y p r b ho _ _ hmem hh hr hb
++  have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
++  have hinv := inv_st sp al ts hok hst k hk
++  obtain ⟨hver, hfr, hnear, -, -⟩ := before_ptr_facts hok hph hj hmk hev hk ho hmem hh hr
++  by_cases hrs : lastSp (st sp al ts k).S ≤ r
++  · left
++    obtain ⟨u, hu⟩ := hver
++    exact ⟨hrs, by rw [hu]; rfl⟩
++  · right
++    cases hn : newest (st sp al ts k).S (lastSp (st sp al ts k).S) y with
++    | some w =>
++      left
++      refine ⟨rfl, ?_⟩
++      obtain ⟨u, hu⟩ := hver
++      obtain ⟨-, hur, -⟩ := hinv.version_node hu
++      have hl : Stream.lv ((st sp al ts k).S.take (lastSp (st sp al ts k).S)) y = some u := by
++        apply (lv_eq_some_iff _ y u).mpr
++        refine ⟨r, ?_, fun r' hr' => ?_⟩
++        · rw [versionAt_take]; simp [show r < lastSp (st sp al ts k).S by omega, hu]
++        · rw [versionAt_take]
++          by_cases h' : r' < lastSp (st sp al ts k).S
++          · simp only [h', ↓reduceIte]; exact hnear r' hr' h'
++          · simp [h']
++      rw [hl, Option.map_some, hur]
++    | none =>
++      right
++      rw [(before_canon hok hph hj hmk hev hk hb).1]
++      unfold ruleRRef at hfr
++      rw [hn] at hfr
++      exact hfr.symm
++
++end Pos
++
++/-! ## Rule 4 by position is rule 4 by node id (question 4) -/
++
++/-- Rule 4 by position gives what rule 4 by node id gives on a memory where each
++pointer that it would leave unlinked (of a pinned object on a key level, holding
++no handle, naming a record) whose node has a canonical object is in `posToId` or
++at the canonical object's position. -/
++theorem HMem.linkDPos_eq_linkD (sp : Spec V T) (S : Stream V T) (m : HMem V) (D : Dirty)
++    (h : ∀ p ∈ m.objs, (p.2.canonical && (inD D p.2.node || p.1 == m.root)) = true →
++      isKeyLevel sp p.2.isData p.2.level = true → ∀ q ∈ p.2.ptrs, q.2.handle = none →
++      ∀ r, q.2.ref = some r → ∀ b, m.canonicalOf q.1 = some b →
++      inPosToId sp S m.s q.1 r = true ∨ (m.obj? b).bind (·.pos) = some r) :
++    m.linkDPos sp S D = m.linkD D := by
++  unfold HMem.linkDPos HMem.linkD
++  congr 1
++  apply List.map_congr_left
++  intro p hp
++  by_cases hpin : (p.2.canonical && (inD D p.2.node || p.1 == m.root)) = true
++  · simp only [hpin, Bool.not_true, Bool.false_eq_true, ↓reduceIte]
++    congr 2
++    apply List.map_congr_left
++    intro q hq
++    obtain ⟨y, pt⟩ := q
++    cases hh : pt.handle with
++    | some n => simp
++    | none =>
++      cases hr : pt.ref with
++      | none => simp
++      | some r =>
++        simp only
++        by_cases hin : inPosToId sp S m.s y r = true
++        · simp only [hin, ↓reduceIte]
++        · simp only [hin, Bool.false_eq_true, ↓reduceIte]
++          cases hbp : m.byPos y r with
++          | some n =>
++            simp only
++            unfold HMem.byPos at hbp
++            cases hc : m.canonicalOf y with
++            | none => rw [hc] at hbp; cases hbp
++            | some b =>
++              rw [hc] at hbp
++              simp only at hbp
++              split at hbp
++              · rw [hbp]
++              · cases hbp
++          | none =>
++            simp only
++            cases hkl : isKeyLevel sp p.2.isData p.2.level with
++            | false => simp
++            | true =>
++              simp only [↓reduceIte]
++              cases hc : m.canonicalOf y with
++              | none => rfl
++              | some b =>
++                exfalso
++                rcases h p hp hpin hkl (y, pt) hq hh r hr b hc with h1 | h1
++                · exact hin h1
++                · unfold HMem.byPos at hbp
++                  rw [hc] at hbp
++                  simp only [h1, beq_self_eq_true, ↓reduceIte] at hbp
++                  unfold HMem.canonicalOf at hc
++                  rw [hbp] at hc
++                  simp at hc
++  · simp [hpin]
++
++
++/-- A version of y in R(s), ..., that is an index node version, is in `posToId`. -/
++theorem inPosToId_of_section {sp : Spec V T} {S : Stream V T} {s : Nat} {y : NodeId} {r : Nat}
++    {w : Version V} (hs : s ≤ r) (hw : S.versionAt r y = some w) (hd : w.isData = false) :
++    inPosToId sp S s y r = true := by
++  unfold inPosToId
++  apply List.any_eq_true.mpr
++  have hlt : r < S.length := by
++    obtain ⟨R, hR, -, -⟩ := versionAt_spec hw
++    exact (List.getElem?_eq_some_iff.mp hR).1
++  refine ⟨r, List.mem_range'_1.mpr ⟨hs, by omega⟩, ?_⟩
++  rw [hw]
++  simp [hd]
++
++/-- The version before a key node version of y in R(s), ..., is in `posToId`. -/
++theorem inPosToId_of_prev {sp : Spec V T} {S : Stream V T} {s : Nat} {y : NodeId} {f r : Nat}
++    {w : Version V} (hs : s ≤ f) (hw : S.versionAt f y = some w)
++    (hk : isKeyLevel sp w.isData w.level = true)
++    (hp : (Stream.lv (S.take f) y).map (·.recNo) = some r) :
++    inPosToId sp S s y r = true := by
++  unfold inPosToId
++  apply List.any_eq_true.mpr
++  have hlt : f < S.length := by
++    obtain ⟨R, hR, -, -⟩ := versionAt_spec hw
++    exact (List.getElem?_eq_some_iff.mp hR).1
++  refine ⟨f, List.mem_range'_1.mpr ⟨hs, by omega⟩, ?_⟩
++  rw [hw]
++  have hd : w.isData = false := by
++    unfold isKeyLevel at hk
++    cases hd : w.isData
++    · rfl
++    · rw [hd] at hk; simp at hk
++  rw [hd] at hk
++  simp [hd, hk, hp]
++
++section Eq
++
++variable {sp : Spec V T} {al : Algo V T} {ts : List T}
++
++/-- `Rule4Pos_handles`: on the states that the startup reaches, rule 4 by position
++links what rule 4 by node id links. -/
++theorem rule4Pos_handles (sp : Spec V T) (al : Algo V T) : Rule4Pos_handles sp al := by
++  intro ts hok hph hev hj hmk k hk
++  rw [show run sp al (ts.take k) = st sp al ts k from rfl]
++  unfold handleStartupPos handleStartup
++  have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
++  have hinv := inv_st sp al ts hok hst k hk
++  have hdo := dataOnce_st sp al ts hok hst k hk
++  obtain ⟨hri, hm⟩ := rinv_lazyStartup hok hph hj hmk hev hk
++  have hs0 : (lazyStartup sp (st sp al ts k).S).s = lastSp (st sp al ts k).S := hm.sEq
++  have hnd : ((((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).toH).objs.map
++      (·.1)).Nodup := by
++    rw [Mem.toH_objs, List.map_map]
++    have h1 : (((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).objs.map (·.1)).Nodup := by
++      rw [Mem.sectionPos_keys]; exact hm.nodup
++    exact (List.Sublist.map _ List.filter_sublist).nodup h1
++  apply HMem.linkDPos_eq_linkD
++  intro p hp _ hkl q hq hh r hr b hb
++  obtain ⟨y, pt⟩ := q
++  simp only at hh hr hb ⊢
++  have hobj := lookup_of_mem _ hnd p hp
++  obtain ⟨hver, hfr, hnear, hpt, n, hn, hnh, hnl⟩ := before_ptr_facts hok hph hj hmk hev hk hobj hq hh hr
++  obtain ⟨hpos, -⟩ := before_canon hok hph hj hmk hev hk hb
++  obtain ⟨u, hu⟩ := hver
++  obtain ⟨-, hur, ny, hny, -, hnyl, hnyd⟩ := hinv.version_node hu
++  -- The pointer's version, if y is a data node, is y's only one, its canonical object's.
++  have hdata : u.isData = true → (((((lazyStartup sp (st sp al ts k).S).sectionPos
++      (st sp al ts k).S).toH).obj? b).bind (·.pos)) = some r := by
++    intro hud
++    rw [hpos, hdo y ny r u hny (by rw [← hnyd]; exact hud) hu, Option.map_some, hur]
++  have hs1 : (((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).toH).s =
++      lastSp (st sp al ts k).S := hs0
++  rw [hs1]
++  by_cases hrs : lastSp (st sp al ts k).S ≤ r
++  · -- a version of the section
++    cases hud : u.isData
++    · exact Or.inl (inPosToId_of_section hrs hu hud)
++    · exact Or.inr (hdata hud)
++  · cases hnw : newest (st sp al ts k).S (lastSp (st sp al ts k).S) y with
++    | none =>
++      -- no version in the section: the pointer names y's latest version, its canonical object's
++      right
++      rw [hpos]
++      unfold ruleRRef at hfr
++      rw [hnw] at hfr
++      exact hfr.symm
++    | some wn =>
++      -- the version before y's first version in the section
++      left
++      obtain ⟨f0, hf0, hwf0⟩ := newest_some hnw
++      obtain ⟨f, w, hsf, hwf, hmin⟩ := first_version (f0 + 1) f0 wn (by omega) hf0 hwf0
++      obtain ⟨-, hwr, nw, hnw', -, hnwl, hnwd⟩ := hinv.version_node hwf
++      rw [hny, Option.some.injEq] at hnw'
++      subst hnw'
++      have hfr' : r < f := by omega
++      apply inPosToId_of_prev hsf hwf
++      · -- w is a key node version: y is below p's node, which is on a key level (A4)
++        have hwd : w.isData = false := by
++          cases hwd : w.isData
++          · rfl
++          · exfalso
++            have h1 := hdo y ny f w hny (by rw [← hnwd]; exact hwd) hwf
++            have h2 := hdo y ny r u hny (by rw [← hnwd]; exact hwd) hu
++            rw [h1, Option.some.injEq] at h2
++            subst h2
++            omega
++        unfold isKeyLevel at hkl ⊢
++        rw [hwd]
++        simp only [Bool.not_false, Bool.true_and]
++        cases hv : sp.virt
++        · rfl
++        · rw [hv] at hkl
++          simp only [Bool.not_true, Bool.false_or, Bool.and_eq_true, decide_eq_true_eq] at hkl
++          simp only [Bool.not_true, Bool.false_or, decide_eq_true_eq]
++          have hyp : y ∈ pointees sp n.hist := by rw [← hnh]; exact hpt
++          obtain ⟨e, he, hye⟩ := (mem_pointees sp _ y).mp hyp
++          obtain ⟨my, hmy, hlt⟩ := hinv.ptrs p.2.node n hn e he y hye
++          rw [hny, Option.some.injEq] at hmy
++          subst hmy
++          rw [hnwl]
++          omega
++      · -- y's latest version before f is the pointer's
++        have hl : Stream.lv ((st sp al ts k).S.take f) y = some u := by
++          apply (lv_eq_some_iff _ y u).mpr
++          refine ⟨r, ?_, fun r' hr' => ?_⟩
++          · rw [versionAt_take]; simp [hfr', hu]
++          · rw [versionAt_take]
++            by_cases h' : r' < f
++            · simp only [h', ↓reduceIte]
++              by_cases h'' : r' < lastSp (st sp al ts k).S
++              · exact hnear r' hr' h''
++              · exact hmin r' (by omega) h'
++            · simp [h']
++        rw [hl, Option.map_some, hur]
++
++end Eq
++
++/-! ## Runs with rule 4 by position -/
++
++/-- `runHandlesPos` is `runHandles` but for its startups: with the same startup
++it would be the same run. -/
++theorem runHandlesPos_of_startup (sp : Spec V T) (al : Algo V T)
++    (h : ∀ S : Stream V T, handleStartupPos sp S = handleStartup sp S)
++    (ts : List (T × Bool × List HCacheOp)) : runHandlesPos sp al ts = runHandles sp al ts := by
++  simp only [runHandlesPos, runHandles, h]
++
++theorem runHandlesPos_succ (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List HCacheOp))
++    {j : Nat} (hj : j < ts.length) :
++    runHandlesPos sp al (ts.take (j + 1)) =
++      (if ts[j].2.1 then
++        (startup sp (handleTrans sp al (runHandlesPos sp al (ts.take j)).2.2
++            (runHandlesPos sp al (ts.take j)).1 (runHandlesPos sp al (ts.take j)).2.1 ts[j].1).1.S,
++          handleStartupPos sp (handleTrans sp al (runHandlesPos sp al (ts.take j)).2.2
++            (runHandlesPos sp al (ts.take j)).1 (runHandlesPos sp al (ts.take j)).2.1 ts[j].1).1.S,
++          (handleTrans sp al (runHandlesPos sp al (ts.take j)).2.2 (runHandlesPos sp al (ts.take j)).1
++            (runHandlesPos sp al (ts.take j)).2.1 ts[j].1).1.S)
++      else
++        ((handleTrans sp al (runHandlesPos sp al (ts.take j)).2.2 (runHandlesPos sp al (ts.take j)).1
++            (runHandlesPos sp al (ts.take j)).2.1 ts[j].1).1,
++          ts[j].2.2.foldl (HMem.cacheOp sp (runHandlesPos sp al (ts.take j)).2.2
++            (handleTrans sp al (runHandlesPos sp al (ts.take j)).2.2 (runHandlesPos sp al (ts.take j)).1
++              (runHandlesPos sp al (ts.take j)).2.1 ts[j].1).1.S
++            (handleTrans sp al (runHandlesPos sp al (ts.take j)).2.2 (runHandlesPos sp al (ts.take j)).1
++              (runHandlesPos sp al (ts.take j)).2.1 ts[j].1).1.D)
++            (handleTrans sp al (runHandlesPos sp al (ts.take j)).2.2 (runHandlesPos sp al (ts.take j)).1
++              (runHandlesPos sp al (ts.take j)).2.1 ts[j].1).2,
++          (runHandlesPos sp al (ts.take j)).2.2)) := by
++  have h1 : ts.take (j + 1) = ts.take j ++ [ts[j]] := by
++    rw [List.take_add_one, List.getElem?_eq_getElem hj]; rfl
++  unfold runHandlesPos
++  rw [h1, List.foldl_append]
++  rfl
++
++/-- `RunPos_handles`: every startup of a run is from the run's stream (T2-C), where
++rule 4 by position is rule 4 by node id. -/
++theorem runPos_handles (sp : Spec V T) (al : Algo V T) : RunPos_handles sp al := by
++  intro ts hok hph hev hj hmk j
++  induction j with
++  | zero =>
++    intro _
++    have h0 := rule4Pos_handles sp al (ts.map (·.1)) hok hph hev hj hmk 0 (Nat.zero_le _)
++    simp only [List.take_zero] at h0
++    simp only [List.take_zero, runHandlesPos, runHandles, List.foldl_nil]
++    rw [show (init sp : DB V T) = run sp al [] from rfl, h0]
++  | succ j ih =>
++    intro hjt
++    rw [runHandlesPos_succ sp al ts (by omega), runHandles_succ sp al ts (by omega), ih (by omega)]
++    split
++    · rename_i hrs
++      obtain ⟨hS, -⟩ := t2_handles sp al ts hok hph hev hj hmk (j + 1) hjt
++      rw [runHandles_succ sp al ts (by omega)] at hS
++      simp only [hrs, ↓reduceIte] at hS
++      have hS' : (handleTrans sp al (runHandles sp al (ts.take j)).2.2 (runHandles sp al (ts.take j)).1
++          (runHandles sp al (ts.take j)).2.1 ts[j].1).1.S = (run sp al ((ts.map (·.1)).take (j + 1))).S := by
++        rw [← List.map_take]; exact hS
++      rw [hS', rule4Pos_handles sp al (ts.map (·.1)) hok hph hev hj hmk (j + 1) (by simp; omega)]
++    · rfl
++
++end SIS

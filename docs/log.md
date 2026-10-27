@@ -1290,3 +1290,19 @@ after it has ended, also after `stop()`. A unit test,
 `Eviction.testEvictionThreadIdleUntilClose`, fails on the code before.
 `before-commit.sh` (1,044 unit tests, 73 f-tests) and `level4.sh` (full)
 pass.
+
+2026-10-27. 005-58 done, by Claude (Opus 5.5, Claude Code), at Frans's
+request (006-09, W3; reviewed and finished at max effort): Java's rule 4
+by position (005-57) is in the Lean model, as new trusted definitions in
+`SIS/Handle.lean` (`inPosToId`, `HMem.byPos`, `HMem.linkDPos`,
+`handleStartupPos`, `runHandlesPos`), and proved to link what rule 4 by
+node id links: `Rule4_positions`, `Rule4Pos_handles` and `RunPos_handles`
+(`SIS/HandleTheorems.lean`, proofs in `SIS/Proof/HandleLinkPos.lean`), with
+no new assumption; the proof adds two facts to E5's rerun invariant. On the
+model's example runs every pointer that rule 4 links is at its canonical
+object's position: the model's startup links by node id where Java can
+only use `posToId`, so those branches are covered by the theorem but not
+exercised in the model; the check under assertions in `linkToCanonical`
+compares the two rules on Java's own states (005-58, Outcome). `lake
+build` clean (163 jobs), `test-traces/run.sh` OK, axioms standard
+(`7c1ce2f`).

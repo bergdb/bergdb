@@ -35,7 +35,6 @@ Open
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 | [005-56](56-package-dependencies.md) | Investigate | Package dependencies: how the packages depend on each other, and whether that follows their `package.html` files; Frans's question. A first look: four of `java/src`'s nine packages used packages their lists leave out; after 006-08's fixes of `stream` and `dag`, two remain (`pub` uses `core` and `pubimp`, `pubimp` uses `dag` and `storage`), and nothing checks the lists | open |
-| [005-58](58-lean-rule4-by-position.md) | Investigate | A Lean theorem for rule 4 by position (005-57): on the states that the model's startup reaches, a pointer of D whose node has a canonical object names a version of the startup section, the version before one, or the canonical object's own; so rule 4 by position is rule 4 by node id (`HMem.linkD`). Frans: "Yes, but in a separate work item in 005." | open |
 | [005-59](59-autocloseable.md) | Decide | `Db` and `Database` as `AutoCloseable`, for try-with-resources and the warnings of IDEs about a database not closed, now that `stop()` or `close()` is required (005-55, its question 6). Options: both, with a `Database.close()` that waits (recommended) or that is `stop()`; only `Db`; neither | open |
 
 
@@ -44,6 +43,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-58](58-lean-rule4-by-position.md) | Investigate | A Lean theorem for rule 4 by position (005-57). Proved in the model: `Rule4_positions` (a pointer that rule 4 links names a version of the startup section, the version before its node's first one there, or its canonical object's version) and `Rule4Pos_handles` (rule 4 by position links what rule 4 by node id links, at every startup of a run), with no new assumption; new trusted definitions of Java's rule 4 by position in `SIS/Handle.lean`. The by-id check under assertions in `linkToCanonical` stays or goes for Frans to decide (recommended: stays) | done | 2026-10-27 |
 | [005-46](46-stream-file-lock.md) | Fix | A read of the stream's last file waits for the writer's append and its `fsync` (`FileStream.DbFile`, one monitor for both): seconds on s1's disk, the longest waits left there with handles (009-03); and every read waits while reclaim's physical cut deletes files (`FileStream.pretruncate`, the stream's monitor): up to 171 ms in P4's soak on F53, under every collector (009-04). Investigated 2026-10-27, with probes: every read also waits while a new file is forced (`newFile`), an encrypted database's reads wait for each other, and a commit by an interrupted thread that makes a physical cut fails the database. Proposed: positional reads on a channel of each file's own, safe from interrupts; the file list without a lock; a new file made, and a cut's files deleted on a thread of their own, outside the stream's monitor. Decided 2026-10-27: as proposed; `SalsaStream` and interrupts in this entry (today an interrupt can fail the database, a commit that waits for room in the write buffer or makes a cut, or hang it, the storage thread interrupted; a rule proposed, one question open); the test reports note a writer's waits for room, which do not count against item 009's target 2. Implemented 2026-10-27, rule A for interrupts; measured the same day on s1 and F53: no read waits for a force, a new file or a cut any more, and a commit only for room in the write buffer when the disk stalls. Done 2026-10-27, at Frans's word; P4's soak and ScaleBench in 006-09's quiet block confirm it, and are item 009's evidence | done | 2026-10-27 |
 | [005-03](03-sweep-cost.md) | Investigate | The sweep's cost under read churn (item 001, finding 10). Done by item 009: handles removed the sweep; the capacity controller runs batches of at most 2 ms, and in P4's soak the writer and the readers keep their paced rates (009-04) | done | 2026-10-27 |
 | [005-51](51-eviction-on-calls.md) | Fix | Eviction only in response to the calls: the eviction thread woke once a second while the database was open, also when idle (`evictorLock.wait(1000)`), against 010-P3. Now it waits with no timeout, the database's close wakes it, and `close()` returns after it has ended | done | 2026-10-27 |
@@ -110,7 +110,7 @@ is done, which 005-33's change needed; 005-33 is decided, A, and done. 005-35,
 is 005-45. 005-11 is kept as it is for release 2026.1, documented as
 experimental; its decision waits for Frans. 005-55 is done; it did not
 change the eviction thread, so 005-51 does not depend on it; 005-51 is
-done. 005-57 is done (part 1); 005-58, its Lean theorem, can go any time.
+done. 005-57 is done (part 1); 005-58, its Lean theorem, is done.
 005-46 is done.
 
 
@@ -286,7 +286,8 @@ Files
   [57-startup-header-reads/](57-startup-header-reads/).
 * [58-lean-rule4-by-position.md](58-lean-rule4-by-position.md). 005-58, a
   Lean theorem for 005-57's rule 4 by position: the statement, what the
-  model needs, the first step; open.
+  model needs, the theorems, the review and the questions for Frans; done.
+  The patch in [58-lean-rule4-by-position/](58-lean-rule4-by-position/).
 * [59-autocloseable.md](59-autocloseable.md). 005-59, `Db` and `Database` as
   `AutoCloseable`: the issue, four options, the questions; open.
 
@@ -1102,3 +1103,11 @@ Claude (Opus 5.5, Claude Code). The soak and ScaleBench run in 006-09's
 quiet block as a confirmation, and as item 009's evidence for its target 2;
 if they show a read or a commit waiting for the stream's writer, 005-46 is
 opened again.
+
+2026-10-27. 005-58 done, by Claude (Opus 5.5, Claude Code; the review at
+max effort, at Frans's word), as 006-09's W3: rule 4 by position is proved
+in the Lean model to link what rule 4 by node id links (`Rule4_positions`,
+`Rule4Pos_handles`, `RunPos_handles`; `7c1ce2f`), with no new assumption;
+lake build clean, trace tests OK, axioms standard. 005-57's report and
+docs/levels.md cite it. For Frans: the trusted additions, and whether the
+by-id check in `linkToCanonical` goes (recommended: it stays).
