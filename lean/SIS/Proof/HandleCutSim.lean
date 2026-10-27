@@ -501,4 +501,306 @@ theorem HMem.withRoot_followR (S0' S' : Stream V T) (hm : HEInv sp db S0 k m)
 
 end Follow
 
+/-! ## Reads after a restart from a cut stream, against the whole stream's -/
+
+section ReadSim
+
+variable {sp : Spec V T} {db1 db : DB V T} {j1 j : Nat} {m : HMem V}
+
+/-- C's follow, on the memory with another root object and the cut streams,
+against E's on the whole streams: the same, and the root objects still
+related. -/
+theorem HEInv.followR_sim (hL : Later sp db1 db j1 j) (hm : HEInv sp db db1.S j m) {c : Nat}
+    (hcut : CutOK sp c db1 j1) {t : Time} (hft : lastFa db1.S ≤ t) {f : Time} {oc oe : HObj V}
+    (hra : m.obj? m.root = some oe) (hr : RootRelH sp f oc oe) {a : Nat} {o : HObj V}
+    (ho : m.obj? a = some o) {y : NodeId} {p : HPtr} (hp : o.ptr? y = some p)
+    (hroot : a = m.root → y ∈ pointees sp oc.hist) (hy : y ≠ SIS.root)
+    (hg : HPtrLaterT sp db1.S db1 j1 db m t y p) :
+    (m.followR sp db1.S db.S a y = none →
+        (m.withRoot oc).followR sp (cutStream c db1.S) (cutStream c db.S) a y = none) ∧
+      ∀ m' n b, m.followR sp db1.S db.S a y = some (m', n, b) →
+        ∃ oc' oe', (m.withRoot oc).followR sp (cutStream c db1.S) (cutStream c db.S) a y =
+            some (m'.withRoot oc', n, b) ∧ m'.obj? m'.root = some oe' ∧ RootRelH sp f oc' oe' := by
+  have he := hm.followR_later hL hcut hft ho hp hg
+  obtain ⟨h1, h2⟩ := HMem.withRoot_followR (cutStream c db1.S) (cutStream c db.S) hm hra hr ho hp hroot hy
+  rw [he] at h1 h2
+  exact ⟨h1, h2⟩
+
+/-- The reader's follow (`HMem.follow` with `false`), likewise. -/
+theorem HEInv.follow_sim (hL : Later sp db1 db j1 j) (hm : HEInv sp db db1.S j m) {c : Nat}
+    (hcut : CutOK sp c db1 j1) {t : Time} (hft : lastFa db1.S ≤ t) {f : Time} {oc oe : HObj V}
+    (hra : m.obj? m.root = some oe) (hr : RootRelH sp f oc oe) {a : Nat} {o : HObj V}
+    (ho : m.obj? a = some o) {y : NodeId} {p : HPtr} (hp : o.ptr? y = some p)
+    (hroot : a = m.root → y ∈ pointees sp oc.hist) (hy : y ≠ SIS.root)
+    (hg : HPtrLaterT sp db1.S db1 j1 db m t y p) {m1 : HMem V} {b : Nat}
+    (hf : m.follow sp db1.S db.S a y false = (m1, some b)) :
+    ∃ oc' oe', (m.withRoot oc).follow sp (cutStream c db1.S) (cutStream c db.S) a y false =
+        (m1.withRoot oc', some b) ∧ m1.obj? m1.root = some oe' ∧ RootRelH sp f oc' oe' := by
+  obtain ⟨-, h2⟩ := hm.followR_sim hL hcut hft hra hr ho hp hroot hy hg
+  unfold HMem.follow at hf ⊢
+  cases hfr : m.followR sp db1.S db.S a y with
+  | none => rw [hfr] at hf; simp at hf
+  | some r =>
+    obtain ⟨m2, n2, b2⟩ := r
+    rw [hfr] at hf
+    simp only [Bool.false_eq_true, ↓reduceIte, Prod.mk.injEq, Option.some.injEq] at hf
+    obtain ⟨rfl, rfl⟩ := hf
+    obtain ⟨oc', oe', e1, e2, e3⟩ := h2 m2 n2 b2 hfr
+    rw [e1]
+    exact ⟨oc', oe', rfl, e2, e3⟩
+
+/-- C's read below an object that is not the root's, on the memory with another
+root object and the cut streams, against E's on the whole streams: the same
+nodes, and the root objects still related; E's invariants are kept. -/
+theorem CInvH.readAt_sim (hL : Later sp db1 db j1 j) (hls : LiveSub sp) {c : Nat}
+    (hcut : CutOK sp c db1 j1) {t : Time} (hft : lastFa db1.S ≤ t) (htj : t ≤ j) {f : Time} :
+    ∀ (fuel : Nat) (m : HMem V) (b : Nat) (y : NodeId) (n : Node V), HEInv sp db db1.S j m →
+      HInvH sp db db1.S j m → CInvH sp db db1.S m → HReadableT sp db m t b y →
+      HLaterSafeT sp db1 j1 db m t b y →
+      db.P.get? y = some n → reachable sp db.P t y = true → n.level < fuel → y ≠ SIS.root →
+      ∀ oc oe, m.obj? m.root = some oe → RootRelH sp f oc oe →
+      ∃ oc' oe', (m.withRoot oc).readAt sp (cutStream c db1.S) (cutStream c db.S) fuel t b =
+          ((m.readAt sp db1.S db.S fuel t b).1.withRoot oc', (m.readAt sp db1.S db.S fuel t b).2) ∧
+        (m.readAt sp db1.S db.S fuel t b).1.obj? (m.readAt sp db1.S db.S fuel t b).1.root = some oe' ∧
+        RootRelH sp f oc' oe' := by
+  have hinv := hL.inv
+  intro fuel
+  induction fuel with
+  | zero => intro m b y n _ _ _ _ _ _ _ hlt; omega
+  | succ fuel ih =>
+    intro m b y n hm hh hc hrd hcs hn hr hlt hyr oc oe hra hrr
+    obtain ⟨o, ho, hoy, hoh, hol, hod⟩ := hm.readableT_facts hinv hrd hn
+    -- b is not the root's address: its object is of y.
+    have hbr : b ≠ m.root := by
+      intro he
+      obtain ⟨o0, ho0, -, hn0⟩ := hm.root
+      rw [← he, ho, Option.some.injEq] at ho0
+      subst ho0
+      exact hyr (by rw [← hoy, hn0])
+    have ho' : (m.withRoot oc).obj? b = some o := by rw [HMem.withRoot_obj?_ne hbr]; exact ho
+    rw [readAt_succ_eqH sp (cutStream c db1.S) (cutStream c db.S) fuel (m.withRoot oc) t b ho',
+      readAt_succ_eqH sp db1.S db.S fuel m t b ho]
+    have hkeepB : ∀ m', HKeepFrom db.P n.level m m' → ∃ o', m'.obj? b = some o' ∧ o'.core = o.core := by
+      intro m' hk
+      exact hk b o ho (fun nn hnn => by
+        rw [hoy, hn, Option.some.injEq] at hnn; subst hnn; exact Nat.le_refl _)
+    have hlive : sp.live (o.hist.upTo t) = sp.live (n.hist.upTo t) := by rw [hoh]
+    -- The fold, with the relation and E's invariants.
+    let I : (HMem V × List (NodeId × Node V)) → (HMem V × List (NodeId × Node V)) → Prop :=
+      fun accC accE => HEInv sp db db1.S j accE.1 ∧ HInvH sp db db1.S j accE.1 ∧ CInvH sp db db1.S accE.1 ∧
+        HKeepFrom db.P n.level m accE.1 ∧ accE.1.root = m.root ∧ accC.2 = accE.2 ∧
+        ∃ oc1 oe1, accC.1 = accE.1.withRoot oc1 ∧ accE.1.obj? accE.1.root = some oe1 ∧ RootRelH sp f oc1 oe1
+    have hstep : ∀ (accC accE : HMem V × List (NodeId × Node V)) z, z ∈ sp.live (o.hist.upTo t) → I accC accE →
+        I (readStepH sp (cutStream c db1.S) (cutStream c db.S) fuel t b o accC z)
+          (readStepH sp db1.S db.S fuel t b o accE z) := by
+      intro accC accE z hz ⟨hmA, hhA, hcA, hkcA, hrA, hlA, oc1, oe1, hCA, hraA, hrrA⟩
+      obtain ⟨o', ho1', hc'⟩ := hkeepB accE.1 hkcA
+      have e4 : o'.hist = o.hist := congrArg (fun c => c.2.2.2.1) hc'
+      have hz' : z ∈ sp.live (o'.hist.upTo t) := by rw [e4]; exact hz
+      have hrdA := hrd.keep ho ho1' hc'
+      have hcsA := hcs.keep ho ho1' hc'
+      obtain ⟨p, hp, hg⟩ := hmA.readableT_ptr hinv hls hhA htj hrdA hr ho1' hz'
+      have hgc := hmA.laterPtr hL hls hcA htj hrdA hcsA hr ho1' hz' hp
+      have hz2 : z ∈ sp.live (n.hist.upTo t) := by rw [← hlive]; exact hz
+      obtain ⟨hrz, hzr, nz, hnz, hlvl⟩ := hinv.reach_child hls hn hr hz2
+      have hne : o'.node ≠ z := by
+        have e1 : o'.node = o.node := congrArg (fun c => c.1) hc'
+        intro he
+        rw [e1, hoy] at he
+        rw [← he, hn, Option.some.injEq] at hnz
+        rw [← hnz] at hlvl
+        omega
+      obtain ⟨m1, n1, b1, hf1, hF1, hrd1⟩ := hmA.follow_goodT hinv hls ho1' hp hg hne
+      have hbrA : b ≠ accE.1.root := by rw [hrA]; exact hbr
+      obtain ⟨oc2, oe2, g1, g2, g3⟩ := hmA.follow_sim hL hcut hft hraA hrrA ho1' hp
+        (fun h => absurd h hbrA) hzr hgc hf1
+      have hh1 : HInvH sp db db1.S j m1 := by
+        have := hhA.follow_reader hinv hmA b z
+        rw [hf1] at this
+        exact this
+      have hroot1 : m1.root = accE.1.root := HMem.follow_root sp db1.S db.S hf1
+      have hc1 : CInvH sp db db1.S m1 := hcA.followed hmA ho1' hp hF1 hroot1
+      have hcs1 : HLaterSafeT sp db1 j1 db m1 t b1 z := hF1.laterSafe hmA ho1' hp hne hgc
+      obtain ⟨o1, ho1, -, -, hol1, -⟩ := hF1.inv.readableT_facts hinv hrd1 hnz
+      have hb1r : b1 ≠ m1.root := by
+        intro he
+        obtain ⟨o0, ho0, -, hn0⟩ := hF1.inv.root
+        obtain ⟨o2, ho2, ho2n, -⟩ := hrd1
+        rw [← he, ho2, Option.some.injEq] at ho0
+        subst ho0
+        exact hzr (by rw [← ho2n, hn0])
+      have ho1C : (m1.withRoot oc2).obj? b1 = some o1 := by rw [HMem.withRoot_obj?_ne hb1r]; exact ho1
+      obtain ⟨oc3, oe3, f1, f2, f3⟩ := ih m1 b1 z nz hF1.inv hh1 hc1 hrd1 hcs1 hnz hrz (by omega) hzr oc2 oe2 g2 g3
+      obtain ⟨-, hI2, hH2, hC2, hkc2, hr2⟩ := CInvH.readAtT_later hL hls hcut hft htj fuel m1 b1 z nz hF1.inv hh1 hc1
+        hrd1 hcs1 hnz hrz (by omega)
+      have hstE : readStepH sp db1.S db.S fuel t b o accE z =
+          ((HMem.readAt sp db1.S db.S fuel m1 t b1).1, accE.2 ++ (HMem.readAt sp db1.S db.S fuel m1 t b1).2) := by
+        unfold readStepH
+        rw [hf1]
+        simp only [ho1, hol1, hol, hlvl, ↓reduceIte]
+      have hstC : readStepH sp (cutStream c db1.S) (cutStream c db.S) fuel t b o accC z =
+          ((HMem.readAt sp (cutStream c db1.S) (cutStream c db.S) fuel (m1.withRoot oc2) t b1).1,
+            accC.2 ++ (HMem.readAt sp (cutStream c db1.S) (cutStream c db.S) fuel (m1.withRoot oc2) t b1).2) := by
+        unfold readStepH
+        rw [hCA, g1]
+        simp only [ho1C, hol1, hol, hlvl, ↓reduceIte]
+      rw [hstE, hstC, f1]
+      refine ⟨hI2, hH2, hC2, ?_, by rw [hr2, hroot1, hrA], by rw [hlA], oc3, oe3, rfl, f2, f3⟩
+      refine hkcA.trans (HKeepFrom.trans ?_ (hkc2.mono (Nat.le_of_lt hlvl)))
+      intro x ox hx hlev
+      apply hF1.frame x ox hx
+      intro hxz
+      have := hlev nz (by rw [hxz]; exact hnz)
+      omega
+    have hfold : ∀ (L : List NodeId), (∀ z ∈ L, z ∈ sp.live (o.hist.upTo t)) →
+        ∀ accC accE, I accC accE →
+          I (L.foldl (readStepH sp (cutStream c db1.S) (cutStream c db.S) fuel t b o) accC)
+            (L.foldl (readStepH sp db1.S db.S fuel t b o) accE) := by
+      intro L
+      induction L with
+      | nil => intro _ accC accE h; exact h
+      | cons z L ihL =>
+        intro hL' accC accE h
+        simp only [List.foldl_cons]
+        exact ihL (fun z' hz' => hL' z' (List.mem_cons_of_mem _ hz')) _ _
+          (hstep accC accE z (hL' z List.mem_cons_self) h)
+    obtain ⟨-, -, -, -, -, hl, oc', oe', h1, h2, h3⟩ := hfold (sp.live (o.hist.upTo t)) (fun z hz => hz)
+      ((m.withRoot oc), [(o.node, o.nodeAt t)]) (m, [(o.node, o.nodeAt t)])
+      ⟨hm, hh, hc, HKeepFrom.refl _ _ m, rfl, rfl, oc, oe, rfl, hra, hrr⟩
+    exact ⟨oc', oe', Prod.ext h1 hl, h2, h3⟩
+
+/-- C's read at a time from the first available time on, from the root's object,
+on the memory with another root object and the cut streams, against E's on the
+whole streams: the same nodes but the root's own, and the root objects still
+related. -/
+theorem CInvH.read_sim (hL : Later sp db1 db j1 j) (hls : LiveSub sp) (hm : HEInv sp db db1.S j m)
+    (hh : HInvH sp db db1.S j m) (hc : CInvH sp db db1.S m) {c : Nat} (hcut : CutOK sp c db1 j1) {t : Time}
+    (hft : lastFa db1.S ≤ t) (htj : t ≤ j) {f : Time} (hf : f ≤ t) {oc oe : HObj V}
+    (hra : m.obj? m.root = some oe) (hr : RootRelH sp f oc oe) :
+    ∃ oc' oe' tail, (m.withRoot oc).read sp (cutStream c db1.S) (cutStream c db.S) t =
+        ((m.read sp db1.S db.S t).1.withRoot oc', (SIS.root, oc.nodeAt t) :: tail) ∧
+      (m.read sp db1.S db.S t).2 = (SIS.root, oe.nodeAt t) :: tail ∧
+      (m.read sp db1.S db.S t).1.obj? (m.read sp db1.S db.S t).1.root = some oe' ∧ RootRelH sp f oc' oe' := by
+  have hinv := hL.inv
+  obtain ⟨o0, ho0, hco, hn0⟩ := hm.root
+  rw [hra, Option.some.injEq] at ho0
+  subst ho0
+  obtain ⟨n0, hnr⟩ := Option.isSome_iff_exists.mp hinv.rootIn
+  have hrd : HReadableT sp db m t m.root SIS.root := ⟨oe, hra, hn0, Or.inl hco⟩
+  have hcs : HLaterSafeT sp db1 j1 db m t m.root SIS.root := ⟨oe, hra, hn0, Or.inl hco⟩
+  obtain ⟨o', ho', -, hoh, hol, -⟩ := hm.readableT_facts hinv hrd hnr
+  rw [hra, Option.some.injEq] at ho'
+  subst ho'
+  have hraC : (m.withRoot oc).obj? (m.withRoot oc).root = some oc := HMem.withRoot_obj?_root hra
+  have hlev : oc.level = oe.level := hr.level
+  unfold HMem.read
+  rw [hraC, hra]
+  simp only
+  rw [show (m.withRoot oc).root = m.root from rfl]
+  rw [hlev, readAt_succ_eqH sp (cutStream c db1.S) (cutStream c db.S) (oe.level) (m.withRoot oc) t m.root hraC,
+    readAt_succ_eqH sp db1.S db.S (oe.level) m t m.root hra]
+  have hrr : reachable sp db.P t SIS.root = true := reachable_root hnr t
+  have hliveEq : sp.live (oc.hist.upTo t) = sp.live (oe.hist.upTo t) := hr.live t hf
+  rw [hliveEq]
+  have hkeepB : ∀ m', HKeepFrom db.P n0.level m m' → ∃ o2, m'.obj? m.root = some o2 ∧ o2.core = oe.core := by
+    intro m' hk
+    exact hk m.root oe hra (fun nn hnn => by
+      rw [hn0, hnr, Option.some.injEq] at hnn; subst hnn; exact Nat.le_refl _)
+  have hlive : sp.live (oe.hist.upTo t) = sp.live (n0.hist.upTo t) := by rw [hoh]
+  -- The fold, with the relation and E's invariants.
+  let I : (HMem V × List (NodeId × Node V)) → (HMem V × List (NodeId × Node V)) → Prop :=
+    fun accC accE => HEInv sp db db1.S j accE.1 ∧ HInvH sp db db1.S j accE.1 ∧ CInvH sp db db1.S accE.1 ∧
+      HKeepFrom db.P n0.level m accE.1 ∧ accE.1.root = m.root ∧
+      (∃ tail, accC.2 = (oc.node, oc.nodeAt t) :: tail ∧ accE.2 = (oe.node, oe.nodeAt t) :: tail) ∧
+      ∃ oc1 oe1, accC.1 = accE.1.withRoot oc1 ∧ accE.1.obj? accE.1.root = some oe1 ∧ RootRelH sp f oc1 oe1
+  have hstep : ∀ (accC accE : HMem V × List (NodeId × Node V)) z, z ∈ sp.live (oe.hist.upTo t) → I accC accE →
+      I (readStepH sp (cutStream c db1.S) (cutStream c db.S) oe.level t m.root oc accC z)
+        (readStepH sp db1.S db.S oe.level t m.root oe accE z) := by
+    intro accC accE z hz ⟨hmA, hhA, hcA, hkcA, hrA, ⟨tl, hlC, hlE⟩, oc1, oe1, hCA, hraA, hrrA⟩
+    obtain ⟨o2, ho2, hc2⟩ := hkeepB accE.1 hkcA
+    have e4 : o2.hist = oe.hist := congrArg (fun c => c.2.2.2.1) hc2
+    have hz' : z ∈ sp.live (o2.hist.upTo t) := by rw [e4]; exact hz
+    rw [← hrA] at ho2
+    rw [hraA, Option.some.injEq] at ho2
+    subst ho2
+    have hrdA := hrd.keep hra (by rw [← hrA]; exact hraA) hc2
+    have hcsA := hcs.keep hra (by rw [← hrA]; exact hraA) hc2
+    have hraA' : accE.1.obj? m.root = some oe1 := by rw [← hrA]; exact hraA
+    obtain ⟨p, hp, hg⟩ := hmA.readableT_ptr hinv hls hhA htj hrdA hrr hraA' hz'
+    have hgc := hmA.laterPtr hL hls hcA htj hrdA hcsA hrr hraA' hz' hp
+    have hz2 : z ∈ sp.live (n0.hist.upTo t) := by rw [← hlive]; exact hz
+    obtain ⟨hrz, hzr, nz, hnz, hlvl⟩ := hinv.reach_child hls hnr hrr hz2
+    have hne : oe1.node ≠ z := by
+      have e1 : oe1.node = oe.node := congrArg (fun c => c.1) hc2
+      intro he
+      exact hzr (by rw [← he, e1, hn0])
+    obtain ⟨m1, n1, b1, hf1, hF1, hrd1⟩ := hmA.follow_goodT hinv hls hraA' hp hg hne
+    -- z is a pointee of C's root object too.
+    have hzc : z ∈ pointees sp oc1.hist := by
+      apply mem_pointees_of_live hls (t := t)
+      rw [hrrA.live t hf, e4]
+      exact hz
+    obtain ⟨oc2, oe2, g1, g2, g3⟩ := hmA.follow_sim hL hcut hft hraA hrrA hraA' hp
+      (fun _ => hzc) hzr hgc hf1
+    have hh1 : HInvH sp db db1.S j m1 := by
+      have := hhA.follow_reader hinv hmA m.root z
+      rw [hf1] at this
+      exact this
+    have hroot1 : m1.root = accE.1.root := HMem.follow_root sp db1.S db.S hf1
+    have hc1 : CInvH sp db db1.S m1 := hcA.followed hmA hraA' hp hF1 hroot1
+    have hcs1 : HLaterSafeT sp db1 j1 db m1 t b1 z := hF1.laterSafe hmA hraA' hp hne hgc
+    obtain ⟨o1, ho1, -, -, hol1, -⟩ := hF1.inv.readableT_facts hinv hrd1 hnz
+    have hb1r : b1 ≠ m1.root := by
+      intro he
+      obtain ⟨o0', ho0', -, hn0'⟩ := hF1.inv.root
+      obtain ⟨o3, ho3, ho3n, -⟩ := hrd1
+      rw [← he, ho3, Option.some.injEq] at ho0'
+      subst ho0'
+      exact hzr (by rw [← ho3n, hn0'])
+    have ho1C : (m1.withRoot oc2).obj? b1 = some o1 := by rw [HMem.withRoot_obj?_ne hb1r]; exact ho1
+    have hlvl' : nz.level < oe.level := by rw [hol]; exact hlvl
+    obtain ⟨oc3, oe3, f1, f2, f3⟩ := CInvH.readAt_sim hL hls hcut hft htj oe.level m1 b1 z nz hF1.inv hh1 hc1 hrd1
+      hcs1 hnz hrz (by omega) hzr oc2 oe2 g2 g3
+    obtain ⟨-, hI2, hH2, hC2, hkc2, hr2⟩ := CInvH.readAtT_later hL hls hcut hft htj oe.level m1 b1 z nz hF1.inv hh1
+      hc1 hrd1 hcs1 hnz hrz (by omega)
+    have hstE : readStepH sp db1.S db.S oe.level t m.root oe accE z =
+        ((HMem.readAt sp db1.S db.S oe.level m1 t b1).1, accE.2 ++ (HMem.readAt sp db1.S db.S oe.level m1 t b1).2) := by
+      unfold readStepH
+      rw [hf1]
+      simp only [ho1, hol1, hlvl', ↓reduceIte]
+    have hstC : readStepH sp (cutStream c db1.S) (cutStream c db.S) oe.level t m.root oc accC z =
+        ((HMem.readAt sp (cutStream c db1.S) (cutStream c db.S) oe.level (m1.withRoot oc2) t b1).1,
+          accC.2 ++ (HMem.readAt sp (cutStream c db1.S) (cutStream c db.S) oe.level (m1.withRoot oc2) t b1).2) := by
+      unfold readStepH
+      rw [hCA, g1]
+      simp only [ho1C, hol1, hlev, hlvl', ↓reduceIte]
+    rw [hstE, hstC, f1]
+    refine ⟨hI2, hH2, hC2, ?_, by rw [hr2, hroot1, hrA], ⟨tl ++ (HMem.readAt sp db1.S db.S oe.level m1 t b1).2,
+      by rw [hlC]; rfl, by rw [hlE]; rfl⟩, oc3, oe3, rfl, f2, f3⟩
+    refine hkcA.trans (HKeepFrom.trans ?_ (hkc2.mono (by rw [← hol]; exact Nat.le_of_lt hlvl')))
+    intro x ox hx hlev'
+    apply hF1.frame x ox hx
+    intro hxz
+    have := hlev' nz (by rw [hxz]; exact hnz)
+    omega
+  have hfold : ∀ (L : List NodeId), (∀ z ∈ L, z ∈ sp.live (oe.hist.upTo t)) →
+      ∀ accC accE, I accC accE →
+        I (L.foldl (readStepH sp (cutStream c db1.S) (cutStream c db.S) oe.level t m.root oc) accC)
+          (L.foldl (readStepH sp db1.S db.S oe.level t m.root oe) accE) := by
+    intro L
+    induction L with
+    | nil => intro _ accC accE h; exact h
+    | cons z L ihL =>
+      intro hL' accC accE h
+      simp only [List.foldl_cons]
+      exact ihL (fun z' hz' => hL' z' (List.mem_cons_of_mem _ hz')) _ _
+        (hstep accC accE z (hL' z List.mem_cons_self) h)
+  obtain ⟨-, -, -, -, -, ⟨tl, hlC, hlE⟩, oc', oe', h1, h2, h3⟩ := hfold (sp.live (oe.hist.upTo t)) (fun z hz => hz)
+    ((m.withRoot oc), [(oc.node, oc.nodeAt t)]) (m, [(oe.node, oe.nodeAt t)])
+    ⟨hm, hh, hc, HKeepFrom.refl _ _ m, rfl, ⟨[], rfl, rfl⟩, oc, oe, rfl, hra, hr⟩
+  have hnc : oc.node = SIS.root := by rw [hr.node, hn0]
+  refine ⟨oc', oe', tl, Prod.ext h1 (by rw [hlC, hnc]), by rw [hlE, hn0], h2, h3⟩
+
+end ReadSim
+
 end SIS
