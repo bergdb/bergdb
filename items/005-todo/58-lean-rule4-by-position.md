@@ -543,5 +543,9 @@ main's lean/ had not changed since `565499f`.
    gone, the risk is small: the case that needs a proof, a key node's
    pointer in neither map, is covered.
 
-Then the main session applies the patch (or copies lean/ from the clone)
-and commits it, and 005-57's report and docs/levels.md cite it.
+Frans's decisions, 2026-10-27, 16:38: "1. As recommended. 2. As
+recommended." The trusted additions stay as they are, and so does the
+check under assertions in `linkToCanonical`.
+
+The main session committed the patch (`7c1ce2f`), and 005-57's report and
+docs/levels.md cite it (`0965377`).
