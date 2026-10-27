@@ -311,6 +311,23 @@ reset. At 0% now. So, go ahead." Both resumed where they stopped, and W6
 started (at high effort, as its pieces are small): 005-53's question 3,
 005-56's check, 005-52's night step.
 
+2026-10-27, 15:45. W6 done (`4f38f52`): 005-53's question 3 found a small
+fault (Reclaim keeps the builder's startup distance); 005-56's check lists
+7 mismatches; 005-52's night step ready.
+
+2026-10-27, 16:15. W5 done: 005-48 in the code (`e611709`, entry
+`78a8d38`); the level3 failure was a race in ReclaimReaders's check, also
+without group commit, fixed there; on s1 one thread's durable commits went
+from 38 to 213 a second; the stream's bytes unchanged. F53's runs tonight.
+
+2026-10-27, 16:38. Frans on 005-58's questions: "1. As recommended. 2. As
+recommended." (`ed852ad`).
+
+2026-10-27, 16:45. W2 done: 005-49's report recommends a paced take for
+007-03's step 3 (`374f744`). Frans chose three more pieces for the evening
+("Fix 005-53's Reclaim fault", "007-03 step 2: debt test", "Draft 009's
+closure"): W7, W8 and W9, at high effort.
+
 
 ## 8. Outcome
 
