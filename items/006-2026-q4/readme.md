@@ -21,7 +21,7 @@ The list
 | [006-05](05-todo-markers.md) | 2026-10-25 | The TODO markers in `java/`: the 15, what was found and done with each, and the 3.0e6 that "result in problems" in 2015 |
 | [006-06](06-fast-restart.md) | 2026-10-26 | Fast restart, a note of Frans's idea: lower the startup distance for a while before a controlled restart; not investigated |
 | [006-07](07-docs-cleanup.md) | 2026-10-26 | The `docs/` cleanup: most documents to items (001-07 to 001-11, 009-05, the new 011), `docs/levels.md` rewritten short, `docs/trace-format.md`, the references as IDs |
-| [006-08](08-core-layer.md) | 2026-10-26 | The Core Layer built alone (680 kB): a program calls `Db` with only it on the class path, and its tests pass on it; each of its packages now follows its `package.html` (`FileStreamPowerLossTester` from `stream` to `core`) |
+| [006-08](08-core-layer.md) | 2026-10-26 | The Core Layer built alone (680 kB): a program calls `Db` with only it on the class path, and its tests pass on it; each of its packages now follows its `package.html` (`FileStreamPowerLossTester` from `stream` to `core`); without its tests, what `Db` needs is 14,677 code lines (335 kB), two thirds of the production code |
 
 
 Files
@@ -52,8 +52,9 @@ Files
   check in [07-docs-cleanup/](07-docs-cleanup/).
 * [08-core-layer.md](08-core-layer.md). 006-08, the check: the Core Layer
   built alone and used, what did not follow `package.html` and the change,
-  the checks; `deps.py`, `core-build.sh`, the demo and the output in
-  [08-core-layer/](08-core-layer/).
+  the checks, and the Core without its tests: its size and lines, against
+  the full build; `deps.py`, `core-build.sh`, `core-size.sh`, `strip.py`,
+  the demo and the output in [08-core-layer/](08-core-layer/).
 
 
 Log
@@ -122,3 +123,13 @@ its unit and f-tests pass on it. `FileStreamPowerLossTester` moved from
 (`FileStreamIo` public, with protected methods); `dag`'s and `stream`'s
 `package.html` lists fixed. `before-commit.sh` OK, `level3.sh`'s step 7
 OK.
+
+2026-10-27. 006-08, "The Core without its tests", from Frans's question of
+2026-10-26 ("Is The Core independent from the test of the code. How large
+would a build of only the Core be compared to the full database."), by
+Claude (Opus 5.5, Claude Code): the tests are in the production files, and
+one line of production code uses `nanotest` (`KeyNode`); with them removed
+(`strip.py`), what `Db` and `DbBuilder` need is 121 files, 14,677 code
+lines and a jar of 335 kB, against 22,017 code lines for all of BergDB's
+production code; an estimate for an embedded port in C or Rust.
+`core-size.sh`, `strip.py`, `lines.py`.

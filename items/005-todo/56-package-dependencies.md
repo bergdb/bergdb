@@ -62,6 +62,54 @@ reference to the implementation package bergdb.pubimp"; `Database`,
 `TestClock` and `Time` have three more.
 
 
+After 006-08
+------------
+
+[006-08](../006-2026-q4/08-core-layer.md), 2026-10-26, checked that the
+Core Layer (`core` and what its list allows: `common`, `dag`, `nanotest`,
+`pub.util`, `storage`, `stream`) builds alone, and fixed its two
+packages that broke their lists:
+
+* `stream`: `FileStreamPowerLossTester` moved to `core`, and
+  `stress/PowerLossTest` with it. `FileStreamIo` became public with
+  protected methods, and `FileStream(File, FileStreamIo)` public, so that
+  the tester can override them from `core`; Frans, 2026-10-27: "It is
+  good as is." The cycles `stream` with `core` and with `storage` are
+  gone.
+* `dag`: its list has `nanotest`. `stream`'s list says `nanotest`, not
+  "nano".
+
+The Core Layer compiled alone before that too: none of its packages uses
+`pub` or `pubimp`. Now each of the seven uses only what its list allows,
+and they compile alone, with an empty class path (`core-build.sh`).
+
+`deps.py` (006-08; imports and qualified names in code, without comments
+and strings) on `java/src`, 2026-10-27: 7 uses not in a list, all in
+`pub` and `pubimp`:
+
+| Package | Its `package.html` | Also uses | Where |
+|---|---|---|---|
+| `pub` | pub.util | `common`, `nanotest` | `CryptoKey`; `nanotest` also in `Time` |
+| `pub` | | `core` | `SyncLevel`, in `Connection`, `Database` and `Transaction` |
+| `pub` | | `pubimp` | `Database`, `Factory`, `TestClock` and `Time` |
+| `pubimp` | pub, core, stream, common, nanotest | `dag` | 8 classes, among them `ConnectionImp`, `IndexManager` and `RwEnvironmentImp` |
+| `pubimp` | | `storage` | `DatabaseBuilderImp`, `DatabaseImp`, `IndexBuilderImp`, `PubTester` and `RwTransaction` |
+| `pubimp` | | `pub.util` | 16 classes |
+
+The only cycle left in `java/src` is `pub` with `pubimp`. Also found by
+006-08, outside `java/src` or without a dependency:
+
+* `java/stress/BryanRepro.java` is in package `bergdb.core` but uses only
+  the Pub API (question 1).
+* Two comments in `core` name classes of other packages: `TestClock`
+  ("Copy of class: bergdb.pub.TestClock") and `DbTester`
+  (`bergdb.test.StreamSize`). A comment in `storage/Constants.java` named
+  `bergdb.core.Spos`; it says `bergdb.dag.Spos` since 006-08.
+
+`deps.py` scans `java/src` only; question 1's `src-dev`, `src-icu` and
+`stress` are still to do.
+
+
 Questions
 ---------
 
@@ -81,16 +129,25 @@ Questions
      Core API?
    * `pub` has `core.SyncLevel` in the Pub API (010-01).
    * `stream`'s tester uses `core` and `storage`, two layers above it.
+     Done in 006-08: the tester moved to `core`.
    * `pub` and `pubimp` use each other, by design.
 4. A check that keeps the lists true: a unit test, or a step in
    `java/before-commit.sh`, that compares each package's dependencies with
    its `package.html`; 010-01 names it as a candidate measure for P12. The
    lists then need one form; today they say "Depends on:",
    "Dependencies:", "Package dependencies:" and "Allowed dependency:".
+   Two such tools exist since 2026-10-26, in
+   [006-08](../006-2026-q4/08-core-layer.md): `deps.py` compares each
+   package's uses with its `package.html` (it reads all four forms), and
+   `core-build.sh` builds the Core Layer alone and runs `CoreDemo` and the
+   Core Layer's unit tests on it (about 15 s). Should both become a step
+   in `java/before-commit.sh`? Frans, 2026-10-27: decided when this entry
+   is worked on.
 5. The rest of the `package.html` files: stale titles (`pub.util`'s
    "Package bergdb.pub", `pubimp`'s "Package com.bergdb.pubimp",
-   `pubimpicu`'s "Package dev"), `stream`'s "nano", and three packages in
-   `src-dev` without one (`bergdb`, `bergdb.dev.props`, `frans.bryan`).
+   `pubimpicu`'s "Package dev"), `stream`'s "nano" (fixed in 006-08),
+   and three packages in `src-dev` without one (`bergdb`,
+   `bergdb.dev.props`, `frans.bryan`).
 
 
 Done when

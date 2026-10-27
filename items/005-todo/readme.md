@@ -39,7 +39,7 @@ Open
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 | [005-55](55-fix-finalize.md) | Fix | The note of deprecated API that every build prints: `finalize()` (six uses) and `Class.newInstance()` (two). `Db.finalize()` stops a database that the application drops without `stop()`, as the Pub API promises; proposed: a `Cleaner` in its place, no `@SuppressWarnings` (Frans: "finalize() need to go"). Found with it: a dropped database whose eviction thread has started is never collected, as the thread holds the `Db` (009's step 3b) | open |
-| [005-56](56-package-dependencies.md) | Investigate | Package dependencies: how the packages depend on each other, and whether that follows their `package.html` files; Frans's question. A first look: four of `java/src`'s nine packages use packages their lists leave out (`pub` uses `core` and `pubimp`, `pubimp` uses `dag` and `storage`, `stream`'s tester `core` and `storage`), and nothing checks the lists | open |
+| [005-56](56-package-dependencies.md) | Investigate | Package dependencies: how the packages depend on each other, and whether that follows their `package.html` files; Frans's question. A first look: four of `java/src`'s nine packages used packages their lists leave out; after 006-08's fixes of `stream` and `dag`, two remain (`pub` uses `core` and `pubimp`, `pubimp` uses `dag` and `storage`), and nothing checks the lists | open |
 
 
 Closed
@@ -905,3 +905,12 @@ while reclaim's physical cut deletes files and forces the directory after
 each (`FileStream.pretruncate`, on the stream's monitor), 88 to 171 ms in
 P4's soak on F53 under every collector. One option added, the deletes
 outside the monitor; "Done when" includes P4's soak. No change to `java/`.
+
+2026-10-27. 005-56's question 4 asks, at Frans's request, whether 006-08's
+`deps.py` and `core-build.sh` become a step in `java/before-commit.sh`;
+decided when 005-56 is worked on. No change to `java/`.
+
+2026-10-27. 005-56 got a section "After 006-08", at Frans's request: 006-08
+fixed `stream` (its tester moved to `core`) and `dag`'s and `stream`'s
+lists; `deps.py` on `java/src` now finds 7 uses not in a list, all in `pub`
+and `pubimp`, and one cycle, `pub` with `pubimp`. No change to `java/`.

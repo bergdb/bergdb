@@ -10,6 +10,15 @@ call the methods of Db directly. Ensure there are not dependencies on
 classes in packages beyond what is allowed according to the package.html
 documentation."
 
+2026-10-27, "The Core without its tests" added by Claude (Opus 5.5, Claude
+Code), from a session of 2026-10-26 on Frans's question: "Is The Core
+independent from the test of the code. How large would a build of only the
+Core be compared to the full database. Assume users would call the methods
+of Db directly instead. How large would the core be. How many lines of
+code? Do not cound test code. This question is relevant for the
+possibility of using the database or some type of clone to C or rust for an
+embedded target where code size matters."
+
 The Core Layer here is `bergdb.core` and the packages it may use, directly
 or not, by the `package.html` files: `common`, `dag`, `nanotest`,
 `pub.util`, `storage` and `stream` (010-P12). The tools and their output
@@ -33,6 +42,11 @@ The seven compiled alone before this change too: none of them uses `pub`
 or `pubimp`. But two of them used packages that their `package.html` does
 not allow. Now each of the seven uses only what its `package.html`
 allows.
+
+Without its test code, what `Db` needs is 14,677 code lines and a jar of
+335 kB, two thirds of BergDB's production code; but the tests are in the
+production files, and a script must remove them first ("The Core without
+its tests").
 
 
 What did not follow package.html
@@ -118,6 +132,88 @@ Not changed; they are 005-56's:
   `DbTester` (`bergdb.test.StreamSize`).
 
 
+The Core without its tests
+--------------------------
+
+The Core Layer's production code does not depend on its test code, except
+for one line. But the tests are in the same files, so the Core cannot be
+built without them as the code stands; a script must remove them first.
+Without its tests, and with only what `Db` and `DbBuilder` need, the Core
+is 14,677 code lines, two thirds of BergDB's production code, in a jar of
+335 kB.
+
+Much of the test code is in the production classes: 342 `@Nano` methods in
+the Core Layer's production files (and 304 in its tester files), and also
+`test*` and `main()` methods, nested `Tester` classes
+(`RecoverableStream.Tester`) and the private helpers that only tests use
+(`Eviction`'s twins). 52 of the Core Layer's production files use
+`nanotest`. A few also import a tester (`DbHelper` uses `KeyNodeTester`,
+`StoredTopNode` uses `TopTester`). `strip.py` removes all of this from a
+copy. After that, one line of production code still uses `nanotest`:
+`KeyNode.checkLastTimeIndex()` calls `Assert.assertEquals`; it could throw
+`AssertionError` itself. Test-only code that `Db` still reaches stays in
+the counts below: `Audit` and `TestClock` (304 code lines), `Db.TestHooks`
+and `DbBuilder`'s test settings (`evictionSchedule`, `auditEvery`,
+`secondTopOrdinal`).
+
+By `core-size.sh`, at `3c807f1` (`runs/core-size.txt`):
+
+| Build | Source files | Classes | Jar |
+|---|---|---|---|
+| The Core Layer, with its tests (`core-build.sh`) | 175 | 415 | 680 kB |
+| The Core Layer, without its tests | 137 | 262 | 365 kB |
+| What `Db` and `DbBuilder` need, without tests | 121 | 234 | 335 kB; 293 kB with `-g:none` |
+| All of `java/src` and `src-icu`, without tests | 207 | 377 | 520 kB, and the ICU jar, 2,021 kB |
+| `build/bergdb.jar`, with tests, `src-dev` and ICU | | | 3,263 kB |
+
+| Code | Lines | Code lines |
+|---|---|---|
+| All of `java/src`, with its tests | 66,810 | 43,984 |
+| All of `java/src` and `src-icu`, without tests | 38,348 | 22,017 |
+| The Core Layer, with its tests | 47,770 | 31,445 |
+| The Core Layer, without its tests | 27,346 | 15,773 |
+| What `Db` and `DbBuilder` need, without tests | 25,649 | 14,677 |
+
+A code line has code on it: not blank, not only a comment. What `Db` needs
+is found by `javac` on `Db.java` and `DbBuilder.java` with the stripped
+copy as source path: it compiles what they use, directly or not, and
+nothing more. `CoreDemo` runs on that jar alone, and `jdeps` finds that it
+needs `java.base` only. Of the Core Layer, `Db` does not need `Jmx` (the
+reason for `java.management`), `DbScan`, `KeyFactory`,
+`DagComparison`, `KvComparison`, `DagNodeIterator`, `StatsNodeVisitor`,
+`OneFileStream`, `ReadOnlyStream` and a few small classes of `common`. The
+upper layers, `pub` and `pubimp`, add 6,099 code lines; the ICU jar is most
+of the full build's bytes.
+
+The 14,677 code lines by part (`runs/closure-lines.txt`):
+
+| Part | Code lines | Classes |
+|---|---|---|
+| `dag`: key, top and value nodes, `Klong`, `GetMany`, `Dag` | 3,617 | 25 |
+| `core`: `Db` (1,320), `StoredTrans`, `DbStarter`, `NodeCollection`, `NodeStream`, `Trans`, the rest | 5,021 | 37 |
+| `storage`: `RecoverableStream`, `MetaBlock`, the exceptions | 592 | 8 |
+| `common`: `Bytes`, `MyChecksum`, `Util`, `StringUtil` and others | 908 | 12 |
+| The replicas and the write buffer: `StorageManager`, `BufferedStream`, the rules | 1,261 | 9 |
+| The streams: `FileStream`, `FileStreamIo`, `MemoryStream`, `AppendOnlyStream` | 941 | 6 |
+| Memory: `Cache3`, `Eviction`, `Residents`, `Handle` | 930 | 6 |
+| Reclaim: `Reclaim`, `CutStream` | 782 | 2 |
+| Encryption: `Salsa`, `SalsaStream` | 243 | 2 |
+| Test-only: `Audit`, `TestClock` | 304 | 2 |
+| `pub.util`: exceptions, `Clock`, `Job`, `StorageInfo` | 78 | 12 |
+
+For a port to C or Rust for an embedded target, where code size matters, an
+estimate, not measured: without the test-only code, the replicas, the
+encryption and `MemoryStream`, and with a simple buffered append and a
+file or flash layer of the target's own, the Core is about 10,000 Java
+code lines with reclaim, 9,000 without. Ported one to one, the line count
+would be about the same in Rust or C. LMDB, about 7,000 code lines of C, is
+about 100 kB of machine code, so a Core of this kind would be 60 to 150 kB.
+The jar sizes do not predict this; bytecode is not machine code. The larger
+question for a port is memory, not size: the node table, handles and
+eviction are shaped by Java's objects and collector, and `BufferedStream`
+and `Eviction` have threads of their own.
+
+
 Tools
 -----
 
@@ -135,6 +231,11 @@ In [08-core-layer/](08-core-layer/):
 * `CoreDemo.java`: the user's program that calls `Db` directly.
 * `CoreUnit.java`: runs the Nano tests of the given packages, as
   `bergdb.dev.Unit` does for all of them.
+* `core-size.sh`: the Core Layer without its tests, what `Db` needs, and
+  all of `java/src` without tests: each compiled, its jar, its lines, and
+  `CoreDemo` on what `Db` needs. `sh core-size.sh REPO`: about 15 s.
+* `strip.py`: removes the test code from a copy of the sources.
+* `lines.py`: lines and code lines of Java files.
 * `runs/`: the output of the checks above.
 
 P12 has no measure yet (010-01). `deps.py` and `core-build.sh` could be

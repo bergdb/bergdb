@@ -1,0 +1,16 @@
+1. The Core Layer without nanotest and test code: common core dag pub.util storage stream
+2. javac, the copy alone
+   137 source files, 262 classes, bergdb-core-notest.jar 365442 bytes
+3. javac, what Db and DbBuilder need
+   121 source files, 234 classes, bergdb-core-db.jar 334892 bytes, 293248 with -g:none
+4. CoreDemo on bergdb-core-db.jar alone
+   CoreDemo OK: the same reads after a restart
+5. All of java/src and java/src-icu without test code
+   207 source files, 377 classes, bergdb-notest.jar 520079 bytes; the ICU jar 2021261 bytes
+6. Lines
+   The Core Layer, with its tests:     47770 lines, 31445 code lines
+   The Core Layer, without:            27346 lines, 15773 code lines
+   What Db and DbBuilder need:         25649 lines, 14677 code lines
+   All, without test code:             38348 lines, 22017 code lines
+   All of java/src, with its tests:    66810 lines, 43984 code lines
+CORE SIZE OK (output: $OUT)
