@@ -77,6 +77,62 @@ the middle of a ScaleBench run, and record the eviction thread's work and
 the longest waits of gets and commits until the resident bytes reach it.
 
 
+The first step, prepared for the quiet block (2026-10-27)
+--------------------------------------------------------
+
+By Claude (Opus 5.5, Claude Code), 2026-10-27 (006-09, W6.4). Not run
+yet: [night/budget.sh](52-cache-size-while-running/night/budget.sh) is a
+step for tonight's conductor (`# minutes: 45`, about 15 to 25 used; it
+kills its JVM at 44), with `budget.sh.READY` written after a smoke test
+(`SMOKE=1`, 40 s, all three runs `BUDGETBENCH OK`). It builds nothing: it
+uses a jar built from HEAD `a6cd234` and the class compiled from
+[night/BudgetBench.java](52-cache-size-while-running/night/BudgetBench.java),
+both in `/Users/f/fl/bench/006-09/w6/night`.
+
+What it measures. `BudgetBench` is not ScaleBench but loads the same
+database in its own JVM (10M key24 keys, 1,000 puts a transaction,
+node size 30, budget 665 MB). Then 2 readers (uniform gets) and a writer
+(200 commits a second of 10 puts) run through five phases: warm (until
+the resident bytes are steady), base (60 s), converge (`setBudget` to a
+fraction of the resident bytes, until they are at most that; at most
+300 s), after (60 s at the low budget) and raise (30 s back at 665 MB).
+The load leaves only the latest tree resident, about 16 bytes a key by
+the cache's count (smoke runs at 0.2M to 0.5M keys), so 665 MB is never
+reached and the low budget is set from the resident bytes: about 160 MB
+at 10M keys, if that holds. Three runs: ZGC to a fifth, G1 to a fifth,
+ZGC to a half. With ZGC a long wait is BergDB's own (010-P1); G1 is the
+default collector, and its pauses are in its GC log.
+
+How to read the output (`night/out/`):
+
+* `RUN.txt`, the line `converge:`: the resident bytes at the drop and the
+  new budget; how long until the resident bytes reached it; the
+  eviction thread's CPU time over that (ThreadMXBean, thread
+  `bergdb-evictor`); the sweeps, objects released and sweep time over it
+  (`Eviction.figures`, the writer's batches and the thread's together).
+  The question-2 answer: if the convergence takes a fraction of a second
+  of one thread, "batches at full speed" is gradual enough at this size;
+  a 6 GB drop (the issue's example) is about 45 times the 130 MB evicted here.
+* `RUN.txt`, the lines `gets, PHASE:` and `commits, PHASE:`: calls a
+  second, the longest, and counts above 1 to 100 ms. Compare converge
+  with base and after: the waits caused by the convergence are those
+  above the other two phases' longest. Then `slowest gets` and `slowest
+  commits`: the 15 longest calls, each with its time in seconds from the
+  drop (negative before it).
+* `RUN.csv`: a line every 100 ms (phase, seconds from the drop, resident
+  bytes, budget, the eviction thread's CPU in ms, sweeps, objects
+  released, sweep ms, longest sweep, and the gets and commits in the
+  interval with the longest of each): the convergence's curve, and which
+  intervals the long waits fall in.
+* `RUN.gc.log` for the collector's pauses beside the long waits;
+  `runs.txt` for the step's start, end and a line per run.
+
+The smoke runs, on a busy F53 (load near 12) and at 0.2M keys, timed
+nothing; they showed one thing to look for: a sweep of 45 ms in one run,
+against the batch limit of 2 ms (`Eviction.BATCH_NANOS`). The night's
+`converge:` line gives the longest sweep of each run.
+
+
 Size and order
 --------------
 

@@ -110,6 +110,49 @@ The only cycle left in `java/src` is `pub` with `pubimp`. Also found by
 `stress` are still to do.
 
 
+The check, with test code apart (2026-10-27)
+--------------------------------------------
+
+By Claude (Opus 5.5, Claude Code), 2026-10-27 (006-09, W6.3).
+[56-package-dependencies/check-deps.py](56-package-dependencies/check-deps.py)
+(`python3 -I check-deps.py [java/src]`, under a second) builds on 006-08's
+`deps.py`: the same uses (imports and qualified names, without comments and
+strings) and the same reading of the four forms of list, but each use is
+production code or test code. Test code: a file whose name contains
+`Tester`, or whose class implements `IPack` (each package's `Pack`); a
+nested class whose name contains `Tester`; a method annotated `@Nano`; a
+static `void test...` method; and, repeated until nothing changes, a method
+or nested class whose name is used in the file only by test code (the
+tests' helpers). An import counts as test code when every use of its
+simple name is. Limits: a helper whose name is also used for something
+else (`Eviction.values`, beside `Map.values`) counts as production, and so
+does a helper in a production file that only another file's tests call.
+Exit status 1 when a use is not in the list.
+
+On HEAD `a6cd234`, `java/src`: the same 7 uses not in a list as 006-08
+found, all in `pub` and `pubimp`; 6 are production code.
+
+| Package | Uses, not in its list | Code | Where | Which looks wrong |
+|---|---|---|---|---|
+| `pub` | `common` | production | `CryptoKey`: `StringUtil`, `SeedGenerator`, `Util` | The list: the 2015 design lets every package use `common` |
+| `pub` | `core` | production | `SyncLevel` in the `sync` methods of `Connection`, `Database` and `Transaction` | The code: a Core type in the Pub API's signatures (010-01); `SyncLevel` belongs in `pub.util` or the Pub API. An API change, for Frans |
+| `pub` | `nanotest` | test only | the `@Nano` methods of `CryptoKey` and `Time` | The list, if test code may use `nanotest` (question 2; the 2015 design allows it for every package) |
+| `pub` | `pubimp` | production | `Factory` (`new DatabaseBuilderImp()`); `Database.PRIMARY = IndexManager.PRIMARY`; `TestClock` (`ClockConstants.MIN_TIME`, `MAX_TIME`); `Time` (`TimeResolver`) | `Factory`: the list (the designed cycle, which `pubimp`'s list allows and the 2015 design lists). The other three: the code, small; `Factory`'s comment says it is the only reference. The constants can live in `pub`; `TimeResolver` is a larger move |
+| `pubimp` | `dag` | production (also `PubTesterIndex`) | `GetData`, `GetMany`, `GetMany.StopCondition`, `Kvt`, `Keys`, `Klong`, `Spos`, in 7 production classes | The list: `GetData`, `GetMany` and `Kvt` are in `Db`'s public signatures (`newGetData`, `getOne(..., GetData)`, `newGetMany`, `getMany(GetMany)`, the `Kvt` handler), and `Keys` and `Klong` make the `long[]` key segments that `getOne` takes, so the Core API needs them. `Spos` is one `Spos.NULL` in `ConnectionImp`, and `ClockConstants` only copies `Klong.MIN_TIME` and `MAX_TIME`. 010-P12's "dag, storage and stream are under them" should then name these types as part of the Core API |
+| `pubimp` | `pub.util` | production (also 4 testers, `DbBoolean`, `DbByteArray`) | 12 production classes | The list: `pub.util` is the package shared with lower layers, and the 2015 design lists it for `pubimp` |
+| `pubimp` | `storage` | production (also `PubTester`) | `StreamIoException`, `StreamFormatException` (thrown through `Db`), in `DatabaseBuilderImp`, `DatabaseImp`, `IndexBuilderImp`, `RwTransaction`; `StorageManager`'s buffer constants in `DatabaseBuilderImp` and `DatabaseImp` | The list for the exceptions, which come through the Core API (the 2015 design lists `storage` for `pubimp`); the constants could come from `DbBuilder`'s defaults |
+
+What test code adds: only `pub` → `nanotest`. In `common`, `storage`,
+`stream`, `pub` and `pubimp`, `nanotest` is used by test code only; in
+`core` and `dag` also by production code, which their lists allow:
+`KeyNode.checkLastTimeIndex` (an invariant check) and `Eviction`'s `Twin`
+(the check under the test schedule `EVERY`) call `Assert`. So the rule "the
+lists cover production code; test code may also use `nanotest`" leaves
+6 mismatches: 4 the lists' (`pub` → `common`, `pubimp` → `dag`,
+`pub.util`, `storage`), 1 the code's (`pub` → `core`), and `pub` →
+`pubimp` both (`Factory` by design, three small uses not).
+
+
 Questions
 ---------
 

@@ -71,6 +71,75 @@ Question 3, a reading of `Reclaim` and `Db`'s start: small, and it may be
 a fault of its own. Then question 1's runs, in the background, on F53.
 
 
+Question 3: Reclaim's startup distance
+--------------------------------------
+
+By Claude (Opus 5.5, Claude Code), 2026-10-27 (006-09, W6.1), a reading of
+HEAD `a6cd234`. Answer: it is the builder's value, never the stream's, and
+it ignores later changes. A fault of its own, small: it changes how often
+reclaim runs, not what it may cut.
+
+What the code does:
+
+* `Db`'s constructor sets `startupDistance` from the builder and then
+  makes the `Reclaim` (`Db.java`, lines 244 and 265). `Reclaim`'s
+  constructor copies `db.getStartupDistance()` into the final field
+  `initialStartupDistance` (`Reclaim.java`, line 180).
+* `Db.start` runs later: `recover()` reads the stream's last valid meta
+  block, and `handleStartParams` sets `Db.startupDistance` to the meta
+  block's value (`Db.java`, lines 686 and 689). So for an existing
+  database `Db` uses the stream's distance, as `DatabaseBuilder`'s Javadoc
+  says, but `Reclaim` keeps the builder's: the Pub API's default 50 MB, or
+  whatever `startupDistanceInMb` the opener passed.
+* `Db.setStartupDistance` changes `Db`'s field and the meta block, not
+  `Reclaim`'s.
+* `Reclaim` uses it in one place: an iteration starts only when the stream
+  has grown by `2 × initialStartupDistance` since the last iteration
+  started, and a quarter of the retain duration has passed
+  (`transactionCompleted`, line 332; the class comment's first point).
+* Nothing else reads the startup distance once at start; `Db`'s other use
+  (line 2051) reads its live field.
+* The pattern is in the 2017 code (`195cf88`: `Reclaim.java`, lines 87,
+  188 and 262).
+
+What it does to reclaim: only the spacing of iterations. Every cut is
+guarded by live values, not by this field: the startup position must have
+passed `pSafe` (`markSafePositions`, `pretruncateIfPossible`) and the last
+valid meta block's transaction must be at or after `pCut`. So no wrong
+cut and no lost data. But:
+
+* Opened with a builder value larger than the stream's (say made at 5 MB,
+  opened with the default 50 MB; or made at 50 MB, opened with 1000),
+  iterations wait for 2 × the larger value of growth: the stream keeps
+  far more than the retention needs, up to 2 GB more at 1000 MB.
+* Opened with a smaller one (made at 1000 MB, as 005-38 suggests for a
+  large database, and opened with the default), an iteration may start
+  every 100 MB of growth instead of every 2000 MB, when the retention is
+  short enough: more iterations, more rows waiting in the table for the
+  startup position to pass them, and more rewriting.
+* After a change of distance (`setStartupDistance`, D4's steps, 006-06's
+  lowering), reclaim keeps the distance it was opened with.
+
+The probe, [ReclaimDistanceProbe.java](53-startup-distance-on-the-fly/ReclaimDistanceProbe.java)
+(core API, memory stream, retention 1 s, 6000 small puts per run), makes a
+database at 2000 bytes and restarts it twice:
+
+| Run | Db's distance | Reclaim's | Iterations | Stream kept after the last cut |
+|---|---|---|---|---|
+| Made with 2000 | 2000 | 2000 | 64 | 98,448 bytes |
+| Restarted, builder 2000 | 2000 | 2000 | 65 | 123,064 bytes |
+| Restarted, builder default | 2000 | 50,000,000 | 1 | 2,426,672 bytes |
+
+With the default in the builder, reclaim nearly stops: one iteration
+instead of 65, and 20 times the stream kept.
+
+A fix, for an entry of its own (not made here): `transactionCompleted`
+reads `Db`'s live distance (it holds the write lock, which guards that
+field) instead of the copy made in the constructor. The spacing then
+follows the stream's distance and every later change. A unit test: the
+probe's third run, asserting that the iterations match the second's.
+
+
 Size and order
 --------------
 
