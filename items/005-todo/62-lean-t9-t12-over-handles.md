@@ -567,7 +567,7 @@ attribution.
 3. Question 3, what to remove, as in "State".
 
 
-In main, 2026-10-27, 19:45: the 11 commits, after the review, as
+In main, 2026-10-27, 19:39: the 11 commits, after the review, as
 `bba91dd` to `a506b34` (the same lean/ tree as `3a2d2e5`), by the 006-09
 session; the patch files 0001 to 0011 were then removed from this
 directory, as the commits hold them. Left for Frans: questions 2 to 4 of

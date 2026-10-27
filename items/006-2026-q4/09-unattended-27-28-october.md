@@ -352,7 +352,7 @@ while the old one's cut thread still deleted files; no data at risk; the
 test now uses `close()` (`b0661ba`, level2 full passes); the API question
 registered as 005-63 (`9fa1789`).
 
-2026-10-27, 19:48. W12 and W14: T9 and T12 over handles proved and
+2026-10-27, 19:39. W12 and W14: T9 and T12 over handles proved and
 reviewed at max effort, in `main` (`bba91dd` to `a506b34`, entry
 `422fad4`); what to remove of the old design is for Frans. W8, 007-03's
 step 2, still runs.
