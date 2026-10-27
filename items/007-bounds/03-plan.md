@@ -7,12 +7,13 @@ of 2026-10-23, which followed 007-01 and 007-02. Updated 2026-10-26 from
 the review after item 009, [007-04](04-review-after-009.md).
 
 **Status (2026-10-27): step 1 done (005-31, 2026-10-24); step 5 done
-(007-05, 2026-10-27); step 6 investigated (005-57, 2026-10-27); steps 2, 3
-and 4 not started.** Step 5: warm on F53, 7.4 s at 50 MB, 12.4 s at 200 MB
-and 70 to 86 s at 1000 MB with 10M to 50M keys and 8-byte values; cold on
-s1, 3.5 minutes at 10M keys, most of it rule 4's reads. Step 6: rule 4 and
-the writer need none of those reads (005-57); with prototypes, a cold start
-on s1 at 50 MB took about 46 s. Steps 2 to 5 waited for release 2026.1 (Frans,
+(007-05, 2026-10-27); step 6 done, rule 4 without reads (005-57,
+2026-10-27); steps 2, 3 and 4 not started.** Step 5: warm on F53, 7.4 s at
+50 MB, 12.4 s at 200 MB and 70 to 86 s at 1000 MB with 10M to 50M keys and
+8-byte values; cold on s1, 3.5 minutes at 10M keys, most of it rule 4's
+reads. Step 6: rule 4 finds a pointer's node by its position, with no read
+(005-57); with it a cold start on s1 at 10M keys took about 46 and 51 s at
+50 and 200 MB, the rest the rerun's loads. Steps 2 to 5 waited for release 2026.1 (Frans,
 2026-10-25: "After the release"), which is out, so they wait only for
 Frans's start. Since 007-04, step 2 is smaller (005-38 measured its first
 workload); steps 3 and 4 wait for
@@ -291,6 +292,12 @@ it means", 3): a cold start in seconds needs the rerun's reads cheaper
   007-05's databases; on s1 a cold start at 10M keys and 50 MB from 214 s
   to about 46 s, the rest the rerun's loads (A). The change waits for
   Frans.
+* Done 2026-10-27 (005-57, "Decided" and "Outcome"): Frans chose part 1
+  alone ("1. Part 1 alone. ... 3. No, not now. Let's get this in place
+  now."): rule 4 by position is in the code, checked against rule 4 by node
+  id at every startup of the tests. Not done: the writer's reads (part 2),
+  and A, the rerun's loads, "not now". The Lean theorem for the argument is
+  005-58.
 
 
 Order
@@ -308,7 +315,8 @@ Since the review (007-04):
 * D4 and step 3 after 005-49's recommendation; step 2's runs again after
   step 3.
 * Step 4 after step 3's design, which it must match.
-* Step 6 after D5, from step 5's count.
+* Step 6 after D5, from step 5's count. Done 2026-10-27 (005-57), rule 4
+  by position; the rerun's loads (its option A) not now.
 
 Before the review: 1, 2 and 3 in that order, 4 beside 2 and 3 once D1 had
 fixed the deadline's rule, and 5 after 3.

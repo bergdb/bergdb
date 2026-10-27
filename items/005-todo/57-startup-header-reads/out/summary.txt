@@ -1,0 +1,66 @@
+Scenario 10m-sd50
+  version         warm F53 (median; runs)           cold s1 (runs)        reads
+  2026.1           7.39 s; 7.29 7.39 7.47            254.2 224.8 s      1113136
+  current          7.67 s; 7.44 7.67 7.79            208.8 219.3 s      1113136
+  part 1           6.55 s; 6.52 6.55 6.91              44.9 47.0 s       249527
+  parts 1+2        6.81 s; 6.81 6.83 6.76              46.8 44.0 s       249527
+
+  Reads by where they come from, F53, warm (counted start; reads, s in reads):
+    2026.1     13.6 s: readTransactions 757 0.0; rerunTransactions.header 82866 0.1; rerunTransactions.node 165876 0.2; linkD.header 863405 1.2; linkD.node 204 0.0
+    current    13.5 s: readTransactions 757 0.0; rerunTransactions.header 82866 0.1; rerunTransactions.node 165876 0.2; linkD.header 863405 1.2; linkD.node 204 0.0
+    part 1     8.1 s: readTransactions 757 0.0; rerunTransactions.header 82866 0.1; rerunTransactions.node 165876 0.2
+    parts 1+2  8.5 s: readTransactions 757 0.0; rerunTransactions.header 82866 0.1; rerunTransactions.node 165876 0.2
+  Reads by where they come from, s1, cold (counted start; reads, s in reads):
+    2026.1     233.8 s: readTransactions 757 0.3; rerunTransactions.header 82866 26.9; rerunTransactions.node 165876 1.9; linkD.header 863405 177.3; linkD.node 204 0.0
+    current    255.2 s: readTransactions 757 0.3; rerunTransactions.header 82866 28.1; rerunTransactions.node 165876 1.9; linkD.header 863405 196.5; linkD.node 204 0.0
+    part 1     50.5 s: readTransactions 757 0.3; rerunTransactions.header 82866 32.1; rerunTransactions.node 165876 2.1
+  Check, F53: {'examined': 871106, 'linked': 3634, 'headerReads': 0, 'checked': 871106, 'differences': 0, 'linkedById': 3634}
+  Check, s1: {'examined': 871106, 'linked': 3634, 'headerReads': 0, 'checked': 871106, 'differences': 0, 'linkedById': 3634}
+  After the start (F53, counted):
+    2026.1     start 27.74 s; 300 transactions in 28.54 s (first half 20.72 s); start and after 56.3 s; reads: load 1394193; idOf.resolvePointers 1481589
+    current    start 28.11 s; 300 transactions in 26.06 s (first half 19.00 s); start and after 54.2 s; reads: load 1101916; idOf.resolvePointers 1481589
+    part 1     start 12.92 s; 300 transactions in 36.09 s (first half 29.04 s); start and after 49.0 s; reads: load 1101916; idOf.resolvePointers 1482090
+    parts 1+2  start 12.94 s; 300 transactions in 20.23 s (first half 13.59 s); start and after 33.2 s; reads: load 1101916
+  After the start (F53, timed):
+    2026.1     start 21.92 s; 300 transactions in 13.63 s (first half 10.44 s); start and after 35.5 s; reads: after 2875782
+    current    start 22.02 s; 300 transactions in 13.46 s (first half 10.41 s); start and after 35.5 s; reads: after 2583505
+    part 1     start 10.71 s; 300 transactions in 23.75 s (first half 20.70 s); start and after 34.5 s; reads: after 2584006
+    parts 1+2  start 11.41 s; 300 transactions in 13.56 s (first half 10.04 s); start and after 25.0 s; reads: after 1101916
+  After the start (s1, cold, timed):
+    current    start 217.38 s; 300 transactions in 457.92 s (first half 333.07 s); start and after 675.3 s; reads: after 2583505
+    part 1     start 48.62 s; 300 transactions in 485.78 s (first half 354.77 s); start and after 534.4 s; reads: after 2584006
+    parts 1+2  start 48.07 s; 300 transactions in 159.87 s (first half 91.18 s); start and after 207.9 s; reads: after 1101916
+
+Scenario 10m-sd200
+  version         warm F53 (median; runs)           cold s1 (runs)        reads
+  2026.1       12.91 s; 12.91 12.99 12.54            220.4 202.8 s      1722436
+  current      13.24 s; 13.23 13.36 13.24            200.4 218.9 s      1722436
+  part 1       12.05 s; 11.77 12.05 12.46              51.3 51.2 s       468312
+  parts 1+2    12.51 s; 12.07 12.59 12.51              53.9 50.3 s       468312
+
+  Reads by where they come from, F53, warm (counted start; reads, s in reads):
+    2026.1     22.1 s: readTransactions 1620 0.0; rerunTransactions.header 155463 0.2; rerunTransactions.node 311220 0.3; linkD.header 1253830 1.7; linkD.node 294 0.0
+    current    22.4 s: readTransactions 1620 0.0; rerunTransactions.header 155463 0.2; rerunTransactions.node 311220 0.3; linkD.header 1253830 1.8; linkD.node 294 0.0
+    part 1     14.8 s: readTransactions 1620 0.0; rerunTransactions.header 155463 0.2; rerunTransactions.node 311220 0.3
+    parts 1+2  15.2 s: readTransactions 1620 0.0; rerunTransactions.header 155463 0.3; rerunTransactions.node 311220 0.3
+  Reads by where they come from, s1, cold (counted start; reads, s in reads):
+    2026.1     260.8 s: readTransactions 1620 0.6; rerunTransactions.header 155463 22.7; rerunTransactions.node 311220 2.0; linkD.header 1253830 193.2; linkD.node 294 0.0
+    current    268.7 s: readTransactions 1620 0.8; rerunTransactions.header 155463 27.6; rerunTransactions.node 311220 2.0; linkD.header 1253830 194.5; linkD.node 294 0.0
+    part 1     61.1 s: readTransactions 1620 0.7; rerunTransactions.header 155463 27.9; rerunTransactions.node 311220 2.2
+  Check, F53: {'examined': 1292217, 'linked': 69405, 'headerReads': 0, 'checked': 1292217, 'differences': 0, 'linkedById': 69405}
+  Check, s1: {'examined': 1292217, 'linked': 69405, 'headerReads': 0, 'checked': 1292217, 'differences': 0, 'linkedById': 69405}
+  After the start (F53, counted):
+    2026.1     start 32.60 s; 800 transactions in 34.07 s (first half 19.94 s); start and after 66.7 s; reads: load 2903786; idOf.resolvePointers 320191
+    current    start 31.98 s; 800 transactions in 28.36 s (first half 17.54 s); start and after 60.3 s; reads: load 2158505; idOf.resolvePointers 320191
+    part 1     start 18.27 s; 800 transactions in 33.13 s (first half 19.37 s); start and after 51.4 s; reads: load 2158505; idOf.resolvePointers 322699
+    parts 1+2  start 19.00 s; 800 transactions in 29.14 s (first half 18.69 s); start and after 48.1 s; reads: load 2158505
+  After the start (F53, timed):
+    2026.1     start 22.01 s; 800 transactions in 15.66 s (first half 10.75 s); start and after 37.7 s; reads: after 3223977
+    current    start 21.91 s; 800 transactions in 14.37 s (first half 10.08 s); start and after 36.3 s; reads: after 2478696
+    part 1     start 15.24 s; 800 transactions in 19.10 s (first half 11.87 s); start and after 34.3 s; reads: after 2481204
+    parts 1+2  start 15.45 s; 800 transactions in 16.12 s (first half 11.29 s); start and after 31.6 s; reads: after 2158505
+  After the start (s1, cold, timed):
+
+checks-before-commit.txt: rule 4: 464 startups, 14596 pointers, 2461 linked, 2461 by id, 0 differences, 5189 header reads; resolvePointers: 76448 pointers, 90 in ids, 106 pinned by position, 106 by id, 76448 checked, 0 differences
+checks-level2.txt: rule 4: 11951 startups, 1827324 pointers, 1114127 linked, 1114127 by id, 0 differences, 30918 header reads; resolvePointers: 3069771 pointers, 5 in ids, 3398 pinned by position, 3398 by id, 3069771 checked, 0 differences
+checks-level4.txt: rule 4: 14027 startups, 456896 pointers, 17356 linked, 17356 by id, 0 differences, 30478 header reads; resolvePointers: 14481150 pointers, 126363 in ids, 17296 pinned by position, 17393 by id, 14481150 checked, 0 differences

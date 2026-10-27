@@ -127,3 +127,11 @@ and on 007-05's two databases, with no difference. Cold on s1, 10M keys:
 214 and 210 s at 50 and 200 MB today, about 46 and 51 s with the change;
 warm on F53, 0.7 to 0.9 s less. java/ not changed; the change waits for Frans.
 007-03's status and step 6 updated.
+
+2026-10-27. Step 6 of 007-03 done (005-57), at Frans's word ("1. Part 1
+alone. ... Go ahead. Implement and commit this."), by Claude (Opus 5.5,
+Claude Code): rule 4 finds a pointer's node by its position, with no read
+of the stream but for a top node's pointer that the maps do not resolve,
+and with assertions on it also runs by node id and fails on a difference.
+The writer's reads (part 2) and the rerun's loads (option A) are not done;
+the Lean theorem for the argument is 005-58. 007-03 updated.

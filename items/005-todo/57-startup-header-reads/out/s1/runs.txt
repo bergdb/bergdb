@@ -1,0 +1,31 @@
+2026-10-27 09:16:32 start; load 0.13 0.10 0.09
+2026-10-27 09:20:51 s1-10m-sd50 rel cold1: exit 0; "startupSec": 254.215
+2026-10-27 09:24:24 s1-10m-sd50 head cold1: exit 0; "startupSec": 208.836
+2026-10-27 09:25:14 s1-10m-sd50 proto cold1: exit 0; "startupSec": 44.8560
+2026-10-27 09:29:03 s1-10m-sd50 rel cold2: exit 0; "startupSec": 224.756
+2026-10-27 09:32:45 s1-10m-sd50 head cold2: exit 0; "startupSec": 219.253
+2026-10-27 09:33:37 s1-10m-sd50 proto cold2: exit 0; "startupSec": 46.9778
+2026-10-27 09:37:34 s1-10m-sd50 rel counted: exit 0; "startupSec": 233.837
+2026-10-27 09:41:53 s1-10m-sd50 head counted: exit 0; "startupSec": 255.207
+2026-10-27 09:42:47 s1-10m-sd50 proto counted: exit 0; "startupSec": 50.4543
+2026-10-27 09:46:48 s1-10m-sd50 proto check: exit 0; "startupSec": 238.281
+2026-10-27 09:50:32 s1-10m-sd200 rel cold1: exit 0; "startupSec": 220.361
+2026-10-27 09:53:55 s1-10m-sd200 head cold1: exit 0; "startupSec": 200.402
+2026-10-27 09:54:50 s1-10m-sd200 proto cold1: exit 0; "startupSec": 51.3283
+2026-10-27 09:58:16 s1-10m-sd200 rel cold2: exit 0; "startupSec": 202.767
+2026-10-27 10:01:58 s1-10m-sd200 head cold2: exit 0; "startupSec": 218.943
+2026-10-27 10:02:52 s1-10m-sd200 proto cold2: exit 0; "startupSec": 51.2176
+2026-10-27 10:07:16 s1-10m-sd200 rel counted: exit 0; "startupSec": 260.832
+2026-10-27 10:11:48 s1-10m-sd200 head counted: exit 0; "startupSec": 268.715
+2026-10-27 10:12:53 s1-10m-sd200 proto counted: exit 0; "startupSec": 61.0835
+2026-10-27 10:16:47 s1-10m-sd200 proto check: exit 0; "startupSec": 231.398
+2026-10-27 10:16:47 done
+2026-10-27 10:17:08 start (b); load 0.78 1.08 1.09
+2026-10-27 10:17:58 s1-10m-sd50 proto2 cold1: exit 0; "startupSec": 46.7940 
+2026-10-27 10:18:46 s1-10m-sd50 proto2 cold2: exit 0; "startupSec": 44.0111 
+2026-10-27 10:19:42 s1-10m-sd200 proto2 cold1: exit 0; "startupSec": 53.9082 
+2026-10-27 10:20:36 s1-10m-sd200 proto2 cold2: exit 0; "startupSec": 50.3395 
+2026-10-27 10:32:10 s1-10m-sd50 head after: exit 0; "startupSec": 217.381 "afterSec": 457.918 
+2026-10-27 10:41:25 s1-10m-sd50 proto after: exit 0; "startupSec": 48.6159 "afterSec": 485.783 
+2026-10-27 10:45:13 s1-10m-sd50 proto2 after: exit 0; "startupSec": 48.0712 "afterSec": 159.873 
+2026-10-27 10:45:13 done (b)

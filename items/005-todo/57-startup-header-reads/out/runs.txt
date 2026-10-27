@@ -1,0 +1,58 @@
+2026-10-27 09:17:44 quiet; load { 2.22 2.81 2.59 }
+2026-10-27 09:17:52 f53-10m-sd50 head warmup: exit 0; "startupSec": 7.59684 
+2026-10-27 09:18:00 f53-10m-sd50 rel warm1: exit 0; "startupSec": 7.29206 
+2026-10-27 09:18:07 f53-10m-sd50 head warm1: exit 0; "startupSec": 7.44366 
+2026-10-27 09:18:14 f53-10m-sd50 proto warm1: exit 0; "startupSec": 6.51676 
+2026-10-27 09:18:22 f53-10m-sd50 rel warm2: exit 0; "startupSec": 7.39093 
+2026-10-27 09:18:29 f53-10m-sd50 head warm2: exit 0; "startupSec": 7.67143 
+2026-10-27 09:18:36 f53-10m-sd50 proto warm2: exit 0; "startupSec": 6.54921 
+2026-10-27 09:18:44 f53-10m-sd50 rel warm3: exit 0; "startupSec": 7.47449 
+2026-10-27 09:18:52 f53-10m-sd50 head warm3: exit 0; "startupSec": 7.79138 
+2026-10-27 09:18:59 f53-10m-sd50 proto warm3: exit 0; "startupSec": 6.90860 
+2026-10-27 09:19:13 f53-10m-sd50 rel counted: exit 0; "startupSec": 13.6274 
+2026-10-27 09:19:26 f53-10m-sd50 head counted: exit 0; "startupSec": 13.5284 
+2026-10-27 09:19:35 f53-10m-sd50 proto counted: exit 0; "startupSec": 8.14861 
+2026-10-27 09:19:43 f53-10m-sd50 proto check: exit 0; "startupSec": 8.00949 
+2026-10-27 09:20:40 f53-10m-sd50 rel after1: exit 0; "startupSec": 27.7362 "afterSec": 28.5420 
+2026-10-27 09:21:16 f53-10m-sd50 rel after0: exit 0; "startupSec": 21.9222 "afterSec": 13.6251 
+2026-10-27 09:22:11 f53-10m-sd50 head after1: exit 0; "startupSec": 28.1083 "afterSec": 26.0602 
+2026-10-27 09:22:46 f53-10m-sd50 head after0: exit 0; "startupSec": 22.0209 "afterSec": 13.4644 
+2026-10-27 09:23:36 f53-10m-sd50 proto after1: exit 0; "startupSec": 12.9182 "afterSec": 36.0884 
+2026-10-27 09:24:11 f53-10m-sd50 proto after0: exit 0; "startupSec": 10.7087 "afterSec": 23.7502 
+2026-10-27 09:24:34 f53-10m-sd200 head warmup: exit 0; "startupSec": 22.7312 
+2026-10-27 09:24:47 f53-10m-sd200 rel warm1: exit 0; "startupSec": 12.9117 
+2026-10-27 09:25:01 f53-10m-sd200 head warm1: exit 0; "startupSec": 13.2342 
+2026-10-27 09:25:13 f53-10m-sd200 proto warm1: exit 0; "startupSec": 11.7720 
+2026-10-27 09:25:26 f53-10m-sd200 rel warm2: exit 0; "startupSec": 12.9944 
+2026-10-27 09:25:39 f53-10m-sd200 head warm2: exit 0; "startupSec": 13.3640 
+2026-10-27 09:25:52 f53-10m-sd200 proto warm2: exit 0; "startupSec": 12.0512 
+2026-10-27 09:26:04 f53-10m-sd200 rel warm3: exit 0; "startupSec": 12.5438 
+2026-10-27 09:26:18 f53-10m-sd200 head warm3: exit 0; "startupSec": 13.2366 
+2026-10-27 09:26:31 f53-10m-sd200 proto warm3: exit 0; "startupSec": 12.4610 
+2026-10-27 09:26:53 f53-10m-sd200 rel counted: exit 0; "startupSec": 22.1325 
+2026-10-27 09:27:16 f53-10m-sd200 head counted: exit 0; "startupSec": 22.4500 
+2026-10-27 09:27:31 f53-10m-sd200 proto counted: exit 0; "startupSec": 14.8406 
+2026-10-27 09:27:45 f53-10m-sd200 proto check: exit 0; "startupSec": 13.6245 
+2026-10-27 09:28:52 f53-10m-sd200 rel after1: exit 0; "startupSec": 32.5978 "afterSec": 34.0689 
+2026-10-27 09:29:30 f53-10m-sd200 rel after0: exit 0; "startupSec": 22.0132 "afterSec": 15.6618 
+2026-10-27 09:30:31 f53-10m-sd200 head after1: exit 0; "startupSec": 31.9850 "afterSec": 28.3573 
+2026-10-27 09:31:08 f53-10m-sd200 head after0: exit 0; "startupSec": 21.9075 "afterSec": 14.3738 
+2026-10-27 09:31:59 f53-10m-sd200 proto after1: exit 0; "startupSec": 18.2713 "afterSec": 33.1272 
+2026-10-27 09:32:34 f53-10m-sd200 proto after0: exit 0; "startupSec": 15.2358 "afterSec": 19.0987 
+2026-10-27 09:32:34 done
+2026-10-27 09:41:06 quiet; load { 1.46 2.43 2.51 }; versions proto2; parts warm counted after
+2026-10-27 09:41:17 f53-10m-sd50 proto2 warmup: exit 0; "startupSec": 11.0310 
+2026-10-27 09:41:24 f53-10m-sd50 proto2 warm1: exit 0; "startupSec": 6.81252 
+2026-10-27 09:41:31 f53-10m-sd50 proto2 warm2: exit 0; "startupSec": 6.83130 
+2026-10-27 09:41:38 f53-10m-sd50 proto2 warm3: exit 0; "startupSec": 6.76394 
+2026-10-27 09:41:47 f53-10m-sd50 proto2 counted: exit 0; "startupSec": 8.49850 
+2026-10-27 09:42:21 f53-10m-sd50 proto2 after1: exit 0; "startupSec": 12.9384 "afterSec": 20.2326 
+2026-10-27 09:42:46 f53-10m-sd50 proto2 after0: exit 0; "startupSec": 11.4109 "afterSec": 13.5627 
+2026-10-27 09:42:59 f53-10m-sd200 proto2 warmup: exit 0; "startupSec": 12.4055 
+2026-10-27 09:43:11 f53-10m-sd200 proto2 warm1: exit 0; "startupSec": 12.0732 
+2026-10-27 09:43:24 f53-10m-sd200 proto2 warm2: exit 0; "startupSec": 12.5902 
+2026-10-27 09:43:36 f53-10m-sd200 proto2 warm3: exit 0; "startupSec": 12.5145 
+2026-10-27 09:43:52 f53-10m-sd200 proto2 counted: exit 0; "startupSec": 15.2151 
+2026-10-27 09:44:41 f53-10m-sd200 proto2 after1: exit 0; "startupSec": 18.9995 "afterSec": 29.1366 
+2026-10-27 09:45:13 f53-10m-sd200 proto2 after0: exit 0; "startupSec": 15.4462 "afterSec": 16.1157 
+2026-10-27 09:45:13 done

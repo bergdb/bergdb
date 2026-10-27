@@ -687,11 +687,26 @@ public class NodeCollection implements PointerFollower {
     /**
      * Rule 4 at startup (DbStarter.linkD; the Lean model's `Mem.linkD`; bergdb item 001,
      * WP R8, change 1: bergdb 001-08, M44): each pointer of 'node' to an index
-     * node that has a canonical object gets that node's live handle, by node id. A stream
+     * node that has a canonical object gets that node's live handle. A stream
      * pointer below the first position of the stream is left as it is (M33).
+     *
+     * <p>The node is found by the pointer's position, without reading the stream (bergdb
+     * 005-57): a vpos is its id; 'ids' gives the id of each index node version of the
+     * startup section and of the version before each key node version there (DbStarter's
+     * posToId); 'byPos' gives the live handle of each canonical object by the position of
+     * its version. A pointer of a node of D whose position is in neither names no node
+     * with a canonical object: every write of a node after the version that a node of D
+     * names is in the startup section (005-57's report, section 2; 001-08, 5.4, case 5).
+     * Top node versions have no prevPos (011-03, G3), so a top node's pointer that neither
+     * resolves reads the header at its position, as every pointer did before 005-57.</p>
+     *
+     * <p>With 'check' (DbStarter, when assertions are on), each pointer is also resolved by
+     * node id, reading the header, and a different result throws an AssertionError.</p>
      */
-    public void linkToCanonical(Node node, long accessData) {
+    public void linkToCanonical(Node node, Map<Long, Long> ids, Map<Long, Handle> byPos,
+            boolean check) {
         final int count = node.getSize();
+        final boolean top = node.getType() == Node.TYPE_TOP_NODE;
 
         for (int i = 0; i < count; i++) {
             if (!pointsToIndexNode(node, i)) {
@@ -706,12 +721,40 @@ public class NodeCollection implements PointerFollower {
                 if (!Spos.isVpos(pos) && pos < nodeStream.getFirstPos()) {
                     continue;
                 }
-                Handle live = cache.liveHandle(idOf(pos));
+                Long id = Spos.isVpos(pos) ? Long.valueOf(pos) : ids.get(pos);
+                Handle live = id != null ? cache.liveHandle(id) : byPos.get(pos);
+                if (live == null && id == null && top) {
+                    live = cache.liveHandle(idOf(pos));
+                }
                 Node canonical = live == null ? null : live.obj;
-                if (canonical != null && canonical.isCanonical()) {
+                if (canonical == null || !canonical.isCanonical()) {
+                    live = null;
+                }
+                if (check) {
+                    checkLinkById(node, i, pos, live);
+                }
+                if (live != null) {
                     node.setPointee(i, live);
                 }
             }
+        }
+    }
+
+    /**
+     * linkToCanonical's check (bergdb 005-57): 'linked', the handle that rule 4 by position
+     * gives pointer i of 'node', at 'pos', or null, is the one that rule 4 by node id gives,
+     * with a read of the header.
+     */
+    private void checkLinkById(Node node, int i, long pos, Handle linked) {
+        Handle byId = cache.liveHandle(idOf(pos));
+        Node o = byId == null ? null : byId.obj;
+        Handle expected = o != null && o.isCanonical() ? byId : null;
+        if (linked != expected) {
+            throw new AssertionError("rule 4 by position is not rule 4 by node id (bergdb 005-57): "
+                    + "pointer " + i + " of node " + node.getId() + " names " + pos + "; by position "
+                    + (linked == null ? "no canonical object" : "node " + linked.id)
+                    + ", by node id " + (expected == null ? "no canonical object"
+                            : "node " + expected.id + "'s, at " + o.getSpos()));
         }
     }
 
@@ -759,12 +802,14 @@ public class NodeCollection implements PointerFollower {
     private static class TestStream extends NodeStream {
         final Map<Long, Node> nodes = new HashMap<Long, Node>();
         int reads = 0;
+        int headerReads = 0;
         
         TestStream() {
             super(new RecoverableStream(new MemoryStream(), new MetaBlock()), new Object());
         }
         
         public NodeHeader readNodeHeader(long pos) {
+            headerReads++;
             Node n = nodes.get(pos);
             return new NodeHeader(n.getType(), n.getId());
         }
@@ -1088,10 +1133,36 @@ public class NodeCollection implements PointerFollower {
         Assert.assertEquals("the slot's version", 150, parent.getPointerPos(2));
     }
     
+    /** A key node of D, canonical, with a key klong at time 10 for each of 'pointers'. */
+    private static KeyNode testNodeOfD(long id, long... pointers) {
+        KeyNode k = new KeyNode(false);
+        k.addToEnd(Klong.createTime(10), null, -1);
+        for (int i = 0; i < pointers.length; i++) {
+            k.addToEnd(Klong.compareValueToKeyKlong(Keys.toSegments("k" + i)[0]), null, pointers[i]);
+        }
+        k.setId(id);
+        k.setCanonical(true);
+        return k;
+    }
+    
+    /** byPos for linkToCanonical: the node table's canonical objects by position. */
+    private static Map<Long, Handle> testByPos(NodeCollection c) {
+        Map<Long, Handle> byPos = new HashMap<Long, Handle>();
+        for (Handle h : c.cache.handles()) {
+            if (h.obj != null && h.obj.isCanonical()) {
+                byPos.put(h.obj.getSpos(), h);
+            }
+        }
+        return byPos;
+    }
+    
     /**
      * Rule 4 at startup: a stream pointer to a node with a canonical object, of any
-     * version, becomes a memory pointer to it, by node id (bergdb item 001, WP R8, change
-     * 1: M44); a pointer to a node without one stays a stream pointer.
+     * version, gets its handle (bergdb item 001, WP R8, change 1: M44); a pointer to a node
+     * without one stays a stream pointer. By position, without a read (bergdb 005-57): a
+     * version older than the canonical object's is found by the startup section's ids,
+     * here as the version before the node's version in the section; a pointer whose
+     * position is in no map is left, unread.
      */
     @Nano
     private static void testLinkToCanonical() {
@@ -1100,21 +1171,92 @@ public class NodeCollection implements PointerFollower {
         stream.nodes.put(150L, testKeyNode(104, 150, 10));
         NodeCollection c = new NodeCollection(testDbInfo(), stream);
         
-        // Node 101's canonical object, written since its version at 100.
+        // Node 101's canonical object, its version at 200 in the section, written since its
+        // version at 100, which is the version's prevPos.
         KeyNode canonical = testKeyNode(101, 200, 10, 20);
         canonical.setCanonical(true);
         c.cache.register(canonical);
+        Map<Long, Long> ids = new HashMap<Long, Long>();
+        ids.put(200L, 101L);
+        ids.put(100L, 101L);
         
-        KeyNode parent = new KeyNode(false);
-        parent.addToEnd(Klong.createTime(10), null, -1);
-        parent.addToEnd(Klong.compareValueToKeyKlong(Keys.toSegments("k")[0]), null, 100);
-        parent.addToEnd(Klong.compareValueToKeyKlong(Keys.toSegments("m")[0]), null, 150);
-        parent.setId(103);
-        parent.setCanonical(true);
-        
-        c.linkToCanonical(parent, AccessData.DEFAULT_ACCESS_DATA);
+        KeyNode parent = testNodeOfD(103, 100, 150);
+        c.linkToCanonical(parent, ids, testByPos(c), false);
         Assert.assertTrue("memory pointer to the canonical object", parent.getPointerNode(1) == canonical);
         Assert.assertTrue("no canonical object, a stream pointer", parent.getPointerNode(2) == null);
         Assert.assertEquals("its position", 150, parent.getPointerPos(2));
+        Assert.assertEquals("no read", 0, stream.headerReads + stream.reads);
+    }
+    
+    /**
+     * Rule 4 by position (bergdb 005-57): a pointer to the version a canonical object was
+     * loaded from, and one that holds a vpos, the id of a node not yet written, get their
+     * nodes' handles, without a read.
+     */
+    @Nano
+    private static void testLinkToCanonicalByPosition() {
+        TestStream stream = new TestStream();
+        stream.nodes.put(150L, testKeyNode(104, 150, 10));     // for the check's read
+        NodeCollection c = new NodeCollection(testDbInfo(), stream);
+        
+        KeyNode loaded = testKeyNode(104, 150, 10);         // loaded from 150, not in the section
+        loaded.setCanonical(true);
+        c.cache.register(loaded);
+        KeyNode created = testKeyNode(1001, 1001, 30);      // made by the rerun, not written
+        created.setCanonical(true);
+        c.cache.register(created);
+        
+        KeyNode parent = testNodeOfD(103, 150, 1001);
+        c.linkToCanonical(parent, new HashMap<Long, Long>(), testByPos(c), true);
+        Assert.assertTrue("the loaded object", parent.getPointerNode(1) == loaded);
+        Assert.assertTrue("the object of the vpos", parent.getPointerNode(2) == created);
+    }
+    
+    /**
+     * Rule 4 by position (bergdb 005-57): a top node's pointer that the maps do not resolve
+     * reads the header, since top node versions have no prevPos and so are not in the
+     * section's ids as the version before a version in the section (011-03, G3).
+     */
+    @Nano
+    private static void testLinkToCanonicalTopNode() {
+        TestStream stream = new TestStream();
+        stream.nodes.put(100L, testKeyNode(101, 100, 10));
+        NodeCollection c = new NodeCollection(testDbInfo(), stream);
+        KeyNode canonical = testKeyNode(101, 200, 10, 20);
+        canonical.setCanonical(true);
+        c.cache.register(canonical);
+        Map<Long, Long> ids = new HashMap<Long, Long>();
+        ids.put(200L, 101L);
+        
+        TopNode top = testParent(301, 100);
+        c.linkToCanonical(top, ids, testByPos(c), false);
+        Assert.assertTrue("the handle, by node id", top.getPointerNode(0) == canonical);
+        Assert.assertEquals("one header read", 1, stream.headerReads);
+    }
+    
+    /**
+     * The check (bergdb 005-57): rule 4 by position against rule 4 by node id. Section ids
+     * without the version before the node's version in the section miss the link that the
+     * node id gives, and the check says so.
+     */
+    @Nano
+    private static void testLinkToCanonicalCheck() {
+        TestStream stream = new TestStream();
+        stream.nodes.put(100L, testKeyNode(101, 100, 10));
+        NodeCollection c = new NodeCollection(testDbInfo(), stream);
+        KeyNode canonical = testKeyNode(101, 200, 10, 20);
+        canonical.setCanonical(true);
+        c.cache.register(canonical);
+        Map<Long, Long> ids = new HashMap<Long, Long>();
+        ids.put(200L, 101L);
+        
+        KeyNode parent = testNodeOfD(103, 100);
+        boolean failed = false;
+        try {
+            c.linkToCanonical(parent, ids, testByPos(c), true);
+        } catch (AssertionError e) {
+            failed = true;
+        }
+        Assert.assertTrue("the check found the missing link", failed);
     }
 }

@@ -38,7 +38,7 @@ Open
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 | [005-56](56-package-dependencies.md) | Investigate | Package dependencies: how the packages depend on each other, and whether that follows their `package.html` files; Frans's question. A first look: four of `java/src`'s nine packages used packages their lists leave out; after 006-08's fixes of `stream` and `dag`, two remain (`pub` uses `core` and `pubimp`, `pubimp` uses `dag` and `storage`), and nothing checks the lists | open |
-| [005-57](57-startup-header-reads.md) | Investigate | Startup without rule 4's header reads: a cold start at 10M keys took minutes on s1, three quarters of it rule 4's reads of a header for each stream pointer of D's nodes (007-05). Investigated 2026-10-27: no read is needed (the section's `posToId` and the canonical objects' positions give every link, by the reconciliation's argument); the writer's `resolvePointers` reads the same kind of header and needs none either (part 2). Prototypes checked against today's code by id in the gates; on s1 a cold start at 50 MB from 214 s to about 46 s. The change waits for Frans | open |
+| [005-58](58-lean-rule4-by-position.md) | Investigate | A Lean theorem for rule 4 by position (005-57): on the states that the model's startup reaches, a pointer of D whose node has a canonical object names a version of the startup section, the version before one, or the canonical object's own; so rule 4 by position is rule 4 by node id (`HMem.linkD`). Frans: "Yes, but in a separate work item in 005." | open |
 
 
 Closed
@@ -46,6 +46,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-57](57-startup-header-reads.md) | Investigate | Startup without rule 4's header reads: a cold start at 10M keys took minutes on s1, most of it rule 4's reads of a header for each stream pointer of D's nodes (007-05). Rule 4 now finds a pointer's node by its position (the startup section's `posToId`, the canonical objects' positions), with no read but for a top node's pointer, checked against rule 4 by node id at every startup of the tests; with it, in the prototype, a cold start on s1 at 10M keys took about 46 and 51 s at 50 and 200 MB, where it took 214 and 210 s. Part 1 of the report; part 2, the writer's reads, not made (Frans: "Part 1 alone") | done | 2026-10-27 |
 | [005-55](55-fix-finalize.md) | Fix | The note of deprecated API that every build printed: `finalize()` (six uses) and `Class.newInstance()` (two). `Db.finalize()` stopped a database that the application dropped without `stop()`, as the Pub API promised. Decided 2026-10-27: no safety net. Now `stop()` or `close()` is required (the Javadoc of `Db` and of `Database.stop()`), the 188 unit and f-tests that left a database running stop it, and so do two night tests and two stress programs, which ran out of memory without `finalize()`; `bergdb.dev.Unit`, `F` and `Night` fail when a test leaves one; `ValueNodeTotalMem` deleted, `newInstance()` replaced; `build.sh` prints no note (Frans: "finalize() need to go") | done | 2026-10-27 |
 | [005-50](50-fix-node-size-start.md) | Fix | A start with another node size than the stream was written with failed with what looked like a corrupt stream (`StreamFormatException: startup error, node ... not found`), or started, and could then leave a stream that no start opened, with either size. Now the size is in every meta block, 2 bytes at offset 44 that were reserved (so no new version: release 2026.1 starts a new database), and a start refuses another size with a `StreamFormatException` that says what to do, and a database without one, written before, with a `VersioningStreamException`, before recovery writes (005-38) | done | 2026-10-27 |
 | [005-38](38-writes-at-scale.md) | Investigate | Writes at scale: the stream grew to about 1.1 KB per key at 100M random keys (004-02); the cause was its startup distance of 10 MB. At 200 to 1000 MB a put costs 180 to 670 bytes at 10M and 50M keys; the fix is a startup distance that suits the database. Node size 30 stays. Bursts of index writes at large startup distances found | done | 2026-10-26 |
@@ -109,8 +110,7 @@ is done, which 005-33's change needed; 005-33 is decided, A, and done. 005-35,
 is 005-45. 005-11 is kept as it is for release 2026.1, documented as
 experimental; its decision waits for Frans. 005-55 is done; it did not
 change the eviction thread, so 005-51 does not depend on it. 005-57 is
-investigated;
-its change, item 007's step 6 (007-03), waits for Frans.
+done (part 1); 005-58, its Lean theorem, can go any time.
 
 
 Files
@@ -275,9 +275,13 @@ Files
   package dependencies against the `package.html` files: Frans's question,
   a first look, the older rules of 2012 and 2015; open.
 * [57-startup-header-reads.md](57-startup-header-reads.md). 005-57,
-  startup without rule 4's header reads: the entry and its findings; open.
-  The report, the prototypes' diffs, the tool, the scripts, the outputs and
-  the analysis in [57-startup-header-reads/](57-startup-header-reads/).
+  startup without rule 4's header reads: the entry, its findings, Frans's
+  decisions and the outcome; done. The report, the prototypes' diffs, the
+  tool, the scripts, the outputs and the analysis in
+  [57-startup-header-reads/](57-startup-header-reads/).
+* [58-lean-rule4-by-position.md](58-lean-rule4-by-position.md). 005-58, a
+  Lean theorem for 005-57's rule 4 by position: the statement, what the
+  model needs, the first step; open.
 
 Log
 ===
@@ -1040,3 +1044,15 @@ theirs now. `bergdb.dev.Unit`, `F` and `Night` check that no test leaves a
 database running. `ValueNodeTotalMem` deleted; `Class.newInstance()`
 replaced. `build.sh` prints no note; `before-commit.sh` and `level1.sh`
 pass.
+
+2026-10-27. 005-57 decided and done, by Claude (Opus 5.5, Claude Code).
+Frans: "1. Part 1 alone. 2. Do not care about streams written with older
+releases. 3. No, not now. Let's get this in place now. 4. Yes, but in a
+separate work item in 005. Go ahead. Implement and commit this." Rule 4
+(`DbStarter.linkD`, `NodeCollection.linkToCanonical`) finds a pointer's node
+by its position, with no read of the stream but for a top node's pointer
+that the maps do not resolve; with assertions on it also runs by node id
+and fails on a difference. Four tests; before-commit, level2.sh quick and
+level4.sh quick pass on `cec0032` with the change, level2.sh full on
+`bf19075` with it, with the check at every startup. Part 2 not made.
+005-58 added for the Lean theorem.

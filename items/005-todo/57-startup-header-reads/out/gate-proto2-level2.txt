@@ -1,0 +1,43 @@
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+1. Unit tests
+SUCCESS, 1023 successful tests in 8.8 s.
+2. RestartStress, random configurations
+   random-0: 005-57 resolvePointers by position, checked: 261369 pointers without a handle, 0 in the section's ids, 506 pinned by position, 506 pinned by id, 261369 checked, 0 differences
+   random-1: 005-57 resolvePointers by position, checked: 185689 pointers without a handle, 0 in the section's ids, 266 pinned by position, 266 pinned by id, 185689 checked, 0 differences
+   random-2: 005-57 resolvePointers by position, checked: 220296 pointers without a handle, 0 in the section's ids, 279 pinned by position, 279 pinned by id, 220296 checked, 0 differences
+   random-3: 005-57 resolvePointers by position, checked: 284883 pointers without a handle, 0 in the section's ids, 179 pinned by position, 179 pinned by id, 284883 checked, 0 differences
+3. RestartStress, small and default startup distances
+   sd1000-keys50-node14: 005-57 resolvePointers by position, checked: 5492 pointers without a handle, 0 in the section's ids, 1 pinned by position, 1 pinned by id, 5492 checked, 0 differences
+   sd1000-keys50-node30: 005-57 resolvePointers by position, checked: 7268 pointers without a handle, 0 in the section's ids, 2 pinned by position, 2 pinned by id, 7268 checked, 0 differences
+   sd1000-keys50-node62: 005-57 resolvePointers by position, checked: 25694 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 25694 checked, 0 differences
+   sd1000-keys50-node8: 005-57 resolvePointers by position, checked: 8148 pointers without a handle, 0 in the section's ids, 2 pinned by position, 2 pinned by id, 8148 checked, 0 differences
+   sd1000-node14: 005-57 resolvePointers by position, checked: 397271 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 397271 checked, 0 differences
+   sd1000-node30: 005-57 resolvePointers by position, checked: 320720 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 320720 checked, 0 differences
+   sd1000-node62: 005-57 resolvePointers by position, checked: 240448 pointers without a handle, 0 in the section's ids, 3 pinned by position, 3 pinned by id, 240448 checked, 0 differences
+   sd1000-node8: 005-57 resolvePointers by position, checked: 473075 pointers without a handle, 0 in the section's ids, 1 pinned by position, 1 pinned by id, 473075 checked, 0 differences
+   default-disk: 005-57 resolvePointers by position, checked: 165450 pointers without a handle, 0 in the section's ids, 117 pinned by position, 117 pinned by id, 165450 checked, 0 differences
+4. RestartInvariance
+   inv-default-100MB: stream identical, all checks OK
+   inv-every1: stream identical, all checks OK
+   inv-idle-1: stream identical, all checks OK
+   inv-idle-2: stream identical, all checks OK
+   inv-sd100: stream identical, all checks OK
+   inv-sd1000-node8: stream identical, all checks OK
+   inv-sd10000-node14: stream identical, all checks OK
+   inv-sd100000-node62: stream identical, all checks OK
+5. CrashTest, the stream cut at random positions
+   crash-0: 005-57 resolvePointers by position, checked: 74251 pointers without a handle, 0 in the section's ids, 46 pinned by position, 46 pinned by id, 74251 checked, 0 differences
+   crash-1: 005-57 resolvePointers by position, checked: 65132 pointers without a handle, 0 in the section's ids, 42 pinned by position, 42 pinned by id, 65132 checked, 0 differences
+   crash-2: 005-57 resolvePointers by position, checked: 71244 pointers without a handle, 0 in the section's ids, 43 pinned by position, 43 pinned by id, 71244 checked, 0 differences
+   crash-3: 005-57 resolvePointers by position, checked: 60313 pointers without a handle, 0 in the section's ids, 66 pinned by position, 66 pinned by id, 60313 checked, 0 differences
+   crash-node8: 005-57 resolvePointers by position, checked: 137264 pointers without a handle, 0 in the section's ids, 0 pinned by position, 0 pinned by id, 137264 checked, 0 differences
+6. BryanRepro, the bug report of 2015 (restarts with deletes and reclaim)
+   bryan: 005-57 resolvePointers by position, checked: 13036 pointers without a handle, 0 in the section's ids, 1805 pinned by position, 1805 pinned by id, 13036 checked, 0 differences
+7. Conformance with the Lean model
+   a2a3-1: transactions 3000: A2, A3, A5, marking, TREE, A6' and A-COPY OK; adoptions below the old parent (A6' allows them, A6 not) 0
+   a2a3-2: transactions 500: A2, A3, A5, marking, TREE, A6' and A-COPY OK; adoptions below the old parent (A6' allows them, A6 not) 1
+   a2a3-3: transactions 6000: A2, A3, A5, marking, TREE, A6' and A-COPY OK; adoptions below the old parent (A6' allows them, A6 not) 0
+   conformance: traces: 70, TRACECHECK OK: 70
+LEVEL 2 OK
+level2 exit 0

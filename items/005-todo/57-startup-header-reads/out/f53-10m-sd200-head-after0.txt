@@ -1,0 +1,5 @@
+[   22.0 s] start: 21.91 s; section 200 MB (1.00 sd), 307 transactions rerun; D 387117 nodes, 137 MB; 1722436 reads; 2026.2-dev
+[   22.2 s] checked 2000 keys
+[   36.6 s] after: 800 transactions of 1000 updates in 14.37 s (first half 10.08 s); reads {after={reads=2478696, bytes=145589996, readSec=9.705482871}}
+[   36.6 s] checked 2000 keys
+RESULT {"version": "2026.2-dev", "keys": 10000000, "valsize": 8, "sd": 200000000, "budget": 4000000000, "byPhase": false, "startupSec": 21.9075, "sectionBytes": 200824040, "transRerun": 307, "streamBytes": 2924649504, "dNodes": 387117, "dBytes": 137120056, "residentAfterStart": 468337520, "loads": 155471, "startReads": {"start": {"reads": 1722436, "bytes": 299465674, "readSec": 10.9309}}, "afterTrans": 800, "afterSec": 14.3738, "afterFirstHalfSec": 10.0809, "afterReads": {"after": {"reads": 2478696, "bytes": 145589996, "readSec": 9.70548}}}

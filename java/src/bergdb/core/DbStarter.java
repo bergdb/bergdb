@@ -3,6 +3,7 @@ package bergdb.core;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import bergdb.common.AssertStatus;
 import bergdb.dag.Handle;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
@@ -496,17 +497,33 @@ public class DbStarter {
     /**
      * Rule 4 (bergdb item 001, WP R8, change 1; the Lean model's `Mem.linkD`;
      * bergdb 001-08, M44): every stream pointer of the canonical object of a
-     * node of D that names a node with a canonical object becomes a memory pointer to it,
-     * by node id. createMemoryPointers links the section's objects by exact position
+     * node of D that names a node with a canonical object gets that node's handle.
+     * createMemoryPointers links the section's objects by exact position
      * only, and NodeCollection.resolvePointers resolves by node id only the pinned set,
      * so without it a node of D could name an older version of a node written since.
      * The root needs nothing: TopDs holds its super root by reference.
+     *
+     * <p>Since bergdb 005-57 (2026-10-27) without reading the stream: the node a pointer
+     * names is found by posToId, or among the canonical objects by the position of their
+     * versions (byPos); see NodeCollection.linkToCanonical. Before, it read the header at
+     * each pointer's position to learn the node's id: a random read for each stream
+     * pointer of D, most of a cold startup (007-05). When assertions are on, so in every
+     * test, each pointer is also found by node id, with that read, and a difference fails:
+     * 005-57's argument checked at every startup of the tests.</p>
      */
     private void linkD() {
         final NodeCollection collection = db.internal().nodeCollection();
+        final Map<Long, Handle> byPos = new HashMap<Long, Handle>();
+        for (Handle h : db.internal().cache().handles()) {
+            Node o = h.obj;
+            if (o != null && o.isCanonical()) {
+                byPos.put(o.getSpos(), h);
+            }
+        }
+        final boolean check = AssertStatus.enabled();
         db.internal().transSeq().visitGotDirtyNodes(Long.MAX_VALUE, new TransSeq.NodeVisitor() {
             public void node(Node node, long tpos, long lastTpos) {
-                collection.linkToCanonical(node, accessData);
+                collection.linkToCanonical(node, posToId, byPos, check);
             }
         });
     }

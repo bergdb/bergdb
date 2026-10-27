@@ -1,0 +1,5 @@
+[   49.4 s] start: 48.62 s; section 107 MB (2.15 sd), 109 transactions rerun; D 176592 nodes, 59 MB; 249527 reads, 483 MB from the device; 2026.2-dev (rule 4 by position)
+[   51.1 s] checked 2000 keys
+[  536.8 s] after: 300 transactions of 1000 updates in 485.78 s (first half 354.77 s); reads {after={reads=2584006, bytes=130839320, readSec=472.313397178}}
+[  536.9 s] checked 2000 keys
+RESULT {"version": "2026.2-dev (rule 4 by position)", "keys": 10000000, "valsize": 8, "sd": 50000000, "budget": 600000000, "byPhase": false, "startupSec": 48.6159, "sectionBytes": 107511688, "transRerun": 109, "streamBytes": 5288934872, "dNodes": 176592, "dBytes": 59772616, "residentAfterStart": 256702224, "loads": 82865, "rule4": {"examined": 871106, "linked": 3634, "headerReads": 0, "checked": 0, "differences": 0, "linkedById": 0}, "deviceReadBytes": 483622912, "startReads": {"start": {"reads": 249527, "bytes": 141696170, "readSec": 35.8544}}, "afterTrans": 300, "afterSec": 485.783, "afterFirstHalfSec": 354.767, "afterReads": {"after": {"reads": 2584006, "bytes": 130839320, "readSec": 472.313}}}

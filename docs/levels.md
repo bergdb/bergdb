@@ -165,7 +165,13 @@ How it works in Java:
 * Startup (`DbStarter`): Rule R from the startup section by node id; the
   super root at the startup time from the last record's topPos (record
   format 5); the rerun of the section's transactions; D rebuilt from the
-  stored got-dirty ids, and its pointers linked by node id (rule 4).
+  stored got-dirty ids, and its pointers linked to the canonical objects
+  (rule 4). Rule 4 finds a pointer's node by its position, without reading
+  the stream: by the section's versions and the versions before them, or
+  the canonical objects' positions; before 005-57 it read a header for each
+  pointer, most of a cold startup. A cold start still reads the nodes on
+  the rerun's paths that have no version in the section: about 46 s on s1
+  at 10M keys and a startup distance of 50 MB (005-57; 214 s before).
 * Marking: the index nodes that an operation (a put or a delete) follows,
   creates or changes get dirty when the operation ends, and only if it
   changed something; a node that the transaction replaced leaves D at its

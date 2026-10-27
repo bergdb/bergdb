@@ -3,38 +3,52 @@
 
 2026-10-27, by Claude (Opus 5.5, Claude Code), for Frans Lundberg. The code
 read at `167597a`. The prototypes are in scratch clones and their diffs here;
-java/ is not changed. Measured on F53 (warm OS cache) and s1 (cold), with
-007-05's two databases of 10M keys.
+java/ was not changed for the report. Measured on F53 (warm OS cache) and s1
+(cold), with 007-05's two databases of 10M keys.
 
-The answer: rule 4 needs no reads. Every pointer that rule 4 links names a
-position that startup already knows (section 2). A prototype that links by
-those positions makes the same links as today's rule 4 in every startup of
-the gates and on both databases, and a cold start on s1 goes from about
-3.5 minutes to about 46 seconds:
+Decided the same day (005-57's entry, "Decided" and "Outcome"): part 1
+alone, rule 4 by position, now in the code; part 2 not made; the Lean
+theorem for section 2's claim is 005-58.
 
-    Startup, 10M keys     2026.1   current   the change
-    50 MB, warm (F53)      7.4 s     7.7 s       6.8 s
-    50 MB, cold (s1)       240 s     214 s       «TBD»
-    200 MB, warm (F53)    12.9 s    13.2 s      12.5 s
-    200 MB, cold (s1)      «TBD»     «TBD»       «TBD»
+The answer: rule 4 needs no reads, and neither does the writer, which reads
+the same kind of header.
 
-(The change: both parts below; the medians of three warm starts and the
-means of two cold ones; section 6 has them all.)
+* **Part 1, rule 4.** Every pointer that rule 4 links names a position that
+  startup already knows: a vpos, a position in `posToId` (the section's
+  versions and the versions just before them, the map of the 2017
+  reconciliation), or the linked object's own position (section 2). It is
+  Frans's argument: a node that stays dirty is written at least once every
+  startup section, so every write of a node after the version that a node
+  of D names is in the section.
+* **Part 2, the writer.** `resolvePointers` reads a header for each pointer
+  without a handle of every node it writes: 1.48 million reads in the first
+  300 transactions after a start at 50 MB, today as well. With part 1 alone
+  they still happen, and on a cold cache they come from the disk instead of
+  from the pages that rule 4 had just read: part 1 alone moves the reads
+  into the time after the start. By the same argument, a map of the pinned
+  objects by position makes them unnecessary (section 3).
+* Prototypes of both parts made the same links and references as today's
+  code, which works by id, in every startup and every `resolvePointers` of
+  before-commit, level2.sh and level4.sh (full), and on the two databases:
+  no difference (section 5).
 
-But that alone moves reads into the time after the start: the writer reads
-the same kind of header for each pointer without a handle of every node it
-writes (`resolvePointers`, `idOf`), 1.48 million reads in the first 300
-transactions at 50 MB, today as well. Today rule 4 has just brought those
-pages into the OS cache; without it they come from the disk. The same
-argument, with a map of D's objects by position, removes those reads too
-(part 2, section 3). With both parts, a start and the 300 transactions
-after it take 25 s on F53 from an uncached copy, against 35.5 s today
-(section 7), and «TBD» on s1 cold.
+The two scenarios (section 6), 10M keys and 8-byte values; the medians of
+three warm starts on F53, the means of two cold starts on s1:
+
+    Startup               2026.1   current   part 1   parts 1 and 2
+    A, 50 MB, warm         7.4 s     7.7 s    6.6 s           6.8 s
+    A, 50 MB, cold         240 s     214 s     46 s            45 s
+    B, 200 MB, warm       12.9 s    13.2 s   12.1 s          12.5 s
+    B, 200 MB, cold        212 s     210 s     51 s            52 s
+
+And the time after a cold start (section 7): on s1, a start at 50 MB and 300
+transactions of 1,000 random updates after it took 675 s with the current
+code, 534 s with part 1, and 208 s with both parts.
 
 What remains of a cold start is the rerun's loads: one random read for each
 node on the rerun's paths that has no version in the section (82,865 at 50
-MB, 155,471 at 200 MB), about 34 s of the 46 on s1. That is the next lever
-(section 8).
+MB, 155,471 at 200 MB), about 30 to 34 s of the 46 to 52 on s1. That is the
+next lever (section 8).
 
 
 # 1. What startup reads, and why rule 4 reads headers
@@ -394,7 +408,7 @@ Scenario A, 10M keys, 50 MB:
     2026.1                         7.39 s   7.29 7.39 7.47 s      254.2 224.8 s       1,113,136
     current                        7.67 s   7.44 7.67 7.79 s      208.8 219.3 s       1,113,136
     part 1                         6.55 s   6.52 6.55 6.91 s       44.9  47.0 s         249,527
-    parts 1 and 2                  6.81 s   6.81 6.83 6.76 s       «TBD»                249,527
+    parts 1 and 2                  6.81 s   6.81 6.83 6.76 s       46.8  44.0 s         249,527
 
 Scenario B, 10M keys, 200 MB:
 
@@ -402,7 +416,7 @@ Scenario B, 10M keys, 200 MB:
     2026.1                        12.91 s   12.91 12.99 12.54 s   220.4 202.8 s       1,722,436
     current                       13.24 s   13.23 13.36 13.24 s   200.4 218.9 s       1,722,436
     part 1                        12.05 s   11.77 12.05 12.46 s    51.3  51.2 s         468,312
-    parts 1 and 2                 12.51 s   12.07 12.59 12.51 s   «TBD»                 468,312
+    parts 1 and 2                 12.51 s   12.07 12.59 12.51 s    53.9  50.3 s         468,312
 
 Warm, part 1 saves 1.1 to 1.2 s against the current code (rule 4's CPU and
 cached reads; 9 to 15 percent), and part 2 gives back a few tenths of that
@@ -456,7 +470,17 @@ this.
 On s1, cold, scenario A (a copy of the database, the cache dropped, a start
 and 300 transactions; s1-57b.sh):
 
-    «TBD»
+    Scenario A, 50 MB    Start     300 transactions   Together   First 150 transactions
+    current              217.4 s   457.9 s            675.3 s    333.1 s
+    part 1                48.6 s   485.8 s            534.4 s    354.8 s
+    parts 1 and 2         48.1 s   159.9 s            207.9 s     91.2 s
+
+The same reads as on F53 (2,583,505, 2,584,006 and 1,101,916). On s1 the
+writer's 1.48 million header reads cost 300 to 330 s, whether rule 4 read
+the same headers at the startup or not: s1's OS cache (about 1 GB beside
+the 2.5 GB heap) keeps little of what rule 4 brought in. With both parts
+the transactions after a cold start are three times as fast: a start and
+the first 300,000 updates take three and a half minutes, not eleven.
 
 
 # 8. What is left of a cold start
@@ -529,7 +553,10 @@ argument a theorem.
    startup figures; 007-03, step 6; the comments of `DbStarter` and
    `NodeCollection`.
 6. Gates: before-commit, level2.sh, level4.sh (full), StreamDigest as
-   2026.1's (no record changes), and this item's two scenarios again.
+   2026.1's (no record changes), and this item's two scenarios again. Since
+   005-50 (`bf19075`, the node size in the meta block), a head build refuses
+   the databases made before it, so the scenarios' databases are made again
+   first (StartupBench's make, 007-05; release 2026.1 starts the new ones).
 
 Size: S for part 1, M for part 2 (the writer's pinned set), with tests and
 documents.

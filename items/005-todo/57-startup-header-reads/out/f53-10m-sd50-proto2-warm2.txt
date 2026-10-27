@@ -1,0 +1,3 @@
+[    6.9 s] start: 6.83 s; section 107 MB (2.15 sd), 109 transactions rerun; D 176592 nodes, 59 MB; 249527 reads; 2026.2-dev (rule 4 by position)
+[    7.0 s] checked 2000 keys
+RESULT {"version": "2026.2-dev (rule 4 by position)", "keys": 10000000, "valsize": 8, "sd": 50000000, "budget": 4000000000, "byPhase": false, "startupSec": 6.83130, "sectionBytes": 107511688, "transRerun": 109, "streamBytes": 5288934872, "dNodes": 176592, "dBytes": 59772616, "residentAfterStart": 256702224, "loads": 82865, "rule4": {"examined": 871106, "linked": 3634, "headerReads": 0, "checked": 0, "differences": 0, "linkedById": 0}, "startReads": {"start": {"reads": 249527, "bytes": 141696170, "readSec": 0.300655}}}

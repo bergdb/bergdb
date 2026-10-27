@@ -1,0 +1,35 @@
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+1. Unit tests
+SUCCESS, 1023 successful tests in 10.0 s.
+SUCCESS, 15 successful tests in 35.0 s.
+2. EvictionInvariance, every schedule, the audit on
+   ei-idle-r: EVICTION INVARIANCE OK, 2000 audits, 0 failed
+   ei-medium: EVICTION INVARIANCE OK, 5005 audits, 0 failed
+   ei-node14: EVICTION INVARIANCE OK, 2005 audits, 0 failed
+   ei-node62-r: EVICTION INVARIANCE OK, 2050 audits, 0 failed
+   ei-node8-r: EVICTION INVARIANCE OK, 2100 audits, 0 failed
+   ei-node8: EVICTION INVARIANCE OK, 2005 audits, 0 failed
+   ei-rec-every1: EVICTION INVARIANCE OK, 5000 audits, 0 failed
+   ei-rec-node62-r: EVICTION INVARIANCE OK, 2620 audits, 0 failed
+   ei-rec-node8: EVICTION INVARIANCE OK, 2265 audits, 0 failed
+3. RestartInvariance, CrashTest and ReclaimStress with forced schedules, the audit on
+   inv-every: stream identical, 4547 audits, 0 failed
+   inv-random: stream identical, 4547 audits, 0 failed
+   crash-every: Done: 8 rounds, 0 failures, 50 s. Cuts where a transaction ends at a meta block's position: 0., 75671 audits, 0 failed
+   crash-random: Done: 8 rounds, 0 failures, 50 s. Cuts where a transaction ends at a meta block's position: 0., 75611 audits, 0 failed
+   reclaim-every: Done: 60 rounds, 0 failures, 60 rounds with a cut, 493 s, 988 exhaustive verifications., 235292 audits, 0 failed
+   reclaim-random: Done: 60 rounds, 0 failures, 60 rounds with a cut, 489 s, 988 exhaustive verifications., 235292 audits, 0 failed
+4. ReclaimReaders with forced schedules
+   readers-budget: 005-57 resolvePointers by position, checked: 19560 pointers without a handle, 212 in the section's ids, 57 pinned by position, 58 pinned by id, 19560 checked, 0 differences
+   readers-disk: 005-57 resolvePointers by position, checked: 242235 pointers without a handle, 1571 in the section's ids, 100 pinned by position, 101 pinned by id, 242235 checked, 0 differences
+   readers-every: 005-57 resolvePointers by position, checked: 124847 pointers without a handle, 648 in the section's ids, 93 pinned by position, 93 pinned by id, 124847 checked, 0 differences
+   readers-many: 005-57 resolvePointers by position, checked: 4925 pointers without a handle, 28 in the section's ids, 39 pinned by position, 39 pinned by id, 4925 checked, 0 differences
+   readers-random: 005-57 resolvePointers by position, checked: 48752 pointers without a handle, 405 in the section's ids, 47 pinned by position, 48 pinned by id, 48752 checked, 0 differences
+5. Conformance with the Lean model, with eviction
+   conformance: traces: 45, TRACECHECK OK: 45; C-P 0 of 10321 transactions fail; 853867 SLOT lines, 611207 checked; traces without SLOT lines: 0; C-H 0 of 10321 transactions fail; 8520 states, 433211 handles, 311901 objects, 311901 histories compared, 656466 pointers, 352961 checked by the record rule; traces without HANDLE lines: 0
+6. LargerThanMemory, on disk, a capped JVM
+   the index: 162215 index nodes, 107 MB in memory (6715 ms); the budget 50 MB; on disk 1374 MB
+   at most: live after a full GC 91 MB (at the phases' ends), collection usage 278 MB, heap used 316 MB, of 805 MB; resident 50 MB; 116 s
+LEVEL 4 OK
+level4 exit 0

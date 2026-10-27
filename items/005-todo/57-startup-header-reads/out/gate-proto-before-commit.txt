@@ -1,0 +1,5 @@
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Unit: SUCCESS, 1023 successful tests in 8.9 s.
+F:    SUCCESS, 71 successful tests in 123.8 s.
+BEFORE COMMIT OK (128 s)

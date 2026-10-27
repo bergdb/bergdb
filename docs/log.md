@@ -1258,3 +1258,25 @@ when a test leaves a database running
 `databasesStopped`). `ValueNodeTotalMem` deleted, `Class.newInstance()`
 replaced: `build.sh` prints no note of deprecated API. `before-commit.sh`
 (1,040 unit tests, 73 f-tests) and `level1.sh` pass.
+
+2026-10-27. 005-57 done, part 1, by Claude (Opus 5.5, Claude Code), at
+Frans's request: rule 4 reads nothing from the stream. Rule 4
+(`DbStarter.linkD`, `NodeCollection.linkToCanonical`) gives each stream
+pointer of D's nodes the handle of its node's canonical object, if it has
+one; it used to read the header at the pointer's position to learn the
+node's id, one random read a pointer: 864,000 and 1.25 million reads at
+10M keys and startup distances of 50 and 200 MB, about 197 s of a cold
+start of 214 s on s1 (007-05). It now finds the node by the position: a
+vpos is the id; the startup section's `posToId` gives the ids of the
+section's versions and of the version before each key node version there;
+the canonical objects give their own positions. A pointer in neither names
+no node with a canonical object, by the argument of the old reconciliation
+(Frans: a node that stays dirty is written at least once every startup
+section; 005-57's report, section 2). A top node's pointer that neither
+resolves reads the header, as before (top node versions have no
+`prevPos`). With assertions on, every startup also runs rule 4 by node id
+and fails on a difference. In the prototype, a cold start on s1 at 10M
+keys took about 46 and 51 s at 50 and 200 MB. Not done: the writer's reads
+of the same headers (part 2) and the rerun's loads. Tests;
+`before-commit.sh`, `level2.sh` (full, and quick on the tree committed on)
+and `level4.sh quick` pass.
