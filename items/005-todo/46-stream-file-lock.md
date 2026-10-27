@@ -646,9 +646,113 @@ Implemented
   out, at Frans's word ("Yes, commit sooner."): `before-commit.sh` is the
   only requirement (AGENTS.md); they run in `night.sh`.
 
-Left from "Done when": the probes of this entry again on the new code, the
-pause probe on s1 (s1 was busy with another session's runs), P4's soak,
-and Props and ScaleBench from the OS's cache.
+Left from "Done when" then: the probes of this entry again on the new
+code, the pause probe on s1 (s1 was busy with another session's runs),
+P4's soak, and Props and ScaleBench from the OS's cache. The first two are
+in the next section; the soak, Props and ScaleBench are part of 006-09's
+quiet block (W1.3, W1.4), by the session of 006-09, which also decides on
+005-46 and 009 being done (Frans, 006-09, section 1).
+
+
+Measured after the change
+-------------------------
+
+2026-10-27, 11:50 to 12:10, by Claude (Opus 5.5, Claude Code), at Frans's
+word ("Go!"), split with the session of 006-09 (it has W1.3 and W1.4).
+The jar of `cec0032` (005-46 and 005-55) against that of `bf19075`, the
+last before 005-46. Outputs in
+[46-stream-file-lock/after/](46-stream-file-lock/after/).
+
+**F53, this entry's probes** (`run.sh` on `cec0032`;
+[after/f53/](46-stream-file-lock/after/f53/)). F53 was busy with other
+sessions' builds and tests: a load average of 3 to 11 while they ran
+(`load.txt`). The verdicts hold by a wide margin; the maxima of 10 to 30 ms
+are load-sensitive, and the quiet block can confirm them.
+
+| Probe | Before (section "What the probes found") | After |
+|---|---|---|
+| 4 KB every 20 ms: reader last, reads over 10 ms, longest | 38, 14.5 ms | 0, 6.1 ms |
+| 2.5 MB at a time, new files: reader first, reads over 10 ms, longest | 47, 16.7 ms | 1, 17.6 ms |
+| Every 10th force 300 ms slower: reader last, over 100 ms, longest | 16, 318 ms | 0, 2.5 ms |
+| A new file's directory force 200 ms slower: reader first, over 100 ms, longest | 28, 220 ms | 0, 5.3 ms |
+| The same as the third, through `SalsaStream`: reader first, over 100 ms, longest | 17, 318 ms | 0, 4.7 ms |
+| A cut of 57 files: `pretruncate`; the readers' longest read | 309 ms; 309 ms | 0.5 ms; 7.1 ms |
+| The same, each directory force 100 ms slower | 6,059 ms; 6,059 ms | 0.5 ms; 1.1 ms |
+| `SlowForceProbe`, every 100th force 1 s slower: the longest get, two phases | 1,012.9 and 1,022.8 ms, at the slow forces | 31.8 and 103.3 ms, at none |
+| `SlowForceProbe`: the longest single-put commit | 1,012.9 ms, at a slow force | 616.2 ms, a wait for room in the write buffer (614.1 ms) |
+
+`SlowForceProbe`'s longest get of the second phase, 103.3 ms at uptime
+27.226 s, came before that phase's first slow force (from 27.304 s), with
+F53 at its busiest; it did not run with a GC log. Its long commits are all
+waits for room during the slow forces (the five longest of the second
+phase, 439 to 639 ms, each at a force's end, and each with a wait for room
+of 430 to 623 ms); that is the disk's limit, which the report now shows
+(decision 5).
+
+`InterruptProbe` and `InterruptCutProbe` on `cec0032`: every row of the
+table in "Interrupts" now does what it proposes. Every call by an
+interrupted thread returned and kept the flag; `sync()` threw as before,
+and kept the flag; the first `close()` waited until the storage was
+closed (16 ms) and left no thread; a job's `join()` returned; the storage
+thread, interrupted, went on, and a commit and a sync then returned. In
+`InterruptCutProbe` all three cases cut the stream and went on, also the
+one with a small write buffer, whose writer waited for room.
+
+Found on the way: when a database stops while a job of `addReplica` runs
+(here after a `join()` that an interrupt ended), the job's thread ends with
+an uncaught `DbStoppingException`, printed on the standard error. Not
+005-46's; the same happens when an application stops a database while the
+job runs. A note for whoever takes up replication (005-11).
+
+**s1, the pause probe** (009-03's `run-pp2.sh` as `run-pp46.sh`; the jar
+of `bf19075` and then `cec0032`, G1 and ZGC, budgets of 20 and 100 MB;
+1M keys, two readers, 60 s a phase; [after/s1/](46-stream-file-lock/after/s1/)).
+The probe prints the disk's waits after each phase (change 7); the GC
+logs, which stayed on s1 (`/opt/bergdb-bench/005-46/out/`), give the
+collector's pauses and stalls. `causes.txt` lists, for each of the five
+longest gets and commits of every phase, what overlapped it
+(`tools/gcmatch.py`); `summary.txt` the longest of each phase
+(`tools/s1sum.py`). s1's disk was calm today: forces of at most 161 ms in
+the jar before; one of 2,500 ms in the jar after.
+
+| ZGC | Before: the longest get; of the five longest, how many ended with a force | After |
+|---|---|---|
+| 20 MB, 1 put a transaction | 43.0 ms; 5 of 5 | 62.3 ms; 0 of 5 |
+| 20 MB, 1,000 puts | 45.3 ms; 5 of 5 | 12.1 ms; 0 of 5, while a force took 2,500 ms |
+| 100 MB, 1 put | 48.8 ms; 5 of 5 | 310.1 ms, a ZGC allocation stall; 0 of 5 |
+| 100 MB, 1,000 puts | 53.7 ms; 4 of 5 | 21.3 ms; 0 of 5 |
+
+* **Before, under ZGC, the longest gets were the forces**: both readers'
+  gets ended at the same uptime as a force of the same length, 40 to 53 ms
+  today (`causes.txt`: 19 of the 20 longest gets).
+* **After, no get waits for a force.** In the phase of 1,000 puts at 20 MB
+  a force took 2,500.2 ms (ending at uptime 84.878 s), and no get took
+  more than 12.1 ms. The commit beside it, 1,503.6 ms, waited 1,463.5 ms
+  for room in the write buffer: the disk's limit, not counted against
+  target 2 (decision 5), and shown apart in the report. Likewise in the
+  load phase at 100 MB, a commit of 7,704 ms is a wait for room of 7,701
+  ms, during a run of slow forces (642, 466 and 452 ms): that is 009-03's
+  load-phase commit of 3.5 to 13.4 s on s1, now explained.
+* **The other long waits after the change are the collector's.** Under G1
+  every one of the five longest gets of every phase is a G1 pause (70 to
+  172 ms, matched to a safepoint in the GC log; three of them end with a
+  force only as the pause held the force's thread too). Under ZGC, two
+  allocation stalls, of 300 and 129 ms, that held both readers and the
+  writer at the start of the phase of single puts at 100 MB, as 009-03
+  saw (section 4).
+* **Left under ZGC above 20 ms, with nothing in the logs under them**:
+  gets of 62.3, 26.2, 25.7, 25.4, 23.5, 21.3 and 21.3 ms: one reader
+  alone, or twice both readers at once (26 and 25 ms at uptime 11.59 s; 24
+  and 21 ms in a phase's first 25 ms). Not a force, a wait for room, a
+  collection or a safepoint; most likely s1's two CPUs, which the two
+  readers share with the writer, the eviction thread and the collector's
+  threads, as 009-03 found (section 4). The single-put commits stayed at
+  24.2 ms at most, but for the stalls.
+
+So on s1 the waits that 005-46 is about are gone: no get waits for a
+force, a new file or a cut, and the commits wait only for room in the
+write buffer when the disk stalls. Whether the residue of 21 to 62 ms
+counts against 009's target 2 is for 009's decision (006-09).
 
 
 Done when

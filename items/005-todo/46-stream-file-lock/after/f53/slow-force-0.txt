@@ -1,0 +1,26 @@
+PauseProbe: keys=1000000 valsize=100 budget=20 MB readers=2 seconds=20 tsize=[1, 1000] java=27 gc=ZGC_Minor_Cycles+ZGC_Minor_Pauses+ZGC_Major_Cycles+ZGC_Major_Pauses xmx=2147 MB
+SlowForceProbe: every 100th force takes 0 ms more
+load: 1000000 keys in 4.2 s; uptime 0.170 to 4.354 s
+  commits  1000, median 3.146 ms, p99 8.389, p99.9 12.583, p99.99 14.680, max 15.111 ms; longest at uptime 0.187s (15.1 ms) 0.514s (12.7 ms) 1.272s (12.3 ms) 1.418s (9.6 ms) 3.269s (9.2 ms)
+  resident 19 MB, 1107 loads, 184 eviction steps, 1380286 objects evicted, eviction time 311 ms in total, 2.086 ms at most
+  waits for room in the write buffer 1, 10.1 ms in all; longest at uptime 0.514s (10.1 ms)
+  file forces 0, 0.0 ms in all
+  directory forces 0, 0.0 ms in all
+  deletes 0, 0.0 ms in all
+phase tsize=1, 2 readers, 20 s; uptime 4.366 to 24.367 s
+  gets     5813427, median 0.005 ms, p99 0.014, p99.9 0.029, p99.99 0.115, max 21.590 ms; longest at uptime 13.256s (21.6 ms) 4.488s (20.7 ms) 13.269s (11.4 ms) 17.819s (10.2 ms) 4.491s (9.5 ms)
+  commits  592898, median 0.008 ms, p99 1.049, p99.9 1.835, p99.99 2.621, max 24.027 ms; longest at uptime 13.259s (24.0 ms) 4.492s (18.8 ms) 12.626s (6.6 ms) 13.269s (6.0 ms) 12.618s (5.8 ms)
+  resident 47 MB, 7859642 loads, 11745 eviction steps, 8071424 objects evicted, eviction time 12286 ms in total, 5.902 ms at most
+  waits for room in the write buffer 0, 0.0 ms in all
+  file forces 0, 0.0 ms in all
+  directory forces 0, 0.0 ms in all
+  deletes 0, 0.0 ms in all
+phase tsize=1000, 2 readers, 20 s; uptime 24.369 to 44.376 s
+  gets     4694881, median 0.005 ms, p99 0.016, p99.9 0.033, p99.99 1.835, max 13.848 ms; longest at uptime 35.225s (13.8 ms) 31.056s (11.1 ms) 31.068s (9.9 ms) 35.225s (8.8 ms) 31.046s (6.1 ms)
+  commits  1402, median 12.583 ms, p99 33.554, p99.9 33.554, p99.99 33.554, max 41.927 ms; longest at uptime 38.208s (41.9 ms) 35.237s (41.2 ms) 41.338s (41.1 ms) 41.910s (40.6 ms) 37.839s (40.4 ms)
+  resident 64 MB, 15921299 loads, 23277 eviction steps, 15808214 objects evicted, eviction time 25414 ms in total, 19.479 ms at most
+  waits for room in the write buffer 0, 0.0 ms in all
+  file forces 0, 0.0 ms in all
+  directory forces 0, 0.0 ms in all
+  deletes 0, 0.0 ms in all
+PAUSE PROBE OK

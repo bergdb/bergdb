@@ -1,0 +1,55 @@
+StreamWaitProbe append WORK/a1 10 4096 20; Java 27, Mac OS X
+writer, append (write and force): 339, mean 5.901 ms, longest 32.912 ms; over 1 ms 339, over 5 ms 161, over 10 ms 28, over 100 ms 0
+  of it the write: 344, mean 0.597 ms, longest 4.146 ms; over 1 ms 67, over 5 ms 0, over 10 ms 0, over 100 ms 0
+  of it the force: 350, mean 5.071 ms, longest 14.267 ms; over 1 ms 350, over 5 ms 114, over 10 ms 7, over 100 ms 0
+  of it the directory forces of 6 new files: 6, mean 1.544 ms, longest 5.102 ms; over 1 ms 2, over 5 ms 1, over 10 ms 0, over 100 ms 0
+reader last, read of 100 bytes: 11685826, mean 0.001 ms, longest 6.145 ms; over 1 ms 79, over 5 ms 2, over 10 ms 0, over 100 ms 0
+reader first, read of 100 bytes: 12063039, mean 0.001 ms, longest 5.951 ms; over 1 ms 7, over 5 ms 1, over 10 ms 0, over 100 ms 0
+StreamWaitProbe append WORK/a2 10 2500000 0; Java 27, Mac OS X
+writer, append (write and force): 536, mean 8.140 ms, longest 66.877 ms; over 1 ms 536, over 5 ms 536, over 10 ms 48, over 100 ms 0
+  of it the write: 591, mean 0.266 ms, longest 0.875 ms; over 1 ms 0, over 5 ms 0, over 10 ms 0, over 100 ms 0
+  of it the force: 650, mean 6.412 ms, longest 25.082 ms; over 1 ms 650, over 5 ms 563, over 10 ms 5, over 100 ms 0
+  of it the directory forces of 59 new files: 59, mean 0.247 ms, longest 5.026 ms; over 1 ms 2, over 5 ms 1, over 10 ms 0, over 100 ms 0
+reader last, read of 100 bytes: 10136078, mean 0.001 ms, longest 10.067 ms; over 1 ms 16, over 5 ms 3, over 10 ms 1, over 100 ms 0
+reader first, read of 100 bytes: 11751522, mean 0.001 ms, longest 17.557 ms; over 1 ms 10, over 5 ms 3, over 10 ms 1, over 100 ms 0
+StreamWaitProbe append WORK/a3 10 4096 20 300 10; Java 27, Mac OS X
+writer, append (write and force): 170, mean 35.222 ms, longest 316.608 ms; over 1 ms 170, over 5 ms 61, over 10 ms 19, over 100 ms 17
+  of it the write: 173, mean 0.047 ms, longest 0.130 ms; over 1 ms 0, over 5 ms 0, over 10 ms 0, over 100 ms 0
+  of it the force: 177, mean 33.758 ms, longest 310.926 ms; over 1 ms 177, over 5 ms 49, over 10 ms 17, over 100 ms 17
+  of it the directory forces of 4 new files: 4, mean 0.105 ms, longest 0.159 ms; over 1 ms 0, over 5 ms 0, over 10 ms 0, over 100 ms 0
+reader last, read of 100 bytes: 12107125, mean 0.001 ms, longest 2.471 ms; over 1 ms 5, over 5 ms 0, over 10 ms 0, over 100 ms 0
+reader first, read of 100 bytes: 12169681, mean 0.001 ms, longest 2.883 ms; over 1 ms 7, over 5 ms 0, over 10 ms 0, over 100 ms 0
+StreamWaitProbe append WORK/a4 10 1000000 50 0 1 200; Java 27, Mac OS X
+writer, append (write and force): 53, mean 122.682 ms, longest 1068.391 ms; over 1 ms 53, over 5 ms 53, over 10 ms 25, over 100 ms 25
+  of it the write: 57, mean 0.200 ms, longest 1.624 ms; over 1 ms 1, over 5 ms 0, over 10 ms 0, over 100 ms 0
+  of it the force: 86, mean 6.227 ms, longest 8.805 ms; over 1 ms 86, over 5 ms 72, over 10 ms 0, over 100 ms 0
+  of it the directory forces of 29 new files: 29, mean 204.953 ms, longest 210.189 ms; over 1 ms 29, over 5 ms 29, over 10 ms 29, over 100 ms 29
+reader last, read of 100 bytes: 11936522, mean 0.001 ms, longest 3.921 ms; over 1 ms 6, over 5 ms 0, over 10 ms 0, over 100 ms 0
+reader first, read of 100 bytes: 11979022, mean 0.001 ms, longest 5.340 ms; over 1 ms 5, over 5 ms 1, over 10 ms 0, over 100 ms 0
+StreamWaitProbe salsa WORK/s1 10 4096 20 300 10; Java 27, Mac OS X
+writer, append (write and force): 167, mean 36.042 ms, longest 318.748 ms; over 1 ms 167, over 5 ms 69, over 10 ms 20, over 100 ms 17
+  of it the write: 170, mean 0.073 ms, longest 2.533 ms; over 1 ms 1, over 5 ms 0, over 10 ms 0, over 100 ms 0
+  of it the force: 174, mean 34.478 ms, longest 311.088 ms; over 1 ms 174, over 5 ms 45, over 10 ms 18, over 100 ms 17
+  of it the directory forces of 4 new files: 4, mean 0.150 ms, longest 0.216 ms; over 1 ms 0, over 5 ms 0, over 10 ms 0, over 100 ms 0
+reader last, read of 100 bytes: 5951625, mean 0.002 ms, longest 14.109 ms; over 1 ms 13, over 5 ms 4, over 10 ms 1, over 100 ms 0
+reader first, read of 100 bytes: 6003005, mean 0.002 ms, longest 4.727 ms; over 1 ms 11, over 5 ms 0, over 10 ms 0, over 100 ms 0
+StreamWaitProbe cut WORK/c1 300; Java 27, Mac OS X
+stream 300000000 bytes in 59 files; the cut at 260000000 deletes 57 of them
+the cut (pretruncate) took 0.540 ms; files left 2
+  its deletes: 57, mean 0.207 ms, longest 0.576 ms; over 1 ms 0, over 5 ms 0, over 10 ms 0, over 100 ms 0
+  its directory forces: 57, mean 4.568 ms, longest 5.383 ms; over 1 ms 57, over 5 ms 6, over 10 ms 0, over 100 ms 0
+reader last, read of 100 bytes: 882657, mean 0.001 ms, longest 7.106 ms; over 1 ms 3, over 5 ms 1, over 10 ms 0, over 100 ms 0
+reader kept, read of 100 bytes: 898664, mean 0.001 ms, longest 1.249 ms; over 1 ms 3, over 5 ms 0, over 10 ms 0, over 100 ms 0
+StreamWaitProbe cut WORK/c2 300 100; Java 27, Mac OS X
+stream 300000000 bytes in 59 files; the cut at 260000000 deletes 57 of them
+the cut (pretruncate) took 0.499 ms; files left 54
+  its deletes: 5, mean 0.210 ms, longest 0.309 ms; over 1 ms 0, over 5 ms 0, over 10 ms 0, over 100 ms 0
+  its directory forces: 4, mean 108.728 ms, longest 110.570 ms; over 1 ms 4, over 5 ms 4, over 10 ms 4, over 100 ms 4
+reader last, read of 100 bytes: 973221, mean 0.001 ms, longest 1.120 ms; over 1 ms 2, over 5 ms 0, over 10 ms 0, over 100 ms 0
+reader kept, read of 100 bytes: 991679, mean 0.001 ms, longest 1.126 ms; over 1 ms 2, over 5 ms 0, over 10 ms 0, over 100 ms 0
+StreamWaitProbe interrupt WORK/i1; Java 27, Mac OS X
+stream of 1000000 bytes in 5 files
+the cut by an interrupted thread: OK
+files left 5, first position 400000
+then a read by another thread: OK
+then an append: OK

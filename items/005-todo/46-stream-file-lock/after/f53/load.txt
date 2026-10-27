@@ -1,0 +1,5 @@
+11:52  up 8 days,  4:37, 3 users, load averages: 2.98 5.52 5.78
+36249   1.9 /opt/homebrew/opt/openjdk/bin/java -ea -cp build/bergdb.jar bergdb.dev.F
+45193   0.0 /Users/f/.vscode/extensions/redhat.java-1.58.0-darwin-arm64/jre/25.0.4.1-macosx-aarch64/bin/java -Djdk.xml.maxGeneralEntitySizeL
+78110   0.0 /System/Library/PrivateFrameworks/MobileSoftwareUpdate.framework/Versions/A/XPCServices/com.apple.MobileSoftwareUpdate.CleanupPr
+11:56  up 8 days,  4:41, 3 users, load averages: 11.43 8.04 6.73

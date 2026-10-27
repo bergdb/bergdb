@@ -1,0 +1,25 @@
+PauseProbe: keys=1000000 valsize=100 budget=20 MB readers=2 seconds=60 tsize=[1, 1000] java=27 gc=ZGC_Minor_Cycles+ZGC_Minor_Pauses+ZGC_Major_Cycles+ZGC_Major_Pauses xmx=1258 MB
+load: 1000000 keys in 10.7 s; uptime 0.876 to 11.554 s
+  commits  1000, median 4.194 ms, p99 16.777, p99.9 33.554, p99.99 4294.967, max 4974.074 ms; longest at uptime 6.280s (4974.1 ms) 0.916s (35.3 ms) 7.643s (31.2 ms) 7.669s (25.5 ms) 7.694s (24.7 ms)
+  resident 19 MB, 1937 loads, 354 eviction steps, 1226730 objects evicted, eviction time 664 ms in total, 5.994 ms at most
+  waits for room in the write buffer 2, 4971.2 ms in all; longest at uptime 6.280s (4670.5 ms) 1.609s (300.7 ms)
+  file forces 258, 7358.6 ms in all; longest at uptime 1.609s (759.8 ms) 4.143s (450.6 ms) 5.530s (408.1 ms) 6.115s (371.9 ms) 2.290s (313.2 ms)
+  directory forces 56, 14.7 ms in all; longest at uptime 0.809s (6.5 ms) 6.341s (0.3 ms) 1.717s (0.2 ms) 7.298s (0.2 ms) 4.565s (0.2 ms)
+  deletes 0, 0.0 ms in all
+phase tsize=1, 2 readers, 60 s; uptime 11.565 to 71.576 s
+  gets     8117302, median 0.005 ms, p99 0.025, p99.9 1.835, p99.99 3.670, max 62.328 ms; longest at uptime 55.216s (62.3 ms) 11.592s (26.2 ms) 61.998s (25.7 ms) 11.591s (25.4 ms) 13.562s (12.5 ms)
+  commits  490237, median 0.010 ms, p99 3.670, p99.9 6.291, p99.99 10.486, max 21.701 ms; longest at uptime 24.771s (21.7 ms) 16.521s (17.1 ms) 13.042s (16.4 ms) 13.018s (16.4 ms) 13.306s (16.4 ms)
+  resident 42 MB, 11083714 loads, 22479 eviction steps, 9861678 objects evicted, eviction time 48583 ms in total, 19.399 ms at most
+  waits for room in the write buffer 0, 0.0 ms in all
+  file forces 2286, 12883.0 ms in all; longest at uptime 14.590s (53.9 ms) 35.101s (52.1 ms) 11.738s (44.6 ms) 15.406s (42.5 ms) 50.342s (37.7 ms)
+  directory forces 10, 2.9 ms in all; longest at uptime 14.136s (1.5 ms) 55.086s (0.3 ms) 47.666s (0.2 ms) 22.376s (0.2 ms) 32.075s (0.2 ms)
+  deletes 0, 0.0 ms in all
+phase tsize=1000, 2 readers, 60 s; uptime 71.582 to 131.610 s
+  gets     4525618, median 0.006 ms, p99 0.033, p99.9 3.670, p99.99 5.243, max 12.082 ms; longest at uptime 85.641s (12.1 ms) 97.637s (11.3 ms) 74.611s (11.3 ms) 90.804s (11.1 ms) 107.116s (11.0 ms)
+  commits  1821, median 25.166 ms, p99 83.886, p99.9 100.663, p99.99 1342.177, max 1503.635 ms; longest at uptime 84.881s (1503.6 ms) 111.462s (113.6 ms) 128.982s (108.1 ms) 128.392s (105.7 ms) 119.172s (103.5 ms)
+  resident 54 MB, 19206407 loads, 39200 eviction steps, 18372971 objects evicted, eviction time 90649 ms in total, 19.399 ms at most
+  waits for room in the write buffer 2, 1500.1 ms in all; longest at uptime 84.878s (1463.5 ms) 84.946s (36.6 ms)
+  file forces 1700, 16542.8 ms in all; longest at uptime 84.878s (2500.2 ms) 85.514s (350.5 ms) 73.408s (67.3 ms) 129.109s (63.8 ms) 130.682s (55.4 ms)
+  directory forces 7, 1.4 ms in all; longest at uptime 96.385s (0.2 ms) 87.784s (0.2 ms) 104.763s (0.2 ms) 121.317s (0.2 ms) 78.110s (0.2 ms)
+  deletes 0, 0.0 ms in all
+PAUSE PROBE OK

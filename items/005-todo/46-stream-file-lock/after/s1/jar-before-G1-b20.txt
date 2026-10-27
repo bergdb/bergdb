@@ -1,0 +1,25 @@
+PauseProbe: keys=1000000 valsize=100 budget=20 MB readers=2 seconds=60 tsize=[1, 1000] java=27 gc=G1_Young_Generation+G1_Concurrent_GC+G1_Old_Generation xmx=1258 MB
+load: 1000000 keys in 5.2 s; uptime 0.976 to 6.134 s
+  commits  1000, median 3.670 ms, p99 16.777, p99.9 50.332, p99.99 58.720, max 63.866 ms; longest at uptime 5.636s (63.9 ms) 3.640s (54.2 ms) 1.918s (30.4 ms) 4.952s (29.0 ms) 1.565s (28.0 ms)
+  resident 19 MB, 1087 loads, 195 eviction steps, 1387758 objects evicted, eviction time 389 ms in total, 5.226 ms at most
+  (no figures of the write buffer's waits in this jar)
+  file forces 241, 2047.7 ms in all; longest at uptime 4.317s (35.7 ms) 3.463s (27.3 ms) 2.907s (24.9 ms) 3.582s (21.4 ms) 2.855s (19.8 ms)
+  directory forces 56, 45.5 ms in all; longest at uptime 1.923s (33.4 ms) 0.901s (6.9 ms) 2.315s (0.1 ms) 2.182s (0.1 ms) 2.426s (0.1 ms)
+  deletes 0, 0.0 ms in all
+phase tsize=1, 2 readers, 60 s; uptime 6.150 to 66.151 s
+  gets     6051140, median 0.005 ms, p99 0.029, p99.9 2.097, p99.99 6.291, max 80.239 ms; longest at uptime 9.841s (80.2 ms) 9.841s (80.2 ms) 27.674s (71.4 ms) 27.674s (70.5 ms) 11.535s (69.4 ms)
+  commits  690638, median 0.010 ms, p99 1.835, p99.9 6.291, p99.99 14.680, max 81.811 ms; longest at uptime 9.842s (81.8 ms) 29.861s (76.0 ms) 47.686s (69.0 ms) 54.018s (68.7 ms) 25.476s (67.1 ms)
+  resident 44 MB, 8570563 loads, 18245 eviction steps, 8644042 objects evicted, eviction time 35269 ms in total, 70.444 ms at most
+  (no figures of the write buffer's waits in this jar)
+  file forces 2166, 11494.7 ms in all; longest at uptime 7.214s (58.3 ms) 8.732s (36.2 ms) 63.287s (35.4 ms) 59.182s (34.6 ms) 52.332s (29.4 ms)
+  directory forces 11, 7.1 ms in all; longest at uptime 9.163s (5.4 ms) 31.783s (0.7 ms) 14.602s (0.2 ms) 18.990s (0.1 ms) 12.619s (0.1 ms)
+  deletes 0, 0.0 ms in all
+phase tsize=1000, 2 readers, 60 s; uptime 66.154 to 126.192 s
+  gets     5073735, median 0.006 ms, p99 0.029, p99.9 3.670, p99.99 10.486, max 256.243 ms; longest at uptime 70.702s (256.2 ms) 70.701s (182.5 ms) 116.549s (159.0 ms) 116.549s (157.9 ms) 97.531s (72.8 ms)
+  commits  1555, median 33.554 ms, p99 83.886, p99.9 201.327, p99.99 268.435, max 292.065 ms; longest at uptime 70.709s (292.1 ms) 116.562s (225.8 ms) 101.213s (139.9 ms) 122.639s (118.6 ms) 112.693s (113.6 ms)
+  resident 55 MB, 17339255 loads, 36132 eviction steps, 17169828 objects evicted, eviction time 75994 ms in total, 157.700 ms at most
+  (no figures of the write buffer's waits in this jar)
+  file forces 1591, 10466.1 ms in all; longest at uptime 116.547s (161.1 ms) 97.531s (72.8 ms) 66.598s (52.4 ms) 72.706s (40.3 ms) 79.710s (35.3 ms)
+  directory forces 5, 8.3 ms in all; longest at uptime 95.691s (3.4 ms) 116.293s (2.5 ms) 75.063s (2.2 ms) 106.165s (0.1 ms) 85.511s (0.1 ms)
+  deletes 0, 0.0 ms in all
+PAUSE PROBE OK

@@ -1,0 +1,16 @@
+jar-before-G1-b20      tsize=1     get max     80.2  commit max     81.8  force max    58.3  room max     n/a  gets at a force 0 of 5
+jar-before-G1-b20      tsize=1000  get max    256.2  commit max    292.1  force max   161.1  room max     n/a  gets at a force 3 of 5  116.549s 159.0ms, 116.549s 157.9ms, 97.531s 72.8ms
+jar-after-G1-b20       tsize=1     get max     78.5  commit max     75.1  force max    70.7  room max     0.0  gets at a force 0 of 5
+jar-after-G1-b20       tsize=1000  get max    172.0  commit max    217.7  force max    70.7  room max     0.0  gets at a force 0 of 5
+jar-before-Z-b20       tsize=1     get max     43.0  commit max     46.3  force max    42.7  room max     n/a  gets at a force 5 of 5  26.707s 43.0ms, 26.707s 43.0ms, 30.657s 42.0ms, 30.657s 42.0ms, 39.598s 40.2ms
+jar-before-Z-b20       tsize=1000  get max     45.3  commit max    113.1  force max    44.4  room max     n/a  gets at a force 5 of 5  101.913s 45.3ms, 101.912s 45.2ms, 118.973s 44.6ms, 118.972s 44.3ms, 102.580s 41.9ms
+jar-after-Z-b20        tsize=1     get max     62.3  commit max     21.7  force max    53.9  room max     0.0  gets at a force 0 of 5
+jar-after-Z-b20        tsize=1000  get max     12.1  commit max   1503.6  force max  2500.2  room max  1463.5  gets at a force 0 of 5
+jar-before-G1-b100     tsize=1     get max    106.5  commit max     97.8  force max    98.0  room max     n/a  gets at a force 0 of 5
+jar-before-G1-b100     tsize=1000  get max    101.9  commit max    125.1  force max    82.6  room max     n/a  gets at a force 0 of 5
+jar-after-G1-b100      tsize=1     get max    110.1  commit max    107.5  force max   118.6  room max     0.0  gets at a force 3 of 5  29.294s 110.1ms, 29.291s 107.7ms, 68.378s 104.9ms
+jar-after-G1-b100      tsize=1000  get max    101.7  commit max    143.9  force max    88.4  room max     0.0  gets at a force 0 of 5
+jar-before-Z-b100      tsize=1     get max     48.8  commit max     48.5  force max    49.4  room max     n/a  gets at a force 5 of 5  25.829s 48.8ms, 25.827s 47.0ms, 61.985s 46.9ms, 61.985s 46.9ms, 70.397s 44.4ms
+jar-before-Z-b100      tsize=1000  get max     53.7  commit max    136.8  force max    50.1  room max     n/a  gets at a force 4 of 5  114.905s 51.0ms, 114.905s 50.0ms, 133.098s 40.8ms, 114.398s 40.8ms
+jar-after-Z-b100       tsize=1     get max    310.1  commit max    315.0  force max    58.2  room max     0.0  gets at a force 0 of 5
+jar-after-Z-b100       tsize=1000  get max     21.3  commit max    117.8  force max    61.8  room max     0.0  gets at a force 0 of 5

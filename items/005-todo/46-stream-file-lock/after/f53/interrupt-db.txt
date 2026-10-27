@@ -1,0 +1,15 @@
+== a write buffer of 100,000 bytes, no syncs
+commit 332 made a physical cut: the first position from 0 to 400000
+333 commits returned; reclaim's iterations 15, the first available lookup time 299000001, the stream 799640 bytes, durable 748992
+then a commit by a thread not interrupted: OK
+then a get: OK
+== a write buffer of 10,000,000 bytes
+commit 196 made a physical cut: the first position from 0 to 200000
+197 commits returned; reclaim's iterations 7, the first available lookup time 166000001, the stream 411640 bytes, durable 409472
+then a commit by a thread not interrupted: OK
+then a get: OK
+== a write buffer of 10,000,000 bytes, no interrupts
+commit 196 made a physical cut: the first position from 0 to 200000
+197 commits returned; reclaim's iterations 7, the first available lookup time 166000001, the stream 411640 bytes, durable 409472
+then a commit by a thread not interrupted: OK
+then a get: OK
