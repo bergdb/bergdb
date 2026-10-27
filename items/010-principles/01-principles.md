@@ -401,18 +401,21 @@ the data methods.
 Where BergDB stands (`java/src`, 2026-10-26):
 
 * The Core Layer imports no upper layer: `core` imports `common`, `dag`,
-  `nanotest`, `pub.util`, `storage` and `stream`.
-* `stream` imports `core` and `storage`, against its `package.html`
-  (`common`, `nano`, `pub.util`); only in `FileStreamPowerLossTester`, a
-  tester.
+  `nanotest`, `pub.util`, `storage` and `stream`. It builds alone, a
+  program calls `Db` with only the Core Layer on its class path, and each
+  of its seven packages imports only what its `package.html` allows
+  (006-08, which moved `FileStreamPowerLossTester`, a tester that made
+  `stream` import `core` and `storage`, to `core`).
 * `pub` imports `core.SyncLevel` (in `Database`, `Connection` and
   `Transaction`): a core type in the public API. Its `package.html` says
   `pub.util` only.
-* Stale `package.html` lists: `core`'s leaves out `dag`, `pubimp`'s leaves
-  out `dag` and `storage`, `dag`'s leaves out `nanotest`.
+* Stale `package.html` lists: `pubimp`'s leaves out `dag`, `storage` and
+  `pub.util` (`core`'s and `dag`'s were fixed the same day; all of them in
+  005-56).
 * `getOneInternal` is public.
 * Db has 43 public methods.
 
-No measure today. Candidates: the number of Db's public methods, and a
-test that checks each package's imports against its `package.html`.
+No measure today. Candidates: the number of Db's public methods, and
+006-08's tools: each package's imports against its `package.html`
+(`deps.py`), and the Core Layer built alone (`core-build.sh`).
 

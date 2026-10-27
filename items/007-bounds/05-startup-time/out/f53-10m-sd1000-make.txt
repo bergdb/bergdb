@@ -1,0 +1,6 @@
+[    0.1 s] make: 10000000 keys, values of 8 bytes, sd 1000000000, 12000000 updates, budget 0, dir /Users/f/fl/bench/007-05/data/f53-10m-sd1000
+[   30.3 s]   load: 9705000 puts, stream 686 MB
+[   31.2 s] load done: 30.8 s, stream 706 MB
+[   60.3 s]   updates: 5877000, stream 2074 MB, lag 1002 MB, largest 1100 MB
+[   81.4 s] make done: stream 2558 MB; lag at the end 1000 MB (1.00 sd), largest 1100 MB (1.10 sd); 7558 transactions in the section; D 1832762 nodes, 766 MB
+RESULT {"mode": "make", "keys": 10000000, "valsize": 8, "sd": 1000000000, "updates": 12000000, "loadSec": 30.8233, "updatesSec": 49.9159, "streamBytes": 2558713008, "lagEnd": 1000351824, "lagMax": 1100961408, "transInSection": 7558, "dNodes": 1832762, "dBytes": 766124504, "closeSec": 0.000607292}

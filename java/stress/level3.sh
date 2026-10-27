@@ -153,7 +153,7 @@ if [ $QUICK = 0 ]; then
 fi
 
 echo "7. PowerLossTest, forced bytes and durable names before deletion"
-$JAVA -ea -Xmx2g -cp $CP bergdb.stream.PowerLossTest 1 $POWER_ROUNDS $POWER_TRANS $POWER_EVENTS \
+$JAVA -ea -Xmx2g -cp $CP bergdb.core.PowerLossTest 1 $POWER_ROUNDS $POWER_TRANS $POWER_EVENTS \
     > $LOG/powerloss.txt 2>&1
 grep -q '^POWERLOSS OK' $LOG/powerloss.txt || fail "PowerLossTest" $LOG/powerloss.txt
 grep '^POWERLOSS OK' $LOG/powerloss.txt

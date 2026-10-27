@@ -1,0 +1,10 @@
+2026-10-27 04:05:29 start; load 0.04 0.08 0.08
+2026-10-27 04:19:07 s1-10m-sd50-make.txt: exit 0; [  817.6 s] make done: stream 5288 MB; lag at the end 107 MB (2.15 sd), largest 116 MB (2.33 sd); 109 transactions in the section; D 176592 nodes, 59 MB
+2026-10-27 04:23:13 s1-10m-sd50-cold1.txt: exit 0; [  243.4 s] start: 241.42 s; section 107 MB (2.15 sd), 109 transactions rerun; D 176592 nodes, 59 MB; heap 429 MB; 2904 MB from the device; by phase:
+2026-10-27 04:26:51 s1-10m-sd50-cold2.txt: exit 0; [  215.4 s] start: 213.51 s; section 107 MB (2.15 sd), 109 transactions rerun; D 176592 nodes, 59 MB; heap 427 MB; 2927 MB from the device; by phase:
+2026-10-27 04:29:50 s1-10m-sd50-warm.txt: exit 0; [  176.8 s] start: 175.02 s; section 107 MB (2.15 sd), 109 transactions rerun; D 176592 nodes, 59 MB; heap 432 MB; 2660 MB from the device; by phase:
+2026-10-27 04:39:57 s1-10m-sd200-make.txt: exit 0; [  607.0 s] make done: stream 2924 MB; lag at the end 200 MB (1.00 sd), largest 344 MB (1.72 sd); 307 transactions in the section; D 387117 nodes, 137 MB
+2026-10-27 04:44:12 s1-10m-sd200-cold1.txt: exit 0; [  252.3 s] start: 248.71 s; section 200 MB (1.00 sd), 307 transactions rerun; D 387117 nodes, 137 MB; heap 746 MB; 3052 MB from the device; by phase:
+2026-10-27 04:47:47 s1-10m-sd200-cold2.txt: exit 0; [  212.8 s] start: 208.92 s; section 200 MB (1.00 sd), 307 transactions rerun; D 387117 nodes, 137 MB; heap 744 MB; 2870 MB from the device; by phase:
+2026-10-27 04:50:38 s1-10m-sd200-warm.txt: exit 0; [  168.6 s] start: 164.48 s; section 200 MB (1.00 sd), 307 transactions rerun; D 387117 nodes, 137 MB; heap 744 MB; 2551 MB from the device; by phase:
+2026-10-27 04:50:38 done

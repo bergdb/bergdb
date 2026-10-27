@@ -1,0 +1,18 @@
+[   76.3 s] start: 71.17 s; section 1000 MB (1.00 sd), 7558 transactions rerun; D 1832762 nodes, 766 MB; heap 2688 MB; by phase:
+    recover                                      5 reads       0.0 MB     0.00 s in reads,   0.0 % of the samples
+    handleStartParams                            8 reads       0.4 MB     0.00 s in reads,   0.0 % of the samples
+    readTransactions                         20120 reads     999.7 MB     0.13 s in reads,   9.3 % of the samples
+    starter.rerunTransactions               167731 reads      26.8 MB     0.23 s in reads,  54.5 % of the samples
+    starter.linkD                          1049964 reads      33.6 MB     1.26 s in reads,  10.3 % of the samples
+    syncStreams                                  0 reads       0.0 MB     0.00 s in reads,   0.0 % of the samples
+    startDb                                      0 reads       0.0 MB     0.00 s in reads,   1.0 % of the samples
+    starter.createMaps                           0 reads       0.0 MB     0.00 s in reads,   1.7 % of the samples
+    starter.updateStreamPointers                 0 reads       0.0 MB     0.00 s in reads,   5.9 % of the samples
+    starter.changeKeyNodesToStateAtStartupTime         0 reads       0.0 MB     0.00 s in reads,   0.1 % of the samples
+    starter.checkStreamPointers                  0 reads       0.0 MB     0.00 s in reads,   0.3 % of the samples
+    starter.createMemoryPointers                 0 reads       0.0 MB     0.00 s in reads,   6.8 % of the samples
+    starter.registerSectionNodes                 0 reads       0.0 MB     0.00 s in reads,   0.7 % of the samples
+    starter.findSuperNodeAtStartupTime           0 reads       0.0 MB     0.00 s in reads,   0.0 % of the samples
+    starter.postStartupCheck                     0 reads       0.0 MB     0.00 s in reads,   9.4 % of the samples
+[   76.3 s] checked 2000 keys
+RESULT {"mode": "start", "keys": 10000000, "valsize": 8, "sd": 1000000000, "budget": 4000000000, "byPhase": true, "startupSec": 71.1677, "sectionBytes": 1000351824, "transRerun": 7558, "streamBytes": 2558713008, "dNodes": 1832762, "dBytes": 766124504, "heapAfterStart": 2688548864, "residentAfterStart": 1677737680, "loads": 55870, "phases": {"recover": {"reads": 5, "bytes": 146, "readSec": 2.90830e-05, "timeShare": 0.00000}, "handleStartParams": {"reads": 8, "bytes": 413020, "readSec": 0.000101250, "timeShare": 8.46848e-05}, "readTransactions": {"reads": 20120, "bytes": 999741804, "readSec": 0.125991, "timeShare": 0.0929415}, "starter.rerunTransactions": {"reads": 167731, "bytes": 26766904, "readSec": 0.225837, "timeShare": 0.545200}, "starter.linkD": {"reads": 1049964, "bytes": 33595104, "readSec": 1.26428, "timeShare": 0.103231}, "syncStreams": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 4.23424e-05}, "startDb": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 0.0100351}, "starter.createMaps": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 0.0165135}, "starter.updateStreamPointers": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 0.0588559}, "starter.changeKeyNodesToStateAtStartupTime": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 0.00101622}, "starter.checkStreamPointers": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 0.00330271}, "starter.createMemoryPointers": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 0.0680019}, "starter.registerSectionNodes": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 0.00715586}, "starter.findSuperNodeAtStartupTime": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 4.23424e-05}, "starter.postStartupCheck": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 0.0935767}}}

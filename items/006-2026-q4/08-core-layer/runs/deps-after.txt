@@ -1,0 +1,28 @@
+deps.py on java/src with 006-08, all packages:
+
+common uses nanotest
+    package.html allows nanotest
+core uses common, dag, nanotest, pub.util, storage, stream
+    package.html allows common, dag, nanotest, pub.util, storage, stream
+dag uses common, nanotest, pub.util
+    package.html allows common, nanotest, pub.util
+nanotest uses nothing
+    package.html allows nothing
+pub uses common, core, nanotest, pub.util, pubimp
+    package.html allows pub.util
+    NOT ALLOWED: common, in CryptoKey.java
+    NOT ALLOWED: core, in Connection.java, Database.java, Transaction.java
+    NOT ALLOWED: nanotest, in CryptoKey.java, Time.java
+    NOT ALLOWED: pubimp, in Database.java, Factory.java, TestClock.java, Time.java
+pub.util uses nothing
+    package.html allows common
+pubimp uses common, core, dag, nanotest, pub, pub.util, storage, stream
+    package.html allows common, core, nanotest, pub, stream
+    NOT ALLOWED: dag, in ClockConstants.java, ConnectionImp.java, IndexBuilderImp.java, IndexManager.java, PrimaryKeyCollator.java, PubTesterIndex.java, RwEnvironmentImp.java, UseIndexBuilderImp.java
+    NOT ALLOWED: pub.util, in ConnectionImp.java, DatabaseBuilderImp.java, DatabaseImp.java, DbArray.java, DbBoolean.java, DbByteArray.java, DbObject.java, DbObjectTester.java, IndexBuilderImp.java, IndexManager.java, KvToObjectImp.java, PubTester.java, PubTesterIndex.java, RwEnvironmentImp.java, StartInfoImp.java, TimeResolver.java
+    NOT ALLOWED: storage, in DatabaseBuilderImp.java, DatabaseImp.java, IndexBuilderImp.java, PubTester.java, RwTransaction.java
+storage uses common, nanotest, pub.util, stream
+    package.html allows common, nanotest, pub.util, stream
+stream uses common, nanotest, pub.util
+    package.html allows common, nanotest, pub.util
+9 packages checked, 7 not as package.html allows

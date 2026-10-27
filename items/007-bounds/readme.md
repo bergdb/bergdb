@@ -30,8 +30,8 @@ Files
   006-06): what is unchanged, what changed, and what it does to the plan.
 * [05-startup-time.md](05-startup-time.md). 007-05, step 5 of 007-03:
   startup time against the section, warm on F53 and cold on s1, with the
-  reads by phase; the tool and the night's scripts in
-  [05-startup-time/](05-startup-time/), scheduled for 2026-10-27, 04:00.
+  reads by phase; the tool, the night's scripts, the outputs and the
+  analysis in [05-startup-time/](05-startup-time/). Ran 2026-10-27.
 
 
 Log
@@ -101,3 +101,14 @@ figures at 50 to 1000 MB for the startup section, the write overhead and D,
 in place of those at 20 and 5 MB (Frans: "We should use at a startup
 distance of at least 50 MB."); section 5 gives 007-03's order, 005-49 first
 and the deadline as its backstop.
+
+2026-10-27. Step 5 of 007-03 done: the night ran from 04:00 to 05:27 with
+no failures, and 007-05 has the results, by Claude (Opus 5.5, Claude
+Code). Warm on F53: 7.4 s at 50 MB (a section of 2.15 sd), 12.4 s at 200
+MB and 70 s at 1000 MB with 10M keys and 8-byte values; 26 and 86 s at
+200 and 1000 MB with 50M keys; 9.1 s with 100-byte values and 1.9 s with
+10 kB values at 200 MB. Cold on s1, 10M keys: 214 and 209 s at 50 and 200
+MB, 86 to 94 percent of it in 1.1 to 1.7 million random reads, 73 to 78
+percent of those rule 4's. So 10 s warm holds up to a startup distance of
+about 75 MB at 10M keys with small values, and a cold start needs step 6
+for both rule 4's reads and the rerun's first touches. 007-03 updated.

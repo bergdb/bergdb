@@ -1,0 +1,52 @@
+Databases (make)
+file                           keys    val   sd MB  updates stream MB    lag MB lag max MB  D nodes    D MB
+f53-10m-sd1000-make.txt         10M      8    1000    12.0M      2559      1000       1101  1832762     766
+f53-10m-sd200-make.txt          10M      8     200     3.0M      2925       201        345   387117     137
+f53-10m-sd50-make.txt           10M      8      50     2.0M      5289       108        117   176592      60
+f53-200k-v10k-make.txt           0M  10000     200     0.1M      3067       216        216    13537       5
+f53-2m-v100-make.txt             2M    100     200     2.0M       994       200        201   210679      81
+f53-50m-sd1000-make.txt         50M      8    1000    10.0M     12170      1001       1654  3895410    1336
+f53-50m-sd200-make.txt          50M      8     200     3.0M     24379       245        485  1279606     425
+s1/s1-10m-sd200-make.txt        10M      8     200     3.0M      2925       201        345   387117     137
+s1/s1-10m-sd50-make.txt         10M      8      50     2.0M      5289       108        117   176592      60
+
+Starts
+file                          phases  startup   sect  sect/sd rerun tx  rerun rd   rerun s  linkD rd   linkD s device MB
+f53-10m-sd1000-start1.txt        yes   71.17s  1000M     1.00     7558    167731      0.23   1049964      1.26         -
+f53-10m-sd1000-start2.txt         no   70.59s  1000M     1.00     7558         -         - 1237828 all  1.44 all         -
+f53-10m-sd1000-start3.txt         no   70.10s  1000M     1.00     7558         -         - 1237828 all  1.42 all         -
+f53-10m-sd200-start1.txt         yes   21.40s   201M     1.00      307    466683      0.57   1254124      1.58         -
+f53-10m-sd200-start2.txt          no   12.28s   201M     1.00      307         -         - 1722436 all  1.94 all         -
+f53-10m-sd200-start3.txt          no   12.50s   201M     1.00      307         -         - 1722436 all  1.95 all         -
+f53-10m-sd50-start1.txt          yes   13.16s   108M     2.15      109    248742      0.31    863609      1.09         -
+f53-10m-sd50-start2.txt           no    7.42s   108M     2.15      109         -         - 1113136 all  1.28 all         -
+f53-10m-sd50-start3.txt           no    7.37s   108M     2.15      109         -         - 1113136 all  1.27 all         -
+f53-200k-v10k-start1.txt         yes    2.06s   216M     1.08       20     16185      0.02     18967      0.02         -
+f53-200k-v10k-start2.txt          no    1.85s   216M     1.08       20         -         - 36384 all  0.06 all         -
+f53-200k-v10k-start3.txt          no    1.86s   216M     1.08       20         -         - 36384 all  0.06 all         -
+f53-2m-v100-start1.txt           yes   10.74s   200M     1.00      649    102358      0.13    195986      0.24         -
+f53-2m-v100-start2.txt            no    9.02s   200M     1.00      649         -         - 300657 all  0.35 all         -
+f53-2m-v100-start3.txt            no    9.09s   200M     1.00      649         -         - 300657 all  0.35 all         -
+f53-50m-sd1000-start1.txt        yes  215.22s  1001M     1.00     4984   6168104     27.56   5303724     45.58         -
+f53-50m-sd1000-start2.txt         no   90.04s  1001M     1.00     4984         -         - 11486814 all 16.62 all         -
+f53-50m-sd1000-start3.txt         no   85.85s  1001M     1.00     4984         -         - 11486814 all 13.98 all         -
+f53-50m-sd200-start1.txt         yes  140.54s   245M     1.23      956   2801333     22.05   3959715     62.65         -
+f53-50m-sd200-start2.txt          no   49.37s   245M     1.23      956         -         - 6764213 all 30.90 all         -
+f53-50m-sd200-start3.txt          no   25.56s   245M     1.23      956         -         - 6764213 all  8.04 all         -
+s1/s1-10m-sd200-cold1.txt        yes  248.71s   201M     1.00      307    466683     33.64   1254124    173.11      3052
+s1/s1-10m-sd200-cold2.txt         no  208.92s   201M     1.00      307         -         - 1722436 all 185.33 all      2870
+s1/s1-10m-sd200-warm.txt          no  164.48s   201M     1.00      307         -         - 1722436 all 142.16 all      2551
+s1/s1-10m-sd50-cold1.txt         yes  241.42s   108M     2.15      109    248742     33.60    863609    180.85      2905
+s1/s1-10m-sd50-cold2.txt          no  213.51s   108M     2.15      109         -         - 1113136 all 200.27 all      2927
+s1/s1-10m-sd50-warm.txt           no  175.02s   108M     2.15      109         -         - 1113136 all 162.06 all      2661
+
+Time shares by phase (samples of the starting thread), counted starts
+f53-10m-sd1000-start1.txt    starter.rerunTransactions 55%, starter.linkD 10%, starter.postStartupCheck 9%, readTransactions 9%, starter.createMemoryPointers 7%
+f53-10m-sd200-start1.txt     starter.linkD 38%, starter.rerunTransactions 30%, starter.updateStreamPointers 8%, starter.createMemoryPointers 7%, readTransactions 7%
+f53-10m-sd50-start1.txt      starter.linkD 42%, starter.rerunTransactions 35%, readTransactions 6%, starter.updateStreamPointers 5%, starter.postStartupCheck 4%
+f53-200k-v10k-start1.txt     readTransactions 65%, starter.rerunTransactions 17%, handleStartParams 6%, starter.linkD 6%, starter.postStartupCheck 2%
+f53-2m-v100-start1.txt       starter.rerunTransactions 48%, starter.linkD 13%, readTransactions 12%, starter.updateStreamPointers 9%, starter.postStartupCheck 7%
+f53-50m-sd1000-start1.txt    starter.rerunTransactions 50%, starter.linkD 37%, starter.postStartupCheck 4%, readTransactions 3%, starter.updateStreamPointers 2%
+f53-50m-sd200-start1.txt     starter.linkD 61%, starter.rerunTransactions 33%, starter.postStartupCheck 2%, readTransactions 1%, starter.updateStreamPointers 1%
+s1/s1-10m-sd200-cold1.txt    starter.linkD 77%, starter.rerunTransactions 19%, starter.createMemoryPointers 1%, starter.updateStreamPointers 1%, readTransactions 1%
+s1/s1-10m-sd50-cold1.txt     starter.linkD 80%, starter.rerunTransactions 17%, starter.updateStreamPointers 0%, readTransactions 0%, starter.createMemoryPointers 0%

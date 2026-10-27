@@ -20,6 +20,7 @@ public class Pack implements IPack {
         CapacityTester.class,
         Eviction.class,
         EvictionReaderTester.class,
+        FileStreamPowerLossTester.class,
         KeyModSet.class,
         Kv.class,
         NodeChecksum.class,

@@ -6,8 +6,11 @@ his request ("Do: write this plan into item 007."), from Claude's proposal
 of 2026-10-23, which followed 007-01 and 007-02. Updated 2026-10-26 from
 the review after item 009, [007-04](04-review-after-009.md).
 
-**Status (2026-10-26): step 1 done (005-31, 2026-10-24); steps 2 to 5 not
-started; step 5 scheduled for 2026-10-27, 04:00.** Steps 2 to 5 waited for release 2026.1 (Frans,
+**Status (2026-10-27): step 1 done (005-31, 2026-10-24); step 5 done
+(007-05, 2026-10-27); steps 2, 3, 4 and 6 not started.** Step 5: warm on
+F53, 7.4 s at 50 MB, 12.4 s at 200 MB and 70 to 86 s at 1000 MB with 10M
+to 50M keys and 8-byte values; cold on s1, 3.5 minutes at 10M keys, most
+of it rule 4's reads. Steps 2 to 5 waited for release 2026.1 (Frans,
 2026-10-25: "After the release"), which is out, so they wait only for
 Frans's start. Since 007-04, step 2 is smaller (005-38 measured its first
 workload); steps 3 and 4 wait for
@@ -226,6 +229,10 @@ and for a cold cache.
   "Schedule Step 5 tonight at 04:00; I assume night.sh is done by then;
   report to news.md."). The tool, the scripts, what the night runs, and
   the results: [007-05](05-startup-time.md).
+* Done 2026-10-27: the night ran from 04:00 to 05:27, and 007-05 has the
+  table, the fit, the numbers for the promise, and rule 4's share. Not
+  done: the count of rule 4's reads that find a canonical object, left to
+  step 6.
 
 ### Step 6. Fewer random reads at startup (D5: in this plan)
 
@@ -237,8 +244,12 @@ of D never names an older version of a node written since. To find the
 object it needs the pointee's id, and a pointer that startup's maps do not
 resolve costs a read of the pointee's header: the 590,000 random reads of
 a cold startup at 10M keys and a startup distance of 10 MB, minutes on s1.
-Their number follows D, not the section. Most likely find no canonical
-object; step 5 counts how many do. The writer may read the same headers
+Step 5 (007-05) counted 864,000 and 1,254,000 at 50 and 200 MB: 78 and
+73 percent of a cold start's reads, and about 80 percent of its 3.5
+minutes on s1; the rerun's first touches are the rest (249,000 and
+467,000 reads, 34 s). Their number follows D, not the section. Most likely
+find no canonical object; step 5 did not count how many do, so this step
+does. The writer may read the same headers
 again when it takes those nodes:
 `NodeCollection.resolvePointers` calls `idOf` for each stream pointer left,
 and `idOf` remembers the last 100,000 positions.
@@ -259,6 +270,9 @@ Options, for the investigation to weigh:
 With the reads few (B) or gone (C), a cold startup reads at random only
 what the rerun touches, at most a node per level of the tree for each key
 rerun, and the section bounds that, with T3 and the deadline, without T4.
+Measured, that still leaves 45 to 55 s on s1 at 10M keys (007-05, "What
+it means", 3): a cold start in seconds needs the rerun's reads cheaper
+(A) or fewer too.
 
 * Done when: the reads counted by source (step 5), the options costed, and
   Frans's choice. The change itself is a step of its own after that.
@@ -271,10 +285,10 @@ Order
 Since the review (007-04):
 
 * 005-49 first, as its entry says: before steps 3 and 4.
-* Step 5 now, beside 005-49 (scheduled for 2026-10-27, 04:00): it needs neither 005-49 nor the
-  deadline, and it shows where a startup's time goes at 50, 200 and 1000
-  MB, warm and cold, which step 6 and the promise need. Step 6's count
-  comes from its runs.
+* Step 5 now, beside 005-49: it needs neither 005-49 nor the deadline,
+  and it shows where a startup's time goes at 50, 200 and 1000 MB, warm
+  and cold, which step 6 and the promise need. Step 6's count comes from
+  its runs. Done 2026-10-27 (007-05).
 * Step 2's runs left after 005-49's first step, on its version of
   WriteBench, in the background: they count, they do not time.
 * D4 and step 3 after 005-49's recommendation; step 2's runs again after
@@ -348,7 +362,11 @@ After the plan
   after 009's step 4c).
 * The promise in the user documentation: the Pub API's startup distance,
   and docs/levels.md, section 5, per startup distance, warm and cold; fast
-  restart (006-06) for planned restarts at large distances.
+  restart (006-06) for planned restarts at large distances. From step 5
+  (007-05, "What it means", 1 and 2): 10 s warm holds up to a startup
+  distance of about 75 MB at 10M keys with 8-byte values (580 MB with 10
+  kB values), while the 200 to 1000 MB that 005-38 found best for the
+  write overhead give warm starts of 12 to 86 s.
 
 
 How to work

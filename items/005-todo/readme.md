@@ -39,6 +39,7 @@ Open
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 | [005-55](55-fix-finalize.md) | Fix | The note of deprecated API that every build prints: `finalize()` (six uses) and `Class.newInstance()` (two). `Db.finalize()` stops a database that the application drops without `stop()`, as the Pub API promises; proposed: a `Cleaner` in its place, no `@SuppressWarnings` (Frans: "finalize() need to go"). Found with it: a dropped database whose eviction thread has started is never collected, as the thread holds the `Db` (009's step 3b) | open |
+| [005-56](56-package-dependencies.md) | Investigate | Package dependencies: how the packages depend on each other, and whether that follows their `package.html` files; Frans's question. A first look: four of `java/src`'s nine packages use packages their lists leave out (`pub` uses `core` and `pubimp`, `pubimp` uses `dag` and `storage`, `stream`'s tester `core` and `storage`), and nothing checks the lists | open |
 
 
 Closed
@@ -261,6 +262,9 @@ Files
   the build, `finalize()` first: what `Db.finalize()` is for, the probes,
   a `Cleaner` proposed; open; the probes, the lint script and their output
   in [55-fix-finalize/](55-fix-finalize/).
+* [56-package-dependencies.md](56-package-dependencies.md). 005-56, the
+  package dependencies against the `package.html` files: Frans's question,
+  a first look, the older rules of 2012 and 2015; open.
 
 Log
 ===
@@ -884,6 +888,16 @@ whose eviction thread has started is never collected, as the thread holds
 the `Db` (since 009's step 3b; one such database in the f-tests); and the
 unit tests leave 211 storage threads of databases not stopped, which only
 finalization cleans up. No change to `java/`.
+
+2026-10-26. Added 005-56, at Frans's request ("Add a todo item to 005 to
+investigate package dependencies. How do packages depend on each other?
+Does this follow the documentation in package.html files?"), by Claude
+(Opus 5.5, Claude Code). A first look, by the import lines and `jdeps`:
+four of `java/src`'s nine packages use packages that their `package.html`
+does not list (`stream`, `dag`, `pubimp`, `pub`); beyond 010-01's five
+mismatches, `pub` also uses `pubimp`, `common` and `nanotest`. The rules
+intended in 2012 and 2015 are in Frans's notes in F1-007. No change to
+`java/`.
 
 2026-10-27. 005-46 got a second case, from the soaks of 009-04 (section
 7.3), by Claude (Opus 5.5, Claude Code): every read from the stream waits

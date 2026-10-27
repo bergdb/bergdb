@@ -1,0 +1,7 @@
+java/before-commit.sh in a clone at cc8effb with 006-08's change, 2026-10-26:
+
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Unit: SUCCESS, 1023 successful tests in 9.7 s.
+F:    SUCCESS, 71 successful tests in 137.6 s.
+BEFORE COMMIT OK (142 s)

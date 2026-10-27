@@ -1,0 +1,39 @@
+2026-10-27 04:00:26 waiting for a quiet F53; load { 1.76 1.69 1.74 }
+2026-10-27 04:05:27 quiet; load { 2.11 1.92 1.83 }; bergdb.jar from 851acdf
+2026-10-27 04:50:38 s1 started
+2026-10-27 04:50:38 f53-10m-sd50 make
+2026-10-27 04:52:04 f53-10m-sd50:  make done: stream 5288 MB; lag at the end 107 MB (2.15 sd), largest 116 MB (2.33 sd); 109 transactions in the section; D 176592 nodes, 59 MB
+2026-10-27 04:52:18 f53-10m-sd50 start 1: "startupSec": 13.1600
+2026-10-27 04:52:26 f53-10m-sd50 start 2: "startupSec": 7.41713
+2026-10-27 04:52:34 f53-10m-sd50 start 3: "startupSec": 7.37498
+2026-10-27 04:52:34 f53-10m-sd200 make
+2026-10-27 04:53:35 f53-10m-sd200:  make done: stream 2924 MB; lag at the end 200 MB (1.00 sd), largest 344 MB (1.72 sd); 307 transactions in the section; D 387117 nodes, 137 MB
+2026-10-27 04:53:58 f53-10m-sd200 start 1: "startupSec": 21.4042
+2026-10-27 04:54:11 f53-10m-sd200 start 2: "startupSec": 12.2789
+2026-10-27 04:54:25 f53-10m-sd200 start 3: "startupSec": 12.5006
+2026-10-27 04:54:25 f53-10m-sd1000 make
+2026-10-27 04:55:46 f53-10m-sd1000:  make done: stream 2558 MB; lag at the end 1000 MB (1.00 sd), largest 1100 MB (1.10 sd); 7558 transactions in the section; D 1832762 nodes, 766 MB
+2026-10-27 04:57:03 f53-10m-sd1000 start 1: "startupSec": 71.1677
+2026-10-27 04:58:26 f53-10m-sd1000 start 2: "startupSec": 70.5916
+2026-10-27 04:59:43 f53-10m-sd1000 start 3: "startupSec": 70.1021
+2026-10-27 04:59:43 f53-2m-v100 make
+2026-10-27 04:59:59 f53-2m-v100:  make done: stream 993 MB; lag at the end 200 MB (1.00 sd), largest 200 MB (1.00 sd); 649 transactions in the section; D 210679 nodes, 80 MB
+2026-10-27 05:00:11 f53-2m-v100 start 1: "startupSec": 10.7409
+2026-10-27 05:00:21 f53-2m-v100 start 2: "startupSec": 9.02133
+2026-10-27 05:00:31 f53-2m-v100 start 3: "startupSec": 9.09263
+2026-10-27 05:00:31 f53-200k-v10k make
+2026-10-27 05:00:55 f53-200k-v10k:  make done: stream 3067 MB; lag at the end 216 MB (1.08 sd), largest 216 MB (1.08 sd); 20 transactions in the section; D 13537 nodes, 4 MB
+2026-10-27 05:00:57 f53-200k-v10k start 1: "startupSec": 2.06161
+2026-10-27 05:01:00 f53-200k-v10k start 2: "startupSec": 1.85113
+2026-10-27 05:01:02 f53-200k-v10k start 3: "startupSec": 1.85905
+2026-10-27 05:01:02 f53-50m-sd200 make
+2026-10-27 05:09:29 f53-50m-sd200:  make done: stream 24378 MB; lag at the end 245 MB (1.23 sd), largest 485 MB (2.43 sd); 956 transactions in the section; D 1279606 nodes, 425 MB
+2026-10-27 05:11:52 f53-50m-sd200 start 1: "startupSec": 140.544
+2026-10-27 05:12:44 f53-50m-sd200 start 2: "startupSec": 49.3729
+2026-10-27 05:13:12 f53-50m-sd200 start 3: "startupSec": 25.5576
+2026-10-27 05:13:12 f53-50m-sd1000 make
+2026-10-27 05:20:06 f53-50m-sd1000:  make done: stream 12169 MB; lag at the end 1001 MB (1.00 sd), largest 1654 MB (1.65 sd); 4984 transactions in the section; D 3895410 nodes, 1336 MB
+2026-10-27 05:23:50 f53-50m-sd1000 start 1: "startupSec": 215.224
+2026-10-27 05:25:26 f53-50m-sd1000 start 2: "startupSec": 90.0366
+2026-10-27 05:26:58 f53-50m-sd1000 start 3: "startupSec": 85.8541
+2026-10-27 05:27:02 done, 0 failures

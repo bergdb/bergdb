@@ -1,4 +1,4 @@
-package bergdb.stream;
+package bergdb.core;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,21 +18,23 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import bergdb.common.NullProgressListener;
-import bergdb.core.CoreTestClock;
-import bergdb.core.Db;
-import bergdb.core.DbUtil;
-import bergdb.core.SyncLevel;
-import bergdb.core.Trans;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
 import bergdb.storage.StorageManager;
+import bergdb.stream.BadDirStateException;
+import bergdb.stream.FileStream;
+import bergdb.stream.FileStreamIo;
 
 /**
  * Power-loss model over the production FileStream operations. Volatile data,
  * forced data and durable directory names are separate. Deletions can survive
  * without a directory force. Recovery always uses a new directory and Db.
  * This proves tested ordering under the model, not physical hardware behavior.
+ * In bergdb.core, not bergdb.stream: it also runs StorageManager and Db over
+ * the model, and stream must not depend on storage or core (package.html).
+ * 
+ * @author Frans Lundberg
  */
 public class FileStreamPowerLossTester {
     static final long SEC = Clock.UNITS_PER_SEC;
@@ -129,7 +131,7 @@ public class FileStreamPowerLossTester {
             }
         }
 
-        synchronized RandomAccessFile open(File file) throws IOException {
+        protected synchronized RandomAccessFile open(File file) throws IOException {
             checkpoint("before_open");
             RandomAccessFile handle = super.open(file);
             handles.add(handle);
@@ -137,7 +139,7 @@ public class FileStreamPowerLossTester {
             return handle;
         }
 
-        synchronized void write(File file, RandomAccessFile handle, byte[] bytes,
+        protected synchronized void write(File file, RandomAccessFile handle, byte[] bytes,
                 int offset, int length) throws IOException {
             checkpoint("before_write");
             super.write(file, handle, bytes, offset, length);
@@ -156,14 +158,14 @@ public class FileStreamPowerLossTester {
             }
         }
 
-        synchronized void forceFile(File file, RandomAccessFile handle) throws IOException {
+        protected synchronized void forceFile(File file, RandomAccessFile handle) throws IOException {
             checkpoint("before_file_force");
             if (failFileForce) throw new IOException("injected file force failure");
             if (!omitFileForce) forced.put(file.getName(), Files.readAllBytes(file.toPath()));
             checkpoint("after_file_force");
         }
 
-        synchronized void forceDirectory(File directory) throws IOException {
+        protected synchronized void forceDirectory(File directory) throws IOException {
             checkpoint("before_directory_force");
             if (failDirectoryForce) throw new IOException("injected directory force failure");
             if (!omitDirectoryForce && directory.getAbsoluteFile().equals(dir.getAbsoluteFile())) {
@@ -180,7 +182,7 @@ public class FileStreamPowerLossTester {
             checkpoint("after_directory_force");
         }
 
-        synchronized boolean delete(File file) throws IOException {
+        protected synchronized boolean delete(File file) throws IOException {
             checkpoint("before_delete");
             if (failDeleteAt > 0 && deletes + 1 == failDeleteAt) {
                 throw new IOException("injected deletion failure");
@@ -216,7 +218,7 @@ public class FileStreamPowerLossTester {
             return result;
         }
 
-        synchronized boolean rename(File file, File destination) throws IOException {
+        protected synchronized boolean rename(File file, File destination) throws IOException {
             checkpoint("before_rename");
             boolean result = super.rename(file, destination);
             if (result) names.remove(file.getName());
@@ -310,12 +312,12 @@ public class FileStreamPowerLossTester {
         final CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
         ModelIo io = new ModelIo(dir, 4, 1) {
             volatile boolean gate;
-            void write(File file, RandomAccessFile handle, byte[] bytes, int offset, int length)
+            protected void write(File file, RandomAccessFile handle, byte[] bytes, int offset, int length)
                     throws IOException {
                 gate = true;
                 super.write(file, handle, bytes, offset, length);
             }
-            void forceFile(File file, RandomAccessFile handle) throws IOException {
+            protected void forceFile(File file, RandomAccessFile handle) throws IOException {
                 if (gate) {
                     entered.countDown();
                     try {
@@ -345,12 +347,12 @@ public class FileStreamPowerLossTester {
         final CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
         ModelIo io = new ModelIo(dir, 7, 1) {
             volatile boolean gate;
-            void write(File file, RandomAccessFile handle, byte[] bytes, int offset, int length)
+            protected void write(File file, RandomAccessFile handle, byte[] bytes, int offset, int length)
                     throws IOException {
                 gate = true;
                 super.write(file, handle, bytes, offset, length);
             }
-            void forceFile(File file, RandomAccessFile handle) throws IOException {
+            protected void forceFile(File file, RandomAccessFile handle) throws IOException {
                 if (gate) {
                     entered.countDown();
                     try {
@@ -359,7 +361,7 @@ public class FileStreamPowerLossTester {
                 }
                 super.forceFile(file, handle);
             }
-            synchronized void forceDirectory(File directory) throws IOException {
+            protected synchronized void forceDirectory(File directory) throws IOException {
                 if (deletes > 0) throw new IOException("injected pending-cut directory force failure");
                 super.forceDirectory(directory);
             }

@@ -21,6 +21,7 @@ The list
 | [006-05](05-todo-markers.md) | 2026-10-25 | The TODO markers in `java/`: the 15, what was found and done with each, and the 3.0e6 that "result in problems" in 2015 |
 | [006-06](06-fast-restart.md) | 2026-10-26 | Fast restart, a note of Frans's idea: lower the startup distance for a while before a controlled restart; not investigated |
 | [006-07](07-docs-cleanup.md) | 2026-10-26 | The `docs/` cleanup: most documents to items (001-07 to 001-11, 009-05, the new 011), `docs/levels.md` rewritten short, `docs/trace-format.md`, the references as IDs |
+| [006-08](08-core-layer.md) | 2026-10-26 | The Core Layer built alone (680 kB): a program calls `Db` with only it on the class path, and its tests pass on it; each of its packages now follows its `package.html` (`FileStreamPowerLossTester` from `stream` to `core`) |
 
 
 Files
@@ -49,6 +50,10 @@ Files
   `docs/`: what moved where, the rules for references, what was carried
   forward, the checks; the script that rewrote the references and the link
   check in [07-docs-cleanup/](07-docs-cleanup/).
+* [08-core-layer.md](08-core-layer.md). 006-08, the check: the Core Layer
+  built alone and used, what did not follow `package.html` and the change,
+  the checks; `deps.py`, `core-build.sh`, the demo and the output in
+  [08-core-layer/](08-core-layer/).
 
 
 Log
@@ -106,3 +111,14 @@ log.md as is."), by Claude (Opus 5.5, Claude Code): `docs/` keeps
 `levels.md` (rewritten short), `sis-model.md`, `trace-format.md` (new),
 `log.md` and `sources/`; the other documents are subitems of 001, 009 and
 the new 011; the code and the items cite them by ID.
+
+2026-10-26. 006-08, at Frans's request ("Check BergDB Core Layer
+independence. Can a version be build from the bergdb.core package with
+dependencies."), by Claude (Opus 5.5, Claude Code): the Core Layer, `core`
+and the six packages it may use, compiles alone (680 kB, 415 classes); a
+program outside `bergdb` calls `Db` with only it on the class path, and
+its unit and f-tests pass on it. `FileStreamPowerLossTester` moved from
+`stream` to `core`, as `stream` may not use `core` or `storage`
+(`FileStreamIo` public, with protected methods); `dag`'s and `stream`'s
+`package.html` lists fixed. `before-commit.sh` OK, `level3.sh`'s step 7
+OK.

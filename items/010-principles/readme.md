@@ -79,3 +79,8 @@ proposed."): the Core Data API (`getOne`, `getMany`, `getTrans`,
 `execute`) within the larger Core API, kept small; the Core Layer does not
 depend on the layers above. From the Db Javadoc of 2013, which Frans
 updated the same day.
+
+2026-10-26. P12's "Where BergDB stands" after 006-08, by Claude (Opus
+5.5, Claude Code): the Core Layer builds alone and follows its
+`package.html` lists, as `FileStreamPowerLossTester` moved from `stream`
+to `core`; `dag`'s and `stream`'s lists fixed.

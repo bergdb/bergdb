@@ -103,7 +103,8 @@ public class FileStream implements AppendOnlyStream {
         this(dir, new FileStreamIo());
     }
 
-    FileStream(File dir, FileStreamIo io) throws IOException {
+    /** As FileStream(dir), with the given persistence boundary; for fault tests. */
+    public FileStream(File dir, FileStreamIo io) throws IOException {
         if (dir == null) {
             throw new IllegalArgumentException("dir == null not allowed");
         }

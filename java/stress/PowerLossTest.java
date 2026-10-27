@@ -1,9 +1,9 @@
-package bergdb.stream;
+package bergdb.core;
 
 /**
  * Deterministic power-loss recovery at the production FileStream persistence
  * boundaries. java -ea -Xmx2g -cp build/bergdb.jar:build/stress
- * bergdb.stream.PowerLossTest [firstSeed [rounds [transactions [perEvent]]]]
+ * bergdb.core.PowerLossTest [firstSeed [rounds [transactions [perEvent]]]]
  * Loss of unforced bytes/names can coexist with surviving prefix deletion.
  * These are fault-model tests, not a claim of physical power cycling.
  */

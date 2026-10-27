@@ -1,0 +1,20 @@
+[  252.3 s] start: 248.71 s; section 200 MB (1.00 sd), 307 transactions rerun; D 387117 nodes, 137 MB; heap 746 MB; 3052 MB from the device; by phase:
+    recover                                      4 reads       0.0 MB     0.00 s in reads,   0.0 % of the samples
+    handleStartParams                            5 reads       0.2 MB     0.00 s in reads,   0.0 % of the samples
+    readTransactions                          1620 reads     200.7 MB     0.64 s in reads,   0.9 % of the samples
+    starter.rerunTransactions               466683 reads      58.5 MB    33.64 s in reads,  18.7 % of the samples
+    starter.linkD                          1254124 reads      40.1 MB   173.11 s in reads,  76.5 % of the samples
+    other                                        0 reads       0.0 MB     0.00 s in reads,   0.0 % of the samples
+    startDb                                      0 reads       0.0 MB     0.00 s in reads,   0.1 % of the samples
+    starter.createMaps                           0 reads       0.0 MB     0.00 s in reads,   0.5 % of the samples
+    starter.updateStreamPointers                 0 reads       0.0 MB     0.00 s in reads,   1.2 % of the samples
+    starter.changeKeyNodesToStateAtStartupTime         0 reads       0.0 MB     0.00 s in reads,   0.0 % of the samples
+    starter.checkStreamPointers                  0 reads       0.0 MB     0.00 s in reads,   0.1 % of the samples
+    starter.createMemoryPointers                 0 reads       0.0 MB     0.00 s in reads,   1.2 % of the samples
+    starter.registerSectionNodes                 0 reads       0.0 MB     0.00 s in reads,   0.2 % of the samples
+    starter.findSuperNodeAtStartupTime           0 reads       0.0 MB     0.00 s in reads,   0.0 % of the samples
+    starter.prepareDb                            0 reads       0.0 MB     0.00 s in reads,   0.0 % of the samples
+    starter.postStartupCheck                     0 reads       0.0 MB     0.00 s in reads,   0.7 % of the samples
+    loadClass                                    0 reads       0.0 MB     0.00 s in reads,   0.0 % of the samples
+[  253.4 s] checked 2000 keys
+RESULT {"mode": "start", "keys": 10000000, "valsize": 8, "sd": 200000000, "budget": 600000000, "byPhase": true, "startupSec": 248.714, "sectionBytes": 200824040, "transRerun": 307, "streamBytes": 2924649504, "dNodes": 387117, "dBytes": 137120056, "heapAfterStart": 746586112, "residentAfterStart": 468337520, "loads": 155471, "deviceReadBytes": 3052437504, "phases": {"recover": {"reads": 4, "bytes": 142, "readSec": 0.00124942, "timeShare": 0.00000}, "handleStartParams": {"reads": 5, "bytes": 161528, "readSec": 0.00140986, "timeShare": 8.55352e-06}, "readTransactions": {"reads": 1620, "bytes": 200696760, "readSec": 0.644831, "timeShare": 0.00855352}, "starter.rerunTransactions": {"reads": 466683, "bytes": 58479980, "readSec": 33.6421, "timeShare": 0.186544}, "starter.linkD": {"reads": 1254124, "bytes": 40127264, "readSec": 173.109, "timeShare": 0.765035}, "other": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 8.55352e-06}, "startDb": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 0.00103498}, "starter.createMaps": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 0.00516632}, "starter.updateStreamPointers": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 0.0116584}, "starter.changeKeyNodesToStateAtStartupTime": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 0.000265159}, "starter.checkStreamPointers": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 0.000838244}, "starter.createMemoryPointers": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 0.0122486}, "starter.registerSectionNodes": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 0.00211272}, "starter.findSuperNodeAtStartupTime": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 8.55352e-06}, "starter.prepareDb": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 8.55352e-06}, "starter.postStartupCheck": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 0.00650067}, "loadClass": {"reads": 0, "bytes": 0, "readSec": 0.00000, "timeShare": 8.55352e-06}}}

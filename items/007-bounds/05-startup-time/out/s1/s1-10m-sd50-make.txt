@@ -1,0 +1,31 @@
+[    0.1 s] make: 10000000 keys, values of 8 bytes, sd 50000000, 2000000 updates, budget 1200000000, dir /opt/bergdb-bench/007/data/s1-10m-sd50
+[   30.5 s]   load: 4313000 puts, stream 1160 MB
+[   60.5 s]   load: 6321000 puts, stream 2087 MB
+[   90.5 s]   load: 7387000 puts, stream 2627 MB
+[  120.5 s]   load: 8252000 puts, stream 3073 MB
+[  150.7 s]   load: 8932000 puts, stream 3470 MB
+[  180.7 s]   load: 9451000 puts, stream 3709 MB
+[  210.7 s]   load: 9917000 puts, stream 4050 MB
+[  216.0 s] load done: 215.5 s, stream 4094 MB
+[  240.8 s]   updates: 68000, stream 4107 MB, lag 51 MB, largest 52 MB
+[  271.0 s]   updates: 167000, stream 4126 MB, lag 51 MB, largest 52 MB
+[  301.1 s]   updates: 249000, stream 4213 MB, lag 98 MB, largest 98 MB
+[  331.3 s]   updates: 345000, stream 4302 MB, lag 52 MB, largest 114 MB
+[  361.5 s]   updates: 447000, stream 4322 MB, lag 51 MB, largest 114 MB
+[  391.9 s]   updates: 552000, stream 4341 MB, lag 51 MB, largest 114 MB
+[  421.9 s]   updates: 649000, stream 4493 MB, lag 74 MB, largest 116 MB
+[  451.9 s]   updates: 762000, stream 4529 MB, lag 51 MB, largest 116 MB
+[  482.0 s]   updates: 881000, stream 4553 MB, lag 52 MB, largest 116 MB
+[  512.2 s]   updates: 984000, stream 4686 MB, lag 95 MB, largest 116 MB
+[  542.3 s]   updates: 1081000, stream 4734 MB, lag 51 MB, largest 116 MB
+[  572.4 s]   updates: 1195000, stream 4756 MB, lag 51 MB, largest 116 MB
+[  602.4 s]   updates: 1287000, stream 4819 MB, lag 81 MB, largest 116 MB
+[  632.4 s]   updates: 1363000, stream 4935 MB, lag 51 MB, largest 116 MB
+[  662.7 s]   updates: 1470000, stream 4957 MB, lag 51 MB, largest 116 MB
+[  692.7 s]   updates: 1586000, stream 4980 MB, lag 51 MB, largest 116 MB
+[  722.7 s]   updates: 1676000, stream 5122 MB, lag 82 MB, largest 116 MB
+[  752.9 s]   updates: 1783000, stream 5162 MB, lag 52 MB, largest 116 MB
+[  782.9 s]   updates: 1888000, stream 5181 MB, lag 51 MB, largest 116 MB
+[  813.2 s]   updates: 1987000, stream 5266 MB, lag 94 MB, largest 116 MB
+[  817.6 s] make done: stream 5288 MB; lag at the end 107 MB (2.15 sd), largest 116 MB (2.33 sd); 109 transactions in the section; D 176592 nodes, 59 MB
+RESULT {"mode": "make", "keys": 10000000, "valsize": 8, "sd": 50000000, "updates": 2000000, "loadSec": 215.531, "updatesSec": 601.379, "streamBytes": 5288934872, "lagEnd": 107511688, "lagMax": 116698624, "transInSection": 109, "dNodes": 176592, "dBytes": 59772616, "closeSec": 0.00362354}

@@ -1,0 +1,24 @@
+[    0.2 s] make: 10000000 keys, values of 8 bytes, sd 200000000, 3000000 updates, budget 1200000000, dir /opt/bergdb-bench/007/data/s1-10m-sd200
+[   30.5 s]   load: 5167000 puts, stream 714 MB
+[   60.5 s]   load: 7766000 puts, stream 1325 MB
+[   88.9 s] load done: 88.4 s, stream 1866 MB
+[   90.5 s]   updates: 6000, stream 1866 MB, lag 200 MB, largest 200 MB
+[  120.6 s]   updates: 167000, stream 1882 MB, lag 201 MB, largest 201 MB
+[  150.6 s]   updates: 519000, stream 1922 MB, lag 201 MB, largest 201 MB
+[  180.6 s]   updates: 816000, stream 1987 MB, lag 201 MB, largest 202 MB
+[  210.7 s]   updates: 950000, stream 2138 MB, lag 295 MB, largest 295 MB
+[  240.8 s]   updates: 1076000, stream 2331 MB, lag 229 MB, largest 331 MB
+[  270.9 s]   updates: 1244000, stream 2354 MB, lag 201 MB, largest 331 MB
+[  302.1 s]   updates: 1422000, stream 2372 MB, lag 200 MB, largest 331 MB
+[  332.2 s]   updates: 1614000, stream 2392 MB, lag 200 MB, largest 331 MB
+[  362.2 s]   updates: 1810000, stream 2412 MB, lag 201 MB, largest 331 MB
+[  392.3 s]   updates: 1982000, stream 2432 MB, lag 200 MB, largest 331 MB
+[  422.4 s]   updates: 2180000, stream 2456 MB, lag 201 MB, largest 331 MB
+[  452.5 s]   updates: 2343000, stream 2488 MB, lag 201 MB, largest 331 MB
+[  482.5 s]   updates: 2515000, stream 2528 MB, lag 201 MB, largest 331 MB
+[  515.2 s]   updates: 2640000, stream 2640 MB, lag 272 MB, largest 331 MB
+[  545.3 s]   updates: 2746000, stream 2805 MB, lag 343 MB, largest 343 MB
+[  575.5 s]   updates: 2863000, stream 2910 MB, lag 201 MB, largest 344 MB
+[  605.5 s]   updates: 2993000, stream 2923 MB, lag 201 MB, largest 344 MB
+[  607.0 s] make done: stream 2924 MB; lag at the end 200 MB (1.00 sd), largest 344 MB (1.72 sd); 307 transactions in the section; D 387117 nodes, 137 MB
+RESULT {"mode": "make", "keys": 10000000, "valsize": 8, "sd": 200000000, "updates": 3000000, "loadSec": 88.4187, "updatesSec": 517.888, "streamBytes": 2924649504, "lagEnd": 200824040, "lagMax": 344980448, "transInSection": 307, "dNodes": 387117, "dBytes": 137120056, "closeSec": 0.00194742}
