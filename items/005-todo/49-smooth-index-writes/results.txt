@@ -1,0 +1,51 @@
+005-49: summary.py's line for each WriteBench run (see summary.py for the columns).
+10M keys and 30M updates unless named; 50M = 50M keys, 20M updates; -u90 = runs of up to
+90M updates, counted over their first 68M (WB_PUTS). The section columns are in units of the
+sd given above each block. head = today's take (565499f); deadline = 007-03's step 3 alone;
+paced = the first paced take (half-fit rounding, carry, floor sd/2); pexp-t125 = it with a
+target of 1.25 sd; pdue-f2 = the due pace; rec-tT = the recommended take (paced-take.diff)
+with the share's sd times T (rec-t10 is the diff as it is). Runs of 2026-10-27, on F53.
+
+sd 50 MB
+run                       B/put    2nd    idx  maxrec max/mean     >4x  sect   p99   max   all       age
+deadline-sd50             499.3  510.2  423.5  109.77    256.5   91.5%  1.76  3.10  4.22  4.22    302477
+head-sd50                 681.4  699.0  604.4    4.90      7.2   10.6%  1.29  2.66  2.75  2.75    134240
+paced-sd50                772.8  791.8  693.2    1.33      1.1    0.0%  1.39  1.43  1.43  1.43     89169
+pdue-f2-sd50              485.6  495.2  409.1  115.34    281.9   80.0%  1.74  3.05  4.32  4.32    325161
+rec-t10-sd50              849.0  866.5  764.6    1.90      2.5    0.0%  1.00  1.12  1.14  1.14     58121
+
+sd 137 MB
+run                       B/put    2nd    idx  maxrec max/mean     >4x  sect   p99   max   all       age
+rec-t10-sd137             593.9  608.0  517.4    1.20      2.3    0.0%  1.00  1.04  1.05  1.05    229742
+
+sd 200 MB
+run                       B/put    2nd    idx  maxrec max/mean     >4x  sect   p99   max   all       age
+head-sd200                373.3  383.7  302.5    4.23     14.0   85.3%  1.08  1.85  1.89  1.90    820447
+paced-sd200               432.0  453.7  370.0    0.68      1.2    0.0%  1.37  1.37  1.37  1.39    638054
+pdue-f2-sd200             439.3  452.2  368.6    1.59      4.3    0.0%  1.14  1.63  1.66  1.67    590756
+pexp-t125-sd200           376.1  400.1  318.8    0.59      1.8    0.0%  1.71  1.72  1.72  1.76    916317
+head-50M-sd200            672.9  681.9  586.6   11.64     19.8   10.7%  1.26  2.61  2.71  2.71    550390
+rec-t10-50M-sd200         829.6  851.5  749.0    1.67      2.2    0.0%  0.99  1.03  1.04  1.04    239225
+rec-t10-sd200             507.6  522.9  436.2    1.00      2.3    0.0%  1.00  1.02  1.03  1.03    395143
+rec-t15-sd200             408.8  432.6  349.9    0.81      2.3    0.0%  1.50  1.53  1.53  1.58    743033
+
+sd 380 MB
+run                       B/put    2nd    idx  maxrec max/mean     >4x  sect   p99   max   all       age
+rec-t10-sd380             347.6  373.7  293.5    0.68      2.3    0.0%  1.00  1.01  1.01  1.06   1117295
+
+sd 541 MB
+run                       B/put    2nd    idx  maxrec max/mean     >4x  sect   p99   max   all       age
+rec-t10-50M-sd541         585.3  594.1  502.8    1.17      2.3    0.0%  1.00  1.02  1.02  1.02    925875
+
+sd 1000 MB, 30M updates
+run                       B/put    2nd    idx  maxrec max/mean     >4x  sect   p99   max   all       age
+head-sd1000               179.9  218.8  146.4    2.49     17.0   91.7%  1.01  1.28  1.31  1.31   7525536
+paced-sd1000              163.6  174.5  102.8    0.22      1.6    0.0%  1.15  1.18  1.18  1.26   7270785
+pdue-f2-sd1000            177.3  193.7  121.5    0.51      2.4    0.0%  1.02  1.10  1.10  1.55   7452324
+pexp-t125-sd1000          151.1  158.6   87.3    0.18      1.5    0.0%  1.32  1.39  1.39  1.44   8976452
+
+sd 1000 MB, the first 68M updates
+run                       B/put    2nd    idx  maxrec max/mean     >4x  sect   p99   max   all       age
+head-sd1000-u90           171.8  175.8  103.9    2.49     23.2   94.7%  1.01  1.28  1.30  1.31   7409252
+rec-t10-sd1000-u90        185.7  196.0  123.4    0.27      2.2    0.0%  1.00  1.01  1.01  1.10   5459551
+rec-t131-sd1000-u90       159.9  169.3   97.8    0.22      2.2    0.0%  1.31  1.32  1.32  1.39   8213339

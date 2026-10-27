@@ -1,0 +1,434 @@
+diff --git a/java/src/bergdb/core/Db.java b/java/src/bergdb/core/Db.java
+index beb9b38..e851007 100644
+--- a/java/src/bergdb/core/Db.java
++++ b/java/src/bergdb/core/Db.java
+@@ -2048,8 +2048,9 @@ public class Db {
+             fixedBytes += StoredKeyNode.getByteSize(tn.keyNodes[i]) + 16;
+         }
+         
+-        long maxSp = nodeStream.getLength() - startupDistance;
+-        newSp = transSeq.take(currentSp, maxSp, x.transNodes.valueCount, x.transNodes.kvSize,
++        // The paced take, with the deadline at 2 * startupDistance (bergdb 005-49).
++        final long ownBytes = TransSeq.ownBytes(tn.valueRecordBytes);
++        newSp = transSeq.take(currentSp, nodeStream.getLength(), startupDistance, ownBytes,
+                 x.transNodes, StoredTrans.recordLimit - fixedBytes);
+         x.trans.startupPos = newSp;
+         
+@@ -2090,6 +2091,7 @@ public class Db {
+         x.transInfo.lastPos = x.trans.lastPos;
+         x.transInfo.tt = x.trans.tt;
+         x.transInfo.startupPos = newSp;
++        x.transInfo.ownBytes = ownBytes;
+         
+         transSeq.add(x.transInfo);      // adds to end of transSeq queue
+         
+diff --git a/java/src/bergdb/core/DbStarter.java b/java/src/bergdb/core/DbStarter.java
+index 2c68ba7..f09d3d8 100644
+--- a/java/src/bergdb/core/DbStarter.java
++++ b/java/src/bergdb/core/DbStarter.java
+@@ -368,10 +368,12 @@ public class DbStarter {
+         List<StoredValueNode> valueNodes = storedTrans.getValueNodes();
+         
+         PutData pd = createPutData();
++        long valueBytes = 0;
+         
+         for (StoredValueNode node : valueNodes) {
+             long[] key = node.getKey();
+             byte[] value = node.getNode().getValue();
++            valueBytes += StoredValueNode.getByteSizeLong(value, key);
+             
+             pd.tt = storedTrans.tt;
+             pd.nodeChangeListener = new Dag.NodeChangeListener() {
+@@ -458,6 +460,7 @@ public class DbStarter {
+         tinfo.tpos = storedTrans.tpos;
+         tinfo.startupPos = storedTrans.startupPos;
+         tinfo.lastPos = storedTrans.lastPos;
++        tinfo.ownBytes = TransSeq.ownBytes(valueBytes);     // bergdb 005-49
+     }
+ 
+     /**
+diff --git a/java/src/bergdb/core/TransSeq.java b/java/src/bergdb/core/TransSeq.java
+index 4515037..0f672dc 100644
+--- a/java/src/bergdb/core/TransSeq.java
++++ b/java/src/bergdb/core/TransSeq.java
+@@ -27,6 +27,8 @@ public class TransSeq implements PosOfTransBeforeFunction {
+     private TransInfo first;     // Head of linked list, may be null.
+     private TransInfo last;      // Last set of linked list, may be null.
+     private int size;
++    private long dirtyCount;     // Got-dirty nodes of the transactions; for take()'s pace.
++    private long ownBytes;       // The own bytes of their records (ownBytes()).
+     
+     public boolean isEmpty() {
+         return first == null;
+@@ -57,6 +59,8 @@ public class TransSeq implements PosOfTransBeforeFunction {
+         }
+         
+         size += 1;
++        dirtyCount += info.gotDirtyNodes.size();
++        ownBytes += info.ownBytes;
+     }
+     
+     /**
+@@ -76,58 +80,81 @@ public class TransSeq implements PosOfTransBeforeFunction {
+     }
+     
+     /**
+-     * Takes dirty index nodes from the trans seq and adds to trans nodes.
+-     * Also computes a new startup pos (sp).
+-     * 
+-     * @param currentSp  Current startup pos (sp).
+-     * @param maxSp  Maximum currently allowed startup pos (sp).
+-     * @param valueCount  Number of value nodes in the current transaction.
+-     * @param transNodes  Output parameters; nodes are added to transNodes.
+-     * @return The new startup pos (sp).
++     * As take() below, with no limit on the bytes of the record.
+      */
+-    public long take(long currentSp, long maxSp, 
+-            final int valueCount, final long kvSize, 
+-            final TransNodesForMe transNodes) {
+-        return take(currentSp, maxSp, valueCount, kvSize, transNodes, Long.MAX_VALUE);
++    public long take(long currentSp, long streamLength, int startupDistance, 
++            long recordOwnBytes, final TransNodesForMe transNodes) {
++        return take(currentSp, streamLength, startupDistance, recordOwnBytes, transNodes, 
++                Long.MAX_VALUE);
+     }
+     
+     /**
+-     * As take() above, and takes nodes for at most 'maxBytes' bytes of the record (2026-10-21,
+-     * bergdb 005-17): a node counts its size in the stream and 16 bytes, for its entry in the
+-     * got-dirty list if it is still dirty. The transactions are taken whole; the first that
+-     * does not fit is not taken, also when fewer than two are. It matters for records near
+-     * the record limit only (StoredTrans.recordLimit).
++     * Takes dirty index nodes from the trans seq and adds them to trans nodes: whole
++     * transactions, oldest first, paced by the own bytes of the record (2026-10-27, bergdb
++     * 005-49). Also computes a new startup pos (sp).
++     * 
++     * <p>The pace. A record takes its share of the got-dirty nodes of the startup section:
++     * their number, times the record's own bytes (ownBytes()) over the own bytes of the
++     * section's records, times the section's length over the startup distance sd. So a
++     * commit writes index nodes in proportion to its own size, and a wave of dirty nodes
++     * is spread over a section of commits. It keeps up: the section's got-dirty nodes per
++     * own byte are the rate at which its commits made nodes dirty. At that rate, a record
++     * writes as many nodes as it makes dirty when the section is sd long, more when the
++     * section is longer, fewer when it is shorter; so the section stays at about sd.</p>
++     * 
++     * <p>The transactions that fit in the share are taken; the next one, which fits only in
++     * part, is taken with the probability of the part that fits, by a hash of the stream's
++     * length (dither()). So a record takes its share on average, and the section has no
++     * band around sd where it can rest away from sd (a rounding rule without the hash gave
++     * one, of 0.7 to 1.5 sd, with one transaction a record; bergdb 005-49).</p>
++     * 
++     * <p>The deadline (bergdb 007-03, step 3, d_h = 2 * sd): a transaction that begins 2 * sd
++     * or more before the end of the stream is taken whatever the share, so the take keeps
++     * up with 2 * sd and T3 holds for it (bergdb 007-01, section 3). The pace keeps the
++     * section far from it.</p>
++     * 
++     * <p>The sums are a function of the startup section, which a start adds again (add()),
++     * and the hash of the stream, so the bytes of the stream do not depend on restarts
++     * (bergdb 010, P2).</p>
++     * 
++     * <p>Nodes for at most 'maxBytes' bytes of the record (2026-10-21, bergdb 005-17): a node
++     * counts its size in the stream and 16 bytes, for its entry in the got-dirty list if it
++     * is still dirty. The first transaction that does not fit is not taken, also after the
++     * deadline. It matters for records near the record limit only (StoredTrans.recordLimit).
++     * </p>
++     * 
++     * @param currentSp  Current startup pos (sp).
++     * @param streamLength  The length of the stream before this record.
++     * @param startupDistance  The startup distance, sd.
++     * @param recordOwnBytes  The own bytes of this record, ownBytes().
++     * @param transNodes  Output parameters; nodes are added to transNodes.
++     * @return The new startup pos (sp).
+      */
+-    public long take(long currentSp, long maxSp, 
+-            final int valueCount, final long kvSize, 
+-            final TransNodesForMe transNodes, final long maxBytes) {
+-        //
+-        // Takes nodes from TransSeq queue until 1. the queue is empty, or 2. the maxSp would be
+-        // exceed if we would continue, or 3. the index node limit has been reached.
+-        // The index node limit (nodeCountLimit) is used for some fairness. Large kv transactions
+-        // should include more index nodes that small kv transactions.
+-        // Since we always process 2 transaction before considering the limit, the startup
+-        // pos updates should never fall exceedingly behind.
+-        //
+-        // TODO D. Consider / test: increase nodeCountLimit by a factor (of 4.0 perhaps) 
+-        // if startup pos is falling behind (with more than 2.0 * startupDistance perhaps).
+-        //
+-        
++    public long take(long currentSp, long streamLength, int startupDistance, 
++            long recordOwnBytes, final TransNodesForMe transNodes, final long maxBytes) {
+         long newSp = currentSp;
+-        int nodeCount = 0;
+-        int transCount = 0;
+         
+         if (isEmpty()) {
+             return newSp;
+         }
+         
+-        final int nodeCountLimit = nodeCountLimit(valueCount, kvSize);
++        final long sd = Math.max(1, startupDistance);
++        final long hardSp = streamLength - 2L * sd;
++        // The share: the section's got-dirty nodes, times this record's part of the own
++        // bytes of the section's records, times the section's length over sd.
++        final double share = ownBytes == 0 ? 0 : (double) dirtyCount * recordOwnBytes 
++                / ownBytes * (streamLength - currentSp) / sd;
++        final double u = dither(streamLength);
+         
++        long taken = 0;
+         long bytes = 0;
+         
+-        while (first != null 
+-                && first.tpos <= maxSp 
+-                && (nodeCount < nodeCountLimit || transCount < 2)) {
++        while (first != null) {
++            final int count = first.gotDirtyNodes.size();
++            
++            if (first.tpos > hardSp && taken + count > share && share - taken <= u * count) {
++                break;
++            }
+             
+             if (maxBytes != Long.MAX_VALUE) {
+                 final long cost = recordBytes(first);
+@@ -140,24 +167,21 @@ public class TransSeq implements PosOfTransBeforeFunction {
+             newSp = first.tpos;
+             
+             for (Node node : first.gotDirtyNodes) {
+-                int type = node.getType();
+-                
+-                switch (type) {
++                switch (node.getType()) {
+                 case Node.TYPE_TOP_NODE:
+                     transNodes.addTopNode((TopNode) node);
+-                    nodeCount++;
+                     break;
+                 case Node.TYPE_KEY_NODE:
+                     transNodes.addKeyNode((KeyNode) node);
+-                    nodeCount++;
+                     break;
+                 }
+                 
+                 assert node.isIndexNode() : "non-index node in trans seq, " + node.toString();
+             }
+             
+-            transCount++;
+-            
++            taken += count;
++            dirtyCount -= count;
++            ownBytes -= first.ownBytes;
+             first = first.next;
+             size -= 1;
+         }
+@@ -171,12 +195,17 @@ public class TransSeq implements PosOfTransBeforeFunction {
+     }
+     
+     /**
+-     * The index nodes take() takes, after the first two transactions. In long (2026-10-21,
+-     * bergdb 005-21): valueCount * 4 was an int product.
++     * The own bytes of a record, which the pace of take() counts (bergdb 005-49): its
++     * header and its value nodes, without the index nodes it takes and the got-dirty list.
++     * A start computes the same from the record (DbStarter).
+      */
+-    static int nodeCountLimit(int valueCount, long kvSize) {
+-        final long limit = valueCount * 4L + kvSize / 1024;
+-        return limit > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) limit;
++    static long ownBytes(long valueRecordBytes) {
++        return 48 + valueRecordBytes;
++    }
++    
++    /** A number in [0, 1) from a stream position, for take()'s rounding (bergdb 005-49). */
++    static double dither(long pos) {
++        return ((pos * 0x9E3779B97F4A7C15L) >>> 11) * 0x1.0p-53;
+     }
+     
+     /** The bytes the got-dirty nodes of 'info' may add to a record; see take(). */
+@@ -208,6 +237,7 @@ public class TransSeq implements PosOfTransBeforeFunction {
+             sum.updateWithLong(info.tt);
+             sum.updateWithLong(info.tpos);
+             sum.updateWithLong(info.startupPos);
++            sum.updateWithLong(info.ownBytes);
+             
+             for (Node node : info.gotDirtyNodes) {
+                 sum.update(node.getType());
+@@ -253,6 +283,9 @@ public class TransSeq implements PosOfTransBeforeFunction {
+         
+         public long startupPos;
+         
++        /** The own bytes of its record, TransSeq.ownBytes() (bergdb 005-49). */
++        public long ownBytes;
++        
+         /** Index nodes that got dirty while the transaction executed. */
+         public ArrayList<Node> gotDirtyNodes = new ArrayList<Node>();
+ 
+@@ -400,28 +433,21 @@ public class TransSeq implements PosOfTransBeforeFunction {
+             }
+         };
+         
+-        s.take(0, 99, Integer.MAX_VALUE, Integer.MAX_VALUE, transNodes);
++        // No own bytes, so no pace: only the deadline, 2 * 50 before the end, takes.
++        s.take(0, 199, 50, 0, transNodes);
+         Assert.assertEquals(0, nodes.size());
+         
+-        s.take(0, 100, Integer.MAX_VALUE, Integer.MAX_VALUE, transNodes);
++        s.take(0, 200, 50, 0, transNodes);
+         Assert.assertEquals(1, nodes.size());
+         Assert.assertTrue(nodes.contains(n1));
+         
+-        s.take(0, 200, Integer.MAX_VALUE, Integer.MAX_VALUE, transNodes);
++        s.take(0, 300, 50, 0, transNodes);
+         Assert.assertEquals(2, nodes.size());
+         Assert.assertTrue(nodes.get(0) == n1);
+         Assert.assertTrue(nodes.get(1) == n2);
+         Assert.assertTrue(s.isEmpty());
+     }
+     
+-    /** bergdb 005-21: the node count limit does not wrap. */
+-    @Nano
+-    public static void testNodeCountLimit() {
+-        assertEquals(4 + 1, nodeCountLimit(1, 1024));
+-        assertEquals(Integer.MAX_VALUE, nodeCountLimit(Integer.MAX_VALUE, Integer.MAX_VALUE));
+-        assertEquals(Integer.MAX_VALUE, nodeCountLimit(600 * 1000 * 1000, 0));   // wrapped
+-    }
+-    
+     /** take() with a byte budget (bergdb 005-17): whole transactions, as many as fit. */
+     @Nano
+     public static void testTakeWithBudget() {
+@@ -440,11 +466,12 @@ public class TransSeq implements PosOfTransBeforeFunction {
+             public void addKeyNode(KeyNode node) { nodes.add(node); }
+         };
+         
+-        Assert.assertEquals(0, s.take(0, 300, 1, 0, transNodes, cost - 1));
++        // All three past the deadline; the budget decides.
++        Assert.assertEquals(0, s.take(0, 400, 50, 0, transNodes, cost - 1));
+         Assert.assertEquals(0, nodes.size());
+-        Assert.assertEquals(200, s.take(0, 300, 1, 0, transNodes, 2 * cost + 1));
++        Assert.assertEquals(200, s.take(0, 400, 50, 0, transNodes, 2 * cost + 1));
+         Assert.assertEquals(2, nodes.size());
+-        Assert.assertEquals(300, s.take(200, 300, 1, 0, transNodes, cost));
++        Assert.assertEquals(300, s.take(200, 400, 50, 0, transNodes, cost));
+         Assert.assertEquals(3, nodes.size());
+         Assert.assertTrue(s.isEmpty());
+     }
+@@ -474,10 +501,122 @@ public class TransSeq implements PosOfTransBeforeFunction {
+             }
+         };
+         
+-        s.take(0, 200, Integer.MAX_VALUE, Integer.MAX_VALUE, transNodes);
++        s.take(0, 300, 50, 0, transNodes);
+         Assert.assertEquals(2, nodes.size());
+         Assert.assertTrue(nodes.get(0) == n1);
+         Assert.assertTrue(nodes.get(1) == n2);
+         Assert.assertTrue(s.isEmpty());
+     }
++    
++    /** A transaction with 'count' dirty key nodes and a record of 'ownBytes' (005-49). */
++    private static TransInfo paceInfo(long tpos, long startupPos, long ownBytes, int count) {
++        TransInfo info = newTransInfo(tpos, tpos + 99);
++        info.startupPos = startupPos;
++        info.ownBytes = ownBytes;
++        for (int i = 0; i < count; i++) {
++            KeyNode n = new KeyNode();
++            n.setDirty(true);
++            info.gotDirtyNodes.add(n);
++        }
++        return info;
++    }
++    
++    private static final TransNodesForMe IGNORE = new TransNodesForMe() {
++        public void addTopNode(TopNode node) {}
++        public void addKeyNode(KeyNode node) {}
++    };
++    
++    /** Ten transactions of 10 got-dirty nodes and 100 own bytes each: 0.1 nodes an own byte. */
++    private static TransSeq paceSeq() {
++        TransSeq s = new TransSeq();
++        for (int i = 0; i < 10; i++) {
++            s.add(paceInfo(100 * i, -1, 100, 10));
++        }
++        return s;
++    }
++    
++    /**
++     * The pace (bergdb 005-49): a record takes its share of the section's got-dirty nodes,
++     * whole transactions, and the next with the probability of the part that fits.
++     */
++    @Nano
++    public static void testPace() {
++        // A record of 100 own bytes, a section of 2000 bytes and sd 800: a share of
++        // 0.1 * 100 * 2000 / 800 = 25 nodes, two transactions and half of the third, which
++        // is taken if the hash of the stream's length is below one half.
++        Assert.assertEquals(0.4442, dither(1300), 1e-4);
++        Assert.assertEquals(0.6408, dither(1200), 1e-4);
++        TransSeq s = paceSeq();
++        Assert.assertEquals(200, s.take(1300 - 2000, 1300, 800, 100, IGNORE));
++        Assert.assertEquals(7, s.getSize());
++        s = paceSeq();
++        Assert.assertEquals(100, s.take(1200 - 2000, 1200, 800, 100, IGNORE));
++        Assert.assertEquals(8, s.getSize());
++        
++        // On average a record takes its share: 2.5 transactions.
++        long transactions = 0;
++        for (long length = 10000; length < 20000; length++) {
++            s = paceSeq();
++            s.take(length - 2000, length, 1000000, 100 * 1000000 / 800, IGNORE);
++            transactions += 10 - s.getSize();
++        }
++        Assert.assertEquals(2.5, transactions / 10000.0, 0.02);
++        
++        // A section of half of that, half the share: 12.5 nodes, one transaction and a
++        // quarter of the next, which the hash 0.44 does not take.
++        s = paceSeq();
++        Assert.assertEquals(0, s.take(1300 - 1000, 1300, 800, 100, IGNORE));
++        Assert.assertEquals(9, s.getSize());
++    }
++    
++    /** The deadline (bergdb 007-03, step 3) takes what the pace does not. */
++    @Nano
++    public static void testDeadline() {
++        TransSeq s = new TransSeq();
++        for (int i = 0; i < 5; i++) {
++            s.add(paceInfo(100 * i, i - 10, 100, 1000));
++        }
++        // A record of 1 byte: a share of about 50 nodes, less than a transaction. The
++        // deadline, 2 * 100 before the end, takes the transactions at 0 to 300 whatever the
++        // share.
++        Assert.assertEquals(300, s.take(-1, 500, 100, 1, IGNORE));
++        Assert.assertEquals(1, s.getSize());
++    }
++    
++    /**
++     * The pace's state is a function of the startup section (bergdb 005-49, 010's P2): a
++     * start adds the section's transactions again and gets the same sums and checksum.
++     */
++    @Nano
++    public static void testPaceAfterRestart() {
++        TransInfo[] t = new TransInfo[6];
++        TransSeq s = new TransSeq();
++        t[0] = paceInfo(0, -1, 100, 5);
++        t[1] = paceInfo(100, -1, 200, 5);
++        s.add(t[0]);
++        s.add(t[1]);
++        long sp = s.take(-1, 2199, 1000, 300, IGNORE);     // past the deadline: takes both
++        Assert.assertEquals(100, sp);
++        t[2] = paceInfo(200, sp, 300, 5);                   // the record that took
++        s.add(t[2]);
++        t[3] = paceInfo(500, sp, 50, 5);
++        s.add(t[3]);
++        t[4] = paceInfo(550, sp, 70, 5);
++        s.add(t[4]);
++        t[5] = paceInfo(620, sp, 30, 5);
++        s.add(t[5]);
++        
++        // A start at the startup pos 100 reads the section from t[1]'s record and adds
++        // t[2] to t[5].
++        TransSeq r = new TransSeq();
++        for (int i = 2; i < 6; i++) {
++            TransInfo a = t[i];
++            TransInfo b = paceInfo(a.tpos, a.startupPos, a.ownBytes, 0);
++            b.gotDirtyNodes = a.gotDirtyNodes;
++            r.add(b);
++        }
++        Assert.assertEquals(s.checksum(), r.checksum());
++        Assert.assertEquals(20, r.dirtyCount);
++        Assert.assertEquals(450, r.ownBytes);
++    }
+ }

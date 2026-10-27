@@ -1,7 +1,7 @@
 005-49. Investigate smooth index writes
 =======================================
 
-Status: open. Kind: investigate. Created 2026-10-26.
+Status: done (2026-10-27; see Results). Kind: investigate. Created 2026-10-26.
 
 Found in 005-38 ([report](38-writes-at-scale/report.md), section 5);
 registered at Frans's request (2026-10-26: "Yes, register the burst
@@ -88,3 +88,25 @@ Size and order
 
 M. Before 007-03's step 3 (the deadline) and step 4 (the take in Lean): the
 take that 007 proves should be the paced one, if that is the choice.
+
+
+Results
+-------
+
+2026-10-27, by Claude (Opus 5.5, Claude Code), 006-09, W2. The report is
+[49-smooth-index-writes/report.md](49-smooth-index-writes/report.md). The recommended take is
+[paced-take.diff](49-smooth-index-writes/paced-take.diff), against `78a8d38`
+(`java/before-commit.sh` OK; level2.sh's RestartInvariance cases identical). It was measured
+with [summary.py](49-smooth-index-writes/summary.py) and the tools beside it, and every run's
+line is in [results.txt](49-smooth-index-writes/results.txt). Nothing in `java/` of the main
+tree.
+
+Recommendation for 007-03's step 3: a paced take. Each commit writes, oldest first and in
+whole transactions, the dirty index nodes waiting in the startup section in proportion to the
+stream it adds: a commit that adds a thousandth of sd writes a thousandth of them. The
+deadline at 2 sd stays as the backstop; in the runs it never acted, and the section stayed
+between 0.88 and 1.14 sd. At the startup distance that gives today's peak section, the paced
+take wrote 3 to 13 percent fewer bytes a put than today's take, and its largest record was
+0.2 to 1.2 MB against 2.5 to 11.6 MB (10M keys at 50, 200 and 1000 MB; 50M keys at 200 MB).
+At the same startup distance it writes 12 to 36 percent more, because its section no longer
+passes sd.

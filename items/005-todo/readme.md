@@ -30,7 +30,6 @@ Open
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10). For release 2026.1: kept, documented as experimental | open |
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
 | [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits starts the flush, instead of waiting for `BufferedStream`'s timer; one thread's durable commit from 35 ms to about one force (005-13's question 5) Implemented 2026-10-27 (`e611709`), as Frans decided (006-09): on s1 one thread's durable commits went from 38 to 213 a second, the sync's median from 24.8 to 3.8 ms; the stream's bytes unchanged. F53's runs (tonight) and the recommendation on the buffer time (question 4) still open | open |
-| [005-49](49-smooth-index-writes.md) | Investigate | Smooth index writes: at large startup distances the index is written in bursts (10M keys, 1000 MB: windows of 70 to 1,100 bytes a put); a commit's index writes should follow its own size. Before 007-03's step 3 (005-38) | open |
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API sets it only at start (`cacheSizeInMb`), against 010-P6; the core has `Eviction.setBudget` (also through JMX). The cache should converge gradually to the new size, with no disruption | open |
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
@@ -44,6 +43,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-49](49-smooth-index-writes.md) | Investigate | Smooth index writes: at large startup distances the index was written in bursts (records of 2.5 to 11.6 MB, up to 72 times their own bytes), and 007-03's deadline alone made records of up to 110 MB. Recommended for 007-03's step 3 (report.md): a paced take, each commit writes the waiting dirty index nodes oldest first, in whole transactions, in proportion to the stream it adds, with the deadline at 2 sd as the backstop (it never fired); the section stays at about sd; at the startup distance that gives today's peak section it writes 3 to 13 percent fewer bytes a put, with records 6 to 11 times smaller. Two questions for Frans: the meaning of the startup distance, and its default | done | 2026-10-27 |
 | [005-58](58-lean-rule4-by-position.md) | Investigate | A Lean theorem for rule 4 by position (005-57). Proved in the model: `Rule4_positions` (a pointer that rule 4 links names a version of the startup section, the version before its node's first one there, or its canonical object's version) and `Rule4Pos_handles` (rule 4 by position links what rule 4 by node id links, at every startup of a run), with no new assumption; new trusted definitions of Java's rule 4 by position in `SIS/Handle.lean`. Frans took the trusted additions as they are, and the by-id check under assertions in `linkToCanonical` stays (2026-10-27) | done | 2026-10-27 |
 | [005-46](46-stream-file-lock.md) | Fix | A read of the stream's last file waits for the writer's append and its `fsync` (`FileStream.DbFile`, one monitor for both): seconds on s1's disk, the longest waits left there with handles (009-03); and every read waits while reclaim's physical cut deletes files (`FileStream.pretruncate`, the stream's monitor): up to 171 ms in P4's soak on F53, under every collector (009-04). Investigated 2026-10-27, with probes: every read also waits while a new file is forced (`newFile`), an encrypted database's reads wait for each other, and a commit by an interrupted thread that makes a physical cut fails the database. Proposed: positional reads on a channel of each file's own, safe from interrupts; the file list without a lock; a new file made, and a cut's files deleted on a thread of their own, outside the stream's monitor. Decided 2026-10-27: as proposed; `SalsaStream` and interrupts in this entry (today an interrupt can fail the database, a commit that waits for room in the write buffer or makes a cut, or hang it, the storage thread interrupted; a rule proposed, one question open); the test reports note a writer's waits for room, which do not count against item 009's target 2. Implemented 2026-10-27, rule A for interrupts; measured the same day on s1 and F53: no read waits for a force, a new file or a cut any more, and a commit only for room in the write buffer when the disk stalls. Done 2026-10-27, at Frans's word; P4's soak and ScaleBench in 006-09's quiet block confirm it, and are item 009's evidence | done | 2026-10-27 |
 | [005-03](03-sweep-cost.md) | Investigate | The sweep's cost under read churn (item 001, finding 10). Done by item 009: handles removed the sweep; the capacity controller runs batches of at most 2 ms, and in P4's soak the writer and the readers keep their paced rates (009-04) | done | 2026-10-27 |
@@ -261,7 +261,10 @@ Files
 * [48-group-commit.md](48-group-commit.md). 005-48, group commit: a
   waiting sync starts the flush; the change, the questions; open.
 * [49-smooth-index-writes.md](49-smooth-index-writes.md). 005-49, smooth
-  index writes: the bursts found in 005-38, the cause, the questions; open.
+  index writes: the bursts found in 005-38, the cause, the questions, the
+  results; done. The report, the paced take's diff, WriteBench with every
+  record logged and the analysis in
+  [49-smooth-index-writes/](49-smooth-index-writes/).
 * [50-fix-node-size-start.md](50-fix-node-size-start.md). 005-50, a start
   with another node size fails with a clear error; found in 005-38; the
   size in the meta block, proposed, decided and done; the probes, their
@@ -1128,3 +1131,11 @@ without it, fixed there. Still open: F53's runs tonight and question 4.
 2026-10-27. 005-58: Frans's decisions on its two questions ("1. As
 recommended. 2. As recommended."): the trusted additions stay as they are,
 and so does the check under assertions in `linkToCanonical`.
+
+2026-10-27. 005-49 done, by Claude (Opus 5.5, Claude Code; at max effort,
+at Frans's word), as 006-09's W2: the report (49-smooth-index-writes/
+report.md) recommends a paced take for 007-03's step 3, with the deadline
+as its backstop; a prototype in paced-take.diff (before-commit OK,
+RestartInvariance identical). Nothing in `java/`. For Frans: is a section
+held at sd the right meaning of the startup distance, and should the
+default or the advice of 005-38 change?
