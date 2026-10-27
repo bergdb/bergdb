@@ -22,6 +22,7 @@ The list
 | [006-06](06-fast-restart.md) | 2026-10-26 | Fast restart, a note of Frans's idea: lower the startup distance for a while before a controlled restart; not investigated |
 | [006-07](07-docs-cleanup.md) | 2026-10-26 | The `docs/` cleanup: most documents to items (001-07 to 001-11, 009-05, the new 011), `docs/levels.md` rewritten short, `docs/trace-format.md`, the references as IDs |
 | [006-08](08-core-layer.md) | 2026-10-26 | The Core Layer: built alone (680 kB), and the Core without its tests, what `Db` needs (14,677 code lines, 335 kB, two thirds of the production code), which writes the same stream; independent of the layers above and of its tests; a C clone for an embedded target is feasible, about 35 to 90 kB of code on a Cortex-M4 by an estimate, its open questions memory and writes at small startup distances |
+| [006-09](09-unattended-27-28-october.md) | 2026-10-27 | Unattended work from 27 October, 12:00, to 28 October, 07:00: the plan (005-46's measurements, 005-49, 005-58, 005-51, 005-48), its principles, the progress and the outcome |
 
 
 Files
@@ -55,6 +56,10 @@ Files
   feasibility of a C clone for an embedded target; the scripts, the
   programs that use the Core and the output in
   [08-core-layer/](08-core-layer/).
+* [09-unattended-27-28-october.md](09-unattended-27-28-october.md). 006-09:
+  the plan for the unattended work of 27 to 28 October, the work in order
+  and what 010's principles ask of each piece, the timeline, the progress
+  through the night and the outcome.
 
 
 Log
@@ -140,3 +145,11 @@ SQLite measured; its open questions are memory and writes at small startup
 distances, a written stream format and power loss on raw flash.
 `core-build.sh` passes at `c7c6f10`. `core-size.sh`, `c-size.sh`,
 `strip.py`, `lines.py`, `CoreSame.java`.
+
+2026-10-27. 006-09, at Frans's request ("Please suggest a plan for work you
+can do unattented between now and tomorrow at 07:00 am. [...] Add an item to
+006 with the plan you create. Update the item with progress."), by Claude
+(Opus 5.5, Claude Code): the plan, from the open items and 005's entries,
+with Frans's answers of 11:39 (commit; 005-51 into `java/`; 005-58 is this
+work's; 005-46's and 009's status at this work's judgement; `night.sh` may
+move; "Follow BergDB's principles 010.").

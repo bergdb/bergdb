@@ -1,0 +1,209 @@
+# 006-09 Unattended work, 27 to 28 October 2026
+
+Created 2026-10-27 by Claude (Opus 5.5, Claude Code), at Frans's request.
+Status: open. The plan for the unattended work from 2026-10-27, 12:00, to
+2026-10-28, 07:00, the progress through the night, and the outcome.
+
+
+## 1. The request
+
+Frans, 2026-10-27, 11:27: "Unattended work with bergdb/. Please suggest a
+plan for work you can do unattented between now and tomorrow at 07:00 am. I
+expect a report entry in news.md by then. Add an item to 006 with the plan
+you create. Update the item with progress. Go through the items/ to find
+tasks to do that you can achieve unattended. Also go through the 005 todos.
+While working, feel free to create up to 4 subagents running at a time."
+
+His answers to the draft plan, 11:39:
+
+1. Commits: "yes, do commit." Each gated step on `main`, in his name.
+2. 005-51: "yes, put it in java and commit."
+3. 005-58: "It is yours."
+4. 005-46 and 009: "You decide when to set them to Done."
+5. Tonight on F53: "No, only the night.sh testing. This could be cancelled
+   for tonight, if you like. So you can run it instead."
+6. "Write the plan. Follow BergDB's principles 010."
+
+
+## 2. Ground rules
+
+* **Other sessions.** At 11:30 the session "Startup time" was gating its
+  implementation of 005-57 (007-03's step 6) in
+  `/Users/f/fl/bench/005-57/`, and the session f1-ce its fix of 005-55 in
+  a scratch clone. This work does not touch 005-57, 005-55 or 007-03, and
+  their uncommitted edits in the main tree stay as they are. Before code
+  that another session's open entry covers is touched, that session is
+  asked first: 005-51 changes the eviction thread and `Db.stop()`, which
+  005-55 also changes.
+* **Clones.** Code and Lean work is done in scratch clones; the main tree
+  only takes finished, gated changes. Shared files (`items/005-todo/readme.md`,
+  `docs/log.md`, `docs/levels.md`) get targeted edits, and a commit takes
+  only this work's hunks, never another session's uncommitted edits.
+* **Gates.** A change to `java/` is committed after `java/before-commit.sh`
+  prints `BEFORE COMMIT OK`, and the level script of the mechanism it
+  changes (`level4.sh` for 005-51). A change to `lean/` after `lake build`
+  is clean, with no `sorry` and no new axiom.
+* **Commits.** In Frans's name only, with no AI attribution; this session
+  makes them, also for its subagents' work.
+* **Timing.** Timed runs only in the quiet block (section 5), on an F53
+  with no other JVM, build, gate or Lean, and with this session idle.
+  Byte counts, memory and other deterministic measurements may run at any
+  time. s1 is checked with `ps` before each run.
+* **Subagents.** At most 4 at a time, each in a clone of its own, each
+  with a brief that points to its 005 entry and to this file.
+* **News.** `tools/news.sh` as work finishes, fails or needs Frans; a
+  summary entry by 07:00.
+* **Principles.** Section 4.
+
+
+## 3. The work, in order
+
+### W1. 005-46's measurements, to close 005-46 and 009's target 2
+
+005-46 is in the code (`eaec93e`); its "Done when" leaves the
+measurements, and 009's target 2 (no stop-the-world of BergDB's own longer
+than about 20 ms) waits for them.
+
+1. The entry's probes again on the new code, on F53: no reader's longest
+   read follows the forces, the new files or the cut; in `SlowForceProbe`
+   no get and no single-put commit waits for a slow force.
+2. The pause probe on s1 (009-03's `s1-probe`, `run-pp2.sh`): no get
+   waits for a force; the report sets the longest commits beside the
+   writer's waits for room and the forces. This afternoon; s1 was idle at
+   11:30.
+3. P4's soak under ZGC on F53 (009-04's soak, about 50 minutes): the cuts
+   are no longer its slowest commits and reads (009-04, section 7.3).
+4. Props (CORE) and 009-03's ScaleBench block from the OS's cache (C) on
+   F53, against `bf19075` (before 005-46) in turns: no fewer reads a
+   second.
+
+Then the results in 005-46; if its "Done when" is met, 005-46 is set done.
+009 is set done if nothing else of 009-01's "done" is left; otherwise its
+log says what is.
+
+### W2. 005-49, smooth index writes
+
+The next step of 007 after step 6 (005-57): 007-03's deadline (step 3)
+follows 005-49's recommendation. An investigation; nothing goes into
+`java/`.
+
+1. Extend 005-38's `WriteBench` (`38-writes-at-scale/wb/`) to record each
+   record's index bytes and puts; rerun the update phase of 005-38's
+   `run3.sh` at 10M keys, sd 200 and 1000 MB. Byte counts, so any time.
+2. Question 1: the distribution of a record's index bytes against its
+   puts.
+3. A paced take, prototyped in a clone: each record takes index nodes in
+   proportion to its own size, counted in bytes or puts, never in time;
+   the deadline stays the backstop. Measured against today for the total
+   bytes, the largest record and the startup section.
+4. The report, a subitem of 005-49, with a recommendation for 007-03's
+   step 3.
+
+### W3. 005-58, a Lean theorem for rule 4 by position
+
+On the states that the model's startup reaches, a pointer of D whose node
+has a canonical object names a version of the startup section, the
+version before one, or the canonical object's own; so rule 4 by position
+(005-57) is rule 4 by node id (`HMem.linkD`). First the statement in the
+model's terms and what it needs (questions 1 and 2), then the proof.
+Committed in `lean/` when `lake build` is clean. 005-57's report and
+`docs/levels.md` cite it once the session "Startup time" agrees, as both
+have its uncommitted edits.
+
+### W4. 005-51, eviction only in response to the calls
+
+The eviction thread waits with no timeout and wakes only on a call's
+request; `stop()` and `close()` wake it, and it ends at once. A test that
+an idle database's threads do not wake; `before-commit.sh` and
+`level4.sh`; committed. After or with 005-55 (f1-ce), which changes the
+same thread's hold on the `Db`.
+
+Then the rest of 010-P3's list, measured with 005-14's `procstat.c`
+(`proc_pid_rusage`): an open, idle database after loads and commits wakes
+no thread of BergDB's own, the replica's consumer included (005-14 saw it
+wake twice a second). A departure is registered in 005 and listed under
+P3 in 010-01.
+
+### W5. 005-48, group commit
+
+A prototype in a clone: `flushSoon()` in `BufferedStream`, called by
+`StorageManager.sync` and `syncStrong`, so that a sync that waits starts
+the flush instead of waiting for the buffer timer. The durable-commit runs
+of `performance-bufftime.suite` at 20 ms, against HEAD, on F53 (in the
+quiet block, in turns) and on s1; questions 1 and 2 answered and a
+recommendation in 005-48. Nothing goes into `java/` before Frans says go
+(005-48, "Done when").
+
+### W6. If there is time, in this order
+
+1. 005-53, question 3: a reading of `Reclaim` and `Db`'s start, which may
+   find a fault of its own.
+2. 005-03: is the sweep it measures gone with 009 (`docs/levels.md` speaks
+   of it in the past)? If so, closed as done by 009, with 009-03's
+   measurements as the evidence; if not, restated.
+3. 005-56: a script that checks each package's imports against its
+   `package.html` list, and the mismatches.
+4. 005-52's first step, in the quiet block: the budget lowered by
+   `setBudget` in the middle of a ScaleBench run; the eviction thread's
+   work and the longest waits of gets and commits until the resident
+   bytes reach it.
+5. 009's ScaleBench at 10M keys in Shenandoah's default mode (about 35
+   minutes), only if the block has room: a recommendation of a collector,
+   no longer target 2's evidence.
+
+### Not tonight
+
+005-05, 005-11 and 005-47 are decisions for Frans. 005-06, 005-07 and
+005-54 come after the work above. 005-55 and 005-57 are other sessions'.
+007-03's steps 2 to 4 wait for 005-49. 006-06 is a note for discussion.
+
+
+## 4. The principles (010)
+
+Each piece of work is checked against 010-01; a departure that a change
+must make is documented there, under its principle, as Frans's rule for
+the principles says. Across all of it: no new setting (P10), no global
+state (P9), no new timer or polling thread (P3), and the simple solution
+first (P11).
+
+| Work | Principles | What they ask of it |
+|---|---|---|
+| W1, 005-46 | P1, P7 | BergDB's own waits at most about 20 ms, readers included; a failed delete fails the stream at its next operation |
+| W2, 005-49 | P4, P1, P5, P2 | A commit's index writes in proportion to its own size; the pacing counts bytes or puts, never time, so the stream stays deterministic; the startup section stays bounded, the deadline the backstop |
+| W3, 005-58 | P5 | Rule 4 by position, the fix of a cold start's random reads, proved to link what rule 4 by node id links |
+| W4, 005-51 | P3, P8 | No wake-up that no call asked for; eviction's work follows the calls, so runs repeat |
+| W5, 005-48 | P3, P2, P1 | The sync call starts the flush: work in response to a call, no new thread or timer; the stream's bytes unchanged (StreamDigest identical); no commit waits longer |
+| W6 | P6, P12, P1 | 005-52 and 005-53: changes while the database runs, in steps; 005-56: a small Core Layer that depends on nothing above it; 005-03: no stop-the-world |
+
+
+## 5. Timeline
+
+Times in CET. The quiet block replaces `night.sh`'s run at 02:10, which
+Frans let this work cancel for tonight.
+
+| Time | What |
+|---|---|
+| 11:30–12:00 | The plan with Frans; this file |
+| 12:00–19:00 | W2, W3, W4 (after 005-55) and W5's prototype in clones, up to 4 subagents; W1.2 on s1; W1.1 if F53 is quiet |
+| 19:00–21:30 | The gates on the combined tree; commits; W6.1 to W6.3 |
+| 21:30–22:30 | `night.sh` by hand on HEAD, instead of at 02:10 |
+| 22:30–05:00 | The quiet block on F53, this session idle: W1.3, W1.4, W5's runs, W6.4 (and W6.5) |
+| 05:00–06:30 | Write-ups, commits, the status of 005-46 and 009; W3 goes on if it is not done |
+| 06:30–07:00 | `night.sh`'s launchd job back; the summary in `news.md`; this file's outcome |
+
+`night.sh` tonight: `launchctl bootout gui/501/local.bergdb.nightly` before
+02:10, with a background script that bootstraps
+`~/Library/LaunchAgents/local.bergdb.nightly.plist` again at 06:00 even if
+this session has ended; `launchctl print gui/501/local.bergdb.nightly`
+checks it in the morning. Lean and builds stop before the quiet block, so
+a subagent still working then is stopped and continued at 05:00.
+
+
+## 6. Progress
+
+2026-10-27, 11:55. The plan written, from Frans's answers of 11:39.
+
+
+## 7. Outcome
+
+Filled in by 07:00 on 2026-10-28.
