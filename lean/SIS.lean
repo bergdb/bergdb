@@ -24,6 +24,7 @@ import SIS.Proof.HandleCutLater
 import SIS.Proof.HandleCutStart
 import SIS.Proof.HandleCutSim
 import SIS.Proof.HandleCutTransSim
+import SIS.Proof.HandleCutT12
 import SIS.ReclaimExample
 import SIS.HandleReclaimExample
 import SIS.Bound

@@ -23,7 +23,7 @@ variable (sp : Spec V T) (al : Algo V T)
 
 /-- The number of transactions before the last restart among the first j (0 if
 none). -/
-def lastR (cs : List (T × Option Nat × List CacheOp)) : Nat → Nat
+def lastR {C : Type} (cs : List (T × Option Nat × C)) : Nat → Nat
   | 0 => 0
   | i + 1 => if ((cs[i]?).bind (·.2.1)).isSome then i + 1 else lastR cs i
 
@@ -31,7 +31,7 @@ def lastR (cs : List (T × Option Nat × List CacheOp)) : Nat → Nat
 def rootHist (P : Struct V) : History V := ((P.get? root).map (·.hist)).getD []
 
 /-- The restarts of C's schedule, for `runRestartsCut`. -/
-def logOf (cs : List (T × Option Nat × List CacheOp)) : List (T × Option Nat) := cs.map (fun p => (p.1, p.2.1))
+def logOf {C : Type} (cs : List (T × Option Nat × C)) : List (T × Option Nat) := cs.map (fun p => (p.1, p.2.1))
 
 /-- The root children of E's root, after transaction j + 1, that C's root has not. -/
 def extraY (cs : List (T × Option Nat × List CacheOp)) (j : Nat) : List NodeId :=
@@ -97,31 +97,31 @@ theorem esOf_map_fst (cs : List (T × Option Nat × List CacheOp)) : (esOf sp al
     simp only [List.getElem_map]
     rw [esOf_getElem (sp := sp) (al := al) cs (by simpa using h2)]
 
-theorem lastR_le (cs : List (T × Option Nat × List CacheOp)) : ∀ j, lastR cs j ≤ j := by
+theorem lastR_le {C : Type} (cs : List (T × Option Nat × C)) : ∀ j, lastR cs j ≤ j := by
   intro j
   induction j with
   | zero => exact Nat.le_refl _
   | succ j ih => unfold lastR; split <;> omega
 
-theorem lastR_succ_none (cs : List (T × Option Nat × List CacheOp)) {j : Nat} (hj : j < cs.length)
+theorem lastR_succ_none {C : Type} (cs : List (T × Option Nat × C)) {j : Nat} (hj : j < cs.length)
     (h : cs[j].2.1 = none) : lastR cs (j + 1) = lastR cs j := by
   show (if ((cs[j]?).bind (·.2.1)).isSome then j + 1 else lastR cs j) = lastR cs j
   rw [List.getElem?_eq_getElem hj]
   simp [h]
 
-theorem lastR_succ_some (cs : List (T × Option Nat × List CacheOp)) {j : Nat} (hj : j < cs.length) {c : Nat}
+theorem lastR_succ_some {C : Type} (cs : List (T × Option Nat × C)) {j : Nat} (hj : j < cs.length) {c : Nat}
     (h : cs[j].2.1 = some c) : lastR cs (j + 1) = j + 1 := by
   show (if ((cs[j]?).bind (·.2.1)).isSome then j + 1 else lastR cs j) = j + 1
   rw [List.getElem?_eq_getElem hj]
   simp [h]
 
-theorem cutMax_take_succ (cs : List (T × Option Nat × List CacheOp)) {j : Nat} (hj : j < cs.length) :
+theorem cutMax_take_succ {C : Type} (cs : List (T × Option Nat × C)) {j : Nat} (hj : j < cs.length) :
     cutMax ((cs.take (j + 1)).map (·.2.1)) = max (cutMax ((cs.take j).map (·.2.1))) (cs[j].2.1.getD 0) := by
   have h1 : cs.take (j + 1) = cs.take j ++ [cs[j]] := by
     rw [List.take_add_one, List.getElem?_eq_getElem hj]; rfl
   rw [h1, List.map_append, List.map_singleton, cutMax_append_one]
 
-theorem runRestartsCut_succ (cs : List (T × Option Nat × List CacheOp)) {j : Nat} (hj : j < cs.length) :
+theorem runRestartsCut_succ {C : Type} (cs : List (T × Option Nat × C)) {j : Nat} (hj : j < cs.length) :
     runRestartsCut sp al ((logOf cs).take (j + 1)) =
       (match cs[j].2.1 with
        | some c => startup sp (cutStream c (step sp al (runRestartsCut sp al ((logOf cs).take j)) cs[j].1).S)
@@ -525,10 +525,10 @@ theorem evictCut_restartsCut (cs : List (T × Option Nat × List CacheOp)) (hok 
   rw [h2] at this
   exact this
 
-theorem logOf_fst (cs : List (T × Option Nat × List CacheOp)) : (logOf cs).map (·.1) = cs.map (·.1) := by
+theorem logOf_fst {C : Type} (cs : List (T × Option Nat × C)) : (logOf cs).map (·.1) = cs.map (·.1) := by
   simp [logOf]
 
-theorem logOf_snd (cs : List (T × Option Nat × List CacheOp)) : (logOf cs).map (·.2) = cs.map (·.2.1) := by
+theorem logOf_snd {C : Type} (cs : List (T × Option Nat × C)) : (logOf cs).map (·.2) = cs.map (·.2.1) := by
   simp [logOf]
 
 /-- T12 with eviction: the run with eviction that restarts from safe cut
