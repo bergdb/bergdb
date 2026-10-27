@@ -191,4 +191,13 @@ What step 3 should change (I may not edit 007-03):
 * For Frans: is a section held at sd, with the write cost that follows at a given sd, the right meaning of the startup distance?
 * For Frans: with the paced take, should the default startup distance (50 MB), or the advice of 200 to 1000 MB from 10M keys (005-38), change? Today's peaks are 2.75, 1.9 and 1.3 times sd at 50, 200 and 1000 MB.
 
+Frans's answers, 2026-10-27, 17:01:
+
+* The startup distance has two meanings. The setting is the target size of
+  the startup section. The actual startup distance is the distance such that
+  the stream's size minus it is a safe position to read from at startup (the
+  startup pos). The paced take holds the actual near the setting; today's
+  take lets it reach 2.75 times the setting.
+* The default setting stays 50 MB for now.
+
 Scratch, for reruns: `/Users/f/fl/bench/006-09/w2/`. The clone `rec` is the take with `-Dpace.T`; `final` is the diff; the runs are in `out2/`, `run2.sh` and `results.sh` are there, and the gate logs are in `inv-final.out` and `digest/`.

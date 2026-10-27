@@ -110,3 +110,13 @@ take wrote 3 to 13 percent fewer bytes a put than today's take, and its largest 
 0.2 to 1.2 MB against 2.5 to 11.6 MB (10M keys at 50, 200 and 1000 MB; 50M keys at 200 MB).
 At the same startup distance it writes 12 to 36 percent more, because its section no longer
 passes sd.
+
+Frans's answers to the report's two questions (section 8), 2026-10-27,
+17:01: "I think startup distance now has multiple meanings. The setting of
+the startup distance is the target size of the startup section of the
+stream. The actual startup distance is such that streamSize -
+actualStartupDistance is a safe position to read from when starting up the
+database. Something like that. The code has the details." And: "Keep 50 MB
+as the default startup distance setting for now." So the setting is the
+section's target, which the paced take holds; the actual startup distance,
+the stream's end minus the startup pos, is what a start reads.
