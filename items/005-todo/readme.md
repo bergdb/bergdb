@@ -24,7 +24,6 @@ Open
 
 | ID | Kind | What | Status |
 |---|---|---|---|
-| [005-03](03-sweep-cost.md) | Investigate | The sweep's cost under read churn (item 001, finding 10) | open |
 | [005-05](05-bergdb-future.md) | Decide | What to do with BergDB: publish it, when, money, paid work | open |
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
@@ -46,6 +45,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-03](03-sweep-cost.md) | Investigate | The sweep's cost under read churn (item 001, finding 10). Done by item 009: handles removed the sweep; the capacity controller runs batches of at most 2 ms, and in P4's soak the writer and the readers keep their paced rates (009-04) | done | 2026-10-27 |
 | [005-51](51-eviction-on-calls.md) | Fix | Eviction only in response to the calls: the eviction thread woke once a second while the database was open, also when idle (`evictorLock.wait(1000)`), against 010-P3. Now it waits with no timeout, the database's close wakes it, and `close()` returns after it has ended | done | 2026-10-27 |
 | [005-57](57-startup-header-reads.md) | Investigate | Startup without rule 4's header reads: a cold start at 10M keys took minutes on s1, most of it rule 4's reads of a header for each stream pointer of D's nodes (007-05). Rule 4 now finds a pointer's node by its position (the startup section's `posToId`, the canonical objects' positions), with no read but for a top node's pointer, checked against rule 4 by node id at every startup of the tests; with it, in the prototype, a cold start on s1 at 10M keys took about 46 and 51 s at 50 and 200 MB, where it took 214 and 210 s. Part 1 of the report; part 2, the writer's reads, not made (Frans: "Part 1 alone") | done | 2026-10-27 |
 | [005-55](55-fix-finalize.md) | Fix | The note of deprecated API that every build printed: `finalize()` (six uses) and `Class.newInstance()` (two). `Db.finalize()` stopped a database that the application dropped without `stop()`, as the Pub API promised. Decided 2026-10-27: no safety net. Now `stop()` or `close()` is required (the Javadoc of `Db` and of `Database.stop()`), the 188 unit and f-tests that left a database running stop it, and so do two night tests and two stress programs, which ran out of memory without `finalize()`; `bergdb.dev.Unit`, `F` and `Night` fail when a test leaves one; `ValueNodeTotalMem` deleted, `newInstance()` replaced; `build.sh` prints no note (Frans: "finalize() need to go") | done | 2026-10-27 |
@@ -95,11 +95,10 @@ Status values: open, in progress, done, dropped, moved (to an item of its
 own). Kinds: Fix (a known fault), Investigate (find out, then propose),
 Decide (a question for Frans, prepared by an investigation).
 
-Order, as proposed, of what is open: 005-03 next among what changes Java,
-as it changes the same part of it as 005-01 and 005-02, which are done;
-005-05 and 005-06 beside the rest, as they are mostly reading and thinking,
-and 005-06 feeds 005-05. 005-07 is best before 005-03's fix; the go point
-it asks about is in `Db.executeInner` since 005-01. 005-09 is done. What is left of 005-10 waits for Frans; a removal is best made
+Order, as proposed, of what is open: 005-03 is done by item 009, whose
+handles removed the sweep; 005-05 and 005-06 beside the rest, as they are mostly reading and thinking,
+and 005-06 feeds 005-05. The go point that 005-07
+asks about is in `Db.executeInner` since 005-01. 005-09 is done. What is left of 005-10 waits for Frans; a removal is best made
 when no other change to `java/` is under way. 005-11 can go any time, best
 before 005-05's decision on publishing, as it concerns the Pub API; 005-12
 is done. 005-27, 005-28 and 005-29, the fixes found in 005-11, are done.
@@ -123,7 +122,7 @@ Files
 * [02-fix-m46-ordinal-bound.md](02-fix-m46-ordinal-bound.md). 005-02, fix
   M46.
 * [03-sweep-cost.md](03-sweep-cost.md). 005-03, investigate the sweep's
-  cost.
+  cost; done by item 009, which removed the sweep.
 * [04-a6-failures.md](04-a6-failures.md). 005-04, the A6 failures: decide
   whether anything is to be done; done, with its tools and runs in
   [04-a6-failures/](04-a6-failures/).
@@ -1077,3 +1076,8 @@ request (006-09, W4: "yes, put it in java and commit."): the eviction
 thread waits with no timeout when idle, the database's close wakes it, and
 `close()` returns after it has ended. A unit test that fails on the code
 before; `before-commit.sh` and `level4.sh` (full) pass.
+
+2026-10-27. 005-03 done by item 009, at Frans's word ("Yes", 006-09), by
+Claude (Opus 5.5, Claude Code): handles removed the sweep it measures; the
+capacity controller runs batches of at most 2 ms, and the questions are
+answered by 009's measurements (005-03, Outcome).

@@ -1,7 +1,8 @@
 005-03. Investigate the sweep's cost
 ===================================
 
-Status: open. Kind: investigate. Created 2026-10-19.
+Status: done (2026-10-27, by item 009; see Outcome). Kind: investigate.
+Created 2026-10-19.
 
 
 The issue
@@ -76,3 +77,44 @@ Size and order
 M for the investigation, mostly machine time on the quiet machine. After
 005-01 and 005-02, which change the same part of Java. Read item 004 first;
 its recommendation 1 may be the first change either way.
+
+
+Outcome
+-------
+
+2026-10-27, by Claude (Opus 5.5, Claude Code), at Frans's word ("Yes", to
+closing 005-03 as done by 009 if handles removed the sweep; 006-09).
+
+Handles, item 009, removed the sweep that this entry is about. Since 009's
+step 3b the capacity controller runs batches: CLOCK steps over the node
+table from where the last batch stopped, for at most `BATCH_NANOS` (2 ms)
+under the write lock, with no walk of the resident objects and no resync
+(`Eviction.sweep`, which kept its name; 009-02, 4.7). Readers never take
+the write lock; they wake the eviction thread (009, decision T5a). The
+questions, answered by 009 rather than by an investigation here:
+
+1. The cost no longer grows with what stays in memory: a batch's work is
+   bounded by the maps it takes, whatever the size of the database and of
+   the budget. 10M keys on s1 with a 600 MB budget (009-03, section 7):
+   1,566 batches, 2.3 s in all, the longest 5 ms, where 2026.1 had 14
+   sweeps, 119 s in all, the longest 24.5 s.
+2. The cheap steps were not made: the walk they would have trimmed is
+   gone.
+3. Of the structural options, handles were chosen (004-03) and made
+   (009); the batches are the incremental sweep with a clock hand.
+4. The batches run under the write lock in slices of at most 2 ms, and a
+   writer that waits goes first (009, step 3d).
+5. The collector: in P4's soak, ZGC and Shenandoah without generations
+   had no stop (009-04, sections 7 and 8); G1 has full collections at
+   large heaps (009-03, section 5). Since 2026-10-27 the collector's
+   pauses do not count against 009's target 2.
+
+Against this entry's proposed targets: in P4's soak the writer makes its
+paced 200 commits a second and the readers 14,624 of their 15,000 reads a
+second, where the code before handles made 120 and 8,755 (009-04,
+sections 1 and 4; 004-04); eviction took about 1,450 batches, 1.5 s in
+all, 2 ms at most. A warm get in memory costs 3 percent more on one thread
+under G1 and 11 percent under ZGC, the hop through the handle (009-03,
+section 5), against the proposed 10; with 8 threads gets are twice as
+fast. The slowest commits and reads left in the soak are reclaim's
+physical cuts, 005-46's.
