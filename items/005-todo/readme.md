@@ -43,6 +43,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-61](61-reclaim-startup-distance.md) | Fix | Reclaim spaced its iterations by the builder's startup distance, copied before `start()` read the stream's, and never saw `setStartupDistance`: reclaim ran too seldom or too often (found in 005-53, question 3; no wrong cut). Now it uses the database's live startup distance; two unit tests that fail on the code before; StreamDigest identical | done | 2026-10-27 |
 | [005-49](49-smooth-index-writes.md) | Investigate | Smooth index writes: at large startup distances the index was written in bursts (records of 2.5 to 11.6 MB, up to 72 times their own bytes), and 007-03's deadline alone made records of up to 110 MB. Recommended for 007-03's step 3 (report.md): a paced take, each commit writes the waiting dirty index nodes oldest first, in whole transactions, in proportion to the stream it adds, with the deadline at 2 sd as the backstop (it never fired); the section stays at about sd; at the startup distance that gives today's peak section it writes 3 to 13 percent fewer bytes a put, with records 6 to 11 times smaller. Frans: the startup distance's setting is the section's target, the actual startup distance what a start reads from; the default stays 50 MB | done | 2026-10-27 |
 | [005-58](58-lean-rule4-by-position.md) | Investigate | A Lean theorem for rule 4 by position (005-57). Proved in the model: `Rule4_positions` (a pointer that rule 4 links names a version of the startup section, the version before its node's first one there, or its canonical object's version) and `Rule4Pos_handles` (rule 4 by position links what rule 4 by node id links, at every startup of a run), with no new assumption; new trusted definitions of Java's rule 4 by position in `SIS/Handle.lean`. Frans took the trusted additions as they are, and the by-id check under assertions in `linkToCanonical` stays (2026-10-27) | done | 2026-10-27 |
 | [005-46](46-stream-file-lock.md) | Fix | A read of the stream's last file waits for the writer's append and its `fsync` (`FileStream.DbFile`, one monitor for both): seconds on s1's disk, the longest waits left there with handles (009-03); and every read waits while reclaim's physical cut deletes files (`FileStream.pretruncate`, the stream's monitor): up to 171 ms in P4's soak on F53, under every collector (009-04). Investigated 2026-10-27, with probes: every read also waits while a new file is forced (`newFile`), an encrypted database's reads wait for each other, and a commit by an interrupted thread that makes a physical cut fails the database. Proposed: positional reads on a channel of each file's own, safe from interrupts; the file list without a lock; a new file made, and a cut's files deleted on a thread of their own, outside the stream's monitor. Decided 2026-10-27: as proposed; `SalsaStream` and interrupts in this entry (today an interrupt can fail the database, a commit that waits for room in the write buffer or makes a cut, or hang it, the storage thread interrupted; a rule proposed, one question open); the test reports note a writer's waits for room, which do not count against item 009's target 2. Implemented 2026-10-27, rule A for interrupts; measured the same day on s1 and F53: no read waits for a force, a new file or a cut any more, and a commit only for room in the write buffer when the disk stalls. Done 2026-10-27, at Frans's word; P4's soak and ScaleBench in 006-09's quiet block confirm it, and are item 009's evidence | done | 2026-10-27 |
@@ -296,6 +297,9 @@ Files
   `AutoCloseable`: the issue, four options, the questions; open.
 * [60-block-storage.md](60-block-storage.md). 005-60, the stream on a
   block device without a file system: the idea, the questions; open.
+* [61-reclaim-startup-distance.md](61-reclaim-startup-distance.md). 005-61,
+  reclaim uses the database's startup distance: the fault found in
+  005-53, the fix, the tests, the gates and StreamDigest; done.
 
 Log
 ===
@@ -1144,3 +1148,9 @@ default or the advice of 005-38 change?
 the startup distance is the target size of the startup section, the actual
 startup distance is such that the stream's size minus it is a safe
 position to start from; the default setting stays 50 MB for now.
+
+2026-10-27. 005-61 registered and done, at Frans's request (006-09: "Fix
+005-53's Reclaim fault"), by Claude (Opus 5.5, Claude Code): Reclaim
+spaces its iterations by the database's live startup distance instead of
+the builder's copy. Two unit tests; StreamDigest identical (36 of 36);
+`before-commit.sh` and `level3.sh` (full) pass.

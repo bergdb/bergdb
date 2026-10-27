@@ -1319,3 +1319,13 @@ one thread, 2,364 to 6,429 with 64; the sync's median 24.8 to 3.8 ms.
 `ReclaimReaders.awaitModel` reads `lastCompleted` again before it fails:
 a race in the check, seen with and without the change. Tests;
 `before-commit.sh` and `level3.sh` (full) pass. F53's runs tonight.
+
+2026-10-27. 005-61 done, by Claude (Opus 5.5, Claude Code), at Frans's
+request (006-09): Reclaim spaces its iterations by the database's live
+startup distance (`db.getStartupDistance()` in `transactionCompleted`). It
+used a copy of the builder's, made before `start()` read the stream's and
+blind to `setStartupDistance`, so a database opened with another distance
+than its own reclaimed too seldom or too often (005-53, question 3; no
+wrong cut: the cuts check the live positions). Two unit tests that fail on
+the code before; StreamDigest identical; `before-commit.sh` and `level3.sh`
+(full) pass.

@@ -77,7 +77,8 @@ Question 3: Reclaim's startup distance
 By Claude (Opus 5.5, Claude Code), 2026-10-27 (006-09, W6.1), a reading of
 HEAD `a6cd234`. Answer: it is the builder's value, never the stream's, and
 it ignores later changes. A fault of its own, small: it changes how often
-reclaim runs, not what it may cut.
+reclaim runs, not what it may cut. Registered and fixed as
+[005-61](61-reclaim-startup-distance.md) (2026-10-27).
 
 What the code does:
 
