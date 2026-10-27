@@ -1347,3 +1347,16 @@ cut them again at start, and failed when a delete found the file gone. No
 data at risk (all below the durable cut). The test now ends each cycle
 with `close()` (`b0661ba`); `level2.sh` full passes. The API question is
 005-63.
+
+2026-10-27. 005-62, by Claude (Opus 5.5, Claude Code, at max effort), at
+Frans's request (006-09): Level 3's reclaim theorems with eviction over
+handles' runs, `T9_handles` (a read through the handles from the first
+available time on gives the same on a safely cut stream, and gives P) and
+`T12_handles` (the run that restarts from safe cut streams appends the
+records of the run without restarts, with its D and lookups), in the new
+trusted file `SIS/HandleReclaimTheorems.lean`, proved (`bba91dd` to
+`a506b34`); T12's proofs are 3,364 lines, against 8,100 over Evict.lean.
+Reviewed independently: the statements are the old ones with the handle
+model in place of Evict.lean's, hypothesis for hypothesis. `lake build`
+clean (173 jobs), trace tests OK, axioms standard. The design before
+handles can now be removed; how far is for Frans.
