@@ -12,10 +12,13 @@ The principles of BergDB.
 List of principles
 ====================
 
-Numbered principles. A principle is followed where possible; if we must,
-we break it, and each deviation is documented here, under its principle
-(Frans, 2026-10-26: "If we must, we can break principles. Deviations should
-be documented in 01.").
+Numbered principles. They guide the development: mostly they are
+followed, and where one is not, the exception is justified and documented
+here, under its principle (Frans, 2026-10-26: "If we must, we can break
+principles. Deviations should be documented in 01."). A few simple
+principles will always need exceptions (Frans, 2026-10-27: "That is the
+thing with principles. They should guide, but a few simple principles will
+always need exceptions.").
 
 
 P1. No stop-the-world

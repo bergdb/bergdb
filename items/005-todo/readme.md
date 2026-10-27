@@ -40,6 +40,7 @@ Open
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 | [005-55](55-fix-finalize.md) | Fix | The note of deprecated API that every build prints: `finalize()` (six uses) and `Class.newInstance()` (two). `Db.finalize()` stops a database that the application drops without `stop()`, as the Pub API promises; proposed: a `Cleaner` in its place, no `@SuppressWarnings` (Frans: "finalize() need to go"). Found with it: a dropped database whose eviction thread has started is never collected, as the thread holds the `Db` (009's step 3b) | open |
 | [005-56](56-package-dependencies.md) | Investigate | Package dependencies: how the packages depend on each other, and whether that follows their `package.html` files; Frans's question. A first look: four of `java/src`'s nine packages used packages their lists leave out; after 006-08's fixes of `stream` and `dag`, two remain (`pub` uses `core` and `pubimp`, `pubimp` uses `dag` and `storage`), and nothing checks the lists | open |
+| [005-57](57-startup-header-reads.md) | Investigate | Startup without rule 4's header reads: a cold start at 10M keys took minutes on s1, three quarters of it rule 4's reads of a header for each stream pointer of D's nodes (007-05). Investigated 2026-10-27: no read is needed (the section's `posToId` and the canonical objects' positions give every link, by the reconciliation's argument); the writer's `resolvePointers` reads the same kind of header and needs none either (part 2). Prototypes checked against today's code by id in the gates; on s1 a cold start at 50 MB from 214 s to about 46 s. The change waits for Frans | open |
 
 
 Closed
@@ -107,7 +108,8 @@ is done, which 005-33's change needed; 005-33 is decided, A, and done. 005-35,
 005-41 is decided: not now. 005-42 is decided, A1 and B2, and done, and so
 is 005-45. 005-11 is kept as it is for release 2026.1, documented as
 experimental; its decision waits for Frans. 005-55 is best done with
-005-51, as both change the eviction thread's wait.
+005-51, as both change the eviction thread's wait. 005-57 is investigated;
+its change, item 007's step 6 (007-03), waits for Frans.
 
 
 Files
@@ -265,6 +267,10 @@ Files
 * [56-package-dependencies.md](56-package-dependencies.md). 005-56, the
   package dependencies against the `package.html` files: Frans's question,
   a first look, the older rules of 2012 and 2015; open.
+* [57-startup-header-reads.md](57-startup-header-reads.md). 005-57,
+  startup without rule 4's header reads: the entry and its findings; open.
+  The report, the prototypes' diffs, the tool, the scripts, the outputs and
+  the analysis in [57-startup-header-reads/](57-startup-header-reads/).
 
 Log
 ===

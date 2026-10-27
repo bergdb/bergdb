@@ -1,0 +1,155 @@
+diff --git a/java/src/bergdb/core/DbStarter.java b/java/src/bergdb/core/DbStarter.java
+index ba74aa3..2d4c0f4 100644
+--- a/java/src/bergdb/core/DbStarter.java
++++ b/java/src/bergdb/core/DbStarter.java
+@@ -504,12 +504,66 @@ public class DbStarter {
+      */
+     private void linkD() {
+         final NodeCollection collection = db.internal().nodeCollection();
++        if (RULE4_BY_ID) {
++            db.internal().transSeq().visitGotDirtyNodes(Long.MAX_VALUE, new TransSeq.NodeVisitor() {
++                public void node(Node node, long tpos, long lastTpos) {
++                    collection.linkToCanonical(node, accessData);
++                }
++            });
++            return;
++        }
++
++        // Rule 4 by position (bergdb 005-57, a prototype): the canonical objects by the
++        // position of their versions, and posToId, give every pointee that rule 4 links.
++        final Map<Long, Handle> byPos = new HashMap<Long, Handle>();
++        for (Handle h : db.internal().cache().handles()) {
++            Node o = h.obj;
++            if (o != null && o.isCanonical()) {
++                byPos.put(o.getSpos(), h);
++            }
++        }
++        final long[] counts = new long[6];
+         db.internal().transSeq().visitGotDirtyNodes(Long.MAX_VALUE, new TransSeq.NodeVisitor() {
+             public void node(Node node, long tpos, long lastTpos) {
+-                collection.linkToCanonical(node, accessData);
++                collection.linkToCanonicalByPosition(node, posToId, byPos, RULE4_CHECK, counts);
+             }
+         });
++        rule4Counts = counts;
++        synchronized (RULE4_TOTALS) {
++            if (RULE4_TOTALS[0]++ == 0 && RULE4_CHECK) {
++                Runtime.getRuntime().addShutdownHook(new Thread() {
++                    public void run() {
++                        synchronized (RULE4_TOTALS) {
++                            long[] t = RULE4_TOTALS;
++                            System.out.println("005-57 rule 4 by position, checked: " + t[0]
++                                    + " startups, " + t[1] + " pointers examined, " + t[2]
++                                    + " linked, " + t[6] + " linked by id, " + t[5]
++                                    + " differences, " + t[3] + " header reads");
++                        }
++                    }
++                });
++            }
++            for (int i = 0; i < counts.length; i++) {
++                RULE4_TOTALS[i + 1] += counts[i];
++            }
++        }
+     }
++
++    /** bergdb 005-57's prototype: startups, and the sums of rule4Counts over them. */
++    static final long[] RULE4_TOTALS = new long[7];
++
++    /** bergdb 005-57's prototype: rule 4 by id, as before (-Dbergdb.rule4.byId=true). */
++    static final boolean RULE4_BY_ID = Boolean.getBoolean("bergdb.rule4.byId");
++
++    /**
++     * bergdb 005-57's prototype: rule 4 by position checked against rule 4 by id, with the
++     * reads (-Dbergdb.rule4.check=true, or assertions on).
++     */
++    static final boolean RULE4_CHECK = Boolean.getBoolean("bergdb.rule4.check")
++            || DbStarter.class.desiredAssertionStatus();
++
++    /** bergdb 005-57's prototype: the last startup's counts, see linkToCanonicalByPosition. */
++    public static volatile long[] rule4Counts = null;
+     
+     private void postStartupCheck() {
+         checkThatValueNodesHaveSpos();
+diff --git a/java/src/bergdb/core/NodeCollection.java b/java/src/bergdb/core/NodeCollection.java
+index d0a8eb6..5736ee7 100644
+--- a/java/src/bergdb/core/NodeCollection.java
++++ b/java/src/bergdb/core/NodeCollection.java
+@@ -715,6 +715,78 @@ public class NodeCollection implements PointerFollower {
+         }
+     }
+ 
++    /**
++     * Rule 4 at startup by position (bergdb 005-57, a prototype): as linkToCanonical, but
++     * the pointee's id comes from what startup knows, not from the stream. ids: the id of
++     * each index node version of the startup section and of the version before it
++     * (DbStarter's posToId). byPos: the live handle of each canonical object, by the position
++     * of its version. A pointer that names neither cannot name a node with a canonical
++     * object (005-57, the argument), except a top node's pointer, which may name an older
++     * top node's version before the section, and top node versions have no prevPos (011-03,
++     * G3): that one reads the header, as before. With check, each pointer is also resolved
++     * by id (idOf, reading the header), and a difference is counted, printed, and fails an
++     * assertion. counts: pointers examined, linked, header reads, checked, differences,
++     * linked by id.
++     */
++    public void linkToCanonicalByPosition(Node node, Map<Long, Long> ids,
++            Map<Long, Handle> byPos, boolean check, long[] counts) {
++        final int count = node.getSize();
++        final boolean top = node.getType() == Node.TYPE_TOP_NODE;
++
++        for (int i = 0; i < count; i++) {
++            if (!pointsToIndexNode(node, i)) {
++                continue;
++            }
++            synchronized (node) {               // C2 (bergdb item 009, step 3c)
++                Pointee pointee = node.getPointee(i);
++                long pos = node.getPointerPos(i);
++                if (pointee != null || Spos.isNull(pos)) {
++                    continue;
++                }
++                if (!Spos.isVpos(pos) && pos < nodeStream.getFirstPos()) {
++                    continue;
++                }
++                counts[0]++;
++                Long id = Spos.isVpos(pos) ? Long.valueOf(pos) : ids.get(pos);
++                Handle live = id != null ? cache.liveHandle(id) : byPos.get(pos);
++                if (live == null && id == null && top) {
++                    counts[2]++;
++                    live = cache.liveHandle(idOf(pos));
++                }
++                Node canonical = live == null ? null : live.obj;
++                boolean link = canonical != null && canonical.isCanonical();
++                if (check) {
++                    counts[3]++;
++                    long idById = idOf(pos);
++                    Handle byId = cache.liveHandle(idById);
++                    Node o = byId == null ? null : byId.obj;
++                    boolean linkById = o != null && o.isCanonical();
++                    if (linkById) {
++                        counts[5]++;
++                    }
++                    if (linkById != link || (link && byId != live)) {
++                        counts[4]++;
++                        String m = "rule 4 by position differs from rule 4 by id: node "
++                                + node.getId() + " at " + node.getSpos() + ", pointer " + i
++                                + " names " + pos + ", node " + idById + "; by position "
++                                + (link ? "links" : "no link") + ", by id "
++                                + (linkById ? "links to the object at " + o.getSpos() : "no link")
++                                + (id != null ? "; the position is in the section's ids" : "")
++                                + (top ? "; a top node" : "");
++                        if (counts[4] <= 10) {
++                            System.err.println(m);
++                        }
++                        assert false : m;
++                    }
++                }
++                if (link) {
++                    node.setPointee(i, live);
++                    counts[1]++;
++                }
++            }
++        }
++    }
++
+     /** True if pointer i of 'node' points to an index node: a key node or a top node. */
+     static boolean pointsToIndexNode(Node node, int i) {
+         switch (node.getType()) {

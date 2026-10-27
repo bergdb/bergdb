@@ -5,8 +5,46 @@ Created 2026-10-26 by Frans Lundberg. Status: open.
 
 BergDB's design principles, in Frans's words: what BergDB promises about
 its behaviour, beyond the results of its operations. The principles guide
-the design and the decisions of other items; this item records them, where
-BergDB stands against them today, and the open questions.
+the design and the decisions of other items; this item records them, how
+they are applied in BergDB's development, and the open questions. Mostly
+they are followed; a few simple principles will always need exceptions,
+and each exception is justified.
+
+
+Principles
+==========
+
+In brief; [01-principles.md](01-principles.md) has each in full, with its
+sources and how it is applied: where it is followed, and the exceptions
+and why they are made.
+
+* **P1**. *No stop-the-world*. No get or commit waits long because BergDB does
+  work for the whole database at once, readers included; the target is a
+  worst case of about 20 ms.
+* **P2**. *A deterministic stream*. The stream's bytes depend only on the
+  transactions, their contents and their order.
+* **P3**. *Calm when not used*. BergDB uses CPU, I/O and wake-ups only for work
+  that the application's calls start.
+* **P4**. *Maintenance proportional to the user's work*. The maintenance a call
+  carries is bounded by, and in proportion to, the work of the call.
+* **P5**. *Bounded startup*. Startup time does not grow with the size of the
+  database or how long it has run.
+* **P6**. *No interruption for changes*. Indexes, replicas and settings change
+  while the database runs; a large change goes in steps.
+* **P7**. *A failed database stops*. After an I/O error, corrupt data or a bug,
+  every call throws until the application restarts the database.
+* **P8**. *Determinism beyond the stream*. Where possible, memory, eviction and
+  work are the same in each run of the same calls, independent of the JVM
+  and timing.
+* **P9**. *No global state*. Several databases run in one JVM without affecting
+  each other.
+* **P10**. *No administration, few settings*. The defaults work; no tuning is
+  needed for good performance.
+* **P11**. *Simple before optimal*. Simple, correct code comes before the last
+  bit of speed.
+* **P12**. *A small Core Layer*. All data passes through four methods (`getOne`,
+  `getMany`, `getTrans`, `execute`); what can be built on top is built on
+  top.
 
 
 Names
@@ -31,14 +69,14 @@ Files
   no interruption for changes, a failed database stops, determinism beyond
   the stream, no global state, no administration, simple before optimal,
   and a small Core Layer. For each, what it means, where it comes from,
-  and where BergDB deviates from it today.
+  and how it is applied, with its exceptions.
 * [02-principles-2012.md](02-principles-2012.md). 010-02, the principles
   Frans wrote down from 2008 to 2017 (notes, logs, code, the old website),
   quoted with their sources: how they support, refine or contradict P1 to
   P4, the reasons behind P3, the other principles, and candidates for 01.
-* [03-startup-distance-on-the-fly.md](03-startup-distance-on-the-fly.md).
-  010-03, moved to [005-53](../005-todo/53-startup-distance-on-the-fly.md):
-  a link in its place.
+* 010-03 was removed on 2026-10-27; its contents are in
+  [005-53](../005-todo/53-startup-distance-on-the-fly.md). The number is not
+  reused.
 
 
 Log
@@ -84,3 +122,15 @@ updated the same day.
 5.5, Claude Code): the Core Layer builds alone and follows its
 `package.html` lists, as `FileStreamPowerLossTester` moved from `stream`
 to `core`; `dag`'s and `stream`'s lists fixed.
+
+2026-10-27. Removed 010-03, the link to 005-53, and added the list of the
+principles in brief to this readme, at Frans's request ("Remove the 03
+document. Create a list with a brief summary of each principle directly in
+the readme.md.").
+
+2026-10-27. "Where BergDB deviates" rephrased as how the principles are
+applied, at Frans's request ("It is more like how these principles are
+applied to the development. Mostly they are followed and some excepts are
+justified. That is the thing with principles. They should guide, but a few
+simple principles will always need exceptions."). Also in 01's
+introduction.

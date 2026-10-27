@@ -1,0 +1,394 @@
+diff --git a/java/src/bergdb/core/Db.java b/java/src/bergdb/core/Db.java
+index c3a02ef..eac59a1 100644
+--- a/java/src/bergdb/core/Db.java
++++ b/java/src/bergdb/core/Db.java
+@@ -1077,6 +1077,7 @@ public class Db {
+                 Node n = gotDirty.get(i);
+                 if (i >= keep && replacedInTrans.contains(n)) {
+                     n.setDirty(false);
++                    nodeCollection.unpinned(n, n.getSpos());    // 005-57's prototype, part 2
+                 } else {
+                     kept.add(n);
+                 }
+@@ -1104,6 +1105,7 @@ public class Db {
+         
+         if (!node.isDirty()) {
+             node.setDirty(true);
++            nodeCollection.pinned(node);        // 005-57's prototype, part 2
+             x.transInfo.addGotDirtyNode(node);
+             if (x.trans.touch) {
+                 x.trans.dirtiedNodes++;
+@@ -2021,6 +2023,19 @@ public class Db {
+         // Before the record's nodes are cleaned: resolvePointers resolves the pinned set
+         // (D's nodes and the record's, dirty) by node id (bergdb item 001, WP R8, change 1).
+         resolvePointersOfTakenNodes();
++
++        // 005-57's prototype, part 2: the taken nodes and their positions before this record,
++        // to move them in pinnedByPos when the record is appended.
++        final ArrayList<Node> taken = new ArrayList<Node>();
++        Iterator<Node> ti = x.transNodes.indexNodeIterator();
++        while (ti.hasNext()) {
++            taken.add(ti.next());
++        }
++        final long[] takenPos = new long[taken.size()];
++        for (int i = 0; i < takenPos.length; i++) {
++            takenPos[i] = taken.get(i).getSpos();
++        }
++
+         x.transNodes.clean();
+         handleStillDirtyNodes();
+         
+@@ -2034,7 +2049,14 @@ public class Db {
+         
+         nodeStream.appendNodes(x.transNodes, x.trans, x.transInfo.gotDirtyNodes, top);
+         newestWrittenTop = top;
+-        
++        for (int i = 0; i < takenPos.length; i++) {         // 005-57's prototype, part 2
++            Node n = taken.get(i);
++            nodeCollection.unpinned(n, takenPos[i]);
++            if (n.isDirty()) {
++                nodeCollection.pinned(n);       // still dirty (Rule A): at its new position
++            }
++        }
++
+         // The resident registry (bergdb item 001, WP J1): a written index object is counted
+         // with its size now; the audit's oracle learns the record's positions.
+         Iterator<Node> written = x.transNodes.indexNodeIterator();
+diff --git a/java/src/bergdb/core/DbStarter.java b/java/src/bergdb/core/DbStarter.java
+index ba74aa3..b5fed66 100644
+--- a/java/src/bergdb/core/DbStarter.java
++++ b/java/src/bergdb/core/DbStarter.java
+@@ -263,6 +263,7 @@ public class DbStarter {
+         }
+         
+         db.internal().nodeCollection().setStartupSection(newById, startupPos, startupTime);
++        db.internal().nodeCollection().setSectionIds(posToId);     // 005-57, part 2
+     }
+ 
+     private void findSuperNodeAtStartupTime() {
+@@ -450,6 +451,7 @@ public class DbStarter {
+             }
+             
+             gotDirtyNode.setDirty(true);
++            db.internal().nodeCollection().pinned(gotDirtyNode);       // 005-57, part 2
+             tinfo.addGotDirtyNode(gotDirtyNode);
+         }
+         
+@@ -504,12 +506,72 @@ public class DbStarter {
+      */
+     private void linkD() {
+         final NodeCollection collection = db.internal().nodeCollection();
++        if (RULE4_BY_ID) {
++            db.internal().transSeq().visitGotDirtyNodes(Long.MAX_VALUE, new TransSeq.NodeVisitor() {
++                public void node(Node node, long tpos, long lastTpos) {
++                    collection.linkToCanonical(node, accessData);
++                }
++            });
++            return;
++        }
++
++        // Rule 4 by position (bergdb 005-57, a prototype): the canonical objects by the
++        // position of their versions, and posToId, give every pointee that rule 4 links.
++        final Map<Long, Handle> byPos = new HashMap<Long, Handle>();
++        for (Handle h : db.internal().cache().handles()) {
++            Node o = h.obj;
++            if (o != null && o.isCanonical()) {
++                byPos.put(o.getSpos(), h);
++            }
++        }
++        final long[] counts = new long[6];
+         db.internal().transSeq().visitGotDirtyNodes(Long.MAX_VALUE, new TransSeq.NodeVisitor() {
+             public void node(Node node, long tpos, long lastTpos) {
+-                collection.linkToCanonical(node, accessData);
++                collection.linkToCanonicalByPosition(node, posToId, byPos, RULE4_CHECK, counts);
+             }
+         });
++        rule4Counts = counts;
++        synchronized (RULE4_TOTALS) {
++            if (RULE4_TOTALS[0]++ == 0 && RULE4_CHECK) {
++                Runtime.getRuntime().addShutdownHook(new Thread() {
++                    public void run() {
++                        synchronized (RULE4_TOTALS) {
++                            long[] t = RULE4_TOTALS;
++                            System.out.println("005-57 rule 4 by position, checked: " + t[0]
++                                    + " startups, " + t[1] + " pointers examined, " + t[2]
++                                    + " linked, " + t[6] + " linked by id, " + t[5]
++                                    + " differences, " + t[3] + " header reads");
++                            long[] r = NodeCollection.RESOLVE_COUNTS;
++                            System.out.println("005-57 resolvePointers by position, checked: "
++                                    + r[0] + " pointers without a handle, " + r[1]
++                                    + " in the section's ids, " + r[2] + " pinned by position, "
++                                    + r[5] + " pinned by id, " + r[3] + " checked, " + r[4]
++                                    + " differences");
++                        }
++                    }
++                });
++            }
++            for (int i = 0; i < counts.length; i++) {
++                RULE4_TOTALS[i + 1] += counts[i];
++            }
++        }
+     }
++
++    /** bergdb 005-57's prototype: startups, and the sums of rule4Counts over them. */
++    static final long[] RULE4_TOTALS = new long[7];
++
++    /** bergdb 005-57's prototype: rule 4 by id, as before (-Dbergdb.rule4.byId=true). */
++    static final boolean RULE4_BY_ID = Boolean.getBoolean("bergdb.rule4.byId");
++
++    /**
++     * bergdb 005-57's prototype: rule 4 by position checked against rule 4 by id, with the
++     * reads (-Dbergdb.rule4.check=true, or assertions on).
++     */
++    static final boolean RULE4_CHECK = Boolean.getBoolean("bergdb.rule4.check")
++            || DbStarter.class.desiredAssertionStatus();
++
++    /** bergdb 005-57's prototype: the last startup's counts, see linkToCanonicalByPosition. */
++    public static volatile long[] rule4Counts = null;
+     
+     private void postStartupCheck() {
+         checkThatValueNodesHaveSpos();
+diff --git a/java/src/bergdb/core/NodeCollection.java b/java/src/bergdb/core/NodeCollection.java
+index d0a8eb6..59b5ba0 100644
+--- a/java/src/bergdb/core/NodeCollection.java
++++ b/java/src/bergdb/core/NodeCollection.java
+@@ -661,21 +661,52 @@ public class NodeCollection implements PointerFollower {
+                     continue;
+                 }
+ 
+-                long id = h != null ? h.id : idOf(pos);
++                // bergdb 005-57's prototype, part 2: a pointer that holds no handle gets its
++                // id from the section's ids (Rule R's posToId, kept), or else its pinned
++                // pointee from pinnedByPos; one that names neither needs nothing (005-57).
++                long id;
++                Handle live;
++                boolean known = true;
++                if (h != null || Spos.isVpos(pos) || RESOLVE_BY_ID) {
++                    id = h != null ? h.id : idOf(pos);
++                    live = cache.liveHandle(id);
++                } else {
++                    RESOLVE_COUNTS[0]++;
++                    Map<Long, Long> ids = sectionIds;
++                    Long sid = ids == null ? null : ids.get(pos);
++                    if (sid != null) {
++                        RESOLVE_COUNTS[1]++;
++                        id = sid;
++                        live = cache.liveHandle(id);
++                    } else {
++                        known = false;
++                        id = Spos.NULL;
++                        live = pinnedByPos.get(pos);
++                    }
++                }
+ 
+                 // 1. A pinned pointee, by node id: its live handle, with its canonical object.
+-                Handle live = cache.liveHandle(id);
+                 Node pinned = live == null ? null : live.obj;
+-                if (pinned != null && pinned.isCanonical() && pinned.isDirty()) {
+-                    if (h != live) node.setPointee(i, live);
+-                    continue;
+-                }
++                boolean isPinned = pinned != null && pinned.isCanonical() && pinned.isDirty();
+ 
+                 // 2. Any other: the pointer's reference after Rule R.
+                 long ref = pos;
+-                Long newPos = newestInSection(id);
+-                if (newPos != null && Spos.newer(newPos, ref)) {
+-                    ref = newPos;
++                if (!isPinned && known) {
++                    Long newPos = newestInSection(id);
++                    if (newPos != null && Spos.newer(newPos, ref)) {
++                        ref = newPos;
++                    }
++                }
++
++                if (h == null && !Spos.isVpos(pos) && !RESOLVE_BY_ID && RESOLVE_CHECK) {
++                    checkResolve(node, i, pos, known, isPinned, live, ref);
++                }
++                if (isPinned) {
++                    if (!known) {
++                        RESOLVE_COUNTS[2]++;
++                    }
++                    if (h != live) node.setPointee(i, live);
++                    continue;
+                 }
+                 if (ref != pos) {
+                     node.setRef(i, ref);
+@@ -684,6 +715,88 @@ public class NodeCollection implements PointerFollower {
+         }
+     }
+ 
++    /** 005-57's prototype, part 2: resolvePointers' answer by position against by id. */
++    private void checkResolve(Node node, int i, long pos, boolean known, boolean isPinned,
++            Handle live, long ref) {
++        RESOLVE_COUNTS[3]++;
++        long idById = idOf(pos);
++        Handle liveById = cache.liveHandle(idById);
++        Node o = liveById == null ? null : liveById.obj;
++        boolean pinnedById = o != null && o.isCanonical() && o.isDirty();
++        long refById = pos;
++        if (!pinnedById) {
++            Long newPos = newestInSection(idById);
++            if (newPos != null && Spos.newer(newPos, refById)) {
++                refById = newPos;
++            }
++        } else {
++            RESOLVE_COUNTS[5]++;
++        }
++        if (pinnedById != isPinned || (isPinned && liveById != live) || (!isPinned && refById != ref)) {
++            RESOLVE_COUNTS[4]++;
++            String m = "resolvePointers by position differs from by id: node " + node.getId()
++                    + " at " + node.getSpos() + ", pointer " + i + " names " + pos + ", node "
++                    + idById + "; by position " + (isPinned ? "pinned" : "ref " + ref)
++                    + ", by id " + (pinnedById ? "pinned" : "ref " + refById)
++                    + (known ? "; in the section's ids" : "");
++            if (RESOLVE_COUNTS[4] <= 10) {
++                System.err.println(m);
++            }
++            assert false : m;
++        }
++    }
++
++    /**
++     * Rule R's ids (bergdb 005-57's prototype, part 2): DbStarter's posToId, kept for the
++     * process with newById, so that the writer finds the id of a pointer that names a version
++     * of the startup section, or the version before one, without reading the stream.
++     */
++    private volatile Map<Long, Long> sectionIds = null;
++
++    /**
++     * The pinned objects, canonical and dirty, by the position of their last written version
++     * (bergdb 005-57's prototype, part 2): a pointer that holds no handle and names a pinned
++     * node names that position. Changed by the writer (Db) under the write lock, and by
++     * DbStarter.
++     */
++    private final HashMap<Long, Handle> pinnedByPos = new HashMap<Long, Handle>();
++
++    /** 005-57's prototype, part 2: resolvePointers by id, as before. */
++    static final boolean RESOLVE_BY_ID = Boolean.getBoolean("bergdb.resolve.byId");
++
++    /** 005-57's prototype, part 2: resolvePointers by position checked against by id. */
++    static final boolean RESOLVE_CHECK = Boolean.getBoolean("bergdb.resolve.check")
++            || NodeCollection.class.desiredAssertionStatus();
++
++    /**
++     * 005-57's prototype, part 2, since the start: pointers without a handle examined, found in
++     * the section's ids, found pinned by position, checked, differences, pinned by id.
++     */
++    public static final long[] RESOLVE_COUNTS = new long[6];
++
++    /** 005-57's prototype, part 2: DbStarter's posToId, for the process. */
++    public void setSectionIds(Map<Long, Long> ids) {
++        this.sectionIds = new HashMap<Long, Long>(ids);
++    }
++
++    /** 005-57's prototype, part 2: 'node' got dirty, pinned at its last written position. */
++    public void pinned(Node node) {
++        long p = node.getSpos();
++        if (node.isIndexNode() && node.isCanonical() && Spos.isValid(p) && !Spos.isVpos(p)) {
++            pinnedByPos.put(p, Handle.of(node));
++        }
++    }
++
++    /** 005-57's prototype, part 2: 'node', last written at 'pos', is no longer pinned there. */
++    public void unpinned(Node node, long pos) {
++        if (Spos.isValid(pos) && !Spos.isVpos(pos)) {
++            Handle h = pinnedByPos.get(pos);
++            if (h != null && h.id == node.getId()) {
++                pinnedByPos.remove(pos);
++            }
++        }
++    }
++
+     /**
+      * Rule 4 at startup (DbStarter.linkD; the Lean model's `Mem.linkD`; bergdb item 001,
+      * WP R8, change 1: bergdb 001-08, M44): each pointer of 'node' to an index
+@@ -715,6 +828,78 @@ public class NodeCollection implements PointerFollower {
+         }
+     }
+ 
++    /**
++     * Rule 4 at startup by position (bergdb 005-57, a prototype): as linkToCanonical, but
++     * the pointee's id comes from what startup knows, not from the stream. ids: the id of
++     * each index node version of the startup section and of the version before it
++     * (DbStarter's posToId). byPos: the live handle of each canonical object, by the position
++     * of its version. A pointer that names neither cannot name a node with a canonical
++     * object (005-57, the argument), except a top node's pointer, which may name an older
++     * top node's version before the section, and top node versions have no prevPos (011-03,
++     * G3): that one reads the header, as before. With check, each pointer is also resolved
++     * by id (idOf, reading the header), and a difference is counted, printed, and fails an
++     * assertion. counts: pointers examined, linked, header reads, checked, differences,
++     * linked by id.
++     */
++    public void linkToCanonicalByPosition(Node node, Map<Long, Long> ids,
++            Map<Long, Handle> byPos, boolean check, long[] counts) {
++        final int count = node.getSize();
++        final boolean top = node.getType() == Node.TYPE_TOP_NODE;
++
++        for (int i = 0; i < count; i++) {
++            if (!pointsToIndexNode(node, i)) {
++                continue;
++            }
++            synchronized (node) {               // C2 (bergdb item 009, step 3c)
++                Pointee pointee = node.getPointee(i);
++                long pos = node.getPointerPos(i);
++                if (pointee != null || Spos.isNull(pos)) {
++                    continue;
++                }
++                if (!Spos.isVpos(pos) && pos < nodeStream.getFirstPos()) {
++                    continue;
++                }
++                counts[0]++;
++                Long id = Spos.isVpos(pos) ? Long.valueOf(pos) : ids.get(pos);
++                Handle live = id != null ? cache.liveHandle(id) : byPos.get(pos);
++                if (live == null && id == null && top) {
++                    counts[2]++;
++                    live = cache.liveHandle(idOf(pos));
++                }
++                Node canonical = live == null ? null : live.obj;
++                boolean link = canonical != null && canonical.isCanonical();
++                if (check) {
++                    counts[3]++;
++                    long idById = idOf(pos);
++                    Handle byId = cache.liveHandle(idById);
++                    Node o = byId == null ? null : byId.obj;
++                    boolean linkById = o != null && o.isCanonical();
++                    if (linkById) {
++                        counts[5]++;
++                    }
++                    if (linkById != link || (link && byId != live)) {
++                        counts[4]++;
++                        String m = "rule 4 by position differs from rule 4 by id: node "
++                                + node.getId() + " at " + node.getSpos() + ", pointer " + i
++                                + " names " + pos + ", node " + idById + "; by position "
++                                + (link ? "links" : "no link") + ", by id "
++                                + (linkById ? "links to the object at " + o.getSpos() : "no link")
++                                + (id != null ? "; the position is in the section's ids" : "")
++                                + (top ? "; a top node" : "");
++                        if (counts[4] <= 10) {
++                            System.err.println(m);
++                        }
++                        assert false : m;
++                    }
++                }
++                if (link) {
++                    node.setPointee(i, live);
++                    counts[1]++;
++                }
++            }
++        }
++    }
++
+     /** True if pointer i of 'node' points to an index node: a key node or a top node. */
+     static boolean pointsToIndexNode(Node node, int i) {
+         switch (node.getType()) {
+@@ -1022,7 +1207,8 @@ public class NodeCollection implements PointerFollower {
+         child.setCanonical(true);
+         child.setDirty(true);
+         c.cache.register(child);
+-        
++        c.pinned(child);        // as Db.makeDirtyIfNeeded does (005-57's prototype, part 2)
++
+         // An internal node whose pointer is a stream pointer to the child's version at 100.
+         KeyNode parent = new KeyNode(false);
+         parent.addToEnd(Klong.createTime(10), null, -1);
