@@ -1,7 +1,6 @@
 #!/bin/sh
-# The size of the Core Layer without its test code, and of what Db needs
-# (bergdb 006-08, "The Core without its tests"). Steps, stopping at the first
-# failure:
+# The Core without its test code: built, used and measured (bergdb 006-08,
+# sections 3 to 5). Steps, stopping at the first failure:
 #   1. A copy of the Core Layer's sources (deps.py) without nanotest, the
 #      tester files and the Pack lists; strip.py removes the test code in the
 #      other files. One line of production code uses nanotest
@@ -9,17 +8,21 @@
 #   2. javac on that copy alone, with an empty class path: bergdb-core-notest.jar.
 #   3. javac on Db.java and DbBuilder.java, with the copy as source path: the
 #      classes that Db and DbBuilder need, directly or not (-implicit:class);
-#      bergdb-core-db.jar, and its size without debug information (-g:none).
-#   4. CoreDemo against bergdb-core-db.jar alone.
-#   5. For comparison: all of java/src and java/src-icu without test code,
+#      bergdb-core-db.jar, its size without debug information (-g:none), and
+#      the JDK modules it needs (jdeps).
+#   4. CoreDemo on bergdb-core-db.jar alone.
+#   5. CoreSame, a fixed workload, on the Core Layer as it is, with its tests
+#      (bergdb-core.jar, as core-build.sh builds it), and on bergdb-core-db.jar:
+#      the same stream, byte for byte, and the same state.
+#   6. For comparison: all of java/src and java/src-icu without test code,
 #      the ICU jar on the class path, not in the jar; bergdb-notest.jar.
-#   6. Lines and code lines (lines.py) of each; closure-lines.txt has each
+#   7. Lines and code lines (lines.py) of each; closure-lines.txt has each
 #      file of step 3.
 #
 # Usage: sh core-size.sh REPO
-#   REPO is a bergdb repository. About 30 s.
+#   REPO is a bergdb repository. About 20 s.
 # Output in $OUT (default: a new temporary directory). Needs a JDK (javac,
-# jar) and python3.
+# jar, jdeps) and python3.
 
 set -e
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -53,6 +56,16 @@ copy_stripped() {
         "$k" "$old" "$new"
 }
 
+# javac on the sources $3... into $1, with the class path $2, nothing else.
+compile() {
+    to=$1 cp=$2
+    shift 2
+    mkdir -p "$to"
+    (cd "$OUT/empty" && javac --release 17 -encoding UTF-8 -nowarn -Xlint:-options \
+        -cp "$cp" -sourcepath "$OUT/empty" -implicit:none -d "$to" "$@") \
+        > "$to.txt" 2>&1 || { cat "$to.txt"; fail "javac into $to"; }
+}
+
 size() {
     wc -c < "$1" | tr -d ' '
 }
@@ -63,18 +76,15 @@ sources_of() {
         sed "s#^#$2/#; s#\$#.java#"
 }
 
-PKGS=$(python3 -I "$HERE/deps.py" "$SRC" core --list | grep -v '^nanotest$')
+LAYER=$(python3 -I "$HERE/deps.py" "$SRC" core --list)
+PKGS=$(echo "$LAYER" | grep -v '^nanotest$')
 mkdir -p "$OUT/empty"
 
 echo "1. The Core Layer without nanotest and test code: $(echo $PKGS)"
 copy_stripped "$OUT/src" $PKGS
 
 echo "2. javac, the copy alone"
-mkdir -p "$OUT/notest"
-(cd "$OUT/empty" && javac --release 17 -encoding UTF-8 -nowarn -Xlint:-options \
-    -cp "$OUT/empty" -sourcepath "$OUT/empty" -implicit:none -d "$OUT/notest" \
-    $(find "$OUT/src" -name '*.java')) > "$OUT/javac-notest.txt" 2>&1 \
-    || { cat "$OUT/javac-notest.txt"; fail "javac on the copy"; }
+compile "$OUT/notest" "$OUT/empty" $(find "$OUT/src" -name '*.java')
 jar cf "$OUT/bergdb-core-notest.jar" -C "$OUT/notest" .
 echo "   $(find "$OUT/src" -name '*.java' | wc -l | tr -d ' ') source files," \
     "$(find "$OUT/notest" -name '*.class' | wc -l | tr -d ' ') classes," \
@@ -95,30 +105,40 @@ echo "   $(wc -l < "$OUT/closure.txt" | tr -d ' ') source files," \
     "$(find "$OUT/db" -name '*.class' | wc -l | tr -d ' ') classes," \
     "bergdb-core-db.jar $(size "$OUT/bergdb-core-db.jar") bytes," \
     "$(size "$OUT/bergdb-core-db-g-none.jar") with -g:none"
+jdeps -summary "$OUT/bergdb-core-db.jar" | sed 's/^/   /'
 
 echo "4. CoreDemo on bergdb-core-db.jar alone"
-mkdir -p "$OUT/user"
-javac --release 17 -Xlint:-options -cp "$OUT/bergdb-core-db.jar" -d "$OUT/user" "$HERE/CoreDemo.java"
-java -ea -cp "$OUT/bergdb-core-db.jar:$OUT/user" CoreDemo "$OUT/demo-db" > "$OUT/demo.txt" 2>&1 \
+mkdir -p "$OUT/user-db"
+javac --release 17 -Xlint:-options -cp "$OUT/bergdb-core-db.jar" -d "$OUT/user-db" \
+    "$HERE/CoreDemo.java" "$HERE/CoreSame.java"
+java -ea -cp "$OUT/bergdb-core-db.jar:$OUT/user-db" CoreDemo "$OUT/demo-db" > "$OUT/demo.txt" 2>&1 \
     || { cat "$OUT/demo.txt"; fail "CoreDemo"; }
 echo "   $(tail -1 "$OUT/demo.txt")"
 
-echo "5. All of java/src and java/src-icu without test code"
+echo "5. CoreSame on the Core Layer with its tests and on bergdb-core-db.jar"
+compile "$OUT/layer" "$OUT/empty" $(for p in $LAYER; do ls "$SRC/bergdb/$(echo $p | tr . /)"/*.java; done)
+jar cf "$OUT/bergdb-core.jar" -C "$OUT/layer" .
+mkdir -p "$OUT/user-layer"
+javac --release 17 -Xlint:-options -cp "$OUT/bergdb-core.jar" -d "$OUT/user-layer" "$HERE/CoreSame.java"
+java -ea -cp "$OUT/bergdb-core.jar:$OUT/user-layer" CoreSame "$OUT/same-layer" > "$OUT/same-layer.txt" 2>&1 \
+    || { cat "$OUT/same-layer.txt"; fail "CoreSame on bergdb-core.jar"; }
+java -ea -cp "$OUT/bergdb-core-db.jar:$OUT/user-db" CoreSame "$OUT/same-db" > "$OUT/same-db.txt" 2>&1 \
+    || { cat "$OUT/same-db.txt"; fail "CoreSame on bergdb-core-db.jar"; }
+cmp -s "$OUT/same-layer.txt" "$OUT/same-db.txt" \
+    || { diff "$OUT/same-layer.txt" "$OUT/same-db.txt"; fail "CoreSame: the two differ"; }
+sed 's/^/   both: /' "$OUT/same-db.txt"
+
+echo "6. All of java/src and java/src-icu without test code"
 ALL=$(cd "$SRC" && find bergdb -name '*.java' | sed 's#/[^/]*$##' | sort -u | tr / . | sed 's/^bergdb\.//')
 copy_stripped "$OUT/all-src" $ALL
-mkdir -p "$OUT/all"
-(cd "$OUT/empty" && javac --release 17 -encoding UTF-8 -nowarn -Xlint:-options \
-    -cp "$ICU" -sourcepath "$OUT/empty" -implicit:none -d "$OUT/all" \
-    $(find "$OUT/all-src" "$REPO/java/src-icu" -name '*.java')) > "$OUT/javac-all.txt" 2>&1 \
-    || { cat "$OUT/javac-all.txt"; fail "javac on all"; }
+compile "$OUT/all" "$ICU" $(find "$OUT/all-src" "$REPO/java/src-icu" -name '*.java')
 jar cf "$OUT/bergdb-notest.jar" -C "$OUT/all" .
 echo "   $(find "$OUT/all-src" "$REPO/java/src-icu" -name '*.java' | wc -l | tr -d ' ') source files," \
     "$(find "$OUT/all" -name '*.class' | wc -l | tr -d ' ') classes," \
     "bergdb-notest.jar $(size "$OUT/bergdb-notest.jar") bytes; the ICU jar $(size "$ICU") bytes"
 
-echo "6. Lines"
-ORIG=$(for p in $(python3 -I "$HERE/deps.py" "$SRC" core --list); do
-    ls "$SRC/bergdb/$(echo $p | tr . /)"/*.java; done)
+echo "7. Lines"
+ORIG=$(for p in $LAYER; do ls "$SRC/bergdb/$(echo $p | tr . /)"/*.java; done)
 echo "   The Core Layer, with its tests:     $(python3 -I "$HERE/lines.py" $ORIG)"
 echo "   The Core Layer, without:            $(python3 -I "$HERE/lines.py" $(find "$OUT/src" -name '*.java'))"
 echo "   What Db and DbBuilder need:         $(python3 -I "$HERE/lines.py" $(cat "$OUT/closure.txt"))"

@@ -3,11 +3,15 @@
    137 source files, 262 classes, bergdb-core-notest.jar 365442 bytes
 3. javac, what Db and DbBuilder need
    121 source files, 234 classes, bergdb-core-db.jar 334892 bytes, 293248 with -g:none
+   bergdb-core-db.jar -> java.base
 4. CoreDemo on bergdb-core-db.jar alone
    CoreDemo OK: the same reads after a restart
-5. All of java/src and java/src-icu without test code
+5. CoreSame on the Core Layer with its tests and on bergdb-core-db.jar
+   both: stream from 7000000 to 14681704, sha-256 67bba63f47ccefb1e0c25ac3f36cf8812561bbb72bbb55179c0f48f409b4e6fe
+   both: latest state, 2691 keys, sha-256 f20b31117b1121223163d23f0fd9d0bc5cff6c433f8eb577f23c5a3b53af5365
+6. All of java/src and java/src-icu without test code
    207 source files, 377 classes, bergdb-notest.jar 520079 bytes; the ICU jar 2021261 bytes
-6. Lines
+7. Lines
    The Core Layer, with its tests:     47770 lines, 31445 code lines
    The Core Layer, without:            27346 lines, 15773 code lines
    What Db and DbBuilder need:         25649 lines, 14677 code lines

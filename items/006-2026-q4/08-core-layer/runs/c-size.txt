@@ -1,0 +1,5 @@
+LMDB, arm64                     8339 code lines    52691 bytes   6.3 bytes a line
+littlefs, arm64                 5419 code lines    26158 bytes   4.8 bytes a line
+littlefs, Cortex-M4             5419 code lines    18850 bytes   3.5 bytes a line
+SQLite, arm64                 165015 code lines   730989 bytes   4.4 bytes a line
+C SIZE OK (output: $OUT)

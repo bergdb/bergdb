@@ -1,7 +1,7 @@
 1. The Core Layer's packages against their package.html
    7 packages checked, all as package.html allows: common core dag nanotest pub.util storage stream
 2. javac, the Core Layer alone
-   175 source files, 415 classes, bergdb-core.jar 680415 bytes
+   175 source files, 415 classes, bergdb-core.jar 680421 bytes
 3. jdeps
    bergdb-core.jar -> java.base
    bergdb-core.jar -> java.management
@@ -12,6 +12,6 @@
    getTrans: the latest apple's transaction is the second one
    CoreDemo OK: the same reads after a restart
 5. The Core Layer's tests
-   unit: SUCCESS, 648 successful tests in 7.8 s.
-   f: SUCCESS, 52 successful tests in 68.5 s.
+   unit: SUCCESS, 648 successful tests in 7.7 s.
+   f: SUCCESS, 52 successful tests in 67.7 s.
 CORE BUILD OK (output: $OUT)
