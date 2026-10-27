@@ -139,12 +139,12 @@ The work in threads of BergDB's own today, all fine as it is (Frans,
   is buffered (005-14).
 * A get or a commit that needs memory: the eviction thread,
   `bergdb-evictor`, one per database (009, decision T5a), is started or
-  woken. A thread is fine (Frans, 2026-10-26). But when idle it waits with
-  a timeout, `evictorLock.wait(1000)` in `Eviction.EvictorRun`, to see
-  whether the database has stopped: one wake-up a second, as long as the
-  database is open. A departure from "no wake-ups", registered as
-  [005-51](../005-todo/51-eviction-on-calls.md): eviction only in response
-  to the calls.
+  woken. A thread is fine (Frans, 2026-10-26). When idle it waits with no
+  timeout; the database's close wakes it, and it ends
+  ([005-51](../005-todo/51-eviction-on-calls.md), 2026-10-27). Until then
+  it waited with a timeout, `evictorLock.wait(1000)`, to see whether the
+  database had stopped: one wake-up a second, as long as the database was
+  open.
 * Adding or deleting an index: a job in a thread of its own
   (`IndexBuilderImp.createInThread`, the `-delete-` thread of
   `DatabaseImp`).

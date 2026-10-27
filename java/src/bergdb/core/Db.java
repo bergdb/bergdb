@@ -1241,8 +1241,9 @@ public class Db {
     /**
      * The one close of the database (2026-10-24, bergdb 005-35), for stop(), close() and a
      * start that throws: takes the write lock, so that a transaction that runs completes and
-     * is written (no transaction starts after it, as the state is STOPPING), then closes the
-     * storage, which writes what is buffered, closes the streams and ends their threads.
+     * is written (no transaction starts after it, as the state is STOPPING), ends the eviction
+     * thread (bergdb 005-51), then closes the storage, which writes what is buffered, closes
+     * the streams and ends their threads.
      * 
      * @return The first failure of a stream's close, such as a failed flush, or null.
      */
@@ -1251,6 +1252,8 @@ public class Db {
             synchronized (writeLock) {
                 // A transaction that runs has ended.
             }
+            // The eviction thread waits with no timeout; it ends now (bergdb 005-51).
+            eviction.endThread(!Thread.holdsLock(writeLock));
             storageManager.closeAndThrow();
             return null;
         } catch (IOException e) {

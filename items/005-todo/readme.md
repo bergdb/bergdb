@@ -33,7 +33,6 @@ Open
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
 | [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits starts the flush, instead of waiting for `BufferedStream`'s timer; one thread's durable commit from 35 ms to about one force (005-13's question 5) | open |
 | [005-49](49-smooth-index-writes.md) | Investigate | Smooth index writes: at large startup distances the index is written in bursts (10M keys, 1000 MB: windows of 70 to 1,100 bytes a put); a commit's index writes should follow its own size. Before 007-03's step 3 (005-38) | open |
-| [005-51](51-eviction-on-calls.md) | Fix | Eviction only in response to the calls: the eviction thread wakes once a second while the database is open, also when idle (`evictorLock.wait(1000)`), against 010-P3, calm when not used | open |
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API sets it only at start (`cacheSizeInMb`), against 010-P6; the core has `Eviction.setBudget` (also through JMX). The cache should converge gradually to the new size, with no disruption | open |
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
@@ -47,6 +46,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-51](51-eviction-on-calls.md) | Fix | Eviction only in response to the calls: the eviction thread woke once a second while the database was open, also when idle (`evictorLock.wait(1000)`), against 010-P3. Now it waits with no timeout, the database's close wakes it, and `close()` returns after it has ended | done | 2026-10-27 |
 | [005-57](57-startup-header-reads.md) | Investigate | Startup without rule 4's header reads: a cold start at 10M keys took minutes on s1, most of it rule 4's reads of a header for each stream pointer of D's nodes (007-05). Rule 4 now finds a pointer's node by its position (the startup section's `posToId`, the canonical objects' positions), with no read but for a top node's pointer, checked against rule 4 by node id at every startup of the tests; with it, in the prototype, a cold start on s1 at 10M keys took about 46 and 51 s at 50 and 200 MB, where it took 214 and 210 s. Part 1 of the report; part 2, the writer's reads, not made (Frans: "Part 1 alone") | done | 2026-10-27 |
 | [005-55](55-fix-finalize.md) | Fix | The note of deprecated API that every build printed: `finalize()` (six uses) and `Class.newInstance()` (two). `Db.finalize()` stopped a database that the application dropped without `stop()`, as the Pub API promised. Decided 2026-10-27: no safety net. Now `stop()` or `close()` is required (the Javadoc of `Db` and of `Database.stop()`), the 188 unit and f-tests that left a database running stop it, and so do two night tests and two stress programs, which ran out of memory without `finalize()`; `bergdb.dev.Unit`, `F` and `Night` fail when a test leaves one; `ValueNodeTotalMem` deleted, `newInstance()` replaced; `build.sh` prints no note (Frans: "finalize() need to go") | done | 2026-10-27 |
 | [005-50](50-fix-node-size-start.md) | Fix | A start with another node size than the stream was written with failed with what looked like a corrupt stream (`StreamFormatException: startup error, node ... not found`), or started, and could then leave a stream that no start opened, with either size. Now the size is in every meta block, 2 bytes at offset 44 that were reserved (so no new version: release 2026.1 starts a new database), and a start refuses another size with a `StreamFormatException` that says what to do, and a database without one, written before, with a `VersioningStreamException`, before recovery writes (005-38) | done | 2026-10-27 |
@@ -110,8 +110,8 @@ is done, which 005-33's change needed; 005-33 is decided, A, and done. 005-35,
 005-41 is decided: not now. 005-42 is decided, A1 and B2, and done, and so
 is 005-45. 005-11 is kept as it is for release 2026.1, documented as
 experimental; its decision waits for Frans. 005-55 is done; it did not
-change the eviction thread, so 005-51 does not depend on it. 005-57 is
-done (part 1); 005-58, its Lean theorem, can go any time.
+change the eviction thread, so 005-51 does not depend on it; 005-51 is
+done. 005-57 is done (part 1); 005-58, its Lean theorem, can go any time.
 
 
 Files
@@ -265,6 +265,9 @@ Files
   size in the meta block, proposed, decided and done; the probes, their
   runs and the first prototype in
   [50-fix-node-size-start/](50-fix-node-size-start/).
+* [51-eviction-on-calls.md](51-eviction-on-calls.md). 005-51, eviction
+  only in response to the calls: the eviction thread's wake-up a second,
+  against 010-P3, the questions, the outcome; done.
 * [54-open-bounds.md](54-open-bounds.md). 005-54, the bounds still open in
   the problem statement (011-01): Q1, Q2, Q3, Q5 and Q8; open.
 * [55-fix-finalize.md](55-fix-finalize.md). 005-55, the deprecated API in
@@ -1068,3 +1071,9 @@ file with the next release's notes (Frans: "Good catch. Add a file to
 bergdb/releases/ with this note."; "Sure, add limited release notes.": also
 005-46, 005-50 and 005-57); question 4 left as it is (Frans). No change to
 `java/`.
+
+2026-10-27. 005-51 done, by Claude (Opus 5.5, Claude Code), at Frans's
+request (006-09, W4: "yes, put it in java and commit."): the eviction
+thread waits with no timeout when idle, the database's close wakes it, and
+`close()` returns after it has ended. A unit test that fails on the code
+before; `before-commit.sh` and `level4.sh` (full) pass.

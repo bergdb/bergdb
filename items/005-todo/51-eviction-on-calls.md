@@ -1,7 +1,7 @@
 005-51. Eviction only in response to the calls
 ==============================================
 
-Status: open. Kind: fix. Created 2026-10-26.
+Status: done (2026-10-27; see Outcome). Kind: fix. Created 2026-10-26.
 
 Found in [010-01](../010-principles/01-principles.md), 010-P3 ("Calm when
 not used"), by Claude (Opus 5.5, Claude Code); registered at Frans's request
@@ -89,3 +89,47 @@ Size and order
 
 S for question 1: about 10 lines in `Eviction` and `Db.stop()`, and a
 test. Questions 2 and 3 may grow it.
+
+
+Outcome
+-------
+
+2026-10-27, by Claude (Opus 5.5, Claude Code), at Frans's request ("yes,
+put it in java and commit."; 006-09, W4), in a clone on `07b6375`.
+
+* Question 1: a wait with no timeout. `Eviction.EvictorRun` waits for the
+  next request with `evictorLock.wait()`. The database's close wakes it:
+  `Db.closeStorage()`, which `stop()`'s closing thread, `close()` and a
+  failed start run, calls the new `Eviction.endThread(wait)` once the
+  state is `STOPPING` and a running transaction has ended. It wakes the
+  thread, which sees that the database is no longer active and ends, and
+  waits until it has ended; only wakes it when the close runs inside a
+  transaction, as a batch takes the write lock that the close then holds.
+  So `close()` returns after the thread has ended, also after `stop()`.
+  No wake-up is lost: the thread reads the state under `evictorLock`
+  before each wait, and the close sets the state before it takes that
+  lock. The other option, a thread that ends when it has nothing to do,
+  would start a thread for each burst of loads; one thread a database is
+  009's decision T5a.
+* Question 2: what one wake buys is limited, as 010-P4 asks, and nothing
+  changed. Each batch ends after at most `BATCH_NANOS` (2 ms) under the
+  write lock, a writer that waits goes first, and the batches stop when
+  the resident bytes are at most the trigger or a batch frees nothing.
+  Their sum follows the bytes that the calls loaded.
+* Question 3: not done, as the scope says.
+* The test, `Eviction.testEvictionThreadIdleUntilClose` (unit, about 0.1
+  s): loads start the thread under a small budget; idle, the thread must
+  be in `Thread.State.WAITING`, a wait with no timeout, and `close()`, with
+  and without `stop()` first, returns after it has ended. On the code
+  before, it fails: the idle thread was in `TIMED_WAITING`.
+* BergDB's other threads, read for the first point of "Done when":
+  `BufferedStream`'s consumer waits with no timeout when nothing is
+  buffered (005-14); `FileStream-cut` (005-46) ends when nothing is left
+  to delete; the JMX monitor (`DBMonitor.MThread`, a sleep of a second)
+  runs only when an application starts it (`Jmx.registerAndStart()`). A
+  sync waits with `wait(500)` on `StorageManager`'s locks, but only while
+  a call waits for durability. The per-process wake-ups of an idle
+  database, by 005-14's `procstat.c`, are in 006-09 (W4).
+* `before-commit.sh` prints `BEFORE COMMIT OK` (1,044 unit tests, 73
+  f-tests, 128 s), and `level4.sh` in full passes (`LEVEL 4 OK`, 16
+  minutes), on `07b6375` with the change.

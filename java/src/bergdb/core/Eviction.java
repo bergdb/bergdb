@@ -397,9 +397,37 @@ public final class Eviction {
     }
 
     /**
+     * Ends the eviction thread, for the close of a database that is no longer active (bergdb
+     * 005-51): wakes it, so that it sees that and ends at once, and with wait, waits until it
+     * has ended, through an interrupt, whose flag it keeps, as close() does. Not with wait
+     * while the write lock is held: a batch takes it.
+     */
+    public void endThread(boolean wait) {
+        Thread t;
+        synchronized (evictorLock) {
+            evictorLock.notifyAll();
+            t = evictor;
+        }
+        if (!wait || t == null || t == Thread.currentThread()) return;
+        boolean interrupted = false;
+        while (true) {
+            try {
+                t.join();
+                break;
+            } catch (InterruptedException e) {
+                interrupted = true;
+            }
+        }
+        if (interrupted) Thread.currentThread().interrupt();
+    }
+
+    /**
      * The eviction thread: when a reader or the writer asks, batches until the resident bytes
      * are at most the trigger, each under the write lock. It ends when the database is no
-     * longer active, at most a second later, and the next request starts a new one.
+     * longer active. Between requests it waits with no timeout, so that the thread of a
+     * database that is not used does not wake (010-P3, bergdb 005-51); the database's close
+     * wakes it (endThread). Until 005-51 it woke once a second, to see whether the database
+     * had stopped.
      */
     private final class EvictorRun implements Runnable {
         private final Db db;
@@ -418,7 +446,7 @@ public final class Eviction {
                             return;
                         }
                         try {
-                            evictorLock.wait(1000);
+                            evictorLock.wait();
                         } catch (InterruptedException e) {
                             evictor = null;
                             return;
@@ -1175,5 +1203,54 @@ public final class Eviction {
         // Until bergdb item 009, step 3a: a value named by two slots (shared > 0). Values
         // are no longer in the node table, so two leaves that load a value get a copy each;
         // a value is shared only where a split copies a pointer that holds it.
+    }
+
+    /**
+     * Eviction only in response to the calls (bergdb 005-51, 010-P3): the eviction thread,
+     * started by the loads of reads, waits for the next request with no timeout, so that the
+     * thread of a database that is not used does not wake; the close ends it, and close()
+     * returns after it has ended, also after stop(). Until 005-51 it woke once a second, to
+     * see whether the database had stopped.
+     */
+    @Nano
+    public static void testEvictionThreadIdleUntilClose() throws InterruptedException {
+        for (int stopFirst = 0; stopFirst < 2; stopFirst++) {
+            MemoryStream s = new MemoryStream();
+            CoreTestClock clock = new CoreTestClock();
+            Db db = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
+                    .startupDistance(200).cacheSizeIndicator(4 * 1000)
+                    .evictionSchedule(Schedule.BUDGET, 1).audit(0).start();
+            long time = 100 * STEP;
+            for (int i = 0; i < 300; i++) {
+                time += STEP;
+                clock.setTime(time);
+                db.execute(db.trans().put("k" + i, "value " + i).build());
+            }
+            Eviction e = db.internal().eviction();
+            Thread t = null;
+            for (int round = 0; round < 10 && t == null; round++) {
+                for (int i = 0; i < 300; i++) DbUtil.get(db, "k" + i);     // loads
+                synchronized (e.evictorLock) {
+                    t = e.evictor;
+                }
+            }
+            Assert.assertTrue("the loads started the eviction thread", t != null);
+            e.awaitBatch();
+            long end = System.nanoTime() + 2000L * 1000 * 1000;
+            while (!idle(e, t) && System.nanoTime() < end) {
+                Thread.sleep(1);
+            }
+            Assert.assertTrue("idle, the thread waits with no timeout: " + t.getState(), idle(e, t));
+            if (stopFirst == 1) db.stop();
+            db.close();
+            Assert.assertTrue("the thread ended with the close", !t.isAlive());
+        }
+    }
+
+    /** Whether the eviction thread t waits for a request with no timeout (005-51's test). */
+    private static boolean idle(Eviction e, Thread t) {
+        synchronized (e.evictorLock) {
+            return !e.wanted && !e.running && t.getState() == Thread.State.WAITING;
+        }
     }
 }

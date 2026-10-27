@@ -1280,3 +1280,13 @@ keys took about 46 and 51 s at 50 and 200 MB. Not done: the writer's reads
 of the same headers (part 2) and the rerun's loads. Tests;
 `before-commit.sh`, `level2.sh` (full, and quick on the tree committed on)
 and `level4.sh quick` pass.
+
+2026-10-27. 005-51 done, by Claude (Opus 5.5, Claude Code), at Frans's
+request (006-09, W4): the eviction thread wakes only for the calls. Idle,
+it waits with no timeout; it woke once a second to see whether the
+database had stopped, against 010-P3. The database's close wakes it
+(`Eviction.endThread`, from `Db.closeStorage`), and `close()` returns
+after it has ended, also after `stop()`. A unit test,
+`Eviction.testEvictionThreadIdleUntilClose`, fails on the code before.
+`before-commit.sh` (1,044 unit tests, 73 f-tests) and `level4.sh` (full)
+pass.
