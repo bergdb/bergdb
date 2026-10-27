@@ -1103,4 +1103,416 @@ theorem HMem.withRoot_evict {oc oe : HObj V} (hra : m.obj? m.root = some oe) (D 
 
 end EvictSim
 
+/-! ## The change on a memory with another root object -/
+
+section ChangeSim
+
+variable {sp : Spec V T} {P P' : Struct V} {j : Time} {m : HMem V} {oc oe : HObj V}
+
+theorem srcOKH_congrP (hReach : ∀ x, reachable sp P' (j - 1) x = reachable sp P (j - 1) x)
+    (hProot : (P'.get? root).map (fun n => sp.live (n.hist.upTo (j - 1))) =
+      (P.get? root).map (fun n => sp.live (n.hist.upTo (j - 1)))) (y : NodeId) (p : Nat × HObj V) :
+    srcOKH sp P' j y p = srcOKH sp P j y p := by
+  unfold srcOKH
+  rw [hReach]
+  by_cases hn : p.2.node = root
+  · rw [hn]
+    cases h1 : P'.get? root <;> cases h2 : P.get? root <;> rw [h1, h2] at hProot <;> simp at hProot
+    all_goals first | rfl | simp [hProot]
+  · simp [written_of_ne_root sp hn]
+
+theorem srcOKH_rootRel {f : Time} (hReach : ∀ x, reachable sp P' (j - 1) x = reachable sp P (j - 1) x)
+    (hProot : (P'.get? root).map (fun n => sp.live (n.hist.upTo (j - 1))) =
+      (P.get? root).map (fun n => sp.live (n.hist.upTo (j - 1))))
+    (hPr : ∀ n, P.get? root = some n → ∀ y ∈ sp.live (n.hist.upTo (j - 1)),
+      y ∈ pointees sp oc.hist ∧ y ∈ pointees sp oe.hist)
+    (hr : RootRelH sp f oc oe) (hnode : oe.node = root) (y : NodeId) (r : Nat) :
+    srcOKH sp P' j y (r, oc) = srcOKH sp P j y (r, oe) ∧
+      (srcOKH sp P j y (r, oe) = true → oc.ptr? y = oe.ptr? y) := by
+  cases hv : sp.virt with
+  | false =>
+    rw [hr.nv hv]
+    exact ⟨srcOKH_congrP hReach hProot y _, fun _ => rfl⟩
+  | true =>
+    have hnc : oc.node = root := by rw [hr.node]; exact hnode
+    have hw : written sp root = false := by simp [written, hv]
+    unfold srcOKH
+    simp only [hnc, hnode, hw, Bool.false_or, hReach]
+    cases h2 : P.get? root with
+    | none =>
+      have h1 : P'.get? root = none := by
+        rw [h2] at hProot; cases h1 : P'.get? root <;> rw [h1] at hProot <;> simp at hProot ⊢
+      rw [h1]; simp
+    | some n =>
+      obtain ⟨n', h1, hl⟩ : ∃ n', P'.get? root = some n' ∧
+          sp.live (n'.hist.upTo (j - 1)) = sp.live (n.hist.upTo (j - 1)) := by
+        rw [h2] at hProot
+        cases h1 : P'.get? root <;> rw [h1] at hProot <;> simp at hProot
+        exact ⟨_, rfl, hProot⟩
+      rw [h1]
+      simp only [hl]
+      by_cases hy : y ∈ sp.live (n.hist.upTo (j - 1))
+      · obtain ⟨hyc, hye⟩ := hPr n h2 y hy
+        have hs := hr.ptrs y hyc
+        refine ⟨?_, fun _ => hs⟩
+        rw [hs, hr.canonical]
+        simp [hyc, hye]
+      · exact ⟨by simp [hy], fun h => by simp [hy] at h⟩
+
+theorem srcPtrH_withRoot {f : Time} (hReach : ∀ x, reachable sp P' (j - 1) x = reachable sp P (j - 1) x)
+    (hProot : (P'.get? root).map (fun n => sp.live (n.hist.upTo (j - 1))) =
+      (P.get? root).map (fun n => sp.live (n.hist.upTo (j - 1))))
+    (hPr : ∀ n, P.get? root = some n → ∀ y ∈ sp.live (n.hist.upTo (j - 1)),
+      y ∈ pointees sp oc.hist ∧ y ∈ pointees sp oe.hist)
+    (hnd : (m.objs.map (·.1)).Nodup) (hra : m.obj? m.root = some oe) (hr : RootRelH sp f oc oe)
+    (hnode : oe.node = root) (y : NodeId) :
+    srcPtrH sp P' j (m.withRoot oc) y = srcPtrH sp P j m y := by
+  unfold srcPtrH HMem.withRoot
+  simp only
+  rw [List.find?_map]
+  have hcongr : m.objs.find? (srcOKH sp P' j y ∘ (fun p => if p.1 == m.root then (m.root, oc) else p)) =
+      m.objs.find? (srcOKH sp P j y) := by
+    apply find?_congr_of_mem
+    intro p hp
+    simp only [Function.comp]
+    by_cases he : p.1 = m.root
+    · have hpo : p.2 = oe := by
+        have := lookup_of_mem m.objs hnd p hp
+        rw [he] at this
+        exact Option.some.inj (this.symm.trans hra)
+      obtain ⟨a, b⟩ := p
+      simp only at he hpo
+      subst he hpo
+      simp only [beq_self_eq_true, ↓reduceIte]
+      exact (srcOKH_rootRel hReach hProot hPr hr hnode y _).1
+    · have : (p.1 == m.root) = false := by simp [he]
+      simp only [this, Bool.false_eq_true, ↓reduceIte]
+      exact srcOKH_congrP hReach hProot y p
+  rw [hcongr]
+  cases hf : m.objs.find? (srcOKH sp P j y) with
+  | none => rfl
+  | some p =>
+    simp only [Option.map_some, Option.bind_some]
+    by_cases he : p.1 = m.root
+    · have hp := List.mem_of_find?_eq_some hf
+      have hpo : p.2 = oe := by
+        have := lookup_of_mem m.objs hnd p hp
+        rw [he] at this
+        exact Option.some.inj (this.symm.trans hra)
+      have hsrc := List.find?_some hf
+      obtain ⟨a, b⟩ := p
+      simp only at he hpo hsrc
+      subst he hpo
+      simp only [beq_self_eq_true, ↓reduceIte]
+      exact (srcOKH_rootRel hReach hProot hPr hr hnode y _).2 hsrc
+    · have : (p.1 == m.root) = false := by simp [he]
+      simp only [this, Bool.false_eq_true, ↓reduceIte]
+
+theorem canPtrH_withRoot (hra : m.obj? m.root = some oe) (hc : oc.canonical = oe.canonical)
+    (hpos : oc.pos = oe.pos) (y : NodeId) : canPtrH (m.withRoot oc) y = canPtrH m y := by
+  unfold canPtrH
+  rw [HMem.withRoot_canonicalOf hra hc]
+  cases m.canonicalOf y with
+  | none => rfl
+  | some b =>
+    simp only [Option.map_some, HMem.withRoot_tableOf]
+    by_cases hb : b = m.root
+    · subst hb; rw [HMem.withRoot_obj?_root hra, hra]; simp [hpos]
+    · rw [HMem.withRoot_obj?_ne hb]
+
+theorem NSH_withRoot {f : Time} (hReach : ∀ x, reachable sp P' (j - 1) x = reachable sp P (j - 1) x)
+    (hProot : (P'.get? root).map (fun n => sp.live (n.hist.upTo (j - 1))) =
+      (P.get? root).map (fun n => sp.live (n.hist.upTo (j - 1))))
+    (hPr : ∀ n, P.get? root = some n → ∀ y ∈ sp.live (n.hist.upTo (j - 1)),
+      y ∈ pointees sp oc.hist ∧ y ∈ pointees sp oe.hist)
+    (hnd : (m.objs.map (·.1)).Nodup) (hra : m.obj? m.root = some oe) (hr : RootRelH sp f oc oe)
+    (hnode : oe.node = root) (y : NodeId) :
+    NSH sp P' j (m.withRoot oc) y = NSH sp P j m y := by
+  unfold NSH
+  rw [canPtrH_withRoot hra hr.canonical hr.pos, srcPtrH_withRoot hReach hProot hPr hnd hra hr hnode]
+
+theorem updObjH_congr {m1 m1' : HMem V} (hns : ∀ y, NSH sp P' j m1' y = NSH sp P j m1 y) (o : HObj V) (v : V) :
+    updObjH sp P' j m1' o v = updObjH sp P j m1 o v := by
+  unfold updObjH
+  generalize ({ o with hist := o.hist ++ [⟨j, v⟩] } : HObj V) = o1
+  induction (sp.ptrs v) generalizing o1 with
+  | nil => rfl
+  | cons y L ih =>
+    simp only [List.foldl_cons]
+    have : upd1H sp P' j m1' o1 y = upd1H sp P j m1 o1 y := by
+      unfold upd1H
+      rw [newPtr_eq, newPtr_eq, hns y]
+    rw [this, ih]
+
+theorem addNewH_withRoot (hne : m.nextObj ≠ m.root) (nn : NewNode) :
+    addNewH (m.withRoot oc) nn = (addNewH m nn).withRoot oc := by
+  unfold addNewH addNewH0 HMem.withRoot HMem.setHandle HMem.setTable
+  have : (m.nextObj == m.root) = false := by simp [hne]
+  simp only [List.map_cons, this, Bool.false_eq_true, ↓reduceIte]
+
+theorem foldl_addNewH_withRoot (N : List NewNode) :
+    ∀ (m : HMem V), m.root < m.nextObj → N.foldl addNewH (m.withRoot oc) = (N.foldl addNewH m).withRoot oc := by
+  induction N with
+  | nil => intro m _; rfl
+  | cons nn N ih =>
+    intro m hlt
+    simp only [List.foldl_cons]
+    rw [addNewH_withRoot (by omega)]
+    exact ih _ (by show m.root < m.nextObj + 1; omega)
+
+/-- A virtual root's new entry, for a new root child z, with the pointer to z's
+object, the same in both. -/
+theorem RootRelH.addRoot (hvl : VirtLiveOK sp) (hv : sp.virt = true) {f : Time} (hr : RootRelH sp f oc oe)
+    (hvalsE : ∀ e ∈ oe.hist, ∃ z, e.val = sp.rootVal z) {e : Entry V} {z : NodeId}
+    (hez : e.val = sp.rootVal z) (hptr : sp.ptrs (sp.rootVal z) = [z]) (p : HPtr) :
+    RootRelH sp f ({ oc with hist := oc.hist ++ [e] }.putPtr z p) ({ oe with hist := oe.hist ++ [e] }.putPtr z p) := by
+  have hcore : ∀ o : HObj V, (o.putPtr z p).core = o.core := fun o => HObj.putPtr_core o z p
+  have hhist : ∀ o : HObj V, (o.putPtr z p).hist = o.hist := fun o => congrArg (fun c => c.2.2.2.1) (hcore o)
+  have hnode : ∀ o : HObj V, (o.putPtr z p).node = o.node := fun o => congrArg (fun c => c.1) (hcore o)
+  have hlevel : ∀ o : HObj V, (o.putPtr z p).level = o.level := fun o => congrArg (fun c => c.2.1) (hcore o)
+  have hdata : ∀ o : HObj V, (o.putPtr z p).isData = o.isData := fun o => congrArg (fun c => c.2.2.1) (hcore o)
+  have hcan : ∀ o : HObj V, (o.putPtr z p).canonical = o.canonical :=
+    fun o => congrArg (fun c => c.2.2.2.2.1) (hcore o)
+  have hpos : ∀ o : HObj V, (o.putPtr z p).pos = o.pos := fun o => congrArg (fun c => c.2.2.2.2.2) (hcore o)
+  have hmem : ∀ y, y ∈ pointees sp (oc.hist ++ [e]) → y ∈ pointees sp oc.hist ∨ y = z := by
+    intro y hy
+    rcases pointees_append_mem hy with h | h
+    · exact Or.inl h
+    · rw [mem_pointees] at h
+      obtain ⟨e', he', hy'⟩ := h
+      rw [List.mem_singleton.mp he', hez, hptr] at hy'
+      exact Or.inr (List.mem_singleton.mp hy')
+  refine ⟨fun h => absurd h (by simp [hv]), by rw [hnode, hnode]; exact hr.node,
+    by rw [hlevel, hlevel]; exact hr.level, by rw [hdata, hdata]; exact hr.isData,
+    by rw [hcan, hcan]; exact hr.canonical, by rw [hpos, hpos]; exact hr.pos, ?_, ?_, ?_, ?_, ?_⟩
+  · intro t ht
+    rw [hhist, hhist]
+    simp only
+    rw [upTo_append, upTo_append]
+    by_cases het : e.time ≤ t
+    · have h1 : History.upTo [e] t = [e] := by simp [History.upTo, het]
+      rw [h1]
+      have hvc : ∀ e' ∈ oc.hist.upTo t ++ [e], ∃ z, e'.val = sp.rootVal z := by
+        intro e' he'
+        rcases List.mem_append.mp he' with h | h
+        · exact hr.vals hv e' (mem_upTo.mp h).1
+        · rw [List.mem_singleton.mp h]; exact ⟨z, hez⟩
+      have hve : ∀ e' ∈ oe.hist.upTo t ++ [e], ∃ z, e'.val = sp.rootVal z := by
+        intro e' he'
+        rcases List.mem_append.mp he' with h | h
+        · exact hvalsE e' (mem_upTo.mp h).1
+        · rw [List.mem_singleton.mp h]; exact ⟨z, hez⟩
+      rw [hvl hv _ hvc, hvl hv _ hve]
+      simp
+    · have h1 : History.upTo [e] t = [] := by simp [History.upTo, het]
+      rw [h1, List.append_nil, List.append_nil]
+      exact hr.live t ht
+  · intro y hy
+    rw [hhist] at hy
+    simp only at hy
+    rw [HObj.ptr?_putPtr, HObj.ptr?_putPtr]
+    split
+    · rfl
+    · rename_i hyz
+      rcases hmem y hy with h | h
+      · exact hr.ptrs y h
+      · exact absurd h hyz
+  · intro _ y hy
+    rw [hhist] at hy
+    simp only at hy
+    rw [HObj.ptr?_putPtr]
+    split
+    · rename_i hyz
+      subst hyz
+      exact absurd (by rw [mem_pointees]; exact ⟨e, by simp, by rw [hez, hptr]; simp⟩) hy
+    · have : y ∉ pointees sp oc.hist := fun h =>
+        hy (by rw [mem_pointees] at h ⊢; obtain ⟨e', he', h'⟩ := h; exact ⟨e', by simp [he'], h'⟩)
+      exact hr.noPtr hv y this
+  · intro _ e' he'
+    rw [hhist] at he'
+    simp only at he'
+    rcases List.mem_append.mp he' with h | h
+    · exact hr.vals hv e' h
+    · rw [List.mem_singleton.mp h]; exact ⟨z, hez⟩
+  · intro _ y hy
+    rw [hhist]
+    simp only
+    rw [HObj.ptr?_putPtr] at hy
+    split at hy
+    · rename_i hyz
+      subst hyz
+      rw [mem_pointees]; exact ⟨e, by simp, by rw [hez, hptr]; simp⟩
+    · have := hr.keysE hv y hy
+      rw [mem_pointees] at this ⊢
+      obtain ⟨e', he', h'⟩ := this
+      exact ⟨e', by simp [he'], h'⟩
+
+/-- Without a virtual root, an object and itself. -/
+theorem RootRelH.ofNV (hv : sp.virt = false) (f : Time) (o : HObj V) : RootRelH sp f o o :=
+  ⟨fun _ => rfl, rfl, rfl, rfl, rfl, rfl, fun _ _ => rfl, fun _ _ => rfl,
+    fun h => absurd h (by simp [hv]), fun h => absurd h (by simp [hv]), fun h => absurd h (by simp [hv])⟩
+
+/-- Setting an object as canonical as the old one keeps every node's canonical
+object. -/
+theorem HMem.canonicalOf_setObj_can {a : Nat} {o o' : HObj V} (ho : m.obj? a = some o)
+    (hc : o'.canonical = o.canonical) (y : NodeId) : (m.setObj a o').canonicalOf y = m.canonicalOf y := by
+  unfold HMem.canonicalOf HMem.tableOf HMem.objOf HMem.handle?
+  simp only [HMem.setObj_table, HMem.setObj_handles]
+  cases (m.table.lookup y).bind (fun n => (m.handles.lookup n).bind (·.obj)) with
+  | none => rfl
+  | some b =>
+    simp only
+    by_cases hb : b = a
+    · subst hb
+      rw [HMem.obj?_setObj_self, ho]
+      simp [hc]
+    · rw [HMem.obj?_setObj_ne _ _ hb]
+
+/-- The change of a transaction on the memory with another root object, with a
+structure P' that agrees with P on what is reachable at the last time and on
+the root's live children then: the same, and the root objects change the same
+way (with a virtual root, the root's new entries are for new root children). -/
+theorem HMem.withRoot_applyChange {db : DB V T} {S0 : Stream V T} {k : Nat} (hvl : VirtLiveOK sp)
+    (hinv : Inv sp db k) (hm : HEInv sp db S0 k m) {f : Time} {c : Changes V}
+    (hstep : StepOK sp db.P (k + 1) c)
+    (hReach : ∀ x, reachable sp P' (k + 1 - 1) x = reachable sp db.P (k + 1 - 1) x)
+    (hProot : (P'.get? SIS.root).map (fun n => sp.live (n.hist.upTo (k + 1 - 1))) =
+      (db.P.get? SIS.root).map (fun n => sp.live (n.hist.upTo (k + 1 - 1))))
+    (hPr : ∀ n, db.P.get? SIS.root = some n → ∀ y ∈ sp.live (n.hist.upTo (k + 1 - 1)),
+      y ∈ pointees sp oc.hist ∧ y ∈ pointees sp oe.hist)
+    (hradds : sp.virt = true → ∀ a ∈ c.adds, a.1 = SIS.root → ∃ nn ∈ c.new, a.2 = sp.rootVal nn.id)
+    (hptrs : sp.virt = true → ∀ z, sp.ptrs (sp.rootVal z) = [z])
+    (hra : m.obj? m.root = some oe) (hr : RootRelH sp f oc oe)
+    (hvalsE : sp.virt = true → ∀ e ∈ oe.hist, ∃ z, e.val = sp.rootVal z) :
+    ∃ oc' oe', RootRelH sp f oc' oe' ∧ (m.applyChange sp db.P (k + 1) c).obj? m.root = some oe' ∧
+      (sp.virt = true → ∀ e ∈ oe'.hist, ∃ z, e.val = sp.rootVal z) ∧
+      (∃ X, oc'.hist = oc.hist ++ X ∧ oe'.hist = oe.hist ++ X) ∧
+      (m.withRoot oc).applyChange sp P' (k + 1) c = (m.applyChange sp db.P (k + 1) c).withRoot oc' := by
+  have haf := hm.addFactsH hinv hstep
+  obtain ⟨o0, ho0, -, hn0⟩ := hm.root
+  rw [hra, Option.some.injEq] at ho0
+  subst ho0
+  have hlt : m.root < m.nextObj := Nat.lt_of_not_le (fun hle => by rw [hm.freshO _ hle] at hra; cases hra)
+  rw [applyChangeH_eq, applyChangeH_eq, foldl_addNewH_withRoot c.new m hlt]
+  have hr1 : (c.new.foldl addNewH m).root = m.root := haf.root
+  have hra1 : (c.new.foldl addNewH m).obj? m.root = some oe := by rw [haf.old _ hlt]; exact hra
+  have hnd1 := haf.nodup
+  have hns : ∀ y, NSH sp P' (k + 1) ((c.new.foldl addNewH m).withRoot oc) y =
+      NSH sp db.P (k + 1) (c.new.foldl addNewH m) y :=
+    NSH_withRoot hReach hProot hPr hnd1 (by rw [hr1]; exact hra1) hr hn0
+  have htbl1 : ∀ y b, (c.new.foldl addNewH m).canonicalOf y = some b → b = m.root → y = SIS.root := by
+    intro y b hc he
+    obtain ⟨o, ho, hon, -⟩ := haf.tbl.canonicalOf_node hc
+    rw [he, hra1, Option.some.injEq] at ho
+    subst ho
+    rw [← hon, hn0]
+  have hcanNew : ∀ nn ∈ c.new, ∃ hn, (c.new.foldl addNewH m).canonicalOf nn.id = some hn := by
+    intro nn hnn
+    obtain ⟨a, n, -, -, -, hc, -⟩ := haf.canNew nn hnn
+    exact ⟨a, hc⟩
+  generalize hm1 : c.new.foldl addNewH m = m1 at hr1 hra1 hnd1 hns htbl1 hcanNew
+  have key : ∀ (L : List (NodeId × V)), (∀ a ∈ L, a ∈ c.adds) →
+      ∀ (ma : HMem V) (oc1 oe1 : HObj V), ma.obj? m.root = some oe1 → ma.root = m.root →
+        (∀ y, ma.canonicalOf y = m1.canonicalOf y) →
+        RootRelH sp f oc1 oe1 → oe1.node = SIS.root → (sp.virt = true → ∀ e ∈ oe1.hist, ∃ z, e.val = sp.rootVal z) →
+        ∃ oc' oe', RootRelH sp f oc' oe' ∧ (L.foldl (addsStepH sp db.P (k + 1) m1) ma).obj? m.root = some oe' ∧
+          (sp.virt = true → ∀ e ∈ oe'.hist, ∃ z, e.val = sp.rootVal z) ∧
+          (∃ X, oc'.hist = oc1.hist ++ X ∧ oe'.hist = oe1.hist ++ X) ∧
+          L.foldl (addsStepH sp P' (k + 1) (m1.withRoot oc)) (ma.withRoot oc1) =
+            (L.foldl (addsStepH sp db.P (k + 1) m1) ma).withRoot oc' := by
+    intro L
+    induction L with
+    | nil =>
+      intro _ ma oc1 oe1 hra' _ _ hrr _ hv'
+      exact ⟨oc1, oe1, hrr, hra', hv', ⟨[], by simp, by simp⟩, rfl⟩
+    | cons a L ih =>
+      intro hL ma oc1 oe1 hra' hrt' hcan hrr hn' hv'
+      simp only [List.foldl_cons]
+      have hra'' : ma.obj? ma.root = some oe1 := by rw [hrt']; exact hra'
+      have hstep' : ∃ oc2 oe2, RootRelH sp f oc2 oe2 ∧ (addsStepH sp db.P (k + 1) m1 ma a).obj? m.root = some oe2 ∧
+          (addsStepH sp db.P (k + 1) m1 ma a).root = m.root ∧
+          (∀ y, (addsStepH sp db.P (k + 1) m1 ma a).canonicalOf y = m1.canonicalOf y) ∧
+          oe2.node = SIS.root ∧ (sp.virt = true → ∀ e ∈ oe2.hist, ∃ z, e.val = sp.rootVal z) ∧
+          (∃ X, oc2.hist = oc1.hist ++ X ∧ oe2.hist = oe1.hist ++ X) ∧
+          addsStepH sp P' (k + 1) (m1.withRoot oc) (ma.withRoot oc1) a =
+            (addsStepH sp db.P (k + 1) m1 ma a).withRoot oc2 := by
+        unfold addsStepH
+        rw [HMem.withRoot_canonicalOf hra'' hrr.canonical]
+        cases hca : ma.canonicalOf a.1 with
+        | none => exact ⟨oc1, oe1, hrr, hra', hrt', hcan, hn', hv', ⟨[], by simp, by simp⟩, rfl⟩
+        | some h =>
+          simp only
+          by_cases hh : h = m.root
+          · subst hh
+            rw [← hrt', HMem.withRoot_obj?_root hra'', hra'']
+            simp only
+            rw [HMem.withRoot_setObj_root _ (updObjH sp db.P (k + 1) m1 oe1 a.2), updObjH_congr hns]
+            have hroot' : (ma.setObj ma.root (updObjH sp db.P (k + 1) m1 oe1 a.2)).obj? ma.root =
+                some (updObjH sp db.P (k + 1) m1 oe1 a.2) := HMem.obj?_setObj_self _ _ _
+            obtain ⟨u1, -, -, u4, u5, -⟩ := updObjH_core sp db.P (k + 1) m1 oe1 a.2
+            have hcan' : ∀ y, (ma.setObj ma.root (updObjH sp db.P (k + 1) m1 oe1 a.2)).canonicalOf y =
+                m1.canonicalOf y := by
+              intro y
+              rw [HMem.canonicalOf_setObj_can hra'' u5, hcan]
+            cases hv : sp.virt with
+            | false =>
+              rw [hrr.nv hv]
+              exact ⟨_, _, RootRelH.ofNV hv f _, hroot', by rw [HMem.setObj_root, hrt'],
+                hcan', by rw [u1, hn'], fun h => absurd h (by simp), ⟨[⟨k + 1, a.2⟩], u4, u4⟩, rfl⟩
+            | true =>
+              have ha1 : a.1 = SIS.root := htbl1 a.1 m.root (by rw [← hcan]; exact hca) rfl
+              obtain ⟨nn, hnn, ha2⟩ := hradds hv a (hL a List.mem_cons_self) ha1
+              obtain ⟨hn, hcn⟩ := hcanNew nn hnn
+              have hpz := hptrs hv nn.id
+              have hupd : ∀ o : HObj V, updObjH sp db.P (k + 1) m1 o a.2 =
+                  ({ o with hist := o.hist ++ [⟨k + 1, a.2⟩] } : HObj V).putPtr nn.id
+                    { ref := (m1.obj? hn).bind (·.pos), handle := m1.tableOf nn.id } := by
+                intro o
+                unfold updObjH
+                rw [ha2, hpz]
+                simp only [List.foldl_cons, List.foldl_nil]
+                unfold upd1H
+                rw [newPtr_eq]
+                unfold NSH canPtrH
+                rw [hcn]
+                rfl
+              rw [hupd oc1, hupd oe1]
+              rw [hupd oe1] at hroot' u1 u4
+              have hrr2 := hrr.addRoot hvl hv (hv' hv) (e := ⟨k + 1, a.2⟩) (z := nn.id) ha2 hpz
+                { ref := (m1.obj? hn).bind (·.pos), handle := m1.tableOf nn.id }
+              refine ⟨_, _, hrr2, hroot', by rw [HMem.setObj_root, hrt'], ?_,
+                by rw [u1]; exact hn', ?_, ⟨[⟨k + 1, a.2⟩], ?_, u4⟩, rfl⟩
+              · intro y
+                rw [HMem.canonicalOf_setObj_can hra'' (by rw [← hupd oe1]; exact u5), hcan]
+              · intro _ e he
+                rw [u4] at he
+                rcases List.mem_append.mp he with h1 | h1
+                · exact hv' hv e h1
+                · rw [List.mem_singleton.mp h1]; exact ⟨nn.id, ha2⟩
+              · have := HObj.putPtr_core ({ oc1 with hist := oc1.hist ++ [⟨k + 1, a.2⟩] } : HObj V) nn.id
+                  { ref := (m1.obj? hn).bind (·.pos), handle := m1.tableOf nn.id }
+                exact congrArg (fun c => c.2.2.2.1) this
+          · have hh' : h ≠ ma.root := by rw [hrt']; exact hh
+            rw [HMem.withRoot_obj?_ne hh']
+            cases hoh : ma.obj? h with
+            | none => exact ⟨oc1, oe1, hrr, hra', hrt', hcan, hn', hv', ⟨[], by simp, by simp⟩, rfl⟩
+            | some o =>
+              simp only
+              rw [updObjH_congr hns, HMem.withRoot_setObj_ne hh']
+              obtain ⟨-, -, -, -, u5, -⟩ := updObjH_core sp db.P (k + 1) m1 o a.2
+              refine ⟨oc1, oe1, hrr, ?_, by rw [HMem.setObj_root, hrt'], fun y => ?_, hn', hv',
+                ⟨[], by simp, by simp⟩, rfl⟩
+              · rw [HMem.obj?_setObj_ne _ _ (fun he => hh he.symm)]
+                exact hra'
+              · rw [HMem.canonicalOf_setObj_can hoh u5, hcan]
+      obtain ⟨oc2, oe2, hrr2, hra2, hrt2, hcan2, hn2, hv2, ⟨X1, hx1, hx1'⟩, he2⟩ := hstep'
+      rw [he2]
+      obtain ⟨oc3, oe3, h1, h2, h3, ⟨X2, hx2, hx2'⟩, h4⟩ :=
+        ih (fun b hb => hL b (List.mem_cons_of_mem _ hb)) _ oc2 oe2 hra2 hrt2 hcan2 hrr2 hn2 hv2
+      exact ⟨oc3, oe3, h1, h2, h3, ⟨X1 ++ X2, by rw [hx2, hx1, List.append_assoc],
+        by rw [hx2', hx1', List.append_assoc]⟩, h4⟩
+  exact key c.adds (fun a ha => ha) m1 oc oe hra1 hr1 (fun _ => rfl) hr hn0 hvalsE
+
+end ChangeSim
+
 end SIS
