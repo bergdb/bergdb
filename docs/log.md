@@ -1337,3 +1337,13 @@ decided (option A, 006-09): `Db` and `Database` implement `AutoCloseable`;
 throws; `close()` is safe after `stop()`, twice and from several threads.
 Two tests each in `DbTester` and `PubTester`; a line in `releases/next.md`;
 `before-commit.sh` passes.
+
+2026-10-27. level2.sh's step 6, `BryanRepro`, failed on `main` from
+`eaec93e` (005-46) on, found and fixed by Claude (Opus 5.5, Claude Code) in
+006-09: each cycle ended with `stop()` and the next started a database on
+the same directory at once, while the old one's `FileStream-cut` thread
+still deleted the files of a cut; the new database took them as its own,
+cut them again at start, and failed when a delete found the file gone. No
+data at risk (all below the durable cut). The test now ends each cycle
+with `close()` (`b0661ba`); `level2.sh` full passes. The API question is
+005-63.

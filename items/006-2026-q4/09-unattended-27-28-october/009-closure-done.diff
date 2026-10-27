@@ -1,0 +1,48 @@
+diff --git a/items/009-handles/readme.md b/items/009-handles/readme.md
+index a88926f..a9f0b3c 100644
+--- a/items/009-handles/readme.md
++++ b/items/009-handles/readme.md
+@@ -1,7 +1,7 @@
+ 009-handles
+ ===========
+ 
+-Created 2026-10-25 by Frans Lundberg. Status: open.
++Created 2026-10-25 by Frans Lundberg. Status: done.
+ 
+ Handles in BergDB: memory pointers of index nodes that go through a
+ per-node handle, so that eviction does bounded, local work and BergDB has
+@@ -328,3 +328,21 @@ Shenandoah's mode is only a recommendation (the default mode, without
+ generations). Reclaim's physical cuts (up to 171 ms in P4's soak) and a
+ read's wait for the writer's force (seconds on s1) are BergDB's own and
+ count, so status stays open until 005-46 is done.
++
++2026-10-28, [TBD: time]. Done, in 006-09 (Frans, 2026-10-27, on 005-46 and
++009: "You decide when to set them to Done."), on the evidence of 006-09's
++quiet block on F53, on `main` with 005-46: in P4's soak under ZGC the
++longest commit took [TBD] ms and the longest read [TBD] ms, and the cuts
++were no longer the slowest; ScaleBench from the OS cache and Props made no
++fewer reads a second than `bf19075` ([TBD]); `performance.sh ab` against
++2026.1, [TBD] (005-46, [TBD: the section]). So target 2 is met, and with it
++every item of 009-01's "done" (009-01, section 1, "Where the targets
++stand"; 009-03, section 0). What is above 20 ms in 009's runs is the
++collector's (G1's pauses, ZGC's allocation stalls when the heap is short)
++and s1's disk, and a writer's waits for room in the write buffer, the
++disk's too (005-46, decision 5). Written by Claude (Opus 5.5, Claude Code):
++009-01's status and targets, 009-03's sections 0 and 8, docs/levels.md's
++Level 4 limits, README.md's pauses, 010-01's P1. Left of 009, outside its
++"done": [TBD, as Frans decides: T9 and T12 over handles, and then the
++removal of the Lean files of the design before handles; LargerThanMemory's
++report with handles; the test schedules' walks].
+diff --git a/items/readme.md b/items/readme.md
+index 9f4a74d..97ba87f 100644
+--- a/items/readme.md
++++ b/items/readme.md
+@@ -109,7 +109,7 @@ Index
+ * **008-release-2026-1** (done). Release 2026.1, internal: the tagged code,
+   the jar and the release notes, and the baseline for performance
+   measurements before handles (004) and gradual eviction.
+-* **009-handles** (open). Handles in BergDB, from 004's direction:
++* **009-handles** (done). Handles in BergDB, from 004's direction:
+   eviction with bounded work and no stop-the-world. The plan, the work on
+   `main` and on the branch `009-handles`, the measurements, the outcome.
+ * **010-principles** (open). BergDB's design principles, in Frans's

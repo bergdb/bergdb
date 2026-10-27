@@ -1,0 +1,307 @@
+diff --git a/README.md b/README.md
+index a627b73..74c8fcf 100644
+--- a/README.md
++++ b/README.md
+@@ -96,6 +96,16 @@ section reached 2.6 times the startup distance at 50 MB in a test
+ ([005-38](items/005-todo/38-writes-at-scale.md)), and the deadline that
+ bounds it is planned ([007-03](items/007-bounds/03-plan.md)).
+ 
++Pauses (2026-10-28). In the runs of bergdb item 009, no get or commit
++waits more than about 20 ms for BergDB's own work [TBD: if 009's target 2
++is met]: eviction works in bounded steps (009), and no read waits for the
++stream's writer, its forces or reclaim's cuts
++([005-46](items/005-todo/46-stream-file-lock.md)). The collector's pauses
++come on top: use ZGC, or Shenandoah in its default mode, without
++generations; with G1 they reach hundreds of milliseconds under eviction. A
++slow disk shows through too, in reads that miss the caches and in a writer
++that fills the write buffer. Details in docs/levels.md, section 7.
++
+ 
+ Notes
+ -----
+diff --git a/docs/levels.md b/docs/levels.md
+index 6a0b0dc..41a102f 100644
+--- a/docs/levels.md
++++ b/docs/levels.md
+@@ -362,11 +362,20 @@ Limits:
+   seconds on a slow disk, and every read for a new file's forces and a
+   cut's deletes, up to 171 ms in P4's soak (009-04, section 7.3). On s1,
+   under ZGC, the longest gets were the forces; since, a force of 2,500 ms
+-  left every get at 12.1 ms at most (005-46, "Measured after the change");
+-  P4's soak and ScaleBench confirm it in 006-09's quiet block. A writer
+-  that fills the write buffer still waits for the disk;
+-  that does not count against item 009's pause target (Frans,
+-  2026-10-27), and the test reports show it apart.
++  left every get at 12.1 ms at most (005-46, "Measured after the change").
++  In P4's soak under ZGC on F53 the longest read is [TBD] ms and the
++  longest commit [TBD] ms, and the cuts are [TBD: no longer] the slowest
++  (006-09's quiet block; 005-46, [TBD: the section]). A writer that fills
++  the write buffer still waits for the disk; that does not count against
++  item 009's pause target (Frans, 2026-10-27), and the test reports show it
++  apart.
++* So the waits above 20 ms left in item 009's runs are not BergDB's own:
++  the collector's (G1's pauses; ZGC's allocation stalls, 129 and 300 ms on
++  s1 when its heap ran short), s1's disk (gets from the device of 64 to 74
++  ms, where single random reads take up to 58 ms;
++  [009-03](../items/009-handles/03-measurements.md), section 9), and a
++  writer's waits for room in the write buffer when the disk stalls. Item
++  009's target 2 is [TBD: met] (009-01, section 1).
+ * Loads in memory, with no eviction, are 8 to 20 percent slower than before
+   handles.
+ * D, which cannot be evicted, is bounded only loosely by the startup
+diff --git a/items/009-handles/01-overview-plan.md b/items/009-handles/01-overview-plan.md
+index 1fe74c3..bd5d1e3 100644
+--- a/items/009-handles/01-overview-plan.md
++++ b/items/009-handles/01-overview-plan.md
+@@ -7,12 +7,13 @@ the work and how to handle it in Git. Frans: "It is implementing handles
+ 004 in BergDB. This is a major one. [...] 009-01 can be a first overview
+ plan. Then 02 for the detailed implementation plan when 01 approved."
+ 
+-**Status: draft, for Frans's approval. Planning now; the work starts after
+-release 2026.1 (item 008).** Decided so far (section 8): Git, with the
+-branch pushed (G1a); what the merge waits for in Lean (G2b); and the
+-phases ("Phases are good."). The rest waits for Frans's reading. Phase 0's
+-output, [009-02](02-implementation-plan.md), is written and waits for his
+-approval.
++**Status: approved and carried out.** Frans approved it on 2026-10-25 by
++asking for 009-02 ("Go ahead and adjust 01 and then write 02."), which was
++to follow "when 01 approved"; his decisions are in section 8. The work ran
++from 2026-10-25 to 2026-10-27 ([009-02](02-implementation-plan.md),
++section 9; [009-03](03-measurements.md)), and Frans merged the branch on
++2026-10-26 (`178a0d4`). Section 1, "Where the targets stand", says what
++each target came to.
+ 
+ 
+ # 1. The goal
+@@ -82,6 +83,41 @@ Done when:
+    handles; README.md and docs/levels.md no longer list the sweep among
+    the known limits; docs/log.md.
+ 
++Where the targets stand, 2026-10-28 (the numbers in 009-03, section 0):
++
++1. Met (step 3b). Eviction's batches walk nothing, and `Residents` counts
++   the bytes exactly without walks. The test schedules (`VALUES`, `EVERY`,
++   `RANDOM`; test-only) still walk, as 009-02 planned for step 3b.
++2. [TBD, 006-09's W1.3 and W1.4: met, or not met.] BergDB's own waits:
++   eviction's batches take at most 2 ms on F53 and 4 ms on s1, and since
++   [005-46](../005-todo/46-stream-file-lock.md) no get waits for the
++   stream's writer, a force, a new file or a cut. P4's soak under ZGC on
++   F53, on `main` with 005-46: the longest commit [TBD] ms and the longest
++   read [TBD] ms; the cuts are [TBD: no longer / still] the slowest
++   (before 005-46, 88 to 171 ms; 009-04, section 7.3). 004-02's runs at
++   10M keys: from the OS cache on F53 the longest get [TBD] ms with ZGC
++   (3.45 ms at step 3d); from the device on s1 64 to 74 ms, s1's disk, and
++   one get of 2,760 ms with nothing of BergDB's under it, put down to s1's
++   disk or the kernel's reclaim (009-03, section 9), for Frans to judge.
++   What is left above 20 ms is the collector's (G1's pauses, ZGC's
++   allocation stalls) and s1's disk; a writer's wait for room in the write
++   buffer is the disk's too, and does not count (005-46, decision 5).
++3. Met (009-03, section 5): in memory on one thread 3 and 11 percent fewer
++   gets (G1, ZGC); with 4 threads 12 and 3 percent more, with 8 threads
++   101 and 61 percent more; from the OS cache 1.4 to 4.6 times as many.
++4. Recorded (009-03, section 3): MEM 130 bytes per KV (2026.1: 191).
++5. Met: StreamDigest gave 2026.1's digests after every step (009's log).
++6. Met: `tc_handles`, `tr_handles`, `t2_handles`, `tr_handles_restarts`
++   and `tp_handles`, with no warnings and no `sorry` (009's log,
++   2026-10-26).
++7. [TBD, 006-09's `perf-ab.sh`: met.] The gates at every step and on the
++   merged tree (`night.sh`: NIGHT OK on `a04a418`). `performance.sh ab`
++   against 2026.1, quick suite, on 2026-10-26: gets on one thread 3 to 9
++   percent fewer, from 4 threads 19 percent more; again in 006-09's quiet
++   block, on `main`: [TBD].
++8. Met: docs/levels.md, section 7; 009-05; README.md's Level 4 row;
++   docs/log.md (2026-10-26).
++
+ Not in 009:
+ 
+ * **005-38, writes at scale.** Investigated on 009's branch once eviction
+@@ -445,7 +481,7 @@ Decided:
+     proves that eviction never changes what reads give, which the reader
+     tests and EvictionInvariance check in the meantime.
+ 
+-Open:
++Decided with 009-02:
+ 
+ * **G3. Phase 0's choices** (the table, the policy, the handle, the
+   protocol): proposed in 009-02, and decided with its approval. Decided
+diff --git a/items/009-handles/03-measurements.md b/items/009-handles/03-measurements.md
+index 3d51f58..d0112a5 100644
+--- a/items/009-handles/03-measurements.md
++++ b/items/009-handles/03-measurements.md
+@@ -13,34 +13,64 @@ ScaleBench's outputs.
+ 
+ # 0. Where the targets stand
+ 
+-Targets 2 to 4 of 009-01, section 1, against 2026.1 in turns, with the
+-branch at step 3d (`66c8f3a`), as of 2026-10-26, 00:30:
+-
+-* **Target 2, pauses (about 20 ms with ZGC or generational Shenandoah).**
+-  Met with ZGC on F53: in 004-02's run from the OS cache at 10M keys and
+-  665 MB (section 5), the longest get of the 1 to 8 thread phases took
+-  3.45 ms (2026.1: 7.3 s); in the pause probe, gets and single-put commits
+-  14.7 ms at most (2026.1: 570 ms). On s1, from the device, the longest get
+-  was 60 ms (2026.1: 2.6 s), and the waits above 20 ms there are the
+-  device's reads and two CPUs shared by the readers, the eviction thread
+-  and the collector, with no collection or batch under them. Shenandoah in
+-  the pause probe: one full collection of 79 ms and degenerated cycles, as
+-  the probe's 1.2 GB heap filled at 700,000 loads a second (the collector,
+-  not eviction). Not yet run: P4's soak, and ScaleBench with Shenandoah
+-  (planned for F53 after 05:00, section 8).
++Targets 2 to 4 of 009-01, section 1, as of 2026-10-28: `main` with
++005-46, against 2026.1 and against `bf19075` (005-50, the commit before
++005-46), in turns. Until 2026-10-27 this section gave the branch at step
++3d (`66c8f3a`), as of 2026-10-26, 00:30; those runs are in sections 4 to
++7.
++
++* **Target 2, pauses: about 20 ms of BergDB's own code; the collector's
++  pauses do not count** (Frans, 2026-10-27). [TBD, 006-09's W1.3 and
++  W1.4: met, or not met.]
++  * Eviction: batches of at most 2 ms on F53 (P4's soak, 009's log of
++    2026-10-26) and 3 to 4 ms on s1 (section 9); a load waits for the
++    eviction thread at most 2 ms.
++  * The stream: since 005-46 no get waits for the writer's append or force,
++    a new file or a cut. On s1, in the pause probe, a force of 2,500 ms
++    left every get at 12.1 ms at most; before, under ZGC, the longest gets
++    were the forces (005-46, "Measured after the change"). In ScaleBench
++    on s1 no sampled reader is blocked on a file any more (10.7 and 10.9
++    percent before; section 9).
++  * P4's soak under ZGC on F53 (006-09, W1.3; 005-46, [TBD: the section
++    with the quiet block's results]): the longest commit [TBD] ms, the
++    longest read [TBD] ms; the cuts are [TBD: no longer / still] the
++    slowest (before 005-46, 88 to 171 ms; 009-04, section 7.3).
++  * From the OS cache on F53 at 10M keys (006-09, W1.4; ScaleBench C,
++    005-46, [TBD]): the longest get [TBD] ms with ZGC and [TBD] ms with G1
++    (at step 3d 3.45 ms with ZGC, 2026.1 7.3 s; section 5).
++  * From the device on s1 (section 9): the longest gets 64 to 74 ms, s1's
++    disk (single random reads there of up to 42 to 58 ms), with G1's young
++    collections under some; and one get of 2,760 ms with nothing of
++    BergDB's under it, s1's disk or the kernel's reclaim in the run's
++    memory cgroup, for Frans to judge.
++  * What is left above 20 ms is the collector's (on s1 G1's pauses of 70
++    to 172 ms, and ZGC's allocation stalls of 129 and 300 ms at the start
++    of one phase) and s1's disk. A writer that fills the write buffer waits
++    for the disk: not counted (005-46, decision 5), and shown apart in the
++    reports. Under ZGC on s1 some gets of 21 to 62 ms have nothing in the
++    logs under them, most likely s1's two CPUs (005-46).
++  * Which collector, a recommendation (009-04, section 8): ZGC, or
++    Shenandoah in its default mode, without generations.
+ * **Target 3, gets.** In memory on one thread: 3 percent fewer with G1, 11
+   percent fewer with ZGC (target: within 20 percent). With 4 threads 12 and
+   3 percent more, with 8 threads 101 and 61 percent more (target: more).
+   From the OS cache 1.4 to 4.6 times as many gets a second, from s1's device
+   the same on one thread and 32 to 53 percent more with 4 (target: no
+-  difference beyond the noise).
++  difference beyond the noise); all at step 3d. Since 005-46, from s1's
++  device 15 to 32 percent more than `bf19075` with 2 and 4 threads
++  (section 9). Props (CORE) and ScaleBench C against `bf19075` on F53:
++  [TBD, W1.4]. `performance.sh ab` against 2026.1, quick suite: on
++  2026-10-26 gets on one thread 3 to 9 percent fewer, from 4 threads 19
++  percent more; in 006-09's quiet block [TBD].
+ * **Target 4, memory.** MEM 130 bytes per KV (2026.1: 191); heap per key
+   after the 10M load 186 bytes under G1 (243) and 225 under ZGC (315).
+ 
+-And beside the targets: the 10M load on s1 with a 600 MB budget took 767 s,
+-2026.1 3,015 s (step 3e, section 7); the cold startup at 10M keys on s1 is
+-unchanged (191 to 200 s, 2026.1 197 s); loads in memory (no eviction) are 8
+-percent slower with G1 and 20 percent with ZGC.
++And beside the targets: the 10M load on s1 with a 600 MB budget took 732 s
++on `main` with 005-46 (section 9; 767 s at step 3d, section 7; 2026.1
++3,015 s); the cold startup at 10M keys on s1 took 21.6 and 19.6 s with
++005-57 (section 9; 191 to 200 s at step 3d, 2026.1 197 s); loads in memory
++(no eviction) are 8 percent slower with G1 and 20 percent with ZGC (step
++3d).
+ 
+ 
+ # 1. The pause probe on s1, steps 1d and 3c
+@@ -340,15 +370,40 @@ into [005-38](../005-todo/38-writes-at-scale.md).
+ 
+ # 8. Still to run
+ 
++As written on 2026-10-26, 00:30, and what became of each (updated
++2026-10-28):
++
+ * P4's soak with eviction (004-04's parameters: 8 GB heap, a 1.6 GB budget,
+   30 measured minutes, a restart) under ZGC and generational Shenandoah on
+-  the branch; 2026.1's are 004-04's (2026-10-24), the same machine.
+-* ScaleBench with Shenandoah on both jars (M; C at 133 and 665 MB), as
+-  004-04's run2.sh.
+-* `performance.sh ab` with the quick suite, 2026.1 against the branch.
+-
+-On F53 from 05:00 (`quiet.sh` keeps timed blocks off 02:00 to 05:00, for
+-`night.sh`).
++  the branch: run on F53 on 2026-10-26, 05:08 to 08:30
++  ([f53-block2/](03-measurements/f53-block2/); 009's log). ZGC: GC pauses
++  at most 0.02 ms, batches at most 2 ms. Generational Shenandoah: stops of
++  821 and 182 ms (009-04); then 009-04's two soaks (section 7), with no
++  stop without generations. In all four the slowest commits and reads were
++  reclaim's physical cuts, 88 to 171 ms (009-04, section 7.3), which
++  005-46 took off the readers.
++* ScaleBench with Shenandoah on both jars: run in the same block. From the
++  OS cache at 10M keys the longest get 2.5 ms at 133 MB (2026.1: 409 ms)
++  and 1.9 ms at 665 MB (7.1 s). Not run without generations; it would
++  serve the recommendation only (009-04, section 8).
++* `performance.sh ab` with the quick suite, 2026.1 against the branch: run
++  in the same block (above, target 3); the run with eviction off was
++  skipped.
++
++Run in 006-09's quiet block on F53 (2026-10-27, from 22:30), on `main`
++with 005-46; the scripts in
++[005-46's night/](../005-todo/46-stream-file-lock/night/), the results in
++005-46 [TBD: the section]:
++
++* P4's soak under ZGC (W1.3): are the cuts still the slowest commits and
++  reads? [TBD]
++* Props (CORE) and ScaleBench from the OS cache (C), against `bf19075` in
++  turns (W1.4): no fewer reads a second. [TBD]
++* `performance.sh ab` against 2026.1, the quick suite (009-01's done item
++  7). [TBD]
++
++Not reported with handles: LargerThanMemory (009-01, phase 5), beyond its
++pass in `level4.sh` in full, and so in `night.sh`.
+ 
+ 
+ # 9. ScaleBench on s1 after 005-46
+diff --git a/items/010-principles/01-principles.md b/items/010-principles/01-principles.md
+index 23137f4..c989e81 100644
+--- a/items/010-principles/01-principles.md
++++ b/items/010-principles/01-principles.md
+@@ -44,21 +44,30 @@ Where BergDB stands:
+   node takes the handle's monitor (009, T7a), and, when the cache is over
+   its budget, waits for the eviction thread's batch at most 2 ms
+   (`Eviction.LOAD_WAIT_NANOS`): short waits, as P1 allows.
+-* A read of the stream's last file waits for the writer's append and its
+-  force, one monitor for both: seconds on s1's disk, the longest waits left
+-  for readers with handles
+-  ([005-46](../005-todo/46-stream-file-lock.md), 009-03). A deviation.
++* No read waits for the stream's writer since 2026-10-27
++  ([005-46](../005-todo/46-stream-file-lock.md)): a read takes no lock, a
++  new file is made outside the stream's monitor, and a cut's files are
++  deleted by a thread of their own. Until then a read of the last file
++  waited for the writer's append and its force, seconds on s1's disk, and
++  every read for a cut's deletes, up to 171 ms in P4's soak (009-04,
++  section 7.3): a deviation, now fixed. A writer that fills the write
++  buffer still waits for the disk: the device's limit, not BergDB's work
++  (005-46, decision 5).
+ * To look at (Frans, 2026-10-26): every place where a reader can wait
+   today, and for how long.
+ * Eviction: the sweep that walked the resident set under the write lock,
+   up to 266 s in 004-02, is replaced by handles and bounded steps (item
+   009, on `main` since 2026-10-26).
+-* The collector: only ZGC and generational Shenandoah meet the target; G1
+-  does not ([004-04](../004-indirect-swizzling/04-zgc.md)), and
+-  generational Shenandoah stopped for 182 and 821 ms in the soak with
+-  eviction ([009-04](../009-handles/04-shenandoah-degenerated.md)).
++* The collector: ZGC, and Shenandoah in its default mode, without
++  generations, meet the target in P4's soak; G1 does not
++  ([004-04](../004-indirect-swizzling/04-zgc.md)), and generational
++  Shenandoah stopped for 182 and 821 ms in the soak with eviction
++  ([009-04](../009-handles/04-shenandoah-degenerated.md), section 8).
++  Item 009's target counts BergDB's own code only, and recommends a
++  collector (Frans, 2026-10-27: "The target of 20 ms is for the BergDB
++  code. Not for the JVM itself.").
+ * The deadline of 007-03 makes one long commit, while the other writers
+-  and the readers of the stream's last file wait
++  wait; since 005-46 the readers of the stream's last file no longer do
+   ([007-04](../007-bounds/04-review-after-009.md), points 6 and 7).
+ 
+ 

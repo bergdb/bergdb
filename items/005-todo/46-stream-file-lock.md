@@ -824,3 +824,10 @@ interrupts, about 100 lines in `BufferedStream`, `StorageManager`,
 the other open entries; before 005-47, whose option A changes the forces
 of the same class. Item 009 waits for the first step and the last: the
 pause probe on s1 needs the reports.
+
+
+Later, 2026-10-27, 19:10: `level2.sh`'s step 6 (`BryanRepro`) failed on
+`main` from this entry's commit on, as the test started a database on the
+directory right after `stop()`, while the old one's cut thread still
+deleted files; no data at risk. Fixed in the test (`close()`, `b0661ba`);
+the API question is 005-63. Found by 006-09 (its note `bryanrepro.md`).

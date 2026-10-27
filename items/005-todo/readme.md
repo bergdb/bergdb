@@ -35,6 +35,7 @@ Open
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 | [005-56](56-package-dependencies.md) | Investigate | Package dependencies: how the packages depend on each other, and whether that follows their `package.html` files; Frans's question. A first look: four of `java/src`'s nine packages used packages their lists leave out; after 006-08's fixes of `stream` and `dag`, two remain (`pub` uses `core` and `pubimp`, `pubimp` uses `dag` and `storage`), and nothing checks the lists | open |
 | [005-60](60-block-storage.md) | Investigate | Block storage: the stream on a raw block device without a file system, as a ring of a fixed size, kept until the room is needed (retention by space); feasible in Java? And on a Linux device in a C or C++ clone. Frans's idea | open |
+| [005-63](63-one-database-per-directory.md) | Decide | One database per directory, also while one closes: `stop()` returns before the close, and since 005-46 the cut's files are deleted afterwards, so a database started on the same directory right after `stop()` can adopt files that are being deleted and fail (level2's `BryanRepro`, fixed in the test with `close()`). Options: a sentence in `stop()`'s Javadoc, a lock file in `FileStream`, both (recommended), nothing | open |
 
 
 Closed
@@ -301,6 +302,9 @@ Files
 * [61-reclaim-startup-distance.md](61-reclaim-startup-distance.md). 005-61,
   reclaim uses the database's startup distance: the fault found in
   005-53, the fix, the tests, the gates and StreamDigest; done.
+* [63-one-database-per-directory.md](63-one-database-per-directory.md).
+  005-63, one database per directory, also while one closes: the issue
+  found with `BryanRepro`, four options; open.
 
 Log
 ===
@@ -1161,3 +1165,9 @@ with the other questions as recommended; by Claude (Opus 5.5, Claude
 Code): `Db` and `Database` implement `AutoCloseable`, `Database.close()`
 waits as `Db.close()` does; tests; `releases/next.md`; `before-commit.sh`
 passes.
+
+2026-10-27. 005-63 added, by Claude (Opus 5.5, Claude Code) in 006-09,
+for Frans to decide: one database per directory, also while one closes;
+found when level2's step 6 (`BryanRepro`) failed on `main` from 005-46 on,
+as the test started a database right after `stop()`; the test now uses
+`close()` (`b0661ba`).
