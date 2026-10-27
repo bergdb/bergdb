@@ -24,6 +24,13 @@ His answers to the draft plan, 11:39:
    for tonight, if you like. So you can run it instead."
 6. "Write the plan. Follow BergDB's principles 010."
 
+And at 12:03, to two questions of the plan's first hour:
+
+7. 005-48: if group commit passes the gates, keeps the stream's bytes
+   unchanged and measures well tonight, commit it: "Yes."
+8. 005-03: if handles removed the sweep it measures, close it as done by
+   009: "Yes."
+
 
 ## 2. Ground rules
 
@@ -178,32 +185,79 @@ first (P11).
 
 ## 5. Timeline
 
-Times in CET. The quiet block replaces `night.sh`'s run at 02:10, which
-Frans let this work cancel for tonight.
+Times in CET. `night.sh` stays at 02:10 (changed at 12:15 from the first
+version of this plan, which moved it by hand to 21:30: launchd is left as
+it is, and the block needs no step of this session), so the quiet block has
+two windows: 22:30 to 02:05, and from `night.sh`'s end (about 03:00) to
+06:15.
 
 | Time | What |
 |---|---|
 | 11:30–12:00 | The plan with Frans; this file |
 | 12:00–19:00 | W2, W3, W4 (after 005-55) and W5's prototype in clones, up to 4 subagents; W1.2 on s1; W1.1 if F53 is quiet |
 | 19:00–21:30 | The gates on the combined tree; commits; W6.1 to W6.3 |
-| 21:30–22:30 | `night.sh` by hand on HEAD, instead of at 02:10 |
-| 22:30–05:00 | The quiet block on F53, this session idle: W1.3, W1.4, W5's runs, W6.4 (and W6.5) |
-| 05:00–06:30 | Write-ups, commits, the status of 005-46 and 009; W3 goes on if it is not done |
-| 06:30–07:00 | `night.sh`'s launchd job back; the summary in `news.md`; this file's outcome |
+| 21:45 | CPU-heavy work stops; the conductor's steps checked |
+| 22:30–02:05 | The quiet block's window 1 on F53, this session idle: W1.3, W1.4, W5's runs, W6.4 (and W6.5) |
+| 02:10–03:00 | `night.sh`, from launchd, as every night |
+| 03:00–06:15 | Window 2, for the steps that did not fit in window 1 |
+| 06:15–07:00 | Write-ups, commits, the status of 005-46 and 009; this file's outcome; the summary in `news.md` |
 
-`night.sh` tonight: `launchctl bootout gui/501/local.bergdb.nightly` before
-02:10, with a background script that bootstraps
-`~/Library/LaunchAgents/local.bergdb.nightly.plist` again at 06:00 even if
-this session has ended; `launchctl print gui/501/local.bergdb.nightly`
-checks it in the morning. Lean and builds stop before the quiet block, so
-a subagent still working then is stopped and continued at 05:00.
+Lean and builds stop before the quiet block; a subagent still working at
+21:45 is stopped, and its state is written in its entry.
 
 
-## 6. Progress
+## 6. If this session stops
 
-2026-10-27, 11:55. The plan written, from Frans's answers of 11:39.
+A usage limit can stop this session and its subagents for hours. So:
+
+* **The conductor.** The quiet block is run by
+  `/Users/f/fl/bench/006-09/night/conductor.sh`, started at 12:15 with
+  `nohup` and `caffeinate`, outside this session: it runs the steps in
+  `steps.txt` whose script has a `.READY` marker (written by whoever
+  prepared it, after a smoke test), one at a time after a quiet check, in
+  the two windows; it writes `results.txt`, `conductor.log` and one
+  `news.md` entry when the block ends. At 06:50, if this session has not
+  written its summary (the marker `summary-written`), it writes a short
+  one itself.
+* **Check-ins.** Scheduled prompts of this session resume the work after a
+  limit: every hour from 12:17 to 21:17 (resume stopped subagents, carry
+  on with the timeline), 21:41 (prepare the block), and 05:57, 06:27 and
+  06:44 (the morning's write-up and summary, the later ones shorter).
+* **State.** This file's progress section, and the entries' own files.
+  Subagents write their state into their entries as they go.
 
 
-## 7. Outcome
+## 7. Progress
+
+2026-10-27, 11:45. The plan written, from Frans's answers of 11:39, and
+committed (`5ca72dd`). Four subagents started, each in a clone of its
+own: W1, W2, W3 and W5.
+
+2026-10-27, 11:50. The other sessions: f1-ce's 005-55 is in (`cec0032`),
+so W4 started on it, in this session. The session "Startup time"
+committed 005-57 (`07b6375`), has no timed runs planned today or tonight,
+and agreed that 005-58 is cited in 005-57's report and `docs/levels.md`
+when it is proved. The session f1-02, which made 005-46, had Frans's go
+for its remaining checks: it runs W1.1 (the probes on F53) and W1.2 (the
+pause probe on s1, `bf19075` and `cec0032` in turns, G1 and ZGC) this
+afternoon and writes them into 005-46; W1.3 and W1.4 stay in the quiet
+block, prepared by this work's W1 subagent, and the status of 005-46 and
+009 is decided here.
+
+2026-10-27, 12:12. W4 and W6.2 done and committed: 005-51 (`c2aab10`; the
+eviction thread waits with no timeout, the close ends it; a unit test that
+fails on the code before; `before-commit.sh` and `level4.sh` full pass)
+and 005-03, closed as done by 009 (`4f7cd60`). f1-02 committed 005-46's
+measurements of the afternoon (`12d7ec7`): after the change no get waited
+for a force on s1, and on F53 every probe's verdict held by a wide margin;
+the maxima of 10 to 30 ms under the afternoon's load are for the quiet
+block to confirm.
+
+2026-10-27, 12:15. At Frans's request ("Ensure you can continue to work
+even if you run out of 5h Claude session usage."): the night conductor
+started and the check-ins scheduled (section 6); `night.sh` left at 02:10.
+
+
+## 8. Outcome
 
 Filled in by 07:00 on 2026-10-28.
