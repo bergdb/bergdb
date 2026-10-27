@@ -38,9 +38,10 @@ who points to it (004-01, section 4).
 In the words a user should be able to rely on, once 009 is done:
 
     Eviction does a bounded amount of work at a time, whatever the size of
-    the database and of the cache. With a concurrent collector (ZGC or
-    generational Shenandoah), no get or commit is stopped for more than
-    about 20 ms by eviction or by the garbage collector.
+    the database and of the cache. No get or commit is stopped for more
+    than about 20 ms by BergDB's own code. The garbage collector's pauses
+    come on top; with ZGC, or Shenandoah in its default mode, they stay
+    small.
 
 Done when:
 
@@ -49,10 +50,15 @@ Done when:
    no longer part of eviction, and the byte count is exact without walks
    (004-01, 4.5).
 2. **Pauses.** In P4's soak and in 004-02's runs with eviction (10M keys,
-   on F53 and s1), under ZGC and under generational Shenandoah, the longest
-   time a get or a commit is stopped by eviction or by the collector is
+   on F53 and s1), the longest time a get or a commit is stopped by
+   BergDB's own code, eviction and the locks a get or a commit waits on, is
    below about 20 ms (Frans, 2026-10-25; 004-04 had about 10 ms). Today:
-   up to 266 s.
+   up to 266 s. The collector's pauses are the JVM's and not part of the
+   target (Frans, 2026-10-27: "The target of 20 ms is for the BergDB code.
+   Not for the JVM itself."); the runs use JVM settings that keep them
+   small, ZGC or Shenandoah in its default mode ("feel free to chose JVM
+   settings to limit the maximum pause time"), and which collector to
+   recommend is a separate question (009-04, section 8).
 3. **Gets.** In memory, on one thread, within 20 percent of today's
    (Frans, 004-03, section 1; 004-01 measured 9 to 13 percent for the
    hop). With 4 and 8 threads, more gets a second than today, since the

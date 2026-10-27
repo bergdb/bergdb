@@ -7,6 +7,10 @@ Found in item 009's measurements
 ([009-03](../009-handles/03-measurements.md), sections 4 and 7), by Claude
 (Opus 5.5, Claude Code), during Frans's unattended run of 009.
 
+Item 009's target 2 waits for this item (009-01): no get or commit stopped
+for more than about 20 ms by BergDB's own code, the collector's pauses not
+counted (Frans, 2026-10-27). Both waits below are BergDB's own.
+
 
 The fault
 ---------

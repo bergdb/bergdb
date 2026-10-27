@@ -49,15 +49,15 @@ F53, makes each database and starts it three times (the first counting by
 phase, the next two timed), warm (the files were just written; a start
 reads what the one before it read):
 
-| Database | Keys | Value | Startup distance | Updates | Last make start |
-|---|---|---|---|---|---|
-| f53-10m-sd50 | 10M | 8 B | 50 MB | 2M | 07:15 |
-| f53-10m-sd200 | 10M | 8 B | 200 MB | 3M | 07:15 |
-| f53-10m-sd1000 | 10M | 8 B | 1000 MB | 12M | 07:00 |
-| f53-2m-v100 | 2M | 100 B | 200 MB | 2M | 07:15 |
-| f53-200k-v10k | 200k | 10 kB | 200 MB | 100k | 07:15 |
-| f53-50m-sd200 | 50M | 8 B | 200 MB | 3M | 06:00 |
-| f53-50m-sd1000 | 50M | 8 B | 1000 MB | 10M | 05:30 |
+| Database       | Keys | Value | Startup distance | Updates | Last make start |
+|----------------|-----:|------:|-----------------:|--------:|----------------:|
+| f53-10m-sd50   |  10M |   8 B |            50 MB |      2M |           07:15 |
+| f53-10m-sd200  |  10M |   8 B |           200 MB |      3M |           07:15 |
+| f53-10m-sd1000 |  10M |   8 B |          1000 MB |     12M |           07:00 |
+| f53-2m-v100    |   2M | 100 B |           200 MB |      2M |           07:15 |
+| f53-200k-v10k  | 200k | 10 kB |           200 MB |    100k |           07:15 |
+| f53-50m-sd200  |  50M |   8 B |           200 MB |      3M |           06:00 |
+| f53-50m-sd1000 |  50M |   8 B |          1000 MB |     10M |           05:30 |
 
 The updates fill at least two startup distances after the load (005-38's
 bytes a put). Starts with ZGC, a 4 GB budget (2 GB for the small ones, 6 GB
@@ -95,30 +95,30 @@ table in `out/summary.txt`; the split by phase and the fit below come from
 The databases are deterministic: s1's two are F53's (the same stream,
 section and D). A transaction is 1,000 puts.
 
-| Database | Stream | Section at the start | Largest in the make | Transactions in the section | D |
-|---|---|---|---|---|---|
-| 10M keys, 8 B, 50 MB | 5.3 GB | 108 MB (2.15 sd) | 117 MB (2.33 sd) | 109 | 177k nodes, 60 MB |
-| 10M keys, 8 B, 200 MB | 2.9 GB | 201 MB (1.00 sd) | 345 MB (1.72 sd) | 307 | 387k, 137 MB |
-| 10M keys, 8 B, 1000 MB | 2.6 GB | 1,000 MB (1.00 sd) | 1,101 MB (1.10 sd) | 7,558 | 1.83M, 766 MB |
-| 2M keys, 100 B, 200 MB | 1.0 GB | 200 MB (1.00 sd) | 201 MB (1.00 sd) | 649 | 211k, 81 MB |
-| 200k keys, 10 kB, 200 MB | 3.1 GB | 216 MB (1.08 sd) | 216 MB (1.08 sd) | 20 | 14k, 5 MB |
-| 50M keys, 8 B, 200 MB | 24.4 GB | 245 MB (1.23 sd) | 485 MB (2.43 sd) | 956 | 1.28M, 425 MB |
-| 50M keys, 8 B, 1000 MB | 12.2 GB | 1,001 MB (1.00 sd) | 1,654 MB (1.65 sd) | 4,984 | 3.90M, 1,336 MB |
+| Database                 |  Stream | Section at the start | Largest in the make | Transactions in the section |                 D |
+|--------------------------|--------:|---------------------:|--------------------:|----------------------------:|------------------:|
+| 10M keys, 8 B, 50 MB     |  5.3 GB |     108 MB (2.15 sd) |    117 MB (2.33 sd) |                         109 | 177k nodes, 60 MB |
+| 10M keys, 8 B, 200 MB    |  2.9 GB |     201 MB (1.00 sd) |    345 MB (1.72 sd) |                         307 |      387k, 137 MB |
+| 10M keys, 8 B, 1000 MB   |  2.6 GB |   1,000 MB (1.00 sd) |  1,101 MB (1.10 sd) |                       7,558 |     1.83M, 766 MB |
+| 2M keys, 100 B, 200 MB   |  1.0 GB |     200 MB (1.00 sd) |    201 MB (1.00 sd) |                         649 |       211k, 81 MB |
+| 200k keys, 10 kB, 200 MB |  3.1 GB |     216 MB (1.08 sd) |    216 MB (1.08 sd) |                          20 |         14k, 5 MB |
+| 50M keys, 8 B, 200 MB    | 24.4 GB |     245 MB (1.23 sd) |    485 MB (2.43 sd) |                         956 |     1.28M, 425 MB |
+| 50M keys, 8 B, 1000 MB   | 12.2 GB |   1,001 MB (1.00 sd) |  1,654 MB (1.65 sd) |                       4,984 |   3.90M, 1,336 MB |
 
 The make of 10M keys at 50 MB stopped at one of the take's peaks, so its
 starts read a section of 2.15 times the startup distance.
 
 ### Startup times
 
-| Database | F53, warm | s1, cold | s1, third start |
-|---|---|---|---|
-| 10M keys, 8 B, 50 MB | 7.4 s | 214 s | 175 s |
-| 10M keys, 8 B, 200 MB | 12.4 s | 209 s | 164 s |
-| 10M keys, 8 B, 1000 MB | 70 s | | |
-| 2M keys, 100 B, 200 MB | 9.1 s | | |
-| 200k keys, 10 kB, 200 MB | 1.9 s | | |
-| 50M keys, 8 B, 200 MB | 26 s (49 s, 141 s) | | |
-| 50M keys, 8 B, 1000 MB | 86 s (90 s, 215 s) | | |
+| Database                 |          F53, warm | s1, cold | s1, third start |
+|--------------------------|-------------------:|---------:|----------------:|
+| 10M keys, 8 B, 50 MB     |              7.4 s |    214 s |           175 s |
+| 10M keys, 8 B, 200 MB    |             12.4 s |    209 s |           164 s |
+| 10M keys, 8 B, 1000 MB   |               70 s |          |                 |
+| 2M keys, 100 B, 200 MB   |              9.1 s |          |                 |
+| 200k keys, 10 kB, 200 MB |              1.9 s |          |                 |
+| 50M keys, 8 B, 200 MB    | 26 s (49 s, 141 s) |          |                 |
+| 50M keys, 8 B, 1000 MB   | 86 s (90 s, 215 s) |          |                 |
 
 F53: the mean of the two timed starts, which differ by 2 percent or less;
 at 50M keys the third start, with the second and the first in brackets.
@@ -138,15 +138,15 @@ reading the section's records, the rerun, rule 4 (`linkD`), the section's
 nodes (`createMaps` to `registerSectionNodes`), and the check
 (`postStartupCheck`); the rest is under 0.4 s.
 
-| Database | Start | Reading | Rerun | Rule 4 | Section's nodes | Check |
-|---|---|---|---|---|---|---|
-| 10M keys, 50 MB | 7.4 | 0.8 | 3.1 | 1.3 | 1.6 | 0.5 |
-| 10M keys, 200 MB | 12.5 | 1.4 | 3.6 | 2.1 | 4.3 | 1.1 |
-| 10M keys, 1000 MB | 70.1 | 6.5 | 42.6 | 2.1 | 11.9 | 6.8 |
-| 2M keys, 100 B | 9.1 | 1.3 | 4.6 | 0.4 | 2.0 | 0.7 |
-| 200k keys, 10 kB | 1.9 | 1.3 | 0.3 | 0.0 | 0.1 | 0.0 |
-| 50M keys, 200 MB | 25.6 | 1.6 | 11.2 | 7.1 | 3.1 | 2.6 |
-| 50M keys, 1000 MB | 85.9 | 6.4 | 47.3 | 11.0 | 12.7 | 8.3 |
+| Database          | Start | Reading | Rerun | Rule 4 | Section's nodes | Check |
+|-------------------|------:|--------:|------:|-------:|----------------:|------:|
+| 10M keys, 50 MB   |   7.4 |     0.8 |   3.1 |    1.3 |             1.6 |   0.5 |
+| 10M keys, 200 MB  |  12.5 |     1.4 |   3.6 |    2.1 |             4.3 |   1.1 |
+| 10M keys, 1000 MB |  70.1 |     6.5 |  42.6 |    2.1 |            11.9 |   6.8 |
+| 2M keys, 100 B    |   9.1 |     1.3 |   4.6 |    0.4 |             2.0 |   0.7 |
+| 200k keys, 10 kB  |   1.9 |     1.3 |   0.3 |    0.0 |             0.1 |   0.0 |
+| 50M keys, 200 MB  |  25.6 |     1.6 |  11.2 |    7.1 |             3.1 |   2.6 |
+| 50M keys, 1000 MB |  85.9 |     6.4 |  47.3 |   11.0 |            12.7 |   8.3 |
 
 * Reading the section's records: 6.0 to 7.1 ms a MB, in all seven.
 * The rerun: 5.6 µs a put where it reads little (10M keys at 1000 MB, 0.02
@@ -173,12 +173,12 @@ the device's: 108 to 180 µs a read on s1 (below).
 
 ### Cold, s1
 
-| Start | Time | Reads | In reads | A read | The rest | From the device |
-|---|---|---|---|---|---|---|
-| 10M keys, 50 MB, cold | 213.5 s | 1,113,136 | 200.3 s | 180 µs | 13.2 s | 2.9 GB |
-| 10M keys, 200 MB, cold | 208.9 s | 1,722,436 | 185.3 s | 108 µs | 23.6 s | 2.9 GB |
-| 10M keys, 50 MB, third | 175.0 s | 1,113,136 | 162.1 s | 146 µs | 13.0 s | 2.7 GB |
-| 10M keys, 200 MB, third | 164.5 s | 1,722,436 | 142.2 s | 83 µs | 22.3 s | 2.6 GB |
+| Start                   |    Time |     Reads | In reads | A read | The rest | From the device |
+|-------------------------|--------:|----------:|---------:|-------:|---------:|----------------:|
+| 10M keys, 50 MB, cold   | 213.5 s | 1,113,136 |  200.3 s | 180 µs |   13.2 s |          2.9 GB |
+| 10M keys, 200 MB, cold  | 208.9 s | 1,722,436 |  185.3 s | 108 µs |   23.6 s |          2.9 GB |
+| 10M keys, 50 MB, third  | 175.0 s | 1,113,136 |  162.1 s | 146 µs |   13.0 s |          2.7 GB |
+| 10M keys, 200 MB, third | 164.5 s | 1,722,436 |  142.2 s |  83 µs |   22.3 s |          2.6 GB |
 
 * A start on s1 waits for reads 86 to 94 percent of its time: 1.1 and 1.7
   million reads, 83 to 180 µs each, spread over the whole stream (2.9 GB
@@ -198,13 +198,13 @@ the device's: 108 to 180 µs a read on s1 (below).
 For the promise, measured on F53 (an M1 Pro) and s1 (2 virtual CPUs, a
 virtual disk):
 
-| | 50 MB | 200 MB | 1000 MB |
-|---|---|---|---|
-| Warm, 10M keys, 8-byte values | 7.4 s (a section of 2.15 sd) | 12.4 s | 70 s |
-| Warm, 50M keys, 8-byte values | | 26 s | 86 s |
-| Warm, 2M keys, 100-byte values | | 9.1 s | |
-| Warm, 200k keys, 10 kB values | | 1.9 s | |
-| Cold, s1, 10M keys, 8-byte values | 214 s | 209 s | |
+|                                   |                        50 MB | 200 MB | 1000 MB |
+|-----------------------------------|-----------------------------:|-------:|--------:|
+| Warm, 10M keys, 8-byte values     | 7.4 s (a section of 2.15 sd) | 12.4 s |    70 s |
+| Warm, 50M keys, 8-byte values     |                              |   26 s |    86 s |
+| Warm, 2M keys, 100-byte values    |                              |  9.1 s |         |
+| Warm, 200k keys, 10 kB values     |                              |  1.9 s |         |
+| Cold, s1, 10M keys, 8-byte values |                        214 s |  209 s |         |
 
 1. Warm, a promise of 10 s (007-01) holds at 50 MB for 10M keys with small
    values, even with the section at 2.15 times the distance, but not at

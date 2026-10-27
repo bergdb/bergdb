@@ -315,3 +315,13 @@ commits and reads, 88 to 171 ms under ZGC too, are reclaim's physical cuts,
 which hold the stream's monitor while they delete files; added to 005-46.
 docs/levels.md's Level 4 limits say both. Status stays open for Frans's
 decision on target 2.
+
+2026-10-27, 08:45. Target 2 restated at Frans's word ("The target of 20 ms is for the BergDB code. Not for the JVM itself. ... I am satisfied if the BergDB code does not cause stop-the-world for longer than 20 ms. It can make sense to recommend a garbage collector or a specific JVM. But this is a separate thing."; and
+for tests, "feel free to chose JVM settings to limit the maximum pause
+time"), by Claude (Opus 5.5, Claude Code), in 009-01's target 2, 009-04's
+section 8 and docs/levels.md's Level 4 limits. The collector's pauses no
+longer count against it, so the question of Shenandoah's mode is only a
+recommendation (the default mode, without generations). Reclaim's physical
+cuts (up to 171 ms in P4's soak) and a read's wait for the writer's force
+(seconds on s1) are BergDB's own and count, so status stays open until
+005-46 is done.

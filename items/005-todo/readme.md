@@ -29,7 +29,7 @@ Open
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10). For release 2026.1: kept, documented as experimental | open |
-| [005-46](46-stream-file-lock.md) | Fix | A read of the stream's last file waits for the writer's append and its `fsync` (`FileStream.DbFile`, one monitor for both): seconds on s1's disk, the longest waits left there with handles (009-03); and every read waits while reclaim's physical cut deletes files (`FileStream.pretruncate`, the stream's monitor): up to 171 ms in P4's soak on F53, under every collector (009-04) | open |
+| [005-46](46-stream-file-lock.md) | Fix | A read of the stream's last file waits for the writer's append and its `fsync` (`FileStream.DbFile`, one monitor for both): seconds on s1's disk, the longest waits left there with handles (009-03); and every read waits while reclaim's physical cut deletes files (`FileStream.pretruncate`, the stream's monitor): up to 171 ms in P4's soak on F53, under every collector (009-04). Item 009's target 2 waits for it | open |
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
 | [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits starts the flush, instead of waiting for `BufferedStream`'s timer; one thread's durable commit from 35 ms to about one force (005-13's question 5) | open |
 | [005-49](49-smooth-index-writes.md) | Investigate | Smooth index writes: at large startup distances the index is written in bursts (10M keys, 1000 MB: windows of 70 to 1,100 bytes a put); a commit's index writes should follow its own size. Before 007-03's step 3 (005-38) | open |
@@ -914,3 +914,8 @@ decided when 005-56 is worked on. No change to `java/`.
 fixed `stream` (its tester moved to `core`) and `dag`'s and `stream`'s
 lists; `deps.py` on `java/src` now finds 7 uses not in a list, all in `pub`
 and `pubimp`, and one cycle, `pub` with `pubimp`. No change to `java/`.
+
+2026-10-27. 005-46: item 009's target 2 waits for it, as Frans restated
+the target for BergDB's own code, the collector's pauses not counted
+(009-01, target 2). By Claude (Opus 5.5, Claude Code). No change to
+`java/`.

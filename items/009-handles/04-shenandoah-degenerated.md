@@ -266,14 +266,18 @@ other lock that readers wait on.
   its stop). Without generations every cycle marks the whole heap and may
   take any region, and in this soak that kept up.
 * **So, for BergDB with eviction under Shenandoah:** its default mode,
-  without generations. 009-01's target 2 names generational Shenandoah;
-  whether it should name the default mode instead is Frans's decision. If
-  so, 004-02's runs (ScaleBench at 10M keys) in that mode would complete the
-  evidence, about 35 minutes on F53, and section 6's points 3 and 4 are not
-  needed for target 2.
+  without generations, as a recommendation. Frans decided on 2026-10-27
+  that target 2 is for BergDB's own code, not for the collector ("The target of 20 ms is for the BergDB code. Not for the JVM itself.
+  ... I am satisfied if the BergDB code does not cause stop-the-world for longer than 20 ms. It can make sense to recommend a garbage collector or a specific JVM. But this is a separate thing."),
+  and that tests may pick JVM settings that keep the collector's pauses
+  small. So generational Shenandoah's stops do not count against target 2;
+  004-02's runs in the default mode (ScaleBench at 10M keys, about 35
+  minutes on F53) and section 6's points 3 and 4 would serve the
+  recommendation only. 009-01's target 2 says this since then.
 * **Beside the collector:** reclaim's physical cuts stop commits, and the
   reads that load from the stream, for up to 171 ms under every collector
-  (section 7.3; 005-46).
+  (section 7.3; 005-46). They are BergDB's own, so they count: with them
+  target 2 is not met in P4's soak, and 009 waits for 005-46.
 
 [docs/levels.md](../../docs/levels.md), section 7 (Level 4's limits), says
 this since 2026-10-27.
