@@ -357,6 +357,12 @@ reviewed at max effort, in `main` (`bba91dd` to `a506b34`, entry
 `422fad4`); what to remove of the old design is for Frans. W8, 007-03's
 step 2, still runs.
 
+2026-10-27, 20:42. W8 done: 007-06, step 2 of 007-03 (`c143402`). All
+agents done. The quiet block's steps are ready (READY markers): P4's soak,
+Props, ScaleBench C and `performance.sh ab` (005-46, 009), 005-48's F53
+runs, 005-52's budget step; 005-48's s1 runs ran in the afternoon. The
+conductor waits for 22:30.
+
 
 ## 8. Outcome
 
