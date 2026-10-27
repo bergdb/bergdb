@@ -29,7 +29,7 @@ Open
 | [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10). For release 2026.1: kept, documented as experimental | open |
-| [005-46](46-stream-file-lock.md) | Fix | A read of the stream's last file waits for the writer's append and its `fsync` (`FileStream.DbFile`, one monitor for both): seconds on s1's disk, the longest waits left there with handles (009-03) | open |
+| [005-46](46-stream-file-lock.md) | Fix | A read of the stream's last file waits for the writer's append and its `fsync` (`FileStream.DbFile`, one monitor for both): seconds on s1's disk, the longest waits left there with handles (009-03); and every read waits while reclaim's physical cut deletes files (`FileStream.pretruncate`, the stream's monitor): up to 171 ms in P4's soak on F53, under every collector (009-04) | open |
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
 | [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits starts the flush, instead of waiting for `BufferedStream`'s timer; one thread's durable commit from 35 ms to about one force (005-13's question 5) | open |
 | [005-49](49-smooth-index-writes.md) | Investigate | Smooth index writes: at large startup distances the index is written in bursts (10M keys, 1000 MB: windows of 70 to 1,100 bytes a put); a commit's index writes should follow its own size. Before 007-03's step 3 (005-38) | open |
@@ -243,8 +243,9 @@ Files
   found on the way in 005-40 and 005-41: `SalsaStream.getLength()` and
   `WTransaction.sync(SyncLevel)`; done.
 * [46-stream-file-lock.md](46-stream-file-lock.md). 005-46, a read of the
-  stream's last file waits for the writer's append and its `fsync`; found
-  in 009's measurements; open.
+  stream's last file waits for the writer's append and its `fsync`, and
+  every read waits for a physical cut's deletes; found in 009's
+  measurements and 009-04's soaks; open.
 * [47-written-not-forced.md](47-written-not-forced.md). 005-47, a
   durability of "written, not forced": Frans's question, the options and
   the constraints; open.
@@ -883,3 +884,10 @@ whose eviction thread has started is never collected, as the thread holds
 the `Db` (since 009's step 3b; one such database in the f-tests); and the
 unit tests leave 211 storage threads of databases not stopped, which only
 finalization cleans up. No change to `java/`.
+
+2026-10-27. 005-46 got a second case, from the soaks of 009-04 (section
+7.3), by Claude (Opus 5.5, Claude Code): every read from the stream waits
+while reclaim's physical cut deletes files and forces the directory after
+each (`FileStream.pretruncate`, on the stream's monitor), 88 to 171 ms in
+P4's soak on F53 under every collector. One option added, the deletes
+outside the monitor; "Done when" includes P4's soak. No change to `java/`.
