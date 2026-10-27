@@ -341,6 +341,22 @@ step 3 as a patch for his review (W10, max effort; not committed to
 `java/`), 005-59's option A (W11), and T9 and T12 over handles in Lean
 (W12, max effort, a new 005 entry). Four agents with W8.
 
+2026-10-27, 17:40. W11 done: 005-59, option A (`f9c3b09`, `2eaaa45`).
+
+2026-10-27, 18:40. W10 done: 007-07, step 3 as a patch for Frans
+(`49f99a1`; not in `java/`). Found on the way: `level2.sh`'s step 6
+(BryanRepro) failed on `main` from `eaec93e` (005-46) on.
+
+2026-10-27, 19:12. W13: the test started a database right after `stop()`
+while the old one's cut thread still deleted files; no data at risk; the
+test now uses `close()` (`b0661ba`, level2 full passes); the API question
+registered as 005-63 (`9fa1789`).
+
+2026-10-27, 19:48. W12 and W14: T9 and T12 over handles proved and
+reviewed at max effort, in `main` (`bba91dd` to `a506b34`, entry
+`422fad4`); what to remove of the old design is for Frans. W8, 007-03's
+step 2, still runs.
+
 
 ## 8. Outcome
 
