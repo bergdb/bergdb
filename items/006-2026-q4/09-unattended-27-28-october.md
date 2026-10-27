@@ -279,6 +279,26 @@ that faster syncs expose; to be understood before any commit.
 started, an idle database wakes no more than the JVM; the thread used 1.4
 ms of CPU a minute before, none after (005-51, Outcome).
 
+2026-10-27, 13:20. W3 done: 005-58 proved and committed (`7c1ce2f`, the
+Lean files; `0965377`, the entry, the citations in 005-57's report and
+`docs/levels.md`); the review at max effort found the statements true and
+not vacuous, with one limit written in the entry (the model's startup
+links by node id where Java uses `posToId`, so those branches are proved
+but not exercised by the model's runs). For Frans: the trusted additions,
+and the by-id check in `linkToCanonical` (recommended: it stays).
+
+2026-10-27, 13:30. W1 done: the quiet block's four steps of 005-46 and 009
+are ready (`night/soak.sh`, `props.sh`, `scalebench-c.sh`, `perf-ab.sh`,
+the last `performance.sh ab` against 2026.1, 009-01's done item 7), and
+009-03's ScaleBench from the device ran on s1 on HEAD (009-03, section 9):
+no reader waits on a file's monitor any more (10.7 percent of samples
+before 005-46), 15 to 32 percent more gets a second with 2 and 4 threads;
+the longest gets, 64 to 74 ms, overlap nothing of BergDB's (s1's disk, and
+G1's young collections under G1); one get of 2,760 ms with nothing else
+running, put down to s1's disk or the kernel's reclaim in the run's memory
+cgroup, a judgement for Frans to see. Cold startup at 10M keys: 21.6 and
+19.6 s (170 to 193 s before 005-57).
+
 
 ## 8. Outcome
 

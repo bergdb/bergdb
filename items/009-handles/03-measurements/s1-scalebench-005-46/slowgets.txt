@@ -1,0 +1,30 @@
+s1-d-key24-10m-b133-2026.1-G1: startup 180.3 s
+  uniform, timed, slowest: 1241.4 ms at 259.4 s (after-load wait 1240 ms); 124.6 ms at 286.6 s (Pause Young (Normal) (G1 Evacuation Pause) 123.074 ms); 59.5 ms at 255.7 s; 55.1 ms at 241.1 s (Pause Young (Normal) (G1 Evacuation Pause) 52.723 ms); 46.8 ms at 255.2 s
+  hot, timed, slowest: 1205.1 ms at 365.5 s (Pause Young (Concurrent Start) (G1 Humongous Allocation) 214.48 ms, Pause Young (Concurrent Start) (G1 Humongous Allocation) 40.28 ms, Pause Remark 4.819 ms, after-load wait 1203 ms); 916.2 ms at 332.4 s (after-load wait 914 ms); 135.2 ms at 338.9 s (Pause Young (Normal) (G1 Evacuation Pause) 133.849 ms); 108.2 ms at 313.3 s (Pause Young (Normal) (G1 Evacuation Pause) 106.255 ms); 47.2 ms at 360.3 s
+  threads: 1: 1179 gets/s, max 44.0 ms, 2: 3202 gets/s, max 678.8 ms, 4: 3787 gets/s, max 723.0 ms
+  sampled: 7.4% BLOCKED reading the stream on bergdb.stream.FileStream$DbFile, holding a pointer lock; 6.6% BLOCKED in NodeCollection.followPointer on bergdb.core.PointerLocks$Lock; 1.5% BLOCKED in Eviction.afterLoad on bergdb.core.Db$WriteLock
+s1-d-key24-10m-b133-2026.1-Z: startup 184.9 s
+  uniform, timed, slowest: 1422.6 ms at 257.7 s (after-load wait 1421 ms); 818.1 ms at 295.1 s (after-load wait 817 ms); 50.9 ms at 259.9 s; 46.7 ms at 268.8 s; 43.1 ms at 243.8 s
+  hot, timed, slowest: 956.2 ms at 366.4 s (after-load wait 955 ms); 935.1 ms at 330.9 s (after-load wait 934 ms); 53.5 ms at 326.2 s; 43.4 ms at 324.0 s; 38.4 ms at 369.7 s
+  threads: 1: 1078 gets/s, max 59.7 ms, 2: 3003 gets/s, max 867.4 ms, 4: 3149 gets/s, max 2779.6 ms
+  sampled: 7.6% BLOCKED reading the stream on bergdb.stream.FileStream$DbFile, holding a pointer lock; 6.1% BLOCKED in NodeCollection.followPointer on bergdb.core.PointerLocks$Lock; 1.8% BLOCKED in Eviction.afterLoad on bergdb.core.Db$WriteLock
+s1-d-key24-10m-b133-bf19075-G1: startup 169.6 s
+  uniform, timed, slowest: 61.0 ms at 271.8 s (Pause Young (Normal) (G1 Evacuation Pause) 59.618 ms); 59.1 ms at 225.1 s (Pause Young (Normal) (G1 Evacuation Pause) 58.906 ms); 48.7 ms at 274.7 s; 47.4 ms at 221.4 s; 42.4 ms at 251.2 s
+  hot, timed, slowest: 66.6 ms at 308.6 s (Pause Young (Normal) (G1 Evacuation Pause) 66.351 ms); 46.2 ms at 350.8 s; 45.2 ms at 311.2 s; 43.9 ms at 343.5 s; 39.7 ms at 339.8 s
+  threads: 1: 1205 gets/s, max 61.6 ms, 2: 3450 gets/s, max 56.5 ms, 4: 5445 gets/s, max 60.9 ms
+  sampled: 10.9% BLOCKED reading the stream on bergdb.stream.FileStream$DbFile
+s1-d-key24-10m-b133-bf19075-Z: startup 193.2 s
+  uniform, timed, slowest: 50.1 ms at 301.8 s; 45.6 ms at 302.4 s; 42.7 ms at 254.8 s; 39.7 ms at 257.1 s; 38.9 ms at 279.5 s
+  hot, timed, slowest: 54.8 ms at 329.5 s; 50.2 ms at 373.5 s; 40.0 ms at 327.8 s; 37.2 ms at 329.1 s; 35.1 ms at 334.6 s
+  threads: 1: 1216 gets/s, max 50.2 ms, 2: 3406 gets/s, max 60.3 ms, 4: 4925 gets/s, max 80.0 ms
+  sampled: 10.7% BLOCKED reading the stream on bergdb.stream.FileStream$DbFile
+s1-d-key24-10m-b133-head-G1: startup 21.6 s
+  uniform, timed, slowest: 2759.9 ms at 91.6 s; 96.9 ms at 94.3 s; 58.2 ms at 89.6 s (Pause Young (Normal) (G1 Evacuation Pause) 57.847 ms); 48.5 ms at 103.2 s; 47.6 ms at 126.8 s
+  hot, timed, slowest: 61.1 ms at 175.6 s (Pause Young (Normal) (G1 Evacuation Pause) 59.72 ms); 59.3 ms at 161.4 s; 43.8 ms at 174.2 s; 42.0 ms at 159.3 s; 39.3 ms at 188.4 s
+  threads: 1: 1314 gets/s, max 70.6 ms, 2: 4014 gets/s, max 59.2 ms, 4: 7181 gets/s, max 62.1 ms
+  sampled: none BLOCKED
+s1-d-key24-10m-b133-head-Z: startup 19.6 s
+  uniform, timed, slowest: 73.8 ms at 87.3 s; 45.3 ms at 105.8 s; 41.6 ms at 109.3 s; 38.0 ms at 114.9 s; 37.6 ms at 72.1 s
+  hot, timed, slowest: 51.3 ms at 195.6 s; 48.5 ms at 166.9 s; 47.9 ms at 182.7 s; 44.5 ms at 156.4 s; 42.5 ms at 176.0 s
+  threads: 1: 1253 gets/s, max 44.0 ms, 2: 3922 gets/s, max 41.6 ms, 4: 6515 gets/s, max 64.0 ms
+  sampled: none BLOCKED

@@ -1,0 +1,163 @@
+{
+  "tool": "ScaleBench, bergdb item 004 (004-02)",
+  "label": "s1-l-key24-10m-head",
+  "mode": "load",
+  "properties": {
+    "sb.budget": "600000000",
+    "sb.dir": "/opt/bergdb-bench/009-46/data/key24-10000000",
+    "sb.disk": "sda",
+    "sb.gclog": "/opt/bergdb-bench/009-46/out/s1-l-key24-10m-head.gc.log",
+    "sb.keys": "10000000",
+    "sb.keytype": "key24",
+    "sb.label": "s1-l-key24-10m-head",
+    "sb.mode": "load",
+    "sb.out": "/opt/bergdb-bench/009-46/out/s1-l-key24-10m-head.json",
+    "sb.phases": "",
+    "sb.sampled": "2",
+    "sb.threads": "1,2,4"
+  },
+  "jvm": {
+    "javaRuntimeVersion": "27+35-2325",
+    "javaVmName": "OpenJDK 64-Bit Server VM",
+    "javaVmVersion": "27+35-2325",
+    "javaVendor": "Oracle Corporation",
+    "osName": "Linux",
+    "osVersion": "7.0.0-30-generic",
+    "osArch": "amd64",
+    "availableProcessors": 2,
+    "maxHeapBytes": 2621440000,
+    "physicalMemoryBytes": 4030119936,
+    "collector": "G1",
+    "gcBeans": ["G1 Young Generation","G1 Concurrent GC","G1 Old Generation"],
+    "vmFlags": ["-Xms2500m","-Xmx2500m","-XX:+AlwaysPreTouch","-Xlog:gc*,safepoint:file=<run>:uptime,level,tags","-Dsb.threads=1,2,4","-Dsb.sampled=2","-Dsb.disk=sda","-Dsb.label=s1-l-key24-10m-head","-Dsb.out=/opt/bergdb-bench/009-46/out/s1-l-key24-10m-head.json","-Dsb.gclog=/opt/bergdb-bench/009-46/out/s1-l-key24-10m-head.gc.log","-Dsb.mode=load","-Dsb.dir=/opt/bergdb-bench/009-46/data/key24-10000000","-Dsb.keys=10000000","-Dsb.keytype=key24","-Dsb.budget=600000000","-Dsb.phases="],
+    "pid": 578500
+  },
+  "vmFlags": ["-Xms2500m","-Xmx2500m","-XX:+AlwaysPreTouch","-Xlog:gc*,safepoint:file=<run>:uptime,level,tags","-Dsb.threads=1,2,4","-Dsb.sampled=2","-Dsb.disk=sda","-Dsb.label=s1-l-key24-10m-head","-Dsb.out=/opt/bergdb-bench/009-46/out/s1-l-key24-10m-head.json","-Dsb.gclog=/opt/bergdb-bench/009-46/out/s1-l-key24-10m-head.gc.log","-Dsb.mode=load","-Dsb.dir=/opt/bergdb-bench/009-46/data/key24-10000000","-Dsb.keys=10000000","-Dsb.keytype=key24","-Dsb.budget=600000000","-Dsb.phases="],
+  "physicalMemory": 4030119936,
+  "os": "Linux 7.0.0-30-generic amd64",
+  "cpus": 2,
+  "clockPairNs": 63.8867,
+  "startupSec": 0.0112917,
+  "load": {
+    "seconds": 731.959,
+    "gets": 0,
+    "loads": 960524,
+    "loadsPerGet": 960524,
+    "streamReads": 2014101,
+    "streamReadsPerGet": 2014101,
+    "streamReadBytes": 264607548,
+    "deviceReadBytes": 4659048448,
+    "deviceReadBytesPerGet": 4659048448,
+    "diskReads": 955783,
+    "diskReadsPerGet": 955783,
+    "diskReadBytes": 4683554816,
+    "stealPercent": 0.0276667,
+    "sweeps": 1568,
+    "sweepMs": 2200,
+    "sweepMaxMsSoFar": 3,
+    "afterLoadCalls": 985659,
+    "afterLoadMs": 106.967,
+    "afterLoadOver10ms": 0,
+    "gcCount": 52,
+    "gcMs": 6499,
+    "residentBytes": 599893040,
+    "heapUsedBytes": 1535421288,
+    "uptimeFrom": 1.30157,
+    "uptimeTo": 733.261,
+    "keys": 10000000,
+    "loaded": 10000000,
+    "putsPerSec": 13662.0,
+    "streamBytes": 7543622944,
+    "diskBytes": 7543622944,
+    "diskBytesPerKey": 754.362,
+    "eviction": "eviction BUDGET: 1888080 slots unswizzled, 3790444 objects released; budget 600000000 bytes, low 450000000; 1568 sweeps (431 after loads, 10 complete, 37 above the budget after); last sweep 600097376 -> 598811824 bytes, pinned 32462496 (at most 32462496); sweep time 2200 ms in total, 3 ms at most"
+  },
+  "keys": 10000000,
+  "loaded": 10000000,
+  "keytype": "key24",
+  "budget": 600000000,
+  "phases": [],
+  "maxima": {
+    "heapUsedBytes": 1728359272,
+    "residentBytes": 600498640,
+    "rssBytes": 2769051648
+  },
+  "gcLog": {
+    "pauses": {
+      "count": 54,
+      "totalMs": 6519.25,
+      "maxMs": 261.549,
+      "p50Ms": 142.335,
+      "p99Ms": 261.549,
+      "p999Ms": 261.549,
+      "longest": [
+        {
+          "uptimeSec": 533.609,
+          "what": "Pause Young (Mixed) (G1 Evacuation Pause)",
+          "ms": 261.549
+        },
+        {
+          "uptimeSec": 126.809,
+          "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+          "ms": 224.103
+        },
+        {
+          "uptimeSec": 319.305,
+          "what": "Pause Young (Mixed) (G1 Evacuation Pause)",
+          "ms": 196.754
+        },
+        {
+          "uptimeSec": 108.706,
+          "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+          "ms": 193.269
+        },
+        {
+          "uptimeSec": 366.781,
+          "what": "Pause Young (Mixed) (G1 Evacuation Pause)",
+          "ms": 192.801
+        }
+      ]
+    },
+    "safepoints": {
+      "count": 54,
+      "totalMs": 6525.76,
+      "maxMs": 261.719,
+      "p50Ms": 143.359,
+      "p99Ms": 261.719,
+      "p999Ms": 261.719,
+      "longest": [
+        {
+          "uptimeSec": 533.610,
+          "what": "G1CollectForAllocation",
+          "ms": 261.719
+        },
+        {
+          "uptimeSec": 126.809,
+          "what": "G1CollectForAllocation",
+          "ms": 224.172
+        },
+        {
+          "uptimeSec": 319.305,
+          "what": "G1CollectForAllocation",
+          "ms": 196.823
+        },
+        {
+          "uptimeSec": 108.706,
+          "what": "G1CollectForAllocation",
+          "ms": 193.327
+        },
+        {
+          "uptimeSec": 366.781,
+          "what": "G1CollectForAllocation",
+          "ms": 192.911
+        }
+      ]
+    },
+    "heapAfterGcMaxMB": 1353,
+    "heapCommittedMaxMB": 2500,
+    "fullGcs": 2,
+    "concurrentCycles": 12
+  },
+  "eviction": "eviction BUDGET: 1888080 slots unswizzled, 3790444 objects released; budget 600000000 bytes, low 450000000; 1568 sweeps (431 after loads, 10 complete, 37 above the budget after); last sweep 600097376 -> 598811824 bytes, pinned 32462496 (at most 32462496); sweep time 2200 ms in total, 3 ms at most"
+}
+
