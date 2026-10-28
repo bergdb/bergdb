@@ -19,6 +19,14 @@ Files
   the morning's write-up, and the lessons of the first night (006-09).
   [01-night/](01-night/) has the conductor script and an example of its
   steps file.
+* [02-coordinator.md](02-coordinator.md). 013-02, the daily coordinator:
+  one session a day that Frans talks to and that runs the work through
+  subagents, in three modes (attended, unattended, closing); a new one
+  each morning; the shared things it owns; its state; how it resumes after
+  a usage limit, a network outage or a dead session; effort and usage.
+  [02-coordinator/skill/](02-coordinator/skill/) is the Claude Code
+  skill `coordinator`, with the state file's template, the watchdog and
+  the usage reader, linked from `~/.claude/skills/coordinator`.
 
 
 Log
@@ -28,3 +36,24 @@ Log
 called 013-ai-work. Create a subitem 01-night. In 013-01 describe the
 unattended nightly work."), with 013-01, by Claude (Opus 5.5, Claude
 Code), from 006-09.
+
+2026-10-28. 013-02, the daily coordinator, at Frans's request ("Add this
+plan to a new 013-02 item. Describe it there. Also implement the
+Claude-specific stuff that is needed for the coordinator skill."), by
+Claude (Opus 5.5, Claude Code), from a conversation with Frans the same
+morning. The skill is installed by a link in `~/.claude/skills/`; a new
+session found it. The watchdog was tested with a stand-in for
+`tools/news.sh`: a live and a dead process, an old heartbeat, a stop by
+`kill`. The skill itself has not run yet.
+
+2026-10-28. `usage.sh`, at Frans's request ("The 5-hour usage limit: the
+coordinator can't see how much usage is left. Solve this somehow."): it
+reads the plan's usage through Claude Code's `/usage`, run headless, with
+no model call, and gives a level for pacing (013-02, section 9). Tested
+online, and with no binary. Plenty changed the same day, at Frans's
+request, to the week at most 15 points ahead of its time (was 10).
+
+2026-10-28. The coordinator's effort follows its mode, at Frans's
+request: xhigh attended, max unattended (013-02, section 9). Frans
+switches it with `/effort`: a scheduled `/effort xhigh` reached the
+model as plain text, so the coordinator cannot switch by itself.
