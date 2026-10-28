@@ -10,6 +10,9 @@ extern const struct test keys_tests[];
 extern const struct test spos_tests[];
 extern const struct test mem_tests[];
 extern const struct test vectors_tests[];
+extern const struct test stream_tests[];
+extern const struct test rstream_tests[];
+extern const struct test records_tests[];
 
 int main(int argc, char **argv) {
     const struct test *const tables[] = {
@@ -21,6 +24,9 @@ int main(int argc, char **argv) {
         spos_tests,
         mem_tests,
         vectors_tests,
+        stream_tests,
+        rstream_tests,
+        records_tests,
         NULL
     };
     return test_main(argc, argv, "UNIT", tables);

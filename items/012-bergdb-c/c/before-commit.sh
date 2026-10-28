@@ -21,7 +21,9 @@
 #   unit-release  the unit tests in the release build, under macOS's leaks
 #   func          the functional tests in the test build, when there are any
 #   func-release  the functional tests in the release build, under leaks
-#   cross         test/cross/cross.sh quick, when it exists (012-05)
+#   cross         test/cross/cross.sh quick, when it exists (012-05), with C's
+#                 tools of the test build as side B (C=build/test: bergdb-scan
+#                 since 012-06, under the sanitizers), Java's where C has none
 
 C=$(cd "$(dirname "$0")" && pwd)
 cd "$C" || exit 1
@@ -95,6 +97,6 @@ if [ -x build/test/func ]; then
     step func-release leaks_run build/release/func
 fi
 if [ -f test/cross/cross.sh ]; then
-    step cross sh test/cross/cross.sh quick
+    step cross sh test/cross/cross.sh quick C=build/test
 fi
 echo "C BEFORE COMMIT OK ($(( $(date +%s) - START )) s)"

@@ -10,14 +10,23 @@ import java.util.List;
 import java.util.Random;
 
 import bergdb.common.Bytes;
+import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
 import bergdb.dag.Klong;
+import bergdb.dag.Node;
+import bergdb.dag.TopNode;
+import bergdb.dag.ValueNode;
+import bergdb.storage.MetaBlock;
+import bergdb.storage.RecoverableStream;
+import bergdb.stream.MemoryStream;
 
 /**
  * Writes what Java's classes give for a fixed set of inputs, as the test vectors of the C
  * clone's unit tests (bergdb 012-04): bytes.txt (Bytes), checksum.txt (NodeChecksum),
  * klong.txt (Klong), keys.txt (Keys) and jsem.txt (Java's own arithmetic: casts, shifts,
- * division, comparisons, and the take's double expressions in TransSeq), into a directory. C's unit tests read them
+ * division, comparisons, and the take's double expressions in TransSeq), and (012-06)
+ * records.txt (a small stream that Db writes, its records as StoredTrans.parse parses them,
+ * and records it refuses), into a directory. C's unit tests read them
  * (c/test/unit/t_vectors.c); 012-05's cross tests run this again and compare with the
  * committed files, so that a change in Java shows.
  *
@@ -44,6 +53,7 @@ public class Vectors {
         klong(open(dir, "klong.txt"));
         keys(open(dir, "keys.txt"));
         jsem(open(dir, "jsem.txt"));
+        records(open(dir, "records.txt"));
         System.out.println("VECTORS OK: " + dir);
     }
 
@@ -495,6 +505,212 @@ public class Vectors {
                     + "\n");
         }
         w.close();
+    }
+
+    // ---- Records and nodes (bergdb 012-06) ----
+
+    /** The position at which each record is parsed a second time: 40 bytes before the meta
+     * block at 200,000, so that its nodes after the block have positions 128 bytes further on
+     * than their offsets say, and its value nodes' stored offsets differ from their distances
+     * in the stream (005-34). */
+    private static final long SHIFTED = RecoverableStream.META_BLOCK_DISTANCE - 40;
+
+    private static void records(PrintWriter w) throws IOException {
+        MemoryStream ms = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        DbBuilder b = Db.builder();
+        b.testSetup(ms);
+        b.clock(clock);
+        b.maxNodeSize8();
+        b.startupDistance(100);
+        clock.setTime(1000);
+        Db db = b.build();
+        db.start();
+        Random r = new Random(7);
+        for (int i = 0; i < 14; i++) {
+            clock.setTime(2000 + 10 * i);
+            Trans.Builder t = db.trans();
+            int n = 1 + r.nextInt(3);
+            for (int j = 0; j < n; j++) {
+                String key = "/k/" + r.nextInt(12);
+                if (r.nextInt(5) == 0) {
+                    t.delete(key);
+                } else {
+                    t.put(key, "v" + i + "." + j);
+                }
+            }
+            db.execute(t.build());
+        }
+        db.close();
+        byte[] stream = new byte[(int) ms.getLength()];
+        ms.read(0, stream, 0, stream.length);
+        w.print("# stream HEX: the stream of a database that Db made (MemoryStream, node size 8, "
+                + "startup distance 100, 14 transactions)\n");
+        w.print("stream " + hex(stream) + "\n");
+
+        List<Long> tposes = new ArrayList<>();
+        List<byte[]> bufs = new ArrayList<>();
+        Object lock = new Object();
+        NodeStream ns = new NodeStream(new RecoverableStream(ms, new MetaBlock()), lock);
+        synchronized (lock) {
+            NodeStream.TransIterator it = ns.createTransIterator(0);
+            while (it.next()) {
+                tposes.add(it.tpos);
+                bufs.add(it.transBuffer);
+            }
+        }
+
+        w.print("# record TPOS HEX: a committed record of the stream, its bytes\n");
+        w.print("# trans TPOS AT TT STARTUPPOS TOPPOS LASTPOS NNODES DIRTY: StoredTrans.parse of "
+                + "the record at AT (TPOS, or " + SHIFTED + "); DIRTY its got-dirty list\n");
+        w.print("# node TPOS AT I 10 SPOS ID ORDINAL ROOTTIME ROOT SKIPPOS SKIPTIME\n");
+        w.print("# node TPOS AT I 20 SPOS ID PREVPOS LEAF N KLONGS REFS\n");
+        w.print("# node TPOS AT I 30|40 SPOS ID TPOS OFFSETFROMTRANS VALUE KEY: a value or a "
+                + "delete (VALUE -)\n");
+        for (int k = 0; k < tposes.size(); k++) {
+            long tpos = tposes.get(k);
+            byte[] buf = bufs.get(k);
+            w.print("record " + tpos + " " + hex(buf) + "\n");
+            for (long at : new long[] {tpos, SHIFTED}) {
+                StoredTrans t = StoredTrans.parse(at, buf);
+                w.print("trans " + tpos + " " + at + " " + t.tt + " " + t.startupPos + " "
+                        + t.topPos + " " + t.lastPos + " " + t.nodes.length + " "
+                        + hexLongs(t.gotDirtyIdsAndSpos) + "\n");
+                for (int i = 0; i < t.nodes.length; i++) {
+                    StoredNode sn = t.nodes[i];
+                    Node n = sn.getNode();
+                    String head = "node " + tpos + " " + at + " " + i + " " + (n.getType() & 0xff)
+                            + " " + n.getSpos() + " " + n.getId() + " ";
+                    if (n instanceof TopNode) {
+                        TopNode top = (TopNode) n;
+                        long[] pos = new long[top.pointersLength];
+                        long[] time = new long[top.pointersLength];
+                        for (int j = 0; j < pos.length; j++) {
+                            pos[j] = top.pointersPos[j];
+                            time[j] = top.pointersTime[j];
+                        }
+                        w.print(head + top.topNodeId + " " + top.rootTime + " "
+                                + top.getPointerPos(0) + " " + decLongs(pos) + " "
+                                + decLongs(time) + "\n");
+                    } else if (n instanceof KeyNode) {
+                        KeyNode key = (KeyNode) n;
+                        long[] kl = new long[key.size];
+                        long[] refs = new long[key.size];
+                        for (int j = 0; j < kl.length; j++) {
+                            kl[j] = key.klongs[j];
+                            refs[j] = key.getPointerPos(j);
+                        }
+                        w.print(head + sn.getPrevPos() + " " + (key.isSegmentLeaf() ? 1 : 0) + " "
+                                + key.size + " " + hexLongs(kl) + " " + decLongs(refs) + "\n");
+                    } else {
+                        ValueNode v = (ValueNode) n;
+                        w.print(head + v.getTpos() + " " + v.getOffsetFromTrans() + " "
+                                + (v.value == null ? "-" : hex(v.value)) + " "
+                                + hexLongs(((StoredValueNode) sn).getKey()) + "\n");
+                    }
+                }
+            }
+        }
+
+        // Refused records: one byte changed, and the changed node's checksum made right
+        // again where the change is to reach the parser's own checks.
+        w.print("# refuse TPOS OFF BYTES FIX EXCEPTION: the record at TPOS with BYTES (hex) "
+                + "written at OFF, and then the checksum of the node at offset FIX computed again "
+                + "(-1: none), refused by StoredTrans.parse with EXCEPTION (its simple name), or "
+                + "taken\n");
+        for (int k = 0; k < tposes.size(); k++) {
+            long tpos = tposes.get(k);
+            byte[] buf = bufs.get(k);
+            refuse(w, tpos, buf, 4, 4, -1);                 // the record's format
+            refuse(w, tpos, buf, 4, 6, -1);
+            refuse(w, tpos, buf, 0, (buf[0] + 8) & 0xff, -1);     // the size, past the buffer
+            int off = 32;
+            while (true) {
+                int size = Bytes.bytesToIntLE(buf, off);
+                if (size == 0) {
+                    break;
+                }
+                int type = buf[off + 4] & 0xff;
+                refuse(w, tpos, buf, off + 9, buf[off + 9] ^ 0x10, -1);    // the checksum
+                refuse(w, tpos, buf, off + 4, 50, off);             // the type
+                refuse(w, tpos, buf, off + 5, buf[off + 5] + 1, off);   // the node's format
+                if (type == Node.TYPE_TOP_NODE) {
+                    refuse(w, tpos, buf, off + 8, 0x80, off);       // h below 0
+                    refuse(w, tpos, buf, off + 8, buf[off + 8] + 1, off);   // h, not the ordinal's
+                    refuse(w, tpos, buf, off + 31, 0x80, off);      // the root time below 0
+                    refuse(w, tpos, buf, off + 31, 0x01, off);      // the root time past 2^56 - 1
+                    refuse(w, tpos, buf, off + 39, 0x80, off);      // the root pointer below 0
+                    refuse(w, tpos, buf, off + 0, size + 16, off);  // the size field (assert)
+                    if (size > 40) {
+                        boolean set = Bytes.bytesToLongLE(buf, off + 40) != -1;
+                        byte[] p = new byte[8];
+                        Bytes.longToBytesLE(set ? -1 : 4096, p, 0);
+                        refuse(w, tpos, buf, off + 40, p, off);     // skip pointer 0 (un)set
+                    }
+                } else if (type == Node.TYPE_KEY_NODE) {
+                    refuse(w, tpos, buf, off + 15, 0x80, off);      // prevPos below -1
+                    refuse(w, tpos, buf, off + 16, 2, off);         // the leaf byte
+                    refuse(w, tpos, buf, off + 18, 0x80, off);      // n below 0
+                } else {
+                    refuse(w, tpos, buf, off + 19, 0x7f, off);      // the stored offset
+                    if (type == Node.TYPE_VALUE) {
+                        refuse(w, tpos, buf, off + 23, 0x80, off);  // the length below 0
+                        refuse(w, tpos, buf, off + 22, 0x7f, off);  // the length past the record
+                    } else {
+                        refuse(w, tpos, buf, off + 20, 7, off);     // the key size
+                    }
+                }
+                off += size;
+            }
+            refuse(w, tpos, buf, off + 7, 0x80, -1);        // the got-dirty count below 0
+        }
+        w.close();
+    }
+
+    private static void refuse(PrintWriter w, long tpos, byte[] buf, int off, int value,
+            int fix) {
+        refuse(w, tpos, buf, off, new byte[] {(byte) value}, fix);
+    }
+
+    /**
+     * Prints a "refuse" line: the record with 'change' written at 'off', and the checksum of
+     * the node at 'fix' computed again (over its size field's bytes, as changed), parsed by
+     * StoredTrans.parse; EXCEPTION is "taken" if the parser takes it, which C checks too.
+     */
+    private static void refuse(PrintWriter w, long tpos, byte[] buf, int off, byte[] change,
+            int fix) {
+        if (off + change.length > buf.length) {
+            return;
+        }
+        byte[] b = buf.clone();
+        System.arraycopy(change, 0, b, off, change.length);
+        if (fix >= 0) {
+            int size = Bytes.bytesToIntLE(b, fix);
+            if (fix + size <= b.length) {
+                int sum = NodeChecksum.sumWithZeroReplace(b, fix, size, fix + 6);
+                b[fix + 6] = (byte) sum;
+                b[fix + 7] = (byte) (sum >>> 8);
+            }
+        }
+        String what;
+        try {
+            StoredTrans.parse(tpos, b);
+            what = "taken";
+        } catch (RuntimeException | AssertionError e) {
+            what = e.getClass().getSimpleName();
+        }
+        w.print("refuse " + tpos + " " + off + " " + hex(change) + " " + fix + " " + what + "\n");
+    }
+
+    private static String decLongs(long[] ls) {
+        if (ls.length == 0) {
+            return "-";
+        }
+        StringBuilder s = new StringBuilder();
+        for (long l : ls) {
+            s.append(s.length() == 0 ? "" : ",").append(l);
+        }
+        return s.toString();
     }
 
     // ---- text ----

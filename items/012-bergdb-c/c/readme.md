@@ -53,6 +53,9 @@ to check C against Java's latest without changing the committed ones:
     BERGDB_VECTORS=DIR build/test/unit vectors_
 
 012-05's cross tests do that and compare DIR with the committed files.
+`records.txt` (012-06) holds a small stream that Java's `Db` wrote, its
+records as `StoredTrans.parse` parses them, and records with one change
+that Java refuses, with the exception; `t_records.c` reads it.
 
 
 # 2. The layout
@@ -83,6 +86,17 @@ The modules so far, each ported from its Java class:
 | `keys` | `bergdb.dag.Keys` | `keys_` |
 | `spos` | `bergdb.dag.Spos` | `spos_`, `SPOS_` |
 | `mem` | the allocator (012-01, 4.5) | `mem_`, `MEM_` |
+| `err` | errors: a code, Java's exception's name, a text (012-06) | `err_`, `ERR_` |
+| `plat` | the platform: a directory's entries, files read (POSIX) | `plat_` |
+| `stream` | `MemoryStream`; `FileStream`'s directory, read-only so far | `stream_` |
+| `meta` | `bergdb.storage.MetaBlock` | `meta_`, `META_` |
+| `rstream` | `RecoverableStream`'s reading side, and recovery's plan | `rs_`, `RS_` |
+| `snode` | `NodeStream.bytesToNode`, the three `Stored*Node.parse` | `sn_`, `NODE_` |
+| `strans` | `StoredTrans.Parser` | `st_`, `ST_` |
+| `nstream` | `NodeStream`'s reads: the trans iterator, `readNode` | `ns_` |
+
+The tools so far: `bergdb-scan PATH` (012-06), Java's `StreamScan` in C:
+the same text, "streamscan 1", for every stream (`tools/scan.c`).
 
 
 # 3. Java's semantics in C

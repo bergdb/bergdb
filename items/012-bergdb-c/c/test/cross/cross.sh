@@ -8,7 +8,10 @@
 # directories cut at chosen and random positions, recovered and dumped by
 # both sides, then more transactions), the runs in turns (a workload's
 # segments run alternately by A and B on one directory), and a planted
-# difference (one byte flipped), which must be found and explained.
+# difference (one byte flipped), which must be found and explained. Both
+# scanners scan the crash variants too, and copies with bits flipped and
+# files cut or removed (the corrupt variants, 012-06): a stream that Java
+# refuses, C refuses, at the same place, and C's scanner never crashes.
 #
 # Usage: test/cross/cross.sh quick|full|scale [C=DIR] [SCALE=N] [KEEP=1]
 #   quick   a minute or so: small configurations, a few seeds, a few cuts,
@@ -260,6 +263,20 @@ compare_text() {  # X Y LABEL: two outputs, equal
     return 0
 }
 
+compare_scan() {  # X Y LABEL: two scans, equal but for the text of their error lines, which
+                  # is each implementation's own (StreamScan's header): the same error
+                  # lines at the same places
+    cmp -s "$1" "$2" && return 0
+    sed 's/^error .*/error/' "$1" > "$1.norm"
+    sed 's/^error .*/error/' "$2" > "$2.norm"
+    if ! cmp -s "$1.norm" "$2.norm"; then
+        fail "$3: $1 and $2 differ:"
+        diff "$1" "$2" | head -8 | sed 's/^/      /' | tee -a "$REPORT"
+        return 1
+    fi
+    return 0
+}
+
 expect_exit() {  # OUT WANT LABEL
     e=$(exit_of "$1")
     if [ "$e" != "$2" ]; then
@@ -287,7 +304,7 @@ stream_sha() {  # DIR FROM: SHA-256 of the stream from position FROM to its end
 
 # ======== The sets ========
 
-SPECS=""; CRASH=""; CUTS=0; RANDCUTS=0; TURNS=""
+SPECS=""; CRASH=""; CUTS=0; RANDCUTS=0; TURNS=""; CORRUPT=""; FLIPS=0
 case "$SET" in
 quick)
     SPECS="sd:l2-sd100:restarts:n=300 sd:l2-sd1000-node8:reads:n=300 sd:l3-node14:restarts:n=600
@@ -295,6 +312,8 @@ quick)
         gen:4:n=200,maxnode=8,sd=100,restarts=3,retain=0"
     CRASH="sd-l2-sd1000-node8-reads-n300 gen-4-n200-maxnode8-sd100-restarts3-retain0"
     CUTS=4; RANDCUTS=3
+    CORRUPT="gen-4-n200-maxnode8-sd100-restarts3-retain0 sd-l2-sd1000-node8-reads-n300"
+    FLIPS=40
     TURNS="gen-4-n200-maxnode8-sd100-restarts3-retain0"
     ;;
 full)
@@ -309,6 +328,9 @@ full)
         gen-201-maxnode8-sd100-retain0 gen-202-maxnode8-sd100-retain0 gen-203-maxnode8-sd100-retain0
         gen-204-maxnode8-sd100-retain0"
     CUTS=15; RANDCUTS=25
+    CORRUPT="sd-l2-sd100-plain sd-l2-sd1000-node8-plain sd-l3-node8-restarts coresame
+        gen-201-maxnode8-sd100-retain0 gen-3"
+    FLIPS=80
     TURNS="sd-l2-sd100-restarts sd-l2-sd1000-node8-restarts sd-l3-node8-restarts coresame
         gen-201-maxnode8-sd100-retain0 gen-205-maxnode8-sd100-retain0"
     ;;
@@ -469,7 +491,8 @@ after_workload() {  # WORKLOAD: settings, a restart, and 20 more transactions la
 
 NCUTS=0
 if [ -n "$CRASH" ]; then
-    : > "$OUT/crash-scan.jobs"; : > "$OUT/crash-dump-a.jobs"; : > "$OUT/crash-dump-b.jobs"
+    : > "$OUT/crash-scan.jobs"; : > "$OUT/crash-scan-b.jobs"
+    : > "$OUT/crash-dump-a.jobs"; : > "$OUT/crash-dump-b.jobs"
     : > "$OUT/crash-run-a.jobs"; : > "$OUT/crash-run-b.jobs"
     seed=1
     for w in $CRASH; do
@@ -483,6 +506,7 @@ if [ -n "$CRASH" ]; then
             d=$OUT/crash/$w/$p
             cut_copy "$OUT/a/$w/db" "$p" "$d/src"
             echo "scan $d/scan.txt $d/src" >> "$OUT/crash-scan.jobs"
+            echo "scan $d/scan-b.txt $d/src" >> "$OUT/crash-scan-b.jobs"
             for s in a b; do
                 copy -R "$d/src" "$d/$s"
                 echo "dump $d/dump-$s.txt -maxnode $m $d/$s $d/scan.txt" >> "$OUT/crash-dump-$s.jobs"
@@ -492,7 +516,7 @@ if [ -n "$CRASH" ]; then
         done
         seed=$((seed + 1))
     done
-    side_jobs a "$OUT/crash-scan.jobs"
+    both_sides "$OUT/crash-scan.jobs" "$OUT/crash-scan-b.jobs"
     both_sides "$OUT/crash-dump-a.jobs" "$OUT/crash-dump-b.jobs"
     both_sides "$OUT/crash-run-a.jobs" "$OUT/crash-run-b.jobs"
     before=$FAILS
@@ -508,9 +532,103 @@ if [ -n "$CRASH" ]; then
             compare_text "$d/dump-a.txt" "$d/dump-b.txt" "crash $w at $p, dumps"
             compare_text "$d/run-a.txt" "$d/run-b.txt" "crash $w at $p, runs after"
             compare_dirs "$d/a" "$d/b" 0 "crash $w at $p, files" "$d/scan.txt"
+            sa=$(exit_of "$d/scan.txt"); sb=$(exit_of "$d/scan-b.txt")
+            [ "$sa" = "$sb" ] || fail "crash $w at $p: scan exit $sa and $sb"
+            compare_scan "$d/scan.txt" "$d/scan-b.txt" "crash $w at $p, scans"
         done
     done
     say "crash variants: $NCUTS cuts, $((FAILS - before)) differences, in $(( $(date +%s) - T0 )) s"
+fi
+
+# ---- Corrupt variants (012-06) ----
+# Copies (APFS clones) of side A's views with one bit flipped, at positions taken from
+# its scan: the fields of the records, the nodes and the meta blocks, and random ones;
+# and with a file cut by a byte, removed or renamed. Both scanners scan each copy, and
+# must give the same exit status and the same text but for the text of the error lines:
+# C refuses what Java refuses, where Java refuses it, and never crashes (with C= the
+# test build, under the sanitizers).
+corrupt_specs() {   # SCAN N SEED: N specs "flip:POS:BIT", and a few for the files
+    awk -v n="$2" -v seed="$3" '
+        function add(p) { if (p >= first && p < len) cand[++nc] = p }
+        /^stream / { for (i = 2; i <= NF; i++) { split($i, a, "="); f[a[1]] = a[2] }
+                     first = f["first"]; len = f["length"] }
+        /^file / { nf++ }
+        /^(record|top|key|value|delete|meta|nodes-end|gotdirty|padding|last) pos=/ {
+            split($2, a, "="); p = a[2] + 0; k = $1
+            if (k == "record") { split("0 1 2 3 4 5 8 15 16 23 24 31", o, " ") }
+            else if (k == "top") { split("0 3 4 5 6 7 8 9 10 15 16 24 31 32 39 40 47 48 55", o, " ") }
+            else if (k == "key") { split("0 3 4 5 6 7 8 15 16 17 18 19 24 32 39 40 47", o, " ") }
+            else if (k == "value" || k == "delete") { split("0 3 4 5 6 7 8 16 17 19 20 23 24 27 28 31", o, " ") }
+            else if (k == "meta") { split("0 3 4 5 6 8 15 16 23 40 44 46 127", o, " ") }
+            else { split("0 1 3", o, " ") }
+            for (j in o) add(p + o[j])
+        }
+        END {
+            srand(seed)
+            for (i = 1; i <= n && nc > 0; i++) {
+                p = (i % 4 == 0) ? first + int(rand() * (len - first)) : cand[1 + int(rand() * nc)]
+                if (!seen[p]++) print "flip:" p ":" int(rand() * 8)
+            }
+            if (nf > 1) { print "cutfirst:0:0"; print "renamelast:0:0" }
+            if (nf > 2) print "dropsecond:0:0"
+        }' "$1"
+}
+
+make_corrupt() {    # VIEW SPEC DEST: a copy of VIEW changed as SPEC says
+    rm -rf "$3"
+    mkdir -p "$(dirname "$3")"
+    copy -R "$1" "$3"
+    kind=${2%%:*}; rest=${2#*:}; pos=${rest%%:*}; bit=${rest#*:}
+    case "$kind" in
+    flip)
+        start=$(cut_file_start "$3" "$pos")
+        name=$(files_of "$3" | awk -v s="$start" '$1 == s { print $2 }')
+        off=$((pos - start))
+        old=$(dd if="$3/$name" bs=1 skip=$off count=1 2>/dev/null | od -An -tu1 | tr -d ' ')
+        new=$(( old ^ (1 << bit) ))
+        printf "\\$(printf '%03o' $new)" | dd of="$3/$name" bs=1 seek=$off conv=notrunc 2>/dev/null ;;
+    cutfirst)
+        name=$(files_of "$3" | awk 'NR == 1 { print $2 }')
+        size=$(files_of "$3" | awk 'NR == 1 { print $3 }')
+        truncate -s $((size - 1)) "$3/$name" ;;
+    dropsecond)
+        name=$(files_of "$3" | awk 'NR == 2 { print $2 }')
+        rm -f "$3/$name" ;;
+    renamelast)
+        name=$(files_of "$3" | awk 'END { print $2 }')
+        mv "$3/$name" "$3/${name#0}" ;;
+    esac
+}
+
+NCORRUPT=0
+if [ -n "$CORRUPT" ]; then
+    : > "$OUT/corrupt-scan-a.jobs"; : > "$OUT/corrupt-scan-b.jobs"
+    seed=1
+    for w in $CORRUPT; do
+        [ -d "$OUT/a/$w/view" ] || { fail "corrupt: no workload $w"; continue; }
+        for spec in $(corrupt_specs "$OUT/a/$w/scan-by-a.txt" "$FLIPS" "$seed"); do
+            d=$OUT/corrupt/$w/$(echo "$spec" | tr ':' '-')
+            make_corrupt "$OUT/a/$w/view" "$spec" "$d/src"
+            echo "scan $d/scan-a.txt $d/src" >> "$OUT/corrupt-scan-a.jobs"
+            echo "scan $d/scan-b.txt $d/src" >> "$OUT/corrupt-scan-b.jobs"
+            NCORRUPT=$((NCORRUPT + 1))
+        done
+        seed=$((seed + 1))
+    done
+    both_sides "$OUT/corrupt-scan-a.jobs" "$OUT/corrupt-scan-b.jobs"
+    before=$FAILS
+    nerr=0
+    for w in $CORRUPT; do
+        [ -d "$OUT/corrupt/$w" ] || continue
+        for d in "$OUT/corrupt/$w"/*; do
+            v=$(basename "$d")
+            sa=$(exit_of "$d/scan-a.txt"); sb=$(exit_of "$d/scan-b.txt")
+            [ "$sa" = "$sb" ] || fail "corrupt $w $v: scan exit $sa and $sb"
+            [ "$sa" = 0 ] || nerr=$((nerr + 1))
+            compare_scan "$d/scan-a.txt" "$d/scan-b.txt" "corrupt $w $v, scans"
+        done
+    done
+    say "corrupt variants: $NCORRUPT, $nerr refused or with error lines, $((FAILS - before)) differences, in $(( $(date +%s) - T0 )) s"
 fi
 
 # ---- Runs in turns ----
@@ -582,10 +700,10 @@ fi
 
 # ---- The result ----
 if [ "$FAILS" = 0 ] && [ "$KEEP" != 1 ]; then
-    rm -rf "$OUT/a" "$OUT/b" "$OUT/crash" "$OUT/turns" "$OUT/planted"
+    rm -rf "$OUT/a" "$OUT/b" "$OUT/crash" "$OUT/corrupt" "$OUT/turns" "$OUT/planted"
 fi
 T=$(( $(date +%s) - T0 ))
-SUMMARY="$NW workloads, $NCUTS crash cuts, $NTURNS in turns${PLANTED:+, $PLANTED}; side B: ${CTOOLS:-Java}; $T s"
+SUMMARY="$NW workloads, $NCUTS crash cuts, $NCORRUPT corrupt variants, $NTURNS in turns${PLANTED:+, $PLANTED}; side B: ${CTOOLS:-Java}; $T s"
 if [ "$FAILS" = 0 ]; then
     say "CROSS $SET OK: $SUMMARY"
     exit 0

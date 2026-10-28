@@ -173,3 +173,12 @@ leaf's key klong never names a delete node), 5 omissions and 14 minor,
 all fixed in the document; findings C1 to C4 hold; an independent replay
 from the scans agreed on 299,401 records. Phase A is done. Java's slips
 found on the way are 005-73 to 005-75.
+
+2026-10-28, 17:10. 012-06 done: the stream reader in C (`err`, `plat`,
+`stream`, `meta`, `rstream`, `snode`, `strans`, `nstream`) and the first C
+tool, `bergdb-scan`, which prints exactly what Java's `StreamScan` prints:
+in the main tree, `cross.sh full` with C as side B passed (278 workloads,
+1,262 crash cuts, 498 corrupt variants, 6 in turns, 0 differences; 1,108
+s), and the C gate runs C's scanner under the sanitizers in its quick set
+(C BEFORE COMMIT OK, 35 s; 100 unit tests). Corrupt input is refused where
+Java refuses it; Java's parser on corrupt sizes is 005-74.
