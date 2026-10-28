@@ -375,6 +375,19 @@ MB), put down to the pace's factor S/sd (up to 10), not the deadline; a cap
 is a decision for Frans, for the Outcome. 100M keys needs more heap than
 F53 has. No agent runs now.
 
+2026-10-28, 17:58. Frans, 17:50: tonight 012 (session f1-0f) has priority
+on F53, and the quiet block becomes flexible. The conductor is stopped;
+the six steps run in 012's gaps: f1-0f writes "quiet until HH:MM" to
+`/Users/f/fl/bench/f53-owner.txt` and tells this session, which starts
+`gaprun.sh` (in `/Users/f/fl/bench/006-10/night/`, from the conductor: a
+step only if its minutes plus 5 end before HH:MM, the same quiet check for
+at most 10 minutes, the same results files; "012" written back at the
+end). 64-s1 runs on s1 since 17:55. Frans also asked to unload the 02:10
+`night.sh` and run it by hand in a gap; this session's permissions refused
+the `launchctl bootout`, so `night.sh` stays at 02:10 and f1-0f was asked
+to keep F53 quiet from 02:05 to about 03:00. A fallback news entry at 06:50
+(`fallback.sh`), and check-ins every hour through the night.
+
 ## 8. Outcome
 
 To come by 07:00 on 2026-10-29.
