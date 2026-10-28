@@ -585,6 +585,8 @@ enum err_code stream_read(struct stream *s, int64_t pos, uint8_t *buf, int32_t n
     }
 
     /* FileStream.read: the file with the largest start at or before pos, then on. */
+    s->file_reads++;
+    s->file_read_bytes += n;
     while (true) {
         int32_t k = -1;
         for (int32_t i = 0; i < s->nfiles; i++) {

@@ -93,12 +93,12 @@ fail() {
 # Each job leaves OUT, OUT.exit and, if it threw, OUT.err.
 
 # Side B's jobs that Java runs although C has the tool: their OUT paths, one a line, in
-# $OUT/java-only.txt. C's bergdb-dump reads a database by a full replay of its stream
-# (012-08), which a database with reclaim's table or cut cannot have (012-11): the dumps
-# of the workloads that may reclaim stay Java's. C's bergdb-run (012-09) creates a
-# database and runs its transactions, but starts no existing one (012-10) and does not
-# reclaim (012-11): the runs of workloads with restarts or that may reclaim, the crash
-# variants' runs after (-segments 1) and side B's turns stay Java's (c_runs).
+# $OUT/java-only.txt. C's bergdb-dump opens a database by the bounded startup (012-10;
+# by a full replay of its stream with -replay, 012-08), without reclaim's table or cut
+# (012-11): the dumps of the workloads that may reclaim stay Java's. C's bergdb-run
+# (012-09) creates a database and runs its transactions, and starts an existing one
+# (012-10), but does not reclaim (012-11): the runs of workloads that may reclaim stay
+# Java's (c_runs).
 ctool() {   # KIND: the C tool's path for a job kind, if side B has it
     [ -n "$CTOOLS" ] || return 1
     t=$CTOOLS/bergdb-$1
@@ -305,8 +305,8 @@ segments_of() { # WORKLOAD: the number of segments
     awk '$1 == "restart" { n++ } END { print n + 1 }' "$1"
 }
 
-c_runs() {      # WORKLOAD: 1 if C's bergdb-run runs it whole (one segment, no reclaim)
-    if [ "$(segments_of "$1")" = 1 ] && [ "$(retain_of "$1")" = 0 ]; then echo 1; else echo 0; fi
+c_runs() {      # WORKLOAD: 1 if C's bergdb-run runs it (no reclaim; restarts since 012-10)
+    if [ "$(retain_of "$1")" = 0 ]; then echo 1; else echo 0; fi
 }
 
 stream_sha() {  # DIR FROM: SHA-256 of the stream from position FROM to its end
@@ -394,7 +394,7 @@ both_sides "$OUT/run-a.jobs" "$OUT/run-b.jobs"
 say "runs done in $(( $(date +%s) - T0 )) s"
 if ctool run > /dev/null; then
     nj=$(grep -c '/run\.txt$' "$OUT/java-only.txt" | tr -d ' ')
-    say "side B's runs: C's of $((NW - nj)), Java's of $nj (restarts or reclaim: 012-10, 012-11)"
+    say "side B's runs: C's of $((NW - nj)), Java's of $nj (reclaim: 012-11)"
 fi
 
 # ---- Views from the decided cut, scans and dumps ----
@@ -547,8 +547,6 @@ if [ -n "$CRASH" ]; then
                 copy -R "$d/src" "$d/$s"
                 echo "dump $d/dump-$s.txt -maxnode $m $d/$s $d/scan.txt" >> "$OUT/crash-dump-$s.jobs"
                 echo "run $d/run-$s.txt -segments 1 $OUT/wl/$w.after.wl $d/$s" >> "$OUT/crash-run-$s.jobs"
-                # A start of a crashed database: Java's on side B until 012-10.
-                [ "$s" = b ] && echo "$d/run-$s.txt" >> "$OUT/java-only.txt"
             done
             NCUTS=$((NCUTS + 1))
         done
@@ -556,6 +554,19 @@ if [ -n "$CRASH" ]; then
     done
     both_sides "$OUT/crash-scan.jobs" "$OUT/crash-scan-b.jobs"
     both_sides "$OUT/crash-dump-a.jobs" "$OUT/crash-dump-b.jobs"
+    # The recovered directories: each side's dump started its copy of the cut, which recovered
+    # it (the zero fill of a torn record, a meta block's fill; 012-02, 4.4). The two must be
+    # equal before the runs after change them (012-10, done item 1: with C= side B's dumps are
+    # C's bounded startup, so this compares C's recovery with Java's).
+    before=$FAILS
+    for w in $CRASH; do
+        [ -d "$OUT/crash/$w" ] || continue
+        for d in "$OUT/crash/$w"/*; do
+            compare_dirs "$d/a" "$d/b" 0 "crash $w at $(basename "$d"), files after the recovery" \
+                "$d/scan.txt"
+        done
+    done
+    say "crash variants: $NCUTS directories recovered by both sides' starts (their dumps), $((FAILS - before)) differences"
     both_sides "$OUT/crash-run-a.jobs" "$OUT/crash-run-b.jobs"
     before=$FAILS
     for w in $CRASH; do
@@ -686,8 +697,10 @@ if [ -n "$TURNS" ]; then
         for w in $TURNS; do
             [ "$k" -lt "$(segments_of "$OUT/wl/$w.wl")" ] || continue
             echo "run $OUT/turns/$w/run-$k.txt -segments $k $OUT/wl/$w.wl $OUT/turns/$w/db" >> "$OUT/turns-$k.jobs"
-            # Side B's segments start an existing database: Java's until 012-10.
-            [ "$side" = b ] && echo "$OUT/turns/$w/run-$k.txt" >> "$OUT/java-only.txt"
+            # Side B's segments of a workload that may reclaim: Java's until 012-11 (c_runs).
+            if [ "$side" = b ] && [ "$(c_runs "$OUT/wl/$w.wl")" = 0 ]; then
+                echo "$OUT/turns/$w/run-$k.txt" >> "$OUT/java-only.txt"
+            fi
         done
         side_jobs $side "$OUT/turns-$k.jobs"
         k=$((k + 1))

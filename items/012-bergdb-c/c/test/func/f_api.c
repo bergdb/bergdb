@@ -181,11 +181,27 @@ TEST(api_create_and_read) {
     CHECK_EQ(file_size(dir, "00000000000000.bergdb"), length);
     CHECK(file_size(dir, "bergdb.lock") > 0);
 
-    /* A start of an existing database is 012-10's: refused, nothing written. */
-    CHECK(bergdb_open(dir, &o, &db, &info, errbuf) == BERGDB_ARG);
-    CHECK(strstr(errbuf, "012-10") != NULL);
-    CHECK(db == NULL);
+    /* A start of the existing database (012-10): the bounded startup, the
+     * same reads, nothing written; then a transaction after it. */
+    REQUIRE(bergdb_open(dir, &o, &db, &info, errbuf) == BERGDB_OK);
     CHECK_EQ(file_size(dir, "00000000000000.bergdb"), length);
+    CHECK_EQ(info.last_pos + 1, length);
+    REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+    CHECK(bergdb_get_one(db, rd, BERGDB_LATEST, k("/k/7", b, &kl), kl, &one) == BERGDB_OK);
+    CHECK(one.value != NULL && one.value_len == 2 && memcmp(one.value, "v7", 2) == 0);
+    CHECK_EQ(one.tpos, 264);
+    CHECK(bergdb_get_one(db, rd, BERGDB_LATEST, k("/k/5", b, &kl), kl, &one) == BERGDB_OK);
+    CHECK(one.value == NULL);                       /* deleted */
+    CHECK(bergdb_get_one(db, rd, 3500, k("/k/5", b, &kl), kl, &one) == BERGDB_OK);
+    CHECK(one.value != NULL);                       /* before the delete */
+    bergdb_range_init(&r);
+    CHECK(bergdb_get_many(db, rd, &r, &many) == BERGDB_OK);
+    CHECK_EQ((int64_t) many.count, 40);
+    bergdb_read_free(rd);
+    CHECK(put_keys(db, &clock, 5000, 41, 45, &ex) == BERGDB_OK);
+    CHECK_EQ(ex.tt, 5000);
+    CHECK_EQ(ex.tpos, length);
+    CHECK(bergdb_close(db) == BERGDB_OK);
     CHECK_EQ(m.live_total, 0);
     remove_dir(dir);
 }
@@ -424,7 +440,9 @@ static const struct test api_tests[] = {
     TEST_END
 };
 
+extern const struct test start_tests[];     /* f_start.c (012-10) */
+
 int main(int argc, char **argv) {
-    const struct test *const tables[] = { api_tests, NULL };
+    const struct test *const tables[] = { api_tests, start_tests, NULL };
     return test_main(argc, argv, "FUNC", tables);
 }

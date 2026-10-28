@@ -88,6 +88,11 @@ struct stream {
     bool dir_unforced;      /* a file made since the last force of the directory */
     int64_t durable;        /* the length at the last force */
     bool failed;            /* an I/O error: FileStream's ioException, every write refused */
+    /* The reads of a directory's files (012-10: what a start reads), as a stream
+     * below Java's BufferedStream counts them: the calls that reach the files
+     * (a read served by the write buffer alone is not one) and their bytes. */
+    int64_t file_reads;
+    int64_t file_read_bytes;
 };
 
 /* An empty memory stream. Nothing is allocated until an append. */

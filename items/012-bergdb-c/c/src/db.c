@@ -13,8 +13,10 @@
 #include "nstream.h"
 #include "nwrite.h"
 #include "plat.h"
+#include "recover.h"
 #include "snode.h"
 #include "spos.h"
+#include "starter.h"
 #include "strans.h"
 #include "topds.h"
 #include "vnode.h"
@@ -97,10 +99,16 @@ static void set_id_of_node(struct db *db, struct node *node) {
     db->next_vpos = spos_next_vpos(db->next_vpos);     /* ExecuteData.increaseNextVpos */
 }
 
-/* registerNewNode: canonical. Cache3.register, the node table, is left out
- * (db.h); its access clock and residents change no byte. */
-static void register_new_node(struct node *node) {
+/* registerNewNode: canonical, and in the node table (Cache3.register); the
+ * table's access clock changes no byte. false: NOMEM. */
+static bool register_new_node(struct db *db, struct node *node) {
     node_set_canonical(node, true);
+    struct node *registered;
+    if (!nt_register(&db->node_table, node, &registered)) {
+        err_set(&db->op_err, ERR_NOMEM, "OutOfMemoryError", "out of memory");
+        return false;
+    }
+    return true;
 }
 
 /* markAtEndOfOp */
@@ -230,7 +238,9 @@ static bool l_top_node_created(void *ctx, struct tnode *node) {
     struct db *db = ctx;
     assert(!node_is_dirty(&node->n) && "node is dirty");
     set_id_of_node(db, &node->n);
-    register_new_node(&node->n);
+    if (!register_new_node(db, &node->n)) {
+        return false;
+    }
     if (!mark_at_end_of_op(db, &node->n)) {
         return false;
     }
@@ -241,7 +251,9 @@ static bool l_top_node_created(void *ctx, struct tnode *node) {
 static bool l_key_node_created(void *ctx, struct knode *node) {
     struct db *db = ctx;
     set_id_of_node(db, &node->n);
-    register_new_node(&node->n);
+    if (!register_new_node(db, &node->n)) {
+        return false;
+    }
     if (!mark_at_end_of_op(db, &node->n)) {
         return false;
     }
@@ -288,34 +300,20 @@ static bool l_pointer_followed(void *ctx, struct node *predecessor, int32_t poin
 /* ======== The followers ======== */
 
 /* The writer's follower (NodeCollection.writer()) and the readers'
- * (NodeCollection.followPointer), for memory pointers: a value, or the
- * handle's object if it may serve the pointer (memoryObject, Handle.usable);
- * the writer's object must be canonical (makeCanonical is for versions read
- * from the stream). A stream pointer, which a database without a start of
- * its index nodes and without eviction never has (db.h), is refused as
- * unsupported: the follow fails. The failure's text is in db->op_err. */
+ * (NodeCollection.followPointer): ncoll.h's (012-10), which load a node that
+ * is not in memory, with Rule R. A failure's text goes to db->op_err, unless
+ * a listener has put its own there. */
 static struct node *follow(struct db *db, struct node *predecessor, int32_t pointerIndex,
         struct opdata *op, bool writer) {
-    assert(pointerIndex >= 0 && "pointerIndex >= 0");
-    assert(predecessor != NULL && "predecessor is null");
-    struct obj *pointee = node_pointee(predecessor, pointerIndex);
-    int64_t pointerPos = node_pointer_pos(predecessor, pointerIndex);
-    assert((pointee != NULL || pointerPos != SPOS_NULL) && "Pointer is null");
-    (void) pointerPos;
-    struct node *result = node_pointer_node(predecessor, pointerIndex);
-    if (result == NULL || (writer && !node_is_canonical(result))) {
-        err_set(&db->op_err, ERR_ARG, "UnsupportedOperationException", "a pointer to a node "
-                "not in memory (index %d of node %" PRId64 "): a start of the index nodes "
-                "and eviction come in bergdb 012-10 and 012-12", (int) pointerIndex,
-                predecessor->id);
-        return NULL;
-    }
-    if (pointee != NULL && pointee->kind == OBJ_HANDLE) {
-        pointee->flags |= OBJ_REF;      /* touch: the CLOCK bit */
-    }
-    if (!op->pointer_listener.pointer_followed(op->pointer_listener.ctx, predecessor,
-            pointerIndex, result, PTR_TYPE_MEMORY)) {
-        return NULL;
+    err_clear(&db->node_coll.err);
+    struct node *result = writer
+            ? nc_follow_writer(&db->node_coll, predecessor, pointerIndex, op)
+            : nc_follow_reader(&db->node_coll, predecessor, pointerIndex, op);
+    if (result == NULL && db->op_err.code == ERR_OK) {
+        db->op_err = db->node_coll.err;
+        if (db->op_err.code == ERR_OK) {
+            err_set(&db->op_err, ERR_NOMEM, "OutOfMemoryError", "out of memory");
+        }
     }
     return result;
 }
@@ -453,152 +451,35 @@ static enum err_code write_primordial_transaction(struct db *db, struct err *e) 
     return ERR_OK;
 }
 
-/* Db.getStartupPosFromLastTransaction: the startupPos of the last committed
- * record, walked from transPos; the in-memory block's lastTrans becomes that
- * record. */
-static enum err_code startup_pos_from_last_transaction(struct db *db, int64_t transPos,
-        int64_t *out, struct err *e) {
-    if (transPos == SPOS_NULL) {
-        transPos = META_BLOCK_SIZE;     /* the first transaction */
-    }
-    assert(transPos >= 0);
-    struct ns_iter it;
-    struct st_record rec;
-    ns_iter_init(&it, &db->stream, db->mem, transPos, true);
-    st_init(&rec);
-    int64_t result = transPos;
-    int64_t lastTpos = SPOS_NULL;
-    enum err_code rc = ERR_OK;
-    for (;;) {
-        bool has;
-        rc = ns_iter_next(&it, &has, e);
-        if (rc != ERR_OK || !has) {
-            break;
-        }
-        if (!it.trans_ok) {
-            continue;
-        }
-        rc = st_parse(&rec, it.tpos, it.buf.p, it.size, db->mem, e);
-        if (rc != ERR_OK) {
-            break;
-        }
-        result = rec.startup_pos;
-        assert(result >= 0 && "Bad storedTrans.startupPos");
-        lastTpos = rec.tpos;
-    }
-    st_free(&rec, db->mem);
-    ns_iter_free(&it);
+/* Reclaim.initFromDb, as far as 012-10 goes: reclaim's table read at the
+ * latest time, as Java's (a getOne through the readers' follower); without
+ * it the first available position and time are 0. A database with the
+ * table is refused as unsupported until 012-11. */
+static enum err_code get_one_internal(struct db *db, int64_t lookupTime, const int64_t *key,
+        int32_t n, struct getdata *gd, struct vnode **out, struct err *e);
+
+static enum err_code init_from_db(struct db *db, struct err *e) {
+    static const char TABLE_IKEY[] = "/#i/dreclaim/-table.txt";   /* Reclaim.TABLE_KEY_NAME */
+    uint8_t bkey[sizeof TABLE_IKEY];
+    const int32_t len = (int32_t) (sizeof TABLE_IKEY - 1);
+    bool ok = keys_ikey_to_bkey((const uint8_t *) TABLE_IKEY, len, bkey);
+    assert(ok);
+    (void) ok;
+    int64_t segs[8];
+    assert(keys_segment_count(len) <= 8);
+    keys_to_segments(bkey, len, segs);
+    struct getdata gd;
+    db_new_get_data(db, &gd);
+    struct vnode *v;
+    enum err_code rc = get_one_internal(db, INT64_MAX, segs, keys_segment_count(len), &gd, &v,
+            e);
     if (rc != ERR_OK) {
         return rc;
     }
-    if (lastTpos != SPOS_NULL) {
-        meta_set_last_trans(&db->rs.meta, lastTpos);
+    if (v != NULL) {
+        return err_set(e, ERR_ARG, "UnsupportedOperationException", "a database with "
+                "reclaim's table: reclaim comes in bergdb 012-11");
     }
-    *out = result;
-    return ERR_OK;
-}
-
-/* Db.readTransactions and DbStarter's primordial startup: the startup
- * section is the creation's record alone (DbStarter.isPrimordialTransaction);
- * its top node and root key node, parsed, become the Dag's, both canonical,
- * the super root's pointer the root's handle. Anything else is a start of
- * an existing database: 012-10's. */
-static enum err_code primordial_startup(struct db *db, const int64_t storedStartupPos,
-        struct db_start_info *info, struct err *e) {
-    int64_t startupPos = storedStartupPos;
-    if (startupPos == 0) {
-        startupPos = META_BLOCK_SIZE;   /* readTransactions: 0 is the first record */
-    }
-    struct ns_iter it;
-    struct st_record rec;
-    ns_iter_init(&it, &db->stream, db->mem, startupPos, true);
-    st_init(&rec);
-    int32_t count = 0;
-    enum err_code rc = ERR_OK;
-    struct tnode *superRoot = NULL;
-    struct knode *keyNode = NULL;
-    int64_t firstTime = 0, lastTt = 0, lastPos = 0, firstTpos = 0;
-    for (;;) {
-        bool has;
-        rc = ns_iter_next(&it, &has, e);
-        if (rc != ERR_OK || !has) {
-            break;
-        }
-        rc = st_parse(&rec, it.tpos, it.buf.p, it.size, db->mem, e);
-        if (rc != ERR_OK) {
-            break;
-        }
-        if (count == 0) {
-            firstTime = rec.tt;
-            firstTpos = rec.tpos;
-            /* checkPrimordialTransaction */
-            if (rec.nnodes != 2) {
-                rc = err_set(e, ERR_FORMAT, "StreamFormatException", "expected 2, got %d "
-                        "nodes.", (int) rec.nnodes);
-                break;
-            }
-            const struct sn_node *n0 = &rec.nodes[0];
-            const struct sn_node *n1 = &rec.nodes[1];
-            if (n0->type != NODE_TOP || n1->type != NODE_KEY) {
-                rc = err_set(e, ERR_FORMAT, "StreamFormatException",
-                        "Expected TopNode and KeyNode");
-                break;
-            }
-            superRoot = tn_new_stored(&db->cx, n0->ordinal, n0->root, n0->root_time, n0->spos,
-                    n0->id, n0->h, n0->bytes + 40);
-            keyNode = kn_new_stored(&db->cx, n1->leaf, n1->spos, n1->id, n1->n, n1->bytes + 32,
-                    n1->bytes + 32 + 8 * (size_t) n1->n);
-            if (superRoot == NULL || keyNode == NULL) {
-                rc = nomem(e);
-                break;
-            }
-        }
-        lastTt = rec.tt;
-        lastPos = rec.last_pos;
-        count++;
-    }
-    st_free(&rec, db->mem);
-    ns_iter_free(&it);
-    if (rc == ERR_OK && count == 0) {
-        rc = err_set(e, ERR_FORMAT, "StreamFormatException",
-                "No transactions in startup transaction set.");
-    }
-    if (rc == ERR_OK && !(count == 1 && firstTpos == META_BLOCK_SIZE)) {
-        rc = err_set(e, ERR_ARG, "UnsupportedOperationException", "the start of a database "
-                "with transactions: bergdb 012-10");
-    }
-    if (rc != ERR_OK) {
-        obj_collect(&db->cx);
-        return rc;
-    }
-
-    /* setLastTransTimeOfDbClock */
-    dbclock_set_last_trans_time(&db->clock, lastTt);
-
-    /* doPrimordialStartup */
-    struct handle *h = hd_of(&db->cx, &keyNode->n);
-    if (h == NULL) {
-        obj_collect(&db->cx);
-        return nomem(e);
-    }
-    tn_set_pointer(&db->cx, superRoot, 0, &h->o, keyNode->n.spos);
-    node_set_canonical(&superRoot->n, true);
-    node_set_canonical(&keyNode->n, true);
-    dag_init(&db->dag, &db->cx, superRoot, db->max_node_size);    /* TopDs holds it */
-    db->dag_made = true;
-    if (!tds_set_second_ordinal(&db->dag.top_ds, db->second_top_ordinal)) {
-        return err_set(e, ERR_ARG, "IllegalArgumentException", "bad secondTopOrdinal");
-    }
-    obj_set(&db->cx, (struct obj **) &db->newest_written_top, &superRoot->n.o);
-    create_put_and_get_data(db);
-    assert(!node_is_dirty(&keyNode->n));
-    assert(!node_is_dirty(&superRoot->n));
-
-    info->start_pos = storedStartupPos;     /* StartInfo.startPos: as stored */
-    info->startup_distance = -1;
-    info->start_time = firstTime;
-    info->trans_count = count;
-    info->last_pos = lastPos;
     return ERR_OK;
 }
 
@@ -611,6 +492,7 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
     memset(info, 0, sizeof *info);
     db->mem = m;
     obj_ctx_init(&db->cx, m);
+    nt_init(&db->node_table, &db->cx, m);
     err_clear(&db->failure);
     err_clear(&db->op_err);
     db->state = DB_ZERO;
@@ -650,6 +532,7 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
         stream_open_memory(&db->stream, m);
     }
     db->stream_open = true;
+    nc_init(&db->node_coll, &db->cx, m, &db->stream, &db->node_table);
     ts_init(&db->trans_seq, m);
     tns_init(&db->trans_nodes, &db->cx, m);
     ser_init(&db->serializer, m);
@@ -682,52 +565,52 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
         }
         info->created = true;
     }
-    bool incomplete;
-    rc = rs_is_incomplete_creation(&db->stream, DB_CREATION_LENGTH, &incomplete, e);
-    if (rc == ERR_OK && incomplete) {
-        rc = err_set(e, ERR_NOT_CREATED, "DatabaseNotCreatedException", "The database was "
-                "not completely created (a crash or a power loss while it was created?): its "
-                "stream, of length %lld, holds an incomplete creation, and no data. Remove "
-                "its files and start it again; the start then creates it (bergdb 005-33).",
-                (long long) stream_length(&db->stream));
+    /* Db.startInner's checks and recovery, then handleStartParams,
+     * readTransactions and DbStarter (012-10, starter.h). */
+    struct sr_env env = { m, &db->cx, &db->rs, &db->node_table, &db->node_coll, &db->dag,
+            &db->trans_seq, db->max_node_size, db->second_top_ordinal };
+    struct rs_recovery plan;
+    struct sr_result res;
+    rc = sr_check_and_recover(&env, &plan, e);
+    if (rc == ERR_OK) {
+        rc = sr_start(&env, &res, e);
+        db->dag_made = res.dag_made;
+        db->newest_written_top = res.newest_written_top;   /* its count taken over */
     }
     if (rc == ERR_OK) {
-        rc = rs_check_node_size(&db->stream, db->max_node_size, e);  /* refuseOtherNodeSize */
-    }
-    if (rc == ERR_OK && !info->created) {
-        rc = err_set(e, ERR_ARG, "UnsupportedOperationException", "the start of an existing "
-                "database: bergdb 012-10");
-    }
-    if (rc == ERR_OK && stream_length(&db->stream) < META_BLOCK_SIZE) {
-        rc = err_set(e, ERR_FORMAT, "StreamFormatException", "Cannot recover stream without "
-                "complete first meta block, length: %lld", (long long) stream_length(&db->stream));
-    }
-    if (rc == ERR_OK) {
-        /* NodeStream.recover: the last valid block, which the in-memory one
-         * copies; a new database needs no fill. */
-        rc = rs_use_last_valid_meta_block(&db->rs, e);
-    }
-    int64_t startupPos = 0;
-    if (rc == ERR_OK) {
-        /* handleStartParams */
-        rc = meta_check_format(&db->rs.meta, e);
-    }
-    if (rc == ERR_OK) {
-        rc = startup_pos_from_last_transaction(db, meta_last_trans(&db->rs.meta), &startupPos,
-                e);
-    }
-    if (rc == ERR_OK) {
-        db->startup_distance = meta_startup_distance(&db->rs.meta);
-        ts_startup_pos_set(&db->startup_pos, startupPos);
+        /* handleStartParams, setLastTransTimeOfDbClock, createPutAndGetData */
+        db->startup_distance = res.startup_distance;
+        ts_startup_pos_set(&db->startup_pos, res.startup_pos);
         ts_startup_pos_release_for_evict(&db->startup_pos);
-        rc = primordial_startup(db, startupPos, info, e);
+        dbclock_set_last_trans_time(&db->clock, res.last_trans_time);
+        create_put_and_get_data(db);
+        info->start_pos = res.start_pos;
+        info->startup_distance = -1;
+        info->start_time = res.start_time;
+        info->trans_count = res.trans_count;
+        info->last_pos = res.last_pos;
+        db->state = DB_ACTIVE;
+        rc = init_from_db(db, e);       /* reclaim.initFromDb() */
     }
     if (rc != ERR_OK) {
+        if (rc == ERR_FAILED) {
+            /* A read of reclaim's table that failed on the storage: Java's
+             * DbFailedException; here its cause, as no database is left to
+             * fail (bergdb.h, bergdb_open). */
+            *e = db->failure;
+            rc = e->code;
+        }
+        /* A start that throws closes its storage: what it appended, recovery's
+         * fill, is written (005-32). */
+        db->state = DB_STOPPING;
+        if (db->stream_open) {
+            struct err e2;
+            (void) stream_finish(&db->stream, &e2);
+            db->stream_open = false;
+        }
         free_all(db);
         return rc;
     }
-    db->state = DB_ACTIVE;
-    /* reclaim.initFromDb: no table in a new database (012-11). */
     obj_collect(&db->cx);
     return ERR_OK;
 }
@@ -975,39 +858,6 @@ static int64_t record_bytes(void *ctx, const struct ts_info *info) {
     return bytes;
 }
 
-/* NodeCollection.resolvePointers before the node is written. Without a
- * start of index nodes and without eviction, every pointer to an index node
- * holds a handle with its canonical object (db.h), so nothing changes; a
- * pointer that does not is refused as unsupported. */
-static enum err_code resolve_pointers(struct node *node, struct err *e) {
-    const int32_t count = node_size(node);
-    for (int32_t i = 0; i < count; i++) {
-        /* pointsToIndexNode */
-        if (node->o.kind == OBJ_KEY) {
-            const struct knode *k = (const struct knode *) node;
-            int64_t klong = k->klongs[i];
-            if (!(kl_is_key(klong) && (!kn_is_segment_leaf(k)
-                    || kl_get_length(klong) == KL_MAX_SIZE))) {
-                continue;
-            }
-        }
-        struct obj *pointee = node_pointee(node, i);
-        int64_t pos = node_pointer_pos(node, i);
-        struct handle *h = (struct handle *) pointee;
-        if (h == NULL && spos_is_null(pos)) {
-            continue;
-        }
-        struct node *o = h == NULL ? NULL : h->obj;
-        if (o != NULL && node_is_canonical(o)) {
-            continue;
-        }
-        return err_set(e, ERR_ARG, "UnsupportedOperationException", "a pointer to a node "
-                "without a canonical object in memory (node %" PRId64 ", index %d): the node "
-                "table and Rule R come in bergdb 012-10", node->id, (int) i);
-    }
-    return ERR_OK;
-}
-
 /* hasDirtyChild */
 static bool has_dirty_child(const struct node *node) {
     const int32_t count = node_size(node);
@@ -1089,7 +939,7 @@ static enum err_code store(struct db *db, struct err *e) {
 
     /* resolvePointersOfTakenNodes, before the record's nodes are cleaned. */
     for (int32_t i = 0; i < tn->top_count + tn->key_count; i++) {
-        enum err_code rc = resolve_pointers(tns_get(tn, i), e);
+        enum err_code rc = nc_resolve_pointers(&db->node_coll, tns_get(tn, i), e);
         if (rc != ERR_OK) {
             return rc;
         }
@@ -1381,25 +1231,38 @@ enum err_code db_sync(struct db *db, int64_t pos, struct err *e) {
 
 /* ======== Close ======== */
 
-/* The roots of the database's objects (012-07, 6.4): the super root, the
- * newest written top node, D's got-dirty nodes, the record's nodes, the
- * replaced nodes, and a running transaction's got-dirty nodes; each one
- * counted holder. *n their number; NULL on NOMEM (n then 0). */
-static struct obj **roots_of(struct db *db, int32_t *n) {
+/* The number of roots that roots_of lists, at most. */
+static int64_t roots_count(const struct db *db) {
     int64_t count = 2 + db->trans_nodes.top_count + db->trans_nodes.key_count
-            + db->trans_nodes.value_count + db->n_replaced;
+            + db->trans_nodes.value_count + db->n_replaced + nt_size(&db->node_table);
     for (struct ts_info *x = db->trans_seq.first; x != NULL; x = x->next) {
         count += x->ndirty;
     }
     if (db->trans_info != NULL) {
         count += db->trans_info->ndirty;
     }
+    return count;
+}
+
+/* The roots of the database's objects (012-07, 6.4): the node table's
+ * handles, the super root, the newest written top node, D's got-dirty
+ * nodes, the record's nodes, the replaced nodes, and a running
+ * transaction's got-dirty nodes; each one counted holder. *n their number;
+ * NULL on NOMEM (n then 0). The array has roots_count(db) entries. */
+static struct obj **roots_of(struct db *db, int32_t *n) {
+    int64_t count = roots_count(db);
     struct obj **roots = mem_alloc(db->mem, (size_t) count * sizeof *roots, MEM_STATE);
     *n = 0;
     if (roots == NULL) {
         return NULL;
     }
     int32_t k = 0;
+    for (int64_t i = 0; i < nt_slots(&db->node_table); i++) {
+        struct handle *h = nt_slot(&db->node_table, i);
+        if (h != NULL) {
+            roots[k++] = &h->o;
+        }
+    }
     if (db->dag_made && db->dag.top_ds.super_root != NULL) {
         roots[k++] = &db->dag.top_ds.super_root->n.o;
     }
@@ -1428,45 +1291,52 @@ static struct obj **roots_of(struct db *db, int32_t *n) {
 
 int64_t db_recount(struct db *db) {
     int32_t n;
+    int64_t count = roots_count(db);
     struct obj **roots = roots_of(db, &n);
     int64_t bad = obj_recount(&db->cx, roots, n, NULL);
-    int64_t count = 2 + db->trans_nodes.top_count + db->trans_nodes.key_count
-            + db->trans_nodes.value_count + db->n_replaced;
-    for (struct ts_info *x = db->trans_seq.first; x != NULL; x = x->next) {
-        count += x->ndirty;
-    }
-    if (db->trans_info != NULL) {
-        count += db->trans_info->ndirty;
-    }
     mem_free(db->mem, roots, (size_t) count * sizeof *roots, MEM_STATE);
     return bad;
 }
 
 /* Frees every object, without trusting the counts (obj_free_all), and every
- * buffer and array. Works after a failure. */
+ * buffer and array. Works after a failure. Without room for the roots' list,
+ * every holder lets go and a safe point frees what the counts let go (the
+ * recount checks them in the tests). */
 static void free_all(struct db *db) {
     int32_t n = 0;
+    int64_t count = roots_count(db);
     struct obj **roots = roots_of(db, &n);
-    int64_t count = 2 + db->trans_nodes.top_count + db->trans_nodes.key_count
-            + db->trans_nodes.value_count + db->n_replaced;
-    for (struct ts_info *x = db->trans_seq.first; x != NULL; x = x->next) {
-        count += x->ndirty;
-    }
-    if (db->trans_info != NULL) {
-        count += db->trans_info->ndirty;
-    }
     if (roots == NULL) {
-        /* No room for the roots' list: the objects are freed one root at a
-         * time, which frees what each reaches. */
-        struct obj *one[1];
-        if (db->dag_made && db->dag.top_ds.super_root != NULL) {
-            one[0] = &db->dag.top_ds.super_root->n.o;
-            obj_free_all(&db->cx, one, 1);
+        nt_free(&db->node_table, true);
+        if (db->dag_made) {
+            dag_free(&db->dag);
         }
+        obj_release(&db->cx, db->newest_written_top == NULL ? NULL
+                : &db->newest_written_top->n.o);
+        for (struct ts_info *x = db->trans_seq.first; x != NULL; x = x->next) {
+            for (int32_t i = 0; i < x->ndirty; i++) {
+                obj_release(&db->cx, &((struct node *) x->gotDirtyNodes[i].node)->o);
+            }
+            x->ndirty = 0;
+        }
+        if (db->trans_info != NULL) {
+            for (int32_t i = 0; i < db->trans_info->ndirty; i++) {
+                obj_release(&db->cx, &((struct node *) db->trans_info->gotDirtyNodes[i].node)->o);
+            }
+            db->trans_info->ndirty = 0;
+        }
+        tns_clear(&db->trans_nodes);
+        for (int32_t i = 0; i < db->n_replaced; i++) {
+            obj_release(&db->cx, &db->replaced[i]->o);
+        }
+        db->n_replaced = 0;
+        obj_collect(&db->cx);
     } else {
         obj_free_all(&db->cx, roots, n);
         mem_free(db->mem, roots, (size_t) count * sizeof *roots, MEM_STATE);
+        nt_free(&db->node_table, false);
     }
+    nc_free(&db->node_coll);
     if (db->dag_made) {
         db->dag.top_ds.super_root = NULL;
         pd_free(&db->put_data);

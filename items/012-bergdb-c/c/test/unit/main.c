@@ -33,6 +33,9 @@ extern const struct test dagvec_tests[];
 extern const struct test dbgetmany_tests[];
 extern const struct test db_tests[];
 extern const struct test serial_tests[];
+extern const struct test sdb_tests[];
+extern const struct test ncoll_tests[];
+extern const struct test recover_tests[];
 
 int main(int argc, char **argv) {
     const struct test *const tables[] = {
@@ -67,6 +70,9 @@ int main(int argc, char **argv) {
         dbgetmany_tests,
         db_tests,
         serial_tests,
+        sdb_tests,
+        ncoll_tests,
+        recover_tests,
         NULL
     };
     return test_main(argc, argv, "UNIT", tables);

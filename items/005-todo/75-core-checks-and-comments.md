@@ -5,7 +5,7 @@ Status: open. Kind: fix. Created 2026-10-28.
 
 Registered by Claude (Opus 5.5, Claude Code), the conductor of 012, from
 the C clone's work (012-02's review, its section 15; 012-04; 012-06,
-section 7; 012-09), as 012-01's decision D5 says. None changes a byte or a
+section 7; 012-09; 012-10), as 012-01's decision D5 says. None changes a byte or a
 result; each misleads a reader of the code, and the C clone was written
 from that code.
 
@@ -29,6 +29,13 @@ The findings
   Every caller passes offset 0, so nothing differs today; with another
   offset the check refuses a right record and passes a wrong one (a probe
   showed both). Added 2026-10-28, 22:17.
+* **`DbStarter.validateTransactions` checks nothing**: it never updates
+  its `tpos` and `tt`, so its "non-increasing" checks compare against −1
+  only (012-10, section 6.4, F1). Probe `TimesProbe` (012-10's scratch,
+  outside the repository): the last record's time set back in a copy of a
+  stream; without `-ea` Java starts and then reads `/k2` as null, with
+  `-ea` it fails in a `KeyNode` assert. C does as Java. Added 2026-10-28,
+  23:26.
 * **`Klong`'s comments**: the format comment gives a TIME klong 58 bits,
   the code 56 (`MAX_TIME` 0x00ffffffffffffff; 012-04); `getIntType`'s
   comment says it returns 0, 1 or 2, and it returns 3 for a delete bitmap

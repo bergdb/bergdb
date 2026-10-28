@@ -1,14 +1,14 @@
 /*
  * api: include/bergdb.h's functions (bergdb 012-03's API), on the modules
- * that 012-09 has: the open that creates a database (db.h), transactions
- * (trans.h), execute, the reads, sync, the clock's times, the settings and
- * the status. The handles' structs are here; the caller sees them as opaque
- * types.
+ * that 012-09 and 012-10 have: the open that creates a database or starts
+ * an existing one (db.h; starter.h), transactions (trans.h), execute, the
+ * reads, sync, the clock's times, the settings and the status. The
+ * handles' structs are here; the caller sees them as opaque types.
  *
- * Not yet (later tasks; each refused or left undefined): the open of an
- * existing database (012-10, BERGDB_ARG with the reason), a retain
- * duration other than forever (012-11), eviction (012-12: the cache size
- * indicator is kept), bergdb_debug_print and bergdb_debug_check (012-13).
+ * Not yet (later tasks; each refused or left undefined): a retain duration
+ * other than forever and a database with reclaim's table (012-11,
+ * BERGDB_ARG with the reason), eviction (012-12: the cache size indicator
+ * is kept), bergdb_debug_print and bergdb_debug_check (012-13).
  *
  * The rules of the header's top comment hold: one caller at a time; a
  * callback that calls its database gets BERGDB_STATE; the database's

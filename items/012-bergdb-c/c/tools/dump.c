@@ -4,18 +4,33 @@
  * byte: the start, the status, the latest state forward and backward, the
  * state at sampled times, ranges and prefixes from sampled keys, getOne of
  * the sampled keys at the sampled times, and getTrans of every committed
- * record. The database is read by a full replay of its stream (replay.h),
- * so only databases without reclaim's table and cut (Level 1).
+ * record. The database is opened by the bounded startup (012-10, sdb.h:
+ * Level 2, as Java's Db.start), which recovers a crashed stream as Java's
+ * start does and writes its fill (so give it a copy, as Java's Dump says);
+ * or, with -replay, read by a full replay of its stream (replay.h, 012-08,
+ * Level 1), which writes nothing. Either way only databases without
+ * reclaim's table and cut (012-11).
  *
- * Usage: bergdb-dump [-maxnode N] [-large] DIR SCAN
+ * Usage: bergdb-dump [-maxnode N] [-large] [-replay] [-check] DIR SCAN
  *   -maxnode N  the database's node size, 8, 14, 30 (default) or 62
  *   -large      the latest state as its digest only, the states at latest
  *               and the middle time only, getTrans of 1,000 records at most
+ *   -replay     open by the full replay (Level 1), not the bounded startup
+ *   -check      linkToCanonical's check by node id at the start, as Java's
+ *               under -ea (005-57); it reads a header per pointer of D
+ *
+ * Or: bergdb-dump -probe [-maxnode N] [-check] DIR: the start alone, and one
+ * line of what it rebuilt and read, the text of the probe of 012-10's
+ * Progress (StartProbe, outside the repository): the startup position, D
+ * (TransSeq.checksum), the newest written top node and the super root, the
+ * node table (its handles, canonical and dirty objects, a CRC32 of its
+ * entries sorted), the followers' loads, the reads of the files.
  * Exit: 0; 1 if the start failed (a line "start error=NAME"); 2 on bad
- * usage; 3 if the replay cannot read the database (an empty or a cut
- * stream, reclaim's table: 012-09 to 012-11), the reason on standard
- * error, and nothing printed after the header; 4 if the allocator's count
- * is not 0 at the end. Nothing is written to DIR.
+ * usage; 3 if C cannot read the database (an empty or a cut stream,
+ * reclaim's table: 012-09 to 012-11), the reason on standard error, and
+ * nothing printed after the header; 4 if the allocator's count is not 0 at
+ * the end. On standard error, the last line: what the start read
+ * ("bergdb-dump: start read ...").
  */
 #define _POSIX_C_SOURCE 200809L
 #include <inttypes.h>
@@ -29,6 +44,7 @@
 #include "mdb.h"
 #include "mem.h"
 #include "replay.h"
+#include "sdb.h"
 #include "sha256.h"
 #include "snode.h"
 #include "stream.h"
@@ -213,6 +229,9 @@ struct dump {
     struct mem mem;
     struct stream s;
     struct replay r;
+    struct sdb sdb;
+    bool use_replay;            /* -replay: the full replay, else the bounded startup */
+    bool check;                 /* -check */
     bool large;
     char *keytext;              /* scratch for key_text: 3 bytes a key byte, and a 0 */
     size_t keytext_cap;
@@ -327,7 +346,11 @@ static bool many(struct dump *d, int64_t time, const uint8_t *start, int32_t sta
         bool fwd, const struct gm_stop *stop, struct pairs *p, int64_t *actual) {
     struct getmany g;
     struct mdb *db = &d->r.db;
-    mdb_new_get_many(db, &g);
+    if (d->use_replay) {
+        mdb_new_get_many(db, &g);
+    } else {
+        sdb_new_get_many(&d->sdb, &g);
+    }
     g.lookup_time = time;
     int64_t *segs = NULL;
     if (start != NULL) {
@@ -345,13 +368,23 @@ static bool many(struct dump *d, int64_t time, const uint8_t *start, int32_t sta
     g.result.add = pairs_add;
     g.result.ctx = p;
     /* Db.getMany: the first available lookup time (reclaim's) */
-    if (g.lookup_time < d->r.first_available_time) {
+    if (g.lookup_time < (d->use_replay ? d->r.first_available_time
+            : d->sdb.first_available_time)) {
         free(segs);
         return false;
     }
-    if (!mdb_get_many(db, &g)) {
-        fprintf(stderr, "bergdb-dump: a getMany failed\n");
-        exit(5);
+    if (d->use_replay) {
+        if (!mdb_get_many(db, &g)) {
+            fprintf(stderr, "bergdb-dump: a getMany failed\n");
+            exit(5);
+        }
+    } else {
+        struct err e;
+        err_clear(&e);
+        if (sdb_get_many(&d->sdb, &g, &e) != ERR_OK) {
+            fprintf(stderr, "bergdb-dump: a getMany failed: %s, %s\n", e.java, e.text);
+            exit(5);
+        }
     }
     *actual = g.actual_lookup_time;
     free(segs);
@@ -403,7 +436,8 @@ static void trans(struct dump *d, int64_t pos) {
     const struct st_record *st;
     struct err e;
     err_clear(&e);
-    enum err_code rc = replay_get_trans(&d->r, pos, &st, &e);
+    enum err_code rc = d->use_replay ? replay_get_trans(&d->r, pos, &st, &e)
+            : sdb_get_trans(&d->sdb, pos, &st, &e);
     if (rc == ERR_NOT_AVAILABLE) {
         fprintf(d->out, "trans pos=%" PRId64 " unavailable\n", pos);
         return;
@@ -476,33 +510,76 @@ static int dump(struct dump *d, const char *dir, const char *scan_path, int32_t 
 
     struct err e;
     err_clear(&e);
-    if (stream_open_dir(&d->s, dir, &d->mem, &e) != ERR_OK) {
-        free_scan(&sc);
-        fprintf(stderr, "bergdb-dump: the directory %s: %s, %s\n", dir, e.java, e.text);
-        return 3;
+    enum err_code rc;
+    int64_t startPos, startTime, lastPos, length;
+    int32_t transCount, startupDistance;
+    int64_t firstPos, firstTime;
+    if (d->use_replay) {
+        if (stream_open_dir(&d->s, dir, &d->mem, &e) != ERR_OK) {
+            free_scan(&sc);
+            fprintf(stderr, "bergdb-dump: the directory %s: %s, %s\n", dir, e.java, e.text);
+            return 3;
+        }
+        rc = replay_open(&d->r, &d->s, &d->mem, max_node, &e);
+    } else {
+        if (stream_open_dir_rw(&d->s, dir, 0, &d->mem, &e) != ERR_OK) {
+            free_scan(&sc);
+            fprintf(stderr, "bergdb-dump: the directory %s: %s, %s\n", dir, e.java, e.text);
+            return 3;
+        }
+        rc = sdb_open(&d->sdb, &d->s, &d->mem, max_node, d->check, &e);
     }
-    enum err_code rc = replay_open(&d->r, &d->s, &d->mem, max_node, &e);
     if (rc != ERR_OK) {
-        stream_close(&d->s);
+        /* Java's start that throws closes its storage: what the start
+         * appended (recovery's fill) is written (005-32). */
+        struct err e2;
+        if (d->use_replay) {
+            stream_close(&d->s);
+        } else if (stream_finish(&d->s, &e2) != ERR_OK) {
+            fprintf(stderr, "bergdb-dump: the close failed: %s, %s\n", e2.java, e2.text);
+        }
         free_scan(&sc);
         if (strcmp(e.java, "UnsupportedOperationException") == 0) {
-            fprintf(stderr, "bergdb-dump: C's replay cannot read this database: %s\n", e.text);
+            fprintf(stderr, "bergdb-dump: C cannot read this database: %s\n", e.text);
             return 3;
         }
         fprintf(out, "start error=%s\n", e.java);
         fprintf(stderr, "bergdb-dump: the start failed: %s, %s\n", e.java, e.text);
         return 1;
     }
-    struct replay *r = &d->r;
+    if (d->use_replay) {
+        struct replay *r = &d->r;
+        startPos = r->start_pos;
+        startTime = r->start_time;
+        transCount = r->trans_count;
+        lastPos = r->last_pos;
+        length = r->length;
+        startupDistance = r->startup_distance;
+        firstPos = r->first_available_pos;
+        firstTime = r->first_available_time;
+    } else {
+        struct sdb *b = &d->sdb;
+        startPos = b->start.start_pos;
+        startTime = b->start.start_time;
+        transCount = b->start.trans_count;
+        lastPos = b->start.last_pos;
+        length = stream_length(&d->s);
+        startupDistance = b->start.startup_distance;
+        firstPos = b->first_available_pos;
+        firstTime = b->first_available_time;
+        fprintf(stderr, "bergdb-dump: start read %" PRId64 " records walked (%" PRId64
+                " bytes), %" PRId64 " section records (%" PRId64 " bytes), %" PRId64
+                " nodes, %" PRId64 " loads, %" PRId64 " headers; %" PRId64 " pairs rerun\n",
+                b->start.walk_records, b->start.walk_bytes, b->start.section_records,
+                b->start.section_bytes, b->nc.reads, b->nc.loads, b->nc.header_reads,
+                b->start.rerun_pairs);
+    }
     fprintf(out, "start startPos=%" PRId64 " startupDistance=-1 startTime=%" PRId64
-            " transCount=%d lastPos=%" PRId64 "\n", r->start_pos, r->start_time,
-            (int) r->trans_count, r->last_pos);
+            " transCount=%d lastPos=%" PRId64 "\n", startPos, startTime, (int) transCount,
+            lastPos);
 
-    const int64_t firstPos = r->first_available_pos;
-    const int64_t firstTime = r->first_available_time;
     fprintf(out, "status length=%" PRId64 " firstAvailablePos=%" PRId64 " firstAvailableTime=%"
-            PRId64 " startupDistance=%d\n", r->length, firstPos, firstTime,
-            (int) r->startup_distance);
+            PRId64 " startupDistance=%d\n", length, firstPos, firstTime, (int) startupDistance);
 
     /* The latest state, forward and backward. */
     struct pairs p;
@@ -638,7 +715,11 @@ static int dump(struct dump *d, const char *dir, const char *scan_path, int32_t 
 
     /* getOne of the sampled keys at the sampled times. */
     struct getdata gd;
-    mdb_new_get_data(&r->db, &gd);
+    if (d->use_replay) {
+        mdb_new_get_data(&d->r.db, &gd);
+    } else {
+        sdb_new_get_data(&d->sdb, &gd);
+    }
     for (int64_t ki = 0; ki < nk; ki++) {
         const struct bytes *key = &keys[ki];
         int32_t n = keys_segment_count(key->n);
@@ -654,8 +735,13 @@ static int dump(struct dump *d, const char *dir, const char *scan_path, int32_t 
                 continue;
             }
             struct vnode *v;
-            if (!mdb_get_one(&r->db, t, segs, n, &gd, &v)) {
-                fprintf(stderr, "bergdb-dump: a getOne failed\n");
+            if (d->use_replay) {
+                if (!mdb_get_one(&d->r.db, t, segs, n, &gd, &v)) {
+                    fprintf(stderr, "bergdb-dump: a getOne failed\n");
+                    exit(5);
+                }
+            } else if (sdb_get_one(&d->sdb, t, segs, n, &gd, &v, &e) != ERR_OK) {
+                fprintf(stderr, "bergdb-dump: a getOne failed: %s, %s\n", e.java, e.text);
                 exit(5);
             }
             if (v == NULL) {
@@ -688,8 +774,16 @@ static int dump(struct dump *d, const char *dir, const char *scan_path, int32_t 
     }
     free(positions);
 
-    replay_close(&d->r);
-    stream_close(&d->s);
+    if (d->use_replay) {
+        replay_close(&d->r);
+        stream_close(&d->s);
+    } else {
+        sdb_close(&d->sdb);
+        if (stream_finish(&d->s, &e) != ERR_OK) {
+            fprintf(stderr, "bergdb-dump: the close failed: %s, %s\n", e.java, e.text);
+            exit(5);
+        }
+    }
     fputs("end\n", out);
 
     for (int64_t i = 0; i < nk; i++) {
@@ -701,20 +795,159 @@ static int dump(struct dump *d, const char *dir, const char *scan_path, int32_t 
     return 0;
 }
 
+/* ======== -probe ======== */
+
+static int cmp_cstr(const void *a, const void *b) {
+    return strcmp(*(char *const *) a, *(char *const *) b);
+}
+
+/* java.util.zip.CRC32's update */
+static uint32_t crc32_update(uint32_t crc, const uint8_t *p, size_t n) {
+    crc = ~crc;
+    for (size_t i = 0; i < n; i++) {
+        crc ^= p[i];
+        for (int k = 0; k < 8; k++) {
+            crc = (crc >> 1) ^ (0xedb88320u & (0u - (crc & 1u)));
+        }
+    }
+    return ~crc;
+}
+
+static int probe(struct dump *d, const char *dir, int32_t max_node) {
+    struct err e;
+    err_clear(&e);
+    if (stream_open_dir_rw(&d->s, dir, 0, &d->mem, &e) != ERR_OK) {
+        fprintf(stderr, "bergdb-dump: the directory %s: %s, %s\n", dir, e.java, e.text);
+        return 3;
+    }
+    enum err_code rc = sdb_open(&d->sdb, &d->s, &d->mem, max_node, d->check, &e);
+    if (rc != ERR_OK) {
+        struct err e2;
+        stream_finish(&d->s, &e2);
+        printf("probe dir=%s error=%s\n", dir, e.java);
+        return rc == ERR_ARG ? 3 : 1;
+    }
+    struct sdb *b = &d->sdb;
+    int64_t reads = d->s.file_reads, bytes = d->s.file_read_bytes;
+    int64_t nh = nt_size(&b->nt);
+    char **lines = xmalloc((size_t) (nh == 0 ? 1 : nh) * sizeof *lines);
+    int64_t k = 0, canonical = 0, dirty = 0;
+    for (int64_t i = 0; i < nt_slots(&b->nt); i++) {
+        struct handle *h = nt_slot(&b->nt, i);
+        if (h == NULL) {
+            continue;
+        }
+        char line[80];
+        struct node *o = h->obj;
+        if (o == NULL) {
+            snprintf(line, sizeof line, "%" PRId64 ":-", h->id);
+        } else {
+            snprintf(line, sizeof line, "%" PRId64 ":%" PRId64 "%s%s", h->id, o->spos,
+                    node_is_canonical(o) ? "c" : "", node_is_dirty(o) ? "d" : "");
+            canonical += node_is_canonical(o) ? 1 : 0;
+            dirty += node_is_dirty(o) ? 1 : 0;
+        }
+        lines[k] = xmalloc(strlen(line) + 1);
+        strcpy(lines[k], line);
+        k++;
+    }
+    qsort(lines, (size_t) k, sizeof *lines, cmp_cstr);
+    uint32_t crc = 0;
+    for (int64_t i = 0; i < k; i++) {
+        crc = crc32_update(crc, (const uint8_t *) lines[i], strlen(lines[i]));
+        crc = crc32_update(crc, (const uint8_t *) "\n", 1);
+        free(lines[i]);
+    }
+    /* The canonical objects' contents: a key node's klongs, references and the
+     * references the record rule would write now; a top node's ordinal, root
+     * time, references and written references. */
+    int64_t nc = 0;
+    for (int64_t i = 0; i < nt_slots(&b->nt); i++) {
+        struct handle *h = nt_slot(&b->nt, i);
+        if (h == NULL || h->obj == NULL || !node_is_canonical(h->obj)) {
+            continue;
+        }
+        struct node *o = h->obj;
+        size_t cap = 64 + 72 * (size_t) (node_size(o) + 1);
+        char *line = xmalloc(cap);
+        int len = snprintf(line, cap, "%" PRId64 ":%" PRId64, o->id, o->spos);
+        if (node_type(o) == NODE_TYPE_KEY_NODE) {
+            const struct knode *kn = (const struct knode *) o;
+            len += snprintf(line + len, cap - (size_t) len, ":K%d", (int) kn->size);
+            for (int32_t j = 0; j < kn->size; j++) {
+                len += snprintf(line + len, cap - (size_t) len, ",%" PRId64 "/%" PRId64 "/%"
+                        PRId64, kn->klongs[j], kn_get_pointer_pos(kn, j),
+                        kn_get_serialized_ref(kn, j));
+            }
+        } else {
+            const struct tnode *tn = (const struct tnode *) o;
+            len += snprintf(line + len, cap - (size_t) len, ":T%" PRId64 "/%" PRId64,
+                    tn->top_node_id, tn->root_time);
+            for (int32_t j = 0; j < tn_get_size(tn); j++) {
+                len += snprintf(line + len, cap - (size_t) len, ",%" PRId64 "/%" PRId64,
+                        tn_get_pointer_pos(tn, j), tn_get_serialized_ref(tn, j));
+            }
+        }
+        lines[nc++] = line;
+    }
+    qsort(lines, (size_t) nc, sizeof *lines, cmp_cstr);
+    uint32_t crc2 = 0;
+    for (int64_t i = 0; i < nc; i++) {
+        crc2 = crc32_update(crc2, (const uint8_t *) lines[i], strlen(lines[i]));
+        crc2 = crc32_update(crc2, (const uint8_t *) "\n", 1);
+        free(lines[i]);
+    }
+    free(lines);
+    struct tnode *top = b->newest_written_top;
+    struct tnode *sr = tds_get_super_root(&b->dag.top_ds);
+    printf("probe dir=%s startPos=%" PRId64 " transCount=%d startupPos=%" PRId64 " D=%" PRId64
+            " Dsize=%d top=%" PRId64 "@%" PRId64 " superRoot=%" PRId64 "@%" PRId64
+            " handles=%" PRId64 " canonical=%" PRId64 " dirty=%" PRId64 " table=%" PRIx32
+            " content=%" PRIx32 " loads=%" PRId64 " reads=%" PRId64 " bytes=%" PRId64 "\n", dir,
+            b->start.start_pos, (int) b->start.trans_count, b->start.startup_pos,
+            ts_checksum(&b->ts), (int) ts_size(&b->ts), top->n.id, top->n.spos, sr->n.id,
+            sr->n.spos, k, canonical, dirty, crc, crc2, b->nc.loads, reads, bytes);
+    sdb_close(b);
+    if (stream_finish(&d->s, &e) != ERR_OK) {
+        fprintf(stderr, "bergdb-dump: the close failed: %s, %s\n", e.java, e.text);
+        return 5;
+    }
+    return 0;
+}
+
 int main(int argc, char **argv) {
     int32_t maxNode = 30;
-    bool large = false;
+    bool large = false, replay = false, check = false, probeOnly = false;
     int i = 1;
     for (; i < argc && argv[i][0] == '-'; i++) {
         if (strcmp(argv[i], "-maxnode") == 0 && i + 1 < argc) {
             maxNode = (int32_t) strtol(argv[++i], NULL, 10);
         } else if (strcmp(argv[i], "-large") == 0) {
             large = true;
+        } else if (strcmp(argv[i], "-replay") == 0) {
+            replay = true;
+        } else if (strcmp(argv[i], "-check") == 0) {
+            check = true;
+        } else if (strcmp(argv[i], "-probe") == 0) {
+            probeOnly = true;
         } else {
             fprintf(stderr, "Dump: unknown option %s\n", argv[i]);
-            fprintf(stderr, "Usage: bergdb-dump [-maxnode N] [-large] DIR SCAN\n");
+            fprintf(stderr, "Usage: bergdb-dump [-maxnode N] [-large] [-replay] [-check] DIR "
+                    "SCAN\n");
             return 2;
         }
+    }
+    if (probeOnly && argc - i == 1) {
+        static struct dump pd;
+        pd.check = check;
+        mem_init(&pd.mem);
+        int st = probe(&pd, argv[i], maxNode);
+        fflush(stdout);
+        if (pd.mem.live_total != 0) {
+            fprintf(stderr, "bergdb-dump: %" PRId64 " bytes live at the end\n", pd.mem.live_total);
+            return 4;
+        }
+        return st;
     }
     if (argc - i != 2 || (maxNode != 8 && maxNode != 14 && maxNode != 30 && maxNode != 62)) {
         fprintf(stderr, "Usage: bergdb-dump [-maxnode N] [-large] DIR SCAN\n");
@@ -725,6 +958,8 @@ int main(int argc, char **argv) {
     static struct dump d;
     d.out = stdout;
     d.large = large;
+    d.use_replay = replay;
+    d.check = check;
     mem_init(&d.mem);
     int status = dump(&d, argv[i], argv[i + 1], maxNode);
     fflush(stdout);

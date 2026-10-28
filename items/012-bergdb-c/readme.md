@@ -240,3 +240,21 @@ dump with its audit on started each of C's directories and equals C's;
 was met at any step. Workloads with restarts or reclaim still run on Java
 until 012-10 and 012-11. In the main tree, with the same `c/`: C BEFORE
 COMMIT OK (72 s; 304 unit tests, 4 functional tests).
+
+2026-10-28, 23:26. 012-10 done, and with it milestone M3: Levels 0 to 2
+in C. C starts existing databases as Java does (`recover`, `starter`,
+`ncoll`, `ntable`, `lmap`, `sdb`): recovery with its fill, the start's
+checks, the startup section, Rule R, rule 4 by position, the rerun that
+rebuilds D and the take's state, and loads on demand. Checked against
+Java: all 1,262 crash copies of the full set recovered to Java's bytes; a
+probe comparing every start (D's checksum, the node table, the canonical
+objects, the loads, every file read) matched on 482 directories and the
+1,262 cuts, with equal reads (441,126 reads, 438 MB, 30,828 loads on both
+sides); C's runs of the 241 workloads without reclaim gave Java's files
+byte for byte, restarts included (`l2-every1`: 399 restarts), with the
+runs in turns and the runs after each crash; a million keys with a
+restart, equal files. `cross.sh full` with C's tools OK in 012-10's clone
+(343 workloads; 1,632 s). Earlier tonight (22:21) the 10M-key scale set:
+C's dumps of the two 10M-key databases equal Java's. In the main tree:
+C BEFORE COMMIT OK (98 s; 329 unit tests, 7 functional tests). Java's
+`DbStarter.validateTransactions` checks nothing: 005-75.

@@ -114,20 +114,29 @@ The modules so far, each ported from its Java class:
 | `trans` | `Trans` and `Trans.Builder`, with `Kv` (012-09) | `tr_` |
 | `transnodes` | `TransNodes`, a record's nodes (012-09) | `tns_` |
 | `serial` | `StoredTrans.Serializer` and `NodeStream.appendNodes`, the record writer (012-09) | `ser_` |
-| `db` | `Db`: the creation and its start, `execute` with its checks, the marking, `store` with the take, `setStartupDistance`, reads, sync, close (012-09; the start of an existing database is 012-10's) | `db_`, `DB_` |
+| `db` | `Db`: the creation and the start (012-10: through `starter`), `execute` with its checks, the marking, `store` with the take, `setStartupDistance`, reads, sync, close (012-09) | `db_`, `DB_` |
 | `api` | `include/bergdb.h`'s functions, and the structs of its handles (012-09) | `api_` |
+| `lmap` | a map from a long to a long, `HashMap<Long, Long>` where its order does not matter (012-10) | `lmap_` |
+| `ntable` | the node table, `Cache3` in part: register, install, makeCanonical, the live handles (012-10) | `nt_` |
+| `ncoll` | `NodeCollection`: the followers that load with Rule R and the cut back, `resolvePointers`, `linkToCanonical` (012-10) | `nc_` |
+| `recover` | `RecoverableStream.recover` with its fill (012-10) | `rcv_` |
+| `starter` | `Db.startInner`'s checks, recovery and start, and `DbStarter`: the bounded startup with its rerun (012-10) | `sr_`, `SR_` |
+| `sdb` | a database opened by the bounded startup, for reads: `bergdb-dump`'s and the tests' (012-10) | `sdb_` |
 
 The tools so far: `bergdb-scan PATH` (012-06), Java's `StreamScan` in C:
 the same text, "streamscan 1", for every stream (`tools/scan.c`);
-`bergdb-dump [-maxnode N] [-large] DIR SCAN` (012-08), Java's `Dump` in C:
-the same text, "bergdb-dump 1", by a full replay of the stream, for a
-database without reclaim's table or cut (exit status 3 for one that has
-them; `cross.sh` gives those to Java's dumper) (`tools/dump.c`);
-`bergdb-run [-v] [-segments A[-B]] WORKLOAD DIR` (012-09), Java's `Run` in
-C through `bergdb.h` only: the same text, "bergdb-run 1", and Java's bytes,
-for a workload that creates its database and neither restarts nor reclaims
-(exit status 3, nothing written, for one that does: 012-10, 012-11;
-`cross.sh` gives those runs to Java) (`tools/run.c`). Part 1 of 012-09
+`bergdb-dump [-maxnode N] [-large] [-replay] [-check] DIR SCAN` (012-08,
+012-10), Java's `Dump` in C: the same text, "bergdb-dump 1", the database
+opened by the bounded startup (or by a full replay of the stream with
+`-replay`), for a database without reclaim's table or cut (exit status 3
+for one that has them; `cross.sh` gives those to Java's dumper); and
+`bergdb-dump -probe [-maxnode N] [-check] DIR`, one line of what a start
+rebuilt and read (012-10, 6.2) (`tools/dump.c`);
+`bergdb-run [-v] [-segments A[-B]] WORKLOAD DIR` (012-09, 012-10), Java's
+`Run` in C through `bergdb.h` only: the same text, "bergdb-run 1", and
+Java's bytes, for a workload that does not reclaim, restarts included
+(exit status 3, nothing written, for one that reclaims: 012-11; `cross.sh`
+gives those runs to Java) (`tools/run.c`). Part 1 of 012-09
 added `bergdb-takecheck`, `bergdb-reappend` and `bergdb-clockcheck`
 (`tools/readme.md`).
 

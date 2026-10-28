@@ -10,20 +10,15 @@
  * STM's record), setStartupDistance (005-53), the reads (getOneInternal,
  * getMany), sync, currentTime and the close. Prefix db_.
  *
- * What is not here yet, and refused: the start of an existing database
- * (012-10: ERR_ARG, "UnsupportedOperationException"), reclaim (012-11: a
- * retain duration other than forever is refused at the open, and
- * setRetainDuration takes forever only), eviction (012-12: the cache size
- * indicator is kept and does nothing; no byte depends on it).
- *
- * No node table yet (Cache3; 012-10 and 012-12 make it): an index object is
- * held by the pointers that name it (through its handle), by D's got-dirty
- * lists, the record, TopDs and the newest written top node (012-07,
- * 6.4.2). Without a start that reads index nodes and without eviction,
- * every pointer to an index node holds a handle whose object is canonical,
- * so the writer's follower and NodeCollection.resolvePointers never need
- * the table; a stream pointer there is refused as unsupported (it would be
- * a bug in 012-09).
+ * The start of an existing database (012-10): Db.startInner's checks and
+ * recovery and DbStarter, in starter.h (sr_check_and_recover, sr_start), on
+ * the node table (ntable.h, Cache3 in part) and the node collection
+ * (ncoll.h, NodeCollection: the followers, which load what is not in memory
+ * with Rule R, and resolvePointers). Not here yet, and refused: reclaim
+ * (012-11: a retain duration other than forever is refused at the open,
+ * setRetainDuration takes forever only, and a database with reclaim's table
+ * is refused at its start), eviction (012-12: the cache size indicator is
+ * kept and does nothing; no byte depends on it).
  *
  * Errors (err.h): before a transaction's go point a refusal leaves the
  * database as it was (ERR_LIMIT, ERR_RERUN, ERR_STATE, ERR_ARG, ERR_NOMEM);
@@ -42,6 +37,8 @@
 #include "getmany.h"
 #include "keymod.h"
 #include "mem.h"
+#include "ncoll.h"
+#include "ntable.h"
 #include "obj.h"
 #include "rstream.h"
 #include "serial.h"
@@ -92,6 +89,8 @@ struct db_start_info {
 struct db {
     struct mem *mem;
     struct obj_ctx cx;
+    struct ntable node_table;       /* Db.cache, Cache3 (012-10) */
+    struct ncoll node_coll;         /* Db.nodeCollection (012-10) */
     struct stream stream;
     bool stream_open;
     struct rs rs;                   /* RecoverableStream with the in-memory meta block */
@@ -147,10 +146,12 @@ struct db {
 
 /* new Db(builder) and start(): the directory dir opened for writing (or a
  * stream in memory, dir NULL), and, as the stream is empty, the database
- * created and started. *info what the start read. On an error nothing is
- * left open or allocated: ERR_ARG (a bad setting; the start of an existing
- * database, unsupported before 012-10), ERR_IN_USE, ERR_IO, ERR_FORMAT,
- * ERR_NOT_CREATED, ERR_LIMIT (the clock at the creation), ERR_NOMEM. */
+ * created and started; else started (012-10). *info what the start read. On
+ * an error nothing is left open or allocated: ERR_ARG (a bad setting; a
+ * database with reclaim's table, unsupported before 012-11), ERR_IN_USE,
+ * ERR_IO, ERR_FORMAT, ERR_NOT_CREATED, ERR_LIMIT (the clock at the
+ * creation), ERR_NOMEM. A start that fails has written what Java's writes
+ * (recovery's fill), and the stream is closed (005-32). */
 enum err_code db_open(struct db *db, const char *dir, const struct db_config *cfg,
         struct mem *m, struct db_start_info *info, struct err *e);
 
