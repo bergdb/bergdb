@@ -17,35 +17,9 @@ variable {V T : Type} [DecidableEq V]
 
 /-! ## The invariant -/
 
-/-- Object h, of node y, can be read at time t: it is canonical, or the
-snapshot of a version of y good for t. -/
-def ReadableT (sp : Spec V T) (db : DB V T) (m : Mem V) (t : Time) (h : Nat) (y : NodeId) : Prop :=
-  ∃ o, m.obj? h = some o ∧ o.node = y ∧
-    (o.canonical = true ∨ ∃ r w, o.pos = some r ∧ db.S.versionAt r y = some w ∧
-      good sp db.S db.P t w = true)
-
-/-- A stream slot's reference that names, after Rule R, a version of y good
-for t. -/
-def GoodRef (sp : Spec V T) (S0 : Stream V T) (db : DB V T) (m : Mem V) (t : Time) (y : NodeId)
-    (r : Option Nat) : Prop :=
-  ∃ r' w, ruleRRef S0 m.s y r = some r' ∧ db.S.versionAt r' y = some w ∧ good sp db.S db.P t w = true
-
 /-- INV-SLOT's second half: y and x are in D, x got dirty no later. -/
 def DLater (D : Dirty) (x y : NodeId) : Prop :=
   inD D y = true ∧ inD D x = true ∧ ∃ a b, dOf D x = some a ∧ dOf D y = some b ∧ a ≤ b
-
-/-- The slot of an object of node x for y, a live child of it at t, as a read at
-t needs it. -/
-def SlotHist (sp : Spec V T) (S0 : Stream V T) (db : DB V T) (m : Mem V) (t : Time) (x y : NodeId) :
-    Slot → Prop
-  | Slot.mem h' => ReadableT sp db m t h' y
-  | Slot.stream r => GoodRef sp S0 db m t y r ∨ DLater db.D x y
-
-/-- E4's invariant: the slots of canonical objects for reads at every time up
-to k. -/
-def HInv (sp : Spec V T) (db : DB V T) (S0 : Stream V T) (k : Nat) (m : Mem V) : Prop :=
-  ∀ h o, m.obj? h = some o → o.canonical = true → ∀ t ≤ k, reachable sp db.P t o.node = true →
-    ∀ y ∈ sp.live (o.hist.upTo t), ∃ sl, o.slot? y = some sl ∧ SlotHist sp S0 db m t o.node y sl
 
 /-! ## Memories that keep what reads need -/
 

@@ -9,7 +9,7 @@ version of every pointee.
 import SIS.Proof.Still
 import SIS.Proof.StepInv
 import SIS.Proof.Newer
-import SIS.Evict
+import SIS.Phys
 
 set_option linter.unusedSectionVars false
 

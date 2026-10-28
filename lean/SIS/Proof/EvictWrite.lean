@@ -15,12 +15,6 @@ namespace SIS
 
 variable {V T : Type} [DecidableEq V]
 
-/-- The canonical objects' positions are the latest versions so far: in the
-stream S followed by the versions vs of the record being written. -/
-def PosOK (S : Stream V T) (vs : List (Version V)) (m : Mem V) : Prop :=
-  ∀ z h o, m.canonicalOf z = some h → m.obj? h = some o →
-    o.pos = ((S.building vs).lv z).map (·.recNo)
-
 /-- The node table names objects of their node. -/
 def TableNode (m : Mem V) : Prop :=
   ∀ y h, m.tableOf y = some h → ∃ o, m.obj? h = some o ∧ o.node = y

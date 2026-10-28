@@ -477,6 +477,17 @@ def lazyStartup (sp : Spec V T) (S : Stream V T) : Mem V :=
     | none => acc) (m3, baseStruct sp S s true)
   r.1
 
+/-- The position of each canonical object made by the startup from S, as Java's
+startup sets it (`DbStarter`'s `newById`): the record of its node's newest
+version in R(s), ..., R(k), if there is one; otherwise it stays (a node of D
+made from its latest version, or a virtual root, never written). -/
+def Mem.sectionPos (m : Mem V) (S : Stream V T) : Mem V :=
+  { m with objs := m.objs.map (fun p =>
+      if !p.2.canonical then p else
+      match newest S m.s p.2.node with
+      | some w => (p.1, { p.2 with pos := some w.recNo })
+      | none => p) }
+
 /-! ## Operations after startup (for the theorems) -/
 
 /-- An operation on the memory after a startup: a read at time t, or the
@@ -597,5 +608,58 @@ def runLazy (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool)) :
     let r := lazyTrans sp al acc.2.2 acc.1 acc.2.1 p.1
     if p.2 then (startup sp r.1.S, lazyStartup sp r.1.S, r.1.S) else (r.1, r.2, acc.2.2))
     (init sp, lazyStartup sp (init sp).S, (init sp).S)
+
+/-! ## The assumptions of stage 2, eviction
+
+TREE, A6' and A-COPY (bergdb item 001, WP E2; bergdb 001-08, section 4): what
+the theorems with eviction (HandleTheorems.lean, HandleReclaimTheorems.lean) and
+T15 (PhysTheorems.lean) assume of BergDB's tree, besides the assumptions above.
+Evict.lean, the model of eviction before handles, stated them until bergdb
+005-62. -/
+
+/-- TREE at time i: every node reachable at i, the root aside, is the live
+child at i of exactly one node reachable at i (sis-model.md, section 11). -/
+def treeAt (sp : Spec V T) (P : Struct V) (i : Time) : Prop :=
+  ∀ y, reachable sp P i y = true → y ≠ root →
+    ((reachList sp P i).eraseDups.filter (fun x => match P.get? x with
+      | some n => (sp.live (n.hist.upTo i)).contains y
+      | none => false)).length = 1
+
+/-- A6' at time i (no adoption, the weaker form; bergdb 001-08,
+section 4): for every node x reachable at i and every pointee y of x that is
+not a live child of x at i, y is a data node, or is not reachable at i, or is
+reachable at i from x through live pointers (below x). -/
+def adoptAt (sp : Spec V T) (P : Struct V) (i : Time) : Prop :=
+  ∀ x n, reachable sp P i x = true → P.get? x = some n →
+    ∀ y ∈ pointees sp n.hist, y ∉ sp.live (n.hist.upTo i) →
+      (∃ ny, P.get? y = some ny ∧ ny.isData = true) ∨ reachable sp P i y = false ∨
+        y ∈ reachFrom sp P i x n
+
+/-- The assumptions of stage 2 at time i, on P after transaction i: TREE and
+A6'. BergDB's Dag meets both (checked on Java by A4: TREE in every transaction,
+A6' in every transaction of 68,901, where A6 fails in 5). -/
+structure EvictStep (sp : Spec V T) (P : Struct V) (i : Time) : Prop where
+  tree : treeAt sp P i
+  adopt : adoptAt sp P i
+
+/-- A-COPY for the change c at time i to P: a pointer of a new entry to a node
+that c does not create names a node of the writer's paths, or a pointee at
+i - 1 of one, live there if that node is a virtual root. This is what Java's
+writer has in hand when it makes the pointer of a new klong: the object it
+created or reached, or a pointer of a node it reached, which a split copies to
+the new nodes and a new super root inherits (`TopDs.newSuperRoot`). The
+physical writer has no other way to know a node's latest version (T-INDEX). -/
+def CopyStep (sp : Spec V T) (P : Struct V) (i : Time) (c : Changes V) : Prop :=
+  ∀ a ∈ c.adds, ∀ y ∈ sp.ptrs a.2, y ∉ c.new.map (·.id) →
+    y ∈ pathOf sp P c i ∨ ∃ z ∈ pathOf sp P c i, ∃ nz, P.get? z = some nz ∧
+      y ∈ pointees sp nz.hist ∧ (written sp z = true ∨ y ∈ sp.live (nz.hist.upTo (i - 1)))
+
+/-- The assumptions of stage 2 hold in every transaction of a run: TREE and A6'
+after it, A-COPY for its change. -/
+def EvictRunOK (sp : Spec V T) (al : Algo V T) (ts : List T) : Prop :=
+  (∀ j ≤ ts.length, EvictStep sp (run sp al (ts.take j)).P j) ∧
+  ∀ j (h : j < ts.length),
+    let db := run sp al (ts.take j)
+    CopyStep sp db.P (j + 1) (sp.exec ts[j] (j + 1) (view sp db.P j))
 
 end SIS

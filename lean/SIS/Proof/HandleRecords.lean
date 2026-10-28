@@ -19,7 +19,7 @@ loops give the model's versions), HandleStepInv.lean (the invariant after the
 record), HandleTrans.lean (one transaction, and runs from a memory with the
 invariant), HandleInit.lean (the startup with handles from R(0) has it).
 -/
-import SIS.Proof.HandleInit
+import SIS.Proof.HandleStart
 
 set_option linter.unusedSectionVars false
 
@@ -77,7 +77,7 @@ theorem TC_handles_records (ts : List (T × Bool × List HCacheOp)) (hok : RunOK
     (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (hnr : ∀ p ∈ ts, p.2.1 = false) :
     ∀ j ≤ ts.length, (runHandles sp al (ts.take j)).1 = run sp al ((ts.take j).map (·.1)) := by
   intro j hjl
-  obtain ⟨e1, -, -⟩ := TC_runH hok hph hev hj hmk hnr (heinv_init hok.1) j hjl
+  obtain ⟨e1, -, -⟩ := TC_runH hok hph hev hj hmk hnr (heinv_init hok hph hj hmk hev) j hjl
   rw [e1]
   unfold st
   rw [List.map_take]
@@ -85,7 +85,7 @@ theorem TC_handles_records (ts : List (T × Bool × List HCacheOp)) (hok : RunOK
 /-- `TC_handles` (SIS/HandleTheorems.lean) holds. -/
 theorem tc_handles (sp : Spec V T) (al : Algo V T) : TC_handles sp al := by
   intro ts hok hph hev hj hmk hnr j hjl
-  obtain ⟨e1, -, e3⟩ := TC_runH hok hph hev hj hmk hnr (heinv_init hok.1) j hjl
+  obtain ⟨e1, -, e3⟩ := TC_runH hok hph hev hj hmk hnr (heinv_init hok hph hj hmk hev) j hjl
   have hst : st sp al (ts.map (·.1)) j = run sp al ((ts.take j).map (·.1)) := by
     unfold st; rw [List.map_take]
   rw [hst] at e1 e3

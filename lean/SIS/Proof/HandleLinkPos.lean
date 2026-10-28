@@ -29,24 +29,6 @@ variable {V T : Type} [DecidableEq V]
 
 /-! ## The memory before rule 4 -/
 
-/-- The positions of the section leave the node table and the canonical objects. -/
-theorem Mem.sectionPos_canonicalOf (m : Mem V) (S : Stream V T) (y : NodeId) :
-    (m.sectionPos S).canonicalOf y = m.canonicalOf y := by
-  unfold Mem.canonicalOf
-  rw [show (m.sectionPos S).tableOf y = m.tableOf y from rfl]
-  cases m.tableOf y with
-  | none => rfl
-  | some h =>
-    simp only
-    rw [Mem.sectionPos_obj?]
-    cases ho : m.obj? h with
-    | none => rfl
-    | some o =>
-      simp only [Option.map_some]
-      cases hc : o.canonical
-      · simp [hc]
-      · cases newest S m.s o.node <;> simp [hc]
-
 /-- The positions change only an object's position. -/
 theorem sectionPosObj_fields (S : Stream V T) (s : Nat) (o : Obj V) :
     (if !o.canonical then o else match newest S s o.node with

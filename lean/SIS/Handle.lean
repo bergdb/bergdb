@@ -97,7 +97,7 @@ schedule of evictions is allowed), bytes and the accounting, the eviction
 thread, and the search of the TopDs skip list (the root's object stands for
 it).
 -/
-import SIS.Evict
+import SIS.Phys
 
 namespace SIS
 

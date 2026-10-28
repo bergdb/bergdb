@@ -438,11 +438,11 @@ theorem HInvH.run {ts : List (T × Bool × List HCacheOp)} (hok : RunOK sp al (t
     have : runHandles sp al (ts.take 0) = (init sp, handleStartup sp (init sp).S, (init sp).S) := by
       simp [runHandles]
     rw [this, st_zero]
-    exact HInvH.of_live (inv_init sp hok.1) hok.1.liveSub (heinv_init hok.1)
+    exact HInvH.of_live (inv_init sp hok.1) hok.1.liveSub (heinv_init hok hph hj hmk hev)
   | succ j ih =>
     intro hjt
     have hh := ih (by omega)
-    obtain ⟨e1, e2, e3⟩ := TC_runH hok hph hev hj hmk hnr (heinv_init hok.1) j (by omega)
+    obtain ⟨e1, e2, e3⟩ := TC_runH hok hph hev hj hmk hnr (heinv_init hok hph hj hmk hev) j (by omega)
     have hjt' : j < ts.length := by omega
     have hjm : j < (ts.map (·.1)).length := by simp; omega
     rw [runHandles_succ sp al ts hjt']
@@ -465,7 +465,7 @@ theorem tr_handles (sp : Spec V T) (al : Algo V T) : TR_handles sp al := by
   intro ts hok hph hev hj hmk hnr j hjt t ht db m
   have hst : st sp al (ts.map (·.1)) j = run sp al ((ts.take j).map (·.1)) := by
     unfold st; rw [List.map_take]
-  obtain ⟨-, -, e3⟩ := TC_runH hok hph hev hj hmk hnr (heinv_init hok.1) j hjt
+  obtain ⟨-, -, e3⟩ := TC_runH hok hph hev hj hmk hnr (heinv_init hok hph hj hmk hev) j hjt
   have hh := HInvH.run hok hph hev hj hmk hnr j hjt
   have hinv := inv_st sp al (ts.map (·.1)) hok (algOK_of sp al (Or.inl hj)) j
     (by rw [List.length_map]; exact hjt)

@@ -17,88 +17,6 @@ variable {V T : Type} [DecidableEq V]
 /-- The got-dirty index of x in D, if x is in D. -/
 def dOf (D : Dirty) (x : NodeId) : Option Nat := (D.find? (fun e => e.1 == x)).map (·.2)
 
-/-- An object whose slots matter for records: a canonical object of a node that
-is current at time k or in D, but a virtual root (never written). -/
-def Relevant (sp : Spec V T) (db : DB V T) (k : Nat) (o : Obj V) : Prop :=
-  o.canonical = true ∧ written sp o.node = true ∧
-    (reachable sp db.P k o.node = true ∨ inD db.D o.node = true)
-
-/-- The reference that slot sl for y serializes (a stream slot's after Rule R). -/
-def slotRefOf (S0 : Stream V T) (m : Mem V) (y : NodeId) : Slot → Option Nat
-  | Slot.mem h => (m.obj? h).bind (·.pos)
-  | Slot.stream r => ruleRRef S0 m.s y r
-
-/-- What a snapshot of version w asks of its slot sl for pointee y: a stream slot
-names w's reference, or (after an unswizzle) a version at least as new as the
-one that Rule R gives for that reference; a memory slot names an object of the
-pointee, canonical or at least as new. -/
-def SnapSlot (S0 : Stream V T) (db : DB V T) (m : Mem V) (w : Version V) (y : NodeId) (sl : Slot) :
-    Prop :=
-  sl = Slot.stream (w.ref? y) ∨
-  (∃ p u, sl = Slot.stream (some p) ∧ db.S.versionAt p y = some u ∧
-    ∀ r0, ruleRRef S0 m.s y (w.ref? y) = some r0 → r0 ≤ p) ∨
-  (∃ h' o', sl = Slot.mem h' ∧ m.obj? h' = some o' ∧ o'.node = y ∧
-    (o'.canonical = true ∨
-      ∃ p, o'.pos = some p ∧ ∀ r0, ruleRRef S0 m.s y (w.ref? y) = some r0 → r0 ≤ p))
-
-/-- A snapshot o: the version w of its node at its position, exactly, with a slot
-for each pointee of its history, each as `SnapSlot` asks. -/
-def SnapExact (sp : Spec V T) (S0 : Stream V T) (db : DB V T) (m : Mem V) (o : Obj V) : Prop :=
-  ∃ r w, o.pos = some r ∧ db.S.versionAt r o.node = some w ∧ o.hist = w.hist ∧
-    o.level = w.level ∧ o.isData = w.isData ∧
-    (∀ y ∈ pointees sp o.hist, (o.slot? y).isSome) ∧
-    ∀ y sl, o.slot? y = some sl → SnapSlot S0 db m w y sl
-
-/-- INV-SLOT for slot sl of a relevant object o for pointee y: for y not in D it
-serializes y's latest version; for y in D it is a memory slot to y's canonical
-object, or o's node is in D with an index at most y's (it is written no later
-than y). -/
-def SlotInv (S0 : Stream V T) (db : DB V T) (m : Mem V) (o : Obj V) (y : NodeId) (sl : Slot) :
-    Prop :=
-  (inD db.D y = false → slotRefOf S0 m y sl = (db.S.lv y).map (·.recNo)) ∧
-  (inD db.D y = true → (∃ h', sl = Slot.mem h' ∧ m.canonicalOf y = some h') ∨
-    (inD db.D o.node = true ∧ ∃ a b, dOf db.D o.node = some a ∧ dOf db.D y = some b ∧ a ≤ b))
-
-/-- The slot sl of a canonical object of a node current at k for a live child y:
-for y in D a memory slot to y's canonical object; otherwise it serializes y's
-latest version (what reads at k and the writer's walk rely on). -/
-def LiveInv (S0 : Stream V T) (db : DB V T) (m : Mem V) (y : NodeId) (sl : Slot) : Prop :=
-  (inD db.D y = true → ∃ h', sl = Slot.mem h' ∧ m.canonicalOf y = some h') ∧
-  (inD db.D y = false → slotRefOf S0 m y sl = (db.S.lv y).map (·.recNo))
-
-/-- The invariant of the memory m with eviction, for state db at time k, after a
-startup from S0. -/
-structure EInv (sp : Spec V T) (db : DB V T) (S0 : Stream V T) (k : Nat) (m : Mem V) : Prop where
-  len : db.S.length = k + 1
-  pre : S0 <+: db.S
-  sEq : m.s = lastSp S0
-  fresh : ∀ h, m.next ≤ h → m.obj? h = none
-  objNodup : (m.objs.map (·.1)).Nodup
-  root : ∃ o, m.obj? m.root = some o ∧ o.canonical = true ∧ o.node = root
-  tblNodup : (m.table.map (·.1)).Nodup
-  tbl : TableNode m
-  slotsNode : SlotsNode m
-  /-- The node table names canonical objects, and every canonical object is the
-  table's (INV-CAN). -/
-  tblCanon : ∀ y h, m.tableOf y = some h → ∃ o, m.obj? h = some o ∧ o.canonical = true
-  canonTbl : ∀ h o, m.obj? h = some o → o.canonical = true → m.tableOf o.node = some h
-  /-- A canonical object holds its node's whole history (CC) and its latest
-  position. -/
-  cc : ∀ h o, m.obj? h = some o → o.canonical = true →
-    ∃ n, db.P.get? o.node = some n ∧ o.hist = n.hist ∧ o.level = n.level ∧ o.isData = n.isData
-  pos : PosOK db.S [] m
-  /-- Every node of D has a canonical object. -/
-  dCanon : ∀ y, inD db.D y = true → (m.canonicalOf y).isSome
-  /-- Snapshots are exact versions (INV-SNAP). -/
-  snap : ∀ h o, m.obj? h = some o → o.canonical = false → SnapExact sp S0 db m o
-  /-- INV-SLOT: a relevant object has a slot for each pointee, as `SlotInv` asks. -/
-  slots : ∀ h o, m.obj? h = some o → Relevant sp db k o → ∀ y ∈ pointees sp o.hist,
-    ∃ sl, o.slot? y = some sl ∧ SlotInv S0 db m o y sl
-  /-- A canonical object of a node current at k (a virtual root too) has a slot
-  for each live child, as `LiveInv` asks. -/
-  live : ∀ h o, m.obj? h = some o → o.canonical = true → reachable sp db.P k o.node = true →
-    ∀ y ∈ sp.live o.hist, ∃ sl, o.slot? y = some sl ∧ LiveInv S0 db m y sl
-
 /-! ## Basic facts -/
 
 theorem ruleRRef_some_ge {S0 : Stream V T} {s : Nat} {y : NodeId} {r r0 : Nat}
@@ -231,75 +149,9 @@ end Facts
 
 /-! ## Memories with the same cores -/
 
-/-- m' has m's objects but for slots, m's canonical objects, and m's startup
-pos. -/
-def Mem.CoreEq (m m' : Mem V) : Prop :=
-  (∀ h, (m'.obj? h).map Obj.core = (m.obj? h).map Obj.core) ∧
-    (∀ y, m'.canonicalOf y = m.canonicalOf y) ∧ m'.s = m.s
-
 section Core
 
 variable {sp : Spec V T} {db : DB V T} {S0 : Stream V T} {k : Nat} {m m' : Mem V}
-
-theorem Mem.CoreEq.obj (hce : m.CoreEq m') {h : Nat} {o : Obj V}
-    (ho : m.obj? h = some o) : ∃ o', m'.obj? h = some o' ∧ o'.node = o.node ∧ o'.level = o.level ∧
-      o'.isData = o.isData ∧ o'.hist = o.hist ∧ o'.canonical = o.canonical ∧ o'.pos = o.pos := by
-  have := hce.1 h
-  rw [ho] at this
-  cases h' : m'.obj? h with
-  | none => rw [h'] at this; cases this
-  | some o' =>
-    rw [h'] at this
-    simp only [Option.map_some, Option.some.injEq, Obj.core, Prod.mk.injEq] at this
-    exact ⟨o', rfl, this.1, this.2.1, this.2.2.1, this.2.2.2.1, this.2.2.2.2.1, this.2.2.2.2.2⟩
-
-theorem Mem.CoreEq.pos_eq (hce : m.CoreEq m') (h : Nat) :
-    (m'.obj? h).bind (·.pos) = (m.obj? h).bind (·.pos) := by
-  cases ho : m.obj? h with
-  | none =>
-    cases ho' : m'.obj? h with
-    | none => rfl
-    | some o' =>
-      have := hce.1 h
-      rw [ho, ho'] at this; cases this
-  | some o =>
-    obtain ⟨o', ho', -, -, -, -, -, hp⟩ := hce.obj ho
-    rw [ho']; simp [hp]
-
-theorem slotRefOf_congr (hce : m.CoreEq m') (y : NodeId) (sl : Slot) :
-    slotRefOf S0 m' y sl = slotRefOf S0 m y sl := by
-  cases sl with
-  | mem h => exact hce.pos_eq h
-  | stream r => simp only [slotRefOf, hce.2.2]
-
-theorem SnapSlot.congr (hce : m.CoreEq m') {w : Version V} {y : NodeId} {sl : Slot}
-    (h : SnapSlot S0 db m w y sl) : SnapSlot S0 db m' w y sl := by
-  unfold SnapSlot at h ⊢
-  rw [hce.2.2]
-  rcases h with h | h | ⟨h', o', hsl, ho', hn, hc⟩
-  · exact Or.inl h
-  · exact Or.inr (Or.inl h)
-  · obtain ⟨o'', ho'', e1, -, -, -, e5, e6⟩ := hce.obj ho'
-    refine Or.inr (Or.inr ⟨h', o'', hsl, ho'', by rw [e1, hn], ?_⟩)
-    rw [e5, e6]; exact hc
-
-theorem SnapExact.congr (hce : m.CoreEq m') {o : Obj V} (h : SnapExact sp S0 db m o) :
-    SnapExact sp S0 db m' o := by
-  obtain ⟨r, w, h1, h2, h3, h4, h5, h6, h7⟩ := h
-  exact ⟨r, w, h1, h2, h3, h4, h5, h6, fun y sl hsl => (h7 y sl hsl).congr hce⟩
-
-theorem SlotInv.congr (hce : m.CoreEq m') {o : Obj V} {y : NodeId} {sl : Slot}
-    (h : SlotInv S0 db m o y sl) : SlotInv S0 db m' o y sl := by
-  refine ⟨fun hy => by rw [slotRefOf_congr hce]; exact h.1 hy, fun hy => ?_⟩
-  rcases h.2 hy with ⟨h', hsl, hc⟩ | h2
-  · exact Or.inl ⟨h', hsl, by rw [hce.2.1]; exact hc⟩
-  · exact Or.inr h2
-
-theorem LiveInv.congr (hce : m.CoreEq m') {y : NodeId} {sl : Slot}
-    (h : LiveInv S0 db m y sl) : LiveInv S0 db m' y sl := by
-  refine ⟨fun hy => ?_, fun hy => by rw [slotRefOf_congr hce]; exact h.2 hy⟩
-  obtain ⟨h', hsl, hc⟩ := h.1 hy
-  exact ⟨h', hsl, by rw [hce.2.1]; exact hc⟩
 
 end Core
 
@@ -316,14 +168,6 @@ end SetObj
 section Evict
 
 variable {sp : Spec V T} {db : DB V T} {S0 : Stream V T} {k : Nat} {m : Mem V}
-
-theorem PosOK.lv0 {S : Stream V T} (hp : PosOK S [] m) {z : NodeId} {h : Nat} {o : Obj V}
-    (hz : m.canonicalOf z = some h) (ho : m.obj? h = some o) : o.pos = (S.lv z).map (·.recNo) := by
-  rw [hp z h o hz ho, lv_building]; rfl
-
-theorem EInv.canonicalOf_of (hm : EInv sp db S0 k m) {h : Nat} {o : Obj V} (ho : m.obj? h = some o)
-    (hc : o.canonical = true) : m.canonicalOf o.node = some h :=
-  (m.canonicalOf_eq_some o.node h).mpr ⟨hm.canonTbl h o ho hc, o, ho, hc⟩
 
 theorem lookup_filter_self {β : Type} (l : List (Nat × β)) (h : Nat) :
     List.lookup h (l.filter (fun p => p.1 != h)) = none := by

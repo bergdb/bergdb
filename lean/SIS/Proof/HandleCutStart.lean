@@ -257,11 +257,8 @@ theorem handleStartup_sim (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hev
   have hD : (startup sp (cutStream c (st sp al ts k).S)).D = (startup sp (st sp al ts k).S).D := by
     rw [startup, startup, startup_D, startup_D, sectionD_cut hcs]
   -- The root's object is in the node table.
-  have hE := einv_startup hok hph hj hmk hev hk
-  unfold evictStartup at hE
-  obtain ⟨o0, ho0, hc0, -⟩ := hE.root
-  have ht := hE.canonTbl _ o0 ho0 hc0
-  generalize hM1 : (lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S = M1 at hsec hraP ht ho0
+  have ht := (startMem_st hok hph hj hmk hev hk).root.1
+  generalize hM1 : (lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S = M1 at hsec hraP ht
   have hheld : M1.heldA M1.root = true := by
     unfold Mem.heldA
     exact List.any_eq_true.mpr ⟨(_, M1.root), mem_of_lookup _ _ _ ht, by simp⟩
