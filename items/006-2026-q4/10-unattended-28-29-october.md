@@ -260,6 +260,16 @@ its smoke mode OK. In `steps.txt` with READY markers. Also in `main`:
 Layer built alone nightly in `night.sh` (`43e631f`), 010-01's P12
 (`64af8da`).
 
+2026-10-28, 10:20. W2.1 done (`67c1c54`, `cfdc901`): 005-65's reading. A
+reader's load enters `evictorLock` in `Eviction.wake` after a slow-path load,
+unbounded; it parks for a batch only under pressure, which last night never
+reached, so the waits over 10 ms were at the monitor's entry. The likely
+commit is `eaec93e` (005-46: all 8 readers runnable, 1.8 times the gets and
+loads); ZGC cleared. Five hypotheses with predictions; the measurement now
+tells them apart (after-load calls by pressure, gets over 10 ms, blocked
+times, the machine's busy cores). `prep.sh` made again, `threads.sh`'s smoke
+OK with the new tables, READY again.
+
 ## 8. Outcome
 
 To come by 07:00 on 2026-10-29.
