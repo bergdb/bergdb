@@ -343,6 +343,16 @@ review's code point: `take` given `getNextPos()`, as a new fix entry with
 StreamDigest. A subagent does both and the review's small fixes, hard stop
 21:30.
 
+2026-10-28, 13:14. 005-53 (E) and 005-52 (B) in `main` (`fd8f513`,
+`ce5c489`): `Database.setStartupDistanceInMb`, `getStartupDistanceInMb`,
+`setCacheSizeInMb`, `getCacheSizeInMb`; `Db.setCacheSizeIndicator` and its
+getter (Db 43 to 45 public methods), JMX through them; a lowered budget
+wakes the eviction thread, so an idle database gives memory back (20 MB to
+4 MB with no further calls). Gates: before-commit, level3 and level4 full,
+level2 quick; StreamDigest identical (36 of 36). Left for the Outcome:
+005-52's pause probe with a lowered budget (a quiet block), and the retain
+duration, which changes the stream's bytes but is not kept in the stream.
+
 ## 8. Outcome
 
 To come by 07:00 on 2026-10-29.
