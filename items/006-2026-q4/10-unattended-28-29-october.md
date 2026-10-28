@@ -353,6 +353,17 @@ level2 quick; StreamDigest identical (36 of 36). Left for the Outcome:
 005-52's pause probe with a lowered budget (a quiet block), and the retain
 duration, which changes the stream's bytes but is not kept in the stream.
 
+2026-10-28, 13:25. The review's small fixes in `main` (`3d21792`: the
+comment of `T3_take_decrease`, README.md's and docs/levels.md's wording,
+the unused trusted definitions marked, Frans's answers in 007-08; `lake
+build` clean, trace tests OK). The review's code point did not hold: a
+record that ends on a 200,000-byte boundary has its meta block written in
+the same append, so `getLength()` equals `getNextPos()` whenever `take` runs
+(0 of 5,524,901 calls differed); 005-68 registered and dropped (`3c4f535`),
+no code changed. At Frans's request (13:20) 012's plan committed as it is,
+decided and not started (`eff970d`), and `main` pushed to `origin`; the old
+012 entry in `news.md` removed, as D1 to D7 are decided.
+
 ## 8. Outcome
 
 To come by 07:00 on 2026-10-29.
