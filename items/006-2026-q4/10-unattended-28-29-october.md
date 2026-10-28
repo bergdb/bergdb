@@ -270,6 +270,17 @@ tells them apart (after-load calls by pressure, gets over 10 ms, blocked
 times, the machine's busy cores). `prep.sh` made again, `threads.sh`'s smoke
 OK with the new tables, READY again.
 
+2026-10-28, 11:05. 005-67 done, at Frans's request (`5dc6954`, `dad6bd2`,
+`058eca2`): `StorageManagerTester.testAddReplica2` asserted the lengths
+before the replica's buffer had written them (and once a buffer had written
+more); the test was wrong, not the code. Forced by sleeps: 97 to 100 of 100
+before, 0 after; 4 failures in 40,000 runs before, 0 in 400,000 after;
+`before-commit.sh`, `core-build.sh` and `level2.sh quick` pass. Also found:
+`testAddReplicaWhileAppending` appended without the write lock (fixed), and
+for 005-11 a replica being copied in when the manager closes is never
+closed (not fixed; for the Outcome). 005-62 is done in `main` (`90153f2`,
+its session), so `lean/` is free for W4.1 once 007-07 is in.
+
 ## 8. Outcome
 
 To come by 07:00 on 2026-10-29.
