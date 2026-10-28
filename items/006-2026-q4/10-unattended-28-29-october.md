@@ -388,6 +388,15 @@ the `launchctl bootout`, so `night.sh` stays at 02:10 and f1-0f was asked
 to keep F53 quiet from 02:05 to about 03:00. A fallback news entry at 06:50
 (`fallback.sh`), and check-ins every hour through the night.
 
+2026-10-28, 20:41. 012's first gap, 18:11 to 20:50 (handed back at 20:40),
+ran five steps: `night.sh` (by hand; session f1-ea unloaded the 02:10 job at
+18:00 at Frans's request) NIGHT FAILED only in level1's SS limits, SS3
+1.65 against 1.63 and SS4 2.40 against 2.38, after 007-07's paced take,
+every other step OK; 007-07's quick suite, 005-65's thread sweep, 005-64's
+trickle and Props before and after 007-07, all exit 0; most marked not
+quiet after the 10-minute check. 64-s1 exit 0 on s1. Left: 64-f53 (90
+minutes), if 012 gives a gap of 95 minutes.
+
 ## 8. Outcome
 
 To come by 07:00 on 2026-10-29.
