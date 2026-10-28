@@ -1426,3 +1426,25 @@ gate. `java/deps.py --layer core` lists the Core Layer's packages. Three
 stale `package.html` titles corrected, three `src-dev` packages got one,
 and `Factory`'s comment names `Time`'s use of `pubimp` too. P12 (010-01)
 has its measures: `deps.py` in `before-commit.sh`, and this.
+
+2026-10-28. 005-62 done, by Claude (Opus 5.5, Claude Code), as Frans
+decided ("as proposed, all steps"; "Prove it!"; a cut without a restart:
+"No, not for now"). The design before handles is gone from lean/:
+SIS/Evict.lean and every proof file of it, SIS/EvictExample.lean's runs,
+and the seven theorems over it with a counterpart over handles
+(`TC_records`, `TR_view`, `T2_cache`, `TR_view_restarts`, `TP_pins`,
+`T9_readCut`, `T12_evictCut`). The startup with handles is now proved over
+handles (SIS/Proof/HandleStart.lean), from the lazy startup's memory
+directly; the assumptions of stage 2 (`EvictRunOK`) and `Mem.sectionPos`
+moved word for word to SIS/Phys.lean; what the proofs over handles still
+used of the old proof files is in files of neutral names. And rule 4 by
+position after a cut: `HMem.linkDPosFrom` is Java's rule with its skip of
+the pointers below the stream's first position; after a safe cut it links
+what rule 4 by node id links (`rule4PosCut_handles`), so the run with cuts
+and rule 4 by position is `runHandlesCut` (`runPosCut_handles`) and T12
+over handles holds for Java's startup; no new assumption. By running, at
+744 restarts, 1,920 pointers below the cut, none to a node with a canonical
+object. lean/ from 144 files and 66,452 lines to 119 and 51,539.
+`lake build` from scratch with no warnings and no `sorry`, axioms standard,
+the trace tests, `reclaimtest`, `phystest`, `sistest` and
+`before-commit.sh` pass.

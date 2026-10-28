@@ -33,7 +33,6 @@ Open
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 | [005-60](60-block-storage.md) | Investigate | Block storage: the stream on a raw block device without a file system, as a ring of a fixed size, kept until the room is needed (retention by space); feasible in Java? And on a Linux device in a C or C++ clone. Frans's idea | open |
-| [005-62](62-lean-t9-t12-over-handles.md) | Fix | Lean: T9 and T12 over handles, so that the design before handles can go. Both proved (`t9_handles`, `t12_handles`; `bba91dd` to `a506b34`), reviewed at max effort, lake build clean, axioms standard; left for Frans: how far to remove the old design's files and theorems, and two further theorems (rule 4 by position after a cut, a cut without a restart) | open |
 | [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered; a longer time may mean fewer forces and wake-ups for writers that do not sync, at the cost of more unsynced data lost on a power loss. Frans's request | open |
 | [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Hypothesis to test: since 005-46 the 8 readers take F53's 8 performance cores and the eviction thread falls behind; the run was not quiet. Test: 4, 6 and 8 threads on `bf19075`, `eaec93e` and `4f7cd60`, with the eviction thread's CPU, in a quiet block | open |
 
@@ -43,6 +42,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-62](62-lean-t9-t12-over-handles.md) | Fix | Lean: T9 and T12 over handles, so that the design before handles can go. Both proved (`t9_handles`, `t12_handles`), reviewed at max effort. Then, as Frans decided (2026-10-28), the design before handles removed from lean/: Evict.lean and its proofs, EvictExample.lean, and the seven theorems over it with a counterpart over handles; the startup with handles proved over handles (HandleStart.lean); the assumptions of stage 2 and `Mem.sectionPos` in Phys.lean; lean/ from 144 files and 66,452 lines to 119 and 51,539. And rule 4 by position after a cut, with Java's skip of the pointers below the stream's first position, proved to link what rule 4 by node id links (`rule4PosCut_handles`, `runPosCut_handles`), so T12 holds for Java's startup; no new assumption. A theorem for a cut without a restart: not for now (Frans) | done | 2026-10-28 |
 | [005-66](66-builder-opens-at-start.md) | Implement | The Pub API's builder opens the directories in `start()`: `dir()` and `replica()` opened their `FileStream`s at once, and since 005-63 a builder that was never started, the first of two `dir()` calls or a replica given before `dir()` held a directory's lock until the JVM ended (a builder has no `close()`). Now they record the directories and `start()` opens them, the database's first, and closes them if it fails (005-32); a bad or busy directory is reported by `start()`; a replica given before `dir()` is kept. Two tests that fail on the code before; `releases/next.md` | done | 2026-10-28 |
 | [005-56](56-package-dependencies.md) | Investigate | Package dependencies against the `package.html` files; Frans's question. Decided 2026-10-28, as the entry's table proposed: the lists of `pub` (`common`, `nanotest` for its tests, `pubimp` for `Factory`'s designed cycle) and `pubimp` (`dag`, `pub.util`, `storage`) changed, all in one form, `Depends on: a, b, c.`; `SyncLevel` moved from `core` to `pub.util` (an API change against 2026.1, in `releases/next.md`); `Database.PRIMARY` and `TestClock`'s range in `pub`; `TimeResolver` stays in `pubimp`. `java/deps.py` checks each package's uses against its list, a step of `before-commit.sh`. Follow-ups 2026-10-28: titles, `src-dev`'s lists, the Core Layer built alone nightly (`java/stress/core-build.sh` in `night.sh`) | done | 2026-10-28 |
 | [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits has the buffer written at once (`BufferedStream.flushSoon`) instead of waiting for the timer, and the force paces the groups (005-13's question 5). In `main` since 2026-10-27 (`e611709`): on s1 one thread's durable commits went from 38 to 213 a second, the sync's median from 24.8 to 3.8 ms, 64 threads' from 2,364 to 6,429; writers that do not sync and the stream's bytes unchanged. Closed by Frans with the buffer time kept at 20 ms; whether 50 or 100 ms is better now is 005-64 | done | 2026-10-28 |
@@ -314,7 +314,8 @@ Files
   005-53, the fix, the tests, the gates and StreamDigest; done.
 * [62-lean-t9-t12-over-handles.md](62-lean-t9-t12-over-handles.md).
   005-62, T9 and T12 over handles: the statements, the proofs, the review,
-  what is left of the old design; open.
+  Frans's answers, the removal of the design before handles, rule 4 by
+  position after a cut; done.
 * [63-one-database-per-directory.md](63-one-database-per-directory.md).
   005-63, one database per directory, also while one closes: the issue
   found with `BryanRepro`, the lock file `bergdb.lock`, four options, the
@@ -1276,3 +1277,9 @@ and `frans.bryan`, `Factory`'s comment names `Time`'s `TimeResolver` too,
 and 010-01's P12 names its measures. 006-08's `core-build.sh` is
 `java/stress/core-build.sh`, a step of `java/night.sh`; `java/deps.py` got
 `--layer PKG [--list]` for it.
+
+2026-10-28. 005-62 done, by Claude (Opus 5.5, Claude Code), as Frans
+decided ("as proposed, all steps"; "Prove it!"; a cut without a restart:
+"No, not for now"): the design before handles removed from lean/, steps a
+to c, and rule 4 by position after a cut proved, with Java's skip of the
+pointers below the stream's first position.

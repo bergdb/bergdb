@@ -98,7 +98,7 @@ Needs elan (`brew install elan-init`). The toolchain version is in
     cd lean
     lake build              # checks every file, runs the #guard tests
     lake exe sistest 20 40  # random runs: 20 seeds, 40 transactions each (7 min)
-    lake exe phystest 20 40 # the physical layer on random runs (9 min)
+    lake exe phystest 20 40 # the physical layer on random runs (7 min)
     lake exe reclaimtest 20 30     # reclaim: random runs with cuts (1 min)
 
 `lake build` checks every proof. To see that a theorem depends on nothing but
