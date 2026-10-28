@@ -2,7 +2,8 @@
 ============================================
 
 Created 2026-10-27 by Claude (Opus 5.5, Claude Code), with 012-01, for
-Frans Lundberg. **Status: draft, for Frans's approval with 012-01.**
+Frans Lundberg. **Status: not started**; approved with 012-01 by Frans's
+go (012-01, 9.1).
 Phase A (012-01, section 8). Effort: high. After: 012-02's `StreamScan`
 (its step 2).
 
@@ -80,10 +81,10 @@ Done when:
    `x:` hex, `z:N` N zero bytes, `r:SEED:N` N bytes from a generator
    written down here (xorshift64*, so that both runners make the same
    bytes without large files). The settings come before the first
-   transaction; `setsd`, `setretain` and `setfraction` are the setters of
-   `Db`. The database id is the test id (`DatabaseId.TEST_ID`). A read
-   set may come later, as `t ... rs TIME KEY...`, if a task needs refused
-   transactions in the cross set.
+   transaction; `setsd`, `setretain`, `setfraction` and `setbudget` are
+   the setters of `Db`. The database id is the test id
+   (`DatabaseId.TEST_ID`). A read set may come later, as `t ... rs TIME
+   KEY...`, if a task needs refused transactions in the cross set.
 2. **`Run.java`**: the test clock (`CoreTestClock`), set as the clock
    lines say and kept across restarts; one start of `Db` per segment
    between `restart` lines; it prints, per transaction, the time and the
@@ -137,7 +138,8 @@ found and explained.
 * Only `Db`'s public API in the runner and the dumper; the scanner reaches
   the parsers. So they keep working while Java's internals change.
 * Java reads some settings from system properties (`stepreserve`, `evict`,
-  `evictbudget`, `audit`; see `DbBuilder`). The runner leaves them unset,
+  `evictbudget`, `evictseed`, `audit`; see `DbBuilder`, `Eviction` and
+  `Audit`). The runner leaves them unset,
   so that Java runs with its defaults, but for the audit when a check
   wants it (it changes no byte). `stepreserve` changes reclaim's records.
 * Build outputs and the reference directories go under `build/`, never

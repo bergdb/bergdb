@@ -2,7 +2,8 @@
 =================================================
 
 Created 2026-10-27 by Claude (Opus 5.5, Claude Code), with 012-01, for
-Frans Lundberg. **Status: draft, for Frans's approval with 012-01.**
+Frans Lundberg. **Status: not started**; approved with 012-01 by Frans's
+go (012-01, 9.1).
 Phase E (012-01, section 8). Effort: high. After: 012-13.
 
 
@@ -12,8 +13,9 @@ Numbers, not targets (012-01, section 1, item 8): how fast and how large
 the C clone is against Java on F53, measured the same way, for 012-16's
 report and for the decision on what comes next.
 
-Done when this file has, with the method, the commits and the raw
-outputs:
+Done when this file has, with the method, the commits, the scripts and
+the summary tables (raw output stays out of the repository, 013-01,
+section 4):
 
 1. **Writes**: transactions a second for single puts and for batches,
    without and with `sync`, for 1M and 10M keys; bytes appended per put

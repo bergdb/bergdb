@@ -2,7 +2,8 @@
 =================================================
 
 Created 2026-10-27 by Claude (Opus 5.5, Claude Code), with 012-01, for
-Frans Lundberg. **Status: draft, for Frans's approval with 012-01.**
+Frans Lundberg. **Status: not started**; approved with 012-01 by Frans's
+go (012-01, 9.1).
 Phase E (012-01, section 8). Effort: high. After: 012-11, 012-12.
 
 
@@ -17,11 +18,11 @@ Done when:
 1. Every function of `bergdb.h` exists and has a functional test, and the
    table of 012-03 says for each of `Db`'s public methods what C has.
 2. **Settings and status**: the startup distance (with Java's clamp and
-   dummy transaction), the retain duration, the internal fraction, and
-   every status value of 012-03's table, equal to Java's on the same
-   database where Java's is not a matter of timing (the stream length,
-   the counts, the first available time and position, the startup
-   distance).
+   dummy transaction, 005-53), the cache budget while running (005-52),
+   the retain duration, the internal fraction, and every status value of
+   012-03's table, equal to Java's on the same database where Java's is
+   not a matter of timing (the stream length, the counts, the first
+   available time and position, the startup distance).
 3. **Durability**, written in the C directory's `readme.md` and tested:
    what is durable after `execute`, after `sync` at each level, and after
    close; the buffer's size; `F_FULLFSYNC`; the durable length; a write or

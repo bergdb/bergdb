@@ -2,7 +2,8 @@
 =====================
 
 Created 2026-10-27 by Claude (Opus 5.5, Claude Code), with 012-01, for
-Frans Lundberg. **Status: draft, for Frans's approval with 012-01.**
+Frans Lundberg. **Status: not started**; approved with 012-01 by Frans's
+go (012-01, 9.1).
 Phase D (012-01, section 8). Effort: max. After: 012-10.
 
 
@@ -54,7 +55,8 @@ Done when:
   `Trans.touch`.
 * `docs/levels.md`, Level 3; 001-07 (the alignment of Level 3), 011-07
   (its durability), 011-04's W1 and W2 (reads and the cut, the retain
-  duration), 005-61 (the startup distance that spaces iterations), 005-53.
+  duration), 005-61 (the startup distance that spaces iterations), 005-53,
+  005-62 (rule 4 by position after a cut, proved).
 * `java/stress/ReclaimStress.java`, `ReclaimReaders.java`, and the
   testers `ReclaimRetentionTester`, `ReclaimReaderTester`.
 
@@ -86,6 +88,11 @@ with a short retain duration keeps the directory's size bounded.
   step and cut.
 * With no thread, C's physical cut may come at another moment than
   Java's; only the decided cut is compared (012-01, 3.2, point 8).
+* A start after a cut: `NodeCollection.linkToCanonical` skips the stream
+  pointers of D's nodes below the stream's first position
+  (`pos < nodeStream.getFirstPos()`), which 005-62 proved right in Lean;
+  C's startup (012-10) does the same, and the runs in turns with cuts
+  check it.
 * A step's size depends on the step reserve (`setStepReserve`, counted in
   index nodes followed, at `80 + 48 * maxNodeSize` bytes each) and on the
   approximate size of the KVs it scans (`key.length * 8 + value.length +

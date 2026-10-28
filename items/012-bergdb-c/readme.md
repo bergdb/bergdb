@@ -26,8 +26,8 @@ the tests, notes, progress), in the order of 012-01, section 8:
 * [02-stream-format.md](02-stream-format.md). 012-02, the stream format
   written down, field by field, with Java's scanner and the determinism
   audit; the file becomes the format document.
-* [03-c-api.md](03-c-api.md). 012-03, the C API: `bergdb.h` from `Db`'s 43
-  public methods.
+* [03-c-api.md](03-c-api.md). 012-03, the C API: `bergdb.h` from `Db`'s
+  public methods (45 since `fd8f513`).
 * [04-c-project.md](04-c-project.md). 012-04, the C project: layout,
   build, test framework, gate, Java's semantics in C, the first modules.
 * [05-cross-harness.md](05-cross-harness.md). 012-05, the cross harness:
@@ -95,3 +95,15 @@ unattended machinery of 013-02 (state file, check-ins, watchdog, the same
 permission mode as the coordinator), pacing by the usage windows, a rule
 for a stuck task, and the open question of who commits while a
 coordinator owns the commits.
+
+2026-10-28, 13:34. The review of the plans before the conductor starts
+(Frans, 13:05: wait for the Java changes that affect the stream, review,
+then the conductor), against `main` at `f589ba3`. Brought in line with
+005-53 and 005-52 (`fd8f513`): `setStartupDistance` writes nothing for the
+value in force, and `Db` has 45 public methods, with a setter and a getter
+of the cache size (012-01, 012-03, 012-05, 012-09, 012-12, 012-13). Also:
+the take in 012-02's outline, the skip below the cut in 012-11 (005-62),
+the ordinal bound in 012-07, no raw output in the repository (012-15),
+and the task plans marked approved with 012-01 by Frans's go. Every Java
+class, member, path and subitem that the plans cite was checked to exist.
+The conductor waits for `/Users/f/fl/bench/012/review-done`.

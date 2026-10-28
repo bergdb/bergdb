@@ -2,7 +2,8 @@
 =============================================
 
 Created 2026-10-27 by Claude (Opus 5.5, Claude Code), with 012-01, for
-Frans Lundberg. **Status: draft, for Frans's approval with 012-01.**
+Frans Lundberg. **Status: not started**; approved with 012-01 by Frans's
+go (012-01, 9.1).
 Phase A (012-01, section 8). Effort: max. After: nothing.
 
 This file is the task's plan now. When the task is done it is the format
@@ -99,8 +100,10 @@ The document's sections:
 6. The nodes: top, key, value and delete; Fletcher-16 and the zeroed
    checksum bytes; klongs and their types; serialized references.
 7. Keys: ikey, bkey, segments, compare values, order.
-8. What decides the bytes (done item 3), with the internal keys
-   (`/#i/-dummy`, `/#i/dreclaim/...`) and the text of reclaim's table.
+8. What decides the bytes (done item 3): among others the take since
+   `f89846d` (a record's share of D, the dither, the deadline), the
+   internal keys (`/#i/-dummy`, `/#i/dreclaim/...`) and the text of
+   reclaim's table.
 9. The directory.
 
 Then: the determinism audit; the differences from 2015's text; the
@@ -117,8 +120,8 @@ workload in two JVMs give the same scan (P2, as a check of the audit).
 
 * Describe what Java does, also where it looks odd; propose nothing. A
   question for Frans goes at the end, with options.
-* Decision D6 of 012-01 decides where the document lives once C writes
-  Java's bytes.
+* Where the document lives: decision D6b of 012-01, so it moves to
+  `docs/stream-format.md` when 012-10 is done.
 
 
 # 6. Progress

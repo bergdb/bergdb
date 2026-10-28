@@ -2,7 +2,8 @@
 ===============================
 
 Created 2026-10-27 by Claude (Opus 5.5, Claude Code), with 012-01, for
-Frans Lundberg. **Status: draft, for Frans's approval with 012-01.**
+Frans Lundberg. **Status: not started**; approved with 012-01 by Frans's
+go (012-01, 9.1).
 Phase D (012-01, section 8). Effort: high. After: 012-10.
 
 
@@ -36,7 +37,11 @@ Done when:
    a few megabytes runs, its resident bytes stay below the budget plus
    what is pinned, and its reads equal Java's on the same workload.
 6. The budget is the option `cache budget` (Java's cache size
-   indicator), and `bergdb_stats` reports the resident bytes.
+   indicator), and `bergdb_stats` reports the resident bytes. It can be
+   changed while the database runs (`Db.setCacheSizeIndicator`, 005-52):
+   for the run only, and after a decrease the setter evicts at its own
+   end, where Java wakes its eviction thread, so that an idle database
+   gives the memory back too (P3).
 
 
 # 2. Read first

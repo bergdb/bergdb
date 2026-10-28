@@ -2,7 +2,8 @@
 =======================
 
 Created 2026-10-27 by Claude (Opus 5.5, Claude Code), with 012-01, for
-Frans Lundberg. **Status: draft, for Frans's approval with 012-01.**
+Frans Lundberg. **Status: not started**; approved with 012-01 by Frans's
+go (012-01, 9.1).
 Phase A (012-01, section 8). Effort: high. After: nothing.
 
 
@@ -18,12 +19,12 @@ Done when:
    comment that says what it does, its errors, and who owns what. It
    compiles alone with the flags of 012-01, 6.1 (012-04's build checks
    it).
-2. This file holds the table of `Db`'s public methods (43 on 2026-10-27;
-   count them again, as 005-52 adds a setter and a getter of the cache
-   size), `DbBuilder`'s settings and the inner types (`Trans.Builder`,
-   `GetData`, `GetMany` with its stop conditions, `StoredTrans`,
-   `StartInfo`, `SyncLevel`), each with its C counterpart or the reason it
-   is left out.
+2. This file holds the table of `Db`'s public methods (45 since
+   `fd8f513`, with 005-52's setter and getter of the cache size; count
+   them again at the start), `DbBuilder`'s settings and the inner types
+   (`Trans.Builder`, `GetData`, `GetMany` with its stop conditions,
+   `StoredTrans`, `StartInfo`, `SyncLevel`), each with its C counterpart
+   or the reason it is left out.
 3. The error codes cover every exception that `Db`'s methods declare,
    each mapped.
 4. The rules are written: one caller at a time; ownership of keys, values

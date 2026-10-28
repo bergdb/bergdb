@@ -2,7 +2,8 @@
 ==================================
 
 Created 2026-10-27 by Claude (Opus 5.5, Claude Code), with 012-01, for
-Frans Lundberg. **Status: draft, for Frans's approval with 012-01.**
+Frans Lundberg. **Status: not started**; approved with 012-01 by Frans's
+go (012-01, 9.1).
 Phase E (012-01, section 8). Effort: high; max to diagnose a failure.
 After: 012-13.
 

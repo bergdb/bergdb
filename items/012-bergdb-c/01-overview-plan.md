@@ -21,6 +21,9 @@ to 012-16 (section 7). On 2026-10-28 Frans took the decisions of section
 11 and commented on two points, which this version answers: the clock
 (section 4.4) and memory (section 4.5). The implementation starts when he
 says so, in a new Claude Code session that conducts it (D7, section 9.1).
+Reviewed on 2026-10-28 at 13:34, with the task plans, against Java's `main`
+at `f589ba3`: after the paced take (`f89846d`) and 005-53 and 005-52
+(`fd8f513`).
 
 **The conductor's prompt**, which starts the work (section 9.1):
 
@@ -57,8 +60,8 @@ Done when:
    in C, in Java, and in turns between them, and after a crash at any
    position. With reclaim, from the cut that reclaim decided (section 3.2,
    point 8).
-4. **The API.** Each of `Db`'s public methods (43 on 2026-10-27, more
-   with 005-52) has its C function, or is
+4. **The API.** Each of `Db`'s 45 public methods (since `fd8f513`) has
+   its C function, or is
    left out for a reason written in 012-03. A C version of 006-08's
    `CoreDemo` runs.
 5. **The levels.** Levels 0 to 4 of `docs/levels.md`: the multiversion map,
@@ -202,8 +205,9 @@ findings:
 6. **Text in the stream.** Reclaim stores its table as a key-value pair
    (`/#i/dreclaim/-table.txt`), a `StringMap` text of decimal numbers,
    `true`, `false` and `null`. `setStartupDistance` writes a dummy
-   transaction of 200,000 zero bytes under `/#i/-dummy`. C must write the
-   same text and the same dummy.
+   transaction of 200,000 zero bytes under `/#i/-dummy`, or nothing when
+   the clamped value is the one in force (005-53, `fd8f513`). C must write
+   the same text and the same dummy, in the same cases.
 7. **The 2015 text is out of date in places.** `MetaBlock`'s own comment
    says the valid block's last byte is 1; the code writes 10. The code
    wins; 012-02 lists every such difference.
@@ -218,11 +222,12 @@ findings:
    it. On 2026-10-28 007-03's step 3, the paced take with its deadline,
    came into `main` (`f89846d`, 007-07): the same format, but every
    stream changed (`StreamDigest`, 36 of 36). The C clone ports the take
-   as it is now. More is on its way: 005-52, decided the same day, gives
-   `Db` a setter and a getter of the cache size, and 005-53 changes how
-   the startup distance is set through the Pub API. So the C clone
-   follows Java's `main`, and its cross tests show at once when Java's
-   bytes change (section 9).
+   as it is now. The same day 005-53 and 005-52 came in (`fd8f513`):
+   `setStartupDistance` writes nothing for the value in force, and `Db`
+   has a setter and a getter of the cache size, 45 public methods in all;
+   `StreamDigest`'s digests did not change. So the C clone follows Java's
+   `main`, and its cross tests show at once when Java's bytes change
+   (section 9).
 
 The conclusion: the stream can be identical, given a faithful port of the
 writer, startup and reclaim, the settings and times fixed as in point 2,
@@ -436,9 +441,8 @@ numbers in BergDB's units (100 ns since 1970, as in Java), positions are
 64-bit stream positions, keys are byte strings (bkeys; the conversion to
 segments is BergDB's, `Keys.toSegments`), and every function returns a
 status code. The design, with the types and the error codes, is 012-03.
-The mapping from `Db`'s 43 public methods of 2026-10-27; 012-03 counts
-them again at its start, as 005-52 adds a setter and a getter of the cache
-size:
+The mapping from `Db`'s 45 public methods (at `f589ba3`; 012-03 counts
+them again at its start):
 
 | `Db` (Java) | C | Note |
 |---|---|---|
@@ -450,7 +454,8 @@ size:
 | `getTrans(tpos)` | `bergdb_get_trans` | the time, the positions and the transaction's key-value pairs |
 | `sync(level)`, `sync(pos, level)` | `bergdb_sync` | NONE, ORDINARY, STRONG; with one stream, STRONG is ORDINARY |
 | `currentTime()`, `lookupTime(t)` | `bergdb_current_time`, `bergdb_lookup_time` | |
-| `getStartupDistance()`, `setStartupDistance(n)` | `bergdb_startup_distance`, `bergdb_set_startup_distance` | the setter writes Java's dummy transaction |
+| `getStartupDistance()`, `setStartupDistance(n)` | `bergdb_startup_distance`, `bergdb_set_startup_distance` | the setter checks the state, clamps, writes nothing for the value in force, else Java's dummy transaction, and puts the setting back if the dummy is refused (005-53) |
+| `getCacheSizeIndicator()`, `setCacheSizeIndicator(n)` | `bergdb_cache_budget`, `bergdb_set_cache_budget` | for the run only, not in the stream (005-52); the setter evicts at its own end, where Java wakes its eviction thread |
 | `getRetainDuration()`, `setRetainDuration(d)`, `setReclaimInternalFraction(f)`, `getInternalFraction()` | reclaim's settings | |
 | `getStreamLength()`, `getDurableLength()`, `getLastTransPosOfLastValidMetaBlock()`, `getFirstAvailableLookupTime()`, `getFirstAvailablePos()`, `getReclaimIterationCount()`, `getTransactionCount()`, `getKvCount()`, `getGetOpCount()`, `getCachePutSize()`, `getDirtyFraction100()`, `getDirtyFraction1000()`, `getAccessData()` | `bergdb_stats`, or one function each | status; 012-03 decides |
 | `printDag(out)`, `checkNodes()` | `bergdb_debug_print`, `bergdb_debug_check` | for tests |
@@ -608,7 +613,7 @@ report.
 | ID | Task | After | Effort |
 |---|---|---|---|
 | 012-02 | The stream format, written down: every field, where Java decides it, the determinism audit; Java's scanner | | max |
-| 012-03 | The C API: `bergdb.h` from `Db`'s 43 methods; types, errors, ownership, one caller | | high |
+| 012-03 | The C API: `bergdb.h` from `Db`'s 45 methods; types, errors, ownership, one caller | | high |
 | 012-04 | The C project: layout, `build.sh`, the test framework, the gate, the rules of 6.2; bytes, Fletcher-16, klongs and keys, with Java's vectors | | high |
 | 012-05 | The cross harness, Java's side: the workload format, Java's runner and dumper, the exported workloads, the compare scripts, the reference outputs | 02 (scanner) | high |
 | 012-06 | The stream reader: memory and directory streams, meta blocks, the framing, records and nodes parsed; C's scanner equals Java's | 02, 04, 05 | high |
@@ -760,8 +765,9 @@ conductor's first steps:
   Java and C, which compare exactly this; max effort.
 * **A moving reference.** Java's `main` changes daily: the paced take
   changed every stream on 2026-10-28 (3.2, point 9), and 005-52 and
-  005-53 change `Db`'s methods. Against it: a pinned commit per task, the
-  quick cross set at each task's start, and Java's `StreamDigest` notes.
+  005-53 changed `Db`'s methods the same day. Against it: a pinned commit
+  per task, the quick cross set at each task's start, and Java's
+  `StreamDigest` notes.
 * **Java's semantics.** Overflow, shifts, signed bytes, casts from double,
   fused multiply-add. Against it: the rules of 6.2,
   UndefinedBehaviorSanitizer, `-fwrapv`, `-ffp-contract=off`, and Java's

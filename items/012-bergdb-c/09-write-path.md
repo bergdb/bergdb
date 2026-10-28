@@ -2,7 +2,8 @@
 ============================
 
 Created 2026-10-27 by Claude (Opus 5.5, Claude Code), with 012-01, for
-Frans Lundberg. **Status: draft, for Frans's approval with 012-01.**
+Frans Lundberg. **Status: not started**; approved with 012-01 by Frans's
+go (012-01, 9.1).
 Phase C (012-01, section 8). Effort: max. After: 012-08.
 
 
@@ -38,7 +39,10 @@ Done when:
    blocks written where a record reaches them and their fields as Java
    sets them.
 5. **`DbClock`**: transaction times, lookup times.
-6. **`setStartupDistance`**: the clamp and the dummy transaction.
+6. **`setStartupDistance`**, as since 005-53 (`fd8f513`): the state
+   checked first, the clamp, nothing written for the value in force, else
+   the dummy transaction, and the setting and the meta block's value put
+   back if the dummy is refused or fails.
 7. **Appends to the directory**: new files at the sizes and names of
    `FileStream`; the buffer, written when full, at `sync` and at close;
    `F_FULLFSYNC` at `sync` and close (012-01, 4.3).

@@ -2,7 +2,8 @@
 =============================
 
 Created 2026-10-27 by Claude (Opus 5.5, Claude Code), with 012-01, for
-Frans Lundberg. **Status: draft, for Frans's approval with 012-01.**
+Frans Lundberg. **Status: not started**; approved with 012-01 by Frans's
+go (012-01, 9.1).
 Phase B (012-01, section 8). Effort: max. After: 012-04, 012-06.
 
 
@@ -24,8 +25,8 @@ Done when:
    splits and replacements at the maximum node size, as `KeyNode` does
    them.
 3. Value nodes, and top nodes with `TopDs`: the super root, top node
-   ordinals (up to 2^48, 005-02), root times, skip pointers, `findRoot` at
-   a time, new top nodes.
+   ordinals (up to 2^48 − 1, 005-02), root times, skip pointers,
+   `findRoot` at a time, new top nodes.
 4. Pointers: a memory pointer or a stream pointer, the node's position and
    id, vpos, and the serialized reference as Java decides it (`Handle`,
    009). The representation chosen here also serves eviction (012-12).
