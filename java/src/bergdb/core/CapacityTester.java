@@ -119,6 +119,78 @@ public class CapacityTester {
         db.stop();
     }
 
+    /** A database of n keys of 300 bytes, started cold with the budget, every key read. */
+    private static Db readAll(int n, long budget) {
+        MemoryStream s = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = builder(s, clock, 0).start();
+        String[] last = load(db, clock, n, 0, 300);
+        db.sync(SyncLevel.STRONG);
+        db.stop();
+        db = builder(s.copy(), clock, budget).start();
+        for (int k = 0; k < n; k++) {
+            Assert.assertEquals(last[k], new String(DbUtil.get(db, "k" + k)));
+        }
+        return db;
+    }
+
+    /**
+     * The budget lowered and raised while the database runs (Db.setCacheSizeIndicator,
+     * bergdb 005-52), with reads and no writes: 2000 keys of 300 bytes, started cold with a
+     * budget of 10 MB and every key read, so that every value is resident; the budget
+     * lowered to a quarter of the resident bytes; from the second round of random reads on,
+     * the resident bytes are at most the new budget plus one load's worth; the budget raised
+     * again, the reads grow them past the low budget.
+     */
+    @Nano
+    public static void testBudgetLoweredAndRaisedUnderReads() {
+        int n = 2000;
+        Db db = readAll(n, 10 * 1000 * 1000);
+        long full = bytes(db);
+        long low = full / 4;
+        db.setCacheSizeIndicator(low);
+        Assert.assertEquals(low, db.getCacheSizeIndicator());
+        Random r = new Random(3);
+        long max = 0;
+        for (int round = 0; round < 3; round++) {
+            for (int j = 0; j < n; j++) {
+                DbUtil.get(db, "k" + r.nextInt(n));
+                if (round > 0) max = Math.max(max, bytes(db));
+            }
+        }
+        Assert.assertTrue("at most " + max + " bytes, budget " + low + " of " + full,
+                max <= low + 20 * 1000);
+        
+        db.setCacheSizeIndicator(10 * 1000 * 1000);
+        for (int k = 0; k < n; k++) DbUtil.get(db, "k" + k);
+        Assert.assertTrue("grown after the raise: " + bytes(db), bytes(db) > 2 * low);
+        db.stop();
+    }
+
+    /**
+     * A database that is not used gives the memory back after a lower budget (bergdb 005-52):
+     * as testBudgetLoweredAndRaisedUnderReads, the budget lowered to a quarter of the resident
+     * bytes, and no other call: the eviction thread, woken by the call, brings them to at most
+     * the budget within 2 s. Until 005-52 nothing ran until the next commit or load (005-51).
+     */
+    @Nano
+    public static void testBudgetLoweredWhileIdle() throws InterruptedException {
+        Db db = readAll(2000, 10 * 1000 * 1000);
+        long full = bytes(db);
+        long low = full / 4;
+        db.setCacheSizeIndicator(low);
+        long end = System.nanoTime() + 2000L * 1000 * 1000;
+        long bytes = full;
+        while (System.nanoTime() < end) {
+            bytes = db.internal().cache().residents().bytes();
+            if (bytes <= low) break;
+            Thread.sleep(1);
+        }
+        db.stop();
+        Assert.assertTrue("at most " + bytes + " bytes, budget " + low + " of " + full,
+                bytes <= low);
+    }
+
     /**
      * A sweep stops near the low watermark: reads with no writes on a cold database whose
      * index alone is several times the budget, as at the end of the run of

@@ -1766,6 +1766,34 @@ public class DbTester {
         db.stop();
     }
     
+    /**
+     * setStartupDistance with the setting in force writes nothing; a call on a stopping or
+     * stopped database throws and leaves the setting as it was (bergdb 005-53). Until
+     * 005-53 the first wrote its 200 kB transaction, and the second changed the setting
+     * before execute() refused the transaction.
+     */
+    @Nano
+    public static void testSetStartupDistanceInForceOrRefused() {
+        Db db = Db.builder().testSetup().startupDistance(2*1000000).start();
+        db.execute(db.trans().put("key", "value").build());
+        long length = db.getStreamLength();
+        db.setStartupDistance(2*1000000);
+        Assert.assertEquals("nothing written", length, db.getStreamLength());
+        db.setStartupDistance(1*1000000);
+        Assert.assertTrue("written", db.getStreamLength() > length);
+        
+        db.stop();
+        Exception ex = null;
+        try {
+            db.setStartupDistance(3*1000000);
+        } catch (bergdb.pub.util.IllegalDbStateException e) {
+            ex = e;
+        }
+        Assert.assertTrue("refused", ex != null);
+        Assert.assertEquals(1*1000000, db.getStartupDistance());
+        db.close();
+    }
+    
     @Nano
     public static void testGetOp() {
         Db db = Db.builder().testSetup().start();

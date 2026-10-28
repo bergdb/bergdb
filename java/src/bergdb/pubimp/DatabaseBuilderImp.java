@@ -137,6 +137,12 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     public DatabaseBuilder startupDistanceInMb(int startupDistanceInMb) {
+        this.startupDistanceInMb = clampStartupDistanceInMb(startupDistanceInMb);
+        return this;
+    }
+    
+    /** The startup distance in MB, clamped to 5 to 1000; also Database's setter's. */
+    static int clampStartupDistanceInMb(int startupDistanceInMb) {
         if (startupDistanceInMb < 5) {
             startupDistanceInMb = 5;
         }
@@ -145,11 +151,16 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
             startupDistanceInMb = 1000;
         }
         
-        this.startupDistanceInMb = startupDistanceInMb;
-        return this;
+        return startupDistanceInMb;
     }
     
     public DatabaseBuilder cacheSizeInMb(int cacheSizeInMb) {
+        this.cacheSizeInMb = clampCacheSizeInMb(cacheSizeInMb);
+        return this;
+    }
+    
+    /** The cache size in MB, clamped to 4 to 100,000; also Database's setter's. */
+    static int clampCacheSizeInMb(int cacheSizeInMb) {
         // Note: we might want to clamp depending on startupDistance? 2 x startupDistance perhaps.
         
         if (cacheSizeInMb < 4) {
@@ -161,8 +172,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
             cacheSizeInMb = 100*1000;
         }
         
-        this.cacheSizeInMb = cacheSizeInMb;
-        return this;
+        return cacheSizeInMb;
     }
     
     public Database start() {

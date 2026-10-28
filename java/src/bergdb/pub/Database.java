@@ -6,6 +6,7 @@ import bergdb.common.Util;
 import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
+import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.StorageInfo;
 import bergdb.pub.util.SyncLevel;
@@ -203,6 +204,64 @@ public interface Database extends AutoCloseable {
      *            The duration to retain historic data states available for lookup operations.
      */
     public void setRetainDuration(Duration duration);
+
+    /**
+     * <p>Returns the startup distance setting in MB (mega = 1000000, rounded): the target
+     * size of the startup section, not the section's present length.</p>
+     */
+    public int getStartupDistanceInMb();
+
+    /**
+     * <p>Sets the startup distance, the target size of the startup section: the part of the
+     * stream that a start reads (bergdb 005-49), while the database runs (bergdb 005-53).
+     * The value is clamped as DatabaseBuilder.startupDistanceInMb() clamps it, to 5 to 1000
+     * MB. The new setting is in force when the method returns. It is written to the stream
+     * with a small transaction of the database's own (a value of 200 kB), so a restart keeps
+     * it, as it keeps the setting the database was created with; a call with the setting in
+     * force writes nothing. A setting that changes the stream's bytes, as this one does, is
+     * kept in the stream; one that does not, as the cache size, lasts for the run.</p>
+     *
+     * <p>The startup section follows the setting as transactions are committed: after a
+     * decrease, each commit writes more of the index, in proportion to its size, and no
+     * commit writes the whole of it; the section is near the new setting after stream of
+     * about 1.4 times the index changed since the startup position (bergdb 007-06, 007-07).
+     * Without commits it does not move. After an increase, commits write less of the index
+     * until the section has grown to the setting. A larger distance writes fewer bytes a put
+     * and starts more slowly.</p>
+     *
+     * @param startupDistanceInMb  The startup distance in megabytes (mega = 1000000).
+     * @throws IllegalDbStateException  If the database is stopping or stopped, as a
+     *     transaction does; the setting is then unchanged.
+     * @throws DbFailedException  If the database has failed, as a transaction does.
+     */
+    public void setStartupDistanceInMb(int startupDistanceInMb);
+
+    /**
+     * <p>Returns the cache size setting in MB (mega = 1000000, rounded): the budget of the
+     * database's cache, not the memory the cache holds now.</p>
+     */
+    public int getCacheSizeInMb();
+
+    /**
+     * <p>Sets the cache size indicator in MB, the budget of the database's cache, while the
+     * database runs (bergdb 005-52), as DatabaseBuilder.cacheSizeInMb() does at start,
+     * clamped the same way, to 4 to 100,000 MB. The new budget is in force when the method
+     * returns. After a decrease the database evicts what it holds above the budget in
+     * batches of at most 2 ms, which this call and the database's commits and reads start,
+     * until the memory it holds is at most the budget, also if no call follows; reads may
+     * wait for a batch meanwhile, at most 2 ms each. What the database must keep in memory
+     * (the nodes changed since its startup position) is never evicted and may exceed the
+     * budget. After an increase, the cache grows as data is read.</p>
+     *
+     * <p>The setting is for this run only: it changes no byte of the stream, so it is not
+     * kept there, and a restart takes the builder's value, or its default, a fifth of the
+     * JVM's maximum heap. A setting that changes the stream's bytes, as the startup distance,
+     * is kept in the stream; one that does not lasts for the run. After stop() the method
+     * has no effect.</p>
+     *
+     * @param cacheSizeInMb  The cache size indicator in megabytes (mega = 1000000).
+     */
+    public void setCacheSizeInMb(int cacheSizeInMb);
 
     /**
      * <p>

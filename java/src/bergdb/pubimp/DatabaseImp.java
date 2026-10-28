@@ -251,6 +251,24 @@ public class DatabaseImp implements Database {
         
         db.setRetainDuration(units);
     }
+
+    public int getStartupDistanceInMb() {
+        return (int) Math.round(db.getStartupDistance() / 1e6);
+    }
+
+    public void setStartupDistanceInMb(int startupDistanceInMb) {
+        int mb = DatabaseBuilderImp.clampStartupDistanceInMb(startupDistanceInMb);
+        db.setStartupDistance(mb * 1000000);
+    }
+
+    public int getCacheSizeInMb() {
+        return (int) Math.min(Integer.MAX_VALUE, Math.round(db.getCacheSizeIndicator() / 1e6));
+    }
+
+    public void setCacheSizeInMb(int cacheSizeInMb) {
+        int mb = DatabaseBuilderImp.clampCacheSizeInMb(cacheSizeInMb);
+        db.setCacheSizeIndicator(mb * 1000000L);
+    }
     
     public final Time getFirstAvailableLookupTime() {
         return Time.units(db.getFirstAvailableLookupTime());

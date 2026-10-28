@@ -339,7 +339,11 @@ public class Db implements AutoCloseable {
      * section comes down only as transactions are committed: in 007-06's runs, over stream
      * of about 1.4 times the bytes of the dirty index nodes at the decrease. This method
      * commits a transaction with a value of 200 kB, so that a meta block in the stream
-     * records the new setting.
+     * records the new setting: a start reads it from there, as the setting decides the
+     * stream's bytes (010-P2). A call with the setting in force writes nothing (bergdb
+     * 005-53). On a database that is not active the call throws as a transaction does
+     * (IllegalDbStateException, DbStoppingException, DbFailedException), and a call that
+     * is refused leaves the setting as it was.
      */
     public void setStartupDistance(int newDistance) {
         //
@@ -362,14 +366,58 @@ public class Db implements AutoCloseable {
         byte[] dummyValue = new byte[RecoverableStream.META_BLOCK_DISTANCE];
         
         synchronized (writeLock) {
+            // The state first, so that a refused call changes nothing (bergdb 005-53).
+            assertDbStateIsActive("setStartupDistance");
+            int old = this.startupDistance;
+            if (newDistance == old) return;
             this.startupDistance = newDistance;
             this.nodeStream.getMetaBlock().setStartupDistance(dist);
-            this.execute(trans().put(DbConstants.DUMMY_KEY, dummyValue).build());
+            try {
+                this.execute(trans().put(DbConstants.DUMMY_KEY, dummyValue).build());
+            } catch (RuntimeException | Error e) {
+                // Refused, or the database failed and must be restarted, which reads the
+                // stream's setting.
+                this.startupDistance = old;
+                this.nodeStream.getMetaBlock().setStartupDistance(old);
+                throw e;
+            }
         }
     }
     
     public long getCachePutSize() {
         return cache.putSize();
+    }
+
+    /**
+     * Returns the cache size indicator in bytes, the budget of the cache: the capacity
+     * controller's high watermark (Eviction), DbBuilder.cacheSizeIndicator or the value of
+     * setCacheSizeIndicator() since the start.
+     */
+    public long getCacheSizeIndicator() {
+        return eviction.budget();
+    }
+
+    /**
+     * Sets the cache size indicator in bytes, the budget of the cache, while the database
+     * runs (bergdb 005-52): the capacity controller's budget and low watermark (Eviction)
+     * and Cache3's indicator, in force when the method returns. After a decrease the method
+     * wakes the eviction thread if the resident bytes are over the new budget; it evicts in
+     * batches of at most 2 ms, between transactions, until they are at most the budget, so
+     * that a database that is not used gives the memory back too: work that the call starts
+     * (010-P3). Commits and loads run batches too, as always. What must stay in memory (the
+     * nodes changed since the startup position) is never evicted and may exceed the budget.
+     * After an increase there is nothing to do. The setting is for this run only: it
+     * changes no byte of the stream (level4.sh's EvictionInvariance), so it is not kept
+     * there, and a start takes the builder's value. A setting that changes the stream's
+     * bytes is kept in the stream (setStartupDistance, 010-P2); one that does not lasts for
+     * the run. On a database that is not active the method only sets the value.
+     */
+    public void setCacheSizeIndicator(long sizeIndicator) {
+        if (sizeIndicator < 1) {
+            throw new IllegalArgumentException("Bad sizeIndicator: " + sizeIndicator + ".");
+        }
+        cache.setSizeIndicator(sizeIndicator);
+        eviction.setBudget(this, sizeIndicator);
     }
 
     public long getRetainDuration() {

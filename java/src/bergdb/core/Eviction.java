@@ -159,8 +159,8 @@ public final class Eviction {
     }
 
     /**
-     * Sets the budget (the cache size indicator, also through JMX: Jmx.DbMonitor); the low
-     * watermark follows. Used from the next transaction boundary or load.
+     * Sets the budget (the cache size indicator: Db.setCacheSizeIndicator, also through JMX);
+     * the low watermark follows. Used from the next transaction boundary or load.
      */
     public void setBudget(long budget) {
         if (budget < 1) throw new IllegalArgumentException("Illegal budget, " + budget);
@@ -169,6 +169,19 @@ public final class Eviction {
             this.low = budget == Long.MAX_VALUE ? Long.MAX_VALUE : (long) (budget * LOW);
             this.trigger = budget;
         }
+    }
+
+    /**
+     * Sets the budget as setBudget(long) does, for Db.setCacheSizeIndicator (bergdb 005-52),
+     * and wakes the eviction thread if the resident bytes are over the new trigger, so that
+     * a decrease is reached also when no transaction or load follows: work that the call
+     * starts (010-P3). Not when the database is not active: its thread has ended or ends.
+     */
+    public void setBudget(Db db, long budget) {
+        setBudget(budget);
+        if (schedule != Schedule.BUDGET) return;
+        Db.Internal in = db.internal();
+        if (in.isActive() && in.cache().residents().bytes() > trigger) wake(db);
     }
 
     /** Slots unswizzled and objects released so far; and the controller's metrics. */

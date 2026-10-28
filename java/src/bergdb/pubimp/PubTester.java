@@ -36,6 +36,7 @@ import bergdb.pub.WBuilder;
 import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.DatabaseNotCreatedException;
+import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.pub.util.SyncLevel;
 import bergdb.storage.BufferedStream;
@@ -561,6 +562,181 @@ public class PubTester {
         d.connection().w().put("/key2", "value2").execute();
         Assert.assertEquals(Duration.seconds(21.0), d.getRetainDuration());
         d.stop();
+    }
+
+    /**
+     * The startup distance set while the database runs (Database.setStartupDistanceInMb,
+     * bergdb 005-53, option E): in force when the call returns, written to the stream with
+     * the call's own transaction (a value of 200 kB), and kept by a restart whose builder
+     * passes its default; a call with the setting in force appends nothing; the value clamped
+     * to 5 to 1000 MB, as the builder clamps it. A call after stop() throws and leaves the
+     * setting as it was. Until 005-53 the core's setter wrote its transaction also for the
+     * setting in force, and changed the setting before it checked the state.
+     */
+    @Nano
+    public static void testSetStartupDistanceInMb() {
+        MemoryStream m = new MemoryStream();
+        Database d = ((DatabaseBuilderImp) Factory.database()).mainStream(m).start();
+        Db db = ((DatabaseImp) d).getDb();
+        Assert.assertEquals(50, d.getStartupDistanceInMb());
+        d.connection().w().put("/a", "1").execute();
+        
+        long length = db.getStreamLength();
+        d.setStartupDistanceInMb(20);
+        Assert.assertEquals(20, d.getStartupDistanceInMb());
+        Assert.assertEquals(20 * 1000000, db.getStartupDistance());
+        Assert.assertTrue("the call's transaction", 
+                db.getStreamLength() - length >= RecoverableStream.META_BLOCK_DISTANCE);
+        
+        length = db.getStreamLength();
+        d.setStartupDistanceInMb(20);
+        Assert.assertEquals("the setting in force: nothing appended", length, 
+                db.getStreamLength());
+        
+        d.setStartupDistanceInMb(1);
+        Assert.assertEquals(5, d.getStartupDistanceInMb());
+        d.setStartupDistanceInMb(5000);
+        Assert.assertEquals(1000, d.getStartupDistanceInMb());
+        d.setStartupDistanceInMb(20);
+        d.connection().w().put("/a", "2").execute();
+        d.sync();
+        d.stop();
+        
+        IllegalDbStateException ex = null;
+        try {
+            d.setStartupDistanceInMb(30);
+        } catch (IllegalDbStateException e) {
+            ex = e;
+        }
+        Assert.assertTrue("a call after stop() throws", ex != null);
+        Assert.assertEquals("the refused call changed the setting", 20, 
+                d.getStartupDistanceInMb());
+        d.close();
+        
+        d = ((DatabaseBuilderImp) Factory.database()).mainStream(m.copy()).start();
+        Assert.assertEquals("kept by the restart", 20, d.getStartupDistanceInMb());
+        Assert.assertEquals("2", d.connection().get("/a", String.class));
+        d.stop();
+    }
+    
+    /**
+     * A decrease of the startup distance through the Pub API pays the startup section's
+     * index nodes over several records (bergdb 007-03, D4:B; 007-07; 005-53): a database at
+     * 50 MB, 15,000 transactions of 20 puts of small values over a million keys (a section of
+     * about 22 MB, all of the stream), lowered to 5 MB, then 300 commits. No record from the
+     * call on is more than a third of what the records wrote until they were back near their
+     * size before the call; with the deadline at twice the new setting at once, the call's
+     * own record would take most of it.
+     */
+    @Nano("f")
+    public static void testDecreaseOfStartupDistanceInMbF() {
+        Database d = ((DatabaseBuilderImp) Factory.database()).mainStream(new MemoryStream())
+                .startupDistanceInMb(50).start();
+        Db db = ((DatabaseImp) d).getDb();
+        java.util.Random r = new java.util.Random(1);
+        long before = 0;
+        for (int i = 0; i < 15000; i++) {
+            long length = db.getStreamLength();
+            WBuilder w = d.connection().w();
+            for (int j = 0; j < 20; j++) w.put("/k/" + r.nextInt(1000 * 1000), "vvvv");
+            w.execute();
+            if (i >= 14800) before = Math.max(before, db.getStreamLength() - length);
+        }
+        
+        long length = db.getStreamLength();
+        d.setStartupDistanceInMb(5);
+        long largest = db.getStreamLength() - length;
+        long paid = largest;
+        boolean back = false;
+        for (int i = 0; i < 300; i++) {
+            length = db.getStreamLength();
+            WBuilder w = d.connection().w();
+            for (int j = 0; j < 20; j++) w.put("/k/" + r.nextInt(1000 * 1000), "vvvv");
+            w.execute();
+            long record = db.getStreamLength() - length;
+            back = back || record < 10 * before;
+            if (!back) {
+                paid += record;
+                largest = Math.max(largest, record);
+            }
+        }
+        d.stop();
+        Assert.assertTrue("back near the size before the call", back);
+        Assert.assertTrue("paid " + paid, paid > 4 * 1000 * 1000);
+        Assert.assertTrue("largest record " + largest + " of " + paid, largest < paid / 3);
+    }
+    
+    /**
+     * The cache size set while the database runs (Database.setCacheSizeInMb, bergdb 005-52,
+     * option B): in force when the call returns, as the core's budget and Cache3's indicator;
+     * clamped to 4 to 100,000 MB, as the builder clamps it; nothing written to the stream;
+     * no exception after close(); and for the run only: a restart takes the builder's value.
+     */
+    @Nano
+    public static void testSetCacheSizeInMb() {
+        MemoryStream m = new MemoryStream();
+        Database d = ((DatabaseBuilderImp) Factory.database()).mainStream(m).cacheSizeInMb(64)
+                .start();
+        Db db = ((DatabaseImp) d).getDb();
+        Assert.assertEquals(64, d.getCacheSizeInMb());
+        d.connection().w().put("/a", "1").execute();
+        long length = db.getStreamLength();
+        
+        d.setCacheSizeInMb(32);
+        Assert.assertEquals(32, d.getCacheSizeInMb());
+        Assert.assertEquals(32L * 1000000, db.getCacheSizeIndicator());
+        Assert.assertEquals(32L * 1000000, db.internal().eviction().budget());
+        Assert.assertEquals(32L * 1000000, db.internal().cache().getSizeIndicator());
+        d.setCacheSizeInMb(1);
+        Assert.assertEquals(4, d.getCacheSizeInMb());
+        d.setCacheSizeInMb(200 * 1000);
+        Assert.assertEquals(100 * 1000, d.getCacheSizeInMb());
+        Assert.assertEquals(100L * 1000 * 1000000, db.internal().eviction().budget());
+        Assert.assertEquals("nothing written", length, db.getStreamLength());
+        d.sync();
+        d.close();
+        d.setCacheSizeInMb(16);
+        
+        d = ((DatabaseBuilderImp) Factory.database()).mainStream(m.copy()).cacheSizeInMb(64)
+                .start();
+        Assert.assertEquals("the builder's value after a restart", 64, d.getCacheSizeInMb());
+        d.stop();
+    }
+    
+    /**
+     * A lowered cache size gives the memory back on a database that is not used (bergdb
+     * 005-52): 20,000 values of 1 kB written with a budget of 100 MB, so that the resident
+     * bytes hold about 20 MB; the cache size lowered to 4 MB and no other call: the eviction
+     * thread, which the call wakes, brings the resident bytes to at most 4 MB within 5 s.
+     * Until 005-52 nothing ran until the next commit or load (005-51).
+     */
+    @Nano("f")
+    public static void testLoweredCacheSizeWhileIdleF() throws InterruptedException {
+        Database d = ((DatabaseBuilderImp) Factory.database()).mainStream(new MemoryStream())
+                .startupDistanceInMb(5).cacheSizeInMb(100).start();
+        Db db = ((DatabaseImp) d).getDb();
+        char[] chars = new char[1000];
+        java.util.Arrays.fill(chars, 'v');
+        String value = new String(chars);
+        for (int i = 0; i < 20000; i += 100) {
+            WBuilder w = d.connection().w();
+            for (int k = i; k < i + 100; k++) w.put("/k/" + k, value);
+            w.execute();
+        }
+        d.sync();
+        long full = db.internal().cache().residents().bytes();
+        Assert.assertTrue("resident " + full, full > 15 * 1000 * 1000);
+        
+        d.setCacheSizeInMb(4);
+        long end = System.nanoTime() + 5000L * 1000 * 1000;
+        long bytes = full;
+        while (System.nanoTime() < end) {
+            bytes = db.internal().cache().residents().bytes();
+            if (bytes <= 4 * 1000 * 1000) break;
+            Thread.sleep(1);
+        }
+        d.stop();
+        Assert.assertTrue("resident " + bytes + " of " + full, bytes <= 4 * 1000 * 1000);
     }
     
     /**

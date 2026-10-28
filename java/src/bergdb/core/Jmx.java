@@ -197,13 +197,12 @@ public class Jmx {
         
         /** The capacity controller's budget (bergdb item 001, WP J7; Eviction). */
         public long getCacheSizeIndicator() {
-            return db.internal().eviction().budget();
+            return db.getCacheSizeIndicator();
         }
         
-        /** Sets the capacity controller's budget too (bergdb item 001, WP J7). */
+        /** Sets the capacity controller's budget too (bergdb item 001, WP J7; 005-52). */
         public void setCacheSizeIndicator(long sizeIndicator) {
-            db.internal().cache().setSizeIndicator(sizeIndicator);
-            db.internal().eviction().setBudget(sizeIndicator);
+            db.setCacheSizeIndicator(sizeIndicator);
         }
         
         /**

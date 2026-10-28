@@ -89,12 +89,13 @@ public interface DatabaseBuilder {
      * high-end server may use 50. The default is 50: startup then takes about 0.6 s
      * with 1000-byte values and 1.4 s with 100-byte values, on a fast SSD (measured
      * 2026-10-13). Existing databases keep the startup distance stored in their
-     * stream. The value should be seen as a proposal, 
+     * stream; Database.setStartupDistanceInMb() changes it while the database runs, and
+     * the stream keeps the new value (bergdb 005-53). The value should be seen as a proposal, 
      * to the database. If the database considers the value
      * too small or to high, it may clamp it to an internally permitted range.
      * 
      * @param startupDistanceInMb    The startup distance in megabytes (mega = 1000000). 
-     *                               Value should be between 5 and 100.
+     *                               Value should be between 5 and 1000.
      */
     public DatabaseBuilder startupDistanceInMb(int startupDistanceInMb);
     
@@ -110,6 +111,8 @@ public interface DatabaseBuilder {
      * recently, down to three quarters of it. What the database must keep in memory (the
      * nodes changed since its startup position, of the order of the startup distance) is
      * never evicted and may exceed it. The default is a fifth of the JVM's maximum heap.
+     * Database.setCacheSizeInMb() changes it while the database runs, for that run (bergdb
+     * 005-52).
      * 
      * @param cacheSizeInMb  The cache size indicator in megabytes (mega = 1000000).
      */
