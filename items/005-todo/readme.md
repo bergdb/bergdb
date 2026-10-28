@@ -37,6 +37,7 @@ Open
 | [005-70](70-keymodset-after-start.md) | Fix | The STM forgets the writes before a start: `KeyModSet` is new and empty after a start (first time −1), so a transaction whose read time is before the start, and whose read key was written after that time, commits where without the restart it is refused: a gap in serializability, and a restart that changes the stream's bytes (P2). Found by 012-02's audit (C4), with a probe. Recommended: the new set's first time at the last transaction's, so the "too old" path refuses | open |
 | [005-71](71-dbclock-read-time-after-start.md) | Fix | `DbClock` forgets `lastReadTime` at a start, so with a clock that has not moved, `currentTime()` before a restart changes the next transaction's time by one unit and the stream's bytes (P2). Found by 012-02's audit (C3), with a probe. Recommended: no code change, a note in P2 | open |
 | [005-72](72-file-layout-after-cut.md) | Decide | The files after reclaim's physical cut depend on timing (when the durable length reached the decision), while the bytes from the decided cut do not; a restart also changes the layout (not a bug). The C clone, without threads, cannot match Java's files after a cut. Recommended (012-02): compare the bytes from the decided cut with reclaim; a layout from the decided cut later, if wanted | open |
+| [005-73](73-db-api-small-findings.md) | Fix | Seven small findings in `Db`'s API from 012-03's mapping, none changing the bytes: `StartInfo.startupDistance` always −1, `getCachePutSize` a constant, the dirty fractions only decay and turn NaN, `setReclaimInternalFraction` accepts NaN, `close()` drops the last flush's `IOException`, `Endpoint`'s comment says non-inclusive, dead fields | open |
 
 
 Closed
@@ -374,6 +375,9 @@ Files
 * [72-file-layout-after-cut.md](72-file-layout-after-cut.md). 005-72, the
   files after reclaim's physical cut depend on timing: the issue, the
   probe, the options; open.
+* [73-db-api-small-findings.md](73-db-api-small-findings.md). 005-73,
+  seven small findings in `Db`'s API (012-03): the findings, what to do;
+  open.
 
 Log
 ===
@@ -1402,3 +1406,7 @@ says: the STM's `KeyModSet` is empty after a start, so a read before a
 restart can commit where it would be refused (a correctness bug, kind
 fix); `DbClock`'s last read time is not kept across a start (kind fix);
 the files after a physical cut depend on timing (kind decide).
+
+2026-10-28. Added 005-73, by Claude (Opus 5.5, Claude Code), the
+conductor of 012, from 012-03's mapping of `Db`'s methods (its section
+6.8): seven small findings in the API, none changing the bytes; kind fix.
