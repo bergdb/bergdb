@@ -29,8 +29,8 @@ Open
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10). For release 2026.1: kept, documented as experimental | open |
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
-| [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API sets it only at start (`cacheSizeInMb`), against 010-P6; the core has `Eviction.setBudget` (also through JMX). The cache should converge gradually to the new size, with no disruption | open |
-| [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
+| [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API sets it only at start (`cacheSizeInMb`), against 010-P6; the core has `Eviction.setBudget` (also through JMX). The cache should converge gradually to the new size, with no disruption. Questions 1 and 3 ready to decide (2026-10-28): B, `Database.setCacheSizeInMb` and a getter, for the run, not in the stream, with 005-53 | open, ready to decide |
+| [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory. Ready to decide (2026-10-28, after D4:B): options A to E, E recommended, `Database.setStartupDistanceInMb` and a getter, kept in the stream; B and D obsolete, C subsumed | open, ready to decide |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 | [005-60](60-block-storage.md) | Investigate | Block storage: the stream on a raw block device without a file system, as a ring of a fixed size, kept until the room is needed (retention by space); feasible in Java? And on a Linux device in a C or C++ clone. Frans's idea | open |
 | [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered; a longer time may mean fewer forces and wake-ups for writers that do not sync, at the cost of more unsynced data lost on a power loss. Frans's request | open |
@@ -1307,3 +1307,19 @@ and none after; 0 failures in 400,000 runs after the fix, 4 in 40,000
 before. 2015's "Expected 800, got 1200" was `BufferedStream`'s flush of
 nothing at a close, fixed by 005-14. `before-commit.sh`, `core-build.sh
 unit f` and `level2.sh quick` pass.
+
+2026-10-28. 005-53 and 005-52's questions 1 and 3 ready to decide, by
+Claude (Opus 5.5, Claude Code), for 006-10's W4.2, a reading of `b1111f4`
+with D4:B in the core: options in full in both entries, the evidence in
+[53-startup-distance-on-the-fly/report.md](53-startup-distance-on-the-fly/report.md).
+005-53: options A to E; B (a `Job`) and D are obsolete, as one call is
+enough since D4:B and nothing would run in the background, and C is
+subsumed; E recommended, `Database.setStartupDistanceInMb` and
+`getStartupDistanceInMb`, kept in the stream as today, a call with the
+value in force writing nothing. 005-52: B recommended,
+`Database.setCacheSizeInMb` and `getCacheSizeInMb`, clamped as the
+builder, for the run only, through a setter in `Db` that JMX uses too.
+One pattern for both, decided and built together: a setting that shapes
+the stream's bytes is kept in the stream, one that does not is for the
+run. Each entry ends with questions for Frans, each with a recommended
+answer.

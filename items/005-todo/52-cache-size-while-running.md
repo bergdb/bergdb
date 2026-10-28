@@ -1,7 +1,10 @@
 005-52. Change the cache size while the database runs
 =====================================================
 
-Status: open. Kind: fix. Created 2026-10-26.
+Status: open, ready to decide on questions 1 and 3 (2026-10-28: options A
+to C for the Pub API, B recommended, below; the evidence in
+[53-startup-distance-on-the-fly/report.md](53-startup-distance-on-the-fly/report.md)).
+Kind: fix. Created 2026-10-26.
 
 Found in [010-01](../010-principles/01-principles.md), 010-P6 ("No
 interruption for changes"); registered at Frans's request (2026-10-26:
@@ -159,3 +162,143 @@ ZGC), and gets stay short under ZGC. Under G1 a batch took 88.8 ms, most
 likely a collection inside it; the commits' 28 to 45 ms are not yet
 compared with a fixed budget's. So the step answers the convergence, and
 leaves the comparison with a fixed budget for the fix.
+
+
+Questions 1 and 3, the Pub API: options A to C
+----------------------------------------------
+
+By Claude (Opus 5.5, Claude Code), 2026-10-28 (006-10, W4.2), a reading of
+`main` at `b1111f4`, together with 005-53's options, as both are a setting
+changed while the database runs. The evidence is in 005-53's
+[report.md](53-startup-distance-on-the-fly/report.md), sections 1, 2.2 and
+4.
+
+**What every option starts from.** `Eviction.setBudget(long)` sets the
+budget (the high watermark), the low one (3/4 of it) and the trigger;
+`Db`'s constructor gives it the builder's cache size, and also
+`Cache3.setSizeIndicator`, whose value only a getter reads. No method of
+`Db` reaches `setBudget`: only `db.internal().eviction()`, as
+`Jmx.DbMonitor.setCacheSizeIndicator` does. The cache size changes no byte
+of the stream (`level4.sh`'s EvictionInvariance).
+
+* A decrease: the next commit's batch (at most 2 ms) or a reader's load
+  wakes the eviction thread, which runs batches of at most 2 ms until the
+  resident bytes are at most the new trigger, a waiting writer first.
+  While they are over it by more than the gap between the watermarks, a
+  load waits for the next batch, at most 2 ms (`Eviction.afterLoad`). The
+  first step (above) measured it at 10M keys: 664 to 132 MB in 47 s with
+  22 s of the thread's CPU, batches of at most 2.18 ms and gets of at
+  most 6.09 ms under ZGC; 664 to 332 MB in 0.31 s. With no calls, nothing
+  runs (005-51). A budget below the pinned bytes (the nodes changed since
+  the startup position, of the order of the startup distance) is not
+  reached: a sweep raises the trigger to them plus the gap.
+* An increase: nothing to do; the resident bytes grow with the loads.
+* Replicas: none; a replica is a stream of this database, the cache is
+  the JVM's.
+
+### A. Keep it as it is
+
+The builder sets the cache size at start; JMX, through the core's
+internals, changes it.
+
+* API: none. Gives: nothing to build. Costs: 010-P6 stays broken; a
+  change needs a restart. Effort: none.
+
+### B. `void setCacheSizeInMb(int)` and `int getCacheSizeInMb()`, for the run (recommended)
+
+A setter and getter on `Database`, beside `setRetainDuration`, with a
+setter and getter in the core that JMX then uses too.
+
+* API, in `pub/Database`:
+
+      /**
+       * Sets the cache size indicator in MB, the budget of the database's
+       * cache, as DatabaseBuilder.cacheSizeInMb() does at start, clamped
+       * the same way, to 4 to 100,000 MB. The new budget is in force when
+       * the method returns. After a decrease the database evicts what it
+       * holds above the budget in batches of at most 2 ms, which this call
+       * and the database's commits and reads start, until the resident
+       * bytes are at most the budget; reads may wait for a batch meanwhile,
+       * at most 2 ms each. What the database must keep in memory is never
+       * evicted and may exceed the budget. After an increase, the cache
+       * grows as data is read. The setting is for this run only: it is not
+       * stored, and a restart takes the builder's value, or its default, a
+       * fifth of the JVM's maximum heap.
+       */
+      public void setCacheSizeInMb(int cacheSizeInMb);
+
+      /** Returns the cache size setting in MB, the budget, not the memory
+       *  the cache holds now. */
+      public int getCacheSizeInMb();
+
+* The core: `Db.setCacheSizeIndicator(long)` and `getCacheSizeIndicator()`
+  (the builder's name), which set `Eviction`'s budget and `Cache3`'s
+  indicator, and wake the eviction thread when the resident bytes are
+  over the new trigger, so that an idle database gives the memory back
+  too (work that the call starts, 010-P3). `Jmx.DbMonitor` calls them
+  instead of reaching into `internal()`. Two methods more in `Db` (43 to
+  45): settings belong to the Core API (010-P12), and the alternative,
+  `pubimp` calling `db.internal()`, which says "for internal use only",
+  would be a way around the layer, not an implementation on top.
+* Persistence: none, as the retain duration (question 3). The cache size
+  shapes no byte of the stream, so P2 does not need it there; it belongs
+  to the machine, not to the data: its default is a share of the JVM's
+  heap, and a stored size would follow a copied database into a smaller
+  JVM; and storing it would need the meta block's reserved bytes and a
+  rule for the builder's value against the stream's, 005-53's option C's
+  trap.
+* A stopping or stopped database: harmless, a field set; the Javadoc says
+  "no effect after stop()". No exception needed.
+* Tests: through `Database`, in memory: lower and raise the budget under
+  reads and writes, the resident bytes at most the trigger after the
+  convergence, and growing after a raise; the clamp; the value back at
+  the builder's after a restart; with no calls after a decrease, the
+  resident bytes still converge (the wake). Then this entry's "Done
+  when": the pause probe of 009-03 with a lowered budget against a fixed
+  one, and `level4.sh`.
+* Gives: 010-P6 for the cache size, with the convergence the first step
+  measured. Costs: two core methods.
+* Effort: S for the code and tests; M with the pause probe, in a quiet
+  block.
+
+### C. B, kept in the stream
+
+As B, and the setting written to the stream, in the meta block's reserved
+bytes (as 005-50 added the node size, no new version), so that a restart
+keeps it.
+
+* Needs a rule for which wins at a start, the builder's value or the
+  stream's; an application that passes the builder's value every start
+  makes the stored one moot, and one that does not inherits a size chosen
+  for another machine or heap.
+* Makes a setting that changes no byte of the data change the stream's
+  bytes, against the line 010-P2 draws.
+* Effort: M, with a format field and its tests.
+
+### Recommendation
+
+B: `setCacheSizeInMb` and `getCacheSizeInMb` on `Database`, clamped as the
+builder, for the run only, through a setter and getter in `Db` that JMX
+uses too, waking the eviction thread after a decrease. Decide and build it
+with 005-53's E, as one pattern: a setter that returns when the setting is
+in force; a getter that gives the setting, not the state converging to
+it; convergence by the database's ordinary work in bounded pieces; kept in
+the stream only if the setting shapes the stream's bytes (the report,
+section 4). Question 2 is answered by the first step for the convergence;
+the comparison with a fixed budget is part of the fix.
+
+
+Questions for Frans
+-------------------
+
+1. `Database.setCacheSizeInMb(int)` and `getCacheSizeInMb()`, clamped to 4
+   to 100,000 MB as the builder? Recommended: yes (B).
+2. Kept in the stream? Recommended: no, for the run, as the retain
+   duration; a restart takes the builder's value.
+3. In the core, `Db.setCacheSizeIndicator` and `getCacheSizeIndicator`
+   (two more public methods), used by JMX too, rather than `pubimp`
+   reaching into `db.internal()`? Recommended: yes.
+4. The setter wakes the eviction thread after a decrease, so that an idle
+   database converges too? Recommended: yes.
+5. Decide and implement together with 005-53, one pattern? Recommended:
+   yes, one commit.
