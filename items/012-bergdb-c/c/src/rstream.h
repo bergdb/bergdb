@@ -5,7 +5,9 @@
  * blocks read and searched, the record to walk from, an incomplete
  * creation, and recovery's plan, which says what Java's recover() would
  * append without appending it (the fill is written in 012-10). The appends
- * (append, writeMetaBlock) come in 012-09. Prefix rs_.
+ * (012-09): struct rs, the stream with its in-memory meta block, and
+ * rs_append, which frames a record around the meta blocks and writes each
+ * block as soon as the record's bytes reach it. Prefix rs_.
  *
  * A record's bytes are its own, without the meta blocks between them; a
  * record's size and every offset in it count record bytes. The functions
@@ -124,5 +126,51 @@ struct rs_recovery {
  * past the end, ERR_ARG). NodeStream.recover's check of a stream shorter
  * than 128 bytes is the caller's. */
 enum err_code rs_plan_recovery(struct stream *s, struct rs_recovery *r, struct err *e);
+
+/* RecoverableStream's appending side: the stream and the in-memory meta
+ * block (RecoverableStream.metaBlock), whose bytes every block written
+ * has, as they are at that moment. Its fields are set by the database:
+ * the creation sets the id, the startup distance, the node size and the
+ * time (Db.writePrimordialTransaction); each record its lastTrans, after
+ * its append (rs_append_record); setStartupDistance the startup distance;
+ * a start makes it a copy of the last valid block
+ * (rs_use_last_valid_meta_block) and sets lastTrans to the last committed
+ * record. */
+struct rs {
+    struct stream *s;
+    struct meta meta;
+    int64_t posOfLastValidMetaBlock;            /* -1 until known */
+    int64_t lastTransSposOfLastValidMetaBlock;  /* -1 until known */
+};
+
+/* RecoverableStream(aos, new MetaBlock()): the block as meta_init makes it
+ * (magic, version, last byte 10, lastTrans -1, the rest 0). */
+void rs_init(struct rs *r, struct stream *s);
+
+/* RecoverableStream.append: the record's 'size' bytes appended, a meta
+ * block written each time they reach a multiple of 200,000 (also when the
+ * record ends there: "size >= distanceToMeta"; and first, before any byte,
+ * when the stream's length is at a multiple, as for the creation at 0).
+ * With useChecks (always, for a record): the last byte must be 10 and the
+ * size field (at buf[0], as Java reads it at 0 whatever the offset) the
+ * size (ERR_ARG, "IllegalArgumentException"), and the stream must not end
+ * inside a meta block (ERR_FORMAT, "StreamFormatException"), checked
+ * before anything is written. The stream's errors as they are (Java's
+ * StreamIoException: ERR_IO). */
+enum err_code rs_append(struct rs *r, const uint8_t *buf, int32_t size, bool useChecks,
+        struct err *e);
+
+/* The tail of NodeStream.appendNodes, for a record serialized at
+ * rs_next_spos(length): appended with the checks, then the in-memory
+ * block's lastTrans set to its position, *tpos. */
+enum err_code rs_append_record(struct rs *r, const uint8_t *buf, int32_t size, int64_t *tpos,
+        struct err *e);
+
+/* Recovery's steps 1 and 3 (RecoverableStream.recover, 012-02, 4.4)
+ * without the fill (012-10): readLastValidMetaBlock, which also sets the
+ * two positions above, and the in-memory block a copy of it
+ * (setFromOtherMetaBlock), its reserved bytes included. None: ERR_FORMAT,
+ * "StreamFormatException", "Could not find *any* valid meta block". */
+enum err_code rs_use_last_valid_meta_block(struct rs *r, struct err *e);
 
 #endif

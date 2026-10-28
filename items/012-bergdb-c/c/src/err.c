@@ -33,6 +33,8 @@ const char *err_code_name(enum err_code code) {
     case ERR_ARG: return "ARG";
     case ERR_NOT_AVAILABLE: return "NOT_AVAILABLE";
     case ERR_NOMEM: return "NOMEM";
+    case ERR_LIMIT: return "LIMIT";
+    case ERR_IN_USE: return "IN_USE";
     }
     return "?";
 }

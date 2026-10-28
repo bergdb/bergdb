@@ -1,0 +1,93 @@
+/*
+ * clock: the database's clock, ported from Java's bergdb.core.DbClock,
+ * SystemClock and CoreTestClock (bergdb 012-09, part 1; 012-01, 4.4;
+ * 012-02, 2.6 and 8.1). Prefix clk_ (the clocks) and dbclock_ (DbClock).
+ *
+ * Every time in the stream is a transaction's, from
+ * dbclock_transaction_begin, which reads the database's clock once. The
+ * only other read is dbclock_current_time (Db.currentTime). Lookup times
+ * never read it.
+ *
+ * A clock is a function and its context (Java's Clock, DbBuilder.clock):
+ * the same type as the API's bergdb_clock_fn (include/bergdb.h), so that
+ * the options' clock is given as it is. Three clocks:
+ *
+ *   - the system clock (SystemClock), the default: milliseconds since
+ *     1970 times 10,000, from plat_time_millis. Ported as its code is, not
+ *     as its comment promises (005-69): its last time is set only when the
+ *     system's time is at or below it, which from 0 never happens, so it
+ *     returns equal times within a millisecond and earlier ones when the
+ *     system clock is set back. DbClock makes transaction times increase
+ *     in any case. Its state is the database's (struct dbclock), not
+ *     global (P9);
+ *   - the test clock (CoreTestClock): the API's struct bergdb_test_clock,
+ *     with bergdb_test_clock_time and bergdb_test_clock_set, implemented
+ *     here; a time that the caller sets, forward only;
+ *   - a function of the caller's.
+ *
+ * One caller at a time (012-01, 4.2): none of Java's synchronized and
+ * volatile.
+ */
+#ifndef BERGDB_CLOCK_H
+#define BERGDB_CLOCK_H
+
+#include <stdbool.h>
+#include <stdint.h>
+#include "err.h"
+
+/* Clock.getTime: the time now, in 100 ns units since 1970; the type of the
+ * API's bergdb_clock_fn. */
+typedef int64_t (*clk_fn)(void *ctx);
+
+#define CLK_UNITS_PER_SEC INT64_C(10000000)     /* Clock.UNITS_PER_SEC */
+
+/* SystemClock's state: its last time, 0 at first. */
+struct clk_system {
+    int64_t lastTime;
+};
+
+/* SystemClock.getTime, ctx a struct clk_system. */
+int64_t clk_system_time(void *ctx);
+
+/* DbClock. */
+struct dbclock {
+    clk_fn clock;               /* NULL: the system clock, below */
+    void *ctx;
+    struct clk_system system;   /* the system clock's state, when clock is NULL */
+    int64_t lastTransactionTime;    /* the last completed transaction's time */
+    int64_t transactionTime;        /* the running transaction's time */
+    int64_t lastReadTime;           /* the last time currentTime returned (C3: 0 at a start) */
+    bool transactionRunning;
+};
+
+/* DbClock(Clock): the clock and its ctx, or NULL for the system clock
+ * (DbBuilder's default, new SystemClock()); the times 0, no transaction
+ * running. Java refuses a null clock; here NULL is the default's. */
+void dbclock_init(struct dbclock *c, clk_fn clock, void *ctx);
+
+/* DbClock.lookupTime: the wanted lookup time, but at most the last
+ * transaction's time. Does not read the clock. */
+int64_t dbclock_lookup_time(const struct dbclock *c, int64_t wantedLookupTime);
+
+/* DbClock.currentTime: while a transaction runs, its time minus 1; else
+ * the clock's time, but at least the last transaction's, which it keeps
+ * as the last read time (so the next transaction's time is later). */
+int64_t dbclock_current_time(struct dbclock *c);
+
+/* DbClock.transactionBegin: reads the clock once; the time is the clock's,
+ * but later than the last transaction's and the last read time. A clock
+ * time outside 0 to 2^56 - 1, or a time above 2^56 - 1, refuses the
+ * transaction before it begins (005-18): ERR_LIMIT, "DbException", with
+ * Java's texts; nothing changes. Else *time is the transaction's time (at
+ * least 1) and a transaction runs. Asserts that none runs. */
+enum err_code dbclock_transaction_begin(struct dbclock *c, int64_t *time, struct err *e);
+
+/* DbClock.transactionEnd: the running transaction's time becomes the last
+ * transaction's. Asserts that one runs. */
+void dbclock_transaction_end(struct dbclock *c);
+
+/* DbClock.setLastTransTime: at a start, the last record's time. Asserts
+ * that no transaction runs. The last read time is left as it is (C3). */
+void dbclock_set_last_trans_time(struct dbclock *c, int64_t lastTransTime);
+
+#endif

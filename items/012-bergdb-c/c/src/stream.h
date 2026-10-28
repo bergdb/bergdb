@@ -5,17 +5,32 @@
  * FileStream: the .bergdb files found, checked and ordered as Java does,
  * and reads at any position, across files. Prefix stream_.
  *
- * Read-only in 012-06: a directory is opened as it is, with no lock, and
- * an empty one is an empty stream (Java's FileStream creates its first file
- * and the directory; 012-09 writes). Appends to files come in 012-09,
- * cuts (pretruncate) in 012-11. The memory stream takes raw appends and a
- * pretruncate already, which the tests use to make streams.
+ * A directory is opened read-only (stream_open_dir, 012-06: as it is, with
+ * no lock, and an empty one is an empty stream) or for writing
+ * (stream_open_dir_rw, 012-09: as Java's FileStream opens it, the
+ * directory made if missing, its lock taken, the first file made in an
+ * empty one, and the last file taking appends up to the capacity that the
+ * open rule gives it). Cuts (pretruncate) come in 012-11. The memory
+ * stream takes raw appends and a pretruncate, which the tests use to make
+ * streams.
+ *
+ * The write buffer (012-01, 4.3): what Java's BufferedStream and its
+ * thread do, without a thread. An append goes to the buffer; the buffer is
+ * written to the files (FileStream.append: each file filled to its
+ * capacity, then a new file) when it is full, at stream_flush and at
+ * stream_sync, which then forces the files written since the last force
+ * and, after a new file, the directory, with F_FULLFSYNC (plat). Reads see
+ * the buffered bytes. The bytes and the files are Java's; only when they
+ * reach the disk differs. A close writes nothing: stream_sync first
+ * (stream_finish does both), as Java's close writes and forces what the
+ * buffer holds.
  *
  * One caller at a time (012-01, 4.2), so none of Java's synchronization.
  */
 #ifndef BERGDB_STREAM_H
 #define BERGDB_STREAM_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include "err.h"
 #include "mem.h"
@@ -27,12 +42,23 @@
 enum stream_kind { STREAM_MEMORY, STREAM_DIR };
 
 /* A .bergdb file of a directory: its first position, its length (at the
- * open, as File.length()) and its descriptor. */
+ * open, as File.length(), and as written since) and its descriptor (read
+ * and write for the last file of a stream opened for writing). */
 struct stream_file {
     int64_t start;
     int64_t length;
     int fd;
 };
+
+/* FileStream.FILE_SIZES: the capacities of new files, 200 kB to 200 GB. */
+#define STREAM_FILE_SIZES 10
+
+/* StorageManager.DEFAULT_BUFFER_SIZE: the write buffer's default size. */
+#define STREAM_BUFFER_SIZE 10000000
+
+/* The lock file and the locked byte (FileStream.LOCK_NAME, LOCK_POS). */
+#define STREAM_LOCK_NAME "bergdb.lock"
+#define STREAM_LOCK_POS (INT64_C(1) << 62)
 
 struct stream {
     enum stream_kind kind;
@@ -45,6 +71,23 @@ struct stream {
     /* STREAM_DIR: the files, by their first positions. */
     struct stream_file *files;
     int32_t nfiles;
+    /* STREAM_DIR opened for writing (stream_open_dir_rw). */
+    bool rw;
+    int32_t files_cap;      /* the files array's capacity */
+    char *dir;              /* the directory's path, for new files */
+    int64_t dir_size;       /* its allocation */
+    int lock_fd;            /* holds the directory's lock */
+    int32_t fileSizeIndex;  /* FileStream.fileSizeIndex: the last file's capacity */
+    int64_t maxSize;        /* the last file's capacity, FILE_SIZES[fileSizeIndex] at its
+                               making or the open */
+    int64_t fileLength;     /* FileStream.length: the bytes in the files */
+    uint8_t *buf;           /* the write buffer: the bytes from fileLength on */
+    int32_t buf_cap;
+    int32_t buf_len;
+    int32_t unforced;       /* the first file written since the last force; nfiles if none */
+    bool dir_unforced;      /* a file made since the last force of the directory */
+    int64_t durable;        /* the length at the last force */
+    bool failed;            /* an I/O error: FileStream's ioException, every write refused */
 };
 
 /* An empty memory stream. Nothing is allocated until an append. */
@@ -67,7 +110,62 @@ void stream_open_memory(struct stream *s, struct mem *m);
  * (a name Java never writes). On a failure nothing stays open. */
 enum err_code stream_open_dir(struct stream *s, const char *dir, struct mem *m, struct err *e);
 
-/* Closes the files and frees what the stream holds. */
+/* Opens directory 'dir' for writing, as Java's FileStream(dir) does:
+ *
+ *   - createDirIfNeeded: made with its missing ancestors if it does not
+ *     exist (each forced), else its parent forced (plat_mkdirs);
+ *   - lockDir: bergdb.lock made with FileStream.LOCK_TEXT if missing, and
+ *     its byte at 2^62 locked (plat_lock; ERR_IN_USE,
+ *     "DirectoryInUseException", if another process holds it);
+ *   - handleExistingFiles: the files checked as stream_open_dir checks
+ *     them; the capacity index from the larger of the last two files'
+ *     lengths, the smallest of FILE_SIZES at or above it
+ *     (determineFileSizeIndexFromFiles: so a restart can change the layout
+ *     from there on, 012-02, 9.3, C1); the last file opened for writing up
+ *     to that capacity; in an empty directory, 00000000000000.bergdb made,
+ *     with the index 0.
+ *
+ * buffer_capacity: the write buffer's size, at least 100
+ * (BufferedStream's minimum); 0 for STREAM_BUFFER_SIZE. It is allocated
+ * at the first append. On a failure nothing stays open. */
+enum err_code stream_open_dir_rw(struct stream *s, const char *dir, int32_t buffer_capacity,
+        struct mem *m, struct err *e);
+
+/* Appends n bytes (AppendOnlyStream.append): to a memory stream as
+ * stream_append_memory; to a directory opened for writing, into the write
+ * buffer, which is written to the files each time it is full. ERR_ARG for
+ * a read-only directory; ERR_IO after an I/O error, which every later
+ * write gives too (FileStream.checkIOException); ERR_NOMEM. */
+enum err_code stream_append(struct stream *s, const uint8_t *buf, int64_t n, struct err *e);
+
+/* Writes the buffer to the files (FileStream.append): each file filled to
+ * its capacity, then a new file (FileStream.newFile: named by its first
+ * position over 100,000, 14 digits; its capacity by
+ * applyFileSizeChangeRules; refused if it exists with bytes). No force.
+ * Nothing to do for a memory stream or a read-only directory. */
+enum err_code stream_flush(struct stream *s, struct err *e);
+
+/* stream_flush, then forces the files written since the last force and,
+ * if a file was made since, the directory (F_FULLFSYNC). */
+enum err_code stream_sync(struct stream *s, struct err *e);
+
+/* The length that the last stream_sync made durable (the whole length of
+ * a memory stream). */
+int64_t stream_durable_length(const struct stream *s);
+
+/* FileStream.determineFileSizeIndex (without the test setting max2G), for
+ * the tests: the index of a new file's capacity, from the current index,
+ * the stream's length and its size (the length less the first position). */
+int32_t stream_file_size_index(int32_t current, int64_t streamLength, int64_t streamSize);
+
+/* stream_sync, then stream_close: Java's close of a stream that it writes.
+ * The stream is closed also when the sync fails, and the sync's error
+ * returned. */
+enum err_code stream_finish(struct stream *s, struct err *e);
+
+/* Closes the files and the lock and frees what the stream holds. Writes
+ * nothing: what the buffer holds is dropped (after a failure; a close
+ * syncs first, stream_finish). */
 void stream_close(struct stream *s);
 
 int64_t stream_first_pos(const struct stream *s);

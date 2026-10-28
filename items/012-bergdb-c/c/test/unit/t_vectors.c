@@ -19,7 +19,10 @@
 #include "checksum.h"
 #include "jsem.h"
 #include "keys.h"
+#include "keymod.h"
 #include "klong.h"
+#include "strmap.h"
+#include "transseq.h"
 
 #ifndef VECTORS_DIR
 #define VECTORS_DIR "test/unit/vectors"
@@ -553,11 +556,132 @@ TEST(vectors_jsem) {
             const double share = (double) dirtyCount * (double) recordOwnBytes
                     / (double) ownBytes * (double) distance / startupDistance;
             CHECK_EQ(j_double_bits(share), v_hex(v->tok[6]));
+            /* And the module's (012-09). */
+            CHECK_EQ(j_double_bits(ts_share(dirtyCount, recordOwnBytes, ownBytes, distance,
+                    startupDistance)), v_hex(v->tok[6]));
         } else if (v_is(v, "dither", 2)) {
             CHECK_EQ(j_double_bits(dither(v_dec(v->tok[1]))), v_hex(v->tok[2]));
+            CHECK_EQ(j_double_bits(ts_dither(v_dec(v->tok[1]))), v_hex(v->tok[2]));
         }
     }
     v_end(v);
+}
+
+/* ---- strmap.txt: StringMap's texts (012-09) ---- */
+
+/* Hex bytes as a NUL-terminated string in out (max bytes with the NUL). */
+static bool v_text(const char *s, char *out, int max) {
+    int n = v_bytes(s, (uint8_t *) out, max - 1);
+    if (n < 0) {
+        return false;
+    }
+    out[n] = '\0';
+    return true;
+}
+
+TEST(vectors_strmap) {
+    static const char *const kinds[] = { "new", "put", "parse", "text", "get", NULL };
+    static char a[V_BYTES], b[V_BYTES];
+    struct vfile *v = &vf;
+    struct mem m;
+    struct err e;
+    struct sm map;
+    int maps = 0;
+    mem_init(&m);
+    sm_init(&map, &m);
+    REQUIRE(v_open(v, "strmap.txt", kinds));
+
+    while (v_next(v)) {
+        if (v_is(v, "new", 0)) {
+            sm_free(&map);
+            sm_init(&map, &m);
+            maps++;
+        } else if (v_is(v, "put", 2)) {
+            if (v_text(v->tok[1], a, V_BYTES) && v_text(v->tok[2], b, V_BYTES)) {
+                CHECK_EQ(sm_put(&map, a, b, &e), ERR_OK);
+            }
+        } else if (v_is(v, "parse", 1)) {
+            if (v_text(v->tok[1], a, V_BYTES)) {
+                CHECK_EQ(sm_parse(&map, a, strlen(a), &e), ERR_OK);
+            }
+        } else if (v_is(v, "text", 1)) {
+            char *text;
+            size_t n;
+            if (v_text(v->tok[1], a, V_BYTES) && sm_serialize(&map, &text, &n, &e) == ERR_OK) {
+                CHECK(strcmp(text, a) == 0);
+                mem_free(&m, text, n + 1, MEM_BUFFER);
+            }
+        } else if (v_is(v, "get", 2)) {
+            if (v_text(v->tok[1], a, V_BYTES)) {
+                const char *got = sm_get(&map, a);
+                if (strcmp(v->tok[2], "null") == 0) {
+                    CHECK(got == NULL);
+                } else if (v_text(v->tok[2], b, V_BYTES)) {
+                    CHECK(got != NULL && strcmp(got, b) == 0);
+                }
+            }
+        }
+    }
+    v_end(v);
+    sm_free(&map);
+    CHECK_EQ(maps, 8);
+    CHECK_MEM_ZERO(&m);
+}
+
+/* ---- keymod.txt: KeyModSet's answers (012-09) ---- */
+
+/* xorshift64*, as Vectors.xorshift (the workloads' r: values). */
+static int64_t v_xorshift(int64_t *x) {
+    *x ^= j_ushr64(*x, 12);
+    *x ^= j_shl64(*x, 25);
+    *x ^= j_ushr64(*x, 27);
+    return *x * J64(0x2545F4914F6CDD1D);
+}
+
+TEST(vectors_keymod) {
+    static const char *const kinds[] = { "keymod", "answers", NULL };
+    struct vfile *v = &vf;
+    struct mem m;
+    struct err e;
+    struct kms s;
+    int64_t x = 0, i = 0, adds = 0, lines = 0;
+    bool ready = false;
+    mem_init(&m);
+    REQUIRE(v_open(v, "keymod.txt", kinds));
+
+    while (v_next(v)) {
+        if (v_is(v, "keymod", 2)) {
+            x = v_dec(v->tok[1]);
+            adds = v_dec(v->tok[2]);
+            ready = kms_init(&s, &m, &e) == ERR_OK;
+            CHECK(ready);
+        } else if (v_is(v, "answers", 3) && ready) {
+            const int64_t n = v_dec(v->tok[1]);
+            int64_t t = 0;
+            int failed = 0;
+            for (; i < n; i++) {
+                t = 1000 + 3 * i;
+                failed += kms_add(&s, t, j_ushr64(v_xorshift(&x), 1) % 50000, &e) != ERR_OK;
+            }
+            CHECK_EQ(failed, 0);
+            CHECK_EQ(kms_first_time(&s), v_dec(v->tok[2]));
+            const char *bits = v->tok[3];
+            REQUIRE(strlen(bits) == 20);
+            for (int q = 0; q < 20; q++) {
+                int64_t qt = t - j_ushr64(v_xorshift(&x), 1) % 200000;
+                int64_t qh = j_ushr64(v_xorshift(&x), 1) % 50000;
+                CHECK(kms_modified_after(&s, qt, qh) == (bits[q] == '1'));
+            }
+            lines++;
+        }
+    }
+    v_end(v);
+    CHECK_EQ(i, adds);
+    CHECK_EQ(lines, 200);
+    if (ready) {
+        kms_free(&s);
+    }
+    CHECK_MEM_ZERO(&m);
 }
 
 const struct test vectors_tests[] = {
@@ -566,5 +690,7 @@ const struct test vectors_tests[] = {
     TEST_ENTRY(vectors_klong),
     TEST_ENTRY(vectors_keys),
     TEST_ENTRY(vectors_jsem),
+    TEST_ENTRY(vectors_strmap),
+    TEST_ENTRY(vectors_keymod),
     TEST_END
 };

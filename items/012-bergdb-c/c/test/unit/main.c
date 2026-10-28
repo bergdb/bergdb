@@ -21,6 +21,11 @@ extern const struct test kmodel_tests[];
 extern const struct test knodevec_tests[];
 extern const struct test topvec_tests[];
 extern const struct test roundtrip_tests[];
+extern const struct test clock_tests[];
+extern const struct test keymod_tests[];
+extern const struct test transseq_tests[];
+extern const struct test append_tests[];
+extern const struct test strmap_tests[];
 
 int main(int argc, char **argv) {
     const struct test *const tables[] = {
@@ -43,6 +48,11 @@ int main(int argc, char **argv) {
         knodevec_tests,
         topvec_tests,
         roundtrip_tests,
+        clock_tests,
+        keymod_tests,
+        transseq_tests,
+        append_tests,
+        strmap_tests,
         NULL
     };
     return test_main(argc, argv, "UNIT", tables);

@@ -405,3 +405,104 @@ enum err_code rs_plan_recovery(struct stream *s, struct rs_recovery *r, struct e
     r->length_after = length;
     return ERR_OK;
 }
+
+void rs_init(struct rs *r, struct stream *s) {
+    r->s = s;
+    meta_init(&r->meta);
+    r->posOfLastValidMetaBlock = -1;
+    r->lastTransSposOfLastValidMetaBlock = -1;
+}
+
+/* RecoverableStream.writeMetaBlock. */
+static enum err_code write_meta_block(struct rs *r, struct err *e) {
+    int64_t metaPos = stream_length(r->s);
+    enum err_code rc = stream_append(r->s, r->meta.block, M, e);
+    if (rc != ERR_OK) {
+        return rc;
+    }
+    r->posOfLastValidMetaBlock = metaPos;
+    r->lastTransSposOfLastValidMetaBlock = meta_last_trans(&r->meta);
+    return ERR_OK;
+}
+
+enum err_code rs_append(struct rs *r, const uint8_t *buffer, int32_t size, bool useChecks,
+        struct err *e) {
+    enum err_code rc;
+    int32_t offset = 0;
+
+    if (useChecks) {
+        if (buffer[size - 1] != RS_LAST_BYTE) {
+            return err_set(e, ERR_ARG, "IllegalArgumentException",
+                    "Last byte of transaction must be %d", RS_LAST_BYTE);
+        }
+        int32_t transactionSize = bytes_get_int_le(buffer);
+        if (transactionSize != size) {
+            return err_set(e, ERR_ARG, "IllegalArgumentException", "Bad transactionSize in "
+                    "byte buffer, was %d, expected %d", (int) transactionSize, (int) size);
+        }
+    }
+
+    int64_t aosSize = stream_length(r->s);
+    int32_t blockPos = (int32_t) (aosSize % D);
+
+    if (useChecks && blockPos > 0 && blockPos < M) {
+        /* If in the middle of writing a meta block, bad state. */
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad state, in the middle of a "
+                "meta block, %d, %lld.", (int) blockPos, (long long) aosSize);
+    }
+
+    int32_t distanceToMeta = D - blockPos;
+    if (blockPos == 0) {
+        distanceToMeta = 0;     /* Special case */
+    }
+
+    while (size >= distanceToMeta) {
+        rc = stream_append(r->s, buffer + offset, distanceToMeta, e);
+        if (rc == ERR_OK) {
+            rc = write_meta_block(r, e);
+        }
+        if (rc != ERR_OK) {
+            return rc;
+        }
+        size -= distanceToMeta;
+        offset += distanceToMeta;
+        distanceToMeta = D - M;
+    }
+
+    if (size > 0) {
+        rc = stream_append(r->s, buffer + offset, size, e);
+        if (rc != ERR_OK) {
+            return rc;
+        }
+    }
+    return ERR_OK;
+}
+
+enum err_code rs_append_record(struct rs *r, const uint8_t *buf, int32_t size, int64_t *tpos,
+        struct err *e) {
+    int64_t pos = rs_next_spos(stream_length(r->s));
+    enum err_code rc = rs_append(r, buf, size, true, e);
+    if (rc != ERR_OK) {
+        return rc;
+    }
+    meta_set_last_trans(&r->meta, pos);
+    *tpos = pos;
+    return ERR_OK;
+}
+
+enum err_code rs_use_last_valid_meta_block(struct rs *r, struct err *e) {
+    struct meta lastBlock;
+    bool found;
+    enum err_code rc = rs_read_last_valid_meta_block(r->s, &lastBlock, &found, e);
+    if (rc != ERR_OK) {
+        return rc;
+    }
+    if (!found) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "Could not find *any* valid "
+                "meta block. At least the very first meta block must be valid in a db stream.");
+    }
+    r->posOfLastValidMetaBlock = lastBlock.pos;
+    r->lastTransSposOfLastValidMetaBlock = meta_last_trans(&lastBlock);
+    meta_from_bytes(&r->meta, lastBlock.block, lastBlock.pos);
+    return ERR_OK;
+}

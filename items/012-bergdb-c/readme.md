@@ -183,7 +183,7 @@ s), and the C gate runs C's scanner under the sanitizers in its quick set
 (C BEFORE COMMIT OK, 35 s; 100 unit tests). Corrupt input is refused where
 Java refuses it; Java's parser on corrupt sizes is 005-74.
 
-2026-10-28, 17:33. 012-07 done: the index nodes in C (`obj`, `node`,
+2026-10-28, 17:31. 012-07 done: the index nodes in C (`obj`, `node`,
 `handle`, `knode`, `tnode`, `vnode`, `opdata`, `topds`, `nwrite`), ported
 from `dag` with Java's names in comments, and the memory design of
 012-01, 4.5 (a counted head for every index object and handle, the
@@ -194,3 +194,19 @@ operations, 196 super roots, 68 `findRoot`s); every node of 012-05's full
 set, 55,330,264 nodes in 5,056,194 records, parsed by 012-06's reader and
 written again gives its own bytes. C BEFORE COMMIT OK (39 s; 185 unit
 tests). The times 17:06 and 17:07 above were first written as 17:10.
+
+2026-10-28, 18:10. 012-09, part 1 done, split from 012-09 by the
+conductor so that it ran beside 012-07: what of the write path needs no
+index nodes and no Dag. `DbClock` and the clocks, `KeyModSet`, the take
+(`TransSeq`, `StartupPos`), the append path (`FileStream`'s files, names,
+sizes and open rule, the lock, the buffer, `F_FULLFSYNC`;
+`RecoverableStream`'s appends with meta blocks) and `StringMap`. Checked
+against Java: the take replayed from C's parsed records with 0 errors
+(331,193 takes in the full set, 866,930 in its crash variants); every
+record of 232 full-set directories appended again through C gives Java's
+directory byte for byte (916.7 MB; the 46 that reclaim cut are skipped,
+for 012-11); 293,331 transaction times through C's `DbClock` equal. The
+C gate has a new step, `write`. Frans, 17:50, through the Unattended
+Lead: "tonight 012 (session f1-0f) has priority on F53. The quiet block
+becomes flexible." So 012 goes on through the night, with gaps handed to
+006-10's timed steps.

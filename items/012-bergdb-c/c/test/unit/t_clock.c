@@ -1,0 +1,219 @@
+/* Unit tests of clock (bergdb 012-09, part 1): Java's @Nano tests of
+ * DbClock, ported, and the rules of 012-01, 4.4: the test clock, the
+ * system clock as SystemClock's code is (005-69), currentTime moving the
+ * next transaction's time, the range of 005-18. */
+#include "test.h"
+#include "bergdb.h"
+#include "clock.h"
+#include "klong.h"
+
+#define F INT64_C(10000)       /* DbClock's tests' factor "F" */
+
+/* DbClock.test1. */
+TEST(clock_dbclock_test1) {
+    struct bergdb_test_clock testClock = { 0 };
+    struct dbclock dbClock;
+    struct err e;
+    int64_t transactionTime = -1;
+
+    dbclock_init(&dbClock, bergdb_test_clock_time, &testClock);
+    CHECK_EQ(bergdb_test_clock_set(&testClock, 1 * F), BERGDB_OK);
+    CHECK_EQ(dbclock_transaction_begin(&dbClock, &transactionTime, &e), ERR_OK);
+    dbclock_transaction_end(&dbClock);
+
+    CHECK_EQ(transactionTime, 1 * F);
+}
+
+/* DbClock.testTime. */
+TEST(clock_dbclock_time) {
+    struct bergdb_test_clock testClock = { 0 };
+    struct dbclock dbClock;
+    struct err e;
+    int64_t transactionTime = -1;
+
+    dbclock_init(&dbClock, bergdb_test_clock_time, &testClock);
+    CHECK_EQ(bergdb_test_clock_set(&testClock, 1 * F), BERGDB_OK);
+
+    int64_t time1 = dbclock_current_time(&dbClock);
+    int64_t time2 = dbclock_current_time(&dbClock);
+    CHECK_EQ(dbclock_transaction_begin(&dbClock, &transactionTime, &e), ERR_OK);
+    int64_t time3 = dbclock_current_time(&dbClock);
+    dbclock_transaction_end(&dbClock);
+    int64_t time4 = dbclock_current_time(&dbClock);
+
+    CHECK_EQ(time1, 1 * F);
+    CHECK_EQ(time2, 1 * F);
+    CHECK_EQ(time3, 1 * F);
+    CHECK_EQ(time4, 1 * F + 1);
+    CHECK_EQ(transactionTime, 1 * F + 1);
+}
+
+/* DbClock.testClockOutOfRange (005-18), with Java's texts. */
+TEST(clock_dbclock_out_of_range) {
+    struct bergdb_test_clock testClock = { 0 };
+    struct dbclock dbClock;
+    struct err e;
+    int64_t t = -1;
+
+    dbclock_init(&dbClock, bergdb_test_clock_time, &testClock);
+    CHECK_EQ(bergdb_test_clock_set(&testClock, KL_MAX_TIME + 1), BERGDB_OK);
+    CHECK_EQ(dbclock_transaction_begin(&dbClock, &t, &e), ERR_LIMIT);
+    CHECK(strcmp(e.java, "DbException") == 0);
+    CHECK(strstr(e.text, "outside the range") != NULL);
+    CHECK_EQ(t, -1);
+    /* Refused before it began: nothing changed, no transaction runs. */
+    CHECK(!dbClock.transactionRunning);
+    CHECK_EQ(dbClock.lastTransactionTime, 0);
+
+    struct bergdb_test_clock testClock2 = { 0 };
+    struct dbclock dbClock2;
+    CHECK_EQ(bergdb_test_clock_set(&testClock2, 1000), BERGDB_OK);
+    dbclock_init(&dbClock2, bergdb_test_clock_time, &testClock2);
+    dbclock_set_last_trans_time(&dbClock2, KL_MAX_TIME);
+    CHECK_EQ(dbclock_transaction_begin(&dbClock2, &t, &e), ERR_LIMIT);
+    CHECK(strstr(e.text, "No database time is left") != NULL);
+    CHECK(!dbClock2.transactionRunning);
+
+    /* The largest time is given; a negative clock time is refused. */
+    struct bergdb_test_clock c3 = { 0 };
+    struct dbclock d3;
+    dbclock_init(&d3, bergdb_test_clock_time, &c3);
+    CHECK_EQ(bergdb_test_clock_set(&c3, KL_MAX_TIME), BERGDB_OK);
+    CHECK_EQ(dbclock_transaction_begin(&d3, &t, &e), ERR_OK);
+    CHECK_EQ(t, KL_MAX_TIME);
+    dbclock_transaction_end(&d3);
+    c3.time = -5;       /* a caller's clock may give anything */
+    CHECK_EQ(dbclock_transaction_begin(&d3, &t, &e), ERR_LIMIT);
+    CHECK(strstr(e.text, "The clock's time, -5, is outside the range of database times, 0 to "
+            "72057594037927935") != NULL);
+}
+
+/* DbClock.testLookupTime. */
+TEST(clock_dbclock_lookup_time) {
+    struct bergdb_test_clock testClock = { 0 };
+    struct dbclock dbClock;
+    struct err e;
+    int64_t t;
+
+    dbclock_init(&dbClock, bergdb_test_clock_time, &testClock);
+    CHECK_EQ(bergdb_test_clock_set(&testClock, 1 * F), BERGDB_OK);
+    CHECK_EQ(dbclock_transaction_begin(&dbClock, &t, &e), ERR_OK);
+    dbclock_transaction_end(&dbClock);
+    CHECK_EQ(bergdb_test_clock_set(&testClock, 2 * F), BERGDB_OK);
+
+    CHECK_EQ(dbclock_lookup_time(&dbClock, 100), 100);
+    CHECK_EQ(dbclock_lookup_time(&dbClock, INT64_MAX), 1 * F);
+    CHECK_EQ(dbclock_lookup_time(&dbClock, 1 * F), 1 * F);
+
+    CHECK_EQ(dbclock_transaction_begin(&dbClock, &t, &e), ERR_OK);
+
+    CHECK_EQ(dbclock_lookup_time(&dbClock, 100), 100);
+    CHECK_EQ(dbclock_lookup_time(&dbClock, INT64_MAX), 1 * F);
+    CHECK_EQ(dbclock_lookup_time(&dbClock, 1 * F), 1 * F);
+
+    dbclock_transaction_end(&dbClock);
+
+    CHECK_EQ(dbclock_lookup_time(&dbClock, 100), 100);
+    CHECK_EQ(dbclock_lookup_time(&dbClock, INT64_MAX), 2 * F);
+    CHECK_EQ(dbclock_lookup_time(&dbClock, 1 * F), 1 * F);
+}
+
+/* 012-01, 4.4: a transaction's time is later than the last transaction's
+ * and the last currentTime's, so a call of currentTime moves the next
+ * transaction's time when the clock has not moved; the creation reads the
+ * clock the same way with both at 0, so its time is at least 1. */
+TEST(clock_dbclock_rules) {
+    struct bergdb_test_clock c = { 0 };
+    struct dbclock d;
+    struct err e;
+    int64_t t;
+
+    dbclock_init(&d, bergdb_test_clock_time, &c);
+    CHECK_EQ(dbclock_transaction_begin(&d, &t, &e), ERR_OK);       /* the clock at 0 */
+    CHECK_EQ(t, 1);
+    dbclock_transaction_end(&d);
+
+    CHECK_EQ(bergdb_test_clock_set(&c, 500), BERGDB_OK);
+    CHECK_EQ(dbclock_transaction_begin(&d, &t, &e), ERR_OK);
+    CHECK_EQ(t, 500);
+    dbclock_transaction_end(&d);
+    /* The clock has not moved: the last transaction's time + 1. */
+    CHECK_EQ(dbclock_transaction_begin(&d, &t, &e), ERR_OK);
+    CHECK_EQ(t, 501);
+    dbclock_transaction_end(&d);
+
+    /* currentTime: the clock's time, but at least the last transaction's. */
+    CHECK_EQ(dbclock_current_time(&d), 501);
+    CHECK_EQ(bergdb_test_clock_set(&c, 600), BERGDB_OK);
+    CHECK_EQ(dbclock_current_time(&d), 600);
+    /* ... and the next transaction is later than it: 601, not 600. */
+    CHECK_EQ(dbclock_transaction_begin(&d, &t, &e), ERR_OK);
+    CHECK_EQ(t, 601);
+    dbclock_transaction_end(&d);
+
+    /* A start sets the last transaction's time only (C3, 005-71): the
+     * last read time stays as it is. */
+    struct dbclock d2;
+    dbclock_init(&d2, bergdb_test_clock_time, &c);
+    dbclock_set_last_trans_time(&d2, 601);
+    CHECK_EQ(d2.lastReadTime, 0);
+    CHECK_EQ(dbclock_transaction_begin(&d2, &t, &e), ERR_OK);
+    CHECK_EQ(t, 602);
+    dbclock_transaction_end(&d2);
+}
+
+/* CoreTestClock: forward only, 0 at first, no range of its own (DbClock
+ * refuses a time out of range). */
+TEST(clock_test_clock) {
+    struct bergdb_test_clock c = { 0 };
+    CHECK_EQ(bergdb_test_clock_time(&c), 0);
+    CHECK_EQ(bergdb_test_clock_set(&c, 0), BERGDB_ARG);
+    CHECK_EQ(bergdb_test_clock_set(&c, -1), BERGDB_ARG);
+    CHECK_EQ(bergdb_test_clock_set(&c, 7), BERGDB_OK);
+    CHECK_EQ(bergdb_test_clock_time(&c), 7);
+    CHECK_EQ(bergdb_test_clock_set(&c, 7), BERGDB_ARG);
+    CHECK_EQ(bergdb_test_clock_time(&c), 7);
+    CHECK_EQ(bergdb_test_clock_set(&c, INT64_MAX), BERGDB_OK);
+    CHECK_EQ(bergdb_test_clock_set(NULL, 1), BERGDB_ARG);
+}
+
+/* SystemClock as its code is (005-69): milliseconds times 10,000, and its
+ * last time is set only when the system's time is at or below it. */
+TEST(clock_system_clock) {
+    struct clk_system s = { 0 };
+    int64_t a = clk_system_time(&s);
+    int64_t b = clk_system_time(&s);
+    CHECK(a % 10000 == 0);
+    CHECK(b >= a);
+    CHECK(a > INT64_C(1700000000000) * 10000);      /* after 2023 */
+    CHECK(a < KL_MAX_TIME);
+    CHECK_EQ(s.lastTime, 0);                        /* never set from 0 */
+    /* A last time at or above the system's: it counts up from there. */
+    s.lastTime = KL_MAX_TIME - 10;
+    CHECK_EQ(clk_system_time(&s), KL_MAX_TIME - 9);
+    CHECK_EQ(clk_system_time(&s), KL_MAX_TIME - 8);
+
+    /* The default of a DbClock: transaction times from the system's, and
+     * strictly increasing in any case. */
+    struct dbclock d;
+    struct err e;
+    int64_t t1, t2;
+    dbclock_init(&d, NULL, NULL);
+    CHECK_EQ(dbclock_transaction_begin(&d, &t1, &e), ERR_OK);
+    dbclock_transaction_end(&d);
+    CHECK_EQ(dbclock_transaction_begin(&d, &t2, &e), ERR_OK);
+    dbclock_transaction_end(&d);
+    CHECK(t1 >= a);
+    CHECK(t2 > t1);
+}
+
+const struct test clock_tests[] = {
+    TEST_ENTRY(clock_dbclock_test1),
+    TEST_ENTRY(clock_dbclock_time),
+    TEST_ENTRY(clock_dbclock_out_of_range),
+    TEST_ENTRY(clock_dbclock_lookup_time),
+    TEST_ENTRY(clock_dbclock_rules),
+    TEST_ENTRY(clock_test_clock),
+    TEST_ENTRY(clock_system_clock),
+    TEST_END
+};

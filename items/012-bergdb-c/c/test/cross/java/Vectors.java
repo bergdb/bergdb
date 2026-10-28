@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Random;
 
 import bergdb.common.Bytes;
+import bergdb.common.StringMap;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.GetData;
@@ -35,8 +36,9 @@ import bergdb.stream.MemoryStream;
  * division, comparisons, and the take's double expressions in TransSeq), and (012-06)
  * records.txt (a small stream that Db writes, its records as StoredTrans.parse parses them,
  * and records it refuses), and (012-07) knode.txt (KeyNode's operations as the Dag makes them,
- * and the node's stored bytes after each) and top.txt (TopDs's chains of top nodes), into a
- * directory. C's unit tests read them
+ * and the node's stored bytes after each) and top.txt (TopDs's chains of top nodes), and
+ * (012-09) strmap.txt (StringMap's texts, in HashMap's order) and keymod.txt (KeyModSet's
+ * answers), into a directory. C's unit tests read them
  * (c/test/unit/t_vectors.c); 012-05's cross tests run this again and compare with the
  * committed files, so that a change in Java shows.
  *
@@ -66,6 +68,8 @@ public class Vectors {
         records(open(dir, "records.txt"));
         knode(open(dir, "knode.txt"));
         top(open(dir, "top.txt"));
+        strmap(open(dir, "strmap.txt"));
+        keymod(open(dir, "keymod.txt"));
         System.out.println("VECTORS OK: " + dir);
     }
 
@@ -1003,6 +1007,120 @@ public class Vectors {
         byte[] a = new byte[n];
         java.util.Arrays.fill(a, b);
         return a;
+    }
+
+    // ---- KeyModSet (bergdb 012-09) ----
+
+    /** xorshift64*, as the workloads' r: values (012-05, 6.1). */
+    private static long xorshift(long[] x) {
+        x[0] ^= x[0] >>> 12;
+        x[0] ^= x[0] << 25;
+        x[0] ^= x[0] >>> 27;
+        return x[0] * 0x2545F4914F6CDD1DL;
+    }
+
+    /**
+     * KeyModSet's answers to a sequence that both sides make: 200,000 adds of hashes below
+     * 50,000 (so keys repeat) at times 1000 + 3 i, which turn the default set's four bins of
+     * 32,000 over six times; after every 1,000 adds, getFirstTime() and 20 questions
+     * modifiedAfter(time, hash), a time up to 200,000 back and a hash below 50,000.
+     */
+    private static void keymod(PrintWriter w) {
+        w.print("# keymod SEED ADDS: the sequence, xorshift64* from SEED (as r: values)\n"
+                + "# answers N FIRST BITS: after N adds, getFirstTime() and the 20 answers,\n"
+                + "# 1 for modified\n");
+        long seed = 0x0123456789abcdefL;
+        int adds = 200000;
+        w.print("keymod " + seed + " " + adds + "\n");
+        long[] x = {seed};
+        KeyModSet s = new KeyModSet();
+        for (int i = 0; i < adds; i++) {
+            long t = 1000 + 3L * i;
+            s.add(t, (xorshift(x) >>> 1) % 50000);
+            if ((i + 1) % 1000 == 0) {
+                StringBuilder b = new StringBuilder();
+                for (int q = 0; q < 20; q++) {
+                    long qt = t - (xorshift(x) >>> 1) % 200000;
+                    long qh = (xorshift(x) >>> 1) % 50000;
+                    b.append(s.modifiedAfter(qt, qh) ? '1' : '0');
+                }
+                w.print("answers " + (i + 1) + " " + s.getFirstTime() + " " + b + "\n");
+            }
+        }
+        w.close();
+    }
+
+    // ---- StringMap (bergdb 012-09) ----
+
+    /**
+     * StringMap's texts: maps made by puts in order, or by parse, and serialize()'s text, in
+     * the order of its HashMap: reclaim's row (Reclaim.IterationInfo.serialize's puts), keys
+     * that make the table grow to 32 and 64, keys of one bucket of 16 (the ninth makes
+     * HashMap.treeifyBin double the small table), keys beyond ASCII, a parsed text.
+     */
+    private static void strmap(PrintWriter w) {
+        w.print("# new: a new StringMap. put KEY VALUE: put(key, value). parse TEXT: parse(text).\n"
+                + "# text TEXT: serialize(). get KEY VALUE: get(key), \"null\" for none.\n"
+                + "# Each text, key and value as its UTF-8 bytes in hex, \"-\" for none.\n");
+        String[][] row = {
+            {"pStart", "5574880"}, {"pCut", "5041560"}, {"tStart", "10000289400000"},
+            {"tEnd", "0"}, {"kvCount", "466"}, {"lastKey", "26177508076421160 7 -3"},
+            {"done", "false"}, {"cut", "true"}, {"rewritten", "102488"}, {"pEnd", "-1"},
+            {"pSafe", "-1"}};
+        strmapPuts(w, row);
+        String[][] row2 = {
+            {"pStart", "0"}, {"pCut", "0"}, {"tStart", "" + Long.MIN_VALUE / 2},
+            {"tEnd", "0"}, {"kvCount", "0"}, {"lastKey", "null"}, {"done", "true"},
+            {"cut", "false"}, {"rewritten", "0"}, {"pEnd", "" + Long.MAX_VALUE},
+            {"pSafe", "" + Long.MIN_VALUE}};
+        strmapPuts(w, row2);
+        String[][] many = new String[40][];
+        for (int i = 0; i < many.length; i++) {
+            many[i] = new String[] {"k" + i, "" + i};
+        }
+        strmapPuts(w, many);
+        // Twelve keys of bucket 5 of a table of 16.
+        List<String[]> same = new ArrayList<String[]>();
+        for (int i = 0; same.size() < 12; i++) {
+            String k = "c" + i;
+            int h = k.hashCode();
+            h ^= h >>> 16;
+            if ((h & 15) == 5) {
+                same.add(new String[] {k, "v" + i});
+            }
+        }
+        strmapPuts(w, same.toArray(new String[0][]));
+        String[][] text = {
+            {"\u00fc", "1"}, {"\ud83d\ude00", "2"}, {"\u65e5\u672c", "3"}, {"a=b", "x"},
+            {"pStart", "4"}, {"k", ""}};
+        strmapPuts(w, text);
+        String[] parses = {
+            "k1=v1\nk2=v2\n",
+            "  a = 1 \n=x\nnone\n\tb==2=\nc=\n\nd=last",
+            "pSafe=-1\npEnd=7\npSafe=8\n"};
+        for (String t : parses) {
+            w.print("new\n");
+            w.print("parse " + hex(t.getBytes(StandardCharsets.UTF_8)) + "\n");
+            StringMap m = new StringMap(t);
+            w.print("text " + hex(m.serialize().getBytes(StandardCharsets.UTF_8)) + "\n");
+            for (String k : new String[] {"a ", "b", "c", "d", "k2", "pSafe", "x"}) {
+                String v = m.get(k);
+                w.print("get " + hex(k.getBytes(StandardCharsets.UTF_8)) + " "
+                        + (v == null ? "null" : hex(v.getBytes(StandardCharsets.UTF_8))) + "\n");
+            }
+        }
+        w.close();
+    }
+
+    private static void strmapPuts(PrintWriter w, String[][] pairs) {
+        StringMap m = new StringMap();
+        w.print("new\n");
+        for (String[] p : pairs) {
+            m.put(p[0], p[1]);
+            w.print("put " + hex(p[0].getBytes(StandardCharsets.UTF_8)) + " "
+                    + hex(p[1].getBytes(StandardCharsets.UTF_8)) + "\n");
+        }
+        w.print("text " + hex(m.serialize().getBytes(StandardCharsets.UTF_8)) + "\n");
     }
 
     private static String hex(byte[] b) {

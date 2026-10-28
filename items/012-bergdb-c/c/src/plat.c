@@ -1,5 +1,6 @@
-/* plat: the platform, POSIX; see plat.h. */
+/* plat: the platform, POSIX and macOS's F_FULLFSYNC; see plat.h. */
 #define _POSIX_C_SOURCE 200809L
+#define _DARWIN_C_SOURCE        /* F_FULLFSYNC */
 #include "plat.h"
 #include <dirent.h>
 #include <errno.h>
@@ -7,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 enum err_code plat_list_dir(const char *dir, struct mem *m, struct plat_entry **out,
@@ -132,4 +134,193 @@ bool plat_is_dir(const char *path) {
 int64_t plat_file_length(const char *path) {
     struct stat st;
     return stat(path, &st) == 0 ? (int64_t) st.st_size : 0;
+}
+
+int64_t plat_time_millis(void) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (int64_t) tv.tv_sec * 1000 + (int64_t) tv.tv_usec / 1000;
+}
+
+/* The parent of 'path' into out: "." for a name without a slash, "/" for
+ * "/x"; false if path has none ("/" itself). */
+static bool parent_of(const char *path, char *out, size_t size) {
+    size_t n = strlen(path);
+    while (n > 1 && path[n - 1] == '/') {
+        n--;
+    }
+    while (n > 0 && path[n - 1] != '/') {
+        n--;
+    }
+    if (n == 0) {
+        snprintf(out, size, ".");
+        return strcmp(path, ".") != 0;
+    }
+    while (n > 1 && path[n - 1] == '/') {
+        n--;
+    }
+    if (n >= size) {
+        return false;
+    }
+    memcpy(out, path, n);
+    out[n] = '\0';
+    return strcmp(out, path) != 0;
+}
+
+enum err_code plat_mkdirs(const char *dir, struct err *e) {
+    char missing[16][1024];
+    char path[1024];
+    int nmissing = 0;
+    struct stat st;
+
+    if (strlen(dir) >= sizeof path) {
+        return err_set(e, ERR_IO, "IOException", "Directory path too long: %s", dir);
+    }
+    if (stat(dir, &st) == 0) {
+        char parent[1024];
+        if (!S_ISDIR(st.st_mode)) {
+            return err_set(e, ERR_IO, "IOException", "Not a directory: %s", dir);
+        }
+        if (parent_of(dir, parent, sizeof parent)) {
+            return plat_force_dir(parent, e);
+        }
+        return ERR_OK;
+    }
+    /* mkdirs(): the missing directories, deepest first. */
+    snprintf(path, sizeof path, "%s", dir);
+    while (stat(path, &st) != 0) {
+        char parent[1024];
+        if (nmissing == 16) {
+            return err_set(e, ERR_IO, "IOException", "Directory %s could not be created: too "
+                    "many missing ancestors.", dir);
+        }
+        snprintf(missing[nmissing++], sizeof missing[0], "%s", path);
+        if (!parent_of(path, parent, sizeof parent)) {
+            break;
+        }
+        snprintf(path, sizeof path, "%s", parent);
+    }
+    for (int i = nmissing - 1; i >= 0; i--) {
+        if (mkdir(missing[i], 0777) != 0 && errno != EEXIST) {
+            return err_set(e, ERR_IO, "IOException", "Directory %s could not be created: %s",
+                    dir, strerror(errno));
+        }
+    }
+    for (int i = 0; i < nmissing; i++) {
+        char parent[1024];
+        enum err_code rc = plat_force_dir(missing[i], e);
+        if (rc != ERR_OK) {
+            return rc;
+        }
+        if (parent_of(missing[i], parent, sizeof parent)) {
+            rc = plat_force_dir(parent, e);
+            if (rc != ERR_OK) {
+                return rc;
+            }
+        }
+    }
+    return ERR_OK;
+}
+
+enum err_code plat_open_rw(const char *path, int *fd, struct err *e) {
+    *fd = open(path, O_RDWR | O_CREAT, 0666);
+    if (*fd < 0) {
+        return err_set(e, ERR_IO, "IOException", "Cannot open %s for writing: %s", path,
+                strerror(errno));
+    }
+    return ERR_OK;
+}
+
+enum err_code plat_pwrite(int fd, int64_t off, const uint8_t *buf, int64_t n, struct err *e) {
+    while (n > 0) {
+        size_t chunk = n > (int64_t) 1 << 30 ? (size_t) 1 << 30 : (size_t) n;
+        ssize_t r = pwrite(fd, buf, chunk, (off_t) off);
+        if (r < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            return err_set(e, ERR_IO, "IOException", "Write of %lld bytes at %lld failed: %s",
+                    (long long) n, (long long) off, strerror(errno));
+        }
+        buf += r;
+        off += r;
+        n -= r;
+    }
+    return ERR_OK;
+}
+
+enum err_code plat_fd_length(int fd, int64_t *length, struct err *e) {
+    struct stat st;
+    if (fstat(fd, &st) != 0) {
+        return err_set(e, ERR_IO, "IOException", "Cannot stat an open file: %s",
+                strerror(errno));
+    }
+    *length = (int64_t) st.st_size;
+    return ERR_OK;
+}
+
+enum err_code plat_force(int fd, struct err *e) {
+#ifdef F_FULLFSYNC
+    if (fcntl(fd, F_FULLFSYNC) == 0) {
+        return ERR_OK;
+    }
+    /* Not every file system has it; then as Java on Linux, fsync. */
+#endif
+    if (fsync(fd) != 0) {
+        return err_set(e, ERR_IO, "IOException", "Force failed: %s", strerror(errno));
+    }
+    return ERR_OK;
+}
+
+enum err_code plat_force_dir(const char *dir, struct err *e) {
+    int fd = open(dir, O_RDONLY);
+    if (fd < 0) {
+        return err_set(e, ERR_IO, "IOException", "Cannot open directory %s: %s", dir,
+                strerror(errno));
+    }
+    enum err_code rc = plat_force(fd, e);
+    close(fd);
+    return rc;
+}
+
+enum err_code plat_lock(const char *dir, const char *name, const char *text, int64_t pos,
+        int *fd, struct err *e) {
+    char path[4096];
+    struct flock fl;
+    int f;
+
+    snprintf(path, sizeof path, "%s/%s", dir, name);
+    /* createNewFile(), then the text. */
+    f = open(path, O_WRONLY | O_CREAT | O_EXCL, 0666);
+    if (f >= 0) {
+        enum err_code rc = plat_pwrite(f, 0, (const uint8_t *) text, (int64_t) strlen(text), e);
+        close(f);
+        if (rc != ERR_OK) {
+            return rc;
+        }
+    } else if (errno != EEXIST) {
+        return err_set(e, ERR_IO, "IOException", "Cannot create %s: %s", path,
+                strerror(errno));
+    }
+    f = open(path, O_RDWR);
+    if (f < 0) {
+        return err_set(e, ERR_IO, "IOException", "Could not lock %s: %s", path,
+                strerror(errno));
+    }
+    memset(&fl, 0, sizeof fl);
+    fl.l_type = F_WRLCK;
+    fl.l_whence = SEEK_SET;
+    fl.l_start = (off_t) pos;
+    fl.l_len = 1;
+    if (fcntl(f, F_SETLK, &fl) != 0) {
+        int err = errno;
+        close(f);
+        if (err == EACCES || err == EAGAIN) {
+            return err_set(e, ERR_IN_USE, "DirectoryInUseException", "Directory %s is in use by"
+                    " another BergDB database (%s is locked by another process).", dir, name);
+        }
+        return err_set(e, ERR_IO, "IOException", "Could not lock %s: %s", path, strerror(err));
+    }
+    *fd = f;
+    return ERR_OK;
 }
