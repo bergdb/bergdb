@@ -1,0 +1,7 @@
+#!/bin/sh
+# Java's bergdb.cross.Run as a side-B tool of cross.sh, one JVM a job (bergdb 012-05,
+# section 6.5): "cross.sh quick C=test/cross/java-tools" checks the plumbing
+# of C= before C has its tools. Needs build/java/classes (java-build.sh).
+CLASSES=$(cd "$(dirname "$0")/../../.." && pwd)/build/java/classes
+JAVA=java; [ -n "${JAVA_HOME:-}" ] && JAVA=$JAVA_HOME/bin/java
+exec "$JAVA" -ea -Xmx1g -cp "$CLASSES" bergdb.cross.Run "$@"

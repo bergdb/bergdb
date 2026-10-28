@@ -128,3 +128,16 @@ positions, the allocator) with 81 unit tests, Java's own tests of those
 classes ported and 957 of Java's vectors agreeing. From 13:55 the agents
 run at Frans's higher effort: at least xhigh, max for the hard tasks
 (012-02's document is at max).
+
+2026-10-28, 15:21. 012-05 done, with 012-02's scanner: Java's side of the
+cross harness in `c/test/cross/` (the workload format, `Run`, `Dump`,
+`Gen`, `Export` of `StreamDigest`'s 36 configurations and modes and of
+`CoreSame`, `cross.sh` with its quick, full and scale sets and the `C=DIR`
+interface for C's tools) and `StreamScan`, Java's scanner ("streamscan
+1"). Java against Java in two JVMs, in the main tree: `cross.sh full`
+passed (278 workloads, 1,262 crash cuts, 6 runs in turns, 0 differences, a
+planted difference found; 788 s), and the C gate runs the quick set (C
+BEFORE COMMIT OK, 23 s). No Java finding: every pair of runs gave the same
+bytes. 012-02's document is under way (sections 1 to 13 drafted). The
+5-hour usage window reached 86% at 15:01: the agents paused until its
+reset at 15:50.
