@@ -11,7 +11,7 @@ from the first available time f on. The touch is `Changes.touch`, which step 3
 marks (`gotDirty3`); f is `Record.fa` (`firstAvail`). Here: what a cut leaves
 of the stream, when a cut is safe, and runs that restart from cut streams.
 -/
-import SIS.Evict
+import SIS.Startup
 
 namespace SIS
 
@@ -19,7 +19,7 @@ variable {V T : Type} [DecidableEq V]
 
 /-- The stub of version v, what a cut leaves of it (plan, 8.7): its node,
 record number, level and kind, without its history and references. Java's
-slots keep the positions of versions whose bytes a cut removed. -/
+pointers keep the positions of versions whose bytes a cut removed. -/
 def Version.stub (v : Version V) : Version V := { v with hist := [], refs := [] }
 
 /-- Record R when a cut removed it: the stubs of its versions, no transaction
@@ -37,8 +37,8 @@ def cutStream (c : Nat) (S : Stream V T) : Stream V T :=
 structure P: the latest version of every node reachable at t, and every version
 that a pointer of one of them to a live child at t leads to, with Rule R from
 the startup pos of S (`follow`), and so on down (bergdb item 001, WP R7).
-Startup's reads (`readFrom`) and the physical layer's loads (`Mem.follow4`)
-follow such pointers. -/
+Startup's reads (`readFrom`) and the physical layer's loads (`HMem.load`,
+Handle.lean) follow such pointers. -/
 inductive ReadsAt (sp : Spec V T) (S : Stream V T) (P : Struct V) (t : Time) :
     Version V → Prop
   | latest (x : NodeId) (v : Version V) : reachable sp P t x = true → S.lv x = some v →
@@ -59,7 +59,7 @@ pointer names (WP R4 found by running that `ReadsAt` alone does not cover them:
 `cutReadWitness` in SIS/ReclaimExample.lean). But not through a version that
 Rule A put back (the node is in D with that version's record as its got-dirty
 index, (x, r) ∈ D): the running memory has held that node's canonical object
-since it wrote the version (D is pinned), and reads through its slots, which
+since it wrote the version (D is pinned), and reads through its pointers, which
 name the latest versions; no snapshot of the version exists. (WP R6 found by
 running that without this exception Java's scheme does not give part 2 of
 `CutOK`: `schemeWitness` in SIS/ReclaimExample.lean.) -/
@@ -94,8 +94,8 @@ With f = fa(k), the first available time of the last record:
    reference below c of that version names the latest version of its node, so
    a node not in D (Java's pSafe wait: a parent written before its child and
    kept in D by Rule A must be written again). After a cut, Java cannot read
-   the node id of a slot's target below the cut (M33), so it could neither link
-   such a slot to the target's object in D nor apply Rule R to it; and the
+   the node id of a pointer's target below the cut (M33), so it could neither link
+   such a pointer to the target's object in D nor apply Rule R to it; and the
    startup reads a node of D that is no longer reachable only through such
    references (M41);
 4. top(k) names a record at c or later (implied by 2; M41). -/
@@ -167,20 +167,5 @@ def runRestartsCut (sp : Spec V T) (al : Algo V T) (ts : List (T × Option Nat))
 /-- The largest cut of a list of restart marks, 0 if there is none. -/
 def cutMax (cs : List (Option Nat)) : Nat :=
   cs.foldl (fun m c => max m (c.getD 0)) 0
-
-/-- A run with eviction, restarts and cuts: as `runEvict`, but a transaction
-marked some c is followed by a restart from the stream cut at c: the logical
-startup, the Level 4 startup for the memory, and the cut stream for Rule R. A
-transaction marked none is followed by its cache operations. -/
-def runEvictCut (sp : Spec V T) (al : Algo V T) (ts : List (T × Option Nat × List CacheOp)) :
-    DB V T × Mem V × Stream V T :=
-  ts.foldl (fun (acc : DB V T × Mem V × Stream V T) p =>
-    let r := evictTrans sp al acc.2.2 acc.1 acc.2.1 p.1
-    match p.2.1 with
-    | some c =>
-      let S := cutStream c r.1.S
-      (startup sp S, evictStartup sp S, S)
-    | none => (r.1, p.2.2.foldl (Mem.cacheOp sp acc.2.2 r.1.S r.1.D) r.2, acc.2.2))
-    (init sp, evictStartup sp (init sp).S, (init sp).S)
 
 end SIS

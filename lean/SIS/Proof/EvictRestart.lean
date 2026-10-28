@@ -462,35 +462,6 @@ section Congr
 variable {sp : Spec V T} {P P' : Struct V} (hP : SameNodes P P')
 include hP
 
-theorem reachOnPath4_congr (S0 S : Stream V T) (j : Time) (path : List NodeId) :
-    Mem.reachOnPath4 sp S0 S P j path = Mem.reachOnPath4 sp S0 S P' j path := by
-  have hP' : ∀ x, P.get? x = P'.get? x := hP
-  funext m x
-  unfold Mem.reachOnPath4
-  simp only [hP']
-
-theorem srcOK4_congr (j : Time) (y : NodeId) : srcOK4 sp P j y = srcOK4 sp P' j y := by
-  have hP' : ∀ x, P.get? x = P'.get? x := hP
-  funext p
-  unfold srcOK4
-  simp only [hP.reachable, hP']
-
-theorem newSlot4_congr (j : Time) (m : Mem V) (o : Obj V) (y : NodeId) :
-    m.newSlot4 sp P j o y = m.newSlot4 sp P' j o y := by
-  unfold Mem.newSlot4
-  rw [srcOK4_congr hP]
-
-theorem applyChange4_congr (j : Time) (c : Changes V) (m : Mem V) :
-    m.applyChange4 sp P j c = m.applyChange4 sp P' j c := by
-  unfold Mem.applyChange4
-  simp only [newSlot4_congr hP]
-
-theorem preWrite_congr (S0 : Stream V T) (D : Dirty) (S : Stream V T) (c : Changes V) (m1 : Mem V) :
-    preWrite sp S0 ⟨P, D, S⟩ c m1 = preWrite sp S0 ⟨P', D, S⟩ c m1 := by
-  have hP' : ∀ x, P.get? x = P'.get? x := hP
-  unfold preWrite
-  simp only [pathOf_congr hP, hP', reachOnPath4_congr hP, applyChange4_congr hP]
-
 theorem D1Of_congr (al : Algo V T) (D : Dirty) (S : Stream V T) (c : Changes V) (vs0 : List (Version V)) :
     D1Of sp al ⟨P, D, S⟩ c vs0 = D1Of sp al ⟨P', D, S⟩ c vs0 := by
   have hPP := hP.apply S.length c
@@ -515,112 +486,11 @@ theorem stepOf_congr (al : Algo V T) (hst : AlgOK sp al) (D : Dirty) (S : Stream
 
 end Congr
 
-/-- A transaction of the physical writer with eviction from states with the
-same stream, D and nodes: the same record and D, and the same memory. -/
-theorem evictTrans_congr (sp : Spec V T) (al : Algo V T) (hst : AlgOK sp al) (S0 : Stream V T)
-    {db1 db2 : DB V T} (h : Rel db1 db2) (m : Mem V) (tr : T) :
-    Rel (evictTrans sp al S0 db1 m tr).1 (evictTrans sp al S0 db2 m tr).1 ∧
-      (evictTrans sp al S0 db1 m tr).2 = (evictTrans sp al S0 db2 m tr).2 := by
-  obtain ⟨hS, hD, hP⟩ := h
-  obtain ⟨P1, D1, S1⟩ := db1
-  obtain ⟨P2, D2, S2⟩ := db2
-  simp only at hS hD hP
-  subst hS hD
-  rw [evictTrans_eq, evictTrans_eq, evictAfter_eq, evictAfter_eq]
-  simp only [preWrite_congr hP, D1Of_congr hP, takenOf_congr hP]
-  exact ⟨stepOf_congr hP al hst _ _ _ _ _ _, trivial⟩
-
 /-! ## Runs with restarts -/
 
 section Run
 
 variable {sp : Spec V T} {al : Algo V T}
-
-/-- What holds after the first j transactions of a run with eviction and
-restarts, with the last restart (or the start) after k1 transactions: the
-stream of the last startup is the run's after k1; ⟨P, D, S⟩ is the run's after
-j (the same stream and D, the same nodes); the memory has the invariant at j
-for the startup from that stream, and the invariant for reads at earlier
-times. -/
-def EvictInvR (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List CacheOp)) (j : Nat)
-    (r : DB V T × Mem V × Stream V T) : Prop :=
-  ∃ k1, k1 ≤ j ∧ r.2.2 = (st sp al (ts.map (·.1)) k1).S ∧ Rel r.1 (st sp al (ts.map (·.1)) j) ∧
-    EInv sp (st sp al (ts.map (·.1)) j) (st sp al (ts.map (·.1)) k1).S j r.2.1 ∧
-    HInv sp (st sp al (ts.map (·.1)) j) (st sp al (ts.map (·.1)) k1).S j r.2.1
-
-/-- One transaction of a run with eviction and restarts, and its cache
-operations or its restart, keeps `EvictInvR`. -/
-theorem evictInvR_step {ts : List (T × Bool × List CacheOp)} (hok : RunOK sp al (ts.map (·.1)))
-    (hph : PhysRunOK sp al (ts.map (·.1))) (hev : EvictRunOK sp al (ts.map (·.1)))
-    (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) {j : Nat} (hjt : j < ts.length)
-    {acc : DB V T × Mem V × Stream V T} (hI : EvictInvR sp al ts j acc) :
-    EvictInvR sp al ts (j + 1)
-      (if ts[j].2.1 then
-        (startup sp (evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).1.S,
-          evictStartup sp (evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).1.S,
-          (evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).1.S)
-      else
-        ((evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).1,
-          ts[j].2.2.foldl (Mem.cacheOp sp acc.2.2 (evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).1.S
-            (evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).1.D) (evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).2,
-          acc.2.2)) := by
-  obtain ⟨k1, hk1, hS0, hrel, hm, hh⟩ := hI
-  have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
-  have hjm : j < (ts.map (·.1)).length := by simp; omega
-  have htr : (ts.map (·.1))[j] = ts[j].1 := by simp
-  obtain ⟨hrel1, hmem1⟩ := evictTrans_congr sp al hst acc.2.2 hrel acc.2.1 ts[j].1
-  have hrun := EInv.run_step hok hph hev hj hmk hjm hm ts[j].2.2
-  have hrunH := HInv.run_step hok hph hev hj hmk hjm hm hh ts[j].2.2
-  rw [htr, ← hS0] at hrun hrunH
-  obtain ⟨f1, f2⟩ := hrun
-  have hrel' : Rel (evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).1 (st sp al (ts.map (·.1)) (j + 1)) := by
-    rw [← f1]; exact hrel1
-  unfold EvictInvR
-  split
-  · -- A restart after j + 1: the logical startup and the Level 4 startup from the stream.
-    refine ⟨j + 1, Nat.le_refl _, hrel'.1, ?_, ?_, ?_⟩
-    · show Rel (startup sp (evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).1.S) _
-      rw [hrel'.1]
-      have hT1 := T1_strong sp al (ts.map (·.1)) hok hst (k := j + 1) (by simp; omega)
-      exact ⟨rfl, hT1.2, hT1.1⟩
-    · show EInv sp _ _ _ (evictStartup sp (evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).1.S)
-      rw [hrel'.1]
-      exact (einv_hinv_startup hok hph hj hmk hev (by simp; omega)).1
-    · show HInv sp _ _ _ (evictStartup sp (evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).1.S)
-      rw [hrel'.1]
-      exact (einv_hinv_startup hok hph hj hmk hev (by simp; omega)).2
-  · -- No restart: the same startup stream; the memory is the one from the run's state.
-    refine ⟨k1, by omega, hS0, hrel', ?_, ?_⟩
-    · show EInv sp _ _ _ (ts[j].2.2.foldl (Mem.cacheOp sp acc.2.2 (evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).1.S
-        (evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).1.D) (evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).2)
-      rw [hrel1.1, hrel1.2.1, hmem1, ← hS0]
-      exact f2
-    · show HInv sp _ _ _ (ts[j].2.2.foldl (Mem.cacheOp sp acc.2.2 (evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).1.S
-        (evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).1.D) (evictTrans sp al acc.2.2 acc.1 acc.2.1 ts[j].1).2)
-      rw [hrel1.1, hrel1.2.1, hmem1, ← hS0]
-      exact hrunH
-
-/-- `EvictInvR` holds after every prefix of a run with eviction and restarts. -/
-theorem evictInvR_all {ts : List (T × Bool × List CacheOp)} (hok : RunOK sp al (ts.map (·.1)))
-    (hph : PhysRunOK sp al (ts.map (·.1))) (hev : EvictRunOK sp al (ts.map (·.1)))
-    (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) :
-    ∀ j ≤ ts.length, EvictInvR sp al ts j (runEvict sp al (ts.take j)) := by
-  intro j
-  induction j with
-  | zero =>
-    intro _
-    have h0 : runEvict sp al (ts.take 0) = (init sp, evictStartup sp (init sp).S, (init sp).S) := by
-      simp [runEvict]
-    rw [h0]
-    refine ⟨0, Nat.le_refl _, by rw [st_zero], by rw [st_zero]; exact ⟨rfl, rfl, SameNodes.refl _⟩, ?_, ?_⟩
-    · rw [st_zero]
-      exact einv_init hok.1
-    · rw [st_zero]
-      exact HInv.of_live (inv_init sp hok.1) hok.1.liveSub (einv_init hok.1)
-  | succ j ih =>
-    intro hjt
-    rw [runEvict_succ sp al ts (by omega)]
-    exact evictInvR_step hok hph hev hj hmk (by omega) (ih (by omega))
 
 end Run
 

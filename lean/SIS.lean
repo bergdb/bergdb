@@ -9,7 +9,6 @@ import SIS.PhysTheorems
 import SIS.Example
 import SIS.PhysExample
 import SIS.Evict
-import SIS.EvictExample
 import SIS.Handle
 import SIS.HandleTheorems
 import SIS.HandleExample

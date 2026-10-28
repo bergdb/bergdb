@@ -3,15 +3,15 @@ Level 3, reclaim, by running (bergdb item 001, WP R3): example 4, F1-008-07's
 reclaim example adapted to BergDB (a virtual root with top nodes, a touch that
 marks without adding entries, rewrites of the values, the first available time
 at the end of an iteration), with `#guard` checks; and random runs that restart
-from the stream cut at the largest safe position, logical and with eviction,
-for `lake exe reclaimtest`. Not part of the trusted part.
+from the stream cut at the largest safe position, for `lake exe reclaimtest`
+(with handles, SIS/HandleReclaimExample.lean). Not part of the trusted part.
 -/
 import SIS.Reclaim
-import SIS.EvictExample
+import SIS.HandleExample
 
 namespace SIS.ReclaimExample
 
-open SIS SIS.Example SIS.PhysExample SIS.EvictExample
+open SIS SIS.Example SIS.PhysExample SIS.HandleExample
 
 /-! ## Example 4: reclaim
 
@@ -274,41 +274,6 @@ def checkCut [DecidableEq T] (sp : Spec Val T) (al : Algo Val T) (cs : List (T �
     equivFromB sp (lastFa r.S) tr.length db.P r.P
   (ok, t8, t12, cm)
 
-/-- As `checkEvict`, with restarts from the stream cut at the given position:
-after every transaction the records are the run's, cut at the largest cut so
-far, and D is the run's; the schedule, reads at three times from the first
-available time on (they give P), the schedule again, the invariants; at a cut,
-reads on the cut stream from the running memory at every time from the first
-available time on (T9), then the restart from the cut stream, its invariants
-and its reads. Returns (transactions, failures). -/
-def checkEvictCut [DecidableEq T] (sp : Spec Val T) (al : Algo Val T) (ts : List (T × Option Nat))
-    (policy seed : Nat) : Nat × Nat :=
-  let ts1 := ts.map (·.1)
-  let r := ts.zipIdx.foldl
-    (fun (acc : (DB Val T × Mem Val × SIS.Stream Val T) × Nat × Nat × Nat) (p, j) =>
-      let ((db, m, S0), cm, n, bad) := acc
-      let (db', m') := evictTrans sp al S0 db m p.1
-      let after := run sp al (ts1.take (j + 1))
-      let k := db'.S.length - 1
-      let f := lastFa after.S
-      let m1 := schedule policy seed j db'.D m'
-      let (m2, readsOK) := reads4 sp S0 db' m1 [k, (f + k) / 2, f + lcg (seed + j) % (k + 1 - f)]
-      let m3 := schedule policy (seed + 7) j db'.D m2
-      let ok := db'.S == cutStream cm after.S && db'.D == after.D && readsOK &&
-        invCanB db' m3 && invSnapB db' m3 && noDanglingB m3 && invSlotB sp S0 db' m3
-      match p.2 with
-      | some c =>
-        let cut := cutStream c db'.S
-        let (_, t9) := reads4 sp S0 { db' with S := cut } m3 (List.range' f (k + 1 - f))
-        let db2 := startup sp cut
-        let m4 := evictStartup sp cut
-        let (_, r2) := reads4 sp cut db2 m4 (List.range' f (k + 1 - f))
-        let ok' := ok && t9 && r2 && invCanB db2 m4 && noDanglingB m4 && invSlotB sp cut db2 m4
-        (((db2, m4, cut), max cm c, n + 1, bad + (if ok' then 0 else 1)))
-      | none => (((db', m3, S0), cm, n + 1, bad + (if ok then 0 else 1))))
-    ((init sp, evictStartup sp (init sp).S, (init sp).S), 0, 0, 0)
-  (r.2.2.1, r.2.2.2)
-
 /-- The cut points of a run with cuts where D holds a node that is not
 reachable from the first available time on (a historical node that Rule A keeps
 in D, the delicate case of the plan's 8.7). -/
@@ -408,10 +373,6 @@ def tsCut4 : List (Tr4 × Option Nat) :=
   | some _ => cutOKB spec4 (cutMax ((tsCut4.take (p.2 + 1)).map (·.2)))
       (run spec4 al4 ((tsCut4.map (·.1)).take (p.2 + 1))) (p.2 + 1)
   | none => true)
--- With eviction and the four cache schedules: the records, D, reads from the first
--- available time on (on the cut stream from the running memory too, T9), the
--- invariants, and the restarts from the cut streams.
-#guard [0, 1, 2, 3].all (fun sched => checkEvictCut spec4 al4 tsCut4 sched 1 == (15, 0))
 
 /-- The pSafe wait, found by search on 2026-10-17: seed 11 of `randomTs4`, startup
 pos i - 4. After T(7) the first available time is 2 and every node reachable from 2
@@ -482,41 +443,43 @@ gives P). Found on 2026-10-17. -/
 def staleWitness : Bool × Bool × Bool × Bool × Bool :=
   let db := run spec4e alE tsE
   let cut := cutStream 1 db.S
-  let (_, onCut) := reads4 spec4e cut { db with S := cut } (evictStartup spec4e cut) [2]
-  let (_, onWhole) := reads4 spec4e db.S db (evictStartup spec4e db.S) [2]
+  let (_, onCut) := readsH spec4e cut { db with S := cut } (handleStartup spec4e cut) [2]
+  let (_, onWhole) := readsH spec4e db.S db (handleStartup spec4e db.S) [2]
   (runOKB spec4e alE tsE, latestB spec4e 1 db 8 && cutDTopB 1 db, !onCut, !cutOKB spec4e 1 db 8, onWhole)
 
 #guard staleWitness == (true, true, true, true, true)
 
-/-- A run with eviction (cache schedule `policy`, as in `checkEvict`), without
+/-- A run with handles and evictions (HandleExample's schedule `policy`), without
 restarts: the records and D, the memory, the stream of the last startup. -/
-def runEvictWith (sp : Spec Val T) (al : Algo Val T) (ts : List T) (policy seed : Nat) :
-    DB Val T × Mem Val × SIS.Stream Val T :=
-  ts.zipIdx.foldl (fun (acc : DB Val T × Mem Val × SIS.Stream Val T) p =>
-      let r := evictTrans sp al acc.2.2 acc.1 acc.2.1 p.1
-      (r.1, schedule policy seed p.2 r.1.D r.2, acc.2.2))
-    (init sp, evictStartup sp (init sp).S, (init sp).S)
+def runHandlesWith (sp : Spec Val T) (al : Algo Val T) (ts : List T) (policy seed : Nat) :
+    DB Val T × HMem Val × SIS.Stream Val T :=
+  ts.zipIdx.foldl (fun (acc : DB Val T × HMem Val × SIS.Stream Val T) p =>
+      let r := handleTrans sp al acc.2.2 acc.1 acc.2.1 p.1
+      (r.1, hschedule policy seed p.2 r.1.D r.2, acc.2.2))
+    (init sp, handleStartup sp (init sp).S, (init sp).S)
 
-/-- Returns (the assumptions hold, and the run with eviction appends the run's
-records; WP R7's `CutOK` allows a cut at 1 after T(6); with every object that may
-be evicted evicted after each transaction (schedule 1), a read at the first
-available time 2 from the running memory, with Rule R of the startup at R(0),
-does not give P on the stream cut at 1; on the whole stream it does; `CutOK`
-since WP R6 does not allow the cut). The tree root 20, reachable at 2 and
+/-- Returns (the assumptions hold, and the run with handles appends the run's
+records; WP R7's `CutOK` allows a cut at 1 after T(6); with every handle that may
+be evicted evicted after each transaction (HandleExample's schedule 1), a read at
+the first available time 2 from the running memory, with Rule R of the startup
+at R(0), does not give P on the stream cut at 1; on the whole stream it does;
+`CutOK` since WP R6 does not allow the cut). The tree root 20, reachable at 2 and
 replaced at 3, names mid node 2's version of R(0); the mid node's latest version
 is of R(6), in the startup section, so the lookups' reads (`ReadsAt`) take that
 one by Rule R. The running memory's Rule R is the startup's, which does not know
-it, and the mid node's canonical object was evicted: the read loads R(0), which
-the cut removed. Physical reads in the running process after a cut needed more
-than WP R7's `CutOK` (bergdb item 001, WP R4: T9; register M48); `CutOK`'s part 2
-over `ReadsPhys` (WP R6, M48's option (a), Frans 2026-10-17) covers R(0). Found
-on 2026-10-17. -/
+it, and the mid node's handle was evicted: the tree root's version that the read
+loads has a pointer that names R(0) and holds no handle, so the slow path loads
+R(0), which the cut removed. Physical reads in the running process after a cut
+needed more than WP R7's `CutOK` (bergdb item 001, WP R4: T9; register M48);
+`CutOK`'s part 2 over `ReadsPhys` (WP R6, M48's option (a), Frans 2026-10-17)
+covers R(0). Found on 2026-10-17 with Evict.lean's eviction, and the same with
+handles (bergdb 005-62). -/
 def cutReadWitness : Bool × Bool × Bool × Bool × Bool :=
   let ts := tsE.take 6
   let db := run spec4e alE ts
-  let r := runEvictWith spec4e alE ts 1 1
-  let (_, onCut) := reads4 spec4e r.2.2 { r.1 with S := cutStream 1 r.1.S } r.2.1 [2]
-  let (_, onWhole) := reads4 spec4e r.2.2 r.1 r.2.1 [2]
+  let r := runHandlesWith spec4e alE ts 1 1
+  let (_, onCut) := readsH spec4e r.2.2 { r.1 with S := cutStream 1 r.1.S } r.2.1 [2]
+  let (_, onWhole) := readsH spec4e r.2.2 r.1 r.2.1 [2]
   (runOKB spec4e alE ts && r.1.S == db.S && r.1.D == db.D, cutOKAtB spec4e 1 db 6, !onCut, onWhole,
     !cutOKB spec4e 1 db 6)
 
@@ -541,9 +504,9 @@ naming mid node 2's version of R(6); mid node 2 written at 10. After T(11) (star
 pos 8, past j0 = 7, where it first passed tEnd = 3), part 2 without the exception
 fails: the tree root's version of R(9), in D, leads to mid node 2's of R(6) and so
 to leaf 5's of R(0), before the cut at 1. The running memory reads through the
-tree root's canonical object, whose slot names mid node 2's latest version: with
-every cache schedule, the reads from 3 to 11 give P on the stream cut at 1. Hence
-the exception in `ReadsPhys`. -/
+tree root's canonical object, whose pointer names mid node 2's latest version:
+with every eviction schedule, the reads from 3 to 11 give P on the stream cut at
+1. Hence the exception in `ReadsPhys`. -/
 
 /-- The touches of transactions pStart + 1 to tEnd cover every index node
 reachable at tEnd whose latest version then is at pStart or before. -/
@@ -582,15 +545,15 @@ def tsW : List Tr4 :=
 the rewrites, the startup pos passed tEnd = 3 first at T(7) and is past 7 at T(11),
 and the first available time is 3; part 2 without the exception for put-back
 versions fails at 1 after T(11); `CutOK` holds at 1 after T(11), and so does WP
-R7's; with every cache schedule, the reads from the running memory at every time
-from 3 to 11 give P on the stream cut at 1). -/
+R7's; with every eviction schedule, the reads from the running memory at every
+time from 3 to 11 give P on the stream cut at 1). -/
 def schemeWitness : Bool × Bool × Bool × Bool × Bool :=
   let db := run spec4 alW tsW
   let sps := (List.range 12).map (fun j => lastSp (run spec4 alW (tsW.take j)).S)
-  let reads := [0, 1, 2, 3].all (fun sched =>
-    let r := runEvictWith spec4 alW tsW sched 1
+  let reads := [0, 1, 2, 3, 4].all (fun sched =>
+    let r := runHandlesWith spec4 alW tsW sched 1
     r.1.S == db.S && (List.range' 3 9).all (fun t =>
-      (reads4 spec4 r.2.2 { r.1 with S := cutStream 1 r.1.S } r.2.1 [t]).2))
+      (readsH spec4 r.2.2 { r.1 with S := cutStream 1 r.1.S } r.2.1 [t]).2))
   (runOKB spec4 alW tsW,
     touchCoverB spec4 alW tsW 0 3 && rewritesB spec4 alW tsW 1 3 &&
       sps.findIdx? (fun s => decide (3 < s)) == some 7 && decide (7 < lastSp db.S) && lastFa db.S == 3,

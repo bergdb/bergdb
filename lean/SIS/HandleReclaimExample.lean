@@ -14,12 +14,11 @@ import SIS.HandleReclaimTheorems
 
 namespace SIS.HandleReclaimExample
 
-open SIS SIS.Example SIS.PhysExample SIS.EvictExample SIS.ReclaimExample SIS.HandleExample
+open SIS SIS.Example SIS.PhysExample SIS.ReclaimExample SIS.HandleExample
 
 variable {T : Type}
 
-/-- As ReclaimExample's `checkEvictCut`, with handles and `HandleExample`'s
-schedule `policy`: the run with handles that restarts from cut streams
+/-- With `HandleExample`'s schedule `policy`: the run with handles that restarts from cut streams
 (`runHandlesCut`, with the operations computed from the memory). After every
 transaction: the records are the run's, cut at the largest cut so far, and D is
 the run's; the schedule, reads at three times from the first available time on
@@ -55,6 +54,10 @@ def checkHandleCut [DecidableEq T] (sp : Spec Val T) (al : Algo Val T) (ts : Lis
   let whole := run sp al ts1
   let same := equivFromB sp (lastFa whole.S) ts1.length r.1.1.P whole.P
   (r.2.2.1, r.2.2.2 + (if same then 0 else 1))
+
+-- The fixed run of example 4 with a cut at 3 (ReclaimExample's `tsCut4`), the five
+-- schedules.
+#guard [0, 1, 2, 3, 4].all (fun pol => checkHandleCut spec4 al4 tsCut4 pol 1 == (15, 0))
 
 -- Example 4 with cuts (largest cuts 10 and 5), two policies, the five schedules.
 #guard [0, 1, 2, 3, 4].all (fun pol =>

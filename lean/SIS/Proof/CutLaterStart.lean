@@ -170,40 +170,6 @@ theorem sectionPos_withRoot {m : Mem V} {oc : Obj V} {S' : Stream V T}
   congr 1
   exact map_withRoot_comm _ _ _ _ _ (fun _ => rfl)
 
-theorem linkD_eq (m : Mem V) (D : Dirty) :
-    m.linkD D = { m with objs := m.objs.map (fun p => (p.1, linkObjD m D p.1 p.2)) } := by
-  unfold Mem.linkD linkObjD
-  congr 1
-  apply List.map_congr_left
-  intro p _
-  cases (!(p.2.canonical && (inD D p.2.node || p.1 == m.root)))
-  · simp only [Bool.false_eq_true, ↓reduceIte]
-    rfl
-  · simp only [↓reduceIte]
-
-theorem linkD_withRoot {m : Mem V} {oc oe : Obj V} (hra : m.obj? m.root = some oe)
-    (hc : oc.canonical = oe.canonical) (D : Dirty) :
-    (m.withRoot oc).linkD D = (m.linkD D).withRoot (linkObjD m D m.root oc) := by
-  have hls : ∀ q, linkSlot (m.withRoot oc) q = linkSlot m q := by
-    intro q; unfold linkSlot; rw [withRoot_canonicalOf hra hc]
-  have hls' : linkSlot (m.withRoot oc) = linkSlot m := funext hls
-  have hlo : ∀ h o, linkObjD (m.withRoot oc) D h o = linkObjD m D h o := by
-    intro h o; unfold linkObjD; rw [hls', withRoot_root]
-  rw [linkD_eq, linkD_eq]
-  simp only [hlo]
-  unfold Mem.withRoot
-  simp only
-  congr 1
-  simp only [List.map_map]
-  apply List.map_congr_left
-  intro p _
-  simp only [Function.comp]
-  by_cases hp : p.1 = m.root
-  · have : (p.1 == m.root) = true := by simp [hp]
-    simp only [this, ↓reduceIte]
-  · have : (p.1 == m.root) = false := by simp [hp]
-    simp only [this, Bool.false_eq_true, ↓reduceIte]
-
 end Base
 
 /-! ## The rerun's loader on the memory with the other root object -/
@@ -1561,18 +1527,6 @@ theorem RootRel.link {f : Time} {oc oe : Obj V} (hr : RootRel sp f oc oe) (m : M
   · rename_i h1 h2; rw [hc] at h1; exact absurd h2 h1
   · exact hr.mapSlots _ (linkQ_fst m)
 
-/-- Rule 4 keeps the relation of the root objects. -/
-theorem RootRel.linkD {f : Time} {oc oe : Obj V} (hr : RootRel sp f oc oe) (m : Mem V) (D : Dirty) (h : Nat) :
-    RootRel sp f (linkObjD m D h oc) (linkObjD m D h oe) := by
-  unfold linkObjD
-  have hcond : (oc.canonical && (inD D oc.node || h == m.root)) =
-      (oe.canonical && (inD D oe.node || h == m.root)) := by rw [hr.canonical, hr.node]
-  split <;> split
-  · exact hr
-  · rename_i h1 h2; rw [hcond] at h1; exact absurd h1 h2
-  · rename_i h1 h2; rw [hcond] at h1; exact absurd h2 h1
-  · exact hr.mapSlots _ (linkSlot_fst m)
-
 theorem secObj_eq (S : Stream V T) (s : Nat) (o : Obj V) :
     secObj S s o = { o with pos := if o.canonical then
       (match newest S s o.node with | some w => some w.recNo | none => o.pos) else o.pos } := by
@@ -1599,10 +1553,6 @@ theorem secObj_hist (S : Stream V T) (s : Nat) (o : Obj V) : (secObj S s o).hist
   split
   · rfl
   · split <;> rfl
-
-theorem linkObjD_hist (m : Mem V) (D : Dirty) (h : Nat) (o : Obj V) : (linkObjD m D h o).hist = o.hist := by
-  unfold linkObjD
-  split <;> rfl
 
 theorem map_withRoot_self (l : List (Nat × Obj V)) (r : Nat) (o : Obj V) (h : ∀ p ∈ l, p.1 = r → p.2 = o) :
     l.map (fun p => if p.1 == r then (r, o) else p) = l := by
@@ -1998,42 +1948,6 @@ theorem sectionPos_sim (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hev : 
     rw [secObj_hist]
     rw [hPC] at hn
     exact h4 n hn
-
-/-- The startup from a stream cut safely: the memory of the startup from the
-whole stream but for the root's object, which holds the root's history of the
-logical startup from the cut stream. -/
-theorem startup_sim (hok : RunOK sp al ts) (hph : PhysRunOK sp al ts) (hev : EvictRunOK sp al ts)
-    (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true) (hex : ExecRootOK sp) (hvl : VirtLiveOK sp)
-    {k c : Nat} (hk : k ≤ ts.length) (hcut : CutOK sp c (st sp al ts k) k) :
-    ∃ oc oe, SimC sp (lastFa (st sp al ts k).S) (evictStartup sp (cutStream c (st sp al ts k).S))
-        (evictStartup sp (st sp al ts k).S) oc oe ∧
-      ∀ n, (startup sp (cutStream c (st sp al ts k).S)).P.get? root = some n → oc.hist = n.hist := by
-  obtain ⟨oc, oe, hsec, hraP, hrr, hist⟩ := sectionPos_sim hok hph hev hj hmk hex hvl hk hcut
-  have hst : AlgOK sp al := algOK_of sp al (Or.inl hj)
-  have hfs := st_fa_le sp al ts hk
-  have hcs : c ≤ lastSp (st sp al ts k).S := Nat.le_trans hcut.1 hfs
-  have hD : (startup sp (cutStream c (st sp al ts k).S)).D = (startup sp (st sp al ts k).S).D := by
-    rw [startup, startup, startup_D, startup_D, sectionD_cut hcs]
-  have hev' : evictStartup sp (cutStream c (st sp al ts k).S) =
-      (evictStartup sp (st sp al ts k).S).withRoot
-        (linkObjD ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S) (startup sp (st sp al ts k).S).D
-          ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).root oc) := by
-    unfold evictStartup
-    rw [hsec, hD, linkD_withRoot hraP hrr.canonical]
-  have hraF : (evictStartup sp (st sp al ts k).S).obj? (evictStartup sp (st sp al ts k).S).root =
-      some (linkObjD ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S) (startup sp (st sp al ts k).S).D
-        ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).root oe) := by
-    show (((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).linkD (startup sp (st sp al ts k).S).D).obj?
-      ((lazyStartup sp (st sp al ts k).S).sectionPos (st sp al ts k).S).root = _
-    rw [Mem.linkD_obj?, hraP]
-    rfl
-  have hE := einv_startup hok hph hj hmk hev hk
-  refine ⟨_, _, ⟨?_, fun _ => hev', hraF, hrr.linkD _ _ _⟩, ?_⟩
-  · rw [hev']
-    exact RootPerm.refl_withRoot hE.objNodup hE.fresh hraF
-  · intro n hn
-    rw [linkObjD_hist]
-    exact hist n hn
 
 end Start
 

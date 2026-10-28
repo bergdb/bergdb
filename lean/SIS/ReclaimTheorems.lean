@@ -1,17 +1,15 @@
 /-
 Self-indexed streams in Lean: the theorems of Level 3, reclaim (bergdb item
-001, WPs R3 to R6).
+001, WPs R3 to R6). T9 and T12 with eviction are stated over handles, in
+HandleReclaimTheorems.lean (bergdb 005-62).
 
 Trusted part: the statements. The proofs are in SIS/Proof/; the proofs here
 only connect them.
 -/
 import SIS.Theorems
 import SIS.Reclaim
-import SIS.PhysTheorems
 import SIS.Proof.CutRecover
 import SIS.Proof.CutRuns
-import SIS.Proof.CutPhysRun
-import SIS.Proof.CutLaterRun
 
 namespace SIS
 
@@ -69,35 +67,6 @@ theorem T8_recoverCut (sp : Spec V T) (al : Algo V T) (ts : List T) (hok : RunOK
       (startup sp (cutStream c db.S)).D = db.D :=
   recoverCut sp al ts hok (algOK_of sp al hst) hk hex hvl hcut
 
-/-- T9 (bergdb item 001, WP R4): in a run with eviction as in `T2_cache`
-(BergDB's algorithm with marking, the assumptions, those of the physical layer
-and of stage 2, the Level 4 startup, any cache schedules, restarts after any
-transactions), after any transaction and its cache operations or its restart,
-with a safe cut (`CutOK`) at c in the run's state: a read through the Level 4
-loader (`Mem.read4`, with Rule R from the stream of the last startup) at any
-time t from the first available time f to the last record gives the same on
-the stream cut at c as on the whole stream, so it needs no record before the
-cut; and it gives P at t (`TR_view_restarts`): exactly the nodes reachable at
-t, each with its node at t. The cut is made while the process runs: the
-memory keeps the objects and slots made before it. -/
-theorem T9_readCut (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List CacheOp))
-    (hok : RunOK sp al (ts.map (·.1))) (hph : PhysRunOK sp al (ts.map (·.1)))
-    (hev : EvictRunOK sp al (ts.map (·.1))) (hj : al.stillDirty = javaTest sp)
-    (hmk : al.mark = true) (j c : Nat) (hjt : j ≤ ts.length)
-    (hcut : CutOK sp c (run sp al ((ts.take j).map (·.1))) j) (t : Time)
-    (hft : lastFa (run sp al ((ts.take j).map (·.1))).S ≤ t) (ht : t ≤ j) :
-    let db := run sp al ((ts.take j).map (·.1))
-    let r := runEvict sp al (ts.take j)
-    let m := r.2.1
-    m.read4 sp r.2.2 (cutStream c db.S) t = m.read4 sp r.2.2 db.S t ∧
-      (m.read4 sp r.2.2 (cutStream c db.S) t).2.map (·.1) = reachList sp db.P t ∧
-      ∀ p ∈ (m.read4 sp r.2.2 (cutStream c db.S) t).2, view sp db.P t p.1 = some p.2 := by
-  intro db r m
-  have he : m.read4 sp r.2.2 (cutStream c db.S) t = m.read4 sp r.2.2 db.S t :=
-    readCut ts hok hph hev hj hmk j hjt hcut hft ht
-  rw [he]
-  exact ⟨rfl, TR_view_restarts sp al ts hok hph hev hj hmk j hjt t ht⟩
-
 /-- T12 (bergdb item 001, WP R5): a run that restarts from safe cut streams
 (`runRestartsCut`: after a transaction marked some c, a restart from the stream
 cut at c, with `CutOK` at the largest cut so far in the run without restarts
@@ -121,31 +90,5 @@ theorem T12_restartCut (sp : Spec V T) (al : Algo V T) (cs : List (T × Option N
     db.S = cutStream (cutMax (cs.map (·.2))) r.S ∧ db.D = r.D ∧
       SameFrom sp (lastFa r.S) cs.length db.P r.P :=
   restartCut sp al cs hok hj hmk hex hvl hpol hcut
-
-/-- T12 with eviction (bergdb item 001, WP R5): T12 for the run with eviction
-(`runEvictCut`), with the assumptions of `T2_cache` (those of the physical
-layer and of stage 2) and of T12: any cache schedules whose reads are at times
-from the first available time on (a read before it may need a record before
-the cut), and restarts from safe cut streams with the Level 4 startup. The run
-appends the records of the run without restarts: its stream is that run's, cut
-at the largest cut; its D is the run's, and so are its lookups from the run's
-first available time on. After a restart from a cut stream, the Level 4 memory
-is the one after the restart from the whole stream but for a virtual root's
-object, rebuilt from the root children that the cut stream still has; the
-physical writer writes the same records from both. -/
-theorem T12_evictCut (sp : Spec V T) (al : Algo V T) (cs : List (T × Option Nat × List CacheOp))
-    (hok : RunOK sp al (cs.map (·.1))) (hph : PhysRunOK sp al (cs.map (·.1)))
-    (hev : EvictRunOK sp al (cs.map (·.1))) (hj : al.stillDirty = javaTest sp) (hmk : al.mark = true)
-    (hex : ExecRootOK sp) (hvl : VirtLiveOK sp) (hpol : PolicyCutOK al)
-    (hcut : ∀ j (h : j < cs.length) c, cs[j].2.1 = some c →
-      CutOK sp (cutMax ((cs.take (j + 1)).map (·.2.1))) (run sp al ((cs.map (·.1)).take (j + 1)))
-        (j + 1))
-    (hreads : ∀ j (h : j < cs.length), cs[j].2.1 = none → ∀ t, CacheOp.read t ∈ cs[j].2.2 →
-      lastFa (run sp al ((cs.map (·.1)).take (j + 1))).S ≤ t ∧ t ≤ j + 1) :
-    let db := (runEvictCut sp al cs).1
-    let r := run sp al (cs.map (·.1))
-    db.S = cutStream (cutMax (cs.map (·.2.1))) r.S ∧ db.D = r.D ∧
-      SameFrom sp (lastFa r.S) cs.length db.P r.P :=
-  restartCut_evict cs hok hph hev hj hmk hex hvl hpol hcut hreads
 
 end SIS

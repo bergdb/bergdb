@@ -1,17 +1,17 @@
 /-
 The physical layer with handles by running (bergdb item 009, phase 2, step 2b):
-EvictExample.lean's runs, with handles (SIS/Handle.lean). After every
-transaction, the records and D must be the model's, reads must give P, and the
-invariants that HandleTheorems.lean states must hold, under schedules that
-evict nothing, everything that may be evicted, and a mix. `#guard` checks. Not
-part of the trusted part.
+runs of examples 2, 3 and 5 with restarts and evictions (SIS/Handle.lean).
+After every transaction, the records and D must be the model's, reads must give
+P, and the invariants that HandleTheorems.lean states must hold, under schedules
+that evict nothing, everything that may be evicted, and a mix. `#guard` checks.
+Not part of the trusted part.
 -/
 import SIS.Handle
-import SIS.EvictExample
+import SIS.PhysExample
 
 namespace SIS.HandleExample
 
-open SIS SIS.Example SIS.PhysExample SIS.EvictExample
+open SIS SIS.Example SIS.PhysExample
 
 variable {T : Type}
 
@@ -194,11 +194,11 @@ def afterTrans (sp : Spec Val T) (S0 : SIS.Stream Val T) (db : DB Val T) (m : HM
   let (m4, ok2) := readsH sp S0 db m3 [1, k / 2]
   (m4, ok1 && ok2)
 
-/-- A run with restarts and the schedule `policy`, as EvictExample's
-`checkEvict`: after every transaction, the records and D are those of the run
-without restarts or eviction; then the operations of `afterTrans` (evictions and
-reads); then the invariants and the reads (they give P), and after a restart
-the invariants of the new memory. Returns (transactions, failures). -/
+/-- A run with restarts and the schedule `policy`: after every transaction, the
+records and D are those of the run without restarts or eviction; then the
+operations of `afterTrans` (evictions and reads); then the invariants and the
+reads (they give P), and after a restart the invariants of the new memory.
+Returns (transactions, failures). -/
 def checkHandles [DecidableEq T] (sp : Spec Val T) (al : Algo Val T) (ts : List (T × Bool))
     (policy seed : Nat) : Nat × Nat :=
   let ts1 := ts.map (·.1)

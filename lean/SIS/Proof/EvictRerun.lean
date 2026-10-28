@@ -9,7 +9,8 @@ it, names latest versions already); every memory slot names an object of its
 pointee; every object has a slot for each pointee of its history. And the node
 table has no repeated keys.
 -/
-import SIS.Proof.EvictReadT
+import SIS.Proof.EvictHist
+import SIS.Proof.EvictTrans
 
 set_option linter.unusedSectionVars false
 

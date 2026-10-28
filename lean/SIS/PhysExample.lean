@@ -334,3 +334,147 @@ def mD : Mem Val := { objs := [], table := [], s := 1, root := 0, next := 1 }
         match m'.canonicalOf 5 with
         | some h => ((m'.obj? h).map (fun o => o.pos == some 0 && o.hist == vY0.hist)) == some true
         | none => false)
+
+/-! ## For the runs with eviction
+
+Used by the runs with handles (HandleExample.lean) and with reclaim
+(ReclaimExample.lean). -/
+
+/-- The record of the latest version of y. -/
+def lvRec (S : SIS.Stream Val T) (y : NodeId) : Option Nat := (S.lv y).map (·.recNo)
+
+/-- Example 3's algorithm of the stage 1 checks. -/
+def al3 : Algo Val Tr3 :=
+  { policy := fun _ _ i tr => i - 1 - (lcg i / 4096 + tr.n) % 5, stillDirty := javaTest spec3, mark := true }
+
+/-! ## The assumptions of stage 2 by running -/
+
+/-- TREE at time i, by running. -/
+def treeB (sp : Spec Val T) (P : Struct Val) (i : Time) : Bool :=
+  let xs := (reachList sp P i).eraseDups
+  xs.all (fun y => y == root ||
+    (xs.filter (fun x => match P.get? x with
+      | some n => (sp.live (n.hist.upTo i)).contains y
+      | none => false)).length == 1)
+
+/-- A6' at time i, by running. -/
+def adoptB (sp : Spec Val T) (P : Struct Val) (i : Time) : Bool :=
+  (reachList sp P i).eraseDups.all (fun x => match P.get? x with
+    | some n => (pointees sp n.hist).all (fun y =>
+        (sp.live (n.hist.upTo i)).contains y ||
+        ((P.get? y).map (·.isData)).getD false || !reachable sp P i y ||
+        (reachFrom sp P i x n).contains y)
+    | none => true)
+
+/-- A-COPY for the change c at time i, by running. -/
+def copyB (sp : Spec Val T) (P : Struct Val) (i : Time) (c : Changes Val) : Bool :=
+  let path := pathOf sp P c i
+  c.adds.all (fun a => (sp.ptrs a.2).all (fun y =>
+    (c.new.map (·.id)).contains y || path.contains y ||
+    path.any (fun z => match P.get? z with
+      | some nz => (pointees sp nz.hist).contains y &&
+          (written sp z || (sp.live (nz.hist.upTo (i - 1))).contains y)
+      | none => false)))
+
+/-- `EvictRunOK` by running: TREE and A6' after every transaction, A-COPY for
+its change. -/
+def evictRunOKB (sp : Spec Val T) (al : Algo Val T) (ts : List T) : Bool :=
+  (states sp al ts).zipIdx.all (fun (db, j) => treeB sp db.P j && adoptB sp db.P j) &&
+  ts.zipIdx.all (fun (tr, j) =>
+    let db := run sp al (ts.take j)
+    copyB sp db.P (j + 1) (sp.exec tr (j + 1) (view sp db.P j)))
+
+#guard evictRunOKB spec3 al3 ((randomTs3 1 20).map (·.1))
+#guard [1, 3].all (fun a => match algos2[a]? with
+  | some al => evictRunOKB spec2 al ((randomTs 1 20).map (·.1))
+  | none => false)
+
+/-! ## Example 5: example 3 with drops
+
+As example 3 (a virtual root, top nodes above tree roots, mid nodes, leaves and
+data nodes), with one more kind of transaction, for the cases of the design
+(bergdb 001-08, 5.4): a drop replaces a leaf by a new, empty one, so
+that the old leaf and its data nodes are no longer reachable (BergDB's delete of
+a long key, whose segment subtree goes cold). The plan's example 5 also asks for
+two root changes in one transaction; the model's assumptions exclude it (every
+node a transaction creates or changes is reachable after it, `stepOKB`), and
+Java splits a node of the same transaction in place (F1-008-11's D1), so the
+second change is not a node of its own. Ids of new nodes from i: 20000 + 8i and
+up. -/
+
+structure Tr5 where
+  k : Nat
+  n : Nat
+  /-- 0: put; 1: root split; 2: drop. -/
+  op : Nat
+  deriving DecidableEq, Repr
+
+def exec5 (tr : Tr5) (i : Time) (view : View Val) : Changes Val :=
+  let none' : Changes Val := { new := [], adds := [] }
+  let base := 20000 + 8 * i
+  match (view 0).bind (fun r => slotOf r.hist 0) with
+  | none => none'
+  | some z =>
+    match (view z).bind (fun zn => (live zn.hist).head?) with
+    | none => none'
+    | some t0 =>
+      match view t0 with
+      | none => none'
+      | some tn =>
+        if tr.op == 1 then
+          let t' := base + 2
+          let z' := base + 3
+          { new := [⟨t', 3, false⟩, ⟨z', 100 + i, false⟩],
+            adds := ((slotOf tn.hist 0).toList.map (fun m => (t', Val.slot 0 m))) ++
+              ((slotOf tn.hist 1).toList.map (fun m => (t', Val.slot 1 m))) ++
+              [(z', .ref t'), (z', .dead z), (0, .slot 0 z')] }
+        else
+          match slotOf tn.hist (tr.k / 2 % 2) with
+          | none => none'
+          | some m =>
+            if tr.op == 2 then
+              let l'' := base + 6
+              { new := [⟨l'', 1, false⟩], adds := [(m, .slot (tr.k % 2) l'')] }
+            else
+              match (view m).bind (fun mn => slotOf mn.hist (tr.k % 2)) with
+              | none => none'
+              | some leaf =>
+                match view leaf with
+                | none => none'
+                | some ln =>
+                  let d := base
+                  if (live ln.hist).length ≥ cap then
+                    let l' := base + 1
+                    { new := [⟨d, 0, true⟩, ⟨l', 1, false⟩],
+                      adds := [(d, .dat tr.n), (l', .ref d), (m, .slot (tr.k % 2) l')] }
+                  else
+                    { new := [⟨d, 0, true⟩], adds := [(d, .dat tr.n), (leaf, .ref d)] }
+
+def spec5 : Spec Val Tr5 where
+  ptrs := ptrs
+  live := live
+  exec := exec5
+  virt := true
+  topLevel := 100
+  rootVal := fun z => .slot 0 z
+  init := spec3.init
+
+/-- n pseudo-random transactions for example 5, with restart marks: about 60
+percent puts, 20 root splits, 20 drops. -/
+def randomTs5 (seed n : Nat) : List (Tr5 × Bool) :=
+  (List.range n).foldl (fun acc _ =>
+    let x := lcg acc.2
+    let y := lcg x
+    let r := y / 1024 % 10
+    let op := if r < 6 then 0 else if r < 8 then 1 else 2
+    (acc.1 ++ [(⟨x / 65536 % 4, y / 65536 % 100, op⟩, (x / 1024) % 3 == 0)], y))
+    ([], seed)
+  |>.1
+
+def al5 : Algo Val Tr5 :=
+  { policy := fun _ _ i tr => i - 1 - (lcg i / 4096 + tr.n) % 5, stillDirty := javaTest spec5, mark := true }
+
+-- Example 5 meets the model's assumptions, the physical layer's and stage 2's.
+#guard runOKB spec5 al5 ((randomTs5 1 20).map (·.1))
+#guard physRunOKB spec5 al5 ((randomTs5 1 20).map (·.1))
+#guard evictRunOKB spec5 al5 ((randomTs5 1 20).map (·.1))
