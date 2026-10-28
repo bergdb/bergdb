@@ -201,8 +201,8 @@ and every first touch after a restart must follow the model's rule (C-L).
 
 Limits:
 
-* Bounded startup is proved in Lean for a startup pos policy that keeps up
-  with a distance (T3,
+* The bound on the startup section is proved in Lean for a startup pos
+  policy that keeps up with a distance (T3,
   [007-01](../items/007-bounds/01-startup-bound.md)), and for BergDB's own
   take, with any share (`T3_take`,
   [007-08](../items/007-bounds/08-step4-take-in-lean.md)): the section
@@ -212,10 +212,12 @@ Limits:
   ([007-03](../items/007-bounds/03-plan.md), step 3 and D4). The proof
   leaves out the record limit, which can stop a record from taking what is
   due, and the stream's meta blocks; the model's take gives Java's startup
-  pos on 300 generated cases. Its pace held the section at 1.00 to 1.14 times
-  the startup distance in 005-49's runs with 10M and 50M keys, and in
-  007-06's and 007-07's with 10M keys, for updates, deletes and single
-  puts, where the take before step 3 reached 2.75 times at 50 MB, 1.9
+  pos on 300 generated cases. T3 is not all of bounded startup: the records
+  at the ends of the section (T4) and a cold start's reads through
+  references into older records are not bounded by a proof. The take's pace
+  held the section at 1.00 to 1.14 times the startup distance in 005-49's
+  runs with 10M and 50M keys, and in 007-06's and 007-07's with 10M keys,
+  for updates, deletes and single puts, where the take before step 3 reached 2.75 times at 50 MB, 1.9
   times at 200 MB and 1.3 times at 1000 MB.
 * A transaction whose dirty index nodes could not be written in one record
   is refused before its go point (005-31); larger updates must be split by

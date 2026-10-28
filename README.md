@@ -92,12 +92,16 @@ the study of prior art, [011-02](items/011-docs-archive/02-prior-art.md).
 
 A known limit (2026-10-25). Replication (`DatabaseBuilder.replica`,
 `Database.addReplica`) is experimental, with known faults, and not for data
-that matters ([005-11](items/005-todo/11-replication.md)). Bounded startup
-is proved for BergDB's own startup pos policy since 2026-10-28, in the Lean
-model of its take ([007-08](items/007-bounds/08-step4-take-in-lean.md)):
-the startup section without its last record stays below twice the startup
-distance, and after a decrease of it comes down with every commit; the
-proof leaves out the record limit and the stream's meta blocks. Before the
+that matters ([005-11](items/005-todo/11-replication.md)). The bound on
+the startup section (T3) is proved for BergDB's own startup pos policy since
+2026-10-28, in the Lean model of its take
+([007-08](items/007-bounds/08-step4-take-in-lean.md)): the startup section
+without its last record stays below twice the startup distance, and after a
+decrease of it comes down with every commit until it is below twice the new
+one. That is not all of bounded startup: the records at the ends of the
+section (T4) and a cold start's reads through references into older records
+are not bounded by a proof, and the model leaves out the record limit and
+the stream's meta blocks. Before the
 take's deadline ([007-03](items/007-bounds/03-plan.md), step 3), the
 startup section reached 2.6 times the startup distance at 50 MB in a test
 ([005-38](items/005-todo/38-writes-at-scale.md)).

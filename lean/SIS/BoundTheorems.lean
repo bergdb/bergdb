@@ -131,10 +131,12 @@ setting be sd' > 0 in T(m+1), ..., T(m+n), where m = ts.length and n =
 us.length (after a decrease, `Db.setStartupDistance`'s transaction is
 T(m+1)). Then after T(m+n) the startup section without its last record costs
 less than 2 sd', or at least n less than after T(m). So it never costs more
-than after T(m), which T3_take bounds by twice the largest setting before; it
-shrinks with every transaction while it costs 2 sd' or more; and it costs less
-than 2 sd' after at most (its cost after T(m)) - 2 sd' + 1 transactions, and
-from then on. -/
+than the larger of its cost after T(m), which T3_take bounds by twice the
+largest setting before, and 2 sd' - 1 (not more than after T(m) if that is
+2 sd' or more; below 2 sd' it may grow, but stays below; bergdb 007-08, review,
+point 2); it shrinks with every transaction while it costs 2 sd' or more; and
+it costs less than 2 sd' after at most (its cost after T(m)) - 2 sd' + 1
+transactions, and from then on. -/
 theorem T3_take_decrease (sp : Spec V T) (al : Algo V T) (size : Record V T → Nat)
     (sd : Time → Nat) (pace : Pace V T) (hp : al.policy = takePolicy size sd pace)
     (ts us : List T) (sd' : Nat) (hsd' : 0 < sd')

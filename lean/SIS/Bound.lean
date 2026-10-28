@@ -7,7 +7,10 @@ SIS/BoundTheorems.lean. Added 2026-10-23. Since 2026-10-28 (bergdb 007-08,
 step 4 of 007-03) also BergDB's take, `TransSeq.take` as step 3 and D4:B left
 it (bergdb 007-07): `Stream.span`, `Pace`, `takeLoop`, `takePolicy`, and
 BergDB's pace with its share and rounding, `share`, `dither`, `javaPace` and
-`javaTake`.
+`javaTake`. No theorem uses `share`, `dither` and `javaPace` (nor `javaTake`,
+made from them): T3 holds for every pace. They are kept, in the trusted part, to
+check the model against Java's arithmetic (the `#guard`s of
+SIS/BoundExample.lean, and TakeCheck; bergdb 007-08, sections 4 and 7).
 -/
 import SIS.Algorithm
 import SIS.Startup
@@ -122,13 +125,15 @@ transactions, o (`own`) the record's own bytes, O (`ownSec`) those of the
 section's records, L (`len`) the length of the section, from the startup pos
 to the end of the stream, and sd the setting. In Java's double arithmetic and
 order: Lean's `Float` is the same IEEE 754 binary64, with the same rounding
-(SIS/BoundExample.lean compares bits with Java's). -/
+(SIS/BoundExample.lean compares bits with Java's). Used by no theorem; kept to
+check the model against Java's arithmetic (the `#guard`s, TakeCheck). -/
 def share (dirty own ownSec len sd : Nat) : Float :=
   dirty.toFloat * own.toFloat / ownSec.toFloat * len.toFloat / sd.toFloat
 
 /-- `TransSeq.dither`: a number in [0, 1) hashed from a stream position, the
 finalizer of SplitMix64, as Java computes it on a `long` (multiplications mod
-2^64, logical shifts). -/
+2^64, logical shifts). Used by no theorem; kept to check the model against
+Java's arithmetic (the `#guard`s, TakeCheck). -/
 def dither (pos : Nat) : Float :=
   let z : UInt64 := UInt64.ofNat pos * 0x9E3779B97F4A7C15
   let z := (z ^^^ (z >>> 30)) * 0xBF58476D1CE4E5B9
@@ -145,7 +150,8 @@ T(s+1), ..., T(i-1), Java's `dirtyCount`, without those of T(i), which Java
 adds to its `TransSeq` after the take. `own t` is the own bytes of the record
 of transaction t (`TransSeq.ownBytes`: its value nodes and 48), a function of
 the transaction here; in Java it is that of the value nodes the transaction
-writes. -/
+writes. Used by no theorem, which hold for every pace; kept to check the model
+against Java's take (the `#guard`s, TakeCheck). -/
 def javaPace (size : Record V T → Nat) (own : T → Nat) (sd : Time → Nat) : Pace V T :=
   fun S D i tr taken count =>
     let s := lastSp S

@@ -137,9 +137,11 @@ transactions (`runRestarts`).
 D4:B. Let the setting be sd' in T(m+1), ..., T(m+n), m = ts.length and n =
 us.length (after a decrease, `setStartupDistance`'s transaction is T(m+1)).
 After T(m+n) the section costs less than 2 sd', or at least n less than
-after T(m). So it never costs more than after T(m), which `T3_take` bounds
-by twice the largest setting before; it shrinks with every transaction
-while it costs 2 sd' or more; it costs less than 2 sd' after at most (its
+after T(m). So it never costs more than the larger of its cost after T(m),
+which `T3_take` bounds by twice the largest setting before, and 2 sd' - 1
+(corrected after the review, point 2: not more than after T(m) only if that
+is 2 sd' or more; a section below 2 sd' may grow, but stays below); it
+shrinks with every transaction while it costs 2 sd' or more; it costs less than 2 sd' after at most (its
 cost after T(m)) - 2 sd' + 1 transactions, and from then on.
 `T3_take_decrease_restarts` is the same with restarts. Raising the setting
 needs nothing: `T3_take` with the new setting as M.
@@ -340,6 +342,21 @@ Nothing else is used; the share, the dither and D's contents never enter.
    the pace (section 3, point 4). Java's runs answer it at scale. Model it?
    Recommended: no.
 
+Frans's answers, 2026-10-28, 13:09 ("as recommended", after the review):
+
+1. Keep `share`, `dither` and `javaPace` in `Bound.lean`, in the trusted
+   part, with a note that no theorem uses them and that they are kept to
+   check the model against Java's arithmetic (the `#guard`s, TakeCheck).
+   Done: the note is in Bound.lean's header and the three definitions'
+   comments, and in lean/README.md's table.
+2. Record lengths in the traces: later, with the next trace format change.
+   As the review notes (its "For Frans", 2), a trace check of the startup
+   pos would be the only check that `Db.store` gives `take` the model's
+   arguments (the stream length, the setting, the startup pos), on which
+   the theorems' meaning for Java rests by reading today, and with each
+   record's tpos it would check the meta blocks at scale too.
+3. No model of how fast the section comes down after a decrease.
+
 
 Files
 -----
@@ -485,3 +502,13 @@ caveat (point 1).
    boundary.
 5. For the author: the comment of point 2, a `#guard` for the fourth
    counterexample, and README.md's first words (point 6).
+
+**Follow-up, 2026-10-28** (006-10, at Frans's word, 13:09: "as
+recommended"): the comment of point 2 corrected, in `T3_take_decrease` and
+section 2; README.md's sentence now says that T3, the startup section's
+bound, is proved, and that T4 and a cold start's reads through references
+are open, and docs/levels.md's limit says the same; the note of point 4 on
+`share`, `dither` and `javaPace`; Frans's answers to section 7's questions
+are under them. Comments and documents only; `lake build` clean. The
+fourth counterexample's `#guard` is not made. The meta blocks (point 4 for
+Frans): a fix was decided, as a 005 entry.
