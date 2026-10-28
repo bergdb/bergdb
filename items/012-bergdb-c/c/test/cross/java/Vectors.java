@@ -14,14 +14,17 @@ import bergdb.common.StringMap;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.GetData;
+import bergdb.dag.GetMany;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
 import bergdb.dag.Klong;
 import bergdb.dag.KlongWithPointer;
 import bergdb.dag.Node;
 import bergdb.dag.OpData;
+import bergdb.dag.Kvt;
 import bergdb.dag.Pointer;
 import bergdb.dag.PointerFollower;
+import bergdb.dag.PutData;
 import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
@@ -38,7 +41,8 @@ import bergdb.stream.MemoryStream;
  * and records it refuses), and (012-07) knode.txt (KeyNode's operations as the Dag makes them,
  * and the node's stored bytes after each) and top.txt (TopDs's chains of top nodes), and
  * (012-09) strmap.txt (StringMap's texts, in HashMap's order) and keymod.txt (KeyModSet's
- * answers), into a directory. C's unit tests read them
+ * answers), and (012-08) dag.txt (the Dag's transactions: dirtyNodeBound before each, the
+ * splits and the state after it), into a directory. C's unit tests read them
  * (c/test/unit/t_vectors.c); 012-05's cross tests run this again and compare with the
  * committed files, so that a change in Java shows.
  *
@@ -70,6 +74,7 @@ public class Vectors {
         top(open(dir, "top.txt"));
         strmap(open(dir, "strmap.txt"));
         keymod(open(dir, "keymod.txt"));
+        dag(open(dir, "dag.txt"));
         System.out.println("VECTORS OK: " + dir);
     }
 
@@ -999,6 +1004,106 @@ public class Vectors {
             h *= 0x100000001b3L;
         }
         return StoredTopNode.getByteSize(node) + " " + String.format("%016x", h);
+    }
+
+    // ---- Dag (012-08) ----
+
+    private static void dag(PrintWriter w) {
+        w.print("# dag SEED MAXNODE T0: Dag.createEmpty(T0, MAXNODE), its pointers memory pointers\n");
+        w.print("# t TT BOUND TSPLITS SSPLITS HASH PAIRS: dirtyNodeBound(the last time, the pairs)\n");
+        w.print("#   before the transaction at TT; the pairs put (the value: TT's two low bytes, then\n");
+        w.print("#   7) or deleted in order, clearFast after each, clear at the end; PutData's time\n");
+        w.print("#   and space split counts after it; HASH, FNV-1a 64 of the latest state's getMany:\n");
+        w.print("#   each pair's key segments, Kvt.time and value length as longs, little-endian;\n");
+        w.print("#   PAIRS: BKEYHEX:D, D 1 for a delete\n");
+        for (int seed = 1; seed <= 12; seed++) {
+            dagRun(w, seed);
+        }
+        w.close();
+    }
+
+    private static final PointerFollower MEMORY_FOLLOWER = new PointerFollower() {
+        public Node followPointer(Node predecessor, int index, OpData op) {
+            Node n = predecessor.getPointerNode(index);
+            if (n == null) throw new IllegalStateException("not in memory");
+            op.pointerListener.pointerFollowed(predecessor, index, n, Pointer.TYPE_MEMORY);
+            return n;
+        }
+    };
+
+    /** DbTesterGetMany.randomKey's alphabet: keys that share prefixes and segments. */
+    private static String dagKey(Random r) {
+        String[] parts = {"a", "b", "ab", "abc", "k", "/k/", "/long/", "xyz", "q", "1234567"};
+        StringBuilder b = new StringBuilder();
+        int count = 1 + r.nextInt(r.nextInt(4) == 0 ? 6 : 3);
+        for (int i = 0; i < count; i++) {
+            b.append(parts[r.nextInt(parts.length)]);
+            if (r.nextBoolean()) {
+                b.append(r.nextInt(100));
+            }
+        }
+        return b.toString();
+    }
+
+    private static void dagRun(PrintWriter w, int seed) {
+        Random r = new Random(200 + seed);
+        int maxNode = new int[] {8, 14, 30, 62}[seed % 4];
+        long t = 1 + r.nextInt(100);
+        Dag dag = Dag.createEmpty(t, maxNode, MEMORY_FOLLOWER, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+        PutData pd = dag.newPutData();
+        pd.pointerFollower = MEMORY_FOLLOWER;
+        GetData gd = dag.newGetData();
+        gd.pointerFollower = MEMORY_FOLLOWER;
+        w.print("dag " + seed + " " + maxNode + " " + t + "\n");
+        for (int i = 0; i < 80; i++) {
+            int n = 1 + r.nextInt(r.nextInt(5) == 0 ? 40 : 6);
+            java.util.TreeMap<long[], Boolean> pairs =
+                    new java.util.TreeMap<long[], Boolean>(new java.util.Comparator<long[]>() {
+                        public int compare(long[] a, long[] b) {
+                            return Keys.compareArrays(a, b);
+                        }
+                    });
+            for (int j = 0; j < n; j++) {
+                pairs.put(Keys.toSegments(dagKey(r)), r.nextInt(5) == 0);
+            }
+            long[][] keys = pairs.keySet().toArray(new long[0][]);
+            boolean[] deletes = new boolean[keys.length];
+            for (int k = 0; k < keys.length; k++) {
+                deletes[k] = pairs.get(keys[k]);
+            }
+            long bound = dag.dirtyNodeBound(t, keys, deletes, gd);
+            t += 1 + r.nextInt(20);
+            pd.tt = t;
+            StringBuilder b = new StringBuilder();
+            for (int k = 0; k < keys.length; k++) {
+                dag.putKv(keys[k], deletes[k] ? null : new byte[] {(byte) t, (byte) (t >> 8), 7}, pd);
+                pd.clearFast();
+                b.append(' ').append(hex(Keys.toBytes(keys[k]))).append(deletes[k] ? ":1" : ":0");
+            }
+            pd.clear();
+            GetMany g = dag.newGetMany();
+            g.gd.pointerFollower = MEMORY_FOLLOWER;
+            g.actualLookupTime = t;
+            dag.getMany(g);
+            long h = 0xcbf29ce484222325L;
+            for (Kvt kvt : g.result) {
+                for (long x : kvt.key) {
+                    h = fnv(h, x);
+                }
+                h = fnv(h, kvt.time);
+                h = fnv(h, kvt.value.length);
+            }
+            w.print("t " + t + " " + bound + " " + pd.timeSplitCount + " " + pd.spaceSplitCount + " "
+                    + String.format("%016x", h) + b + "\n");
+        }
+    }
+
+    private static long fnv(long h, long x) {
+        for (int i = 0; i < 8; i++) {
+            h ^= (x >>> (8 * i)) & 0xff;
+            h *= 0x100000001b3L;
+        }
+        return h;
     }
 
     // ---- text ----

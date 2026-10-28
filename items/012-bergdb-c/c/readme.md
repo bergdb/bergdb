@@ -94,9 +94,26 @@ The modules so far, each ported from its Java class:
 | `snode` | `NodeStream.bytesToNode`, the three `Stored*Node.parse` | `sn_`, `NODE_` |
 | `strans` | `StoredTrans.Parser` | `st_`, `ST_` |
 | `nstream` | `NodeStream`'s reads: the trans iterator, `readNode` | `ns_` |
+| `obj` | the counted objects of the index, the pending list, safe points, the recount, close's walk (012-07, 6.4) | `obj_`, `OBJ_` |
+| `node` | `bergdb.dag.Node`, `Pointer`, `KlongWithPointer`, `AccessData`'s constants | `node_`, `ptr_`, `kwp_` |
+| `handle` | `bergdb.dag.Handle`, and `Cache3`'s changes of a handle | `hd_` |
+| `knode` | `bergdb.dag.KeyNode`, and `StoredKeyNode.parse`'s object | `kn_` |
+| `tnode` | `bergdb.dag.TopNode`, and `StoredTopNode.parse`'s object | `tn_`, `TN_` |
+| `vnode` | `bergdb.dag.ValueNode`, and `StoredValueNode.parse`'s object | `vn_` |
+| `topds` | `bergdb.dag.TopDs` | `tds_` |
+| `opdata` | `bergdb.dag.OpData`, and the Dag's interfaces (follower, listeners, cache policy) | `op_`, `OP_` |
+| `nwrite` | the writers: `StoredKeyNode.toLongs`, `StoredTopNode.toLongs`, `StoredValueNode.toBytes` | `nw_` |
+| `dag` | `bergdb.dag.Dag` (putKv, getOne, dirtyNodeBound), `PutData`, `GetData`, `KeyAccessPath` (012-08) | `dag_`, `pd_`, `kap_`, `DAG_` |
+| `getmany` | `bergdb.dag.GetMany`: the chain, the stop conditions, `Dag.getMany` | `gm_`, `GM_` |
+| `mdb` | a database of Level 0 in memory: Db's creation, puts and deletes at a transaction's time, reads with `DbClock.lookupTime` | `mdb_` |
+| `replay` | Java's databases read by a full replay of the stream (Level 1): `Db.start`'s checks and reports, `getTrans` | `replay_` |
 
 The tools so far: `bergdb-scan PATH` (012-06), Java's `StreamScan` in C:
-the same text, "streamscan 1", for every stream (`tools/scan.c`).
+the same text, "streamscan 1", for every stream (`tools/scan.c`);
+`bergdb-dump [-maxnode N] [-large] DIR SCAN` (012-08), Java's `Dump` in C:
+the same text, "bergdb-dump 1", by a full replay of the stream, for a
+database without reclaim's table or cut (exit status 3 for one that has
+them; `cross.sh` gives those to Java's dumper) (`tools/dump.c`).
 
 
 # 3. Java's semantics in C

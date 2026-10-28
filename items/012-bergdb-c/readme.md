@@ -210,3 +210,16 @@ C gate has a new step, `write`. Frans, 17:50, through the Unattended
 Lead: "tonight 012 (session f1-0f) has priority on F53. The quiet block
 becomes flexible." So 012 goes on through the night, with gaps handed to
 006-10's timed steps.
+
+2026-10-28, 21:40. 012-08 done, and with it milestone M2: C reads Java's
+databases. The Dag (puts and deletes with Java's splits and new top
+nodes, `getOne`, `dirtyNodeBound`), `getMany` in both directions with
+every stop condition, `getTrans` with Java's refusals, a full replay of
+the stream, and `bergdb-dump`. C's dumps equal Java's on every database of
+012-05's sets without reclaim (176 workloads, both sides) and on all
+1,262 crash cuts; Java's `DagTester` and 29 of `DbTesterGetMany`'s 33
+ported; Java's Dag and C's agree on 960 transactions. In the main tree,
+with 012-09 part 1: `cross.sh full` with C's tools OK (279 workloads, 0
+differences; 1,437 s), C BEFORE COMMIT OK (51 s; 286 unit tests). Phase
+C runs: 012-09 proper (execute, Java's bytes) and 012-10 part 1
+(recovery, bounded startup's reads), side by side.

@@ -26,6 +26,11 @@ extern const struct test keymod_tests[];
 extern const struct test transseq_tests[];
 extern const struct test append_tests[];
 extern const struct test strmap_tests[];
+extern const struct test dag_tests[];
+extern const struct test getmany_tests[];
+extern const struct test replay_tests[];
+extern const struct test dagvec_tests[];
+extern const struct test dbgetmany_tests[];
 
 int main(int argc, char **argv) {
     const struct test *const tables[] = {
@@ -53,6 +58,11 @@ int main(int argc, char **argv) {
         transseq_tests,
         append_tests,
         strmap_tests,
+        dag_tests,
+        getmany_tests,
+        replay_tests,
+        dagvec_tests,
+        dbgetmany_tests,
         NULL
     };
     return test_main(argc, argv, "UNIT", tables);

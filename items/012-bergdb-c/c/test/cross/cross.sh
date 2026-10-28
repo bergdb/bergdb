@@ -92,6 +92,10 @@ fail() {
 # (Batch.java). Java runs a job file in one JVM; C runs its tools one job at a time.
 # Each job leaves OUT, OUT.exit and, if it threw, OUT.err.
 
+# Side B's jobs that Java runs although C has the tool: their OUT paths, one a line, in
+# $OUT/java-only.txt. C's bergdb-dump reads a database by a full replay of its stream
+# (012-08), which a database with reclaim's table or cut cannot have (012-11): the dumps
+# of the workloads that may reclaim stay Java's.
 ctool() {   # KIND: the C tool's path for a job kind, if side B has it
     [ -n "$CTOOLS" ] || return 1
     t=$CTOOLS/bergdb-$1
@@ -106,7 +110,7 @@ side_jobs() {   # SIDE JOBFILE: runs the jobs on side a or b
         : > "$jobs.java"
         while read -r kind out rest; do
             [ -n "$kind" ] || continue
-            if t=$(ctool "$kind"); then
+            if t=$(ctool "$kind") && ! grep -qxF "$out" "$OUT/java-only.txt" 2>/dev/null; then
                 # shellcheck disable=SC2086
                 "$t" $rest < /dev/null > "$out" 2> "$out.err"
                 echo $? > "$out.exit"
@@ -342,6 +346,7 @@ esac
 rm -rf "$OUT"
 mkdir -p "$OUT"
 : > "$REPORT"
+: > "$OUT/java-only.txt"
 say "cross.sh $SET, $(date '+%Y-%m-%d %H:%M'), side B: ${CTOOLS:-Java}"
 sh "$HERE/java-build.sh" | tee -a "$REPORT" | grep -q "JAVA BUILD OK" || { say "CROSS $SET FAILED: the Java build"; exit 1; }
 
@@ -389,12 +394,19 @@ for w in $WORKLOADS; do
             # C to Java: Java's dumps of C's directories run Java's audit (012-01, 1).
             audit=""; [ -n "$CTOOLS" ] && [ "$x$y" = ba ] && audit="-audit 1"
             echo "dump $OUT/$x/$w/dump-by-$y.txt -maxnode $m $LARGE $audit $OUT/$x/$w/dumpdir-by-$y $OUT/a/$w/scan-by-a.txt" >> "$OUT/dump-$y.jobs"
+            if [ "$y" = b ] && [ "$(retain_of "$OUT/wl/$w.wl")" = 1 ]; then
+                echo "$OUT/$x/$w/dump-by-$y.txt" >> "$OUT/java-only.txt"
+            fi
         done
     done
 done
 both_sides "$OUT/scan-a.jobs" "$OUT/scan-b.jobs"
 both_sides "$OUT/dump-a.jobs" "$OUT/dump-b.jobs"
 say "scans and dumps done in $(( $(date +%s) - T0 )) s"
+if ctool dump > /dev/null; then
+    nj=$(wc -l < "$OUT/java-only.txt" | tr -d ' ')
+    say "side B's dumps: C's of $(( $(wc -l < "$OUT/dump-b.jobs" | tr -d ' ') - nj )), Java's of $nj (workloads that may reclaim)"
+fi
 
 # ---- Compare ----
 for w in $WORKLOADS; do
