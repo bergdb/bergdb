@@ -1,10 +1,8 @@
 005-53. Investigate the startup distance on the fly
 ===================================================
 
-Status: open, ready to decide (2026-10-28: options A to E for the Pub API,
-E recommended, below; the evidence in
-[53-startup-distance-on-the-fly/report.md](53-startup-distance-on-the-fly/report.md)).
-Kind: investigate. Created 2026-10-26.
+Status: done (2026-10-28: option E, decided by Frans and implemented with
+005-52; see Outcome). Kind: investigate. Created 2026-10-26.
 
 Found in [010-01](../010-principles/01-principles.md), 010-P6 ("No
 interruption for changes"), and studied first as 010-03; registered at
@@ -343,3 +341,93 @@ Questions for Frans
    now; it does not block E.
 5. Decide and implement together with 005-52, one pattern? Recommended:
    yes, one commit.
+
+
+Decision
+--------
+
+Frans, 2026-10-28, 12:32: "53 and 52. Yes, do this as recommended.", and
+the smaller questions "as recommended". So: E; a call with the value in
+force writes nothing; no getter for the actual startup distance now (with
+006-06); the 200 kB value keeps counting toward its record's share, as
+now; done together with 005-52, in one commit.
+
+
+Outcome
+-------
+
+2026-10-28, by Claude (Opus 5.5, Claude Code), for 006-10, in a clone on
+`8b37ad1`, together with [005-52](52-cache-size-while-running.md), whose
+Outcome has its half; the code is one commit, `fd8f513`.
+
+* The API, in `pub/Database`, beside the retain duration:
+  `void setStartupDistanceInMb(int)` and `int getStartupDistanceInMb()`.
+  `DatabaseImp` clamps as the builder does (5 to 1000 MB; the clamp is
+  now one static method of `DatabaseBuilderImp` that both use) and calls
+  `Db.setStartupDistance`; the getter rounds `Db.getStartupDistance()` to
+  MB. No new core method (010-P12), no new setting, no format change. The
+  Javadoc says what E's text says, and the pattern: a setting that
+  changes the stream's bytes is kept in the stream (P2), one that does not
+  lasts for the run.
+* `Db.setStartupDistance`, two changes: under the write lock it checks
+  the state first (`assertDbStateIsActive`), then returns at once when the
+  clamped value is the one in force; and if the transaction is refused,
+  or fails the database, it puts the setting and the in-memory meta
+  block's value back before it rethrows. So a refused call changes
+  nothing; until now the setting changed before `execute` checked the
+  state (report, 1.2).
+* A stopped or stopping database: the call throws as a transaction does,
+  `IllegalDbStateException` (`DbStoppingException` while stopping) or
+  `DbFailedException`, also for the value in force, and the setting stays.
+  The getter works after `stop()`.
+* `DatabaseBuilder.startupDistanceInMb`'s Javadoc: "between 5 and 1000"
+  (it said 100), and that `Database.setStartupDistanceInMb` changes an
+  existing database's distance, which the stream keeps.
+* The tests:
+  * `PubTester.testSetStartupDistanceInMb` (unit): in force at once (the
+    getter and `Db`'s value, the stream grown by the call's 200 kB); the
+    same value again appends nothing (the stream's length unchanged); 1
+    gives 5 and 5000 gives 1000; after `stop()` a call throws
+    `IllegalDbStateException` and the setting stays 20; a restart whose
+    builder passes the default (50) has 20.
+  * `PubTester.testDecreaseOfStartupDistanceInMbF` (f, D4:B's small
+    check): 50 MB, 15,000 transactions of 20 small puts over a million
+    keys (a section of about 22 MB), lowered to 5 MB, then 300 commits. No
+    record from the call on is more than a third of what the records wrote
+    until they were back near their size before the call (largest about
+    3.0 MB of about 16 MB, over 10 records). With the deadline at twice
+    the new setting at once (D4:B removed, a mutation for the check), one
+    record took 9.4 MB of 17.0 MB and the test fails.
+  * `DbTester.testSetStartupDistanceInForceOrRefused` (unit, core): the
+    value in force writes nothing; a call after `stop()` throws and leaves
+    the setting.
+  * Mutations of the change, each in a copy: without the return for the
+    value in force, `DbTester`'s and `PubTester`'s tests fail ("nothing
+    written, expected 384, got 200616"; "the setting in force: nothing
+    appended, expected 200616, got 400832"), as on the code before;
+    without the state check first and the restore, both fail on the
+    refused call ("Expected 1000000, got 3000000"; "the refused call
+    changed the setting, expected 20, got 30").
+* StreamDigest, `StreamDigest all` with main's compiled class (`8b37ad1`)
+  against main's jar and the change's: "DIGESTS IDENTICAL (36 of 36)",
+  and the change's digests are 007-07's `digest-patch.txt`: none of its
+  configurations calls a setter, so nothing changes.
+* Gates, on the change (`8b37ad1` and the code, identical in java/ to
+  `fd8f513`), F53 with other sessions' runs about, nice 10:
+  `before-commit.sh` "BEFORE COMMIT OK (103 s)" (1,069 unit tests, 77
+  f-tests; deps.py: 9 packages, all as package.html allows);
+  `level3.sh` (full) "LEVEL 3 OK" (conformance: 25 traces, TRACECHECK OK
+  25, C-CUT 0 of 305); `level4.sh` (full) "LEVEL 4 OK" (EVICTION
+  INVARIANCE OK in all 9; conformance: 45 traces, C-P and C-H 0 of 10,344
+  transactions fail); `level2.sh quick` "LEVEL 2 OK" (14 traces,
+  TRACECHECK OK).
+
+Left: 006-06 (fast restart) wants to know when the section is short; a
+getter for the actual startup distance is for it (question 3). The retain
+duration shapes the stream's bytes and yet a restart takes the builder's
+value (report, 1.2, the aside): not this entry's; its Javadoc does not say
+so.
+
+Files: [53-startup-distance-on-the-fly/](53-startup-distance-on-the-fly/):
+`impl-gates.txt` (the gates' summary lines), `impl-digest-base.txt` and
+`impl-digest-change.txt` (StreamDigest's output, main and the change).

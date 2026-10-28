@@ -1465,3 +1465,23 @@ Frans's note of 2015 in the test, "Expected 800, got 1200", was a fault
 of the code then: `BufferedStream`'s flush of nothing at a close, fixed by
 005-14. Test code only; `before-commit.sh`, `core-build.sh unit f` and
 `level2.sh quick` pass.
+
+2026-10-28. 005-53 and 005-52 done, by Claude (Opus 5.5, Claude Code),
+for 006-10, as Frans decided ("53 and 52. Yes, do this as recommended."):
+the startup distance and the cache size change while the database runs,
+through the Pub API (010-P6). `Database.setStartupDistanceInMb(int)` and
+`getStartupDistanceInMb()`, clamped to 5 to 1000 MB as the builder, kept in
+the stream as before through `Db.setStartupDistance`, one call since D4:B;
+that method now writes nothing for the value in force, and checks the
+state before it changes the setting, which it puts back if the
+transaction is refused. `Database.setCacheSizeInMb(int)` and
+`getCacheSizeInMb()`, clamped to 4 to 100,000 MB as the builder, for the
+run only, through the new `Db.setCacheSizeIndicator` and
+`getCacheSizeIndicator` (Db's public methods from 43 to 45), which JMX now
+uses instead of `internal()`; after a decrease the setter wakes the
+eviction thread (`Eviction.setBudget(Db, long)`), so that an idle database
+gives the memory back too (010-P3: work the call starts). The rule, in
+both Javadocs: a setting that changes the stream's bytes is kept in the
+stream (P2), one that does not lasts for the run. New tests in
+`PubTester`, `DbTester` and `CapacityTester`, each failing on a mutation
+of the change; StreamDigest identical (36 of 36); `before-commit.sh`, `level3.sh` and `level4.sh` (full) and `level2.sh quick` pass.

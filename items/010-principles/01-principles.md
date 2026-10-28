@@ -167,10 +167,11 @@ The work in threads of BergDB's own today, all fine as it is (Frans,
   buffer at the latest a buffer time (20 ms) after the commit, the
   durability promise of `sync(ORDINARY)` (005-13), and sleeps when nothing
   is buffered (005-14).
-* A get or a commit that needs memory: the eviction thread,
-  `bergdb-evictor`, one per database (009, decision T5a), is started or
-  woken. A thread is fine (Frans, 2026-10-26). When idle it waits with no
-  timeout; the database's close wakes it, and it ends
+* A get or a commit that needs memory, or a lower cache size
+  (`Database.setCacheSizeInMb`, since 2026-10-28, 005-52): the eviction
+  thread, `bergdb-evictor`, one per database (009, decision T5a), is
+  started or woken. A thread is fine (Frans, 2026-10-26). When idle it
+  waits with no timeout; the database's close wakes it, and it ends
   ([005-51](../005-todo/51-eviction-on-calls.md), 2026-10-27). Until then
   it waited with a timeout, `evictorLock.wait(1000)`, to see whether the
   database had stopped: one wake-up a second, as long as the database was
@@ -275,20 +276,23 @@ Where BergDB stands:
 * Replicas: `addReplica` and `removeReplica` while it runs; experimental,
   with known faults (005-11).
 * The retain duration: `setRetainDuration` while it runs.
-* The startup distance: set when the database is created. Through the Pub
-  API, an existing database keeps the one in its stream
-  (`DatabaseBuilder.startupDistanceInMb`); the core can change it while the
-  database runs (`Db.setStartupDistance`), and 006-06 (fast restart)
-  builds on that. A deviation. On-the-fly changes date from 2013-04, in the
-  core and through JMX (`Jmx.DbMonitor`), never in the Pub API; the code is
-  unchanged since. Being investigated in
-  [005-53](../005-todo/53-startup-distance-on-the-fly.md).
-* The cache size: set at start only (`cacheSizeInMb`); a change needs a
-  restart. A deviation. It should change while the database runs, with no
-  disruption: the cache converges gradually to the new size (Frans,
-  2026-10-26: "Gradual convergence to the new setting."). Registered as
-  [005-52](../005-todo/52-cache-size-while-running.md); the core can do it
-  already (`Eviction.setBudget`, also through JMX).
+* The startup distance: `Database.setStartupDistanceInMb` while it runs,
+  since 2026-10-28 ([005-53](../005-todo/53-startup-distance-on-the-fly.md),
+  option E), with one call: the setting is in force when the call returns
+  and kept in the stream's meta blocks, as it shapes the stream's bytes
+  (P2); after a decrease the section comes down as the application
+  commits, with no commit that writes the whole of it (007-03, D4:B;
+  007-07). The core had it since 2013-04 (`Db.setStartupDistance`, also
+  through JMX), never the Pub API until then; 006-06 (fast restart) builds
+  on it.
+* The cache size: `Database.setCacheSizeInMb` while it runs, since
+  2026-10-28 ([005-52](../005-todo/52-cache-size-while-running.md), option
+  B), for the run, as it changes no byte of the stream: the resident bytes
+  converge to the new budget in the eviction thread's batches of at most 2
+  ms, which the call starts, so an idle database gives the memory back too
+  (Frans, 2026-10-26: "Gradual convergence to the new setting."). The rule
+  for a setting changed while running: one that changes the stream's bytes
+  is kept in the stream, one that does not lasts for the run.
 * Fixed for the life of the database, by decision: the crypto key. The log
   of 2008-10-18, `doc/log-old/2008-2011-log.txt` line 1253: "Discussion
   with Anton. Conclusion: do NOT ever change encryption key of stream. This
@@ -403,10 +407,13 @@ Where BergDB stands:
 * The Pub API's settings (`DatabaseBuilder`): the directory, or memory;
   the crypto key; the clock; the retain duration; the startup distance
   (default 50 MB, clamped to 5 to 1000 MB); the cache size (default a fifth
-  of the JVM's maximum heap).
+  of the JVM's maximum heap). The retain duration, the startup distance
+  and the cache size also change while the database runs (`Database`'s
+  setters; P6).
 * The default startup distance does not suit a large database: from about
   10M keys, 200 to 1000 MB does (005-38), chosen when the database is
-  created (P6). A deviation. 2013-04-08: "It is not clear to me how to do
+  created, or later with `Database.setStartupDistanceInMb` (P6, since
+  2026-10-28). A deviation. 2013-04-08: "It is not clear to me how to do
   automatic startupDistance changes based on db size."
 * The node size is not a setting of the Pub API (30). Through the core, a
   database started with another node size than it was written with fails,
@@ -471,7 +478,9 @@ Where BergDB stands (`java/src`, 2026-10-28):
   and `java/deps.py` checks them (005-56). `pub` and `pubimp` use each
   other, by design: `Factory`, and `Time`'s `TimeResolver`.
 * `getOneInternal` is public.
-* Db has 43 public methods.
+* Db has 45 public methods (43 until 005-52 added `setCacheSizeIndicator`
+  and `getCacheSizeIndicator`, 2026-10-28, so that `pubimp` and JMX set the
+  cache size through the Core API and not through `internal()`).
 
 The measures: `java/deps.py` in `java/before-commit.sh`, each package's
 uses against its `package.html` (005-56), and the Core Layer built alone,

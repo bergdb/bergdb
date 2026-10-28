@@ -29,8 +29,6 @@ Open
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10). For release 2026.1: kept, documented as experimental | open |
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
-| [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API sets it only at start (`cacheSizeInMb`), against 010-P6; the core has `Eviction.setBudget` (also through JMX). The cache should converge gradually to the new size, with no disruption. Questions 1 and 3 ready to decide (2026-10-28): B, `Database.setCacheSizeInMb` and a getter, for the run, not in the stream, with 005-53 | open, ready to decide |
-| [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory. Ready to decide (2026-10-28, after D4:B): options A to E, E recommended, `Database.setStartupDistanceInMb` and a getter, kept in the stream; B and D obsolete, C subsumed | open, ready to decide |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 | [005-60](60-block-storage.md) | Investigate | Block storage: the stream on a raw block device without a file system, as a ring of a fixed size, kept until the room is needed (retention by space); feasible in Java? And on a Linux device in a C or C++ clone. Frans's idea | open |
 | [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered; a longer time may mean fewer forces and wake-ups for writers that do not sync, at the cost of more unsynced data lost on a power loss. Frans's request | open |
@@ -42,6 +40,8 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API could not change it for an existing database (against 010-P6); the core could since 2013-04, through JMX only. Investigated (the history, `Reclaim`'s fault fixed as 005-61, the decrease measured in 007-06 and 007-07) and decided after D4:B (Frans, 2026-10-28): option E, `Database.setStartupDistanceInMb` and `getStartupDistanceInMb`, kept in the stream's meta blocks as before, one call, no steps and no `Job`; a call with the value in force writes nothing, a refused call changes nothing. Implemented with 005-52 (`fd8f513`); StreamDigest identical | done | 2026-10-28 |
+| [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API set it only at start (`cacheSizeInMb`), against 010-P6. Decided (Frans, 2026-10-28): option B, `Database.setCacheSizeInMb` and `getCacheSizeInMb`, clamped as the builder, for the run only, through `Db.setCacheSizeIndicator` and its getter, which JMX uses too; after a decrease the setter wakes the eviction thread, so that an idle database gives the memory back. Implemented with 005-53 (`fd8f513`). Left: the pause probe with a lowered budget against a fixed one, for a quiet block | done | 2026-10-28 |
 | [005-67](67-fix-test-add-replica2.md) | Fix | `StorageManagerTester.testAddReplica2` failed about one gate run in twelve on a busy machine, "Expected 700, got 200", since 2015 (Frans's note): the test was wrong, not the code. It asserted both streams' lengths right after an append, but an active replica only means that the sync's last bytes are in the replica's buffer, which writes them a little later, and both buffers write an append within milliseconds. Now it waits for the confirmed lengths; `testAddReplicaWhileAppending`'s writer, which appended without the write lock and could hang the test, takes it. Forced interleavings: each failure certain before, none after; 400,000 runs after the fix without a failure (4 in 40,000 before). 2015's "Expected 800, got 1200" was `BufferedStream`'s flush of nothing at a close, fixed by 005-14. Test code only | done | 2026-10-28 |
 | [005-62](62-lean-t9-t12-over-handles.md) | Fix | Lean: T9 and T12 over handles, so that the design before handles can go. Both proved (`t9_handles`, `t12_handles`), reviewed at max effort. Then, as Frans decided (2026-10-28), the design before handles removed from lean/: Evict.lean and its proofs, EvictExample.lean, and the seven theorems over it with a counterpart over handles; the startup with handles proved over handles (HandleStart.lean); the assumptions of stage 2 and `Mem.sectionPos` in Phys.lean; lean/ from 144 files and 66,452 lines to 119 and 51,539. And rule 4 by position after a cut, with Java's skip of the pointers below the stream's first position, proved to link what rule 4 by node id links (`rule4PosCut_handles`, `runPosCut_handles`), so T12 holds for Java's startup; no new assumption. A theorem for a cut without a restart: not for now (Frans) | done | 2026-10-28 |
 | [005-66](66-builder-opens-at-start.md) | Implement | The Pub API's builder opens the directories in `start()`: `dir()` and `replica()` opened their `FileStream`s at once, and since 005-63 a builder that was never started, the first of two `dir()` calls or a replica given before `dir()` held a directory's lock until the JVM ended (a builder has no `close()`). Now they record the directories and `start()` opens them, the database's first, and closes them if it fails (005-32); a bad or busy directory is reported by `start()`; a replica given before `dir()` is kept. Two tests that fail on the code before; `releases/next.md` | done | 2026-10-28 |
@@ -283,6 +283,18 @@ Files
 * [51-eviction-on-calls.md](51-eviction-on-calls.md). 005-51, eviction
   only in response to the calls: the eviction thread's wake-up a second,
   against 010-P3, the questions, the outcome; done.
+* [52-cache-size-while-running.md](52-cache-size-while-running.md). 005-52,
+  the cache size while the database runs: the issue, the questions, the
+  first step measured, options A to C, the decision (B) and the outcome;
+  done. The first step's night script, `BudgetBench` and their output in
+  [52-cache-size-while-running/](52-cache-size-while-running/).
+* [53-startup-distance-on-the-fly.md](53-startup-distance-on-the-fly.md).
+  005-53, the startup distance on the fly: the issue, the questions,
+  question 3 (fixed as 005-61), options A to E after D4:B, the decision (E)
+  and the outcome; done. The history from 2013, the report with the
+  evidence for both 005-53 and 005-52, `ReclaimDistanceProbe`, and the
+  gates and StreamDigest of the change in
+  [53-startup-distance-on-the-fly/](53-startup-distance-on-the-fly/).
 * [54-open-bounds.md](54-open-bounds.md). 005-54, the bounds still open in
   the problem statement (011-01): Q1, Q2, Q3, Q5 and Q8; open.
 * [55-fix-finalize.md](55-fix-finalize.md). 005-55, the deprecated API in
@@ -1323,3 +1335,17 @@ One pattern for both, decided and built together: a setting that shapes
 the stream's bytes is kept in the stream, one that does not is for the
 run. Each entry ends with questions for Frans, each with a recommended
 answer.
+
+2026-10-28. 005-53 and 005-52 done, by Claude (Opus 5.5, Claude Code),
+for 006-10, as Frans decided (2026-10-28, 12:32: "53 and 52. Yes, do this
+as recommended.", the smaller questions as recommended), in one commit
+(`fd8f513`): `Database.setStartupDistanceInMb` and
+`getStartupDistanceInMb` (005-53's E), kept in the stream through
+`Db.setStartupDistance`, which now writes nothing for the value in force
+and changes nothing when the call is refused; `Database.setCacheSizeInMb`
+and `getCacheSizeInMb` (005-52's B), for the run only, through the new
+`Db.setCacheSizeIndicator` and its getter, which JMX uses too, the setter
+waking the eviction thread after a decrease. Tests in `PubTester`,
+`DbTester` and `CapacityTester`, each failing on a mutation of the change;
+StreamDigest identical (36 of 36); `before-commit.sh`, `level3.sh` and `level4.sh` (full) and `level2.sh quick` pass. Left: 005-52's pause probe
+with a lowered budget, for a quiet block.

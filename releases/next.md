@@ -69,6 +69,28 @@ API changes
   directory that cannot be opened, or that another database has, is reported
   by `start()`, with the same `StreamIoException` that `dir()` threw;
   `replica()` no longer throws its `IOException`.
+* **The startup distance changes while the database runs** (bergdb 005-53,
+  2026-10-28). `Database.setStartupDistanceInMb(int)` and
+  `getStartupDistanceInMb()`: the setter clamps as
+  `DatabaseBuilder.startupDistanceInMb` does (5 to 1000 MB), and the new
+  setting is in force when it returns, written to the stream with a small
+  transaction of the database's own (a value of 200 kB), so that a restart
+  keeps it. A call with the setting in force writes nothing, so an
+  application may call it after every start; one on a stopped or failed
+  database throws as a transaction does and changes nothing. After a
+  decrease, the commits that follow bring the startup section down to the
+  new setting, with no commit writing the whole of it (007-07). Until now
+  only a new database could choose its startup distance through the Pub
+  API.
+* **The cache size changes while the database runs** (bergdb 005-52,
+  2026-10-28). `Database.setCacheSizeInMb(int)` and `getCacheSizeInMb()`:
+  clamped as `DatabaseBuilder.cacheSizeInMb` (4 to 100,000 MB), in force
+  when the setter returns, for this run only (a restart takes the
+  builder's value). After a decrease the database evicts down to the new
+  budget in batches of at most 2 ms, also when no other call follows. The
+  rule for both setters: a setting that changes the stream's bytes, as the
+  startup distance, is kept in the stream; one that does not lasts for the
+  run.
 
 
 Format

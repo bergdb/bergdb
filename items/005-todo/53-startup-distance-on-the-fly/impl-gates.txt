@@ -1,0 +1,37 @@
+Gates of 005-53 and 005-52 (one change), 2026-10-28, F53, nice 10, on the clone of 8b37ad1 with the change (another session's WriteBench and Lean builds on the machine).
+
+java/before-commit.sh:
+Deps: 9 packages, all as package.html allows
+Unit: SUCCESS, 1069 successful tests in 42.0 s.
+F:    SUCCESS, 77 successful tests in 94.8 s.
+BEFORE COMMIT OK (103 s)
+
+java/stress/level3.sh (full), 12:46 to 12:54:
+SUCCESS, 1069 successful tests in 10.0 s.
+SUCCESS, 77 successful tests in 90.9 s.
+   conformance: traces: 25, TRACECHECK OK: 25; C-CUT 0 of 305 CUT lines fail; traces without a cut: 0
+LEVEL 3 OK
+
+java/stress/level4.sh (full), 12:54 to 13:09:
+SUCCESS, 1069 successful tests in 9.7 s.
+SUCCESS, 16 successful tests in 13.8 s.
+   ei-idle-r: EVICTION INVARIANCE OK, 2000 audits, 0 failed
+   ei-medium: EVICTION INVARIANCE OK, 5005 audits, 0 failed
+   ei-node14: EVICTION INVARIANCE OK, 2005 audits, 0 failed
+   ei-node62-r: EVICTION INVARIANCE OK, 2050 audits, 0 failed
+   ei-node8-r: EVICTION INVARIANCE OK, 2100 audits, 0 failed
+   ei-node8: EVICTION INVARIANCE OK, 2005 audits, 0 failed
+   ei-rec-every1: EVICTION INVARIANCE OK, 5000 audits, 0 failed
+   ei-rec-node62-r: EVICTION INVARIANCE OK, 2635 audits, 0 failed
+   ei-rec-node8: EVICTION INVARIANCE OK, 2275 audits, 0 failed
+   conformance: traces: 45, TRACECHECK OK: 45; C-P 0 of 10344 transactions fail; 838528 SLOT lines, 592583 checked; traces without SLOT lines: 0; C-H 0 of 10344 transactions fail; 8520 states, 430842 handles, 310889 objects, 310889 histories compared, 653784 pointers, 342036 checked by the record rule; traces without HANDLE lines: 0
+LEVEL 4 OK
+
+java/stress/level2.sh quick, 13:09 to 13:10:
+SUCCESS, 1069 successful tests in 9.4 s.
+   conformance: traces: 14, TRACECHECK OK: 14
+LEVEL 2 OK
+
+StreamDigest all, main's class (8b37ad1) against main's jar and the change's:
+DIGESTS IDENTICAL (36 of 36)
+Against 007-07's digest-patch.txt: DIGESTS IDENTICAL (36 of 36)

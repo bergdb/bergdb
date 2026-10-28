@@ -1,10 +1,9 @@
 005-52. Change the cache size while the database runs
 =====================================================
 
-Status: open, ready to decide on questions 1 and 3 (2026-10-28: options A
-to C for the Pub API, B recommended, below; the evidence in
-[53-startup-distance-on-the-fly/report.md](53-startup-distance-on-the-fly/report.md)).
-Kind: fix. Created 2026-10-26.
+Status: done (2026-10-28: option B, decided by Frans and implemented with
+005-53; see Outcome; the pause probe of "Done when" left for a quiet
+block). Kind: fix. Created 2026-10-26.
 
 Found in [010-01](../010-principles/01-principles.md), 010-P6 ("No
 interruption for changes"); registered at Frans's request (2026-10-26:
@@ -302,3 +301,80 @@ Questions for Frans
    database converges too? Recommended: yes.
 5. Decide and implement together with 005-53, one pattern? Recommended:
    yes, one commit.
+
+
+Decision
+--------
+
+Frans, 2026-10-28, 12:32: "53 and 52. Yes, do this as recommended.", and
+the smaller questions "as recommended". So: B, clamped to 4 to 100,000 MB
+as the builder; for the run only, not kept in the stream; a setter and a
+getter in `Db`, which JMX uses; the setter wakes the eviction thread after
+a decrease; done together with 005-53, in one commit.
+
+
+Outcome
+-------
+
+2026-10-28, by Claude (Opus 5.5, Claude Code), for 006-10, in a clone on
+`8b37ad1`, together with [005-53](53-startup-distance-on-the-fly.md); the
+code is one commit, `fd8f513`. Gates, StreamDigest and their files: in
+005-53's Outcome.
+
+* The API, in `pub/Database`: `void setCacheSizeInMb(int)` and
+  `int getCacheSizeInMb()`. `DatabaseImp` clamps as the builder (4 to
+  100,000 MB, one static method of `DatabaseBuilderImp` for both) and
+  calls `Db.setCacheSizeIndicator`; the getter rounds
+  `Db.getCacheSizeIndicator()` to MB. The Javadoc: in force when the call
+  returns; after a decrease the database evicts in batches of at most 2
+  ms, which the call and the commits and reads start, also when no call
+  follows; reads may wait for a batch, at most 2 ms each; pinned state may
+  exceed the budget; for this run only, a restart takes the builder's
+  value; the pattern (a setting that changes the stream's bytes is kept in
+  the stream, one that does not lasts for the run).
+* The core: `Db.setCacheSizeIndicator(long)` and `getCacheSizeIndicator()`
+  (Db's public methods from 43 to 45, 010-P12). The setter sets `Cache3`'s
+  indicator and `Eviction.setBudget(Db, long)`, new: the budget as
+  `setBudget(long)` sets it, then, with the capacity controller's schedule
+  and an active database, a wake of the eviction thread if the resident
+  bytes are over the new trigger: work that the call starts (010-P3). The
+  getter is `Eviction.budget()`, as JMX read it. `Jmx.DbMonitor`'s
+  `get`/`setCacheSizeIndicator` call them instead of `db.internal()`.
+  Thread safety as the retain duration's setter: no write lock;
+  `Eviction`'s fields are volatile and set under its monitor.
+* A stopped or stopping database: the setter sets the values and does not
+  wake the thread (it has ended or ends); it throws nothing, as
+  `setRetainDuration`. The Javadoc says so ("After stop() the method has
+  no effect").
+* `DatabaseBuilder.cacheSizeInMb`'s Javadoc names the new setter.
+* The tests:
+  * `PubTester.testSetCacheSizeInMb` (unit): the builder's 64 MB; 32 MB in
+    force at once (the getter, `Db`'s getter, `Eviction`'s budget and
+    `Cache3`'s indicator); 1 gives 4 and 200,000 gives 100,000; nothing
+    written to the stream; a call after `close()` throws nothing; a
+    restart with the builder at 64 has 64.
+  * `PubTester.testLoweredCacheSizeWhileIdleF` (f): 20,000 values of 1 kB
+    written with a budget of 100 MB (about 20 MB resident), the cache size
+    lowered to 4 MB and no other call: the resident bytes are at most 4 MB
+    within 5 s (about 0.2 s here).
+  * `CapacityTester.testBudgetLoweredAndRaisedUnderReads` (unit, core):
+    2000 values of 300 bytes, every key read with a budget of 10 MB; the
+    budget lowered to a quarter of the resident bytes; from the second
+    round of random reads on, the resident bytes are at most the budget
+    plus 20 kB; the budget raised again, reading every key grows them past
+    twice the low budget.
+  * `CapacityTester.testBudgetLoweredWhileIdle` (unit, core): as the one
+    before, and after the decrease no other call: at most the budget
+    within 2 s.
+  * Without the wake (a mutation in a copy) the three convergence tests
+    fail: the resident bytes stay where they were (924,984 bytes against a
+    budget of 231,246; 19,996,280 against 4 MB). Under reads too, as every
+    value is resident, so the reads load nothing and wake nothing.
+* StreamDigest identical (005-53's Outcome): no configuration calls the
+  setter, and the cache size changes no byte (EvictionInvariance in
+  `level4.sh`).
+
+Left: "Done when"'s pause probe of 009-03 with a lowered budget against a
+fixed one (no get or commit waiting longer), for a quiet block; the first
+step's runs measured the convergence (47 s from 664 to 132 MB, batches of
+at most 2.2 ms and gets of at most 6.1 ms under ZGC), not the comparison.

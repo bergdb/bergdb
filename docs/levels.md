@@ -142,7 +142,9 @@ The database as designed, the self-indexed stream: index nodes are written
 lazily to the stream, and startup reads only the startup section, the tail
 of the stream, and reruns the transactions in it. This is the default
 (startup distance 50 MB). Existing databases keep the startup distance
-stored in their stream.
+stored in their stream; `Database.setStartupDistanceInMb` changes it while
+the database runs, with one call, and the stream keeps the new value
+(005-53).
 
 Theory: [sis-model.md](sis-model.md), an abstract model with Rule A and
 Rule R and the theorems T1 (recovery) and T2 (restart invariance), proved in
@@ -312,7 +314,11 @@ Limits:
 Since 2026-10-18 the database keeps only part of its index and values in
 memory: eviction is on by default. The budget is `cacheSizeInMb`
 (`DbBuilder.cacheSizeIndicator`; by default a fifth of the JVM's maximum
-heap); `DbBuilder.noEvict()` turns it off.
+heap); `DbBuilder.noEvict()` turns it off. `Database.setCacheSizeInMb`
+(`Db.setCacheSizeIndicator`) changes it while the database runs, for that
+run: after a decrease the call wakes the eviction thread, which evicts in
+its batches until the resident bytes are at most the budget, also when no
+other call follows (005-52).
 
 How it works, with handles since 2026-10-26 (item
 [009](../items/009-handles/readme.md); `dag/Handle.java`,
