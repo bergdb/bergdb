@@ -132,6 +132,23 @@ The step: [65-gets-with-8-readers/night/](65-gets-with-8-readers/night/).
   without an import. The three builds have `bergdb.core.SyncLevel`; since
   005-56 (`04f1546`) `main` has it in `bergdb.pub.util`, so compiling
   ScaleBench against a jar of `main` needs that import added.
+* `ScaleBench-065.diff` and `sum.py`, second version (2026-10-28, for the
+  section Reading): for each after-load call, the resident bytes and the
+  trigger read just before it, so that the calls over the trigger (they
+  enter `evictorLock`), those under pressure (only they may park) and the
+  calls over 10 ms under pressure are counted; the gets over 10 ms of each
+  threads phase; with thread contention monitoring on, the blocked and
+  waited counts and times of the readers and of the eviction thread; and
+  the machine's busy cores in each phase (`getCpuLoad`), so the other
+  processes' too. `sum.py` prints them in two more tables and each build's
+  sums or means; its first table, which `threads.sh` checks, is unchanged.
+  Smoke test 2026-10-28, 10:06 (`SMOKE=1` with
+  `B=/Users/f/fl/bench/006-10/w2-builds`: links to the three clones in
+  `d2-009-builds`, and ScaleBench patched with this version and compiled
+  against each jar): exit 0 in about a minute, 18 of 18 rows, every new
+  cell filled. `d2-009-builds/sb` still has the classes of the first
+  version, so `prep.sh` must run again before the block for the night to
+  measure these.
 
 The ScaleBench outputs and GC logs stay out of the repository (013-01,
 section 4): `out/` beside the step, the GC logs in the builds directory.

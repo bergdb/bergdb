@@ -1,6 +1,45 @@
 --- ScaleBench.java
 +++ ScaleBench.java
-@@ -418,11 +418,39 @@
+@@ -165,6 +165,13 @@
+     final LongAdder alCalls = new LongAdder(), alNanos = new LongAdder(), alSlow = new LongAdder();
+     final AtomicLong alMax = new AtomicLong();
+     final List<long[]> alEvents = Collections.synchronizedList(new ArrayList<long[]>());
++    // bergdb 005-65: what each call found, read just before it as afterLoad reads it: the
++    // resident bytes over the trigger (afterLoad calls wake(), which takes the monitor
++    // evictorLock) and over it by more than the gap between the watermarks (pressure: only
++    // then may it park for the eviction thread's next batch, at most LOAD_WAIT_NANOS); the
++    // calls over 10 ms that began under pressure; the phase's longest call without pressure.
++    final LongAdder alWake = new LongAdder(), alPressure = new LongAdder(), alSlowPressure = new LongAdder();
++    final AtomicLong alMaxCalm = new AtomicLong();
+ 
+     volatile boolean done = false;
+     volatile long maxHeap = 0, maxResident = 0, maxRss = 0;
+@@ -324,16 +331,24 @@
+     void wrapLoadListener() {
+         final Eviction ev = db.internal().eviction();
+         final Db d = db;
++        final Residents res = db.internal().cache().residents();
++        final long gap = ev.budget() - (long) (ev.budget() * Eviction.LOW);     // afterLoad's high - low
+         db.internal().nodeCollection().setLoadListener(new NodeCollection.LoadListener() {
+             public void loaded() {
++                long bytes = res.bytes(), trigger = trigger(ev);        // 005-65: before the call
+                 long t0 = System.nanoTime();
+                 ev.afterLoad(d);
+                 long dt = System.nanoTime() - t0;
+                 alCalls.increment();
+                 alNanos.add(dt);
+                 if (dt > alMax.get()) alMax.accumulateAndGet(dt, Math::max);
++                boolean over = bytes > trigger, pressure = over && bytes - gap > trigger;
++                if (over) alWake.increment();
++                if (pressure) alPressure.increment();
++                else if (dt > alMaxCalm.get()) alMaxCalm.accumulateAndGet(dt, Math::max);
+                 if (dt > 10000000L) {
+                     alSlow.increment();
++                    if (pressure) alSlowPressure.increment();
+                     if (alEvents.size() < 100000) alEvents.add(new long[] {t0, dt});
+                 }
+             }
+@@ -418,11 +433,94 @@
  
      long resident() {
          return db.internal().cache().residents().bytes();
@@ -22,8 +61,61 @@
 +            if (evictorId < 0) return -1;
 +        }
 +        return MX.getThreadCpuTime(evictorId);
++    }
++
++    /** Eviction's trigger (private; bergdb 009, step 3d), read as afterLoad reads it. */
++    static final java.lang.invoke.VarHandle TRIGGER = triggerHandle();
++
++    static java.lang.invoke.VarHandle triggerHandle() {
++        try {
++            return java.lang.invoke.MethodHandles.privateLookupIn(Eviction.class,
++                    java.lang.invoke.MethodHandles.lookup()).findVarHandle(Eviction.class, "trigger", long.class);
++        } catch (Exception e) {
++            return null;
++        }
++    }
++
++    /** The trigger, or the budget if the field cannot be read (TRIGGER null). */
++    static long trigger(Eviction ev) {
++        return TRIGGER == null ? ev.budget() : (long) TRIGGER.getVolatile(ev);
++    }
++
++    /**
++     * A thread's monitor counts so far: {blocked, blocked ms, waited, waited ms}, the times -1
++     * without contention monitoring (threads() turns it on). Blocked: to enter a monitor, or to
++     * enter it again after Object.wait (that re-entry counts as blocked and as waited both);
++     * waited: Object.wait and LockSupport.park (afterLoad's wait for a batch).
++     */
++    static long[] monitorCounts(long id) {
++        ThreadInfo ti = id < 0 ? null : MX.getThreadInfo(id);
++        if (ti == null) return null;
++        return new long[] {ti.getBlockedCount(), ti.getBlockedTime(), ti.getWaitedCount(), ti.getWaitedTime()};
      }
  
++    /** b - a for monitorCounts (a null: from 0, the thread started since), times -1 if unknown. */
++    static long[] monitorDelta(long[] a, long[] b) {
++        if (b == null) return null;
++        long[] z = {0, 0, 0, 0};
++        if (a == null) a = z;
++        long[] d = new long[4];
++        for (int i = 0; i < 4; i++) d[i] = (i % 2 == 1 && (a[i] < 0 || b[i] < 0)) ? -1 : b[i] - a[i];
++        return d;
++    }
++
++    static final int CPUS = Runtime.getRuntime().availableProcessors();
++
++    /**
++     * The machine's CPU load (all processes, 0 to 1) since the last call, or -1 (macOS and
++     * Linux: com.sun.management's getCpuLoad keeps the last call's ticks); Snap calls it.
++     */
++    static double machineLoad() {
++        java.lang.management.OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
++        if (os instanceof com.sun.management.OperatingSystemMXBean) {
++            return ((com.sun.management.OperatingSystemMXBean) os).getCpuLoad();
++        }
++        return -1;
++    }
++
 +    /** The CPU time of the process so far (ns), or -1. */
 +    static long processCpu() {
 +        java.lang.management.OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
@@ -37,19 +129,41 @@
      final class Snap {
          final long nanos = System.nanoTime();
 +        final long evCpu = evictorCpu(), procCpu = processCpu();       // 005-65: first, beside nanos
++        final double machine = machineLoad();
++        final long[] evMon = monitorCounts(evictorId);
          final long loads = db.internal().nodeCollection().loads();
          final long sreads = stream.reads.sum(), sbytes = stream.readBytes.sum();
          final long dev = deviceReadBytes();
-@@ -466,6 +494,8 @@
+@@ -430,6 +528,7 @@
+         final long[] cpu = cpuStat();
+         final long[] sw = sweeps();
+         final long alc = alCalls.sum(), aln = alNanos.sum(), als = alSlow.sum();
++        final long alw = alWake.sum(), alp = alPressure.sum(), alsp = alSlowPressure.sum();
+         final long[] gc = PerfUtil.gcTotals();
+     }
+ 
+@@ -466,6 +565,20 @@
          m.put("afterLoadOver10ms", b.als - a.als);
          m.put("gcCount", b.gc[0] - a.gc[0]);
          m.put("gcMs", b.gc[1] - a.gc[1]);
 +        if (b.evCpu >= 0) m.put("evictionCpuMs", (b.evCpu - Math.max(0, a.evCpu)) / 1e6);     // started in it: from 0
 +        if (a.procCpu >= 0 && b.procCpu >= 0) m.put("processCpuMs", (b.procCpu - a.procCpu) / 1e6);
++        m.put("afterLoadWakeCalls", b.alw - a.alw);
++        m.put("afterLoadPressureCalls", b.alp - a.alp);
++        m.put("afterLoadOver10msUnderPressure", b.alsp - a.alsp);
++        if (b.machine >= 0) m.put("machineCores", b.machine * CPUS);     // since a's call
++        m.put("cpus", CPUS);
++        long[] em = monitorDelta(a.evMon, b.evMon);
++        if (em != null) {
++            m.put("evictorBlocked", em[0]);
++            m.put("evictorBlockedMs", em[1]);
++            m.put("evictorWaited", em[2]);
++            m.put("evictorWaitedMs", em[3]);
++        }
          m.put("residentBytes", resident());
          m.put("heapUsedBytes", Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
          m.put("uptimeFrom", uptime(a.nanos));
-@@ -508,6 +538,25 @@
+@@ -508,6 +621,62 @@
          return s.toString();
      }
  
@@ -72,60 +186,119 @@
 +        return s.toString();
 +    }
 +
++    /**
++     * 005-65: where a threads phase's time went: the gets over 10 ms; the after-load calls
++     * over the trigger (a second) and under pressure, those over 10 ms under pressure, the
++     * longest without; the monitor counts of the eviction thread and the readers; the
++     * machine's busy cores and the other processes' (the machine's less this process's).
++     */
++    static String whereLine(Map<String, Object> d) {
++        double sec = (Double) d.get("seconds");
++        StringBuilder s = new StringBuilder("where:");
++        s.append(String.format(Locale.ROOT, " gets over 10 ms %d; after-load calls over the trigger %.0f a second,"
++                + " under pressure %d, over 10 ms under pressure %d, longest without pressure %.1f ms;",
++                (Long) d.get("getsOver10ms"), (Long) d.get("afterLoadWakeCalls") / sec,
++                (Long) d.get("afterLoadPressureCalls"), (Long) d.get("afterLoadOver10msUnderPressure"),
++                (Double) d.get("afterLoadMaxCalmMs")));
++        if (d.containsKey("evictorBlocked")) {
++            s.append(String.format(Locale.ROOT, " eviction thread waiting %d ms (%d times), blocked %d ms (%d times,"
++                    + " the waits' re-entries included);", (Long) d.get("evictorWaitedMs"), (Long) d.get("evictorWaited"),
++                    (Long) d.get("evictorBlockedMs"), (Long) d.get("evictorBlocked")));
++        }
++        s.append(String.format(Locale.ROOT, " readers blocked %d ms (%d times), parked %d ms (%d times)",
++                (Long) d.get("readersBlockedMs"), (Long) d.get("readersBlocked"),
++                (Long) d.get("readersWaitedMs"), (Long) d.get("readersWaited")));
++        if (d.containsKey("machineCores") && d.containsKey("processCpuMs")) {
++            double mc = (Double) d.get("machineCores"), pc = (Double) d.get("processCpuMs") / 1000 / sec;
++            s.append(String.format(Locale.ROOT, "; machine %.2f of %d cores, other processes %.2f",
++                    mc, (Integer) d.get("cpus"), mc - pc));
++        }
++        return s.toString();
++    }
++
++    /** The values of h over v (by its buckets, to within 1 percent of v). */
++    static long countOver(PerfUtil.Hist h, long v) {
++        long n = 0;
++        for (int i = PerfUtil.Hist.index(v) + 1; i < PerfUtil.Hist.SIZE; i++) n += h.counts[i];
++        return n;
++    }
++
      void say(String s) {
          System.out.printf(Locale.ROOT, "[%7.1f s] %s%n", (System.nanoTime() - nano0) / 1e9, s);
          System.out.flush();
-@@ -779,6 +828,7 @@
+@@ -779,6 +948,8 @@
          final CyclicBarrier barrier;
          final PerfUtil.Hist h = new PerfUtil.Hist();
          long gets;
 +        long cpuNanos;          // 005-65: the thread's CPU time from the barrier to its end
++        long[] mon;             // 005-65: its monitorCounts over the same time
  
          Reader(int t, double sec, CyclicBarrier barrier) {
              this.t = t;
-@@ -797,6 +847,7 @@
+@@ -797,6 +968,8 @@
              } catch (Exception e) {
                  throw new RuntimeException(e);
              }
 +            long cpu0 = MX.getCurrentThreadCpuTime();
++            long[] mon0 = monitorCounts(getId());
              long stop = System.nanoTime() + (long) (sec * 1e9);
              long n = 0;
              do {
-@@ -811,6 +862,7 @@
+@@ -811,21 +984,35 @@
                  n += 64;
              } while (System.nanoTime() < stop);
              gets = n;
 +            cpuNanos = MX.getCurrentThreadCpuTime() - cpu0;
++            mon = monitorDelta(mon0, monitorCounts(getId()));
          }
      }
  
-@@ -819,13 +871,15 @@
+     void threads() throws Exception {
++        // 005-65: blocked and waited times (ThreadInfo), and the machine's load from here on
++        // (its first call only sets the start).
++        if (MX.isThreadContentionMonitoringSupported()) MX.setThreadContentionMonitoringEnabled(true);
++        machineLoad();
+         for (int threads : threadCounts) {
              CyclicBarrier barrier = new CyclicBarrier(threads + 1);
              Reader[] rs = new Reader[threads];
              for (int t = 0; t < threads; t++) (rs[t] = new Reader(t, threadSec, barrier)).start();
 +            alMax.set(0);       // 005-65: the phase's longest after-load wait
++            alMaxCalm.set(0);
              barrier.await();
              Snap a = new Snap();
 -            long gets = 0;
 +            long gets = 0, readersCpu = 0;
++            long[] rmon = {0, 0, 0, 0};
              PerfUtil.Hist h = new PerfUtil.Hist();
              for (Reader r : rs) {
                  r.join();
                  gets += r.gets;
 +                readersCpu += r.cpuNanos;
++                for (int i = 0; i < 4; i++) {
++                    long x = r.mon == null ? -1 : r.mon[i];
++                    rmon[i] = rmon[i] < 0 || x < 0 ? -1 : rmon[i] + x;
++                }
                  h.add(r.h);
              }
              Snap b = new Snap();
-@@ -833,9 +887,12 @@
+@@ -833,9 +1020,20 @@
              m.put("phase", "threads-" + threads);
              m.put("threads", threads);
              m.put("latency", hist(h));
 +            m.put("afterLoadMaxMs", alMax.get() / 1e6);
 +            m.put("readersCpuMs", readersCpu / 1e6);
++            m.put("getsOver10ms", countOver(h, 10000000L));
++            m.put("afterLoadMaxCalmMs", alMaxCalm.get() / 1e6);
++            m.put("triggerRead", TRIGGER != null);
++            m.put("readersBlocked", rmon[0]);
++            m.put("readersBlockedMs", rmon[1]);
++            m.put("readersWaited", rmon[2]);
++            m.put("readersWaitedMs", rmon[3]);
              phaseResults.add(m);
              say(String.format(Locale.ROOT, "threads %d: %.0f gets a second; %s; %s", threads,
                      (Double) m.get("getsPerSec"), histLine(h), counterLine(m)));
 +            say(String.format(Locale.ROOT, "threads %d: %s", threads, cpuLine(m)));
++            say(String.format(Locale.ROOT, "threads %d: %s", threads, whereLine(m)));
          }
          sampledThreads();
      }
