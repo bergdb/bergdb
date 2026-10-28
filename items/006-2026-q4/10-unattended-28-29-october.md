@@ -307,6 +307,14 @@ pattern and one commit: a setting that changes the stream's bytes is kept
 in the stream (P2), one that does not lasts for the run. Questions with
 recommended answers in both entries; for Frans.
 
+2026-10-28, 12:35. Frans (12:32): "53 and 52. Yes, do this as
+recommended.", the smaller questions "as recommended", and "Start subagents
+for the tasks." Started, each with a hard stop at 21:30: 005-53's E with
+005-52's B in the code (one commit, gates before-commit, level3 and level4
+full); 010-01's P1 and P2 lines after 007-07; 007-07's runs at 50M keys
+(byte counts, on F53 at the lowest priority or on s1 before 21:30). With
+W4.1, four agents.
+
 ## 8. Outcome
 
 To come by 07:00 on 2026-10-29.
