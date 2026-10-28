@@ -40,6 +40,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-68](68-fix-take-stream-length.md) | Fix | `Db.store` passes the stream's `getLength()` to `TransSeq.take`, where the Lean model's argument is where the record begins, `getNextPos()`: after a record that ends on a 200,000-byte boundary they would differ by the meta block's 128 bytes, and Java could leave T3's bound (007-08, review, point 1). Dropped: the finding does not hold. `RecoverableStream.append` writes a meta block together with the record that ends at its position, and recovery fills out one that a crash cut, so when `take` is called the two are equal: by reading, and by running an instrumented copy (0 of 5,524,901 calls differ, 229 after a record that ended exactly on a boundary). No change; the one-line change would pass the same value | dropped | 2026-10-28 |
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API could not change it for an existing database (against 010-P6); the core could since 2013-04, through JMX only. Investigated (the history, `Reclaim`'s fault fixed as 005-61, the decrease measured in 007-06 and 007-07) and decided after D4:B (Frans, 2026-10-28): option E, `Database.setStartupDistanceInMb` and `getStartupDistanceInMb`, kept in the stream's meta blocks as before, one call, no steps and no `Job`; a call with the value in force writes nothing, a refused call changes nothing. Implemented with 005-52 (`fd8f513`); StreamDigest identical | done | 2026-10-28 |
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API set it only at start (`cacheSizeInMb`), against 010-P6. Decided (Frans, 2026-10-28): option B, `Database.setCacheSizeInMb` and `getCacheSizeInMb`, clamped as the builder, for the run only, through `Db.setCacheSizeIndicator` and its getter, which JMX uses too; after a decrease the setter wakes the eviction thread, so that an idle database gives the memory back. Implemented with 005-53 (`fd8f513`). Left: the pause probe with a lowered budget against a fixed one, for a quiet block | done | 2026-10-28 |
 | [005-67](67-fix-test-add-replica2.md) | Fix | `StorageManagerTester.testAddReplica2` failed about one gate run in twelve on a busy machine, "Expected 700, got 200", since 2015 (Frans's note): the test was wrong, not the code. It asserted both streams' lengths right after an append, but an active replica only means that the sync's last bytes are in the replica's buffer, which writes them a little later, and both buffers write an append within milliseconds. Now it waits for the confirmed lengths; `testAddReplicaWhileAppending`'s writer, which appended without the write lock and could hang the test, takes it. Forced interleavings: each failure certain before, none after; 400,000 runs after the fix without a failure (4 in 40,000 before). 2015's "Expected 800, got 1200" was `BufferedStream`'s flush of nothing at a close, fixed by 005-14. Test code only | done | 2026-10-28 |
@@ -119,7 +120,8 @@ is 005-45. 005-11 is kept as it is for release 2026.1, documented as
 experimental; its decision waits for Frans. 005-55 is done; it did not
 change the eviction thread, so 005-51 does not depend on it; 005-51 is
 done. 005-57 is done (part 1); 005-58, its Lean theorem, is done.
-005-46 is done. 005-56 is done.
+005-46 is done. 005-56 is done. 005-68 is dropped: its finding did not
+hold.
 
 
 Files
@@ -350,6 +352,12 @@ Files
   interleavings, 2015's fault, the fix and the outcome; done. The loops,
   the probes and their output in
   [67-fix-test-add-replica2/](67-fix-test-add-replica2/).
+* [68-fix-take-stream-length.md](68-fix-take-stream-length.md). 005-68,
+  `TransSeq.take` gets the stream's length, not where the record begins
+  (007-08's review): the issue, why it does not hold (the meta blocks are
+  written eagerly), the instrumented run and the outcome; dropped. The
+  probe's diff and output in
+  [68-fix-take-stream-length/](68-fix-take-stream-length/).
 
 Log
 ===
@@ -1349,3 +1357,18 @@ waking the eviction thread after a decrease. Tests in `PubTester`,
 `DbTester` and `CapacityTester`, each failing on a mutation of the change;
 StreamDigest identical (36 of 36); `before-commit.sh`, `level3.sh` and `level4.sh` (full) and `level2.sh quick` pass. Left: 005-52's pause probe
 with a lowered budget, for a quiet block.
+
+2026-10-28. Added 005-68, at Frans's decision (2026-10-28, 13:09, "as
+recommended", through 006-10's session), by Claude (Opus 5.5, Claude
+Code): 007-08's review found that `Db.store` passes `getLength()` to
+`TransSeq.take` where the model's argument is `getNextPos()`, which would
+differ by a meta block after a record that ends on a block boundary; kind
+fix.
+
+2026-10-28. 005-68 dropped, by Claude (Opus 5.5, Claude Code): the
+finding does not hold. `RecoverableStream.append` writes the meta block
+with the record that ends at its position, and every start's recovery
+fills out one that a crash cut, so `getLength()` equals `getNextPos()`
+whenever `take` is called; an instrumented copy found 0 of 5,524,901
+calls to differ, 229 of them after a record that ended exactly on a
+boundary. No change: the change would pass the same value.

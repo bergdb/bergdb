@@ -1,0 +1,30 @@
+diff --git a/java/src/bergdb/core/Db.java b/java/src/bergdb/core/Db.java
+index ab09ab4..0d125e0 100644
+--- a/java/src/bergdb/core/Db.java
++++ b/java/src/bergdb/core/Db.java
+@@ -2099,6 +2099,11 @@ public class Db implements AutoCloseable {
+         }
+     }
+     
++    static final java.util.concurrent.atomic.AtomicLong PROBE_CALLS = new java.util.concurrent.atomic.AtomicLong(), PROBE_DIFF = new java.util.concurrent.atomic.AtomicLong(), PROBE_EDGE = new java.util.concurrent.atomic.AtomicLong(), PROBE_EDGE_NONEMPTY = new java.util.concurrent.atomic.AtomicLong();
++    static {
++        Runtime.getRuntime().addShutdownHook(new Thread(() -> System.err.println("PROBE005 calls=" + PROBE_CALLS + " diff=" + PROBE_DIFF + " edge=" + PROBE_EDGE + " edgeNonEmpty=" + PROBE_EDGE_NONEMPTY)));
++    }
++    
+     private void store() {
+         long currentSp = x.startupPos.get();
+         long newSp;
+@@ -2116,6 +2121,13 @@ public class Db implements AutoCloseable {
+             fixedBytes += StoredKeyNode.getByteSize(tn.keyNodes[i]) + 16;
+         }
+         
++        {   // PROBE 005-68: does take() ever get a length that differs from getNextPos()?
++            long l = nodeStream.getLength(), n = nodeStream.getNextPos();
++            PROBE_CALLS.incrementAndGet();
++            if (l != n) { PROBE_DIFF.incrementAndGet(); System.err.println("PROBE005 DIFF " + l + " " + n + " empty=" + transSeq.isEmpty()); }
++            if (l % 200000 == 128) PROBE_EDGE.incrementAndGet();
++            if (l % 200000 == 128 && !transSeq.isEmpty()) PROBE_EDGE_NONEMPTY.incrementAndGet();
++        }
+         newSp = transSeq.take(currentSp, nodeStream.getLength(), startupDistance, ownBytes,
+                 x.transNodes, StoredTrans.recordLimit - fixedBytes);
+         x.trans.startupPos = newSp;

@@ -89,6 +89,13 @@ Java's take:
   leaves then begins less than d + 128 bytes before R(i), so the section
   exceeds the model's bound by less than 128 bytes in that record. Not
   proved.
+  (2026-10-28, 005-68: this case does not arise when `Db.store` calls
+  `take`. `RecoverableStream.append` writes a meta block together with the
+  record that ends at its position, and recovery fills out one that a
+  crash cut, so the stream's length is never inside a meta block then, and
+  `getLength()` equals `getNextSpos()`, where R(i) begins: Java's argument
+  is the model's. Checked by running: 0 of 5,524,901 calls differ, 229 of them
+  after a record that ended exactly on a boundary.)
 * The own bytes as a function of the transaction (`own : T → Nat`); Java's
   are those of the value nodes the transaction writes, which a value
   transformation decides as it runs. The theorems hold for every pace, so
@@ -511,4 +518,8 @@ are open, and docs/levels.md's limit says the same; the note of point 4 on
 `share`, `dither` and `javaPace`; Frans's answers to section 7's questions
 are under them. Comments and documents only; `lake build` clean. The
 fourth counterexample's `#guard` is not made. The meta blocks (point 4 for
-Frans): a fix was decided, as a 005 entry.
+Frans): a fix was decided, as 005-68, which found that point 1's case does
+not arise: when `take` is called the stream's length is where R(i) begins,
+as `RecoverableStream.append` writes a meta block with the record that ends
+at its position; so the gap is not there, and 005-68 was dropped with no
+change.

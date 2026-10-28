@@ -1485,3 +1485,18 @@ both Javadocs: a setting that changes the stream's bytes is kept in the
 stream (P2), one that does not lasts for the run. New tests in
 `PubTester`, `DbTester` and `CapacityTester`, each failing on a mutation
 of the change; StreamDigest identical (36 of 36); `before-commit.sh`, `level3.sh` and `level4.sh` (full) and `level2.sh quick` pass.
+
+2026-10-28. 007-08's review followed up, by Claude (Opus 5.5, Claude
+Code), for 006-10, as Frans decided ("as recommended"): the wrong comment
+of `T3_take_decrease` corrected, README.md and levels.md say that T3, the
+startup section's bound, is proved (T4 and a cold start's reads through
+references open), `share`, `dither` and `javaPace` marked as used by no
+theorem. The review's code finding became 005-68 and was dropped: it does
+not hold. `Db.store` passes the stream's `getLength()` to `TransSeq.take`,
+and the review held that after a record ending on a 200,000-byte boundary
+this is 128 bytes before where the next record begins (`getNextPos()`),
+the model's argument; but `RecoverableStream.append` writes the meta block
+together with such a record, and recovery fills out one that a crash cut,
+so the two are equal whenever `take` is called (an instrumented copy: 0 of
+5,524,901 calls differ, 229 after a record that ended exactly on
+a boundary). No change to `java/`.

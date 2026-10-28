@@ -1,0 +1,6 @@
+probe-digest.err: PROBE005 calls=88071 diff=0 edge=3 edgeNonEmpty=3
+probe-f.txt:SUCCESS, 77 successful tests in 86.5 s.
+probe-f.txt:PROBE005 calls=5381113 diff=0 edge=222 edgeNonEmpty=222
+probe-unit.txt:SUCCESS, 1069 successful tests in 9.5 s.
+probe-unit.txt:PROBE005 calls=55717 diff=0 edge=4 edgeNonEmpty=4
+probe-digest.txt: Done: 12 configurations, 3 modes; the modes give the same stream
