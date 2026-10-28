@@ -1407,3 +1407,13 @@ readers from the OS's cache at 665 MB under ZGC on F53, gets of 27 and 36
 ms, with loads waiting for the eviction thread. 005-46's Props in the
 quiet block had measured CORE after all (the same as before 005-46); its
 parser is fixed. README.md's pauses, docs/levels.md's Level 4 limits.
+
+2026-10-28. 005-66 done, by Claude (Opus 5.5, Claude Code), at Frans's
+request: the Pub API's `DatabaseBuilder.dir()` and `replica()` only
+record their directories, and `start()` opens them, the database's first,
+and closes them again if it fails. Since 005-63 a builder that was never
+started, the first of two `dir()` calls and a replica given before `dir()`
+held a directory's lock until the JVM ended; now a builder holds nothing
+before `start()`, a replica given before `dir()` is kept, and a bad or busy
+directory is reported by `start()`. Javadoc, two tests in `PubTester`, a
+line in `releases/next.md`; `before-commit.sh` and `level2.sh quick` pass.

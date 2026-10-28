@@ -1,7 +1,8 @@
 005-66. Implement: the Pub API's builder opens the directories in `start()`
 ==========================================================================
 
-Status: open. Kind: implement. Created 2026-10-28.
+Status: done (2026-10-28; see Outcome). Kind: implement. Created
+2026-10-28.
 
 Registered at Frans's request (2026-10-28, 09:43: "Register this as a new
 005 "Implement" entry. Then implement it and commit if successful."), by
@@ -82,3 +83,38 @@ First step
 ----------
 
 The change in `DatabaseBuilderImp`.
+
+
+Outcome
+-------
+
+2026-10-28, by Claude (Opus 5.5, Claude Code), as registered; in a clone
+on `87e550e`, the code in commit `83b7ac0` (java/ and
+releases/next.md).
+
+* `DatabaseBuilderImp`: `dir()` records the directory, and `replica()`
+  the replica's by name (a `LinkedHashMap`: the same name replaces, as in
+  `DbBuilder.stream()`); `memory()` and `mainStream()` drop a recorded
+  `dir()`. `start()` first checks that there is a stream
+  (`IllegalStateException`, nothing opened), then `openDirs()` opens the
+  database's directory and then the replicas', inside the `try` that
+  closes the builder's streams when the start fails (005-32). A null name
+  or directory is refused at once, with `IllegalArgumentException`, as
+  before.
+* Javadoc: `DatabaseBuilder.dir()` (`start()` opens the directory,
+  creates it and reports its errors; 005-63's paragraph names `start()`),
+  `replica()` (opened by `start()` after the database's own; "call dir()
+  first" gone; `throws IOException` kept, no longer thrown), `start()`
+  (the `StreamIoException`, `DirectoryInUseException` as its cause);
+  `Database.stop()`: `DatabaseBuilder.start()` throws.
+  `releases/next.md`: 005-63's line names `start()`, and a line for this
+  change.
+* Tests in `PubTester`: `testBuilderOpensInStart` (the first four cases
+  above) and `testReplicaBeforeDir`. With the `DatabaseBuilderImp` before
+  this change both fail: `dir()` of a held directory throws where it now
+  returns, and the dropped replica's directory stays held, so the start
+  on it is refused. The 005-32 tests pass as they are.
+* Gates, in the clone: `java/before-commit.sh` (deps: 9 packages, as
+  `package.html` allows; unit 1058 tests, f 74; `BEFORE COMMIT OK
+  (94 s)`) and `level2.sh quick` (`LEVEL 2 OK`; its `BryanRepro` starts
+  through the builder).

@@ -36,7 +36,6 @@ Open
 | [005-62](62-lean-t9-t12-over-handles.md) | Fix | Lean: T9 and T12 over handles, so that the design before handles can go. Both proved (`t9_handles`, `t12_handles`; `bba91dd` to `a506b34`), reviewed at max effort, lake build clean, axioms standard; left for Frans: how far to remove the old design's files and theorems, and two further theorems (rule 4 by position after a cut, a cut without a restart) | open |
 | [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered; a longer time may mean fewer forces and wake-ups for writers that do not sync, at the cost of more unsynced data lost on a power loss. Frans's request | open |
 | [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Hypothesis to test: since 005-46 the 8 readers take F53's 8 performance cores and the eviction thread falls behind; the run was not quiet. Test: 4, 6 and 8 threads on `bf19075`, `eaec93e` and `4f7cd60`, with the eviction thread's CPU, in a quiet block | open |
-| [005-66](66-builder-opens-at-start.md) | Implement | The Pub API's builder opens the directories in `start()`: `dir()` and `replica()` open their `FileStream`s at once, and since 005-63 a builder that is never started, a second `dir()` or a replica given before `dir()` holds a directory's lock until the JVM ends (a builder has no `close()`). They record the directories, `start()` opens them, and a failed start closes them (005-32); a bad or busy directory is reported by `start()` | open |
 
 
 Closed
@@ -44,6 +43,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-66](66-builder-opens-at-start.md) | Implement | The Pub API's builder opens the directories in `start()`: `dir()` and `replica()` opened their `FileStream`s at once, and since 005-63 a builder that was never started, the first of two `dir()` calls or a replica given before `dir()` held a directory's lock until the JVM ended (a builder has no `close()`). Now they record the directories and `start()` opens them, the database's first, and closes them if it fails (005-32); a bad or busy directory is reported by `start()`; a replica given before `dir()` is kept. Two tests that fail on the code before; `releases/next.md` | done | 2026-10-28 |
 | [005-56](56-package-dependencies.md) | Investigate | Package dependencies against the `package.html` files; Frans's question. Decided 2026-10-28, as the entry's table proposed: the lists of `pub` (`common`, `nanotest` for its tests, `pubimp` for `Factory`'s designed cycle) and `pubimp` (`dag`, `pub.util`, `storage`) changed, all in one form, `Depends on: a, b, c.`; `SyncLevel` moved from `core` to `pub.util` (an API change against 2026.1, in `releases/next.md`); `Database.PRIMARY` and `TestClock`'s range in `pub`; `TimeResolver` stays in `pubimp`. `java/deps.py` checks each package's uses against its list, a step of `before-commit.sh` | done | 2026-10-28 |
 | [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits has the buffer written at once (`BufferedStream.flushSoon`) instead of waiting for the timer, and the force paces the groups (005-13's question 5). In `main` since 2026-10-27 (`e611709`): on s1 one thread's durable commits went from 38 to 213 a second, the sync's median from 24.8 to 3.8 ms, 64 threads' from 2,364 to 6,429; writers that do not sync and the stream's bytes unchanged. Closed by Frans with the buffer time kept at 20 ms; whether 50 or 100 ms is better now is 005-64 | done | 2026-10-28 |
 | [005-63](63-one-database-per-directory.md) | Decide | One database per directory, also while one closes: `stop()` returns before the close, and since 005-46 the cut's files are deleted afterwards, so a database started on the same directory right after `stop()` could adopt files that were being deleted and fail (level2's `BryanRepro`, fixed in the test with `close()`). Decided 2026-10-28, option C: `FileStream` holds an operating-system lock on `bergdb.lock` in its directory until it is closed, and a second one on the directory, in the JVM or in another process, is refused with `DirectoryInUseException`; within the JVM a set of the locked directories refuses first, as closing a second channel of the file released the lock for other processes (macOS, Linux), a deviation from 010-P9; `stop()`'s Javadoc says to start again after `close()`; network file systems in `FileStream`'s Javadoc; tests, `releases/next.md` | done | 2026-10-28 |
@@ -329,7 +329,7 @@ Files
   [65-gets-with-8-readers/night/](65-gets-with-8-readers/night/).
 * [66-builder-opens-at-start.md](66-builder-opens-at-start.md). 005-66,
   the Pub API's builder opens the directories in `start()`: the issue
-  left by 005-63, the change, the tests; open.
+  left by 005-63, the change, the tests and the outcome; done.
 
 Log
 ===
@@ -1260,3 +1260,10 @@ hypothesis to test (the readers take F53's 8 performance cores since
 `start()`, not in `dir()` and `replica()`, so that a builder that is
 never started holds no directory's lock (005-63's outcome); kind
 implement.
+
+2026-10-28. 005-66 done, by Claude (Opus 5.5, Claude Code), as
+registered: `DatabaseBuilder.dir()` and `replica()` record their
+directories, `start()` opens them, the database's first, and closes them
+if it fails; a builder that is never started holds nothing. Javadoc, two
+tests in `PubTester` that fail on the code before, `releases/next.md`;
+`before-commit.sh` and `level2.sh quick` pass.
