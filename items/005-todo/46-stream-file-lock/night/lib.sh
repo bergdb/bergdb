@@ -4,7 +4,7 @@
 # NEWS=1: an entry in news.md at the step's end (off by default: 006-09's conductor writes one
 # for the block). Written 2026-10-27 by Claude (Opus 5.5, Claude Code).
 
-NIGHT=/Users/f/fl/repos/bergdb/items/005-todo/46-stream-file-lock/night
+NIGHT=$(cd "$(dirname "$0")" && pwd)     # the step's directory (so a clone's scripts use the clone's)
 REPO=/Users/f/fl/repos/bergdb
 B=${B:-/Users/f/fl/bench/006-09/w1}
 export JAVA_HOME=/opt/homebrew/opt/openjdk

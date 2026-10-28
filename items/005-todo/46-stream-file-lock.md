@@ -858,8 +858,12 @@ Nothing in it shows a read or a commit waiting for the stream's writer, so
   the eviction thread over 10 ms: no wait for the writer, but a question
   for 009's target 2 (009's log, 2026-10-28). (The step started after 30
   minutes without a quiet machine, `NOT QUIET`.)
-* Props in turns: MEM 130.0 and SS 1.5 for both; CORE was not read
-  (the step exited 1): to be rerun.
+* Props in turns (23:34 to 23:39, quiet): MEM 130.0 and SS 1.5 for both;
+  CORE 0.23, 0.23, 0.23 and 0.24 for `bf19075`, 0.24, 0.23, 0.22 and 0.24
+  for HEAD (lower is faster; means 0.233 and 0.232): no fewer reads a
+  second. The step exited 1 because its parser missed the CORE line,
+  which follows a row of progress dots; read again from its files on
+  2026-10-28, the parser fixed (night/README.md), no rerun needed.
 * `performance.sh ab`, quick suite, 2026.1 against HEAD: throughput up 1 to
   25 percent (gets 16.6 percent in the mixed restart scenario, four reader
   threads 25 percent), startup 2 to 4 percent faster; the only flags are

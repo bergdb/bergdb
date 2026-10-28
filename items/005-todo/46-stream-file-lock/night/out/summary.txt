@@ -31,8 +31,10 @@ soak p4-46-zgc-1027-2244: ok True
 
 # 2. Props, in turns (W1.4; CORE and SS: lower is faster)
 
-bf19075  round 1: MEM 130.0, CORE ?, SS 1.5; round 2: MEM 130.0, CORE ?, SS 1.5; round 3: MEM 130.0, CORE ?, SS 1.5; round 4: MEM 130.0, CORE ?, SS 1.5
-head     round 1: MEM 130.0, CORE ?, SS 1.5; round 2: MEM 130.0, CORE ?, SS 1.5; round 3: MEM 130.0, CORE ?, SS 1.5; round 4: MEM 130.0, CORE ?, SS 1.5
+bf19075  round 1: MEM 130.0, CORE 0.23, SS 1.5; round 2: MEM 130.0, CORE 0.23, SS 1.5; round 3: MEM 130.0, CORE 0.23, SS 1.5; round 4: MEM 130.0, CORE 0.24, SS 1.5
+         CORE mean 0.233, from 0.23 to 0.24
+head     round 1: MEM 130.0, CORE 0.24, SS 1.5; round 2: MEM 130.0, CORE 0.23, SS 1.5; round 3: MEM 130.0, CORE 0.22, SS 1.5; round 4: MEM 130.0, CORE 0.24, SS 1.5
+         CORE mean 0.232, from 0.22 to 0.24
 
 # 3. ScaleBench from the OS's cache, in turns (W1.4; gets a second)
 

@@ -21,7 +21,8 @@ props = {}
 for f in sorted(glob.glob(os.path.join(out, 'props', 'props-*.txt'))):
     m = re.match(r'props-(.+)-(\d+)\.txt', os.path.basename(f))
     t = open(f).read()
-    vals = dict((k, float(v)) for k, v in re.findall(r'^(MEM|CORE|SS):([\d.]+)', t, re.M))
+    # Core prints a row of progress dots before its CORE line, on the same line (2026-10-28).
+    vals = dict((k, float(v)) for k, v in re.findall(r'^\.*(MEM|CORE|SS):([\d.]+)', t, re.M))
     props.setdefault(m.group(1), []).append((int(m.group(2)), vals))
 for jar in sorted(props):
     rs = sorted(props[jar])
