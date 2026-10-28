@@ -38,6 +38,20 @@ API changes
   a job's `join()` and the wait before an rw-transaction's rerun end on an
   interrupt; every other call ignores it until it is done; the interrupt flag
   is always kept. The rule is in `Database`'s class Javadoc.
+* **One database per directory** (bergdb 005-63, 2026-10-28). A `FileStream`
+  takes an exclusive lock on a file of its own in the directory,
+  `bergdb.lock`, before it reads anything, and releases it when it is
+  closed. A second database on the directory, in the same JVM or in another
+  process, is refused at once with a `DirectoryInUseException`
+  (`DatabaseBuilder.dir()` throws a `StreamIoException` with it as the
+  cause); so is one started right after `stop()`, while the first is still
+  closing: start it after `close()` has returned. Before, nothing refused a
+  second database, and one started right after `stop()` could take files
+  that the first was still deleting (005-46), and fail. The operating system
+  holds the lock and drops it when the process ends, so a crash leaves none;
+  the file stays, with a text for people. On a network file system a crashed
+  client's lock may stay until the server notices (NFSv4: about 90 s), and
+  where the file system supports no locks, a start fails.
 
 
 Format

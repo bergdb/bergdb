@@ -21,6 +21,12 @@ public interface DatabaseBuilder {
     /**
      * Use the given directory to store the database stream in files.
      * 
+     * <p>One database at a time has the directory (bergdb 005-63): while another database
+     * has it open, in this process or in another, also one that is closing after stop(),
+     * this method throws a StreamIoException whose cause is a
+     * bergdb.stream.DirectoryInUseException. Nothing in the directory has been read or
+     * changed then.</p>
+     * 
      * @throws DbException  If there is file error when accessing the 
      * specified directory.
      */

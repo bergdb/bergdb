@@ -52,7 +52,7 @@ public class ReclaimReaderTester {
     private interface Kit {
         AppendOnlyStream open() throws IOException;
 
-        /** Called after db.stop() has closed 'old'. */
+        /** Called after db.close() has closed 'old'. */
         AppendOnlyStream reopen(AppendOnlyStream old) throws IOException;
 
         long firstPos(AppendOnlyStream s);
@@ -147,7 +147,7 @@ public class ReclaimReaderTester {
         }
 
         db.sync(SyncLevel.STRONG);
-        db.stop();
+        db.close();         // Closed before the directory opens again (bergdb 005-63).
         stream = kit.reopen(stream);
         clock = new CoreTestClock();
         clock.setTime(time);

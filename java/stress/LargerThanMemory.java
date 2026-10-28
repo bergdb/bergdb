@@ -250,7 +250,7 @@ public class LargerThanMemory {
         phase = "restart " + r;
         iterations += db.internal().reclaim().getIterationCount();
         db.sync(SyncLevel.STRONG);
-        db.stop();
+        db.close();     // Closed before the directory opens again (bergdb 005-63).
         db = null;
         System.gc();
         long s = System.nanoTime();

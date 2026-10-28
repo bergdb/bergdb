@@ -182,24 +182,26 @@ public class StorageManagerTester {
         m.syncStreams(new NullProgressListener());
         m.close();
         
-        String[] fileNames = mainDir.list();
+        // The stream's files, not bergdb.lock (bergdb 005-63).
+        java.io.FilenameFilter streamFiles = (d, name) -> name.endsWith(".bergdb");
+        String[] fileNames = mainDir.list(streamFiles);
         Arrays.sort(fileNames);
         Assert.assertEquals(2, fileNames.length);
         Assert.assertEquals("00000000000002.bergdb", fileNames[0]);
         Assert.assertEquals("00000000000004.bergdb", fileNames[1]);
         
-        fileNames = rDir.list();
+        fileNames = rDir.list(streamFiles);
         Arrays.sort(fileNames);
         Assert.assertEquals(2, fileNames.length);
         Assert.assertEquals("00000000000002.bergdb", fileNames[0]);
         Assert.assertEquals("00000000000004.bergdb", fileNames[1]);
         
-        File[] files = mainDir.listFiles();
+        File[] files = mainDir.listFiles(streamFiles);
         Arrays.sort(files);
         Assert.assertEquals(200*1000, files[0].length());
         Assert.assertEquals(200*900, files[1].length());
         
-        files = rDir.listFiles();
+        files = rDir.listFiles(streamFiles);
         Arrays.sort(files);
         Assert.assertEquals(200*1000, files[0].length());
         Assert.assertEquals(200*900, files[1].length());

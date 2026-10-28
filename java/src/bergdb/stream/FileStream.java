@@ -2,6 +2,7 @@ package bergdb.stream;
 
 import java.io.EOFException;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -9,12 +10,21 @@ import java.nio.ByteBuffer;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.ClosedChannelException;
 import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 import bergdb.common.Bug;
 import bergdb.common.Util;
@@ -26,10 +36,12 @@ import bergdb.pub.util.BadFormatException;
 /**
  * An object of this class is an AppendOnlyStream that stores the stream data 
  * in one directory in the filesystem.
- * Multiple files are used to be able pretruncate the stream and reclaim disk space.
- * 
+ * Multiple files are used to be able pretruncate (cut) the stream and reclaim disk space.
  * Files of sizes 200*1000, 1*M, 5*M, 20*M, 100*M, 500*M, 2*G, 10*G, 50*G, 200*G
- * are used to store the stream (4-5 factor log factor). Decimal factors, M = 1,000,000 bytes.
+ * are automatically chosen to store the stream. Decimal factors, M = 1,000,000 bytes.
+ * Each file is named <14-digit index>.bergdb. The index is the file's first stream 
+ * position divided by 100,000, padded with zeros (indexToString).
+ * The first two files are: 00000000000000.bergdb, 00000000000002.bergdb.
  * 
  * Hard sync. Every append is forced to the device before it returns: the bytes are
  * written, then FileChannel.force(true) (F_FULLFSYNC on macOS, fsync on Linux). A new
@@ -38,8 +50,8 @@ import bergdb.pub.util.BadFormatException;
  * durable length, which sync() waits for, holds after a power loss, not only after a
  * process crash (2026-10-14, bergdb 011-07).
  * 
- * A force costs a device round trip: well under a millisecond on a fast SSD, up to
- * seconds on a slow virtual disk. This class is meant to be used below BufferedStream,
+ * A force costs a device round trip: well under a millisecond on a fast SSD, more
+ * on a slow virtual disk. This class is meant to be used below BufferedStream,
  * which controls the buffering: it collects the database's appends and writes them
  * here in chunks, from a thread of its own, when a buffer time has passed or its
  * buffer is full. So there is one force per chunk, not one
@@ -57,6 +69,25 @@ import bergdb.pub.util.BadFormatException;
  * the calling thread neither ends nor fails it, and the thread's interrupt flag is set
  * again when it returns. A channel that an interrupt closes during a read or a force
  * (FileChannel is interruptible) is opened again.
+ * 
+ * One stream per directory (2026-10-28, bergdb 005-63). The constructor takes an exclusive
+ * lock on the file bergdb.lock in the directory before it reads anything, and close()
+ * releases it, last. A second FileStream on the directory, in this JVM or in another process,
+ * is refused with DirectoryInUseException; so is one while a database closes after stop().
+ * The operating system holds the lock and drops it when the process ends, also at a crash,
+ * so a lock is never stale; the file is never deleted, and its text is for people. The lock
+ * is on one byte far beyond the end of the file: on Windows a lock is mandatory, and the text
+ * stays readable. Within the JVM, a set of the locked directories (LOCKED_DIRS) refuses a
+ * second FileStream before it opens the file: on macOS and Linux, closing any channel of the
+ * file releases the process's lock (FileLock's Javadoc, "Platform dependencies"). That set is
+ * global state, a deviation from bergdb 010-P9.
+ * 
+ * Network file systems. On NFS or SMB the server holds the lock. After a crash of the client,
+ * the lock may stay until the server notices (NFSv4: a lease, typically 90 s), and starts on
+ * the directory are refused until then. Some setups do not support locks: the constructor
+ * then fails with an IOException, or, with NFS's mount option nolock, the lock refuses only
+ * FileStreams on the same machine. The hard sync also depends on the server. Use a local
+ * disk for a database.
  * 
  * @author Frans Lundberg
  */
@@ -87,6 +118,27 @@ public class FileStream implements AppendOnlyStream {
     /** File size index for 2G. */
     private static final int INDEX_2G = 6;
     
+    /** The lock file, in the stream's directory (bergdb 005-63). */
+    private static final String LOCK_NAME = "bergdb.lock";
+    
+    /** The locked byte, far beyond the end of the lock file. */
+    private static final long LOCK_POS = 1L << 62;
+    
+    /** The lock file's text, written once, when the file is created. */
+    private static final String LOCK_TEXT = 
+            "This directory contains a BergDB database. BergDB locks this file\n"
+            + "while a database has the directory open. The lock is held by the\n"
+            + "operating system and ends with the process. Do not delete this file\n"
+            + "while a database is open.\n";
+    
+    /**
+     * The directories that FileStreams of this JVM hold, by lockKey() (bergdb 005-63). A
+     * second FileStream on a directory is refused here, before it opens the lock file:
+     * closing its channel would release the first's lock for other processes.
+     */
+    private static final Set<Object> LOCKED_DIRS = 
+            Collections.synchronizedSet(new HashSet<Object>());
+    
     private final File dir;
     private final FileStreamIo io;
     private volatile long firstPos = 0;
@@ -110,6 +162,12 @@ public class FileStream implements AppendOnlyStream {
     /** If not null, this stream should be considered faulty and not used any further. */
     private volatile IOException ioException = null;
     
+    /** The open lock file, which holds the directory's lock, or null. Under this. */
+    private RandomAccessFile lockFile = null;
+    
+    /** This stream's key in LOCKED_DIRS while it holds the lock. Under this. */
+    private Object lockKey = null;
+    
     /**
      * Creates a new stream if it does not exist or opens an existing one if it exists.
      * If the directory 'dir' does not exist an attempt to create it is made.
@@ -119,6 +177,9 @@ public class FileStream implements AppendOnlyStream {
      * @throws IOException
      *      If existing directory cannot be read from / written to, or if 
      *      'dir' does not exist and cannot be created.
+     * @throws DirectoryInUseException
+     *      If another FileStream holds the directory, in this JVM or in another process
+     *      (bergdb 005-63).
      * @throws BadDirStateException
      *      If the directory exists but the files in the directory
      *      are not in a valid state. The files in the directory were modified by some other software.
@@ -127,7 +188,10 @@ public class FileStream implements AppendOnlyStream {
         this(dir, new FileStreamIo());
     }
 
-    /** As FileStream(dir), with the given persistence boundary; for fault tests. */
+    /** 
+     * Internal, for testing.
+     * As FileStream(dir), with the given persistence boundary; for fault tests.
+     */
     public FileStream(File dir, FileStreamIo io) throws IOException {
         if (dir == null) {
             throw new IllegalArgumentException("dir == null not allowed");
@@ -140,6 +204,7 @@ public class FileStream implements AppendOnlyStream {
         this.io = io;
         try {
             createDirIfNeeded();
+            lockDir();
             handleExistingFiles();
         } catch (IOException e) {
             closeAfterFailedOpen(e);
@@ -151,12 +216,14 @@ public class FileStream implements AppendOnlyStream {
     }
 
     private void closeAfterFailedOpen(Throwable failure) {
-        if (dbFiles == null) return;
-        for (DbFile file : dbFiles) {
-            if (file != null && !file.isClosed) {
-                try { file.close(); } catch (IOException e) { failure.addSuppressed(e); }
+        if (dbFiles != null) {
+            for (DbFile file : dbFiles) {
+                if (file != null && !file.isClosed) {
+                    try { file.close(); } catch (IOException e) { failure.addSuppressed(e); }
+                }
             }
         }
+        try { unlockDir(); } catch (IOException e) { failure.addSuppressed(e); }
     }
     
     public void read(long spos, byte[] dest, int destOffset, int length) throws IOException {
@@ -230,7 +297,8 @@ public class FileStream implements AppendOnlyStream {
 
     /**
      * Closes the files, after the cut's thread has deleted what the cuts so far took off
-     * (bergdb 005-46). Throws the stream's failure, such as a failed delete of a cut.
+     * (bergdb 005-46), and then releases the directory's lock (bergdb 005-63). Throws the
+     * stream's failure, such as a failed delete of a cut.
      */
     public void close() throws IOException {
         awaitCutThread();
@@ -250,6 +318,12 @@ public class FileStream implements AppendOnlyStream {
                     }
                 }
             }
+        }
+        try {
+            unlockDir();
+        } catch (IOException e) {
+            if (failure == null) failure = e;
+            else failure.addSuppressed(e);
         }
         if (failure != null) throw failure;
     }
@@ -475,6 +549,105 @@ public class FileStream implements AppendOnlyStream {
             if (parent != null) {
                 forceDirectory(parent);
             }
+        }
+    }
+
+    /**
+     * Takes the directory (bergdb 005-63): creates bergdb.lock with its text if it does not
+     * exist, and takes an exclusive lock on one byte far beyond its end, held until close().
+     * Refused with DirectoryInUseException: before the file is opened if a FileStream of
+     * this JVM holds the directory, after if another process holds the lock. Not
+     * interruptible, as the rest of this class.
+     */
+    private void lockDir() throws IOException {
+        Object key = lockKey(dir);
+        if (!LOCKED_DIRS.add(key)) {
+            throw new DirectoryInUseException("Directory " + dir.getPath() 
+                    + " is in use by another BergDB database in this JVM (" + LOCK_NAME 
+                    + " is locked).");
+        }
+        
+        boolean interrupted = Thread.interrupted();
+        boolean locked = false;
+        try {
+            File file = new File(dir, LOCK_NAME);
+            if (file.createNewFile()) {
+                try (FileOutputStream out = new FileOutputStream(file)) {
+                    out.write(LOCK_TEXT.getBytes(StandardCharsets.UTF_8));
+                }
+            }
+            
+            while (true) {
+                RandomAccessFile f = new RandomAccessFile(file, "rw");
+                FileLock lock;
+                try {
+                    lock = f.getChannel().tryLock(LOCK_POS, 1, false);
+                } catch (ClosedByInterruptException e) {
+                    // An interrupt during tryLock() closed the channel; try again.
+                    Thread.interrupted();
+                    interrupted = true;
+                    f.close();
+                    continue;
+                } catch (OverlappingFileLockException e) {
+                    // Held in this JVM, not by a FileStream of it.
+                    f.close();
+                    throw new DirectoryInUseException("Directory " + dir.getPath() 
+                            + " is in use in this JVM (" + LOCK_NAME + " is locked).");
+                } catch (IOException e) {
+                    f.close();
+                    throw new IOException("Could not lock " + file.getPath() + ": " 
+                            + e.getMessage(), e);
+                }
+                
+                if (lock == null) {
+                    f.close();
+                    throw new DirectoryInUseException("Directory " + dir.getPath() 
+                            + " is in use by another BergDB database (" + LOCK_NAME 
+                            + " is locked by another process).");
+                }
+                
+                synchronized (this) {
+                    lockFile = f;
+                    lockKey = key;
+                }
+                locked = true;
+                return;
+            }
+        } finally {
+            if (!locked) {
+                LOCKED_DIRS.remove(key);
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+    
+    /**
+     * The directory's key in LOCKED_DIRS: its file key (device and inode on macOS and Linux),
+     * so that another path to the same directory finds it, or, where there is none (Windows),
+     * its real path.
+     */
+    private static Object lockKey(File dir) throws IOException {
+        Path path = dir.toPath();
+        Object key = Files.readAttributes(path, BasicFileAttributes.class).fileKey();
+        return key != null ? key : path.toRealPath();
+    }
+    
+    /**
+     * Releases the directory's lock, if this stream holds it; the file stays (bergdb 005-63).
+     * The lock file is closed before the directory leaves LOCKED_DIRS.
+     */
+    private synchronized void unlockDir() throws IOException {
+        if (lockFile == null) {
+            return;
+        }
+        try {
+            lockFile.close();       // Releases the lock.
+        } finally {
+            lockFile = null;
+            LOCKED_DIRS.remove(lockKey);
+            lockKey = null;
         }
     }
 
@@ -1280,6 +1453,15 @@ public class FileStream implements AppendOnlyStream {
         }
         
         Assert.assertTrue(ex != null);
+        
+        // bergdb 005-63: the failed open released the directory's lock.
+        ex = null;
+        try {
+            new FileStream(dir).close();
+        } catch (BadDirStateException e) {
+            ex = e;
+        }
+        Assert.assertTrue(ex != null);
     }
     
     @Nano
@@ -1835,5 +2017,164 @@ public class FileStream implements AppendOnlyStream {
         stop.set(true);
         for (Run r : readers) r.finish();
         f.close();
+    }
+    
+    // ---- bergdb 005-63: one stream per directory ----
+    
+    /**
+     * bergdb 005-63: a second FileStream on the directory in the same JVM is refused, also by
+     * another path to it, and the first goes on; after the first's close(), a new one opens.
+     */
+    @Nano
+    public static void testSecondStreamRefused(TestEnvironment c) throws IOException {
+        File dir = c.createTempDir();
+        FileStream f = new FileStream(dir);
+        byte[] bytes = new byte[] {1, 2, 3};
+        f.append(bytes, 0, bytes.length);
+        for (File path : new File[] {dir, new File(dir, ".")}) {
+            try {
+                new FileStream(path).close();
+                throw new AssertionError("a second FileStream opened " + path.getPath());
+            } catch (DirectoryInUseException e) {
+                Assert.assertTrue(e.getMessage(), 
+                        e.getMessage().contains("is in use by another BergDB database"));
+            }
+        }
+        f.append(bytes, 0, bytes.length);
+        byte[] b = new byte[6];
+        f.read(0, b, 0, b.length);
+        Assert.assertEquals(3, b[5]);
+        f.close();
+        
+        FileStream f2 = new FileStream(dir);
+        Assert.assertEquals(6, f2.getLength());
+        f2.close();
+    }
+    
+    /**
+     * bergdb 005-63: bergdb.lock holds its text, is not a stream file, and stays as it is
+     * through appends, a cut, a close, a new open and seekFirstPos(). A directory without it,
+     * as from 2026.1, opens and gets one.
+     */
+    @Nano
+    public static void testLockFile(TestEnvironment c) throws IOException {
+        File dir = c.createTempDir();
+        File lock = new File(dir, LOCK_NAME);
+        byte[] text = LOCK_TEXT.getBytes(StandardCharsets.UTF_8);
+        FileStream f = new FileStream(dir);
+        Assert.assertArrayEquals(text, Files.readAllBytes(lock.toPath()));
+        byte[] bytes = new byte[500 * 1000];
+        new Random(9).nextBytes(bytes);
+        f.append(bytes, 0, bytes.length);
+        f.pretruncate(200 * 1000);
+        f.awaitDeletes();
+        Assert.assertEquals(2, f.getSortedDbFiles().length);
+        f.close();
+        
+        FileStream f2 = new FileStream(dir);
+        Assert.assertEquals(2, f2.dbFiles.length);
+        readAndCheck(f2, 300 * 1000, 1000, bytes);
+        f2.seekFirstPos(2000 * 1000);
+        f2.close();
+        Assert.assertArrayEquals(text, Files.readAllBytes(lock.toPath()));
+        
+        Assert.assertTrue(lock.delete());
+        FileStream f3 = new FileStream(dir);
+        Assert.assertEquals(2000 * 1000, f3.getFirstPos());
+        f3.close();
+        Assert.assertArrayEquals(text, Files.readAllBytes(lock.toPath()));
+    }
+    
+    /**
+     * bergdb 005-63: a FileStream in another process holds the directory. The open here is
+     * refused; after the child is killed (destroyForcibly(), as kill -9), it opens. And a
+     * refusal in this JVM does not release the lock for other processes: a child's open is
+     * refused while this JVM holds the directory, also after a second FileStream here was
+     * refused. Without LOCKED_DIRS, that refusal closed its channel of the lock file, which
+     * released this JVM's lock on macOS and Linux, and the child opened the directory.
+     */
+    @Nano("f")
+    public static void testLockAcrossProcesses(TestEnvironment c) throws Exception {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = c.createTempDir();
+        
+        Process holder = startLockChild("hold", dir);
+        try {
+            Assert.assertEquals("held", firstLine(holder));
+            try {
+                new FileStream(dir).close();
+                throw new AssertionError("opened a directory that another process holds");
+            } catch (DirectoryInUseException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("another process"));
+            }
+        } finally {
+            holder.destroyForcibly();
+        }
+        Assert.assertTrue("the child ends", 
+                holder.waitFor(60, java.util.concurrent.TimeUnit.SECONDS));
+        
+        FileStream f = new FileStream(dir);
+        try {
+            Assert.assertEquals("refused", runLockChild(dir));
+            try {
+                new FileStream(dir).close();
+                throw new AssertionError("a second FileStream opened");
+            } catch (DirectoryInUseException e) {
+                // Expected.
+            }
+            Assert.assertEquals("refused", runLockChild(dir));
+        } finally {
+            f.close();
+        }
+        Assert.assertEquals("opened", runLockChild(dir));
+    }
+    
+    private static Process startLockChild(String mode, File dir) throws IOException {
+        String javaBin = System.getProperty("java.home") + "/bin/java";
+        String cp = System.getProperty("java.class.path");
+        return new ProcessBuilder(javaBin, "-cp", cp, LockChild.class.getName(), mode, 
+                dir.getPath()).redirectErrorStream(true).start();
+    }
+    
+    /** Runs a child that tries to open 'dir', and returns the first line it prints. */
+    private static String runLockChild(File dir) throws Exception {
+        Process p = startLockChild("try", dir);
+        String line = firstLine(p);
+        Assert.assertTrue("the child ends", p.waitFor(60, java.util.concurrent.TimeUnit.SECONDS));
+        return line;
+    }
+    
+    private static String firstLine(Process p) throws IOException {
+        java.io.BufferedReader in = new java.io.BufferedReader(
+                new java.io.InputStreamReader(p.getInputStream(), StandardCharsets.UTF_8));
+        return in.readLine();
+    }
+    
+    /**
+     * testLockAcrossProcesses' child: "hold" opens a FileStream on the directory, prints
+     * "held" and keeps it until killed, or until its input ends; "try" prints "opened" or
+     * "refused".
+     */
+    public static class LockChild {
+        public static void main(String[] args) throws Exception {
+            File dir = new File(args[1]);
+            if (args[0].equals("hold")) {
+                new FileStream(dir);
+                System.out.println("held");
+                System.out.flush();
+                while (System.in.read() != -1) {
+                    // Until killed, or the parent is gone.
+                }
+            } else {
+                try {
+                    new FileStream(dir).close();
+                    System.out.println("opened");
+                } catch (DirectoryInUseException e) {
+                    System.out.println("refused");
+                }
+            }
+        }
     }
 }

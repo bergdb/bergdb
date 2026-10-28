@@ -215,7 +215,7 @@ public class RestartStress {
             long sum1 = DbUtil.checksum(db);
             db.sync(strongSync ? SyncLevel.STRONG : SyncLevel.ORDINARY);
             if (!RESTART) continue;
-            if (stopBeforeRestart) db.stop();
+            if (stopBeforeRestart) db.close();     // closed before the reopen (bergdb 005-63)
             if (!FILE) memStream = memStream.copy();    // Without stop: like a crash after sync.
             Db before = db;
             db = start(false);

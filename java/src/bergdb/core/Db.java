@@ -1188,6 +1188,10 @@ public class Db implements AutoCloseable {
      * It is safe to call it several times and from different threads; only the first call
      * of stop() or close() has an effect.</p>
      * 
+     * <p>Start another database on the same directory only after this one is closed, when
+     * close() has returned (bergdb 005-63). Until then, a new FileStream on the directory
+     * is refused with DirectoryInUseException.</p>
+     * 
      * <p>Until 005-35, stop() dropped what was still buffered (all of a quick run's
      * transactions, unless a sync came first), did not wait for a running transaction,
      * and a writer that waited for room in the buffer waited for ever.</p>

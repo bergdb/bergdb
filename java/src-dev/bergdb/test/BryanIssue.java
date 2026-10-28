@@ -102,7 +102,9 @@ public class BryanIssue {
             out.println(String.format("Db checksum: %d", dbChecksum(d)));
             //out.println(String.format("Dag checksum: %d", dagChecksum(d)));
         } finally {
-            d.stop();
+            // close(), not stop(): BryanIssueNight's next job opens the directory again, which
+            // is refused until this database is closed (bergdb 005-63).
+            d.close();
             out.println(String.format("STOP lastId = %d", lastId));
         }
 

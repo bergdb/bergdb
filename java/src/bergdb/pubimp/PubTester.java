@@ -40,8 +40,12 @@ import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.storage.BufferedStream;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
+import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;
+import bergdb.stream.DirectoryInUseException;
+import bergdb.stream.FileStream;
+import bergdb.stream.FileStreamIo;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.SalsaStream;
 
@@ -124,6 +128,53 @@ public class PubTester {
             Assert.assertEquals("call " + c, "a", d2.connection().get("/a", String.class));
             d2.close();
         }
+    }
+    
+    /**
+     * bergdb 005-63: a start on a directory whose database is still closing after stop() is
+     * refused at once, with DirectoryInUseException as the cause; after close() it starts.
+     * The close waits here for a write whose force is held on a latch.
+     */
+    @Nano
+    public static void testStartWhileStoppingRefused(TestEnvironment env) throws Exception {
+        final String dir = env.createTempDir().getPath();
+        final java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+        final java.util.concurrent.atomic.AtomicBoolean hold = 
+                new java.util.concurrent.atomic.AtomicBoolean();
+        FileStreamIo io = new FileStreamIo() {
+            protected void forceFile(File file, RandomAccessFile handle) throws IOException {
+                if (hold.get()) {
+                    try {
+                        release.await(30, java.util.concurrent.TimeUnit.SECONDS);
+                    } catch (InterruptedException e) {
+                        throw new IOException(e);
+                    }
+                }
+                super.forceFile(file, handle);
+            }
+        };
+        Database d = ((DatabaseBuilderImp) Factory.database())
+                .mainStream(new FileStream(new File(dir), io)).start();
+        d.connection().put("/a", "a");
+        d.sync();
+        hold.set(true);
+        d.connection().put("/b", "b");      // Its write waits for the latch.
+        d.stop();
+        
+        try {
+            Factory.database().dir(dir).start().close();
+            throw new AssertionError("a database started while the other was closing");
+        } catch (StreamIoException e) {
+            Assert.assertTrue("the cause, " + e.getCause(), 
+                    e.getCause() instanceof DirectoryInUseException);
+        }
+        
+        release.countDown();
+        d.close();
+        Database d2 = Factory.database().dir(dir).start();
+        Assert.assertEquals("a", d2.connection().get("/a", String.class));
+        Assert.assertEquals("b", d2.connection().get("/b", String.class));
+        d2.close();
     }
     
     private static String v1;

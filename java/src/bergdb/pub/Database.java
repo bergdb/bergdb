@@ -90,6 +90,11 @@ public interface Database extends AutoCloseable {
      * commit; at the exit of the JVM, what is buffered and not yet written is lost, as in a
      * crash, which the database tolerates.
      * </p>
+     * 
+     * <p>Start another database on the same directory only after this one is closed, when
+     * close() has returned (bergdb 005-63). Until then, a start there is refused:
+     * DatabaseBuilder.dir() throws.
+     * </p>
      */
     public void stop();
     

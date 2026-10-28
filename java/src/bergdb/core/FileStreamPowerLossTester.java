@@ -545,7 +545,7 @@ public class FileStreamPowerLossTester {
             byte[] value = new byte[] {9, 8, 7};
             db.execute(db.trans().put(freshKey, value).build());
             db.sync(SyncLevel.ORDINARY);
-            db.stop(); db = null;
+            db.close(); db = null;      // Closed before the directory opens again (bergdb 005-63).
             CoreTestClock clock2 = new CoreTestClock(); clock2.setTime(lastTime + 3 * SEC);
             db = start(new FileStream(dir), clock2);
             if (!Arrays.equals(value, DbUtil.get(db, Long.MAX_VALUE, freshKey))) {

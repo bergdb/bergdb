@@ -447,7 +447,7 @@ public class ReclaimReaders {
                             + ", during " + expiredDuring);
                 }
                 db.sync(SyncLevel.STRONG);
-                db.stop();
+                db.close();     // Closed before the directory opens again (bergdb 005-63).
                 db = start(false);
                 verify(db, "after restart " + s);
             }
