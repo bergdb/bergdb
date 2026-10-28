@@ -152,9 +152,17 @@ CC, T2-L). They prove the model, not the Java code.
 
 How it works in Java:
 
-* A transaction's got-dirty index nodes are written when the transaction
-  falls more than the startup distance behind the end of the stream
-  (`TransSeq.take`). D, the dirty set, is what startup rebuilds.
+* Each commit writes index nodes of D, the dirty set, in whole
+  transactions, oldest first (`TransSeq.take`): its share of D, in
+  proportion to the stream it adds, so that the startup section stays near
+  the startup distance's setting, its target size; and, the deadline,
+  every transaction that begins twice the setting or more before the end
+  of the stream (005-49; 007-03, step 3). After a decrease of the setting,
+  the share follows the new setting at once, and while the section's
+  transactions span more than twice the new setting, the deadline is at
+  that span, which shrinks with every commit, instead of writing what lies
+  past twice the new setting at once (007-03, D4; 007-07). D is what
+  startup rebuilds.
 * One canonical object per index node: the one that holds the node's whole
   history and can change. The writer, D and the still-dirty test (Rule A)
   use canonical objects only, and decide by node id, never by whether a
@@ -192,23 +200,41 @@ and every first touch after a restart must follow the model's rule (C-L).
 Limits:
 
 * Bounded startup is proved in Lean for a startup pos policy that keeps up
-  with the startup distance (T3,
-  [007-01](../items/007-bounds/01-startup-bound.md)), not yet for BergDB's
-  own: at its peaks the startup section reached 2.6 times the startup
-  distance at 50 MB, 2.3 times at 200 MB and 1.65 times at 1000 MB, in
-  runs with 10M and 50M keys (005-38). The deadline that bounds it, at
-  twice the startup distance, is planned
-  ([007-03](../items/007-bounds/03-plan.md)), after 005-49 (smooth index
-  writes), as the backstop of the take it recommends.
+  with a distance (T3,
+  [007-01](../items/007-bounds/01-startup-bound.md)). BergDB's take keeps
+  up with twice the startup distance by its deadline, and after a decrease
+  of it with the span of the section at the decrease, which only shrinks,
+  as far as the record limit lets a record take what is due
+  ([007-03](../items/007-bounds/03-plan.md), step 3 and D4); the proof for
+  its own take is step 4. Its pace held the section at 1.00 to 1.14 times
+  the startup distance in 005-49's runs with 10M and 50M keys, and in
+  007-06's and 007-07's with 10M keys, for updates, deletes and single
+  puts, where the take before step 3 reached 2.75 times at 50 MB, 1.9
+  times at 200 MB and 1.3 times at 1000 MB.
 * A transaction whose dirty index nodes could not be written in one record
   is refused before its go point (005-31); larger updates must be split by
   the application, as a transaction of values over 7/8 of the record limit
   must (005-17).
-* Write overhead: with uniform random updates, a put of a 24-byte key and
-  an 8-byte value costs 681 and 1,013 bytes of stream at 50 MB with 10M
-  and 50M keys, 373 and 673 at 200 MB, and 180 and 299 at 1000 MB; its own
-  record is 68 bytes of it (005-38). At large startup distances the index
-  is written in bursts (005-49).
+* Write overhead: with uniform random updates of 10M keys in transactions
+  of 1,000 puts, a put of a 24-byte key and an 8-byte value costs 867, 524
+  and 190 bytes of stream at 50, 200 and 1000 MB, against 699, 384 and 219
+  with the take before 007-03's step 3 in the same runs: 24 and 36
+  percent more at 50 and 200 MB, since the section no longer goes past the
+  startup distance, and 13 percent less at 1000 MB
+  ([007-06](../items/007-bounds/06-debt-test.md), sections 1 and 4;
+  [007-07](../items/007-bounds/07-step3-paced-take.md), section 10). Its
+  own record is 68 bytes of it (005-38). With 50M keys it is measured only
+  with the take before step 3: 1,013, 673 and 299 bytes (005-38).
+* The largest record in those runs: 0.34 to 1.9 MB, against 2.6 to 4.6 MB
+  with the take before step 3, and 0.23 to 0.29 MB with transactions of
+  one put, against 0.73 to 0.96 MB (007-06, 007-07). A small commit after a
+  large transaction can still write that transaction whole (007-07,
+  sections 7.1 and 7.2). After a decrease of the startup distance,
+  `setStartupDistance`'s own transaction, with the share of its 200 kB
+  value, writes the largest record: 3.3 to 5.4 MB from 1000 to 100 MB and
+  from 200 to 50 MB at 10M keys, where a deadline at twice the new
+  distance at once wrote 87 to 486 MB in one record (007-07, section 10;
+  007-06).
 * The conservative still-dirty test writes index nodes that are no longer
   current: 20 to 46 percent of those written at 50 MB (011-04, "Bounds,
   measured").

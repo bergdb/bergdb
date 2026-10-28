@@ -184,12 +184,26 @@ call's share is bounded by its size, so no call stops for long.
 
 Where BergDB stands:
 
-* Index nodes are written in bursts at the startup distances a large
-  database should use ([005-49](../005-todo/49-smooth-index-writes.md),
-  from [005-38](../005-todo/38-writes-at-scale.md)).
+* Index nodes are written in proportion to each commit's size since
+  2026-10-28, by 005-49's paced take
+  ([007-07](../007-bounds/07-step3-paced-take.md)): in 007-06's and
+  007-07's runs at 10M keys the largest record fell from 2.3 to 4.6 MB to
+  0.23 to 1.9 MB with transactions of 1,000 puts, and from 0.73 to 0.96 MB
+  to 0.23 to 0.29 MB with single puts. Before, they were written in bursts
+  at the startup distances a large database should use
+  ([005-49](../005-todo/49-smooth-index-writes.md), from
+  [005-38](../005-todo/38-writes-at-scale.md)). A small commit after a
+  large transaction can still write that transaction whole (007-07,
+  sections 7.1 and 7.2), accepted for now (Frans, 2026-10-28).
 * The deadline of 007-03 takes every transaction that is due, in one
-  record, or a few at the record limit; after a decrease of the startup
-  distance, that is one long commit (007-04, point 6).
+  record, or a few at the record limit. After a decrease of the startup
+  distance it no longer makes one long commit (D4:B, 007-07): it is at the
+  section's span, which shrinks with every commit. At 10M keys, from 1000
+  to 100 MB and from 200 to 50 MB, the largest record of a decrease was
+  3.3 to 5.4 MB, `setStartupDistance`'s own, with the share of its 200 kB
+  value, where a deadline at twice the new distance at once wrote 87 to
+  486 MB in one record (007-06). Whether that value should earn a share is
+  for Frans (007-07, section 10.5).
 * Eviction in bounded steps (009) is proportional by design; P1's
   measurements in 009-03 are its evidence.
 
@@ -210,10 +224,14 @@ Where BergDB stands, in item [007](../007-bounds/readme.md):
 
 * T3 is proved in Lean: a startup pos policy that keeps up with the
   startup distance bounds the startup section.
-* BergDB's own take does not keep up yet: 005-38 measured it past 2 × sd
-  at 50 and 200 MB (007-04). The plan, 007-03, adds a deadline (D1), after
-  smooth index writes (005-49). A deviation until then;
-  [docs/levels.md](../../docs/levels.md), section 5, says so.
+* BergDB's own take keeps up with 2 × sd since 2026-10-28, by 007-03's
+  deadline (step 3, [007-07](../007-bounds/07-step3-paced-take.md)); after
+  a decrease of the startup distance, with the section's span at the
+  decrease, which shrinks with every commit. Its pace held the section at
+  1.00 to 1.14 sd in 005-49's, 007-06's and 007-07's runs. Before, 005-38
+  measured the take past 2 × sd at 50 and 200 MB (007-04). Proved in Lean
+  for a policy that keeps up (T3), not yet for BergDB's own take: 007-03,
+  step 4; [docs/levels.md](../../docs/levels.md), section 5, says so.
 * A cold startup's random reads take minutes on s1 (007-04; 007-03, step
   6).
 

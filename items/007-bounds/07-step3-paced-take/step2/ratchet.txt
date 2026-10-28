@@ -1,0 +1,20 @@
+d4b-del-sd1000.rec: steady, 8000 records, max section 1.025 sd, 0 at or over 2 sd
+d4b-del-sd200.rec: steady, 8000 records, max section 1.053 sd, 0 at or over 2 sd
+d4b-del-sd50.rec: steady, 8000 records, max section 1.121 sd, 0 at or over 2 sd
+d4b-low1000-100-once-t.rec: section at the decrease 1037 MB (10.37 new sd), below 2 new sd after 587 records; grew 0 times while at or over 2 sd (most 0 bytes); 0 records at or over 2 sd after
+d4b-low1000-100-once-w.rec: section at the decrease 983 MB (9.83 new sd), below 2 new sd after 669 records; grew 0 times while at or over 2 sd (most 0 bytes); 0 records at or over 2 sd after
+d4b-low200-50-once-t.rec: section at the decrease 193 MB (3.86 new sd), below 2 new sd after 86 records; grew 0 times while at or over 2 sd (most 0 bytes); 0 records at or over 2 sd after
+d4b-low200-50-once-w.rec: section at the decrease 197 MB (3.93 new sd), below 2 new sd after 81 records; grew 0 times while at or over 2 sd (most 0 bytes); 0 records at or over 2 sd after
+d4b-one-sd200.rec: steady, 6000000 records, max section 1.033 sd, 0 at or over 2 sd
+d4b-one-sd50.rec: steady, 6000000 records, max section 1.110 sd, 0 at or over 2 sd
+d4b-upd-sd1000.rec: steady, 30000 records, max section 1.089 sd, 0 at or over 2 sd
+d4b-upd-sd200.rec: steady, 30000 records, max section 1.029 sd, 0 at or over 2 sd
+d4b-upd-sd50.rec: steady, 30000 records, max section 1.113 sd, 0 at or over 2 sd
+d4b-upd-sd50.rec: the same bytes as 007-06's step3-upd-sd50.rec
+d4b-upd-sd200.rec: the same bytes as 007-06's step3-upd-sd200.rec
+d4b-upd-sd1000.rec: the same bytes as 007-06's step3-upd-sd1000.rec
+d4b-one-sd50.rec: the same bytes as 007-06's step3-one-sd50.rec
+d4b-one-sd200.rec: the same bytes as 007-06's step3-one-sd200.rec
+d4b-del-sd50.rec: the same bytes as 007-06's step3-del-sd50.rec
+d4b-del-sd200.rec: the same bytes as 007-06's step3-del-sd200.rec
+d4b-del-sd1000.rec: the same bytes as 007-06's step3-del-sd1000.rec

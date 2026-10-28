@@ -6,11 +6,15 @@ his request ("Do: write this plan into item 007."), from Claude's proposal
 of 2026-10-23, which followed 007-01 and 007-02. Updated 2026-10-26 from
 the review after item 009, [007-04](04-review-after-009.md).
 
-**Status (2026-10-27): step 1 done (005-31, 2026-10-24); step 5 done
+**Status (2026-10-28): step 1 done (005-31, 2026-10-24); step 5 done
 (007-05, 2026-10-27); step 6 done, rule 4 without reads (005-57,
-2026-10-27); steps 2, 3 and 4 not started.** Step 5: warm on F53, 7.4 s at
-50 MB, 12.4 s at 200 MB and 70 to 86 s at 1000 MB with 10M to 50M keys and
-8-byte values; cold on s1, 3.5 minutes at 10M keys, most of it rule 4's
+2026-10-27); step 2 done (007-06, 2026-10-27); step 3 done, with D4:B
+(007-07, 2026-10-28); step 4 not started.** Step 3: 005-49's paced take
+with the deadline at d_h = 2 × sd as its backstop, and after a decrease of
+the startup distance the deadline at the span of the section's
+transactions, which shrinks with every commit (D4:B). Step 5: warm on
+F53, 7.4 s at 50 MB, 12.4 s at 200 MB and 70 to 86 s at 1000 MB with 10M
+to 50M keys and 8-byte values; cold on s1, 3.5 minutes at 10M keys, most of it rule 4's
 reads. Step 6: rule 4 finds a pointer's node by its position, with no read
 (005-57); with it a cold start on s1 at 10M keys took about 46 and 51 s at
 50 and 200 MB, the rest the rerun's loads. Steps 2 to 5 waited for release 2026.1 (Frans,
@@ -117,6 +121,12 @@ smaller ones only as a quick stress. In memory, as 005-38 ran it, with a
   outputs in this item's directory. The same runs again after step 3.
 * Size: S, and runs in the background. They count bytes and nodes, not
   time, so a busy machine does not matter.
+* Done 2026-10-27 ([007-06](06-debt-test.md)): 50 runs at 10M keys on
+  today's take, on 005-49's paced take and on 007-07's patch. The same runs
+  again on step 3 with D4:B, 2026-10-28: 007-07, section 10.4 (the steady
+  runs the same bytes as the patch's; one call from 1000 to 100 MB or from
+  200 to 50 MB writes no record over 5.4 MB, where the patch wrote 87 to
+  486 MB).
 
 ### Step 3. The deadline in `TransSeq.take` (D1, decided)
 
@@ -163,6 +173,20 @@ lags passes at least one transaction per record.
   change; the quick performance suite unchanged; docs/levels.md, section
   5 (Level 2), updated.
 * Size: S for the code, M with the gates and runs.
+* Done 2026-10-28 ([007-07](07-step3-paced-take.md), section 10), at
+  Frans's decision (006-09, section 8, decision 1), by Claude (Opus 5.5,
+  Claude Code): 007-07's patch, 005-49's paced take with the deadline at
+  d_h = 2 × sd as its backstop (the take loop above, with its node limit,
+  is gone), and D4:B as 007-06 measured it: while the section's
+  transactions span more than d_h, the deadline is at that span, which
+  shrinks with every commit. Gates: before-commit.sh, level2.sh, level3.sh
+  and level4.sh, full, pass; StreamDigest: every stream changes, as
+  expected, the same with or without D4:B. Step 2's runs again: the section
+  without its last record below the deadline in force in every run, at
+  most 1.12 sd in steady runs. The quick performance suite waits for a
+  quiet block (007-07's night step). 7.1 and 7.2's whole-transaction
+  bursts are accepted for now; a pace by nodes is a model change for step
+  4.
 
 ### Step 4. BergDB's take in Lean
 
@@ -198,6 +222,14 @@ paced by 005-49 changes the definition, so this step waits for 005-49 too.
   warnings and no `sorry`; lean/README.md and docs/sis-model.md, section
   10, updated.
 * Size: S to M.
+* Since step 3 (007-07, 2026-10-28): the take is 005-49's pace with the
+  deadline, and the deadline's distance is the larger of d_h and the span
+  of the section's transactions, from the oldest's tpos to the newest's,
+  a function of the stream and of T(i). After a decrease of the startup
+  distance it is the span at the decrease and shrinks with every
+  transaction, so T3 holds for the deadline in force (007-06, section 5,
+  point 2). The pace only takes transactions earlier than the deadline
+  does; its share needs no proof of its own.
 
 Later, not in this plan: the trace checker compares Java's startup pos
 with this policy on every record. It needs each record's length in bytes
@@ -361,6 +393,14 @@ Decisions
   stays in proportion to its own size, as Frans asks of a user operation
   (005-49). Step 2's runtime decrease gives the sizes of the steps.
   Decided (Frans, 2026-10-26, "D4:B."): B.
+  Built 2026-10-28 as 007-06's "pace" (Frans, 006-09, section 8, decision
+  1: "the pace takes the new startup distance at once, and the deadline
+  has its own distance, lowered with the lag to max(2 × new sd, lag)"):
+  `setStartupDistance` returns after its one transaction; the commits that
+  follow take shares of the new setting at once, and while the section's
+  transactions span more than 2 × the new sd, the deadline is at that
+  span, which a start rebuilds and which shrinks with every commit
+  ([007-07](07-step3-paced-take.md), section 10).
 * **D5 (new, 2026-10-26): step 6, fewer random reads at startup**: in this
   plan, as proposed, or as an entry of its own. Either way, its count goes
   with step 5's runs. Recommended: in this plan, since a startup time that

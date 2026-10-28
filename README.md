@@ -93,10 +93,11 @@ the study of prior art, [011-02](items/011-docs-archive/02-prior-art.md).
 Two known limits (2026-10-25). Replication (`DatabaseBuilder.replica`,
 `Database.addReplica`) is experimental, with known faults, and not for data
 that matters ([005-11](items/005-todo/11-replication.md)). And bounded
-startup is not yet proved for BergDB's own startup pos policy: the startup
-section reached 2.6 times the startup distance at 50 MB in a test
-([005-38](items/005-todo/38-writes-at-scale.md)), and the deadline that
-bounds it is planned ([007-03](items/007-bounds/03-plan.md)).
+startup is not yet proved for BergDB's own startup pos policy: its take
+keeps up with twice the startup distance by a deadline, which
+[007-03](items/007-bounds/03-plan.md)'s step 4 is to prove; before the
+deadline, the startup section reached 2.6 times the startup distance at
+50 MB in a test ([005-38](items/005-todo/38-writes-at-scale.md)).
 
 Pauses (2026-10-28). In the runs of bergdb item 009, no get or commit
 waits more than about 20 ms for BergDB's own work: eviction works in

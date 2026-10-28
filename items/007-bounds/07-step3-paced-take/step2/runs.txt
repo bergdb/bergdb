@@ -1,0 +1,27 @@
+2026-10-28 09:47:17 start smoke-low: d4b -Dwb.keys=200000 -Dwb.window=200000 -Dwb.ring=200000000 -Dwb.updates=1000000 -Dwb.sd=20000000 -Dwb.lowerAt=500000 -Dwb.lowerTo=2000000
+2026-10-28 09:47:25 end smoke-low: WRITEBENCH OK
+2026-10-28 10:20:37 start d4b-upd-sd1000: d4b -Dwb.sd=1000000000
+2026-10-28 10:23:56 end d4b-upd-sd1000: WRITEBENCH OK
+2026-10-28 10:23:56 start d4b-upd-sd200: d4b -Dwb.sd=200000000
+2026-10-28 10:29:38 end d4b-upd-sd200: WRITEBENCH OK
+2026-10-28 10:29:38 start d4b-upd-sd50: d4b -Dwb.sd=50000000
+2026-10-28 10:38:16 end d4b-upd-sd50: WRITEBENCH OK
+2026-10-28 10:38:16 start d4b-one-sd50: d4b -Dwb.sd=50000000 -Dwb.utx=1 -Dwb.updates=6000000
+2026-10-28 10:42:08 end d4b-one-sd50: WRITEBENCH OK
+2026-10-28 10:42:08 start d4b-one-sd200: d4b -Dwb.sd=200000000 -Dwb.utx=1 -Dwb.updates=6000000
+2026-10-28 10:44:33 end d4b-one-sd200: WRITEBENCH OK
+2026-10-28 10:44:33 start d4b-del-sd50: d4b -Dwb.sd=50000000 -Dwb.op=delete -Dwb.updates=8000000
+2026-10-28 10:47:51 end d4b-del-sd50: WRITEBENCH OK
+2026-10-28 10:47:51 start d4b-del-sd200: d4b -Dwb.sd=200000000 -Dwb.op=delete -Dwb.updates=8000000
+2026-10-28 10:49:56 end d4b-del-sd200: WRITEBENCH OK
+2026-10-28 10:49:56 start d4b-del-sd1000: d4b -Dwb.sd=1000000000 -Dwb.op=delete -Dwb.updates=8000000
+2026-10-28 10:51:08 end d4b-del-sd1000: WRITEBENCH OK
+2026-10-28 10:51:09 start d4b-low1000-100-once-w: d4b -Dwb.sd=1000000000 -Dwb.updates=22181000 -Dwb.lowerAt=12181000 -Dwb.lowerTo=100000000
+2026-10-28 10:55:19 end d4b-low1000-100-once-w: WRITEBENCH OK
+2026-10-28 10:55:19 start d4b-low200-50-once-w: d4b -Dwb.sd=200000000 -Dwb.updates=24585000 -Dwb.lowerAt=14585000 -Dwb.lowerTo=50000000
+2026-10-28 11:01:09 end d4b-low200-50-once-w: WRITEBENCH OK
+2026-10-28 11:01:09 start d4b-low1000-100-once-t: d4b -Dwb.sd=1000000000 -Dwb.updates=30000000 -Dwb.lowerAt=20000000 -Dwb.lowerTo=100000000
+2026-10-28 11:05:37 end d4b-low1000-100-once-t: WRITEBENCH OK
+2026-10-28 11:05:37 start d4b-low200-50-once-t: d4b -Dwb.sd=200000000 -Dwb.updates=30000000 -Dwb.lowerAt=20000000 -Dwb.lowerTo=50000000
+2026-10-28 11:11:43 end d4b-low200-50-once-t: WRITEBENCH OK
+2026-10-28 11:11:43 QUEUE D4B DONE

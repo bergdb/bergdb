@@ -41,8 +41,9 @@ Files
   007-03 as a patch for Frans's review: 005-49's paced take with the
   deadline at 2 sd in `TransSeq.take`, its tests, gates and StreamDigest,
   the findings, and what step 3's "Done when" still needs; the patch and
-  the probes in [07-step3-paced-take/](07-step3-paced-take/). Not in
-  `java/`.
+  the probes in [07-step3-paced-take/](07-step3-paced-take/). In the code
+  since 2026-10-28, with D4:B, its tests, gates and step 2's runs again
+  (section 10).
 
 
 Log
@@ -166,3 +167,19 @@ D4's option B: the pace should use a new startup distance at once, and the
 deadline come down with the lag ("pace"); a deadline that jumps to the new
 2 sd writes records of 86 to 490 MB. Left: 50M keys, a longer delete run,
 D4:B on 007-07's patch.
+
+2026-10-28. Step 3 of 007-03 done, at Frans's decision (006-09, section 8,
+decision 1: "apply the step 3 patch, and add D4:B the way 007-06 measured
+it as "pace""), by Claude (Opus 5.5, Claude Code); 007-07, section 10.
+007-07's patch and D4:B: a new startup distance applies at once to the
+pace, and while the section's transactions span more than twice the
+setting, the deadline is at that span, which a start rebuilds and which
+shrinks with every commit. before-commit.sh, level2.sh, level3.sh and
+level4.sh, full, pass; every StreamDigest stream changes against main, as
+expected, and none against the patch alone. 007-06's step-2 runs again on
+it: the steady runs are the patch's, byte for byte; one call from 1000 to
+100 MB or from 200 to 50 MB writes no record over 5.4 MB (the patch: 87 to
+486 MB), and the section comes below the new 2 sd after 0.08 to 0.67M
+puts, shrinking with every record. Left: the quick performance suite, in
+a quiet block (007-07's night step); whether `setStartupDistance`'s 200 kB
+value should earn a share (007-06, point 4); step 4.

@@ -99,3 +99,15 @@ Performance
   instead of reading a header for each: in the prototype a cold start of 10M
   keys on s1 took about 46 and 51 s at startup distances of 50 and 200 MB,
   where it took 214 and 210 s.
+* **Index writes in proportion to each commit, and bounded startup**
+  (bergdb 005-49; 007-03, step 3; 007-07, 2026-10-28). Each commit writes
+  its share of the dirty index nodes, in proportion to its size, so that
+  the startup section stays near the startup distance, and a deadline
+  takes every transaction that begins twice the startup distance or more
+  before the end of the stream, so that a start reruns less than that. At
+  10M keys the largest record of a run is 2 to 10 times smaller; a put
+  costs 24 and 36 percent more stream at startup distances of 50 and 200
+  MB, and 13 percent less at 1000 MB. `Db.setStartupDistance` lowers the
+  distance in one call, with no commit that writes the whole startup
+  section; the section comes down as transactions are committed. Every
+  stream differs from what 2026.1 wrote; the format does not.

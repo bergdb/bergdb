@@ -1,0 +1,22 @@
+--- a/java/src/bergdb/core/TransSeq.java	2026-10-28 09:46:40
++++ b/java/src/bergdb/core/TransSeq.java	2026-10-28 10:24:12
+@@ -29,6 +29,7 @@
+     private int size;
+     private long dirtyCount;     // D: the got-dirty nodes of the transactions, for take()
+     private long ownBytes;       // O: the own bytes of their records, ownBytes()
++    public static long PROBE_FORCED_TRANS; public static boolean PROBE_FORCED_NOW;   // PROBE 007-07
+     
+     public boolean isEmpty() {
+         return first == null;
+@@ -171,6 +172,11 @@
+             // share is taken if the part that fits is larger than u.
+             if (first.tpos > hardSp && taken + count > share && share - taken <= u * count) {
+                 break;
++            }
++            // PROBE 007-07: a transaction taken by the deadline only.
++            if (first.tpos <= hardSp && taken + count > share && share - taken <= u * count) {
++                PROBE_FORCED_TRANS++;
++                PROBE_FORCED_NOW = true;
+             }
+             
+             if (maxBytes != Long.MAX_VALUE) {
