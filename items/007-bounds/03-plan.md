@@ -9,10 +9,14 @@ the review after item 009, [007-04](04-review-after-009.md).
 **Status (2026-10-28): step 1 done (005-31, 2026-10-24); step 5 done
 (007-05, 2026-10-27); step 6 done, rule 4 without reads (005-57,
 2026-10-27); step 2 done (007-06, 2026-10-27); step 3 done, with D4:B
-(007-07, 2026-10-28); step 4 not started.** Step 3: 005-49's paced take
-with the deadline at d_h = 2 × sd as its backstop, and after a decrease of
-the startup distance the deadline at the span of the section's
-transactions, which shrinks with every commit (D4:B). Step 5: warm on
+(007-07, 2026-10-28); step 4 done (007-08, 2026-10-28).** Step 3: 005-49's
+paced take with the deadline at d_h = 2 × sd as its backstop, and after a
+decrease of the startup distance the deadline at the span of the section's
+transactions, which shrinks with every commit (D4:B). Step 4: that take is
+a policy of the Lean model, and T3 is proved for it: with a constant
+setting the section without its last record stays below d_h, and after a
+decrease it never grows and shrinks with every commit until it is below
+the new d_h. Step 5: warm on
 F53, 7.4 s at 50 MB, 12.4 s at 200 MB and 70 to 86 s at 1000 MB with 10M
 to 50M keys and 8-byte values; cold on s1, 3.5 minutes at 10M keys, most of it rule 4's
 reads. Step 6: rule 4 finds a pointer's node by its position, with no read
@@ -230,6 +234,29 @@ paced by 005-49 changes the definition, so this step waits for 005-49 too.
   transaction, so T3 holds for the deadline in force (007-06, section 5,
   point 2). The pace only takes transactions earlier than the deadline
   does; its share needs no proof of its own.
+* Done 2026-10-28 ([007-08](08-step4-take-in-lean.md)), at Frans's go
+  (006-10, question 3), by Claude (Opus 5.5, Claude Code): the take is
+  `takePolicy` in `lean/SIS/Bound.lean`, whole transactions oldest first,
+  each taken if it begins max(2 sd, span) or more before the end or if the
+  pace takes it, with any pace, and BergDB's own (`javaPace`: the share in
+  Java's double arithmetic, the dither) giving `javaTake`, which gives
+  Java's startup pos on 300 generated cases; the setting is any function
+  of the transaction. Proved, for every pace and every cost of a record,
+  with nothing else assumed: after a transaction the section costs less
+  than the larger of 2 sd and the section before (`T3_take_step`); with
+  settings at most M, less than 2 M, with and without restarts (`T3_take`,
+  `T3_take_restarts`; with a constant setting, less than d_h, this step's
+  T3); after a decrease to sd', less than 2 sd' or at least one unit less
+  for each transaction since (`T3_take_decrease`, also with restarts); and
+  what startup reruns (`T3_take_rerun`). "The policy keeps up with d_h"
+  above is false with D4:B (`KeepsUp` is over all streams, and on a stream
+  whose span is longer than d_h the deadline is at the span); the proof
+  goes by induction over the run from the one-transaction bound. The
+  record limit and the meta blocks are left out, as planned. `#guard`s on
+  example 2: the take keeps the section below d_h, also with restarts,
+  and through decreases; the take before step 3 with a tight limit does
+  not keep up. docs/sis-model.md (6.1, step 4; section 10) and
+  lean/README.md updated.
 
 Later, not in this plan: the trace checker compares Java's startup pos
 with this policy on every record. It needs each record's length in bytes
@@ -346,7 +373,8 @@ Since the review (007-04):
   WriteBench, in the background: they count, they do not time.
 * D4 and step 3 after 005-49's recommendation; step 2's runs again after
   step 3.
-* Step 4 after step 3's design, which it must match.
+* Step 4 after step 3's design, which it must match. Done 2026-10-28
+  (007-08).
 * Step 6 after D5, from step 5's count. Done 2026-10-27 (005-57), rule 4
   by position; the rerun's loads (its option A) not now.
 

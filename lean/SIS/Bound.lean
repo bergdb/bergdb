@@ -61,8 +61,9 @@ that decides, transaction by transaction, whether to take the next one
 out of the model, as 007-03's step 4 says: the record limit (`take`'s
 `maxBytes`), which stops the take before a transaction whose nodes would not
 fit in the record, also past the deadline (since 005-31 the nodes of one
-transaction fit in a record); and the meta blocks, 128 bytes every 200 kB,
-which Java's positions count and the model's cost of a record does not. -/
+transaction fit in a record whose own part is below 1/16 of the limit); and
+the meta blocks, 128 bytes every 200 kB, which Java's positions count and the
+model's cost of a record does not (bergdb 007-08, section 1). -/
 
 /-- The span of the startup section's transactions: the cost of R(s+1), ...,
 R(k-1), from the beginning of R(s+1) to that of R(k), where R(k) is the last

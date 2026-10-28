@@ -44,6 +44,14 @@ Files
   the probes in [07-step3-paced-take/](07-step3-paced-take/). In the code
   since 2026-10-28, with D4:B, its tests, gates and step 2's runs again
   (section 10).
+* [08-step4-take-in-lean.md](08-step4-take-in-lean.md). 007-08, step 4 of
+  007-03: BergDB's take with D4:B as a policy of the Lean model, with any
+  pace and BergDB's share, and T3 for it (`T3_take` and five more): the
+  trusted definitions, the statements in Lean and in words, what is true
+  and what is not of the plan's statements, the checks by running, the
+  proof, what is not covered, questions for Frans; the probe that runs
+  `TransSeq.take` on the generated cases in
+  [08-step4-take-in-lean/](08-step4-take-in-lean/).
 
 
 Log
@@ -183,3 +191,19 @@ it: the steady runs are the patch's, byte for byte; one call from 1000 to
 puts, shrinking with every record. Left: the quick performance suite, in
 a quiet block (007-07's night step); whether `setStartupDistance`'s 200 kB
 value should earn a share (007-06, point 4); step 4.
+
+2026-10-28. Step 4 of 007-03 done, at Frans's go (006-10, question 3), by
+Claude (Opus 5.5, Claude Code); 007-08. `TransSeq.take` with D4:B is
+`takePolicy` in `lean/SIS/Bound.lean`, with any pace, and with BergDB's
+share (`javaTake`), which gives Java's startup pos on 300 generated cases.
+Proved for every pace and every cost of a record, with nothing else
+assumed: the section without its last record costs less after a
+transaction than the larger of twice the setting and what it cost before
+(`T3_take_step`), so less than d_h with a constant setting, with and
+without restarts (`T3_take`), and after a decrease it never grows and
+loses at least one unit with every transaction until it is below the new
+d_h (`T3_take_decrease`); what startup reruns (`T3_take_rerun`). The
+plan's "keeps up with d_h" is false with D4:B, and below the new d_h right
+after a decrease is false, as intended; the counterexamples are `#guard`s.
+`lake build` with no warnings and no `sorry`, the axioms Lean's standard
+ones, the trace tests pass.
