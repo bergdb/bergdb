@@ -336,6 +336,13 @@ be marked so. For Frans: the 128-byte meta-block gap at records ending on a
 200,000-byte boundary; `take` given `getNextPos()` instead of `getLength()`
 would make the model exact (a code change).
 
+2026-10-28, 13:10. Frans: "as recommended" on 007-08's three questions
+(keep `share`, `dither` and `javaPace` with a note; record lengths in the
+traces later; no model of how fast the section comes down) and on the
+review's code point: `take` given `getNextPos()`, as a new fix entry with
+StreamDigest. A subagent does both and the review's small fixes, hard stop
+21:30.
+
 ## 8. Outcome
 
 To come by 07:00 on 2026-10-29.
