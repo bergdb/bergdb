@@ -1,0 +1,13 @@
+# bergdb 005-64, question 3: mixed writers, run by MixedProbe (tools/) at each buffer time.
+# Perf cannot express it: a Perf run's threads all sync (commit=durable) or none do.
+# NAME SYNC_THREADS SYNC_RATE PLAIN_THREADS PLAIN_RATE VALSIZE SECONDS WARMUP_S
+# A rate is transactions a second per thread, 0 as fast as possible; one put a transaction.
+#
+# m-s1-p1: one thread that syncs after each transaction, back to back, beside one that never
+#   syncs, as fast as it can: each sync's flush carries what the other wrote meanwhile.
+# m-s1r10-p1r10k: a sync 10 times a second beside 10 MB/s of writes nobody syncs; between the
+#   syncs the timer flushes, so here a longer buffer time can make each sync's flush larger.
+# m-s16-p1r10k: 16 threads that sync back to back beside 10 MB/s nobody syncs.
+m-s1-p1         1  0   1  0      1000  8   2
+m-s1r10-p1r10k  1  10  1  10000  1000  20  2
+m-s16-p1r10k    16 0   1  10000  1000  8   2

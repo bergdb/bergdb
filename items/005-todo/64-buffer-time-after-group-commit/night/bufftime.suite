@@ -1,0 +1,32 @@
+# bergdb 005-64: the buffer time after group commit, 20, 50 and 100 ms (Perf's bufftime=). From
+# 005-13's performance-bufftime.suite and 005-48's group-commit.suite. Writers that do not sync,
+# one thread (question 1: a-100, a-1k, a-1k-x100, as in 005-13), and writers that sync
+# (sync(ORDINARY)) after each transaction with 1, 16 and 64 threads (question 2, a check;
+# more transactions than 005-13's, as a sync now takes about one force: some 5 s measured
+# each). Same format as performance.suite. run-f53.sh and s1-runner.sh run it through
+# rounds.sh: performance.sh reference with RUNS=1 per round, the three buffer times of each
+# scenario next to each other, their order rotated from round to round.
+
+a-100-b20      write  1  n=100000 valsize=100 retain=inf ops=1000000 bufftime=20
+a-100-b50      write  1  n=100000 valsize=100 retain=inf ops=1000000 bufftime=50
+a-100-b100     write  1  n=100000 valsize=100 retain=inf ops=1000000 bufftime=100
+
+a-1k-b20       write  1  n=100000 valsize=1000 retain=inf ops=500000 bufftime=20
+a-1k-b50       write  1  n=100000 valsize=1000 retain=inf ops=500000 bufftime=50
+a-1k-b100      write  1  n=100000 valsize=1000 retain=inf ops=500000 bufftime=100
+
+a-1k-x100-b20  write  1  n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=20
+a-1k-x100-b50  write  1  n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=50
+a-1k-x100-b100 write  1  n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=100
+
+d-t1-b20       write  1  n=100000 commit=durable threads=1 ops=1000 warmup=100000 valsize=1000 bufftime=20
+d-t1-b50       write  1  n=100000 commit=durable threads=1 ops=1000 warmup=100000 valsize=1000 bufftime=50
+d-t1-b100      write  1  n=100000 commit=durable threads=1 ops=1000 warmup=100000 valsize=1000 bufftime=100
+
+d-t16-b20      write  1  n=100000 commit=durable threads=16 ops=8000 warmup=100000 valsize=1000 bufftime=20
+d-t16-b50      write  1  n=100000 commit=durable threads=16 ops=8000 warmup=100000 valsize=1000 bufftime=50
+d-t16-b100     write  1  n=100000 commit=durable threads=16 ops=8000 warmup=100000 valsize=1000 bufftime=100
+
+d-t64-b20      write  1  n=100000 commit=durable threads=64 ops=32000 warmup=100000 valsize=1000 bufftime=20
+d-t64-b50      write  1  n=100000 commit=durable threads=64 ops=32000 warmup=100000 valsize=1000 bufftime=50
+d-t64-b100     write  1  n=100000 commit=durable threads=64 ops=32000 warmup=100000 valsize=1000 bufftime=100

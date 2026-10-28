@@ -1,0 +1,4 @@
+# bergdb 005-64: the smoke test's mixed configurations: mixed.txt's, two seconds each.
+m-s1-p1         1  0   1  0      1000  2  1
+m-s1r10-p1r10k  1  10  1  10000  1000  2  1
+m-s16-p1r10k    16 0   1  10000  1000  2  1
