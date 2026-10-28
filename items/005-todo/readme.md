@@ -36,6 +36,7 @@ Open
 | [005-62](62-lean-t9-t12-over-handles.md) | Fix | Lean: T9 and T12 over handles, so that the design before handles can go. Both proved (`t9_handles`, `t12_handles`; `bba91dd` to `a506b34`), reviewed at max effort, lake build clean, axioms standard; left for Frans: how far to remove the old design's files and theorems, and two further theorems (rule 4 by position after a cut, a cut without a restart) | open |
 | [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered; a longer time may mean fewer forces and wake-ups for writers that do not sync, at the cost of more unsynced data lost on a power loss. Frans's request | open |
 | [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Hypothesis to test: since 005-46 the 8 readers take F53's 8 performance cores and the eviction thread falls behind; the run was not quiet. Test: 4, 6 and 8 threads on `bf19075`, `eaec93e` and `4f7cd60`, with the eviction thread's CPU, in a quiet block | open |
+| [005-66](66-builder-opens-at-start.md) | Implement | The Pub API's builder opens the directories in `start()`: `dir()` and `replica()` open their `FileStream`s at once, and since 005-63 a builder that is never started, a second `dir()` or a replica given before `dir()` holds a directory's lock until the JVM ends (a builder has no `close()`). They record the directories, `start()` opens them, and a failed start closes them (005-32); a bad or busy directory is reported by `start()` | open |
 
 
 Closed
@@ -326,6 +327,9 @@ Files
   hypothesis and what would refute it, the test; open. The night step
   (`prep.sh`, `threads.sh`, `sum.py`, `ScaleBench-065.diff`) in
   [65-gets-with-8-readers/night/](65-gets-with-8-readers/night/).
+* [66-builder-opens-at-start.md](66-builder-opens-at-start.md). 005-66,
+  the Pub API's builder opens the directories in `start()`: the issue
+  left by 005-63, the change, the tests; open.
 
 Log
 ===
@@ -1250,3 +1254,9 @@ hypothesis to test (the readers take F53's 8 performance cores since
 005-46) and a night step that runs 4, 6 and 8 threads on `bf19075`,
 `eaec93e` and `4f7cd60` with the eviction thread's CPU, smoke-tested. Item
 009 is closed with this case open here.
+
+2026-10-28. Added 005-66, at Frans's request (09:43), by Claude (Opus
+5.5, Claude Code): the Pub API's builder opens its directories in
+`start()`, not in `dir()` and `replica()`, so that a builder that is
+never started holds no directory's lock (005-63's outcome); kind
+implement.
