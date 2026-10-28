@@ -1379,3 +1379,9 @@ systems. Tests in `FileStream`, one across processes, and in `PubTester`;
 six tests and stress programs that restarted right after `stop()` now call
 `close()`; a line in `releases/next.md`. `before-commit.sh`, `level3.sh`,
 `level2.sh` and `level4.sh quick` pass.
+
+2026-10-28. 005-48 closed by Frans, with the buffer time kept at 20 ms:
+group commit is in `main` since 2026-10-27 (`e611709`). Now that a sync
+no longer waits for the timer, whether 50 or 100 ms is better is a new
+entry, 005-64 (fewer forces and wake-ups for writers that do not sync,
+against more unsynced data lost on a power loss).

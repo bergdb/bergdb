@@ -1,6 +1,0 @@
-14:52:14 runner on s1: head-e718347 against proto-e718347, gc48-group-commit.suite, RUNS=6, HEAP=1g
-14:52:14 force probe before
-15:11:44 performance.sh exit 1: A correctness or storage failure fails the whole run; the data is in /opt/bergdb-bench/005-48/java/build/perf/data/e7183471-20261027T145225-gc48-group-commit.suite-g1-1g-ref/a-1k-x100-b20-run1
-15:11:44 force probe after
-15:11:57 a run failed, see ab.txt
-15:11:59 runner exit 1; the table: python3 -I /Users/f/fl/repos/bergdb/items/005-todo/48-group-commit/tools/table.py /Users/f/fl/repos/bergdb/items/005-todo/48-group-commit/night/out/s1

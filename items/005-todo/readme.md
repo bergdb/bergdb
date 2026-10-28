@@ -29,7 +29,6 @@ Open
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: how it is today, how it may need to change | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10). For release 2026.1: kept, documented as experimental | open |
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
-| [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits starts the flush, instead of waiting for `BufferedStream`'s timer; one thread's durable commit from 35 ms to about one force (005-13's question 5) Implemented 2026-10-27 (`e611709`), as Frans decided (006-09): on s1 one thread's durable commits went from 38 to 213 a second, the sync's median from 24.8 to 3.8 ms; the stream's bytes unchanged. F53's runs (tonight) and the recommendation on the buffer time (question 4) still open | open |
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API sets it only at start (`cacheSizeInMb`), against 010-P6; the core has `Eviction.setBudget` (also through JMX). The cache should converge gradually to the new size, with no disruption | open |
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
@@ -43,7 +42,9 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits has the buffer written at once (`BufferedStream.flushSoon`) instead of waiting for the timer, and the force paces the groups (005-13's question 5). In `main` since 2026-10-27 (`e611709`): on s1 one thread's durable commits went from 38 to 213 a second, the sync's median from 24.8 to 3.8 ms, 64 threads' from 2,364 to 6,429; writers that do not sync and the stream's bytes unchanged. Closed by Frans with the buffer time kept at 20 ms; whether 50 or 100 ms is better now is 005-64 | done | 2026-10-28 |
 | [005-63](63-one-database-per-directory.md) | Decide | One database per directory, also while one closes: `stop()` returns before the close, and since 005-46 the cut's files are deleted afterwards, so a database started on the same directory right after `stop()` could adopt files that were being deleted and fail (level2's `BryanRepro`, fixed in the test with `close()`). Decided 2026-10-28, option C: `FileStream` holds an operating-system lock on `bergdb.lock` in its directory until it is closed, and a second one on the directory, in the JVM or in another process, is refused with `DirectoryInUseException`; within the JVM a set of the locked directories refuses first, as closing a second channel of the file released the lock for other processes (macOS, Linux), a deviation from 010-P9; `stop()`'s Javadoc says to start again after `close()`; network file systems in `FileStream`'s Javadoc; tests, `releases/next.md` | done | 2026-10-28 |
+| [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered; a longer time may mean fewer forces and wake-ups for writers that do not sync, at the cost of more unsynced data lost on a power loss. Frans's request | open |
 | [005-59](59-autocloseable.md) | Decide | `Db` and `Database` as `AutoCloseable` (005-55's question 6). Decided 2026-10-27, option A: both implement it, `Database` gets a `close()` that waits as `Db.close()` does, so try-with-resources closes the database; Javadoc, tests, a line in `releases/next.md` | done | 2026-10-27 |
 | [005-61](61-reclaim-startup-distance.md) | Fix | Reclaim spaced its iterations by the builder's startup distance, copied before `start()` read the stream's, and never saw `setStartupDistance`: reclaim ran too seldom or too often (found in 005-53, question 3; no wrong cut). Now it uses the database's live startup distance; two unit tests that fail on the code before; StreamDigest identical | done | 2026-10-27 |
 | [005-49](49-smooth-index-writes.md) | Investigate | Smooth index writes: at large startup distances the index was written in bursts (records of 2.5 to 11.6 MB, up to 72 times their own bytes), and 007-03's deadline alone made records of up to 110 MB. Recommended for 007-03's step 3 (report.md): a paced take, each commit writes the waiting dirty index nodes oldest first, in whole transactions, in proportion to the stream it adds, with the deadline at 2 sd as the backstop (it never fired); the section stays at about sd; at the startup distance that gives today's peak section it writes 3 to 13 percent fewer bytes a put, with records 6 to 11 times smaller. Frans: the startup distance's setting is the section's target, the actual startup distance what a start reads from; the default stays 50 MB | done | 2026-10-27 |
@@ -262,7 +263,10 @@ Files
   durability of "written, not forced": Frans's question, the options and
   the constraints; open.
 * [48-group-commit.md](48-group-commit.md). 005-48, group commit: a
-  waiting sync starts the flush; the change, the questions; open.
+  waiting sync starts the flush; the change, the questions, the
+  measurements on s1, the outcome; done. The scripts of the runs, the two
+  tables, the tools and the ReclaimReaders experiment in
+  [48-group-commit/](48-group-commit/).
 * [49-smooth-index-writes.md](49-smooth-index-writes.md). 005-49, smooth
   index writes: the bursts found in 005-38, the cause, the questions, the
   results; done. The report, the paced take's diff, WriteBench with every
@@ -310,6 +314,9 @@ Files
   005-63, one database per directory, also while one closes: the issue
   found with `BryanRepro`, the lock file `bergdb.lock`, four options, the
   decision (C) and the outcome; done.
+* [64-buffer-time-after-group-commit.md](64-buffer-time-after-group-commit.md).
+  005-64, the buffer time after group commit, 20, 50 or 100 ms: the issue,
+  the questions; open.
 
 Log
 ===
@@ -1202,3 +1209,15 @@ on macOS. `stop()`'s Javadoc and network file systems in `FileStream`'s;
 tests; six tests and stress programs that restarted right after `stop()`
 call `close()`; `releases/next.md`. `before-commit.sh`, `level3.sh`,
 `level2.sh` and `level4.sh quick` pass.
+
+2026-10-28. 005-48 closed by Frans ("Close, keep 20 ms as recommended.
+Commit."): group commit is in `main` (`e611709`); the buffer time stays
+20 ms; F53's runs, refused in 006-09's night by `performance.sh`'s quiet
+check, are no longer a condition. The test runs' raw outputs and the
+prototype's diff removed from `48-group-commit/`; the scripts, the tables,
+the tools and the ReclaimReaders experiment kept. By Claude (Opus 5.5,
+Claude Code).
+
+2026-10-28. Added 005-64, at Frans's request ("create a new 005 item to
+investigate 20 ms vs 50 ms, vs 100 ms"), by Claude (Opus 5.5, Claude
+Code): the buffer time after group commit.

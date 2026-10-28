@@ -1,1 +1,0 @@
-Done: 12 rounds, 0 failures, 12 rounds with a cut, 41297881 gets and 13843551 scans correct, expired at admission 2, expired during 0, 39 s.

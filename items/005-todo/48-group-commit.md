@@ -1,7 +1,7 @@
 005-48. Group commit: a waiting sync starts the flush
 ====================================================
 
-Status: open. Kind: investigate. Created 2026-10-26.
+Status: done (2026-10-28; see Outcome). Kind: investigate. Created 2026-10-26.
 
 Proposed in [005-13](13-buffer-time.md) (question 5, "Then, likely, group
 commit"), not done there; registered at Frans's request (2026-10-26: "Yes,
@@ -118,8 +118,8 @@ Prototype
 then the ReclaimReaders failure, the gates, the digests and s1's runs from 14:40. Frans
 decided at 12:03 that the change is committed tonight if it passes the gates, keeps the
 stream's bytes and measures well. It is one local commit, java/ only, `200aaab` on
-`e718347` in the clone `/Users/f/fl/bench/006-09/gc48`;
-[48-group-commit/prototype.diff](48-group-commit/prototype.diff) is the same diff.
+`e718347` in the clone `/Users/f/fl/bench/006-09/gc48`, in `main` as `e611709`
+(the same diff).
 
 * **The change** (010-P3: work in response to a call; no thread, timer or setting).
   `BufferedStream.flushSoon(length)`: if a byte before `length` is still buffered, it
@@ -158,9 +158,10 @@ stream's bytes and measures well. It is one local commit, java/ only, `200aaab` 
   reclaim's internal transactions (steps, table stores) run inside the user transaction's
   execute (`Reclaim.transactionCompleted`), before it returns; `Db.sync` runs none. So the
   database did nothing wrong (005-57's guess, an internal transaction after the last
-  publication, cannot happen). Evidence (runs in
-  [48-group-commit/runs/reclaimreaders/](48-group-commit/runs/reclaimreaders/)): with a
-  pause of 2 ms between the two reads (an instrumented copy, `experiment/`), all 36 seeds
+  publication, cannot happen). Evidence (the experiment in
+  [48-group-commit/runs/reclaimreaders/experiment/](48-group-commit/runs/reclaimreaders/experiment/):
+  the instrumented copy as a diff, the scripts, `results.txt`; the run logs were not
+  kept): with a pause of 2 ms between the two reads, all 36 seeds
   of level3's three JVMs fail, each in its first or second session with readers, on HEAD
   as on the prototype, each with `lastCompleted`, read again, at or past T; with the fix
   none fails (862 sessions on each, with 902 and 1,086 readers that the second read let
@@ -177,9 +178,9 @@ stream's bytes and measures well. It is one local commit, java/ only, `200aaab` 
   With it, 101 runs of step 5's JVMs (1,212 seeds) at level3's load, 0 failures.
 * **Gates**, on `200aaab`'s tree: `before-commit.sh` "BEFORE COMMIT OK (120 s)" (1,046
   unit tests, 73 f-tests); `level3.sh` (full) "LEVEL 3 OK", step 5 with 0 failures in its
-  36 seeds. Log: `48-group-commit/runs/gates-200aaab.txt`.
-* **StreamDigest** (P2), `tools/digest.sh`, outputs in
-  [48-group-commit/digest/](48-group-commit/digest/): `StreamDigest all` (12
+  36 seeds.
+* **StreamDigest** (P2), [48-group-commit/tools/digest.sh](48-group-commit/tools/digest.sh)
+  (the outputs were not kept): `StreamDigest all` (12
   configurations; modes plain, reads, restarts) "DIGESTS IDENTICAL (36 of 36)", HEAD
   against the change. With syncs (`tools/SyncDigest.java`: a sync after every 7th
   transaction and a thread that syncs in a loop, the path that the change moves): each
@@ -202,17 +203,45 @@ stream's bytes and measures well. It is one local commit, java/ only, `200aaab` 
   not sync (question 2): puts a second 160,961 and 163,686 (100-byte values), 78,566 and
   80,507 (1 KB), 89,598 and 90,534 (1 KB, 100 puts a transaction; heap 2 GB, as HEAD's
   first run ran out of a 1 GB heap); forces a second and bytes a force the same (29.9 and
-  29.8, 42.1 and 43.2, 45.1 and 45.1). Tables: `night/out/s1/table.md` and
-  `night/out/s1-x100/table.md`.
-* **F53**, tonight in 006-09's quiet block: `night/run-f53.sh` (READY; HEAD against the
-  change in turns, 10 runs of each, the same suite at 20 ms, heap 8 GB; about 45 minutes),
-  outputs in `night/out/f53/`.
-* **Questions.** 1 and 2: s1's answers above, F53's tonight. 3 to 6 are open; on s1 a
-  short wait before the flush (question 3) looks unneeded: under load the disk forces
-  nearly all the time, and the group forms during the force.
+  29.8, 42.1 and 43.2, 45.1 and 45.1). Tables:
+  [night/out/s1/table.md](48-group-commit/night/out/s1/table.md) and
+  [night/out/s1-x100/table.md](48-group-commit/night/out/s1-x100/table.md); the raw
+  outputs were not kept.
+* **F53**: `night/run-f53.sh` (HEAD against the change in turns, 10 runs of each, the same
+  suite at 20 ms, heap 8 GB; about 45 minutes) did not run, see below.
+* **Questions.** 1 and 2: s1's answers above. On s1 a short wait before the flush
+  (question 3) looks unneeded: under load the disk forces nearly all the time, and the
+  group forms during the force.
 
 
 The F53 runs did not run: in 006-09's quiet block at 00:57, `performance.sh`
 found the machine not quiet (89.2 percent idle) and refused, by its own
-check (`night/out/`); s1's runs stand. Left for another quiet block, with
-question 4 (the buffer time).
+check; s1's runs stand.
+
+
+Outcome
+-------
+
+2026-10-28, closed by Frans: "Close, keep 20 ms as recommended. Commit.
+And also: create a new 005 item to investigate 20 ms vs 50 ms, vs 100 ms."
+
+* Group commit is in `main` since 2026-10-27 (`e611709`): a sync that
+  waits has the buffer written at once (`BufferedStream.flushSoon`), and
+  the force paces the groups. On s1 one thread's durable commits went from
+  38 to 213 a second (the sync's median from 24.8 to 3.8 ms), 64 threads'
+  from 2,364 to 6,429; writers that do not sync are unchanged; the stream's
+  bytes are unchanged (StreamDigest). The gates, `level3.sh` and `night.sh`
+  (2026-10-28) pass with it.
+* Question 4: the buffer time stays 20 ms. Whether 50 or 100 ms is better
+  now that a sync does not wait for it is investigated in
+  [005-64](64-buffer-time-after-group-commit.md), with question 5 (the
+  replica's 2,000 ms).
+* Questions 1 and 2 are answered on s1; F53's runs were refused by
+  `performance.sh`'s quiet check and are not a condition any more; 005-64
+  measures on F53. Question 3: no wait before the flush (s1: the group
+  forms during the force). Question 6: since 005-46 a reader does not wait
+  for the force; 005-47 is its own entry.
+* Files kept in [48-group-commit/](48-group-commit/): the scripts of the
+  runs (`night/`), the two tables, the tools (`tools/`) and the
+  ReclaimReaders experiment; the test runs' raw outputs and the prototype's
+  diff (the same as `e611709`) were removed on 2026-10-28.
