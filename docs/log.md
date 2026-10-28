@@ -1360,3 +1360,22 @@ Reviewed independently: the statements are the old ones with the handle
 model in place of Evict.lean's, hypothesis for hypothesis. `lake build`
 clean (173 jobs), trace tests OK, axioms standard. The design before
 handles can now be removed; how far is for Frans.
+
+2026-10-28. 005-63 done, by Claude (Opus 5.5, Claude Code), as Frans
+decided (option C): one database per directory. `FileStream` holds an
+operating-system lock on a file of its own in the directory,
+`bergdb.lock` (on one byte far beyond its end, so the file's text stays
+readable on Windows), from before it reads the directory until its
+`close()` has ended. A second `FileStream` on the directory, in the JVM or
+in another process, is refused at once with the new
+`DirectoryInUseException`, and so is a database started right after
+`stop()` while the first still closes (`BryanRepro`'s case, 006-09). A
+crash leaves no lock. Within the JVM a set of the locked directories
+refuses first: closing a refused channel of the file released the first
+stream's lock for other processes (POSIX record locks; seen on macOS), a
+deviation from 010-P9 that Frans chose. `stop()`'s Javadoc says to start
+again after `close()`; `FileStream`'s says what holds on network file
+systems. Tests in `FileStream`, one across processes, and in `PubTester`;
+six tests and stress programs that restarted right after `stop()` now call
+`close()`; a line in `releases/next.md`. `before-commit.sh`, `level3.sh`,
+`level2.sh` and `level4.sh quick` pass.

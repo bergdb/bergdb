@@ -36,7 +36,6 @@ Open
 | [005-56](56-package-dependencies.md) | Investigate | Package dependencies: how the packages depend on each other, and whether that follows their `package.html` files; Frans's question. A first look: four of `java/src`'s nine packages used packages their lists leave out; after 006-08's fixes of `stream` and `dag`, two remain (`pub` uses `core` and `pubimp`, `pubimp` uses `dag` and `storage`), and nothing checks the lists | open |
 | [005-60](60-block-storage.md) | Investigate | Block storage: the stream on a raw block device without a file system, as a ring of a fixed size, kept until the room is needed (retention by space); feasible in Java? And on a Linux device in a C or C++ clone. Frans's idea | open |
 | [005-62](62-lean-t9-t12-over-handles.md) | Fix | Lean: T9 and T12 over handles, so that the design before handles can go. Both proved (`t9_handles`, `t12_handles`; `bba91dd` to `a506b34`), reviewed at max effort, lake build clean, axioms standard; left for Frans: how far to remove the old design's files and theorems, and two further theorems (rule 4 by position after a cut, a cut without a restart) | open |
-| [005-63](63-one-database-per-directory.md) | Decide | One database per directory, also while one closes: `stop()` returns before the close, and since 005-46 the cut's files are deleted afterwards, so a database started on the same directory right after `stop()` can adopt files that are being deleted and fail (level2's `BryanRepro`, fixed in the test with `close()`). Options: a sentence in `stop()`'s Javadoc, a lock file in `FileStream`, both (recommended), nothing | open |
 
 
 Closed
@@ -44,6 +43,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-63](63-one-database-per-directory.md) | Decide | One database per directory, also while one closes: `stop()` returns before the close, and since 005-46 the cut's files are deleted afterwards, so a database started on the same directory right after `stop()` could adopt files that were being deleted and fail (level2's `BryanRepro`, fixed in the test with `close()`). Decided 2026-10-28, option C: `FileStream` holds an operating-system lock on `bergdb.lock` in its directory until it is closed, and a second one on the directory, in the JVM or in another process, is refused with `DirectoryInUseException`; within the JVM a set of the locked directories refuses first, as closing a second channel of the file released the lock for other processes (macOS, Linux), a deviation from 010-P9; `stop()`'s Javadoc says to start again after `close()`; network file systems in `FileStream`'s Javadoc; tests, `releases/next.md` | done | 2026-10-28 |
 | [005-59](59-autocloseable.md) | Decide | `Db` and `Database` as `AutoCloseable` (005-55's question 6). Decided 2026-10-27, option A: both implement it, `Database` gets a `close()` that waits as `Db.close()` does, so try-with-resources closes the database; Javadoc, tests, a line in `releases/next.md` | done | 2026-10-27 |
 | [005-61](61-reclaim-startup-distance.md) | Fix | Reclaim spaced its iterations by the builder's startup distance, copied before `start()` read the stream's, and never saw `setStartupDistance`: reclaim ran too seldom or too often (found in 005-53, question 3; no wrong cut). Now it uses the database's live startup distance; two unit tests that fail on the code before; StreamDigest identical | done | 2026-10-27 |
 | [005-49](49-smooth-index-writes.md) | Investigate | Smooth index writes: at large startup distances the index was written in bursts (records of 2.5 to 11.6 MB, up to 72 times their own bytes), and 007-03's deadline alone made records of up to 110 MB. Recommended for 007-03's step 3 (report.md): a paced take, each commit writes the waiting dirty index nodes oldest first, in whole transactions, in proportion to the stream it adds, with the deadline at 2 sd as the backstop (it never fired); the section stays at about sd; at the startup distance that gives today's peak section it writes 3 to 13 percent fewer bytes a put, with records 6 to 11 times smaller. Frans: the startup distance's setting is the section's target, the actual startup distance what a start reads from; the default stays 50 MB | done | 2026-10-27 |
@@ -308,7 +308,8 @@ Files
   what is left of the old design; open.
 * [63-one-database-per-directory.md](63-one-database-per-directory.md).
   005-63, one database per directory, also while one closes: the issue
-  found with `BryanRepro`, four options; open.
+  found with `BryanRepro`, the lock file `bergdb.lock`, four options, the
+  decision (C) and the outcome; done.
 
 Log
 ===
@@ -1183,3 +1184,21 @@ theorems with eviction over handles' runs (`bba91dd` to `a506b34`); an
 independent review at max effort found them faithful to `T9_readCut` and
 `T12_evictCut` and not vacuous; lake build clean, axioms standard, trace
 tests OK. Open: what to remove of the design before handles, for Frans.
+
+2026-10-28. 005-63 updated with Frans, by Claude (Opus 5.5, Claude
+Code): option B worked out as a lock file, `bergdb.lock`: its text,
+never deleted, a lock on one byte beyond its end, taken before the
+listing and released last, crashes, tests; several instances on one
+directory not considered now.
+
+2026-10-28. 005-63 decided and done: Frans chose option C (08:13), made
+by Claude (Opus 5.5, Claude Code). `FileStream` holds an operating-system
+lock on `bergdb.lock` in its directory until it is closed; a second one
+on the directory, in the JVM or in another process, is refused with the
+new `DirectoryInUseException`. Within the JVM a set of the locked
+directories refuses first (Frans's choice, a deviation from 010-P9):
+closing a refused channel released the first's lock for other processes
+on macOS. `stop()`'s Javadoc and network file systems in `FileStream`'s;
+tests; six tests and stress programs that restarted right after `stop()`
+call `close()`; `releases/next.md`. `before-commit.sh`, `level3.sh`,
+`level2.sh` and `level4.sh quick` pass.
