@@ -138,3 +138,24 @@ Size and order
 
 S to M: the method is small; question 2 decides the rest. After or with
 005-51.
+
+
+The first step, measured
+------------------------
+
+2026-10-28, 01:20 to 01:33, in 006-09's quiet block on F53 (jar `a6cd234`,
+10M keys; [52-cache-size-while-running/night/out/](52-cache-size-while-running/night/out/)),
+by Claude (Opus 5.5, Claude Code). The budget lowered in the middle of the
+run by `setBudget`, from 664 MB resident:
+
+| run | new budget | reached after | the eviction thread's CPU | longest batch | longest get | longest commit |
+|---|---|---|---|---|---|---|
+| ZGC, to a fifth | 132 MB | 47.0 s | 22.0 s | 2.18 ms | 6.09 ms | 38.4 ms |
+| G1, to a fifth | 132 MB | 46.9 s | 26.3 s | 88.8 ms | 36.7 ms | 45.1 ms |
+| ZGC, to a half | 332 MB | 0.31 s | 0.19 s | 2.22 ms | 4.12 ms | 28.5 ms |
+
+Question 2: the resident bytes converge in bounded batches (2.2 ms under
+ZGC), and gets stay short under ZGC. Under G1 a batch took 88.8 ms, most
+likely a collection inside it; the commits' 28 to 45 ms are not yet
+compared with a fixed budget's. So the step answers the convergence, and
+leaves the comparison with a fixed budget for the fix.

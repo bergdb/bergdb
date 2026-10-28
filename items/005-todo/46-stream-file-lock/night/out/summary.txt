@@ -1,0 +1,130 @@
+# 1. The soak (W1.3)
+
+soak p4-46-zgc-1027-2244: ok True
+  measured phase: uptime 980.5 to 2790.4 s; 1800 s steady, 200.0 commits and 14624 reads a second; physical cuts 3 (all 4); restarts 1
+  physical cuts (uptime s, first position MB): 980.5 (1200), 1785.4 (3500), 2104.9 (4500), 2528.6 (6500)
+  the slowest commits (ms at uptime s; "cut": a physical cut seen within 2 s; GC overlap):
+         5.1 ms at  1907.65 s  none
+         4.3 ms at  1631.76 s  none
+         2.5 ms at  1117.37 s  none
+         2.5 ms at  2738.39 s  none
+         2.5 ms at  1754.82 s  none
+         2.5 ms at  2319.25 s  none
+         2.4 ms at  1714.49 s  none
+         2.4 ms at  2670.09 s  none
+         2.4 ms at  2471.57 s  none
+         2.4 ms at  2284.57 s  none
+  the cut at 980.5 s: the warm-up's, which ended with it; its commits are not measured
+  the cut at 1785.4 s: no commit among the 20 slowest (the slowest kept are all over 2.4 ms)
+  the cut at 2104.9 s: no commit among the 20 slowest (the slowest kept are all over 2.4 ms)
+  the cut at 2528.6 s: no commit among the 20 slowest (the slowest kept are all over 2.4 ms)
+  longest: commit 5.1 ms (p99.9 2.26 ms), durable commit 39.5 ms, pacing delay 35.6 ms; latest get 2.4 ms, historical get 3.6 ms, forward scan 3.4 ms, backward scan 3.6 ms
+  the disk's waits (the write buffer's for each database object, then the forces and deletes of the whole run):
+    waits for room in the write buffer 5, 230.7 ms in all; longest at uptime 0.460s (127.3 ms) 0.312s (43.8 ms) 0.598s (31.4 ms) 0.528s (20.2 ms) 0.645s (8.0 ms)
+    waits for room in the write buffer 0, 0.0 ms in all
+    file forces 105533, 473542.5 ms in all; longest at uptime 1993.514s (17.9 ms) 1993.257s (14.5 ms) 2738.410s (13.8 ms) 2480.415s (13.8 ms) 1993.549s (13.5 ms)
+    directory forces 192, 479.2 ms in all; longest at uptime 1785.356s (12.9 ms) 980.642s (8.9 ms) 980.851s (8.8 ms) 0.120s (8.5 ms) 980.728s (8.3 ms)
+    deletes 89, 112.0 ms in all; longest at uptime 2528.655s (8.9 ms) 1785.420s (8.8 ms) 1785.433s (8.6 ms) 2528.641s (8.3 ms) 1785.441s (8.0 ms)
+  GC in the measured phase: 165 pauses, at most 0.014 ms; safepoints at most 0.258875 ms
+  eviction BUDGET: 5723319 slots unswizzled, 6179255 objects released; budget 1600000000 bytes, low 1200000000; 1576 sweeps (787 after loads, 21 complete, 0 above the budget after); last sweep 1600003683 -> 1596113442 bytes, pinned 13107272 (at most 13575752); sweep time 2361 ms in total, 2 ms at most; resident at most 1600 MB
+  restart 1 at 1880.6 s: startup 0.91 s, 4540 transactions rerun, readers paused 9.8 s
+
+# 2. Props, in turns (W1.4; CORE and SS: lower is faster)
+
+bf19075  round 1: MEM 130.0, CORE ?, SS 1.5; round 2: MEM 130.0, CORE ?, SS 1.5; round 3: MEM 130.0, CORE ?, SS 1.5; round 4: MEM 130.0, CORE ?, SS 1.5
+head     round 1: MEM 130.0, CORE ?, SS 1.5; round 2: MEM 130.0, CORE ?, SS 1.5; round 3: MEM 130.0, CORE ?, SS 1.5; round 4: MEM 130.0, CORE ?, SS 1.5
+
+# 3. ScaleBench from the OS's cache, in turns (W1.4; gets a second)
+
+## b133-g1
+
+| run | startup | uniform 1 | hot 1 | threads 1 | 2 | 4 | 8 | sampled 4 | blocked reading | uniform timed max | longest of the thread phases |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| bf19075, round 1 | 1.52 s | 107,495 | 643,754 | 107,849 | 177,219 | 263,682 | 182,179 | 259,411 | 13.3% | 11.55 ms | 13.40 ms |
+| head, round 1 | 0.87 s | 130,545 | 713,908 | 130,941 | 221,848 | 343,839 | 255,250 | 341,752 | 0.0% | 11.09 ms | 14.54 ms |
+| bf19075, round 2 | 1.52 s | 106,741 | 648,865 | 106,995 | 176,369 | 258,911 | 183,065 | 260,592 | 13.2% | 11.54 ms | 14.83 ms |
+| head, round 2 | 0.90 s | 130,073 | 721,078 | 129,573 | 222,261 | 345,900 | 265,774 | 340,269 | 0.0% | 11.22 ms | 13.37 ms |
+| bf19075, mean of 2 | 1.52 s | 107,118 | 646,310 | 107,422 | 176,794 | 261,296 | 182,622 | 260,002 | 13.2% | 11.54 ms | 14.11 ms |
+| head, mean of 2 | 0.89 s | 130,309 | 717,493 | 130,257 | 222,054 | 344,870 | 260,512 | 341,010 | 0.0% | 11.16 ms | 13.96 ms |
+
+HEAD against bf19075, gets a second: uniform 1 +21.6%, hot 1 +11.0%, threads 1 +21.3%, 2 +25.6%, 4 +32.0%, 8 +42.7%, sampled 4 +31.2%
+
+## b665-g1
+
+| run | startup | uniform 1 | hot 1 | threads 1 | 2 | 4 | 8 | sampled 4 | blocked reading | uniform timed max | longest of the thread phases |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| bf19075, round 1 | 1.52 s | 260,626 | 1,032,861 | 252,521 | 441,982 | 705,602 | 405,433 | 721,663 | 3.8% | 52.45 ms | 212.59 ms |
+| head, round 1 | 0.89 s | 305,726 | 1,109,518 | 303,267 | 545,718 | 864,756 | 698,774 | 853,914 | 0.0% | 47.92 ms | 264.95 ms |
+| bf19075, round 2 | 1.55 s | 256,713 | 1,035,305 | 253,359 | 445,933 | 700,951 | 393,594 | 713,357 | 3.4% | 53.34 ms | 253.37 ms |
+| head, round 2 | 0.93 s | 299,694 | 1,110,555 | 299,807 | 533,811 | 862,358 | 716,813 | 858,406 | 0.0% | 47.83 ms | 284.45 ms |
+| bf19075, mean of 2 | 1.54 s | 258,670 | 1,034,083 | 252,940 | 443,958 | 703,276 | 399,514 | 717,510 | 3.6% | 52.89 ms | 232.98 ms |
+| head, mean of 2 | 0.91 s | 302,710 | 1,110,036 | 301,537 | 539,764 | 863,557 | 707,794 | 856,160 | 0.0% | 47.88 ms | 274.70 ms |
+
+HEAD against bf19075, gets a second: uniform 1 +17.0%, hot 1 +7.3%, threads 1 +19.2%, 2 +21.6%, 4 +22.8%, 8 +77.2%, sampled 4 +19.3%
+
+## b665-zgc
+
+| run | startup | uniform 1 | hot 1 | threads 1 | 2 | 4 | 8 | sampled 4 | blocked reading | uniform timed max | longest of the thread phases |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| bf19075, round 1 | 1.64 s | 238,488 | 914,049 | 240,216 | 415,037 | 590,743 | 395,448 | 626,398 | 3.7% | 0.28 ms | 2.83 ms |
+| head, round 1 | 1.00 s | 290,397 | 995,458 | 282,481 | 491,818 | 711,200 | 727,507 | 733,546 | 0.0% | 0.26 ms | 27.35 ms |
+| bf19075, round 2 | 1.62 s | 250,752 | 985,594 | 242,012 | 415,556 | 603,118 | 400,486 | 619,578 | 3.5% | 0.26 ms | 1.37 ms |
+| head, round 2 | 1.00 s | 294,743 | 1,047,387 | 285,624 | 492,907 | 686,657 | 710,841 | 713,397 | 0.0% | 0.28 ms | 36.47 ms |
+| bf19075, mean of 2 | 1.63 s | 244,620 | 949,822 | 241,114 | 415,296 | 596,930 | 397,967 | 622,988 | 3.6% | 0.27 ms | 2.10 ms |
+| head, mean of 2 | 1.00 s | 292,570 | 1,021,422 | 284,052 | 492,362 | 698,928 | 719,174 | 723,472 | 0.0% | 0.27 ms | 31.91 ms |
+
+HEAD against bf19075, gets a second: uniform 1 +19.6%, hot 1 +7.5%, threads 1 +17.8%, 2 +18.6%, 4 +17.1%, 8 +80.7%, sampled 4 +16.1%
+
+# 4. performance.sh ab, quick suite, 2026.1 against HEAD (009-01, done item 7)
+
+## ab run 1
+
+COMPARE reference a42947c5-20261028T010114-quick-g1-8g-ref [a42947c58ee0c984375095cf99bc207d9980c214, build 2026.1, jar 1c913899]
+        candidate 4f7cd60f-20261028T010114-quick-g1-8g-cand [4f7cd60fbd8807c62af1d9a85d0213618960a96a, build head-4f7cd60, jar c9361942]
+thresholds: /Users/f/fl/bench/006-09/w1/head/java/bench/thresholds.json (missing): {warm_read_throughput=0.05}  (NOT FROZEN: only the provisional warm-read target raises alerts)
+
+SCENARIO r-1k-fin [restart] reference 3 runs, candidate 4f7cd60f-20261028T010114-quick-g1-8g-cand 3 runs
+  metric                                       ref median  ref CV      cand median cand CV    change  status
+  gclog.pause.max_ms                               24.339 74.2% n3           38.734 22.3% n3    +59.1%  EXPLAIN (maximum much larger than the reference's)
+  gclog.safepoint.max_ms                           24.448 74.1% n3           38.818 22.2% n3    +58.8%  EXPLAIN (maximum much larger than the reference's)
+  mix.commit.append.max_us                       24,539.7 73.8% n3         38,943.9 22.3% n3    +58.7%  EXPLAIN (maximum much larger than the reference's)
+  mix.commits_per_s                              49,758.6 0.5% n3         53,285.7 0.7% n3     +7.1%  
+  mix.get.max_us                                 24,532.2 74.0% n3         38,847.0 22.2% n3    +58.4%  EXPLAIN (maximum much larger than the reference's)
+  mix.gets_per_s                                2,017,000 1.5% n3        2,350,900 0.7% n3    +16.6%  
+  mix.puts_per_s                                 49,758.6 0.5% n3         53,285.7 0.7% n3     +7.1%  
+  startup.sec                                      0.7018 0.5% n3           0.6863 1.1% n3     -2.2%  
+  (32 more metrics compared, nothing to report; --all shows them)
+
+SCENARIO read-1k [read] reference 3 runs, candidate 4f7cd60f-20261028T010114-quick-g1-8g-cand 3 runs
+  metric                                       ref median  ref CV      cand median cand CV    change  status
+  get_historical.ops_per_s                      1,238,960 0.9% n3        1,232,800 1.0% n3     -0.5%  
+  get_latest.ops_per_s                          1,297,970 1.1% n3        1,282,210 0.8% n3     -1.2%  
+  get_latest_mt4.ops_per_s                      3,482,100 1.4% n3        4,357,120 0.5% n3    +25.1%  
+  get_longkey.ops_per_s                         950,398.0 1.8% n3        914,214.0 4.9% n3     -3.8%  
+  scan_back.kvs_per_s                           4,058,440 1.7% n3        4,092,120 1.8% n3     +0.8%  
+  scan_back.scans_per_s                          40,584.4 1.7% n3         40,921.2 1.8% n3     +0.8%  
+  scan_fwd.kvs_per_s                            3,829,710 0.6% n3        3,853,640 2.4% n3     +0.6%  
+  scan_fwd.scans_per_s                           38,297.1 0.6% n3         38,536.4 2.4% n3     +0.6%  
+  scan_fwd_hist.kvs_per_s                       3,545,280 2.8% n3        3,473,010 1.7% n3     -2.0%  
+  scan_fwd_hist.scans_per_s                      35,452.8 2.8% n3         34,730.1 1.7% n3     -2.0%  
+  (42 more metrics compared, nothing to report; --all shows them)
+
+SCENARIO w-uni-1k-fin [write] reference 3 runs, candidate 4f7cd60f-20261028T010114-quick-g1-8g-cand 3 runs
+  metric                                       ref median  ref CV      cand median cand CV    change  status
+  commits_per_s                                  63,461.4 0.0% n3         66,708.4 0.2% n3     +5.1%  
+  puts_per_s                                     63,461.4 0.0% n3         66,708.4 0.2% n3     +5.1%  
+  restart.startup_sec                              0.6133 0.2% n3           0.5896 0.7% n3     -3.9%  
+  user_mb_per_s                                    63.715 0.0% n3           66.975 0.2% n3     +5.1%  
+  (29 more metrics compared, nothing to report; --all shows them)
+
+SCENARIO w-uni-1k-inf [write] reference 3 runs, candidate 4f7cd60f-20261028T010114-quick-g1-8g-cand 3 runs
+  metric                                       ref median  ref CV      cand median cand CV    change  status
+  commits_per_s                                 102,876.0 0.2% n3        103,766.0 0.1% n3     +0.9%  
+  puts_per_s                                    102,876.0 0.2% n3        103,766.0 0.1% n3     +0.9%  
+  restart.startup_sec                              0.6390 0.3% n3           0.6219 0.6% n3     -2.7%  
+  user_mb_per_s                                     103.3 0.2% n3            104.2 0.1% n3     +0.9%  
+  (23 more metrics compared, nothing to report; --all shows them)
+
+NO ALERTS
+Comparison exit code 0 (0: no alerts, 1: alerts to repeat in a matched run, 3: incompatible, 4: failed or missing runs)
+

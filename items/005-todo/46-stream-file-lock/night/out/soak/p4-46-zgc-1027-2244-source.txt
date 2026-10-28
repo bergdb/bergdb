@@ -1,0 +1,11 @@
+name p4-46-zgc-1027-2244
+commit 4f7cd60fbd8807c62af1d9a85d0213618960a96a
+changed files (java/src, java/src-dev, java/stress):
+jar sha256 729232bbe8c1d2e8582d14aaf35293c961072f446d2e77833527e6834a22285c
+java /opt/homebrew/opt/openjdk/bin/java: openjdk version "27" 2026-09-15 OpenJDK Runtime Environment Homebrew (build 27) OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing) 
+flags -XX:+UseZGC -da -Xms8g -Xmx8g -Xlog:gc*,safepoint:file=gc.log:uptime,level,tags -Devictbudget=1600000000
+properties rate=200 warmup=300 warmupmax=3600 measure=1800 restarts=1 mincuts=2 extend=900
+machine MacBookPro18,3 Apple M1 Pro, 10 cores, 34359738368 bytes, 27.0.1
+disk free 634 GB
+started 2026-10-27 22:44:52 CET
+ended 2026-10-27 23:31:24 CET, exit code 0

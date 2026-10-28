@@ -328,3 +328,18 @@ Shenandoah's mode is only a recommendation (the default mode, without
 generations). Reclaim's physical cuts (up to 171 ms in P4's soak) and a
 read's wait for the writer's force (seconds on s1) are BergDB's own and
 count, so status stays open until 005-46 is done.
+
+2026-10-28, 06:10. The quiet block's runs (006-09; 005-46's section
+"Confirmed in the quiet block"), by Claude (Opus 5.5, Claude Code). P4's
+soak under ZGC on HEAD meets target 2: the slowest commit 5.1 ms, gets and
+scans at most 3.6 ms, the cuts no longer among the slowest, the collector
+at most 0.014 ms. `performance.sh ab` against 2026.1 (done item 7): no
+regression but the collector's maxima under G1. Not yet met, so status
+stays open: in ScaleBench from the OS's cache with 8 threads at 665 MB
+under ZGC, the longest gets were 27 and 36 ms, with 22 and 26 waits of a
+reader's load for the eviction thread over 10 ms (the load waits for the
+next batch when the resident bytes run ahead, step 3d), where 4 threads
+stayed under 6 ms; to be explained before target 2 is called met for
+read-heavy loads. Also for Frans: s1's get of 2,760 ms (009-03, section
+9). The closure, drafted in 006-09 (009-closure.diff and
+009-closure-done.diff), waits for both.

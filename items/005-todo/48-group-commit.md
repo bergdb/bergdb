@@ -210,3 +210,9 @@ stream's bytes and measures well. It is one local commit, java/ only, `200aaab` 
 * **Questions.** 1 and 2: s1's answers above, F53's tonight. 3 to 6 are open; on s1 a
   short wait before the flush (question 3) looks unneeded: under load the disk forces
   nearly all the time, and the group forms during the force.
+
+
+The F53 runs did not run: in 006-09's quiet block at 00:57, `performance.sh`
+found the machine not quiet (89.2 percent idle) and refused, by its own
+check (`night/out/`); s1's runs stand. Left for another quiet block, with
+question 4 (the buffer time).

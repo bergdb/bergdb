@@ -1,0 +1,8 @@
+2026-10-28 01:20:28 budget: start; jar a6cd234 a6cd234414072a43bb1703f0dbbd9a18f98c8f51 built Tue O
+2026-10-28 01:25:00   budget-zgc-f20: converge: resident 664 MB at the drop, budget 132 MB; reached the budget after 46.99 s; the eviction thread's CPU 22002 ms; 26112 sweeps, 12072021 objects released, 23644 ms of sweeps (the longest of the run 2.18 ms)
+2026-10-28 01:25:00   budget-zgc-f20: gets, converge: 47.0 s, 246276 a second, the longest 6.09 ms commits, converge: 47.0 s, 200 a second, the longest 38.43 ms 
+2026-10-28 01:29:22   budget-g1-f20: converge: resident 664 MB at the drop, budget 132 MB; reached the budget after 46.87 s; the eviction thread's CPU 26255 ms; 26939 sweeps, 12560719 objects released, 27734 ms of sweeps (the longest of the run 88.79 ms)
+2026-10-28 01:29:22   budget-g1-f20: gets, converge: 46.9 s, 257784 a second, the longest 36.73 ms commits, converge: 46.9 s, 200 a second, the longest 45.13 ms 
+2026-10-28 01:33:07   budget-zgc-f50: converge: resident 664 MB at the drop, budget 332 MB; reached the budget after 0.31 s; the eviction thread's CPU 188 ms; 168 sweeps, 473937 objects released, 238 ms of sweeps (the longest of the run 2.22 ms)
+2026-10-28 01:33:07   budget-zgc-f50: gets, converge: 0.3 s, 118535 a second, the longest 4.12 ms commits, converge: 0.3 s, 201 a second, the longest 28.46 ms 
+2026-10-28 01:33:08 budget: end, 0 of 3 runs failed or skipped

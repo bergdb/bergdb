@@ -1,0 +1,180 @@
+Session 4f7cd60f-20261028T010114-quick-g1-8g-cand  (4f7cd60fbd8807c62af1d9a85d0213618960a96a)
+
+r-1k-fin  [restart, 3 runs, workload 57e71d6450818537+c2a684be74cb422d]
+  metric                                         n           median              min              max      CV
+  first_gets.max_us                              3            270.9            262.5            293.0    5.7%
+  first_gets.mean_us                             3            2.281            2.277            2.304    0.6%
+  first_gets.p50_us                              3           0.7110           0.7110           0.7110    0.0%
+  first_gets.p95_us                              3            8.895            8.831            8.959    0.7%
+  first_gets.p999_us                             3           14.015           13.951           15.167    4.8%
+  first_gets.p99_us                              3            9.855            9.727           10.047    1.6%
+  gclog.pause.max_ms                             3           38.734           38.621           55.812   22.3%
+  gclog.pause.total_ms                           3           60.699           56.066           74.810   15.3%
+  gclog.safepoint.max_ms                         3           38.818           38.726           55.916   22.2%
+  gclog.safepoint.total_ms                       3           60.994           56.341           75.136   15.3%
+  heap.after_gc_mb_max                           3            104.9            100.7            109.1    4.0%
+  mix.commit.append.max_us                       3         38,943.9         38,821.8         56,101.4   22.3%
+  mix.commit.append.mean_us                      3           17.863           17.715           17.937    0.6%
+  mix.commit.append.p50_us                       3           10.239            9.983           10.303    1.7%
+  mix.commit.append.p95_us                       3           58.879           57.599           58.879    1.3%
+  mix.commit.append.p999_us                      3            146.4            145.4            147.5    0.7%
+  mix.commit.append.p99_us                       3           89.087           87.551           89.599    1.2%
+  mix.commits_per_s                              3         53,285.7         53,219.2         53,910.9    0.7%
+  mix.get.max_us                                 3         38,847.0         38,818.0         55,961.0   22.2%
+  mix.get.mean_us                                3           0.7170           0.6927           0.7186    2.0%
+  mix.get.p50_us                                 3           0.6670           0.6270           0.6670    3.5%
+  mix.get.p95_us                                 3            1.047            1.003            1.047    2.5%
+  mix.get.p999_us                                3            4.959            4.927            4.959    0.4%
+  mix.get.p99_us                                 3            1.503            1.463            1.631    5.7%
+  mix.gets_per_s                                 3        2,350,900        2,340,400        2,374,620    0.7%
+  mix.puts_per_s                                 3         53,285.7         53,219.2         53,910.9    0.7%
+  prepare.commit.append.max_us                   3        110,134.0         97,505.2        132,163.0   15.5%
+  prepare.commit.append.mean_us                  3           14.418           14.346           14.560    0.8%
+  prepare.commit.append.p50_us                   3            8.191            8.127            8.191    0.5%
+  prepare.commit.append.p95_us                   3           47.359           47.103           47.359    0.3%
+  prepare.commit.append.p999_us                  3           92.159           91.647           92.671    0.6%
+  prepare.commit.append.p99_us                   3           64.255           64.255           64.255    0.0%
+  rss_mb_max                                     3          1,413.4          1,382.8          1,428.6    1.7%
+  second_gets.max_us                             3           16.584           15.583           25.583   28.6%
+  second_gets.mean_us                            3           0.5654           0.5644           0.5996    3.5%
+  second_gets.p50_us                             3           0.5430           0.5430           0.5430    0.0%
+  second_gets.p95_us                             3           0.7950           0.7950           0.8350    2.9%
+  second_gets.p999_us                            3            1.003            1.003            4.767   96.3%
+  second_gets.p99_us                             3           0.9190           0.9190            3.295   80.2%
+  startup.sec                                    3           0.6863           0.6810           0.6956    1.1%
+  longest GC pauses of run1 (2 in the window, total 56.066 ms): 38.7 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 4.3 s); 17.3 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 1.7 s);
+
+read-1k  [read, 3 runs, workload 54f8384ff215e80c]
+  metric                                         n           median              min              max      CV
+  gclog.pause.max_ms                             3           0.0000           0.0000           0.0000       -
+  gclog.pause.total_ms                           3           0.0000           0.0000           0.0000       -
+  gclog.safepoint.max_ms                         3           0.0000           0.0000           0.0000       -
+  gclog.safepoint.total_ms                       3           0.0000           0.0000           0.0000       -
+  get_historical.get.max_us                      3           27.458           24.417           31.500   12.8%
+  get_historical.get.mean_us                     3           0.7667           0.7615           0.7725    0.7%
+  get_historical.get.p50_us                      3           0.7110           0.7110           0.7110    0.0%
+  get_historical.get.p95_us                      3            1.375            1.335            1.463    4.7%
+  get_historical.get.p999_us                     3            2.007            1.959            2.255    7.7%
+  get_historical.get.p99_us                      3            1.671            1.631            1.839    6.4%
+  get_historical.ops_per_s                       3        1,232,800        1,217,110        1,240,380    1.0%
+  get_latest.get.max_us                          3           26.833           22.250           27.334   11.0%
+  get_latest.get.mean_us                         3           0.7301           0.7272           0.7331    0.4%
+  get_latest.get.p50_us                          3           0.6670           0.6670           0.6670    0.0%
+  get_latest.get.p95_us                          3            1.423            1.375            1.503    4.5%
+  get_latest.get.p999_us                         3            2.047            1.959            2.255    7.3%
+  get_latest.get.p99_us                          3            1.711            1.711            1.879    5.5%
+  get_latest.ops_per_s                           3        1,282,210        1,265,160        1,284,790    0.8%
+  get_latest_mt4.ops_per_s                       3        4,357,120        4,344,850        4,383,590    0.5%
+  get_longkey.get.max_us                         3           31.583           28.083           40.583   19.3%
+  get_longkey.get.mean_us                        3            1.177            1.158            1.224    2.9%
+  get_longkey.get.p50_us                         3            1.167            1.167            1.215    2.3%
+  get_longkey.get.p95_us                         3            1.503            1.503            1.631    4.8%
+  get_longkey.get.p999_us                        3            2.095            1.959            2.175    5.3%
+  get_longkey.get.p99_us                         3            1.671            1.631            1.799    5.2%
+  get_longkey.ops_per_s                          3        914,214.0        842,248.0        920,368.0    4.9%
+  heap.after_gc_mb_max                           3            582.9            582.7            583.1    0.0%
+  rss_mb_max                                     3          1,571.5          1,569.9          1,573.0    0.1%
+  scan_back.kvs_per_s                            3        4,092,120        4,008,110        4,155,960    1.8%
+  scan_back.max_us                               3            131.1            123.2            140.7    6.7%
+  scan_back.mean_us                              3           24.437           24.062           24.949    1.8%
+  scan_back.p50_us                               3           19.455           19.455           19.583    0.4%
+  scan_back.p95_us                               3           77.311           74.751           80.895    4.0%
+  scan_back.p999_us                              3           90.111           89.599            112.1   13.2%
+  scan_back.p99_us                               3           82.943           81.919           98.815   10.8%
+  scan_back.scans_per_s                          3         40,921.2         40,081.1         41,559.6    1.8%
+  scan_fwd.kvs_per_s                             3        3,853,640        3,717,190        3,892,040    2.4%
+  scan_fwd.max_us                                3            126.3            114.2            130.2    6.7%
+  scan_fwd.mean_us                               3           25.950           25.694           26.902    2.4%
+  scan_fwd.p50_us                                3           20.991           20.863           20.991    0.4%
+  scan_fwd.p95_us                                3           79.359           76.799           86.015    5.9%
+  scan_fwd.p999_us                               3           92.159           91.647            116.7   14.3%
+  scan_fwd.p99_us                                3           86.015           84.479            103.9   11.8%
+  scan_fwd.scans_per_s                           3         38,536.4         37,171.9         38,920.4    2.4%
+  scan_fwd_hist.kvs_per_s                        3        3,473,010        3,438,370        3,550,970    1.7%
+  scan_fwd_hist.max_us                           3            868.5            847.5            895.5    2.8%
+  scan_fwd_hist.mean_us                          3           28.794           28.161           29.084    1.6%
+  scan_fwd_hist.p50_us                           3           21.759           21.759           22.271    1.3%
+  scan_fwd_hist.p95_us                           3           82.431           78.847           89.599    6.5%
+  scan_fwd_hist.p999_us                          3            167.9            167.9            186.4    6.1%
+  scan_fwd_hist.p99_us                           3            120.3            116.2            126.0    4.0%
+  scan_fwd_hist.scans_per_s                      3         34,730.1         34,383.7         35,509.7    1.7%
+
+w-uni-1k-fin  [write, 3 runs, workload affdfe7d5e46a3e9]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         3          1,687.2          1,687.2          1,687.2    0.0%
+  bytes_appended_per_user_byte                   3            1.680            1.680            1.680    0.0%
+  commit.append.max_us                           3        126,367.0        110,597.0        126,628.0    7.6%
+  commit.append.mean_us                          3           14.400           14.357           14.444    0.3%
+  commit.append.p50_us                           3            8.191            8.127            8.191    0.5%
+  commit.append.p95_us                           3           47.359           47.103           47.359    0.3%
+  commit.append.p999_us                          3           92.671           92.159           93.183    0.6%
+  commit.append.p99_us                           3           64.255           64.255           64.255    0.0%
+  commits_per_s                                  3         66,708.4         66,503.2         66,750.1    0.2%
+  disk_over_kept_max                             3            1.638            1.193            1.646   17.4%
+  disk_over_kept_mean                            3            1.119            1.076            1.141    3.0%
+  gclog.pause.max_ms                             3            126.1            114.1            126.4    5.8%
+  gclog.pause.total_ms                           3            301.6            289.0            304.1    2.7%
+  gclog.safepoint.max_ms                         3            126.2            114.1            126.5    5.8%
+  gclog.safepoint.total_ms                       3            302.0            289.3            304.4    2.7%
+  heap.after_gc_mb_max                           3            163.6            163.6            167.8    1.5%
+  kept_mb_max                                    3            581.2            577.2            586.9    0.8%
+  kept_mb_mean                                   3            453.9            453.9            453.9    0.0%
+  puts_per_s                                     3         66,708.4         66,503.2         66,750.1    0.2%
+  rec.other_bytes_per_put                        3           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         3            430.0            430.0            430.0    0.0%
+  rec.table_bytes_per_put                        3           0.0555           0.0555           0.0555    0.0%
+  rec.user_bytes_per_put                         3          1,257.1          1,257.1          1,257.1    0.0%
+  rec.user_index_bytes_per_put                   3            170.7            170.7            170.7    0.0%
+  rec.user_value_bytes_per_put                   3          1,036.0          1,036.0          1,036.0    0.0%
+  restart.startup_sec                            3           0.5896           0.5889           0.5965    0.7%
+  rss_mb_max                                     3          2,876.3          2,829.5          2,911.7    1.4%
+  se                                             3           0.4470           0.4470           0.4470    0.0%
+  se_offered                                     3           0.5319           0.5319           0.5319    0.0%
+  slowest_commit_ms                              3            126.4            110.6            126.6    7.6%
+  storage.disk_mb_max                            3            587.6            584.0            593.4    0.8%
+  user_mb_per_s                                  3           66.975           66.769           67.017    0.2%
+  we                                             3           0.5951           0.5951           0.5951    0.0%
+  longest GC pauses of run1 (4 in the window, total 301.6 ms): 126.1 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 10.3 s); 110.7 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 15.3 s); 36.6 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 4.5 s); 28.2 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.6 s);
+  slowest commits of run1:
+    126.37 ms at 8065 ms into the phase, 1 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 126.1 ms; safepoint G1CollectForAllocation 126.2 ms;
+    28.48 ms at 389 ms into the phase, 1 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 28.2 ms; safepoint G1CollectForAllocation 28.4 ms;
+    4.04 ms at 10145 ms into the phase, 0 index nodes written; overlapping: none
+    2.01 ms at 5 ms into the phase, 1 index nodes written; overlapping: none
+    0.88 ms at 1 ms into the phase, 0 index nodes written; overlapping: none
+
+w-uni-1k-inf  [write, 3 runs, workload 1e8fb7fcb249a754]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         3          1,224.1          1,224.1          1,224.1    0.0%
+  bytes_appended_per_user_byte                   3            1.219            1.219            1.219    0.0%
+  commit.append.max_us                           3         54,767.4         53,996.1        161,686.0   68.7%
+  commit.append.mean_us                          3            9.032            8.992            9.121    0.7%
+  commit.append.p50_us                           3            7.583            7.551            7.615    0.4%
+  commit.append.p95_us                           3           13.759           13.695           13.823    0.5%
+  commit.append.p999_us                          3           25.343           24.959           25.471    1.1%
+  commit.append.p99_us                           3           17.279           17.279           17.407    0.4%
+  commits_per_s                                  3        103,766.0        103,628.0        103,786.0    0.1%
+  gclog.pause.max_ms                             3            161.6            157.3            161.7    1.6%
+  gclog.pause.total_ms                           3            244.6            242.3            248.4    1.3%
+  gclog.safepoint.max_ms                         3            161.6            157.4            161.8    1.6%
+  gclog.safepoint.total_ms                       3            244.9            242.6            248.7    1.3%
+  heap.after_gc_mb_max                           3            146.8            146.8            151.0    1.6%
+  puts_per_s                                     3        103,766.0        103,628.0        103,786.0    0.1%
+  rec.other_bytes_per_put                        3           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         3           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        3           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         3          1,224.1          1,224.1          1,224.1    0.0%
+  rec.user_index_bytes_per_put                   3            138.2            138.2            138.2    0.0%
+  rec.user_value_bytes_per_put                   3          1,036.0          1,036.0          1,036.0    0.0%
+  restart.startup_sec                            3           0.6219           0.6171           0.6244    0.6%
+  rss_mb_max                                     3          2,556.5          2,538.8          2,577.8    0.8%
+  slowest_commit_ms                              3           54.767           53.996            161.7   68.7%
+  storage.disk_mb_max                            3          1,449.6          1,449.0          1,450.0    0.0%
+  user_mb_per_s                                  3            104.2            104.0            104.2    0.1%
+  we                                             3           0.8202           0.8202           0.8202    0.0%
+  longest GC pauses of run1 (3 in the window, total 244.6 ms): 161.6 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 10.0 s); 50.7 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 4.4 s); 32.3 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.6 s);
+  slowest commits of run1:
+    161.69 ms at 7806 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 161.6 ms; safepoint G1CollectForAllocation 161.6 ms;
+    0.09 ms at 67 ms into the phase, 0 index nodes written; overlapping: none
+    0.08 ms at 87 ms into the phase, 16 index nodes written; overlapping: none
+    0.08 ms at 73 ms into the phase, 9 index nodes written; overlapping: none
+    0.08 ms at 227 ms into the phase, 11 index nodes written; overlapping: none

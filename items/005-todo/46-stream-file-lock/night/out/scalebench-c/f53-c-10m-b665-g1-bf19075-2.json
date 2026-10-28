@@ -1,0 +1,896 @@
+{
+  "tool": "ScaleBench, bergdb item 004 (004-02)",
+  "label": "f53-c-10m-b665-g1-bf19075-2",
+  "mode": "get",
+  "properties": {
+    "sb.budget": "665000000",
+    "sb.dir": "/Users/f/fl/bench/006-09/w1/sbdata/key24-10000000",
+    "sb.disk": "sda",
+    "sb.gclog": "/Users/f/fl/repos/bergdb/items/005-todo/46-stream-file-lock/night/out/scalebench-c/f53-c-10m-b665-g1-bf19075-2.gc.log",
+    "sb.label": "f53-c-10m-b665-g1-bf19075-2",
+    "sb.mode": "get",
+    "sb.out": "/Users/f/fl/repos/bergdb/items/005-todo/46-stream-file-lock/night/out/scalebench-c/f53-c-10m-b665-g1-bf19075-2.json",
+    "sb.phases": "warm,uniform,hot,threads",
+    "sb.pidio": "/Users/f/fl/bench/006-09/w1/sb/pidio",
+    "sb.sampled": "4",
+    "sb.threads": "1,2,4,8",
+    "sb.warmos": "1"
+  },
+  "jvm": {
+    "javaRuntimeVersion": "27",
+    "javaVmName": "OpenJDK 64-Bit Server VM",
+    "javaVmVersion": "27",
+    "javaVendor": "Homebrew",
+    "osName": "Mac OS X",
+    "osVersion": "27.0.1",
+    "osArch": "aarch64",
+    "availableProcessors": 10,
+    "maxHeapBytes": 2793406464,
+    "physicalMemoryBytes": 34359738368,
+    "collector": "G1",
+    "gcBeans": ["G1 Young Generation","G1 Concurrent GC","G1 Old Generation"],
+    "vmFlags": ["-Xms2660m","-Xmx2660m","-XX:+AlwaysPreTouch","-Xlog:gc*,safepoint:file=<run>:uptime,level,tags","-Dsb.threads=1,2,4,8","-Dsb.sampled=4","-Dsb.disk=sda","-Dsb.pidio=/Users/f/fl/bench/006-09/w1/sb/pidio","-Dsb.label=f53-c-10m-b665-g1-bf19075-2","-Dsb.out=/Users/f/fl/repos/bergdb/items/005-todo/46-stream-file-lock/night/out/scalebench-c/f53-c-10m-b665-g1-bf19075-2.json","-Dsb.gclog=/Users/f/fl/repos/bergdb/items/005-todo/46-stream-file-lock/night/out/scalebench-c/f53-c-10m-b665-g1-bf19075-2.gc.log","-XX:+UseG1GC","-Dsb.mode=get","-Dsb.dir=/Users/f/fl/bench/006-09/w1/sbdata/key24-10000000","-Dsb.budget=665000000","-Dsb.phases=warm,uniform,hot,threads","-Dsb.warmos=1"],
+    "pid": 31347
+  },
+  "vmFlags": ["-Xms2660m","-Xmx2660m","-XX:+AlwaysPreTouch","-Xlog:gc*,safepoint:file=<run>:uptime,level,tags","-Dsb.threads=1,2,4,8","-Dsb.sampled=4","-Dsb.disk=sda","-Dsb.pidio=/Users/f/fl/bench/006-09/w1/sb/pidio","-Dsb.label=f53-c-10m-b665-g1-bf19075-2","-Dsb.out=/Users/f/fl/repos/bergdb/items/005-todo/46-stream-file-lock/night/out/scalebench-c/f53-c-10m-b665-g1-bf19075-2.json","-Dsb.gclog=/Users/f/fl/repos/bergdb/items/005-todo/46-stream-file-lock/night/out/scalebench-c/f53-c-10m-b665-g1-bf19075-2.gc.log","-XX:+UseG1GC","-Dsb.mode=get","-Dsb.dir=/Users/f/fl/bench/006-09/w1/sbdata/key24-10000000","-Dsb.budget=665000000","-Dsb.phases=warm,uniform,hot,threads","-Dsb.warmos=1"],
+  "physicalMemory": 34359738368,
+  "os": "Mac OS X 27.0.1 aarch64",
+  "cpus": 10,
+  "clockPairNs": 23.2139,
+  "osWarmBytes": 7543623080,
+  "startupSec": 1.55237,
+  "keys": 10000000,
+  "loaded": 10000000,
+  "keytype": "key24",
+  "budget": 665000000,
+  "phases": [
+    {
+      "seconds": 20.0275,
+      "gets": 4268928,
+      "getsPerSec": 213153,
+      "loads": 4349909,
+      "loadsPerGet": 1.01897,
+      "streamReads": 9429004,
+      "streamReadsPerGet": 2.20875,
+      "streamReadBytes": 541966084,
+      "deviceReadBytes": 0,
+      "deviceReadBytesPerGet": 0,
+      "sweeps": 399,
+      "sweepMs": 184,
+      "sweepMaxMsSoFar": 1,
+      "afterLoadCalls": 4350544,
+      "afterLoadMs": 67.0994,
+      "afterLoadOver10ms": 0,
+      "gcCount": 5,
+      "gcMs": 230,
+      "residentBytes": 664706800,
+      "heapUsedBytes": 1017192848,
+      "uptimeFrom": 2.36180,
+      "uptimeTo": 22.3893,
+      "phase": "warm",
+      "curve": [
+        {
+          "window": 0,
+          "getsPerSec": 124984,
+          "loadsPerGet": 1.64995,
+          "residentBytes": 384795760,
+          "sweeps": 0,
+          "deviceReadBytesPerGet": 0
+        },
+        {
+          "window": 1,
+          "getsPerSec": 198223,
+          "loadsPerGet": 1.10937,
+          "residentBytes": 582829808,
+          "sweeps": 0,
+          "deviceReadBytesPerGet": 0
+        },
+        {
+          "window": 2,
+          "getsPerSec": 260892,
+          "loadsPerGet": 0.855222,
+          "residentBytes": 663737136,
+          "sweeps": 198,
+          "deviceReadBytesPerGet": 0
+        },
+        {
+          "window": 3,
+          "getsPerSec": 269651,
+          "loadsPerGet": 0.818474,
+          "residentBytes": 664706800,
+          "sweeps": 201,
+          "deviceReadBytesPerGet": 0
+        }
+      ],
+      "gcPauses": {
+        "count": 5,
+        "totalMs": 229.996,
+        "maxMs": 54.0890,
+        "p50Ms": 53.7590,
+        "p99Ms": 54.0890,
+        "p999Ms": 54.0890,
+        "longest": [
+          {
+            "uptimeSec": 21.8860,
+            "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+            "ms": 54.0890
+          },
+          {
+            "uptimeSec": 11.7140,
+            "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+            "ms": 53.8260
+          },
+          {
+            "uptimeSec": 16.7570,
+            "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+            "ms": 53.5390
+          },
+          {
+            "uptimeSec": 7.18600,
+            "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+            "ms": 45.5480
+          },
+          {
+            "uptimeSec": 3.32300,
+            "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+            "ms": 22.9940
+          }
+        ]
+      }
+    },
+    {
+      "phase": "uniform",
+      "untimed": {
+        "seconds": 15.0046,
+        "gets": 3864064,
+        "getsPerSec": 257525,
+        "loads": 3198382,
+        "loadsPerGet": 0.827725,
+        "streamReads": 6402212,
+        "streamReadsPerGet": 1.65686,
+        "streamReadBytes": 343674864,
+        "deviceReadBytes": 0,
+        "deviceReadBytesPerGet": 0,
+        "sweeps": 680,
+        "sweepMs": 316,
+        "sweepMaxMsSoFar": 1,
+        "afterLoadCalls": 3198382,
+        "afterLoadMs": 51.8867,
+        "afterLoadOver10ms": 0,
+        "gcCount": 3,
+        "gcMs": 168,
+        "residentBytes": 664416912,
+        "heapUsedBytes": 1828788600,
+        "uptimeFrom": 22.3932,
+        "uptimeTo": 37.3978,
+        "windowsGetsPerSec": [264244,256713,257712,255957,253314],
+        "medianGetsPerSec": 256713,
+        "gcPauses": {
+          "count": 3,
+          "totalMs": 168.719,
+          "maxMs": 56.7100,
+          "p50Ms": 56.7100,
+          "p99Ms": 56.7100,
+          "p999Ms": 56.7100,
+          "longest": [
+            {
+              "uptimeSec": 26.8860,
+              "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+              "ms": 56.7100
+            },
+            {
+              "uptimeSec": 31.5340,
+              "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+              "ms": 56.6260
+            },
+            {
+              "uptimeSec": 35.8440,
+              "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+              "ms": 55.3830
+            }
+          ]
+        }
+      },
+      "timed": {
+        "seconds": 3.98340,
+        "gets": 1000000,
+        "getsPerSec": 251042,
+        "loads": 828626,
+        "loadsPerGet": 0.828626,
+        "streamReads": 1657722,
+        "streamReadsPerGet": 1.65772,
+        "streamReadBytes": 90908260,
+        "deviceReadBytes": 0,
+        "deviceReadBytesPerGet": 0,
+        "sweeps": 182,
+        "sweepMs": 86,
+        "sweepMaxMsSoFar": 1,
+        "afterLoadCalls": 828626,
+        "afterLoadMs": 13.3976,
+        "afterLoadOver10ms": 0,
+        "gcCount": 1,
+        "gcMs": 53,
+        "residentBytes": 664416912,
+        "heapUsedBytes": 1828788600,
+        "uptimeFrom": 37.3978,
+        "uptimeTo": 41.3812,
+        "latency": {
+          "count": 1000000,
+          "meanUs": 3.93060,
+          "p50Us": 3.88700,
+          "p90Us": 8.25500,
+          "p99Us": 10.2390,
+          "p999Us": 12.6070,
+          "maxUs": 53336
+        },
+        "gcPauses": {
+          "count": 1,
+          "totalMs": 53.2040,
+          "maxMs": 53.2040,
+          "p50Ms": 53.2040,
+          "p99Ms": 53.2040,
+          "p999Ms": 53.2040,
+          "longest": [
+            {
+              "uptimeSec": 39.8950,
+              "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+              "ms": 53.2040
+            }
+          ]
+        }
+      },
+      "slowestGets": [
+        {
+          "us": 53336,
+          "uptime": 39.8466,
+          "overlapping": ["Pause Young (Normal) (G1 Evacuation Pause) 53.204 ms"]
+        },
+        {
+          "us": 98.4580,
+          "uptime": 40.5139,
+          "overlapping": []
+        },
+        {
+          "us": 82.8750,
+          "uptime": 39.4914,
+          "overlapping": []
+        },
+        {
+          "us": 62.4580,
+          "uptime": 40.0932,
+          "overlapping": []
+        },
+        {
+          "us": 40.4580,
+          "uptime": 39.5014,
+          "overlapping": []
+        },
+        {
+          "us": 38.9160,
+          "uptime": 38.5751,
+          "overlapping": []
+        },
+        {
+          "us": 37.4580,
+          "uptime": 40.5240,
+          "overlapping": []
+        },
+        {
+          "us": 37.2920,
+          "uptime": 39.0992,
+          "overlapping": []
+        },
+        {
+          "us": 34.7090,
+          "uptime": 40.1032,
+          "overlapping": []
+        },
+        {
+          "us": 32.2090,
+          "uptime": 37.8056,
+          "overlapping": []
+        }
+      ]
+    },
+    {
+      "phase": "hot",
+      "untimed": {
+        "seconds": 15.0042,
+        "gets": 15011008,
+        "getsPerSec": 1.00045e+06,
+        "loads": 1323352,
+        "loadsPerGet": 0.0881588,
+        "streamReads": 2647361,
+        "streamReadsPerGet": 0.176361,
+        "streamReadBytes": 144268064,
+        "deviceReadBytes": 0,
+        "deviceReadBytesPerGet": 0,
+        "sweeps": 280,
+        "sweepMs": 134,
+        "sweepMaxMsSoFar": 1,
+        "afterLoadCalls": 1323352,
+        "afterLoadMs": 21.6850,
+        "afterLoadOver10ms": 0,
+        "gcCount": 4,
+        "gcMs": 100,
+        "residentBytes": 664276272,
+        "heapUsedBytes": 1909528952,
+        "uptimeFrom": 41.3873,
+        "uptimeTo": 56.3916,
+        "windowsGetsPerSec": [904307,948180,1.05692e+06,1.05891e+06,1.03530e+06],
+        "medianGetsPerSec": 1.03530e+06,
+        "gcPauses": {
+          "count": 4,
+          "totalMs": 100.537,
+          "maxMs": 50.2780,
+          "p50Ms": 1.41500,
+          "p99Ms": 50.2780,
+          "p999Ms": 50.2780,
+          "longest": [
+            {
+              "uptimeSec": 46.7040,
+              "what": "Pause Young (Concurrent Start) (G1 Evacuation Pause)",
+              "ms": 50.2780
+            },
+            {
+              "uptimeSec": 55.0310,
+              "what": "Pause Young (Prepare Mixed) (G1 Evacuation Pause)",
+              "ms": 48.7580
+            },
+            {
+              "uptimeSec": 46.9240,
+              "what": "Pause Remark",
+              "ms": 1.41400
+            },
+            {
+              "uptimeSec": 47.0810,
+              "what": "Pause Cleanup",
+              "ms": 0.0870000
+            }
+          ]
+        }
+      },
+      "timed": {
+        "seconds": 0.961483,
+        "gets": 1000000,
+        "getsPerSec": 1.04006e+06,
+        "loads": 83544,
+        "loadsPerGet": 0.0835440,
+        "streamReads": 167128,
+        "streamReadsPerGet": 0.167128,
+        "streamReadBytes": 9289148,
+        "deviceReadBytes": 0,
+        "deviceReadBytesPerGet": 0,
+        "sweeps": 19,
+        "sweepMs": 9,
+        "sweepMaxMsSoFar": 1,
+        "afterLoadCalls": 83544,
+        "afterLoadMs": 1.37190,
+        "afterLoadOver10ms": 0,
+        "gcCount": 0,
+        "gcMs": 0,
+        "residentBytes": 664276272,
+        "heapUsedBytes": 1909528952,
+        "uptimeFrom": 56.3916,
+        "uptimeTo": 57.3530,
+        "latency": {
+          "count": 1000000,
+          "meanUs": 0.911230,
+          "p50Us": 0.543000,
+          "p90Us": 0.959000,
+          "p99Us": 8.70300,
+          "p999Us": 10.3670,
+          "maxUs": 35.6670
+        },
+        "gcPauses": {
+          "count": 0,
+          "totalMs": 0,
+          "maxMs": 0,
+          "p50Ms": 0,
+          "p99Ms": 0,
+          "p999Ms": 0,
+          "longest": []
+        }
+      },
+      "slowestGets": [
+        {
+          "us": 35.6670,
+          "uptime": 56.3963,
+          "overlapping": []
+        },
+        {
+          "us": 28.2920,
+          "uptime": 57.1679,
+          "overlapping": []
+        },
+        {
+          "us": 25.0410,
+          "uptime": 56.7957,
+          "overlapping": []
+        },
+        {
+          "us": 24.4170,
+          "uptime": 57.1962,
+          "overlapping": []
+        },
+        {
+          "us": 23.5000,
+          "uptime": 57.3319,
+          "overlapping": []
+        },
+        {
+          "us": 19.9160,
+          "uptime": 56.7893,
+          "overlapping": []
+        },
+        {
+          "us": 19.4580,
+          "uptime": 56.4349,
+          "overlapping": []
+        },
+        {
+          "us": 19,
+          "uptime": 56.9918,
+          "overlapping": []
+        },
+        {
+          "us": 18.1250,
+          "uptime": 57.0910,
+          "overlapping": []
+        },
+        {
+          "us": 17.5420,
+          "uptime": 56.6853,
+          "overlapping": []
+        }
+      ]
+    },
+    {
+      "seconds": 30.0002,
+      "gets": 7600832,
+      "getsPerSec": 253359,
+      "loads": 6311291,
+      "loadsPerGet": 0.830342,
+      "streamReads": 12625812,
+      "streamReadsPerGet": 1.66111,
+      "streamReadBytes": 696630172,
+      "deviceReadBytes": 0,
+      "deviceReadBytesPerGet": 0,
+      "sweeps": 1384,
+      "sweepMs": 684,
+      "sweepMaxMsSoFar": 30,
+      "afterLoadCalls": 6310507,
+      "afterLoadMs": 102.695,
+      "afterLoadOver10ms": 0,
+      "gcCount": 16,
+      "gcMs": 710,
+      "residentBytes": 664287312,
+      "heapUsedBytes": 2302334088,
+      "uptimeFrom": 57.3598,
+      "uptimeTo": 87.3600,
+      "phase": "threads-1",
+      "threads": 1,
+      "latency": {
+        "count": 7600832,
+        "meanUs": 3.90107,
+        "p50Us": 3.83900,
+        "p90Us": 8.19100,
+        "p99Us": 9.91900,
+        "p999Us": 12.0950,
+        "maxUs": 180801
+      },
+      "gcPauses": {
+        "count": 16,
+        "totalMs": 711.305,
+        "maxMs": 163.782,
+        "p50Ms": 41.9830,
+        "p99Ms": 163.782,
+        "p999Ms": 163.782,
+        "longest": [
+          {
+            "uptimeSec": 60.7310,
+            "what": "Pause Full (G1 Compaction Pause)",
+            "ms": 163.782
+          },
+          {
+            "uptimeSec": 71.3810,
+            "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+            "ms": 59.9610
+          },
+          {
+            "uptimeSec": 76.0620,
+            "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+            "ms": 57.6670
+          },
+          {
+            "uptimeSec": 59.5770,
+            "what": "Pause Young (Mixed) (G1 Evacuation Pause) (Evacuation Failure: Allocation)",
+            "ms": 57.0370
+          },
+          {
+            "uptimeSec": 80.3820,
+            "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+            "ms": 55.0900
+          }
+        ]
+      }
+    },
+    {
+      "seconds": 30.0003,
+      "gets": 13378112,
+      "getsPerSec": 445933,
+      "loads": 10972816,
+      "loadsPerGet": 0.820207,
+      "streamReads": 21951282,
+      "streamReadsPerGet": 1.64084,
+      "streamReadBytes": 1212530012,
+      "deviceReadBytes": 0,
+      "deviceReadBytesPerGet": 0,
+      "sweeps": 2426,
+      "sweepMs": 1234,
+      "sweepMaxMsSoFar": 56,
+      "afterLoadCalls": 10971503,
+      "afterLoadMs": 406.894,
+      "afterLoadOver10ms": 0,
+      "gcCount": 23,
+      "gcMs": 1031,
+      "residentBytes": 664551056,
+      "heapUsedBytes": 2349187664,
+      "uptimeFrom": 87.3657,
+      "uptimeTo": 117.366,
+      "phase": "threads-2",
+      "threads": 2,
+      "latency": {
+        "count": 13378112,
+        "meanUs": 4.43109,
+        "p50Us": 4.31900,
+        "p90Us": 9.21500,
+        "p99Us": 12.0310,
+        "p999Us": 15.6150,
+        "maxUs": 195317
+      },
+      "gcPauses": {
+        "count": 23,
+        "totalMs": 1031.77,
+        "maxMs": 156.570,
+        "p50Ms": 46.8470,
+        "p99Ms": 156.570,
+        "p999Ms": 156.570,
+        "longest": [
+          {
+            "uptimeSec": 91.7760,
+            "what": "Pause Full (G1 Compaction Pause)",
+            "ms": 156.570
+          },
+          {
+            "uptimeSec": 111.386,
+            "what": "Pause Full (G1 Compaction Pause)",
+            "ms": 153.815
+          },
+          {
+            "uptimeSec": 97.8070,
+            "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+            "ms": 57.6910
+          },
+          {
+            "uptimeSec": 100.481,
+            "what": "Pause Young (Normal) (G1 Evacuation Pause)",
+            "ms": 56.5910
+          },
+          {
+            "uptimeSec": 91.5530,
+            "what": "Pause Young (Mixed) (G1 Evacuation Pause) (Evacuation Failure: Allocation)",
+            "ms": 55.8140
+          }
+        ]
+      }
+    },
+    {
+      "seconds": 30.0007,
+      "gets": 21029056,
+      "getsPerSec": 700951,
+      "loads": 17427265,
+      "loadsPerGet": 0.828723,
+      "streamReads": 34863291,
+      "streamReadsPerGet": 1.65786,
+      "streamReadBytes": 1922282136,
+      "deviceReadBytes": 0,
+      "deviceReadBytesPerGet": 0,
+      "sweeps": 3824,
+      "sweepMs": 2146,
+      "sweepMaxMsSoFar": 62,
+      "afterLoadCalls": 17425189,
+      "afterLoadMs": 834.482,
+      "afterLoadOver10ms": 0,
+      "gcCount": 35,
+      "gcMs": 1536,
+      "residentBytes": 664451888,
+      "heapUsedBytes": 1665645592,
+      "uptimeFrom": 117.372,
+      "uptimeTo": 147.372,
+      "phase": "threads-4",
+      "threads": 4,
+      "latency": {
+        "count": 21029056,
+        "meanUs": 5.64770,
+        "p50Us": 5.05500,
+        "p90Us": 11.1350,
+        "p99Us": 16.5110,
+        "p999Us": 26.4950,
+        "maxUs": 248347
+      },
+      "gcPauses": {
+        "count": 35,
+        "totalMs": 1538.55,
+        "maxMs": 146.116,
+        "p50Ms": 52.9910,
+        "p99Ms": 146.116,
+        "p999Ms": 146.116,
+        "longest": [
+          {
+            "uptimeSec": 144.384,
+            "what": "Pause Full (G1 Compaction Pause)",
+            "ms": 146.116
+          },
+          {
+            "uptimeSec": 134.301,
+            "what": "Pause Full (G1 Compaction Pause)",
+            "ms": 144.326
+          },
+          {
+            "uptimeSec": 124.045,
+            "what": "Pause Full (G1 Compaction Pause)",
+            "ms": 142.218
+          },
+          {
+            "uptimeSec": 144.238,
+            "what": "Pause Young (Mixed) (G1 Evacuation Pause) (Evacuation Failure: Allocation)",
+            "ms": 65.8950
+          },
+          {
+            "uptimeSec": 123.862,
+            "what": "Pause Young (Mixed) (G1 Evacuation Pause) (Evacuation Failure: Allocation)",
+            "ms": 65.5580
+          }
+        ]
+      }
+    },
+    {
+      "seconds": 30.0010,
+      "gets": 11808192,
+      "getsPerSec": 393594,
+      "loads": 9799403,
+      "loadsPerGet": 0.829882,
+      "streamReads": 19603703,
+      "streamReadsPerGet": 1.66018,
+      "streamReadBytes": 1080658188,
+      "deviceReadBytes": 0,
+      "deviceReadBytesPerGet": 0,
+      "sweeps": 2147,
+      "sweepMs": 1179,
+      "sweepMaxMsSoFar": 62,
+      "afterLoadCalls": 9797943,
+      "afterLoadMs": 1055.52,
+      "afterLoadOver10ms": 0,
+      "gcCount": 18,
+      "gcMs": 759,
+      "residentBytes": 664845328,
+      "heapUsedBytes": 2010832192,
+      "uptimeFrom": 147.379,
+      "uptimeTo": 177.380,
+      "phase": "threads-8",
+      "threads": 8,
+      "latency": {
+        "count": 11808192,
+        "meanUs": 20.2292,
+        "p50Us": 14.1430,
+        "p90Us": 44.0310,
+        "p99Us": 133.119,
+        "p999Us": 225.279,
+        "maxUs": 253369
+      },
+      "gcPauses": {
+        "count": 18,
+        "totalMs": 758.947,
+        "maxMs": 145.406,
+        "p50Ms": 53.2470,
+        "p99Ms": 145.406,
+        "p999Ms": 145.406,
+        "longest": [
+          {
+            "uptimeSec": 160.543,
+            "what": "Pause Full (G1 Compaction Pause)",
+            "ms": 145.406
+          },
+          {
+            "uptimeSec": 160.354,
+            "what": "Pause Young (Mixed) (G1 Evacuation Pause) (Evacuation Failure: Allocation)",
+            "ms": 64.6520
+          },
+          {
+            "uptimeSec": 170.509,
+            "what": "Pause Young (Mixed) (G1 Evacuation Pause) (Evacuation Failure: Allocation)",
+            "ms": 61.7880
+          },
+          {
+            "uptimeSec": 152.027,
+            "what": "Pause Young (Mixed) (G1 Evacuation Pause)",
+            "ms": 60.4130
+          },
+          {
+            "uptimeSec": 167.431,
+            "what": "Pause Young (Prepare Mixed) (G1 Evacuation Pause)",
+            "ms": 57.4890
+          }
+        ]
+      }
+    },
+    {
+      "seconds": 20.0003,
+      "gets": 14267328,
+      "getsPerSec": 713357,
+      "loads": 11609692,
+      "loadsPerGet": 0.813726,
+      "streamReads": 23225293,
+      "streamReadsPerGet": 1.62787,
+      "streamReadBytes": 1285170912,
+      "deviceReadBytes": 0,
+      "deviceReadBytesPerGet": 0,
+      "sweeps": 2583,
+      "sweepMs": 1315,
+      "sweepMaxMsSoFar": 62,
+      "afterLoadCalls": 11607978,
+      "afterLoadMs": 540.935,
+      "afterLoadOver10ms": 0,
+      "gcCount": 24,
+      "gcMs": 1184,
+      "residentBytes": 664397232,
+      "heapUsedBytes": 2211861352,
+      "uptimeFrom": 177.386,
+      "uptimeTo": 197.386,
+      "phase": "sampled-4",
+      "threads": 4,
+      "samples": 708,
+      "statesPercent": {
+        "RUNNABLE reading the stream": 52.6836,
+        "RUNNABLE in NodeChecksum.sumWithZeroReplace": 9.18079,
+        "RUNNABLE in Dag.getEqNodeInSegment": 8.75706,
+        "RUNNABLE in KeyNode.searchEq": 7.48588,
+        "RUNNABLE in KeyNode.searchLte": 4.51977,
+        "RUNNABLE in NodeCollection.followPointer": 4.37853,
+        "BLOCKED reading the stream on bergdb.stream.FileStream$DbFile": 3.38983,
+        "RUNNABLE in KeyNode.getDeleteBitmapAtTime": 2.54237,
+        "RUNNABLE in NodeCollection.followStreamPointer": 2.40113,
+        "RUNNABLE in ?": 0.988701,
+        "RUNNABLE in StoredValueNode.parse": 0.847458,
+        "RUNNABLE in KeyNode.ensureCapacity": 0.706215,
+        "RUNNABLE in NodeStream.readNode": 0.423729,
+        "RUNNABLE in StoredKeyNode.parse": 0.423729,
+        "RUNNABLE in Dag.getOne": 0.282486,
+        "RUNNABLE in NodeStream.bytesToNode": 0.282486,
+        "RUNNABLE in RecoverableStream.read": 0.282486,
+        "BLOCKED reading the stream on bergdb.stream.FileStream": 0.141243,
+        "RUNNABLE in KeyNode.growCapacity": 0.141243,
+        "RUNNABLE in Residents.added": 0.141243
+      },
+      "gcPauses": {
+        "count": 24,
+        "totalMs": 1185.01,
+        "maxMs": 154.203,
+        "p50Ms": 45.5670,
+        "p99Ms": 154.203,
+        "p999Ms": 154.203,
+        "longest": [
+          {
+            "uptimeSec": 185.056,
+            "what": "Pause Full (G1 Compaction Pause)",
+            "ms": 154.203
+          },
+          {
+            "uptimeSec": 192.227,
+            "what": "Pause Full (G1 Compaction Pause)",
+            "ms": 147.524
+          },
+          {
+            "uptimeSec": 178.201,
+            "what": "Pause Full (G1 Compaction Pause)",
+            "ms": 147.357
+          },
+          {
+            "uptimeSec": 192.079,
+            "what": "Pause Young (Mixed) (G1 Evacuation Pause) (Evacuation Failure: Allocation)",
+            "ms": 72.2020
+          },
+          {
+            "uptimeSec": 178.010,
+            "what": "Pause Young (Mixed) (G1 Evacuation Pause) (Evacuation Failure: Allocation)",
+            "ms": 65.0950
+          }
+        ]
+      }
+    }
+  ],
+  "maxima": {
+    "heapUsedBytes": 2792021312,
+    "residentBytes": 664996176,
+    "rssBytes": 2972254208
+  },
+  "gcLog": {
+    "pauses": {
+      "count": 130,
+      "totalMs": 5785.46,
+      "maxMs": 163.782,
+      "p50Ms": 48.8950,
+      "p99Ms": 156.671,
+      "p999Ms": 163.782,
+      "longest": [
+        {
+          "uptimeSec": 60.7310,
+          "what": "Pause Full (G1 Compaction Pause)",
+          "ms": 163.782
+        },
+        {
+          "uptimeSec": 91.7760,
+          "what": "Pause Full (G1 Compaction Pause)",
+          "ms": 156.570
+        },
+        {
+          "uptimeSec": 185.056,
+          "what": "Pause Full (G1 Compaction Pause)",
+          "ms": 154.203
+        },
+        {
+          "uptimeSec": 111.386,
+          "what": "Pause Full (G1 Compaction Pause)",
+          "ms": 153.815
+        },
+        {
+          "uptimeSec": 192.227,
+          "what": "Pause Full (G1 Compaction Pause)",
+          "ms": 147.524
+        }
+      ]
+    },
+    "safepoints": {
+      "count": 297,
+      "totalMs": 5817.47,
+      "maxMs": 219.879,
+      "p50Ms": 0.125000,
+      "p99Ms": 195.583,
+      "p999Ms": 219.879,
+      "longest": [
+        {
+          "uptimeSec": 192.227,
+          "what": "G1CollectForAllocation",
+          "ms": 219.879
+        },
+        {
+          "uptimeSec": 144.384,
+          "what": "G1CollectForAllocation",
+          "ms": 212.128
+        },
+        {
+          "uptimeSec": 91.7760,
+          "what": "G1CollectForAllocation",
+          "ms": 195.237
+        },
+        {
+          "uptimeSec": 178.201,
+          "what": "G1CollectForAllocation",
+          "ms": 190.768
+        },
+        {
+          "uptimeSec": 160.543,
+          "what": "G1CollectForAllocation",
+          "ms": 188.396
+        }
+      ]
+    },
+    "heapAfterGcMaxMB": 2663,
+    "heapCommittedMaxMB": 2664,
+    "fullGcs": 10,
+    "concurrentCycles": 36
+  },
+  "eviction": "eviction BUDGET: 3680601 slots unswizzled, 13883951 objects released; budget 665000000 bytes, low 498750000; 13925 sweeps (13925 after loads, 76 complete, 2 above the budget after); last sweep 665000656 -> 664326032 bytes, pinned 44704880 (at most 44704880); sweep time 7288 ms in total, 62 ms at most"
+}
+

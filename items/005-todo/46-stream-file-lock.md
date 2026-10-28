@@ -831,3 +831,37 @@ Later, 2026-10-27, 19:10: `level2.sh`'s step 6 (`BryanRepro`) failed on
 directory right after `stop()`, while the old one's cut thread still
 deleted files; no data at risk. Fixed in the test (`close()`, `b0661ba`);
 the API question is 005-63. Found by 006-09 (its note `bryanrepro.md`).
+
+
+Confirmed in the quiet block, 2026-10-27 to 28
+----------------------------------------------
+
+By Claude (Opus 5.5, Claude Code), 006-09's quiet block on F53, run by its
+conductor on HEAD `4f7cd60` against `bf19075`; the scripts and summaries
+in [46-stream-file-lock/night/](46-stream-file-lock/night/) (`out/summary.txt`).
+Nothing in it shows a read or a commit waiting for the stream's writer, so
+005-46 stays done.
+
+* P4's soak under ZGC (22:44 to 23:31; 009-04's parameters): `SOAK OK`,
+  200 commits and 14,624 reads a second, the paced rates. The slowest
+  commit 5.1 ms (p99.9 2.26 ms); latest get 2.4 ms, historical get 3.6 ms,
+  scans 3.4 to 3.6 ms; none of the 20 slowest commits within 2 s of any of
+  the three measured physical cuts (009-04, 7.3, had them at 88 to 171 ms);
+  the deletes at most 8.9 ms each, off the readers' path. The collector's
+  pauses at most 0.014 ms. The longest durable commit 39.5 ms, its force.
+* ScaleBench from the OS's cache, in turns: HEAD reads 17 to 43 percent
+  more gets a second with 1 to 8 threads at 133 MB under G1, and 7 to 81
+  percent more at 665 MB under G1 and ZGC; readers blocked on a file's
+  monitor 3.4 to 13.3 percent of samples with `bf19075`, none with HEAD.
+  But with 8 threads at 665 MB under ZGC, HEAD's longest gets were 27 and
+  36 ms (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for
+  the eviction thread over 10 ms: no wait for the writer, but a question
+  for 009's target 2 (009's log, 2026-10-28). (The step started after 30
+  minutes without a quiet machine, `NOT QUIET`.)
+* Props in turns: MEM 130.0 and SS 1.5 for both; CORE was not read
+  (the step exited 1): to be rerun.
+* `performance.sh ab`, quick suite, 2026.1 against HEAD: throughput up 1 to
+  25 percent (gets 16.6 percent in the mixed restart scenario, four reader
+  threads 25 percent), startup 2 to 4 percent faster; the only flags are
+  maxima of the collector, G1's pause in r-1k-fin 24 to 39 ms; long keys
+  3.8 percent slower within a CV of 4.9 percent.

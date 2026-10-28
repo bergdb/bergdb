@@ -1,0 +1,8 @@
+[    0.5 s] load: 10000000 keys, key24, budget 0 bytes, dir /Users/f/fl/bench/006-09/w1/sbdata/key24-10000000
+[   30.5 s]   3750000 puts, 124967 a second; resident 991 MB, heap 1411 MB, stream 2057 MB
+[   60.5 s]   6201000 puts, 103330 a second; resident 1669 MB, heap 2302 MB, stream 4035 MB
+[   90.5 s]   8275000 puts, 91924 a second; resident 2234 MB, heap 2749 MB, stream 5912 MB
+[  118.1 s] load done: 117.0 s, 85451 puts a second; on disk 7543 MB, 754.4 bytes per key; heap after a full GC 1859 MB (2 MB before the load), 185.7 bytes per key; eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most
+[  118.1 s] two clock reads cost 22.1 ns; heap 6442 MB; 10 CPUs
+[  118.1 s] at most: heap used 3707 MB, resident 2712 MB, RSS 6684 MB; eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most
+SCALEBENCH OK

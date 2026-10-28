@@ -1,0 +1,28 @@
+soak p4-46-zgc-1027-2244: ok True
+  measured phase: uptime 980.5 to 2790.4 s; 1800 s steady, 200.0 commits and 14624 reads a second; physical cuts 3 (all 4); restarts 1
+  physical cuts (uptime s, first position MB): 980.5 (1200), 1785.4 (3500), 2104.9 (4500), 2528.6 (6500)
+  the slowest commits (ms at uptime s; "cut": a physical cut seen within 2 s; GC overlap):
+         5.1 ms at  1907.65 s  none
+         4.3 ms at  1631.76 s  none
+         2.5 ms at  1117.37 s  none
+         2.5 ms at  2738.39 s  none
+         2.5 ms at  1754.82 s  none
+         2.5 ms at  2319.25 s  none
+         2.4 ms at  1714.49 s  none
+         2.4 ms at  2670.09 s  none
+         2.4 ms at  2471.57 s  none
+         2.4 ms at  2284.57 s  none
+  the cut at 980.5 s: the warm-up's, which ended with it; its commits are not measured
+  the cut at 1785.4 s: no commit among the 20 slowest (the slowest kept are all over 2.4 ms)
+  the cut at 2104.9 s: no commit among the 20 slowest (the slowest kept are all over 2.4 ms)
+  the cut at 2528.6 s: no commit among the 20 slowest (the slowest kept are all over 2.4 ms)
+  longest: commit 5.1 ms (p99.9 2.26 ms), durable commit 39.5 ms, pacing delay 35.6 ms; latest get 2.4 ms, historical get 3.6 ms, forward scan 3.4 ms, backward scan 3.6 ms
+  the disk's waits (the write buffer's for each database object, then the forces and deletes of the whole run):
+    waits for room in the write buffer 5, 230.7 ms in all; longest at uptime 0.460s (127.3 ms) 0.312s (43.8 ms) 0.598s (31.4 ms) 0.528s (20.2 ms) 0.645s (8.0 ms)
+    waits for room in the write buffer 0, 0.0 ms in all
+    file forces 105533, 473542.5 ms in all; longest at uptime 1993.514s (17.9 ms) 1993.257s (14.5 ms) 2738.410s (13.8 ms) 2480.415s (13.8 ms) 1993.549s (13.5 ms)
+    directory forces 192, 479.2 ms in all; longest at uptime 1785.356s (12.9 ms) 980.642s (8.9 ms) 980.851s (8.8 ms) 0.120s (8.5 ms) 980.728s (8.3 ms)
+    deletes 89, 112.0 ms in all; longest at uptime 2528.655s (8.9 ms) 1785.420s (8.8 ms) 1785.433s (8.6 ms) 2528.641s (8.3 ms) 1785.441s (8.0 ms)
+  GC in the measured phase: 165 pauses, at most 0.014 ms; safepoints at most 0.258875 ms
+  eviction BUDGET: 5723319 slots unswizzled, 6179255 objects released; budget 1600000000 bytes, low 1200000000; 1576 sweeps (787 after loads, 21 complete, 0 above the budget after); last sweep 1600003683 -> 1596113442 bytes, pinned 13107272 (at most 13575752); sweep time 2361 ms in total, 2 ms at most; resident at most 1600 MB
+  restart 1 at 1880.6 s: startup 0.91 s, 4540 transactions rerun, readers paused 9.8 s

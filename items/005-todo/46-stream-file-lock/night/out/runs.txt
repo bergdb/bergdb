@@ -1,0 +1,41 @@
+2026-10-27 22:44:36 soak: start: p4-46-zgc-1027-2244, ZGC, heap 8g, budget 1600000000 bytes, rate=200 warmup=300 warmupmax=3600 measure=1800 restarts=1 mincuts=2 extend=900; deadline in 115 min
+2026-10-27 22:44:36 soak:   head's jar: commit 4f7cd60fbd8807c62af1d9a85d0213618960a96a, sha256 729232bbe8c1d2e8
+2026-10-27 22:44:52 soak:   quiet: load 1.91 2.01 2.24; AC Power; sessions  3 idle 
+2026-10-27 23:31:24 soak: end after 46 min: needs a look; P4's soak under ZGC on HEAD, exit 0: SOAK OK: 1800 s steady, 359995 commits (200.0/s), 16870527 gets and 9452588 scans checked, 3 physical cuts, 1 restarts, expired 676411 at admission and 0 during  The cuts: 980.5 s: the warm-up's, which ended with it; its commits are not measured 1785.4 s: no commit among the 20 slowest (the slowest kept are all over 2.4 ms) 2104.9 s: no commit among the 20 slowest (the slowest kept are all over 2.4 ms) 2528.6 s: no commit among the 20 slowest (the slowest kept are all over 2.4 ms) . The GC log is in /Users/f/fl/bench/006-09/w1/head/java/build/soak/p4-46-zgc-1027-2244.
+2026-10-27 23:33:57 props: start: bergdb.dev.props.Props, 4 rounds, bf19075 and HEAD in turns (ABBA); deadline in 12 min
+2026-10-27 23:33:57 props:   head's jar: commit 4f7cd60fbd8807c62af1d9a85d0213618960a96a, sha256 729232bbe8c1d2e8
+2026-10-27 23:33:57 props:   bf19075's jar: commit bf190751781504cf3efb96e339827b30f6958e2a, sha256 ade6df2644b8d815
+2026-10-27 23:34:12 props:   quiet: load 1.77 1.29 1.14; AC Power; sessions  3 idle 
+2026-10-27 23:34:50 props:   bf19075, round 1: MEM:130 SS:1.50 (1.10, 1.19, 1.62, 2.37) 
+2026-10-27 23:35:28 props:   head, round 1: MEM:130 SS:1.50 (1.10, 1.19, 1.62, 2.37) 
+2026-10-27 23:36:06 props:   head, round 2: MEM:130 SS:1.50 (1.10, 1.19, 1.62, 2.37) 
+2026-10-27 23:36:44 props:   bf19075, round 2: MEM:130 SS:1.50 (1.10, 1.19, 1.62, 2.37) 
+2026-10-27 23:37:22 props:   bf19075, round 3: MEM:130 SS:1.50 (1.10, 1.19, 1.62, 2.37) 
+2026-10-27 23:37:59 props:   head, round 3: MEM:130 SS:1.50 (1.10, 1.19, 1.62, 2.37) 
+2026-10-27 23:38:37 props:   head, round 4: MEM:130 SS:1.50 (1.10, 1.19, 1.62, 2.37) 
+2026-10-27 23:39:15 props:   bf19075, round 4: MEM:130 SS:1.50 (1.10, 1.19, 1.62, 2.37) 
+2026-10-27 23:39:15 props: end after 5 min: FAILED; Props in turns, 8 runs, 8 failed; CORE (lower is faster): HEAD , bf19075 .
+2026-10-28 00:09:24 scalebench-c: start: 10m key24 keys, C at 665 MB (G1, ZGC) and 133 MB (G1), 2 rounds in turns; deadline in 65 min
+2026-10-28 00:09:24 scalebench-c:   head's jar: commit 4f7cd60fbd8807c62af1d9a85d0213618960a96a, sha256 729232bbe8c1d2e8
+2026-10-28 00:09:24 scalebench-c:   bf19075's jar: commit bf190751781504cf3efb96e339827b30f6958e2a, sha256 ade6df2644b8d815
+2026-10-28 00:11:25 scalebench-c:   not quiet after 2 min, going on: load 2.76 2.71 2.53; AC Power; sessions  3 idle ; others: 
+2026-10-28 00:13:23 scalebench-c:   load done: 117.0 s, 85451 puts a second; on disk 7543 MB, 754.4 bytes per key; heap after a full GC 1859 MB (2 MB before the load), 185.7 bytes per key; eviction BUDGET: 0 slots unswizzled, 0 objects 
+2026-10-28 00:16:42 scalebench-c:   f53-c-10m-b665-g1-bf19075-1: uniform 1 thread 260626; threads 1,2,4,8: 252521 441982 705602 405433 
+2026-10-28 00:19:59 scalebench-c:   f53-c-10m-b665-g1-head-1: uniform 1 thread 305726; threads 1,2,4,8: 303267 545718 864756 698774 
+2026-10-28 00:23:17 scalebench-c:   f53-c-10m-b665-zgc-bf19075-1: uniform 1 thread 238488; threads 1,2,4,8: 240216 415037 590743 395448 
+2026-10-28 00:26:33 scalebench-c:   f53-c-10m-b665-zgc-head-1: uniform 1 thread 290397; threads 1,2,4,8: 282481 491818 711200 727507 
+2026-10-28 00:29:47 scalebench-c:   f53-c-10m-b133-g1-bf19075-1: uniform 1 thread 107495; threads 1,2,4,8: 107849 177219 263682 182179 
+2026-10-28 00:32:59 scalebench-c:   f53-c-10m-b133-g1-head-1: uniform 1 thread 130545; threads 1,2,4,8: 130941 221848 343839 255250 
+2026-10-28 00:36:15 scalebench-c:   f53-c-10m-b665-g1-head-2: uniform 1 thread 299694; threads 1,2,4,8: 299807 533811 862358 716813 
+2026-10-28 00:39:33 scalebench-c:   f53-c-10m-b665-g1-bf19075-2: uniform 1 thread 256713; threads 1,2,4,8: 253359 445933 700951 393594 
+2026-10-28 00:42:51 scalebench-c:   f53-c-10m-b665-zgc-head-2: uniform 1 thread 294743; threads 1,2,4,8: 285624 492907 686657 710841 
+2026-10-28 00:46:09 scalebench-c:   f53-c-10m-b665-zgc-bf19075-2: uniform 1 thread 250752; threads 1,2,4,8: 242012 415556 603118 400486 
+2026-10-28 00:49:20 scalebench-c:   f53-c-10m-b133-g1-head-2: uniform 1 thread 130073; threads 1,2,4,8: 129573 222261 345900 265774 
+2026-10-28 00:52:34 scalebench-c:   f53-c-10m-b133-g1-bf19075-2: uniform 1 thread 106741; threads 1,2,4,8: 106995 176369 258911 183065 
+2026-10-28 00:52:34 scalebench-c: end after 43 min: needs a look; ScaleBench C at 10m keys, HEAD against bf19075 in turns, 0 of 13 runs failed or skipped. b133-g1 HEAD: uniform 1 +21.6%, hot 1 +11.0%, threads 1 +21.3%, 2 +25.6%, 4 +32.0%, 8 +42.7%, sampled 4 +31.2% b665-g1 HEAD: uniform 1 +17.0%, hot 1 +7.3%, threads 1 +19.2%, 2 +21.6%, 4 +22.8%, 8 +77.2%, sampled 4 +19.3% b665-zgc HEAD: uniform 1 +19.6%, hot 1 +7.5%, threads 1 +17.8%, 2 +18.6%, 4 +17.1%, 8 +80.7%, sampled 4 +16.1% 
+2026-10-28 00:59:54 perf-ab: start: performance.sh ab 2026.1 head-4f7cd60, suite quick, G1, 8 GB heap, no budget; deadline in 40 min
+2026-10-28 00:59:54 perf-ab:   head's jar: commit 4f7cd60fbd8807c62af1d9a85d0213618960a96a, sha256 729232bbe8c1d2e8
+2026-10-28 01:00:09 perf-ab:   quiet: load 1.59 2.19 3.31; AC Power; sessions  3 idle 
+2026-10-28 01:00:11 perf-ab:   ab 1: not quiet (89.31% idle), again in 60 s
+2026-10-28 01:14:23 perf-ab:   ab 1: exit 0; NO ALERTS;Comparison exit code 0 (0: no alerts, 1: alerts to repeat in a matched run, 3: incompatible, 4: failed or missing runs);
+2026-10-28 01:14:24 perf-ab: end after 14 min: needs a look; performance.sh ab, quick suite, 2026.1 against HEAD: 1 run(s), exit 0; alerts in the first: 0. Sessions in /Users/f/fl/bench/006-09/w1/head/java/build/perf/runs.

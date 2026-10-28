@@ -369,7 +369,59 @@ the conductor is alive, its six F53 steps READY with their minutes (soak
 budget 45), 005-48's s1 step done. This session is idle until the
 morning.
 
+2026-10-28, 06:15. The block's results written into 005-46, 009, 005-52
+and 005-48; the Outcome below; the summary in `news.md`.
+
 
 ## 8. Outcome
 
-Filled in by 07:00 on 2026-10-28.
+2026-10-28, 06:15, by Claude (Opus 5.5, Claude Code).
+
+**Done, in `main`** (all in Frans's name; each code change gated on a tree
+with the ones before it):
+
+* 005-51, eviction only on calls (`c2aab10`; measured `78a6723`).
+* 005-03, closed as done by 009 (`4f7cd60`).
+* 005-58, rule 4 by position in Lean (`7c1ce2f`, `0965377`; Frans's
+  decisions `ed852ad`).
+* 005-48, group commit (`e611709`, `78a8d38`): one thread's durable
+  commits on s1 from 38 to 213 a second; F53's runs still to make.
+* 005-61, Reclaim's startup distance (`a175840`, `7fde735`), found in
+  005-53's question 3.
+* 005-59, `AutoCloseable`, option A (`f9c3b09`, `2eaaa45`).
+* 005-62, T9 and T12 over handles, proved and reviewed (`bba91dd` to
+  `a506b34`, `422fad4`).
+* BryanRepro's fix in the test, `level2.sh` passes again (`b0661ba`); the
+  API question is 005-63.
+* Reports and steps: 005-49 (`374f744`, Frans's answers `82b59a1`), 007-06
+  (`c143402`), 007-07 as a patch, not applied (`49f99a1`), 009-03's
+  section 9 (`e718347`), 005-53's question 3, 005-56's check and 005-52's
+  first step (`4f38f52`).
+* 005-46: closed by f1-02 at Frans's word; tonight's soak, ScaleBench and
+  `performance.sh ab` confirm it (no read or commit waits for the writer).
+
+**The night** (conductor, 22:44 to 01:33; `night.sh` 02:10 to 02:51, OK on
+all of the day's changes): P4's soak, ScaleBench C, `performance.sh ab` and
+005-52's budget step ran; Props exited 1 (CORE not read), and 005-48's F53
+runs were refused by `performance.sh`'s own quiet check (89.2 percent idle
+at 00:57).
+
+**For Frans to decide:**
+
+1. 007-07: apply the step 3 patch? Accept whole-transaction bursts after a
+   large take, or a node pace? D4's option B in BergDB, as 007-06's "pace"
+   (the deadline comes down with the lag), or the caller's job?
+2. 009, target 2: the gets of 27 and 36 ms with 8 threads at 665 MB under
+   ZGC (readers waiting for the eviction thread) need an explanation, and
+   s1's get of 2,760 ms needs your call; the closure is drafted.
+3. 005-62: how far to remove the design before handles (steps a to c);
+   rule 4 by position after a cut; a cut without a restart.
+4. 005-63: a sentence in `stop()`'s Javadoc and a lock file (recommended:
+   both).
+5. 005-48: question 4, the buffer time now that syncs do not wait for it;
+   the s1 runs' raw JSON (left uncommitted).
+6. 005-56: the 7 mismatches, list or code; `SyncLevel` in the Pub API.
+
+**Left:** 005-48's F53 runs and the Props rerun in a quiet block; 009's
+closure after 2; 007-03's own text, which follows Frans's decision on
+007-07. One usage limit stopped the agents from 14:45 to 15:20.

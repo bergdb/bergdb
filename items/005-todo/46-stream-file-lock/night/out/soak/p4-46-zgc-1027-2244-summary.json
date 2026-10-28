@@ -1,0 +1,602 @@
+{
+ "ok": true,
+ "failure": null,
+ "params": {
+  "checktimes": 6,
+  "companion": 20000,
+  "del": 5,
+  "dirtyevery": 60,
+  "durable": 200,
+  "extend": 900,
+  "hot": 30,
+  "hotkeys": 1000,
+  "longlen": 120,
+  "maxnode": 0,
+  "measure": 1800,
+  "mincuts": 2,
+  "n": 1000000,
+  "nlong": 1000,
+  "rate": 200,
+  "readers": 3,
+  "readrate": 5000,
+  "restarts": 1,
+  "retain": 300,
+  "samplekeys": 20000,
+  "samplems": 1000,
+  "scanlen": 50,
+  "sd": 0,
+  "seed": 1,
+  "tsize": 10,
+  "valsize": 1000,
+  "warmup": 300,
+  "warmupmax": 3600
+ },
+ "phases": {
+  "load": 10.8771,
+  "warmup": 969.517,
+  "measured": 1809.83,
+  "measured_steady": 1800,
+  "close": 0.000425792
+ },
+ "windows_uptime_s": {
+  "load": [
+   0.147,
+   11.024
+  ],
+  "warmup": [
+   11.025,
+   980.543
+  ],
+  "measured": [
+   980.543,
+   2790.38
+  ]
+ },
+ "metrics": {
+  "load.puts_per_s": 92028,
+  "load.stream_mb": 1287.03,
+  "warmup.physical_cuts": 1,
+  "measured.steady_s": 1800,
+  "measured.wall_s": 1809.83,
+  "commits": 359995,
+  "commits_per_s": 199.997,
+  "puts": 3427916,
+  "deletes": 172034,
+  "paced": true,
+  "updates_per_key_per_retention": 0.599391,
+  "stream_appended_mb": 7042.67,
+  "bytes_appended_per_user_byte": 2.04632,
+  "commits_with_reclaim_step": 335630,
+  "commits_with_cut_decision": 3,
+  "physical_cuts": 3,
+  "physical_cuts_total": 4,
+  "cut_decisions_total": 4,
+  "restarts": 1,
+  "expired_at_admission": 676411,
+  "expired_during": 0,
+  "unverifiable_skipped": 0,
+  "gc.mxbean.count": 230,
+  "gc.mxbean.ms": 56142,
+  "heap_used_max_mb": 8239.71,
+  "heap_after_gc_max_mb": 6270.48,
+  "rss_max_mb": 9719.05,
+  "disk_max_mb": 6719.36,
+  "files_max": 86,
+  "kept_max_mb": 6632.32,
+  "dirty_nodes_max": 44383,
+  "dirty_count_ms_max": 8.63017,
+  "gets_checked": 16870527,
+  "scans_checked": 9452588,
+  "scan_kvs_checked": 471964653,
+  "reads_per_s": 14623.9,
+  "commits_slowest_second": 199,
+  "restart_seconds": [
+   [
+    900,
+    909
+   ]
+  ]
+ },
+ "latency": {
+  "commit_append_ns": {
+   "count": 359995,
+   "mean": 234669,
+   "p50": 223231,
+   "p95": 327679,
+   "p99": 421887,
+   "p999": 2260991,
+   "max": 5079542
+  },
+  "commit_append_reclaim_step_ns": {
+   "count": 335630,
+   "mean": 242318,
+   "p50": 227327,
+   "p95": 331775,
+   "p99": 428031,
+   "p999": 2260991,
+   "max": 5079542
+  },
+  "commit_append_no_step_ns": {
+   "count": 24365,
+   "mean": 129314,
+   "p50": 123903,
+   "p95": 172031,
+   "p99": 205823,
+   "p999": 1835007,
+   "max": 2221417
+  },
+  "commit_durable_ns": {
+   "count": 1800,
+   "mean": 19603500,
+   "p50": 19660799,
+   "p95": 33423359,
+   "p99": 36700159,
+   "p999": 38797311,
+   "max": 39471209
+  },
+  "pacing_delay_ns": {
+   "count": 359995,
+   "mean": 758716,
+   "p50": 113151,
+   "p95": 2244607,
+   "p99": 8585215,
+   "p999": 24641535,
+   "max": 35550667
+  },
+  "get_latest_ns": {
+   "count": 9446537,
+   "mean": 2561.23,
+   "p50": 2255,
+   "p95": 4447,
+   "p99": 11583,
+   "p999": 15231,
+   "max": 2429916
+  },
+  "get_historical_ns": {
+   "count": 7423990,
+   "mean": 4303.34,
+   "p50": 2751,
+   "p95": 14591,
+   "p99": 19455,
+   "p999": 25599,
+   "max": 3573208
+  },
+  "scan_forward_ns": {
+   "count": 4589164,
+   "mean": 38769.7,
+   "p50": 19071,
+   "p95": 120831,
+   "p99": 240639,
+   "p999": 397311,
+   "max": 3416833
+  },
+  "scan_backward_ns": {
+   "count": 4863424,
+   "mean": 39395.5,
+   "p50": 18943,
+   "p95": 123391,
+   "p99": 246783,
+   "p999": 403455,
+   "max": 3596125
+  }
+ },
+ "eviction": "eviction BUDGET: 5723319 slots unswizzled, 6179255 objects released; budget 1600000000 bytes, low 1200000000; 1576 sweeps (787 after loads, 21 complete, 0 above the budget after); last sweep 1600003683 -> 1596113442 bytes, pinned 13107272 (at most 13575752); sweep time 2361 ms in total, 2 ms at most; resident at most 1600 MB",
+ "restarts": [
+  {
+   "index": 1,
+   "uptime_s": 1880.58,
+   "close_s": 0.00199404,
+   "startup_s": 0.910594,
+   "transactions_rerun": 4540,
+   "section_mb": 50.0134,
+   "stream_mb": 8298.73,
+   "first_available_pos_mb": 3937.72,
+   "first_lookup_age_s": 395.219,
+   "first_lookup_moved_s": 0,
+   "last_time_moved_s": 0,
+   "pause_s": 9.831
+  }
+ ],
+ "physical_cuts": [
+  "uptime s, first pos MB",
+  [
+   [
+    980.538,
+    1200
+   ],
+   [
+    1785.36,
+    3500
+   ],
+   [
+    2104.9,
+    4500
+   ],
+   [
+    2528.64,
+    6500
+   ]
+  ]
+ ],
+ "cut_decisions": [
+  "uptime s, segment, pos MB, age of the new first time s, stream length MB",
+  [
+   [
+    980.475,
+    0,
+    1287.08,
+    300.001,
+    4832.45
+   ],
+   [
+    1785.31,
+    0,
+    3937.72,
+    300.003,
+    7920.67
+   ],
+   [
+    2104.87,
+    1,
+    4903.78,
+    300.001,
+    9169.16
+   ],
+   [
+    2528.58,
+    1,
+    6853.66,
+    300.001,
+    10814.4
+   ]
+  ]
+ ],
+ "slowest_commits_with_pauses": [
+  [
+   5.07954,
+   1907.65,
+   377352,
+   1,
+   0,
+   "none"
+  ],
+  [
+   4.33108,
+   1631.76,
+   324146,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.48096,
+   1117.37,
+   221268,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.46096,
+   2738.39,
+   543499,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.458,
+   1754.82,
+   348759,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.45383,
+   2319.25,
+   459672,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.43379,
+   1714.49,
+   340693,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.43167,
+   2670.09,
+   529839,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.41958,
+   2471.57,
+   490137,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.41929,
+   2284.57,
+   452737,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.413,
+   2678.38,
+   531497,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.41296,
+   2380.82,
+   471985,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.41158,
+   1105.71,
+   218937,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.40888,
+   1180.2,
+   233835,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.40596,
+   2596.96,
+   515214,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.40208,
+   1266.16,
+   251026,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.39879,
+   2221.01,
+   440023,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.39558,
+   2071.53,
+   410128,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.39458,
+   1207.36,
+   239266,
+   1,
+   0,
+   "none"
+  ],
+  [
+   2.39325,
+   1710.56,
+   339906,
+   1,
+   0,
+   "none"
+  ]
+ ],
+ "slowest_durable_commits_with_pauses": [
+  [
+   39.4712,
+   1326.58,
+   263104,
+   1,
+   0,
+   "none"
+  ],
+  [
+   38.7005,
+   2485.45,
+   492904,
+   1,
+   0,
+   "none"
+  ],
+  [
+   38.5426,
+   2224.45,
+   440704,
+   1,
+   0,
+   "none"
+  ],
+  [
+   37.8493,
+   2180.45,
+   431904,
+   1,
+   0,
+   "none"
+  ],
+  [
+   37.5698,
+   2162.45,
+   428304,
+   1,
+   0,
+   "none"
+  ],
+  [
+   37.5282,
+   2065.45,
+   408904,
+   1,
+   0,
+   "none"
+  ],
+  [
+   37.3711,
+   1209.58,
+   239704,
+   1,
+   0,
+   "none"
+  ],
+  [
+   37.2246,
+   1851.58,
+   368104,
+   1,
+   0,
+   "none"
+  ],
+  [
+   37.2087,
+   1797.58,
+   357304,
+   1,
+   0,
+   "none"
+  ],
+  [
+   36.997,
+   1641.58,
+   326104,
+   1,
+   0,
+   "none"
+  ]
+ ],
+ "disk_waits": [
+  "waits for room in the write buffer 5, 230.7 ms in all; longest at uptime 0.460s (127.3 ms) 0.312s (43.8 ms) 0.598s (31.4 ms) 0.528s (20.2 ms) 0.645s (8.0 ms)",
+  "waits for room in the write buffer 0, 0.0 ms in all",
+  "file forces 105533, 473542.5 ms in all; longest at uptime 1993.514s (17.9 ms) 1993.257s (14.5 ms) 2738.410s (13.8 ms) 2480.415s (13.8 ms) 1993.549s (13.5 ms)\ndirectory forces 192, 479.2 ms in all; longest at uptime 1785.356s (12.9 ms) 980.642s (8.9 ms) 980.851s (8.8 ms) 0.120s (8.5 ms) 980.728s (8.3 ms)\ndeletes 89, 112.0 ms in all; longest at uptime 2528.655s (8.9 ms) 1785.420s (8.8 ms) 1785.433s (8.6 ms) 2528.641s (8.3 ms) 1785.441s (8.0 ms)"
+ ],
+ "collector": "ZGC",
+ "vmFlags": [
+  "-XX:+UseZGC",
+  "-da",
+  "-Xms8g",
+  "-Xmx8g",
+  "-Xlog:gc*,safepoint:file=<run>:uptime,level,tags",
+  "-Devictbudget=1600000000",
+  "-Dsoak.out=/Users/f/fl/bench/006-09/w1/head/java/build/soak/p4-46-zgc-1027-2244",
+  "-Dsoak.dir=/Users/f/fl/bench/006-09/w1/head/java/build/soak/p4-46-zgc-1027-2244/data",
+  "-Dsoak.rate=200",
+  "-Dsoak.warmup=300",
+  "-Dsoak.warmupmax=3600",
+  "-Dsoak.measure=1800",
+  "-Dsoak.restarts=1",
+  "-Dsoak.mincuts=2",
+  "-Dsoak.extend=900"
+ ],
+ "gcLog_measured": {
+  "pauses": {
+   "count": 165,
+   "totalMs": 1.398,
+   "maxMs": 0.014,
+   "p50Ms": 0.009,
+   "p99Ms": 0.014,
+   "p999Ms": 0.014,
+   "longest": [
+    {
+     "uptimeSec": 1680.37,
+     "what": "Pause Mark End",
+     "ms": 0.014
+    },
+    {
+     "uptimeSec": 1927.46,
+     "what": "Pause Relocate Start",
+     "ms": 0.014
+    },
+    {
+     "uptimeSec": 1286.96,
+     "what": "Pause Mark End",
+     "ms": 0.013
+    },
+    {
+     "uptimeSec": 1476.95,
+     "what": "Pause Mark End",
+     "ms": 0.013
+    },
+    {
+     "uptimeSec": 1742.78,
+     "what": "Pause Mark End",
+     "ms": 0.013
+    }
+   ]
+  },
+  "safepoints": {
+   "count": 180,
+   "totalMs": 9.23024,
+   "maxMs": 0.258875,
+   "p50Ms": 0.039,
+   "p99Ms": 0.213,
+   "p999Ms": 0.259,
+   "longest": [
+    {
+     "uptimeSec": 1092.25,
+     "what": "ZMarkStartYoungAndOld",
+     "ms": 0.258875
+    },
+    {
+     "uptimeSec": 2105.16,
+     "what": "ZRelocateStartYoung",
+     "ms": 0.2125
+    },
+    {
+     "uptimeSec": 1881.19,
+     "what": "ZMarkEndYoung",
+     "ms": 0.128625
+    },
+    {
+     "uptimeSec": 1336.83,
+     "what": "ZRelocateStartOld",
+     "ms": 0.111125
+    },
+    {
+     "uptimeSec": 1903.99,
+     "what": "ZRelocateStartYoung",
+     "ms": 0.093708
+    }
+   ]
+  },
+  "heapAfterGcMaxMB": 0,
+  "heapCommittedMaxMB": 0,
+  "fullGcs": 0,
+  "concurrentCycles": 0
+ },
+ "gcLog_heap_after_gc_measured": {
+  "first_tenth_mean_mb": null,
+  "last_tenth_mean_mb": null,
+  "peak_mb": 0
+ }
+}

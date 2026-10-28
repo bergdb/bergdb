@@ -1,0 +1,32 @@
+[    0.6 s] read the stream's files once: 7543 MB in 0.6 s
+[    1.6 s] opened /Users/f/fl/bench/006-09/w1/sbdata/key24-10000000: 10000000 keys, key24, budget 665000000 bytes; startup 0.89 s, resident 56 MB
+[    1.6 s] two clock reads cost 23.3 ns; heap 2793 MB; 10 CPUs
+[    6.6 s]   warm 0: 164932 gets a second; loads/get 1.558, stream reads/get 3.720, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 2 (63 ms), resident 442 MB
+[   11.6 s]   warm 1: 277405 gets a second; loads/get 0.996, stream reads/get 2.130, device bytes/get 0, sweeps 0 (0 ms), after-load waits over 10 ms 0, gc 1 (47 ms), resident 641 MB
+[   16.6 s]   warm 2: 324000 gets a second; loads/get 0.818, stream reads/get 1.658, device bytes/get 0, sweeps 290 (130 ms), after-load waits over 10 ms 0, gc 2 (103 ms), resident 664 MB
+[   21.6 s]   warm 3: 313356 gets a second; loads/get 0.824, stream reads/get 1.651, device bytes/get 0, sweeps 288 (132 ms), after-load waits over 10 ms 0, gc 1 (53 ms), resident 664 MB
+[   40.0 s] uniform, 1 thread: 305726 gets a second (median of 5 windows, 302302 to 311690); loads/get 0.829, stream reads/get 1.659, device bytes/get 0, sweeps 840 (418 ms), after-load waits over 10 ms 0, gc 4 (210 ms), resident 664 MB
+[   40.0 s] uniform, timed 1000000 gets: mean 3.33, p50 3.17, p90 6.85, p99 8.77, p99.9 12.22, max 47921.9 us; loads/get 0.829, stream reads/get 1.659, device bytes/get 0, sweeps 181 (96 ms), after-load waits over 10 ms 0, gc 3 (49 ms), resident 664 MB
+[   55.9 s] hot, 1 thread: 1109518 gets a second (median of 5 windows, 1026564 to 1131966); loads/get 0.088, stream reads/get 0.176, device bytes/get 0, sweeps 308 (206 ms), after-load waits over 10 ms 0, gc 3 (147 ms), resident 664 MB
+[   55.9 s] hot, timed 1000000 gets: mean 0.84, p50 0.54, p90 0.96, p99 7.14, p99.9 9.02, max 35.0 us; loads/get 0.084, stream reads/get 0.167, device bytes/get 0, sweeps 19 (9 ms), after-load waits over 10 ms 0, gc 0 (0 ms), resident 664 MB
+[   85.9 s] threads 1: 303267 gets a second; mean 3.25, p50 3.09, p90 6.66, p99 8.38, p99.9 10.56, max 176680.5 us; loads/get 0.831, stream reads/get 1.661, device bytes/get 0, sweeps 1656 (871 ms), after-load waits over 10 ms 0, gc 16 (748 ms), resident 664 MB
+[  115.9 s] threads 2: 545718 gets a second; mean 3.61, p50 3.38, p90 7.36, p99 9.34, p99.9 12.35, max 193848.8 us; loads/get 0.825, stream reads/get 1.650, device bytes/get 0, sweeps 2973 (1702 ms), after-load waits over 10 ms 0, gc 29 (1241 ms), resident 664 MB
+[  145.9 s] threads 4: 864756 gets a second; mean 4.56, p50 3.89, p90 8.51, p99 13.57, p99.9 18.30, max 255622.7 us; loads/get 0.829, stream reads/get 1.659, device bytes/get 0, sweeps 4719 (2985 ms), after-load waits over 10 ms 0, gc 46 (1981 ms), resident 664 MB
+[  175.9 s] threads 8: 698774 gets a second; mean 11.35, p50 11.52, p90 23.17, p99 30.34, p99.9 46.85, max 264951.4 us; loads/get 0.829, stream reads/get 1.659, device bytes/get 0, sweeps 3817 (4337 ms), after-load waits over 10 ms 0, gc 35 (1528 ms), resident 664 MB
+[  195.9 s] sampled 4 threads: 853914 gets a second, 704 samples:
+     47.4% RUNNABLE reading the stream
+     12.1% RUNNABLE in NodeChecksum.sumWithZeroReplace
+     11.5% RUNNABLE in Dag.getEqNodeInSegment
+      7.1% RUNNABLE in KeyNode.searchEq
+      5.3% RUNNABLE in KeyNode.searchLte
+      4.5% RUNNABLE in NodeCollection.followPointer
+      3.4% RUNNABLE in KeyNode.getDeleteBitmapAtTime
+      2.3% RUNNABLE in ?
+      2.1% RUNNABLE in NodeCollection.followStreamPointer
+      1.0% RUNNABLE in KeyNode.ensureCapacity
+      0.9% RUNNABLE in TopDs.findRoot
+      0.6% RUNNABLE in NodeStream.readNode
+      0.4% RUNNABLE in NodeStream.bytesToNode
+      0.4% RUNNABLE in Residents.added
+[  196.9 s] at most: heap used 2782 MB, resident 665 MB, RSS 2982 MB; eviction BUDGET: 4770943 slots unswizzled, 18143466 objects released; budget 665000000 bytes, low 498750000; 18197 sweeps (18197 after loads, 100 complete, 6 above the budget after); last sweep 665002224 -> 664339984 bytes, pinned 44704880 (at most 44704944); sweep time 12599 ms in total, 197 ms at most
+SCALEBENCH OK

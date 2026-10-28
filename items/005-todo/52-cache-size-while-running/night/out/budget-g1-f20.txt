@@ -1,0 +1,24 @@
+BudgetBench: 10000000 keys, budget 665000000 bytes, lowered to 0.2 of the resident bytes, 2 readers, 200 commits a second of 10 puts; dir /Users/f/fl/bench/006-09/w6/night/bbdata; OpenJDK 64-Bit Server VM 27, [-Xms6g, -Xmx6g, -XX:+UseG1GC, -Xlog:gc:file=/Users/f/fl/repos/bergdb/items/005-todo/52-cache-size-while-running/night/out/budget-g1-f20.gc.log, -Dbb.dir=/Users/f/fl/bench/006-09/w6/night/bbdata, -Dbb.out=/Users/f/fl/repos/bergdb/items/005-todo/52-cache-size-while-running/night/out/budget-g1-f20.csv, -Dbb.lowfrac=0.2, -Dbb.keys=10000000, -Dbb.high=665000000, -Dbb.warmmax=120, -Dbb.base=60, -Dbb.convmax=300, -Dbb.after=60, -Dbb.raise=30]
+  load: 2716000 puts, resident 662 MB
+  load: 4373000 puts, resident 662 MB
+  load: 5836000 puts, resident 664 MB
+  load: 7323000 puts, resident 664 MB
+  load: 8441000 puts, resident 664 MB
+  load: 9555000 puts, resident 664 MB
+load done: 10000000 keys in 64.2 s, 155856 puts a second; resident 664 MB, budget 665 MB
+warm: 0.1 s, resident 664 MB, 1228 sweeps
+converge: resident 664 MB at the drop, budget 132 MB; reached the budget after 46.87 s; the eviction thread's CPU 26255 ms; 26939 sweeps, 12560719 objects released, 27734 ms of sweeps (the longest of the run 88.79 ms)
+resident at the end 664 MB; eviction BUDGET: 19164618 slots unswizzled, 46957814 objects released; budget 665000000 bytes, low 498750000; 55154 sweeps (51941 after loads, 659 complete, 28838 above the budget after); last sweep 665000224 -> 664429504 bytes, pinned 132230672 (at most 168353856); sweep time 53966 ms in total, 88 ms at most
+gets, warm: 0.1 s, 340112 a second, the longest 0.41 ms; >1 ms 0, >2 ms 0, >5 ms 0, >10 ms 0, >20 ms 0, >50 ms 0, >100 ms 0
+gets, base: 60.1 s, 535180 a second, the longest 94.71 ms; >1 ms 30, >2 ms 30, >5 ms 28, >10 ms 26, >20 ms 26, >50 ms 26, >100 ms 0
+gets, converge: 46.9 s, 257784 a second, the longest 36.73 ms; >1 ms 271, >2 ms 236, >5 ms 21, >10 ms 20, >20 ms 20, >50 ms 0, >100 ms 0
+gets, after: 60.1 s, 231707 a second, the longest 35.60 ms; >1 ms 30, >2 ms 30, >5 ms 30, >10 ms 30, >20 ms 30, >50 ms 0, >100 ms 0
+gets, raise: 30.0 s, 480600 a second, the longest 92.86 ms; >1 ms 12, >2 ms 10, >5 ms 10, >10 ms 10, >20 ms 10, >50 ms 10, >100 ms 0
+slowest gets (ms at s from the drop): 94.7@-44.29 94.7@-44.29 92.9@126.79 92.8@126.79 88.7@-2.48 88.7@-2.48 87.9@-8.41 87.8@-8.41 85.0@110.63 85.0@110.63 84.3@115.99 84.2@115.99 82.4@-13.87 82.3@-13.87 81.9@121.30
+commits, warm: 0.1 s, 200 a second, the longest 0.67 ms; >1 ms 0, >2 ms 0, >5 ms 0, >10 ms 0, >20 ms 0, >50 ms 0, >100 ms 0
+commits, base: 60.1 s, 200 a second, the longest 22.16 ms; >1 ms 26, >2 ms 13, >5 ms 13, >10 ms 13, >20 ms 2, >50 ms 0, >100 ms 0
+commits, converge: 46.9 s, 200 a second, the longest 45.13 ms; >1 ms 1473, >2 ms 66, >5 ms 65, >10 ms 33, >20 ms 11, >50 ms 0, >100 ms 0
+commits, after: 60.1 s, 200 a second, the longest 35.88 ms; >1 ms 658, >2 ms 47, >5 ms 44, >10 ms 16, >20 ms 2, >50 ms 0, >100 ms 0
+commits, raise: 30.0 s, 200 a second, the longest 12.36 ms; >1 ms 16, >2 ms 13, >5 ms 4, >10 ms 1, >20 ms 0, >50 ms 0, >100 ms 0
+slowest commits (ms at s from the drop): 45.1@34.51 37.0@2.63 35.9@64.58 33.2@56.26 32.4@0.19 30.5@34.91 28.4@43.46 28.4@0.16 24.4@0.07 24.3@0.13 22.4@0.11 22.3@0.04 22.2@-33.87 21.8@-39.45 21.3@0.02
+BUDGETBENCH OK
