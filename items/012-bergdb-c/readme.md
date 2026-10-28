@@ -165,3 +165,11 @@ section 8): the format written down, the API designed, C builds and its
 tests run, and Java's reference outputs exist; 012-02's review is the
 part of phase A still to come. Phase B runs: 012-06 (the stream reader)
 and 012-07 (the index nodes).
+
+2026-10-28, 17:10. 012-02 done: its review by a second agent at max
+effort (section 15) found 21 points, 2 errors (a retain duration of
+forever lets an iteration in progress go on with its steps and table; a
+leaf's key klong never names a delete node), 5 omissions and 14 minor,
+all fixed in the document; findings C1 to C4 hold; an independent replay
+from the scans agreed on 299,401 records. Phase A is done. Java's slips
+found on the way are 005-73 to 005-75.

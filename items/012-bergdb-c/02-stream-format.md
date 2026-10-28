@@ -2,11 +2,15 @@
 ===================================
 
 Created 2026-10-27 by Claude (Opus 5.5, Claude Code), with 012-01, for
-Frans Lundberg; the document written on 2026-10-28. **Status: in
-progress, started 2026-10-28 13:47**: the document is written and
-checked (Done-when items 1 to 6 hold, item 5 for 012-05's quick and full
-sets; 14.6); its review by a second agent (14.3, step 5) is still to
-come. Approved with 012-01 by Frans's go (012-01, 9.1).
+Frans Lundberg; the document written on 2026-10-28. **Status: done**
+(started 2026-10-28 13:47, done 17:05, set by the conductor after the
+review): the document is written and checked (Done-when items 1 to 6 hold, item 5 for 012-05's quick and full
+sets; 14.6); its review by a second agent (14.3, step 5) was made on
+2026-10-28, 16:22 to 17:05 (section 15): 21 findings, 2 of them errors
+(reclaim goes on with an iteration in progress when the retain duration
+is forever, 8.13; a leaf's key klong never names a delete node, 6.3.1)
+and 5 omissions, all fixed in this document; C1 to C4 hold. Approved
+with 012-01 by Frans's go (012-01, 9.1).
 **Reference:** Java's `main` at `404d2ee` (`java/` last changed at
 `fd8f513`). Everything below describes the Java code of that commit, and
 a line quoted is quoted from it.
@@ -25,7 +29,8 @@ Sections 1 to 7 are the format; 8, what decides the bytes a writer
 writes; 9, the directory; 10, the determinism audit; 11, the differences
 from the text of 2015; 12, the format of `StreamScan`, Java's scanner,
 with which every claim here was checked (section 14.6 says how); 13,
-questions for Frans; 14, how it was made: the task's plan and progress.
+questions for Frans; 14, how it was made: the task's plan and progress;
+15, the review of the document against the code by a second agent.
 
 **Conventions.** Classes and methods are Java's, in
 `java/src/bergdb/` (`core`, `dag`, `storage`, `stream`, `common`). *SFE*
@@ -121,7 +126,7 @@ and `getSpos(start, size − 1)` the position of the record's last byte
 `transPos(p) = (p / D) * B + max(0, p % D − M)`, the record bytes before
 `p` (`getTransPos`), and `t = transPos(pos) − n`, it is
 `(t / B) * D + M + t % B`; it throws `IllegalArgumentException` when
-`pos` is in a meta block (`pos % D < M`), `t < 0` or `n < 0`.
+`pos < 0`, `pos` is in a meta block (`pos % D < M`), `t < 0` or `n < 0`.
 
 ## 2.4 Alignment
 
@@ -144,8 +149,9 @@ memory until the node is first written (`Spos.isVpos(x)` is
 `x % 2 == 1`, so −1 is not a vpos; `Spos.nextVpos(v)` is `v + 1` for an
 even `v` and `v + 2` for an odd one). The nodes made by a transaction get
 the odd numbers from its record's position + 1 up, in the order they are
-made (section 8.4). The one exception is the creation's root key node,
-whose id is 0 (8.2).
+made (section 8.4). The creation is the exception: its root key node
+has the id 0, which is even, and its top node the id 1 (8.2), not 129
+and 131.
 
 A written node is at an even position (2.4). So a reference that is odd
 names a node that had not been written when the reference was written,
@@ -324,7 +330,14 @@ of 4.6):
 
    The record so completed ends in 0: it is failed, and every walk skips
    it. The size field is the one the crash left (or completed); so the
-   fill appends exactly the bytes that the record lacked.
+   fill appends exactly the bytes that the record lacked. A completed
+   size is 17 or more (the rule of the 1 above), and a size Java wrote is
+   48 or more; only a corrupt size field, with all four bytes present,
+   gives 5 to 16: 5 leaves the record whole after byte 4 (its "last
+   byte" is the filler 4), 6 to 16 are filled with zeros, and the start's
+   walk then refuses either ("Bad transaction size", below 17, 4.3; found
+   by 012-06, checked in `fixLastTransactionIfNeeded`,
+   `RecoverableStream.java:229-267`).
 
 So after a crash Java writes bytes that a run without the crash does not
 have: the failed record, and the meta blocks inside it, whose `lastTrans`
@@ -354,9 +367,14 @@ for at most 6 bytes (`MetaBlock.beginsAsBlock`: "berg" and 154 as a
 `Db.refuseIncompleteCreation` then throws `DatabaseNotCreatedException`,
 and nothing is written (scans `recovered-60`, `recovered-130`,
 `recovered-148`: the start refused, the bytes as cut). A stream of fewer
-than 128 bytes that is not an incomplete creation is refused by
-`NodeStream.recover` ("Cannot recover stream without complete first meta
-block", an SFE).
+than 128 bytes that is not an incomplete creation (its first bytes are not
+"berg" and 154) is refused by the start's first read of a meta block,
+`refuseOtherNodeSize` (4.6) through `RecoverableStream.readMetaBlock`: a
+`StreamIoException` when it has fewer than 6 bytes, else `BadMagicBytes`
+(so `BadCryptoKey`) or a `VersioningStreamException`; nothing is written.
+`NodeStream.recover`'s own refusal ("Cannot recover stream without
+complete first meta block", an SFE) is not reached from a start (the
+review's probe `short`, 15.2, finding 21).
 
 ## 4.6 The order of a start's checks
 
@@ -378,11 +396,11 @@ bytes:
 
 | Off | Size | Type | Field | Meaning and range | Written by | Checked on reading by |
 |---|---|---|---|---|---|---|
-| 0 | 4 | `i32` | size | the record's bytes, a multiple of 8, from 48 (no nodes, no got-dirty pairs) to `StoredTrans.recordLimit` = `MAX_RECORD_SIZE` = 2^31 − 9 | `Serializer.serializeHeader` (`totalSize` from `prepareToSerialize`) | the walk: below 17 is an SFE (4.3); `Parser.parse`: larger than the buffer is an SFE. The parser does not compare it with the size it parses |
+| 0 | 4 | `i32` | size | the record's bytes, a multiple of 8, from 48 (no nodes, no got-dirty pairs) to the largest multiple of 8 not above `StoredTrans.recordLimit` (`MAX_RECORD_SIZE` = 2^31 − 9, so 2^31 − 16; `prepareToSerialize` compares the aligned size with the limit) | `Serializer.serializeHeader` (`totalSize` from `prepareToSerialize`) | the walk: below 17 is an SFE (4.3); `Parser.parse`: larger than the buffer is an SFE. The parser does not compare it with the size it parses |
 | 4 | 1 | `u8` | format | 5 (section 1) | `serializeHeader` (the `i32` 5 at 4–7) | `Parser.parse`: another value, `VersioningStreamException` |
 | 5 | 3 | zero | | the upper bytes of that `i32` | `serializeHeader` | skipped (`offset += 3`) |
 | 8 | 8 | `i64` | time | the transaction's time `tt` (section 8.1), 1 to 2^56 − 1 | `serializeHeader` | the start: strictly increasing (2.6). The walk reads it (`transTime`) |
-| 16 | 8 | `i64` | `startupPos` | the position of the record that a start reads from, the startup position s: the position of the last transaction that this record's take took, or the startup position before the record if it took none (8.7, 8.9); 0 means the first record (`readTransactions` reads 0 as 128) | `serializeHeader`, from `Db.store` (`x.trans.startupPos = newSp`); 0 in the creation's record | `Db.getStartupPosFromLastTransaction` asserts `>= 0` and walks from it: the record there must be committed, an SFE else |
+| 16 | 8 | `i64` | `startupPos` | the position of the record that a start reads from, the startup position s: the position of the last transaction that this record's take took, or the startup position before the record if it took none (8.7, 8.9); 0 means the first record (`readTransactions` reads 0 as 128) | `serializeHeader`, from `Db.store` (`x.trans.startupPos = newSp`); 0 in the creation's record | `Db.getStartupPosFromLastTransaction` asserts `>= 0` for each record it walks; a start reads from the last record's (`Db.readTransactions`, an exact walk): the record there must be committed, an SFE else |
 | 24 | 8 | `i64` | `topPos` | the position of the latest version of the newest written top node after this record, in this record if written here (8.10); never −1 or a vpos in Java's records | `Serializer.serialize` (`topNode.getSpos()` after `prepareToSerialize`), the node chosen by `Db.store` | `DbStarter.topNodeOfLastTransaction`, of the last record only: a vpos or −1, or a position that does not hold a top node, is an SFE |
 | 32 | | | nodes | the top nodes, then the key nodes, then the value and delete nodes, each starting with its size (section 6) | `Serializer.serializeNodes` | `Parser.next`, `NodeStream.bytesToNode` |
 | e | 4 | `i32` | end of nodes | 0 | `Serializer.serializeEnd` | `Parser.next`: a node size of 0 ends the nodes |
@@ -443,7 +461,11 @@ which counts bytes 6–7 as 0): another value is a
 `NodeStream.readNode`, which reads one node by its position, refuses a
 size of 6 or less (an SFE). The parsers do not check the size field
 against the node's own layout; the record parser uses it to find the
-next node.
+next node, and refuses no negative size: `Parser.next` moves back by it,
+so a crafted record makes it loop until memory runs out; and a record's
+and a node's size is allocated before their bytes are read (012-06's
+corrupt-input tests, registered as 005-74; Java's writer never writes
+such sizes).
 
 ## 6.2 The top node
 
@@ -461,7 +483,7 @@ pointers); the newest, the *super root*, is where a lookup starts
 | 6 | 2 | `u16` | checksum | 6.1 | `toLongs` | `bytesToNode` |
 | 8 | 1 | `u8` | h | the number of skip pointers: the bit length of the ordinal (`TopNode.height`), 0 to 48 | `toLongs` (`node.pointersLength`) | `parse`: read as a signed byte, below 0 an SFE (005-21); not equal to the ordinal's bit length, an SFE |
 | 9 | 1 | zero | | zero | `toLongs` | not checked |
-| 10 | 6 | `u48` | ordinal | the top node's number in the chain: 0 for the first, then each new top node one more than the super root before it (`TopDs.newSuperRoot`: `superRoot.topNodeId + 1`, or `DbBuilder.secondTopOrdinal` for the second, 1 by default, a test setting) | `toLongs`: `((long) node.pointersLength) \| (node.topNodeId << (2 * 8))` | `parse`: `bytesToLongLE(buffer, firstOffset + 8) >>> 16`; above `TopNode.MAX_TOP_NODE_ID_VALUE` = 2^48 − 1 an SFE |
+| 10 | 6 | `u48` | ordinal | the top node's number in the chain: 0 for the first, then each new top node one more than the super root before it (`TopDs.newSuperRoot`: `superRoot.topNodeId + 1`, or `DbBuilder.secondTopOrdinal` for the second, 1 by default, a test setting) | `toLongs`: `((long) node.pointersLength) \| (node.topNodeId << (2 * 8))` | `parse`: `bytesToLongLE(buffer, firstOffset + 8) >>> 16`; its test "above `TopNode.MAX_TOP_NODE_ID_VALUE` = 2^48 − 1, an SFE" cannot fail, as 48 bits are read |
 | 16 | 8 | `i64` | id | the node's id (2.5); not the ordinal | `toLongs` (`node.getId()`) | read by `NodeStream.readNodeHeader` (`StoredTopNode.ID_OFFSET` = 16) and `parse` |
 | 24 | 8 | `i64` | root time | the time at which the root pointer's root became the root: the time of the transaction that made this top node | `toLongs` (`node.rootTime`) | `parse`: outside 0 to 2^56 − 1 an SFE |
 | 32 | 8 | `i64` | root pointer | the reference (6.5) to the root key node | `toLongs` (`node.getSerializedRef(0)`) | `parse`: below 0 an SFE |
@@ -493,11 +515,11 @@ reference. Layout, 32 + 16·n bytes (`StoredKeyNode`):
 | 6 | 2 | `u16` | checksum | 6.1 | `toLongs` | `bytesToNode` |
 | 8 | 8 | `i64` | `prevPos` | the position of the version this one replaces: the node's position before this write (`prepareToSerialize`: `prevPos[i] = node.spos` before the new position is set); the node's vpos if it was never written; 0 in the creation's root (its id, 8.2) | `toLongs` | `parse`: not a position and not −1 (`Spos.isValidOrNull`) is an SFE. The start uses it to map positions to ids (`DbStarter.createMaps`, `posToId`) |
 | 16 | 1 | `u8` | leaf | 1 for a segment leaf, 0 for an inner node | `toLongs` | `parse`: neither 0 nor 1 is an SFE |
-| 17 | 2 | `i16` | n | the number of klongs, 1 to the maximum node size (6.3.1, at its end); Java writes `sz << (1 * 8)`, an `int` shift, so bytes 17–19 hold `n` | `toLongs` | `parse`: read as a signed short; below 0 an SFE |
+| 17 | 2 | `i16` | n | the number of klongs, 1 to the maximum node size (6.3.1, at its end); Java writes `sz << (1 * 8)`, an `int` shift, so bytes 17–19 hold `n` | `toLongs` | `parse`: read as a signed short; below 0 an SFE. A start refuses 0 in the records it reads (`DbStarter.validateTransactions`, `KeyNode.validateStreamNode`: "Key node with size 0", an SFE) |
 | 19 | 5 | zero | reserved | zero | `toLongs` | not checked |
 | 24 | 8 | `i64` | id | 2.5 | `toLongs` | `readNodeHeader` (`ID_OFFSET` = 24), `parse` |
-| 32 + 8·i | 8 | `i64` | klong i | i from 0 to n − 1 (6.3.1) | `toLongs` (`node.klongs`) | not checked |
-| 32 + 8·n + 8·i | 8 | `i64` | ref i | the reference of klong i (6.5): for a key klong, its child's; −1 for a time klong and a delete bitmap | `toLongs` (`node.getSerializedRef(i)`) | not checked |
+| 32 + 8·i | 8 | `i64` | klong i | i from 0 to n − 1 (6.3.1) | `toLongs` (`node.klongs`) | not checked by `parse`; `validateStreamNode`'s checks of the time klongs (`checkLastTimeIndex`, `checkIncreasingTime`) cannot fail on parsed bytes (the second never updates its `time`) |
+| 32 + 8·n + 8·i | 8 | `i64` | ref i | the reference of klong i (6.5): for a key klong, its child's; −1 for a time klong and a delete bitmap | `toLongs` (`node.getSerializedRef(i)`) | not checked by `parse`. A start checks the records it reads: a key klong's ref must be 0 or more, or −1 if its time is after the startup time (`validateStreamNode`); and in each node's newest version in the section, after Rule R and the cut back to the startup time, no key klong's ref may be −1 or a vpos (`DbStarter.checkStreamPointers`); both SFEs |
 
 ### 6.3.1 Klongs
 
@@ -524,8 +546,12 @@ delete in the same node by the same transaction changes that
 transaction's bitmap in place, when it is the node's last klong. A
 reader at time t stops at the first time klong after t. The first klong
 of a node is a time klong. In a segment leaf a key klong of
-length 0 to 6 names a value or delete node (the key's last segment), one
-of length 7 the root of the next segment's B-tree; in an inner node, a key
+length 0 to 6 names a value node (the key's last segment), never a delete
+node: a delete is a delete bitmap in the leaf, and its delete node is
+written in its record only, for the rerun at a start (8.14), and named
+by no reference (`Dag.setValue`; in the review's check of the scans,
+15.2, finding 2, 44,604 such klongs name value nodes, none a delete
+node). One of length 7 names the root of the next segment's B-tree; in an inner node, a key
 klong names a child, the first with the empty key (`klong 0x4000000000000000`
 in the scans). The bound: at most the maximum node size of klongs
 (`Dag`'s splits; the scans of `n8` and `n30` have n up to 8 and 30).
@@ -665,8 +691,10 @@ section 10, checks it):
   meta blocks, section 3).
 * **The settings not stored**, which a writer must be given the same at
   every open: the retain duration (`DbBuilder.retainDuration`,
-  `Db.setRetainDuration`; `Long.MAX_VALUE`, forever, by default, which
-  turns reclaim off), reclaim's internal fraction (0.25;
+  `Db.setRetainDuration`; `Long.MAX_VALUE`, forever, by default, with
+  which reclaim starts no iteration and makes no cut, but an iteration in
+  progress, stored in the table by a run with a finite duration, goes on
+  with its steps to its end: 8.13), reclaim's internal fraction (0.25;
   `Db.setReclaimInternalFraction`) and step reserve (4 MiB,
   `Reclaim.DEFAULT_STEP_RESERVE`, or the system property `stepreserve`;
   `DbBuilder.reclaimStepReserve`), and two test settings: the second top
@@ -779,7 +807,27 @@ stream, `FileStream` writes `bergdb.lock` (9.5), and the Pub API's
    ordinals (`LAST_TOP_ORDINAL`) and `Db.checkDirtyNodes` (its index nodes
    at most 15/16 of the record limit, 005-31); `ExecuteData.begin` (8.4);
    `stmCheckConflicts`, the read set against `KeyModSet` (a
-   `RerunException`); `transactionBegin`, the time (8.1).
+   `RerunException`); `transactionBegin`, the time (8.1). Between
+   `checkSize` and the lock, `warmup` reads the pairs' keys (no byte).
+   A refused transaction writes no record, so these checks decide which
+   records exist, and a port computes them exactly as Java: `valueLimit()`
+   is `recordLimit / 8 * 7` (integer division first) against the sum of
+   the pairs' `StoredValueNode.getByteSizeLong`; `dirtyLimit()` is
+   `recordLimit - recordLimit / 16`; `checkDirtyNodes` first passes a
+   transaction whose sum of `3 * height * k + 3` over its pairs (k the
+   key's segments, `height = 2 + 63 - Long.numberOfLeadingZeros(max(1,
+   streamLength / 48))`) is at most `(dirtyLimit - 2 * (40 + 16 * 64 +
+   16)) / (32 + 16 * (maxNodeSize + 1) + 16)`, and else refuses it when
+   that sum for the pairs with a key transformation plus
+   `Dag.dirtyNodeBound` of the other pairs' keys (a sum, 10.2) exceeds
+   the same bound. They matter only near the record limit, so in practice
+   with a lowered test limit. The STM's refusal is decided the same way,
+   by `KeyModSet` (`Keys.hash` of the keys; 4 bins of 32,000 (time, hash)
+   pairs, the oldest bin dropped when a fifth is needed; the writes'
+   hashes are added after the go point, `stmRecordKeys`): a key read is
+   in conflict when a bin holds its hash with a time after the read time,
+   and a read time before the oldest bin's first time is refused as too
+   old (`KeyModSet.modifiedAfter`); at a start it is empty (C4).
 2. **The changes** (`putKvs`): for a reclaim step, first the touch of its
    key range (8.13); then each key-value pair in the transaction's order
    (8.5): `Dag.putKv`, which makes the value or delete node and changes and
@@ -851,6 +899,28 @@ reclaim's row, 8.13) is transformed when it is applied, and the node holds
 the result. Each node is added to the record's `TransNodes` when it is
 made, so the value nodes are in the order of the pairs. Its stored key is
 the pair's key; its offset is set by the serializer (6.4).
+
+**The key nodes' contents** (added by the review, 15.2, finding 11).
+Which klongs a key node holds, and when and how it splits, is decided by
+the Dag, and every klong and ref is in the record that writes the node;
+this document does not describe it, and a port follows the code exactly:
+a klong is appended, with a time klong first if the node has none of the
+transaction's time (`KeyNode.addKlong`), while `size + 1 < maxNodeSize`
+(`Dag.setValue`, `setNode`) or `size + n + 1 <= maxNodeSize` for n klongs
+(`Dag.appendKlongs`); else the node is full (`handleFullNode`): its last
+version (`KeyNode.lastVersion`: a time klong, then the live key klongs,
+deletes applied, one per compare value, in increasing compare value) is
+split in two when it has more than `maxNodeSize / 2` klongs (a space
+split, `KeyNode.firstAndSecond`: the first `(size - 1) / 2 + 1`, time
+klong included, and the rest), else it replaces the node (a time split,
+whose new klongs replace one of the same compare value and time,
+`replaceKlong`, or are appended); a node that the transaction made itself
+is changed in place instead (`timeSplitInPlace`, `spaceSplitInPlace`); a
+replaced node is cut back to before the transaction
+(`toPreviousState(tTime - 1)`); a delete sets bits in a delete bitmap
+(6.3.1). Each of these steps reports to the
+`NodeChangeListener` in its own order, which gives the ids (8.4) and the
+marks (8.6).
 
 ## 8.6 The got-dirty list
 
@@ -1024,7 +1094,13 @@ reference is raised to the node's newest version in the startup section
 if that is newer (Rule R, `Spos.newer`). Then the record rule (6.5)
 gives each reference written. A port reproduces the record rule's result:
 for every pointer, the latest version of the node at the moment the record
-is serialized, or its vpos if it was never written.
+is serialized, or its vpos if it was never written. It computes it as Java
+does, from what the pointer holds (Rule R's map of the last start's
+section, the canonical object, `writtenPos`), not from a table of every
+node's latest position, which would grow with the database; that the two
+agree is the model's claim, checked by Java's audit (INV-SLOT) only for
+the nodes its oracle knows, and otherwise by the byte tests (doubt D1;
+the review, 15.2, finding 19).
 
 ## 8.9 The startup position
 
@@ -1079,14 +1155,24 @@ calls put it again.
 
 ## 8.13 Reclaim's records and its table
 
-Reclaim (`Reclaim`, with a retain duration other than forever) writes
-internal transactions, after a user transaction's record and under the
-same lock (`Reclaim.transactionCompleted`, called with the user
-transaction `t`; it returns at once for an internal one). With
-`streamSize = t.nextPos` (the position after `t`'s record):
+Reclaim (`Reclaim`) writes internal transactions, after a user
+transaction's record and under the same lock
+(`Reclaim.transactionCompleted`, called with the user transaction `t`,
+whatever the retain duration; it returns at once for an internal one).
+A retain duration of forever (`Long.MAX_VALUE`, the default) stops only
+the new iterations (step 1) and the cuts (step 4, where
+`t.tt - retainDuration > tEnd` never holds): an iteration in progress,
+the table's last row not done, as a run with a finite duration stored
+it, goes on with its steps (step 2) after a restart with the default or
+`setRetainDuration(Long.MAX_VALUE)`, and the table is stored at its end
+and when it gets safe (step 3); the review's probe showed it (15.2,
+finding 1). With `streamSize = t.nextPos` (the position after `t`'s
+record):
 
 1. **A new iteration** when none is in progress (the last row of the
-   table is done, or there is none), and
+   table is done, or there is none), the retain duration is not
+   `Long.MAX_VALUE` (tested first, so that the product below is not
+   computed then), and
    `streamSize > lastPStart() + 2L * db.getStartupDistance()` and
    `t.tt - lastTStart() >= (long) (ITERATION_SPACING * retainDuration)`
    (`ITERATION_SPACING` = 0.25; `lastPStart()` 0 and `lastTStart()`
@@ -1102,7 +1188,10 @@ transaction `t`; it returns at once for an internal one). With
      `key.length * 8 + value.length + 100` per pair and stops after the pair
      that takes the count above the size, or when the index nodes it has
      followed exceed `max(1, stepReserve / (80 + 48 * maxNodeSize))`, or at
-     the end (`eod`);
+     the end (`eod`). `eod` is set only when the scan runs out of pairs
+     (`Dag.getMany` calls `eod()` only then), not when the count stops it
+     at the last pair: the next step then scans nothing, touches to the
+     end, and ends the iteration;
    * for each pair scanned, its value now (the first read at the latest time
      fixes the step's lookup time; the others read at it): if it exists and
      its record is before `pCut` (`gd.tpos != Spos.NULL && gd.tpos < it.pCut`),
@@ -1165,10 +1254,16 @@ first step. `pEnd` and `pSafe` are −1 until set; `tEnd` 0. The row of the
 iteration in progress, under `/#i/dreclaim/-current.txt`, is one row's text
 without the separator.
 
-At a start, `Reclaim.initFromDb` reads both keys back and makes a cut that
-the table marks but the files do not show yet; it writes nothing. The
-retain duration, the internal fraction and the step reserve are not
-stored (8.1).
+At a start, `Reclaim.initFromDb` reads both keys back (at
+`Long.MAX_VALUE`): the table's rows, and the current row, which replaces
+the table's row with the same `pStart` when neither is done (so the
+iteration in progress resumes after its last step); the first available
+position and time are the `pCut` and `tEnd` of the cut row with the
+largest `pStart`, or 0 and 0. It makes a cut that the table marks but the
+files do not show yet, and writes nothing. The retain duration, the
+internal fraction and the step reserve are not stored (8.1); a cut that
+was pending (decided, not yet made) is made here, so nothing else of it
+needs to be kept.
 
 ## 8.14 What a start rebuilds
 
@@ -1195,8 +1290,10 @@ two transactions leaves the bytes as they are (P2;
 Not rebuilt: `DbClock`'s `lastReadTime` (C3), the STM's `KeyModSet` (C4),
 and `FileStream`'s file size, which comes from the files (C1, 9.3).
 
-A start appends nothing to the stream but recovery's fill after a crash
-(4.4), and a close nothing at all: it writes and forces what the buffer
+A start appends nothing to the stream but the creation on an empty one
+(8.2) and recovery's fill after a crash (4.4); a physical cut that the
+table marks (`initFromDb`) deletes files and appends nothing. A close
+appends nothing at all: it writes and forces what the buffer
 holds. Reads, syncs and the settings that are not stored append nothing
 either; `setStartupDistance` appends its dummy (8.12).
 
@@ -1233,7 +1330,10 @@ filled to its capacity before the next is made. The capacity is chosen by
   is not the largest (with `setMax2G`, a test setting, the index of 2·10^9)
   and `L % FILE_SIZES[c + 1] == 0`; else it stays `c`;
 * if `found` is smaller than `c`: it becomes `found` at once;
-* with `max2G`, an index above that of 2·10^9 becomes it.
+* with `max2G`, when the current index `c` (not the result) is above that
+  of 2·10^9, the result is that index; since the rule tests `c`, a jump
+  up from below can still pass it once (`setMax2G` has no caller outside
+  `FileStream`'s tests).
 
 An empty directory gets `00000000000000.bergdb` with index 0. Opening an
 existing directory (`determineFileSizeIndexFromFiles`) sets the index to
@@ -1286,11 +1386,19 @@ reads the `.bergdb` files sorted by name (`String.compareTo`) and throws
 * a name, without `.bergdb`, is not a number: `stringToIndex` strips
   leading zeros and parses the rest as a `long`; it must be from 0 to
   `Long.MAX_VALUE / 100,000`. Java writes 14 digits, but accepts any such
-  number ("Bad name of bergdb file");
+  number ("Bad name of bergdb file"), and `Long.parseLong` takes a
+  leading `+` and any Unicode decimal digits: `+6.bergdb`, `0000+6.bergdb`
+  and `٦.bergdb` are file 6 (found by 012-06; checked with
+  `Long.parseLong`);
 * a file's first position is not where the files before it end ("are not
   in a correct state");
 * a file other than the last has a length that is not a multiple of
   100,000 ("Bad size of file").
+
+`checkDbFiles` checks the files one by one in name order, each its name,
+then its first position (not for the first file), then its size (not
+for the last), so the first failing check in that order gives the
+message: a bad size of a file is refused before a gap after it.
 
 The stream format's own checks (sections 3 to 6) come at the start. The
 directory is created if missing. `bergdb.lock` is created if missing, with
@@ -1459,7 +1567,12 @@ Not proved, and not shown false by any probe:
   physical first position, which depends on when the cut was made (C2).
   Argued to give the same reference either way (such pointers name
   replaced nodes, neither pinned nor newer in the section); the four runs
-  of `CutLayoutProbe` and `StreamDigest` agree from the decided cut.
+  of `CutLayoutProbe` and `StreamDigest` agree from the decided cut. It
+  matters more for C than for two Java runs: a C clone without threads
+  makes its physical cuts at its own points (C2), so its first position
+  differs from Java's after every cut, and its bytes equal Java's only if
+  D2 holds; 012-05's cross sets with reclaim test it, from the decided
+  cut (the review, 15.2, finding 13).
 * **D3.** `dirtyNodeBound` counts objects; it equals a count of nodes if
   there is one object per node during the call, which holds under the
   write lock.
@@ -1545,6 +1658,19 @@ format classes, against the code at the reference. The code wins.
 13. **Words.** The 2015 text and `RecoverableStream` call records
     "transactions"; this document says records, and keeps "transaction"
     for what a record stores.
+14. **A key klong's first byte** (added by the review, 15.2, finding 18).
+    `Klong`'s comment: "First byte is stored in bits 6:3-7:2", bits 51 to
+    58; the code (`Klong.createKey`, `createCompareValue`) puts byte j at
+    bits 54 − 8j to 61 − 8j, the first at 6:6-7:5 (section 7). The
+    comment's "DATA, 56 bits at 0:6-7:5" is right.
+15. **Smaller comments** (the review, finding 18). `StoredKeyNode.toLongs`:
+    "6 zero bytes available" after the leaf flag and the size; there are
+    5, bytes 19 to 23 (its parser says 5). `Spos`: value nodes "can start
+    at any mod8 value"; since 2015-11-14 a value node's size is a multiple
+    of 4 (`StoredValueNode`), so it starts at a multiple of 4 (2.4).
+    `RecoverableStream.MIN_TRANS_SIZE`: "a 16-byte header and the last
+    byte"; the header is 32 bytes since format 5, and 17 stays the walk's
+    bound (4.3).
 
 
 # 12. The scanner's format
@@ -1585,7 +1711,7 @@ file holding a stream from position 0. Exit status 0 if no `error` line.
 The common node fields are `pos= off= size= type= format= sum= sumOk=`
 (6.1): `sum` the stored checksum in 4 hex digits (`u16`, byte 7 then byte
 6), `sumOk` whether it equals Fletcher-16 with bytes 6–7 as 0. Numbers are
-decimal; a pointer is printed `decimal/0xhex`, except −1, printed `-1`.
+decimal; a pointer is printed `decimal/0xhex`, except −1, printed `-1`; the hex is `Long.toHexString`'s, lower case without leading zeros (`296/0x128`), and a negative pointer other than −1, which only a corrupt stream has, is printed as its signed decimal and the 16 hex digits of its two's complement (`-2/0xfffffffffffffffe`; `StreamScan.ptr`).
 Items come in the order of their first byte; a meta block inside a record
 comes after the item it falls in or after.
 
@@ -1921,3 +2047,307 @@ workload in two JVMs give the same scan (P2, as a check of the audit).
   StreamScan unchanged since `ff1627f` (in `main`). **Next**: the review,
   step 5, by a second agent at max effort (started by the conductor), on
   this file at the clone's HEAD.
+
+
+# 15. The review
+
+Step 5 of the plan (14.3): an independent review of this document
+against the Java code, field by field, at max effort. By Claude (Opus 5.5,
+Claude Code), the reviewing agent, a subagent of 012's conductor, which
+did not write the document. Started 2026-10-28 16:22, in the scratch clone
+`/Users/f/fl/bench/012/02-review/` at `1955718` (`java/` as at `fd8f513`,
+so as at the document's reference, `404d2ee`). Probes of the review are in
+`/Users/f/fl/bench/012/02-review-out/` (outside the repository).
+
+## 15.1 What was checked, and how
+
+* **The code, field by field**, at the clone's HEAD: `MetaBlock`,
+  `RecoverableStream` (append, read, recovery, the iterators,
+  `getSpos`, `getStartSpos`, `isIncompleteCreation`), `NodeStream`,
+  `StoredTrans` (header, serializer, parser, limits), the three
+  `Stored*Node`, `NodeChecksum`, `Spos`, `Klong`, `Keys`, `TopNode`,
+  `TopDs`, `KeyNode` (adds, splits, `lastVersion`, validation), `Dag`
+  (puts, deletes, splits), `Handle.serializedRef`, `NodeCollection`
+  (`resolvePointers`, the maintenance follower), `TransSeq`, `TransNodes`,
+  `DbHelper`, `Db` (constructor, start, creation, `execute`, the checks,
+  `store`, marking, `putKvs`, `touchRange`, `setStartupDistance`),
+  `DbClock`, `DbStarter`, `Trans`, `KeyModSet`, `Reclaim` (all of
+  `transactionCompleted`, `step`, the table, the cut, `initFromDb`),
+  `StringMap`, `DbBuilder`, `DatabaseId`, `DbConstants`, `SystemClock`,
+  `FileStream` (names, sizes, open, cut, lock) and `StreamScan`; the
+  2015 text against section 11.
+* **The bytes**: the 26 streams of `MakeStreams`, made again in
+  `/Users/f/fl/bench/012/02-review-out/streams/` (3 s) and scanned with
+  `StreamScan` (all exit 0); the creation's 264 bytes by `xxd` against
+  8.2's dump (equal); the key segments of section 7 recomputed
+  (`keys_check.py`, equal); the order of the row's names of 8.13 from
+  `String.hashCode` and `HashMap`'s buckets (`hashorder.py`, equal); a
+  stored table read from the stream (`valueat.py`: 11 lines a row in
+  that order, `----next----` after each).
+* **An independent replay** (`replay.py`, written without the author's
+  `check_scan.py`) of the take with its doubles, dither and deadline
+  (8.7), the record's index nodes and their order (top nodes first, each
+  in the order the take met them, once), `prevPos` (6.3), the got-dirty
+  positions (8.6), the value ids (8.4: odd, after the record, increasing),
+  `topPos` (8.10) and the meta blocks' `lastTrans` (3), from the scans
+  alone: 0 differences on `MakeStreams`' streams (5,928 records, 27,558
+  index nodes) and on 012-05's quick set (`cross.sh quick KEEP=1`, CROSS
+  quick OK, 20 s; 6,192 records, 37,258 index nodes) and on the full
+  set's 278 scans that the author kept (`02-stream-format`'s
+  `c/build/cross/full/a/*/scan-by-a.txt`, read only: 299,401 records,
+  1,979,848 index nodes in the record's order, 1,851,704 `prevPos`,
+  2,030,278 got-dirty positions, 801,057 value ids, 299,401 `topPos`,
+  4,898 `lastTrans`), but for one artefact of the script (a torn record
+  of `cut-200131`, which it does not count as the block's writer). Two
+  more runs of `MakeStreams`, the author's at 15:00 and this one, give
+  the same bytes in all 26 directories (`diff -rq`, `bergdb.lock` left
+  out). `scancheck.py`, on `MakeStreams`' streams, the quick set and the
+  full set (1,880,135 key nodes): every key node's first klong is a time
+  klong, time klongs and bitmaps have the ref −1, no time klong has bits
+  56 to 61, no key klong bits 0 to 2.
+* **Reclaim's table** (`reclaimcheck.py`, from the scans and the
+  directories' bytes) on `MakeStreams`' `reclaim`, the probe's stream and
+  the quick set's three workloads with reclaim: 38 stored tables, each row
+  11 lines in 8.13's order, and each table explained by 8.13's steps: 10
+  new iterations (`pStart` the table record's position, `tStart` the user
+  record's time, `pCut` the row before's `pStart`, the initial fields),
+  10 ends (`pEnd` and `tEnd` the step's record), 10 safe positions (`pSafe`
+  the position after the last user record), 6 cuts; 177 steps' rows; the
+  first table of two cut streams not classified (no table before it in
+  the scan).
+* **Probes** (`probes/src/bergdb/core/ReviewProbe.java`, run with the
+  probe classes first on the class path): `retain-forever` (finding 1),
+  `short` (finding 21).
+  `files_check.py`: 9.2's rule gives the names and sizes of the files of
+  six `MakeStreams` directories without restarts (`deadline`: 37 files,
+  20 of 200,000, 16 of 1,000,000 from 4 MB, and from 20 MB one of a
+  capacity of 5,000,000, holding 2,719,920), all equal.
+
+## 15.2 Findings
+
+Severity: **error**, a C port from the document would be wrong;
+**omission**, a writer (or reader) would lack something it needs;
+**minor**, wording or a reference. Fixed in the document unless said.
+
+1. **Error, fixed (8.1, 8.13).** "`Long.MAX_VALUE`, forever, by default,
+   which turns reclaim off" and "Reclaim (with a retain duration other
+   than forever) writes internal transactions". `Reclaim.transactionCompleted`
+   (`Reclaim.java:322-353`) tests the retain duration only for a new
+   iteration (`:331`) and, through `t.tt - tRetain > row.tEnd`, for a cut
+   (`:670`); a step needs only an iteration in progress (`:342-348`), and
+   `markSafePositions` none (`:576-590`). So a database whose table has a
+   row not done goes on with its steps, and stores the table at the row's
+   end and when it gets safe, after a restart with the default retain
+   duration or after `setRetainDuration(Long.MAX_VALUE)`. Probe
+   `ReviewProbe retain-forever`: retain 2 s until a row is in progress
+   (80 transactions, stream 72,272), restart with forever, 400 more
+   transactions: the iteration completed, and the scan shows a step's
+   record (`-current.txt`, at 96,656) and two of the table (104,440 and
+   112,584) after the restart. A C port that skips reclaim when the
+   duration is forever writes other bytes.
+2. **Error, fixed (6.3.1).** "In a segment leaf a key klong of length 0
+   to 6 names a value or delete node". It names a value node only: a
+   delete is a delete bitmap (`Dag.appendDeleteKlong`), and the delete
+   node is made only for the listener, so it is written in its record
+   (for the rerun) and named by no klong (`Dag.setValue`,
+   `Dag.java:678-685`). Checked with `scancheck.py` on the 26 streams of
+   `MakeStreams` (44,604 such klongs name value nodes, none a delete node;
+   5,865 name positions not in the scans, in the cut stream `reclaim`)
+   and on the full set's 278 scans (3,577,250 name value nodes, none a
+   delete node; 491,630 positions outside the scans, in gaps and cut
+   streams).
+3. **Minor, fixed (2.5).** "The one exception is the creation's root key
+   node, whose id is 0": the creation's top node, id 1, is the other
+   exception to "the odd numbers from its record's position + 1 up" (it
+   would be 129).
+4. **Omission for a reader, fixed (6.3, the columns "Checked on reading
+   by" of n, klong and ref).** A start validates every node of the records
+   it reads (`DbStarter.validateTransactions`, `validateNode`,
+   `KeyNode.validateStreamNode`, `KeyNode.java:1619-1662`): a key node with
+   n = 0 is an SFE, and a key klong's ref must be 0 or more (−1 is let
+   through after the startup time); and `DbStarter.checkStreamPointers`
+   (`:682-723`) refuses −1 or a vpos in the newest versions after Rule R
+   and the cut back. The table said "not checked". Not bytes, but 012-06
+   and 012-14 refuse what Java refuses. `validateStreamNode`'s
+   `checkIncreasingTime` (`KeyNode.java:1569-1583`) never updates its
+   `time`, so it checks nothing; its `checkLastTimeIndex` cannot fail on
+   parsed bytes either: a slip in Java for the conductor, not changed.
+5. **Minor, fixed (6.2, ordinal).** "above `MAX_TOP_NODE_ID_VALUE` an
+   SFE": the test (`StoredTopNode.java:106`) cannot fail, as `>>> 16` of
+   a long leaves 48 bits.
+6. **Minor, fixed (5, `startupPos`).** "`Db.getStartupPosFromLastTransaction`
+   asserts `>= 0` and walks from it": it asserts it for each record it
+   walks from the meta block's record; the walk from the startup position
+   is `Db.readTransactions` (4.3).
+7. **Minor, fixed (2.3).** `getStartSpos` throws for `pos < 0` too
+   (`RecoverableStream.java:349`).
+8. **Minor, fixed (5, size).** "to `recordLimit` = 2^31 − 9": the size is
+   a multiple of 8, so at most 2^31 − 16; `prepareToSerialize` compares
+   the aligned size with the limit (`StoredTrans.java:649-655`).
+9. **Omission, fixed (8.3, step 1).** The refusals before the go point
+   decide which records exist, but their arithmetic was given as "7/8"
+   and "15/16" of the limit: `valueLimit()` is `recordLimit / 8 * 7`
+   (`StoredTrans.java:70-72`), not `recordLimit * 7 / 8`, and
+   `checkDirtyNodes` (`Db.java:2059-2100`) has a cheap bound from the
+   stream's length before `Dag.dirtyNodeBound`. Added, with `warmup`,
+   and the rule of `KeyModSet`, which decides the STM's refusals the same
+   way (`KeyModSet.java:51-96`).
+10. **Minor, fixed (9.2).** "with `max2G`, an index above that of 2·10^9
+    becomes it": `determineFileSizeIndex` tests the current index, not the
+    result (`FileStream.java:964-966`), so one jump past 2·10^9 is
+    possible; `setMax2G` is called only by `FileStream`'s tests.
+11. **Omission, fixed (8.5, a paragraph "The key nodes' contents").**
+    Section 8 says which index nodes a record holds and every number in
+    the header and the lists, but not that the klongs and refs of each key
+    node, and its splits, come from the Dag's algorithm, which it leaves
+    to the port without saying so: the capacity tests (`size + 1 <
+    maxNodeSize`, `size + n + 1 > maxNodeSize`), `KeyNode.lastVersion`
+    (sorted, one live klong per compare value), the split rule (`last.size
+    > maxNodeSize / 2`), `firstAndSecond`'s split point, the in-place
+    changes of a node made by the same transaction, `replaceKlong`, and
+    the cut back of a replaced node (`Dag.java:616-1200`,
+    `KeyNode.java:801-1270`). Added as a pointer, not a description.
+12. **Omission, fixed (8.13, step 2).** "or at the end (`eod`)":
+    `Dag.getMany` calls `eod()` only when the scan runs out of pairs
+    (`Dag.java:569-596`), not after `ADD_AND_STOP`; so a step whose count
+    stops at the last pair is not the last: the next step scans nothing,
+    touches to the end and ends the iteration, one record more. A writer
+    that sets the end when the last key is reached writes one record
+    fewer.
+13. **Minor, a sentence added (10.4, D2).** D2, the pointers below the
+    physical first position, decides more for C than for two Java runs:
+    C cuts at its own points (C2), so its first position differs from
+    Java's after every cut. Left as a doubt; 012-05's sets with reclaim
+    test it from the decided cut.
+14. **Minor, fixed (8.14).** "A start appends nothing to the stream but
+    recovery's fill": also the creation, on an empty stream; and a start
+    may make a physical cut (`initFromDb`), which deletes files only.
+15. **Minor, fixed (4.4; from 012-06, through the conductor).** With all
+    four size bytes of a torn record present, a size of 5 to 16, which
+    only a corrupt size field gives, passes recovery (5 left whole, 6 to
+    16 filled) and the start's walk refuses it (below 17). Checked in
+    `fixLastTransactionIfNeeded` and `transHeaderFixBytes`
+    (`RecoverableStream.java:229-302`): a torn size of 1 to 3 bytes is
+    completed to 17 or more.
+16. **Minor, fixed (9.5 and 6.1; from 012-06, through the conductor).**
+    `stringToIndex` parses with `Long.parseLong`, which takes a leading
+    `+` and Unicode decimal digits (checked with a one-line program:
+    `+6`, `٦` and `６` give 6), and `checkDbFiles` checks file by file in
+    name order (name, first position, size), so the first failing check
+    gives the message (`FileStream.java:736-784`); and `StoredTrans.Parser`
+    refuses no negative node size (005-74), said in 6.1. 012-06's third
+    point, the ordinal test that cannot fail, is finding 5.
+17. **Minor, fixed (12).** "a pointer is printed `decimal/0xhex`": the
+    hex is `Long.toHexString`'s (no leading zeros), and a negative
+    pointer other than −1 prints as its two's complement
+    (`StreamScan.ptr`); only a corrupt stream has one, but C's scanner
+    prints the same text for the planted copies too.
+18. **Minor, fixed (11, items 14 and 15).** Section 11 lists the
+    differences of the format classes' comments from the code, but not
+    `Klong`'s "First byte is stored in bits 6:3-7:2" (`Klong.java:36-38`;
+    the code: bits 54 to 61, `Klong.java:150-164`), nor three smaller
+    ones (`StoredKeyNode.java:66`, `Spos.java:17-19`,
+    `RecoverableStream.java:64-69`).
+19. **Minor, a sentence added (8.8).** "A port reproduces the record
+    rule's result: the latest version": true of the model; Java gets it
+    from what each pointer holds (Rule R's map of the last start's
+    section, the canonical object, `writtenPos`), and its audit checks the
+    equivalence only for the pointees its oracle knows (`Audit`'s INV-SLOT:
+    "a pointee written before the startup section of the last startup is
+    not known to it and not checked"). The sentence now says that a port
+    computes it the same way; a table of every node's latest position would
+    grow with the database. A matter of design for 012-07 and 012-09, so
+    only noted.
+20. **Omission, fixed (8.13, "At a start").** "`Reclaim.initFromDb`
+    reads both keys back": how it combines them decides where the
+    iteration in progress resumes: the current row replaces the table's
+    row with the same `pStart` when neither is done, and the first
+    available position and time come from the cut row with the largest
+    `pStart` (`Reclaim.java:600-647`).
+21. **Minor, fixed (4.5, last sentence).** "A stream of fewer than 128
+    bytes that is not an incomplete creation is refused by
+    `NodeStream.recover`": `Db.startInner` calls `refuseOtherNodeSize`
+    first (`Db.java:678-680`), whose read of the block at 0 refuses such a
+    stream, so `NodeStream.recover`'s check (`NodeStream.java:65-75`) is
+    not reached. Probe `ReviewProbe short`: 3 bytes, `StreamIoException`
+    ("Cannot read 6 bytes at position 0"); 60 bytes not "berg",
+    `BadCryptoKey`; "berg" with version 1, `VersioningStreamException`;
+    nothing written in any. It matters for the error that C's start gives
+    (012-03's error enum, 012-14).
+
+## 15.3 The audit and its findings C1 to C4
+
+The audit's list (10.2) was checked against a grep of the Core for hash
+collections and their iteration, sorts, doubles, clocks and threads; no
+use that reaches the bytes is missing or misjudged. The order of a row's
+names (`StringMap`), the take's doubles and the dither, and reclaim's two
+conversions are as 10.2 says. Finding 1 (reclaim with a retain duration of
+forever) is not a matter of determinism: Java's bytes are a function of
+the inputs either way, but a writer must know it.
+
+C1 to C4 hold, from the code:
+
+* **C1** (005-72, as related): `determineFileSizeIndexFromFiles`
+  (`FileStream.java:715-734`) gives the reopened last file a capacity
+  from the larger of the last two files' lengths, so a restart can change
+  the layout from there on; 9.2's rule gave the layout of the directories
+  without restarts exactly (15.1).
+* **C2** (005-72): `applyFileSizeChangeRules` (`:924-928`) sizes a new
+  file from `length − getFirstPos()`, and the first position moves when
+  `Reclaim.cutIfDurable` (`Reclaim.java:369-374`) makes the cut, at the
+  first user transaction at which `getDurableLength()` has reached the
+  decision's length: timing.
+* **C3** (005-71): `DbClock` starts `lastReadTime` at 0
+  (`DbClock.java:51-59`), and a start sets only `lastTransactionTime`
+  (`setLastTransTime`, `:159-162`).
+* **C4** (005-70): `Db`'s constructor makes a new `KeyModSet`
+  (`Db.java:232`), whose first bin has `firstTime` −1 and no entry
+  (`KeyModSet.java:115-126`); `modifiedAfter` (`:51-87`) then finds
+  neither a conflict nor "too old" for any read time.
+
+## 15.4 The result
+
+21 findings: 2 errors (1, 2), 5 omissions (4, 9, 11, 12, 20), 14 minor. All
+are fixed in the document; 13 and 19 are matters of judgement, noted with
+a sentence and left as they were in substance. The errors: reclaim goes on
+with an iteration in progress when the retain duration is forever (8.1,
+8.13), and a leaf's key klong never names a delete node (6.3.1). Nothing
+in sections 3 to 6 was wrong in its bytes; the tables lacked some of the
+start's checks (finding 4). The take (8.7), the record's index nodes and
+their order, the got-dirty positions, `prevPos`, `topPos`, `lastTrans`,
+the table's text and the files' sizes were replayed independently from the
+scans and agree with the document.
+
+## 15.5 Progress
+
+* 16:22: started; read 012-01 (sections 1 to 3, 6.2) and this document in
+  full. Read so far against it: `MetaBlock`, `RecoverableStream`,
+  `NodeStream`, `StoredTrans`, `StoredTopNode`, `StoredKeyNode`,
+  `StoredValueNode`, `NodeChecksum`, `Spos`, `TransSeq`, `TransNodes`,
+  `DbHelper.handleStillDirtyNodes`, `TopDs`, `TopNode`, `DatabaseId`,
+  `DbBuilder`, and `Db` (constructor, `setStartupDistance`, the start,
+  the creation, marking, `execute`, `store`, `putKvs`, `touchRange`).
+* 16:43: findings 1 to 10 written and fixed in the document (committed).
+  Then `Reclaim`, `DbStarter`, `Dag`, `KeyNode`, `FileStream`,
+  `StreamScan` and the 2015 text read; the replay, the scans' checks and
+  the probe `retain-forever` run (15.1).
+* 16:48 to 17:00: findings 11 to 19; 012-06's three points, sent by the
+  conductor at 16:50, checked against the code and added (findings 5,
+  15, 16); 15.3 (C1 to C4) and 15.4 written. All committed.
+* 17:00: the replay on the author's kept full set (278 workloads) found
+  33 differences in `topPos` in one cut stream, `gen-18`: an artefact of
+  the script, which forgot the newest top node written before its start
+  in a cut stream; fixed (the script), 0 left there; the full set run
+  again: 0 differences (15.1).
+* 17:01 to 17:05: findings 20 (how a start restores reclaim's rows) and
+  21 (a short stream is refused by the first read of a meta block; probe
+  `short`); the klong checks on the full set; the tables' cells checked;
+  the status line at the top updated. **Done**: every section read
+  against the code; nothing left open but the doubts of 10.4 (D2 and D1
+  are the ones that matter for C, findings 13 and 19) and Frans's
+  questions Q1 and Q2. Java slips seen, for the conductor to register if
+  wanted (not changed here): `KeyNode.checkIncreasingTime` never updates
+  its `time` (finding 4); `StoredTopNode.parse`'s ordinal test cannot
+  fail (finding 5); `NodeStream.recover`'s length check is unreachable
+  from a start (finding 21); `Klong`'s and three other comments differ
+  from the code (finding 18).
