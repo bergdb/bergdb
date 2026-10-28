@@ -34,7 +34,7 @@ import bergdb.common.StringUtil;
  *       or dead, of one at tt of T(i-1). The paths: the nodes in R(tt of T(i-1)) with a
  *       node below them, themselves included, that the transaction changed or that is
  *       not in R(tt).
- *   TREE, A6' and A-COPY are assumptions of the model (SIS/Evict.lean, EvictRunOK;
+ *   TREE, A6' and A-COPY are assumptions of the model (SIS/Phys.lean, EvictRunOK;
  *   bergdb 001-08, 5.5), which level2.sh requires (bergdb 005-04). A6, the
  *   stronger form that item 001's plan assumed (no such index node at all), is not
  *   assumed: its failures, adoptions below the old parent, are counted for information.

@@ -730,31 +730,45 @@ only the standard axioms. The definitions and statements are in
 in [011-11](../items/011-docs-archive/11-level2-alignment.md), section 13 (the physical
 layer, part 1), [001-08](../items/001-lean-model-levels-3-4/08-level4-alignment.md), section 5
 (eviction) and [001-07](../items/001-lean-model-levels-3-4/07-level3-alignment.md), sections 2 and 5
-(reclaim).
+(reclaim). Since bergdb item 009 BergDB evicts with handles
+([009-02](../items/009-handles/02-implementation-plan.md), section 4), and since
+bergdb 005-62 (2026-10-28) the model of eviction is that one only.
 
-15.1 Memory: objects, slots, the node table
--------------------------------------------
+15.1 Memory: objects, pointers, handles
+---------------------------------------
 
-The physical layer (`SIS/Phys.lean`, `SIS/Evict.lean`) is a memory of
-objects: each holds a node's history, either the node's whole history (the
-canonical object, at most one per node, the one in the node table) or a
-version read from the stream (a snapshot). An object has a slot per
-pointee; slot is the Lean word for what BergDB calls a pointer. A slot is a
-memory slot (a memory pointer, to another object) or a stream slot (a
-stream pointer, naming a record). Reads go through slots. Following a
-stream slot is a first touch: it loads the canonical object if there is
-one, else exactly the version the slot names after Rule R. The writer, the
-algorithm of 6.1 on this memory, makes every node it reaches canonical.
+The physical layer is a memory of objects: each holds a node's history,
+either the node's whole history (the canonical object, at most one per node)
+or a version read from the stream (a snapshot). An object has a pointer per
+pointee. Stage 1, lazy reading without eviction (`SIS/Phys.lean`), calls a
+pointer a slot: a memory slot (to another object) or a stream slot (naming a
+record); following a stream slot is a first touch, which takes the canonical
+object if there is one, in the node table, else the version the slot names
+after Rule R. The startup is stage 1's, whatever is evicted later.
 
-Eviction is two operations, at any time between transactions: unswizzle (a
-memory slot to an object that is not pinned and has been written becomes a
-stream slot naming that object's version, which is what the slot serialized
-before) and release (an object that no memory slot names leaves memory, and
-the node table if it is there). The pinned objects are the root's and the
-canonical objects of D. The physical writer writes from slots and the
-pinned set (`Mem.refOf`): a version names the latest version of each
-pointee (Option K of [011-05](../items/011-docs-archive/05-level4-plan.md)), with no table of
-all nodes.
+With eviction (`SIS/Handle.lean`), each node that is in memory, or that a
+pointer in memory names, has one live handle, in a table from node to
+handle; the handle holds the node's one object, or none. A pointer holds a
+reference (the record of the version it names) and a handle, or none until
+it is first followed. A follow takes the handle's object when it can serve
+the reference (canonical, or a snapshot at least as new: the fast path).
+Otherwise the slow path raises the reference after Rule R to the written
+position of the handle the pointer holds, takes the node's live handle, and
+loads the version at that reference if the handle's object cannot serve it.
+The writer, the algorithm of 6.1 on this memory, makes every node it reaches
+canonical.
+
+Eviction is one local operation, at any time between transactions: a live
+handle whose object is not pinned and has been written dies, keeps a
+canonical object's position as its written position, and its object leaves
+memory; no walk, and nothing about the pointers that hold the handle. The
+pinned objects are the root's and the canonical objects of D. The physical
+writer writes from the pointers and the pinned set (`HMem.refOf`, the record
+rule): a version names the latest version of each pointee (Option K of
+[011-05](../items/011-docs-archive/05-level4-plan.md)), with no table of all
+nodes. Before handles, the model had Java's earlier design: memory slots and
+stream slots, with eviction as unswizzle and release (`SIS/Evict.lean`, until
+bergdb 005-62).
 
 15.2 What is proved for it
 --------------------------
@@ -768,19 +782,24 @@ all nodes.
 * CC (`CC_canonical`): in a run with lazy restarts, every canonical object
   holds its node's whole history. T2-L (`T2_lazy`): such a run appends the
   records of the run without restarts.
-* T-CACHE (`TC_records`): with any cache schedule (reads, unswizzles,
-  releases), the physical writer appends exactly the model's records and
-  leaves the model's D, and three invariants hold: INV-CAN (at most one
-  canonical object per node, named by the node table), INV-SNAP (every other
-  object is exactly the version at its position) and INV-SLOT (what each
-  slot may name; 001-08, 5.3 and 5.4). T-READ (`TR_view`):
-  reads give P. T2-C (`T2_cache`, `TR_view_restarts`): with restarts too.
-  T-PIN (`TP_pins`): every object outside the pinned set may be evicted.
+* T-CACHE (`TC_handles`): with any reads and evictions between
+  transactions, the physical writer with handles appends exactly the model's
+  records and leaves the model's D, and the invariants hold: the table and
+  the handles, INV-CAN (at most one canonical object per node, its live
+  handle's), INV-SNAP (every other object is exactly the version at its
+  position), INV-SLOT (what each pointer's record is; 001-08, 5.3 and 5.4)
+  and those of the fast path. T-READ (`TR_handles`): reads give P. T2-C
+  (`T2_handles`, `TR_handles_restarts`): with restarts too. T-PIN
+  (`TP_handles`): every live handle whose object is not pinned may be
+  evicted. Rule 4 by position (`Rule4Pos_handles`, `RunPos_handles`): Java's
+  startup since bergdb 005-57 links what the model's rule 4 by node id links;
+  after a safe cut too, where it skips the pointers below the stream's first
+  position (`Rule4PosCut_handles`, `RunPosCut_handles`, bergdb 005-62).
   They assume three properties of BergDB's tree that Java runs meet: TREE
   (every reachable node but the root has exactly one current parent), A6'
   (no adoption, weakened: a node that x points to without it being x's live
   child is a data node, unreachable, or reachable from x through live
-  pointers) and A-COPY (a new pointer copies a slot only from a current
+  pointers) and A-COPY (a new pointer copies a pointer only from a current
   node).
 
 15.3 Reclaim
@@ -799,9 +818,10 @@ the top is after the cut. Then:
   index nodes not in D that are dirty or touched.
 * T8 (`T8_recoverCut`): startup from the cut stream gives the same lookups
   at every time from f on, and the same D.
-* T9 (`T9_readCut`): with eviction, reads in the running process from f on
-  give the same on the cut stream as on the whole stream.
-* T12 (`T12_restartCut`, and with eviction `T12_evictCut`): a run that
+* T9 (`T9_handles`): with eviction, reads through the handles in the
+  running process from f on give the same on the cut stream as on the whole
+  stream.
+* T12 (`T12_restartCut`, and with eviction `T12_handles`): a run that
   restarts from safe cut streams appends the records of the run without
   restarts.
 

@@ -58,7 +58,7 @@ by node id links (`rule4Pos_handles`), and the runs are the same
 
 Since bergdb 005-62 (2026-10-27) Level 3's reclaim theorems with eviction are
 stated over handles too (SIS/HandleReclaimTheorems.lean), so that the design
-before handles can be removed later: T9 over handles (`T9_handles`) is proved
+before handles could be removed: T9 over handles (`T9_handles`) is proved
 (`t9_handles`, SIS/Proof/HandleCutRun.lean): in a run with handles, after a
 safe cut, a read through the handles at a time from the first available time
 on gives the same on the cut stream as on the whole stream, and gives P. T12
@@ -67,6 +67,26 @@ restarts from cut streams, `runHandlesCut`) is proved too (`t12_handles`,
 SIS/Proof/HandleCutT12.lean): that run appends the records of the run without
 restarts, cut at the largest cut, with its D and lookups from the first
 available time on.
+
+Since bergdb 005-62 (2026-10-28) eviction is modeled with handles only: the
+model of eviction before handles (SIS/Evict.lean, with memory slots, stream
+slots, unswizzle and release) is gone, with its proofs and the theorems stated
+over it (`TC_records`, `TR_view`, `T2_cache`, `TR_view_restarts` and `TP_pins`
+of SIS/PhysTheorems.lean, `T9_readCut` and `T12_evictCut` of
+SIS/ReclaimTheorems.lean), each of which has its counterpart over handles. The
+assumptions of stage 2 (`EvictRunOK`) are now in SIS/Phys.lean, and the startup
+with handles is proved from the lazy startup's memory directly
+(SIS/Proof/HandleStart.lean).
+
+Since bergdb 005-62's question 2 (2026-10-28) the model also has Java's rule 4
+by position after a cut: `HMem.linkDPosFrom` is `HMem.linkDPos` with Java's skip
+of a stream pointer of a node of D below the stream's first position;
+`handleStartupPosFrom` and `runHandlesCutPos` are the startup and the run with
+cuts with it. Proved: after a safe cut, for every first position up to the cut,
+it links what rule 4 by node id links (`rule4PosCut_handles`): the pointers it
+skips name no node with a canonical object; so the run with cuts and rule 4 by
+position is `runHandlesCut` (`runPosCut_handles`), and T12 over handles holds
+for it; SIS/Proof/HandleCutSkip.lean, SIS/Proof/HandleCutPos.lean.
 
 
 Build and run
@@ -79,7 +99,6 @@ Needs elan (`brew install elan-init`). The toolchain version is in
     lake build              # checks every file, runs the #guard tests
     lake exe sistest 20 40  # random runs: 20 seeds, 40 transactions each (7 min)
     lake exe phystest 20 40 # the physical layer on random runs (9 min)
-    lake exe phystest 20 40 evict  # its eviction part only (2.5 min)
     lake exe reclaimtest 20 30     # reclaim: random runs with cuts (1 min)
 
 `lake build` checks every proof. To see that a theorem depends on nothing but
@@ -102,16 +121,9 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.CC_canonical
     #print axioms SIS.T2_lazy
     #print axioms SIS.T15_closed
-    #print axioms SIS.TC_records
-    #print axioms SIS.TR_view
-    #print axioms SIS.T2_cache
-    #print axioms SIS.TR_view_restarts
-    #print axioms SIS.TP_pins
     #print axioms SIS.T13_markTouch
     #print axioms SIS.T8_recoverCut
-    #print axioms SIS.T9_readCut
     #print axioms SIS.T12_restartCut
-    #print axioms SIS.T12_evictCut
     #print axioms SIS.T3_section
     #print axioms SIS.T3_restarts
     #print axioms SIS.T3_reads
@@ -128,6 +140,7 @@ their proofs are checked the same way, each printing
     import SIS.Proof.HandleLinkPos
     import SIS.Proof.HandleCutRun
     import SIS.Proof.HandleCutT12
+    import SIS.Proof.HandleCutPos
     #print axioms SIS.tc_handles
     #print axioms SIS.tr_handles
     #print axioms SIS.t2_handles
@@ -138,6 +151,8 @@ their proofs are checked the same way, each printing
     #print axioms SIS.runPos_handles
     #print axioms SIS.t9_handles
     #print axioms SIS.t12_handles
+    #print axioms SIS.rule4PosCut_handles
+    #print axioms SIS.runPosCut_handles
 
 The equalities of the checker's fast paths (Check/Fast.lean,
 Check/R4.lean) are checked the same way:
@@ -166,14 +181,13 @@ its section in sis-model.md.
 | SIS/Startup.lean | `newest` (R(s) to R(k)), Rule R (`follow`), reading the stream (`readFrom`), where reading starts (`topVersion`, `startVersion`; with a virtual root `readTops`, `topsRead`, `rootVersion`), P up to s (`baseStruct`), `rerun`, `startup` | 6.2 |
 | SIS/Assumptions.lean | Assumptions A2 to A5, the data node rules and the touch's (`SpecOK`, `StepOK`, `RunOK`), with a virtual root R1 to R4 (`VirtInit`, `VirtStep`, `topClosure`), `runRestarts` | 3.4 |
 | SIS/Theorems.lean | T1 (`T1_recovery`, `T1_crash`, `T1_nodes`), T2 (`T2_restart`), T13 (`T13_markExact`) | 9 |
-| SIS/Phys.lean | The physical layer, what Java holds in memory (bergdb item 001, WPs L1 and L3): objects (`Obj`), their slots (`Slot`), the memory with the node table (`Mem`); Java's first touch (`Mem.follow`: Rule R, the table, the version read, cut back in the section); reads (`Mem.read`); the lazy startup (`lazyStartup`); a version cut back to a time (`Version.cutTo`); the operations after startup (`Op`, `Mem.step`, admissible: `OpsOK`); the assumptions of the physical layer (`PhysStep`, `PhysRunOK`); the writer after a lazy startup (WP L4: its view through the physical layer, `Mem.view`; its transaction, `lazyTrans`, with the record of `stepWith`, `step` with its change given) and a run with lazy restarts (`runLazy`); the writer's paths reach the touched nodes too (`pathOf`, WP R3) | — (011-11, 13) |
-| SIS/Evict.lean | The physical layer, part 2, with eviction (bergdb item 001, WP E2; 001-08, section 5): the pinned objects (`Mem.pinned`), unswizzling (`Mem.unswizzle`) and release (`Mem.release`); the Level 4 loader (`Mem.follow4`: the canonical object, or exactly the version a slot names after Rule R) and reads through it (`Mem.read4`); the writer's path (`Mem.reachOnPath4`) and the change (`Mem.applyChange4`, `Mem.newSlot4`); startup with rule 4 (`evictStartup`, `Mem.linkD`); the physical writer (`Mem.refOf`, `Mem.writeNode`) and its transaction (`evictTrans`); cache schedules (`CacheOp`) and runs (`runEvict`); the assumptions of stage 2 (`EvictStep`: TREE, `treeAt`, and A6', `adoptAt`; A-COPY, `CopyStep`; `EvictRunOK`) | — (001-08, 5) |
-| SIS/Handle.lean | The physical layer with handles (bergdb item 009, phase 2, 2a; aligned with Java's step 3a; ../items/009-handles/02-implementation-plan.md, section 4): objects by address (`HObj`), pointers with a reference and a handle (`HPtr`), handles (`Handle`: node, object, written position, dead), the table from node to live handle (`HMem`); following a pointer (`HMem.followR`: the fast path's test, else the reference after Rule R raised to the held handle's written position and written back, `HMem.setRef`, the live handle, `HMem.resolve`, and the load, `HMem.load`; `HMem.follow`, with the writer's `HMem.promote`); reads (`HMem.read`); the writer's walk and change (`HMem.reachOnPath`, `HMem.newPtr`, `HMem.applyChange`); the record rule (`HMem.ptrRef`, `HMem.refOf`) and the physical writer (`HMem.writeNode`, with `resolvePointers`; `handleTrans`); eviction (`HMem.evictable`, `HMem.evict`); startup with rule 4 by handles (`handleStartup`, `Mem.toH`, `HMem.linkD`); rule 4 by position, Java's since bergdb 005-57 (`inPosToId` for Java's `posToId`, `HMem.byPos`, `HMem.linkDPos`, `handleStartupPos`); reads and evictions between transactions (`HCacheOp`) and runs (`runHandles`; with rule 4 by position, `runHandlesPos`). The file's header lists the choices where the plan is vague | — (../items/009-handles/02-implementation-plan.md, 4) |
+| SIS/Phys.lean | The physical layer, what Java holds in memory (bergdb item 001, WPs L1 and L3): objects (`Obj`), their slots (`Slot`), the memory with the node table (`Mem`); Java's first touch (`Mem.follow`: Rule R, the table, the version read, cut back in the section); reads (`Mem.read`); the lazy startup (`lazyStartup`); a version cut back to a time (`Version.cutTo`); the operations after startup (`Op`, `Mem.step`, admissible: `OpsOK`); the assumptions of the physical layer (`PhysStep`, `PhysRunOK`); the writer after a lazy startup (WP L4: its view through the physical layer, `Mem.view`; its transaction, `lazyTrans`, with the record of `stepWith`, `step` with its change given) and a run with lazy restarts (`runLazy`); the writer's paths reach the touched nodes too (`pathOf`, WP R3); the positions of the startup section's canonical objects, as Java's startup sets them (`Mem.sectionPos`); the assumptions of stage 2, eviction (bergdb item 001, WP E2; 001-08, section 4: `EvictStep`, TREE, `treeAt`, and A6', `adoptAt`; A-COPY, `CopyStep`; `EvictRunOK`), in Evict.lean until bergdb 005-62 | — (011-11, 13; 001-08, 4) |
+| SIS/Handle.lean | The physical layer with handles (bergdb item 009, phase 2, 2a; aligned with Java's step 3a; ../items/009-handles/02-implementation-plan.md, section 4): objects by address (`HObj`), pointers with a reference and a handle (`HPtr`), handles (`Handle`: node, object, written position, dead), the table from node to live handle (`HMem`); following a pointer (`HMem.followR`: the fast path's test, else the reference after Rule R raised to the held handle's written position and written back, `HMem.setRef`, the live handle, `HMem.resolve`, and the load, `HMem.load`; `HMem.follow`, with the writer's `HMem.promote`); reads (`HMem.read`); the writer's walk and change (`HMem.reachOnPath`, `HMem.newPtr`, `HMem.applyChange`); the record rule (`HMem.ptrRef`, `HMem.refOf`) and the physical writer (`HMem.writeNode`, with `resolvePointers`; `handleTrans`); eviction (`HMem.evictable`, `HMem.evict`); startup with rule 4 by handles (`handleStartup`, `Mem.toH`, `HMem.linkD`); rule 4 by position, Java's since bergdb 005-57 (`inPosToId` for Java's `posToId`, `HMem.byPos`, `HMem.linkDPos`, `handleStartupPos`); after a cut, with Java's skip of the pointers below the stream's first position (`HMem.linkDPosFrom`, `handleStartupPosFrom`, bergdb 005-62); reads and evictions between transactions (`HCacheOp`) and runs (`runHandles`; with rule 4 by position, `runHandlesPos`). The file's header lists the choices where the plan is vague | — (../items/009-handles/02-implementation-plan.md, 4) |
 | SIS/HandleTheorems.lean | The statements over handles (bergdb item 009, 2c): the invariants (`HTableOK`, `HCanOK`, `HSnapOK`, `HSlotOK` for the record rule, `HRuleROK`, `HLiveWrittenOK` and `HFastOK` for the fast path's test, `HWrittenOK`); T-CACHE (`TC_handles`, proved: `tc_handles`), T2-C (`T2_handles`, with restarts), T-READ (`TR_handles`; with restarts, `TR_handles_restarts`), T-PIN (`TP_handles`); rule 4 by position (bergdb 005-58): the positions of the pointers that rule 4 links (`Rule4_positions`), rule 4 by position is rule 4 by node id (`Rule4Pos_handles`), and so are the runs (`RunPos_handles`); all proved in SIS/Proof/ (`tc_handles`, `t2_handles`, `tr_handles`, `tr_handles_restarts`, `tp_handles`, `rule4_positions`, `rule4Pos_handles`, `runPos_handles`) | — (../items/009-handles/02-implementation-plan.md, 5, phase 2) |
-| SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`); T1-L (`T1_lazy`): after the lazy startup from the stream of a run, or of a prefix of it (a crash), and any reads and writer follows, a read at any time up to the last record gives P at that time; CC (`CC_canonical`): in a run with lazy restarts, every canonical object holds its node's whole history; T2-L (`T2_lazy`): such a run appends the records of the run without restarts; `step_eq_stepWith`; stage 2 (bergdb item 001, WP E3): D closed upward (`T15_closed`), and T-CACHE (`TC_records`): in a run with eviction and any cache schedule, without restarts, every transaction of the physical writer appends the model's record and leaves the model's D, and INV-CAN, INV-SNAP and INV-SLOT hold; T-READ (`TR_view`, WP E4): in such a run, a read through the Level 4 loader at any time up to the last record gives P at that time; T2-C (`T2_cache`, WP E5): with restarts too, the records and D stay the model's, and the invariants hold for the stream of the last startup; and T-READ with restarts (`TR_view_restarts`, WP E5); T-PIN (`TP_pins`, WP E6): in such runs, every object outside the pinned set may be evicted | 5.1, 9; 001-08, 5.3 to 5.6 |
-| SIS/Reclaim.lean | Level 3, reclaim (bergdb item 001, WP R3): what a cut leaves of a version (`Version.stub`) and of a record (`Record.cut`); the stream after a cut (`cutStream`); the versions that a lookup at a time may read (`ReadsAt`, WP R7); when a cut is safe (`CutOK`); the same lookups from f on (`SameFrom`); policies that a cut does not change (`PolicyCutOK`); a virtual root seen only through its live children (`ExecRootOK`), whose live children are those of its last entry (`VirtLiveOK`, WP R4); runs that restart from cut streams (`runRestartsCut`, `cutMax`; with eviction, `runEvictCut`) | — (001-07, 5) |
-| SIS/ReclaimTheorems.lean | T13' (`T13_markTouch`, WP R3): with touches, step 3 gives exactly the index nodes not in D (and not a virtual root) that are dirty or touched; T8 (`T8_recoverCut`, WP R4): after a safe cut, startup from the cut stream gives the same lookups at every time from the first available time on (`SameFrom`), and the same D; T9 (`T9_readCut`, WP R4): in a run with eviction as in T2-C, after a safe cut, a read through the Level 4 loader in the running process at any time from the first available time on gives the same on the cut stream as on the whole stream, and gives P; T12 (`T12_restartCut`, WP R5): a run that restarts from safe cut streams appends the records of the run without restarts (its stream is that run's, cut at the largest cut), with that run's D and lookups from the first available time on; T12 with eviction (`T12_evictCut`, WP R5): so does the run with eviction (`runEvictCut`), with any cache schedules whose reads are from the first available time on and the Level 4 startup at each restart | — (001-07, 2.2, 2.9, 2.10) |
-| SIS/HandleReclaimTheorems.lean | Level 3's reclaim theorems with eviction over handles (bergdb 005-62), as definitions of type `Prop`: the run with handles that restarts from cut streams (`runHandlesCut`, Reclaim.lean's `runEvictCut` over handles); T9 with handles (`T9_handles`): in a run with handles as in `T2_handles`, after a safe cut, a read through the handles at any time from the first available time on gives the same on the cut stream as on the whole stream (memory and nodes), and gives P; proved (`t9_handles`, SIS/Proof/HandleCutRun.lean); T12 with eviction over handles (`T12_handles`): the run with handles that restarts from safe cut streams appends the records of the run without restarts, cut at the largest cut, with that run's D and lookups from the first available time on; proved (`t12_handles`, SIS/Proof/HandleCutT12.lean) | — (001-07, 2.9, 2.10; ../items/005-todo/62-lean-t9-t12-over-handles.md) |
+| SIS/PhysTheorems.lean | Lemma M: a newer version of a node serves every time an older one serves (`LM_newer`), so Rule R's version does (`LM_ruleR`), and a version cut back to s serves the times up to s (`LM_cutTo`); T1-L (`T1_lazy`): after the lazy startup from the stream of a run, or of a prefix of it (a crash), and any reads and writer follows, a read at any time up to the last record gives P at that time; CC (`CC_canonical`): in a run with lazy restarts, every canonical object holds its node's whole history; T2-L (`T2_lazy`): such a run appends the records of the run without restarts; `step_eq_stepWith`; stage 2 (bergdb item 001, WP E3): D closed upward (`T15_closed`). Stage 2's T-CACHE, T-READ, T2-C and T-PIN are stated over handles (SIS/HandleTheorems.lean); over Evict.lean they were here until bergdb 005-62 | 5.1, 9 |
+| SIS/Reclaim.lean | Level 3, reclaim (bergdb item 001, WP R3): what a cut leaves of a version (`Version.stub`) and of a record (`Record.cut`); the stream after a cut (`cutStream`); the versions that a lookup at a time may read (`ReadsAt`, WP R7); when a cut is safe (`CutOK`); the same lookups from f on (`SameFrom`); policies that a cut does not change (`PolicyCutOK`); a virtual root seen only through its live children (`ExecRootOK`), whose live children are those of its last entry (`VirtLiveOK`, WP R4); runs that restart from cut streams (`runRestartsCut`, `cutMax`) | — (001-07, 5) |
+| SIS/ReclaimTheorems.lean | T13' (`T13_markTouch`, WP R3): with touches, step 3 gives exactly the index nodes not in D (and not a virtual root) that are dirty or touched; T8 (`T8_recoverCut`, WP R4): after a safe cut, startup from the cut stream gives the same lookups at every time from the first available time on (`SameFrom`), and the same D; T12 (`T12_restartCut`, WP R5): a run that restarts from safe cut streams appends the records of the run without restarts (its stream is that run's, cut at the largest cut), with that run's D and lookups from the first available time on. T9 and T12 with eviction are stated over handles (SIS/HandleReclaimTheorems.lean); over Evict.lean they were here until bergdb 005-62 | — (001-07, 2.2, 2.10) |
+| SIS/HandleReclaimTheorems.lean | Level 3's reclaim theorems with eviction over handles (bergdb 005-62), as definitions of type `Prop`: the run with handles that restarts from cut streams (`runHandlesCut`); T9 with handles (`T9_handles`): in a run with handles as in `T2_handles`, after a safe cut, a read through the handles at any time from the first available time on gives the same on the cut stream as on the whole stream (memory and nodes), and gives P; proved (`t9_handles`, SIS/Proof/HandleCutRun.lean); T12 with eviction over handles (`T12_handles`): the run with handles that restarts from safe cut streams appends the records of the run without restarts, cut at the largest cut, with that run's D and lookups from the first available time on; proved (`t12_handles`, SIS/Proof/HandleCutT12.lean); rule 4 by position after a cut (question 2): the run with cuts and Java's rule 4 by position (`runHandlesCutPos`), the startup from a stream cut safely with it is `handleStartup` (`Rule4PosCut_handles`), and so is the run (`RunPosCut_handles`); proved (`rule4PosCut_handles`, `runPosCut_handles`, SIS/Proof/HandleCutPos.lean) | — (001-07, 2.9, 2.10; ../items/005-todo/62-lean-t9-t12-over-handles.md) |
 | SIS/Bound.lean | Bounds, part 1 (bergdb item 007): the cost of the records R(a), ..., R(b-1) for any cost of a record (`Stream.cost`); the startup pos that a startup distance d asks for (`sdTarget`); a policy that keeps up with d (`KeepsUp`); the startup distance policy (`sdPolicy`) | 10 (../items/007-bounds/01-startup-bound.md, 3) |
 | SIS/BoundTheorems.lean | T3 (`T3_section`): in every run whose policy keeps up with d, the startup section without its last record costs less than d; also with restarts (`T3_restarts`); what startup reads (`T3_reads`) and reruns (`T3_rerun`), and with records of bounded cost (`T3_bounded`). No assumption but the policy | 10 (../items/007-bounds/01-startup-bound.md, 3) |
 
@@ -186,7 +200,7 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
 | Run | The parts of a transaction, runs, and the invariant `Inv` (INV-1 to INV-4 and the facts about S and P) |
 | Init, Util, StepFacts, StepP, StepS, StepD, StepInv | The invariant holds after T(0) and after every transaction (`inv_st`) |
 | Mark | Marking the access path of the change finds exactly the dirty index nodes not in D (`step_marked_iff`, T13) |
-| StepFacts, Fresh, VStep, EvictLogic (the touch) | WP R3: what step 3 gives with touches (`mem_touchOf`, `step_gd3_mem`, `step_gd3_of_touch`); the nodes reachable before the change with a touched node below them are touched, so a clean node's live children stay out of D (`step_cleanFresh`) and D stays closed upward (`step_touch_D1`, with A6' also before the change); a root child that a root child points to is not reachable (`VInv.deadTops`), so it is never touched |
+| StepFacts, Fresh, VStep, EvLogic (the touch) | WP R3: what step 3 gives with touches (`mem_touchOf`, `step_gd3_mem`, `step_gd3_of_touch`); the nodes reachable before the change with a touched node below them are touched, so a clean node's live children stay out of D (`step_cleanFresh`) and D stays closed upward (`step_touch_D1`, with A6' also before the change); a root child that a root child points to is not reachable (`VInv.deadTops`), so it is never touched |
 | Still | What the proofs need of the still-dirty test (`StillOK`), for the exact test and BergDB's (`java_stillOK`) |
 | VStep | With a virtual root, the transaction keeps `VInv` (`step_vinv`): the root children, the root's history, R4, and that the latest version of a root child names the latest versions of the root children it points to (`step_fresh`, which needs BergDB's still-dirty test) |
 | RunFacts | How the states of a run relate |
@@ -206,29 +220,25 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
 | PhysT1 | The operations keep the invariant (`MemInv.ops_ok`); T1-L in the strong form (`T1_lazy_strong`) |
 | PhysFrozen | The frozen run (WP L4): the same transactions with the startup pos frozen after a restart at k1 (`frozenAlgo`); after k1 it takes no node and writes only new data nodes, so its states only grow (`frozen_grow`), and the invariant carries over (`MemInv.transfer`) |
 | PhysT2 | A run with lazy restarts: after every transaction, ⟨P, D, S⟩ is the run's, and the memory meets the invariant for the frozen run from the last restart (`LazyInv`, `lazyInv_all`); CC and T2-L in the strong form (`T2_lazy_strong`) |
-| EvictLogic | Stage 2 (WP E3): the logical facts that the design rests on (`EvLogic`): D is closed upward, and a current clean node has no pointee in D and names the latest versions of its pointees (`evLogic_st`); D closed upward alone needs no A6' (`DClosed`, `step_closed`; WP R5) |
-| EvictWrite, EvictWrites | The physical writer's loop writes the model's versions (`writeNodes_eq`), and its two loops write the model's record (`AInv.loops_vs`) |
-| EvictInv | The invariant with eviction (`EInv`): INV-CAN, INV-SNAP, INV-SLOT made precise (`SlotInv`), and the live slots of current canonical objects (`LiveInv`); unswizzle and release keep it (`EInv.unswizzle`, `EInv.release`) |
-| EvictFollow, EvictPromote, EvictRead | The Level 4 loader keeps it, so reads and cache schedules do (`EInv.cacheOps`); the writer's follow and promotion (`EInv.follow4_writer`); a read at the last time gives P, the writer's view (`EInv.view4_ok`) |
-| EvictPath, EvictApply, EvictApplyInv | The writer's paths (`EInv.reachPath4_ok`); the change applied, with TREE's one current parent (`treeAt_unique`) and A-COPY (`EInv.applyChange4_ok`) |
-| EvictStepInv, EvictTrans, EvictRun, EvictInit | The memory after the record has the next state's invariant (`AInv.final_ok`); one transaction (`EInv.evictTrans_ok`); runs (`TC_run`); the startup from R(0) (`einv_init`); the invariant in the terms of `TC_records` (`EInv.tc_facts`) |
-| EvictHist, EvictHistTrans, EvictReadT | Stage 2 (WP E4): the invariant for reads at earlier times (`HInv`: every slot of a canonical object for a live child at a time t names an object or a version good for t, or, by INV-SLOT's second half, a node of D), kept by the cache operations and every transaction (`HInv.evictTrans_ok`) and in every run (`HInv.run`); a read at any time up to the last record gives P (`EInv.read4T_ok`) |
-| EvictKeys, EvictPin | Stage 2 (WP E6): no object has two slots for the same pointee, in every memory of every run (`SlotsND`, `slotsND_runEvict`); unswizzling every memory slot to an object, then releasing it, removes it (`Mem.evict_ok`); an object outside the pinned set has been written (`EInv.detachable_of_unpinned`) |
-| EvictRerun, EvictRestart | Stage 2 (WP E5): the startup from the stream after T(k): its rerun keeps `RInv` (every object canonical, every stream slot naming its pointee's latest version after Rule R and naming a version, a slot for each pointee; since bergdb 005-58 also: no version of a stream slot's pointee between it and the section, `RInv.near`, and every slot for a pointee, `RInv.keys`; `rinv_lazyStartup`), and after the positions and rule 4 the memory has the invariant and the invariant for reads at earlier times (`einv_hinv_startup`; with what T9's invariant needs, `einv_hinv_startup_facts`); the physical writer depends on P only through its nodes (`evictTrans_congr`); runs with restarts (`EvictInvR`, `evictInvR_all`) |
+| EvLogic | Stage 2 (WP E3): the logical facts that the design rests on (`EvLogic`): D is closed upward, and a current clean node has no pointee in D and names the latest versions of its pointees (`evLogic_st`); D closed upward alone needs no A6' (`DClosed`, `step_closed`; WP R5) |
+| LogicFacts | Logical facts and list lemmas that the proofs of the physical layer share (bergdb 005-62, from the proof files of the design before handles): D's got-dirty indices (`dOf`), Rule R's bounds (`Inv.ruleR_bound`, `Inv.ruleR_lv0`), the latest versions (`Inv.lv_whole`, `Inv.ref_versionAt`), a clean node's latest version good for every time it is reachable (`Inv.clean_good`), TREE's one current parent (`treeAt_unique`), the parts of a transaction from step 3 on (`D1Of`, `takenOf`, `stepOf`), which depend on P only through its nodes (`stepOf_congr`) |
+| PhysStart | The lazy startup from the stream after T(k) (WP E5): its rerun keeps `RInv` (every object canonical, every stream slot naming its pointee's latest version after Rule R and naming a version, a slot for each pointee; since bergdb 005-58 also: no version of a stream slot's pointee between it and the section, `RInv.near`, and every slot for a pointee, `RInv.keys`; `rinv_lazyStartup`); the node table has no repeated keys (`tblND_lazyStartup`), and no object two slots for the same pointee (`slotsND_lazyStartup`) |
 | HandleMem, HandleInv | Bergdb item 009, 2d, T-CACHE over handles: the memory's operations; the fast path's test with a pointer's own reference agrees with the slow path's (`hFastOK_of`); evicting a handle changes no pointer's record (`HMem.ptrRef_evict_of`); the invariant with handles (`HEInv`: the table and the handles, INV-CAN, INV-SNAP, INV-SLOT for the record rule, the live pointers of current canonical objects, the snapshots against Rule R, live handles without a written position, references that name versions), and an eviction keeps it (`HEInv.evict`) |
 | HandleFollow, HandleRead | The readers' follow keeps it (`HEInv.followR_ok`: the fast path; the slow path's write-back, live handle and load; and, for reads at earlier times, what the pointers give, `HMem.KeepPtrs`), so reads and any operations between transactions do (`HEInv.cacheOps`); a read at the last time gives P, the writer's view (`HEInv.view_ok`) |
 | HandleWalk, HandleApply, HandleApplyInv | The writer's promote and its walk (`HEInv.follow_writer`, `HEInv.reachPath_ok`); the change applied, with TREE and A-COPY (`HEInv.applyChange_ok`, `HAInv`) |
 | HandleWrite, HandleWrites, HandleStepInv | The writer's loop writes the model's versions (`writeNodesH_eq`), its two loops the model's record (`HAInv.loops_vs`); the memory after the record has the next state's invariant (`HAInv.final_ok`) |
-| HandleTrans, HandleInit, HandleRecords | One transaction (`HEInv.handleTrans_ok`); runs (`TC_runH`); the startup with handles from R(0) (`heinv_init`, from E3's `einv_lazyBase`: `EInv.toH`, and rule 4, `HEInv.linkD`); T-CACHE over handles (`TC_handles_records`, `tc_handles`) |
+| HandleTrans, HandleInit, HandleStart, HandleRecords | One transaction (`HEInv.handleTrans_ok`); runs (`TC_runH`); stage 1's memory with handles (`Mem.toH`) and rule 4 with handles (`HMem.linkD`), by lookup; the startup with handles from the stream after T(k), R(0) included, has the invariant (bergdb 005-62: the lazy startup's memory with the positions of its section meets `StartMem`, `startMem_st`, by `RInv`; taken to handles and with rule 4 it has `HEInv` and the pointer facts of T9's invariant, `StartMem.heinv`, `heinv_startup`, `heinv_init`); T-CACHE over handles (`TC_handles_records`, `tc_handles`) |
 | HandleHist, HandleHistTrans, HandleReadT | Bergdb item 009, phase 4a, T-READ over handles: the invariant for reads at earlier times (`HInvH`: the pointer of a canonical object for a live child at a time t holds a canonical object, or its slow path's reference names a version good for t, or, by INV-SLOT's second half, a node of D), kept by reads (`HInvH.followR`), evictions (`HInvH.evict`: a pointer whose handle held the evicted canonical object then has its node's latest version, clean, as its slow path's reference), every transaction (`HInvH.handleTrans_ok`) and in every run (`HInvH.run`); a read at any time up to the last record gives P (`HEInv.readT_ok`, `tr_handles`) |
-| HandleRestart, HandlePin | The startup with handles from the stream after T(k) has both invariants (`heinv_hinvH_startup`: E5's Level 4 startup taken to handles, `EInv.toH` and `HInv.toH`, and the pointers that rule 4 links, `HEInv.relinkH`); the physical writer with handles depends on P only through its nodes (`handleTrans_congr`); runs with restarts (`HandleInvR`, `handleInvR_all`); T2-C and T-READ with restarts over handles (`t2_handles`, `tr_handles_restarts`); a live handle whose object is not pinned may be evicted (`HEInv.evictable_of_unpinned`), T-PIN (`tp_handles`) |
+| HandleRestart, HandlePin | The startup with handles from the stream after T(k) has both invariants (`heinv_hinvH_startup`; the invariant for reads at earlier times from `StartMem`, `StartMem.hinvH`); the physical writer with handles depends on P only through its nodes (`handleTrans_congr`); runs with restarts (`HandleInvR`, `handleInvR_all`); T2-C and T-READ with restarts over handles (`t2_handles`, `tr_handles_restarts`); a live handle whose object is not pinned may be evicted (`HEInv.evictable_of_unpinned`), T-PIN (`tp_handles`) |
 | HandleLinkPos | Bergdb 005-58, rule 4 by position: a pointer that holds no handle in the memory before rule 4 is a stream slot of the lazy startup's memory (`before_ptr`), so `RInv` says what it names (`before_ptr_facts`); a canonical object there is at its node's latest position (`before_canon`); the positions (`rule4_positions`); rule 4 by position is rule 4 by node id where each pointer it leaves is in `posToId` or at the canonical object's position (`HMem.linkDPos_eq_linkD`), which the startup's memories meet, with the first version of a node in the section (`first_version`), A4 and a data node's one version (`rule4Pos_handles`); runs (`runPos_handles`; `runHandlesPos` is `runHandles` but for its startups, `runHandlesPos_of_startup`) |
 | HandleCut | Bergdb 005-62, T9 over handles: the invariant on the pointers (`CInvH`: a canonical object of a clean written node has, for each pointee that its latest version names at r0, a pointer that holds a canonical object or whose slow path's reference is r0 or later, `HMem.PtrAtLeast`; with a virtual root, the root's object holds the canonical objects of the root children of D and names the others at their latest versions or later); a follow on a stream cut safely is the follow on the whole stream when the pointee has a canonical object or every version at or after the slow path's reference is one `ReadsPhys` covers (`HEInv.followR_cut`, `HPtrCutT`); the pointers of an object a read at t may reach are such (`HEInv.cutPtr`), so a read at a time from f on gives the same on the cut stream (`CInvH.read_cut`); reads and evictions keep `CInvH` (`CInvH.readAt`, `CInvH.evict`, `CInvH.cacheOps`) |
 | HandleCutTrans, HandleCutRun | One transaction keeps `CInvH`: the writer's promote and walk, the change (new pointers hold canonical objects or copy pointers at their pointees' latest versions), the root's pointers to the nodes on the paths and the new ones (`HEInv.rootPtrs_change`), the writes and the next state (`CInvH.next`, `CInvH.handleTrans_ok`); the startup with handles gives it (`cinvH_startup`, from the pointer facts that `heinv_hinvH_startup` now also gives); runs with restarts (`HandleInvC`, `handleInvC_all`), and T9 over handles (`readCutH`, `t9_handles`) |
-| HandleCutLater | Bergdb 005-62, part 1 of T12 over handles: in a state later than a restart from a stream on which a cut at c is safe (`Later`), a read through the handles at a time from the restart state's first available time on gives the same on the cut streams (the stream now, and the restart's for Rule R) as on the whole streams (`CInvH.read_later`), and so does the writer's walk (`HEInv.reachPath_later`): every load is of a version at least as new as one that `LaterOK` allows (`HPtrLaterT`, `HLaterSafeT`, `HEInv.laterPtr`); a snapshot taken from the live handle is newer than the version the pointer names, and names its live children at least as new (`Inv.ref_mono`, `ruleRRef_mono`). T9's invariant is all it needs of the memory |
-| HandleCutStart | Bergdb 005-62, part 2 of T12 over handles: the memory with handles with another root object (`HMem.withRoot`), the two root objects (`RootRelH`: the same but for the history and the pointers of the root children that only times before the first available time need); `Mem.toH` and rule 4 with handles keep a memory with another root object (`Mem.toH_withRoot`, `HMem.linkD_withRoot`), so the startup with handles from a stream cut safely is the one from the whole stream but for the root's object (`handleStartup_sim`, from `sectionPos_sim`, the same for Evict.lean's startup before rule 4, SIS/Proof/CutLaterStart.lean) |
+| HandleCutLater | Bergdb 005-62, part 1 of T12 over handles: in a state later than a restart from a stream on which a cut at c is safe (`Later`, `later_st`; and the versions that the loads may read then, `LaterOK`), a read through the handles at a time from the restart state's first available time on gives the same on the cut streams (the stream now, and the restart's for Rule R) as on the whole streams (`CInvH.read_later`), and so does the writer's walk (`HEInv.reachPath_later`): every load is of a version at least as new as one that `LaterOK` allows (`HPtrLaterT`, `HLaterSafeT`, `HEInv.laterPtr`); a snapshot taken from the live handle is newer than the version the pointer names, and names its live children at least as new (`Inv.ref_mono`, `ruleRRef_mono`). T9's invariant is all it needs of the memory |
+| HandleCutStart | Bergdb 005-62, part 2 of T12 over handles: the memory with handles with another root object (`HMem.withRoot`), the two root objects (`RootRelH`: the same but for the history and the pointers of the root children that only times before the first available time need); `Mem.toH` and rule 4 with handles keep a memory with another root object (`Mem.toH_withRoot`, `HMem.linkD_withRoot`), so the startup with handles from a stream cut safely is the one from the whole stream but for the root's object (`handleStartup_sim`, from `sectionPos_sim`, the same for the lazy startup with the positions of its section, SIS/Proof/CutLazyStart.lean) |
 | HandleCutSim | Part 3 of T12 over handles: the steps of a transaction and the reads on the memory with another root object and the cut streams, against the same on E's memory and the whole streams, give the same results and memories that differ only in the root's object again, with the same history: the follow and the read from the root (`HEInv.followR_sim`, `CInvH.read_sim`, with `CInvH.readAt_sim` below the root), the writer's walk (`HEInv.reachPath_sim`), the change (`HMem.withRoot_applyChange`, the source search finding corresponding objects; the two root objects get the same new entries, `RootRelH.addRoot`), the writes (`HMem.withRoot_writeNodes`, with Rule R of the cut stream, `HMem.writeNodes_cutS0`) and an eviction (`HMem.withRoot_evict`) |
 | HandleCutTransSim, HandleCutT12 | Part 4 and 5 of T12 over handles: one transaction of C (the run with handles that restarts from cut streams) against one of E (the run with handles that restarts from the whole streams at the same points, with the same cache operations): the same record as the logical step from C's state, and memories that differ only in the root's object (`handleTrans_sim`); C's cache operations (`ops_simH`); the two runs side by side (`RunSimH`, `runSimH_zero`, `runSimH_step`: a restart by `handleStartup_sim`), so C appends the records of the run that restarts from cut streams (`handleCut_restartsCut`), and T12 over handles (`t12_handles`) follows from `restartCut` |
+| HandleCutSkip | Bergdb 005-62, question 2: the pointers that Java's rule 4 skips after a cut name no node with a canonical object (`cutSkip_lazy`): the rerun's invariant against the safe cut (`CutInv`: every object is the root's or of a node whose latest version is at c or later; a live stream slot below c of a node reachable then names a node without a version in the section, `cut_ref_live`; a stream slot below c of a node of D names such a node, or one not reachable from then on without a canonical object), for the memory before the rerun (`cutInv_lazyBase`), the walk (`CutInv.reachOnPath`) and the change (`CutInv.applyChange`: a new pointer without a source, `stale_absurd`, with TREE, no resurrection `reach_back`, `clean_ref_lvAt` and `PhysStep`'s `liveNew`), and the rerun (`cutInv_lazyStartup`) |
+| HandleCutPos | Rule 4 by position with a first position is rule 4 by position where the skipped pointers name no node with a canonical object (`HMem.linkDPosFrom_eq_linkDPos`); `posToId` on a cut stream (`inPosToId_cut`); `rule4Pos_handles`'s condition (`rule4Pos_cond`) carried to the startup from a stream cut safely by `sectionPos_sim` (`handleStartupPosFrom_cut`; `rule4PosCut_zero` without the skip; `rule4PosCut_handles`); runs (`runHandlesCutPos_succ`, `runPosCut_handles`, the restarts' streams by T12's `RunSimH`) |
 | CutStream, CutRead | Stage 3 (WP R4): the stream after a cut (its records, `versionAt`, `newest`, the last record); a pointer followed, or a read from a version, on a stream cut at or before the startup pos gives what it gives on the whole stream if it reads no record before the cut (`follow_cut`, `readFrom_cut`); a read from a version that a lookup may read reaches only such versions (`readFrom_readsAt`); a version a lookup may read, a physical read may follow (`ReadsAt.phys`, WP R6) |
 | CutAgree, CutRerun | Structures that agree for lookups from f on (`CutAgree`); a transaction's change is the same on both (`exec_cutAgree`, with `ExecRootOK`), and so is the rerun of the startup section (`rerun_cutAgree`, with `VirtLiveOK`), which keeps every node it starts with the run's (`rerun_cutAgree_nodes`, WP R5) |
 | CutBase, CutTops, CutStart | Startup's reads of a stream cut safely at the times from f to s: without a virtual root, the whole stream's (`Inv.readAt_cut_nv`); with one, the whole stream's but for the root's version, which startup rebuilds from the root children it can read: the root children live from f on are read at their latest versions (`Inv.topsRead_cut_all`), so the rebuilt root has the root's live children from f on (`Inv.cutRoot_live`, `Inv.readAt_cut_v`) |
@@ -237,13 +247,7 @@ The proofs, in SIS/Proof/ (not needed for reading the statements):
 | CutHist | WP R5: the nodes of D that no lookup from f on may reach (M33, M34): every node of D was reachable at a time at which its ancestors (it included) are in D, each with an entry from just after that time or a version in the record of its entry, put back by Rule A (`DAnchor`, `dAnchor_st`: Rule A with BergDB's test along the path, `step_anc_persist`, and D closed upward, `dClosed_st`); with a virtual root, every root child created after a root child of D is in D (`TopsD`, `topsD_st`) |
 | CutHistRead | WP R5: after a safe cut, startup reads such a node at that time through its ancestors' versions in the startup section (Rule R), at its newest version, from the cut stream as from the whole stream (`Inv.baseCut_get?_hist`; with a virtual root, the root children from its root child then on are read, `Inv.topsRead_cut_from`); T8 with D's nodes (`recoverCut_dNodes`) |
 | CutRuns | WP R5: the relation after every prefix of a run with restarts from cut streams (`restartCut_rel`), and T12 (`restartCut`) |
-| CutPhys, CutPhysTrans, CutPhysRun | WP R4, T9: the invariant on the slots (`CInv`: a canonical object of a clean node names, for each pointee, a canonical object or a record at or after the one its node's latest version names; one of a node of D names a pointee of D by a snapshot only of the pointee's latest version; a virtual root's object names its root children of D by their canonical objects and the others at their latest versions; no snapshot of a version that Rule A put back and that is still in D); with it a read at a time from f on follows only canonical objects and versions that `ReadsPhys` covers, so it gives the same on a stream cut safely (`CInv.read4_cut`); the cache operations, the writer's walk and change, and the writes keep it (`CInv.evictTrans_ok`); the startup gives it (`cinv_startup`); runs with restarts (`EvictInvC`, `evictInvC_all`), and T9 (`readCut`) |
-| CutLater, CutLaterRead | WP R5, T12 with eviction: the invariant on the slots after a restart (`NInv`: every slot of a canonical object names a canonical object, or a record that is its pointee's latest version in the stream of the last startup, or one written after it; a snapshot's slot may also name what its version's reference names after Rule R), which the startup gives (`ninv_startup`) and the cache operations and transactions keep (`NInv.evictTrans_ok`, `evictInvN_all`); in a state later than one where a cut at c is safe (`Later`), a read from f on and the writer's walk then follow only versions that `ReadsPhys` covers in that state or written after it, so they give the same on the streams cut at c (`NInv.read4_later`, `NInv.reachPath4_later`) |
-| CutLaterSim | WP R5: a memory with another object for the root (`Mem.withRoot`); two root objects that agree from f on (`RootRel`: the same live children from f on, and the same slots for the pointees of the cut run's root); the Level 4 loader, the writer's walk, its change and its writes on such memories (`read4_withRoot`, `reachPath4_withRoot`, `applyChange4_withRoot`, `writeNodes_withRoot`); the writer's paths on structures that agree (`CutAgree.pathOf_eq`) |
-| CutLaterPerm | WP R5: memories that are the same but for where the root's entry is in the list of objects (`RootPerm`), which every operation keeps (`RootPerm.applyChange4`: the one search over the list finds the root's object only when it is the only source, `RootOnly`) |
-| CutLaterTrans | WP R5: one transaction of C, after a restart from a cut stream, and of E, after the restart from the whole stream at the same point: the same record, and memories related again (`SimC`, `evictTrans_sim`); a batch of C's cache operations and E's with extra unswizzles of its root's slots before each release (`augment`, `ExtraOK`, `ops_sim`) |
-| CutLaterStart | WP R5: the Level 4 startup from a stream cut safely is the one from the whole stream but for the root's object (`startup_sim`): the rebuilt virtual root (`rootObj_rel`), the rerun's transactions (`rerunStep_sim`), with the writer's last resort for a root child that only the whole stream's root still points to: every slot for it is the same stream slot (`anySlot_sim`) |
-| CutLaterRun | WP R5: the run with eviction that restarts from cut streams (C) has the states of the run without eviction that restarts from cut streams (`evictCut_restartsCut`), through the run with eviction that restarts from the whole streams at the same points (E) with the schedule `esOf`; T12 with eviction (`restartCut_evict`) |
+| CutLazySim, CutLazyStart | WP R5, for T12 over handles: stage 1's memory with another object for the root (`Mem.withRoot`); two root objects that agree from f on (`RootRel`: the same live children from f on, and the same slots for the pointees of the cut run's root); the lazy startup with the positions of its section from a stream cut safely is the one from the whole stream but for the root's object (`sectionPos_sim`): the rebuilt virtual root (`rootObj_rel`), the rerun's transactions (`rerunStep_sim`), with the writer's last resort for a root child that only the whole stream's root still points to: every slot for it is the same stream slot (`anySlot_sim`); a transaction's change on views whose roots differ only there (`exec_rootSwap`), and the writer's paths on structures that agree (`CutAgree.pathOf_eq`) |
 | Bound | The cost of a part of the stream (`cost_split`, `cost_append_left`, `cost_ge_count`), the target's maximality (`sdTarget_max`), T3 after one transaction (`section_step`), for runs (`section_run`) and runs with restarts (`section_runRestarts`), and what startup reads and reruns (`reads_of_section`, `rerun_of_section`, `bounded_of_section`); bergdb item 007 |
 
 Not trusted, tests only:
@@ -276,17 +280,11 @@ Not trusted, tests only:
   with lazy restarts (`checkLazy`, also as `#guard`s): after every
   transaction the writer's view is P's, the records are the run's, every
   canonical object is whole, and the memory meets the invariant for the
-  frozen run (`frozenB`).
-* SIS/EvictExample.lean (bergdb item 001, WP E2): the physical layer with
-  eviction by running. The invariants of 001-08, 5.3
-  (`invCanB`, `invSnapB`, `invSlotB`, `noDanglingB`); cache schedules
-  (`schedule`: none, every object that may be detached, each with
-  probability 0.3, unswizzles and releases apart); runs with restarts and a
-  schedule, checked after every transaction (`checkEvict`: the records and D
-  are the model's, reads give P, the invariants hold); TREE, A6' and A-COPY by
-  running (`treeB`, `adoptB`, `copyB`, `evictRunOKB`); example 5 (example 3
-  with drops). `lake exe phystest 20 40 evict` runs `checkEvict` on examples
-  2, 3 and 5 with every schedule.
+  frozen run (`frozenB`). And, for the runs with eviction, the assumptions of
+  stage 2 by running (bergdb item 001, WP E2: TREE, A6' and A-COPY, `treeB`,
+  `adoptB`, `copyB`, `evictRunOKB`) and example 5 (example 3 with drops), in
+  SIS/EvictExample.lean until bergdb 005-62, whose runs of the design before
+  handles went with it.
 * SIS/HandleExample.lean (bergdb item 009, phase 2, 2b): the physical layer
   with handles by running. The invariants of SIS/HandleTheorems.lean as
   `Bool`s (`hTableOKB`, `hCanOKB`, `hSnapOKB`, `hSlotOKB`, `hRuleROKB`,
@@ -309,12 +307,10 @@ Not trusted, tests only:
   end of an iteration once the startup pos has passed it. `CutOK` by running
   (`cutOKB`; WP R7's, with part 2 over `ReadsAt`, `cutOKAtB`), the largest
   safe cut (`safeCut`), T8 by running (`checkT8`),
-  `PolicyCutOK` by running (`policyCutB`), runs with restarts from cut
-  streams (`checkCut`), and with eviction and the four cache schedules
-  (`checkEvictCut`: the records, D, reads from f on, also on the cut stream
-  from the running memory, the invariants, the restarts). `#guard` checks on
-  a fixed run: the touch makes clean nodes dirty, and without it no cut is
-  safe; T8 and T12 at the safe cut, logical and with eviction, and T12's
+  `PolicyCutOK` by running (`policyCutB`), and runs with restarts from cut
+  streams (`checkCut`); with eviction, HandleReclaimExample.lean below.
+  `#guard` checks on a fixed run: the touch makes clean nodes dirty, and
+  without it no cut is safe; T8 and T12 at the safe cut, and T12's
   assumption on the cuts (WP R5); the pSafe wait
   (`pSafeWitness`); a stale reference that WP R3's `CutOK` let through, after
   which a physical read from the cut stream fails (`staleWitness`, WP R7); a
@@ -322,7 +318,10 @@ Not trusted, tests only:
   replaced node to a version before a cut that WP R7's `CutOK` allows
   (`cutReadWitness`, WP R4; `CutOK` since WP R6 does not); Java's scheme,
   and a stale chain of put-back versions that only the exception of
-  `ReadsPhys` for them lets through (`schemeWitness`, WP R6); T-SCHEME by
+  `ReadsPhys` for them lets through (`schemeWitness`, WP R6). The three
+  witnesses run with handles since bergdb 005-62 (`runHandlesWith`, with
+  HandleExample.lean's eviction schedules) and hold as they did with
+  Evict.lean's eviction. T-SCHEME by
   running (`checkSchemeB`, WP R6: for every iteration whose scheme conditions
   hold, `CutOK` at its cut position in every later state past the waits; a
   `#guard` on the fixed run). Proved there (WP
@@ -339,7 +338,13 @@ Not trusted, tests only:
   first available time on give P, also on the cut stream from the running
   memory (T9 over handles) and after the restart from the cut stream; at the
   end the lookups from the first available time on are the run's. `#guard`
-  checks on two runs with cuts; `lake exe reclaimtest` runs it on random runs.
+  checks on the fixed run with a cut at 3 (`tsCut4`) and on two runs with
+  cuts; `lake exe reclaimtest` runs it on random runs. And at every restart,
+  rule 4 by position with the cut as the stream's first position (at the
+  restart's cut and at the largest cut so far) against rule 4 by node id
+  (`checkHandleCut`), and the pointers that Java skips, by whether they name a
+  node with a canonical object (`posCutCounts`, bergdb 005-62, question 2;
+  `#guard`s on the two runs); `reclaimtest` prints the counts per policy.
 * Check/ and TraceCheck.lean: the trace checker, `lake exe tracecheck`. It
   checks traces of Java runs against the model's definitions
   ([011-11](../items/011-docs-archive/11-level2-alignment.md), section 8.5;
@@ -372,8 +377,9 @@ Not trusted, tests only:
   (`loader4Failures`: no snapshot from the node table; section 13.5 of
   011-11). Since J4, C-P: INV-SLOT on Java's physical states,
   the SLOT lines of the exporter's run E, which runs with a forced eviction
-  schedule (`slotFailures`, after the model's `invSlotB`; test traces
-  `slot.trace` and `badslot.trace`;
+  schedule (`slotFailures`, after the model's `invSlotB` of the design before
+  handles, removed in bergdb 005-62; test traces `slot.trace` and
+  `badslot.trace`;
   [001-08](../items/001-lean-model-levels-3-4/08-level4-alignment.md), section 7.3).
   Since bergdb item 009, step 4c, C-H: the model's invariants with handles
   (SIS/HandleTheorems.lean) on run E's handle state, which the exporter
@@ -1141,6 +1147,41 @@ By running, reclaim with handles passes (SIS/HandleReclaimExample.lean,
 `reclaimtest`). `lake build` passes with no warnings and no `sorry`;
 `#print axioms SIS.t9_handles` and `SIS.t12_handles` show only Lean's
 standard axioms.
+
+2026-10-28. The design before handles removed (bergdb 005-62, question 3,
+steps a to c, Frans: "as proposed, all steps"). Step a: the seven theorems
+over SIS/Evict.lean that have a counterpart over handles (`TC_records`,
+`TR_view`, `T2_cache`, `TR_view_restarts` and `TP_pins` of
+SIS/PhysTheorems.lean, `T9_readCut` and `T12_evictCut` of
+SIS/ReclaimTheorems.lean), Reclaim.lean's `runEvictCut`, the eight proof files
+that only they used, and the declarations of the other proof files of the
+design that nothing kept used; SIS/EvictExample.lean's runs with eviction (its
+checks of TREE, A6' and A-COPY and example 5 moved to SIS/PhysExample.lean;
+ReclaimExample.lean's three witnesses run with handles and hold as before;
+`phystest` has no `evict` part any more). Step c: the startup with handles is
+proved from the lazy startup's memory directly (SIS/Proof/HandleStart.lean:
+`StartMem`, `startMem_st`, `StartMem.heinv`, `heinv_startup`, and
+`StartMem.hinvH` in HandleRestart.lean), no longer through Evict.lean's Level 4
+startup and its invariants (`evictStartup`, `Mem.linkD`, `EInv`, `HInv`); then
+SIS/Evict.lean went, its assumptions of stage 2 (`EvictRunOK` and its parts)
+and `Mem.sectionPos` moved word for word to SIS/Phys.lean. Step b: what the
+proofs over handles still used of the proof files of the design moved to
+SIS/Proof/LogicFacts.lean, PhysStart.lean (`RInv`, `rinv_lazyStartup`),
+EvLogic.lean (EvictLogic.lean renamed), CutLazySim.lean and CutLazyStart.lean
+(`sectionPos_sim`), and into HandleCut, HandleCutTrans, HandleCutLater and
+HandleCutT12. No other definition or statement of the trusted part changed;
+comments of Handle.lean, HandleTheorems.lean and HandleReclaimTheorems.lean no
+longer compare with Evict.lean but as history. And rule 4 by position after a
+cut (question 2, Frans: "Prove it!"): `HMem.linkDPosFrom`, `handleStartupPosFrom`
+and `runHandlesCutPos`, Java's rule with its skip below the stream's first
+position; `Rule4PosCut_handles` and `RunPosCut_handles` proved
+(`rule4PosCut_handles`, `runPosCut_handles`, SIS/Proof/HandleCutSkip.lean and
+HandleCutPos.lean), with no new assumption. lean/ from 144 files and 66,452
+lines to 119 and 51,539. `lake build` passes with no warnings and no `sorry`;
+`#print axioms` of every theorem of the lists above shows only Lean's standard
+axioms; `lake exe reclaimtest 20 30` passes, with 1,920 skipped pointers at 744
+restarts, none to a node with a canonical object; `phystest 20 40` and
+`sistest 20 40` pass; the trace tests pass.
 
 Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),
 T1-L (`T1_lazy`, L3), CC and T2-L (`CC_canonical`, `T2_lazy`, L4) are proved,

@@ -62,7 +62,8 @@ public class NodeCollection implements PointerFollower {
      * True from setStartupSection() until endReconstruction(): while DbStarter rebuilds the
      * database. Only then is a key node version of the startup section that a pointer leads
      * to cut back to the startup time; a load at runtime never is (bergdb item 001, WP R8,
-     * change 2; bergdb 001-08, M22: the Level 4 loader, `Mem.follow4`).
+     * change 2; bergdb 001-08, M22: the Level 4 loader, `Mem.follow4`, lean/SIS/Evict.lean until
+     * bergdb 005-62).
      */
     private volatile boolean reconstructing = false;
     
@@ -685,7 +686,7 @@ public class NodeCollection implements PointerFollower {
     }
 
     /**
-     * Rule 4 at startup (DbStarter.linkD; the Lean model's `Mem.linkD`; bergdb item 001,
+     * Rule 4 at startup (DbStarter.linkD; the Lean model's `HMem.linkD`; bergdb item 001,
      * WP R8, change 1: bergdb 001-08, M44): each pointer of 'node' to an index
      * node that has a canonical object gets that node's live handle. A stream
      * pointer below the first position of the stream is left as it is (M33).

@@ -8,12 +8,13 @@ node's table entry, with its node's whole history and latest position; a memory
 slot names its pointee's canonical object, and a stream slot, after Rule R, its
 pointee's latest version; a slot for every pointee; every node of D has a
 canonical object. Taken to handles (`Mem.toH`) and with rule 4 with handles
-(`HMem.linkD`), such a memory has the invariant with handles, the invariant for
-reads at earlier times and the pointer facts of T9's invariant
-(`StartMem.handles`): a memory slot becomes a pointer that holds its pointee's
-live handle, a stream slot of a pinned object to a node with a canonical object
-takes that node's live handle by rule 4, and every other stream slot becomes a
-pointer whose slow path's reference is its pointee's latest version.
+(`HMem.linkD`), such a memory has the invariant with handles and the pointer
+facts of T9's invariant (`StartMem.heinv`, `heinv_startup`; the invariant for
+reads at earlier times is `StartMem.hinvH`, SIS/Proof/HandleRestart.lean): a
+memory slot becomes a pointer that holds its pointee's live handle, a stream
+slot of a pinned object to a node with a canonical object takes that node's
+live handle by rule 4, and every other stream slot becomes a pointer whose slow
+path's reference is its pointee's latest version.
 -/
 import SIS.Proof.PhysStart
 import SIS.Proof.HandleInit

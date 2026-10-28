@@ -27,8 +27,8 @@ import bergdb.stream.MemoryStream;
 /**
  * Eviction at transaction boundaries (bergdb item 001, WP J2: values; J3: index nodes;
  * bergdb 001-08, 5.2 and 6.2, rows 8 and 9; the Lean model's `Mem.unswizzle`,
- * `Mem.release` and `Mem.detachable`, lean/SIS/Evict.lean). With handles since bergdb item
- * 009, step 3a (items/009-handles/02-implementation-plan.md, 4.7).
+ * `Mem.release` and `Mem.detachable`, lean/SIS/Evict.lean until bergdb 005-62). With handles
+ * since bergdb item 009, step 3a (items/009-handles/02-implementation-plan.md, 4.7).
  *
  * <p>An object is <b>detachable</b> when it is not pinned (Residents.isPinned: the super
  * root, and the canonical objects of D and of the record being written; also the newest

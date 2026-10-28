@@ -22,9 +22,9 @@ import bergdb.dag.TopNode;
 
 /**
  * The audit (bergdb item 001, WP J1; test-only): the invariants of the Lean model's
- * physical layer (bergdb 001-08, 5.3; lean/SIS/Evict.lean) checked on Java's
- * own state at a transaction boundary, for stress programs that ask for it (the system
- * property audit=N: every N-th transaction; 0, the default, off). It reads the stream but
+ * physical layer (bergdb 001-08, 5.3; lean/SIS/Evict.lean until bergdb 005-62) checked on
+ * Java's own state at a transaction boundary, for stress programs that ask for it (the
+ * system property audit=N: every N-th transaction; 0, the default, off). It reads the stream but
  * changes nothing: no slot, no node table entry, no dirty flag.
  *
  * <ol>

@@ -171,7 +171,9 @@ How it works in Java:
   the stream: by the section's versions and the versions before them, or
   the canonical objects' positions; before 005-57 it read a header for each
   pointer, most of a cold startup. The Lean model proves, for its startup,
-  that this links what rule 4 by node id links (005-58, `Rule4Pos_handles`). A cold start still reads the nodes on
+  that this links what rule 4 by node id links (005-58, `Rule4Pos_handles`),
+  also after a safe cut, where Java skips the pointers below the stream's first
+  position (005-62, `Rule4PosCut_handles`). A cold start still reads the nodes on
   the rerun's paths that have no version in the section: about 46 s on s1
   at 10M keys and a startup distance of 50 MB (005-57; 214 s before).
 * Marking: the index nodes that an operation (a put or a delete) follows,
@@ -329,11 +331,12 @@ named, with a sweep that walked every resident object (item 004).
 
 Evidence: the Lean model proves that with any eviction schedule the
 records, D and the answers are those without eviction (T-CACHE, T-READ,
-T2-C, T-PIN), for the design before handles
-([001-08](../items/001-lean-model-levels-3-4/08-level4-alignment.md),
-section 5) and for handles (`tc_handles`, `tr_handles`, `t2_handles`,
+T2-C, T-PIN; [001-08](../items/001-lean-model-levels-3-4/08-level4-alignment.md),
+section 5), for handles (`tc_handles`, `tr_handles`, `t2_handles`,
 `tr_handles_restarts`, `tp_handles`; the mapping and its register in
-[009-05](../items/009-handles/05-handles-alignment.md)). Java is checked
+[009-05](../items/009-handles/05-handles-alignment.md)), also with reclaim's
+cuts (`t9_handles`, `t12_handles`; 005-62, which removed the model and the
+proofs of the design before handles). Java is checked
 against it: the audit (INV-CAN, the pins, INV-SLOT; test-only), the
 checker's C-P on Java's physical states and its C-H on Java's handle state
 (`conformance.sh evict`; 009-05, section 4), and `EvictionInvariance`.

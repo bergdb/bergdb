@@ -41,7 +41,7 @@ import bergdb.nanotest.Nano;
  * exact by walks of the resident objects after each sweep (resync, which the audit and
  * the test schedules still use).</p>
  *
- * <p><b>Pins</b> (the model's `Mem.pinned`, lean/SIS/Evict.lean): the objects that eviction
+ * <p><b>Pins</b> (the model's `HMem.pinned`, lean/SIS/Handle.lean): the objects that eviction
  * must keep: the canonical objects of the nodes of D (TransSeq; dirty), those of the record
  * being written (TransNodes; their dirty flags are cleared before the record is appended, so
  * "not dirty" is not "written"), and the super root, which the model's root object stands

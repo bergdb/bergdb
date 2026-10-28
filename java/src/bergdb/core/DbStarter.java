@@ -495,7 +495,7 @@ public class DbStarter {
      * @throws AssertionError
      */
     /**
-     * Rule 4 (bergdb item 001, WP R8, change 1; the Lean model's `Mem.linkD`;
+     * Rule 4 (bergdb item 001, WP R8, change 1; the Lean model's `HMem.linkD`;
      * bergdb 001-08, M44): every stream pointer of the canonical object of a
      * node of D that names a node with a canonical object gets that node's handle.
      * createMemoryPointers links the section's objects by exact position
