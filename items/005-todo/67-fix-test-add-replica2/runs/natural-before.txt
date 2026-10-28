@@ -1,0 +1,38 @@
+bergdb 005-67. The test before the fix (fccafd3), no instrumentation; F53, 2026-10-28 10:20 to 10:34,
+with a load of about 3 to 12 from other sessions. JDK 27.
+
+1. probe/Loop67.java, 8 JVMs at a time (each started with & from zsh, so at nice 15), 5,000 runs each:
+   for k in 1 2 3 4 5 6 7 8; do nice -n 10 java -ea -cp cls:before.jar Loop67 testAddReplica2 5000 & done
+
+JVM 1:
+  testAddReplica2: runs 5000, failed 0, did not end 0 (63406 ms)
+JVM 2:
+  testAddReplica2: runs 5000, failed 0, did not end 0 (63354 ms)
+JVM 3:
+  1 x AssertionError: Expected 700, got 200. (line 444)
+  2 x AssertionError: Expected 700, got 800. (line 444)
+  testAddReplica2: runs 5000, failed 3, did not end 0 (63408 ms)
+JVM 4:
+  1 x AssertionError: Expected 700, got 800. (line 444)
+  testAddReplica2: runs 5000, failed 1, did not end 0 (63435 ms)
+JVM 5:
+  testAddReplica2: runs 5000, failed 0, did not end 0 (63406 ms)
+JVM 6:
+  testAddReplica2: runs 5000, failed 0, did not end 0 (63338 ms)
+JVM 7:
+  testAddReplica2: runs 5000, failed 0, did not end 0 (63461 ms)
+JVM 8:
+  testAddReplica2: runs 5000, failed 0, did not end 0 (63412 ms)
+
+In all: 40,000 runs, 4 failures (1 x "Expected 700, got 200", 3 x "Expected 700, got 800", both at m2, line 444).
+
+2. probe/Loop67.java, one JVM: 1,000 runs, 0 failures (12.8 s). Before it, the probe's first version, 500 runs, 0 failures.
+
+3. loop.sh before.jar 50 (the test alone, each run in a JVM of its own, Unit with -c and -m):
+   runs 50, failed 0, passed 50 (8 s)
+   loop.sh before.jar 30 '.*StorageManagerTester' '.*' (the class):
+   runs 30, failed 0, passed 30 (21 s)
+
+4. unit-loop.sh before.jar 60 (all unit tests, as before-commit.sh runs them, alone):
+   unit runs 60, StorageManagerTester failed 0, other failures 0 (566 s)
+   and one more run before it, timed: SUCCESS, 1058 successful tests in 9.2 s.

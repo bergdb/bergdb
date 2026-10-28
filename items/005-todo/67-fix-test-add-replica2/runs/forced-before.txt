@@ -1,0 +1,44 @@
+bergdb 005-67, forced interleavings, 2026-10-28 10:56, forced-before-final.jar
+--- -cp cls-final:forced-before-final.jar Loop67 testAddReplica2 100
+testAddReplica2: runs 100, failed 0, did not end 0 (1317 ms)
+--- -Dr67.replicaFlushDelay=2 -cp cls-final:forced-before-final.jar Loop67 testAddReplica2 100
+testAddReplica2: runs 100, failed 0, did not end 0 (1600 ms)
+--- -Dr67.replicaFlushDelay=5 -cp cls-final:forced-before-final.jar Loop67 testAddReplica2 100
+testAddReplica2: runs 100, failed 0, did not end 0 (1923 ms)
+--- -Dr67.replicaFlushDelay=10 -cp cls-final:forced-before-final.jar Loop67 testAddReplica2 100
+97 x AssertionError: Expected 700, got 200. (line 444)
+testAddReplica2: runs 100, failed 97, did not end 0 (1427 ms)
+--- -Dr67.replicaFlushDelay=50 -cp cls-final:forced-before-final.jar Loop67 testAddReplica2 100
+100 x AssertionError: Expected 700, got 200. (line 444)
+testAddReplica2: runs 100, failed 100, did not end 0 (1383 ms)
+--- -Dr67.afterAppend=1 -cp cls-final:forced-before-final.jar Loop67 testAddReplica2 100
+40 x AssertionError: Expected 700, got 800. (line 444)
+testAddReplica2: runs 100, failed 40, did not end 0 (1478 ms)
+--- -Dr67.afterAppend=3 -cp cls-final:forced-before-final.jar Loop67 testAddReplica2 100
+100 x AssertionError: Expected 700, got 800. (line 444)
+testAddReplica2: runs 100, failed 100, did not end 0 (1756 ms)
+--- -Dr67.afterAppend=10 -cp cls-final:forced-before-final.jar Loop67 testAddReplica2 100
+57 x AssertionError: Expected 700, got 800. (line 443)
+43 x AssertionError: Expected 700, got 800. (line 444)
+testAddReplica2: runs 100, failed 100, did not end 0 (2593 ms)
+--- -Dr67.afterAppend=50 -cp cls-final:forced-before-final.jar Loop67 testAddReplica2 100
+100 x AssertionError: Expected 700, got 800. (line 443)
+testAddReplica2: runs 100, failed 100, did not end 0 (6807 ms)
+--- -cp cls-final:forced-before-final.jar Loop67 testAddReplicaWhileAppending 20 5000
+testAddReplicaWhileAppending: runs 20, failed 0, did not end 0 (1252 ms)
+--- -Dr67.syncPause=30 -cp cls-final:forced-before-final.jar Loop67 testAddReplicaWhileAppending 5 5000
+5 x did not end in 5000 ms
+testAddReplicaWhileAppending: runs 5, failed 0, did not end 5 (25022 ms)
+(WhileAppending67 has a writer of its own, without and then with the write lock: StorageManager's contract, not the test; the same on both copies.)
+--- -Dr67.syncPause=30 -cp cls-final:forced-before-final.jar WhileAppending67 5
+main 750, replica 720, the replica lacks 30 bytes
+main 750, replica 730, the replica lacks 20 bytes
+main 750, replica 730, the replica lacks 20 bytes
+main 750, replica 730, the replica lacks 20 bytes
+main 750, replica 730, the replica lacks 20 bytes
+--- -Dr67.syncPause=30 -cp cls-final:forced-before-final.jar WhileAppending67 5 lock
+main 750, replica 750
+main 750, replica 750
+main 750, replica 750
+main 750, replica 750
+main 750, replica 750

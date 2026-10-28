@@ -1,0 +1,31 @@
+bergdb 005-67. The test with the fix (86e2c84 on fccafd3: the same test code as dad6bd2 but
+comments), no instrumentation; F53, 2026-10-28 10:37 to 10:58, with a load of about 3 to 8 from other
+sessions (and, from 10:49 to 10:54, the gates of this entry). JDK 27.
+
+1. probe/Loop67.java, 8 JVMs at a time (started with & from zsh, so at nice 15), 50,000 runs each,
+   10 times the 40,000 runs that gave 4 failures before (natural-before.txt):
+   for k in 1 2 3 4 5 6 7 8; do nice -n 10 java -ea -cp cls:after.jar Loop67 testAddReplica2 50000 & done
+
+JVM 1:
+  testAddReplica2: runs 50000, failed 0, did not end 0 (1239036 ms)
+JVM 2:
+  testAddReplica2: runs 50000, failed 0, did not end 0 (1239950 ms)
+JVM 3:
+  testAddReplica2: runs 50000, failed 0, did not end 0 (1239822 ms)
+JVM 4:
+  testAddReplica2: runs 50000, failed 0, did not end 0 (1239505 ms)
+JVM 5:
+  testAddReplica2: runs 50000, failed 0, did not end 0 (1239459 ms)
+JVM 6:
+  testAddReplica2: runs 50000, failed 0, did not end 0 (1239923 ms)
+JVM 7:
+  testAddReplica2: runs 50000, failed 0, did not end 0 (1239264 ms)
+JVM 8:
+  testAddReplica2: runs 50000, failed 0, did not end 0 (1240361 ms)
+
+In all: 400,000 runs, 0 failures, none that did not end.
+
+2. loop.sh after.jar 1000 (the test alone, each run in a JVM of its own, Unit with -c and -m):
+   runs 1000, failed 0, passed 1000 (177 s)
+
+3. probe/Loop67.java, one JVM: 200 runs, 0 failures (5.2 s).

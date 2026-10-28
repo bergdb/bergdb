@@ -1448,3 +1448,20 @@ object. lean/ from 144 files and 66,452 lines to 119 and 51,539.
 `lake build` from scratch with no warnings and no `sorry`, axioms standard,
 the trace tests, `reclaimtest`, `phystest`, `sistest` and
 `before-commit.sh` pass.
+
+2026-10-28. 005-67 done, by Claude (Opus 5.5, Claude Code), at Frans's
+request: `StorageManagerTester.testAddReplica2`, which failed about one
+gate run in twelve on a busy machine ("Expected 700, got 200") and since
+2026-10-28 runs twice a night, was wrong, not the code. It asserted the
+lengths of the main and the replica right after an append, but an active
+replica only means that the sync's last bytes are in the replica's
+buffer, which writes them a little later, and both buffers write an
+append within milliseconds. It now waits for the confirmed lengths. The
+writer of `testAddReplicaWhileAppending` appended without the write lock
+that `StorageManager.append` requires, which could hang that test; it
+takes it now. Forced interleavings made each failure certain before and
+none after; 0 failures in 400,000 runs after the fix, 4 in 40,000 before.
+Frans's note of 2015 in the test, "Expected 800, got 1200", was a fault
+of the code then: `BufferedStream`'s flush of nothing at a close, fixed by
+005-14. Test code only; `before-commit.sh`, `core-build.sh unit f` and
+`level2.sh quick` pass.

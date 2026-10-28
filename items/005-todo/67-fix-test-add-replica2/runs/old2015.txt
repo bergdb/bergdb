@@ -1,0 +1,20 @@
+bergdb 005-67. Frans's note of 2015 in testAddReplica2, "Expected 800, got 1200": the test as it
+was before the note (probe/Old2015.java) with 2015's BufferedStream (7c458d1, instrumented by
+probe/old2015.py, compiled to old2015/cls and put before the jar on the class path) under today's
+StorageManager, whose replica code is that of 2015; then with today's BufferedStream. 20 or 200
+runs each, F53, 2026-10-28 10:38 to 10:41.
+
+--- 2015 BufferedStream, today's StorageManager, no delay
+200 x main 800, replica 800
+--- 2015 BufferedStream, closePause=5
+1 x main 800, replica 1800 (the test: "Expected 800, got 1800")
+15 x main 800, replica 2800 (the test: "Expected 800, got 2800")
+4 x main 800, replica 3800 (the test: "Expected 800, got 3800")
+--- 2015 BufferedStream, closePause=5 betweenAppends=20
+20 x main 800, replica 1200 (the test: "Expected 800, got 1200")
+--- today's BufferedStream (before.jar), closePause has no hook: no delay
+200 x main 800, replica 800
+--- today's BufferedStream (forced-before.jar), closePause=5
+20 x main 800, replica 800
+--- today's BufferedStream (forced-before.jar), closePause=5, replicaFlushDelay=3
+20 x main 800, replica 800

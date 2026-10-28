@@ -1,0 +1,38 @@
+diff -ru a/java/src/bergdb/storage/BufferedStream.java b/java/src/bergdb/storage/BufferedStream.java
+--- a/java/src/bergdb/storage/BufferedStream.java
++++ b/java/src/bergdb/storage/BufferedStream.java
+@@ -231,6 +231,7 @@
+      * Flushes bytes from ring buffer to underlying stream. Used by consumer.
+      */
+     private void flushToStream() {
++        { int r67 = Integer.getInteger("r67.replicaFlushDelay", 0); if (r67 > 0 && bufferCapacity < 10000) { try { Thread.sleep(r67); } catch (InterruptedException e) { Thread.currentThread().interrupt(); } } }    // bergdb 005-67, instrumented copy
+         // We do not flush more than half of the buffer to leave room for
+         // producer to add data
+         // while consumer is writing (flushing) to underlying filesystem.
+@@ -645,6 +646,7 @@
+             }
+         }
+ 
++        { int r67 = Integer.getInteger("r67.closePause", 0); if (r67 > 0 && bufferCapacity < 10000) { try { Thread.sleep(r67); } catch (InterruptedException e) { Thread.currentThread().interrupt(); } } }    // bergdb 005-67, instrumented copy
+         stop();
+ 
+         // The thread closes the stream as it ends. Not from the thread itself: the listener
+diff -ru a/java/src/bergdb/storage/StorageManager.java b/java/src/bergdb/storage/StorageManager.java
+--- a/java/src/bergdb/storage/StorageManager.java
++++ b/java/src/bergdb/storage/StorageManager.java
+@@ -838,6 +838,7 @@
+         }
+         
+         this.streamLength += length;
++        { int r67 = Integer.getInteger("r67.afterAppend", 0); if (r67 > 0 && true) { try { Thread.sleep(r67); } catch (InterruptedException e) { Thread.currentThread().interrupt(); } } }    // bergdb 005-67, instrumented copy
+     }
+ 
+     public void pretruncate(long position) throws IOException {
+@@ -1135,6 +1136,7 @@
+                         mainLength = mainStream.getLength();
+                         replicaLength = replicaStream.getLength();
+                         diff = mainLength - replicaLength;
++                        { int r67 = Integer.getInteger("r67.syncPause", 0); if (r67 > 0 && true) { try { Thread.sleep(r67); } catch (InterruptedException e) { Thread.currentThread().interrupt(); } } }    // bergdb 005-67, instrumented copy
+                         
+                         if (firstTime) {
+                             totalDiff = diff;

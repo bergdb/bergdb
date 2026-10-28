@@ -35,7 +35,6 @@ Open
 | [005-60](60-block-storage.md) | Investigate | Block storage: the stream on a raw block device without a file system, as a ring of a fixed size, kept until the room is needed (retention by space); feasible in Java? And on a Linux device in a C or C++ clone. Frans's idea | open |
 | [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered; a longer time may mean fewer forces and wake-ups for writers that do not sync, at the cost of more unsynced data lost on a power loss. Frans's request | open |
 | [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Hypothesis to test: since 005-46 the 8 readers take F53's 8 performance cores and the eviction thread falls behind; the run was not quiet. Test: 4, 6 and 8 threads on `bf19075`, `eaec93e` and `4f7cd60`, with the eviction thread's CPU, in a quiet block | open |
-| [005-67](67-fix-test-add-replica2.md) | Fix | `StorageManagerTester.testAddReplica2` fails about one run in twelve, "Expected 700, got 200": a race known since 2015 (Frans's note in the test), never fixed; it fails gates and, since 2026-10-28, nights, which run it twice (`before-commit.sh`, `core-build.sh`). Is the test wrong or the code? | open |
 
 
 Closed
@@ -43,6 +42,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-67](67-fix-test-add-replica2.md) | Fix | `StorageManagerTester.testAddReplica2` failed about one gate run in twelve on a busy machine, "Expected 700, got 200", since 2015 (Frans's note): the test was wrong, not the code. It asserted both streams' lengths right after an append, but an active replica only means that the sync's last bytes are in the replica's buffer, which writes them a little later, and both buffers write an append within milliseconds. Now it waits for the confirmed lengths; `testAddReplicaWhileAppending`'s writer, which appended without the write lock and could hang the test, takes it. Forced interleavings: each failure certain before, none after; 400,000 runs after the fix without a failure (4 in 40,000 before). 2015's "Expected 800, got 1200" was `BufferedStream`'s flush of nothing at a close, fixed by 005-14. Test code only | done | 2026-10-28 |
 | [005-62](62-lean-t9-t12-over-handles.md) | Fix | Lean: T9 and T12 over handles, so that the design before handles can go. Both proved (`t9_handles`, `t12_handles`), reviewed at max effort. Then, as Frans decided (2026-10-28), the design before handles removed from lean/: Evict.lean and its proofs, EvictExample.lean, and the seven theorems over it with a counterpart over handles; the startup with handles proved over handles (HandleStart.lean); the assumptions of stage 2 and `Mem.sectionPos` in Phys.lean; lean/ from 144 files and 66,452 lines to 119 and 51,539. And rule 4 by position after a cut, with Java's skip of the pointers below the stream's first position, proved to link what rule 4 by node id links (`rule4PosCut_handles`, `runPosCut_handles`), so T12 holds for Java's startup; no new assumption. A theorem for a cut without a restart: not for now (Frans) | done | 2026-10-28 |
 | [005-66](66-builder-opens-at-start.md) | Implement | The Pub API's builder opens the directories in `start()`: `dir()` and `replica()` opened their `FileStream`s at once, and since 005-63 a builder that was never started, the first of two `dir()` calls or a replica given before `dir()` held a directory's lock until the JVM ended (a builder has no `close()`). Now they record the directories and `start()` opens them, the database's first, and closes them if it fails (005-32); a bad or busy directory is reported by `start()`; a replica given before `dir()` is kept. Two tests that fail on the code before; `releases/next.md` | done | 2026-10-28 |
 | [005-56](56-package-dependencies.md) | Investigate | Package dependencies against the `package.html` files; Frans's question. Decided 2026-10-28, as the entry's table proposed: the lists of `pub` (`common`, `nanotest` for its tests, `pubimp` for `Factory`'s designed cycle) and `pubimp` (`dag`, `pub.util`, `storage`) changed, all in one form, `Depends on: a, b, c.`; `SyncLevel` moved from `core` to `pub.util` (an API change against 2026.1, in `releases/next.md`); `Database.PRIMARY` and `TestClock`'s range in `pub`; `TimeResolver` stays in `pubimp`. `java/deps.py` checks each package's uses against its list, a step of `before-commit.sh`. Follow-ups 2026-10-28: titles, `src-dev`'s lists, the Core Layer built alone nightly (`java/stress/core-build.sh` in `night.sh`) | done | 2026-10-28 |
@@ -334,7 +334,10 @@ Files
   left by 005-63, the change, the tests and the outcome; done.
 * [67-fix-test-add-replica2.md](67-fix-test-add-replica2.md). 005-67,
   `StorageManagerTester.testAddReplica2` fails about one run in twelve:
-  the issue, its history since 2015; open.
+  the issue, its history since 2015, the cause (the test), the forced
+  interleavings, 2015's fault, the fix and the outcome; done. The loops,
+  the probes and their output in
+  [67-fix-test-add-replica2/](67-fix-test-add-replica2/).
 
 Log
 ===
@@ -1292,3 +1295,15 @@ pointers below the stream's first position.
 by Claude (Opus 5.5, Claude Code): `StorageManagerTester.testAddReplica2`
 fails about one run in twelve, "Expected 700, got 200", a race known since
 2015 and never fixed, which now fails nights; kind fix.
+
+2026-10-28. 005-67 done, by Claude (Opus 5.5, Claude Code), as
+registered: the test was wrong, not the code. `testAddReplica2` asserted
+the streams' lengths right after an append, before the replica's buffer
+had written the sync's last bytes and before the buffers had written the
+append; now it waits for the confirmed lengths. The writer of
+`testAddReplicaWhileAppending` takes the write lock, without which the
+test could hang. Forced interleavings made each failure certain before
+and none after; 0 failures in 400,000 runs after the fix, 4 in 40,000
+before. 2015's "Expected 800, got 1200" was `BufferedStream`'s flush of
+nothing at a close, fixed by 005-14. `before-commit.sh`, `core-build.sh
+unit f` and `level2.sh quick` pass.

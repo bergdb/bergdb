@@ -1,0 +1,70 @@
+bergdb 005-67. Gates in the clone on dad6bd2 (the fix on 90153f2), with nice -n 10, F53, 2026-10-28.
+The same three passed at 10:49 to 10:53 on 6962a45, the same change without the comment under the
+note of 2015 (BEFORE COMMIT OK (91 s), CORE BUILD OK, LEVEL 2 OK).
+
+--- java/before-commit.sh (10:59)
+Deps: 9 packages, all as package.html allows
+Unit: SUCCESS, 1058 successful tests in 8.7 s.
+F:    SUCCESS, 74 successful tests in 84.1 s.
+BEFORE COMMIT OK (89 s)
+bergdb.storage.StorageManagerTester .................
+
+--- java/stress/core-build.sh unit f (11:00)
+1. The Core Layer's packages against their package.html
+   7 packages, all as package.html allows: common core dag nanotest pub.util storage stream
+2. javac, the Core Layer alone
+   177 source files, 430 classes, bergdb-core.jar 715133 bytes
+3. jdeps
+   bergdb-core.jar -> java.base
+   bergdb-core.jar -> java.management
+4. CoreDemo, calls Db directly
+   getOne: apple red then green, banana yellow then null
+   getMany at the first time: /fruit/apple=red /fruit/banana=yellow
+   getMany at the latest time: /fruit/apple=green
+   getTrans: the latest apple's transaction is the second one
+   CoreDemo OK: the same reads after a restart
+5. The Core Layer's tests
+   unit: SUCCESS, 674 successful tests in 7.9 s.
+   f: SUCCESS, 54 successful tests in 32.0 s.
+CORE BUILD OK
+bergdb.storage.StorageManagerTester .................
+
+--- java/stress/level2.sh quick (11:01; lean/.lake copied from 005-62's work tree at the same lean/; lake build: Build completed successfully (147 jobs).)
+1. Unit tests
+SUCCESS, 1058 successful tests in 9.2 s.
+2. RestartStress, random configurations
+   random-0: Done: 10 rounds, 0 failures, 5 s.
+   random-1: Done: 10 rounds, 0 failures, 5 s.
+   random-2: Done: 10 rounds, 0 failures, 7 s.
+   random-3: Done: 10 rounds, 0 failures, 6 s.
+3. RestartStress, small and default startup distances
+   sd1000-keys50-node14: Done: 3 rounds, 0 failures, 3 s.
+   sd1000-keys50-node30: Done: 3 rounds, 0 failures, 2 s.
+   sd1000-keys50-node62: Done: 3 rounds, 0 failures, 3 s.
+   sd1000-keys50-node8: Done: 3 rounds, 0 failures, 3 s.
+   sd1000-node14: Done: 3 rounds, 0 failures, 6 s.
+   sd1000-node30: Done: 3 rounds, 0 failures, 6 s.
+   sd1000-node62: Done: 3 rounds, 0 failures, 7 s.
+   sd1000-node8: Done: 3 rounds, 0 failures, 6 s.
+4. RestartInvariance
+   inv-every1: stream identical, all checks OK
+   inv-idle-1: stream identical, all checks OK
+   inv-idle-2: stream identical, all checks OK
+   inv-sd100: stream identical, all checks OK
+   inv-sd1000-node8: stream identical, all checks OK
+   inv-sd10000-node14: stream identical, all checks OK
+   inv-sd100000-node62: stream identical, all checks OK
+5. CrashTest, the stream cut at random positions
+   crash-0: Done: 1 rounds, 0 failures, 2 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-1: Done: 1 rounds, 0 failures, 2 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-2: Done: 1 rounds, 0 failures, 2 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-3: Done: 1 rounds, 0 failures, 2 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-node8: Done: 1 rounds, 0 failures, 3 s. Cuts where a transaction ends at a meta block's position: 0.
+6. BryanRepro, the bug report of 2015 (restarts with deletes and reclaim)
+   bryan: Done: 15 cycles, 0 failures, 12 s.
+7. Conformance with the Lean model
+   a2a3-1: transactions 3000: A2, A3, A5, marking, TREE, A6' and A-COPY OK; adoptions below the old parent (A6' allows them, A6 not) 0
+   a2a3-2: transactions 500: A2, A3, A5, marking, TREE, A6' and A-COPY OK; adoptions below the old parent (A6' allows them, A6 not) 1
+   a2a3-3: transactions 6000: A2, A3, A5, marking, TREE, A6' and A-COPY OK; adoptions below the old parent (A6' allows them, A6 not) 0
+   conformance: traces: 14, TRACECHECK OK: 14
+LEVEL 2 OK

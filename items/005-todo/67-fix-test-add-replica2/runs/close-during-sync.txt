@@ -1,0 +1,11 @@
+bergdb 005-67, found on the way (for 005-11): close() while a replica is being added, on the
+instrumented copy of the code before (probe/forced.py), whose sync pauses 200 ms with the write
+lock after reading the lengths; then without the pause, so that close() comes after the sync.
+probe/CloseDuringSync67.java, F53, 2026-10-28 10:42.
+
+--- base code, instrumented, syncPause=200
+after close(): the main's BufferedStream thread alive: false; the replica's alive: true (1 thread)
+the replica's directory is still held after close(): bergdb.stream.DirectoryInUseException: Directory /var/folders/v3/nbl076_52896ts43jf4cwr5c0000gp/T/r67-replica12840181033380000965 is in use by another BergDB database in this JVM (bergdb.lock is locked).
+--- without the pause (close after the sync)
+after close(): the main's BufferedStream thread alive: false; the replica's alive: false (1 thread)
+the replica's directory is free after close()

@@ -1,0 +1,36 @@
+bergdb 005-67, forced interleavings, 2026-10-28 10:57, forced-after-final.jar
+--- -cp cls-final:forced-after-final.jar Loop67 testAddReplica2 100
+testAddReplica2: runs 100, failed 0, did not end 0 (2527 ms)
+--- -Dr67.replicaFlushDelay=2 -cp cls-final:forced-after-final.jar Loop67 testAddReplica2 100
+testAddReplica2: runs 100, failed 0, did not end 0 (2542 ms)
+--- -Dr67.replicaFlushDelay=5 -cp cls-final:forced-after-final.jar Loop67 testAddReplica2 100
+testAddReplica2: runs 100, failed 0, did not end 0 (2619 ms)
+--- -Dr67.replicaFlushDelay=10 -cp cls-final:forced-after-final.jar Loop67 testAddReplica2 100
+testAddReplica2: runs 100, failed 0, did not end 0 (3837 ms)
+--- -Dr67.replicaFlushDelay=50 -cp cls-final:forced-after-final.jar Loop67 testAddReplica2 100
+testAddReplica2: runs 100, failed 0, did not end 0 (12235 ms)
+--- -Dr67.afterAppend=1 -cp cls-final:forced-after-final.jar Loop67 testAddReplica2 100
+testAddReplica2: runs 100, failed 0, did not end 0 (2544 ms)
+--- -Dr67.afterAppend=3 -cp cls-final:forced-after-final.jar Loop67 testAddReplica2 100
+testAddReplica2: runs 100, failed 0, did not end 0 (2576 ms)
+--- -Dr67.afterAppend=10 -cp cls-final:forced-after-final.jar Loop67 testAddReplica2 100
+testAddReplica2: runs 100, failed 0, did not end 0 (2628 ms)
+--- -Dr67.afterAppend=50 -cp cls-final:forced-after-final.jar Loop67 testAddReplica2 100
+testAddReplica2: runs 100, failed 0, did not end 0 (6746 ms)
+--- -cp cls-final:forced-after-final.jar Loop67 testAddReplicaWhileAppending 20 5000
+testAddReplicaWhileAppending: runs 20, failed 0, did not end 0 (1226 ms)
+--- -Dr67.syncPause=30 -cp cls-final:forced-after-final.jar Loop67 testAddReplicaWhileAppending 50 5000
+testAddReplicaWhileAppending: runs 50, failed 0, did not end 0 (4099 ms)
+(WhileAppending67 has a writer of its own, without and then with the write lock: StorageManager's contract, not the test; the same on both copies.)
+--- -Dr67.syncPause=30 -cp cls-final:forced-after-final.jar WhileAppending67 5
+main 750, replica 720, the replica lacks 30 bytes
+main 750, replica 730, the replica lacks 20 bytes
+main 750, replica 730, the replica lacks 20 bytes
+main 750, replica 730, the replica lacks 20 bytes
+main 750, replica 730, the replica lacks 20 bytes
+--- -Dr67.syncPause=30 -cp cls-final:forced-after-final.jar WhileAppending67 5 lock
+main 750, replica 750
+main 750, replica 750
+main 750, replica 750
+main 750, replica 750
+main 750, replica 750
