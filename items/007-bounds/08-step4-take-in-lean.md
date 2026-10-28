@@ -351,3 +351,137 @@ Files
 * [08-step4-take-in-lean/TakeCheck.java](08-step4-take-in-lean/TakeCheck.java):
   the probe that runs `TransSeq.take` on the generated cases; how to run it
   is in its comment.
+
+
+Review, 2026-10-28
+------------------
+
+2026-10-28, 13:05, by Claude (Opus 5.5, Claude Code): an independent
+review at max effort of `db1eca8`, `a0e47c3`, `63471fc`, `8e71ffb` and
+`8b6669f`, from the Lean and the Java, not from the account above. In my
+clone `/Users/f/fl/bench/006-10/rev8/` at `8b6669f`; my checks are in its
+`review/` folder (not committed; run from lean/ with `lake env lean
+../review/<file>`).
+
+**1. Faithfulness.** `takePolicy` is `TransSeq.take` of `f89846d`
+(unchanged since) as `Db.store` calls it, but for the record limit and the
+meta blocks. The loop's list, T(s+1), ..., T(i-1), is the `TransSeq`:
+`store` adds every transaction after its take, and `DbStarter` adds
+T(s+1), ..., T(k) again at a start. The test `d ≤ S.cost size j S.length`
+is Java's `first.tpos <= hardSp`; `max (2 * sd i) (S.span size)` is
+`Math.max(2L * startupDistance, span())`, `Stream.span` of the stream
+before R(i) being `last.tpos - first.tpos`; both, and the share, are
+computed once before the loop; the pace sees what Java's break test sees;
+the result is the last transaction taken, or s. `javaPace` takes D, o, O,
+L and the dither as `take` does. The Float model is sound: `Nat.toFloat`
+rounds to nearest below 2^64, as Java's long to double does; `*` and `/`
+are binary64 and left-associative, in Java's order; comparisons with NaN
+are false in both. TakeCheck runs the real `TransSeq.take` (I built it
+from the clone's sources, JDK 27): its 300 results are `javaTakes`, and
+`TakeCheck bits` prints the `#guard`s' bits. Two limits of these checks:
+the share's bits come from a copy of the expression in TakeCheck, not from
+TransSeq (`a0e47c3`'s message says both come from TransSeq itself); and
+neither the three share checks nor the 300 cases tell Java's order of the
+share's operations from two other orders, or the deadline's `≤` from `<`
+(review/Variants.lean: 0 of 300 cases differ, where a dither of 0.5
+changes 52, the deadline alone 213, T(i)'s nodes in D 11, the deadline
+without the span 40). On three inputs where the order changes the bits,
+`share` gives Java's (review/Order3.lean, ShareBits.java); the `≤` I
+confirm by reading.
+
+The meta blocks: section 1's account holds for one record, not for runs.
+After a record that ends exactly on a 200,000-byte boundary, `take` gets
+`getLength()`, 128 bytes before where R(i) begins (`getNextSpos`), so
+Java's deadline is 128 bytes stricter than the model's. This recurs at
+every such record, and the theorems are inductions over records. With
+records that each fill a block (199,872 bytes) and a pace that takes
+nothing more, Java's section after a decrease stays at m × 200,000 bytes,
+where the model's loses a record each time, and at a constant setting it
+can stay up to 127 bytes above 2 sd. So "for every pace" does not carry
+over to Java there. With Java's share, about L/sd' ≥ 2 transactions'
+worth of nodes a record while the section is above 2 sd', it should not
+matter, and 007-07's runs shrank at every record. Passing
+`nodeStream.getNextPos()` instead of `getLength()` to `take` in
+`Db.store` would make the model exact here.
+
+**2. The statements**, read in full (review/Stmts.lean), say what section
+2 says. `T3_take` with M = sd is 007-03's T3 with d = d_h, `T3_take_rerun`
+with M = sd the goal's sentence with the last record whole, and
+`T3_take_decrease` the honest form under D4:B. The hypotheses are only the
+policy, M > 0 and the settings, and they are met: review/NonVacuous.lean
+applies `T3_take` to example 2's run with `javaTake` at a setting of 1000,
+and `T3_take_decrease` to the decrease from 2000 to 400 after T(40), where
+the second disjunct is the one that holds. The section without its last
+record is the right quantity: the take chooses s(k) before R(k) exists, so
+R(s+1), ..., R(k-1) is what it can bound, and the theorems add R(s) and
+R(k) for the reads and the rerun. `T3_take_reads` is what startup reads in
+full (6.2, step 3; `readTransactions` from the startup pos), not all that
+it reads: the reads through references into older records (step 5; rule 4
+and the index at s from a cold disk, the plan's N) are outside it, as for
+`T3_reads`. One comment is wrong: "So it never costs more than after
+T(m)" (`T3_take_decrease`, and section 2) holds only if the section after
+T(m) costs at least 2 sd'; in general it never costs more than the larger
+of that and 2 sd' - 1. The statement itself is right.
+
+**3. The counterexamples** are correct. Three are `#guard`s that the
+build runs: `KeepsUp` with 2 sd (transaction 31 of the run from 400 to
+100), above the new d_h right after a decrease (1016 and 816; 616 to
+280), and one unit a transaction (`slowSpans`). `KeepsUp` fails since it
+is over all streams; at a constant setting the take keeps up with d_h on
+every stream a run reaches (by `T3_take`). The fourth, R(s+1), ..., R(k)
+below 2 sd plus the last transaction's own bytes, is argued from 007-07's
+Java data, not checked; it is false in the model too
+(review/NonVacuous.lean, `viol`: with the deadline alone at sd 200, after
+T(6) they cost 552 ≥ 2 · 200 + 72).
+
+**4. The trusted part.** The theorems need `Stream.span`, `Pace`,
+`takeLoop` and `takePolicy` (with `sectionIdx`, trusted before): minimal.
+`share`, `dither`, `javaPace` and `javaTake` enter no theorem, so they
+cannot make one wrong; keeping them is harmless, but Bound.lean's header
+and lean/README.md's table list them with the trusted definitions without
+saying so. No definition changed: `Stream.cost`, `sdTarget`, `KeepsUp` and
+`sdPolicy` are as before, with accurate new comments; no other trusted
+file and no earlier statement changed.
+
+**5. The checks.** In the fresh clone, `nice -n 10 lake build`: "Build
+completed successfully (148 jobs)", no warnings, 67 s (review/build.log).
+`#print axioms` of the seven and of `takePolicy_keepsUp`
+(review/Axioms.lean): `[propext, Classical.choice, Quot.sound]`. `sh
+test-traces/run.sh`: "TRACE TESTS OK". No `sorry`, `admit`,
+`native_decide`, `axiom`, `unsafe`, `implemented_by`, `extern`, `opaque`,
+`ofReduceBool`, `maxHeartbeats` or `by decide` anywhere in lean/; `decide`
+only as Bool tests in definitions.
+
+**6. Docs.** docs/sis-model.md, docs/levels.md and lean/README.md claim
+what is proved, and name the record limit and the meta blocks as left out.
+README.md's "Bounded startup is proved for BergDB's own startup pos
+policy" says more than T3, which leaves the records at the ends (T4) and a
+cold start's random reads open (levels.md already used the phrase for
+T3); what follows its colon is exact. "Comes down with every commit" holds
+for the model; for Java it rests on the share (point 1).
+
+**Changes made.** None to the Lean, the Java or the docs; only this
+section.
+
+**Verdict.** Faithful to `TransSeq.take` without the record limit and the
+meta blocks, not vacuous, the proofs sound. No error in a definition, a
+statement or a proof; one wrong comment (point 2) and an understated
+caveat (point 1).
+
+**For Frans.**
+
+1. The subitem's question 1: keep `share`, `dither` and `javaPace` in
+   Bound.lean, as recommended, with a line there and in lean/README.md
+   that no theorem uses them.
+2. Question 2: later, as recommended. But a trace check of the startup pos
+   is the only check that `Db.store` gives `take` the model's arguments
+   (the stream length, the setting, the startup pos), which the theorems'
+   meaning for Java now rests on by reading; with each record's tpos it
+   would cover the meta blocks too.
+3. Question 3: no, as recommended.
+4. The meta blocks (point 1): keep them out, as documented, with section 1
+   saying that the 128 bytes can recur; or pass `getNextPos()` to `take`,
+   which changes a stream only after a record that ends on a block
+   boundary.
+5. For the author: the comment of point 2, a `#guard` for the fourth
+   counterexample, and README.md's first words (point 6).
