@@ -141,3 +141,16 @@ BEFORE COMMIT OK, 23 s). No Java finding: every pair of runs gave the same
 bytes. 012-02's document is under way (sections 1 to 13 drafted). The
 5-hour usage window reached 86% at 15:01: the agents paused until its
 reset at 15:50.
+
+2026-10-28, 16:25. 012-02's document written and checked, its review
+(step 5) still to come: the stream and the directory field by field, what
+decides the bytes (the take replayed from the scans alone with 0 errors
+over 299,401 takes), the determinism audit, the differences from the text
+of 2015, the scanner's format. The audit found four real dependences:
+C1 and C2 on the files, C3 and C4 on the bytes after a restart. Registered
+as 005-70 (the STM's `KeyModSet` is empty after a start, a correctness
+bug), 005-71 (`DbClock`'s last read time) and 005-72 (the files after a
+physical cut depend on timing); C follows Java until they are fixed. Two
+questions for Frans in 012-02, section 13 (Q1, how cross tests compare
+after reclaim's cuts; Q2, the restart findings), neither blocking before
+012-10 and 012-11.
