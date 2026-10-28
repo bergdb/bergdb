@@ -364,6 +364,17 @@ no code changed. At Frans's request (13:20) 012's plan committed as it is,
 decided and not started (`eff970d`), and `main` pushed to `origin`; the old
 012 entry in `news.md` removed, as D1 to D7 are decided.
 
+2026-10-28, 16:00. 007-07 at 50M keys done (`3c6b545`, 007-07 section 11):
+the whole set of 12 runs on F53 at the lowest priority, 12:36 to 15:55.
+Steady: the section at most 1.11 sd (10M: 1.10), no record over 2.3 times
+the mean; the long delete run (16.6 sd of stream) at most 1.06 sd. After a
+one-call decrease the section shrinks at every record and stays below the
+new 2 sd, in fewer puts than at 10M. But the largest record of a decrease
+grows with the keys: 13.3 to 15.4 MB from 1000 to 100 MB (10M: 3.3 to 3.6
+MB), put down to the pace's factor S/sd (up to 10), not the deadline; a cap
+is a decision for Frans, for the Outcome. 100M keys needs more heap than
+F53 has. No agent runs now.
+
 ## 8. Outcome
 
 To come by 07:00 on 2026-10-29.
