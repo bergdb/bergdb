@@ -28,7 +28,7 @@ The findings
   `RecoverableStream.java:490` at `fd8f513`; 012-09, section 6.3, F2).
   Every caller passes offset 0, so nothing differs today; with another
   offset the check refuses a right record and passes a wrong one (a probe
-  showed both). Added 2026-10-28, 22:20.
+  showed both). Added 2026-10-28, 22:17.
 * **`Klong`'s comments**: the format comment gives a TIME klong 58 bits,
   the code 56 (`MAX_TIME` 0x00ffffffffffffff; 012-04); `getIntType`'s
   comment says it returns 0, 1 or 2, and it returns 3 for a delete bitmap
