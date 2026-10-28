@@ -2,6 +2,8 @@ package bergdb.pubimp;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import bergdb.common.Util;
 import bergdb.core.Db;
@@ -33,6 +35,12 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     private int cacheSizeInMb;         // cache size indicator from user
     private int startupDistanceInMb;
     
+    /** The directory of dir(), opened by start() (bergdb 005-66), or null. */
+    private File dir = null;
+    
+    /** The directories of replica(), by name, in the order given; opened by start(). */
+    private final Map<String, File> replicaDirs = new LinkedHashMap<String, File>();
+    
     
     public DatabaseBuilderImp() {
         // Sets some default values.
@@ -63,6 +71,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     
     public DatabaseBuilder memory() {
         dbBuilder.mainStream(new MemoryStream());
+        this.dir = null;
         return this;
     }
     
@@ -75,10 +84,10 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     public DatabaseBuilder replica(String name, String dir) throws IOException {
-        FileStream stream = new FileStream(new File(dir));
-        int bufferSize = StorageManager.DEFAULT_REPLICA_BUFFER_SIZE;
-        int bufferTime = StorageManager.DEFAULT_BUFFER_TIME;
-        dbBuilder.stream(name, stream, bufferSize, bufferTime);
+        if (name == null) {
+            throw new IllegalArgumentException("name == null not allowed");
+        }
+        replicaDirs.put(name, new File(dir));
         return this;
     }
     
@@ -87,15 +96,16 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         return dir(d);
     }
     
+    /**
+     * Records the directory; start() opens it (bergdb 005-66). Until 005-66 this method
+     * opened it, and a builder that was never started held it, since 005-63 its lock too,
+     * until the JVM ended.
+     */
     public DatabaseBuilder dir(File dir) {
-        FileStream stream;
-        try {
-            stream = new FileStream(dir);
-        } catch (IOException e) {
-            throw new StreamIoException(e);
+        if (dir == null) {
+            throw new IllegalArgumentException("dir == null not allowed");
         }
-        
-        dbBuilder.mainStream(stream);
+        this.dir = dir;
         return this;
     }
     
@@ -114,6 +124,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
      */
     public DatabaseBuilder mainStream(final AppendOnlyStream stream) {
         dbBuilder.mainStream(stream);
+        this.dir = null;
         return this;
     }
     
@@ -164,17 +175,46 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         dbBuilder.startupDistance(startupDistance);
         dbBuilder.cacheSizeIndicator(cacheSizeIndicator);
         
+        if (dir == null && dbBuilder.getStreamCount() == 0) {
+            throw new IllegalStateException("no streams, please provide a database stream");
+        }
+        
         Db db;
         try {
+            openDirs();
             handleCryptoKeyAndCreatedTxt();
             db = dbBuilder.build();
         } catch (RuntimeException | Error e) {
-            // The streams that dir() and replica() opened are closed (2026-10-24, bergdb
-            // 005-32): a crypto key of an unknown algorithm left the directory's file open.
+            // The streams that openDirs() opened are closed (2026-10-24, bergdb 005-32): a
+            // crypto key of an unknown algorithm left the directory's file open.
             dbBuilder.closeStreams(e);
             throw e;
         }
         return DatabaseImp.createAndStart(db);
+    }
+    
+    /**
+     * Opens the directories of dir() and replica() (bergdb 005-66): the database's first,
+     * then the replicas in the order given. Each stream goes to the DbBuilder as it is
+     * opened, so that a failure closes those before it (start(), closeStreams).
+     */
+    private void openDirs() {
+        if (dir != null) {
+            dbBuilder.mainStream(openDir(dir));
+        }
+        for (Map.Entry<String, File> replica : replicaDirs.entrySet()) {
+            int bufferSize = StorageManager.DEFAULT_REPLICA_BUFFER_SIZE;
+            int bufferTime = StorageManager.DEFAULT_BUFFER_TIME;
+            dbBuilder.stream(replica.getKey(), openDir(replica.getValue()), bufferSize, bufferTime);
+        }
+    }
+    
+    private static FileStream openDir(File dir) {
+        try {
+            return new FileStream(dir);
+        } catch (IOException e) {
+            throw new StreamIoException(e);
+        }
     }
 
     private void handleCryptoKeyAndCreatedTxt() {

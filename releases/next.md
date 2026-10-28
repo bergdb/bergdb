@@ -43,7 +43,7 @@ API changes
   `bergdb.lock`, before it reads anything, and releases it when it is
   closed. A second database on the directory, in the same JVM or in another
   process, is refused at once with a `DirectoryInUseException`
-  (`DatabaseBuilder.dir()` throws a `StreamIoException` with it as the
+  (`DatabaseBuilder.start()` throws a `StreamIoException` with it as the
   cause); so is one started right after `stop()`, while the first is still
   closing: start it after `close()` has returned. Before, nothing refused a
   second database, and one started right after `stop()` could take files
@@ -59,6 +59,16 @@ API changes
   `ORDINARY` and `STRONG`. Code that names it changes its import, from
   `bergdb.core.SyncLevel` to `bergdb.pub.util.SyncLevel`, and code compiled
   against 2026.1 that uses it must be compiled again.
+* **The builder opens the directories in `start()`** (bergdb 005-66,
+  2026-10-28). `DatabaseBuilder.dir()` and `replica()` only record their
+  directories; `start()` opens them, the database's first, and closes them
+  again if it fails. So a builder that is never started holds nothing, where
+  since 005-63 it held the directory's lock until the JVM ended, and so did
+  the first of two `dir()` calls and a replica given before `dir()`. A
+  replica given before `dir()` is now kept; before, `dir()` dropped it. A
+  directory that cannot be opened, or that another database has, is reported
+  by `start()`, with the same `StreamIoException` that `dir()` threw;
+  `replica()` no longer throws its `IOException`.
 
 
 Format

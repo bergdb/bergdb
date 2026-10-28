@@ -194,6 +194,63 @@ public class PubTester {
         d2.close();
     }
     
+    /**
+     * bergdb 005-66: the builder opens its directories in start(). dir() of a directory that
+     * a database holds returns, and start() is refused; dir() of a new directory creates
+     * nothing; a builder that is dropped, and the first of two dir(), hold nothing. Until
+     * 005-66 dir() opened the directory, and those held its lock until the JVM ended.
+     */
+    @Nano
+    public static void testBuilderOpensInStart(TestEnvironment env) throws Exception {
+        File tmp = env.createTempDir();
+        String a = new File(tmp, "a").getPath();
+        File b = new File(tmp, "b");
+        
+        Database d = Factory.database().dir(a).start();
+        DatabaseBuilder held = Factory.database().dir(a);
+        try {
+            held.start().close();
+            throw new AssertionError("started on a directory that a database holds");
+        } catch (StreamIoException e) {
+            Assert.assertTrue("the cause, " + e.getCause(), 
+                    e.getCause() instanceof DirectoryInUseException);
+        }
+        d.close();
+        
+        Factory.database().dir(b.getPath());        // Dropped.
+        Assert.assertFalse("dir() created the directory", b.exists());
+        
+        Database d2 = Factory.database().dir(a).dir(b.getPath()).start();
+        d2.connection().put("/k", "b");
+        Database d3 = Factory.database().dir(a).start();      // The first dir() holds nothing.
+        Assert.assertTrue(d3.connection().get("/k", String.class) == null);
+        d3.close();
+        d2.close();
+        
+        Database d4 = Factory.database().dir(b.getPath()).start();
+        Assert.assertEquals("b", d4.connection().get("/k", String.class));
+        d4.close();
+    }
+    
+    /**
+     * bergdb 005-66: a replica given before dir() is kept and written. Until 005-66 dir()
+     * replaced it, and its directory stayed held.
+     */
+    @Nano
+    public static void testReplicaBeforeDir(TestEnvironment env) throws Exception {
+        File tmp = env.createTempDir();
+        String dir = new File(tmp, "db").getPath();
+        String replica = new File(tmp, "replica").getPath();
+        Database d = Factory.database().replica("r", replica).dir(dir).start();
+        d.connection().put("/k", "v");
+        d.sync(SyncLevel.STRONG);
+        d.close();
+        
+        Database r = Factory.database().dir(replica).start();
+        Assert.assertEquals("v", r.connection().get("/k", String.class));
+        r.close();
+    }
+    
     private static String v1;
     private static String v2;
     

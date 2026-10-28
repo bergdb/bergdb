@@ -19,16 +19,16 @@ import bergdb.pub.util.DbException;
 public interface DatabaseBuilder {
     
     /**
-     * Use the given directory to store the database stream in files.
+     * Use the given directory to store the database stream in files. start() opens the
+     * directory, and creates it if it does not exist; this method only records it (bergdb
+     * 005-66), so a builder that is not started holds nothing. Until 005-66 this method
+     * opened it and threw the errors that start() now throws.
      * 
      * <p>One database at a time has the directory (bergdb 005-63): while another database
      * has it open, in this process or in another, also one that is closing after stop(),
-     * this method throws a StreamIoException whose cause is a
+     * start() throws a StreamIoException whose cause is a
      * bergdb.stream.DirectoryInUseException. Nothing in the directory has been read or
      * changed then.</p>
-     * 
-     * @throws DbException  If there is file error when accessing the 
-     * specified directory.
      */
     public DatabaseBuilder dir(String dirname);
     
@@ -57,12 +57,16 @@ public interface DatabaseBuilder {
      * fails is dropped without a word, and reclaim's next cut then fails the database. A
      * start without a replica that a crash left ahead of the main, and then one with it, can
      * leave two histories, or a database that does not start. A slow replica slows every
-     * write, and a hung one stops them. Call dir() first: a replica added before it is
-     * dropped.</p>
+     * write, and a hung one stops them.</p>
+     * 
+     * <p>start() opens the replica's directory, after the database's own; this method only
+     * records it (bergdb 005-66). Until 005-66 it opened it, and a replica added before
+     * dir() was dropped.</p>
      * 
      * @param name  Name of the storage replica.
      * @param dir   Directory of the replica database data.
-     * @throws IOException  if there is a file access error with the specified directory 'dir'.
+     * @throws IOException  Not thrown since bergdb 005-66: start() throws a
+     *      StreamIoException if the directory cannot be opened. Kept so that callers compile.
      */
     public DatabaseBuilder replica(String name, String dir) throws IOException;
     
@@ -120,7 +124,10 @@ public interface DatabaseBuilder {
      * removed, at once.</p>
      * 
      * @throws DbException
-     *             If a functioning database could not be started.
+     *             If a functioning database could not be started; among them a
+     *             StreamIoException if a directory of dir() or replica() cannot be opened,
+     *             or another database has it (the cause a DirectoryInUseException, bergdb
+     *             005-63).
      * @throws BadReplicaException
      *             If the replica provided when creating the Database object
      *             is not a valid replica of the database. The database ID in

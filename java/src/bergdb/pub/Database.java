@@ -93,7 +93,7 @@ public interface Database extends AutoCloseable {
      * 
      * <p>Start another database on the same directory only after this one is closed, when
      * close() has returned (bergdb 005-63). Until then, a start there is refused:
-     * DatabaseBuilder.dir() throws.
+     * DatabaseBuilder.start() throws.
      * </p>
      */
     public void stop();
