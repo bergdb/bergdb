@@ -69,9 +69,20 @@ Where BergDB stands:
   Item 009's target counts BergDB's own code only, and recommends a
   collector (Frans, 2026-10-27: "The target of 20 ms is for the BergDB
   code. Not for the JVM itself.").
-* The deadline of 007-03 makes one long commit, while the other writers
-  wait; since 005-46 the readers of the stream's last file no longer do
-  ([007-04](../007-bounds/04-review-after-009.md), points 6 and 7).
+* A decrease of the startup distance no longer makes one long commit
+  ([007-04](../007-bounds/04-review-after-009.md), points 6 and 7). Since
+  2026-10-28 007-03's deadline is a backstop behind 005-49's paced take,
+  in which each commit writes its share; the deadline is at the stream's
+  length minus max(2 × sd, the section's span), and after a decrease the
+  span shrinks with every commit (D4:B,
+  [007-07](../007-bounds/07-step3-paced-take.md), section 10.1). At 10M
+  keys, from 1000 to 100 MB, no record of the decrease was over 3.6 MB,
+  where the patch alone wrote one of 486 MB; from 200 to 50 MB, 5.4 MB
+  (007-07, section 10.4). In steady state the deadline never took a
+  transaction that the share would not. Not yet known: how long these
+  commits take, as the runs counted bytes only, and 50M keys, not run
+  (007-07, section 10.5). The other writers wait for each commit; since
+  005-46 the readers of the stream's last file do not.
 
 
 P2. A deterministic stream
@@ -96,10 +107,17 @@ Where BergDB stands:
 * Checked for the bytes: the restart checks require byte equality
   (`RestartInvariance`, [levels.md](../011-docs-archive/04-levels.md)); the padding
   bytes that the 2017 code left uninitialized were fixed on 2026-10-12.
-* To check: that the memory budget and eviction (Level 4, item 009), the
-  buffer time and the startup distance's deadline (007-03) leave the bytes
-  unchanged, or, where a setting changes the bytes, that the principle says
-  so.
+* Checked for the take since 2026-10-28, 005-49's paced take with 007-03's
+  deadline and D4:B ([007-07](../007-bounds/07-step3-paced-take.md)): it
+  reads only what a start reruns, the section's span too (section 10.1).
+  StreamDigest: two runs give the same 36 streams, and in each
+  configuration the plain, reads and restarts streams agree (sections 5
+  and 10.3). No configuration of StreamDigest lowers the startup distance;
+  a decrease with restarts during it gives the same stream, byte for byte,
+  as without (`DbTesterRestart`, section 10.2).
+* To check: that the memory budget and eviction (Level 4, item 009) and
+  the buffer time leave the bytes unchanged, or, where a setting changes
+  the bytes, that the principle says so.
 
 
 P3. Calm when not used
