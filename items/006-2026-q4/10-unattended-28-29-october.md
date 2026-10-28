@@ -249,6 +249,17 @@ summary, with its builds in `/Users/f/fl/bench/006-09/d2-009-builds`.
 007-07 with D4:B still runs (a subagent at max effort).
 
 
+2026-10-28, 10:08. W3.1 done (`da371c0`): 005-64's `night/run-f53.sh` (90
+minutes, up to 9 rounds of 20, 50 and 100 ms rotated, MixedProbe for
+question 3), `trickle.sh` (26 minutes, question 4) and `run-s1.sh` (60
+minutes), on the preserved build `main-bf9fc7f` (before 007-07; the buffer
+time does not depend on it); question 5 written from the code. Each smoke
+test passed its parse check (every expected row, every cell); s1 idle and
+its smoke mode OK. In `steps.txt` with READY markers. Also in `main`:
+005-66 (another session, `83b7ac0`), 005-56's follow-ups with the Core
+Layer built alone nightly in `night.sh` (`43e631f`), 010-01's P12
+(`64af8da`).
+
 ## 8. Outcome
 
 To come by 07:00 on 2026-10-29.
