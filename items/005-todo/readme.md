@@ -35,6 +35,7 @@ Open
 | [005-60](60-block-storage.md) | Investigate | Block storage: the stream on a raw block device without a file system, as a ring of a fixed size, kept until the room is needed (retention by space); feasible in Java? And on a Linux device in a C or C++ clone. Frans's idea | open |
 | [005-62](62-lean-t9-t12-over-handles.md) | Fix | Lean: T9 and T12 over handles, so that the design before handles can go. Both proved (`t9_handles`, `t12_handles`; `bba91dd` to `a506b34`), reviewed at max effort, lake build clean, axioms standard; left for Frans: how far to remove the old design's files and theorems, and two further theorems (rule 4 by position after a cut, a cut without a restart) | open |
 | [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered; a longer time may mean fewer forces and wake-ups for writers that do not sync, at the cost of more unsynced data lost on a power loss. Frans's request | open |
+| [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Hypothesis to test: since 005-46 the 8 readers take F53's 8 performance cores and the eviction thread falls behind; the run was not quiet. Test: 4, 6 and 8 threads on `bf19075`, `eaec93e` and `4f7cd60`, with the eviction thread's CPU, in a quiet block | open |
 
 
 Closed
@@ -320,6 +321,11 @@ Files
 * [64-buffer-time-after-group-commit.md](64-buffer-time-after-group-commit.md).
   005-64, the buffer time after group commit, 20, 50 or 100 ms: the issue,
   the questions; open.
+* [65-gets-with-8-readers.md](65-gets-with-8-readers.md). 005-65, gets of
+  27 and 36 ms with 8 readers at 665 MB under ZGC: the issue, the
+  hypothesis and what would refute it, the test; open. The night step
+  (`prep.sh`, `threads.sh`, `sum.py`, `ScaleBench-065.diff`) in
+  [65-gets-with-8-readers/night/](65-gets-with-8-readers/night/).
 
 Log
 ===
@@ -1235,3 +1241,12 @@ as the entry's table proposed; `SyncLevel` moved from `bergdb.core` to
 checks each package's uses against its list, a step of
 `java/before-commit.sh`: "9 packages, all as package.html allows".
 `before-commit.sh` and `level2.sh quick` pass.
+
+2026-10-28. Added 005-65, at Frans's decision on item 009's target 2
+(006-09, decision 2), by Claude (Opus 5.5, Claude Code): the gets of 27
+and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under
+ZGC, with waits of a reader's load for the eviction thread over 10 ms; a
+hypothesis to test (the readers take F53's 8 performance cores since
+005-46) and a night step that runs 4, 6 and 8 threads on `bf19075`,
+`eaec93e` and `4f7cd60` with the eviction thread's CPU, smoke-tested. Item
+009 is closed with this case open here.

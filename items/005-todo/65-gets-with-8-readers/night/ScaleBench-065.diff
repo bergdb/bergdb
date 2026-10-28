@@ -1,0 +1,131 @@
+--- ScaleBench.java
++++ ScaleBench.java
+@@ -418,11 +418,39 @@
+ 
+     long resident() {
+         return db.internal().cache().residents().bytes();
++    }
++
++    // bergdb 005-65: the CPU of the eviction thread, the readers and the rest of the process
++    // (the collector's threads, the compiler) in each threads phase. getThreadInfo with depth 0
++    // and getThreadCpuTime stop no thread (no safepoint).
++
++    static final ThreadMXBean MX = ManagementFactory.getThreadMXBean();
++    volatile long evictorId = -1;
++
++    /** The CPU time of the thread bergdb-evictor so far (ns), or -1 if there is none. */
++    long evictorCpu() {
++        if (evictorId < 0) {
++            for (ThreadInfo ti : MX.getThreadInfo(MX.getAllThreadIds(), 0)) {
++                if (ti != null && ti.getThreadName().equals("bergdb-evictor")) evictorId = ti.getThreadId();
++            }
++            if (evictorId < 0) return -1;
++        }
++        return MX.getThreadCpuTime(evictorId);
+     }
+ 
++    /** The CPU time of the process so far (ns), or -1. */
++    static long processCpu() {
++        java.lang.management.OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
++        if (os instanceof com.sun.management.OperatingSystemMXBean) {
++            return ((com.sun.management.OperatingSystemMXBean) os).getProcessCpuTime();
++        }
++        return -1;
++    }
++
+     /** The counters at a moment; delta() makes a phase's record from two. */
+     final class Snap {
+         final long nanos = System.nanoTime();
++        final long evCpu = evictorCpu(), procCpu = processCpu();       // 005-65: first, beside nanos
+         final long loads = db.internal().nodeCollection().loads();
+         final long sreads = stream.reads.sum(), sbytes = stream.readBytes.sum();
+         final long dev = deviceReadBytes();
+@@ -466,6 +494,8 @@
+         m.put("afterLoadOver10ms", b.als - a.als);
+         m.put("gcCount", b.gc[0] - a.gc[0]);
+         m.put("gcMs", b.gc[1] - a.gc[1]);
++        if (b.evCpu >= 0) m.put("evictionCpuMs", (b.evCpu - Math.max(0, a.evCpu)) / 1e6);     // started in it: from 0
++        if (a.procCpu >= 0 && b.procCpu >= 0) m.put("processCpuMs", (b.procCpu - a.procCpu) / 1e6);
+         m.put("residentBytes", resident());
+         m.put("heapUsedBytes", Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
+         m.put("uptimeFrom", uptime(a.nanos));
+@@ -508,6 +538,25 @@
+         return s.toString();
+     }
+ 
++    /** 005-65: a threads phase's CPU, in ms and in cores (CPU time over the phase's seconds). */
++    static String cpuLine(Map<String, Object> d) {
++        double sec = (Double) d.get("seconds");
++        double rd = (Double) d.get("readersCpuMs");
++        Double ev = (Double) d.get("evictionCpuMs"), pr = (Double) d.get("processCpuMs");
++        StringBuilder s = new StringBuilder("cpu:");
++        s.append(String.format(Locale.ROOT, " eviction thread %s,", ev == null ? "?" : String.format(Locale.ROOT,
++                "%.0f ms (%.3f cores)", ev, ev / 1000 / sec)));
++        s.append(String.format(Locale.ROOT, " readers %.0f ms (%.2f cores),", rd, rd / 1000 / sec));
++        if (pr != null) {
++            double rest = pr - rd - (ev == null ? 0 : ev);
++            s.append(String.format(Locale.ROOT, " the rest of the process %.0f ms (%.2f cores), process %.2f cores;",
++                    rest, rest / 1000 / sec, pr / 1000 / sec));
++        }
++        s.append(String.format(Locale.ROOT, " longest after-load wait %.1f ms, longest batch so far %d ms",
++                (Double) d.get("afterLoadMaxMs"), (Long) d.get("sweepMaxMsSoFar")));
++        return s.toString();
++    }
++
+     void say(String s) {
+         System.out.printf(Locale.ROOT, "[%7.1f s] %s%n", (System.nanoTime() - nano0) / 1e9, s);
+         System.out.flush();
+@@ -779,6 +828,7 @@
+         final CyclicBarrier barrier;
+         final PerfUtil.Hist h = new PerfUtil.Hist();
+         long gets;
++        long cpuNanos;          // 005-65: the thread's CPU time from the barrier to its end
+ 
+         Reader(int t, double sec, CyclicBarrier barrier) {
+             this.t = t;
+@@ -797,6 +847,7 @@
+             } catch (Exception e) {
+                 throw new RuntimeException(e);
+             }
++            long cpu0 = MX.getCurrentThreadCpuTime();
+             long stop = System.nanoTime() + (long) (sec * 1e9);
+             long n = 0;
+             do {
+@@ -811,6 +862,7 @@
+                 n += 64;
+             } while (System.nanoTime() < stop);
+             gets = n;
++            cpuNanos = MX.getCurrentThreadCpuTime() - cpu0;
+         }
+     }
+ 
+@@ -819,13 +871,15 @@
+             CyclicBarrier barrier = new CyclicBarrier(threads + 1);
+             Reader[] rs = new Reader[threads];
+             for (int t = 0; t < threads; t++) (rs[t] = new Reader(t, threadSec, barrier)).start();
++            alMax.set(0);       // 005-65: the phase's longest after-load wait
+             barrier.await();
+             Snap a = new Snap();
+-            long gets = 0;
++            long gets = 0, readersCpu = 0;
+             PerfUtil.Hist h = new PerfUtil.Hist();
+             for (Reader r : rs) {
+                 r.join();
+                 gets += r.gets;
++                readersCpu += r.cpuNanos;
+                 h.add(r.h);
+             }
+             Snap b = new Snap();
+@@ -833,9 +887,12 @@
+             m.put("phase", "threads-" + threads);
+             m.put("threads", threads);
+             m.put("latency", hist(h));
++            m.put("afterLoadMaxMs", alMax.get() / 1e6);
++            m.put("readersCpuMs", readersCpu / 1e6);
+             phaseResults.add(m);
+             say(String.format(Locale.ROOT, "threads %d: %.0f gets a second; %s; %s", threads,
+                     (Double) m.get("getsPerSec"), histLine(h), counterLine(m)));
++            say(String.format(Locale.ROOT, "threads %d: %s", threads, cpuLine(m)));
+         }
+         sampledThreads();
+     }
