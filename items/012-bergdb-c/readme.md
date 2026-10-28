@@ -120,3 +120,11 @@ time), so at most two subagents at a time, at high effort (012-01, 9.2):
 `/Users/f/fl/bench/012/`; 012-05 follows once 012-02's scanner exists, then
 012-03. Tonight 006-10's quiet block holds: nothing CPU-heavy of 012 after
 21:45, the conductor idle from 22:30 to 06:15.
+
+2026-10-28, 14:18. 012-04 done (`40aa5b8`): the C project in `c/`, its
+build, the C gate (`C BEFORE COMMIT OK` in 3 s), the rules of Java's
+semantics in C, and the first modules (bytes, Fletcher-16, klongs, keys,
+positions, the allocator) with 81 unit tests, Java's own tests of those
+classes ported and 957 of Java's vectors agreeing. From 13:55 the agents
+run at Frans's higher effort: at least xhigh, max for the hard tasks
+(012-02's document is at max).
