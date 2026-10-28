@@ -326,6 +326,14 @@ Where BergDB stands (`java/src`, 2026-10-26):
 * System properties set defaults, for tests and stress programs: `evict`,
   `evictseed` and `evictbudget` (the eviction schedule), and `audit`.
   `Audit` prints to `System.err` when an audit fails.
+* A static set, since 2026-10-28 (005-63): `FileStream.LOCKED_DIRS`, the
+  directories that the JVM's `FileStream`s hold. A second `FileStream` on
+  a directory is refused there before it opens the directory's lock file,
+  `bergdb.lock`: closing its channel of the file would release the first
+  stream's operating-system lock for other processes (POSIX record locks
+  belong to the process; seen on macOS). A deviation that Frans chose: one
+  database refuses another on its own directory, in the JVM as across
+  processes, and the set does nothing else.
 * To check: whether any of these lets one database affect another in the
   same JVM.
 

@@ -218,7 +218,8 @@ releases/next.md).
   directory finds it, or the real path where there is none (Windows,
   where closing a handle releases only that handle's locks). Lucene's
   `NativeFSLockFactory` and SQLite do the same. It is global state, a
-  deviation from 010-P9, which `FileStream`'s Javadoc states. A lock that
+  deviation from 010-P9, which `FileStream`'s Javadoc states, and 010-01's
+  list of where BergDB stands on P9 (added the same day). A lock that
   other code in the JVM holds (`OverlappingFileLockException`) is refused
   too.
 * **The exception.** The class Frans remembered is `StreamException`
