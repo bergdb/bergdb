@@ -154,3 +154,14 @@ physical cut depend on timing); C follows Java until they are fixed. Two
 questions for Frans in 012-02, section 13 (Q1, how cross tests compare
 after reclaim's cuts; Q2, the restart findings), neither blocking before
 012-10 and 012-11.
+
+2026-10-28, 16:25. 012-03 done: `c/include/bergdb.h`, the C API, from
+`Db`'s 45 public methods (35 with a C counterpart, 10 left out with their
+reasons), with the rules of ownership, errors and the clock in its top
+comment, and two examples (C's `CoreDemo` and a `getMany` with a prefix)
+that compile; their comments hold Java's output for the same calls. The
+tables and the decisions D1 to D16 in 012-03. So M1 is reached (012-01,
+section 8): the format written down, the API designed, C builds and its
+tests run, and Java's reference outputs exist; 012-02's review is the
+part of phase A still to come. Phase B runs: 012-06 (the stream reader)
+and 012-07 (the index nodes).
