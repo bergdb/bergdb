@@ -368,10 +368,12 @@ public class DbStarter {
         List<StoredValueNode> valueNodes = storedTrans.getValueNodes();
         
         PutData pd = createPutData();
+        long valueBytes = 0;
         
         for (StoredValueNode node : valueNodes) {
             long[] key = node.getKey();
             byte[] value = node.getNode().getValue();
+            valueBytes += StoredValueNode.getByteSizeLong(value, key);
             
             pd.tt = storedTrans.tt;
             pd.nodeChangeListener = new Dag.NodeChangeListener() {
@@ -458,6 +460,7 @@ public class DbStarter {
         tinfo.tpos = storedTrans.tpos;
         tinfo.startupPos = storedTrans.startupPos;
         tinfo.lastPos = storedTrans.lastPos;
+        tinfo.ownBytes = TransSeq.ownBytes(valueBytes);     // for the take's pace (005-49)
     }
 
     /**

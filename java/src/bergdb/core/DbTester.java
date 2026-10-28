@@ -17,6 +17,7 @@ import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
 import bergdb.dag.Klong;
 import bergdb.dag.Node;
+import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
@@ -1802,6 +1803,119 @@ public class DbTester {
             assertEquals("i=" + i, tpos[i-1], sp[i]);
         }
         db.close();
+    }
+    
+    /**
+     * Whether the trans seq holds a transaction that began 2 * sd or more before 'length',
+     * the stream's length before the last record. The deadline of the take leaves none
+     * (bergdb 007-03, step 3).
+     */
+    private static boolean dueLeft(Db db, long length, int sd) {
+        return db.internal().transSeq().posOfTransBefore(length - 2L * sd + 1) != Spos.NULL;
+    }
+    
+    /** The startup section: the stream's length minus the startup pos. */
+    private static long section(Db db) {
+        return db.getStreamLength() - db.internal().getStartupPosForEvict();
+    }
+    
+    /** The span of the trans seq's transactions, TransSeq.span(). */
+    private static long span(Db db) {
+        return db.internal().transSeq().span();
+    }
+    
+    /** A put of a random value of 'size' bytes to one of 'keys' keys; the record's bytes. */
+    private static long putRandom(Db db, Random random, int keys, int size) {
+        byte[] value = new byte[size];
+        random.nextBytes(value);
+        long length = db.getStreamLength();
+        db.execute(db.trans().put("/k/" + random.nextInt(keys), value).build());
+        return db.getStreamLength() - length;
+    }
+    
+    /**
+     * The paced take (bergdb 005-49; 007-03, step 3) holds the startup section near the
+     * startup distance's setting, sd, and its deadline takes every transaction that begins
+     * 2 * sd or more before the end of the stream. Random updates of 2000 keys at sd 10 kB:
+     * the take before 2026-10-27 held the section at 1.30 sd on average, left transactions
+     * past 2 sd after 57 of the records, and wrote records of up to 6.7 times the mean.
+     */
+    @Nano
+    public static void testPaceHoldsTheStartupSection() {
+        final int sd = 10 * 1000;
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup().clock(clock).startupDistance(sd).start();
+        Random random = new Random(1);
+        double sections = 0;
+        long records = 0;
+        long bytes = 0;
+        long largest = 0;
+        for (int i = 0; i < 6000; i++) {
+            clock.setTime(10 + i);
+            long length = db.getStreamLength();
+            long record = putRandom(db, random, 2000, 16);
+            assertFalse("i=" + i, dueLeft(db, length, sd));
+            if (db.getStreamLength() > 4 * sd) {
+                sections += (double) section(db) / sd;
+                records++;
+                bytes += record;
+                largest = Math.max(largest, record);
+            }
+        }
+        db.close();
+        double mean = sections / records;
+        assertTrue("mean section " + mean, mean > 0.9 && mean < 1.1);
+        assertTrue("largest record " + largest, largest < 5.0 * bytes / records);
+    }
+    
+    /**
+     * A decrease of the startup distance to less than half of the startup section (bergdb
+     * 007-03, D4; 007-07). The pace uses the new setting at once. The deadline does not jump
+     * to twice the new setting, which would make the transaction that setStartupDistance
+     * runs write the index nodes of every transaction past it (007-06, section 3); it is at
+     * the span of the section's transactions, which shrinks with every commit until it is
+     * below twice the setting. 2 MB lowered to 500 kB, 1 kB values: transactions past twice
+     * the new setting are left after the call (with the deadline at twice the new setting
+     * at once, none were), the span is below twice the setting after 19 commits, and the
+     * deadline holds from then on.
+     */
+    @Nano
+    public static void testDecreaseOfStartupDistance() {
+        final int sd = 500 * 1000;
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup().clock(clock).startupDistance(2000 * 1000).start();
+        Random random = new Random(1);
+        long time = 10;
+        for (int i = 0; i < 4000; i++) {
+            clock.setTime(time++);
+            putRandom(db, random, 1000, 1000);
+        }
+        
+        long length = db.getStreamLength();
+        assertTrue(dueLeft(db, length, sd));
+        db.setStartupDistance(sd);
+        assertTrue("no jump", dueLeft(db, length, sd));
+        
+        long span = span(db);
+        int below = -1;
+        for (int i = 0; i < 400; i++) {
+            clock.setTime(time++);
+            length = db.getStreamLength();
+            putRandom(db, random, 1000, 1000);
+            if (below >= 0) {
+                assertFalse("i=" + i, dueLeft(db, length, sd));
+            } else {
+                if (span >= 2L * sd) {
+                    assertTrue("i=" + i, span(db) < span);
+                }
+                if (span(db) < 2L * sd) {
+                    below = i;
+                }
+            }
+            span = span(db);
+        }
+        db.close();
+        assertTrue("below 2 sd after " + below, below >= 0 && below < 60);
     }
     
     /** The nodes of D: the nodes that got dirty in the transactions of TransSeq. */

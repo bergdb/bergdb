@@ -545,6 +545,59 @@ public class DbTesterRestart {
     }
     
     /**
+     * After a decrease of the startup distance (bergdb 007-03, D4; 007-07) the deadline is
+     * at the span of the section's transactions, which a start rebuilds, and the new
+     * setting is in the meta block that setStartupDistance's transaction writes: the stream
+     * with restarts while the section comes down, one right after the call, is the same,
+     * byte for byte, as without (010, P2).
+     */
+    @Nano("f") private static void testSameStreamAfterDecreaseWithRestartsF() 
+            throws IOException {
+        MemoryStream a = decreaseRun(0);
+        MemoryStream b = decreaseRun(10);
+        long length = a.getLength();
+        Assert.assertEquals("stream length", length, b.getLength());
+        byte[] bytesA = new byte[(int) length];
+        byte[] bytesB = new byte[(int) length];
+        a.read(0, bytesA, 0, (int) length);
+        b.read(0, bytesB, 0, (int) length);
+        Assert.assertTrue("same stream", java.util.Arrays.equals(bytesA, bytesB));
+    }
+    
+    /**
+     * Puts of 1 kB at a startup distance of 2 MB, lowered to 500 kB after 4000 of them, and
+     * 300 more, with a restart every restartEvery after the decrease (0 for none) and one
+     * right after it; the stream.
+     */
+    private static MemoryStream decreaseRun(int restartEvery) {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(2000 * 1000).start();
+        Random random = new Random(1);
+        long time = 10;
+        for (int i = 0; i < 4300; i++) {
+            boolean restart = restartEvery > 0 && i > 4000 && i % restartEvery == 0;
+            if (i == 4000) {
+                db.setStartupDistance(500 * 1000);
+                restart = restartEvery > 0;
+            }
+            if (restart) {
+                db.sync(SyncLevel.STRONG);
+                db.close();
+                stream = stream.copy();     // db.close() closed it
+                db = Db.builder().testSetup(stream).clock(clock).start();
+            }
+            clock.setTime(time++);
+            byte[] value = new byte[1000];
+            random.nextBytes(value);
+            db.execute(db.trans().put("/k/" + random.nextInt(1000), value).build());
+        }
+        db.sync(SyncLevel.STRONG);
+        db.close();
+        return stream;
+    }
+    
+    /**
      * A random run with restarts every restartEvery transactions (0 for none), and with
      * lookups of every key after each restart (or at the same points, if lookupEvery).
      */

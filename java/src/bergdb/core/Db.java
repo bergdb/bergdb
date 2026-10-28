@@ -325,12 +325,21 @@ public class Db implements AutoCloseable {
     }
     
     /**
-     * Suggests a new startup distance.
-     * If the startup distance is reduced drastically, this method
-     * can cause a large transaction to run. It is recommended that the 
-     * startup distance is reduced no more than 10M for every call to this 
-     * method. Call this method repeatedly to reduce the startup distance
-     * more than 10M.
+     * Sets the startup distance, the target size of the startup section. The take
+     * (TransSeq.take) holds the actual startup distance, such that the stream's length minus
+     * it is the position a start reads from, near the setting, and in any case it takes the
+     * transactions that begin twice the setting or more before the end of the stream (the
+     * deadline). The new setting applies at once: after a decrease, the commits that follow
+     * write more index nodes, each in proportion to its size, until the startup section is
+     * near the new setting; after an increase, fewer. A decrease does not make one commit
+     * write the index nodes of every transaction past twice the new setting: while the
+     * actual startup distance is longer than that, the deadline is at about the actual
+     * startup distance and comes down with it, a commit at a time (bergdb 007-03, D4;
+     * 007-07). So one call is enough, with no need to lower the distance in steps. The
+     * section comes down only as transactions are committed: in 007-06's runs, over stream
+     * of about 1.4 times the bytes of the dirty index nodes at the decrease. This method
+     * commits a transaction with a value of 200 kB, so that a meta block in the stream
+     * records the new setting.
      */
     public void setStartupDistance(int newDistance) {
         //
@@ -2046,11 +2055,12 @@ public class Db implements AutoCloseable {
         long currentSp = x.startupPos.get();
         long newSp;
         
-        // The bytes of the record besides the index nodes that take() adds, so that the
-        // record stays within the record limit (bergdb 005-17).
+        // The record's own bytes, which pace take() (bergdb 005-49), and the bytes of the
+        // record besides the index nodes that take() adds, so that the record stays within
+        // the record limit (bergdb 005-17).
         final TransNodes tn = x.transNodes;
-        long fixedBytes = 32 + tn.valueRecordBytes + 4 + 4 + 1 + 7
-                + 16L * x.transInfo.gotDirtyNodes.size();
+        final long ownBytes = TransSeq.ownBytes(tn.valueRecordBytes);
+        long fixedBytes = ownBytes + 16L * x.transInfo.gotDirtyNodes.size();
         for (int i = 0; i < tn.topCount; i++) {
             fixedBytes += StoredTopNode.getByteSize(tn.topNodes[i]) + 16;
         }
@@ -2058,8 +2068,7 @@ public class Db implements AutoCloseable {
             fixedBytes += StoredKeyNode.getByteSize(tn.keyNodes[i]) + 16;
         }
         
-        long maxSp = nodeStream.getLength() - startupDistance;
-        newSp = transSeq.take(currentSp, maxSp, x.transNodes.valueCount, x.transNodes.kvSize,
+        newSp = transSeq.take(currentSp, nodeStream.getLength(), startupDistance, ownBytes,
                 x.transNodes, StoredTrans.recordLimit - fixedBytes);
         x.trans.startupPos = newSp;
         
@@ -2100,6 +2109,7 @@ public class Db implements AutoCloseable {
         x.transInfo.lastPos = x.trans.lastPos;
         x.transInfo.tt = x.trans.tt;
         x.transInfo.startupPos = newSp;
+        x.transInfo.ownBytes = ownBytes;
         
         transSeq.add(x.transInfo);      // adds to end of transSeq queue
         
