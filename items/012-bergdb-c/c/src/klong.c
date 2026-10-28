@@ -15,18 +15,19 @@ int64_t kl_create_delete(void) {
 }
 
 /* Java's DELETE_BITS[bitIndex]: 2^bitIndex. */
-static int64_t delete_bit(int32_t bitIndex) {
+int64_t kl_delete_bit(int32_t bitIndex) {
+    assert(bitIndex >= 0 && bitIndex < 62);     /* DELETE_BITS has 62 entries */
     return j_shl64(1, bitIndex);
 }
 
 int64_t kl_delete(int64_t klong, int32_t bitIndex) {
     assert(bitIndex >= 0 && bitIndex < 62);
-    return klong | delete_bit(bitIndex);
+    return klong | kl_delete_bit(bitIndex);
 }
 
 bool kl_is_deleted(int64_t klong, int32_t bitIndex) {
     assert(bitIndex >= 0 && bitIndex < 62);
-    return (klong & delete_bit(bitIndex)) != 0;
+    return (klong & kl_delete_bit(bitIndex)) != 0;
 }
 
 int64_t kl_create_key(const uint8_t *key, int32_t keyLength) {

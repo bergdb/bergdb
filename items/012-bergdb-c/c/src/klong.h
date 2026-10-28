@@ -57,6 +57,9 @@ int64_t kl_create_key(const uint8_t *key, int32_t length);
  * reads it. */
 int64_t kl_create_delete(void);
 int64_t kl_delete(int64_t klong, int32_t bit_index);
+/* Klong.DELETE_BITS[bit_index]: 2^bit_index, bit_index 0 to 61 (asserted,
+ * where Java's array index throws). */
+int64_t kl_delete_bit(int32_t bit_index);
 bool kl_is_deleted(int64_t klong, int32_t bit_index);
 
 /* The time of a TIME klong (asserted). */

@@ -10,10 +10,18 @@ import java.util.List;
 import java.util.Random;
 
 import bergdb.common.Bytes;
+import bergdb.dag.AccessData;
+import bergdb.dag.Dag;
+import bergdb.dag.GetData;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Keys;
 import bergdb.dag.Klong;
+import bergdb.dag.KlongWithPointer;
 import bergdb.dag.Node;
+import bergdb.dag.OpData;
+import bergdb.dag.Pointer;
+import bergdb.dag.PointerFollower;
+import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.storage.MetaBlock;
@@ -26,7 +34,9 @@ import bergdb.stream.MemoryStream;
  * klong.txt (Klong), keys.txt (Keys) and jsem.txt (Java's own arithmetic: casts, shifts,
  * division, comparisons, and the take's double expressions in TransSeq), and (012-06)
  * records.txt (a small stream that Db writes, its records as StoredTrans.parse parses them,
- * and records it refuses), into a directory. C's unit tests read them
+ * and records it refuses), and (012-07) knode.txt (KeyNode's operations as the Dag makes them,
+ * and the node's stored bytes after each) and top.txt (TopDs's chains of top nodes), into a
+ * directory. C's unit tests read them
  * (c/test/unit/t_vectors.c); 012-05's cross tests run this again and compare with the
  * committed files, so that a change in Java shows.
  *
@@ -54,6 +64,8 @@ public class Vectors {
         keys(open(dir, "keys.txt"));
         jsem(open(dir, "jsem.txt"));
         records(open(dir, "records.txt"));
+        knode(open(dir, "knode.txt"));
+        top(open(dir, "top.txt"));
         System.out.println("VECTORS OK: " + dir);
     }
 
@@ -711,6 +723,278 @@ public class Vectors {
             s.append(s.length() == 0 ? "" : ",").append(l);
         }
         return s.toString();
+    }
+
+    // ---- KeyNode (bergdb 012-07) ----
+
+    /**
+     * knode.txt: runs of KeyNode's operations, as the Dag makes them, each line an operation
+     * and what Java's node is after it: its size and the FNV-1a hash (64 bits) of its stored
+     * bytes (StoredKeyNode.toLongs with prevPos 0), and at a run's end the bytes themselves.
+     */
+    private static void knode(PrintWriter w) {
+        w.print("# run SEED LEAF: a new KeyNode(LEAF), id 0, spos 0; the operations follow, each\n");
+        w.print("#   with = SIZE HASH: the node after it, its size and its stored bytes' FNV-1a\n");
+        w.print("# a T K S: addKlong(T, K, a value node at S)   c T K S: addKlong(T, K, a key node at S)\n");
+        w.print("# d T CV DEL: getDeleteBitmap(CV) is DEL; if not 0, addDeleteKlong(T, DEL)\n");
+        w.print("# r T K S R: replaceKlong(T, K, a value node at S) gives R (1 replaced)\n");
+        w.print("# l T: the node becomes lastVersion(T)   x T: setContentFrom(lastVersion(T))\n");
+        w.print("# p T: toPreviousState(T)\n");
+        w.print("# s T W N K1 S1 ...: firstAndSecond(T, lastVersion(T), N inserts (K, a value node\n");
+        w.print("#   at S)); the node becomes first (W 0) or second (W 1); = also has SECONDKLONG and\n");
+        w.print("#   the other node's SIZE HASH\n");
+        w.print("# end HEX: the node's stored bytes, at the end of runs 1 to 4\n");
+        for (int seed = 1; seed <= 12; seed++) {
+            knodeRun(w, seed);
+        }
+        w.close();
+    }
+
+    private static void knodeRun(PrintWriter w, int seed) {
+        Random r = new Random(seed);
+        long[] cvs = new long[12];
+        for (int i = 0; i < cvs.length; i++) {
+            byte[] b = new byte[r.nextInt(4)];
+            for (int j = 0; j < b.length; j++) {
+                b[j] = (byte) (0x61 + r.nextInt(5));
+            }
+            cvs[i] = Klong.createCompareValue(b, 0, b.length);
+        }
+        boolean leaf = seed % 3 != 0;
+        KeyNode node = new KeyNode(leaf);
+        node.setId(0);
+        node.setSpos(0);
+        w.print("run " + seed + " " + (leaf ? 1 : 0) + "\n");
+        long t = 1 + r.nextInt(5);
+        long nextSpos = 1000;
+        for (int op = 0; op < 40; op++) {
+            if (r.nextInt(3) == 0) {
+                t += 1 + r.nextInt(3);
+            }
+            long cv = cvs[r.nextInt(cvs.length)];
+            long k = Klong.compareValueToKeyKlong(cv);
+            int what = r.nextInt(20);
+            String line;
+            if (node.size + 3 > 60 || what == 0) {
+                if (node.size < 2 || r.nextBoolean()) {
+                    t++;
+                    KeyNode last = node.lastVersion(t);
+                    last.setId(0);
+                    last.setSpos(0);
+                    node = last;
+                    line = "l " + t;
+                } else {
+                    t++;
+                    KeyNode last = node.lastVersion(t);
+                    knodeSetContentFrom(node, last);
+                    line = "x " + t;
+                }
+            } else if (what == 1 && node.size >= 3) {
+                t++;
+                KeyNode last = node.lastVersion(t);
+                if (last.size < 2) {
+                    node.toPreviousState(t - 2);
+                    w.print("p " + (t - 2) + " = " + knodeState(node) + "\n");
+                    continue;
+                }
+                int n = r.nextInt(3);
+                KlongWithPointer[] insert = new KlongWithPointer[n];
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < n; i++) {
+                    insert[i] = new KlongWithPointer();
+                    insert[i].klong = Klong.compareValueToKeyKlong(cvs[r.nextInt(cvs.length)]);
+                    ValueNode v = new ValueNode(new byte[0], nextSpos);
+                    v.setId(nextSpos);
+                    insert[i].node = v;
+                    sb.append(" " + hex16(insert[i].klong) + " " + nextSpos);
+                    nextSpos += 8;
+                }
+                KeyNode first = new KeyNode(leaf);
+                KeyNode second = new KeyNode(leaf);
+                long secondKlong = node.firstAndSecond(t, last, insert, first, second);
+                int which = r.nextInt(2);
+                KeyNode other = which == 0 ? second : first;
+                node = which == 0 ? first : second;
+                node.setId(0);
+                node.setSpos(0);
+                other.setId(0);
+                other.setSpos(0);
+                w.print("s " + t + " " + which + " " + n + sb + " = " + knodeState(node) + " "
+                        + hex16(secondKlong) + " " + knodeState(other) + "\n");
+                continue;
+            } else if (what == 2) {
+                long tp = t - r.nextInt(6);
+                node.toPreviousState(tp);
+                line = "p " + tp;
+            } else if (what <= 5) {
+                long del = node.getDeleteBitmap(cv);
+                if (del != 0) {
+                    node.addDeleteKlong(t, del);
+                }
+                line = "d " + t + " " + hex16(cv) + " " + hex16(del);
+            } else if (what == 6 && !knodeHasDelete(node)) {
+                ValueNode v = new ValueNode(new byte[0], nextSpos);
+                v.setId(nextSpos);
+                boolean replaced = node.replaceKlong(t, k, v, AccessData.DEFAULT_ACCESS_DATA);
+                line = "r " + t + " " + hex16(k) + " " + nextSpos + " " + (replaced ? 1 : 0);
+                nextSpos += 8;
+            } else if (what <= 8) {
+                KeyNode c = new KeyNode(true);
+                c.setId(nextSpos + 1);
+                c.setSpos(nextSpos);
+                node.addKlong(t, k, c, AccessData.DEFAULT_ACCESS_DATA);
+                line = "c " + t + " " + hex16(k) + " " + nextSpos;
+                nextSpos += 8;
+            } else {
+                ValueNode v = new ValueNode(new byte[0], nextSpos);
+                v.setId(nextSpos);
+                node.addKlong(t, k, v, AccessData.DEFAULT_ACCESS_DATA);
+                line = "a " + t + " " + hex16(k) + " " + nextSpos;
+                nextSpos += 8;
+            }
+            w.print(line + " = " + knodeState(node) + "\n");
+        }
+        if (seed <= 4) {
+            w.print("end " + hex(knodeStored(node)) + "\n");
+        }
+    }
+
+    /** KeyNode.setContentFrom, package-private in bergdb.dag. */
+    private static void knodeSetContentFrom(KeyNode node, KeyNode other) {
+        try {
+            java.lang.reflect.Method m = KeyNode.class.getDeclaredMethod("setContentFrom",
+                    KeyNode.class);
+            m.setAccessible(true);
+            m.invoke(node, other);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private static boolean knodeHasDelete(KeyNode node) {
+        for (int i = 0; i < node.size; i++) {
+            if (Klong.getType(node.klongs[i]) == Klong.TYPE_DELETE_BITMAP) return true;
+        }
+        return false;
+    }
+
+    private static byte[] knodeStored(KeyNode node) {
+        long[] longs = new long[StoredKeyNode.getByteSize(node) / 8];
+        StoredKeyNode.toLongs(node, longs, 0, 0);
+        return Bytes.longsToBytesLE(longs);
+    }
+
+    /** SIZE HASH: the node's size and the FNV-1a hash of its stored bytes. */
+    private static String knodeState(KeyNode node) {
+        long h = 0xcbf29ce484222325L;
+        for (byte b : knodeStored(node)) {
+            h ^= b & 0xff;
+            h *= 0x100000001b3L;
+        }
+        return node.size + " " + hex16(h);
+    }
+
+    // ---- TopDs (bergdb 012-07) ----
+
+    /**
+     * top.txt: chains of top nodes made by TopDs.newSuperRoot, as the Dag makes them, each
+     * new top node given its id by the node change listener as Db does (a vpos), and written
+     * now and then (a position, canonical); after each step the super root's ordinal and the
+     * size and FNV-1a hash of its stored bytes (StoredTopNode.toLongs); and findRoot at times.
+     */
+    private static void top(PrintWriter w) {
+        w.print("# chain SEED T0 R0 SECOND: createFromFirstRoot(T0, a key node at R0), the first top\n");
+        w.print("#   node's id 1; setSecondOrdinal(SECOND); every node canonical, as Db makes them\n");
+        w.print("# n T R = ORD SIZE HASH: newSuperRoot(T, a key node at R, its id R + 1); each top\n");
+        w.print("#   node made gets the next id, 3, 5, ...; then the super root's ordinal and stored bytes\n");
+        w.print("# w P: the super root is written at P: its spos P\n");
+        w.print("# f T = R: findRoot(T) is the key node at R, -1 for none\n");
+        for (int seed = 1; seed <= 8; seed++) {
+            topChain(w, seed);
+        }
+        w.close();
+    }
+
+    private static void topChain(PrintWriter w, int seed) {
+        Random r = new Random(100 + seed);
+        long t = 10 + r.nextInt(10);
+        long[] nextId = {1};
+        long rootPos = 2000;
+        KeyNode root0 = new KeyNode();
+        root0.setSpos(rootPos);
+        root0.setId(rootPos + 1);
+        root0.setCanonical(true);
+        TopDs ds = TopDs.createFromFirstRoot(t, root0, 0, Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+        ds.getSuperRoot().setId(nextId[0]);
+        ds.getSuperRoot().setSpos(nextId[0]);
+        ds.getSuperRoot().setCanonical(true);
+        nextId[0] += 2;
+        long second = seed % 4 == 0 ? 1 + r.nextInt(1000) : 1;
+        ds.setSecondOrdinal(second);
+        w.print("chain " + seed + " " + t + " " + rootPos + " " + second + "\n");
+        Dag.NodeChangeListener ids = new Dag.NodeChangeListener() {
+            public void topNodeCreated(TopNode node) {
+                node.setId(nextId[0]);          // as Db: setIdOfNode, registerNewNode
+                node.setSpos(nextId[0]);
+                node.setCanonical(true);
+                nextId[0] += 2;
+            }
+            public void keyNodeCreated(KeyNode node) {}
+            public void keyNodeChanged(KeyNode node) {}
+            public void valueNodeCreated(ValueNode node, long[] key) {}
+        };
+        long pos = 10000;
+        long first = t;
+        for (int step = 0; step < 40; step++) {
+            int what = r.nextInt(10);
+            if (what < 6) {
+                if (r.nextInt(5) != 0) {
+                    t += 1 + r.nextInt(4);
+                }
+                rootPos += 16;
+                KeyNode root = new KeyNode();
+                root.setSpos(rootPos);
+                root.setId(rootPos + 1);
+                root.setCanonical(true);
+                ds.newSuperRoot(t, root, 0, Dag.DO_NOTHING_POINTER_CREATED_LISTENER, ids);
+                TopNode s = ds.getSuperRoot();
+                w.print("n " + t + " " + rootPos + " = " + s.topNodeId + " " + topState(s) + "\n");
+            } else if (what < 8) {
+                pos += 64 * (1 + r.nextInt(4));
+                TopNode s = ds.getSuperRoot();
+                s.setSpos(pos);
+                w.print("w " + pos + "\n");
+            } else {
+                long at = first - 2 + r.nextInt((int) (t - first + 4));
+                KeyNode found = ds.findRoot(at, topOp());
+                w.print("f " + at + " = " + (found == null ? -1 : found.getSpos()) + "\n");
+            }
+        }
+    }
+
+    private static OpData topOp() {
+        GetData gd = new GetData();
+        gd.pointerFollower = new PointerFollower() {
+            public Node followPointer(Node predecessor, int index, OpData op) {
+                Node n = predecessor.getPointerNode(index);
+                if (n == null) throw new IllegalStateException("not in memory");
+                return n;
+            }
+        };
+        gd.pointerListener = Dag.DO_NOTHING_POINTER_LISTENER;
+        gd.tempPointer = new Pointer();
+        return gd;
+    }
+
+    private static String topState(TopNode node) {
+        long[] longs = new long[StoredTopNode.getByteSize(node) / 8];
+        StoredTopNode.toLongs(node, longs, 0);
+        long h = 0xcbf29ce484222325L;
+        for (byte b : Bytes.longsToBytesLE(longs)) {
+            h ^= b & 0xff;
+            h *= 0x100000001b3L;
+        }
+        return StoredTopNode.getByteSize(node) + " " + String.format("%016x", h);
     }
 
     // ---- text ----

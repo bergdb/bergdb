@@ -13,6 +13,14 @@ extern const struct test vectors_tests[];
 extern const struct test stream_tests[];
 extern const struct test rstream_tests[];
 extern const struct test records_tests[];
+extern const struct test knode_tests[];
+extern const struct test obj_tests[];
+extern const struct test tnode_tests[];
+extern const struct test nwrite_tests[];
+extern const struct test kmodel_tests[];
+extern const struct test knodevec_tests[];
+extern const struct test topvec_tests[];
+extern const struct test roundtrip_tests[];
 
 int main(int argc, char **argv) {
     const struct test *const tables[] = {
@@ -27,6 +35,14 @@ int main(int argc, char **argv) {
         stream_tests,
         rstream_tests,
         records_tests,
+        knode_tests,
+        obj_tests,
+        tnode_tests,
+        nwrite_tests,
+        kmodel_tests,
+        knodevec_tests,
+        topvec_tests,
+        roundtrip_tests,
         NULL
     };
     return test_main(argc, argv, "UNIT", tables);

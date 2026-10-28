@@ -166,7 +166,7 @@ tests run, and Java's reference outputs exist; 012-02's review is the
 part of phase A still to come. Phase B runs: 012-06 (the stream reader)
 and 012-07 (the index nodes).
 
-2026-10-28, 17:10. 012-02 done: its review by a second agent at max
+2026-10-28, 17:06. 012-02 done: its review by a second agent at max
 effort (section 15) found 21 points, 2 errors (a retain duration of
 forever lets an iteration in progress go on with its steps and table; a
 leaf's key klong never names a delete node), 5 omissions and 14 minor,
@@ -174,7 +174,7 @@ all fixed in the document; findings C1 to C4 hold; an independent replay
 from the scans agreed on 299,401 records. Phase A is done. Java's slips
 found on the way are 005-73 to 005-75.
 
-2026-10-28, 17:10. 012-06 done: the stream reader in C (`err`, `plat`,
+2026-10-28, 17:07. 012-06 done: the stream reader in C (`err`, `plat`,
 `stream`, `meta`, `rstream`, `snode`, `strans`, `nstream`) and the first C
 tool, `bergdb-scan`, which prints exactly what Java's `StreamScan` prints:
 in the main tree, `cross.sh full` with C as side B passed (278 workloads,
@@ -182,3 +182,15 @@ in the main tree, `cross.sh full` with C as side B passed (278 workloads,
 s), and the C gate runs C's scanner under the sanitizers in its quick set
 (C BEFORE COMMIT OK, 35 s; 100 unit tests). Corrupt input is refused where
 Java refuses it; Java's parser on corrupt sizes is 005-74.
+
+2026-10-28, 17:33. 012-07 done: the index nodes in C (`obj`, `node`,
+`handle`, `knode`, `tnode`, `vnode`, `opdata`, `topds`, `nwrite`), ported
+from `dag` with Java's names in comments, and the memory design of
+012-01, 4.5 (a counted head for every index object and handle, the
+holders listed against Java's fields, a pending list freed at safe
+points). Java's `KeyNodeTester` (45 of 46), `TopTester` and the node
+tests ported; Java and C operation by operation agree (480 key node
+operations, 196 super roots, 68 `findRoot`s); every node of 012-05's full
+set, 55,330,264 nodes in 5,056,194 records, parsed by 012-06's reader and
+written again gives its own bytes. C BEFORE COMMIT OK (39 s; 185 unit
+tests). The times 17:06 and 17:07 above were first written as 17:10.
