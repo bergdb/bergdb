@@ -40,7 +40,10 @@ The operations, each mirroring one of Java's:
 * startup (02, 4.9; `handleStartup`): stage 1's reads unchanged, then rule 4,
   D's pointers resolved to handles by node id (`HMem.linkD`); and Java's rule 4
   since bergdb 005-57, by position (`HMem.linkDPos`, `handleStartupPos`), which
-  bergdb 005-58 proves the same (`Rule4Pos_handles`, HandleTheorems.lean);
+  bergdb 005-58 proves the same (`Rule4Pos_handles`, HandleTheorems.lean); after a
+  cut, with Java's skip of the pointers below the stream's first position
+  (`HMem.linkDPosFrom`, `handleStartupPosFrom`), which bergdb 005-62 proves the
+  same (`Rule4PosCut_handles`, HandleReclaimTheorems.lean);
 * runs with reads and evictions between transactions (`HCacheOp`,
   `runHandles`).
 
@@ -766,7 +769,8 @@ Java resolves by reading the header at its position: by node id.
 Java links pointers to index nodes only; here values have handles (choice 5 of
 the header) and `HMem.linkD` links them, so this does too: a value's one version
 is its canonical object's, which `byPos` finds. (Java also leaves a pointer below
-the stream's first position, cut by reclaim, as it is; this model has no cuts.)
+the stream's first position, cut by reclaim, as it is; `HMem.linkDPosFrom` adds
+that rule, for the startups from cut streams.)
 That it links what `HMem.linkD` links is `Rule4Pos_handles` (HandleTheorems.lean). -/
 def HMem.linkDPos (sp : Spec V T) (S : Stream V T) (m : HMem V) (D : Dirty) : HMem V :=
   { m with objs := m.objs.map (fun p =>
@@ -788,6 +792,42 @@ def HMem.linkDPos (sp : Spec V T) (S : Stream V T) (m : HMem V) (D : Dirty) : HM
 `handleStartup` with `HMem.linkDPos` in place of `HMem.linkD`. -/
 def handleStartupPos (sp : Spec V T) (S : Stream V T) : HMem V :=
   (((lazyStartup sp S).sectionPos S).toH).linkDPos sp S (startup sp S).D
+
+/-- Rule 4 by position on a stream that reclaim has cut (bergdb 005-62; Java's
+`NodeCollection.linkToCanonical`, which `DbStarter.linkD` calls, since bergdb
+005-57): `HMem.linkDPos`, but a pointer of the canonical object of a node of D
+that holds no handle and names a record before `first` is left as it is. `first`
+is the stream's first position (Java's `nodeStream.getFirstPos()`: the start of
+the first file that reclaim's physical cut kept, at or below the cut); Java skips
+a stream pointer below it before it looks in either map (M33: the bytes there,
+the header included, are gone). Java runs rule 4 on the nodes of D only (the
+got-dirty nodes), not on TopDs, which the root's object stands for, so the
+root's object, unless its node is in D, is linked as by `HMem.linkDPos`. With
+`first` 0 this is `HMem.linkDPos`. That it links what `HMem.linkD` links after a
+safe cut is `Rule4PosCut_handles` (HandleReclaimTheorems.lean). -/
+def HMem.linkDPosFrom (sp : Spec V T) (S : Stream V T) (first : Nat) (m : HMem V) (D : Dirty) :
+    HMem V :=
+  { m with objs := m.objs.map (fun p =>
+      if !(p.2.canonical && (inD D p.2.node || p.1 == m.root)) then p else
+      (p.1, { p.2 with ptrs := p.2.ptrs.map (fun q =>
+        let byId : NodeId × HPtr := match m.canonicalOf q.1 with
+          | some _ => (q.1, { q.2 with handle := m.tableOf q.1 })
+          | none => q
+        match q.2.handle, q.2.ref with
+        | some _, _ => q
+        | none, none => byId
+        | none, some r =>
+          if inD D p.2.node && decide (r < first) then q else
+          if inPosToId sp S m.s q.1 r then byId else
+          match m.byPos q.1 r with
+          | some n => (q.1, { q.2 with handle := some n })
+          | none => if isKeyLevel sp p.2.isData p.2.level then q else byId) })) }
+
+/-- Java's startup with handles and rule 4 by position from a stream S whose
+first position is `first` (bergdb 005-62): `handleStartupPos` with
+`HMem.linkDPosFrom`. -/
+def handleStartupPosFrom (sp : Spec V T) (first : Nat) (S : Stream V T) : HMem V :=
+  (((lazyStartup sp S).sectionPos S).toH).linkDPosFrom sp S first (startup sp S).D
 
 /-! ## Cache operations and runs -/
 

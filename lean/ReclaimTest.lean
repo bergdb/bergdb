@@ -4,10 +4,12 @@ example 4 with pseudo-random puts, splits and reclaim iterations, restarting at
 random transactions from the stream cut at the largest safe position (`CutOK`
 checked by running). For each startup pos policy: the assumptions and
 `PolicyCutOK`, T8 at every restart, T12; and with handles (bergdb 005-62,
-SIS/HandleReclaimExample.lean) and five eviction schedules, the
-records and D after every transaction (T12 over handles), reads from the first
-available time on, on the cut stream too (T9 over handles), and after the
-restarts, and the lookups at the end. And T-SCHEME by running
+SIS/HandleReclaimExample.lean) and five eviction schedules, the records and D
+after every transaction (T12 over handles), reads from the first available time
+on, on the cut stream too (T9 over handles), and after the restarts, and the
+lookups at the end; and at every restart, rule 4 by position
+with the cut as the stream's first position against rule 4 by node id
+(bergdb 005-62, `posCutCounts`). And T-SCHEME by running
 (WP R6, `checkSchemeB`): for every iteration whose scheme conditions hold,
 `CutOK` at its cut position in every later state past the waits.
 Usage: lake exe reclaimtest [seeds] [n] [scheme]
@@ -32,6 +34,7 @@ def main (args : List String) : IO UInt32 := do
     let mut hist := 0
     let mut htrans := 0
     let mut hfails := 0
+    let mut pc : List Nat := [0, 0, 0, 0, 0, 0, 0]
     let mut sIters := 0
     let mut sStates := 0
     let mut sFails := 0
@@ -53,12 +56,14 @@ def main (args : List String) : IO UInt32 := do
           let (n2, f2) := checkHandleCut spec4 al cs sched seed
           htrans := htrans + n2
           hfails := hfails + f2
+        pc := List.zipWith (· + ·) pc (posCutCounts spec4 al cs)
     if hfails != 0 then bad := bad + 1
     if sFails != 0 then bad := bad + 1
+    if pc.getD 3 0 + pc.getD 4 0 + pc.getD 5 0 != 0 then bad := bad + 1
     let scheme := s!"T-SCHEME: {sIters} iterations with the scheme's conditions, CutOK checked in {sStates} states past the waits, {sFails} fail"
     if schemeOnly then
       IO.println s!"policy {a}: {scheme}"
     else
-      IO.println s!"policy {a}: assumptions {okok}/{seeds}, T8 {t8ok}/{seeds}, T12 {t12ok}/{seeds} seeds; largest cut per seed: {cuts}; cuts with a node in D not reachable from the first available time on: {hist}; with handles: {htrans} transactions, {hfails} fail; {scheme}"
+      IO.println s!"policy {a}: assumptions {okok}/{seeds}, T8 {t8ok}/{seeds}, T12 {t12ok}/{seeds} seeds; largest cut per seed: {cuts}; cuts with a node in D not reachable from the first available time on: {hist}; with handles: {htrans} transactions, {hfails} fail; rule 4 by position after a cut: {pc.getD 0 0} restarts, {pc.getD 1 0} with a cut above 0, {pc.getD 2 0} pointers of D below the cut, {pc.getD 3 0} of them to a node with a canonical object, {pc.getD 4 0 + pc.getD 5 0} restarts where it differs from rule 4 by node id ({pc.getD 6 0} without the skip); {scheme}"
   IO.println (if bad == 0 then "all checks pass" else s!"{bad} failures")
   return (if bad == 0 then 0 else 1)
