@@ -34,6 +34,9 @@ Open
 | [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered; a longer time may mean fewer forces and wake-ups for writers that do not sync, at the cost of more unsynced data lost on a power loss. Frans's request | open |
 | [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Hypothesis to test: since 005-46 the 8 readers take F53's 8 performance cores and the eviction thread falls behind; the run was not quiet. Test: 4, 6 and 8 threads on `bf19075`, `eaec93e` and `4f7cd60`, with the eviction thread's CPU, in a quiet block | open |
 | [005-69](69-system-clock-promise.md) | Fix | `SystemClock`, `DbBuilder`'s default clock, promises strictly increasing times but never sets its last time, so it returns equal times within a millisecond and earlier ones when the system clock is set back. No harm: `DbClock` makes transaction and current times increase itself. Options: make the code keep the promise (one line and a test), or the comment say what the code does. Found by 012's planning (012-01, 4.4) | open |
+| [005-70](70-keymodset-after-start.md) | Fix | The STM forgets the writes before a start: `KeyModSet` is new and empty after a start (first time −1), so a transaction whose read time is before the start, and whose read key was written after that time, commits where without the restart it is refused: a gap in serializability, and a restart that changes the stream's bytes (P2). Found by 012-02's audit (C4), with a probe. Recommended: the new set's first time at the last transaction's, so the "too old" path refuses | open |
+| [005-71](71-dbclock-read-time-after-start.md) | Fix | `DbClock` forgets `lastReadTime` at a start, so with a clock that has not moved, `currentTime()` before a restart changes the next transaction's time by one unit and the stream's bytes (P2). Found by 012-02's audit (C3), with a probe. Recommended: no code change, a note in P2 | open |
+| [005-72](72-file-layout-after-cut.md) | Decide | The files after reclaim's physical cut depend on timing (when the durable length reached the decision), while the bytes from the decided cut do not; a restart also changes the layout (not a bug). The C clone, without threads, cannot match Java's files after a cut. Recommended (012-02): compare the bytes from the decided cut with reclaim; a layout from the decided cut later, if wanted | open |
 
 
 Closed
@@ -362,6 +365,15 @@ Files
 * [69-system-clock-promise.md](69-system-clock-promise.md). 005-69,
   `SystemClock` does not keep its promise of strictly increasing times:
   the issue, why no database depends on it, the options; open.
+* [70-keymodset-after-start.md](70-keymodset-after-start.md). 005-70, the
+  STM forgets the writes before a start: the issue, the probe, the
+  options; open.
+* [71-dbclock-read-time-after-start.md](71-dbclock-read-time-after-start.md).
+  005-71, `DbClock` forgets the last read time at a start: the issue, the
+  probe, the options; open.
+* [72-file-layout-after-cut.md](72-file-layout-after-cut.md). 005-72, the
+  files after reclaim's physical cut depend on timing: the issue, the
+  probe, the options; open.
 
 Log
 ===
@@ -1382,3 +1394,11 @@ conductor of 012, as 012-01's decision D5 says: `SystemClock` never sets
 its last time, so its promise of strictly increasing times does not hold;
 harmless, as `DbClock` keeps its own; kind fix, open for Frans's choice
 between the code and the comment.
+
+2026-10-28. Added 005-70, 005-71 and 005-72, by Claude (Opus 5.5, Claude
+Code), the conductor of 012, from 012-02's determinism audit (its section
+10.3, findings C4, C3 and C2, each with a probe), as 012-01's decision D5
+says: the STM's `KeyModSet` is empty after a start, so a read before a
+restart can commit where it would be refused (a correctness bug, kind
+fix); `DbClock`'s last read time is not kept across a start (kind fix);
+the files after a physical cut depend on timing (kind decide).
