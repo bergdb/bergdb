@@ -154,6 +154,256 @@ The ScaleBench outputs and GC logs stay out of the repository (013-01,
 section 4): `out/` beside the step, the GC logs in the builds directory.
 
 
+Reading
+-------
+
+By Claude (Opus 5.5, Claude Code), 2026-10-28, for 006-10's W2.1: the
+code on the path at `4f7cd60` (the same at `bf19075` and `eaec93e` but
+for 005-51's wait, see the commits below) and last night's outputs
+(005-46's `night/out/scalebench-c/`, the GC logs in
+`/Users/f/fl/bench/006-09/w1/raw/scalebench-c/`). No timed runs. The
+explanation only: a fix is Frans's choice after the runs (2026-10-28).
+
+**The path.**
+
+* A get that misses the cache follows a pointer on the slow path
+  (`NodeCollection.followStreamPointer`). On the way a load enters the
+  predecessor's monitor, the map's monitor (`Cache3.liveOrNewHandle`), the
+  handle's monitor for the read (009-02, T7a), and for each stream read
+  `BufferedStream`'s monitor (`BufferedStream.read`) and the JDK channel's
+  `sun.nio.ch.NativeThreadSet` (the positional read's `add` and `remove`).
+  Then, with no lock held, `NodeCollection.followPointer` calls the load
+  listener, `Eviction.afterLoad` (set in `Db`'s constructor). ScaleBench
+  wraps that call and times it: the column "waits > 10 ms" counts the
+  calls over 10 ms.
+* `Eviction.afterLoad` reads the resident bytes. At or below the trigger
+  it returns. Above it, it calls `Eviction.wake`, which enters the monitor
+  `evictorLock`, sets `wanted`, starts the thread if there is none, and
+  calls `notifyAll`. Only when the resident bytes are over the trigger by
+  more than the gap between the watermarks (`high - low`, 166 MB at a
+  665 MB budget: pressure) does the reader then park, in steps of 50
+  microseconds (`LockSupport.parkNanos`), until the thread's count
+  `batches` changes or `LOAD_WAIT_NANOS`, 2 ms by the clock, has passed.
+* So `LOAD_WAIT_NANOS` bounds the park loop only. Nothing bounds the
+  entry into `evictorLock`: a reader waits there while another thread
+  holds the monitor, and, once it is free, until the reader runs again.
+* The eviction thread (`Eviction.EvictorRun`) enters `evictorLock` too: to
+  read `wanted` and wait (`evictorLock.wait()`, with no timeout since
+  005-51), again on each `notifyAll` that wakes it, and after each series
+  of batches (its `finally`). In between it runs batches, each under the
+  write lock (`sweep(db, true)`), and counts them in `batches`, a volatile
+  field that parked readers read without the lock.
+* A batch (`Eviction.sweep`) takes CLOCK steps over the node table, one of
+  its 4,096 maps at a time (`Cache3.clockStep`), from where the last batch
+  stopped. It ends at the first of: the resident bytes down to the low
+  watermark; 4,096 handles examined (65,536 under pressure); two rounds of
+  the hand; `BATCH_NANOS`, 2 ms, by the clock; a writer waiting. So it is
+  bounded by time and by work, and the clock is read between maps, not
+  within one.
+* In a map, `clockStep` holds the map's monitor (the `HashMap`) for the
+  whole map. For each handle: a volatile read of its object;
+  `Eviction.detachable` (in TransNodes, `Residents.isPinned`, a stream
+  position); the CLOCK bit cleared or tested; a compareAndSet to DEAD; and
+  `Cache3.kill`, whose `Residents.released` enters the object's monitor and
+  adds to two `AtomicLong`s. For each pinned key node of the map,
+  `unswizzleValues` enters its monitor for each value pointer. A batch
+  allocates an `ArrayList` and a `Detachable`, and a `long[4]` for each
+  map; under ZGC each load and store of a reference has its barrier.
+* A map holds 1/4,096 of the live handles, so a step takes microseconds
+  to tens of microseconds, and the work alone overruns the 2 ms by that
+  much. A batch of 17 ms had about 15 ms in which the thread did not run:
+  off its core (holding the write lock and, within a step, a map's
+  monitor), or parked on a monitor held by a reader that was itself off
+  its core (a map's: readers enter it in `Cache3.liveOrNewHandle`,
+  `liveHandle`, `getNode` and `dropIfEmpty`; an object's: `Node.swizzle`,
+  `KeyNode.setPointee`, `Residents.added`, `followValuePointer`). Not page
+  faults: a batch reads no file, and the heap is pre-touched
+  (`-XX:+AlwaysPreTouch`, `-Xms` equal to `-Xmx`). An efficiency core makes
+  a batch do less in its 2 ms, not last longer.
+* A long batch makes no load wait unless the resident bytes are under
+  pressure. A writer would wait for it (the write lock); ScaleBench's get
+  phases have none.
+
+**What last night's outputs already show.**
+
+* **No load waited for a batch.** The park loop needs the resident bytes
+  over 831 MB (665 + 166). ScaleBench samples them every second: the most
+  in each of the four ZGC runs was 665.0 to 665.5 MB (the JSON's
+  `maxima`). A batch freed about 0.6 MB (the last batch of each run), and
+  with 8 threads `4f7cd60` ran 5,001 and 4,964 batches in 30 s, about
+  100 MB a second; to fall 166 MB behind, the thread would have had to
+  stop for over a second and a half. Its longest batch was 17 ms. So the
+  after-load calls over 10 ms were spent in `Eviction.wake`, at the entry
+  into `evictorLock`, or a reader lost its core within the call.
+* **Running readers rarely lost their cores for long.** A thread that runs
+  Java or VM code reaches a safepoint well within a millisecond unless it
+  is off its core; a thread parked on a monitor, or in the kernel's read,
+  does not hold one up. In `4f7cd60`'s 8-thread phases the GC logs have
+  182 and 181 safepoints, a median time to reach of 0.07 ms, and one over
+  2 ms: 7.0 ms (ZRelocateStartYoung in round 1, 8 threads running). Had
+  readers lost their cores for 10 ms or more often enough to put 26 and 22
+  such pauses into their after-load calls (3.7 and 3.1 percent of their
+  time), about 30 times as many would have fallen elsewhere in their gets,
+  and a tenth or more of the safepoints would have waited over 2 ms
+  (allowing for about half of a reader's time in the kernel's read); 1 of
+  363 did. So the long calls were most likely readers queued on
+  `evictorLock` whose turn came late: a holder off its core (rare, as the
+  one 7 ms reach shows), or a reader woken from the monitor's queue that
+  waited for a core or lost the monitor again to readers that came first
+  (a Java monitor is not fair).
+* **The call's cost grows with the readers, most with 8 under ZGC on
+  `4f7cd60`.** The mean after-load call (the JSON's `afterLoadMs` over
+  `afterLoadCalls`) on `4f7cd60` under ZGC: 17, 41 to 43, 105 to 112 and
+  426 to 493 ns with 1, 2, 4 and 8 threads. With 8 threads: `bf19075` under
+  ZGC 138 to 147 ns; `4f7cd60` under G1 154 to 161 ns, with about as many
+  calls a second (579,000 to 595,000, against 589,000 to 602,000) and no
+  call over 10 ms. The resident bytes stay at the budget (a batch frees its
+  0.6 MB, and the loads fill it again within milliseconds), so a large
+  share of the calls must enter `evictorLock` (tonight's runs count them).
+  Under ZGC the same number of calls cost about three times as much as
+  under G1. G1's batches are shorter (below), so fewer of its calls may
+  find the bytes over the trigger; but the larger difference is most
+  likely what the machine has to spare.
+* **ZGC's workers took cores.** ZGC ran up to 3 concurrent workers ("GC
+  Workers Max: 3 (dynamic)"), about 2 a cycle. With `4f7cd60` and 8 threads
+  its cycles ran back to back (236 and 234 cycles, 35.0 and 34.9 s of
+  cycle time in the 30 s phase); with `bf19075` 83 and 81 cycles, 16.4 and
+  14.9 s. So with `4f7cd60` and 8 threads: 8 readers that do not block,
+  the eviction thread, about 2 workers (up to 3), the compiler and
+  ScaleBench's sampler, on 10 cores (8 performance, 2 efficiency); and
+  more from other processes (the 1-minute load average was 2.76 at the
+  step's start, with no JVM, gate, Lean build or `night.sh` running). With
+  4 threads, about 7 to 8.
+* **The batches stretched with 8 readers on `4f7cd60` only.** The mean
+  batch under ZGC: 1.24 to 1.28 ms with 4 threads, 1.81 to 1.88 ms with 8
+  (under G1 0.54 to 0.63 and 1.04 to 1.14 ms); `bf19075` 1.20 and 1.26 to
+  1.29 ms. The longest batch so far was 2 ms through the 4-thread phase and
+  became 17 and 11 ms in the 8-thread phase; with `bf19075` 2 ms
+  throughout. That is the eviction thread off its core in a batch, as the
+  entry's hypothesis says.
+* **Not the collector, not allocation.** No allocation stall in the four
+  ZGC GC logs (every `Allocation Stalls` line 0); pauses of at most
+  0.025 ms; in the threads phases no safepoint over 7.1 ms, its reach
+  included (the longer ones, up to 13 ms, are the sampled phase's thread
+  dumps).
+
+**The commits from `bf19075` to `4f7cd60`.** Seven commits; four change
+`java/src` (`git log bf19075..4f7cd60 -- java/src`). `Eviction`'s load path
+and batch (`afterLoad`, `wake`, `EvictorRun`'s loop, `sweep`), `Cache3`,
+`Residents` and `bergdb.dag` are the same in all three builds, but for
+005-51's wait.
+
+* `eaec93e`, 005-46: a read takes no lock on its file (`FileStream`'s
+  `DbFile.read`: positional reads on a `FileChannel` of each file's own;
+  the list of files a volatile array). It is the only one that changes
+  what readers do in this benchmark, and the most likely to matter, by
+  what it lets them do. With 8 threads `4f7cd60` made 1.8 times the gets
+  and the after-load calls of `bf19075` (727,507 against 395,448 gets a
+  second; 602,000 against 328,000 calls), so the eviction thread ran 2.3
+  times the batches (5,001 against 2,160), the readers entered
+  `evictorLock` about twice as often, and ZGC collected without a break.
+  And all 8 readers stayed runnable, where `bf19075`'s queued on the
+  file's monitor (BLOCKED in 3.5 and 3.7 percent of the samples with 4
+  threads; with 8 its gets a second fell below its own with 4). Readers
+  still meet on short monitors (the path above); the smoke tests' samples,
+  at a 0.5 MB budget and not the night's regime, show readers BLOCKED in
+  `Eviction.wake`, on `BufferedStream` and on `NativeThreadSet`.
+* `cec0032`, 005-55: `Db.finalize()` removed; tests close their databases.
+  Nothing on the get path or in eviction at runtime: it cannot explain the
+  waits.
+* `07b6375`, 005-57: rule 4 at the start by position, without header reads
+  (`DbStarter.linkD`, `NodeCollection.linkToCanonical`). It runs before the
+  phases, and the readers' path after the start is unchanged. Both jars
+  counted the same pinned bytes, 44,704,880 (`Eviction.stats`; the get
+  phases write nothing, so that is D as the start left it), so eviction
+  worked on the same state. It cannot explain the waits.
+* `c2aab10`, 005-51: the idle eviction thread waits with no timeout
+  (`evictorLock.wait()` for `wait(1000)`), and the close ends it
+  (`Eviction.endThread`, from `Db.closeStorage`). Under load `notifyAll`
+  wakes it either way; no request is lost (`wanted` is set and read under
+  the monitor); and loads call `wake` every few microseconds, so the old
+  timeout never ran out. It cannot explain the waits.
+
+So `eaec93e` alone should show the case: tonight `eaec93e` like `4f7cd60`,
+within the noise.
+
+**The hypotheses, and what tonight's runs would show.** The columns named
+are `sum.py`'s; those marked (+) come from the second version of
+`ScaleBench-065.diff` and `sum.py` (The test).
+
+* **H1, the entry's: the eviction thread falls behind for want of cores,
+  its batches stretch, and the loads that wait for it wait longer than
+  2 ms.** Its first half fits last night (batches of 17 and 11 ms with 8
+  threads on `4f7cd60` only); its second half does not, as no load waited
+  for a batch (above).
+  * Holds as stated if, with 8 threads on `eaec93e` and `4f7cd60` only,
+    the after-load calls over 10 ms began under pressure ("of them under
+    pressure" (+) close to "after-load > 10 ms"), the readers parked
+    ("readers parked ms" (+) well above 0; samples TIMED_WAITING in
+    `Eviction.afterLoad`), and the batches' time by the clock was well
+    above the eviction thread's CPU ("batch wall over eviction CPU" well
+    above 1).
+  * Refuted as the cause of the waits if the long calls began without
+    pressure, as last night's resident bytes say they did. Its first half
+    may still hold, as a finding about batches, which a writer waits for.
+* **H2: the monitor in `Eviction.wake`.** Every load over the trigger
+  enters `evictorLock`; with 8 readers it is a hot monitor, and a reader
+  that queues for it waits until the holder lets go and until it runs
+  again.
+  * Holds if the long calls began without pressure ("of them under
+    pressure" (+) 0), the readers did not park ("readers parked ms" (+)
+    near 0), the mean call ("after-load ns a call" (+)) with 8 threads is
+    several times that with 4 on `eaec93e` and `4f7cd60` and less so on
+    `bf19075`, "readers blocked %" (+) rises with the threads, the sampled
+    readers show BLOCKED in `Eviction.wake` on `java.lang.Object`, and the
+    gets over 10 ms (+) are not many more than the calls over 10 ms (the
+    long gets are these calls).
+  * Refuted if the long calls began under pressure; or if the gets over
+    10 ms far outnumber the calls over 10 ms (ten times or more): then the
+    long gets come from something that every part of a get meets (H3 on
+    its own), and the calls are only a sample of it.
+* **H3: not enough cores.** With 8 readers on `eaec93e` and `4f7cd60` more
+  threads are runnable than there are cores (8 readers, the eviction
+  thread, up to 3 of ZGC's workers, the rest), and a thread that loses its
+  core, or is woken, waits for a time slice (on macOS about 10 ms for an
+  ordinary thread) or more. H1 and H2 need it for anything to last 10 ms.
+  * Holds if, with 8 threads on `eaec93e` and `4f7cd60`, the machine is at
+    about 9.5 to 10 of its 10 cores ("machine cores" (+)), the rest of the
+    process (ZGC) at 1.5 to 3 cores ("rest"), and the eviction thread's
+    share neither running nor waiting ("the rest %" (+)) and "batch wall
+    over eviction CPU" are above their values with 4 threads; and if there
+    are idle cores with 4 threads, and with `bf19075` at 8.
+  * Refuted if the long waits come while the machine has idle cores
+    ("machine cores" clearly below 10, such as 9 or less): then the monitor
+    alone makes them, a queued reader losing `evictorLock` again and again
+    to readers that come first.
+* **H4: the other processes** (the step ran not quiet).
+  * Holds if the waits are gone tonight, with "other processes' cores" (+)
+    near 0.
+  * Refuted if the waits stay with 8 threads while the other processes use
+    next to nothing.
+* **H5: a commit after 005-46** (005-55, 005-57, 005-51).
+  * Holds if only `4f7cd60` has the waits.
+  * Refuted if `eaec93e` has them about as often, as this reading expects.
+
+Which change, if any, follows from the runs: the examples under Done when
+answer H1 (a thread behind for want of cores); H2 points at the entry into
+`evictorLock` on every load over the trigger.
+
+**What threads.sh measures.** As committed in `fab16db`, it cannot tell
+H1 from H2 (whether a long call could park), H3 from the monitor alone (it
+does not see the machine's cores, and of the eviction thread only its
+CPU), or H4, and it does not count long gets. The second version adds
+them (The test). Its cost: two volatile reads and at most two counter
+increments a load, and the timing of contended monitor entries; the same
+for the three builds. For the eviction thread, a wait's re-entry into
+`evictorLock` counts as waited and as blocked both, so `sum.py` splits its
+time into running, waiting (the re-entry included) and the rest. To use it
+tonight, its commit goes into `main` and `prep.sh` runs again before the
+block (about 3 minutes; it makes the clones and ScaleBench's classes
+again), then `SMOKE=1`.
+
+
 Done when
 ---------
 
