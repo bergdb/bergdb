@@ -326,6 +326,16 @@ with D4:B, shown by a `#guard`. `lake build` clean, axioms standard. Also
 010-01's P1 and P2 after 007-07 (`b362a8b`). An independent review of 007-08
 at max effort started.
 
+2026-10-28, 13:06. 007-08's review done (`f5a09cf`): faithful to
+`TransSeq.take` but for the record limit and the meta blocks, not vacuous,
+no error in a definition, statement or proof; `lake build` and the axioms
+checked again. To fix: one wrong comment ("never costs more than after
+T(m)" holds only when that section is at least 2·sd'), README.md's "Bounded
+startup is proved" says more than T3, and the unused trusted definitions to
+be marked so. For Frans: the 128-byte meta-block gap at records ending on a
+200,000-byte boundary; `take` given `getNextPos()` instead of `getLength()`
+would make the model exact (a code change).
+
 ## 8. Outcome
 
 To come by 07:00 on 2026-10-29.
