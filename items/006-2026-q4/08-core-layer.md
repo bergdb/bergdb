@@ -382,3 +382,6 @@ does:
 P12 has no measure yet (010-01). `core-build.sh`, or `deps.py` with
 `core-size.sh`, could be one, as a step in `java/before-commit.sh` (about 15
 to 20 s); not added, as the commit gate is Frans's call.
+
+2026-10-28: `core-build.sh` is now `java/stress/core-build.sh`, a step of
+`java/night.sh`, not of `before-commit.sh` (005-56, "Follow-ups").

@@ -1417,3 +1417,12 @@ held a directory's lock until the JVM ended; now a builder holds nothing
 before `start()`, a replica given before `dir()` is kept, and a bad or busy
 directory is reported by `start()`. Javadoc, two tests in `PubTester`, a
 line in `releases/next.md`; `before-commit.sh` and `level2.sh quick` pass.
+
+2026-10-28. 005-56's follow-ups, by Claude (Opus 5.5, Claude Code), as
+Frans decided: the Core Layer is built alone every night, with an empty
+class path, and its unit and f-tests run on it: 006-08's `core-build.sh`
+is `java/stress/core-build.sh`, step 2 of `java/night.sh`, not a commit
+gate. `java/deps.py --layer core` lists the Core Layer's packages. Three
+stale `package.html` titles corrected, three `src-dev` packages got one,
+and `Factory`'s comment names `Time`'s use of `pubimp` too. P12 (010-01)
+has its measures: `deps.py` in `before-commit.sh`, and this.

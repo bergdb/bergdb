@@ -438,7 +438,9 @@ Where BergDB stands (`java/src`, 2026-10-26):
 * `getOneInternal` is public.
 * Db has 43 public methods.
 
-No measure today. Candidates: the number of Db's public methods, and
-006-08's tools: each package's imports against its `package.html`
-(`deps.py`), and the Core Layer built alone (`core-build.sh`).
+The measures: `java/deps.py` in `java/before-commit.sh`, each package's
+uses against its `package.html` (005-56), and the Core Layer built alone,
+with an empty class path, and its tests run on it, nightly in `night.sh`
+(`java/stress/core-build.sh`, from 006-08; 2026-10-28). A candidate: the
+number of Db's public methods.
 

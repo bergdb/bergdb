@@ -324,3 +324,52 @@ Files: [56-package-dependencies/](56-package-dependencies/):
 `check-deps.py` (the check of 2026-10-27; `java/deps.py` since),
 `deps.txt` (`java/deps.py`'s output on the result) and `gates.txt` (the
 gates' output).
+
+
+Follow-ups, 2026-10-28
+----------------------
+
+Frans, 2026-10-28, on the five points left over above: "as proposed", and
+"Do not add core-build.sh to before-commit.sh. Ensure it runs nightly.
+From night.sh somehow." Done by Claude (Opus 5.5, Claude Code), in a clone
+on `b5e6d79`:
+
+1. `src-dev`, `src-icu` and `stress` are not checked by `deps.py`: no
+   action; it scans `java/src`, as before.
+2. The stale titles are corrected: `pub.util`'s is "Package
+   bergdb.pub.util", `pubimp`'s "Package bergdb.pubimp", `pubimpicu`'s
+   "Package bergdb.pubimpicu".
+3. `src-dev`'s `bergdb` (only `Help`), `bergdb.dev.props` (the properties
+   of 2014 to 2017, MEM, CORE and SS) and `frans.bryan` (Bryan Wisdom's
+   program of 2015-11) have a short `package.html` in the form of the other
+   `src-dev` packages. `bergdb.dev.props` and `frans.bryan` also have a
+   `package-info.java`, which Javadoc prefers; the two say the same.
+4. `Factory`'s comment names both of `pub`'s references to `pubimp`: its
+   `new DatabaseBuilderImp()` and `Time`'s use of `TimeResolver`.
+5. 010-01's P12 names its measures: `java/deps.py` in `before-commit.sh`,
+   and the Core Layer built alone, nightly. The number of Db's public
+   methods stays a candidate.
+6. 006-08's `core-build.sh` is a tool of the build: `java/stress/core-build.sh`
+   (`java/stress/core-build.sh [GROUP...]`, unit by default), with
+   `CoreDemo.java` and `CoreUnit.java` in `java/stress/core-build/`
+   (`CoreDemo` imports `SyncLevel` from `pub.util` now). It runs from
+   `java/`, on `src/`, writes `build/core-build/`, and uses `java/deps.py`,
+   which got `--layer PKG [--list]` for it: only the package and the ones
+   it may use, directly or not (for `core`, the Core Layer's seven). It is
+   step 2 of `java/night.sh`, `core-build`, with the unit and f groups,
+   about 50 s: its last line in the report, and a failure makes the night
+   FAILED. Not in `before-commit.sh`. `README.md` and `docs/levels.md`
+   name it among the night's steps. The copy in
+   [006-08's directory](../006-2026-q4/08-core-layer/) stays, as history.
+
+Tested: `java/stress/core-build.sh unit f` on the clone, `CORE BUILD OK`
+(177 source files, 430 classes, a jar of 714,723 bytes; unit 674 tests,
+f 54), about 50 s. One earlier run failed in
+`StorageManagerTester.testAddReplica2`, the known race (about one run in
+twelve, 001-05), which the night now runs twice. Not the full
+night run: `sh -n night.sh`, and night.sh's `step` function, cut from the
+script by `sed`, run on the clone (`core-build ok 48 s CORE BUILD OK`)
+and on a copy with a `core` class using `pub` (`core-build-bad FAILED 1 s
+CORE BUILD FAILED: deps.py`, in the failed steps). The gate, on the
+rebased tree: `java/before-commit.sh` (`Deps: 9 packages, all as
+package.html allows`; unit 1058 tests, f 74; `BEFORE COMMIT OK (93 s)`).

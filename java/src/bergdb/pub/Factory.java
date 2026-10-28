@@ -16,6 +16,6 @@ public final class Factory {
 }
 
 /*
-Note, the code [new DatabaseBuilderImp();] is the *only* reference to the implementation package
-bergdb.pubimp. Nice, ha!?
+Note, pub refers to the implementation package bergdb.pubimp in two places only:
+[new DatabaseBuilderImp();] here, and Time's use of pubimp's TimeResolver (bergdb 005-56).
 */

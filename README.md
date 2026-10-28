@@ -48,6 +48,7 @@ and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
     java/night.sh                  # the night run, at 02:10: all of the below (about 50 minutes)
     java/night.sh large            # the same and the large conformance set (about 6 hours)
     java/night.sh tests            # only the night-tests (about 4.5 minutes)
+    java/stress/core-build.sh      # the Core Layer built alone, its tests on it (about 15 s; unit f: 50 s)
     java/stress/level1.sh          # full replay          (about 80 s)
     java/stress/level2.sh          # bounded startup      (about 17 minutes; quick: 2)
     java/stress/level3.sh          # reclaim              (about 8 minutes)
@@ -60,9 +61,10 @@ prints `LEVEL n OK` when it passes; they are deeper checks of their levels,
 run after larger changes, not commit gates. Some tasks need more testing,
 depending on the job; work on performance, for example, runs the
 performance tests. `java/night.sh`, the night run, is not a gate either:
-on a clean clone of the committed code, the check before a commit, the four
-level scripts, the night tests (the long-running tests of 2013 to 2015) and
-the medium conformance set; launchd starts it at 02:10, and its report is in
+on a clean clone of the committed code, the check before a commit, the Core
+Layer built alone (`core-build.sh`), the four level scripts, the night tests
+(the long-running tests of 2013 to 2015) and the medium conformance set;
+launchd starts it at 02:10, and its report is in
 `java/build/night/`. `java/night.sh large` adds the large conformance set;
 it is started by hand. Set `JAVAC` and `JAR` if the JDK tools are not on the
 path.

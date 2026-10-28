@@ -21,14 +21,17 @@
 # is the date and time; lean/.lake is copied in, so that lake builds only what
 # changed) and runs there, one after another, going on after a failure:
 #   1. before-commit.sh: the unit and f-tests.
-#   2. stress/level1.sh to level4.sh, full: the random stress programs at
+#   2. stress/core-build.sh unit f: the Core Layer built alone, with an empty
+#      class path, a program that calls Db with only it, and its unit and
+#      f-tests on it; about a minute (bergdb 006-08, 005-56; 010-01, P12).
+#   3. stress/level1.sh to level4.sh, full: the random stress programs at
 #      scale (RestartStress, CrashTest, RestartInvariance, ReclaimStress,
 #      EvictionInvariance, LargerThanMemory, ...), conformance with the Lean
 #      model (the small, reclaim and evict sets), and level1.sh's MEM and SS
 #      limits.
-#   3. The night tests.
-#   4. stress/conformance.sh medium: 9 traces of 120 to 500 transactions.
-#   5. With "large": stress/conformance.sh large, 12 traces of 1,000 to 5,000
+#   4. The night tests.
+#   5. stress/conformance.sh medium: 9 traces of 120 to 500 transactions.
+#   6. With "large": stress/conformance.sh large, 12 traces of 1,000 to 5,000
 #      transactions at node sizes 8 to 62; about 5 hours, most of it the two
 #      l-big62 traces.
 # It writes build/night/RUN/report.txt (the commit, the JDK, each step's last
@@ -95,6 +98,7 @@ night_tests() {
 }
 
 step before-commit sh before-commit.sh
+step core-build sh stress/core-build.sh unit f
 step level1 sh stress/level1.sh
 step level2 sh stress/level2.sh
 step level3 sh stress/level3.sh

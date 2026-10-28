@@ -4,7 +4,7 @@ of allowed packages in its package.html (bergdb 005-56). A step of
 before-commit.sh. By Claude (Opus 5.5, Claude Code), 2026-10-27, from 006-08's
 deps.py (005-56's check-deps.py).
 
-Usage: python3 -I java/deps.py [JAVA_SRC]
+Usage: python3 -I java/deps.py [JAVA_SRC] [--layer PKG [--list]]
   Under a second.
 
 JAVA_SRC is java/src (the default: the one of this repository). A use is an
@@ -28,6 +28,10 @@ Each use is production code or test code. Test code is:
 An import counts as test code if every use of its simple name in the file is in
 test code (an import used nowhere counts as production code). Everything else
 is production code.
+
+With --layer PKG (such as core), only PKG and the packages it may use, directly
+or not, according to the lists: for core, the Core Layer (bergdb 006-08). With
+--list as well, prints only those packages, one per line (stress/core-build.sh).
 
 Prints, per package, the packages its production code uses and the ones only
 its test code uses, beside its list; then each use the list does not allow,
@@ -204,11 +208,35 @@ def scan(src_dir):
     return packages
 
 
+def layer(packages, root):
+    """root and the packages it may use, directly or not, by the lists."""
+    result, todo = set(), [root]
+    while todo:
+        p = todo.pop()
+        if p not in result:
+            result.add(p)
+            todo += sorted(packages.get(p, (None,))[0] or ())
+    return result
+
+
 def main():
-    src = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_SRC
+    args = sys.argv[1:]
+    root = None
+    if "--layer" in args:
+        i = args.index("--layer")
+        root = args[i + 1]
+        del args[i:i + 2]
+    listing = "--list" in args
+    args = [a for a in args if a != "--list"]
+    src = args[0] if args else DEFAULT_SRC
     packages = scan(src)
+    checked = sorted(layer(packages, root)) if root else sorted(packages)
+    if listing:
+        print("\n".join(checked))
+        return 0
+    checked = [p for p in checked if p in packages]    # the others: BAD LIST below
     bad = 0
-    for pkg in sorted(packages):
+    for pkg in checked:
         allowed, problem, uses = packages[pkg]
         prod = sorted(u for u in uses if uses[u]["prod"])
         test = sorted(u for u in uses if not uses[u]["prod"])
@@ -237,7 +265,7 @@ def main():
             else:
                 print("    NOT ALLOWED, test only: %s -> %s, in %s" % (
                     pkg, used, ", ".join(sorted(uses[used]["test"]))))
-    print("%d packages, %s" % (len(packages),
+    print("%d packages, %s" % (len(checked),
           "all as package.html allows" if bad == 0
           else "%d uses or lists not allowed" % bad))
     return 1 if bad else 0
