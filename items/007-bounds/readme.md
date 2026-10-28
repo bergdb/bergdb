@@ -208,3 +208,15 @@ plan's "keeps up with d_h" is false with D4:B, and below the new d_h right
 after a decrease is false, as intended; the counterexamples are `#guard`s.
 `lake build` with no warnings and no `sorry`, the axioms Lean's standard
 ones, the trace tests pass.
+
+2026-10-28. 007-07, section 11, by Claude (Opus 5.5, Claude Code) in
+006-10: 007-06's step-2 set at 50M keys on main (D4:B), and 40M deletes
+at 1000 MB (16.6 sd of stream), on F53, byte counts only. The steady
+bound holds: the section is at most 1.11 sd, the debt at most 1.10 sd,
+and no record is over 2.3 times the mean. One call from 1000 to 100 MB
+or from 200 to 50 MB still ratchets the section below the new 2 sd, in
+1.2 to 1.4 times the debt of stream (0.03 to 0.20M puts). But its
+largest record grows with the keys: 13 to 15 MB from 1000 to 100 MB,
+against 3.3 to 3.6 MB at 10M. The cause is the pace's share, whose factor
+S/sd is up to 10 during a decrease, not the deadline. Capping that
+factor is for Frans; 100M keys was not run.

@@ -5,7 +5,8 @@ Created 2026-10-27 by Claude (Opus 5.5, Claude Code) for Frans Lundberg
 (006-09, W10), at his choice (17:27): "007-03 step 3 as a patch". Status:
 done. Frans decided on 2026-10-28 to apply the patch and to add D4:B as
 007-06 measured it; both went into the code that day, gated, with
-007-06's step-2 runs again on them (section 10). Sections 1 to 9 are the
+007-06's step-2 runs again on them (section 10) and at 50M keys (section
+11). Sections 1 to 9 are the
 patch as it was written for his review on 2026-10-27.
 
 The patch: [07-step3-paced-take/step3.diff](07-step3-paced-take/step3.diff),
@@ -575,7 +576,9 @@ the backstop that keeps the span from growing.
   0.07 to 0.10 MB there, and the section came down later where the call
   had done much of the work (8 to 1 MB: below 2 sd after 370 commits
   instead of 73). For Frans: count the value, as now, or not.
-* 007-06's "Left": 50M keys and a longer delete run, not run.
+* 007-06's "Left": 50M keys and a longer delete run. Run in section 11:
+  the steady bound holds at 50M keys, but a decrease's largest record
+  grows with the keys, to 13 to 15 MB from 1000 to 100 MB (11.3).
 * Step 4 of 007-03: the take in Lean, with the deadline at max(d_h, span);
   the comments of `lean/SIS/Bound.lean` and `BoundExample.lean`, which
   describe the take before step 3, go with it.
@@ -588,6 +591,182 @@ The documents: 007-03 (the status, steps 2, 3 and 4, D4), this item's log,
 docs/levels.md, section 5 (the take, its limits, the write overhead and
 the largest records, from 007-06 and 10.4), README.md (as the patch had
 it), 010-01 (P4, P5) and releases/next.md.
+
+
+## 11. 50M keys (2026-10-28)
+
+007-06's "Left" (50M keys, a longer delete run), run on main's code in
+006-10 by Claude (Opus 5.5, Claude Code): the set of 10.4 again, with 50M
+keys instead of 10M. The build was main's `b362a8b`, whose `java/` has
+`f89846d`'s take (step 3 and D4:B). Main moved during the runs. Its
+`fd8f513` (005-53) changed `setStartupDistance` for the value in force
+and for a refused transaction, not for a decrease. A smoke run (200k keys,
+20 to 2 MB) gave the same records, byte for byte, on `b362a8b`, on main's
+`0b6d08e` and on 10.4's d4b build.
+
+On F53, `nice -n 19`, one JVM of 22 GB at a time, from 12:36 to 15:55,
+byte counts only. Nothing was skipped. The settings are 005-38's for 50M
+keys: 24-byte keys with 8-byte values loaded in random order, 1,000 puts a
+transaction, windows of 2.5M puts, a ring of 1.3 GB, and no eviction.
+Where they differ from 10.4:
+
+* 20M updates after the load, not 30M, as 005-49 ran 50M keys. Steady
+  runs are measured over the last 10M (4.6 to 12.4 GB of stream).
+* The "worst" points come from pick.py on this build's steady runs at
+  50M: 15.72M updates at 1000 MB and 11.71M at 200 MB. The "20M" points
+  are as before. Each decrease run has 10M updates after the call.
+* Deletes at 1000 MB: 40M of the 50M keys, 16.6 GB of stream (16.6 sd).
+  At 10M keys the run covered only 1.4 sd (007-06). At 50 and 200 MB:
+  8M, as at 10M.
+
+Scripts and summaries are in
+[07-step3-paced-take/step2-50m/](07-step3-paced-take/step2-50m/):
+`run50.sh` and `queue50.sh` (with 007-06's `pick.py` and `summary.py`
+and 10.4's `ratchet.py` beside them), `cmp50.py` for the tables below,
+`big.py` for the records over a few times the mean, and `share.py` for
+the share estimate of 11.2. Outputs: `runs.txt`, `summary.txt`,
+`tables.txt`, `big.txt`, `ratchet.txt` and `share.txt`. The records
+(wb.rec, 0.8 GB) stay in `/Users/f/fl/bench/006-10/r50/out/`. The 10M
+rows are 10.4's records, reread.
+
+### 11.1 Steady runs
+
+Over the second half of each workload. "Mean record" is the mean record
+in bytes, and the largest is also given in times that mean.
+
+| run | keys | puts | B/put | mean record | largest record (× mean) | records over 3 / 5 / 10 × mean | over 100 kB | section mean / p99 / max (sd) | debt max (sd) | D max |
+|---|---|---|---|---|---|---|---|---|---|---|
+| updates, 50 MB | 10M | 15.0M | 867 | 867 kB | 1.93 MB (2.2×) | 0 / 0 / 0 | 14030 | 0.97 / 1.08 / 1.10 | 1.04 | 137k |
+| updates, 50 MB | 50M | 10.0M | 1244 | 1244 kB | 2.82 MB (2.3×) | 0 / 0 / 0 | 9999 | 0.95 / 1.05 / 1.08 | 1.05 | 138k |
+| updates, 200 MB | 10M | 15.0M | 524 | 524 kB | 1.12 MB (2.1×) | 0 / 0 / 0 | 14127 | 0.99 / 1.01 / 1.02 | 0.88 | 448k |
+| updates, 200 MB | 50M | 10.0M | 851 | 851 kB | 1.78 MB (2.1×) | 0 / 0 / 0 | 9502 | 1.00 / 1.05 / 1.05 | 0.97 | 537k |
+| updates, 1000 MB | 10M | 15.0M | 190 | 190 kB | 0.34 MB (1.8×) | 0 / 0 / 0 | 14695 | 1.03 / 1.09 / 1.09 | 0.59 | 1417k |
+| updates, 1000 MB | 50M | 10.0M | 460 | 460 kB | 0.95 MB (2.1×) | 0 / 0 / 0 | 9532 | 1.00 / 1.01 / 1.01 | 0.85 | 2308k |
+| deletes, 50 MB | 10M | 4.0M | 787 | 787 kB | 1.72 MB (2.2×) | 0 / 0 / 0 | 3749 | 0.97 / 1.08 / 1.10 | 1.03 | 137k |
+| deletes, 50 MB | 50M | 4.0M | 1159 | 1159 kB | 2.53 MB (2.2×) | 0 / 0 / 0 | 3796 | 0.95 / 1.07 / 1.11 | 1.10 | 152k |
+| deletes, 200 MB | 10M | 4.0M | 422 | 422 kB | 0.85 MB (2.0×) | 0 / 0 / 0 | 3779 | 0.99 / 1.01 / 1.01 | 0.86 | 464k |
+| deletes, 200 MB | 50M | 4.0M | 783 | 783 kB | 1.71 MB (2.2×) | 0 / 0 / 0 | 3774 | 0.99 / 1.03 / 1.04 | 0.96 | 537k |
+| deletes, 1000 MB | 10M | 4.0M | 121 | 121 kB | 0.23 MB (1.9×) | 0 / 0 / 0 | 2875 | 0.96 / 1.02 / 1.03 | 0.47 | 1219k |
+| deletes, 1000 MB | 50M | 20.0M | 423 | 423 kB | 0.94 MB (2.2×) | 0 / 0 / 0 | 18882 | 1.00 / 1.01 / 1.01 | 0.86 | 2308k |
+| single puts, 50 MB | 10M | 3.0M | 873 | 0.87 kB | 0.29 MB (328×) | 2451 / 2359 / 2359 | 1222 | 1.00 / 1.03 / 1.03 | 0.90 | 121k |
+| single puts, 50 MB | 50M | 3.0M | 1225 | 1.23 kB | 0.33 MB (269×) | 1422 / 1397 / 1397 | 1397 | 1.00 / 1.03 / 1.04 | 0.95 | 132k |
+| single puts, 200 MB | 10M | 3.0M | 537 | 0.54 kB | 0.23 MB (434×) | 6540 / 4117 / 4062 | 686 | 1.00 / 1.01 / 1.01 | 0.79 | 425k |
+| single puts, 200 MB | 50M | 3.0M | 859 | 0.86 kB | 0.28 MB (324×) | 2645 / 2332 / 2194 | 1737 | 1.00 / 1.02 / 1.03 | 0.89 | 505k |
+
+* **The section holds at sd at 50M keys.** It is at most 1.11 sd in
+  every run, the same as at 10M (1.10). The debt is at most 1.10 sd. The
+  section stayed below 2 sd at every record (ratchet.txt), and that
+  includes the whole of the long delete run: 40M deletes and 16.6 sd of
+  stream, with the section at most 1.06 sd and the debt at most 0.88 sd.
+* **Bytes a put grow with the keys**, as 005-38 found on today's take:
+  1.4 to 1.8 times at 50 and 200 MB, and 2.4 to 3.5 times at 1000 MB
+  (190 to 460 for updates, 121 to 423 for deletes). At 1000 MB, D is
+  2.3M nodes at 50M keys, against 1.4M at 10M.
+* **Records stay near their mean** with 1,000 puts a transaction. The
+  largest is 1.8 to 2.3 times the mean at both sizes, and no record is
+  over 3 times the mean. The largest record grows with the mean, up to
+  2.82 MB (updates at 50 MB).
+* **Single puts are no worse at 50M.** The largest record is 0.33 and
+  0.28 MB, against 0.29 and 0.23 MB at 10M. Of 3M records, 1,397 and
+  1,737 are over 100 kB, against 1,222 and 686. A put's mean record is
+  about 1 kB, so these are the whole-transaction bursts of 7.1/7.2,
+  which Frans accepted for now.
+
+### 11.2 Decreases, one call (D4:B)
+
+From `setStartupDistance`'s record until the section is first below the
+new 2 sd ("catch-up"). "Records" is the count of records in the
+catch-up. "New mean" is the mean record in the second half of the rest
+of the run, the new distance's steady records.
+
+| decrease | keys | section / debt before | setStartupDistance's record | to 2 sd: puts, stream, records | largest user record (× new mean) | catch-up records over 3 / 5 / 10 × new mean | to sd: puts, stream | new mean record | after, 2nd half: section max, largest record |
+|---|---|---|---|---|---|---|---|---|---|
+| 1000 to 100, worst | 10M | 988 / 601 MB | 3.34 MB | 0.67M, 822 MB, 669 | 2.30 MB (3.3×) | 26 / 0 / 0 | 0.74M, 931 MB | 695 kB | 1.04 sd, 1.67 MB |
+| 1000 to 100, worst | 50M | 1009 / 849 MB | 11.42 MB | 0.20M, 1146 MB, 201 | 13.34 MB (12.3×) | 202 / 62 / 16 | 0.21M, 1174 MB | 1080 kB | 1.08 sd, 2.56 MB |
+| 1000 to 100, 20M | 10M | 1043 / 579 MB | 3.61 MB | 0.59M, 817 MB, 587 | 2.94 MB (4.3×) | 87 / 1 / 0 | 0.64M, 918 MB | 691 kB | 1.05 sd, 1.54 MB |
+| 1000 to 100, 20M | 50M | 1004 / 847 MB | 11.56 MB | 0.20M, 1144 MB, 196 | 15.36 MB (14.1×) | 197 / 61 / 15 | 0.20M, 1175 MB | 1087 kB | 1.07 sd, 2.71 MB |
+| 200 to 50, worst | 10M | 201 / 175 MB | 5.42 MB | 0.08M, 234 MB, 81 | 5.11 MB (5.9×) | 41 / 7 / 0 | 0.10M, 275 MB | 862 kB | 1.08 sd, 1.83 MB |
+| 200 to 50, worst | 50M | 207 / 194 MB | 8.46 MB | 0.04M, 240 MB, 40 | 8.80 MB (6.9×) | 40 / 12 / 0 | 0.05M, 267 MB | 1268 kB | 1.10 sd, 2.82 MB |
+| 200 to 50, 20M | 10M | 198 / 170 MB | 5.34 MB | 0.09M, 234 MB, 86 | 4.66 MB (5.3×) | 35 / 3 / 0 | 0.10M, 275 MB | 874 kB | 1.10 sd, 1.97 MB |
+| 200 to 50, 20M | 50M | 195 / 180 MB | 8.81 MB | 0.03M, 222 MB, 32 | 8.77 MB (6.9×) | 33 / 23 / 0 | 0.04M, 242 MB | 1276 kB | 1.13 sd, 2.95 MB |
+
+* **The deadline holds the section at 50M, as at 10M.** In all four
+  decreases the section without its last record shrank at every record
+  until it was below the new 2 sd, never grew in the meantime, and
+  stayed below 2 sd afterwards (ratchet.txt). Afterwards it settles at
+  1.07 to 1.13 sd.
+* **The catch-up takes about the same stream for a given debt, but
+  fewer puts.** Before it is below the new 2 sd, the stream grows by
+  1.35 times the debt at the decrease from 1000 to 100 MB (1.37 to 1.41
+  at 10M), and by 1.23 to 1.24 times it from 200 to 50 MB (1.34 to
+  1.38). The debt is larger at 50M (849 MB against 601 MB at 1000 MB),
+  but the commits during the catch-up are larger still: 5.7 kB a put
+  against 1.2 kB at 1000 to 100 MB. So the section is below 2 sd after
+  0.20M puts and about 200 records, against 0.59 to 0.67M puts and 587
+  to 669 records at 10M. From 200 to 50 MB it takes 0.03 to 0.04M puts,
+  against 0.08 to 0.09M.
+* **The largest record of a decrease grows with the keys.** From 1000
+  to 100 MB, `setStartupDistance`'s record is 11.4 to 11.6 MB, against
+  3.3 to 3.6 MB at 10M, and the largest user record is 13.3 to 15.4 MB,
+  against 2.3 to 2.9 MB. That is 12 to 14 times the new mean record, and
+  29 to 33 times the mean record before the call. Every catch-up record
+  is over 3 times the new mean, and 15 to 16 are over 10 times it. From
+  200 to 50 MB the call's record is 8.5 to 8.8 MB (5.3 to 5.4 MB at
+  10M), and the largest user record is 8.8 MB (4.7 to 5.1 MB), 6.9
+  times the new mean. That is about the ratio at 10M (5.3 to 5.9).
+* **The shape, from 1000 to 100 MB, is the same at both sizes and four
+  times as large at 50M.** After the call's record (11.4 MB; 3.3 MB at
+  10M), the records fall within about 8 records to a plateau: 3.7 to 5 MB
+  (1.0 to 1.1 MB at 10M), while the section comes down slowly. A second
+  peak follows in the last tenth of the catch-up: 12 to 15 MB (2.0 to 2.9
+  MB at 10M), while the section falls from about 850 to 200 MB. After it,
+  the records fall to the new steady mean.
+* **The share writes both, not the deadline.** `share.py` estimates each
+  record's share, o × D/O × S/sd, from the logged fields, with O summed
+  over the records after the startup pos. At every record of the
+  catch-up, the nodes written are 0.5 to 1.2 times the estimate (0.6 to
+  1.6 at 10M), the peak included. S/sd starts at 10 at both sizes. D/O,
+  the section's got-dirty nodes for each MB of its own bytes, starts
+  where the old setting left it: 12k at 50M against 3.2k at 10M. With 50M
+  keys, a put more often makes a node dirty that is not dirty already.
+  That gives the plateau's four times. D/O then rises, as the old
+  transactions are paid off and those made since the call become more
+  of the section. At 90 percent of the catch-up it is 31k at 50M and 12k
+  at 10M, while S/sd is still 7 and 4.5, and that is the peak. Since
+  these are estimates, from own bytes that include the got-dirty list,
+  they explain the shape, not each record.
+
+### 11.3 What it means for D4:B and the bound
+
+1. **Steady state scales to 50M keys.** The paced take holds the section
+   at 1.11 sd at most and the debt at 1.10 sd at most, on updates,
+   deletes and single puts. No record is over 2.3 times the mean. The
+   long delete run (16.6 sd) shows no drift. T3's bound with the
+   deadline at 2 sd is never reached in steady state, as at 10M.
+2. **D4:B keeps its guarantee at 50M:** a ratchet down to the new 2 sd,
+   with the deadline a backstop that never lets the section grow. The
+   catch-up costs about 1.2 to 1.4 times the debt in stream, whatever
+   the keys. There is no large commit of the kind 007-06 measured on the
+   patch alone (486 MB at 10M keys).
+3. **But the largest record of a decrease grows with D, so with the
+   keys:** 13 to 15 MB at 50M keys from 1000 to 100 MB, against 3.6 MB at
+   10M. That is 4 times as large for 5 times the keys and 1.4 times the
+   debt. It is 13 to 15 percent of the new setting. For the startup bound
+   (T3_bounded, d + 2M with M the largest record), M is then 15 MB
+   against d = 200 MB. Of a catch-up's 196 to 201 commits, 61 to 62 write
+   over 5 times the new mean record and 15 to 16 over 10 times. 100M
+   keys, which needs a heap over F53's 32 GB, was not run, and the
+   records there are not known; from 10M to 50M they grew 4 times.
+4. **What would bound it.** The plateau and the peak are the pace's
+   share, with S/sd at up to 10 times its steady value of 1. Capping the share's factor
+   S/sd (at 2 or 4, say) would bound a decrease's records near the
+   steady ones, at the cost of a longer catch-up. 007-06's "follow",
+   whose factor was at most 2, took 3.0 to 3.4M puts from 1000 to 100 MB
+   at 10M keys. The deadline at the span would still keep the section
+   from growing. That is a change to step 3's take, for Frans, and no
+   test has been run on it. `setStartupDistance`'s 200 kB value (10.5) is
+   no longer the main question at 50M. The call's record is 11.4 MB, but
+   the user records after it reach 15 MB.
 
 
 ## Files
@@ -613,3 +792,8 @@ In [07-step3-paced-take/](07-step3-paced-take/):
   `runs.txt`, `summary.txt`, `tables.txt` and `ratchet.txt`.
 * `night/run-quick.sh`: the night step for the quick performance suite
   (section 10.5).
+* `step2-50m/`: section 11's runs at 50M keys: `run50.sh`, `queue50.sh`,
+  `cmp50.py`, `big.py` and `share.py` (with 007-06's `pick.py`,
+  `summary.py` and `tables.py` and 10.4's `ratchet.py` beside them), and
+  the outputs `runs.txt`, `summary.txt`, `tables.txt`, `big.txt`,
+  `ratchet.txt` and `share.txt`.

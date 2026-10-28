@@ -1,0 +1,56 @@
+== out/m50-del-sd1000.rec: 90000 records, 40000 after the load
+  all: 40000000 puts, B/put 414; maxrec 0.94 MB, idx 0.85 MB; sec mean 1.01 p99 1.05 max 1.06 sd; lag max 1.06 sd; D max 2474524 nodes, debt max 885 MB (0.88 sd), debt at max sec 0.88 sd; sec+debt max 1.93 sd
+  2nd half: 20000000 puts, B/put 423; maxrec 0.94 MB, idx 0.85 MB; sec mean 1.00 p99 1.01 max 1.01 sd; lag max 1.01 sd; D max 2307916 nodes, debt max 858 MB (0.86 sd), debt at max sec 0.85 sd; sec+debt max 1.86 sd
+== out/m50-del-sd200.rec: 58000 records, 8000 after the load
+  all: 8000000 puts, B/put 774; maxrec 1.71 MB, idx 1.61 MB; sec mean 1.00 p99 1.06 max 1.07 sd; lag max 1.07 sd; D max 573974 nodes, debt max 198 MB (0.99 sd), debt at max sec 0.94 sd; sec+debt max 2.03 sd
+  2nd half: 4000000 puts, B/put 783; maxrec 1.71 MB, idx 1.61 MB; sec mean 0.99 p99 1.03 max 1.04 sd; lag max 1.04 sd; D max 536626 nodes, debt max 193 MB (0.96 sd), debt at max sec 0.95 sd; sec+debt max 1.99 sd
+== out/m50-del-sd50.rec: 58000 records, 8000 after the load
+  all: 8000000 puts, B/put 1150; maxrec 2.53 MB, idx 2.41 MB; sec mean 0.95 p99 1.06 max 1.11 sd; lag max 1.17 sd; D max 151873 nodes, debt max 55 MB (1.10 sd), debt at max sec 0.97 sd; sec+debt max 2.12 sd
+  2nd half: 4000000 puts, B/put 1159; maxrec 2.53 MB, idx 2.41 MB; sec mean 0.95 p99 1.07 max 1.11 sd; lag max 1.17 sd; D max 151873 nodes, debt max 55 MB (1.10 sd), debt at max sec 0.97 sd; sec+debt max 2.12 sd
+== out/m50-low1000-100-once-t.rec: 80001 records, 30001 after the load
+  before: 19999782 puts, B/put 443; maxrec 0.95 MB, idx 0.86 MB; sec mean 1.01 p99 1.02 max 1.02 sd; lag max 1.02 sd; D max 2338118 nodes, debt max 849 MB (0.85 sd), debt at max sec 0.84 sd; sec+debt max 1.87 sd
+  at the decrease: sec 1004 MB, lag 1005 MB, D 2269066 nodes, debt 847 MB, sd 1000 -> 100 MB
+  dummies: 1 records, 11.6 MB in all, largest 11.56 MB (idx 11.21 MB); after them sec 991 MB, debt 839 MB
+  to 2 sd (200 MB): first below: 195997 puts, 1144 MB of stream, largest user record 15.36 MB (idx 15.06 MB); stays below: 195997 puts, 1144 MB of stream, largest user record 15.36 MB (idx 15.06 MB)
+  to sd (100 MB): first below: 203997 puts, 1175 MB of stream, largest user record 15.36 MB (idx 15.06 MB); stays below: 8789917 puts, 10406 MB of stream, largest user record 15.36 MB (idx 15.06 MB)
+  after: 9803907 puts, B/put 1079; maxrec 5.19 MB, idx 5.05 MB; sec mean 0.97 p99 1.25 max 1.92 sd; lag max 2.08 sd; D max 336415 nodes, debt max 128 MB (1.28 sd), debt at max sec 0.52 sd; sec+debt max 2.48 sd
+  after, 2nd half: 4901951 puts, B/put 1087; maxrec 2.71 MB, idx 2.56 MB; sec mean 0.98 p99 1.06 max 1.07 sd; lag max 1.09 sd; D max 260639 nodes, debt max 102 MB (1.02 sd), debt at max sec 0.96 sd; sec+debt max 2.07 sd
+== out/m50-low1000-100-once-w.rec: 75725 records, 25725 after the load
+  before: 15723824 puts, B/put 437; maxrec 0.91 MB, idx 0.82 MB; sec mean 1.01 p99 1.02 max 1.02 sd; lag max 1.02 sd; D max 2338118 nodes, debt max 849 MB (0.85 sd), debt at max sec 0.84 sd; sec+debt max 1.87 sd
+  at the decrease: sec 1009 MB, lag 1010 MB, D 2303102 nodes, debt 849 MB, sd 1000 -> 100 MB
+  dummies: 1 records, 11.4 MB in all, largest 11.42 MB (idx 11.07 MB); after them sec 996 MB, debt 841 MB
+  to 2 sd (200 MB): first below: 200998 puts, 1146 MB of stream, largest user record 13.34 MB (idx 13.07 MB); stays below: 200998 puts, 1146 MB of stream, largest user record 13.34 MB (idx 13.07 MB)
+  to sd (100 MB): first below: 206998 puts, 1174 MB of stream, largest user record 13.34 MB (idx 13.07 MB); stays below: 9777907 puts, 11376 MB of stream, largest user record 13.34 MB (idx 13.07 MB)
+  after: 9798908 puts, B/put 1069; maxrec 5.99 MB, idx 5.84 MB; sec mean 0.97 p99 1.30 max 1.79 sd; lag max 1.96 sd; D max 351111 nodes, debt max 132 MB (1.32 sd), debt at max sec 0.49 sd; sec+debt max 2.55 sd
+  after, 2nd half: 4899954 puts, B/put 1080; maxrec 2.56 MB, idx 2.42 MB; sec mean 0.98 p99 1.06 max 1.08 sd; lag max 1.10 sd; D max 265085 nodes, debt max 103 MB (1.03 sd), debt at max sec 0.97 sd; sec+debt max 2.06 sd
+== out/m50-low200-50-once-t.rec: 80001 records, 30001 after the load
+  before: 19999782 puts, B/put 827; maxrec 1.78 MB, idx 1.67 MB; sec mean 1.00 p99 1.05 max 1.05 sd; lag max 1.06 sd; D max 546070 nodes, debt max 195 MB (0.97 sd), debt at max sec 0.94 sd; sec+debt max 2.02 sd
+  at the decrease: sec 195 MB, lag 197 MB, D 478141 nodes, debt 180 MB, sd 200 -> 50 MB
+  dummies: 1 records, 8.8 MB in all, largest 8.81 MB (idx 8.50 MB); after them sec 186 MB, debt 174 MB
+  to 2 sd (100 MB): first below: 32000 puts, 222 MB of stream, largest user record 8.77 MB (idx 8.55 MB); stays below: 32000 puts, 222 MB of stream, largest user record 8.77 MB (idx 8.55 MB)
+  to sd (50 MB): first below: 37000 puts, 242 MB of stream, largest user record 8.77 MB (idx 8.55 MB); stays below: 9930905 puts, 12898 MB of stream, largest user record 8.77 MB (idx 8.55 MB)
+  after: 9967904 puts, B/put 1280; maxrec 4.16 MB, idx 4.02 MB; sec mean 0.95 p99 1.11 max 1.69 sd; lag max 1.92 sd; D max 161342 nodes, debt max 63 MB (1.26 sd), debt at max sec 0.61 sd; sec+debt max 2.35 sd
+  after, 2nd half: 4983950 puts, B/put 1276; maxrec 2.95 MB, idx 2.80 MB; sec mean 0.96 p99 1.09 max 1.13 sd; lag max 1.19 sd; D max 141124 nodes, debt max 56 MB (1.12 sd), debt at max sec 0.96 sd; sec+debt max 2.17 sd
+== out/m50-low200-50-once-w.rec: 71714 records, 21714 after the load
+  before: 11712869 puts, B/put 807; maxrec 1.76 MB, idx 1.64 MB; sec mean 1.00 p99 1.04 max 1.05 sd; lag max 1.06 sd; D max 546070 nodes, debt max 194 MB (0.97 sd), debt at max sec 0.94 sd; sec+debt max 2.01 sd
+  at the decrease: sec 207 MB, lag 208 MB, D 535297 nodes, debt 194 MB, sd 200 -> 50 MB
+  dummies: 1 records, 8.5 MB in all, largest 8.46 MB (idx 8.15 MB); after them sec 200 MB, debt 188 MB
+  to 2 sd (100 MB): first below: 39999 puts, 240 MB of stream, largest user record 8.80 MB (idx 8.59 MB); stays below: 39999 puts, 240 MB of stream, largest user record 8.80 MB (idx 8.59 MB)
+  to sd (50 MB): first below: 47999 puts, 267 MB of stream, largest user record 8.80 MB (idx 8.59 MB); stays below: 9886899 puts, 12619 MB of stream, largest user record 8.80 MB (idx 8.59 MB)
+  after: 9959899 puts, B/put 1257; maxrec 4.87 MB, idx 4.73 MB; sec mean 0.95 p99 1.10 max 1.72 sd; lag max 1.89 sd; D max 147175 nodes, debt max 55 MB (1.11 sd), debt at max sec 0.68 sd; sec+debt max 2.39 sd
+  after, 2nd half: 4979957 puts, B/put 1268; maxrec 2.82 MB, idx 2.68 MB; sec mean 0.95 p99 1.08 max 1.10 sd; lag max 1.15 sd; D max 137853 nodes, debt max 54 MB (1.07 sd), debt at max sec 0.99 sd; sec+debt max 2.13 sd
+== out/m50-one-sd200.rec: 6050000 records, 6000000 after the load
+  all: 6000000 puts, B/put 854; maxrec 0.97 MB, idx 0.95 MB; sec mean 1.00 p99 1.02 max 1.03 sd; lag max 1.03 sd; D max 521958 nodes, debt max 181 MB (0.90 sd), debt at max sec 0.89 sd; sec+debt max 1.91 sd
+  2nd half: 3000000 puts, B/put 859; maxrec 0.28 MB, idx 0.27 MB; sec mean 1.00 p99 1.02 max 1.03 sd; lag max 1.03 sd; D max 505116 nodes, debt max 178 MB (0.89 sd), debt at max sec 0.89 sd; sec+debt max 1.91 sd
+== out/m50-one-sd50.rec: 6050000 records, 6000000 after the load
+  all: 6000000 puts, B/put 1215; maxrec 1.32 MB, idx 1.30 MB; sec mean 1.00 p99 1.04 max 1.05 sd; lag max 1.06 sd; D max 139096 nodes, debt max 49 MB (0.98 sd), debt at max sec 0.93 sd; sec+debt max 1.99 sd
+  2nd half: 3000000 puts, B/put 1225; maxrec 0.33 MB, idx 0.32 MB; sec mean 1.00 p99 1.03 max 1.04 sd; lag max 1.05 sd; D max 131524 nodes, debt max 47 MB (0.95 sd), debt at max sec 0.93 sd; sec+debt max 1.98 sd
+== out/m50-upd-sd1000.rec: 70000 records, 20000 after the load
+  all: 19999782 puts, B/put 443; maxrec 0.95 MB, idx 0.86 MB; sec mean 1.01 p99 1.02 max 1.02 sd; lag max 1.02 sd; D max 2338118 nodes, debt max 849 MB (0.85 sd), debt at max sec 0.84 sd; sec+debt max 1.87 sd
+  2nd half: 9998900 puts, B/put 460; maxrec 0.95 MB, idx 0.86 MB; sec mean 1.00 p99 1.01 max 1.01 sd; lag max 1.01 sd; D max 2307520 nodes, debt max 849 MB (0.85 sd), debt at max sec 0.85 sd; sec+debt max 1.86 sd
+== out/m50-upd-sd200.rec: 70000 records, 20000 after the load
+  all: 19999782 puts, B/put 827; maxrec 1.78 MB, idx 1.67 MB; sec mean 1.00 p99 1.05 max 1.05 sd; lag max 1.06 sd; D max 546070 nodes, debt max 195 MB (0.97 sd), debt at max sec 0.94 sd; sec+debt max 2.02 sd
+  2nd half: 9998900 puts, B/put 851; maxrec 1.78 MB, idx 1.67 MB; sec mean 1.00 p99 1.05 max 1.05 sd; lag max 1.06 sd; D max 536724 nodes, debt max 195 MB (0.97 sd), debt at max sec 0.94 sd; sec+debt max 2.02 sd
+== out/m50-upd-sd50.rec: 70000 records, 20000 after the load
+  all: 19999782 puts, B/put 1212; maxrec 2.82 MB, idx 2.68 MB; sec mean 0.95 p99 1.05 max 1.11 sd; lag max 1.16 sd; D max 146749 nodes, debt max 54 MB (1.07 sd), debt at max sec 0.99 sd; sec+debt max 2.14 sd
+  2nd half: 9998900 puts, B/put 1244; maxrec 2.82 MB, idx 2.68 MB; sec mean 0.95 p99 1.05 max 1.08 sd; lag max 1.13 sd; D max 138361 nodes, debt max 52 MB (1.05 sd), debt at max sec 0.94 sd; sec+debt max 2.09 sd

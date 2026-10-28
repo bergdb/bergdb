@@ -350,9 +350,11 @@ Left
 * The same runs at 50M keys (22 GB heap; 005-38's largest D). Not run
   tonight. The commands are those of queue1.sh to queue5.sh with
   `-Dwb.keys=50000000`, fewer updates (005-49 ran 20M at 50M keys) and
-  `HEAP=22g`, one JVM at a time.
+  `HEAP=22g`, one JVM at a time. Run on main with D4:B: 007-07, section
+  11.
 * The deletes at 1000 MB cover only 1.4 sd of stream; 10M keys allow at
-  most 10M deletes. A longer run would need more keys.
+  most 10M deletes. A longer run would need more keys. Run with 40M
+  deletes at 50M keys: 007-07, section 11.
 * D4's B as in section 5, point 2, in step 3's take, then these
   decreases again, to replace the probe.
 * "follow" and "pace" on 007-07's patch: the probe is the same two

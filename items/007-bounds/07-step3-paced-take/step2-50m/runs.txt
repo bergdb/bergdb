@@ -1,0 +1,25 @@
+2026-10-28 12:36:02 start m50-upd-sd1000: -Dwb.sd=1000000000
+2026-10-28 12:47:46 end m50-upd-sd1000: WRITEBENCH OK
+2026-10-28 12:47:46 start m50-low1000-100-once-w: -Dwb.sd=1000000000 -Dwb.updates=25724000 -Dwb.lowerAt=15724000 -Dwb.lowerTo=100000000
+2026-10-28 13:09:42 end m50-low1000-100-once-w: WRITEBENCH OK
+2026-10-28 13:09:42 start m50-del-sd1000: -Dwb.sd=1000000000 -Dwb.op=delete -Dwb.updates=40000000
+2026-10-28 13:21:50 end m50-del-sd1000: WRITEBENCH OK
+2026-10-28 13:21:50 start m50-upd-sd200: -Dwb.sd=200000000
+2026-10-28 13:36:47 end m50-upd-sd200: WRITEBENCH OK
+2026-10-28 13:36:47 start m50-low200-50-once-w: -Dwb.sd=200000000 -Dwb.updates=21713000 -Dwb.lowerAt=11713000 -Dwb.lowerTo=50000000
+2026-10-28 13:53:53 end m50-low200-50-once-w: WRITEBENCH OK
+2026-10-28 13:53:53 start m50-upd-sd50: -Dwb.sd=50000000
+2026-10-28 14:15:56 end m50-upd-sd50: WRITEBENCH OK
+2026-10-28 14:15:56 start m50-del-sd50: -Dwb.sd=50000000 -Dwb.op=delete -Dwb.updates=8000000
+2026-10-28 14:33:45 end m50-del-sd50: WRITEBENCH OK
+2026-10-28 14:33:45 start m50-del-sd200: -Dwb.sd=200000000 -Dwb.op=delete -Dwb.updates=8000000
+2026-10-28 14:46:42 end m50-del-sd200: WRITEBENCH OK
+2026-10-28 14:46:42 start m50-one-sd50: -Dwb.sd=50000000 -Dwb.utx=1 -Dwb.updates=6000000
+2026-10-28 15:06:04 end m50-one-sd50: WRITEBENCH OK
+2026-10-28 15:06:04 start m50-one-sd200: -Dwb.sd=200000000 -Dwb.utx=1 -Dwb.updates=6000000
+2026-10-28 15:19:16 end m50-one-sd200: WRITEBENCH OK
+2026-10-28 15:19:16 start m50-low1000-100-once-t: -Dwb.sd=1000000000 -Dwb.updates=30000000 -Dwb.lowerAt=20000000 -Dwb.lowerTo=100000000
+2026-10-28 15:33:31 end m50-low1000-100-once-t: WRITEBENCH OK
+2026-10-28 15:33:31 start m50-low200-50-once-t: -Dwb.sd=200000000 -Dwb.updates=30000000 -Dwb.lowerAt=20000000 -Dwb.lowerTo=50000000
+2026-10-28 15:54:54 end m50-low200-50-once-t: WRITEBENCH OK
+2026-10-28 15:54:54 QUEUE50 DONE

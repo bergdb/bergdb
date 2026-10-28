@@ -1,0 +1,12 @@
+m50-del-sd1000.rec: steady, 40000 records, max section 1.057 sd, 0 at or over 2 sd
+m50-del-sd200.rec: steady, 8000 records, max section 1.066 sd, 0 at or over 2 sd
+m50-del-sd50.rec: steady, 8000 records, max section 1.113 sd, 0 at or over 2 sd
+m50-low1000-100-once-t.rec: section at the decrease 991 MB (9.91 new sd), below 2 new sd after 196 records; grew 0 times while at or over 2 sd (most 0 bytes); 0 records at or over 2 sd after
+m50-low1000-100-once-w.rec: section at the decrease 996 MB (9.96 new sd), below 2 new sd after 201 records; grew 0 times while at or over 2 sd (most 0 bytes); 0 records at or over 2 sd after
+m50-low200-50-once-t.rec: section at the decrease 186 MB (3.72 new sd), below 2 new sd after 32 records; grew 0 times while at or over 2 sd (most 0 bytes); 0 records at or over 2 sd after
+m50-low200-50-once-w.rec: section at the decrease 200 MB (4.00 new sd), below 2 new sd after 40 records; grew 0 times while at or over 2 sd (most 0 bytes); 0 records at or over 2 sd after
+m50-one-sd200.rec: steady, 6000000 records, max section 1.026 sd, 0 at or over 2 sd
+m50-one-sd50.rec: steady, 6000000 records, max section 1.053 sd, 0 at or over 2 sd
+m50-upd-sd1000.rec: steady, 20000 records, max section 1.024 sd, 0 at or over 2 sd
+m50-upd-sd200.rec: steady, 20000 records, max section 1.055 sd, 0 at or over 2 sd
+m50-upd-sd50.rec: steady, 20000 records, max section 1.110 sd, 0 at or over 2 sd

@@ -1,0 +1,24 @@
+m50-del-sd1000.rec: steady 2nd half, 20000 records, mean 422.8 kB, max 0.94 MB (2.2x), >3x 0 >5x 0 >10x 0, >100 kB 18882
+m50-del-sd200.rec: steady 2nd half, 4000 records, mean 783.3 kB, max 1.71 MB (2.2x), >3x 0 >5x 0 >10x 0, >100 kB 3774
+m50-del-sd50.rec: steady 2nd half, 4000 records, mean 1159.2 kB, max 2.53 MB (2.2x), >3x 0 >5x 0 >10x 0, >100 kB 3796
+m50-low1000-100-once-t.rec: before (2nd half) mean 0.460 MB; after (2nd half) mean 1.087 MB; catch-up 197 records, 195997 puts, 1144 MB: max 15.36 MB (14.1x after's mean), largest user 15.36 MB (14.1x), >3x 197 >5x 61 >10x 15; after (2nd half) max 2.71 MB (2.5x), >3x 0 >5x 0 >10x 0
+m50-low1000-100-once-w.rec: before (2nd half) mean 0.454 MB; after (2nd half) mean 1.080 MB; catch-up 202 records, 200998 puts, 1146 MB: max 13.34 MB (12.3x after's mean), largest user 13.34 MB (12.3x), >3x 202 >5x 62 >10x 16; after (2nd half) max 2.56 MB (2.4x), >3x 0 >5x 0 >10x 0
+m50-low200-50-once-t.rec: before (2nd half) mean 0.851 MB; after (2nd half) mean 1.276 MB; catch-up 33 records, 32000 puts, 222 MB: max 8.81 MB (6.9x after's mean), largest user 8.77 MB (6.9x), >3x 33 >5x 23 >10x 0; after (2nd half) max 2.95 MB (2.3x), >3x 0 >5x 0 >10x 0
+m50-low200-50-once-w.rec: before (2nd half) mean 0.822 MB; after (2nd half) mean 1.268 MB; catch-up 41 records, 39999 puts, 240 MB: max 8.80 MB (6.9x after's mean), largest user 8.80 MB (6.9x), >3x 40 >5x 12 >10x 0; after (2nd half) max 2.82 MB (2.2x), >3x 0 >5x 0 >10x 0
+m50-one-sd200.rec: steady 2nd half, 3000000 records, mean 0.9 kB, max 0.28 MB (324.0x), >3x 2645 >5x 2332 >10x 2194, >100 kB 1737
+m50-one-sd50.rec: steady 2nd half, 3000000 records, mean 1.2 kB, max 0.33 MB (269.1x), >3x 1422 >5x 1397 >10x 1397, >100 kB 1397
+m50-upd-sd1000.rec: steady 2nd half, 9999 records, mean 459.8 kB, max 0.95 MB (2.1x), >3x 0 >5x 0 >10x 0, >100 kB 9532
+m50-upd-sd200.rec: steady 2nd half, 9999 records, mean 851.0 kB, max 1.78 MB (2.1x), >3x 0 >5x 0 >10x 0, >100 kB 9502
+m50-upd-sd50.rec: steady 2nd half, 9999 records, mean 1243.6 kB, max 2.82 MB (2.3x), >3x 0 >5x 0 >10x 0, >100 kB 9999
+d4b-del-sd1000.rec: steady 2nd half, 4000 records, mean 120.5 kB, max 0.23 MB (1.9x), >3x 0 >5x 0 >10x 0, >100 kB 2875
+d4b-del-sd200.rec: steady 2nd half, 4000 records, mean 422.3 kB, max 0.85 MB (2.0x), >3x 0 >5x 0 >10x 0, >100 kB 3779
+d4b-del-sd50.rec: steady 2nd half, 4000 records, mean 786.7 kB, max 1.72 MB (2.2x), >3x 0 >5x 0 >10x 0, >100 kB 3749
+d4b-low1000-100-once-t.rec: before (2nd half) mean 0.181 MB; after (2nd half) mean 0.691 MB; catch-up 588 records, 586975 puts, 817 MB: max 3.61 MB (5.2x after's mean), largest user 2.94 MB (4.3x), >3x 87 >5x 1 >10x 0; after (2nd half) max 1.54 MB (2.2x), >3x 0 >5x 0 >10x 0
+d4b-low1000-100-once-w.rec: before (2nd half) mean 0.158 MB; after (2nd half) mean 0.695 MB; catch-up 670 records, 668963 puts, 822 MB: max 3.34 MB (4.8x after's mean), largest user 2.30 MB (3.3x), >3x 26 >5x 0 >10x 0; after (2nd half) max 1.67 MB (2.4x), >3x 0 >5x 0 >10x 0
+d4b-low200-50-once-t.rec: before (2nd half) mean 0.523 MB; after (2nd half) mean 0.874 MB; catch-up 87 records, 85997 puts, 234 MB: max 5.34 MB (6.1x after's mean), largest user 4.66 MB (5.3x), >3x 35 >5x 3 >10x 0; after (2nd half) max 1.97 MB (2.3x), >3x 0 >5x 0 >10x 0
+d4b-low200-50-once-w.rec: before (2nd half) mean 0.520 MB; after (2nd half) mean 0.862 MB; catch-up 82 records, 80995 puts, 234 MB: max 5.42 MB (6.3x after's mean), largest user 5.11 MB (5.9x), >3x 41 >5x 7 >10x 0; after (2nd half) max 1.83 MB (2.1x), >3x 0 >5x 0 >10x 0
+d4b-one-sd200.rec: steady 2nd half, 3000000 records, mean 0.5 kB, max 0.23 MB (434.3x), >3x 6540 >5x 4117 >10x 4062, >100 kB 686
+d4b-one-sd50.rec: steady 2nd half, 3000000 records, mean 0.9 kB, max 0.29 MB (328.1x), >3x 2451 >5x 2359 >10x 2359, >100 kB 1222
+d4b-upd-sd1000.rec: steady 2nd half, 15000 records, mean 189.6 kB, max 0.34 MB (1.8x), >3x 0 >5x 0 >10x 0, >100 kB 14695
+d4b-upd-sd200.rec: steady 2nd half, 15000 records, mean 524.4 kB, max 1.12 MB (2.1x), >3x 0 >5x 0 >10x 0, >100 kB 14127
+d4b-upd-sd50.rec: steady 2nd half, 15000 records, mean 867.2 kB, max 1.93 MB (2.2x), >3x 0 >5x 0 >10x 0, >100 kB 14030
