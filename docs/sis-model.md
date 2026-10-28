@@ -298,9 +298,12 @@ running database knows it, in RAM and in the stream.
    d(x) = i, and its id goes into gd(i).
 4. Startup pos. Choose s(i), with s(i-1) <= s(i) < i, by any policy that
    depends only on S, D and T(i). (T(i) since 2026-10-16: BergDB's limit on
-   the nodes taken depends on the size of the transaction.) In BergDB: the
-   last transaction that starts at least the startup distance, a configured
-   number of bytes, before the end of the stream.
+   the nodes taken, then, depended on the size of the transaction.) In
+   BergDB (since bergdb 007-07): whole transactions from s(i-1) + 1 on, as
+   many as the record's share of D asks for, in proportion to the stream it
+   adds, and every one that starts at least the larger of twice the startup
+   distance, a configured number of bytes, and the span of the section's
+   transactions before the end of the stream (`takePolicy` in Lean).
 5. Take. Remove every node with d(x) <= s(i) from D. These are the taken
    nodes.
 6. Write index. Write a version of each taken node, lowest level first.
@@ -564,9 +567,16 @@ being on the access path.
   form: with any cost of a record, and a policy that never asks for a
   startup pos before the one a startup distance d asks for, the startup
   section without its last record costs less than d, after every run
-  (`T3_section`, lean/SIS/BoundTheorems.lean). BergDB's take does not keep
-  up with d; the size of the records at the ends of the section (T4) and
-  the rest are open ([../items/007-bounds/](../items/007-bounds/readme.md)).
+  (`T3_section`, lean/SIS/BoundTheorems.lean). Since 2026-10-28 (bergdb
+  007-08), T3 for BergDB's take (6.1, step 4), with any share: after a
+  transaction the section without its last record costs less than the
+  larger of twice the startup distance and what it cost before, so less
+  than twice the startup distance while it is constant, and after a
+  decrease it shrinks with every transaction until it is below twice the
+  new one (`T3_take`, `T3_take_decrease`). The record limit and the
+  stream's meta blocks are left out. The size of the records at the ends
+  of the section (T4) and the rest are open
+  ([../items/007-bounds/](../items/007-bounds/readme.md)).
 * Reclaim: cutting the front of the stream (INV-RECLAIM of
   [011-01](../items/011-docs-archive/01-problem.md); level 3 of levels.md), and eviction and the
   cache (the planned T5; level 4): not in sections 2 to 9; bergdb item 001

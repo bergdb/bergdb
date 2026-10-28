@@ -201,12 +201,16 @@ Limits:
 
 * Bounded startup is proved in Lean for a startup pos policy that keeps up
   with a distance (T3,
-  [007-01](../items/007-bounds/01-startup-bound.md)). BergDB's take keeps
-  up with twice the startup distance by its deadline, and after a decrease
-  of it with the span of the section at the decrease, which only shrinks,
-  as far as the record limit lets a record take what is due
-  ([007-03](../items/007-bounds/03-plan.md), step 3 and D4); the proof for
-  its own take is step 4. Its pace held the section at 1.00 to 1.14 times
+  [007-01](../items/007-bounds/01-startup-bound.md)), and for BergDB's own
+  take, with any share (`T3_take`,
+  [007-08](../items/007-bounds/08-step4-take-in-lean.md)): the section
+  without its last record stays below twice the startup distance, and
+  after a decrease of it, it never grows and shrinks with every commit
+  until it is below twice the new one, by the deadline at the span
+  ([007-03](../items/007-bounds/03-plan.md), step 3 and D4). The proof
+  leaves out the record limit, which can stop a record from taking what is
+  due, and the stream's meta blocks; the model's take gives Java's startup
+  pos on 300 generated cases. Its pace held the section at 1.00 to 1.14 times
   the startup distance in 005-49's runs with 10M and 50M keys, and in
   007-06's and 007-07's with 10M keys, for updates, deletes and single
   puts, where the take before step 3 reached 2.75 times at 50 MB, 1.9

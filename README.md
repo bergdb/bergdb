@@ -90,14 +90,17 @@ eviction; Java's runs are checked against it, not proved, and concurrency and
 resource bounds are not in it. Whether the concept is novel is open; see
 the study of prior art, [011-02](items/011-docs-archive/02-prior-art.md).
 
-Two known limits (2026-10-25). Replication (`DatabaseBuilder.replica`,
+A known limit (2026-10-25). Replication (`DatabaseBuilder.replica`,
 `Database.addReplica`) is experimental, with known faults, and not for data
-that matters ([005-11](items/005-todo/11-replication.md)). And bounded
-startup is not yet proved for BergDB's own startup pos policy: its take
-keeps up with twice the startup distance by a deadline, which
-[007-03](items/007-bounds/03-plan.md)'s step 4 is to prove; before the
-deadline, the startup section reached 2.6 times the startup distance at
-50 MB in a test ([005-38](items/005-todo/38-writes-at-scale.md)).
+that matters ([005-11](items/005-todo/11-replication.md)). Bounded startup
+is proved for BergDB's own startup pos policy since 2026-10-28, in the Lean
+model of its take ([007-08](items/007-bounds/08-step4-take-in-lean.md)):
+the startup section without its last record stays below twice the startup
+distance, and after a decrease of it comes down with every commit; the
+proof leaves out the record limit and the stream's meta blocks. Before the
+take's deadline ([007-03](items/007-bounds/03-plan.md), step 3), the
+startup section reached 2.6 times the startup distance at 50 MB in a test
+([005-38](items/005-todo/38-writes-at-scale.md)).
 
 Pauses (2026-10-28). In the runs of bergdb item 009, no get or commit
 waits more than about 20 ms for BergDB's own work: eviction works in
