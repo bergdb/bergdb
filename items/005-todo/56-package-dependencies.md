@@ -1,7 +1,7 @@
 005-56. Investigate the package dependencies
 ============================================
 
-Status: open. Kind: investigate. Created 2026-10-26.
+Status: done (2026-10-28; see Outcome). Kind: investigate. Created 2026-10-26.
 
 Registered at Frans's request (2026-10-26: "Add a todo item to 005 to
 investigate package dependencies. How do packages depend on each other?
@@ -217,3 +217,110 @@ Size and order
 S for questions 1, 2, 4 and 5. Question 3 may grow it: `SyncLevel` is in
 the Pub API's signatures, and `pubimp`'s uses of `dag` touch P12. Question
 4's check would be P12's measure (010-01).
+
+
+Decision
+--------
+
+Frans, 2026-10-28 (006-09, section 8, decision 6): "005-56, as the
+entry's table proposes: change the lists for pub→common, pub→nanotest
+(test code only), pubimp→dag, pubimp→pub.util and pubimp→storage; change
+the code for SyncLevel (move to pub.util, which core already uses; an API
+change against 2026.1, note it for the release notes) and pub→pubimp's
+three small uses (Database.PRIMARY, TestClock's constants into pub;
+TimeResolver may wait), Factory stays (the designed cycle); one form for
+the package.html lists; deps.py as a step in java/before-commit.sh."
+
+
+Outcome
+-------
+
+2026-10-28, by Claude (Opus 5.5, Claude Code), as decided; in a clone on
+`3950a96`.
+
+* **The lists, in one form.** Every `package.html` in `java/src` says
+  `Depends on: a, b, c.`, the packages in alphabetical order, or `Depends
+  on: nothing.` (`nanotest`); more text may follow the period. This is the
+  form that `bergdb.dev`'s `package.html` already asked for ("a statement
+  like: Depends on: list-of-packages", checked by a `jdepend.sh` that is
+  gone); its paragraph now names `java/deps.py`.
+  `common`'s "Package dependencies: nanotest (only)", `dag`'s
+  "Dependencies: ...", `pub`'s "Dependencies: ..." and `pub.util`'s
+  "Allowed dependency: ..." are in the form now, and `core`'s and
+  `storage`'s lists are sorted. Changed lists: `pub` gets `common`,
+  `nanotest` (its text says only test code, the `@Nano` methods, uses it)
+  and `pubimp` (`Factory`, the circular dependency by design, and
+  `TimeResolver`); `pubimp` gets `dag`, `pub.util` and `storage`.
+* **`SyncLevel`** moved from `bergdb.core` to `bergdb.pub.util` (`git
+  mv`, the package line its only change), so `pub` no longer uses `core`.
+  55 files: the class, its 20 imports changed (`pub`'s `Connection`,
+  `Database` and `Transaction`, 5 in `pubimp`, 12 in `src-dev`) and 34
+  imports added (17 files of `core`, among them `Db`, `Eviction`,
+  `Reclaim` and the testers, which used it without an import; `BigDb`
+  and `BigDbWithDeletes` in `src-dev`, which import `bergdb.core.*`; 15
+  stress programs, among them `Perf`, `Soak`, `TraceExport` and
+  `RestartStress`). An API change against 2026.1: a line in
+  `releases/next.md`. Tools in `items/` that import `bergdb.core.SyncLevel`
+  are left as they are; they were run against the code of their day.
+* **`Database.PRIMARY`** is defined in `pub` (`Util.identity("primary")`,
+  so that it is not inlined, as `pubimp`'s dev notes ask), and
+  `IndexManager.PRIMARY` is `Database.PRIMARY`.
+* **`TestClock`** checks against `Time`'s own range, `MIN_IN_UNITS` and
+  `MAX_IN_UNITS`, now package-private, instead of `pubimp`'s
+  `ClockConstants`, which only copied `Klong.MIN_TIME` and `MAX_TIME` for
+  it and is deleted. `PubTester.testTimeRangeIsTheCores` checks that
+  `Time`'s range is `Klong`'s.
+* **`TimeResolver` waits**, as Frans allowed: 646 lines with its own
+  Nanotest tests in `pubimp`'s `Pack`, and it uses `core.SystemClock`;
+  moving it into `pub` is not small. So `pub` uses `pubimp` in `Factory`
+  and `Time`, and `Factory`'s comment that its `new DatabaseBuilderImp()`
+  is "the *only* reference" to `pubimp` is still not quite true.
+* **The check**, `java/deps.py` (`python3 -I java/deps.py [JAVA_SRC]`,
+  under a second), is `check-deps.py` made a tool of the build: it reads
+  only the one form, and a package in `java/src` without a list, with a
+  list in another form, out of order or naming a package that does not
+  exist is a failure ("BAD LIST"), as is a use that the list leaves out
+  ("NOT ALLOWED", now with the two packages). The list covers production
+  and test code alike; the split is still printed. `java/before-commit.sh`
+  runs it after the build, logs to `build/before-commit/deps.txt`, prints
+  `Deps: 9 packages, all as package.html allows`, and on a failure prints
+  the failing lines and `BEFORE COMMIT FAILED: package dependencies: ...;
+  change the code or the list`. Tried on a copy of `java/src` with
+  `pub`'s old list, `common`'s old form and `storage`'s old order: 5
+  failures, exit status 1. `check-deps.py` stays here as the
+  investigation's tool.
+
+The check on the result, `java/src`:
+
+| Package | Production code uses | Only test code uses | `package.html` |
+|---|---|---|---|
+| `common` | nothing | nanotest | nanotest |
+| `core` | common, dag, nanotest, pub.util, storage, stream | nothing | the same |
+| `dag` | common, nanotest, pub.util | nothing | the same |
+| `nanotest` | nothing | nothing | nothing |
+| `pub` | common, pub.util, pubimp | nanotest | common, nanotest, pub.util, pubimp |
+| `pub.util` | nothing | nothing | common |
+| `pubimp` | common, core, dag, pub, pub.util, storage, stream | nanotest | common, core, dag, nanotest, pub, pub.util, storage, stream |
+| `storage` | common, pub.util, stream | nanotest | common, nanotest, pub.util, stream |
+| `stream` | common, pub.util | nanotest | common, nanotest, pub.util |
+
+"9 packages, all as package.html allows". The only cycle is `pub` with
+`pubimp`.
+
+* Gates, in the clone, on the final tree: `java/before-commit.sh` (`Deps: 9
+  packages, all as package.html allows`; unit 1056 tests, f 74; `BEFORE
+  COMMIT OK (89 s)`) and `java/stress/level2.sh quick` (`LEVEL 2 OK`).
+  `build.sh` compiles every stress program, so all 15 that use
+  `SyncLevel` compiled.
+
+Not done, as the decision did not ask: question 1's graph of `src-dev`,
+`src-icu` and `stress` (`deps.py` scans `java/src`), and question 5's
+stale titles (`pub.util`'s "Package bergdb.pub", `pubimp`'s "Package
+com.bergdb.pubimp", `pubimpicu`'s "Package dev") and the three `src-dev`
+packages without a `package.html`. 010-01's P12 says "No measure today";
+`deps.py` in `before-commit.sh` is one now.
+
+Files: [56-package-dependencies/](56-package-dependencies/):
+`check-deps.py` (the check of 2026-10-27; `java/deps.py` since),
+`deps.txt` (`java/deps.py`'s output on the result) and `gates.txt` (the
+gates' output).

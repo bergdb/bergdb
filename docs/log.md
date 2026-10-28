@@ -1385,3 +1385,15 @@ group commit is in `main` since 2026-10-27 (`e611709`). Now that a sync
 no longer waits for the timer, whether 50 or 100 ms is better is a new
 entry, 005-64 (fewer forces and wake-ups for writers that do not sync,
 against more unsynced data lost on a power loss).
+
+2026-10-28. 005-56 done, by Claude (Opus 5.5, Claude Code), as Frans
+decided: the packages of `java/src` use only what their `package.html`
+lists, and `java/before-commit.sh` checks it with `java/deps.py`. The
+lists are in one form, `Depends on: a, b, c.`; `pub`'s now has `common`,
+`nanotest` (its tests) and `pubimp` (`Factory`'s designed cycle, and
+`Time`'s `TimeResolver`, which stays), and `pubimp`'s `dag`, `pub.util`
+and `storage`. `SyncLevel`, a Core class in the Pub API's `sync` methods,
+moved from `bergdb.core` to `bergdb.pub.util`, an API change against
+2026.1 (`releases/next.md`); `Database.PRIMARY` is defined in `pub`, and
+`TestClock` checks against `Time`'s range instead of `pubimp`'s
+`ClockConstants`, which is gone. `before-commit.sh` and `level2.sh quick` pass.

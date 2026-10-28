@@ -1,0 +1,37 @@
+common
+    production code uses: nothing
+    test code only uses:  nanotest
+    package.html allows:  nanotest
+core
+    production code uses: common, dag, nanotest, pub.util, storage, stream
+    test code only uses:  nothing
+    package.html allows:  common, dag, nanotest, pub.util, storage, stream
+dag
+    production code uses: common, nanotest, pub.util
+    test code only uses:  nothing
+    package.html allows:  common, nanotest, pub.util
+nanotest
+    production code uses: nothing
+    test code only uses:  nothing
+    package.html allows:  nothing
+pub
+    production code uses: common, pub.util, pubimp
+    test code only uses:  nanotest
+    package.html allows:  common, nanotest, pub.util, pubimp
+pub.util
+    production code uses: nothing
+    test code only uses:  nothing
+    package.html allows:  common
+pubimp
+    production code uses: common, core, dag, pub, pub.util, storage, stream
+    test code only uses:  nanotest
+    package.html allows:  common, core, dag, nanotest, pub, pub.util, storage, stream
+storage
+    production code uses: common, pub.util, stream
+    test code only uses:  nanotest
+    package.html allows:  common, nanotest, pub.util, stream
+stream
+    production code uses: common, pub.util
+    test code only uses:  nanotest
+    package.html allows:  common, nanotest, pub.util
+9 packages, all as package.html allows

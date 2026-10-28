@@ -32,7 +32,6 @@ Open
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API sets it only at start (`cacheSizeInMb`), against 010-P6; the core has `Eviction.setBudget` (also through JMX). The cache should converge gradually to the new size, with no disruption | open |
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API cannot change it for an existing database (against 010-P6); the core can since 2013-04, through JMX only. A decrease in steps (007-03's D4), measured; options A to D for the Pub API; `Reclaim.initialStartupDistance`. First study, from 010-03, in its directory | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
-| [005-56](56-package-dependencies.md) | Investigate | Package dependencies: how the packages depend on each other, and whether that follows their `package.html` files; Frans's question. A first look: four of `java/src`'s nine packages used packages their lists leave out; after 006-08's fixes of `stream` and `dag`, two remain (`pub` uses `core` and `pubimp`, `pubimp` uses `dag` and `storage`), and nothing checks the lists | open |
 | [005-60](60-block-storage.md) | Investigate | Block storage: the stream on a raw block device without a file system, as a ring of a fixed size, kept until the room is needed (retention by space); feasible in Java? And on a Linux device in a C or C++ clone. Frans's idea | open |
 | [005-62](62-lean-t9-t12-over-handles.md) | Fix | Lean: T9 and T12 over handles, so that the design before handles can go. Both proved (`t9_handles`, `t12_handles`; `bba91dd` to `a506b34`), reviewed at max effort, lake build clean, axioms standard; left for Frans: how far to remove the old design's files and theorems, and two further theorems (rule 4 by position after a cut, a cut without a restart) | open |
 
@@ -42,6 +41,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-56](56-package-dependencies.md) | Investigate | Package dependencies against the `package.html` files; Frans's question. Decided 2026-10-28, as the entry's table proposed: the lists of `pub` (`common`, `nanotest` for its tests, `pubimp` for `Factory`'s designed cycle) and `pubimp` (`dag`, `pub.util`, `storage`) changed, all in one form, `Depends on: a, b, c.`; `SyncLevel` moved from `core` to `pub.util` (an API change against 2026.1, in `releases/next.md`); `Database.PRIMARY` and `TestClock`'s range in `pub`; `TimeResolver` stays in `pubimp`. `java/deps.py` checks each package's uses against its list, a step of `before-commit.sh` | done | 2026-10-28 |
 | [005-48](48-group-commit.md) | Investigate | Group commit: a sync that waits has the buffer written at once (`BufferedStream.flushSoon`) instead of waiting for the timer, and the force paces the groups (005-13's question 5). In `main` since 2026-10-27 (`e611709`): on s1 one thread's durable commits went from 38 to 213 a second, the sync's median from 24.8 to 3.8 ms, 64 threads' from 2,364 to 6,429; writers that do not sync and the stream's bytes unchanged. Closed by Frans with the buffer time kept at 20 ms; whether 50 or 100 ms is better now is 005-64 | done | 2026-10-28 |
 | [005-63](63-one-database-per-directory.md) | Decide | One database per directory, also while one closes: `stop()` returns before the close, and since 005-46 the cut's files are deleted afterwards, so a database started on the same directory right after `stop()` could adopt files that were being deleted and fail (level2's `BryanRepro`, fixed in the test with `close()`). Decided 2026-10-28, option C: `FileStream` holds an operating-system lock on `bergdb.lock` in its directory until it is closed, and a second one on the directory, in the JVM or in another process, is refused with `DirectoryInUseException`; within the JVM a set of the locked directories refuses first, as closing a second channel of the file released the lock for other processes (macOS, Linux), a deviation from 010-P9; `stop()`'s Javadoc says to start again after `close()`; network file systems in `FileStream`'s Javadoc; tests, `releases/next.md` | done | 2026-10-28 |
 | [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered; a longer time may mean fewer forces and wake-ups for writers that do not sync, at the cost of more unsynced data lost on a power loss. Frans's request | open |
@@ -116,7 +116,7 @@ is 005-45. 005-11 is kept as it is for release 2026.1, documented as
 experimental; its decision waits for Frans. 005-55 is done; it did not
 change the eviction thread, so 005-51 does not depend on it; 005-51 is
 done. 005-57 is done (part 1); 005-58, its Lean theorem, is done.
-005-46 is done.
+005-46 is done. 005-56 is done.
 
 
 Files
@@ -289,7 +289,10 @@ Files
   in [55-fix-finalize/](55-fix-finalize/).
 * [56-package-dependencies.md](56-package-dependencies.md). 005-56, the
   package dependencies against the `package.html` files: Frans's question,
-  a first look, the older rules of 2012 and 2015; open.
+  a first look, the older rules of 2012 and 2015, the check with test code
+  apart, the decision and the outcome; done. The check of 2026-10-27, the
+  output of `java/deps.py` on the result and the gates in
+  [56-package-dependencies/](56-package-dependencies/).
 * [57-startup-header-reads.md](57-startup-header-reads.md). 005-57,
   startup without rule 4's header reads: the entry, its findings, Frans's
   decisions and the outcome; done. The report, the prototypes' diffs, the
@@ -1221,3 +1224,14 @@ Claude Code).
 2026-10-28. Added 005-64, at Frans's request ("create a new 005 item to
 investigate 20 ms vs 50 ms, vs 100 ms"), by Claude (Opus 5.5, Claude
 Code): the buffer time after group commit.
+
+2026-10-28. 005-56 decided and done, as Frans decided (006-09, section 8,
+decision 6), by Claude (Opus 5.5, Claude Code): the `package.html` lists
+in one form, `Depends on: a, b, c.`, with `pub`'s and `pubimp`'s changed
+as the entry's table proposed; `SyncLevel` moved from `bergdb.core` to
+`bergdb.pub.util` (55 files; an API change against 2026.1, in
+`releases/next.md`); `Database.PRIMARY` and `TestClock`'s range in `pub`,
+`ClockConstants` deleted; `TimeResolver` stays in `pubimp`. `java/deps.py`
+checks each package's uses against its list, a step of
+`java/before-commit.sh`: "9 packages, all as package.html allows".
+`before-commit.sh` and `level2.sh quick` pass.
