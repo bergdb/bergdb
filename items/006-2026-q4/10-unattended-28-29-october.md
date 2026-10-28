@@ -298,6 +298,15 @@ Lean, a subagent at max effort, hard stop 21:45. 007-07's open points for the
 Outcome: the 200 kB padding counted as the record's own bytes, the deadline's
 extra takes during a catch-up, P1's and P2's bullets in 010-01, 50M keys.
 
+2026-10-28, 12:15. W4.2 done (`22c9874`): 005-53 and 005-52 ready to
+decide. 005-53: a new option E recommended, `Database.setStartupDistanceInMb`
+and a getter, kept in the stream's meta blocks; one call is enough since
+D4:B; B and D (a `Job`) obsolete. 005-52: B recommended, a setter and getter
+for the cache size, clamped as the builder, for the run only. Both as one
+pattern and one commit: a setting that changes the stream's bytes is kept
+in the stream (P2), one that does not lasts for the run. Questions with
+recommended answers in both entries; for Frans.
+
 ## 8. Outcome
 
 To come by 07:00 on 2026-10-29.
