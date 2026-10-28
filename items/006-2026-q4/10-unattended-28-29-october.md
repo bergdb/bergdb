@@ -315,6 +315,17 @@ full); 010-01's P1 and P2 lines after 007-07; 007-07's runs at 50M keys
 (byte counts, on F53 at the lowest priority or on s1 before 21:30). With
 W4.1, four agents.
 
+2026-10-28, 12:45. W4.1 done (`db1eca8` to `8b6669f`): 007-08, step 4 of
+007-03. BergDB's take as a policy in `lean/SIS/Bound.lean` (`javaTake`,
+checked against Java's `TransSeq.take` on 300 cases), and T3 for it: the
+section stays below 2·M while the setting stays at most M (`T3_take`, with
+restarts); after a decrease to sd' it ends below 2·sd' or shrinks by at
+least one unit a transaction (`T3_take_decrease`); what startup reruns and
+reads (`T3_take_rerun`, `T3_take_reads`). The plan's `KeepsUp` is false
+with D4:B, shown by a `#guard`. `lake build` clean, axioms standard. Also
+010-01's P1 and P2 after 007-07 (`b362a8b`). An independent review of 007-08
+at max effort started.
+
 ## 8. Outcome
 
 To come by 07:00 on 2026-10-29.
