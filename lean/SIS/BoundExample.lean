@@ -80,10 +80,10 @@ def states2 (p : Stream Val Tr2 → Dirty → Time → Tr2 → Nat) (seed n : Na
 arithmetic against Java's; then runs. -/
 
 /-! Java's share and dither, bit for bit. The numbers on the right are Java's
-`Double.doubleToLongBits` of `TransSeq.dither(p)` (a copy of its five lines)
-and of the share's expression, printed by JDK 27 on 2026-10-28; Lean's `Float`
-gives the same bits. The share 25 and the dithers of 1300 and 1200 are those
-of `TransSeq.testShare`. -/
+`Double.doubleToLongBits` of `TransSeq.dither(p)` and of the share's
+expression in `TransSeq.take`, with its types, printed by JDK 27 on 2026-10-28
+(`TakeCheck bits`, bergdb 007-08); Lean's `Float` gives the same bits. The
+share 25 and the dithers of 1300 and 1200 are those of `TransSeq.testShare`. -/
 
 #guard [0, 1, 1200, 1300, 123456789, 50000000000, 9007199254740993].map (fun p => (dither p).toBits)
   == [0, 4606131375998723001, 4607131743264829540, 4600978861501654284, 4603666215157931066,
@@ -122,20 +122,23 @@ def sdDecrease (a b m : Nat) : Time → Nat := fun i => if i ≤ m then a else b
 /-- The deadline alone: a pace that never takes. -/
 def noPace : Pace Val Tr2 := fun _ _ _ _ _ _ => false
 
-/-- The section, `Stream.span`, after each transaction of a run. -/
-def spans (sts : List (DB Val Tr2)) : List Nat := sts.map (fun db => db.S.span bytes2)
+/-- The section, `Stream.span` with the cost `bytes2`, after each transaction
+of a run. -/
+def spans (sts : List (DB Val Tr2)) (size : Record Val Tr2 → Nat := bytes2) : List Nat :=
+  sts.map (fun db => db.S.span size)
 
 /-- T3_take_step by running: after every transaction of the states sts, the
 section is shorter than the larger of twice the setting and the section
 before. -/
-def stepBoundB (sd : Time → Nat) (sts : List (DB Val Tr2)) : Bool :=
-  (sts.zip sts.tail).all (fun (a, b) => b.S.span bytes2 < max (2 * sd a.S.length) (a.S.span bytes2))
+def stepBoundB (sd : Time → Nat) (sts : List (DB Val Tr2)) (size : Record Val Tr2 → Nat := bytes2) :
+    Bool :=
+  (sts.zip sts.tail).all (fun (a, b) => b.S.span size < max (2 * sd a.S.length) (a.S.span size))
 
 /-- T3_take_decrease by running, for a change of the setting to b after T(m):
 after every T(k), k ≥ m, the section is shorter than 2 b, or at least k - m
 shorter than after T(m). -/
-def decreaseB (b m : Nat) (sts : List (DB Val Tr2)) : Bool :=
-  let xs := spans sts
+def decreaseB (b m : Nat) (sts : List (DB Val Tr2)) (size : Record Val Tr2 → Nat := bytes2) : Bool :=
+  let xs := spans sts size
   (List.range xs.length).all (fun k =>
     decide (k < m) || decide (xs[k]! < 2 * b) || decide (xs[k]! + (k - m) ≤ xs[m]!))
 
@@ -172,6 +175,116 @@ def decreaseB (b m : Nat) (sts : List (DB Val Tr2)) : Bool :=
 #guard decreaseB 100 30 (states2 (takePolicy bytes2 (sdDecrease 400 100 30) noPace) 1 80)
 #guard ((spans (states2 (takePolicy bytes2 (sdDecrease 400 100 30) noPace) 1 80)).drop 30).take 7 ==
   [672, 616, 608, 456, 328, 280, 0]
+
+/-! ### How slowly the section may come down after a decrease
+
+T3_take_decrease says that the section loses at least one unit of cost with
+each transaction while it is at 2 sd' or more, not a record or a fraction of
+it. Without more of the pace or the costs, nothing better holds: with the
+deadline alone, a record that is one unit smaller than the oldest in the
+section makes the take take that one alone, and the section shrinks by one.
+Here the cost of a record is carried by its transaction (`nSize`): 30
+transactions of cost 10 at the setting 50, then the setting 5, with costs 9,
+then 8, 7, and so on, each one smaller than the record it replaces. From T(32)
+to T(47) the section shrinks by exactly 1 with each transaction, from 80 to
+64, while every record costs 8 to 10. -/
+
+/-- A cost of a record carried by its transaction: n (10 for R(0)). -/
+def nSize (R : Record Val Tr2) : Nat := (R.trans.map (·.n)).getD 10
+
+/-- 30 transactions of cost 10, then 80 that are each one smaller than the
+oldest record in the section after a decrease of the setting to 5. -/
+def slowTs : List Tr2 :=
+  List.replicate 30 ⟨0, 10⟩ ++ (List.range 80).map (fun t => ⟨0, if t < 8 then 9 else 8 - (t - 8) / 9⟩)
+
+/-- The sections of the run with the deadline alone, the setting 50 to T(30)
+and 5 from T(31) on. -/
+def slowSpans : List Nat :=
+  (states spec2 (algo2 (takePolicy nSize (sdDecrease 50 5 30) noPace)) slowTs).map
+    (fun db => db.S.span nSize)
+
+#guard (List.range 16).all (fun k => slowSpans[31 + k]! == slowSpans[32 + k]! + 1 && 10 ≤ slowSpans[32 + k]!)
+#guard slowSpans[31]! == 80 && slowSpans[47]! == 64
+#guard decreaseB 5 30 (states spec2 (algo2 (takePolicy nSize (sdDecrease 50 5 30) noPace)) slowTs) nSize
+#guard stepBoundB (sdDecrease 50 5 30)
+  (states spec2 (algo2 (takePolicy nSize (sdDecrease 50 5 30) noPace)) slowTs) nSize
+
+/-! ### Against Java's `TransSeq.take` on generated cases
+
+bergdb 007-08's `TakeCheck` (in items/007-bounds/08-step4-take-in-lean/) runs
+`TransSeq.take` of `f89846d` on 300 cases that SplitMix64 makes from the case
+number, and prints the number of transactions taken in each. `takeCase` makes
+the same cases as streams of the model, with the same generator, and runs
+`javaTake` on them: the results are the same in all 300. In the cases, the
+deadline takes a transaction in 107, the span is longer than twice the
+setting in 95, the share takes more than the deadline in 213, and the share
+stops the take before its last transaction in 163; the deadline alone gives
+other results in 213 cases, a dither of 0.5 in 52, and counting the got-dirty
+nodes of T(i) in D, which Java adds after the take, in 11. -/
+
+/-- SplitMix64's generator, as `TakeCheck` has it: the next number and state. -/
+def splitmix (st : UInt64) : UInt64 × UInt64 :=
+  let st := st + 0x9E3779B97F4A7C15
+  let z := (st ^^^ (st >>> 30)) * 0xBF58476D1CE4E5B9
+  let z := (z ^^^ (z >>> 27)) * 0x94D049BB133111EB
+  (z ^^^ (z >>> 31), st)
+
+/-- A number below k, `Long.remainderUnsigned(next(), k)`, and the next state. -/
+def below (k : Nat) (st : UInt64) : Nat × UInt64 :=
+  let (z, st) := splitmix st
+  ((z % UInt64.ofNat k).toNat, st)
+
+/-- The records R(j), ..., of a case, with a records before the `TransSeq`:
+each record's own bytes and size, and the got-dirty nodes of a transaction of
+the `TransSeq`, drawn as `TakeCheck` draws them. -/
+def genRecs (a : Nat) : (j left : Nat) → UInt64 → List (Nat × Nat × Nat) × UInt64
+  | _, 0, st => ([], st)
+  | j, left + 1, st =>
+    let (own, st) := below 400 st
+    let (sz, st) := below 3000 st
+    let (count, st) := if a ≤ j then below 30 st else (0, st)
+    let (rest, st) := genRecs a (j + 1) left st
+    ((48 + own, 48 + own + sz, count) :: rest, st)
+
+/-- The cost of a record of a case: its size, carried by its transaction. -/
+def caseSize (R : Record Val (Nat × Nat)) : Nat := (R.trans.map (·.2)).getD 0
+
+/-- Case c of `TakeCheck`: R(0), ..., R(s), s = a - 1, and T(s+1), ..., T(s+n),
+the last record's startup pos s, D with the got-dirty nodes of these
+transactions and of T(i), i = a + n, and `javaTake` in T(i), which returns
+the number of transactions taken. -/
+def takeCase (c : Nat) : Nat :=
+  let st : UInt64 := UInt64.ofNat c
+  let (a, st) := below 4 st
+  let a := 1 + a
+  let (n, st) := below 13 st
+  let (sd, st) := below 16000 st
+  let (o, st) := below 400 st
+  let (extra, st) := below 5 st
+  let recs := (genRecs a 0 (a + n) st).1
+  let idx := (List.range recs.length).zip recs
+  let S : Stream Val (Nat × Nat) := idx.map (fun (j, (own, sz, _)) =>
+    { trans := some (own, sz), sp := if j + 1 = a + n then a - 1 else 0, vers := [], gd := [],
+      top := none })
+  let D : Dirty := idx.flatMap (fun (j, (_, _, count)) => List.replicate count (0, j)) ++
+    List.replicate extra (0, a + n)
+  javaTake caseSize (fun t => t.1) (fun _ => 10 + sd) S D (a + n) (48 + o, 0) - (a - 1)
+
+/-- `TakeCheck 300`'s output, JDK 27, 2026-10-28. -/
+def javaTakes : List Nat :=
+  [0, 2, 1, 0, 3, 6, 1, 3, 2, 8, 5, 0, 0, 5, 1, 0, 9, 2, 0, 0, 1, 8, 2, 1, 1, 2, 0, 3,
+   0, 4, 3, 7, 5, 2, 0, 0, 1, 2, 1, 0, 4, 1, 1, 1, 2, 0, 10, 3, 1, 1, 0, 1, 3, 3, 9, 1,
+   0, 3, 1, 1, 0, 0, 6, 4, 2, 7, 2, 1, 2, 1, 2, 0, 1, 1, 1, 4, 4, 8, 1, 5, 1, 9, 3, 2,
+   2, 2, 0, 0, 2, 6, 3, 3, 1, 1, 5, 0, 1, 0, 2, 2, 12, 0, 0, 0, 2, 3, 0, 4, 3, 0, 3, 8,
+   4, 3, 2, 1, 1, 1, 0, 3, 1, 5, 1, 5, 2, 10, 10, 2, 1, 1, 9, 1, 11, 0, 1, 1, 1, 0, 4,
+   3, 4, 3, 2, 2, 1, 0, 9, 11, 0, 2, 2, 0, 3, 9, 1, 1, 5, 10, 3, 3, 0, 4, 3, 3, 1, 1, 0,
+   0, 2, 6, 3, 0, 5, 2, 0, 1, 4, 2, 3, 1, 7, 10, 2, 2, 2, 0, 10, 0, 0, 6, 1, 0, 0, 7, 0,
+   0, 1, 4, 0, 2, 1, 1, 2, 2, 0, 4, 8, 4, 1, 0, 2, 0, 1, 2, 10, 3, 5, 3, 5, 2, 3, 1, 2,
+   2, 1, 2, 0, 1, 2, 1, 0, 1, 5, 0, 9, 2, 3, 5, 1, 2, 4, 1, 6, 0, 1, 4, 0, 1, 5, 6, 1,
+   2, 2, 1, 0, 1, 2, 3, 0, 0, 4, 0, 3, 2, 2, 2, 7, 0, 2, 2, 9, 1, 5, 3, 6, 1, 1, 2, 1,
+   0, 5, 9, 3, 2, 1, 7, 0, 0, 7, 0, 0, 3, 2, 0, 5, 0, 1, 0, 1, 2]
+
+#guard (List.range 300).map takeCase == javaTakes
 
 -- `KeepsUp size (2 * sd)` does not hold for the take: in transaction 31 of
 -- that run, the stream's span, 672, is longer than d_h = 200, and the take asks
