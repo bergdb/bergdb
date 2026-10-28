@@ -281,6 +281,23 @@ for 005-11 a replica being copied in when the manager closes is never
 closed (not fixed; for the Outcome). 005-62 is done in `main` (`90153f2`,
 its session), so `lean/` is free for W4.1 once 007-07 is in.
 
+2026-10-28, 11:58. 007-07 with D4:B in `main` (`f89846d`, `b4aa91c`), so W1
+runs tonight: the deadline is streamLength − max(2·sd, span), the span from
+the oldest section transaction to the newest, so after a decrease it comes
+down with the lag and never jumps, with no stored distance (a start rebuilds
+the span; no format change); a raise needs nothing. Gates full: before-commit,
+level2 (BryanRepro 40 cycles, 0 failures), level3, level4. StreamDigest: the
+patched build's two runs identical. 007-06's step 2 again: a one-call decrease
+from 1000 to 100 MB writes records of at most 3.6 MB (486 MB with the patch
+alone), the section below 2 sd after 0.6M puts and then at 1.04 to 1.10 sd.
+W1's steps READY: 007-07's `night/run-quick.sh` (40 minutes) and
+`night/props-ab.sh` (`eeda4e5`; a copy of 005-46's `props.sh` outside the
+repository, on `main-cefb473` and `d4b-f89846d` in
+`/Users/f/fl/bench/006-10/w1props`; smoke parsed). W4.1 started: step 4 in
+Lean, a subagent at max effort, hard stop 21:45. 007-07's open points for the
+Outcome: the 200 kB padding counted as the record's own bytes, the deadline's
+extra takes during a catch-up, P1's and P2's bullets in 010-01, 50M keys.
+
 ## 8. Outcome
 
 To come by 07:00 on 2026-10-29.
