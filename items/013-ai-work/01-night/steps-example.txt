@@ -1,0 +1,10 @@
+# 006-09's quiet block: MINUTES|WHERE|SCRIPT|LABEL (see conductor.sh). A step runs only
+# with SCRIPT.READY; "# minutes: N" in the script overrides MINUTES. Edit by writing a new
+# file and mv-ing it over this one.
+60|f53|/Users/f/fl/repos/bergdb/items/005-todo/46-stream-file-lock/night/soak.sh|46-soak
+40|f53|/Users/f/fl/repos/bergdb/items/005-todo/46-stream-file-lock/night/props.sh|46-props
+90|f53|/Users/f/fl/repos/bergdb/items/005-todo/46-stream-file-lock/night/scalebench-c.sh|46-scalebench-c
+90|f53|/Users/f/fl/repos/bergdb/items/005-todo/48-group-commit/night/run-f53.sh|48-f53
+60|s1|/Users/f/fl/repos/bergdb/items/005-todo/48-group-commit/night/run-s1.sh|48-s1
+40|f53|/Users/f/fl/repos/bergdb/items/005-todo/46-stream-file-lock/night/perf-ab.sh|46-perf-ab
+45|f53|/Users/f/fl/repos/bergdb/items/005-todo/52-cache-size-while-running/night/budget.sh|52-budget

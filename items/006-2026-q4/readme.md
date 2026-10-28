@@ -23,6 +23,7 @@ The list
 | [006-07](07-docs-cleanup.md) | 2026-10-26 | The `docs/` cleanup: most documents to items (001-07 to 001-11, 009-05, the new 011), `docs/levels.md` rewritten short, `docs/trace-format.md`, the references as IDs |
 | [006-08](08-core-layer.md) | 2026-10-26 | The Core Layer: built alone (680 kB), and the Core without its tests, what `Db` needs (14,677 code lines, 335 kB, two thirds of the production code), which writes the same stream; independent of the layers above and of its tests; a C clone for an embedded target is feasible, about 35 to 90 kB of code on a Cortex-M4 by an estimate, its open questions memory and writes at small startup distances |
 | [006-09](09-unattended-27-28-october.md) | 2026-10-27 | Unattended work from 27 October, 12:00, to 28 October, 07:00: the plan (005-46's measurements, 005-49, 005-58, 005-51, 005-48), its principles, the progress and the outcome |
+| [006-10](10-unattended-28-29-october.md) | 2026-10-28 | Unattended work from 28 October, noon, to 29 October, 07:00, in 013-01's way: the plan (007-07's performance check, 005-65's 8-thread case, 005-64's buffer time), its principles, the progress and the outcome |
 
 
 Files
@@ -60,6 +61,10 @@ Files
   the plan for the unattended work of 27 to 28 October, the work in order
   and what 010's principles ask of each piece, the timeline, the progress
   through the night and the outcome.
+* [10-unattended-28-29-october.md](10-unattended-28-29-october.md). 006-10:
+  the plan for the unattended work of 28 to 29 October, in 013-01's way of
+  working: the questions for Frans, the work in order, the principles, the
+  timeline and the quiet block's steps, the progress and the outcome.
 
 
 Log
@@ -153,3 +158,10 @@ can do unattented between now and tomorrow at 07:00 am. [...] Add an item to
 with Frans's answers of 11:39 (commit; 005-51 into `java/`; 005-58 is this
 work's; 005-46's and 009's status at this work's judgement; `night.sh` may
 move; "Follow BergDB's principles 010.").
+
+2026-10-28. 006-10, at Frans's request ("You gave me proposed work for
+tonight. Create 006-10 for planning tonight's unattended work. Similar to
+006-09 in way of working."), by Claude (Opus 5.5, Claude Code): a draft
+plan in 013-01's way of working, from the proposal of the morning (007-07's
+quick performance suite, 005-65's 8-thread case, 005-64's buffer time),
+with five questions for Frans before the work starts.

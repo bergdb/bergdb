@@ -119,3 +119,6 @@ Index
   moved here on 2026-10-26 (006-07): the problem statement, prior art, the
   plans for Levels 3 and 4, the Level 2 alignment and more of 12 to 16
   October, and `docs/levels.md` as it was until then.
+* **013-ai-work** (open). How AI agents work on BergDB: ways of working
+  that have worked, for Frans, Claude and other AI agents; first, the
+  unattended night (013-01).

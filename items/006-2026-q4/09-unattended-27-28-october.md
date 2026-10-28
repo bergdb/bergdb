@@ -410,6 +410,14 @@ at 00:57).
 Frans this morning and under way in his own sessions; four left, 1, 2, 5
 and 6, plus 012's decisions):
 
+2026-10-28, 09:40: Frans answered 1, 2, 5 and 6 as recommended (09:10
+and 09:12), and 5 with 005-64 for the buffer time. Done: 2 (009 closed,
+`bf9fc7f`; the 8-thread case is 005-65, `fab16db`), 4 (005-63,
+`322c5d1`), 5 (005-48 closed at 20 ms, `3950a96`; 005-64 for 20, 50 or
+100 ms) and 6 (005-56, `04f1546`). Under way: 1 (007-07 with D4:B, in a
+clone of this session; 006-10 measures it tonight) and 3 (005-62's
+session). Left: 7, 012's decisions.
+
 1. 007-07: apply the step 3 patch? Accept whole-transaction bursts after a
    large take, or a node pace? D4's option B (decided 2026-10-26) inside
    `setStartupDistance`, as 007-06's "pace" (the deadline comes down with
