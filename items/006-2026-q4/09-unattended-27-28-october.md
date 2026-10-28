@@ -369,13 +369,13 @@ the conductor is alive, its six F53 steps READY with their minutes (soak
 budget 45), 005-48's s1 step done. This session is idle until the
 morning.
 
-2026-10-28, 06:15. The block's results written into 005-46, 009, 005-52
+2026-10-28, 05:59. The block's results written into 005-46, 009, 005-52
 and 005-48; the Outcome below; the summary in `news.md`.
 
 
 ## 8. Outcome
 
-2026-10-28, 06:15, by Claude (Opus 5.5, Claude Code).
+2026-10-28, 05:59, by Claude (Opus 5.5, Claude Code).
 
 **Done, in `main`** (all in Frans's name; each code change gated on a tree
 with the ones before it):

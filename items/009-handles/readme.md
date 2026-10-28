@@ -329,7 +329,7 @@ generations). Reclaim's physical cuts (up to 171 ms in P4's soak) and a
 read's wait for the writer's force (seconds on s1) are BergDB's own and
 count, so status stays open until 005-46 is done.
 
-2026-10-28, 06:10. The quiet block's runs (006-09; 005-46's section
+2026-10-28, 05:58. The quiet block's runs (006-09; 005-46's section
 "Confirmed in the quiet block"), by Claude (Opus 5.5, Claude Code). P4's
 soak under ZGC on HEAD meets target 2: the slowest commit 5.1 ms, gets and
 scans at most 3.6 ms, the cuts no longer among the slowest, the collector
