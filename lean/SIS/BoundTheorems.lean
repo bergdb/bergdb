@@ -72,7 +72,7 @@ theorem T3_bounded (sp : Spec V T) (al : Algo V T) (size : Record V T → Nat) (
 
 /-! ## T3 for BergDB's take (bergdb 007-08)
 
-In the six below, the run's startup pos policy is BergDB's take,
+In the seven below, the run's startup pos policy is BergDB's take,
 `takePolicy size sd pace` (SIS/Bound.lean), with any pace, so in particular
 with BergDB's own share, `javaTake size own sd`; `size` is any cost of a
 record (for BergDB, its bytes in the stream), and sd i is the startup
@@ -162,6 +162,17 @@ theorem T3_take_decrease_restarts (sp : Spec V T) (al : Algo V T) (size : Record
   exact fold_decrease sp al size sd pace (restartNext sp al) Prod.fst (restartNext_S sp al) hp
     hsd' us _
     (fun i h1 h2 => by rw [runRestarts_length] at h1 h2; exact hset i (by omega) (by omega))
+
+/-- T3 for BergDB's take, what startup reads (6.2): with settings at most M > 0
+in T(1), ..., T(k), R(s), ..., R(k), which cost less than 2 M plus the costs
+of the two records at their ends, R(s) and R(k). -/
+theorem T3_take_reads (sp : Spec V T) (al : Algo V T) (size : Record V T → Nat)
+    (sd : Time → Nat) (pace : Pace V T) (hp : al.policy = takePolicy size sd pace) (M : Nat)
+    (hM0 : 0 < M) (ts : List T) (hM : ∀ i, 0 < i → i ≤ ts.length → sd i ≤ M) :
+    let S := (run sp al ts).S
+    S.cost size (lastSp S) S.length <
+      S.cost size (lastSp S) (lastSp S + 1) + 2 * M + S.cost size (S.length - 1) S.length :=
+  reads_of_section size _ (T3_take sp al size sd pace hp M hM0 ts hM) (lastSp_lt_run sp al ts)
 
 /-- T3 for BergDB's take, what startup reruns (6.2, step 6): with settings at
 most M > 0 in T(1), ..., T(k), the transactions T(s+1), ..., T(k), whose

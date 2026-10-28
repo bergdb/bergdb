@@ -147,6 +147,7 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
     #print axioms SIS.T3_take_decrease
     #print axioms SIS.T3_take_decrease_restarts
     #print axioms SIS.T3_take_rerun
+    #print axioms SIS.T3_take_reads
 
 Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
 (`LM_cutTo`, `T3_section` and `T3_restarts` need no `Classical.choice`).
@@ -207,7 +208,7 @@ its section in sis-model.md.
 | SIS/ReclaimTheorems.lean | T13' (`T13_markTouch`, WP R3): with touches, step 3 gives exactly the index nodes not in D (and not a virtual root) that are dirty or touched; T8 (`T8_recoverCut`, WP R4): after a safe cut, startup from the cut stream gives the same lookups at every time from the first available time on (`SameFrom`), and the same D; T12 (`T12_restartCut`, WP R5): a run that restarts from safe cut streams appends the records of the run without restarts (its stream is that run's, cut at the largest cut), with that run's D and lookups from the first available time on. T9 and T12 with eviction are stated over handles (SIS/HandleReclaimTheorems.lean); over Evict.lean they were here until bergdb 005-62 | — (001-07, 2.2, 2.10) |
 | SIS/HandleReclaimTheorems.lean | Level 3's reclaim theorems with eviction over handles (bergdb 005-62), as definitions of type `Prop`: the run with handles that restarts from cut streams (`runHandlesCut`); T9 with handles (`T9_handles`): in a run with handles as in `T2_handles`, after a safe cut, a read through the handles at any time from the first available time on gives the same on the cut stream as on the whole stream (memory and nodes), and gives P; proved (`t9_handles`, SIS/Proof/HandleCutRun.lean); T12 with eviction over handles (`T12_handles`): the run with handles that restarts from safe cut streams appends the records of the run without restarts, cut at the largest cut, with that run's D and lookups from the first available time on; proved (`t12_handles`, SIS/Proof/HandleCutT12.lean); rule 4 by position after a cut (question 2): the run with cuts and Java's rule 4 by position (`runHandlesCutPos`), the startup from a stream cut safely with it is `handleStartup` (`Rule4PosCut_handles`), and so is the run (`RunPosCut_handles`); proved (`rule4PosCut_handles`, `runPosCut_handles`, SIS/Proof/HandleCutPos.lean) | — (001-07, 2.9, 2.10; ../items/005-todo/62-lean-t9-t12-over-handles.md) |
 | SIS/Bound.lean | Bounds, part 1 (bergdb item 007): the cost of the records R(a), ..., R(b-1) for any cost of a record (`Stream.cost`); the startup pos that a startup distance d asks for (`sdTarget`); a policy that keeps up with d (`KeepsUp`); the startup distance policy (`sdPolicy`). BergDB's take (bergdb 007-08; `TransSeq.take` since 007-07): the startup section without its last record, which is the span of its transactions (`Stream.span`); a pace, any rule that decides whether to take the next transaction (`Pace`); the take's loop (`takeLoop`) and the take, whole transactions oldest first, each taken if it begins max(2 sd, span) or more before the end of the stream or if the pace takes it, with the setting sd any function of the transaction (`takePolicy`); BergDB's pace, its share in Java's double arithmetic and its dither (`share`, `dither`, `javaPace`), and the take with it (`javaTake`) | 10 (../items/007-bounds/01-startup-bound.md, 3; ../items/007-bounds/08-step4-take-in-lean.md, 1) |
-| SIS/BoundTheorems.lean | T3 (`T3_section`): in every run whose policy keeps up with d, the startup section without its last record costs less than d; also with restarts (`T3_restarts`); what startup reads (`T3_reads`) and reruns (`T3_rerun`), and with records of bounded cost (`T3_bounded`). No assumption but the policy. T3 for BergDB's take (bergdb 007-08), for every pace: after a transaction on any database, the section costs less than max(2 sd, the section before) (`T3_take_step`); with settings at most M, less than 2 M, also with restarts (`T3_take`, `T3_take_restarts`); after a change of the setting to sd', less than 2 sd' or at least one less for each transaction since (`T3_take_decrease`, `T3_take_decrease_restarts`); what startup reruns (`T3_take_rerun`). No assumption but the policy | 10 (../items/007-bounds/01-startup-bound.md, 3; ../items/007-bounds/08-step4-take-in-lean.md, 2) |
+| SIS/BoundTheorems.lean | T3 (`T3_section`): in every run whose policy keeps up with d, the startup section without its last record costs less than d; also with restarts (`T3_restarts`); what startup reads (`T3_reads`) and reruns (`T3_rerun`), and with records of bounded cost (`T3_bounded`). No assumption but the policy. T3 for BergDB's take (bergdb 007-08), for every pace: after a transaction on any database, the section costs less than max(2 sd, the section before) (`T3_take_step`); with settings at most M, less than 2 M, also with restarts (`T3_take`, `T3_take_restarts`); after a change of the setting to sd', less than 2 sd' or at least one less for each transaction since (`T3_take_decrease`, `T3_take_decrease_restarts`); what startup reruns and reads (`T3_take_rerun`, `T3_take_reads`). No assumption but the policy | 10 (../items/007-bounds/01-startup-bound.md, 3; ../items/007-bounds/08-step4-take-in-lean.md, 2) |
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
 
@@ -1217,9 +1218,9 @@ new definitions in SIS/Bound.lean, `Stream.span`, `Pace`, `takeLoop`,
 `takePolicy`, `share`, `dither`, `javaPace` and `javaTake`, and the import of
 SIS/Startup.lean (for `sectionIdx`); new statements in SIS/BoundTheorems.lean,
 `T3_take_step`, `T3_take`, `T3_take_restarts`, `T3_take_decrease`,
-`T3_take_decrease_restarts` and `T3_take_rerun`; the comments of `sdTarget`
-and `KeepsUp` no longer describe the take before 007-07; no definition
-changed. The theorems hold for every pace and every cost of a record, with
+`T3_take_decrease_restarts`, `T3_take_rerun` and `T3_take_reads`; the
+comments of `sdTarget` and `KeepsUp` no longer describe the take before
+007-07; no definition changed. The theorems hold for every pace and every cost of a record, with
 nothing else assumed; `KeepsUp` with twice the setting does not hold for the
 take (on a stream whose span is longer, its deadline is at the span), so they
 are proved by induction over the run from the bound for one transaction,
@@ -1229,7 +1230,7 @@ which follows from the take keeping up with its own deadline's distance
 against Java's `TransSeq.take` on 300 generated cases, the same in all;
 runs of example 2 with constant and decreasing settings, with and without
 restarts. `lake build` passes with no warnings and no `sorry`; `#print
-axioms` of the six theorems shows only Lean's standard axioms; the trace
+axioms` of the seven theorems shows only Lean's standard axioms; the trace
 tests pass.
 
 Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),

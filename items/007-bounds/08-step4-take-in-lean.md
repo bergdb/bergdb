@@ -154,9 +154,10 @@ needs nothing: `T3_take` with the new setting as M.
 What startup reruns (6.2, step 6), the plan's goal statement: T(s+1), ...,
 T(k), whose records cost less than 2 M plus the last record; if every record
 costs at least m (48 bytes in Java), there are fewer than 2 M / m + 1 of
-them.
+them. `T3_take_reads`, with the same hypotheses: what startup reads, R(s),
+..., R(k), costs less than 2 M plus the costs of R(s) and R(k).
 
-`#print axioms` of the six: `[propext, Classical.choice, Quot.sound]`.
+`#print axioms` of the seven: `[propext, Classical.choice, Quot.sound]`.
 
 And T2, restart invariance (`T2_restart`), holds for runs with the take as
 it is: it is proved for every policy that sees only S, D, i and T(i), as
@@ -214,7 +215,8 @@ Against the statements of 007-03 and 007-07:
    wrote records of up to 209 kB where their mean was 576 bytes). The
    records at the ends of the section, R(s) and R(k), are bounded only by
    a bound on D (T4, 007-01, section 6). The same holds for what startup
-   reads, R(s), ..., R(k): less than the costs of R(s) and R(k) plus 2 M.
+   reads, R(s), ..., R(k): less than the costs of R(s) and R(k) plus 2 M
+   (`T3_take_reads`).
 
 
 4 Checked by running

@@ -248,15 +248,15 @@ paced by 005-49 changes the definition, so this step waits for 005-49 too.
   `T3_take_restarts`; with a constant setting, less than d_h, this step's
   T3); after a decrease to sd', less than 2 sd' or at least one unit less
   for each transaction since (`T3_take_decrease`, also with restarts); and
-  what startup reruns (`T3_take_rerun`). "The policy keeps up with d_h"
-  above is false with D4:B (`KeepsUp` is over all streams, and on a stream
-  whose span is longer than d_h the deadline is at the span); the proof
-  goes by induction over the run from the one-transaction bound. The
-  record limit and the meta blocks are left out, as planned. `#guard`s on
-  example 2: the take keeps the section below d_h, also with restarts,
-  and through decreases; the take before step 3 with a tight limit does
-  not keep up. docs/sis-model.md (6.1, step 4; section 10) and
-  lean/README.md updated.
+  what startup reruns and reads (`T3_take_rerun`, `T3_take_reads`). "The
+  policy keeps up with d_h" above is false with D4:B (`KeepsUp` is over
+  all streams, and on a stream whose span is longer than d_h the deadline
+  is at the span); the proof goes by induction over the run from the
+  one-transaction bound. The record limit and the meta blocks are left
+  out, as planned. `#guard`s on example 2: the take keeps the section below
+  d_h, also with restarts, and through decreases; the take before step 3
+  with a tight limit does not keep up. docs/sis-model.md (6.1, step 4;
+  section 10) and lean/README.md updated.
 
 Later, not in this plan: the trace checker compares Java's startup pos
 with this policy on every record. It needs each record's length in bytes

@@ -46,7 +46,7 @@ Files
   (section 10).
 * [08-step4-take-in-lean.md](08-step4-take-in-lean.md). 007-08, step 4 of
   007-03: BergDB's take with D4:B as a policy of the Lean model, with any
-  pace and BergDB's share, and T3 for it (`T3_take` and five more): the
+  pace and BergDB's share, and T3 for it (`T3_take` and six more): the
   trusted definitions, the statements in Lean and in words, what is true
   and what is not of the plan's statements, the checks by running, the
   proof, what is not covered, questions for Frans; the probe that runs
@@ -202,7 +202,8 @@ transaction than the larger of twice the setting and what it cost before
 (`T3_take_step`), so less than d_h with a constant setting, with and
 without restarts (`T3_take`), and after a decrease it never grows and
 loses at least one unit with every transaction until it is below the new
-d_h (`T3_take_decrease`); what startup reruns (`T3_take_rerun`). The
+d_h (`T3_take_decrease`); what startup reruns and reads (`T3_take_rerun`,
+`T3_take_reads`). The
 plan's "keeps up with d_h" is false with D4:B, and below the new d_h right
 after a decrease is false, as intended; the counterexamples are `#guard`s.
 `lake build` with no warnings and no `sorry`, the axioms Lean's standard
