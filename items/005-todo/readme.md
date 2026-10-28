@@ -33,6 +33,7 @@ Open
 | [005-60](60-block-storage.md) | Investigate | Block storage: the stream on a raw block device without a file system, as a ring of a fixed size, kept until the room is needed (retention by space); feasible in Java? And on a Linux device in a C or C++ clone. Frans's idea | open |
 | [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered; a longer time may mean fewer forces and wake-ups for writers that do not sync, at the cost of more unsynced data lost on a power loss. Frans's request | open |
 | [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Hypothesis to test: since 005-46 the 8 readers take F53's 8 performance cores and the eviction thread falls behind; the run was not quiet. Test: 4, 6 and 8 threads on `bf19075`, `eaec93e` and `4f7cd60`, with the eviction thread's CPU, in a quiet block | open |
+| [005-69](69-system-clock-promise.md) | Fix | `SystemClock`, `DbBuilder`'s default clock, promises strictly increasing times but never sets its last time, so it returns equal times within a millisecond and earlier ones when the system clock is set back. No harm: `DbClock` makes transaction and current times increase itself. Options: make the code keep the promise (one line and a test), or the comment say what the code does. Found by 012's planning (012-01, 4.4) | open |
 
 
 Closed
@@ -358,6 +359,9 @@ Files
   written eagerly), the instrumented run and the outcome; dropped. The
   probe's diff and output in
   [68-fix-take-stream-length/](68-fix-take-stream-length/).
+* [69-system-clock-promise.md](69-system-clock-promise.md). 005-69,
+  `SystemClock` does not keep its promise of strictly increasing times:
+  the issue, why no database depends on it, the options; open.
 
 Log
 ===
@@ -1372,3 +1376,9 @@ fills out one that a crash cut, so `getLength()` equals `getNextPos()`
 whenever `take` is called; an instrumented copy found 0 of 5,524,901
 calls to differ, 229 of them after a record that ended exactly on a
 boundary. No change: the change would pass the same value.
+
+2026-10-28. Added 005-69, by Claude (Opus 5.5, Claude Code), the
+conductor of 012, as 012-01's decision D5 says: `SystemClock` never sets
+its last time, so its promise of strictly increasing times does not hold;
+harmless, as `DbClock` keeps its own; kind fix, open for Frans's choice
+between the code and the comment.
