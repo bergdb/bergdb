@@ -107,3 +107,16 @@ the ordinal bound in 012-07, no raw output in the repository (012-15),
 and the task plans marked approved with 012-01 by Frans's go. Every Java
 class, member, path and subitem that the plans cite was checked to exist.
 The conductor waits for `/Users/f/fl/bench/012/review-done`.
+
+2026-10-28, 13:43. The implementation started. Frans gave the go by
+starting the conductor (the session f1-0f) with the prompt at the top of
+012-01, which approves the task plans 012-02 to 012-16. The Java reference
+of the first tasks: `main` at `404d2ee` (`java/` as of `fd8f513`). The
+conductor's state is in `/Users/f/fl/bench/012/state.md`, with check-ins
+every 20 minutes from 06:17 to 21:47 and the watchdog until 07:00 on
+2026-10-29. The usage level was tight (the week 25 points ahead of its
+time), so at most two subagents at a time, at high effort (012-01, 9.2):
+012-02 and 012-04 started at 13:47, each in a scratch clone under
+`/Users/f/fl/bench/012/`; 012-05 follows once 012-02's scanner exists, then
+012-03. Tonight 006-10's quiet block holds: nothing CPU-heavy of 012 after
+21:45, the conductor idle from 22:30 to 06:15.
