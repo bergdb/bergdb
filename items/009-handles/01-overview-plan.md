@@ -7,12 +7,13 @@ the work and how to handle it in Git. Frans: "It is implementing handles
 004 in BergDB. This is a major one. [...] 009-01 can be a first overview
 plan. Then 02 for the detailed implementation plan when 01 approved."
 
-**Status: draft, for Frans's approval. Planning now; the work starts after
-release 2026.1 (item 008).** Decided so far (section 8): Git, with the
-branch pushed (G1a); what the merge waits for in Lean (G2b); and the
-phases ("Phases are good."). The rest waits for Frans's reading. Phase 0's
-output, [009-02](02-implementation-plan.md), is written and waits for his
-approval.
+**Status: approved and carried out.** Frans approved it on 2026-10-25 by
+asking for 009-02 ("Go ahead and adjust 01 and then write 02."), which was
+to follow "when 01 approved"; his decisions are in section 8. The work ran
+from 2026-10-25 to 2026-10-27 ([009-02](02-implementation-plan.md),
+section 9; [009-03](03-measurements.md)), and Frans merged the branch on
+2026-10-26 (`178a0d4`). Section 1, "Where the targets stand", says what
+each target came to.
 
 
 # 1. The goal
@@ -81,6 +82,52 @@ Done when:
 8. **Docs.** docs/levels.md, Level 4; the alignment of Level 4 with
    handles; README.md and docs/levels.md no longer list the sweep among
    the known limits; docs/log.md.
+
+Where the targets stand, 2026-10-28 (the numbers in 009-03, section 0):
+
+1. Met (step 3b). Eviction's batches walk nothing, and `Residents` counts
+   the bytes exactly without walks. The test schedules (`VALUES`, `EVERY`,
+   `RANDOM`; test-only) still walk, as 009-02 planned for step 3b.
+2. Met in P4's soak and the pause probe; not yet with 8 threads at 665
+   MB under ZGC ([005-65](../005-todo/65-gets-with-8-readers.md)).
+   BergDB's own waits: eviction's batches take at most 2 ms on F53 and 4
+   ms on s1, and since [005-46](../005-todo/46-stream-file-lock.md) no get
+   waits for the stream's writer, a force, a new file or a cut. P4's soak
+   under ZGC on F53, on `main` with 005-46 (006-09's quiet block): the
+   longest commit 5.1 ms and the longest read 3.6 ms; the cuts are no
+   longer the slowest (before 005-46, 88 to 171 ms; 009-04, section 7.3).
+   In the pause probe on s1 a force of 2,500 ms left every get at 12.1 ms
+   at most (005-46). 004-02's runs at 10M keys: from the OS cache on F53
+   with ZGC the longest get 6.0 ms with up to 4 threads (3.45 ms at step
+   3d), but 27 and 36 ms with 8 threads, with readers' loads waiting for
+   the eviction thread over 10 ms (`bf19075`: 2.1 ms), which 005-65 is to
+   explain; from the device on s1 64 to 74 ms, s1's disk, and one get of
+   2,760 ms with one reader, no writer and no collection or safepoint
+   under it, which Frans accepted as not BergDB's (2026-10-28: the run's
+   memory cgroup at its limit, the kernel reclaiming about 56 times a
+   second; step 3d's 2,690 ms the same; 009-03, section 9). What is left
+   above 20 ms, but for 005-65, is the collector's (G1's pauses, ZGC's
+   allocation stalls) and s1's disk; a writer's wait for room in the write
+   buffer is the disk's too, and does not count (005-46, decision 5).
+3. Met (009-03, section 5): in memory on one thread 3 and 11 percent fewer
+   gets (G1, ZGC); with 4 threads 12 and 3 percent more, with 8 threads
+   101 and 61 percent more; from the OS cache 1.4 to 4.6 times as many.
+4. Recorded (009-03, section 3): MEM 130 bytes per KV (2026.1: 191).
+5. Met: StreamDigest gave 2026.1's digests after every step (009's log).
+6. Met: `tc_handles`, `tr_handles`, `t2_handles`, `tr_handles_restarts`
+   and `tp_handles`, with no warnings and no `sorry` (009's log,
+   2026-10-26).
+7. Met. The gates at every step and on the merged tree (`night.sh`:
+   NIGHT OK on `a04a418`). `performance.sh ab` against 2026.1, quick
+   suite, on 2026-10-26: gets on one thread 3 to 9 percent fewer, from 4
+   threads 19 percent more; again in 006-09's quiet block, on `main`
+   (`4f7cd60`, 2026-10-28, 01:00): no alerts, throughput 1 to 25 percent
+   higher (four reader threads 25 percent, the mixed scenario's gets 17
+   percent), startup 2 to 4 percent faster; the only flags are G1's pause
+   maxima, 24 to 39 ms in r-1k-fin (005-46, "Confirmed in the quiet
+   block").
+8. Met: docs/levels.md, section 7; 009-05; README.md's Level 4 row;
+   docs/log.md (2026-10-26).
 
 Not in 009:
 
@@ -445,7 +492,7 @@ Decided:
     proves that eviction never changes what reads give, which the reader
     tests and EvictionInvariance check in the meantime.
 
-Open:
+Decided with 009-02:
 
 * **G3. Phase 0's choices** (the table, the policy, the handle, the
   protocol): proposed in 009-02, and decided with its approval. Decided

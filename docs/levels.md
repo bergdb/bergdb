@@ -362,11 +362,26 @@ Limits:
   seconds on a slow disk, and every read for a new file's forces and a
   cut's deletes, up to 171 ms in P4's soak (009-04, section 7.3). On s1,
   under ZGC, the longest gets were the forces; since, a force of 2,500 ms
-  left every get at 12.1 ms at most (005-46, "Measured after the change");
-  P4's soak and ScaleBench confirm it in 006-09's quiet block. A writer
-  that fills the write buffer still waits for the disk;
-  that does not count against item 009's pause target (Frans,
-  2026-10-27), and the test reports show it apart.
+  left every get at 12.1 ms at most (005-46, "Measured after the change").
+  In P4's soak under ZGC on F53 the longest read is 3.6 ms and the
+  longest commit 5.1 ms, and the cuts are no longer the slowest (006-09's
+  quiet block; 005-46, "Confirmed in the quiet block"). A writer that fills
+  the write buffer still waits for the disk; that does not count against
+  item 009's pause target (Frans, 2026-10-27), and the test reports show it
+  apart.
+* So the waits above 20 ms left in item 009's runs are not BergDB's own,
+  but for one case: the collector's (G1's pauses; ZGC's allocation stalls,
+  129 and 300 ms on s1 when its heap ran short), s1's disk (gets from the
+  device of 64 to 74 ms, where single random reads take up to 58 ms, and
+  one get of 2,760 ms under the kernel's memory reclaim;
+  [009-03](../items/009-handles/03-measurements.md), section 9), and a
+  writer's waits for room in the write buffer when the disk stalls. Item
+  009's target 2 is met in P4's soak and the pause probe (009-01, section
+  1). The case: in ScaleBench from the OS's cache on F53 with 8 readers at
+  665 MB under ZGC, gets of 27 and 36 ms, with readers' loads waiting for
+  the eviction thread over 10 ms (with 4 readers at most 6 ms; before
+  005-46, 2.1 ms), not yet explained
+  ([005-65](../items/005-todo/65-gets-with-8-readers.md)).
 * Loads in memory, with no eviction, are 8 to 20 percent slower than before
   handles.
 * D, which cannot be evicted, is bounded only loosely by the startup

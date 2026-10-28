@@ -1397,3 +1397,13 @@ moved from `bergdb.core` to `bergdb.pub.util`, an API change against
 2026.1 (`releases/next.md`); `Database.PRIMARY` is defined in `pub`, and
 `TestClock` checks against `Time`'s range instead of `pubimp`'s
 `ClockConstants`, which is gone. `before-commit.sh` and `level2.sh quick` pass.
+
+2026-10-28. Item 009, handles, done at Frans's decision on its target 2,
+by Claude (Opus 5.5, Claude Code): no get or commit waits more than about
+20 ms for BergDB's own work in P4's soak (the longest commit 5.1 ms, read
+3.6 ms, on `main` with 005-46) and the pause probe; s1's get of 2,760 ms is
+the machine's (the kernel's memory reclaim). Open as 005-65: with 8
+readers from the OS's cache at 665 MB under ZGC on F53, gets of 27 and 36
+ms, with loads waiting for the eviction thread. 005-46's Props in the
+quiet block had measured CORE after all (the same as before 005-46); its
+parser is fixed. README.md's pauses, docs/levels.md's Level 4 limits.

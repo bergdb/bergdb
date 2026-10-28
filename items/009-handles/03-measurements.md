@@ -13,34 +13,78 @@ ScaleBench's outputs.
 
 # 0. Where the targets stand
 
-Targets 2 to 4 of 009-01, section 1, against 2026.1 in turns, with the
-branch at step 3d (`66c8f3a`), as of 2026-10-26, 00:30:
+Targets 2 to 4 of 009-01, section 1, as of 2026-10-28: `main` with
+005-46, against 2026.1 and against `bf19075` (005-50, the commit before
+005-46), in turns. Until 2026-10-27 this section gave the branch at step
+3d (`66c8f3a`), as of 2026-10-26, 00:30; those runs are in sections 4 to
+7.
 
-* **Target 2, pauses (about 20 ms with ZGC or generational Shenandoah).**
-  Met with ZGC on F53: in 004-02's run from the OS cache at 10M keys and
-  665 MB (section 5), the longest get of the 1 to 8 thread phases took
-  3.45 ms (2026.1: 7.3 s); in the pause probe, gets and single-put commits
-  14.7 ms at most (2026.1: 570 ms). On s1, from the device, the longest get
-  was 60 ms (2026.1: 2.6 s), and the waits above 20 ms there are the
-  device's reads and two CPUs shared by the readers, the eviction thread
-  and the collector, with no collection or batch under them. Shenandoah in
-  the pause probe: one full collection of 79 ms and degenerated cycles, as
-  the probe's 1.2 GB heap filled at 700,000 loads a second (the collector,
-  not eviction). Not yet run: P4's soak, and ScaleBench with Shenandoah
-  (planned for F53 after 05:00, section 8).
+* **Target 2, pauses: about 20 ms of BergDB's own code; the collector's
+  pauses do not count** (Frans, 2026-10-27). Met in P4's soak and the
+  pause probe; not yet with 8 threads at 665 MB under ZGC
+  ([005-65](../005-todo/65-gets-with-8-readers.md)).
+  * Eviction: batches of at most 2 ms on F53 (P4's soak, 009's log of
+    2026-10-26) and 3 to 4 ms on s1 (section 9); a load waits for the
+    eviction thread at most 2 ms.
+  * The stream: since 005-46 no get waits for the writer's append or force,
+    a new file or a cut. On s1, in the pause probe, a force of 2,500 ms
+    left every get at 12.1 ms at most; before, under ZGC, the longest gets
+    were the forces (005-46, "Measured after the change"). In ScaleBench
+    on s1 no sampled reader is blocked on a file any more (10.7 and 10.9
+    percent before; section 9).
+  * P4's soak under ZGC on F53 (006-09, W1.3; 005-46, "Confirmed in the
+    quiet block"): the longest commit 5.1 ms (p99.9 2.26 ms), the longest
+    read 3.6 ms (a historical get and a backward scan); the cuts are no
+    longer the slowest (before 005-46, 88 to 171 ms; 009-04, section
+    7.3); the collector's pauses at most 0.014 ms. The longest durable
+    commit, 39.5 ms, is its force, the disk's.
+  * From the OS cache on F53 at 10M keys (006-09, W1.4; ScaleBench C,
+    005-46, "Confirmed in the quiet block"; the step ran not quiet): with
+    ZGC the longest get 6.0 ms with up to 4 threads, but 27 and 36 ms with
+    8 threads, with 26 and 22 waits of a reader's load for the eviction
+    thread over 10 ms and batches of up to 17 ms (`bf19075`: 2.8 and 1.4
+    ms, no such wait): 005-65 tests whether 8 readers on F53's 8
+    performance cores leave the eviction thread behind. With G1 284 ms,
+    G1's full collections of up to 164 ms in the 2,660 MB heap (`bf19075`:
+    253 ms). At step 3d 3.45 ms with ZGC, 2026.1 7.3 s (section 5).
+  * From the device on s1 (section 9): the longest gets 64 to 74 ms, s1's
+    disk (single random reads there of up to 42 to 58 ms), with G1's young
+    collections under some; and one get of 2,760 ms with nothing of
+    BergDB's under it (one reader, no writer, no collection or
+    safepoint), which Frans accepted as not BergDB's on 2026-10-28: the
+    run's memory cgroup at its limit, the kernel reclaiming about 56 times
+    a second; step 3d's 2,690 ms the same.
+  * What is left above 20 ms is the collector's (on s1 G1's pauses of 70
+    to 172 ms, and ZGC's allocation stalls of 129 and 300 ms at the start
+    of one phase) and s1's disk. A writer that fills the write buffer waits
+    for the disk: not counted (005-46, decision 5), and shown apart in the
+    reports. Under ZGC on s1 some gets of 21 to 62 ms have nothing in the
+    logs under them, most likely s1's two CPUs (005-46).
+  * Which collector, a recommendation (009-04, section 8): ZGC, or
+    Shenandoah in its default mode, without generations.
 * **Target 3, gets.** In memory on one thread: 3 percent fewer with G1, 11
   percent fewer with ZGC (target: within 20 percent). With 4 threads 12 and
   3 percent more, with 8 threads 101 and 61 percent more (target: more).
   From the OS cache 1.4 to 4.6 times as many gets a second, from s1's device
   the same on one thread and 32 to 53 percent more with 4 (target: no
-  difference beyond the noise).
+  difference beyond the noise); all at step 3d. Since 005-46, from s1's
+  device 15 to 32 percent more than `bf19075` with 2 and 4 threads
+  (section 9). Against `bf19075` on F53 in 006-09's quiet block: Props
+  CORE the same (means 0.232 and 0.233, lower is faster); ScaleBench C 17
+  to 43 percent more gets a second with 1 to 8 threads at 133 MB under G1,
+  7 to 81 percent more at 665 MB under G1 and ZGC. `performance.sh ab`
+  against 2026.1, quick suite: on 2026-10-26 gets on one thread 3 to 9
+  percent fewer, from 4 threads 19 percent more; in 006-09's quiet block
+  no alerts, throughput 1 to 25 percent higher.
 * **Target 4, memory.** MEM 130 bytes per KV (2026.1: 191); heap per key
   after the 10M load 186 bytes under G1 (243) and 225 under ZGC (315).
 
-And beside the targets: the 10M load on s1 with a 600 MB budget took 767 s,
-2026.1 3,015 s (step 3e, section 7); the cold startup at 10M keys on s1 is
-unchanged (191 to 200 s, 2026.1 197 s); loads in memory (no eviction) are 8
-percent slower with G1 and 20 percent with ZGC.
+And beside the targets: the 10M load on s1 with a 600 MB budget took 732 s
+on `main` with 005-46 (section 9; 767 s at step 3d, section 7; 2026.1
+3,015 s); the cold startup at 10M keys on s1 took 21.6 and 19.6 s with
+005-57 (section 9; 191 to 200 s at step 3d, 2026.1 197 s); loads in memory
+(no eviction) are 8 percent slower with G1 and 20 percent with ZGC (step
+3d).
 
 
 # 1. The pause probe on s1, steps 1d and 3c
@@ -340,15 +384,47 @@ into [005-38](../005-todo/38-writes-at-scale.md).
 
 # 8. Still to run
 
+As written on 2026-10-26, 00:30, and what became of each (updated
+2026-10-28):
+
 * P4's soak with eviction (004-04's parameters: 8 GB heap, a 1.6 GB budget,
   30 measured minutes, a restart) under ZGC and generational Shenandoah on
-  the branch; 2026.1's are 004-04's (2026-10-24), the same machine.
-* ScaleBench with Shenandoah on both jars (M; C at 133 and 665 MB), as
-  004-04's run2.sh.
-* `performance.sh ab` with the quick suite, 2026.1 against the branch.
+  the branch: run on F53 on 2026-10-26, 05:08 to 08:30
+  ([f53-block2/](03-measurements/f53-block2/); 009's log). ZGC: GC pauses
+  at most 0.02 ms, batches at most 2 ms. Generational Shenandoah: stops of
+  821 and 182 ms (009-04); then 009-04's two soaks (section 7), with no
+  stop without generations. In all four the slowest commits and reads were
+  reclaim's physical cuts, 88 to 171 ms (009-04, section 7.3), which
+  005-46 took off the readers.
+* ScaleBench with Shenandoah on both jars: run in the same block. From the
+  OS cache at 10M keys the longest get 2.5 ms at 133 MB (2026.1: 409 ms)
+  and 1.9 ms at 665 MB (7.1 s). Not run without generations; it would
+  serve the recommendation only (009-04, section 8).
+* `performance.sh ab` with the quick suite, 2026.1 against the branch: run
+  in the same block (above, target 3); the run with eviction off was
+  skipped.
 
-On F53 from 05:00 (`quiet.sh` keeps timed blocks off 02:00 to 05:00, for
-`night.sh`).
+Run in 006-09's quiet block on F53 (2026-10-27, from 22:30), on `main`
+with 005-46; the scripts in
+[005-46's night/](../005-todo/46-stream-file-lock/night/), the results in
+005-46, "Confirmed in the quiet block":
+
+* P4's soak under ZGC (W1.3): are the cuts still the slowest commits and
+  reads? No: none of the 20 slowest commits is within 2 s of a measured
+  cut; the longest commit 5.1 ms, the longest read 3.6 ms.
+* Props (CORE) and ScaleBench from the OS cache (C), against `bf19075` in
+  turns (W1.4): no fewer reads a second. Props CORE the same (HEAD
+  0.22 to 0.24, `bf19075` 0.23 to 0.24; the step exited 1 as its parser missed CORE, read again
+  on 2026-10-28); ScaleBench C 7 to 81 percent more gets a second, and no
+  sampled reader blocked on a file (3.4 to 13.3 percent with `bf19075`).
+  But with 8 threads at 665 MB under ZGC gets of 27 and 36 ms, with
+  readers' loads waiting for the eviction thread: 005-65.
+* `performance.sh ab` against 2026.1, the quick suite (009-01's done item
+  7). No alerts: throughput 1 to 25 percent higher, startup 2 to 4
+  percent faster; the only flags are G1's pause maxima.
+
+Not reported with handles: LargerThanMemory (009-01, phase 5), beyond its
+pass in `level4.sh` in full, and so in `night.sh`.
 
 
 # 9. ScaleBench on s1 after 005-46

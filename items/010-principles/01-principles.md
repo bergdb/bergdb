@@ -43,22 +43,34 @@ Where BergDB stands:
 * Readers never take the write lock (009, step 3b). A reader that loads a
   node takes the handle's monitor (009, T7a), and, when the cache is over
   its budget, waits for the eviction thread's batch at most 2 ms
-  (`Eviction.LOAD_WAIT_NANOS`): short waits, as P1 allows.
-* A read of the stream's last file waits for the writer's append and its
-  force, one monitor for both: seconds on s1's disk, the longest waits left
-  for readers with handles
-  ([005-46](../005-todo/46-stream-file-lock.md), 009-03). A deviation.
+  (`Eviction.LOAD_WAIT_NANOS`): short waits, as P1 allows. Not yet
+  explained: with 8 readers from the OS's cache at 665 MB under ZGC on
+  F53, such waits of over 10 ms and gets of 27 and 36 ms (006-09's quiet
+  block; [005-65](../005-todo/65-gets-with-8-readers.md)).
+* No read waits for the stream's writer since 2026-10-27
+  ([005-46](../005-todo/46-stream-file-lock.md)): a read takes no lock, a
+  new file is made outside the stream's monitor, and a cut's files are
+  deleted by a thread of their own. Until then a read of the last file
+  waited for the writer's append and its force, seconds on s1's disk, and
+  every read for a cut's deletes, up to 171 ms in P4's soak (009-04,
+  section 7.3): a deviation, now fixed. A writer that fills the write
+  buffer still waits for the disk: the device's limit, not BergDB's work
+  (005-46, decision 5).
 * To look at (Frans, 2026-10-26): every place where a reader can wait
   today, and for how long.
 * Eviction: the sweep that walked the resident set under the write lock,
   up to 266 s in 004-02, is replaced by handles and bounded steps (item
   009, on `main` since 2026-10-26).
-* The collector: only ZGC and generational Shenandoah meet the target; G1
-  does not ([004-04](../004-indirect-swizzling/04-zgc.md)), and
-  generational Shenandoah stopped for 182 and 821 ms in the soak with
-  eviction ([009-04](../009-handles/04-shenandoah-degenerated.md)).
+* The collector: ZGC, and Shenandoah in its default mode, without
+  generations, meet the target in P4's soak; G1 does not
+  ([004-04](../004-indirect-swizzling/04-zgc.md)), and generational
+  Shenandoah stopped for 182 and 821 ms in the soak with eviction
+  ([009-04](../009-handles/04-shenandoah-degenerated.md), section 8).
+  Item 009's target counts BergDB's own code only, and recommends a
+  collector (Frans, 2026-10-27: "The target of 20 ms is for the BergDB
+  code. Not for the JVM itself.").
 * The deadline of 007-03 makes one long commit, while the other writers
-  and the readers of the stream's last file wait
+  wait; since 005-46 the readers of the stream's last file no longer do
   ([007-04](../007-bounds/04-review-after-009.md), points 6 and 7).
 
 

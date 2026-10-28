@@ -96,6 +96,18 @@ section reached 2.6 times the startup distance at 50 MB in a test
 ([005-38](items/005-todo/38-writes-at-scale.md)), and the deadline that
 bounds it is planned ([007-03](items/007-bounds/03-plan.md)).
 
+Pauses (2026-10-28). In the runs of bergdb item 009, no get or commit
+waits more than about 20 ms for BergDB's own work: eviction works in
+bounded steps (009), and no read waits for the stream's writer, its forces
+or reclaim's cuts ([005-46](items/005-todo/46-stream-file-lock.md)). One
+case is open: with 8 readers on F53's 8 performance cores, from the OS's
+cache under eviction, gets of up to 36 ms
+([005-65](items/005-todo/65-gets-with-8-readers.md)). The collector's pauses
+come on top: use ZGC, or Shenandoah in its default mode, without
+generations; with G1 they reach hundreds of milliseconds under eviction. A
+slow disk shows through too, in reads that miss the caches and in a writer
+that fills the write buffer. Details in docs/levels.md, section 7.
+
 
 Notes
 -----

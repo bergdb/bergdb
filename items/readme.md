@@ -109,7 +109,7 @@ Index
 * **008-release-2026-1** (done). Release 2026.1, internal: the tagged code,
   the jar and the release notes, and the baseline for performance
   measurements before handles (004) and gradual eviction.
-* **009-handles** (open). Handles in BergDB, from 004's direction:
+* **009-handles** (done). Handles in BergDB, from 004's direction:
   eviction with bounded work and no stop-the-world. The plan, the work on
   `main` and on the branch `009-handles`, the measurements, the outcome.
 * **010-principles** (open). BergDB's design principles, in Frans's

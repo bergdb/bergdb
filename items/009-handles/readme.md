@@ -1,7 +1,7 @@
 009-handles
 ===========
 
-Created 2026-10-25 by Frans Lundberg. Status: open.
+Created 2026-10-25 by Frans Lundberg. Status: done.
 
 Handles in BergDB: memory pointers of index nodes that go through a
 per-node handle, so that eviction does bounded, local work and BergDB has
@@ -343,3 +343,33 @@ stayed under 6 ms; to be explained before target 2 is called met for
 read-heavy loads. Also for Frans: s1's get of 2,760 ms (009-03, section
 9). The closure, drafted in 006-09 (009-closure.diff and
 009-closure-done.diff), waits for both.
+
+2026-10-28, 09:35. Done, at Frans's decision on target 2 (006-09,
+decision 2 of section 8: "accept s1's get of 2,760 ms as not BergDB's
+[...]. Register the 8-thread case as a new 005 entry [...]. Then close
+009"), on the evidence of 006-09's quiet block on F53, on `main` with
+005-46 (005-46, "Confirmed in the quiet block"): in P4's soak under ZGC
+the longest commit took 5.1 ms and the longest read 3.6 ms, and the cuts
+were no longer the slowest; ScaleBench from the OS's cache and Props made
+no fewer reads a second than `bf19075` (7 to 81 percent more gets a
+second; CORE 0.232 and 0.233); `performance.sh ab` against 2026.1, no
+alerts. So target 2 is met in P4's soak and the pause probe, not yet with
+8 threads at 665 MB under ZGC, where gets took 27 and 36 ms with readers'
+loads waiting for the eviction thread: registered as
+[005-65](../005-todo/65-gets-with-8-readers.md), with a hypothesis and a
+night step. s1's get of 2,760 ms is not BergDB's, as Frans accepted (one
+reader, no writer, no collection or safepoint, the run's memory cgroup at
+its limit with the kernel reclaiming about 56 times a second; step 3d's
+2,690 ms the same). Every other item of 009-01's "done" is met or recorded
+(009-01, section 1, "Where the targets stand"; 009-03, section 0). What is
+above 20 ms in 009's runs, but for 005-65, is the collector's (G1's
+pauses, ZGC's allocation stalls when the heap is short) and s1's disk,
+and a writer's waits for room in the write buffer, the disk's too (005-46,
+decision 5). Written by Claude (Opus 5.5, Claude Code), from 006-09's
+drafts (009-closure.diff, 009-closure-done.diff): 009-01's status and
+targets, 009-03's sections 0 and 8, docs/levels.md's Level 4 limits,
+README.md's pauses, 010-01's P1. Left of 009, outside its "done", none of
+it holding 009 open (009-closure-notes.md, section 3): T9 and T12 over
+handles are 005-62 (proved; the design before handles being removed);
+LargerThanMemory's report with handles and the test schedules' walks are
+not made and not registered.
