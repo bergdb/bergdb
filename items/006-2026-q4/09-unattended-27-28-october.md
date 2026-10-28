@@ -406,22 +406,51 @@ all of the day's changes): P4's soak, ScaleBench C, `performance.sh ab` and
 runs were refused by `performance.sh`'s own quiet check (89.2 percent idle
 at 00:57).
 
-**For Frans to decide:**
+**For Frans to decide** (updated 2026-10-28, 08:45: 3 and 4 decided by
+Frans this morning and under way in his own sessions; four left, 1, 2, 5
+and 6, plus 012's decisions):
 
 1. 007-07: apply the step 3 patch? Accept whole-transaction bursts after a
-   large take, or a node pace? D4's option B in BergDB, as 007-06's "pace"
-   (the deadline comes down with the lag), or the caller's job?
+   large take, or a node pace? D4's option B (decided 2026-10-26) inside
+   `setStartupDistance`, as 007-06's "pace" (the deadline comes down with
+   the lag), or the caller's steps? Recommended: apply it with D4:B as
+   007-06's pace, and accept the bursts for now (a node pace changes the
+   model and belongs with step 4); before `main`, `level2.sh` and
+   `level4.sh` in full, 007-06's runs on the patched build and the quick
+   performance suite in a quiet block. `step3.diff` still applies to
+   `main`.
 2. 009, target 2: the gets of 27 and 36 ms with 8 threads at 665 MB under
    ZGC (readers waiting for the eviction thread) need an explanation, and
    s1's get of 2,760 ms needs your call; the closure is drafted.
-3. 005-62: how far to remove the design before handles (steps a to c);
-   rule 4 by position after a cut; a cut without a restart.
-4. 005-63: a sentence in `stop()`'s Javadoc and a lock file (recommended:
-   both).
+   Recommended: s1's get as the machine's (one reader, no writer, no GC,
+   the cgroup at its limit); the 8-thread gets to a new 005 entry
+   (ScaleBench C at 4, 6 and 8 threads, HEAD against `bf19075`, with the
+   eviction thread's CPU), and 009 closed with that said.
+3. 005-62: decided (Frans, 07:24: "1. as proposed, all steps. 2. Prove
+   it! ... 3. No, not for now."): the design before handles goes, steps a
+   to c, and rule 4 by position after a cut is to be proved; a cut without
+   a restart not now. Under way in the session "005-62, Lean, handles",
+   which commits if it succeeds.
+4. 005-63: decided (Frans, 07:13: option C, and a note on network file
+   systems in `FileStream`'s Javadoc): the lock file `bergdb.lock` as the
+   entry now describes it, and the sentence in `stop()`'s Javadoc. Under
+   way in the session "005-63 FileStream" (`FileStream.java` changed, not
+   committed). The entry's open point, an exception class of its own for
+   the refusal, may come back to you.
 5. 005-48: question 4, the buffer time now that syncs do not wait for it;
-   the s1 runs' raw JSON (left uncommitted).
+   the s1 runs' raw JSON (left uncommitted, about 2 MB in `night/out/`).
+   Recommended: keep 20 ms, add a sweep at 20, 100 and 200 ms with writers
+   that do not sync to the F53 runs, change it only on a clear gain; commit
+   the JSON beside `table.md`.
 6. 005-56: the 7 mismatches, list or code; `SyncLevel` in the Pub API.
+   Recommended: as the entry's table, and after 005-63 is in `main`
+   (both touch the Pub API's files); moving `SyncLevel` is an API change
+   against 2026.1.
+7. Not from this night: 012's decisions D1 to D7 (012-01, section 11), from
+   the 012 planning session; nothing waits on them.
 
 **Left:** 005-48's F53 runs and the Props rerun in a quiet block; 009's
 closure after 2; 007-03's own text, which follows Frans's decision on
-007-07. One usage limit stopped the agents from 14:45 to 15:20.
+007-07. One usage limit stopped the agents from 14:45 to 15:20. The
+night's step markers (`*.READY`, `*.DONE`) were removed on 2026-10-28; the
+conductor had ended.
