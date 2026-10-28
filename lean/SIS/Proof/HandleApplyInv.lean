@@ -1,7 +1,7 @@
 /-
 Proofs about the physical layer with handles (bergdb item 009, step 2d), part 7:
 after the writer's paths, the change applied to the canonical objects gives
-`HAInv`, as SIS/Proof/EvictApplyInv.lean shows `AInv` for Evict.lean.
+`HAInv`.
 -/
 import SIS.Proof.HandleApply
 

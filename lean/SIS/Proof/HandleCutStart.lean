@@ -2,14 +2,14 @@
 Proofs about reclaim with handles (bergdb 005-62), part 2 of T12 over handles:
 the startup with handles from a stream cut safely is the startup with handles
 from the whole stream but for the virtual root's object (`handleStartup_sim`).
-The startup with handles is `Mem.toH` and rule 4 with handles on Evict.lean's
-startup memory before rule 4, where the two startups are already the same but
-for the root's object (`sectionPos_sim`, SIS/Proof/CutLaterStart.lean); `Mem.toH`
-and rule 4 keep that. The two root objects agree from the first available time
+The startup with handles is `Mem.toH` and rule 4 with handles on stage 1's lazy
+startup memory with the positions of its section, where the two startups are
+already the same but for the root's object (`sectionPos_sim`,
+SIS/Proof/CutLazyStart.lean); `Mem.toH` and rule 4 keep that. The two root objects agree from the first available time
 on (`RootRelH`, `RootRel` over handles).
 -/
+import SIS.Proof.CutLazyStart
 import SIS.Proof.HandleCutLater
-import SIS.Proof.CutLaterStart
 
 set_option linter.unusedSectionVars false
 

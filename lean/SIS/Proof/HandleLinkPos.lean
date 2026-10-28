@@ -4,7 +4,7 @@ Proofs about rule 4 by position (bergdb 005-58): `Rule4_positions`,
 that the startup with handles gives rule 4 holds the objects of the lazy
 startup's memory, taken to handles; a pointer that holds no handle there is a
 stream slot of that memory, which the rerun's invariant describes (`RInv`,
-SIS/Proof/EvictRerun.lean): it names a version of its pointee, its pointee's
+SIS/Proof/PhysStart.lean): it names a version of its pointee, its pointee's
 latest version after Rule R, and no version of its pointee lies between it and
 the startup section (`RInv.near`). So such a pointer names a version of the
 section, its pointee's latest version before the section, or, when the pointee
@@ -19,7 +19,6 @@ with handles is from the run's stream (T2-C), so the run with rule 4 by position
 is the run with rule 4 by node id (`runPos_handles`).
 -/
 import SIS.Proof.HandleRestart
-import SIS.Proof.EvictKeys
 
 set_option linter.unusedSectionVars false
 

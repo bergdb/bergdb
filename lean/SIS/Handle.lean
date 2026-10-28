@@ -3,16 +3,16 @@ Self-indexed streams in Lean: the physical layer with handles (bergdb item 009,
 phase 2, step 2a; the design is items/009-handles/02-implementation-plan.md,
 section 4, here called 02; aligned with Java's implementation, step 3a on the
 branch 009-handles: java/src/bergdb/dag/Handle.java, core/NodeCollection.java,
-core/Cache3.java). Trusted part, like Evict.lean. The statements are in
+core/Cache3.java). Trusted part. The statements are in
 HandleTheorems.lean, all proved in SIS/Proof/Handle*.lean: T-CACHE over
 handles (`tc_handles`, step 2d), and T-READ, T2-C, T-READ with restarts and
 T-PIN (`tr_handles`, `t2_handles`, `tr_handles_restarts`, `tp_handles`, phase
 4a).
 
-Evict.lean models BergDB's memory as it is at Level 4: a pointer of an object
-is a memory pointer to an object, or a stream pointer, and eviction unswizzles
-memory pointers and releases objects that no memory pointer names. This file
-models 009's design instead:
+Before item 009, a pointer of an object in BergDB's memory was a memory pointer
+to an object or a stream pointer, and eviction unswizzled memory pointers and
+released the objects that no memory pointer named (bergdb 001-08, section 5;
+modeled in Evict.lean until bergdb 005-62). This file models 009's design:
 
 * A *handle* (02, 4.1) is one per index node that is resident or that a
   resident pointer names: the node id, the node's one object or none, a
@@ -26,14 +26,14 @@ models 009's design instead:
 * The objects are numbered. Phys.lean calls an object's number a handle
   (`Slot.mem h`); here it is an *address*, since a handle is 009's.
 
-The operations, each mirroring one of Evict.lean and one of Java's:
+The operations, each mirroring one of Java's:
 
 * following a pointer (02, 4.4; `HMem.followR`, `HMem.follow`): the fast path,
   and the slow path: the reference raised and written back, the live handle
   (`HMem.resolve`), load and install (`HMem.load`);
 * the writer's promote (02, 4.5; `HMem.promote`), its walk and its change
-  (`HMem.reachOnPath`, `HMem.newPtr`, `HMem.applyChange`; A-COPY as in
-  Evict.lean);
+  (`HMem.reachOnPath`, `HMem.newPtr`, `HMem.applyChange`; with A-COPY, Phys.lean's
+  `CopyStep`);
 * the record rule (02, 4.6; `HMem.ptrRef`, `HMem.refOf`) and the physical
   writer (`HMem.writeNode`, `HMem.writeNodes`, `handleTrans`);
 * eviction (02, 4.7; `HMem.evictable`, `HMem.evict`);
@@ -90,7 +90,7 @@ the definition. The choices:
    (Java's `Cache3.makeCanonical`): the object its follow reached is the node's
    latest version.
 
-Left out, as in Evict.lean: concurrency (the fast path's barriers of 02, 3.3
+Left out, as in Phys.lean: concurrency (the fast path's barriers of 02, 3.3
 and 3.4, the handle's LOADING state, the monitors and the map locks: every
 operation here is atomic), the CLOCK bit and the order of eviction (any
 schedule of evictions is allowed), bytes and the accounting, the eviction
@@ -125,7 +125,7 @@ structure HPtr where
   deriving DecidableEq, Repr
 
 /-- An object in memory, a Java `Node` object, with pointers that hold handles:
-as Evict.lean's `Obj`, with `ptrs` for its `slots`. `canonical` and `pos` are
+as Phys.lean's `Obj`, with `ptrs` for its `slots`. `canonical` and `pos` are
 Java's `isCanonical()` and `spos`. One pointer for each pointee of the history,
 live or dead. -/
 structure HObj (V : Type) where
@@ -153,7 +153,7 @@ structure Handle where
 
 /-- Java's memory with handles: the objects by address; the handles by number;
 the table (02, 4.3), from node id to the node's live handle; Rule R's startup
-pos of the last startup, as in Evict.lean; the address of the root's object;
+pos of the last startup, as in Phys.lean's `Mem`; the address of the root's object;
 the next free address and handle number. -/
 structure HMem (V : Type) where
   objs : List (Nat × HObj V)
@@ -222,7 +222,8 @@ def HObj.nodeAt (o : HObj V) (t : Time) : Node V :=
 
 /-- The object read from version w (`StoredKeyNode.parse`, `StoredTopNode.parse`):
 its history, its record, and for each pointee of that history a pointer with
-w's reference and no handle. A snapshot, not cut back (the Level 4 loader). -/
+w's reference and no handle. A snapshot, not cut back: since bergdb item 001, WP
+R8, Java cuts a version back only while its startup reconstructs the database. -/
 def HObj.ofVersion (sp : Spec V T) (w : Version V) : HObj V :=
   { node := w.node, level := w.level, isData := w.isData, hist := w.hist, canonical := false,
     pos := some w.recNo,
@@ -334,7 +335,8 @@ startup (its stream S0), raised to the written position of the handle the
 pointer holds, if any (a dead handle's; a live one has none), is written back
 into the pointer (choice 1 of the header); then the live handle (`resolve`) and
 the load with that reference (`load`; choice 7). Versions are read from S, the
-stream now, as in Evict.lean's `follow4`. Returns the memory after, the live
+stream now, since a pointer can name a record written since the startup. Returns
+the memory after, the live
 handle and the address of the object reached; none if there is no such pointer
 or nothing to read.
 
@@ -368,8 +370,8 @@ def HMem.followR (sp : Spec V T) (S0 S : Stream V T) (m : HMem V) (a : Nat) (y :
       | (m2, some b) => some (m2, r1.2, b)
       | (_, none) => none
 
-/-- The writer's promote (02, 4.5; Java's `Cache3.makeCanonical`; Evict.lean's
-`Mem.promote`), after its follow has reached the live handle n: the handle's
+/-- The writer's promote (02, 4.5; Java's `Cache3.makeCanonical`), after its
+follow has reached the live handle n: the handle's
 object, marked canonical. It is the object the follow reached, the version of
 the node that the writer's pointer names, which is the node's latest (the
 invariant `HSlotOK` of HandleTheorems.lean); Java takes the newer of that
@@ -393,7 +395,7 @@ def HMem.follow (sp : Spec V T) (S0 S : Stream V T) (m : HMem V) (a : Nat) (y : 
   | some (m1, n, b) => if writer then m1.promote n else (m1, some b)
 
 /-- Read at time t from the object at address a, down, through the handles: as
-Evict.lean's `Mem.readAt4`. Each object reached, by node, with the node it gives
+Phys.lean's `Mem.readAt`. Each object reached, by node, with the node it gives
 at t; the memory after the follows on the way. A pointer to an object that is
 not on a lower level is not followed. fuel bounds the depth. -/
 def HMem.readAt (sp : Spec V T) (S0 S : Stream V T) : Nat → HMem V → Time → Nat →
@@ -429,9 +431,11 @@ def HMem.view (sp : Spec V T) (S0 S : Stream V T) (m : HMem V) (t : Time) : HMem
 
 /-! ## The writer's walk and change (02, 4.5) -/
 
-/-- The writer reaches node x of the path, as Evict.lean's `Mem.reachOnPath4`:
-from the canonical object of the node of the path that x is a live child of at
-j - 1, through that object's pointer (the writer's follow, which promotes). -/
+/-- The writer reaches node x of the path: from the canonical object of the node
+of the path that x is a live child of at j - 1, through that object's pointer
+(the writer's follow, which promotes). Unlike stage 1's `Mem.reachOnPath`
+(Phys.lean), the writer follows the pointer also when x has a canonical object
+already, as Java's writer does, which walks down from the root. -/
 def HMem.reachOnPath (sp : Spec V T) (S0 S : Stream V T) (P : Struct V) (j : Time)
     (path : List NodeId) (m : HMem V) (x : NodeId) : HMem V :=
   let parent := path.find? (fun p => match P.get? p, m.canonicalOf p with
@@ -443,10 +447,12 @@ def HMem.reachOnPath (sp : Spec V T) (S0 S : Stream V T) (P : Struct V) (j : Tim
     | none => m
   | none => m
 
-/-- An object that a new pointer to y may copy its pointer from, as Evict.lean's
-`srcOK4`: a canonical object of a node reachable at j - 1, with y a pointee of
-its history and a pointer for it; if it is a virtual root's, with y a live child
-of it at j - 1. -/
+/-- An object that a new pointer to y may copy its pointer from: a canonical
+object of a node reachable at j - 1, with y a pointee of its history and a
+pointer for it; if it is a virtual root's (never written, so that its pointers
+for dead pointees may be stale), with y a live child of it at j - 1. Stage 1's
+`srcOK` (Phys.lean) asks for a live child always; Java's writer also copies dead
+pointers (the skip pointers of `TopDs.newSuperRoot`). -/
 def srcOKH (sp : Spec V T) (P : Struct V) (j : Time) (y : NodeId) (p : Nat × HObj V) : Bool :=
   p.2.canonical && (p.2.ptr? y).isSome && (pointees sp p.2.hist).contains y &&
     reachable sp P (j - 1) p.2.node &&
@@ -454,12 +460,16 @@ def srcOKH (sp : Spec V T) (P : Struct V) (j : Time) (y : NodeId) (p : Nat × HO
       | some n => (sp.live (n.hist.upTo (j - 1))).contains y
       | none => false)
 
-/-- The pointer that a new pointer of object o to y gets, as Evict.lean's
-`newSlot4`: if y has a canonical object, y's live handle, with that object's
+/-- The pointer that a new pointer of object o to y gets (Java: the pointer of a
+new klong, which the writer has in hand): if y has a canonical object, y's live
+handle, with that object's
 position as the reference (02, 4.5: `pointerCreated` becomes "the pointee's
 live handle into the pointer"); else a copy of the pointer for y of an object
 that `srcOKH` allows, the pair as it is (02, 4.2: "a split copies the pairs
-(handle, reference)"); else o's own pointer for y; else none. -/
+(handle, reference)"); else o's own pointer for y; else none. Stage 1's last
+resort (Phys.lean's `Mem.newSlot`), a copy from any canonical object, is not
+here: a canonical object that is not current may hold a stale pointer, and Java
+copies only from the nodes its writer reached (A-COPY, `CopyStep`). -/
 def HMem.newPtr (sp : Spec V T) (P : Struct V) (j : Time) (m : HMem V) (o : HObj V) (y : NodeId) :
     Option HPtr :=
   match m.canonicalOf y with
@@ -470,7 +480,7 @@ def HMem.newPtr (sp : Spec V T) (P : Struct V) (j : Time) (m : HMem V) (o : HObj
     | none => o.ptr? y
 
 /-- Apply the change c of transaction j to the canonical objects, as
-Evict.lean's `Mem.applyChange4`: for each new node a new canonical object, with
+Phys.lean's `Mem.applyChange`: for each new node a new canonical object, with
 a new live handle in the table at once (02, 4.5: "a node the writer makes gets
 its handle at once"); the entries appended; and for each pointee of a new entry
 the pointer of `newPtr`, taken from the memory as it was before the entries. -/
@@ -523,8 +533,8 @@ def HMem.ptrRef (S0 : Stream V T) (m : HMem V) (y : NodeId) (p : HPtr) : Option 
     | none => maxRef rr hd.written
   | none => rr
 
-/-- The reference that the physical writer gives pointee y of object o (02, 4.6;
-Evict.lean's `Mem.refOf`): if y is pinned (in D, which holds the nodes in D
+/-- The reference that the physical writer gives pointee y of object o (02, 4.6):
+if y is pinned (in D, which holds the nodes in D
 before this record's writes, those taken by it included), the position of its
 canonical object, found by node id (`resolvePointers` keeps this rule); otherwise
 the record rule for o's pointer for y (`ptrRef`). Readers change a pointer's
@@ -544,8 +554,8 @@ def HMem.holdsCanonical (m : HMem V) (p : HPtr) : Bool :=
   | some o => o.canonical
   | none => false
 
-/-- Write node x into record i from its canonical object (Evict.lean's
-`Mem.writeNode`): the version (the object's history, and for each pointee the
+/-- Write node x into record i from its canonical object: the version (the
+object's history, and for each pointee the
 reference `refOf` gives) and the memory after, where the object names record i.
 Its pointers as Java's `resolvePointers` leaves them (choice 2 of the header): a
 pointer whose handle holds a canonical object stays as it is; a pointer to a
@@ -581,9 +591,9 @@ def HMem.writeNodes (sp : Spec V T) (S0 : Stream V T) (D : Dirty) (i : Nat) (m :
     | (m', none) => (m', acc.2)) (m, [])
 
 /-- One transaction of BergDB's writer with handles, from the memory m after
-the startup from S0 and the operations since: Evict.lean's `evictTrans`, word for
-word, through the handles: the view, the walk highest level first, the change,
-then the versions of the record from the objects (`writeNodes`), the data nodes
+the startup from S0 and the operations since: as Phys.lean's `lazyTrans`, through
+the handles (the view, the walk highest level first, the change), but with the
+versions of the record from the objects (`writeNodes`): the data nodes
 the change creates first (step 2), then the taken nodes (step 6); the rest is
 step's. T-CACHE for handles (`TC_handles`, HandleTheorems.lean) is to say that
 the record is the model's. -/
@@ -620,8 +630,8 @@ def handleTrans (sp : Spec V T) (al : Algo V T) (S0 : Stream V T) (db : DB V T) 
 
 /-! ## Eviction (02, 4.7) -/
 
-/-- The pinned objects, as Evict.lean's `Mem.pinned`: the canonical objects of
-the nodes of D, and the root's object. (Java pins more, which the model treats
+/-- The pinned objects: the canonical objects of the nodes of D, and the root's
+object. (Java pins more, which the model treats
 as atomic: the record being written, the newest written top node, the objects
 of an operation in progress.) -/
 def HMem.pinned (m : HMem V) (D : Dirty) (a : Nat) : Bool :=
@@ -665,8 +675,9 @@ def HMem.evict (m : HMem V) (D : Dirty) (n : Nat) : HMem V :=
 
 /-! ## Startup (02, 4.9) -/
 
-/-- The memory with handles that holds the objects of Evict.lean's memory m
-(after a startup, where every object is canonical and the node table's): each
+/-- The memory with handles that holds the objects of stage 1's memory m
+(Phys.lean; after a startup, where every object is canonical and the node
+table's): each
 object that the node table names keeps its address and gets a live handle, the
 table's for its node, with the same number as the address and no written
 position (nothing written by this process yet); a memory slot to such an object
@@ -688,10 +699,14 @@ def Mem.toH (m : Mem V) : HMem V :=
     table := m.table,
     s := m.s, root := m.root, nextObj := m.next, nextHandle := m.next }
 
-/-- Rule 4 with handles (02, 4.9; Evict.lean's `Mem.linkD`): each pointer of a
-pinned object (the canonical object of a node of D, or the root's object) that
-holds no handle, to a node that has a canonical object, takes that node's live
-handle, by node id; its reference stays. -/
+/-- Rule 4 with handles (02, 4.9; Java's `DbStarter.linkD`, by node id before
+bergdb 005-57): each pointer of a pinned object (the canonical object of a node
+of D, or the root's object) that holds no handle, to a node that has a canonical
+object, takes that node's live handle, by node id; its reference stays. Java
+links the pointers of D's nodes only; its virtual root holds its super root by
+reference (`TopDs`), for which the root's object stands. A virtual root is never
+written, and a written root with a pointee in D is in D itself, so linking it
+changes no record. -/
 def HMem.linkD (m : HMem V) (D : Dirty) : HMem V :=
   { m with objs := m.objs.map (fun p =>
       if !(p.2.canonical && (inD D p.2.node || p.1 == m.root)) then p else
@@ -703,9 +718,9 @@ def HMem.linkD (m : HMem V) (D : Dirty) : HMem V :=
 
 /-- Java's startup from S with handles (02, 4.9: "Unchanged reads. Rule 4 ...
 D's pointers resolved to their nodes' handles by id"): stage 1's lazy startup
-and the positions of its canonical objects, as in Evict.lean's `evictStartup`;
-the handles (`Mem.toH`); and rule 4 with handles for D (the D of the model's
-startup) and the root's object. -/
+and the positions of its canonical objects (`Mem.sectionPos`, Phys.lean); the
+handles (`Mem.toH`); and rule 4 with handles for D (the D of the model's startup)
+and the root's object. -/
 def handleStartup (sp : Spec V T) (S : Stream V T) : HMem V :=
   (((lazyStartup sp S).sectionPos S).toH).linkD (startup sp S).D
 
@@ -778,7 +793,7 @@ def handleStartupPos (sp : Spec V T) (S : Stream V T) : HMem V :=
 
 /-- An operation between transactions, with handles: a read at time t, or the
 eviction of handle n. An eviction that `HMem.evictable` does not allow does
-nothing. (Evict.lean's `CacheOp` has unswizzles and releases instead.) -/
+nothing. -/
 inductive HCacheOp where
   | read (t : Time)
   | evict (n : Nat)
@@ -789,8 +804,9 @@ def HMem.cacheOp (sp : Spec V T) (S0 S : Stream V T) (D : Dirty) (m : HMem V) : 
   | .read t => (m.read sp S0 S t).1
   | .evict n => m.evict D n
 
-/-- A run with handles, as Evict.lean's `runEvict`: R(0) and the startup with
-handles from it; each transaction by `handleTrans`, followed by its operations;
+/-- A run with handles, as Phys.lean's `runLazy` with operations between
+transactions: R(0) and the startup with handles from it; each transaction by
+`handleTrans`, followed by its operations;
 after a transaction marked true, a restart (the logical startup for ⟨P, D, S⟩,
 the startup with handles for the memory, and its stream for Rule R). -/
 def runHandles (sp : Spec V T) (al : Algo V T) (ts : List (T × Bool × List HCacheOp)) :

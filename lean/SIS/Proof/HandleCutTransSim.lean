@@ -3,11 +3,9 @@ Proofs about reclaim with handles (bergdb 005-62), part 4 of T12 over handles:
 one transaction of C, the run with handles after a restart from a cut stream,
 against one of E, after the restart from the whole stream at the same point:
 the same record, and memories that differ only in the root's object again
-(`handleTrans_sim`, as `evictTrans_sim` of CutLaterTrans.lean); and the reads
-and evictions between transactions (`ops_sim`).
+(`handleTrans_sim`).
 -/
 import SIS.Proof.HandleCutSim
-import SIS.Proof.CutLaterTrans
 
 set_option linter.unusedSectionVars false
 

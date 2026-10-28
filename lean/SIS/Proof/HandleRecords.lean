@@ -7,17 +7,17 @@ the physical writer with handles appends exactly the model's records and leaves
 the model's D (`TC_handles_records`), and the memory meets the invariants of
 `TC_handles` (`tc_handles`).
 
-The proof follows E3's for Evict.lean (SIS/Proof/Evict*.lean), part by part:
-SIS/Proof/HandleMem.lean (the memory's operations), HandleInv.lean (the
-invariant `HEInv`; eviction keeps it), HandleFollow.lean (the readers' follow:
-the fast path, the slow path's write-back, the live handle, the load),
-HandleRead.lean (reads and the operations between transactions keep the
-invariant; a read at the last time gives P there), HandleWalk.lean (the
-writer's promote and its walk), HandleApply.lean and HandleApplyInv.lean (the
-change, with A-COPY), HandleWrite.lean and HandleWrites.lean (the writer's two
-loops give the model's versions), HandleStepInv.lean (the invariant after the
-record), HandleTrans.lean (one transaction, and runs from a memory with the
-invariant), HandleInit.lean (the startup with handles from R(0) has it).
+The proof, part by part: SIS/Proof/HandleMem.lean (the memory's operations),
+HandleInv.lean (the invariant `HEInv`; eviction keeps it), HandleFollow.lean
+(the readers' follow: the fast path, the slow path's write-back, the live
+handle, the load), HandleRead.lean (reads and the operations between
+transactions keep the invariant; a read at the last time gives P there),
+HandleWalk.lean (the writer's promote and its walk), HandleApply.lean and
+HandleApplyInv.lean (the change, with A-COPY), HandleWrite.lean and
+HandleWrites.lean (the writer's two loops give the model's versions),
+HandleStepInv.lean (the invariant after the record), HandleTrans.lean (one
+transaction, and runs from a memory with the invariant), HandleInit.lean and
+HandleStart.lean (the startup with handles from R(0) has it).
 -/
 import SIS.Proof.HandleStart
 

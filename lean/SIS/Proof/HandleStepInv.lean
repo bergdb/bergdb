@@ -1,8 +1,7 @@
 /-
 Proofs about the physical layer with handles (bergdb item 009, step 2d), part
 10: after the record, the memory with handles has the invariant of the next
-state (INV-SLOT across D's changes), as SIS/Proof/EvictStepInv.lean shows for
-Evict.lean.
+state (INV-SLOT across D's changes).
 -/
 import SIS.Proof.HandleWrites
 

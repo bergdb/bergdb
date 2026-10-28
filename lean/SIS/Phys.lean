@@ -11,6 +11,11 @@ other node is read from the stream when a pointer to it is first followed
 specification: the theorems of PhysTheorems.lean say that what is read through
 this layer is P.
 
+The file also states the assumptions of the physical layer (`PhysRunOK`) and
+of stage 2, eviction (`EvictRunOK`: TREE, A6' and A-COPY), and the positions
+that Java's startup gives the canonical objects of its section
+(`Mem.sectionPos`), which the startup with handles uses (Handle.lean).
+
 What is left out: concurrency (readers beside the writer), access data, bytes,
 and the search of the TopDs skip list (the root's object stands for it: reads
 start at the root's live child at their time, as in the logical model).

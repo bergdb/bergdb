@@ -4,8 +4,8 @@ reads in the running process after a cut. A read through the handles at a time
 t from f on reads the stream only in a load, at the slow path's reference of a
 pointer whose pointee has no canonical object; it reads only versions that
 `ReadsPhys` covers, so a safe cut (`CutOK`'s part 2) changes nothing it reads.
-What it needs of the memory (`CInvH`, as `CInv` of SIS/Proof/CutPhys.lean is
-for Evict.lean's memory): a canonical object of a clean node has, for each
+What it needs of the memory (`CInvH`, as `CInv` was for the memory before
+handles, until bergdb 005-62): a canonical object of a clean node has, for each
 pointee, a pointer that holds a canonical object or whose slow path's
 reference is at or after the one that the node's latest version names; with a
 virtual root, the root's object holds the live handle of each root child of D
@@ -14,14 +14,45 @@ by themselves with handles: a node has at most one object in memory, held by
 its live handle, and every node of D has a canonical object, which every follow
 of a pointer to it reaches without a load.
 -/
+import SIS.Proof.CutStream
 import SIS.Proof.HandleRestart
-import SIS.Proof.CutPhys
 
 set_option linter.unusedSectionVars false
 
 namespace SIS
 
 variable {V T : Type} [DecidableEq V]
+
+/-! ## Logical facts -/
+
+section
+
+variable {sp : Spec V T} {db : DB V T} {S0 : Stream V T} {k : Nat} {m : Mem V}
+
+theorem foldl_eq_inv {α β : Type} (f g : α → β → α) (I : α → Prop) :
+    ∀ (l : List β), (∀ a z, z ∈ l → I a → f a z = g a z ∧ I (g a z)) →
+      ∀ a, I a → l.foldl f a = l.foldl g a ∧ I (l.foldl g a) := by
+  intro l
+  induction l with
+  | nil => intro _ a h; exact ⟨rfl, h⟩
+  | cons z l ih =>
+    intro hstep a ha
+    simp only [List.foldl_cons]
+    obtain ⟨e, h2⟩ := hstep a z List.mem_cons_self ha
+    rw [e]
+    exact ih (fun a' z' hz' ha' => hstep a' z' (List.mem_cons_of_mem z hz') ha') _ h2
+
+/-- A reference of the latest version of a node is at or before the latest
+version of the pointee. -/
+theorem Inv.ref_le_lv (hinv : Inv sp db k) {x : NodeId} {v : Version V} (hv : db.S.lv x = some v)
+    {y : NodeId} {r0 : Nat} (hr0 : v.ref? y = some r0) :
+    ∃ u, db.S.lv y = some u ∧ r0 ≤ u.recNo := by
+  obtain ⟨u0, hu0⟩ := hinv.ref_versionAt (hinv.lv_at hv) hr0
+  obtain ⟨r', u', h1, h2, hle⟩ := lv_recNo_ge hu0
+  rw [(hinv.version_node h1).2.1.symm] at hle
+  exact ⟨u', h2, hle⟩
+
+end
 
 /-! ## The invariant -/
 

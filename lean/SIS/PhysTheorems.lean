@@ -3,10 +3,10 @@ Self-indexed streams in Lean: the theorems of the physical layer (bergdb item
 001, stages 1 and 2). Trusted part: the statements. The proofs are in
 SIS/Proof/; the proofs here only connect them.
 -/
+import SIS.Proof.EvLogic
 import SIS.Theorems
 import SIS.Proof.Newer
 import SIS.Proof.PhysT2
-import SIS.Proof.EvictLogic
 
 namespace SIS
 

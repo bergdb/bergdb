@@ -3,8 +3,7 @@ Proofs about the physical layer with handles (bergdb item 009, step 2d), part
 11: one transaction of the physical writer with handles (`handleTrans`) appends
 the model's record and leaves the model's D, and the memory after it, and after
 any reads and evictions, has the invariant; and so for every transaction of a
-run with any reads and evictions and no restart, as SIS/Proof/EvictTrans.lean
-and SIS/Proof/EvictRun.lean show for Evict.lean.
+run with any reads and evictions and no restart.
 -/
 import SIS.Proof.HandleStepInv
 

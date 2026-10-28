@@ -1,7 +1,7 @@
 /-
 Proofs about the physical layer with handles (bergdb item 009, phase 4a), part
-1 of T-READ: the invariant for reads at earlier times (`HInvH`), as `HInv` of
-SIS/Proof/EvictHist.lean is for Evict.lean's memory. For every canonical
+1 of T-READ: the invariant for reads at earlier times (`HInvH`). For every
+canonical
 object, every time t at which its node is reachable, and every live child at t,
 its pointer holds a handle that holds a canonical object; or the slow path's
 reference (the reference after Rule R, raised to the held handle's written
@@ -12,8 +12,8 @@ of a canonical object gives its handle the object's position, its node's latest
 version, which is good for every time at which the node is reachable, since a
 canonical object that may be evicted is not of a node of D.
 -/
+import SIS.Proof.LogicFacts
 import SIS.Proof.HandleRecords
-import SIS.Proof.EvictHist
 
 set_option linter.unusedSectionVars false
 

@@ -12,12 +12,14 @@ SIS/Proof/HandlePin.lean); the last four in phase 4a. And rule 4 by position
 (`rule4_positions`, `rule4Pos_handles`, `runPos_handles`,
 SIS/Proof/HandleLinkPos.lean).
 
-They mirror PhysTheorems.lean's `TC_records` (T-CACHE), `TR_view` (T-READ),
-`TP_pins` (T-PIN), and `T2_cache` (T2-C) and `TR_view_restarts`, the forms
-with restarts, where Rule R on the fast path matters; over the memory with
-handles of SIS/Handle.lean, with the same assumptions: BergDB's bookkeeping
-(`javaTest`, marking), the Level 2 assumptions (`RunOK`), those of the physical
-layer (`PhysRunOK`) and those of stage 2 (`EvictRunOK`: TREE, A6' and A-COPY).
+They are stage 2's T-CACHE, T-READ, T-PIN and T2-C (bergdb item 001, WPs E3
+to E6; bergdb 001-08, sections 5.11 to 5.14), and the forms with restarts, where
+Rule R on the fast path matters, over the memory with handles of SIS/Handle.lean
+(stated over Evict.lean's memory before handles, as PhysTheorems.lean's
+`TC_records`, `TR_view`, `TP_pins`, `T2_cache` and `TR_view_restarts`, until
+bergdb 005-62). The assumptions: BergDB's bookkeeping (`javaTest`, marking), the
+Level 2 assumptions (`RunOK`), those of the physical layer (`PhysRunOK`) and
+those of stage 2 (`EvictRunOK`: TREE, A6' and A-COPY; SIS/Phys.lean).
 SIS/HandleExample.lean checks each of them by running, with the `Bool` twins
 of the invariants below.
 -/
@@ -47,7 +49,7 @@ def HTableOK (m : HMem V) : Prop :=
   (∀ a o y p n, m.obj? a = some o → o.ptr? y = some p → p.handle = some n →
     ∃ hd, m.handle? n = some hd ∧ hd.node = y)
 
-/-- INV-CAN with handles, in state db (TC_records' second and third parts): a
+/-- INV-CAN with handles, in state db (part of T-CACHE): a
 canonical object is its node's canonical object (the object of its live
 handle), holds its node's whole history, level and kind, and its position is its
 node's latest record; every node of D has a canonical object. -/
@@ -126,7 +128,7 @@ def HWrittenOK (db : DB V T) (m : HMem V) : Prop :=
 
 /-! ## The theorems to prove -/
 
-/-- T-CACHE with handles (bergdb item 009, 2c; `TC_records` over handles). For a
+/-- T-CACHE with handles (bergdb item 009, 2c; bergdb 001-08, 5.11). For a
 run of BergDB's algorithm (`javaTest`, with marking) that meets the assumptions,
 those of the physical layer and those of stage 2, from the startup with handles
 from R(0) (`handleStartup`), with any reads and evictions after each transaction
@@ -151,7 +153,7 @@ def TC_handles (sp : Spec V T) (al : Algo V T) : Prop :=
         HSlotOK sp (init sp).S db j m ∧ HRuleROK (init sp).S m ∧ HLiveWrittenOK m ∧
         HWrittenOK db m
 
-/-- T2-C with handles (`T2_cache` over handles): T-CACHE with restarts. In a
+/-- T2-C with handles (bergdb 001-08, 5.13): T-CACHE with restarts. In a
 run as in `TC_handles`, now with restarts after any transactions (after a
 transaction marked true: the logical startup for ⟨P, D, S⟩ and the startup with
 handles, `handleStartup`, for the memory), after every transaction and its
@@ -175,7 +177,7 @@ def T2_handles (sp : Spec V T) (al : Algo V T) : Prop :=
         HTableOK m ∧ HCanOK db m ∧ HSnapOK db m ∧ HSlotOK sp r.2.2 db j m ∧
         HRuleROK r.2.2 m ∧ HLiveWrittenOK m ∧ HWrittenOK db m
 
-/-- T-READ with handles (`TR_view` over handles). In a run as in `TC_handles`
+/-- T-READ with handles (bergdb 001-08, 5.12). In a run as in `TC_handles`
 (BergDB's algorithm with marking, the assumptions, the startup with handles from
 R(0), any reads and evictions, no restart), after any transaction and its
 operations, a read through the handles (`HMem.read`: the fast path, or resolve
@@ -195,7 +197,7 @@ def TR_handles (sp : Spec V T) (al : Algo V T) : Prop :=
       (m.read sp (init sp).S db.S t).2.map (·.1) = reachList sp db.P t ∧
         ∀ p ∈ (m.read sp (init sp).S db.S t).2, view sp db.P t p.1 = some p.2
 
-/-- T-READ with handles and restarts (`TR_view_restarts` over handles). In a
+/-- T-READ with handles and restarts (bergdb 001-08, 5.13). In a
 run as in `T2_handles` (with restarts after any transactions), after any
 transaction and its operations or its restart, a read through the handles (with
 Rule R from the stream of the last startup) at any time t up to the last record
@@ -213,17 +215,17 @@ def TR_handles_restarts (sp : Spec V T) (al : Algo V T) : Prop :=
       (m.read sp r.2.2 db.S t).2.map (·.1) = reachList sp db.P t ∧
         ∀ p ∈ (m.read sp r.2.2 db.S t).2, view sp db.P t p.1 = some p.2
 
-/-- T-PIN with handles (`TP_pins` over handles; 02, 2c: "every LIVE handle whose
+/-- T-PIN with handles (bergdb 001-08, 5.14; 02, 2c: "every LIVE handle whose
 object is not pinned and is written may be evicted, in one step"). In a run as
-in `TC_handles`, now with restarts after any transactions too (as `TP_pins`),
+in `TC_handles`, now with restarts after any transactions too,
 after any transaction and its operations or its restart: every live handle whose
 object is not pinned (`HMem.pinned`: the canonical objects of the nodes of D,
 and the root's object) may be evicted (`HMem.evictable`: its object has been
 written), and one eviction (`HCacheOp.evict`) removes the object from memory and
 kills the handle. The second part is by the definition of `HMem.evict`; the
 first, that every object outside the pinned set has been written, is what needs
-a proof (`HEInv.evictable_of_unpinned`, as `EInv.detachable_of_unpinned` for
-Evict.lean). With `TC_handles` and `TR_handles`, which hold for any operations,
+a proof (`HEInv.evictable_of_unpinned`). With `TC_handles` and `TR_handles`,
+which hold for any operations,
 the pinned set is all that must stay: no walk, and nothing about the pointers
 that hold a handle. Proved: `tp_handles` (SIS/Proof/HandlePin.lean). -/
 def TP_handles (sp : Spec V T) (al : Algo V T) : Prop :=

@@ -1,7 +1,7 @@
 /-
 Proofs about the physical layer with handles (bergdb item 009, phase 4a): T-PIN
-over handles (`tp_handles`, `TP_handles` of SIS/HandleTheorems.lean), as
-SIS/Proof/EvictPin.lean shows for Evict.lean. In every state of a run with
+over handles (`tp_handles`, `TP_handles` of SIS/HandleTheorems.lean). In every
+state of a run with
 handles and restarts, the object of a live handle outside the pinned set has a
 position: a canonical one is of a node not in D, and not the root, which is
 clean and reachable at some time, so it has been written and its latest version

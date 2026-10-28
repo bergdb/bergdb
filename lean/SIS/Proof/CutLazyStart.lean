@@ -1,10 +1,11 @@
 /-
-Proofs about reclaim, part 21 (bergdb item 001, WP R5, T12 with eviction): the
-Level 4 startup from a stream cut safely is the startup from the whole stream
-but for the root's object: with a virtual root, the root rebuilt from the root
-children that the cut stream still has.
+Proofs about reclaim (bergdb item 001, WP R5, T12 with eviction; bergdb 005-62):
+the lazy startup from a stream cut safely, with the positions of its section, is
+the one from the whole stream but for the root's object: with a virtual root,
+the root rebuilt from the root children that the cut stream still has
+(`sectionPos_sim`, for the startup with handles, SIS/Proof/HandleCutStart.lean).
 -/
-import SIS.Proof.CutLaterTrans
+import SIS.Proof.CutLazySim
 
 set_option linter.unusedSectionVars false
 

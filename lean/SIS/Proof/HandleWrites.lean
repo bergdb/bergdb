@@ -1,8 +1,7 @@
 /-
 Proofs about the physical layer with handles (bergdb item 009, step 2d), part 9:
 the physical writer's two loops (the new data nodes, then the taken nodes) write
-the model's record, and what they change, as SIS/Proof/EvictWrites.lean shows
-for Evict.lean.
+the model's record, and what they change.
 -/
 import SIS.Proof.HandleWrite
 

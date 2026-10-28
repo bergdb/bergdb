@@ -4,8 +4,8 @@ the memory's operations, one at a time: what the objects, the handles and the
 table are after setting an object, a handle, a table entry or a pointer's
 reference, after a resolve, a load, a promote and an eviction.
 -/
+import SIS.Proof.LogicFacts
 import SIS.HandleTheorems
-import SIS.Proof.EvictInv
 import SIS.Proof.Recon
 import SIS.Proof.PhysRun
 

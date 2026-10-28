@@ -1,9 +1,8 @@
 /-
 Proofs about the physical layer with handles (bergdb item 009, phase 4a), part
 2 of T-READ: one transaction of the physical writer with handles keeps the
-invariant for reads at earlier times (`HInvH`), as SIS/Proof/EvictHistTrans.lean
-shows for Evict.lean: the writer's walk (its follows and promotes), the change,
-the writes, and the step to the next state.
+invariant for reads at earlier times (`HInvH`): the writer's walk (its follows
+and promotes), the change, the writes, and the step to the next state.
 -/
 import SIS.Proof.HandleHist
 

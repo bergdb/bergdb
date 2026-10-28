@@ -2,10 +2,10 @@
 Proofs about the physical layer with handles (bergdb item 009, step 2d), part 6:
 the change applied to the canonical objects (`HMem.applyChange`): the new
 nodes' objects and live handles, and the shapes of the objects after the adds,
-with `HMem.newPtr`, as SIS/Proof/EvictApply.lean shows for Evict.lean.
+with `HMem.newPtr`.
 -/
+import SIS.Proof.LogicFacts
 import SIS.Proof.HandleWalk
-import SIS.Proof.EvictInit
 
 set_option linter.unusedSectionVars false
 

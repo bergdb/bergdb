@@ -4,7 +4,7 @@ the writer's walk. The writer's follow (the readers' follow, then the promote)
 of a live pointer of the canonical object of a current node leaves the child's
 canonical object, held by the child's live handle, which the pointer holds; and
 the writer reaches every node of its paths, highest level first
-(`HMem.reachOnPath`), as SIS/Proof/EvictPath.lean shows for Evict.lean.
+(`HMem.reachOnPath`).
 -/
 import SIS.Proof.HandleRead
 

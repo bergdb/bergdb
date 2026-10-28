@@ -1,9 +1,10 @@
 /-
 Self-indexed streams in Lean: Level 3's reclaim theorems with eviction over
-handles (bergdb 005-62): T9 (`T9_handles`) and T12 with eviction
-(`T12_handles`), stated over the run with handles of SIS/Handle.lean
-(`runHandles`, and `runHandlesCut` below), as ReclaimTheorems.lean states them
-over Evict.lean's runs (`T9_readCut`, `T12_evictCut`). Trusted part: the run
+handles: T9 (`T9_handles`) and T12 with eviction (`T12_handles`) of bergdb item
+001 (WPs R4 and R5; 001-07, 2.9 and 2.10), stated over the run with handles of
+SIS/Handle.lean (`runHandles`, and `runHandlesCut` below) since bergdb 005-62,
+and before over Evict.lean's runs (ReclaimTheorems.lean's `T9_readCut` and
+`T12_evictCut`). Trusted part: the run
 with cuts and the statements, as definitions of type `Prop`, not as theorems,
 so that nothing here is assumed or left unproved. The proofs are in
 SIS/Proof/.
@@ -20,11 +21,11 @@ namespace SIS
 
 variable {V T : Type} [DecidableEq V]
 
-/-- A run with handles, restarts and cuts (Reclaim.lean's `runEvictCut` over
-handles): as `runHandles`, but a transaction marked some c is followed by a
-restart from the stream cut at c: the logical startup, the startup with handles
-(`handleStartup`) for the memory, and the cut stream for Rule R. A transaction
-marked none is followed by its reads and evictions. -/
+/-- A run with handles, restarts and cuts (bergdb item 001, WP R5): as
+`runHandles`, but a transaction marked some c is followed by a restart from the
+stream cut at c: the logical startup, the startup with handles (`handleStartup`)
+for the memory, and the cut stream for Rule R. A transaction marked none is
+followed by its reads and evictions. -/
 def runHandlesCut (sp : Spec V T) (al : Algo V T) (ts : List (T × Option Nat × List HCacheOp)) :
     DB V T × HMem V × Stream V T :=
   ts.foldl (fun (acc : DB V T × HMem V × Stream V T) p =>
@@ -36,7 +37,7 @@ def runHandlesCut (sp : Spec V T) (al : Algo V T) (ts : List (T × Option Nat ×
     | none => (r.1, p.2.2.foldl (HMem.cacheOp sp acc.2.2 r.1.S r.1.D) r.2, acc.2.2))
     (init sp, handleStartup sp (init sp).S, (init sp).S)
 
-/-- T9 with handles (`T9_readCut` over handles). In a run with handles as in
+/-- T9 with handles (bergdb item 001, WP R4). In a run with handles as in
 `T2_handles` (any reads and evictions between transactions, restarts after any
 transactions), after any transaction j and its operations or its restart, with
 a safe cut (`CutOK`) at c in the run's state: a read through the handles
@@ -60,7 +61,7 @@ def T9_handles (sp : Spec V T) (al : Algo V T) : Prop :=
         (m.read sp r.2.2 (cutStream c db.S) t).2.map (·.1) = reachList sp db.P t ∧
         ∀ p ∈ (m.read sp r.2.2 (cutStream c db.S) t).2, view sp db.P t p.1 = some p.2
 
-/-- T12 with eviction over handles (`T12_evictCut` over handles). For the run
+/-- T12 with eviction over handles (bergdb item 001, WP R5). For the run
 with handles that restarts from safe cut streams (`runHandlesCut`), with the
 assumptions of `T2_handles` and of T12: any reads and evictions between
 transactions, the reads at times from the first available time on (a read

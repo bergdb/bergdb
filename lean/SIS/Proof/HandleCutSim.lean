@@ -4,7 +4,7 @@ the operations on a memory with handles with another root object
 (`HMem.withRoot`). Following a pointer of another object than the root's
 changes the root's object in neither memory; following one of the root's, for a
 pointee that both root objects have the same pointer for, sets it the same in
-both. CutLaterSim.lean does this for Evict.lean's memory.
+both, as SIS/Proof/CutLazySim.lean does for stage 1's memory.
 -/
 import SIS.Proof.HandleCutStart
 

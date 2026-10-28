@@ -5,7 +5,7 @@ the physical writer's loop writes the model's versions (`HMem.writeNodes` agains
 node's whole history; the positions of the canonical objects at the latest
 versions so far; and for each pointee that is not pinned, a pointer that holds
 its live handle with its canonical object, or whose record is its latest
-version, as SIS/Proof/EvictWrite.lean shows for Evict.lean. And what the loop
+version. And what the loop
 changes: the positions of the objects it writes, and their pointers as
 `resolvePointers` leaves them.
 -/

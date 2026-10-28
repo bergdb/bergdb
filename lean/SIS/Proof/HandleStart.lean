@@ -3,7 +3,7 @@ Proofs about the physical layer with handles (bergdb 005-62): the startup with
 handles from the stream after T(k) (`handleStartup`), proved over handles. Its
 memory before `Mem.toH` and rule 4 is stage 1's lazy startup with the positions
 of its section, which meets `StartMem` (`startMem_st`, from the rerun's
-invariant `RInv`, SIS/Proof/EvictRerun.lean): every object is canonical, its
+invariant `RInv`, SIS/Proof/PhysStart.lean): every object is canonical, its
 node's table entry, with its node's whole history and latest position; a memory
 slot names its pointee's canonical object, and a stream slot, after Rule R, its
 pointee's latest version; a slot for every pointee; every node of D has a
@@ -15,8 +15,8 @@ live handle, a stream slot of a pinned object to a node with a canonical object
 takes that node's live handle by rule 4, and every other stream slot becomes a
 pointer whose slow path's reference is its pointee's latest version.
 -/
+import SIS.Proof.PhysStart
 import SIS.Proof.HandleInit
-import SIS.Proof.EvictRestart
 
 set_option linter.unusedSectionVars false
 

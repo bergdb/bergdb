@@ -9,7 +9,7 @@ created after a root child of D are in D too. After a restart from a cut
 stream, startup reads such a node through its ancestors' versions in the
 startup section (Rule R); T12 needs that.
 -/
-import SIS.Proof.EvictLogic
+import SIS.Proof.EvLogic
 import SIS.Proof.Fresh
 import SIS.Proof.CutRecover
 

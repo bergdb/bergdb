@@ -1,13 +1,13 @@
 /-
-Proofs about reclaim, part 18 (bergdb item 001, WP R5, T12 with eviction): a
-memory with another object for the root (`Mem.withRoot`). After a restart from
-a cut stream, the Level 4 memory is the one after the restart from the whole
-stream but for the root's object: a virtual root rebuilt from the root children
-that the cut stream still has. The physical writer and the cache operations do
-the same on both while the two root objects agree from the first available
-time on (`RootRel`).
+Proofs about reclaim (bergdb item 001, WP R5; bergdb 005-62): stage 1's memory
+with another object for the root (`Mem.withRoot`) and two root objects that agree
+from the first available time on (`RootRel`), for the lazy startup from a stream
+cut safely (SIS/Proof/CutLazyStart.lean); a transaction's change on views whose
+roots differ only there (`exec_rootSwap`), and the writer's paths on structures
+that agree (`CutAgree.pathOf_eq`).
 -/
-import SIS.Proof.CutLaterRead
+import SIS.Proof.PhysStart
+import SIS.Proof.CutRuns
 
 set_option linter.unusedSectionVars false
 
@@ -15,19 +15,29 @@ namespace SIS
 
 variable {V T : Type} [DecidableEq V]
 
-/-! ## Another object for the root -/
+/-- The node table names objects of their node. -/
+def TableNode (m : Mem V) : Prop :=
+  ∀ y h, m.tableOf y = some h → ∃ o, m.obj? h = some o ∧ o.node = y
+
+/-- A memory slot for y names an object of node y. -/
+def SlotsNode (m : Mem V) : Prop :=
+  ∀ h o, m.obj? h = some o → ∀ y h', o.slot? y = some (Slot.mem h') →
+    ∃ o', m.obj? h' = some o' ∧ o'.node = y
 
 /-- m with object oc for the root. -/
 def Mem.withRoot (m : Mem V) (oc : Obj V) : Mem V :=
   { m with objs := m.objs.map (fun p => if p.1 == m.root then (m.root, oc) else p) }
 
-section Basic
+section
 
 variable {m : Mem V} {oc : Obj V}
 
 @[simp] theorem withRoot_table : (m.withRoot oc).table = m.table := rfl
+
 @[simp] theorem withRoot_s : (m.withRoot oc).s = m.s := rfl
+
 @[simp] theorem withRoot_root : (m.withRoot oc).root = m.root := rfl
+
 @[simp] theorem withRoot_next : (m.withRoot oc).next = m.next := rfl
 
 theorem withRoot_tableOf (y : NodeId) : (m.withRoot oc).tableOf y = m.tableOf y := rfl
@@ -99,10 +109,7 @@ theorem withRoot_canonicalOf {oe : Obj V} (he : m.obj? m.root = some oe) (hc : o
       simp [hc]
     · rw [withRoot_obj?_ne hh]
 
-end Basic
-
-
-/-! ## The two root objects -/
+end
 
 /-- The root's object after a restart from a cut stream (oc) and after the
 restart from the whole stream (oe), each with the transactions since: the same
@@ -167,9 +174,7 @@ theorem RootRel.setSlot {sp : Spec V T} {f : Time} {oc oe : Obj V} (hr : RootRel
       | some _ => exact hr.keysE hv z (by rw [h]; rfl)
     · exact hr.keysE hv z hz
 
-/-! ## The loader -/
-
-section Loader
+section
 
 variable {sp : Spec V T} {S0 S : Stream V T} {m : Mem V} {oc oe : Obj V}
 
@@ -193,8 +198,6 @@ theorem swz_withRoot {hp : Nat} (y : NodeId) (h1 : Nat) (hra : RootAt m oe) :
     | none => rfl
     | some op => exact withRoot_setObj_ne he _
 
-
-
 /-- The root's object after a swizzle, or after a promotion. -/
 theorem swz_obj?_root (m : Mem V) (hp : Nat) (y : NodeId) (h1 : Nat) :
     (m.swz hp y h1).obj? m.root =
@@ -211,10 +214,6 @@ theorem swz_obj?_root (m : Mem V) (hp : Nat) (y : NodeId) (h1 : Nat) :
 
 theorem swz_root' (m : Mem V) (hp : Nat) (y : NodeId) (h1 : Nat) : (m.swz hp y h1).root = m.root := by
   unfold Mem.swz; split <;> rfl
-
-
-
-/-! ## The root apart from the other objects -/
 
 /-- The root's object is of the root's node, at a handle below `next`; no
 memory slot for another node, no table entry of another node and no history
@@ -264,10 +263,11 @@ theorem find?_congr_of_mem {α : Type} {l : List α} {p q : α → Bool} (h : �
     simp only [List.find?_cons]
     rw [h a List.mem_cons_self, ih (fun b hb => h b (List.mem_cons_of_mem _ hb))]
 
-/-! ## The change -/
+end
 
-section Change
+section
 
+variable {sp : Spec V T} {S0 S : Stream V T} {m : Mem V} {oc oe : Obj V}
 variable {P P' : Struct V} {j : Time}
 
 theorem addNew_withRoot (hne : m.next ≠ m.root) (nn : NewNode) :
@@ -373,15 +373,9 @@ theorem RootRel.addRoot (hvl : VirtLiveOK sp) (hv : sp.virt = true) {f : Time} (
       obtain ⟨e', he', h'⟩ := this
       exact ⟨e', by simp [he'], h'⟩
 
-/-! ## The physical writer -/
+end
 
-end Change
-
-end Loader
-
-/-! ## The writer's paths on structures that agree -/
-
-section Paths
+section
 
 variable {sp : Spec V T} {f k : Time} {P P' : Struct V}
 
@@ -500,6 +494,32 @@ theorem CutAgree.live_eq (h : CutAgree sp f k P P') {t : Time} (h1 : f ≤ t) (h
     exact ((h.rootLive hv n n' hn hn').2 t h1 h2).symm
   · rw [h.nodes x t h1 h2 (fun hv' hx0 => hv ⟨hv', hx0⟩) hx]
 
-end Paths
+end
+
+section
+
+variable {sp : Spec V T} {m : Mem V}
+
+theorem RootSep.mk' (hroot : ∃ o, m.obj? m.root = some o ∧ o.node = root)
+    (hfr : ∀ h, m.next ≤ h → m.obj? h = none) (htbl : TableNode m) (hsn : SlotsNode m)
+    (hptr : ∀ h o, m.obj? h = some o → ∀ y ∈ pointees sp o.hist, y ≠ root) : RootSep sp m := by
+  obtain ⟨o0, ho0, hn0⟩ := hroot
+  refine ⟨fun o ho => by rw [ho0, Option.some.injEq] at ho; subst ho; exact hn0, ?_, ?_, ?_, hptr⟩
+  · apply Nat.lt_of_not_le
+    intro hle
+    rw [hfr _ hle] at ho0
+    cases ho0
+  · intro h o y h' ho hsl hy he
+    obtain ⟨o', ho', hn'⟩ := hsn h o ho y h' hsl
+    rw [he, ho0, Option.some.injEq] at ho'
+    subst ho'
+    exact hy (hn'.symm.trans hn0)
+  · intro y h ht hy he
+    obtain ⟨o', ho', hn'⟩ := htbl y h ht
+    rw [he, ho0, Option.some.injEq] at ho'
+    subst ho'
+    exact hy (hn'.symm.trans hn0)
+
+end
 
 end SIS

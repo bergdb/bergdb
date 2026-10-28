@@ -1,8 +1,8 @@
 /-
 Proofs about the physical layer with handles (bergdb item 009, phase 4a), part
 3 of T-READ: a read through the handles at any time t up to the last record
-gives P at t (`tr_handles`, `TR_handles` of SIS/HandleTheorems.lean), as
-SIS/Proof/EvictReadT.lean shows for Evict.lean. Every object the read reaches
+gives P at t (`tr_handles`, `TR_handles` of SIS/HandleTheorems.lean). Every
+object the read reaches
 is canonical, or the snapshot of a version good for t; the invariant for
 earlier times (`HInvH`) gives the pointers it follows: a follow of a pointer to
 a node with a canonical object reaches that object, and any other follow

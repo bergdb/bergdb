@@ -1,9 +1,8 @@
 /-
 Proofs about the physical layer with handles (bergdb item 009, step 2d), part 2:
-the invariant of the memory with handles (`HEInv`), as `EInv` of
-SIS/Proof/EvictInv.lean is for Evict.lean's memory: INV-CAN, INV-SNAP, INV-SLOT
-for the record rule, the live pointers of current canonical objects, and the
-table and the handles; and that an eviction keeps it.
+the invariant of the memory with handles (`HEInv`): INV-CAN, INV-SNAP,
+INV-SLOT for the record rule, the live pointers of current canonical objects,
+and the table and the handles; and that an eviction keeps it.
 -/
 import SIS.Proof.HandleMem
 

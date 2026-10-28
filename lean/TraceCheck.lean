@@ -18,7 +18,7 @@ Checks, per transaction i (R(0) included):
   C-A  the assumptions: SpecOK for R(0); StepOK (A2, A3, A4, fresh and distinct
        ids, data nodes) and A5 for every transaction; with a virtual root also
        VirtInit and VirtStep (R1 to R4, dead top nodes); and those of stage 2
-       (`EvictRunOK`, SIS/Evict.lean; since bergdb 005-04, before diagnostics):
+       (`EvictRunOK`, SIS/Phys.lean; since bergdb 005-04, before diagnostics):
        TREE and A6' after every transaction, R(0) included, and A-COPY for
        each change. A6' allows adoptions below the old parent, which A6, the
        stronger form, does not; they are counted, not a failure
@@ -30,8 +30,9 @@ Checks, per transaction i (R(0) included):
        touch after a restart follows the rule of SIS/Phys.lean (Rule R, the
        node table, the version read, cut back to the startup time)
   C-L4 a diagnostic, not part of the verdict (bergdb item 001, WP R8, change
-       3): the FIRST lines against the Level 4 loader (`Mem.follow4`,
-       SIS/Evict.lean): no snapshot from the node table
+       3): the FIRST lines against the Level 4 loader of the design before
+       handles (`Mem.follow4`, SIS/Evict.lean until bergdb 005-62): no
+       snapshot from the node table
   C-CUT with reclaim (bergdb item 001, WP R7): CutOK (SIS/Reclaim.lean) at every
        CUT line, in the model's state after its transaction, and the CUT's
        first available time is the record's; the physical cut (PHYSCUT) is at
@@ -39,8 +40,9 @@ Checks, per transaction i (R(0) included):
        a physical read may follow (ReadsPhys; before, the diagnostic C-CUT+),
        but for the versions of D that Rule A put back
   C-P  with run E's SLOT lines (bergdb item 001, WP J4): INV-SLOT on Java's
-       physical states (`slotFailures`; the model's `invSlotB`, which
-       `TC_records` proves): every slot of a resident canonical object of a
+       physical states (`slotFailures`; INV-SLOT of the design before handles,
+       SIS/EvictExample.lean's `invSlotB`, which `TC_records` proved, until
+       bergdb 005-62): every slot of a resident canonical object of a
        node current at i or in D names the pointee's latest version, or, for a
        pointee in D, is a memory slot to its canonical object or belongs to a
        node of D that got dirty no later; the object has a slot for every

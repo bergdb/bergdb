@@ -306,7 +306,7 @@ def closedFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (D : Dirty)
      | some n => (reachFrom sp P i x n).any (fun y => inD D y)
      | none => false))
 
-/-- A6', no adoption, the weaker form (`adoptAt` in SIS/Evict.lean, an assumption
+/-- A6', no adoption, the weaker form (`adoptAt` in SIS/Phys.lean, an assumption
 of stage 2; bergdb 001-08, 5.5), first: the pairs (x, y) of a node x
 reachable at i and a pointee y of x, live or dead, that is not a live child of x
 at i, is an index node reachable at i, and is not reachable from x at i through
@@ -334,7 +334,7 @@ def adoptFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time)
     | some n => !(SIS.Fast.reachFromG sp (fun z => m[z]?) i p.1 n).contains p.2
     | none => true)
 
-/-- TREE, one current parent (`treeAt` in SIS/Evict.lean, an assumption of stage 2;
+/-- TREE, one current parent (`treeAt` in SIS/Phys.lean, an assumption of stage 2;
 bergdb item 001, WP A4; sis-model.md, section 11): the nodes reachable at i, the
 root aside, that are the live child at i of no node or of more than one node
 reachable at i. -/
@@ -347,7 +347,7 @@ def treeFailures (sp : Spec BVal Nat) (P : Struct BVal) (i : Time) (rlList : Lis
     | none => m) {}
   xs.filter (fun y => y != root && counts.getD y 0 != 1)
 
-/-- A-COPY (bergdb item 001, WPs E2 and E3; `CopyStep` in SIS/Evict.lean): the
+/-- A-COPY (bergdb item 001, WPs E2 and E3; `CopyStep` in SIS/Phys.lean): the
 pointers of transaction i's new entries, as (node, pointee), that name a node the
 transaction does not create, not on the writer's paths, and not a pointee of a
 node of the paths (written, or a live child of a virtual root at i - 1). The
@@ -440,8 +440,9 @@ def firstFailures (sp : Spec BVal Nat) (S : Stream BVal Nat) (i s : Nat) (f : TF
   nFails ++ kFails
 
 /-- C-P, INV-SLOT on Java's physical states (bergdb item 001, WP J4; the
-model's `invSlotB` in SIS/EvictExample.lean, proved in `TC_records`): the SLOT
-lines of T(i), run E's resident canonical objects at the end of T(i). For an
+INV-SLOT of the design before handles, `invSlotB` of SIS/EvictExample.lean,
+proved in `TC_records`, until bergdb 005-62): the SLOT lines of T(i), run E's
+resident canonical objects at the end of T(i). For an
 object of a written node that is current at i (`now`) or in D: its slot for a
 pointee not in D names the pointee's latest version (`lvRec`); its slot for a
 pointee in D is a memory slot to the pointee's canonical object, or the
@@ -769,9 +770,10 @@ def handleFailures (sp : Spec BVal Nat) (g : NodeId → Option (Node BVal)) (now
     named "T-PIN" pinF ++ named "state" stateF, counts)
 
 /-- C-L4, a diagnostic (bergdb item 001, WP R8, change 3): a first touch follows
-the Level 4 loader (`Mem.follow4`, `SIS/Evict.lean`): the node table's canonical
-object, or exactly the version that the pointer names after Rule R, read and not
-entered in the node table; never a snapshot from the table, which stage 1's rule
+the Level 4 loader of the design before handles (`Mem.follow4`, SIS/Evict.lean
+until bergdb 005-62): the node table's canonical object, or exactly the version
+that the pointer names after Rule R, read and not entered in the node table;
+never a snapshot from the table, which stage 1's rule
 (C-L) allows. C-L checks the rest of the line. A cut back is C-L's alone: since
 R8's change 2, Java cuts back only while it reconstructs the database at
 startup, and the trace does not mark which first touches those are. -/
