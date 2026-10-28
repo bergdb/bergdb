@@ -421,7 +421,7 @@ only the Core Layer API, should not offered by this class." `getTrans` came
 on 2016-03-30, for `Connection.transactionInfo()`: the only widening of
 the data methods.
 
-Where BergDB stands (`java/src`, 2026-10-26):
+Where BergDB stands (`java/src`, 2026-10-28):
 
 * The Core Layer imports no upper layer: `core` imports `common`, `dag`,
   `nanotest`, `pub.util`, `storage` and `stream`. It builds alone, a
@@ -429,12 +429,11 @@ Where BergDB stands (`java/src`, 2026-10-26):
   of its seven packages imports only what its `package.html` allows
   (006-08, which moved `FileStreamPowerLossTester`, a tester that made
   `stream` import `core` and `storage`, to `core`).
-* `pub` imports `core.SyncLevel` (in `Database`, `Connection` and
-  `Transaction`): a core type in the public API. Its `package.html` says
-  `pub.util` only.
-* Stale `package.html` lists: `pubimp`'s leaves out `dag`, `storage` and
-  `pub.util` (`core`'s and `dag`'s were fixed the same day; all of them in
-  005-56).
+* `pub` imports no core type: `SyncLevel` is in `pub.util` since
+  2026-10-28 (005-56; until then a core type in the public API).
+* Every `package.html` in `java/src` lists its package's uses in one form,
+  and `java/deps.py` checks them (005-56). `pub` and `pubimp` use each
+  other, by design: `Factory`, and `Time`'s `TimeResolver`.
 * `getOneInternal` is public.
 * Db has 43 public methods.
 
