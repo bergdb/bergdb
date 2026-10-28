@@ -99,8 +99,7 @@ releases/next.md).
   (`IllegalStateException`, nothing opened), then `openDirs()` opens the
   database's directory and then the replicas', inside the `try` that
   closes the builder's streams when the start fails (005-32). A null name
-  or directory is refused at once, with `IllegalArgumentException`, as
-  before.
+  or directory is refused at once, as before.
 * Javadoc: `DatabaseBuilder.dir()` (`start()` opens the directory,
   creates it and reports its errors; 005-63's paragraph names `start()`),
   `replica()` (opened by `start()` after the database's own; "call dir()
@@ -109,7 +108,7 @@ releases/next.md).
   `Database.stop()`: `DatabaseBuilder.start()` throws.
   `releases/next.md`: 005-63's line names `start()`, and a line for this
   change.
-* Tests in `PubTester`: `testBuilderOpensInStart` (the first four cases
+* Tests in `PubTester`: `testBuilderOpensInStart` (the first three cases
   above) and `testReplicaBeforeDir`. With the `DatabaseBuilderImp` before
   this change both fail: `dir()` of a held directory throws where it now
   returns, and the dropped replica's directory stays held, so the start
