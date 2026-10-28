@@ -400,6 +400,9 @@ public class StorageManagerTester {
             at bergdb.nanotest.Assert.assertEquals(Assert.java:37)
             at bergdb.storage.StorageManagerTester.testAddReplica2(StorageManagerTester.java:359)
             ...
+        2026-10-28 (bergdb 005-67): reproduced with the BufferedStream of 2015, whose close()
+        could flush 0 bytes, which appended stale bytes of the ring buffer to the replica;
+        fixed 2026-10-21 (bergdb 005-14).
         */
         
         final MemoryStream m1 = new MemoryStream();
@@ -438,15 +441,45 @@ public class StorageManagerTester {
             Thread.sleep(10);
         }
         
-        manager.append(bytes, 0, 100);
-
+        // 2026-10-28 (bergdb 005-67): active means that the sync has appended the main's last
+        // bytes to the replica's buffer, which writes them to m2 a little later, and an append
+        // reaches the streams when their buffers are written. The test asserted 700 for both
+        // right after the append below, and failed when m2's write came after the poll that
+        // saw the replica active ("Expected 700, got 200", about one run in 12 on a busy
+        // machine) or a buffer wrote the 100 bytes before the assertions ("got 800"). Now it
+        // waits for the writes it asserts, by the storages' confirmed lengths.
+        waitForConfirmedLength(s, 700);
         Assert.assertEquals(700, m1.getLength());
         Assert.assertEquals(700, m2.getLength());
+        
+        synchronized (writeLock) {     // As StorageManager.append() requires.
+            manager.append(bytes, 0, 100);
+        }
+        waitForConfirmedLength(manager.getStorageInfo("main"), 800);
+        waitForConfirmedLength(s, 800);
+        Assert.assertEquals(800, m1.getLength());
+        Assert.assertEquals(800, m2.getLength());
         
         manager.close();
         
         Assert.assertEquals(800, m1.getLength());
         Assert.assertEquals(800, m2.getLength());
+    }
+    
+    /**
+     * Waits until the storage's confirmed length, the bytes written to its stream, is at
+     * least 'length'; fails after 10 s (bergdb 005-67).
+     */
+    private static void waitForConfirmedLength(StorageInfo s, long length)
+            throws InterruptedException {
+        long t0 = System.nanoTime();
+        while (s.getConfirmedLength() < length) {
+            if (System.nanoTime() - t0 > 10L * 1000 * 1000 * 1000) {
+                throw new AssertionError("Storage " + s.getName() + ": confirmed length "
+                        + s.getConfirmedLength() + " after 10 s, expected " + length + ".");
+            }
+            Thread.sleep(1);
+        }
     }
     
     @Nano
@@ -572,11 +605,17 @@ public class StorageManagerTester {
         Assert.assertEquals(700, m1.getLength());
         Assert.assertEquals(200, m2.getLength());
         
+        // The writer appends with the write lock, as StorageManager.append() requires (2026-10-28,
+        // bergdb 005-67): without it, an append made while the sync had the lock, after it read
+        // the lengths and before the replica was active, reached the main only, and
+        // syncStrong(750) below waited for ever.
         Thread writer = new Thread(new Runnable() {
             public void run() {
                 for (int i = 0; i < 5; i++) {
                     try {
-                        manager.append(bytes, 0, 10);
+                        synchronized (writeLock) {
+                            manager.append(bytes, 0, 10);
+                        }
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
