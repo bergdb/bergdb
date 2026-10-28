@@ -38,6 +38,7 @@ Open
 | [005-71](71-dbclock-read-time-after-start.md) | Fix | `DbClock` forgets `lastReadTime` at a start, so with a clock that has not moved, `currentTime()` before a restart changes the next transaction's time by one unit and the stream's bytes (P2). Found by 012-02's audit (C3), with a probe. Recommended: no code change, a note in P2 | open |
 | [005-72](72-file-layout-after-cut.md) | Decide | The files after reclaim's physical cut depend on timing (when the durable length reached the decision), while the bytes from the decided cut do not; a restart also changes the layout (not a bug). The C clone, without threads, cannot match Java's files after a cut. Recommended (012-02): compare the bytes from the decided cut with reclaim; a layout from the decided cut later, if wanted | open |
 | [005-73](73-db-api-small-findings.md) | Fix | Seven small findings in `Db`'s API from 012-03's mapping, none changing the bytes: `StartInfo.startupDistance` always −1, `getCachePutSize` a constant, the dirty fractions only decay and turn NaN, `setReclaimInternalFraction` accepts NaN, `close()` drops the last flush's `IOException`, `Endpoint`'s comment says non-inclusive, dead fields | open |
+| [005-74](74-parser-corrupt-sizes.md) | Fix | Java's record parser and corrupt sizes: `StoredTrans.Parser` takes a negative node size and moves back, so a crafted record loops until `OutOfMemoryError`; record and node sizes are allocated before their bytes are read. Found by 012-06's corrupt-input tests, with a probe; the C reader refuses both. Recommended: refuse small node sizes in `Parser.next` and check a size before allocating | open |
 
 
 Closed
@@ -378,6 +379,9 @@ Files
 * [73-db-api-small-findings.md](73-db-api-small-findings.md). 005-73,
   seven small findings in `Db`'s API (012-03): the findings, what to do;
   open.
+* [74-parser-corrupt-sizes.md](74-parser-corrupt-sizes.md). 005-74,
+  Java's record parser and corrupt sizes: the issue, the probe, the
+  options; open.
 
 Log
 ===
@@ -1410,3 +1414,8 @@ the files after a physical cut depend on timing (kind decide).
 2026-10-28. Added 005-73, by Claude (Opus 5.5, Claude Code), the
 conductor of 012, from 012-03's mapping of `Db`'s methods (its section
 6.8): seven small findings in the API, none changing the bytes; kind fix.
+
+2026-10-28. Added 005-74, by Claude (Opus 5.5, Claude Code), the
+conductor of 012, from 012-06's corrupt-input tests (its section 7, F2
+and F3): a negative node size makes `StoredTrans.Parser` loop until the
+heap is gone, and sizes are allocated before they are read; kind fix.
