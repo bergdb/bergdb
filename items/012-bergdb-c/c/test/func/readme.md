@@ -1,0 +1,1 @@
+Functional tests (bergdb 012-01, 6.4): C programs that use `include/bergdb.h` only, linked by `build.sh` into one program, `func`, which `before-commit.sh` runs in the test build and in the release build under `leaks`. The first come with the API's first functions.
