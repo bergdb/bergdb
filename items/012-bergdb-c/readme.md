@@ -223,3 +223,20 @@ with 012-09 part 1: `cross.sh full` with C's tools OK (279 workloads, 0
 differences; 1,437 s), C BEFORE COMMIT OK (51 s; 286 unit tests). Phase
 C runs: 012-09 proper (execute, Java's bytes) and 012-10 part 1
 (recovery, bounded startup's reads), side by side.
+
+2026-10-28, 22:16. 012-09 done: C creates databases and executes
+transactions with Java's bytes, and Java opens C's databases. `Trans` and
+its builder, `TransNodes`, the record serializer, `execute` with every
+check before the go point and P7 after it, the got-dirty lists, ids and
+vpos, `topPos`, the creation's 264 bytes, `setStartupDistance`, the
+implementation of `bergdb.h` (`db`, `api`) and `bergdb-run`, C's workload
+runner. In 012-09's clone `cross.sh full` with C's tools passed twice:
+C ran 104 workloads (`StreamDigest`'s Level 2 configurations in the plain
+and reads modes, the 100 MB one included, `CoreSame` plain, 84 random
+seeds, and new workloads for a decrease of the startup distance and a
+`now` that moves a time), all byte for byte equal to Java's, and Java's
+dump with its audit on started each of C's directories and equals C's;
+300 more seeds and a million keys gave 0 differences; no byte difference
+was met at any step. Workloads with restarts or reclaim still run on Java
+until 012-10 and 012-11. In the main tree, with the same `c/`: C BEFORE
+COMMIT OK (72 s; 304 unit tests, 4 functional tests).

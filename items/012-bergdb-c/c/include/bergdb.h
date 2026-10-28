@@ -245,7 +245,11 @@ typedef struct bergdb_read bergdb_read;     /* a read context (GetData, GetMany)
  * The text of the last error of a call on db or on one of its
  * transactions or read contexts; "" if that call succeeded. After
  * BERGDB_FAILED, the text includes the first failure's. The string is
- * db's: valid until the next call on db. db NULL gives "".
+ * db's: valid until the next call on db. db NULL gives "". The text, and
+ * that of bergdb_open's error buffer, begins with the simple name of the
+ * exception that Java throws in the same case and ": " ("DbException: The
+ * transaction is too large: ..."), so that a tool can print Java's name, as
+ * bergdb-run prints Run's "error=NAME" (012-09).
  */
 const char *bergdb_errmsg(const bergdb_db *db);
 

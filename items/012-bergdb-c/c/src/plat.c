@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/time.h>
@@ -140,6 +141,10 @@ int64_t plat_time_millis(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
     return (int64_t) tv.tv_sec * 1000 + (int64_t) tv.tv_usec / 1000;
+}
+
+void plat_random(uint8_t *buf, int32_t n) {
+    arc4random_buf(buf, (size_t) n);
 }
 
 /* The parent of 'path' into out: "." for a name without a slash, "/" for

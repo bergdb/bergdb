@@ -583,3 +583,18 @@ with its reason above.
   C BEFORE COMMIT OK (23 s). No question for Frans; findings F1 to F7 for
   the conductor (6.8). Next: the conductor checks and copies the files
   into the main tree; the implementing tasks follow 6.10.
+
+**Changes by the implementing tasks** (each with its reason):
+
+* 2026-10-28, 012-09 proper: `bergdb_errmsg`'s comment (and so
+  `bergdb_open`'s error buffer) promises that the text begins with the
+  simple name of Java's exception for the same case and `": "`. Reason:
+  `bergdb-run` must print `Run`'s `refused ... error=NAME` and
+  `start error=NAME` lines with Java's names, and a code alone does not
+  give them (`BERGDB_FORMAT` and `BERGDB_STATE` stand for several Java
+  exceptions each). No other change: `src/api.c` implements the header as
+  it is; what later tasks give is refused with the reason in the text (the
+  open of an existing database, 012-10; a retain duration other than
+  forever, 012-11), and `bergdb_debug_print` and `bergdb_debug_check` are
+  not defined yet (012-13).
+

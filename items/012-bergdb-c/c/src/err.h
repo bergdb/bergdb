@@ -27,8 +27,14 @@
  *
  * And of the writer (012-09):
  *
- *   DbException of a limit (DbClock's range, 005-18)       ERR_LIMIT
+ *   DbException of a limit (DbClock's range, 005-18; the
+ *   record limit, 005-17; the dirty nodes, 005-31; the top
+ *   node ordinals, 005-02)                                 ERR_LIMIT
  *   DirectoryInUseException (FileStream's lock, 005-63)    ERR_IN_USE
+ *   RerunException (the STM)                               ERR_RERUN
+ *   IllegalDbStateException, DbStoppingException           ERR_STATE
+ *   DbFailedException (005-01, 005-30)                     ERR_FAILED
+ *   DatabaseNotCreatedException (005-33)                   ERR_NOT_CREATED
  */
 #ifndef BERGDB_ERR_H
 #define BERGDB_ERR_H
@@ -45,8 +51,15 @@ enum err_code {
     ERR_LIMIT,          /* a limit of the database refuses a transaction (012-09: Java's
                            DbException, BERGDB_LIMIT): a clock time out of range, no
                            time left (005-18) */
-    ERR_IN_USE          /* another stream holds the directory's lock (012-09: Java's
+    ERR_IN_USE,         /* another stream holds the directory's lock (012-09: Java's
                            DirectoryInUseException, BERGDB_IN_USE) */
+    ERR_RERUN,          /* the STM refuses a transaction (012-09 proper: Java's
+                           RerunException, BERGDB_RERUN) */
+    ERR_STATE,          /* the database is not active (IllegalDbStateException,
+                           DbStoppingException; BERGDB_STATE) */
+    ERR_FAILED,         /* the database has failed (DbFailedException; BERGDB_FAILED) */
+    ERR_NOT_CREATED     /* an incomplete creation (DatabaseNotCreatedException, 005-33;
+                           BERGDB_NOT_CREATED) */
 };
 
 #define ERR_TEXT 240

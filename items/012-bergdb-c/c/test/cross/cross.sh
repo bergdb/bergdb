@@ -95,7 +95,10 @@ fail() {
 # Side B's jobs that Java runs although C has the tool: their OUT paths, one a line, in
 # $OUT/java-only.txt. C's bergdb-dump reads a database by a full replay of its stream
 # (012-08), which a database with reclaim's table or cut cannot have (012-11): the dumps
-# of the workloads that may reclaim stay Java's.
+# of the workloads that may reclaim stay Java's. C's bergdb-run (012-09) creates a
+# database and runs its transactions, but starts no existing one (012-10) and does not
+# reclaim (012-11): the runs of workloads with restarts or that may reclaim, the crash
+# variants' runs after (-segments 1) and side B's turns stay Java's (c_runs).
 ctool() {   # KIND: the C tool's path for a job kind, if side B has it
     [ -n "$CTOOLS" ] || return 1
     t=$CTOOLS/bergdb-$1
@@ -302,6 +305,10 @@ segments_of() { # WORKLOAD: the number of segments
     awk '$1 == "restart" { n++ } END { print n + 1 }' "$1"
 }
 
+c_runs() {      # WORKLOAD: 1 if C's bergdb-run runs it whole (one segment, no reclaim)
+    if [ "$(segments_of "$1")" = 1 ] && [ "$(retain_of "$1")" = 0 ]; then echo 1; else echo 0; fi
+}
+
 stream_sha() {  # DIR FROM: SHA-256 of the stream from position FROM to its end
     stream_bytes "$1" "$2" | shasum -a 256 | awk '{ print $1 }'
 }
@@ -313,7 +320,8 @@ case "$SET" in
 quick)
     SPECS="sd:l2-sd100:restarts:n=300 sd:l2-sd1000-node8:reads:n=300 sd:l3-node14:restarts:n=600
         sd:l2-idle-1:plain:n=200 coresame:n=1500 gen:1:n=300 gen:2:n=300 gen:3:n=300,retain=2
-        gen:4:n=200,maxnode=8,sd=100,restarts=3,retain=0"
+        gen:4:n=200,maxnode=8,sd=100,restarts=3,retain=0 coresame:n=1500:plain
+        gen:5:n=300,restarts=0,retain=0 gen:6:n=300,maxnode=8,sd=100,restarts=0,retain=0"
     CRASH="sd-l2-sd1000-node8-reads-n300 gen-4-n200-maxnode8-sd100-restarts3-retain0"
     CUTS=4; RANDCUTS=3
     CORRUPT="gen-4-n200-maxnode8-sd100-restarts3-retain0 sd-l2-sd1000-node8-reads-n300"
@@ -325,9 +333,13 @@ full)
              l2-idle-1 l2-idle-2 l2-default-100MB l3-every1 l3-node8 l3-node14 l3-node62; do
         for m in plain reads restarts; do SPECS="$SPECS sd:$c:$m"; done
     done
-    SPECS="$SPECS coresame"
+    SPECS="$SPECS coresame coresame:plain"
     s=1; while [ $s -le 200 ]; do SPECS="$SPECS gen:$s"; s=$((s + 1)); done
     s=201; while [ $s -le 240 ]; do SPECS="$SPECS gen:$s:maxnode=8,sd=100,retain=0"; s=$((s + 1)); done
+    # Without restarts and reclaim, for C's writer (012-09): random seeds, and small
+    # startup distances and node size 8, where index writes and splits come often.
+    s=241; while [ $s -le 280 ]; do SPECS="$SPECS gen:$s:restarts=0,retain=0"; s=$((s + 1)); done
+    s=281; while [ $s -le 300 ]; do SPECS="$SPECS gen:$s:maxnode=8,sd=100,restarts=0,retain=0"; s=$((s + 1)); done
     CRASH="sd-l2-sd100-plain sd-l2-sd1000-node8-plain sd-l2-sd10000-node14-restarts sd-l2-every1-plain
         gen-201-maxnode8-sd100-retain0 gen-202-maxnode8-sd100-retain0 gen-203-maxnode8-sd100-retain0
         gen-204-maxnode8-sd100-retain0"
@@ -357,6 +369,11 @@ if [ "$SET" != scale ]; then
     for f in "$HERE"/workloads/*.wl; do       # hand-written workloads
         [ -f "$f" ] && cp "$f" "$OUT/wl/" && echo "$OUT/wl/$(basename "$f")" >> "$OUT/export.txt"
     done
+    if [ "$SET" = full ]; then
+        for f in "$HERE"/workloads/full/*.wl; do  # hand-written, the full set's only
+            [ -f "$f" ] && cp "$f" "$OUT/wl/" && echo "$OUT/wl/$(basename "$f")" >> "$OUT/export.txt"
+        done
+    fi
 fi
 WORKLOADS=$(sed 's|.*/||; s|\.wl$||' "$OUT/export.txt")
 NW=$(echo $WORKLOADS | wc -w | tr -d ' ')
@@ -369,9 +386,16 @@ for w in $WORKLOADS; do
         mkdir -p "$OUT/$s/$w"
         echo "run $OUT/$s/$w/run.txt $OUT/wl/$w.wl $OUT/$s/$w/db" >> "$OUT/run-$s.jobs"
     done
+    if [ "$(c_runs "$OUT/wl/$w.wl")" = 0 ]; then
+        echo "$OUT/b/$w/run.txt" >> "$OUT/java-only.txt"
+    fi
 done
 both_sides "$OUT/run-a.jobs" "$OUT/run-b.jobs"
 say "runs done in $(( $(date +%s) - T0 )) s"
+if ctool run > /dev/null; then
+    nj=$(grep -c '/run\.txt$' "$OUT/java-only.txt" | tr -d ' ')
+    say "side B's runs: C's of $((NW - nj)), Java's of $nj (restarts or reclaim: 012-10, 012-11)"
+fi
 
 # ---- Views from the decided cut, scans and dumps ----
 : > "$OUT/scan-a.jobs"; : > "$OUT/scan-b.jobs"; : > "$OUT/dump-a.jobs"; : > "$OUT/dump-b.jobs"
@@ -404,7 +428,7 @@ both_sides "$OUT/scan-a.jobs" "$OUT/scan-b.jobs"
 both_sides "$OUT/dump-a.jobs" "$OUT/dump-b.jobs"
 say "scans and dumps done in $(( $(date +%s) - T0 )) s"
 if ctool dump > /dev/null; then
-    nj=$(wc -l < "$OUT/java-only.txt" | tr -d ' ')
+    nj=$(grep -c '/dump-by-b\.txt$' "$OUT/java-only.txt" | tr -d ' ')
     say "side B's dumps: C's of $(( $(wc -l < "$OUT/dump-b.jobs" | tr -d ' ') - nj )), Java's of $nj (workloads that may reclaim)"
 fi
 
@@ -523,6 +547,8 @@ if [ -n "$CRASH" ]; then
                 copy -R "$d/src" "$d/$s"
                 echo "dump $d/dump-$s.txt -maxnode $m $d/$s $d/scan.txt" >> "$OUT/crash-dump-$s.jobs"
                 echo "run $d/run-$s.txt -segments 1 $OUT/wl/$w.after.wl $d/$s" >> "$OUT/crash-run-$s.jobs"
+                # A start of a crashed database: Java's on side B until 012-10.
+                [ "$s" = b ] && echo "$d/run-$s.txt" >> "$OUT/java-only.txt"
             done
             NCUTS=$((NCUTS + 1))
         done
@@ -660,6 +686,8 @@ if [ -n "$TURNS" ]; then
         for w in $TURNS; do
             [ "$k" -lt "$(segments_of "$OUT/wl/$w.wl")" ] || continue
             echo "run $OUT/turns/$w/run-$k.txt -segments $k $OUT/wl/$w.wl $OUT/turns/$w/db" >> "$OUT/turns-$k.jobs"
+            # Side B's segments start an existing database: Java's until 012-10.
+            [ "$side" = b ] && echo "$OUT/turns/$w/run-$k.txt" >> "$OUT/java-only.txt"
         done
         side_jobs $side "$OUT/turns-$k.jobs"
         k=$((k + 1))

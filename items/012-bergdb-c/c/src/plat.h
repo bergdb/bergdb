@@ -59,6 +59,10 @@ int64_t plat_file_length(const char *path);
  * the system's real-time clock (gettimeofday). */
 int64_t plat_time_millis(void);
 
+/* n random bytes from the system's cryptographic generator (arc4random_buf),
+ * as Java's SecureRandom gives DatabaseId.createRandom its bytes (012-09). */
+void plat_random(uint8_t *buf, int32_t n);
+
 /* FileStream.createDirIfNeeded: if 'dir' exists, its parent is forced; else
  * it is made with its missing ancestors (mode 0777, less the umask), and
  * each new directory and its parent are forced, from the deepest up.

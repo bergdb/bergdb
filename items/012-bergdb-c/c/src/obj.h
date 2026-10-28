@@ -42,6 +42,7 @@ enum obj_kind {
 #define OBJ_DEAD      0x0040u   /* a handle's DEAD; LIVE without it */
 #define OBJ_REF       0x0080u   /* Handle.ref, the CLOCK bit */
 #define OBJ_LEFT      0x0100u   /* an index object that a handle let go of (handle.h) */
+#define OBJ_REPLACED  0x0200u   /* in Db.replacedInTrans during a transaction (db.h) */
 
 struct obj {
     int32_t refs;               /* the counted holders */

@@ -25,7 +25,10 @@ import bergdb.pub.util.Clock;
  *                        same draws); writes OUTDIR/sd-NAME-MODE[-nN].wl and, beside it,
  *                        .digest: StreamDigest's own DIGEST line for the same run, which
  *                        the stream that Run makes must match from the decided cut
- *   coresame[:n=N]       CoreSame's workload, N transactions (6000); OUTDIR/coresame[-nN].wl
+ *   coresame[:n=N][:plain]  CoreSame's workload, N transactions (6000); OUTDIR/coresame[-nN].wl;
+ *                        with plain, without its retain duration and its restarts (its
+ *                        syncs kept), for a writer that neither reclaims nor restarts
+ *                        (012-09): OUTDIR/coresame-plain[-nN].wl
  *   gen:SEED[:K=V,...]   Gen's workload; OUTDIR/gen-SEED[-K-V...].wl
  *   scale:KEYS           the scale workload: KEYS keys; OUTDIR/scale-KEYS.wl
  * Prints the path of each workload written.
@@ -42,10 +45,19 @@ public final class Export {
             case "sd":
                 f = streamDigest(dir, parts[1], parts[2], parts.length > 3 ? parts[3] : null);
                 break;
-            case "coresame":
-                f = coreSame(dir, parts.length > 1 ? Integer.parseInt(parts[1].substring(2))
-                        : 6000);
+            case "coresame": {
+                int n = 6000;
+                boolean plain = false;
+                for (int k = 1; k < parts.length; k++) {
+                    if (parts[k].equals("plain")) {
+                        plain = true;
+                    } else {
+                        n = Integer.parseInt(parts[k].substring(2));
+                    }
+                }
+                f = coreSame(dir, n, plain);
                 break;
+            }
             case "scale":
                 f = scale(dir, Long.parseLong(parts[1]));
                 break;
@@ -190,17 +202,22 @@ public final class Export {
      * CoreSame's workload, draw for draw: a test clock 10 ms a transaction, the test id, a
      * startup distance of 20,000, a cache budget of 64,000, a retain duration of 5 s, a
      * restart (sync, close, start) after every 1,000 transactions, and its read of the
-     * latest state at the end.
+     * latest state at the end. With plain (bergdb 012-09), the same draws without the retain
+     * duration and the restarts: no reclaim, one segment.
      */
-    static File coreSame(File dir, int n) throws IOException {
-        File f = new File(dir, n == 6000 ? "coresame.wl" : "coresame-n" + n + ".wl");
+    static File coreSame(File dir, int n, boolean plain) throws IOException {
+        String name = "coresame" + (plain ? "-plain" : "");
+        File f = new File(dir, n == 6000 ? name + ".wl" : name + "-n" + n + ".wl");
         PrintStream out = open(f);
         out.println("bergdb-workload 1");
-        out.println("# CoreSame (bergdb 006-08), " + n + " transactions (bergdb 012-05)");
+        out.println("# CoreSame (bergdb 006-08), " + n + " transactions (bergdb 012-05)"
+                + (plain ? ", without its retain duration and restarts (bergdb 012-09)" : ""));
         out.println("set maxnode 30");
         out.println("set sd 20000");
         out.println("set budget 64000");
-        out.println("set retain 50000000");
+        if (!plain) {
+            out.println("set retain 50000000");
+        }
         final long step = 100 * 1000;
         Random random = new Random(17);
         long time = 0;
@@ -222,7 +239,9 @@ public final class Export {
             out.println(line);
             if (i % 1000 == 0) {
                 out.println("sync");
-                out.println("restart");
+                if (!plain) {
+                    out.println("restart");
+                }
             }
         }
         out.println("check latest");

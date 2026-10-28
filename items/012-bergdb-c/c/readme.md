@@ -87,8 +87,8 @@ The modules so far, each ported from its Java class:
 | `spos` | `bergdb.dag.Spos` | `spos_`, `SPOS_` |
 | `mem` | the allocator (012-01, 4.5) | `mem_`, `MEM_` |
 | `err` | errors: a code, Java's exception's name, a text (012-06) | `err_`, `ERR_` |
-| `plat` | the platform: a directory's entries, files read (POSIX) | `plat_` |
-| `stream` | `MemoryStream`; `FileStream`'s directory, read-only so far | `stream_` |
+| `plat` | the platform: a directory's entries, files read and written, forces (`F_FULLFSYNC`), the lock, the time, random bytes (POSIX, macOS) | `plat_` |
+| `stream` | `MemoryStream`; `FileStream`'s directory, read-only or for writing (the lock, the files' names and sizes, the write buffer) | `stream_` |
 | `meta` | `bergdb.storage.MetaBlock` | `meta_`, `META_` |
 | `rstream` | `RecoverableStream`'s reading side, and recovery's plan | `rs_`, `RS_` |
 | `snode` | `NodeStream.bytesToNode`, the three `Stored*Node.parse` | `sn_`, `NODE_` |
@@ -107,13 +107,29 @@ The modules so far, each ported from its Java class:
 | `getmany` | `bergdb.dag.GetMany`: the chain, the stop conditions, `Dag.getMany` | `gm_`, `GM_` |
 | `mdb` | a database of Level 0 in memory: Db's creation, puts and deletes at a transaction's time, reads with `DbClock.lookupTime` | `mdb_` |
 | `replay` | Java's databases read by a full replay of the stream (Level 1): `Db.start`'s checks and reports, `getTrans` | `replay_` |
+| `clock` | `DbClock`, `SystemClock`, `CoreTestClock` (012-09, part 1) | `clk_`, `dbclock_` |
+| `keymod` | `KeyModSet`, the STM's conflict set (012-09, part 1) | `kms_` |
+| `transseq` | `TransSeq` (D and the paced take), `TransInfo`, `StartupPos` (012-09, part 1) | `ts_` |
+| `strmap` | `StringMap`, reclaim's table text (012-09, part 1) | `sm_` |
+| `trans` | `Trans` and `Trans.Builder`, with `Kv` (012-09) | `tr_` |
+| `transnodes` | `TransNodes`, a record's nodes (012-09) | `tns_` |
+| `serial` | `StoredTrans.Serializer` and `NodeStream.appendNodes`, the record writer (012-09) | `ser_` |
+| `db` | `Db`: the creation and its start, `execute` with its checks, the marking, `store` with the take, `setStartupDistance`, reads, sync, close (012-09; the start of an existing database is 012-10's) | `db_`, `DB_` |
+| `api` | `include/bergdb.h`'s functions, and the structs of its handles (012-09) | `api_` |
 
 The tools so far: `bergdb-scan PATH` (012-06), Java's `StreamScan` in C:
 the same text, "streamscan 1", for every stream (`tools/scan.c`);
 `bergdb-dump [-maxnode N] [-large] DIR SCAN` (012-08), Java's `Dump` in C:
 the same text, "bergdb-dump 1", by a full replay of the stream, for a
 database without reclaim's table or cut (exit status 3 for one that has
-them; `cross.sh` gives those to Java's dumper) (`tools/dump.c`).
+them; `cross.sh` gives those to Java's dumper) (`tools/dump.c`);
+`bergdb-run [-v] [-segments A[-B]] WORKLOAD DIR` (012-09), Java's `Run` in
+C through `bergdb.h` only: the same text, "bergdb-run 1", and Java's bytes,
+for a workload that creates its database and neither restarts nor reclaims
+(exit status 3, nothing written, for one that does: 012-10, 012-11;
+`cross.sh` gives those runs to Java) (`tools/run.c`). Part 1 of 012-09
+added `bergdb-takecheck`, `bergdb-reappend` and `bergdb-clockcheck`
+(`tools/readme.md`).
 
 
 # 3. Java's semantics in C

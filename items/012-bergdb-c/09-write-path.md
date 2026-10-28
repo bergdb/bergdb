@@ -2,10 +2,14 @@
 ============================
 
 Created 2026-10-27 by Claude (Opus 5.5, Claude Code), with 012-01, for
-Frans Lundberg. **Status: part 1 done** (started 2026-10-28 17:14, done
-18:07; section 6: the clocks, `KeyModSet`, the take, the append path,
-`StringMap`, each checked against Java); 012-09 proper not started (after
-012-07 and 012-08; 6.5). Approved with 012-01 by Frans's go (012-01, 9.1).
+Frans Lundberg. **Status: done** (part 1, 17:14 to 18:07: the clocks,
+`KeyModSet`, the take, the append path, `StringMap`, each checked against
+Java; part 2, 012-09 proper, 2026-10-28 20:55 to 22:14: `Trans`,
+`TransNodes`, the record writer, `Db`'s creation and `execute`,
+`setStartupDistance`, the API, `bergdb-run`; C writes Java's bytes on every
+workload of the sets without restarts and reclaim, and Java starts C's
+databases; sections 6.6 to 6.9). Approved with 012-01 by Frans's go
+(012-01, 9.1).
 Phase C (012-01, section 8). Effort: max. After: 012-08.
 
 
@@ -427,3 +431,289 @@ TransSeq and StartupPos, `ts_`; `strmap` StringMap, `sm_`), its tools
 new step `write` in its section 1 (`before-commit.sh`'s header says it),
 `plat`'s and `stream`'s rows (writes, forces, the lock, the time; the
 directory for writing), and `tools/readme.md`'s list.
+
+## 6.6 Part 2, 012-09 proper: decisions
+
+Taken in this task, as the plan left them to it (012-07's design and
+012-08's modules followed as they are):
+
+1. **Modules** (`c/readme.md`, section 2): `trans` (`Trans`,
+   `Trans.Builder`, `Kv`), `transnodes` (`TransNodes`), `serial`
+   (`StoredTrans.Serializer` as `ser_serialize`, and
+   `NodeStream.appendNodes` as `ser_append_nodes`), `db` (`Db`'s write
+   path, its reads, sync and close), `api` (`include/bergdb.h`'s
+   functions and its handles' structs); `tools/run.c` (`bergdb-run`).
+2. **Faithful line by line**: `executeInner`'s steps in Java's order, Db's
+   listeners where Java calls them (the Dag's own pointer listener first,
+   then the mark), `store`'s order (the take, `resolvePointers` before
+   `clean`, `handleStillDirtyNodes` pass after pass, the newest written
+   top node, the record, D), the serializer's `prepareToSerialize` before
+   any byte (also before the record limit's check, as Java). The warm-up is
+   ported (it reads, and counts the gets); the key and value
+   transformations run as `bergdb.h` says (a key transformation's write
+   hash is the new key's).
+3. **No node table yet** (`Cache3`; 012-10 and 012-12 make it). An index
+   object is held by the pointers that name it (its handle), by D's
+   got-dirty lists, the record, `TopDs` and the newest written top node
+   (012-07, 6.4.2). Without a start of index nodes and without eviction,
+   every pointer to an index node holds a handle whose object is
+   canonical: the writer's follower follows memory pointers only, and
+   `NodeCollection.resolvePointers` changes nothing (its "continue" for a
+   canonical object); a pointer that would need the table, a stream pointer
+   or a version, is refused as unsupported (a bug in 012-09 if it came).
+   Memory then follows Java's but for orphans (a node made and replaced in
+   one transaction, `lastVersion`'s temporaries), which C frees at the
+   next safe point and Java keeps in its table until eviction; no byte
+   depends on them.
+4. **The creation** as Java's: `writePrimordialTransaction` writes the root
+   key node and the first top node through a `TransNodes` of its own and
+   drops them; the start reads the record back (012-06's reader and
+   parser, 012-07's constructors of parsed nodes) as `DbStarter`'s
+   primordial startup, with recovery's steps 1 and 3 and
+   `getStartupPosFromLastTransaction`. Any other start, of a database with
+   records, is refused as unsupported (`UnsupportedOperationException`,
+   `BERGDB_ARG` with the reason): 012-10.
+5. **Memory** (012-01, 4.5): D's got-dirty entries count their nodes (the
+   take releases them as their nodes go to the record, which counts them
+   until `clear`); `replacedInTrans` counts its nodes too, with a flag,
+   `OBJ_REPLACED`, as its identity set; `opMarks` borrows (cleared at
+   `endOfOp`). Safe points after each put (after `endOfOp` and
+   `clearFast`, as 012-07, 6.4.4 says) and at the end of `execute`.
+   `x.transInfo` is cleared after `store`, where Java keeps an alias of
+   D's newest entry (no listener reads it between transactions).
+6. **Not yet, refused or left as Java's default**: reclaim (a retain
+   duration other than forever is refused at the open and by
+   `setRetainDuration`; 012-11), eviction (the cache size indicator is
+   kept; 012-12), `bergdb_debug_print` and `bergdb_debug_check` (012-13).
+7. **`bergdb-run`** uses `bergdb.h` only, as `Run` uses `Db`'s public API;
+   a check's pairs are digested by a stop function that answers
+   `BERGDB_CONTINUE`, so nothing is kept per pair; a workload that C cannot
+   run yet (a restart, `-segments` from 1, a directory with a stream, a
+   retain duration) exits 3 before anything is written. The names of
+   Java's exceptions in its `refused` and `start error` lines come from
+   `bergdb_errmsg`, whose text now begins with them (a header change,
+   noted in 03-c-api.md).
+8. **`cross.sh`**: side B's runs that C cannot do yet are Java's
+   (`java-only.txt`, as 012-08's dumps), and the report counts C's.
+9. **`getTrans` at a position inside a record** fails the database, as
+   Java's does (005-34: the bytes there are not a committed record, which
+   is corrupt data as for the other reads).
+
+## 6.7 Part 2, 012-09 proper: progress
+
+**Java's reference:** `main` at `b16e14e`, `java/` as of `fd8f513`.
+**Clone:** `/Users/f/fl/bench/012/09-proper/`, a clone of `bergdb` at
+`b16e14e` with 012-08's work merged (`b7ca7ef`, from 012-08's pause commit
+`417102c`); committed locally, the conductor copies the files in.
+
+* 20:55: started; read 012-01 (sections 1, 3, 4, 6), this plan with part
+  1's progress, 012-02 (sections 2 to 8, 15), 012-07 (section 6), 012-08,
+  012-05 (section 6), `c/readme.md`, and Java's `Db` (all), `Trans`,
+  `TransNodes`, `StoredTrans.Serializer`, `NodeStream.appendNodes`,
+  `DbHelper.handleStillDirtyNodes`, `NodeCollection`'s writer follower and
+  `resolvePointers`, `DbStarter`'s primordial startup, `Run`, `Workload`.
+  Next: `Trans` and its builder, `TransNodes`, the serializer, the
+  creation with its first byte check.
+* 21:16: the write path written, on part 1's modules and 012-07's and
+  012-08's: `trans` (`Trans` and `Trans.Builder`, with `Kv`), `transnodes`
+  (`TransNodes`), `serial` (`StoredTrans.Serializer` and
+  `NodeStream.appendNodes`), `db` (`Db`: the creation and the start that
+  reads it back as `DbStarter`'s primordial startup; `executeInner` with
+  `checkSize`, `warmup`, the top node ordinals, `checkDirtyNodes`,
+  `ExecuteData.begin`, the STM, the clock; `putKvs` with Db's listeners
+  and the marking, `endOfOp`, `endOfTrans`; `store` with the take,
+  `resolvePointers`, `handleStillDirtyNodes`, the newest written top node
+  and the record; `setStartupDistance`; the reads, `sync`, `close`), `api`
+  (`include/bergdb.h`'s functions on them) and `tools/run.c`
+  (`bergdb-run`, Java's `Run` through `bergdb.h` only). **The first byte
+  checks**: the creation alone (264 bytes) and single puts, deletes, an
+  empty transaction and a `now`, Java's bytes and `Run`'s text at the first
+  try (`7eb1518`).
+* 21:23: `cross.sh`: side B's runs that C cannot do yet are Java's
+  (`c_runs`: a workload with restarts or that may reclaim; the crash
+  variants' runs after, `-segments 1`; side B's turns), and the report
+  counts C's. New workloads that C runs: `coresame:plain` (Export: CoreSame's
+  draws without its retain duration and restarts), Gen seeds with
+  `restarts=0,retain=0` (quick: 5 and 6, the second with node size 8 and
+  startup distance 100; full: 241 to 280, and 281 to 300 with node size 8
+  and startup distance 100), `workloads/nowmoves.wl` (part 1's F4: a `now`
+  that moves the next transaction's time, without restarts),
+  `workloads/sdcut.wl` (F1: a decrease of the startup distance from
+  2,500,000 to 400,000 after 3 MB; 3 takes stop at a transaction that 2 sd
+  alone would take, the span term) and `workloads/full/sdcut-large.wl`
+  (the full set only: 5,000,000 to 400,000 after 12 MB; 9 such stops).
+  `cross.sh quick C=build/test`: **OK, 16 workloads, C's runs of 8, 0
+  differences** (runs, files, scans, dumps; Java dumps C's directories with
+  its audit on). `02ce175`. The full set started in a run-only clone
+  (`c/build/fullrun/`, a `git clone` of this clone at `02ce175`, ignored by
+  Git), so that the gate can run here meanwhile. Next: the unit and
+  functional tests, the allocation-failure runs, the gate.
+* 21:30: unit tests (`t_db.c`): Java's stream of `records.txt` (Java's
+  `Db`, node size 8, startup distance 100, 14 transactions), its
+  transactions read back from its records and executed again by C's `Db`,
+  gives Java's stream byte for byte, record by record, with the recount
+  after each; `Trans.Builder`'s order and its rules for a key given twice;
+  the refusals before the go point (005-17's `checkSize`, 005-31's
+  `checkDirtyNodes` under a lowered record limit, the STM, 005-18's clock),
+  each leaving the stream and the state as they were, and the bytes after
+  them those of a run without them; `setStartupDistance` (005-53: the
+  clamp, the value in force writes nothing, a refused dummy puts the
+  setting and the meta block's value back, a stopped database refuses);
+  the allocation failures in turn over Java's transactions (235 runs: 20
+  opens refused, 105 transactions refused with NOMEM and then executed
+  again with Java's bytes, 108 failed databases; every close frees all).
+  Functional tests (`test/func/f_api.c`, through `bergdb.h` only): a
+  database in a directory (times, a `now` that moves a time, a delete of a
+  missing key, `getOne` at times, `getMany` with a count, a prefix and
+  backward, `getTrans` and its refusals, `sync`, the stats, the files), the
+  start of an existing database refused until 012-10 with nothing written,
+  the API's refusals, a callback that calls its database (`BERGDB_STATE`),
+  `getTrans` inside a record failing the database as Java's (005-34), and
+  the allocation failures in turn through the options' counts (21 opens,
+  324 transactions refused, 611 failed databases). **C BEFORE COMMIT OK
+  (91 s; 292 unit tests, 3 functional tests), with `bergdb-run` as side B
+  of its quick cross set** (`8cb5706`, then `test/func` in the next
+  commit).
+* 21:34: `ser_serialize` split from `ser_append_nodes` (Java's
+  `Serializer.serialize` and `NodeStream.appendNodes`), and Java's
+  `StoredTrans` serializer tests that C has ported with `TransNodes`'
+  (`t_serial.c`, 11 tests: empty and full records parsed back, the corrupt
+  got-dirty count, the record limit, topPos of a top node in the record and
+  of an earlier one, the formats refused, the got-dirty ids and positions,
+  a delete node, the startup position, the keys, the same bytes from a
+  reused serializer, a record across a meta block). A hand check of
+  records larger than the write buffer: 12 MB and 25 MB values and values
+  of 199,900 to 200,001 bytes, `bergdb-run` against `Run`, the same text
+  and the same 40 stream files and lock file (37.6 MB).
+* 21:36: the first `cross.sh full C=` run (the run clone, tools of the test
+  build at `02ce175`): runs, files, scans and dumps of all 343 workloads
+  compared, **0 differences**; C ran 104 of them (side B's runs: C's of
+  104, Java's of 239, the workloads with restarts or reclaim): StreamDigest's
+  eight Level 2 configurations in their plain and reads modes (16, the
+  100 MB one included), `coresame-plain`, 84 Gen seeds (19 of 1 to 200, 5
+  of 201 to 240, 40 of 241 to 280, 20 of 281 to 300 with node size 8 and
+  startup distance 100), `nowmoves`, `sdcut` and `sdcut-large`; Java
+  dumped each of C's directories with its audit on, and its dumps equal
+  C's (C's dumper made 482 of side B's dumps). The crash variants, the
+  corrupt variants and the turns follow.
+* 21:44: beyond the sets, by hand (a script in the scratchpad: Export's
+  Gen workloads, Java's `Run` in one JVM against `bergdb-run` of the
+  release build, outputs and directories compared): 150 Gen seeds (1001 to
+  1150, `restarts=0,retain=0`, the rest drawn: node sizes, startup
+  distances, setters, large values, long keys, reads) **0 differences**
+  (425 MB on each side); 150 seeds (2001 to 2150) with node size 8 and
+  startup distance 100, **0 differences** (524 MB); and Export's scale
+  workload of 1,000,000 keys without its restart line (10,207
+  transactions, 98 MB), **the same output and files** (Java 5 s, C 4 s, on
+  a loaded machine).
+* 21:50: mutations of the write path, each against Java's outputs and
+  directories on five workloads (`coresame-plain-n1500`, Gen 1003, Gen 2001
+  with node size 8 and startup distance 100, `nowmoves`, `sdcut`; a script
+  in the scratchpad, the tree restored after each): Rule A's still-dirty
+  test in one pass (4 of 5 workloads differ), the replaced nodes left in
+  the got-dirty list (4), `prevPos` written as the new position (5), the
+  newest written top node never updated (5), ids from the record's
+  position + 3 (5), the super root not marked when accessed (5), an
+  operation's marks made dirty although it changed nothing (3). Unmutated:
+  all 5 the same.
+* 21:49: the first full run's end: `CROSS full OK: 343 workloads, 1262
+  crash cuts, 498 corrupt variants, 6 in turns, the planted difference at
+  1164 was found and explained; side B: .../build/fullrun/tools-c; 1514 s`
+  (crash variants: 1,262 cuts, 0 differences; corrupt variants: 498, 0
+  differences; runs in turns: 6 workloads, 0 differences). The gate on the
+  final code (`ed454d1`): **C BEFORE COMMIT OK (68 s)**: 304 unit tests and
+  4 functional tests, in both builds and under `leaks`; the quick cross
+  set with `bergdb-run` as side B (16 workloads, C's runs of 8); the
+  write checks. 21:50: the second and last full run started, with a copy
+  of the final test build's tools (`build/fullrun/tools-c2`, the run clone
+  at `ed454d1`).
+* 22:14: **the second and last full run, on the final tools** (`ed454d1`,
+  `build/fullrun/tools-c2`): `CROSS full OK: 343 workloads, 1262 crash cuts, 498 corrupt variants, 6 in turns, the planted difference at 1164 was found and explained; side B: build/fullrun/tools-c2; 1451 s` (compared in 624 s: 0 differences; crash variants: 1262 cuts, 0 differences, in 1146 s; corrupt variants: 498, 463 refused or with error lines, 0 differences, in 1418 s; runs in turns: 6 workloads, 0 differences, in 1441 s). **012-09 done**: section 6.8.
+
+## 6.8 Done when, as it holds
+
+Part 2's own, with part 1's (6.2) where it gave them:
+
+1. **Creation** (`db.c`: `write_primordial_transaction`, the start that
+   reads it back): Java's 264 bytes at the first try (21:16), and in every
+   workload of the sets that C runs (8 in quick, 104 in full) and in
+   `t_db.c` against Java's stream of `records.txt`.
+2. **`execute`** as `executeInner` (decision 2): `Trans.Builder.build`'s
+   order and rules (`db_trans_build`); the checks before the go point, each
+   with a test that it refuses and leaves the stream and the state as they
+   were, the later bytes those of a run without the refused transaction
+   (`db_refusals`: 005-17, 005-31, the STM, 005-18; `db_top_ordinals`:
+   005-02; `api_refusals` through `bergdb.h`); the warm-up; the puts with the
+   key and value transformations (`api_transformations`); `store()`; the
+   clock's end; the read set's record (a later read set conflicts).
+3. **The take** (part 1's `transseq`, called by `store` as Java's
+   `Db.store` calls `TransSeq.take`): which transactions, in what order,
+   within what budget; the startup position of each record; the got-dirty
+   lists (marking, `endOfOp`, `endOfTrans`, Rule A); ids and vpos;
+   `topPos` and the newest written top node: Java's bytes on every
+   workload below, and each of seven mutations of them found (21:50).
+4. **The record writer** (`serial.c`, `rstream`'s appends): Java's
+   `StoredTrans` serializer tests (`t_serial.c`), and Java's bytes with
+   records across meta blocks and larger than the write buffer.
+5. **`DbClock`**: part 1's, and `nowmoves.wl` (a `now` that moves a
+   transaction's time) in both sets, Java's times.
+6. **`setStartupDistance`** (005-53): `db_set_startup_distance` (the clamp,
+   the value in force writes nothing, a refused dummy puts the setting and
+   the meta block's value back, a stopped database refuses);
+   `sdcut.wl` and `sdcut-large.wl` (decreases with the take's span term)
+   and Gen's setters, Java's bytes.
+7. **Appends to the directory**: part 1's `stream`; the files' names,
+   sizes and bytes equal Java's in every workload that C runs, the 100 MB
+   one included.
+8. **The bytes.** Every workload of the sets without restarts and without
+   reclaim: StreamDigest's eight Level 2 configurations in their plain and
+   reads modes, CoreSame without its retain duration and restarts
+   (`coresame:plain`), Gen's random seeds (84 in full), `nowmoves`,
+   `sdcut`, `sdcut-large`: C's directory equals Java's, file by file and
+   byte by byte, and `bergdb-run` prints `Run`'s text (`cross.sh quick` and
+   `full` with `C=`, 0 differences). By hand: 300 more Gen seeds (150 with
+   node size 8 and startup distance 100) and a million keys, 0
+   differences.
+9. **C to Java.** `cross.sh` dumps each of C's directories with Java's
+   `Dump` with its audit on (`-audit 1`, assertions on): every start passed
+   and every dump equals C's own and Java's of Java's directory.
+
+The task's instructions: **the C gate prints C BEFORE COMMIT OK** (68 s)
+with `bergdb-run` in its quick cross set; **`cross.sh full` with `C=` the
+test build's tools passes** (21:49, 1,514 s, and the second run, on the
+final tools, in the last entry of 6.7).
+
+## 6.9 Notes for the conductor
+
+* **Files** (all in `items/012-bergdb-c/`): `09-write-path.md`,
+  `03-c-api.md` (its progress: the header's one change), `c/readme.md`,
+  `c/include/bergdb.h` (`bergdb_errmsg`'s comment), new `c/src/api.c`,
+  `api.h`, `db.c`, `db.h`, `serial.c`, `serial.h`, `trans.c`, `trans.h`,
+  `transnodes.c`, `transnodes.h`; changed `c/src/err.c`, `err.h` (four
+  codes), `obj.h` (`OBJ_REPLACED`), `plat.c`, `plat.h` (`plat_random`);
+  `c/tools/run.c`, `c/tools/readme.md`; `c/test/unit/t_db.c`,
+  `t_serial.c`, `main.c`; `c/test/func/f_api.c`; `c/test/cross/cross.sh`,
+  `c/test/cross/java/Export.java`, `c/test/cross/workloads/nowmoves.wl`,
+  `sdcut.wl`, `workloads/full/sdcut-large.wl`.
+* **012-05's text** (not this task's file): 05-cross-harness.md, 6.5's
+  table of the sets and Export's usage lack what this task added: Export's
+  `coresame[:n=N][:plain]`; quick's `coresame:n=1500:plain`,
+  `gen:5:n=300,restarts=0,retain=0`,
+  `gen:6:n=300,maxnode=8,sd=100,restarts=0,retain=0`; full's
+  `coresame:plain`, Gen 241 to 280 `restarts=0,retain=0` and 281 to 300
+  `maxnode=8,sd=100,restarts=0,retain=0`; `workloads/full/` for the full
+  set's own hand-written workloads; and that with `C=` side B's runs that C
+  cannot do yet are Java's and counted (decision 8).
+* **Part 1's findings F1 and F4** have their workloads now (`sdcut*.wl`,
+  `nowmoves.wl`). F4's Gen option (a `now` before `t -` lines) is not
+  added: Gen is 012-05's.
+* **Findings in Java**: none in part 2.
+* **For 012-10**: the start of an existing database goes where `db_open`
+  now refuses it; it needs the node table (decision 3), the writer's
+  `makeCanonical` and stream pointers in `follow`, Rule R in
+  `resolve_pointers`, and the rerun through Db's listeners (with no
+  running transaction they mark nothing, as Java's with `x.transInfo`
+  null). `bergdb-run` then drops its exit 3 for restarts, and `cross.sh`'s
+  `c_runs` its first condition.
+* Part 1's question for Frans (6.4) stands; part 2 adds none.
+
