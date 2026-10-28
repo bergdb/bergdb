@@ -29,8 +29,8 @@ public class Time {
     private final long units;
     
     private static final long UNITS_PER_MILLISECOND = Clock.UNITS_PER_SEC / 1000;
-    private static final long MIN_IN_UNITS = 0;
-    private static final long MAX_IN_UNITS = 72057594037927935L;
+    static final long MIN_IN_UNITS = 0;
+    static final long MAX_IN_UNITS = 72057594037927935L;
     
     /**
      * The maximum possible Time value.

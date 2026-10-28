@@ -18,6 +18,7 @@ import bergdb.dag.Pointer;
 import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
+import bergdb.pub.util.SyncLevel;
 import bergdb.storage.RecoverableStream;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;

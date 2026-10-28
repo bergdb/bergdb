@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
+import bergdb.pub.util.SyncLevel;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.FileStream;
 import bergdb.stream.FileStreamIo;

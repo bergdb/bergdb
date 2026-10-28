@@ -3,6 +3,7 @@ package bergdb.core;
 import java.util.*;
 
 import bergdb.dag.*;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.MemoryStream;
 
 /**

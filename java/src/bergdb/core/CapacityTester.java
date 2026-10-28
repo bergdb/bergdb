@@ -11,6 +11,7 @@ import bergdb.dag.GetMany;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.MemoryStream;
 
 /**

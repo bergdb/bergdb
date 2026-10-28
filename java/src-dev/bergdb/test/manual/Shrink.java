@@ -4,9 +4,9 @@ import java.io.File;
 import java.io.IOException;
 import bergdb.common.StringUtil;
 import bergdb.core.Db;
-import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.pub.util.Clock;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.FileStream;
 
 /**

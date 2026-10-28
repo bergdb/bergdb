@@ -8,7 +8,6 @@ import bergdb.core.Reclaim;
 import bergdb.core.StoredNode;
 import bergdb.core.StoredTrans;
 import bergdb.core.StoredValueNode;
-import bergdb.core.SyncLevel;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.dag.Spos;
@@ -23,6 +22,7 @@ import bergdb.pub.UseIndexBuilder;
 import bergdb.pub.UsePrimaryBuilder;
 import bergdb.pub.WBuilder;
 import bergdb.pub.util.LookupTimeNotAvailableException;
+import bergdb.pub.util.SyncLevel;
 
 /**
  * Implementation of Connection.

@@ -52,6 +52,13 @@ API changes
   the file stays, with a text for people. On a network file system a crashed
   client's lock may stay until the server notices (NFSv4: about 90 s), and
   where the file system supports no locks, a start fails.
+* **`SyncLevel` is in `bergdb.pub.util`** (bergdb 005-56, 2026-10-28). It
+  was `bergdb.core.SyncLevel`, a class of the Core Layer in the Pub API's
+  signatures (`Database.sync`, `Connection.sync` and `Transaction.sync`);
+  now it is `bergdb.pub.util.SyncLevel`, with the same constants, `NONE`,
+  `ORDINARY` and `STRONG`. Code that names it changes its import, from
+  `bergdb.core.SyncLevel` to `bergdb.pub.util.SyncLevel`, and code compiled
+  against 2026.1 that uses it must be compiled again.
 
 
 Format

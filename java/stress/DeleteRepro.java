@@ -1,5 +1,6 @@
 package bergdb.core;
 
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.MemoryStream;
 
 /**

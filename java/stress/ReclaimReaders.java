@@ -13,6 +13,7 @@ import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.LookupTimeNotAvailableException;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;
 import bergdb.stream.FileStream;

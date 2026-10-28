@@ -14,6 +14,7 @@ import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.DatabaseNotCreatedException;
+import bergdb.pub.util.SyncLevel;
 import bergdb.storage.MetaBlock;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;

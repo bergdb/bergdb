@@ -1,4 +1,4 @@
-package bergdb.core;
+package bergdb.pub.util;
 
 /**
  * The sync level for method Database.sync() and others determine

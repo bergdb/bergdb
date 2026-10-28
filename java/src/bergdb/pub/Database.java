@@ -2,13 +2,13 @@ package bergdb.pub;
 
 import java.io.IOException;
 
-import bergdb.core.SyncLevel;
+import bergdb.common.Util;
 import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.StorageInfo;
-import bergdb.pubimp.IndexManager;
+import bergdb.pub.util.SyncLevel;
 
 /**
  * <p>A representation of a started BergDB database.</p>
@@ -58,7 +58,7 @@ public interface Database extends AutoCloseable {
     /**
      * Name of the primary index.
      */
-    public static final String PRIMARY = IndexManager.PRIMARY;
+    public static final String PRIMARY = Util.identity("primary");
 
     /**
      * Returns information about the startup of this database.

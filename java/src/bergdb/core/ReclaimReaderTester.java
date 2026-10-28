@@ -20,6 +20,7 @@ import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.LookupTimeNotAvailableException;
+import bergdb.pub.util.SyncLevel;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;

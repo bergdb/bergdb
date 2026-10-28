@@ -1,7 +1,7 @@
 package bergdb.pub;
 
-import bergdb.core.SyncLevel;
 import bergdb.pub.util.DbException;
+import bergdb.pub.util.SyncLevel;
 
 /**
  * <p>Represents a database transaction that has been executed.

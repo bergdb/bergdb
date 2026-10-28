@@ -5,12 +5,12 @@ import java.util.Map;
 
 import bergdb.core.InternalDataException;
 import bergdb.core.RerunException;
-import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.pub.Action;
 import bergdb.pub.Time;
 import bergdb.pub.Transaction;
 import bergdb.pub.util.DbException;
+import bergdb.pub.util.SyncLevel;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 

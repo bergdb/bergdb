@@ -7,6 +7,7 @@ import bergdb.dag.Node;
 import bergdb.dag.NodeVisitor;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.MemoryStream;
 
 /**

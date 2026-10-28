@@ -8,10 +8,10 @@ import bergdb.core.Db;
 import bergdb.core.DbUtil;
 import bergdb.core.Jmx;
 import bergdb.core.KeyFactory;
-import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.FileStream;
 
 /**

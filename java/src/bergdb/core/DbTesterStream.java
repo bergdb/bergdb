@@ -15,6 +15,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.util.DbFailedException;
+import bergdb.pub.util.SyncLevel;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;

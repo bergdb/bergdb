@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.util.*;
 
 import bergdb.core.*;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;

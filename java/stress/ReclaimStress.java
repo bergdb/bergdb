@@ -4,6 +4,7 @@ import java.util.*;
 
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.LookupTimeNotAvailableException;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.CutStream;
 
 /**

@@ -10,6 +10,7 @@ import bergdb.dag.Node;
 import bergdb.dag.KeyNode;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.ReadOnlyStream;
 

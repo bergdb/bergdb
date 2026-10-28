@@ -21,6 +21,7 @@ import bergdb.common.NullProgressListener;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
+import bergdb.pub.util.SyncLevel;
 import bergdb.storage.StorageManager;
 import bergdb.stream.BadDirStateException;
 import bergdb.stream.FileStream;

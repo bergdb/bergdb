@@ -92,8 +92,9 @@ by the specified allowed package dependencies.</p>
 
 <p><b>package.html</b>. Use Javadoc package.html files to document the Java packages.
 Each package should specify its allowed package dependencies with a statement like:
-<code>Depends on: list-of-packages</code>. bergdb/jdepend.sh is used to verify that these
-rules are followed.</p>
+<code>Depends on: a, b, c.</code> (the packages in alphabetical order) or
+<code>Depends on: nothing.</code> java/deps.py, a step of java/before-commit.sh, checks
+that the packages in java/src follow these rules (bergdb 005-56).</p>
 
 <p><b>Global stuff / static</b>. Do not use JVM global stuff (non-final "static" fields). 
 It should be possible to run multiple BergDB instances in one JVM. 

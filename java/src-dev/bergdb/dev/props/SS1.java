@@ -1,9 +1,9 @@
 package bergdb.dev.props;
 
 import bergdb.core.Db;
-import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.Keys;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.MemoryStream;
 
 /**

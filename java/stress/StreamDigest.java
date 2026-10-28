@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 import bergdb.pub.util.Clock;
+import bergdb.pub.util.SyncLevel;
 import bergdb.storage.RecoverableStream;
 import bergdb.stream.MemoryStream;
 

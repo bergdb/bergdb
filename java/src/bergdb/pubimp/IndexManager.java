@@ -17,6 +17,7 @@ import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pub.Database;
 import bergdb.pub.IndexAlreadyExistsException;
 import bergdb.pub.Kv;
 import bergdb.pub.NoSuchIndexException;
@@ -50,7 +51,7 @@ public class IndexManager {
     /**
      * Name of the primary index.
      */
-    public static final String PRIMARY = Util.identity("primary");
+    public static final String PRIMARY = Database.PRIMARY;
     
     /** 
      * ikey for where to store index entries, constant database directory. 

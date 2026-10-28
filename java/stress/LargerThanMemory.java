@@ -10,6 +10,7 @@ import bergdb.dag.Kvt;
 import bergdb.dag.Node;
 import bergdb.dag.OpData;
 import bergdb.dag.PointerFollower;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.FileStream;
 
 /**

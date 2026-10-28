@@ -6,7 +6,6 @@ import java.util.Random;
 import bergdb.common.StringUtil;
 import bergdb.core.Db;
 import bergdb.core.DbUtil;
-import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
@@ -14,6 +13,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.SimpleTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.MemoryStream;
 
 /**

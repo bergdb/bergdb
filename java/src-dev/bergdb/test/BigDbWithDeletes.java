@@ -5,6 +5,7 @@ import bergdb.core.*;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.MemoryStream;
 
 /**

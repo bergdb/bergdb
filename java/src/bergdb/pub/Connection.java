@@ -1,9 +1,9 @@
 package bergdb.pub;
 
-import bergdb.core.SyncLevel;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
+import bergdb.pub.util.SyncLevel;
 
 /**
  * A connection to a Database is used to put and get data stored in the

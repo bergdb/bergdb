@@ -7,10 +7,10 @@ import bergdb.core.Db;
 import bergdb.core.CoreTestClock;
 import bergdb.core.KeyFactory;
 import bergdb.core.NodeStream;
-import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.MemoryStream;
 
 

@@ -6,6 +6,7 @@ import java.util.*;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.dag.Node;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.FileStream;
 
 /**

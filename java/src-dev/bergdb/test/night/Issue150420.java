@@ -13,7 +13,6 @@ import bergdb.core.DagComparison;
 import bergdb.core.Db;
 import bergdb.core.DbScan;
 import bergdb.core.KvComparison;
-import bergdb.core.SyncLevel;
 import bergdb.core.TestClock;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
@@ -22,6 +21,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.SimpleTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
+import bergdb.pub.util.SyncLevel;
 import bergdb.pubimp.PubKeys;
 import bergdb.stream.MemoryStream;
 

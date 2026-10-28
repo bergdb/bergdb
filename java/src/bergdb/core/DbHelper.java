@@ -20,6 +20,7 @@ import bergdb.nanotest.Nano;
 import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
+import bergdb.pub.util.SyncLevel;
 import bergdb.storage.MetaBlock;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StorageManager;

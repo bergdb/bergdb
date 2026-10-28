@@ -3,11 +3,11 @@ package bergdb.test;
 import bergdb.core.Db;
 import bergdb.core.DbBuilder;
 import bergdb.core.KeyFactory;
-import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.nanotest.SimpleTestEnvironment;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.MemoryStream;
 
 

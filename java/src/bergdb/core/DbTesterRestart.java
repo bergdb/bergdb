@@ -22,6 +22,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.DbException;
+import bergdb.pub.util.SyncLevel;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.VersioningStreamException;

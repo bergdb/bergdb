@@ -15,7 +15,7 @@ import bergdb.core.DbBuilder;
 import bergdb.core.DbStoppingException;
 import bergdb.core.DbTester;
 import bergdb.core.DbTesterFailure;
-import bergdb.core.SyncLevel;
+import bergdb.dag.Klong;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
@@ -37,6 +37,7 @@ import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
+import bergdb.pub.util.SyncLevel;
 import bergdb.storage.BufferedStream;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
@@ -66,6 +67,22 @@ public class PubTester {
         String value = c.get("/key1", String.class);
         Assert.assertEquals("value1", value);
         db.stop();
+    }
+    
+    /**
+     * bergdb 005-56: Time's range, which TestClock checks against, is the core's
+     * (Klong.MIN_TIME to MAX_TIME); pub has its own copy, as pub does not use dag.
+     */
+    @Nano
+    public static void testTimeRangeIsTheCores() {
+        Assert.assertEquals(Klong.MAX_TIME, Time.MAX.units());
+        Assert.assertEquals(Klong.MIN_TIME, Time.units(Klong.MIN_TIME).units());
+        try {
+            Time.units(Klong.MIN_TIME - 1);
+            throw new AssertionError("expected IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // Expected.
+        }
     }
     
     /**

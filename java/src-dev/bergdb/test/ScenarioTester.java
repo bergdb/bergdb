@@ -5,11 +5,11 @@ import bergdb.core.CoreTestClock;
 import bergdb.core.DagComparison;
 import bergdb.core.Db;
 import bergdb.core.DbUtil;
-import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.MemoryStream;
 
 /**

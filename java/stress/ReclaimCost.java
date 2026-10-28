@@ -6,6 +6,7 @@ import java.util.*;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.pub.util.Clock;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;
 import bergdb.stream.FileStream;

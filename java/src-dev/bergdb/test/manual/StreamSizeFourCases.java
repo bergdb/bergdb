@@ -4,8 +4,8 @@ import java.io.PrintStream;
 
 import bergdb.core.Db;
 import bergdb.core.KeyFactory;
-import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.MemoryStream;
 
 /**

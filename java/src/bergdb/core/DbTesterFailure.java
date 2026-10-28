@@ -16,6 +16,7 @@ import bergdb.nanotest.Nano;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.pub.util.StorageInfo;
+import bergdb.pub.util.SyncLevel;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;

@@ -36,6 +36,7 @@ import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.pub.util.StorageInfo;
+import bergdb.pub.util.SyncLevel;
 import bergdb.storage.BadMagicBytes;
 import bergdb.storage.BufferedStream;
 import bergdb.storage.MetaBlock;

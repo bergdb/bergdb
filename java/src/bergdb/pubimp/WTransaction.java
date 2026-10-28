@@ -2,10 +2,10 @@ package bergdb.pubimp;
 
 import bergdb.common.Bug;
 import bergdb.core.RerunException;
-import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.pub.Time;
 import bergdb.pub.Transaction;
+import bergdb.pub.util.SyncLevel;
 
 public class WTransaction implements Transaction {
     private ConnectionImp connection;

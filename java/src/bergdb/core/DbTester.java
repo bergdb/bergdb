@@ -27,6 +27,7 @@ import bergdb.pub.util.Clock;
 import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
+import bergdb.pub.util.SyncLevel;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;

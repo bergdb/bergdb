@@ -21,6 +21,7 @@ import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
+import bergdb.pub.util.SyncLevel;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
