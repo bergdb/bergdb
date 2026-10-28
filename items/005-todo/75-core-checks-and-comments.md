@@ -5,7 +5,7 @@ Status: open. Kind: fix. Created 2026-10-28.
 
 Registered by Claude (Opus 5.5, Claude Code), the conductor of 012, from
 the C clone's work (012-02's review, its section 15; 012-04; 012-06,
-section 7), as 012-01's decision D5 says. None changes a byte or a
+section 7; 012-09), as 012-01's decision D5 says. None changes a byte or a
 result; each misleads a reader of the code, and the C clone was written
 from that code.
 
@@ -23,6 +23,12 @@ The findings
   stream shorter than a meta block that is not an incomplete creation is
   refused by the first read of a meta block before it (012-02, finding
   21).
+* **`RecoverableStream.append` checks the size field at the buffer's
+  start, not at `offset`** (`Bytes.bytesToIntLE(buffer, 0)`,
+  `RecoverableStream.java:490` at `fd8f513`; 012-09, section 6.3, F2).
+  Every caller passes offset 0, so nothing differs today; with another
+  offset the check refuses a right record and passes a wrong one (a probe
+  showed both). Added 2026-10-28, 22:20.
 * **`Klong`'s comments**: the format comment gives a TIME klong 58 bits,
   the code 56 (`MAX_TIME` 0x00ffffffffffffff; 012-04); `getIntType`'s
   comment says it returns 0, 1 or 2, and it returns 3 for a delete bitmap
