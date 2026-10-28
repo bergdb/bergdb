@@ -1938,6 +1938,15 @@ theorem SlotsND.linkCanonical {m : Mem V} (hm : SlotsND m) : SlotsND m.linkCanon
       · rfl
     · rfl
 
+/-- The positions of the section keep the slots. -/
+theorem SlotsND.sectionPos {m : Mem V} (hm : SlotsND m) (S : Stream V T) : SlotsND (m.sectionPos S) := by
+  apply hm.map_objs rfl
+  intro p _
+  dsimp only
+  split
+  · rfl
+  · split <;> rfl
+
 theorem slotsND_lazyStartup (sp : Spec V T) (S : Stream V T) : SlotsND (lazyStartup sp S) := by
   rw [lazyStartup_eq]
   have h0 : SlotsND (lazyBase sp S) := ((slotsND_lazySec sp S).lazyRoot sp S).linkCanonical

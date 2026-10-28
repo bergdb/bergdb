@@ -23,6 +23,8 @@ import SIS.Proof.HandleCutStart
 import SIS.Proof.HandleCutSim
 import SIS.Proof.HandleCutTransSim
 import SIS.Proof.HandleCutT12
+import SIS.Proof.HandleCutSkip
+import SIS.Proof.HandleCutPos
 import SIS.ReclaimExample
 import SIS.HandleReclaimExample
 import SIS.Bound
