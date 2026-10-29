@@ -85,6 +85,10 @@ enum err_code plat_fd_length(int fd, int64_t *length, struct err *e);
  * the system has none. ERR_IO. */
 enum err_code plat_force(int fd, struct err *e);
 
+/* Deletes the file at path (File.delete, for FileStream's cut, 012-11).
+ * ERR_IO, "IOException", if it cannot be deleted. */
+enum err_code plat_unlink(const char *path, struct err *e);
+
 /* Forces a directory, its entries (FileStreamIo.forceDirectory): opened
  * for reading and forced as a file. ERR_IO. */
 enum err_code plat_force_dir(const char *dir, struct err *e);

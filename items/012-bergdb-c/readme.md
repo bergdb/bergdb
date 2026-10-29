@@ -258,3 +258,20 @@ restart, equal files. `cross.sh full` with C's tools OK in 012-10's clone
 C's dumps of the two 10M-key databases equal Java's. In the main tree:
 C BEFORE COMMIT OK (98 s; 329 unit tests, 7 functional tests). Java's
 `DbStarter.validateTransactions` checks nothing: 005-75.
+
+2026-10-29, 02:14. 012-11 done: reclaim in C (Level 3), with restarts, in
+turns and after crashes. `reclaim` ports Java's `Reclaim` line for line
+(iterations, steps, the touch, the step reserve, the table in
+`StringMap`'s order, safe positions, the cut and the first available
+time and position); the front files deleted as `FileStream` and
+`CutStream` do; the table restored at a start; reads before the cut
+refused; Java's maintenance follower. `cross.sh` compares workloads with
+reclaim from the decided cut (012-01, 3.2 point 8; 005-72's option A),
+and C now runs every workload of the sets. `cross.sh full` with C's tools
+OK in 012-11's clone: 446 workloads (181 with reclaim, all run by C),
+1,368 crash cuts, 498 corrupt variants, 6 in turns, 0 differences (1,751
+s); by hand 416 more workloads, with and without restarts; every one of
+11 mutations of reclaim found. In the main tree: C BEFORE COMMIT OK (130
+s; 340 unit tests, 9 functional tests). For Frans (11-reclaim.md, 6.4):
+with no thread, C frees a decided cut's disk only at the next sync or
+open; recommended, C forces the stream itself when a cut is pending.

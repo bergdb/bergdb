@@ -111,6 +111,7 @@ The modules so far, each ported from its Java class:
 | `keymod` | `KeyModSet`, the STM's conflict set (012-09, part 1) | `kms_` |
 | `transseq` | `TransSeq` (D and the paced take), `TransInfo`, `StartupPos` (012-09, part 1) | `ts_` |
 | `strmap` | `StringMap`, reclaim's table text (012-09, part 1) | `sm_` |
+| `reclaim` | `Reclaim`: iterations, steps, the table, the cut (012-11, part 1) | `rc_` |
 | `trans` | `Trans` and `Trans.Builder`, with `Kv` (012-09) | `tr_` |
 | `transnodes` | `TransNodes`, a record's nodes (012-09) | `tns_` |
 | `serial` | `StoredTrans.Serializer` and `NodeStream.appendNodes`, the record writer (012-09) | `ser_` |
@@ -134,9 +135,8 @@ for one that has them; `cross.sh` gives those to Java's dumper); and
 rebuilt and read (012-10, 6.2) (`tools/dump.c`);
 `bergdb-run [-v] [-segments A[-B]] WORKLOAD DIR` (012-09, 012-10), Java's
 `Run` in C through `bergdb.h` only: the same text, "bergdb-run 1", and
-Java's bytes, for a workload that does not reclaim, restarts included
-(exit status 3, nothing written, for one that reclaims: 012-11; `cross.sh`
-gives those runs to Java) (`tools/run.c`). Part 1 of 012-09
+Java's bytes, for every workload, restarts and reclaim included (012-11)
+(`tools/run.c`). Part 1 of 012-09
 added `bergdb-takecheck`, `bergdb-reappend` and `bergdb-clockcheck`
 (`tools/readme.md`).
 

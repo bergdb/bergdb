@@ -329,3 +329,11 @@ enum err_code plat_lock(const char *dir, const char *name, const char *text, int
     *fd = f;
     return ERR_OK;
 }
+
+enum err_code plat_unlink(const char *path, struct err *e) {
+    if (unlink(path) != 0) {
+        return err_set(e, ERR_IO, "IOException", "Could not delete file %s: %s", path,
+                strerror(errno));
+    }
+    return ERR_OK;
+}

@@ -134,6 +134,42 @@ enum err_code tr_put_segments(struct tr_builder *b, const int64_t *key, int32_t 
     return ERR_OK;
 }
 
+enum err_code tr_put_segments_tf(struct tr_builder *b, const int64_t *key, int32_t key_n,
+        const uint8_t *value, int32_t value_len, const struct tr_transform *tf, struct err *e) {
+    assert(value != NULL);
+    enum err_code rc = tr_put_segments(b, key, key_n, value, value_len, e);
+    if (rc == ERR_OK && tf != NULL) {
+        b->kvs[b->nkvs - 1].has_tf = true;
+        b->kvs[b->nkvs - 1].tf = *tf;
+    }
+    return rc;
+}
+
+/* The read set's room for one more hash. */
+static bool read_room(struct tr_builder *b) {
+    if (b->nread == b->read_cap) {
+        int32_t ncap = b->read_cap == 0 ? 8 : b->read_cap * 2;
+        int64_t *n = mem_realloc(b->mem, b->read_hashes,
+                (size_t) b->read_cap * sizeof *b->read_hashes,
+                (size_t) ncap * sizeof *b->read_hashes, MEM_CALLER);
+        if (n == NULL) {
+            return false;
+        }
+        b->read_hashes = n;
+        b->read_cap = ncap;
+    }
+    return true;
+}
+
+enum err_code tr_key_read_segments(struct tr_builder *b, const int64_t *key, int32_t key_n,
+        struct err *e) {
+    if (!read_room(b)) {
+        return nomem(e);
+    }
+    b->read_hashes[b->nread++] = keys_hash(key, key_n);    /* Builder.keyRead(long[]) */
+    return ERR_OK;
+}
+
 enum err_code tr_key_read(struct tr_builder *b, const uint8_t *key, int32_t key_len,
         struct err *e) {
     if (b->nread == b->read_cap) {

@@ -678,3 +678,74 @@ enum err_code stream_truncate_memory(struct stream *s, int64_t length, struct er
     s->length = length;
     return ERR_OK;
 }
+
+/* AppendOnlyStream.pretruncate, reclaim's cut (012-11; 012-02, 9.4). */
+enum err_code stream_pretruncate(struct stream *s, int64_t pos, struct err *e) {
+    if (s->kind == STREAM_MEMORY) {
+        /* CutStream.pretruncate: the first position is pos exactly. */
+        if (pos < s->first) {
+            return err_set(e, ERR_IO, "IOException", "CutStream: pretruncate to %lld, below "
+                    "the earlier cut at %lld", (long long) pos, (long long) s->first);
+        }
+        if (pos > s->length) {
+            return err_set(e, ERR_IO, "IOException", "CutStream: pretruncate to %lld, beyond "
+                    "the length %lld", (long long) pos, (long long) s->length);
+        }
+        s->first = pos;
+        return ERR_OK;
+    }
+    if (!s->rw) {
+        return err_set(e, ERR_ARG, "IllegalArgumentException", "a stream opened read-only");
+    }
+    /* FileStream.pretruncate: checkIOException, then the files that end
+     * before pos taken off the stream. */
+    if (s->failed) {
+        return err_set(e, ERR_IO, "IOException", "The stream has failed: no more writes.");
+    }
+    const int64_t len = s->fileLength;
+    if (pos > len) {
+        return err_set(e, ERR_ARG, "IllegalArgumentException", "pos > length of stream (%lld).",
+                (long long) len);
+    }
+    int32_t index = -1;      /* index of last file to delete */
+    for (int32_t i = 0; i < s->nfiles; i++) {
+        if (s->files[i].start + s->files[i].length - 1 < pos) {
+            index = i;
+        } else {
+            break;
+        }
+    }
+    if (index == -1) {
+        return ERR_OK;
+    }
+    const int32_t newSize = s->nfiles - (index + 1);
+    if (newSize < 1) {
+        return fail(s, err_set(e, ERR_IO, "Bug", "Unexpected newSize: %d. pos=%lld, "
+                "kfiles.length=%d", (int) newSize, (long long) pos, (int) s->nfiles));
+    }
+    /* Taken off at once (the first position moves now); then deleted, oldest
+     * first, the directory forced after each (runCuts, 005-46), in this call:
+     * C has no thread of its own. A failure stops the deletes; the files left
+     * are before the first position, and the next start cuts again. */
+    enum err_code rc = ERR_OK;
+    for (int32_t i = 0; i <= index; i++) {
+        plat_close(s->files[i].fd);
+        if (rc == ERR_OK) {
+            char path[4096];
+            snprintf(path, sizeof path, "%s/%014lld%s", s->dir,
+                    (long long) (s->files[i].start / STREAM_INDEX_UNIT), SUFFIX);
+            rc = plat_unlink(path, e);
+            if (rc == ERR_OK) {
+                rc = plat_force_dir(s->dir, e);
+            }
+        }
+    }
+    memmove(s->files, s->files + (index + 1), (size_t) newSize * sizeof *s->files);
+    s->nfiles = newSize;
+    s->unforced = s->unforced > index + 1 ? s->unforced - (index + 1) : 0;
+    s->first = s->files[0].start;
+    if (rc != ERR_OK) {
+        return fail(s, rc);
+    }
+    return ERR_OK;
+}

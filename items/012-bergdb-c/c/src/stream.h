@@ -10,7 +10,7 @@
  * (stream_open_dir_rw, 012-09: as Java's FileStream opens it, the
  * directory made if missing, its lock taken, the first file made in an
  * empty one, and the last file taking appends up to the capacity that the
- * open rule gives it). Cuts (pretruncate) come in 012-11. The memory
+ * open rule gives it). Reclaim's cut is stream_pretruncate (012-11). The memory
  * stream takes raw appends and a pretruncate, which the tests use to make
  * streams.
  *
@@ -193,6 +193,25 @@ enum err_code stream_append_memory(struct stream *s, const uint8_t *buf, int64_t
  * 1,000,000 (its arrays' size), if that is after it. ERR_ARG for a negative
  * position or one past the length. */
 enum err_code stream_pretruncate_memory(struct stream *s, int64_t pos, struct err *e);
+
+/* AppendOnlyStream.pretruncate(pos), reclaim's cut (012-11; 012-02, 9.4):
+ *
+ *   - a directory opened for writing: FileStream.pretruncate, every file
+ *     that ends before pos (start + length - 1 < pos) taken off the stream,
+ *     the first position then the first remaining file's start (a file
+ *     boundary at or before pos); then, as FileStream's cut thread does,
+ *     each file deleted, oldest first, and the directory forced after each
+ *     (005-46), here in the call. ERR_IO (the stream's failure, as Java's)
+ *     if a delete or a force fails, or the stream failed before;
+ *     ERR_ARG if pos is past the bytes in the files;
+ *   - a memory stream: CutStream.pretruncate, the first position pos
+ *     exactly, so that a read just below the cut is refused (Java's
+ *     MemoryStream drops whole 1 MB arrays); ERR_IO, "IOException", for a
+ *     pos below the earlier cut or past the length.
+ *
+ * Reads below the first position give ERR_NOT_AVAILABLE,
+ * "ReadBelowFirstPosException" (stream_read). */
+enum err_code stream_pretruncate(struct stream *s, int64_t pos, struct err *e);
 
 /* Cuts a memory stream to 'length' bytes (MemoryStream.truncate), for
  * crash tests. ERR_ARG if it is longer than the stream. */

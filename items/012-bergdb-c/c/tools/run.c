@@ -12,9 +12,8 @@
  *                segment A-1 left
  * Exit status: 0; 1 if a transaction or a call was refused, or the start
  * failed; 2 on a bad workload or usage; 3 for a workload that C cannot run
- * yet (nothing is written then): a retain duration other than forever
- * (reclaim, 012-11). Restarts, -segments from 1 and a DIR that has a stream
- * start the existing database (012-10).
+ * yet: none since 012-11 (restarts, -segments from 1 and a DIR that has a
+ * stream start the existing database, 012-10; reclaim, 012-11).
  *
  * The workload is parsed whole first, as Java's Workload.read: a bad line
  * anywhere exits 2 before anything runs. The names of Java's exceptions
@@ -1027,13 +1026,6 @@ int main(int argc, char **argv) {
     wl_path = argv[i];
     struct workload w;
     wl_read(argv[i], &w);
-
-    /* What C cannot run yet (exit 3, nothing written): reclaim (012-11). */
-    if (w.reclaims) {
-        fprintf(stderr, "bergdb-run: %s: a retain duration other than forever (reclaim): "
-                "not before bergdb 012-11\n", argv[i]);
-        return 3;
-    }
 
     static char outbuf[1 << 16];
     setvbuf(stdout, outbuf, _IOFBF, sizeof outbuf);

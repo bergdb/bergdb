@@ -2,7 +2,8 @@
 # The cross tests of BergDB C with BergDB Java (bergdb 012-05; 012-01, section
 # 6.4). For each workload of a set, side A and side B run it, each in a
 # directory of its own, and the script compares: the files (names, sizes,
-# bytes; with reclaim from the cut that reclaim decided), the runners'
+# bytes; for a workload that reclaims, the stream's bytes from the cut that reclaim
+# decided, as each run makes its physical cut at its own moments), the runners'
 # outputs, the scans (each directory by both scanners) and the dumps (each
 # directory by both dumpers). Then the crash variants (copies of finished
 # directories cut at chosen and random positions, recovered and dumped by
@@ -94,11 +95,10 @@ fail() {
 
 # Side B's jobs that Java runs although C has the tool: their OUT paths, one a line, in
 # $OUT/java-only.txt. C's bergdb-dump opens a database by the bounded startup (012-10;
-# by a full replay of its stream with -replay, 012-08), without reclaim's table or cut
-# (012-11): the dumps of the workloads that may reclaim stay Java's. C's bergdb-run
-# (012-09) creates a database and runs its transactions, and starts an existing one
-# (012-10), but does not reclaim (012-11): the runs of workloads that may reclaim stay
-# Java's (c_runs).
+# by a full replay of its stream with -replay, 012-08), reclaim's table and cut
+# included (012-11). C's bergdb-run (012-09) creates a database and runs its
+# transactions, starts an existing one (012-10), and reclaims (012-11): every run is
+# C's (c_runs).
 ctool() {   # KIND: the C tool's path for a job kind, if side B has it
     [ -n "$CTOOLS" ] || return 1
     t=$CTOOLS/bergdb-$1
@@ -169,6 +169,31 @@ make_view() {   # DIR CUT VIEW: hard links to DIR's files from the file that hol
     done
     for f in "$1"/*; do
         case "$f" in *.bergdb) ;; *) [ -f "$f" ] && ln "$f" "$3/$(basename "$f")" ;; esac
+    done
+}
+
+split_view() {  # DIR FROM LAYOUT VIEW: DIR's stream bytes from FROM, a multiple of 200,000,
+                # in files cut where LAYOUT's files begin (a workload that reclaims: each
+                # side's physical cut and so its files differ, 012-02, C2; the views of both
+                # sides then hold the same files when their bytes are the same)
+    rm -rf "$4"
+    mkdir -p "$4"
+    stream_bytes "$1" "$2" > "$4/.stream"
+    { echo "$2"; files_of "$3" | awk -v f="$2" '$1 > f { print $1 }'; } | {
+        prev=""
+        while read -r start; do
+            [ -n "$prev" ] && dd if="$4/.stream" of="$4/$(printf '%014d' $((prev / 100000))).bergdb" \
+                bs=100000 skip=$(( (prev - $2) / 100000 )) count=$(( (start - prev) / 100000 )) 2>/dev/null
+            prev=$start
+        done
+        dd if="$4/.stream" of="$4/$(printf '%014d' $((prev / 100000))).bergdb" \
+            bs=100000 skip=$(( (prev - $2) / 100000 )) 2>/dev/null
+    }
+    rm -f "$4/.stream"
+    # A piece past the stream's end (a shorter stream) is no file.
+    for f in "$4"/*.bergdb; do [ -s "$f" ] || rm -f "$f"; done
+    for f in "$1"/*; do
+        case "$f" in *.bergdb) ;; *) [ -f "$f" ] && ln "$f" "$4/$(basename "$f")" ;; esac
     done
 }
 
@@ -261,6 +286,61 @@ compare_dirs() {
     LAST_FIRSTDIFF=$first
 }
 
+# compare_stream X Y CUT LABEL [SCANX SCANY]: for a workload that reclaims: the stream's
+# bytes from CUT, reclaim's decided cut, the same (not the files, whose layout follows the
+# physical cut: 012-01, 3.2 point 8; 012-02, C2 and Q1; 005-72), and the other files equal.
+# On a difference: the first differing position and the scans' lines around it, and
+# LAST_FIRSTDIFF as compare_dirs sets it.
+compare_stream() {
+    x=$1; y=$2; cut=$3; label=$4; sx=${5:-}; sy=${6:-}
+    LAST_FIRSTDIFF=""
+    for name in $( (ls "$x"; ls "$y") | sort -u); do
+        case "$name" in
+        *.bergdb) ;;
+        *) if [ ! -f "$x/$name" ] || [ ! -f "$y/$name" ]; then
+               fail "$label: $name in one directory only"
+           elif ! cmp -s "$x/$name" "$y/$name"; then
+               fail "$label: $name differs"
+           fi ;;
+        esac
+    done
+    tmp=$OUT/.cmp.$$
+    stream_bytes "$x" "$cut" > "$tmp.x"
+    stream_bytes "$y" "$cut" > "$tmp.y"
+    if cmp -s "$tmp.x" "$tmp.y"; then
+        rm -f "$tmp.x" "$tmp.y"
+        return 0
+    fi
+    sxz=$(wc -c < "$tmp.x" | tr -d ' '); syz=$(wc -c < "$tmp.y" | tr -d ' ')
+    off=$(cmp "$tmp.x" "$tmp.y" 2>/dev/null | sed -n 's/.* differ: char \([0-9]*\).*/\1/p')
+    [ -n "$off" ] && off=$((off - 1))
+    if [ -z "$off" ]; then
+        off=$sxz; [ "$syz" -lt "$off" ] && off=$syz      # one is a prefix of the other
+    fi
+    rm -f "$tmp.x" "$tmp.y"
+    first=$((cut + off))
+    fail "$label: the streams from the decided cut at $cut (lengths $((cut + sxz)), $((cut + syz))) differ first at stream position $first"
+    if [ -n "$sx" ]; then
+        say "    side A's scan around $first:"
+        scan_around "$sx" "$first" | tee -a "$REPORT"
+        if [ -n "$sy" ] && [ -f "$sy" ]; then
+            say "    side B's scan around $first:"
+            scan_around "$sy" "$first" | tee -a "$REPORT"
+        fi
+    fi
+    LAST_FIRSTDIFF=$first
+}
+
+compare_db() {  # WORKLOAD X Y CUT LABEL [SCANX SCANY]: compare_stream for a workload that
+                # reclaims, compare_dirs for the others
+    wl=$1; shift
+    if [ "$(retain_of "$wl")" = 1 ]; then
+        compare_stream "$@"
+    else
+        compare_dirs "$@"
+    fi
+}
+
 compare_text() {  # X Y LABEL: two outputs, equal
     if ! cmp -s "$1" "$2"; then
         fail "$3: $1 and $2 differ:"
@@ -305,8 +385,10 @@ segments_of() { # WORKLOAD: the number of segments
     awk '$1 == "restart" { n++ } END { print n + 1 }' "$1"
 }
 
-c_runs() {      # WORKLOAD: 1 if C's bergdb-run runs it (no reclaim; restarts since 012-10)
-    if [ "$(retain_of "$1")" = 0 ]; then echo 1; else echo 0; fi
+c_runs() {      # WORKLOAD: 1 if C's bergdb-run runs it: every workload since 012-11
+                # (restarts since 012-10, reclaim since 012-11); kept as the place to
+                # send a kind of workload to Java
+    echo 1
 }
 
 stream_sha() {  # DIR FROM: SHA-256 of the stream from position FROM to its end
@@ -321,12 +403,15 @@ quick)
     SPECS="sd:l2-sd100:restarts:n=300 sd:l2-sd1000-node8:reads:n=300 sd:l3-node14:restarts:n=600
         sd:l2-idle-1:plain:n=200 coresame:n=1500 gen:1:n=300 gen:2:n=300 gen:3:n=300,retain=2
         gen:4:n=200,maxnode=8,sd=100,restarts=3,retain=0 coresame:n=1500:plain
-        gen:5:n=300,restarts=0,retain=0 gen:6:n=300,maxnode=8,sd=100,restarts=0,retain=0"
-    CRASH="sd-l2-sd1000-node8-reads-n300 gen-4-n200-maxnode8-sd100-restarts3-retain0"
+        gen:5:n=300,restarts=0,retain=0 gen:6:n=300,maxnode=8,sd=100,restarts=0,retain=0
+        sd:l3-node14:plain:n=600 sd:l3-every1:reads:n=400 gen:7:n=400,restarts=0,retain=1
+        gen:8:n=300,maxnode=8,sd=100,restarts=0,retain=1"
+    CRASH="sd-l2-sd1000-node8-reads-n300 gen-4-n200-maxnode8-sd100-restarts3-retain0
+        reclaim-crash"
     CUTS=4; RANDCUTS=3
     CORRUPT="gen-4-n200-maxnode8-sd100-restarts3-retain0 sd-l2-sd1000-node8-reads-n300"
     FLIPS=40
-    TURNS="gen-4-n200-maxnode8-sd100-restarts3-retain0"
+    TURNS="gen-4-n200-maxnode8-sd100-restarts3-retain0 sd-l3-node14-restarts-n600"
     ;;
 full)
     for c in l2-sd100 l2-sd1000-node8 l2-sd10000-node14 l2-sd100000-node62 l2-every1 \
@@ -340,9 +425,15 @@ full)
     # startup distances and node size 8, where index writes and splits come often.
     s=241; while [ $s -le 280 ]; do SPECS="$SPECS gen:$s:restarts=0,retain=0"; s=$((s + 1)); done
     s=281; while [ $s -le 300 ]; do SPECS="$SPECS gen:$s:maxnode=8,sd=100,restarts=0,retain=0"; s=$((s + 1)); done
+    # Without restarts, with reclaim, for C's reclaim (012-11, part 1): random retain
+    # durations (forever in about 6 of 10), 2 s, and 1 s with node size 8 and startup
+    # distance 100.
+    s=301; while [ $s -le 340 ]; do SPECS="$SPECS gen:$s:restarts=0"; s=$((s + 1)); done
+    s=341; while [ $s -le 380 ]; do SPECS="$SPECS gen:$s:restarts=0,retain=2"; s=$((s + 1)); done
+    s=381; while [ $s -le 400 ]; do SPECS="$SPECS gen:$s:maxnode=8,sd=100,restarts=0,retain=1"; s=$((s + 1)); done
     CRASH="sd-l2-sd100-plain sd-l2-sd1000-node8-plain sd-l2-sd10000-node14-restarts sd-l2-every1-plain
         gen-201-maxnode8-sd100-retain0 gen-202-maxnode8-sd100-retain0 gen-203-maxnode8-sd100-retain0
-        gen-204-maxnode8-sd100-retain0"
+        gen-204-maxnode8-sd100-retain0 reclaim-crash"
     CUTS=15; RANDCUTS=25
     CORRUPT="sd-l2-sd100-plain sd-l2-sd1000-node8-plain sd-l3-node8-restarts coresame
         gen-201-maxnode8-sd100-retain0 gen-3"
@@ -394,7 +485,13 @@ both_sides "$OUT/run-a.jobs" "$OUT/run-b.jobs"
 say "runs done in $(( $(date +%s) - T0 )) s"
 if ctool run > /dev/null; then
     nj=$(grep -c '/run\.txt$' "$OUT/java-only.txt" | tr -d ' ')
-    say "side B's runs: C's of $((NW - nj)), Java's of $nj (reclaim: 012-11)"
+    nr=0
+    for w in $WORKLOADS; do
+        if [ "$(retain_of "$OUT/wl/$w.wl")" = 1 ] && [ "$(c_runs "$OUT/wl/$w.wl")" = 1 ]; then
+            nr=$((nr + 1))
+        fi
+    done
+    say "side B's runs: C's of $((NW - nj)), $nr of them with reclaim; Java's of $nj"
 fi
 
 # ---- Views from the decided cut, scans and dumps ----
@@ -408,6 +505,11 @@ for w in $WORKLOADS; do
             # Gigabytes: the scans take the stream's last 2 MB or so, for the comparison
             # and for the dump's samples.
             tail_view "$OUT/$x/$w/db" "$OUT/$x/$w/view"
+        elif [ "$(retain_of "$OUT/wl/$w.wl")" = 1 ]; then
+            # Both sides from the same position, cut where side A's files begin.
+            fa=$(cut_file_start "$OUT/a/$w/db" "$cut"); fb=$(cut_file_start "$OUT/b/$w/db" "$cut")
+            [ "$fb" -gt "$fa" ] && fa=$fb
+            split_view "$OUT/$x/$w/db" "$fa" "$OUT/a/$w/db" "$OUT/$x/$w/view"
         else
             make_view "$OUT/$x/$w/db" "$cut" "$OUT/$x/$w/view"
         fi
@@ -418,9 +520,6 @@ for w in $WORKLOADS; do
             # C to Java: Java's dumps of C's directories run Java's audit (012-01, 1).
             audit=""; [ -n "$CTOOLS" ] && [ "$x$y" = ba ] && audit="-audit 1"
             echo "dump $OUT/$x/$w/dump-by-$y.txt -maxnode $m $LARGE $audit $OUT/$x/$w/dumpdir-by-$y $OUT/a/$w/scan-by-a.txt" >> "$OUT/dump-$y.jobs"
-            if [ "$y" = b ] && [ "$(retain_of "$OUT/wl/$w.wl")" = 1 ]; then
-                echo "$OUT/$x/$w/dump-by-$y.txt" >> "$OUT/java-only.txt"
-            fi
         done
     done
 done
@@ -429,7 +528,7 @@ both_sides "$OUT/dump-a.jobs" "$OUT/dump-b.jobs"
 say "scans and dumps done in $(( $(date +%s) - T0 )) s"
 if ctool dump > /dev/null; then
     nj=$(grep -c '/dump-by-b\.txt$' "$OUT/java-only.txt" | tr -d ' ')
-    say "side B's dumps: C's of $(( $(wc -l < "$OUT/dump-b.jobs" | tr -d ' ') - nj )), Java's of $nj (workloads that may reclaim)"
+    say "side B's dumps: C's of $(( $(wc -l < "$OUT/dump-b.jobs" | tr -d ' ') - nj )), Java's of $nj"
 fi
 
 # ---- Compare ----
@@ -440,7 +539,7 @@ for w in $WORKLOADS; do
     expect_exit "$B/run.txt" 0 "$w run B"
     compare_text "$A/run.txt" "$B/run.txt" "$w run outputs"
     cut=$(decided_cut "$A/run.txt")
-    compare_dirs "$A/db" "$B/db" "$cut" "$w files" "$A/scan-by-a.txt" "$B/scan-by-b.txt"
+    compare_db "$OUT/wl/$w.wl" "$A/db" "$B/db" "$cut" "$w files" "$A/scan-by-a.txt" "$B/scan-by-b.txt"
     for x in a b; do
         for y in a b; do
             expect_exit "$OUT/$x/$w/scan-by-$y.txt" 0 "$w scan of $x by $y"
@@ -450,7 +549,7 @@ for w in $WORKLOADS; do
             compare_text "$A/dump-by-a.txt" "$OUT/$x/$w/dump-by-$y.txt" "$w dump of $x by $y"
         done
     done
-    compare_dirs "$A/dumpdir-by-a" "$B/dumpdir-by-b" "$cut" "$w files after the dumps"
+    compare_db "$OUT/wl/$w.wl" "$A/dumpdir-by-a" "$B/dumpdir-by-b" "$cut" "$w files after the dumps"
     if [ -f "$OUT/wl/$w.digest" ]; then
         want=$(sed 's/.* sha256=//' "$OUT/wl/$w.digest")
         got=$(stream_sha "$A/db" "$cut")
@@ -533,14 +632,26 @@ if [ -n "$CRASH" ]; then
     seed=1
     for w in $CRASH; do
         [ -d "$OUT/a/$w/db" ] || { fail "crash: no workload $w"; continue; }
+        # A workload that reclaims (012-11): copies of C's directory (side B, with C=) cut
+        # at or after the stream's length at its last sync before the end. C's stream is
+        # durable after a sync only, so every physical cut it made had its decision durable
+        # by then, and such a copy is a crash; Java's directory makes its cuts at its own
+        # moments, and a copy of it cut there might not be. Without C=: none.
+        src=$OUT/a/$w/db; from=0
         if [ "$(retain_of "$OUT/wl/$w.wl")" = 1 ]; then
-            fail "crash: $w reclaims; its cuts would not be crashes"; continue
+            if ! ctool run > /dev/null; then
+                say "crash: $w reclaims; its crash variants need C's runs (C=)"; continue
+            fi
+            src=$OUT/b/$w/db
+            from=$(awk '/^status / { for (i = 2; i <= NF; i++) if ($i ~ /^length=/) {
+                split($i, a, "="); p = l; l = a[2] } } END { print p + 0 }' "$OUT/b/$w/run.txt")
         fi
         after_workload "$OUT/wl/$w.wl" > "$OUT/wl/$w.after.wl"
         m=$(maxnode_of "$OUT/wl/$w.wl")
-        for p in $(crash_positions "$OUT/a/$w/scan-by-a.txt" "$CUTS" "$RANDCUTS" "$seed"); do
+        for p in $(crash_positions "$OUT/a/$w/scan-by-a.txt" "$CUTS" "$RANDCUTS" "$seed" \
+                | awk -v f="$from" '$1 >= f'); do
             d=$OUT/crash/$w/$p
-            cut_copy "$OUT/a/$w/db" "$p" "$d/src"
+            cut_copy "$src" "$p" "$d/src"
             echo "scan $d/scan.txt $d/src" >> "$OUT/crash-scan.jobs"
             echo "scan $d/scan-b.txt $d/src" >> "$OUT/crash-scan-b.jobs"
             for s in a b; do
@@ -562,8 +673,8 @@ if [ -n "$CRASH" ]; then
     for w in $CRASH; do
         [ -d "$OUT/crash/$w" ] || continue
         for d in "$OUT/crash/$w"/*; do
-            compare_dirs "$d/a" "$d/b" 0 "crash $w at $(basename "$d"), files after the recovery" \
-                "$d/scan.txt"
+            compare_db "$OUT/wl/$w.wl" "$d/a" "$d/b" "$(decided_cut "$d/dump-a.txt")" \
+                "crash $w at $(basename "$d"), files after the recovery" "$d/scan.txt"
         done
     done
     say "crash variants: $NCUTS directories recovered by both sides' starts (their dumps), $((FAILS - before)) differences"
@@ -580,7 +691,8 @@ if [ -n "$CRASH" ]; then
             [ "$ea" = 0 ] && [ "$ra" = 0 ] || echo "crash $w at $p: dump exit $ea, run exit $ra" >> "$REPORT"
             compare_text "$d/dump-a.txt" "$d/dump-b.txt" "crash $w at $p, dumps"
             compare_text "$d/run-a.txt" "$d/run-b.txt" "crash $w at $p, runs after"
-            compare_dirs "$d/a" "$d/b" 0 "crash $w at $p, files" "$d/scan.txt"
+            compare_db "$OUT/wl/$w.wl" "$d/a" "$d/b" "$(decided_cut "$d/run-a.txt")" \
+                "crash $w at $p, files" "$d/scan.txt"
             sa=$(exit_of "$d/scan.txt"); sb=$(exit_of "$d/scan-b.txt")
             [ "$sa" = "$sb" ] || fail "crash $w at $p: scan exit $sa and $sb"
             compare_scan "$d/scan.txt" "$d/scan-b.txt" "crash $w at $p, scans"
@@ -697,7 +809,7 @@ if [ -n "$TURNS" ]; then
         for w in $TURNS; do
             [ "$k" -lt "$(segments_of "$OUT/wl/$w.wl")" ] || continue
             echo "run $OUT/turns/$w/run-$k.txt -segments $k $OUT/wl/$w.wl $OUT/turns/$w/db" >> "$OUT/turns-$k.jobs"
-            # Side B's segments of a workload that may reclaim: Java's until 012-11 (c_runs).
+            # Side B's segments: C's since 012-11 (c_runs).
             if [ "$side" = b ] && [ "$(c_runs "$OUT/wl/$w.wl")" = 0 ]; then
                 echo "$OUT/turns/$w/run-$k.txt" >> "$OUT/java-only.txt"
             fi
@@ -717,8 +829,8 @@ if [ -n "$TURNS" ]; then
         done
         compare_text "$OUT/a/$w/run.txt" "$OUT/turns/$w/run.txt" "turns $w, run outputs"
         cut=$(decided_cut "$OUT/a/$w/run.txt")
-        compare_dirs "$OUT/a/$w/db" "$OUT/turns/$w/db" "$cut" "turns $w, files (A alone)" "$OUT/a/$w/scan-by-a.txt"
-        compare_dirs "$OUT/b/$w/db" "$OUT/turns/$w/db" "$cut" "turns $w, files (B alone)" "$OUT/b/$w/scan-by-b.txt"
+        compare_db "$OUT/wl/$w.wl" "$OUT/a/$w/db" "$OUT/turns/$w/db" "$cut" "turns $w, files (A alone)" "$OUT/a/$w/scan-by-a.txt"
+        compare_db "$OUT/wl/$w.wl" "$OUT/b/$w/db" "$OUT/turns/$w/db" "$cut" "turns $w, files (B alone)" "$OUT/b/$w/scan-by-b.txt"
     done
     say "runs in turns: $NTURNS workloads, $((FAILS - before)) differences, in $(( $(date +%s) - T0 )) s"
 fi
@@ -737,7 +849,7 @@ if [ "$SET" != scale ]; then
     new=$(( (old + 1) % 256 ))
     printf "\\$(printf '%03o' $new)" | dd of="$OUT/planted/$name" bs=1 seek=$off conv=notrunc 2>/dev/null
     keep=$FAILS; saved=$REPORT; REPORT=$OUT/planted.txt; : > "$REPORT"
-    compare_dirs "$OUT/a/$w/db" "$OUT/planted" "$cut" "planted, $w byte $p" "$OUT/a/$w/scan-by-a.txt" > /dev/null
+    compare_db "$OUT/wl/$w.wl" "$OUT/a/$w/db" "$OUT/planted" "$cut" "planted, $w byte $p" "$OUT/a/$w/scan-by-a.txt" > /dev/null
     FAILS=$keep; REPORT=$saved
     echo "scan $OUT/planted.scan $OUT/planted" > "$OUT/planted.jobs"
     side_jobs a "$OUT/planted.jobs"

@@ -5,10 +5,9 @@
  * reads, sync, the clock's times, the settings and the status. The
  * handles' structs are here; the caller sees them as opaque types.
  *
- * Not yet (later tasks; each refused or left undefined): a retain duration
- * other than forever and a database with reclaim's table (012-11,
- * BERGDB_ARG with the reason), eviction (012-12: the cache size indicator
- * is kept), bergdb_debug_print and bergdb_debug_check (012-13).
+ * Not yet (later tasks; each refused or left undefined): eviction (012-12:
+ * the cache size indicator is kept), bergdb_debug_print and
+ * bergdb_debug_check (012-13).
  *
  * The rules of the header's top comment hold: one caller at a time; a
  * callback that calls its database gets BERGDB_STATE; the database's

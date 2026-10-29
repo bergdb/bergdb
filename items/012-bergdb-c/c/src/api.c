@@ -747,7 +747,12 @@ int bergdb_get_trans(bergdb_db *db, bergdb_read *rd, int64_t tpos, struct bergdb
     ns_iter_init(&it, &db->db.stream, db->mem, tpos, true);
     st_init(&rec);
     rc = ns_iter_next(&it, &has, &e);
-    if (rc != ERR_OK) {
+    if (rc == ERR_NOT_AVAILABLE) {
+        /* isReadBelowCut: reclaim has removed it (012-11). */
+        rc = err_set(&e, ERR_NOT_AVAILABLE, "LookupTimeNotAvailableException", "The "
+                "transaction at stream pos %lld is no longer available: reclaim has removed it.",
+                (long long) tpos);
+    } else if (rc != ERR_OK) {
         /* Corrupt data, as for the other reads (005-34): the database fails. */
         rc = db_fail_on_storage(&db->db, "A read", &e);
     } else if (!has) {
@@ -934,9 +939,9 @@ int bergdb_stats(bergdb_db *db, struct bergdb_stats *s) {
     s->first_available_pos = db_first_available_pos(&db->db);
     s->startup_distance = db->db.startup_distance;
     s->cache_size_indicator = db->db.cache_size_indicator;
-    s->retain_duration = db->db.retain_duration;
-    s->internal_fraction = db->db.internal_fraction;
-    s->reclaim_iteration_count = 0;
+    s->retain_duration = db->db.reclaim.retainDuration;
+    s->internal_fraction = db->db.reclaim.internalFraction;
+    s->reclaim_iteration_count = db->db.reclaim.iterationCount;
     s->transaction_count = db->db.transaction_count;
     s->kv_count = db->db.kv_count;
     s->get_op_count = db->db.get_op_count;

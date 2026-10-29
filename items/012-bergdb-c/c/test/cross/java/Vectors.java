@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -29,6 +31,7 @@ import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.storage.MetaBlock;
+import bergdb.pub.util.Clock;
 import bergdb.storage.RecoverableStream;
 import bergdb.stream.MemoryStream;
 
@@ -42,7 +45,9 @@ import bergdb.stream.MemoryStream;
  * and the node's stored bytes after each) and top.txt (TopDs's chains of top nodes), and
  * (012-09) strmap.txt (StringMap's texts, in HashMap's order) and keymod.txt (KeyModSet's
  * answers), and (012-08) dag.txt (the Dag's transactions: dirtyNodeBound before each, the
- * splits and the state after it), into a directory. C's unit tests read them
+ * splits and the state after it), and (012-11) reclaim.txt (runs of Db with reclaim, with
+ * the default step reserve and with one of four nodes, which splits the steps: the stream
+ * from the decided cut, as its SHA-256), into a directory. C's unit tests read them
  * (c/test/unit/t_vectors.c); 012-05's cross tests run this again and compare with the
  * committed files, so that a change in Java shows.
  *
@@ -75,6 +80,7 @@ public class Vectors {
         strmap(open(dir, "strmap.txt"));
         keymod(open(dir, "keymod.txt"));
         dag(open(dir, "dag.txt"));
+        reclaim(open(dir, "reclaim.txt"));
         System.out.println("VECTORS OK: " + dir);
     }
 
@@ -1226,6 +1232,58 @@ public class Vectors {
                     + hex(p[1].getBytes(StandardCharsets.UTF_8)) + "\n");
         }
         w.print("text " + hex(m.serialize().getBytes(StandardCharsets.UTF_8)) + "\n");
+    }
+
+    // ---- Reclaim (012-11) ----
+
+    /**
+     * Runs of Db with reclaim on a MemoryStream (node size 8, startup distance 2000, retain
+     * 1 s, 2000 transactions of one put 50 ms apart, the keys and values from the index i:
+     * "/k/" + (i * 7919) % 200, 1 + (i * 31) % 30 bytes (byte) (i + j)), with the default
+     * step reserve and with one of four nodes (Reclaim.Tester.testStepReserveSplitsSteps'):
+     * the stream's length, the first available position and time, the iterations, and the
+     * SHA-256 of the stream from the first available position.
+     */
+    private static void reclaim(PrintWriter w) throws IOException {
+        w.print("# reclaim reserve=R n=N length=L firstAvailablePos=P firstAvailableTime=T "
+                + "iterations=I sha256=H\n");
+        for (long reserve : new long[] {Reclaim.DEFAULT_STEP_RESERVE, 4 * (80 + 48 * 8)}) {
+            MemoryStream ms = new MemoryStream();
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            Db db = Db.builder().testSetup(ms).clock(clock).maxNodeSize8().startupDistance(2000)
+                    .reclaimStepReserve(reserve).start();
+            db.setRetainDuration(Clock.UNITS_PER_SEC);
+            final int n = 2000;
+            for (int i = 0; i < n; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                byte[] v = new byte[1 + (i * 31) % 30];
+                for (int j = 0; j < v.length; j++) {
+                    v[j] = (byte) (i + j);
+                }
+                db.execute(db.trans().put("/k/" + (i * 7919) % 200, v).build());
+            }
+            long first = db.getFirstAvailablePos();
+            long length = db.getStreamLength();
+            long firstTime = db.getFirstAvailableLookupTime();
+            long iterations = db.getReclaimIterationCount();
+            db.close();
+            byte[] bytes = new byte[(int) (length - first)];
+            ms.read(first, bytes, 0, bytes.length);
+            String sha;
+            try {
+                MessageDigest md = MessageDigest.getInstance("SHA-256");
+                sha = hex(md.digest(bytes));
+            } catch (NoSuchAlgorithmException e) {
+                throw new IOException(e);
+            }
+            w.print("reclaim reserve=" + reserve + " n=" + n + " length=" + length
+                    + " firstAvailablePos=" + first + " firstAvailableTime=" + firstTime
+                    + " iterations=" + iterations + " sha256=" + sha + "\n");
+        }
+        w.close();
     }
 
     private static String hex(byte[] b) {

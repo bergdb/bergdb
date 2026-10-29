@@ -36,6 +36,7 @@ extern const struct test serial_tests[];
 extern const struct test sdb_tests[];
 extern const struct test ncoll_tests[];
 extern const struct test recover_tests[];
+extern const struct test reclaim_tests[];
 
 int main(int argc, char **argv) {
     const struct test *const tables[] = {
@@ -73,6 +74,7 @@ int main(int argc, char **argv) {
         sdb_tests,
         ncoll_tests,
         recover_tests,
+        reclaim_tests,
         NULL
     };
     return test_main(argc, argv, "UNIT", tables);

@@ -816,7 +816,12 @@ int bergdb_set_cache_size_indicator(bergdb_db *db, int64_t size);
 
 /* Sets the retain duration in time units (Java's setRetainDuration(long)):
  * how long the history stays available for lookups; reclaim removes what
- * is older. Errors: BERGDB_ARG (under BERGDB_UNITS_PER_SEC), BERGDB_STATE. */
+ * is older. BERGDB_FOREVER stops new iterations and cuts; an iteration in
+ * progress goes on to its end, as Java's. The front files of a cut are
+ * deleted in a later transaction's call once the stream is durable up to
+ * the cut's decision, so, with no thread of the library's, after a
+ * bergdb_sync (or at the next open): 012-11, Q1. Errors: BERGDB_ARG
+ * (under BERGDB_UNITS_PER_SEC), BERGDB_STATE. */
 int bergdb_set_retain_duration(bergdb_db *db, int64_t duration);
 
 /* Sets reclaim's internal fraction (Java's setReclaimInternalFraction;

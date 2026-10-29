@@ -4,6 +4,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include "keys.h"
+#include "reclaim.h"
 #include "snode.h"
 #include "spos.h"
 
@@ -106,9 +107,13 @@ static void free_all(struct sdb *d) {
     st_free(&d->gt_rec, d->mem);
 }
 
-/* Reclaim.initFromDb, as far as part 1 goes: without the table, the first
- * available position and time are 0. Its read is Java's (a getOne at the
- * latest time, through the readers' follower). */
+/* Reclaim.initFromDb: the table read at the latest time, as Java's (a
+ * getOne through the readers' follower); the first available position and
+ * time from the row marked cut with the largest pStart (rc_first_available_
+ * of_table), or 0 and 0 without the table; and a cut that the table marks
+ * but the stream does not show yet made (pretruncate), as Java's start does
+ * (012-11). The current row matters for the steps only, which sdb does not
+ * make. */
 static enum err_code init_from_db(struct sdb *d, struct err *e) {
     uint8_t bkey[sizeof TABLE_KEY_NAME];
     int32_t len = (int32_t) (sizeof TABLE_KEY_NAME - 1);
@@ -122,16 +127,26 @@ static enum err_code init_from_db(struct sdb *d, struct err *e) {
     struct getdata gd;
     struct vnode *v;
     sdb_new_get_data(d, &gd);
+    d->first_available_pos = 0;
+    d->first_available_time = 0;
     enum err_code rc = sdb_get_one(d, INT64_MAX, segs, n, &gd, &v, e);
+    if (rc != ERR_OK || v == NULL || v->len < 0) {
+        return rc;
+    }
+    int64_t pos, time;
+    rc = rc_first_available_of_table(d->mem, (const char *) v->value, (size_t) v->len, &pos,
+            &time, e);
     if (rc != ERR_OK) {
         return rc;
     }
-    if (v != NULL) {
-        return unsupported(e, "the database has reclaim's table: its first available time and "
-                "position are 012-11's to read");
+    if (pos > 0 && stream_first_pos(d->s) < pos) {
+        rc = stream_pretruncate(d->s, pos, e);  /* A crash came between the table write and the cut. */
+        if (rc != ERR_OK) {
+            return rc;
+        }
     }
-    d->first_available_pos = 0;
-    d->first_available_time = 0;
+    d->first_available_pos = pos;
+    d->first_available_time = time;
     return ERR_OK;
 }
 

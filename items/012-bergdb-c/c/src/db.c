@@ -161,7 +161,12 @@ static bool make_dirty_if_needed(struct db *db, struct node *node) {
             return false;
         }
         node_set_dirty(node, true);
-        /* x.trans.touch: reclaim's (012-11) */
+        if (db->trans->touch) {
+            db->trans->dirtied_nodes++;
+            db->trans->dirtied_bytes += node_is_top_node(node)
+                    ? nw_top_byte_size((const struct tnode *) node)
+                    : nw_key_byte_size((const struct knode *) node);
+        }
     }
     return true;
 }
@@ -215,7 +220,7 @@ static void clear_replaced(struct db *db) {
 static void end_of_trans(struct db *db) {
     struct ts_info *info = db->trans_info;
     if (db->n_replaced > 0 && info != NULL) {
-        const int32_t keep = 0;     /* x.trans.touch ? touchMarks : 0; the touch is 012-11's */
+        const int32_t keep = db->trans != NULL && db->trans->touch ? db->touch_marks : 0;
         int32_t kept = 0;
         for (int32_t i = 0; i < info->ndirty; i++) {
             struct node *n = info->gotDirtyNodes[i].node;
@@ -326,6 +331,27 @@ static struct node *writer_follow(void *ctx, struct node *predecessor, int32_t p
 static struct node *reader_follow(void *ctx, struct node *predecessor, int32_t pointerIndex,
         struct opdata *op) {
     return follow(ctx, predecessor, pointerIndex, op, false);
+}
+
+/* The maintenance follower (reclaim's, 012-11): nc_follow_maintenance, its
+ * failure's text in db->op_err as follow's. */
+static struct node *maintenance_follow(void *ctx, struct node *predecessor,
+        int32_t pointerIndex, struct opdata *op) {
+    struct db *db = ctx;
+    err_clear(&db->node_coll.err);
+    struct node *result = nc_follow_maintenance(&db->node_coll, predecessor, pointerIndex, op);
+    if (result == NULL && db->op_err.code == ERR_OK) {
+        db->op_err = db->node_coll.err;
+        if (db->op_err.code == ERR_OK) {
+            err_set(&db->op_err, ERR_NOMEM, "OutOfMemoryError", "out of memory");
+        }
+    }
+    return result;
+}
+
+struct op_follower db_maintenance_follower(struct db *db) {
+    struct op_follower f = { maintenance_follow, db };
+    return f;
 }
 
 static bool l_super_root_accessed(void *ctx, struct tnode *superRoot) {
@@ -451,38 +477,6 @@ static enum err_code write_primordial_transaction(struct db *db, struct err *e) 
     return ERR_OK;
 }
 
-/* Reclaim.initFromDb, as far as 012-10 goes: reclaim's table read at the
- * latest time, as Java's (a getOne through the readers' follower); without
- * it the first available position and time are 0. A database with the
- * table is refused as unsupported until 012-11. */
-static enum err_code get_one_internal(struct db *db, int64_t lookupTime, const int64_t *key,
-        int32_t n, struct getdata *gd, struct vnode **out, struct err *e);
-
-static enum err_code init_from_db(struct db *db, struct err *e) {
-    static const char TABLE_IKEY[] = "/#i/dreclaim/-table.txt";   /* Reclaim.TABLE_KEY_NAME */
-    uint8_t bkey[sizeof TABLE_IKEY];
-    const int32_t len = (int32_t) (sizeof TABLE_IKEY - 1);
-    bool ok = keys_ikey_to_bkey((const uint8_t *) TABLE_IKEY, len, bkey);
-    assert(ok);
-    (void) ok;
-    int64_t segs[8];
-    assert(keys_segment_count(len) <= 8);
-    keys_to_segments(bkey, len, segs);
-    struct getdata gd;
-    db_new_get_data(db, &gd);
-    struct vnode *v;
-    enum err_code rc = get_one_internal(db, INT64_MAX, segs, keys_segment_count(len), &gd, &v,
-            e);
-    if (rc != ERR_OK) {
-        return rc;
-    }
-    if (v != NULL) {
-        return err_set(e, ERR_ARG, "UnsupportedOperationException", "a database with "
-                "reclaim's table: reclaim comes in bergdb 012-11");
-    }
-    return ERR_OK;
-}
-
 static void free_all(struct db *db);
 
 enum err_code db_open(struct db *db, const char *dir, const struct db_config *cfg,
@@ -491,6 +485,7 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
     memset(db, 0, sizeof *db);
     memset(info, 0, sizeof *info);
     db->mem = m;
+    rc_init(&db->reclaim, m);
     obj_ctx_init(&db->cx, m);
     nt_init(&db->node_table, &db->cx, m);
     err_clear(&db->failure);
@@ -499,8 +494,6 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
     db->max_node_size = cfg->max_node_size;
     db->startup_distance = cfg->startup_distance;
     db->cache_size_indicator = cfg->cache_size_indicator;
-    db->retain_duration = cfg->retain_duration;
-    db->internal_fraction = 0.25;
     db->record_limit = cfg->record_limit > 0 ? cfg->record_limit : ST_MAX_RECORD_SIZE;
     db->second_top_ordinal = cfg->second_top_ordinal > 0 ? cfg->second_top_ordinal : 1;
     if (cfg->max_node_size != 8 && cfg->max_node_size != 14 && cfg->max_node_size != 30
@@ -517,10 +510,15 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
                 " must be at least one second (%lld), was %lld.",
                 (long long) CLK_UNITS_PER_SEC, (long long) cfg->retain_duration);
     }
-    if (cfg->retain_duration != INT64_MAX) {
-        return err_set(e, ERR_ARG, "UnsupportedOperationException", "a retain duration "
-                "other than forever: reclaim comes in bergdb 012-11");
+    /* reclaim.setStepReserve(b.reclaimStepReserve), setRetainDuration(b's) */
+    if (cfg->step_reserve < 0) {
+        return err_set(e, ERR_ARG, "IllegalArgumentException", "Illegal step reserve, %lld",
+                (long long) cfg->step_reserve);
     }
+    if (cfg->step_reserve > 0) {
+        db->reclaim.stepReserve = cfg->step_reserve;
+    }
+    db->reclaim.retainDuration = cfg->retain_duration;
 
     /* The Db constructor. */
     if (dir != NULL) {
@@ -590,7 +588,7 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
         info->trans_count = res.trans_count;
         info->last_pos = res.last_pos;
         db->state = DB_ACTIVE;
-        rc = init_from_db(db, e);       /* reclaim.initFromDb() */
+        rc = rc_init_from_db(db, e);    /* reclaim.initFromDb() */
     }
     if (rc != ERR_OK) {
         if (rc == ERR_FAILED) {
@@ -632,7 +630,7 @@ static enum err_code check_size(const struct db *db, const struct trans *t, stru
     return ERR_OK;
 }
 
-/* getOneInternal: the first available time (0 before 012-11), the actual
+/* getOneInternal: the first available time (reclaim's), the actual
  * lookup time, Dag.getOne, the get count. */
 static enum err_code get_one_internal(struct db *db, int64_t lookupTime, const int64_t *key,
         int32_t n, struct getdata *gd, struct vnode **out, struct err *e) {
@@ -761,6 +759,53 @@ static enum err_code stm_check_conflicts(struct db *db, const struct trans *t, s
     return ERR_OK;
 }
 
+/* touchRange's stop condition: the keys up to 'to' (inclusive; NULL: all). */
+struct touch_stop {
+    const int64_t *to;
+    int32_t to_n;
+};
+
+static int32_t touch_handle_kvt(void *ctx, const struct kvt *kvt) {
+    const struct touch_stop *s = ctx;
+    if (s->to != NULL && keys_compare_keys(kvt->key, kvt->key_n, s->to, s->to_n) > 0) {
+        return GM_STOP;
+    }
+    return GM_CONTINUE;
+}
+
+/* touchRange(from, to): visits, as the writer, every node reachable at the
+ * transaction time for the keys after 'from' (exclusive; NULL: from the
+ * first key) up to 'to' (inclusive; NULL: to the last key), with the
+ * putData's pointer listener, which marks them (reclaim's steps, 012-11;
+ * Trans.touch). */
+static enum err_code touch_range(struct db *db, const int64_t *from, int32_t from_n,
+        const int64_t *to, int32_t to_n, struct err *e) {
+    struct putdata *pd = &db->put_data;
+    struct getmany g;
+    gm_init(&g, &db->dag, db->mem);         /* dag.newGetMany() */
+    g.gd.op.pointer_follower = pd->op.pointer_follower;
+    g.gd.op.pointer_listener = pd->op.pointer_listener;    /* makes nodes dirty */
+    g.gd.op.access_data = pd->op.access_data;
+    g.lookup_time = db->trans->tt;
+    g.actual_lookup_time = db->trans->tt;  /* Dag.getMany() uses this one. */
+    g.start_key = from;
+    g.start_key_n = from_n;
+    g.inclusive = false;
+    struct touch_stop ts = { to, to_n };
+    g.stop_condition.handle_kvt = touch_handle_kvt;
+    g.stop_condition.eod = NULL;
+    g.stop_condition.ctx = &ts;
+    err_clear(&db->op_err);
+    if (!dag_get_many(&db->dag, &g)) {
+        if (db->op_err.code != ERR_OK) {
+            *e = db->op_err;
+            return e->code;
+        }
+        return nomem(e);
+    }
+    return ERR_OK;
+}
+
 /* putKvs: the pairs applied in the transaction's order, each an operation
  * with its marking, then endOfTrans. A safe point after each operation. */
 static enum err_code put_kvs(struct db *db, struct err *e) {
@@ -772,7 +817,24 @@ static enum err_code put_kvs(struct db *db, struct err *e) {
     db->op_changed = false;
     clear_replaced(db);
     db->touch_marks = 0;
-    /* x.trans.touch: reclaim's (012-11) */
+
+    if (t->touch) {
+        /* Before the puts, the touch makes dirty every index node of the
+         * range, so that the value transformation of the row of a reclaim
+         * step, wherever its key sorts, can store what the step made dirty
+         * (Trans.dirtiedBytes). */
+        enum err_code rc = touch_range(db, t->touch_from, t->touch_from_n, t->touch_to,
+                t->touch_to_n, e);
+        if (rc != ERR_OK) {
+            return rc;
+        }
+        if (!end_of_op(db, true)) {
+            return nomem(e);
+        }
+        db->touch_marks = db->trans_info == NULL ? 0 : db->trans_info->ndirty;
+        pd_clear_fast(pd);
+        obj_collect(&db->cx);       /* a safe point, as after a put */
+    }
 
     for (int32_t i = 0; i < t->nkvs; i++) {
         struct tr_kv *kv = t->kvs[i];
@@ -1070,8 +1132,15 @@ enum err_code db_execute(struct db *db, struct trans *t, struct err *e) {
     db->trans = NULL;
     db->trans_info = NULL;      /* D's now */
     tns_clear(&db->trans_nodes);
-    /* eviction (012-12), the audit, reclaim.transactionCompleted (012-11) */
+    /* eviction (012-12), the audit */
     obj_collect(&db->cx);
+    /* reclaim.transactionCompleted(t), within the go point: what fails there
+     * fails the database (an internal transaction that failed has failed it
+     * already, and its ERR_FAILED is returned as it is). */
+    rc = rc_transaction_completed(db, t, e);
+    if (rc != ERR_OK) {
+        return fail(db, t, e);
+    }
     return ERR_OK;
 }
 
@@ -1132,23 +1201,11 @@ enum err_code db_set_startup_distance(struct db *db, int32_t newDistance, struct
 }
 
 enum err_code db_set_retain_duration(struct db *db, int64_t d, struct err *e) {
-    if (d < CLK_UNITS_PER_SEC) {
-        return err_set(e, ERR_ARG, "IllegalArgumentException", "retainDuration is too small");
-    }
-    if (d != INT64_MAX) {
-        return err_set(e, ERR_ARG, "UnsupportedOperationException", "a retain duration other "
-                "than forever: reclaim comes in bergdb 012-11");
-    }
-    db->retain_duration = d;
-    return ERR_OK;
+    return rc_set_retain_duration(&db->reclaim, d, e);
 }
 
 enum err_code db_set_reclaim_internal_fraction(struct db *db, double f, struct err *e) {
-    if (f < 0.001 || f > 0.90) {
-        return err_set(e, ERR_ARG, "IllegalArgumentException", "Bad internal fraction");
-    }
-    db->internal_fraction = f;
-    return ERR_OK;
+    return rc_set_internal_fraction(&db->reclaim, f, e);
 }
 
 enum err_code db_set_cache_size_indicator(struct db *db, int64_t size, struct err *e) {
@@ -1175,13 +1232,11 @@ int64_t db_stream_length(const struct db *db) {
 }
 
 int64_t db_first_available_pos(const struct db *db) {
-    (void) db;
-    return 0;       /* Reclaim's, without a cut (012-11) */
+    return db->reclaim.firstAvailablePos;
 }
 
 int64_t db_first_available_time(const struct db *db) {
-    (void) db;
-    return 0;
+    return db->reclaim.firstAvailableLookupTime;
 }
 
 enum err_code db_get_one(struct db *db, int64_t lookup_time, const int64_t *key, int32_t n,
@@ -1361,6 +1416,7 @@ static void free_all(struct db *db) {
     db->replaced = NULL;
     db->n_op_marks = db->cap_op_marks = db->n_replaced = db->cap_replaced = 0;
     ser_free(&db->serializer);
+    rc_free(&db->reclaim);
     if (db->kms_made) {
         kms_free(&db->key_mod_set);
         db->kms_made = false;

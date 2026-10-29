@@ -14,11 +14,15 @@
  * recovery and DbStarter, in starter.h (sr_check_and_recover, sr_start), on
  * the node table (ntable.h, Cache3 in part) and the node collection
  * (ncoll.h, NodeCollection: the followers, which load what is not in memory
- * with Rule R, and resolvePointers). Not here yet, and refused: reclaim
- * (012-11: a retain duration other than forever is refused at the open,
- * setRetainDuration takes forever only, and a database with reclaim's table
- * is refused at its start), eviction (012-12: the cache size indicator is
- * kept and does nothing; no byte depends on it).
+ * with Rule R, and resolvePointers). Not here yet: eviction (012-12: the
+ * cache size indicator is kept and does nothing; no byte depends on it).
+ *
+ * Reclaim (Level 3, 012-11): reclaim.h's, called at the end of execute as
+ * Java's Reclaim.transactionCompleted, with the touch of its steps here
+ * (Trans.touch: touchRange, Trans.dirtiedBytes, the touch's marks kept at
+ * endOfTrans), its settings and status, and the reads' refusals before the
+ * first available lookup time; its table read back at a start
+ * (rc_init_from_db).
  *
  * Errors (err.h): before a transaction's go point a refusal leaves the
  * database as it was (ERR_LIMIT, ERR_RERUN, ERR_STATE, ERR_ARG, ERR_NOMEM);
@@ -40,6 +44,7 @@
 #include "ncoll.h"
 #include "ntable.h"
 #include "obj.h"
+#include "reclaim.h"
 #include "rstream.h"
 #include "serial.h"
 #include "stream.h"
@@ -66,7 +71,7 @@ struct db_config {
     int32_t max_node_size;          /* 8, 14, 30 or 62 */
     int32_t startup_distance;       /* at least 10 */
     int64_t cache_size_indicator;   /* for this run only; nothing reads it before 012-12 */
-    int64_t retain_duration;        /* INT64_MAX (forever) only, before 012-11 */
+    int64_t retain_duration;        /* at least one second; INT64_MAX: forever */
     clk_fn clock;                   /* NULL: the system clock */
     void *clock_ctx;
     bool random_id;                 /* DatabaseId.createRandom; else id */
@@ -74,6 +79,7 @@ struct db_config {
     int32_t buffer_size;            /* the write buffer's size; 0: Java's default */
     int64_t record_limit;           /* StoredTrans.recordLimit; 0: MAX_RECORD_SIZE */
     int64_t second_top_ordinal;     /* DbBuilder.secondTopOrdinal; 0: 1 */
+    int64_t step_reserve;           /* DbBuilder.reclaimStepReserve; 0: 4 MiB (012-11) */
 };
 
 /* Java's StartInfo, and whether the open created the database. */
@@ -125,8 +131,6 @@ struct db {
 
     int32_t max_node_size;
     int32_t startup_distance;       /* Db.startupDistance */
-    int64_t retain_duration;
-    double internal_fraction;
     int64_t cache_size_indicator;
     int64_t record_limit;
     int64_t second_top_ordinal;
@@ -137,6 +141,7 @@ struct db {
     struct err op_err;              /* a callback's failure (the follower, a listener) */
     struct op_pointer_listener dag_listener;    /* the Dag's own pointer listener, which
                                                    Db's calls first */
+    struct reclaim reclaim;         /* Db.reclaim: its table, settings and status */
 
     /* Aux */
     int64_t transaction_count;
@@ -168,12 +173,11 @@ enum err_code db_execute(struct db *db, struct trans *t, struct err *e);
 /* setStartupDistance(n) (005-53). */
 enum err_code db_set_startup_distance(struct db *db, int32_t n, struct err *e);
 
-/* setRetainDuration: forever only before 012-11 (else ERR_ARG,
- * "UnsupportedOperationException"); under one second ERR_ARG. */
+/* setRetainDuration: under one second ERR_ARG (Reclaim's check). */
 enum err_code db_set_retain_duration(struct db *db, int64_t d, struct err *e);
 
 /* setReclaimInternalFraction: Java's range check (0.001 to 0.90, NaN let
- * through); the value is kept for 012-11. */
+ * through), used from the next step. */
 enum err_code db_set_reclaim_internal_fraction(struct db *db, double f, struct err *e);
 
 /* setCacheSizeIndicator: at least 1; kept (eviction is 012-12's). */
@@ -183,8 +187,8 @@ enum err_code db_set_cache_size_indicator(struct db *db, int64_t size, struct er
 int64_t db_current_time(struct db *db);
 int64_t db_lookup_time(const struct db *db, int64_t wanted);
 
-/* getStreamLength, getFirstAvailablePos, getFirstAvailableLookupTime (0
- * and 0 without reclaim), getStartupDistance. */
+/* getStreamLength, getFirstAvailablePos, getFirstAvailableLookupTime
+ * (reclaim's: 0 and 0 before a cut), getStartupDistance. */
 int64_t db_stream_length(const struct db *db);
 int64_t db_first_available_pos(const struct db *db);
 int64_t db_first_available_time(const struct db *db);
@@ -192,6 +196,10 @@ int64_t db_first_available_time(const struct db *db);
 /* sync(pos, level): pos 0 for the last transaction; the stream written and
  * forced. ERR_FAILED if that fails (the database fails, 005-30). */
 enum err_code db_sync(struct db *db, int64_t pos, struct err *e);
+
+/* NodeCollection.maintenance(): the follower of reclaim's scan and reads
+ * (012-11), which loads without installing or swizzling. */
+struct op_follower db_maintenance_follower(struct db *db);
 
 /* newGetData, newGetMany: the database's reader follower set. */
 void db_new_get_data(struct db *db, struct getdata *gd);

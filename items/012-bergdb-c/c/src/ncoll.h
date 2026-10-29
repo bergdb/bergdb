@@ -10,8 +10,8 @@
  * before a node is written; linkToCanonical, rule 4 by position (005-57).
  * Prefix nc_.
  *
- * One caller: no monitors, no LOADING state (012-07, 6.3), no maintenance
- * follower (reclaim's, 012-11), no listeners of loads and first touches
+ * One caller: no monitors, no LOADING state (012-07, 6.3), the maintenance
+ * follower without its map of versions read (reclaim's, 012-11), no listeners of loads and first touches
  * (tests and eviction's, 012-12). idOf's cache of node headers (Java's
  * LinkedHashMap of 100,000 by access order) is a map cleared when it
  * reaches 100,000 entries: it decides how many headers are read again,
@@ -87,6 +87,12 @@ void nc_free(struct ncoll *nc);
 struct node *nc_follow_reader(void *ctx, struct node *predecessor, int32_t index,
         struct opdata *op);
 struct node *nc_follow_writer(void *ctx, struct node *predecessor, int32_t index,
+        struct opdata *op);
+
+/* NodeCollection.MaintenanceFollower's follow (reclaim's, 012-11): no
+ * reference raised, no handle made, nothing installed or swizzled; what it
+ * reads is kept by nothing (freed at the next safe point). */
+struct node *nc_follow_maintenance(void *ctx, struct node *predecessor, int32_t index,
         struct opdata *op);
 
 /* NodeStream.readNode, made an object (pending, obj.h): the node at pos,

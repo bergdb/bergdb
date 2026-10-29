@@ -13,8 +13,10 @@
  * it, as Java's close). Nothing else is written: no transactions.
  *
  * Refused as unsupported (ERR_ARG, "UnsupportedOperationException"): an
- * empty stream, which Java's start creates (012-09); a database with
- * reclaim's table (012-11), found by initFromDb's read.
+ * empty stream, which Java's start creates (012-09). A database with
+ * reclaim's table gets its first available position and time from it, and
+ * a cut that the table marks but the files do not show is made, as Java's
+ * initFromDb does (012-11).
  */
 #ifndef BERGDB_SDB_H
 #define BERGDB_SDB_H

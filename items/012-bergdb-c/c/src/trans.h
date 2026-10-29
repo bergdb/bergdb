@@ -73,6 +73,21 @@ struct trans {
     int64_t next_pos;       /* of the next transaction's first byte */
     int32_t node_count;     /* the nodes of its record */
     bool is_internal;       /* Trans.isInternal: the creation; reclaim's (012-11) */
+    /* Trans.touch, touchFrom, touchTo (a reclaim step's, 012-11): every
+     * index node reachable at the transaction's time for the keys after
+     * touch_from (exclusive; NULL: from the first key) up to touch_to
+     * (inclusive; NULL: to the last key) gets dirty, before the puts. The
+     * caller's arrays, valid during execute; tr_build leaves them unset. */
+    bool touch;
+    const int64_t *touch_from;
+    int32_t touch_from_n;
+    const int64_t *touch_to;
+    int32_t touch_to_n;
+    /* Trans.dirtiedNodes, dirtiedBytes: with touch, the index nodes that the
+     * touch and the puts make dirty, and their sizes in the stream then
+     * (StoredTopNode.getByteSize, StoredKeyNode.getByteSize). */
+    int64_t dirtied_nodes;
+    int64_t dirtied_bytes;
     int64_t startup_pos;    /* Spos.NULL until store() */
     int32_t cap;            /* the arrays' capacity */
     struct mem *mem;
@@ -99,6 +114,16 @@ enum err_code tr_delete(struct tr_builder *b, const uint8_t *key, int32_t key_le
  * transactions (setStartupDistance's dummy). */
 enum err_code tr_put_segments(struct tr_builder *b, const int64_t *key, int32_t key_n,
         const uint8_t *value, int32_t value_len, struct err *e);
+
+/* Builder.put(long[] key, KeyTransformation kt, byte[] value,
+ * ValueTransformation vt): the key's segments and the value copied, tf as
+ * tr_put's (NULL for none). For reclaim's steps (012-11). ERR_NOMEM. */
+enum err_code tr_put_segments_tf(struct tr_builder *b, const int64_t *key, int32_t key_n,
+        const uint8_t *value, int32_t value_len, const struct tr_transform *tf, struct err *e);
+
+/* Builder.keyRead(long[] key): Keys.hash of the segments. ERR_NOMEM. */
+enum err_code tr_key_read_segments(struct tr_builder *b, const int64_t *key, int32_t key_n,
+        struct err *e);
 
 /* Builder.keyRead(byte[] key): Keys.hash of its segments. ERR_NOMEM. */
 enum err_code tr_key_read(struct tr_builder *b, const uint8_t *key, int32_t key_len,

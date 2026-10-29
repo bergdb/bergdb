@@ -215,7 +215,7 @@ static bool cut_back(const struct ncoll *nc, const struct node *node, int64_t po
 /* followValuePointer: the value read at the pointer's position, put into the
  * pointer unless the cache policy says no (large values). */
 static struct node *follow_value_pointer(struct ncoll *nc, struct node *predecessor,
-        int32_t pointerIndex, int64_t pointerPos, struct opdata *op) {
+        int32_t pointerIndex, int64_t pointerPos, struct opdata *op, bool isMaintenance) {
     assert(pointerPos >= 0 && !spos_is_vpos(pointerPos) && "bad value pointer");
     struct node *node;
     enum err_code rc = read_node(nc, pointerPos, &node, &nc->err);
@@ -223,7 +223,7 @@ static struct node *follow_value_pointer(struct ncoll *nc, struct node *predeces
         return NULL;
     }
     nc->loads++;
-    if (op->cache_policy.should_cache(op->cache_policy.ctx, node)) {
+    if (!isMaintenance && op->cache_policy.should_cache(op->cache_policy.ctx, node)) {
         if (node_pointee(predecessor, pointerIndex) == NULL) {
             node_set_pointee(nc->cx, predecessor, pointerIndex, &node->o);
         }
@@ -236,12 +236,15 @@ static struct node *follow_value_pointer(struct ncoll *nc, struct node *predeces
     return node;
 }
 
-/* followStreamPointer: the slow path (009-02, 4.4). */
+/* followStreamPointer: the slow path (009-02, 4.4). A maintenance read
+ * (isMaintenance, reclaim's, 012-11) raises no reference, makes no handle,
+ * installs nothing and does not swizzle, as Java's. */
 static struct node *follow_stream_pointer(struct ncoll *nc, struct node *predecessor,
         int32_t pointerIndex, int64_t pointerPos, struct handle *handle, struct opdata *op,
-        bool isWriter) {
+        bool isWriter, bool isMaintenance) {
     if (!nc_points_to_index_node(predecessor, pointerIndex)) {
-        return follow_value_pointer(nc, predecessor, pointerIndex, pointerPos, op);
+        return follow_value_pointer(nc, predecessor, pointerIndex, pointerPos, op,
+                isMaintenance);
     }
 
     /* 1. The id of the node. A vpos is the id of a node that had not been
@@ -270,14 +273,14 @@ static struct node *follow_stream_pointer(struct ncoll *nc, struct node *predece
     if (handle != NULL) {
         ref = nc_newer_pos(ref, handle->written_pos);
     }
-    if (ref != pointerPos) {
+    if (ref != pointerPos && !isMaintenance) {
         node_raise_ref(predecessor, pointerIndex, ref);     /* never lowered (step 3d) */
     }
 
-    /* 3. The node's live handle. */
+    /* 3. The node's live handle. A maintenance read makes none. */
     struct handle *live = handle != NULL && !hd_is_dead(handle) ? handle
-            : nt_live_or_new_handle(nc->nt, id);
-    if (live == NULL) {
+            : isMaintenance ? nt_live_handle(nc->nt, id) : nt_live_or_new_handle(nc->nt, id);
+    if (live == NULL && !isMaintenance) {
         err_set(&nc->err, ERR_NOMEM, "OutOfMemoryError", "a handle");
         return NULL;
     }
@@ -285,8 +288,17 @@ static struct node *follow_stream_pointer(struct ncoll *nc, struct node *predece
     /* 4. The handle's object, or a version read and installed. */
     struct node *result = NULL;
     bool cutBack = false;
-    struct node *o = live->obj;
-    if (o != NULL && hd_usable(o, ref)) {
+    struct node *o = live == NULL ? NULL : live->obj;
+    if (live == NULL) {
+        /* A maintenance read of a node with no live handle: read, keep nothing. */
+        struct node *node;
+        enum err_code rc = read_version(nc, id, ref, pointerIndex, predecessor, &node, &nc->err);
+        if (rc != ERR_OK) {
+            return NULL;
+        }
+        cutBack = cut_back(nc, node, ref);
+        result = node;
+    } else if (o != NULL && hd_usable(o, ref)) {
         result = o;
     } else {
         struct node *node;
@@ -300,7 +312,8 @@ static struct node *follow_stream_pointer(struct ncoll *nc, struct node *predece
         /* A version cut back to the startup time is not the version at its
          * position: only the writer's rerun, which makes it canonical, keeps it
          * in the handle (M22). */
-        if (op->cache_policy.should_cache(op->cache_policy.ctx, node) && (!cutBack || isWriter)) {
+        if (!isMaintenance && op->cache_policy.should_cache(op->cache_policy.ctx, node)
+                && (!cutBack || isWriter)) {
             result = nt_install(nc->nt, live, node);
             if (!hd_usable(result, ref)) {
                 result = node;
@@ -311,13 +324,14 @@ static struct node *follow_stream_pointer(struct ncoll *nc, struct node *predece
     }
 
     /* A read that kept nothing in a new handle leaves no empty handle. */
-    if (live->obj == NULL) {
+    if (live != NULL && live->obj == NULL && !isMaintenance) {
         nt_drop_if_empty(nc->nt, live);
     }
 
     /* 5. Swizzle: the live handle into the pointer. */
-    if (op->cache_policy.should_cache(op->cache_policy.ctx, result) && (!cutBack || isWriter)
-            && node_pointee(predecessor, pointerIndex) != &live->o) {
+    if (!isMaintenance && live != NULL && op->cache_policy.should_cache(op->cache_policy.ctx,
+            result) && (!cutBack || isWriter) && node_pointee(predecessor, pointerIndex)
+            != &live->o) {
         if (isWriter) {
             node_set_pointee(nc->cx, predecessor, pointerIndex, &live->o);
         } else {
@@ -331,7 +345,9 @@ static struct node *follow_stream_pointer(struct ncoll *nc, struct node *predece
         result = nt_make_canonical(nc->nt, live, result);
     }
 
-    touch(&live->o);
+    if (live != NULL) {
+        touch(&live->o);
+    }
     if (!op->pointer_listener.pointer_followed(op->pointer_listener.ctx, predecessor,
             pointerIndex, result, PTR_TYPE_STREAM)) {
         err_set(&nc->err, ERR_NOMEM, "OutOfMemoryError", "a pointer listener");
@@ -361,7 +377,33 @@ struct node *nc_follow_reader(void *ctx, struct node *predecessor, int32_t point
     assert((pointee != NULL || pointerPos != SPOS_NULL) && "Pointer is null");
     return follow_stream_pointer(nc, predecessor, pointerIndex, pointerPos,
             pointee != NULL && pointee->kind == OBJ_HANDLE ? (struct handle *) pointee : NULL,
-            op, false);
+            op, false, false);
+}
+
+/* MaintenanceFollower.followPointer (reclaim's scan and reads, 012-11): an
+ * object in memory as the readers' follower takes it, without the touch;
+ * else the version read, kept by nothing (Java's map of the versions it
+ * read, by position, saves reads only, and is left out). */
+struct node *nc_follow_maintenance(void *ctx, struct node *predecessor, int32_t pointerIndex,
+        struct opdata *op) {
+    struct ncoll *nc = ctx;
+    assert(pointerIndex >= 0 && "pointerIndex");
+    assert(predecessor != NULL && "predecessor is null");
+    struct obj *pointee = node_pointee(predecessor, pointerIndex);
+    int64_t pointerPos = node_pointer_pos(predecessor, pointerIndex);
+    assert((pointee != NULL || pointerPos != SPOS_NULL) && "Pointer is null");
+    struct node *mem = memory_object(pointee, pointerPos);
+    if (mem != NULL) {
+        if (!op->pointer_listener.pointer_followed(op->pointer_listener.ctx, predecessor,
+                pointerIndex, mem, PTR_TYPE_MEMORY)) {
+            err_set(&nc->err, ERR_NOMEM, "OutOfMemoryError", "a pointer listener");
+            return NULL;
+        }
+        return mem;
+    }
+    return follow_stream_pointer(nc, predecessor, pointerIndex, pointerPos,
+            pointee != NULL && pointee->kind == OBJ_HANDLE ? (struct handle *) pointee : NULL,
+            op, false, true);
 }
 
 /* WriterFollower.followPointer */
@@ -389,7 +431,7 @@ struct node *nc_follow_writer(void *ctx, struct node *predecessor, int32_t point
     }
     return follow_stream_pointer(nc, predecessor, pointerIndex, pointerPos,
             pointee != NULL && pointee->kind == OBJ_HANDLE ? (struct handle *) pointee : NULL,
-            op, true);
+            op, true, false);
 }
 
 enum err_code nc_resolve_pointers(struct ncoll *nc, struct node *node, struct err *e) {
