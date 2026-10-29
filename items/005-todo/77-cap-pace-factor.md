@@ -123,12 +123,29 @@ Questions
 7. **One value or two:** from 200 to 50 MB S/sd starts at 4, so cap 4 does
    not bind there; does the cap need a different value at 1000 against
    200 MB (or one tied to sd), or is one constant enough?
+8. **The quick suite's commit tail and startup** (added 2026-10-29, as
+   Frans decided on 006-10's point 5: "as recommended", look at it with
+   this entry). 007-07's quick suite (007-07, section 12.1; not a quiet
+   block) showed, from main before 007-07 to 007-07's take, the commit's
+   p99 and p99.9 9 to 11 percent higher with finite retention
+   (w-uni-1k-fin's append p99 from 64.5 to 70.1 µs, p99.9 from 92.7 to
+   102.9 µs; r-1k-fin's prepare phase +9.2 and +10.5 %), the median 2 to 6
+   percent faster, and startup 1 to 4 percent slower (r-1k-fin reruns
+   33,355 transactions instead of 32,540 from the same position;
+   w-uni-1k-fin's restart from 0.595 to 0.620 s). Index writes moved from
+   the user's records to reclaim's step records (from 430.0 to 462.8 bytes
+   a put in steps, from 171 to 138 in the user's records); why the take
+   moves them there was not looked into. Not yet explained. With each cap and without:
+   the quick suite in a quiet block, its four scenarios in ABBA order, to
+   see whether the tail and the startup move with the cap; and where the
+   index writes go (the user's records against reclaim's steps), with an
+   explanation of why the paced take puts more of them in the steps.
 
 
 Done when
 ---------
 
-* Both variants measured (questions 1 to 7), a recommendation (cap 2, cap
+* Both variants measured (questions 1 to 8), a recommendation (cap 2, cap
   4, another value, or no cap), and Frans's decision.
 * With a cap: the change in `TransSeq.take`, with tests (a share capped at
   a large S/sd, the same share below the cap, a decrease's records);

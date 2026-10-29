@@ -820,7 +820,9 @@ Beyond the CV, with the 3 runs of each build not overlapping:
   index in its own record (138 against 171). Index writes move from the
   user's records to reclaim's steps; a commit that carries a step is
   slower, so the tail grows a little and the median falls. Why the take
-  moves them there was not looked into.
+  moves them there was not looked into. To be studied with the cap's
+  variants, with the startup's 1 to 4 percent below, in a quiet block:
+  005-77, question 8 (Frans, 2026-10-29).
 * **Startup: +1 to 4 percent.** r-1k-fin's start reruns 33,355
   transactions against 32,540 (+2.5 %, the same in every run) from the
   same position (1864.5 MB), in 0.700 against 0.692 s; w-uni-1k-fin's
