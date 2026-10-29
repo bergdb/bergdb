@@ -305,3 +305,17 @@ with C's tools on the merged tree OK (446 workloads, 1,368 crash cuts,
 2,240 s); C BEFORE COMMIT OK (150 s). Questions for Frans: 13-api-complete
 Q2 (a closed handle ends at the close, as `fclose`; implemented, as
 recommended) and 11-reclaim Q1 (forcing a pending cut).
+
+2026-10-29, 05:06. 012-15 done: speed, memory and size against Java on
+F53, the same workloads through `bergdb.h` and Java's `Db`, medians of
+three runs in turns on a quiet machine (15-performance.md). C writes at
+1.01 to 1.31 of Java's rate, reads at 0.73 to 0.97 in memory and 0.33 to
+0.68 under small budgets, starts 1.9 to 2.4 times faster (10M keys warm:
+0.99 s against 2.42 s at 50 MB, 4.55 s against 10.3 s at 200 MB), needs
+3 to 7 percent less memory per key, and appends the same bytes per put.
+16,146 lines of C (006-08's estimate: 11,200 to 17,300), 196 kB of
+machine code at `-O2`. Proposals that keep the bytes, not applied:
+`-flto` (+15 to +34 percent on every figure), a bounded eviction sweep.
+And 012-01's done item 7: the 10M-key scale set with C writing side B,
+`cross.sh scale C=build/release` OK, the same bytes as Java's, each
+side's dump of both databases equal, Java's with its audit on (257 s).

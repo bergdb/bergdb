@@ -7,8 +7,9 @@
 # each with libbergdb.a (src/*.c), the tools (tools/*.c, one program each,
 # bergdb-NAME), the unit tests (test/unit/*.c, one program: unit), the
 # functional tests (test/func/*.c, one program: func, when there are any)
-# and the examples (examples/*.c, one program each, named as the file,
-# with include/ only on their include path: bergdb.h's API alone; 012-13).
+# the examples (examples/*.c, one program each, named as the file,
+# with include/ only on their include path: bergdb.h's API alone; 012-13)
+# and the benchmarks (bench/*.c, likewise, bench-NAME; 012-15).
 # Then checks that include/bergdb.h compiles alone.
 #
 # Usage: ./build.sh            (from any directory; a few seconds)
@@ -44,6 +45,11 @@ build() {    # build NAME FLAGS...
     for e in "$C"/examples/*.c; do
         [ -f "$e" ] || continue
         $CC $WARN -I"$C/include" "$@" -o "$out/$(basename "$e" .c)" "$e" "$out/libbergdb.a"
+    done
+    # The benchmarks (012-15), one program each, against bergdb.h only.
+    for b in "$C"/bench/*.c; do
+        [ -f "$b" ] || continue
+        $CC $WARN -I"$C/include" "$@" -o "$out/bench-$(basename "$b" .c)" "$b" "$out/libbergdb.a"
     done
 }
 

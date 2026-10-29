@@ -25,7 +25,8 @@ flags (C17, every warning an error, `-fwrapv -ffp-contract=off`):
 Each has `libbergdb.a`, the tools (`bergdb-NAME` from `tools/NAME.c`), the
 unit tests `unit`, the functional tests `func`, and the examples
 (`core_demo`, `get_many_prefix`: one program each, built with `include/`
-only on their include path). `build.sh` also checks that
+only on their include path), and the benchmarks against Java
+(`bench-cbench`, 012-15; `bench/bench.sh` runs them). `build.sh` also checks that
 `include/bergdb.h` compiles alone.
 
 `before-commit.sh` (012-01, 6.5) runs, in order, and stops at the first
@@ -78,6 +79,8 @@ As 012-01, 6.3:
     test/cross/          the cross tests with Java: cross.sh, the Java harness
                          (java/, compiled by java-build.sh into build/java/)
     tools/               bergdb-scan, bergdb-dump, bergdb-run
+    bench/               the benchmarks against Java (012-15): bench-cbench (cbench.c),
+                         JBench.java, bench.sh (the runs), summary.py, size.sh
 
 The modules so far, each ported from its Java class:
 
