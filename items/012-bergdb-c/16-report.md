@@ -158,7 +158,10 @@ list. And: "Continue with 012 until it is finished. Run agents with Opus
 * **The code** stays in `c/` (D1, "indefinitely for now"). As 012 is
   done, the C clone follows Java no further by itself: a change of Java's
   bytes will make C's cross tests fail, but nothing runs them unless
-  someone does. To keep C in step, the options are: (a) run the C gate in
+  someone does. Decided by Frans, 2026-10-29, 12:36: "No. For now I want
+  C to be a separate project. Keeps testing, scripts and everything in
+  012. Tests can start manually. Good for now." That is option (c). The
+  options were: (a) run the C gate in
   `night.sh` (about 3 minutes; it builds Java's Core Layer for the cross
   tests), so that a Java change that breaks equality shows the next
   morning; (b) the C gate in `java/before-commit.sh`, which keeps them in

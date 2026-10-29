@@ -373,3 +373,8 @@ prompts, the plans, Claude Code and Opus 5.5 as used, the effort per
 task, the usage). The C code stays in `c/`; the format document stays
 012-02.
 
+2026-10-29, 12:36. Frans on keeping C in step with Java (012-16, 0.6):
+"No. For now I want C to be a separate project. Keeps testing, scripts
+and everything in 012. Tests can start manually. Good for now." So the C
+gate is not added to `night.sh` or to Java's gate; C's tests run by hand
+(`c/before-commit.sh`, `c/test/cross/cross.sh`).
