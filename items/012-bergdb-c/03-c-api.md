@@ -598,3 +598,31 @@ with its reason above.
   forever, 012-11), and `bergdb_debug_print` and `bergdb_debug_check` are
   not defined yet (012-13).
 
+* 2026-10-28, 012-11 (noted by 012-13, as 11-reclaim.md, 6.5 asks):
+  `bergdb_set_retain_duration`'s comment says what C does: `BERGDB_FOREVER`
+  stops new iterations and cuts while an iteration in progress goes on to
+  its end, as Java's; and the front files of a cut are deleted in a later
+  transaction's call once the stream is durable up to the cut's decision,
+  so after a `bergdb_sync` or at the next open (11-reclaim.md, 6.4, Q1,
+  for Frans). A comment only.
+* 2026-10-29, 012-13: comments only; no function, type or field added or
+  changed. Section A: when a committed transaction reaches the files and
+  the device (the 10 MB buffer; sync and close force), with a pointer to
+  the C directory's readme.md, section 9 (durability). Section C: the
+  handle is not valid after `bergdb_close` (a second close or a call uses
+  freed memory; NULL is taken), 13-api-complete.md, Q2. Section G and
+  `BERGDB_IN_USE`: the lock refuses another process's open; within one
+  process a directory is opened once, not detected (012-13's decision on
+  09-write-path.md, 6.4: option A). `bergdb_close`: `BERGDB_IO` also after
+  an earlier storage failure. `bergdb_sync`: the files and the directory
+  forced; any position before the end makes the whole stream durable.
+  `durable_length`: the length at the last force (0 after a creation, as
+  Java's). The debug calls: what `bergdb_debug_check` checks (Java's
+  `KeyNode.check`, and C's recount of every object's holders), the text
+  of `bergdb_debug_print`, and `BERGDB_NOMEM`. Every function of 6.1 now
+  exists and has a functional test (13-api-complete.md, 6.2), so 6.2's
+  table says for each of `Db`'s 45 methods what C has.
+* D13's memory stream across restarts (6.10): not added. The functional
+  tests restart in directories (`f_start.c` restarts after every
+  transaction in 0.9 s), so `bergdb.h` keeps `dir` NULL as a database
+  that the close drops.

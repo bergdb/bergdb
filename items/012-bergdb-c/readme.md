@@ -290,3 +290,18 @@ above the budget plus what is pinned (at most 3,999,972), 113 MB of RSS
 and 27.9 s against 210.5 MB resident without eviction (Java's run: 974 MB
 RSS, 40 s; timed beside other work, so rough). In the main tree: C BEFORE
 COMMIT OK (150 s; 345 unit tests, 11 functional).
+
+2026-10-29, 04:00. 012-13 done: every one of `bergdb.h`'s 33 functions
+implemented with a functional test (the debug print and check last);
+the 13 status values of `Db`'s getters equal Java's at 9 points of a
+sequence with every setter, reclaim, sync and a restart; durability
+written in `c/readme.md` and tested by killing the process after execute,
+after sync, in a record's write and at random moments; close frees
+everything. C's `CoreDemo` prints what Java's `CoreDemo` prints, each on
+a new directory and on the other's database, and the gate runs both
+examples. A guide in `c/readme.md`. Merged with 012-12: `cross.sh full`
+with C's tools on the merged tree OK (446 workloads, 1,368 crash cuts,
+498 corrupt variants, 6 in turns, 1,784 budget runs, 0 differences;
+2,240 s); C BEFORE COMMIT OK (150 s). Questions for Frans: 13-api-complete
+Q2 (a closed handle ends at the close, as `fclose`; implemented, as
+recommended) and 11-reclaim Q1 (forcing a pending cut).

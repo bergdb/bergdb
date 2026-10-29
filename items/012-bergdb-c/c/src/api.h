@@ -5,9 +5,10 @@
  * reads, sync, the clock's times, the settings and the status. The
  * handles' structs are here; the caller sees them as opaque types.
  *
- * Not yet (later tasks; each refused or left undefined): eviction (012-12:
- * the cache size indicator is kept), bergdb_debug_print and
- * bergdb_debug_check (012-13).
+ * Eviction to the cache size indicator runs at the end of the calls
+ * (012-12). bergdb_debug_print and bergdb_debug_check (012-13) walk the nodes
+ * in memory as Java's Dag.visitMemoryNodes, by an explicit stack, with
+ * KeyNode.check, and recount every object's holders.
  *
  * The rules of the header's top comment hold: one caller at a time; a
  * callback that calls its database gets BERGDB_STATE; the database's

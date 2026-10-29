@@ -23,17 +23,19 @@ flags (C17, every warning an error, `-fwrapv -ffp-contract=off`):
   (`-fno-sanitize-recover=all`), and `BERGDB_TEST` (the allocator's checks).
 
 Each has `libbergdb.a`, the tools (`bergdb-NAME` from `tools/NAME.c`), the
-unit tests `unit` and the functional tests `func` (once `test/func/` has
-any). `build.sh` also checks that `include/bergdb.h` compiles alone and
-that `examples/*.c` compile, once 012-03 has written them.
+unit tests `unit`, the functional tests `func`, and the examples
+(`core_demo`, `get_many_prefix`: one program each, built with `include/`
+only on their include path). `build.sh` also checks that
+`include/bergdb.h` compiles alone.
 
 `before-commit.sh` (012-01, 6.5) runs, in order, and stops at the first
 failure with the tail of its output (all of it in `build/gate/`): the
 build; the rules a tool can check (section 4); the unit tests in the test
 build; the unit tests in the release build, then under macOS's `leaks`;
-the functional tests likewise, when there are any; and
-`test/cross/cross.sh quick`, when it exists (012-05). Java's gate,
-`java/before-commit.sh`, is not touched.
+the functional tests likewise; `test/cross/cross.sh quick` (012-05) and
+`writecheck.sh`; and `examples/compare.sh` (012-13), which runs the
+examples under the sanitizers and compares them with Java (section 8).
+Java's gate, `java/before-commit.sh`, is not touched.
 
 The test programs run every test, or those whose names start with an
 argument; `-l` lists them:
@@ -66,11 +68,13 @@ As 012-01, 6.3:
     build.sh             the builds
     before-commit.sh     the C gate
     include/bergdb.h     the API (012-03)
-    examples/            the API's examples (012-03)
+    examples/            the API's examples (012-03), and compare.sh, which
+                         checks them against Java (012-13)
     src/                 the library: one .c and .h per module
     test/unit/           unit tests, t_MODULE.c, and test.h, the framework
     test/unit/vectors/   Java's vectors
-    test/func/           functional tests, through bergdb.h only
+    test/func/           functional tests, through bergdb.h only; java/ holds
+                         StatsProbe.java, Java's side of f_settings.c's status test
     test/cross/          the cross tests with Java: cross.sh, the Java harness
                          (java/, compiled by java-build.sh into build/java/)
     tools/               bergdb-scan, bergdb-dump, bergdb-run
@@ -316,3 +320,175 @@ adds the edge cases (012-04, section 4: empty keys refused, keys of 6, 7,
 in `hash`); `t_vectors.c` checks every line of Java's vectors and fails on
 a kind of line it does not know, so that a new kind in `Vectors.java`
 shows.
+
+
+# 8. The API in short
+
+To see it run, from this directory (a JDK for the last line):
+
+    ./build.sh                              # about 20 s
+    build/release/core_demo /tmp/fruit      # C's CoreDemo: a new database, a restart
+    build/release/get_many_prefix           # getMany with a prefix, in memory
+    build/release/func durable_             # kill -9 and restarts (section 9)
+    sh examples/compare.sh                  # the examples against Java's, both ways
+
+`include/bergdb.h` is the API (012-03); its top comment has the rules, and
+each declaration its errors and who owns what. In short:
+
+```c
+#include "bergdb.h"
+
+char err[BERGDB_ERRBUF_SIZE];
+bergdb_db *db;
+if (bergdb_open("mydb", NULL, &db, NULL, err) != BERGDB_OK) {     /* defaults */
+    fprintf(stderr, "open: %s\n", err);         /* "DirectoryInUseException: ..." */
+    exit(1);
+}
+
+uint8_t key[64];                                /* keys are bkeys: bytes */
+size_t len = strlen("/fruit/apple");
+bergdb_ikey_to_bkey((const uint8_t *) "/fruit/apple", len, key);
+
+bergdb_trans *t;                                /* a transaction: Java's Trans.Builder */
+bergdb_trans_new(db, &t);
+bergdb_trans_put(t, key, len, (const uint8_t *) "red", 3);      /* copied */
+struct bergdb_executed ex;
+int rc = bergdb_execute(db, t, &ex);            /* ex.tt, ex.tpos, ex.last_pos */
+if (rc != BERGDB_OK) {
+    fprintf(stderr, "%s: %s\n", bergdb_errname(rc), bergdb_errmsg(db));
+}
+bergdb_trans_free(t);
+bergdb_sync(db, 0, BERGDB_SYNC_ORDINARY);       /* durable now (section 9) */
+
+bergdb_read *rd;                                /* a read context: GetData, GetMany */
+bergdb_read_new(db, &rd);
+struct bergdb_one one;
+bergdb_get_one(db, rd, BERGDB_LATEST, key, len, &one);
+/* one.value: NULL if none; else valid until rd's next call */
+bergdb_read_free(rd);
+
+bergdb_close(db);                               /* writes, forces, frees all */
+```
+
+* **Open.** `bergdb_open(dir, opt, &db, &info, errbuf)` creates the
+  database in an empty directory and starts an existing one (Java's or
+  C's) by the bounded startup; `dir` NULL is a database in memory, lost
+  at the close. `bergdb_options_init` gives Java's defaults (node size
+  30, startup distance 50 MB, cache budget 200 MB, retain forever, the
+  system clock, a random id); the test clock (`struct
+  bergdb_test_clock`) and `bergdb_test_id` make times and bytes
+  deterministic. A failed open leaves nothing open, and its text is in
+  `errbuf`.
+* **Write.** A transaction holds puts, deletes and a read set
+  (`bergdb_trans_key_read`, `bergdb_trans_lookup_time`: the STM's
+  conflict gives `BERGDB_RERUN`); `bergdb_execute` commits it at one new
+  time, atomically, and it can be executed again. Key and value
+  transformations (`bergdb_trans_put_transformed`) compute a key or a
+  value at the transaction's time.
+* **Read.** `bergdb_get_one` (a key at a time), `bergdb_get_many` (a range
+  in key order, forward or backward, with Java's stop conditions: an end
+  key, a count, a prefix, or a function), `bergdb_get_trans` (the
+  transaction at a position, as `bergdb_one.tpos` gives it). Results
+  point into the read context: copy what must outlive its next call.
+* **Close.** `bergdb_close` writes and forces what is buffered, releases
+  the directory's lock and frees every byte, the transactions and read
+  contexts not yet freed with it; after it the handle is gone, as a
+  `FILE` after `fclose` (012-13, Q2). Its `BERGDB_IO` says that the last
+  write or force failed.
+* **Errors.** Every call returns `BERGDB_OK` or a code; `bergdb_errmsg(db)`
+  is the text, which begins with the name of Java's exception for the
+  same case. A *refusal* (`BERGDB_RERUN`, `BERGDB_LIMIT`, `BERGDB_ARG`,
+  `BERGDB_NOT_AVAILABLE`, `BERGDB_NOMEM`, `BERGDB_STATE`) leaves the
+  database as it was. `BERGDB_FAILED` means that the database has failed
+  (the storage, memory after a transaction's go point, corrupt data):
+  every later transaction and read gets it too; close the database and
+  open it again, which rebuilds it from the stream as after a crash (P7).
+* **One caller at a time.** A database, with its transactions and read
+  contexts, is used by one thread at a time, as a `FILE`; different
+  databases may be used by different threads. The library has no threads,
+  no locks and no global state: what Java's threads do happens in the
+  calls, and a database that is not called does nothing (P3). A callback
+  (the clock, a stop condition, a transformation) must not call its
+  database: such a call gets `BERGDB_STATE`. A directory is opened by one
+  database at a time: another process's open, C's or Java's, gets
+  `BERGDB_IN_USE`; within one process, open a directory once (section 9).
+* **Examples.** `examples/core_demo.c` (Java's `CoreDemo`: execute,
+  getOne, getMany, getTrans, a restart) and `examples/get_many_prefix.c`
+  (getMany with a prefix, a count and a stop function), built into
+  `build/release/`. `examples/compare.sh` runs them and checks them
+  against Java: `get_many_prefix` prints Java's output, which its comment
+  holds, and `core_demo` and Java's `CoreDemo` print the same on each
+  other's databases.
+
+
+# 9. Durability
+
+What a C database keeps when its process dies, as written in 012-13 and
+tested by `test/func/f_durable.c` (a child process killed with `SIGKILL`
+after `bergdb_execute`, after `bergdb_sync`, with a record partly written,
+and at random moments; a write that fails). Power loss is 012-14's.
+
+1. **The write buffer.** `bergdb_execute` appends the transaction's record
+   to the stream's write buffer, in memory: 10 MB, Java's
+   `StorageManager.DEFAULT_BUFFER_SIZE`, fixed. The buffer is written to
+   the files (with `write`, not forced) when it is full, which can be in
+   the middle of a record, at `bergdb_sync` and at `bergdb_close`. Nothing
+   writes it between calls: the library has no thread (012-01, 4.3).
+   Java's `BufferedStream` writes it within 20 ms from a thread of its
+   own, and `FileStream` forces each write; the bytes are the same, and
+   only when they reach the disk differs.
+2. **After `bergdb_execute`**, the transaction is committed: reads see it
+   and the stream's length counts it, but it is not durable. A process
+   that dies (a crash, `kill -9`, `abort`) loses what the buffer holds;
+   what a full buffer wrote stays.
+3. **After `bergdb_sync`** at `BERGDB_SYNC_ORDINARY` or `STRONG` (the same
+   with one stream; `NONE` does nothing), every transaction committed
+   before it is durable: the buffer is written, and the files written
+   since the last force, and the directory after a new file, are forced
+   with `F_FULLFSYNC`, as Java's `force(true)` on macOS. With one stream,
+   a sync to any position before the end makes all of it durable; a
+   position at or past the end is `BERGDB_ARG` (012-03, D11).
+4. **After `bergdb_close`**, as after a sync: the close writes and forces
+   the buffer before it closes the files and releases the lock.
+5. **The creation** is in the buffer too: the first meta block and the
+   primordial transaction (264 bytes) become durable at the first sync or
+   close. A process that dies before leaves an empty file, and the next
+   open creates the database again (a new random id, unless the options
+   give one). Java's start does not wait for its creation to be durable
+   either; its buffer thread writes and forces it within 20 ms.
+6. **What a start finds** after a process died: whole transactions only,
+   a prefix of those committed: every synced one, and later ones as far as
+   a full buffer's write took whole records, never one without those
+   before it. A record that a write left torn at the end of the stream is
+   cut off by the start's recovery (Java's: the zero fill), and the next
+   transaction follows the last whole one.
+7. **The durable length** (`bergdb_stats.durable_length`, Java's
+   `getDurableLength`) is the stream's length at the last force: the
+   open's (0 after a creation, as Java's), each sync's, the close's.
+8. **A write or a force that fails** (an I/O error, a full disk, a file
+   size limit) fails the database (P7): the call returns `BERGDB_FAILED`
+   (`bergdb_sync`, or `bergdb_execute` when its record filled the buffer),
+   and so does every later transaction, read and sync, as the stream takes
+   no write after an error (Java's `FileStream.checkIOException`);
+   `bergdb_stats` and the setters of the cache size indicator, the retain
+   duration and the internal fraction still work, and `bergdb_close` gives
+   `BERGDB_IO` and frees everything. The next open finds a prefix, as in
+   point 6. A database that failed for another reason (memory after a
+   transaction's go point, corrupt data in a read) still syncs and closes
+   the records before the failure, while the storage works.
+9. **Reclaim's cut** frees the disk only when the stream is durable up to
+   the cut's decision: in C, at the first transaction after a sync, or at
+   the next open (`bergdb_set_retain_duration`'s comment). An application
+   that never syncs keeps its whole stream on disk until it restarts;
+   Java's buffer thread makes it durable within 20 ms. Whether C should
+   force the stream itself for a pending cut is 11-reclaim.md, 6.4's
+   question Q1, for Frans (recommended there: B, one force per cut).
+10. **One database per directory.** The open locks `bergdb.lock` as
+    Java's `FileStream` does (an `fcntl` lock of the byte at 2^62), so
+    that another process's open, C's or Java's, gets `BERGDB_IN_USE`
+    until the close. The lock belongs to the process (POSIX): within one
+    process, open a directory once. A second open in the same process is
+    not refused, and its close would release the first one's lock. Java
+    checks a set of the JVM's locked directories; C has no global state
+    (P9), so it leaves this to its one caller (012-13's decision on
+    09-write-path.md, 6.4: option A).

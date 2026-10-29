@@ -5,10 +5,11 @@
 #   build/test/     -O1 -g, AddressSanitizer and UndefinedBehaviorSanitizer,
 #                   BERGDB_TEST (the allocator's checks, mem.h)
 # each with libbergdb.a (src/*.c), the tools (tools/*.c, one program each,
-# bergdb-NAME), the unit tests (test/unit/*.c, one program: unit) and the
-# functional tests (test/func/*.c, one program: func, when there are any).
-# Then checks that include/bergdb.h compiles alone and that examples/*.c
-# compile (-fsyntax-only; they link in 012-13), when they exist.
+# bergdb-NAME), the unit tests (test/unit/*.c, one program: unit), the
+# functional tests (test/func/*.c, one program: func, when there are any)
+# and the examples (examples/*.c, one program each, named as the file,
+# with include/ only on their include path: bergdb.h's API alone; 012-13).
+# Then checks that include/bergdb.h compiles alone.
 #
 # Usage: ./build.sh            (from any directory; a few seconds)
 # Prints BUILD OK. Every warning is an error (-Werror).
@@ -39,18 +40,19 @@ build() {    # build NAME FLAGS...
     if ls "$C"/test/func/*.c > /dev/null 2>&1; then
         $CC $WARN $INC -I"$C/test/unit" "$@" -o "$out/func" "$C"/test/func/*.c "$out/libbergdb.a"
     fi
+    # The examples (012-03), one program each, against bergdb.h only (012-13).
+    for e in "$C"/examples/*.c; do
+        [ -f "$e" ] || continue
+        $CC $WARN -I"$C/include" "$@" -o "$out/$(basename "$e" .c)" "$e" "$out/libbergdb.a"
+    done
 }
 
 build release -O2
 build test -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all -DBERGDB_TEST
 
-# The API header alone, and the examples (written by 012-03).
+# The API header alone (written by 012-03).
 if [ -f include/bergdb.h ]; then
     echo '#include "bergdb.h"' | $CC $WARN $INC -fsyntax-only -x c -
 fi
-for e in examples/*.c; do
-    [ -f "$e" ] || continue
-    $CC $WARN $INC -fsyntax-only "$e"
-done
 
 echo "BUILD OK: build/release and build/test"

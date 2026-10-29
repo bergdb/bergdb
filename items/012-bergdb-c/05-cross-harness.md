@@ -358,79 +358,108 @@ Exit status: 0; 1 if the start failed; 2 on bad usage.
 
 ## 6.5 cross.sh
 
+As `cross.sh` is at 012-11's end (`main` at `ca9e583`); brought up to
+date by 012-13 (2026-10-29) from 09-write-path.md, 6.9 and 11-reclaim.md,
+6.5. 012-12 adds runs of side B with memory budgets (its own file says
+which).
+
 `test/cross/cross.sh quick|full|scale [C=DIR] [SCALE=N] [KEEP=1]`, from
 any directory. It builds Java (`java-build.sh`), exports the set's
-workloads (`Export.java`: `sd:NAME:MODE[:n=N]`, `coresame[:n=N]`,
-`gen:SEED[:K=V,...]`, `scale:KEYS`) and the hand-written ones of
-`test/cross/workloads/` into `build/cross/SET/wl/`, and then:
+workloads (`Export.java`: `sd:NAME:MODE[:n=N]`, `coresame[:n=N][:plain]`,
+`gen:SEED[:K=V,...]`, `scale:KEYS`), copies the hand-written ones of
+`test/cross/workloads/` (both sets) and of `test/cross/workloads/full/`
+(the full set only) into `build/cross/SET/wl/`, and then:
 
 0. The script is one compound command (`{ ... }`), which `sh` reads
    whole before it runs, so that an edit of the file does not change a
    run in progress. Every JVM gets `JAVA_OPTS`, by default `-Xmx2g`
    (scale: `-Xmx12g`), to stay small beside other sessions' runs.
 1. **Runs**: side A and side B run each workload into
-   `build/cross/SET/{a,b}/W/db`, at the same time (two JVMs).
+   `build/cross/SET/{a,b}/W/db`, at the same time.
 2. **The decided cut**: the `firstAvailablePos` of side A's last `status`
-   line. Each side's *view* holds hard links to its files from the one
-   that holds the cut on, and its other files (`bergdb.lock`). In scale,
-   the view is one file with the stream's bytes from the meta block 2 MB
-   or less before its end, so that the scans stay small: a stream of
+   line. Each side's *view* holds its stream's bytes from a common
+   position at or before the cut, cut at side A's file boundaries
+   (`split_view`), and its other files (`bergdb.lock`), so that two
+   directories whose reclaim cut their front files at different moments
+   compare. In scale, the view is the stream's bytes from the meta block
+   2 MB or less before its end, so that the scans stay small: a stream of
    gigabytes is compared byte for byte, and scanned only at its end.
 3. **Scans**: each view by both scanners; **dumps**: a copy (`cp -R`) of
    each directory by both dumpers, sampled with side A's scan of side A.
    With `C=`, Java's dumps of side B's directories run Java's audit
    (`-audit 1`; C to Java, 012-01, section 1).
 4. **Compare**, per workload: both runs exit 0 and print the same text;
-   the files from the cut file on have the same names, sizes and bytes,
-   and files before it that both sides have are equal (a reclaim cut is
-   physical only when the bytes are durable, which differs between runs:
-   012-01, 3.2, point 8); the four scans equal; the four dumps equal; the
-   dumped copies' files equal; for StreamDigest's workloads, the SHA-256
+   the files: for a workload without reclaim, the same names, sizes and
+   bytes; for one that reclaims (`compare_db`, `compare_stream`), the
+   stream's bytes from the decided cut and the other files, as each run
+   makes its physical cut at its own moments (a cut is made when the
+   decision's bytes are durable: 012-01, 3.2, point 8; 005-72, option A);
+   the four scans equal; the four dumps equal; the dumped copies' files
+   equal (again from the cut); for StreamDigest's workloads, the SHA-256
    of side A's stream from the cut equals StreamDigest's own `sha256` for
    the same run (Export writes it beside the workload, `W.digest`), which
    checks the export draw for draw. On a difference: the first differing
    stream position, and both sides' scan lines around it.
-5. **Crash variants** (workloads that do not reclaim; a cut before a
-   reclaim cut's durable bytes would be no crash): copies of side A's
-   directory cut at chosen positions (for records spread over the
-   stream: 3 and 17 bytes in, the middle, without its last byte, whole;
-   meta blocks: 1 before, at, 1, 127, 128 and 129 after; the first file's
-   end is a meta block's position) and random ones (awk's `rand`, seeded
-   per workload). Side A scans each cut copy; each side dumps its own copy
+5. **Crash variants**: copies of a finished directory cut at chosen
+   positions (for records spread over the stream: 3 and 17 bytes in, the
+   middle, without its last byte, whole; meta blocks: 1 before, at, 1,
+   127, 128 and 129 after; the first file's end is a meta block's
+   position) and random ones (awk's `rand`, seeded per workload). For a
+   workload without reclaim, copies of side A's directory. For one that
+   reclaims, only with `C=`: copies of side B's (C's) directory, cut at or
+   after the stream's length at its last sync, since C's stream is
+   durable after a sync only, so every physical cut it made had its
+   decision durable by then and such a copy is a crash (Java's directory
+   makes its cuts at its own moments, and a copy of it cut earlier might
+   not be). Side A scans each cut copy; each side dumps its own copy
    (which recovers it), then runs the workload's *after-workload* on it
    (its settings, a `restart`, 20 transactions a million time units after
    its last time, `check latest`, `sync`; `-segments 1`). Compared: the
-   exit statuses, the dumps, the runs, the files.
-6. **Runs in turns**: segment k of a workload is run by side A if k is
-   even, by side B if odd (each in a JVM of its own), all on one
+   exit statuses, the dumps, the runs, the files (from the decided cut).
+6. **Corrupt variants** (012-06): copies of a few workloads' directories
+   with bits flipped, files cut short or removed; both scanners scan each:
+   a stream that Java refuses, C refuses at the same place, and C's
+   scanner never crashes.
+7. **Runs in turns**: segment k of a workload is run by side A if k is
+   even, by side B if odd (each in a process of its own), all on one
    directory; the outputs, joined, equal side A's whole run, and the files
-   equal both sides' (from the cut).
-7. **A planted difference**: a copy of side B's directory of the first
+   equal both sides' (from the decided cut).
+8. **A planted difference**: a copy of side B's directory of the first
    workload with one byte changed, 20 bytes into the first value node
    1,000 bytes or more after the cut; the comparison must report that
    position, and the report shows both scans around it.
-8. The last line: `CROSS SET OK: ...` (exit 0) or `CROSS SET FAILED: ...`
+9. The last line: `CROSS SET OK: ...` (exit 0) or `CROSS SET FAILED: ...`
    (exit 1). The directories of a passed run are deleted unless `KEEP=1`;
    `build/cross/SET/report.txt` keeps the report.
 
 **The C side** (`C=DIR`): side B uses `DIR/bergdb-run`, `bergdb-dump` and
 `bergdb-scan` where they exist and are executable, Java's tools
-otherwise, so that 012-06 (the scanner), 012-08 (the dumper) and 012-09
-(the runner) each add one tool. Each is called once per job, with the
-job's arguments, its standard output to the job's output file. Java runs
-a side's jobs in one JVM (`Batch.java`: "run|dump|scan OUT ARGS" a line;
-`OUT.exit` holds each job's exit status). `test/cross/java-tools/` holds
-the three tools as wrappers of Java's classes, one JVM a job, so that
-`cross.sh quick C=test/cross/java-tools` checks the plumbing of `C=`
-before C has a tool, and shows the interface.
+otherwise. Each is called once per job, with the job's arguments, its
+standard output to the job's output file. Since 012-11 C has all three:
+`bergdb-scan` (012-06), `bergdb-dump` by the bounded startup with
+reclaim's table and cut (012-08, 012-10, 012-11), `bergdb-run` with
+restarts and reclaim (012-09 to 012-11), so every run, dump and scan of
+side B is C's; `c_runs` answers 1 for every workload and is kept as the
+place to send a kind of workload to Java (its outputs then listed in
+`java-only.txt` and counted in the report). Java runs a side's jobs in one
+JVM (`Batch.java`: "run|dump|scan OUT ARGS" a line; `OUT.exit` holds each
+job's exit status). `test/cross/java-tools/` holds the three tools as
+wrappers of Java's classes, one JVM a job, which checks the plumbing of
+`C=` without C. The C gate runs `cross.sh quick C=build/test KEEP=1`, then
+`writecheck.sh` on its Java directories (012-09, part 1: C's take and
+append path replayed on Java's records).
 
-**The sets**:
+**The sets** (at `ca9e583`):
 
-| Set | Workloads | Crash cuts | Turns |
-|---|---|---|---|
-| quick | StreamDigest's `l2-sd100` (restarts, 300 transactions), `l2-sd1000-node8` (reads, 300), `l3-node14` (restarts, 600), `l2-idle-1` (plain, 200); CoreSame (1,500); Gen seeds 1 to 4, small; `example.wl` | 2 workloads, about 60 | 1 workload |
-| full | StreamDigest's twelve configurations at full size, three modes each; CoreSame (6,000); Gen seeds 1 to 200, and 201 to 240 with node size 8, startup distance 100 and no reclaim; `example.wl` | 8 workloads, about a thousand | 6 workloads |
-| scale | `Export scale:SCALE` (10M keys by default): transactions of 100 consecutive keys `/k/i` with 40-byte values, node size 30, startup distance 50 MB, a restart halfway, then a pass that deletes or puts every 97th key, a check and gets; dumps with `-large` | none | none |
+| Set | Workloads | Crash cuts | Corrupt | Turns |
+|---|---|---|---|---|
+| quick | StreamDigest's `l2-sd100` (restarts, 300 transactions), `l2-sd1000-node8` (reads, 300), `l3-node14` (restarts and plain, 600), `l2-idle-1` (plain, 200), `l3-every1` (reads, 400); CoreSame (1,500, and plain); Gen seeds 1 to 4 (3 with a retain of 2 s, 4 with node size 8, startup distance 100, 3 restarts, no reclaim), 5 and 6 without restarts and reclaim (6 with node size 8, startup distance 100), 7 and 8 without restarts with a retain of 1 s (8 with node size 8, startup distance 100); the hand-written `example.wl`, `clock.wl`, `nowmoves.wl`, `sdcut.wl`, `reclaim-sync.wl`, `reclaim-crash.wl` | 3 workloads (`reclaim-crash` among them); per workload 4 records and 4 meta blocks cut as in point 5, and 3 random cuts | 2 workloads, 40 flips | 2 (`gen-4-...`, `sd-l3-node14-restarts-n600`) |
+| full | StreamDigest's twelve configurations at full size, three modes each; CoreSame (6,000, and plain); Gen seeds 1 to 200; 201 to 240 with node size 8, startup distance 100 and no reclaim; 241 to 280 without restarts and reclaim; 281 to 300 the same with node size 8 and startup distance 100; 301 to 340 without restarts (random retain durations, forever in about 6 of 10); 341 to 380 without restarts with a retain of 2 s; 381 to 400 the same with 1 s, node size 8 and startup distance 100; quick's hand-written workloads and `full/sdcut-large.wl`, `full/reclaim-sync-large.wl` | 9 workloads (`reclaim-crash` among them); per workload 15 records and 15 meta blocks, and 25 random cuts | 6 workloads, 80 flips | 6 |
+| scale | `Export scale:SCALE` (10M keys by default): transactions of 100 consecutive keys `/k/i` with 40-byte values, node size 30, startup distance 50 MB, a restart halfway, then a pass that deletes or puts every 97th key, a check and gets; dumps with `-large` | none | none | none |
+
+012-11's last `cross.sh full C=build/test` (in its clone): 446 workloads,
+181 of them with reclaim, all run by C; 1,368 crash cuts, 498 corrupt
+variants, 6 in turns; no difference; 1,751 s.
 
 
 # 7. Progress

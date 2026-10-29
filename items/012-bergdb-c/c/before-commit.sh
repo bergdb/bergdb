@@ -29,6 +29,11 @@
 #                 (012-09, part 1): C's take replayed on every record, and the
 #                 records re-appended through C's append path, the
 #                 directories equal to Java's; C's tools of the test build
+#   examples      examples/compare.sh with the test build (012-13): the
+#                 examples run under the sanitizers, get_many_prefix prints
+#                 Java's output, and core_demo and Java's CoreDemo print the
+#                 same on each other's databases (the Java classes of the
+#                 cross step)
 
 C=$(cd "$(dirname "$0")" && pwd)
 cd "$C" || exit 1
@@ -104,5 +109,8 @@ fi
 if [ -f test/cross/cross.sh ]; then
     step cross sh test/cross/cross.sh quick C=build/test KEEP=1
     step write sh test/cross/writecheck.sh build/cross/quick C=build/test
+fi
+if [ -f examples/compare.sh ]; then
+    step examples sh examples/compare.sh build/test
 fi
 echo "C BEFORE COMMIT OK ($(( $(date +%s) - START )) s)"

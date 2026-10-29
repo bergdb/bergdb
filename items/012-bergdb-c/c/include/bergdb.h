@@ -22,8 +22,12 @@
  * happens inside the calls (012-01, 4.2 and 4.3): the stream's write buffer
  * is written when it is full, at bergdb_sync and at bergdb_close; eviction
  * runs at the end of a transaction and after loads, as in Java. A database
- * that is not called does nothing (P3). A committed transaction is durable
- * after bergdb_sync or bergdb_close; until then it may be in the buffer.
+ * that is not called does nothing (P3). A committed transaction is in the
+ * stream's write buffer (10 MB) until bergdb_sync, bergdb_close or a full
+ * buffer writes it to the files, and durable on the device after
+ * bergdb_sync or bergdb_close, which force it (F_FULLFSYNC); a process that
+ * dies loses what the buffer holds, never what was synced (the C
+ * directory's readme.md, section 9: durability).
  *
  *
  * B. Errors
@@ -65,7 +69,11 @@
  * The caller owns:
  *
  *   - a database (bergdb_db), from a successful bergdb_open until
- *     bergdb_close, which frees all of its memory;
+ *     bergdb_close, which frees all of its memory. After the close the
+ *     pointer is not valid, as a FILE after fclose: a second bergdb_close,
+ *     or any other call with it, uses freed memory (AddressSanitizer
+ *     reports it in a test build); a caller that may close twice sets its
+ *     pointer to NULL, which bergdb_close takes (012-13, Q2);
  *   - a transaction (bergdb_trans) and a read context (bergdb_read), from
  *     its _new function until its _free function. Each belongs to the
  *     database that made it, is used with that database only, and is
@@ -155,7 +163,11 @@
  * memory (dir NULL), which is lost at the close. In a directory, the open
  * creates the directory and its missing parents, as Java's FileStream
  * does, and the lock file bergdb.lock (kept; locked while a database has
- * the directory open, in this process or another, Java's as well: 005-63).
+ * the directory open, so that the open of another process, C's or Java's,
+ * is refused with BERGDB_IN_USE: 005-63). Within one process, open a
+ * directory once: the lock is the process's (POSIX), so a second open in
+ * the same process is not refused, and its close releases the first
+ * open's lock (012-13's decision, after 012-09, 6.4: no global state, P9).
  * When the stream is empty (no .bergdb file), the open creates the
  * database, as Java's start does: the first .bergdb file, with the first
  * meta block and the primordial transaction (264 bytes), the database id
@@ -228,9 +240,10 @@ enum bergdb_error {
      * transaction (DatabaseNotCreatedException, 005-33): remove its
      * .bergdb files and open again, which creates the database. */
     BERGDB_NOT_CREATED = 9,
-    /* Another database holds the directory, in this process or another
-     * (DirectoryInUseException, 005-63): open it when that one is
-     * closed. */
+    /* A database of another process, C's or Java's, holds the directory
+     * (DirectoryInUseException, 005-63): open it when that one is closed.
+     * Within one process a directory is opened once (section G): a second
+     * open there is not detected. */
     BERGDB_IN_USE = 10,
     /* Out of memory (OutOfMemoryError). A refusal; after a transaction's
      * go point, a failure (BERGDB_FAILED). */
@@ -414,7 +427,7 @@ struct bergdb_start_info {
  *
  * Errors: BERGDB_ARG (db NULL; a setting out of range: the node size, a
  * startup distance under 10, a retain duration under one second);
- * BERGDB_IN_USE; BERGDB_IO; BERGDB_FORMAT; BERGDB_NOT_CREATED;
+ * BERGDB_IN_USE (another process); BERGDB_IO; BERGDB_FORMAT; BERGDB_NOT_CREATED;
  * BERGDB_LIMIT (the clock's time out of range at the creation);
  * BERGDB_NOMEM. Java's start throws DbFailedException when the read of
  * reclaim's table fails on the storage; here that is BERGDB_IO or
@@ -432,11 +445,15 @@ int bergdb_open(const char *dir, const struct bergdb_options *opt, bergdb_db **d
  * writes what the records before the failure left in the buffer. db NULL
  * does nothing.
  *
- * Returns BERGDB_OK, or BERGDB_IO if the last write or force failed: the
- * database is closed and freed all the same, and transactions that no
- * sync had made durable may be lost; the code has no text, as the
- * database is gone. Java's close() does not report it (012-03, 6.8).
- * BERGDB_STATE from a callback, and nothing is closed.
+ * Returns BERGDB_OK, or BERGDB_IO if the last write or force failed, or
+ * the storage had failed before (the stream takes no write after a
+ * failure): the database is closed and freed all the same, and
+ * transactions that no sync had made durable may be lost; the code has no
+ * text, as the database is gone. Java's close() does not report it
+ * (012-03, 6.8). BERGDB_STATE from a callback, and nothing is closed.
+ * After the close, db is not valid (section C): Java's second close() is
+ * harmless and its calls after a close throw IllegalDbStateException, while
+ * here the handle is gone (012-13, Q2).
  */
 int bergdb_close(bergdb_db *db);
 
@@ -761,8 +778,11 @@ enum bergdb_sync_level {
 /*
  * Makes the stream durable up to and including the byte at pos, a
  * transaction's last_pos; pos 0 for the last transaction executed (Java's
- * sync(level) and sync(pos, level)): writes the buffer and forces it
- * (F_FULLFSYNC). A negative pos, or one already durable, needs nothing.
+ * sync(level) and sync(pos, level)): writes the buffer and forces the
+ * files written since the last force (F_FULLFSYNC), and the directory
+ * after a new file. With one stream, any pos before the end makes all of
+ * it durable. A negative pos needs nothing; BERGDB_SYNC_NONE does nothing.
+ * Durability: the C directory's readme.md, section 9.
  *
  * Errors: BERGDB_ARG (level not one of the three; pos at or past the end
  * of the stream, which Java waits for, as another thread's transaction can
@@ -836,7 +856,9 @@ int bergdb_set_reclaim_internal_fraction(bergdb_db *db, double fraction);
 /* The status, Db's getters, each a field (012-03, 6.2). */
 struct bergdb_stats {
     int64_t stream_length;              /* getStreamLength() */
-    int64_t durable_length;             /* getDurableLength(): the length durable on the device */
+    int64_t durable_length;             /* getDurableLength(): the stream's length at the last
+                                           force: the open (0 after a creation, as Java's),
+                                           each bergdb_sync, the close */
     int64_t last_trans_pos_of_last_valid_meta_block;
                                         /* getLastTransPosOfLastValidMetaBlock(): where recovery
                                            starts */
@@ -875,17 +897,22 @@ int bergdb_stats(bergdb_db *db, struct bergdb_stats *stats);
 
 /*
  * Prints the index in memory to out (Java's printDag), for tests and
- * development; the text is C's own. Errors: BERGDB_ARG (NULL),
- * BERGDB_STATE, BERGDB_FAILED.
+ * development; the text is C's own: a line per node reached from the super
+ * root by memory pointers, depth first, indented by its depth ("top ...",
+ * "key ...", "value ...", "delete ..."), "-> POS" for a pointer to the
+ * stream, and a last line with the counts. Errors: BERGDB_ARG (NULL),
+ * BERGDB_STATE, BERGDB_FAILED, BERGDB_NOMEM.
  */
 int bergdb_debug_print(bergdb_db *db, FILE *out);
 
 /*
- * Checks every index object in memory (Java's checkNodes), for tests. An
+ * Checks every index object in memory (Java's checkNodes: KeyNode.check of
+ * each key node reached from the super root), and recounts the holders of
+ * every object of the database (C's, 012-01, 4.5), for tests. An
  * inconsistency is a bug, and stops the program with a failed assert, as
  * Java's AssertionError. Errors: BERGDB_ARG (NULL), BERGDB_STATE,
  * BERGDB_FAILED (a failed database's memory is not checked; Java's
- * checkNodes has no state check).
+ * checkNodes has no state check), BERGDB_NOMEM.
  */
 int bergdb_debug_check(bergdb_db *db);
 

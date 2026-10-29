@@ -6,6 +6,8 @@
 #include <string.h>
 #include "getmany.h"
 #include "keys.h"
+#include "knode.h"
+#include "node.h"
 #include "nstream.h"
 #include "rstream.h"
 #include "spos.h"
@@ -491,18 +493,20 @@ int bergdb_get_one(bergdb_db *db, bergdb_read *rd, int64_t lookup_time,
     }
     rd->used = 0;
     rd->nkvts = 0;
-    memset(out, 0, sizeof *out);
-    out->actual_lookup_time = gd.actual_lookup_time;
+    struct bergdb_one one;      /* *out is set on success only (bergdb.h) */
+    memset(&one, 0, sizeof one);
+    one.actual_lookup_time = gd.actual_lookup_time;
     if (v != NULL && v->len >= 0) {
         if (!buf_room(rd, (size_t) v->len + 1)) {
             return fail_nomem(db);
         }
         memcpy(rd->buf, v->value, (size_t) v->len);
-        out->value = rd->buf;
-        out->value_len = (size_t) v->len;
-        out->time = gd.kv_time;
-        out->tpos = gd.tpos;
+        one.value = rd->buf;
+        one.value_len = (size_t) v->len;
+        one.time = gd.kv_time;
+        one.tpos = gd.tpos;
     }
+    *out = one;
     /* The end of the call: a safe point (012-07, 6.4.4), and eviction after
      * the loads (012-12). */
     db_evict(&db->db);
@@ -961,4 +965,200 @@ int bergdb_stats(bergdb_db *db, struct bergdb_stats *s) {
     s->get_op_count = db->db.get_op_count;
     db->errmsg[0] = '\0';
     return BERGDB_OK;
+}
+
+/* ======== Debugging (012-13) ======== */
+
+/* A frame of the walk's stack: a node, its depth, its next pointer. */
+struct walk_frame {
+    struct node *node;
+    int32_t depth;
+    int32_t next;
+};
+
+/* One line of bergdb_debug_print: the node at its depth. */
+static void print_node(FILE *out, const struct node *n, int32_t depth) {
+    fprintf(out, "%*s", (int) (2 * depth), "");
+    switch (n->o.kind) {
+    case OBJ_TOP: {
+        const struct tnode *t = (const struct tnode *) n;
+        fprintf(out, "top ordinal=%lld id=%lld spos=%lld rootTime=%lld dirty=%d\n",
+                (long long) t->top_node_id, (long long) n->id, (long long) n->spos,
+                (long long) t->root_time, node_is_dirty(n) ? 1 : 0);
+        break;
+    }
+    case OBJ_KEY: {
+        const struct knode *k = (const struct knode *) n;
+        fprintf(out, "key id=%lld spos=%lld size=%d leaf=%d dirty=%d\n", (long long) n->id,
+                (long long) n->spos, (int) k->size, kn_is_segment_leaf(k) ? 1 : 0,
+                node_is_dirty(n) ? 1 : 0);
+        break;
+    }
+    default: {
+        const struct vnode *v = (const struct vnode *) n;
+        if (v->len < 0) {
+            fprintf(out, "delete spos=%lld\n", (long long) n->spos);
+        } else {
+            fprintf(out, "value spos=%lld len=%d\n", (long long) n->spos, (int) v->len);
+        }
+        break;
+    }
+    }
+}
+
+/* Java's checkNodes for one node: KeyNode.check() of a key node, an
+ * AssertionError if bad. */
+static void check_node(const struct node *n) {
+    if (n->o.kind == OBJ_KEY) {
+        const char *m = kn_check((const struct knode *) n);
+        if (m != NULL) {
+            fprintf(stderr, "bergdb_debug_check: key node id=%lld spos=%lld: %s\n",
+                    (long long) n->id, (long long) n->spos, m);
+        }
+        assert(m == NULL && "bergdb_debug_check: a bad key node");
+    }
+}
+
+/* Dag.visitMemoryNodes: every node in memory from the super root, once
+ * each, depth first in pointer order; printed to out if not NULL, checked
+ * if check. An explicit stack, not recursion: a chain of top nodes in
+ * memory can be long (012-01, 4.5, point 8). The nodes are marked
+ * (OBJ_MARK) while the walk runs, and unmarked at its end. Counts the
+ * nodes by kind in counts[OBJ_TOP], [OBJ_KEY], [OBJ_VALUE]. ERR_NOMEM, and
+ * nothing marked, if the stack cannot grow. */
+static enum err_code walk_memory_nodes(struct db *d, FILE *out, bool check, int64_t counts[4]) {
+    struct mem *m = d->mem;
+    memset(counts, 0, 4 * sizeof *counts);
+    if (!d->dag_made || d->dag.top_ds.super_root == NULL) {
+        return ERR_OK;
+    }
+    size_t cap = 32, n = 0, seen_cap = 256, nseen = 0;
+    struct walk_frame *stack = mem_alloc(m, cap * sizeof *stack, MEM_STATE);
+    struct node **seen = mem_alloc(m, seen_cap * sizeof *seen, MEM_STATE);
+    enum err_code rc = ERR_OK;
+    struct node *next = &d->dag.top_ds.super_root->n;
+    int32_t depth = 0;
+    if (stack == NULL || seen == NULL) {
+        rc = ERR_NOMEM;
+        next = NULL;
+    }
+    for (;;) {
+        if (next != NULL) {     /* visit next, and push it */
+            if (nseen == seen_cap) {
+                struct node **s2 = mem_realloc(m, seen, seen_cap * sizeof *seen,
+                        2 * seen_cap * sizeof *seen, MEM_STATE);
+                if (s2 == NULL) {
+                    rc = ERR_NOMEM;
+                    break;
+                }
+                seen = s2;
+                seen_cap *= 2;
+            }
+            if (n == cap) {
+                struct walk_frame *f2 = mem_realloc(m, stack, cap * sizeof *stack,
+                        2 * cap * sizeof *stack, MEM_STATE);
+                if (f2 == NULL) {
+                    rc = ERR_NOMEM;
+                    break;
+                }
+                stack = f2;
+                cap *= 2;
+            }
+            next->o.flags |= OBJ_MARK;
+            seen[nseen++] = next;
+            counts[next->o.kind]++;
+            if (out != NULL) {
+                print_node(out, next, depth);
+            }
+            if (check) {
+                check_node(next);
+            }
+            stack[n].node = next;
+            stack[n].depth = depth;
+            stack[n].next = 0;
+            n++;
+            next = NULL;
+        }
+        if (n == 0) {
+            break;
+        }
+        struct walk_frame *f = &stack[n - 1];
+        if (f->next >= node_size(f->node)) {
+            n--;
+            continue;
+        }
+        struct pointer p;
+        node_get_pointer(f->node, f->next++, &p);
+        if (ptr_is_mem(&p)) {
+            if ((p.node->o.flags & OBJ_MARK) == 0) {
+                next = p.node;
+                depth = f->depth + 1;
+            } else if (out != NULL) {
+                fprintf(out, "%*s(again) id=%lld\n", (int) (2 * (f->depth + 1)), "",
+                        (long long) p.node->id);
+            }
+        } else if (out != NULL && !ptr_is_null(&p)) {
+            fprintf(out, "%*s-> %lld\n", (int) (2 * (f->depth + 1)), "", (long long) p.pos);
+        }
+    }
+    for (size_t i = 0; i < nseen; i++) {
+        seen[i]->o.flags &= (uint16_t) ~OBJ_MARK;
+    }
+    mem_free(m, stack, cap * sizeof *stack, MEM_STATE);
+    mem_free(m, seen, seen_cap * sizeof *seen, MEM_STATE);
+    return rc;
+}
+
+/* The state check of the debug calls: the database active (D14). */
+static int debug_state(bergdb_db *db, const char *method) {
+    struct err e;
+    enum err_code rc = db_check_active(&db->db, method, &e);
+    return rc == ERR_OK ? BERGDB_OK : done(db, rc, &e);
+}
+
+int bergdb_debug_print(bergdb_db *db, FILE *out) {
+    if (db == NULL || out == NULL) {
+        return fail_arg(db, "NULL");
+    }
+    if (db->in_callback) {
+        return fail_state(db);
+    }
+    int c = debug_state(db, "printDag");
+    if (c != BERGDB_OK) {
+        return c;
+    }
+    int64_t counts[4];
+    if (walk_memory_nodes(&db->db, out, false, counts) != ERR_OK) {
+        return fail_nomem(db);
+    }
+    fprintf(out, "in memory: %lld top nodes, %lld key nodes, %lld value nodes\n",
+            (long long) counts[OBJ_TOP], (long long) counts[OBJ_KEY],
+            (long long) counts[OBJ_VALUE]);
+    return ok_done(db);
+}
+
+int bergdb_debug_check(bergdb_db *db) {
+    if (db == NULL) {
+        return fail_arg(db, "NULL");
+    }
+    if (db->in_callback) {
+        return fail_state(db);
+    }
+    int c = debug_state(db, "checkNodes");
+    if (c != BERGDB_OK) {
+        return c;
+    }
+    int64_t counts[4];
+    if (walk_memory_nodes(&db->db, NULL, true, counts) != ERR_OK) {
+        return fail_nomem(db);
+    }
+    /* C's own check beside Java's (012-01, 4.5): every object's count of
+     * holders recounted by a walk from the database's roots. */
+    const int64_t bad = db_recount(&db->db);
+    if (bad != 0) {
+        fprintf(stderr, "bergdb_debug_check: %lld objects with a wrong count of holders\n",
+                (long long) bad);
+    }
+    assert(bad == 0 && "bergdb_debug_check: a wrong count of holders");
+    return ok_done(db);
 }
