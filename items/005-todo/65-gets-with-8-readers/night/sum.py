@@ -7,7 +7,8 @@
 # where the time went: the gets and the after-load calls over 10 ms, and whether the calls
 # began under pressure; the readers' time blocked and parked; the eviction thread's time
 # running, waiting and neither; the machine's busy cores and the other processes'.
-# Written 2026-10-28 by Claude (Opus 5.5, Claude Code).
+# Written 2026-10-28 by Claude (Opus 5.5, Claude Code). 2026-10-29, for the rerun with 005-65's
+# fix (ScaleBench-065.diff's third version): the calls that entered evictorLock, an estimate.
 # Usage: python3 sum.py OUTDIR   (threads.sh's night/out/threads)
 import glob, json, os, re, sys
 
@@ -168,21 +169,25 @@ print('\n## Where the time went: gets and after-load calls\n')
 print('Gets over 10 ms (from the histogram); after-load calls over 10 ms, and of them those that')
 print('began under pressure (the resident bytes over the trigger by more than the gap between the')
 print('watermarks, so that afterLoad may park for a batch); the mean after-load call; the calls')
-print('over the trigger (each takes the monitor evictorLock in Eviction.wake) and under pressure;')
-print('the longest call without pressure; the readers\' time blocked on monitors (percent of their')
-print('time, and the times a second) and parked (LockSupport: afterLoad\'s wait).\n')
-print('| run | threads | gets > 10 ms | after-load > 10 ms | of them under pressure | after-load ns a call | over the trigger, k a second | under pressure | longest without pressure ms | readers blocked % | blocked, k a second | readers parked ms |')
-print('|---|---|---|---|---|---|---|---|---|---|---|---|')
+print('over the trigger and of them those that entered the monitor evictorLock in Eviction.wake')
+print('(every call over the trigger before 005-65\'s fix; with it, only one that finds no request')
+print('pending: an estimate, from the flag read just before the call; ? for a run without the')
+print('figure); the calls under pressure; the longest call without pressure; the readers\' time')
+print('blocked on monitors (percent of their time, and the times a second) and parked (LockSupport:')
+print('afterLoad\'s wait).\n')
+print('| run | threads | gets > 10 ms | after-load > 10 ms | of them under pressure | after-load ns a call | over the trigger, k a second | entering evictorLock, k a second | under pressure | longest without pressure ms | readers blocked % | blocked, k a second | readers parked ms |')
+print('|---|---|---|---|---|---|---|---|---|---|---|---|---|')
 for b, r, n, d in runs_by_order():
     for t, p in tphases(d):
         sec = p['seconds']
         rb = p.get('readersBlocked')
         rw = p.get('readersWaitedMs')
-        print('| %s r%d | %d | %s | %d | %s | %s | %s | %s | %s | %s | %s | %s |' % (
+        print('| %s r%d | %d | %s | %d | %s | %s | %s | %s | %s | %s | %s | %s | %s |' % (
             b, r, t, fmt(p.get('getsOver10ms'), '%d'), p['afterLoadOver10ms'],
             fmt(p.get('afterLoadOver10msUnderPressure'), '%d'),
             fmt(ratio(p.get('afterLoadMs'), p.get('afterLoadCalls'), 1e6), '%.0f'),
             fmt(ratio(p.get('afterLoadWakeCalls'), sec, 1e-3), '%.0f'),
+            fmt(ratio(p.get('afterLoadEnterCalls'), sec, 1e-3), '%.0f'),
             fmt(p.get('afterLoadPressureCalls'), '%d'), fmt(p.get('afterLoadMaxCalmMs'), '%.1f'),
             fmt(blocked_pct(p, t), '%.2f'), fmt(None if rb is None or rb < 0 else rb / sec / 1000.0, '%.1f'),
             fmt(None if rw is None or rw < 0 else rw, '%d')))
@@ -207,8 +212,8 @@ for b, r, n, d in runs_by_order():
             fmt(p.get('machineCores'), '%.2f'), fmt(others(p), '%.2f')))
 
 print('\n## Each build, the reading\'s figures (sums or means of its runs)\n')
-print('| build | threads | gets > 10 ms | after-load > 10 ms | of them under pressure | after-load ns a call | readers blocked % | eviction thread, the rest % | machine cores | other processes\' cores |')
-print('|---|---|---|---|---|---|---|---|---|---|')
+print('| build | threads | gets > 10 ms | after-load > 10 ms | of them under pressure | after-load ns a call | entering evictorLock, k a second | readers blocked % | eviction thread, the rest % | machine cores | other processes\' cores |')
+print('|---|---|---|---|---|---|---|---|---|---|---|')
 
 
 def mean(xs):
@@ -226,10 +231,11 @@ for bd in order:
         ps = [p for b, r, n, d in runs_by_order() if b == bd for tt, p in tphases(d) if tt == t]
         if not ps:
             continue
-        print('| %s | %d | %s | %d | %s | %s | %s | %s | %s | %s |' % (
+        print('| %s | %d | %s | %d | %s | %s | %s | %s | %s | %s | %s |' % (
             bd, t, fmt(total([p.get('getsOver10ms') for p in ps]), '%d'), sum(p['afterLoadOver10ms'] for p in ps),
             fmt(total([p.get('afterLoadOver10msUnderPressure') for p in ps]), '%d'),
             fmt(mean([ratio(p.get('afterLoadMs'), p.get('afterLoadCalls'), 1e6) for p in ps]), '%.0f'),
+            fmt(mean([ratio(p.get('afterLoadEnterCalls'), p['seconds'], 1e-3) for p in ps]), '%.0f'),
             fmt(mean([blocked_pct(p, t) for p in ps]), '%.2f'),
             fmt(mean([(ev_pcts(p) or [None] * 4)[2] for p in ps]), '%.1f'),
             fmt(mean([p.get('machineCores') for p in ps]), '%.2f'), fmt(mean([others(p) for p in ps]), '%.2f')))

@@ -1,0 +1,56 @@
+Gates of 005-65's fix, 2026-10-29, F53, nice 10, in the clone on 4a69f53 (main with 005-64's buffer time) with the fix
+(b91682c; in main as 988fe1a on 5a6befd, the same java/), other sessions' work on the machine (load 7 to 18).
+
+java/before-commit.sh, 10:24 to 10:26:
+Deps: 9 packages, all as package.html allows
+Unit: SUCCESS, 1071 successful tests in 10.2 s.
+F:    SUCCESS, 78 successful tests in 94.0 s.
+BEFORE COMMIT OK (100 s)
+
+java/stress/level4.sh (full), 10:26 to 10:42:
+SUCCESS, 1071 successful tests in 10.6 s.
+SUCCESS, 17 successful tests in 19.8 s.
+   ei-idle-r: EVICTION INVARIANCE OK, 2000 audits, 0 failed
+   ei-medium: EVICTION INVARIANCE OK, 5005 audits, 0 failed
+   ei-node14: EVICTION INVARIANCE OK, 2005 audits, 0 failed
+   ei-node62-r: EVICTION INVARIANCE OK, 2050 audits, 0 failed
+   ei-node8-r: EVICTION INVARIANCE OK, 2100 audits, 0 failed
+   ei-node8: EVICTION INVARIANCE OK, 2005 audits, 0 failed
+   ei-rec-every1: EVICTION INVARIANCE OK, 5000 audits, 0 failed
+   ei-rec-node62-r: EVICTION INVARIANCE OK, 2635 audits, 0 failed
+   ei-rec-node8: EVICTION INVARIANCE OK, 2275 audits, 0 failed
+   inv-every: stream identical, 4563 audits, 0 failed
+   inv-random: stream identical, 4563 audits, 0 failed
+   crash-every: Done: 8 rounds, 0 failures, 57 s. Cuts where a transaction ends at a meta block's position: 0., 71044 audits, 0 failed
+   crash-random: Done: 8 rounds, 0 failures, 56 s. Cuts where a transaction ends at a meta block's position: 0., 72245 audits, 0 failed
+   reclaim-every: Done: 60 rounds, 0 failures, 60 rounds with a cut, 537 s, 988 exhaustive verifications., 236371 audits, 0 failed
+   reclaim-random: Done: 60 rounds, 0 failures, 60 rounds with a cut, 538 s, 988 exhaustive verifications., 236371 audits, 0 failed
+   readers-budget: Done: 6 rounds, 0 failures, 6 rounds with a cut, 300342 gets and 138227 scans correct, expired at admission 2, expired during 180, 16 s.
+   readers-disk: Done: 6 rounds, 0 failures, 6 rounds with a cut, 23708355 gets and 7963817 scans correct, expired at admission 5, expired during 45, 94 s.
+   readers-every: Done: 6 rounds, 0 failures, 6 rounds with a cut, 2891354 gets and 1002168 scans correct, expired at admission 3, expired during 199, 15 s.
+   readers-many: Done: 6 rounds, 0 failures, 6 rounds with a cut, 6341263 gets and 2151645 scans correct, expired at admission 1, expired during 313, 13 s.
+   readers-random: Done: 6 rounds, 0 failures, 6 rounds with a cut, 5719874 gets and 1952397 scans correct, expired at admission 0, expired during 307, 18 s.
+   conformance: traces: 45, TRACECHECK OK: 45; C-P 0 of 10344 transactions fail; 838934 SLOT lines, 592956 checked; traces without SLOT lines: 0; C-H 0 of 10344 transactions fail; 8520 states, 428542 handles, 307929 objects, 307929 histories compared, 647128 pointers, 342017 checked by the record rule; traces without HANDLE lines: 0
+   the index: 162162 index nodes, 107 MB in memory (5417 ms); the budget 50 MB; on disk 1557 MB
+   at most: live after a full GC 91 MB (at the phases' ends), collection usage 260 MB, heap used 327 MB, of 805 MB; resident 50 MB; 95 s
+LEVEL 4 OK
+
+java/stress/level2.sh quick, 10:42 to 10:43:
+SUCCESS, 1071 successful tests in 11.3 s.
+   conformance: traces: 14, TRACECHECK OK: 14
+LEVEL 2 OK
+
+java/stress/core-build.sh unit f, 10:43 to 10:44:
+   7 packages, all as package.html allows: common core dag nanotest pub.util storage stream
+   unit: SUCCESS, 685 successful tests in 9.8 s.
+   f: SUCCESS, 56 successful tests in 35.1 s.
+CORE BUILD OK
+
+StreamDigest all, main's class (4a69f53) against main's jar and the fix's (b91682c):
+default: DIGESTS IDENTICAL (36 of 36)   (digest-base.txt, digest-fix.txt)
+-Devictbudget=20000 (every database with the capacity controller at a 20 kB budget):
+  the fix's against the default ones: DIGESTS IDENTICAL (36 of 36)
+  main's against the fix's: DIGESTS DIFFER (1 of 36): l3-node62 reads, firstPos 9000000 against 8000000
+  (and so sha256all), sha256 from the decided cut the same. The physical cut depends on timing (005-72):
+  three more runs of l3-node62 with that budget, each build: firstPos 8000000 or 9000000 in each mode,
+  sha256 d0fcb7484582... in all.

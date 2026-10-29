@@ -1,8 +1,11 @@
 005-65. Investigate: gets of 27 and 36 ms with 8 readers at 665 MB under ZGC
 ==============================================================================
 
-Status: open, measured (Results, 2026-10-28 night); a fix is Frans's
-decision (Recommendation). Kind: investigate. Created 2026-10-28.
+Status: open. Measured (Results, 2026-10-28 night); Frans decided on
+2026-10-29 (Decision and fix): the fix, in `main` since 2026-10-29
+(`988fe1a`), and the rest of the long gets accepted as a full machine. Open
+until the thread sweep reruns with the fix in a quiet block (State). Kind:
+investigate. Created 2026-10-28.
 
 Registered at Frans's decision on item 009's target 2 (2026-10-28,
 decision 2 of 006-09, section 8): "Register the 8-thread case as a new 005
@@ -546,7 +549,7 @@ rounds.
 Recommendation
 --------------
 
-For Frans to decide; no change made.
+Decided by Frans on 2026-10-29: (a), then (b) (Decision and fix).
 
 * **(a) Fix the hot monitor (the explanation points here).**
   `Eviction.wake` enters `evictorLock` and calls `notifyAll` on every
@@ -581,6 +584,176 @@ For Frans to decide; no change made.
   10 ms, as for the after-load call.
 
 
+Decision and fix, 2026-10-29
+----------------------------
+
+**Frans's decision** (2026-10-29, 09:49): option A of the
+Recommendation, (a) and then (b). The fix is in `main` (`988fe1a`), by
+Claude (Opus 5.5, Claude Code), for 006-10. The rest of the long gets is
+accepted as a full machine: with every core busy (8 readers and ZGC's
+workers on F53's 10 cores), a thread that blocks on a monitor or is woken
+waits for a core, and that wait comes from the operating system's
+scheduling, outside BergDB's target of about 20 ms (010-P1; Frans,
+2026-10-27: "The target of 20 ms is for the BergDB code."). 009's target 2
+is not reworded here.
+
+**The fix** (`Eviction.wake`, `afterLoad`, `EvictorRun`; the protocol in
+wake's comment, with its interleavings). A load over the trigger enters
+`evictorLock` only when no request to the eviction thread is pending: wake
+reads the flag `wanted`, now volatile, first, and returns if it is set.
+The flag is still written only under `evictorLock`: set by wake, with
+`notifyAll`, and cleared by the thread when it takes the request, before
+its batches.
+
+* The thread reads the flag under the lock before each `wait()`, which
+  lets the lock go atomically, so a request made as it is about to wait
+  is either seen or wakes it: nothing is lost although the wait has no
+  timeout (005-51).
+* A caller that finds the flag set made its change before it read it (a
+  load its bytes, `setBudget` its lower trigger), and the thread clears
+  the flag after that read and then reads the bytes and the trigger for
+  its batches: they see the change. So the re-check before the wait is of
+  the flag, not of the resident bytes as (a) had it: that would be needed
+  for a flag that meant "the thread awake in its batches", and it would
+  spin after a batch that freed nothing.
+* The thread ends only with no request pending: at the close (the state
+  set, then `endThread`), or on an interrupt while it waits with none.
+  Until now an interrupt ended it also with a request pending, which with
+  the skip would have left the loads without eviction for good.
+* A reader under pressure reads `batches` before wake and parks as
+  before, at most `LOAD_WAIT_NANOS`, whether its request is new or was
+  pending.
+* No new thread, timer or setting (010-P3, P10).
+
+Found while writing out `setBudget`'s interleaving, and fixed in the same
+commit with one line: a batch that ended while `setBudget` ran could put
+back the trigger of the old budget, as `Eviction.sweep` computed it
+outside the monitor that `setBudget` holds; a decrease then waited until
+the resident bytes passed the old budget (005-52's feature, a narrow
+race). Now sweep computes the trigger in its `synchronized (this)` block.
+A review by a subagent (Opus 5.5, from the code and not from this text)
+found no bug in the change, the same race, and that a batch that throws
+ends the thread for good, as before 005-65; wake's comment says so.
+
+**Tests.** `Eviction.testNoLostRequest` (unit, 15 bursts, about 0.2 s;
+`testNoLostRequestF`, 300 bursts, about 2 s): a database of 2,000 keys of
+300 bytes, started cold with a budget of 50 kB; 8 reader threads read in
+bursts of 100 random gets each, so that the eviction thread sleeps and
+wakes again and again; after each burst, within 2 s, the thread must wait
+with no request pending (never asleep with one), and the resident bytes
+must be at most the trigger, or its last batch have freed nothing (then it
+stops until the next request, by design, 005-51).
+`Eviction.testInterruptWithRequestPending`: under `evictorLock` the test
+makes a request without `notifyAll` and interrupts the waiting thread, as
+a wake that an interrupt overtakes; the thread must take the request;
+idle, an interrupt ends it, and the next loads start a new thread. 005-51's
+idle test and 005-52's lowered-budget tests pass as before.
+
+Run many times, also on deliberately broken versions of the fix
+([fix/run.sh](65-gets-with-8-readers/fix/run.sh), with `mkvariant.py` and
+`RaceLoop`; F53 busy with other sessions' work and the gates, load 8 to
+20). The fix's runs: 200 unit and 40 F on the final code (15,000 bursts),
+200 unit and 20 F on a first version of the tests (30 bursts a unit run;
+12,000 bursts).
+
+| version | runs | race test failed | interrupt test failed |
+|---|---|---|---|
+| the fix | 400 unit, 60 F | 0 | 0 |
+| after its batches the thread waits without checking the flag | 40 unit | 40, each at the first burst: "request pending true, batches running false, the thread WAITING" | 40 |
+| an interrupt ends the thread also with a request pending (the code before) | 40 unit | 0 | 40: "the thread null" |
+| the flag cleared after the batches, not when the thread takes the request | 70 F (21,000 bursts) | 0 | 0 |
+
+The race test catches at once the lost wake-up that the skip makes
+possible: the thread asleep with a request pending, which no load would
+ever end. It does not catch the last version, which loses a load only in
+the few instructions between the batches' last check of the bytes and the
+clear, and only if no load follows before the burst ends; the fix clears
+the flag where the code always did.
+
+**An untimed count** ([fix/run.sh](65-gets-with-8-readers/fix/run.sh):
+`EntriesProbe` with the counters of `mkcount.py`; 1M keys of 100 bytes on
+disk, from the OS's cache, a budget of 20 MB, ZGC, 8 reader threads, 10 s
+after 3 s of warming; `main` before the fix (`4a69f53`) and the fix in
+turns, two runs each; F53 busy, load 13 to 16, so the gets a second are
+not a measurement). A second:
+
+| | before the fix | the fix |
+|---|---|---|
+| loads | 568,868 and 578,966 | 582,643 and 573,324 |
+| after-load calls over the trigger | 116,037 and 127,780 | 124,931 and 101,492 |
+| of them entering `evictorLock` | all | 584 and 551 |
+| the eviction thread's entries | 786 and 796 | 765 and 753 |
+| requests taken (series of batches) | 393 and 398 | 382 and 377 |
+
+The loads enter the monitor about 1.5 times a series of batches, the
+first loads after the thread has taken a request, as (a) expected ("about
+the batch series' rate"). A first count in the morning, on `633ad86`
+against a first version of the fix, gave 76,800 and 189,566 entries a
+second against 526 and 564. The output:
+[fix/results-2026-10-29.txt](65-gets-with-8-readers/fix/results-2026-10-29.txt).
+
+**Gates**, in the clone on `4a69f53` (`main` with 005-64's buffer time of
+50 ms) with the fix, nice 10, F53 shared with other sessions' work
+([fix/gates.txt](65-gets-with-8-readers/fix/gates.txt)); in `main` as
+`988fe1a` on `5a6befd`, the same `java/`:
+
+* `before-commit.sh`: "BEFORE COMMIT OK (100 s)", 1,071 unit tests and
+  78 f-tests.
+* `level4.sh` (full): "LEVEL 4 OK": EVICTION INVARIANCE OK in all nine
+  configurations, 0 audits failed; conformance with the Lean model, 45
+  traces, C-P and C-H 0 of 10,344 transactions failing.
+* `level2.sh quick`: "LEVEL 2 OK".
+* `core-build.sh unit f`: "CORE BUILD OK".
+* StreamDigest (`all`, `main`'s class against `main`'s jar and the
+  fix's): "DIGESTS IDENTICAL (36 of 36)"
+  ([fix/digest-base.txt](65-gets-with-8-readers/fix/digest-base.txt),
+  [fix/digest-fix.txt](65-gets-with-8-readers/fix/digest-fix.txt)). With
+  `-Devictbudget=20000`, so that every database runs the capacity
+  controller at a budget of 20 kB and the eviction thread and the skip
+  run in the reads and restarts modes, the fix's 36 digests are those
+  without eviction. `main`'s own run with that budget differed in one
+  line, the physical cut of l3-node62's reads mode (`firstPos` 9,000,000
+  against 8,000,000, and so `sha256all`), with `sha256` from the decided
+  cut the same: the physical cut depends on timing (005-72), and in three
+  more runs of l3-node62 with that budget it was at 8 or 9 MB in each
+  mode, for both builds.
+
+
+State
+-----
+
+Open until the thread sweep reruns with the fix in a quiet block on F53,
+as on 2026-10-28 ([night/](65-gets-with-8-readers/night/)), with four
+builds in turns: `bf19075` and `4f7cd60` (the first night's reference and
+HEAD), `5a6befd` (`main` before the fix) and `988fe1a` (the fix). Made
+for it on 2026-10-29: the third version of `ScaleBench-065.diff` counts the
+after-load calls that enter `evictorLock` (an estimate: with the fix, the
+calls that found `wanted` clear just before the call), `sum.py` prints
+them in its tables of where the time went, and `prep.sh` compiles
+ScaleBench with `bergdb.pub.util.SyncLevel` for a jar of `main` (005-56).
+
+1. Before the block, not quiet (under a minute, then about 2 minutes),
+   from the repository's `items/005-todo/65-gets-with-8-readers/night/`:
+   `B=/Users/f/fl/bench/006-10/e65-builds BUILDS="bf19075 5a6befd 988fe1a 4f7cd60" sh prep.sh`,
+   then the same `B` and `BUILDS` with `SMOKE=1 sh threads.sh`, which must
+   print `threads (SMOKE): OK`. Done 2026-10-29, 10:44 to 10:47, with
+   these four builds (jars `308e7d01`, `79925f95`, `2b5202f0` and
+   `517165ee`, by the first 8 bytes of their SHA-256): `threads (SMOKE):
+   OK, 0 problems`, 24 of 24 rows; in its small runs (20,000 keys, a
+   0.5 MB budget) `5a6befd` entered `evictorLock` 351,000 to 382,000 times
+   a second, the fix 1,000 to 3,000. So `B` is ready, and step 2 can run
+   as it is; step 1 again only if `B` is lost.
+2. In the block, the same `B` and `BUILDS` with `sh threads.sh`: about 21
+   minutes (the 10M load with `4f7cd60`'s jar, as on 2026-10-28, then 8
+   runs, ABCD DCBA), within its `# minutes: 30`. The summary in
+   `night/out/summary.txt`; the raw outputs stay out of the repository.
+3. Expected, by (a): with 8 threads, the fix against `5a6befd`, the
+   entries into `evictorLock` from about 78,000 a second to a few hundred,
+   the after-load call near its cost with 4 threads, the after-load calls
+   over 10 ms near 0, and the gets over 10 ms down by about a fifth, not
+   to 0. Then the results here, and the entry closes.
+
+
 Done when
 ---------
 
@@ -590,15 +763,17 @@ Frans: nothing (a machine with as many readers as cores is outside the
 target), a change (for example, a reader that runs a batch itself instead
 of waiting for the eviction thread; or the eviction thread at a higher
 priority), or more measurements. A change to `java/` is a decision for
-Frans after the explanation.
+Frans after the explanation. Since Frans's decision of 2026-10-29: the
+rerun with the fix (State), written here.
 
 
 First step
 ----------
 
 `threads.sh` in the next quiet block on F53 (006-10, W2), after its
-`.READY` marker. Done 2026-10-28, 19:34 to 19:50 (Results). Next:
-Frans's decision on the Recommendation.
+`.READY` marker. Done 2026-10-28, 19:34 to 19:50 (Results). Frans decided
+and the fix is in `main`, 2026-10-29 (Decision and fix). Next: the rerun
+(State).
 
 
 Size and order

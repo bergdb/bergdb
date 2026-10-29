@@ -1554,3 +1554,24 @@ levels.md, sis-model.md and lean/README.md now say that the meta blocks,
 not modelled, make no difference to the take (bergdb 005-68), while the
 record limit is still left out. `lake build` clean (148 jobs, no
 warnings, no `sorry`); trace tests OK.
+
+2026-10-29. 005-65's fix, as Frans decided (option A of its
+recommendation), by Claude (Opus 5.5, Claude Code), for 006-10: a reader's
+load skips the monitor `evictorLock` when a request to the eviction thread
+is already pending. `Eviction.wake` reads the flag `wanted`, now volatile,
+first; the flag is written only under the monitor, set by wake and cleared
+by the thread when it takes the request, and the thread reads it under the
+monitor before each wait, so no request is lost although the thread waits
+with no timeout (005-51). An interrupt ends the thread only with no
+request pending. Found while writing out the protocol, and fixed in the
+same commit: a batch that ended while `setBudget` ran could put back the
+old budget's trigger (005-52). Tests: `Eviction.testNoLostRequest` (8
+readers in bursts; without the thread's check of the flag before it waits
+it fails at the first burst) and `testInterruptWithRequestPending`. In an
+untimed count with 8 readers the loads' entries into the monitor went from
+116,000 to 128,000 a second to about 570. With 8 readers on F53 the rest
+of the long gets comes with every core busy, and Frans accepted it as a
+full machine; the thread sweep reruns with the fix in a quiet block
+(005-65's State). In the clone: BEFORE COMMIT OK (100 s), LEVEL 4
+OK (full), LEVEL 2 OK (quick), CORE BUILD OK (unit f); StreamDigest
+against main identical (36 of 36). The fix is `988fe1a`.

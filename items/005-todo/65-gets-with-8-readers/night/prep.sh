@@ -30,10 +30,18 @@ mkdir -p "$B/sb/src"
 cp "$S/ScaleBench.java" "$REPO/java/stress/PerfUtil.java" "$B/sb/src/"
 (cd "$B/sb/src" && patch -s -p0 ScaleBench.java < "$REPO/items/009-handles/03-measurements/ScaleBench-009.diff" \
     && patch -s -p0 ScaleBench.java < "$HERE/ScaleBench-065.diff")
+# Since 005-56 (04f1546) SyncLevel is in bergdb.pub.util, and ScaleBench, in bergdb.core, names it
+# without an import: a jar that has it there gets a copy with the import, on the package line so
+# that the line numbers stay (2026-10-29, for the rerun with 005-65's fix).
+mkdir -p "$B/sb/src-pub"
+sed 's/^package bergdb\.core;$/package bergdb.core; import bergdb.pub.util.SyncLevel;/' \
+    "$B/sb/src/ScaleBench.java" > "$B/sb/src-pub/ScaleBench.java"
 for j in $BUILDS; do
+    s=src
+    if unzip -l "$B/$j/java/build/bergdb.jar" bergdb/pub/util/SyncLevel.class > /dev/null 2>&1; then s=src-pub; fi
     mkdir -p "$B/sb/classes-$j"
     nice javac --release 17 -Xlint:-options -nowarn -cp "$B/$j/java/build/bergdb.jar" -d "$B/sb/classes-$j" \
-        "$B/sb/src/ScaleBench.java" "$B/sb/src/PerfUtil.java"
+        "$B/sb/$s/ScaleBench.java" "$B/sb/src/PerfUtil.java"
 done
 cc -O2 -o "$B/sb/pidio" "$S/pidio.c"
 echo "PREP OK: $B"
