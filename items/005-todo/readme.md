@@ -40,6 +40,7 @@ Open
 | [005-73](73-db-api-small-findings.md) | Fix | Seven small findings in `Db`'s API from 012-03's mapping, none changing the bytes: `StartInfo.startupDistance` always −1, `getCachePutSize` a constant, the dirty fractions only decay and turn NaN, `setReclaimInternalFraction` accepts NaN, `close()` drops the last flush's `IOException`, `Endpoint`'s comment says non-inclusive, dead fields | open |
 | [005-74](74-parser-corrupt-sizes.md) | Fix | Java's record parser and corrupt sizes: `StoredTrans.Parser` takes a negative node size and moves back, so a crafted record loops until `OutOfMemoryError`; record and node sizes are allocated before their bytes are read; `getTrans` lets a checksum failure escape with the database active; a refused start can first write a zero fill. Found by 012-06's and 012-14's corrupt-input runs, with probes; the C reader refuses the first two. Recommended: refuse small node sizes in `Parser.next` and check a size before allocating | open |
 | [005-75](75-core-checks-and-comments.md) | Fix | Dead checks and comments that differ from the code in the Core, found by the C clone's work: `KeyNode.checkIncreasingTime` and `DbStarter.validateTransactions` never update their times and check nothing (a stream with a time set back starts; one flipped bit of a record's time makes a start fail with an Error); `StoredTopNode`'s ordinal check and `NodeStream.recover`'s length check cannot fire; `RecoverableStream.append` checks the size at the buffer's start, not at its offset; `Klong`'s comments (TIME 58 bits, the code 56; `getIntType`; the first key byte) | open |
+| [005-76](76-wake-at-a-quarter.md) | Fix | `BufferedStream` checks the quarter-full rule only when its thread wakes, every bufferTime / 4 (about 32 ms on macOS at 100 ms); nothing wakes it when an append passes a quarter of the buffer, so at 100 to 170 MB/s of stream 3 to 5 MB arrive between checks, a flush takes at most 5 MB, and writers wait for room: at 100 ms 13 to 16 % fewer puts a second with 1 KB values and a p99.9 of 16 to 25 ms for large transactions (005-64's runs). Proposed: an append that takes the buffer past a quarter wakes the thread (010-P3); then the buffer time costs no throughput. Frans's request when he set 50 ms (005-64) | open |
 
 
 Closed
@@ -390,6 +391,10 @@ Files
 * [75-core-checks-and-comments.md](75-core-checks-and-comments.md).
   005-75, dead checks and comments that differ from the code in the Core:
   the findings, what to do; open.
+* [76-wake-at-a-quarter.md](76-wake-at-a-quarter.md). 005-76,
+  `BufferedStream` checks the quarter-full rule only when its thread
+  wakes: the issue from 005-64's runs, the proposed fix, when it is done;
+  open.
 
 Log
 ===
@@ -1447,3 +1452,11 @@ explanation (005-46's readers fill F53's cores; `evictorLock` in
 10 ms) and a recommendation for Frans; the summary in
 `65-gets-with-8-readers/night/results-2026-10-28.txt`. No change to
 `java/`.
+
+2026-10-29. Added 005-76, at Frans's request (2026-10-29, 09:36, "Also
+register a 005 fix for the rest", when he set the default buffer time to
+50 ms in 005-64), by Claude (Opus 5.5, Claude Code), 006-10's session:
+`BufferedStream` checks the quarter rule only when its thread wakes, so
+at a high rate and a long buffer time writers wait for room (005-64's
+runs at 100 ms: 13 to 16 % fewer puts a second at 1 KB values); proposed,
+an append past a quarter wakes the thread; kind fix, registered only.
