@@ -767,8 +767,9 @@ int bergdb_get_trans(bergdb_db *db, bergdb_read *rd, int64_t tpos, struct bergdb
         rc = err_set(&e, ERR_NOT_AVAILABLE, "LookupTimeNotAvailableException", "The "
                 "transaction at stream pos %lld is no longer available: reclaim has removed it.",
                 (long long) tpos);
-    } else if (rc != ERR_OK) {
-        /* Corrupt data, as for the other reads (005-34): the database fails. */
+    } else if (rc != ERR_OK && rc != ERR_NOMEM) {
+        /* Corrupt data, as for the other reads (005-34): the database fails; on
+         * memory a refusal, as the parse's below (012-14, 7.2). */
         rc = db_fail_on_storage(&db->db, "A read", &e);
     } else if (!has) {
         rc = err_set(&e, ERR_ARG, "IllegalArgumentException", "Not a position of a "

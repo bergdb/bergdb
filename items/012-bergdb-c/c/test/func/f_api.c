@@ -432,11 +432,62 @@ TEST(api_alloc_failures) {
             (long long) failed);
 }
 
+/* A read whose node load fails on memory is a refusal, not a failed
+ * database (012-14, 7.2): a read has no go point (03-c-api.md, the error
+ * table: NOMEM is a refusal before a go point; Java's reads do not fail the
+ * database on an OutOfMemoryError). Under a budget of one byte every read
+ * loads; allocation 1 to 6 of each get_one fails in turn: BERGDB_NOMEM, and
+ * the same read again gives the value; never BERGDB_FAILED. */
+TEST(api_read_nomem) {
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock clock = {0};
+    struct bergdb_options o;
+    bergdb_db *db;
+    options(&o, &clock, &m);
+    o.cache_size_indicator = 1;
+    bergdb_test_clock_set(&clock, 1000);
+    REQUIRE(bergdb_open(NULL, &o, &db, NULL, NULL) == BERGDB_OK);
+    struct bergdb_executed ex;
+    for (int i = 0; i < 20; i++) {
+        REQUIRE(put_keys(db, &clock, 2000 + 10 * i, 10 * i, 10 * i + 10, &ex) == BERGDB_OK);
+    }
+    bergdb_read *rd;
+    REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+    int64_t refused = 0;
+    for (int key = 0; key < 200; key += 7) {
+        for (int64_t j = 1; j <= 6; j++) {
+            char ikey[32], value[32];
+            uint8_t b[32];
+            size_t kl;
+            struct bergdb_one one;
+            snprintf(ikey, sizeof ikey, "/k/%d", key);
+            snprintf(value, sizeof value, "v%d", key);
+            m.fail_at = m.allocs + j;
+            int rc = bergdb_get_one(db, rd, BERGDB_LATEST, k(ikey, b, &kl), kl, &one);
+            m.fail_at = 0;
+            CHECK(rc == BERGDB_OK || rc == BERGDB_NOMEM);
+            if (rc == BERGDB_NOMEM) {
+                refused++;
+                rc = bergdb_get_one(db, rd, BERGDB_LATEST, k(ikey, b, &kl), kl, &one);
+            }
+            REQUIRE(rc == BERGDB_OK);
+            CHECK(one.value != NULL && one.value_len == strlen(value)
+                    && memcmp(one.value, value, one.value_len) == 0);
+        }
+    }
+    CHECK(refused > 0);
+    bergdb_read_free(rd);
+    bergdb_close(db);
+    CHECK_EQ(m.live_total, 0);
+    printf("  api_read_nomem: %lld reads refused (NOMEM) and read again\n", (long long) refused);
+}
+
 static const struct test api_tests[] = {
     TEST_ENTRY(api_create_and_read),
     TEST_ENTRY(api_refusals),
     TEST_ENTRY(api_transformations),
     TEST_ENTRY(api_alloc_failures),
+    TEST_ENTRY(api_read_nomem),
     TEST_END
 };
 

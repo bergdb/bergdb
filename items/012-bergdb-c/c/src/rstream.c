@@ -1,12 +1,34 @@
 /* rstream: ported from Java's bergdb.storage.RecoverableStream, its reading
  * side; see rstream.h. */
 #include "rstream.h"
+#include <assert.h>
 #include <string.h>
 #include "bytes.h"
 #include "spos.h"
 
 #define D META_BLOCK_DISTANCE
 #define M META_BLOCK_SIZE
+
+/* A read of the stream, as RecoverableStream makes every read (readRaw,
+ * read, readMetaBlock): catch (IOException e) { throw new
+ * StreamIoException(e); }. An error of the stream's read that is an
+ * IOException in Java (IOException, EOFException,
+ * ReadBelowFirstPosException: ERR_IO and ERR_NOT_AVAILABLE) is named
+ * StreamIoException, as Java names it (012-14, 6.4); the code stays, so that
+ * a read below the first position is still ERR_NOT_AVAILABLE (Db's
+ * isReadBelowCut looks at the cause), and the text begins with the inner
+ * exception's name, as Java's message, the cause's toString(), does. */
+static enum err_code rs_stream_read(struct stream *s, int64_t pos, uint8_t *buf, int32_t n,
+        struct err *e) {
+    enum err_code rc = stream_read(s, pos, buf, n, e);
+    if (rc == ERR_IO || rc == ERR_NOT_AVAILABLE) {
+        char inner[ERR_TEXT];
+        memcpy(inner, e->text, sizeof inner);
+        inner[ERR_TEXT - 1] = '\0';
+        err_set(e, rc, "StreamIoException", "%s: %s", e->java, inner);
+    }
+    return rc;
+}
 
 int64_t rs_get_spos(int64_t sposStart, int64_t size) {
     const int64_t startOffset = sposStart % D;
@@ -72,7 +94,7 @@ enum err_code rs_read(struct stream *s, int64_t pos, uint8_t *buffer, int32_t si
     int32_t distanceToMeta = D - blockPos;
 
     while (size >= distanceToMeta) {
-        rc = stream_read(s, pos, buffer, distanceToMeta, e);
+        rc = rs_stream_read(s, pos, buffer, distanceToMeta, e);
         if (rc != ERR_OK) {
             return rc;
         }
@@ -83,7 +105,7 @@ enum err_code rs_read(struct stream *s, int64_t pos, uint8_t *buffer, int32_t si
     }
 
     if (size > 0) {
-        rc = stream_read(s, pos, buffer, size, e);
+        rc = rs_stream_read(s, pos, buffer, size, e);
         if (rc != ERR_OK) {
             return rc;
         }
@@ -104,7 +126,7 @@ enum err_code rs_read_meta_block(struct stream *s, int64_t blockPos, struct meta
         struct err *e) {
     uint8_t header[6];
     uint8_t metaBytes[M];
-    enum err_code rc = stream_read(s, blockPos, header, 6, e);
+    enum err_code rc = rs_stream_read(s, blockPos, header, 6, e);
     if (rc != ERR_OK) {
         return rc;
     }
@@ -120,7 +142,7 @@ enum err_code rs_read_meta_block(struct stream *s, int64_t blockPos, struct meta
                 "Cannot read meta block with version %d. Version supported: %d", (int) version,
                 META_VERSION_154);
     }
-    rc = stream_read(s, blockPos, metaBytes, M, e);
+    rc = rs_stream_read(s, blockPos, metaBytes, M, e);
     if (rc != ERR_OK) {
         return rc;
     }
@@ -212,7 +234,7 @@ enum err_code rs_is_incomplete_creation(struct stream *s, int64_t creationLength
         return ERR_OK;
     }
     int32_t n = (int32_t) (length < M ? length : M);
-    rc = stream_read(s, 0, block, n, e);
+    rc = rs_stream_read(s, 0, block, n, e);
     if (rc != ERR_OK) {
         return rc;
     }
@@ -235,7 +257,7 @@ enum err_code rs_is_incomplete_creation(struct stream *s, int64_t creationLength
         return ERR_OK;
     }
     uint8_t sizeBytes[4];
-    rc = stream_read(s, M, sizeBytes, 4, e);
+    rc = rs_stream_read(s, M, sizeBytes, 4, e);
     if (rc != ERR_OK) {
         return rc;
     }
@@ -245,7 +267,7 @@ enum err_code rs_is_incomplete_creation(struct stream *s, int64_t creationLength
         return ERR_OK;
     }
     uint8_t lastByte;
-    rc = stream_read(s, length - 1, &lastByte, 1, e);
+    rc = rs_stream_read(s, length - 1, &lastByte, 1, e);
     if (rc != ERR_OK) {
         return rc;
     }
@@ -300,6 +322,7 @@ static int64_t length_after_append(int64_t len, int64_t n) {
  * of which only 1 to 4 bytes exist. */
 static int32_t trans_header_fix_bytes(const uint8_t *existing, int32_t n, uint8_t *fix) {
     uint8_t buffer[5] = { 0, 0, 0, 0, 0 };
+    assert(n >= 1 && n <= 4);   /* the caller's remaining, 1 to 4 (and for gcc's range) */
     int32_t bytesToAdd = 5 - n;
     memcpy(buffer, existing, (size_t) n);
     int32_t sizeFromBuffer = bytes_get_int_le(buffer);
@@ -342,7 +365,7 @@ enum err_code rs_plan_recovery(struct stream *s, struct rs_recovery *r, struct e
             : meta_last_trans(&r->last_valid);
     r->walk_from = spos;
     while (true) {
-        int64_t remaining;
+        int64_t remaining = 0;      /* set when ERR_OK (for gcc's -Wmaybe-uninitialized) */
         uint8_t header[5];
         rc = rs_remaining_trans_bytes(spos, length, &remaining, e);
         if (rc != ERR_OK) {

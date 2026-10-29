@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include "test.h"
 #include "stream.h"
+#include "plat.h"
 
 TEST(stream_memory) {
     struct mem m;
@@ -148,8 +149,95 @@ TEST(stream_dir) {
     CHECK_MEM_ZERO(&m);
 }
 
+
+#ifdef BERGDB_TEST
+/* A counting seam over the real calls (012-14, 6.5). */
+static int64_t seam_counts[6];
+static enum err_code seam_open_rw(const char *path, int *fd, struct err *e) {
+    seam_counts[0]++;
+    return plat_io_real()->open_rw(path, fd, e);
+}
+static enum err_code seam_pwrite(int fd, int64_t off, const uint8_t *buf, int64_t n,
+        struct err *e) {
+    seam_counts[1] += n;
+    return plat_io_real()->pwrite(fd, off, buf, n, e);
+}
+static enum err_code seam_force(int fd, struct err *e) {
+    seam_counts[2]++;
+    return plat_io_real()->force(fd, e);
+}
+static enum err_code seam_force_dir(const char *dir, struct err *e) {
+    seam_counts[3]++;
+    return plat_io_real()->force_dir(dir, e);
+}
+static enum err_code seam_unlink(const char *path, struct err *e) {
+    seam_counts[4]++;
+    return plat_io_real()->unlink(path, e);
+}
+static void seam_close(int fd) {
+    seam_counts[5]++;
+    plat_io_real()->close(fd);
+}
+static const struct plat_io SEAM = {
+    seam_open_rw, seam_pwrite, seam_force, seam_force_dir, seam_unlink, seam_close
+};
+#endif
+
+/* The I/O seam of the test build (012-14, 6.5): the stream's writes, forces,
+ * opens, deletes and closes go through it, and the default is the real
+ * calls; the release build has none. */
+TEST(stream_seam) {
+#ifdef BERGDB_TEST
+    struct mem m;
+    struct err e;
+    struct stream s;
+    static uint8_t data[250000];
+    uint8_t b[4];
+    const char *tmp = getenv("TMPDIR");
+    mem_init(&m);
+    snprintf(tdir, sizeof tdir, "%s/bergdb-t_seam-XXXXXX", tmp != NULL ? tmp : "/tmp");
+    REQUIRE(mkdtemp(tdir) != NULL);
+    for (int32_t i = 0; i < (int32_t) sizeof data; i++) {
+        data[i] = (uint8_t) i;
+    }
+    plat_io_set(&SEAM);
+    REQUIRE(stream_open_dir_rw(&s, tdir, 0, &m, &e) == ERR_OK);
+    CHECK_EQ(seam_counts[0], 1);            /* the first file */
+    CHECK_EQ(stream_append(&s, data, (int64_t) sizeof data, &e), ERR_OK);
+    CHECK_EQ(seam_counts[1], 225);          /* the lock file's text only; the rest buffered */
+    CHECK_EQ(stream_sync(&s, &e), ERR_OK);
+    CHECK_EQ(seam_counts[0], 2);            /* a second file at 200,000 */
+    CHECK_EQ(seam_counts[1], 225 + 250000);
+    CHECK_EQ(seam_counts[2], 2);            /* both files forced */
+    CHECK(seam_counts[3] >= 1);             /* and the directory */
+    int64_t dirs = seam_counts[3];
+    CHECK_EQ(stream_pretruncate(&s, 200000, &e), ERR_OK);
+    CHECK_EQ(seam_counts[4], 1);            /* the first file deleted */
+    CHECK_EQ(seam_counts[3], dirs + 1);     /* the directory forced after it */
+    CHECK_EQ(stream_read(&s, 249996, b, 4, &e), ERR_OK);
+    CHECK_EQ(b[3], (uint8_t) 249999);
+    CHECK_EQ(stream_finish(&s, &e), ERR_OK);
+    CHECK(seam_counts[5] >= 3);             /* two files and the lock */
+    plat_io_set(NULL);
+    /* The default again: the real calls, not counted. */
+    int64_t writes = seam_counts[1];
+    REQUIRE(stream_open_dir_rw(&s, tdir, 0, &m, &e) == ERR_OK);
+    CHECK_EQ(stream_append(&s, data, 10, &e), ERR_OK);
+    CHECK_EQ(stream_finish(&s, &e), ERR_OK);
+    CHECK_EQ(seam_counts[1], writes);
+    char path[300];
+    snprintf(path, sizeof path, "%s/00000000000002.bergdb", tdir);
+    CHECK_EQ(plat_file_length(path), 50010);
+    remove_file("00000000000002.bergdb");
+    remove_file("bergdb.lock");
+    rmdir(tdir);
+    CHECK_MEM_ZERO(&m);
+#endif
+}
+
 const struct test stream_tests[] = {
     TEST_ENTRY(stream_memory),
     TEST_ENTRY(stream_dir),
+    TEST_ENTRY(stream_seam),
     TEST_END
 };

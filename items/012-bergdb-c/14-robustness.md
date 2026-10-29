@@ -2,10 +2,9 @@
 ==================================
 
 Created 2026-10-27 by Claude (Opus 5.5, Claude Code), with 012-01, for
-Frans Lundberg. **Status: in progress, started 2026-10-29 05:00** (a
-first pass, by a subagent of 012's conductor, in the night's last 90
-minutes, ended 06:20; its state in 6.9); approved with 012-01 by Frans's
-go (012-01, 9.1).
+Frans Lundberg. **Status: done, 2026-10-29** (started 05:00; a first
+pass to 06:20, its state in 6.9; the second, 07:36 on, section 7, its
+state in 7.8); approved with 012-01 by Frans's go (012-01, 9.1).
 Phase E (012-01, section 8). Effort: high; max to diagnose a failure.
 After: 012-13.
 
@@ -512,6 +511,9 @@ examples.
 
 ## 6.9 The state at the first pass's end, and what is left
 
+(What follows was left at 06:20; section 7 made it, and 7.8 has the end
+state.)
+
 Done items, as this pass leaves them:
 
 1. **Random runs**: running (6.1); a set that a later session extends by
@@ -538,3 +540,330 @@ Scripts, all in `c/test/stress/` (and cross.sh's random set):
 `random.sh`, `long.sh`, `corrupt.sh`. Raw output and probes:
 `/Users/f/fl/bench/012/14-out/` (`random/`, `long*/`, `corrupt*/`,
 `gcc/`, `probes/`).
+
+
+# 7. The second pass: the rest (2026-10-29, 07:36 to 12:00)
+
+By a subagent of 012's conductor (Claude, Opus 5.5), in a clone of main
+at 57aaf9f (`/Users/f/fl/bench/012/14b/`), after the conductor's
+decisions on 6.9: power loss and allocation failures to be made; the
+eviction lag found and fixed in C; C to name wrapped exceptions as Java
+does; `-Werror` kept for clang, gcc checked by hand; the flipped record
+time left as it is (Frans, 2026-10-29: no action now). Raw output:
+`/Users/f/fl/bench/012/14-out/`.
+
+## 7.1 Power loss (done item 2)
+
+**The seam** (6.5's design, one change): `struct plat_io` in `plat.h`,
+in the test build only (`#ifdef BERGDB_TEST`): the six persistence calls
+`plat_open_rw`, `plat_pwrite`, `plat_force`, `plat_force_dir`,
+`plat_unlink`, `plat_close`, and `plat_io_set` replacing them for the
+process (NULL: the real ones; `plat_io_real()` gives those to a model).
+The change from 6.5: the dispatch is inside `plat.c`'s public functions,
+not at `stream.c`'s call sites, so `stream.c` is untouched and the
+directory forces of `plat_mkdirs` and the lock file's write go through the
+seam too. The release build calls the real functions directly (the seam's
+pointer is the library's one writable variable, in the test build only;
+the gate's `nm` check of P9 is on the release build). Unit test
+`stream_seam` (`t_stream.c`): a counting seam sees the stream's opens,
+its writes byte for byte (the lock's text and the records), the forces of
+both files and of the directory, the cut's delete and its directory
+force, and the closes; after `plat_io_set(NULL)` nothing more is counted.
+
+**The model** (`test/stress/power.c`, `bergdb-power`, 474 lines with its
+images): Java's `ModelIo` in C. `tools/run.c` is linked in with its
+`main`, `bergdb_sync` and `bergdb_close` renamed (build.sh), so the run
+is `bergdb-run`'s, text and bytes (checked per workload: the same text and
+files as the release build's `bergdb-run`). Per file: the bytes written
+(passed on to the real file), the bytes forced, whether its name is
+durable (after a force of the directory; a delete survives at once, as
+Java's model). The acknowledged length is the stream's durable length
+after each `bergdb_sync` that returned `BERGDB_OK`, or its length before
+each `bergdb_close` that did. Images, at: each write (the written bytes
+lost), each write again with the unforced tail of a durable file cut at
+half (Java's `partial_write`) and at a random length (seeded), each file
+force, each directory force, each delete (and the delete rolled back,
+`unpersisted_delete`; earlier unforced deletes rolled back,
+`unordered_delete`), each acknowledgement. An image equal to an earlier
+one (names, lengths, tear, acknowledgement) is not written again. Checked
+in the process, for every image: the files from the first are contiguous
+to at least the acknowledged length ("no committed and synced transaction
+lost"); else `power LOST`.
+
+**The runs** (`test/stress/power.sh`): Gen's workloads with a `sync`
+added after a transaction line with chance 0.15 (so that forces come
+often; C writes only at syncs, closes and a full 10 MB buffer). Each image
+is started by Java's `Dump` and by C's `bergdb-dump` (test build,
+sanitizers), each on its own copy, then run on by `Run` and `bergdb-run`
+(a restart and 20 transactions, as cross.sh's crash variants). Checked:
+the same exit (0: every image starts), the same dump, the same
+directories after the starts (C's recovery writes Java's bytes, from
+reclaim's decided cut), C's recovered stream at least as long as the
+acknowledged length, and after the runs the same text, exit 0 and the
+same files. An image of the creation before its first sync (empty files)
+is started by both runners instead, as C's dumper does not create
+databases (012-09).
+
+**Result**: twelve Gen workloads in two sets (`14-out/power/`: 1101 to
+1106, the script's default; `14-out/power2/`: 1201 to 1206; 300 to 1,500
+transactions, node sizes 8 to 62, startup distances 100 to 100,000,
+reclaim in seven, restarts up to 6, large values, setters), the tools of
+fe07c48: **5,756 distinct images, every one started and run on by C and
+Java alike, no acknowledged byte lost** (`POWER OK` twice, 1,400 and
+1,382 s): 1,352 after a file force, 1,364 after an acknowledgement, 228
+after a directory force, 108 after a delete (reclaim's cuts), and 2,704
+torn (1,352 at half the unforced tail, 1,352 at a random length). The
+images after a write, and the rolled-back deletes, are each equal to an
+earlier image (C forces the directory after each delete, so no delete is
+pending at the next), and so not written again. Each workload's
+`bergdb-power` gave `bergdb-run`'s text and files.
+
+**The other way** (`power.sh JAVAIMG=1`, `test/stress/java/PowerImages.java`):
+Java's `FileStreamPowerLossTester.runTrace` workload on Java's `Db`
+through Java's own `ModelIo` (a 100 kB buffer flushed every 10 ms, a force
+per write, reclaim's cuts deleting files), its images written out and
+checked as above (but the acknowledged length, which Java's test checks
+by time). Seeds 17, 19, 23, 29, 31, 37 (600 to 1,500 transactions, 30 to
+40 images per event kind): **2,753 images, every one started and run on
+by C and Java alike** (`POWER OK`, 267 s), of 19 event kinds, among them
+230 `partial_write`, 54 deletes, 54 `unordered_delete` and 54
+`unpersisted_delete`.
+
+**The negative control** (`OMIT=file`, `OMIT=dir`: after the first
+acknowledged sync, the model ignores file forces, or directory forces, as
+Java's `testWeakenedForceOrderingIsDetected`), on Gen 7 and 1105: caught
+in both workloads both ways (`POWER CONTROL CAUGHT`: 592 and 143 images
+losing acknowledged bytes without file forces, 179 and 39 without
+directory forces).
+
+**Not covered**, as in Java's model: reordered writes within a file
+(a later page durable before an earlier one, without a force between) and
+a torn write of a file whose name is not yet durable.
+
+**For 012-11's Q1** (C forces the stream for a pending cut, 633ad86,
+merged into this clone at 09:52): power.sh is the check of that change;
+on the merged tree: the default six workloads give **2,602
+images, POWER OK** (1,304 s; `14-out/power-merged/`), the cuts' own
+forces among the events (1101: 140 writes and forces against 134 before,
+1103: 172 against 168, 1105: 224 against 216), no acknowledged byte lost.
+And `allocfail.sh` on the merged tree: **ALLOCFAIL SET OK**, the same
+5,991 runs, 4,275 refused, 1,693 failed, 17 absorbed (388 s).
+
+## 7.2 Allocation failures (done item 7)
+
+`test/stress/allocfail.c` (`bergdb-allocfail`, the test build): `run.c`
+again, its API calls renamed to wrappers (build.sh's `-Dbergdb_X=af_X`).
+The workload runs once as it is (the reference), then once per allocation
+number N = 1, 2, ..., each in a child process (fork), with the
+database's allocator (`bergdb_options.mem`, shared by the run's restarts)
+failing allocation N, until a run makes fewer than N allocations. A call
+that gives `BERGDB_NOMEM` is made again by its wrapper (the one failure
+has passed); a getMany's pairs reach `run.c`'s stop function only after
+the call succeeds. Checked in each run: the failing call gives NOMEM or
+FAILED, nothing else (a second NOMEM fails the run); after a NOMEM the run
+ends with the reference's text, exit and files, byte for byte (the
+database was as it was); after a FAILED, the closed database's stream is a
+prefix of the reference's (from the later first position) and the
+directory opens again; a refused open leaves 0 live bytes; the live bytes
+are 0 after every close; and the sanitizers and the allocator's checks of
+each free are on.
+
+**A finding, fixed: a read that failed on memory failed the database.**
+The first run of the set (`14-out/allocfail/`, all checks passed) had 783
+reads (`get_one`, `get_many`) give `BERGDB_FAILED` when a node's load
+failed on memory: the Dag's follower puts NOMEM in `op_err`, and getOne,
+getMany and the execute's dirty-node bound (before its go point) sent
+every `op_err` to `db_fail_on_storage`. That contradicts the API's
+contract (03-c-api.md's error table and `c/readme.md`, section 8: NOMEM
+is a refusal before a go point, and a read has none; FAILED is the
+storage, memory after a go point, corrupt data) and Java, whose reads let
+an `OutOfMemoryError` escape without failing the database. The fix
+(`db.c`, `read_failed`, used at the three places; `api.c`'s getTrans
+likewise for its iterator, as already for its parse): NOMEM is returned as
+a refusal, anything else fails the database as before. An abandoned load
+leaves the database as it was, as the execute's touch before its go point
+already relied on. The test `api_read_nomem` (`f_api.c`: a budget of one
+byte, allocations 1 to 6 of each of 29 reads failed in turn; NOMEM, then
+the same read gives the value) fails before the fix (FAILED) and passes
+after (166 reads refused and read again). `evict_alloc_failures` now
+counts 953 refused and 567 failed (before 488 and 1,032), its recounts and
+bytes unchanged.
+
+`test/stress/allocfail.sh`, six Gen workloads (restarts 0 to 4, reclaim
+in four, budgets 1 to 2,000 bytes or none, node sizes 8 to 62, large
+values, deletes, setters, gets and checks), with the fix
+(`14-out/allocfail2/`): **5,991 runs: 4,275 refused (NOMEM, then the
+reference's text and bytes), 1,693 failed databases (P7: a prefix,
+opened again), 17 absorbed, 0 failing a check** (`ALLOCFAIL OK` on each).
+NOMEM came from `open` (1,958), `get_many` (866), `trans_put` (450),
+`execute` (414), `get_one` (346), `trans_delete`, `trans_new`, `read_new`
+and `set_startup_distance`; FAILED from `execute` after its go point
+(1,415), `set_startup_distance` (276; its take, which writes) and `sync`
+(2); no read gives FAILED. The 17 absorbed are one a close (each
+workload's restarts plus one): the close's list of roots (`db.c`,
+`free_all`), whose failure has a fallback by design (every holder lets
+go, a safe point frees; 012-07), so the close frees everything and
+reports nothing, and the run's text and bytes are the reference's.
+
+**In the gate**: step `allocfail`, `bergdb-allocfail -budget 1000
+test/stress/allocfail.wl` (Gen 31: 4 transactions, a restart, retain 1 s,
+node size 8, startup distance 300): 379 runs, 286 refused, 90 failed, 2
+absorbed, 13 to 19 s.
+
+The unit tests `evict_alloc_failures` (012-12) and `api_alloc_failures`
+(f_api.c) stay: the first in memory at the db level with recounts, the
+second through the API in memory.
+
+## 7.3 The eviction lag (6.8), fixed
+
+(07:37 to 07:47, by a fork of this agent in a clone of 14b.) The cause
+was the order of two steps at a sweep's end in `evict.c`. The floor (the
+resident bytes after a sweep of two rounds) was measured before
+`nt_shrink`, while the resident bytes count the node table's arrays. When
+a take had written most of D (1,437 nodes down to 19) and the sweep
+emptied the table, the floor kept the arrays of the table's largest size:
+146,624 bytes against 8,448 resident after the shrink. The trigger, floor
+plus the gap, stayed there; the reset for a shrunk D could not fire, since
+D's count was taken after the take. So no sweep ran while reclaim's loads
+after each execute's eviction stayed resident, over 23 transactions. The
+fix measures the floor after the shrink (`evict.c`; `evict.h` says so).
+The test `evict_floor_after_shrink` (`t_evict.c`) puts 3,000 handles with
+no object in a table at a budget of one byte, sweeps, adds 200 more and
+checks that the next run drops them; it fails before the fix (floor
+139,264 against 0 resident, the 200 kept) and passes after. Eviction
+changes no byte. The probe's workload w3 (Gen 3, 20,000 transactions) at
+budgets 1, 4,000, 20,000 and 64,000: the same text and files before and
+after; `maxOver` from 11,986 and 7,987 bytes (budgets 1 and 4,000) to 0 in
+every segment. Long run seed 3 (200,000 transactions, budget 1): from up
+to 20,063 to 0 in all 31 segments, with Java's text and files; seed 1
+(100,000, budget 20,000) unchanged at 0, the same bytes. Raw output:
+`14-out/evlag/`.
+
+## 7.4 Exception names (6.4): C names what Java names
+
+`rstream.c` makes every read of the stream through `rs_stream_read`, as
+`RecoverableStream` makes every read (`readRaw`, `read`, `readMetaBlock`)
+with `catch (IOException e) { throw new StreamIoException(e); }`: an
+error of the stream's read that is an `IOException` in Java
+(`IOException`, `EOFException`, `ReadBelowFirstPosException`; `ERR_IO`
+and `ERR_NOT_AVAILABLE`) is named `StreamIoException`, its text begins
+with the inner name (as Java's message, the cause's `toString()`), and
+its code stays, so that a read below the first position is still
+`ERR_NOT_AVAILABLE`, which `getTrans` and the reads turn into
+`LookupTimeNotAvailableException` as Java's `isReadBelowCut` does through
+the cause. `IllegalArgumentException` is not wrapped (not an
+`IOException`). `t_rstream.c`'s `rs_read_across` checks
+`StreamIoException` with the text "EOFException: ..." past the end, and
+"ReadBelowFirstPosException: ..." with code `ERR_NOT_AVAILABLE` below a
+cut (4 checks fail before the fix). `tools/reappend.c` tells a torn last
+record by `StreamIoException` with "EOFException: " in the text. The
+stream's own reads (`t_stream.c`, `t_append.c`) keep their inner names, as
+Java's `FileStream` throws them.
+
+The probe `14-out/probes/corrupt-501-first-missing/` now gives
+`start error=StreamIoException` in C as in Java. `corrupt.sh` on its four
+bases: **CORRUPT OK, 144 variants, no difference** (88 refused by both,
+40 started alike, 16 with a later read failing alike; before: the
+first-missing difference). 
+
+`corrupt.sh HEADERS=4` on eight bases (501, 703, 902, 905, 1001, 1002,
+603, 708; 1,309 variants; `14-out/corrupt-names3/`, the final tree's
+tools) found 8 more of the class: a record whose size field runs past the
+end is refused by `nstream.c`'s `past_end` before its read, with the
+read's error as it was named, `EOFException`. It now names the read's
+error as the read does, `StreamIoException` with "EOFException: " in the
+text (`t_rstream.c` checks it; fails before). After that: **no naming
+difference**; the 88 differences left are the known classes only: 58
+aborts from a flipped record time (6.6; Frans: no action now), 13 starts
+that both refuse after the recovery's fill of a corrupt size, writing the
+same bytes (6.6, a Java finding), 10 of the one-file database emptied (C's
+dumper does not create databases), 7 getTrans of a record with a bad
+checksum (6.7, a Java bug).
+
+## 7.5 gcc (done item 6): `-Werror` for clang, gcc by hand
+
+`build.sh` takes `WERROR=` (empty: warnings are not errors) and
+`BUILD=DIR`; the gate keeps clang with `-Werror`. `test/stress/gcc.sh`
+builds both builds with gcc 16 without `-Werror` into
+`14-out/gcc/build` and runs the unit and functional tests in both;
+`c/readme.md`, section 10, says how. The library's four gcc warnings
+(6.2) are silenced without a change of behaviour: `starter.c`'s
+`lastSuperNode` and `rstream.c`'s `remaining` initialized (set by the
+callee on every `ERR_OK` path, the only one that reads them);
+`trans_header_fix_bytes` asserts its range, 1 to 4 (the assert is on in
+both builds, and gives gcc the range); `plat.c` copies an entry's name
+with `memcpy` (its length is checked below `PLAT_NAME` just before, so
+`snprintf` never cut it). At `-O2`, `-O1 -g -DBERGDB_TEST`, `-O3` and
+with gcc's sanitizers: no warning in the library. **GCC OK**: gcc 16.2.0,
+0 warnings in the library, 15 in the tests and examples (paths into fixed
+buffers), the unit tests (347 and 346) and the functional tests (23) pass
+in both builds (97 s).
+
+## 7.6 Scale (done item 5)
+
+Made by the conductor (012's log, 2026-10-29, 05:06; 15-performance.md):
+the 10M-key scale set, `cross.sh scale C=build/release`, with C writing
+side B at a startup distance of 50 MB: the same bytes as Java's, each
+side's dump of both databases equal (each dumper starting the other's
+database and reading it), Java's with its audit on (**CROSS scale OK**,
+257 s; `/Users/f/fl/bench/012/cross-scale-c.txt`). At 200 MB, 012-15
+timed Java's start of C's 10M-key database (10.3 s, C's 4.55 s).
+
+**At 200 MB, the bytes** (this pass, `14-out/scale200/run.sh`): cross.sh
+scale's 10M-key workload with `set sd 200000000`, run whole by Java
+(`Run`) and by C (release `bergdb-run`), and in turns: segment 0 by C and
+segment 1, after the restart, by Java (Java starts C's database), and the
+other way (C starts Java's). **The four directories are equal, byte for
+byte (1.1 GB, 73 files), and the four texts equal** (whole runs 60 s,
+turns 77 s). So done item 5 holds at both startup distances.
+
+## 7.7 The gate and cross.sh full
+
+On this clone's tree before the merge (a936f04, the nstream
+fix, `14-out/cross-full.txt`): **CROSS full OK: 446 workloads, 1368 crash
+cuts, 498 corrupt variants, 6 in turns, 1784 budget runs, the planted
+difference found and explained** (C's test build, 2,515 s).
+
+After merging main (633ad86, 012-11's Q1, and two level 1 limits), with
+macOS `leaks` replaced by the conductor's stand-in
+(`/Users/f/fl/bench/012/noleaks/`, as `leaks --atExit` hangs on F53 since
+about 08:30): **C BEFORE COMMIT OK (168 s)**: unit 347 and release 346
+tests, functional 25 in both builds, cross quick, writecheck, allocfail
+(379 runs), examples. **The steps unit-release and func-release ran
+without the leak check.** And `cross.sh full C=build/test` on the
+merged tree (`14-out/cross-full-merged.txt`): **CROSS full OK: 446
+workloads, 1357 crash cuts, 498 corrupt variants, 6 in turns, 1784 budget
+runs, the planted difference found and explained** (2,710 s).
+
+## 7.8 The state
+
+Every done item holds:
+
+1. **Random runs**: 1,845 workloads equal to Java's (6.1); more seeds by
+   `random.sh FROM TO` at any time.
+2. **Power loss**: the seam, the model and the runs (7.1): 5,756 C images
+   and 2,753 Java images, each recovered by C as by Java, no acknowledged
+   byte lost; the negative control caught.
+3. **Corrupt input**: 2,199 starts in the first pass (6.4, 6.6) and 1,453
+   in this one (7.4); C refuses what Java refuses, with Java's names now,
+   and never writes into a refused database where Java does not. The one
+   crash family, a flipped record time (6.6), stays as it is by Frans's
+   decision (2026-10-29: no action now); its fix, F1's with a maximum, is
+   prototyped (6.6) for when it is taken, Java first.
+4. **Long runs**: done (6.8); `maxOver` now 0 (7.3). The directory's bound
+   follows 012-11's Q1, made in 633ad86 (the million-transaction run at
+   most 25.2 MB, Java's 34.2 MB).
+5. **Scale**: 50 MB (the conductor's) and 200 MB (7.6), the same bytes,
+   each side starting the other's database.
+6. **gcc**: 7.5; `-Werror` stays clang's.
+7. **Allocation failures**: 7.2, with the read fix; its short version in
+   the gate.
+
+Fixes in `src/` this pass, each with a test that fails before it:
+`evict.c` (the floor after the shrink), `rstream.c` and `nstream.c`
+(StreamIoException), `db.c` and `api.c` (a read's NOMEM a refusal); and,
+without a change of behaviour, `starter.c`, `rstream.c`, `plat.c` for
+gcc, and `plat.c`'s seam (test build only). Java findings: none new; 6.6's
+and 6.7's stay in 005-74 and 005-75.
+
+**012-14 is done.**

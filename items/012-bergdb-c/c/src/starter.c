@@ -617,7 +617,7 @@ static enum err_code top_node_of_last_transaction(struct starter *st, struct tno
 /* findSuperNodeAtStartupTime */
 static enum err_code find_super_node_at_startup_time(struct starter *st, struct err *e) {
     struct sr_env *env = st->env;
-    struct tnode *lastSuperNode;
+    struct tnode *lastSuperNode = NULL;     /* set when ERR_OK (for gcc's -Wmaybe-uninitialized) */
     enum err_code rc = top_node_of_last_transaction(st, &lastSuperNode, e);
     if (rc != ERR_OK) {
         return rc;

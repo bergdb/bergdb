@@ -26,16 +26,21 @@ Each has `libbergdb.a`, the tools (`bergdb-NAME` from `tools/NAME.c`), the
 unit tests `unit`, the functional tests `func`, and the examples
 (`core_demo`, `get_many_prefix`: one program each, built with `include/`
 only on their include path), and the benchmarks against Java
-(`bench-cbench`, 012-15; `bench/bench.sh` runs them). `build.sh` also checks that
-`include/bergdb.h` compiles alone.
+(`bench-cbench`, 012-15; `bench/bench.sh` runs them); the test build also
+has the robustness runners of 012-14, `bergdb-power` and
+`bergdb-allocfail` (section 10). `build.sh` also checks that
+`include/bergdb.h` compiles alone. `CC=` names another compiler, `WERROR=`
+(empty) turns `-Werror` off, `BUILD=DIR` builds into DIR (section 10, gcc).
 
 `before-commit.sh` (012-01, 6.5) runs, in order, and stops at the first
 failure with the tail of its output (all of it in `build/gate/`): the
 build; the rules a tool can check (section 4); the unit tests in the test
 build; the unit tests in the release build, then under macOS's `leaks`;
 the functional tests likewise; `test/cross/cross.sh quick` (012-05) and
-`writecheck.sh`; and `examples/compare.sh` (012-13), which runs the
-examples under the sanitizers and compares them with Java (section 8).
+`writecheck.sh`; the allocation failures in turn on a small workload
+(`bergdb-allocfail`, 012-14, section 10); and `examples/compare.sh`
+(012-13), which runs the examples under the sanitizers and compares them
+with Java (section 8).
 Java's gate, `java/before-commit.sh`, is not touched.
 
 The test programs run every test, or those whose names start with an
@@ -78,6 +83,9 @@ As 012-01, 6.3:
                          StatsProbe.java, Java's side of f_settings.c's status test
     test/cross/          the cross tests with Java: cross.sh, the Java harness
                          (java/, compiled by java-build.sh into build/java/)
+    test/stress/         the robustness runs (012-14, section 10), by hand: random.sh,
+                         long.sh, corrupt.sh, power.sh (power.c; java/PowerImages.java),
+                         allocfail.sh (allocfail.c, allocfail.wl), gcc.sh
     tools/               bergdb-scan, bergdb-dump, bergdb-run
     bench/               the benchmarks against Java (012-15): bench-cbench (cbench.c),
                          JBench.java, bench.sh (the runs), summary.py, size.sh
@@ -94,7 +102,7 @@ The modules so far, each ported from its Java class:
 | `spos` | `bergdb.dag.Spos` | `spos_`, `SPOS_` |
 | `mem` | the allocator (012-01, 4.5) | `mem_`, `MEM_` |
 | `err` | errors: a code, Java's exception's name, a text (012-06) | `err_`, `ERR_` |
-| `plat` | the platform: a directory's entries, files read and written, forces (`F_FULLFSYNC`), the lock, the time, random bytes (POSIX, macOS) | `plat_` |
+| `plat` | the platform: a directory's entries, files read and written, forces (`F_FULLFSYNC`), the lock, the time, random bytes (POSIX, macOS); in the test build the I/O seam of the writes, forces and deletes (`plat_io_set`, 012-14) | `plat_` |
 | `stream` | `MemoryStream`; `FileStream`'s directory, read-only or for writing (the lock, the files' names and sizes, the write buffer) | `stream_` |
 | `meta` | `bergdb.storage.MetaBlock` | `meta_`, `META_` |
 | `rstream` | `RecoverableStream`'s reading side, and recovery's plan | `rs_`, `RS_` |
@@ -429,7 +437,8 @@ bergdb_close(db);                               /* writes, forces, frees all */
 What a C database keeps when its process dies, as written in 012-13 and
 tested by `test/func/f_durable.c` (a child process killed with `SIGKILL`
 after `bergdb_execute`, after `bergdb_sync`, with a record partly written,
-and at random moments; a write that fails). Power loss is 012-14's.
+and at random moments; a write that fails). Power loss: `test/stress/power.sh`
+(012-14, section 10).
 
 1. **The write buffer.** `bergdb_execute` appends the transaction's record
    to the stream's write buffer, in memory: 10 MB, Java's
@@ -513,3 +522,46 @@ and at random moments; a write that fails). Power loss is 012-14's.
     checks a set of the JVM's locked directories; C has no global state
     (P9), so it leaves this to its one caller (012-13's decision on
     09-write-path.md, 6.4: option A).
+
+
+# 10. Robustness runs (012-14)
+
+By hand, not in the gate (but for the short allocation-failure run); each
+script's header has its usage, and 14-robustness.md the results. Raw
+output goes to `/Users/f/fl/bench/012/14-out/` by default (`OUT=`).
+
+* `test/stress/random.sh FROM TO`: Gen's seeds by the thousand, Java
+  against C, in batches of `cross.sh random`.
+* `test/stress/long.sh SEED N`: a long run with restarts, reclaim and a
+  small budget, in both builds and under `leaks`.
+* `test/stress/corrupt.sh`: corrupt databases started by both dumpers.
+* `test/stress/power.sh`: **power loss**. `bergdb-power` (`power.c`, the
+  test build) is `tools/run.c` under a model of the disk behind the test
+  build's I/O seam (`plat.h`, `struct plat_io`: open, write, force, force of
+  the directory, delete and close, replaced for the process by
+  `plat_io_set`; the release build has no seam): Java's `ModelIo` of
+  `FileStreamPowerLossTester` in C, the bytes written, the bytes forced and
+  the durable names apart. At each write, tear, force and delete it writes
+  the image that a power loss leaves, and checks that the image holds the
+  stream up to the length that the last `bergdb_sync` or `bergdb_close`
+  acknowledged. The script starts every image with both dumpers and runs
+  on it with both runners: the same exits, dumps and files. `JAVAIMG=1`
+  does the other way, Java's images (`java/PowerImages.java`) started by
+  both; `OMIT=file` or `OMIT=dir` is the negative control (forces not
+  modelled: acknowledged bytes are lost, and found).
+* `test/stress/allocfail.sh`: **allocation failures in turn**.
+  `bergdb-allocfail WORKLOAD OUT` (`allocfail.c`, the test build) runs the
+  workload once, then once for each allocation number N in a child process
+  with allocation N failing (`bergdb_options.mem`'s `fail_at`): the call
+  gives `BERGDB_NOMEM` and the run, making the call again, ends with the
+  reference's text and bytes; or the call gives `BERGDB_FAILED` (after the
+  go point, P7), and the closed stream is a prefix of the reference's and
+  opens again; the live bytes are 0 after every close. The gate runs it on
+  `test/stress/allocfail.wl` (Gen 31: 4 transactions, a restart, reclaim,
+  a budget of 1,000 bytes; 379 runs, about 15 s).
+* `test/stress/gcc.sh`: **a second compiler**, Homebrew's gcc 16, by hand:
+  both builds without `-Werror` (`CC=gcc-16 WERROR= BUILD=DIR ./build.sh`),
+  then the unit and functional tests in both. The gate keeps clang and
+  `-Werror`. The library has no gcc warning (012-14 silenced its four, none
+  a bug); the tests and the examples have about 15 of
+  `-Wformat-truncation`, paths into fixed buffers, as meant.

@@ -373,7 +373,9 @@ int main(int argc, char **argv) {
         records++;
     }
     if (rc != ERR_OK) {
-        if (strcmp(err.java, "EOFException") == 0) {
+        /* RecoverableStream's StreamIoException of an EOFException (012-14, 6.4). */
+        if (strcmp(err.java, "StreamIoException") == 0
+                && strncmp(err.text, "EOFException: ", 14) == 0) {
             printf("reappend %s skipped: a torn last record (a crash cut; recovery is "
                     "012-10's): %s\n", srcdir, err.text);
             status = 3;

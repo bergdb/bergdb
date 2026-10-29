@@ -89,6 +89,18 @@ enum err_code db_fail_on_storage(struct db *db, const char *what, struct err *e)
             "restarted. Cause: %s: %s", what, cause.java, cause.text);
 }
 
+/* A read in the Dag that failed (012-14, 7.2): on memory, a refusal
+ * (ERR_NOMEM), as a read has no go point and an abandoned load leaves the
+ * database as it was (the execute's touch before its go point treats it so
+ * too); on the storage, failOnStorage. */
+static enum err_code read_failed(struct db *db, struct err *e) {
+    *e = db->op_err;
+    if (e->code == ERR_NOMEM) {
+        return ERR_NOMEM;
+    }
+    return db_fail_on_storage(db, "A read", e);
+}
+
 /* ======== Ids and the marking (Db's listeners) ======== */
 
 /* setIdOfNode: the next vpos as the node's id and position. */
@@ -670,8 +682,7 @@ static enum err_code get_one_internal(struct db *db, int64_t lookupTime, const i
     err_clear(&db->op_err);
     if (!dag_get_one(&db->dag, gd->actual_lookup_time, key, n, gd, out)) {
         if (db->op_err.code != ERR_OK) {
-            *e = db->op_err;
-            return db_fail_on_storage(db, "A read", e);
+            return read_failed(db, e);
         }
         return nomem(e);
     }
@@ -748,8 +759,7 @@ static enum err_code check_dirty_nodes(struct db *db, const struct trans *t, str
         if (!dag_dirty_node_bound(&db->dag, time, keys, keyN, deletes, n, &gd, db->mem,
                 &bound)) {
             if (db->op_err.code != ERR_OK) {
-                *e = db->op_err;
-                rc = db_fail_on_storage(db, "A read", e);
+                rc = read_failed(db, e);
             } else {
                 rc = nomem(e);
             }
@@ -1329,8 +1339,7 @@ enum err_code db_get_many(struct db *db, struct getmany *g, struct err *e) {
     err_clear(&db->op_err);
     if (!dag_get_many(&db->dag, g)) {
         if (db->op_err.code != ERR_OK) {
-            *e = db->op_err;
-            return db_fail_on_storage(db, "A read", e);
+            return read_failed(db, e);
         }
         return nomem(e);
     }

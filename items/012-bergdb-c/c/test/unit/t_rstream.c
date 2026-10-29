@@ -219,8 +219,33 @@ TEST(rs_read_across) {
     CHECK(memcmp(back, tbuf, 10) == 0);
     CHECK_EQ(rs_read(&s, D + 5, back, 10, &e), ERR_OK);
     CHECK(memcmp(back, tbuf + (D - M), 10) == 0);
+    /* RecoverableStream wraps the stream's IOException: StreamIoException, the
+     * inner name first in the text (012-14, 6.4). */
     CHECK_EQ(rs_read(&s, M, back, size + 1, &e), ERR_IO);
-    CHECK(strcmp(e.java, "EOFException") == 0);
+    CHECK(strcmp(e.java, "StreamIoException") == 0);
+    CHECK(strncmp(e.text, "EOFException: ", 14) == 0);
+    /* Below the first position: the code stays NOT_AVAILABLE (isReadBelowCut). */
+    /* NodeStream's read of a record whose size passes the end: the read's error,
+     * StreamIoException of an EOFException, without the buffer (012-14, 7.4). */
+    {
+        struct ns_buf nb = {0};
+        int32_t got;
+        uint8_t hdr[8] = {0};
+        struct stream s2;
+        stream_open_memory(&s2, &m);
+        t_append(&s2, &mb, tbuf, 100);          /* a meta block and 100 bytes */
+        bytes_put_int_le(1000000, hdr);
+        memcpy(s2.bytes + M, hdr, 4);           /* the record at M claims 1,000,000 bytes */
+        CHECK_EQ(ns_read_trans_bytes(&s2, &m, M, &nb, &got, &e), ERR_IO);
+        CHECK(strcmp(e.java, "StreamIoException") == 0);
+        CHECK(strncmp(e.text, "EOFException: ", 14) == 0);
+        ns_buf_free(&nb, &m);
+        stream_close(&s2);
+    }
+    REQUIRE(stream_pretruncate(&s, D, &e) == ERR_OK);
+    CHECK_EQ(rs_read(&s, M, back, 10, &e), ERR_NOT_AVAILABLE);
+    CHECK(strcmp(e.java, "StreamIoException") == 0);
+    CHECK(strncmp(e.text, "ReadBelowFirstPosException: ", 28) == 0);
     stream_close(&s);
     CHECK_MEM_ZERO(&m);
 }

@@ -29,6 +29,10 @@
 #                 (012-09, part 1): C's take replayed on every record, and the
 #                 records re-appended through C's append path, the
 #                 directories equal to Java's; C's tools of the test build
+#   allocfail     the allocation failures in turn, short (012-14, done item 7):
+#                 build/test/bergdb-allocfail on test/stress/allocfail.wl (Gen 31,
+#                 4 transactions, a restart, reclaim, a budget of 1,000 bytes),
+#                 each allocation number failed once, under the sanitizers
 #   examples      examples/compare.sh with the test build (012-13): the
 #                 examples run under the sanitizers, get_many_prefix prints
 #                 Java's output, and core_demo and Java's CoreDemo print the
@@ -109,6 +113,10 @@ fi
 if [ -f test/cross/cross.sh ]; then
     step cross sh test/cross/cross.sh quick C=build/test KEEP=1
     step write sh test/cross/writecheck.sh build/cross/quick C=build/test
+fi
+if [ -x build/test/bergdb-allocfail ]; then
+    step allocfail build/test/bergdb-allocfail -budget 1000 test/stress/allocfail.wl \
+        build/gate/allocfail
 fi
 if [ -f examples/compare.sh ]; then
     step examples sh examples/compare.sh build/test

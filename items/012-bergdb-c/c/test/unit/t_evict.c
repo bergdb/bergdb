@@ -162,6 +162,48 @@ TEST(evict_table) {
     CHECK_MEM_ZERO(&m);
 }
 
+/* The floor after a sweep is measured after the node table's shrink
+ * (14-robustness.md, 6.8): a sweep that empties a large table shrinks its
+ * arrays; a floor that still counted them kept the trigger above the
+ * resident bytes, and what was loaded next stayed unevicted (a budget of
+ * one byte, up to 20 kB over in a long run). Here: 3,000 handles with no
+ * object, a sweep drops them all; the floor is the resident bytes after it;
+ * 200 more such handles, and the next ev_run drops them too. */
+TEST(evict_floor_after_shrink) {
+    struct mem m;
+    struct obj_ctx cx;
+    struct ntable t;
+    struct ts_seq d;
+    struct ev ev;
+    mem_init(&m);
+    obj_ctx_init(&cx, &m);
+    nt_init(&t, &cx, &m);
+    ts_init(&d, &m);
+    ev_init(&ev, &cx, &m, 1);
+    struct ev_env env = { &t, NULL, NULL, &d };
+    for (int64_t id = 1; id <= 3000; id++) {
+        REQUIRE(nt_live_or_new_handle(&t, 2 * id + 1) != NULL);
+    }
+    const int64_t big = ev_resident_bytes(&m, &t);
+    ev_run(&ev, &env, false);
+    CHECK_EQ(nt_size(&t), 0);
+    const int64_t small = ev_resident_bytes(&m, &t);
+    CHECK(small < big);
+    CHECK_EQ(ev.floor, small);
+    CHECK_EQ(ev.trigger, small + 1);
+    for (int64_t id = 3001; id <= 3200; id++) {
+        REQUIRE(nt_live_or_new_handle(&t, 2 * id + 1) != NULL);
+    }
+    CHECK(ev_resident_bytes(&m, &t) > small);
+    ev_run(&ev, &env, false);
+    CHECK_EQ(nt_size(&t), 0);
+    CHECK_EQ(ev_resident_bytes(&m, &t), ev.floor);
+    ev_free(&ev);
+    nt_free(&t, true);
+    obj_collect(&cx);
+    CHECK_MEM_ZERO(&m);
+}
+
 /* Java's Eviction.detachable. */
 TEST(evict_detachable) {
     struct mem m;
@@ -421,6 +463,7 @@ TEST(evict_alloc_failures) {
 
 const struct test evict_tests[] = {
     TEST_ENTRY(evict_table),
+    TEST_ENTRY(evict_floor_after_shrink),
     TEST_ENTRY(evict_detachable),
     TEST_ENTRY(evict_twins),
     TEST_ENTRY(evict_large_value),

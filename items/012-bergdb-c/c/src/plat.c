@@ -52,7 +52,7 @@ enum err_code plat_list_dir(const char *dir, struct mem *m, struct plat_entry **
         }
         x = &list[count++];
         memset(x, 0, sizeof *x);
-        snprintf(x->name, sizeof x->name, "%s", d->d_name);
+        memcpy(x->name, d->d_name, strlen(d->d_name) + 1);     /* shorter than PLAT_NAME */
         snprintf(path, sizeof path, "%s/%s", dir, d->d_name);
         if (stat(path, &st) == 0) {
             x->size = (int64_t) st.st_size;
@@ -121,7 +121,7 @@ enum err_code plat_pread(int fd, int64_t off, uint8_t *buf, int32_t n, struct er
     return ERR_OK;
 }
 
-void plat_close(int fd) {
+static void real_close(int fd) {
     if (fd >= 0) {
         close(fd);
     }
@@ -227,7 +227,7 @@ enum err_code plat_mkdirs(const char *dir, struct err *e) {
     return ERR_OK;
 }
 
-enum err_code plat_open_rw(const char *path, int *fd, struct err *e) {
+static enum err_code real_open_rw(const char *path, int *fd, struct err *e) {
     *fd = open(path, O_RDWR | O_CREAT, 0666);
     if (*fd < 0) {
         return err_set(e, ERR_IO, "IOException", "Cannot open %s for writing: %s", path,
@@ -236,7 +236,7 @@ enum err_code plat_open_rw(const char *path, int *fd, struct err *e) {
     return ERR_OK;
 }
 
-enum err_code plat_pwrite(int fd, int64_t off, const uint8_t *buf, int64_t n, struct err *e) {
+static enum err_code real_pwrite(int fd, int64_t off, const uint8_t *buf, int64_t n, struct err *e) {
     while (n > 0) {
         size_t chunk = n > (int64_t) 1 << 30 ? (size_t) 1 << 30 : (size_t) n;
         ssize_t r = pwrite(fd, buf, chunk, (off_t) off);
@@ -264,7 +264,7 @@ enum err_code plat_fd_length(int fd, int64_t *length, struct err *e) {
     return ERR_OK;
 }
 
-enum err_code plat_force(int fd, struct err *e) {
+static enum err_code real_force(int fd, struct err *e) {
 #ifdef F_FULLFSYNC
     if (fcntl(fd, F_FULLFSYNC) == 0) {
         return ERR_OK;
@@ -277,13 +277,13 @@ enum err_code plat_force(int fd, struct err *e) {
     return ERR_OK;
 }
 
-enum err_code plat_force_dir(const char *dir, struct err *e) {
+static enum err_code real_force_dir(const char *dir, struct err *e) {
     int fd = open(dir, O_RDONLY);
     if (fd < 0) {
         return err_set(e, ERR_IO, "IOException", "Cannot open directory %s: %s", dir,
                 strerror(errno));
     }
-    enum err_code rc = plat_force(fd, e);
+    enum err_code rc = real_force(fd, e);
     close(fd);
     return rc;
 }
@@ -330,10 +330,71 @@ enum err_code plat_lock(const char *dir, const char *name, const char *text, int
     return ERR_OK;
 }
 
-enum err_code plat_unlink(const char *path, struct err *e) {
+static enum err_code real_unlink(const char *path, struct err *e) {
     if (unlink(path) != 0) {
         return err_set(e, ERR_IO, "IOException", "Could not delete file %s: %s", path,
                 strerror(errno));
     }
     return ERR_OK;
+}
+
+/* ======== The I/O seam (bergdb 012-14, 6.5) ========
+ *
+ * The persistence calls (plat_open_rw, plat_pwrite, plat_force,
+ * plat_force_dir, plat_unlink, plat_close) are the real ones above, or, in
+ * the test build after plat_io_set, a test's: the power-loss model of
+ * test/stress/power.c. The release build calls the real ones directly. */
+
+#ifdef BERGDB_TEST
+/* The test build's seam: the one writable variable of the library, in the
+ * test build only (P9 holds for the release build, which before-commit.sh
+ * checks with nm). */
+static const struct plat_io *plat_io_now = NULL;
+
+static const struct plat_io PLAT_IO_REAL = {
+    real_open_rw, real_pwrite, real_force, real_force_dir, real_unlink, real_close
+};
+
+void plat_io_set(const struct plat_io *io) {
+    plat_io_now = io;
+}
+
+const struct plat_io *plat_io_real(void) {
+    return &PLAT_IO_REAL;
+}
+
+/* SEAM(CALL, REAL): the seam's CALL when a test has set one, else REAL. */
+#define SEAM(call, real) (plat_io_now != NULL ? plat_io_now->call : (real))
+#else
+#define SEAM(call, real) (real)
+#endif
+
+enum err_code plat_open_rw(const char *path, int *fd, struct err *e) {
+    return SEAM(open_rw(path, fd, e), real_open_rw(path, fd, e));
+}
+
+enum err_code plat_pwrite(int fd, int64_t off, const uint8_t *buf, int64_t n, struct err *e) {
+    return SEAM(pwrite(fd, off, buf, n, e), real_pwrite(fd, off, buf, n, e));
+}
+
+enum err_code plat_force(int fd, struct err *e) {
+    return SEAM(force(fd, e), real_force(fd, e));
+}
+
+enum err_code plat_force_dir(const char *dir, struct err *e) {
+    return SEAM(force_dir(dir, e), real_force_dir(dir, e));
+}
+
+enum err_code plat_unlink(const char *path, struct err *e) {
+    return SEAM(unlink(path, e), real_unlink(path, e));
+}
+
+void plat_close(int fd) {
+#ifdef BERGDB_TEST
+    if (plat_io_now != NULL) {
+        plat_io_now->close(fd);
+        return;
+    }
+#endif
+    real_close(fd);
 }

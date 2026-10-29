@@ -147,6 +147,15 @@ static int64_t sweep(struct ev *ev, const struct ev_env *env, bool in_call) {
         obj_collect(ev->cx);
         ev->evicted++;
     }
+    /* The node table's arrays shrink first (nt_shrink), as they count in
+     * the resident bytes: a floor measured before would keep the arrays of
+     * the table's largest size in the trigger, and after a take that wrote
+     * most of D the trigger would stay far above what is resident while
+     * reclaim's loads grow unevicted (14-robustness.md, 6.8). */
+    nt_shrink(nt);
+    if (ev->hand >= nt_slots(nt)) {
+        ev->hand = 0;
+    }
     const int64_t after = ev_resident_bytes(ev->mem, nt);
     /* The trigger (Eviction.sweep's last step): after two rounds what is left
      * could not go; the controller runs again once the resident bytes have
@@ -166,10 +175,6 @@ static int64_t sweep(struct ev *ev, const struct ev_env *env, bool in_call) {
         ev->trigger = ev->floor > ev->high - gap ? ev->floor + gap : ev->high;
     } else {
         ev->trigger = ev->high;
-    }
-    nt_shrink(nt);
-    if (ev->hand >= nt_slots(nt)) {
-        ev->hand = 0;
     }
     return before - after;
 }

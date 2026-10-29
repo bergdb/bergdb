@@ -40,7 +40,8 @@
  * evicted. The sweep stops when the resident bytes are at most the low
  * watermark (Java's LOW, 0.75 of the budget) or after two rounds of the
  * hand (the first may only clear CLOCK bits). After a sweep of two rounds,
- * everything that could go has gone: the resident bytes then are the floor,
+ * everything that could go has gone: the resident bytes then, after the
+ * node table's arrays have shrunk (nt_shrink), are the floor,
  * and the trigger becomes the budget or the floor plus the gap between the
  * watermarks if that is more (Java's pinnedOfLastRound + (high - low), with
  * the floor measured by the allocator rather than summed by the hand), so

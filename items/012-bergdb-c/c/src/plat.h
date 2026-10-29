@@ -106,4 +106,31 @@ enum err_code plat_force_dir(const char *dir, struct err *e);
 enum err_code plat_lock(const char *dir, const char *name, const char *text, int64_t pos,
         int *fd, struct err *e);
 
+#ifdef BERGDB_TEST
+/* The I/O seam (bergdb 012-14, 6.5), in the test build only: the
+ * persistence calls of this module, which the stream makes through
+ * plat_open_rw, plat_pwrite, plat_force, plat_force_dir, plat_unlink and
+ * plat_close, replaced for the process by a test's (Java's FileStreamIo,
+ * replaced by FileStreamPowerLossTester's ModelIo). plat_mkdirs and
+ * plat_lock call through it too. The reads (plat_open_read, plat_pread)
+ * are not in it: a model passes the writes on to the real files. Set by a
+ * test only (test/stress/power.c, the power-loss model); the release build
+ * has no seam and calls the real functions. */
+struct plat_io {
+    enum err_code (*open_rw)(const char *path, int *fd, struct err *e);
+    enum err_code (*pwrite)(int fd, int64_t off, const uint8_t *buf, int64_t n, struct err *e);
+    enum err_code (*force)(int fd, struct err *e);
+    enum err_code (*force_dir)(const char *dir, struct err *e);
+    enum err_code (*unlink)(const char *path, struct err *e);
+    void (*close)(int fd);
+};
+
+/* Replaces the persistence calls by io's, for the process; NULL: the real
+ * ones again. */
+void plat_io_set(const struct plat_io *io);
+
+/* The real calls, which a model calls to pass on. */
+const struct plat_io *plat_io_real(void);
+#endif
+
 #endif

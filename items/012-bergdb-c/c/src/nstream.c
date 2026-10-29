@@ -28,12 +28,14 @@ static enum err_code ensure(struct ns_buf *b, struct mem *m, int64_t n, struct e
 }
 
 /* A read of n record bytes at pos would pass the end of the stream: the error that
- * the read gives, without the allocation of its buffer. */
+ * the read gives, without the allocation of its buffer: RecoverableStream's
+ * StreamIoException of the stream's EOFException (012-14, 7.4). */
 static bool past_end(struct stream *s, int64_t pos, int64_t n, struct err *e) {
     if (rs_trans_pos(pos) + n <= rs_trans_pos(stream_length(s))) {
         return false;
     }
-    err_set(e, ERR_IO, "EOFException", "Cannot read %lld record bytes at %lld, past the end of"
+    err_set(e, ERR_IO, "StreamIoException", "EOFException: Cannot read %lld record bytes at "
+            "%lld, past the end of"
             " the stream, %lld.", (long long) n, (long long) pos,
             (long long) stream_length(s));
     return true;

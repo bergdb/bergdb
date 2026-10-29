@@ -352,3 +352,14 @@ gate passed with macOS's `leaks` replaced by a stand-in that runs the
 programs without a leak check (192 s): since about 08:30 `leaks --atExit`
 hangs on F53 for every program, even a trivial one (a machine problem,
 for Frans).
+
+2026-10-29, 10:49. 012-14 done: power loss through an I/O seam in the
+test build (5,756 power-loss images of C's runs recovered by C as by Java,
+2,753 of Java's own, no acknowledged byte lost), allocation failures in
+turn (5,991 runs, 0 bad; a short version in the gate), the eviction lag
+fixed (`maxOver` 0), exception names as Java's, a read's NOMEM refused
+instead of failing the database, gcc 16 without warnings in the library
+(by hand, `test/stress/gcc.sh`), and the 10M-key workload at a startup
+distance of 200 MB in Java, C and turns, byte for byte. `cross.sh full`
+with C's tools OK on the tree merged with main (2,710 s); C BEFORE COMMIT
+OK (167 s), with the `leaks` stand-in (macOS `leaks` still hangs).
