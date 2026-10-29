@@ -1,7 +1,7 @@
 012-bergdb-c
 ============
 
-Created 2026-10-27 by Frans Lundberg. Status: done.
+Created 2026-10-27 by Frans Lundberg. Status: open.
 
 BergDB's Core in C: a clone of the Core (`bergdb.core` and what `Db` needs
 of the Core Layer) written in C, for F53 first. Its API corresponds to the
@@ -52,6 +52,8 @@ the tests, notes, progress), in the order of 012-01, section 8:
 * [15-performance.md](15-performance.md). 012-15, speed, memory and size
   against Java.
 * [16-report.md](16-report.md). 012-16, the report and the next steps.
+* [17-lto.md](17-lto.md). 012-17, link-time optimization in the release
+  build (012-15's first proposal); a plan, not started.
 
 
 Log
@@ -383,3 +385,7 @@ gate is not added to `night.sh` or to Java's gate; C's tests run by hand
 
 2026-10-29, 12:45. Frans on 012-02's Q2: "I confirm (a)." 005-70 and 005-71 stay
 open for the Java fixes; C does as Java.
+
+2026-10-29, 12:51. 012-17 added at Frans's request ("Just add subitem 17
+for now."): link-time optimization in the release build, 012-15's first
+proposal; a plan, not started. 012's status is open again while it waits.
