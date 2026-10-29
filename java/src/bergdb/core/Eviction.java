@@ -359,7 +359,8 @@ public final class Eviction {
         long bytes = in.cache().residents().bytes();
         if (bytes <= trigger) return;
         if (Thread.holdsLock(in.getWriteLock()) || !in.isActive()) return;
-        long batch = wake(db);
+        long batch = batches;
+        wake(db);
         if (bytes > trigger + (high - low)) {
             long end = System.nanoTime() + LOAD_WAIT_NANOS;
             while (batches == batch && in.isActive() && System.nanoTime() < end) {
@@ -374,8 +375,36 @@ public final class Eviction {
     /** The batches the eviction thread has run, for afterLoad's wait. */
     private volatile long batches = 0;
 
-    /** Wakes the eviction thread, and starts it if there is none; returns batches. */
-    private long wake(Db db) {
+    /**
+     * Asks the eviction thread for batches (a request), and starts it if there is none. If a
+     * request is pending (wanted), it returns without entering evictorLock: one pending
+     * request serves every load until the thread takes it (bergdb 005-65; before, with 8
+     * readers, 78,000 loads a second entered the monitor, and its queue made after-load calls
+     * of over 10 ms). The protocol, by which no request is lost although the thread waits with
+     * no timeout (005-51):
+     * <ol>
+     * <li>wanted is written only under evictorLock: set here, with notifyAll, and cleared by
+     * the thread when it takes the request, before its batches. The thread reads it under the
+     * lock before each wait(), which lets the lock go atomically: a request made as the thread
+     * is about to wait comes before that read, or after the wait began, and wakes it.</li>
+     * <li>A caller that finds wanted set made its change before it read the flag (a load added
+     * to the resident bytes, setBudget lowered the trigger), and the thread clears the flag
+     * after that read, then reads the bytes and the trigger for its batches (volatile accesses
+     * are in one total order): its batches see the change. A caller that finds the flag clear,
+     * as the thread has just taken a request, makes a new one, which the thread takes after
+     * its batches.</li>
+     * <li>The thread ends only with no request pending: when the database is no longer active
+     * (the close sets the state, then endThread notifies), or on an interrupt while it waits
+     * with none. So a pending request always has a thread that will take it, unless an error
+     * ended the thread (a batch that throws), which, as before 005-65, stops the loads'
+     * eviction. A load that found the database active just before the close may start a
+     * thread after endThread; it ends at once.</li>
+     * <li>A reader under pressure (afterLoad) reads batches before wake and parks until a batch
+     * has ended, at most LOAD_WAIT_NANOS, whether its request is new or was pending.</li>
+     * </ol>
+     */
+    private void wake(Db db) {
+        if (wanted) return;
         synchronized (evictorLock) {
             wanted = true;
             if (evictor == null) {
@@ -384,13 +413,12 @@ public final class Eviction {
                 evictor.start();
             }
             evictorLock.notifyAll();
-            return batches;
         }
     }
 
     private final Object evictorLock = new Object();
     private Thread evictor = null;      // under evictorLock
-    private boolean wanted = false;     // under evictorLock
+    private volatile boolean wanted = false;    // written under evictorLock; see wake()
     private boolean running = false;    // under evictorLock: a batch in progress
 
     /**
@@ -462,8 +490,10 @@ public final class Eviction {
                         try {
                             evictorLock.wait();
                         } catch (InterruptedException e) {
-                            evictor = null;
-                            return;
+                            if (!wanted) {      // not with a request pending (wake, 3)
+                                evictor = null;
+                                return;
+                            }
                         }
                     }
                     wanted = false;
@@ -603,9 +633,11 @@ public final class Eviction {
         // controller runs once the detachable objects have grown by the gap. (In step 3b the
         // trigger was raised only after a round that met no detachable object, so readers
         // that kept loading kept the batches going with pinned state above the budget.)
-        trigger = Math.max(high, pinnedOfLastRound + (high - low));
+        // Under this monitor, as setBudget writes the watermarks and the trigger: else a batch
+        // that ended as it ran could put back the trigger of the old budget (bergdb 005-65).
         long dt = System.nanoTime() - t0;
         synchronized (this) {
+            trigger = Math.max(high, pinnedOfLastRound + (high - low));
             released += r + values;
             unswizzled += values;
             sweeps++;
@@ -1266,5 +1298,183 @@ public final class Eviction {
         synchronized (e.evictorLock) {
             return !e.wanted && !e.running && t.getState() == Thread.State.WAITING;
         }
+    }
+
+    /**
+     * No request lost (bergdb 005-65): a load skips evictorLock when a request is pending
+     * (wake), which is safe only if the eviction thread takes every pending request. Eight
+     * reader threads read in bursts under a small budget, so that the thread sleeps and wakes
+     * again and again; after each burst, within 2 s, the thread waits with no request pending
+     * (it is never asleep with one) and the resident bytes are at most the trigger, or its
+     * last batch freed nothing (then it stops until the next request, by design: 005-51).
+     * Without the thread's check of the flag before it waits, on which the skip relies, the
+     * first burst fails.
+     */
+    @Nano
+    public static void testNoLostRequest() throws Exception {
+        noLostRequest(15);
+    }
+
+    @Nano("f")
+    public static void testNoLostRequestF() throws Exception {
+        noLostRequest(300);
+    }
+
+    private static void noLostRequest(final int bursts) throws Exception {
+        final int n = 2000, readers = 8, gets = 100;
+        StringBuilder sb = new StringBuilder(":");
+        while (sb.length() < 280) sb.append((char) ('a' + sb.length() % 26));
+        final String pad = sb.toString();
+        MemoryStream s = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db0 = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
+                .startupDistance(2000).start();
+        long time = 100 * STEP;
+        for (int i = 0; i < n; i += 50) {
+            time += STEP;
+            clock.setTime(time);
+            Trans.Builder b = db0.trans();
+            for (int k = i; k < i + 50; k++) b.put("k" + k, k + pad);
+            db0.execute(b.build());
+        }
+        db0.sync(SyncLevel.STRONG);
+        db0.stop();
+        final Db db = Db.builder().testSetup(s.copy()).clock(clock).testId().maxNodeSize8()
+                .startupDistance(2000).cacheSizeIndicator(50 * 1000)
+                .evictionSchedule(Schedule.BUDGET, 1).audit(0).start();
+        final java.util.concurrent.CyclicBarrier go = new java.util.concurrent.CyclicBarrier(readers + 1);
+        final java.util.concurrent.CyclicBarrier done = new java.util.concurrent.CyclicBarrier(readers + 1);
+        final java.util.concurrent.ConcurrentLinkedQueue<String> wrong =
+                new java.util.concurrent.ConcurrentLinkedQueue<String>();
+        Thread[] ts = new Thread[readers];
+        for (int r = 0; r < readers; r++) {
+            final Random rnd = new Random(r);
+            ts[r] = new Thread(new Runnable() {
+                public void run() {
+                    try {
+                        for (int b = 0; b < bursts; b++) {
+                            go.await(10, java.util.concurrent.TimeUnit.SECONDS);
+                            for (int j = 0; j < gets; j++) {
+                                int k = rnd.nextInt(n);
+                                try {
+                                    String v = new String(DbUtil.get(db, "k" + k));
+                                    if (!v.equals(k + pad)) wrong.add("k" + k + " = " + v);
+                                } catch (RuntimeException x) {
+                                    wrong.add("k" + k + ": " + x);
+                                }
+                            }
+                            done.await(10, java.util.concurrent.TimeUnit.SECONDS);
+                        }
+                    } catch (Exception x) {
+                        // A barrier broken or timed out: the bursts stopped, after a failure.
+                    }
+                }
+            });
+            ts[r].setDaemon(true);
+            ts[r].start();
+        }
+        Eviction e = db.internal().eviction();
+        String failed = null;
+        try {
+            for (int b = 0; b < bursts && failed == null; b++) {
+                go.await(10, java.util.concurrent.TimeUnit.SECONDS);
+                done.await(10, java.util.concurrent.TimeUnit.SECONDS);
+                failed = settled(e, db, 2000);
+                if (failed != null) failed = "after burst " + b + ": " + failed;
+            }
+        } finally {
+            go.reset();     // the readers end, if the bursts stopped early
+            done.reset();
+            for (Thread t : ts) t.join(12 * 1000);
+            db.close();
+        }
+        Assert.assertTrue("wrong values: " + wrong, wrong.isEmpty());
+        Assert.assertTrue(failed, failed == null);
+    }
+
+    /**
+     * Waits at most 'millis', after loads, until the eviction thread waits for a request with
+     * none pending and the resident bytes are at most the trigger, or its last batch freed
+     * nothing; null then, else what it found (005-65's tests).
+     */
+    private static String settled(Eviction e, Db db, long millis) throws InterruptedException {
+        long end = System.nanoTime() + millis * 1000 * 1000;
+        while (true) {
+            Thread t;
+            boolean wanted, running;
+            synchronized (e.evictorLock) {
+                t = e.evictor;
+                wanted = e.wanted;
+                running = e.running;
+            }
+            long before, after;
+            synchronized (e) {
+                before = e.lastBefore;
+                after = e.lastAfter;
+            }
+            long bytes = db.internal().cache().residents().bytes(), trigger = e.trigger;
+            Thread.State st = t == null ? null : t.getState();
+            if (!wanted && !running && st == Thread.State.WAITING
+                    && (bytes <= trigger || (before == after && after == bytes))) {
+                return null;
+            }
+            if (System.nanoTime() > end) {
+                return "request pending " + wanted + ", batches running " + running + ", the thread "
+                        + st + "; resident bytes " + bytes + ", trigger " + trigger
+                        + ", the last batch " + before + " -> " + after;
+            }
+            Thread.sleep(1);
+        }
+    }
+
+    /**
+     * An interrupt ends the eviction thread only with no request pending (bergdb 005-65): a
+     * load that finds a request pending does not enter evictorLock (wake), so a request left
+     * by a thread that ended would leave the loads without eviction. The thread waits idle;
+     * under evictorLock the test makes a request without notifyAll, as a wake whose notifyAll
+     * an interrupt overtakes, and interrupts the thread: it takes the request and waits
+     * again. Idle, an interrupt ends it, and the next loads start a new thread.
+     */
+    @Nano
+    public static void testInterruptWithRequestPending() throws InterruptedException {
+        MemoryStream s = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
+                .startupDistance(200).cacheSizeIndicator(4 * 1000)
+                .evictionSchedule(Schedule.BUDGET, 1).audit(0).start();
+        long time = 100 * STEP;
+        for (int i = 0; i < 300; i++) {
+            time += STEP;
+            clock.setTime(time);
+            db.execute(db.trans().put("k" + i, "value " + i).build());
+        }
+        Eviction e = db.internal().eviction();
+        Thread t = loadsStartThread(db, e);
+        String state = settled(e, db, 2000);
+        Assert.assertTrue("idle first: " + state, state == null);
+        synchronized (e.evictorLock) {
+            e.wanted = true;
+            t.interrupt();
+        }
+        state = settled(e, db, 2000);
+        Assert.assertTrue("the request taken: " + state, state == null && t.isAlive());
+        t.interrupt();
+        t.join(2000);
+        Assert.assertTrue("idle, an interrupt ends the thread", !t.isAlive());
+        Thread t2 = loadsStartThread(db, e);
+        Assert.assertTrue("the loads start a new thread", t2 != t);
+        db.close();
+        Assert.assertTrue("the close ends it", !t2.isAlive());
+    }
+
+    /** Reads keys k0 to k299 until the eviction thread runs, and returns it (005-65's test). */
+    private static Thread loadsStartThread(Db db, Eviction e) {
+        for (int round = 0; round < 10; round++) {
+            for (int i = 0; i < 300; i++) DbUtil.get(db, "k" + i);     // loads
+            synchronized (e.evictorLock) {
+                if (e.evictor != null) return e.evictor;
+            }
+        }
+        throw new AssertionError("the loads started no eviction thread");
     }
 }
