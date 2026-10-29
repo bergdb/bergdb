@@ -10,8 +10,10 @@ add an 005 item for removing the use of doubles. It seems the right way
 forward. To ensure things are deterministic for all potential programming
 languages and targets. Integer operations are well-defined on all
 targets." So the direction is decided: no double decides the stream's
-bytes or the memory; how the take's rule becomes integers is to be chosen
-(section Options). Registered only; nothing changed. Code cited at
+bytes or the memory. Frans's decisions on the questions follow below
+(section Decision, 15:48): option B for the take, an integer for the
+internal fraction's setter, and this entry on its own. Registered only;
+nothing changed; not to be implemented until Frans says so. Code cited at
 `82626eb`.
 
 
@@ -104,10 +106,32 @@ with bounds that can be written beside the code; C if 005-77 changes the
 share anyway (see Order).
 
 
+Decision
+--------
+
+Frans, 2026-10-29, 15:48: "B for the take. setReclaimInternalFraction()
+should take an integer. Not together, create a new entry. But make a note
+about the others that you mention. Do not implement this now, just create
+the entry." So:
+
+1. **The take: option B**, fixed point. The number of bits (16 proposed,
+   for the share's fraction and for the dither) is for the first step,
+   with question 2's bounds.
+2. **`setReclaimInternalFraction` takes an integer**: an API change, in
+   `Db`, JMX and the C clone's `bergdb_set_reclaim_internal_fraction`,
+   noted in `releases/next.md`; the unit (parts of 2^16, or per mille) is
+   for the first step. The NaN that the double setter accepts (005-73)
+   goes with it.
+3. **Not together** with 005-77 and 005-78: this entry changes the bytes
+   on its own, and so do they. Notes in both (and in 005-73) point here,
+   so that whichever comes later builds on the one before.
+4. **Not now**: registered only.
+
+
 Proposal
 --------
 
-* **The take**: an option above.
+* **The take**: option B (Decision).
 * **The iteration spacing**: `retainDuration / 4` (with `Long.MAX_VALUE`,
   forever, as today handled before). The same as `(long) (0.25 *
   retainDuration)` for every duration below 2^53 time units (about 28
@@ -116,10 +140,8 @@ Proposal
 * **The internal fraction**: an integer in parts of 2^16 (or per mille),
   `allowed = growth * f >> 16` with a bound on growth or a 128-bit
   product. The default 0.25 is 16,384 exactly, so the default's bytes stay
-  the same; other values may round by one byte. The setting at the API:
-  either `setReclaimInternalFraction(double)` stays and converts once (NaN
-  and values outside 0.001 to 0.90 refused, 005-73), or it takes the
-  integer (an API change, in `releases/next.md`). For Frans.
+  the same; other values may round by one byte. The setter takes the
+  integer (Decision, 2), its range the same as today's 0.001 to 0.90.
 * **The low watermark**: floor(3 * budget / 4) without overflow, `budget
   / 4 * 3 + budget % 4 * 3 / 4`, the same as `(long) (budget * 0.75)` for
   every budget below 2^53 bytes.
@@ -134,16 +156,15 @@ Proposal
 Questions
 ---------
 
-1. Which option for the take, A, B or C, and with how many bits of
-   dither and of fraction?
+1. The take is option B (Decision). With how many bits of dither and of
+   fraction?
 2. The bounds: what limits `dirtyCount`, `recordOwnBytes`, `ownBytes`,
    the distance and sd today (the record limit, 2 GB in Java; the
    distance's largest setting), and does the chosen form hold for all of
    them, or does the code clamp?
-3. The internal fraction at the API: a double converted once, or an
-   integer?
-4. With 005-77 and 005-78 (Order below): one change of the take's and
-   reclaim's bytes, or three?
+3. The internal fraction's setter takes an integer (Decision). Its unit,
+   parts of 2^16 or per mille?
+4. Decided: on its own, not with 005-77 or 005-78.
 
 
 Done when
@@ -183,6 +204,8 @@ M: reclaim and eviction a few lines each; the take a day with its tests
 and measurements; C in hours; Lean an hour or two. Related: 005-77 (a cap
 of the pace's factor S/sd, the same expression), 005-78 (the retain
 duration into the stream, the same iteration rule), 005-73 (the fraction
-setter accepts NaN). Each changes the bytes of the take or of reclaim;
-doing 005-77's decision first, or the three together, changes the
-StreamDigest and the C clone once.
+setter accepts NaN). Each changes the bytes of the take or of reclaim,
+and each is done on its own (Decision, 3): the StreamDigest and the C
+clone change with each. If 005-77 caps S/sd first, B's share is computed
+from the capped factor; if this entry comes first, 005-77's cap is
+written in B's integers.

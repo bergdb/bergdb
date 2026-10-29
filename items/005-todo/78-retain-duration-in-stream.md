@@ -320,3 +320,15 @@ Independent of the other entries; before the next release, since it
 changes what a restart does with a database that reclaims. Builds on
 005-53 and 005-52 (the rule), 005-61 (reclaim reads the live startup
 distance), 005-42 (internal KVs), 010-01's P2.
+
+
+Note: 005-79
+------------
+
+2026-10-29, at Frans's request (15:48): 005-79 replaces the doubles in
+reclaim's decisions with integers, done on its own, not with this entry:
+the iteration spacing `(long) (ITERATION_SPACING * retainDuration)`
+becomes `retainDuration / 4` (the same for every duration below 2^53
+time units, about 28 years), and `setReclaimInternalFraction` takes an
+integer. If the retain duration goes into the stream here, the value kept
+is the long in time units, and the spacing derived from it in integers.

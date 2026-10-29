@@ -54,3 +54,12 @@ Done when
 ---------
 
 Each finding fixed or accepted, the fixes with `before-commit.sh`.
+
+
+Note: 005-79
+------------
+
+2026-10-29, Frans (15:48): 005-79 makes `setReclaimInternalFraction`
+take an integer (parts of 2^16 or per mille), so the NaN that the double
+setter accepts goes with it; the range check stays (0.001 to 0.90 in the
+integer's unit).

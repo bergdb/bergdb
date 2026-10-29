@@ -177,3 +177,15 @@ section's bound holds without the cap. After 005-76, or independent of it
 (different code; both need F53's quiet time). Builds on 005-49 (the pace),
 007-06 (the variants, "follow"), 007-07 (step 3, D4:B, sections 10 and 11)
 and 007-08 (T3_take for any pace).
+
+
+Note: 005-79
+------------
+
+2026-10-29, at Frans's request (15:48): 005-79 replaces the doubles in
+`TransSeq.take` with integers, option B (the share in fixed point, units
+of 2^-16, the dither's top bits), done on its own, not with this entry.
+Both change the same expression, the share. Whichever comes second builds
+on the first: a cap of S/sd written in B's integers, or B's share computed
+from the capped factor; the runs of this entry measure the take as it is
+in `main` then.
