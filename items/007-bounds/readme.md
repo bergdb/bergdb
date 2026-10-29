@@ -220,3 +220,15 @@ largest record grows with the keys: 13 to 15 MB from 1000 to 100 MB,
 against 3.3 to 3.6 MB at 10M. The cause is the pace's share, whose factor
 S/sd is up to 10 during a decrease, not the deadline. Capping that
 factor is for Frans; 100M keys was not run.
+
+2026-10-29. 007-07, section 12, by Claude (Opus 5.5, Claude Code) in
+006-10: the quick performance suite and Props, main before 007-07
+(`cefb473`) against 007-07's code (`f89846d`), run on the night of
+2026-10-28, not quiet. The quick suite: no alerts, throughput within -0.3
+to +1.3 % (gets +4.4 %), the same bytes a put; under finite retention the
+commit's p99 and p99.9 are 9 to 11 percent higher and the startup 1 to 4
+percent longer. Props: MEM 130 to 129, CORE 0.237 to 0.240, SS 1.50 to
+1.51 (SS3 1.62 to 1.65, SS4 2.37 to 2.40), over level1's SS limits,
+since the setting is now the section's target (005-49). Recommended to
+Frans: `SS_MAX="1.52 1.11 1.21 1.66 2.41"` with a reason in docs/log.md;
+level1.sh not changed. Section 8's quick-suite item done in substance.

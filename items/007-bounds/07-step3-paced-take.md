@@ -292,7 +292,9 @@ patch, with a series of records as in 7.3. Once; not measured.
 ## 8. What remains of step 3's "Done when"
 
 (2026-10-28: done, section 10, but the quick performance suite, which
-waits for a quiet block, and the comments of the Lean files, for step 4.)
+waits for a quiet block, and the comments of the Lean files, for step 4.
+2026-10-29: the quick suite ran on the night of 2026-10-28, not in a
+quiet block, and is done in substance, section 12.4.)
 
 * Step 2's runs again on this take, and 005-49's: the section without its
   last record below d_h, the section at about sd, the largest record below
@@ -558,7 +560,8 @@ the backstop that keeps the span from growing.
 
 ### 10.5 Left
 
-* **The quick performance suite**, in a quiet block:
+* **The quick performance suite**, in a quiet block (run on the night of
+  2026-10-28, not quiet, and done in substance: section 12):
   [night/run-quick.sh](07-step3-paced-take/night/run-quick.sh), `#
   minutes: 40`. `performance.sh ab` with `SUITE=quick` and `FORCE=1` on
   two preserved builds in the clone, `main-cefb473` and `d4b-f89846d`,
@@ -769,6 +772,157 @@ of the run, the new distance's steady records.
    the user records after it reach 15 MB.
 
 
+## 12. The quick suite and Props, 2026-10-28 night
+
+Section 10.5's quick performance suite and Props (MEM, CORE, SS) before
+and after 007-07, run in a gap on the evening of 2026-10-28 for 006-10's
+W1.1 and W1.2, by Claude (Opus 5.5, Claude Code); written up the next
+morning. Both were marked not quiet: the conductor's 10-minute check did
+not find the machine quiet and went on, and performance.sh measured
+84.52 % idle CPU before the runs (its own limit is 90 %; `FORCE=1`). The
+two builds are the preserved ones of section 10: `main-cefb473`, main
+just before 007-07, and `d4b-f89846d`, 007-07's code (step 3 with D4:B).
+Also the night run of `night.sh` at 18:22 (java/build/night/2026-10-28-1822/,
+on main after 007-07), whose only failure was level1's SS limits.
+
+### 12.1 The quick suite
+
+[night/run-quick.sh](07-step3-paced-take/night/run-quick.sh): 4 scenarios,
+3 runs of each build per scenario in ABBA order, from 19:13 to 19:27.
+"Comparison exit code 0", no alerts. The comparison and the metrics that
+moved are in
+[night/results-quick-2026-10-28.md](07-step3-paced-take/night/results-quick-2026-10-28.md).
+Medians of 3 runs, main-cefb473 against d4b-f89846d:
+
+| scenario | throughput | change (CV ref / cand) | latency (median of the runs) |
+|---|---|---|---|
+| read-1k (warm reads) | get_latest 1,262,180 / 1,267,990 gets/s | +0.5 % (1.4 / 1.1 %) | p50 667 / 667 ns, p99 1799 / 1751 ns, p99.9 2175 / 2127 ns |
+| w-uni-1k-inf (updates, infinite retention) | 103,664 / 103,400 commits/s | -0.3 % (0.4 / 0.5 %) | append p50 7.6 / 7.6 µs, p99.9 25.6 / 25.9 µs |
+| w-uni-1k-fin (updates, finite retention) | 66,622 / 66,683 commits/s | +0.1 % (0.1 / 0.2 %) | append p50 8.2 / 8.0 µs, p99 64.5 / 70.1 µs, p99.9 92.7 / 102.9 µs |
+| r-1k-fin (restart, then mixed) | 53,421 / 54,127 commits/s, 2,357,620 / 2,460,360 gets/s | +1.3 % (0.2 / 0.4 %), +4.4 % (1.3 / 1.7 %) | startup 0.692 / 0.700 s; commit p99 88.1 / 92.2 µs, get p99 1.46 / 1.30 µs |
+
+The other read metrics (historical gets, four threads, long keys, scans)
+are within -2.6 to +3.1 %, each inside its CV. Bytes appended a put are
+the same: 1.22 and 1.68 per user byte, 1687.2 against 1687.1 bytes a put
+in w-uni-1k-fin.
+
+Beyond the CV, with the 3 runs of each build not overlapping:
+
+* **Finite retention, the commit's tail: +9 to 11 percent at p99 and
+  p99.9.** w-uni-1k-fin's append p99 is 64.5 against 70.1 µs and its p99.9
+  92.7 against 102.9 µs (+11.0 %), and r-1k-fin's prepare phase, the same
+  workload, gives +9.2 and +10.5 %; r-1k-fin's mixed phase +4.7 % at p99.
+  The median commit is 2 to 6 percent faster, the throughput the same.
+  The stream shows where: a put writes the same bytes, but more of them
+  in reclaim's step records (462.8 against 430.0 bytes a put) and less
+  index in its own record (138 against 171). Index writes move from the
+  user's records to reclaim's steps; a commit that carries a step is
+  slower, so the tail grows a little and the median falls. Why the take
+  moves them there was not looked into.
+* **Startup: +1 to 4 percent.** r-1k-fin's start reruns 33,355
+  transactions against 32,540 (+2.5 %, the same in every run) from the
+  same position (1864.5 MB), in 0.700 against 0.692 s; w-uni-1k-fin's
+  restart is 0.620 against 0.595 s (+4.1 %).
+* **r-1k-fin's gets: +4.4 %**, p99 1.30 against 1.46 µs. Not explained;
+  the change touches no read path, so probably the machine (CV 1.3 and
+  1.7 %).
+* **w-uni-1k-inf's slowest commit**, performance.sh's only EXPLAIN (a
+  median of 0.14 against 32.0 ms), is a GC pause's: every run of both
+  builds had a G1 pause of 151 to 170 ms, and one run of each build had
+  its slowest commit at 159 to 164 ms. Whether a pause falls inside an
+  append is chance; GC pauses in total are +3.2 %.
+
+### 12.2 Props
+
+[night/props-ab.sh](07-step3-paced-take/night/props-ab.sh): 005-46's
+props.sh, four rounds of each build in turns (ABBA), 20:33 to 20:41. The
+output stayed in `/Users/f/fl/bench/006-10/w1props/night/out/`.
+
+| property | main-cefb473 | d4b-f89846d | change |
+|---|---|---|---|
+| MEM (bytes a KV) | 130 in all 4 rounds | 129 in all 4 rounds | -1 |
+| CORE (lower is faster; get, get4t, getmany, set) | mean 0.237 (0.23 to 0.24) | mean 0.240 (0.24 in all rounds) | +0.003, within a round's step |
+| SS | 1.50 | 1.51 | +0.01 |
+| SS1 (1 kB KVs, 100 a transaction) | 1.10 | 1.10 | 0 |
+| SS2 (1 kB KVs, 1 a transaction) | 1.19 | 1.20 | +0.01 |
+| SS3 (100-byte KVs, 100 a transaction) | 1.62 | 1.65 | +0.03 |
+| SS4 (100-byte KVs, 1 a transaction) | 2.37 | 2.40 | +0.03 |
+
+CORE's parts moved within their noise: set 0.28 to 0.29 before, 0.30 to
+0.31 after, the others the same. MEM and SS do not depend on the machine:
+every round of a build gave the same values. Level1's logs agree on the
+SS before 007-07: `SS:1.50 (1.10, 1.19, 1.62, 2.37)` in every night run
+from 2026-10-23 to 2026-10-28 02:10, and `SS:1.51 (1.10, 1.20, 1.65,
+2.40)` at 18:22, after 007-07.
+
+### 12.3 SS against level1's limits
+
+level1.sh (step 6) has `SS_MAX="1.51 1.11 1.20 1.63 2.38"`: the values of
+2026-10-19 plus one step of 0.01 for other machines. Its rule: "a change
+that needs a higher one needs a reason in docs/log.md".
+
+| | SS | SS1 | SS2 | SS3 | SS4 |
+|---|---|---|---|---|---|
+| before 007-07 | 1.50 | 1.10 | 1.19 | 1.62 | 2.37 |
+| after 007-07 | 1.51 | 1.10 | 1.20 | 1.65 | 2.40 |
+| raised by | 0.01 | 0 | 0.01 | 0.03 (1.9 %) | 0.03 (1.3 %) |
+| level1's limit | 1.51 | 1.11 | 1.20 | 1.63 | 2.38 |
+| after 007-07 against it | at it | below | at it | over by 0.02 | over by 0.02 |
+
+SS3 and SS4 fail; SS and SS2 pass only at the limit, without the step
+for other machines that the limits are meant to have.
+
+Why: the SS scenarios use the default startup distance, 50 MB, and each
+writes 100 MB of user data, 110 to 240 MB of stream, so the take works
+for 2 to 5 sd of each run. 007-07 makes the setting the section's target
+(005-49, in Frans's terms): the paced take holds the section at about
+the setting, where the old take let it grow past it. The same setting
+then holds a smaller section and pays it off sooner, which writes more.
+docs/levels.md, section 5, gives the size of it at 50 MB with small KVs
+(10M keys, 32-byte puts): 867 against 699 bytes a put, 24 percent more.
+In the SS scenarios the user's data are most of the stream and the keys
+fewer (100k of 1 kB, 1M of 100 bytes), so the rise is 0 to 2 percent,
+largest where the KVs are small (SS3, SS4). That is the expected cost of
+the bound, not a regression. The section sizes in the SS runs themselves
+were not logged; this is the reading of docs/levels.md's figure, which
+007-06 and section 10.4 measured.
+
+**Recommendation for Frans:** raise level1.sh's limits to the new values
+plus the one noise step:
+
+    SS_MAX="1.52 1.11 1.21 1.66 2.41"   # SS, then SS1 to SS4
+
+(SS1 unchanged), change step 6's comment to say that the SS limits are
+the values of 2026-10-28 (`f89846d`, 007-07), and add to docs/log.md, as
+the rule asks, something like:
+
+> 2026-10-29. level1.sh's SS limits raised to 1.52 1.11 1.21 1.66 2.41
+> (from 1.51 1.11 1.20 1.63 2.38). 007-07's paced take holds the startup
+> section at the startup distance, the setting being the section's
+> target (005-49), where the old take let it grow past it; at Props' 50 MB
+> it pays the section off sooner and writes more: SS 1.50 to 1.51, SS2
+> 1.19 to 1.20, SS3 1.62 to 1.65, SS4 2.37 to 2.40, SS1 unchanged (bergdb
+> 007-07, section 12). The same cause as docs/levels.md's 24 percent at
+> 50 MB with 32-byte puts. The limits keep one step of 0.01 above the new
+> values.
+
+level1.sh is not changed here; Frans decides. Until then night.sh's
+level1 fails on main.
+
+### 12.4 Section 8's quick performance suite
+
+**Done, in substance:** 007-03's step 3 asks for "the quick performance
+suite unchanged", and it is: every throughput within -0.3 to +1.3 %
+(gets +4.4 %), the bytes a put the same, no alerts. What did change is
+small and explained: the commit's p99 and p99.9 under finite retention
+up 9 to 11 percent (about 6 and 10 µs), the median commit down, and the
+startup 1 to 4 percent longer. The runs were not in a quiet block, so
+they are not a reference; with 3 runs a build in ABBA order and CVs of
+0.1 to 2 percent on the metrics above, a quiet rerun would refine the
+figures, not the verdict. Of section 8 there remain the Lean comments
+(step 4), and of 10.5 the questions there.
+
+
 ## Files
 
 In [07-step3-paced-take/](07-step3-paced-take/):
@@ -791,7 +945,9 @@ In [07-step3-paced-take/](07-step3-paced-take/):
   `pick.py`, `summary.py` and `tables.py`), `ratchet.py`, and the outputs
   `runs.txt`, `summary.txt`, `tables.txt` and `ratchet.txt`.
 * `night/run-quick.sh`: the night step for the quick performance suite
-  (section 10.5).
+  (section 10.5); `night/props-ab.sh`: Props before and after 007-07;
+  `night/results-quick-2026-10-28.md`: the quick suite's comparison
+  (section 12).
 * `step2-50m/`: section 11's runs at 50M keys: `run50.sh`, `queue50.sh`,
   `cmp50.py`, `big.py` and `share.py` (with 007-06's `pick.py`,
   `summary.py` and `tables.py` and 10.4's `ratchet.py` beside them), and
