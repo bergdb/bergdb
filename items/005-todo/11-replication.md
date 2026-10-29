@@ -435,6 +435,20 @@ request):
   assertion when the stream is empty or its length a multiple of 1,000,000
   bytes (test code; P2 met it).
 
+A leak, found by 005-67's probe (2026-10-29, noted as Frans decided on
+006-10's point 7: "as recommended"; to be fixed with this entry's
+decision): if the manager is closed while a replica is still being copied
+in (`addReplica`), the replica's stream is never closed. Its slot in the
+manager's array of streams is null until `makeActive`, as in P3, so
+`close()` does not close the replica's `BufferedStream`: its thread stays
+alive, and since 005-63 its directory stays locked (`bergdb.lock`), until
+the JVM ends; another start on that directory in the same JVM gets a
+`DirectoryInUseException`. With `close()` after the copy, both threads end
+and the directory is free
+([005-67](67-fix-test-add-replica2.md), "Found on the way, for 005-11";
+`67-fix-test-add-replica2/probe/CloseDuringSync67.java`,
+`67-fix-test-add-replica2/runs/close-during-sync.txt`).
+
 
 Done when
 ---------
