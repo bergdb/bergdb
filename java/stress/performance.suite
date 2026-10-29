@@ -43,7 +43,8 @@ w-cold-1k-inf   write    3   n=100000 valsize=1000 work=cold retain=inf ops=1700
 w-cold-1k-fin   write    3   n=100000 valsize=1000 work=cold retain=1 mincuts=6 ops=1700000 maxops=6000000
 
 # ---- Durable commits (execute() then sync(ORDINARY)); the buffering and group commit timing are
-# the defaults (buffer time 100 ms): the latency is dominated by it. 1, 16 and 64 committing threads,
+# the defaults (buffer time 50 ms since 005-64); since 005-48 a sync has the buffer written at once,
+# so the force paces the latency, not the buffer time. 1, 16 and 64 committing threads,
 # 100 commits each.
 d-1k-t1         write    3   n=100000 valsize=1000 commit=durable threads=1 ops=100 warmup=100000
 d-1k-t16        write    3   n=100000 valsize=1000 commit=durable threads=16 ops=1600 warmup=100000

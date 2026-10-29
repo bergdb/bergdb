@@ -1,0 +1,48 @@
+005-64's gates and StreamDigest, 2026-10-29, on main f648f96 with the default buffer time 50 ms (nice -n 10, F53, not quiet: other sessions busy).
+digest-base.txt: main f648f96; digest-cur.txt: the change; digest-probe50.txt: main with DbBuilder.testSetup's buffer time 10 -> 50 ms (StreamDigest's databases use testSetup, so the default does not reach them; this run checks that the buffer time leaves the bytes unchanged).
+compare base cur: DIGESTS IDENTICAL (36 of 36)
+compare base probe50: DIGESTS IDENTICAL (36 of 36)
+
+Thu Oct 29 09:39:15 CET 2026
+== before-commit
+exit 0
+F:    SUCCESS, 77 successful tests in 92.1 s.
+BEFORE COMMIT OK (99 s)
+Thu Oct 29 09:40:55 CET 2026
+== level1
+exit 0
+   CORE:0.27 (0.29, 0.21, 0.26, 0.33) (get, get4t, getmany, set; not checked)
+LEVEL 1 OK
+Thu Oct 29 09:42:57 CET 2026
+== level2 quick
+exit 0
+   conformance: traces: 14, TRACECHECK OK: 14
+LEVEL 2 OK
+Thu Oct 29 09:44:55 CET 2026
+== level3
+exit 0
+   InterruptStress: 60 s, 11537080 calls, 473871 of them with an interrupt, the flag kept by all; syncs ended by an interrupt 31825; reads expired by a cut 0; restarts 15; storage threads interrupted 590; first available lookup time 28787400001
+LEVEL 3 OK
+Thu Oct 29 09:52:42 CET 2026
+== StreamDigest
+base build exit 0
+cur build exit 0
+base exit 0
+cur exit 0
+compare exit 0
+DIGESTS IDENTICAL (36 of 36)
+Thu Oct 29 09:53:38 CET 2026
+ALL DONE
+
+before-commit:
+Deps: 9 packages, all as package.html allows
+Unit: SUCCESS, 1069 successful tests in 13.2 s.
+F:    SUCCESS, 77 successful tests in 92.1 s.
+BEFORE COMMIT OK (99 s)
+
+level1 (tail):
+6. Props
+   MEM:129 (at most 131)
+   SS:1.51 (1.10, 1.20, 1.65, 2.40) (at most 1.52 1.11 1.21 1.66 2.41)
+   CORE:0.27 (0.29, 0.21, 0.26, 0.33) (get, get4t, getmany, set; not checked)
+LEVEL 1 OK

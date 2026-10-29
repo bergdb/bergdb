@@ -1526,3 +1526,20 @@ since: level1 in the nights of 27 and 28 October 129, 130 and 129, 007-07's
 Props in turns 130 before it and 129 after (four rounds each, its section
 12.2), and level1 129 today. The limit is 130, the highest, plus one step
 for MEM's noise. LEVEL 1 OK (MEM:129).
+
+2026-10-29. The main stream's default buffer time is 50 ms, where it was
+20 ms (bergdb 005-64), as Frans decided on 29 October ("Use 50 ms."), by
+Claude (Opus 5.5, Claude Code), for 006-10. Since group commit (005-48) a
+sync has the buffer written at once, so the buffer time only bounds how
+long bytes nobody syncs on stay buffered. In 005-64's runs of 28 October
+on F53 and s1, 50 ms gave writers that do not sync 11 to 35 percent fewer
+forces (fewer rewrites of the stream's last, partly filled page) with the
+same throughput, latency and CPU, at the cost of about twice the unsynced
+data a power loss can take (about 82 against 40 ms of writes on macOS,
+never more than the 10 MB buffer). `StorageManager.DEFAULT_BUFFER_TIME`
+and its comment, `Db`'s Javadoc, levels.md, `releases/next.md`. No test
+changed. StreamDigest identical (36 of 36), and also with the tests' buffer
+time at 50 ms instead of 10 (P2); `before-commit.sh`, `level1.sh`,
+`level2.sh quick` and `level3.sh` pass. 100 ms lost 13 to 16 percent of
+the throughput at 1 KB values, because the quarter-full rule is seen only
+when the storage thread wakes; that is 005-76, registered.

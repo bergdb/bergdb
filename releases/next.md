@@ -133,3 +133,14 @@ Performance
   distance in one call, with no commit that writes the whole startup
   section; the section comes down as transactions are committed. Every
   stream differs from what 2026.1 wrote; the format does not.
+* **The default buffer time is 50 ms** (bergdb 005-64, 2026-10-29), where it
+  was 20 ms (`StorageManager.DEFAULT_BUFFER_TIME`, the main stream's; also
+  the Pub API's). A writer that does not sync gets 11 to 35 percent fewer
+  forces, so fewer rewrites of the stream's last, partly filled page, with
+  the same throughput, latency and CPU; a sync is not slower, as it has the
+  buffer written at once (005-48). For data that is not synced, a power loss
+  or a crash can take about twice as much: the writes of about 1.1 to 2
+  buffer times, about 82 ms of writes on macOS where it was about 40, fewer
+  at high rates, where a quarter of the buffer starts a flush, and never more
+  than the 10 MB buffer. What a sync has returned for is never lost. The
+  stream's bytes do not change.

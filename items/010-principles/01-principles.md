@@ -115,9 +115,11 @@ Where BergDB stands:
   and 10.3). No configuration of StreamDigest lowers the startup distance;
   a decrease with restarts during it gives the same stream, byte for byte,
   as without (`DbTesterRestart`, section 10.2).
-* To check: that the memory budget and eviction (Level 4, item 009) and
-  the buffer time leave the bytes unchanged, or, where a setting changes
-  the bytes, that the principle says so.
+* Checked for the buffer time on 2026-10-29 (005-64): StreamDigest with
+  the tests' buffer time at 50 ms gives the same 36 streams as at 10 ms.
+* To check: that the memory budget and eviction (Level 4, item 009) leave
+  the bytes unchanged, or, where a setting changes the bytes, that the
+  principle says so.
 
 
 P3. Calm when not used
@@ -164,9 +166,9 @@ The work in threads of BergDB's own today, all fine as it is (Frans,
 2026-10-26), with the call that starts it:
 
 * A commit: `BufferedStream`'s consumer thread, one per stream, writes the
-  buffer at the latest a buffer time (20 ms) after the commit, the
-  durability promise of `sync(ORDINARY)` (005-13), and sleeps when nothing
-  is buffered (005-14).
+  buffer at the latest a buffer time (50 ms since 005-64; 20 ms from
+  005-13) after the commit, and at once for a sync that waits (005-48),
+  and sleeps when nothing is buffered (005-14).
 * A get or a commit that needs memory, or a lower cache size
   (`Database.setCacheSizeInMb`, since 2026-10-28, 005-52): the eviction
   thread, `bergdb-evictor`, one per database (009, decision T5a), is

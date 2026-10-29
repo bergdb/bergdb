@@ -445,9 +445,10 @@ Limits:
   `PowerLossTest` in `level3.sh`). Not established: physical power cycling,
   other storage providers and Windows, replication.
 * `BufferedStream`, above it, collects the database's appends and writes
-  them in chunks from a thread of its own, when the buffer time (20 ms by
-  default since 005-13) has passed or its buffer is full: one force per
-  chunk, not one per transaction. `execute()` only appends to that buffer.
+  them in chunks from a thread of its own, when the buffer time (50 ms by
+  default since 005-64; 20 ms from 005-13) has passed or its buffer is
+  full: one force per chunk, not one per transaction. `execute()` only
+  appends to that buffer.
 * `sync()` waits until the transaction's last byte, its commit byte, is
   durable (005-44). The transactions of many threads share one force: on
   F53, one thread that syncs after every transaction gets 29 durable

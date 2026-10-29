@@ -31,7 +31,6 @@ Open
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 | [005-60](60-block-storage.md) | Investigate | Block storage: the stream on a raw block device without a file system, as a ring of a fixed size, kept until the room is needed (retention by space); feasible in Java? And on a Linux device in a C or C++ clone. Frans's idea | open |
-| [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered; a longer time may mean fewer forces and wake-ups for writers that do not sync, at the cost of more unsynced data lost on a power loss. Frans's request. Runs of 2026-10-28 on F53 and s1: 50 ms saves 11 to 35 % of the forces, nothing else; 100 ms costs 13 to 16 % of the throughput at 1 KB values and slows a rare sync by 50 to 65 %; idle and trickle energy the same. Ready to decide; the recommendation: keep 20 ms | open |
 | [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Measured 2026-10-28 night, quiet: only with 8 threads, on `eaec93e` (005-46) and `4f7cd60` alike; no load waited for a batch; the machine at 9.6 of 10 cores, and the loads' entries into `evictorLock` in `Eviction.wake` (78,000 a second) a fifth of the gets over 10 ms. Recommendation for Frans: skip that monitor when a request is pending; accept the rest as a full machine | open |
 | [005-69](69-system-clock-promise.md) | Fix | `SystemClock`, `DbBuilder`'s default clock, promises strictly increasing times but never sets its last time, so it returns equal times within a millisecond and earlier ones when the system clock is set back. No harm: `DbClock` makes transaction and current times increase itself. Options: make the code keep the promise (one line and a test), or the comment say what the code does. Found by 012's planning (012-01, 4.4) | open |
 | [005-70](70-keymodset-after-start.md) | Fix | The STM forgets the writes before a start: `KeyModSet` is new and empty after a start (first time −1), so a transaction whose read time is before the start, and whose read key was written after that time, commits where without the restart it is refused: a gap in serializability, and a restart that changes the stream's bytes (P2). Found by 012-02's audit (C4), with a probe. Recommended: the new set's first time at the last transaction's, so the "too old" path refuses | open |
@@ -48,6 +47,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered. Runs of 2026-10-28 on F53 and s1: 50 ms saves 11 to 35 % of the forces of writers that do not sync, with the same throughput, latency and CPU; 100 ms costs 13 to 16 % of the throughput at 1 KB values (the quarter rule seen only at a wake, now 005-76); idle and trickle energy the same; twice the unsynced data at risk at 50 ms (question 5). Decided (Frans, 2026-10-29): 50 ms. `StorageManager.DEFAULT_BUFFER_TIME` 20 to 50, its comment, the docs, `releases/next.md`; StreamDigest identical; the four gates pass | done | 2026-10-29 |
 | [005-68](68-fix-take-stream-length.md) | Fix | `Db.store` passes the stream's `getLength()` to `TransSeq.take`, where the Lean model's argument is where the record begins, `getNextPos()`: after a record that ends on a 200,000-byte boundary they would differ by the meta block's 128 bytes, and Java could leave T3's bound (007-08, review, point 1). Dropped: the finding does not hold. `RecoverableStream.append` writes a meta block together with the record that ends at its position, and recovery fills out one that a crash cut, so when `take` is called the two are equal: by reading, and by running an instrumented copy (0 of 5,524,901 calls differ, 229 after a record that ended exactly on a boundary). No change; the one-line change would pass the same value | dropped | 2026-10-28 |
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API could not change it for an existing database (against 010-P6); the core could since 2013-04, through JMX only. Investigated (the history, `Reclaim`'s fault fixed as 005-61, the decrease measured in 007-06 and 007-07) and decided after D4:B (Frans, 2026-10-28): option E, `Database.setStartupDistanceInMb` and `getStartupDistanceInMb`, kept in the stream's meta blocks as before, one call, no steps and no `Job`; a call with the value in force writes nothing, a refused call changes nothing. Implemented with 005-52 (`fd8f513`); StreamDigest identical | done | 2026-10-28 |
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API set it only at start (`cacheSizeInMb`), against 010-P6. Decided (Frans, 2026-10-28): option B, `Database.setCacheSizeInMb` and `getCacheSizeInMb`, clamped as the builder, for the run only, through `Db.setCacheSizeIndicator` and its getter, which JMX uses too; after a decrease the setter wakes the eviction thread, so that an idle database gives the memory back. Implemented with 005-53 (`fd8f513`). Left: the pause probe with a lowered budget against a fixed one, for a quiet block | done | 2026-10-28 |
@@ -346,9 +346,10 @@ Files
 * [64-buffer-time-after-group-commit.md](64-buffer-time-after-group-commit.md).
   005-64, the buffer time after group commit, 20, 50 or 100 ms: the issue,
   the questions, data at risk (question 5), the results of 2026-10-28's
-  runs and a recommendation (keep 20 ms); open, ready to decide. The
-  scripts and probes in its `night/` and `tools/`, the summaries in
-  `night/results-*-2026-10-28.md`.
+  runs, a recommendation (keep 20 ms), Frans's decision (50 ms) and the
+  outcome; done. The scripts and probes in its `night/` and `tools/`, the
+  summaries in `night/results-*-2026-10-28.md`, the gates and
+  StreamDigest's outputs in `outcome/`.
 * [65-gets-with-8-readers.md](65-gets-with-8-readers.md). 005-65, gets of
   27 and 36 ms with 8 readers at 665 MB under ZGC: the issue, the
   hypothesis and what would refute it, the test, the results of
@@ -1460,3 +1461,12 @@ register a 005 fix for the rest", when he set the default buffer time to
 at a high rate and a long buffer time writers wait for room (005-64's
 runs at 100 ms: 13 to 16 % fewer puts a second at 1 KB values); proposed,
 an append past a quarter wakes the thread; kind fix, registered only.
+
+2026-10-29. 005-64 done, as Frans decided (2026-10-29, 09:36, "Use 50
+ms."), by Claude (Opus 5.5, Claude Code), 006-10's session: the main
+stream's default buffer time is 50 ms (`StorageManager.DEFAULT_BUFFER_TIME`,
+was 20), its comment with the history and the data at risk, `Db`'s
+Javadoc, docs/levels.md, 010-01's P3, `releases/next.md`. No test changed.
+StreamDigest identical (36 of 36), also with the tests' buffer time at 50
+ms; `before-commit.sh`, `level1.sh`, `level2.sh quick` and `level3.sh`
+pass. The rest, the quarter rule, is 005-76.

@@ -82,7 +82,7 @@ import bergdb.stream.SalsaStream;
  * Nothing else releases them (2026-10-27, bergdb 005-55: finalize() is gone, with no
  * safety net in its place). A Db that is not stopped keeps its storage threads (one per
  * stream), its open files, its write buffer and its memory until the JVM exits. What it has
- * committed is still written within the buffer time (for the main stream 20 ms by
+ * committed is still written within the buffer time (for the main stream 50 ms by
  * default), as after any commit; the storage threads are daemon threads, so they do not
  * keep the JVM alive, and at its exit what is buffered and not yet written is lost, as in
  * a crash, which the database tolerates.</p>

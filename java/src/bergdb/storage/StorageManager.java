@@ -48,14 +48,19 @@ public class StorageManager implements AppendOnlyStream {
     public static final int DEFAULT_REPLICA_BUFFER_TIME = 2 * 1000;
     public static final int DEFAULT_BUFFER_SIZE = 10 * 1000000;
     /**
-     * The main stream's buffer time in ms. 20 since 2026-10-20 (bergdb item 005-13): 100 was
-     * chosen for rotating drives; on an SSD a sync after a commit then waited about 120 ms, and
-     * a shorter time costs no throughput of writers that do not sync. Since 2026-10-27 (bergdb
-     * item 005-48) a sync does not wait for it: a waiting sync has the buffer written at once
-     * (BufferedStream.flushSoon). The buffer time is the longest time that bytes nobody syncs
-     * on stay in the buffer.
+     * The main stream's buffer time in ms. 100 until 2026-10-20, chosen for rotating drives;
+     * 20 until 2026-10-29 (bergdb item 005-13): on an SSD a sync after a commit waited about
+     * 120 ms at 100. Since 2026-10-27 (bergdb item 005-48) a sync does not wait for it: a
+     * waiting sync has the buffer written at once (BufferedStream.flushSoon). The buffer time
+     * is the longest time that bytes nobody syncs on stay in the buffer. 50 since 2026-10-29
+     * (bergdb item 005-64): writers that do not sync get 11 to 35 percent fewer forces than at
+     * 20, so fewer rewrites of the stream's last page, with the same throughput and latency;
+     * syncs are unchanged. For bytes nobody synced, a power loss can take the writes of about
+     * 1.1 to 2 buffer times (four waits of bufferTime / 4 and two forces; about 82 ms of writes
+     * on macOS), fewer at high rates, where a quarter of the buffer starts a flush, and never
+     * more than the buffer.
      */
-    public static final int DEFAULT_BUFFER_TIME = 20;
+    public static final int DEFAULT_BUFFER_TIME = 50;
     
     private final AtomicReference<Internal> internal;
     private final Object writeLock;

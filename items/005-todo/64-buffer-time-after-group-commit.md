@@ -1,8 +1,8 @@
 005-64. Investigate: the buffer time after group commit, 20, 50 or 100 ms
 =========================================================================
 
-Status: open, ready to decide (2026-10-29: runs done, recommendation keep
-20 ms). Kind: investigate. Created 2026-10-28.
+Status: done (2026-10-29: Frans decided 50 ms; see Decision and
+Outcome). Kind: investigate. Created 2026-10-28.
 
 Registered at Frans's request (2026-10-28, when he closed 005-48 with the
 buffer time kept at 20 ms): "create a new 005 item to investigate 20 ms
@@ -440,6 +440,68 @@ synced", from question 5.
 * **Several databases, or other processes on the same disk**, where fewer
   forces might matter more than here.
 
+Decision
+--------
+
+Frans, 2026-10-29, 09:36: "Use 50 ms. Also register a 005 fix for the
+rest." His reasons, from the conversation: fewer forces mean fewer
+rewrites of the stream's last, partly filled page, so less wear of the
+SSD and fewer chances that a power loss tears a page that already holds
+forced bytes; at 50 ms the night's runs showed 11 to 14 % fewer forces on
+F53 and 18 to 35 % on s1 for writers that do not sync, half the forces of
+a rare sync beside a plain writer (m-s1r10-p1r10k, 41 to 21 a second),
+with the same throughput, latency and CPU. The cost is about twice the data that nobody synced at risk (about
+82 against 40 ms of writes on F53, question 5). Syncing writers are
+unchanged (group commit, 005-48), and the stream's bytes do not depend on
+the buffer time. "The rest", the quarter rule seen only when the thread
+wakes (the cause of 100 ms's throughput loss), is
+[005-76](76-wake-at-a-quarter.md).
+
+
+Outcome
+-------
+
+2026-10-29, by Claude (Opus 5.5, Claude Code), 006-10's session, in a
+clone on `main`'s `f648f96`.
+
+* **The default**: `StorageManager.DEFAULT_BUFFER_TIME = 50` (was 20).
+  Its comment gives the history (100 until 2026-10-20, 20 until
+  2026-10-29, 50 since, with the reasons) and question 5's sentence: for
+  bytes nobody synced, a power loss can take the writes of about 1.1 to 2
+  buffer times (about 82 ms of writes on macOS), fewer at high rates, and
+  never more than the buffer. Everything else follows the constant and
+  needed no change: `BufferedStream(stream)`, `DbBuilder.stream(name,
+  stream)` and `mainStream`, and the Pub API's builder
+  (`DatabaseBuilderImp`, the database and the replicas it adds). The
+  replicas' 2,000 ms (`DEFAULT_REPLICA_BUFFER_TIME`) and the tests' 10 ms
+  (`DbBuilder.testSetup`) are unchanged.
+* **Docs that said 20 ms**: `Db`'s class Javadoc (what an unstopped
+  database still writes), docs/levels.md (Level 3's limits),
+  010-01's P3 (and P2: the buffer time checked, below); the stale "buffer time 100 ms" comment of
+  `java/stress/performance.suite`'s durable commits. `releases/next.md`:
+  a line under Performance (the default 20 to 50 ms, and what it means
+  for data that is not synced). `releases/2026.1/` and the history in
+  items and docs/log.md are left as they were.
+* **Tests**: none changed. No test asserts the default (no test names
+  `DEFAULT_BUFFER_TIME` or a buffer time of 20 ms); most unit and f-tests
+  run with `testSetup`'s 10 ms or a buffer time of their own, and all pass
+  with the default at 50 ms. No timing check was loosened.
+* **StreamDigest** (P2): `StreamDigest all`, main `f648f96` against the
+  change, one compiled copy (main's): "DIGESTS IDENTICAL (36 of 36)". As
+  StreamDigest's databases use `testSetup` (10 ms), the default does not
+  reach them; so also main with `testSetup`'s buffer time set to 50 ms
+  against main: "DIGESTS IDENTICAL (36 of 36)", a check that the buffer
+  time leaves the bytes unchanged (010-01, P2's "to check").
+* **Gates**, `nice -n 10`, F53 not quiet (other sessions): `before-commit.sh`
+  "BEFORE COMMIT OK (99 s)" (1,069 unit tests, 77 f-tests); `level1.sh`
+  "LEVEL 1 OK" (MEM:129, SS:1.51); `level2.sh quick` "LEVEL 2 OK";
+  `level3.sh` (full) "LEVEL 3 OK".
+
+Files: [64-buffer-time-after-group-commit/outcome/](64-buffer-time-after-group-commit/outcome/):
+`gates.txt` (the gates' summary lines), `digest-base.txt`,
+`digest-cur.txt` and `digest-probe50.txt`.
+
+
 State
 -----
 
@@ -457,3 +519,8 @@ outside the repository. Question 5 is written (from the code), question 6
 not measured (005-11). Next: Frans's decision. If he keeps 20 ms, the item
 is done with no code change (perhaps question 5's sentence in the
 constant's comment); if he changes it, see "Done when".
+
+2026-10-29, by Claude (Opus 5.5, Claude Code), 006-10's session:
+**done.** Frans decided 50 ms (Decision); the default, its comment, the
+docs and `releases/next.md` changed, StreamDigest identical, the four
+gates pass (Outcome). The rest is 005-76.
