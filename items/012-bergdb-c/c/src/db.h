@@ -14,8 +14,7 @@
  * recovery and DbStarter, in starter.h (sr_check_and_recover, sr_start), on
  * the node table (ntable.h, Cache3 in part) and the node collection
  * (ncoll.h, NodeCollection: the followers, which load what is not in memory
- * with Rule R, and resolvePointers). Not here yet: eviction (012-12: the
- * cache size indicator is kept and does nothing; no byte depends on it).
+ * with Rule R, and resolvePointers).
  *
  * Reclaim (Level 3, 012-11): reclaim.h's, called at the end of execute as
  * Java's Reclaim.transactionCompleted, with the touch of its steps here
@@ -23,6 +22,14 @@
  * endOfTrans), its settings and status, and the reads' refusals before the
  * first available lookup time; its table read back at a start
  * (rc_init_from_db).
+ *
+ * Eviction to the memory budget (012-12, evict.h): the capacity controller
+ * runs at the end of the calls, safe points, where Java's runs: at the end
+ * of execute (afterTransaction, before reclaim's transactionCompleted, as
+ * Java's) and of the open (after the startup's loads), after the API's
+ * reads (afterLoad; also between the pairs of its getMany), and in
+ * setCacheSizeIndicator after a decrease (where Java wakes its thread). No
+ * byte depends on it.
  *
  * Errors (err.h): before a transaction's go point a refusal leaves the
  * database as it was (ERR_LIMIT, ERR_RERUN, ERR_STATE, ERR_ARG, ERR_NOMEM);
@@ -38,6 +45,7 @@
 #include "clock.h"
 #include "dag.h"
 #include "err.h"
+#include "evict.h"
 #include "getmany.h"
 #include "keymod.h"
 #include "mem.h"
@@ -70,7 +78,7 @@ enum db_state { DB_ZERO, DB_ACTIVE, DB_STOPPING, DB_FAILED };
 struct db_config {
     int32_t max_node_size;          /* 8, 14, 30 or 62 */
     int32_t startup_distance;       /* at least 10 */
-    int64_t cache_size_indicator;   /* for this run only; nothing reads it before 012-12 */
+    int64_t cache_size_indicator;   /* the memory budget, for this run only (012-12) */
     int64_t retain_duration;        /* at least one second; INT64_MAX: forever */
     clk_fn clock;                   /* NULL: the system clock */
     void *clock_ctx;
@@ -97,6 +105,7 @@ struct db {
     struct obj_ctx cx;
     struct ntable node_table;       /* Db.cache, Cache3 (012-10) */
     struct ncoll node_coll;         /* Db.nodeCollection (012-10) */
+    struct ev ev;                   /* Db.eviction (012-12) */
     struct stream stream;
     bool stream_open;
     struct rs rs;                   /* RecoverableStream with the in-memory meta block */
@@ -180,8 +189,20 @@ enum err_code db_set_retain_duration(struct db *db, int64_t d, struct err *e);
  * through), used from the next step. */
 enum err_code db_set_reclaim_internal_fraction(struct db *db, double f, struct err *e);
 
-/* setCacheSizeIndicator: at least 1; kept (eviction is 012-12's). */
+/* setCacheSizeIndicator: at least 1; the budget for this run, and on an
+ * active database eviction to it at once (005-52; 012-12). */
 enum err_code db_set_cache_size_indicator(struct db *db, int64_t size, struct err *e);
+
+/* The end of a call that read (012-12): a safe point, then the capacity
+ * controller (Eviction.afterLoad, run in the call). On an active database
+ * only; the caller holds nothing uncounted. db_safe_point is the same for
+ * a getMany's safe points between pairs (getmany.h), ctx the struct db. */
+void db_evict(struct db *db);
+void db_safe_point(void *ctx);
+
+/* The resident bytes and the pinned bytes (evict.h), for bergdb_stats. */
+int64_t db_resident_bytes(const struct db *db);
+int64_t db_pinned_bytes(struct db *db);
 
 /* currentTime(), lookupTime(t). */
 int64_t db_current_time(struct db *db);

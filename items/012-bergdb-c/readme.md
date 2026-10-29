@@ -275,3 +275,18 @@ s); by hand 416 more workloads, with and without restarts; every one of
 s; 340 unit tests, 9 functional tests). For Frans (11-reclaim.md, 6.4):
 with no thread, C frees a decided cut's disk only at the next sync or
 open; recommended, C forces the stream itself when a cut is pending.
+
+2026-10-29, 03:17. 012-12 done, and with it milestone M4: Levels 3 and 4
+in C. Index nodes and values not pinned are evicted to the budget (Java's
+cache size indicator) at the calls' ends, a deterministic CLOCK after
+Java's capacity controller, and loaded again from the stream; the node
+table's bytes are the allocator's exact counts; the setter evicts at its
+own end. The bytes never change: `cross.sh full` with C's tools OK in
+012-12's clone with 1,784 budget runs, from a few kilobytes to unlimited
+(446 workloads, 1,368 crash cuts, 498 corrupt variants, 0 differences;
+2,544 s). Larger than memory: a million keys (1.2 GB on disk) at a 4 MB
+budget give Java's reads and files byte for byte, the resident bytes never
+above the budget plus what is pinned (at most 3,999,972), 113 MB of RSS
+and 27.9 s against 210.5 MB resident without eviction (Java's run: 974 MB
+RSS, 40 s; timed beside other work, so rough). In the main tree: C BEFORE
+COMMIT OK (150 s; 345 unit tests, 11 functional).

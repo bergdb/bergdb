@@ -503,7 +503,9 @@ int bergdb_get_one(bergdb_db *db, bergdb_read *rd, int64_t lookup_time,
         out->time = gd.kv_time;
         out->tpos = gd.tpos;
     }
-    obj_collect(&db->db.cx);    /* the end of the call: a safe point (012-07, 6.4.4) */
+    /* The end of the call: a safe point (012-07, 6.4.4), and eviction after
+     * the loads (012-12). */
+    db_evict(&db->db);
     return ok_done(db);
 }
 
@@ -688,9 +690,18 @@ int bergdb_get_many(bergdb_db *db, bergdb_read *rd, const struct bergdb_range *r
         g.stop_condition.ctx = &mc;
         g.result.add = many_add;
         g.result.ctx = &mc;
+        /* A safe point between the pairs, with eviction after the loads, so
+         * that a long range stays within the budget (012-12): the chain
+         * counts its links, and each pair is copied when it is added. */
+        g.collect = &db->db.cx;
+        g.safe_point = db_safe_point;
+        g.safe_point_ctx = &db->db;
         db->in_callback = true;
         rc = db_get_many(&db->db, &g, &e);
         db->in_callback = false;
+        if (rc == ERR_OK) {
+            db_evict(&db->db);
+        }
         if (rc == ERR_NOMEM && mc.bad_answer) {
             rc = err_set(&e, ERR_ARG, "IllegalArgumentException", "a stop function's answer "
                     "out of range");
@@ -939,6 +950,9 @@ int bergdb_stats(bergdb_db *db, struct bergdb_stats *s) {
     s->first_available_pos = db_first_available_pos(&db->db);
     s->startup_distance = db->db.startup_distance;
     s->cache_size_indicator = db->db.cache_size_indicator;
+    s->resident_bytes = db_resident_bytes(&db->db);
+    s->evicted = db->db.ev.evicted + db->db.ev.unswizzled;
+    s->pinned_bytes = db_pinned_bytes(&db->db);
     s->retain_duration = db->db.reclaim.retainDuration;
     s->internal_fraction = db->db.reclaim.internalFraction;
     s->reclaim_iteration_count = db->db.reclaim.iterationCount;

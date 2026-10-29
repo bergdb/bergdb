@@ -8,8 +8,10 @@
 # directory by both dumpers). Then the crash variants (copies of finished
 # directories cut at chosen and random positions, recovered and dumped by
 # both sides, then more transactions), the runs in turns (a workload's
-# segments run alternately by A and B on one directory), and a planted
-# difference (one byte flipped), which must be found and explained. Both
+# segments run alternately by A and B on one directory), with C's tools the
+# runs under memory budgets (012-12: C's runs with -budget, the files and the
+# text of side A), and a planted difference (one byte flipped), which must be
+# found and explained. Both
 # scanners scan the crash variants too, and copies with bits flipped and
 # files cut or removed (the corrupt variants, 012-06): a stream that Java
 # refuses, C refuses, at the same place, and C's scanner never crashes.
@@ -835,6 +837,51 @@ if [ -n "$TURNS" ]; then
     say "runs in turns: $NTURNS workloads, $((FAILS - before)) differences, in $(( $(date +%s) - T0 )) s"
 fi
 
+# ---- Budgets (012-12): C's runs under memory budgets, the files and the text of side A ----
+# Each workload that C runs, run again by C's bergdb-run with -budget B for each budget B
+# (from one byte, where everything that may go is evicted at every call, up): eviction
+# decides only what is in memory, so the files, byte for byte (from the decided cut for a
+# workload that reclaims, compare_db), and the runner's text (its reads and checks) must
+# be side A's, as without eviction. The four budgets run at once,
+# each into directories of its own. The dumps of equal files are equal; the runs' own
+# reads are in their text.
+NBUDGET=0
+if brun=$(ctool run) && [ "$SET" != scale ]; then
+    before=$FAILS
+    case "$SET" in
+    quick) BUDGETS="1 20000" ;;
+    *) BUDGETS="1 4000 64000 1000000" ;;
+    esac
+    rm -rf "$OUT/budget"
+    for bu in $BUDGETS; do
+        (
+            for w in $WORKLOADS; do
+                [ "$(c_runs "$OUT/wl/$w.wl")" = 1 ] || continue
+                d=$OUT/budget/$bu/$w
+                mkdir -p "$d"
+                "$brun" -budget "$bu" "$OUT/wl/$w.wl" "$d/db" < /dev/null > "$d/run.txt" 2> "$d/run.txt.err"
+                echo $? > "$d/run.txt.exit"
+                [ -s "$d/run.txt.err" ] || rm -f "$d/run.txt.err"
+            done
+        ) &
+    done
+    wait
+    for bu in $BUDGETS; do
+        for w in $WORKLOADS; do
+            [ "$(c_runs "$OUT/wl/$w.wl")" = 1 ] || continue
+            d=$OUT/budget/$bu/$w
+            b0=$FAILS
+            expect_exit "$d/run.txt" "$(exit_of "$OUT/a/$w/run.txt")" "$w run with budget $bu"
+            compare_text "$OUT/a/$w/run.txt" "$d/run.txt" "$w run output with budget $bu"
+            cut=$(decided_cut "$OUT/a/$w/run.txt")
+            compare_db "$OUT/wl/$w.wl" "$OUT/a/$w/db" "$d/db" "$cut" "$w files with budget $bu" "$OUT/a/$w/scan-by-a.txt"
+            NBUDGET=$((NBUDGET + 1))
+            if [ $FAILS -eq $b0 ] && [ "$KEEP" != 1 ]; then rm -rf "$d"; fi
+        done
+    done
+    say "budgets $BUDGETS: $NBUDGET runs of C, $((FAILS - before)) differences, in $(( $(date +%s) - T0 )) s"
+fi
+
 # ---- A planted difference: one byte flipped in a copy must be found and explained ----
 PLANTED=""
 if [ "$SET" != scale ]; then
@@ -865,10 +912,10 @@ fi
 
 # ---- The result ----
 if [ "$FAILS" = 0 ] && [ "$KEEP" != 1 ]; then
-    rm -rf "$OUT/a" "$OUT/b" "$OUT/crash" "$OUT/corrupt" "$OUT/turns" "$OUT/planted"
+    rm -rf "$OUT/a" "$OUT/b" "$OUT/crash" "$OUT/corrupt" "$OUT/turns" "$OUT/planted" "$OUT/budget"
 fi
 T=$(( $(date +%s) - T0 ))
-SUMMARY="$NW workloads, $NCUTS crash cuts, $NCORRUPT corrupt variants, $NTURNS in turns${PLANTED:+, $PLANTED}; side B: ${CTOOLS:-Java}; $T s"
+SUMMARY="$NW workloads, $NCUTS crash cuts, $NCORRUPT corrupt variants, $NTURNS in turns, $NBUDGET budget runs${PLANTED:+, $PLANTED}; side B: ${CTOOLS:-Java}; $T s"
 if [ "$FAILS" = 0 ]; then
     say "CROSS $SET OK: $SUMMARY"
     exit 0

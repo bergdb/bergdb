@@ -362,7 +362,11 @@ struct bergdb_options {
     int32_t startup_distance;
     /* The cache size indicator in bytes, the memory budget
      * (cacheSizeIndicator(long)): 200,000,000 by default; BERGDB_NO_EVICT
-     * for no eviction. For this run only (005-52). No check, as Java. */
+     * for no eviction. For this run only (005-52). Under 1: BERGDB_ARG,
+     * "AssertionError" (Cache3.setSizeIndicator's assert; DbBuilder has no
+     * check). The index's resident bytes (bergdb_stats) are kept at most
+     * this, but for what must stay: the nodes changed since the startup
+     * position and the newest top nodes (Level 4, 012-12). */
     int64_t cache_size_indicator;
     /* The retain duration in time units (retainDuration(long)): at least
      * BERGDB_UNITS_PER_SEC; BERGDB_FOREVER by default. */
@@ -840,6 +844,17 @@ struct bergdb_stats {
     int64_t first_available_pos;        /* getFirstAvailablePos() */
     int32_t startup_distance;           /* getStartupDistance() */
     int64_t cache_size_indicator;       /* getCacheSizeIndicator() */
+    int64_t resident_bytes;             /* the bytes the index takes in memory, which the
+                                           budget bounds (Level 4, 012-12): its key nodes,
+                                           top nodes, values and handles, and the node
+                                           table, as the allocator counts them (Java's
+                                           CacheStats.residentBytes counts estimates) */
+    int64_t evicted;                    /* the index objects evicted since the open, and the
+                                           values that left memory (CacheStats.released) */
+    int64_t pinned_bytes;               /* of the resident bytes, those that must stay: the
+                                           nodes changed since the startup position (D) and
+                                           the newest top nodes, with what they hold, and the
+                                           node table (a walk of D, for reports) */
     int64_t retain_duration;            /* getRetainDuration() */
     double internal_fraction;           /* getInternalFraction() */
     int64_t reclaim_iteration_count;    /* getReclaimIterationCount() */

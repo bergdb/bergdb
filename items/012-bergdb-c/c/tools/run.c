@@ -5,11 +5,21 @@
  * Run uses Db's public API. For the same workload it prints Run's text, and
  * writes Java's bytes (bergdb 012-09).
  *
- * Usage: bergdb-run [-v] [-segments A[-B]] WORKLOAD DIR
+ * Usage: bergdb-run [-v] [-segments A[-B]] [-budget N] [-mem] WORKLOAD DIR
  *   -v           also print each get's and each check's key-value pairs
  *   -segments    run only segments A to B (0-based; the segments are
  *                separated by restart lines); DIR holds the database that
  *                segment A-1 left
+ *   -budget N    the memory budget at every start is N bytes (in place of
+ *                the workload's "set budget", or of none: no eviction);
+ *                its setbudget lines still apply (012-12: the bytes and
+ *                the text must not change with the budget)
+ *   -mem         also print to standard error, at each segment's end, the
+ *                index's resident bytes (bergdb_stats) then and at most
+ *                after any line of the segment, the budget, the pinned bytes
+ *                (then and at most), the most resident bytes over the budget
+ *                plus the pinned (maxOver: 0 or less when the budget holds), and the
+ *                allocator's live and peak bytes (012-12)
  * Exit status: 0; 1 if a transaction or a call was refused, or the start
  * failed; 2 on a bad workload or usage; 3 for a workload that C cannot run
  * yet: none since 012-11 (restarts, -segments from 1 and a DIR that has a
@@ -73,6 +83,7 @@ static void bad(int number, const char *fmt, ...) {
 
 struct line {
     int number;             /* 1-based */
+    char *text;             /* the line's copy, which the words point into */
     char **words;
     int nwords;
     int segment;
@@ -533,6 +544,7 @@ static void wl_read(const char *path, struct workload *w) {
         }
         struct line *l = &w->lines[w->nlines++];
         l->number = number;
+        l->text = copy;
         l->words = words;
         l->nwords = nwords;
         l->segment = segment;
@@ -621,6 +633,12 @@ struct run {
     int refusals;
     struct sha256 reads;
     int64_t read_count;
+    int64_t budget;             /* -budget N; -1: the workload's */
+    bool mem_report;            /* -mem */
+    struct bergdb_mem mem;      /* the allocator's counts, with -mem */
+    int64_t max_resident;       /* the most resident bytes after a line of the segment */
+    int64_t max_over;           /* the most resident bytes over the budget plus the pinned */
+    int64_t max_pinned;         /* the most pinned bytes after a line of the segment */
 };
 
 static bool has_stream(const char *dir) {
@@ -659,6 +677,12 @@ static bool start(struct run *r) {
     }
     if (r->w->budget >= 0) {
         opt.cache_size_indicator = r->w->budget;
+    }
+    if (r->budget >= 0) {
+        opt.cache_size_indicator = r->budget;
+    }
+    if (r->mem_report) {
+        opt.mem = &r->mem;
     }
     if (r->w->retain >= 0) {
         opt.retain_duration = r->w->retain;
@@ -716,6 +740,17 @@ static void end_segment(struct run *r, int segment) {
         r->read_count = 0;
     }
     status(r);
+    if (r->mem_report) {
+        struct bergdb_stats s;
+        bergdb_stats(r->db, &s);
+        fprintf(stderr, "mem segment=%d resident=%" PRId64 " maxResident=%" PRId64
+                " budget=%" PRId64 " pinned=%" PRId64 " maxPinned=%" PRId64 " maxOver=%" PRId64
+                " evicted=%" PRId64 " live=%" PRId64 " peak=%" PRId64 "\n",
+                segment, s.resident_bytes, r->max_resident, s.cache_size_indicator,
+                s.pinned_bytes, r->max_pinned, r->max_over, s.evicted, r->mem.live_total,
+                r->mem.peak_total);
+        r->max_resident = r->max_pinned = r->max_over = 0;
+    }
     bergdb_close(r->db);
     r->db = NULL;
     fprintf(r->out, "end segment=%d\n", segment);
@@ -969,6 +1004,23 @@ static int run(struct run *r, int from, int to) {
             if (execute(r, l) != BERGDB_OK) {
                 refused(r, l);
             }
+            if (r->mem_report && r->db != NULL) {
+                struct bergdb_stats s;
+                if (bergdb_stats(r->db, &s) == BERGDB_OK) {
+                    if (s.resident_bytes > r->max_resident) {
+                        r->max_resident = s.resident_bytes;
+                    }
+                    if (s.pinned_bytes > r->max_pinned) {
+                        r->max_pinned = s.pinned_bytes;
+                    }
+                    int64_t free_bytes = s.resident_bytes - s.pinned_bytes;
+                    int64_t over = free_bytes > s.cache_size_indicator
+                            ? free_bytes - s.cache_size_indicator : 0;
+                    if (over > r->max_over) {
+                        r->max_over = over;
+                    }
+                }
+            }
         }
         if (segment == w->segments - 1) {
             /* The last segment ends at the end of the workload, not at a restart. */
@@ -983,12 +1035,14 @@ static int run(struct run *r, int from, int to) {
 
 static int usage(const char *msg) {
     fprintf(stderr, "Run: %s\n", msg);
-    fprintf(stderr, "Usage: bergdb-run [-v] [-segments A[-B]] WORKLOAD DIR\n");
+    fprintf(stderr, "Usage: bergdb-run [-v] [-segments A[-B]] [-budget N] [-mem] WORKLOAD DIR\n");
     return 2;
 }
 
 int main(int argc, char **argv) {
     bool verbose = false;
+    bool mem_report = false;
+    int64_t budget = -1;
     int from = 0, to = INT_MAX;
     int i = 1;
     for (; i < argc && argv[i][0] == '-'; i++) {
@@ -1016,6 +1070,12 @@ int main(int argc, char **argv) {
                 }
                 to = (int) v;
             }
+        } else if (strcmp(argv[i], "-budget") == 0 && i + 1 < argc) {
+            if (!parse_long(argv[++i], &budget) || budget < 1) {
+                return usage("bad -budget");
+            }
+        } else if (strcmp(argv[i], "-mem") == 0) {
+            mem_report = true;
         } else {
             return usage("unknown option");
         }
@@ -1035,10 +1095,18 @@ int main(int argc, char **argv) {
     r.dir = argv[i + 1];
     r.out = stdout;
     r.verbose = verbose;
+    r.budget = budget;
+    r.mem_report = mem_report;
     int status = run(&r, from, to);
     if (r.db != NULL) {
         bergdb_close(r.db);
     }
+    /* The workload, freed, so that leaks finds nothing of the tool's. */
+    for (int k = 0; k < w.nlines; k++) {
+        free(w.lines[k].words);
+        free(w.lines[k].text);
+    }
+    free(w.lines);
     fflush(stdout);
     return status;
 }

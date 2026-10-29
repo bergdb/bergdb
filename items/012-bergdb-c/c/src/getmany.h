@@ -104,6 +104,9 @@ struct getmany {
     bool cache;                 /* true */
     struct gm_sink result;      /* GetMany.result.add */
     struct obj_ctx *collect;    /* not NULL: a safe point (obj_collect) after each pair */
+    void (*safe_point)(void *ctx);  /* not NULL: called after each such obj_collect: the
+                                       API's eviction (012-12) */
+    void *safe_point_ctx;
     /* Output */
     int64_t actual_lookup_time; /* set by the database before Dag.getMany */
     int32_t get_op_count;

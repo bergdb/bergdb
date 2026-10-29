@@ -159,3 +159,37 @@ int64_t nt_slots(const struct ntable *t) {
 struct handle *nt_slot(const struct ntable *t, int64_t i) {
     return t->map.used[i] ? to_handle(t->map.vals[i]) : NULL;
 }
+
+bool nt_evict(struct ntable *t, struct handle *h) {
+    if (hd_is_dead(h)) {
+        return false;
+    }
+    hd_kill(t->cx, h);
+    if (nt_live_handle(t, h->id) == h) {
+        remove_handle(t, h);
+    }
+    return true;
+}
+
+int64_t nt_bytes(const struct ntable *t) {
+    return t->map.cap * (int64_t) (2 * sizeof(int64_t) + 1);
+}
+
+/* The smallest table that nt_shrink makes, in slots. */
+#define NT_MIN_SHRINK 1024
+
+void nt_shrink(struct ntable *t) {
+    if (t->map.cap <= NT_MIN_SHRINK || t->map.size >= t->map.cap / 8) {
+        return;
+    }
+    struct lmap n;
+    lmap_init(&n, t->map.mem);
+    for (int64_t i = 0; i < t->map.cap; i++) {
+        if (t->map.used[i] && !lmap_put(&n, t->map.keys[i], t->map.vals[i])) {
+            lmap_free(&n);
+            return;
+        }
+    }
+    lmap_free(&t->map);
+    t->map = n;
+}

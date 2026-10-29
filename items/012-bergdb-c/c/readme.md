@@ -118,11 +118,12 @@ The modules so far, each ported from its Java class:
 | `db` | `Db`: the creation and the start (012-10: through `starter`), `execute` with its checks, the marking, `store` with the take, `setStartupDistance`, reads, sync, close (012-09) | `db_`, `DB_` |
 | `api` | `include/bergdb.h`'s functions, and the structs of its handles (012-09) | `api_` |
 | `lmap` | a map from a long to a long, `HashMap<Long, Long>` where its order does not matter (012-10) | `lmap_` |
-| `ntable` | the node table, `Cache3` in part: register, install, makeCanonical, the live handles (012-10) | `nt_` |
+| `ntable` | the node table, `Cache3` in part: register, install, makeCanonical, the live handles (012-10); evict, its bytes and shrink (012-12) | `nt_` |
 | `ncoll` | `NodeCollection`: the followers that load with Rule R and the cut back, `resolvePointers`, `linkToCanonical` (012-10) | `nc_` |
 | `recover` | `RecoverableStream.recover` with its fill (012-10) | `rcv_` |
 | `starter` | `Db.startInner`'s checks, recovery and start, and `DbStarter`: the bounded startup with its rerun (012-10) | `sr_`, `SR_` |
 | `sdb` | a database opened by the bounded startup, for reads: `bergdb-dump`'s and the tests' (012-10) | `sdb_` |
+| `evict` | `Eviction` (the capacity controller, made deterministic: CLOCK over the node table at the ends of calls, the pins, the admission of large values) and `Cache3.clockStep`, Level 4 (012-12) | `ev_`, `EV_` |
 
 The tools so far: `bergdb-scan PATH` (012-06), Java's `StreamScan` in C:
 the same text, "streamscan 1", for every stream (`tools/scan.c`);
@@ -133,10 +134,11 @@ opened by the bounded startup (or by a full replay of the stream with
 for one that has them; `cross.sh` gives those to Java's dumper); and
 `bergdb-dump -probe [-maxnode N] [-check] DIR`, one line of what a start
 rebuilt and read (012-10, 6.2) (`tools/dump.c`);
-`bergdb-run [-v] [-segments A[-B]] WORKLOAD DIR` (012-09, 012-10), Java's
-`Run` in C through `bergdb.h` only: the same text, "bergdb-run 1", and
-Java's bytes, for every workload, restarts and reclaim included (012-11)
-(`tools/run.c`). Part 1 of 012-09
+`bergdb-run [-v] [-segments A[-B]] [-budget N] [-mem] WORKLOAD DIR` (012-09,
+012-10), Java's `Run` in C through `bergdb.h` only: the same text,
+"bergdb-run 1", and Java's bytes, for every workload, restarts and reclaim
+included (012-11), and under any memory budget (`-budget`, `-mem`'s report
+of the resident and pinned bytes, 012-12) (`tools/run.c`). Part 1 of 012-09
 added `bergdb-takecheck`, `bergdb-reappend` and `bergdb-clockcheck`
 (`tools/readme.md`).
 

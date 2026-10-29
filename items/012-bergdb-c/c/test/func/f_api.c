@@ -442,8 +442,10 @@ static const struct test api_tests[] = {
 
 extern const struct test start_tests[];     /* f_start.c (012-10) */
 extern const struct test reclaim_func_tests[];      /* f_reclaim.c (012-11) */
+extern const struct test budget_tests[];    /* f_budget.c (012-12) */
 
 int main(int argc, char **argv) {
-    const struct test *const tables[] = { api_tests, start_tests, reclaim_func_tests, NULL };
+    const struct test *const tables[] = { api_tests, start_tests, reclaim_func_tests,
+            budget_tests, NULL };
     return test_main(argc, argv, "FUNC", tables);
 }

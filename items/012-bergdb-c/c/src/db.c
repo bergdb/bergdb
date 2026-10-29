@@ -381,6 +381,21 @@ static bool l_pointer_followed(void *ctx, struct node *predecessor, int32_t poin
     return true;
 }
 
+/* Db.newPutData's PointerCreatedListener: Eviction.largeValueCreated
+ * (012-12). */
+static bool l_pointer_created(void *ctx, struct node *from, int32_t index, struct node *to) {
+    struct db *db = ctx;
+    if (to->o.kind == OBJ_VALUE && ((struct vnode *) to)->len > EV_LARGE_VALUE
+            && from->o.kind == OBJ_KEY) {
+        if (!ev_large_value_created(&db->ev, (struct knode *) from, index,
+                (struct vnode *) to)) {
+            err_set(&db->op_err, ERR_NOMEM, "OutOfMemoryError", "out of memory");
+            return false;
+        }
+    }
+    return true;
+}
+
 /* createPutAndGetData: Db.newPutData and newGetData. */
 static void create_put_and_get_data(struct db *db) {
     dag_new_put_data(&db->dag, &db->put_data, db->mem);
@@ -398,8 +413,10 @@ static void create_put_and_get_data(struct db *db) {
     pd->op.pointer_listener.super_root_accessed = l_super_root_accessed;
     pd->op.pointer_listener.pointer_followed = l_pointer_followed;
     pd->op.pointer_listener.ctx = db;
-    /* Db's PointerCreatedListener feeds the node table's residents and
-     * eviction's large values: no byte; the Dag's does nothing. */
+    /* Db's PointerCreatedListener: eviction's large values (012-12); the
+     * residents are the allocator's counts. No byte. */
+    pd->pointer_created_listener.pointer_created = l_pointer_created;
+    pd->pointer_created_listener.ctx = db;
     db_new_get_data(db, &db->get_data);
 }
 
@@ -494,12 +511,18 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
     db->max_node_size = cfg->max_node_size;
     db->startup_distance = cfg->startup_distance;
     db->cache_size_indicator = cfg->cache_size_indicator;
+    ev_init(&db->ev, &db->cx, m, cfg->cache_size_indicator < 1 ? 1 : cfg->cache_size_indicator);
     db->record_limit = cfg->record_limit > 0 ? cfg->record_limit : ST_MAX_RECORD_SIZE;
     db->second_top_ordinal = cfg->second_top_ordinal > 0 ? cfg->second_top_ordinal : 1;
     if (cfg->max_node_size != 8 && cfg->max_node_size != 14 && cfg->max_node_size != 30
             && cfg->max_node_size != 62) {
         return err_set(e, ERR_ARG, "IllegalArgumentException", "Bad maxNodeSize, %d.",
                 (int) cfg->max_node_size);
+    }
+    if (cfg->cache_size_indicator < 1) {
+        /* Cache3.setSizeIndicator's assert (C's asserts are on, as Java's -ea). */
+        return err_set(e, ERR_ARG, "AssertionError", "a cache size indicator under 1, %lld",
+                (long long) cfg->cache_size_indicator);
     }
     if (cfg->startup_distance < 10) {
         return err_set(e, ERR_ARG, "IllegalArgumentException", "Too small, %d",
@@ -609,7 +632,7 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
         free_all(db);
         return rc;
     }
-    obj_collect(&db->cx);
+    db_evict(db);       /* eviction.afterTransaction: after the startup's loads (012-12) */
     return ERR_OK;
 }
 
@@ -1029,6 +1052,7 @@ static enum err_code store(struct db *db, struct err *e) {
     db->trans->last_pos = out.last_pos;
     db->trans->next_pos = out.next_pos;
     obj_set(&db->cx, (struct obj **) &db->newest_written_top, &top->n.o);
+    ev_record_written(&db->ev, tn);     /* admission (Eviction.recordWritten, 012-12) */
 
     db->trans->node_count = tns_size(tn);
     info->tpos = out.tpos;
@@ -1134,6 +1158,7 @@ enum err_code db_execute(struct db *db, struct trans *t, struct err *e) {
     tns_clear(&db->trans_nodes);
     /* eviction (012-12), the audit */
     obj_collect(&db->cx);
+    db_evict(db);       /* eviction.afterTransaction (012-12) */
     /* reclaim.transactionCompleted(t), within the go point: what fails there
      * fails the database (an internal transaction that failed has failed it
      * already, and its ERR_FAILED is returned as it is). */
@@ -1214,7 +1239,46 @@ enum err_code db_set_cache_size_indicator(struct db *db, int64_t size, struct er
                 (long long) size);
     }
     db->cache_size_indicator = size;
+    ev_set_budget(&db->ev, size);
+    /* After a decrease, eviction to the new budget now, where Java wakes its
+     * eviction thread (005-52): an idle database gives the memory back too. */
+    db_evict(db);
     return ERR_OK;
+}
+
+/* ======== Eviction (012-12) ======== */
+
+/* The capacity controller at a safe point: at the end of a call, or inside
+ * one (in_call). */
+static void evict_at(struct db *db, bool in_call) {
+    obj_collect(&db->cx);
+    if (db->state != DB_ACTIVE) {
+        return;
+    }
+    struct ev_env env = { &db->node_table, tds_get_super_root(&db->dag.top_ds),
+            db->newest_written_top, &db->trans_seq };
+    ev_run(&db->ev, &env, in_call);
+}
+
+void db_evict(struct db *db) {
+    evict_at(db, false);
+}
+
+void db_safe_point(void *ctx) {
+    evict_at(ctx, true);
+}
+
+int64_t db_resident_bytes(const struct db *db) {
+    return ev_resident_bytes(db->mem, &db->node_table);
+}
+
+int64_t db_pinned_bytes(struct db *db) {
+    if (!db->dag_made) {
+        return nt_bytes(&db->node_table);
+    }
+    struct ev_env env = { &db->node_table, tds_get_super_root(&db->dag.top_ds),
+            db->newest_written_top, &db->trans_seq };
+    return ev_pinned_bytes(&env);
 }
 
 /* ======== Reads, the clock, status ======== */
@@ -1358,6 +1422,7 @@ int64_t db_recount(struct db *db) {
  * every holder lets go and a safe point frees what the counts let go (the
  * recount checks them in the tests). */
 static void free_all(struct db *db) {
+    ev_free(&db->ev);       /* the large values' holds, before the roots are taken */
     int32_t n = 0;
     int64_t count = roots_count(db);
     struct obj **roots = roots_of(db, &n);

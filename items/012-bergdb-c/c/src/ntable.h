@@ -9,8 +9,10 @@
  *
  * The table holds each live handle (counted, 012-07, 6.4.2: Cache3.maps).
  * A value has no handle and is not in the table (009-02, 4.8). Left out
- * for 012-12: evict and the CLOCK walk, the residents and the access clock
- * (no byte depends on them), the sizes. Java's 4,096 maps and their locks
+ * for 012-12 (evict.h): the CLOCK walk, eviction's policy; evict (nt_evict)
+ * and the sizes (nt_bytes, nt_shrink) are here. The residents and the
+ * access clock are left out (the allocator counts the bytes; no byte
+ * depends on them). Java's 4,096 maps and their locks
  * are one map here (lmap.h), whose iteration order is its own: Java's
  * handles() order decides nothing that is written (linkD's byPos is keyed by
  * distinct positions).
@@ -69,6 +71,21 @@ struct node *nt_make_canonical(struct ntable *t, struct handle *h, struct node *
 /* dropIfEmpty: live handle h, if it has no object, dies and leaves the
  * table. */
 void nt_drop_if_empty(struct ntable *t, struct handle *h);
+
+/* Cache3.evict (012-12): live handle h dies (hd_kill: a canonical object's
+ * position into its written position, the object let go) and leaves the
+ * table. The caller has checked that the object may go (evict.h). false if
+ * h is dead already. */
+bool nt_evict(struct ntable *t, struct handle *h);
+
+/* The bytes of the table's own arrays, as allocated (012-12: part of the
+ * resident bytes). */
+int64_t nt_bytes(const struct ntable *t);
+
+/* After eviction (012-12): a table that holds fewer than an eighth of its
+ * slots is made again at its size, so that its arrays shrink as eviction
+ * takes handles. Changes the slots' order; on NOMEM it stays as it is. */
+void nt_shrink(struct ntable *t);
 
 /* The number of live handles, and the handles in the table's order:
  * for (i = 0; i < nt_slots(t); i++) if ((h = nt_slot(t, i)) != NULL). */

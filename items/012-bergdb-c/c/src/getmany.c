@@ -520,6 +520,9 @@ bool dag_get_many(struct dag *d, struct getmany *g) {
         }
         if (g->collect != NULL) {
             obj_collect(g->collect);    /* a safe point between pairs: the chain holds its links */
+            if (g->safe_point != NULL) {
+                g->safe_point(g->safe_point_ctx);
+            }
         }
     }
 
