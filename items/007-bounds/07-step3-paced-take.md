@@ -909,6 +909,11 @@ the rule asks, something like:
 level1.sh is not changed here; Frans decides. Until then night.sh's
 level1 fails on main.
 
+**Decided:** Frans chose A on 2026-10-29 (09:08). Done in the commit
+"level1: SS limits raised after 007-07 (007-07's section 12.3, option A)":
+level1.sh's `SS_MAX` and step 6's comment as recommended, and
+docs/log.md's entry of 2026-10-29; `level1.sh` gives `LEVEL 1 OK`.
+
 ### 12.4 Section 8's quick performance suite
 
 **Done, in substance:** 007-03's step 3 asks for "the quick performance

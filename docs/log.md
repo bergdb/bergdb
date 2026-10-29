@@ -1500,3 +1500,18 @@ together with such a record, and recovery fills out one that a crash cut,
 so the two are equal whenever `take` is called (an instrumented copy: 0 of
 5,524,901 calls differ, 229 after a record that ended exactly on
 a boundary). No change to `java/`.
+
+2026-10-29. `level1.sh`'s SS limits raised to 1.52 1.11 1.21 1.66 2.41
+(from 1.51 1.11 1.20 1.63 2.38), as Frans decided on 29 October (option A
+of bergdb 007-07, section 12.3), by Claude (Opus 5.5, Claude Code), for
+006-10. The reason, as step 6's rule asks: after 007-07's paced take
+(`f89846d`) SS went from 1.50 to 1.51, SS2 from 1.19 to 1.20, SS3 from 1.62
+to 1.65 and SS4 from 2.37 to 2.40, SS1 unchanged, so SS3 and SS4 failed
+their limits. The startup distance setting is now the startup section's
+target (005-49): the paced take holds the section at about the setting,
+where the old take let it grow past it, so at Props' default 50 MB it
+writes index nodes more often. That is 0 to 2 percent in the SS workloads,
+where the user's data are most of the stream, and 24 percent at 10M small
+keys (32-byte puts, docs/levels.md, section 5): the expected cost of the
+bound, not a regression. The limits keep one step of 0.01 above the new
+values; MEM's limit is unchanged.
