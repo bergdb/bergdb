@@ -137,12 +137,19 @@ TEST(mem_fail_at) {
     CHECK_MEM_ZERO(&m);
 }
 
-/* An allocation too large for malloc fails, counted as failed, not live. */
+/* An allocation too large for malloc fails, counted as failed, not live.
+ * The results go through a volatile pointer: where the optimizer sees the
+ * whole allocation (the release build's -flto, 012-17, inlines mem_alloc
+ * here), it may remove a malloc whose block is never used and take it as
+ * succeeded, as C allows; the block must escape for malloc to run. */
 TEST(mem_too_large) {
     struct mem m;
+    void *volatile p;
     mem_init(&m);
-    CHECK(mem_alloc(&m, SIZE_MAX, MEM_VALUE) == NULL);
-    CHECK(mem_alloc(&m, SIZE_MAX - 8, MEM_VALUE) == NULL);
+    p = mem_alloc(&m, SIZE_MAX, MEM_VALUE);
+    CHECK(p == NULL);
+    p = mem_alloc(&m, SIZE_MAX - 8, MEM_VALUE);
+    CHECK(p == NULL);
     CHECK_EQ(m.failed, 2);
     CHECK_MEM_ZERO(&m);
 }

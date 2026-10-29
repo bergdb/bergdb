@@ -389,3 +389,13 @@ open for the Java fixes; C does as Java.
 2026-10-29, 12:51. 012-17 added at Frans's request ("Just add subitem 17
 for now."): link-time optimization in the release build, 012-15's first
 proposal; a plan, not started. 012's status is open again while it waits.
+
+2026-10-29, 15:27. 012-17 done: the release build links with `-flto`
+(`build.sh`; `LTO=` builds without). The semantic flags need nothing at
+the link: their effect is in the bitcode (`c/readme.md`, section 1). One
+unit test made robust against the optimizer's wider view
+(`mem_too_large`), and the gate's rule of no global state reads the
+bitcode's symbols. `cross.sh full` with the release tools OK (2018 s); C
+BEFORE COMMIT OK with macOS's `leaks`. Gains of `-flto` (1M and 10M keys,
+in turns): writes 1.24 to 1.38, reads 1.08 to 1.23, under a 16 MB budget
+1.23 to 1.24; the library 20 percent larger, `core_demo` 5 percent.

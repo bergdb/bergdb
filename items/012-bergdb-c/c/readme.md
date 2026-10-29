@@ -11,16 +11,46 @@ Its first parts, the build, the tests, the gate and the rules below, are
 
 # 1. Build and test
 
-    ./build.sh             the release and the test builds, into build/ (about 1 s)
+    ./build.sh             the release and the test builds, into build/ (about 30 s)
     ./before-commit.sh     the C gate: must print C BEFORE COMMIT OK
 
 Both are plain `sh`; Apple clang 21 as `cc` (or `CC=...`). `build.sh`
 compiles every module with one `cc` call per build, with 012-01, 6.1's
 flags (C17, every warning an error, `-fwrapv -ffp-contract=off`):
 
-* `build/release/`: `-O2`;
+* `build/release/`: `-O2 -flto` (link-time optimization, 012-17, below);
 * `build/test/`: `-O1 -g`, AddressSanitizer and UndefinedBehaviorSanitizer
   (`-fno-sanitize-recover=all`), and `BERGDB_TEST` (the allocator's checks).
+
+**Link-time optimization** (012-17). The release build's objects in
+`build/release/obj/` are LLVM bitcode, not machine code; each program's
+link optimizes the library and the program as one, so the small helpers
+that the hot paths call across modules (`klong`, `keys`, `node`) are
+inlined, which `-O2` alone cannot do across files (012-15, 6.4: +15 to +34
+percent). An application that links `libbergdb.a` therefore links with
+clang and `-flto` too (`ld` reads the bitcode through Apple's
+`libLTO.dylib`); `LTO= ./build.sh` builds the release without it, `-O2`
+alone. The flags of Java's semantics (section 3) hold at the link without
+anything more: `-fwrapv` and `-ffp-contract=off` act when clang turns C
+into bitcode, and what they decide is in the bitcode, instruction by
+instruction: signed arithmetic without `nsw` (so no optimization may
+assume that it does not wrap), and multiplies and adds without the
+`contract` flag and no `llvm.fmuladd` (so none may be fused). The link
+keeps that; clang 21's driver gives the link step (`ld`) only `-O2` and
+`-lto_library` (seen with `cc -###`), none of the two flags, and needs
+none (`-Wl,-mllvm,...` would be for the optimizer's own options, none of
+which is needed). Checked on 2026-10-29 with two files, a function in one
+and its caller in the other, linked with `-flto`: `x + 1 > x` across them
+stays false at `Long.MAX_VALUE` with `-fwrapv` and folds to true without
+it; `a * b + c` across them gives Java's 0 with `-ffp-contract=off` and
+`-0x1p-60` (an `fmadd`) only with `-ffp-contract=fast`. `t_jsem.c`'s
+`jsem_wrapv` and `jsem_no_fma` run in the release build's `unit`, which is
+linked with `-flto`. One test met the optimizer's wider view:
+`mem_too_large` (`t_mem.c`) passes its results through a volatile, as a
+`malloc` whose block is never used may be removed and taken as succeeded
+once `mem_alloc` is inlined into the test. The gate's rule of no global
+state (section 4) reads the bitcode's symbols (`nm` shows writable
+variables as `(LTO,DATA)`).
 
 Each has `libbergdb.a`, the tools (`bergdb-NAME` from `tools/NAME.c`), the
 unit tests `unit`, the functional tests `func`, and the examples

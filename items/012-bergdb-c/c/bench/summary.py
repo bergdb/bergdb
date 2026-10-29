@@ -8,7 +8,9 @@ the run count, and C's value against Java's. A run's figure for a phase with
 rounds (get, hist, many, lowget, get4t) is its best round, as Props takes
 the best of its rounds (006-02). Rates are operations a second; times
 (create, close, lowopen, start) are seconds. Then the bytes appended per
-put, the memory and the maximum resident sets.
+put, the memory and the maximum resident sets. With bench.sh's lto mode
+(012-17), runs named co2 are C's release build without -flto: the table
+then has C -O2 -flto (c), C -O2 (co2), Java, and the gain of -flto.
 """
 import glob
 import os
@@ -62,7 +64,7 @@ def fmt(x, time=False):
 def main(out):
     runs = {}
     for f in sorted(glob.glob(os.path.join(out, "[0-9][0-9]-*.txt"))):
-        m = re.match(r"\d\d-(.*)-(c|java)\.txt$", os.path.basename(f))
+        m = re.match(r"\d\d-(.*)-(c|co2|java)\.txt$", os.path.basename(f))
         if not m:
             continue
         name, lang = m.group(1), m.group(2)
@@ -70,12 +72,18 @@ def main(out):
             continue
         runs.setdefault(name, {}).setdefault(lang, []).append(parse(f))
     for name, by in runs.items():
-        print("## %s (runs: C %d, Java %d)" % (name, len(by.get("c", [])), len(by.get("java", []))))
+        lto = "co2" in by
+        print("## %s (runs: C %d, %sJava %d)" % (name, len(by.get("c", [])),
+                                                 "C -O2 %d, " % len(by["co2"]) if lto else "", len(by.get("java", []))))
         print()
-        print("| Phase | C | Java | C/Java | C range | Java range |")
-        print("|---|---:|---:|---:|---|---|")
+        if lto:
+            print("| Phase | C -O2 -flto | C -O2 | Gain | Java | C/Java | C range | C -O2 range | Java range |")
+            print("|---|---:|---:|---:|---:|---:|---|---|---|")
+        else:
+            print("| Phase | C | Java | C/Java | C range | Java range |")
+            print("|---|---:|---:|---:|---|---|")
         phases = []
-        for lang in ("c", "java"):
+        for lang in ("c", "co2", "java"):
             for r in by.get(lang, []):
                 for p in r["phases"]:
                     if p not in phases:
@@ -84,15 +92,22 @@ def main(out):
             t = p in TIMES
             cs = [r["phases"][p] for r in by.get("c", []) if p in r["phases"]]
             js = [r["phases"][p] for r in by.get("java", []) if p in r["phases"]]
-            c, j = med(cs), med(js)
+            os_ = [r["phases"][p] for r in by.get("co2", []) if p in r["phases"]]
+            c, j, o = med(cs), med(js), med(os_)
             ratio = "%.2f" % (c / j) if c and j else "-"
             rng = lambda xs: "%s to %s" % (fmt(min(xs), t), fmt(max(xs), t)) if xs else "-"
-            print("| %s | %s | %s | %s | %s | %s |" % (p, fmt(c, t), fmt(j, t), ratio, rng(cs), rng(js)))
+            if lto:
+                # the gain: how many times faster with -flto (for times, the inverse)
+                gain = "%.2f" % ((o / c) if t else (c / o)) if c and o else "-"
+                print("| %s | %s | %s | %s | %s | %s | %s | %s | %s |" % (
+                    p, fmt(c, t), fmt(o, t), gain, fmt(j, t), ratio, rng(cs), rng(os_), rng(js)))
+            else:
+                print("| %s | %s | %s | %s | %s | %s |" % (p, fmt(c, t), fmt(j, t), ratio, rng(cs), rng(js)))
         print()
         # bytes appended per put, and the stream (equal by construction)
         for p in ("load", "batch", "single", "syncone", "syncbatch"):
             vals = set()
-            for lang in ("c", "java"):
+            for lang in ("c", "co2", "java"):
                 for r in by.get(lang, []):
                     x = r["extra"].get(p)
                     if x and "bytes_per_put" in x:

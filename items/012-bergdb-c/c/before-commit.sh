@@ -72,8 +72,11 @@ rules() {
     fi
     # No global state (P9): nothing in the writable data of the release
     # build's objects (constants are in __TEXT,__const or __DATA,__const).
+    # With -flto (012-17) the objects are LLVM bitcode, whose symbols nm
+    # shows as (LTO,CODE), (LTO,RODATA) or (LTO,DATA): DATA is every
+    # writable variable (data, bss, common, thread-local); constants are RODATA.
     if nm -m build/release/obj/*.o \
-            | grep -E '\(__DATA,__(data|bss|common|thread_vars|thread_bss|thread_data)\)|\(common\)'; then
+            | grep -E '\(__DATA,__(data|bss|common|thread_vars|thread_bss|thread_data)\)|\(common\)|\(LTO,DATA\)'; then
         echo "rules: writable global or static data in the library, above"
         bad=1
     fi

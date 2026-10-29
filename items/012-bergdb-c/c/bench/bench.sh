@@ -3,7 +3,7 @@
 # Java's JBench (bench/JBench.java) on the same workloads, in turns, each
 # run a fresh process, each after a check that the machine is quiet.
 #
-# Usage: sh bench/bench.sh smoke|timed|extra OUT
+# Usage: sh bench/bench.sh smoke|timed|extra|lto OUT
 #   smoke   small sizes, one run each: the plumbing (about 30 s)
 #   timed   the measurements of 012-15 (about an hour):
 #           A. 1M keys: run C and Java in turns, 3 each
@@ -14,6 +14,10 @@
 #   extra   1M keys, 2 runs each: the first sync alone (firstsync), gets
 #           under a budget of 128 MB (above D), then opens of that database
 #           under 16 and 128 MB budgets (about 10 minutes)
+#   lto     timed's A, B, C and D with C's release build twice (012-17): as
+#           built (-O2 -flto, run name c) and without link-time optimization
+#           (LTO= build.sh into build/nolto: -O2 alone, run name co2), in
+#           turns with Java (about 40 minutes)
 #   OUT: a new directory for the outputs (outside the repository); data in
 #   OUT/data.noindex (not indexed by Spotlight), deleted at the end.
 # Builds first (build.sh, the Java harness, JBench). Each run's output is
@@ -31,7 +35,7 @@ set -e
 C=$(cd "$(dirname "$0")/.." && pwd)
 MODE=$1
 OUT=$2
-[ -n "$OUT" ] || { echo "usage: bench.sh smoke|timed|extra OUT"; exit 2; }
+[ -n "$OUT" ] || { echo "usage: bench.sh smoke|timed|extra|lto OUT"; exit 2; }
 JAVA_HOME=${JAVA_HOME:-/opt/homebrew/opt/openjdk}
 export JAVA_HOME
 mkdir -p "$OUT/data.noindex"
@@ -51,7 +55,11 @@ sh test/cross/java-build.sh >> "$OUT/build.txt" 2>&1 || { log "BENCH FAILED: jav
 mkdir -p build/bench/java
 "$JAVA_HOME/bin/javac" --release 17 -encoding UTF-8 -nowarn -cp build/java/classes \
     -d build/bench/java bench/JBench.java >> "$OUT/build.txt" 2>&1 || { log "BENCH FAILED: javac"; exit 1; }
+if [ "$MODE" = lto ]; then
+    LTO= BUILD=$C/build/nolto ./build.sh >> "$OUT/build.txt" 2>&1 || { log "BENCH FAILED: build without LTO"; exit 1; }
+fi
 CB=$C/build/release/bench-cbench
+CBO2=$C/build/nolto/release/bench-cbench
 JB="$JAVA_HOME/bin/java $JFLAGS -cp $C/build/java/classes:$C/build/bench/java bergdb.core.JBench"
 log "build OK: $(git -C "$C" rev-parse --short HEAD) $(git -C "$C" status --short | wc -l | tr -d ' ') changed files; java $("$JAVA_HOME/bin/java" -version 2>&1 | head -1); JFLAGS $JFLAGS"
 
@@ -94,6 +102,8 @@ run() {    # run NAME LANG ARGS...: one run, output in OUT/NN-NAME-LANG.txt
     log "run $N $name $lang quiet=$QUIET: $*"
     if [ "$lang" = c ]; then
         /usr/bin/time -l "$CB" "$@" > "$f" 2>&1 || { log "BENCH FAILED: $f"; tail -5 "$f"; exit 1; }
+    elif [ "$lang" = co2 ]; then
+        /usr/bin/time -l "$CBO2" "$@" > "$f" 2>&1 || { log "BENCH FAILED: $f"; tail -5 "$f"; exit 1; }
     else
         /usr/bin/time -l $JB "$@" > "$f" 2>&1 || { log "BENCH FAILED: $f"; tail -5 "$f"; exit 1; }
     fi
@@ -168,8 +178,38 @@ extrastarts)
     # the opens of extra alone, on extra's database left in OUT
     extrastarts
     ;;
+lto)
+    # timed's, with C's release build with and without -flto (012-17)
+    A="keys=1000000 upd=1000000 single=100000 syncs=200 syncb=50 gets=1000000 scans=100 low=16000000 rounds=3"
+    for i in 1 2 3; do
+        for lang in java c co2; do
+            rm -rf "$DATA/1m"
+            run 1m $lang run "$DATA/1m" $A
+        done
+    done
+    rm -rf "$DATA/1m"
+    B="keys=10000000 upd=2000000 single=100000 syncs=200 syncb=50 gets=1000000 scans=100 low=16000000 rounds=3"
+    for i in 1 2 3; do
+        for lang in java c co2; do
+            rm -rf "$DATA/10m"
+            run 10m $lang run "$DATA/10m" $B
+        done
+    done
+    for lang in c co2; do
+        rm -rf "$DATA/10m-sd200"
+        run 10m-sd200-make $lang run "$DATA/10m-sd200" keys=10000000 upd=3000000 sd=200000000
+    done
+    for db in 10m 10m-sd200; do
+        run start-$db-warmup c start "$DATA/$db" keys=10000000
+        for i in 1 2 3; do
+            for lang in java c co2; do
+                run start-$db $lang start "$DATA/$db" keys=10000000
+            done
+        done
+    done
+    ;;
 *)
-    echo "usage: bench.sh smoke|timed|extra OUT"
+    echo "usage: bench.sh smoke|timed|extra|lto OUT"
     exit 2
     ;;
 esac

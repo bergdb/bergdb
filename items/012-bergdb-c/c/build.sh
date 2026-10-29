@@ -1,7 +1,9 @@
 #!/bin/sh
 # Builds the C clone of BergDB's Core (bergdb 012) into build/, two builds
 # with the flags of 012-01, section 6.1:
-#   build/release/  -O2
+#   build/release/  -O2 -flto (link-time optimization, 012-17: the library's
+#                   objects are LLVM bitcode, optimized across modules at
+#                   each program's link; readme, section 1)
 #   build/test/     -O1 -g, AddressSanitizer and UndefinedBehaviorSanitizer,
 #                   BERGDB_TEST (the allocator's checks, mem.h)
 # each with libbergdb.a (src/*.c), the tools (tools/*.c, one program each,
@@ -19,6 +21,8 @@
 #   WERROR=     (empty) warnings are not errors: for another compiler, by hand
 #               (test/stress/gcc.sh: Homebrew's gcc 16; the gate is clang's, with -Werror)
 #   BUILD=DIR   the builds go to DIR/release and DIR/test instead of build/
+#   LTO=        (empty) the release build without -flto: -O2 alone, as before
+#               012-17 (bench/bench.sh's lto mode compares the two)
 
 set -e
 C=$(cd "$(dirname "$0")" && pwd)
@@ -26,6 +30,7 @@ cd "$C"
 CC=${CC:-cc}
 WERROR=${WERROR--Werror}
 BUILD=${BUILD:-$C/build}
+LTO=${LTO--flto}
 
 WARN="-std=c17 -Wall -Wextra -Wpedantic -Wshadow -Wconversion $WERROR -fwrapv -ffp-contract=off"
 INC="-I$C/src -I$C/include -ffile-prefix-map=$C/="
@@ -79,7 +84,12 @@ build() {    # build NAME FLAGS...
     done
 }
 
-build release -O2
+# The release build with link-time optimization (012-17): $LTO goes to every
+# compile and every link of the build, as all of its flags do. -fwrapv and
+# -ffp-contract=off act at the compile: their effect is in the bitcode (no nsw
+# on signed arithmetic, no contract flag and no llvm.fmuladd), which the link
+# keeps; the driver passes them to no link step (readme.md, section 1).
+build release -O2 $LTO
 build test -O1 -g -fsanitize=address,undefined -fno-sanitize-recover=all -DBERGDB_TEST
 
 # The API header alone (written by 012-03).
