@@ -1791,6 +1791,9 @@ restart and committed with it, a serializability gap). Options:
 Recommendation: (a) for 012's pace, with C4 marked in 005 as a correctness
 bug for a fix soon; C follows the fix when it comes (012-01, 9.2).
 
+Answered by Frans, 2026-10-29, 12:45: "I confirm (a)." Both are registered (005-70,
+005-71) and C does as Java; the Java fixes are decided in those entries.
+
 
 # 14. How it was made
 

@@ -150,6 +150,7 @@ list. And: "Continue with 012 until it is finished. Run agents with Opus
 5.5 High to preserve usage."
 
 Later the same day, 12:41, on 012-02's Q1 (point 2 above): "(a) is good as long as there is an item in 005 to consider (b)". Done: A in the cross tests since 012-11; 005-72 stays open for B.
+And 12:45, on 012-02's Q2: "I confirm (a)." (both registered, C as Java).
 
 ## 0.6 The format document, the code's place, and next steps
 
