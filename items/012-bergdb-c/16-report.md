@@ -149,6 +149,8 @@ Java's behaviour). Points 2, 6 and 7 of this section were not in that
 list. And: "Continue with 012 until it is finished. Run agents with Opus
 5.5 High to preserve usage."
 
+Later the same day, 12:41, on 012-02's Q1 (point 2 above): "(a) is good as long as there is an item in 005 to consider (b)". Done: A in the cross tests since 012-11; 005-72 stays open for B.
+
 ## 0.6 The format document, the code's place, and next steps
 
 * **The format document** stays 012-02 in this item (D6b changed by

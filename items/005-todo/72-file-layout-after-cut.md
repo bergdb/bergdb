@@ -51,9 +51,17 @@ Recommended (012-02): A now, so that 012's cross tests compare what is
 deterministic; B can be decided later, on its own merits.
 
 
+Decision
+--------
+
+Frans, 2026-10-29, 12:41, on 012-02's Q1: "(a) is good as long as there is an item in 005 to consider (b)". So A for 012's cross tests, done since 012-11 (`ca9e583`:
+workloads with reclaim are compared from the decided cut). This entry
+stays open to consider B, a Java change on its own merits.
+
+
 Done when
 ---------
 
-Decided; for A, 012-05's `compare_dirs` compares the bytes from the
-decided cut for workloads with reclaim before 012-11; for B, the change
-with its gates.
+B decided; if taken, the change with its gates (and the C clone's
+`FileStream` port, in 012's `c/`, brought in line by hand, as C is a
+separate project).

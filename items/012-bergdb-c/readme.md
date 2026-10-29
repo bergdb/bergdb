@@ -378,3 +378,5 @@ task, the usage). The C code stays in `c/`; the format document stays
 and everything in 012. Tests can start manually. Good for now." So the C
 gate is not added to `night.sh` or to Java's gate; C's tests run by hand
 (`c/before-commit.sh`, `c/test/cross/cross.sh`).
+
+2026-10-29, 12:41. Frans on 012-02's Q1: "(a) is good as long as there is an item in 005 to consider (b)". A is what the cross tests do since 012-11; 005-72 stays open for B.

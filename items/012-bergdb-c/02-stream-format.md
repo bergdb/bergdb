@@ -1767,6 +1767,10 @@ not timed as Java's, a workload with reclaim and a live stream above 4 MB
 would differ in its file names after the cut, so (a) also means a change
 of `compare_dirs` for such workloads before 012-11.
 
+Answered by Frans, 2026-10-29, 12:41: "(a) is good as long as there is an
+item in 005 to consider (b)". (a) is done in 012-11; 005-72 is open for
+(b).
+
 **Q2. Restarts that change the bytes (C3, C4).** Two pieces of state that
 decide the bytes are not rebuilt by a start: `DbClock.lastReadTime` (a
 transaction's time can differ by one unit after `currentTime()` and a
