@@ -159,6 +159,199 @@ list. And: "Continue with 012 until it is finished. Run agents with Opus
 
 
 
+## 0.7 How the work was done
+
+Frans, 2026-10-29, 09:02: "This port to C is valuable in itself. And also
+valuable as a capability test for AI porting. We might do similar jobs in
+the future." This section is written for that: how an AI ported BergDB's
+Core, what it took, and what to do again. The conductor's raw notes are
+in `/Users/f/fl/bench/012/report-data.md` and its state file in
+`/Users/f/fl/bench/012/state.md` (outside the repository).
+
+### The people and the tools
+
+* **Frans** asked for the item, took the decisions D1 to D7, gave the
+  go, and set the rules for effort and usage. He was away for most of the
+  run.
+* **Claude Opus 5.5 in Claude Code** (the VS Code extension, auto
+  permission mode) did everything else: one *planning session*
+  ("012-bergdb-c") and one *conductor session* ("f1-0f"), and the
+  subagents the conductor started.
+* F53, Frans's MacBook (Apple M1 Pro, 10 cores, 32 GB), with Apple clang
+  21 and OpenJDK 27. No other tools.
+
+### The timeline
+
+| When | What |
+|---|---|
+| 2026-10-27, evening | Frans's request ("Create item 012-bergdb-c ... a clone of the Core of BergDB written in C ... The stream format must be identical ..."); the planning session writes 012-01, the overview plan, while Frans is away, and then the task plans 012-02 to 012-16 |
+| 2026-10-28, morning | Frans's decisions D1 to D7 and two comments (deterministic time needs the test clock; a plan for allocating and freeing memory), answered in 012-01, 4.4 and 4.5 |
+| 2026-10-28, 13:05 to 13:40 | The plans reviewed against Java's `main` of that hour (the paced take, 005-52, 005-53) |
+| 2026-10-28, 13:43 | Frans's go: the conductor's prompt pasted into a new session |
+| 13:47 to 16:25 | Phase A: the format document with Java's scanner, the C API, the C project with its gate, the cross harness (M1) |
+| 16:20 to 21:40 | Phase B: the C stream reader and scanner, the index nodes, the Dag and full replay (M2) |
+| 17:09 to 23:26 | Phase C: the write path, startup and recovery (M3) |
+| 22:32 to 03:17 | Phase D: reclaim, the memory budget (M4) |
+| 2026-10-29, 02:16 to 06:14 | Phase E: the rest of the API, the measurements, robustness's first pass, the interim report; `news.md` at 06:17 |
+| 07:35 to 12:00 | Frans's answers; the forced cut (012-11, Q1); robustness's rest; this report |
+
+The C that reads and writes Java's bytes, Levels 0 to 4, took 13.5 hours
+from the go (13:43 to 03:17); with the API, the measurements and a first
+pass of robustness, 16.5 hours (to 06:14). There were two pauses for the
+usage window (15:02 to 15:53, and the first F53 gap) and two hand-overs of
+the machine to another session's timed measurements (18:11 to 20:40,
+23:55 to 01:11).
+
+### The prompts
+
+Frans's words to the conductor, all of them:
+
+* 13:43, the conductor's prompt (012-01, at its top), pasted with the
+  night's rules: "You are the conductor of bergdb item 012, the C clone
+  of BergDB's Core. Read items/012-bergdb-c/01-overview-plan.md in full,
+  and 013-01 for the way of working. Then work through 012's tasks
+  unattended, as its section 9 says, with the decisions of its section
+  11. Start with phase A."
+* 13:48: "Good luck! See you in the morning. Hope you have some
+  impressive C clone for me to show by 07:00. Do your best to work
+  unattended until then or until completion."
+* 13:55: "I want at least Extra High for this work with the C clone. This
+  is very important. The 5hr session limit must be followed, but the
+  weekly is a later problem. Feel free to spend up to 75% of the weekly
+  usage while you are working."
+* 14:03: "What I really meant was that you can use up to 75% of the
+  weekly budget before throttling usage because of it. Do not stop,
+  continue beyond 75% if necessary. 012-02 at max was a good choice. Nice
+  to see the coders at xhigh."
+* 17:50, to another session that relayed it: "tonight 012 (session f1-0f)
+  has priority on F53. The quiet block becomes flexible."
+* 2026-10-29, 07:35: answers to five questions, and "Continue with 012
+  until it is finished. Run agents with Opus 5.5 High to preserve
+  usage."; 07:40: "work unattended"; 09:02: this section's request.
+
+Everything else came from the plans: each subagent's brief named its task
+plan, the clone, the files it might write, the conventions shared with
+the agents beside it, the hard stop, and the report's length.
+
+### The plans
+
+* **012-01, the overview plan**: the goal and nine "Done when" items;
+  what "identical bytes" takes, checked against the code before any line
+  of C (the determinism of the stream, the inputs to fix, Java's
+  arithmetic in C); what is ported, rewritten and left out; the rules of
+  the design (one caller, no global state, the platform in one module,
+  faithful before clever); the memory plan (counted references, frees at
+  safe points); the C API's mapping; the build, the tests and the gate;
+  the fifteen tasks in five phases with milestones; how the work runs
+  unattended; the risks; the decisions.
+* **The task plans 012-02 to 012-16**: each with its goal and "Done
+  when", what to read in Java, the steps, the tests, notes and a Progress
+  section, which the agents kept as they went, so that a stopped agent
+  could be resumed from its file. Each plan is now also the record of its
+  task.
+* What the plans got right: the order (the format document with a Java
+  scanner first; a cross harness that compared Java with Java before any
+  C existed, so that C's tools could take side B one by one: the scanner,
+  the dumper, the runner); byte equality as the single test of
+  faithfulness; small node sizes and startup distances in the workloads.
+  What the conductor changed: it split 012-09, 012-10 and 012-11 into a
+  part that needed no earlier task and the rest, so that two agents could
+  work at once on a mostly sequential plan; in practice the part-1 agents
+  of 012-10 and 012-11 went on into the whole task.
+
+### Claude Code and Opus 5.5, as used
+
+* **The conductor** (Opus 5.5 at its default xhigh) planned the order,
+  wrote the briefs, read the reports and checked their claims (the diffs,
+  the gate's output, the full runs), merged the clones (in scratch
+  clones; the conflicts were the shared test tables and `Vectors.java`,
+  resolved by keeping both sides), gated the combined tree in `main`,
+  committed in Frans's name with path lists, pushed, and kept `news.md`,
+  012's log and the 005 entries.
+* **Subagents** (the Agent tool), one task each, in a git clone of their
+  own under `/Users/f/fl/bench/012/`; 20 in all, two to four at a time.
+  Their reports were about 20 lines; the details went into the task
+  files.
+* **Messages** (SendMessage) paused agents at a safe point for the usage
+  window and for the machine's hand-overs, resumed them, and told them to
+  pull `main` when a task they built on was merged.
+* **Keeping going unattended**: check-ins every 20 minutes
+  (CronCreate), one-off check-ins at the usage window's resets and the
+  gaps' ends, a watchdog script (`caffeinate`, a log, `news.md` if the
+  session died), a usage watcher (Claude Code's `/usage`, run headless
+  every 5 minutes, which woke the conductor at 85 percent of the 5-hour
+  window), and a state file. 013-01 and 013-02 describe the machinery.
+* **Effort**, set on every agent: max for the format document and its
+  review and for 012-07 to 012-10, the hardest tasks; xhigh for the rest;
+  xhigh only once the week passed 75 percent (23:41); high from 07:35, at
+  Frans's word. The two first agents started at high, as the usage level
+  was tight, and were restarted at max and xhigh at 13:56 when Frans
+  raised the effort.
+
+| Task | Effort | Clock time |
+|---|---|---|
+| 012-02, the format document; its review | max; max | 13:47 to 16:16; 16:27 to 17:05 |
+| 012-03, the C API | xhigh | 15:55 to 16:21 |
+| 012-04, the C project | xhigh | 13:47 to 14:16 |
+| 012-05, the cross harness | xhigh | 13:58 to 15:06 |
+| 012-06, the stream reader | xhigh | 15:55 to 16:48 |
+| 012-07, the index nodes | max | 16:20 to 17:30 |
+| 012-08, the Dag and replay | max | 17:32 to 21:14, paused 18:11 to 20:53 |
+| 012-09, the write path (two parts) | xhigh, max | 17:09 to 18:07; 20:55 to 22:14 |
+| 012-10, startup | max | 21:32 to 23:23 |
+| 012-11, reclaim; its Q1 | xhigh; high | 22:32 to 02:11, paused 23:55 to 01:12; 07:37 to 09:45 |
+| 012-12, the memory budget | xhigh | 01:52 to 03:14 |
+| 012-13, the API's rest | xhigh | 02:16 to 03:17 |
+| 012-14, robustness (two passes) | xhigh; high | 05:00 to 06:13; 07:37 on |
+| 012-15, measurements | xhigh | 03:18 to 04:59 |
+
+### Usage
+
+The plan's usage, as Claude Code's `/usage` reports it for the whole
+account: the week went from 49 percent at 13:45 on 2026-10-28 to 65
+percent at 20:53, 76 percent at 01:52, 84 percent at 07:35 and 88 percent
+at 09:51 on 2026-10-29: about 39 points of a week in 20 hours. Other
+sessions worked in the same hours (the 006-10 session until about 21:00,
+and its night's measurements), so 012's own share is somewhat less; the
+tool gives no figure per session. The 5-hour window was the limit that
+bounded the pace: it reached the conductor's pause point (85 percent)
+three times; the week passed 75 percent at 23:41, after which the
+conductor ran at most two agents, at xhigh. The full log is
+`/Users/f/fl/bench/012/usage.log`.
+
+### What made it work, and what did not
+
+* **Byte equality made faithfulness testable.** Every task's claim was
+  checked by comparing C's files with Java's, so a wrong port could not
+  pass as a right one. No byte difference was met in 012-09, and the
+  mutations tried in 012-09 and 012-11 were all found.
+* **The format document and Java's scanner first.** When the scanners'
+  texts agree, a byte difference points at its field. The document's
+  independent review at max effort found 2 errors and 5 omissions before
+  any writer was written.
+* **Java's own vectors and tests** (`Vectors.java`, Java's testers ported)
+  checked each module against Java before the modules met.
+* **Clones and a conductor that merges.** Agents never touched `main`;
+  every merge was gated in a scratch clone and again in `main`.
+* **The usage window, not the agent count, bounded the work**: more
+  agents only reached the pause sooner. The pauses were used to hand the
+  machine to another session's timed runs.
+* **What went wrong**: the conductor wrote several log times without
+  reading the clock (corrected in later commits); it once passed C's side
+  to `cross.sh` as an environment variable instead of an argument (the
+  run was killed and repeated); it first recorded Frans's morning answers
+  against the wrong list (corrected). macOS's `leaks` began to hang on
+  every program at about 08:30 on 2026-10-29, which stalled one agent's
+  run for an hour before a check-in found it; the gate then ran with a
+  stand-in that skips only the leak check.
+* **For a next port**: the same shape (overview plan, task plans, a
+  format document first, a harness that compares the two implementations
+  from the start, byte or output equality as the test, clones and a
+  conductor) should carry over to another language or another
+  deterministic system. Plan the usage windows into the timeline, and
+  give the conductor a list of what it may decide itself (012's plan did:
+  the testing choices were left to it).
+
 # 1. The goal
 
 012's outcome, for Frans to decide what comes next, and the item closed.
