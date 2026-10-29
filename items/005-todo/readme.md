@@ -41,6 +41,7 @@ Open
 | [005-75](75-core-checks-and-comments.md) | Fix | Dead checks and comments that differ from the code in the Core, found by the C clone's work: `KeyNode.checkIncreasingTime` and `DbStarter.validateTransactions` never update their times and check nothing (a stream with a time set back starts; one flipped bit of a record's time makes a start fail with an Error); `StoredTopNode`'s ordinal check and `NodeStream.recover`'s length check cannot fire; `RecoverableStream.append` checks the size at the buffer's start, not at its offset; `Klong`'s comments (TIME 58 bits, the code 56; `getIntType`; the first key byte) | open |
 | [005-76](76-wake-at-a-quarter.md) | Fix | `BufferedStream` checks the quarter-full rule only when its thread wakes, every bufferTime / 4 (about 32 ms on macOS at 100 ms); nothing wakes it when an append passes a quarter of the buffer, so at 100 to 170 MB/s of stream 3 to 5 MB arrive between checks, a flush takes at most 5 MB, and writers wait for room: at 100 ms 13 to 16 % fewer puts a second with 1 KB values and a p99.9 of 16 to 25 ms for large transactions (005-64's runs). Proposed: an append that takes the buffer past a quarter wakes the thread (010-P3); then the buffer time costs no throughput. Frans's request when he set 50 ms (005-64) | open |
 | [005-77](77-cap-pace-factor.md) | Investigate | A decrease's commits grow with the keys: after a one-call decrease (D4:B) from 1000 to 100 MB at 50M keys, the catch-up's records are 12 to 14 times the new mean (largest 13.3 to 15.4 MB, against 2.3 to 3.6 MB at 10M), written by the committing threads; the cause is the pace's factor S/sd in the share, which starts at 10 (007-07, section 11). Only bytes measured, not commit times; 100M keys not run. Proposed: cap S/sd at 2 or at 4 (two variants); the deadline at the span still keeps the section from growing, the catch-up gets longer, and T3_take and T3_take_decrease hold for any pace (007-08). Frans's decision on 006-10's point 4 | open |
+| [005-78](78-retain-duration-in-stream.md) | Investigate | The retain duration is not kept in the stream: it decides when reclaim's iterations start and where it cuts, so the stream's bytes, but a start takes the builder's value (default forever), against the rule of 005-53 and 005-52 (a setting that changes the stream's bytes is kept in the stream, 010-P2) and without a word in its Javadoc. Frans: it must be in the stream; study first. Forms: the meta blocks (as the startup distance), an internal KV, or reclaim's table | open |
 
 
 Closed
@@ -401,6 +402,11 @@ Files
   factor S/sd, so that a decrease's records stay near the steady ones:
   the issue from 007-07's runs at 50M keys, the two variants, the
   questions, when it is done; open.
+* [78-retain-duration-in-stream.md](78-retain-duration-in-stream.md).
+  005-78, the retain duration is not kept in the stream: the issue with
+  the code, how the startup distance is kept, three forms of "in the
+  stream", StreamDigest and the Lean model, the questions, when it is
+  done; open.
 
 Log
 ===
@@ -1484,3 +1490,14 @@ mean (up to 15.4 MB; 007-07, section 11), from the pace's factor S/sd,
 which starts at 10; proposed, investigate a cap of S/sd at 2 and at 4, at
 10M and 50M keys, with the commit times in a quiet block; kind
 investigate, registered only.
+
+2026-10-29. Added 005-78, as Frans decided (2026-10-29, 10:09, on 006-10's
+decision 6: "It really should be in the stream. It must be really, to
+follow our principle of a deterministic stream. Still an Investigate
+entry. Important to study first."), by Claude (Opus 5.5, Claude Code),
+006-10's session: the retain duration decides reclaim's iterations and
+cuts, so the stream's bytes, but a start takes the builder's value, as
+005-53 left it; the checks set it again after each start. Three forms to
+study (the meta blocks, an internal KV, reclaim's table), the start, old
+databases, replicas, StreamDigest and the Lean model; kind investigate,
+registered only.
