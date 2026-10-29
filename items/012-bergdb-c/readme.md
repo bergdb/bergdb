@@ -1,7 +1,7 @@
 012-bergdb-c
 ============
 
-Created 2026-10-27 by Frans Lundberg. Status: open.
+Created 2026-10-27 by Frans Lundberg. Status: done.
 
 BergDB's Core in C: a clone of the Core (`bergdb.core` and what `Db` needs
 of the Core Layer) written in C, for F53 first. Its API corresponds to the
@@ -53,7 +53,7 @@ the tests, notes, progress), in the order of 012-01, section 8:
   against Java.
 * [16-report.md](16-report.md). 012-16, the report and the next steps.
 * [17-lto.md](17-lto.md). 012-17, link-time optimization in the release
-  build (012-15's first proposal); a plan, not started.
+  build (012-15's first proposal).
 
 
 Log
@@ -399,3 +399,13 @@ bitcode's symbols. `cross.sh full` with the release tools OK (2018 s); C
 BEFORE COMMIT OK with macOS's `leaks`. Gains of `-flto` (1M and 10M keys,
 in turns): writes 1.24 to 1.38, reads 1.08 to 1.23, under a 16 MB budget
 1.23 to 1.24; the library 20 percent larger, `core_demo` 5 percent.
+
+2026-10-29, 15:33. 012-17 merged into `main` (`ae4aaf9`), its gate there
+`C BEFORE COMMIT OK (180 s)` with macOS's own `leaks`; 012's status done
+again. The gate with the real `leaks` on `44332aa` (14:01 to 14:04, Frans
+had enabled developer mode): `C BEFORE COMMIT OK (172 s)`, 0 leaks in
+unit-release and func-release. 012-16 restructured at Frans's request:
+the report is the whole file, sections 1 to 8 (section 0 and the plan's
+stubs gone; the log's earlier "section 0" means sections 1 to 8 now),
+with Frans's answers beside each question, the sizes, and 012-17's
+figures.

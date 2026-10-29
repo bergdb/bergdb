@@ -1585,4 +1585,5 @@ workloads, power-loss images and a 10M-key database, every byte is equal.
 Written by Claude (Opus 5.5) agents in about 21 hours, unattended for
 most of it; the stream's format written down in 012-02. The port found
 Java bugs registered as 005-69 to 005-75, among them 005-70: the STM's
-`KeyModSet` is empty after a start. Report: 012-16, section 0.
+`KeyModSet` is empty after a start. The release build links with `-flto`
+(012-17): 1.08 to 1.38 times faster, the same bytes. Report: 012-16.
