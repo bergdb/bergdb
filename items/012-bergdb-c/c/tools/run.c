@@ -95,6 +95,7 @@ struct workload {
     int64_t startup_distance;   /* -1: not set */
     int64_t retain;         /* -1: not set; INT64_MAX: forever */
     const char *fraction;   /* NULL: not set */
+    char *fraction_line;    /* the copy of the set line that fraction points into */
     int64_t budget;         /* -1 */
     struct line *lines;
     int nlines;
@@ -491,7 +492,13 @@ static void wl_read(const char *path, struct workload *w) {
                 bad(number, "a set line after the first operation");
             }
             setting(w, number, words, nwords);
-            free(words);    /* copy stays: fraction points into it */
+            if (w->fraction == words[2]) {
+                free(w->fraction_line);     /* copy stays: fraction points into it */
+                w->fraction_line = copy;
+            } else {
+                free(copy);
+            }
+            free(words);
             continue;
         }
         if (strcmp(cmd, "clock") != 0) {
@@ -1107,6 +1114,7 @@ int main(int argc, char **argv) {
         free(w.lines[k].text);
     }
     free(w.lines);
+    free(w.fraction_line);
     fflush(stdout);
     return status;
 }

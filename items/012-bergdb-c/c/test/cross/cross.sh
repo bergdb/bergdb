@@ -17,6 +17,7 @@
 # refuses, C refuses, at the same place, and C's scanner never crashes.
 #
 # Usage: test/cross/cross.sh quick|full|scale [C=DIR] [SCALE=N] [KEEP=1]
+#        test/cross/cross.sh random SPECFILE=FILE [OUTDIR=DIR] [C=DIR] [KEEP=1]
 #   quick   a minute or so: small configurations, a few seeds, a few cuts,
 #           one workload in turns, and the hand-written workloads in
 #           test/cross/workloads/; the C gate runs it
@@ -30,7 +31,12 @@
 #           bergdb-dump, bergdb-scan, which take the arguments of Java's
 #           Run, Dump and StreamScan and print the same text; Java's
 #           otherwise. Without C=, both sides are Java (two JVMs).
+#   random  the export specs in FILE (whitespace-separated, as Export takes them),
+#           without the hand-written workloads; each workload with 3 random crash
+#           cuts, and with C= its runs under the budgets 1 and 64000; for many random
+#           seeds in batches (012-14, test/stress/random.sh)
 #   KEEP=1  keep the directories of passed workloads (default: deleted)
+#   OUTDIR=DIR  the output directory instead of build/cross/SET/
 # Output: build/cross/SET/ (report.txt; workloads in wl/). The last line is
 # "CROSS SET OK: ..." or "CROSS SET FAILED: ..."; the exit status 0 or 1.
 # Needs JAVA_HOME (or java on PATH), python3 for the Java build. JAVA_OPTS
@@ -47,16 +53,21 @@ shift 2>/dev/null || true
 CTOOLS=""
 SCALE=10000000
 KEEP=0
+SPECFILE=""
+OUTDIR=""
 for arg in "$@"; do
     case "$arg" in
     C=*) CTOOLS=$(cd "${arg#C=}" && pwd) || exit 2 ;;
     SCALE=*) SCALE=${arg#SCALE=} ;;
     KEEP=*) KEEP=${arg#KEEP=} ;;
+    SPECFILE=*) SPECFILE=${arg#SPECFILE=} ;;
+    OUTDIR=*) OUTDIR=${arg#OUTDIR=} ;;
     *) echo "cross.sh: unknown argument $arg"; exit 2 ;;
     esac
 done
 case "$SET" in
 quick|full|scale) ;;
+random) [ -f "$SPECFILE" ] || { echo "cross.sh random: no SPECFILE"; exit 2; } ;;
 *) echo "Usage: test/cross/cross.sh quick|full|scale [C=DIR] [SCALE=N] [KEEP=1]"; exit 2 ;;
 esac
 
@@ -74,7 +85,7 @@ if [ -z "${JAVA_OPTS:-}" ]; then
     JAVA_OPTS=-Xmx2g; [ "$SET" = scale ] && JAVA_OPTS=-Xmx12g
 fi
 CLASSES=$CDIR/build/java/classes
-OUT=$CDIR/build/cross/$SET
+OUT=${OUTDIR:-$CDIR/build/cross/$SET}
 REPORT=$OUT/report.txt
 T0=$(date +%s)
 FAILS=0
@@ -446,6 +457,10 @@ full)
 scale)
     SPECS="scale:$SCALE"
     ;;
+random)
+    SPECS=$(cat "$SPECFILE")
+    CUTS=0; RANDCUTS=3      # CRASH: every workload, below
+    ;;
 esac
 
 rm -rf "$OUT"
@@ -453,12 +468,16 @@ mkdir -p "$OUT"
 : > "$REPORT"
 : > "$OUT/java-only.txt"
 say "cross.sh $SET, $(date '+%Y-%m-%d %H:%M'), side B: ${CTOOLS:-Java}"
-sh "$HERE/java-build.sh" | tee -a "$REPORT" | grep -q "JAVA BUILD OK" || { say "CROSS $SET FAILED: the Java build"; exit 1; }
+if [ "$SET" = random ] && [ -f "$CLASSES/bergdb/core/Batch.class" ]; then
+    say "the Java build: build/java/classes as it is (random.sh builds it once, and runs batches at once)"
+else
+    sh "$HERE/java-build.sh" | tee -a "$REPORT" | grep -q "JAVA BUILD OK" || { say "CROSS $SET FAILED: the Java build"; exit 1; }
+fi
 
 # shellcheck disable=SC2086
 "$JAVA" $JAVA_OPTS -cp "$CLASSES" bergdb.core.Export "$OUT/wl" $SPECS > "$OUT/export.txt" 2>&1 \
     || { cat "$OUT/export.txt"; say "CROSS $SET FAILED: the export"; exit 1; }
-if [ "$SET" != scale ]; then
+if [ "$SET" != scale ] && [ "$SET" != random ]; then
     for f in "$HERE"/workloads/*.wl; do       # hand-written workloads
         [ -f "$f" ] && cp "$f" "$OUT/wl/" && echo "$OUT/wl/$(basename "$f")" >> "$OUT/export.txt"
     done
@@ -470,6 +489,7 @@ if [ "$SET" != scale ]; then
 fi
 WORKLOADS=$(sed 's|.*/||; s|\.wl$||' "$OUT/export.txt")
 NW=$(echo $WORKLOADS | wc -w | tr -d ' ')
+[ "$SET" = random ] && CRASH=$WORKLOADS
 say "workloads: $NW, exported in $(( $(date +%s) - T0 )) s"
 
 # ---- Runs ----
@@ -850,6 +870,7 @@ if brun=$(ctool run) && [ "$SET" != scale ]; then
     before=$FAILS
     case "$SET" in
     quick) BUDGETS="1 20000" ;;
+    random) BUDGETS="1 64000" ;;
     *) BUDGETS="1 4000 64000 1000000" ;;
     esac
     rm -rf "$OUT/budget"

@@ -35,7 +35,14 @@ The findings
   outside the repository): the last record's time set back in a copy of a
   stream; without `-ea` Java starts and then reads `/k2` as null, with
   `-ea` it fails in a `KeyNode` assert. C does as Java. Added 2026-10-28,
-  23:26.
+  23:26. 012-14's corrupt-input runs (2026-10-29) found the consequence:
+  one flipped bit in a record header's time field, which no checksum
+  covers, makes Java's start fail with an `AssertionError` (with `-ea`) or
+  another `Error` (without), and C's process abort, in 50 distinct
+  variants; a two-line fix of the check, with a check that a time is at
+  most `Klong.MAX_TIME`, refuses all 50 as a format error (a prototype in
+  C, not applied; probes `crash-703-flip-3/` and `crash-902-flip-8/` in
+  `/Users/f/fl/bench/012/14-out/probes/`).
 * **`Klong`'s comments**: the format comment gives a TIME klong 58 bits,
   the code 56 (`MAX_TIME` 0x00ffffffffffffff; 012-04); `getIntType`'s
   comment says it returns 0, 1 or 2, and it returns 3 for a delete bitmap

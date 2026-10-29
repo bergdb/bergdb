@@ -319,3 +319,14 @@ machine code at `-O2`. Proposals that keep the bytes, not applied:
 And 012-01's done item 7: the 10M-key scale set with C writing side B,
 `cross.sh scale C=build/release` OK, the same bytes as Java's, each
 side's dump of both databases equal, Java's with its audit on (257 s).
+
+2026-10-29, 06:14. 012-14, a first pass (05:00 to 06:20; the task stays
+open): 1,800 random workloads over wide parameters, 916 with reclaim,
+with 2,652 crash cuts and 3,600 budget runs, all equal to Java's; long
+runs up to a million transactions with 50 restarts, Java's bytes, no
+sanitizer report, a leak in the `bergdb-run` tool fixed; gcc 16 passes
+the tests without `-Werror`; 2,199 starts of corrupt variants, refused as
+Java refuses them but for a flipped bit in a record's time, where Java's
+start throws an `Error` and C aborts (005-75). Java findings added to
+005-74 and 005-75. 012-16 has an interim report (section 0) with the
+points for Frans to decide.

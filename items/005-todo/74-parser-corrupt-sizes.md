@@ -26,6 +26,18 @@ The issue
   a corrupt size near 2^31 gives `OutOfMemoryError` in a small heap,
   instead of a format error or the read's own error.
 
+Found by 012-14's corrupt-input runs (2026-10-29, 012-14 section 6; its
+probes in `/Users/f/fl/bench/012/14-out/probes/`):
+
+* **`Db.getTrans` parses the record outside its `try`**, so a checksum
+  failure (or an `ArrayIndexOutOfBoundsException`) escapes, and the
+  database stays active; C fails the database, as 005-34 and 012-03 say
+  (probe `gettrans-checksum/`).
+* **A start that refuses can first write**: a flipped size field makes
+  recovery write about 1 MB of zero fill before the start refuses the
+  stream, in Java and (as Java) in C; outside 005-40's scope (probe
+  `refused-start-writes/`).
+
 A database whose stream is corrupt should be refused with a clear error
 (`StreamFormatException`, levels.md section 3), not take the JVM's heap.
 

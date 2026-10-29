@@ -122,12 +122,26 @@ All registered in 005 (decision D5), none fixed in 012; C does as Java:
    budget. Recommended: a small task after 012-14.
 7. **005-69, 005-71 to 005-75**: when to fix, each entry has a
    recommendation.
+8. **012-14's open points** (14-robustness.md, section 6): one flipped
+   bit of a record's time makes Java's start throw an `Error` and C's
+   process abort (005-75); C could refuse it first as a format error (a
+   prototype exists), or keep Java's behaviour until Java is fixed.
+   Recommended: fix Java (005-75) and C together. Also: `-Werror` under
+   gcc 16 (40 warnings, the library's 4 false positives), and the names
+   of the exceptions C reports for read errors.
 
 ## 0.6 Left
 
-* **012-14**, robustness: power loss through an I/O seam, corrupt input
-  beyond 012-06's variants, long runs, thousands of random seeds, a second
-  compiler; a first pass ran 05:00 to 06:30 (its file has the state).
+* **012-14**, robustness: a first pass ran 05:00 to 06:20. 1,800 random
+  workloads over wide parameters (916 with reclaim, 2,652 crash cuts,
+  3,600 budget runs): all byte for byte equal to Java's. Long runs up to
+  1M transactions with 50 restarts (2.49 GB written): Java's bytes, no
+  sanitizer report, flat memory; one leak in the `bergdb-run` tool found
+  and fixed. gcc 16: the tests pass without `-Werror`. 2,199 starts of
+  corrupt variants: C refuses as Java but for the flipped-time case
+  above. Left: power loss through an I/O seam (designed, not built),
+  allocation failures in turn as a set, the open points above, a small
+  eviction lag (20 kB over budget plus pinned in one run).
 * **012-16**, this report's final version, after 012-14, with 012-01's
   next steps (section 1, item 7 below) and the log's entry in
   `docs/log.md`.
