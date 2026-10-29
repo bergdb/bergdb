@@ -40,6 +40,7 @@ Open
 | [005-74](74-parser-corrupt-sizes.md) | Fix | Java's record parser and corrupt sizes: `StoredTrans.Parser` takes a negative node size and moves back, so a crafted record loops until `OutOfMemoryError`; record and node sizes are allocated before their bytes are read; `getTrans` lets a checksum failure escape with the database active; a refused start can first write a zero fill. Found by 012-06's and 012-14's corrupt-input runs, with probes; the C reader refuses the first two. Recommended: refuse small node sizes in `Parser.next` and check a size before allocating | open |
 | [005-75](75-core-checks-and-comments.md) | Fix | Dead checks and comments that differ from the code in the Core, found by the C clone's work: `KeyNode.checkIncreasingTime` and `DbStarter.validateTransactions` never update their times and check nothing (a stream with a time set back starts; one flipped bit of a record's time makes a start fail with an Error); `StoredTopNode`'s ordinal check and `NodeStream.recover`'s length check cannot fire; `RecoverableStream.append` checks the size at the buffer's start, not at its offset; `Klong`'s comments (TIME 58 bits, the code 56; `getIntType`; the first key byte) | open |
 | [005-76](76-wake-at-a-quarter.md) | Fix | `BufferedStream` checks the quarter-full rule only when its thread wakes, every bufferTime / 4 (about 32 ms on macOS at 100 ms); nothing wakes it when an append passes a quarter of the buffer, so at 100 to 170 MB/s of stream 3 to 5 MB arrive between checks, a flush takes at most 5 MB, and writers wait for room: at 100 ms 13 to 16 % fewer puts a second with 1 KB values and a p99.9 of 16 to 25 ms for large transactions (005-64's runs). Proposed: an append that takes the buffer past a quarter wakes the thread (010-P3); then the buffer time costs no throughput. Frans's request when he set 50 ms (005-64) | open |
+| [005-77](77-cap-pace-factor.md) | Investigate | A decrease's commits grow with the keys: after a one-call decrease (D4:B) from 1000 to 100 MB at 50M keys, the catch-up's records are 12 to 14 times the new mean (largest 13.3 to 15.4 MB, against 2.3 to 3.6 MB at 10M), written by the committing threads; the cause is the pace's factor S/sd in the share, which starts at 10 (007-07, section 11). Only bytes measured, not commit times; 100M keys not run. Proposed: cap S/sd at 2 or at 4 (two variants); the deadline at the span still keeps the section from growing, the catch-up gets longer, and T3_take and T3_take_decrease hold for any pace (007-08). Frans's decision on 006-10's point 4 | open |
 
 
 Closed
@@ -396,6 +397,10 @@ Files
   `BufferedStream` checks the quarter-full rule only when its thread
   wakes: the issue from 005-64's runs, the proposed fix, when it is done;
   open.
+* [77-cap-pace-factor.md](77-cap-pace-factor.md). 005-77, cap the pace's
+  factor S/sd, so that a decrease's records stay near the steady ones:
+  the issue from 007-07's runs at 50M keys, the two variants, the
+  questions, when it is done; open.
 
 Log
 ===
@@ -1470,3 +1475,12 @@ Javadoc, docs/levels.md, 010-01's P3, `releases/next.md`. No test changed.
 StreamDigest identical (36 of 36), also with the tests' buffer time at 50
 ms; `before-commit.sh`, `level1.sh`, `level2.sh quick` and `level3.sh`
 pass. The rest, the quarter rule, is 005-76.
+
+2026-10-29. Added 005-77, as Frans decided (2026-10-29, 10:02, on
+006-10's decision 4: "an entry for A as recommended"), by Claude (Opus
+5.5, Claude Code), 006-10's session: after a one-call decrease from 1000
+to 100 MB at 50M keys the catch-up's records are 12 to 14 times the new
+mean (up to 15.4 MB; 007-07, section 11), from the pace's factor S/sd,
+which starts at 10; proposed, investigate a cap of S/sd at 2 and at 4, at
+10M and 50M keys, with the commit times in a quiet block; kind
+investigate, registered only.

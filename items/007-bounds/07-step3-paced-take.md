@@ -770,6 +770,8 @@ of the run, the new distance's steady records.
    test has been run on it. `setStartupDistance`'s 200 kB value (10.5) is
    no longer the main question at 50M. The call's record is 11.4 MB, but
    the user records after it reach 15 MB.
+   Registered as 005-77 (Frans, 2026-10-29: an entry to test a cap of
+   S/sd at 2 and at 4, at 10M and 50M keys).
 
 
 ## 12. The quick suite and Props, 2026-10-28 night
