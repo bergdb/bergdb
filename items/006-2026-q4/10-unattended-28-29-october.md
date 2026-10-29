@@ -494,8 +494,10 @@ the 012 session).
    done); 005-76 registered for the rest: wake the consumer when the
    buffer passes a quarter (`d5c2c4b`).
 3. A: 005-65's fix, loads skip `evictorLock` when a request is pending,
-   and the rest accepted as a full machine; under way, the thread sweep
-   again in the next quiet block.
+   and the rest accepted as a full machine (`988fe1a`, `b6b5c8f`):
+   entries of `evictorLock` from about 120,000 to about 570 a second with
+   8 readers; also a stale trigger after `setBudget` fixed (005-52); the
+   thread sweep again in the next quiet block.
 4. A: 005-77, cap the pace's factor S/sd (`bcc7d3b`).
 5. The quick suite's p99 question added to 005-77 (`f6b8ab9`).
 6. 005-78, the retain duration is to be kept in the stream (P2), an
