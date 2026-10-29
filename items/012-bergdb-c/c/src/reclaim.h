@@ -15,12 +15,13 @@
  * touched (Trans.touch, db.c), and the row stored by a value
  * transformation, all in one internal transaction; the safe positions;
  * the cut decided when the last done, safe row ended before the retention
- * window; and the cut made (stream_pretruncate) at the first external
- * transaction at which the stream is durable up to the length at the
- * decision. With no thread, C's stream is durable after a sync and at the
- * close (012-01, 4.3), so C's physical cut comes at other moments than
- * Java's; the bytes from the decided cut do not differ (012-01, 3.2 point
- * 8; 012-02, C2).
+ * window; and the cut made (stream_pretruncate) when the stream is durable
+ * up to the length at the decision. Java's buffer thread forces the stream
+ * within about 20 ms; C has no thread (012-01, 4.3), so it forces the
+ * stream itself in the call that decides the cut, one force per cut, and
+ * cuts there (012-11, 6.4, Q1: option B, Frans 2026-10-29). C's physical
+ * cut so comes at other moments than Java's; the bytes from the decided cut
+ * do not differ (012-01, 3.2 point 8; 012-02, C2).
  *
  * The table and the current row are StringMap texts (strmap.h): a row is 11
  * lines "name=value\n" in HashMap's order for these names, pCut, tEnd, cut,

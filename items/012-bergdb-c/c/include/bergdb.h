@@ -20,14 +20,15 @@
  * no global state (bergdb 010-01, P9). Different databases may be used by
  * different threads at the same time. What Java does in threads of its own
  * happens inside the calls (012-01, 4.2 and 4.3): the stream's write buffer
- * is written when it is full, at bergdb_sync and at bergdb_close; eviction
+ * is written when it is full, at bergdb_sync and at bergdb_close, and
+ * written and forced by a transaction that decides a reclaim cut; eviction
  * runs at the end of a transaction and after loads, as in Java. A database
  * that is not called does nothing (P3). A committed transaction is in the
- * stream's write buffer (10 MB) until bergdb_sync, bergdb_close or a full
- * buffer writes it to the files, and durable on the device after
- * bergdb_sync or bergdb_close, which force it (F_FULLFSYNC); a process that
- * dies loses what the buffer holds, never what was synced (the C
- * directory's readme.md, section 9: durability).
+ * stream's write buffer (10 MB) until bergdb_sync, bergdb_close, a reclaim
+ * cut or a full buffer writes it to the files, and durable on the device
+ * after bergdb_sync, bergdb_close or a reclaim cut, which force it
+ * (F_FULLFSYNC); a process that dies loses what the buffer holds, never
+ * what was synced (the C directory's readme.md, section 9: durability).
  *
  *
  * B. Errors
@@ -842,10 +843,12 @@ int bergdb_set_cache_size_indicator(bergdb_db *db, int64_t size);
  * how long the history stays available for lookups; reclaim removes what
  * is older. BERGDB_FOREVER stops new iterations and cuts; an iteration in
  * progress goes on to its end, as Java's. The front files of a cut are
- * deleted in a later transaction's call once the stream is durable up to
- * the cut's decision, so, with no thread of the library's, after a
- * bergdb_sync (or at the next open): 012-11, Q1. Errors: BERGDB_ARG
- * (under BERGDB_UNITS_PER_SEC), BERGDB_STATE. */
+ * deleted once the stream is durable up to the cut's decision: the library
+ * has no thread, so the bergdb_execute call that decides a cut forces the
+ * stream itself (as a bergdb_sync does; one force per cut, a few per
+ * retention period) and deletes them, whether the application syncs or
+ * not (012-11, Q1, option B). Errors: BERGDB_ARG (under
+ * BERGDB_UNITS_PER_SEC), BERGDB_STATE. */
 int bergdb_set_retain_duration(bergdb_db *db, int64_t duration);
 
 /* Sets reclaim's internal fraction (Java's setReclaimInternalFraction;
@@ -858,7 +861,8 @@ struct bergdb_stats {
     int64_t stream_length;              /* getStreamLength() */
     int64_t durable_length;             /* getDurableLength(): the stream's length at the last
                                            force: the open (0 after a creation, as Java's),
-                                           each bergdb_sync, the close */
+                                           each bergdb_sync, a reclaim cut's (see
+                                           bergdb_set_retain_duration), the close */
     int64_t last_trans_pos_of_last_valid_meta_block;
                                         /* getLastTransPosOfLastValidMetaBlock(): where recovery
                                            starts */

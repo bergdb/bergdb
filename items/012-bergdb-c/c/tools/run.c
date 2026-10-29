@@ -18,8 +18,10 @@
  *                index's resident bytes (bergdb_stats) then and at most
  *                after any line of the segment, the budget, the pinned bytes
  *                (then and at most), the most resident bytes over the budget
- *                plus the pinned (maxOver: 0 or less when the budget holds), and the
- *                allocator's live and peak bytes (012-12)
+ *                plus the pinned (maxOver: 0 or less when the budget holds), the
+ *                allocator's live and peak bytes (012-12), and the stream's
+ *                durable length before the segment's close (cross.sh's crash
+ *                variants of a workload that reclaims, 012-11, Q1)
  * Exit status: 0; 1 if a transaction or a call was refused, or the start
  * failed; 2 on a bad workload or usage; 3 for a workload that C cannot run
  * yet: none since 012-11 (restarts, -segments from 1 and a DIR that has a
@@ -752,10 +754,10 @@ static void end_segment(struct run *r, int segment) {
         bergdb_stats(r->db, &s);
         fprintf(stderr, "mem segment=%d resident=%" PRId64 " maxResident=%" PRId64
                 " budget=%" PRId64 " pinned=%" PRId64 " maxPinned=%" PRId64 " maxOver=%" PRId64
-                " evicted=%" PRId64 " live=%" PRId64 " peak=%" PRId64 "\n",
+                " evicted=%" PRId64 " live=%" PRId64 " peak=%" PRId64 " durable=%" PRId64 "\n",
                 segment, s.resident_bytes, r->max_resident, s.cache_size_indicator,
                 s.pinned_bytes, r->max_pinned, r->max_over, s.evicted, r->mem.live_total,
-                r->mem.peak_total);
+                r->mem.peak_total, s.durable_length);
         r->max_resident = r->max_pinned = r->max_over = 0;
     }
     bergdb_close(r->db);

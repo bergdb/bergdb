@@ -884,11 +884,27 @@ static enum err_code pretruncate_if_possible(struct db *db, int64_t timeNow, str
     return ERR_OK;
 }
 
-/* cutIfDurable: the pending cut made when the stream is durable up to
+/*
+ * cutIfDurable: the pending cut made when the stream is durable up to
  * pendingCutDurableAt, past the table that marks the cut and the meta block
- * that recovery starts from. */
+ * that recovery starts from. Java's buffer thread writes and forces the
+ * stream within about 20 ms, so Java cuts at one of the next transactions.
+ * C has no thread: here, when the stream is not yet durable up to the
+ * decision, C forces it itself (stream_sync: the buffer written, the files
+ * and a new file's directory forced, F_FULLFSYNC) and cuts in the same call
+ * (bergdb 012-11, 6.4, Q1: option B, decided by Frans 2026-10-29). One force
+ * per cut decided, at most one cut per quarter of the retain duration; the
+ * bytes do not change (012-01, 3.2 point 8), only when the front files are
+ * deleted. A failed force fails the database, as the stream's failure.
+ */
 static enum err_code cut_if_durable(struct db *db, struct err *e) {
     struct reclaim *r = &db->reclaim;
+    if (r->pendingCut != -1 && stream_durable_length(&db->stream) < r->pendingCutDurableAt) {
+        enum err_code rc = stream_sync(&db->stream, e);
+        if (rc != ERR_OK) {
+            return rc;
+        }
+    }
     if (r->pendingCut != -1 && stream_durable_length(&db->stream) >= r->pendingCutDurableAt) {
         enum err_code rc = pretruncate(db, r->pendingCut, e);
         if (rc != ERR_OK) {

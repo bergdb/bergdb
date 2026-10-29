@@ -655,18 +655,26 @@ if [ -n "$CRASH" ]; then
     for w in $CRASH; do
         [ -d "$OUT/a/$w/db" ] || { fail "crash: no workload $w"; continue; }
         # A workload that reclaims (012-11): copies of C's directory (side B, with C=) cut
-        # at or after the stream's length at its last sync before the end. C's stream is
-        # durable after a sync only, so every physical cut it made had its decision durable
-        # by then, and such a copy is a crash; Java's directory makes its cuts at its own
-        # moments, and a copy of it cut there might not be. Without C=: none.
+        # at or after the stream's durable length at the end, before the close. C's stream
+        # is durable after a sync and after the force that a cut's decision makes (012-11,
+        # 6.4, Q1, option B), and C cuts only then, so every physical cut it made had its
+        # decision durable by then, and such a copy is a crash; Java's directory makes its
+        # cuts at its own moments, and a copy of it cut there might not be. The durable
+        # length is not in Run's text: C's run is made again with -mem, whose last line
+        # gives it (its text checked equal to side B's). Without C=: none.
         src=$OUT/a/$w/db; from=0
         if [ "$(retain_of "$OUT/wl/$w.wl")" = 1 ]; then
-            if ! ctool run > /dev/null; then
+            if ! crun=$(ctool run); then
                 say "crash: $w reclaims; its crash variants need C's runs (C=)"; continue
             fi
             src=$OUT/b/$w/db
-            from=$(awk '/^status / { for (i = 2; i <= NF; i++) if ($i ~ /^length=/) {
-                split($i, a, "="); p = l; l = a[2] } } END { print p + 0 }' "$OUT/b/$w/run.txt")
+            dd=$OUT/crash/$w.durable
+            rm -rf "$dd"; mkdir -p "$dd"
+            "$crun" -mem "$OUT/wl/$w.wl" "$dd/db" < /dev/null > "$dd/run.txt" 2> "$dd/mem.txt"
+            cmp -s "$dd/run.txt" "$OUT/b/$w/run.txt" || fail "crash: $w's run with -mem differs from side B's"
+            from=$(awk '/^mem / { for (i = 2; i <= NF; i++) if ($i ~ /^durable=/) {
+                split($i, a, "="); d = a[2] } } END { print d + 0 }' "$dd/mem.txt")
+            rm -rf "$dd"
         fi
         after_workload "$OUT/wl/$w.wl" > "$OUT/wl/$w.after.wl"
         m=$(maxnode_of "$OUT/wl/$w.wl")

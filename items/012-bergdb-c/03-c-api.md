@@ -622,6 +622,12 @@ with its reason above.
   of `bergdb_debug_print`, and `BERGDB_NOMEM`. Every function of 6.1 now
   exists and has a functional test (13-api-complete.md, 6.2), so 6.2's
   table says for each of `Db`'s 45 methods what C has.
+* 2026-10-29, 012-11's Q1 (option B, decided by Frans): comments only.
+  `bergdb_set_retain_duration`: the call that decides a reclaim cut forces
+  the stream itself (one force per cut) and deletes the front files,
+  whether the application syncs or not; section A and `durable_length`:
+  a reclaim cut's force is one of the moments the stream is written and
+  forced (11-reclaim.md, 6.9).
 * D13's memory stream across restarts (6.10): not added. The functional
   tests restart in directories (`f_start.c` restarts after every
   transaction in 0.9 s), so `bergdb.h` keeps `dir` NULL as a database

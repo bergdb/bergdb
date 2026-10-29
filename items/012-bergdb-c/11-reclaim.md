@@ -4,7 +4,7 @@
 Created 2026-10-27 by Claude (Opus 5.5, Claude Code), with 012-01, for
 Frans Lundberg. **Status: done 2026-10-29 02:11** (part 1 done
 2026-10-28 23:33, started 22:38; proper from 23:33, paused 23:55 to 01:12);
-Q1 (6.4) waits for Frans;
+Q1 (6.4) decided by Frans on 2026-10-29 (option B), done in 6.9;
 approved with 012-01 by Frans's go (012-01, 9.1).
 Phase D (012-01, section 8). Effort: max. After: 012-10.
 
@@ -294,7 +294,8 @@ conductor merges the two.
    the decision; without syncs the cut waits, and a cut pending at the
    close stays pending, as in Java, for the next start's `initFromDb`
    (part 2). C's files after a cut may so differ from Java's (C2); the
-   bytes from the decided cut do not.
+   bytes from the decided cut do not. **Changed on 2026-10-29** by Q1's
+   option B (6.4, 6.9): C forces the stream itself for a pending cut.
 6. **The step reserve** is `db_config.step_reserve`
    (`DbBuilder.reclaimStepReserve`, a test setting; 0: 4 MiB), not in
    `bergdb.h`, which leaves the builder's test settings out (012-03, 6.3).
@@ -323,6 +324,9 @@ conductor merges the two.
    `restarts=0,retain=2`, 381 to 400 `maxnode=8,sd=100,restarts=0,retain=1`.
 
 ## 6.4 A question for Frans: when C's cut frees the disk
+
+**Decided by Frans on 2026-10-29: B, as recommended ("Do as
+recommended"); done in 6.9.**
 
 **Q1.** Java's buffer thread writes and forces the stream within 20 ms, so
 a decided cut is made at one of the next transactions, and the directory
@@ -418,7 +422,7 @@ As of 23:45; all done by 01:41 (6.7) but item 7:
 5. The maintenance follower with stream pointers: done at 23:48.
 6. Crash tests with reclaim: done at 01:20 (crash variants of C's
    directory from its last sync on; a cut pending at a start).
-7. Frans's answer to Q1 (6.4).
+7. Frans's answer to Q1 (6.4): B, on 2026-10-29; done in 6.9.
 
 ## 6.7 012-11 proper's progress
 
@@ -541,11 +545,13 @@ Section 1's items, with the evidence (6.2, 6.7):
    first available position and time equal Java's in every run's status
    lines), the front files deleted as `FileStream` deletes them
    (`stream_pretruncate`; `CutStream`'s exact cut for a memory stream),
-   in the calls when the bytes the decision needs are durable (after a
-   sync: 6.3 decision 5, Q1 in 6.4), and a cut pending at a start made by
-   it (`api_reclaim_pending_cut_at_open`, the crash checks). A long run
-   with a short retain duration keeps the directory bounded
-   (`api_reclaim_directory`: at most 430 kB of a 6.8 MB stream).
+   in the calls when the bytes the decision needs are durable (since
+   2026-10-29 C forces them itself in the call that decides the cut: Q1's
+   option B, 6.4, 6.9), and a cut that the table marks and the files do
+   not show made at a start (`api_reclaim_pending_cut_at_open`, the crash
+   checks). A long run with a short retain duration keeps the directory
+   bounded (`api_reclaim_directory`: at most 430 kB of a 6.8 MB stream;
+   with no sync, `api_reclaim_directory_no_sync`: at most 342 kB).
 4. **Reads before the cut** refused as Java's: `getOne` and `getMany`
    before the first available time, `getTrans` of a removed record
    (`LookupTimeNotAvailableException`): unit and functional tests, and the
@@ -566,5 +572,61 @@ Section 1's items, with the evidence (6.2, 6.7):
    own) with Java's text, Java dumps C's with its audit on: 892 dumps of
    side B by C in the full set, every one equal.
 
-Not done in 012-11: Q1 (6.4) waits for Frans; 012-13 writes the rule of
-when the disk is freed into the API's text.
+Q1 (6.4): decided by Frans on 2026-10-29 (B) and done (6.9); the rule of
+when the disk is freed is in `bergdb.h` (`bergdb_set_retain_duration`) and
+in `c/readme.md`, section 9, point 9.
+
+## 6.9 Q1 decided: option B (2026-10-29)
+
+Frans decided Q1 (6.4) on 2026-10-29 ("Do as recommended"): **option B**.
+Done by a subagent of 012's conductor in `/Users/f/fl/bench/012/16f/` (a
+clone of `main` at `57aaf9f`).
+
+Progress:
+
+* 07:36: started; read 6.4, `c/readme.md` 9, 012-14's 6.8, Java's
+  `Reclaim.cutIfDurable`.
+* 07:45: `cut_if_durable` (`reclaim.c`) forces the stream itself when a cut
+  is pending and the stream is not durable up to the decision
+  (`stream_sync`), then cuts; `bergdb.h`'s comments; `bergdb-run -mem`
+  gives the durable length; `cross.sh`'s crash variants of a workload that
+  reclaims start at C's durable length at the end; functional tests
+  `api_reclaim_directory_no_sync` (new) and `api_reclaim_pending_cut_at_open`
+  (reworked). The C gate next.
+
+* 07:48: **C BEFORE COMMIT OK (167 s)**: 345 unit tests, 24 functional
+  (`api_reclaim_directory_no_sync`: a 6.8 MB stream, no sync, 103 cuts
+  decided, 103 forces, none else, files deleted in 33 of them, the
+  directory at most 342 kB in the second half; with a sync every 20
+  transactions, `api_reclaim_directory`, 410 kB), the quick set with 82
+  crash cuts (93 before: `reclaim-crash`'s window, from C's durable length
+  at the end, is now the last cut's decision to the end, 53 kB, where it
+  was the last sync to the end, 665 kB). `cross.sh full C=build/test`
+  started at 07:49. Docs: `c/readme.md` 9 (points 1, 2, 7, 9),
+  `bergdb.h`'s comments, 03-c-api.md's change list.
+* 08:29: `cross.sh full C=build/test` on `8e62a25` (the code as at the
+  gate): `CROSS full OK: 446 workloads, 1357 crash cuts, 498 corrupt
+  variants, 6 in turns, 1784 budget runs, the planted difference at 1164
+  was found and explained; side B: .../16f/items/012-bergdb-c/c/build/test;
+  2468 s` (0 differences in the comparison, the crash variants, the corrupt
+  variants, the turns and the budget runs). The long run next.
+* 09:45: **the long run** (`test/stress/long.sh 2 1000000 4000
+  retain=1,restarts=50,sd=50000,huge=1,setters=10`, 012-14's million-transaction
+  run, 6.8 there; output in `/Users/f/fl/bench/012/16f-out/long/`): the test
+  build's and Java's runs exit 0 in 484 s, C's text is Java's, and the
+  stream from the decided cut and the other files are Java's (both C
+  builds); no sanitizer report. **The directory's peak (sampled every
+  2 s): C's test build 25.2 MB, Java's 34.2 MB**; before this change, C's
+  was 206 to 213 MB against Java's 36.5 MB (012-14, 6.8). The release build
+  alone, sampled the same way (170 s): at most 25.2 MB, 7.2 MB at the end,
+  its text Java's. The release run under `leaks --atExit` finished its
+  text but `leaks` hung at its exit (the process stopped, state T, 0 % CPU
+  for an hour; killed on the conductor's word), so `long.sh` printed LONG
+  RUN FAILED for the leak check alone. Since about 08:30 `leaks --atExit`
+  hangs on this machine for every program: a 20,000-transaction run in the
+  foreground, and `build/release/unit` itself (both stopped at exit, killed
+  after 2 to 3 minutes); at 07:48 the gate's leak steps passed. So no leak
+  figure for this change beyond the gate's (its `unit-release` and
+  `func-release` steps under `leaks`, 0 leaks, on the code as it is now:
+  only these documents changed after `152d6e9`), and the gate cannot be
+  run again until `leaks` works.

@@ -339,3 +339,16 @@ stays in the item and `docs/` gets nothing; 012-14's flipped time no
 action now. "Continue with 012 until it is finished. Run agents with Opus
 5.5 High to preserve usage." (Recorded first, at 68b55e6, against the
 wrong list; corrected here.)
+
+2026-10-29, 09:50. 012-11's Q1, option B, as Frans decided: C forces the
+stream itself when reclaim has decided a cut that is not yet durable, one
+force per cut, so that the cut frees disk without the application's sync.
+In the million-transaction run without syncs C's directory now peaks at
+25.2 MB (before: 206 to 213 MB; Java: 34.2 MB); the bytes are unchanged.
+In its clone: C BEFORE COMMIT OK (167 s, 07:48) and `cross.sh full` with
+C's tools OK (446 workloads, 1,357 crash cuts, 498 corrupt variants, 6 in
+turns, 1,784 budget runs, 0 differences; 2,468 s). In the main tree the
+gate passed with macOS's `leaks` replaced by a stand-in that runs the
+programs without a leak check (192 s): since about 08:30 `leaks --atExit`
+hangs on F53 for every program, even a trivial one (a machine problem,
+for Frans).

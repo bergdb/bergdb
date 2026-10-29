@@ -435,15 +435,19 @@ and at random moments; a write that fails). Power loss is 012-14's.
    to the stream's write buffer, in memory: 10 MB, Java's
    `StorageManager.DEFAULT_BUFFER_SIZE`, fixed. The buffer is written to
    the files (with `write`, not forced) when it is full, which can be in
-   the middle of a record, at `bergdb_sync` and at `bergdb_close`. Nothing
-   writes it between calls: the library has no thread (012-01, 4.3).
+   the middle of a record, at `bergdb_sync` and at `bergdb_close`, and it
+   is written and forced by a transaction that decides a reclaim cut
+   (point 9). Nothing writes it between calls: the library has no thread
+   (012-01, 4.3).
    Java's `BufferedStream` writes it within 20 ms from a thread of its
    own, and `FileStream` forces each write; the bytes are the same, and
    only when they reach the disk differs.
 2. **After `bergdb_execute`**, the transaction is committed: reads see it
    and the stream's length counts it, but it is not durable. A process
    that dies (a crash, `kill -9`, `abort`) loses what the buffer holds;
-   what a full buffer wrote stays.
+   what a full buffer wrote stays. The one exception is a transaction
+   whose call decides a reclaim cut (point 9): that call forces the stream,
+   so it and every transaction before it are durable when it returns.
 3. **After `bergdb_sync`** at `BERGDB_SYNC_ORDINARY` or `STRONG` (the same
    with one stream; `NONE` does nothing), every transaction committed
    before it is durable: the buffer is written, and the files written
@@ -467,7 +471,8 @@ and at random moments; a write that fails). Power loss is 012-14's.
    transaction follows the last whole one.
 7. **The durable length** (`bergdb_stats.durable_length`, Java's
    `getDurableLength`) is the stream's length at the last force: the
-   open's (0 after a creation, as Java's), each sync's, the close's.
+   open's (0 after a creation, as Java's), each sync's, each reclaim
+   cut's force (point 9), the close's.
 8. **A write or a force that fails** (an I/O error, a full disk, a file
    size limit) fails the database (P7): the call returns `BERGDB_FAILED`
    (`bergdb_sync`, or `bergdb_execute` when its record filled the buffer),
@@ -480,12 +485,25 @@ and at random moments; a write that fails). Power loss is 012-14's.
    transaction's go point, corrupt data in a read) still syncs and closes
    the records before the failure, while the storage works.
 9. **Reclaim's cut** frees the disk only when the stream is durable up to
-   the cut's decision: in C, at the first transaction after a sync, or at
-   the next open (`bergdb_set_retain_duration`'s comment). An application
-   that never syncs keeps its whole stream on disk until it restarts;
-   Java's buffer thread makes it durable within 20 ms. Whether C should
-   force the stream itself for a pending cut is 11-reclaim.md, 6.4's
-   question Q1, for Frans (recommended there: B, one force per cut).
+   the cut's decision (the table that marks the cut, the meta block that
+   recovery starts from), as Java's `Reclaim.cutIfDurable`. Java's buffer
+   thread forces the stream within about 20 ms, so Java cuts at one of the
+   next transactions. C has no thread, so the `bergdb_execute` call whose
+   transaction lets reclaim decide a cut forces the stream itself (as a
+   `bergdb_sync` does: the buffer written, the files written since the
+   last force and a new file's directory forced, `F_FULLFSYNC`) and then
+   deletes the front files, in that call (11-reclaim.md, 6.4, Q1: option
+   B, decided by Frans on 2026-10-29; 6.9). That is one force per cut
+   decided: at most one per quarter of the retain duration, and only when
+   the stream has grown by twice the startup distance since the last
+   iteration began. The force comes whether the application syncs or not,
+   so the directory stays within what the retention needs, as Java's does;
+   the bytes are the same either way (only when the front files are
+   deleted differs, 012-01, 3.2 point 8). A force that fails fails the
+   database (point 8). A cut that the table marks and the files do not
+   show (a process that died between the force and the deletes; a
+   directory that Java's cut thread had not cut yet) is made by the next
+   open.
 10. **One database per directory.** The open locks `bergdb.lock` as
     Java's `FileStream` does (an `fcntl` lock of the byte at 2^62), so
     that another process's open, C's or Java's, gets `BERGDB_IN_USE`

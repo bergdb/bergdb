@@ -1,7 +1,10 @@
 /* Functional tests of reclaim, Level 3 (bergdb 012-11, part 1; 012-01, 6.4),
  * through include/bergdb.h only: a long run in a directory with a short
- * retain duration and a sync now and then keeps the directory's size
- * bounded, its front files deleted; the first available time and position
+ * retain duration keeps the directory's size bounded, its front files
+ * deleted, with a sync now and then and with none (C forces the stream
+ * itself for a cut, one force per cut: 012-11, 6.4, Q1, option B); a cut
+ * that the table marks and the files do not show made at the next open;
+ * the first available time and position
  * and the iteration count in the stats; reads before the first available
  * time refused (getOne, getMany), and getTrans of a removed record; the
  * settings' checks; a retain duration of forever stops new iterations and
@@ -200,11 +203,14 @@ TEST(api_reclaim_directory) {
     remove_dir(dir);
 }
 
-/* A cut decided but not made at the close (no sync while it ran: C's stream
- * is durable only after a sync, 012-11, Q1) is made at the next open, as
- * Java's initFromDb makes it; the first available position and time are the
- * table's, and reclaim goes on after the start. */
-TEST(api_reclaim_pending_cut_at_open) {
+/* With no sync at all: C forces the stream for each cut it decides, one
+ * force per cut, and deletes the front files in that call (012-11, 6.4,
+ * Q1, option B, decided by Frans 2026-10-29), so the directory stays
+ * bounded as with syncs, and as Java's does with its buffer thread. The
+ * stream (about 1 MB) never fills the 10 MB write buffer: without the
+ * forces nothing would reach the files, and no file would be deleted,
+ * until the close. */
+TEST(api_reclaim_directory_no_sync) {
     struct bergdb_mem m = {0};
     struct bergdb_test_clock clock = {0};
     struct bergdb_options o;
@@ -223,6 +229,134 @@ TEST(api_reclaim_pending_cut_at_open) {
     int64_t time = BERGDB_UNITS_PER_SEC;
     bergdb_test_clock_set(&clock, time);
     REQUIRE(bergdb_open(dir, &o, &db, NULL, NULL) == BERGDB_OK);
+
+    uint64_t rnd = 11;
+    uint8_t v[200];
+    struct bergdb_executed ex;
+    struct bergdb_stats s;
+    REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
+    int64_t durable = s.durable_length;
+    int64_t firstPos = s.first_available_pos;
+    int64_t lastFirst = 0, maxBytes = 0;
+    int decided = 0, forces = 0, deletes = 0, forcesWithoutCut = 0, cutsNotDurable = 0;
+    const int N = 6000;
+    for (int i = 0; i < N; i++) {
+        time += BERGDB_UNITS_PER_SEC / 20;
+        char key[32];
+        snprintf(key, sizeof key, "/k/%d", test_random_below(&rnd, 50));
+        size_t len = (size_t) (50 + test_random_below(&rnd, 150));
+        for (size_t j = 0; j < len; j++) {
+            v[j] = (uint8_t) test_random(&rnd);
+        }
+        REQUIRE(put(db, &clock, time, key, v, len, &ex) == BERGDB_OK);
+        REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
+        const bool cut = s.first_available_pos != firstPos;
+        const bool forced = s.durable_length != durable;
+        decided += cut;
+        forces += forced;
+        forcesWithoutCut += forced && !cut;
+        /* The cut's call forced the stream whole: the decision is durable. */
+        cutsNotDurable += cut && s.durable_length != s.stream_length;
+        durable = s.durable_length;
+        firstPos = s.first_available_pos;
+        int n;
+        int64_t bytes, first;
+        dir_files(dir, &n, &bytes, &first);
+        if (first > lastFirst) {
+            deletes++;
+            lastFirst = first;
+            CHECK(cut);                     /* files deleted only in a cut's call */
+            CHECK(first <= s.first_available_pos);
+        }
+        if (i >= N / 2 && bytes > maxBytes) {
+            maxBytes = bytes;
+        }
+    }
+    printf("  api_reclaim_directory_no_sync: stream %lld bytes, the directory at most %lld "
+            "bytes in the second half, %d cuts decided, %d forces, %d with files deleted\n",
+            (long long) s.stream_length, (long long) maxBytes, decided, forces, deletes);
+    CHECK(decided >= 3);
+    CHECK_EQ(forces, decided);              /* one force per cut, none else */
+    CHECK_EQ(forcesWithoutCut, 0);
+    CHECK_EQ(cutsNotDurable, 0);
+    CHECK(deletes >= 3);
+    CHECK(maxBytes > 0);
+    CHECK(maxBytes * 4 < s.stream_length);  /* bounded, as with syncs */
+    CHECK(bergdb_close(db) == BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+    remove_dir(dir);
+}
+
+/* Hard links in keep/ to every .bergdb file of dir not linked yet, so that
+ * the files a cut deletes can be put back. */
+static void keep_files(const char *dir, const char *keep) {
+    DIR *d = opendir(dir);
+    struct dirent *x;
+    while (d != NULL && (x = readdir(d)) != NULL) {
+        size_t len = strlen(x->d_name);
+        if (len == 21 && strcmp(x->d_name + 14, ".bergdb") == 0) {
+            char from[1200], to[1200];
+            snprintf(from, sizeof from, "%s/%s", dir, x->d_name);
+            snprintf(to, sizeof to, "%s/%s", keep, x->d_name);
+            (void) link(from, to);      /* EEXIST: kept already */
+        }
+    }
+    if (d != NULL) {
+        closedir(d);
+    }
+}
+
+/* The files of keep/ that dir lacks, linked back into dir: the cuts undone
+ * on the disk, the table that marks them left as it is. */
+static int restore_files(const char *dir, const char *keep) {
+    DIR *d = opendir(keep);
+    struct dirent *x;
+    int restored = 0;
+    while (d != NULL && (x = readdir(d)) != NULL) {
+        if (x->d_name[0] == '.') {
+            continue;
+        }
+        char from[1200], to[1200];
+        snprintf(from, sizeof from, "%s/%s", keep, x->d_name);
+        snprintf(to, sizeof to, "%s/%s", dir, x->d_name);
+        if (link(from, to) == 0) {
+            restored++;
+        }
+    }
+    if (d != NULL) {
+        closedir(d);
+    }
+    return restored;
+}
+
+/* A cut that the table marks and the files do not show (a crash after the
+ * cut's force, before its deletes; or Java's directory, whose cut thread
+ * deletes later) is made at the next open, as Java's initFromDb makes it:
+ * C cuts as it runs (Q1, option B), the files it deleted are put back
+ * after the close, and the open deletes them again; the first available
+ * position and time are the table's, and reclaim goes on after the start. */
+TEST(api_reclaim_pending_cut_at_open) {
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock clock = {0};
+    struct bergdb_options o;
+    bergdb_db *db;
+    char dir[1024];
+    temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    bergdb_options_init(&o);
+    o.clock = bergdb_test_clock_time;
+    o.clock_ctx = &clock;
+    memcpy(o.id, bergdb_test_id, BERGDB_ID_SIZE);
+    o.max_node_size = 8;
+    o.startup_distance = 2000;
+    o.retain_duration = BERGDB_UNITS_PER_SEC;
+    o.mem = &m;
+    int64_t time = BERGDB_UNITS_PER_SEC;
+    bergdb_test_clock_set(&clock, time);
+    char keep[1100];
+    snprintf(keep, sizeof keep, "%s-keep", dir);
+    REQUIRE(mkdir(keep, 0700) == 0);
+    REQUIRE(bergdb_open(dir, &o, &db, NULL, NULL) == BERGDB_OK);
     uint64_t rnd = 3;
     uint8_t v[200];
     struct bergdb_executed ex;
@@ -233,6 +367,7 @@ TEST(api_reclaim_pending_cut_at_open) {
         size_t len = (size_t) (50 + test_random_below(&rnd, 150));
         memset(v, (int) i, len);
         REQUIRE(put(db, &clock, time, key, v, len, &ex) == BERGDB_OK);
+        keep_files(dir, keep);
     }
     struct bergdb_stats s;
     REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
@@ -240,10 +375,12 @@ TEST(api_reclaim_pending_cut_at_open) {
     int n;
     int64_t bytes, first;
     dir_files(dir, &n, &bytes, &first);
-    CHECK_EQ(first, 0);                     /* no sync: no cut made */
+    CHECK(first > 0);                       /* no sync, and cut as it ran (Q1, B) */
     CHECK(bergdb_close(db) == BERGDB_OK);
+    CHECK(restore_files(dir, keep) > 0);
+    remove_dir(keep);
     dir_files(dir, &n, &bytes, &first);
-    CHECK_EQ(first, 0);                     /* nor at the close */
+    CHECK_EQ(first, 0);                     /* the cuts undone on the disk */
 
     REQUIRE(bergdb_open(dir, &o, &db, NULL, NULL) == BERGDB_OK);
     struct bergdb_stats s2;
@@ -280,6 +417,7 @@ TEST(api_reclaim_pending_cut_at_open) {
 
 const struct test reclaim_func_tests[] = {
     TEST_ENTRY(api_reclaim_directory),
+    TEST_ENTRY(api_reclaim_directory_no_sync),
     TEST_ENTRY(api_reclaim_pending_cut_at_open),
     TEST_END
 };
