@@ -1,7 +1,8 @@
 005-65. Investigate: gets of 27 and 36 ms with 8 readers at 665 MB under ZGC
 ==============================================================================
 
-Status: open. Kind: investigate. Created 2026-10-28.
+Status: open, measured (Results, 2026-10-28 night); a fix is Frans's
+decision (Recommendation). Kind: investigate. Created 2026-10-28.
 
 Registered at Frans's decision on item 009's target 2 (2026-10-28,
 decision 2 of 006-09, section 8): "Register the 8-thread case as a new 005
@@ -404,6 +405,182 @@ block (about 3 minutes; it makes the clones and ScaleBench's classes
 again), then `SMOKE=1`.
 
 
+Results, 2026-10-28 night
+-------------------------
+
+By Claude (Opus 5.5, Claude Code), 2026-10-29, from `threads.sh`'s run in
+006-10's W2: 2026-10-28, 19:34 to 19:50, quiet (load 1.55 at the start,
+AC power, two idle sessions), `threads: OK, 0 problems`. The 10M load with
+`4f7cd60`'s jar, then the builds in turns, ABC CBA. `sum.py`'s summary is
+kept as
+[night/results-2026-10-28.txt](65-gets-with-8-readers/night/results-2026-10-28.txt);
+the raw outputs stay out of the repository. Each row below is a build's
+two rounds: counts summed, the longest the most of the two, the rest
+means.
+
+**Gets and after-load calls.** "Over the trigger": the calls that enter
+`evictorLock` in `Eviction.wake`. "Under pressure": the calls that may
+park for a batch. The readers parked 0 ms in every phase.
+
+| build | threads | gets a second | longest get ms | gets > 10 ms | after-load > 10 ms | of them under pressure | after-load ns a call | over the trigger, k a second | readers blocked % |
+|---|---|---|---|---|---|---|---|---|---|
+| `bf19075` | 4 | 595,058 | 2.2 | 0 | 0 | 0 | 78 | 2 | 0.54 |
+| `bf19075` | 6 | 439,162 | 1.5 | 0 | 0 | 0 | 135 | 1 | 15.28 |
+| `bf19075` | 8 | 402,044 | 0.6 | 0 | 0 | 0 | 132 | 1 | 26.55 |
+| `eaec93e` | 4 | 700,173 | 5.9 | 0 | 0 | 0 | 101 | 3 | 0.01 |
+| `eaec93e` | 6 | 746,007 | 10.5 | 2 | 0 | 0 | 167 | 11 | 0.14 |
+| `eaec93e` | 8 | 717,384 | 26.4 | 269 | 57 | 0 | 472 | 78 | 2.34 |
+| `4f7cd60` | 4 | 699,194 | 5.1 | 0 | 0 | 0 | 109 | 3 | 0.01 |
+| `4f7cd60` | 6 | 743,908 | 9.7 | 0 | 0 | 0 | 157 | 8 | 0.11 |
+| `4f7cd60` | 8 | 721,958 | 38.9 | 329 | 67 | 0 | 448 | 78 | 2.38 |
+
+**CPU and cores.** In cores (CPU time over the phase's 30 s). The
+eviction thread's "rest": its share neither running nor waiting for a
+request (runnable without a core, or blocked). The longest batch is the
+run's so far (`Eviction` keeps no maximum per phase), the most of the two
+rounds.
+
+| build | threads | readers | rest of the process | eviction thread | eviction running % | batch wall over eviction CPU | eviction thread, the rest % | longest batch ms | machine cores | other processes' cores |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `bf19075` | 4 | 3.99 | 1.19 | 0.124 | 12.4 | 0.98 | -0.1 | 2 | 5.46 | 0.15 |
+| `bf19075` | 6 | 5.28 | 0.83 | 0.100 | 10.1 | 0.99 | -0.1 | 2 | 6.47 | 0.26 |
+| `bf19075` | 8 | 6.24 | 0.70 | 0.092 | 9.2 | 0.99 | -0.1 | 2 | 7.33 | 0.31 |
+| `eaec93e` | 4 | 3.99 | 1.50 | 0.157 | 15.7 | 0.98 | -0.1 | 2 | 5.86 | 0.21 |
+| `eaec93e` | 6 | 5.96 | 1.68 | 0.245 | 24.5 | 1.00 | 0.3 | 16 | 8.07 | 0.19 |
+| `eaec93e` | 8 | 7.41 | 1.68 | 0.313 | 31.3 | 1.02 | 1.1 | 16 | 9.62 | 0.22 |
+| `4f7cd60` | 4 | 3.99 | 1.50 | 0.154 | 15.4 | 0.98 | -0.1 | 4 | 5.86 | 0.20 |
+| `4f7cd60` | 6 | 5.96 | 1.69 | 0.249 | 24.9 | 1.01 | 0.4 | 6 | 8.11 | 0.21 |
+| `4f7cd60` | 8 | 7.39 | 1.66 | 0.316 | 31.6 | 1.02 | 1.1 | 23 | 9.55 | 0.18 |
+
+**Further figures** (from the JSON of each run, and derived):
+
+* With 8 threads a phase made about 590,000 after-load calls a second
+  (17.6 and 17.9 million in 30 s, `eaec93e` and `4f7cd60` round 1). 13
+  percent of them entered `evictorLock` (2.26 and 2.41 million), against
+  0.5 percent with 4 threads and 1.5 to 1.7 percent with 6.
+* With 8 threads the after-load calls took 3.4 percent of the readers'
+  time (8.3 and 7.7 s of 240 reader-seconds). But the calls over 10 ms
+  are a fifth of the gets over 10 ms (57 of 269, 67 of 329): six times
+  their share of the time.
+* A reader's mean block on a monitor (blocked percent times the readers,
+  over the blocks a second) was about 120 to 140 microseconds with 8
+  threads on `eaec93e` and `4f7cd60`, about 15 with 6, and about 35 on
+  `bf19075` with 8 (its file's monitor, held across a read).
+* The sampled readers (8, 20 s): on `eaec93e` and `4f7cd60` BLOCKED in
+  `Eviction.wake` on `java.lang.Object` in 1.7, 1.3, 0.1 and 1.5 percent
+  of the samples, the most frequent BLOCKED place in three of the four
+  runs (in the fourth `BufferedStream.read`, 1.1 percent); also BLOCKED
+  in `BufferedStream.read`, `Cache3.liveOrNewHandle` and on
+  `NativeThreadSet`, each 0.1 to 1.3 percent. On `bf19075` BLOCKED on
+  `FileStream$DbFile` in 18.4 and 18.5 percent.
+
+**The hypotheses, against the predictions written before the run.**
+
+* **The entry's hypothesis: partly supported.** The long gets come with 8
+  threads only, on `eaec93e` and `4f7cd60` only, with the process at about
+  9.4 cores and the machine at 9.6 of its 10. But the eviction thread did
+  not fall behind. Its batches' time by the clock was 1.02 times its CPU
+  time, not "well above". It got twice the CPU with 8 threads as with 4
+  (0.31 against 0.16 cores). No load waited for it.
+* **H1, the eviction thread behind: refuted as the cause of the waits.**
+  None of the 124 after-load calls over 10 ms began under pressure. The
+  readers never parked. Its first half holds only for a few batches: the
+  longest grew to 11 to 23 ms with 8 threads (16 ms once with 6), while
+  the mean batch stayed on its core. A writer would wait for such a batch;
+  ScaleBench's get phases have none.
+* **H2, the monitor in `Eviction.wake`: holds, for the long after-load
+  calls.** They began without pressure and did not park. The mean call
+  with 8 threads was 4.4 times that with 4 on `eaec93e` and `4f7cd60`
+  (472 against 101 ns, 448 against 109), 1.7 times on `bf19075`. Readers
+  blocked rose 0.01, 0.13, 2.3 percent with 4, 6, 8 threads. The samples
+  show BLOCKED in `Eviction.wake` on `java.lang.Object`. Its refutation by
+  count is not met: the gets over 10 ms are 4.7 and 4.9 times the calls
+  over 10 ms, under ten times. But it accounts for only a fifth of the
+  long gets.
+* **H3, not enough cores: holds.** With 8 threads the machine was at 9.62
+  and 9.55 cores, the rest of the process at 1.66 to 1.68. The eviction
+  thread's rest was 1.1 percent against -0.1 with 4, and its batch ratio
+  1.02 against 0.98. There were idle cores with 4 threads (5.9) and with
+  `bf19075` at 8 (7.3), and no long call there. With 6 threads (8.1
+  cores) the case is at its edge: no call over 10 ms, 2 gets over 10 ms
+  in four phases, the longest 10.5 ms.
+* **H4, the other processes: refuted.** They used 0.17 to 0.24 cores, and
+  the waits stayed: 57 and 67 calls over 10 ms in two phases, against
+  last night's 48.
+* **H5, a commit after 005-46: refuted.** `eaec93e` had 57 calls and 269
+  gets over 10 ms, `4f7cd60` 67 and 329: within the noise. 005-46 alone
+  brings the case.
+* **The Reading's other predictions.** As predicted: no load waited for a
+  batch; `eaec93e` like `4f7cd60`; the call's cost growing with the
+  readers. Not as predicted: the Reading expected the long gets to be
+  mostly these calls (running readers rarely lose their cores). Four of
+  five gets over 10 ms had no after-load call over 10 ms.
+
+**The explanation, as far as the numbers carry it.**
+
+1. Since 005-46 the readers do not queue on a file's monitor. With 8
+   threads the process runs 7.4 cores of readers, 1.7 of ZGC and the
+   compiler and 0.3 of eviction: about 9.4 of F53's 10 cores (8
+   performance, 2 efficiency), the machine 9.6. `bf19075`'s readers spend
+   27 percent of their time blocked on the file's monitor, so its process
+   leaves cores free.
+2. With no core free, a thread that blocks on a monitor, or is woken,
+   waits for a core. The monitors' waits grow (about 120 to 140
+   microseconds a block with 8 threads, 15 with 6), and some last a
+   scheduler's time slice, 10 ms or more.
+3. `evictorLock` concentrates them. With faster loads the resident bytes
+   are over the trigger more of the time, and 13 percent of the loads
+   (78,000 a second) enter `evictorLock` and call `notifyAll`, against
+   0.5 percent with 4 threads, though the eviction thread is already awake
+   for most of them. The after-load call is 3.4 percent of a reader's time
+   but a fifth of the gets over 10 ms.
+4. The other four fifths of the gets over 10 ms fall elsewhere in the get:
+   at the path's other monitors (`BufferedStream`, a map's `HashMap`,
+   `NativeThreadSet`) or as a reader that loses its core. These numbers
+   cannot tell those apart.
+5. The eviction thread is not the bottleneck. It runs 31 percent of the
+   time, on its core within its batches. A few batches stretch to 11 to
+   23 ms: a writer's concern, not a reader's here.
+
+
+Recommendation
+--------------
+
+For Frans to decide; no change made.
+
+* **(a) Fix the hot monitor (the explanation points here).**
+  `Eviction.wake` enters `evictorLock` and calls `notifyAll` on every
+  load over the trigger. A volatile flag read before the monitor (a
+  request pending, or the thread awake in its batches) would let a load
+  skip it; only a load that finds no request pending enters. The thread
+  must re-check the resident bytes under the lock before it waits, or a
+  request could be lost and, since 005-51's wait has no timeout, the
+  flag would stay set while the thread sleeps. Cost: about 10 to 20 lines
+  in `Eviction`, a test for the lost request (a load and the thread's
+  wait racing), `before-commit.sh`, and one `threads.sh` run (17
+  minutes). Expected: the entries into `evictorLock` from about 78,000 a
+  second to about the batch series' rate, the after-load call near its
+  4-thread cost, the after-load calls over 10 ms near 0, and the gets
+  over 10 ms down by about a fifth, not to 0.
+* **(b) Accept the rest as outside the target.** The other four fifths
+  are a machine with as many runnable threads as cores (8 readers and
+  ZGC's workers on 10 cores, 2 of them efficiency cores). BergDB's code
+  can do little more there than not hold readers on monitors. With 6
+  readers on F53 the longest get was 10.5 ms. The ~20 ms target is for
+  BergDB's own code; this is the scheduler's.
+* **Recommended:** (a), as it is cheap and removes BergDB's own share,
+  then (b), stated in 009's target 2 as readers up to the cores less the
+  collector's.
+* **To measure first, if the explanation should be complete before a
+  fix:** where the other four fifths spend their time. Two cheap
+  variations of `threads.sh`, one night block: 7 threads, and 8 threads
+  with `-XX:ConcGCThreads=1` (the machine below 9 cores with 8 readers).
+  If the gets over 10 ms go when a core is free, saturation is the rest
+  of the cause. Then, if needed, time the get's parts in ScaleBench (the
+  stream read, each monitor entry on the path) and count those over
+  10 ms, as for the after-load call.
+
+
 Done when
 ---------
 
@@ -420,7 +597,8 @@ First step
 ----------
 
 `threads.sh` in the next quiet block on F53 (006-10, W2), after its
-`.READY` marker.
+`.READY` marker. Done 2026-10-28, 19:34 to 19:50 (Results). Next:
+Frans's decision on the Recommendation.
 
 
 Size and order
