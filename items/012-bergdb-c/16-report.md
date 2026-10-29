@@ -130,6 +130,14 @@ All registered in 005 (decision D5), none fixed in 012; C does as Java:
    gcc 16 (40 warnings, the library's 4 false positives), and the names
    of the exceptions C reports for read errors.
 
+**Frans's answers**, 2026-10-29, 07:35: "1. Good catch. I will look at it
+later." (005-70) "2. Do as recommended." (012-02's Q1 and Q2 confirmed)
+"3. Ok, no action now." (012-11's Q1) "4. Do not move the format
+document." (D6b: 012-02 stays in the item; `docs/` gets nothing) "5. No
+action now." (013's Q2, the closed handle, stays as implemented) Points
+6 to 8 were not answered. And: "Continue with 012 until it is finished.
+Run agents with Opus 5.5 High to preserve usage."
+
 ## 0.6 Left
 
 * **012-14**, robustness: a first pass ran 05:00 to 06:20. 1,800 random

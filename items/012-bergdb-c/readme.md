@@ -330,3 +330,9 @@ Java refuses them but for a flipped bit in a record's time, where Java's
 start throws an `Error` and C aborts (005-75). Java findings added to
 005-74 and 005-75. 012-16 has an interim report (section 0) with the
 points for Frans to decide.
+
+2026-10-29, 07:35. Frans's answers to 012-16, section 0.5: 005-70 later;
+012-02's Q1 and Q2 as recommended; 012-11's Q1 no action now; D6b
+changed: "Do not move the format document", so 012-02 stays in the item
+and `docs/` gets nothing; 013's Q2 no action. "Continue with 012 until it
+is finished. Run agents with Opus 5.5 High to preserve usage."
