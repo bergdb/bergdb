@@ -31,7 +31,7 @@ Open
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 | [005-60](60-block-storage.md) | Investigate | Block storage: the stream on a raw block device without a file system, as a ring of a fixed size, kept until the room is needed (retention by space); feasible in Java? And on a Linux device in a C or C++ clone. Frans's idea | open |
-| [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered; a longer time may mean fewer forces and wake-ups for writers that do not sync, at the cost of more unsynced data lost on a power loss. Frans's request | open |
+| [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered; a longer time may mean fewer forces and wake-ups for writers that do not sync, at the cost of more unsynced data lost on a power loss. Frans's request. Runs of 2026-10-28 on F53 and s1: 50 ms saves 11 to 35 % of the forces, nothing else; 100 ms costs 13 to 16 % of the throughput at 1 KB values and slows a rare sync by 50 to 65 %; idle and trickle energy the same. Ready to decide; the recommendation: keep 20 ms | open |
 | [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Hypothesis to test: since 005-46 the 8 readers take F53's 8 performance cores and the eviction thread falls behind; the run was not quiet. Test: 4, 6 and 8 threads on `bf19075`, `eaec93e` and `4f7cd60`, with the eviction thread's CPU, in a quiet block | open |
 | [005-69](69-system-clock-promise.md) | Fix | `SystemClock`, `DbBuilder`'s default clock, promises strictly increasing times but never sets its last time, so it returns equal times within a millisecond and earlier ones when the system clock is set back. No harm: `DbClock` makes transaction and current times increase itself. Options: make the code keep the promise (one line and a test), or the comment say what the code does. Found by 012's planning (012-01, 4.4) | open |
 | [005-70](70-keymodset-after-start.md) | Fix | The STM forgets the writes before a start: `KeyModSet` is new and empty after a start (first time −1), so a transaction whose read time is before the start, and whose read key was written after that time, commits where without the restart it is refused: a gap in serializability, and a restart that changes the stream's bytes (P2). Found by 012-02's audit (C4), with a probe. Recommended: the new set's first time at the last transaction's, so the "too old" path refuses | open |
@@ -344,7 +344,10 @@ Files
   decision (C) and the outcome; done.
 * [64-buffer-time-after-group-commit.md](64-buffer-time-after-group-commit.md).
   005-64, the buffer time after group commit, 20, 50 or 100 ms: the issue,
-  the questions; open.
+  the questions, data at risk (question 5), the results of 2026-10-28's
+  runs and a recommendation (keep 20 ms); open, ready to decide. The
+  scripts and probes in its `night/` and `tools/`, the summaries in
+  `night/results-*-2026-10-28.md`.
 * [65-gets-with-8-readers.md](65-gets-with-8-readers.md). 005-65, gets of
   27 and 36 ms with 8 readers at 665 MB under ZGC: the issue, the
   hypothesis and what would refute it, the test; open. The night step
@@ -1428,3 +1431,9 @@ heap is gone, and sizes are allocated before they are read; kind fix.
 conductor of 012, from 012-02's review, 012-04 and 012-06: dead checks
 (`KeyNode.checkIncreasingTime` checks nothing) and comments that differ
 from the code; kind fix.
+
+2026-10-29. 005-64 ready to decide, by Claude (Opus 5.5, Claude Code),
+006-10's morning write-up: the runs of questions 1 to 4 at 20, 50 and 100
+ms (F53 9 rounds, not quiet; s1 6 rounds; trickle and idle on F53), the
+tables and a recommendation in the entry: keep 20 ms. The summaries in
+`64-buffer-time-after-group-commit/night/results-*-2026-10-28.md`.
