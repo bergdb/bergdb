@@ -100,8 +100,10 @@ without its last record stays below twice the startup distance, and after a
 decrease of it comes down with every commit until it is below twice the new
 one. That is not all of bounded startup: the records at the ends of the
 section (T4) and a cold start's reads through references into older records
-are not bounded by a proof, and the model leaves out the record limit and
-the stream's meta blocks. Before the
+are not bounded by a proof, and the model leaves out the record limit. It
+leaves out the stream's meta blocks too, but they make no difference to the
+take: when it runs, the stream's length is where the new record begins
+([005-68](items/005-todo/68-fix-take-stream-length.md)). Before the
 take's deadline ([007-03](items/007-bounds/03-plan.md), step 3), the
 startup section reached 2.6 times the startup distance at 50 MB in a test
 ([005-38](items/005-todo/38-writes-at-scale.md)).

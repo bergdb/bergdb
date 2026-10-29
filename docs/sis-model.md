@@ -573,8 +573,9 @@ being on the access path.
   larger of twice the startup distance and what it cost before, so less
   than twice the startup distance while it is constant, and after a
   decrease it shrinks with every transaction until it is below twice the
-  new one (`T3_take`, `T3_take_decrease`). The record limit and the
-  stream's meta blocks are left out. The size of the records at the ends
+  new one (`T3_take`, `T3_take_decrease`). The record limit is left out;
+  so are the stream's meta blocks, which make no difference to the take
+  (bergdb 005-68). The size of the records at the ends
   of the section (T4) and the rest are open
   ([../items/007-bounds/](../items/007-bounds/readme.md)).
 * Reclaim: cutting the front of the stream (INV-RECLAIM of

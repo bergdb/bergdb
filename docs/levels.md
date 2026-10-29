@@ -211,10 +211,15 @@ Limits:
   until it is below twice the new one, by the deadline at the span
   ([007-03](../items/007-bounds/03-plan.md), step 3 and D4). The proof
   leaves out the record limit, which can stop a record from taking what is
-  due, and the stream's meta blocks; the model's take gives Java's startup
-  pos on 300 generated cases. T3 is not all of bounded startup: the records
-  at the ends of the section (T4) and a cold start's reads through
-  references into older records are not bounded by a proof. The take's pace
+  due. It leaves out the stream's meta blocks too, but they make no
+  difference to the take: when it runs, the stream's length (`getLength()`)
+  is where the new record begins (`getNextPos()`), as a meta block is written
+  with the record that ends at its position
+  ([005-68](../items/005-todo/68-fix-take-stream-length.md)). The model's
+  take gives Java's startup pos on 300 generated cases. T3 is not all of
+  bounded startup: the records at the ends of the section (T4) and a cold
+  start's reads through references into older records are not bounded by a
+  proof. The take's pace
   held the section at 1.00 to 1.14 times the startup distance in 005-49's
   runs with 10M and 50M keys, and in 007-06's and 007-07's with 10M keys,
   for updates, deletes and single puts, where the take before step 3 reached 2.75 times at 50 MB, 1.9

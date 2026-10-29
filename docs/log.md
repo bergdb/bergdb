@@ -1543,3 +1543,14 @@ time at 50 ms instead of 10 (P2); `before-commit.sh`, `level1.sh`,
 `level2.sh quick` and `level3.sh` pass. 100 ms lost 13 to 16 percent of
 the throughput at 1 KB values, because the quarter-full rule is seen only
 when the storage thread wakes; that is 005-76, registered.
+
+2026-10-29. 007-08's fourth counterexample is a `#guard` in
+`lean/SIS/BoundExample.lean`, as Frans decided on 006-10's point 9, by
+Claude (Opus 5.5, Claude Code): R(s+1), ..., R(k) cost less than 2 sd plus
+the last record counted whole (`T3_take_rerun`), but not less than 2 sd
+plus the last transaction's own bytes; with the deadline alone at a
+setting of 200, after T(6) they cost 552, at least 2 · 200 + 72. README.md,
+levels.md, sis-model.md and lean/README.md now say that the meta blocks,
+not modelled, make no difference to the take (bergdb 005-68), while the
+record limit is still left out. `lake build` clean (148 jobs, no
+warnings, no `sorry`); trace tests OK.

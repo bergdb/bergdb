@@ -294,4 +294,19 @@ def javaTakes : List Nat :=
   db.S.length == 31 && db.S.span bytes2 == 672 &&
   takePolicy bytes2 (sdDecrease 400 100 30) noPace db.S db.D 31 ⟨0, 0⟩ < sdTarget bytes2 200 db.S
 
+-- Startup reruns R(s+1), ..., R(k), which cost less than 2 sd plus the last
+-- record counted whole (`T3_take_rerun` with M = sd), but not less than 2 sd
+-- plus the last transaction's own bytes (bergdb 007-08, section 3, point 5): a
+-- record holds the versions of the nodes it takes, so a small transaction's
+-- record can be large. With the deadline alone at a setting of 200, after T(6)
+-- R(s+1), ..., R(6) cost 552, at least 2 · 200 + 72 (own2) = 472, and less than
+-- 2 · 200 + 232, R(6)'s cost. Found by 007-08's review.
+#guard
+  let db := ((states2 (takePolicy bytes2 (sdConst 200) noPace) 1 60)[6]?).getD (init spec2)
+  let S := db.S
+  S.length == 7 && S.cost bytes2 (lastSp S + 1) S.length == 552 &&
+  2 * 200 + own2 ⟨0, 0⟩ ≤ S.cost bytes2 (lastSp S + 1) S.length &&
+  S.cost bytes2 (S.length - 1) S.length == 232 &&
+  S.cost bytes2 (lastSp S + 1) S.length < 2 * 200 + S.cost bytes2 (S.length - 1) S.length
+
 end SIS.Example

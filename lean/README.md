@@ -427,8 +427,9 @@ Not trusted, tests only:
   constant setting, with restarts (the same stream as without, T2) and
   with decreases of the setting meet `T3_take_step`, `T3_take` and
   `T3_take_decrease`; the counterexamples to `KeepsUp` with twice the
-  setting and to the new bound right after a decrease; and a run where the
-  section comes down by one unit a transaction (`slowSpans`).
+  setting, to the new bound right after a decrease, and to the rerun's
+  bound with the last transaction's own bytes in place of its record; and a
+  run where the section comes down by one unit a transaction (`slowSpans`).
 * Check/Fast.lean and Check/R4.lean, the checker's fast paths (bergdb item
   001, WP C2). `markOf`, `writeAll`, `reachList` and `step` have fast
   versions, proven equal to them and marked `@[csimp]` (`markOf_eq_fast`,
@@ -1255,7 +1256,9 @@ Not done:
 * A check of the physical layer's assumptions (`PhysStep`, M47) on Java
   traces; they are argued (011-11, 13.3).
 * The bounds: T4 (D) (bergdb item 007). T3 for BergDB's take is proved
-  without its record limit and the stream's meta blocks (bergdb 007-08).
+  without its record limit (bergdb 007-08). The stream's meta blocks are
+  not modelled either, but they make no difference to the take: when it
+  runs, the stream's length is where the new record begins (bergdb 005-68).
 * Reclaim's theorems: T-SCHEME (R6), that Java's scheme gives safe cuts:
   checked, not proved (the plan's fallback; 001-07, section 5):
   by running on example 4 (`reclaimtest`, `checkSchemeB`), and at every cut

@@ -223,7 +223,11 @@ Against the statements of 007-03 and 007-07:
    can hold a large one's got-dirty nodes (007-07, 7.1 and 7.2: single puts
    wrote records of up to 209 kB where their mean was 576 bytes). The
    records at the ends of the section, R(s) and R(k), are bounded only by
-   a bound on D (T4, 007-01, section 6). The same holds for what startup
+   a bound on D (T4, 007-01, section 6). In the model too (a `#guard` in
+   `BoundExample.lean` since 2026-10-29, from the review's point 3): with
+   the deadline alone at a setting of 200, after T(6) R(s+1), ..., R(6)
+   cost 552, at least 2 · 200 + 72, the last transaction's own bytes, and
+   less than 2 · 200 + 232, its record's cost. The same holds for what startup
    reads, R(s), ..., R(k): less than the costs of R(s) and R(k) plus 2 M
    (`T3_take_reads`).
 
@@ -267,7 +271,7 @@ runs them:
   400 after T(40) (BergDB's pace, with and without restarts) and from 400 to
   100 after T(30) (the deadline alone), every step meets `T3_take_step` and
   every state `T3_take_decrease`, with the sections of section 3; and the
-  counterexamples of section 3. The take before 007-07, with its node limit
+  counterexamples of section 3, all four. The take before 007-07, with its node limit
   (`oldTake`, the old sketch `javaTake` renamed), does not keep up, as
   before.
 
@@ -316,7 +320,8 @@ Nothing else is used; the share, the dither and D's contents never enter.
 6 Not covered
 -------------
 
-* The record limit and the meta blocks (section 1).
+* The record limit (section 1). The meta blocks are left out too, but
+  they make no difference to the take (005-68; section 1).
 * The trace checker does not compare Java's startup pos with this policy on
   Java's runs (007-03, step 4, "Later"): it would need each record's length
   in bytes in the traces. The generated cases check the take as a function;
@@ -523,3 +528,16 @@ not arise: when `take` is called the stream's length is where R(i) begins,
 as `RecoverableStream.append` writes a meta block with the record that ends
 at its position; so the gap is not there, and 005-68 was dropped with no
 change.
+
+**Follow-up, 2026-10-29** (006-10's decision 9; Frans, 10:09: "Yes, as
+recommended for 5 to 9"), by Claude (Opus 5.5, Claude Code): the fourth
+counterexample is a `#guard` at the end of `BoundExample.lean`: with the
+deadline alone at a setting of 200, after T(6) R(s+1), ..., R(6) cost 552,
+at least 2 · 200 + 72 (`own2`) = 472, and less than 2 · 200 + 232, R(6)'s
+cost, as `T3_take_rerun` says (section 3, point 5; the review's `viol`).
+README.md, docs/levels.md, docs/sis-model.md and lean/README.md no longer
+say only that the meta blocks are not modelled: they still are not, but
+005-68 showed that they make no difference to the take (`getLength()`
+equals `getNextPos()` whenever `take` runs), while the record limit is
+still left out. `nice -n 10 lake build`: "Build completed successfully (148
+jobs)", no warnings, no `sorry`; `sh test-traces/run.sh`: "TRACE TESTS OK".
