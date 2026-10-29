@@ -485,6 +485,26 @@ the 10-minute check (the machine at 82 to 86 percent idle).
 Not this plan's: 012-16's interim report has seven points for Frans (from
 the 012 session).
 
+**Frans's decisions, 2026-10-29 morning:**
+
+1. A: level1's SS limits raised (`f6fc56b`); also, at his word, `MEM_MAX`
+   lowered from 228 to 131 (`f648f96`).
+2. The default buffer time is 50 ms, for fewer forces (SSD wear, torn
+   pages) at about twice the unsynced data at risk (`27ec238`; 005-64
+   done); 005-76 registered for the rest: wake the consumer when the
+   buffer passes a quarter (`d5c2c4b`).
+3. A: 005-65's fix, loads skip `evictorLock` when a request is pending,
+   and the rest accepted as a full machine; under way, the thread sweep
+   again in the next quiet block.
+4. A: 005-77, cap the pace's factor S/sd (`bcc7d3b`).
+5. The quick suite's p99 question added to 005-77 (`f6b8ab9`).
+6. 005-78, the retain duration is to be kept in the stream (P2), an
+   investigate entry, to be studied first (`08da06e`).
+7. The replica leak noted in 005-11 (`49029f3`).
+8. 005-52's pause probe in the next quiet block.
+9. The fourth counterexample a `#guard`, the meta-block wording softened
+   (`9cf8a82`); `lake build` clean, trace tests OK.
+
 **Left:** nothing of the night's steps; points 1 to 9 above. The raw output
 of the night is in `/Users/f/fl/bench/006-10/night/out/`, out of the
 repository.
