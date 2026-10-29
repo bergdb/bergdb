@@ -1,7 +1,8 @@
 # 006-10 Unattended work, 28 to 29 October 2026
 
 Created 2026-10-28 by Claude (Opus 5.5, Claude Code), at Frans's request.
-Status: open. The plan for the unattended work from 2026-10-28, noon, to
+Status: done (2026-10-29; see Outcome). The plan for the unattended work
+from 2026-10-28, noon, to
 2026-10-29, 07:00, the progress through the night, and the outcome. The way
 of working is 013-01's, from 006-09. Lead: the session Unattended-006-09
 (Frans, 09:34).
@@ -404,4 +405,86 @@ is done; F53 is 012's until the morning.
 
 ## 8. Outcome
 
-To come by 07:00 on 2026-10-29.
+2026-10-29, 06:04, by Claude (Opus 5.5, Claude Code).
+
+**Done, in `main`, on 28 October** (in Frans's name; code gated in clones on
+trees with the changes before it; `main` pushed at 13:24):
+
+* 005-48 closed at 20 ms, 005-64 registered (`3950a96`).
+* 005-56, the package lists and `java/deps.py` in `before-commit.sh`
+  (`04f1546`, `43bdb09`); its follow-ups, with the Core Layer built alone
+  nightly in `night.sh` (`43e631f`, `64af8da`).
+* 009 closed (`bf9fc7f`); 005-65 registered (`fab16db`) and read
+  (`67c1c54`, `cfdc901`); Props' parser (`e10b928`).
+* 005-67, `testAddReplica2`: the test was wrong (`dad6bd2`, `058eca2`).
+* 007-07, 007-03's step 3 with D4:B (`f89846d`, `b4aa91c`); at 50M keys
+  (`3c6b545`); 010-01's P1 and P2 (`b362a8b`).
+* 007-08, step 4 in Lean, T3 for BergDB's take (`db1eca8` to `8b6669f`),
+  reviewed at max effort (`f5a09cf`), the review's fixes (`3d21792`);
+  005-68 registered and dropped, as the review's code point did not hold
+  (`3c4f535`).
+* 005-53 (E) and 005-52 (B): the startup distance and the cache size
+  change while the database runs (`fd8f513`, `ce5c489`).
+* 013-ai-work with 013-01 (`cb5baa0`); 012's plan committed (`eff970d`).
+* Other sessions the same day: 005-62 (`90153f2`), 005-63 and 005-66, 013-02,
+  and 012's first unattended run (012-04 to 012-16's interim report).
+
+**The night**, in 012's gaps (Frans, 17:50: 012 first on F53; the conductor
+stopped at 17:55): gap 1, 18:11 to 20:40, and gap 2, 23:55 to 01:11. Every
+step ran, all but `night.sh` with exit 0; most were marked not quiet after
+the 10-minute check (the machine at 82 to 86 percent idle).
+
+* `night.sh`, by hand (session f1-ea unloaded the 02:10 job at 18:00, at
+  Frans's request; loaded again at 05:58): NIGHT FAILED only in level1's SS
+  limits, after 007-07 (below); every other step OK (report
+  `java/build/night/2026-10-28-1822/report.txt`).
+* 007-07's quick suite and Props (007-07, section 12, `234c852`): no alerts;
+  with finite retention commit p99 and p99.9 9 to 11 percent higher, the
+  median faster; startup 1 to 4 percent slower; MEM 130 to 129, CORE 0.237
+  to 0.240; SS3 1.62 to 1.65 and SS4 2.37 to 2.40.
+* 005-65 (`71beee8`): with 8 readers and ZGC F53 runs at 9.6 of 10 cores
+  (since 005-46 the readers no longer block on a file), and readers enter
+  `evictorLock` 78,000 times a second (3,000 with 4); those calls explain
+  about a fifth of the gets over 10 ms. The eviction thread does not fall
+  behind; other processes and later commits are ruled out.
+* 005-64 (`c802258`): 100 ms costs 13 to 16 percent of the puts a second and
+  slows a rare sync (p50 5.6 to 8.4 ms) and saves no energy; 50 ms saves 11
+  to 35 percent of the forces at twice the data at risk; syncing writers
+  and idle are the same at every buffer time. On F53 and s1.
+
+**For Frans to decide** (each with a recommendation):
+
+1. level1's SS limits: `night.sh` fails on `main` until they change.
+   Recommended: `SS_MAX="1.52 1.11 1.21 1.66 2.41"` with the reason in
+   `docs/log.md` (drafted in 007-07, section 12.3: since 005-49 the setting
+   is the section's target, so at Props' 50 MB the take writes more).
+2. 005-64: the buffer time. Recommended: keep 20 ms, and close 005-64; the
+   replica's 2,000 ms (question 6) waits for 005-11.
+3. 005-65: a fix. Recommended: loads skip `evictorLock` when a request is
+   already pending (a volatile flag, re-checked under the lock; about 20
+   lines, a race test, one `threads.sh` run), and the rest accepted as a
+   full machine, outside 009's target.
+4. 007-07 at 50M keys: the largest record of a decrease grows with the keys
+   (13 to 15 MB from 1000 to 100 MB, against 3.5 MB at 10M), from the pace's
+   factor S/sd (up to 10). Recommended: a 005 entry to test a cap of that
+   factor at 10M and 50M keys.
+5. 007-07's quick suite: commit p99 up 9 to 11 percent with finite
+   retention, not yet explained. Recommended: look at it with point 4.
+6. The retain duration changes the stream's bytes but is not kept in the
+   stream, against the rule of 005-53 and 005-52. Recommended: a 005 entry
+   to decide: keep it in the stream, or say so in its Javadoc.
+7. 005-11: a replica being copied in when the database closes is never
+   closed, its directory locked until the JVM ends (005-67's probe).
+   Recommended: note it in 005-11, fixed with 005-11's decision.
+8. 005-52's pause probe with a lowered budget, not run (a quiet block).
+   Recommended: in the next quiet block.
+9. Small, 007-08: the fourth counterexample as a `#guard`, and README's
+   "the meta blocks are not modelled", which 005-68 showed make no difference
+   to the take. Recommended: both, small.
+
+Not this plan's: 012-16's interim report has seven points for Frans (from
+the 012 session).
+
+**Left:** nothing of the night's steps; points 1 to 9 above. The raw output
+of the night is in `/Users/f/fl/bench/006-10/night/out/`, out of the
+repository.
