@@ -24,6 +24,7 @@ package bergdb.pub.util;
 public class DbFailedException extends IllegalDbStateException {
     private static final long serialVersionUID = 1L;
 
+    /** Creates the exception with the given message and cause. */
     public DbFailedException(String message, Throwable cause) {
         super(message);
         initCause(cause);

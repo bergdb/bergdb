@@ -50,6 +50,9 @@ public class CryptoKey {
         return algo;
     }
     
+    /**
+     * Returns true if this is CryptoKey.NULL: no crypto key, no encryption.
+     */
     public boolean isNull() {
         return algo == null;
     }
@@ -82,7 +85,7 @@ public class CryptoKey {
     /**
      * Parses a string that was created with serialize().
      * 
-     * @throws CryptoKey.FormatException
+     * @throws CryptoKey.FormatException if the string is not in serialize()'s format.
      */
     public static CryptoKey parse(String serializedKey) {
         // Note: think about not printing serializedKey in log messages
@@ -130,6 +133,10 @@ public class CryptoKey {
         return b.toString();
     }
     
+    /**
+     * Returns the key as serialize() does, but with the key data replaced by "****":
+     * for log messages and error messages.
+     */
     public String toStringWithMaskedKey() {
         StringBuilder b = new StringBuilder();
         b.append(name);
@@ -177,6 +184,7 @@ public class CryptoKey {
     public static class FormatException extends RuntimeException {
         private static final long serialVersionUID = 1L;
         
+        /** Creates the exception with the given message. */
         public FormatException(String message) {
             super(message);
         }

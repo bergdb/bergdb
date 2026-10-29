@@ -39,14 +39,14 @@ public interface Transaction {
     /**
      * Waits until ordinary durability has been attained for this transaction.
      * 
-     * @throws DbException
+     * @throws DbException if the database is faulty or has failed.
      */
     public void sync();
     
     /** 
      * Waits until the specific sync level has been attained for this transaction.
      * 
-     * @throws DbException
+     * @throws DbException if the database is faulty or has failed.
      */
     public void sync(SyncLevel syncLevel);
 }

@@ -147,26 +147,6 @@ public class Util {
         Assert.assertArrayEquals(new byte[]{}, subarray(bytes, 1, 0));
     }
     
-    private static boolean runsIkvm = false;
-    private static volatile boolean runsIkvmSet = false;
-    
-    /**
-     * Returns true if this software is IKVM-created CIL (.NET) code.
-     */
-    public static boolean runsIkvm() {
-        if (!runsIkvmSet) {
-            String name = "java.vm.name";
-            String vm = System.getProperty(name);
-            if (vm == null) {
-                throw new Error("Property " + name + " is mandatory and still missing.");
-            }
-            runsIkvm = vm.toLowerCase(Locale.US).contains("ikvm");
-            runsIkvmSet = true;
-        }
-        
-        return runsIkvm;
-    }    
-    
     private static boolean runsAndroid = false;
     private static volatile boolean runsAndroidSet = false;
     

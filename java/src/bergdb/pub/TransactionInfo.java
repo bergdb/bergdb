@@ -2,6 +2,11 @@ package bergdb.pub;
 
 import java.util.List;
 
+/**
+ * Information about a transaction: its time and its KVs. Returned by
+ * Connection.transactionInfo() for the transaction that wrote the last value
+ * retrieved with get().
+ */
 public interface TransactionInfo {
     /** Transaction time. */
     public Time time();

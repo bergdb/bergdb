@@ -8,6 +8,7 @@ package bergdb.pub;
 public class ObjectCreationException extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
+    /** Creates the exception with the given message. */
     public ObjectCreationException(String message) {
         super(message);
     }

@@ -227,8 +227,7 @@ public interface Connection extends ReadInterface {
      * @param indexName
      *            The name of the index to use.
      * @param type
-     *            The type of the objects to iterate. In C#, use the typeof()
-     *            operator.
+     *            The type of the objects to iterate.
      * @throws NoSuchIndexException
      *             if the index does not exist.
      */
@@ -240,8 +239,7 @@ public interface Connection extends ReadInterface {
      * according to the primary key of the database.
      * 
      * @param type
-     *            The type of the objects to iterate. In C#, use the typeof()
-     *            operator.
+     *            The type of the objects to iterate.
      * @throws NoSuchIndexException
      *             if the index does not exist.
      */

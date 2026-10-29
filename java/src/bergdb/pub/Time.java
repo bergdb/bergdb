@@ -168,7 +168,7 @@ public class Time {
     }
     
     /**
-     * Returns true if this time, t, satisfies: t0 <= t <= t1.
+     * Returns true if this time, t, satisfies: {@code t0 <= t <= t1}.
      */
     public boolean isBetween(Time t0, Time t1) {
         return this.units >= t0.units && this.units <= t1.units;

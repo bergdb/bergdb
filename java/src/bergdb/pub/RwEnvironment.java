@@ -28,13 +28,15 @@ public interface RwEnvironment extends ReadInterface {
      * Stores an object using the 'key' field as the database key.
      * 
      * @param object The object to store in the database.
-     * @throws MissingKeyFieldException
+     * @throws MissingKeyFieldException if 'object' does not have a String field named 'key'.
      * @throws IllegalArgumentException if key field is null or otherwise of an invalid format.
      * @throws IllegalArgumentException if 'object' is null.
      */
     public void put(Object object) throws MissingKeyFieldException;
     
     /**
+     * Sets the key-value entry with the given key to the provided object.
+     *
      * @see WBuilder#put(String, Object)
      * @throws IllegalArgumentException if 'key' is null or otherwise of an invalid format.
      * @throws IllegalArgumentException if 'object' is null.

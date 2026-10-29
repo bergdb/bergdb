@@ -7,6 +7,9 @@ import bergdb.pubimp.DatabaseBuilderImp;
  * used to create a Database.
  */
 public final class Factory {
+    private Factory() {
+    }
+
     /**
      * Creates a new builder object that is used to create a Database.
      */

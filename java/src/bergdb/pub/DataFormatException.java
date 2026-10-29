@@ -10,6 +10,7 @@ import bergdb.pub.util.DbException;
 public class DataFormatException extends DbException {
     private static final long serialVersionUID = 1L;
 
+    /** Creates the exception with the given message. */
     public DataFormatException(String message) {
         super(message);
     }

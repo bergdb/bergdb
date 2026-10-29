@@ -26,10 +26,12 @@ package bergdb.pub.util;
 public class DbException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     
+    /** Creates the exception with the given message. */
     public DbException(String message) {
         super(message);
     }
     
+    /** Creates the exception with the given message and cause. */
     public DbException(String message, Throwable cause) {
         super(message, cause);
     }

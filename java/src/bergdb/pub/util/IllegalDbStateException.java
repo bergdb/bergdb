@@ -9,6 +9,7 @@ package bergdb.pub.util;
 public class IllegalDbStateException extends DbException {
     private static final long serialVersionUID = 1L;
 
+    /** Creates the exception with the given message. */
     public IllegalDbStateException(String message) {
         super(message);
     }

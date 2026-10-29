@@ -91,6 +91,11 @@ API changes
   rule for both setters: a setting that changes the stream's bytes, as the
   startup distance, is kept in the stream; one that does not lasts for the
   run.
+* **`Factory` has no public constructor** (2026-10-29). It has only the
+  static `Factory.database()`; `new Factory()` no longer compiles.
+* **No .NET** (2026-10-29). `Util.runsIkvm()` in `bergdb.common` is gone,
+  and the Pub API's Javadoc no longer names .NET or C#; BergDB runs on Java
+  only.
 
 
 Format

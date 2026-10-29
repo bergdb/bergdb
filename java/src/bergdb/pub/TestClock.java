@@ -9,6 +9,12 @@ import bergdb.pub.util.Clock;
  */
 public final class TestClock implements Clock {
     private long time = 0;
+
+    /**
+     * Creates a test clock. Its time is 0 until setTime() is called.
+     */
+    public TestClock() {
+    }
     
     public long getTime() {
         return time;

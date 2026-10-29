@@ -13,11 +13,16 @@ import bergdb.pub.util.DbException;
 public interface ReadInterface {
     
     /**
+     * Checks whether a key-value entry with the given key exists.
+     *
      * @see Connection#exists(String)
      */
     public boolean exists(String key) throws DbException;
     
     /**
+     * Gets the object stored under the key, created from 'clazz', or null if no entry
+     * exists for the key.
+     *
      * @see Connection#get(String, Class)
      */
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);

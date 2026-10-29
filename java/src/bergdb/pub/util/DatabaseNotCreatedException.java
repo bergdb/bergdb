@@ -14,6 +14,7 @@ package bergdb.pub.util;
 public class DatabaseNotCreatedException extends DbException {
     private static final long serialVersionUID = 1L;
 
+    /** Creates the exception with the given message. */
     public DatabaseNotCreatedException(String message) {
         super(message);
     }

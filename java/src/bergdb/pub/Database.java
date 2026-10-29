@@ -181,7 +181,7 @@ public interface Database extends AutoCloseable {
      * If the retain duration is increased, the actual duration available for lookups will increase
      * until it equals or exceeds the retain duration set in this method. Use
      * getFirstAvailableLookupTime() to see the currently available time span for lookups.
-     * <p>
+     * </p>
      * 
      * <p>
      * A finite duration makes the database reclaim stream space: it rewrites live values that

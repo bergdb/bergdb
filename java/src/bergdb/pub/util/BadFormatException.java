@@ -8,6 +8,7 @@ package bergdb.pub.util;
 public class BadFormatException extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
+    /** Creates the exception with the given message. */
     public BadFormatException(String message) {
         super(message);
     }

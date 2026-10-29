@@ -230,7 +230,7 @@ public interface IndexBuilder {
      * If the database is stopped before the index has been created, the index creation process
      * will automatically continue when the database is started again.
      * 
-     * @throws IndexAlreadyExistsException
+     * @throws IndexAlreadyExistsException if an index with this name already exists.
      */
     public Job start();
 }

@@ -9,6 +9,7 @@ package bergdb.pub.util;
 public class LookupTimeNotAvailableException extends IllegalArgumentException {
     private static final long serialVersionUID = 1L;
 
+    /** Creates the exception with the given message. */
     public LookupTimeNotAvailableException(String message) {
         super(message);
     }
