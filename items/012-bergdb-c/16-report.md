@@ -130,13 +130,16 @@ All registered in 005 (decision D5), none fixed in 012; C does as Java:
    gcc 16 (40 warnings, the library's 4 false positives), and the names
    of the exceptions C reports for read errors.
 
-**Frans's answers**, 2026-10-29, 07:35: "1. Good catch. I will look at it
-later." (005-70) "2. Do as recommended." (012-02's Q1 and Q2 confirmed)
-"3. Ok, no action now." (012-11's Q1) "4. Do not move the format
-document." (D6b: 012-02 stays in the item; `docs/` gets nothing) "5. No
-action now." (013's Q2, the closed handle, stays as implemented) Points
-6 to 8 were not answered. And: "Continue with 012 until it is finished.
-Run agents with Opus 5.5 High to preserve usage."
+**Frans's answers**, 2026-10-29, 07:35, to the conductor's list of the
+same morning (its numbers, not this section's): "1. Good catch. I will
+look at it later." (005-70) "2. Do as recommended." (012-11's Q1: C
+forces the stream itself when a cut is pending) "3. Ok, no action now."
+(012-13's Q2: a closed handle ends at the close, as implemented) "4. Do
+not move the format document." (D6b changed: 012-02 stays in the item,
+`docs/` gets nothing) "5. No action now." (012-14's flipped time: C keeps
+Java's behaviour). Points 2, 6 and 7 of this section were not in that
+list. And: "Continue with 012 until it is finished. Run agents with Opus
+5.5 High to preserve usage."
 
 ## 0.6 Left
 
