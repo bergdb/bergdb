@@ -251,6 +251,9 @@ everything in 012. Tests can start manually. Good for now." At 12:41 on
      with Java's 005-75 fix.
   2. **Java's fixes found by the port**: 005-70 (the STM after a start,
      a correctness bug), then 005-69 and 005-71 to 005-75; C follows each.
+     And 005-79 (Frans, 2026-10-29): integers instead of doubles in the
+     take, reclaim and eviction, so that every language and target gives
+     the same bytes without floating point's traps.
   3. **Linux** (a day or two): the platform module (`plat`) is the only
      one that knows macOS; `F_FULLFSYNC` becomes `fdatasync`, and the
      cross sets run there.
