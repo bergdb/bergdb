@@ -111,17 +111,17 @@ grep -E '^(STREAM: [is]|TRANSSEQ|KV|IDENTITY|LOOKUP)' $F | sed 's/^/   /'
 echo "6. Props"
 # Run as in 2014 to 2017, without -ea; numbers to compare with the history in
 # src-dev/bergdb/dev/props and bergdb item 006-02. MEM and SS do not depend on
-# the machine. MEM's limit is the value of 2026-10-19 (11ea2f6) on JDK 27 with
-# its default compact object headers, plus one step for MEM's noise (226 to
-# 227 in 31 runs). The SS limits are the values of 2026-10-28 after 007-07
-# (f89846d; bergdb 007-07, section 12.3), plus the same one step for SS on
-# other machines (0.01). When a change improves
+# the machine. MEM's limit is the value of 2026-10-29 (after the handles work,
+# bergdb item 009, and 007-07) on JDK 27 with its default compact object
+# headers, plus one step for MEM's noise (129 to 130 since 009). The SS limits
+# are the values of 2026-10-28 after 007-07 (f89846d; bergdb 007-07, section
+# 12.3), plus the same one step for SS on other machines (0.01). When a change improves
 # MEM or SS, lower the limit; a change that needs a higher one needs a reason
 # in docs/log.md. Without compact object headers (older JDKs, or
 # -XX:-UseCompactObjectHeaders) MEM is about 18 bytes higher for this code: it
 # is then printed, not checked. CORE (1.00 = cissi, July 2013) depends on the machine
 # and on what else runs: printed only.
-MEM_MAX=228
+MEM_MAX=131
 SS_MAX="1.52 1.11 1.21 1.66 2.41"   # SS, then SS1 to SS4
 $JAVA -cp build/bergdb.jar bergdb.dev.props.Mem > $LOG/props-mem.txt 2>&1 &
 $JAVA -cp build/bergdb.jar bergdb.dev.props.SS > $LOG/props-ss.txt 2>&1 &

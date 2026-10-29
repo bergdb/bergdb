@@ -1515,3 +1515,14 @@ where the user's data are most of the stream, and 24 percent at 10M small
 keys (32-byte puts, docs/levels.md, section 5): the expected cost of the
 bound, not a regression. The limits keep one step of 0.01 above the new
 values; MEM's limit is unchanged.
+
+2026-10-29. `level1.sh`'s MEM limit lowered from 228 to 131 bytes per KV,
+as Frans decided on 29 October, by Claude (Opus 5.5, Claude Code), for
+006-10, as step 6's rule asks when a change improves MEM. The limit was
+still that of 2026-10-19 (MEM 226 to 227); 005-08's fix gave 191 (2026.1),
+and the handles work (bergdb item 009: 174 after its phase 1 on 25 October,
+then handles, `178a0d4`, 26 October) 129 to 130. MEM has been 129 to 130
+since: level1 in the nights of 27 and 28 October 129, 130 and 129, 007-07's
+Props in turns 130 before it and 129 after (four rounds each, its section
+12.2), and level1 129 today. The limit is 130, the highest, plus one step
+for MEM's noise. LEVEL 1 OK (MEM:129).
