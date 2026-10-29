@@ -1,9 +1,10 @@
 005-52. Change the cache size while the database runs
 =====================================================
 
-Status: done (2026-10-28: option B, decided by Frans and implemented with
-005-53; see Outcome; the pause probe of "Done when" left for a quiet
-block). Kind: fix. Created 2026-10-26.
+Status: open (reopened by Frans, 2026-10-29: one point of "Done when" is
+left, the pause probe with a lowered budget; see Left to do. The API is
+done: option B, decided by Frans and implemented with 005-53 on
+2026-10-28; see Outcome). Kind: fix. Created 2026-10-26.
 
 Found in [010-01](../010-principles/01-principles.md), 010-P6 ("No
 interruption for changes"); registered at Frans's request (2026-10-26:
@@ -374,7 +375,40 @@ code is one commit, `fd8f513`. Gates, StreamDigest and their files: in
   setter, and the cache size changes no byte (EvictionInvariance in
   `level4.sh`).
 
-Left: "Done when"'s pause probe of 009-03 with a lowered budget against a
-fixed one (no get or commit waiting longer), for a quiet block; the first
-step's runs measured the convergence (47 s from 664 to 132 MB, batches of
-at most 2.2 ms and gets of at most 6.1 ms under ZGC), not the comparison.
+
+Left to do
+----------
+
+Reopened by Frans, 2026-10-29 ("Reopen 005-52, ensure it is clear what is
+left to do."). One point of "Done when" is not met: no get or commit
+waits longer while the resident bytes converge to a lowered budget than
+with a fixed budget. The first step measured the convergence (47 s from
+664 to 132 MB, batches of at most 2.2 ms and gets of at most 6.1 ms under
+ZGC), not this comparison. The steps:
+
+1. The probe. `java/stress/PauseProbe.java` (009-03, section 1) cannot
+   change its budget during a run. Add two properties, for example
+   `lower=MB` and `lowerAt=S`: S seconds into each phase the probe calls
+   `Db.setCacheSizeIndicator` with the lower budget (or
+   `Database.setCacheSizeInMb`, if the probe moves to the Pub API).
+   Without them the probe runs as now, so that its earlier tables stay
+   comparable. The setter exists only since `fd8f513`; the probe reaches
+   it by reflection, as it does `CacheStats`, so that one compiled copy
+   still runs on 2026.1's jar.
+2. The runs, in a quiet block on F53 (s1 too if it is quiet), on one jar
+   from `main`, with ZGC and with G1, 1M keys, 4 readers, the default
+   phases (`tsize=1,1000`, 60 s each): (a) a fixed budget of 100 MB, above
+   the about 55 MB the startup distance pins; (b) a budget of, for
+   example, 400 MB, lowered to 100 MB 10 s into each phase. Four runs,
+   about 15 minutes. Raw output outside the repo; the script and the
+   table here.
+3. The comparison. For each collector and phase: the p99.9 and the
+   longest wait of the gets and the commits in (b) against (a), the
+   longest batch, the time until the resident bytes reach the new budget,
+   and the GC log beside each long wait (with ZGC a long wait is
+   BergDB's own, 010-P1).
+
+Done when the table is here and no wait in (b) is longer than in (a)
+beyond the spread between two runs of (a); then the entry closes. If one
+is longer: its cause, and a proposal for Frans, before any change to
+`java/`.
