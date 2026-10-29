@@ -1,7 +1,7 @@
 012-bergdb-c
 ============
 
-Created 2026-10-27 by Frans Lundberg. Status: open.
+Created 2026-10-27 by Frans Lundberg. Status: done.
 
 BergDB's Core in C: a clone of the Core (`bergdb.core` and what `Db` needs
 of the Core Layer) written in C, for F53 first. Its API corresponds to the
@@ -363,3 +363,13 @@ instead of failing the database, gcc 16 without warnings in the library
 distance of 200 MB in Java, C and turns, byte for byte. `cross.sh full`
 with C's tools OK on the tree merged with main (2,710 s); C BEFORE COMMIT
 OK (167 s), with the `leaks` stand-in (macOS `leaks` still hangs).
+
+2026-10-29, 10:49. 012-16 done, and with it 012: status done. The report
+is 012-16, section 0: 012-01's "Done when" item by item with its
+evidence, the milestones, the departures from Java, what the port found
+in Java (005-69 to 005-75), the points for Frans, the code's place and
+next steps, and how the work was done (section 0.7: the timeline, the
+prompts, the plans, Claude Code and Opus 5.5 as used, the effort per
+task, the usage). The C code stays in `c/`; the format document stays
+012-02.
+

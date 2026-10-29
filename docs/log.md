@@ -1575,3 +1575,14 @@ full machine; the thread sweep reruns with the fix in a quiet block
 (005-65's State). In the clone: BEFORE COMMIT OK (100 s), LEVEL 4
 OK (full), LEVEL 2 OK (quick), CORE BUILD OK (unit f); StreamDigest
 against main identical (36 of 36). The fix is `988fe1a`.
+
+2026-10-29. BergDB's Core in C (item 012, done): a clone of the Core
+Layer that writes Java's stream byte for byte, Levels 0 to 4, with an API
+like `Db`'s public methods (`items/012-bergdb-c/c/`, `bergdb.h`). Java
+opens C's databases and C opens Java's; on the cross sets (446 workloads,
+1,357 crash cuts, 1,784 budget runs, runs in turns), 1,800 random
+workloads, power-loss images and a 10M-key database, every byte is equal.
+Written by Claude (Opus 5.5) agents in about 21 hours, unattended for
+most of it; the stream's format written down in 012-02. The port found
+Java bugs registered as 005-69 to 005-75, among them 005-70: the STM's
+`KeyModSet` is empty after a start. Report: 012-16, section 0.

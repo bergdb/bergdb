@@ -2,19 +2,20 @@
 ========================
 
 Created 2026-10-27 by Claude (Opus 5.5, Claude Code), with 012-01, for
-Frans Lundberg. **Status: in progress.** Section 0 is an interim report,
-written by the conductor (session f1-0f) on 2026-10-29 at 05:08, after
-the first unattended run (2026-10-28 13:43 to 2026-10-29 07:00); the final
-report follows 012-14. Approved with 012-01 by Frans's go (012-01, 9.1).
+Frans Lundberg. **Status: done** (2026-10-29, 10:49). Section 0 is the
+report, written by the conductor (session f1-0f): first as an interim
+report at 05:08 on 2026-10-29, then completed after 012-14, with section
+0.7 on how the work was done, at Frans's request. Sections 1 to 6 are the
+plan as approved with 012-01 by Frans's go (012-01, 9.1).
 Phase E (012-01, section 8). Effort: high. After: 012-14, 012-15.
 
 
-# 0. Interim report, 2026-10-29
+# 0. The report
 
 **In short.** BergDB's Core runs in C: Levels 0 to 4, every byte equal
-to Java's. 012-02 to 012-13 and 012-15 are done, in 15 hours of
-unattended work (two to four subagents at a time, xhigh and max effort);
-012-14 (robustness) has had a first pass; this report is 012-16's draft.
+to Java's, and each implementation opens the other's databases. 012-02 to
+012-16 are done: the clone itself (to M4) in 13.5 hours of unattended work
+from Frans's go, and the whole item in 21 hours (section 0.7).
 The C code is in `c/` (21,080 lines of C in `src/`, 16,146 code lines by
 006-08's count; 17,049 lines of tests), built and gated by
 `c/before-commit.sh` (`C BEFORE COMMIT OK`, about 150 s); `c/readme.md`
@@ -53,8 +54,14 @@ has the guide.
    21, `-Wconversion`), 345 unit tests, 23 functional tests, the
    examples, the quick cross set, under AddressSanitizer and
    UndefinedBehaviorSanitizer, `leaks` on the release build, the
-   allocator's count 0 after every test, allocation failures in turn. The
-   deep set passes (item 1).
+   allocator's count 0 after every test, allocation failures in turn
+   (5,991 runs in 012-14, 0 bad; 379 in the gate). The deep set passes
+   (item 1). Beyond it (012-14): 1,800 random workloads, power loss
+   through an I/O seam (5,756 images of C's runs and 2,753 of Java's,
+   recovered alike, no acknowledged byte lost), long runs to a million
+   transactions, gcc 16 without warnings. Since about 08:30 on
+   2026-10-29 macOS's `leaks` hangs on F53 for every program, so the last
+   gates ran with a stand-in that skips only the leak check.
 7. **Scale.** `cross.sh scale` (10M keys) with C writing side B
    (2026-10-29, 05:02): the same bytes as Java's, each side's dumps of
    both databases equal, Java's with its audit (257 s). C at a 4 MB
@@ -65,7 +72,7 @@ has the guide.
    to 0.68 (small budgets), starts 1.9 to 2.4 times faster (10M keys,
    warm, 50 MB: 0.99 s against 2.42 s), needs 3 to 7 percent less memory
    per key; 196 kB of machine code at `-O2` (LMDB: 53 kB).
-9. **Reported**: this section, the draft.
+9. **Reported**: this section.
 
 ## 0.2 The milestones
 
@@ -75,7 +82,8 @@ has the guide.
 | M2: C reads Java's databases | 21:40 | `dabaa50` |
 | M3: Levels 0 to 2, C writes and restarts as Java | 23:26 | `e0d5e15`, `e1507b9` |
 | M4: Levels 3 and 4 | 2026-10-29 03:17 | `ca9e583`, `afb47e5` |
-| Phase E so far: API and durability, measurements | 04:00, 05:06 | `0c910bc`, `9104af2` |
+| Phase E: API and durability, measurements | 04:00, 05:06 | `0c910bc`, `9104af2` |
+| 012-11's Q1 (the forced cut), 012-14 done, this report | 09:50, 10:49, 10:49 | `633ad86`, `18a5b2b` |
 
 ## 0.3 Departures from Java
 
@@ -141,23 +149,39 @@ Java's behaviour). Points 2, 6 and 7 of this section were not in that
 list. And: "Continue with 012 until it is finished. Run agents with Opus
 5.5 High to preserve usage."
 
-## 0.6 Left
+## 0.6 The format document, the code's place, and next steps
 
-* **012-14**, robustness: a first pass ran 05:00 to 06:20. 1,800 random
-  workloads over wide parameters (916 with reclaim, 2,652 crash cuts,
-  3,600 budget runs): all byte for byte equal to Java's. Long runs up to
-  1M transactions with 50 restarts (2.49 GB written): Java's bytes, no
-  sanitizer report, flat memory; one leak in the `bergdb-run` tool found
-  and fixed. gcc 16: the tests pass without `-Werror`. 2,199 starts of
-  corrupt variants: C refuses as Java but for the flipped-time case
-  above. Left: power loss through an I/O seam (designed, not built),
-  allocation failures in turn as a set, the open points above, a small
-  eviction lag (20 kB over budget plus pinned in one run).
-* **012-16**, this report's final version, after 012-14, with 012-01's
-  next steps (section 1, item 7 below) and the log's entry in
-  `docs/log.md`.
-
-
+* **The format document** stays 012-02 in this item (D6b changed by
+  Frans, 2026-10-29: "Do not move the format document"). Being in a done
+  item, it is history and is not kept up to date with Java; a change of
+  Java's bytes after `fd8f513` is not in it.
+* **The code** stays in `c/` (D1, "indefinitely for now"). As 012 is
+  done, the C clone follows Java no further by itself: a change of Java's
+  bytes will make C's cross tests fail, but nothing runs them unless
+  someone does. To keep C in step, the options are: (a) run the C gate in
+  `night.sh` (about 3 minutes; it builds Java's Core Layer for the cross
+  tests), so that a Java change that breaks equality shows the next
+  morning; (b) the C gate in `java/before-commit.sh`, which keeps them in
+  step at every commit at about 3 minutes' cost; (c) nothing until a new
+  item takes C up. Recommended: (a).
+* **Next steps**, each a possible item, with a rough size from 012's
+  pace:
+  1. **Small fixes in C** (hours): `-flto` in the release build (+15 to
+     +34 percent, 012-15), a bounded eviction sweep when D is over the
+     budget, a faster close (an arena), the flipped record time with
+     Java's 005-75 fix.
+  2. **Java's fixes found by the port**: 005-70 (the STM after a start,
+     a correctness bug), then 005-69 and 005-71 to 005-75; C follows each.
+  3. **Linux** (a day or two): the platform module (`plat`) is the only
+     one that knows macOS; `F_FULLFSYNC` becomes `fdatasync`, and the
+     cross sets run there.
+  4. **An embedded target** (006-08's open questions): memory and writes
+     at small startup distances, raw flash, 005-60's block storage. The
+     C clone's 150 to 200 kB of code and its exact memory count are a
+     start.
+  5. **Readers in other threads**, which C left out (one caller).
+  6. **A C trace exporter** for the Lean checker (`docs/trace-format.md`),
+     so that C's runs are checked against the model directly.
 
 ## 0.7 How the work was done
 
@@ -193,7 +217,7 @@ in `/Users/f/fl/bench/012/report-data.md` and its state file in
 | 17:09 to 23:26 | Phase C: the write path, startup and recovery (M3) |
 | 22:32 to 03:17 | Phase D: reclaim, the memory budget (M4) |
 | 2026-10-29, 02:16 to 06:14 | Phase E: the rest of the API, the measurements, robustness's first pass, the interim report; `news.md` at 06:17 |
-| 07:35 to 12:00 | Frans's answers; the forced cut (012-11, Q1); robustness's rest; this report |
+| 07:35 to 10:49 | Frans's answers; the forced cut (012-11, Q1); robustness's rest (012-14 done 10:49); this report; 012 done |
 
 The C that reads and writes Java's bytes, Levels 0 to 4, took 13.5 hours
 from the go (13:43 to 03:17); with the API, the measurements and a first
@@ -310,7 +334,8 @@ the agents beside it, the hard stop, and the report's length.
 The plan's usage, as Claude Code's `/usage` reports it for the whole
 account: the week went from 49 percent at 13:45 on 2026-10-28 to 65
 percent at 20:53, 76 percent at 01:52, 84 percent at 07:35 and 88 percent
-at 09:51 on 2026-10-29: about 39 points of a week in 20 hours. Other
+at 09:51 and 91 percent at 10:49 on 2026-10-29 when 012 was done: about
+42 points of a week in 21 hours. Other
 sessions worked in the same hours (the 006-10 session until about 21:00,
 and its night's measurements), so 012's own share is somewhat less; the
 tool gives no figure per session. The 5-hour window was the limit that
