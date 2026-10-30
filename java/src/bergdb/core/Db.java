@@ -130,7 +130,7 @@ public class Db implements AutoCloseable {
      */
     private final ReadSync readSync;
     
-    private final IKeyModSet keyModSet;
+    private final KeyModSet keyModSet;
     
     private final StorageManager storageManager;
     
@@ -695,6 +695,7 @@ public class Db implements AutoCloseable {
         ArrayList<StoredTrans> transactions = readTransactions(startupPos);
         
         setLastTransTimeOfDbClock(transactions);
+        keyModSet.setFirstTime(transactions.get(transactions.size() - 1).tt);
         
         startDb(transactions);
         
@@ -1778,6 +1779,8 @@ public class Db implements AutoCloseable {
      *             because one or more KVs with a key in the read key hash set,
      *             were changed after the read time of the transaction; 
      *             the STM approach.
+     *             Also if the read time is outside the STM's retained coverage, including
+     *             before the last recovered commit at startup (bergdb 005-70, option A).
      * @throws StreamFormatException
      *             If the database stream is corrupt, while the database is stopping; else
      *             the cause of a DbFailedException.

@@ -1,0 +1,117 @@
+005-70 validation, 2026-10-30
+
+Regression on original implementation (expected failure)
+--------------------------------------------------------
+
+======== NanotestForBergDB: unit ========
+On f53 261030 12:05, OpenJDK 64-Bit Server VM 27
+bergdb.core.DbTesterRestart FAILED! bergdb.core.DbTesterRestart.testStmAfterRestart
+java.lang.AssertionError: committed a stale read set at 10
+	at bergdb.core.DbTesterRestart.assertStmRefused(DbTesterRestart.java:96)
+	at bergdb.core.DbTesterRestart.testStmAfterRestart(DbTesterRestart.java:70)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+
+bergdb.dev.NanotestForBergDB .
+FAILURE, total: 2, failed: 1. Time: 0.0 s.
+
+Focused Java regressions after fix
+----------------------------------
+
+======== NanotestForBergDB: unit ========
+On f53 261030 12:05, OpenJDK 64-Bit Server VM 27
+bergdb.core.DbTesterRestart .
+bergdb.core.KeyModSet .
+bergdb.dev.NanotestForBergDB .
+SUCCESS, 3 successful tests in 0.0 s.
+
+java/before-commit.sh
+---------------------
+Deps: 9 packages, all as package.html allows
+Unit: SUCCESS, 1073 successful tests in 40.1 s.
+F:    SUCCESS, 78 successful tests in 89.0 s.
+BEFORE COMMIT OK (94 s)
+
+java/stress/level2.sh (full)
+----------------------------
+1. Unit tests
+SUCCESS, 1073 successful tests in 9.7 s.
+2. RestartStress, random configurations
+   random-0: Done: 50 rounds, 0 failures, 25 s.
+   random-1: Done: 50 rounds, 0 failures, 24 s.
+   random-2: Done: 50 rounds, 0 failures, 23 s.
+   random-3: Done: 50 rounds, 0 failures, 26 s.
+3. RestartStress, small and default startup distances
+   sd1000-keys50-node14: Done: 10 rounds, 0 failures, 7 s.
+   sd1000-keys50-node30: Done: 10 rounds, 0 failures, 6 s.
+   sd1000-keys50-node62: Done: 10 rounds, 0 failures, 7 s.
+   sd1000-keys50-node8: Done: 10 rounds, 0 failures, 8 s.
+   sd1000-node14: Done: 10 rounds, 0 failures, 16 s.
+   sd1000-node30: Done: 10 rounds, 0 failures, 17 s.
+   sd1000-node62: Done: 10 rounds, 0 failures, 20 s.
+   sd1000-node8: Done: 10 rounds, 0 failures, 17 s.
+   default-disk: Done: 2 rounds, 0 failures, 599 s.
+4. RestartInvariance
+   inv-default-100MB: stream identical, all checks OK
+   inv-every1: stream identical, all checks OK
+   inv-idle-1: stream identical, all checks OK
+   inv-idle-2: stream identical, all checks OK
+   inv-sd100: stream identical, all checks OK
+   inv-sd1000-node8: stream identical, all checks OK
+   inv-sd10000-node14: stream identical, all checks OK
+   inv-sd100000-node62: stream identical, all checks OK
+5. CrashTest, the stream cut at random positions
+   crash-0: Done: 5 rounds, 0 failures, 6 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-1: Done: 5 rounds, 0 failures, 6 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-2: Done: 5 rounds, 0 failures, 6 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-3: Done: 5 rounds, 0 failures, 6 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-node8: Done: 5 rounds, 0 failures, 7 s. Cuts where a transaction ends at a meta block's position: 0.
+6. BryanRepro, the bug report of 2015 (restarts with deletes and reclaim)
+   bryan: Done: 40 cycles, 0 failures, 44 s.
+7. Conformance with the Lean model
+   a2a3-1: transactions 3000: A2, A3, A5, marking, TREE, A6' and A-COPY OK; adoptions below the old parent (A6' allows them, A6 not) 0
+   a2a3-2: transactions 500: A2, A3, A5, marking, TREE, A6' and A-COPY OK; adoptions below the old parent (A6' allows them, A6 not) 1
+   a2a3-3: transactions 6000: A2, A3, A5, marking, TREE, A6' and A-COPY OK; adoptions below the old parent (A6' allows them, A6 not) 0
+   conformance: traces: 70, TRACECHECK OK: 70
+LEVEL 2 OK
+
+StreamDigest all: pre-fix vs fixed build, same harness
+------------------------------------------------------
+DIGESTS IDENTICAL (36 of 36)
+
+Original probe: plain
+---------------------
+stm plain: the transaction that read /k at 10000000000001: refused (RerunException), stream 472
+
+Original probe: restart
+-----------------------
+stm restart: the transaction that read /k at 10000000000001: refused (RerunException), stream 472
+
+C keymod unit tests (sanitizers)
+--------------------------------
+UNIT OK: 12 tests, 207 checks
+
+C API restart regression (sanitizers)
+-------------------------------------
+FUNC OK: 1 tests, 62 checks
+
+C before-commit.sh (outside sandbox for macOS leaks)
+----------------------------------------------------
+  build: ok (29 s) BUILD OK: /Users/f/fl/repos/bergdb/items/012-bergdb-c/c/build/release and /Users/f/fl/repos/bergdb/items/012-bergdb-c/c/build/test
+  rules: ok (0 s) rules ok: 44 modules
+  unit: ok (8 s) UNIT OK: 347 tests, 9455474 checks
+  unit-release: ok (9 s) UNIT OK: 346 tests, 9455448 checks
+  func: ok (26 s) FUNC OK: 26 tests, 43131 checks
+  func-release: ok (55 s) FUNC OK: 26 tests, 43131 checks
+  cross: ok (101 s) CROSS quick OK: 22 workloads, 82 crash cuts, 85 corrupt variants, 2 in turns, 44 budget runs, the planted difference at 1164 was found and explained; side B: /Users/f/fl/repos/bergdb/items/012-bergdb-c/c/build/test; 101 s
+  write: ok (4 s) WRITECHECK OK: 22 directories, 8855 records, 8828 takes replayed, 8091 transactions taken, 49083 index nodes in order, 0 errors; crash variants: 82 directories, 10441 records, 10341 takes replayed; reappend: 19 directories equal, 3 skipped (a reclaim cut); clock: 19 workloads' times equal, 3 skipped
+  allocfail: ok (24 s) ALLOCFAIL OK: 379 runs, each allocation number failed once: 286 refused (NOMEM, then the same text and bytes), 90 failed databases (P7, opened again), 2 absorbed (no call failed; the same text and bytes), the allocator's count 0 after every close
+  examples: ok (1 s) EXAMPLES OK
+C BEFORE COMMIT OK (257 s)
+
+cmp of the two original-probe stream files: exit 0 (identical).

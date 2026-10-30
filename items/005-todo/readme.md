@@ -34,7 +34,6 @@ Open
 | [005-60](60-block-storage.md) | Investigate | Block storage: the stream on a raw block device without a file system, as a ring of a fixed size, kept until the room is needed (retention by space); feasible in Java? And on a Linux device in a C or C++ clone. Frans's idea | open |
 | [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Measured 2026-10-28 night, quiet: only with 8 threads, on `eaec93e` (005-46) and `4f7cd60` alike; no load waited for a batch; the machine at 9.6 of 10 cores, and the loads' entries into `evictorLock` in `Eviction.wake` (78,000 a second) a fifth of the gets over 10 ms. Frans decided 2026-10-29: the fix, in `main` (`988fe1a`): a load skips that monitor when a request to the eviction thread is pending (an untimed count with 8 readers: 116,000 to 128,000 entries a second before, about 570 after); the rest accepted as a full machine. Open until the thread sweep reruns with the fix in a quiet block | open |
 | [005-69](69-system-clock-promise.md) | Fix | `SystemClock`, `DbBuilder`'s default clock, promises strictly increasing times but never sets its last time, so it returns equal times within a millisecond and earlier ones when the system clock is set back. No harm: `DbClock` makes transaction and current times increase itself. Options: make the code keep the promise (one line and a test), or the comment say what the code does. Found by 012's planning (012-01, 4.4) | open |
-| [005-70](70-keymodset-after-start.md) | Fix | The STM forgets the writes before a start: `KeyModSet` is new and empty after a start (first time −1), so a transaction whose read time is before the start, and whose read key was written after that time, commits where without the restart it is refused: a gap in serializability, and a restart that changes the stream's bytes (P2). Found by 012-02's audit (C4), with a probe. Recommended: the new set's first time at the last transaction's, so the "too old" path refuses | open |
 | [005-71](71-dbclock-read-time-after-start.md) | Fix | `DbClock` forgets `lastReadTime` at a start, so with a clock that has not moved, `currentTime()` before a restart changes the next transaction's time by one unit and the stream's bytes (P2). Found by 012-02's audit (C3), with a probe. Recommended: no code change, a note in P2 | open |
 | [005-72](72-file-layout-after-cut.md) | Decide | The files after reclaim's physical cut depend on timing (when the durable length reached the decision), while the bytes from the decided cut do not; a restart also changes the layout (not a bug). The C clone, without threads, cannot match Java's files after a cut. Frans, 2026-10-29: A for 012's cross tests (done); the entry stays open to consider B, a layout from the decided cut | open |
 | [005-73](73-db-api-small-findings.md) | Fix | Seven small findings in `Db`'s API from 012-03's mapping, none changing the bytes: `StartInfo.startupDistance` always −1, `getCachePutSize` a constant, the dirty fractions only decay and turn NaN, `setReclaimInternalFraction` accepts NaN, `close()` drops the last flush's `IOException`, `Endpoint`'s comment says non-inclusive, dead fields | open |
@@ -52,6 +51,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-70](70-keymodset-after-start.md) | Fix | STM startup boundary | done | 2026-10-30 |
 | [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered. Runs of 2026-10-28 on F53 and s1: 50 ms saves 11 to 35 % of the forces of writers that do not sync, with the same throughput, latency and CPU; 100 ms costs 13 to 16 % of the throughput at 1 KB values (the quarter rule seen only at a wake, now 005-76); idle and trickle energy the same; twice the unsynced data at risk at 50 ms (question 5). Decided (Frans, 2026-10-29): 50 ms. `StorageManager.DEFAULT_BUFFER_TIME` 20 to 50, its comment, the docs, `releases/next.md`; StreamDigest identical; the four gates pass | done | 2026-10-29 |
 | [005-68](68-fix-take-stream-length.md) | Fix | `Db.store` passes the stream's `getLength()` to `TransSeq.take`, where the Lean model's argument is where the record begins, `getNextPos()`: after a record that ends on a 200,000-byte boundary they would differ by the meta block's 128 bytes, and Java could leave T3's bound (007-08, review, point 1). Dropped: the finding does not hold. `RecoverableStream.append` writes a meta block together with the record that ends at its position, and recovery fills out one that a crash cut, so when `take` is called the two are equal: by reading, and by running an instrumented copy (0 of 5,524,901 calls differ, 229 after a record that ended exactly on a boundary). No change; the one-line change would pass the same value | dropped | 2026-10-28 |
 | [005-53](53-startup-distance-on-the-fly.md) | Investigate | The startup distance on the fly: the Pub API could not change it for an existing database (against 010-P6); the core could since 2013-04, through JMX only. Investigated (the history, `Reclaim`'s fault fixed as 005-61, the decrease measured in 007-06 and 007-07) and decided after D4:B (Frans, 2026-10-28): option E, `Database.setStartupDistanceInMb` and `getStartupDistanceInMb`, kept in the stream's meta blocks as before, one call, no steps and no `Job`; a call with the value in force writes nothing, a refused call changes nothing. Implemented with 005-52 (`fd8f513`); StreamDigest identical | done | 2026-10-28 |
@@ -383,8 +383,9 @@ Files
   `SystemClock` does not keep its promise of strictly increasing times:
   the issue, why no database depends on it, the options; open.
 * [70-keymodset-after-start.md](70-keymodset-after-start.md). 005-70, the
-  STM forgets the writes before a start: the issue, the probe, the
-  options; open.
+  STM startup boundary: the issue, lifecycle clarification, option A,
+  Java and C fixes, regressions and validation; done. Command outputs in
+  [70-keymodset-after-start/](70-keymodset-after-start/).
 * [71-dbclock-read-time-after-start.md](71-dbclock-read-time-after-start.md).
   005-71, `DbClock` forgets the last read time at a start: the issue, the
   probe, the options; open.
@@ -1525,3 +1526,10 @@ back in Open.
 setBudget split\" since I want to finish and I don't remember this
 one."): `setBudget`'s race, fixed inside 005-65's commit `988fe1a`, with
 options for a record and a test; kind decide, registered only.
+
+2026-10-30. 005-70 done, option A accepted by Frans: the STM coverage
+begins at the last recovered commit, and an older read set is refused.
+Java and C fixed, with real-read restart regressions; the Java test fails
+before the fix. BEFORE COMMIT OK, LEVEL 2 OK (full, 70 conformance traces),
+C BEFORE COMMIT OK; StreamDigest identical (36 of 36). The original probe
+now refuses both runs, whose 472-byte streams are identical.

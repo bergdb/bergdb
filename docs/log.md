@@ -1587,3 +1587,10 @@ most of it; the stream's format written down in 012-02. The port found
 Java bugs registered as 005-69 to 005-75, among them 005-70: the STM's
 `KeyModSet` is empty after a start. The release build links with `-flto`
 (012-17): 1.08 to 1.38 times faster, the same bytes. Report: 012-16.
+
+2026-10-30. 005-70: STM coverage starts at the last recovered commit.
+A Core transaction with an older read set is refused; before, a new
+`KeyModSet` could accept it despite a conflicting write before reopening.
+Equality at the boundary is covered, including after the first unrelated
+write. Java and C fixed, with regressions. BEFORE COMMIT OK, LEVEL 2 OK
+(full), C BEFORE COMMIT OK; StreamDigest identical (36 of 36).

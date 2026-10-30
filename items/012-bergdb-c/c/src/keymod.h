@@ -7,10 +7,9 @@
  * written after its read time (Db.stmCheckConflicts); every committed
  * write adds its key's hash and time. Prefix kms_.
  *
- * As Java's, a set is in memory only, and a start makes a new one, whose
- * first bin is empty with firstTime -1: it then holds nothing before the
- * start, and answers "not modified" for any read time older than it
- * (012-02, 10.3, C4; Java bug 005-70, which C follows until Java is fixed).
+ * As Java's, a set is in memory only. Startup sets its first time to the
+ * last recovered commit's time (bergdb 005-70, option A); earlier read
+ * times cannot be validated. The first added pair preserves that boundary.
  * A read time older than every bin's first time is answered "modified"
  * ("Too old time, not enough information, we must be on the safe side").
  *
@@ -60,11 +59,14 @@ enum err_code kms_init(struct kms *s, struct mem *m, struct err *e);
  * "IllegalArgumentException"); asserted above 0. */
 enum err_code kms_init_size(struct kms *s, struct mem *m, int32_t totalSize, struct err *e);
 
+/* Sets a new, empty set's coverage boundary: KeyModSet.setFirstTime. */
+void kms_set_first_time(struct kms *s, int64_t time);
+
 /* Frees the bins. */
 void kms_free(struct kms *s);
 
-/* KeyModSet.getFirstTime: the first time of the oldest bin, -1 if it is
- * empty. */
+/* KeyModSet.getFirstTime: the first time of the oldest bin, -1 before
+ * initialization or the first add. */
 int64_t kms_first_time(const struct kms *s);
 
 /* KeyModSet.modifiedAfter: whether the key of 'hash' was written after

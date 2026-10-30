@@ -11,6 +11,11 @@ empties this file.
 API changes
 -----------
 
+* **STM read sets after reopening** (bergdb 005-70, 2026-10-30). The Core
+  refuses a transaction with a read dependency whose snapshot predates
+  the last recovered commit. Before, the empty STM history could accept
+  it despite a conflicting write before the close. A snapshot at the last
+  recovered commit is covered. The stream format is unchanged.
 * **`stop()` or `close()` is required** (bergdb 005-55, 2026-10-27,
   `cec0032`). `Db.finalize()` is gone, with nothing in its place: nothing
   stops a database that the application drops. Until 2026.1,

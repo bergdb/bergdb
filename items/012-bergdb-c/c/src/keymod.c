@@ -99,7 +99,7 @@ static bool bin_add(struct mem *m, struct kms_bin *bin, int64_t time, int64_t ha
     /* Java counts the pair and sets firstTime first; the same, as nothing
      * above reads them. Here after the allocations, so that a failed one
      * leaves the bin as it was. */
-    if (bin->size == 0) {
+    if (bin->size == 0 && bin->firstTime == -1) {
         bin->firstTime = time;
     }
     bin->size++;
@@ -144,6 +144,12 @@ enum err_code kms_init_size(struct kms *s, struct mem *m, int32_t totalSize, str
 
 enum err_code kms_init(struct kms *s, struct mem *m, struct err *e) {
     return kms_init_size(s, m, KMS_DEFAULT_SIZE, e);
+}
+
+void kms_set_first_time(struct kms *s, int64_t time) {
+    assert(time >= 0);
+    assert(s->bins[0]->size == 0 && s->bins[0]->firstTime == -1 && s->bins[1] == NULL);
+    s->bins[0]->firstTime = time;
 }
 
 void kms_free(struct kms *s) {

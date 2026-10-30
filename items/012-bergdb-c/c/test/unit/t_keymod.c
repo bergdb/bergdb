@@ -1,5 +1,5 @@
 /* Unit tests of keymod (bergdb 012-09, part 1): Java's @Nano tests of
- * KeyModSet, ported, what a new set forgets (005-70), the bins' turnover,
+ * KeyModSet, ported, the startup boundary (005-70), the bins' turnover,
  * and the allocation-failure runs. */
 #include "test.h"
 #include "keymod.h"
@@ -160,17 +160,26 @@ TEST(keymod_bad_size) {
     CHECK_MEM_ZERO(&km);
 }
 
-/* A new set (a start, 005-70; 012-02, 10.3, C4): the first bin is empty
- * with firstTime -1, so no read time is too old and nothing is modified;
- * the writes before the start are forgotten. */
-TEST(keymod_new_set_forgets) {
+/* KeyModSet.testStartupBoundary: the last recovered commit, preserved on
+ * the first add and eventually dropped by normal bin turnover (005-70). */
+TEST(keymod_startup_boundary) {
     struct kms s;
-    REQUIRE(new_set(&s, KMS_DEFAULT_SIZE) != NULL);
-    CHECK_EQ(kms_first_time(&s), -1);
-    CHECK(!kms_modified_after(&s, 0, 5));
-    CHECK(!kms_modified_after(&s, 1, 5));
-    CHECK(!kms_modified_after(&s, INT64_MAX, 5));
-    CHECK(kms_modified_after(&s, -2, 5));      /* below -1 only: too old */
+    REQUIRE(new_set(&s, 8) != NULL);
+    kms_set_first_time(&s, 100);
+    CHECK(kms_modified_after(&s, 99, 5));
+    CHECK(!kms_modified_after(&s, 100, 5));
+    CHECK(!kms_modified_after(&s, 101, 5));
+    CHECK_EQ(kms_add(&s, 110, 7, &ke), ERR_OK);
+    CHECK_EQ(kms_first_time(&s), 100);
+    CHECK(!kms_modified_after(&s, 100, 5));
+    CHECK(kms_modified_after(&s, 100, 7));
+    CHECK(!kms_modified_after(&s, 110, 7));
+    for (int i = 1; i <= 8; i++) {
+        CHECK_EQ(kms_add(&s, 110 + i, 7, &ke), ERR_OK);
+    }
+    CHECK_EQ(kms_first_time(&s), 112);
+    CHECK(kms_modified_after(&s, 100, 5));
+    CHECK(!kms_modified_after(&s, 112, 5));
     kms_free(&s);
     CHECK_MEM_ZERO(&km);
 }
@@ -246,7 +255,7 @@ const struct test keymod_tests[] = {
     TEST_ENTRY(keymod_bins1),
     TEST_ENTRY(keymod_bins2),
     TEST_ENTRY(keymod_bad_size),
-    TEST_ENTRY(keymod_new_set_forgets),
+    TEST_ENTRY(keymod_startup_boundary),
     TEST_ENTRY(keymod_default_turnover),
     TEST_ENTRY(keymod_failure_runs),
     TEST_END

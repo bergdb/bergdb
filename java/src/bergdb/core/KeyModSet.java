@@ -29,6 +29,16 @@ public class KeyModSet implements IKeyModSet {
         bins = new Bin[BIN_COUNT];
         bins[0] = new Bin(totalSize / BIN_COUNT);     // The other bins set to null to start with.
     }
+
+    /**
+     * Sets a new, empty set's coverage boundary to the last recovered commit's time.
+     * Earlier reads cannot be validated (bergdb 005-70, option A).
+     */
+    void setFirstTime(long time) {
+        assert time >= 0;
+        assert bins[0].size == 0 && bins[0].firstTime == -1 && bins[1] == null;
+        bins[0].firstTime = time;
+    }
     
     /**
      * Returns the first (oldest) time that is currently handled.
@@ -135,7 +145,7 @@ public class KeyModSet implements IKeyModSet {
             assert hash >= 0;
             assert !isFull();
             
-            if (size == 0) {
+            if (size == 0 && firstTime == -1) {
                 firstTime = time;
             }
             size++;
@@ -206,6 +216,27 @@ public class KeyModSet implements IKeyModSet {
 
     
     // ======== Tests ========
+
+    @Nano
+    public static void testStartupBoundary() {
+        KeyModSet s = new KeyModSet(8);
+        s.setFirstTime(100);
+        Assert.assertTrue(s.modifiedAfter(99, 5));
+        Assert.assertFalse(s.modifiedAfter(100, 5));
+        Assert.assertFalse(s.modifiedAfter(101, 5));
+        s.add(110, 7);
+        Assert.assertEquals(100L, s.getFirstTime());
+        Assert.assertFalse(s.modifiedAfter(100, 5));
+        Assert.assertTrue(s.modifiedAfter(100, 7));
+        Assert.assertFalse(s.modifiedAfter(110, 7));
+        // Once the initialized bin ages out, normal coverage limits take over.
+        for (int i = 1; i <= 8; i++) {
+            s.add(110 + i, 7);
+        }
+        Assert.assertEquals(112L, s.getFirstTime());
+        Assert.assertTrue(s.modifiedAfter(100, 5));
+        Assert.assertFalse(s.modifiedAfter(112, 5));
+    }
     
     @Nano
     public static void test1() {

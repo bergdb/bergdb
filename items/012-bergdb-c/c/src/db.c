@@ -616,6 +616,7 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
         ts_startup_pos_set(&db->startup_pos, res.startup_pos);
         ts_startup_pos_release_for_evict(&db->startup_pos);
         dbclock_set_last_trans_time(&db->clock, res.last_trans_time);
+        kms_set_first_time(&db->key_mod_set, res.last_trans_time);
         create_put_and_get_data(db);
         info->start_pos = res.start_pos;
         info->startup_distance = -1;

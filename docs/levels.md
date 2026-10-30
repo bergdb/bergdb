@@ -78,6 +78,9 @@ environment has failed, or that has a bug, does not run on.
   the transaction (005-17), the index nodes it can make dirty (005-31) and
   the clock (005-18). The Pub API runs the application's code before it too.
   A refused transaction leaves the database as it was, and it goes on.
+  The STM also refuses a read set whose snapshot predates the last
+  recovered commit at startup: its in-memory write history cannot validate
+  it (005-70). A snapshot at that commit is covered.
 * After the go point nothing refuses the transaction and nothing is undone.
   When something throws there (the environment or a bug: a read error or a
   corrupt node when a put loads an index node, an append error, an `Error`,

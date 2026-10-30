@@ -79,6 +79,67 @@ static int put_keys(bergdb_db *db, struct bergdb_test_clock *clock, int64_t tt, 
     return rc;
 }
 
+/* Real read results across close/open, through the API (bergdb 005-70). */
+TEST(api_stm_after_restart) {
+    for (int mode = 0; mode < 2; mode++) {
+        char dir[1024], errbuf[BERGDB_ERRBUF_SIZE];
+        temp_dir(dir, sizeof dir);
+        REQUIRE(dir[0] != '\0');
+        struct bergdb_mem m = {0};
+        struct bergdb_test_clock clock = {0};
+        struct bergdb_options o;
+        options(&o, &clock, &m);
+        o.startup_distance = mode == 0 ? 100 : 1000000;
+        bergdb_db *db;
+        REQUIRE(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_OK);
+        struct bergdb_executed ex;
+        CHECK_EQ(put_keys(db, &clock, 10, 1, 2, &ex), BERGDB_OK);
+        bergdb_read *rd;
+        REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+        struct bergdb_one one;
+        uint8_t key[4], out[2];
+        CHECK_EQ(bergdb_ikey_to_bkey((const uint8_t *) "/k/1", 4, key), BERGDB_OK);
+        CHECK_EQ(bergdb_ikey_to_bkey((const uint8_t *) "/j", 2, out), BERGDB_OK);
+        CHECK_EQ(bergdb_get_one(db, rd, BERGDB_LATEST, key, 4, &one), BERGDB_OK);
+        CHECK(one.value != NULL && one.value_len == 2 && memcmp(one.value, "v1", 2) == 0);
+        int64_t old_read_time = one.actual_lookup_time;
+        bergdb_trans *t;
+        REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+        bergdb_test_clock_set(&clock, 20);
+        CHECK_EQ(bergdb_trans_put(t, key, 4, (const uint8_t *) "new", 3), BERGDB_OK);
+        CHECK_EQ(bergdb_execute(db, t, &ex), BERGDB_OK);
+        bergdb_trans_free(t);
+        /* The last recovered commit has no writes. */
+        CHECK_EQ(put_keys(db, &clock, 30, 0, 0, &ex), BERGDB_OK);
+        CHECK_EQ(bergdb_get_one(db, rd, BERGDB_LATEST, key, 4, &one), BERGDB_OK);
+        int64_t boundary = one.actual_lookup_time;
+        bergdb_read_free(rd);
+        CHECK_EQ(bergdb_close(db), BERGDB_OK);
+        CHECK_EQ(m.live_total, 0);
+
+        REQUIRE(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_OK);
+        REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+        CHECK_EQ(bergdb_trans_key_read(t, key, 4), BERGDB_OK);
+        CHECK_EQ(bergdb_trans_lookup_time(t, old_read_time), BERGDB_OK);
+        CHECK_EQ(bergdb_trans_put(t, out, 2, (const uint8_t *) "result", 6), BERGDB_OK);
+        struct bergdb_stats before, after;
+        CHECK_EQ(bergdb_stats(db, &before), BERGDB_OK);
+        CHECK_EQ(bergdb_execute(db, t, &ex), BERGDB_RERUN);
+        CHECK_EQ(bergdb_stats(db, &after), BERGDB_OK);
+        CHECK_EQ(after.stream_length, before.stream_length);
+        CHECK_EQ(bergdb_trans_lookup_time(t, boundary), BERGDB_OK);
+        CHECK_EQ(bergdb_execute(db, t, &ex), BERGDB_OK);
+        /* The first unrelated write preserves coverage back to the boundary. */
+        CHECK_EQ(bergdb_execute(db, t, &ex), BERGDB_OK);
+        CHECK_EQ(put_keys(db, &clock, 40, 1, 2, &ex), BERGDB_OK);
+        CHECK_EQ(bergdb_execute(db, t, &ex), BERGDB_RERUN);
+        bergdb_trans_free(t);
+        CHECK_EQ(bergdb_close(db), BERGDB_OK);
+        CHECK_EQ(m.live_total, 0);
+        remove_dir(dir);
+    }
+}
+
 TEST(api_create_and_read) {
     char dir[1024];
     temp_dir(dir, sizeof dir);
@@ -483,6 +544,7 @@ TEST(api_read_nomem) {
 }
 
 static const struct test api_tests[] = {
+    TEST_ENTRY(api_stm_after_restart),
     TEST_ENTRY(api_create_and_read),
     TEST_ENTRY(api_refusals),
     TEST_ENTRY(api_transformations),

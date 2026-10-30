@@ -555,7 +555,9 @@ int bergdb_trans_delete(bergdb_trans *t, const uint8_t *key, size_t key_len);
 /*
  * Adds the key to the transaction's read set (Trans.Builder.keyRead): the
  * execute is refused with BERGDB_RERUN if a transaction after the lookup
- * time (bergdb_trans_lookup_time) changed the key. Errors as
+ * time (bergdb_trans_lookup_time) changed the key, or the time is outside
+ * the STM's coverage, including before the last recovered commit at open
+ * (bergdb 005-70, option A). Errors as
  * bergdb_trans_put.
  */
 int bergdb_trans_key_read(bergdb_trans *t, const uint8_t *key, size_t key_len);

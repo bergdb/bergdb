@@ -13,6 +13,8 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import bergdb.common.StringUtil;
+import bergdb.dag.GetData;
+import bergdb.dag.Keys;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Node;
 import bergdb.dag.NodeVisitor;
@@ -37,6 +39,66 @@ import bergdb.stream.MemoryStream;
  * @author Frans Lundberg
  */
 public class DbTesterRestart {
+
+    /** Real read results carried to a new Db: bergdb 005-70, option A. */
+    @Nano
+    public static void testStmAfterRestart() {
+        for (int startupDistance : new int[] {100, 1000000}) {
+            MemoryStream stream = new MemoryStream();
+            CoreTestClock clock = new CoreTestClock();
+            long oldReadTime;
+            long boundary;
+            try (Db db = Db.builder().testSetup(stream).clock(clock)
+                    .startupDistance(startupDistance).retainForever().start()) {
+                clock.setTime(10);
+                db.execute(db.trans().put("/k", "1"));
+                GetData read = db.newGetData();
+                Assert.assertArrayEquals(StringUtil.toBytes("1"),
+                        db.getOne(Long.MAX_VALUE, Keys.toSegments("/k"), read));
+                oldReadTime = read.actualLookupTime;
+                clock.setTime(20);
+                db.execute(db.trans().put("/k", "2"));
+                // The boundary is the last commit, including one without writes.
+                clock.setTime(30);
+                db.execute(db.trans().build());
+                db.getOne(Long.MAX_VALUE, Keys.toSegments("/k"), read);
+                boundary = read.actualLookupTime;
+                assertStmRefused(db, oldReadTime);
+            }
+            try (Db db = Db.builder().testSetup(stream.copy()).clock(clock)
+                    .startupDistance(startupDistance).retainForever().start()) {
+                assertStmRefused(db, oldReadTime);
+                // An empty commit must not erase the boundary either.
+                db.execute(db.trans().build());
+                assertStmRefused(db, oldReadTime);
+                // Equality is safe. The first unrelated write must preserve coverage.
+                db.execute(db.trans().lookupTime(boundary).keyRead("/k").put("/j", "1"));
+                db.execute(db.trans().lookupTime(boundary).keyRead("/k").put("/j", "2"));
+                Assert.assertArrayEquals(StringUtil.toBytes("2"), DbUtil.get(db, Long.MAX_VALUE, "/j"));
+                // New writes still conflict normally; reads after them can commit.
+                db.execute(db.trans().put("/k", "3"));
+                assertStmRefused(db, boundary);
+                GetData read = db.newGetData();
+                db.getOne(Long.MAX_VALUE, Keys.toSegments("/k"), read);
+                db.execute(db.trans().lookupTime(read.actualLookupTime)
+                        .keyRead("/k").put("/j", "3"));
+                // Without read dependencies there is nothing for the STM to validate.
+                db.execute(db.trans().lookupTime(oldReadTime).put("/j", "4"));
+            }
+        }
+    }
+
+    private static void assertStmRefused(Db db, long readTime) {
+        long length = db.getStreamLength();
+        byte[] before = DbUtil.get(db, Long.MAX_VALUE, "/j");
+        try {
+            db.execute(db.trans().lookupTime(readTime).keyRead("/k").put("/j", "stale"));
+            throw new AssertionError("committed a stale read set at " + readTime);
+        } catch (RerunException expected) {
+            Assert.assertEquals(length, db.getStreamLength());
+            Assert.assertArrayEquals(before, DbUtil.get(db, Long.MAX_VALUE, "/j"));
+        }
+    }
 
     @Nano
     public static void test0() {
