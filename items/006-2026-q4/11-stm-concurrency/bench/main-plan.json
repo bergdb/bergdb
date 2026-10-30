@@ -1,0 +1,2373 @@
+{
+  "description": "006-11 public rw actions; sequential fresh-JVM runs, paired mode order reversed on alternate repeats",
+  "jvm_flags": [
+    "-Xms512m",
+    "-Xmx2g",
+    "-XX:+UseZGC"
+  ],
+  "defaults": {
+    "keys": 4096,
+    "reads": 8,
+    "work": 0,
+    "seconds": 3,
+    "warmupSeconds": 2,
+    "storage": "memory",
+    "durable": false,
+    "cacheBytes": 0
+  },
+  "timeout_seconds": 120,
+  "jobs": [
+    {
+      "name": "p-r1-none-t1-serial-r1",
+      "case": "p-r1-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r1-none-t1-optimistic-r1",
+      "case": "p-r1-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r1-none-t2-serial-r1",
+      "case": "p-r1-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r1-none-t2-optimistic-r1",
+      "case": "p-r1-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r1-none-t4-serial-r1",
+      "case": "p-r1-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r1-none-t4-optimistic-r1",
+      "case": "p-r1-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r1-none-t8-serial-r1",
+      "case": "p-r1-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r1-none-t8-optimistic-r1",
+      "case": "p-r1-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-none-t1-serial-r1",
+      "case": "p-r8-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-none-t1-optimistic-r1",
+      "case": "p-r8-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-none-t2-serial-r1",
+      "case": "p-r8-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-none-t2-optimistic-r1",
+      "case": "p-r8-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-none-t4-serial-r1",
+      "case": "p-r8-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-none-t4-optimistic-r1",
+      "case": "p-r8-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-none-t8-serial-r1",
+      "case": "p-r8-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-none-t8-optimistic-r1",
+      "case": "p-r8-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t1-serial-r1",
+      "case": "p-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t1-optimistic-r1",
+      "case": "p-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t2-serial-r1",
+      "case": "p-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t2-optimistic-r1",
+      "case": "p-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t4-serial-r1",
+      "case": "p-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t4-optimistic-r1",
+      "case": "p-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t8-serial-r1",
+      "case": "p-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t8-optimistic-r1",
+      "case": "p-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t1-serial-r1",
+      "case": "p-r8-cpu100",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t1-optimistic-r1",
+      "case": "p-r8-cpu100",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t2-serial-r1",
+      "case": "p-r8-cpu100",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t2-optimistic-r1",
+      "case": "p-r8-cpu100",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t4-serial-r1",
+      "case": "p-r8-cpu100",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t4-optimistic-r1",
+      "case": "p-r8-cpu100",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t8-serial-r1",
+      "case": "p-r8-cpu100",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t8-optimistic-r1",
+      "case": "p-r8-cpu100",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "u-r8-none-t1-serial-r1",
+      "case": "u-r8-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "u-r8-none-t1-optimistic-r1",
+      "case": "u-r8-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "u-r8-none-t2-serial-r1",
+      "case": "u-r8-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "u-r8-none-t2-optimistic-r1",
+      "case": "u-r8-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "u-r8-none-t4-serial-r1",
+      "case": "u-r8-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "u-r8-none-t4-optimistic-r1",
+      "case": "u-r8-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "u-r8-none-t8-serial-r1",
+      "case": "u-r8-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "u-r8-none-t8-optimistic-r1",
+      "case": "u-r8-none",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 701
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t1-serial-r1",
+      "case": "u-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t1-optimistic-r1",
+      "case": "u-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t2-serial-r1",
+      "case": "u-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t2-optimistic-r1",
+      "case": "u-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t4-serial-r1",
+      "case": "u-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t4-optimistic-r1",
+      "case": "u-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t8-serial-r1",
+      "case": "u-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t8-optimistic-r1",
+      "case": "u-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t1-serial-r1",
+      "case": "hot-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t1-optimistic-r1",
+      "case": "hot-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t2-serial-r1",
+      "case": "hot-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t2-optimistic-r1",
+      "case": "hot-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t4-serial-r1",
+      "case": "hot-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t4-optimistic-r1",
+      "case": "hot-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t8-serial-r1",
+      "case": "hot-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t8-optimistic-r1",
+      "case": "hot-r8-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 701
+      }
+    },
+    {
+      "name": "p-r8-none-t8-optimistic-r2",
+      "case": "p-r8-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-none-t8-serial-r2",
+      "case": "p-r8-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-none-t4-optimistic-r2",
+      "case": "p-r8-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-none-t4-serial-r2",
+      "case": "p-r8-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-none-t2-optimistic-r2",
+      "case": "p-r8-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-none-t2-serial-r2",
+      "case": "p-r8-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-none-t1-optimistic-r2",
+      "case": "p-r8-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-none-t1-serial-r2",
+      "case": "p-r8-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t8-optimistic-r2",
+      "case": "p-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t8-serial-r2",
+      "case": "p-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t4-optimistic-r2",
+      "case": "p-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t4-serial-r2",
+      "case": "p-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t2-optimistic-r2",
+      "case": "p-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t2-serial-r2",
+      "case": "p-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t1-optimistic-r2",
+      "case": "p-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t1-serial-r2",
+      "case": "p-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t8-optimistic-r2",
+      "case": "p-r8-cpu100",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t8-serial-r2",
+      "case": "p-r8-cpu100",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t4-optimistic-r2",
+      "case": "p-r8-cpu100",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t4-serial-r2",
+      "case": "p-r8-cpu100",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t2-optimistic-r2",
+      "case": "p-r8-cpu100",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t2-serial-r2",
+      "case": "p-r8-cpu100",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t1-optimistic-r2",
+      "case": "p-r8-cpu100",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t1-serial-r2",
+      "case": "p-r8-cpu100",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "u-r8-none-t8-optimistic-r2",
+      "case": "u-r8-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "u-r8-none-t8-serial-r2",
+      "case": "u-r8-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "u-r8-none-t4-optimistic-r2",
+      "case": "u-r8-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "u-r8-none-t4-serial-r2",
+      "case": "u-r8-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "u-r8-none-t2-optimistic-r2",
+      "case": "u-r8-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "u-r8-none-t2-serial-r2",
+      "case": "u-r8-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "u-r8-none-t1-optimistic-r2",
+      "case": "u-r8-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "u-r8-none-t1-serial-r2",
+      "case": "u-r8-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t8-optimistic-r2",
+      "case": "u-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t8-serial-r2",
+      "case": "u-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t4-optimistic-r2",
+      "case": "u-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t4-serial-r2",
+      "case": "u-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t2-optimistic-r2",
+      "case": "u-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t2-serial-r2",
+      "case": "u-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t1-optimistic-r2",
+      "case": "u-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t1-serial-r2",
+      "case": "u-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t8-optimistic-r2",
+      "case": "hot-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t8-serial-r2",
+      "case": "hot-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t4-optimistic-r2",
+      "case": "hot-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t4-serial-r2",
+      "case": "hot-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t2-optimistic-r2",
+      "case": "hot-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t2-serial-r2",
+      "case": "hot-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t1-optimistic-r2",
+      "case": "hot-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t1-serial-r2",
+      "case": "hot-r8-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r1-none-t8-optimistic-r2",
+      "case": "p-r1-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r1-none-t8-serial-r2",
+      "case": "p-r1-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r1-none-t4-optimistic-r2",
+      "case": "p-r1-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r1-none-t4-serial-r2",
+      "case": "p-r1-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r1-none-t2-optimistic-r2",
+      "case": "p-r1-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r1-none-t2-serial-r2",
+      "case": "p-r1-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r1-none-t1-optimistic-r2",
+      "case": "p-r1-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r1-none-t1-serial-r2",
+      "case": "p-r1-none",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 702
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t1-serial-r3",
+      "case": "p-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t1-optimistic-r3",
+      "case": "p-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t2-serial-r3",
+      "case": "p-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t2-optimistic-r3",
+      "case": "p-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t4-serial-r3",
+      "case": "p-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t4-optimistic-r3",
+      "case": "p-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t8-serial-r3",
+      "case": "p-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-cpu10-t8-optimistic-r3",
+      "case": "p-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t1-serial-r3",
+      "case": "p-r8-cpu100",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t1-optimistic-r3",
+      "case": "p-r8-cpu100",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t2-serial-r3",
+      "case": "p-r8-cpu100",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t2-optimistic-r3",
+      "case": "p-r8-cpu100",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t4-serial-r3",
+      "case": "p-r8-cpu100",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t4-optimistic-r3",
+      "case": "p-r8-cpu100",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t8-serial-r3",
+      "case": "p-r8-cpu100",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-cpu100-t8-optimistic-r3",
+      "case": "p-r8-cpu100",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 30000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "u-r8-none-t1-serial-r3",
+      "case": "u-r8-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "u-r8-none-t1-optimistic-r3",
+      "case": "u-r8-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "u-r8-none-t2-serial-r3",
+      "case": "u-r8-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "u-r8-none-t2-optimistic-r3",
+      "case": "u-r8-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "u-r8-none-t4-serial-r3",
+      "case": "u-r8-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "u-r8-none-t4-optimistic-r3",
+      "case": "u-r8-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "u-r8-none-t8-serial-r3",
+      "case": "u-r8-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "u-r8-none-t8-optimistic-r3",
+      "case": "u-r8-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t1-serial-r3",
+      "case": "u-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t1-optimistic-r3",
+      "case": "u-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t2-serial-r3",
+      "case": "u-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t2-optimistic-r3",
+      "case": "u-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t4-serial-r3",
+      "case": "u-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t4-optimistic-r3",
+      "case": "u-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t8-serial-r3",
+      "case": "u-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "u-r8-cpu10-t8-optimistic-r3",
+      "case": "u-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "uniform",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t1-serial-r3",
+      "case": "hot-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t1-optimistic-r3",
+      "case": "hot-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t2-serial-r3",
+      "case": "hot-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t2-optimistic-r3",
+      "case": "hot-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t4-serial-r3",
+      "case": "hot-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t4-optimistic-r3",
+      "case": "hot-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t8-serial-r3",
+      "case": "hot-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "hot-r8-cpu10-t8-optimistic-r3",
+      "case": "hot-r8-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "hot",
+        "reads": 8,
+        "work": 3000,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r1-none-t1-serial-r3",
+      "case": "p-r1-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r1-none-t1-optimistic-r3",
+      "case": "p-r1-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r1-none-t2-serial-r3",
+      "case": "p-r1-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r1-none-t2-optimistic-r3",
+      "case": "p-r1-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r1-none-t4-serial-r3",
+      "case": "p-r1-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r1-none-t4-optimistic-r3",
+      "case": "p-r1-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r1-none-t8-serial-r3",
+      "case": "p-r1-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r1-none-t8-optimistic-r3",
+      "case": "p-r1-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 1,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-none-t1-serial-r3",
+      "case": "p-r8-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-none-t1-optimistic-r3",
+      "case": "p-r8-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-none-t2-serial-r3",
+      "case": "p-r8-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-none-t2-optimistic-r3",
+      "case": "p-r8-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 2,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-none-t4-serial-r3",
+      "case": "p-r8-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-none-t4-optimistic-r3",
+      "case": "p-r8-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-none-t8-serial-r3",
+      "case": "p-r8-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 703
+      }
+    },
+    {
+      "name": "p-r8-none-t8-optimistic-r3",
+      "case": "p-r8-none",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "reads": 8,
+        "work": 0,
+        "seed": 703
+      }
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "description": "006-11 public rw actions; sequential fresh-JVM runs, paired mode order reversed on alternate repeats",
+  "jvm_flags": [
+    "-Xms512m",
+    "-Xmx2g",
+    "-XX:+UseZGC"
+  ],
+  "defaults": {
+    "keys": 128,
+    "reads": 8,
+    "work": 100,
+    "seconds": 0.3,
+    "warmupSeconds": 0.2,
+    "storage": "memory",
+    "durable": false,
+    "cacheBytes": 0
+  },
+  "timeout_seconds": 120,
+  "jobs": [
+    {
+      "name": "stripped-serial-point-rw",
+      "case": "stripped-smoke",
+      "repeat": 1,
+      "variant": "serial-stripped",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "storage": "memory",
+        "durable": false
+      }
+    },
+    {
+      "name": "stock-small-eviction",
+      "case": "eviction-smoke",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "storage": "file",
+        "durable": false,
+        "keys": 16384,
+        "startupBytes": 200000,
+        "cacheBytes": 1000000
+      }
+    }
+  ]
+}

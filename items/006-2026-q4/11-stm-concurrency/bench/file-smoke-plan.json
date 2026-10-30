@@ -1,0 +1,73 @@
+{
+  "description": "006-11 public rw actions; sequential fresh-JVM runs, paired mode order reversed on alternate repeats",
+  "jvm_flags": [
+    "-Xms512m",
+    "-Xmx2g",
+    "-XX:+UseZGC"
+  ],
+  "defaults": {
+    "keys": 128,
+    "reads": 8,
+    "work": 100,
+    "seconds": 0.3,
+    "warmupSeconds": 0.2,
+    "storage": "memory",
+    "durable": false,
+    "cacheBytes": 0
+  },
+  "timeout_seconds": 120,
+  "jobs": [
+    {
+      "name": "file-serial-durable0",
+      "case": "file-smoke",
+      "repeat": 1,
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "storage": "file",
+        "durable": false,
+        "diagnosticLoads": true
+      }
+    },
+    {
+      "name": "file-serial-durable1",
+      "case": "file-smoke",
+      "repeat": 1,
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "storage": "file",
+        "durable": true,
+        "diagnosticLoads": true
+      }
+    },
+    {
+      "name": "file-optimistic-durable0",
+      "case": "file-smoke",
+      "repeat": 1,
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "storage": "file",
+        "durable": false,
+        "diagnosticLoads": true
+      }
+    },
+    {
+      "name": "file-optimistic-durable1",
+      "case": "file-smoke",
+      "repeat": 1,
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "storage": "file",
+        "durable": true,
+        "diagnosticLoads": true
+      }
+    }
+  ]
+}

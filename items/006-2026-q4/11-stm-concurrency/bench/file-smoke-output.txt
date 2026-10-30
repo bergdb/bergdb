@@ -1,0 +1,9 @@
+RUN 1/4 file-serial-durable0
+OK file-serial-durable0: 119503/s drained=119477/s attempts=1.0000 max=18.1ms
+RUN 2/4 file-serial-durable1
+OK file-serial-durable1: 453/s drained=459/s attempts=1.0000 max=10.2ms
+RUN 3/4 file-optimistic-durable0
+OK file-optimistic-durable0: 189547/s drained=189524/s attempts=1.0000 max=0.4ms
+RUN 4/4 file-optimistic-durable1
+OK file-optimistic-durable1: 440/s drained=447/s attempts=1.0000 max=10.2ms
+ALL BENCHMARK JOBS PASSED 4

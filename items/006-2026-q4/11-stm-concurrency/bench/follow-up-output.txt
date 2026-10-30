@@ -1,0 +1,312 @@
+Waiting for main's frozen session to finish
+COMMAND python3 -B /Users/f/fl/repos/bergdb/items/006-2026-q4/11-stm-concurrency/bench/build.py --out /private/tmp/bergdb-006-11-stripped-build --variants serial-stripped --commit 4685ab1d3611b9b3d8a20907c29253051be53fc6
+Built serial-stripped
+BUILD_METADATA /private/tmp/bergdb-006-11-stripped-build/builds.json
+COMMAND git apply --check /Users/f/fl/repos/bergdb/items/006-2026-q4/11-stm-concurrency/bench/eviction-startup.patch
+COMMAND git apply /Users/f/fl/repos/bergdb/items/006-2026-q4/11-stm-concurrency/bench/eviction-startup.patch
+COMMAND python3 -B /Users/f/fl/repos/bergdb/items/006-2026-q4/11-stm-concurrency/bench/run.py --builds /private/tmp/bergdb-006-11-runs/all-builds.json --plan /Users/f/fl/repos/bergdb/items/006-2026-q4/11-stm-concurrency/bench/extended-smoke-plan.json --out /private/tmp/bergdb-006-11-runs/extended-smoke --cooldown 0
+RUN 1/2 stripped-serial-point-rw
+OK stripped-serial-point-rw: 162867/s drained=162829/s attempts=1.0000 max=7.4ms
+RUN 2/2 stock-small-eviction
+OK stock-small-eviction: 42003/s drained=42004/s attempts=1.0000 max=1.2ms
+ALL BENCHMARK JOBS PASSED 2
+COMMAND python3 -B /Users/f/fl/repos/bergdb/items/006-2026-q4/11-stm-concurrency/bench/run.py --builds /private/tmp/bergdb-006-11-runs/all-builds.json --plan /Users/f/fl/repos/bergdb/items/006-2026-q4/11-stm-concurrency/bench/cost-plan.json --out /private/tmp/bergdb-006-11-runs/cost --quiet
+RUN 1/60 p-r1-none-t1-stock-r1
+OK p-r1-none-t1-stock-r1: 245622/s drained=245622/s attempts=1.0000 max=0.5ms
+RUN 2/60 p-r1-none-t1-serial-bypass-r1
+OK p-r1-none-t1-serial-bypass-r1: 266974/s drained=266974/s attempts=1.0000 max=2.3ms
+RUN 3/60 p-r1-none-t1-serial-bypass-no-warmup-r1
+OK p-r1-none-t1-serial-bypass-no-warmup-r1: 291662/s drained=291663/s attempts=1.0000 max=0.6ms
+RUN 4/60 p-r1-none-t1-serial-stripped-r1
+OK p-r1-none-t1-serial-stripped-r1: 299442/s drained=299442/s attempts=1.0000 max=0.5ms
+RUN 5/60 p-r8-none-t1-stock-r1
+OK p-r8-none-t1-stock-r1: 116584/s drained=116584/s attempts=1.0000 max=0.7ms
+RUN 6/60 p-r8-none-t1-serial-bypass-r1
+OK p-r8-none-t1-serial-bypass-r1: 133974/s drained=133975/s attempts=1.0000 max=0.5ms
+RUN 7/60 p-r8-none-t1-serial-bypass-no-warmup-r1
+OK p-r8-none-t1-serial-bypass-no-warmup-r1: 129550/s drained=129550/s attempts=1.0000 max=0.5ms
+RUN 8/60 p-r8-none-t1-serial-stripped-r1
+OK p-r8-none-t1-serial-stripped-r1: 144560/s drained=144560/s attempts=1.0000 max=0.6ms
+RUN 9/60 p-r8-cpu10-t1-stock-r1
+OK p-r8-cpu10-t1-stock-r1: 54936/s drained=54936/s attempts=1.0000 max=4.7ms
+WAIT quiet 010-p-r8-cpu10-t1-serial-bypass-r1: 79.3% idle
+WAIT quiet 010-p-r8-cpu10-t1-serial-bypass-r1: 76.2% idle
+WAIT quiet 010-p-r8-cpu10-t1-serial-bypass-r1: 79.9% idle
+WAIT quiet 010-p-r8-cpu10-t1-serial-bypass-r1: 79.4% idle
+RUN 10/60 p-r8-cpu10-t1-serial-bypass-r1
+OK p-r8-cpu10-t1-serial-bypass-r1: 59554/s drained=59551/s attempts=1.0000 max=1.0ms
+WAIT quiet 011-p-r8-cpu10-t1-serial-bypass-no-warmup-r1: 56.4% idle
+WAIT quiet 011-p-r8-cpu10-t1-serial-bypass-no-warmup-r1: 79.9% idle
+RUN 11/60 p-r8-cpu10-t1-serial-bypass-no-warmup-r1
+OK p-r8-cpu10-t1-serial-bypass-no-warmup-r1: 59330/s drained=59329/s attempts=1.0000 max=0.6ms
+RUN 12/60 p-r8-cpu10-t1-serial-stripped-r1
+OK p-r8-cpu10-t1-serial-stripped-r1: 59592/s drained=59593/s attempts=1.0000 max=5.9ms
+WAIT quiet 013-p-r8-cpu100-t1-stock-r1: 27.6% idle
+WAIT quiet 013-p-r8-cpu100-t1-stock-r1: 48.6% idle
+WAIT quiet 013-p-r8-cpu100-t1-stock-r1: 78.7% idle
+WAIT quiet 013-p-r8-cpu100-t1-stock-r1: 75.7% idle
+WAIT quiet 013-p-r8-cpu100-t1-stock-r1: 77.8% idle
+WAIT quiet 013-p-r8-cpu100-t1-stock-r1: 78.2% idle
+WAIT quiet 013-p-r8-cpu100-t1-stock-r1: 68.9% idle
+RUN 13/60 p-r8-cpu100-t1-stock-r1
+OK p-r8-cpu100-t1-stock-r1: 9608/s drained=9608/s attempts=1.0000 max=0.6ms
+RUN 14/60 p-r8-cpu100-t1-serial-bypass-r1
+OK p-r8-cpu100-t1-serial-bypass-r1: 9500/s drained=9501/s attempts=1.0000 max=9.4ms
+WAIT quiet 015-p-r8-cpu100-t1-serial-bypass-no-warmup-r1: 78.2% idle
+RUN 15/60 p-r8-cpu100-t1-serial-bypass-no-warmup-r1
+OK p-r8-cpu100-t1-serial-bypass-no-warmup-r1: 9661/s drained=9662/s attempts=1.0000 max=0.5ms
+WAIT quiet 016-p-r8-cpu100-t1-serial-stripped-r1: 77.9% idle
+RUN 16/60 p-r8-cpu100-t1-serial-stripped-r1
+OK p-r8-cpu100-t1-serial-stripped-r1: 9638/s drained=9638/s attempts=1.0000 max=2.8ms
+RUN 17/60 p-r8-none-t8-stock-r1
+OK p-r8-none-t8-stock-r1: 101398/s drained=101389/s attempts=1.0000 max=35.8ms
+RUN 18/60 p-r8-none-t8-serial-bypass-r1
+OK p-r8-none-t8-serial-bypass-r1: 116563/s drained=116557/s attempts=1.0000 max=57.0ms
+WAIT quiet 019-p-r8-none-t8-serial-bypass-no-warmup-r1: 78.2% idle
+RUN 19/60 p-r8-none-t8-serial-bypass-no-warmup-r1
+OK p-r8-none-t8-serial-bypass-no-warmup-r1: 120353/s drained=120349/s attempts=1.0000 max=48.7ms
+RUN 20/60 p-r8-none-t8-serial-stripped-r1
+OK p-r8-none-t8-serial-stripped-r1: 129434/s drained=129429/s attempts=1.0000 max=34.7ms
+WAIT quiet 021-p-r1-none-t1-serial-stripped-r2: 76.2% idle
+RUN 21/60 p-r1-none-t1-serial-stripped-r2
+OK p-r1-none-t1-serial-stripped-r2: 283622/s drained=283622/s attempts=1.0000 max=1.0ms
+RUN 22/60 p-r1-none-t1-serial-bypass-no-warmup-r2
+OK p-r1-none-t1-serial-bypass-no-warmup-r2: 270518/s drained=270518/s attempts=1.0000 max=3.2ms
+RUN 23/60 p-r1-none-t1-serial-bypass-r2
+OK p-r1-none-t1-serial-bypass-r2: 255682/s drained=255682/s attempts=1.0000 max=2.0ms
+WAIT quiet 024-p-r1-none-t1-stock-r2: 75.8% idle
+WAIT quiet 024-p-r1-none-t1-stock-r2: 79.2% idle
+WAIT quiet 024-p-r1-none-t1-stock-r2: 79.4% idle
+RUN 24/60 p-r1-none-t1-stock-r2
+OK p-r1-none-t1-stock-r2: 240773/s drained=240773/s attempts=1.0000 max=3.0ms
+WAIT quiet 025-p-r8-none-t1-serial-stripped-r2: 74.2% idle
+RUN 25/60 p-r8-none-t1-serial-stripped-r2
+OK p-r8-none-t1-serial-stripped-r2: 139059/s drained=139059/s attempts=1.0000 max=0.7ms
+RUN 26/60 p-r8-none-t1-serial-bypass-no-warmup-r2
+OK p-r8-none-t1-serial-bypass-no-warmup-r2: 125632/s drained=125632/s attempts=1.0000 max=2.2ms
+WAIT quiet 027-p-r8-none-t1-serial-bypass-r2: 76.4% idle
+RUN 27/60 p-r8-none-t1-serial-bypass-r2
+OK p-r8-none-t1-serial-bypass-r2: 129771/s drained=129771/s attempts=1.0000 max=0.6ms
+RUN 28/60 p-r8-none-t1-stock-r2
+OK p-r8-none-t1-stock-r2: 114472/s drained=114472/s attempts=1.0000 max=0.9ms
+WAIT quiet 029-p-r8-cpu10-t1-serial-stripped-r2: 79.5% idle
+RUN 29/60 p-r8-cpu10-t1-serial-stripped-r2
+OK p-r8-cpu10-t1-serial-stripped-r2: 63580/s drained=63580/s attempts=1.0000 max=0.6ms
+RUN 30/60 p-r8-cpu10-t1-serial-bypass-no-warmup-r2
+OK p-r8-cpu10-t1-serial-bypass-no-warmup-r2: 61047/s drained=61048/s attempts=1.0000 max=0.6ms
+RUN 31/60 p-r8-cpu10-t1-serial-bypass-r2
+OK p-r8-cpu10-t1-serial-bypass-r2: 59259/s drained=59260/s attempts=1.0000 max=0.6ms
+WAIT quiet 032-p-r8-cpu10-t1-stock-r2: 76.4% idle
+RUN 32/60 p-r8-cpu10-t1-stock-r2
+OK p-r8-cpu10-t1-stock-r2: 56610/s drained=56610/s attempts=1.0000 max=0.6ms
+RUN 33/60 p-r8-cpu100-t1-serial-stripped-r2
+OK p-r8-cpu100-t1-serial-stripped-r2: 9869/s drained=9869/s attempts=1.0000 max=0.7ms
+WAIT quiet 034-p-r8-cpu100-t1-serial-bypass-no-warmup-r2: 79.6% idle
+RUN 34/60 p-r8-cpu100-t1-serial-bypass-no-warmup-r2
+OK p-r8-cpu100-t1-serial-bypass-no-warmup-r2: 9678/s drained=9678/s attempts=1.0000 max=2.0ms
+RUN 35/60 p-r8-cpu100-t1-serial-bypass-r2
+OK p-r8-cpu100-t1-serial-bypass-r2: 9654/s drained=9654/s attempts=1.0000 max=2.4ms
+RUN 36/60 p-r8-cpu100-t1-stock-r2
+OK p-r8-cpu100-t1-stock-r2: 9678/s drained=9678/s attempts=1.0000 max=0.6ms
+RUN 37/60 p-r8-none-t8-serial-stripped-r2
+OK p-r8-none-t8-serial-stripped-r2: 131599/s drained=131591/s attempts=1.0000 max=30.7ms
+RUN 38/60 p-r8-none-t8-serial-bypass-no-warmup-r2
+OK p-r8-none-t8-serial-bypass-no-warmup-r2: 120600/s drained=120592/s attempts=1.0000 max=33.8ms
+RUN 39/60 p-r8-none-t8-serial-bypass-r2
+OK p-r8-none-t8-serial-bypass-r2: 121054/s drained=121047/s attempts=1.0000 max=33.5ms
+RUN 40/60 p-r8-none-t8-stock-r2
+OK p-r8-none-t8-stock-r2: 106551/s drained=106545/s attempts=1.0000 max=31.3ms
+RUN 41/60 p-r1-none-t1-stock-r3
+OK p-r1-none-t1-stock-r3: 251033/s drained=251033/s attempts=1.0000 max=0.6ms
+RUN 42/60 p-r1-none-t1-serial-bypass-r3
+OK p-r1-none-t1-serial-bypass-r3: 256376/s drained=256376/s attempts=1.0000 max=0.5ms
+RUN 43/60 p-r1-none-t1-serial-bypass-no-warmup-r3
+OK p-r1-none-t1-serial-bypass-no-warmup-r3: 294010/s drained=294010/s attempts=1.0000 max=0.5ms
+RUN 44/60 p-r1-none-t1-serial-stripped-r3
+OK p-r1-none-t1-serial-stripped-r3: 298027/s drained=298027/s attempts=1.0000 max=0.6ms
+RUN 45/60 p-r8-none-t1-stock-r3
+OK p-r8-none-t1-stock-r3: 115974/s drained=115974/s attempts=1.0000 max=0.6ms
+RUN 46/60 p-r8-none-t1-serial-bypass-r3
+OK p-r8-none-t1-serial-bypass-r3: 131262/s drained=131262/s attempts=1.0000 max=0.6ms
+RUN 47/60 p-r8-none-t1-serial-bypass-no-warmup-r3
+OK p-r8-none-t1-serial-bypass-no-warmup-r3: 128355/s drained=128355/s attempts=1.0000 max=0.6ms
+RUN 48/60 p-r8-none-t1-serial-stripped-r3
+OK p-r8-none-t1-serial-stripped-r3: 141847/s drained=141847/s attempts=1.0000 max=0.6ms
+RUN 49/60 p-r8-cpu10-t1-stock-r3
+OK p-r8-cpu10-t1-stock-r3: 56298/s drained=56298/s attempts=1.0000 max=0.8ms
+WAIT quiet 050-p-r8-cpu10-t1-serial-bypass-r3: 79.2% idle
+RUN 50/60 p-r8-cpu10-t1-serial-bypass-r3
+OK p-r8-cpu10-t1-serial-bypass-r3: 60995/s drained=60996/s attempts=1.0000 max=0.4ms
+RUN 51/60 p-r8-cpu10-t1-serial-bypass-no-warmup-r3
+OK p-r8-cpu10-t1-serial-bypass-no-warmup-r3: 60375/s drained=60375/s attempts=1.0000 max=0.5ms
+WAIT quiet 052-p-r8-cpu10-t1-serial-stripped-r3: 77.3% idle
+RUN 52/60 p-r8-cpu10-t1-serial-stripped-r3
+OK p-r8-cpu10-t1-serial-stripped-r3: 61100/s drained=61100/s attempts=1.0000 max=0.7ms
+RUN 53/60 p-r8-cpu100-t1-stock-r3
+OK p-r8-cpu100-t1-stock-r3: 9718/s drained=9719/s attempts=1.0000 max=0.6ms
+RUN 54/60 p-r8-cpu100-t1-serial-bypass-r3
+OK p-r8-cpu100-t1-serial-bypass-r3: 9716/s drained=9716/s attempts=1.0000 max=0.6ms
+RUN 55/60 p-r8-cpu100-t1-serial-bypass-no-warmup-r3
+OK p-r8-cpu100-t1-serial-bypass-no-warmup-r3: 9806/s drained=9806/s attempts=1.0000 max=0.5ms
+RUN 56/60 p-r8-cpu100-t1-serial-stripped-r3
+OK p-r8-cpu100-t1-serial-stripped-r3: 9872/s drained=9872/s attempts=1.0000 max=0.7ms
+RUN 57/60 p-r8-none-t8-stock-r3
+OK p-r8-none-t8-stock-r3: 108156/s drained=108149/s attempts=1.0000 max=41.7ms
+RUN 58/60 p-r8-none-t8-serial-bypass-r3
+OK p-r8-none-t8-serial-bypass-r3: 123025/s drained=123020/s attempts=1.0000 max=27.9ms
+RUN 59/60 p-r8-none-t8-serial-bypass-no-warmup-r3
+OK p-r8-none-t8-serial-bypass-no-warmup-r3: 121541/s drained=121535/s attempts=1.0000 max=30.0ms
+RUN 60/60 p-r8-none-t8-serial-stripped-r3
+OK p-r8-none-t8-serial-stripped-r3: 140346/s drained=140339/s attempts=1.0000 max=34.2ms
+ALL BENCHMARK JOBS PASSED 60
+COMMAND python3 -B /Users/f/fl/repos/bergdb/items/006-2026-q4/11-stm-concurrency/bench/run.py --builds /private/tmp/bergdb-006-11-runs/all-builds.json --plan /Users/f/fl/repos/bergdb/items/006-2026-q4/11-stm-concurrency/bench/file-plan.json --out /private/tmp/bergdb-006-11-runs/file --quiet
+RUN 1/36 file-append-cpu10-t1-serial-r1
+OK file-append-cpu10-t1-serial-r1: 55283/s drained=55283/s attempts=1.0000 max=0.7ms
+RUN 2/36 file-append-cpu10-t1-optimistic-r1
+OK file-append-cpu10-t1-optimistic-r1: 55716/s drained=55716/s attempts=1.0000 max=0.6ms
+RUN 3/36 file-append-cpu10-t4-serial-r1
+OK file-append-cpu10-t4-serial-r1: 50066/s drained=50065/s attempts=1.0000 max=70.5ms
+RUN 4/36 file-append-cpu10-t4-optimistic-r1
+OK file-append-cpu10-t4-optimistic-r1: 104347/s drained=104346/s attempts=1.0000 max=10.7ms
+RUN 5/36 file-append-cpu10-t8-serial-r1
+OK file-append-cpu10-t8-serial-r1: 51023/s drained=51020/s attempts=1.0000 max=93.5ms
+RUN 6/36 file-append-cpu10-t8-optimistic-r1
+OK file-append-cpu10-t8-optimistic-r1: 96764/s drained=96764/s attempts=1.0000 max=14.3ms
+WAIT quiet 007-file-durable-cpu100-t1-serial-r1: 78.2% idle
+WAIT quiet 007-file-durable-cpu100-t1-serial-r1: 75.8% idle
+RUN 7/36 file-durable-cpu100-t1-serial-r1
+OK file-durable-cpu100-t1-serial-r1: 175/s drained=175/s attempts=1.0000 max=16.7ms
+WAIT quiet 008-file-durable-cpu100-t1-optimistic-r1: 78.5% idle
+RUN 8/36 file-durable-cpu100-t1-optimistic-r1
+OK file-durable-cpu100-t1-optimistic-r1: 179/s drained=179/s attempts=1.0000 max=18.6ms
+RUN 9/36 file-durable-cpu100-t4-serial-r1
+OK file-durable-cpu100-t4-serial-r1: 382/s drained=382/s attempts=1.0000 max=23.7ms
+WAIT quiet 010-file-durable-cpu100-t4-optimistic-r1: 77.8% idle
+WAIT quiet 010-file-durable-cpu100-t4-optimistic-r1: 78.2% idle
+RUN 10/36 file-durable-cpu100-t4-optimistic-r1
+OK file-durable-cpu100-t4-optimistic-r1: 387/s drained=388/s attempts=1.0000 max=21.0ms
+WAIT quiet 011-file-durable-cpu100-t8-serial-r1: 77.6% idle
+WAIT quiet 011-file-durable-cpu100-t8-serial-r1: 78.3% idle
+RUN 11/36 file-durable-cpu100-t8-serial-r1
+OK file-durable-cpu100-t8-serial-r1: 774/s drained=775/s attempts=1.0000 max=27.9ms
+RUN 12/36 file-durable-cpu100-t8-optimistic-r1
+OK file-durable-cpu100-t8-optimistic-r1: 779/s drained=780/s attempts=1.0000 max=25.2ms
+RUN 13/36 file-append-cpu10-t8-optimistic-r2
+OK file-append-cpu10-t8-optimistic-r2: 98476/s drained=98475/s attempts=1.0000 max=1.4ms
+WAIT quiet 014-file-append-cpu10-t8-serial-r2: 77.7% idle
+WAIT quiet 014-file-append-cpu10-t8-serial-r2: 74.9% idle
+WAIT quiet 014-file-append-cpu10-t8-serial-r2: 78.5% idle
+WAIT quiet 014-file-append-cpu10-t8-serial-r2: 79.0% idle
+WAIT quiet 014-file-append-cpu10-t8-serial-r2: 77.9% idle
+WAIT quiet 014-file-append-cpu10-t8-serial-r2: 77.4% idle
+WAIT quiet 014-file-append-cpu10-t8-serial-r2: 74.8% idle
+RUN 14/36 file-append-cpu10-t8-serial-r2
+OK file-append-cpu10-t8-serial-r2: 50426/s drained=50424/s attempts=1.0000 max=76.5ms
+RUN 15/36 file-append-cpu10-t4-optimistic-r2
+OK file-append-cpu10-t4-optimistic-r2: 108229/s drained=108229/s attempts=1.0000 max=0.7ms
+RUN 16/36 file-append-cpu10-t4-serial-r2
+OK file-append-cpu10-t4-serial-r2: 48271/s drained=48270/s attempts=1.0000 max=58.3ms
+RUN 17/36 file-append-cpu10-t1-optimistic-r2
+OK file-append-cpu10-t1-optimistic-r2: 55866/s drained=55867/s attempts=1.0000 max=1.8ms
+WAIT quiet 018-file-append-cpu10-t1-serial-r2: 78.3% idle
+WAIT quiet 018-file-append-cpu10-t1-serial-r2: 77.8% idle
+WAIT quiet 018-file-append-cpu10-t1-serial-r2: 78.9% idle
+WAIT quiet 018-file-append-cpu10-t1-serial-r2: 76.9% idle
+RUN 18/36 file-append-cpu10-t1-serial-r2
+OK file-append-cpu10-t1-serial-r2: 54883/s drained=54883/s attempts=1.0000 max=0.5ms
+RUN 19/36 file-durable-cpu100-t8-optimistic-r2
+OK file-durable-cpu100-t8-optimistic-r2: 770/s drained=771/s attempts=1.0000 max=26.0ms
+WAIT quiet 020-file-durable-cpu100-t8-serial-r2: 78.3% idle
+WAIT quiet 020-file-durable-cpu100-t8-serial-r2: 73.8% idle
+RUN 20/36 file-durable-cpu100-t8-serial-r2
+OK file-durable-cpu100-t8-serial-r2: 756/s drained=757/s attempts=1.0000 max=26.9ms
+WAIT quiet 021-file-durable-cpu100-t4-optimistic-r2: 79.8% idle
+RUN 21/36 file-durable-cpu100-t4-optimistic-r2
+OK file-durable-cpu100-t4-optimistic-r2: 370/s drained=370/s attempts=1.0000 max=26.0ms
+RUN 22/36 file-durable-cpu100-t4-serial-r2
+OK file-durable-cpu100-t4-serial-r2: 380/s drained=380/s attempts=1.0000 max=18.7ms
+RUN 23/36 file-durable-cpu100-t1-optimistic-r2
+OK file-durable-cpu100-t1-optimistic-r2: 174/s drained=174/s attempts=1.0000 max=17.1ms
+RUN 24/36 file-durable-cpu100-t1-serial-r2
+OK file-durable-cpu100-t1-serial-r2: 177/s drained=177/s attempts=1.0000 max=15.5ms
+RUN 25/36 file-append-cpu10-t1-serial-r3
+OK file-append-cpu10-t1-serial-r3: 57005/s drained=57005/s attempts=1.0000 max=0.5ms
+RUN 26/36 file-append-cpu10-t1-optimistic-r3
+OK file-append-cpu10-t1-optimistic-r3: 56285/s drained=56285/s attempts=1.0000 max=0.6ms
+WAIT quiet 027-file-append-cpu10-t4-serial-r3: 79.3% idle
+WAIT quiet 027-file-append-cpu10-t4-serial-r3: 77.2% idle
+WAIT quiet 027-file-append-cpu10-t4-serial-r3: 76.9% idle
+RUN 27/36 file-append-cpu10-t4-serial-r3
+OK file-append-cpu10-t4-serial-r3: 50784/s drained=50783/s attempts=1.0000 max=52.9ms
+RUN 28/36 file-append-cpu10-t4-optimistic-r3
+OK file-append-cpu10-t4-optimistic-r3: 109272/s drained=109271/s attempts=1.0000 max=0.8ms
+RUN 29/36 file-append-cpu10-t8-serial-r3
+OK file-append-cpu10-t8-serial-r3: 51166/s drained=51164/s attempts=1.0000 max=90.7ms
+RUN 30/36 file-append-cpu10-t8-optimistic-r3
+OK file-append-cpu10-t8-optimistic-r3: 99833/s drained=99828/s attempts=1.0000 max=1.0ms
+WAIT quiet 031-file-durable-cpu100-t1-serial-r3: 72.9% idle
+WAIT quiet 031-file-durable-cpu100-t1-serial-r3: 75.6% idle
+WAIT quiet 031-file-durable-cpu100-t1-serial-r3: 78.6% idle
+WAIT quiet 031-file-durable-cpu100-t1-serial-r3: 75.9% idle
+WAIT quiet 031-file-durable-cpu100-t1-serial-r3: 75.7% idle
+WAIT quiet 031-file-durable-cpu100-t1-serial-r3: 78.8% idle
+RUN 31/36 file-durable-cpu100-t1-serial-r3
+OK file-durable-cpu100-t1-serial-r3: 177/s drained=177/s attempts=1.0000 max=24.9ms
+RUN 32/36 file-durable-cpu100-t1-optimistic-r3
+OK file-durable-cpu100-t1-optimistic-r3: 172/s drained=172/s attempts=1.0000 max=16.9ms
+RUN 33/36 file-durable-cpu100-t4-serial-r3
+OK file-durable-cpu100-t4-serial-r3: 376/s drained=376/s attempts=1.0000 max=22.6ms
+RUN 34/36 file-durable-cpu100-t4-optimistic-r3
+OK file-durable-cpu100-t4-optimistic-r3: 384/s drained=385/s attempts=1.0000 max=23.1ms
+RUN 35/36 file-durable-cpu100-t8-serial-r3
+OK file-durable-cpu100-t8-serial-r3: 763/s drained=762/s attempts=1.0000 max=25.1ms
+RUN 36/36 file-durable-cpu100-t8-optimistic-r3
+OK file-durable-cpu100-t8-optimistic-r3: 747/s drained=747/s attempts=1.0000 max=32.8ms
+ALL BENCHMARK JOBS PASSED 36
+COMMAND python3 -B /Users/f/fl/repos/bergdb/items/006-2026-q4/11-stm-concurrency/bench/run.py --builds /private/tmp/bergdb-006-11-runs/all-builds.json --plan /Users/f/fl/repos/bergdb/items/006-2026-q4/11-stm-concurrency/bench/eviction-plan.json --out /private/tmp/bergdb-006-11-runs/eviction --quiet
+RUN 1/12 file-eviction-r8-t1-serial-r1
+OK file-eviction-r8-t1-serial-r1: 19910/s drained=19910/s attempts=1.0000 max=2.1ms
+WAIT quiet 002-file-eviction-r8-t1-optimistic-r1: 74.8% idle
+WAIT quiet 002-file-eviction-r8-t1-optimistic-r1: 76.4% idle
+WAIT quiet 002-file-eviction-r8-t1-optimistic-r1: 78.6% idle
+WAIT quiet 002-file-eviction-r8-t1-optimistic-r1: 79.9% idle
+WAIT quiet 002-file-eviction-r8-t1-optimistic-r1: 78.6% idle
+WAIT quiet 002-file-eviction-r8-t1-optimistic-r1: 79.4% idle
+WAIT quiet 002-file-eviction-r8-t1-optimistic-r1: 78.6% idle
+WAIT quiet 002-file-eviction-r8-t1-optimistic-r1: 74.5% idle
+RUN 2/12 file-eviction-r8-t1-optimistic-r1
+OK file-eviction-r8-t1-optimistic-r1: 20741/s drained=20741/s attempts=1.0000 max=2.1ms
+RUN 3/12 file-eviction-r8-t8-serial-r1
+OK file-eviction-r8-t8-serial-r1: 18038/s drained=18037/s attempts=1.0000 max=462.0ms
+RUN 4/12 file-eviction-r8-t8-optimistic-r1
+OK file-eviction-r8-t8-optimistic-r1: 39474/s drained=39474/s attempts=1.0000 max=2.6ms
+WAIT quiet 005-file-eviction-r8-t8-optimistic-r2: 79.2% idle
+RUN 5/12 file-eviction-r8-t8-optimistic-r2
+OK file-eviction-r8-t8-optimistic-r2: 39166/s drained=39166/s attempts=1.0000 max=4.2ms
+RUN 6/12 file-eviction-r8-t8-serial-r2
+OK file-eviction-r8-t8-serial-r2: 19137/s drained=19136/s attempts=1.0000 max=407.6ms
+WAIT quiet 007-file-eviction-r8-t1-optimistic-r2: 72.6% idle
+WAIT quiet 007-file-eviction-r8-t1-optimistic-r2: 73.2% idle
+WAIT quiet 007-file-eviction-r8-t1-optimistic-r2: 71.4% idle
+WAIT quiet 007-file-eviction-r8-t1-optimistic-r2: 72.2% idle
+RUN 7/12 file-eviction-r8-t1-optimistic-r2
+OK file-eviction-r8-t1-optimistic-r2: 19902/s drained=19902/s attempts=1.0000 max=2.1ms
+RUN 8/12 file-eviction-r8-t1-serial-r2
+OK file-eviction-r8-t1-serial-r2: 19062/s drained=19062/s attempts=1.0000 max=2.8ms
+WAIT quiet 009-file-eviction-r8-t1-serial-r3: 75.6% idle
+WAIT quiet 009-file-eviction-r8-t1-serial-r3: 78.0% idle
+WAIT quiet 009-file-eviction-r8-t1-serial-r3: 78.5% idle
+WAIT quiet 009-file-eviction-r8-t1-serial-r3: 76.2% idle
+WAIT quiet 009-file-eviction-r8-t1-serial-r3: 78.9% idle
+WAIT quiet 009-file-eviction-r8-t1-serial-r3: 78.9% idle
+RUN 9/12 file-eviction-r8-t1-serial-r3
+OK file-eviction-r8-t1-serial-r3: 20804/s drained=20804/s attempts=1.0000 max=2.1ms
+RUN 10/12 file-eviction-r8-t1-optimistic-r3
+OK file-eviction-r8-t1-optimistic-r3: 21012/s drained=21012/s attempts=1.0000 max=2.1ms
+WAIT quiet 011-file-eviction-r8-t8-serial-r3: 77.4% idle
+RUN 11/12 file-eviction-r8-t8-serial-r3
+OK file-eviction-r8-t8-serial-r3: 19306/s drained=19304/s attempts=1.0000 max=377.3ms
+RUN 12/12 file-eviction-r8-t8-optimistic-r3
+OK file-eviction-r8-t8-optimistic-r3: 39055/s drained=39054/s attempts=1.0000 max=4.1ms
+ALL BENCHMARK JOBS PASSED 12
+ALL FOLLOW-UP BENCHMARK SESSIONS PASSED

@@ -1,0 +1,31 @@
+{
+  "commit": "4685ab1d3611b9b3d8a20907c29253051be53fc6",
+  "production_java_clean": true,
+  "java_version": "openjdk version \"27\" 2026-09-15\nOpenJDK Runtime Environment Homebrew (build 27)\nOpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing)\n",
+  "variants": {
+    "stock": {
+      "dir": "/private/tmp/bergdb-006-11-builds-l66cxw25/stock",
+      "jar": "/private/tmp/bergdb-006-11-builds-l66cxw25/stock/java/build/bergdb.jar",
+      "jar_sha256": "7bd90fdc47fc91c89f9305689b621de76518b3e2bf834a545771f247b2a312aa",
+      "patch_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "serial-bypass": {
+      "dir": "/private/tmp/bergdb-006-11-builds-l66cxw25/serial-bypass",
+      "jar": "/private/tmp/bergdb-006-11-builds-l66cxw25/serial-bypass/java/build/bergdb.jar",
+      "jar_sha256": "6d3111ed4071d782258e489d25a8076d23ad14260b506b731409d35992e36a80",
+      "patch_sha256": "5d5e68e89d88caf1c2468b0b63b683f211ae4613e9271fd5fc1c36d06f2eec2c"
+    },
+    "serial-bypass-no-warmup": {
+      "dir": "/private/tmp/bergdb-006-11-builds-l66cxw25/serial-bypass-no-warmup",
+      "jar": "/private/tmp/bergdb-006-11-builds-l66cxw25/serial-bypass-no-warmup/java/build/bergdb.jar",
+      "jar_sha256": "0d4f39ec2fcb89b31290de518a5046aad6f6db44f887e5370f0ec7fcc2a714fc",
+      "patch_sha256": "5c6a4ea5b5d6fe9b77d1ff27f25b102056f2399d793c63a8899a452628a207e2"
+    },
+    "serial-stripped": {
+      "dir": "/private/tmp/bergdb-006-11-stripped-build/serial-stripped",
+      "jar": "/private/tmp/bergdb-006-11-stripped-build/serial-stripped/java/build/bergdb.jar",
+      "jar_sha256": "463696f468968fc7131ec1cc88da345a2048c10ae29e6ed946c412438bc0b9fa",
+      "patch_sha256": "2ac9823a1dd273c43835181f01ab62b94e3afea7e3a8a8a895dcceb16f5381f7"
+    }
+  }
+}

@@ -1,0 +1,2258 @@
+[
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 131072,
+    "reads": 8,
+    "work": 0,
+    "seconds": 5.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 701,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 8000000,
+    "startup_bytes": 1000000,
+    "effective_startup_bytes": 1000000,
+    "diagnostic_loads": true,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/eviction/001-file-eviction-r8-t1-serial-r1/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 0,
+      "ns_per_compute": 18.1354,
+      "ns_per_iteration": null,
+      "checksum": "81985529186877192"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000012417,
+      "drain_seconds": 1.2417000000000002e-05,
+      "commits": 42075,
+      "active_commits": 42074,
+      "active_commits_per_second": 21037.0,
+      "batch_commits_per_second": 21037.36938949214,
+      "attempts": 42075,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        42075
+      ],
+      "per_worker_active_commits": [
+        42074
+      ],
+      "latency": {
+        "count": 42075,
+        "mean_ns": 47204.7444325609,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 90112,
+        "max_ns": 2904166
+      },
+      "active_completion_latency": {
+        "count": 42074,
+        "mean_ns": 47204.32842135285,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 90112,
+        "max_ns": 2904166
+      },
+      "rw_execution_latency": {
+        "count": 42075,
+        "mean_ns": 47114.33580510992,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 90112,
+        "max_ns": 2903917
+      },
+      "worker_cpu_ns": 1994165000,
+      "process_cpu_ns": 3207964000,
+      "allocated_bytes": 864001440,
+      "gc_count": 6,
+      "gc_ms": 21,
+      "stream_loads": 370973,
+      "storage_read_calls_with_write_lock": 549,
+      "storage_read_calls_without_write_lock": 743936,
+      "storage_read_ns_with_write_lock": 520500,
+      "storage_read_ns_without_write_lock": 521009862,
+      "stream_bytes": 39960344,
+      "heap_used_bytes": 637534208,
+      "resident_cache_bytes": 7822392,
+      "eviction_summary": "eviction BUDGET: 198637 slots unswizzled, 280090 objects released; budget 8000000 bytes, low 6000000; 116 sweeps (21 after loads, 40 complete, 6 above the budget after); last sweep 8000072 -> 6915072 bytes, pinned 1456816 (at most 1677536); sweep time 119 ms in total, 2 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 5.0,
+      "batch_seconds": 5.000055459,
+      "drain_seconds": 5.5459000000000006e-05,
+      "commits": 99552,
+      "active_commits": 99551,
+      "active_commits_per_second": 19910.2,
+      "batch_commits_per_second": 19910.179160274787,
+      "attempts": 99552,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        99552
+      ],
+      "per_worker_active_commits": [
+        99551
+      ],
+      "latency": {
+        "count": 99552,
+        "mean_ns": 50069.83033992285,
+        "p50_ns_upper": 47104,
+        "p95_ns_upper": 65536,
+        "p99_ns_upper": 86016,
+        "max_ns": 2131792
+      },
+      "active_completion_latency": {
+        "count": 99551,
+        "mean_ns": 50069.72891281856,
+        "p50_ns_upper": 47104,
+        "p95_ns_upper": 65536,
+        "p99_ns_upper": 86016,
+        "max_ns": 2131792
+      },
+      "rw_execution_latency": {
+        "count": 99552,
+        "mean_ns": 50026.898957328835,
+        "p50_ns_upper": 47104,
+        "p95_ns_upper": 65536,
+        "p99_ns_upper": 86016,
+        "max_ns": 2131792
+      },
+      "worker_cpu_ns": 4974578000,
+      "process_cpu_ns": 5310836000,
+      "allocated_bytes": 2219888888,
+      "gc_count": 16,
+      "gc_ms": 104,
+      "stream_loads": 937104,
+      "storage_read_calls_with_write_lock": 8,
+      "storage_read_calls_without_write_lock": 1866973,
+      "storage_read_ns_with_write_lock": 7669,
+      "storage_read_ns_without_write_lock": 1323081827,
+      "stream_bytes": 113130464,
+      "heap_used_bytes": 159383552,
+      "resident_cache_bytes": 7678864,
+      "eviction_summary": "eviction BUDGET: 545333 slots unswizzled, 859510 objects released; budget 8000000 bytes, low 6000000; 381 sweeps (53 after loads, 147 complete, 19 above the budget after); last sweep 8001024 -> 6851704 bytes, pinned 1523848 (at most 1677536); sweep time 379 ms in total, 2 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 141627,
+      "expected_commits": 141627,
+      "value_digest": "2190717153435610391"
+    },
+    "run": {
+      "job": {
+        "name": "file-eviction-r8-t1-serial-r1",
+        "case": "file-eviction-r8",
+        "repeat": 1,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 0,
+          "seed": 701
+        }
+      },
+      "directory": "001-file-eviction-r8-t1-serial-r1",
+      "elapsed_seconds": 8.047931457999999,
+      "minimum_idle_before_run": 82.82
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 131072,
+    "reads": 8,
+    "work": 0,
+    "seconds": 5.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 701,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 8000000,
+    "startup_bytes": 1000000,
+    "effective_startup_bytes": 1000000,
+    "diagnostic_loads": true,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/eviction/002-file-eviction-r8-t1-optimistic-r1/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 0,
+      "ns_per_compute": 18.0396,
+      "ns_per_iteration": null,
+      "checksum": "81985529186877192"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0001327090000003,
+      "drain_seconds": 0.000132709,
+      "commits": 43103,
+      "active_commits": 43102,
+      "active_commits_per_second": 21551.0,
+      "batch_commits_per_second": 21550.070055876473,
+      "attempts": 43103,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        43103
+      ],
+      "per_worker_active_commits": [
+        43102
+      ],
+      "latency": {
+        "count": 43103,
+        "mean_ns": 46081.59856622509,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 94208,
+        "max_ns": 2544167
+      },
+      "active_completion_latency": {
+        "count": 43102,
+        "mean_ns": 46079.29293304255,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 94208,
+        "max_ns": 2544167
+      },
+      "rw_execution_latency": {
+        "count": 43103,
+        "mean_ns": 46004.90979746189,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 94208,
+        "max_ns": 2542375
+      },
+      "worker_cpu_ns": 1995210000,
+      "process_cpu_ns": 3227404000,
+      "allocated_bytes": 885361576,
+      "gc_count": 10,
+      "gc_ms": 19,
+      "stream_loads": 379876,
+      "storage_read_calls_with_write_lock": 536,
+      "storage_read_calls_without_write_lock": 763465,
+      "storage_read_ns_with_write_lock": 519708,
+      "storage_read_ns_without_write_lock": 521194419,
+      "stream_bytes": 40633752,
+      "heap_used_bytes": 88080384,
+      "resident_cache_bytes": 7859672,
+      "eviction_summary": "eviction BUDGET: 203252 slots unswizzled, 286585 objects released; budget 8000000 bytes, low 6000000; 119 sweeps (22 after loads, 41 complete, 7 above the budget after); last sweep 8001848 -> 6933656 bytes, pinned 1491920 (at most 1653032); sweep time 115 ms in total, 2 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 5.0,
+      "batch_seconds": 5.0000445000000004,
+      "drain_seconds": 4.4500000000000004e-05,
+      "commits": 103706,
+      "active_commits": 103705,
+      "active_commits_per_second": 20741.0,
+      "batch_commits_per_second": 20741.015404962895,
+      "attempts": 103706,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        103706
+      ],
+      "per_worker_active_commits": [
+        103705
+      ],
+      "latency": {
+        "count": 103706,
+        "mean_ns": 48070.8923398839,
+        "p50_ns_upper": 45056,
+        "p95_ns_upper": 63488,
+        "p99_ns_upper": 77824,
+        "max_ns": 2062541
+      },
+      "active_completion_latency": {
+        "count": 103705,
+        "mean_ns": 48070.84521479196,
+        "p50_ns_upper": 45056,
+        "p95_ns_upper": 63488,
+        "p99_ns_upper": 77824,
+        "max_ns": 2062541
+      },
+      "rw_execution_latency": {
+        "count": 103706,
+        "mean_ns": 48033.20773147166,
+        "p50_ns_upper": 45056,
+        "p95_ns_upper": 63488,
+        "p99_ns_upper": 77824,
+        "max_ns": 2062292
+      },
+      "worker_cpu_ns": 4988692000,
+      "process_cpu_ns": 5341861000,
+      "allocated_bytes": 2315671544,
+      "gc_count": 10,
+      "gc_ms": 74,
+      "stream_loads": 977098,
+      "storage_read_calls_with_write_lock": 0,
+      "storage_read_calls_without_write_lock": 1945558,
+      "storage_read_ns_with_write_lock": 0,
+      "storage_read_ns_without_write_lock": 1328469108,
+      "stream_bytes": 117343552,
+      "heap_used_bytes": 266338304,
+      "resident_cache_bytes": 7371352,
+      "eviction_summary": "eviction BUDGET: 563272 slots unswizzled, 890267 objects released; budget 8000000 bytes, low 6000000; 386 sweeps (46 after loads, 152 complete, 20 above the budget after); last sweep 8000488 -> 6887944 bytes, pinned 1592448 (at most 1653032); sweep time 359 ms in total, 2 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 146809,
+      "expected_commits": 146809,
+      "value_digest": "1512852226395710317"
+    },
+    "run": {
+      "job": {
+        "name": "file-eviction-r8-t1-optimistic-r1",
+        "case": "file-eviction-r8",
+        "repeat": 1,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 0,
+          "seed": 701
+        }
+      },
+      "directory": "002-file-eviction-r8-t1-optimistic-r1",
+      "elapsed_seconds": 8.030925582999998,
+      "minimum_idle_before_run": 81.54
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 131072,
+    "reads": 8,
+    "work": 0,
+    "seconds": 5.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 701,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 8000000,
+    "startup_bytes": 1000000,
+    "effective_startup_bytes": 1000000,
+    "diagnostic_loads": true,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/eviction/003-file-eviction-r8-t8-serial-r1/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 0,
+      "ns_per_compute": 17.8979,
+      "ns_per_iteration": null,
+      "checksum": "81985529186877192"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000794834,
+      "drain_seconds": 0.000794834,
+      "commits": 38289,
+      "active_commits": 38281,
+      "active_commits_per_second": 19140.5,
+      "batch_commits_per_second": 19136.894672729846,
+      "attempts": 38289,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        4302,
+        4808,
+        5004,
+        4184,
+        4655,
+        4830,
+        4488,
+        6018
+      ],
+      "per_worker_active_commits": [
+        4301,
+        4807,
+        5003,
+        4183,
+        4654,
+        4829,
+        4487,
+        6017
+      ],
+      "latency": {
+        "count": 38289,
+        "mean_ns": 417535.78581315785,
+        "p50_ns_upper": 47104,
+        "p95_ns_upper": 73728,
+        "p99_ns_upper": 155648,
+        "max_ns": 192176542
+      },
+      "active_completion_latency": {
+        "count": 38281,
+        "mean_ns": 400999.73425459105,
+        "p50_ns_upper": 47104,
+        "p95_ns_upper": 73728,
+        "p99_ns_upper": 155648,
+        "max_ns": 192176542
+      },
+      "rw_execution_latency": {
+        "count": 38289,
+        "mean_ns": 51679.531484238294,
+        "p50_ns_upper": 47104,
+        "p95_ns_upper": 69632,
+        "p99_ns_upper": 106496,
+        "max_ns": 2712625
+      },
+      "worker_cpu_ns": 2106949000,
+      "process_cpu_ns": 3514115000,
+      "allocated_bytes": 730833816,
+      "gc_count": 6,
+      "gc_ms": 23,
+      "stream_loads": 324372,
+      "storage_read_calls_with_write_lock": 576,
+      "storage_read_calls_without_write_lock": 652895,
+      "storage_read_ns_with_write_lock": 595701,
+      "storage_read_ns_without_write_lock": 492373952,
+      "stream_bytes": 37459584,
+      "heap_used_bytes": 511705088,
+      "resident_cache_bytes": 7425312,
+      "eviction_summary": "eviction BUDGET: 182141 slots unswizzled, 254453 objects released; budget 8000000 bytes, low 6000000; 148 sweeps (62 after loads, 36 complete, 13 above the budget after); last sweep 8001728 -> 6907208 bytes, pinned 1437256 (at most 1635544); sweep time 113 ms in total, 2 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 5.0,
+      "batch_seconds": 5.0006903750000005,
+      "drain_seconds": 0.000690375,
+      "commits": 90199,
+      "active_commits": 90191,
+      "active_commits_per_second": 18038.2,
+      "batch_commits_per_second": 18037.309498490995,
+      "attempts": 90199,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        14322,
+        11005,
+        11088,
+        11466,
+        10347,
+        8713,
+        12048,
+        11210
+      ],
+      "per_worker_active_commits": [
+        14321,
+        11004,
+        11087,
+        11465,
+        10346,
+        8712,
+        12047,
+        11209
+      ],
+      "latency": {
+        "count": 90199,
+        "mean_ns": 443294.49205645296,
+        "p50_ns_upper": 51200,
+        "p95_ns_upper": 77824,
+        "p99_ns_upper": 106496,
+        "max_ns": 461960333
+      },
+      "active_completion_latency": {
+        "count": 90191,
+        "mean_ns": 427169.7085407635,
+        "p50_ns_upper": 51200,
+        "p95_ns_upper": 77824,
+        "p99_ns_upper": 106496,
+        "max_ns": 461960333
+      },
+      "rw_execution_latency": {
+        "count": 90199,
+        "mean_ns": 55137.41065865475,
+        "p50_ns_upper": 51200,
+        "p95_ns_upper": 77824,
+        "p99_ns_upper": 102400,
+        "max_ns": 2122792
+      },
+      "worker_cpu_ns": 5261542000,
+      "process_cpu_ns": 5444058000,
+      "allocated_bytes": 1801876864,
+      "gc_count": 6,
+      "gc_ms": 23,
+      "stream_loads": 771671,
+      "storage_read_calls_with_write_lock": 0,
+      "storage_read_calls_without_write_lock": 1534750,
+      "storage_read_ns_with_write_lock": 0,
+      "storage_read_ns_without_write_lock": 1172053989,
+      "stream_bytes": 102885792,
+      "heap_used_bytes": 1751121920,
+      "resident_cache_bytes": 7171792,
+      "eviction_summary": "eviction BUDGET: 474209 slots unswizzled, 746204 objects released; budget 8000000 bytes, low 6000000; 527 sweeps (239 after loads, 128 complete, 34 above the budget after); last sweep 8000712 -> 6832208 bytes, pinned 1524344 (at most 1646960); sweep time 349 ms in total, 2 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 128488,
+      "expected_commits": 128488,
+      "value_digest": "17302953430661583201"
+    },
+    "run": {
+      "job": {
+        "name": "file-eviction-r8-t8-serial-r1",
+        "case": "file-eviction-r8",
+        "repeat": 1,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 0,
+          "seed": 701
+        }
+      },
+      "directory": "003-file-eviction-r8-t8-serial-r1",
+      "elapsed_seconds": 8.071433958999997,
+      "minimum_idle_before_run": 81.42
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 131072,
+    "reads": 8,
+    "work": 0,
+    "seconds": 5.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 701,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 8000000,
+    "startup_bytes": 1000000,
+    "effective_startup_bytes": 1000000,
+    "diagnostic_loads": true,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/eviction/004-file-eviction-r8-t8-optimistic-r1/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 0,
+      "ns_per_compute": 17.825,
+      "ns_per_iteration": null,
+      "checksum": "81985529186877192"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000180667,
+      "drain_seconds": 0.00018066700000000002,
+      "commits": 78047,
+      "active_commits": 78039,
+      "active_commits_per_second": 39019.5,
+      "batch_commits_per_second": 39019.97518907126,
+      "attempts": 78047,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        9815,
+        9849,
+        9814,
+        9776,
+        9783,
+        9710,
+        9658,
+        9642
+      ],
+      "per_worker_active_commits": [
+        9814,
+        9848,
+        9813,
+        9775,
+        9782,
+        9709,
+        9657,
+        9641
+      ],
+      "latency": {
+        "count": 78047,
+        "mean_ns": 204389.7520084052,
+        "p50_ns_upper": 163840,
+        "p95_ns_upper": 442368,
+        "p99_ns_upper": 1310720,
+        "max_ns": 7198667
+      },
+      "active_completion_latency": {
+        "count": 78039,
+        "mean_ns": 204389.95481746306,
+        "p50_ns_upper": 163840,
+        "p95_ns_upper": 442368,
+        "p99_ns_upper": 1310720,
+        "max_ns": 7198667
+      },
+      "rw_execution_latency": {
+        "count": 78047,
+        "mean_ns": 204209.7172857381,
+        "p50_ns_upper": 163840,
+        "p95_ns_upper": 442368,
+        "p99_ns_upper": 1310720,
+        "max_ns": 7195667
+      },
+      "worker_cpu_ns": 5950536000,
+      "process_cpu_ns": 8004294000,
+      "allocated_bytes": 1665808336,
+      "gc_count": 12,
+      "gc_ms": 53,
+      "stream_loads": 707571,
+      "storage_read_calls_with_write_lock": 625,
+      "storage_read_calls_without_write_lock": 1389822,
+      "storage_read_ns_with_write_lock": 1557504,
+      "storage_read_ns_without_write_lock": 1921863631,
+      "stream_bytes": 65821952,
+      "heap_used_bytes": 876609536,
+      "resident_cache_bytes": 7727624,
+      "eviction_summary": "eviction BUDGET: 325950 slots unswizzled, 490252 objects released; budget 8000000 bytes, low 6000000; 179 sweeps (0 after loads, 78 complete, 0 above the budget after); last sweep 8001760 -> 6862696 bytes, pinned 1541752 (at most 1640928); sweep time 204 ms in total, 2 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 5.0,
+      "batch_seconds": 5.000206209,
+      "drain_seconds": 0.000206209,
+      "commits": 197379,
+      "active_commits": 197371,
+      "active_commits_per_second": 39474.2,
+      "batch_commits_per_second": 39474.172014092626,
+      "attempts": 197379,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        24800,
+        24832,
+        24652,
+        24459,
+        24694,
+        24724,
+        24495,
+        24723
+      ],
+      "per_worker_active_commits": [
+        24799,
+        24831,
+        24651,
+        24458,
+        24693,
+        24723,
+        24494,
+        24722
+      ],
+      "latency": {
+        "count": 197379,
+        "mean_ns": 202401.480522244,
+        "p50_ns_upper": 163840,
+        "p95_ns_upper": 442368,
+        "p99_ns_upper": 1310720,
+        "max_ns": 2594458
+      },
+      "active_completion_latency": {
+        "count": 197371,
+        "mean_ns": 202401.16704075068,
+        "p50_ns_upper": 163840,
+        "p95_ns_upper": 442368,
+        "p99_ns_upper": 1310720,
+        "max_ns": 2594458
+      },
+      "rw_execution_latency": {
+        "count": 197379,
+        "mean_ns": 202279.4445761707,
+        "p50_ns_upper": 163840,
+        "p95_ns_upper": 425984,
+        "p99_ns_upper": 1310720,
+        "max_ns": 2594375
+      },
+      "worker_cpu_ns": 14605465000,
+      "process_cpu_ns": 15029629000,
+      "allocated_bytes": 4436740000,
+      "gc_count": 14,
+      "gc_ms": 103,
+      "stream_loads": 1871039,
+      "storage_read_calls_with_write_lock": 41,
+      "storage_read_calls_without_write_lock": 3667793,
+      "storage_read_ns_with_write_lock": 44249,
+      "storage_read_ns_without_write_lock": 4919492807,
+      "stream_bytes": 217682440,
+      "heap_used_bytes": 1432354816,
+      "resident_cache_bytes": 7021288,
+      "eviction_summary": "eviction BUDGET: 1002560 slots unswizzled, 1639647 objects released; budget 8000000 bytes, low 6000000; 648 sweeps (1 after loads, 292 complete, 1 above the budget after); last sweep 8003256 -> 6887616 bytes, pinned 1571240 (at most 1661112); sweep time 680 ms in total, 2 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 275426,
+      "expected_commits": 275426,
+      "value_digest": "16105525949458734534"
+    },
+    "run": {
+      "job": {
+        "name": "file-eviction-r8-t8-optimistic-r1",
+        "case": "file-eviction-r8",
+        "repeat": 1,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 0,
+          "seed": 701
+        }
+      },
+      "directory": "004-file-eviction-r8-t8-optimistic-r1",
+      "elapsed_seconds": 8.06705358299999,
+      "minimum_idle_before_run": 81.25
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 131072,
+    "reads": 8,
+    "work": 0,
+    "seconds": 5.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 702,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 8000000,
+    "startup_bytes": 1000000,
+    "effective_startup_bytes": 1000000,
+    "diagnostic_loads": true,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/eviction/005-file-eviction-r8-t8-optimistic-r2/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 0,
+      "ns_per_compute": 18.70835,
+      "ns_per_iteration": null,
+      "checksum": "81985529186877192"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000154625,
+      "drain_seconds": 0.000154625,
+      "commits": 77617,
+      "active_commits": 77609,
+      "active_commits_per_second": 38804.5,
+      "batch_commits_per_second": 38805.49984979286,
+      "attempts": 77617,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        9702,
+        9684,
+        9549,
+        9779,
+        9818,
+        9687,
+        9765,
+        9633
+      ],
+      "per_worker_active_commits": [
+        9701,
+        9683,
+        9548,
+        9778,
+        9817,
+        9686,
+        9764,
+        9632
+      ],
+      "latency": {
+        "count": 77617,
+        "mean_ns": 205545.14867876883,
+        "p50_ns_upper": 163840,
+        "p95_ns_upper": 442368,
+        "p99_ns_upper": 1310720,
+        "max_ns": 6121375
+      },
+      "active_completion_latency": {
+        "count": 77609,
+        "mean_ns": 205547.3035601541,
+        "p50_ns_upper": 163840,
+        "p95_ns_upper": 442368,
+        "p99_ns_upper": 1310720,
+        "max_ns": 6121375
+      },
+      "rw_execution_latency": {
+        "count": 77617,
+        "mean_ns": 205368.79083190538,
+        "p50_ns_upper": 163840,
+        "p95_ns_upper": 442368,
+        "p99_ns_upper": 1310720,
+        "max_ns": 6119459
+      },
+      "worker_cpu_ns": 5743683000,
+      "process_cpu_ns": 7757282000,
+      "allocated_bytes": 1582030104,
+      "gc_count": 12,
+      "gc_ms": 46,
+      "stream_loads": 703651,
+      "storage_read_calls_with_write_lock": 715,
+      "storage_read_calls_without_write_lock": 1383126,
+      "storage_read_ns_with_write_lock": 1808616,
+      "storage_read_ns_without_write_lock": 1827218176,
+      "stream_bytes": 65328864,
+      "heap_used_bytes": 796917760,
+      "resident_cache_bytes": 7599584,
+      "eviction_summary": "eviction BUDGET: 323084 slots unswizzled, 486205 objects released; budget 8000000 bytes, low 6000000; 177 sweeps (0 after loads, 78 complete, 0 above the budget after); last sweep 8001152 -> 6855464 bytes, pinned 1538424 (at most 1592880); sweep time 199 ms in total, 2 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 5.0,
+      "batch_seconds": 5.000237375,
+      "drain_seconds": 0.000237375,
+      "commits": 195838,
+      "active_commits": 195830,
+      "active_commits_per_second": 39166.0,
+      "batch_commits_per_second": 39165.74060646471,
+      "attempts": 195838,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        24513,
+        24441,
+        24348,
+        24534,
+        24420,
+        24588,
+        24433,
+        24561
+      ],
+      "per_worker_active_commits": [
+        24512,
+        24440,
+        24347,
+        24533,
+        24419,
+        24587,
+        24432,
+        24560
+      ],
+      "latency": {
+        "count": 195838,
+        "mean_ns": 203992.3778531235,
+        "p50_ns_upper": 172032,
+        "p95_ns_upper": 425984,
+        "p99_ns_upper": 1310720,
+        "max_ns": 4238083
+      },
+      "active_completion_latency": {
+        "count": 195830,
+        "mean_ns": 203991.25539498543,
+        "p50_ns_upper": 172032,
+        "p95_ns_upper": 425984,
+        "p99_ns_upper": 1310720,
+        "max_ns": 4238083
+      },
+      "rw_execution_latency": {
+        "count": 195838,
+        "mean_ns": 203870.8041136041,
+        "p50_ns_upper": 172032,
+        "p95_ns_upper": 425984,
+        "p99_ns_upper": 1310720,
+        "max_ns": 4237833
+      },
+      "worker_cpu_ns": 14595216000,
+      "process_cpu_ns": 15113575000,
+      "allocated_bytes": 4200862264,
+      "gc_count": 14,
+      "gc_ms": 112,
+      "stream_loads": 1856094,
+      "storage_read_calls_with_write_lock": 24,
+      "storage_read_calls_without_write_lock": 3638644,
+      "storage_read_ns_with_write_lock": 46706,
+      "storage_read_ns_without_write_lock": 4954219712,
+      "stream_bytes": 215645072,
+      "heap_used_bytes": 1090519040,
+      "resident_cache_bytes": 7568128,
+      "eviction_summary": "eviction BUDGET: 994518 slots unswizzled, 1625896 objects released; budget 8000000 bytes, low 6000000; 643 sweeps (0 after loads, 290 complete, 0 above the budget after); last sweep 8000464 -> 6880328 bytes, pinned 1588864 (at most 1673088); sweep time 690 ms in total, 2 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 273455,
+      "expected_commits": 273455,
+      "value_digest": "3914429560595744785"
+    },
+    "run": {
+      "job": {
+        "name": "file-eviction-r8-t8-optimistic-r2",
+        "case": "file-eviction-r8",
+        "repeat": 2,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 0,
+          "seed": 702
+        }
+      },
+      "directory": "005-file-eviction-r8-t8-optimistic-r2",
+      "elapsed_seconds": 8.044746167,
+      "minimum_idle_before_run": 82.56
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 131072,
+    "reads": 8,
+    "work": 0,
+    "seconds": 5.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 702,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 8000000,
+    "startup_bytes": 1000000,
+    "effective_startup_bytes": 1000000,
+    "diagnostic_loads": true,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/eviction/006-file-eviction-r8-t8-serial-r2/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 0,
+      "ns_per_compute": 17.70835,
+      "ns_per_iteration": null,
+      "checksum": "81985529186877192"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000594625,
+      "drain_seconds": 0.000594625,
+      "commits": 40021,
+      "active_commits": 40013,
+      "active_commits_per_second": 20006.5,
+      "batch_commits_per_second": 20004.55239651561,
+      "attempts": 40021,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        4571,
+        5517,
+        5583,
+        5040,
+        4284,
+        5522,
+        4664,
+        4840
+      ],
+      "per_worker_active_commits": [
+        4570,
+        5516,
+        5582,
+        5039,
+        4283,
+        5521,
+        4663,
+        4839
+      ],
+      "latency": {
+        "count": 40021,
+        "mean_ns": 399436.8165713001,
+        "p50_ns_upper": 47104,
+        "p95_ns_upper": 65536,
+        "p99_ns_upper": 155648,
+        "max_ns": 199102042
+      },
+      "active_completion_latency": {
+        "count": 40013,
+        "mean_ns": 390998.3985454727,
+        "p50_ns_upper": 47104,
+        "p95_ns_upper": 65536,
+        "p99_ns_upper": 139264,
+        "max_ns": 199102042
+      },
+      "rw_execution_latency": {
+        "count": 40021,
+        "mean_ns": 49433.177132005694,
+        "p50_ns_upper": 45056,
+        "p95_ns_upper": 65536,
+        "p99_ns_upper": 98304,
+        "max_ns": 2388542
+      },
+      "worker_cpu_ns": 2110685000,
+      "process_cpu_ns": 3832170000,
+      "allocated_bytes": 800028952,
+      "gc_count": 6,
+      "gc_ms": 21,
+      "stream_loads": 340493,
+      "storage_read_calls_with_write_lock": 651,
+      "storage_read_calls_without_write_lock": 684160,
+      "storage_read_ns_with_write_lock": 679623,
+      "storage_read_ns_without_write_lock": 497620996,
+      "stream_bytes": 38511128,
+      "heap_used_bytes": 583008256,
+      "resident_cache_bytes": 6969784,
+      "eviction_summary": "eviction BUDGET: 189074 slots unswizzled, 265241 objects released; budget 8000000 bytes, low 6000000; 130 sweeps (41 after loads, 38 complete, 8 above the budget after); last sweep 8001832 -> 6938312 bytes, pinned 1456928 (at most 1629880); sweep time 108 ms in total, 2 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 5.0,
+      "batch_seconds": 5.000799333000001,
+      "drain_seconds": 0.000799333,
+      "commits": 95695,
+      "active_commits": 95687,
+      "active_commits_per_second": 19137.4,
+      "batch_commits_per_second": 19135.940802206147,
+      "attempts": 95695,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        13000,
+        11208,
+        10325,
+        11336,
+        14372,
+        11794,
+        10738,
+        12922
+      ],
+      "per_worker_active_commits": [
+        12999,
+        11207,
+        10324,
+        11335,
+        14371,
+        11793,
+        10737,
+        12921
+      ],
+      "latency": {
+        "count": 95695,
+        "mean_ns": 417836.7132452061,
+        "p50_ns_upper": 49152,
+        "p95_ns_upper": 69632,
+        "p99_ns_upper": 90112,
+        "max_ns": 407593833
+      },
+      "active_completion_latency": {
+        "count": 95687,
+        "mean_ns": 414401.55732753663,
+        "p50_ns_upper": 49152,
+        "p95_ns_upper": 69632,
+        "p99_ns_upper": 90112,
+        "max_ns": 407593833
+      },
+      "rw_execution_latency": {
+        "count": 95695,
+        "mean_ns": 51972.26213490778,
+        "p50_ns_upper": 49152,
+        "p95_ns_upper": 69632,
+        "p99_ns_upper": 90112,
+        "max_ns": 2064500
+      },
+      "worker_cpu_ns": 5254038000,
+      "process_cpu_ns": 5546943000,
+      "allocated_bytes": 2016139568,
+      "gc_count": 16,
+      "gc_ms": 97,
+      "stream_loads": 833102,
+      "storage_read_calls_with_write_lock": 0,
+      "storage_read_calls_without_write_lock": 1657245,
+      "storage_read_ns_with_write_lock": 0,
+      "storage_read_ns_without_write_lock": 1209872481,
+      "stream_bytes": 108392584,
+      "heap_used_bytes": 104857600,
+      "resident_cache_bytes": 7381792,
+      "eviction_summary": "eviction BUDGET: 499583 slots unswizzled, 789616 objects released; budget 8000000 bytes, low 6000000; 577 sweeps (274 after loads, 136 complete, 40 above the budget after); last sweep 8000544 -> 6889960 bytes, pinned 1514176 (at most 1642112); sweep time 345 ms in total, 2 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 135716,
+      "expected_commits": 135716,
+      "value_digest": "4588802473118481642"
+    },
+    "run": {
+      "job": {
+        "name": "file-eviction-r8-t8-serial-r2",
+        "case": "file-eviction-r8",
+        "repeat": 2,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 0,
+          "seed": 702
+        }
+      },
+      "directory": "006-file-eviction-r8-t8-serial-r2",
+      "elapsed_seconds": 8.016289583999992,
+      "minimum_idle_before_run": 83.9
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 131072,
+    "reads": 8,
+    "work": 0,
+    "seconds": 5.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 702,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 8000000,
+    "startup_bytes": 1000000,
+    "effective_startup_bytes": 1000000,
+    "diagnostic_loads": true,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/eviction/007-file-eviction-r8-t1-optimistic-r2/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 0,
+      "ns_per_compute": 18.54165,
+      "ns_per_iteration": null,
+      "checksum": "81985529186877192"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000015459,
+      "drain_seconds": 1.5459000000000002e-05,
+      "commits": 42731,
+      "active_commits": 42730,
+      "active_commits_per_second": 21365.0,
+      "batch_commits_per_second": 21365.334856644226,
+      "attempts": 42731,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        42731
+      ],
+      "per_worker_active_commits": [
+        42730
+      ],
+      "latency": {
+        "count": 42731,
+        "mean_ns": 46458.383445273925,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 94208,
+        "max_ns": 2565708
+      },
+      "active_completion_latency": {
+        "count": 42730,
+        "mean_ns": 46458.60088930494,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 94208,
+        "max_ns": 2565708
+      },
+      "rw_execution_latency": {
+        "count": 42731,
+        "mean_ns": 46380.833563455104,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 94208,
+        "max_ns": 2563708
+      },
+      "worker_cpu_ns": 1994971000,
+      "process_cpu_ns": 3496136000,
+      "allocated_bytes": 876501544,
+      "gc_count": 6,
+      "gc_ms": 20,
+      "stream_loads": 376061,
+      "storage_read_calls_with_write_lock": 498,
+      "storage_read_calls_without_write_lock": 756777,
+      "storage_read_ns_with_write_lock": 519007,
+      "storage_read_ns_without_write_lock": 524559342,
+      "stream_bytes": 40346024,
+      "heap_used_bytes": 643825664,
+      "resident_cache_bytes": 7738872,
+      "eviction_summary": "eviction BUDGET: 202801 slots unswizzled, 284956 objects released; budget 8000000 bytes, low 6000000; 127 sweeps (31 after loads, 41 complete, 8 above the budget after); last sweep 8000480 -> 6900424 bytes, pinned 1496472 (at most 1708544); sweep time 116 ms in total, 2 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 5.0,
+      "batch_seconds": 5.000044708,
+      "drain_seconds": 4.4708e-05,
+      "commits": 99511,
+      "active_commits": 99510,
+      "active_commits_per_second": 19902.0,
+      "batch_commits_per_second": 19902.02204407969,
+      "attempts": 99511,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        99511
+      ],
+      "per_worker_active_commits": [
+        99510
+      ],
+      "latency": {
+        "count": 99511,
+        "mean_ns": 50097.49285003668,
+        "p50_ns_upper": 47104,
+        "p95_ns_upper": 65536,
+        "p99_ns_upper": 81920,
+        "max_ns": 2104292
+      },
+      "active_completion_latency": {
+        "count": 99510,
+        "mean_ns": 50097.41678223294,
+        "p50_ns_upper": 47104,
+        "p95_ns_upper": 65536,
+        "p99_ns_upper": 81920,
+        "max_ns": 2104292
+      },
+      "rw_execution_latency": {
+        "count": 99511,
+        "mean_ns": 50059.49817608103,
+        "p50_ns_upper": 47104,
+        "p95_ns_upper": 65536,
+        "p99_ns_upper": 81920,
+        "max_ns": 2104292
+      },
+      "worker_cpu_ns": 4985980000,
+      "process_cpu_ns": 5258707000,
+      "allocated_bytes": 2220697424,
+      "gc_count": 15,
+      "gc_ms": 104,
+      "stream_loads": 937818,
+      "storage_read_calls_with_write_lock": 18,
+      "storage_read_calls_without_write_lock": 1868132,
+      "storage_read_ns_with_write_lock": 15709,
+      "storage_read_ns_without_write_lock": 1314887787,
+      "stream_bytes": 113860640,
+      "heap_used_bytes": 163577856,
+      "resident_cache_bytes": 7141480,
+      "eviction_summary": "eviction BUDGET: 548608 slots unswizzled, 864860 objects released; budget 8000000 bytes, low 6000000; 400 sweeps (70 after loads, 147 complete, 31 above the budget after); last sweep 8002448 -> 6879936 bytes, pinned 1546472 (at most 1708544); sweep time 364 ms in total, 2 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 142242,
+      "expected_commits": 142242,
+      "value_digest": "12104379215759288464"
+    },
+    "run": {
+      "job": {
+        "name": "file-eviction-r8-t1-optimistic-r2",
+        "case": "file-eviction-r8",
+        "repeat": 2,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 0,
+          "seed": 702
+        }
+      },
+      "directory": "007-file-eviction-r8-t1-optimistic-r2",
+      "elapsed_seconds": 8.064650915999977,
+      "minimum_idle_before_run": 81.65
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 131072,
+    "reads": 8,
+    "work": 0,
+    "seconds": 5.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 702,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 8000000,
+    "startup_bytes": 1000000,
+    "effective_startup_bytes": 1000000,
+    "diagnostic_loads": true,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/eviction/008-file-eviction-r8-t1-serial-r2/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 0,
+      "ns_per_compute": 17.8875,
+      "ns_per_iteration": null,
+      "checksum": "81985529186877192"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000020583,
+      "drain_seconds": 2.0583000000000003e-05,
+      "commits": 42619,
+      "active_commits": 42618,
+      "active_commits_per_second": 21309.0,
+      "batch_commits_per_second": 21309.280695537724,
+      "attempts": 42619,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        42619
+      ],
+      "per_worker_active_commits": [
+        42618
+      ],
+      "latency": {
+        "count": 42619,
+        "mean_ns": 46605.60116380018,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 90112,
+        "max_ns": 2431042
+      },
+      "active_completion_latency": {
+        "count": 42618,
+        "mean_ns": 46605.754211835374,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 90112,
+        "max_ns": 2431042
+      },
+      "rw_execution_latency": {
+        "count": 42619,
+        "mean_ns": 46506.454914474765,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 90112,
+        "max_ns": 2428792
+      },
+      "worker_cpu_ns": 1994186000,
+      "process_cpu_ns": 3343493000,
+      "allocated_bytes": 874378456,
+      "gc_count": 6,
+      "gc_ms": 21,
+      "stream_loads": 375283,
+      "storage_read_calls_with_write_lock": 490,
+      "storage_read_calls_without_write_lock": 754247,
+      "storage_read_ns_with_write_lock": 468748,
+      "storage_read_ns_without_write_lock": 522977799,
+      "stream_bytes": 40271160,
+      "heap_used_bytes": 641728512,
+      "resident_cache_bytes": 7669792,
+      "eviction_summary": "eviction BUDGET: 201845 slots unswizzled, 283942 objects released; budget 8000000 bytes, low 6000000; 109 sweeps (13 after loads, 41 complete, 5 above the budget after); last sweep 8000760 -> 6891272 bytes, pinned 1506856 (at most 1726728); sweep time 117 ms in total, 2 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 5.0,
+      "batch_seconds": 5.00001475,
+      "drain_seconds": 1.4750000000000001e-05,
+      "commits": 95311,
+      "active_commits": 95310,
+      "active_commits_per_second": 19062.0,
+      "batch_commits_per_second": 19062.143766675887,
+      "attempts": 95311,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        95311
+      ],
+      "per_worker_active_commits": [
+        95310
+      ],
+      "latency": {
+        "count": 95311,
+        "mean_ns": 52309.28119524504,
+        "p50_ns_upper": 49152,
+        "p95_ns_upper": 69632,
+        "p99_ns_upper": 94208,
+        "max_ns": 2757041
+      },
+      "active_completion_latency": {
+        "count": 95310,
+        "mean_ns": 52309.398100933795,
+        "p50_ns_upper": 49152,
+        "p95_ns_upper": 69632,
+        "p99_ns_upper": 94208,
+        "max_ns": 2757041
+      },
+      "rw_execution_latency": {
+        "count": 95311,
+        "mean_ns": 52264.10809875041,
+        "p50_ns_upper": 49152,
+        "p95_ns_upper": 69632,
+        "p99_ns_upper": 94208,
+        "max_ns": 2756833
+      },
+      "worker_cpu_ns": 4958806000,
+      "process_cpu_ns": 5253365000,
+      "allocated_bytes": 2123742872,
+      "gc_count": 10,
+      "gc_ms": 68,
+      "stream_loads": 897187,
+      "storage_read_calls_with_write_lock": 21,
+      "storage_read_calls_without_write_lock": 1787972,
+      "storage_read_ns_with_write_lock": 26122,
+      "storage_read_ns_without_write_lock": 1317105204,
+      "stream_bytes": 110258016,
+      "heap_used_bytes": 287309824,
+      "resident_cache_bytes": 6965360,
+      "eviction_summary": "eviction BUDGET: 534558 slots unswizzled, 840047 objects released; budget 8000000 bytes, low 6000000; 388 sweeps (66 after loads, 143 complete, 26 above the budget after); last sweep 8002000 -> 6849232 bytes, pinned 1508728 (at most 1726728); sweep time 373 ms in total, 2 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 137930,
+      "expected_commits": 137930,
+      "value_digest": "5866645251076712285"
+    },
+    "run": {
+      "job": {
+        "name": "file-eviction-r8-t1-serial-r2",
+        "case": "file-eviction-r8",
+        "repeat": 2,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 0,
+          "seed": 702
+        }
+      },
+      "directory": "008-file-eviction-r8-t1-serial-r2",
+      "elapsed_seconds": 8.077089416999996,
+      "minimum_idle_before_run": 83.11
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 131072,
+    "reads": 8,
+    "work": 0,
+    "seconds": 5.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 703,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 8000000,
+    "startup_bytes": 1000000,
+    "effective_startup_bytes": 1000000,
+    "diagnostic_loads": true,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/eviction/009-file-eviction-r8-t1-serial-r3/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 0,
+      "ns_per_compute": 17.93125,
+      "ns_per_iteration": null,
+      "checksum": "81985529186877192"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0000192500000002,
+      "drain_seconds": 1.925e-05,
+      "commits": 43606,
+      "active_commits": 43605,
+      "active_commits_per_second": 21802.5,
+      "batch_commits_per_second": 21802.79014814482,
+      "attempts": 43606,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        43606
+      ],
+      "per_worker_active_commits": [
+        43605
+      ],
+      "latency": {
+        "count": 43606,
+        "mean_ns": 45540.192083658214,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 90112,
+        "max_ns": 2802959
+      },
+      "active_completion_latency": {
+        "count": 43605,
+        "mean_ns": 45540.047769751174,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 90112,
+        "max_ns": 2802959
+      },
+      "rw_execution_latency": {
+        "count": 43606,
+        "mean_ns": 45440.960303627944,
+        "p50_ns_upper": 40960,
+        "p95_ns_upper": 59392,
+        "p99_ns_upper": 90112,
+        "max_ns": 2800750
+      },
+      "worker_cpu_ns": 1994929000,
+      "process_cpu_ns": 3281791000,
+      "allocated_bytes": 894731776,
+      "gc_count": 12,
+      "gc_ms": 43,
+      "stream_loads": 384122,
+      "storage_read_calls_with_write_lock": 575,
+      "storage_read_calls_without_write_lock": 768416,
+      "storage_read_ns_with_write_lock": 533743,
+      "storage_read_ns_without_write_lock": 524548494,
+      "stream_bytes": 40983928,
+      "heap_used_bytes": 106954752,
+      "resident_cache_bytes": 7861480,
+      "eviction_summary": "eviction BUDGET: 204628 slots unswizzled, 288644 objects released; budget 8000000 bytes, low 6000000; 112 sweeps (14 after loads, 42 complete, 7 above the budget after); last sweep 8001608 -> 6885872 bytes, pinned 1494248 (at most 1657216); sweep time 116 ms in total, 2 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 5.0,
+      "batch_seconds": 5.000009375,
+      "drain_seconds": 9.375000000000001e-06,
+      "commits": 104020,
+      "active_commits": 104019,
+      "active_commits_per_second": 20803.8,
+      "batch_commits_per_second": 20803.96099257314,
+      "attempts": 104020,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        104020
+      ],
+      "per_worker_active_commits": [
+        104019
+      ],
+      "latency": {
+        "count": 104020,
+        "mean_ns": 47920.536358392616,
+        "p50_ns_upper": 45056,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 77824,
+        "max_ns": 2099125
+      },
+      "active_completion_latency": {
+        "count": 104019,
+        "mean_ns": 47920.59087282131,
+        "p50_ns_upper": 45056,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 77824,
+        "max_ns": 2099125
+      },
+      "rw_execution_latency": {
+        "count": 104020,
+        "mean_ns": 47880.809882714864,
+        "p50_ns_upper": 45056,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 77824,
+        "max_ns": 2099125
+      },
+      "worker_cpu_ns": 4983513000,
+      "process_cpu_ns": 5260117000,
+      "allocated_bytes": 2323864136,
+      "gc_count": 10,
+      "gc_ms": 81,
+      "stream_loads": 980550,
+      "storage_read_calls_with_write_lock": 8,
+      "storage_read_calls_without_write_lock": 1952006,
+      "storage_read_ns_with_write_lock": 8542,
+      "storage_read_ns_without_write_lock": 1345610623,
+      "stream_bytes": 117932640,
+      "heap_used_bytes": 297795584,
+      "resident_cache_bytes": 7389064,
+      "eviction_summary": "eviction BUDGET: 565790 slots unswizzled, 894693 objects released; budget 8000000 bytes, low 6000000; 398 sweeps (56 after loads, 153 complete, 28 above the budget after); last sweep 8000112 -> 6868624 bytes, pinned 1584192 (at most 1657216); sweep time 362 ms in total, 2 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 147626,
+      "expected_commits": 147626,
+      "value_digest": "13649771237495643353"
+    },
+    "run": {
+      "job": {
+        "name": "file-eviction-r8-t1-serial-r3",
+        "case": "file-eviction-r8",
+        "repeat": 3,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 0,
+          "seed": 703
+        }
+      },
+      "directory": "009-file-eviction-r8-t1-serial-r3",
+      "elapsed_seconds": 8.027782292000012,
+      "minimum_idle_before_run": 82.96
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 131072,
+    "reads": 8,
+    "work": 0,
+    "seconds": 5.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 703,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 8000000,
+    "startup_bytes": 1000000,
+    "effective_startup_bytes": 1000000,
+    "diagnostic_loads": true,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/eviction/010-file-eviction-r8-t1-optimistic-r3/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 0,
+      "ns_per_compute": 18.07085,
+      "ns_per_iteration": null,
+      "checksum": "81985529186877192"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000012625,
+      "drain_seconds": 1.2625e-05,
+      "commits": 42287,
+      "active_commits": 42286,
+      "active_commits_per_second": 21143.0,
+      "batch_commits_per_second": 21143.366532498763,
+      "attempts": 42287,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        42287
+      ],
+      "per_worker_active_commits": [
+        42286
+      ],
+      "latency": {
+        "count": 42287,
+        "mean_ns": 46958.637761014026,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 63488,
+        "p99_ns_upper": 102400,
+        "max_ns": 3166541
+      },
+      "active_completion_latency": {
+        "count": 42286,
+        "mean_ns": 46958.49588516294,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 63488,
+        "p99_ns_upper": 102400,
+        "max_ns": 3166541
+      },
+      "rw_execution_latency": {
+        "count": 42287,
+        "mean_ns": 46876.9717407241,
+        "p50_ns_upper": 43008,
+        "p95_ns_upper": 63488,
+        "p99_ns_upper": 98304,
+        "max_ns": 3166375
+      },
+      "worker_cpu_ns": 1989186000,
+      "process_cpu_ns": 3324649000,
+      "allocated_bytes": 866655280,
+      "gc_count": 6,
+      "gc_ms": 23,
+      "stream_loads": 372161,
+      "storage_read_calls_with_write_lock": 571,
+      "storage_read_calls_without_write_lock": 747960,
+      "storage_read_ns_with_write_lock": 583204,
+      "storage_read_ns_without_write_lock": 521358771,
+      "stream_bytes": 40086264,
+      "heap_used_bytes": 643825664,
+      "resident_cache_bytes": 6913880,
+      "eviction_summary": "eviction BUDGET: 201102 slots unswizzled, 283160 objects released; budget 8000000 bytes, low 6000000; 117 sweeps (21 after loads, 41 complete, 9 above the budget after); last sweep 8001616 -> 6907288 bytes, pinned 1482896 (at most 1669208); sweep time 116 ms in total, 2 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 5.0,
+      "batch_seconds": 5.000024167,
+      "drain_seconds": 2.4167e-05,
+      "commits": 105062,
+      "active_commits": 105061,
+      "active_commits_per_second": 21012.2,
+      "batch_commits_per_second": 21012.298439156722,
+      "attempts": 105062,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        105062
+      ],
+      "per_worker_active_commits": [
+        105061
+      ],
+      "latency": {
+        "count": 105062,
+        "mean_ns": 47444.514496202246,
+        "p50_ns_upper": 45056,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 77824,
+        "max_ns": 2067792
+      },
+      "active_completion_latency": {
+        "count": 105061,
+        "mean_ns": 47444.48858282331,
+        "p50_ns_upper": 45056,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 77824,
+        "max_ns": 2067792
+      },
+      "rw_execution_latency": {
+        "count": 105062,
+        "mean_ns": 47405.99962879062,
+        "p50_ns_upper": 45056,
+        "p95_ns_upper": 61440,
+        "p99_ns_upper": 77824,
+        "max_ns": 2067042
+      },
+      "worker_cpu_ns": 4986717000,
+      "process_cpu_ns": 5290212000,
+      "allocated_bytes": 2346384624,
+      "gc_count": 16,
+      "gc_ms": 99,
+      "stream_loads": 990203,
+      "storage_read_calls_with_write_lock": 12,
+      "storage_read_calls_without_write_lock": 1971078,
+      "storage_read_ns_with_write_lock": 10207,
+      "storage_read_ns_without_write_lock": 1330167887,
+      "stream_bytes": 117739696,
+      "heap_used_bytes": 268435456,
+      "resident_cache_bytes": 7746152,
+      "eviction_summary": "eviction BUDGET: 564358 slots unswizzled, 892403 objects released; budget 8000000 bytes, low 6000000; 390 sweeps (49 after loads, 153 complete, 26 above the budget after); last sweep 8003184 -> 6890376 bytes, pinned 1534528 (at most 1669208); sweep time 357 ms in total, 2 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 147349,
+      "expected_commits": 147349,
+      "value_digest": "4102625335697761740"
+    },
+    "run": {
+      "job": {
+        "name": "file-eviction-r8-t1-optimistic-r3",
+        "case": "file-eviction-r8",
+        "repeat": 3,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 0,
+          "seed": 703
+        }
+      },
+      "directory": "010-file-eviction-r8-t1-optimistic-r3",
+      "elapsed_seconds": 8.071134458999978,
+      "minimum_idle_before_run": 81.7
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 131072,
+    "reads": 8,
+    "work": 0,
+    "seconds": 5.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 703,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 8000000,
+    "startup_bytes": 1000000,
+    "effective_startup_bytes": 1000000,
+    "diagnostic_loads": true,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/eviction/011-file-eviction-r8-t8-serial-r3/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 0,
+      "ns_per_compute": 18.12705,
+      "ns_per_iteration": null,
+      "checksum": "81985529186877192"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0006394590000003,
+      "drain_seconds": 0.000639459,
+      "commits": 38930,
+      "active_commits": 38922,
+      "active_commits_per_second": 19461.0,
+      "batch_commits_per_second": 19458.77845449413,
+      "attempts": 38930,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        4545,
+        4530,
+        4816,
+        4509,
+        6275,
+        3581,
+        5322,
+        5352
+      ],
+      "per_worker_active_commits": [
+        4544,
+        4529,
+        4815,
+        4508,
+        6274,
+        3580,
+        5321,
+        5351
+      ],
+      "latency": {
+        "count": 38930,
+        "mean_ns": 410670.30161828926,
+        "p50_ns_upper": 47104,
+        "p95_ns_upper": 69632,
+        "p99_ns_upper": 139264,
+        "max_ns": 169878958
+      },
+      "active_completion_latency": {
+        "count": 38922,
+        "mean_ns": 402073.49766199064,
+        "p50_ns_upper": 47104,
+        "p95_ns_upper": 69632,
+        "p99_ns_upper": 131072,
+        "max_ns": 169878958
+      },
+      "rw_execution_latency": {
+        "count": 38930,
+        "mean_ns": 50854.35499614693,
+        "p50_ns_upper": 47104,
+        "p95_ns_upper": 69632,
+        "p99_ns_upper": 106496,
+        "max_ns": 2873542
+      },
+      "worker_cpu_ns": 2109301000,
+      "process_cpu_ns": 3425998000,
+      "allocated_bytes": 779451256,
+      "gc_count": 6,
+      "gc_ms": 21,
+      "stream_loads": 331481,
+      "storage_read_calls_with_write_lock": 475,
+      "storage_read_calls_without_write_lock": 666981,
+      "storage_read_ns_with_write_lock": 501036,
+      "storage_read_ns_without_write_lock": 500052605,
+      "stream_bytes": 37671344,
+      "heap_used_bytes": 555745280,
+      "resident_cache_bytes": 6976488,
+      "eviction_summary": "eviction BUDGET: 185961 slots unswizzled, 259787 objects released; budget 8000000 bytes, low 6000000; 143 sweeps (56 after loads, 37 complete, 15 above the budget after); last sweep 8000192 -> 6922136 bytes, pinned 1509352 (at most 1777864); sweep time 110 ms in total, 2 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 5.0,
+      "batch_seconds": 5.000926584,
+      "drain_seconds": 0.000926584,
+      "commits": 96537,
+      "active_commits": 96529,
+      "active_commits_per_second": 19305.8,
+      "batch_commits_per_second": 19303.822677353666,
+      "attempts": 96537,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        14013,
+        12695,
+        12024,
+        9446,
+        14166,
+        9546,
+        11061,
+        13586
+      ],
+      "per_worker_active_commits": [
+        14012,
+        12694,
+        12023,
+        9445,
+        14165,
+        9545,
+        11060,
+        13585
+      ],
+      "latency": {
+        "count": 96537,
+        "mean_ns": 414204.2811771652,
+        "p50_ns_upper": 49152,
+        "p95_ns_upper": 69632,
+        "p99_ns_upper": 94208,
+        "max_ns": 377344292
+      },
+      "active_completion_latency": {
+        "count": 96529,
+        "mean_ns": 398693.67176703375,
+        "p50_ns_upper": 49152,
+        "p95_ns_upper": 69632,
+        "p99_ns_upper": 94208,
+        "max_ns": 377344292
+      },
+      "rw_execution_latency": {
+        "count": 96537,
+        "mean_ns": 51510.808239327926,
+        "p50_ns_upper": 49152,
+        "p95_ns_upper": 69632,
+        "p99_ns_upper": 86016,
+        "max_ns": 4625875
+      },
+      "worker_cpu_ns": 5256043000,
+      "process_cpu_ns": 5492714000,
+      "allocated_bytes": 2038776840,
+      "gc_count": 10,
+      "gc_ms": 65,
+      "stream_loads": 837701,
+      "storage_read_calls_with_write_lock": 0,
+      "storage_read_calls_without_write_lock": 1664770,
+      "storage_read_ns_with_write_lock": 0,
+      "storage_read_ns_without_write_lock": 1211102182,
+      "stream_bytes": 107982480,
+      "heap_used_bytes": 113246208,
+      "resident_cache_bytes": 7005488,
+      "eviction_summary": "eviction BUDGET: 500817 slots unswizzled, 789620 objects released; budget 8000000 bytes, low 6000000; 527 sweeps (222 after loads, 135 complete, 49 above the budget after); last sweep 8000720 -> 6982256 bytes, pinned 1470392 (at most 1777864); sweep time 346 ms in total, 2 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 135467,
+      "expected_commits": 135467,
+      "value_digest": "1908629379800145598"
+    },
+    "run": {
+      "job": {
+        "name": "file-eviction-r8-t8-serial-r3",
+        "case": "file-eviction-r8",
+        "repeat": 3,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 0,
+          "seed": 703
+        }
+      },
+      "directory": "011-file-eviction-r8-t8-serial-r3",
+      "elapsed_seconds": 8.073354334000015,
+      "minimum_idle_before_run": 81.69
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 131072,
+    "reads": 8,
+    "work": 0,
+    "seconds": 5.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 703,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 8000000,
+    "startup_bytes": 1000000,
+    "effective_startup_bytes": 1000000,
+    "diagnostic_loads": true,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/eviction/012-file-eviction-r8-t8-optimistic-r3/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 0,
+      "ns_per_compute": 17.7396,
+      "ns_per_iteration": null,
+      "checksum": "81985529186877192"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0002431250000003,
+      "drain_seconds": 0.00024312500000000001,
+      "commits": 76577,
+      "active_commits": 76569,
+      "active_commits_per_second": 38284.5,
+      "batch_commits_per_second": 38283.84611995603,
+      "attempts": 76577,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        9639,
+        9512,
+        9558,
+        9532,
+        9637,
+        9537,
+        9591,
+        9571
+      ],
+      "per_worker_active_commits": [
+        9638,
+        9511,
+        9557,
+        9531,
+        9636,
+        9536,
+        9590,
+        9570
+      ],
+      "latency": {
+        "count": 76577,
+        "mean_ns": 208363.03097535812,
+        "p50_ns_upper": 163840,
+        "p95_ns_upper": 442368,
+        "p99_ns_upper": 1376256,
+        "max_ns": 5205333
+      },
+      "active_completion_latency": {
+        "count": 76569,
+        "mean_ns": 208350.33201426166,
+        "p50_ns_upper": 163840,
+        "p95_ns_upper": 442368,
+        "p99_ns_upper": 1376256,
+        "max_ns": 5205333
+      },
+      "rw_execution_latency": {
+        "count": 76577,
+        "mean_ns": 208186.281416091,
+        "p50_ns_upper": 163840,
+        "p95_ns_upper": 442368,
+        "p99_ns_upper": 1376256,
+        "max_ns": 5205166
+      },
+      "worker_cpu_ns": 5707437000,
+      "process_cpu_ns": 7581242000,
+      "allocated_bytes": 1558420216,
+      "gc_count": 12,
+      "gc_ms": 49,
+      "stream_loads": 694078,
+      "storage_read_calls_with_write_lock": 576,
+      "storage_read_calls_without_write_lock": 1363745,
+      "storage_read_ns_with_write_lock": 1358222,
+      "storage_read_ns_without_write_lock": 1812035905,
+      "stream_bytes": 64637192,
+      "heap_used_bytes": 767557632,
+      "resident_cache_bytes": 7386424,
+      "eviction_summary": "eviction BUDGET: 321384 slots unswizzled, 482307 objects released; budget 8000000 bytes, low 6000000; 175 sweeps (0 after loads, 77 complete, 0 above the budget after); last sweep 8001936 -> 6845936 bytes, pinned 1516096 (at most 1626720); sweep time 202 ms in total, 2 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 5.0,
+      "batch_seconds": 5.0002295420000005,
+      "drain_seconds": 0.000229542,
+      "commits": 195281,
+      "active_commits": 195273,
+      "active_commits_per_second": 39054.6,
+      "batch_commits_per_second": 39054.40707465825,
+      "attempts": 195281,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        24297,
+        24239,
+        24520,
+        24513,
+        24371,
+        24292,
+        24579,
+        24470
+      ],
+      "per_worker_active_commits": [
+        24296,
+        24238,
+        24519,
+        24512,
+        24370,
+        24291,
+        24578,
+        24469
+      ],
+      "latency": {
+        "count": 195281,
+        "mean_ns": 204569.36488956938,
+        "p50_ns_upper": 172032,
+        "p95_ns_upper": 425984,
+        "p99_ns_upper": 1376256,
+        "max_ns": 4122625
+      },
+      "active_completion_latency": {
+        "count": 195273,
+        "mean_ns": 204567.26340559113,
+        "p50_ns_upper": 172032,
+        "p95_ns_upper": 425984,
+        "p99_ns_upper": 1376256,
+        "max_ns": 4122625
+      },
+      "rw_execution_latency": {
+        "count": 195281,
+        "mean_ns": 204445.34421167447,
+        "p50_ns_upper": 172032,
+        "p95_ns_upper": 425984,
+        "p99_ns_upper": 1376256,
+        "max_ns": 4122375
+      },
+      "worker_cpu_ns": 14803703000,
+      "process_cpu_ns": 15304404000,
+      "allocated_bytes": 4186523184,
+      "gc_count": 14,
+      "gc_ms": 109,
+      "stream_loads": 1850375,
+      "storage_read_calls_with_write_lock": 44,
+      "storage_read_calls_without_write_lock": 3628549,
+      "storage_read_ns_with_write_lock": 83290,
+      "storage_read_ns_without_write_lock": 5058986580,
+      "stream_bytes": 214518096,
+      "heap_used_bytes": 1180696576,
+      "resident_cache_bytes": 7367712,
+      "eviction_summary": "eviction BUDGET: 990617 slots unswizzled, 1618254 objects released; budget 8000000 bytes, low 6000000; 638 sweeps (0 after loads, 289 complete, 0 above the budget after); last sweep 8002792 -> 6879320 bytes, pinned 1582568 (at most 1686928); sweep time 690 ms in total, 2 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 271858,
+      "expected_commits": 271858,
+      "value_digest": "1146652386047206656"
+    },
+    "run": {
+      "job": {
+        "name": "file-eviction-r8-t8-optimistic-r3",
+        "case": "file-eviction-r8",
+        "repeat": 3,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 0,
+          "seed": 703
+        }
+      },
+      "directory": "012-file-eviction-r8-t8-optimistic-r3",
+      "elapsed_seconds": 8.050473667000006,
+      "minimum_idle_before_run": 82.21
+    }
+  }
+]

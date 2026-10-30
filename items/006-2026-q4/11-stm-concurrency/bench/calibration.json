@@ -1,0 +1,13 @@
+{
+  "java": "27",
+  "fixed_work_iterations": [
+    0,
+    3000,
+    30000
+  ],
+  "calibration_ns": {
+    "3000": 9370.143264326432,
+    "30000": 93598.66066066067
+  },
+  "note": "One initial calibration; iteration counts fixed for every compared run. Per-JVM calibration also recorded."
+}

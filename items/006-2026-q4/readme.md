@@ -24,6 +24,7 @@ The list
 | [006-08](08-core-layer.md) | 2026-10-26 | The Core Layer: built alone (680 kB), and the Core without its tests, what `Db` needs (14,677 code lines, 335 kB, two thirds of the production code), which writes the same stream; independent of the layers above and of its tests; a C clone for an embedded target is feasible, about 35 to 90 kB of code on a Cortex-M4 by an estimate, its open questions memory and writes at small startup distances |
 | [006-09](09-unattended-27-28-october.md) | 2026-10-27 | Unattended work from 27 October, 12:00, to 28 October, 07:00: the plan (005-46's measurements, 005-49, 005-58, 005-51, 005-48), its principles, the progress and the outcome |
 | [006-10](10-unattended-28-29-october.md) | 2026-10-28 | Unattended work from 28 October, noon, to 29 October, 07:00, in 013-01's way: the plan (007-07's performance check, 005-65's 8-thread case, 005-64's buffer time), its principles, the progress and the outcome |
+| [006-11](11-stm-concurrency.md) | 2026-10-30 | STM and concurrent writers, investigated and benchmarked: keep STM for read-dependent work (1.7x to 6.9x the partially stripped serial control); tiny resident updates and hot keys do not automatically benefit; 276 checked measurements, code costs, critical-section review and reproducible evidence |
 
 
 Files
@@ -65,6 +66,11 @@ Files
   the plan for the unattended work of 28 to 29 October, in 013-01's way of
   working: the questions for Frans, the work in order, the principles, the
   timeline and the quiet block's steps, the progress and the outcome.
+* [11-stm-concurrency.md](11-stm-concurrency.md). 006-11: STM and concurrent
+  writers, the source investigation, critical-section review and completed
+  benchmarks (section 10); the source-size tool, test output, benchmark code,
+  results and raw evidence in
+  [11-stm-concurrency/](11-stm-concurrency/).
 
 
 Log
@@ -165,3 +171,25 @@ tonight. Create 006-10 for planning tonight's unattended work. Similar to
 plan in 013-01's way of working, from the proposal of the morning (007-07's
 quick performance suite, 005-65's 8-thread case, 005-64's buffer time),
 with five questions for Frans before the work starts.
+
+2026-10-30. 006-11, at Frans's request, by Codex: the current STM and writer
+concurrency design, existing correctness and performance evidence, a fresh
+source-size count and focused tests, and a proposed first comparison of
+optimistic actions with serialized application actions. No production code
+changed; writer-scaling measurements remain proposed.
+
+2026-10-30. 006-11, section 9, at Frans's request, by Codex: a source-only
+review of the single-writer section, its required ordering and candidates
+for less work under the lock, especially record encoding/checksums and
+reclaim preparation. No code changes or new performance measurements.
+
+2026-10-30. 006-11 benchmark complete, at Frans's request to code and run it
+unattended, by Codex with two subagents: 276 measured runs with
+verified counter totals and stored computations; the unchanged baseline's
+1,071 unit and 78 functional checks pass. Concurrent read-dependent work
+gives 1.7x to 6.9x the throughput of a partially stripped serial control;
+small resident actions favor the serial path, hot-key retries reach ten
+seconds, and preparation keeps almost all storage reads outside the write
+lock in the eviction workload. Recommendation: keep STM; code, full results,
+measurement conditions and raw evidence are in 006-11. Production Java and
+Lean were not edited, and no commit was made.

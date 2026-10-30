@@ -44,6 +44,7 @@ Open
 | [005-78](78-retain-duration-in-stream.md) | Investigate | The retain duration is not kept in the stream: it decides when reclaim's iterations start and where it cuts, so the stream's bytes, but a start takes the builder's value (default forever), against the rule of 005-53 and 005-52 (a setting that changes the stream's bytes is kept in the stream, 010-P2) and without a word in its Javadoc. Frans: it must be in the stream; study first. Forms: the meta blocks (as the startup distance), an internal KV, or reclaim's table | open |
 | [005-79](79-integers-not-doubles.md) | Implement | Integers instead of doubles in the Core's decisions, so that the stream's bytes are the same in every language and on every target (Frans, 2026-10-29: "Integer operations are well-defined on all targets"): the take's share and dither (`TransSeq.take`), reclaim's iteration spacing and internal fraction, eviction's low watermark. Decided (Frans, 15:48): the take in fixed point (option B), `setReclaimInternalFraction` takes an integer, on its own (not with 005-77 or 005-78, which have notes), not before Frans says so; the other three keep their bytes below 2^53. A check in the gates that keeps doubles out; the C clone and Lean's `share` and `dither` follow | open |
 | [005-80](80-setbudget-race-record.md) | Decide | `setBudget`'s race (005-52), fixed inside 005-65's commit `988fe1a`: a batch that ended while `setBudget` lowered the budget could put back the old budget's trigger, so an idle database kept the memory; now the batch computes the trigger under the monitor `setBudget` holds. Not recorded in 005-52, no test forces the interleaving, no commit of its own. Options: A nothing more, B a line in 005-52 and a forced-interleaving test (recommended), C a commit of its own (not possible, `main` is pushed). Frans's request, 2026-10-29 | open |
+| [005-81](81-overload-and-retries.md) | Investigate | Client overload, backpressure and retries | open |
 
 
 Closed
@@ -417,6 +418,10 @@ Files
 * [80-setbudget-race-record.md](80-setbudget-race-record.md). 005-80,
   the record and a test of `setBudget`'s race, fixed inside 005-65's
   commit: the issue, options A to C, when it is done; open.
+* [81-overload-and-retries.md](81-overload-and-retries.md). 005-81,
+  client overload and transaction retries: verified current waits and
+  resource controls, the client contract, retry/sleep variants, and the
+  overload/recovery investigation plan; open.
 
 Log
 ===
@@ -1533,3 +1538,10 @@ Java and C fixed, with real-read restart regressions; the Java test fails
 before the fix. BEFORE COMMIT OK, LEVEL 2 OK (full, 70 conformance traces),
 C BEFORE COMMIT OK; StreamDigest identical (36 of 36). The original probe
 now refuses both runs, whose 472-byte streams are identical.
+
+2026-10-30. Added 005-81 at Frans's request, following 006-11: investigate
+client overload across storage, CPU and memory, and replace the hard-coded
+retry policy in RwTransaction.executeRw if supported by the measurements.
+Source-checked plan with exact current sleeps, refusal/commit boundaries,
+bounded arrival tests, recovery and fairness measures, and small retry
+variants to compare. Registered and planned only; no Java changes.

@@ -95,6 +95,7 @@ public class RwTransaction implements Transaction {
      * @throws StreamIoException
      * @throws StreamFormatException
      * @throws InternalDataException
+     * @throws DbException
      */
     public static Trans executeRw(RwEnvironmentImp env, ConnectionImp connection, RwTransaction rw) {
         long sleepTime = 10;

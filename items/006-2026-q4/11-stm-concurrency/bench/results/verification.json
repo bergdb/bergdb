@@ -1,0 +1,38 @@
+{
+  "main": {
+    "unique_checked_runs": 168,
+    "distinct_configurations": 56,
+    "all_counter_invariants_passed": true,
+    "all_stored_computations_verified": true,
+    "worker_totals_match": true,
+    "experimental_variants_serial_only": true,
+    "idle_thresholds_checked": true
+  },
+  "cost": {
+    "unique_checked_runs": 60,
+    "distinct_configurations": 20,
+    "all_counter_invariants_passed": true,
+    "all_stored_computations_verified": true,
+    "worker_totals_match": true,
+    "experimental_variants_serial_only": true,
+    "idle_thresholds_checked": true
+  },
+  "file": {
+    "unique_checked_runs": 36,
+    "distinct_configurations": 12,
+    "all_counter_invariants_passed": true,
+    "all_stored_computations_verified": true,
+    "worker_totals_match": true,
+    "experimental_variants_serial_only": true,
+    "idle_thresholds_checked": true
+  },
+  "eviction": {
+    "unique_checked_runs": 12,
+    "distinct_configurations": 4,
+    "all_counter_invariants_passed": true,
+    "all_stored_computations_verified": true,
+    "worker_totals_match": true,
+    "experimental_variants_serial_only": true,
+    "idle_thresholds_checked": true
+  }
+}

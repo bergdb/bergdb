@@ -1,0 +1,15 @@
+commit 4685ab1d3611b9b3d8a20907c29253051be53fc6
+code lines after 006-08's test stripping; package/import/braces count
+   5  core/IKeyModSet.java
+ 148  core/KeyModSet.java
+  10  core/RerunException.java
+ 197  core/Trans.java
+  65  core/DbClock.java
+   4  pub/Action.java
+ 110  pubimp/RwTransaction.java
+ 442  pubimp/RwEnvironmentImp.java
+   7  Db.stmCheckConflicts
+   5  Db.stmRecordKeys
+   7  Db.warmup
+  41  Db.executeInner
+22455  java/src production, 205 files (strip heuristic)

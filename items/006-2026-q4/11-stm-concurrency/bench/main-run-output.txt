@@ -1,0 +1,433 @@
+RUN 1/168 p-r1-none-t1-serial-r1
+OK p-r1-none-t1-serial-r1: 257329/s drained=257329/s attempts=1.0000 max=0.5ms
+RUN 2/168 p-r1-none-t1-optimistic-r1
+OK p-r1-none-t1-optimistic-r1: 256528/s drained=256528/s attempts=1.0000 max=0.5ms
+RUN 3/168 p-r1-none-t2-serial-r1
+OK p-r1-none-t2-serial-r1: 228672/s drained=228670/s attempts=1.0000 max=27.0ms
+RUN 4/168 p-r1-none-t2-optimistic-r1
+OK p-r1-none-t2-optimistic-r1: 239792/s drained=239789/s attempts=1.0000 max=12.0ms
+RUN 5/168 p-r1-none-t4-serial-r1
+OK p-r1-none-t4-serial-r1: 229606/s drained=229598/s attempts=1.0000 max=15.6ms
+RUN 6/168 p-r1-none-t4-optimistic-r1
+OK p-r1-none-t4-optimistic-r1: 230854/s drained=230850/s attempts=1.0000 max=20.4ms
+RUN 7/168 p-r1-none-t8-serial-r1
+OK p-r1-none-t8-serial-r1: 223482/s drained=223474/s attempts=1.0000 max=27.9ms
+RUN 8/168 p-r1-none-t8-optimistic-r1
+OK p-r1-none-t8-optimistic-r1: 215745/s drained=215735/s attempts=1.0000 max=10.5ms
+RUN 9/168 p-r8-none-t1-serial-r1
+OK p-r8-none-t1-serial-r1: 116285/s drained=116285/s attempts=1.0000 max=0.7ms
+RUN 10/168 p-r8-none-t1-optimistic-r1
+OK p-r8-none-t1-optimistic-r1: 113632/s drained=113632/s attempts=1.0000 max=0.7ms
+RUN 11/168 p-r8-none-t2-serial-r1
+OK p-r8-none-t2-serial-r1: 106377/s drained=106376/s attempts=1.0000 max=13.0ms
+RUN 12/168 p-r8-none-t2-optimistic-r1
+OK p-r8-none-t2-optimistic-r1: 130956/s drained=130955/s attempts=1.0000 max=0.7ms
+RUN 13/168 p-r8-none-t4-serial-r1
+OK p-r8-none-t4-serial-r1: 108061/s drained=108057/s attempts=1.0000 max=22.6ms
+RUN 14/168 p-r8-none-t4-optimistic-r1
+OK p-r8-none-t4-optimistic-r1: 125206/s drained=125206/s attempts=1.0000 max=1.3ms
+RUN 15/168 p-r8-none-t8-serial-r1
+OK p-r8-none-t8-serial-r1: 107429/s drained=107423/s attempts=1.0000 max=38.5ms
+RUN 16/168 p-r8-none-t8-optimistic-r1
+OK p-r8-none-t8-optimistic-r1: 118906/s drained=118903/s attempts=1.0000 max=5.0ms
+WAIT quiet 017-p-r8-cpu10-t1-serial-r1: 78.3% idle
+RUN 17/168 p-r8-cpu10-t1-serial-r1
+OK p-r8-cpu10-t1-serial-r1: 53887/s drained=53887/s attempts=1.0000 max=0.6ms
+RUN 18/168 p-r8-cpu10-t1-optimistic-r1
+OK p-r8-cpu10-t1-optimistic-r1: 50450/s drained=50450/s attempts=1.0000 max=0.8ms
+RUN 19/168 p-r8-cpu10-t2-serial-r1
+OK p-r8-cpu10-t2-serial-r1: 48693/s drained=48693/s attempts=1.0000 max=33.8ms
+WAIT quiet 020-p-r8-cpu10-t2-optimistic-r1: 85.9% idle
+WAIT quiet 020-p-r8-cpu10-t2-optimistic-r1: 89.2% idle
+RUN 20/168 p-r8-cpu10-t2-optimistic-r1
+OK p-r8-cpu10-t2-optimistic-r1: 87318/s drained=87318/s attempts=1.0000 max=0.8ms
+WAIT quiet 021-p-r8-cpu10-t4-serial-r1: 89.6% idle
+RUN 21/168 p-r8-cpu10-t4-serial-r1
+OK p-r8-cpu10-t4-serial-r1: 47508/s drained=47507/s attempts=1.0000 max=52.0ms
+WAIT quiet 022-p-r8-cpu10-t4-optimistic-r1: 87.8% idle
+WAIT quiet 022-p-r8-cpu10-t4-optimistic-r1: 89.5% idle
+RUN 22/168 p-r8-cpu10-t4-optimistic-r1
+OK p-r8-cpu10-t4-optimistic-r1: 104427/s drained=104427/s attempts=1.0000 max=5.0ms
+WAIT quiet 023-p-r8-cpu10-t8-serial-r1: 89.3% idle
+RUN 23/168 p-r8-cpu10-t8-serial-r1
+OK p-r8-cpu10-t8-serial-r1: 50107/s drained=50104/s attempts=1.0000 max=83.5ms
+RUN 24/168 p-r8-cpu10-t8-optimistic-r1
+OK p-r8-cpu10-t8-optimistic-r1: 97275/s drained=97274/s attempts=1.0000 max=5.5ms
+RUN 25/168 p-r8-cpu100-t1-serial-r1
+OK p-r8-cpu100-t1-serial-r1: 9306/s drained=9306/s attempts=1.0000 max=2.5ms
+RUN 26/168 p-r8-cpu100-t1-optimistic-r1
+OK p-r8-cpu100-t1-optimistic-r1: 9597/s drained=9598/s attempts=1.0000 max=0.6ms
+RUN 27/168 p-r8-cpu100-t2-serial-r1
+OK p-r8-cpu100-t2-serial-r1: 9135/s drained=9135/s attempts=1.0000 max=490.2ms
+RUN 28/168 p-r8-cpu100-t2-optimistic-r1
+OK p-r8-cpu100-t2-optimistic-r1: 18219/s drained=18219/s attempts=1.0000 max=5.2ms
+RUN 29/168 p-r8-cpu100-t4-serial-r1
+OK p-r8-cpu100-t4-serial-r1: 9286/s drained=9281/s attempts=1.0000 max=651.4ms
+WAIT quiet 030-p-r8-cpu100-t4-optimistic-r1: 89.5% idle
+WAIT quiet 030-p-r8-cpu100-t4-optimistic-r1: 89.6% idle
+RUN 30/168 p-r8-cpu100-t4-optimistic-r1
+OK p-r8-cpu100-t4-optimistic-r1: 35566/s drained=35566/s attempts=1.0000 max=5.9ms
+WAIT quiet 031-p-r8-cpu100-t8-serial-r1: 89.8% idle
+WAIT quiet 031-p-r8-cpu100-t8-serial-r1: 89.8% idle
+RUN 31/168 p-r8-cpu100-t8-serial-r1
+OK p-r8-cpu100-t8-serial-r1: 9221/s drained=9221/s attempts=1.0000 max=741.8ms
+WAIT quiet 032-p-r8-cpu100-t8-optimistic-r1: 89.8% idle
+WAIT quiet 032-p-r8-cpu100-t8-optimistic-r1: 88.0% idle
+RUN 32/168 p-r8-cpu100-t8-optimistic-r1
+OK p-r8-cpu100-t8-optimistic-r1: 67714/s drained=67713/s attempts=1.0000 max=2.8ms
+WAIT quiet 033-u-r8-none-t1-serial-r1: 86.8% idle
+RUN 33/168 u-r8-none-t1-serial-r1
+OK u-r8-none-t1-serial-r1: 108443/s drained=108443/s attempts=1.0000 max=1.9ms
+RUN 34/168 u-r8-none-t1-optimistic-r1
+OK u-r8-none-t1-optimistic-r1: 111675/s drained=111675/s attempts=1.0000 max=1.7ms
+RUN 35/168 u-r8-none-t2-serial-r1
+OK u-r8-none-t2-serial-r1: 103514/s drained=103513/s attempts=1.0000 max=14.2ms
+WAIT quiet 036-u-r8-none-t2-optimistic-r1: 86.2% idle
+RUN 36/168 u-r8-none-t2-optimistic-r1
+OK u-r8-none-t2-optimistic-r1: 112811/s drained=112520/s attempts=1.0006 max=32.9ms
+WAIT quiet 037-u-r8-none-t4-serial-r1: 88.5% idle
+WAIT quiet 037-u-r8-none-t4-serial-r1: 89.5% idle
+WAIT quiet 037-u-r8-none-t4-serial-r1: 89.6% idle
+RUN 37/168 u-r8-none-t4-serial-r1
+OK u-r8-none-t4-serial-r1: 98544/s drained=98541/s attempts=1.0000 max=27.8ms
+RUN 38/168 u-r8-none-t4-optimistic-r1
+OK u-r8-none-t4-optimistic-r1: 114003/s drained=113572/s attempts=1.0016 max=12.8ms
+WAIT quiet 039-u-r8-none-t8-serial-r1: 88.4% idle
+RUN 39/168 u-r8-none-t8-serial-r1
+OK u-r8-none-t8-serial-r1: 96548/s drained=96544/s attempts=1.0000 max=51.8ms
+WAIT quiet 040-u-r8-none-t8-optimistic-r1: 87.7% idle
+RUN 40/168 u-r8-none-t8-optimistic-r1
+OK u-r8-none-t8-optimistic-r1: 114087/s drained=113650/s attempts=1.0036 max=53.9ms
+WAIT quiet 041-u-r8-cpu10-t1-serial-r1: 86.3% idle
+WAIT quiet 041-u-r8-cpu10-t1-serial-r1: 87.5% idle
+WAIT quiet 041-u-r8-cpu10-t1-serial-r1: 87.8% idle
+RUN 41/168 u-r8-cpu10-t1-serial-r1
+OK u-r8-cpu10-t1-serial-r1: 55598/s drained=55598/s attempts=1.0000 max=4.8ms
+RUN 42/168 u-r8-cpu10-t1-optimistic-r1
+OK u-r8-cpu10-t1-optimistic-r1: 56598/s drained=56598/s attempts=1.0000 max=0.6ms
+RUN 43/168 u-r8-cpu10-t2-serial-r1
+OK u-r8-cpu10-t2-serial-r1: 50124/s drained=50123/s attempts=1.0000 max=30.9ms
+WAIT quiet 044-u-r8-cpu10-t2-optimistic-r1: 89.6% idle
+RUN 44/168 u-r8-cpu10-t2-optimistic-r1
+OK u-r8-cpu10-t2-optimistic-r1: 63003/s drained=62957/s attempts=1.0009 max=18.4ms
+WAIT quiet 045-u-r8-cpu10-t4-serial-r1: 70.5% idle
+WAIT quiet 045-u-r8-cpu10-t4-serial-r1: 83.8% idle
+WAIT quiet 045-u-r8-cpu10-t4-serial-r1: 88.2% idle
+RUN 45/168 u-r8-cpu10-t4-serial-r1
+OK u-r8-cpu10-t4-serial-r1: 49341/s drained=49340/s attempts=1.0000 max=84.9ms
+RUN 46/168 u-r8-cpu10-t4-optimistic-r1
+OK u-r8-cpu10-t4-optimistic-r1: 73944/s drained=73775/s attempts=1.0023 max=37.6ms
+WAIT quiet 047-u-r8-cpu10-t8-serial-r1: 81.7% idle
+WAIT quiet 047-u-r8-cpu10-t8-serial-r1: 75.8% idle
+WAIT quiet 047-u-r8-cpu10-t8-serial-r1: 86.2% idle
+WAIT quiet 047-u-r8-cpu10-t8-serial-r1: 89.3% idle
+WAIT quiet 047-u-r8-cpu10-t8-serial-r1: 85.8% idle
+RUN 47/168 u-r8-cpu10-t8-serial-r1
+OK u-r8-cpu10-t8-serial-r1: 48125/s drained=48123/s attempts=1.0000 max=134.0ms
+WAIT quiet 048-u-r8-cpu10-t8-optimistic-r1: 87.4% idle
+RUN 48/168 u-r8-cpu10-t8-optimistic-r1
+OK u-r8-cpu10-t8-optimistic-r1: 90440/s drained=90091/s attempts=1.0043 max=51.0ms
+RUN 49/168 hot-r8-cpu10-t1-serial-r1
+OK hot-r8-cpu10-t1-serial-r1: 58736/s drained=58736/s attempts=1.0000 max=0.6ms
+WAIT quiet 050-hot-r8-cpu10-t1-optimistic-r1: 86.9% idle
+WAIT quiet 050-hot-r8-cpu10-t1-optimistic-r1: 89.9% idle
+WAIT quiet 050-hot-r8-cpu10-t1-optimistic-r1: 84.3% idle
+WAIT quiet 050-hot-r8-cpu10-t1-optimistic-r1: 88.7% idle
+WAIT quiet 050-hot-r8-cpu10-t1-optimistic-r1: 89.6% idle
+RUN 50/168 hot-r8-cpu10-t1-optimistic-r1
+OK hot-r8-cpu10-t1-optimistic-r1: 58441/s drained=58441/s attempts=1.0000 max=0.7ms
+WAIT quiet 051-hot-r8-cpu10-t2-serial-r1: 89.8% idle
+RUN 51/168 hot-r8-cpu10-t2-serial-r1
+OK hot-r8-cpu10-t2-serial-r1: 50471/s drained=50470/s attempts=1.0000 max=37.7ms
+RUN 52/168 hot-r8-cpu10-t2-optimistic-r1
+OK hot-r8-cpu10-t2-optimistic-r1: 54802/s drained=31948/s attempts=1.0001 max=5145.7ms
+WAIT quiet 053-hot-r8-cpu10-t4-serial-r1: 85.6% idle
+WAIT quiet 053-hot-r8-cpu10-t4-serial-r1: 84.5% idle
+WAIT quiet 053-hot-r8-cpu10-t4-serial-r1: 87.2% idle
+WAIT quiet 053-hot-r8-cpu10-t4-serial-r1: 86.2% idle
+RUN 53/168 hot-r8-cpu10-t4-serial-r1
+OK hot-r8-cpu10-t4-serial-r1: 51377/s drained=51376/s attempts=1.0000 max=58.2ms
+RUN 54/168 hot-r8-cpu10-t4-optimistic-r1
+OK hot-r8-cpu10-t4-optimistic-r1: 57797/s drained=32642/s attempts=1.0002 max=5149.7ms
+RUN 55/168 hot-r8-cpu10-t8-serial-r1
+OK hot-r8-cpu10-t8-serial-r1: 50371/s drained=50368/s attempts=1.0000 max=121.7ms
+RUN 56/168 hot-r8-cpu10-t8-optimistic-r1
+OK hot-r8-cpu10-t8-optimistic-r1: 54621/s drained=31356/s attempts=1.0007 max=5146.6ms
+WAIT quiet 057-p-r8-none-t8-optimistic-r2: 88.6% idle
+RUN 57/168 p-r8-none-t8-optimistic-r2
+OK p-r8-none-t8-optimistic-r2: 122586/s drained=122584/s attempts=1.0000 max=1.3ms
+RUN 58/168 p-r8-none-t8-serial-r2
+OK p-r8-none-t8-serial-r2: 106541/s drained=106535/s attempts=1.0000 max=27.1ms
+RUN 59/168 p-r8-none-t4-optimistic-r2
+OK p-r8-none-t4-optimistic-r2: 125363/s drained=125362/s attempts=1.0000 max=0.6ms
+RUN 60/168 p-r8-none-t4-serial-r2
+OK p-r8-none-t4-serial-r2: 107073/s drained=107070/s attempts=1.0000 max=24.4ms
+RUN 61/168 p-r8-none-t2-optimistic-r2
+OK p-r8-none-t2-optimistic-r2: 132563/s drained=132563/s attempts=1.0000 max=0.7ms
+RUN 62/168 p-r8-none-t2-serial-r2
+OK p-r8-none-t2-serial-r2: 106048/s drained=106046/s attempts=1.0000 max=16.2ms
+RUN 63/168 p-r8-none-t1-optimistic-r2
+OK p-r8-none-t1-optimistic-r2: 111374/s drained=111374/s attempts=1.0000 max=0.4ms
+RUN 64/168 p-r8-none-t1-serial-r2
+OK p-r8-none-t1-serial-r2: 114026/s drained=114026/s attempts=1.0000 max=0.5ms
+RUN 65/168 p-r8-cpu10-t8-optimistic-r2
+OK p-r8-cpu10-t8-optimistic-r2: 99126/s drained=99126/s attempts=1.0000 max=1.1ms
+RUN 66/168 p-r8-cpu10-t8-serial-r2
+OK p-r8-cpu10-t8-serial-r2: 50901/s drained=50900/s attempts=1.0000 max=87.7ms
+RUN 67/168 p-r8-cpu10-t4-optimistic-r2
+OK p-r8-cpu10-t4-optimistic-r2: 107273/s drained=107274/s attempts=1.0000 max=0.6ms
+RUN 68/168 p-r8-cpu10-t4-serial-r2
+OK p-r8-cpu10-t4-serial-r2: 50549/s drained=50547/s attempts=1.0000 max=70.3ms
+RUN 69/168 p-r8-cpu10-t2-optimistic-r2
+OK p-r8-cpu10-t2-optimistic-r2: 93617/s drained=93616/s attempts=1.0000 max=0.7ms
+RUN 70/168 p-r8-cpu10-t2-serial-r2
+OK p-r8-cpu10-t2-serial-r2: 50861/s drained=50860/s attempts=1.0000 max=51.8ms
+RUN 71/168 p-r8-cpu10-t1-optimistic-r2
+OK p-r8-cpu10-t1-optimistic-r2: 56120/s drained=56120/s attempts=1.0000 max=0.6ms
+RUN 72/168 p-r8-cpu10-t1-serial-r2
+OK p-r8-cpu10-t1-serial-r2: 56077/s drained=56077/s attempts=1.0000 max=0.7ms
+RUN 73/168 p-r8-cpu100-t8-optimistic-r2
+OK p-r8-cpu100-t8-optimistic-r2: 67694/s drained=67694/s attempts=1.0000 max=1.9ms
+RUN 74/168 p-r8-cpu100-t8-serial-r2
+OK p-r8-cpu100-t8-serial-r2: 9467/s drained=9466/s attempts=1.0000 max=1601.5ms
+RUN 75/168 p-r8-cpu100-t4-optimistic-r2
+OK p-r8-cpu100-t4-optimistic-r2: 35981/s drained=35981/s attempts=1.0000 max=0.8ms
+RUN 76/168 p-r8-cpu100-t4-serial-r2
+OK p-r8-cpu100-t4-serial-r2: 9413/s drained=9413/s attempts=1.0000 max=1084.5ms
+RUN 77/168 p-r8-cpu100-t2-optimistic-r2
+OK p-r8-cpu100-t2-optimistic-r2: 18553/s drained=18553/s attempts=1.0000 max=0.7ms
+RUN 78/168 p-r8-cpu100-t2-serial-r2
+OK p-r8-cpu100-t2-serial-r2: 9411/s drained=9411/s attempts=1.0000 max=561.6ms
+RUN 79/168 p-r8-cpu100-t1-optimistic-r2
+OK p-r8-cpu100-t1-optimistic-r2: 9644/s drained=9644/s attempts=1.0000 max=0.5ms
+RUN 80/168 p-r8-cpu100-t1-serial-r2
+OK p-r8-cpu100-t1-serial-r2: 9625/s drained=9625/s attempts=1.0000 max=0.6ms
+RUN 81/168 u-r8-none-t8-optimistic-r2
+OK u-r8-none-t8-optimistic-r2: 122064/s drained=121662/s attempts=1.0035 max=37.7ms
+RUN 82/168 u-r8-none-t8-serial-r2
+OK u-r8-none-t8-serial-r2: 105517/s drained=105513/s attempts=1.0000 max=41.1ms
+RUN 83/168 u-r8-none-t4-optimistic-r2
+OK u-r8-none-t4-optimistic-r2: 122712/s drained=122282/s attempts=1.0015 max=37.6ms
+RUN 84/168 u-r8-none-t4-serial-r2
+OK u-r8-none-t4-serial-r2: 106366/s drained=106365/s attempts=1.0000 max=25.2ms
+WAIT quiet 085-u-r8-none-t2-optimistic-r2: 88.8% idle
+RUN 85/168 u-r8-none-t2-optimistic-r2
+OK u-r8-none-t2-optimistic-r2: 113628/s drained=113627/s attempts=1.0005 max=12.8ms
+RUN 86/168 u-r8-none-t2-serial-r2
+OK u-r8-none-t2-serial-r2: 103986/s drained=103985/s attempts=1.0000 max=27.9ms
+RUN 87/168 u-r8-none-t1-optimistic-r2
+OK u-r8-none-t1-optimistic-r2: 108456/s drained=108456/s attempts=1.0000 max=8.4ms
+RUN 88/168 u-r8-none-t1-serial-r2
+OK u-r8-none-t1-serial-r2: 107506/s drained=107507/s attempts=1.0000 max=2.0ms
+RUN 89/168 u-r8-cpu10-t8-optimistic-r2
+OK u-r8-cpu10-t8-optimistic-r2: 91694/s drained=91410/s attempts=1.0043 max=37.9ms
+WAIT quiet 090-u-r8-cpu10-t8-serial-r2: 89.2% idle
+RUN 90/168 u-r8-cpu10-t8-serial-r2
+OK u-r8-cpu10-t8-serial-r2: 48642/s drained=48640/s attempts=1.0000 max=117.4ms
+WAIT quiet 091-u-r8-cpu10-t4-optimistic-r2: 89.8% idle
+RUN 91/168 u-r8-cpu10-t4-optimistic-r2
+OK u-r8-cpu10-t4-optimistic-r2: 80904/s drained=80820/s attempts=1.0021 max=37.6ms
+RUN 92/168 u-r8-cpu10-t4-serial-r2
+OK u-r8-cpu10-t4-serial-r2: 48728/s drained=48727/s attempts=1.0000 max=75.5ms
+WAIT quiet 093-u-r8-cpu10-t2-optimistic-r2: 89.5% idle
+RUN 93/168 u-r8-cpu10-t2-optimistic-r2
+OK u-r8-cpu10-t2-optimistic-r2: 65587/s drained=65373/s attempts=1.0009 max=12.7ms
+RUN 94/168 u-r8-cpu10-t2-serial-r2
+OK u-r8-cpu10-t2-serial-r2: 48057/s drained=48057/s attempts=1.0000 max=47.1ms
+WAIT quiet 095-u-r8-cpu10-t1-optimistic-r2: 87.5% idle
+WAIT quiet 095-u-r8-cpu10-t1-optimistic-r2: 88.9% idle
+RUN 95/168 u-r8-cpu10-t1-optimistic-r2
+OK u-r8-cpu10-t1-optimistic-r2: 54692/s drained=54692/s attempts=1.0000 max=0.6ms
+RUN 96/168 u-r8-cpu10-t1-serial-r2
+OK u-r8-cpu10-t1-serial-r2: 55357/s drained=55357/s attempts=1.0000 max=0.7ms
+RUN 97/168 hot-r8-cpu10-t8-optimistic-r2
+OK hot-r8-cpu10-t8-optimistic-r2: 57369/s drained=16755/s attempts=1.0006 max=10258.8ms
+RUN 98/168 hot-r8-cpu10-t8-serial-r2
+OK hot-r8-cpu10-t8-serial-r2: 52183/s drained=52180/s attempts=1.0000 max=85.6ms
+WAIT quiet 099-hot-r8-cpu10-t4-optimistic-r2: 88.4% idle
+RUN 99/168 hot-r8-cpu10-t4-optimistic-r2
+OK hot-r8-cpu10-t4-optimistic-r2: 55300/s drained=30100/s attempts=1.0003 max=5152.2ms
+RUN 100/168 hot-r8-cpu10-t4-serial-r2
+OK hot-r8-cpu10-t4-serial-r2: 50601/s drained=50601/s attempts=1.0000 max=68.2ms
+WAIT quiet 101-hot-r8-cpu10-t2-optimistic-r2: 86.2% idle
+RUN 101/168 hot-r8-cpu10-t2-optimistic-r2
+OK hot-r8-cpu10-t2-optimistic-r2: 55061/s drained=31922/s attempts=1.0001 max=5137.2ms
+RUN 102/168 hot-r8-cpu10-t2-serial-r2
+OK hot-r8-cpu10-t2-serial-r2: 50975/s drained=50974/s attempts=1.0000 max=44.7ms
+WAIT quiet 103-hot-r8-cpu10-t1-optimistic-r2: 88.2% idle
+RUN 103/168 hot-r8-cpu10-t1-optimistic-r2
+OK hot-r8-cpu10-t1-optimistic-r2: 56400/s drained=56400/s attempts=1.0000 max=0.7ms
+WAIT quiet 104-hot-r8-cpu10-t1-serial-r2: 85.8% idle
+WAIT quiet 104-hot-r8-cpu10-t1-serial-r2: 89.2% idle
+WAIT quiet 104-hot-r8-cpu10-t1-serial-r2: 89.9% idle
+RUN 104/168 hot-r8-cpu10-t1-serial-r2
+OK hot-r8-cpu10-t1-serial-r2: 55529/s drained=55529/s attempts=1.0000 max=2.3ms
+WAIT quiet 105-p-r1-none-t8-optimistic-r2: 89.2% idle
+RUN 105/168 p-r1-none-t8-optimistic-r2
+OK p-r1-none-t8-optimistic-r2: 223876/s drained=223872/s attempts=1.0000 max=3.5ms
+RUN 106/168 p-r1-none-t8-serial-r2
+OK p-r1-none-t8-serial-r2: 225247/s drained=225235/s attempts=1.0000 max=33.1ms
+WAIT quiet 107-p-r1-none-t4-optimistic-r2: 86.8% idle
+WAIT quiet 107-p-r1-none-t4-optimistic-r2: 89.5% idle
+WAIT quiet 107-p-r1-none-t4-optimistic-r2: 89.2% idle
+RUN 107/168 p-r1-none-t4-optimistic-r2
+OK p-r1-none-t4-optimistic-r2: 212977/s drained=212975/s attempts=1.0000 max=3.5ms
+WAIT quiet 108-p-r1-none-t4-serial-r2: 89.5% idle
+WAIT quiet 108-p-r1-none-t4-serial-r2: 89.2% idle
+WAIT quiet 108-p-r1-none-t4-serial-r2: 88.7% idle
+WAIT quiet 108-p-r1-none-t4-serial-r2: 87.8% idle
+WAIT quiet 108-p-r1-none-t4-serial-r2: 89.1% idle
+WAIT quiet 108-p-r1-none-t4-serial-r2: 86.7% idle
+WAIT quiet 108-p-r1-none-t4-serial-r2: 89.5% idle
+WAIT quiet 108-p-r1-none-t4-serial-r2: 88.5% idle
+RUN 108/168 p-r1-none-t4-serial-r2
+OK p-r1-none-t4-serial-r2: 226123/s drained=226120/s attempts=1.0000 max=19.6ms
+RUN 109/168 p-r1-none-t2-optimistic-r2
+OK p-r1-none-t2-optimistic-r2: 249072/s drained=249071/s attempts=1.0000 max=3.7ms
+RUN 110/168 p-r1-none-t2-serial-r2
+OK p-r1-none-t2-serial-r2: 219992/s drained=219989/s attempts=1.0000 max=7.3ms
+RUN 111/168 p-r1-none-t1-optimistic-r2
+OK p-r1-none-t1-optimistic-r2: 245990/s drained=245990/s attempts=1.0000 max=0.6ms
+WAIT quiet 112-p-r1-none-t1-serial-r2: 88.5% idle
+WAIT quiet 112-p-r1-none-t1-serial-r2: 88.9% idle
+RUN 112/168 p-r1-none-t1-serial-r2
+OK p-r1-none-t1-serial-r2: 238190/s drained=238190/s attempts=1.0000 max=1.0ms
+WAIT quiet 113-p-r8-cpu10-t1-serial-r3: 86.9% idle
+RUN 113/168 p-r8-cpu10-t1-serial-r3
+OK p-r8-cpu10-t1-serial-r3: 53695/s drained=53695/s attempts=1.0000 max=0.6ms
+WAIT quiet 114-p-r8-cpu10-t1-optimistic-r3: 89.5% idle
+RUN 114/168 p-r8-cpu10-t1-optimistic-r3
+OK p-r8-cpu10-t1-optimistic-r3: 52291/s drained=52291/s attempts=1.0000 max=0.9ms
+RUN 115/168 p-r8-cpu10-t2-serial-r3
+OK p-r8-cpu10-t2-serial-r3: 49088/s drained=49087/s attempts=1.0000 max=49.3ms
+RUN 116/168 p-r8-cpu10-t2-optimistic-r3
+OK p-r8-cpu10-t2-optimistic-r3: 87581/s drained=87581/s attempts=1.0000 max=3.5ms
+RUN 117/168 p-r8-cpu10-t4-serial-r3
+OK p-r8-cpu10-t4-serial-r3: 50472/s drained=50471/s attempts=1.0000 max=70.5ms
+RUN 118/168 p-r8-cpu10-t4-optimistic-r3
+OK p-r8-cpu10-t4-optimistic-r3: 100480/s drained=100480/s attempts=1.0000 max=6.2ms
+WAIT quiet 119-p-r8-cpu10-t8-serial-r3: 85.0% idle
+RUN 119/168 p-r8-cpu10-t8-serial-r3
+OK p-r8-cpu10-t8-serial-r3: 49639/s drained=49636/s attempts=1.0000 max=85.2ms
+RUN 120/168 p-r8-cpu10-t8-optimistic-r3
+OK p-r8-cpu10-t8-optimistic-r3: 96669/s drained=96669/s attempts=1.0000 max=7.9ms
+RUN 121/168 p-r8-cpu100-t1-serial-r3
+OK p-r8-cpu100-t1-serial-r3: 9597/s drained=9597/s attempts=1.0000 max=0.6ms
+WAIT quiet 122-p-r8-cpu100-t1-optimistic-r3: 88.0% idle
+RUN 122/168 p-r8-cpu100-t1-optimistic-r3
+OK p-r8-cpu100-t1-optimistic-r3: 9456/s drained=9456/s attempts=1.0000 max=3.4ms
+WAIT quiet 123-p-r8-cpu100-t2-serial-r3: 88.9% idle
+WAIT quiet 123-p-r8-cpu100-t2-serial-r3: 89.9% idle
+WAIT quiet 123-p-r8-cpu100-t2-serial-r3: 89.5% idle
+RUN 123/168 p-r8-cpu100-t2-serial-r3
+OK p-r8-cpu100-t2-serial-r3: 9417/s drained=9417/s attempts=1.0000 max=621.7ms
+RUN 124/168 p-r8-cpu100-t2-optimistic-r3
+OK p-r8-cpu100-t2-optimistic-r3: 18640/s drained=18640/s attempts=1.0000 max=0.7ms
+RUN 125/168 p-r8-cpu100-t4-serial-r3
+OK p-r8-cpu100-t4-serial-r3: 9192/s drained=9191/s attempts=1.0000 max=613.6ms
+RUN 126/168 p-r8-cpu100-t4-optimistic-r3
+OK p-r8-cpu100-t4-optimistic-r3: 35986/s drained=35987/s attempts=1.0000 max=0.8ms
+RUN 127/168 p-r8-cpu100-t8-serial-r3
+OK p-r8-cpu100-t8-serial-r3: 9468/s drained=9468/s attempts=1.0000 max=1744.9ms
+RUN 128/168 p-r8-cpu100-t8-optimistic-r3
+OK p-r8-cpu100-t8-optimistic-r3: 68405/s drained=68405/s attempts=1.0000 max=1.2ms
+WAIT quiet 129-u-r8-none-t1-serial-r3: 88.1% idle
+WAIT quiet 129-u-r8-none-t1-serial-r3: 89.9% idle
+RUN 129/168 u-r8-none-t1-serial-r3
+OK u-r8-none-t1-serial-r3: 111457/s drained=111457/s attempts=1.0000 max=2.8ms
+WAIT quiet 130-u-r8-none-t1-optimistic-r3: 88.4% idle
+RUN 130/168 u-r8-none-t1-optimistic-r3
+OK u-r8-none-t1-optimistic-r3: 112508/s drained=112508/s attempts=1.0000 max=1.6ms
+RUN 131/168 u-r8-none-t2-serial-r3
+OK u-r8-none-t2-serial-r3: 101173/s drained=101172/s attempts=1.0000 max=13.9ms
+RUN 132/168 u-r8-none-t2-optimistic-r3
+OK u-r8-none-t2-optimistic-r3: 112124/s drained=111911/s attempts=1.0006 max=12.7ms
+WAIT quiet 133-u-r8-none-t4-serial-r3: 89.7% idle
+RUN 133/168 u-r8-none-t4-serial-r3
+OK u-r8-none-t4-serial-r3: 101250/s drained=101248/s attempts=1.0000 max=21.5ms
+RUN 134/168 u-r8-none-t4-optimistic-r3
+OK u-r8-none-t4-optimistic-r3: 118385/s drained=118002/s attempts=1.0016 max=37.7ms
+RUN 135/168 u-r8-none-t8-serial-r3
+OK u-r8-none-t8-serial-r3: 106787/s drained=106781/s attempts=1.0000 max=34.1ms
+RUN 136/168 u-r8-none-t8-optimistic-r3
+OK u-r8-none-t8-optimistic-r3: 123008/s drained=122709/s attempts=1.0035 max=37.9ms
+WAIT quiet 137-u-r8-cpu10-t1-serial-r3: 88.4% idle
+WAIT quiet 137-u-r8-cpu10-t1-serial-r3: 83.1% idle
+RUN 137/168 u-r8-cpu10-t1-serial-r3
+OK u-r8-cpu10-t1-serial-r3: 54813/s drained=54813/s attempts=1.0000 max=0.9ms
+RUN 138/168 u-r8-cpu10-t1-optimistic-r3
+OK u-r8-cpu10-t1-optimistic-r3: 53881/s drained=53882/s attempts=1.0000 max=8.0ms
+WAIT quiet 139-u-r8-cpu10-t2-serial-r3: 88.9% idle
+WAIT quiet 139-u-r8-cpu10-t2-serial-r3: 89.5% idle
+RUN 139/168 u-r8-cpu10-t2-serial-r3
+OK u-r8-cpu10-t2-serial-r3: 48554/s drained=48554/s attempts=1.0000 max=46.0ms
+RUN 140/168 u-r8-cpu10-t2-optimistic-r3
+OK u-r8-cpu10-t2-optimistic-r3: 63880/s drained=63852/s attempts=1.0009 max=12.7ms
+RUN 141/168 u-r8-cpu10-t4-serial-r3
+OK u-r8-cpu10-t4-serial-r3: 49316/s drained=49315/s attempts=1.0000 max=67.0ms
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 81.6% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 81.5% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 79.9% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 82.6% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 79.5% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 82.7% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 81.6% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 79.9% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 79.8% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 81.5% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 82.5% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 78.4% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 78.3% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 82.5% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 79.8% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 79.2% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 82.6% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 80.5% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 82.2% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 82.8% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 82.4% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 79.7% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 78.9% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 77.6% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 81.2% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 78.7% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 82.7% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 80.3% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 82.4% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 80.7% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 81.3% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 81.3% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 78.7% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 81.3% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 82.7% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 80.5% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 83.9% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 83.2% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 76.6% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 79.6% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 80.8% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 79.2% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 78.5% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 79.3% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 81.8% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 83.7% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 82.7% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 80.2% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 82.3% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 83.4% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 82.7% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 82.6% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 81.5% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 78.3% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 82.7% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 78.2% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 81.9% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 79.4% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 81.8% idle
+WAIT quiet 142-u-r8-cpu10-t4-optimistic-r3: 81.7% idle
+Traceback (most recent call last):
+  File "/Users/f/fl/repos/bergdb/items/006-2026-q4/11-stm-concurrency/bench/run.py", line 170, in <module>
+    main(parser.parse_args())
+  File "/Users/f/fl/repos/bergdb/items/006-2026-q4/11-stm-concurrency/bench/run.py", line 106, in main
+    raise RuntimeError("machine did not become quiet")
+RuntimeError: machine did not become quiet

@@ -1,0 +1,44 @@
+--- a/items/006-2026-q4/11-stm-concurrency/bench/RwBench.java
++++ b/items/006-2026-q4/11-stm-concurrency/bench/RwBench.java
+@@ -48,7 +48,7 @@
+     static volatile long calibrationSink;
+ 
+     final Map<String, String> args = new LinkedHashMap<>();
+-    final int threads, keys, reads, work;
++    final int threads, keys, reads, work, startupBytes;
+     final double seconds, warmupSeconds, hotFraction;
+     final long seed, cacheBytes;
+     final String mode, workload, storage, variant;
+@@ -70,6 +70,7 @@
+         keys = integer("keys", 4096);
+         reads = integer("reads", 1);
+         work = integer("work", 0);
++        startupBytes = integer("startupBytes", 0);
+         seconds = decimal("seconds", 3);
+         warmupSeconds = decimal("warmupSeconds", 2);
+         hotFraction = decimal("hotFraction", 0.9);
+@@ -88,13 +89,14 @@
+         if (!List.of("memory", "file").contains(storage)) bad("unknown storage");
+         if (threads < 1 || threads > 128 || keys < 1 || reads < 1 || reads > keys
+                 || work < 0 || seconds <= 0 || warmupSeconds < 0 || hotFraction < 0
+-                || hotFraction > 1 || cacheBytes < 0) bad("invalid numeric parameter");
++                || hotFraction > 1 || cacheBytes < 0 || startupBytes < 0) bad("invalid numeric parameter");
+         if (workload.equals("partitioned") && (keys % threads != 0 || keys / threads < reads))
+             bad("partitioned requires keys divisible by threads and reads <= keys/threads");
+ 
+         keyNames = new String[keys];
+         for (int i = 0; i < keys; i++) keyNames[i] = String.format(Locale.ROOT, "/bench/c/%08d", i);
+         DbBuilder builder = Db.builder().retainForever().testId();
++        if (startupBytes > 0) builder.startupDistance(startupBytes);
+         if (cacheBytes == 0) builder.noEvict();
+         else builder.cacheSizeIndicator(cacheBytes);
+         AppendOnlyStream stream;
+@@ -463,6 +465,8 @@
+         out.put("seconds", seconds); out.put("warmup_seconds", warmupSeconds);
+         out.put("hot_fraction", hotFraction); out.put("seed", seed);
+         out.put("storage", storage); out.put("durable", durable); out.put("cache_bytes", cacheBytes);
++        out.put("startup_bytes", startupBytes);
++        out.put("effective_startup_bytes", core.getStartupDistance());
+         out.put("diagnostic_loads", diagnosticLoads);
+         out.put("java", System.getProperty("java.runtime.version"));
+         out.put("available_processors", Runtime.getRuntime().availableProcessors());

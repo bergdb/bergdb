@@ -1,0 +1,6494 @@
+[
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 701,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/001-file-append-cpu10-t1-serial-r1/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9329.65796579658,
+      "ns_per_iteration": 3.10988598859886,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000019,
+      "drain_seconds": 1.9e-05,
+      "commits": 105978,
+      "active_commits": 105977,
+      "active_commits_per_second": 52988.5,
+      "batch_commits_per_second": 52988.496609282214,
+      "attempts": 105978,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        105978
+      ],
+      "per_worker_active_commits": [
+        105977
+      ],
+      "latency": {
+        "count": 105978,
+        "mean_ns": 18664.977976561175,
+        "p50_ns_upper": 18432,
+        "p95_ns_upper": 24576,
+        "p99_ns_upper": 36864,
+        "max_ns": 684166
+      },
+      "active_completion_latency": {
+        "count": 105977,
+        "mean_ns": 18664.921737735545,
+        "p50_ns_upper": 18432,
+        "p95_ns_upper": 24576,
+        "p99_ns_upper": 36864,
+        "max_ns": 684166
+      },
+      "rw_execution_latency": {
+        "count": 105978,
+        "mean_ns": 18602.43894015739,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 24576,
+        "p99_ns_upper": 36864,
+        "max_ns": 682791
+      },
+      "worker_cpu_ns": 1995226000,
+      "process_cpu_ns": 3924180000,
+      "allocated_bytes": 591600376,
+      "gc_count": 7,
+      "gc_ms": 24,
+      "stream_loads": 0,
+      "stream_bytes": 15125064,
+      "heap_used_bytes": 436207616,
+      "resident_cache_bytes": 29250584,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.000010542,
+      "drain_seconds": 1.0542e-05,
+      "commits": 165849,
+      "active_commits": 165848,
+      "active_commits_per_second": 55282.666666666664,
+      "batch_commits_per_second": 55282.805736220645,
+      "attempts": 165849,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        165849
+      ],
+      "per_worker_active_commits": [
+        165848
+      ],
+      "latency": {
+        "count": 165849,
+        "mean_ns": 17982.610018752,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 28672,
+        "max_ns": 688916
+      },
+      "active_completion_latency": {
+        "count": 165848,
+        "mean_ns": 17982.61719767498,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 28672,
+        "max_ns": 688916
+      },
+      "rw_execution_latency": {
+        "count": 165849,
+        "mean_ns": 17952.608445031325,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 28672,
+        "max_ns": 680791
+      },
+      "worker_cpu_ns": 2996959000,
+      "process_cpu_ns": 3300631000,
+      "allocated_bytes": 924172552,
+      "gc_count": 11,
+      "gc_ms": 144,
+      "stream_loads": 0,
+      "stream_bytes": 41963408,
+      "heap_used_bytes": 442499072,
+      "resident_cache_bytes": 78424704,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 271827,
+      "expected_commits": 271827,
+      "value_digest": "5268239867271161545"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t1-serial-r1",
+        "case": "file-append-cpu10",
+        "repeat": 1,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 701
+        }
+      },
+      "directory": "001-file-append-cpu10-t1-serial-r1",
+      "elapsed_seconds": 5.514842208,
+      "minimum_idle_before_run": 83.95
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 701,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/002-file-append-cpu10-t1-optimistic-r1/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9333.845934593459,
+      "ns_per_iteration": 3.1112819781978196,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000005791,
+      "drain_seconds": 5.791e-06,
+      "commits": 106933,
+      "active_commits": 106932,
+      "active_commits_per_second": 53466.0,
+      "batch_commits_per_second": 53466.345188197505,
+      "attempts": 106933,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        106933
+      ],
+      "per_worker_active_commits": [
+        106932
+      ],
+      "latency": {
+        "count": 106933,
+        "mean_ns": 18498.793150851467,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 24576,
+        "p99_ns_upper": 34816,
+        "max_ns": 852041
+      },
+      "active_completion_latency": {
+        "count": 106932,
+        "mean_ns": 18498.809121684808,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 24576,
+        "p99_ns_upper": 34816,
+        "max_ns": 852041
+      },
+      "rw_execution_latency": {
+        "count": 106933,
+        "mean_ns": 18444.91879962219,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 24576,
+        "p99_ns_upper": 34816,
+        "max_ns": 850875
+      },
+      "worker_cpu_ns": 1997226000,
+      "process_cpu_ns": 3808532000,
+      "allocated_bytes": 596975472,
+      "gc_count": 8,
+      "gc_ms": 22,
+      "stream_loads": 0,
+      "stream_bytes": 15269640,
+      "heap_used_bytes": 434110464,
+      "resident_cache_bytes": 29537536,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.000013375,
+      "drain_seconds": 1.3375000000000002e-05,
+      "commits": 167148,
+      "active_commits": 167147,
+      "active_commits_per_second": 55715.666666666664,
+      "batch_commits_per_second": 55715.75160060745,
+      "attempts": 167148,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        167148
+      ],
+      "per_worker_active_commits": [
+        167147
+      ],
+      "latency": {
+        "count": 167148,
+        "mean_ns": 17843.164387249624,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 29696,
+        "max_ns": 585167
+      },
+      "active_completion_latency": {
+        "count": 167147,
+        "mean_ns": 17843.17342219723,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 29696,
+        "max_ns": 585167
+      },
+      "rw_execution_latency": {
+        "count": 167148,
+        "mean_ns": 17815.48611410247,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 29696,
+        "max_ns": 584958
+      },
+      "worker_cpu_ns": 2992819000,
+      "process_cpu_ns": 3246038000,
+      "allocated_bytes": 931362872,
+      "gc_count": 9,
+      "gc_ms": 134,
+      "stream_loads": 0,
+      "stream_bytes": 42264352,
+      "heap_used_bytes": 459276288,
+      "resident_cache_bytes": 79051848,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 274081,
+      "expected_commits": 274081,
+      "value_digest": "4557187360840109831"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t1-optimistic-r1",
+        "case": "file-append-cpu10",
+        "repeat": 1,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 701
+        }
+      },
+      "directory": "002-file-append-cpu10-t1-optimistic-r1",
+      "elapsed_seconds": 5.4997669170000005,
+      "minimum_idle_before_run": 83.79
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 4,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 701,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/003-file-append-cpu10-t4-serial-r1/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9328.58295829583,
+      "ns_per_iteration": 3.109527652765277,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0001555420000003,
+      "drain_seconds": 0.00015554200000000002,
+      "commits": 97417,
+      "active_commits": 97413,
+      "active_commits_per_second": 48706.5,
+      "batch_commits_per_second": 48704.71218582859,
+      "attempts": 97417,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        23721,
+        22214,
+        25408,
+        26074
+      ],
+      "per_worker_active_commits": [
+        23720,
+        22213,
+        25407,
+        26073
+      ],
+      "latency": {
+        "count": 97417,
+        "mean_ns": 81886.59825287167,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 26624,
+        "p99_ns_upper": 57344,
+        "max_ns": 36820458
+      },
+      "active_completion_latency": {
+        "count": 97413,
+        "mean_ns": 81235.31031792471,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 26624,
+        "p99_ns_upper": 57344,
+        "max_ns": 36820458
+      },
+      "rw_execution_latency": {
+        "count": 97417,
+        "mean_ns": 20198.78766539721,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 26624,
+        "p99_ns_upper": 40960,
+        "max_ns": 5714666
+      },
+      "worker_cpu_ns": 2140995000,
+      "process_cpu_ns": 3470559000,
+      "allocated_bytes": 544091144,
+      "gc_count": 6,
+      "gc_ms": 25,
+      "stream_loads": 0,
+      "stream_bytes": 13904168,
+      "heap_used_bytes": 394264576,
+      "resident_cache_bytes": 26916152,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.000127667,
+      "drain_seconds": 0.000127667,
+      "commits": 150202,
+      "active_commits": 150198,
+      "active_commits_per_second": 50066.0,
+      "batch_commits_per_second": 50065.20277525243,
+      "attempts": 150202,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        37491,
+        41948,
+        32697,
+        38066
+      ],
+      "per_worker_active_commits": [
+        37490,
+        41947,
+        32696,
+        38065
+      ],
+      "latency": {
+        "count": 150202,
+        "mean_ns": 79769.04690350329,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 26624,
+        "p99_ns_upper": 36864,
+        "max_ns": 70452667
+      },
+      "active_completion_latency": {
+        "count": 150198,
+        "mean_ns": 79554.15633363959,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 26624,
+        "p99_ns_upper": 36864,
+        "max_ns": 70452667
+      },
+      "rw_execution_latency": {
+        "count": 150202,
+        "mean_ns": 19811.891719151543,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 25600,
+        "p99_ns_upper": 32768,
+        "max_ns": 5092708
+      },
+      "worker_cpu_ns": 3238380000,
+      "process_cpu_ns": 3681014000,
+      "allocated_bytes": 831051304,
+      "gc_count": 12,
+      "gc_ms": 156,
+      "stream_loads": 0,
+      "stream_bytes": 37773536,
+      "heap_used_bytes": 310378496,
+      "resident_cache_bytes": 70966456,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 247619,
+      "expected_commits": 247619,
+      "value_digest": "16468208134843499665"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t4-serial-r1",
+        "case": "file-append-cpu10",
+        "repeat": 1,
+        "variant": "stock",
+        "params": {
+          "threads": 4,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 701
+        }
+      },
+      "directory": "003-file-append-cpu10-t4-serial-r1",
+      "elapsed_seconds": 5.493280583000001,
+      "minimum_idle_before_run": 84.18
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 4,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 701,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/004-file-append-cpu10-t4-optimistic-r1/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9389.576357635764,
+      "ns_per_iteration": 3.129858785878588,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0000155420000003,
+      "drain_seconds": 1.5542e-05,
+      "commits": 254849,
+      "active_commits": 254845,
+      "active_commits_per_second": 127422.5,
+      "batch_commits_per_second": 127423.50979190538,
+      "attempts": 254849,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        63609,
+        63621,
+        63861,
+        63758
+      ],
+      "per_worker_active_commits": [
+        63608,
+        63620,
+        63860,
+        63757
+      ],
+      "latency": {
+        "count": 254849,
+        "mean_ns": 31145.763726755842,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 86016,
+        "p99_ns_upper": 147456,
+        "max_ns": 1010541
+      },
+      "active_completion_latency": {
+        "count": 254845,
+        "mean_ns": 31145.677560870332,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 86016,
+        "p99_ns_upper": 147456,
+        "max_ns": 1010541
+      },
+      "rw_execution_latency": {
+        "count": 254849,
+        "mean_ns": 31052.733638350554,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 86016,
+        "p99_ns_upper": 147456,
+        "max_ns": 1010250
+      },
+      "worker_cpu_ns": 6055189000,
+      "process_cpu_ns": 8288068000,
+      "allocated_bytes": 1424339160,
+      "gc_count": 18,
+      "gc_ms": 196,
+      "stream_loads": 0,
+      "stream_bytes": 38904008,
+      "heap_used_bytes": 343932928,
+      "resident_cache_bytes": 73084152,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.0000697080000003,
+      "drain_seconds": 6.9708e-05,
+      "commits": 313046,
+      "active_commits": 313042,
+      "active_commits_per_second": 104347.33333333333,
+      "batch_commits_per_second": 104346.24207738574,
+      "attempts": 313046,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        78203,
+        78274,
+        78139,
+        78430
+      ],
+      "per_worker_active_commits": [
+        78202,
+        78273,
+        78138,
+        78429
+      ],
+      "latency": {
+        "count": 313046,
+        "mean_ns": 38182.24495441565,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 118784,
+        "p99_ns_upper": 180224,
+        "max_ns": 10738375
+      },
+      "active_completion_latency": {
+        "count": 313042,
+        "mean_ns": 38181.55448470173,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 118784,
+        "p99_ns_upper": 180224,
+        "max_ns": 10738375
+      },
+      "rw_execution_latency": {
+        "count": 313046,
+        "mean_ns": 38118.35954460367,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 118784,
+        "p99_ns_upper": 180224,
+        "max_ns": 10738292
+      },
+      "worker_cpu_ns": 7374516000,
+      "process_cpu_ns": 7744766000,
+      "allocated_bytes": 1741274600,
+      "gc_count": 4,
+      "gc_ms": 284,
+      "stream_loads": 0,
+      "stream_bytes": 97783352,
+      "heap_used_bytes": 1063256064,
+      "resident_cache_bytes": 174258920,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 567895,
+      "expected_commits": 567895,
+      "value_digest": "3638168640522351257"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t4-optimistic-r1",
+        "case": "file-append-cpu10",
+        "repeat": 1,
+        "variant": "stock",
+        "params": {
+          "threads": 4,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 701
+        }
+      },
+      "directory": "004-file-append-cpu10-t4-optimistic-r1",
+      "elapsed_seconds": 5.51367875,
+      "minimum_idle_before_run": 82.63
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 701,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/005-file-append-cpu10-t8-serial-r1/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9328.320432043205,
+      "ns_per_iteration": 3.1094401440144015,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.00029775,
+      "drain_seconds": 0.00029775,
+      "commits": 100440,
+      "active_commits": 100432,
+      "active_commits_per_second": 50216.0,
+      "batch_commits_per_second": 50212.52461039862,
+      "attempts": 100440,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        10445,
+        11844,
+        9486,
+        15961,
+        13799,
+        11091,
+        11243,
+        16571
+      ],
+      "per_worker_active_commits": [
+        10444,
+        11843,
+        9485,
+        15960,
+        13798,
+        11090,
+        11242,
+        16570
+      ],
+      "latency": {
+        "count": 100440,
+        "mean_ns": 159060.68265631222,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 26624,
+        "p99_ns_upper": 49152,
+        "max_ns": 76441375
+      },
+      "active_completion_latency": {
+        "count": 100432,
+        "mean_ns": 157799.0403158356,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 26624,
+        "p99_ns_upper": 49152,
+        "max_ns": 76441375
+      },
+      "rw_execution_latency": {
+        "count": 100440,
+        "mean_ns": 19574.864516129033,
+        "p50_ns_upper": 18432,
+        "p95_ns_upper": 25600,
+        "p99_ns_upper": 36864,
+        "max_ns": 798125
+      },
+      "worker_cpu_ns": 2167502000,
+      "process_cpu_ns": 3676560000,
+      "allocated_bytes": 560319408,
+      "gc_count": 6,
+      "gc_ms": 28,
+      "stream_loads": 0,
+      "stream_bytes": 14279912,
+      "heap_used_bytes": 404750336,
+      "resident_cache_bytes": 27672208,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.0003180840000003,
+      "drain_seconds": 0.000318084,
+      "commits": 153077,
+      "active_commits": 153069,
+      "active_commits_per_second": 51023.0,
+      "batch_commits_per_second": 51020.25709084783,
+      "attempts": 153077,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        21038,
+        19712,
+        18871,
+        23160,
+        17076,
+        13943,
+        16616,
+        22661
+      ],
+      "per_worker_active_commits": [
+        21037,
+        19711,
+        18870,
+        23159,
+        17075,
+        13942,
+        16615,
+        22660
+      ],
+      "latency": {
+        "count": 153077,
+        "mean_ns": 156661.72007551754,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 25600,
+        "p99_ns_upper": 32768,
+        "max_ns": 93535625
+      },
+      "active_completion_latency": {
+        "count": 153069,
+        "mean_ns": 156071.42994335887,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 25600,
+        "p99_ns_upper": 32768,
+        "max_ns": 93535625
+      },
+      "rw_execution_latency": {
+        "count": 153077,
+        "mean_ns": 19430.449153040627,
+        "p50_ns_upper": 18432,
+        "p95_ns_upper": 25600,
+        "p99_ns_upper": 30720,
+        "max_ns": 636583
+      },
+      "worker_cpu_ns": 3246206000,
+      "process_cpu_ns": 3677328000,
+      "allocated_bytes": 852656528,
+      "gc_count": 12,
+      "gc_ms": 152,
+      "stream_loads": 0,
+      "stream_bytes": 38691856,
+      "heap_used_bytes": 348127232,
+      "resident_cache_bytes": 72684888,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 253517,
+      "expected_commits": 253517,
+      "value_digest": "1269075526682635046"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t8-serial-r1",
+        "case": "file-append-cpu10",
+        "repeat": 1,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 701
+        }
+      },
+      "directory": "005-file-append-cpu10-t8-serial-r1",
+      "elapsed_seconds": 5.492655165999999,
+      "minimum_idle_before_run": 82.17
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 701,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/006-file-append-cpu10-t8-optimistic-r1/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9330.770477047705,
+      "ns_per_iteration": 3.1102568256825682,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000136291,
+      "drain_seconds": 0.000136291,
+      "commits": 215301,
+      "active_commits": 215293,
+      "active_commits_per_second": 107646.5,
+      "batch_commits_per_second": 107643.16460272657,
+      "attempts": 215301,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        26886,
+        27092,
+        26799,
+        26933,
+        26898,
+        26895,
+        26657,
+        27141
+      ],
+      "per_worker_active_commits": [
+        26885,
+        27091,
+        26798,
+        26932,
+        26897,
+        26894,
+        26656,
+        27140
+      ],
+      "latency": {
+        "count": 215301,
+        "mean_ns": 73977.57074049818,
+        "p50_ns_upper": 25600,
+        "p95_ns_upper": 253952,
+        "p99_ns_upper": 360448,
+        "max_ns": 1548208
+      },
+      "active_completion_latency": {
+        "count": 215293,
+        "mean_ns": 73974.9235181822,
+        "p50_ns_upper": 25600,
+        "p95_ns_upper": 253952,
+        "p99_ns_upper": 360448,
+        "max_ns": 1548208
+      },
+      "rw_execution_latency": {
+        "count": 215301,
+        "mean_ns": 73855.07004147682,
+        "p50_ns_upper": 25600,
+        "p95_ns_upper": 253952,
+        "p99_ns_upper": 360448,
+        "max_ns": 1546000
+      },
+      "worker_cpu_ns": 5607039000,
+      "process_cpu_ns": 7745742000,
+      "allocated_bytes": 1202328920,
+      "gc_count": 13,
+      "gc_ms": 104,
+      "stream_loads": 0,
+      "stream_bytes": 32267600,
+      "heap_used_bytes": 668991488,
+      "resident_cache_bytes": 61098328,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.0000996250000003,
+      "drain_seconds": 9.962500000000001e-05,
+      "commits": 290301,
+      "active_commits": 290293,
+      "active_commits_per_second": 96764.33333333333,
+      "batch_commits_per_second": 96763.78663591879,
+      "attempts": 290301,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        36078,
+        36212,
+        36334,
+        36466,
+        36360,
+        36551,
+        36205,
+        36095
+      ],
+      "per_worker_active_commits": [
+        36077,
+        36211,
+        36333,
+        36465,
+        36359,
+        36550,
+        36204,
+        36094
+      ],
+      "latency": {
+        "count": 290301,
+        "mean_ns": 82469.04713039225,
+        "p50_ns_upper": 24576,
+        "p95_ns_upper": 278528,
+        "p99_ns_upper": 376832,
+        "max_ns": 14305583
+      },
+      "active_completion_latency": {
+        "count": 290293,
+        "mean_ns": 82466.33365255104,
+        "p50_ns_upper": 24576,
+        "p95_ns_upper": 278528,
+        "p99_ns_upper": 376832,
+        "max_ns": 14305583
+      },
+      "rw_execution_latency": {
+        "count": 290301,
+        "mean_ns": 82382.36081515392,
+        "p50_ns_upper": 24576,
+        "p95_ns_upper": 278528,
+        "p99_ns_upper": 376832,
+        "max_ns": 14305292
+      },
+      "worker_cpu_ns": 7291170000,
+      "process_cpu_ns": 7739906000,
+      "allocated_bytes": 1623908864,
+      "gc_count": 9,
+      "gc_ms": 380,
+      "stream_loads": 0,
+      "stream_bytes": 85522504,
+      "heap_used_bytes": 559939584,
+      "resident_cache_bytes": 153587992,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 505602,
+      "expected_commits": 505602,
+      "value_digest": "17732562231683965549"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t8-optimistic-r1",
+        "case": "file-append-cpu10",
+        "repeat": 1,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 701
+        }
+      },
+      "directory": "006-file-append-cpu10-t8-optimistic-r1",
+      "elapsed_seconds": 5.522573000000001,
+      "minimum_idle_before_run": 82.82
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 701,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/007-file-durable-cpu100-t1-serial-r1/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 93273.8993993994,
+      "ns_per_iteration": 3.1091299799799796,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.002135625,
+      "drain_seconds": 0.002135625,
+      "commits": 344,
+      "active_commits": 343,
+      "active_commits_per_second": 171.5,
+      "batch_commits_per_second": 171.81653215925368,
+      "attempts": 344,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        344
+      ],
+      "per_worker_active_commits": [
+        343
+      ],
+      "latency": {
+        "count": 344,
+        "mean_ns": 5804704.5930232555,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 8126464,
+        "p99_ns_upper": 10485760,
+        "max_ns": 12271958
+      },
+      "active_completion_latency": {
+        "count": 343,
+        "mean_ns": 5805865.903790087,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 8126464,
+        "p99_ns_upper": 10485760,
+        "max_ns": 12271958
+      },
+      "rw_execution_latency": {
+        "count": 344,
+        "mean_ns": 566382.8895348837,
+        "p50_ns_upper": 442368,
+        "p95_ns_upper": 1245184,
+        "p99_ns_upper": 1966080,
+        "max_ns": 5726750
+      },
+      "worker_cpu_ns": 177915000,
+      "process_cpu_ns": 500661000,
+      "allocated_bytes": 2089696,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 396712,
+      "heap_used_bytes": 31457280,
+      "resident_cache_bytes": 32080,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.0044721670000003,
+      "drain_seconds": 0.004472167,
+      "commits": 526,
+      "active_commits": 525,
+      "active_commits_per_second": 175.0,
+      "batch_commits_per_second": 175.07234907262162,
+      "attempts": 526,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        526
+      ],
+      "per_worker_active_commits": [
+        525
+      ],
+      "latency": {
+        "count": 526,
+        "mean_ns": 5701933.933460076,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 8126464,
+        "p99_ns_upper": 9961472,
+        "max_ns": 16744917
+      },
+      "active_completion_latency": {
+        "count": 525,
+        "mean_ns": 5702529.521904762,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 8126464,
+        "p99_ns_upper": 9961472,
+        "max_ns": 16744917
+      },
+      "rw_execution_latency": {
+        "count": 526,
+        "mean_ns": 434519.6482889734,
+        "p50_ns_upper": 376832,
+        "p95_ns_upper": 884736,
+        "p99_ns_upper": 1769472,
+        "max_ns": 2931375
+      },
+      "worker_cpu_ns": 222144000,
+      "process_cpu_ns": 665772000,
+      "allocated_bytes": 3067016,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 464216,
+      "heap_used_bytes": 33554432,
+      "resident_cache_bytes": 38176,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 870,
+      "expected_commits": 870,
+      "value_digest": "9927171785768525348"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t1-serial-r1",
+        "case": "file-durable-cpu100",
+        "repeat": 1,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 701
+        }
+      },
+      "directory": "007-file-durable-cpu100-t1-serial-r1",
+      "elapsed_seconds": 6.210350959000003,
+      "minimum_idle_before_run": 83.4
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 701,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/008-file-durable-cpu100-t1-optimistic-r1/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 93343.96846846846,
+      "ns_per_iteration": 3.1114656156156153,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0050293750000003,
+      "drain_seconds": 0.005029375,
+      "commits": 339,
+      "active_commits": 338,
+      "active_commits_per_second": 169.0,
+      "batch_commits_per_second": 169.0748296393413,
+      "attempts": 339,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        339
+      ],
+      "per_worker_active_commits": [
+        338
+      ],
+      "latency": {
+        "count": 339,
+        "mean_ns": 5900883.454277286,
+        "p50_ns_upper": 5767168,
+        "p95_ns_upper": 8126464,
+        "p99_ns_upper": 10485760,
+        "max_ns": 14258833
+      },
+      "active_completion_latency": {
+        "count": 338,
+        "mean_ns": 5900160.476331361,
+        "p50_ns_upper": 5767168,
+        "p95_ns_upper": 8126464,
+        "p99_ns_upper": 10485760,
+        "max_ns": 14258833
+      },
+      "rw_execution_latency": {
+        "count": 339,
+        "mean_ns": 575106.2035398231,
+        "p50_ns_upper": 491520,
+        "p95_ns_upper": 1048576,
+        "p99_ns_upper": 2490368,
+        "max_ns": 4794834
+      },
+      "worker_cpu_ns": 182887000,
+      "process_cpu_ns": 517778000,
+      "allocated_bytes": 2056616,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 396040,
+      "heap_used_bytes": 31457280,
+      "resident_cache_bytes": 31920,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.0034651250000004,
+      "drain_seconds": 0.0034651250000000003,
+      "commits": 538,
+      "active_commits": 537,
+      "active_commits_per_second": 179.0,
+      "batch_commits_per_second": 179.12643483749454,
+      "attempts": 538,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        538
+      ],
+      "per_worker_active_commits": [
+        537
+      ],
+      "latency": {
+        "count": 538,
+        "mean_ns": 5572314.747211896,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 7340032,
+        "p99_ns_upper": 9437184,
+        "max_ns": 18646500
+      },
+      "active_completion_latency": {
+        "count": 537,
+        "mean_ns": 5573034.918063315,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 7340032,
+        "p99_ns_upper": 9437184,
+        "max_ns": 18646500
+      },
+      "rw_execution_latency": {
+        "count": 538,
+        "mean_ns": 453715.3178438662,
+        "p50_ns_upper": 376832,
+        "p95_ns_upper": 1048576,
+        "p99_ns_upper": 1638400,
+        "max_ns": 3230875
+      },
+      "worker_cpu_ns": 230464000,
+      "process_cpu_ns": 705417000,
+      "allocated_bytes": 3140896,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 465128,
+      "heap_used_bytes": 33554432,
+      "resident_cache_bytes": 40208,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 877,
+      "expected_commits": 877,
+      "value_digest": "12092670600328367793"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t1-optimistic-r1",
+        "case": "file-durable-cpu100",
+        "repeat": 1,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 701
+        }
+      },
+      "directory": "008-file-durable-cpu100-t1-optimistic-r1",
+      "elapsed_seconds": 6.230262124999996,
+      "minimum_idle_before_run": 82.41
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 4,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 701,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/009-file-durable-cpu100-t4-serial-r1/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 93355.60660660661,
+      "ns_per_iteration": 3.1118535535535536,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.006419292,
+      "drain_seconds": 0.006419292,
+      "commits": 819,
+      "active_commits": 815,
+      "active_commits_per_second": 407.5,
+      "batch_commits_per_second": 408.1898550644518,
+      "attempts": 819,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        205,
+        205,
+        204,
+        205
+      ],
+      "per_worker_active_commits": [
+        204,
+        204,
+        203,
+        204
+      ],
+      "latency": {
+        "count": 819,
+        "mean_ns": 9781758.866910867,
+        "p50_ns_upper": 9961472,
+        "p95_ns_upper": 13107200,
+        "p99_ns_upper": 15728640,
+        "max_ns": 24089833
+      },
+      "active_completion_latency": {
+        "count": 815,
+        "mean_ns": 9786800.218404908,
+        "p50_ns_upper": 9961472,
+        "p95_ns_upper": 13107200,
+        "p99_ns_upper": 15728640,
+        "max_ns": 24089833
+      },
+      "rw_execution_latency": {
+        "count": 819,
+        "mean_ns": 374920.2380952381,
+        "p50_ns_upper": 278528,
+        "p95_ns_upper": 1015808,
+        "p99_ns_upper": 2621440,
+        "max_ns": 6278500
+      },
+      "worker_cpu_ns": 280894000,
+      "process_cpu_ns": 792972000,
+      "allocated_bytes": 4864672,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 457672,
+      "heap_used_bytes": 33554432,
+      "resident_cache_bytes": 36144,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.0070419580000003,
+      "drain_seconds": 0.007041958,
+      "commits": 1150,
+      "active_commits": 1146,
+      "active_commits_per_second": 382.0,
+      "batch_commits_per_second": 382.4356347740725,
+      "attempts": 1150,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        288,
+        288,
+        287,
+        287
+      ],
+      "per_worker_active_commits": [
+        287,
+        287,
+        286,
+        286
+      ],
+      "latency": {
+        "count": 1150,
+        "mean_ns": 10440243.670434782,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 14155776,
+        "p99_ns_upper": 17825792,
+        "max_ns": 23656375
+      },
+      "active_completion_latency": {
+        "count": 1146,
+        "mean_ns": 10442275.534904014,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 14155776,
+        "p99_ns_upper": 17825792,
+        "max_ns": 23656375
+      },
+      "rw_execution_latency": {
+        "count": 1150,
+        "mean_ns": 452118.5478260869,
+        "p50_ns_upper": 344064,
+        "p95_ns_upper": 1114112,
+        "p99_ns_upper": 2359296,
+        "max_ns": 6560375
+      },
+      "worker_cpu_ns": 442648000,
+      "process_cpu_ns": 861749000,
+      "allocated_bytes": 6664216,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 610112,
+      "heap_used_bytes": 41943040,
+      "resident_cache_bytes": 247936,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 1969,
+      "expected_commits": 1969,
+      "value_digest": "2946408683681208634"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t4-serial-r1",
+        "case": "file-durable-cpu100",
+        "repeat": 1,
+        "variant": "stock",
+        "params": {
+          "threads": 4,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 701
+        }
+      },
+      "directory": "009-file-durable-cpu100-t4-serial-r1",
+      "elapsed_seconds": 6.245261749999997,
+      "minimum_idle_before_run": 82.4
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 4,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 701,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/010-file-durable-cpu100-t4-optimistic-r1/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 108888.51351351352,
+      "ns_per_iteration": 3.6296171171171174,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.009898708,
+      "drain_seconds": 0.009898708,
+      "commits": 841,
+      "active_commits": 837,
+      "active_commits_per_second": 418.5,
+      "batch_commits_per_second": 418.42904652486595,
+      "attempts": 841,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        210,
+        210,
+        210,
+        211
+      ],
+      "per_worker_active_commits": [
+        209,
+        209,
+        209,
+        210
+      ],
+      "latency": {
+        "count": 841,
+        "mean_ns": 9534746.191438762,
+        "p50_ns_upper": 9437184,
+        "p95_ns_upper": 12582912,
+        "p99_ns_upper": 14680064,
+        "max_ns": 22568250
+      },
+      "active_completion_latency": {
+        "count": 837,
+        "mean_ns": 9525970.436081242,
+        "p50_ns_upper": 9437184,
+        "p95_ns_upper": 12582912,
+        "p99_ns_upper": 14680064,
+        "max_ns": 22568250
+      },
+      "rw_execution_latency": {
+        "count": 841,
+        "mean_ns": 329050.8620689655,
+        "p50_ns_upper": 262144,
+        "p95_ns_upper": 851968,
+        "p99_ns_upper": 1441792,
+        "max_ns": 2184417
+      },
+      "worker_cpu_ns": 261337000,
+      "process_cpu_ns": 763769000,
+      "allocated_bytes": 5005448,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 460488,
+      "heap_used_bytes": 33554432,
+      "resident_cache_bytes": 36144,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.0068368750000003,
+      "drain_seconds": 0.006836875,
+      "commits": 1166,
+      "active_commits": 1162,
+      "active_commits_per_second": 387.3333333333333,
+      "batch_commits_per_second": 387.78292553698975,
+      "attempts": 1166,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        291,
+        292,
+        292,
+        291
+      ],
+      "per_worker_active_commits": [
+        290,
+        291,
+        291,
+        290
+      ],
+      "latency": {
+        "count": 1166,
+        "mean_ns": 10298105.88593482,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 13107200,
+        "p99_ns_upper": 15204352,
+        "max_ns": 21037667
+      },
+      "active_completion_latency": {
+        "count": 1162,
+        "mean_ns": 10299118.800344234,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 13107200,
+        "p99_ns_upper": 15204352,
+        "max_ns": 21037667
+      },
+      "rw_execution_latency": {
+        "count": 1166,
+        "mean_ns": 519614.77358490566,
+        "p50_ns_upper": 376832,
+        "p95_ns_upper": 1310720,
+        "p99_ns_upper": 2031616,
+        "max_ns": 2730834
+      },
+      "worker_cpu_ns": 487551000,
+      "process_cpu_ns": 924634000,
+      "allocated_bytes": 6778632,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 611544,
+      "heap_used_bytes": 41943040,
+      "resident_cache_bytes": 241168,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 2007,
+      "expected_commits": 2007,
+      "value_digest": "8889545991538819260"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t4-optimistic-r1",
+        "case": "file-durable-cpu100",
+        "repeat": 1,
+        "variant": "stock",
+        "params": {
+          "threads": 4,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 701
+        }
+      },
+      "directory": "010-file-durable-cpu100-t4-optimistic-r1",
+      "elapsed_seconds": 6.231727542000002,
+      "minimum_idle_before_run": 80.15
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 701,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/011-file-durable-cpu100-t8-serial-r1/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 93231.16966966967,
+      "ns_per_iteration": 3.1077056556556557,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0087840000000003,
+      "drain_seconds": 0.008784,
+      "commits": 1680,
+      "active_commits": 1672,
+      "active_commits_per_second": 836.0,
+      "batch_commits_per_second": 836.3268524639781,
+      "attempts": 1680,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        210,
+        210,
+        210,
+        210,
+        210,
+        210,
+        210,
+        210
+      ],
+      "per_worker_active_commits": [
+        209,
+        209,
+        209,
+        209,
+        209,
+        209,
+        209,
+        209
+      ],
+      "latency": {
+        "count": 1680,
+        "mean_ns": 9554304.298214287,
+        "p50_ns_upper": 9961472,
+        "p95_ns_upper": 12058624,
+        "p99_ns_upper": 14680064,
+        "max_ns": 19172041
+      },
+      "active_completion_latency": {
+        "count": 1672,
+        "mean_ns": 9546043.419856459,
+        "p50_ns_upper": 9961472,
+        "p95_ns_upper": 12058624,
+        "p99_ns_upper": 14680064,
+        "max_ns": 19172041
+      },
+      "rw_execution_latency": {
+        "count": 1680,
+        "mean_ns": 232241.2726190476,
+        "p50_ns_upper": 204800,
+        "p95_ns_upper": 376832,
+        "p99_ns_upper": 688128,
+        "max_ns": 2241625
+      },
+      "worker_cpu_ns": 430996000,
+      "process_cpu_ns": 871916000,
+      "allocated_bytes": 9853664,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 571840,
+      "heap_used_bytes": 39845888,
+      "resident_cache_bytes": 173464,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.0078609590000003,
+      "drain_seconds": 0.007860959,
+      "commits": 2331,
+      "active_commits": 2323,
+      "active_commits_per_second": 774.3333333333334,
+      "batch_commits_per_second": 774.9693326166808,
+      "attempts": 2331,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        292,
+        291,
+        292,
+        291,
+        291,
+        291,
+        292,
+        291
+      ],
+      "per_worker_active_commits": [
+        291,
+        290,
+        291,
+        290,
+        290,
+        290,
+        291,
+        290
+      ],
+      "latency": {
+        "count": 2331,
+        "mean_ns": 10304005.686400687,
+        "p50_ns_upper": 9961472,
+        "p95_ns_upper": 13107200,
+        "p99_ns_upper": 19922944,
+        "max_ns": 27860292
+      },
+      "active_completion_latency": {
+        "count": 2323,
+        "mean_ns": 10285006.046491606,
+        "p50_ns_upper": 9961472,
+        "p95_ns_upper": 13107200,
+        "p99_ns_upper": 19922944,
+        "max_ns": 27860292
+      },
+      "rw_execution_latency": {
+        "count": 2331,
+        "mean_ns": 327835.63835263834,
+        "p50_ns_upper": 294912,
+        "p95_ns_upper": 655360,
+        "p99_ns_upper": 1245184,
+        "max_ns": 3518458
+      },
+      "worker_cpu_ns": 767126000,
+      "process_cpu_ns": 1163750000,
+      "allocated_bytes": 13473664,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 875696,
+      "heap_used_bytes": 54525952,
+      "resident_cache_bytes": 804576,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 4011,
+      "expected_commits": 4011,
+      "value_digest": "6479187255568103091"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t8-serial-r1",
+        "case": "file-durable-cpu100",
+        "repeat": 1,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 701
+        }
+      },
+      "directory": "011-file-durable-cpu100-t8-serial-r1",
+      "elapsed_seconds": 6.229927875000001,
+      "minimum_idle_before_run": 83.61
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 701,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/012-file-durable-cpu100-t8-optimistic-r1/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 93324.51201201201,
+      "ns_per_iteration": 3.110817067067067,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.009417667,
+      "drain_seconds": 0.009417667000000001,
+      "commits": 1664,
+      "active_commits": 1656,
+      "active_commits_per_second": 828.0,
+      "batch_commits_per_second": 828.1006120963899,
+      "attempts": 1664,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        208,
+        208,
+        208,
+        208,
+        208,
+        208,
+        208,
+        208
+      ],
+      "per_worker_active_commits": [
+        207,
+        207,
+        207,
+        207,
+        207,
+        207,
+        207,
+        207
+      ],
+      "latency": {
+        "count": 1664,
+        "mean_ns": 9641700.143629808,
+        "p50_ns_upper": 9961472,
+        "p95_ns_upper": 12582912,
+        "p99_ns_upper": 15204352,
+        "max_ns": 20005792
+      },
+      "active_completion_latency": {
+        "count": 1656,
+        "mean_ns": 9637749.495772947,
+        "p50_ns_upper": 9437184,
+        "p95_ns_upper": 12582912,
+        "p99_ns_upper": 15204352,
+        "max_ns": 20005792
+      },
+      "rw_execution_latency": {
+        "count": 1664,
+        "mean_ns": 298081.58713942306,
+        "p50_ns_upper": 253952,
+        "p95_ns_upper": 557056,
+        "p99_ns_upper": 1310720,
+        "max_ns": 3390208
+      },
+      "worker_cpu_ns": 478329000,
+      "process_cpu_ns": 1008502000,
+      "allocated_bytes": 9775720,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 569776,
+      "heap_used_bytes": 39845888,
+      "resident_cache_bytes": 171432,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.007066709,
+      "drain_seconds": 0.007066709,
+      "commits": 2345,
+      "active_commits": 2337,
+      "active_commits_per_second": 779.0,
+      "batch_commits_per_second": 779.8297234250017,
+      "attempts": 2345,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        293,
+        294,
+        293,
+        293,
+        293,
+        293,
+        293,
+        293
+      ],
+      "per_worker_active_commits": [
+        292,
+        293,
+        292,
+        292,
+        292,
+        292,
+        292,
+        292
+      ],
+      "latency": {
+        "count": 2345,
+        "mean_ns": 10239734.717697227,
+        "p50_ns_upper": 9961472,
+        "p95_ns_upper": 13107200,
+        "p99_ns_upper": 19922944,
+        "max_ns": 25172875
+      },
+      "active_completion_latency": {
+        "count": 2337,
+        "mean_ns": 10238849.967051776,
+        "p50_ns_upper": 9961472,
+        "p95_ns_upper": 13107200,
+        "p99_ns_upper": 19922944,
+        "max_ns": 25172875
+      },
+      "rw_execution_latency": {
+        "count": 2345,
+        "mean_ns": 351087.87292110873,
+        "p50_ns_upper": 311296,
+        "p95_ns_upper": 720896,
+        "p99_ns_upper": 1638400,
+        "max_ns": 2807667
+      },
+      "worker_cpu_ns": 766481000,
+      "process_cpu_ns": 1194520000,
+      "allocated_bytes": 13555208,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 875408,
+      "heap_used_bytes": 54525952,
+      "resident_cache_bytes": 801744,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 4009,
+      "expected_commits": 4009,
+      "value_digest": "15757421164286708973"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t8-optimistic-r1",
+        "case": "file-durable-cpu100",
+        "repeat": 1,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 701
+        }
+      },
+      "directory": "012-file-durable-cpu100-t8-optimistic-r1",
+      "elapsed_seconds": 6.261966082999976,
+      "minimum_idle_before_run": 82.43
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 702,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/013-file-append-cpu10-t8-optimistic-r2/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9590.90909090909,
+      "ns_per_iteration": 3.196969696969697,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000169708,
+      "drain_seconds": 0.00016970800000000002,
+      "commits": 216875,
+      "active_commits": 216867,
+      "active_commits_per_second": 108433.5,
+      "batch_commits_per_second": 108428.29942508058,
+      "attempts": 216875,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        26940,
+        27038,
+        27356,
+        26981,
+        27044,
+        27297,
+        26934,
+        27285
+      ],
+      "per_worker_active_commits": [
+        26939,
+        27037,
+        27355,
+        26980,
+        27043,
+        27296,
+        26933,
+        27284
+      ],
+      "latency": {
+        "count": 216875,
+        "mean_ns": 73457.5369314121,
+        "p50_ns_upper": 25600,
+        "p95_ns_upper": 253952,
+        "p99_ns_upper": 360448,
+        "max_ns": 2114208
+      },
+      "active_completion_latency": {
+        "count": 216867,
+        "mean_ns": 73456.02272821592,
+        "p50_ns_upper": 25600,
+        "p95_ns_upper": 253952,
+        "p99_ns_upper": 360448,
+        "max_ns": 2114208
+      },
+      "rw_execution_latency": {
+        "count": 216875,
+        "mean_ns": 73340.10629164265,
+        "p50_ns_upper": 24576,
+        "p95_ns_upper": 253952,
+        "p99_ns_upper": 360448,
+        "max_ns": 2113875
+      },
+      "worker_cpu_ns": 5579624000,
+      "process_cpu_ns": 7617070000,
+      "allocated_bytes": 1210148464,
+      "gc_count": 13,
+      "gc_ms": 97,
+      "stream_loads": 0,
+      "stream_bytes": 32586944,
+      "heap_used_bytes": 685768704,
+      "resident_cache_bytes": 61609016,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.000086375,
+      "drain_seconds": 8.6375e-05,
+      "commits": 295435,
+      "active_commits": 295427,
+      "active_commits_per_second": 98475.66666666667,
+      "batch_commits_per_second": 98475.49805961837,
+      "attempts": 295435,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        36714,
+        36556,
+        37132,
+        37183,
+        37068,
+        36913,
+        37004,
+        36865
+      ],
+      "per_worker_active_commits": [
+        36713,
+        36555,
+        37131,
+        37182,
+        37067,
+        36912,
+        37003,
+        36864
+      ],
+      "latency": {
+        "count": 295435,
+        "mean_ns": 81043.37589317447,
+        "p50_ns_upper": 24576,
+        "p95_ns_upper": 294912,
+        "p99_ns_upper": 376832,
+        "max_ns": 1381833
+      },
+      "active_completion_latency": {
+        "count": 295427,
+        "mean_ns": 81041.96964393911,
+        "p50_ns_upper": 24576,
+        "p95_ns_upper": 294912,
+        "p99_ns_upper": 376832,
+        "max_ns": 1381833
+      },
+      "rw_execution_latency": {
+        "count": 295435,
+        "mean_ns": 80962.85278656895,
+        "p50_ns_upper": 24576,
+        "p95_ns_upper": 294912,
+        "p99_ns_upper": 376832,
+        "max_ns": 1381625
+      },
+      "worker_cpu_ns": 7300102000,
+      "process_cpu_ns": 7726910000,
+      "allocated_bytes": 1652784904,
+      "gc_count": 9,
+      "gc_ms": 401,
+      "stream_loads": 0,
+      "stream_bytes": 86763000,
+      "heap_used_bytes": 591396864,
+      "resident_cache_bytes": 155753224,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 512310,
+      "expected_commits": 512310,
+      "value_digest": "4003173281574064820"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t8-optimistic-r2",
+        "case": "file-append-cpu10",
+        "repeat": 2,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 702
+        }
+      },
+      "directory": "013-file-append-cpu10-t8-optimistic-r2",
+      "elapsed_seconds": 5.518633666999989,
+      "minimum_idle_before_run": 82.68
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 702,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/014-file-append-cpu10-t8-serial-r2/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9328.376687668768,
+      "ns_per_iteration": 3.1094588958895892,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0004705830000002,
+      "drain_seconds": 0.000470583,
+      "commits": 97557,
+      "active_commits": 97549,
+      "active_commits_per_second": 48774.5,
+      "batch_commits_per_second": 48767.0255334117,
+      "attempts": 97557,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        13950,
+        13380,
+        12145,
+        9183,
+        12308,
+        12348,
+        12070,
+        12173
+      ],
+      "per_worker_active_commits": [
+        13949,
+        13379,
+        12144,
+        9182,
+        12307,
+        12347,
+        12069,
+        12172
+      ],
+      "latency": {
+        "count": 97557,
+        "mean_ns": 163766.8689176584,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 27648,
+        "p99_ns_upper": 55296,
+        "max_ns": 64835375
+      },
+      "active_completion_latency": {
+        "count": 97549,
+        "mean_ns": 162551.06806835538,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 27648,
+        "p99_ns_upper": 55296,
+        "max_ns": 64835375
+      },
+      "rw_execution_latency": {
+        "count": 97557,
+        "mean_ns": 20157.447338479044,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 27648,
+        "p99_ns_upper": 40960,
+        "max_ns": 1574125
+      },
+      "worker_cpu_ns": 2166649000,
+      "process_cpu_ns": 3666559000,
+      "allocated_bytes": 544829864,
+      "gc_count": 6,
+      "gc_ms": 26,
+      "stream_loads": 0,
+      "stream_bytes": 13907064,
+      "heap_used_bytes": 390070272,
+      "resident_cache_bytes": 26933296,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.000298083,
+      "drain_seconds": 0.00029808300000000004,
+      "commits": 151286,
+      "active_commits": 151278,
+      "active_commits_per_second": 50426.0,
+      "batch_commits_per_second": 50423.65652173101,
+      "attempts": 151286,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        19243,
+        20575,
+        15472,
+        15635,
+        20559,
+        22491,
+        19480,
+        17831
+      ],
+      "per_worker_active_commits": [
+        19242,
+        20574,
+        15471,
+        15634,
+        20558,
+        22490,
+        19479,
+        17830
+      ],
+      "latency": {
+        "count": 151286,
+        "mean_ns": 158512.83232420712,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 26624,
+        "p99_ns_upper": 34816,
+        "max_ns": 76490708
+      },
+      "active_completion_latency": {
+        "count": 151278,
+        "mean_ns": 156884.5672206137,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 26624,
+        "p99_ns_upper": 34816,
+        "max_ns": 76490708
+      },
+      "rw_execution_latency": {
+        "count": 151286,
+        "mean_ns": 19659.956096400194,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 26624,
+        "p99_ns_upper": 32768,
+        "max_ns": 621417
+      },
+      "worker_cpu_ns": 3245913000,
+      "process_cpu_ns": 3709667000,
+      "allocated_bytes": 838503560,
+      "gc_count": 12,
+      "gc_ms": 164,
+      "stream_loads": 0,
+      "stream_bytes": 37957440,
+      "heap_used_bytes": 314572800,
+      "resident_cache_bytes": 71349520,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 248843,
+      "expected_commits": 248843,
+      "value_digest": "16150812996421553187"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t8-serial-r2",
+        "case": "file-append-cpu10",
+        "repeat": 2,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 702
+        }
+      },
+      "directory": "014-file-append-cpu10-t8-serial-r2",
+      "elapsed_seconds": 5.49787758299999,
+      "minimum_idle_before_run": 81.9
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 4,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 702,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/015-file-append-cpu10-t4-optimistic-r2/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9453.389138913892,
+      "ns_per_iteration": 3.151129712971297,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0000407090000003,
+      "drain_seconds": 4.0709e-05,
+      "commits": 246505,
+      "active_commits": 246501,
+      "active_commits_per_second": 123250.5,
+      "batch_commits_per_second": 123249.9913080519,
+      "attempts": 246505,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        61528,
+        61685,
+        61651,
+        61641
+      ],
+      "per_worker_active_commits": [
+        61527,
+        61684,
+        61650,
+        61640
+      ],
+      "latency": {
+        "count": 246505,
+        "mean_ns": 32196.083949615626,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 90112,
+        "p99_ns_upper": 155648,
+        "max_ns": 5062959
+      },
+      "active_completion_latency": {
+        "count": 246501,
+        "mean_ns": 32195.580370870706,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 90112,
+        "p99_ns_upper": 155648,
+        "max_ns": 5062959
+      },
+      "rw_execution_latency": {
+        "count": 246505,
+        "mean_ns": 32103.616405346747,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 90112,
+        "p99_ns_upper": 155648,
+        "max_ns": 5062833
+      },
+      "worker_cpu_ns": 5902924000,
+      "process_cpu_ns": 8073688000,
+      "allocated_bytes": 1371347848,
+      "gc_count": 18,
+      "gc_ms": 191,
+      "stream_loads": 0,
+      "stream_bytes": 37585344,
+      "heap_used_bytes": 291504128,
+      "resident_cache_bytes": 70631656,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.000026166,
+      "drain_seconds": 2.6166000000000003e-05,
+      "commits": 324691,
+      "active_commits": 324687,
+      "active_commits_per_second": 108229.0,
+      "batch_commits_per_second": 108229.38935659936,
+      "attempts": 324691,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        80809,
+        81094,
+        81294,
+        81494
+      ],
+      "per_worker_active_commits": [
+        80808,
+        81093,
+        81293,
+        81493
+      ],
+      "latency": {
+        "count": 324691,
+        "mean_ns": 36801.86033490303,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 118784,
+        "p99_ns_upper": 180224,
+        "max_ns": 717875
+      },
+      "active_completion_latency": {
+        "count": 324687,
+        "mean_ns": 36801.78398272798,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 118784,
+        "p99_ns_upper": 180224,
+        "max_ns": 717875
+      },
+      "rw_execution_latency": {
+        "count": 324691,
+        "mean_ns": 36736.28249936093,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 118784,
+        "p99_ns_upper": 180224,
+        "max_ns": 717833
+      },
+      "worker_cpu_ns": 7495698000,
+      "process_cpu_ns": 7841743000,
+      "allocated_bytes": 1805700040,
+      "gc_count": 4,
+      "gc_ms": 264,
+      "stream_loads": 0,
+      "stream_bytes": 98390200,
+      "heap_used_bytes": 1107296256,
+      "resident_cache_bytes": 175275272,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 571196,
+      "expected_commits": 571196,
+      "value_digest": "8102692378966208647"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t4-optimistic-r2",
+        "case": "file-append-cpu10",
+        "repeat": 2,
+        "variant": "stock",
+        "params": {
+          "threads": 4,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 702
+        }
+      },
+      "directory": "015-file-append-cpu10-t4-optimistic-r2",
+      "elapsed_seconds": 5.5111152919999995,
+      "minimum_idle_before_run": 81.7
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 4,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 702,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/016-file-append-cpu10-t4-serial-r2/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9346.853435343535,
+      "ns_per_iteration": 3.1156178117811786,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000094958,
+      "drain_seconds": 9.495800000000001e-05,
+      "commits": 94577,
+      "active_commits": 94573,
+      "active_commits_per_second": 47286.5,
+      "batch_commits_per_second": 47286.254895903796,
+      "attempts": 94577,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        22785,
+        23373,
+        23430,
+        24989
+      ],
+      "per_worker_active_commits": [
+        22784,
+        23372,
+        23429,
+        24988
+      ],
+      "latency": {
+        "count": 94577,
+        "mean_ns": 84344.82527464394,
+        "p50_ns_upper": 20480,
+        "p95_ns_upper": 28672,
+        "p99_ns_upper": 55296,
+        "max_ns": 50510459
+      },
+      "active_completion_latency": {
+        "count": 94573,
+        "mean_ns": 84075.92369915303,
+        "p50_ns_upper": 20480,
+        "p95_ns_upper": 28672,
+        "p99_ns_upper": 55296,
+        "max_ns": 50510459
+      },
+      "rw_execution_latency": {
+        "count": 94577,
+        "mean_ns": 20799.28355731309,
+        "p50_ns_upper": 20480,
+        "p95_ns_upper": 27648,
+        "p99_ns_upper": 43008,
+        "max_ns": 803625
+      },
+      "worker_cpu_ns": 2182620000,
+      "process_cpu_ns": 3739333000,
+      "allocated_bytes": 528106704,
+      "gc_count": 6,
+      "gc_ms": 26,
+      "stream_loads": 0,
+      "stream_bytes": 13452088,
+      "heap_used_bytes": 373293056,
+      "resident_cache_bytes": 26069504,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.000151958,
+      "drain_seconds": 0.000151958,
+      "commits": 144817,
+      "active_commits": 144813,
+      "active_commits_per_second": 48271.0,
+      "batch_commits_per_second": 48269.88833476947,
+      "attempts": 144817,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        34305,
+        32676,
+        38018,
+        39818
+      ],
+      "per_worker_active_commits": [
+        34304,
+        32675,
+        38017,
+        39817
+      ],
+      "latency": {
+        "count": 144817,
+        "mean_ns": 82738.21079707493,
+        "p50_ns_upper": 20480,
+        "p95_ns_upper": 27648,
+        "p99_ns_upper": 40960,
+        "max_ns": 58340917
+      },
+      "active_completion_latency": {
+        "count": 144813,
+        "mean_ns": 82501.05922810797,
+        "p50_ns_upper": 20480,
+        "p95_ns_upper": 27648,
+        "p99_ns_upper": 40960,
+        "max_ns": 58340917
+      },
+      "rw_execution_latency": {
+        "count": 144817,
+        "mean_ns": 20554.06243742102,
+        "p50_ns_upper": 20480,
+        "p95_ns_upper": 27648,
+        "p99_ns_upper": 36864,
+        "max_ns": 1094625
+      },
+      "worker_cpu_ns": 3264196000,
+      "process_cpu_ns": 3729398000,
+      "allocated_bytes": 806426192,
+      "gc_count": 12,
+      "gc_ms": 158,
+      "stream_loads": 0,
+      "stream_bytes": 36346400,
+      "heap_used_bytes": 268435456,
+      "resident_cache_bytes": 68423032,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 239394,
+      "expected_commits": 239394,
+      "value_digest": "3996985282366679392"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t4-serial-r2",
+        "case": "file-append-cpu10",
+        "repeat": 2,
+        "variant": "stock",
+        "params": {
+          "threads": 4,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 702
+        }
+      },
+      "directory": "016-file-append-cpu10-t4-serial-r2",
+      "elapsed_seconds": 5.532670249999995,
+      "minimum_idle_before_run": 80.61
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 702,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/017-file-append-cpu10-t1-optimistic-r2/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9338.408790879088,
+      "ns_per_iteration": 3.112802930293029,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000014333,
+      "drain_seconds": 1.4333000000000002e-05,
+      "commits": 109068,
+      "active_commits": 109067,
+      "active_commits_per_second": 54533.5,
+      "batch_commits_per_second": 54533.60918488977,
+      "attempts": 109068,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        109068
+      ],
+      "per_worker_active_commits": [
+        109067
+      ],
+      "latency": {
+        "count": 109068,
+        "mean_ns": 18136.05635016687,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 32768,
+        "max_ns": 707333
+      },
+      "active_completion_latency": {
+        "count": 109067,
+        "mean_ns": 18136.06103587703,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 32768,
+        "max_ns": 707333
+      },
+      "rw_execution_latency": {
+        "count": 109068,
+        "mean_ns": 18083.827712986393,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 32768,
+        "max_ns": 706167
+      },
+      "worker_cpu_ns": 1997034000,
+      "process_cpu_ns": 3663580000,
+      "allocated_bytes": 608784472,
+      "gc_count": 12,
+      "gc_ms": 81,
+      "stream_loads": 0,
+      "stream_bytes": 15624504,
+      "heap_used_bytes": 83886080,
+      "resident_cache_bytes": 30158008,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.000008584,
+      "drain_seconds": 8.584000000000001e-06,
+      "commits": 167600,
+      "active_commits": 167599,
+      "active_commits_per_second": 55866.333333333336,
+      "batch_commits_per_second": 55866.5068139685,
+      "attempts": 167600,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        167600
+      ],
+      "per_worker_active_commits": [
+        167599
+      ],
+      "latency": {
+        "count": 167600,
+        "mean_ns": 17794.90442124105,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 28672,
+        "max_ns": 1792583
+      },
+      "active_completion_latency": {
+        "count": 167599,
+        "mean_ns": 17794.91140161934,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 28672,
+        "max_ns": 1792583
+      },
+      "rw_execution_latency": {
+        "count": 167600,
+        "mean_ns": 17767.902780429595,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 28672,
+        "max_ns": 1792333
+      },
+      "worker_cpu_ns": 2991634000,
+      "process_cpu_ns": 3252174000,
+      "allocated_bytes": 933933592,
+      "gc_count": 6,
+      "gc_ms": 96,
+      "stream_loads": 0,
+      "stream_bytes": 42742640,
+      "heap_used_bytes": 476053504,
+      "resident_cache_bytes": 79871864,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 276668,
+      "expected_commits": 276668,
+      "value_digest": "1236353115857486000"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t1-optimistic-r2",
+        "case": "file-append-cpu10",
+        "repeat": 2,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 702
+        }
+      },
+      "directory": "017-file-append-cpu10-t1-optimistic-r2",
+      "elapsed_seconds": 5.534238875,
+      "minimum_idle_before_run": 82.71
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 702,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/018-file-append-cpu10-t1-serial-r2/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9377.687818781878,
+      "ns_per_iteration": 3.1258959395939594,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0000200830000003,
+      "drain_seconds": 2.0083e-05,
+      "commits": 104366,
+      "active_commits": 104365,
+      "active_commits_per_second": 52182.5,
+      "batch_commits_per_second": 52182.47600966714,
+      "attempts": 104366,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        104366
+      ],
+      "per_worker_active_commits": [
+        104365
+      ],
+      "latency": {
+        "count": 104366,
+        "mean_ns": 18954.568873004617,
+        "p50_ns_upper": 18432,
+        "p95_ns_upper": 24576,
+        "p99_ns_upper": 38912,
+        "max_ns": 1066959
+      },
+      "active_completion_latency": {
+        "count": 104365,
+        "mean_ns": 18954.55166962104,
+        "p50_ns_upper": 18432,
+        "p95_ns_upper": 24576,
+        "p99_ns_upper": 38912,
+        "max_ns": 1066959
+      },
+      "rw_execution_latency": {
+        "count": 104366,
+        "mean_ns": 18892.153469520727,
+        "p50_ns_upper": 18432,
+        "p95_ns_upper": 24576,
+        "p99_ns_upper": 38912,
+        "max_ns": 1066250
+      },
+      "worker_cpu_ns": 1991456000,
+      "process_cpu_ns": 3753265000,
+      "allocated_bytes": 582811152,
+      "gc_count": 6,
+      "gc_ms": 25,
+      "stream_loads": 0,
+      "stream_bytes": 14918984,
+      "heap_used_bytes": 425721856,
+      "resident_cache_bytes": 28838504,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.0000034170000003,
+      "drain_seconds": 3.417e-06,
+      "commits": 164649,
+      "active_commits": 164648,
+      "active_commits_per_second": 54882.666666666664,
+      "batch_commits_per_second": 54882.937488334195,
+      "attempts": 164649,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        164649
+      ],
+      "per_worker_active_commits": [
+        164648
+      ],
+      "latency": {
+        "count": 164649,
+        "mean_ns": 18113.686284155992,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 24576,
+        "p99_ns_upper": 29696,
+        "max_ns": 527875
+      },
+      "active_completion_latency": {
+        "count": 164648,
+        "mean_ns": 18113.679382683058,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 24576,
+        "p99_ns_upper": 29696,
+        "max_ns": 527875
+      },
+      "rw_execution_latency": {
+        "count": 164649,
+        "mean_ns": 18085.272986777934,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 29696,
+        "max_ns": 527750
+      },
+      "worker_cpu_ns": 2994726000,
+      "process_cpu_ns": 3353889000,
+      "allocated_bytes": 917347376,
+      "gc_count": 12,
+      "gc_ms": 143,
+      "stream_loads": 0,
+      "stream_bytes": 41385696,
+      "heap_used_bytes": 429916160,
+      "resident_cache_bytes": 77475616,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 269015,
+      "expected_commits": 269015,
+      "value_digest": "1838179961657464483"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t1-serial-r2",
+        "case": "file-append-cpu10",
+        "repeat": 2,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 702
+        }
+      },
+      "directory": "018-file-append-cpu10-t1-serial-r2",
+      "elapsed_seconds": 5.497025167000004,
+      "minimum_idle_before_run": 82.37
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 702,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/019-file-durable-cpu100-t8-optimistic-r2/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 93833.08258258259,
+      "ns_per_iteration": 3.1277694194194194,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0090394170000003,
+      "drain_seconds": 0.009039417000000001,
+      "commits": 1681,
+      "active_commits": 1673,
+      "active_commits_per_second": 836.5,
+      "batch_commits_per_second": 836.7182772900268,
+      "attempts": 1681,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        210,
+        211,
+        210,
+        210,
+        210,
+        210,
+        210,
+        210
+      ],
+      "per_worker_active_commits": [
+        209,
+        210,
+        209,
+        209,
+        209,
+        209,
+        209,
+        209
+      ],
+      "latency": {
+        "count": 1681,
+        "mean_ns": 9539481.351576442,
+        "p50_ns_upper": 9437184,
+        "p95_ns_upper": 12058624,
+        "p99_ns_upper": 16252928,
+        "max_ns": 18994917
+      },
+      "active_completion_latency": {
+        "count": 1673,
+        "mean_ns": 9514870.009563658,
+        "p50_ns_upper": 9437184,
+        "p95_ns_upper": 12058624,
+        "p99_ns_upper": 16252928,
+        "max_ns": 18994917
+      },
+      "rw_execution_latency": {
+        "count": 1681,
+        "mean_ns": 279175.756097561,
+        "p50_ns_upper": 237568,
+        "p95_ns_upper": 589824,
+        "p99_ns_upper": 1114112,
+        "max_ns": 4151750
+      },
+      "worker_cpu_ns": 445509000,
+      "process_cpu_ns": 956578000,
+      "allocated_bytes": 9865912,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 571712,
+      "heap_used_bytes": 39845888,
+      "resident_cache_bytes": 162720,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.0088745,
+      "drain_seconds": 0.0088745,
+      "commits": 2319,
+      "active_commits": 2311,
+      "active_commits_per_second": 770.3333333333334,
+      "batch_commits_per_second": 770.7200815454416,
+      "attempts": 2319,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        289,
+        290,
+        289,
+        291,
+        291,
+        289,
+        290,
+        290
+      ],
+      "per_worker_active_commits": [
+        288,
+        289,
+        288,
+        290,
+        290,
+        288,
+        289,
+        289
+      ],
+      "latency": {
+        "count": 2319,
+        "mean_ns": 10366425.726606296,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 14680064,
+        "p99_ns_upper": 17825792,
+        "max_ns": 26025667
+      },
+      "active_completion_latency": {
+        "count": 2311,
+        "mean_ns": 10366827.27953267,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 14680064,
+        "p99_ns_upper": 17825792,
+        "max_ns": 26025667
+      },
+      "rw_execution_latency": {
+        "count": 2319,
+        "mean_ns": 410390.723156533,
+        "p50_ns_upper": 344064,
+        "p95_ns_upper": 950272,
+        "p99_ns_upper": 2097152,
+        "max_ns": 6382167
+      },
+      "worker_cpu_ns": 784613000,
+      "process_cpu_ns": 1184636000,
+      "allocated_bytes": 13412032,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 877824,
+      "heap_used_bytes": 54525952,
+      "resident_cache_bytes": 804272,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 4000,
+      "expected_commits": 4000,
+      "value_digest": "6870940463525584432"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t8-optimistic-r2",
+        "case": "file-durable-cpu100",
+        "repeat": 2,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 702
+        }
+      },
+      "directory": "019-file-durable-cpu100-t8-optimistic-r2",
+      "elapsed_seconds": 6.249658082999986,
+      "minimum_idle_before_run": 82.8
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 702,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/020-file-durable-cpu100-t8-serial-r2/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 95515.89039039038,
+      "ns_per_iteration": 3.183863013013013,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.008873625,
+      "drain_seconds": 0.008873625000000001,
+      "commits": 1720,
+      "active_commits": 1712,
+      "active_commits_per_second": 856.0,
+      "batch_commits_per_second": 856.2011958318184,
+      "attempts": 1720,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        215,
+        215,
+        215,
+        215,
+        215,
+        215,
+        215,
+        215
+      ],
+      "per_worker_active_commits": [
+        214,
+        214,
+        214,
+        214,
+        214,
+        214,
+        214,
+        214
+      ],
+      "latency": {
+        "count": 1720,
+        "mean_ns": 9336211.305813953,
+        "p50_ns_upper": 9437184,
+        "p95_ns_upper": 12058624,
+        "p99_ns_upper": 16252928,
+        "max_ns": 20034459
+      },
+      "active_completion_latency": {
+        "count": 1712,
+        "mean_ns": 9331512.455023365,
+        "p50_ns_upper": 9437184,
+        "p95_ns_upper": 12058624,
+        "p99_ns_upper": 16252928,
+        "max_ns": 20034459
+      },
+      "rw_execution_latency": {
+        "count": 1720,
+        "mean_ns": 209061.0191860465,
+        "p50_ns_upper": 188416,
+        "p95_ns_upper": 344064,
+        "p99_ns_upper": 425984,
+        "max_ns": 1163125
+      },
+      "worker_cpu_ns": 405828000,
+      "process_cpu_ns": 868656000,
+      "allocated_bytes": 10073264,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 576816,
+      "heap_used_bytes": 39845888,
+      "resident_cache_bytes": 176944,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.006807792,
+      "drain_seconds": 0.006807792,
+      "commits": 2276,
+      "active_commits": 2268,
+      "active_commits_per_second": 756.0,
+      "batch_commits_per_second": 756.9489496653532,
+      "attempts": 2276,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        285,
+        285,
+        285,
+        284,
+        284,
+        284,
+        285,
+        284
+      ],
+      "per_worker_active_commits": [
+        284,
+        284,
+        284,
+        283,
+        283,
+        283,
+        284,
+        283
+      ],
+      "latency": {
+        "count": 2276,
+        "mean_ns": 10556866.383128295,
+        "p50_ns_upper": 9961472,
+        "p95_ns_upper": 14680064,
+        "p99_ns_upper": 16777216,
+        "max_ns": 26857375
+      },
+      "active_completion_latency": {
+        "count": 2268,
+        "mean_ns": 10557667.31569665,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 14680064,
+        "p99_ns_upper": 16777216,
+        "max_ns": 26857375
+      },
+      "rw_execution_latency": {
+        "count": 2276,
+        "mean_ns": 340308.77108963096,
+        "p50_ns_upper": 311296,
+        "p95_ns_upper": 655360,
+        "p99_ns_upper": 1310720,
+        "max_ns": 5059792
+      },
+      "worker_cpu_ns": 763727000,
+      "process_cpu_ns": 1144260000,
+      "allocated_bytes": 13156056,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 877328,
+      "heap_used_bytes": 54525952,
+      "resident_cache_bytes": 807360,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 3996,
+      "expected_commits": 3996,
+      "value_digest": "3004413135472381154"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t8-serial-r2",
+        "case": "file-durable-cpu100",
+        "repeat": 2,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 702
+        }
+      },
+      "directory": "020-file-durable-cpu100-t8-serial-r2",
+      "elapsed_seconds": 6.275419542000009,
+      "minimum_idle_before_run": 80.49
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 4,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 702,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/021-file-durable-cpu100-t4-optimistic-r2/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 93248.12312312312,
+      "ns_per_iteration": 3.108270770770771,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.009325167,
+      "drain_seconds": 0.009325167,
+      "commits": 807,
+      "active_commits": 803,
+      "active_commits_per_second": 401.5,
+      "batch_commits_per_second": 401.62737881041033,
+      "attempts": 807,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        202,
+        202,
+        201,
+        202
+      ],
+      "per_worker_active_commits": [
+        201,
+        201,
+        200,
+        201
+      ],
+      "latency": {
+        "count": 807,
+        "mean_ns": 9933499.318463445,
+        "p50_ns_upper": 9961472,
+        "p95_ns_upper": 13631488,
+        "p99_ns_upper": 17825792,
+        "max_ns": 26962292
+      },
+      "active_completion_latency": {
+        "count": 803,
+        "mean_ns": 9931858.229140723,
+        "p50_ns_upper": 9961472,
+        "p95_ns_upper": 13631488,
+        "p99_ns_upper": 17825792,
+        "max_ns": 26962292
+      },
+      "rw_execution_latency": {
+        "count": 807,
+        "mean_ns": 363459.43370508053,
+        "p50_ns_upper": 278528,
+        "p95_ns_upper": 917504,
+        "p99_ns_upper": 1769472,
+        "max_ns": 5895875
+      },
+      "worker_cpu_ns": 270412000,
+      "process_cpu_ns": 715030000,
+      "allocated_bytes": 4802176,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 456120,
+      "heap_used_bytes": 33554432,
+      "resident_cache_bytes": 34112,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.0158332910000003,
+      "drain_seconds": 0.015833291,
+      "commits": 1115,
+      "active_commits": 1111,
+      "active_commits_per_second": 370.3333333333333,
+      "batch_commits_per_second": 369.71539618169163,
+      "attempts": 1115,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        278,
+        279,
+        279,
+        279
+      ],
+      "per_worker_active_commits": [
+        277,
+        278,
+        278,
+        278
+      ],
+      "latency": {
+        "count": 1115,
+        "mean_ns": 10798614.185650224,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 15204352,
+        "p99_ns_upper": 17825792,
+        "max_ns": 26005208
+      },
+      "active_completion_latency": {
+        "count": 1111,
+        "mean_ns": 10747293.078307832,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 14680064,
+        "p99_ns_upper": 16777216,
+        "max_ns": 21971000
+      },
+      "rw_execution_latency": {
+        "count": 1115,
+        "mean_ns": 478276.7273542601,
+        "p50_ns_upper": 360448,
+        "p95_ns_upper": 1114112,
+        "p99_ns_upper": 2752512,
+        "max_ns": 5699042
+      },
+      "worker_cpu_ns": 443016000,
+      "process_cpu_ns": 879862000,
+      "allocated_bytes": 6466936,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 600536,
+      "heap_used_bytes": 41943040,
+      "resident_cache_bytes": 232720,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 1922,
+      "expected_commits": 1922,
+      "value_digest": "10937698858304364506"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t4-optimistic-r2",
+        "case": "file-durable-cpu100",
+        "repeat": 2,
+        "variant": "stock",
+        "params": {
+          "threads": 4,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 702
+        }
+      },
+      "directory": "021-file-durable-cpu100-t4-optimistic-r2",
+      "elapsed_seconds": 6.235581458000013,
+      "minimum_idle_before_run": 81.53
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 4,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 702,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/022-file-durable-cpu100-t4-serial-r2/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 93342.21771771772,
+      "ns_per_iteration": 3.1114072572572575,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0076605,
+      "drain_seconds": 0.007660500000000001,
+      "commits": 801,
+      "active_commits": 797,
+      "active_commits_per_second": 398.5,
+      "batch_commits_per_second": 398.97183811705213,
+      "attempts": 801,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        200,
+        200,
+        201,
+        200
+      ],
+      "per_worker_active_commits": [
+        199,
+        199,
+        200,
+        199
+      ],
+      "latency": {
+        "count": 801,
+        "mean_ns": 10003625.400749063,
+        "p50_ns_upper": 9961472,
+        "p95_ns_upper": 13631488,
+        "p99_ns_upper": 16252928,
+        "max_ns": 30267833
+      },
+      "active_completion_latency": {
+        "count": 797,
+        "mean_ns": 10007221.178168131,
+        "p50_ns_upper": 9961472,
+        "p95_ns_upper": 13631488,
+        "p99_ns_upper": 16252928,
+        "max_ns": 30267833
+      },
+      "rw_execution_latency": {
+        "count": 801,
+        "mean_ns": 348940.9550561798,
+        "p50_ns_upper": 278528,
+        "p95_ns_upper": 917504,
+        "p99_ns_upper": 1507328,
+        "max_ns": 4302667
+      },
+      "worker_cpu_ns": 275380000,
+      "process_cpu_ns": 735809000,
+      "allocated_bytes": 4760280,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 455336,
+      "heap_used_bytes": 33554432,
+      "resident_cache_bytes": 32080,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.007051042,
+      "drain_seconds": 0.007051042,
+      "commits": 1144,
+      "active_commits": 1140,
+      "active_commits_per_second": 380.0,
+      "batch_commits_per_second": 380.43916914663396,
+      "attempts": 1144,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        287,
+        286,
+        285,
+        286
+      ],
+      "per_worker_active_commits": [
+        286,
+        285,
+        284,
+        285
+      ],
+      "latency": {
+        "count": 1144,
+        "mean_ns": 10490155.151223777,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 14155776,
+        "p99_ns_upper": 16252928,
+        "max_ns": 18740084
+      },
+      "active_completion_latency": {
+        "count": 1140,
+        "mean_ns": 10494080.659649123,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 14155776,
+        "p99_ns_upper": 16252928,
+        "max_ns": 18740084
+      },
+      "rw_execution_latency": {
+        "count": 1144,
+        "mean_ns": 429335.3688811189,
+        "p50_ns_upper": 344064,
+        "p95_ns_upper": 917504,
+        "p99_ns_upper": 1638400,
+        "max_ns": 5336791
+      },
+      "worker_cpu_ns": 461340000,
+      "process_cpu_ns": 914451000,
+      "allocated_bytes": 6635536,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 603528,
+      "heap_used_bytes": 41943040,
+      "resident_cache_bytes": 238816,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 1945,
+      "expected_commits": 1945,
+      "value_digest": "10083415765227859093"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t4-serial-r2",
+        "case": "file-durable-cpu100",
+        "repeat": 2,
+        "variant": "stock",
+        "params": {
+          "threads": 4,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 702
+        }
+      },
+      "directory": "022-file-durable-cpu100-t4-serial-r2",
+      "elapsed_seconds": 6.186438875000022,
+      "minimum_idle_before_run": 81.16
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 702,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/023-file-durable-cpu100-t1-optimistic-r2/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 93273.64864864865,
+      "ns_per_iteration": 3.1091216216216218,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.004578334,
+      "drain_seconds": 0.004578334,
+      "commits": 341,
+      "active_commits": 340,
+      "active_commits_per_second": 170.0,
+      "batch_commits_per_second": 170.11058845455923,
+      "attempts": 341,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        341
+      ],
+      "per_worker_active_commits": [
+        340
+      ],
+      "latency": {
+        "count": 341,
+        "mean_ns": 5866481.173020528,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 8912896,
+        "p99_ns_upper": 11534336,
+        "max_ns": 11943792
+      },
+      "active_completion_latency": {
+        "count": 340,
+        "mean_ns": 5865806.605882353,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 8912896,
+        "p99_ns_upper": 11534336,
+        "max_ns": 11943792
+      },
+      "rw_execution_latency": {
+        "count": 341,
+        "mean_ns": 576803.788856305,
+        "p50_ns_upper": 442368,
+        "p95_ns_upper": 1310720,
+        "p99_ns_upper": 3801088,
+        "max_ns": 6371750
+      },
+      "worker_cpu_ns": 172975000,
+      "process_cpu_ns": 495426000,
+      "allocated_bytes": 2067592,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 396296,
+      "heap_used_bytes": 31457280,
+      "resident_cache_bytes": 31920,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.005894458,
+      "drain_seconds": 0.005894458,
+      "commits": 524,
+      "active_commits": 523,
+      "active_commits_per_second": 174.33333333333334,
+      "batch_commits_per_second": 174.3241512041139,
+      "attempts": 524,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        524
+      ],
+      "per_worker_active_commits": [
+        523
+      ],
+      "latency": {
+        "count": 524,
+        "mean_ns": 5727206.419847328,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 8126464,
+        "p99_ns_upper": 10485760,
+        "max_ns": 17130667
+      },
+      "active_completion_latency": {
+        "count": 523,
+        "mean_ns": 5723939.047801147,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 8126464,
+        "p99_ns_upper": 10485760,
+        "max_ns": 17130667
+      },
+      "rw_execution_latency": {
+        "count": 524,
+        "mean_ns": 479075.1145038168,
+        "p50_ns_upper": 376832,
+        "p95_ns_upper": 917504,
+        "p99_ns_upper": 3670016,
+        "max_ns": 5311167
+      },
+      "worker_cpu_ns": 213576000,
+      "process_cpu_ns": 678092000,
+      "allocated_bytes": 3058840,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 463576,
+      "heap_used_bytes": 33554432,
+      "resident_cache_bytes": 38088,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 865,
+      "expected_commits": 865,
+      "value_digest": "985837650445652105"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t1-optimistic-r2",
+        "case": "file-durable-cpu100",
+        "repeat": 2,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 702
+        }
+      },
+      "directory": "023-file-durable-cpu100-t1-optimistic-r2",
+      "elapsed_seconds": 6.208275458999992,
+      "minimum_idle_before_run": 82.68
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 702,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/024-file-durable-cpu100-t1-serial-r2/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 93178.36636636636,
+      "ns_per_iteration": 3.1059455455455454,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000604291,
+      "drain_seconds": 0.0006042910000000001,
+      "commits": 335,
+      "active_commits": 334,
+      "active_commits_per_second": 167.0,
+      "batch_commits_per_second": 167.44940591552495,
+      "attempts": 335,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        335
+      ],
+      "per_worker_active_commits": [
+        334
+      ],
+      "latency": {
+        "count": 335,
+        "mean_ns": 5960226.259701492,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 9961472,
+        "p99_ns_upper": 11534336,
+        "max_ns": 11761792
+      },
+      "active_completion_latency": {
+        "count": 334,
+        "mean_ns": 5961754.25748503,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 9961472,
+        "p99_ns_upper": 11534336,
+        "max_ns": 11761792
+      },
+      "rw_execution_latency": {
+        "count": 335,
+        "mean_ns": 554876.2417910448,
+        "p50_ns_upper": 425984,
+        "p95_ns_upper": 1179648,
+        "p99_ns_upper": 3014656,
+        "max_ns": 5330083
+      },
+      "worker_cpu_ns": 167262000,
+      "process_cpu_ns": 463281000,
+      "allocated_bytes": 2031048,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 395528,
+      "heap_used_bytes": 31457280,
+      "resident_cache_bytes": 31920,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.0008951670000004,
+      "drain_seconds": 0.0008951670000000001,
+      "commits": 531,
+      "active_commits": 530,
+      "active_commits_per_second": 176.66666666666666,
+      "batch_commits_per_second": 176.94720090167013,
+      "attempts": 531,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        531
+      ],
+      "per_worker_active_commits": [
+        530
+      ],
+      "latency": {
+        "count": 531,
+        "mean_ns": 5641958.182674199,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 8388608,
+        "p99_ns_upper": 11010048,
+        "max_ns": 15450167
+      },
+      "active_completion_latency": {
+        "count": 530,
+        "mean_ns": 5633539.39245283,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 8388608,
+        "p99_ns_upper": 11010048,
+        "max_ns": 15450167
+      },
+      "rw_execution_latency": {
+        "count": 531,
+        "mean_ns": 449540.34086629003,
+        "p50_ns_upper": 360448,
+        "p95_ns_upper": 851968,
+        "p99_ns_upper": 2490368,
+        "max_ns": 5982750
+      },
+      "worker_cpu_ns": 218905000,
+      "process_cpu_ns": 686703000,
+      "allocated_bytes": 3100912,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 463704,
+      "heap_used_bytes": 33554432,
+      "resident_cache_bytes": 38088,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 866,
+      "expected_commits": 866,
+      "value_digest": "4181337497353910359"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t1-serial-r2",
+        "case": "file-durable-cpu100",
+        "repeat": 2,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 702
+        }
+      },
+      "directory": "024-file-durable-cpu100-t1-serial-r2",
+      "elapsed_seconds": 6.213567583999975,
+      "minimum_idle_before_run": 83.39
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 703,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/025-file-append-cpu10-t1-serial-r3/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9329.395439543954,
+      "ns_per_iteration": 3.1097984798479845,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000019833,
+      "drain_seconds": 1.9833e-05,
+      "commits": 107856,
+      "active_commits": 107855,
+      "active_commits_per_second": 53927.5,
+      "batch_commits_per_second": 53927.46522829106,
+      "attempts": 107856,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        107856
+      ],
+      "per_worker_active_commits": [
+        107855
+      ],
+      "latency": {
+        "count": 107856,
+        "mean_ns": 18338.144229342826,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 34816,
+        "max_ns": 834250
+      },
+      "active_completion_latency": {
+        "count": 107855,
+        "mean_ns": 18338.087487830882,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 34816,
+        "max_ns": 834250
+      },
+      "rw_execution_latency": {
+        "count": 107856,
+        "mean_ns": 18277.466900311527,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 34816,
+        "max_ns": 832708
+      },
+      "worker_cpu_ns": 1997116000,
+      "process_cpu_ns": 3824034000,
+      "allocated_bytes": 602451208,
+      "gc_count": 12,
+      "gc_ms": 79,
+      "stream_loads": 0,
+      "stream_bytes": 15401752,
+      "heap_used_bytes": 77594624,
+      "resident_cache_bytes": 29816920,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.0000167500000003,
+      "drain_seconds": 1.675e-05,
+      "commits": 171015,
+      "active_commits": 171014,
+      "active_commits_per_second": 57004.666666666664,
+      "batch_commits_per_second": 57004.68172386037,
+      "attempts": 171015,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        171015
+      ],
+      "per_worker_active_commits": [
+        171014
+      ],
+      "latency": {
+        "count": 171015,
+        "mean_ns": 17438.00660176008,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 22528,
+        "p99_ns_upper": 27648,
+        "max_ns": 515458
+      },
+      "active_completion_latency": {
+        "count": 171014,
+        "mean_ns": 17438.010624861123,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 22528,
+        "p99_ns_upper": 27648,
+        "max_ns": 515458
+      },
+      "rw_execution_latency": {
+        "count": 171015,
+        "mean_ns": 17408.7132824606,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 22528,
+        "p99_ns_upper": 27648,
+        "max_ns": 515458
+      },
+      "worker_cpu_ns": 2998341000,
+      "process_cpu_ns": 3253522000,
+      "allocated_bytes": 953044904,
+      "gc_count": 6,
+      "gc_ms": 89,
+      "stream_loads": 0,
+      "stream_bytes": 43195064,
+      "heap_used_bytes": 488636416,
+      "resident_cache_bytes": 80656016,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 278871,
+      "expected_commits": 278871,
+      "value_digest": "15028546917976826654"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t1-serial-r3",
+        "case": "file-append-cpu10",
+        "repeat": 3,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 703
+        }
+      },
+      "directory": "025-file-append-cpu10-t1-serial-r3",
+      "elapsed_seconds": 5.504407458999992,
+      "minimum_idle_before_run": 83.42
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 703,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/026-file-append-cpu10-t1-optimistic-r3/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9344.72202220222,
+      "ns_per_iteration": 3.1149073407340735,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000007375,
+      "drain_seconds": 7.3750000000000005e-06,
+      "commits": 105416,
+      "active_commits": 105415,
+      "active_commits_per_second": 52707.5,
+      "batch_commits_per_second": 52707.805639966704,
+      "attempts": 105416,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        105416
+      ],
+      "per_worker_active_commits": [
+        105415
+      ],
+      "latency": {
+        "count": 105416,
+        "mean_ns": 18766.701326174396,
+        "p50_ns_upper": 18432,
+        "p95_ns_upper": 24576,
+        "p99_ns_upper": 36864,
+        "max_ns": 849750
+      },
+      "active_completion_latency": {
+        "count": 105415,
+        "mean_ns": 18766.662751980268,
+        "p50_ns_upper": 18432,
+        "p95_ns_upper": 24576,
+        "p99_ns_upper": 36864,
+        "max_ns": 849750
+      },
+      "rw_execution_latency": {
+        "count": 105416,
+        "mean_ns": 18713.825320634438,
+        "p50_ns_upper": 18432,
+        "p95_ns_upper": 24576,
+        "p99_ns_upper": 36864,
+        "max_ns": 848417
+      },
+      "worker_cpu_ns": 1996719000,
+      "process_cpu_ns": 3708119000,
+      "allocated_bytes": 588526328,
+      "gc_count": 7,
+      "gc_ms": 24,
+      "stream_loads": 0,
+      "stream_bytes": 15045160,
+      "heap_used_bytes": 434110464,
+      "resident_cache_bytes": 29120456,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.000016791,
+      "drain_seconds": 1.6791000000000002e-05,
+      "commits": 168855,
+      "active_commits": 168854,
+      "active_commits_per_second": 56284.666666666664,
+      "batch_commits_per_second": 56284.68497461819,
+      "attempts": 168855,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        168855
+      ],
+      "per_worker_active_commits": [
+        168854
+      ],
+      "latency": {
+        "count": 168855,
+        "mean_ns": 17662.31706493737,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 28672,
+        "max_ns": 626667
+      },
+      "active_completion_latency": {
+        "count": 168854,
+        "mean_ns": 17662.32172764637,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 23552,
+        "p99_ns_upper": 28672,
+        "max_ns": 626667
+      },
+      "rw_execution_latency": {
+        "count": 168855,
+        "mean_ns": 17635.53696366705,
+        "p50_ns_upper": 17408,
+        "p95_ns_upper": 22528,
+        "p99_ns_upper": 28672,
+        "max_ns": 626667
+      },
+      "worker_cpu_ns": 2998074000,
+      "process_cpu_ns": 3297980000,
+      "allocated_bytes": 933062448,
+      "gc_count": 11,
+      "gc_ms": 143,
+      "stream_loads": 0,
+      "stream_bytes": 42368584,
+      "heap_used_bytes": 450887680,
+      "resident_cache_bytes": 79186512,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 274271,
+      "expected_commits": 274271,
+      "value_digest": "9693652730590805036"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t1-optimistic-r3",
+        "case": "file-append-cpu10",
+        "repeat": 3,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 703
+        }
+      },
+      "directory": "026-file-append-cpu10-t1-optimistic-r3",
+      "elapsed_seconds": 5.490129707999984,
+      "minimum_idle_before_run": 81.98
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 4,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 703,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/027-file-append-cpu10-t4-serial-r3/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9385.826132613262,
+      "ns_per_iteration": 3.128608710871087,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.00014075,
+      "drain_seconds": 0.00014075,
+      "commits": 98126,
+      "active_commits": 98122,
+      "active_commits_per_second": 49061.0,
+      "batch_commits_per_second": 49059.54743434931,
+      "attempts": 98126,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        24800,
+        24241,
+        24110,
+        24975
+      ],
+      "per_worker_active_commits": [
+        24799,
+        24240,
+        24109,
+        24974
+      ],
+      "latency": {
+        "count": 98126,
+        "mean_ns": 81291.74861912236,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 26624,
+        "p99_ns_upper": 51200,
+        "max_ns": 50865792
+      },
+      "active_completion_latency": {
+        "count": 98122,
+        "mean_ns": 80905.79416440758,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 26624,
+        "p99_ns_upper": 51200,
+        "max_ns": 50865792
+      },
+      "rw_execution_latency": {
+        "count": 98126,
+        "mean_ns": 20051.740231946682,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 26624,
+        "p99_ns_upper": 36864,
+        "max_ns": 729459
+      },
+      "worker_cpu_ns": 2169923000,
+      "process_cpu_ns": 3659573000,
+      "allocated_bytes": 548110344,
+      "gc_count": 6,
+      "gc_ms": 27,
+      "stream_loads": 0,
+      "stream_bytes": 13968056,
+      "heap_used_bytes": 392167424,
+      "resident_cache_bytes": 27078112,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.0001505830000004,
+      "drain_seconds": 0.000150583,
+      "commits": 152356,
+      "active_commits": 152352,
+      "active_commits_per_second": 50784.0,
+      "batch_commits_per_second": 50782.7843253293,
+      "attempts": 152356,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        36703,
+        38470,
+        35389,
+        41794
+      ],
+      "per_worker_active_commits": [
+        36702,
+        38469,
+        35388,
+        41793
+      ],
+      "latency": {
+        "count": 152356,
+        "mean_ns": 78641.67813541967,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 25600,
+        "p99_ns_upper": 34816,
+        "max_ns": 52852666
+      },
+      "active_completion_latency": {
+        "count": 152352,
+        "mean_ns": 78348.0794410313,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 25600,
+        "p99_ns_upper": 34816,
+        "max_ns": 52852666
+      },
+      "rw_execution_latency": {
+        "count": 152356,
+        "mean_ns": 19530.738080548188,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 25600,
+        "p99_ns_upper": 30720,
+        "max_ns": 611958
+      },
+      "worker_cpu_ns": 3240320000,
+      "process_cpu_ns": 3663175000,
+      "allocated_bytes": 848475264,
+      "gc_count": 12,
+      "gc_ms": 147,
+      "stream_loads": 0,
+      "stream_bytes": 38232064,
+      "heap_used_bytes": 327155712,
+      "resident_cache_bytes": 71818432,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 250482,
+      "expected_commits": 250482,
+      "value_digest": "18405929449335972530"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t4-serial-r3",
+        "case": "file-append-cpu10",
+        "repeat": 3,
+        "variant": "stock",
+        "params": {
+          "threads": 4,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 703
+        }
+      },
+      "directory": "027-file-append-cpu10-t4-serial-r3",
+      "elapsed_seconds": 5.485240957999963,
+      "minimum_idle_before_run": 80.38
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 4,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 703,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/028-file-append-cpu10-t4-optimistic-r3/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9326.832733273328,
+      "ns_per_iteration": 3.1089442444244426,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.000033208,
+      "drain_seconds": 3.3208000000000005e-05,
+      "commits": 258046,
+      "active_commits": 258042,
+      "active_commits_per_second": 129021.0,
+      "batch_commits_per_second": 129020.85773767812,
+      "attempts": 258046,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        64663,
+        64525,
+        64415,
+        64443
+      ],
+      "per_worker_active_commits": [
+        64662,
+        64524,
+        64414,
+        64442
+      ],
+      "latency": {
+        "count": 258046,
+        "mean_ns": 30746.374034086944,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 86016,
+        "p99_ns_upper": 147456,
+        "max_ns": 1193541
+      },
+      "active_completion_latency": {
+        "count": 258042,
+        "mean_ns": 30745.967547918557,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 86016,
+        "p99_ns_upper": 147456,
+        "max_ns": 1193541
+      },
+      "rw_execution_latency": {
+        "count": 258046,
+        "mean_ns": 30657.6609170458,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 86016,
+        "p99_ns_upper": 147456,
+        "max_ns": 1193417
+      },
+      "worker_cpu_ns": 6062335000,
+      "process_cpu_ns": 7979373000,
+      "allocated_bytes": 1435088040,
+      "gc_count": 18,
+      "gc_ms": 201,
+      "stream_loads": 0,
+      "stream_bytes": 39480240,
+      "heap_used_bytes": 358612992,
+      "resident_cache_bytes": 74074280,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.000055209,
+      "drain_seconds": 5.5209000000000006e-05,
+      "commits": 327820,
+      "active_commits": 327816,
+      "active_commits_per_second": 109272.0,
+      "batch_commits_per_second": 109271.32241318696,
+      "attempts": 327820,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        81826,
+        81993,
+        81834,
+        82167
+      ],
+      "per_worker_active_commits": [
+        81825,
+        81992,
+        81833,
+        82166
+      ],
+      "latency": {
+        "count": 327820,
+        "mean_ns": 36454.21014886218,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 118784,
+        "p99_ns_upper": 172032,
+        "max_ns": 771000
+      },
+      "active_completion_latency": {
+        "count": 327816,
+        "mean_ns": 36453.442013202526,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 118784,
+        "p99_ns_upper": 172032,
+        "max_ns": 771000
+      },
+      "rw_execution_latency": {
+        "count": 327820,
+        "mean_ns": 36389.04045817827,
+        "p50_ns_upper": 22528,
+        "p95_ns_upper": 118784,
+        "p99_ns_upper": 172032,
+        "max_ns": 770833
+      },
+      "worker_cpu_ns": 7521581000,
+      "process_cpu_ns": 7859847000,
+      "allocated_bytes": 1823515920,
+      "gc_count": 4,
+      "gc_ms": 252,
+      "stream_loads": 0,
+      "stream_bytes": 101342712,
+      "heap_used_bytes": 1249902592,
+      "resident_cache_bytes": 180199032,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 585866,
+      "expected_commits": 585866,
+      "value_digest": "9728386174125960242"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t4-optimistic-r3",
+        "case": "file-append-cpu10",
+        "repeat": 3,
+        "variant": "stock",
+        "params": {
+          "threads": 4,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 703
+        }
+      },
+      "directory": "028-file-append-cpu10-t4-optimistic-r3",
+      "elapsed_seconds": 5.509225000000015,
+      "minimum_idle_before_run": 83.5
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 703,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/029-file-append-cpu10-t8-serial-r3/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9352.841434143415,
+      "ns_per_iteration": 3.1176138113811382,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0003724590000003,
+      "drain_seconds": 0.000372459,
+      "commits": 99650,
+      "active_commits": 99642,
+      "active_commits_per_second": 49821.0,
+      "batch_commits_per_second": 49815.722842842835,
+      "attempts": 99650,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        15487,
+        13792,
+        12339,
+        11863,
+        12786,
+        12288,
+        9238,
+        11857
+      ],
+      "per_worker_active_commits": [
+        15486,
+        13791,
+        12338,
+        11862,
+        12785,
+        12287,
+        9237,
+        11856
+      ],
+      "latency": {
+        "count": 99650,
+        "mean_ns": 160323.2387355745,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 26624,
+        "p99_ns_upper": 47104,
+        "max_ns": 83830000
+      },
+      "active_completion_latency": {
+        "count": 99642,
+        "mean_ns": 159305.61022460408,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 26624,
+        "p99_ns_upper": 47104,
+        "max_ns": 83830000
+      },
+      "rw_execution_latency": {
+        "count": 99650,
+        "mean_ns": 19735.846171600602,
+        "p50_ns_upper": 19456,
+        "p95_ns_upper": 26624,
+        "p99_ns_upper": 36864,
+        "max_ns": 787292
+      },
+      "worker_cpu_ns": 2175221000,
+      "process_cpu_ns": 3718496000,
+      "allocated_bytes": 556001072,
+      "gc_count": 6,
+      "gc_ms": 25,
+      "stream_loads": 0,
+      "stream_bytes": 14176776,
+      "heap_used_bytes": 398458880,
+      "resident_cache_bytes": 27483088,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.000276459,
+      "drain_seconds": 0.000276459,
+      "commits": 153506,
+      "active_commits": 153498,
+      "active_commits_per_second": 51166.0,
+      "batch_commits_per_second": 51163.951755020586,
+      "attempts": 153506,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        13778,
+        19451,
+        18920,
+        23110,
+        15476,
+        22800,
+        20536,
+        19435
+      ],
+      "per_worker_active_commits": [
+        13777,
+        19450,
+        18919,
+        23109,
+        15475,
+        22799,
+        20535,
+        19434
+      ],
+      "latency": {
+        "count": 153506,
+        "mean_ns": 156220.11848396805,
+        "p50_ns_upper": 18432,
+        "p95_ns_upper": 25600,
+        "p99_ns_upper": 34816,
+        "max_ns": 90726333
+      },
+      "active_completion_latency": {
+        "count": 153498,
+        "mean_ns": 154864.2925184693,
+        "p50_ns_upper": 18432,
+        "p95_ns_upper": 25600,
+        "p99_ns_upper": 34816,
+        "max_ns": 90726333
+      },
+      "rw_execution_latency": {
+        "count": 153506,
+        "mean_ns": 19373.076179432726,
+        "p50_ns_upper": 18432,
+        "p95_ns_upper": 25600,
+        "p99_ns_upper": 30720,
+        "max_ns": 647250
+      },
+      "worker_cpu_ns": 3240046000,
+      "process_cpu_ns": 3678312000,
+      "allocated_bytes": 854970368,
+      "gc_count": 12,
+      "gc_ms": 158,
+      "stream_loads": 0,
+      "stream_bytes": 38601808,
+      "heap_used_bytes": 343932928,
+      "resident_cache_bytes": 72550576,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 253156,
+      "expected_commits": 253156,
+      "value_digest": "16789961643884111192"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t8-serial-r3",
+        "case": "file-append-cpu10",
+        "repeat": 3,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 703
+        }
+      },
+      "directory": "029-file-append-cpu10-t8-serial-r3",
+      "elapsed_seconds": 5.523298374999968,
+      "minimum_idle_before_run": 82.4
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 3000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 703,
+    "storage": "file",
+    "durable": false,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/030-file-append-cpu10-t8-optimistic-r3/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 3000,
+      "ns_per_compute": 9357.748274827483,
+      "ns_per_iteration": 3.1192494249424945,
+      "checksum": "5936177746916010334"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0001616660000003,
+      "drain_seconds": 0.000161666,
+      "commits": 212583,
+      "active_commits": 212575,
+      "active_commits_per_second": 106287.5,
+      "batch_commits_per_second": 106282.90883363024,
+      "attempts": 212583,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        26607,
+        26619,
+        26669,
+        26599,
+        26453,
+        26704,
+        26355,
+        26577
+      ],
+      "per_worker_active_commits": [
+        26606,
+        26618,
+        26668,
+        26598,
+        26452,
+        26703,
+        26354,
+        26576
+      ],
+      "latency": {
+        "count": 212583,
+        "mean_ns": 74931.51231754186,
+        "p50_ns_upper": 25600,
+        "p95_ns_upper": 253952,
+        "p99_ns_upper": 344064,
+        "max_ns": 1543709
+      },
+      "active_completion_latency": {
+        "count": 212575,
+        "mean_ns": 74927.60836410678,
+        "p50_ns_upper": 25600,
+        "p95_ns_upper": 253952,
+        "p99_ns_upper": 344064,
+        "max_ns": 1543709
+      },
+      "rw_execution_latency": {
+        "count": 212583,
+        "mean_ns": 74809.3148511405,
+        "p50_ns_upper": 25600,
+        "p95_ns_upper": 253952,
+        "p99_ns_upper": 344064,
+        "max_ns": 1543500
+      },
+      "worker_cpu_ns": 5577174000,
+      "process_cpu_ns": 7731265000,
+      "allocated_bytes": 1185114352,
+      "gc_count": 13,
+      "gc_ms": 91,
+      "stream_loads": 0,
+      "stream_bytes": 31841264,
+      "heap_used_bytes": 664797184,
+      "resident_cache_bytes": 60301544,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.000238791,
+      "drain_seconds": 0.00023879100000000002,
+      "commits": 299508,
+      "active_commits": 299500,
+      "active_commits_per_second": 99833.33333333333,
+      "batch_commits_per_second": 99828.05398638685,
+      "attempts": 299508,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        37220,
+        37081,
+        37800,
+        37485,
+        37202,
+        37317,
+        37659,
+        37744
+      ],
+      "per_worker_active_commits": [
+        37219,
+        37080,
+        37799,
+        37484,
+        37201,
+        37316,
+        37658,
+        37743
+      ],
+      "latency": {
+        "count": 299508,
+        "mean_ns": 79942.99506857914,
+        "p50_ns_upper": 24576,
+        "p95_ns_upper": 278528,
+        "p99_ns_upper": 360448,
+        "max_ns": 1018708
+      },
+      "active_completion_latency": {
+        "count": 299500,
+        "mean_ns": 79936.15228714525,
+        "p50_ns_upper": 24576,
+        "p95_ns_upper": 278528,
+        "p99_ns_upper": 360448,
+        "max_ns": 1018708
+      },
+      "rw_execution_latency": {
+        "count": 299508,
+        "mean_ns": 79856.05228240982,
+        "p50_ns_upper": 24576,
+        "p95_ns_upper": 278528,
+        "p99_ns_upper": 360448,
+        "max_ns": 1018666
+      },
+      "worker_cpu_ns": 7444205000,
+      "process_cpu_ns": 7933516000,
+      "allocated_bytes": 1666633512,
+      "gc_count": 9,
+      "gc_ms": 383,
+      "stream_loads": 0,
+      "stream_bytes": 86684760,
+      "heap_used_bytes": 652214272,
+      "resident_cache_bytes": 155639296,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 512091,
+      "expected_commits": 512091,
+      "value_digest": "9431678402692080019"
+    },
+    "run": {
+      "job": {
+        "name": "file-append-cpu10-t8-optimistic-r3",
+        "case": "file-append-cpu10",
+        "repeat": 3,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 3000,
+          "durable": false,
+          "seed": 703
+        }
+      },
+      "directory": "030-file-append-cpu10-t8-optimistic-r3",
+      "elapsed_seconds": 5.525524958000005,
+      "minimum_idle_before_run": 80.24
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 703,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/031-file-durable-cpu100-t1-serial-r3/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 93358.73273273274,
+      "ns_per_iteration": 3.1119577577577577,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.001883958,
+      "drain_seconds": 0.001883958,
+      "commits": 339,
+      "active_commits": 338,
+      "active_commits_per_second": 169.0,
+      "batch_commits_per_second": 169.34048481945024,
+      "attempts": 339,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        339
+      ],
+      "per_worker_active_commits": [
+        338
+      ],
+      "latency": {
+        "count": 339,
+        "mean_ns": 5891861.486725664,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 8912896,
+        "p99_ns_upper": 10485760,
+        "max_ns": 11134917
+      },
+      "active_completion_latency": {
+        "count": 338,
+        "mean_ns": 5893048.701183432,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 8912896,
+        "p99_ns_upper": 10485760,
+        "max_ns": 11134917
+      },
+      "rw_execution_latency": {
+        "count": 339,
+        "mean_ns": 558155.1091445427,
+        "p50_ns_upper": 425984,
+        "p95_ns_upper": 1114112,
+        "p99_ns_upper": 3145728,
+        "max_ns": 4924000
+      },
+      "worker_cpu_ns": 175357000,
+      "process_cpu_ns": 505683000,
+      "allocated_bytes": 2059032,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 396072,
+      "heap_used_bytes": 31457280,
+      "resident_cache_bytes": 32080,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.007848667,
+      "drain_seconds": 0.007848667,
+      "commits": 531,
+      "active_commits": 530,
+      "active_commits_per_second": 176.66666666666666,
+      "batch_commits_per_second": 176.53813698333911,
+      "attempts": 531,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        531
+      ],
+      "per_worker_active_commits": [
+        530
+      ],
+      "latency": {
+        "count": 531,
+        "mean_ns": 5655414.860640301,
+        "p50_ns_upper": 5242880,
+        "p95_ns_upper": 8912896,
+        "p99_ns_upper": 11534336,
+        "max_ns": 24887292
+      },
+      "active_completion_latency": {
+        "count": 530,
+        "mean_ns": 5647433.096226415,
+        "p50_ns_upper": 5242880,
+        "p95_ns_upper": 8912896,
+        "p99_ns_upper": 11534336,
+        "max_ns": 24887292
+      },
+      "rw_execution_latency": {
+        "count": 531,
+        "mean_ns": 439506.9792843691,
+        "p50_ns_upper": 360448,
+        "p95_ns_upper": 851968,
+        "p99_ns_upper": 3014656,
+        "max_ns": 4761083
+      },
+      "worker_cpu_ns": 208780000,
+      "process_cpu_ns": 656309000,
+      "allocated_bytes": 3095288,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 464200,
+      "heap_used_bytes": 33554432,
+      "resident_cache_bytes": 36144,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 870,
+      "expected_commits": 870,
+      "value_digest": "6627266657511224421"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t1-serial-r3",
+        "case": "file-durable-cpu100",
+        "repeat": 3,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 703
+        }
+      },
+      "directory": "031-file-durable-cpu100-t1-serial-r3",
+      "elapsed_seconds": 6.249847041999999,
+      "minimum_idle_before_run": 83.2
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 1,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 703,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/032-file-durable-cpu100-t1-optimistic-r3/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 93194.38288288288,
+      "ns_per_iteration": 3.1064794294294296,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0023870830000003,
+      "drain_seconds": 0.0023870830000000003,
+      "commits": 335,
+      "active_commits": 334,
+      "active_commits_per_second": 167.0,
+      "batch_commits_per_second": 167.30032012496753,
+      "attempts": 335,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        335
+      ],
+      "per_worker_active_commits": [
+        334
+      ],
+      "latency": {
+        "count": 335,
+        "mean_ns": 5963279.886567164,
+        "p50_ns_upper": 5767168,
+        "p95_ns_upper": 8912896,
+        "p99_ns_upper": 11010048,
+        "max_ns": 13088166
+      },
+      "active_completion_latency": {
+        "count": 334,
+        "mean_ns": 5963101.083832336,
+        "p50_ns_upper": 5767168,
+        "p95_ns_upper": 8912896,
+        "p99_ns_upper": 11010048,
+        "max_ns": 13088166
+      },
+      "rw_execution_latency": {
+        "count": 335,
+        "mean_ns": 609904.7492537313,
+        "p50_ns_upper": 507904,
+        "p95_ns_upper": 1245184,
+        "p99_ns_upper": 4456448,
+        "max_ns": 6929041
+      },
+      "worker_cpu_ns": 179013000,
+      "process_cpu_ns": 510799000,
+      "allocated_bytes": 2035384,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 395560,
+      "heap_used_bytes": 31457280,
+      "resident_cache_bytes": 32080,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.004985,
+      "drain_seconds": 0.004985000000000001,
+      "commits": 517,
+      "active_commits": 516,
+      "active_commits_per_second": 172.0,
+      "batch_commits_per_second": 172.0474478241988,
+      "attempts": 517,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        517
+      ],
+      "per_worker_active_commits": [
+        516
+      ],
+      "latency": {
+        "count": 517,
+        "mean_ns": 5797780.8588007735,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 9437184,
+        "p99_ns_upper": 10485760,
+        "max_ns": 16855000
+      },
+      "active_completion_latency": {
+        "count": 516,
+        "mean_ns": 5798756.775193798,
+        "p50_ns_upper": 5505024,
+        "p95_ns_upper": 9437184,
+        "p99_ns_upper": 10485760,
+        "max_ns": 16855000
+      },
+      "rw_execution_latency": {
+        "count": 517,
+        "mean_ns": 493302.58220502903,
+        "p50_ns_upper": 393216,
+        "p95_ns_upper": 884736,
+        "p99_ns_upper": 4194304,
+        "max_ns": 5256333
+      },
+      "worker_cpu_ns": 218734000,
+      "process_cpu_ns": 686527000,
+      "allocated_bytes": 3015112,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 461896,
+      "heap_used_bytes": 33554432,
+      "resident_cache_bytes": 36144,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 852,
+      "expected_commits": 852,
+      "value_digest": "1083036571392331243"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t1-optimistic-r3",
+        "case": "file-durable-cpu100",
+        "repeat": 3,
+        "variant": "stock",
+        "params": {
+          "threads": 1,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 703
+        }
+      },
+      "directory": "032-file-durable-cpu100-t1-optimistic-r3",
+      "elapsed_seconds": 6.2262836669999615,
+      "minimum_idle_before_run": 82.45
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 4,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 703,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/033-file-durable-cpu100-t4-serial-r3/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 93394.64414414414,
+      "ns_per_iteration": 3.1131548048048048,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.008972833,
+      "drain_seconds": 0.008972833000000001,
+      "commits": 836,
+      "active_commits": 832,
+      "active_commits_per_second": 416.0,
+      "batch_commits_per_second": 416.13305380123074,
+      "attempts": 836,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        209,
+        209,
+        209,
+        209
+      ],
+      "per_worker_active_commits": [
+        208,
+        208,
+        208,
+        208
+      ],
+      "latency": {
+        "count": 836,
+        "mean_ns": 9600441.495215312,
+        "p50_ns_upper": 9961472,
+        "p95_ns_upper": 12058624,
+        "p99_ns_upper": 15204352,
+        "max_ns": 19985792
+      },
+      "active_completion_latency": {
+        "count": 832,
+        "mean_ns": 9602086.646634616,
+        "p50_ns_upper": 9961472,
+        "p95_ns_upper": 12058624,
+        "p99_ns_upper": 15204352,
+        "max_ns": 19985792
+      },
+      "rw_execution_latency": {
+        "count": 836,
+        "mean_ns": 259907.22368421053,
+        "p50_ns_upper": 221184,
+        "p95_ns_upper": 442368,
+        "p99_ns_upper": 884736,
+        "max_ns": 4120916
+      },
+      "worker_cpu_ns": 233237000,
+      "process_cpu_ns": 651835000,
+      "allocated_bytes": 4960744,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 459848,
+      "heap_used_bytes": 33554432,
+      "resident_cache_bytes": 36144,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.008202416,
+      "drain_seconds": 0.008202416,
+      "commits": 1131,
+      "active_commits": 1127,
+      "active_commits_per_second": 375.6666666666667,
+      "batch_commits_per_second": 375.972040307011,
+      "attempts": 1131,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        283,
+        283,
+        282,
+        283
+      ],
+      "per_worker_active_commits": [
+        282,
+        282,
+        281,
+        282
+      ],
+      "latency": {
+        "count": 1131,
+        "mean_ns": 10611448.14765694,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 14155776,
+        "p99_ns_upper": 16252928,
+        "max_ns": 22550750
+      },
+      "active_completion_latency": {
+        "count": 1127,
+        "mean_ns": 10618789.579414375,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 14155776,
+        "p99_ns_upper": 16252928,
+        "max_ns": 22550750
+      },
+      "rw_execution_latency": {
+        "count": 1131,
+        "mean_ns": 447227.37577365164,
+        "p50_ns_upper": 344064,
+        "p95_ns_upper": 1015808,
+        "p99_ns_upper": 1769472,
+        "max_ns": 4981750
+      },
+      "worker_cpu_ns": 459255000,
+      "process_cpu_ns": 905958000,
+      "allocated_bytes": 6557352,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 606360,
+      "heap_used_bytes": 41943040,
+      "resident_cache_bytes": 232864,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 1967,
+      "expected_commits": 1967,
+      "value_digest": "17034515318102286479"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t4-serial-r3",
+        "case": "file-durable-cpu100",
+        "repeat": 3,
+        "variant": "stock",
+        "params": {
+          "threads": 4,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 703
+        }
+      },
+      "directory": "033-file-durable-cpu100-t4-serial-r3",
+      "elapsed_seconds": 6.247079290999977,
+      "minimum_idle_before_run": 83.15
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 4,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 703,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/034-file-durable-cpu100-t4-optimistic-r3/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 93203.82882882883,
+      "ns_per_iteration": 3.1067942942942945,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.0068185830000003,
+      "drain_seconds": 0.0068185830000000005,
+      "commits": 841,
+      "active_commits": 837,
+      "active_commits_per_second": 418.5,
+      "batch_commits_per_second": 419.0712639020843,
+      "attempts": 841,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        210,
+        210,
+        211,
+        210
+      ],
+      "per_worker_active_commits": [
+        209,
+        209,
+        210,
+        209
+      ],
+      "latency": {
+        "count": 841,
+        "mean_ns": 9529634.835909631,
+        "p50_ns_upper": 9437184,
+        "p95_ns_upper": 12058624,
+        "p99_ns_upper": 15728640,
+        "max_ns": 28847792
+      },
+      "active_completion_latency": {
+        "count": 837,
+        "mean_ns": 9528287.063321386,
+        "p50_ns_upper": 9437184,
+        "p95_ns_upper": 12058624,
+        "p99_ns_upper": 15728640,
+        "max_ns": 28847792
+      },
+      "rw_execution_latency": {
+        "count": 841,
+        "mean_ns": 340410.83472057077,
+        "p50_ns_upper": 278528,
+        "p95_ns_upper": 720896,
+        "p99_ns_upper": 1900544,
+        "max_ns": 5682000
+      },
+      "worker_cpu_ns": 262905000,
+      "process_cpu_ns": 711741000,
+      "allocated_bytes": 5002240,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 460488,
+      "heap_used_bytes": 33554432,
+      "resident_cache_bytes": 36144,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.0082079580000003,
+      "drain_seconds": 0.008207958000000001,
+      "commits": 1157,
+      "active_commits": 1153,
+      "active_commits_per_second": 384.3333333333333,
+      "batch_commits_per_second": 384.61436714276516,
+      "attempts": 1157,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        290,
+        289,
+        289,
+        289
+      ],
+      "per_worker_active_commits": [
+        289,
+        288,
+        288,
+        288
+      ],
+      "latency": {
+        "count": 1157,
+        "mean_ns": 10387806.878997408,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 14155776,
+        "p99_ns_upper": 16252928,
+        "max_ns": 23064500
+      },
+      "active_completion_latency": {
+        "count": 1153,
+        "mean_ns": 10390390.373807458,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 14155776,
+        "p99_ns_upper": 16252928,
+        "max_ns": 23064500
+      },
+      "rw_execution_latency": {
+        "count": 1157,
+        "mean_ns": 465171.2765773552,
+        "p50_ns_upper": 344064,
+        "p95_ns_upper": 1179648,
+        "p99_ns_upper": 2359296,
+        "max_ns": 5062833
+      },
+      "worker_cpu_ns": 452956000,
+      "process_cpu_ns": 942521000,
+      "allocated_bytes": 6707640,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 610376,
+      "heap_used_bytes": 41943040,
+      "resident_cache_bytes": 238872,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 1998,
+      "expected_commits": 1998,
+      "value_digest": "10888964206560828502"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t4-optimistic-r3",
+        "case": "file-durable-cpu100",
+        "repeat": 3,
+        "variant": "stock",
+        "params": {
+          "threads": 4,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 703
+        }
+      },
+      "directory": "034-file-durable-cpu100-t4-optimistic-r3",
+      "elapsed_seconds": 6.227241041000013,
+      "minimum_idle_before_run": 83.15
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "serial",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 703,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/035-file-durable-cpu100-t8-serial-r3/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 93352.97747747747,
+      "ns_per_iteration": 3.1117659159159157,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.01139625,
+      "drain_seconds": 0.01139625,
+      "commits": 1702,
+      "active_commits": 1694,
+      "active_commits_per_second": 847.0,
+      "batch_commits_per_second": 846.1783698761494,
+      "attempts": 1702,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        213,
+        212,
+        213,
+        213,
+        213,
+        213,
+        212,
+        213
+      ],
+      "per_worker_active_commits": [
+        212,
+        211,
+        212,
+        212,
+        212,
+        212,
+        211,
+        212
+      ],
+      "latency": {
+        "count": 1702,
+        "mean_ns": 9426249.52467685,
+        "p50_ns_upper": 9437184,
+        "p95_ns_upper": 13107200,
+        "p99_ns_upper": 16252928,
+        "max_ns": 19076375
+      },
+      "active_completion_latency": {
+        "count": 1694,
+        "mean_ns": 9403783.982290437,
+        "p50_ns_upper": 9437184,
+        "p95_ns_upper": 12582912,
+        "p99_ns_upper": 16252928,
+        "max_ns": 18030375
+      },
+      "rw_execution_latency": {
+        "count": 1702,
+        "mean_ns": 253272.91833137485,
+        "p50_ns_upper": 196608,
+        "p95_ns_upper": 507904,
+        "p99_ns_upper": 1245184,
+        "max_ns": 6700583
+      },
+      "worker_cpu_ns": 428796000,
+      "process_cpu_ns": 877536000,
+      "allocated_bytes": 9977664,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 574624,
+      "heap_used_bytes": 39845888,
+      "resident_cache_bytes": 179152,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.0112124590000002,
+      "drain_seconds": 0.011212459000000001,
+      "commits": 2296,
+      "active_commits": 2288,
+      "active_commits_per_second": 762.6666666666666,
+      "batch_commits_per_second": 762.4835614430485,
+      "attempts": 2296,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        287,
+        287,
+        287,
+        287,
+        287,
+        287,
+        287,
+        287
+      ],
+      "per_worker_active_commits": [
+        286,
+        286,
+        286,
+        286,
+        286,
+        286,
+        286,
+        286
+      ],
+      "latency": {
+        "count": 2296,
+        "mean_ns": 10473222.581881532,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 14155776,
+        "p99_ns_upper": 16252928,
+        "max_ns": 25099625
+      },
+      "active_completion_latency": {
+        "count": 2288,
+        "mean_ns": 10467874.201048952,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 14155776,
+        "p99_ns_upper": 16252928,
+        "max_ns": 25099625
+      },
+      "rw_execution_latency": {
+        "count": 2296,
+        "mean_ns": 328961.37891986064,
+        "p50_ns_upper": 278528,
+        "p95_ns_upper": 622592,
+        "p99_ns_upper": 1638400,
+        "max_ns": 4699041
+      },
+      "worker_cpu_ns": 743543000,
+      "process_cpu_ns": 1113531000,
+      "allocated_bytes": 13277816,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 877904,
+      "heap_used_bytes": 54525952,
+      "resident_cache_bytes": 829976,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 3998,
+      "expected_commits": 3998,
+      "value_digest": "6229667821753868868"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t8-serial-r3",
+        "case": "file-durable-cpu100",
+        "repeat": 3,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "serial",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 703
+        }
+      },
+      "directory": "035-file-durable-cpu100-t8-serial-r3",
+      "elapsed_seconds": 6.252220584000042,
+      "minimum_idle_before_run": 82.2
+    }
+  },
+  {
+    "schema": "rwbench-1",
+    "variant": "stock",
+    "threads": 8,
+    "mode": "optimistic",
+    "workload": "partitioned",
+    "keys": 4096,
+    "reads": 8,
+    "work": 30000,
+    "seconds": 3.0,
+    "warmup_seconds": 2.0,
+    "hot_fraction": 0.9,
+    "seed": 703,
+    "storage": "file",
+    "durable": true,
+    "cache_bytes": 0,
+    "startup_bytes": 0,
+    "effective_startup_bytes": 50000000,
+    "diagnostic_loads": false,
+    "java": "27",
+    "available_processors": 10,
+    "max_heap_bytes": 2147483648,
+    "jvm_flags": [
+      "-Xms512m",
+      "-Xmx2g",
+      "-XX:+UseZGC",
+      "-Dbench.variant=stock",
+      "-Xlog:gc,safepoint:file=/private/tmp/bergdb-006-11-runs/file/036-file-durable-cpu100-t8-optimistic-r3/gc.log:uptime,level,tags"
+    ],
+    "thread_cpu_time_enabled": true,
+    "thread_allocated_memory_enabled": true,
+    "calibration": {
+      "iterations": 30000,
+      "ns_per_compute": 93248.37387387388,
+      "ns_per_iteration": 3.108279129129129,
+      "checksum": "821218851165370422"
+    },
+    "warmup": {
+      "requested_seconds": 2.0,
+      "batch_seconds": 2.005099458,
+      "drain_seconds": 0.005099458,
+      "commits": 1656,
+      "active_commits": 1648,
+      "active_commits_per_second": 824.0,
+      "batch_commits_per_second": 825.8941936235863,
+      "attempts": 1656,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        207,
+        207,
+        207,
+        207,
+        207,
+        207,
+        207,
+        207
+      ],
+      "per_worker_active_commits": [
+        206,
+        206,
+        206,
+        206,
+        206,
+        206,
+        206,
+        206
+      ],
+      "latency": {
+        "count": 1656,
+        "mean_ns": 9669818.996980676,
+        "p50_ns_upper": 9437184,
+        "p95_ns_upper": 12582912,
+        "p99_ns_upper": 15204352,
+        "max_ns": 21044791
+      },
+      "active_completion_latency": {
+        "count": 1648,
+        "mean_ns": 9658635.725728156,
+        "p50_ns_upper": 9437184,
+        "p95_ns_upper": 12582912,
+        "p99_ns_upper": 15204352,
+        "max_ns": 21044791
+      },
+      "rw_execution_latency": {
+        "count": 1656,
+        "mean_ns": 302073.3611111111,
+        "p50_ns_upper": 253952,
+        "p95_ns_upper": 557056,
+        "p99_ns_upper": 1310720,
+        "max_ns": 4481209
+      },
+      "worker_cpu_ns": 468584000,
+      "process_cpu_ns": 969640000,
+      "allocated_bytes": 9719696,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 568656,
+      "heap_used_bytes": 39845888,
+      "resident_cache_bytes": 168992,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "measured": {
+      "requested_seconds": 3.0,
+      "batch_seconds": 3.012279666,
+      "drain_seconds": 0.012279666000000002,
+      "commits": 2249,
+      "active_commits": 2241,
+      "active_commits_per_second": 747.0,
+      "batch_commits_per_second": 746.6106236365638,
+      "attempts": 2249,
+      "attempts_per_commit": 1.0,
+      "max_attempts_one_commit": 1,
+      "per_worker_commits": [
+        281,
+        281,
+        281,
+        282,
+        282,
+        281,
+        280,
+        281
+      ],
+      "per_worker_active_commits": [
+        280,
+        280,
+        280,
+        281,
+        281,
+        280,
+        279,
+        280
+      ],
+      "latency": {
+        "count": 2249,
+        "mean_ns": 10702213.236549577,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 14680064,
+        "p99_ns_upper": 18874368,
+        "max_ns": 32770125
+      },
+      "active_completion_latency": {
+        "count": 2241,
+        "mean_ns": 10690626.7416332,
+        "p50_ns_upper": 10485760,
+        "p95_ns_upper": 14155776,
+        "p99_ns_upper": 18874368,
+        "max_ns": 32770125
+      },
+      "rw_execution_latency": {
+        "count": 2249,
+        "mean_ns": 406325.5126722988,
+        "p50_ns_upper": 344064,
+        "p95_ns_upper": 884736,
+        "p99_ns_upper": 1835008,
+        "max_ns": 6291209
+      },
+      "worker_cpu_ns": 788437000,
+      "process_cpu_ns": 1229522000,
+      "allocated_bytes": 13011704,
+      "gc_count": 0,
+      "gc_ms": 0,
+      "stream_loads": 0,
+      "stream_bytes": 861904,
+      "heap_used_bytes": 54525952,
+      "resident_cache_bytes": 777096,
+      "eviction_summary": "eviction BUDGET: 0 slots unswizzled, 0 objects released; budget 9223372036854775807 bytes, low 9223372036854775807; 0 sweeps (0 after loads, 0 complete, 0 above the budget after); last sweep 0 -> 0 bytes, pinned 0 (at most 0); sweep time 0 ms in total, 0 ms at most"
+    },
+    "verification": {
+      "passed": true,
+      "sum_counters": 3905,
+      "expected_commits": 3905,
+      "value_digest": "2489609033750243255"
+    },
+    "run": {
+      "job": {
+        "name": "file-durable-cpu100-t8-optimistic-r3",
+        "case": "file-durable-cpu100",
+        "repeat": 3,
+        "variant": "stock",
+        "params": {
+          "threads": 8,
+          "mode": "optimistic",
+          "workload": "partitioned",
+          "work": 30000,
+          "durable": true,
+          "seed": 703
+        }
+      },
+      "directory": "036-file-durable-cpu100-t8-optimistic-r3",
+      "elapsed_seconds": 6.24381649999998,
+      "minimum_idle_before_run": 82.11
+    }
+  }
+]

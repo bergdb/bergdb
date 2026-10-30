@@ -1,0 +1,527 @@
+{
+  "description": "006-11 public rw actions; sequential fresh-JVM runs, paired mode order reversed on alternate repeats",
+  "jvm_flags": [
+    "-Xms512m",
+    "-Xmx2g",
+    "-XX:+UseZGC"
+  ],
+  "defaults": {
+    "keys": 4096,
+    "reads": 8,
+    "work": 0,
+    "seconds": 3,
+    "warmupSeconds": 2,
+    "storage": "file",
+    "durable": false,
+    "cacheBytes": 0
+  },
+  "timeout_seconds": 120,
+  "jobs": [
+    {
+      "name": "file-append-cpu10-t1-serial-r1",
+      "case": "file-append-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 701
+      }
+    },
+    {
+      "name": "file-append-cpu10-t1-optimistic-r1",
+      "case": "file-append-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 701
+      }
+    },
+    {
+      "name": "file-append-cpu10-t4-serial-r1",
+      "case": "file-append-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 701
+      }
+    },
+    {
+      "name": "file-append-cpu10-t4-optimistic-r1",
+      "case": "file-append-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 701
+      }
+    },
+    {
+      "name": "file-append-cpu10-t8-serial-r1",
+      "case": "file-append-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 701
+      }
+    },
+    {
+      "name": "file-append-cpu10-t8-optimistic-r1",
+      "case": "file-append-cpu10",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 701
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t1-serial-r1",
+      "case": "file-durable-cpu100",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 701
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t1-optimistic-r1",
+      "case": "file-durable-cpu100",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 701
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t4-serial-r1",
+      "case": "file-durable-cpu100",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 701
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t4-optimistic-r1",
+      "case": "file-durable-cpu100",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 701
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t8-serial-r1",
+      "case": "file-durable-cpu100",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 701
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t8-optimistic-r1",
+      "case": "file-durable-cpu100",
+      "repeat": 1,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 701
+      }
+    },
+    {
+      "name": "file-append-cpu10-t8-optimistic-r2",
+      "case": "file-append-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 702
+      }
+    },
+    {
+      "name": "file-append-cpu10-t8-serial-r2",
+      "case": "file-append-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 702
+      }
+    },
+    {
+      "name": "file-append-cpu10-t4-optimistic-r2",
+      "case": "file-append-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 702
+      }
+    },
+    {
+      "name": "file-append-cpu10-t4-serial-r2",
+      "case": "file-append-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 702
+      }
+    },
+    {
+      "name": "file-append-cpu10-t1-optimistic-r2",
+      "case": "file-append-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 702
+      }
+    },
+    {
+      "name": "file-append-cpu10-t1-serial-r2",
+      "case": "file-append-cpu10",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 702
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t8-optimistic-r2",
+      "case": "file-durable-cpu100",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 702
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t8-serial-r2",
+      "case": "file-durable-cpu100",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 702
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t4-optimistic-r2",
+      "case": "file-durable-cpu100",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 702
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t4-serial-r2",
+      "case": "file-durable-cpu100",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 702
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t1-optimistic-r2",
+      "case": "file-durable-cpu100",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 702
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t1-serial-r2",
+      "case": "file-durable-cpu100",
+      "repeat": 2,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 702
+      }
+    },
+    {
+      "name": "file-append-cpu10-t1-serial-r3",
+      "case": "file-append-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 703
+      }
+    },
+    {
+      "name": "file-append-cpu10-t1-optimistic-r3",
+      "case": "file-append-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 703
+      }
+    },
+    {
+      "name": "file-append-cpu10-t4-serial-r3",
+      "case": "file-append-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 703
+      }
+    },
+    {
+      "name": "file-append-cpu10-t4-optimistic-r3",
+      "case": "file-append-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 703
+      }
+    },
+    {
+      "name": "file-append-cpu10-t8-serial-r3",
+      "case": "file-append-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 703
+      }
+    },
+    {
+      "name": "file-append-cpu10-t8-optimistic-r3",
+      "case": "file-append-cpu10",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 3000,
+        "durable": false,
+        "seed": 703
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t1-serial-r3",
+      "case": "file-durable-cpu100",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 703
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t1-optimistic-r3",
+      "case": "file-durable-cpu100",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 1,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 703
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t4-serial-r3",
+      "case": "file-durable-cpu100",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 703
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t4-optimistic-r3",
+      "case": "file-durable-cpu100",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 4,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 703
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t8-serial-r3",
+      "case": "file-durable-cpu100",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "serial",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 703
+      }
+    },
+    {
+      "name": "file-durable-cpu100-t8-optimistic-r3",
+      "case": "file-durable-cpu100",
+      "repeat": 3,
+      "variant": "stock",
+      "params": {
+        "threads": 8,
+        "mode": "optimistic",
+        "workload": "partitioned",
+        "work": 30000,
+        "durable": true,
+        "seed": 703
+      }
+    }
+  ],
+  "minimum_idle_percent": 80,
+  "idle_threshold_rationale": "The first141 main runs met90%idle. Sustained macOS mediaanalysisd load made90% unavailable; remaining adjacent paired comparisons use80% with raw idle samples retained. No system processes stopped. Primary100us scaling already has3 clean repetitions."
+}

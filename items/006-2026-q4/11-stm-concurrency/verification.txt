@@ -1,0 +1,46 @@
+006-11 targeted checks, 2026-10-30
+commit 4685ab1d3611b9b3d8a20907c29253051be53fc6
+isolated committed-source build /private/tmp/bergdb-006-11-l0o7e8ma
+Built build/bergdb.jar
+Built stress tests in build/stress/
+
+COMMAND java -ea -cp /private/tmp/bergdb-006-11-l0o7e8ma/java/build/bergdb.jar bergdb.dev.Unit -c ^bergdb.core.(KeyModSet|RerunException)$ -v
+
+======== NanotestForBergDB: unit ========
+On f53 261030 08:10, OpenJDK 64-Bit Server VM 27
+bergdb.core.KeyModSet.test1: 1
+bergdb.core.KeyModSet.test2: 0
+bergdb.core.KeyModSet.test3: 0
+bergdb.core.KeyModSet.testBins1: 0
+bergdb.core.KeyModSet.testBins2: 0
+bergdb.core.KeyModSet.testFutureTime: 0
+bergdb.core.KeyModSet.testResize: 0
+bergdb.core.RerunException.test1: 0
+bergdb.dev.NanotestForBergDB.databasesStopped: 0
+SUCCESS, 9 successful tests in 0.0 s.
+
+COMMAND java -ea -cp /private/tmp/bergdb-006-11-l0o7e8ma/java/build/bergdb.jar bergdb.dev.Unit -c ^bergdb.core.DbTester$ -m ^testRerun$ -v
+
+======== NanotestForBergDB: unit ========
+On f53 261030 08:10, OpenJDK 64-Bit Server VM 27
+bergdb.core.DbTester.testRerun: 21
+bergdb.dev.NanotestForBergDB.databasesStopped: 0
+SUCCESS, 2 successful tests in 0.0 s.
+
+COMMAND java -ea -cp /private/tmp/bergdb-006-11-l0o7e8ma/java/build/bergdb.jar bergdb.dev.Unit -c ^bergdb.pubimp.(PubTester|PubTesterOutput)$ -m ^test(Rw[12]|Rerun|Threads|Outputs|MissingOutput|Refused|WrongClass|EnvironmentAfterRun)$ -v
+
+======== NanotestForBergDB: unit ========
+On f53 261030 08:10, OpenJDK 64-Bit Server VM 27
+bergdb.pubimp.PubTester.testRw1: 38
+bergdb.pubimp.PubTester.testRw2: 17
+bergdb.pubimp.PubTesterOutput.testEnvironmentAfterRun: 2
+bergdb.pubimp.PubTesterOutput.testMissingOutput: 4
+bergdb.pubimp.PubTesterOutput.testOutputs: 2
+bergdb.pubimp.PubTesterOutput.testRefused: 2
+bergdb.pubimp.PubTesterOutput.testRerun: 17
+bergdb.pubimp.PubTesterOutput.testThreads: 88
+bergdb.pubimp.PubTesterOutput.testWrongClass: 2
+bergdb.dev.NanotestForBergDB.databasesStopped: 0
+SUCCESS, 10 successful tests in 0.2 s.
+
+ALL TARGETED CHECKS PASSED
