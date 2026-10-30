@@ -27,6 +27,11 @@ Files
   [02-coordinator/skill/](02-coordinator/skill/) is the Claude Code
   skill `coordinator`, with the state file's template, the watchdog and
   the usage reader, linked from `~/.claude/skills/coordinator`.
+* [03-model-comparison.md](03-model-comparison.md). 013-03, a dated
+  Artificial Analysis comparison of GPT-6.1 Sol, GPT-6 Astra, Claude Opus,
+  Sonnet and Haiku 5.5: intelligence, estimated task time, time to first
+  token, time for a 500-token answer and API-equivalent cost per task;
+  what the figures mean for Frans's subscriptions and model choices.
 
 
 Log
@@ -57,3 +62,9 @@ request, to the week at most 15 points ahead of its time (was 10).
 request: xhigh attended, max unattended (013-02, section 9). Frans
 switches it with `/effort`: a scheduled `/effort xhigh` reached the
 model as plain text, so the coordinator cannot switch by itself.
+
+2026-10-30. 013-03, the model comparison, at Frans's request, by Codex:
+the chat's table extended with both response timings and the Sonnet and
+Haiku configurations discussed, refreshed from AA Intelligence Index
+v5.0, with dated sources and the distinction between API-equivalent cost
+and subscription usage.

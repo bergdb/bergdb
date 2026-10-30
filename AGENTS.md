@@ -47,6 +47,16 @@ algorithm. [README.md](README.md) describes the repo; start reading at
   details belong in the item. An unattended session ends its night with a
   summary entry. The helper drops `OK` entries after 3 weekdays.
 
+## Markdown tables
+
+- Make tables readable in source/text view as well as when rendered.
+- Align the data rows using the widths of their contents. Do not pad short
+  data rows to match long headers; the header and separator may remain
+  unaligned with the data rows.
+- Aim for data rows of at most 100 characters, with 120 as the maximum.
+  If the contents need more space, split the table or use a list.
+- When asked to format selected lines, change only those lines.
+
 ## General
 
 - Preserve unrelated worktree changes.
