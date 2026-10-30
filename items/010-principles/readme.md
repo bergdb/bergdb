@@ -134,3 +134,9 @@ applied to the development. Mostly they are followed and some excepts are
 justified. That is the thing with principles. They should guide, but a few
 simple principles will always need exceptions."). Also in 01's
 introduction.
+
+2026-10-30. P2's RW lifecycle clarified by Frans (005-70): reads and commit
+belong to the same running database instance; after close/open, reread and
+recompute. Reads should normally be within about one second of the current
+time, as guidance, not a timeout. Lean's T2 compares a fixed transaction
+sequence; pending read sets and STM admission are outside its scope.

@@ -135,3 +135,44 @@ Validation on 2026-10-30:
 
 The command outputs, including the regression failure before the fix, are
 in [validation.txt](70-keymodset-after-start/validation.txt).
+
+
+RW lifecycle and Lean
+---------------------
+
+2026-10-30, after the fix (`7d967d7`), Frans clarified the intended
+contract: "The reads of an RW transactions must have been done for the
+currently running database." Normally they should be within about one
+second of the current time. This is guidance for short transactions, not
+a new one-second timeout. Reads and computation belong to the same run
+as the commit, with a common read snapshot; after close/open the caller
+must discard the old read set, reread and recompute.
+
+This scopes 010-P2's "between any two transactions": an RW transaction
+includes its reads, not only `Db.execute`. Carrying a pending read set
+across a restart is outside the contract. The fix's timestamp boundary is
+a safety check, not proof of the read set's origin: a read collected on
+the old instance at the last recovered commit's time can pass it. The
+Core API carries no instance identity with the read set. The tests that
+carry read times across close/open exercise this defensive check, not a
+promise that such use is supported. No instance token or timeout is added.
+
+The distinction matters for P2. A separate probe reads `/a` at T1, writes
+only `/unrelated` at T2, optionally restarts, then submits the old read
+dependency with a put of `/b`. The fixed build commits without the
+restart (584 bytes) and refuses after it (496 bytes). That difference is
+outside the clarified RW contract; the changed-key regression above is
+refused in both runs. Neither probe establishes full STM admission
+invariance across restarts.
+
+Lean is compatible with this boundary, but does not prove it. In
+`SIS.Basic`, `Spec.exec` maps a transaction, its time and the preceding
+state's view to `Changes`; it has no STM read-set validation or refusal
+result. `SIS.Theorems.T2_restart` compares `runRestarts sp al ts` with
+`run sp al (ts.map (·.1))`: exactly the same transaction list, with the
+restart flags removed. It proves equality of the resulting abstract
+records under the model's assumptions. Concurrent preparation, admission,
+retry and read-set lifetime are outside that theorem. No Lean definition
+or proof needs changing for this caller requirement. The fix's completed
+148-job Lean build and 70 conformance traces remain the validation of the
+modeled storage behavior, not a proof of STM correctness.

@@ -80,7 +80,11 @@ environment has failed, or that has a bug, does not run on.
   A refused transaction leaves the database as it was, and it goes on.
   The STM also refuses a read set whose snapshot predates the last
   recovered commit at startup: its in-memory write history cannot validate
-  it (005-70). A snapshot at that commit is covered.
+  it (005-70). A snapshot at that commit is covered. RW read dependencies
+  must be collected on the same running `Db` instance as the commit;
+  after reopening, reread and recompute. Normally the reads are within
+  about one second of the current time (guidance, not an enforced timeout;
+  010-P2). The timestamp check does not establish the read set's origin.
 * After the go point nothing refuses the transaction and nothing is undone.
   When something throws there (the environment or a bug: a read error or a
   corrupt node when a put loads an index node, an append error, an `Error`,

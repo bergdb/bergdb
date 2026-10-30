@@ -100,6 +100,16 @@ and their order, and nothing else: not of timing, threads, restarts or the
 state of the cache. Frans's goal of 2015-12-28: "a restart can be inserted
 between any two transactions without affecting the bytes in the stream".
 
+For an RW transaction, the reads, computation and commit belong to the
+same running database instance (Frans, 2026-10-30, 005-70). A restart
+between transactions does not mean a restart between an RW transaction's
+reads and its commit. After closing and reopening, discard the pending
+read set, reread on the new instance and recompute. Normally the reads
+should be within about one second of the current time; this is usage
+guidance, not an enforced timeout. The reads use a common snapshot.
+Historical queries remain available; carrying their results across a
+restart as an RW transaction's read dependencies is outside this contract.
+
 The transactions are deterministic too: "Is a KissDB transaction always
 deterministic? Answer: Yes." (2008-08-02). So a transaction needs no
 rollback: what may refuse it is checked before it changes anything (the go
@@ -110,7 +120,10 @@ Where BergDB stands:
 
 * Proved for the abstract records: T2, restart invariance
   ([sis-model.md](../../docs/sis-model.md), section 9), on assumption A1,
-  determinism of the transactions.
+  determinism of the transactions. `T2_restart` compares the same list of
+  transactions with and without restarts. The model has no pending STM
+  read sets or admission/retry decisions; this is not a proof of STM or
+  its lifecycle checks (005-70, "RW lifecycle and Lean").
 * Checked for the bytes: the restart checks require byte equality
   (`RestartInvariance`, [levels.md](../011-docs-archive/04-levels.md)); the padding
   bytes that the 2017 code left uninitialized were fixed on 2026-10-12.
