@@ -1615,3 +1615,18 @@ previous behavior and pass with and without assertions. BEFORE COMMIT OK
 (1,086 unit tests, 78 f-tests), LEVEL 2 OK (quick, 14 conformance traces),
 StreamDigest identical (36 of 36). No format or valid stream-byte change;
 C unchanged. Evidence: 005-75, "Decision and outcome".
+
+2026-11-02. 005-73: startup info reports the effective distance; broken
+cache and dirty-fraction diagnostics removed with their JMX attributes;
+close() reports and retains I/O errors from the final flush or storage
+close, including after stop(). Endpoint comment fixed; unused scan cache
+flag removed. The GetData pointer counters stay: Huge reads them. F4, the
+reclaim internal fraction, deferred for Frans to inspect. BEFORE COMMIT OK
+(1,089 unit, 78 f-tests); all 36 stream digests unchanged. Java only.
+
+2026-11-02. 005-73 done: Frans approved F4 after inspecting the source.
+The reclaim fraction setter now rejects NaN as an argument error without
+changing the setting; the double API and range remain unchanged. 005-79
+stays separate. The new regression fails on the original setter and
+passes with the check. BEFORE COMMIT OK (1,090 unit, 78 f-tests); all 36
+stream digests identical. Java only.

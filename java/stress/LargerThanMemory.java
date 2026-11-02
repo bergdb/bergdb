@@ -261,14 +261,13 @@ public class LargerThanMemory {
                 + db.internal().cache().residents().bytes() / 1000000 + " MB");
     }
 
-    /** The memory size of every index node of the latest tree, by a scan that caches nothing. */
+    /** The memory size of every index node of the latest tree, by a scan. */
     void indexSize() {
         phase = "index size";
         long s = System.nanoTime();
         final HashSet<Long> ids = new HashSet<Long>();
         final long[] bytes = new long[1];
         GetMany g = db.newGetMany();
-        g.cache = false;
         final PointerFollower real = g.gd.pointerFollower;
         g.gd.pointerFollower = new PointerFollower() {
             public Node followPointer(Node predecessor, int pointerIndex, OpData op) {

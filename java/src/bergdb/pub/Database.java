@@ -73,6 +73,8 @@ public interface Database extends AutoCloseable {
      * background, typically within a second, also when the program returns from main right
      * after this method. This method returns at once; close() also waits until the database
      * is closed. Until 005-35, what was still buffered was lost.
+     * Call close() to wait for completion and report a failed flush or storage close
+     * (bergdb 005-73, F5).
      * </p>
      * 
      * <p>Call sync() before stop() when the transactions must be durable when stop()
@@ -110,6 +112,8 @@ public interface Database extends AutoCloseable {
      * 
      * <p>This is AutoCloseable's close(), without its checked exception: a try-with-resources
      * block calls it when the block ends, also when the block throws.
+     * A failed final flush or storage close throws StreamIoException, also after stop()
+     * or an earlier close() (bergdb 005-73, F5).
      * </p>
      */
     public void close();

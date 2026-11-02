@@ -237,7 +237,7 @@ public class Reclaim implements Db.TransactionListener {
      * Must be between 0.001 and 0.90 inclusive.      
      */
     public void setInternalFraction(double internalFraction) {
-        if (internalFraction < 0.001 || internalFraction > 0.90) {
+        if (Double.isNaN(internalFraction) || internalFraction < 0.001 || internalFraction > 0.90) {
             throw new IllegalArgumentException("Illegal internalFraction value, " + internalFraction);
         }
         

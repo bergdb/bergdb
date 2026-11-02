@@ -159,6 +159,7 @@ public class Db implements AutoCloseable {
     private final Object closeLock = new Object();
     private boolean closeBegun = false;
     private boolean closeDone = false;
+    private IOException closeFailure;    // Under closeLock, also when stop() began the close.
     
     private final ExecuteData x;
     private final Aux aux = new Aux();
@@ -312,18 +313,6 @@ public class Db implements AutoCloseable {
         }
     }
     
-    public double getDirtyFraction100() {
-        synchronized (writeLock) {
-            return aux.dirtyFraction100;
-        }
-    }
-    
-    public double getDirtyFraction1000() {
-        synchronized (writeLock) {
-            return aux.dirtyFraction1000;
-        }
-    }
-    
     /**
      * Sets the startup distance, the target size of the startup section. The take
      * (TransSeq.take) holds the actual startup distance, such that the stream's length minus
@@ -384,10 +373,6 @@ public class Db implements AutoCloseable {
         }
     }
     
-    public long getCachePutSize() {
-        return cache.putSize();
-    }
-
     /**
      * Returns the cache size indicator in bytes, the budget of the cache: the capacity
      * controller's high watermark (Eviction), DbBuilder.cacheSizeIndicator or the value of
@@ -715,7 +700,7 @@ public class Db implements AutoCloseable {
         
         StartInfo result = new StartInfo();
         result.startPos = startupPos;
-        result.startupDistance = params.startupDistance;
+        result.startupDistance = startupDistance;
         result.startTime = transactions.get(0).tt;
         result.transCount = transactions.size();
         result.lastPos = transactions.get(transactions.size() - 1).lastPos;
@@ -1245,6 +1230,8 @@ public class Db implements AutoCloseable {
      * <p>Every transaction that has returned is written, as with close(), and with a file
      * storage forced to the device (FileStream forces every append); only close() waits
      * for that. This method returns at once.
+     * Call close() to wait for completion and report a failed flush or storage close
+     * (bergdb 005-73, F5).
      * It is safe to call it several times and from different threads; only the first call
      * of stop() or close() has an effect.</p>
      * 
@@ -1287,6 +1274,8 @@ public class Db implements AutoCloseable {
      * waits for that lock. It is safe to call it several times, also after stop(), and from
      * different threads. It is AutoCloseable's close() (bergdb 005-59): a try-with-resources
      * block calls it when the block ends, also when the block throws.
+     * A failed final flush or storage close throws StreamIoException, also after stop()
+     * or an earlier close() (bergdb 005-73, F5).
      */
     public void close() {
         // Under readSync, as a failure (setFailed(), bergdb 005-30).
@@ -1301,9 +1290,22 @@ public class Db implements AutoCloseable {
         if (mine) {
             closeStorage();
         } else if (Thread.holdsLock(writeLock)) {
-            storageManager.close();
+            // Waiting for the other closer would deadlock on this transaction's lock.
+            try {
+                storageManager.closeAndThrow();
+            } catch (IOException e) {
+                synchronized (closeLock) {
+                    if (closeFailure == null) closeFailure = e;
+                }
+                throw new StreamIoException(e);
+            }
         } else {
             waitUntilClosed();
+        }
+        synchronized (closeLock) {
+            if (closeFailure != null) {
+                throw new StreamIoException(closeFailure);
+            }
         }
     }
         
@@ -1326,6 +1328,9 @@ public class Db implements AutoCloseable {
             storageManager.closeAndThrow();
             return null;
         } catch (IOException e) {
+            synchronized (closeLock) {
+                if (closeFailure == null) closeFailure = e;
+            }
             return e;
         } finally {
             synchronized (closeLock) {
@@ -2591,27 +2596,9 @@ public class Db implements AutoCloseable {
          */
         private long kvCount = 0;
         
-        private long nodesWritten = 0;
-            // Number of nodes written since database started.
-        private long ordinaryNodesWritten = 0;
-        
-        // Below two, protected by writeLock.
-        private double dirtyFraction100 = 0.10;
-        private double dirtyFraction1000 = 0.10;
-        
         private void updateStats() {
             kvCount += x.trans.kvs.length;
             transactionCount++;
-            
-            int ordinaryNodeCount = x.transNodes.size();
-            nodesWritten += x.transNodes.size();
-            ordinaryNodesWritten += ordinaryNodeCount;
-            
-            int totalNodeCount = x.transNodes.size();
-            int dirtyNodeCount = totalNodeCount - ordinaryNodeCount;
-            double dirtyFraction = ((double) dirtyNodeCount) / totalNodeCount;
-            dirtyFraction100   = 0.99  * aux.dirtyFraction100  +  0.01  * dirtyFraction;
-            dirtyFraction1000  = 0.999 * aux.dirtyFraction1000 +  0.001 * dirtyFraction;
         }
     }
     

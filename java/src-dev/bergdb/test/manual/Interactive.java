@@ -185,9 +185,8 @@ public class Interactive {
                 1e-6 * db.getStreamLength(),
                 1e-6 * db.getStartupDistance(),
                 1e-6 * db.internal().getStartupPosForEvict());
-        System.out.format("Cache, totalSize: %d, putSize: %d\n", 
-                db.internal().cache().totalSize(), 
-                db.internal().cache().putSize());
+        System.out.format("Cache, resident bytes: %d\n",
+                db.internal().cache().residents().bytes());
     }
     
     private void runEvictMax(CommandLine options) {

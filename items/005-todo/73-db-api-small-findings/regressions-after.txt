@@ -1,0 +1,6 @@
+
+======== NanotestForBergDB: unit ========
+On f53 261102 11:20, OpenJDK 64-Bit Server VM 27
+bergdb.core.DbTester ...
+bergdb.dev.NanotestForBergDB .
+SUCCESS, 4 successful tests in 0.0 s.

@@ -11,6 +11,18 @@ empties this file.
 Reliability
 -----------
 
+* **NaN reclaim fractions are refused** (bergdb 005-73, F4, 2026-11-02).
+  `Db.setReclaimInternalFraction(double)` throws
+  `IllegalArgumentException` for NaN and leaves the setting unchanged.
+  The double API and inclusive range 0.001 to 0.90 stay the same.
+
+* **Close reports storage failures** (bergdb 005-73, 2026-11-02).
+  `Db.close()` and `Database.close()` throw `StreamIoException` when the
+  final flush or storage close fails, after cleanup. A later `close()`
+  also reports a failure from an asynchronous `stop()` or an earlier
+  `close()`. A try-with-resources block suppresses the close failure when
+  the block itself throws. Before, these I/O failures were discarded.
+
 * **Corrupt startup times are refused** (bergdb 005-75, 2026-11-02).
   Startup checks record order, the 56-bit range of record times, and
   increasing times within stored key nodes before replay. Violations
@@ -29,6 +41,15 @@ Reliability
 
 API changes
 -----------
+
+* **Broken Core diagnostics removed** (bergdb 005-73, 2026-11-02).
+  `Db.getCachePutSize()`, `getDirtyFraction100()` and
+  `getDirtyFraction1000()`, their JMX attributes, and JMX's
+  `CachedMemoryValueSpeed` and `CachedMemoryValueSpeedM` are gone; the
+  cache size was constant and the dirty fractions were incorrect.
+  `Cache3.putSize()` and the unused `GetMany.cache` field are gone too.
+  Core startup info now reports the effective startup distance instead
+  of −1. Stream bytes and format are unchanged.
 
 * **STM read sets after reopening** (bergdb 005-70, 2026-10-30). The Core
   refuses a transaction with a read dependency whose snapshot predates

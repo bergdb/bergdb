@@ -33,8 +33,6 @@ public class Jmx {
         public long getStreamSize();
         public int getStartupDistance();
         public void setStartupDistance(int newDistance);
-        public double getDirtyFraction100();
-        public double getDirtyFraction1000();
         public long getRetainDuration();
         public String getRetainDurationH();
         public void setRetainDuration(long durationTimeUnits);
@@ -44,7 +42,6 @@ public class Jmx {
         public double getActualRetainDurationInDays();
         public long getFirstLookupTime();
         public String getFirstLookupTimeH();
-        public long getCachePutSize();
         public long getCacheSizeIndicator();
         public void setCacheSizeIndicator(long sizeIndicator);
         public long getCacheTotalSize();
@@ -130,14 +127,6 @@ public class Jmx {
             db.setStartupDistance(newDistance);
         }
         
-        public double getDirtyFraction100() {
-            return db.getDirtyFraction100();
-        }
-        
-        public double getDirtyFraction1000() {
-            return db.getDirtyFraction1000();
-        }
-        
         public long getRetainDuration() {
             return db.getRetainDuration();
         }
@@ -189,10 +178,6 @@ public class Jmx {
         public String getFirstLookupTimeH() {
             long time = db.getFirstAvailableLookupTime();
             return DbUtil.dbTimeToUtc(time);
-        }
-        
-        public long getCachePutSize() {
-            return db.getCachePutSize();
         }
         
         /** The capacity controller's budget (bergdb item 001, WP J7; Eviction). */
@@ -252,8 +237,6 @@ public class Jmx {
     public static interface SpeedMBean {
         public double getStreamSizeSpeed();
         public double getStreamSizeSpeedM();
-        public double getCachedMemoryValueSpeed();
-        public double getCachedMemoryValueSpeedM();
         public double getTransactionSpeed();
         public double getKvSpeed();
         public double getGetSpeed();
@@ -266,7 +249,6 @@ public class Jmx {
     public static class Speed implements Runnable, SpeedMBean {
         volatile boolean stop = false;
         volatile double streamSizeSpeed = 0.0;
-        volatile double cachedMemoryValueSpeed = 0.0;
         volatile double transactionSpeed = 0.0;
         volatile double kvSpeed = 0.0;
         volatile double getSpeed = 0.0;
@@ -285,14 +267,6 @@ public class Jmx {
         
         public double getStreamSizeSpeedM() {
             return streamSizeSpeed * 1e-6;
-        }
-        
-        public double getCachedMemoryValueSpeed() {
-            return cachedMemoryValueSpeed;
-        }
-        
-        public double getCachedMemoryValueSpeedM() {
-            return cachedMemoryValueSpeed * 1e-6;
         }
         
         public double getTransactionSpeed() {
@@ -346,7 +320,6 @@ public class Jmx {
                 long time = System.nanoTime();
                 
                 long streamSize = db.getStreamLength();
-                long cachedMemoryValue = db.getCachePutSize();
                 long transactionCount = db.getTransactionCount();
                 long kvCount = db.getKvCount();
                 long getCount = db.getGetOpCount();
@@ -367,7 +340,6 @@ public class Jmx {
                 double secs = time * 1e-9;
                 
                 streamSizeSpeed = (db.getStreamLength() - streamSize) / secs;
-                cachedMemoryValueSpeed = (db.getCachePutSize() - cachedMemoryValue) / secs;
                 kvSpeed = (db.getKvCount() - kvCount) / secs;
                 transactionSpeed = (db.getTransactionCount() - transactionCount) / secs;
                 getSpeed = (db.getGetOpCount() - getCount) / secs;

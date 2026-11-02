@@ -471,6 +471,8 @@ Limits:
 * `stop()` returns at once, and the buffered transactions are written in
   the background; `close()` waits for them. Call `sync()` before `stop()`
   when the transactions must be durable when it returns.
+  A failed final flush or storage close throws `StreamIoException` from
+  `close()`, also after `stop()` or an earlier `close()` (005-73).
 * An idle database does not wake: when nothing has been buffered for a
   buffer time, the storage thread waits for the next append (005-14).
 * A physical cut only takes its files off the stream's list; a thread of

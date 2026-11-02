@@ -1,0 +1,41 @@
+Built build/bergdb.jar
+Built stress tests in build/stress/
+
+======== NanotestForBergDB: unit ========
+On f53 261102 11:18, OpenJDK 64-Bit Server VM 27
+bergdb.core.DbTester FAILED! bergdb.core.DbTester.testCloseFailureSuppressedByBlockFailure
+java.lang.AssertionError: one close failure, expected 1, got 0.
+	at bergdb.nanotest.Assert.assertEquals(Assert.java:86)
+	at bergdb.core.DbTester.testCloseFailureSuppressedByBlockFailure(DbTester.java:2675)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+FAILED! bergdb.core.DbTester.testCloseReportsFinalFlushFailure
+java.lang.AssertionError: close reports the flush failure, expected true, but was false.
+	at bergdb.nanotest.Assert.assertTrue(Assert.java:357)
+	at bergdb.core.DbTester.testCloseReportsFinalFlushFailure(DbTester.java:2650)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+FAILED! bergdb.core.DbTester.testStartInfoReportsEffectiveDistance
+java.lang.AssertionError: creation, expected 523456, got -1.
+	at bergdb.nanotest.Assert.assertEquals(Assert.java:86)
+	at bergdb.core.DbTester.testStartInfoReportsEffectiveDistance(DbTester.java:1744)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+
+bergdb.dev.NanotestForBergDB .
+FAILURE, total: 4, failed: 3. Time: 0.0 s.

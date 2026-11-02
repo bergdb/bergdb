@@ -48,7 +48,6 @@ public class Cache3 {
     private final Object bigLock;
     private long sizeIndicator;
     private long totalSize;     // total cache size estimation, in bytes
-    private long putSize;
     private final HashMap<Long, Handle>[] maps;
 
     /**
@@ -74,7 +73,6 @@ public class Cache3 {
         this.bigLock = new Object();
         this.dbInfo = dbInfo;
         this.totalSize = INITIAL_CACHE_SIZE;
-        this.putSize = INITIAL_CACHE_SIZE;
         this.maps = new HashMap[1 << MAP_BITS];
 
         for (int i = 0; i < maps.length; i++) {
@@ -208,12 +206,6 @@ public class Cache3 {
     /** Advances the access clock by one; see accessClock. */
     public void tickAccessClock() {
         accessClock.incrementAndGet();
-    }
-
-    public long putSize() {
-        synchronized (bigLock) {
-            return putSize;
-        }
     }
 
     /**

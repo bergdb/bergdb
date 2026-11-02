@@ -44,11 +44,6 @@ public class GetMany {
      */
     public StopCondition stopCondition;
     
-    /**
-     * Set to false to disable node caching for the GetMany operation.
-     */
-    public boolean cache = true;
-    
     // ---- Output ----
     
     /**
@@ -452,7 +447,7 @@ public class GetMany {
         private boolean eod;        // True if we got to "end of database"
         
         /**
-         * Non-inclusive, forward direction end point.
+         * Inclusive, forward direction end point.
          */
         public Endpoint(long[] key) {
             this(key, true, false);

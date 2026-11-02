@@ -1737,6 +1737,26 @@ public class DbTester {
     }
     
     @Nano
+    public static void testStartInfoReportsEffectiveDistance() {
+        MemoryStream stream = new MemoryStream();
+        Db db = Db.builder().testSetup(stream).startupDistance(523456).build();
+        try {
+            Assert.assertEquals("creation", 523456, db.start().startupDistance);
+            db.setStartupDistance(567890);
+        } finally {
+            db.close();
+        }
+
+        Db reopened = Db.builder().testSetup(stream.copy()).startupDistance(987654).build();
+        try {
+            Assert.assertEquals("stored distance, not the builder's", 567890,
+                    reopened.start().startupDistance);
+        } finally {
+            reopened.close();
+        }
+    }
+
+    @Nano
     public static void testStartupDistance1() {
         // Checks that startupDistance from Db.Builder is used.
         
@@ -2604,7 +2624,82 @@ public class DbTester {
         db.close();
     }
     
+    /** bergdb 005-73, F4: invalid fractions are refused without changing the setting. */
+    @Nano
+    public static void testReclaimInternalFractionValidation() {
+        try (Db db = Db.builder().testSetup().start()) {
+            for (double valid : new double[] {0.001, 0.90, 0.25}) {
+                db.setReclaimInternalFraction(valid);
+                Assert.assertTrue("accepted fraction", db.getInternalFraction() == valid);
+            }
+            for (double invalid : new double[] {Double.NaN, Double.NEGATIVE_INFINITY,
+                    Double.POSITIVE_INFINITY, Math.nextDown(0.001), Math.nextUp(0.90)}) {
+                boolean refused = false;
+                try {
+                    db.setReclaimInternalFraction(invalid);
+                } catch (IllegalArgumentException expected) {
+                    refused = true;
+                }
+                Assert.assertTrue("refused fraction " + invalid, refused);
+                Assert.assertTrue("setting unchanged", db.getInternalFraction() == 0.25);
+            }
+        }
+    }
+
     // ======== AutoCloseable, bergdb 005-59 ========
+
+    /** bergdb 005-73, F5: the final flush fails, including a close begun by stop(). */
+    @Nano
+    public static void testCloseReportsFinalFlushFailure() {
+        for (int mode = 0; mode < 2; mode++) {
+            DbTesterFailure.FaultStream s = new DbTesterFailure.FaultStream();
+            DbBuilder b = Db.builder();
+            b.testSetupExceptStream();
+            b.stream("main", s, 100 * 1000, 60 * 1000);
+            Db db = b.start();
+            db.sync(SyncLevel.STRONG);
+            db.execute(db.trans().put("/buffered", "value").build());
+            s.failAppends = true;
+            if (mode == 1) db.stop();
+            IOException first = null;
+            for (int call = 0; call < 2; call++) {
+                StreamIoException thrown = null;
+                try {
+                    db.close();
+                } catch (StreamIoException e) {
+                    thrown = e;
+                }
+                Assert.assertTrue("close reports the flush failure", thrown != null);
+                Assert.assertTrue("I/O cause", thrown.getCause() instanceof IOException);
+                if (first == null) first = (IOException) thrown.getCause();
+                Assert.assertTrue("same stored failure", first == thrown.getCause());
+            }
+            DbTesterFailure.assertClosed(s.inner);
+        }
+    }
+
+    /** A storage-close error is reported and suppressed by try-with-resources. */
+    @Nano
+    public static void testCloseFailureSuppressedByBlockFailure() {
+        final IOException failure = new IOException("the storage close fails");
+        DbTesterFailure.FaultStream s = new DbTesterFailure.FaultStream() {
+            public void close() throws IOException {
+                super.close();
+                throw failure;
+            }
+        };
+        IllegalStateException blockFailure = new IllegalStateException("the block fails");
+        try (Db db = Db.builder().testSetup(s).start()) {
+            throw blockFailure;
+        } catch (IllegalStateException e) {
+            Assert.assertTrue("the block failure", e == blockFailure);
+            Throwable[] suppressed = e.getSuppressed();
+            Assert.assertEquals("one close failure", 1, suppressed.length);
+            Assert.assertTrue("storage exception", suppressed[0] instanceof StreamIoException);
+            Assert.assertTrue("original I/O cause", suppressed[0].getCause() == failure);
+        }
+        DbTesterFailure.assertClosed(s.inner);
+    }
     
     /**
      * bergdb 005-59: Db is AutoCloseable. A try-with-resources block closes the database when

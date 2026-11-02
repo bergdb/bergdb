@@ -36,7 +36,6 @@ Open
 | [005-69](69-system-clock-promise.md) | Fix | `SystemClock`, `DbBuilder`'s default clock, promises strictly increasing times but never sets its last time, so it returns equal times within a millisecond and earlier ones when the system clock is set back. No harm: `DbClock` makes transaction and current times increase itself. Options: make the code keep the promise (one line and a test), or the comment say what the code does. Found by 012's planning (012-01, 4.4) | open |
 | [005-71](71-dbclock-read-time-after-start.md) | Fix | `DbClock` forgets `lastReadTime` at a start, so with a clock that has not moved, `currentTime()` before a restart changes the next transaction's time by one unit and the stream's bytes (P2). Found by 012-02's audit (C3), with a probe. Recommended: no code change, a note in P2 | open |
 | [005-72](72-file-layout-after-cut.md) | Decide | The files after reclaim's physical cut depend on timing (when the durable length reached the decision), while the bytes from the decided cut do not; a restart also changes the layout (not a bug). The C clone, without threads, cannot match Java's files after a cut. Frans, 2026-10-29: A for 012's cross tests (done); the entry stays open to consider B, a layout from the decided cut | open |
-| [005-73](73-db-api-small-findings.md) | Fix | Seven small findings in `Db`'s API from 012-03's mapping, none changing the bytes: `StartInfo.startupDistance` always −1, `getCachePutSize` a constant, the dirty fractions only decay and turn NaN, `setReclaimInternalFraction` accepts NaN, `close()` drops the last flush's `IOException`, `Endpoint`'s comment says non-inclusive, dead fields | open |
 | [005-76](76-wake-at-a-quarter.md) | Fix | `BufferedStream` checks the quarter-full rule only when its thread wakes, every bufferTime / 4 (about 32 ms on macOS at 100 ms); nothing wakes it when an append passes a quarter of the buffer, so at 100 to 170 MB/s of stream 3 to 5 MB arrive between checks, a flush takes at most 5 MB, and writers wait for room: at 100 ms 13 to 16 % fewer puts a second with 1 KB values and a p99.9 of 16 to 25 ms for large transactions (005-64's runs). Proposed: an append that takes the buffer past a quarter wakes the thread (010-P3); then the buffer time costs no throughput. Frans's request when he set 50 ms (005-64) | open |
 | [005-77](77-cap-pace-factor.md) | Investigate | A decrease's commits grow with the keys: after a one-call decrease (D4:B) from 1000 to 100 MB at 50M keys, the catch-up's records are 12 to 14 times the new mean (largest 13.3 to 15.4 MB, against 2.3 to 3.6 MB at 10M), written by the committing threads; the cause is the pace's factor S/sd in the share, which starts at 10 (007-07, section 11). Only bytes measured, not commit times; 100M keys not run. Proposed: cap S/sd at 2 or at 4 (two variants); the deadline at the span still keeps the section from growing, the catch-up gets longer, and T3_take and T3_take_decrease hold for any pace (007-08). Frans's decision on 006-10's point 4 | open |
 | [005-78](78-retain-duration-in-stream.md) | Investigate | The retain duration is not kept in the stream: it decides when reclaim's iterations start and where it cuts, so the stream's bytes, but a start takes the builder's value (default forever), against the rule of 005-53 and 005-52 (a setting that changes the stream's bytes is kept in the stream, 010-P2) and without a word in its Javadoc. Frans: it must be in the stream; study first. Forms: the meta blocks (as the startup distance), an internal KV, or reclaim's table | open |
@@ -52,6 +51,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-73](73-db-api-small-findings.md) | Fix | Core API fixes | done | 2026-11-02 |
 | [005-75](75-core-checks-and-comments.md) | Fix | Core checks and comments | done | 2026-11-02 |
 | [005-74](74-parser-corrupt-sizes.md) | Fix | Reject corrupt sizes | done | 2026-11-02 |
 | [005-70](70-keymodset-after-start.md) | Fix | STM startup boundary | done | 2026-10-30 |
@@ -1571,3 +1571,15 @@ after validating recovered times. Four regressions fail on the previous
 behavior and pass with the fix, with and without assertions. BEFORE
 COMMIT OK (1,086 unit tests, 78 f-tests), LEVEL 2 OK (quick, 14 conformance
 traces), StreamDigest identical (36 of 36); evidence in 005-75. Java only.
+
+2026-11-02. 005-73: recommendations implemented except F4, deferred for
+Frans to inspect the Java setter. F1, F2, F3, F5 and F6 fixed or removed;
+F7 corrected: GetMany.cache removed, GetData pointer counters kept because
+Huge reads them. close() retains its I/O failure for later callers, also
+after stop(). BEFORE COMMIT OK (1,089 unit, 78 f-tests), all 36 stream
+digests unchanged. Java only; entry stays open for F4.
+
+2026-11-02. 005-73 closed after Frans approved F4: NaN explicitly
+refused before changing the reclaim fraction; double API retained,
+005-79 separate. Regression fails before and passes after. BEFORE COMMIT
+OK (1,090 unit, 78 f-tests), all 36 stream digests identical.
