@@ -24,9 +24,12 @@ time counts as covered, and no write before the start is seen:
   without the start it is refused. That is a gap in the STM's
   serializability: the transaction read a value that was no longer the
   latest, and still commits;
-* and a restart changes the bytes of the stream (against P2, 010-01): the
-  committed transaction writes a record that the run without the restart
-  does not.
+* acceptance differs across the restart, so the accepted transaction
+  sequences and their streams differ. This was initially described as
+  a violation of P2. Under the accepted-transaction interpretation
+  clarified on 2026-11-02, this difference alone does not violate P2.
+  The correctness concern is accepting a stale read set without
+  sufficient validation.
 
 Probe (012-02, `/Users/f/fl/bench/012/02-out/audit/` and `02-out/verify/`,
 `RestartStateProbe stm`): put `/k` at T1; put `/k` at T2; [restart]; at
@@ -148,7 +151,7 @@ a new one-second timeout. Reads and computation belong to the same run
 as the commit, with a common read snapshot; after close/open the caller
 must discard the old read set, reread and recompute.
 
-This scopes 010-P2's "between any two transactions": an RW transaction
+This defines the RW transaction lifecycle contract. An RW transaction
 includes its reads, not only `Db.execute`. Carrying a pending read set
 across a restart is outside the contract. The fix's timestamp boundary is
 a safety check, not proof of the read set's origin: a read collected on
@@ -157,13 +160,13 @@ Core API carries no instance identity with the read set. The tests that
 carry read times across close/open exercise this defensive check, not a
 promise that such use is supported. No instance token or timeout is added.
 
-The distinction matters for P2. A separate probe reads `/a` at T1, writes
-only `/unrelated` at T2, optionally restarts, then submits the old read
-dependency with a put of `/b`. The fixed build commits without the
-restart (584 bytes) and refuses after it (496 bytes). That difference is
-outside the clarified RW contract; the changed-key regression above is
-refused in both runs. Neither probe establishes full STM admission
-invariance across restarts.
+A separate probe reads `/a` at T1, writes only `/unrelated` at T2,
+optionally restarts, then submits the old read dependency with a put
+of `/b`. The fixed build commits without the restart (584 bytes) and
+refuses after it (496 bytes). This is compatible with P2 because the
+accepted transaction sequences differ. Carrying that read dependency
+across restart is also outside the RW lifecycle contract; that is a
+separate consideration.
 
 Lean is compatible with this boundary, but does not prove it. In
 `SIS.Basic`, `Spec.exec` maps a transaction, its time and the preceding
@@ -176,3 +179,19 @@ retry and read-set lifetime are outside that theorem. No Lean definition
 or proof needs changing for this caller requirement. The fix's completed
 148-job Lean build and 70 conformance traces remain the validation of the
 modeled storage behavior, not a proof of STM correctness.
+
+
+Clarification, 2026-11-02
+-------------------------
+
+Frans clarified that P2 concerns the ordered sequence of accepted
+transactions. Acceptance need not be deterministic: a request may be
+refused because of an STM conflict, insufficient validation history
+after restart, or a lack of resources. Different accepted transaction
+sequences may produce different streams without violating P2 (010-01,
+P2). The RW lifecycle contract is separate from this principle.
+
+005-70 remains a completed defensive STM fix: insufficient validation
+history must not permit an invalid stale-read transaction to commit.
+It does not establish or require deterministic admission. The recorded
+implementation, probes and validation results above are unchanged.
