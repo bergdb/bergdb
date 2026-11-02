@@ -1578,6 +1578,7 @@ public class KeyNode implements Node {
                     throw new AssertionError("Time not increasing, " + klongTime + ", " + time 
                             + ", index=" + i);
                 }
+                time = klongTime;
             }
         }
     }

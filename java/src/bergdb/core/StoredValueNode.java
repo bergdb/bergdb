@@ -86,7 +86,7 @@ public class StoredValueNode implements StoredNode {
                     + "format version " + version + ".");
         }
         
-        offset += 2; // two bytes not used
+        offset += 2; // checksum bytes, checked before parsing
         
         long id = Bytes.bytesToLongLE(buffer, offset);
         offset += 8;

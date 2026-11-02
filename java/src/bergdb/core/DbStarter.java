@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import bergdb.common.AssertStatus;
+import bergdb.common.Bytes;
 import bergdb.dag.Handle;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
@@ -605,9 +606,9 @@ public class DbStarter {
      * 
      * @throws StreamFormatException 
      *      If a transaction does not follow the db stream format. This should only happen
-     *      if the db stream was tampered with.
+     *      if the db stream is corrupt or was tampered with.
      */
-    private void validateTransactions(List<StoredTrans> transactions, long startupTime) {
+    private static void validateTransactions(List<StoredTrans> transactions, long startupTime) {
         // The versions are checked where they are read: each transaction's format and its
         // nodes' by the parsers (StoredTrans.Parser, Stored*Node.parse), the meta blocks' by
         // recovery (RecoverableStream.readMetaBlock); a stream of another version is refused
@@ -636,9 +637,16 @@ public class DbStarter {
                 throw new StreamFormatException("non-increasing tpos, " + t.toString());
             }
             
+            if (t.tt < Klong.MIN_TIME || t.tt > Klong.MAX_TIME) {
+                throw new StreamFormatException("Transaction time out of range, " + t.toString());
+            }
+
             if (t.tt <= tt) {
                 throw new StreamFormatException("non-increasing tt, " + t.toString());
             }
+
+            tpos = t.tpos;
+            tt = t.tt;
             
             for (StoredNode stored : t.nodes) {
                 validateNode(stored, startupTime);
@@ -649,7 +657,7 @@ public class DbStarter {
     /**
      * @throws StreamFormatException
      */
-    private void validateNode(StoredNode stored, long startupTime) {
+    private static void validateNode(StoredNode stored, long startupTime) {
         Node node = stored.getNode();
         if (node == null) {
             throw new StreamFormatException("getNode() returned null");
@@ -782,6 +790,60 @@ public class DbStarter {
     
     
     // ======== Testing =======
+
+    /** Checks every pair, including a backwards step that stays above the first time. */
+    @Nano
+    private static void testTransactionOrder() {
+        StoredTrans first = testTransaction(128, 0);
+        StoredTrans second = testTransaction(256, 20);
+        validateTransactions(List.of(first, second, testTransaction(384, Klong.MAX_TIME)), 0);
+        long[][] bad = {{256, 30}, {200, 30}, {384, 20}, {384, 10}};
+        for (long[] b : bad) {
+            try {
+                validateTransactions(List.of(first, second, testTransaction(b[0], b[1])), 0);
+                throw new AssertionError("accepted transaction at " + b[0] + ", time " + b[1]);
+            } catch (StreamFormatException expected) {
+                String field = b[0] <= 256 ? "tpos" : "tt";
+                Assert.assertTrue(expected.getMessage(),
+                        expected.getMessage().contains("non-increasing " + field));
+            }
+        }
+    }
+
+    private static StoredTrans testTransaction(long pos, long time) {
+        StoredTrans.Parser parser = new StoredTrans.Parser();
+        parser.tpos = pos;
+        parser.transactionTime = time;
+        parser.nodes = new StoredNode[0];
+        parser.gotDirtyIdsAndSpos = new long[0];
+        return new StoredTrans(parser);
+    }
+
+    /** Parsed key nodes must reject equal and decreasing times as format errors (005-75). */
+    @Nano
+    private static void testParsedKeyNodeTimeOrder() {
+        for (long last : new long[] {10, 20, 30}) {
+            KeyNode node = KeyNode.nodeWithTime(0);
+            node.addToEnd(Klong.createTime(20), null, Spos.NULL);
+            node.addToEnd(Klong.createTime(last), null, Spos.NULL);
+            long[] longs = new long[StoredKeyNode.getByteSize(node) / 8];
+            StoredKeyNode.toLongs(node, longs, 0, Spos.NULL);
+            StoredKeyNode parsed = StoredKeyNode.parse(Bytes.longsToBytesLE(longs), 0, 512);
+            if (last > 20) {
+                parsed.getNode().check();
+                validateNode(parsed, 0);
+            } else {
+                Assert.assertTrue(parsed.getNode().checkWithMessage() != null);
+                try {
+                    validateNode(parsed, 0);
+                    throw new AssertionError("accepted key node time " + last);
+                } catch (StreamFormatException expected) {
+                    Assert.assertTrue(expected.getMessage(),
+                            expected.getMessage().contains("Time not increasing"));
+                }
+            }
+        }
+    }
     
     /**
      * A key node read at startup with a key klong that points to an unwritten node (a 

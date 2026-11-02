@@ -1,0 +1,9 @@
+
+======== NanotestForBergDB: unit ========
+On f53 261102 10:45, OpenJDK 64-Bit Server VM 27
+NOTE: assertions disabled, use -ea to enable.
+bergdb.core.DbStarter ..
+bergdb.core.DbTesterRestart .
+bergdb.storage.RecoverableStream$Tester .
+bergdb.dev.NanotestForBergDB .
+SUCCESS, 5 successful tests in 0.0 s.

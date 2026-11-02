@@ -12,10 +12,12 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 
+import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
 import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.dag.KeyNode;
+import bergdb.dag.Klong;
 import bergdb.dag.Node;
 import bergdb.dag.NodeVisitor;
 import bergdb.dag.TopNode;
@@ -39,6 +41,45 @@ import bergdb.stream.MemoryStream;
  * @author Frans Lundberg
  */
 public class DbTesterRestart {
+
+    /** A corrupt record time must refuse startup before replay, with or without -ea. */
+    @Nano
+    public static void testCorruptRecordTimesRefused() throws IOException {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        long lastPos;
+        try (Db db = Db.builder().testSetup(stream).clock(clock)
+                .startupDistance(1000000).retainForever().start()) {
+            clock.setTime(10);
+            db.execute(db.trans().put("/k1", "1"));
+            clock.setTime(20);
+            db.execute(db.trans().put("/k2", "2"));
+            clock.setTime(30);
+            Trans trans = db.trans().put("/k3", "3").build();
+            db.execute(trans);
+            lastPos = trans.tpos;
+        }
+        long[][] bad = {
+            {lastPos, 20}, {lastPos, 10}, {lastPos, 0}, {lastPos, -1},
+            {lastPos, Klong.MAX_TIME + 1}, {lastPos, Long.MAX_VALUE},
+            {RecoverableStream.META_BLOCK_SIZE, -1},
+            {RecoverableStream.META_BLOCK_SIZE, Klong.MAX_TIME + 1}
+        };
+        for (long[] b : bad) {
+            MemoryStream corrupt = stream.copy();
+            byte[] timeBytes = new byte[8];
+            Bytes.longToBytesLE(b[1], timeBytes, 0);
+            MemoryStream.TestAccess.write(corrupt, timeBytes, b[0] + 8);
+            try (Db ignored = Db.builder().testSetup(corrupt).clock(clock)
+                    .startupDistance(1000000).retainForever().start()) {
+                throw new AssertionError("started with corrupt record time " + b[1]);
+            } catch (StreamFormatException expected) {
+                String message = b[1] < 0 || b[1] > Klong.MAX_TIME
+                        ? "Transaction time out of range" : "non-increasing tt";
+                Assert.assertTrue(expected.getMessage(), expected.getMessage().contains(message));
+            }
+        }
+    }
 
     /** Real read results carried to a new Db: bergdb 005-70, option A. */
     @Nano

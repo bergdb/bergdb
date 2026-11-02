@@ -62,9 +62,9 @@ public class RecoverableStream {
     public static final int META_BLOCK_DISTANCE = 200*1000;
     
     /** 
-     * Smallest size of a transaction that the layer above reads (NodeStream: a 16-byte 
-     * header and the last byte). A transaction header fixed at recovery must give at 
-     * least this size.
+     * Minimum record size accepted by recovery's walk, retained from the 16-byte header
+     * format. The current record header is 32 bytes; recovery does not parse it. A torn
+     * transaction header completed at recovery must give at least this size.
      */
     public static final int MIN_TRANS_SIZE = 16 + 1;
     
@@ -459,8 +459,8 @@ public class RecoverableStream {
     
     /**
      * Appends transaction bytes to the stream.
-     * The last byte in 'buffer' must equal LAST_BYTE.
-     * The first 4 bytes must be the total byte size of the transaction; 
+     * The byte at offset + size - 1 must equal LAST_BYTE.
+     * The first 4 bytes at offset must be the total byte size of the transaction;
      * that is, it has to equal 'size'.
      *  
      * @param useChecks Normally checks should be run. They are fast.
@@ -487,7 +487,7 @@ public class RecoverableStream {
                         "must be " + ((int) LAST_BYTE));
             }
             
-            int transactionSize = Bytes.bytesToIntLE(buffer, 0);
+            int transactionSize = Bytes.bytesToIntLE(buffer, offset);
             if (transactionSize != size) {
                 throw new IllegalArgumentException("Bad transactionSize in " +
                 		"byte buffer, was " + transactionSize 
@@ -840,6 +840,35 @@ public class RecoverableStream {
             r.append(transBytes, 0, transBytes.length, true, -1);
             
             Assert.assertEquals(RecoverableStream.META_BLOCK_SIZE + 20, mstream.getLength());
+        }
+
+        /** Checks and writes the supplied slice, even when the prefix looks like a record. */
+        @Nano
+        public static void testAppendOffset() throws IOException {
+            MemoryStream stream = new MemoryStream();
+            RecoverableStream r = new RecoverableStream(stream, new MetaBlock());
+            int offset = 8;
+            int size = 24;
+            byte[] buffer = new byte[offset + size + 8];
+            Bytes.intToBytesLE(size + 1, buffer, 0);
+            Bytes.intToBytesLE(size, buffer, offset);
+            buffer[offset + size - 1] = LAST_BYTE;
+            r.append(buffer, offset, size, true, -1);
+            byte[] stored = new byte[size];
+            stream.read(META_BLOCK_SIZE, stored, 0, size);
+            Assert.assertArrayEquals(java.util.Arrays.copyOfRange(buffer, offset, offset + size),
+                    stored);
+            long length = stream.getLength();
+            Bytes.intToBytesLE(size, buffer, 0);
+            Bytes.intToBytesLE(size + 1, buffer, offset);
+            try {
+                r.append(buffer, offset, size, true, -1);
+                throw new AssertionError("accepted wrong record size at offset");
+            } catch (IllegalArgumentException expected) {
+                Assert.assertTrue(expected.getMessage(),
+                        expected.getMessage().contains("Bad transactionSize"));
+            }
+            Assert.assertEquals(length, stream.getLength());
         }
         
         @Nano

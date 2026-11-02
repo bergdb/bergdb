@@ -14,8 +14,8 @@ import bergdb.nanotest.Nano;
 abstract public class Spos {
     // Note, set NULL to -2 to test if used everywhere where it should be used.
     // But, consider on-disk, at-user data.
-    // Note 150515, index nodes have spos % 8 == 0. BUT, this is not
-    // the case for value nodes. They can start at any mod8 value.
+    // Index nodes have spos % 8 == 0. Value nodes are aligned to 4 bytes
+    // (since 2015-11-14), so their spos % 8 is 0 or 4.
     //
     
     /**

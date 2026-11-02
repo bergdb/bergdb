@@ -193,6 +193,9 @@ How it works in Java:
   position (005-62, `Rule4PosCut_handles`). A cold start still reads the nodes on
   the rerun's paths that have no version in the section: about 46 s on s1
   at 10M keys and a startup distance of 50 MB (005-57; 214 s before).
+  Before replay it validates record order and the 56-bit range of record
+  times in the startup section, and increasing times within its stored
+  key nodes; violations are refused as stream format errors (005-75).
 * Marking: the index nodes that an operation (a put or a delete) follows,
   creates or changes get dirty when the operation ends, and only if it
   changed something; a node that the transaction replaced leaves D at its

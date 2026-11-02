@@ -1605,3 +1605,13 @@ OK (1,082 unit tests, 78 f-tests), LEVEL 2 OK (quick, 14 conformance
 traces), StreamDigest identical (36 of 36). No format or valid stream-byte
 change. The later getTrans and recovery findings remain open as 005-82
 and 005-83; C unchanged.
+
+2026-11-02. 005-75 done, by Codex, at Frans's request: increasing times
+within key nodes, increasing record positions and times, the 56-bit record
+time range, and the buffer offset in append's size check now checked.
+Startup seeds STM coverage after validating recovered times. Two dead
+checks removed and format comments corrected. Four regressions fail on the
+previous behavior and pass with and without assertions. BEFORE COMMIT OK
+(1,086 unit tests, 78 f-tests), LEVEL 2 OK (quick, 14 conformance traces),
+StreamDigest identical (36 of 36). No format or valid stream-byte change;
+C unchanged. Evidence: 005-75, "Decision and outcome".

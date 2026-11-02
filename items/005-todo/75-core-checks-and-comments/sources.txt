@@ -1,0 +1,32 @@
+005-75 validation, 2026-11-02
+Checked base: c229ab2a55a77eda7c2612ac840b85c5deed42bd
+StreamDigest baseline: 7f3dab4a0e48cd9ade955a652450bb630e8714cc
+JDK: OpenJDK 27; javac --release 17 (build.sh).
+Builds and runs used isolated snapshots; all tracked java/ files match the checked snapshot.
+
+Commands:
+  java/before-commit.sh
+  java/stress/level2.sh quick
+  java [-ea] -cp CHECKED/bergdb.jar bergdb.dev.Unit -c 'DbStarter|DbTesterRestart|RecoverableStream'
+    -m 'testTransactionOrder|testParsedKeyNodeTimeOrder|testCorruptRecordTimesRefused|testAppendOffset'
+  java -cp BASELINE/bergdb.jar:BASELINE/stress bergdb.core.StreamDigest all
+  java -cp CHECKED/bergdb.jar:BASELINE/stress bergdb.core.StreamDigest all
+  java -cp CHECKED/bergdb.jar:BASELINE/stress bergdb.core.StreamDigest compare digest-before.txt digest-after.txt
+
+Before-regression runs compile the new tests against baseline production behavior:
+  original KeyNode and Db; no previous-time/position updates or time bounds in DbStarter;
+  original RecoverableStream.append size check at buffer offset 0.
+All four fail; after runs pass, both with and without -ea.
+
+SHA-256 of changed Java sources tested:
+013fd26de5924be3c9afd3268aa2b155488c7523ebeab1732fc1815180586d4a  java/src/bergdb/core/Db.java
+5c8ec6895936d371717fd258882ed863eb115600c3edae276e825eeb485ea3bf  java/src/bergdb/core/DbStarter.java
+ee41d4d072a618ae953f1e09d718aa12ff33310f2d1239d3ea5a7b1d864cf23f  java/src/bergdb/core/DbTesterRestart.java
+ec6503abe27181b8fd72bd5137be7faef000875b17039ee372d01b29bb0e0ca8  java/src/bergdb/core/NodeStream.java
+0500bd84eb654360e091aaecfe8b00b2063ba8e41734665914079af51b38eb67  java/src/bergdb/core/StoredKeyNode.java
+fef4feec2b73477a2923231f909a495f74e2323f7c7f25a881a77fedf24276ae  java/src/bergdb/core/StoredTopNode.java
+51aae144d2d818f2bae39f6f17767006d8f1c9a7790097fe15d004f37c615988  java/src/bergdb/core/StoredValueNode.java
+95905b635fd3e4168cbac96799eb84b5a923c5889d62b9b4275dad3f3f58bf30  java/src/bergdb/dag/KeyNode.java
+f012d4d09a78a67a6417cdb4cfaf218e8f25a8f310a788d5fd0e43b9c3ccc4d4  java/src/bergdb/dag/Klong.java
+698c3754bf414d5f043b87b75e70e5cb4376da38140a38e990d3c325bad9951d  java/src/bergdb/dag/Spos.java
+8b3fc5d02976e697a9d7de3c5be574e6079f7946d28371c4c7861350c2946fa0  java/src/bergdb/storage/RecoverableStream.java

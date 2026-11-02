@@ -11,6 +11,13 @@ empties this file.
 Reliability
 -----------
 
+* **Corrupt startup times are refused** (bergdb 005-75, 2026-11-02).
+  Startup checks record order, the 56-bit range of record times, and
+  increasing times within stored key nodes before replay. Violations
+  raise `StreamFormatException` with assertions enabled or disabled.
+  Valid stream bytes and the format are unchanged. Core stream appends
+  also check the size at the supplied buffer offset.
+
 * **Corrupt sizes are rejected before allocation** (bergdb 005-74, option A,
   2026-11-02). Record and node reads check that the declared bytes exist,
   excluding meta blocks, before allocating their buffers. The transaction

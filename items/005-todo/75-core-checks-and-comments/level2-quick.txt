@@ -1,0 +1,38 @@
+1. Unit tests
+SUCCESS, 1086 successful tests in 9.9 s.
+2. RestartStress, random configurations
+   random-0: Done: 10 rounds, 0 failures, 4 s.
+   random-1: Done: 10 rounds, 0 failures, 4 s.
+   random-2: Done: 10 rounds, 0 failures, 6 s.
+   random-3: Done: 10 rounds, 0 failures, 6 s.
+3. RestartStress, small and default startup distances
+   sd1000-keys50-node14: Done: 3 rounds, 0 failures, 2 s.
+   sd1000-keys50-node30: Done: 3 rounds, 0 failures, 2 s.
+   sd1000-keys50-node62: Done: 3 rounds, 0 failures, 2 s.
+   sd1000-keys50-node8: Done: 3 rounds, 0 failures, 3 s.
+   sd1000-node14: Done: 3 rounds, 0 failures, 5 s.
+   sd1000-node30: Done: 3 rounds, 0 failures, 5 s.
+   sd1000-node62: Done: 3 rounds, 0 failures, 6 s.
+   sd1000-node8: Done: 3 rounds, 0 failures, 5 s.
+4. RestartInvariance
+   inv-every1: stream identical, all checks OK
+   inv-idle-1: stream identical, all checks OK
+   inv-idle-2: stream identical, all checks OK
+   inv-sd100: stream identical, all checks OK
+   inv-sd1000-node8: stream identical, all checks OK
+   inv-sd10000-node14: stream identical, all checks OK
+   inv-sd100000-node62: stream identical, all checks OK
+5. CrashTest, the stream cut at random positions
+   crash-0: Done: 1 rounds, 0 failures, 2 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-1: Done: 1 rounds, 0 failures, 2 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-2: Done: 1 rounds, 0 failures, 2 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-3: Done: 1 rounds, 0 failures, 2 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-node8: Done: 1 rounds, 0 failures, 2 s. Cuts where a transaction ends at a meta block's position: 0.
+6. BryanRepro, the bug report of 2015 (restarts with deletes and reclaim)
+   bryan: Done: 15 cycles, 0 failures, 10 s.
+7. Conformance with the Lean model
+   a2a3-1: transactions 3000: A2, A3, A5, marking, TREE, A6' and A-COPY OK; adoptions below the old parent (A6' allows them, A6 not) 0
+   a2a3-2: transactions 500: A2, A3, A5, marking, TREE, A6' and A-COPY OK; adoptions below the old parent (A6' allows them, A6 not) 1
+   a2a3-3: transactions 6000: A2, A3, A5, marking, TREE, A6' and A-COPY OK; adoptions below the old parent (A6' allows them, A6 not) 0
+   conformance: traces: 14, TRACECHECK OK: 14
+LEVEL 2 OK

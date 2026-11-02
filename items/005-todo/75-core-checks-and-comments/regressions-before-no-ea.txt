@@ -1,0 +1,51 @@
+
+======== NanotestForBergDB: unit ========
+On f53 261102 10:44, OpenJDK 64-Bit Server VM 27
+NOTE: assertions disabled, use -ea to enable.
+bergdb.core.DbStarter FAILED! bergdb.core.DbStarter.testParsedKeyNodeTimeOrder
+java.lang.AssertionError: Expected true, but was false.
+	at bergdb.nanotest.Assert.assertTrue(Assert.java:363)
+	at bergdb.core.DbStarter.testParsedKeyNodeTimeOrder(DbStarter.java:830)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+FAILED! bergdb.core.DbStarter.testTransactionOrder
+java.lang.AssertionError: accepted transaction at 256, time 30
+	at bergdb.core.DbStarter.testTransactionOrder(DbStarter.java:798)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+
+bergdb.core.DbTesterRestart FAILED! bergdb.core.DbTesterRestart.testCorruptRecordTimesRefused
+java.lang.AssertionError: started with corrupt record time 20
+	at bergdb.core.DbTesterRestart.testCorruptRecordTimesRefused(DbTesterRestart.java:75)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+
+bergdb.storage.RecoverableStream$Tester FAILED! bergdb.storage.RecoverableStream.Tester.testAppendOffset
+java.lang.IllegalArgumentException: Bad transactionSize in byte buffer, was 25, expected 24
+	at bergdb.storage.RecoverableStream.append(RecoverableStream.java:492)
+	at bergdb.storage.RecoverableStream$Tester.testAppendOffset(RecoverableStream.java:856)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+
+bergdb.dev.NanotestForBergDB .
+FAILURE, total: 5, failed: 4. Time: 0.0 s.

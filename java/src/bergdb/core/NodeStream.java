@@ -65,12 +65,6 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
     public void recover() {
         assert Thread.holdsLock(writeLock);
         
-        long length = rstream.getLength();
-        if (length < RecoverableStream.META_BLOCK_SIZE) {
-            throw new StreamFormatException("Cannot recover stream without complete first "
-                    + "meta block, length: " + length);
-        }
-        
         rstream.recover();
     }
 

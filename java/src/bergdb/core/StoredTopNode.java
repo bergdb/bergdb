@@ -103,10 +103,6 @@ public class StoredTopNode implements StoredNode {
         
         // offset == 16 here
 
-        if (topNodeId > TopNode.MAX_TOP_NODE_ID_VALUE) {
-            throw new StreamFormatException("TopNode ID too large in stream, " + topNodeId);
-        }
-
         long id = Bytes.bytesToLongLE(buffer, offset);
         offset += 8;
 

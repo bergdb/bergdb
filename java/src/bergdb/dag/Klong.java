@@ -23,29 +23,30 @@ import bergdb.nanotest.Nano;
  * Similarly, Byte 0 is the least significant byte.
  * Bit 3:4 means Bit 4 of Byte 3.
  * 
+ * KEY KLONG
  * VERSION, 3 bits at 0:0-0:2.
- * No longer used! Always set to 0.
+ * No longer used! Always set to 0 in a key klong.
  * 
  * LENGTH, 3 bits at 0:3-0:5
- * Length of key. 7 for a TIME klong.
+ * Length of key in bytes.
  * 0 - length 0 (empty key) - can happen also when DB key is non-empty
  * 1 - length 1
  * ..
  * 7 - length 7
  * 
  * DATA, 56 bits at 0:6-7:5
- * Up to seven data bytes. First byte is stored in bits 6:3-7:2.
+ * Up to seven data bytes. First byte is stored in bits 6:6-7:5.
  * Bytes (often characters) of the key. Zero padded at the end.
  * 
  * TYPE, 2 bits at 7:6-7:7
  * 0 - time, indicates new version
- * 1 - key, 0-7 characters of key. Klong has a pointer to a key node or a value node.
+ * 1 - key, 0-7 bytes of key. Klong has a pointer to a key node or a value node.
  * 2 - DEPRECATED! not used
  * 3 - delete bitmap. 62 bits at 0:0-7:5 are deleted-or-not bits for klongs at index 0 to 61.
  * 
  * TIME KLONG
- * Type = 0, time value in 58 bits (bits 0:0-7:1). 4 bits are unused, reserved and must be set
- * to zero.
+ * Type = 0, time value in 56 bits (bits 0:0-6:7). The 6 bits at 7:0-7:5 are reserved
+ * and must be zero in stored times.
  * </pre>
  */
 public class Klong {
@@ -99,7 +100,7 @@ public class Klong {
     private Klong() {}
     
     /**
-     * Creates a 7 byte TIME klong.
+     * Creates a TIME klong with a 56-bit time value.
      */
     public static final long createTime(long time) {
         assert time >= MIN_TIME;
@@ -180,8 +181,8 @@ public class Klong {
     }
 
     /**
-     * Sets the header byte of 'value'. Overwrites any previous data there.
-     * length must be 1-7 (not checked).
+     * Sets a key klong's type and length, and clears its reserved version bits.
+     * length must be 0-7 (not checked).
      */
     public static final long setHeader(long klong, long type, long length) {
         // 2 zero bits in beginning, 6 at end
@@ -207,7 +208,8 @@ public class Klong {
     }
     
     /**
-     * Gets a small type value: 0, 1, or 2. int required for a switch.
+     * Gets the two-bit type as an int for a switch: 0 (time), 1 (key), or 3 (delete
+     * bitmap). Type 2 is unused.
      */
     public static final int getIntType(long value) {
         return (int) ((value & 0xc000000000000000L) >>> (7*8 + 6));
@@ -261,9 +263,9 @@ public class Klong {
     
     /**
      * Returns the compare value of a key klong. The compare value contains the key 
-     * characters (0-7 characters in 7*8 bits) and their length (3 bits)
+     * bytes (0-7 bytes in 7*8 bits) and their length (3 bits)
      * at the end. Version is not included.
-     * A compare value is in the range [0, 2^(56+3)].
+     * A compare value is non-negative and below 2^62; its lowest three bits are zero.
      */
     public static final long getCompareValue(long value) {
         // All, but type bits in Byte 7 and version bits in Byte 0
@@ -632,7 +634,9 @@ Removed support for 3-bit "version". Not used.
 
 == 120918 ==
 
-About TIME klongs and time unit. Copy from log:
+About TIME klongs and time unit. Historical proposal copied from the log:
+the current format uses 56 time bits, not the 58 proposed below (see MAX_TIME
+and the class comment), for about 228 years at 100 ns resolution.
 
 Deciding on time resolution. We want to be able to store
 a time in 58 bits (7 bytes + 2 bits). So, we have 2^58-1 as largest value (~2.88e17).

@@ -695,9 +695,10 @@ public class Db implements AutoCloseable {
         ArrayList<StoredTrans> transactions = readTransactions(startupPos);
         
         setLastTransTimeOfDbClock(transactions);
-        keyModSet.setFirstTime(transactions.get(transactions.size() - 1).tt);
         
         startDb(transactions);
+        // Seed STM coverage only after DbStarter has validated the recovered times.
+        keyModSet.setFirstTime(transactions.get(transactions.size() - 1).tt);
         
         createPutAndGetData();
         
