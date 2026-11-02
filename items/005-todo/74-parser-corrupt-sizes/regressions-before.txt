@@ -1,0 +1,121 @@
+
+======== NanotestForBergDB: unit ========
+On f53 261102 10:31, OpenJDK 64-Bit Server VM 27
+bergdb.core.NodeStreamTester FAILED! bergdb.core.NodeStreamTester.testCorruptIteratorSize
+java.lang.OutOfMemoryError: Requested array size exceeds VM limit
+	at bergdb.core.NodeStream$TransIterator.next(NodeStream.java:375)
+	at bergdb.core.NodeStreamTester.checkCorruptReadSize(NodeStreamTester.java:61)
+	at bergdb.core.NodeStreamTester.testCorruptIteratorSize(NodeStreamTester.java:44)
+	at java.base/java.lang.invoke.DirectMethodHandle$Holder.invokeStatic(DirectMethodHandle$Holder)
+	at java.base/java.lang.invoke.LambdaForm$MH/0x00007e0001083c00.invoke(LambdaForm$MH)
+	at java.base/java.lang.invoke.Invokers$Holder.invokeExact_MT(Invokers$Holder)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invokeImpl(DirectMethodHandleAccessor.java:154)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+FAILED! bergdb.core.NodeStreamTester.testCorruptReadNodeSize
+java.lang.OutOfMemoryError: Requested array size exceeds VM limit
+	at bergdb.core.NodeStream.readNode(NodeStream.java:198)
+	at bergdb.core.NodeStreamTester.checkCorruptReadSize(NodeStreamTester.java:57)
+	at bergdb.core.NodeStreamTester.testCorruptReadNodeSize(NodeStreamTester.java:34)
+	at java.base/java.lang.invoke.DirectMethodHandle$Holder.invokeStatic(DirectMethodHandle$Holder)
+	at java.base/java.lang.invoke.LambdaForm$MH/0x00007e0001083c00.invoke(LambdaForm$MH)
+	at java.base/java.lang.invoke.Invokers$Holder.invokeExact_MT(Invokers$Holder)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invokeImpl(DirectMethodHandleAccessor.java:154)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+FAILED! bergdb.core.NodeStreamTester.testCorruptReadTransSize
+java.lang.OutOfMemoryError: Requested array size exceeds VM limit
+	at bergdb.core.NodeStream.readTransBytes(NodeStream.java:216)
+	at bergdb.core.NodeStreamTester.checkCorruptReadSize(NodeStreamTester.java:59)
+	at bergdb.core.NodeStreamTester.testCorruptReadTransSize(NodeStreamTester.java:39)
+	at java.base/java.lang.invoke.DirectMethodHandle$Holder.invokeStatic(DirectMethodHandle$Holder)
+	at java.base/java.lang.invoke.LambdaForm$MH/0x00007e0001083c00.invoke(LambdaForm$MH)
+	at java.base/java.lang.invoke.Invokers$Holder.invokeExact_MT(Invokers$Holder)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invokeImpl(DirectMethodHandleAccessor.java:154)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+.FAILED! bergdb.core.NodeStreamTester.testReadSizeExcludesMetaBlocks
+bergdb.storage.StreamIoException: Not enough bytes left in the stream, position is 200128, length to read is 128 and stream size is 200144.
+	at bergdb.storage.RecoverableStream.read(RecoverableStream.java:455)
+	at bergdb.core.NodeStream.readTransBytes(NodeStream.java:217)
+	at bergdb.core.NodeStreamTester.testReadSizeExcludesMetaBlocks(NodeStreamTester.java:81)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+Caused by: java.io.EOFException: Not enough bytes left in the stream, position is 200128, length to read is 128 and stream size is 200144.
+	at bergdb.stream.MemoryStream.read(MemoryStream.java:195)
+	at bergdb.storage.RecoverableStream.read(RecoverableStream.java:453)
+	... 9 more
+
+bergdb.core.StoredTrans FAILED! bergdb.core.StoredTrans.testCorruptRecordSize
+java.lang.AssertionError: bad record size was accepted: -2147483648
+	at bergdb.core.StoredTrans.testCorruptRecordSize(StoredTrans.java:915)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+FAILED! bergdb.core.StoredTrans.testGotDirtyCountOutsideRecord
+java.lang.AssertionError: got-dirty list beyond the record was accepted
+	at bergdb.core.StoredTrans.testGotDirtyCountOutsideRecord(StoredTrans.java:930)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+FAILED! bergdb.core.StoredTrans.testNegativeNodeSize
+java.lang.OutOfMemoryError: Java heap space
+	at bergdb.core.StoredValueNode.parse(StoredValueNode.java:117)
+	at bergdb.core.NodeStream.bytesToNode(NodeStream.java:259)
+	at bergdb.core.StoredTrans$Parser.next(StoredTrans.java:380)
+	at bergdb.core.StoredTrans$Parser.parse(StoredTrans.java:326)
+	at bergdb.core.StoredTrans.parse(StoredTrans.java:191)
+	at bergdb.core.StoredTrans.testNegativeNodeSize(StoredTrans.java:859)
+	at java.base/java.lang.invoke.DirectMethodHandle$Holder.invokeStatic(DirectMethodHandle$Holder)
+	at java.base/java.lang.invoke.LambdaForm$MH/0x00007e0001083c00.invoke(LambdaForm$MH)
+	at java.base/java.lang.invoke.Invokers$Holder.invokeExact_MT(Invokers$Holder)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invokeImpl(DirectMethodHandleAccessor.java:154)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+FAILED! bergdb.core.StoredTrans.testNodeSizeOutsideRecord
+java.lang.AssertionError: spos: 192, storedSum: 0, computedSum: 257, nodeType: 40, expected true, but was false.
+	at bergdb.nanotest.Assert.assertTrue(Assert.java:357)
+	at bergdb.core.StoredTrans.testNodeSizeOutsideRecord(StoredTrans.java:874)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+
+bergdb.dev.NanotestForBergDB .
+FAILURE, total: 10, failed: 8. Time: 0.4 s.

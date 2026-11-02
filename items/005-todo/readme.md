@@ -37,7 +37,6 @@ Open
 | [005-71](71-dbclock-read-time-after-start.md) | Fix | `DbClock` forgets `lastReadTime` at a start, so with a clock that has not moved, `currentTime()` before a restart changes the next transaction's time by one unit and the stream's bytes (P2). Found by 012-02's audit (C3), with a probe. Recommended: no code change, a note in P2 | open |
 | [005-72](72-file-layout-after-cut.md) | Decide | The files after reclaim's physical cut depend on timing (when the durable length reached the decision), while the bytes from the decided cut do not; a restart also changes the layout (not a bug). The C clone, without threads, cannot match Java's files after a cut. Frans, 2026-10-29: A for 012's cross tests (done); the entry stays open to consider B, a layout from the decided cut | open |
 | [005-73](73-db-api-small-findings.md) | Fix | Seven small findings in `Db`'s API from 012-03's mapping, none changing the bytes: `StartInfo.startupDistance` always −1, `getCachePutSize` a constant, the dirty fractions only decay and turn NaN, `setReclaimInternalFraction` accepts NaN, `close()` drops the last flush's `IOException`, `Endpoint`'s comment says non-inclusive, dead fields | open |
-| [005-74](74-parser-corrupt-sizes.md) | Fix | Java's record parser and corrupt sizes: `StoredTrans.Parser` takes a negative node size and moves back, so a crafted record loops until `OutOfMemoryError`; record and node sizes are allocated before their bytes are read; `getTrans` lets a checksum failure escape with the database active; a refused start can first write a zero fill. Found by 012-06's and 012-14's corrupt-input runs, with probes; the C reader refuses the first two. Recommended: refuse small node sizes in `Parser.next` and check a size before allocating | open |
 | [005-75](75-core-checks-and-comments.md) | Fix | Dead checks and comments that differ from the code in the Core, found by the C clone's work: `KeyNode.checkIncreasingTime` and `DbStarter.validateTransactions` never update their times and check nothing (a stream with a time set back starts; one flipped bit of a record's time makes a start fail with an Error); `StoredTopNode`'s ordinal check and `NodeStream.recover`'s length check cannot fire; `RecoverableStream.append` checks the size at the buffer's start, not at its offset; `Klong`'s comments (TIME 58 bits, the code 56; `getIntType`; the first key byte) | open |
 | [005-76](76-wake-at-a-quarter.md) | Fix | `BufferedStream` checks the quarter-full rule only when its thread wakes, every bufferTime / 4 (about 32 ms on macOS at 100 ms); nothing wakes it when an append passes a quarter of the buffer, so at 100 to 170 MB/s of stream 3 to 5 MB arrive between checks, a flush takes at most 5 MB, and writers wait for room: at 100 ms 13 to 16 % fewer puts a second with 1 KB values and a p99.9 of 16 to 25 ms for large transactions (005-64's runs). Proposed: an append that takes the buffer past a quarter wakes the thread (010-P3); then the buffer time costs no throughput. Frans's request when he set 50 ms (005-64) | open |
 | [005-77](77-cap-pace-factor.md) | Investigate | A decrease's commits grow with the keys: after a one-call decrease (D4:B) from 1000 to 100 MB at 50M keys, the catch-up's records are 12 to 14 times the new mean (largest 13.3 to 15.4 MB, against 2.3 to 3.6 MB at 10M), written by the committing threads; the cause is the pace's factor S/sd in the share, which starts at 10 (007-07, section 11). Only bytes measured, not commit times; 100M keys not run. Proposed: cap S/sd at 2 or at 4 (two variants); the deadline at the span still keeps the section from growing, the catch-up gets longer, and T3_take and T3_take_decrease hold for any pace (007-08). Frans's decision on 006-10's point 4 | open |
@@ -45,6 +44,8 @@ Open
 | [005-79](79-integers-not-doubles.md) | Implement | Integers instead of doubles in the Core's decisions, so that the stream's bytes are the same in every language and on every target (Frans, 2026-10-29: "Integer operations are well-defined on all targets"): the take's share and dither (`TransSeq.take`), reclaim's iteration spacing and internal fraction, eviction's low watermark. Decided (Frans, 15:48): the take in fixed point (option B), `setReclaimInternalFraction` takes an integer, on its own (not with 005-77 or 005-78, which have notes), not before Frans says so; the other three keep their bytes below 2^53. A check in the gates that keeps doubles out; the C clone and Lean's `share` and `dither` follow | open |
 | [005-80](80-setbudget-race-record.md) | Decide | `setBudget`'s race (005-52), fixed inside 005-65's commit `988fe1a`: a batch that ended while `setBudget` lowered the budget could put back the old budget's trigger, so an idle database kept the memory; now the batch computes the trigger under the monitor `setBudget` holds. Not recorded in 005-52, no test forces the interleaving, no commit of its own. Options: A nothing more, B a line in 005-52 and a forced-interleaving test (recommended), C a commit of its own (not possible, `main` is pushed). Frans's request, 2026-10-29 | open |
 | [005-81](81-overload-and-retries.md) | Investigate | Client overload, backpressure and retries | open |
+| [005-82](82-gettrans-corruption.md) | Fix | Corrupt getTrans leaves Db active | open |
+| [005-83](83-recovery-before-refusal.md) | Investigate | Recovery writes before refusing corruption | open |
 
 
 Closed
@@ -52,6 +53,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-74](74-parser-corrupt-sizes.md) | Fix | Reject corrupt sizes | done | 2026-11-02 |
 | [005-70](70-keymodset-after-start.md) | Fix | STM startup boundary | done | 2026-10-30 |
 | [005-64](64-buffer-time-after-group-commit.md) | Investigate | The buffer time after group commit, 20, 50 or 100 ms: since 005-48 a sync no longer waits for the timer, which now only bounds how long bytes nobody syncs on stay buffered. Runs of 2026-10-28 on F53 and s1: 50 ms saves 11 to 35 % of the forces of writers that do not sync, with the same throughput, latency and CPU; 100 ms costs 13 to 16 % of the throughput at 1 KB values (the quarter rule seen only at a wake, now 005-76); idle and trickle energy the same; twice the unsynced data at risk at 50 ms (question 5). Decided (Frans, 2026-10-29): 50 ms. `StorageManager.DEFAULT_BUFFER_TIME` 20 to 50, its comment, the docs, `releases/next.md`; StreamDigest identical; the four gates pass | done | 2026-10-29 |
 | [005-68](68-fix-take-stream-length.md) | Fix | `Db.store` passes the stream's `getLength()` to `TransSeq.take`, where the Lean model's argument is where the record begins, `getNextPos()`: after a record that ends on a 200,000-byte boundary they would differ by the meta block's 128 bytes, and Java could leave T3's bound (007-08, review, point 1). Dropped: the finding does not hold. `RecoverableStream.append` writes a meta block together with the record that ends at its position, and recovery fills out one that a crash cut, so when `take` is called the two are equal: by reading, and by running an instrumented copy (0 of 5,524,901 calls differ, 229 after a record that ended exactly on a boundary). No change; the one-line change would pass the same value | dropped | 2026-10-28 |
@@ -397,8 +399,8 @@ Files
   seven small findings in `Db`'s API (012-03): the findings, what to do;
   open.
 * [74-parser-corrupt-sizes.md](74-parser-corrupt-sizes.md). 005-74,
-  Java's record parser and corrupt sizes: the issue, the probe, the
-  options; open.
+  parser and reader size checks, option A done, with regressions and
+  recorded checks; later findings open as 005-82 and 005-83.
 * [75-core-checks-and-comments.md](75-core-checks-and-comments.md).
   005-75, dead checks and comments that differ from the code in the Core:
   the findings, what to do; open.
@@ -422,6 +424,12 @@ Files
   client overload and transaction retries: verified current waits and
   resource controls, the client contract, retry/sleep variants, and the
   overload/recovery investigation plan; open.
+
+* [82-gettrans-corruption.md](82-gettrans-corruption.md). 005-82,
+  parsing errors in `getTrans` must fail the database; split from 005-74.
+* [83-recovery-before-refusal.md](83-recovery-before-refusal.md). 005-83,
+  distinguish a corrupt size from a torn record before recovery writes;
+  split from 005-74.
 
 Log
 ===
@@ -1545,3 +1553,13 @@ retry policy in RwTransaction.executeRw if supported by the measurements.
 Source-checked plan with exact current sleeps, refusal/commit boundaries,
 bounded arrival tests, recovery and fairness measures, and small retry
 variants to compare. Registered and planned only; no Java changes.
+
+2026-11-02. Frans selected 005-74 option A, the parser and reader size
+checks. Its later checksum and recovery findings stay open in their own
+entries, 005-82 and 005-83; neither is silently closed with option A.
+
+2026-11-02. 005-74 option A done: sizes checked before parsing and
+allocation, including bounds inside a reused record buffer and reads
+across meta blocks. BEFORE COMMIT OK (1,082 unit, 78 f), LEVEL 2 OK
+(quick, 14 traces), all 36 stream digests unchanged. Moved to Closed;
+005-82 and 005-83 remain open.

@@ -1594,3 +1594,14 @@ A Core transaction with an older read set is refused; before, a new
 Equality at the boundary is covered, including after the first unrelated
 write. Java and C fixed, with regressions. BEFORE COMMIT OK, LEVEL 2 OK
 (full), C BEFORE COMMIT OK; StreamDigest identical (36 of 36).
+
+2026-11-02. 005-74 option A done, by Codex, at Frans's request: the
+transaction parser refuses negative and undersized nodes and checks nodes
+and the got-dirty list against the declared record, also in a larger
+reused array. The three allocating readers check sizes against the stream's
+record bytes first, excluding meta blocks. Nine regressions, eight failing
+on the old code; the focused suite passes with a 64 MB heap. BEFORE COMMIT
+OK (1,082 unit tests, 78 f-tests), LEVEL 2 OK (quick, 14 conformance
+traces), StreamDigest identical (36 of 36). No format or valid stream-byte
+change. The later getTrans and recovery findings remain open as 005-82
+and 005-83; C unchanged.

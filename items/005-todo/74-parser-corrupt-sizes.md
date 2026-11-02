@@ -1,7 +1,7 @@
 005-74. Fix: Java's record parser and corrupt sizes (a negative node size loops)
 ================================================================================
 
-Status: open. Kind: fix. Created 2026-10-28.
+Status: done (2026-11-02, option A). Kind: fix. Created 2026-10-28.
 
 Registered by Claude (Opus 5.5, Claude Code), the conductor of 012, from
 012-06's corrupt-input tests of the C stream reader (012-06, section 7,
@@ -29,11 +29,11 @@ The issue
 Found by 012-14's corrupt-input runs (2026-10-29, 012-14 section 6; its
 probes in `/Users/f/fl/bench/012/14-out/probes/`):
 
-* **`Db.getTrans` parses the record outside its `try`**, so a checksum
+* **`Db.getTrans` parses the record outside its `try`** (now 005-82), so a checksum
   failure (or an `ArrayIndexOutOfBoundsException`) escapes, and the
   database stays active; C fails the database, as 005-34 and 012-03 say
   (probe `gettrans-checksum/`).
-* **A start that refuses can first write**: a flipped size field makes
+* **A start that refuses can first write** (now 005-83): a flipped size field makes
   recovery write about 1 MB of zero fill before the start refuses the
   stream, in Java and (as Java) in C; outside 005-40's scope (probe
   `refused-start-writes/`).
@@ -61,3 +61,50 @@ Done when
 ---------
 
 Decided; for A, the change with its tests and `before-commit.sh`.
+
+
+Decision and scope
+------------------
+
+2026-11-02. Frans: "Fix 005-74 as recommended. That is: Option A. Commit
+if successful." Option A is the parser and reader size checks (F2 and
+F3). The two findings added from 012-14 concern error handling and
+recovery policy, respectively; they remain open as 005-82 and 005-83.
+
+
+Outcome
+-------
+
+2026-11-02, by Codex, on `main` from `7f3dab4`:
+
+* `StoredTrans.Parser` checks the record's minimum size, confines nodes
+  and the got-dirty list to its declared size, and checks space for the
+  end marker and padding. Its array may be larger than the record, as
+  with the serializer's reused buffer. Node sizes smaller than the common
+  8-byte header, negative sizes included, are refused before parsing or
+  advancing the offset. Subtraction bounds avoid overflow in these checks.
+* `NodeStream.readNode`, `readTransBytes` and `TransIterator.next` check
+  the declared extent before allocating its buffer. The check locates
+  the last byte in stream coordinates, excluding meta blocks; it accepts
+  a record ending just before a meta block, including one a crash has
+  not yet written. The format and the writer do not change.
+* Nine regressions cover the looping 112-byte record, small and oversized
+  nodes, record and list bounds in a reused buffer, the three allocating
+  readers, and meta-block boundaries. The positive boundary control
+  passes on both builds. On the old code eight tests fail, four with an
+  `OutOfMemoryError`; on the fix the focused parser/reader suite passes
+  at `-Xmx64m` (37 checks including the stopped-database check).
+* The final `before-commit.sh`: `BEFORE COMMIT OK (96 s)`, 1,082 unit
+  tests and 78 f-tests. `level2.sh quick`: `LEVEL 2 OK`, including crash
+  and restart checks and 14 conformance traces. StreamDigest, one compiled
+  copy run against the before and after jars: `DIGESTS IDENTICAL (36 of
+  36)`. These checks concern the implementation and tested workloads, not
+  a proof of the parser.
+* The C reader already rejects the original negative and oversized input
+  cases; C is unchanged and its gate was not rerun. The two later findings
+  are open as 005-82 (`getTrans` failure handling) and 005-83 (recovery's
+  writes before refusal). Option A does not settle either.
+
+Evidence is in [74-parser-corrupt-sizes/](74-parser-corrupt-sizes/): the
+before and after tests, final gate output, Level 2 quick output, and both
+digest sets with their comparison. `releases/next.md` records the fix.

@@ -27,6 +27,86 @@ import bergdb.stream.MemoryStream;
  * @author Frans Lundberg
  */
 public class NodeStreamTester {
+
+    /** bergdb 005-74, F3: refuse corrupt sizes before allocating their buffers. */
+    @Nano
+    private static void testCorruptReadNodeSize() throws IOException {
+        checkCorruptReadSize(0);
+    }
+
+    @Nano
+    private static void testCorruptReadTransSize() throws IOException {
+        checkCorruptReadSize(1);
+    }
+
+    @Nano
+    private static void testCorruptIteratorSize() throws IOException {
+        checkCorruptReadSize(2);
+    }
+
+    private static void checkCorruptReadSize(int reader) throws IOException {
+        for (int size : new int[] {Integer.MAX_VALUE, 1 << 30, -1, 0, 6, 7}) {
+            byte[] bytes = new byte[132];
+            Bytes.intToBytesLE(size, bytes, 128);
+            MemoryStream stream = new MemoryStream();
+            stream.append(bytes, 0, bytes.length);
+            NodeStream ns = new NodeStream(new RecoverableStream(stream, new MetaBlock()),
+                    new Object());
+            try {
+                if (reader == 0) {
+                    ns.readNode(128);
+                } else if (reader == 1) {
+                    ns.readTransBytes(128);
+                } else {
+                    ns.createTransIteratorFromExactStartupPos(128).next();
+                }
+                throw new AssertionError("bad size was accepted: " + size);
+            } catch (StreamFormatException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("size"));
+            }
+        }
+    }
+
+    /** Meta blocks are not bytes available to a node or a record. */
+    @Nano
+    private static void testReadSizeExcludesMetaBlocks() throws IOException {
+        byte[] bytes = new byte[RecoverableStream.META_BLOCK_DISTANCE + 144];
+        int pos = RecoverableStream.META_BLOCK_DISTANCE - 8;
+        Bytes.intToBytesLE(136, bytes, pos);  // Fits physically, but only 24 record bytes exist.
+        MemoryStream stream = new MemoryStream();
+        stream.append(bytes, 0, bytes.length);
+        NodeStream ns = new NodeStream(new RecoverableStream(stream, new MetaBlock()),
+                new Object());
+        try {
+            ns.readTransBytes(pos);
+            throw new AssertionError("meta blocks counted as record bytes");
+        } catch (StreamFormatException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("size"));
+        }
+    }
+
+    /** A last byte just before a meta block, and a read across one, are both valid. */
+    @Nano
+    private static void testReadSizeAtMetaBlock() throws IOException {
+        int pos = RecoverableStream.META_BLOCK_DISTANCE - 32;
+        for (int length : new int[] {200000, 200128, 200144}) {
+            int size = length == 200144 ? 48 : 32;
+            byte[] expected = new byte[size];
+            Bytes.intToBytesLE(size, expected, 0);
+            for (int i = 4; i < size; i++) {
+                expected[i] = (byte) i;
+            }
+            byte[] bytes = new byte[length];
+            for (int i = 0; i < size; i++) {
+                bytes[(int) RecoverableStream.getSpos(pos, i)] = expected[i];
+            }
+            MemoryStream stream = new MemoryStream();
+            stream.append(bytes, 0, bytes.length);
+            NodeStream ns = new NodeStream(new RecoverableStream(stream, new MetaBlock()),
+                    new Object());
+            Assert.assertArrayEquals(expected, ns.readTransBytes(pos));
+        }
+    }
     
     @Nano
     public static void testSimpleRestart() {

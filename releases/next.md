@@ -8,6 +8,18 @@ again. The release folds them into its `releases/VERSION/readme.md`, as
 empties this file.
 
 
+Reliability
+-----------
+
+* **Corrupt sizes are rejected before allocation** (bergdb 005-74, option A,
+  2026-11-02). Record and node reads check that the declared bytes exist,
+  excluding meta blocks, before allocating their buffers. The transaction
+  parser refuses negative or undersized nodes and confines nodes and the
+  got-dirty list to the declared record, even in a larger reused buffer.
+  Malformed sizes raise `StreamFormatException` instead of looping or
+  exhausting the heap. Valid stream bytes and the format are unchanged.
+
+
 API changes
 -----------
 

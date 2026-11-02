@@ -269,6 +269,7 @@ public class StoredTrans {
         long[] gotDirtyIdsAndSpos;
 
         int offset = 0;
+        int byteSize;
 
         /**
          * Parses a transaction starting at buffer[0].
@@ -293,11 +294,13 @@ public class StoredTrans {
 
             this.tpos = tpos;
             offset = 0;
-            int byteSize = Bytes.bytesToIntLE(buffer, offset);
+            byteSize = Bytes.bytesToIntLE(buffer, offset);
             offset += 4;
 
-            if (buffer.length < byteSize) {
-                throw new StreamFormatException("buffer too small, size in header: " 
+            // Header, node end marker, got-dirty count and last byte (bergdb 005-74,
+            // option A). The serializer may have supplied an array longer than the record.
+            if (byteSize < 32 + 4 + 4 + 1 || buffer.length < byteSize) {
+                throw new StreamFormatException("Bad transaction size in header: "
                         + byteSize + ", buffer size: " + buffer.length + ".");
             }
             
@@ -332,11 +335,15 @@ public class StoredTrans {
             }
             
             // Parse got-dirty node ids
+
+            if (offset > byteSize - 5) {
+                throw new StreamFormatException("No room for gotDirtyCount and last byte.");
+            }
             
             int gotDirtyCount = Bytes.bytesToIntLE(buffer, offset);
             offset += 4;
             
-            if (gotDirtyCount < 0 || gotDirtyCount > (buffer.length - offset) / 16) {
+            if (gotDirtyCount < 0 || gotDirtyCount > (byteSize - offset - 1) / 16) {
                 throw new StreamFormatException("bad gotDirtyCount, " + gotDirtyCount);
             }
             
@@ -354,6 +361,10 @@ public class StoredTrans {
             
             int transSizeBefore = offset;
             int count = computeZeroCount(transSizeBefore);
+            if (count > byteSize - transSizeBefore) {
+                throw new StreamFormatException("No room for transaction padding, size "
+                        + byteSize + ", required " + ((long) transSizeBefore + count) + ".");
+            }
             int transSize = transSizeBefore + count;
             lastPos = RecoverableStream.getSpos(tpos, transSize - 1);
             
@@ -366,14 +377,22 @@ public class StoredTrans {
         }
 
         private StoredNode next(byte[] buffer) {
-            if (offset + 4 >= buffer.length) {
-                return null;
+            if (offset > byteSize - 4) {
+                throw new StreamFormatException("Missing node end marker at offset " + offset
+                        + ", transaction size " + byteSize + ".");
             }
 
             int nodeSize = Bytes.bytesToIntLE(buffer, offset);
             if (nodeSize == 0) {
                 offset += 4;
                 return null;
+            }
+
+            // The common node header is 8 bytes. Check before parsing or advancing: a
+            // negative size used to move backwards and loop until the heap ran out.
+            if (nodeSize < 8 || nodeSize > byteSize - offset) {
+                throw new StreamFormatException("Bad node size, " + nodeSize + ", at offset "
+                        + offset + " of transaction at " + tpos + ", size " + byteSize + ".");
             }
 
             long spos = RecoverableStream.getSpos(tpos, offset);
@@ -850,6 +869,88 @@ public class StoredTrans {
     
     
     // ======== Testing ========
+
+    /** bergdb 005-74, F2: this record used to loop between its two delete nodes. */
+    @Nano
+    private static void testNegativeNodeSize() {
+        byte[] buffer = recordWithBadNodeSize(-32);
+        try {
+            parse(128, buffer);
+            throw new AssertionError("negative node size was accepted");
+        } catch (StreamFormatException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("node size"));
+        }
+    }
+
+    /** bergdb 005-74, option A: a node must fit inside its declared record. */
+    @Nano
+    private static void testNodeSizeOutsideRecord() {
+        for (int size : new int[] {1, 6, 7, Integer.MAX_VALUE}) {
+            try {
+                parse(128, recordWithBadNodeSize(size));
+                throw new AssertionError("bad node size was accepted: " + size);
+            } catch (StreamFormatException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("node size"));
+            }
+        }
+        byte[] buffer = recordWithBadNodeSize(32);
+        Bytes.intToBytesLE(80, buffer, 0);    // The array is longer than the record.
+        try {
+            parse(128, buffer);
+            throw new AssertionError("node beyond the declared record was accepted");
+        } catch (StreamFormatException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("node size"));
+        }
+    }
+
+    private static byte[] recordWithBadNodeSize(int size) {
+        byte[] buffer = new byte[112];
+        Bytes.intToBytesLE(buffer.length, buffer, 0);
+        buffer[4] = RECORD_FORMAT;
+        Bytes.longToBytesLE(1, buffer, 8);
+        for (int offset : new int[] {32, 64}) {
+            Bytes.intToBytesLE(offset == 32 ? 32 : size, buffer, offset);
+            buffer[offset + 4] = Node.TYPE_DELETE;
+            buffer[offset + 5] = 4;
+            Bytes.intToBytesLE(offset, buffer, offset + 16);
+            Bytes.intToBytesLE(8, buffer, offset + 20);
+        }
+        int sum = NodeChecksum.sumWithZeroReplace(buffer, 32, 32, 38);
+        Bytes.shortToBytesLE((short) sum, buffer, 38);
+        buffer[buffer.length - 1] = RecoverableStream.LAST_BYTE;
+        return buffer;
+    }
+
+    /** A reused serializer buffer must not make bytes beyond the record readable. */
+    @Nano
+    private static void testCorruptRecordSize() {
+        Serializer serializer = new Serializer();
+        serializer.serialize(new TransNodes(), 100, 200, -1, new ArrayList<Node>());
+        for (int size : new int[] {Integer.MIN_VALUE, -1, 0, 16, 32, 40, 41, 47}) {
+            byte[] buffer = serializer.getTransBuffer().clone();
+            Bytes.intToBytesLE(size, buffer, 0);
+            try {
+                parse(200, buffer);
+                throw new AssertionError("bad record size was accepted: " + size);
+            } catch (StreamFormatException e) {
+                // Refused before a header, node or list is read outside the record.
+            }
+        }
+    }
+
+    @Nano
+    private static void testGotDirtyCountOutsideRecord() {
+        Serializer serializer = new Serializer();
+        serializer.serialize(new TransNodes(), 100, 200, -1, new ArrayList<Node>());
+        byte[] buffer = serializer.getTransBuffer().clone();
+        Bytes.intToBytesLE(1, buffer, 36);
+        try {
+            parse(200, buffer);
+            throw new AssertionError("got-dirty list beyond the record was accepted");
+        } catch (StreamFormatException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("gotDirtyCount"));
+        }
+    }
     
     @Nano
     private static void testKvSanity() {

@@ -193,6 +193,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             throw new StreamFormatException("Bad node byte size, " + size + ". At spos " + spos
                     + ".");
         }
+        checkReadSize(spos, size);
         
         if (buffer.length < size) {
             buffer = new byte[size];
@@ -212,10 +213,22 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
             throw new StreamFormatException("Bad transaction byte size, " + size + ". At spos " + tpos
                     + ".");
         }
+        checkReadSize(tpos, size);
         
         buffer = new byte[size];
         rstream.read(tpos, buffer, 0, size);
         return buffer;
+    }
+
+    /** Check untrusted sizes before allocating, excluding meta blocks (bergdb 005-74, A). */
+    private void checkReadSize(long pos, int size) {
+        long length = rstream.getLength();
+        // Check the last byte, not the next position: a record may end just before a meta
+        // block that a crash has not written. Recovery handles that incomplete block.
+        if (size < 8 || RecoverableStream.getSpos(pos, (long) size - 1) >= length) {
+            throw new StreamFormatException("Bad item byte size, " + size + ", at spos " + pos
+                    + ": beyond the stream's record bytes, length " + length + ".");
+        }
     }
 
     /**
@@ -371,6 +384,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
                             + transCount;
                     throw new StreamFormatException(message);
                 }
+                checkReadSize(tpos, size);
 
                 buffer = new byte[size];
                 rstream.read(tpos, buffer, 0, size);

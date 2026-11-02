@@ -1,0 +1,7 @@
+
+======== NanotestForBergDB: unit ========
+On f53 261102 10:39, OpenJDK 64-Bit Server VM 27
+bergdb.core.NodeStreamTester ...............
+bergdb.core.StoredTrans .....................
+bergdb.dev.NanotestForBergDB .
+SUCCESS, 37 successful tests in 0.1 s.
