@@ -34,6 +34,8 @@ Open
 | [015-04](04-deps-helper-rule.md) | Investigate | deps.py counts take and dither as test code | open |
 | [015-05](05-empty-or-missing-directory.md) | Decide | A start on an empty or missing directory creates a database | open |
 | [015-06](06-refused-start-leaves-file.md) | Fix | A refused start leaves an empty first stream file | open |
+| [015-07](07-node-fields-unchecked.md) | Fix | A node's inner fields unchecked; such a read does not fail the database | open |
+| [015-08](08-streamdigest-compare-cut.md) | Fix | StreamDigest's compare reports the physical cut, which depends on timing | open |
 
 
 Closed
@@ -65,6 +67,12 @@ Files
   directory; B1 (`createIfMissing()`) recommended for after 2026.2.
 * [06-refused-start-leaves-file.md](06-refused-start-leaves-file.md).
   015-06, Fix: a refused start leaves an empty `00000000000000.bergdb`.
+* [07-node-fields-unchecked.md](07-node-fields-unchecked.md). 015-07, Fix:
+  the node parsers do not check their inner fields; a read that meets one
+  throws an unchecked exception and the database stays active.
+* [08-streamdigest-compare-cut.md](08-streamdigest-compare-cut.md).
+  015-08, Fix: `StreamDigest compare` reports the physical cut's fields,
+  which differ between runs.
 
 
 Log

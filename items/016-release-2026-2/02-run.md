@@ -180,6 +180,38 @@ section 3). Unless he chooses before the release, it is a known issue of
 * 16:02 jcstress on F53 started (016-08, F1). Homebrew's install of
   `openjdk@17` had upgraded seven shared libraries (brotli, freetype and
   others); `openjdk` 27 itself is unchanged.
+* 16:03 P1's plans done: 016-03, 016-04, 016-09, 016-10. Chosen from
+  their recommendations: ScaleBench at 200 MB only (no 10 MB runs), the
+  quick `ab` with two runs per scenario, Props three runs each, no
+  Shenandoah; the source zip without `releases/2026.1/`; the write-ups
+  of 005-65 and 005-52 after the quiet block.
+* 16:04 Committed `323a54a`: the plans 016-03 to 016-10. All detailed
+  plans are in place.
+* 16:04 The tools agent T started (016-10's scripts, then 016-09's). The
+  005-65 rerun's smoke test started.
+* 16:05 jcstress on F53, today's five tests on `6f932f0`: all OK, and
+  the control saw its race (016-08, `08-tests/results.md`). JDK 17's
+  `before-commit.sh` and night tests on F53 started (016-08, F2). 005-65's
+  rerun smoke-tested and READY for window 2.
+* 16:09 JDK 17 on F53: `BEFORE COMMIT OK (76 s)` and the night tests'
+  SUCCESS (016-08, F2). 16:10 the stress runner's smoke OK; F3, the
+  stress programs with fresh seeds, two hours from 16:10.
+* 16:08 s1, JDK 27: `level1.sh` and the night tests failed on the
+  machine, not on BergDB: the OOM killer took one of `level1.sh`'s four
+  parallel `-Xmx2g` RestartStress JVMs (3 GB of memory), and
+  `BryanIssueNight` filled `/tmp`, a 1.9 GB tmpfs ("No space left on
+  device"). Rerun queued with the temp files on the disk and the four
+  JVMs one after another, in s1's copy only (016-08, section 2, "A
+  failure").
+* 16:11 Hand-offs waiting for review (H5), with no free slot: 005-79's
+  Part A (`679e153` in its clone; `BEFORE COMMIT OK`, LEVEL 3 OK, the
+  decided digests identical, 36 of 36) and 005-82 (`BEFORE COMMIT OK`;
+  three tests, each fails on the base).
+* 16:12 Registered from the agents' findings: 015-07 (Fix, for 2026.2: the
+  node parsers do not check their inner fields, and such a read does not
+  fail the database; verified by a probe; F1 takes it next) and 015-08
+  (Fix: StreamDigest's compare reports the physical cut, which depends on
+  timing).
 
 
 ## 7. For Frans to decide

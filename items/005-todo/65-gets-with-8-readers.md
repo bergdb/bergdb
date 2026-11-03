@@ -869,8 +869,9 @@ Size: about 1.5 agent-hours and 30 minutes of the block (about 21 used).
 Depends on nothing of tonight's code: the four builds are fixed. No stop
 for Frans unless the results go against the expectation.
 
-**State** (2026-11-03): the wrapper is written, not smoke-tested, no
-READY marker. `prep.sh` need not run again (State's step 1: only if `B`
+**State** (2026-11-03, 16:06): the wrapper is smoke-tested and READY;
+its step `65-rerun` is in night 1's `steps.txt`
+(`/Users/f/fl/bench/016/night1/`). `prep.sh` need not run again (State's step 1: only if `B`
 is lost).
 
 
@@ -880,3 +881,8 @@ Log
 2026-11-03. Planned for night 1 of release 2026.2 (016-05): the rerun in
 window 2, by `night/rerun-016.sh` (written, not yet smoke-tested), then
 the results, the explanation and the close in the morning.
+
+2026-11-03, 16:06. `SMOKE=1 sh night/rerun-016.sh`: "threads (SMOKE):
+OK, 0 problems" (16:04 to 16:05, beside other runs, so its numbers mean
+nothing). `rerun-016.sh.READY` written; the step `65-rerun` (30 minutes)
+added to night 1's `steps.txt`, first in window 2.
