@@ -92,6 +92,17 @@ public class StoredTopNode implements StoredNode {
             throw new StreamFormatException("TopNode at " + spos + " with " + pointerCount
                     + " skip pointers.");
         }
+        // The node's size is its pointers' (getByteSize), checked before the arrays
+        // (2026-11-03, bergdb 015-07): before, only the assert below checked it, after them. A
+        // node whose checksum was right but whose count did not fit it read the bytes after
+        // it, or threw an ArrayIndexOutOfBoundsException, which escaped the reads' failure
+        // handling.
+        final int nodeSize = Bytes.bytesToIntLE(buffer, firstOffset);
+        if (nodeSize != 40 + 16 * pointerCount || nodeSize > buffer.length - firstOffset) {
+            throw new StreamFormatException("TopNode at " + spos + " with " + pointerCount
+                    + " skip pointers has the size " + nodeSize + ", not "
+                    + (40 + 16 * pointerCount) + ", or more than its buffer.");
+        }
 
         offset += 1; // rest of header (reserved)
 
@@ -488,5 +499,29 @@ public class StoredTopNode implements StoredNode {
         
         Assert.assertEquals(top1.topNodeId, top2.topNodeId);
         Assert.assertEquals(top1.rootTime, top2.rootTime);
+    }
+    
+    /**
+     * A top node whose checksum is right but whose pointer count does not fit its size is
+     * refused with a StreamFormatException, before its arrays (2026-11-03, bergdb 015-07).
+     * Before: a count one larger read the bytes after the node, which the buffer holds here
+     * as in a load, and only the assert after the arrays saw it (with -ea); one of 127 threw
+     * an ArrayIndexOutOfBoundsException.
+     */
+    @Nano
+    public static void testRefusesPointerCountBeyondTheNode() {
+        TopTester t = new TopTester();
+        t.createTestData();
+        TopNode top = t.ds1.getSuperRoot();
+        final int size = StoredTopNode.getByteSize(top);
+        long[] longs = new long[size / 8];
+        StoredTopNode.toLongs(top, longs, 0);
+        for (int count : new int[] {top.pointersLength + 1, 127}) {
+            byte[] buffer = java.util.Arrays.copyOf(Bytes.longsToBytesLE(longs), size + 64);
+            buffer[8] = (byte) count;
+            String refused = StoredValueNode.parseWithRightChecksum(buffer, size);
+            Assert.assertTrue(count + ": " + refused, refused.startsWith("TopNode at")
+                    && refused.contains("has the size"));
+        }
     }
 }

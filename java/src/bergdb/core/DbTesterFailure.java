@@ -388,6 +388,78 @@ public class DbTesterFailure {
     }
 
     /**
+     * A get that loads an index node whose checksum is right but whose key count does not
+     * fit its size (bergdb 015-07): the parse refuses it with a StreamFormatException, and
+     * the read fails the database as for a checksum error. Before, the parse threw an
+     * ArrayIndexOutOfBoundsException, which escaped the read's failure handling (it caught a
+     * StreamException only), and the database stayed active and took the next transaction
+     * (005-82's probe).
+     */
+    @Nano
+    public static void testBadKeyCountInGetOne() {
+        failInLoad(0);
+    }
+
+    /** As testBadKeyCountInGetOne, in a scan (Db.getMany). */
+    @Nano
+    public static void testBadKeyCountInGetMany() {
+        failInLoad(1);
+    }
+
+    /** As testBadKeyCountInGetOne, in a put, whose warm-up loads the node. */
+    @Nano
+    public static void testBadKeyCountInPut() {
+        failInLoad(2);
+    }
+
+    /**
+     * The load fails the database: the call throws a DbFailedException whose cause is the
+     * parse's StreamFormatException, every later transaction and read is refused with it,
+     * nothing more is appended, and a restart, with the audit on, gives every key.
+     */
+    private static void failInLoad(int what) {
+        final long auditFailures = Audit.failures();
+        final KeyCountStream s = new KeyCountStream();
+        Db db = startEvicting(s, 0);
+        fill(db);
+        db.sync(SyncLevel.STRONG);
+        final long length = s.getLength();
+
+        s.damage = true;
+        DbFailedException e = null;
+        try {
+            if (what == 0) {
+                DbUtil.get(db, key(KEYS / 2));
+            } else if (what == 1) {
+                DbUtil.checksum(db);
+            } else {
+                db.execute(db.trans().put(key(KEYS / 2), "w").build());
+            }
+        } catch (DbFailedException ex) {
+            e = ex;
+        } catch (RuntimeException ex) {
+            throw new AssertionError("the load did not fail the database: " + ex, ex);
+        }
+        Assert.assertTrue("the load fails the database", e != null);
+        Assert.assertTrue("damaged reads", s.damaged > 0);
+        Assert.assertTrue("the cause: " + e.getCause(),
+                e.getCause().getClass() == StreamFormatException.class
+                && e.getCause().getMessage().startsWith("Bad key count"));
+        assertRefused(db, e.getCause());
+        s.damage = false;
+        db.sync(SyncLevel.STRONG);      // The storage is healthy.
+        Assert.assertEquals("the stream's length", length, s.getLength());
+        db.close();
+
+        Db db2 = startEvicting(s.inner.copy(), 1);
+        for (int j = 0; j < KEYS; j++) {
+            Assert.assertEquals(key(j), "v" + j, DbUtil.getString(db2, key(j)));
+        }
+        db2.close();
+        Assert.assertEquals("audit failures", auditFailures, Audit.failures());
+    }
+
+    /**
      * A read error in the warm-up of a transaction, before its go point, fails the database
      * as well; the transaction has not begun.
      */
@@ -631,13 +703,43 @@ public class DbTesterFailure {
 
     /**
      * As testGetTransChecksum, with a value node whose checksum is right but whose value
-     * size is -1: the parse throws a NegativeArraySizeException, which getTrans makes the
-     * cause of a StreamFormatException, the cause of the failure (bergdb 005-82, 010-01's
-     * P7). Before, it escaped as it was.
+     * size is -1: the parse refuses it with a StreamFormatException ("Bad value size", bergdb
+     * 015-07), the cause of the failure. Until 005-82 the parse's NegativeArraySizeException
+     * escaped as it was; from 005-82 to 015-07 getTrans made it the cause of a
+     * StreamFormatException (testGetTransUncheckedParseError; that wrap is tested by
+     * testParseTransWraps now).
      */
     @Nano
-    public static void testGetTransUncheckedParseError() throws IOException {
+    public static void testGetTransBadValueSize() throws IOException {
         getTransOfDamagedRecord(2);
+    }
+
+    /**
+     * Db.parseTrans, getTrans's parse (bergdb 005-82): a RuntimeException other than a
+     * StreamFormatException becomes the cause of a StreamFormatException, which fails the
+     * database. Since 015-07 no malformed record is known to give one, so a record buffer of
+     * null stands for a bug: StoredTrans.parse throws an IllegalArgumentException for it.
+     */
+    @Nano
+    public static void testParseTransWraps() {
+        Db db = Db.builder().testSetup().start();
+        Trans t = db.trans().put("/a", "a0").build();
+        db.execute(t);
+        NodeStream.TransIterator ti =
+                db.internal().nodeStream().createTransIteratorFromExactStartupPos(t.tpos);
+        Assert.assertTrue("the transaction", ti.next());
+        ti.transBuffer = null;
+        StreamFormatException e = null;
+        try {
+            Db.parseTrans(ti, t.tpos);
+        } catch (StreamFormatException ex) {
+            e = ex;
+        } finally {
+            db.close();
+        }
+        Assert.assertTrue("wrapped: " + e, e != null
+                && e.getCause() instanceof IllegalArgumentException
+                && e.getMessage().startsWith("A malformed record at stream pos " + t.tpos));
     }
 
     /**
@@ -704,8 +806,8 @@ public class DbTesterFailure {
             Assert.assertTrue("the cause: " + e.getCause(),
                     e.getCause().getMessage().startsWith("Bad node size"));
         } else if (damage == 2) {
-            Assert.assertTrue("the cause's cause: " + e.getCause().getCause(),
-                    e.getCause().getCause() instanceof NegativeArraySizeException);
+            Assert.assertTrue("the cause: " + e.getCause(), e.getCause().getCause() == null
+                    && e.getCause().getMessage().startsWith("Bad value size"));
         }
         assertRefused(db, e.getCause());
         DbFailedException refused = null;
@@ -1078,6 +1180,57 @@ public class DbTesterFailure {
                 faults++;
                 throw new AssertionError("FaultStream: an Error in an append, as set");
             }
+            inner.append(source, sourceOffset, length);
+        }
+
+        public void pretruncate(long position) throws IOException {
+            inner.pretruncate(position);
+        }
+
+        public void seekFirstPos(long position) throws IOException {
+            inner.seekFirstPos(position);
+        }
+
+        public void close() throws IOException {
+            inner.close();
+        }
+    }
+
+    /**
+     * A test stream over a MemoryStream whose reads of a whole key node, while 'damage' is
+     * set, give the node a key count of 32,767 with its checksum made right (bergdb 015-07):
+     * a node that passes the checksum but whose inner field does not fit its size. A load
+     * reads a node with one read of its size (NodeStream.readNode); a read of a record starts
+     * with its format byte, not a node's type, and is left as it is.
+     */
+    static class KeyCountStream implements AppendOnlyStream {
+        final MemoryStream inner = new MemoryStream();
+        volatile boolean damage = false;
+        volatile int damaged = 0;
+
+        public long getLength() {
+            return inner.getLength();
+        }
+
+        public long getFirstPos() {
+            return inner.getFirstPos();
+        }
+
+        public void read(long position, byte[] dest, int destOffset, int length)
+                throws IOException {
+            inner.read(position, dest, destOffset, length);
+            if (damage && length >= 32 && dest[destOffset + 4] == bergdb.dag.Node.TYPE_KEY_NODE
+                    && bergdb.common.Bytes.bytesToIntLE(dest, destOffset) == length) {
+                dest[destOffset + 17] = (byte) 0xff;      // the count, bytes 17 and 18
+                dest[destOffset + 18] = (byte) 0x7f;
+                int sum = NodeChecksum.sumWithZeroReplace(dest, destOffset, length,
+                        destOffset + 6);
+                bergdb.common.Bytes.ushortToBytesLE(sum, dest, destOffset + 6);
+                damaged++;
+            }
+        }
+
+        public void append(byte[] source, int sourceOffset, int length) throws IOException {
             inner.append(source, sourceOffset, length);
         }
 

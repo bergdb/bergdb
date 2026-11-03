@@ -1526,12 +1526,14 @@ public class Db implements AutoCloseable {
     /**
      * Parses the record that 'ti' has read, for getTrans() (2026-11-03, bergdb 005-82). A
      * StreamFormatException is thrown as it is. Any other RuntimeException means a malformed
-     * record too, or a bug: a node whose checksum is right but whose fields do not fit its
-     * size (the node parsers do not check them all). It becomes a StreamFormatException with
-     * it as the cause, so that getTrans() fails the database (bergdb 010-01, P7). The parse
-     * reads only the record's bytes, not the stream.
+     * record too, or a bug: it becomes a StreamFormatException with it as the cause, so that
+     * getTrans() fails the database (bergdb 010-01, P7). Since bergdb 015-07 the node parsers
+     * check their fields against the node's size, so that no malformed node is known to come
+     * here; before, a node whose checksum was right but whose value size was -1 did
+     * (DbTesterFailure.testParseTransWraps). The parse reads only the record's bytes, not the
+     * stream. Package-private for that test.
      */
-    private static StoredTrans parseTrans(NodeStream.TransIterator ti, long tpos) {
+    static StoredTrans parseTrans(NodeStream.TransIterator ti, long tpos) {
         try {
             return ti.getStoredTrans();
         } catch (StreamFormatException e) {

@@ -85,6 +85,16 @@ public class StoredKeyNode implements StoredNode {
      * @throws StreamFormatException
      */
     public static StoredKeyNode parse(byte[] buffer, int offset, long spos) {
+        // The key count is checked against the node's size (2026-11-03, bergdb 015-07): a node
+        // whose checksum was right but whose count did not fit it threw an
+        // ArrayIndexOutOfBoundsException, which escaped the reads' failure handling, or read
+        // the bytes after it.
+        final int nodeSize = Bytes.bytesToIntLE(buffer, offset);
+        if (nodeSize < 32 || nodeSize > buffer.length - offset) {
+            throw new StreamFormatException("Bad key node size, " + nodeSize + ", at spos "
+                    + spos + ".");
+        }
+        
         offset += 4; // Skip size.
         byte type = buffer[offset];
         offset += 1;
@@ -135,6 +145,10 @@ public class StoredKeyNode implements StoredNode {
 
         if (size < 0) {
             throw new StreamFormatException("Bad Node size, " + size + ".");
+        }
+        if (size > (nodeSize - 32) / 16) {      // getByteSize()
+            throw new StreamFormatException("Bad key count, " + size + ", of key node at spos "
+                    + spos + ", size " + nodeSize + ".");
         }
 
         long[] klongs = new long[size];
@@ -207,6 +221,29 @@ public class StoredKeyNode implements StoredNode {
             throw new AssertionError("parsed");
         } catch (VersioningStreamException e) {
             Assert.assertTrue(e.getMessage(), e.getMessage().contains("format version 3"));
+        }
+    }
+    
+    /**
+     * A key node whose checksum is right but whose key count does not fit it is refused with
+     * a StreamFormatException (2026-11-03, bergdb 015-07). Before: a count of 32,767 threw an
+     * ArrayIndexOutOfBoundsException; one of 3, one more than the node holds, read the bytes
+     * after the node, which the buffer holds here as in a load.
+     */
+    @Nano
+    private static void testRefusesKeyCountBeyondTheNode() {
+        KeyNode node = new KeyNode();
+        node.addToEnd(Klong.createTime(5000), null, Spos.NULL);
+        node.addToEnd(Klong.createKey(StringUtil.toBytes("key")), null, 1234);
+        final int size = getByteSize(node);
+        long[] longs = new long[size / 8];
+        toLongs(node, longs, 0, 200);
+        for (int count : new int[] {32767, 3}) {
+            byte[] buffer = java.util.Arrays.copyOf(Bytes.longsToBytesLE(longs), size + 64);
+            buffer[17] = (byte) count;          // the count, bytes 17 and 18 (toLongs)
+            buffer[18] = (byte) (count >>> 8);
+            String refused = StoredValueNode.parseWithRightChecksum(buffer, size);
+            Assert.assertTrue(count + ": " + refused, refused.startsWith("Bad key count"));
         }
     }
 }

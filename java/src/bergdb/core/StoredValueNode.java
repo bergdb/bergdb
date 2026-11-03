@@ -26,6 +26,12 @@ public class StoredValueNode implements StoredNode {
     
     public static final int ID_OFFSET = 8;
     
+    /**
+     * The smallest size of a stored value node: the header, 8 bytes; the id, 8; the offset
+     * from the transaction, 4; and the value's or the key's size, 4.
+     */
+    static final int MIN_SIZE = 24;
+    
     private ValueNode node;
     private long[] key;
 
@@ -65,10 +71,25 @@ public class StoredValueNode implements StoredNode {
 
     /**
      * Creates a StoredValueNode by parsing the provided byte buffer.
+     * 
+     * @throws StreamFormatException
+     *      If a size of the node, of its value or of its key does not fit the node (2026-11-03,
+     *      bergdb 015-07), or another field is wrong.
      */
     public static StoredValueNode parse(byte[] buffer, int offset, long spos) {
         assert buffer != null;
         assert buffer.length > offset;
+        
+        // The sizes are checked against the node's (2026-11-03, bergdb 015-07): a node whose
+        // checksum was right but whose value or key size did not fit it threw a
+        // NegativeArraySizeException or an ArrayIndexOutOfBoundsException, which escaped the
+        // reads' failure handling, or read the bytes after it. 'end' is the node's end.
+        final int nodeSize = Bytes.bytesToIntLE(buffer, offset);
+        if (nodeSize < MIN_SIZE || nodeSize > buffer.length - offset) {
+            throw new StreamFormatException("Bad value node size, " + nodeSize + ", at spos "
+                    + spos + ".");
+        }
+        final int end = offset + nodeSize;
         
         offset += 4; // Skips byte size.
         byte type = buffer[offset];
@@ -99,6 +120,10 @@ public class StoredValueNode implements StoredNode {
         if (type == Node.TYPE_VALUE) {
             int valueSize = Bytes.bytesToIntLE(buffer, offset);
             offset += 4;
+            if (valueSize < 0 || valueSize > end - offset - 4) {      // and the key's size
+                throw new StreamFormatException("Bad value size, " + valueSize
+                        + ", of value node at spos " + spos + ", size " + nodeSize + ".");
+            }
             value = new byte[valueSize];
             System.arraycopy(buffer, offset, value, 0, valueSize);
             offset += valueSize;
@@ -109,9 +134,9 @@ public class StoredValueNode implements StoredNode {
         int keySize = Bytes.bytesToIntLE(buffer, offset);
         offset += 4;
         
-        if (keySize % 8 != 0 || keySize <= 0) {
+        if (keySize % 8 != 0 || keySize <= 0 || keySize > end - offset) {
             throw new StreamFormatException("Bad key size when reading value node at spos " 
-                    + spos + ", keySize: " + keySize + ".");
+                    + spos + ", keySize: " + keySize + ", node size: " + nodeSize + ".");
         }
         
         key = new long[keySize / 8];
@@ -341,5 +366,55 @@ public class StoredValueNode implements StoredNode {
         } catch (StreamFormatException e) {
             // Expected.
         }
+    }
+    
+    /**
+     * A value node whose checksum is right but whose sizes do not fit it is refused with a
+     * StreamFormatException, by NodeStream.bytesToNode as a load and a record's parse call it
+     * (2026-11-03, bergdb 015-07). Before: a value size of -1 threw a
+     * NegativeArraySizeException; one of 1,000, and a key size of 8,000, an
+     * ArrayIndexOutOfBoundsException; a key size 16 bytes past the node, and a node size of
+     * 20, read the bytes after the node, which the buffer holds here as in a load.
+     */
+    @Nano
+    private static void testRefusesSizesBeyondTheNode() {
+        long[] key = Keys.toSegments("/-mykey.txt");
+        ValueNode node = new ValueNode(new byte[10], Spos.NULL);
+        final int size = getByteSize(node, key);
+        final int valueAt = 20, keyAt = 24 + 10;
+        // The field's offset, its value, and what the message starts with.
+        Object[][] cases = {
+            {valueAt, -1, "Bad value size"},
+            {valueAt, 1000, "Bad value size"},
+            {keyAt, 8000, "Bad key size"},
+            {keyAt, 8 * key.length + 16, "Bad key size"},
+            {0, 20, "Bad value node size"},
+        };
+        for (Object[] c : cases) {
+            byte[] buffer = new byte[size + 64];
+            toBytes(node, key, buffer, 0);
+            Bytes.intToBytesLE((Integer) c[1], buffer, (Integer) c[0]);
+            final int n = (Integer) c[0] == 0 ? (Integer) c[1] : size;
+            String refused = parseWithRightChecksum(buffer, n);
+            Assert.assertTrue("at " + c[0] + ", " + c[1] + ": " + refused,
+                    refused.startsWith((String) c[2]));
+        }
+    }
+    
+    /**
+     * Gives the node at the start of 'buffer', its size 'size', its checksum, and parses it as
+     * NodeStream.bytesToNode does (bergdb 015-07's tests); returns the StreamFormatException's
+     * message. It must not be a checksum's.
+     */
+    static String parseWithRightChecksum(byte[] buffer, int size) {
+        Bytes.ushortToBytesLE(NodeChecksum.sumWithZeroReplace(buffer, 0, size, 6), buffer, 6);
+        try {
+            NodeStream.bytesToNode(128, buffer, 0, size);
+        } catch (StreamChecksumException e) {
+            throw new AssertionError("a checksum error", e);
+        } catch (StreamFormatException e) {
+            return e.getMessage();
+        }
+        throw new AssertionError("parsed");
     }
 }
