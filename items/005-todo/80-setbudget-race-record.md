@@ -1,9 +1,9 @@
 005-80. Decide: the record and a test of setBudget's race, fixed inside 005-65's commit
 ======================================================================================
 
-Status: open; option B taken under D2 (016-01, section 10) and planned
-for release 2026.2 (see Plan for 2026.2). Kind: decide. Created
-2026-10-29.
+Status: done (2026-11-03): option B, taken under D2 (016-01, section 10):
+the record in 005-52's Outcome and a test that forces the interleaving (see
+Outcome). Kind: decide. Created 2026-10-29. Closed 2026-11-03.
 
 Registered at Frans's request (2026-10-29, 15:51: "Add an entry for "The
 setBudget split" since I want to finish and I don't remember this one.").
@@ -137,15 +137,87 @@ the code; its line in 005-52 meets F2's edits of that file (step 4). No
 stop for Frans. Done when the line in 005-52, the test failing on the
 mutation and passing on `main`, and `BEFORE COMMIT OK` are in place.
 
-**State** (2026-11-03): planned, not started. Read at `df6ad50`:
-`Eviction.setBudget(long)` and `setBudget(Db, long)`, `sweep` (the
-trigger's line under `synchronized (this)`, with 005-65's comment), the
-fields `high`, `low` and `trigger` (volatile), the callers of `sweep`
-(the eviction thread's run under the write lock), and `988fe1a`'s diff.
+**State** (2026-11-03, 16:19, F1): done; the final hand-off is
+`/Users/f/fl/bench/016/005-80/handoff/` (with `review.txt`), for the
+coordinator's combined gate and commit.
 
+
+Outcome
+-------
+
+2026-11-03, by F1 (016-05), in `/Users/f/fl/bench/016/005-80/repo` from
+`main` at `323a54a`:
+
+* Option B. The record: a bullet in 005-52's Outcome (the fix in
+  `988fe1a`, what the race did, the test).
+* The test: `Eviction.testSetBudgetAtBatchEnd` (unit), with a hook,
+  `Eviction.testBeforeTrigger` (a package-private instance field, null but
+  in the test), between the computation of the trigger and its write in
+  `sweep`'s `synchronized (this)` block. The test lowers the budget from
+  within the hook and checks that `setBudget` waited for the batch's
+  monitor and wrote its trigger last. With the three lines moved out of
+  the monitor, as the line was before `988fe1a`, it fails: the batch puts
+  back the old budget's trigger (1,000,000 instead of 250,000). What
+  `sweep` computes is unchanged, and no stream byte changes (the cache
+  size changes none).
+* `before-commit.sh`: `BEFORE COMMIT OK (121 s)`. Reviewed by the
+  coordinator: no faults.
+* Option C (a commit of its own) stays impossible without rewriting the
+  pushed `main`; not done.
 
 Log
 ---
 
 2026-11-03. Option B planned for release 2026.2 (016-05), with a test hook
 between the trigger's computation and its write. Nothing changed yet.
+
+2026-11-03, 16:07 to 16:11, by F1 (016-05), in
+`/Users/f/fl/bench/016/005-80/repo` from `main` at `323a54a`, steps 1 to 4:
+
+* **The hook**, `Eviction`: a package-private instance field `Runnable
+  testBeforeTrigger`, null but in the test. In `sweep`'s `synchronized
+  (this)` block the trigger's line became three: `final long next =
+  Math.max(high, pinnedOfLastRound + (high - low));`, the hook if it is
+  set, `trigger = next;`. What is computed is unchanged; one plain field
+  read a batch. The comment at the line names the test.
+* **The test**, `Eviction.testSetBudgetAtBatchEnd` (unit), beside
+  `testNoLostRequest`: a database with `Schedule.BUDGET` and a budget B0
+  of 1,000,000 bytes, 300 small values (far below the budget: the batch
+  frees nothing, `pinnedOfLastRound` stays 0, and no eviction thread
+  runs). The hook starts a thread that calls `setBudget(B0 / 4)` and waits,
+  at most 2 s, until that thread is `BLOCKED` (it waits for the monitor)
+  or has ended, and records which; a state check instead of the plan's
+  `join(200)`, so that the test takes about 40 ms and does not depend on a
+  timeout. The test runs one batch itself, `e.sweep(db, false)` under the
+  write lock, then joins the thread. Asserts: the thread has ended; the
+  budget is B0 / 4; the trigger is B0 / 4 (setBudget's, written last);
+  the thread was `BLOCKED` in the hook. The hook is set back to null and
+  the database closed in a `finally`.
+* **The mutation** (step 3), the three lines moved before the
+  `synchronized (this)` block, as the line was before `988fe1a`: the test
+  fails, three runs of three, with "the trigger, setBudget's (setBudget in
+  the hook: TERMINATED), expected 250000, got 1000000.": setBudget ended
+  within the hook, and the batch then wrote the old budget's trigger. On
+  the code as it is the test passes, three runs of three (38 to 51 ms).
+  The mutation is reverted (`git diff` holds only the hook, its comment
+  and the test).
+* **The record** (step 4): the bullet in 005-52's Outcome, as the plan
+  words it, with the test's date.
+* **The gate** (step 5): `java/before-commit.sh`, first 16:13 to 16:15:
+  `BEFORE COMMIT FAILED: unit tests`, one failure,
+  `Reclaim.Tester.testCrashBeforeIterationEnd` ("truncate to 241352,
+  before the length at the last cut, 246952"), with F53 loaded by other
+  agents' runs (the unit tests took 36 s, against about 11 s). That test
+  touches nothing of this change and passed five runs of five alone; the
+  coordinator registered it as 015-09 (it depends on timing under load).
+  Again, 16:16 to 16:18: `BEFORE COMMIT OK (121 s)`, 1,094 unit tests and
+  78 f-tests. `level4.sh quick` not run: other agents' gates kept F53 busy
+  (one at a time).
+
+2026-11-03. Reviewed 2026-11-03 by the coordinator (H5, 016-05, section
+5): no faults. Checked: the hook reads a plain field once a batch; the
+mutation shows that `setBudget` needs no write lock (it ended within the
+hook while the test held the lock), so `BLOCKED` in the fixed code is on
+the eviction monitor; a batch of the eviction thread that reached the
+hook first would give the same interleaving and the same asserts. No
+answers needed. Closed: Outcome and Status above.

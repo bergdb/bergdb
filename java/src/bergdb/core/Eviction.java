@@ -135,6 +135,12 @@ public final class Eviction {
      */
     private volatile long trigger;
 
+    /**
+     * A test's hook in sweep(), under the monitor, between the computation of the trigger and
+     * its write (bergdb 005-80, testSetBudgetAtBatchEnd); null but in that test.
+     */
+    Runnable testBeforeTrigger = null;
+
     private long unswizzled = 0;
     private long released = 0;
 
@@ -644,9 +650,13 @@ public final class Eviction {
         // that kept loading kept the batches going with pinned state above the budget.)
         // Under this monitor, as setBudget writes the watermarks and the trigger: else a batch
         // that ended as it ran could put back the trigger of the old budget (bergdb 005-65).
+        // The hook, a test's, stops the batch between the two (testSetBudgetAtBatchEnd).
         long dt = System.nanoTime() - t0;
         synchronized (this) {
-            trigger = Math.max(high, pinnedOfLastRound + (high - low));
+            final long next = Math.max(high, pinnedOfLastRound + (high - low));
+            final Runnable hook = testBeforeTrigger;
+            if (hook != null) hook.run();
+            trigger = next;
             released += r + values;
             unswizzled += values;
             sweeps++;
@@ -1465,6 +1475,69 @@ public final class Eviction {
             }
             Thread.sleep(1);
         }
+    }
+
+    /**
+     * setBudget as a batch ends (bergdb 005-80): a batch computes the trigger from the
+     * watermarks it reads, and a setBudget that lowers the budget before the batch writes the
+     * trigger must not have its own trigger put back by the batch's. Since 988fe1a (005-65)
+     * the batch computes and writes the trigger under the monitor that setBudget holds, so
+     * setBudget waits for it and writes its trigger last. The hook testBeforeTrigger stops
+     * the batch between the computation and the write, and a thread calls setBudget there;
+     * the batch goes on when that thread waits for the monitor. Before 988fe1a the line was
+     * outside the monitor: setBudget ended within the hook, and the batch then wrote the old
+     * budget's trigger, B0 instead of B0 / 4.
+     */
+    @Nano
+    public static void testSetBudgetAtBatchEnd() throws InterruptedException {
+        final long b0 = 1000 * 1000;
+        MemoryStream s = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(s).clock(clock).testId().cacheSizeIndicator(b0)
+                .evictionSchedule(Schedule.BUDGET, 1).audit(0).start();
+        long time = 100 * STEP;
+        for (int i = 0; i < 300; i++) {
+            time += STEP;
+            clock.setTime(time);
+            db.execute(db.trans().put("k" + i, "value " + i).build());
+        }
+        final Eviction e = db.internal().eviction();
+        final Thread setter = new Thread(new Runnable() {
+            public void run() {
+                e.setBudget(b0 / 4);
+            }
+        });
+        setter.setDaemon(true);
+        final Thread.State[] inHook = new Thread.State[1];
+        e.testBeforeTrigger = new Runnable() {
+            public void run() {
+                if (setter.getState() != Thread.State.NEW) return;     // the test's batch only
+                setter.start();
+                // Until setBudget waits for the monitor, or has ended; at most 2 s.
+                final long end = System.nanoTime() + 2000L * 1000 * 1000;
+                Thread.State st = setter.getState();
+                while (st != Thread.State.BLOCKED && st != Thread.State.TERMINATED
+                        && System.nanoTime() < end) {
+                    Thread.yield();
+                    st = setter.getState();
+                }
+                inHook[0] = st;
+            }
+        };
+        try {
+            synchronized (db.internal().getWriteLock()) {     // as a batch's caller
+                e.sweep(db, false);
+            }
+            setter.join(2000);
+        } finally {
+            e.testBeforeTrigger = null;
+            db.close();
+        }
+        Assert.assertTrue("setBudget has ended", !setter.isAlive());
+        Assert.assertEquals("the budget", b0 / 4, e.budget());
+        Assert.assertEquals("the trigger, setBudget's (setBudget in the hook: " + inHook[0]
+                + ")", b0 / 4, e.trigger);
+        Assert.assertEquals("setBudget in the hook", Thread.State.BLOCKED, inHook[0]);
     }
 
     /**

@@ -376,6 +376,12 @@ code is one commit, `fd8f513`. Gates, StreamDigest and their files: in
 * StreamDigest identical (005-53's Outcome): no configuration calls the
   setter, and the cache size changes no byte (EvictionInvariance in
   `level4.sh`).
+* Fixed in `988fe1a` (005-65's commit, 2026-10-29): `Eviction.sweep`
+  computes the trigger under the monitor that `setBudget` holds. Before, a
+  batch that ended while `setBudget` lowered the budget could put back the
+  old budget's trigger, and the decrease then waited until the resident
+  bytes passed the old budget or another batch ended (005-80). Test:
+  `Eviction.testSetBudgetAtBatchEnd` (2026-11-03).
 
 
 Left to do
