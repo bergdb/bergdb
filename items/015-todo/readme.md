@@ -61,6 +61,7 @@ Open
 | [015-46](46-string-at-object-key-index.md) | Fix | A String or byte[] at an object key in an indexed directory breaks ... | open |
 | [015-47](47-bytes-shared-with-caller.md) | Fix | A byte[] value is shared with the caller: a change of the array ... | open |
 | [015-48](48-exists-freezes-time.md) | Fix | freezeLookupTime(), then exists(): the frozen time is the read ... | open |
+| [015-49](49-review-s2-faults.md) | Fix | Review S2's 27 faults of the indexes and the objects | open |
 
 
 Closed
@@ -169,6 +170,7 @@ Files
 * [46-string-at-object-key-index.md](46-string-at-object-key-index.md). 015-46, Fix: S1-F7.
 * [47-bytes-shared-with-caller.md](47-bytes-shared-with-caller.md). 015-47, Fix: S1-F8.
 * [48-exists-freezes-time.md](48-exists-freezes-time.md). 015-48, Fix: S1-F9.
+* [49-review-s2-faults.md](49-review-s2-faults.md). 015-49, Fix: review S2's 27 faults.
 
 
 Log

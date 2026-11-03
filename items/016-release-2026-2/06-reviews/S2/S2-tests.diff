@@ -1,0 +1,121 @@
+diff --git a/java/src/bergdb/pubimp/PubTesterComposite.java b/java/src/bergdb/pubimp/PubTesterComposite.java
+index 11c279c..fc92e03 100644
+--- a/java/src/bergdb/pubimp/PubTesterComposite.java
++++ b/java/src/bergdb/pubimp/PubTesterComposite.java
+@@ -877,6 +877,38 @@ public class PubTesterComposite {
+         database.stop();
+     }
+     
++    /**
++     * 016-06/S2-F14: a composite index whose second level has two fields, after a restart:
++     * a new object is indexed.
++     */
++    @Nano
++    public static void testS2TwoFieldsLevelAfterRestart() {
++        MemoryStream stream = new MemoryStream();
++        DatabaseBuilder builder = Factory.database();
++        ((DatabaseBuilderImp) builder).getDbBuilder().testSetup(stream);
++        Database db = builder.start();
++        try {
++            db.indexBuilder("ft").dir("/payments/").type("long").field("time")
++                    .type("string").field("from").field("to").createFast();
++        } finally {
++            db.close();
++        }
++        builder = Factory.database();
++        ((DatabaseBuilderImp) builder).getDbBuilder().testSetup(stream.copy());
++        db = builder.start();
++        try {
++            Connection c = db.newConnection();
++            c.put("/payments/1", new Payment2("a", "b", 7));
++            int count = 0;
++            for (Payment2 p : c.useIndex("ft", Payment2.class).eq(7).objects()) {
++                count++;
++            }
++            Assert.assertEquals(2, count);
++        } finally {
++            db.close();
++        }
++    }
++    
+     public static void main(String[] args) {
+         //
+     }
+diff --git a/java/src/bergdb/pubimp/PubTesterIndex.java b/java/src/bergdb/pubimp/PubTesterIndex.java
+index 6d0e7c4..8c97d39 100644
+--- a/java/src/bergdb/pubimp/PubTesterIndex.java
++++ b/java/src/bergdb/pubimp/PubTesterIndex.java
+@@ -2151,6 +2151,73 @@ public class PubTesterIndex {
+         Assert.assertEquals(want.toString(), got.toString());
+     }
+     
++    // ======== Review 016-06/S2 (tests that fail at fa08db4) ========
++    
++    /** 016-06/S2-F2: inclusive(false) with no startAt() excludes nothing. */
++    @Nano
++    public static void testS2ExclusiveWithoutStart() {
++        Database db = Factory.database().memory().start();
++        try {
++            db.indexBuilder("amount").type("long").dir("/payments/").field("amount").createFast();
++            Connection c = db.newConnection();
++            for (long v = 1; v <= 3; v++) {
++                c.put("/payments/" + v, new Payment("a", "b", v));
++            }
++            assertAmounts(new long[] {1, 2, 3}, c.useIndex("amount", Payment.class).inclusive(false).objects());
++        } finally {
++            db.close();
++        }
++    }
++    
++    /** 016-06/S2-F13: prefix() on a secondary string index. */
++    @Nano
++    public static void testS2Prefix() {
++        Database db = Factory.database().memory().start();
++        try {
++            db.indexBuilder("from").type("string").dir("/payments/").field("from").createFast();
++            Connection c = db.newConnection();
++            c.put("/payments/1", new Payment("a", "x", 1));
++            c.put("/payments/2", new Payment("ab", "x", 2));
++            c.put("/payments/3", new Payment("abc", "x", 3));
++            c.put("/payments/4", new Payment("b", "x", 4));
++            assertAmounts(new long[] {2, 3}, c.useIndex("from", Payment.class).prefix("ab").objects());
++        } finally {
++            db.close();
++        }
++    }
++    
++    /** 016-06/S2-F26: an object whose indexed String field is null is stored. */
++    @Nano
++    public static void testS2NullStringField() {
++        Database db = Factory.database().memory().start();
++        try {
++            db.indexBuilder("from").type("string").dir("/payments/").field("from").createFast();
++            Connection c = db.newConnection();
++            Payment p = new Payment(null, "x", 1);
++            c.put("/payments/1", p);
++            Assert.assertEquals(1, c.get("/payments/1", Payment.class).amount);
++        } finally {
++            db.close();
++        }
++    }
++    
++    /** 016-06/S2-F3: a String put over an indexed object, then a delete of the key. */
++    @Nano
++    public static void testS2StringOverObject() {
++        Database db = Factory.database().memory().start();
++        try {
++            db.indexBuilder("amount").type("long").dir("/payments/").field("amount").createFast();
++            Connection c = db.newConnection();
++            c.put("/payments/1", new Payment("a", "b", 1));
++            c.put("/payments/1", "hello");
++            c.delete("/payments/1");
++            Assert.assertFalse(c.exists("/payments/1"));
++            assertAmounts(new long[] {}, c.useIndex("amount", Payment.class).objects());
++        } finally {
++            db.close();
++        }
++    }
++    
+     public static void main(String[] args) {
+         //composite1();
+     }
