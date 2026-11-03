@@ -506,12 +506,15 @@ Limits:
 
 Replication is in no level, and no check of the levels has a replica. It is
 experimental, with known faults (005-11; Frans, 2026-10-25: kept as it is
-for release 2026.1, documented as experimental): with reclaim, a crash can
-leave a replica that does not start or gives wrong answers; a replica whose
-storage fails fails the database at reclaim's next cut; a start without a
-replica that was ahead of the main mixes two histories; a replica is written
-in plain text when the database is encrypted. The Javadoc of
-`DatabaseBuilder.replica` and `Database.addReplica` lists them.
+for releases 2026.1 and 2026.2, documented as experimental; since 2026.2
+also: its API will change in a later release, and it must not be used in
+production, 016-01, section 3):
+with reclaim, a crash can leave a replica that does not start or gives wrong
+answers; a replica whose storage fails fails the database at reclaim's next
+cut; a start without a replica that was ahead of the main mixes two
+histories; a replica is written in plain text when the database is
+encrypted. The Javadoc of `DatabaseBuilder.replica` and
+`Database.addReplica` lists them.
 
 
 ## 10. Open work

@@ -90,9 +90,10 @@ eviction; Java's runs are checked against it, not proved, and concurrency and
 resource bounds are not in it. Whether the concept is novel is open; see
 the study of prior art, [011-02](items/011-docs-archive/02-prior-art.md).
 
-A known limit (2026-10-25). Replication (`DatabaseBuilder.replica`,
-`Database.addReplica`) is experimental, with known faults, and not for data
-that matters ([005-11](items/005-todo/11-replication.md)). The bound on
+A known limit. Replication (`DatabaseBuilder.replica`,
+`Database.addReplica`) is experimental, with known faults; its API will
+change, and it must not be used in production
+([005-11](items/005-todo/11-replication.md); Frans, 2026-11-03). The bound on
 the startup section (T3) is proved for BergDB's own startup pos policy since
 2026-10-28, in the Lean model of its take
 ([007-08](items/007-bounds/08-step4-take-in-lean.md)): the startup section

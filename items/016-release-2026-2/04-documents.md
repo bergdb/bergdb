@@ -246,3 +246,14 @@ diff -w` shows the same lines). Gates in the clone: `build.sh` OK,
 coordinator's to start (016-05, section 4: subagents start no agents).
 Hand-off: `/Users/f/fl/bench/016/docs/handoff-D1/`.
 
+2026-11-03, 20:24, the documents agent: **D2 done** on `main` at
+`777f75f`. README.md's known limit and docs/levels.md, section 9 have the
+four statements, in section 2's words but for one: section 9 says "its API
+will change", not "may change", as Frans said it and as D1's Javadoc and
+the notes' known issue say it. The check: `grep -n -i 'replica' README.md
+docs/levels.md` shows README.md, lines 93 to 96, and section 9 with the
+four; docs/levels.md, line 28 links to section 9, and line 469 lists
+replication among what power-loss testing has not established, which
+stays. The draft notes (016-03, N2) have the same four in their known
+issues. Hand-off: `/Users/f/fl/bench/016/docs/handoff-D2/`.
+
