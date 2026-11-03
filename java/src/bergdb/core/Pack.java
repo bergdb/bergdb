@@ -41,6 +41,7 @@ public class Pack implements IPack {
         StoredTopNode.class,
         StoredTrans.class,
         StoredValueNode.class,
+        SystemClock.class,
         Tester.class,
         Trans.class,
         TransNodes.class,

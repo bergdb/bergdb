@@ -1,9 +1,9 @@
 005-69. Fix: `SystemClock` does not keep its promise of strictly increasing times
 ===============================================================================
 
-Status: open; option A taken under D2 (016-01, section 10) and planned
-for release 2026.2, Java only (see Plan for 2026.2). Kind: fix. Created
-2026-10-28.
+Status: done (2026.2, Java): option A, taken under D2 (016-01, section
+10); the C clone's port is a later follow-up (D7; see Plan for 2026.2).
+Kind: fix. Created 2026-10-28. Closed 2026-11-03.
 
 Registered by Claude (Opus 5.5, Claude Code), the conductor of 012, as
 012-01 (section 4.4) and its decision D5 say: a Java bug that the C clone's
@@ -124,13 +124,68 @@ same line, with a note in 012's log; C is a separate project, built and
 tested by hand (012). Until then C keeps Java's old behaviour, which no
 cross test sees (they use the test clock).
 
-**State** (2026-11-03): planned, not started. The code read at `df6ad50`:
-`SystemClock` (`lastTime` starts at 0 and is set only inside the `if`);
-its users `DbBuilder` and `pubimp.TimeResolver`.
+**State** (2026-11-03, 16:18, F1): done; the final hand-off is
+`/Users/f/fl/bench/016/005-69/handoff/` (with `review.txt`), for the
+coordinator's combined gate and commit.
 
+
+Outcome
+-------
+
+2026-11-03, by F1 (016-05), in `/Users/f/fl/bench/016/005-69/repo` from
+`main` at `323a54a`:
+
+* `SystemClock` keeps its promise: `getTime()` calls a package-private
+  `synchronized getTime(long millis)` with `System.currentTimeMillis()`,
+  which keeps a system time later than the last one as `lastTime`, and
+  gives `lastTime + 1` for an equal or earlier one. So each call returns a
+  time later than the one before, in 100 ns units, also when the system
+  clock is set back. The class Javadoc says so, and that a database does
+  not depend on it (`DbClock`). No stream byte changes: the streams that
+  are compared byte for byte use the test clock.
+* Tests (unit, in `SystemClock`, added to `bergdb.core.Pack`):
+  `testStrictlyIncreasing` and `testClockSetBack`; both fail with the line
+  `lastTime = time;` removed, the code as it was.
+* `before-commit.sh`: `BEFORE COMMIT OK (111 s)`. Reviewed by the
+  coordinator: no findings.
+* Not done for 2026.2 (D7): the C clone's port (`c/src/clock.c`), which
+  keeps Java's old behaviour; no cross test sees it (they use the test
+  clock).
+* For `releases/next.md`: "`SystemClock`, the default clock, gives
+  strictly increasing times as its Javadoc said (005-69)".
 
 Log
 ---
 
 2026-11-03. Option A planned for release 2026.2, Java only (016-05); the C
 port is a later follow-up (D7). Nothing changed yet.
+
+2026-11-03, 16:05 to 16:07, by F1 (016-05), in
+`/Users/f/fl/bench/016/005-69/repo` from `main` at `323a54a`, steps 1 and 2:
+
+* **The fix**, `SystemClock`: `getTime()` calls a new package-private
+  `synchronized getTime(long millis)` with `System.currentTimeMillis()`.
+  In it, a system time later than `lastTime` becomes `lastTime`; an equal
+  or earlier one gives `lastTime + 1`, as before. The class Javadoc says so,
+  and that a database does not depend on it (`DbClock`). `DbClock`,
+  `DbBuilder` and `pubimp.TimeResolver` are unchanged; the `Clock`
+  interface promises nothing about order.
+* **The tests**, in `SystemClock` (added to `bergdb.core.Pack`'s list):
+  `testStrictlyIncreasing` (100,000 calls of `getTime()`, each later than
+  the one before) and `testClockSetBack` (`getTime(1000)`, `(1000)`,
+  `(999)`, `(2000)`, `(0)`: 10,000,000, then + 1, + 2, then 20,000,000 and
+  + 1).
+* **The mutation**: the line `lastTime = time;` removed (the code as it
+  was, with the new method kept): both fail, `testClockSetBack` with
+  "Expected 10000001, got 10000000." and `testStrictlyIncreasing` at its
+  first call ("call 0: 17937184124300000, after 17937184124300000"). With
+  the fix both pass (`unit.sh -c SystemClock`).
+* **The gate** (step 3): `java/before-commit.sh`, 16:11 to 16:13: `BEFORE
+  COMMIT OK (111 s)`, 1,095 unit tests and 78 f-tests. `level1.sh quick`
+  not run: other agents' gates kept F53 busy (one at a time).
+
+2026-11-03. Reviewed 2026-11-03 by the coordinator (H5, 016-05, section
+5): no findings. `getTime(long)` keeps `lastTime` and stays strictly
+increasing also when two threads read `currentTimeMillis` outside the
+lock in the other order; the tests and the mutation are right. Closed:
+Outcome and Status above.
