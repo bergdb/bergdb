@@ -279,5 +279,133 @@ Known issues and limits
 Post-release notes
 ------------------
 
-None yet. A fault found later that affects 2026.1, its numbers or its
-correctness, is recorded here.
+A fault found later that affects 2026.1, its numbers or its correctness,
+is recorded here. Each was checked against 2026.1's code (`git show
+release-2026.1:PATH` of the code its fix changed), on 2026-11-03, for
+release 2026.2 (bergdb 016-03, N3).
+
+**Faults of 2026.1 fixed for 2026.2:**
+
+* **An interrupt could fail or stop the database** (005-46, `eaec93e`).
+  An append that waited for room in the write buffer threw an
+  `IOException` ("Thread interrupted while appending") when its thread was
+  interrupted, which failed the database; an interrupt of the storage
+  thread threw a `Bug` and stopped its writes; a wait for an index job,
+  and an index job's own thread, threw an `Error` when interrupted.
+* **A start with another node size** looked like a corrupt stream, or
+  started and could leave a stream that no start opened (005-50,
+  `bf19075`): 2026.1 does not keep the node size in the stream (offset 44
+  of the meta block is reserved). Through the core API only
+  (`DbBuilder.maxNodeSize8()` and its kin).
+* **Reclaim spaced its iterations by the builder's startup distance**, not
+  the stream's (005-61, `a175840`): `Reclaim` took `db.getStartupDistance()`
+  in `Db`'s constructor, before `start()` read the stream's. A database
+  opened with another startup distance than it was made with, as one made
+  with `startupDistanceInMb(5)` and opened with the default 50 MB,
+  reclaimed too seldom or too often; in a test at 2,000 bytes against 50
+  MB it nearly stopped reclaiming.
+* **Nothing refused a second database on one directory** (005-63,
+  `322c5d1`), in the same JVM or in another process: 2026.1 takes no lock
+  on the directory. The two could write beside each other, and one
+  started right after `stop()` could take files that the first was still
+  deleting.
+* **A read set from before a restart was accepted** (005-70, `7d967d7`):
+  after a start the STM's history is empty, and a transaction with a read
+  dependency whose snapshot predated the last recovered commit was not
+  checked, despite a conflicting write before the close. Through the core
+  API only: a Pub API transaction cannot move to a new `Database`.
+* **`close()` discarded I/O failures** (005-73, `3ad171d`): a failed final
+  flush or storage close, which `closeStorage()` returned, was dropped by
+  `close()` and by `stop()`'s thread.
+  `Db.setReclaimInternalFraction(Double.NaN)` was accepted (its range check
+  is false for NaN). `Db.getCachePutSize()` was constant and
+  `getDirtyFraction100()` and `getDirtyFraction1000()` were incorrect, with
+  their JMX attributes.
+* **Corrupt sizes looped or exhausted the heap** (005-74, `c229ab2`): a
+  negative node size moved `StoredTrans.Parser` back for ever, and a
+  corrupt record or node size near 2^31 was allocated before its bytes
+  were read, giving an `OutOfMemoryError` instead of a format error.
+* **Corrupt times and sizes were replayed** (005-75, `0e61856`): startup
+  did not check the record order, the 56-bit range of record times or the
+  increasing times in key nodes before replay, and a Core append did not
+  check the size at the buffer's offset.
+* **A node's inner fields were not checked** (015-07, `12610c7`): a node
+  whose checksum was right but whose key count, value size, key size or
+  pointer count did not fit threw an `ArrayIndexOutOfBoundsException` or a
+  `NegativeArraySizeException` in a load, which escaped the reads' failure
+  handling, so the database stayed active.
+* **`getTrans` on a corrupt record left the database active** (005-82,
+  `3e32f02`): `Db.getTrans` parsed the record (`ti.getStoredTrans()`)
+  after its `try`, so the parse's exceptions passed its failure handling.
+* **A key node's growth was published with plain stores** (015-12,
+  `dc42409`): a reader that read the node's size before a growth could see
+  the new arrays without their contents, so a search could miss a key
+  that was there long before its lookup time, or return the value of a
+  later or uncommitted transaction. Rare (8 misses in 477 million searches
+  in a probe, none seen through a database); `growCapacity` is the same in
+  2026.1.
+* **A directory whose stream files were gone, or whose only file was
+  empty, started as a new, empty database** without a word (015-01,
+  `ed16384`): 2026.1 creates a database for every empty stream, whatever
+  `created.txt` says. An empty or missing directory still does, in 2026.2
+  too (015-05).
+* **A start refused for its crypto key left an empty first stream file**
+  (015-06, in part, `ed16384`): in 2026.1, `dir()` opened the directory,
+  creating `00000000000000.bergdb`, before `start()` checked the key.
+* **`SystemClock` did not give strictly increasing times** (005-69,
+  `b281d39`), as its Javadoc said: its last time stayed 0, so calls within
+  a millisecond, or after the system clock was set back, gave equal or
+  earlier times. No harm: a database's own clock makes its times strictly
+  increasing.
+* **`BufferedStream` did not wake its consumer when its buffer was a
+  quarter full** (005-76, `df6ad50`): 2026.1's known issue of 005-13,
+  fixed.
+
+**Faults of 2026.1 not fixed in 2026.2** (known issues of 2026.2):
+
+* **Holes in an unforced tail** after a power loss can refuse a start or
+  fail a later read (014-01, found in 005-83). Not fixed.
+* **A filtered scan takes an empty page for the end of its range**
+  (015-20): a typed primary scan (`usePrimary`) leaves out every later
+  object when one page of about 100 entries holds no object; the same code
+  in 2026.1 (`UseIndexBuilderImp`). Not fixed when this note was written
+  (2026-11-03).
+* **Indexes deleted and created again under the same name** while an old
+  job runs: a second `deleteIndex` lets the first job delete the new index
+  and its entries (015-21); a deleted index's build writes into its
+  replacement (015-22). Also after a restart. Not fixed when this note was
+  written.
+* **A refused index deletion** leaves the index active but no longer
+  maintained (015-23). Not fixed.
+* **A failed append's transaction was visible** to a read before the
+  failure, where 2026.1's documents said that its time never becomes a
+  lookup time (015-27): `transactionEnd()` comes before `store()`. The
+  text is corrected for 2026.2 (docs/levels.md, section 3); the code is
+  the same.
+* **`FileStream.append` with a negative length** corrupts the stream's
+  length (015-26). Internal: no path from the Pub API gives one.
+* **A start on an empty or missing directory creates a database**
+  (015-05), as above.
+
+**Documentation of 2026.1 that was wrong:**
+
+* The Javadoc of `Database.stop()` and `Db.stop()` said that the files are
+  not forced and that only `sync(STRONG)` forces them; `FileStream` forces
+  every append, so `sync()` waits until the data is on the device, and
+  `STRONG` adds the replicas (`a515af3`).
+* `DatabaseBuilder.startupDistanceInMb`'s Javadoc said 5 to 100 MB; the
+  code clamps to 5 to 1000 MB (`fd8f513`).
+
+**"How to compare a later version", above, no longer holds as written:**
+
+* One compiled copy of StreamDigest, PauseProbe or `performance.sh`'s
+  harness no longer runs on both 2026.1 and later jars: 005-56 (`04f1546`)
+  moved `SyncLevel` to `bergdb.pub.util`, and 005-46 (`eaec93e`) made
+  `PauseProbe` use `FileStreamIo`, package-private in 2026.1. What runs on
+  both: Props, each jar its own; `PauseProbe` as of `e23c96e`;
+  StreamDigest and the harness compiled per jar, with the import of
+  `SyncLevel` changed for 2026.1; ScaleBench patched and compiled per jar
+  (bergdb 016-10, section 1).
+* Later versions give other digests than 2026.1, by design: the node size
+  in the meta block (005-50), the paced take (007-07) and the take in
+  integers (005-79) change the records, though handles alone do not.

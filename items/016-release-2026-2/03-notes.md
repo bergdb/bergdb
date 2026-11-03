@@ -395,3 +395,46 @@ section 4.2, without 005-82 and 015-01 (fixed), with 005-78, 015-05,
 tonight (015-13, 015-14, 015-20, 015-22) move to the changes in N4 if they
 get in. Every table's data rows are aligned and at most 100 characters.
 
+2026-11-03, 20:45, the notes agent: **N3 done** on `main` at `b6515aa`.
+`releases/2026.1/readme.md`, "Post-release notes", replaces "None yet."
+Each fault was checked against 2026.1's code (`git show
+release-2026.1:PATH` of the files its fix changed; for the fixes, a script
+that finds the code lines each fix removed in the files at the tag), and
+each expectation of section 3 is confirmed:
+
+* Affects 2026.1, fixed for 2026.2, each with a line: 005-46 (the
+  buffer's wait threw "Thread interrupted while appending", the consumer a
+  `Bug`, the index waits an `Error`), 005-50 (offset 44 reserved; core API
+  only), 005-61 (`initialStartupDistance` taken in `Db`'s constructor),
+  005-63 (no lock at the tag), 005-70 (an empty `KeyModSet` passed every
+  read set; core API only), 005-73 (`close()` and `stop()`'s thread
+  dropped `closeStorage()`'s failure; the range check is false for NaN),
+  005-74 and 005-75 (the fixes' removed lines all at the tag), 005-76
+  (2026.1's known issue, fixed), 005-82, 005-69; and from tonight 015-07
+  (no inner checks at the tag), 015-12 (`growCapacity` and the readers'
+  plain reads the same), 015-01 (an empty stream is always created) and
+  015-06's part (`dir()` opened the directory before the crypto check).
+* Affects 2026.1, not fixed when written (each a known issue of 2026.2):
+  014-01; 015-20 (`UseIndexBuilderImp` unchanged since the tag), 015-21,
+  015-22, 015-23 (`IndexManager`'s logic unchanged but for 005-46's
+  interrupts), 015-26, 015-27 (`transactionEnd()` before `store()` at the
+  tag), 015-05. N4 moves those that get in to the fixed list.
+* Not in 2026.1, so no line: 005-80 (005-52's setter), 015-10, 015-13,
+  015-14, 015-15, 015-25 (handles and the eviction thread), 015-17 (its
+  effect, a close that reports a get's failure, needs 005-73), 015-24
+  (005-63's lock).
+* No line, with the reason: 005-72 (a property, the same in 2026.1);
+  005-78 (the retain duration not kept in the stream: a gap against P2,
+  the same in 2026.1, an Investigate entry, not a fault); 005-83 is
+  014-01's line.
+* Also: the two Javadoc errors of 2026.1 (`stop()`, `startupDistanceInMb`)
+  and the note on 2026.1's "How to compare a later version" (one compiled
+  copy per jar; digests differ by design).
+* Not yet listed: the reviews' faults not yet verified (R2-F2 to F4; R3's
+  F4 to F7, F10 and F11, whose reports say "In 2026.1: yes" for most):
+  the coordinator's list at 01:00 (section 3, the last point).
+
+N3 found no fault that was not registered already, so section 4's stop
+does not apply: the faults of 2026.1 left open are 016-02's item 7.
+Hand-off: `/Users/f/fl/bench/016/docs/handoff-N3/`.
+
