@@ -310,3 +310,24 @@ author knows the change):
 
 Hand-off: `/Users/f/fl/bench/016/docs/handoff-D3/`.
 
+2026-11-03, 20:55, the documents agent: **D4 and D6 done, with no
+change**, on `main` at `44bfaae`. The lines for 016-02:
+
+* lean/README.md: unchanged, because each of the 44 theorems of its
+  `#print axioms` lists (the indented lines; 39 in lean/SIS, 5 in
+  lean/Check: `markOf_eq_fast`, `writeAll_eq_fast`, `reachList_eq_fast`,
+  `step_eq_fast`, `r4Fast_sound`) exists at `main` (`grep -rn "theorem
+  NAME"`), and tonight's Lean work added none: since `df6ad50` only
+  005-79's `f04cefe` touched `lean/`, a sentence of lean/README.md on the
+  integer take. 005-79's step 8 (Lean) is not made (015-03).
+* docs/sis-model.md: unchanged, because the model is unchanged tonight;
+  it says T3 holds "with any share", which stays true of the integer
+  take, and it names no arithmetic of Java's.
+* docs/trace-format.md: unchanged, because no Java change since `df6ad50`
+  touches the trace (`git diff --stat df6ad50..main -- java | grep -i
+  trace` prints nothing); since 2026.1, `TraceExport`'s format 2 and its
+  handles' lines (009, `851acdf`, `e712874`) are in it already (its
+  section 2). 005-79 changes the values in `REC` lines, not the format.
+
+Hand-off: `/Users/f/fl/bench/016/docs/handoff-D4-D6/` (this State only).
+
