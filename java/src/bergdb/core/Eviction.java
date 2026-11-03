@@ -480,7 +480,8 @@ public final class Eviction {
 
     /**
      * The eviction thread: when a reader or the writer asks, batches until the resident bytes
-     * are at most the trigger, each under the write lock. It ends when the database is no
+     * are at most the trigger, or until the hand has gone over the maps twice without freeing
+     * anything (bergdb 015-10), each under the write lock. It ends when the database is no
      * longer active. Between requests it waits with no timeout, so that the thread of a
      * database that is not used does not wake (010-P3, bergdb 005-51); the database's close
      * wakes it (endThread). Until 005-51 it woke once a second, to see whether the database
@@ -520,20 +521,31 @@ public final class Eviction {
                     // that waits for the write lock goes first: a monitor is not fair, and a
                     // busy eviction thread would keep the writer out for as long as readers
                     // load; the end of the writer's transaction runs a batch anyway.
-                    // A batch that freed nothing ends them (every object in use, or pinned):
-                    // the next request, a load or a transaction's end, starts them again.
+                    // They end too when the hand has gone over the maps twice (2 maps() of
+                    // them) since the request or since the last batch that freed something
+                    // (bergdb 015-10): then nothing can go (every object in use, held by a
+                    // loader, or pinned), as the first round may only clear the CLOCK bits and
+                    // the second takes what is still clear; the next request, a load or a
+                    // transaction's end, starts them again. A batch that took no map (a writer
+                    // waited, or its time ran out first) counts none: the next goes on. Until
+                    // 015-10 a batch that freed nothing ended them; a batch cut short by its
+                    // time or its handles in the first round frees nothing, and when every
+                    // object is resident no load comes to start them again.
+                    long idleMaps = 0;      // the maps taken without freeing
                     while (in.isActive() && in.cache().residents().bytes() > trigger) {
                         while (in.writersWaiting() > 0 && in.isActive()) {
                             java.util.concurrent.locks.LockSupport.parkNanos(100 * 1000);
                         }
-                        long freed = 0;
+                        long[] fm = null;
                         synchronized (in.getWriteLock()) {
                             if (in.isActive() && in.cache().residents().bytes() > trigger) {
-                                freed = sweep(db, true);
+                                fm = sweep(db, true);
                             }
                         }
                         batches++;      // this thread's only (afterLoad reads it)
-                        if (freed == 0) break;
+                        if (fm == null) break;
+                        idleMaps = fm[0] > 0 ? 0 : idleMaps + fm[1];
+                        if (idleMaps >= 2 * Cache3.maps()) break;
                     }
                 } finally {
                     synchronized (evictorLock) {
@@ -581,10 +593,11 @@ public final class Eviction {
      * resident bytes stay above the budget, the next trigger goes on from the hand; pinned
      * state is never taken: its bytes, which the hand's rounds count, raise the trigger if
      * they are above the budget (trigger). Until step
-     * 3b a sweep walked every resident object, twice. Returns the bytes freed. The caller
-     * holds Db.writeLock, between transactions.
+     * 3b a sweep walked every resident object, twice. Returns the bytes freed and the maps
+     * taken (the eviction thread's stop rule, EvictorRun). The caller holds Db.writeLock,
+     * between transactions.
      */
-    long sweep(Db db, boolean afterLoad) {
+    long[] sweep(Db db, boolean afterLoad) {
         final long t0 = System.nanoTime();
         final Db.Internal in = db.internal();
         final Cache3 table = in.cache();
@@ -675,7 +688,7 @@ public final class Eviction {
             allReleased += r + values;
             allUnswizzled += values;
         }
-        return freed;
+        return new long[] {freed, maps};
     }
 
     /**
@@ -1357,7 +1370,8 @@ public final class Eviction {
      * reader threads read in bursts under a small budget, so that the thread sleeps and wakes
      * again and again; after each burst, within 2 s, the thread waits with no request pending
      * (it is never asleep with one) and the resident bytes are at most the trigger, or its
-     * last batch freed nothing (then it stops until the next request, by design: 005-51).
+     * last batch freed nothing (then, after two rounds of the hand without freeing, it stops
+     * until the next request, by design: 005-51, 015-10).
      * Without the thread's check of the flag before it waits, on which the skip relies, the
      * first burst fails.
      */
@@ -1590,5 +1604,143 @@ public final class Eviction {
             }
         }
         throw new AssertionError("the loads started no eviction thread");
+    }
+
+    /**
+     * A database of n keys with short values, started cold with a budget of 100 MB and every
+     * key read twice, so that every index node is resident (bergdb 015-10's tests); the
+     * eviction thread has not run. Then nothing that the hand's first round over the maps meets
+     * can go: every live handle's CLOCK bit is set (the reads set nearly all; the few they
+     * leave clear, 2 of about 5,000 here, the test sets, as a follow does),
+     * and no pinned key node holds a resident value (the reads load some into the leaves of D,
+     * and a batch would take them whatever their bits: the test takes them first, as
+     * unswizzleValues does). Checks that a batch cannot take a round of the hand (more
+     * detachable objects than BATCH).
+     */
+    private static Db everyKeyReadTwice(int n) {
+        MemoryStream s = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db0 = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
+                .startupDistance(2000).start();
+        long time = 100 * STEP;
+        for (int i = 0; i < n; i += 50) {
+            time += STEP;
+            clock.setTime(time);
+            Trans.Builder b = db0.trans();
+            for (int k = i; k < i + 50; k++) b.put("k" + k, "value " + k);
+            db0.execute(b.build());
+        }
+        db0.sync(SyncLevel.STRONG);
+        db0.stop();
+        Db db = Db.builder().testSetup(s.copy()).clock(clock).testId().maxNodeSize8()
+                .startupDistance(2000).cacheSizeIndicator(100L * 1000 * 1000)
+                .evictionSchedule(Schedule.BUDGET, 1).audit(0).start();
+        boolean ok = false;
+        try {
+            for (int round = 0; round < 2; round++) {
+                for (int k = 0; k < n; k++) DbUtil.get(db, "k" + k);
+            }
+            Db.Internal in = db.internal();
+            int detachable = 0;
+            synchronized (in.getWriteLock()) {
+                for (Handle h : in.cache().handles()) {
+                    Node o = h.obj;
+                    if (o == null) continue;
+                    h.ref = 1;
+                    if (detachable(o, in.superRoot(), in.newestWrittenTop())) {
+                        detachable++;
+                    } else if (o instanceof KeyNode) {
+                        unswizzleValues(in, o);
+                    }
+                }
+            }
+            Assert.assertTrue("more detachable objects than a batch examines: " + detachable,
+                    detachable > BATCH);
+            synchronized (in.eviction().evictorLock) {
+                Assert.assertTrue("no eviction thread yet", in.eviction().evictor == null);
+            }
+            ok = true;
+            return db;
+        } finally {
+            if (!ok) db.close();
+        }
+    }
+
+    /**
+     * A lowered budget is reached when every resident object was just read (bergdb 015-10,
+     * 005-52): 10,000 keys (about 5,000 index nodes, more than BATCH), every key read twice
+     * (everyKeyReadTwice); the budget lowered to 9/10 of the resident bytes, so that they are
+     * not under pressure and a batch examines at most BATCH handles; no other call. The first
+     * batch is in the hand's first round over the maps, which only clears the CLOCK bits, and
+     * it frees nothing; the eviction thread goes on from the hand, and within 2 s the resident
+     * bytes are at most the budget and the thread waits for a request with none pending. Until
+     * 015-10 a batch that freed nothing ended the thread's batches, here the first, and
+     * nothing started them again (a read that finds its objects resident loads nothing), so
+     * the resident bytes stayed above the budget; on s1 under load, a batch cut short by its
+     * 2 ms in the first round did so in CapacityTester.testBudgetLoweredAndRaisedUnderReads.
+     */
+    @Nano
+    public static void testLoweredBudgetAfterReads() throws InterruptedException {
+        Db db = everyKeyReadTwice(10000);
+        try {
+            Db.Internal in = db.internal();
+            Eviction e = in.eviction();
+            long full = in.cache().residents().bytes();
+            long budget = full / 10 * 9;
+            Assert.assertTrue("not under pressure", full <= budget + (budget - lowOf(budget)));
+            db.setCacheSizeIndicator(budget);
+            long end = System.nanoTime() + 2000L * 1000 * 1000;
+            long bytes = full;
+            while (System.nanoTime() < end) {
+                bytes = in.cache().residents().bytes();
+                if (bytes <= budget) break;
+                Thread.sleep(1);
+            }
+            String state = settled(e, db, 2000);
+            Assert.assertTrue("at most " + bytes + " bytes, budget " + budget + " of " + full
+                    + ", after " + e.sweepCounts()[0] + " batches", bytes <= budget);
+            Assert.assertTrue("idle after: " + state, state == null);
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * Nothing can go, and the eviction thread stops (bergdb 015-10; 005-51, 010-P3): as
+     * testLoweredBudgetAfterReads, with every handle that holds an object held as by a loader
+     * (LOADING), so that no batch frees anything and no object is pinned for it (the trigger
+     * stays the budget). The thread goes over the maps twice without freeing, then waits for
+     * the next request with none pending, within 2 s, and stays so: no batch in the next 20
+     * ms; the resident bytes are as they were. Without a stop rule it would run batches for
+     * as long as the database is active; with the rule of before 015-10 it stopped after the
+     * first batch, before the hand had gone over the maps once.
+     */
+    @Nano
+    public static void testNothingToFree() throws InterruptedException {
+        Db db = everyKeyReadTwice(10000);
+        List<Handle> held = new ArrayList<Handle>();
+        try {
+            Db.Internal in = db.internal();
+            Eviction e = in.eviction();
+            for (Handle h : in.cache().handles()) {
+                if (h.obj != null && h.casState(Handle.LIVE, Handle.LOADING)) held.add(h);
+            }
+            long full = in.cache().residents().bytes();
+            long budget = full / 10 * 9;
+            db.setCacheSizeIndicator(budget);
+            String state = settled(e, db, 2000);
+            Assert.assertTrue("idle: " + state, state == null);
+            long batches = e.batches;
+            long[] c = e.sweepCounts();
+            Thread.sleep(20);
+            Assert.assertEquals("no batch since", batches, e.batches);
+            Assert.assertEquals("nothing freed", full, in.cache().residents().bytes());
+            // A batch takes less than a round (everyKeyReadTwice), so each round ends in its own.
+            Assert.assertTrue("the hand went over the maps twice: " + c[2] + " of " + c[0]
+                    + " batches ended a round", c[2] >= 2);
+        } finally {
+            for (Handle h : held) h.casState(Handle.LOADING, Handle.LIVE);
+            db.close();
+        }
     }
 }
