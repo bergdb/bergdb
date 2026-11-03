@@ -295,7 +295,11 @@ Ensure this is either fixed before the release or clearly documented as an
 open todo item. This needs an investigation and a fix."
 
 * 1: 015-05 after the release, B1 recommended; a known issue of 2026.2.
-* 2: explained to Frans at 17:20; waiting for his answer.
+* 2: explained to Frans at 17:20 (S1 and S2 cover the parts the C clone
+  did not port; about 90 lines changed since 2026.1; R1 took 41 minutes).
+  Frans, 17:21: "Yes, as recommended." So S1 and S2 run tonight after
+  R2 to R8 and 015-14, if they can start by about 22:00; a fault they find
+  is fixed by 01:00 or a known issue.
 * 3: `night.sh large` after the release, registered as 015-18 so that it
   is not forgotten.
 * 4: 015-13 is fixed before the release (R1-F2's proposal: the handles
