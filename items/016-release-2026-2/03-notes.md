@@ -395,7 +395,7 @@ section 4.2, without 005-82 and 015-01 (fixed), with 005-78, 015-05,
 tonight (015-13, 015-14, 015-20, 015-22) move to the changes in N4 if they
 get in. Every table's data rows are aligned and at most 100 characters.
 
-2026-11-03, 20:45, the notes agent: **N3 done** on `main` at `b6515aa`.
+2026-11-03, 20:27, the notes agent: **N3 done** on `main` at `b6515aa`.
 `releases/2026.1/readme.md`, "Post-release notes", replaces "None yet."
 Each fault was checked against 2026.1's code (`git show
 release-2026.1:PATH` of the files its fix changed; for the fixes, a script

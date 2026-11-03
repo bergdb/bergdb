@@ -257,7 +257,7 @@ replication among what power-loss testing has not established, which
 stays. The draft notes (016-03, N2) have the same four in their known
 issues. Hand-off: `/Users/f/fl/bench/016/docs/handoff-D2/`.
 
-2026-11-03, 20:30, the documents agent: **D3 done for what is in `main`
+2026-11-03, 20:23, the documents agent: **D3 done for what is in `main`
 at `fe72238`**; the lines that tonight's open fixes may change are listed
 below for their entries. Each line changed in docs/levels.md, with what
 made it out of date (the list for 016-02):
@@ -310,7 +310,7 @@ author knows the change):
 
 Hand-off: `/Users/f/fl/bench/016/docs/handoff-D3/`.
 
-2026-11-03, 20:55, the documents agent: **D4 and D6 done, with no
+2026-11-03, 20:28, the documents agent: **D4 and D6 done, with no
 change**, on `main` at `44bfaae`. The lines for 016-02:
 
 * lean/README.md: unchanged, because each of the 44 theorems of its
