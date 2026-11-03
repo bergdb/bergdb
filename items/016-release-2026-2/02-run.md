@@ -279,6 +279,9 @@ section 3). Unless he chooses before the release, it is a known issue of
 * 17:15 005-79's Part B gated on `main` (`BEFORE COMMIT OK (153 s)`) and
   committed, `f04cefe`; 005-79 done for 2026.2 (Java), Lean and C after
   the release (015-03, 015-02). s1: jcstress's five tests OK on Linux.
+* 17:19 015-01 with 015-06's first part gated on `main` (`BEFORE COMMIT
+  OK (142 s)`) and committed, `ed16384`: 015-01 done; 015-06 in progress
+  (a start refused after the open still leaves the first file).
 
 
 ## 7. For Frans to decide
