@@ -295,6 +295,12 @@ public class Trans {
         /**
          * Finishes building the transaction by creating a Trans
          * instance and returning it.
+         * 
+         * One operation a key, in key order: of the calls on a key, the last put, or a delete if
+         * there is no put; a delete never replaces a put, whatever their order. Kept so on
+         * 2026-11-03 (bergdb 015-40): the C clone builds the same way (bergdb 012-09), and the
+         * Pub API's RwEnvironmentImp gives one operation a key from each of its maps, so only a
+         * key in two of them comes twice (bergdb 015-41).
          */
         public Trans build() {
             // We use a TreeMap to sort and to avoid duplicates.

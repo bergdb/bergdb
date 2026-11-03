@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.UnsupportedEncodingException;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -321,6 +322,99 @@ public class PubTester {
         Assert.assertEquals("value2..", v2);
         Assert.assertEquals("15", c1.get("/length", String.class));
         db.stop();
+    }
+    
+    private static void assertNoEntry(String what, String value) {
+        Assert.assertTrue(what + ": expected no entry, got '" + value + "'.", value == null);
+    }
+    
+    /**
+     * bergdb 015-40 (review 016-06/S1, S1-F1): in an rw-transaction, a put and then a delete
+     * of a key with a suffix leave no entry. Until 015-40 the put stayed: MapKey.equals was
+     * never true, so kvOps held both operations, and Trans.Builder.build keeps a put over a
+     * delete.
+     */
+    @Nano
+    public static void testRwPutThenDelete() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.connection();
+            c.put("/a.txt", "old");
+            c.rw(new Action() {
+                public void run(RwEnvironment env) {
+                    env.put("/a.txt", "new");
+                    env.delete("/a.txt");
+                }
+            });
+            assertNoEntry("rw: put then delete", c.get("/a.txt", String.class));
+        } finally {
+            db.close();
+        }
+    }
+    
+    /** bergdb 015-40: the same through WBuilder; and a delete and then a put leave the put. */
+    @Nano
+    public static void testWPutThenDelete() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.connection();
+            c.put("/b.txt", "old");
+            c.w().put("/b.txt", "new").delete("/b.txt").execute();
+            assertNoEntry("w: put then delete", c.get("/b.txt", String.class));
+            c.w().delete("/b.txt").put("/b.txt", "again").execute();
+            Assert.assertEquals("w: delete then put", "again", c.get("/b.txt", String.class));
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * bergdb 015-40 (S1-F1): of many puts of one key in an rw-transaction, the last wins.
+     * Until 015-40 each put was an entry of its own in kvOps, all in one bin; once the bin
+     * was a tree (more than 8 entries), the iteration order was not the order of the puts,
+     * and Trans.Builder.build keeps the last one it is given.
+     */
+    @Nano
+    public static void testRwManyPutsOfOneKey() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.connection();
+            for (int round = 0; round < 20; round++) {
+                final int n = 40;
+                c.rw(new Action() {
+                    public void run(RwEnvironment env) {
+                        for (int i = 0; i < n; i++) {
+                            env.put("/c.txt", "v" + i);
+                        }
+                    }
+                });
+                Assert.assertEquals("round " + round, "v" + (n - 1), c.get("/c.txt", String.class));
+            }
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * bergdb 015-40: a delete and then a put of a key with ${transactionTime}: the put wins,
+     * with its key transformation. A HashMap keeps its first key object when a put replaces
+     * an entry, so RwEnvironmentImp removes the key first; without that, the delete's MapKey,
+     * which has no transformation, would store the value at the key as written.
+     */
+    @Nano
+    public static void testWDeleteThenPutOfReplacedKey() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.connection();
+            c.setEnableKeyReplace(true);
+            String key = "/t/${transactionTime}.txt";
+            Transaction t = c.w().delete(key).put(key, "v").execute();
+            String replaced = String.format(Locale.US, "/t/%018d.txt", t.getTime().units());
+            Assert.assertEquals("the replaced key", "v", c.get(replaced, String.class));
+            assertNoEntry("the key as written", c.get(key, String.class));
+        } finally {
+            db.close();
+        }
     }
     
     public static class Person {

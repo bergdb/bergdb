@@ -36,6 +36,12 @@ public class RwEnvironmentImp implements RwEnvironment {
     private boolean firstRead;
     private long readTime;
     private MyLongSet readHashes;
+    
+    // The writes, one operation a key in each map (bergdb 015-40): a value, or null for a
+    // delete. In kvOps the last call on a key wins (setKv); in indexOps a put of an index
+    // entry stays over a delete of it (deleteIndexEntry). A key may be in kvOps and in
+    // objectOps both: createTrans adds kvOps first, and Trans.Builder.build keeps the later
+    // put and a put over a delete (bergdb 015-41).
     private HashMap<MapKey, byte[]> kvOps;
     private HashMap<String, ObjectInfo> objectOps;
     private HashMap<MapKey, byte[]> indexOps;
@@ -209,13 +215,24 @@ public class RwEnvironmentImp implements RwEnvironment {
             throw new IllegalArgumentException("value == null not allowed.");
         }
 
-        kvOps.put(new MapKey(Keys.toSegments(ikey), 
+        setKv(new MapKey(Keys.toSegments(ikey), 
                 enableKeyReplace ? getKeyTransformation(ikey) : null), value);
     }
     
     // Used internally, no checking
     void set(byte[] key, byte[] value, KeyTransformation kt) {
-        kvOps.put(new MapKey(Keys.toSegments(key), kt), value);
+        setKv(new MapKey(Keys.toSegments(key), kt), value);
+    }
+    
+    /**
+     * Sets the operation of a key in kvOps, a put, or a delete if value is null: it replaces
+     * the key's earlier one, so the last call on a key wins (bergdb 015-40). The key is
+     * removed first, as a HashMap keeps its first key object when a put replaces an entry,
+     * and the key transformation of the MapKey must be the last call's (a delete has none).
+     */
+    private void setKv(MapKey key, byte[] value) {
+        kvOps.remove(key);
+        kvOps.put(key, value);
     }
 
     /**
@@ -230,7 +247,7 @@ public class RwEnvironmentImp implements RwEnvironment {
         if (Entries.isObjectKey(ikey)) {
             objectOps.put(ikey, new ObjectInfo(ikey, null, null));
         } else {
-            kvOps.put(new MapKey(Keys.toSegments(ikey), null), null);   
+            setKv(new MapKey(Keys.toSegments(ikey), null), null);   
         }
     }
     
@@ -290,9 +307,17 @@ public class RwEnvironmentImp implements RwEnvironment {
         }
     }
     
+    /**
+     * Deletes an index entry of an object's previous value, unless this transaction puts it
+     * (bergdb 015-40): when the indexed fields of an object are unchanged, the entry deleted
+     * for its previous value and the one put for its new value are one key, and the entry
+     * must stay, whatever the order of the two calls. indexEntries() deletes first, so the
+     * put replaces the delete; before 015-40, when MapKey.equals was never true and indexOps
+     * held both, Trans.Builder.build's rule (a put over a delete) kept the entry.
+     */
     private void deleteIndexEntry(byte[] indexKey) {
-        indexOps.put(new MapKey(Keys.toSegments(indexKey), null), null);
-            // null marks "delete op"
+        indexOps.putIfAbsent(new MapKey(Keys.toSegments(indexKey), null), null);
+            // null marks "delete op"; putIfAbsent replaces a delete, not a put
     }
     
     /**
@@ -323,7 +348,10 @@ public class RwEnvironmentImp implements RwEnvironment {
         
         RwEnvironmentImp.IndexSetter setter = new RwEnvironmentImp.IndexSetter() {
             public void setIndexKey(byte[] indexKey, KeyTransformation kt) {
-                indexOps.put(new MapKey(Keys.toSegments(indexKey), kt), emptyByteArray);
+                // Removed first, so that the MapKey kept is the put's, with its kt (setKv).
+                MapKey key = new MapKey(Keys.toSegments(indexKey), kt);
+                indexOps.remove(key);
+                indexOps.put(key, emptyByteArray);
             }
         };
         
@@ -597,6 +625,9 @@ public class RwEnvironmentImp implements RwEnvironment {
     
     /**
      * Internal class that bounds a key transformation with a database key.
+     * Two MapKeys are equal when their keys are, whatever their transformations.
+     * Until 2026-11-03 (bergdb 015-40) equals() tested for a long[] and so was never true:
+     * a map held each call on a key, and the order of the calls was lost.
      */
     private static final class MapKey {
         private long[] array;
@@ -617,7 +648,7 @@ public class RwEnvironmentImp implements RwEnvironment {
                 return false;
             }
             
-            if (!(key instanceof long[])) {
+            if (!(key instanceof MapKey)) {
                 return false;
             }
             
