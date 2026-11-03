@@ -372,8 +372,8 @@ under Reliability, 005-49's figures from docs/levels.md); and the commits
 of tonight up to `c72a02b`: 005-82, 015-07, 015-12, 015-01 with 015-06's
 part, 005-69 under Reliability; 015-17 in 005-73's close entry, 015-24 in
 005-63's, 015-10 in 005-52's and with 015-15 in Handles' (faults of the
-development, never in a release); 005-79 under Format; `DatabaseMissingException`
-and `Database.PRIMARY` under API changes; `doubles.py`, PauseProbe's
+development, never in a release); 005-79 under Format;
+`DatabaseMissingException` and `Database.PRIMARY` under API changes; `doubles.py`, PauseProbe's
 `lower` and the growth's jcstress test under Build and tools. The walk is
 `/Users/f/fl/bench/016/docs/walk.sh` (outside the repository; `walk.sh
 REPO`); its list of commits not for the notes, with reasons, adds to
@@ -382,3 +382,16 @@ section 1's: `7f3dab4` (a `@throws` line), `cc8effb`, `b348922`,
 (tests only, 015-09 and 015-16). `27ec238` is 005-64's code, not only a
 suite comment, and is cited. It printed nothing at 20:10. Hand-off:
 `/Users/f/fl/bench/016/docs/handoff-N1/`.
+
+2026-11-03, 20:16, the notes agent: **N2 done**, from `next.md` at
+`e5bd275`. The draft is `/Users/f/fl/bench/016/docs/out/readme.md` (not
+`notes/out/`: this agent's directory is `docs/`), with section 2's layout;
+`out/markers.txt` says where each of its 34 markers comes from (016-09's
+R2 to R8, 016-10's N8 and `tables.md`) and lists the five `N4-*` markers,
+which are text for step N4, not numbers. The known issues are 016-01,
+section 4.2, without 005-82 and 015-01 (fixed), with 005-78, 015-05,
+015-06's rest, and the open faults of 015 (015-13, 015-14, 015-20 to
+015-23, 015-25 to 015-27), as the coordinator asked: those being fixed
+tonight (015-13, 015-14, 015-20, 015-22) move to the changes in N4 if they
+get in. Every table's data rows are aligned and at most 100 characters.
+
