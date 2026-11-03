@@ -43,6 +43,9 @@ Open
 | [015-25](25-evictor-failure.md) | Fix | An exception in the evictor strands its requests on a dead worker | open |
 | [015-26](26-negative-append-length.md) | Fix | A negative append length corrupts FileStream's length | open |
 | [015-27](27-failed-append-visible.md) | Decide | A failed append's transaction was already visible to readers | open |
+| [015-28](28-write-racing-index-create.md) | Fix | A write racing an index's creation is never indexed | open |
+| [015-29](29-delete-primary-index.md) | Fix | deleteIndex(Database.PRIMARY) throws Bug and leaves the primary deleting | open |
+| [015-30](30-build-scans-past-dir.md) | Fix | An index build step scans past its directory, over non-objects | open |
 
 
 Closed
@@ -126,6 +129,9 @@ Files
 * [25-evictor-failure.md](25-evictor-failure.md). 015-25, Fix: an exception in the evictor strands its requests on a dead worker (R3-F3).
 * [26-negative-append-length.md](26-negative-append-length.md). 015-26, Fix: a negative append length corrupts FileStream's length bookkeeping (R2-F5).
 * [27-failed-append-visible.md](27-failed-append-visible.md). 015-27, Decide: a failed append's transaction was already visible to readers (R3-F8).
+* [28-write-racing-index-create.md](28-write-racing-index-create.md). 015-28, Fix: a write racing an index's creation is never indexed.
+* [29-delete-primary-index.md](29-delete-primary-index.md). 015-29, Fix: deleteIndex(Database.PRIMARY) throws Bug and leaves the primary deleting.
+* [30-build-scans-past-dir.md](30-build-scans-past-dir.md). 015-30, Fix: an index build step scans past its directory, over non-objects.
 
 
 Log
