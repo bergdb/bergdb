@@ -310,6 +310,17 @@ section 3). Unless he chooses before the release, it is a known issue of
   wrong answer or lose data), 015-14 and 015-10, at xhigh. 015-13 waits
   for 015-10 (both change `Eviction`). 015-09 and 015-16 reviewed by the
   coordinator, in the combined gate.
+* 19:39 015-09 and 015-16 committed (`d91b619`, `cf6c8e7`), done; gate
+  `BEFORE COMMIT OK (103 s)`.
+* 19:44 verify-1: all eight confirmed; 015-20 to 015-27 registered
+  (`c657764`). 19:50 the index faults (015-20, 22, 21) and 015-24 started.
+* 19:57 Usage at 14% with 9% of the window gone, and extra usage on: three
+  agents at a time from now; 015-26 and 015-23 put off.
+* 19:59 015-10 committed (`24bdae5`), done: the eviction thread's stop
+  rule; gate `BEFORE COMMIT OK (115 s)`.
+* 20:06 015-24 committed, done: the directory lock across class loaders,
+  new in 2026.2; gate `BEFORE COMMIT OK (107 s)`. The docs agent started
+  (016-03, 016-04).
 
 
 ## 7. For Frans to decide
@@ -357,6 +368,30 @@ open todo item. This needs an investigation and a fix."
    (R1-F3), not on the JMM as 009-02, 3.4 says. Recommended: state it in
    009-02 for 2026.2, then measure acquire reads (T6a) and take them if
    they cost little.
+
+Open since 19:45 (no answer needed tonight; the work goes on as
+recommended):
+
+6. **015-27: a failed append's transaction was already visible** (review
+   R3, R3-F8, confirmed by verify-1): a get beside a put whose append
+   fails can see the put's values; `docs/levels.md`, section 3, says a
+   transaction is visible only once stored. Recommended: correct the text
+   for 2026.2 (what a reader may see before a failure), and decide on the
+   code after the release; a change of the code is a change of the
+   writer's protocol.
+7. **Which review faults block the release.** Of the 17 faults of R2 and
+   R3, 8 are confirmed so far, 2 of them new in 2026.2 (015-24, 015-25).
+   As 016-06, section 6: the new ones and those with a wrong answer or
+   lost data in normal use (015-20, 015-21, 015-22) are being fixed now;
+   what is not fixed by 01:00 is a known issue of 2026.2, and the release
+   does not wait for it. Recommended: as that.
+8. **015-24's mechanism** (committed tonight): to refuse a directory that
+   a copy of BergDB in another class loader holds, each copy records its
+   locked directories as system properties (`bergdb.lock.KEY`), a JVM-wide
+   registry. The alternatives were the platform MBean server (needs
+   `java.management`) and a second lock file (a new file in the database
+   directory). Recommended: keep it; a copy of 2026.1 in the same JVM still
+   has the old fault.
 
 
 ## 8. Outcome
