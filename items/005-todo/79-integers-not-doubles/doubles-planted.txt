@@ -1,0 +1,8 @@
+005-79, step 4, by hand: 'double x = 0.5;' planted in TransSeq.take of Part B (the clone),
+after 'final long u = ditherFp(streamLength);', and java/before-commit.sh run, 2026-11-03:
+
+Deps: 9 packages, all as package.html allows
+REFUSED core/TransSeq.java:179: floating point type or method: double: double x = 0.5;
+REFUSED core/TransSeq.java:179: floating literal: 0.5: double x = 0.5;
+BEFORE COMMIT FAILED: doubles in the Core's production code outside the allowed list (bergdb 005-79): decide with integers, or add an API conversion or a statistic to ALLOWED in doubles.py with its reason (log: java/build/before-commit/doubles.txt)
+exit status 1

@@ -8,13 +8,15 @@
 #
 # Builds with build.sh, checks the package dependencies with deps.py (each
 # package in src uses only what its package.html lists, bergdb 005-56; under a
-# second), then runs at the same time, each in its own JVM with assertions on
-# (-ea):
+# second), checks with doubles.py that no double or float is used in the Core
+# Layer's production code outside its list of allowed places (API conversions,
+# statistics, the users' values as bits; bergdb 005-79; under a second), then
+# runs at the same time, each in its own JVM with assertions on (-ea):
 #   * the unit tests (bergdb.dev.Unit, the Nano test group "unit"), about 10 s;
 #   * the f-tests (bergdb.dev.F, the Nano test group "f"), about 2 minutes.
-# Logs go to build/before-commit/. Exits with status 1 unless deps.py passes
-# and both print SUCCESS. Set JAVA_HOME or PATH for the JDK; the build needs
-# javac too; deps.py needs python3.
+# Logs go to build/before-commit/. Exits with status 1 unless deps.py and
+# doubles.py pass and both print SUCCESS. Set JAVA_HOME or PATH for the JDK; the
+# build needs javac too; deps.py and doubles.py need python3.
 
 cd "$(dirname "$0")"
 
@@ -31,13 +33,19 @@ fail() {
 
 ./build.sh > /dev/null || { echo "BEFORE COMMIT FAILED: build"; exit 1; }
 mkdir -p $LOG
-rm -f $LOG/unit.txt $LOG/f.txt $LOG/deps.txt
+rm -f $LOG/unit.txt $LOG/f.txt $LOG/deps.txt $LOG/doubles.txt
 
 if ! python3 -I deps.py > $LOG/deps.txt 2>&1; then
     grep -E 'NOT ALLOWED|BAD LIST|Error' $LOG/deps.txt
     fail "package dependencies: a use that its package's package.html does not list, or a list not in the form \"Depends on: a, b, c.\"; change the code or the list" $LOG/deps.txt
 fi
 echo "Deps: $(tail -1 $LOG/deps.txt)"
+
+if ! python3 -I doubles.py > $LOG/doubles.txt 2>&1; then
+    grep -E 'REFUSED|SELF-TEST|doubles.py:|Error' $LOG/doubles.txt
+    fail "doubles in the Core's production code outside the allowed list (bergdb 005-79): decide with integers, or add an API conversion or a statistic to ALLOWED in doubles.py with its reason" $LOG/doubles.txt
+fi
+echo "Doubles: $(tail -1 $LOG/doubles.txt)"
 
 $JAVA -ea -cp build/bergdb.jar bergdb.dev.Unit > $LOG/unit.txt 2>&1 &
 $JAVA -ea -cp build/bergdb.jar bergdb.dev.F > $LOG/f.txt 2>&1 &

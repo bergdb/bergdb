@@ -1,0 +1,34 @@
+005-79, step 4, by hand: java/doubles.py of Part B (the clone) on the base's java/src (6d81050),
+2026-11-03. It refuses exactly the four decisions (Eviction.LOW; Reclaim's spacing and fraction;
+TransSeq's share and dither) and the three sizes (StoredTrans, KeyAccessPath).
+
+Self-test: 13 snippets judged right.
+common: 19 files; floating point in allowed places: Bytes.java (18), SeedGenerator.java (2), StringUtil.java (12)
+core: 64 files; floating point in allowed places: CacheStats.java (1), Db.java (4), Jmx.java (35), KeyFactory.java (2), NodeCollection.java (1)
+dag: 32 files; floating point in allowed places: none
+nanotest: 17 files; floating point in allowed places: Assert.java (8), ConsoleUI.java (10)
+pub.util: 13 files; floating point in allowed places: none
+storage: 19 files; floating point in allowed places: BufferedStream.java (3), StorageManager.java (2)
+stream: 13 files; floating point in allowed places: none
+REFUSED core/Eviction.java:108: floating point type or method: double: static final double LOW = 0.75;
+REFUSED core/Eviction.java:108: floating literal: 0.75: static final double LOW = 0.75;
+REFUSED core/Reclaim.java:118: floating point type or method: double: static final double ITERATION_SPACING = 0.25;
+REFUSED core/Reclaim.java:118: floating literal: 0.25: static final double ITERATION_SPACING = 0.25;
+REFUSED core/Reclaim.java:140: floating point type or method: double: private static final double DEFAULT_INTERNAL_FRACTION = 0.25;
+REFUSED core/Reclaim.java:140: floating literal: 0.25: private static final double DEFAULT_INTERNAL_FRACTION = 0.25;
+REFUSED core/Reclaim.java:141: floating point type or method: double: private volatile double internalFraction;
+REFUSED core/Reclaim.java:237: floating point type or method: double: public void setInternalFraction(double internalFraction) {
+REFUSED core/Reclaim.java:238: floating point type or method: Double: if (Double.isNaN(internalFraction) || internalFraction < 0.001 || internalFraction > 0.90) {
+REFUSED core/Reclaim.java:238: floating literal: 0.001: if (Double.isNaN(internalFraction) || internalFraction < 0.001 || internalFraction > 0.90) {
+REFUSED core/Reclaim.java:238: floating literal: 0.90: if (Double.isNaN(internalFraction) || internalFraction < 0.001 || internalFraction > 0.90) {
+REFUSED core/Reclaim.java:279: floating point type or method: double: public double getInternalFraction() {
+REFUSED core/Reclaim.java:279: an allowed method's name outside the allowed places (it returns or takes floating point): getInternalFraction: public double getInternalFraction() {
+REFUSED core/StoredTrans.java:808: floating literal: 1.20: this.prevPos = new long[(int) (transNodes.keyCount * 1.20)];
+REFUSED core/StoredTrans.java:847: floating literal: 1.20: Math.min((long) (totalSize * 1.20), MAX_RECORD_SIZE));
+REFUSED core/TransSeq.java:160: floating point type or method: double: final double share = (double) dirtyCount * recordOwnBytes / ownBytes
+REFUSED core/TransSeq.java:162: floating point type or method: double: final double u = dither(streamLength);
+REFUSED core/TransSeq.java:233: floating point type or method: double: static double dither(long pos) {
+REFUSED core/TransSeq.java:237: floating literal: 0x1.0p-53: return ((z ^ (z >>> 31)) >>> 11) * 0x1.0p-53;
+REFUSED dag/KeyAccessPath.java:64: floating literal: 1.6: int newSize = (int) (size * 1.6);
+7 packages, 177 files: 20 uses of floating point outside the allowed places
+exit status 1

@@ -111,11 +111,26 @@ public class TransSeq implements PosOfTransBeforeFunction {
      * more while it is longer, fewer while it is shorter; so the actual startup distance,
      * such that the stream's length minus it is the startup pos, stays near the setting.</p>
      * 
+     * <p>The share is computed in integers, once per take (bergdb 005-79; in doubles from
+     * 2026-10-28, f89846d, until then; 2026.1 had no pace): in units of 2^-16 of a node,
+     * shareFp = floor(D o S 2^16 / (O sd)), at most D 2^16, with one rounding (shareFp()). Its
+     * bounds: o is below 2^31 (the record limit, StoredTrans.valueLimit), sd from 10 to
+     * 2^31 - 1, and O at least 48 when D has a transaction. Nothing in the code bounds D and S,
+     * so shareFp() checks D < 2^32 and S < 2^47 (128 TB) itself; beyond them the share is all
+     * of D, and the take takes every transaction before the deadline, as it does after it. T3
+     * holds for every pace (bergdb 007-08), so this cannot break the bound. Within them D o
+     * and S 2^16 are below 2^63, and their product is divided in 128 bits.</p>
+     * 
      * <p>The transactions that fit in the share are taken. The next, of which only a part
-     * fits, is taken if that part is larger than a number in [0, 1) hashed from the stream's
-     * length (dither()), so that a record takes its share on average. Without the hash, a
-     * record that takes about one transaction leaves a band of 0.7 to 1.5 sd where the
-     * section does not move (005-49, section 5).</p>
+     * fits, is taken if that part is larger than a number u in [0, 1) hashed from the
+     * stream's length (ditherFp(), u = uFp / 2^16), so that a record takes its share on
+     * average. Without the hash, a record that takes about one transaction leaves a band of
+     * 0.7 to 1.5 sd where the section does not move (005-49, section 5). In integers, before
+     * the deadline, the take stops at a transaction of count nodes, after taken nodes, if
+     * ((taken + count) << 16) > shareFp and shareFp - (taken << 16) <= uFp * count. With
+     * taken + count at most D < 2^32, shareFp at most D 2^16, uFp below 2^16 and count below
+     * 2^31, no term reaches 2^49. Beyond the bounds shareFp is Long.MAX_VALUE, and the first
+     * test is false.</p>
      * 
      * <p>The deadline (D1 of bergdb 007-01, D4 of 007-03): a transaction that begins d or
      * more before the end of the stream is taken whatever the share, where d is the larger
@@ -157,9 +172,10 @@ public class TransSeq implements PosOfTransBeforeFunction {
         assert ownBytes > 0 : ownBytes;     // every record has own bytes, see ownBytes()
         // The deadline: d_h, or the span of the section's transactions while it is longer.
         final long hardSp = streamLength - Math.max(2L * startupDistance, span());
-        final double share = (double) dirtyCount * recordOwnBytes / ownBytes 
-                * (streamLength - currentSp) / startupDistance;
-        final double u = dither(streamLength);
+        // The share and the dither in units of 2^-16 (bergdb 005-79).
+        final long share = shareFp(dirtyCount, recordOwnBytes, ownBytes, 
+                streamLength - currentSp, startupDistance);
+        final long u = ditherFp(streamLength);
         
         long taken = 0;
         long bytes = 0;
@@ -168,8 +184,9 @@ public class TransSeq implements PosOfTransBeforeFunction {
             final int count = first.gotDirtyNodes.size();
             
             // Before the deadline, a transaction that does not fit in what is left of the
-            // share is taken if the part that fits is larger than u.
-            if (first.tpos > hardSp && taken + count > share && share - taken <= u * count) {
+            // share is taken if the part that fits is larger than u. In units of 2^-16.
+            if (first.tpos > hardSp && ((taken + count) << 16) > share 
+                    && share - (taken << 16) <= u * count) {
                 break;
             }
             
@@ -224,17 +241,101 @@ public class TransSeq implements PosOfTransBeforeFunction {
     }
     
     /**
-     * A number in [0, 1) hashed from a stream position, for take() (bergdb 005-49): the
-     * finalizer of SplitMix64. A product with a constant alone, as 005-49's prototype had,
-     * turns a step of the stream into a fixed step of the number; since what a record takes
-     * changes its size, records then took more than their share, up to 30 percent with
-     * transactions of one put (bergdb 007-03, step 3).
+     * A number from 0 to 65,535, in units of 2^-16 a number in [0, 1), hashed from a stream
+     * position, for take() (bergdb 005-49): the top 16 bits of SplitMix64's finalizer. A
+     * product with a constant alone, as 005-49's prototype had, turns a step of the stream
+     * into a fixed step of the number; since what a record takes changes its size, records
+     * then took more than their share, up to 30 percent with transactions of one put (bergdb
+     * 007-03, step 3). From 2026-10-28 (f89846d) until 005-79 it was a double, the top 53
+     * bits times 2^-53; this is its floor times 2^16, exactly (bergdb 005-79).
      */
-    static double dither(long pos) {
+    static int ditherFp(long pos) {
         long z = pos * 0x9E3779B97F4A7C15L;
         z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
         z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
-        return ((z ^ (z >>> 31)) >>> 11) * 0x1.0p-53;
+        return (int) ((z ^ (z >>> 31)) >>> 48);
+    }
+    
+    /**
+     * The share of take(), floor(D o S 2^16 / (O sd)) at most D 2^16, in units of 2^-16 of
+     * a node (bergdb 005-79), in 64-bit integers with a 128-bit product and two divisions of
+     * 128 by 64 bits:
+     * 
+     * <pre>
+     *     p = D * o                  below 2^63, as D < 2^32 and o < 2^31
+     *     q = S << 16                below 2^63, as S < 2^47
+     *     X = p * q                  below 2^126: Math.multiplyHigh and the low product
+     *     Y = floor(X / O)           128 by 64 bits
+     *     Q = floor(Y / sd)          128 by 64 bits; floor(X / (O sd)) for positive integers
+     *     result = min(Q, D << 16)
+     * </pre>
+     * 
+     * <p>The min changes no decision of take(): taken + count is at most D, so its first
+     * test is false at D << 16 as at any larger Q. Outside the bounds, D or S not below 2^32
+     * and 2^47, o not below 2^31, or O or sd not positive, it returns Long.MAX_VALUE: the
+     * share is all of D (see take()). None of these is reached with BergDB's limits.</p>
+     * 
+     * @param D  The got-dirty nodes of the section's transactions.
+     * @param o  The record's own bytes.
+     * @param O  The own bytes of the section's records.
+     * @param S  The length of the section, from the startup pos to the end of the stream.
+     * @param sd  The startup distance's setting.
+     */
+    static long shareFp(long D, long o, long O, long S, int sd) {
+        if (D >>> 32 != 0 || o >>> 31 != 0 || S >>> 47 != 0 || O < 1 || sd < 1) {
+            return Long.MAX_VALUE;
+        }
+        final long p = D * o;
+        final long q = S << 16;
+        final long xHi = Math.multiplyHigh(p, q);     // the unsigned high word, as p, q >= 0
+        final long xLo = p * q;
+        // Y = X / O: xHi is below 2^62, so its signed division is the unsigned one.
+        final long yHi = xHi / O;
+        final long yLo = divlu(xHi % O, xLo, O);
+        final long qHi = yHi / sd;
+        final long qLo = divlu(yHi % sd, yLo, sd);
+        final long max = D << 16;
+        return qHi != 0 || Long.compareUnsigned(qLo, max) > 0 ? max : qLo;
+    }
+    
+    /**
+     * The quotient of the 128-bit unsigned number u1 2^64 + u0 by v, where u1 < v, both
+     * unsigned: below 2^64 then. Hacker's Delight, 2nd edition, section 9-4, divlu, with
+     * 64-bit words in two 32-bit digits (bergdb 005-79): v is normalized, shifted left until
+     * its top bit is set; each quotient digit is estimated from the top digits and corrected
+     * at most twice. The comparisons are unsigned, as the words use all 64 bits.
+     */
+    private static long divlu(long u1, long u0, long v) {
+        assert v != 0 && Long.compareUnsigned(u1, v) < 0 : u1 + ", " + v;
+        final long b = 1L << 32;                    // the number base, 32-bit digits
+        final int s = Long.numberOfLeadingZeros(v); // 0 to 63
+        v <<= s;                                    // normalized
+        final long vn1 = v >>> 32, vn0 = v & 0xFFFFFFFFL;
+        final long un32 = (u1 << s) | (s == 0 ? 0 : u0 >>> (64 - s));
+        final long un10 = u0 << s;
+        final long un1 = un10 >>> 32, un0 = un10 & 0xFFFFFFFFL;
+        
+        long q1 = Long.divideUnsigned(un32, vn1);
+        long rhat = Long.remainderUnsigned(un32, vn1);
+        while (q1 >= b || Long.compareUnsigned(q1 * vn0, (rhat << 32) + un1) > 0) {
+            q1--;
+            rhat += vn1;
+            if (rhat >= b) {
+                break;
+            }
+        }
+        
+        final long un21 = (un32 << 32) + un1 - q1 * v;   // below v, modulo 2^64 as computed
+        long q0 = Long.divideUnsigned(un21, vn1);
+        rhat = Long.remainderUnsigned(un21, vn1);
+        while (q0 >= b || Long.compareUnsigned(q0 * vn0, (rhat << 32) + un0) > 0) {
+            q0--;
+            rhat += vn1;
+            if (rhat >= b) {
+                break;
+            }
+        }
+        return (q1 << 32) + q0;
     }
     
     /** The bytes the got-dirty nodes of 'info' may add to a record; see take(). */
@@ -577,8 +678,11 @@ public class TransSeq implements PosOfTransBeforeFunction {
         // D = 100 nodes, O = 1000 bytes. A record of 100 own bytes, a section of 2000 and sd
         // 800: a share of 100 * 100 / 1000 * 2000 / 800 = 25 nodes, two transactions and
         // half of the third, which is taken if the hash of the stream's length is below 0.5.
-        Assert.assertEquals(0.4056, dither(1300), 1e-4);
-        Assert.assertEquals(0.9944, dither(1200), 1e-4);
+        // In units of 2^-16 (bergdb 005-79): the share 25 * 2^16, and the hashes 26,583 and
+        // 65,167, 0.4056 and 0.9944.
+        Assert.assertEquals(25L << 16, shareFp(100, 100, 1000, 2000, 800));
+        Assert.assertEquals(26583, ditherFp(1300));
+        Assert.assertEquals(65167, ditherFp(1200));
         TransSeq s = paceSeq(0);
         Assert.assertEquals(200, s.take(1300 - 2000, 1300, 800, 100, IGNORE, Long.MAX_VALUE));
         Assert.assertEquals(7, s.getSize());
@@ -591,6 +695,21 @@ public class TransSeq implements PosOfTransBeforeFunction {
         s = paceSeq(0);
         Assert.assertEquals(0, s.take(1300 - 1000, 1300, 800, 100, IGNORE, Long.MAX_VALUE));
         Assert.assertEquals(9, s.getSize());
+        
+        // A tie, which the take stops at (<=; bergdb 005-79, the review of Part B): the part
+        // that fits, all of the share, 297,636 / 2^16 nodes, equals u times the
+        // transaction's 6 nodes, 49,606 * 6. It is l3-node14's one take where the double
+        // rule of 2026-10-28 differs: that rule took the transaction. One transaction of 6
+        // nodes at 500,000, the stream's length 531,776, sd 2^16, a section of u bytes, and
+        // o = O = 1000 own bytes.
+        final long tieLength = 531776;
+        Assert.assertEquals(49606, ditherFp(tieLength));
+        Assert.assertEquals(297636, shareFp(6, 1000, 1000, 49606, 65536));
+        s = new TransSeq();
+        s.add(paceInfo(500000, 6, 1000));
+        Assert.assertEquals(tieLength - 49606, 
+                s.take(tieLength - 49606, tieLength, 65536, 1000, IGNORE, Long.MAX_VALUE));
+        Assert.assertEquals(1, s.getSize());
         
         // On average a record takes its share, 2.5 transactions, also when what it takes
         // decides the length of the stream, and so the hash, for the next record. Here a
@@ -750,5 +869,168 @@ public class TransSeq implements PosOfTransBeforeFunction {
         Assert.assertEquals(r.dirtyCount, s.dirtyCount);
         Assert.assertEquals(r.ownBytes, s.ownBytes);
         Assert.assertEquals(r.checksum(), s.checksum());
+    }
+    
+    // ======== The take in integers, bergdb 005-79 ========
+    
+    /** A number below 2^k, with k uniform from 0 to maxBits: spread over the bit lengths. */
+    private static long spread(java.util.SplittableRandom r, int maxBits) {
+        final int k = r.nextInt(maxBits + 1);
+        return k == 0 ? 0 : r.nextLong() >>> (64 - k);
+    }
+    
+    private static java.math.BigInteger unsigned(long x) {
+        java.math.BigInteger b = java.math.BigInteger.valueOf(x);
+        return x >= 0 ? b : b.add(java.math.BigInteger.ONE.shiftLeft(64));
+    }
+    
+    /** shareFp as BigInteger computes it: floor(D o S 2^16 / (O sd)), at most D 2^16. */
+    private static long shareExact(long D, long o, long O, long S, int sd) {
+        java.math.BigInteger x = java.math.BigInteger.valueOf(D).multiply(java.math.BigInteger.valueOf(o))
+                .multiply(java.math.BigInteger.valueOf(S)).shiftLeft(16);
+        java.math.BigInteger q = x.divide(java.math.BigInteger.valueOf(O)
+                .multiply(java.math.BigInteger.valueOf(sd)));
+        return q.min(java.math.BigInteger.valueOf(D << 16)).longValueExact();
+    }
+    
+    private static void checkShareFp(long D, long o, long O, long S, int sd) {
+        final long expected = shareExact(D, o, O, S, sd);
+        final long actual = shareFp(D, o, O, S, sd);
+        if (actual != expected) {
+            Assert.assertEquals("shareFp(" + D + ", " + o + ", " + O + ", " + S + ", " + sd + ")",
+                    expected, actual);
+        }
+    }
+    
+    private static void checkDivlu(long u1, long u0, long v) {
+        java.math.BigInteger x = unsigned(u1).shiftLeft(64).add(unsigned(u0));
+        final long expected = x.divide(unsigned(v)).longValue();
+        final long actual = divlu(u1, u0, v);
+        if (actual != expected) {
+            Assert.assertEquals("divlu(" + Long.toUnsignedString(u1) + ", " 
+                    + Long.toUnsignedString(u0) + ", " + Long.toUnsignedString(v) + ")",
+                    expected, actual);
+        }
+    }
+    
+    /**
+     * divlu, the 128 by 64-bit division of shareFp, against BigInteger: unsigned words that
+     * use all 64 bits, divisors of every bit length, the quotient below 2^64 (u1 < v), and
+     * the edges, where the estimated quotient digits are corrected.
+     */
+    @Nano
+    public static void testDivluExact() {
+        final long m = -1L;                                 // 2^64 - 1
+        final long[] vs = {1, 2, 3, 10, 0xFFFFFFFFL, 1L << 32, (1L << 32) + 1, Long.MAX_VALUE,
+                Long.MIN_VALUE, Long.MIN_VALUE + 1, m - 1, m, 0x8000000080000000L, 
+                0xFFFFFFFF00000000L, 0x80000000FFFFFFFFL};
+        for (long v : vs) {
+            for (long u1 : new long[] {0, 1, v - 1, (v - 1) >>> 1, Long.divideUnsigned(v, 3)}) {
+                if (Long.compareUnsigned(u1, v) >= 0) {
+                    continue;
+                }
+                for (long u0 : new long[] {0, 1, m, Long.MIN_VALUE, Long.MAX_VALUE, 0xFFFFFFFFL,
+                        0xFFFFFFFF00000000L, v, v - 1}) {
+                    checkDivlu(u1, u0, v);
+                }
+            }
+        }
+        java.util.SplittableRandom r = new java.util.SplittableRandom(7905);
+        for (int i = 0; i < 100000; i++) {
+            long v = spread(r, 64);
+            if (v == 0) {
+                v = 1;
+            }
+            long u1 = Long.remainderUnsigned(spread(r, 64), v);
+            if (i % 4 == 0) {
+                u1 = v - 1 - (u1 & 0xFF);                   // near v: corrections
+                if (Long.compareUnsigned(u1, v) >= 0) {
+                    u1 = v - 1;
+                }
+            }
+            checkDivlu(u1, r.nextLong(), v);
+        }
+    }
+    
+    /**
+     * shareFp against BigInteger's floor, clamped at D 2^16 (bergdb 005-79), on 10^5 cases
+     * from SplitMix64: half spread over the bit lengths within the bounds (D to 2^32 - 1, o
+     * to 2^31 - 1, S to 2^47 - 1, O from 1 to S + 1 or to 2^63 - 1, sd from 10 to
+     * 2^31 - 1), which mostly clamp; half as BergDB has them, a section near sd and o at most
+     * O, where the share is a few nodes; and on the edges, each bound at its largest, O = 1,
+     * sd = 10, o = 0 and D = 0.
+     */
+    @Nano
+    public static void testShareFpExact() {
+        final long dMax = (1L << 32) - 1, oMax = (1L << 31) - 1, sMax = (1L << 47) - 1;
+        final int sdMax = Integer.MAX_VALUE;
+        for (long D : new long[] {0, 1, 1000, dMax}) {
+            for (long o : new long[] {0, 1, 48, oMax}) {
+                for (long S : new long[] {0, 1, 10, 1L << 31, sMax}) {
+                    for (long O : new long[] {1, 48, oMax, sMax + 1, Long.MAX_VALUE}) {
+                        for (int sd : new int[] {10, 1 << 20, sdMax}) {
+                            checkShareFp(D, o, O, S, sd);
+                        }
+                    }
+                }
+            }
+        }
+        java.util.SplittableRandom r = new java.util.SplittableRandom(79);
+        for (int i = 0; i < 50000; i++) {
+            final long D = spread(r, 32), o = spread(r, 31), S = spread(r, 47);
+            final long O = i % 2 == 0 ? 1 + Long.remainderUnsigned(spread(r, 48), S + 1)
+                    : 1 + spread(r, 62) + spread(r, 62);
+            final int sd = 10 + (int) Long.remainderUnsigned(spread(r, 31), sdMax - 9L);
+            checkShareFp(D, o, O, S, sd);
+        }
+        for (int i = 0; i < 50000; i++) {
+            final int sd = 10 + (int) Long.remainderUnsigned(spread(r, 31), sdMax - 9L);
+            final long S = r.nextLong(4L * sd + 1);
+            final long O = 48 + r.nextLong(S + 1);
+            final long o = 48 + r.nextLong(Math.min(O, (1L << 31) - 48));
+            final long D = r.nextLong(1 + Math.min(dMax, O / 40));
+            checkShareFp(D, o, O, S, sd);
+        }
+    }
+    
+    /**
+     * Outside the bounds the share is all of D, Long.MAX_VALUE, and every transaction before
+     * the deadline is taken (bergdb 005-79): D = 2^32, S = 2^47, o = 2^31, O or sd not
+     * positive. At the bounds' largest values the share is D 2^16 here, the min.
+     */
+    @Nano
+    public static void testShareFpClamp() {
+        Assert.assertEquals(Long.MAX_VALUE, shareFp(1L << 32, 48, 1000, 2000, 800));
+        Assert.assertEquals(Long.MAX_VALUE, shareFp(100, 48, 1000, 1L << 47, 800));
+        Assert.assertEquals(Long.MAX_VALUE, shareFp(100, 1L << 31, 1000, 2000, 800));
+        Assert.assertEquals(Long.MAX_VALUE, shareFp(100, 48, 0, 2000, 800));
+        Assert.assertEquals(Long.MAX_VALUE, shareFp(100, 48, 1000, 2000, 0));
+        Assert.assertEquals(Long.MAX_VALUE, shareFp(-1, 48, 1000, 2000, 800));
+        final long dMax = (1L << 32) - 1;
+        Assert.assertEquals(dMax << 16, shareFp(dMax, (1L << 31) - 1, 1, (1L << 47) - 1, 10));
+        
+        // Beyond the bounds a record takes every transaction before the deadline.
+        TransSeq s = new TransSeq();
+        for (int i = 0; i < 10; i++) {
+            s.add(paceInfo((1L << 48) + 100 * i, 10, 100));
+        }
+        final long length = (1L << 48) + 2000;
+        Assert.assertEquals((1L << 48) + 900, s.take(0, length, 800, 100, IGNORE, Long.MAX_VALUE));
+        Assert.assertTrue(s.isEmpty());
+    }
+    
+    /** ditherFp is the floor of the double dither of 005-49 times 2^16 (bergdb 005-79). */
+    @Nano
+    public static void testDitherFp() {
+        java.util.SplittableRandom r = new java.util.SplittableRandom(79);
+        for (int i = 0; i < 1000; i++) {
+            final long pos = i < 500 ? i : r.nextLong();
+            long z = pos * 0x9E3779B97F4A7C15L;
+            z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
+            z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
+            final long top53 = (z ^ (z >>> 31)) >>> 11;     // 005-49's u is top53 2^-53
+            final int u = ditherFp(pos);
+            Assert.assertTrue("pos " + pos, u >= 0 && u < 65536 && u == top53 >>> 37);
+        }
     }
 }

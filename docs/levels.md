@@ -280,17 +280,17 @@ How it works (`Reclaim`; the class comment has the details):
 
 * An iteration starts at an external transaction when the stream has grown
   by more than twice the startup distance since the last one started, and a
-  quarter of R has passed (`ITERATION_SPACING`). pStart and tStart are the
-  stream length and the time then; the cut point pCut is the previous
-  iteration's pStart.
+  quarter of R has passed (R / `ITERATION_DIVISOR`, in integers since
+  005-79). pStart and tStart are the stream length and the time then; the
+  cut point pCut is the previous iteration's pStart.
 * Each external transaction allows a step while the bytes charged so far
-  are below a quarter (`internalFraction`) of the stream's growth since
-  pStart; the charge counts the value nodes rewritten and the index nodes
-  made dirty. A step scans at most about 16 KB of KVs at tStart, with
-  maintenance reads that swizzle nothing; in one internal transaction it
-  touches its key range at the current time (making its index nodes dirty,
-  also those of deleted keys) and rewrites each live value stored before
-  pCut.
+  are below a quarter (`internalFraction`, 16,384 units of 2^-16;
+  `fractionOf`) of the stream's growth since pStart; the charge counts the
+  value nodes rewritten and the index nodes made dirty. A step scans at
+  most about 16 KB of KVs at tStart, with maintenance reads that swizzle
+  nothing; in one internal transaction it touches its key range at the
+  current time (making its index nodes dirty, also those of deleted keys)
+  and rewrites each live value stored before pCut.
 * When the scan ends, the iteration is done; tEnd and pEnd are the time and
   the position of its last step. The cut at pCut waits until tEnd is older
   than R, the startup pos has passed pEnd and then pSafe, and the last valid

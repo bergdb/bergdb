@@ -1,0 +1,81 @@
+--- a/java/src/bergdb/core/TransSeq.java
++++ b/java/src/bergdb/core/TransSeq.java
+@@ -176,6 +176,13 @@
+         final long share = shareFp(dirtyCount, recordOwnBytes, ownBytes, 
+                 streamLength - currentSp, startupDistance);
+         final long u = ditherFp(streamLength);
++        // 005-79's comparison (compare-take.diff, not committed): the double rule of
++        // 2026-10-28 beside the integer one, at each test of the loop before the deadline.
++        final double shareD = (double) dirtyCount * recordOwnBytes / ownBytes 
++                * (streamLength - currentSp) / startupDistance;
++        final double uD = ditherDouble(streamLength);
++        boolean cmpDiffers = false;
++        cmpTakes++;
+         
+         long taken = 0;
+         long bytes = 0;
+@@ -185,6 +192,20 @@
+             
+             // Before the deadline, a transaction that does not fit in what is left of the
+             // share is taken if the part that fits is larger than u. In units of 2^-16.
++            if (first.tpos > hardSp) {
++                final boolean bi = ((taken + count) << 16) > share 
++                        && share - (taken << 16) <= u * count;
++                final boolean bd = taken + count > shareD && shareD - taken <= uD * count;
++                cmpTests++;
++                if (bi != bd) {
++                    cmpTestsDiffering++;
++                    cmpDiffers = true;
++                    System.out.println("TAKE DIFFERS at length " + streamLength + ": taken " + taken
++                            + ", count " + count + "; share " + shareD + " (double), " + share
++                            + " / 2^16 = " + share / 65536.0 + "; u " + uD + ", " + u + " / 2^16 = "
++                            + u / 65536.0 + "; stops: double " + bd + ", integer " + bi);
++                }
++            }
+             if (first.tpos > hardSp && ((taken + count) << 16) > share 
+                     && share - (taken << 16) <= u * count) {
+                 break;
+@@ -222,6 +243,9 @@
+             size -= 1;
+         }
+         
++        if (cmpDiffers) {
++            cmpTakesDiffering++;
++        }
+         if (first == null) {
+             // To avoid a potential memory leak
+             last = null;
+@@ -249,6 +273,16 @@
+      * 007-03, step 3). Until 2026.1 it was a double, the top 53 bits times 2^-53; this is
+      * its floor times 2^16, exactly (bergdb 005-79).
+      */
++    // 005-79's comparison: counts, and the double dither of 2026-10-28.
++    static long cmpTakes, cmpTakesDiffering, cmpTests, cmpTestsDiffering;
++    
++    static double ditherDouble(long pos) {
++        long z = pos * 0x9E3779B97F4A7C15L;
++        z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
++        z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
++        return ((z ^ (z >>> 31)) >>> 11) * 0x1.0p-53;
++    }
++    
+     static int ditherFp(long pos) {
+         long z = pos * 0x9E3779B97F4A7C15L;
+         z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
+--- a/java/stress/StreamDigest.java
++++ b/java/stress/StreamDigest.java
+@@ -342,8 +342,14 @@
+             String first = null;
+             for (String mode : modes) {
+                 long t0 = System.nanoTime();
++                TransSeq.cmpTakes = TransSeq.cmpTakesDiffering = 0;
++                TransSeq.cmpTests = TransSeq.cmpTestsDiffering = 0;
+                 String line = w.run(mode);
+                 System.out.println(line);
++                // 005-79's comparison (compare-take.diff).
++                System.out.println("COMPARE " + c[0] + " " + mode + " takes=" + TransSeq.cmpTakes
++                        + " takesDiffering=" + TransSeq.cmpTakesDiffering + " tests="
++                        + TransSeq.cmpTests + " testsDiffering=" + TransSeq.cmpTestsDiffering);
+                 System.out.println("  " + c[0] + " " + mode + ": "
+                         + (System.nanoTime() - t0) / 1000000 + " ms");
+                 String sha = line.substring(line.indexOf(" sha256=") + 8);

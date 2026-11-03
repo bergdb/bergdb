@@ -39,7 +39,6 @@ Open
 | [005-72](72-file-layout-after-cut.md) | Decide | The files after reclaim's physical cut depend on timing (when the durable length reached the decision), while the bytes from the decided cut do not; a restart also changes the layout (not a bug). The C clone, without threads, cannot match Java's files after a cut. Frans, 2026-10-29: A for 012's cross tests (done); the entry stays open to consider B, a layout from the decided cut | open |
 | [005-77](77-cap-pace-factor.md) | Investigate | A decrease's commits grow with the keys: after a one-call decrease (D4:B) from 1000 to 100 MB at 50M keys, the catch-up's records are 12 to 14 times the new mean (largest 13.3 to 15.4 MB, against 2.3 to 3.6 MB at 10M), written by the committing threads; the cause is the pace's factor S/sd in the share, which starts at 10 (007-07, section 11). Only bytes measured, not commit times; 100M keys not run. Proposed: cap S/sd at 2 or at 4 (two variants); the deadline at the span still keeps the section from growing, the catch-up gets longer, and T3_take and T3_take_decrease hold for any pace (007-08). Frans's decision on 006-10's point 4 | open |
 | [005-78](78-retain-duration-in-stream.md) | Investigate | The retain duration is not kept in the stream: it decides when reclaim's iterations start and where it cuts, so the stream's bytes, but a start takes the builder's value (default forever), against the rule of 005-53 and 005-52 (a setting that changes the stream's bytes is kept in the stream, 010-P2) and without a word in its Javadoc. Frans: it must be in the stream; study first. Forms: the meta blocks (as the startup distance), an internal KV, or reclaim's table | open |
-| [005-79](79-integers-not-doubles.md) | Implement | Integers instead of doubles in the Core's decisions, so that the stream's bytes are the same in every language and on every target (Frans, 2026-10-29: "Integer operations are well-defined on all targets"): the take's share and dither (`TransSeq.take`), reclaim's iteration spacing and internal fraction, eviction's low watermark. Decided (Frans, 15:48): the take in fixed point (option B), `setReclaimInternalFraction` takes an integer, on its own (not with 005-77 or 005-78, which have notes), not before Frans says so; the other three keep their bytes below 2^53. A check in the gates that keeps doubles out; the C clone and Lean's `share` and `dither` follow | in progress |
 | [005-81](81-overload-and-retries.md) | Investigate | Client overload, backpressure and retries | open |
 
 
@@ -48,6 +47,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-79](79-integers-not-doubles.md) | Implement | Integers, not doubles, in the Core's decisions | done | 2026-11-03 |
 | [005-82](82-gettrans-corruption.md) | Fix | getTrans fails the database on a corrupt record | done | 2026-11-03 |
 | [005-69](69-system-clock-promise.md) | Fix | SystemClock keeps its promise | done | 2026-11-03 |
 | [005-71](71-dbclock-read-time-after-start.md) | Fix | DbClock read time after a start: a note in P2 | done | 2026-11-03 |

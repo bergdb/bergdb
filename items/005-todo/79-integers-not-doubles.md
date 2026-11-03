@@ -1,8 +1,9 @@
 005-79. Implement: integers instead of doubles in the Core's decisions
 ====================================================================
 
-Status: open, planned for release 2026.2 (016-01, section 4.1, item 2;
-"Plan for 2026.2" below); nothing implemented yet. Kind: implement.
+Status: done for release 2026.2 (2026-11-03, Java: Part A `dde82e8`,
+Part B the commit after it); Lean and the C clone follow after the
+release (015-03, 015-02). Kind: implement.
 Created 2026-10-29.
 
 Registered at Frans's request (2026-10-29, 15:38, in 012's conductor
@@ -694,7 +695,7 @@ part).
     `stress/`, `probe/` with ShareProbe); `digest-base.txt` (StreamDigest
     all, 7 s) and `share-base.txt` (sd 800 kB: E[w] 0.92, E[share] 0.92,
     S/sd 1.001; sd 2 MB: 0.52, 0.52, 1.008) in this directory.
-  * 16:17. Step 2 done: **Part A** committed in the clone, `679e153`
+  * 16:10. Step 2 done: **Part A** committed in the clone, `679e153`
     (amended from `d969336`: Reclaim's int getter and setter renamed
     `getInternalFractionUnits` and `setInternalFractionUnits`, so that
     the check's name rule of step 4 does not meet Db's double
@@ -716,8 +717,40 @@ part).
       printed `DIGESTS IDENTICAL (36 of 36)`, the second `DIGESTS DIFFER
       (3 of 36)`, only there. `digest-compare.py` compares length,
       firstAvailablePos, firstAvailableTime and sha256.
-* **Next**: step 3, Part B (TransSeq written, tests pass; StreamDigest,
-  compare-take, ShareProbe to run), then step 4.
+  * By 16:22 (the coordinator): Part A reviewed (H5, no faults) and
+    committed in `main` as `dde82e8`.
+  * 16:24. Steps 3 to 5 done: **Part B** committed in the clone, then
+    rebased on `main` `f2cb23b`: `2200a1c`. The hand-off is in
+    `/Users/f/fl/bench/016/005-79/handoff/` (016-05, section 4): BASE
+    `f2cb23b`, `files.txt`, `patch.diff`, `gates.txt`. Files:
+    `java/src/bergdb/core/TransSeq.java`, `java/doubles.py` (new),
+    `java/deps.py`, `java/before-commit.sh`,
+    `items/010-principles/01-principles.md` (P2), `docs/levels.md`
+    (section 5), `lean/README.md`. Not `releases/next.md`: 016-05,
+    section 4, item 7, gives it to 016-03's agent, so the note's text is in
+    Outcome below.
+    * `before-commit.sh` on `2200a1c`: `BEFORE COMMIT OK (140 s)`, 16:27;
+      unit 1102, f 78; `Doubles: 7 packages, 177 files: no floating point
+      outside the allowed places (102 uses in them)`. Before the rebase,
+      on `9b3d4a1`: `BEFORE COMMIT OK (149 s)`, 16:24.
+    * The patch applies cleanly to `main` `3e32f02` (005-82), and
+      `doubles.py` and `deps.py` pass there; not gated there.
+    * See "Part B" below for the take, the digests, the check and the
+      tests.
+  * 16:43. `level2.sh` on `2200a1c`: `LEVEL 2 OK` (16:28 to 16:43:50);
+    RestartInvariance identical in 8 configurations, conformance `TRACECHECK
+    OK: 70`.
+  * 16:47. B amended (two Javadoc lines in TransSeq: the double take was
+    005-49's, never released, not 2026.1's) and rebased on `main`
+    `3e32f02` (005-82): **`ddbba95`**. `before-commit.sh` on it:
+    `BEFORE COMMIT OK (139 s)`, 16:46, unit 1105, f 78. StreamDigest on it:
+    the same decided digests as `digest-b.txt`, 36 of 36. The hand-off
+    rewritten for it: BASE `3e32f02`.
+  * 17:05. The review's findings answered (Log, 16:58 to 17:05); B
+    amended and rebased on `main` `d5fc369`: **`b550a99`**, `BEFORE COMMIT
+    OK (147 s)`. The hand-off rewritten (BASE `d5fc369`, `review.txt`).
+* **Next**: the combined gate and the commit of B (step 7), by the
+  coordinator.
 * **For the implementer**:
   * The Java files have trailing whitespace, which the Edit and Write
     tools drop. Edit them with exact strings, and compare with `diff -w`.
@@ -727,6 +760,152 @@ part).
     copy.
   * Record the outcome of each step in this State, with the times, so
     that a fresh agent can resume.
+
+
+Part B, 2026-11-03
+------------------
+
+**The take** (`TransSeq`). The plan's section 1, with three choices of
+the implementer:
+
+* Outside the bounds (D or S not below 2^32 or 2^47, o not below 2^31, O
+  or sd not positive), `shareFp` returns `Long.MAX_VALUE`, not D << 16.
+  The decisions are the same: the first test of the loop is false, so
+  every transaction before the deadline is taken. And D << 16 cannot
+  overflow for any D. Within the bounds the result is min(Q, D << 16), as
+  planned.
+* The division is Hacker's Delight's `divlu` (the plan's first choice),
+  with `Long.divideUnsigned`, `remainderUnsigned` and unsigned compares.
+  The second division, by sd, uses the same helper.
+* The test `testDivluExact` checks `divlu` alone against BigInteger, with
+  divisors of every bit length up to 2^64 - 1 and u1 near v. shareFp's own
+  divisors never have the top bit set (O < 2^63, sd < 2^31), so its tests
+  cannot reach a normalization shift of 0.
+
+**The tests**:
+
+* `testShareFpExact`: about 10^5 cases against BigInteger, half spread
+  over the bit lengths within the bounds, half as BergDB has them (a
+  section near sd, o at most O), and 1,200 edge cases.
+* `testShareFpClamp`, `testDivluExact`, `testDitherFp`, and `testShare`
+  with integers: `ditherFp(1300) = 26583`, `ditherFp(1200) = 65167`,
+  `shareFp(100, 100, 1000, 2000, 800) = 25 << 16`.
+* The other take tests (`TransSeq`, `DbTester`) are unchanged, and pass.
+* Mutations, each run on TransSeq's tests, and each caught:
+  * divlu's first correction cut (`testDivluExact`, `testShareFpExact`);
+  * a signed compare in its second (both);
+  * the shift for s = 0 (`testDivluExact`);
+  * the clamp at D << 16 without qHi (`testShareFpExact`);
+  * the dither's bits shifted by one (`testDitherFp`, `testShare`).
+
+**The comparison** ([compare-take.diff](79-integers-not-doubles/compare-take.diff),
+in the clone only, [compare.txt](79-integers-not-doubles/compare.txt)). At
+each test of the loop before the deadline, it computes the double rule of
+2026-10-28 on the same state.
+
+* One take differs in all of StreamDigest, in l3-node14 (each mode), one
+  of 2,158. At stream length 531,776, before any node is taken, a
+  transaction of 6 nodes had a share of 4.5415785 (double) and
+  297,636 / 2^16 = 4.5415649, and u was 0.75692965 and 49,606 / 2^16. The
+  double rule takes it (4.5415785 > 0.75692965 * 6 = 4.5415779). The
+  integer rule stops at the tie: rounded to 2^-16, the share equalled u
+  times the transaction's 6 nodes (297,636 = 49,606 * 6). `testShare` has
+  this case since the review (Log).
+* Every other configuration has no differing take.
+
+**StreamDigest** ([digest-b.txt](79-integers-not-doubles/digest-b.txt),
+[digest-summary.txt](79-integers-not-doubles/digest-summary.txt)):
+
+* The decided digests change in 1 of the 12 configurations, l3-node14
+  (plain length 1,582,944 to 1,604,576, +1.4 percent), exactly where
+  `compare.txt` counts a differing take.
+* In every configuration plain, reads and restarts give the same stream.
+* On `2200a1c` (rebased), the same digests as `digest-b.txt`, 36 of 36.
+
+**ShareProbe** ([share-b.txt](79-integers-not-doubles/share-b.txt)): the
+base's numbers to two decimals, at sd 800 kB (E[w] 0.92, E[share] 0.92,
+S/sd 1.001) and 2 MB (0.52, 0.52, 1.008).
+
+**The check** (`java/doubles.py`, a step of `before-commit.sh` after
+deps.py):
+
+* It works as the plan's step 4 says, with these differences:
+  * The name rule guards only the allowed methods that return floating
+    point: `Db.getInternalFraction`, `Bytes.bytesToFloatLE` and
+    `bytesToDoubleLE`. A use of `addRandomOffset` or `oneDecimal` decides
+    nothing.
+  * Names with double or float as a part in camel case are refused too
+    (`doubleValue`, `DoubleStream`, `floatToRawIntBits`), not only the four
+    words.
+  * `doubles` (Random's stream), `average` and `getAverage` are refused as
+    calls.
+* Two places more in the allowed list: `CacheStats.toString` and
+  `BufferedStream.Waits.take`. They are text of statistics, with literals
+  1e6 and 1e3 that the plan's scan did not match: its pattern had no
+  exponent-only literals.
+* Its self-test, 13 snippets, runs at every run.
+* `deps.py`: `test_regions(code, filename, helpers=True)` and a main guard.
+  `doubles.py` does not write `__pycache__` into `java/`.
+* By hand, once:
+  * On the base's `java/src` (`6d81050`), it refuses exactly the four
+    decisions and the three sizes, 20 uses on their lines
+    ([doubles-base.txt](79-integers-not-doubles/doubles-base.txt)).
+  * `double x = 0.5;` planted in `TransSeq.take`: `BEFORE COMMIT FAILED:
+    doubles in the Core's production code outside the allowed list ...`
+    with the line `REFUSED core/TransSeq.java:179`
+    ([doubles-planted.txt](79-integers-not-doubles/doubles-planted.txt)).
+* A limit: it finds floating point by its types, literals and calls. A
+  floating value from a JDK method whose name does not show it, assigned
+  with `var`, would pass. No such use is in the Core.
+
+**Not done**: step 8 (Lean), as Frans allowed (15:31). Step 9 (C) is for
+after the release. `docs/log.md` has no entry for 005-79.
+
+
+Outcome
+-------
+
+For the release notes (016-03's agent), 2026.2:
+
+* **The Core decides in integers** (bergdb 005-79, 2026-11-03). No double
+  or float decides the stream's bytes or the memory: the take's share and
+  dither (in units of 2^-16 of a node), reclaim's iteration spacing and
+  internal fraction, eviction's low watermark and two buffer sizes use
+  64-bit integers, which every language and target computes alike. Doubles
+  stay at the API, converted at once, and in statistics; `java/doubles.py`
+  checks it in `before-commit.sh`. The format is the same.
+  * The paced take (005-49, new in 2026.2; every stream differs from
+    2026.1's anyway) decides in integers. Its choices differ in some
+    records from its double rule of 2026-10-28, so the same transactions
+    can give other bytes than during 2026.2's development, once.
+    StreamDigest's decided digests change in 1 of its 12 configurations,
+    l3-node14, where one take of 2,158 differs: rounded to 2^-16, the
+    share equalled u times the transaction's 6 nodes (297,636 = 49,606 *
+    6), and the integer rule stops at such a tie. The digests of 2026.2
+    are the new reference (016-01, W7).
+  * `Db.setReclaimInternalFraction(double)` and JMX's setter keep their
+    double, the range 0.001 to 0.90 and 005-73's checks. The fraction is
+    used as the nearest multiple of 2^-16: the default 0.25 exactly, 0.1 as
+    0.100006. So a fraction other than the default can make a reclaim step
+    rewrite a few bytes more or less per MB of growth than the exact
+    double did, and change the stream's bytes.
+  * The iteration spacing and the low watermark give what they gave, for
+    retain durations below 28 years and budgets below 3 PB. The default
+    fraction gives what it gave for streams below 2^53 bytes (9 PB).
+
+If B is not committed (the plan's fallback), the first and the last two
+points hold for A alone, without the take and `doubles.py`: the take keeps
+its doubles in 2026.2.
+
+Left for after B (the review's finding 6; the coordinator adds them to
+015-02 and 015-03):
+
+* 007-08's `TakeCheck.java` (items/007-bounds/08-step4-take-in-lean/) and
+  012's `Vectors.java` call `TransSeq.dither`, which is gone; they no
+  longer compile against `main`.
+* `SIS/Bound.lean:133` and `SIS/BoundExample.lean:83` call `dither` a Java
+  function. Their bits are the double dither of 2026-10-28, which Java no
+  longer has.
 
 
 Log
@@ -741,3 +920,57 @@ Log
   [doubles-scan.txt](79-integers-not-doubles/doubles-scan.txt).
 * Frans's changes of 15:31 (Java only; Lean as a tool) and 15:40 (tonight;
   `before-commit.sh` the only gate) are in "Decisions of 2026-11-03".
+* Part A (the implementer, 15:51 to 16:10): the baseline, then Part A, its
+  gate and `level3.sh`; amended for the names of Reclaim's int methods;
+  handed over. The coordinator reviewed and committed it (`dde82e8`).
+* Part B (16:04 to 16:47): the take in fixed point, `doubles.py`, the
+  notes; gated, `level2.sh`; rebased on `main` `3e32f02` as `ddbba95` and
+  gated again; handed over in `/Users/f/fl/bench/016/005-79/handoff/`. A
+  finding on the way: StreamDigest's `compare` counts the physical cut,
+  which depends on timing (State, Part A).
+* 16:58 to 17:05. The review of Part B (016-01, H5, an agent at xhigh, on
+  `2200a1c`): no fault in the code. Its findings and the answers:
+  1. Test gap: no test pinned the `<=` of `shareFp - (taken << 16) <= u *
+     count`; the mutant `<` passed TransSeq and DbTester, though it gives
+     the base's digest for l3-node14. Fixed: `testShare` has the
+     reviewer's case, one transaction of 6 nodes at 500,000, L = 531,776
+     (`ditherFp(L)` = 49,606), sd 65,536, sp = L - 49,606, o = O = 1000,
+     so `shareFp` = 297,636 = 6 u, and the take returns sp. The `<`
+     mutant of the new source fails it (`testShare` FAILED, 1 of 18); the
+     same one-character change as the reviewer's `review/mut1`.
+  2. Text: "in doubles from 005-49 to 2026.1" and "Until 2026.1 it was a
+     double" were wrong: the double pace came in `f89846d` (2026-10-28),
+     after release 2026.1 (`a42947c`), which had no dither. Fixed in
+     `ddbba95` already (005-49 until 005-79), now with the date and the
+     commit: "in doubles from 2026-10-28, f89846d, until then; 2026.1 had
+     no pace", and "From 2026-10-28 (f89846d) until 005-79".
+  3. Text: lean/README.md's "no longer for Java's take" was half true:
+     TakeCheck's 300 cases give exactly `BoundExample.lean`'s `javaTake`s
+     on the integer take too; only the bit guards of `dither` and `share`
+     lost their Java counterpart. Fixed: lean/README.md says so, with the
+     reviewer's count, 13 differing cases of 3 * 10^6, each taking one
+     transaction more. docs/levels.md's "the model's take gives Java's
+     startup pos on 300 generated cases" stays true, and agrees.
+  4. Nit, taken: `doubles.py` refuses `Math.PI`, `Math.E` and `TAU`, static
+     imports of Math's or StrictMath's floating methods and constants or
+     of all their members, `averagingInt`, `averagingLong` and
+     `nextExponential`; three self-test snippets more (16), one of them a
+     static import of `Math.max`, which passes.
+  5. Nit, no change: `divlu` stays. Under P11 (simple before optimal) the
+     64-step shift and subtract would be the plainer code. `divlu` stays as
+     it is correct, as `testDivluExact` covers it against BigInteger with
+     its corrections reached, and as the plan named it first; it takes two
+     unsigned divisions and their remainders where the plainer code takes
+     64 steps.
+  6. Nit: TakeCheck.java and Vectors.java call `TransSeq.dither`;
+     Bound.lean:133 and BoundExample.lean:83 call it a Java function.
+     Noted in Outcome; the coordinator adds them to 015-02 and 015-03.
+  7. Nit, taken: "its share and dither, rounded to 2^-16, were equal" now
+     says that the share equalled u times the 6 nodes (297,636 = 49,606 *
+     6), in the commit message, Part B and Outcome.
+  8. Nit, taken: docs/levels.md's two edited bullets reflowed.
+  * The clone rebased on `main` `d5fc369` (015-07's parsers, PauseProbe):
+    **`b550a99`**. `before-commit.sh` on it: `BEFORE COMMIT OK (147 s)`,
+    17:02:42 to 17:05:09; unit 1112, f 78. StreamDigest on it: the same
+    decided digests as `digest-b.txt`, 36 of 36. The hand-off rewritten,
+    BASE `d5fc369`, with `review.txt`.

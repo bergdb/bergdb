@@ -1,0 +1,19 @@
+StreamDigest all: the base 6d81050 (digest-base.txt) against Part B (digest-b.txt),
+005-79, 2026-11-03. Lengths of the plain stream; 'digest' compares the decided fields
+(length, firstAvailablePos, firstAvailableTime, sha256; digest-compare.py), the physical
+cut left out; 'modes' says whether plain, reads and restarts give the same stream
+(sha256) within the configuration, for Part B; 'takes' is compare.txt's differing takes.
+
+configuration                base          B  change  digest   modes  takes
+l2-sd100                  5131920    5131920   +0.0%  same     agree  0
+l2-sd1000-node8           4355480    4355480   +0.0%  same     agree  0
+l2-sd10000-node14         2556312    2556312   +0.0%  same     agree  0
+l2-sd100000-node62        2531344    2531344   +0.0%  same     agree  0
+l2-every1                  514616     514616   +0.0%  same     agree  0
+l2-idle-1                  222152     222152   +0.0%  same     agree  0
+l2-idle-2                  222112     222112   +0.0%  same     agree  0
+l2-default-100MB         79056128   79056128   +0.0%  same     agree  0
+l3-every1                 1947712    1947712   +0.0%  same     agree  0
+l3-node8                  7094096    7094096   +0.0%  same     agree  0
+l3-node14                 1582944    1604576   +1.4%  differs  agree  1
+l3-node62                10118752   10118752   +0.0%  same     agree  0

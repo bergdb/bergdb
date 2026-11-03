@@ -160,6 +160,20 @@ Where BergDB stands:
   clock before each transaction: `RestartInvariance` and `StreamDigest`
   set it 1 to 20 units after the last one before each transaction, and
   neither calls `currentTime()` (their reads give their lookup times).
+* Decided in integers since 2026-11-03 (005-79): no double or float decides
+  the stream's bytes or the memory in the Core. The take's share and dither
+  are in units of 2^-16, as is reclaim's internal fraction; reclaim's
+  iteration spacing and eviction's low watermark are integer quotients
+  (R / 4, floor(3 budget / 4)). Integer operations are defined alike on
+  every target, so a port (item 012) gives the same bytes with 64-bit
+  integer arithmetic, with no care for fused multiply-adds, extended
+  precision or a missing FPU. `java/doubles.py` checks it in
+  `before-commit.sh`: it refuses floating point in the Core Layer's
+  production code outside a list of allowed places (API conversions,
+  statistics, the users' values as bits). Frans (016-01, D3, 2026-11-03):
+  "005-79, yes implement this internally. The Pub API can use doubles at
+  the interface, then immediately convert to integers (int, long)
+  internally."
 * To check: that the memory budget and eviction (Level 4, item 009) leave
   the bytes unchanged, or, where a setting changes the bytes, that the
   principle says so.

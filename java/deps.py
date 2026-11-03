@@ -121,8 +121,9 @@ def block_end(code, start):
     return len(code)
 
 
-def test_regions(code, filename):
-    """The (start, end) ranges of test code in a stripped file."""
+def test_regions(code, filename, helpers=True):
+    """The (start, end) ranges of test code in a stripped file; with helpers=False, without
+    the helper rule (java/doubles.py, bergdb 005-79)."""
     if "Tester" in filename or re.search(r"\bimplements\s+IPack\b", code):
         return [(0, len(code))]
     regions = []
@@ -136,6 +137,8 @@ def test_regions(code, filename):
         regions.append((m.start(), block_end(code, k)))
     for m in re.finditer(r"\bstatic\s+(?:\w+\s+)*void\s+test\w*\s*\(", code):
         regions.append((m.start(), block_end(code, m.end())))
+    if not helpers:
+        return regions
     # Helpers: a method or nested class of the file, every use of whose name in the
     # file is in test code, is test code too; repeated until nothing changes.
     decls = []
@@ -271,4 +274,5 @@ def main():
     return 1 if bad else 0
 
 
-sys.exit(main())
+if __name__ == "__main__":
+    sys.exit(main())

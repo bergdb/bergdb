@@ -1,0 +1,44 @@
+005-79, step 3: compare-take.diff on Part B (the clone, TransSeq.java uncommitted on 679e153), StreamDigest all.
+Per configuration and mode: the takes, those where a test of the loop before the deadline differs
+between the integer rule and the double rule of 2026-10-28 on the same state, and the tests.
+
+COMPARE l2-sd100 plain takes=1999 takesDiffering=0 tests=26 testsDiffering=0
+COMPARE l2-sd100 reads takes=1999 takesDiffering=0 tests=26 testsDiffering=0
+COMPARE l2-sd100 restarts takes=1999 takesDiffering=0 tests=26 testsDiffering=0
+COMPARE l2-sd1000-node8 plain takes=1999 takesDiffering=0 tests=944 testsDiffering=0
+COMPARE l2-sd1000-node8 reads takes=1999 takesDiffering=0 tests=944 testsDiffering=0
+COMPARE l2-sd1000-node8 restarts takes=1999 takesDiffering=0 tests=944 testsDiffering=0
+COMPARE l2-sd10000-node14 plain takes=1999 takesDiffering=0 tests=3994 testsDiffering=0
+COMPARE l2-sd10000-node14 reads takes=1999 takesDiffering=0 tests=3994 testsDiffering=0
+COMPARE l2-sd10000-node14 restarts takes=1999 takesDiffering=0 tests=3994 testsDiffering=0
+COMPARE l2-sd100000-node62 plain takes=1999 takesDiffering=0 tests=3966 testsDiffering=0
+COMPARE l2-sd100000-node62 reads takes=1999 takesDiffering=0 tests=3966 testsDiffering=0
+COMPARE l2-sd100000-node62 restarts takes=1999 takesDiffering=0 tests=3966 testsDiffering=0
+COMPARE l2-every1 plain takes=399 takesDiffering=0 tests=105 testsDiffering=0
+COMPARE l2-every1 reads takes=399 takesDiffering=0 tests=105 testsDiffering=0
+COMPARE l2-every1 restarts takes=399 takesDiffering=0 tests=105 testsDiffering=0
+COMPARE l2-idle-1 plain takes=399 takesDiffering=0 tests=160 testsDiffering=0
+COMPARE l2-idle-1 reads takes=399 takesDiffering=0 tests=160 testsDiffering=0
+COMPARE l2-idle-1 restarts takes=399 takesDiffering=0 tests=160 testsDiffering=0
+COMPARE l2-idle-2 plain takes=399 takesDiffering=0 tests=172 testsDiffering=0
+COMPARE l2-idle-2 reads takes=399 takesDiffering=0 tests=172 testsDiffering=0
+COMPARE l2-idle-2 restarts takes=399 takesDiffering=0 tests=172 testsDiffering=0
+COMPARE l2-default-100MB plain takes=11999 takesDiffering=0 tests=17034 testsDiffering=0
+COMPARE l2-default-100MB reads takes=11999 takesDiffering=0 tests=17034 testsDiffering=0
+COMPARE l2-default-100MB restarts takes=11999 takesDiffering=0 tests=17034 testsDiffering=0
+COMPARE l3-every1 plain takes=1156 takesDiffering=0 tests=210 testsDiffering=0
+COMPARE l3-every1 reads takes=1156 takesDiffering=0 tests=210 testsDiffering=0
+COMPARE l3-every1 restarts takes=1156 takesDiffering=0 tests=210 testsDiffering=0
+COMPARE l3-node8 plain takes=2270 takesDiffering=0 tests=924 testsDiffering=0
+COMPARE l3-node8 reads takes=2270 takesDiffering=0 tests=924 testsDiffering=0
+COMPARE l3-node8 restarts takes=2270 takesDiffering=0 tests=924 testsDiffering=0
+TAKE DIFFERS at length 531776: taken 0, count 6; share 4.541578544061303 (double), 297636 / 2^16 = 4.54156494140625; u 0.7569296531167173, 49606 / 2^16 = 0.756927490234375; stops: double false, integer true
+COMPARE l3-node14 plain takes=2158 takesDiffering=1 tests=3942 testsDiffering=1
+TAKE DIFFERS at length 531776: taken 0, count 6; share 4.541578544061303 (double), 297636 / 2^16 = 4.54156494140625; u 0.7569296531167173, 49606 / 2^16 = 0.756927490234375; stops: double false, integer true
+COMPARE l3-node14 reads takes=2158 takesDiffering=1 tests=3942 testsDiffering=1
+TAKE DIFFERS at length 531776: taken 0, count 6; share 4.541578544061303 (double), 297636 / 2^16 = 4.54156494140625; u 0.7569296531167173, 49606 / 2^16 = 0.756927490234375; stops: double false, integer true
+COMPARE l3-node14 restarts takes=2158 takesDiffering=1 tests=3942 testsDiffering=1
+COMPARE l3-node62 plain takes=2573 takesDiffering=0 tests=4290 testsDiffering=0
+COMPARE l3-node62 reads takes=2573 takesDiffering=0 tests=4290 testsDiffering=0
+COMPARE l3-node62 restarts takes=2573 takesDiffering=0 tests=4290 testsDiffering=0
+Done: 12 configurations, 3 modes; the modes give the same stream
