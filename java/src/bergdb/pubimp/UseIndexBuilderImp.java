@@ -546,6 +546,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
     private class IndexIterator implements Iterator<Kv<TYPE>> {
         private GetMany g;
         private boolean gotEod = false;
+        private boolean endedAtLimit = false;
         private int resultIndex = -1;
         private long[] startKey;
         private boolean done = false;
@@ -583,9 +584,11 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
             assert g.lookupTime >= 0;
             connection.getDb().getMany(g);
             this.gotEod = stopCondition.gotEod();
+            this.endedAtLimit = stopCondition.endedAtLimit();
             
-            if (g.result.size() > 0) {
-                this.startKey = g.result.get(g.result.size() - 1).key;
+            if (stopCondition.lastKey() != null) {
+                this.startKey = stopCondition.lastKey();
+                    // The last entry visited, returned or filtered out (bergdb 015-20).
             }
             
             if (firstBatch) {
@@ -599,13 +602,16 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                 return false;
             }
             
-            if (resultIndex == -1) {
+            while (resultIndex == -1) {
                 getMany();
-                if (g.result.size() == 0) {
-                    done = true;
-                } else {
+                if (g.result.size() > 0) {
                     resultIndex = 0;
+                } else if (!endedAtLimit) {
+                    done = true;
+                    break;
                 }
+                // Else a limit ended the page on entries filtered out, not the end of the
+                // range: the next page starts after them (bergdb 015-20).
             }
             return !done;
         }
@@ -698,6 +704,8 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         private boolean gotEod = false;
         private long data = 0;
         private final boolean excludeNonObj;
+        private long[] lastKey = null;      // The last entry visited within the prefix.
+        private boolean endedAtLimit = false;
         
         public IterStopCondition(boolean excludeNonObj) {
             isFirst = true;
@@ -721,8 +729,11 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                 return result;
             }
             
+            lastKey = kvt.key;
+            
             if (count >= maxCount || data > maxData || nanos > maxNanos) {
                 result = GetMany.StopCondition.ADD_AND_STOP;
+                endedAtLimit = true;
             }
             
             if (excludeNonObj) {
@@ -748,6 +759,20 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         
         public final boolean gotEod() {
             return gotEod;
+        }
+        
+        /**
+         * True if a limit ended the page, false if the end of the prefix or of the
+         * database did. A page that a limit ended can be empty, all its entries filtered
+         * out (bergdb 015-20).
+         */
+        public final boolean endedAtLimit() {
+            return endedAtLimit;
+        }
+        
+        /** The key of the last entry visited within the prefix, or null. */
+        public final long[] lastKey() {
+            return lastKey;
         }
     }
     

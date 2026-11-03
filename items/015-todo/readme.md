@@ -39,7 +39,6 @@ Open
 | [015-14](14-fast-path-jmm-argument.md) | Fix | The fast path's plain reads rest on the address dependency, not the JMM | open |
 | [015-18](18-night-large-after-release.md) | Implement | Run night.sh large on the release, after 2026.2 | open |
 | [015-19](19-tools-after-005-79.md) | Fix | Tools in items still use what 005-79 removed | open |
-| [015-20](20-filtered-scan-empty-page.md) | Fix | A filtered scan takes an empty page for the end of its range | open |
 | [015-21](21-index-delete-twice.md) | Fix | A second delete job lets the first delete a replacement index | open |
 | [015-22](22-index-build-after-delete.md) | Fix | A deleted index's build job writes into its replacement | open |
 | [015-23](23-refused-index-delete.md) | Fix | A refused index deletion leaves the index active and unmaintained | open |
@@ -53,6 +52,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-20](20-filtered-scan-empty-page.md) | Fix | A filtered scan takes an empty page for the end of its range | done | 2026-11-03 |
 | [015-24](24-lock-other-class-loader.md) | Fix | A refused open via another class loader drops the directory lock | done | 2026-11-03 |
 | [015-10](10-capacity-test-under-load.md) | Fix | The eviction thread stops after a batch that frees nothing | done | 2026-11-03 |
 | [015-16](16-powerloss-cleanup.md) | Investigate | PowerLossTest failed once in its cleanup, "cannot delete test file" | done | 2026-11-03 |

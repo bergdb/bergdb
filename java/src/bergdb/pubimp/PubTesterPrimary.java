@@ -547,4 +547,50 @@ public class PubTesterPrimary {
         
         db.stop();
     }
+    
+    /**
+     * Regression test for bergdb 015-20 (review R3-F12): a page of the scan (100 entries)
+     * that holds no object is not the end of the range. 100 Strings and then an object;
+     * an object, 250 Strings (more than two pages) and an object, forward and backward,
+     * with objects() and kvs().
+     */
+    @Nano
+    public static void testFilteredPages() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.newConnection();
+            WBuilder w = c.w();
+            for (int i = 0; i < 100; i++) {
+                w.put(String.format("/a/s%03d", i), "not an object");
+            }
+            w.put("/a/z", new Person("z")).execute();
+            Assert.assertEquals("z", c.get("/a/z", Person.class).name);
+            Assert.assertEquals("[z]", names(c.usePrimary(Person.class).dir("/a/").objects()));
+            
+            w = c.w();
+            w.put("/b/a", new Person("a"));
+            for (int i = 0; i < 250; i++) {
+                w.put(String.format("/b/s%03d", i), "not an object");
+            }
+            w.put("/b/z", new Person("z")).execute();
+            Assert.assertEquals("[a, z]", names(c.usePrimary(Person.class).dir("/b/").objects()));
+            Assert.assertEquals("[z, a]", 
+                    names(c.usePrimary(Person.class).dir("/b/").backward().objects()));
+            StringBuilder keys = new StringBuilder();
+            for (Kv<Person> kv : c.usePrimary(Person.class).dir("/b/").kvs()) {
+                keys.append(kv.key()).append(' ');
+            }
+            Assert.assertEquals("/b/a /b/z ", keys.toString());
+        } finally {
+            db.stop();
+        }
+    }
+    
+    private static String names(Iterable<Person> persons) {
+        java.util.List<String> result = new java.util.ArrayList<String>();
+        for (Person p : persons) {
+            result.add(p.name);
+        }
+        return result.toString();
+    }
 }
