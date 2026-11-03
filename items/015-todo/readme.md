@@ -41,6 +41,7 @@ Open
 | [015-14](14-fast-path-jmm-argument.md) | Fix | The fast path's plain reads rest on the address dependency, not the JMM | open |
 | [015-16](16-powerloss-cleanup.md) | Investigate | PowerLossTest failed once in its cleanup, "cannot delete test file" | open |
 | [015-18](18-night-large-after-release.md) | Implement | Run night.sh large on the release, after 2026.2 | open |
+| [015-19](19-tools-after-005-79.md) | Fix | Tools in items still use what 005-79 removed | open |
 
 
 Closed
@@ -107,6 +108,8 @@ Files
   `InterruptStress` saw a get fail with "File closed" during a close (F3).
 * [18-night-large-after-release.md](18-night-large-after-release.md).
   015-18, Implement: `night.sh large` on the release's commit, after it.
+* [19-tools-after-005-79.md](19-tools-after-005-79.md). 015-19, Fix:
+  tools in items still use `Eviction.LOW` and `TransSeq.dither`.
 
 
 Log

@@ -282,6 +282,18 @@ section 3). Unless he chooses before the release, it is a known issue of
 * 17:19 015-01 with 015-06's first part gated on `main` (`BEFORE COMMIT
   OK (142 s)`) and committed, `ed16384`: 015-01 done; 015-06 in progress
   (a start refused after the open still leaves the first file).
+* 17:25 Frans: "Avoid consuming extra usage. Restart agents at high
+  effort if needed. Hold new starts until 19:30 if needed." The 5-hour
+  window at 92%; the four agents stopped at safe points with their State
+  notes (015-09's fix ready, not gated; 015-10's stop rule proposed;
+  015-13 half done in K's clone; 015-16 found: the tester's `stop()`).
+  No new start until 19:33.
+* 17:27 015-15 (R1-F4) gated on `main` (`BEFORE COMMIT OK (137 s)`) and
+  committed, `f82e7e7`; done.
+* 17:31 015-17 (F3's `InterruptStress`) gated on `main` with the patch
+  (`BEFORE COMMIT OK (130 s)`) and committed, `6105d21`; done: close()
+  reported a get's "File closed". 015-19 registered: tools in items that
+  still use what 005-79 removed (after the release).
 
 
 ## 7. For Frans to decide

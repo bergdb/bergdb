@@ -28,3 +28,7 @@ Log
 ---
 
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
+
+2026-11-03, 17:35, by the coordinator: `lean/`'s `Bound.lean` (line 133)
+and `BoundExample.lean` (line 83) name `TransSeq.dither`, which 005-79
+removed; 007-08's `TakeCheck.java` calls it (015-19).

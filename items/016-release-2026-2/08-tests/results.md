@@ -57,3 +57,7 @@ outside the repository, in the run's directory. Times from `date`.
   (`6f932f0`) and main's (`3e32f02`) in turns, three rounds, the first two
   beside the night tests: six of six SUCCESS (1,093 and 1,101 tests);
   `CapacityTester.testBudgetLoweredAndRaisedUnderReads` passed each time.
+* **L3, jcstress, default mode, `3e32f02`, JDK 27** (16:44 to 17:00, with
+  `/tmp` on the disk): the five tests `[OK]`; "Failed tests: No matches",
+  "Error tests: No matches". L4, the stress programs on disk, runs until
+  23:30.

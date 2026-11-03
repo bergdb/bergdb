@@ -33,3 +33,7 @@ Log
 ---
 
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
+
+2026-11-03, 17:35, by the coordinator: C's cross-test generator
+`c/test/cross/java/Vectors.java` calls `TransSeq.dither`, which 005-79
+removed, so it no longer compiles against `main` (015-19).

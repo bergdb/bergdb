@@ -449,3 +449,60 @@ coordinator's choices of the startup distance (section 2, 200 MB
 recommended) and of the write-ups' time (section 2, A recommended); who
 runs N1 to N5 (recommended: the tools agent of 016-09, from about 17:00,
 about 5.5 hours, then 016-09's R0).
+
+2026-11-03, 16:05: the coordinator chose 200 MB only, `ab` with 2 runs a
+scenario and one round, Props 3 runs each, no Shenandoah, the write-ups
+after the block (A). The tools agent started.
+
+2026-11-03, 16:30, the tools agent (all in `/Users/f/fl/bench/016/numbers/`,
+N below):
+
+* N1 done: `N/tag` (release-2026.1), `N/cand` (main at 323a54a), and
+  `N/jars/2026.1.jar` (SHA-256 OK).
+* N2 done: `N/tag`'s `performance.sh build 2026.1` has the release jar's
+  classes (`diff -r` of both unzipped: the same), so the rebuild is kept;
+  copied to `N/cand`; `N/harness131.sh` compiles the harness against both
+  builds (2026.1 with the import changed). The `ab` smoke is still to run.
+* N3 done: `N/prep-tools.sh JAR OUTDIR [TREE]` compiles ScaleBench (both
+  diffs), e23c96e's PauseProbe, StreamDigest and pidio against 2026.1's jar
+  and the candidate's (`N/tools/2026.1`, `N/tools/cand`).
+* N4: the scripts are in `N/night/` (`lib.sh`, `props.sh`, `sb-m.sh`,
+  `sb-c.sh`, `pp.sh`, `quick-ab.sh`, `s1-w7.sh`, `tables.sh` with
+  `tables.py`); smoke OK on the candidate (`REL=N/rel-cand`): `pp.sh`,
+  `sb-m.sh`, `sb-c.sh`, `tables.sh`. N6's `N/prep-a.sh` and N8's
+  `N/digests.sh` (with a copy of 005-79's `digest-compare.py`: decided
+  digests only, 015-08) are written; their rehearsal on a scratch commit A
+  waits for a gap in the other agents' gates.
+* 16:52: `prep-a.sh` rehearsed on a scratch commit A (`b90eff7`: main's
+  `f2cb23b` with BuildInfo at 2026.2, in `R/cand` only; `MARK=0`, `REL=N/rel-rehearsal`):
+  `PREP A OK: 5 of 5 steps would be READY`, 256 s with the other agents'
+  load. It found that ScaleBench no longer compiled on main's jar: 005-79
+  (`dde82e8`) replaced `Eviction.LOW` by `Eviction.lowOf(budget)`;
+  `prep-tools.sh` now uses `lowOf` in that one line for a jar without `LOW`.
+* 16:35: the s1 half rehearsed with `SMOKE=1` (016-09's `s1-chain.sh`):
+  `S1 W7 DONE (SMOKE): 4 runs OK`.
+* 16:53: N8 rehearsed: `DIGESTS OK` in 52 s: 2026.2 has 12 configurations,
+  whose modes agree; 2026.1 now equals its release's decided digests (36 of
+  36); 2026.1 against 2026.2: the decided digests differ in 36 of 36, by
+  design. N2's check: the smoke suite in turns, 2026.1 against the
+  candidate, `W7 quick-ab OK (SMOKE): ab exit 0; 7 of 7 scenarios
+  compared`. `tables.sh` makes the tables from the smoke outputs.
+* 17:00: N5 done: the coordinator put the five lines into the conductor's
+  `steps.txt`, after `65-rerun` and `52-lowered`; and chose 3 runs a
+  scenario for the quick `ab` (`quick-ab.sh` changed; still 22 minutes).
+  Open: N6 (`prep-a.sh`, about 4 minutes, writes the markers) and N8
+  (`digests.sh`) at about 01:50, after 016-09's `build-a.sh`.
+* 17:18: 016-09's `rehearse.sh` on main's `437cb48`: `PREP A OK` (5 of 5)
+  and `DIGESTS OK`.
+
+2026-11-03, 17:20, the tools agent stopped (usage). N1 to N5 are done.
+Left: N6 and N8 at about 01:50 (016-09's State has the commands); N7
+unattended; N9 at 06:05 is 016-09's `collect.sh`, which fetches s1's
+outputs, deletes s1's data and runs `night/tables.sh` (into
+`N/night/tables.md` and the baseline). Before the freeze, if java/stress,
+ScaleBench or its diffs changed after 17:18, run 016-09's `rehearse.sh`
+again.
+* Found: with 2 runs a scenario PerfTool raises no alert ("fewer than 3
+  runs: no conclusion"), so the quick `ab` gives medians and changes only;
+  2026.1's quick suite took about 34 s a run (its `runs.txt`), so 3 runs a
+  scenario would take about 17 minutes, not 35.

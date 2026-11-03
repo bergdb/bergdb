@@ -352,3 +352,79 @@ decisions R-1 to R-3 (the coordinator's, recommendations above); the
 tools agent's start (recommended: from about 17:00 or the first free
 slot, 016-10's N1 to N5 first, then R0, done by 01:15); JDK 17 on F53,
 which 016-08 installs (R0b).
+
+2026-11-03, 16:05: R-1, R-2 and R-3 yes (the coordinator). R0b done by
+016-08 at 15:43: `/opt/homebrew/opt/openjdk@17` (17.0.21.0.3) on F53,
+`/opt/bergdb-bench/jdk-17` on s1.
+
+2026-11-03, 16:30, the tools agent: R0's scripts are written in
+`/Users/f/fl/bench/016/release/` (R): `build-a.sh`, `tests-f53.sh`,
+`userprog/UserProgram.java`, `s1-chain.sh` with s1's `run.sh`,
+`collect.sh` (R8's files and 016-10's N9), `finish.sh`, and `axioms.sh`
+(R8's Lean check). `build-a.sh` rehearsed on a scratch commit with
+BuildInfo set (`R/cand`, not in main; outputs in `R/rehearsal/`):
+`BUILD A OK`; the source zip is 12 MB without `releases/2026.1/` (the
+tree has grown since 2026.1's 6.9 MB), the Javadoc zip 4.1 MB. The user's
+program runs on the candidate's jar with JDK 27 and 17. The other
+rehearsals follow.
+
+2026-11-03, 16:52, the tools agent:
+
+* `s1-chain.sh` with `SMOKE=1` (16:28 to 16:31): the files copied and
+  checked, `run.sh` started; the user's program OK with JDK 27 and 17,
+  `s1-w7.sh`'s smoke OK. Unit FAILED on s1 with both JDKs
+  (`CapacityTester.testBudgetLoweredAndRaisedUnderReads`, then the
+  stopped-databases check), passed a third run and alone; 016-08's runs
+  were on s1 at the same time. Handed to the coordinator (a 015 entry).
+  Fixed: `s1-chain.sh` waited for `run.sh` to end (the background list
+  kept ssh's channel); it now returns at once.
+* `axioms.sh` on main's HEAD: `AXIOMS OK: 44 theorems` in 40 s (all three
+  lists of lean/README.md, `Check.Steps` included).
+* Also written: `set-buildinfo.sh CLONE VERSION INT` (A: `2026.2 262`,
+  B: `2026.3-dev 263`), tested in a scratch clone; `stage-b.sh CLONE`
+  (R9's release files and BuildInfo in a clone of main).
+* 17:04: `tests-f53.sh` on the scratch A's jar: `TESTS F53 OK: JDK 27
+  (187 s): Unit 1098; F 78; Night 8; userprog OK; JDK 17 (204 s): Unit
+  1098; F 78; Night 8; userprog OK`, with the other agents' load.
+* 17:08: `collect.sh` and `finish.sh` rehearsed (`R=R/rehearsal`, the
+  smoke outputs, last night's `night.sh` report): `FINISH OK`, the
+  baseline zip 0.14 MB with the smoke outputs, `SHA256SUMS` checks.
+* `rehearse.sh` repeats 01:45 to 02:00 (build-a, prep-a with `MARK=0`,
+  digests; `JARTESTS=1` also the jar's tests) on main's current HEAD in
+  scratch clones, about 6 minutes; run again during the evening, so
+  that a commit that breaks a tool is found before the freeze.
+* 17:18: `rehearse.sh` on main's `437cb48`: `REHEARSAL OK` (BUILD A OK,
+  PREP A OK 5 of 5, DIGESTS OK).
+
+2026-11-03, 17:20, the tools agent stopped (usage). R0 is done; nothing
+of it runs. Left, for a fresh agent after 19:30 or the coordinator:
+
+1. Before the freeze, after the last fixes (about 00:45), once no gate
+   runs: `sh /Users/f/fl/bench/016/release/rehearse.sh` (about 6 minutes;
+   `JARTESTS=1` adds the jar's tests, 7 more). It must print `REHEARSAL OK`;
+   a failure names the script and the step (as 005-79 broke ScaleBench's
+   compile).
+2. The commands from 01:35 and from 06:05, in order (each prints one
+   result line):
+   * R2: in a clone of main, `sh /Users/f/fl/bench/016/release/set-buildinfo.sh CLONE 2026.2 262`;
+     `java/before-commit.sh`; commit A as R2 says.
+   * R3: `sh /Users/f/fl/bench/016/release/build-a.sh A` → `BUILD A OK`.
+   * R4, N6 and N8 together, in the background:
+     `STOP_AT=$(date -j -f "%Y-%m-%d %H:%M" "2026-11-04 02:05" +%s) sh /Users/f/fl/bench/016/release/tests-f53.sh /Users/f/fl/bench/016/release/out/bergdb-2026.2.jar`
+     (`TESTS F53 OK`, about 7 minutes; `INCOMPLETE`: run again at 06:05
+     with `JDKS=17`); `sh /Users/f/fl/bench/016/numbers/prep-a.sh`
+     (`PREP A OK: 5 of 5 steps READY`, about 4 minutes);
+     `sh /Users/f/fl/bench/016/numbers/digests.sh` (`DIGESTS OK`).
+   * R5, once prep-a's tools are made (it waits for them):
+     `sh /Users/f/fl/bench/016/release/s1-chain.sh` → `S1 CHAIN STARTED`.
+   * R8 at 06:05: `sh /Users/f/fl/bench/016/release/collect.sh` (`COLLECT
+     OK`; it fetches s1's outputs and writes the tables);
+     `sh /Users/f/fl/bench/016/release/axioms.sh A` (`AXIOMS OK: 44
+     theorems`); `sh /Users/f/fl/bench/016/release/finish.sh` (`FINISH OK`).
+   * R9: in a clone of main, `sh /Users/f/fl/bench/016/release/stage-b.sh CLONE`
+     (`STAGE B OK`: the six files in releases/2026.2/, BuildInfo at
+     2026.3-dev and 263); the coordinator's files of B; before-commit;
+     commit B; the tag on A.
+3. Not rehearsed: s1's tests on the jar in full (only the smoke, Unit
+   alone, at 16:28, with 016-08's runs beside it: the CapacityTester
+   failure handed to the coordinator), and `run.sh`'s F and Night on s1.
