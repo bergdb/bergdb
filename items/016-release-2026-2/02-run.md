@@ -421,10 +421,9 @@ recommended):
    has the old fault.
 9. **The Pub API's upper layers have many old faults.** Tonight's reviews
    of the indexes, the objects and the rw-transactions (R3, S1, S2) found
-   about 45 faults that 2026.1 has too: 7 of them fixed tonight (015-20 to
-   015-22, 015-24 to 015-25 elsewhere, 015-40 in progress), the rest
-   registered (015-23, 015-26 to 015-39, 015-41 to 015-49; S2's 27 in
-   015-49). Some give wrong answers in normal use (S2: `prefix()`,
+   about 45 faults that 2026.1 has too: 3 of them fixed tonight (015-20 to
+   015-22), 015-40 in progress, the rest registered (015-23, 015-28 to
+   015-30, 015-36, 015-37, 015-39, 015-41 to 015-49; S2's 27 in 015-49). Some give wrong answers in normal use (S2: `prefix()`,
    `inclusive(false)` without `startAt()`, later composite levels; S1: a
    put and a delete of one key in one transaction). Recommended: release
    2026.2 with them as known issues, the notes saying plainly that the
