@@ -1,12 +1,16 @@
 package bergdb.core;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
@@ -24,6 +28,7 @@ import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;
+import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -609,6 +614,144 @@ public class DbTesterFailure {
             stopping = e;
         }
         Assert.assertTrue("stopping, not failed", stopping != null);
+    }
+
+    /**
+     * Regression test for bergdb 015-17: a get that runs while another thread closes the
+     * database, and reads a file after the storage thread has closed it, fails as a read
+     * while the database stops does (the StreamIoException as it is), and close() does not
+     * report it: the close wrote and closed everything. The read's "File closed" was the
+     * FileStream's failure, and BufferedStream.close(), which closes the FileStream again
+     * after its thread's close, threw it: Db.close() threw it as a failed close
+     * (InterruptStress, 016-08's F3). CloseRaceStream holds the get in its read until the
+     * storage thread has closed the files, and that close until the read has failed: the
+     * stress run's interleaving. A restart then has every key.
+     */
+    @Nano
+    public static void testGetDuringClose() throws Exception {
+        final File dir = Files.createTempDirectory("bergdb-getduringclose-").toFile();
+        try {
+            final CloseRaceStream s = new CloseRaceStream(new FileStream(dir));
+            final Db db = startEvicting(s, 0);
+            fill(db);
+            db.sync(SyncLevel.STRONG);
+            final Throwable[] thrown = new Throwable[1];
+            Thread reader = new Thread(new Runnable() {
+                public void run() {
+                    try {
+                        DbUtil.getString(db, key(5));
+                    } catch (Throwable e) {
+                        thrown[0] = e;
+                    }
+                }
+            });
+            reader.setDaemon(true);
+            s.reader = reader;
+            reader.start();
+            Assert.assertTrue("the get reads the stream", s.inRead.await(10, TimeUnit.SECONDS));
+            db.close();
+            reader.join(10 * 1000);
+            Assert.assertTrue("the get still runs after 10 s", !reader.isAlive());
+            Assert.assertTrue("the read met the closed files", s.readDone.getCount() == 0);
+            Assert.assertTrue("the get fails as a read while the database stops: " + thrown[0],
+                    thrown[0] instanceof StreamIoException);
+            Assert.assertTrue("the storage thread's close and close()'s", s.closes >= 2);
+            DbStoppingException stopping = null;
+            try {
+                db.execute(db.trans().put("/later", "x").build());
+            } catch (DbStoppingException e) {
+                stopping = e;
+            }
+            Assert.assertTrue("stopping, not failed", stopping != null);
+
+            Db again = startEvicting(new FileStream(dir), 0);
+            try {
+                for (int i = 0; i < KEYS; i++) {
+                    Assert.assertEquals("v" + i, DbUtil.getString(again, key(i)));
+                }
+            } finally {
+                again.close();
+            }
+        } finally {
+            File[] fs = dir.listFiles();
+            if (fs != null) for (File f : fs) f.delete();
+            dir.delete();
+        }
+    }
+
+    /**
+     * A stream over a FileStream for testGetDuringClose (bergdb 015-17): the first read of
+     * thread 'reader' waits, once it has begun, until the first close() has closed the
+     * FileStream, and then reads; that close waits until the read is done.
+     */
+    static final class CloseRaceStream implements AppendOnlyStream {
+        final FileStream inner;
+        volatile Thread reader;
+        final CountDownLatch inRead = new CountDownLatch(1);
+        final CountDownLatch closed = new CountDownLatch(1);
+        final CountDownLatch readDone = new CountDownLatch(1);
+        int closes = 0;     // under this
+
+        CloseRaceStream(FileStream inner) {
+            this.inner = inner;
+        }
+
+        private static void await(CountDownLatch latch) throws IOException {
+            try {
+                if (!latch.await(10, TimeUnit.SECONDS)) {
+                    throw new IOException("CloseRaceStream: waited 10 s");
+                }
+            } catch (InterruptedException e) {
+                throw new IOException(e);
+            }
+        }
+
+        public long getLength() {
+            return inner.getLength();
+        }
+
+        public long getFirstPos() {
+            return inner.getFirstPos();
+        }
+
+        public void read(long position, byte[] dest, int destOffset, int length)
+                throws IOException {
+            if (Thread.currentThread() != reader || inRead.getCount() == 0) {
+                inner.read(position, dest, destOffset, length);
+                return;
+            }
+            inRead.countDown();
+            await(closed);
+            try {
+                inner.read(position, dest, destOffset, length);
+            } finally {
+                readDone.countDown();
+            }
+        }
+
+        public void append(byte[] source, int sourceOffset, int length) throws IOException {
+            inner.append(source, sourceOffset, length);
+        }
+
+        public void pretruncate(long position) throws IOException {
+            inner.pretruncate(position);
+        }
+
+        public void seekFirstPos(long position) throws IOException {
+            inner.seekFirstPos(position);
+        }
+
+        public void close() throws IOException {
+            final boolean first;
+            synchronized (this) {
+                first = closes++ == 0;
+            }
+            inner.close();
+            if (first && reader != null && inRead.getCount() == 0) {
+                closed.countDown();
+                await(readDone);
+            }
+        }
     }
 
     /**

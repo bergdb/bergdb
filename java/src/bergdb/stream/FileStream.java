@@ -298,7 +298,9 @@ public class FileStream implements AppendOnlyStream {
     /**
      * Closes the files, after the cut's thread has deleted what the cuts so far took off
      * (bergdb 005-46), and then releases the directory's lock (bergdb 005-63). Throws the
-     * stream's failure, such as a failed delete of a cut.
+     * stream's failure, such as a failed delete of a cut; also when called again, as
+     * BufferedStream.close() does after its thread's close. A read of a file that the close
+     * has closed is not a failure of the stream (bergdb 015-17).
      */
     public void close() throws IOException {
         awaitCutThread();
@@ -1200,8 +1202,7 @@ public class FileStream implements AppendOnlyStream {
             }
 
             if (isClosed) {
-                ioException = new IOException("File closed, " + file.getPath() + ".");
-                throw ioException;
+                throw closedException();
             }
             
             final long fileLength = this.fileLength;
@@ -1272,8 +1273,7 @@ public class FileStream implements AppendOnlyStream {
                     throw deletedException(spos);
                 }
                 if (isClosed) {
-                    ioException = new IOException("File closed, " + file.getPath() + ".");
-                    throw ioException;
+                    throw closedException();
                 }
                 if (channel == closed) {
                     channel = io.openRead(file);
@@ -1284,6 +1284,17 @@ public class FileStream implements AppendOnlyStream {
         private ReadBelowFirstPosException deletedException(long spos) {
             return new ReadBelowFirstPosException("Cannot read at spos " + spos
                     + ", the file " + file.getPath() + " has been deleted by pretruncate.");
+        }
+        
+        /**
+         * The failure of a read of this file after close() has closed it (2026-11-03, bergdb
+         * 015-17): only that read fails, as one of a deleted file does, and the stream has not
+         * failed. It was kept as the stream's failure, 'ioException', and the second close()
+         * of a BufferedStream's close, after its thread's close, threw it: Db.close() reported
+         * a get that ran during the close as a failed close (InterruptStress).
+         */
+        private IOException closedException() {
+            return new IOException("File closed, " + file.getPath() + ".");
         }
         
         /**
@@ -1729,7 +1740,7 @@ public class FileStream implements AppendOnlyStream {
         volatile int failDeleteAt = 0;
         int deletes = 0;
         
-        private void hold(java.util.concurrent.CountDownLatch latch) throws IOException {
+        void hold(java.util.concurrent.CountDownLatch latch) throws IOException {
             if (latch == null) return;
             held.countDown();
             try {
@@ -1762,6 +1773,82 @@ public class FileStream implements AppendOnlyStream {
         protected FileChannel openRead(File file) throws IOException {
             readOpens.incrementAndGet();
             return lastRead = super.openRead(file);
+        }
+    }
+    
+    /**
+     * A HeldIo whose read channels hold their next positional read, when 'holdRead' is set,
+     * on that latch before it reads (bergdb 015-17): a read stopped after its checks of the
+     * file, and before the channel reads.
+     */
+    static final class HeldReadIo extends HeldIo {
+        volatile java.util.concurrent.CountDownLatch holdRead;
+        
+        protected FileChannel openRead(File file) throws IOException {
+            return new HeldChannel(super.openRead(file));
+        }
+        
+        /** Reads through 'ch'; the first read after 'holdRead' is set waits on it. */
+        final class HeldChannel extends FileChannel {
+            private final FileChannel ch;
+            
+            HeldChannel(FileChannel ch) {
+                this.ch = ch;
+            }
+            
+            public int read(ByteBuffer dst, long position) throws IOException {
+                final java.util.concurrent.CountDownLatch latch = holdRead;
+                if (latch != null) {
+                    holdRead = null;
+                    hold(latch);
+                }
+                return ch.read(dst, position);
+            }
+            
+            public int read(ByteBuffer dst) throws IOException { return ch.read(dst); }
+            public long read(ByteBuffer[] dsts, int offset, int length) throws IOException {
+                return ch.read(dsts, offset, length);
+            }
+            public int write(ByteBuffer src) throws IOException { return ch.write(src); }
+            public long write(ByteBuffer[] srcs, int offset, int length) throws IOException {
+                return ch.write(srcs, offset, length);
+            }
+            public int write(ByteBuffer src, long position) throws IOException {
+                return ch.write(src, position);
+            }
+            public long position() throws IOException { return ch.position(); }
+            public FileChannel position(long p) throws IOException {
+                ch.position(p);
+                return this;
+            }
+            public long size() throws IOException { return ch.size(); }
+            public FileChannel truncate(long size) throws IOException {
+                ch.truncate(size);
+                return this;
+            }
+            public void force(boolean metaData) throws IOException { ch.force(metaData); }
+            public long transferTo(long position, long count,
+                    java.nio.channels.WritableByteChannel target) throws IOException {
+                return ch.transferTo(position, count, target);
+            }
+            public long transferFrom(java.nio.channels.ReadableByteChannel src, long position,
+                    long count) throws IOException {
+                return ch.transferFrom(src, position, count);
+            }
+            public java.nio.MappedByteBuffer map(MapMode mode, long position, long size)
+                    throws IOException {
+                return ch.map(mode, position, size);
+            }
+            public FileLock lock(long position, long size, boolean shared) throws IOException {
+                return ch.lock(position, size, shared);
+            }
+            public FileLock tryLock(long position, long size, boolean shared)
+                    throws IOException {
+                return ch.tryLock(position, size, shared);
+            }
+            protected void implCloseChannel() throws IOException {
+                ch.close();
+            }
         }
     }
     
@@ -1954,6 +2041,52 @@ public class FileStream implements AppendOnlyStream {
         f.append(bytes, 0, 10);
         readAndCheck(f, 3000, 1000, bytes);
         f.close();
+    }
+    
+    /**
+     * Regression test for bergdb 015-17: a read of a file that close() has closed fails alone,
+     * as one of a file that a cut deleted does, and the stream has not failed: a second
+     * close(), as BufferedStream.close() makes one after its thread's, does not throw the
+     * read's exception. It did, and Db.close() threw it as a failed close (InterruptStress,
+     * 016-08). Both ways a read meets the close: it begins after it (the read's check of
+     * isClosed), or it is under way when the close closes its channel (the check after the
+     * ClosedChannelException, reopenChannel()); a held channel stops the read between the two.
+     */
+    @Nano
+    public static void testReadOfClosedFileFailsAlone(TestEnvironment c) throws Exception {
+        for (int i = 0; i < 2; i++) {
+            final boolean underWay = i == 1;
+            HeldReadIo io = new HeldReadIo();
+            final FileStream f = new FileStream(c.createTempDir(), io);
+            byte[] bytes = new byte[100 * 1000];
+            f.append(bytes, 0, bytes.length);
+            Run reader = null;
+            final java.util.concurrent.CountDownLatch hold =
+                    new java.util.concurrent.CountDownLatch(1);
+            if (underWay) {
+                io.holdRead = hold;
+                reader = new Run(() -> f.read(1000, new byte[10], 0, 10));
+                Assert.assertTrue(io.held.await(10, java.util.concurrent.TimeUnit.SECONDS));
+            }
+            f.close();      // The storage thread's close, the first.
+            Throwable failed = null;
+            if (underWay) {
+                hold.countDown();
+                reader.join(10000);
+                Assert.assertTrue("the read still runs after 10 s", !reader.isAlive());
+                failed = reader.failure;
+            } else {
+                try {
+                    f.read(1000, new byte[10], 0, 10);
+                } catch (IOException e) {
+                    failed = e;
+                }
+            }
+            Assert.assertTrue("the read of the closed file fails: " + failed,
+                    failed instanceof IOException && !(failed instanceof ReadBelowFirstPosException)
+                    && failed.getMessage().startsWith("File closed"));
+            f.close();      // BufferedStream.close()'s, the second: nothing failed.
+        }
     }
     
     /**

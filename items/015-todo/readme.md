@@ -40,7 +40,6 @@ Open
 | [015-13](13-handles-not-counted.md) | Fix | The resident bytes count no handle, where 009-02, 4.7 counts them | open |
 | [015-14](14-fast-path-jmm-argument.md) | Fix | The fast path's plain reads rest on the address dependency, not the JMM | open |
 | [015-16](16-powerloss-cleanup.md) | Investigate | PowerLossTest failed once in its cleanup, "cannot delete test file" | open |
-| [015-17](17-read-during-close.md) | Investigate | A read during close fails with "File closed", and close reports it | open |
 | [015-18](18-night-large-after-release.md) | Implement | Run night.sh large on the release, after 2026.2 | open |
 
 
@@ -49,6 +48,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-17](17-read-during-close.md) | Investigate | A read during close fails with "File closed", and close reports it | done | 2026-11-03 |
 | [015-15](15-resident-count-drift.md) | Fix | A batch subtracts values never counted; a count driven to 0 stays 0 | done | 2026-11-03 |
 | [015-01](01-empty-directory.md) | Fix | A directory without its stream starts as a new one | done | 2026-11-03 |
 | [015-12](12-keynode-growth-publication.md) | Fix | After a key node's growth, a reader can see its arrays without contents | done | 2026-11-03 |
