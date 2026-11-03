@@ -43,7 +43,6 @@ Open
 | [015-21](21-index-delete-twice.md) | Fix | A second delete job lets the first delete a replacement index | open |
 | [015-22](22-index-build-after-delete.md) | Fix | A deleted index's build job writes into its replacement | open |
 | [015-23](23-refused-index-delete.md) | Fix | A refused index deletion leaves the index active and unmaintained | open |
-| [015-24](24-lock-other-class-loader.md) | Fix | A refused open via another class loader drops the directory lock | open |
 | [015-25](25-evictor-failure.md) | Fix | An exception in the evictor strands its requests on a dead worker | open |
 | [015-26](26-negative-append-length.md) | Fix | A negative append length corrupts FileStream's length | open |
 | [015-27](27-failed-append-visible.md) | Decide | A failed append's transaction was already visible to readers | open |
@@ -54,6 +53,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-24](24-lock-other-class-loader.md) | Fix | A refused open via another class loader drops the directory lock | done | 2026-11-03 |
 | [015-10](10-capacity-test-under-load.md) | Fix | The eviction thread stops after a batch that frees nothing | done | 2026-11-03 |
 | [015-16](16-powerloss-cleanup.md) | Investigate | PowerLossTest failed once in its cleanup, "cannot delete test file" | done | 2026-11-03 |
 | [015-09](09-reclaim-test-timing.md) | Fix | Reclaim.Tester.testCrashBeforeIterationEnd depends on timing under load | done | 2026-11-03 |

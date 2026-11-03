@@ -142,7 +142,12 @@ public class SeedGenerator {
             Properties p = System.getProperties();
             keys = p.keys();
             while (keys.hasMoreElements()) {
-                out.writeUTF(p.getProperty((String) keys.nextElement()));
+                // A property can go meanwhile: a FileStream's close removes its own (bergdb
+                // 015-24).
+                String value = p.getProperty((String) keys.nextElement());
+                if (value != null) {
+                    out.writeUTF(value);
+                }
             }
             out.close();
         } catch (IOException e) {

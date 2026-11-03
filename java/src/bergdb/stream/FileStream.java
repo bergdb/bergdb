@@ -79,8 +79,11 @@ import bergdb.pub.util.BadFormatException;
  * is on one byte far beyond the end of the file: on Windows a lock is mandatory, and the text
  * stays readable. Within the JVM, a set of the locked directories (LOCKED_DIRS) refuses a
  * second FileStream before it opens the file: on macOS and Linux, closing any channel of the
- * file releases the process's lock (FileLock's Javadoc, "Platform dependencies"). That set is
- * global state, a deviation from bergdb 010-P9.
+ * file releases the process's lock (FileLock's Javadoc, "Platform dependencies"). Each class
+ * loader that loads BergDB has a set of its own, so a system property per locked directory,
+ * bergdb.lock.KEY, does the same across them (2026-11-03, bergdb 015-24); a program that
+ * replaces the system properties while a database is open loses that refusal. That set and
+ * those properties are global state, a deviation from bergdb 010-P9.
  * 
  * Network file systems. On NFS or SMB the server holds the lock. After a crash of the client,
  * the lock may stay until the server notices (NFSv4: a lease, typically 90 s), and starts on
@@ -132,12 +135,26 @@ public class FileStream implements AppendOnlyStream {
             + "while a database is open.\n";
     
     /**
-     * The directories that FileStreams of this JVM hold, by lockKey() (bergdb 005-63). A
-     * second FileStream on a directory is refused here, before it opens the lock file:
-     * closing its channel would release the first's lock for other processes.
+     * The directories that FileStreams of this copy of the class hold, by lockKey() (bergdb
+     * 005-63); each class loader that loads the class has its own (bergdb 015-24). A second
+     * FileStream on a directory is refused here, before it opens the lock file: closing its
+     * channel would release the first's lock for other processes.
      */
     private static final Set<Object> LOCKED_DIRS = 
             Collections.synchronizedSet(new HashSet<Object>());
+    
+    /**
+     * The system properties that hold the directories of all the JVM's copies of the class,
+     * one per class loader that loads it (bergdb 015-24): the name is PROPERTY_PREFIX and
+     * lockKey(), the value the holder's COPY. A directory that another copy holds is refused
+     * here, before the lock file is opened, as LOCKED_DIRS does within a copy. The names are
+     * a contract between the versions of BergDB in one JVM, as the lock is between processes.
+     */
+    private static final String PROPERTY_PREFIX = "bergdb.lock.";
+    
+    /** This copy of the class, unique among the JVM's copies: the value of its properties. */
+    private static final String COPY = "FileStream " + Long.toHexString(System.nanoTime()) 
+            + "." + Integer.toHexString(System.identityHashCode(LOCKED_DIRS));
     
     private final File dir;
     private final FileStreamIo io;
@@ -579,8 +596,8 @@ public class FileStream implements AppendOnlyStream {
      * Takes the directory (bergdb 005-63): creates bergdb.lock with its text if it does not
      * exist, and takes an exclusive lock on one byte far beyond its end, held until close().
      * Refused with DirectoryInUseException: before the file is opened if a FileStream of
-     * this JVM holds the directory, after if another process holds the lock. Not
-     * interruptible, as the rest of this class.
+     * this JVM holds the directory, of this copy of the class or of another (bergdb 015-24),
+     * after if another process holds the lock. Not interruptible, as the rest of this class.
      */
     private void lockDir() throws IOException {
         Object key = lockKey(dir);
@@ -593,6 +610,16 @@ public class FileStream implements AppendOnlyStream {
         boolean interrupted = Thread.interrupted();
         boolean locked = false;
         try {
+            // A FileStream of another copy of the class holds it (bergdb 015-24). This copy's
+            // own value, which a program that puts back older system properties can leave, is
+            // no holder: LOCKED_DIRS has none.
+            Object holder = System.getProperties().putIfAbsent(PROPERTY_PREFIX + key, COPY);
+            if (holder != null && !holder.equals(COPY)) {
+                throw new DirectoryInUseException("Directory " + dir.getPath() 
+                        + " is in use by another BergDB database in this JVM, in another class"
+                        + " loader (" + LOCK_NAME + " is locked).");
+            }
+            
             File file = new File(dir, LOCK_NAME);
             if (file.createNewFile()) {
                 try (FileOutputStream out = new FileOutputStream(file)) {
@@ -612,7 +639,7 @@ public class FileStream implements AppendOnlyStream {
                     f.close();
                     continue;
                 } catch (OverlappingFileLockException e) {
-                    // Held in this JVM, not by a FileStream of it.
+                    // Held in this JVM, not by a FileStream of it, of any copy of the class.
                     f.close();
                     throw new DirectoryInUseException("Directory " + dir.getPath() 
                             + " is in use in this JVM (" + LOCK_NAME + " is locked).");
@@ -638,6 +665,7 @@ public class FileStream implements AppendOnlyStream {
             }
         } finally {
             if (!locked) {
+                System.getProperties().remove(PROPERTY_PREFIX + key, COPY);
                 LOCKED_DIRS.remove(key);
             }
             if (interrupted) {
@@ -659,7 +687,8 @@ public class FileStream implements AppendOnlyStream {
     
     /**
      * Releases the directory's lock, if this stream holds it; the file stays (bergdb 005-63).
-     * The lock file is closed before the directory leaves LOCKED_DIRS.
+     * The lock file is closed before the directory leaves the system properties and
+     * LOCKED_DIRS.
      */
     private synchronized void unlockDir() throws IOException {
         if (lockFile == null) {
@@ -669,6 +698,7 @@ public class FileStream implements AppendOnlyStream {
             lockFile.close();       // Releases the lock.
         } finally {
             lockFile = null;
+            System.getProperties().remove(PROPERTY_PREFIX + lockKey, COPY);
             LOCKED_DIRS.remove(lockKey);
             lockKey = null;
         }
@@ -2206,6 +2236,37 @@ public class FileStream implements AppendOnlyStream {
     }
     
     /**
+     * bergdb 015-24: a directory that another copy of the class holds, by its system property,
+     * is refused before the lock file is opened, or made, and the property stays. This copy's
+     * own value, as a program that puts back older system properties can leave it, refuses
+     * nothing; the close removes it.
+     */
+    @Nano
+    public static void testOtherCopyRefusedFirst(TestEnvironment c) throws IOException {
+        File dir = c.createTempDir();
+        String name = PROPERTY_PREFIX + lockKey(dir);
+        System.getProperties().put(name, "another copy");
+        try {
+            try {
+                new FileStream(dir).close();
+                throw new AssertionError("opened a directory that another copy holds");
+            } catch (DirectoryInUseException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("another class loader"));
+            }
+            Assert.assertFalse("the lock file was made", new File(dir, LOCK_NAME).exists());
+            Assert.assertEquals("another copy", System.getProperty(name));
+            
+            System.getProperties().put(name, COPY);
+            FileStream f = new FileStream(dir);
+            Assert.assertEquals(COPY, System.getProperty(name));
+            f.close();
+            Assert.assertNull(System.getProperty(name));
+        } finally {
+            System.getProperties().remove(name);
+        }
+    }
+    
+    /**
      * bergdb 005-63: bergdb.lock holds its text, is not a stream file, and stays as it is
      * through appends, a cut, a close, a new open and seekFirstPos(). A directory without it,
      * as from 2026.1, opens and gets one.
@@ -2283,6 +2344,62 @@ public class FileStream implements AppendOnlyStream {
             f.close();
         }
         Assert.assertEquals("opened", runLockChild(dir));
+    }
+    
+    /**
+     * bergdb 015-24: two copies of FileStream in one JVM, from two class loaders (two
+     * applications that each bring bergdb.jar, or a redeploy; here a URLClassLoader over this
+     * class's jar). Each refuses a directory that the other holds, and the refusal leaves the
+     * lock for other processes: a child's open is refused. Before, the other copy's LOCKED_DIRS
+     * was empty: it opened bergdb.lock, was refused by OverlappingFileLockException, and the
+     * close of its channel released this JVM's lock on macOS and Linux; the child opened.
+     */
+    @Nano("f")
+    public static void testLockAcrossClassLoaders(TestEnvironment c) throws Exception {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = c.createTempDir();
+        java.net.URL code = FileStream.class.getProtectionDomain().getCodeSource().getLocation();
+        try (java.net.URLClassLoader loader = new java.net.URLClassLoader(
+                new java.net.URL[] {code}, ClassLoader.getPlatformClassLoader())) {
+            Class<?> other = Class.forName(FileStream.class.getName(), true, loader);
+            Assert.assertTrue("another copy of the class", other != FileStream.class);
+            java.lang.reflect.Constructor<?> open = other.getConstructor(File.class);
+            
+            FileStream f = new FileStream(dir);
+            try {
+                try {
+                    other.getMethod("close").invoke(open.newInstance(dir));
+                    throw new AssertionError("the other copy opened a directory held here");
+                } catch (java.lang.reflect.InvocationTargetException e) {
+                    Assert.assertEquals(DirectoryInUseException.class.getName(), 
+                            e.getCause().getClass().getName());
+                }
+                Assert.assertEquals("refused", runLockChild(dir));
+                byte[] bytes = new byte[] {1, 2, 3};
+                f.append(bytes, 0, bytes.length);
+            } finally {
+                f.close();
+            }
+            
+            Object g = open.newInstance(dir);
+            try {
+                Assert.assertEquals(3L, other.getMethod("getLength").invoke(g));
+                try {
+                    new FileStream(dir).close();
+                    throw new AssertionError("this copy opened a directory that the other holds");
+                } catch (DirectoryInUseException e) {
+                    // Expected.
+                }
+                Assert.assertEquals("refused", runLockChild(dir));
+            } finally {
+                other.getMethod("close").invoke(g);
+            }
+        }
+        FileStream f2 = new FileStream(dir);
+        Assert.assertEquals(3, f2.getLength());
+        f2.close();
     }
     
     private static Process startLockChild(String mode, File dir) throws IOException {
