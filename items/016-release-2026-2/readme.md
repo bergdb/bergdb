@@ -23,6 +23,25 @@ Files
     with his answers.
 * [02-run.md](02-run.md). 016-02, the run: the request, the subitems and
   agents, the timeline, the progress, the stops for Frans and the outcome.
+* [03-notes.md](03-notes.md). 016-03, W1 and W2: the release notes from
+  `releases/next.md` and the walk of `git log release-2026.1..`, and
+  2026.1's post-release notes.
+* [04-documents.md](04-documents.md). 016-04, W3 and replication's
+  wording: the Javadoc, README.md, docs/levels.md and lean/README.md.
+* [05-fixes.md](05-fixes.md). 016-05, W4 and H5: the fixes before the
+  release, their order, gates, reviews and hand-off; the quiet block's
+  steps.
+* [06-reviews.md](06-reviews.md). 016-06, H1 and H2: the reviews of the
+  changes since 2026.1 and of the Pub API's promises; the reports in
+  `06-reviews/`.
+* [07-concurrency.md](07-concurrency.md). 016-07, H3: the threads, locks
+  and shared fields, and the jcstress tests to add.
+* [08-tests.md](08-tests.md). 016-08, H4: the tests beyond the gates,
+  Linux, JDK 17, jcstress, the stress programs; scripts in `08-tests/`.
+* [09-release.md](09-release.md). 016-09, W6: the release by 008-01's
+  steps, commits A and B, the files, the tests on the jar.
+* [10-numbers.md](10-numbers.md). 016-10, W7: the numbers against 2026.1,
+  in turns, in the quiet block.
 
 
 Log

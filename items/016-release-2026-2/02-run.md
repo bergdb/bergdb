@@ -170,6 +170,16 @@ section 3). Unless he chooses before the release, it is a known issue of
   plans: 015-02 (C follows), 015-03 (Lean follows 005-79), 015-04
   (`deps.py`), 015-05 (an empty or missing directory, for Frans), 015-06
   (a refused start leaves an empty first file; fixed with 015-01).
+* 15:58 P4's plans done: 016-06 (eight reviews tonight, R1 to R8; S1
+  and S2 after the release), 016-07, 016-08 (H4 run by the coordinator;
+  `night.sh large` does not fit).
+* 15:59 Review R1 (handles and the node table) started, base `6f932f0`.
+* 16:01 s1, JDK 27: `BEFORE COMMIT OK (121 s)`, the first run of the
+  unit tests and f-tests on Linux on record; `level1.sh`, the night tests
+  and the same on JDK 17 follow (016-08, L1 and L2).
+* 16:02 jcstress on F53 started (016-08, F1). Homebrew's install of
+  `openjdk@17` had upgraded seven shared libraries (brotli, freetype and
+  others); `openjdk` 27 itself is unchanged.
 
 
 ## 7. For Frans to decide
@@ -178,6 +188,14 @@ section 3). Unless he chooses before the release, it is a known issue of
    3), for after the release. Recommended: B1, `createIfMissing()`, in the
    first release with a public API; until then the recipe in
    `DatabaseBuilder.start()`'s Javadoc.
+2. **The reviews left out tonight** (016-06, section 7): S1
+   (rw-transactions, encryption, JMX) and S2 (indexes, objects). The run
+   goes on with A, after the release; B would run them tonight, C would
+   release a day later.
+3. **`night.sh large`** (016-08, section 6): it does not fit before the
+   release commit. The run goes on with A: tonight the large conformance
+   set without its two `l-big62` traces, and the whole of `night.sh large`
+   on the release commit after the quiet block.
 
 
 ## 8. Outcome
