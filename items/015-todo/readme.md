@@ -40,6 +40,14 @@ Open
 | [015-14](14-fast-path-jmm-argument.md) | Fix | The fast path's plain reads rest on the address dependency, not the JMM | open |
 | [015-18](18-night-large-after-release.md) | Implement | Run night.sh large on the release, after 2026.2 | open |
 | [015-19](19-tools-after-005-79.md) | Fix | Tools in items still use what 005-79 removed | open |
+| [015-20](20-filtered-scan-empty-page.md) | Fix | A filtered scan takes an empty page for the end of its range | open |
+| [015-21](21-index-delete-twice.md) | Fix | A second delete job lets the first delete a replacement index | open |
+| [015-22](22-index-build-after-delete.md) | Fix | A deleted index's build job writes into its replacement | open |
+| [015-23](23-refused-index-delete.md) | Fix | A refused index deletion leaves the index active and unmaintained | open |
+| [015-24](24-lock-other-class-loader.md) | Fix | A refused open via another class loader drops the directory lock | open |
+| [015-25](25-evictor-failure.md) | Fix | An exception in the evictor strands its requests on a dead worker | open |
+| [015-26](26-negative-append-length.md) | Fix | A negative append length corrupts FileStream's length | open |
+| [015-27](27-failed-append-visible.md) | Decide | A failed append's transaction was already visible to readers | open |
 
 
 Closed
@@ -110,6 +118,14 @@ Files
   015-18, Implement: `night.sh large` on the release's commit, after it.
 * [19-tools-after-005-79.md](19-tools-after-005-79.md). 015-19, Fix:
   tools in items still use `Eviction.LOW` and `TransSeq.dither`.
+* [20-filtered-scan-empty-page.md](20-filtered-scan-empty-page.md). 015-20, Fix: a filtered scan takes an empty page for the end of its range (R3-F12).
+* [21-index-delete-twice.md](21-index-delete-twice.md). 015-21, Fix: a second delete job lets the first delete a replacement index (R3-F1).
+* [22-index-build-after-delete.md](22-index-build-after-delete.md). 015-22, Fix: a deleted index's build job writes into its replacement (R3-F2).
+* [23-refused-index-delete.md](23-refused-index-delete.md). 015-23, Fix: a refused index deletion stops maintaining an index that stays active (R3-F9).
+* [24-lock-other-class-loader.md](24-lock-other-class-loader.md). 015-24, Fix: a refused open through another class loader releases the active directory lock (R2-F1).
+* [25-evictor-failure.md](25-evictor-failure.md). 015-25, Fix: an exception in the evictor strands its requests on a dead worker (R3-F3).
+* [26-negative-append-length.md](26-negative-append-length.md). 015-26, Fix: a negative append length corrupts FileStream's length bookkeeping (R2-F5).
+* [27-failed-append-visible.md](27-failed-append-visible.md). 015-27, Decide: a failed append's transaction was already visible to readers (R3-F8).
 
 
 Log
