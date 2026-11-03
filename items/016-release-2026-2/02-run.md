@@ -271,6 +271,14 @@ section 3). Unless he chooses before the release, it is a known issue of
 * 17:06 015-12 (R1-F1) gated on `main` (`BEFORE COMMIT OK (102 s)`) and
   committed, `dc42409`; done. Its jcstress test fails on the code before
   and passes with the fence; R1's probes go to zero.
+* 17:04 Frans checked in; told that nothing blocks, and the three
+  optional decisions (015-13, 015-14, 005-78) with their recommendations.
+* 17:10 Usage tight (the 5-hour window at 81%, 54% of it gone; extra
+  usage on). New agents at high effort until the reset at 19:30, still
+  up to four (Frans's word); Frans asked once.
+* 17:15 005-79's Part B gated on `main` (`BEFORE COMMIT OK (153 s)`) and
+  committed, `f04cefe`; 005-79 done for 2026.2 (Java), Lean and C after
+  the release (015-03, 015-02). s1: jcstress's five tests OK on Linux.
 
 
 ## 7. For Frans to decide
