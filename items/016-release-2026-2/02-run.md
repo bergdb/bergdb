@@ -260,6 +260,17 @@ section 3). Unless he chooses before the release, it is a known issue of
   test file"; three reruns of its seed OK) and `InterruptStress` once (a
   get during a close failed with "File closed", and the close reported
   it). Registered as 015-16 and 015-17 (Investigate), for an agent.
+* 16:56 The tools agent's W7 steps smoke-tested; their five lines added to
+  `steps.txt` after 005-65's and 005-52's (READY at about 01:55, by
+  `prep-a.sh` on the release's jar).
+* 16:58 Review of 005-79's Part B: no fault in the code (the fixed-point
+  take against BigInteger, divlu, the overflow bounds, T3, the digests);
+  a test gap (one comparison that decides l3-node14's bytes is not pinned
+  by a test), two wrong Javadoc dates and a half-true sentence in
+  `lean/README.md`. The author answers them, then the commit.
+* 17:06 015-12 (R1-F1) gated on `main` (`BEFORE COMMIT OK (102 s)`) and
+  committed, `dc42409`; done. Its jcstress test fails on the code before
+  and passes with the fence; R1's probes go to zero.
 
 
 ## 7. For Frans to decide
