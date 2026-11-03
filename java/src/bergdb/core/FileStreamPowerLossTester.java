@@ -554,7 +554,7 @@ public class FileStreamPowerLossTester {
             }
             check(db, model, keys, actual, image.event + ", second restart");
         } finally {
-            if (db != null) db.stop();
+            if (db != null) db.close();     // close() waits for the cut's deletes (bergdb 015-16)
             remove(dir);
         }
     }
@@ -628,7 +628,7 @@ public class FileStreamPowerLossTester {
             io.acknowledged.set(db.lookupTime(Long.MAX_VALUE));
             io.acknowledgedFrontier.set(db.getFirstAvailableLookupTime());
             io.checkpoint("final_acknowledgement");
-            db.stop(); db = null;
+            db.close(); db = null;
             if (io.deletes < 2) throw new AssertionError("trace did not exercise physical deletion: " + io.deletes);
             List<Image> cases = negativeFile || negativeDirectory ? io.images.get("after_delete") : io.snapshots();
             if (cases == null || cases.isEmpty()) throw new AssertionError("no power-loss checkpoints");
@@ -648,7 +648,7 @@ public class FileStreamPowerLossTester {
             System.out.println("POWER TRACE seed=" + seed + " checkpoints=" + checked
                     + " physical_deletes=" + io.deletes + " stages=" + io.seen);
             return checked;
-        } finally { if (db != null) db.stop(); remove(dir); }
+        } finally { if (db != null) db.close(); remove(dir); }
     }
 
     @Nano("f")

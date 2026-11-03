@@ -34,12 +34,10 @@ Open
 | [015-05](05-empty-or-missing-directory.md) | Decide | A start on an empty or missing directory creates a database | open |
 | [015-06](06-refused-start-leaves-file.md) | Fix | A refused start leaves an empty first stream file | in progress |
 | [015-08](08-streamdigest-compare-cut.md) | Fix | StreamDigest's compare reports the physical cut, which depends on timing | open |
-| [015-09](09-reclaim-test-timing.md) | Fix | Reclaim.Tester.testCrashBeforeIterationEnd depends on timing under load | open |
 | [015-10](10-capacity-test-under-load.md) | Investigate | CapacityTester's lowered budget fails under load on s1 | open |
 | [015-11](11-tempdircreator-tmp.md) | Fix | The tests' TempDirCreator writes to /tmp, whatever java.io.tmpdir says | open |
 | [015-13](13-handles-not-counted.md) | Fix | The resident bytes count no handle, where 009-02, 4.7 counts them | open |
 | [015-14](14-fast-path-jmm-argument.md) | Fix | The fast path's plain reads rest on the address dependency, not the JMM | open |
-| [015-16](16-powerloss-cleanup.md) | Investigate | PowerLossTest failed once in its cleanup, "cannot delete test file" | open |
 | [015-18](18-night-large-after-release.md) | Implement | Run night.sh large on the release, after 2026.2 | open |
 | [015-19](19-tools-after-005-79.md) | Fix | Tools in items still use what 005-79 removed | open |
 
@@ -49,6 +47,8 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-16](16-powerloss-cleanup.md) | Investigate | PowerLossTest failed once in its cleanup, "cannot delete test file" | done | 2026-11-03 |
+| [015-09](09-reclaim-test-timing.md) | Fix | Reclaim.Tester.testCrashBeforeIterationEnd depends on timing under load | done | 2026-11-03 |
 | [015-17](17-read-during-close.md) | Investigate | A read during close fails with "File closed", and close reports it | done | 2026-11-03 |
 | [015-15](15-resident-count-drift.md) | Fix | A batch subtracts values never counted; a count driven to 0 stays 0 | done | 2026-11-03 |
 | [015-01](01-empty-directory.md) | Fix | A directory without its stream starts as a new one | done | 2026-11-03 |
