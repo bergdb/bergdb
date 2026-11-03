@@ -337,6 +337,17 @@ section 3). Unless he chooses before the release, it is a known issue of
   015-29, and 015-30 (time only).
 * 20:29 Usage at 35% with 20% of the window gone: at most two agents until
   00:30.
+* 20:36 015-14 committed (`4e10aa2`), done. 20:48 015-13 committed
+  (`e427a4c`), done: the handles are counted; at a given cache size about a
+  third fewer objects stay in memory. 20:56 015-25 committed (`fa08db4`),
+  done: an eviction batch that throws fails the database.
+* 20:56 verify-2: R2's and R3's other nine findings confirmed, all in
+  2026.1 too: 015-31 to 015-39.
+* 21:25 S1 (rw-transactions, encryption, JMX): 9 faults with failing tests,
+  all in 2026.1 too: 015-40 to 015-48. 015-40 (a put and a delete of one
+  key in one transaction keeps the put) is being fixed. 21:26 S2 (indexes
+  and objects): 27 faults with probes, all in 2026.1 too: 015-49. Item 9 of
+  section 7.
 
 
 ## 7. For Frans to decide
@@ -408,6 +419,19 @@ recommended):
    `java.management`) and a second lock file (a new file in the database
    directory). Recommended: keep it; a copy of 2026.1 in the same JVM still
    has the old fault.
+9. **The Pub API's upper layers have many old faults.** Tonight's reviews
+   of the indexes, the objects and the rw-transactions (R3, S1, S2) found
+   about 45 faults that 2026.1 has too: 7 of them fixed tonight (015-20 to
+   015-22, 015-24 to 015-25 elsewhere, 015-40 in progress), the rest
+   registered (015-23, 015-26 to 015-39, 015-41 to 015-49; S2's 27 in
+   015-49). Some give wrong answers in normal use (S2: `prefix()`,
+   `inclusive(false)` without `startAt()`, later composite levels; S1: a
+   put and a delete of one key in one transaction). Recommended: release
+   2026.2 with them as known issues, the notes saying plainly that the
+   index and object layers have known faults, in 2026.1 too; after the
+   release, an item of its own to verify and fix them. Alternatives: mark
+   indexes and objects experimental, as replication; or hold the release
+   for fixes (days, not hours).
 
 
 ## 8. Outcome
