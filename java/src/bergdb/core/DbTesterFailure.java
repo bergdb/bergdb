@@ -4,9 +4,11 @@ import java.io.IOException;
 import java.io.InterruptedIOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
@@ -604,6 +606,129 @@ public class DbTesterFailure {
         db.close();
     }
 
+    /**
+     * Db.getTrans of a record that next() reads whole, its size and last byte right, but whose
+     * parse fails (bergdb 005-82): here a byte of a value node's value is flipped, and the
+     * node's checksum fails. The read fails the database with the StreamChecksumException as
+     * the cause. Before, getTrans parsed the record outside its failure handling: the
+     * exception escaped as it was, and the database stayed active and took writes (bergdb
+     * 012-14, section 6.7).
+     */
+    @Nano
+    public static void testGetTransChecksum() throws IOException {
+        getTransOfDamagedRecord(0);
+    }
+
+    /**
+     * As testGetTransChecksum, with the flipped byte in the value node's size, its high byte:
+     * the node does not fit inside its declared record (bergdb 005-74), and the parse refuses
+     * the record before the checksum, with a StreamFormatException.
+     */
+    @Nano
+    public static void testGetTransMalformed() throws IOException {
+        getTransOfDamagedRecord(1);
+    }
+
+    /**
+     * As testGetTransChecksum, with a value node whose checksum is right but whose value
+     * size is -1: the parse throws a NegativeArraySizeException, which getTrans makes the
+     * cause of a StreamFormatException, the cause of the failure (bergdb 005-82, 010-01's
+     * P7). Before, it escaped as it was.
+     */
+    @Nano
+    public static void testGetTransUncheckedParseError() throws IOException {
+        getTransOfDamagedRecord(2);
+    }
+
+    /**
+     * Two transactions, synced; the reads of the first one's value node then give it damaged
+     * (FaultStream.patch): 0, a byte of the value flipped; 1, the high byte of the node's
+     * size flipped; 2, the value's size -1, with the checksum made right. getTrans of the
+     * first fails the database, and every later transaction and read is refused with that
+     * cause, getTrans of the second too; nothing is appended. Damage in the reads only: the
+     * restart reads both, and getTrans gives them.
+     */
+    private static void getTransOfDamagedRecord(int damage) throws IOException {
+        FaultStream s = new FaultStream();
+        Db db = Db.builder().testSetup(s).start();
+        Trans t1 = db.trans().put("/a", "a0").build();
+        db.execute(t1);
+        Trans t2 = db.trans().put("/b", "b0").build();
+        db.execute(t2);
+        db.sync(SyncLevel.STRONG);
+        final long length = s.getLength();
+        
+        // The value node of /a, as stored: size 4, type 1, version 1, checksum 2, id 8,
+        // offset from the record 4, the value's size 4, then the value (StoredValueNode).
+        long vpos = -1;
+        for (StoredNode n : db.getTrans(t1.tpos).nodes) {
+            if (n instanceof StoredValueNode
+                    && Arrays.equals(bytes("a0"), ((StoredValueNode) n).getNode().value)) {
+                vpos = n.getNode().getSpos();
+            }
+        }
+        Assert.assertTrue("the value node", vpos > 0);
+        byte[] node = new byte[4];
+        s.inner.read(vpos, node, 0, 4);
+        node = new byte[Bytes.bytesToIntLE(node, 0)];
+        s.inner.read(vpos, node, 0, node.length);
+        Class<?> cause;
+        if (damage == 0) {
+            node[24] ^= 0x01;
+            cause = StreamChecksumException.class;
+        } else if (damage == 1) {
+            node[3] ^= 0x01;
+            cause = StreamFormatException.class;
+        } else {
+            Bytes.intToBytesLE(-1, node, 20);
+            final int sum = NodeChecksum.sumWithZeroReplace(node, 0, node.length, 6);
+            node[6] = (byte) sum;
+            node[7] = (byte) (sum >>> 8);
+            cause = StreamFormatException.class;
+        }
+        s.patchAt = vpos;
+        s.patch = node;
+
+        DbFailedException e = null;
+        try {
+            db.getTrans(t1.tpos);
+        } catch (DbFailedException ex) {
+            e = ex;
+        } catch (RuntimeException ex) {
+            throw new AssertionError("the read did not fail the database: " + ex, ex);
+        }
+        Assert.assertTrue("the read fails the database", e != null);
+        Assert.assertTrue("faults made", s.faults > 0);
+        Assert.assertTrue("the cause: " + e.getCause(), e.getCause().getClass() == cause);
+        if (damage == 1) {
+            Assert.assertTrue("the cause: " + e.getCause(),
+                    e.getCause().getMessage().startsWith("Bad node size"));
+        } else if (damage == 2) {
+            Assert.assertTrue("the cause's cause: " + e.getCause().getCause(),
+                    e.getCause().getCause() instanceof NegativeArraySizeException);
+        }
+        assertRefused(db, e.getCause());
+        DbFailedException refused = null;
+        try {
+            db.getTrans(t2.tpos);
+        } catch (DbFailedException ex) {
+            refused = ex;
+        }
+        Assert.assertTrue("getTrans of the second refused",
+                refused != null && refused.getCause() == e.getCause());
+        s.patch = null;
+        db.sync(SyncLevel.STRONG);      // The storage is healthy.
+        Assert.assertEquals("the stream's length", length, s.getLength());
+        db.close();
+
+        Db db2 = Db.builder().testSetup(s.inner.copy()).start();
+        Assert.assertEquals("a0", DbUtil.getString(db2, "/a"));
+        Assert.assertEquals("b0", DbUtil.getString(db2, "/b"));
+        Assert.assertEquals("the first", t1.tt, db2.getTrans(t1.tpos).tt);
+        Assert.assertEquals("the second", t2.tt, db2.getTrans(t2.tpos).tt);
+        db2.close();
+    }
+
     // ======== Helpers ========
 
     /**
@@ -822,12 +947,6 @@ public class DbTesterFailure {
         throw new AssertionError("the thread did not come to wait for the write lock");
     }
 
-    /**
-     * A test stream over a MemoryStream that fails on purpose, when set: its reads throw an
-     * IOException (a read error: the storage then fails), or return the bytes with the last one
-     * changed (a corrupt node: a checksum error, the storage stays healthy); its appends throw,
-     * or wait until holdAppends is cleared.
-     */
     /** The threads of BufferedStreams that are alive (bergdb 005-32). */
     public static Set<Thread> storageThreads() {
         Set<Thread> result = new HashSet<Thread>();
@@ -895,6 +1014,13 @@ public class DbTesterFailure {
         return thrown[0];
     }
     
+    /**
+     * A test stream over a MemoryStream that fails on purpose, when set: its reads throw an
+     * IOException (a read error: the storage then fails), or return the bytes with the last one
+     * changed (a corrupt node: a checksum error, the storage stays healthy), or with the bytes
+     * of 'patch' at stream position patchAt instead of the stored ones (bergdb 005-82); its
+     * appends throw, or wait until holdAppends is cleared.
+     */
     static class FaultStream implements AppendOnlyStream {
         final MemoryStream inner = new MemoryStream();
         volatile boolean failReads = false;
@@ -902,6 +1028,8 @@ public class DbTesterFailure {
         volatile boolean failAppends = false;
         volatile boolean errorInAppends = false;    // an Error, as an assertion (bergdb 005-32)
         volatile boolean holdAppends = false;
+        volatile long patchAt = -1;
+        volatile byte[] patch = null;
         volatile int faults = 0;
 
         public long getLength() {
@@ -922,6 +1050,15 @@ public class DbTesterFailure {
             if (corruptReads && length > 8) {
                 faults++;
                 dest[destOffset + length - 1] ^= 0x55;
+            }
+            final byte[] p = patch;
+            final long at = patchAt;
+            if (p != null && at < position + length && at + p.length > position) {
+                faults++;
+                for (long q = Math.max(at, position); q < Math.min(at + p.length,
+                        position + length); q++) {
+                    dest[destOffset + (int) (q - position)] = p[(int) (q - at)];
+                }
             }
         }
 

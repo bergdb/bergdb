@@ -1467,8 +1467,10 @@ public class Db implements AutoCloseable {
      *             005-43). Nothing is read.
      * @throws DbFailedException
      *             If the database has failed, or fails now: the read failed on the storage,
-     *             or the bytes at 'tpos' are not a committed transaction, which is corrupt
-     *             data as for the other reads (bergdb 005-30, 005-34).
+     *             the bytes at 'tpos' are not a committed transaction, or its record is
+     *             corrupt: a node's checksum fails, or the record is malformed. That is
+     *             corrupt data, as for the other reads (bergdb 005-30, 005-34, 005-82); the
+     *             cause is the read's exception.
      * @throws LookupTimeNotAvailableException
      *             If reclaim has removed the transaction: the time of the get has expired.
      */
@@ -1487,9 +1489,14 @@ public class Db implements AutoCloseable {
         assertDbStateIsActive("getTrans");
 
         NodeStream.TransIterator ti = nodeStream.createTransIteratorFromExactStartupPos(tpos);
-        boolean gotTrans;
+        StoredTrans stored = null;
         try {
-            gotTrans = ti.next();
+            // The parse within the try since 2026-11-03 (bergdb 005-82): it came after it, and
+            // its exception, a node's checksum or a malformed record, escaped as it was, with
+            // the database still active. Only next() reads the stream.
+            if (ti.next()) {
+                stored = parseTrans(ti, tpos);
+            }
         } catch (StreamIoException e) {
             if (isReadBelowCut(e)) {
                 LookupTimeNotAvailableException ex = new LookupTimeNotAvailableException(
@@ -1502,17 +1509,37 @@ public class Db implements AutoCloseable {
         } catch (StreamFormatException e) {
             // Corrupt data, as for the other reads (2026-10-24, bergdb 005-34): it was thrown
             // as it was, as the Pub API's position was wrong for a value after a meta block in
-            // its record, and for a value that startup had rerun.
+            // its record, and for a value that startup had rerun. And the parse's, since
+            // bergdb 005-82.
             throw failOnStorage(e, "A read");
         }
-        if (!gotTrans) {
+        if (stored == null) {
             // At or past the end of the stream, refused as the positions above are (2026-10-25,
             // bergdb 005-43). It was a DbException.
             throw new IllegalArgumentException("Not a position of a transaction, " + tpos
                     + ": at or past the end of the stream.");
         }
         
-        return ti.getStoredTrans();
+        return stored;
+    }
+    
+    /**
+     * Parses the record that 'ti' has read, for getTrans() (2026-11-03, bergdb 005-82). A
+     * StreamFormatException is thrown as it is. Any other RuntimeException means a malformed
+     * record too, or a bug: a node whose checksum is right but whose fields do not fit its
+     * size (the node parsers do not check them all). It becomes a StreamFormatException with
+     * it as the cause, so that getTrans() fails the database (bergdb 010-01, P7). The parse
+     * reads only the record's bytes, not the stream.
+     */
+    private static StoredTrans parseTrans(NodeStream.TransIterator ti, long tpos) {
+        try {
+            return ti.getStoredTrans();
+        } catch (StreamFormatException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new StreamFormatException("A malformed record at stream pos " + tpos
+                    + ": its parse threw " + e + ".", e);
+        }
     }
     
     

@@ -1,9 +1,10 @@
 005-82. Fix: parsing corrupt transaction data must fail the database
 ==================================================================
 
-Status: open; planned for release 2026.2, the live-read part only
-(Frans, 2026-11-03, 15:27, 016-01's Q1: "as recommended"; see Plan for
-2026.2). Kind: fix. Created 2026-11-02.
+Status: done (2026.2), the live-read part only (Frans, 2026-11-03, 15:27,
+016-01's Q1: "as recommended"; see Plan for 2026.2 and Outcome); startup's
+handling of damaged tails stays with 014-01. Kind: fix. Created
+2026-11-02. Closed 2026-11-03.
 
 Split from 005-74 when Frans selected its option A, the size checks.
 Found in 012-14, section 6.7; the finding and its probe remain there.
@@ -115,12 +116,39 @@ first in F1's row. No stop for Frans: Q1 decided the scope. The C clone
 fails the database here already (012-03); after the fix both agree
 (012-14, section 6.7), and nothing changes in C.
 
-**State** (2026-11-03): planned, not started. No clone yet. The code was
-read at `df6ad50`: `Db.getTrans` (lines 1455 to 1496), `failOnStorage`,
-`NodeStream.TransIterator`, `StoredTrans.parse`, and
-`DbTesterFailure.testGetTrans` and `FaultStream`. To resume: step 1, or
-the step after the last one in the Log.
+**State** (2026-11-03, 16:19, F1): done; the final hand-off is
+`/Users/f/fl/bench/016/005-82/handoff/` (with `review.txt`), for the
+coordinator's combined gate and commit.
 
+
+Outcome
+-------
+
+2026-11-03, by F1 (016-05), in `/Users/f/fl/bench/016/005-82/repo` from
+`main` at `6f932f0`:
+
+* `Db.getTrans` parses the record inside its failure handling (a new
+  `Db.parseTrans`): a node's checksum or a malformed record fails the
+  database, with the exception as the cause, as every other read does
+  (docs/levels.md, section 3; 005-34). Any other `RuntimeException` of the
+  parse (a node with a right checksum whose fields do not fit its size)
+  becomes the cause of a `StreamFormatException`, which fails the database
+  too (010-01, P7); an `Error` is thrown as it is. Valid, expired and
+  invalid-position reads are as they were. `Db.readTransactions`, the take
+  and recovery are not changed (014-01).
+* `getTrans`'s Javadoc names the corrupt record; `Connection.transactionInfo()`
+  and docs/levels.md were right already.
+* Tests (unit, `DbTesterFailure`, with `FaultStream`'s new `patchAt` and
+  `patch`): `testGetTransChecksum`, `testGetTransMalformed`,
+  `testGetTransUncheckedParseError`. All three fail with the fix reverted;
+  the third alone without `parseTrans`'s wrap.
+* `before-commit.sh`: `BEFORE COMMIT OK (82 s)`, and after the review's
+  nit `BEFORE COMMIT OK (108 s)`. Reviewed by the coordinator: no faults;
+  its nit taken.
+* The finding of the same unchecked exceptions in the Dag's loads is
+  015-07.
+* For `releases/next.md`: "a corrupt transaction record read by
+  `Connection.transactionInfo()` fails the database (005-82)".
 
 Log
 ---
@@ -141,3 +169,83 @@ not been carried out.
 
 2026-11-03. Planned for release 2026.2 (016-05), the live-read part only,
 by Frans's answer to Q1; "Plan for 2026.2" above. Nothing changed yet.
+
+2026-11-03, 15:58 to 16:12, by F1 (016-05), in
+`/Users/f/fl/bench/016/005-82/repo` from `main` at `6f932f0`, steps 1 to 4:
+
+* **The fix**, `Db.getTrans`: the parse (`ti.getStoredTrans()`) moved into
+  the `try` around `ti.next()`, through a new `Db.parseTrans`. Its
+  `StreamFormatException`, with `StreamChecksumException` and
+  `VersioningStreamException`, goes to `failOnStorage(e, "A read")` as
+  `next()`'s does: the database fails with it as the cause. The end of the
+  stream, the position checks and the expiry by a cut are as they were;
+  only `next()` reads the stream.
+* **Step 2's question**: yes, an unchecked exception other than a
+  `StreamFormatException` can still come. The node parsers check the
+  node's checksum first, but not every field against the node's size:
+  `StoredKeyNode.parse` the key count (up to 32,767), `StoredValueNode.parse`
+  the value's size (negative: `NegativeArraySizeException`; too large:
+  `ArrayIndexOutOfBoundsException`) and the key's size,
+  `StoredTopNode.parse` the pointer count (only an `assert`). A node with a
+  right checksum and such a field (a writer's bug, or one random damage in
+  65,536, Fletcher-16) throws one. So `parseTrans` makes any
+  `RuntimeException` other than a `StreamFormatException` the cause of a
+  `StreamFormatException` ("A malformed record at stream pos ..."), which
+  fails the database (010-01, P7). An `Error` (that `assert` with `-ea`, an
+  `OutOfMemoryError`) is thrown as it is and fails nothing, as in the other
+  reads.
+* **Finding for the coordinator** (not fixed here): the same exceptions
+  reach the Dag's loads (`NodeStream.readNode`, `bytesToNode`), and there
+  they escape. `Db.getOneInternal`, `Db.getMany` and the reads before a
+  transaction's go point catch only `StreamException`. A probe (outside
+  the repository, on the clone's jar) gave every key node read a key count
+  of 32,767 with the checksum made right: `getOne`, `getMany`
+  (`DbUtil.checksum`) and a put each threw
+  `ArrayIndexOutOfBoundsException: Index 1024 out of bounds for length
+  1024`, and a later put was taken: the database stayed active, against
+  docs/levels.md, section 3, and P7. After the go point `fail()` catches
+  every `Throwable`, so a load there fails the database.
+* **The Javadoc**: `getTrans`'s `@throws DbFailedException` names the
+  corrupt record (a node's checksum fails, or the record is malformed;
+  005-82) and the cause. `Connection.transactionInfo()`'s line ("If the
+  database has failed, before or in this read") is right as it is, and
+  docs/levels.md, section 3, lists `getTrans` among the reads that corrupt
+  data fails already: both unchanged.
+* **The tests**, `DbTesterFailure`. `FaultStream` got `patchAt` and `patch`
+  in place of the plan's `flipAt`: a read that covers those stream
+  positions gets those bytes in the caller's buffer, so that a test can
+  also give a node whose checksum is right. Three unit tests, on the value
+  node of /a in the first of two synced transactions:
+  `testGetTransChecksum` (a byte of the value flipped:
+  `StreamChecksumException`), `testGetTransMalformed` (the high byte of
+  the node's size flipped: the parse's `StreamFormatException`, "Bad node
+  size") and `testGetTransUncheckedParseError` (the value's size -1, the
+  checksum made right: a `StreamFormatException` whose cause is a
+  `NegativeArraySizeException`). In each, `getTrans` of the first fails the
+  database with that cause; `assertRefused`; `getTrans` of the second is
+  refused with the same cause; nothing is appended; a restart on a copy
+  reads both values and both transactions.
+* **Mutations**, `unit.sh -c DbTesterFailure -m testGetTrans`: (1) the fix
+  reverted (`Db.java` of `6f932f0`): the three tests fail, each with "the
+  read did not fail the database:" and the `StreamChecksumException`, the
+  `StreamFormatException` "Bad node size, 16777256, at offset 32 of
+  transaction at 264, size 120." and the `NegativeArraySizeException: -1`
+  escaping; `databasesStopped` names the three. (2) The parse in the `try`
+  without `parseTrans`'s wrap: only `testGetTransUncheckedParseError`
+  fails. With the fix the five pass, `testGetTrans` and
+  `testGetTransBelowTheCut` unchanged.
+* **The gate** (step 5): `java/before-commit.sh`, 16:10 to 16:11: `BEFORE
+  COMMIT OK (82 s)`, 1,096 unit tests and 78 f-tests. `level1.sh quick`
+  not run: other agents' gates and level scripts kept F53 busy (one at a
+  time).
+
+2026-11-03. Reviewed 2026-11-03 by the coordinator (H5, 016-05, section
+5): no faults. The fix is within Q1's scope; `parseTrans` wraps only a
+`RuntimeException` (an `Error` passes); the three tests and the two
+mutations are right; the restart check shows that the damage was in the
+reads only. One nit, optional: `FaultStream`'s class Javadoc sat above
+`storageThreads()`'s comment, not above the class (so before this
+change). Answer: taken, the comment moved above `static class
+FaultStream`; `before-commit.sh` again, 16:18 to 16:20: `BEFORE COMMIT OK
+(108 s)`, 1,096 unit tests and 78 f-tests. The finding of 16:12 (the Dag's
+loads) is registered as 015-07. Closed: Outcome and Status above.

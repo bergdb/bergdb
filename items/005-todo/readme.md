@@ -41,7 +41,6 @@ Open
 | [005-78](78-retain-duration-in-stream.md) | Investigate | The retain duration is not kept in the stream: it decides when reclaim's iterations start and where it cuts, so the stream's bytes, but a start takes the builder's value (default forever), against the rule of 005-53 and 005-52 (a setting that changes the stream's bytes is kept in the stream, 010-P2) and without a word in its Javadoc. Frans: it must be in the stream; study first. Forms: the meta blocks (as the startup distance), an internal KV, or reclaim's table | open |
 | [005-79](79-integers-not-doubles.md) | Implement | Integers instead of doubles in the Core's decisions, so that the stream's bytes are the same in every language and on every target (Frans, 2026-10-29: "Integer operations are well-defined on all targets"): the take's share and dither (`TransSeq.take`), reclaim's iteration spacing and internal fraction, eviction's low watermark. Decided (Frans, 15:48): the take in fixed point (option B), `setReclaimInternalFraction` takes an integer, on its own (not with 005-77 or 005-78, which have notes), not before Frans says so; the other three keep their bytes below 2^53. A check in the gates that keeps doubles out; the C clone and Lean's `share` and `dither` follow | in progress |
 | [005-81](81-overload-and-retries.md) | Investigate | Client overload, backpressure and retries | open |
-| [005-82](82-gettrans-corruption.md) | Fix | Corrupt getTrans leaves Db active | in progress |
 
 
 Closed
@@ -49,6 +48,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-82](82-gettrans-corruption.md) | Fix | getTrans fails the database on a corrupt record | done | 2026-11-03 |
 | [005-69](69-system-clock-promise.md) | Fix | SystemClock keeps its promise | done | 2026-11-03 |
 | [005-71](71-dbclock-read-time-after-start.md) | Fix | DbClock read time after a start: a note in P2 | done | 2026-11-03 |
 | [005-80](80-setbudget-race-record.md) | Decide | setBudget's race recorded, with a test | done | 2026-11-03 |
