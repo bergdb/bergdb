@@ -35,6 +35,7 @@ import bergdb.pub.TransactionInfo;
 import bergdb.pub.WBuilder;
 import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.BadReplicaException;
+import bergdb.pub.util.DatabaseMissingException;
 import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
@@ -1733,6 +1734,238 @@ public class PubTester {
         
         String s = new String(Util.fileToBytes(file.getPath()), "UTF-8");
         Assert.assertTrue(s.contains("creation date"));
+    }
+    
+    /**
+     * A directory that held a database, its stream's files removed (bergdb 015-01): start()
+     * throws a DatabaseMissingException and opens, creates and writes nothing; the
+     * directory's files and created.txt's bytes are as they were. Before, the start created
+     * a new, empty database there, and said nothing.
+     */
+    @Nano
+    private static void testStreamFilesRemoved(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = createdWithData(env);
+        for (File f : streamFiles(dir)) {
+            Assert.assertTrue(f.delete());
+        }
+        assertMissing(dir);
+    }
+    
+    /** As testStreamFilesRemoved, with the one stream file emptied (bergdb 015-01). */
+    @Nano
+    private static void testOnlyStreamFileEmptied(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = createdWithData(env);
+        File[] streams = streamFiles(dir);
+        Assert.assertEquals(1, streams.length);
+        try (RandomAccessFile f = new RandomAccessFile(streams[0], "rw")) {
+            f.setLength(0);
+        }
+        assertMissing(dir);
+    }
+    
+    /**
+     * The remedy that DatabaseMissingException's message gives (bergdb 015-01): with
+     * created.txt removed too, start() creates a new, empty database, as for any directory
+     * without created.txt.
+     */
+    @Nano
+    private static void testMissingStreamRemedy(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = createdWithData(env);
+        for (File f : streamFiles(dir)) {
+            Assert.assertTrue(f.delete());
+        }
+        assertMissing(dir);
+        Assert.assertTrue(new File(dir, "created.txt").delete());
+        Database d = Factory.database().dir(dir.getPath()).start();
+        Assert.assertNull(d.connection().get("/k", String.class));
+        d.close();
+        Assert.assertTrue("a new created.txt", new File(dir, "created.txt").isFile());
+    }
+    
+    /**
+     * A creation that crashed before its first write (bergdb 005-33, row 0 of its table): the
+     * directory holds bergdb.lock and an empty first stream file, and no created.txt. start()
+     * creates the database, as before 015-01.
+     */
+    @Nano
+    private static void testCrashedCreationBeforeFirstWrite(TestEnvironment env)
+            throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = env.createTempDir();
+        new FileStream(dir).close();
+        Assert.assertTrue(new File(dir, "bergdb.lock").isFile());
+        File[] streams = streamFiles(dir);
+        Assert.assertTrue(streams.length == 1 && streams[0].length() == 0);
+        Database d = Factory.database().dir(dir.getPath()).start();
+        d.connection().put("/k", "v");
+        d.close();
+        Assert.assertTrue("created.txt", new File(dir, "created.txt").isFile());
+        Database d2 = Factory.database().dir(dir.getPath()).start();
+        Assert.assertEquals("v", d2.connection().get("/k", String.class));
+        d2.close();
+    }
+    
+    /**
+     * A database whose created.txt was lost gets one at its next start (bergdb 015-01, A+),
+     * with the creation date unknown and its own database ID; from then on a start refuses
+     * the directory if its stream goes missing. Before, none was written.
+     */
+    @Nano
+    private static void testCreatedTxtWrittenAtStart(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = createdWithData(env);
+        File txt = new File(dir, "created.txt");
+        String before = new String(Util.fileToBytes(txt.getPath()), "UTF-8");
+        Assert.assertTrue(txt.delete());
+        Database d = Factory.database().dir(dir.getPath()).start();
+        Assert.assertEquals("v", d.connection().get("/k", String.class));
+        d.close();
+        Assert.assertTrue("created.txt written", txt.isFile());
+        String after = new String(Util.fileToBytes(txt.getPath()), "UTF-8");
+        Assert.assertTrue(after, after.contains("creation date: unknown"));
+        Assert.assertEquals("the database ID", line(before, "database ID:"),
+                line(after, "database ID:"));
+        Assert.assertTrue(after, line(after, "database ID:").length() > "database ID:".length());
+    }
+    
+    /**
+     * A creation whose force fails writes no created.txt, and the start fails (bergdb
+     * 015-01): the creation is made durable before created.txt is written. Before,
+     * created.txt was written at once, before any byte of the stream reached its file, and
+     * the start returned. Through the core API, as DbTesterStream.testCreatedTxt.
+     */
+    @Nano
+    private static void testNoCreatedTxtWithoutForce(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = env.createTempDir();
+        final java.util.concurrent.atomic.AtomicBoolean fail =
+                new java.util.concurrent.atomic.AtomicBoolean(false);
+        FileStreamIo io = new FileStreamIo() {
+            protected void forceFile(File file, RandomAccessFile handle) throws IOException {
+                if (fail.get()) {
+                    throw new IOException("PubTester: a force that fails, as set (015-01)");
+                }
+                super.forceFile(file, handle);
+            }
+        };
+        FileStream fs = new FileStream(dir, io);
+        fail.set(true);
+        Db db = null;
+        boolean failed = false;
+        try {
+            db = Db.builder().testSetup(fs).createdTxt(dir, null).start();
+        } catch (StreamIoException e) {
+            failed = true;
+        } finally {
+            if (db != null) {
+                try {
+                    db.close();     // Before 015-01: the start returned.
+                } catch (RuntimeException e) {
+                    // The failed force.
+                }
+            }
+        }
+        Assert.assertTrue("no created.txt", !new File(dir, "created.txt").exists());
+        Assert.assertTrue("the start failed", failed);
+    }
+    
+    /**
+     * A start refused for its crypto key, of an unknown algorithm, creates nothing (bergdb
+     * 015-06): an empty directory stays empty, and a missing one is not created. Before, the start opened the directory first, which created it, its lock
+     * file and an empty first stream file, and left them.
+     */
+    @Nano
+    private static void testRefusedStartCreatesNothing(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File empty = env.createTempDir();
+        File missing = new File(env.createTempDir(), "db");
+        CryptoKey other = CryptoKey.parse("8184a9f2-other-75ac20b68ccdbf95b9999287bc4da0caf67b4c8e"
+                + "dc40d7615bebf1beae3578b800cfc3dfbaad319c");
+        for (File dir : new File[] {empty, missing}) {
+            try {
+                Factory.database().dir(dir.getPath()).cryptoKey(other).start();
+                throw new AssertionError("started");
+            } catch (IllegalStateException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("other"));
+            }
+        }
+        Assert.assertEquals("the empty directory: " + listing(empty), 0, empty.list().length);
+        Assert.assertTrue("the missing directory", !missing.exists());
+    }
+    
+    /** A database with /k = v in a new temporary directory, closed (bergdb 015-01's tests). */
+    private static File createdWithData(TestEnvironment env) throws IOException {
+        File dir = env.createTempDir();
+        Database d = Factory.database().dir(dir.getPath()).start();
+        d.connection().put("/k", "v");
+        d.close();
+        Assert.assertTrue(new File(dir, "created.txt").isFile());
+        return dir;
+    }
+    
+    /** The directory's stream files (*.bergdb). */
+    private static File[] streamFiles(File dir) {
+        File[] fs = dir.listFiles((d, name) -> name.endsWith(".bergdb"));
+        return fs == null ? new File[0] : fs;
+    }
+    
+    /** The directory's files, sorted, each with its length. */
+    private static String listing(File dir) {
+        String[] names = dir.list();
+        if (names == null) {
+            return "(none)";
+        }
+        java.util.Arrays.sort(names);
+        StringBuilder sb = new StringBuilder();
+        for (String n : names) {
+            sb.append(n).append(':').append(new File(dir, n).length()).append(' ');
+        }
+        return sb.toString();
+    }
+    
+    /** The line of 's' that starts with 'prefix', or null. */
+    private static String line(String s, String prefix) {
+        for (String l : s.split("\n")) {
+            if (l.startsWith(prefix)) {
+                return l;
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * A start on 'dir' throws a DatabaseMissingException, and the directory's files and
+     * created.txt's bytes are as before (bergdb 015-01).
+     */
+    private static void assertMissing(File dir) throws IOException {
+        String before = listing(dir);
+        byte[] txt = Util.fileToBytes(new File(dir, "created.txt").getPath());
+        try {
+            Database d = Factory.database().dir(dir.getPath()).start();
+            d.close();
+            throw new AssertionError("a new database started in " + dir);
+        } catch (DatabaseMissingException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("015-01"));
+        }
+        Assert.assertEquals("the directory's files", before, listing(dir));
+        Assert.assertArrayEquals(txt, Util.fileToBytes(new File(dir, "created.txt").getPath()));
     }
     
     @Nano

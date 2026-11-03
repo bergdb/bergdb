@@ -1,7 +1,8 @@
 015-01. Fix: a database directory without its stream starts as a new, empty database
 ==================================================================================
 
-Status: open. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
+Status: done (2026.2): A with A+ (see Outcome). Kind: Fix. Created 2026-11-03 by
+Frans Lundberg. Closed 2026-11-03.
 
 To be fixed before release 2026.2. Frans, 2026-11-03, 15:27, on 016-01's
 question Q4 (a Decide entry for after the release, or a fix before it):
@@ -293,6 +294,47 @@ agent makes steps 1 to 6 in its clone. The code was read at `df6ad50`:
 `storageManager.sync` can run inside `handleEmptyStream` (step 1's
 first check).
 
+2026-11-03, 17:13, F1: done; the final hand-off is
+`/Users/f/fl/bench/016/015-01/handoff/` (with `review.txt`, one patch with
+015-06), for the coordinator's combined gate and commit. Case 3 stays
+015-05's.
+
+
+
+Outcome
+-------
+
+2026-11-03, by F1 (016-05), in `/Users/f/fl/bench/016/015-01/repo` from
+`main` at `d5fc369`: A with A+, as the coordinator decided.
+
+* **The order**: a creation through the Pub API (`DbBuilder.createdTxt`)
+  is made durable, rule D1, before `created.txt` is written
+  (`Db.syncCreation`, which ignores interrupts as a start must, 005-46);
+  a failed sync fails the start, and no `created.txt` is written. So
+  `created.txt` marks a directory whose creation reached the disk. The
+  core API's streams without `created.txt` are as before.
+* **A+**: a start that has read a stream with data and finds no
+  `created.txt` writes one, "creation date: unknown (created.txt written
+  at a start on DATE)", with the stream's database ID.
+* **The check**: `DatabaseBuilder.start()` refuses a `dir()` that has
+  `created.txt` and no `*.bergdb` file with a byte
+  (`FileStream.hasStreamBytes`), with the new
+  `bergdb.pub.util.DatabaseMissingException`, before it opens the
+  directory: it opens, creates and writes nothing. Its message and Javadoc
+  say what to do (restore the files; or, for a new database, remove
+  `created.txt` and the `*.bergdb` files). Cases 1 and 2 are closed.
+* **Case 3** (an empty or missing directory) is a new database, as before;
+  `DatabaseBuilder.dir()`'s Javadoc gives the recipe (check that
+  `created.txt` exists before `start()`); B1 is 015-05, for Frans after
+  the release. For the release notes: the refusal, the new exception (the
+  only Pub API addition of W4), `created.txt`'s meaning, and case 3 with
+  the recipe in "Known issues and limits".
+* **Tests** (`PubTester`, unit): seven with 015-06's; all fail on the code
+  as it was except the crashed creation before its first write (005-33's
+  row 0), which keeps today's behaviour.
+* **Gates**: `BEFORE COMMIT OK (94 s)` on `d5fc369`; `LEVEL 1 OK` and
+  `LEVEL 2 OK` (quick); `JAVADOC PUB OK`. No stream byte changes.
+* Reviewed by the coordinator: no faults; one doubt noted (the Log).
 
 Log
 ---
@@ -306,3 +348,99 @@ Frans's "You decide how to": it closes cases 1 and 2 with no stream byte,
 no setting and no method change, and keeps "start() creates or opens".
 Case 3 needs a change of the Pub API's usage (B1), which is Frans's to
 decide: 015-05.
+
+2026-11-03, 16:40 to 16:56, by F1 (016-05; the coordinator gave this
+entry to F1, with 015-06), in `/Users/f/fl/bench/016/015-01/repo`, steps 1
+to 5:
+
+* **Step 1, the order** (`Db.handleEmptyStream`): with `createdTxtDir` set
+  (the Pub API's directories), the creation is made durable by
+  `storageManager.sync(CREATION_LENGTH)` (rule D1, the main stream's write
+  and force, as `Db.sync(ORDINARY)` waits for) before
+  `writeCreatedTxt`. The check of step 1: the sync works there, as
+  `writePrimordialTransaction` sets `x.endOfLastTrans` and the storage
+  runs since `syncStreams()`; `sync` has the main stream flush at once
+  (005-48). A failed sync throws a `StreamIoException`, the start fails
+  (`start()` closes the storage, 005-32), and no `created.txt` is written
+  (`testNoCreatedTxtWithoutForce`). Without `createdTxtDir` (the core
+  API's streams, the tests) nothing changes: no sync. The cost: one
+  force at a creation.
+* **Step 2, A+** (`Db.writeCreatedTxtIfMissing`, called in `startInner`
+  after the stream is read and checked, before the state becomes
+  `ACTIVE`): with `createdTxtDir` set and no `created.txt`, it writes one,
+  "creation date: unknown (created.txt written at a start on DATE)", with
+  the database ID of the stream's meta block. A failure to write it fails
+  the start, as before. `writeCreatedTxt` takes the date's text and the
+  ID.
+* **Step 3, the check** (`DatabaseBuilderImp.start()`, before `openDirs()`,
+  `refuseMissingStream`): `created.txt` a file in `dir()` and
+  `FileStream.hasStreamBytes(dir)` false (a new static method: a `*.bergdb`
+  file with a byte; false for a missing directory) gives the new
+  `bergdb.pub.util.DatabaseMissingException` (extends `DbException`), and
+  the start opens, creates and writes nothing. Also with replicas (the
+  main directory's check; replicas' directories have no `created.txt`).
+  015-06's change is in the same place: `checkCryptoKey()`, before
+  `openDirs()` too.
+* **Step 4, the Javadoc**: `DatabaseBuilder.dir()` (what `created.txt`
+  means, the refusal, case 3 and the recipe: check that `created.txt`
+  exists before `start()`); `start()`'s `@throws DatabaseMissingException`;
+  the new class (what happened and what to do).
+  `DatabaseNotCreatedException` unchanged. `java/javadoc-pub.sh`: `JAVADOC
+  PUB OK`.
+* **Step 5, the tests**, `PubTester` (unit, each in a temporary
+  directory, each closing its databases), with helpers `createdWithData`,
+  `streamFiles`, `listing` and `assertMissing`:
+  `testStreamFilesRemoved`, `testOnlyStreamFileEmptied` (truncated to 0),
+  `testMissingStreamRemedy` (refused, then `created.txt` removed: a new,
+  empty database, and a new `created.txt`),
+  `testCrashedCreationBeforeFirstWrite` (`bergdb.lock` and an empty
+  `00000000000000.bergdb`, made by a `FileStream` opened and closed: the
+  start creates the database, and it starts again with its value),
+  `testNoCreatedTxtWithoutForce` (core API, a `FileStreamIo` whose
+  `forceFile` fails once armed after the open: the start throws a
+  `StreamIoException`, no `created.txt`; about 0.5 s, the sync's wait of
+  500 ms before it sees the storage's error), `testCreatedTxtWrittenAtStart`
+  (A+: "creation date: unknown", the same database ID line). In
+  `PubTester` too, not in `DbTesterStream`, so that the tests of 015-01
+  are together.
+* **On the code as it was** (`Db.java`, `DatabaseBuilderImp.java` and
+  `FileStream.java` of `c960c34`, the tests and the new class kept): five
+  of the six fail: `testStreamFilesRemoved`, `testOnlyStreamFileEmptied`
+  and `testMissingStreamRemedy` ("a new database started in ..."),
+  `testNoCreatedTxtWithoutForce` ("no created.txt, expected true"),
+  `testCreatedTxtWrittenAtStart` ("created.txt written, expected true");
+  `testCrashedCreationBeforeFirstWrite` passes on both, as it keeps
+  today's behaviour. The remedy's test fails before only at its first
+  part, the refusal; its second part is today's behaviour.
+* **The gate**, first run, 16:55 to 16:57: `BEFORE COMMIT FAILED: unit
+  tests`, one: `PubInterruptTester.testDirAndJobJoinByInterruptedThread`,
+  "StreamIoException: Thread was interrupted while waiting for D1 size
+  264": a start by an interrupted thread now waits for the creation's
+  sync, and `StorageManager.sync` ends on an interrupt, against 005-46's
+  rule (a start ignores an interrupt until it is done, and keeps the
+  flag). Fixed: `Db.syncCreation()` waits as `waitUntilClosed()` does: on
+  an `InterruptedIOException` it clears the flag and waits again, and
+  sets the flag at the end. `PubInterruptTester`, `InterruptTester` and
+  `PubTester` pass.
+* **The gate** again, 16:59 to 17:01: `BEFORE COMMIT OK (98 s)`, 1,108 unit
+  tests and 78 f-tests.
+* **On `d5fc369`** (015-07 in `main`, `Db.java` and the node parsers): the
+  change applies unchanged; gated again there (below).
+* **The gate on `d5fc369`**, 17:05 to 17:07: `BEFORE COMMIT OK (94 s)`,
+  1,115 unit tests and 78 f-tests. `level1.sh quick` and `level2.sh quick`
+  run after it.
+* **`level1.sh quick`**, 17:07 to 17:09: `LEVEL 1 OK`; **`level2.sh
+  quick`**, 17:09 to 17:12: `LEVEL 2 OK` (its crash and restart checks on
+  disk, the conformance traces: `TRACECHECK OK: 14`).
+
+2026-11-03. Reviewed 2026-11-03 by the coordinator (H5, 016-05, section
+5), with 015-06: no faults. Checked: the creation is forced before
+`created.txt`, so `created.txt` means durable; `refuseMissingStream` runs
+before `openDirs()` and takes no lock; the 2012 rule for a creation that
+crashed before its first write still holds (no `created.txt` then); A+
+writes only for a started database that read the stream and has none; the
+crypto check moved before the open with the same messages; encrypted
+streams keep the `.bergdb` suffix. One doubt, noted, no change: with
+replicas given, a main directory with `created.txt` and no stream is now
+refused too; replication is experimental (016-01, section 3), and refusing
+is the safer side. Closed: Outcome and Status above.

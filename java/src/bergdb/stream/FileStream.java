@@ -509,6 +509,27 @@ public class FileStream implements AppendOnlyStream {
     }
 
     /**
+     * Whether 'dir' holds a stream file (*.bergdb) with at least one byte (2026-11-03,
+     * bergdb 015-01): false for a directory that does not exist, holds none, or holds only
+     * empty ones. It opens nothing and takes no lock; a running stream always has a file with
+     * bytes once its database is created, and a cut never removes the last file. For the
+     * Pub API's start, which refuses a directory that held a database (created.txt) and has
+     * no stream byte.
+     */
+    public static boolean hasStreamBytes(File dir) {
+        File[] files = dir.listFiles();
+        if (files == null) {
+            return false;
+        }
+        for (File f : files) {
+            if (f.getName().endsWith(SUFFIX) && f.isFile() && f.length() > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * @throws IOException  If directory does not exist and cannot be created.
      */
     private void createDirIfNeeded() throws IOException {

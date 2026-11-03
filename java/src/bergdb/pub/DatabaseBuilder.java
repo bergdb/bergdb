@@ -5,6 +5,7 @@ import java.io.IOException;
 import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.Clock;
+import bergdb.pub.util.DatabaseMissingException;
 import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.DbException;
 
@@ -29,6 +30,13 @@ public interface DatabaseBuilder {
      * start() throws a StreamIoException whose cause is a
      * bergdb.stream.DirectoryInUseException. Nothing in the directory has been read or
      * changed then.</p>
+     * 
+     * <p>A directory that holds a database has created.txt, written once the database's
+     * creation is durable; start() refuses one that has created.txt and no stream file
+     * (*.bergdb) with a byte, with a DatabaseMissingException (bergdb 015-01). A directory
+     * without created.txt, also an empty or a missing one, gets a new, empty database, as a
+     * wrong path or a volume that is not mounted does too. An application that must never
+     * create a database there checks, before start(), that created.txt exists in it.</p>
      */
     public DatabaseBuilder dir(String dirname);
     
@@ -147,6 +155,13 @@ public interface DatabaseBuilder {
      *             start has written nothing. To create the database, remove its files, in
      *             its directory the stream's files (*.bergdb) and created.txt, and start
      *             again. A database that holds data never gives this exception.
+     * @throws DatabaseMissingException
+     *             If the directory of dir() held a database and its stream is missing: it
+     *             has created.txt, and no stream file (*.bergdb) with a byte; the files
+     *             were removed, not restored, or emptied (bergdb 015-01). The start has
+     *             opened, created and written nothing. Restore the *.bergdb files and start
+     *             again; or, for a new, empty database there, remove created.txt and the
+     *             *.bergdb files. Before, such a start created a new, empty database.
      */
     public abstract Database start();
 }

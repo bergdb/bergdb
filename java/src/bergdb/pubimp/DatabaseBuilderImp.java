@@ -15,6 +15,7 @@ import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Duration;
 import bergdb.pub.util.Clock;
+import bergdb.pub.util.DatabaseMissingException;
 import bergdb.storage.StorageManager;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
@@ -189,6 +190,14 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
             throw new IllegalStateException("no streams, please provide a database stream");
         }
         
+        // What can refuse the start is checked before openDirs() opens a directory, which
+        // creates it, its lock file and an empty first stream file (2026-11-03, bergdb 015-01,
+        // 015-06): a refused start opens, creates and writes nothing.
+        checkCryptoKey();
+        if (dir != null) {
+            refuseMissingStream(dir);
+        }
+        
         Db db;
         try {
             openDirs();
@@ -219,6 +228,50 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         }
     }
     
+    /**
+     * Refuses a crypto key of another algorithm than salsa, or with key data of another
+     * length than 40 bytes; before the directories are opened (2026-11-03, bergdb 015-06).
+     * Before, the start opened the directory first, and a refused start left it, its lock
+     * file and an empty first stream file, which breaks the restore in place of a database
+     * whose first file has another name (FileStream's check of the files' positions).
+     */
+    private void checkCryptoKey() {
+        if (cryptoKey == null) {
+            return;
+        }
+        String algo = cryptoKey.getAlgo();
+        if (!algo.equals("salsa")) {
+            throw new IllegalStateException("Cannot encrypt with algorithm '" + algo + "'. Not supported.");
+        }
+        byte[] keyData = cryptoKey.getKeyData();
+        if (keyData.length != 40) {
+            throw new IllegalStateException("Unexpected keyData length, " + keyData.length + ".");
+        }
+    }
+    
+    /**
+     * Refuses a directory that held a database and has no stream byte (2026-11-03, bergdb
+     * 015-01): it has created.txt, which a creation writes once its first bytes are durable
+     * (Db.handleEmptyStream), and no *.bergdb file with a byte (FileStream.hasStreamBytes).
+     * Before the directory is opened, so that the start opens, creates and writes nothing;
+     * safe without the directory's lock, as a running database always has a stream file
+     * with bytes. Also when replicas are given. A directory without created.txt, also an
+     * empty or a missing one, is a new database, as before.
+     *
+     * @throws DatabaseMissingException
+     */
+    private static void refuseMissingStream(File dir) {
+        File createdTxt = new File(dir, "created.txt");
+        if (createdTxt.isFile() && !FileStream.hasStreamBytes(dir)) {
+            throw new DatabaseMissingException("The directory " + dir + " held a database "
+                    + "(its created.txt), and its stream is missing: no stream file (*.bergdb) "
+                    + "with a byte. The start has opened, created and written nothing. Restore "
+                    + "the *.bergdb files from a backup and start again; or, to create a new, "
+                    + "empty database there, remove created.txt and the *.bergdb files and "
+                    + "start again (bergdb 015-01).");
+        }
+    }
+    
     private static FileStream openDir(File dir) {
         try {
             return new FileStream(dir);
@@ -243,16 +296,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
                 dbBuilder.createdTxt(fileStream.getDir(), null);
             }
         } else {
-            String algo = cryptoKey.getAlgo();
-            
-            if (!algo.equals("salsa")) {
-                throw new IllegalStateException("Cannot encrypt with algorithm '" + algo + "'. Not supported.");
-            }
-            
-            byte[] keyData = cryptoKey.getKeyData();
-            if (keyData.length != 40) {
-                throw new IllegalStateException("Unexpected keyData length, " + keyData.length + ".");
-            }
+            byte[] keyData = cryptoKey.getKeyData();     // checked by checkCryptoKey()
             
             SalsaStream salsa;
             

@@ -706,6 +706,7 @@ public class Db implements AutoCloseable {
         keyModSet.setFirstTime(transactions.get(transactions.size() - 1).tt);
         
         createPutAndGetData();
+        writeCreatedTxtIfMissing();
         
         this.state = DbState.ACTIVE;
         reclaim.initFromDb();
@@ -942,14 +943,70 @@ public class Db implements AutoCloseable {
      * (if not given in the database builder)
      * and writes the first metablock and the primordial transaction to the stream.
      * 
+     * <p>With created.txt (DbBuilder.createdTxt, the Pub API's directories), the creation is
+     * made durable first, by a sync as Db.sync(ORDINARY) makes (rule D1: the main stream's
+     * write and force), and created.txt written after it (2026-11-03, bergdb 015-01): so
+     * created.txt marks a directory whose creation reached the disk, and the Pub API's start
+     * refuses one that has it and no stream byte. Before, created.txt was written at once,
+     * and the creation reached the file with the buffer's first write, after start()
+     * returned. A sync that fails fails the start, and no created.txt is written.</p>
+     * 
      * @throws StreamIoException
      */
     private void handleEmptyStream() {
         if (nodeStream.getLength() == 0) {
             determineDatabaseId();            
             writePrimordialTransaction();
-            writeCreatedTxt();
+            if (createdTxtDir != null) {
+                syncCreation();
+                writeCreatedTxt(Util.today(), databaseId);
+            }
         }
+    }
+    
+    /**
+     * Waits until the creation is durable, by rule D1 (bergdb 015-01), without being
+     * interrupted: a start ignores an interrupt until it is done, and keeps the thread's
+     * flag (bergdb 005-46; PubInterruptTester). StorageManager.sync ends on an interrupt and
+     * sets the flag again; here the flag is cleared and the wait goes on, and the flag is set
+     * again at the end.
+     * 
+     * @throws StreamIoException  If the storage has failed: the start fails.
+     */
+    private void syncCreation() {
+        boolean interrupted = false;
+        try {
+            while (true) {
+                try {
+                    storageManager.sync(CREATION_LENGTH);
+                    return;
+                } catch (InterruptedIOException e) {
+                    Thread.interrupted();
+                    interrupted = true;
+                }
+            }
+        } catch (IOException e) {
+            throw new StreamIoException(e);
+        } finally {
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+    
+    /**
+     * Writes created.txt for a database that holds data and has none (2026-11-03, bergdb
+     * 015-01, A+): its created.txt was lost, or its creation stopped between the sync and
+     * created.txt (handleEmptyStream). The creation date is unknown. Called at the end of a
+     * start that read the stream, so that the Pub API refuses the directory if its stream
+     * goes missing later. A failure to write it fails the start, as handleEmptyStream's does.
+     */
+    private void writeCreatedTxtIfMissing() {
+        if (createdTxtDir == null || new File(createdTxtDir, "created.txt").exists()) {
+            return;
+        }
+        writeCreatedTxt("unknown (created.txt written at a start on " + Util.today() + ")",
+                DatabaseId.createFromBytes(nodeStream.getMetaBlock().getId()));
     }
     
     /**
@@ -1067,9 +1124,11 @@ public class Db implements AutoCloseable {
     /** 
      * Writes created.txt if createdTxt parameters has been set in DbBuilder.
      * 
+     * @param creationDate  The creation date's text: today's, or "unknown ..." (A+).
+     * @param id  The database's ID.
      * @throws StreamIoException 
      */
-    private void writeCreatedTxt() {
+    private void writeCreatedTxt(String creationDate, DatabaseId id) {
         if (createdTxtDir == null) {
             return;
         }
@@ -1080,9 +1139,9 @@ public class Db implements AutoCloseable {
         StringBuilder b = new StringBuilder();
         b.append("This directory contains a BergDB database.\n");
         b.append("\n");
-        b.append("creation date: " + Util.today() + "\n");
+        b.append("creation date: " + creationDate + "\n");
         b.append("created with:  BergDB " + BuildInfo.RELEASE + "\n");
-        b.append("database ID:   " + databaseId.idToString() + "\n");
+        b.append("database ID:   " + id.idToString() + "\n");
         b.append("crypto key:    " + keyInfo + "\n");
         b.append("\n");
         
