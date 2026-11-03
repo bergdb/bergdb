@@ -11,10 +11,18 @@ made as 2026.1 was (008), and measured against 2026.1 in turns.
 Files
 =====
 
-* [01-plan.md](01-plan.md). 016-01, the plan: the goal, where `main`
-  stands against 2026.1's known issues, the scope (what must be done
-  before the release, the candidates, what stays out), the work W1 to W7,
-  the order and size, and the decisions for Frans, D1 to D6.
+* [01-plan.md](01-plan.md). 016-01, the plan:
+  * the goal, and where `main` stands against 2026.1's known issues;
+  * the rules for the work: the stream format kept unless Frans approves
+    a change, replication and 014-01 out, doubles only at an API;
+  * every unsolved issue known on 2026-11-03, each with a proposal: to
+    fix before the release, a known issue of 2026.2, or not for 2026.2;
+  * the work W1 to W7, and the search for unknown faults (H1 to H5);
+  * the unattended run by one coordinator session;
+  * Frans's decisions D1 to D7, and questions Q1 to Q4 for the start,
+    with his answers.
+* [02-run.md](02-run.md). 016-02, the run: the request, the subitems and
+  agents, the timeline, the progress, the stops for Frans and the outcome.
 
 
 Log
@@ -25,3 +33,27 @@ Log
 it and the work needed."), with the plan drafted by Claude (Opus 5.5,
 Claude Code) in 016-01. Nothing done yet; the plan waits for Frans's
 decisions (016-01, section 8).
+
+2026-11-03. 016-01 reviewed and revised, at Frans's request (15:01, "Now,
+review your plan. You now have Max effort level."), with his decisions D1
+to D6 (016-01, section 10):
+
+* The issue list was made from every open 005 entry, 014, 015, 007,
+  010-01's "To check" lines, docs/levels.md's limits, 012's findings in
+  Java and 009's leftovers.
+* Added: 005-79, 005-65's rerun, the search for unknown faults, and the
+  unattended run.
+* Corrected from the draft: `night.sh` OK since 2026-10-30; 005-76 does
+  not change what the C clone compares; 005-50 added to 2026.1's faults.
+* Found: 005-82's log has Frans's earlier question about crash tails
+  (now Q1); no JDK 17 on F53 or s1; no record of the gates on Linux or of
+  a large conformance run with handles; a directory without its stream
+  files starts as a new database (Q4).
+
+Four questions wait for Frans before the start (016-01, section 11).
+Nothing done yet.
+
+2026-11-03, 15:27. Frans answered Q1 to Q4 and started the coordinator
+(013-02), unattended until 07:00; at 15:31 he limited the release to Java
+(D7). Both are in 016-01, section 10. The run is 016-02. The detailed
+plans are being written as 016-03 to 016-10, and in the entries of W4.
