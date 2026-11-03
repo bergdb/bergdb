@@ -524,7 +524,8 @@ public class CapacityTester {
      * startup distance of 100 kB a leaf stays in D, dirty, while the writer puts 20 values of
      * 1,000 bytes into it, which are counted from its write, not before; a batch (a budget of
      * 1,000 bytes) takes them as stream pointers (Eviction.unswizzleValues). The leaf's count
-     * goes down to its own bytes, no further, and after its write it is its bytes again; its
+     * goes down to its bytes without its values (its own and its entry in the node table,
+     * bergdb 015-13), no further, and after its write it is its bytes again; its
      * eviction, written, takes the object counter down by one. Throughout,
      * every resident index object is counted (checkCounts). Before the fix the batch took the
      * leaf's count to 0, which meant "not counted", and it stayed 0 after the leaf's write.
@@ -557,11 +558,13 @@ public class CapacityTester {
 
             // A batch ends after 2 ms (Eviction.BATCH_NANOS): under load one may not reach the
             // leaf's map, the next goes on from the hand.
-            for (int i = 0; i < 1000 && Residents.bytesOf(leaf) > leaf.getMemSize(); i++) {
+            for (int i = 0; i < 1000
+                    && Residents.bytesOf(leaf) > Residents.bytesWithoutValues(leaf); i++) {
                 batch(db, 1000);
             }
             Assert.assertTrue("dirty", leaf.isDirty());
-            Assert.assertEquals("its values taken", leaf.getMemSize(), Residents.bytesOf(leaf));
+            Assert.assertEquals("its values taken", Residents.bytesWithoutValues(leaf),
+                    Residents.bytesOf(leaf));
             Assert.assertEquals("its count after the batch", Residents.bytesOf(leaf),
                     leaf.countedMemSize);
             checkCounts(db);
@@ -586,6 +589,92 @@ public class CapacityTester {
         } finally {
             db.stop();
         }
+    }
+
+    /**
+     * The handles counted (bergdb 015-13; 009-02, 4.7; 016-06/R1, R1-F2): 2000 keys of 300
+     * bytes, started cold with a budget of 10 MB, every key read; then every object that can
+     * go evicted (a budget of 1 byte), the budget raised again and every key read, so that
+     * each object is counted from a load after the start. Each resident index object that is
+     * not dirty is then counted by 4.7's rule, computed here apart from Residents: its own
+     * bytes, 79 for its live handle with its entry in the node table, 32 for each pointer that
+     * holds a handle, live or dead, and the bytes of its values (checkRule); the resident bytes
+     * are the sum of the counts (checkCounts). The reads put handles into pointers of objects
+     * counted before (a loaded object's pointers hold none), which the follow's swizzle counts
+     * (Residents.handleIn). Then the budget lowered to a third: eviction leaves dead handles in
+     * the pointers of the objects that stay, counted still; every key read again, and the rule
+     * holds again. (Right after the start, a few objects of the startup section, counted
+     * before the startup's rerun of its transactions grew them, are counted below their bytes
+     * until their next write, as Residents' comment says of the objects the writer changed
+     * since their last count; the eviction takes them.) Before 015-13 no handle was counted:
+     * R1's probe found 34 to 49 percent of the counted bytes held on top.
+     */
+    @Nano
+    public static void testCountsWithHandles() throws InterruptedException {
+        int n = 2000;
+        long big = 10 * 1000 * 1000;
+        Db db = readAll(n, big);
+        try {
+            db.setCacheSizeIndicator(1);
+            bytes(db);
+            db.setCacheSizeIndicator(big);
+            for (int k = 0; k < n; k++) DbUtil.get(db, "k" + k);
+            long[] c = checkRule(db);
+            Assert.assertTrue("pointers that hold a handle: " + c[1] + " of " + c[0] + " objects",
+                    c[1] > c[0] / 2);
+            long full = bytes(db);
+            long budget = full / 3;
+            db.setCacheSizeIndicator(budget);
+            long end = System.nanoTime() + 2000L * 1000 * 1000;
+            while (db.internal().cache().residents().bytes() > budget && System.nanoTime() < end) {
+                Thread.sleep(1);
+            }
+            bytes(db);
+            c = checkRule(db);
+            Assert.assertTrue("dead handles in pointers after the eviction: " + c[2], c[2] > 0);
+            for (int k = 0; k < n; k++) DbUtil.get(db, "k" + k);
+            bytes(db);
+            checkRule(db);
+        } finally {
+            db.stop();
+        }
+    }
+
+    /**
+     * checkCounts, and each resident index object that is not dirty counted by 009-02, 4.7's
+     * rule, computed apart from Residents (testCountsWithHandles). Returns the objects
+     * checked, their pointers that hold a handle, and those of them that hold a dead one.
+     */
+    private static long[] checkRule(Db db) {
+        checkCounts(db);
+        Db.Internal in = db.internal();
+        long objects = 0, handles = 0, dead = 0;
+        synchronized (in.getWriteLock()) {
+            final List<Node> d = new ArrayList<Node>();
+            in.transSeq().visitGotDirtyNodes(Long.MAX_VALUE, new TransSeq.NodeVisitor() {
+                public void node(Node node, long tpos, long lastTpos) {
+                    d.add(node);
+                }
+            });
+            for (Node o : Residents.walk(in.superRoot(), in.cache().nodes(), d)) {
+                if (!o.isIndexNode() || o.isDirty()) continue;
+                long rule = o.getMemSize() + 79;
+                for (int i = 0; i < o.getSize(); i++) {
+                    bergdb.dag.Pointee p = o.getPointee(i);
+                    if (p instanceof bergdb.dag.Handle) {
+                        rule += 32;
+                        handles++;
+                        if (((bergdb.dag.Handle) p).isDead()) dead++;
+                    } else if (p instanceof bergdb.dag.ValueNode) {
+                        rule += ((bergdb.dag.ValueNode) p).getMemSize();
+                    }
+                }
+                Assert.assertEquals("object " + o.getId() + " by 4.7's rule", rule,
+                        (long) Residents.counted(o));
+                objects++;
+            }
+        }
+        return new long[] {objects, handles, dead};
     }
 
     /** One batch of the capacity controller with the budget 'budget', then the budget back. */

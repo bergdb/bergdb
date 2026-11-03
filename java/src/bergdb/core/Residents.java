@@ -6,6 +6,7 @@ import java.util.IdentityHashMap;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import bergdb.dag.Handle;
 import bergdb.dag.Pointee;
 import bergdb.dag.KeyNode;
 import bergdb.dag.Klong;
@@ -28,24 +29,27 @@ import bergdb.nanotest.Nano;
  * super root, the node table and D.</p>
  *
  * <p><b>Accounting</b>, without walks since bergdb item 009, step 3b
- * (items/009-handles/02-implementation-plan.md, 4.7): each index object is counted with
- * its own bytes and those of the values its pointers hold (`Node.getMemSize()`), in its
- * field `countedMemSize` (KeyNode, TopNode; -1 if not counted, so that a count is never
- * taken for "not counted", bergdb 015-15): from when it enters a handle (added) until it
- * leaves it (released); again when the writer writes it, as it may have grown (grown); and
- * a value a reader puts into, or eviction takes from, a pointer of a counted object moves
- * that object's count (valueIn, valueOut). A value that two resident objects hold is
- * counted for each. Between the writer's changes to a canonical object and its write, the
- * object is counted with its size at the last count: the growth of its arrays and the
- * values the writer put into it are not counted until its write. It is pinned meanwhile
- * (D, or the record being written), and a batch of the capacity controller takes its
- * written values (Eviction.unswizzleValues), counted or not: so valueOut takes no more than
- * the count holds above the object's own bytes. The estimate does not drift: every byte
- * added is taken away with the object or the pointer it was added for, and no more; it is
- * exact but for the objects the writer changed since their last count, which it counts
- * below their bytes (bergdb 015-15). Before step 3b the estimate was made exact by walks of
- * the resident objects after each sweep (resync, which the audit and the test schedules
- * still use).</p>
+ * (items/009-handles/02-implementation-plan.md, 4.7): each index object is counted with its own
+ * bytes (`Node.getMemSize()`), its live handle with the handle's entry in the node table, the
+ * handles its pointers hold, and the values they hold (bytesOf; the handles since bergdb
+ * 015-13), in its field `countedMemSize` (KeyNode, TopNode; -1 if not counted, so that a count
+ * is never taken for "not counted", bergdb 015-15): from when it enters a handle (added) until
+ * it leaves it (released); again when the writer writes it, as it may have grown (grown); and a
+ * handle a follow puts into a pointer that held none, and a value a reader puts into, or
+ * eviction takes from, a pointer of a counted object move that object's count (handleIn,
+ * valueIn, valueOut). A dead handle stays counted in the pointers that hold it. A handle or a
+ * value that two resident objects hold is counted for each, and a live handle that a pointer
+ * holds also with its object's entry: an upper bound (009-02, 4.7). Between the writer's
+ * changes to a canonical object and its write, the object is counted with its size at the last
+ * count: the growth of its arrays and the pointers the writer added to it, with their values
+ * and handles, are not counted until its write. It is pinned meanwhile (D, or the record being
+ * written), and a batch of the capacity controller takes its written values
+ * (Eviction.unswizzleValues), counted or not: so valueOut takes no more than the count holds
+ * above the object's own bytes and its entry. The estimate does not drift: every byte added is
+ * taken away with the object or the pointer it was added for, and no more; it is exact but for
+ * the objects the writer changed since their last count, which it counts below their bytes
+ * (bergdb 015-15). Before step 3b the estimate was made exact by walks of the resident objects
+ * after each sweep (resync, which the audit and the test schedules still use).</p>
  *
  * <p><b>Pins</b> (the model's `HMem.pinned`, lean/SIS/Handle.lean): the objects that eviction
  * must keep: the canonical objects of the nodes of D (TransSeq; dirty), those of the record
@@ -83,18 +87,45 @@ public final class Residents {
     }
 
     /**
-     * The bytes index object o is counted with now: its own, and for a key node those of the
-     * values its pointers hold.
+     * The bytes of a live handle with its entry in the node table, counted with the handle's
+     * object (009-02, 4.7 and T1a: the handle, the HashMap's entry and its Long key; with JDK
+     * 27's compact headers and compressed oops; bergdb 015-13).
+     */
+    static final int ENTRY_BYTES = 79;
+
+    /**
+     * The bytes of a handle, counted for each pointer of an index object that holds one,
+     * live or dead (009-02, 4.7; bergdb 015-13): an upper bound, as a handle that several
+     * pointers hold, or that the table holds too, is counted for each.
+     */
+    static final int HANDLE_BYTES = 32;
+
+    /**
+     * The bytes index object o is counted with now: its own, its live handle's entry
+     * (ENTRY_BYTES), a handle's bytes for each of its pointers that holds a handle
+     * (HANDLE_BYTES), and the bytes of the values its pointers hold (bergdb 015-13: before,
+     * no handle was counted).
      */
     static int bytesOf(Node o) {
-        int size = o.getMemSize();
-        if (o instanceof KeyNode) {
-            KeyNode k = (KeyNode) o;
-            int n = k.size;
-            for (int i = 0; i < n; i++) {
-                Pointee p = k.pointers[i];
-                if (p instanceof ValueNode) size += ((ValueNode) p).getMemSize();
-            }
+        int size = o.getMemSize() + ENTRY_BYTES;
+        int n = o.getSize();
+        for (int i = 0; i < n; i++) {
+            Pointee p = o.getPointee(i);
+            if (p instanceof Handle) size += HANDLE_BYTES;
+            else if (p instanceof ValueNode) size += ((ValueNode) p).getMemSize();
+        }
+        return size;
+    }
+
+    /**
+     * The bytes of bytesOf(o) without the values': o's own, its entry and the handles its
+     * pointers hold (bergdb 015-13); valueOut's floor.
+     */
+    static int bytesWithoutValues(Node o) {
+        int size = o.getMemSize() + ENTRY_BYTES;
+        int n = o.getSize();
+        for (int i = 0; i < n; i++) {
+            if (o.getPointee(i) instanceof Handle) size += HANDLE_BYTES;
         }
         return size;
     }
@@ -149,6 +180,18 @@ public final class Residents {
     }
 
     /**
+     * A handle went into a pointer of 'holder' that held none (a follow's swizzle,
+     * NodeCollection): the holder's count takes the handle's bytes (bergdb 015-13). The
+     * caller holds the holder's monitor. Nothing if the holder is not counted.
+     */
+    public void handleIn(Node holder) {
+        int c = counted(holder);
+        if (c < 0) return;
+        setCounted(holder, c + HANDLE_BYTES);
+        bytes.addAndGet(HANDLE_BYTES);
+    }
+
+    /**
      * Value v went into a pointer of 'holder' (a reader's load). The caller holds the
      * holder's monitor. Nothing if the holder is not counted (not resident).
      */
@@ -162,15 +205,17 @@ public final class Residents {
 
     /**
      * Value v left a pointer of 'holder' (eviction). The caller holds the holder's monitor.
-     * Takes v's bytes from the holder's count, but not below the holder's own bytes
-     * (getMemSize): v may not be counted, as a value the writer put into the holder is counted
-     * from the holder's write (bergdb 015-15). Before, a batch's values could take a pinned
-     * leaf's count to 0, which then stayed.
+     * Takes v's bytes from the holder's count, but not below the holder's bytes without its
+     * values (bytesWithoutValues: its own, its entry and its handles, bergdb 015-13): v may
+     * not be counted, as a value the writer put into the holder is counted from the holder's
+     * write (bergdb 015-15). Before, a batch's values could take a pinned leaf's count to 0,
+     * which then stayed.
      */
     public void valueOut(Node holder, ValueNode v) {
         int c = counted(holder);
         if (c < 0) return;
-        int size = Math.min(v.getMemSize(), Math.max(0, c - holder.getMemSize()));
+        int own = bytesWithoutValues(holder);
+        int size = Math.min(v.getMemSize(), Math.max(0, c - own));
         if (size == 0) return;
         setCounted(holder, c - size);
         bytes.addAndGet(-size);
@@ -248,56 +293,102 @@ public final class Residents {
     // ======== Tests ========
 
     /**
-     * Accounting (bergdb item 009, step 3b): an object counted once, with the values its
-     * pointers hold; a version that becomes canonical; growth; a value in and out of a
-     * pointer; a release takes the object's count away, values included.
+     * Accounting (bergdb item 009, step 3b): an object counted once, with its entry in the
+     * node table and the values its pointers hold; a version that becomes canonical; growth;
+     * a value in and out of a pointer; a release takes the object's count away, values
+     * included.
      */
     @Nano
     public static void testAccounting() {
         Residents r = new Residents();
+        final long e = ENTRY_BYTES;
         KeyNode k = KeyNode.nodeWithTime(5);
         k.setCanonical(true);
         r.added(k);
         long b1 = r.bytes();
-        Assert.assertEquals((long) k.getMemSize(), b1);
+        Assert.assertEquals(k.getMemSize() + e, b1);
         r.added(k);                                     // counted once
         Assert.assertEquals(b1, r.bytes());
         KeyNode s = KeyNode.nodeWithTime(6);            // a version read
         r.added(s);
-        Assert.assertEquals(b1 + s.getMemSize(), r.bytes());
+        Assert.assertEquals(b1 + s.getMemSize() + e, r.bytes());
         s.setCanonical(true);
         r.promoted(s);                                  // counted already
-        Assert.assertEquals(b1 + s.getMemSize(), r.bytes());
+        Assert.assertEquals(b1 + s.getMemSize() + e, r.bytes());
         for (int i = 0; i < 10; i++) {
             k.addToEnd(Klong.createTime(10 + i), null, Spos.NULL);
         }
         r.grown(k);
-        Assert.assertEquals((long) k.getMemSize() + s.getMemSize(), r.bytes());
+        Assert.assertEquals(k.getMemSize() + s.getMemSize() + 2 * e, r.bytes());
         ValueNode v = new ValueNode(new byte[100]);
         r.added(v);                                     // a value alone: not counted
-        Assert.assertEquals((long) k.getMemSize() + s.getMemSize(), r.bytes());
+        Assert.assertEquals(k.getMemSize() + s.getMemSize() + 2 * e, r.bytes());
         synchronized (s) {
             r.valueIn(s, v);
         }
-        Assert.assertEquals((long) k.getMemSize() + s.getMemSize() + v.getMemSize(), r.bytes());
+        Assert.assertEquals(k.getMemSize() + s.getMemSize() + 2 * e + v.getMemSize(), r.bytes());
         synchronized (s) {
             r.valueOut(s, v);
         }
-        Assert.assertEquals((long) k.getMemSize() + s.getMemSize(), r.bytes());
+        Assert.assertEquals(k.getMemSize() + s.getMemSize() + 2 * e, r.bytes());
         synchronized (s) {
             r.valueIn(s, v);
         }
-        Assert.assertEquals((long) s.getMemSize() + v.getMemSize(), (long) r.released(s));
-        Assert.assertEquals((long) k.getMemSize(), r.bytes());
+        Assert.assertEquals(s.getMemSize() + e + v.getMemSize(), (long) r.released(s));
+        Assert.assertEquals(k.getMemSize() + e, r.bytes());
         Assert.assertEquals(0, r.released(s));          // released once
+    }
+
+    /**
+     * Handles counted (bergdb 015-13; 009-02, 4.7): an index object with its entry in the
+     * node table (ENTRY_BYTES) and a handle's bytes (HANDLE_BYTES) for each pointer that
+     * holds one, live or dead; a follow's swizzle into a pointer that held none adds them
+     * (handleIn), one that replaces a handle by another adds nothing; a value's pointer not.
+     */
+    @Nano
+    public static void testHandlesCounted() {
+        Residents r = new Residents();
+        KeyNode child = KeyNode.nodeWithTime(4);
+        KeyNode k = KeyNode.nodeWithTime(5);
+        k.setCanonical(true);
+        k.addToEnd(Klong.createKey(new byte[] {1}), null, 300);    // a stream pointer
+        k.addToEnd(Klong.createKey(new byte[] {2}), null, 400);
+        r.added(k);
+        int own = k.getMemSize() + ENTRY_BYTES;
+        Assert.assertEquals(own, counted(k));
+        Handle h = Handle.of(child);
+        synchronized (k) {                                  // a follow's swizzle
+            k.setPointee(1, h);
+            r.handleIn(k);
+        }
+        Assert.assertEquals(own + HANDLE_BYTES, counted(k));
+        Assert.assertEquals(bytesOf(k), counted(k));
+        Assert.assertEquals(own + HANDLE_BYTES, bytesWithoutValues(k));
+        k.setPointee(1, new Handle(child.getId()));         // a dead handle resolved again
+        Assert.assertEquals(bytesOf(k), counted(k));
+        ValueNode v = new ValueNode(new byte[100], 400);
+        synchronized (k) {
+            k.setPointee(2, v);
+            r.valueIn(k, v);
+        }
+        Assert.assertEquals(own + HANDLE_BYTES + v.getMemSize(), counted(k));
+        Assert.assertEquals(bytesOf(k), counted(k));
+        synchronized (k) {                                  // a batch takes the value
+            k.setPointer(2, null, 400);
+            r.valueOut(k, v);
+        }
+        Assert.assertEquals(own + HANDLE_BYTES, counted(k));
+        Assert.assertEquals((long) own + HANDLE_BYTES, r.bytes());
+        Assert.assertEquals(own + HANDLE_BYTES, r.released(k));
+        Assert.assertEquals(0L, r.bytes());
     }
 
     /**
      * Counted apart from the size (bergdb 015-15): an object is not counted (-1) until it
      * enters a handle; a batch that takes a value a reader loaded and one the writer put in
-     * (not counted) takes the count down to the object's own bytes, no further; a count of 0
-     * is a count, which valueIn and the object's write (grown) raise; a release takes the
-     * object counter back, once.
+     * (not counted) takes the count down to the object's own bytes and its entry in the node
+     * table (bergdb 015-13), no further; a count of 0 is a count, which valueIn and the
+     * object's write (grown) raise; a release takes the object counter back, once.
      */
     @Nano
     public static void testCountedApartFromSize() {
@@ -307,7 +398,7 @@ public final class Residents {
         k.addToEnd(Klong.createKey(new byte[] {1}), null, 300);    // a stream pointer
         Assert.assertEquals(-1, counted(k));
         r.added(k);
-        Assert.assertEquals(k.getMemSize(), counted(k));
+        Assert.assertEquals(k.getMemSize() + ENTRY_BYTES, counted(k));
         ValueNode v = new ValueNode(new byte[200], 300);
         synchronized (k) {                                  // a reader's load: counted
             k.setPointee(1, v);
@@ -323,8 +414,8 @@ public final class Residents {
             k.setPointer(2, null, 400);
             r.valueOut(k, w);
         }
-        Assert.assertEquals(k.getMemSize(), counted(k));
-        Assert.assertEquals((long) k.getMemSize(), r.bytes());
+        Assert.assertEquals(k.getMemSize() + ENTRY_BYTES, counted(k));
+        Assert.assertEquals((long) k.getMemSize() + ENTRY_BYTES, r.bytes());
         k.countedMemSize = 0;                               // a count of 0 is a count
         r.bytes.set(0);
         synchronized (k) {

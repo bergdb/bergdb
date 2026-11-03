@@ -498,13 +498,22 @@ public class NodeCollection implements PointerFollower {
         //    capacity controller found the lost update: stale reads). Before the swizzle,
         //    step 2 raised the reference to the written position of the handle it replaces.
         //    The writer's swizzle always replaces: its handle holds the canonical object.
+        //    Under the predecessor's monitor, as its count: a pointer that held no handle
+        //    holds one now, and the predecessor is counted with it (Residents.handleIn,
+        //    bergdb 015-13).
 
         if (!isMaintenance && live != null && op.cachePolicy.shouldCache(result)
                 && (!cutBack || isWriter) && predecessor.getPointee(pointerIndex) != live) {
-            if (isWriter) {
-                predecessor.setPointee(pointerIndex, live);
-            } else {
-                predecessor.swizzle(pointerIndex, handle, live);
+            synchronized (predecessor) {
+                final boolean held = predecessor.getPointee(pointerIndex) instanceof Handle;
+                final boolean swizzled;
+                if (isWriter) {
+                    predecessor.setPointee(pointerIndex, live);
+                    swizzled = true;
+                } else {
+                    swizzled = predecessor.swizzle(pointerIndex, handle, live);
+                }
+                if (swizzled && !held) cache.residents().handleIn(predecessor);
             }
         }
 
