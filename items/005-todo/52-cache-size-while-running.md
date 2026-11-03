@@ -552,13 +552,15 @@ Depends on the probe's commit for steps 7 and 8, and on 005-65's step
 running first in the block. Stop for Frans: only if a wait is longer
 (step 10).
 
-**State** (2026-11-03): planned, not started. `PauseProbe` read at
-`df6ad50` (its properties, `phase`, `evictionFigures`, the reflection on
-`cacheStats`); `CacheStats.toString` gives the longest batch ("ms at
-most"). `night/lowered.sh` and `night/sum52.py` are written, not
-smoke-tested (the probe has no `lower` yet); no READY marker; `$R` does
-not exist.
-
+**State** (2026-11-03, 16:46, F1, who took this part from F2 at the
+coordinator's request): steps 1 to 3 done in
+`/Users/f/fl/bench/016/005-52/repo` (base `3e32f02`, in
+`/Users/f/fl/bench/016/005-52/BASE`; made on `f2cb23b` and moved onto
+`3e32f02` unchanged); the probe handed off for the review
+(`/Users/f/fl/bench/016/005-52/handoff/`, steps 4 and 5). Steps 7 and 8
+(the prep of `$R` with `/Users/f/fl/bench/016/005-52/prep.sh`, then the
+smoke and READY) after the coordinator has committed the probe. To resume:
+the Log's last entry; the clone's `git diff` holds the change.
 
 Log
 ---
@@ -567,3 +569,41 @@ Log
 and `lowerAt`, six runs (two of the fixed budget per collector, for the
 spread) in night 1's window 2, the table in the morning. Nothing changed
 yet.
+
+2026-11-03, 16:20 to 16:28, by F1 (016-05; the coordinator gave this part
+to F1), in `/Users/f/fl/bench/016/005-52/repo`, steps 1 and 2:
+
+* **The probe's properties** (step 1), `java/stress/PauseProbe.java`:
+  `lower=MB` (default 0, none) and `lowerAt=S` (default 10). With `lower`:
+  the start refuses a `lowerAt` outside 0 to `seconds` - 1, and finds by
+  reflection, once, `Db.setCacheSizeIndicator(long)` and the resident
+  bytes' path (`internal()`, `cache()`, `residents()`, `bytes()`); a jar
+  without them fails the probe there with a message that names them. Each
+  phase sets the budget back to `budget` before its readers start;
+  `lowerAt` seconds in, the writer's loop, before it builds its next
+  transaction and outside the commit's timing, makes a `Lowering`: the
+  resident bytes then, the budget set to `lower`, and a sampler thread
+  (daemon) that reads the resident bytes every 10 ms until they are at
+  most `lower` or the phase's `stop`; the phase joins it after the readers
+  and fails if it threw. The header gets ` lower=L MB lowerAt=S s`, and
+  each phase, before its `gets` line, `lowered: budget B to L MB at uptime
+  U s, resident R MB; reached in X s` (or `; not reached, resident R MB at
+  the phase's end`). Without `lower` nothing of this runs: no reflection,
+  no setter call, the same lines. The class Javadoc names both
+  properties.
+* **The smoke** (step 2, untimed, JDK 27): `-Dkeys=20000 -Dseconds=3
+  -Dbudget=8 -Dlower=2 -DlowerAt=1`: two `lowered:` lines ("budget 8 to 2
+  MB at uptime 1.507 s, resident 7 MB; reached in 0.017 s"; in the phase
+  tsize=1000 "not reached, resident 4 MB at the phase's end") and `PAUSE
+  PROBE OK`. Without `lower`: no `lowered:` line, the header as before,
+  `PAUSE PROBE OK`. With `lowerAt=3` and `seconds=3`: `PAUSE PROBE FAILED:
+  java.lang.IllegalArgumentException: lowerAt=3 must be from 0 to less
+  than seconds=3`. Outputs in `/Users/f/fl/bench/016/005-52/smoke/`.
+* **`sum52.py` against the probe as made** (step 6's reading): on six
+  copies of the two smoke outputs (a outside, b with `lower`) it parses
+  the header, the phases, the `lowered:` lines (`reached` 0.017 and "not
+  reached"), the latencies and the eviction line: 12 rows, `complete`,
+  exit 0. No change to `sum52.py` or `lowered.sh` is needed for the
+  probe's format.
+* **The gate** (step 3): `java/before-commit.sh`, 16:43 to 16:45: `BEFORE
+  COMMIT OK (100 s)` (its build compiles `java/stress/`).

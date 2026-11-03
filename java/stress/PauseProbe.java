@@ -29,7 +29,13 @@ import bergdb.stream.FileStream;
  * Properties: keys=N (default 1000000), valsize=N (bytes, default 100), budget=MB (default
  * 20), dir=D (default build/pauseprobe, emptied first), readers=N (default 4), seconds=S (per
  * phase, default 60), tsize=N,N,... (the writer's puts a transaction, a phase each; default
- * 1,1000).
+ * 1,1000); lower=MB (default 0: none) and lowerAt=S (default 10), the lowered budget (bergdb
+ * 005-52): each phase starts with the budget 'budget', and lowerAt seconds into it, between
+ * two of the writer's commits, the budget becomes 'lower'; a sampler reads the resident bytes
+ * every 10 ms until they are at most 'lower' or the phase ends, and the phase's block has a
+ * line "lowered:" with the time they took. Db.setCacheSizeIndicator (since fd8f513) and the
+ * resident bytes are reached by reflection, found once at the start and only with lower, so
+ * that without it the probe runs and prints as before.
  * Prints a block per phase and PAUSE PROBE OK, or an error and exits 1.
  */
 public class PauseProbe {
@@ -40,6 +46,11 @@ public class PauseProbe {
     final int readers = Integer.getInteger("readers", 4);
     final int seconds = Integer.getInteger("seconds", 60);
     final int[] tsizes = parse(System.getProperty("tsize", "1,1000"));
+    /** The lowered budget, in bytes, 0 for none, and the seconds into a phase (bergdb 005-52). */
+    final long lower = Long.getLong("lower", 0) * 1000 * 1000;
+    final int lowerAt = Integer.getInteger("lowerAt", 10);
+    /** Db.setCacheSizeIndicator, and the resident bytes' path; found by findLowering(). */
+    Method setBudget, internal, cache, residents, bytes;
     Db db;
     /** The disk's waits for the report (bergdb 005-46). */
     final TimedIo io = new TimedIo();
@@ -180,6 +191,79 @@ public class PauseProbe {
         }
     }
 
+    /**
+     * Finds, for lower (bergdb 005-52), Db.setCacheSizeIndicator(long) and the resident bytes,
+     * db.internal().cache().residents().bytes(); a jar without them fails the probe here, at
+     * once.
+     */
+    void findLowering() {
+        try {
+            setBudget = Db.class.getMethod("setCacheSizeIndicator", long.class);
+            internal = Db.class.getMethod("internal");
+            cache = internal.getReturnType().getMethod("cache");
+            residents = cache.getReturnType().getMethod("residents");
+            bytes = residents.getReturnType().getMethod("bytes");
+        } catch (NoSuchMethodException e) {
+            throw new IllegalStateException("lower is set, but this jar has no " + e.getMessage()
+                    + ": it needs Db.setCacheSizeIndicator (since fd8f513, bergdb 005-52) and "
+                    + "the resident bytes (Residents, item 009)", e);
+        }
+    }
+
+    long residentBytes() throws Exception {
+        return (Long) bytes.invoke(residents.invoke(cache.invoke(internal.invoke(db))));
+    }
+
+    /**
+     * The lowering of a phase (bergdb 005-52): sets the budget to 'lower', and starts a sampler
+     * that reads the resident bytes every 10 ms until they are at most 'lower' (reachedNs) or
+     * the phase ends (stop). Called by the writer between two commits, outside their times.
+     */
+    final class Lowering {
+        final long atNs = System.nanoTime();
+        final long atUptimeMs = uptimeMs();
+        final long before;
+        volatile long reachedNs = -1;
+        volatile long lastBytes;
+        final Thread sampler;
+
+        Lowering() throws Exception {
+            before = residentBytes();
+            lastBytes = before;
+            setBudget.invoke(db, lower);
+            sampler = new Thread(new Runnable() {
+                public void run() {
+                    try {
+                        while (!stop) {
+                            long b = residentBytes();
+                            lastBytes = b;
+                            if (b <= lower) {
+                                reachedNs = System.nanoTime();
+                                return;
+                            }
+                            Thread.sleep(10);
+                        }
+                    } catch (Throwable e) {
+                        failure = e;
+                        stop = true;
+                    }
+                }
+            });
+            sampler.setDaemon(true);
+            sampler.start();
+        }
+
+        /** The phase's line, after the sampler has ended. */
+        String line() {
+            String s = String.format("lowered: budget %d to %d MB at uptime %.3f s, resident %d MB",
+                    budget / 1000000, lower / 1000000, atUptimeMs / 1e3, before / 1000000);
+            if (reachedNs >= 0) {
+                return s + String.format("; reached in %.3f s", (reachedNs - atNs) / 1e9);
+            }
+            return s + "; not reached, resident " + lastBytes / 1000000 + " MB at the phase's end";
+        }
+    }
+
     void load() {
         int[] order = new int[keys];
         for (int i = 0; i < keys; i++) order[i] = i;
@@ -250,10 +334,17 @@ public class PauseProbe {
         Lat commits = new Lat();
         Random rnd = new Random(tsize);
         int version = 1;
+        if (lower > 0) setBudget.invoke(db, budget);     // each phase from the same budget
+        Lowering lowering = null;
         long from = uptimeMs();
         for (Thread t : ts) t.start();
-        long end = System.nanoTime() + seconds * 1000000000L;
+        final long begin = System.nanoTime();
+        long end = begin + seconds * 1000000000L;
         while (System.nanoTime() < end && failure == null) {
+            if (lower > 0 && lowering == null
+                    && System.nanoTime() - begin >= lowerAt * 1000000000L) {
+                lowering = new Lowering();
+            }
             Trans.Builder b = db.trans();
             for (int j = 0; j < tsize; j++) {
                 int k = rnd.nextInt(keys);
@@ -267,12 +358,14 @@ public class PauseProbe {
         }
         stop = true;
         for (Thread t : ts) t.join();
+        if (lowering != null) lowering.sampler.join();
         long to = uptimeMs();
-        if (failure != null) throw new RuntimeException("a reader failed", failure);
+        if (failure != null) throw new RuntimeException("a reader or the sampler failed", failure);
         Lat gets = new Lat();
         for (Lat l : getLats) gets.addAll(l);
         System.out.println(String.format("phase tsize=%d, %d readers, %d s; uptime %.3f to %.3f s",
                 tsize, readers, seconds, from / 1e3, to / 1e3));
+        if (lowering != null) System.out.println("  " + lowering.line());
         System.out.println("  " + gets.line("gets"));
         System.out.println("  " + commits.line("commits"));
         System.out.println("  " + evictionFigures());
@@ -283,7 +376,15 @@ public class PauseProbe {
         System.out.println("PauseProbe: keys=" + keys + " valsize=" + valsize + " budget="
                 + budget / 1000000 + " MB readers=" + readers + " seconds=" + seconds
                 + " tsize=" + Arrays.toString(tsizes) + " java=" + System.getProperty("java.version")
-                + " gc=" + gcNames() + " xmx=" + Runtime.getRuntime().maxMemory() / 1000000 + " MB");
+                + " gc=" + gcNames() + " xmx=" + Runtime.getRuntime().maxMemory() / 1000000 + " MB"
+                + (lower > 0 ? " lower=" + lower / 1000000 + " MB lowerAt=" + lowerAt + " s" : ""));
+        if (lower > 0) {
+            if (lowerAt < 0 || lowerAt >= seconds) {
+                throw new IllegalArgumentException("lowerAt=" + lowerAt + " must be from 0 to "
+                        + "less than seconds=" + seconds);
+            }
+            findLowering();
+        }
         db = start();
         load();
         for (int tsize : tsizes) phase(tsize);
