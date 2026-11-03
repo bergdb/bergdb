@@ -47,7 +47,7 @@ Open
 | [015-32](32-failed-open-leaks.md) | Fix | An unchecked failure during an open leaks handles; an Error keeps the lock | open |
 | [015-33](33-max2g-cap.md) | Fix | setMax2G(true) still allows files over two billion bytes | open |
 | [015-34](34-consumer-stop-interrupt.md) | Fix | A storage thread interrupted at its stop skips closing its stream | open |
-| [015-35](35-background-write-failure.md) | Fix | A failed background write does not fail the database until a caller touches storage | open |
+| [015-35](35-background-write-failure.md) | Fix | A failed background write fails the database only at a caller's next storage call | open |
 | [015-36](36-interrupted-delete-index.md) | Fix | An interrupted deleteIndex leaves the index deleting with no job | open |
 | [015-37](37-interrupted-build-step.md) | Fix | An interrupted retry of a build step ends the build for this run | open |
 | [015-38](38-jmx-monitor-interrupt.md) | Fix | JMX's monitor thread ends on an interrupt, and stop loses the caller's flag | open |
@@ -145,10 +145,11 @@ Files
 * [32-failed-open-leaks.md](32-failed-open-leaks.md). 015-32, Fix: an unchecked failure during an open leaks handles; an Error keeps the lock (R2-F3).
 * [33-max2g-cap.md](33-max2g-cap.md). 015-33, Fix: setMax2G(true) still allows files over two billion bytes (R2-F4).
 * [34-consumer-stop-interrupt.md](34-consumer-stop-interrupt.md). 015-34, Fix: a storage thread interrupted at its stop skips closing its stream (R3-F6).
-* [35-background-write-failure.md](35-background-write-failure.md). 015-35, Fix: a failed background write does not fail the database until a caller touches storage (R3-F10).
+* [35-background-write-failure.md](35-background-write-failure.md). 015-35, Fix: a failed background write fails the database
+  only at a caller's next storage call (R3-F10).
 * [36-interrupted-delete-index.md](36-interrupted-delete-index.md). 015-36, Fix: an interrupted deleteIndex leaves the index deleting with no job (R3-F11).
 * [37-interrupted-build-step.md](37-interrupted-build-step.md). 015-37, Fix: an interrupted retry of a build step ends the build for this run (R3-F5).
-* [38-jmx-monitor-interrupt.md](38-jmx-monitor-interrupt.md). 015-38, Fix: jMX's monitor thread ends on an interrupt, and stop loses the caller's flag (R3-F4).
+* [38-jmx-monitor-interrupt.md](38-jmx-monitor-interrupt.md). 015-38, Fix: JMX's monitor thread ends on an interrupt, and stop loses the caller's flag (R3-F4).
 * [39-job-status-mutable.md](39-job-status-mutable.md). 015-39, Fix: an index build's status object reads the worker's changing counter (R3-F7).
 
 

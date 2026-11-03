@@ -1,4 +1,4 @@
-015-38. Fix: jMX's monitor thread ends on an interrupt, and stop loses the caller's flag
+015-38. Fix: JMX's monitor thread ends on an interrupt, and stop loses the caller's flag
 ========================================================================================
 
 Status: open. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
