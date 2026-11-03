@@ -52,6 +52,15 @@ Open
 | [015-37](37-interrupted-build-step.md) | Fix | An interrupted retry of a build step ends the build for this run | open |
 | [015-38](38-jmx-monitor-interrupt.md) | Fix | JMX's monitor thread ends on an interrupt, and stop loses the caller's flag | open |
 | [015-39](39-job-status-mutable.md) | Fix | An index build's status object reads the worker's changing counter | open |
+| [015-40](40-two-writes-one-key.md) | Fix | Two writes of one key in a transaction: the later one can lose | open |
+| [015-41](41-object-key-two-maps.md) | Fix | A String or bytes and an object, or a delete, of one key: the call ... | open |
+| [015-42](42-rw-changes-frozen-time.md) | Fix | An rw() on a connection changes its frozen lookup time | open |
+| [015-43](43-object-index-read-time.md) | Fix | Index work reads the indexes before the read time: a new or ... | open |
+| [015-44](44-cryptokey-null.md) | Fix | DatabaseBuilder.cryptoKey(CryptoKey.NULL) after a key keeps the key | open |
+| [015-45](45-cryptokey-hashcode.md) | Fix | CryptoKey has equals() and no hashCode() | open |
+| [015-46](46-string-at-object-key-index.md) | Fix | A String or byte[] at an object key in an indexed directory breaks ... | open |
+| [015-47](47-bytes-shared-with-caller.md) | Fix | A byte[] value is shared with the caller: a change of the array ... | open |
+| [015-48](48-exists-freezes-time.md) | Fix | freezeLookupTime(), then exists(): the frozen time is the read ... | open |
 
 
 Closed
@@ -151,6 +160,15 @@ Files
 * [37-interrupted-build-step.md](37-interrupted-build-step.md). 015-37, Fix: an interrupted retry of a build step ends the build for this run (R3-F5).
 * [38-jmx-monitor-interrupt.md](38-jmx-monitor-interrupt.md). 015-38, Fix: JMX's monitor thread ends on an interrupt, and stop loses the caller's flag (R3-F4).
 * [39-job-status-mutable.md](39-job-status-mutable.md). 015-39, Fix: an index build's status object reads the worker's changing counter (R3-F7).
+* [40-two-writes-one-key.md](40-two-writes-one-key.md). 015-40, Fix: S1-F1.
+* [41-object-key-two-maps.md](41-object-key-two-maps.md). 015-41, Fix: S1-F2.
+* [42-rw-changes-frozen-time.md](42-rw-changes-frozen-time.md). 015-42, Fix: S1-F3.
+* [43-object-index-read-time.md](43-object-index-read-time.md). 015-43, Fix: S1-F4.
+* [44-cryptokey-null.md](44-cryptokey-null.md). 015-44, Fix: S1-F5.
+* [45-cryptokey-hashcode.md](45-cryptokey-hashcode.md). 015-45, Fix: S1-F6.
+* [46-string-at-object-key-index.md](46-string-at-object-key-index.md). 015-46, Fix: S1-F7.
+* [47-bytes-shared-with-caller.md](47-bytes-shared-with-caller.md). 015-47, Fix: S1-F8.
+* [48-exists-freezes-time.md](48-exists-freezes-time.md). 015-48, Fix: S1-F9.
 
 
 Log

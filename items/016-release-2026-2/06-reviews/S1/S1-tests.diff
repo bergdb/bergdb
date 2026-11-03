@@ -1,0 +1,560 @@
+diff --git a/java/src/bergdb/pubimp/Pack.java b/java/src/bergdb/pubimp/Pack.java
+index dffb226..13d9fbf 100644
+--- a/java/src/bergdb/pubimp/Pack.java
++++ b/java/src/bergdb/pubimp/Pack.java
+@@ -38,6 +38,7 @@ public class Pack implements IPack {
+         PubTesterNestedFields.class,
+         PubTesterOutput.class,
+         PubTesterPrimary.class,
++        PubTesterS1.class,
+         PubUtil.class,
+         IndexEntryBuilder.class,
+         WBuilderImp.class,
+diff --git a/java/src/bergdb/pubimp/PubTesterS1.java b/java/src/bergdb/pubimp/PubTesterS1.java
+new file mode 100644
+index 0000000..ff04ba9
+--- /dev/null
++++ b/java/src/bergdb/pubimp/PubTesterS1.java
+@@ -0,0 +1,542 @@
++package bergdb.pubimp;
++
++import bergdb.core.Db;
++import bergdb.core.RerunException;
++import bergdb.core.Trans;
++import bergdb.nanotest.Assert;
++import bergdb.stream.MemoryStream;
++import bergdb.nanotest.Nano;
++import bergdb.pub.Action;
++import bergdb.pub.Connection;
++import bergdb.pub.CryptoKey;
++import bergdb.pub.Database;
++import bergdb.pub.Factory;
++import bergdb.pub.RwEnvironment;
++
++/**
++ * Review 016-06/S1: tests that fail on e427a4c.
++ */
++public class PubTesterS1 {
++
++    private static void assertGone(String what, String value) {
++        Assert.assertTrue(what + ": expected no entry, got '" + value + "'.", value == null);
++    }
++
++    public static class Item {
++        public String key;
++        public String name;
++
++        public Item() {}
++
++        public Item(String key, String name) {
++            this.key = key;
++            this.name = name;
++        }
++    }
++
++    /**
++     * S1-F1: an rw-transaction that puts a key and then deletes it keeps the put. The
++     * key exists before, so the delete of RwEnvironment ("Deletes a database entry if it
++     * exists") must leave no entry.
++     */
++    @Nano
++    public static void testRwPutThenDelete() {
++        Database db = Factory.database().memory().start();
++        try {
++            Connection c = db.connection();
++            c.put("/a.txt", "old");
++            c.rw(new Action() {
++                public void run(RwEnvironment env) {
++                    env.put("/a.txt", "new");
++                    env.delete("/a.txt");
++                }
++            });
++            assertGone("rw: put then delete", c.get("/a.txt", String.class));
++        } finally {
++            db.close();
++        }
++    }
++
++    /** S1-F1, the same through WBuilder. */
++    @Nano
++    public static void testWPutThenDelete() {
++        Database db = Factory.database().memory().start();
++        try {
++            Connection c = db.connection();
++            c.put("/b.txt", "old");
++            c.w().put("/b.txt", "new").delete("/b.txt").execute();
++            assertGone("w: put then delete", c.get("/b.txt", String.class));
++        } finally {
++            db.close();
++        }
++    }
++
++    /**
++     * S1-F1: many puts of one key in one rw-transaction; the last must win. MapKey.equals
++     * is never true, so each put is an entry of its own in one HashMap bin; once the bin is
++     * a tree, the iteration order is not the order of the puts.
++     */
++    @Nano
++    public static void testRwManyPutsOfOneKey() {
++        Database db = Factory.database().memory().start();
++        try {
++            Connection c = db.connection();
++            for (int round = 0; round < 20; round++) {
++                final int n = 40;
++                c.rw(new Action() {
++                    public void run(RwEnvironment env) {
++                        for (int i = 0; i < n; i++) {
++                            env.put("/c.txt", "v" + i);
++                        }
++                    }
++                });
++                Assert.assertEquals("round " + round, "v" + (n - 1), c.get("/c.txt", String.class));
++            }
++        } finally {
++            db.close();
++        }
++    }
++
++    /**
++     * S1-F2: an object key written as a String and then deleted, and an object then
++     * written as a String, in one rw-transaction: the String's put goes to kvOps, the
++     * object's put and the delete to objectOps, and createTrans adds kvOps first.
++     */
++    @Nano
++    public static void testRwStringAndObjectOfOneKey() {
++        Database db = Factory.database().memory().start();
++        try {
++            Connection c = db.connection();
++            c.put("/d", "old");
++            c.rw(new Action() {
++                public void run(RwEnvironment env) {
++                    env.put("/d", "new");
++                    env.delete("/d");
++                }
++            });
++            assertGone("String put, then delete", c.get("/d", String.class));
++        } finally {
++            db.close();
++        }
++    }
++
++    /** S1-F2, the second half: an object put, then a String put of the same key. */
++    @Nano
++    public static void testRwObjectThenString() {
++        Database db = Factory.database().memory().start();
++        try {
++            Connection c = db.connection();
++            c.rw(new Action() {
++                public void run(RwEnvironment env) {
++                    env.put("/e", new Item("/e", "object"));
++                    env.put("/e", "text");
++                }
++            });
++            Assert.assertEquals("object put, then String put", "text",
++                    c.get("/e", String.class));
++        } finally {
++            db.close();
++        }
++    }
++
++    /**
++     * S1-F3: Connection.freezeLookupTime(): "The lookup time of this Connection will not
++     * change until setLookupTime() is called or this method is called again." An rw() on
++     * the connection whose action reads changes it.
++     */
++    @Nano
++    public static void testRwKeepsFrozenLookupTime() {
++        Database db = Factory.database().memory().start();
++        try {
++            Connection c = db.connection();
++            Connection other = db.newConnection();
++            c.put("/f.txt", "1");
++            c.freezeLookupTime();
++            Assert.assertEquals("1", c.get("/f.txt", String.class));
++            other.put("/f.txt", "2");
++            Assert.assertEquals("frozen before rw", "1", c.get("/f.txt", String.class));
++            c.rw(new Action() {
++                public void run(RwEnvironment env) {
++                    env.get("/g.txt", String.class);
++                }
++            });
++            Assert.assertEquals("frozen after rw", "1", c.get("/f.txt", String.class));
++        } finally {
++            db.close();
++        }
++    }
++
++    public static class Pay {
++        public String from;
++        public String to;
++
++        public Pay() {}
++
++        public Pay(String from, String to) {
++            this.from = from;
++            this.to = to;
++        }
++    }
++
++    /**
++     * S1-F4: a w-transaction (or an rw-transaction) whose only reads are the virtual read of
++     * its objects' directory (RwEnvironmentImp.indexEntries, IndexManager's design note: "we
++     * can get transaction rerun in case an index is added while Connection.set(String,
++     * Object) is being executed") has readTime -1, so its core transaction's lookup time is
++     * Long.MAX_VALUE, and the STM check never finds the directory's virtual hash modified
++     * after it. The steps of RwTransaction.executeRw for WTransaction.execute(), run here
++     * one by one, with an index made between createTrans() and Db.execute(), as another
++     * thread can make it while this one waits for the write lock.
++     */
++    @Nano
++    public static void testObjectPutWithoutReadsMissesNewIndex() {
++        Database database = Factory.database().memory().start();
++        try {
++            ConnectionImp c = (ConnectionImp) database.newConnection();
++            Db db = ((DatabaseImp) database).getDb();
++            IndexManager m = ((DatabaseImp) database).getIndexManager();
++
++            // 1. The w-transaction's preparation: no index for /payments/ yet.
++            RwEnvironmentImp env = new RwEnvironmentImp(c);
++            env.put("/payments/10", new Pay("a", "b"));
++            env.indexEntries(m);
++            Trans t = env.createTrans(db);
++
++            // 2. Meanwhile, another thread: an index on /payments/, made and built.
++            database.indexBuilder("from").type("string/unicode").dir("/payments/")
++                    .field("from").start().join();
++
++            // 3. The w-transaction's commit. Its directory's indexes changed after it read
++            // them: it must be run again (RerunException), as executeRw does.
++            try {
++                db.execute(t);
++            } catch (RerunException e) {
++                return;
++            }
++            Assert.assertTrue("the object", c.get("/payments/10", Pay.class) != null);
++            int n = 0;
++            for (Pay p : c.useIndex("from", Pay.class).objects()) {
++                n++;
++            }
++            Assert.assertEquals("the objects in the index 'from'", 1, n);
++        } finally {
++            database.close();
++        }
++    }
++
++    /**
++     * S1-F5: DatabaseBuilder.cryptoKey(): "The crypto key to use or CryptoKey.NULL to not use
++     * any encryption." After a key, CryptoKey.NULL is ignored and the database is encrypted.
++     */
++    @Nano
++    public static void testCryptoKeyNullAfterKey() throws Exception {
++        MemoryStream m = new MemoryStream();
++        DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
++        b.mainStream(m);
++        b.cryptoKey(CryptoKey.generate()).cryptoKey(CryptoKey.NULL);
++        Database database = b.start();
++        database.connection().put("/a.txt", "v");
++        database.close();
++        byte[] magic = new byte[4];
++        m.read(0, magic, 0, 4);
++        Assert.assertEquals("the stream's first bytes, plain text without encryption", "berg",
++                new String(magic, "ISO-8859-1"));
++    }
++
++    /** S1-F4, the contrast: the same steps with a read first are refused. */
++    @Nano
++    public static void testObjectPutWithReadIsRefused() {
++        Database database = Factory.database().memory().start();
++        try {
++            ConnectionImp c = (ConnectionImp) database.newConnection();
++            Db db = ((DatabaseImp) database).getDb();
++            IndexManager m = ((DatabaseImp) database).getIndexManager();
++            RwEnvironmentImp env = new RwEnvironmentImp(c);
++            env.get("/other.txt", String.class);
++            env.put("/payments/10", new Pay("a", "b"));
++            env.indexEntries(m);
++            Trans t = env.createTrans(db);
++            database.indexBuilder("from").type("string/unicode").dir("/payments/")
++                    .field("from").start().join();
++            boolean refused = false;
++            try {
++                db.execute(t);
++            } catch (RerunException e) {
++                refused = true;
++            }
++            Assert.assertTrue("refused", refused);
++        } finally {
++            database.close();
++        }
++    }
++
++    /** S1-F3, through a w-transaction of an object in a directory with an index. */
++    @Nano
++    public static void testObjectPutKeepsFrozenLookupTime() {
++        Database db = Factory.database().memory().start();
++        try {
++            db.indexBuilder("from").type("string/unicode").dir("/payments/")
++                    .field("from").start().join();
++            Connection c = db.connection();
++            Connection other = db.newConnection();
++            c.put("/f.txt", "1");
++            c.freezeLookupTime();
++            Assert.assertEquals("1", c.get("/f.txt", String.class));
++            other.put("/f.txt", "2");
++            c.put("/payments/1", new Pay("a", "b"));
++            Assert.assertEquals("frozen after an object put", "1", c.get("/f.txt", String.class));
++        } finally {
++            db.close();
++        }
++    }
++
++    /**
++     * S1-F3, transactionInfo(): "the transaction that wrote the last value retrieved with
++     * the get() method"; after an rw() that reads, it is the rw's last read's.
++     */
++    @Nano
++    public static void testRwKeepsTransactionInfo() {
++        Database db = Factory.database().memory().start();
++        try {
++            Connection c = db.connection();
++            final long ta = c.put("/a.txt", "a").getTime().units();
++            final long tb = c.put("/b.txt", "b").getTime().units();
++            Assert.assertEquals("a", c.get("/a.txt", String.class));
++            Assert.assertEquals("before rw", ta, c.transactionInfo().time().units());
++            c.rw(new Action() {
++                public void run(RwEnvironment env) {
++                    env.get("/b.txt", String.class);
++                }
++            });
++            Assert.assertTrue("tb differs", tb != ta);
++            Assert.assertEquals("after rw", ta, c.transactionInfo().time().units());
++        } finally {
++            db.close();
++        }
++    }
++
++    /**
++     * S1-F6: CryptoKey overrides equals() and not hashCode(): two equal keys (one parsed
++     * from the other's serialize()) have different hash codes, against Object.hashCode()'s
++     * contract, so a HashSet or HashMap of keys does not find an equal key.
++     */
++    @Nano
++    public static void testCryptoKeyHashCode() {
++        CryptoKey k = CryptoKey.generate();
++        CryptoKey k2 = CryptoKey.parse(k.serialize());
++        Assert.assertTrue("equal", k.equals(k2));
++        java.util.Set<CryptoKey> set = new java.util.HashSet<CryptoKey>();
++        set.add(k);
++        Assert.assertTrue("a HashSet finds the equal key", set.contains(k2));
++    }
++
++    /**
++     * S1-F7 (probe): a String put to an object key whose object is indexed leaves the
++     * object's index entries: only objectOps reads the previous value and deletes them.
++     */
++    @Nano
++    public static void testStringOverIndexedObject() {
++        Database db = Factory.database().memory().start();
++        try {
++            db.indexBuilder("from").type("string/unicode").dir("/payments/")
++                    .field("from").start().join();
++            Connection c = db.connection();
++            c.put("/payments/1", new Pay("a", "b"));
++            c.put("/payments/1", "text");
++            int n = 0;
++            String what = "";
++            try {
++                for (bergdb.pubimp.DbObject o : c.useIndex("from", bergdb.pubimp.DbObject.class)
++                        .objects()) {
++                    n++;
++                    what += o + "; ";
++                }
++            } catch (RuntimeException e) {
++                what += e;
++                n = -1;
++            }
++            Assert.assertEquals("entries of the index 'from' after a String put (" + what + ")",
++                    0, n);
++        } finally {
++            db.close();
++        }
++    }
++
++    /**
++     * S1-F7, the other order: an object put over a String at an object key, in a directory
++     * with an index: indexEntries parses the previous value as a DbObject.
++     */
++    @Nano
++    public static void testObjectOverStringInIndexedDir() {
++        Database db = Factory.database().memory().start();
++        try {
++            db.indexBuilder("from").type("string/unicode").dir("/payments/")
++                    .field("from").start().join();
++            Connection c = db.connection();
++            c.put("/payments/2", "text");
++            String what = "put";
++            try {
++                c.put("/payments/2", new Pay("a", "b"));
++            } catch (RuntimeException e) {
++                what = e.toString();
++            }
++            Assert.assertEquals("an object put over a String", "put", what);
++        } finally {
++            db.close();
++        }
++    }
++
++    /**
++     * S1-F4, with a read: indexEntries reads IndexManager's map first and the previous
++     * value after it, and that read fixes the read time. An index deleted in between
++     * (ensureDeletingState: the map, then storeIndex's commit; then the deletion job) does
++     * not refuse the transaction, which writes an entry into the deleted index's directory
++     * after the deletion: "After this method returns, there should be no more index entries
++     * added to the index directory" (DatabaseImp.deleteIndexInternal). The deletion runs
++     * inside the map read here (a subclass of IndexManager), as another thread can run it
++     * between the two. A new index of the name then holds the old entry.
++     */
++    @Nano
++    public static void testObjectPutWhileIndexIsDeleted() {
++        final Database database = Factory.database().memory().start();
++        try {
++            ConnectionImp c = (ConnectionImp) database.newConnection();
++            Db db = ((DatabaseImp) database).getDb();
++            final IndexManager real = ((DatabaseImp) database).getIndexManager();
++            database.indexBuilder("from").type("string/unicode").dir("/payments/")
++                    .field("from").start().join();
++            IndexManager m = new IndexManager(new BergCollatorFactory()) {
++                public IndexForDir[] getActiveIndexesForDir(String dir) {
++                    IndexForDir[] result = real.getActiveIndexesForDir(dir);
++                    database.deleteIndex("from").join();
++                    return result;
++                }
++            };
++            RwEnvironmentImp env = new RwEnvironmentImp(c);
++            env.put("/payments/10", new Pay("a", "b"));
++            env.indexEntries(m);
++            Trans t = env.createTrans(db);
++            try {
++                db.execute(t);
++            } catch (RerunException e) {
++                return;
++            }
++            // A new index of the name, on another field.
++            database.indexBuilder("from").type("string/unicode").dir("/payments/")
++                    .field("to").start().join();
++            int n = 0;
++            for (Pay p : c.useIndex("from", Pay.class).objects()) {
++                n++;
++            }
++            Assert.assertEquals("the objects in the new index 'from'", 1, n);
++        } finally {
++            database.close();
++        }
++    }
++
++    /** S1-F4, the contrast of the deletion: the same without the interleaving gives 1. */
++    @Nano
++    public static void testObjectPutAfterIndexIsDeleted() {
++        final Database database = Factory.database().memory().start();
++        try {
++            Connection c = database.newConnection();
++            database.indexBuilder("from").type("string/unicode").dir("/payments/")
++                    .field("from").start().join();
++            database.deleteIndex("from").join();
++            c.put("/payments/10", new Pay("a", "b"));
++            database.indexBuilder("from").type("string/unicode").dir("/payments/")
++                    .field("to").start().join();
++            int n = 0;
++            for (Pay p : c.useIndex("from", Pay.class).objects()) {
++                n++;
++            }
++            Assert.assertEquals("the objects in the new index 'from'", 1, n);
++        } finally {
++            database.close();
++        }
++    }
++
++    /** Probe: a byte[] put, then the caller's array changed; and a get's array changed. */
++    @Nano
++    public static void testByteArrayAliasing() {
++        Database db = Factory.database().memory().start();
++        try {
++            Connection c = db.connection();
++            final byte[] b = {1, 2, 3};
++            c.rw(new Action() {
++                public void run(RwEnvironment env) {
++                    env.put("/x.bin", b);
++                }
++            });
++            b[0] = 9;
++            int x = c.get("/x.bin", byte[].class)[0];
++            c.put("/y.bin", new byte[] {1, 2, 3});
++            c.get("/y.bin", byte[].class)[0] = 9;
++            int y = c.get("/y.bin", byte[].class)[0];
++            Assert.assertEquals("after the caller's change of its put's array, x[0]; after a "
++                    + "change of a get's array, y[0]", "1 1", x + " " + y);
++        } finally {
++            db.close();
++        }
++    }
++
++    /**
++     * S1-F8: the array of a byte[] put stays the database's value in memory, so the caller's
++     * later change changes what reads return; the stream holds the bytes of the commit, so
++     * a restart (or an eviction) returns the old value at the same time.
++     */
++    @Nano
++    public static void testByteArrayPutAliasedAgainstStream() {
++        MemoryStream m = new MemoryStream();
++        DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
++        b.mainStream(m);
++        Database db = b.start();
++        final byte[] value = {1, 2, 3};
++        int before;
++        try {
++            Connection c = db.connection();
++            c.rw(new Action() {
++                public void run(RwEnvironment env) {
++                    env.put("/x.bin", value);
++                }
++            });
++            c.sync();
++            value[0] = 9;
++            before = c.get("/x.bin", byte[].class)[0];
++        } finally {
++            db.close();
++        }
++        DatabaseBuilderImp b2 = (DatabaseBuilderImp) Factory.database();
++        b2.mainStream(m.copy());
++        Database db2 = b2.start();
++        int after;
++        try {
++            after = db2.connection().get("/x.bin", byte[].class)[0];
++        } finally {
++            db2.close();
++        }
++        Assert.assertEquals("the value's first byte before and after a restart", "1 1",
++                before + " " + after);
++    }
++
++    /** Probe (outside the area): freezeLookupTime(), then exists() as the first read. */
++    @Nano
++    public static void testFreezeThenExists() {
++        Database db = Factory.database().memory().start();
++        try {
++            Connection c = db.newConnection();
++            db.connection().put("/a.txt", "1");
++            c.freezeLookupTime();
++            boolean e = c.exists("/a.txt");
++            String v;
++            try {
++                v = c.get("/a.txt", String.class);
++            } catch (RuntimeException x) {
++                v = x.toString();
++            }
++            Assert.assertEquals("exists, then get, after freezeLookupTime()", "true 1", e + " " + v);
++        } finally {
++            db.close();
++        }
++    }
++}
