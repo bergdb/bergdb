@@ -2583,6 +2583,16 @@ public class Db implements AutoCloseable {
         /** True when the database is active: started, not stopping. */
         public boolean isActive() { return state == DbState.ACTIVE; }
 
+        /**
+         * Fails the database with what a batch of the eviction thread threw (bergdb 015-25;
+         * Eviction.EvictorRun), as a transaction that throws after its go point fails it,
+         * the writer's own batch included (fail(); 010-01, P7): the batch's changes in memory
+         * are not undone, and every later transaction and read is refused with a
+         * DbFailedException whose cause is the first failure, until the database is
+         * restarted; stop(), close() and sync() still work. Nothing while it is stopping.
+         */
+        public void failByEviction(Throwable e) { setFailed(e); }
+
         public void evictNow(Eviction.Schedule schedule, long seed) {
             synchronized (writeLock) {
                 new Eviction(schedule, seed).afterTransaction(Db.this);

@@ -38,7 +38,6 @@ Open
 | [015-18](18-night-large-after-release.md) | Implement | Run night.sh large on the release, after 2026.2 | open |
 | [015-19](19-tools-after-005-79.md) | Fix | Tools in items still use what 005-79 removed | open |
 | [015-23](23-refused-index-delete.md) | Fix | A refused index deletion leaves the index active and unmaintained | open |
-| [015-25](25-evictor-failure.md) | Fix | An exception in the evictor strands its requests on a dead worker | open |
 | [015-26](26-negative-append-length.md) | Fix | A negative append length corrupts FileStream's length | open |
 | [015-27](27-failed-append-visible.md) | Decide | A failed append's transaction was already visible to readers | open |
 | [015-28](28-write-racing-index-create.md) | Fix | A write racing an index's creation is never indexed | open |
@@ -51,6 +50,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-25](25-evictor-failure.md) | Fix | An exception in the evictor strands its requests on a dead worker | done | 2026-11-03 |
 | [015-13](13-handles-not-counted.md) | Fix | The resident bytes count no handle, where 009-02, 4.7 counts them | done | 2026-11-03 |
 | [015-14](14-fast-path-jmm-argument.md) | Fix | The fast path's plain reads rest on the address dependency, not the JMM | done | 2026-11-03 |
 | [015-20](20-filtered-scan-empty-page.md) | Fix | A filtered scan takes an empty page for the end of its range | done | 2026-11-03 |

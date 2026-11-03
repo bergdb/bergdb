@@ -410,10 +410,12 @@ public final class Eviction {
      * its batches.</li>
      * <li>The thread ends only with no request pending: when the database is no longer active
      * (the close sets the state, then endThread notifies), or on an interrupt while it waits
-     * with none. So a pending request always has a thread that will take it, unless an error
-     * ended the thread (a batch that throws), which, as before 005-65, stops the loads'
-     * eviction. A load that found the database active just before the close may start a
-     * thread after endThread; it ends at once.</li>
+     * with none, or when a batch throws: that fails the database first (bergdb 015-25), so
+     * that it is no longer active either. So a pending request always has a thread that will
+     * take it while the database is active. A load that found the database active just
+     * before the close or the failure may start a thread after it; it ends at once. (Until
+     * 015-25 a batch that threw ended the thread and nothing else: the database went on
+     * without eviction, and every later request was left on the dead thread.)</li>
      * <li>A reader under pressure (afterLoad) reads batches before wake and parks until a batch
      * has ended, at most LOAD_WAIT_NANOS, whether its request is new or was pending.</li>
      * </ol>
@@ -485,7 +487,8 @@ public final class Eviction {
      * longer active. Between requests it waits with no timeout, so that the thread of a
      * database that is not used does not wake (010-P3, bergdb 005-51); the database's close
      * wakes it (endThread). Until 005-51 it woke once a second, to see whether the database
-     * had stopped.
+     * had stopped. A batch that throws, a bug or the JVM's failure, fails the database, as the
+     * writer's batch does within its transaction (bergdb 015-25), and the thread ends.
      */
     private final class EvictorRun implements Runnable {
         private final Db db;
@@ -547,6 +550,22 @@ public final class Eviction {
                         idleMaps = fm[0] > 0 ? 0 : idleMaps + fm[1];
                         if (idleMaps >= 2 * Cache3.maps()) break;
                     }
+                } catch (RuntimeException | Error x) {
+                    // A batch that throws (a bug, an OutOfMemoryError) has changed the memory
+                    // state part of the way, which nothing undoes: the database fails, as when
+                    // the writer's batch throws within its transaction's go point (Db.fail;
+                    // 010-01, P7), and every later read and transaction is refused with a
+                    // DbFailedException whose cause is x (bergdb 015-25). Then the thread
+                    // ends, with no request pending and none named, so that no waiter waits
+                    // for it; a wake after the failure starts a thread that ends at once. As
+                    // BufferedStream's consumer (bergdb 005-32), it does not rethrow: x is the
+                    // database's failure.
+                    in.failByEviction(x);
+                    synchronized (evictorLock) {
+                        evictor = null;
+                        wanted = false;
+                    }
+                    return;
                 } finally {
                     synchronized (evictorLock) {
                         running = false;
@@ -1740,6 +1759,76 @@ public final class Eviction {
                     + " batches ended a round", c[2] >= 2);
         } finally {
             for (Handle h : held) h.casState(Handle.LOADING, Handle.LIVE);
+            db.close();
+        }
+    }
+
+    /**
+     * A batch of the eviction thread that throws fails the database (bergdb 015-25; 016-07,
+     * R3-F3; 010-01, P7), as one of the writer's batches does, which runs within its
+     * transaction's go point (Db.fail): an Error in the thread's first batch (the hook
+     * testBeforeTrigger, in the thread only), woken by a lower budget. Within 2 s the database
+     * has failed; a read and a transaction are refused with a DbFailedException whose cause is
+     * the Error; the thread has ended and left no request pending and no thread named, so that
+     * a later setCacheSizeIndicator starts none; close() works. Until 015-25 the Error ended
+     * the thread and nothing else: the database went on without eviction, every later wake
+     * set the request on the dead thread, and loads under pressure each waited 2 ms for a
+     * batch that never came.
+     */
+    @Nano
+    public static void testBatchFailureFailsTheDatabase() throws InterruptedException {
+        MemoryStream s = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(s).clock(clock).testId().cacheSizeIndicator(1000 * 1000)
+                .evictionSchedule(Schedule.BUDGET, 1).audit(0).start();
+        final Eviction e = db.internal().eviction();
+        final Error injected = new AssertionError("an Error in a batch (the test's)");
+        try {
+            long time = 100 * STEP;
+            for (int i = 0; i < 300; i++) {
+                time += STEP;
+                clock.setTime(time);
+                db.execute(db.trans().put("k" + i, "value " + i).build());
+            }
+            e.testBeforeTrigger = new Runnable() {
+                public void run() {
+                    if ("bergdb-evictor".equals(Thread.currentThread().getName())) throw injected;
+                }
+            };
+            db.setCacheSizeIndicator(1);        // wakes the thread
+            long end = System.nanoTime() + 2000L * 1000 * 1000;
+            while (db.internal().isActive() && System.nanoTime() < end) Thread.sleep(1);
+            Assert.assertFalse("the database failed", db.internal().isActive());
+            try {
+                DbUtil.get(db, "k1");
+                throw new AssertionError("no failure: a read after the failure");
+            } catch (bergdb.pub.util.DbFailedException x) {
+                Assert.assertTrue("the read's cause: " + x.getCause(), x.getCause() == injected);
+            }
+            time += STEP;
+            clock.setTime(time);
+            try {
+                db.execute(db.trans().put("k0", "after").build());
+                throw new AssertionError("no failure: a transaction after the failure");
+            } catch (bergdb.pub.util.DbFailedException x) {
+                Assert.assertTrue("the transaction's cause: " + x.getCause(),
+                        x.getCause() == injected);
+            }
+            boolean ended = false;
+            end = System.nanoTime() + 2000L * 1000 * 1000;
+            while (!ended && System.nanoTime() < end) {
+                synchronized (e.evictorLock) {
+                    ended = e.evictor == null && !e.wanted && !e.running;
+                }
+                if (!ended) Thread.sleep(1);
+            }
+            Assert.assertTrue("the thread ended, no request pending", ended);
+            db.setCacheSizeIndicator(2);
+            synchronized (e.evictorLock) {
+                Assert.assertTrue("no thread after the failure", e.evictor == null && !e.wanted);
+            }
+        } finally {
+            e.testBeforeTrigger = null;
             db.close();
         }
     }
