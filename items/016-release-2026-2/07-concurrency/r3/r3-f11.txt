@@ -1,0 +1,12 @@
+From repo/java, against b9ba427 (the clone's changes are tests only):
+javac -cp build/bergdb.jar -d ../../out/r3/classes ../../out/r3/DeleteCallerInterruptProbe.java
+java -ea -cp ../../out/r3/classes:build/bergdb.jar bergdb.core.DeleteCallerInterruptProbe
+
+deleteIndex threw: InterruptedIOException
+caller interrupt retained: true
+database still active: true
+delete workers started: 0
+index name still occupied after interrupted deletion: true
+restart resumes delete jobs: 1
+
+Both databases close; the resumed deletion job is joined before the second close.

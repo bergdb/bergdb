@@ -1,0 +1,10 @@
+Assertions enabled: true
+Negative append: AssertionError
+Reported length: 3
+Previously committed last byte: EOFException
+Next append: IOException
+Assertions enabled: false
+Negative append: returned normally
+Reported length: 2
+Previously committed last byte: EOFException
+Next append: IOException

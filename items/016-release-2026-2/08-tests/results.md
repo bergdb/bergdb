@@ -25,6 +25,16 @@ outside the repository, in the run's directory. Times from `date`.
   `before-commit.sh`: "Unit: SUCCESS, 1093 successful tests in 9.8 s",
   "F: SUCCESS, 78 successful tests in 71.0 s", `BEFORE COMMIT OK (76 s)`;
   `night.sh tests`: "SUCCESS, 8 successful tests in 143.1 s".
+* **F3, the stress programs with fresh seeds, `323a54a`, JDK 27** (16:10
+  to 18:11, 5 lanes, base seed 110310000, beside the other agents' work;
+  `/Users/f/fl/bench/016/h4-stress/f3/summary.txt`): 3,407 runs, two
+  failed. `crash` 940, `restartdisk` 805, `restart` 466, `evinv` 465,
+  `dagfuzz` 329 (300 seeds each), `readers` 329, `powerloss` 32, `ltm`
+  20, `reclaim` 20, `interrupt` 1 (a 600 s run): all `ok` but two:
+  * `interrupt seed=111110000`, FAILED after 485 s: a get's "File closed"
+    reported by close(); 015-17, fixed in `6105d21`;
+  * `powerloss seed=111010062`, FAILED after 1 s, "cannot delete test
+    file": 015-16, the tester's `stop()` before it removes the directory.
 
 
 ## s1

@@ -1,0 +1,4 @@
+Before second loader: REFUSED
+Second loader: bergdb.stream.DirectoryInUseException
+After rejected open, first still open: ACQUIRED
+First still accepts appends: length=4

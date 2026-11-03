@@ -1,0 +1,8 @@
+Command (from repo/java):
+javac -cp build/bergdb.jar -d ../../out/r3/classes ../../out/r3/DuplicateDeleteProbe.java
+java -ea -cp ../../out/r3/classes:build/bergdb.jar bergdb.core.DuplicateDeleteProbe
+
+new index before old job resumes: 1 entry
+FAULT: old delete job removed newly created index: NoSuchIndexException
+primary object survives: 2
+FAULT persists after reopen: NoSuchIndexException

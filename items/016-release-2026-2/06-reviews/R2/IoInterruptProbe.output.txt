@@ -1,0 +1,4 @@
+Interrupt at file force: append completed, bytes correct, flag kept
+Interrupt at directory force during rotation: append completed, flag kept
+Interrupt at positional read: read completed, bytes correct, flag kept
+All original and reopened data handles closed

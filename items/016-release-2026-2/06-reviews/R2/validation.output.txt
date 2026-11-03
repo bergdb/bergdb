@@ -1,0 +1,7 @@
+Base: b9ba427; only five added Nano methods differ in FileStream.java.
+Production source before the test section: identical to BASE.
+Original embedded tests after test0: identical to BASE.
+Regression patch matches the clone diff and passes reverse application check.
+24 selected existing test methods: SUCCESS; five added regressions: printed FAILURE.
+Report: five faults, one doubt; all referenced attachments present.
+Started 18:06; ended 18:45 CET (date).

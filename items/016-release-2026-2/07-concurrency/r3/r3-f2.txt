@@ -1,0 +1,9 @@
+Command (from repo/java):
+javac -cp build/bergdb.jar -d ../../out/r3/classes ../../out/r3/BuildDeleteProbe.java
+java -ea -cp ../../out/r3/classes:build/bergdb.jar bergdb.core.BuildDeleteProbe
+
+replacement index before old build resumes: [100]
+replacement index after old build resumes: [200, 100, 100]
+old build failure: java.lang.IllegalStateException: State not STATE_CREATING, but 30, cannot set state to STATE_ACTIVE.
+old build reports progress: 100
+database active: true

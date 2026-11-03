@@ -1,0 +1,13 @@
+Command (from repo/java):
+javac -cp build/bergdb.jar -d ../../out/r3/classes ../../out/r3/ConsumerStopInterruptProbe.java
+java -ea -cp ../../out/r3/classes:build/bergdb.jar bergdb.core.ConsumerStopInterruptProbe ../../out/r3/tmp
+
+consumer terminated after stop+interrupt: true
+FAULT: terminated consumer left directory locked
+
+Regression patch: r3-f6.patch (tests only, against b9ba427).
+After sh build.sh, from repo/java:
+java -ea -cp build/bergdb.jar bergdb.dev.Unit -c bergdb.storage.BufferedStream -m testStopAndInterruptClosesUnderlying
+AssertionError: stop plus interrupt must close the underlying stream, expected true, but was false.
+FAILURE, total: 2, failed: 1. Time: 0.0 s.
+(The second test is the runner's successful databasesStopped check.)

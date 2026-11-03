@@ -294,6 +294,22 @@ section 3). Unless he chooses before the release, it is a known issue of
   (`BEFORE COMMIT OK (130 s)`) and committed, `6105d21`; done: close()
   reported a get's "File closed". 015-19 registered: tools in items that
   still use what 005-79 removed (after the release).
+* 17:57 Frans: xhigh for every agent, no split by task; the pace is set
+  by the number of agents at a time.
+* 18:04 Frans: reviews on Codex (GPT-6.1 Sol, effort max), from Codex's
+  own quota. R2 and R3 started 18:05 (016-06, section 9).
+* 18:11 F3 (the stress programs, 2 hours): 3,407 runs, two failed, both
+  known: 015-17 (fixed) and 015-16 (016-08's results).
+* 18:45 R2 done: 5 faults, 1 doubt. 19:13 R3 done: 12 faults, 4 doubts,
+  13 tests to add. Of the 17 faults, two are new in 2026.2 (R2-F1,
+  R3-F3); the others are in 2026.1 too.
+* 19:20 Codex's usage limit: R4, R5 and R6 (started 19:15) stopped; they
+  continue at 23:09.
+* 19:33 Claude's 5-hour window reset; usage plenty. Started: verify-1
+  (eight of the 17 faults: the two new ones and those that can give a
+  wrong answer or lose data), 015-14 and 015-10, at xhigh. 015-13 waits
+  for 015-10 (both change `Eviction`). 015-09 and 015-16 reviewed by the
+  coordinator, in the combined gate.
 
 
 ## 7. For Frans to decide

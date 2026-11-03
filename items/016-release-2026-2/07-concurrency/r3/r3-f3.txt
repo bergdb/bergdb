@@ -1,0 +1,9 @@
+Command (from repo/java):
+javac -cp build/bergdb.jar -d ../../out/r3/classes ../../out/r3/EvictorFailureProbe.java
+java -ea -cp ../../out/r3/classes:build/bergdb.jar bergdb.core.EvictorFailureProbe
+
+evictor dead: true
+database active after worker Error: true
+cached read after worker Error: value
+FAULT: read was accepted
+request kept on the same dead worker: true; wanted=true

@@ -1,0 +1,8 @@
+Command (from repo/java):
+javac -cp build/bergdb.jar -d ../../out/r3/classes ../../out/r3/BuildInterruptProbe.java
+java -ea -cp ../../out/r3/classes:build/bergdb.jar bergdb.core.BuildInterruptProbe
+
+build worker terminated: true
+uncaught failure: bergdb.pub.util.DbException: The transaction was not run: the thread was interrupted while it waited to run it again after a conflict.
+job progress after join: -1
+database active: true

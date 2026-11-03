@@ -1,0 +1,13 @@
+From repo/java, against b9ba427 (the clone's changes are tests only):
+javac -cp build/bergdb.jar -d ../../out/r3/classes ../../out/r3/RefusedIndexDeleteProbe.java
+java -ea -cp ../../out/r3/classes:build/bergdb.jar bergdb.core.RefusedIndexDeleteProbe
+
+delete refused before go: The transaction is too large: its values and keys take 192 bytes in the stream, more than 56.
+refusal changed stream length: false
+database still active: true
+primary new object exists: true
+active index result count, expected 2: 1
+index result count after reopen, expected 2: 1
+
+Both databases closed. The lowered record limit is restored in finally.
+No delete job is started by the refused call.

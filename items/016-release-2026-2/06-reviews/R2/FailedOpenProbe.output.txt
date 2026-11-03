@@ -1,0 +1,9 @@
+IOException: IOException
+  data handle still valid: false
+  reopen: succeeded
+RuntimeException: IllegalStateException
+  data handle still valid: true
+  reopen: succeeded
+Error: AssertionError
+  data handle still valid: true
+  reopen: DirectoryInUseException

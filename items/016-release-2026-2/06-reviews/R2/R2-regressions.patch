@@ -1,0 +1,101 @@
+diff --git a/java/src/bergdb/stream/FileStream.java b/java/src/bergdb/stream/FileStream.java
+index b2ee644..18a2466 100644
+--- a/java/src/bergdb/stream/FileStream.java
++++ b/java/src/bergdb/stream/FileStream.java
+@@ -1375,6 +1375,96 @@ public class FileStream implements AppendOnlyStream {
+     
+     // ======== Tests ========
+ 
++    /** R2: a legal cut at an empty stream's length must not throw an internal Bug. */
++    @Nano
++    public static void testReviewCutAtEmptyEnd(TestEnvironment c) throws IOException {
++        FileStream f = new FileStream(c.createTempDir());
++        try {
++            f.pretruncate(f.getLength());
++            Assert.assertEquals(0, f.getLength());
++        } finally {
++            f.close();
++        }
++    }
++
++    /** R2: keeping the last file is allowed; rejecting this discard frontier is not. */
++    @Nano
++    public static void testReviewCutAtNonemptyEnd(TestEnvironment c) throws IOException {
++        FileStream f = new FileStream(c.createTempDir());
++        try {
++            f.append(new byte[] {1, 2, 3}, 0, 3);
++            f.pretruncate(f.getLength());
++            f.append(new byte[] {4}, 0, 1);
++            byte[] b = new byte[1];
++            f.read(3, b, 0, 1);
++            Assert.assertEquals(4, b[0]);
++        } finally {
++            f.close();
++        }
++    }
++
++    /** R2: a restarted stream's small capacity must not jump past max2G. */
++    @Nano
++    public static void testReviewMax2GJump(TestEnvironment c) throws IOException {
++        FileStream f = new FileStream(c.createTempDir());
++        try {
++            f.setMax2G(true);
++            // A reachable state: repeated 100 MB writes/reopens, retained length 40 GB.
++            f.fileSizeIndex = 4;
++            int index = f.determineFileSizeIndex(4, 40 * G, 40 * G);
++            Assert.assertTrue("max2G selected " + FILE_SIZES[index], index <= INDEX_2G);
++        } finally {
++            f.close();
++        }
++    }
++
++    /** R2: an unpublished writer handle must be closed when opening throws unchecked. */
++    @Nano
++    public static void testReviewUncheckedOpenClosesHandle(TestEnvironment c) throws IOException {
++        final RandomAccessFile[] opened = new RandomAccessFile[1];
++        FileStreamIo io = new FileStreamIo() {
++            protected RandomAccessFile open(File file) throws IOException {
++                return opened[0] = super.open(file);
++            }
++            protected void forceFile(File file, RandomAccessFile handle) {
++                throw new IllegalStateException("R2 injected opening failure");
++            }
++        };
++        try {
++            try {
++                new FileStream(c.createTempDir(), io).close();
++                throw new AssertionError("injected failure was not thrown");
++            } catch (IllegalStateException expected) {
++                Assert.assertEquals("R2 injected opening failure", expected.getMessage());
++            }
++            Assert.assertTrue("unpublished writer handle leaked", !opened[0].getFD().valid());
++        } finally {
++            if (opened[0] != null) opened[0].close();
++        }
++    }
++
++    /** R2: a negative length must be refused before it changes file-length bookkeeping. */
++    @Nano
++    public static void testReviewNegativeAppendRejected(TestEnvironment c) throws IOException {
++        FileStream f = new FileStream(c.createTempDir());
++        try {
++            f.append(new byte[] {1, 2, 3}, 0, 3);
++            try {
++                f.append(new byte[1], 0, -1);
++                throw new AssertionError("negative append accepted");
++            } catch (IllegalArgumentException expected) {
++                // The rejection promised by AppendOnlyStream.append().
++            }
++            Assert.assertEquals(3, f.getLength());
++            byte[] tail = new byte[1];
++            f.read(2, tail, 0, 1);
++            Assert.assertEquals(3, tail[0]);
++            f.append(new byte[] {4}, 0, 1);
++        } finally {
++            f.close();
++        }
++    }
++
+     @Nano
+     public static void test0(TestEnvironment c) throws IOException {
+         // Simple sanity test.

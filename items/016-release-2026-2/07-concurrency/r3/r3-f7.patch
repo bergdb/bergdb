@@ -1,0 +1,38 @@
+diff --git a/java/src/bergdb/pubimp/PubTesterIndex.java b/java/src/bergdb/pubimp/PubTesterIndex.java
+index 6d0e7c4..a519c17 100644
+--- a/java/src/bergdb/pubimp/PubTesterIndex.java
++++ b/java/src/bergdb/pubimp/PubTesterIndex.java
+@@ -22,6 +22,33 @@ import bergdb.stream.MemoryStream;
+  * @author Frans Lundberg
+  */
+ public class PubTesterIndex { 
++    /** R3: a JobStatus is an immutable snapshot, including its note. */
++    @Nano
++    public static void testBuildJobStatusIsImmutable() {
++        Database db = Factory.database().memory().start();
++        EventToWaitFor event = new EventToWaitFor();
++        Job job = null;
++        String before = null, after = null;
++        try {
++            db.newConnection().w().put("/payments/1", new Payment("a", "b", 1))
++                    .put("/payments/2", new Payment("b", "c", 2)).execute();
++            IndexBuilderImp b = (IndexBuilderImp) db.indexBuilder("amount")
++                    .dir("/payments/").type("long").field("amount");
++            b.createInThreadWaitEvent(event);
++            job = b.start();
++            bergdb.pub.util.JobStatus snapshot = job.getStatus();
++            before = snapshot.note();
++            event.happened();
++            Assert.assertEquals("the build finished", 100, job.join(1000).progress());
++            after = snapshot.note();
++        } finally {
++            event.happened();
++            if (job != null) job.join(1000);
++            db.close();
++        }
++        Assert.assertEquals("JobStatus.note must be immutable", before, after);
++    }
++
+     /**
+      * Test class - payment with 'long' amount.
+      */

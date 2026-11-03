@@ -1,0 +1,50 @@
+diff --git a/java/src/bergdb/storage/BufferedStream.java b/java/src/bergdb/storage/BufferedStream.java
+index cef5f77..78d8312 100644
+--- a/java/src/bergdb/storage/BufferedStream.java
++++ b/java/src/bergdb/storage/BufferedStream.java
+@@ -30,6 +30,45 @@ import bergdb.stream.MemoryStream;
+  * @author Frans Lundberg
+  */
+ public class BufferedStream implements AppendOnlyStream, Closeable {
++    /** R3: stopping through an interrupt must still release the underlying stream. */
++    @Nano
++    public static void testStopAndInterruptClosesUnderlying() throws Exception {
++        final java.util.concurrent.atomic.AtomicBoolean closed =
++                new java.util.concurrent.atomic.AtomicBoolean();
++        MemoryStream m = new MemoryStream() {
++            public void close() {
++                closed.set(true);
++                super.close();
++            }
++        };
++        BufferedStream b = new BufferedStream(m, 1024, 60000);
++        boolean wasClosed = false;
++        b.start();
++        try {
++            long end = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(1);
++            while (b.consumer.getState() != Thread.State.TIMED_WAITING
++                    && System.nanoTime() < end) Thread.sleep(1);
++            Assert.assertEquals(Thread.State.TIMED_WAITING, b.consumer.getState());
++            synchronized (b) {
++                b.consumer.interrupt();
++                // Let the interrupt remove it from the wait set before stop notifies.
++                // It still cannot enter the catch until we release b.
++                long interruptedEnd = System.nanoTime()
++                        + java.util.concurrent.TimeUnit.SECONDS.toNanos(1);
++                while (b.consumer.getState() != Thread.State.BLOCKED
++                        && System.nanoTime() < interruptedEnd) Thread.yield();
++                Assert.assertEquals(Thread.State.BLOCKED, b.consumer.getState());
++                b.stop();
++            }
++            b.consumer.join(1000);
++            Assert.assertFalse("the consumer ended", b.consumer.isAlive());
++            wasClosed = closed.get();
++        } finally {
++            b.close();
++        }
++        Assert.assertTrue("stop plus interrupt must close the underlying stream", wasClosed);
++    }
++
+     //
+     // 1212 Frans: Implementation note: I tried to implement finalize() to stop
+     // the consumer thread. This is *not possible*. Threads are never garbage collected, they are

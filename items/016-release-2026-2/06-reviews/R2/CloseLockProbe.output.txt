@@ -1,0 +1,4 @@
+Open while a cut keeps close unfinished: refused
+Open after completed close: succeeded
+Open while a native process holds the lock: refused
+Open after native process releases: succeeded

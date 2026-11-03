@@ -1,0 +1,16 @@
+2026-11-03, 18:48. One JVM at a time, from repo/java.
+Each command: java -ea -cp build/bergdb.jar bergdb.dev.Unit -c CLASS -m METHOD
+
+CLASS                           METHOD                                  RESULT
+bergdb.core.DbClock              testLookupTime                          SUCCESS
+bergdb.core.KeyModSet            testStartupBoundary                     SUCCESS
+bergdb.core.DbTester             testSetStartupDistanceInForceOrRefused  SUCCESS
+bergdb.core.Eviction             testSetBudgetAtBatchEnd                  SUCCESS
+bergdb.storage.BufferedStream    testQuarterBacklogDoesNotWait            SUCCESS
+bergdb.core.DbTester             testCloseReportsFinalFlushFailure        SUCCESS
+bergdb.stream.FileStream         testReadOfClosedFileFailsAlone           SUCCESS
+bergdb.stream.FileStream         testCutOnItsOwnThread                    SUCCESS
+
+Eight selected unit methods; each runner also passed its databasesStopped
+check. Printed durations 0.0 s, except testCutOnItsOwnThread 0.2 s.
+No gate, level, stress, night or performance run.

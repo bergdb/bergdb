@@ -1,0 +1,28 @@
+Each selected method below printed SUCCESS. Unit's framework self-check is excluded from the count.
+Class bergdb.stream.FileStream (15 selected methods):
+testReadOfLastFileDuringForce: SUCCESS
+testReadDuringNewFile: SUCCESS
+testCutOnItsOwnThread: SUCCESS
+testReadPastEnd: SUCCESS
+testReadBelowFirstPosDoesNotBreakStream: SUCCESS
+testReadOfFileDeletedMeanwhileDoesNotBreakStream: SUCCESS
+testReadOfClosedFileFailsAlone: SUCCESS
+testFailedDeleteOfACut: SUCCESS
+testReadsAndInterrupts: SUCCESS
+testCutAndOpenByInterruptedThread: SUCCESS
+testSecondStreamRefused: SUCCESS
+testLockFile: SUCCESS
+testReopenPast214TB: SUCCESS
+testRestartMissingFile: SUCCESS
+testMultiFileRead1: SUCCESS
+Class bergdb.core.FileStreamPowerLossTester (5 selected methods):
+testUnforcedBytesCanBeLostAfterDeletion: SUCCESS
+testMissingDirectoryForceLosesReplacementFile: SUCCESS
+testPartialDeletionAndDirectoryFailureKeepForcedBytes: SUCCESS
+testRecoveryBetweenEveryPrefixDeletion: SUCCESS
+testUnorderedUnforcedDeletionsAreDetected: SUCCESS
+Class bergdb.core.InterruptTester (4 selected methods):
+testCommitThatWaitsForRoom: SUCCESS
+testSync: SUCCESS
+testStartCommitAndClose: SUCCESS
+testStorageThreadInterrupted: SUCCESS

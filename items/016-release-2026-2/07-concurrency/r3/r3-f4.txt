@@ -1,0 +1,8 @@
+Command (from repo/java):
+javac -cp build/bergdb.jar -d ../../out/r3/classes ../../out/r3/JmxInterruptProbe.java
+java -ea -cp ../../out/r3/classes:build/bergdb.jar bergdb.core.JmxInterruptProbe
+
+monitor died on interrupt while stop=false: true
+registerAndStart retained dead thread: true
+interrupted stop lost caller flag: true
+stop returned with monitor alive: true

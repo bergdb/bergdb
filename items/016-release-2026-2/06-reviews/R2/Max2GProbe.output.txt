@@ -1,0 +1,3 @@
+After 400 public-API write/reopen rounds: files=460; largest=100000000; length=40000000000
+After setMax2G(true): largest=2001000000; files=461
+Cap respected: false

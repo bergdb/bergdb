@@ -741,18 +741,23 @@ the stop for Frans.
 
 ## 9. State
 
-**Not started** (2026-11-03, when this plan was written). A fresh agent
-resumes from this table: the first row without a report is the next to
-start, unless it is past 19:40. The coordinator fills it in.
+2026-11-03, 19:50. R1 by a Claude agent; R2 to R6 on Codex (GPT-6.1 Sol,
+effort max), at Frans's suggestion at 18:04, with this plan's brief and in
+clones of their own; R3's first session was ended at 18:27 by the
+service's content filter and continued from its report in a second one.
+Codex reached its usage limit at 19:20, so R4, R5 and R6 stopped early and
+continue after 23:06; R7 and R8 follow if its quota allows. The last start
+of 19:40 (section 6) holds for Claude's reviews; a review on Codex ends
+within about an hour.
 
 | ID | Base | Agent | Started | Report | Faults | Doubts | Verified by |
 |---|---|---|---|---|---|---|---|
-| R1 |      |       |         |        |        |        |             |
-| R2 |      |       |         |        |        |        |             |
-| R3 |      |       |         |        |        |        |             |
-| R4 |      |       |         |        |        |        |             |
-| R5 |      |       |         |        |        |        |             |
-| R6 |      |       |         |        |        |        |             |
+| R1 | `6f932f0` | Claude | 15:59 | [R1](06-reviews/R1.md) | 4 | 2 | R1-F1, F2, F4 by test; F3 pending |
+| R2 | `b9ba427` | Codex | 18:06 | [R2](06-reviews/R2.md) | 5 | 1 | verify-1 (F1, F5); F2 to F4 pending |
+| R3 | `b9ba427` | Codex | 18:06 | [r3](07-concurrency/r3.md) | 12 | 4 | verify-1 (F1 to F3, F8, F9, F12) |
+| R4 | `b9ba427` | Codex | 19:15 | stopped 19:20, continues 23:09 |  |  |  |
+| R5 | `b9ba427` | Codex | 19:15 | stopped 19:21, continues 23:09 |  |  |  |
+| R6 | `b9ba427` | Codex | 19:15 | stopped 19:20, continues 23:09 |  |  |  |
 | R7 |      |       |         |        |        |        |             |
 | R8 |      |       |         |        |        |        |             |
 | S1 |      |       |         |        |        |        |             |

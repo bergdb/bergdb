@@ -1,0 +1,10 @@
+testReviewCutAtEmptyEnd: Unit exit 0; FAILURE, total: 2, failed: 1. Time: 0.0 s.
+bergdb.common.Bug: Unexpected newSize: 0. pos=0, kfiles.length=1
+testReviewCutAtNonemptyEnd: Unit exit 0; FAILURE, total: 2, failed: 1. Time: 0.0 s.
+bergdb.common.Bug: Unexpected newSize: 0. pos=3, kfiles.length=1
+testReviewMax2GJump: Unit exit 0; FAILURE, total: 2, failed: 1. Time: 0.0 s.
+java.lang.AssertionError: max2G selected 10000000000, expected true, but was false.
+testReviewUncheckedOpenClosesHandle: Unit exit 0; FAILURE, total: 2, failed: 1. Time: 0.0 s.
+java.lang.AssertionError: unpublished writer handle leaked, expected true, but was false.
+testReviewNegativeAppendRejected: Unit exit 0; FAILURE, total: 2, failed: 1. Time: 0.0 s.
+java.lang.AssertionError: 2 != 3

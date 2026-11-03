@@ -1,0 +1,13 @@
+Command (from repo/java), after applying r3-f7.patch and sh build.sh:
+java -ea -cp build/bergdb.jar bergdb.dev.Unit -c bergdb.pubimp.PubTesterIndex -m testBuildJobStatusIsImmutable
+AssertionError: JobStatus.note must be immutable, expected 'Working, processed 0 entries for index: amount.', got 'Working, processed 2 entries for index: amount.'.
+FAILURE, total: 2, failed: 1. Time: 0.0 s.
+(The second test is the runner's successful databasesStopped check.)
+
+Standalone probe:
+javac -cp build/bergdb.jar -d ../../out/r3/classes ../../out/r3/JobStatusProbe.java
+java -ea -cp ../../out/r3/classes:build/bergdb.jar bergdb.core.JobStatusProbe
+same JobStatus note before: Working, processed 0 entries for index: amount.
+same JobStatus note after:  Working, processed 2 entries for index: amount.
+FAULT: immutable status changed: true
+old status progress remains: -1

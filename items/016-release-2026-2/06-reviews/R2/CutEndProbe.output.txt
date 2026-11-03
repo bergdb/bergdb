@@ -1,0 +1,3 @@
+cut at length 0: bergdb.common.Bug: Unexpected newSize: 0. pos=0, kfiles.length=1
+cut at length 3: bergdb.common.Bug: Unexpected newSize: 0. pos=3, kfiles.length=1
+Stream remains usable: length=4, last=7
