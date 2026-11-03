@@ -694,7 +694,30 @@ part).
     `stress/`, `probe/` with ShareProbe); `digest-base.txt` (StreamDigest
     all, 7 s) and `share-base.txt` (sd 800 kB: E[w] 0.92, E[share] 0.92,
     S/sd 1.001; sd 2 MB: 0.52, 0.52, 1.008) in this directory.
-* **Next**: step 2, Part A.
+  * 16:17. Step 2 done: **Part A** committed in the clone, `679e153`
+    (amended from `d969336`: Reclaim's int getter and setter renamed
+    `getInternalFractionUnits` and `setInternalFractionUnits`, so that
+    the check's name rule of step 4 does not meet Db's double
+    `getInternalFraction`). Files: `core/Reclaim.java`, `core/Db.java`,
+    `core/Jmx.java` (Javadoc), `core/Eviction.java`, `core/StoredTrans.java`,
+    `dag/KeyAccessPath.java`, `core/DbTester.java`. New tests
+    `Reclaim.Tester.testFractionOfExact`, `Eviction.testLowOfExact`.
+    * `before-commit.sh` on `679e153`: `BEFORE COMMIT OK (70 s)`, unit
+      1095 tests (base 1093), f 78.
+    * `level3.sh` on `d969336`: `LEVEL 3 OK` (16:00 to 16:08).
+    * `equiv.txt` (`Equiv.java`): `EQUIV OK`, about 10^8 values each, no
+      difference below 2^53 (spacing, default fraction) and 2^53 / 3
+      (watermark); the first differences at bound + 3.
+    * `digest-a.txt`: the decided digests identical to the base, 36 of 36
+      (`digest-compare.py`). A finding: StreamDigest's own `compare` also
+      compares `firstPos` and `sha256all`, the physical cut, which waits for
+      durability and differs between runs of the same jar (the base gave
+      firstPos 8000000 or 9000000 in l3-node62). Its first run on A
+      printed `DIGESTS IDENTICAL (36 of 36)`, the second `DIGESTS DIFFER
+      (3 of 36)`, only there. `digest-compare.py` compares length,
+      firstAvailablePos, firstAvailableTime and sha256.
+* **Next**: step 3, Part B (TransSeq written, tests pass; StreamDigest,
+  compare-take, ShareProbe to run), then step 4.
 * **For the implementer**:
   * The Java files have trailing whitespace, which the Edit and Write
     tools drop. Edit them with exact strings, and compare with `diff -w`.

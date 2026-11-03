@@ -805,7 +805,9 @@ public class StoredTrans {
             }
 
             if (this.prevPos.length < transNodes.keyCount) {
-                this.prevPos = new long[(int) (transNodes.keyCount * 1.20)];
+                // floor(1.2 keyCount), in integers (bergdb 005-79); keyCount is far below
+                // 2^31 / 1.2, as each key node takes bytes of a record below 2^31.
+                this.prevPos = new long[transNodes.keyCount + transNodes.keyCount / 5];
             }
         }
 
@@ -843,8 +845,9 @@ public class StoredTrans {
             if (byteBuffer.length < totalSize) {
                 // At most the record limit (2026-10-21, bergdb 005-17): the int cast gave
                 // Integer.MAX_VALUE, more than the largest array, from 1.79 GB.
+                // floor(1.2 totalSize) in long integers (bergdb 005-79).
                 int newSize = (int) Math.max(totalSize, 
-                        Math.min((long) (totalSize * 1.20), MAX_RECORD_SIZE));
+                        Math.min(totalSize + totalSize / 5L, MAX_RECORD_SIZE));
                 
                 try {
                     byteBuffer = new byte[newSize];

@@ -54,7 +54,7 @@ import bergdb.stream.MemoryStream;
  * <p>Which detachable objects eviction takes is a schedule. <b>budget</b>, the default (WP
  * J7; the plan's Q9 and Q10): the capacity controller, with the budget of
  * DbBuilder.cacheSizeIndicator (the public API's cacheSizeInMb) for the resident bytes
- * (Residents) as its high watermark and LOW of it as its low one: when the resident bytes
+ * (Residents) as its high watermark and 3/4 of it (lowOf) as its low one: when the resident bytes
  * pass the budget, at a transaction boundary or, through the eviction thread, after a
  * reader's load (afterLoad), a batch (sweep()) of CLOCK steps over the node table, one map
  * at a time, takes detachable objects whose CLOCK bit is clear, with the values they hold,
@@ -104,8 +104,17 @@ public final class Eviction {
         return Schedule.BUDGET;
     }
 
-    /** The low watermark, as a fraction of the budget (the high one): see sweep(). */
-    static final double LOW = 0.75;
+    /**
+     * The low watermark of a budget (the high one; see sweep()): floor(3 budget / 4), in
+     * integers without overflow (bergdb 005-79), as budget / 4 * 3 is at most 3 2^61 and
+     * budget % 4 * 3 / 4 at most 2. Long.MAX_VALUE, no budget, stays Long.MAX_VALUE. It was
+     * (long) (budget * 0.75), the same for every budget below 2^53 / 3, about 3 10^15 bytes,
+     * where budget and 3 budget / 4 are exact doubles. Between 2^53 / 3 and 2^53 the double
+     * product can round up past the next integer.
+     */
+    static long lowOf(long budget) {
+        return budget == Long.MAX_VALUE ? Long.MAX_VALUE : budget / 4 * 3 + budget % 4 * 3 / 4;
+    }
 
     /** The default seed of the random schedule: the system property evictseed, else 1. */
     public static long defaultSeed() {
@@ -115,7 +124,7 @@ public final class Eviction {
     private final Schedule schedule;
     private final Random random;
 
-    /** The capacity controller's watermarks (BUDGET): the budget, and LOW of it. */
+    /** The capacity controller's watermarks (BUDGET): the budget, and lowOf(budget). */
     private volatile long high, low;
 
     /**
@@ -149,7 +158,7 @@ public final class Eviction {
         this.schedule = schedule;
         this.random = new Random(seed);
         this.high = budget;
-        this.low = budget == Long.MAX_VALUE ? Long.MAX_VALUE : (long) (budget * LOW);
+        this.low = lowOf(budget);
         this.trigger = budget;
     }
 
@@ -166,7 +175,7 @@ public final class Eviction {
         if (budget < 1) throw new IllegalArgumentException("Illegal budget, " + budget);
         synchronized (this) {
             this.high = budget;
-            this.low = budget == Long.MAX_VALUE ? Long.MAX_VALUE : (long) (budget * LOW);
+            this.low = lowOf(budget);
             this.trigger = budget;
         }
     }
@@ -943,6 +952,37 @@ public final class Eviction {
 
     private static Twin twin(int s, boolean quick) {
         return new Twin(SCHEDULES[s], 1 + s, 0, quick);
+    }
+
+    /**
+     * lowOf(budget) is floor(3 budget / 4), as BigInteger computes it, for every budget from
+     * 1 to Long.MAX_VALUE - 1, on the edges and on random values spread over the bit lengths;
+     * Long.MAX_VALUE stays (bergdb 005-79).
+     */
+    @Nano
+    public static void testLowOfExact() {
+        Assert.assertEquals(Long.MAX_VALUE, lowOf(Long.MAX_VALUE));
+        long[] edges = {1, 2, 3, 4, 5, 0xFFFF, 1L << 47, (1L << 53) / 3, (1L << 53) / 3 + 1,
+                1L << 53, Long.MAX_VALUE - 2, Long.MAX_VALUE - 1};
+        for (long b : edges) {
+            checkLowOf(b);
+        }
+        Random r = new Random(79);
+        for (int i = 0; i < 100000; i++) {
+            long b = (r.nextLong() >>> 1) >>> r.nextInt(63);
+            if (b >= 1 && b < Long.MAX_VALUE) {
+                checkLowOf(b);
+            }
+        }
+    }
+
+    private static void checkLowOf(long budget) {
+        long expected = java.math.BigInteger.valueOf(budget).multiply(java.math.BigInteger.valueOf(3))
+                .shiftRight(2).longValueExact();
+        long actual = lowOf(budget);
+        if (actual != expected) {
+            Assert.assertEquals("lowOf(" + budget + ")", expected, actual);
+        }
     }
 
     /**

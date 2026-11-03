@@ -419,12 +419,32 @@ public class Db implements AutoCloseable {
         reclaim.setRetainDuration(duration);
     }
     
+    /**
+     * Sets reclaim's internal fraction: the bytes an iteration rewrites, compared to the
+     * stream's growth while it runs; 0.25 by default. Used from the next step.
+     * 
+     * <p>It must be between 0.001 and 0.90 inclusive. NaN and other values are refused with
+     * an IllegalArgumentException, and the setting stays as it was (bergdb 005-73).</p>
+     * 
+     * <p>Reclaim keeps the fraction as an integer in units of 2^-16 (bergdb 005-79): the
+     * nearest one, (int) Math.round(internalFraction * 65536), so 0.25 is kept exactly and
+     * 0.1 as 6,554 units (0.100006). The product with a power of two is exact, so only
+     * Math.round rounds, half up. No double decides the stream's bytes.</p>
+     */
     public void setReclaimInternalFraction(double internalFraction) {
-        reclaim.setInternalFraction(internalFraction);
+        if (Double.isNaN(internalFraction) || internalFraction < 0.001 || internalFraction > 0.90) {
+            throw new IllegalArgumentException("Illegal internalFraction value, " + internalFraction);
+        }
+        reclaim.setInternalFractionUnits((int) Math.round(internalFraction * Reclaim.FRACTION_ONE));
     }
     
+    /**
+     * Reclaim's internal fraction as it is used: its units of 2^-16 over 65,536, which is
+     * exact (bergdb 005-79). After setReclaimInternalFraction(0.25) it is 0.25; after 0.1 it
+     * is 6554 / 65536.0.
+     */
     public double getInternalFraction() {
-        return reclaim.getInternalFraction();
+        return reclaim.getInternalFractionUnits() / (double) Reclaim.FRACTION_ONE;
     }
     
     public long getReclaimIterationCount() {

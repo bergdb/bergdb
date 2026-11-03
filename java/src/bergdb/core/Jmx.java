@@ -49,7 +49,13 @@ public class Jmx {
         public long getTransactionCount();
         public long getGetOpCount();
         public long getReclaimIterationCount();
+        /** Reclaim's internal fraction as it is used, a multiple of 2^-16 (bergdb 005-79). */
         public double getReclaimInternalFraction();
+        /**
+         * Sets reclaim's internal fraction through Db.setReclaimInternalFraction: 0.001 to
+         * 0.90, NaN and other values refused; kept as the nearest multiple of 2^-16, so 0.25
+         * exactly and 0.1 as 0.100006 (bergdb 005-79).
+         */
         public void setReclaimInternalFraction(double internalFraction);
         public String[] getDummyStrings();
     }

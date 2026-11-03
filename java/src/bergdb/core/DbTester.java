@@ -2624,13 +2624,36 @@ public class DbTester {
         db.close();
     }
     
-    /** bergdb 005-73, F4: invalid fractions are refused without changing the setting. */
+    /**
+     * bergdb 005-73, F4: invalid fractions are refused without changing the setting. Since
+     * 005-79 the fraction is kept in units of 2^-16, the nearest: 0.001, 0.90 and 0.25 give
+     * 66, 58,982 and 16,384 units, and the getter gives the units over 65,536.
+     */
     @Nano
     public static void testReclaimInternalFractionValidation() {
         try (Db db = Db.builder().testSetup().start()) {
-            for (double valid : new double[] {0.001, 0.90, 0.25}) {
-                db.setReclaimInternalFraction(valid);
-                Assert.assertTrue("accepted fraction", db.getInternalFraction() == valid);
+            Reclaim reclaim = db.internal().reclaim();
+            Assert.assertEquals("default", 16384, reclaim.getInternalFractionUnits());
+            double[] valid = {0.001, 0.90, 0.1, 0.25};
+            int[] units = {66, 58982, 6554, 16384};
+            for (int i = 0; i < valid.length; i++) {
+                db.setReclaimInternalFraction(valid[i]);
+                Assert.assertEquals("units of " + valid[i], units[i],
+                        reclaim.getInternalFractionUnits());
+                Assert.assertTrue("accepted fraction " + valid[i],
+                        db.getInternalFraction() == units[i] / 65536.0);
+            }
+            Assert.assertTrue("0.25 exactly", db.getInternalFraction() == 0.25);
+            for (int invalid : new int[] {Reclaim.MIN_INTERNAL_FRACTION - 1,
+                    Reclaim.MAX_INTERNAL_FRACTION + 1, 0, -1}) {
+                boolean refused = false;
+                try {
+                    reclaim.setInternalFractionUnits(invalid);
+                } catch (IllegalArgumentException expected) {
+                    refused = true;
+                }
+                Assert.assertTrue("refused units " + invalid, refused);
+                Assert.assertEquals("units unchanged", 16384, reclaim.getInternalFractionUnits());
             }
             for (double invalid : new double[] {Double.NaN, Double.NEGATIVE_INFINITY,
                     Double.POSITIVE_INFINITY, Math.nextDown(0.001), Math.nextUp(0.90)}) {

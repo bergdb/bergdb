@@ -37,12 +37,12 @@ import bergdb.stream.MemoryStream;
  * <ul>
  * <li>An iteration starts at an external transaction when the stream has grown by twice
  * the startup distance since the last iteration started, and a quarter of the retain
- * duration has passed (ITERATION_SPACING): pStart is the stream length then, tStart the
+ * duration has passed (ITERATION_DIVISOR): pStart is the stream length then, tStart the
  * time. The startup distance is Db's live value: the stream's after start(), and the new
  * one after setStartupDistance() (bergdb 005-61; it was the builder's before). Its cut point pCut is the pStart of the iteration before (the first iteration:
  * its own pStart).</li>
  * <li>Each external transaction allows a step when the bytes rewritten so far are below
- * internalFraction times the stream growth since pStart. A step scans the KVs at time
+ * internalFraction times the stream growth since pStart (fractionOf). A step scans the KVs at time
  * tStart after lastKey, rewrites each live value stored before pCut, and "touches"
  * the same key range at the current time (Trans.touch): every index node on the way
  * gets dirty and is written again, also nodes that hold deleted keys only. The row of the
@@ -109,13 +109,18 @@ public class Reclaim implements Db.TransactionListener {
             DbConstants.INTERNAL_PREFIX + "dreclaim/-current.txt";
     
     /**
-     * An iteration starts when this fraction of the retain duration has passed since the
+     * An iteration starts when the retain duration over this divisor has passed since the
      * last one started (2026-10-13, bergdb 011-04, "Level 3 cost"). Before,
      * iterations ran back to back whatever the retention; with a long retention, many
      * per retention duration, each rewriting most KVs. A cut point every quarter of the
      * retention keeps the stream within about 1.25 times what the retention needs.
+     * 
+     * <p>In integers since bergdb 005-79: retainDuration / 4 (retainDuration is at least
+     * one second and not Long.MAX_VALUE there). It was (long) (0.25 * retainDuration), the
+     * same for every duration below 2^53 time units, 28.5 years: there the conversion to
+     * double and the product by 0.25 are exact.</p>
      */
-    static final double ITERATION_SPACING = 0.25;
+    static final long ITERATION_DIVISOR = 4;
     
     /** A step is made when it may rewrite more than this many bytes. */
     private static final long MIN_STEP_SIZE = 10 * 1000L;
@@ -136,9 +141,22 @@ public class Reclaim implements Db.TransactionListener {
     // internalFraction: the bytes rewritten by an iteration, compared to the growth of the
     // stream while it runs. A small internalFraction will reduce the stream writes but 
     // increase the total stream size.
+    // In units of 2^-16, an int, since bergdb 005-79 (a double before): FRACTION_ONE is 1.
     
-    private static final double DEFAULT_INTERNAL_FRACTION = 0.25;
-    private volatile double internalFraction;
+    /** The unit of the internal fraction: FRACTION_ONE units are 1 (bergdb 005-79). */
+    static final int FRACTION_ONE = 1 << 16;
+    
+    /** The default internal fraction, 0.25: 16,384 units of 2^-16, exactly. */
+    static final int DEFAULT_INTERNAL_FRACTION = 16384;
+    
+    /**
+     * The smallest and the largest internal fraction, in units of 2^-16: 0.001 and 0.90
+     * (Db.setReclaimInternalFraction's range) rounded to the nearest unit, 65.536 to 66 and
+     * 58,982.4 to 58,982.
+     */
+    static final int MIN_INTERNAL_FRACTION = 66, MAX_INTERNAL_FRACTION = 58982;
+    
+    private volatile int internalFraction;
     
     private volatile long retainDuration;
     
@@ -231,11 +249,13 @@ public class Reclaim implements Db.TransactionListener {
     }
     
     /**
-     * Sets the internal fraction value, used from the next step.
-     * Must be between 0.001 and 0.90 inclusive.      
+     * Sets the internal fraction, in units of 2^-16 (FRACTION_ONE), used from the next step.
+     * Must be between MIN_INTERNAL_FRACTION and MAX_INTERNAL_FRACTION inclusive, 66 and
+     * 58,982 (0.001 and 0.90); otherwise IllegalArgumentException, and the setting stays as
+     * it was. Db.setReclaimInternalFraction converts the API's double to this unit.
      */
-    public void setInternalFraction(double internalFraction) {
-        if (Double.isNaN(internalFraction) || internalFraction < 0.001 || internalFraction > 0.90) {
+    public void setInternalFractionUnits(int internalFraction) {
+        if (internalFraction < MIN_INTERNAL_FRACTION || internalFraction > MAX_INTERNAL_FRACTION) {
             throw new IllegalArgumentException("Illegal internalFraction value, " + internalFraction);
         }
         
@@ -274,10 +294,22 @@ public class Reclaim implements Db.TransactionListener {
     }
     
     /**
-     * Gets the internal fraction value to be used for the next iteration.
+     * Gets the internal fraction to be used for the next step, in units of 2^-16
+     * (FRACTION_ONE).
      */
-    public double getInternalFraction() {
+    public int getInternalFractionUnits() {
         return this.internalFraction;
+    }
+    
+    /**
+     * floor(g * f / 2^16): the part f, in units of 2^-16, of g bytes (bergdb 005-79). Exact
+     * for every long g and every f from 0 to 2^16 - 1, without overflow: with g = a 2^16 + b,
+     * a = g >> 16 and 0 <= b = g & 0xFFFF < 2^16, it is a f + floor(b f / 2^16), and |a f| is
+     * below 2^47 2^16 = 2^63, b f below 2^32. For the default fraction, 16,384, it is
+     * floor(g / 4), which (long) (0.25 * g) gave for 0 <= g < 2^53.
+     */
+    static long fractionOf(long g, int f) {
+        return (g >> 16) * f + (((g & 0xFFFF) * f) >>> 16);
     }
     
     public long getIterationCount() {
@@ -328,7 +360,7 @@ public class Reclaim implements Db.TransactionListener {
         
         if (current == null && retainDuration != Long.MAX_VALUE
                 && streamSize > lastPStart() + 2L * db.getStartupDistance()
-                && t.tt - lastTStart() >= (long) (ITERATION_SPACING * retainDuration)) {
+                && t.tt - lastTStart() >= retainDuration / ITERATION_DIVISOR) {
             current = new IterationInfo();
             current.pStart = streamSize;
             current.tStart = t.tt;
@@ -338,7 +370,7 @@ public class Reclaim implements Db.TransactionListener {
         }
         
         if (current != null) {
-            long allowed = (long) (internalFraction * (streamSize - current.pStart)) 
+            long allowed = fractionOf(streamSize - current.pStart, internalFraction) 
                     - current.rewritten;
             if (allowed > MIN_STEP_SIZE) {
                 step(current, Math.min(allowed, MAX_STEP_SIZE));
@@ -1877,7 +1909,7 @@ public class Reclaim implements Db.TransactionListener {
         }
         
         /**
-         * Iterations start a quarter of the retain duration apart (ITERATION_SPACING,
+         * Iterations start a quarter of the retain duration apart (ITERATION_DIVISOR,
          * 2026-10-13, bergdb 011-04, "Level 3 cost"); before, they ran back
          * to back whatever the retention.
          */
@@ -1915,6 +1947,36 @@ public class Reclaim implements Db.TransactionListener {
                         + " after the one before", starts.get(i) - starts.get(i - 1) >= retain / 4);
             }
             db.stop();
+        }
+
+        /**
+         * fractionOf(g, f) is floor(g f / 2^16), as BigInteger computes it, on the edges and
+         * on random values spread over the bit lengths (bergdb 005-79).
+         */
+        @Nano
+        public static void testFractionOfExact() {
+            long[] gs = {0, 1, 3, 4, 0xFFFF, 0x10000, 1L << 47, (1L << 53) / 3, 1L << 53,
+                    Long.MAX_VALUE - 1, Long.MAX_VALUE, -1, -0x10001, Long.MIN_VALUE};
+            int[] fs = {0, 1, MIN_INTERNAL_FRACTION, DEFAULT_INTERNAL_FRACTION,
+                    MAX_INTERNAL_FRACTION, FRACTION_ONE - 1};
+            for (long g : gs) {
+                for (int f : fs) {
+                    checkFractionOf(g, f);
+                }
+            }
+            java.util.Random r = new java.util.Random(79);
+            for (int i = 0; i < 100000; i++) {
+                checkFractionOf(r.nextLong() >> r.nextInt(64), r.nextInt(FRACTION_ONE));
+            }
+        }
+        
+        private static void checkFractionOf(long g, int f) {
+            long expected = java.math.BigInteger.valueOf(g).multiply(java.math.BigInteger.valueOf(f))
+                    .shiftRight(16).longValueExact();
+            long actual = fractionOf(g, f);
+            if (actual != expected) {
+                Assert.assertEquals("fractionOf(" + g + ", " + f + ")", expected, actual);
+            }
         }
 
         /**

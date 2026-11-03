@@ -61,7 +61,7 @@ public final class KeyAccessPath {
         assert klongs.length == nodes.length : klongs.length + " != " + nodes.length;
         
         int size = klongs.length;
-        int newSize = (int) (size * 1.6);
+        int newSize = size + size * 3 / 5;      // floor(1.6 size), in integers (bergdb 005-79)
         
         long[] newKlongs = new long[newSize];
         System.arraycopy(klongs, 0, newKlongs, 0, size);

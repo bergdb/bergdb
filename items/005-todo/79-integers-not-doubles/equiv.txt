@@ -1,0 +1,25 @@
+spacing   below 9007199254740992: 102097170 values checked, 0 differences (0.3 s)
+  above the bound, the first differences:
+    x = 9007199254740995 = bound + 3: double 2251799813685249, integer 2251799813685248
+    x = 9007199254740999 = bound + 7: double 2251799813685250, integer 2251799813685249
+    x = 9007199254741003 = bound + 11: double 2251799813685251, integer 2251799813685250
+    x = 9007199254741007 = bound + 15: double 2251799813685252, integer 2251799813685251
+    x = 9007199254741011 = bound + 19: double 2251799813685253, integer 2251799813685252
+  above the bound, random values to 2^62: 3095026 of 9999686 differ
+watermark below 3002399751580330: 99533318 values checked, 0 differences (0.6 s)
+  above the bound, the first differences:
+    x = 3002399751580333 = bound + 3: double 2251799813685250, integer 2251799813685249
+    x = 3002399751580337 = bound + 7: double 2251799813685253, integer 2251799813685252
+    x = 3002399751580341 = bound + 11: double 2251799813685256, integer 2251799813685255
+    x = 3002399751580345 = bound + 15: double 2251799813685259, integer 2251799813685258
+    x = 3002399751580349 = bound + 19: double 2251799813685262, integer 2251799813685261
+  above the bound, random values to 2^62: 3318430 of 9999897 differ
+fraction  below 9007199254740992: 102097170 values checked, 0 differences (0.8 s)
+  above the bound, the first differences:
+    x = 9007199254740995 = bound + 3: double 2251799813685249, integer 2251799813685248
+    x = 9007199254740999 = bound + 7: double 2251799813685250, integer 2251799813685249
+    x = 9007199254741003 = bound + 11: double 2251799813685251, integer 2251799813685250
+    x = 9007199254741007 = bound + 15: double 2251799813685252, integer 2251799813685251
+    x = 9007199254741011 = bound + 19: double 2251799813685253, integer 2251799813685252
+  above the bound, random values to 2^62: 3095026 of 9999686 differ
+EQUIV OK: no difference below the bounds
