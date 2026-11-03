@@ -146,6 +146,20 @@ Where BergDB stands:
   as without (`DbTesterRestart`, section 10.2).
 * Checked for the buffer time on 2026-10-29 (005-64): StreamDigest with
   the tests' buffer time at 50 ms gives the same 36 streams as at 10 ms.
+* Not kept across a start (005-71, option A, 2026-11-03): `DbClock`'s
+  last read time, the last time `currentTime()` returned. A restart after
+  a `currentTime()` that returned a time after the last transaction's,
+  with a clock that has not moved since, gives the next transaction a time
+  one unit earlier than without the restart, and so other bytes; the next
+  transaction may then have the time that `currentTime()` returned before
+  the restart (its promise, a time before every later transaction's,
+  holds within a run). Accepted: a read is not a write and need not be
+  durable; the transactions' times stay increasing; it needs a clock that
+  does not move (a test clock, or a system clock set back), as a restart
+  takes longer than a time unit (100 ns). The checks of P2 move the test
+  clock before each transaction: `RestartInvariance` and `StreamDigest`
+  set it 1 to 20 units after the last one before each transaction, and
+  neither calls `currentTime()` (their reads give their lookup times).
 * To check: that the memory budget and eviction (Level 4, item 009) leave
   the bytes unchanged, or, where a setting changes the bytes, that the
   principle says so.

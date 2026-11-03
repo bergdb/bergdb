@@ -1,9 +1,9 @@
 005-71. Fix: `DbClock` forgets the last read time at a start
 ============================================================
 
-Status: open; option A taken under D2 (016-01, section 10) and planned
-for release 2026.2: two notes, no code (see Plan for 2026.2). Kind: fix.
-Created 2026-10-28.
+Status: done (2026-11-03): option A, taken under D2 (016-01, section 10):
+the note in 010-01's P2, no code; 012-05's note left for the C clone's
+next work (see Outcome). Kind: fix. Created 2026-10-28. Closed 2026-11-03.
 
 Registered by Claude (Opus 5.5, Claude Code), the conductor of 012, from
 012-02's determinism audit (012-02, section 10.3, finding C3; question Q2
@@ -102,11 +102,73 @@ The steps, by agent F1 (016-05), after 005-80, in
 Size: about 0.4 agent-hours, the review's share included. No stop for
 Frans. Done when both notes are in `main`.
 
-**State** (2026-11-03): planned, not started.
+**State** (2026-11-03, 16:18, F1): done; the final hand-off is
+`/Users/f/fl/bench/016/005-71/handoff/` (with `review.txt`), for the
+coordinator's commit.
 
+
+Outcome
+-------
+
+2026-11-03, by F1 (016-05), in `/Users/f/fl/bench/016/005-71/repo` from
+`main` at `323a54a`:
+
+* Option A: nothing changes in the code. 010-01's P2, "Where BergDB
+  stands", has a bullet: `DbClock`'s last read time is not kept across a
+  start; when it changes the next transaction's time (a read time after
+  the last transaction's, a clock that has not moved), by how much, why it
+  is accepted, and that the checks of P2 (`RestartInvariance`,
+  `StreamDigest`) move the test clock before each transaction and never
+  call `currentTime()`, checked in their code.
+* 012-05's note (step 2 of the plan) is not made: 012 is a done item and
+  the C clone is not part of 2026.2 (D7). Its `now` rule already says that
+  `now` can move the next transaction's time, true of Java and C alike.
+  The dated sentence is left for the C clone's next work, with 005-69's C
+  port.
+* No gate (no `java/` or `lean/`). Reviewed by the coordinator: no
+  findings.
 
 Log
 ---
 
 2026-11-03. Option A planned for release 2026.2 (016-05): the notes in
 010-01's P2 and in 012-05; no code. Nothing changed yet.
+
+2026-11-03, 16:11 to 16:14, by F1 (016-05), in
+`/Users/f/fl/bench/016/005-71/repo` from `main` at `323a54a`:
+
+* **The note in P2** (step 1), 010-01, P2's "Where BergDB stands", a
+  bullet after "Checked for the buffer time": the plan's text, with two
+  points made exact against `DbClock` (`currentTime`, `transactionBegin`,
+  `setLastTransTime`, read at `323a54a`): the next transaction's time
+  differs only when the read time was after the last transaction's (else
+  both runs give the last transaction's time plus one); and across the
+  restart the next transaction may have the very time that
+  `currentTime()` returned before it, so `currentTime()`'s promise (a time
+  before every later transaction's) holds within a run only. A start
+  makes a new `DbClock` with `lastReadTime` 0 and sets only the last
+  transaction's time (`Db.setLastTransTimeOfDbClock`).
+* **The check of the plan's last sentence**: right. `RestartInvariance`
+  (`run`) and `StreamDigest` (`run`) call `clock.setTime(times[i])`
+  before each transaction, with `times` strictly increasing (each 1 to 20
+  units, times the scale, after the one before), and neither calls
+  `currentTime()`: their reads (`DbUtil.checksum`, their lookups) use
+  lookup times, which `DbClock.lookupTime` gives without touching the
+  last read time. `DbTesterRestart` does not call it either. In `java/`
+  only the Pub API (`DatabaseImp`, `ConnectionImp`), JMX and tests call
+  `Db.currentTime()`.
+* **The note in 012-05** (step 2): not made, by the coordinator's brief
+  for 2026.2: 012 is a done item, and the C clone is not part of the
+  release (D7, Frans, 2026-11-03, 15:31: "Only Java code will be included
+  in the release"). 012-05, section 6.1, already says that `now` "can move
+  the next transaction's time (012-01, 4.4)", which is true of Java and C
+  alike, so the cross tests are not wrong without it. The dated sentence
+  of the plan (a workload that compares streams with and without restarts
+  sets the clock after a `now`) is left for when the C clone is next
+  worked on, with 005-69's C port.
+* No gate: no file of `java/` or `lean/` changed.
+
+2026-11-03. Reviewed 2026-11-03 by the coordinator (H5, 016-05, section
+5), with 005-69: no findings; the P2 note matches `DbClock`
+(`currentTime`, `lastReadTime` 0 after a start). Closed: Outcome and
+Status above.
