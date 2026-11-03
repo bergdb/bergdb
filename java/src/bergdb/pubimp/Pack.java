@@ -34,6 +34,7 @@ public class Pack implements IPack {
         PubTester.class,
         PubTesterComposite.class,
         PubTesterIndex.class,
+        PubTesterIndexJobs.class,
         PubTesterNestedFields.class,
         PubTesterOutput.class,
         PubTesterPrimary.class,

@@ -155,7 +155,7 @@ public class RwEnvironmentImp implements RwEnvironment {
         return output;
     }
     
-    private void addReadHash(long hash) {
+    void addReadHash(long hash) {
         this.readHashes.add(hash);
     }
     

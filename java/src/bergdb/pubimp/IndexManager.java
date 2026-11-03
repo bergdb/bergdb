@@ -614,6 +614,20 @@ public class IndexManager {
     }
     
     /**
+     * As setIndexStateToActive(), for a build at its end; unless the index is deleting: then
+     * returns false and changes nothing (bergdb 015-22).
+     */
+    boolean setIndexStateToActiveUnlessDeleting(ConnectionImp connection, Index index) {
+        synchronized (lock) {
+            if (index.getState() == Index.STATE_DELETING) {
+                return false;
+            }
+            setIndexStateToActive(connection, index);
+            return true;
+        }
+    }
+    
+    /**
      * Ensures that an index is in a deleting state.
      * 
      * @throws NoSuchIndexException  If no index exists with the given name.

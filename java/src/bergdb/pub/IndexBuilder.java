@@ -229,6 +229,9 @@ public interface IndexBuilder {
      * The index cannot be used until the job finishes.
      * If the database is stopped before the index has been created, the index creation process
      * will automatically continue when the database is started again.
+     * If the index is deleted before the job finishes, the job stops without making the index
+     * active, and writes nothing to an index created later with the same name; its status then
+     * has progress 100 and a note that says that the index was deleted.
      * 
      * @throws IndexAlreadyExistsException if an index with this name already exists.
      */

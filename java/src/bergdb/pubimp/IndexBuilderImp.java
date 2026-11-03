@@ -2,6 +2,7 @@ package bergdb.pubimp;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import bergdb.common.EventToWaitFor;
 import bergdb.core.DbStoppingException;
@@ -254,6 +255,16 @@ public class IndexBuilderImp implements IndexBuilder {
         createInThread_waitEvent = event;
     }
     
+    private volatile Consumer<String> testHook = null;
+    
+    /**
+     * For tests only (bergdb 015-22): the hook is called with "action" at the end of each run
+     * of a step's action, before its transaction, and with "step" after the transaction.
+     */
+    void testHook(Consumer<String> hook) {
+        testHook = hook;
+    }
+    
     /**
      * Starts the index creation in a new low-priority thread.
      * 
@@ -408,6 +419,15 @@ public class IndexBuilderImp implements IndexBuilder {
                 
                 env.getMany(g);
                 
+                // The build belongs to its index, this Index object, while it is creating
+                // (bergdb 015-22): a deletion sets the state to deleting, then writes the
+                // index info's key. Read after the first read, so if the deletion's write
+                // comes after that read, the transaction runs again and stops here.
+                env.addReadHash(createState.index.keyHash);
+                if (createState.index.getState() != IndexManager.Index.STATE_CREATING) {
+                    throw new IndexDeletedException();
+                }
+                
                 RwEnvironmentImp.IndexSetter indexSetter = new RwEnvironmentImp.IndexSetter() {
                     public void setIndexKey(byte[] indexKey, KeyTransformation kt) {
                         env.set(indexKey, new byte[0], kt);
@@ -431,6 +451,11 @@ public class IndexBuilderImp implements IndexBuilder {
                     RwEnvironmentImp.setIndexEntry(dbo, keyname, createState.index, dirIndex, 
                             indexSetter, false);
                 }
+                
+                final Consumer<String> hook = testHook;
+                if (hook != null) {
+                    hook.accept("action");
+                }
             }
         };
         
@@ -442,6 +467,16 @@ public class IndexBuilderImp implements IndexBuilder {
             
             createState.isDone = true;
             return;
+        } catch (IndexDeletedException e) {
+            // The index was deleted; the build stops, and wrote nothing after the deletion
+            // (bergdb 015-22).
+            createState.stop(createState.processedEntries);
+            return;
+        }
+        
+        final Consumer<String> hook = testHook;
+        if (hook != null) {
+            hook.accept("step");
         }
         
         handleStepResult(createState, stopCondition, g);
@@ -451,9 +486,13 @@ public class IndexBuilderImp implements IndexBuilder {
             final TheStopCondition stopCondition, final GetMany g) {
         if (stopCondition.isDone()) {
             if (createState.dirId == createState.index.dirs.length - 1) {
-                // Done with all directories.
-                createState.update(true, createState.processedEntries + stopCondition.getProcessedEntries());
-                indexManager.setIndexStateToActive(connection, createState.index);
+                // Done with all directories: activated, then reported done (bergdb 015-22).
+                long processed = createState.processedEntries + stopCondition.getProcessedEntries();
+                if (indexManager.setIndexStateToActiveUnlessDeleting(connection, createState.index)) {
+                    createState.update(true, processed);
+                } else {
+                    createState.stop(processed);
+                }
             } else {
                 // Done with one directory, prepare to process next directory.
                 createState.update(false, createState.processedEntries + stopCondition.getProcessedEntries());
@@ -465,6 +504,11 @@ public class IndexBuilderImp implements IndexBuilder {
             createState.update(false, createState.processedEntries + stopCondition.getProcessedEntries());
             createState.startKey = g.result.get(g.result.size() - 1).key;
         }
+    }
+    
+    /** Thrown by a step's action when the index of the build is deleting (bergdb 015-22). */
+    private static final class IndexDeletedException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
     }
     
     private static class CompositePart {
@@ -489,6 +533,8 @@ public class IndexBuilderImp implements IndexBuilder {
         
         public boolean isDone;
         
+        private boolean stopped = false;    // Done because the index was deleted (bergdb 015-22).
+        
         public IndexCreateState(IndexManager.Index index) {
             assert index != null;
             assert index.dirs.length > 0;
@@ -509,10 +555,17 @@ public class IndexBuilderImp implements IndexBuilder {
             this.processedEntries = processedEntries;
         }
         
+        /** Done, without activating the index: the index was deleted (bergdb 015-22). */
+        public synchronized void stop(long processedEntries) {
+            this.stopped = true;
+            update(true, processedEntries);
+        }
+        
         public synchronized JobStatus getJobStatus() {
             // May be called from any thread; synch accordingly.
             
             final int progress = isDone ? 100 : -1;
+            final boolean stopped = this.stopped;
             
             return new JobStatus() {
                 public int progress() {
@@ -521,7 +574,10 @@ public class IndexBuilderImp implements IndexBuilder {
 
                 public String note() {
                     String result = 
-                            progress == 100 ? 
+                            stopped ?
+                              "Stopped: the index " + index.getName() + " was deleted before "
+                                    + "it was built. Processed " + processedEntries + " entries."
+                            : progress == 100 ? 
                               "Done! Processed " + processedEntries + " entries for index: " 
                                     + index.getName() + "." 
                             : "Working, processed " + processedEntries + " entries for index: " 
