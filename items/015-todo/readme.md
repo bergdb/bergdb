@@ -61,6 +61,12 @@ Open
 | [015-47](47-bytes-shared-with-caller.md) | Fix | A byte[] value is shared with the caller: a change of the array ... | open |
 | [015-48](48-exists-freezes-time.md) | Fix | freezeLookupTime(), then exists(): the frozen time is the read ... | open |
 | [015-49](49-review-s2-faults.md) | Fix | Review S2's 27 faults of the indexes and the objects | open |
+| [015-50](50-reclaim-step-too-large.md) | Fix | A reclaim step that rewrites old values beyond the value limit ... | open |
+| [015-51](51-transform-size-unchecked.md) | Fix | A value transformation's result is not size-checked: one above the ... | open |
+| [015-52](52-warmup-read-expired.md) | Fix | `execute()` can be refused with `LookupTimeNotAvailableException`, ... | open |
+| [015-53](53-stop-during-step-committed.md) | Fix | A transaction that runs when `stop()` comes is committed, but ... | open |
+| [015-54](54-safe-pos-javadoc.md) | Fix | pSafe is not "the stream length now", as `markSafePositions`'s ... | open |
+| [015-55](55-database-time-margin.md) | Fix | A user transaction at the last database time is taken, and ... | open |
 
 
 Closed
@@ -171,6 +177,12 @@ Files
 * [47-bytes-shared-with-caller.md](47-bytes-shared-with-caller.md). 015-47, Fix: S1-F8.
 * [48-exists-freezes-time.md](48-exists-freezes-time.md). 015-48, Fix: S1-F9.
 * [49-review-s2-faults.md](49-review-s2-faults.md). 015-49, Fix: review S2's 27 faults.
+* [50-reclaim-step-too-large.md](50-reclaim-step-too-large.md). 015-50, Fix: R7-F1.
+* [51-transform-size-unchecked.md](51-transform-size-unchecked.md). 015-51, Fix: R7-F2.
+* [52-warmup-read-expired.md](52-warmup-read-expired.md). 015-52, Fix: R7-F3.
+* [53-stop-during-step-committed.md](53-stop-during-step-committed.md). 015-53, Fix: R7-F4.
+* [54-safe-pos-javadoc.md](54-safe-pos-javadoc.md). 015-54, Fix: R7-F5.
+* [55-database-time-margin.md](55-database-time-margin.md). 015-55, Fix: R7-F6.
 
 
 Log

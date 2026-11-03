@@ -1,0 +1,13 @@
+== f7974d3, -Drate=20
+put 1677: pSafe 1077656 = the user record's end; the same call then started an iteration at pStart 1077656 (its table and step before the marking); stream now 1081704; startup pos 1077656
+put 2761: pSafe 1830056 = the user record's end; the same call then started an iteration at pStart 1830056 (its table and step before the marking); stream now 1833936; startup pos 1830056
+pSafe markings 57, in a call that had appended internal records before the marking: 2, of them cut in the same call: 0; such rows cut later: 2, of them at a startup pos before the length at the marking: 0
+== f7974d3, -Drate=1
+put 1428: pSafe 888536 = the user record's end; the same call then started an iteration at pStart 888536 (its table and step before the marking); stream now 891472; startup pos 888536
+put 1836: pSafe 1218184 = the user record's end; the same call then started an iteration at pStart 1218184 (its table and step before the marking); stream now 1222808; startup pos 1218184
+put 3653: pSafe 2484568 = the user record's end; the same call then started an iteration at pStart 2484568 (its table and step before the marking); stream now 2488536; startup pos 2484568
+pSafe markings 58, in a call that had appended internal records before the marking: 3, of them cut in the same call: 0; such rows cut later: 3, of them at a startup pos before the length at the marking: 0
+== f7974d3, -Drate=2 -Dsd=50000 -Dv=2000
+put 1677: pSafe 1077656 = the user record's end; the same call then started an iteration at pStart 1077656 (its table and step before the marking); stream now 1081704; startup pos 1077656
+put 2761: pSafe 1830056 = the user record's end; the same call then started an iteration at pStart 1830056 (its table and step before the marking); stream now 1833936; startup pos 1830056
+pSafe markings 57, in a call that had appended internal records before the marking: 2, of them cut in the same call: 0; such rows cut later: 2, of them at a startup pos before the length at the marking: 0

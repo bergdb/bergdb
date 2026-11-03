@@ -1,0 +1,6 @@
+== f7974d3
+put 297 of /k/7 threw bergdb.core.DbStoppingException: Cannot call getMany() while DB is stopping.
+after a restart: the value of /k/7 is the put's; the transaction at 133280 has time 159000000 (the put's 159000000)
+== release-2026.1 (fractionOf written as / 4, the default fraction)
+put 156 of /k/29 threw bergdb.core.DbStoppingException: Cannot call getMany() while DB is stopping.
+after a restart: the value of /k/29 is the put's; the transaction at 44664 has time 88500000 (the put's 88500000)

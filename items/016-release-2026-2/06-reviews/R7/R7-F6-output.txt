@@ -1,0 +1,4 @@
+== f7974d3
+put 297 (clock at Klong.MAX_TIME: true) FAILED THE DATABASE: bergdb.pub.util.DbException: No database time is left after 72057594037927935; the largest is 72057594037927935. No transaction is executed.
+== release-2026.1 (fractionOf written as / 4)
+put 156 (clock at Klong.MAX_TIME: true) FAILED THE DATABASE: bergdb.pub.util.DbException: No database time is left after 72057594037927935; the largest is 72057594037927935. No transaction is executed.
