@@ -230,3 +230,19 @@ In commit B (016-09, R9), drafted by the documents agent in the evening as
 2026-11-03, 16:05: the plan is written; nothing of D1 to D6 is done. The
 line numbers of section 1 are from 2026-11-03 at `df6ad50`; they move as
 entries are committed, so the agent finds each line by its text.
+
+2026-11-03, 20:19, the documents agent (in `/Users/f/fl/bench/016/docs/repo`,
+with 016-03): **D1 done** on `main` at `9645bc4` (its `java/` as at
+`e5bd275`). `DatabaseBuilder.replica` and `Database.addReplica` begin
+with section 2's paragraph; the faults follow in a paragraph of their own,
+"Its known faults: ...", unchanged but for those two words and a reflow.
+`removeReplica` and `getStorageInfos` say "Experimental, as addReplica():
+not to be used in production, and its API will change (bergdb 005-11)".
+`BadReplicaException` gets the sentence; `SyncLevel.STRONG`, which names
+replicas, says "experimental (see Database.addReplica(); bergdb 005-11)".
+The diff touches comments only (section 2's grep prints nothing; `git
+diff -w` shows the same lines). Gates in the clone: `build.sh` OK,
+`JAVADOC PUB OK`, `BEFORE COMMIT OK (105 s)`. The review (H5) is the
+coordinator's to start (016-05, section 4: subagents start no agents).
+Hand-off: `/Users/f/fl/bench/016/docs/handoff-D1/`.
+

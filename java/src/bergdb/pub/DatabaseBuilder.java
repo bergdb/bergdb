@@ -58,14 +58,16 @@ public interface DatabaseBuilder {
     /**
      * Adds a replica to the sets of database replicas.
      * 
-     * <p>Experimental, with known faults; not for data that matters (2026-10-25, bergdb
-     * 005-11). A replica is written in plain text, also when the database is encrypted.
-     * With reclaim (a finite retain duration), a crash can leave a replica that does not
-     * start, or that gives wrong answers at times it claims to have. A replica whose storage
-     * fails is dropped without a word, and reclaim's next cut then fails the database. A
-     * start without a replica that a crash left ahead of the main, and then one with it, can
-     * leave two histories, or a database that does not start. A slow replica slows every
-     * write, and a hung one stops them.</p>
+     * <p>Experimental, with known faults, and not to be used in production; its API will
+     * change in a later release (2026-11-03; bergdb 005-11, and bergdb 016-01, section 3).</p>
+     * 
+     * <p>Its known faults: a replica is written in plain text, also when the database is
+     * encrypted. With reclaim (a finite retain duration), a crash can leave a replica that
+     * does not start, or that gives wrong answers at times it claims to have. A replica
+     * whose storage fails is dropped without a word, and reclaim's next cut then fails the
+     * database. A start without a replica that a crash left ahead of the main, and then one
+     * with it, can leave two histories, or a database that does not start. A slow replica
+     * slows every write, and a hung one stops them.</p>
      * 
      * <p>start() opens the replica's directory, after the database's own; this method only
      * records it (bergdb 005-66). Until 005-66 it opened it, and a replica added before

@@ -1,7 +1,8 @@
 package bergdb.pub.util;
 
 /**
- * Thrown to indicate that the replica state is illegal.
+ * Thrown to indicate that the replica state is illegal. Replication is experimental (see
+ * Database.addReplica()).
  * 
  * @author Frans Lundberg
  */

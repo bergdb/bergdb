@@ -312,10 +312,12 @@ public interface Database extends AutoCloseable {
      * Adds a replica storage to this database while it is running. The replicated data is storage
      * in the provided directory.
      * 
-     * <p>Experimental, with known faults; not for data that matters (2026-10-25, bergdb
-     * 005-11): those of DatabaseBuilder.replica(), and a cut of reclaim's during the copy
-     * fails the database. The job reports done also when the copy failed; getStorageInfos()
-     * shows the error.</p>
+     * <p>Experimental, with known faults, and not to be used in production; its API will
+     * change in a later release (2026-11-03; bergdb 005-11, and bergdb 016-01, section 3).</p>
+     * 
+     * <p>Its known faults: those of DatabaseBuilder.replica(), and a cut of reclaim's during
+     * the copy fails the database. The job reports done also when the copy failed;
+     * getStorageInfos() shows the error.</p>
      * 
      * @param name
      *            Name of the storage to add.
@@ -333,7 +335,8 @@ public interface Database extends AutoCloseable {
 
     /**
      * Removes a replica storage from the database. The existing replica data is not deleted but
-     * will no longer be updated. Experimental, as addReplica() (bergdb 005-11).
+     * will no longer be updated. Experimental, as addReplica(): not to be used in production,
+     * and its API will change (bergdb 005-11).
      * 
      * @param name
      *            Name of the storage.
@@ -342,7 +345,7 @@ public interface Database extends AutoCloseable {
 
     /**
      * Returns information about the storages currently used by the database. Experimental, as
-     * addReplica() (bergdb 005-11).
+     * addReplica(): not to be used in production, and its API will change (bergdb 005-11).
      */
     // NOTE Consider making the returned data immutable? Or not? Should it be used for
     // custom durability rules?
