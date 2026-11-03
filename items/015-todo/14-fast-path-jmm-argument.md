@@ -1,7 +1,7 @@
-015-14. Decide: the fast path's plain reads rest on the address dependency, not on the JMM
+015-14. Fix: the fast path's plain reads rest on the address dependency, not on the JMM
 ==========================================================================================
 
-Status: open. Kind: Decide. Created 2026-11-03 by Frans Lundberg.
+Status: open. Kind: Fix (decided). Created 2026-11-03 by Frans Lundberg.
 
 For Frans; a known issue of 2026.2 until decided. Found by review R1
 (016-06/R1 (items/016-release-2026-2/06-reviews/R1.md)), R1-F3, with the interleaving written out (to be checked by a
@@ -29,3 +29,13 @@ Log
 ---
 
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
+
+2026-11-03, 17:18. Frans: ""thread safety rests on today's JVM
+behaviour". This is not acceptable. Ensure this is either fixed before the
+release or clearly documented as an open todo item. This needs an
+investigation and a fix." So: an investigation (R1-F3's interleaving
+checked; every plain read of a shared field on the read path that relies
+on an address dependency, 015-12's reader side included) and a fix that
+makes the read path correct by the Java Memory Model, before the release.
+If it is not done by the freeze, this entry stays an open Fix and the
+notes say so in their known issues.

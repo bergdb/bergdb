@@ -1,7 +1,7 @@
-015-13. Decide: the resident bytes count no handle, where 009-02, 4.7 counts them
+015-13. Fix: the resident bytes count no handle, where 009-02, 4.7 counts them
 =================================================================================
 
-Status: open. Kind: Decide. Created 2026-11-03 by Frans Lundberg.
+Status: open. Kind: Fix (decided). Created 2026-11-03 by Frans Lundberg.
 
 For Frans; a known issue of 2026.2 until decided. Found by review R1
 (016-06/R1 (items/016-release-2026-2/06-reviews/R1.md)), R1-F2, with a probe.
@@ -27,3 +27,7 @@ Log
 ---
 
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
+
+2026-11-03, 17:18. Frans: "This seems straigh-forward. If it really is
+straight-forward and you have a proposal, fix it before the release." So
+option A, R1-F2's proposal, before the release, by agent K after 015-15.

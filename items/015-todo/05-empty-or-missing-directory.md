@@ -39,3 +39,6 @@ Log
 ---
 
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
+
+2026-11-03, 17:18. Frans: "As recommended." B1 after the release; a known
+issue of 2026.2 until then, with the recipe in `DatabaseBuilder`'s Javadoc.

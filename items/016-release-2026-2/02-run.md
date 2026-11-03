@@ -283,6 +283,25 @@ section 3). Unless he chooses before the release, it is a known issue of
 
 ## 7. For Frans to decide
 
+Frans's answers, 2026-11-03, 17:18, to items 1 to 5 below: "1. As
+recommended. 2. Tell me more. 3. It can be run later. Let's just ensure we
+remember to. 4. This seems straigh-forward. If it really is
+straight-forward and you have a proposal, fix it before the release. 5.
+"thread safety rests on today's JVM behaviour". This is not acceptable.
+Ensure this is either fixed before the release or clearly documented as an
+open todo item. This needs an investigation and a fix."
+
+* 1: 015-05 after the release, B1 recommended; a known issue of 2026.2.
+* 2: explained to Frans at 17:20; waiting for his answer.
+* 3: `night.sh large` after the release, registered as 015-18 so that it
+  is not forgotten.
+* 4: 015-13 is fixed before the release (R1-F2's proposal: the handles
+  counted as 009-02, 4.7 says), by agent K after 015-15.
+* 5: 015-14 becomes a Fix: an investigation and a fix (acquire reads, or
+  what the investigation finds) before the release, by its own agent;
+  if not done by the freeze, an open Fix entry and a known issue of the
+  notes, said plainly.
+
 1. **015-05: a start on an empty or missing directory** (015-01's case
    3), for after the release. Recommended: B1, `createIfMissing()`, in the
    first release with a public API; until then the recipe in

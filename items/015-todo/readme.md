@@ -38,11 +38,12 @@ Open
 | [015-09](09-reclaim-test-timing.md) | Fix | Reclaim.Tester.testCrashBeforeIterationEnd depends on timing under load | open |
 | [015-10](10-capacity-test-under-load.md) | Investigate | CapacityTester's lowered budget fails under load on s1 | open |
 | [015-11](11-tempdircreator-tmp.md) | Fix | The tests' TempDirCreator writes to /tmp, whatever java.io.tmpdir says | open |
-| [015-13](13-handles-not-counted.md) | Decide | The resident bytes count no handle, where 009-02, 4.7 counts them | open |
-| [015-14](14-fast-path-jmm-argument.md) | Decide | The fast path's plain reads rest on the address dependency, not the JMM | open |
+| [015-13](13-handles-not-counted.md) | Fix | The resident bytes count no handle, where 009-02, 4.7 counts them | open |
+| [015-14](14-fast-path-jmm-argument.md) | Fix | The fast path's plain reads rest on the address dependency, not the JMM | open |
 | [015-15](15-resident-count-drift.md) | Fix | A batch subtracts values never counted; a count driven to 0 stays 0 | open |
 | [015-16](16-powerloss-cleanup.md) | Investigate | PowerLossTest failed once in its cleanup, "cannot delete test file" | open |
 | [015-17](17-read-during-close.md) | Investigate | A read during close fails with "File closed", and close reports it | open |
+| [015-18](18-night-large-after-release.md) | Implement | Run night.sh large on the release, after 2026.2 | open |
 
 
 Closed
@@ -93,10 +94,10 @@ Files
 * [12-keynode-growth-publication.md](12-keynode-growth-publication.md).
   015-12, Fix: a key node's growth publishes its arrays before their
   contents (R1-F1).
-* [13-handles-not-counted.md](13-handles-not-counted.md). 015-13, Decide:
+* [13-handles-not-counted.md](13-handles-not-counted.md). 015-13, Fix:
   the resident bytes count no handle (R1-F2).
 * [14-fast-path-jmm-argument.md](14-fast-path-jmm-argument.md). 015-14,
-  Decide: the fast path's argument rests on the address dependency
+  Fix: the fast path's argument rests on the address dependency
   (R1-F3).
 * [15-resident-count-drift.md](15-resident-count-drift.md). 015-15, Fix:
   the resident count drifts below the real bytes (R1-F4).
@@ -104,6 +105,8 @@ Files
   `PowerLossTest` failed once in its cleanup (F3, 016-08).
 * [17-read-during-close.md](17-read-during-close.md). 015-17, Investigate:
   `InterruptStress` saw a get fail with "File closed" during a close (F3).
+* [18-night-large-after-release.md](18-night-large-after-release.md).
+  015-18, Implement: `night.sh large` on the release's commit, after it.
 
 
 Log
