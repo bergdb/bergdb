@@ -552,15 +552,14 @@ Depends on the probe's commit for steps 7 and 8, and on 005-65's step
 running first in the block. Stop for Frans: only if a wait is longer
 (step 10).
 
-**State** (2026-11-03, 16:46, F1, who took this part from F2 at the
-coordinator's request): steps 1 to 3 done in
-`/Users/f/fl/bench/016/005-52/repo` (base `3e32f02`, in
-`/Users/f/fl/bench/016/005-52/BASE`; made on `f2cb23b` and moved onto
-`3e32f02` unchanged); the probe handed off for the review
-(`/Users/f/fl/bench/016/005-52/handoff/`, steps 4 and 5). Steps 7 and 8
-(the prep of `$R` with `/Users/f/fl/bench/016/005-52/prep.sh`, then the
-smoke and READY) after the coordinator has committed the probe. To resume:
-the Log's last entry; the clone's `git diff` holds the change.
+**State** (2026-11-03, 16:52, F1): steps 1 to 8 done. The probe is in
+`main` (`87d1e2c`); `$R` = `/Users/f/fl/bench/016/005-52/run/` holds
+`bergdb.jar`, `stress/` and `jar.txt` from `c960c34`; the smoke printed
+`lowered (SMOKE): OK`, and `night/lowered.sh.READY` is written (16:51).
+Next: step 9, the conductor's step `52-lowered` in window 2 (after
+`65-rerun`; its `steps.txt` line in 016-05, section 6), then step 10 in
+the morning, from `$R/out/summary.txt`. To resume: step 10, or the
+conductor's `status.txt` if the block has not run.
 
 Log
 ---
@@ -607,3 +606,24 @@ to F1), in `/Users/f/fl/bench/016/005-52/repo`, steps 1 and 2:
   probe's format.
 * **The gate** (step 3): `java/before-commit.sh`, 16:43 to 16:45: `BEFORE
   COMMIT OK (100 s)` (its build compiles `java/stress/`).
+
+2026-11-03. Reviewed 2026-11-03 by the coordinator (H5, 016-05, section
+5): no findings. Without `lower` no reflection and no new call; the
+budget is reset each phase; the sampler ends on `stop` or when it reaches
+the lower budget; a failure of the sampler fails the phase. Committed as
+`87d1e2c`.
+
+2026-11-03, 16:49 to 16:52, by F1, steps 7 and 8:
+
+* **The prep** (step 7), by `/Users/f/fl/bench/016/005-52/prep.sh` (a
+  fresh clone of `main`, as the work clone keeps its entry edits): `main`
+  at `c960c34` (the probe's commit `87d1e2c` and one of documents), `sh
+  java/build.sh`; `bergdb.jar` and `stress/` copied to `$R`; `$R/jar.txt`:
+  `c960c34218409ff943e92be097f15aa08abfde8a` and the jar's SHA-256
+  `665ef9ceeeb826caef74c486970e2437953bfadd7cb5904c0f25dd623eba7ed6`.
+* **READY** (step 8): `SMOKE=1 sh night/lowered.sh`, from the main tree's
+  path, 16:50:41 to 16:51:30 (F53 loaded, about 50): six runs OK, 2
+  lowerings in each (b), the summary complete (12 rows); its last line
+  `lowered (SMOKE): OK, 0 problems;
+  /Users/f/fl/bench/016/005-52/run/smoke/summary.txt`. Then `touch
+  night/lowered.sh.READY` (16:51).

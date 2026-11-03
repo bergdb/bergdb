@@ -34,7 +34,7 @@ Open
 | [015-04](04-deps-helper-rule.md) | Investigate | deps.py counts take and dither as test code | open |
 | [015-05](05-empty-or-missing-directory.md) | Decide | A start on an empty or missing directory creates a database | open |
 | [015-06](06-refused-start-leaves-file.md) | Fix | A refused start leaves an empty first stream file | open |
-| [015-07](07-node-fields-unchecked.md) | Fix | A node's inner fields unchecked; such a read does not fail the database | open |
+| [015-07](07-node-fields-unchecked.md) | Fix | A node's inner fields unchecked; such a read does not fail the database | done |
 | [015-08](08-streamdigest-compare-cut.md) | Fix | StreamDigest's compare reports the physical cut, which depends on timing | open |
 | [015-09](09-reclaim-test-timing.md) | Fix | Reclaim.Tester.testCrashBeforeIterationEnd depends on timing under load | open |
 | [015-10](10-capacity-test-under-load.md) | Investigate | CapacityTester's lowered budget fails under load on s1 | open |
@@ -43,6 +43,8 @@ Open
 | [015-13](13-handles-not-counted.md) | Decide | The resident bytes count no handle, where 009-02, 4.7 counts them | open |
 | [015-14](14-fast-path-jmm-argument.md) | Decide | The fast path's plain reads rest on the address dependency, not the JMM | open |
 | [015-15](15-resident-count-drift.md) | Fix | A batch subtracts values never counted; a count driven to 0 stays 0 | open |
+| [015-16](16-powerloss-cleanup.md) | Investigate | PowerLossTest failed once in its cleanup, "cannot delete test file" | open |
+| [015-17](17-read-during-close.md) | Investigate | A read during close fails with "File closed", and close reports it | open |
 
 
 Closed
@@ -98,6 +100,10 @@ Files
   (R1-F3).
 * [15-resident-count-drift.md](15-resident-count-drift.md). 015-15, Fix:
   the resident count drifts below the real bytes (R1-F4).
+* [16-powerloss-cleanup.md](16-powerloss-cleanup.md). 015-16, Investigate:
+  `PowerLossTest` failed once in its cleanup (F3, 016-08).
+* [17-read-during-close.md](17-read-during-close.md). 015-17, Investigate:
+  `InterruptStress` saw a get fail with "File closed" during a close (F3).
 
 
 Log

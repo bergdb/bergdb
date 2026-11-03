@@ -251,6 +251,15 @@ section 3). Unless he chooses before the release, it is a known issue of
   (RestartInvariance identical in 8 configurations, TRACECHECK OK); its
   review runs.
 * 16:48 Agent K started: 015-12, then 015-15 (R1's faults).
+* 16:52 015-07 gated on `main` (`BEFORE COMMIT OK (113 s)`) and
+  committed, `12610c7`; done. 005-52's night script smoke-tested
+  ("lowered (SMOKE): OK") and READY; both steps of the quiet block are in
+  `steps.txt` (65-rerun, 52-lowered).
+* 16:52 F3 (the stress programs, fresh seeds) has two failed chunks of
+  about a thousand: `PowerLossTest` once in its cleanup ("cannot delete
+  test file"; three reruns of its seed OK) and `InterruptStress` once (a
+  get during a close failed with "File closed", and the close reported
+  it). Registered as 015-16 and 015-17 (Investigate), for an agent.
 
 
 ## 7. For Frans to decide

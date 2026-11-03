@@ -1,7 +1,7 @@
 015-07. Fix: a node's inner fields are not checked, and a read that meets one does not fail the database
 ========================================================================================================
 
-Status: open. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
+Status: done (2026-11-03, 12610c7). Kind: Fix. Created 2026-11-03 by Frans Lundberg.
 
 For release 2026.2 (016-01, section 6, the rule for findings: verified,
 no format or API change).
