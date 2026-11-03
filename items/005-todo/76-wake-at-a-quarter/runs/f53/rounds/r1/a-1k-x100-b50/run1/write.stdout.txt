@@ -1,0 +1,11 @@
+Perf mode=write scenario=a-1k-x100-b50 workload=5d03558eabc86b45 {batch=100, bufftime=50, commit=append, firstgets=300000, gets=2000000, halt=0, history=-1, longlen=120, maxops=0, mincuts=0, mixops=50000, mixreaders=2, mtthreads=4, n=100000, nlong=0, ops=10000, rate=0, retain=inf, samplems=1000, scanlen=100, scans=20000, sd=0, seed=1, threads=1, timedgets=1000000, tsize=100, valsize=1000, warmgets=3000000, warmup=-1, windows=5, work=uniform}
+startupDistance 50000000
+PHASE load 1.10 s
+PHASE warmup 0.93 s
+PROGRESS 9 s: 9841 commits, stream 1383 MB, kept 1383 MB, on disk 1382 MB in 74 files, 0 physical cuts
+WRITE 10000 commits (1000000 puts) in 9.25 s: 1081 commits/s, bytes appended per user byte 1.17, append p50 876.5 us p99.9 1982.5 us max 35.42 ms
+  buffer time 50 ms: 573 forces, 61.9 a second, 2051584 bytes each, 7.33 ms each
+VERIFY 100000 keys after restart: ok (0.69 s)
+PHASE verify 1.27 s
+PERF OK
+CPU64 process_cpu_ms=16778.1 consumer_cpu_ms=348.9 consumers=2 uptime_ms=12803

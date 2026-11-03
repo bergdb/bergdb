@@ -1630,3 +1630,54 @@ changing the setting; the double API and range remain unchanged. 005-79
 stays separate. The new regression fails on the original setter and
 passes with the check. BEFORE COMMIT OK (1,090 unit, 78 f-tests); all 36
 stream digests identical. Java only.
+
+2026-11-02. 005-83, at Frans's request after discussing 005-82: an
+item-local experiment with normal force calls, preserving all previously
+forced bytes. All 56 ordinary controls recover; all 56 tail-hole images
+fail the readable-prefix oracle (112 checks): 68 refuse startup, 44 fail
+later reads or history checks. Some getTrans errors leave the instance
+active and another write is accepted. The original refused-start fixture
+appends 1,057,153 bytes before refusal. Report and reproducible evidence:
+005-83, "Power-loss tail experiment". Recovery design remains open; no
+production code or format change.
+
+2026-11-02. 005-83 design step complete at Frans's request: proposed
+format 155 / record 6 with whole-record and meta SHA-256, an enforced
+8 MB physical write window, anchors protected through reclaim using
+complete durable transactions, read-only prefix reconstruction and
+exclusive startup suffix removal. First implementation scope: plaintext
+main files; legacy, encryption and replica restrictions are explicit.
+Item-local framing and geometry checks pass 84,560 conditions, including
+negative controls. Proposal and acceptance matrix: 005-83, recovery design,
+sections 1–9. Not implemented or committed; the item remains open.
+
+2026-11-02. 005-76: an append that reaches a quarter of BufferedStream's
+capacity wakes the consumer once per crossing. The consumer also skips
+its timer wait with a quarter ready, including bytes left after a flush.
+Three regressions fail before and pass after. BEFORE COMMIT OK (1,093
+unit, 78 f-tests), full LEVEL 2 OK (70 traces), full LEVEL 3 OK (25 traces,
+440 power-loss cold recoveries and interrupt stress). All 36 logical
+stream digests match main; one physical cut differs with flush timing.
+Three admitted rounds on F53 and s1 no longer reproduce 005-64's 100 ms
+throughput penalty. Default remains 50 ms; no API or format change.
+Evidence and comparison limits: 005-76, Implementation and checks and the
+F53/s1 results.
+
+2026-11-02. 005-83 reconsidered at Frans's request: truncation is not
+fundamentally required. Withdraw the initial preference for it; investigate
+an appended recovery checkpoint that selects the accepted history while
+leaving abandoned bytes in place. Recorded the requirements for checkpoint
+discovery/publication, readers, repeated repair crashes and bounded
+startup/reclaim. This is a direction, not a completed replacement protocol;
+the earlier model checks do not establish it. No production code change.
+
+2026-11-03. Created 014-stream at Frans's request, to define the stream
+format and the contract between append-only storage and the database.
+014-01 gathers the correction discussion and a read-only search of F1-007:
+the explicit 2008 abort-instead-of-truncate decision, the January 2012
+arbitrary-prefix claim, zero-fill recovery and original 2013 prefix tests.
+Distinguished recoverable interruptions from integrity failures, and the
+historical prefix model from a proposed unforced-tail-damage model. Moved
+005-83's investigation to 014-01; original artifacts stay usable in 005.
+Added an AppendOnlyStream Javadoc reference. No executable source changes;
+F1 files preserved. Contract and protocol remain open; no commit.

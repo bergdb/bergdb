@@ -25,6 +25,7 @@ import bergdb.stream.MemoryStream;
  * <p>A sync that waits for buffered bytes has them written at once, without waiting for
  * the buffer time: it calls flushSoon() (group commit, 2026-10-27, bergdb item 005-48).
  * The buffer time is then the longest time that bytes nobody syncs on stay buffered.
+ * An append that reaches a quarter of the buffer wakes the thread too (bergdb 005-76).
  * 
  * @author Frans Lundberg
  */
@@ -159,7 +160,9 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                     if (stop) {
                         break A;
                     }
-                    if (!syncWaits()) {     // No wait while a sync waits (bergdb 005-48).
+                    // No wait while a sync waits (bergdb 005-48), or with a quarter ready
+                    // (bergdb 005-76). An append's wake may arrive during the last flush.
+                    if (!syncWaits() && pStart - cStart < twentyFivePercentOfBufferCapacity) {
                         wait(waitTime);
                     }
                 } catch (InterruptedException e) {
@@ -490,9 +493,11 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                         }
                     } else {
                         int len = length <= available ? length : available;
+                        long bufferedBefore = pStart - cStart;
                         appendToBuffer(source, sourceOffset, len);
-                        if (idle) {
-                            notifyAll();    // Wakes the consumer (005-14).
+                        if (idle || (bufferedBefore < twentyFivePercentOfBufferCapacity
+                                && pStart - cStart >= twentyFivePercentOfBufferCapacity)) {
+                            notifyAll();    // Idle (005-14), or one wake per crossing (005-76).
                         }
                         length -= len;
                         sourceOffset += len;
@@ -734,6 +739,115 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     }
     
     // ======== Test ========
+
+    /** bergdb 005-76: reaching a quarter wakes a consumer in its timed wait. */
+    @Nano
+    public static void testQuarterWakesConsumer() throws Exception {
+        MemoryStream m = new MemoryStream();
+        BufferedStream b = new BufferedStream(m, 1024, 60000);
+        java.util.concurrent.CountDownLatch flushed = new java.util.concurrent.CountDownLatch(1);
+        b.setAppendListener(new AppendListener() {
+            public void dataAppended(long length) { flushed.countDown(); }
+            public void appendFailed(IOException e) {}
+        });
+        b.start();
+        try {
+            long deadline = System.nanoTime() + 2000000000L;
+            while (b.consumer.getState() != Thread.State.TIMED_WAITING) {
+                Assert.assertTrue("consumer did not enter its timed wait",
+                        System.nanoTime() < deadline);
+                Thread.sleep(1);
+            }
+            b.append(new byte[255], 0, 255);   // Just below the quarter.
+            Assert.assertEquals(0, m.getLength());
+            b.append(new byte[] {42}, 0, 1);   // Exactly a quarter, without a sync.
+            Assert.assertTrue("the quarter-full append did not wake the consumer",
+                    flushed.await(2, java.util.concurrent.TimeUnit.SECONDS));
+            byte[] bytes = new byte[256];
+            m.read(0, bytes, 0, bytes.length);
+            Assert.assertEquals((byte) 42, bytes[255]);
+        } finally {
+            b.close();
+        }
+    }
+
+    /** bergdb 005-76: bytes arriving during a flush need no new threshold crossing. */
+    @Nano
+    public static void testQuarterBacklogDoesNotWait() throws Exception {
+        java.util.concurrent.CountDownLatch entered = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch flushed = new java.util.concurrent.CountDownLatch(2);
+        MemoryStream m = new MemoryStream() {
+            @Override public void append(byte[] source, int offset, int length) throws IOException {
+                if (getLength() == 0) {
+                    entered.countDown();
+                    try {
+                        if (!release.await(2, java.util.concurrent.TimeUnit.SECONDS)) {
+                            throw new IOException("test did not release the first flush");
+                        }
+                    } catch (InterruptedException e) {
+                        throw new IOException(e);
+                    }
+                }
+                super.append(source, offset, length);
+            }
+        };
+        BufferedStream b = new BufferedStream(m, 1024, 60000);
+        b.setAppendListener(new AppendListener() {
+            public void dataAppended(long length) { flushed.countDown(); }
+            public void appendFailed(IOException e) {}
+        });
+        b.append(new byte[512], 0, 512);
+        b.flushSoon(512);   // Start the first flush also on the code before the fix.
+        b.start();
+        try {
+            Assert.assertTrue("first flush did not start",
+                    entered.await(2, java.util.concurrent.TimeUnit.SECONDS));
+            b.append(new byte[256], 0, 256);   // Above a quarter throughout this append.
+            release.countDown();
+            Assert.assertTrue("the quarter-full backlog waited for the timer",
+                    flushed.await(2, java.util.concurrent.TimeUnit.SECONDS));
+            Assert.assertEquals(768, m.getLength());
+        } finally {
+            release.countDown();
+            b.close();
+        }
+    }
+
+    /** bergdb 005-76: a writer faster than the timer can drain need not wait for room. */
+    @Nano
+    public static void testQuarterAvoidsRoomWaits() throws Exception {
+        MemoryStream m = new MemoryStream() {
+            @Override public void append(byte[] source, int offset, int length) throws IOException {
+                try {
+                    Thread.sleep(3);   // A small force latency, without a real disk.
+                } catch (InterruptedException e) {
+                    throw new IOException(e);
+                }
+                super.append(source, offset, length);
+            }
+        };
+        BufferedStream b = new BufferedStream(m, 256 * 1024, 4000);
+        b.start();
+        try {
+            byte[] bytes = new byte[1024];
+            for (int i = 0; i < 512; i++) {
+                java.util.Arrays.fill(bytes, (byte) i);
+                b.append(bytes, 0, bytes.length);
+                Thread.sleep(1);
+            }
+            String waits = b.takeRoomWaits();
+            Assert.assertTrue(waits, waits.startsWith("waits for room in the write buffer 0,"));
+        } finally {
+            b.close();
+        }
+        Assert.assertEquals(512 * 1024, m.getLength());
+        byte[] bytes = new byte[512 * 1024];
+        m.read(0, bytes, 0, bytes.length);
+        for (int i = 0; i < bytes.length; i++) {
+            Assert.assertEquals((byte) (i / 1024), bytes[i]);
+        }
+    }
 
     @Nano
     public static void test1() throws IOException, InterruptedException {

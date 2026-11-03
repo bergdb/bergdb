@@ -1,0 +1,15 @@
+12:05:59 runner on s1: 005-76-after-20261102, bufftime.suite, ROUNDS=3, budget 0 min, HEAP=2g, FORCE=0
+12:05:59 force probe before
+12:06:10 round 1 of 3, buffer times in the order 20 50 100
+    CPU idle before the runs: 100%
+12:08:35 round 1 done (2 min)
+12:08:35 round 2 of 3, buffer times in the order 50 100 20
+    CPU idle before the runs: 100%
+12:11:03 round 2 done (2 min)
+12:11:03 round 3 of 3, buffer times in the order 100 20 50
+    CPU idle before the runs: 100%
+12:13:32 round 3 done (2 min)
+12:13:32 rounds done: 3 of 3, exit 0
+12:13:32 force probe after
+12:13:49 CHECK OK: 6 rows, every cell parsed
+12:13:49 DONE in 7 min

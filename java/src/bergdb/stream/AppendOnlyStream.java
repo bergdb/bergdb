@@ -8,6 +8,10 @@ import java.io.IOException;
  * Existing bytes that have already been appended to the stream will never be modified.
  * Additionally, an AppendOnlyStream has the method <code>pretruncate()</code> that truncates the
  * stream from the beginning of it, that is, it removes the first bytes of the stream.</p>
+ *
+ * <p>The stream format and storage/database contract are being specified in bergdb 014.
+ * Historical crash assumptions and startup stream correction are investigated in
+ * bergdb 014-01, sections 2 to 5.</p>
  * 
  * <p>CONCURRENCY.
  * Implementations can assume that the interface user adheres to the following concurrency rules:

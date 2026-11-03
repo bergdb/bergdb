@@ -1,0 +1,6 @@
+lazy-s11/zero-value-512 values RECOVERY_FAILURE stage=values recovered=211 recoveryWrites=0 active=false
+lazy-s11/zero-value-512 transaction RECOVERY_FAILURE stage=getTrans-target recovered=211 recoveryWrites=0 active=true
+PROBE COMPLETE rows=2 controls=0 control_failures=0 negatives=0 missed_negatives=0 hole_checks=2 hole_failures=2 results=/private/tmp/bergdb-005-83.dmAq1k/regression-current/probe/results.tsv
+Exception in thread "main" java.lang.AssertionError: recovery does not tolerate the injected tail holes
+	at bergdb.core.PowerLossTailProbe.require(PowerLossTailProbe.java:519)
+	at bergdb.core.PowerLossTailProbe.main(PowerLossTailProbe.java:168)

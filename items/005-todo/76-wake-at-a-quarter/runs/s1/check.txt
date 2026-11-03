@@ -1,0 +1,7 @@
+ok      a-1k at 20 ms: 3 runs
+ok      a-1k at 50 ms: 3 runs
+ok      a-1k at 100 ms: 3 runs
+ok      a-1k-x100 at 20 ms: 3 runs
+ok      a-1k-x100 at 50 ms: 3 runs
+ok      a-1k-x100 at 100 ms: 3 runs
+CHECK OK: 6 rows, every cell parsed

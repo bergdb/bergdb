@@ -1,0 +1,4 @@
+LOGICAL DIGESTS IDENTICAL (36 of 36)
+Compared length, firstAvailablePos, firstAvailableTime, sha256 from the decided cut.
+Physical-cut differences: 1
+l3-node62 reads 8000000 -> 9000000

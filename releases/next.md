@@ -183,6 +183,12 @@ Performance
   distance in one call, with no commit that writes the whole startup
   section; the section comes down as transactions are committed. Every
   stream differs from what 2026.1 wrote; the format does not.
+* **A quarter-full write buffer wakes the storage thread** (bergdb 005-76,
+  2026-11-02). An append notifies it once when the buffered bytes reach a
+  quarter, and after a flush it writes again without a timer wait if a
+  quarter remains. Before, the quarter rule waited for the next timer
+  check, reducing throughput at high write rates and long buffer times.
+  The stream's bytes and the default buffer time do not change.
 * **The default buffer time is 50 ms** (bergdb 005-64, 2026-10-29), where it
   was 20 ms (`StorageManager.DEFAULT_BUFFER_TIME`, the main stream's; also
   the Pub API's). A writer that does not sync gets 11 to 35 percent fewer

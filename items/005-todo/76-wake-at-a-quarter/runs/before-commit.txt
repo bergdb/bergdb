@@ -1,0 +1,4 @@
+Deps: 9 packages, all as package.html allows
+Unit: SUCCESS, 1093 successful tests in 9.2 s.
+F:    SUCCESS, 78 successful tests in 64.3 s.
+BEFORE COMMIT OK (70 s)

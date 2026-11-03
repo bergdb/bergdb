@@ -1,0 +1,3 @@
+scenario=meta seed=11 startupDistance=2048 maxNodeSize=8 bufferSize=10000000 bufferTime=60000 retain=forever eviction=off
+ack_time=123 ack_end=156648 forced_end=200000 capture_from=200000 capture_to=265408 complete_tail_records=7 target_time=205 target_pos=201496 target_blob=202144 original_node_checksum=37275 last_complete_meta=200000 target_before_last_meta=false
+file_forces=5 directory_forces=3 forced_sha256=0e2ced1e8e58fb59bde1ad01c6425d07aae513389bd80f318d4dde064aa6b378

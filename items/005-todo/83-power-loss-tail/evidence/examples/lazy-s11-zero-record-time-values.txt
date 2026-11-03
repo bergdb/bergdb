@@ -1,0 +1,6 @@
+lazy-s11	zero-record-time	hole	values	123	4335336	4588096	4335344	8	211	transactions	RECOVERY_FAILURE	0	0	0	true		false	AssertionError: wrong transaction time at 4335336
+java.lang.AssertionError: wrong transaction time at 4335336
+	at bergdb.core.PowerLossTailProbe.require(PowerLossTailProbe.java:519)
+	at bergdb.core.PowerLossTailProbe.runCase(PowerLossTailProbe.java:346)
+	at bergdb.core.PowerLossTailProbe.runSource(PowerLossTailProbe.java:295)
+	at bergdb.core.PowerLossTailProbe.main(PowerLossTailProbe.java:140)

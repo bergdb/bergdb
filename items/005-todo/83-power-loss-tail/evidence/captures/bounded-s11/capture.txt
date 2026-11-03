@@ -1,0 +1,3 @@
+scenario=bounded seed=11 startupDistance=2048 maxNodeSize=8 bufferSize=10000000 bufferTime=60000 retain=forever eviction=off
+ack_time=123 ack_end=37224 forced_end=37224 capture_from=37224 capture_to=145856 complete_tail_records=12 target_time=200 target_pos=37224 target_blob=37984 original_node_checksum=3082 last_complete_meta=0 target_before_last_meta=false
+file_forces=3 directory_forces=2 forced_sha256=72ac38135bd115a9f33ccd58d2f57cb070b2ee3a63146a6939d78500b20ea489

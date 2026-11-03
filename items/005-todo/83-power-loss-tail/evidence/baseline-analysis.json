@@ -1,0 +1,102 @@
+{
+  "rows": 184,
+  "distinct_images": 128,
+  "control_checks": 56,
+  "negative_controls_detected": 8,
+  "hole_images": 56,
+  "hole_checks": 112,
+  "hole_recovered": 0,
+  "hole_failures_by_stage": {
+    "start": 68,
+    "transactions": 20,
+    "getTrans-target": 16,
+    "values": 8
+  },
+  "forced_prefix_image_checks": 120,
+  "independent_node_checksum_checks": 16,
+  "later_commit_markers_checked": 594,
+  "writes_accepted_after_getTrans_error": [
+    "lazy-s11/zero-node-size",
+    "lazy-s11/zero-node-checksum",
+    "lazy-s11/zero-value-512",
+    "lazy-s11/zero-page-4096",
+    "lazy-s29/zero-node-size",
+    "lazy-s29/zero-node-checksum",
+    "lazy-s29/zero-value-512",
+    "lazy-s29/zero-page-4096"
+  ],
+  "corrupt_input": [
+    {
+      "scenario": "replay-s11",
+      "outcome": "RECOVERED",
+      "stage": "complete",
+      "recovered_time": "123",
+      "recovery_writes": "958376",
+      "growth_after_start": "958376",
+      "logical_growth": "958376"
+    },
+    {
+      "scenario": "replay-s29",
+      "outcome": "RECOVERED",
+      "stage": "complete",
+      "recovered_time": "123",
+      "recovery_writes": "958376",
+      "growth_after_start": "958376",
+      "logical_growth": "958376"
+    },
+    {
+      "scenario": "bounded-s11",
+      "outcome": "RECOVERED",
+      "stage": "complete",
+      "recovered_time": "123",
+      "recovery_writes": "949496",
+      "growth_after_start": "949496",
+      "logical_growth": "949496"
+    },
+    {
+      "scenario": "bounded-s29",
+      "outcome": "RECOVERED",
+      "stage": "complete",
+      "recovered_time": "123",
+      "recovery_writes": "949496",
+      "growth_after_start": "949496",
+      "logical_growth": "949496"
+    },
+    {
+      "scenario": "meta-s11",
+      "outcome": "RECOVERED",
+      "stage": "complete",
+      "recovered_time": "204",
+      "recovery_writes": "994208",
+      "growth_after_start": "994208",
+      "logical_growth": "994208"
+    },
+    {
+      "scenario": "meta-s29",
+      "outcome": "RECOVERED",
+      "stage": "complete",
+      "recovered_time": "204",
+      "recovery_writes": "994208",
+      "growth_after_start": "994208",
+      "logical_growth": "994208"
+    },
+    {
+      "scenario": "lazy-s11",
+      "outcome": "RECOVERY_FAILURE",
+      "stage": "transactions",
+      "recovered_time": "211",
+      "recovery_writes": "0",
+      "growth_after_start": "0",
+      "logical_growth": "0"
+    },
+    {
+      "scenario": "lazy-s29",
+      "outcome": "RECOVERY_FAILURE",
+      "stage": "transactions",
+      "recovered_time": "211",
+      "recovery_writes": "0",
+      "growth_after_start": "0",
+      "logical_growth": "0"
+    }
+  ]
+}

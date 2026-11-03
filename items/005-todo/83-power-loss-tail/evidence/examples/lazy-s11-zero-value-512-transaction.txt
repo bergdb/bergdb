@@ -1,0 +1,12 @@
+lazy-s11	zero-value-512	hole	transaction	123	4335336	4588096	4336184	512	211	getTrans-target	RECOVERY_FAILURE	0	0	0	true	accepted	false	StreamChecksumException: spos: 4336096, storedSum: 21299, computedSum: 50480, nodeType: 30
+bergdb.core.StreamChecksumException: spos: 4336096, storedSum: 21299, computedSum: 50480, nodeType: 30
+	at bergdb.core.NodeStream.checkChecksum(NodeStream.java:282)
+	at bergdb.core.NodeStream.bytesToNode(NodeStream.java:253)
+	at bergdb.core.StoredTrans$Parser.next(StoredTrans.java:399)
+	at bergdb.core.StoredTrans$Parser.parse(StoredTrans.java:329)
+	at bergdb.core.StoredTrans.parse(StoredTrans.java:191)
+	at bergdb.core.NodeStream$TransIterator.getStoredTrans(NodeStream.java:415)
+	at bergdb.core.Db.getTrans(Db.java:1495)
+	at bergdb.core.PowerLossTailProbe.runCase(PowerLossTailProbe.java:340)
+	at bergdb.core.PowerLossTailProbe.runSource(PowerLossTailProbe.java:297)
+	at bergdb.core.PowerLossTailProbe.main(PowerLossTailProbe.java:140)

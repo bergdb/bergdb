@@ -459,10 +459,17 @@ Limits:
   ([011-07](../items/011-docs-archive/07-level3-durability.md);
   `PowerLossTest` in `level3.sh`). Not established: physical power cycling,
   other storage providers and Windows, replication.
+* Recovery tolerates the tested truncated prefixes of an unforced write,
+  but holes in that write (later bytes surviving while earlier ones are
+  missing) can refuse startup or fail a later read after startup succeeds.
+  The experiment preserves every already-forced byte and name; recovery
+  for this fault class is open (005-83, "Power-loss tail experiment").
 * `BufferedStream`, above it, collects the database's appends and writes
   them in chunks from a thread of its own, when the buffer time (50 ms by
   default since 005-64; 20 ms from 005-13) has passed or its buffer is
-  full: one force per chunk, not one per transaction. `execute()` only
+  a quarter full: an append that reaches the quarter wakes the thread,
+  which also continues without a timer wait when a flush leaves a quarter
+  ready (005-76). One force per chunk, not one per transaction. `execute()` only
   appends to that buffer.
 * `sync()` waits until the transaction's last byte, its commit byte, is
   durable (005-44). The transactions of many threads share one force: on

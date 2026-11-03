@@ -1,0 +1,3 @@
+       6 scenarios from b76-r2.suite
+CPU idle before the runs: 83.68%
+performance.sh: the machine is not quiet (83.68% idle): stop other jobs, or FORCE=1 (the results are then not a reference)

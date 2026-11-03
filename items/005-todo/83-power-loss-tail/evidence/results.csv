@@ -1,0 +1,185 @@
+scenario,image,kind,order,ack_time,forced_end,captured_end,damage_start,damage_bytes,recovered_time,stage,outcome,recovery_writes,growth_after_start,logical_growth,active_after_error,post_error_write,continued,error
+replay-s11,full,control,values,123,27720,126712,-1,0,211,complete,RECOVERED,0,0,0,,,true,
+replay-s11,lost-write,control,values,123,27720,27720,27720,0,123,complete,RECOVERED,0,0,0,,,true,
+replay-s11,prefix-record-boundary,control,values,123,27720,27720,27720,0,123,complete,RECOVERED,0,0,0,,,true,
+replay-s11,prefix-header-1,control,values,123,27720,27721,27721,0,123,complete,RECOVERED,215,215,215,,,true,
+replay-s11,prefix-header-3,control,values,123,27720,27723,27723,0,123,complete,RECOVERED,8149,8149,8149,,,true,
+replay-s11,prefix-body,control,values,123,27720,27888,27888,0,123,complete,RECOVERED,7984,7984,7984,,,true,
+replay-s11,prefix-before-marker,control,values,123,27720,35871,35871,0,123,complete,RECOVERED,1,1,1,,,true,
+replay-s11,zero-record-size,hole,values,123,27720,126712,27720,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: Bad transaction size in db stream, 0, spos 27720. Stream length: 126712"
+replay-s11,zero-record-size,hole,transaction,123,27720,126712,27720,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: Bad transaction size in db stream, 0, spos 27720. Stream length: 126712"
+replay-s11,zero-record-time,hole,values,123,27720,126712,27728,8,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: non-increasing tt, tt:0, tpos:27720, lastPos:35871, startupPos:0, topPos:160, nodeCount:2 got dirty: 27723 27723 "
+replay-s11,zero-record-time,hole,transaction,123,27720,126712,27728,8,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: non-increasing tt, tt:0, tpos:27720, lastPos:35871, startupPos:0, topPos:160, nodeCount:2 got dirty: 27723 27723 "
+replay-s11,zero-node-size,hole,values,123,27720,126712,27800,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: bad gotDirtyCount, -1072036834"
+replay-s11,zero-node-size,hole,transaction,123,27720,126712,27800,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: bad gotDirtyCount, -1072036834"
+replay-s11,zero-node-checksum,hole,values,123,27720,126712,27806,2,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 27800, storedSum: 0, computedSum: 49178, nodeType: 30"
+replay-s11,zero-node-checksum,hole,transaction,123,27720,126712,27806,2,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 27800, storedSum: 0, computedSum: 49178, nodeType: 30"
+replay-s11,zero-value-512,hole,values,123,27720,126712,27888,512,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 27800, storedSum: 49178, computedSum: 49846, nodeType: 30"
+replay-s11,zero-value-512,hole,transaction,123,27720,126712,27888,512,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 27800, storedSum: 49178, computedSum: 49846, nodeType: 30"
+replay-s11,zero-page-4096,hole,values,123,27720,126712,28672,4096,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 27800, storedSum: 49178, computedSum: 50532, nodeType: 30"
+replay-s11,zero-page-4096,hole,transaction,123,27720,126712,28672,4096,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 27800, storedSum: 49178, computedSum: 50532, nodeType: 30"
+replay-s11,zero-commit-marker,hole,values,123,27720,126712,35871,1,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: startup error, node 35877:35877 not found, got dirty in trans tt=201, tpos=35872; startup pos 128, time 1; in node table: no"
+replay-s11,zero-commit-marker,hole,transaction,123,27720,126712,35871,1,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: startup error, node 35877:35877 not found, got dirty in trans tt=201, tpos=35872; startup pos 128, time 1; in node table: no"
+replay-s11,size-grow-bitflip,corrupt-input,values,123,27720,126712,27720,4,123,complete,RECOVERED,958376,958376,958376,,,true,
+replay-s11,lost-ack-negative,negative,values,123,27720,264,0,0,1,acknowledged-prefix,ACK_LOSS,0,0,0,true,,false,"AssertionError: acknowledged 123, recovered 1"
+replay-s29,full,control,values,123,27720,126712,-1,0,211,complete,RECOVERED,0,0,0,,,true,
+replay-s29,lost-write,control,values,123,27720,27720,27720,0,123,complete,RECOVERED,0,0,0,,,true,
+replay-s29,prefix-record-boundary,control,values,123,27720,27720,27720,0,123,complete,RECOVERED,0,0,0,,,true,
+replay-s29,prefix-header-1,control,values,123,27720,27721,27721,0,123,complete,RECOVERED,215,215,215,,,true,
+replay-s29,prefix-header-3,control,values,123,27720,27723,27723,0,123,complete,RECOVERED,8149,8149,8149,,,true,
+replay-s29,prefix-body,control,values,123,27720,27888,27888,0,123,complete,RECOVERED,7984,7984,7984,,,true,
+replay-s29,prefix-before-marker,control,values,123,27720,35871,35871,0,123,complete,RECOVERED,1,1,1,,,true,
+replay-s29,zero-record-size,hole,values,123,27720,126712,27720,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: Bad transaction size in db stream, 0, spos 27720. Stream length: 126712"
+replay-s29,zero-record-size,hole,transaction,123,27720,126712,27720,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: Bad transaction size in db stream, 0, spos 27720. Stream length: 126712"
+replay-s29,zero-record-time,hole,values,123,27720,126712,27728,8,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: non-increasing tt, tt:0, tpos:27720, lastPos:35871, startupPos:0, topPos:160, nodeCount:2 got dirty: 27723 27723 "
+replay-s29,zero-record-time,hole,transaction,123,27720,126712,27728,8,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: non-increasing tt, tt:0, tpos:27720, lastPos:35871, startupPos:0, topPos:160, nodeCount:2 got dirty: 27723 27723 "
+replay-s29,zero-node-size,hole,values,123,27720,126712,27800,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: bad gotDirtyCount, -2040265698"
+replay-s29,zero-node-size,hole,transaction,123,27720,126712,27800,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: bad gotDirtyCount, -2040265698"
+replay-s29,zero-node-checksum,hole,values,123,27720,126712,27806,2,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 27800, storedSum: 0, computedSum: 34404, nodeType: 30"
+replay-s29,zero-node-checksum,hole,transaction,123,27720,126712,27806,2,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 27800, storedSum: 0, computedSum: 34404, nodeType: 30"
+replay-s29,zero-value-512,hole,values,123,27720,126712,27888,512,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 27800, storedSum: 34404, computedSum: 3310, nodeType: 30"
+replay-s29,zero-value-512,hole,transaction,123,27720,126712,27888,512,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 27800, storedSum: 34404, computedSum: 3310, nodeType: 30"
+replay-s29,zero-page-4096,hole,values,123,27720,126712,28672,4096,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 27800, storedSum: 34404, computedSum: 7549, nodeType: 30"
+replay-s29,zero-page-4096,hole,transaction,123,27720,126712,28672,4096,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 27800, storedSum: 34404, computedSum: 7549, nodeType: 30"
+replay-s29,zero-commit-marker,hole,values,123,27720,126712,35871,1,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: startup error, node 35877:35877 not found, got dirty in trans tt=201, tpos=35872; startup pos 128, time 1; in node table: no"
+replay-s29,zero-commit-marker,hole,transaction,123,27720,126712,35871,1,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: startup error, node 35877:35877 not found, got dirty in trans tt=201, tpos=35872; startup pos 128, time 1; in node table: no"
+replay-s29,size-grow-bitflip,corrupt-input,values,123,27720,126712,27720,4,123,complete,RECOVERED,958376,958376,958376,,,true,
+replay-s29,lost-ack-negative,negative,values,123,27720,264,0,0,1,acknowledged-prefix,ACK_LOSS,0,0,0,true,,false,"AssertionError: acknowledged 123, recovered 1"
+bounded-s11,full,control,values,123,37224,145856,-1,0,211,complete,RECOVERED,0,0,0,,,true,
+bounded-s11,lost-write,control,values,123,37224,37224,37224,0,123,complete,RECOVERED,0,0,0,,,true,
+bounded-s11,prefix-record-boundary,control,values,123,37224,37224,37224,0,123,complete,RECOVERED,0,0,0,,,true,
+bounded-s11,prefix-header-1,control,values,123,37224,37225,37225,0,123,complete,RECOVERED,207,207,207,,,true,
+bounded-s11,prefix-header-3,control,values,123,37224,37227,37227,0,123,complete,RECOVERED,8909,8909,8909,,,true,
+bounded-s11,prefix-body,control,values,123,37224,38072,38072,0,123,complete,RECOVERED,8064,8064,8064,,,true,
+bounded-s11,prefix-before-marker,control,values,123,37224,46135,46135,0,123,complete,RECOVERED,1,1,1,,,true,
+bounded-s11,zero-record-size,hole,values,123,37224,145856,37224,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: Bad transaction size in db stream, 0, spos 37224. Stream length: 145856"
+bounded-s11,zero-record-size,hole,transaction,123,37224,145856,37224,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: Bad transaction size in db stream, 0, spos 37224. Stream length: 145856"
+bounded-s11,zero-record-time,hole,values,123,37224,145856,37232,8,211,transactions,RECOVERY_FAILURE,0,0,0,true,,false,AssertionError: wrong transaction time at 37224
+bounded-s11,zero-record-time,hole,transaction,123,37224,145856,37232,8,211,transactions,RECOVERY_FAILURE,0,0,0,true,,false,AssertionError: wrong transaction time at 37224
+bounded-s11,zero-node-size,hole,values,123,37224,145856,37984,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: bad gotDirtyCount, 201983006"
+bounded-s11,zero-node-size,hole,transaction,123,37224,145856,37984,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: bad gotDirtyCount, 201983006"
+bounded-s11,zero-node-checksum,hole,values,123,37224,145856,37990,2,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 37984, storedSum: 0, computedSum: 3082, nodeType: 30"
+bounded-s11,zero-node-checksum,hole,transaction,123,37224,145856,37990,2,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 37984, storedSum: 0, computedSum: 3082, nodeType: 30"
+bounded-s11,zero-value-512,hole,values,123,37224,145856,38072,512,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 37984, storedSum: 3082, computedSum: 3750, nodeType: 30"
+bounded-s11,zero-value-512,hole,transaction,123,37224,145856,38072,512,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 37984, storedSum: 3082, computedSum: 3750, nodeType: 30"
+bounded-s11,zero-page-4096,hole,values,123,37224,145856,40960,4096,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 37984, storedSum: 3082, computedSum: 40131, nodeType: 30"
+bounded-s11,zero-page-4096,hole,transaction,123,37224,145856,40960,4096,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 37984, storedSum: 3082, computedSum: 40131, nodeType: 30"
+bounded-s11,zero-commit-marker,hole,values,123,37224,145856,46135,1,211,transactions,RECOVERY_FAILURE,0,0,0,false,,false,DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Transaction at start pos 37224 is not committed (its last byte is 0).
+bounded-s11,zero-commit-marker,hole,transaction,123,37224,145856,46135,1,211,getTrans-target,RECOVERY_FAILURE,0,0,0,false,,false,DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Transaction at start pos 37224 is not committed (its last byte is 0).
+bounded-s11,size-grow-bitflip,corrupt-input,values,123,37224,145856,37224,4,123,complete,RECOVERED,949496,949496,949496,,,true,
+bounded-s11,lost-ack-negative,negative,values,123,37224,264,0,0,1,acknowledged-prefix,ACK_LOSS,0,0,0,true,,false,"AssertionError: acknowledged 123, recovered 1"
+bounded-s29,full,control,values,123,37224,145856,-1,0,211,complete,RECOVERED,0,0,0,,,true,
+bounded-s29,lost-write,control,values,123,37224,37224,37224,0,123,complete,RECOVERED,0,0,0,,,true,
+bounded-s29,prefix-record-boundary,control,values,123,37224,37224,37224,0,123,complete,RECOVERED,0,0,0,,,true,
+bounded-s29,prefix-header-1,control,values,123,37224,37225,37225,0,123,complete,RECOVERED,207,207,207,,,true,
+bounded-s29,prefix-header-3,control,values,123,37224,37227,37227,0,123,complete,RECOVERED,8909,8909,8909,,,true,
+bounded-s29,prefix-body,control,values,123,37224,38072,38072,0,123,complete,RECOVERED,8064,8064,8064,,,true,
+bounded-s29,prefix-before-marker,control,values,123,37224,46135,46135,0,123,complete,RECOVERED,1,1,1,,,true,
+bounded-s29,zero-record-size,hole,values,123,37224,145856,37224,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: Bad transaction size in db stream, 0, spos 37224. Stream length: 145856"
+bounded-s29,zero-record-size,hole,transaction,123,37224,145856,37224,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: Bad transaction size in db stream, 0, spos 37224. Stream length: 145856"
+bounded-s29,zero-record-time,hole,values,123,37224,145856,37232,8,211,transactions,RECOVERY_FAILURE,0,0,0,true,,false,AssertionError: wrong transaction time at 37224
+bounded-s29,zero-record-time,hole,transaction,123,37224,145856,37232,8,211,transactions,RECOVERY_FAILURE,0,0,0,true,,false,AssertionError: wrong transaction time at 37224
+bounded-s29,zero-node-size,hole,values,123,37224,145856,37984,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: bad gotDirtyCount, -783023074"
+bounded-s29,zero-node-size,hole,transaction,123,37224,145856,37984,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: bad gotDirtyCount, -783023074"
+bounded-s29,zero-node-checksum,hole,values,123,37224,145856,37990,2,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 37984, storedSum: 0, computedSum: 53588, nodeType: 30"
+bounded-s29,zero-node-checksum,hole,transaction,123,37224,145856,37990,2,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 37984, storedSum: 0, computedSum: 53588, nodeType: 30"
+bounded-s29,zero-value-512,hole,values,123,37224,145856,38072,512,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 37984, storedSum: 53588, computedSum: 22494, nodeType: 30"
+bounded-s29,zero-value-512,hole,transaction,123,37224,145856,38072,512,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 37984, storedSum: 53588, computedSum: 22494, nodeType: 30"
+bounded-s29,zero-page-4096,hole,values,123,37224,145856,40960,4096,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 37984, storedSum: 53588, computedSum: 61941, nodeType: 30"
+bounded-s29,zero-page-4096,hole,transaction,123,37224,145856,40960,4096,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 37984, storedSum: 53588, computedSum: 61941, nodeType: 30"
+bounded-s29,zero-commit-marker,hole,values,123,37224,145856,46135,1,211,transactions,RECOVERY_FAILURE,0,0,0,false,,false,DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Transaction at start pos 37224 is not committed (its last byte is 0).
+bounded-s29,zero-commit-marker,hole,transaction,123,37224,145856,46135,1,211,getTrans-target,RECOVERY_FAILURE,0,0,0,false,,false,DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Transaction at start pos 37224 is not committed (its last byte is 0).
+bounded-s29,size-grow-bitflip,corrupt-input,values,123,37224,145856,37224,4,123,complete,RECOVERED,949496,949496,949496,,,true,
+bounded-s29,lost-ack-negative,negative,values,123,37224,264,0,0,1,acknowledged-prefix,ACK_LOSS,0,0,0,true,,false,"AssertionError: acknowledged 123, recovered 1"
+meta-s11,full,control,values,123,200000,265408,-1,0,211,complete,RECOVERED,0,0,0,,,true,
+meta-s11,lost-write,control,values,123,200000,200000,200000,0,203,complete,RECOVERED,1496,1496,1496,,,true,
+meta-s11,prefix-record-boundary,control,values,123,200000,201496,201496,0,204,complete,RECOVERED,0,0,0,,,true,
+meta-s11,prefix-header-1,control,values,123,200000,201497,201497,0,204,complete,RECOVERED,199,199,199,,,true,
+meta-s11,prefix-header-3,control,values,123,200000,201499,201499,0,204,complete,RECOVERED,8901,8901,8901,,,true,
+meta-s11,prefix-body,control,values,123,200000,202232,202232,0,204,complete,RECOVERED,8168,8168,8168,,,true,
+meta-s11,prefix-before-marker,control,values,123,200000,210399,210399,0,204,complete,RECOVERED,1,1,1,,,true,
+meta-s11,zero-record-size,hole,values,123,200000,265408,201496,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: Bad transaction size in db stream, 0, spos 201496. Stream length: 265408"
+meta-s11,zero-record-size,hole,transaction,123,200000,265408,201496,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: Bad transaction size in db stream, 0, spos 201496. Stream length: 265408"
+meta-s11,zero-record-time,hole,values,123,200000,265408,201504,8,211,transactions,RECOVERY_FAILURE,0,0,0,true,,false,AssertionError: wrong transaction time at 201496
+meta-s11,zero-record-time,hole,transaction,123,200000,265408,201504,8,211,transactions,RECOVERY_FAILURE,0,0,0,true,,false,AssertionError: wrong transaction time at 201496
+meta-s11,zero-node-size,hole,values,123,200000,265408,202144,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: bad gotDirtyCount, -1852111842"
+meta-s11,zero-node-size,hole,transaction,123,200000,265408,202144,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: bad gotDirtyCount, -1852111842"
+meta-s11,zero-node-checksum,hole,values,123,200000,265408,202150,2,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 202144, storedSum: 0, computedSum: 37275, nodeType: 30"
+meta-s11,zero-node-checksum,hole,transaction,123,200000,265408,202150,2,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 202144, storedSum: 0, computedSum: 37275, nodeType: 30"
+meta-s11,zero-value-512,hole,values,123,200000,265408,202232,512,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 202144, storedSum: 37275, computedSum: 23847, nodeType: 30"
+meta-s11,zero-value-512,hole,transaction,123,200000,265408,202232,512,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 202144, storedSum: 37275, computedSum: 23847, nodeType: 30"
+meta-s11,zero-page-4096,hole,values,123,200000,265408,200704,4096,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: Bad transaction size in db stream, 0, spos 201496. Stream length: 265408"
+meta-s11,zero-page-4096,hole,transaction,123,200000,265408,200704,4096,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: Bad transaction size in db stream, 0, spos 201496. Stream length: 265408"
+meta-s11,zero-commit-marker,hole,values,123,200000,265408,210399,1,211,transactions,RECOVERY_FAILURE,0,0,0,false,,false,DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Transaction at start pos 201496 is not committed (its last byte is 0).
+meta-s11,zero-commit-marker,hole,transaction,123,200000,265408,210399,1,211,getTrans-target,RECOVERY_FAILURE,0,0,0,false,,false,DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Transaction at start pos 201496 is not committed (its last byte is 0).
+meta-s11,size-grow-bitflip,corrupt-input,values,123,200000,265408,201496,4,204,complete,RECOVERED,994208,994208,994208,,,true,
+meta-s11,lost-ack-negative,negative,values,123,200000,264,0,0,1,acknowledged-prefix,ACK_LOSS,0,0,0,true,,false,"AssertionError: acknowledged 123, recovered 1"
+meta-s29,full,control,values,123,200000,265408,-1,0,211,complete,RECOVERED,0,0,0,,,true,
+meta-s29,lost-write,control,values,123,200000,200000,200000,0,203,complete,RECOVERED,1496,1496,1496,,,true,
+meta-s29,prefix-record-boundary,control,values,123,200000,201496,201496,0,204,complete,RECOVERED,0,0,0,,,true,
+meta-s29,prefix-header-1,control,values,123,200000,201497,201497,0,204,complete,RECOVERED,199,199,199,,,true,
+meta-s29,prefix-header-3,control,values,123,200000,201499,201499,0,204,complete,RECOVERED,8901,8901,8901,,,true,
+meta-s29,prefix-body,control,values,123,200000,202232,202232,0,204,complete,RECOVERED,8168,8168,8168,,,true,
+meta-s29,prefix-before-marker,control,values,123,200000,210399,210399,0,204,complete,RECOVERED,1,1,1,,,true,
+meta-s29,zero-record-size,hole,values,123,200000,265408,201496,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: Bad transaction size in db stream, 0, spos 201496. Stream length: 265408"
+meta-s29,zero-record-size,hole,transaction,123,200000,265408,201496,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: Bad transaction size in db stream, 0, spos 201496. Stream length: 265408"
+meta-s29,zero-record-time,hole,values,123,200000,265408,201504,8,211,transactions,RECOVERY_FAILURE,0,0,0,true,,false,AssertionError: wrong transaction time at 201496
+meta-s29,zero-record-time,hole,transaction,123,200000,265408,201504,8,211,transactions,RECOVERY_FAILURE,0,0,0,true,,false,AssertionError: wrong transaction time at 201496
+meta-s29,zero-node-size,hole,values,123,200000,265408,202144,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: bad gotDirtyCount, -593165282"
+meta-s29,zero-node-size,hole,transaction,123,200000,265408,202144,4,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: bad gotDirtyCount, -593165282"
+meta-s29,zero-node-checksum,hole,values,123,200000,265408,202150,2,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 202144, storedSum: 0, computedSum: 56485, nodeType: 30"
+meta-s29,zero-node-checksum,hole,transaction,123,200000,265408,202150,2,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 202144, storedSum: 0, computedSum: 56485, nodeType: 30"
+meta-s29,zero-value-512,hole,values,123,200000,265408,202232,512,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 202144, storedSum: 56485, computedSum: 20663, nodeType: 30"
+meta-s29,zero-value-512,hole,transaction,123,200000,265408,202232,512,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamChecksumException: spos: 202144, storedSum: 56485, computedSum: 20663, nodeType: 30"
+meta-s29,zero-page-4096,hole,values,123,200000,265408,200704,4096,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: Bad transaction size in db stream, 0, spos 201496. Stream length: 265408"
+meta-s29,zero-page-4096,hole,transaction,123,200000,265408,200704,4096,-1,start,RECOVERY_FAILURE,0,0,0,false,,false,"StreamFormatException: Bad transaction size in db stream, 0, spos 201496. Stream length: 265408"
+meta-s29,zero-commit-marker,hole,values,123,200000,265408,210399,1,211,transactions,RECOVERY_FAILURE,0,0,0,false,,false,DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Transaction at start pos 201496 is not committed (its last byte is 0).
+meta-s29,zero-commit-marker,hole,transaction,123,200000,265408,210399,1,211,getTrans-target,RECOVERY_FAILURE,0,0,0,false,,false,DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Transaction at start pos 201496 is not committed (its last byte is 0).
+meta-s29,size-grow-bitflip,corrupt-input,values,123,200000,265408,201496,4,204,complete,RECOVERED,994208,994208,994208,,,true,
+meta-s29,lost-ack-negative,negative,values,123,200000,264,0,0,1,acknowledged-prefix,ACK_LOSS,0,0,0,true,,false,"AssertionError: acknowledged 123, recovered 1"
+lazy-s11,full,control,values,123,4335336,4588096,-1,0,211,complete,RECOVERED,0,0,0,,,true,
+lazy-s11,lost-write,control,values,123,4335336,4335336,4335336,0,123,complete,RECOVERED,0,0,0,,,true,
+lazy-s11,prefix-record-boundary,control,values,123,4335336,4335336,4335336,0,123,complete,RECOVERED,0,0,0,,,true,
+lazy-s11,prefix-header-1,control,values,123,4335336,4335337,4335337,0,123,complete,RECOVERED,175,175,175,,,true,
+lazy-s11,prefix-header-3,control,values,123,4335336,4335339,4335339,0,123,complete,RECOVERED,20909,20909,20909,,,true,
+lazy-s11,prefix-body,control,values,123,4335336,4336184,4336184,0,123,complete,RECOVERED,20064,20064,20064,,,true,
+lazy-s11,prefix-before-marker,control,values,123,4335336,4356247,4356247,0,123,complete,RECOVERED,1,1,1,,,true,
+lazy-s11,zero-record-size,hole,values,123,4335336,4588096,4335336,4,211,transactions,RECOVERY_FAILURE,0,0,0,false,,false,"DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Bad transaction size, 0, transPos=4335336, stream size: 4588096, transCount=0"
+lazy-s11,zero-record-size,hole,transaction,123,4335336,4588096,4335336,4,211,getTrans-target,RECOVERY_FAILURE,0,0,0,false,,false,"DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Bad transaction size, 0, transPos=4335336, stream size: 4588096, transCount=0"
+lazy-s11,zero-record-time,hole,values,123,4335336,4588096,4335344,8,211,transactions,RECOVERY_FAILURE,0,0,0,true,,false,AssertionError: wrong transaction time at 4335336
+lazy-s11,zero-record-time,hole,transaction,123,4335336,4588096,4335344,8,211,transactions,RECOVERY_FAILURE,0,0,0,true,,false,AssertionError: wrong transaction time at 4335336
+lazy-s11,zero-node-size,hole,values,123,4335336,4588096,4336096,4,211,values,RECOVERY_FAILURE,0,0,0,false,,false,"DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Bad node byte size, 0. At spos 4336096."
+lazy-s11,zero-node-size,hole,transaction,123,4335336,4588096,4336096,4,211,getTrans-target,RECOVERY_FAILURE,0,0,0,true,accepted,false,"StreamFormatException: bad gotDirtyCount, 1395852318"
+lazy-s11,zero-node-checksum,hole,values,123,4335336,4588096,4336102,2,211,values,RECOVERY_FAILURE,0,0,0,false,,false,"DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamChecksumException: spos: 4336096, storedSum: 0, computedSum: 21299, nodeType: 30"
+lazy-s11,zero-node-checksum,hole,transaction,123,4335336,4588096,4336102,2,211,getTrans-target,RECOVERY_FAILURE,0,0,0,true,accepted,false,"StreamChecksumException: spos: 4336096, storedSum: 0, computedSum: 21299, nodeType: 30"
+lazy-s11,zero-value-512,hole,values,123,4335336,4588096,4336184,512,211,values,RECOVERY_FAILURE,0,0,0,false,,false,"DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamChecksumException: spos: 4336096, storedSum: 21299, computedSum: 50480, nodeType: 30"
+lazy-s11,zero-value-512,hole,transaction,123,4335336,4588096,4336184,512,211,getTrans-target,RECOVERY_FAILURE,0,0,0,true,accepted,false,"StreamChecksumException: spos: 4336096, storedSum: 21299, computedSum: 50480, nodeType: 30"
+lazy-s11,zero-page-4096,hole,values,123,4335336,4588096,4337664,4096,211,values,RECOVERY_FAILURE,0,0,0,false,,false,"DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamChecksumException: spos: 4336096, storedSum: 21299, computedSum: 48295, nodeType: 30"
+lazy-s11,zero-page-4096,hole,transaction,123,4335336,4588096,4337664,4096,211,getTrans-target,RECOVERY_FAILURE,0,0,0,true,accepted,false,"StreamChecksumException: spos: 4336096, storedSum: 21299, computedSum: 48295, nodeType: 30"
+lazy-s11,zero-commit-marker,hole,values,123,4335336,4588096,4356247,1,211,transactions,RECOVERY_FAILURE,0,0,0,false,,false,DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Transaction at start pos 4335336 is not committed (its last byte is 0).
+lazy-s11,zero-commit-marker,hole,transaction,123,4335336,4588096,4356247,1,211,getTrans-target,RECOVERY_FAILURE,0,0,0,false,,false,DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Transaction at start pos 4335336 is not committed (its last byte is 0).
+lazy-s11,size-grow-bitflip,corrupt-input,values,123,4335336,4588096,4335336,4,211,transactions,RECOVERY_FAILURE,0,0,0,false,,false,"DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Bad item byte size, 1069488, at spos 4335336: beyond the stream's record bytes, length 4588096."
+lazy-s11,lost-ack-negative,negative,values,123,4335336,264,0,0,1,acknowledged-prefix,ACK_LOSS,0,0,0,true,,false,"AssertionError: acknowledged 123, recovered 1"
+lazy-s29,full,control,values,123,4335336,4588096,-1,0,211,complete,RECOVERED,0,0,0,,,true,
+lazy-s29,lost-write,control,values,123,4335336,4335336,4335336,0,123,complete,RECOVERED,0,0,0,,,true,
+lazy-s29,prefix-record-boundary,control,values,123,4335336,4335336,4335336,0,123,complete,RECOVERED,0,0,0,,,true,
+lazy-s29,prefix-header-1,control,values,123,4335336,4335337,4335337,0,123,complete,RECOVERED,175,175,175,,,true,
+lazy-s29,prefix-header-3,control,values,123,4335336,4335339,4335339,0,123,complete,RECOVERED,20909,20909,20909,,,true,
+lazy-s29,prefix-body,control,values,123,4335336,4336184,4336184,0,123,complete,RECOVERED,20064,20064,20064,,,true,
+lazy-s29,prefix-before-marker,control,values,123,4335336,4356247,4356247,0,123,complete,RECOVERED,1,1,1,,,true,
+lazy-s29,zero-record-size,hole,values,123,4335336,4588096,4335336,4,211,transactions,RECOVERY_FAILURE,0,0,0,false,,false,"DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Bad transaction size, 0, transPos=4335336, stream size: 4588096, transCount=0"
+lazy-s29,zero-record-size,hole,transaction,123,4335336,4588096,4335336,4,211,getTrans-target,RECOVERY_FAILURE,0,0,0,false,,false,"DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Bad transaction size, 0, transPos=4335336, stream size: 4588096, transCount=0"
+lazy-s29,zero-record-time,hole,values,123,4335336,4588096,4335344,8,211,transactions,RECOVERY_FAILURE,0,0,0,true,,false,AssertionError: wrong transaction time at 4335336
+lazy-s29,zero-record-time,hole,transaction,123,4335336,4588096,4335344,8,211,transactions,RECOVERY_FAILURE,0,0,0,true,,false,AssertionError: wrong transaction time at 4335336
+lazy-s29,zero-node-size,hole,values,123,4335336,4588096,4336096,4,211,values,RECOVERY_FAILURE,0,0,0,false,,false,"DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Bad node byte size, 0. At spos 4336096."
+lazy-s29,zero-node-size,hole,transaction,123,4335336,4588096,4336096,4,211,getTrans-target,RECOVERY_FAILURE,0,0,0,true,accepted,false,"StreamFormatException: bad gotDirtyCount, 628491294"
+lazy-s29,zero-node-checksum,hole,values,123,4335336,4588096,4336102,2,211,values,RECOVERY_FAILURE,0,0,0,false,,false,"DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamChecksumException: spos: 4336096, storedSum: 0, computedSum: 9590, nodeType: 30"
+lazy-s29,zero-node-checksum,hole,transaction,123,4335336,4588096,4336102,2,211,getTrans-target,RECOVERY_FAILURE,0,0,0,true,accepted,false,"StreamChecksumException: spos: 4336096, storedSum: 0, computedSum: 9590, nodeType: 30"
+lazy-s29,zero-value-512,hole,values,123,4335336,4588096,4336184,512,211,values,RECOVERY_FAILURE,0,0,0,false,,false,"DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamChecksumException: spos: 4336096, storedSum: 9590, computedSum: 14284, nodeType: 30"
+lazy-s29,zero-value-512,hole,transaction,123,4335336,4588096,4336184,512,211,getTrans-target,RECOVERY_FAILURE,0,0,0,true,accepted,false,"StreamChecksumException: spos: 4336096, storedSum: 9590, computedSum: 14284, nodeType: 30"
+lazy-s29,zero-page-4096,hole,values,123,4335336,4588096,4337664,4096,211,values,RECOVERY_FAILURE,0,0,0,false,,false,"DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamChecksumException: spos: 4336096, storedSum: 9590, computedSum: 6202, nodeType: 30"
+lazy-s29,zero-page-4096,hole,transaction,123,4335336,4588096,4337664,4096,211,getTrans-target,RECOVERY_FAILURE,0,0,0,true,accepted,false,"StreamChecksumException: spos: 4336096, storedSum: 9590, computedSum: 6202, nodeType: 30"
+lazy-s29,zero-commit-marker,hole,values,123,4335336,4588096,4356247,1,211,transactions,RECOVERY_FAILURE,0,0,0,false,,false,DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Transaction at start pos 4335336 is not committed (its last byte is 0).
+lazy-s29,zero-commit-marker,hole,transaction,123,4335336,4588096,4356247,1,211,getTrans-target,RECOVERY_FAILURE,0,0,0,false,,false,DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Transaction at start pos 4335336 is not committed (its last byte is 0).
+lazy-s29,size-grow-bitflip,corrupt-input,values,123,4335336,4588096,4335336,4,211,transactions,RECOVERY_FAILURE,0,0,0,false,,false,"DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamFormatException: Bad item byte size, 1069488, at spos 4335336: beyond the stream's record bytes, length 4588096."
+lazy-s29,lost-ack-negative,negative,values,123,4335336,264,0,0,1,acknowledged-prefix,ACK_LOSS,0,0,0,true,,false,"AssertionError: acknowledged 123, recovered 1"

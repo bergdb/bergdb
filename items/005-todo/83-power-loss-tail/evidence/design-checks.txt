@@ -1,0 +1,6 @@
+Framing: 5408 single-bit changes; all cuts, zero holes and meta changes rejected
+Prefix: first bad record stops recovery despite intact later record/meta
+Anchors: 64875 recovery-length cases preserve the C-based anchor
+Negative controls: D-based anchor ends at 17536, beyond recovered EOF 5000; C-based anchor ends at 640; uncapped writes invalidate L-W
+Removal: every highest-first interruption leaves a prefix; lowest-first does not
+DESIGN CHECKS OK (84560 conditions; model only, not production recovery)

@@ -1,0 +1,223 @@
+Session 3ad171d3-dacb0cb-20261102T120611-b64-r1.suite-g1-2g-r1  (3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 + working-tree diff)
+
+a-1k-b100  [write, 1 runs, workload 2190e15717386bcd]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,223.2          1,223.2          1,223.2       -
+  bytes_appended_per_user_byte                   1            1.218            1.218            1.218       -
+  commit.append.max_us                           1        110,024.0        110,024.0        110,024.0       -
+  commit.append.mean_us                          1           11.117           11.117           11.117       -
+  commit.append.p50_us                           1            8.703            8.703            8.703       -
+  commit.append.p95_us                           1           21.375           21.375           21.375       -
+  commit.append.p999_us                          1           62.975           62.975           62.975       -
+  commit.append.p99_us                           1           34.047           34.047           34.047       -
+  commits_per_s                                  1         78,464.8         78,464.8         78,464.8       -
+  gclog.pause.max_ms                             1            136.2            136.2            136.2       -
+  gclog.pause.total_ms                           1            466.1            466.1            466.1       -
+  gclog.safepoint.max_ms                         1            136.3            136.3            136.3       -
+  gclog.safepoint.total_ms                       1            466.4            466.4            466.4       -
+  heap.after_gc_mb_max                           1           40.895           40.895           40.895       -
+  puts_per_s                                     1         78,464.8         78,464.8         78,464.8       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,223.2          1,223.2          1,223.2       -
+  rec.user_index_bytes_per_put                   1            137.3            137.3            137.3       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1            1.013            1.013            1.013       -
+  rss_mb_max                                     1          1,170.3          1,170.3          1,170.3       -
+  slowest_commit_ms                              1            110.0            110.0            110.0       -
+  storage.disk_mb_max                            1            838.0            838.0            838.0       -
+  user_mb_per_s                                  1           78.779           78.779           78.779       -
+  we                                             1           0.8208           0.8208           0.8208       -
+  longest GC pauses of run1 (4 in the window, total 466.1 ms): 136.2 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 12.2 s); 127.4 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 8.9 s); 109.6 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 10.3 s); 93.0 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 7.5 s);
+  slowest commits of run1:
+    110.02 ms at 3243 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 109.6 ms; safepoint G1CollectForAllocation 109.6 ms;
+    1.53 ms at 17 ms into the phase, 0 index nodes written; overlapping: none
+    0.93 ms at 1218 ms into the phase, 0 index nodes written; overlapping: none
+    0.88 ms at 4726 ms into the phase, 1 index nodes written; overlapping: none
+    0.87 ms at 255 ms into the phase, 0 index nodes written; overlapping: none
+
+a-1k-b20  [write, 1 runs, workload 50c2ac98ea4aaeed]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,223.2          1,223.2          1,223.2       -
+  bytes_appended_per_user_byte                   1            1.218            1.218            1.218       -
+  commit.append.max_us                           1        173,121.0        173,121.0        173,121.0       -
+  commit.append.mean_us                          1           11.639           11.639           11.639       -
+  commit.append.p50_us                           1            8.511            8.511            8.511       -
+  commit.append.p95_us                           1           21.503           21.503           21.503       -
+  commit.append.p999_us                          1           76.287           76.287           76.287       -
+  commit.append.p99_us                           1           36.095           36.095           36.095       -
+  commits_per_s                                  1         73,340.3         73,340.3         73,340.3       -
+  gclog.pause.max_ms                             1            172.4            172.4            172.4       -
+  gclog.pause.total_ms                           1            798.1            798.1            798.1       -
+  gclog.safepoint.max_ms                         1            172.5            172.5            172.5       -
+  gclog.safepoint.total_ms                       1            798.6            798.6            798.6       -
+  heap.after_gc_mb_max                           1           30.409           30.409           30.409       -
+  puts_per_s                                     1         73,340.3         73,340.3         73,340.3       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,223.2          1,223.2          1,223.2       -
+  rec.user_index_bytes_per_put                   1            137.3            137.3            137.3       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1            1.026            1.026            1.026       -
+  rss_mb_max                                     1          1,211.7          1,211.7          1,211.7       -
+  slowest_commit_ms                              1            173.1            173.1            173.1       -
+  storage.disk_mb_max                            1            839.1            839.1            839.1       -
+  user_mb_per_s                                  1           73.634           73.634           73.634       -
+  we                                             1           0.8208           0.8208           0.8208       -
+  longest GC pauses of run1 (6 in the window, total 798.1 ms): 172.4 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 6.6 s); 129.1 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 9.1 s); 128.7 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 10.5 s); 124.6 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 4.3 s); 123.4 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 7.9 s);
+  slowest commits of run1:
+    173.12 ms at 2922 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 172.4 ms; safepoint G1CollectForAllocation 172.5 ms;
+    129.32 ms at 5426 ms into the phase, 1 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 129.1 ms; safepoint G1CollectForAllocation 129.3 ms;
+    0.97 ms at 627 ms into the phase, 10 index nodes written; overlapping: none
+    0.89 ms at 6085 ms into the phase, 0 index nodes written; overlapping: none
+    0.88 ms at 3884 ms into the phase, 0 index nodes written; overlapping: none
+
+a-1k-b50  [write, 1 runs, workload 347d1a4e5ae2382e]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,223.2          1,223.2          1,223.2       -
+  bytes_appended_per_user_byte                   1            1.218            1.218            1.218       -
+  commit.append.max_us                           1        100,845.0        100,845.0        100,845.0       -
+  commit.append.mean_us                          1           11.074           11.074           11.074       -
+  commit.append.p50_us                           1            8.703            8.703            8.703       -
+  commit.append.p95_us                           1           21.247           21.247           21.247       -
+  commit.append.p999_us                          1           60.671           60.671           60.671       -
+  commit.append.p99_us                           1           34.047           34.047           34.047       -
+  commits_per_s                                  1         78,362.0         78,362.0         78,362.0       -
+  gclog.pause.max_ms                             1            173.7            173.7            173.7       -
+  gclog.pause.total_ms                           1            469.4            469.4            469.4       -
+  gclog.safepoint.max_ms                         1            173.8            173.8            173.8       -
+  gclog.safepoint.total_ms                       1            469.7            469.7            469.7       -
+  heap.after_gc_mb_max                           1           37.749           37.749           37.749       -
+  puts_per_s                                     1         78,362.0         78,362.0         78,362.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,223.2          1,223.2          1,223.2       -
+  rec.user_index_bytes_per_put                   1            137.3            137.3            137.3       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.9632           0.9632           0.9632       -
+  rss_mb_max                                     1          1,221.5          1,221.5          1,221.5       -
+  slowest_commit_ms                              1            100.8            100.8            100.8       -
+  storage.disk_mb_max                            1            838.8            838.8            838.8       -
+  user_mb_per_s                                  1           78.675           78.675           78.675       -
+  we                                             1           0.8208           0.8208           0.8208       -
+  longest GC pauses of run1 (4 in the window, total 469.4 ms): 173.7 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 10.0 s); 110.7 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 13.1 s); 100.5 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 11.5 s); 84.4 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 8.4 s);
+  slowest commits of run1:
+    100.85 ms at 4244 ms into the phase, 1 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 100.5 ms; safepoint G1CollectForAllocation 100.5 ms;
+    3.42 ms at 70 ms into the phase, 0 index nodes written; overlapping: none
+    1.81 ms at 25 ms into the phase, 0 index nodes written; overlapping: none
+    1.44 ms at 242 ms into the phase, 0 index nodes written; overlapping: none
+    1.22 ms at 97 ms into the phase, 0 index nodes written; overlapping: none
+
+a-1k-x100-b100  [write, 1 runs, workload ea30c808b5b79d19]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,177.6          1,177.6          1,177.6       -
+  bytes_appended_per_user_byte                   1            1.173            1.173            1.173       -
+  commit.append.max_us                           1        346,091.0        346,091.0        346,091.0       -
+  commit.append.mean_us                          1          1,021.6          1,021.6          1,021.6       -
+  commit.append.p50_us                           1            966.7            966.7            966.7       -
+  commit.append.p95_us                           1          1,220.6          1,220.6          1,220.6       -
+  commit.append.p999_us                          1          3,899.4          3,899.4          3,899.4       -
+  commit.append.p99_us                           1          1,409.0          1,409.0          1,409.0       -
+  commits_per_s                                  1            880.2            880.2            880.2       -
+  gclog.pause.max_ms                             1            343.6            343.6            343.6       -
+  gclog.pause.total_ms                           1            891.0            891.0            891.0       -
+  gclog.safepoint.max_ms                         1            343.7            343.7            343.7       -
+  gclog.safepoint.total_ms                       1            891.7            891.7            891.7       -
+  heap.after_gc_mb_max                           1          1,268.3          1,268.3          1,268.3       -
+  puts_per_s                                     1         88,022.0         88,022.0         88,022.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,177.6          1,177.6          1,177.6       -
+  rec.user_index_bytes_per_put                   1            135.3            135.3            135.3       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1            1.032            1.032            1.032       -
+  rss_mb_max                                     1          1,745.8          1,745.8          1,745.8       -
+  slowest_commit_ms                              1            346.1            346.1            346.1       -
+  storage.disk_mb_max                            1          1,400.0          1,400.0          1,400.0       -
+  user_mb_per_s                                  1           88.374           88.374           88.374       -
+  we                                             1           0.8526           0.8526           0.8526       -
+  longest GC pauses of run1 (7 in the window, total 891.0 ms): 343.6 ms (Pause Young (Concurrent Start) (G1 Evacuation Pause) at uptime 19.1 s); 156.9 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 12.0 s); 148.7 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 16.5 s); 119.6 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 14.0 s); 118.3 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 10.3 s);
+  slowest commits of run1:
+    346.09 ms at 9970 ms into the phase, 24 index nodes written; overlapping: GC pause Pause Young (Concurrent Start) (G1 Evacuation Pause) 343.6 ms; safepoint G1CollectForAllocation 343.7 ms;
+    6.46 ms at 10123 ms into the phase, 31 index nodes written; overlapping: none
+    6.39 ms at 10085 ms into the phase, 35 index nodes written; overlapping: none
+    5.35 ms at 10335 ms into the phase, 31 index nodes written; overlapping: GC pause Pause Remark 3.8 ms; safepoint G1PauseRemark 3.9 ms;
+    4.70 ms at 10535 ms into the phase, 33 index nodes written; overlapping: none
+
+a-1k-x100-b20  [write, 1 runs, workload 573dda5d2b194027]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,177.6          1,177.6          1,177.6       -
+  bytes_appended_per_user_byte                   1            1.173            1.173            1.173       -
+  commit.append.max_us                           1        168,061.0        168,061.0        168,061.0       -
+  commit.append.mean_us                          1          1,029.9          1,029.9          1,029.9       -
+  commit.append.p50_us                           1            954.4            954.4            954.4       -
+  commit.append.p95_us                           1          1,261.6          1,261.6          1,261.6       -
+  commit.append.p999_us                          1          4,456.5          4,456.5          4,456.5       -
+  commit.append.p99_us                           1          1,802.2          1,802.2          1,802.2       -
+  commits_per_s                                  1            864.2            864.2            864.2       -
+  gclog.pause.max_ms                             1            340.0            340.0            340.0       -
+  gclog.pause.total_ms                           1          1,042.8          1,042.8          1,042.8       -
+  gclog.safepoint.max_ms                         1            340.1            340.1            340.1       -
+  gclog.safepoint.total_ms                       1          1,043.5          1,043.5          1,043.5       -
+  heap.after_gc_mb_max                           1          1,336.9          1,336.9          1,336.9       -
+  puts_per_s                                     1         86,422.0         86,422.0         86,422.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,177.6          1,177.6          1,177.6       -
+  rec.user_index_bytes_per_put                   1            135.3            135.3            135.3       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1            1.270            1.270            1.270       -
+  rss_mb_max                                     1          1,800.7          1,800.7          1,800.7       -
+  slowest_commit_ms                              1            168.1            168.1            168.1       -
+  storage.disk_mb_max                            1          1,400.2          1,400.2          1,400.2       -
+  user_mb_per_s                                  1           86.768           86.768           86.768       -
+  we                                             1           0.8526           0.8526           0.8526       -
+  longest GC pauses of run1 (8 in the window, total 1,042.8 ms): 340.0 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 16.2 s); 201.6 ms (Pause Young (Concurrent Start) (G1 Evacuation Pause) at uptime 17.8 s); 166.4 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 9.7 s); 136.7 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 13.7 s); 112.4 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 11.6 s);
+  slowest commits of run1:
+    168.06 ms at 2513 ms into the phase, 69 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 166.4 ms; safepoint G1CollectForAllocation 166.5 ms;
+    138.26 ms at 6503 ms into the phase, 27 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 136.7 ms; safepoint G1CollectForAllocation 136.7 ms;
+    84.02 ms at 786 ms into the phase, 29 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 82.5 ms; safepoint G1CollectForAllocation 82.6 ms;
+    23.24 ms at 9647 ms into the phase, 59 index nodes written; overlapping: none
+    7.76 ms at 1487 ms into the phase, 24 index nodes written; overlapping: none
+
+a-1k-x100-b50  [write, 1 runs, workload 5d03558eabc86b45]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,177.6          1,177.6          1,177.6       -
+  bytes_appended_per_user_byte                   1            1.173            1.173            1.173       -
+  commit.append.max_us                           1        143,249.0        143,249.0        143,249.0       -
+  commit.append.mean_us                          1          1,015.8          1,015.8          1,015.8       -
+  commit.append.p50_us                           1            958.5            958.5            958.5       -
+  commit.append.p95_us                           1          1,220.6          1,220.6          1,220.6       -
+  commit.append.p999_us                          1          3,227.7          3,227.7          3,227.7       -
+  commit.append.p99_us                           1          1,417.2          1,417.2          1,417.2       -
+  commits_per_s                                  1            868.4            868.4            868.4       -
+  gclog.pause.max_ms                             1            345.0            345.0            345.0       -
+  gclog.pause.total_ms                           1          1,098.0          1,098.0          1,098.0       -
+  gclog.safepoint.max_ms                         1            345.0            345.0            345.0       -
+  gclog.safepoint.total_ms                       1          1,098.5          1,098.5          1,098.5       -
+  heap.after_gc_mb_max                           1           41.943           41.943           41.943       -
+  puts_per_s                                     1         86,838.5         86,838.5         86,838.5       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,177.6          1,177.6          1,177.6       -
+  rec.user_index_bytes_per_put                   1            135.3            135.3            135.3       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1            1.253            1.253            1.253       -
+  rss_mb_max                                     1          1,853.5          1,853.5          1,853.5       -
+  slowest_commit_ms                              1            143.2            143.2            143.2       -
+  storage.disk_mb_max                            1          1,400.0          1,400.0          1,400.0       -
+  user_mb_per_s                                  1           87.186           87.186           87.186       -
+  we                                             1           0.8526           0.8526           0.8526       -
+  longest GC pauses of run1 (6 in the window, total 1,098.0 ms): 345.0 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 19.8 s); 200.6 ms (Pause Young (Concurrent Start) (G1 Evacuation Pause) at uptime 21.4 s); 177.1 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 15.0 s); 141.4 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 12.9 s); 135.3 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 17.3 s);
+  slowest commits of run1:
+    143.25 ms at 2937 ms into the phase, 25 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 141.4 ms; safepoint G1CollectForAllocation 141.5 ms;
+    136.95 ms at 7281 ms into the phase, 32 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 135.3 ms; safepoint G1CollectForAllocation 135.5 ms;
+    99.89 ms at 1084 ms into the phase, 50 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 98.5 ms; safepoint G1CollectForAllocation 98.6 ms;
+    12.86 ms at 10929 ms into the phase, 25 index nodes written; overlapping: none
+    6.91 ms at 8752 ms into the phase, 20 index nodes written; overlapping: none

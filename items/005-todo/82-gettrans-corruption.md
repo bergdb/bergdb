@@ -43,3 +43,14 @@ Log
 
 2026-11-02. Split from 005-74 during its option A implementation. The
 checksum finding remains open; no production change for it in 005-74.
+
+2026-11-02. Frans asked to distinguish expected incomplete crash tails
+from unexpected corruption before implementing this change. 005-83,
+"Power-loss tail experiment", now supplies the evidence: the `lazy`
+case opens with damaged unforced data before an intact later meta block.
+An ordinary read fails the instance; `getTrans` reports the parsing
+error, stays active and accepts another write. Its section 4 recommends
+deciding the startup recovery contract first. Making live-read error
+handling consistent would not by itself make the damaged tail recover.
+This item remains open; its implementation and that policy decision have
+not been carried out.

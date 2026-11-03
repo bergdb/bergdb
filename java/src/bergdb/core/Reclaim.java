@@ -28,8 +28,6 @@ import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;
 import bergdb.stream.MemoryStream;
 
-// NOTE Could we make this class more testable (separate from Db?).
-
 /**
  * This class handles stream space reclaim.
  * 

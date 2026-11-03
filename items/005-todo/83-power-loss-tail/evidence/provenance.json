@@ -1,0 +1,13 @@
+{
+  "main_source_commit": "3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7",
+  "initial_source_commit": "0e61856",
+  "full_run_directory": "/private/tmp/bergdb-005-83.dmAq1k/final-current",
+  "regression_run_directory": "/private/tmp/bergdb-005-83.dmAq1k/regression-current",
+  "full_run_exit": 0,
+  "require_recovery_exit": 1,
+  "require_recovery_failure_expected": true,
+  "refused_start_source": "/Users/f/fl/bench/012/14-out/probes/refused-start-writes/db",
+  "physical_power_cycles": 0,
+  "production_files_modified_by_experiment": [],
+  "archived_row_tables": "CSV, lossless conversion of the run TSV tables"
+}

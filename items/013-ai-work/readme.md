@@ -68,3 +68,11 @@ the chat's table extended with both response timings and the Sonnet and
 Haiku configurations discussed, refreshed from AA Intelligence Index
 v5.0, with dated sources and the distinction between API-equivalent cost
 and subscription usage.
+
+2026-11-03. Effort xhigh for everything, the coordinator in every mode
+and every subagent, at Frans's request ("Effort level should be xhigh by
+default for everything unless explicitely told by Frans to use something
+else. If usage is tight or limit, use effort level High. Do not use
+Medium."): high when usage is tight or limit, another level only at
+Frans's word, never medium (013-02, section 9; the skill; 013-01,
+section 4). This replaces max unattended and max for hard problems.

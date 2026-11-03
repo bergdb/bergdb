@@ -1,0 +1,3 @@
+       6 scenarios from b64-r1.suite
+CPU idle before the runs: 83.54%
+performance.sh: the machine is not quiet (83.54% idle): stop other jobs, or FORCE=1 (the results are then not a reference)

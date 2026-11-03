@@ -51,7 +51,8 @@ Two things make it work:
 
 1. **Read the current state:**
    * `items/readme.md`;
-   * the Open table of `items/005-todo/readme.md`;
+   * the Open tables of `items/015-todo/readme.md` and
+     `items/005-todo/readme.md`;
    * the principles, `items/010-principles/01-principles.md`;
    * `news.md`, `git log`, `git status`;
    * which other sessions are working and on what. In Claude Code,
@@ -112,9 +113,9 @@ Two things make it work:
     too.
 * **Subagents.**
   * At most the number Frans allows (4 in 006-09).
-  * Set the effort on every call: max for hard problems (Lean proofs,
-    concurrency, algorithm design) or when usage is plentiful; high for
-    mechanical work or when usage is tight.
+  * Set the effort on every call: xhigh, or high when usage is tight
+    (013-02, section 9). Another level only when Frans asks for it; never
+    medium.
   * Each brief names the item, the clone, the files in the main tree the
     agent may write (only its own item's), the hard stop time, and the
     length of its report.
@@ -148,7 +149,7 @@ Two things make it work:
 * **Check, then commit.** The lead session reads each report and checks
   the claims that matter: the gate output, the diff, the numbers. It
   copies the work into `main`, gates the combined tree and commits. A
-  failure found on the way is fixed, or registered as a new 005 entry for
+  failure found on the way is fixed, or registered as a new 015 entry for
   Frans.
 * **Prepare the night's steps.** Every timed run is a script in its item's
   directory (`night/…sh`), as described in section 7.
@@ -313,7 +314,7 @@ closed.
   that parses the result would have found it in the day.
 * **Busy sessions of Frans's** count as not quiet, rightly. Plan the
   block's length with some slack.
-* **Write a decision entry** (Kind: decide, in 005) when the night finds an
+* **Write a decision entry** (Kind: decide, in 015) when the night finds an
   API question. In 006-09, `BryanRepro` showed one: a start right after
   `stop()`. The test was fixed at once and 005-63 registered for Frans,
   instead of the session deciding by itself.

@@ -273,3 +273,19 @@ forces are small, most of it is the power-loss tester's new mode and the
 gates. M to L if it needs a checksum per record. B is M or more, through
 `StorageManager`, the rules and the API. After 005-46; the replica side
 after 005-11.
+
+
+Follow-up: tail-hole experiment
+-------------------------------
+
+2026-11-02. The proposed hole experiment has been run with today's
+per-append forces still enabled, as 005-83, "Power-loss tail experiment".
+All 56 truncated-prefix or undamaged controls recover, while all 56
+hole images fail the readable-prefix oracle at startup or a later read.
+Every admissible image preserves the already-forced prefix and durable
+names; these are modeled persistence images, not physical power cycles.
+The one-unforced-write concern above is therefore reproduced in the
+tested fault model. The new durability mode remains unimplemented; a
+hole-tolerant recovery design is open before either mode changes. On
+2026-11-03 the correction/contract investigation moved from 005-83 to
+014-01; the experiment and evidence remain at their original location.

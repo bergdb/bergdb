@@ -79,8 +79,9 @@ its number from the main tree right before writing it.
 ### `attended`
 
 1. `date`. Delete the unattended check-in and any one-off night check-ins
-   (CronList, CronDelete); set the attended one. Ask Frans to type
-   `/effort xhigh` (section "Effort").
+   (CronList, CronDelete); set the attended one. If the session's effort
+   is not the one section "Effort" gives, ask Frans to type the
+   `/effort` command for it.
 2. Stop the watchdog: `kill $(cat STATE_DIR/watchdog.pid)`.
 3. Set the mode in the state file.
 4. If Frans was away, give a summary of at most ten lines:
@@ -103,9 +104,9 @@ UNTIL is when Frans is back, such as `07:00` (the next one) or
 3. Start the watchdog until UNTIL (section "The watchdog").
 4. Delete the attended check-in; set the unattended one, without night
    hours if there is a quiet block. Write the job IDs in the state file.
-5. Set the mode: `unattended until YYYY-MM-DD HH:MM`. Unless the usage
-   level is `tight` or `limit`, ask Frans to type `/effort max` before he
-   goes (section "Effort").
+5. Set the mode: `unattended until YYYY-MM-DD HH:MM`. If the session's
+   effort is not the one section "Effort" gives, ask Frans to type the
+   `/effort` command for it before he goes.
 6. Check that the session's permission mode will not stop for prompts.
    If it may, tell Frans before he leaves.
 7. Confirm in two or three lines: what runs, until when, and when he
@@ -123,7 +124,7 @@ work goes on with something else.
    * finish it: gate it, then send today's coordinator the files, your
      hunks of shared files, and the gate results, and let it commit;
    * or hand it over: write its State note in its item, then send today's
-     coordinator the task and the item (or register a 005 entry).
+     coordinator the task and the item (or register a 015 entry).
 3. Write the plan's Outcome. Add a `news.md` entry if anything changed
    since the morning summary.
 4. Delete all check-ins (CronList, CronDelete); stop the watchdog. Set
@@ -182,10 +183,10 @@ gone.
    is this session's). Update the process ID.
 2. Set the check-in for the mode again. Restart the watchdog if the mode
    is unattended and its process is gone. A new process starts at the
-   settings' effort (xhigh); if the mode is unattended, ask Frans to type
-   `/effort max` (section "Effort").
+   settings' effort (xhigh); if the usage level is `tight` or `limit`,
+   ask Frans to type `/effort high` (section "Effort").
 3. Restart each subagent listed as running with a new agent, from its
-   item's State note, at the effort recorded.
+   item's State note, at the effort section "Effort" gives now.
 4. Write the gap in the events and in the plan's progress. Tell Frans in
    a few lines, or write a `news.md` entry if unattended.
 
@@ -211,26 +212,34 @@ state file. Delete the old job when the mode changes.
 Effort
 ------
 
-| Mode | The session's effort |
+xhigh for everything, the session in every mode and every subagent,
+unless Frans says otherwise (Frans, 2026-11-03). High when the usage
+level is `tight` or `limit`. Never medium or low.
+
+| Usage level | The session and subagents |
 |---|---|
-| Attended | xhigh: quicker answers (Frans, 2026-10-28) |
-| Unattended | max, unless the usage level is `tight` or `limit`, then xhigh |
-| Closing | xhigh |
+| `plenty`, `normal` | xhigh |
+| `tight`, `limit` | high |
+
+Another level, such as max for one task, only when Frans asks for it.
+Write his word in the day's plan and on the state file's Effort line.
 
 `/effort LEVEL` sets it for this session only; it does not touch
 `~/.claude/settings.json`. Claude Code sends the effort inside the
 conversation (per-turn effort), so a switch keeps the prompt cache. The
-settings' default for Opus 5.5 is xhigh, so a new session starts there.
-A max turn costs about twice an xhigh one (Claude Code's effort cost
-index for Opus 5: high 1, xhigh 1.66, max 3.44).
+settings' default for Opus 5.5 is xhigh, so a new session starts there,
+and a switch of mode needs no switch of effort. Claude Code's effort cost
+index for Opus 5: high 1, xhigh 1.66, max 3.44.
 
 The coordinator cannot switch its own effort. A scheduled prompt
 (CronCreate) of `/effort xhigh` reached the model as plain text, not as
-the command (tested 2026-10-28, 13:03). So Frans switches it: ask him, in
-the last line of the switch, to type `/effort max` (going unattended) or
-`/effort xhigh` (back), as a message of its own. If he forgets, little is
-lost: the heavy work is the subagents', whose effort the coordinator sets
-on every call. Write the level in the state file.
+the command (tested 2026-10-28, 13:03). So Frans switches it: when the
+level turns `tight` or `limit` while he is there, ask him, in the last
+line of the turn, to type `/effort high`, as a message of its own; when
+it is back to `plenty` or `normal`, `/effort xhigh`. While he is away, the
+session's effort stays where it is. Little is lost: the heavy work is the
+subagents', whose effort the coordinator sets on every call. Write the
+level in the state file.
 
 
 Usage
@@ -248,15 +257,13 @@ the thresholds.
 
 | Level | The coordinator |
 |---|---|
-| `plenty` | max where it helps, up to the agent limit |
-| `normal` | max for hard problems only (Lean proofs, concurrency, algorithm design), high otherwise |
-| `tight` | high only, at most two agents at a time, puts off what can wait, tells Frans once if he is there |
+| `plenty`, `normal` | xhigh, up to the agent limit |
+| `tight` | high only, at most two agents at a time, puts off what can wait, tells Frans once if he is there and asks for `/effort high` |
 | `limit` | starts nothing; sets a one-off check-in (CronCreate, not recurring) 3 minutes after the reset the line gives; writes the limit in the events |
 | `unknown` | keeps the last known level; the next check-in reads again |
 
-Run it at the start, at every check-in, and before starting an agent at
-max or a second agent at a time, if the last reading is more than 20
-minutes old. Frans's word overrides the level ("usage is tight", "plenty
+Run it at the start, at every check-in, and before starting a second
+agent at a time, if the last reading is more than 20 minutes old. Frans's word overrides the level ("usage is tight", "plenty
 of usage") until he says otherwise; write it on the Usage line.
 
 A weekly limit that is reached stops the work until its reset, days away:
@@ -282,17 +289,17 @@ Rules
   builds, gates, Lean, measurements and reviews as background commands or
   in subagents, never in the foreground.
 * **Subagents.**
-  * Use background agents (Agent). Pass `effort` on every call: `max` for
-    hard problems (Lean proofs, concurrency, algorithm design) or when
-    usage is plentiful; `high` for mechanical work or when usage is
-    tight.
+  * Use background agents (Agent). Pass `effort` on every call: `xhigh`,
+    or `high` when the usage level is `tight` or `limit` (section
+    "Effort"). Another level only when Frans asks for it; never `medium`
+    or `low`.
   * Write the agent's name or ID, task, item, clone, effort and output
     file in the state file at once.
   * The brief: as for a peer who knows nothing of the conversation; it
     names the item, the clone, the files it may write, when to stop, and
     a report of about 20 lines, the rest in the item's State note.
-* **The session's effort follows the mode** (section "Effort"): xhigh
-  attended, max unattended.
+* **The session's effort is xhigh in every mode**, high when the usage
+  level is `tight` or `limit` (section "Effort").
 * **Usage.** Pace by `USAGE`'s level (section "Usage"), or by Frans's
   word when he gave one. A usage limit reached goes into the events with
   its times.

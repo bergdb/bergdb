@@ -1,0 +1,9 @@
+opened=false originalBytes=1059016 finalBytes=2116169 written=1057153 growth=1057153 originalBytesPreserved=true guardFired=false
+bergdb.storage.StreamFormatException: Bad lastByte: -105
+	at bergdb.core.NodeStream$TransIterator.next(NodeStream.java:387)
+	at bergdb.core.Db.getStartupPosFromLastTransaction(Db.java:763)
+	at bergdb.core.Db.handleStartParams(Db.java:733)
+	at bergdb.core.Db.startInner(Db.java:677)
+	at bergdb.core.Db.start(Db.java:608)
+	at bergdb.core.Db.start(Db.java:570)
+	at bergdb.core.RefusedStartProbe.main(RefusedStartProbe.java:24)

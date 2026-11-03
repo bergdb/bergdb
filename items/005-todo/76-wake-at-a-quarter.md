@@ -1,11 +1,11 @@
 005-76. Fix: BufferedStream checks the quarter-full rule only when its thread wakes
 ==================================================================================
 
-Status: open. Kind: fix. Created 2026-10-29.
+Status: done. Kind: fix. Created 2026-10-29. Closed 2026-11-02.
 
 Registered at Frans's request (2026-10-29, 09:36, when he set the default
 buffer time to 50 ms in 005-64): "Also register a 005 fix for the rest."
-Registered only; not implemented.
+Implementation authorized by Frans on 2026-11-02: "Fix 005-76 as proposed."
 
 
 The issue
@@ -91,3 +91,138 @@ S: a few lines and a test, plus the runs on F53 (quiet) and s1. Builds on
 005-13 (the sweep that first saw it at 200 ms), 005-14 (the idle wait,
 whose notify in `append` is the model), 005-48 (group commit) and 005-64
 (the runs and question 5's rules).
+
+
+Implementation and checks, 2026-11-02
+-------------------------------------
+
+An append now notifies once when `pStart - cStart` crosses from below a
+quarter to at least a quarter, including equality. The idle notification
+stays. The consumer also checks the quarter before entering its timed
+wait: a notification during a flush is not saved, and a half-buffer flush
+may leave a quarter ready without any new crossing. A notification alone
+would leave both cases waiting for the timer.
+
+Three regressions were added first. All three fail on the previous code
+([before-tests.txt](76-wake-at-a-quarter/runs/before-tests.txt)) and pass
+with the fix, with assertions on and off:
+
+* An append of 255 bytes followed by one byte in a 1,024-byte buffer wakes
+  a consumer already in its timed wait. The timer's wait is 15 s; the
+  test allows 2 s for the notification and checks the bytes written.
+* A blocked first flush lets another quarter arrive while the buffered
+  amount is already above a quarter. After release, the second flush
+  starts without a timer wait. A sync request starts only the first flush.
+* A writer appends 512 blocks of 1 KB, spaced 1 ms apart, to a 256 KB
+  buffer with a 4 s buffer time, over a stream with a 3 ms append delay.
+  Before the fix it waits for room twice, for 1,524 ms in all; after, zero
+  waits. It checks every byte after closing, across ring-buffer wraps.
+
+`before-commit.sh`: BEFORE COMMIT OK, 1,093 unit tests and 78 f-tests.
+Full `level2.sh`: LEVEL 2 OK, 70 conformance traces. Full `level3.sh`:
+LEVEL 3 OK, 25 reclaim conformance traces, 440 cold recoveries under the
+power-loss model, and 60 s of interrupt stress. Level 3 ran on an
+isolated copy of the candidate sources, to avoid rebuilding Level 2's
+classpath while it ran; all 464 input files compared byte for byte with
+the working tree afterward. The summaries are preserved in `runs/`.
+
+The preserved before/after snapshots include the pre-existing, unrelated
+Reclaim worktree change on both sides; this task changes only
+BufferedStream's Java code. Only the changed snapshot was timed in these
+performance runs; the earlier measurements cited above are historical
+005-64 results. The digest reference is committed `main`, `3ad171d`.
+
+StreamDigest's 36 logical streams are identical: length, decided retained
+position, first available lookup time, and SHA-256 from the decided cut.
+The strict comparison reports 35 of 36 identical, because `l3-node62
+reads` physically cuts at 8,000,000 in the reference and 9,000,000 after
+the fix; both decide 9,164,760 and have the same retained bytes. Physical
+cuts depend on flush timing (005-72), which this fix changes. The raw
+outputs and both comparisons are preserved in
+[runs/](76-wake-at-a-quarter/runs/); this is not a claim that physical
+cut positions or hashes including already-reclaimed bytes are identical.
+
+The performance check uses 005-64's runners and harness, restricted to
+the two workloads named in this entry's completion criteria: `a-1k` and
+`a-1k-x100`, at 20, 50 and 100 ms. Their six original suite lines are in
+[throughput.suite](76-wake-at-a-quarter/throughput.suite).
+[mixed.txt](76-wake-at-a-quarter/mixed.txt) is intentionally empty; mixed
+and durable writers were not part of this fix's performance criterion.
+Three rounds rotate the buffer-time order, 20/50/100, 50/100/20,
+100/20/50. The s1 run uses an isolated new directory,
+`/opt/bergdb-bench/005-76-20261102`, a 2 GB heap and FORCE=0. F53's timed
+runs follow the correctness checks, with no overlapping test work.
+
+F53's wrapper is [run-f53.sh](76-wake-at-a-quarter/run-f53.sh), taking
+`BUILD=005-76-after-20261102`; preparation used 005-64's
+`night/prepare.sh` with that BUILD and CLONE set to this repository. Its
+initial attempts were refused at the 90 % idle admission check, including
+after adding a 30 s cooldown after the force probe. The actual admitted
+rotations ran the same `performance.sh reference` directly, with its quiet
+check enforced, FORCE=0, the same CPU agent, G1 and an 8 GB heap. The first
+round's setup was traced to investigate the refusals; it admitted at
+92.29 % idle. No timed run overlapped another run from this task. All
+refused attempts are preserved, along with the admitted sessions, in
+`runs/`; they are not included in the metric tables.
+For s1, the same preparation made the package, whose `night/bufftime.suite`
+and `night/mixed.txt` were replaced by the two files above before invoking
+005-64's `night/run-s1.sh`, with ROUNDS=3, BUDGET=0, the new REMOTE above
+and OUT set to this entry's `runs/s1/`. Its check parsed all six rows,
+three runs per row. The JSON metric records were fetched separately from
+the original `write.result.json` files. `summarize.py` makes compact tables
+from those records; all other metrics remain in the JSON, and the full
+sessions remain in Java's ignored build directory on each machine.
+
+s1's results
+------------
+
+All three rounds started at 100 % idle CPU, with FORCE=0. Medians:
+
+| workload  | buffer ms | puts/s | append p99.9 ms |
+|---|---|---|---|
+| a-1k      | 20  | 81,422 | 0.055 |
+| a-1k      | 50  | 80,209 | 0.061 |
+| a-1k      | 100 | 78,372 | 0.063 |
+| a-1k-x100 | 20  | 86,511 | 3.736 |
+| a-1k-x100 | 50  | 87,018 | 3.228 |
+| a-1k-x100 | 100 | 88,022 | 3.916 |
+
+At 50 and 100 ms, single-put throughput is 1.5 and 3.7 % below 20 ms;
+the three-run ranges overlap. The 100-put workload is 0.6 and 1.7 %
+faster. The earlier 13 to 16 % throughput penalty at 100 ms is not
+reproduced. Its 100-put p99.9 is now 3.9 ms, versus 24.6 ms in 005-64;
+it stays within the current 20 ms runs' range, 2.5 to 4.5 ms. This is a
+comparison with the historical report, not a new before/after benchmark
+on the same base commit. Full ranges and raw metrics are in
+[runs/s1/](76-wake-at-a-quarter/runs/s1/).
+
+
+F53's results and outcome
+-------------------------
+
+The three admitted rounds started at 92.29, 93.40 and 91.74 % idle CPU,
+with FORCE=0. Medians:
+
+| workload  | buffer ms | puts/s  | append p99.9 ms |
+|---|---|---|---|
+| a-1k      | 20  | 101,453 | 0.029 |
+| a-1k      | 50  | 102,116 | 0.029 |
+| a-1k      | 100 | 103,485 | 0.029 |
+| a-1k-x100 | 20  | 109,714 | 1.270 |
+| a-1k-x100 | 50  | 112,021 | 1.073 |
+| a-1k-x100 | 100 | 110,882 | 1.139 |
+
+At 50 and 100 ms, single-put throughput is 0.7 and 2.0 % above 20 ms;
+the 100-put workload is 2.1 and 1.1 % faster. There is no measured
+throughput penalty at the longer buffer times. Its 100-put p99.9 at
+100 ms is 1.14 ms, versus 16.5 ms in 005-64's historical report. The full
+ranges and raw metrics are in [runs/f53/](76-wake-at-a-quarter/runs/f53/).
+Both machines' checks parsed all six rows, with three runs per row.
+
+Closed: the crossing notification and pre-wait quarter check fix the
+polling delay, the regressions fail before and pass after, the full
+correctness checks pass, and the performance runs no longer reproduce
+005-64's 100 ms penalty. The StreamDigest completion criterion is met for
+all 36 logical streams from the decided cut; the one physical-cut
+difference in the strict comparison is documented above, not suppressed.
+The buffer time stays 50 ms. No API or format change; C unchanged.

@@ -1,0 +1,6 @@
+a-1k-b20       write  1  n=100000 valsize=1000 retain=inf ops=500000 bufftime=20
+a-1k-b50       write  1  n=100000 valsize=1000 retain=inf ops=500000 bufftime=50
+a-1k-b100      write  1  n=100000 valsize=1000 retain=inf ops=500000 bufftime=100
+a-1k-x100-b20  write  1  n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=20
+a-1k-x100-b50  write  1  n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=50
+a-1k-x100-b100 write  1  n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=100

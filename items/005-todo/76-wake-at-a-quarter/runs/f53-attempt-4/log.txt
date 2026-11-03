@@ -1,0 +1,3 @@
+12:24:03 round 1 of 3, buffer times in the order 20 50 100
+    CPU idle before the runs: 83.12%
+12:24:06 performance.sh found the machine not quiet; stopped

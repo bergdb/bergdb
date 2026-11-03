@@ -1,0 +1,39 @@
+
+======== NanotestForBergDB: unit ========
+On f53 261102 12:03, OpenJDK 64-Bit Server VM 27
+bergdb.storage.BufferedStream .........FAILED! bergdb.storage.BufferedStream.testQuarterAvoidsRoomWaits
+java.lang.AssertionError: waits for room in the write buffer 2, 1523.9 ms in all; longest at uptime 2.494s (846.6 ms) 1.485s (677.3 ms), expected true, but was false.
+	at bergdb.nanotest.Assert.assertTrue(Assert.java:357)
+	at bergdb.storage.BufferedStream.testQuarterAvoidsRoomWaits(BufferedStream.java:835)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+FAILED! bergdb.storage.BufferedStream.testQuarterBacklogDoesNotWait
+java.lang.AssertionError: the quarter-full backlog waited for the timer, expected true, but was false.
+	at bergdb.nanotest.Assert.assertTrue(Assert.java:357)
+	at bergdb.storage.BufferedStream.testQuarterBacklogDoesNotWait(BufferedStream.java:803)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+FAILED! bergdb.storage.BufferedStream.testQuarterWakesConsumer
+java.lang.AssertionError: the quarter-full append did not wake the consumer, expected true, but was false.
+	at bergdb.nanotest.Assert.assertTrue(Assert.java:357)
+	at bergdb.storage.BufferedStream.testQuarterWakesConsumer(BufferedStream.java:759)
+	at java.base/jdk.internal.reflect.DirectMethodHandleAccessor.invoke(DirectMethodHandleAccessor.java:104)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:583)
+	at bergdb.nanotest.TestRunner.invokeTestMethod(TestRunner.java:131)
+	at bergdb.nanotest.TestRunner.runClassTests(TestRunner.java:98)
+	at bergdb.nanotest.TestRunner.run(TestRunner.java:59)
+	at bergdb.dev.NanotestForBergDB.go(NanotestForBergDB.java:84)
+	at bergdb.dev.Unit.main(Unit.java:16)
+...........
+bergdb.dev.NanotestForBergDB .
+FAILURE, total: 24, failed: 3. Time: 7.8 s.

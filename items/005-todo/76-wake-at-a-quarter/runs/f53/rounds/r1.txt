@@ -1,0 +1,862 @@
+++ dirname stress/performance.sh
++ cd stress/..
+++ pwd
++ JAVADIR=/Users/f/fl/repos/bergdb/java
+++ cd ..
+++ pwd
++ ROOT=/Users/f/fl/repos/bergdb
++ PERF=/Users/f/fl/repos/bergdb/java/build/perf
++ DATA=/Users/f/fl/repos/bergdb/java/build/perf/data
++ '[' -n /opt/homebrew/opt/openjdk ']'
++ JAVA=/opt/homebrew/opt/openjdk/bin/java
++ JAVAC=/opt/homebrew/opt/openjdk/bin/javac
++ JAR=/opt/homebrew/opt/openjdk/bin/jar
++ export JAVAC JAR
++ GC=g1
++ HEAP=8g
++ RUNS=
++ ONLY=
++ OSCACHE=warm
++ COOLDOWN=5
++ FORCE=0
++ KEEPDATA=0
++ THRESHOLDS=/Users/f/fl/repos/bergdb/java/bench/thresholds.json
++ SRCPATHS='java/src java/src-dev java/src-icu java/stress java/build.sh java/in'
++ HARNESS_FILES='PerfUtil.java Perf.java PerfTool.java'
++ case $GC in
++ GCFLAGS=-XX:+UseG1GC
++ JVMFLAGS='-XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar'
++ main reference admission-diagnostic
++ COMMANDLINE='reference admission-diagnostic'
++ MODE_SMOKE=0
++ '[' 2 -ge 1 ']'
++ cmd=reference
++ shift
++ case $cmd in
++ '[' reference = quick ']'
+++ resolve_build 005-76-after-20261102
+++ case $1 in
+++ '[' -d /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102 ']'
+++ echo /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102
++ b=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102
++ prepare_target R /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102
++ tag=R
++ bdir=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102
++ '[' -f /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/identity.env ']'
++ '[' -f /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar ']'
++ bjar=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar
+++ sha256
++++ for f in '$HARNESS_FILES'
++++ echo /Users/f/fl/repos/bergdb/java/stress/PerfUtil.java
++++ for f in '$HARNESS_FILES'
++++ echo /Users/f/fl/repos/bergdb/java/stress/Perf.java
++++ for f in '$HARNESS_FILES'
++++ echo /Users/f/fl/repos/bergdb/java/stress/PerfTool.java
+++ shasum -a 256
+++ cut '-d ' -f1
+++ cat /Users/f/fl/repos/bergdb/java/stress/PerfUtil.java /Users/f/fl/repos/bergdb/java/stress/Perf.java /Users/f/fl/repos/bergdb/java/stress/PerfTool.java
++ hsha=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f
+++ echo fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f
+++ cut -c1-12
++ hclasses=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c
++ '[' '!' -d /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c ']'
++ eval 'R_CP="/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c"'
+++ R_CP=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c
++ eval 'R_BUILD="/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102"'
+++ R_BUILD=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102
++ eval 'R_HSHA="fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f"'
+++ R_HSHA=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f
+++ suite_file
+++ case ${SUITE:-principal} in
+++ '[' -f /Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite ']'
+++ echo /Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite
++ sf=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite
++ check_scenarios /Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite
+++ scenarios /Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite
+++ wc -l
+++ grep -v '^[[:space:]]*#' /Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite
+++ grep -v '^[[:space:]]*$'
+++ read -r name mode runs props
+++ '[' -n '' ']'
+++ echo 'a-1k-b20 write 1 n=100000 valsize=1000 retain=inf ops=500000 bufftime=20'
+++ read -r name mode runs props
+++ '[' -n '' ']'
+++ echo 'a-1k-b50 write 1 n=100000 valsize=1000 retain=inf ops=500000 bufftime=50'
+++ read -r name mode runs props
+++ '[' -n '' ']'
+++ echo 'a-1k-b100 write 1 n=100000 valsize=1000 retain=inf ops=500000 bufftime=100'
+++ read -r name mode runs props
+++ '[' -n '' ']'
+++ echo 'a-1k-x100-b20 write 1 n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=20'
+++ read -r name mode runs props
+++ '[' -n '' ']'
+++ echo 'a-1k-x100-b50 write 1 n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=50'
+++ read -r name mode runs props
+++ '[' -n '' ']'
+++ echo 'a-1k-x100-b100 write 1 n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=100'
+++ read -r name mode runs props
++ n='       6'
++ '[' '       6' -gt 0 ']'
+++ basename /Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite
++ echo '       6 scenarios from throughput.suite'
+       6 scenarios from throughput.suite
++ quiet_check
++ mkdir -p /Users/f/fl/repos/bergdb/java/build/perf/data
+++ df -Pk /Users/f/fl/repos/bergdb/java/build/perf/data
+++ tail -1
+++ awk '{print $4}'
++ freekb=461125952
++ '[' 461125952 -lt 30000000 ']'
+++ uname -s
++ '[' Darwin = Darwin ']'
+++ top -l 2 -n 0 -s 2
+++ grep 'CPU usage'
+++ tail -1
+++ sed -e 's/.* \([0-9.]*\)% idle.*/\1/'
++ idle=92.29
++ echo 'CPU idle before the runs: 92.29%'
+CPU idle before the runs: 92.29%
++ '[' -n 92.29 ']'
++ awk 'BEGIN { exit !(92.29 < 90) }'
++ start_caffeinate
++ command -v caffeinate
++ new_session R /Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite /Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite admission-diagnostic
++ tag=R
++ suitefile=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite
++ suitename=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite
++ label=admission-diagnostic
++ eval 'bdir=$R_BUILD; hsha=$R_HSHA; cp=$R_CP'
+++ bdir=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102
+++ hsha=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f
+++ cp=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c
++ caffeinate -i -w 81698
++ . /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/identity.env
+++ COMMIT=3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7
+++ BRANCH=main
+++ DIRTY=true
+++ DIFFSHA=acb0cbc1e05461a7f4a02868f66d6453c0884527265a8e0a1fa04f837e3681ea
+++ MANIFEST=27684dbe7f33789cb6bcc2e823628ab21406d96792020c66154c52a4851d22d3
+++ JARSHA=394064baf0fe356190ec1fd8d5c15edc96565c0e659323e5422816b7ebae28e6
+++ BUILDLABEL=005-76-after-20261102
+++ BUILTAT=2026-11-02T12:05:17+0100
+++ date +%Y%m%dT%H%M%S
++ stamp=20261102T123102
+++ echo 3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7
+++ cut -c1-8
++ short=3ad171d3
++ '[' true = true ']'
+++ echo acb0cbc1e05461a7f4a02868f66d6453c0884527265a8e0a1fa04f837e3681ea
+++ cut -c1-6
++ short=3ad171d3-dacb0cb
++ sid=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g
++ '[' -n admission-diagnostic ']'
++ sid=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic
++ sdir=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic
++ '[' -e /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic ']'
++ mkdir -p /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic
+++ grep -m1 'TRACE_VERSION =' /Users/f/fl/repos/bergdb/java/stress/Perf.java
+++ sed -e 's/[^0-9]*\([0-9]*\).*/\1/'
++ traceversion=1
++ CP=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c
++ machine_facts
+++ uname -s
++ '[' Darwin = Darwin ']'
+++ sysctl -n hw.model
++ echo machine.model=MacBookPro18,3
+++ sysctl -n machdep.cpu.brand_string
++ echo 'machine.cpu=Apple M1 Pro'
+++ sysctl -n hw.ncpu
++ echo machine.cores=10
+++ sysctl -n hw.memsize
++ echo machine.memBytes=34359738368
+++ sw_vers -productVersion
+++ sw_vers -buildVersion
++ echo 'machine.osBuild=27.0.1 26A434'
+++ pmset -g batt
+++ head -1
+++ tr -d ''\'''
++ echo 'machine.power=Now drawing from AC Power'
+++ pmset -g therm
+++ grep -i -m1 -E 'warning|cpu_'
+++ tr -s ' '
++ echo 'machine.thermal=Note: No thermal warning level has been recorded'
+++ uname -sr
++ echo 'machine.kernel=Darwin 27.0.0'
+++ hostname -s
++ echo machine.host=f53
++ mkdir -p /Users/f/fl/repos/bergdb/java/build/perf/data
+++ df -P /Users/f/fl/repos/bergdb/java/build/perf/data
+++ tail -1
+++ awk '{print $NF}'
++ mp=/System/Volumes/Data
++ echo machine.dataVolume=/System/Volumes/Data
+++ mount
+++ grep ' on /System/Volumes/Data '
+++ head -1
+++ sed -e 's/.*(\([^,)]*\).*/\1/'
++ echo machine.fsType=apfs
+++ date +%Y-%m-%dT%H:%M:%S%z
+++ basename /Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite
+++ sha256
+++ shasum -a 256
+++ cut '-d ' -f1
+++ /opt/homebrew/opt/openjdk/bin/java -version
+++ tr '\n' ';'
++ set -- id=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic createdAt=2026-11-02T12:31:02+0100 label=admission-diagnostic 'command=stress/performance.sh reference admission-diagnostic' suite.name=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite suite.file=throughput.suite suite.sha256=5eea4fbb308833f7a651b6265980b4c5734ef7932c46bcd181c632b8b0b298d0 runsOverride=none only=all source.commit=3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 source.branch=main source.dirty=true source.diffSha256=acb0cbc1e05461a7f4a02868f66d6453c0884527265a8e0a1fa04f837e3681ea source.manifestSha256=27684dbe7f33789cb6bcc2e823628ab21406d96792020c66154c52a4851d22d3 source.jarSha256=394064baf0fe356190ec1fd8d5c15edc96565c0e659323e5422816b7ebae28e6 source.buildLabel=005-76-after-20261102 source.builtAt=2026-11-02T12:05:17+0100 source.buildDir=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102 harness.sha256=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f harness.traceVersion=1 jvm.java=/opt/homebrew/opt/openjdk/bin/java 'jvm.flags=-XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g' jvm.gc=g1 jvm.heap=8g 'jvm.version=openjdk version "27" 2026-09-15;OpenJDK Runtime Environment Homebrew (build 27);OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing);' osCache=warm cooldownSec=5
++ IFS=
++ read -r fact
++ set -- id=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic createdAt=2026-11-02T12:31:02+0100 label=admission-diagnostic 'command=stress/performance.sh reference admission-diagnostic' suite.name=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite suite.file=throughput.suite suite.sha256=5eea4fbb308833f7a651b6265980b4c5734ef7932c46bcd181c632b8b0b298d0 runsOverride=none only=all source.commit=3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 source.branch=main source.dirty=true source.diffSha256=acb0cbc1e05461a7f4a02868f66d6453c0884527265a8e0a1fa04f837e3681ea source.manifestSha256=27684dbe7f33789cb6bcc2e823628ab21406d96792020c66154c52a4851d22d3 source.jarSha256=394064baf0fe356190ec1fd8d5c15edc96565c0e659323e5422816b7ebae28e6 source.buildLabel=005-76-after-20261102 source.builtAt=2026-11-02T12:05:17+0100 source.buildDir=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102 harness.sha256=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f harness.traceVersion=1 jvm.java=/opt/homebrew/opt/openjdk/bin/java 'jvm.flags=-XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g' jvm.gc=g1 jvm.heap=8g 'jvm.version=openjdk version "27" 2026-09-15;OpenJDK Runtime Environment Homebrew (build 27);OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing);' osCache=warm cooldownSec=5 machine.model=MacBookPro18,3
++ IFS=
++ read -r fact
++ set -- id=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic createdAt=2026-11-02T12:31:02+0100 label=admission-diagnostic 'command=stress/performance.sh reference admission-diagnostic' suite.name=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite suite.file=throughput.suite suite.sha256=5eea4fbb308833f7a651b6265980b4c5734ef7932c46bcd181c632b8b0b298d0 runsOverride=none only=all source.commit=3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 source.branch=main source.dirty=true source.diffSha256=acb0cbc1e05461a7f4a02868f66d6453c0884527265a8e0a1fa04f837e3681ea source.manifestSha256=27684dbe7f33789cb6bcc2e823628ab21406d96792020c66154c52a4851d22d3 source.jarSha256=394064baf0fe356190ec1fd8d5c15edc96565c0e659323e5422816b7ebae28e6 source.buildLabel=005-76-after-20261102 source.builtAt=2026-11-02T12:05:17+0100 source.buildDir=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102 harness.sha256=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f harness.traceVersion=1 jvm.java=/opt/homebrew/opt/openjdk/bin/java 'jvm.flags=-XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g' jvm.gc=g1 jvm.heap=8g 'jvm.version=openjdk version "27" 2026-09-15;OpenJDK Runtime Environment Homebrew (build 27);OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing);' osCache=warm cooldownSec=5 machine.model=MacBookPro18,3 'machine.cpu=Apple M1 Pro'
++ IFS=
++ read -r fact
++ set -- id=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic createdAt=2026-11-02T12:31:02+0100 label=admission-diagnostic 'command=stress/performance.sh reference admission-diagnostic' suite.name=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite suite.file=throughput.suite suite.sha256=5eea4fbb308833f7a651b6265980b4c5734ef7932c46bcd181c632b8b0b298d0 runsOverride=none only=all source.commit=3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 source.branch=main source.dirty=true source.diffSha256=acb0cbc1e05461a7f4a02868f66d6453c0884527265a8e0a1fa04f837e3681ea source.manifestSha256=27684dbe7f33789cb6bcc2e823628ab21406d96792020c66154c52a4851d22d3 source.jarSha256=394064baf0fe356190ec1fd8d5c15edc96565c0e659323e5422816b7ebae28e6 source.buildLabel=005-76-after-20261102 source.builtAt=2026-11-02T12:05:17+0100 source.buildDir=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102 harness.sha256=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f harness.traceVersion=1 jvm.java=/opt/homebrew/opt/openjdk/bin/java 'jvm.flags=-XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g' jvm.gc=g1 jvm.heap=8g 'jvm.version=openjdk version "27" 2026-09-15;OpenJDK Runtime Environment Homebrew (build 27);OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing);' osCache=warm cooldownSec=5 machine.model=MacBookPro18,3 'machine.cpu=Apple M1 Pro' machine.cores=10
++ IFS=
++ read -r fact
++ set -- id=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic createdAt=2026-11-02T12:31:02+0100 label=admission-diagnostic 'command=stress/performance.sh reference admission-diagnostic' suite.name=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite suite.file=throughput.suite suite.sha256=5eea4fbb308833f7a651b6265980b4c5734ef7932c46bcd181c632b8b0b298d0 runsOverride=none only=all source.commit=3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 source.branch=main source.dirty=true source.diffSha256=acb0cbc1e05461a7f4a02868f66d6453c0884527265a8e0a1fa04f837e3681ea source.manifestSha256=27684dbe7f33789cb6bcc2e823628ab21406d96792020c66154c52a4851d22d3 source.jarSha256=394064baf0fe356190ec1fd8d5c15edc96565c0e659323e5422816b7ebae28e6 source.buildLabel=005-76-after-20261102 source.builtAt=2026-11-02T12:05:17+0100 source.buildDir=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102 harness.sha256=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f harness.traceVersion=1 jvm.java=/opt/homebrew/opt/openjdk/bin/java 'jvm.flags=-XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g' jvm.gc=g1 jvm.heap=8g 'jvm.version=openjdk version "27" 2026-09-15;OpenJDK Runtime Environment Homebrew (build 27);OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing);' osCache=warm cooldownSec=5 machine.model=MacBookPro18,3 'machine.cpu=Apple M1 Pro' machine.cores=10 machine.memBytes=34359738368
++ IFS=
++ read -r fact
++ set -- id=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic createdAt=2026-11-02T12:31:02+0100 label=admission-diagnostic 'command=stress/performance.sh reference admission-diagnostic' suite.name=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite suite.file=throughput.suite suite.sha256=5eea4fbb308833f7a651b6265980b4c5734ef7932c46bcd181c632b8b0b298d0 runsOverride=none only=all source.commit=3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 source.branch=main source.dirty=true source.diffSha256=acb0cbc1e05461a7f4a02868f66d6453c0884527265a8e0a1fa04f837e3681ea source.manifestSha256=27684dbe7f33789cb6bcc2e823628ab21406d96792020c66154c52a4851d22d3 source.jarSha256=394064baf0fe356190ec1fd8d5c15edc96565c0e659323e5422816b7ebae28e6 source.buildLabel=005-76-after-20261102 source.builtAt=2026-11-02T12:05:17+0100 source.buildDir=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102 harness.sha256=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f harness.traceVersion=1 jvm.java=/opt/homebrew/opt/openjdk/bin/java 'jvm.flags=-XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g' jvm.gc=g1 jvm.heap=8g 'jvm.version=openjdk version "27" 2026-09-15;OpenJDK Runtime Environment Homebrew (build 27);OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing);' osCache=warm cooldownSec=5 machine.model=MacBookPro18,3 'machine.cpu=Apple M1 Pro' machine.cores=10 machine.memBytes=34359738368 'machine.osBuild=27.0.1 26A434'
++ IFS=
++ read -r fact
++ set -- id=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic createdAt=2026-11-02T12:31:02+0100 label=admission-diagnostic 'command=stress/performance.sh reference admission-diagnostic' suite.name=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite suite.file=throughput.suite suite.sha256=5eea4fbb308833f7a651b6265980b4c5734ef7932c46bcd181c632b8b0b298d0 runsOverride=none only=all source.commit=3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 source.branch=main source.dirty=true source.diffSha256=acb0cbc1e05461a7f4a02868f66d6453c0884527265a8e0a1fa04f837e3681ea source.manifestSha256=27684dbe7f33789cb6bcc2e823628ab21406d96792020c66154c52a4851d22d3 source.jarSha256=394064baf0fe356190ec1fd8d5c15edc96565c0e659323e5422816b7ebae28e6 source.buildLabel=005-76-after-20261102 source.builtAt=2026-11-02T12:05:17+0100 source.buildDir=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102 harness.sha256=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f harness.traceVersion=1 jvm.java=/opt/homebrew/opt/openjdk/bin/java 'jvm.flags=-XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g' jvm.gc=g1 jvm.heap=8g 'jvm.version=openjdk version "27" 2026-09-15;OpenJDK Runtime Environment Homebrew (build 27);OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing);' osCache=warm cooldownSec=5 machine.model=MacBookPro18,3 'machine.cpu=Apple M1 Pro' machine.cores=10 machine.memBytes=34359738368 'machine.osBuild=27.0.1 26A434' 'machine.power=Now drawing from AC Power'
++ IFS=
++ read -r fact
++ set -- id=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic createdAt=2026-11-02T12:31:02+0100 label=admission-diagnostic 'command=stress/performance.sh reference admission-diagnostic' suite.name=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite suite.file=throughput.suite suite.sha256=5eea4fbb308833f7a651b6265980b4c5734ef7932c46bcd181c632b8b0b298d0 runsOverride=none only=all source.commit=3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 source.branch=main source.dirty=true source.diffSha256=acb0cbc1e05461a7f4a02868f66d6453c0884527265a8e0a1fa04f837e3681ea source.manifestSha256=27684dbe7f33789cb6bcc2e823628ab21406d96792020c66154c52a4851d22d3 source.jarSha256=394064baf0fe356190ec1fd8d5c15edc96565c0e659323e5422816b7ebae28e6 source.buildLabel=005-76-after-20261102 source.builtAt=2026-11-02T12:05:17+0100 source.buildDir=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102 harness.sha256=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f harness.traceVersion=1 jvm.java=/opt/homebrew/opt/openjdk/bin/java 'jvm.flags=-XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g' jvm.gc=g1 jvm.heap=8g 'jvm.version=openjdk version "27" 2026-09-15;OpenJDK Runtime Environment Homebrew (build 27);OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing);' osCache=warm cooldownSec=5 machine.model=MacBookPro18,3 'machine.cpu=Apple M1 Pro' machine.cores=10 machine.memBytes=34359738368 'machine.osBuild=27.0.1 26A434' 'machine.power=Now drawing from AC Power' 'machine.thermal=Note: No thermal warning level has been recorded'
++ IFS=
++ read -r fact
++ set -- id=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic createdAt=2026-11-02T12:31:02+0100 label=admission-diagnostic 'command=stress/performance.sh reference admission-diagnostic' suite.name=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite suite.file=throughput.suite suite.sha256=5eea4fbb308833f7a651b6265980b4c5734ef7932c46bcd181c632b8b0b298d0 runsOverride=none only=all source.commit=3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 source.branch=main source.dirty=true source.diffSha256=acb0cbc1e05461a7f4a02868f66d6453c0884527265a8e0a1fa04f837e3681ea source.manifestSha256=27684dbe7f33789cb6bcc2e823628ab21406d96792020c66154c52a4851d22d3 source.jarSha256=394064baf0fe356190ec1fd8d5c15edc96565c0e659323e5422816b7ebae28e6 source.buildLabel=005-76-after-20261102 source.builtAt=2026-11-02T12:05:17+0100 source.buildDir=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102 harness.sha256=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f harness.traceVersion=1 jvm.java=/opt/homebrew/opt/openjdk/bin/java 'jvm.flags=-XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g' jvm.gc=g1 jvm.heap=8g 'jvm.version=openjdk version "27" 2026-09-15;OpenJDK Runtime Environment Homebrew (build 27);OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing);' osCache=warm cooldownSec=5 machine.model=MacBookPro18,3 'machine.cpu=Apple M1 Pro' machine.cores=10 machine.memBytes=34359738368 'machine.osBuild=27.0.1 26A434' 'machine.power=Now drawing from AC Power' 'machine.thermal=Note: No thermal warning level has been recorded' 'machine.kernel=Darwin 27.0.0'
++ IFS=
++ read -r fact
++ set -- id=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic createdAt=2026-11-02T12:31:02+0100 label=admission-diagnostic 'command=stress/performance.sh reference admission-diagnostic' suite.name=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite suite.file=throughput.suite suite.sha256=5eea4fbb308833f7a651b6265980b4c5734ef7932c46bcd181c632b8b0b298d0 runsOverride=none only=all source.commit=3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 source.branch=main source.dirty=true source.diffSha256=acb0cbc1e05461a7f4a02868f66d6453c0884527265a8e0a1fa04f837e3681ea source.manifestSha256=27684dbe7f33789cb6bcc2e823628ab21406d96792020c66154c52a4851d22d3 source.jarSha256=394064baf0fe356190ec1fd8d5c15edc96565c0e659323e5422816b7ebae28e6 source.buildLabel=005-76-after-20261102 source.builtAt=2026-11-02T12:05:17+0100 source.buildDir=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102 harness.sha256=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f harness.traceVersion=1 jvm.java=/opt/homebrew/opt/openjdk/bin/java 'jvm.flags=-XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g' jvm.gc=g1 jvm.heap=8g 'jvm.version=openjdk version "27" 2026-09-15;OpenJDK Runtime Environment Homebrew (build 27);OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing);' osCache=warm cooldownSec=5 machine.model=MacBookPro18,3 'machine.cpu=Apple M1 Pro' machine.cores=10 machine.memBytes=34359738368 'machine.osBuild=27.0.1 26A434' 'machine.power=Now drawing from AC Power' 'machine.thermal=Note: No thermal warning level has been recorded' 'machine.kernel=Darwin 27.0.0' machine.host=f53
++ IFS=
++ read -r fact
++ set -- id=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic createdAt=2026-11-02T12:31:02+0100 label=admission-diagnostic 'command=stress/performance.sh reference admission-diagnostic' suite.name=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite suite.file=throughput.suite suite.sha256=5eea4fbb308833f7a651b6265980b4c5734ef7932c46bcd181c632b8b0b298d0 runsOverride=none only=all source.commit=3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 source.branch=main source.dirty=true source.diffSha256=acb0cbc1e05461a7f4a02868f66d6453c0884527265a8e0a1fa04f837e3681ea source.manifestSha256=27684dbe7f33789cb6bcc2e823628ab21406d96792020c66154c52a4851d22d3 source.jarSha256=394064baf0fe356190ec1fd8d5c15edc96565c0e659323e5422816b7ebae28e6 source.buildLabel=005-76-after-20261102 source.builtAt=2026-11-02T12:05:17+0100 source.buildDir=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102 harness.sha256=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f harness.traceVersion=1 jvm.java=/opt/homebrew/opt/openjdk/bin/java 'jvm.flags=-XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g' jvm.gc=g1 jvm.heap=8g 'jvm.version=openjdk version "27" 2026-09-15;OpenJDK Runtime Environment Homebrew (build 27);OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing);' osCache=warm cooldownSec=5 machine.model=MacBookPro18,3 'machine.cpu=Apple M1 Pro' machine.cores=10 machine.memBytes=34359738368 'machine.osBuild=27.0.1 26A434' 'machine.power=Now drawing from AC Power' 'machine.thermal=Note: No thermal warning level has been recorded' 'machine.kernel=Darwin 27.0.0' machine.host=f53 machine.dataVolume=/System/Volumes/Data
++ IFS=
++ read -r fact
++ set -- id=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic createdAt=2026-11-02T12:31:02+0100 label=admission-diagnostic 'command=stress/performance.sh reference admission-diagnostic' suite.name=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite suite.file=throughput.suite suite.sha256=5eea4fbb308833f7a651b6265980b4c5734ef7932c46bcd181c632b8b0b298d0 runsOverride=none only=all source.commit=3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 source.branch=main source.dirty=true source.diffSha256=acb0cbc1e05461a7f4a02868f66d6453c0884527265a8e0a1fa04f837e3681ea source.manifestSha256=27684dbe7f33789cb6bcc2e823628ab21406d96792020c66154c52a4851d22d3 source.jarSha256=394064baf0fe356190ec1fd8d5c15edc96565c0e659323e5422816b7ebae28e6 source.buildLabel=005-76-after-20261102 source.builtAt=2026-11-02T12:05:17+0100 source.buildDir=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102 harness.sha256=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f harness.traceVersion=1 jvm.java=/opt/homebrew/opt/openjdk/bin/java 'jvm.flags=-XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g' jvm.gc=g1 jvm.heap=8g 'jvm.version=openjdk version "27" 2026-09-15;OpenJDK Runtime Environment Homebrew (build 27);OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing);' osCache=warm cooldownSec=5 machine.model=MacBookPro18,3 'machine.cpu=Apple M1 Pro' machine.cores=10 machine.memBytes=34359738368 'machine.osBuild=27.0.1 26A434' 'machine.power=Now drawing from AC Power' 'machine.thermal=Note: No thermal warning level has been recorded' 'machine.kernel=Darwin 27.0.0' machine.host=f53 machine.dataVolume=/System/Volumes/Data machine.fsType=apfs
++ IFS=
++ read -r fact
++ tool session /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/session.json id=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic createdAt=2026-11-02T12:31:02+0100 label=admission-diagnostic 'command=stress/performance.sh reference admission-diagnostic' suite.name=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite suite.file=throughput.suite suite.sha256=5eea4fbb308833f7a651b6265980b4c5734ef7932c46bcd181c632b8b0b298d0 runsOverride=none only=all source.commit=3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 source.branch=main source.dirty=true source.diffSha256=acb0cbc1e05461a7f4a02868f66d6453c0884527265a8e0a1fa04f837e3681ea source.manifestSha256=27684dbe7f33789cb6bcc2e823628ab21406d96792020c66154c52a4851d22d3 source.jarSha256=394064baf0fe356190ec1fd8d5c15edc96565c0e659323e5422816b7ebae28e6 source.buildLabel=005-76-after-20261102 source.builtAt=2026-11-02T12:05:17+0100 source.buildDir=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102 harness.sha256=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f harness.traceVersion=1 jvm.java=/opt/homebrew/opt/openjdk/bin/java 'jvm.flags=-XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g' jvm.gc=g1 jvm.heap=8g 'jvm.version=openjdk version "27" 2026-09-15;OpenJDK Runtime Environment Homebrew (build 27);OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing);' osCache=warm cooldownSec=5 machine.model=MacBookPro18,3 'machine.cpu=Apple M1 Pro' machine.cores=10 machine.memBytes=34359738368 'machine.osBuild=27.0.1 26A434' 'machine.power=Now drawing from AC Power' 'machine.thermal=Note: No thermal warning level has been recorded' 'machine.kernel=Darwin 27.0.0' machine.host=f53 machine.dataVolume=/System/Volumes/Data machine.fsType=apfs
++ /opt/homebrew/opt/openjdk/bin/java -cp /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c bergdb.core.PerfTool session /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/session.json id=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic createdAt=2026-11-02T12:31:02+0100 label=admission-diagnostic 'command=stress/performance.sh reference admission-diagnostic' suite.name=/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite suite.file=throughput.suite suite.sha256=5eea4fbb308833f7a651b6265980b4c5734ef7932c46bcd181c632b8b0b298d0 runsOverride=none only=all source.commit=3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 source.branch=main source.dirty=true source.diffSha256=acb0cbc1e05461a7f4a02868f66d6453c0884527265a8e0a1fa04f837e3681ea source.manifestSha256=27684dbe7f33789cb6bcc2e823628ab21406d96792020c66154c52a4851d22d3 source.jarSha256=394064baf0fe356190ec1fd8d5c15edc96565c0e659323e5422816b7ebae28e6 source.buildLabel=005-76-after-20261102 source.builtAt=2026-11-02T12:05:17+0100 source.buildDir=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102 harness.sha256=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f harness.traceVersion=1 jvm.java=/opt/homebrew/opt/openjdk/bin/java 'jvm.flags=-XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g' jvm.gc=g1 jvm.heap=8g 'jvm.version=openjdk version "27" 2026-09-15;OpenJDK Runtime Environment Homebrew (build 27);OpenJDK 64-Bit Server VM Homebrew (build 27, mixed mode, sharing);' osCache=warm cooldownSec=5 machine.model=MacBookPro18,3 'machine.cpu=Apple M1 Pro' machine.cores=10 machine.memBytes=34359738368 'machine.osBuild=27.0.1 26A434' 'machine.power=Now drawing from AC Power' 'machine.thermal=Note: No thermal warning level has been recorded' 'machine.kernel=Darwin 27.0.0' machine.host=f53 machine.dataVolume=/System/Volumes/Data machine.fsType=apfs
++ cp /Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/suite.txt
++ eval 'R_SDIR="/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic"'
+++ R_SDIR=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic
++ eval 'R_SID="3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic"'
+++ R_SID=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic
++ target R
++ eval 'CP=$R_CP; SDIR=$R_SDIR; SID=$R_SID; HSHA=$R_HSHA'
+++ CP=/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c
+++ SDIR=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic
+++ SID=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic
+++ HSHA=fc8a9162db0c5fc7a8e35c3562a89de9ef77a4f0564b2fd4013cafaa0c72dd0f
++ echo 'Session 3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic, source /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102'
+Session 3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic, source /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102
++ run_suite /Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite
++ scenarios /Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite
++ read -r name mode runs props
++ grep -v '^[[:space:]]*#' /Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite
++ grep -v '^[[:space:]]*$'
++ read -r name mode runs props
++ '[' -n '' ']'
++ echo 'a-1k-b20 write 1 n=100000 valsize=1000 retain=inf ops=500000 bufftime=20'
++ read -r name mode runs props
++ '[' -n '' ']'
++ echo 'a-1k-b20 (write, 1 runs)'
++ echo 'a-1k-b50 write 1 n=100000 valsize=1000 retain=inf ops=500000 bufftime=50'
+a-1k-b20 (write, 1 runs)
++ read -r name mode runs props
++ k=1
++ '[' 1 -le 1 ']'
++ '[' -n '' ']'
++ run_one a-1k-b20 write 1 'n=100000 valsize=1000 retain=inf ops=500000 bufftime=20'
++ echo 'a-1k-b100 write 1 n=100000 valsize=1000 retain=inf ops=500000 bufftime=100'
++ read -r name mode runs props
++ name=a-1k-b20
++ mode=write
++ k=1
++ props='n=100000 valsize=1000 retain=inf ops=500000 bufftime=20'
++ '[' -n '' ']'
++ rundir=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b20/run1
++ echo 'a-1k-x100-b20 write 1 n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=20'
++ mkdir -p /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b20/run1
++ read -r name mode runs props
++ '[' -n '' ']'
++ echo 'a-1k-x100-b50 write 1 n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=50'
++ read -r name mode runs props
++ '[' -n '' ']'
++ echo 'a-1k-x100-b100 write 1 n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=100'
++ read -r name mode runs props
++ datadir=/Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b20-run1
++ mkdir -p /Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic
++ DOPTS=
++ RUNHEAP=8g
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.retain=inf'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.retain=inf -Dperf.ops=500000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.retain=inf -Dperf.ops=500000 -Dperf.bufftime=20'
++ uptime
++ OSSTATE=warm
++ case $mode in
++ jvm write
++ mode=write
++ shift
++ log=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b20/run1/write.stdout.txt
++ /opt/homebrew/opt/openjdk/bin/java -XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g '-Xlog:gc*,safepoint:file=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b20/run1/write.gc.log:uptime,level,tags' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.retain=inf -Dperf.ops=500000 -Dperf.bufftime=20 -Dperf.scenario=a-1k-b20 -Dperf.out=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b20/run1 -Dperf.dir=/Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b20-run1 -Dperf.source=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic -Dperf.oscache=warm -cp /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c bergdb.core.Perf write
++ rc=0
++ '[' 0 -ne 0 ']'
++ grep -q '^PERF OK' /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b20/run1/write.stdout.txt
++ tool finish /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b20/run1 write
++ /opt/homebrew/opt/openjdk/bin/java -cp /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c bergdb.core.PerfTool finish /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b20/run1 write
++ uptime
+++ grep -h -E '^(WRITE|READ get_latest:|STARTUP|MIXED)' /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b20/run1/write.stdout.txt
+++ head -3
+++ tr '\n' '|'
+++ cut -c1-200
++ echo '  a-1k-b20 run 1: WRITE 500000 commits (500000 puts) in 5.11 s: 97879 commits/s, bytes appended per user byte 1.22, append p50 7.9 us p99.9 31.5 us max 55.65 ms|'
+  a-1k-b20 run 1: WRITE 500000 commits (500000 puts) in 5.11 s: 97879 commits/s, bytes appended per user byte 1.22, append p50 7.9 us p99.9 31.5 us max 55.65 ms|
++ '[' 0 = 1 ']'
++ rm -rf /Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b20-run1
++ '[' 5 -gt 0 ']'
++ sleep 5
++ k=2
++ '[' 2 -le 1 ']'
++ read -r name mode runs props
++ echo 'a-1k-b50 (write, 1 runs)'
+a-1k-b50 (write, 1 runs)
++ k=1
++ '[' 1 -le 1 ']'
++ run_one a-1k-b50 write 1 'n=100000 valsize=1000 retain=inf ops=500000 bufftime=50'
++ name=a-1k-b50
++ mode=write
++ k=1
++ props='n=100000 valsize=1000 retain=inf ops=500000 bufftime=50'
++ rundir=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b50/run1
++ mkdir -p /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b50/run1
++ datadir=/Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b50-run1
++ mkdir -p /Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic
++ DOPTS=
++ RUNHEAP=8g
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.retain=inf'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.retain=inf -Dperf.ops=500000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.retain=inf -Dperf.ops=500000 -Dperf.bufftime=50'
++ uptime
++ OSSTATE=warm
++ case $mode in
++ jvm write
++ mode=write
++ shift
++ log=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b50/run1/write.stdout.txt
++ /opt/homebrew/opt/openjdk/bin/java -XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g '-Xlog:gc*,safepoint:file=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b50/run1/write.gc.log:uptime,level,tags' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.retain=inf -Dperf.ops=500000 -Dperf.bufftime=50 -Dperf.scenario=a-1k-b50 -Dperf.out=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b50/run1 -Dperf.dir=/Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b50-run1 -Dperf.source=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic -Dperf.oscache=warm -cp /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c bergdb.core.Perf write
++ rc=0
++ '[' 0 -ne 0 ']'
++ grep -q '^PERF OK' /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b50/run1/write.stdout.txt
++ tool finish /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b50/run1 write
++ /opt/homebrew/opt/openjdk/bin/java -cp /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c bergdb.core.PerfTool finish /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b50/run1 write
++ uptime
+++ grep -h -E '^(WRITE|READ get_latest:|STARTUP|MIXED)' /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b50/run1/write.stdout.txt
+++ head -3
+++ tr '\n' '|'
+++ cut -c1-200
++ echo '  a-1k-b50 run 1: WRITE 500000 commits (500000 puts) in 5.04 s: 99122 commits/s, bytes appended per user byte 1.22, append p50 7.8 us p99.9 30.8 us max 0.13 ms|'
+  a-1k-b50 run 1: WRITE 500000 commits (500000 puts) in 5.04 s: 99122 commits/s, bytes appended per user byte 1.22, append p50 7.8 us p99.9 30.8 us max 0.13 ms|
++ '[' 0 = 1 ']'
++ rm -rf /Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b50-run1
++ '[' 5 -gt 0 ']'
++ sleep 5
++ k=2
++ '[' 2 -le 1 ']'
++ read -r name mode runs props
++ echo 'a-1k-b100 (write, 1 runs)'
+a-1k-b100 (write, 1 runs)
++ k=1
++ '[' 1 -le 1 ']'
++ run_one a-1k-b100 write 1 'n=100000 valsize=1000 retain=inf ops=500000 bufftime=100'
++ name=a-1k-b100
++ mode=write
++ k=1
++ props='n=100000 valsize=1000 retain=inf ops=500000 bufftime=100'
++ rundir=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b100/run1
++ mkdir -p /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b100/run1
++ datadir=/Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b100-run1
++ mkdir -p /Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic
++ DOPTS=
++ RUNHEAP=8g
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.retain=inf'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.retain=inf -Dperf.ops=500000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.retain=inf -Dperf.ops=500000 -Dperf.bufftime=100'
++ uptime
++ OSSTATE=warm
++ case $mode in
++ jvm write
++ mode=write
++ shift
++ log=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b100/run1/write.stdout.txt
++ /opt/homebrew/opt/openjdk/bin/java -XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g '-Xlog:gc*,safepoint:file=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b100/run1/write.gc.log:uptime,level,tags' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.retain=inf -Dperf.ops=500000 -Dperf.bufftime=100 -Dperf.scenario=a-1k-b100 -Dperf.out=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b100/run1 -Dperf.dir=/Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b100-run1 -Dperf.source=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic -Dperf.oscache=warm -cp /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c bergdb.core.Perf write
++ rc=0
++ '[' 0 -ne 0 ']'
++ grep -q '^PERF OK' /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b100/run1/write.stdout.txt
++ tool finish /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b100/run1 write
++ /opt/homebrew/opt/openjdk/bin/java -cp /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c bergdb.core.PerfTool finish /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b100/run1 write
++ uptime
+++ grep -h -E '^(WRITE|READ get_latest:|STARTUP|MIXED)' /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b100/run1/write.stdout.txt
+++ head -3
+++ tr '\n' '|'
+++ cut -c1-200
++ echo '  a-1k-b100 run 1: WRITE 500000 commits (500000 puts) in 4.94 s: 101272 commits/s, bytes appended per user byte 1.22, append p50 7.8 us p99.9 29.6 us max 34.94 ms|'
+  a-1k-b100 run 1: WRITE 500000 commits (500000 puts) in 4.94 s: 101272 commits/s, bytes appended per user byte 1.22, append p50 7.8 us p99.9 29.6 us max 34.94 ms|
++ '[' 0 = 1 ']'
++ rm -rf /Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-b100-run1
++ '[' 5 -gt 0 ']'
++ sleep 5
++ k=2
++ '[' 2 -le 1 ']'
++ read -r name mode runs props
++ echo 'a-1k-x100-b20 (write, 1 runs)'
+a-1k-x100-b20 (write, 1 runs)
++ k=1
++ '[' 1 -le 1 ']'
++ run_one a-1k-x100-b20 write 1 'n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=20'
++ name=a-1k-x100-b20
++ mode=write
++ k=1
++ props='n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=20'
++ rundir=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b20/run1
++ mkdir -p /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b20/run1
++ datadir=/Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b20-run1
++ mkdir -p /Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic
++ DOPTS=
++ RUNHEAP=8g
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.tsize=100'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.tsize=100 -Dperf.retain=inf'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.tsize=100 -Dperf.retain=inf -Dperf.ops=10000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.tsize=100 -Dperf.retain=inf -Dperf.ops=10000 -Dperf.bufftime=20'
++ uptime
++ OSSTATE=warm
++ case $mode in
++ jvm write
++ mode=write
++ shift
++ log=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b20/run1/write.stdout.txt
++ /opt/homebrew/opt/openjdk/bin/java -XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g '-Xlog:gc*,safepoint:file=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b20/run1/write.gc.log:uptime,level,tags' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.tsize=100 -Dperf.retain=inf -Dperf.ops=10000 -Dperf.bufftime=20 -Dperf.scenario=a-1k-x100-b20 -Dperf.out=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b20/run1 -Dperf.dir=/Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b20-run1 -Dperf.source=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic -Dperf.oscache=warm -cp /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c bergdb.core.Perf write
++ rc=0
++ '[' 0 -ne 0 ']'
++ grep -q '^PERF OK' /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b20/run1/write.stdout.txt
++ tool finish /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b20/run1 write
++ /opt/homebrew/opt/openjdk/bin/java -cp /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c bergdb.core.PerfTool finish /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b20/run1 write
++ uptime
+++ grep -h -E '^(WRITE|READ get_latest:|STARTUP|MIXED)' /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b20/run1/write.stdout.txt
+++ head -3
+++ tr '\n' '|'
+++ cut -c1-200
++ echo '  a-1k-x100-b20 run 1: WRITE 10000 commits (1000000 puts) in 9.28 s: 1078 commits/s, bytes appended per user byte 1.17, append p50 876.5 us p99.9 2072.6 us max 2.59 ms|'
+  a-1k-x100-b20 run 1: WRITE 10000 commits (1000000 puts) in 9.28 s: 1078 commits/s, bytes appended per user byte 1.17, append p50 876.5 us p99.9 2072.6 us max 2.59 ms|
++ '[' 0 = 1 ']'
++ rm -rf /Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b20-run1
++ '[' 5 -gt 0 ']'
++ sleep 5
++ k=2
++ '[' 2 -le 1 ']'
++ read -r name mode runs props
++ echo 'a-1k-x100-b50 (write, 1 runs)'
+a-1k-x100-b50 (write, 1 runs)
++ k=1
++ '[' 1 -le 1 ']'
++ run_one a-1k-x100-b50 write 1 'n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=50'
++ name=a-1k-x100-b50
++ mode=write
++ k=1
++ props='n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=50'
++ rundir=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b50/run1
++ mkdir -p /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b50/run1
++ datadir=/Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b50-run1
++ mkdir -p /Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic
++ DOPTS=
++ RUNHEAP=8g
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.tsize=100'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.tsize=100 -Dperf.retain=inf'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.tsize=100 -Dperf.retain=inf -Dperf.ops=10000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.tsize=100 -Dperf.retain=inf -Dperf.ops=10000 -Dperf.bufftime=50'
++ uptime
++ OSSTATE=warm
++ case $mode in
++ jvm write
++ mode=write
++ shift
++ log=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b50/run1/write.stdout.txt
++ /opt/homebrew/opt/openjdk/bin/java -XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g '-Xlog:gc*,safepoint:file=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b50/run1/write.gc.log:uptime,level,tags' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.tsize=100 -Dperf.retain=inf -Dperf.ops=10000 -Dperf.bufftime=50 -Dperf.scenario=a-1k-x100-b50 -Dperf.out=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b50/run1 -Dperf.dir=/Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b50-run1 -Dperf.source=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic -Dperf.oscache=warm -cp /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c bergdb.core.Perf write
++ rc=0
++ '[' 0 -ne 0 ']'
++ grep -q '^PERF OK' /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b50/run1/write.stdout.txt
++ tool finish /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b50/run1 write
++ /opt/homebrew/opt/openjdk/bin/java -cp /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c bergdb.core.PerfTool finish /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b50/run1 write
++ uptime
+++ grep -h -E '^(WRITE|READ get_latest:|STARTUP|MIXED)' /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b50/run1/write.stdout.txt
+++ head -3
+++ tr '\n' '|'
+++ cut -c1-200
++ echo '  a-1k-x100-b50 run 1: WRITE 10000 commits (1000000 puts) in 9.25 s: 1081 commits/s, bytes appended per user byte 1.17, append p50 876.5 us p99.9 1982.5 us max 35.42 ms|'
+  a-1k-x100-b50 run 1: WRITE 10000 commits (1000000 puts) in 9.25 s: 1081 commits/s, bytes appended per user byte 1.17, append p50 876.5 us p99.9 1982.5 us max 35.42 ms|
++ '[' 0 = 1 ']'
++ rm -rf /Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b50-run1
++ '[' 5 -gt 0 ']'
++ sleep 5
++ k=2
++ '[' 2 -le 1 ']'
++ read -r name mode runs props
++ echo 'a-1k-x100-b100 (write, 1 runs)'
+a-1k-x100-b100 (write, 1 runs)
++ k=1
++ '[' 1 -le 1 ']'
++ run_one a-1k-x100-b100 write 1 'n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=100'
++ name=a-1k-x100-b100
++ mode=write
++ k=1
++ props='n=100000 valsize=1000 tsize=100 retain=inf ops=10000 bufftime=100'
++ rundir=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b100/run1
++ mkdir -p /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b100/run1
++ datadir=/Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b100-run1
++ mkdir -p /Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic
++ DOPTS=
++ RUNHEAP=8g
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.tsize=100'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.tsize=100 -Dperf.retain=inf'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.tsize=100 -Dperf.retain=inf -Dperf.ops=10000'
++ for p in '$props'
++ case $p in
++ DOPTS=' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.tsize=100 -Dperf.retain=inf -Dperf.ops=10000 -Dperf.bufftime=100'
++ uptime
++ OSSTATE=warm
++ case $mode in
++ jvm write
++ mode=write
++ shift
++ log=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b100/run1/write.stdout.txt
++ /opt/homebrew/opt/openjdk/bin/java -XX:+UseG1GC -da -javaagent:/Users/f/fl/repos/bergdb/java/build/perf/005-64-tools/cpu64.jar -Xms8g -Xmx8g '-Xlog:gc*,safepoint:file=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b100/run1/write.gc.log:uptime,level,tags' -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.tsize=100 -Dperf.retain=inf -Dperf.ops=10000 -Dperf.bufftime=100 -Dperf.scenario=a-1k-x100-b100 -Dperf.out=/Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b100/run1 -Dperf.dir=/Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b100-run1 -Dperf.source=3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic -Dperf.oscache=warm -cp /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c bergdb.core.Perf write
++ rc=0
++ '[' 0 -ne 0 ']'
++ grep -q '^PERF OK' /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b100/run1/write.stdout.txt
++ tool finish /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b100/run1 write
++ /opt/homebrew/opt/openjdk/bin/java -cp /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c bergdb.core.PerfTool finish /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b100/run1 write
++ uptime
+++ head -3
+++ grep -h -E '^(WRITE|READ get_latest:|STARTUP|MIXED)' /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b100/run1/write.stdout.txt
+++ tr '\n' '|'
+++ cut -c1-200
++ echo '  a-1k-x100-b100 run 1: WRITE 10000 commits (1000000 puts) in 9.32 s: 1072 commits/s, bytes appended per user byte 1.17, append p50 880.6 us p99.9 2441.2 us max 33.21 ms|'
+  a-1k-x100-b100 run 1: WRITE 10000 commits (1000000 puts) in 9.32 s: 1072 commits/s, bytes appended per user byte 1.17, append p50 880.6 us p99.9 2441.2 us max 33.21 ms|
++ '[' 0 = 1 ']'
++ rm -rf /Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/a-1k-x100-b100-run1
++ '[' 5 -gt 0 ']'
++ sleep 5
++ k=2
++ '[' 2 -le 1 ']'
++ read -r name mode runs props
++ rm -rf /Users/f/fl/repos/bergdb/java/build/perf/data/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic
++ tool summary /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic
++ /opt/homebrew/opt/openjdk/bin/java -cp /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c bergdb.core.PerfTool summary /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic
++ tee /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic/summary.txt
+Session throughput.suite-g1-8g-admission-diagnostic  (3ad171d3a167d3469f64e3c68b5e5eb9063f8ff7 + working-tree diff)
+
+a-1k-b100  [write, 1 runs, workload 2190e15717386bcd]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,223.2          1,223.2          1,223.2       -
+  bytes_appended_per_user_byte                   1            1.218            1.218            1.218       -
+  commit.append.max_us                           1         34,939.4         34,939.4         34,939.4       -
+  commit.append.mean_us                          1            9.290            9.290            9.290       -
+  commit.append.p50_us                           1            7.775            7.775            7.775       -
+  commit.append.p95_us                           1           14.463           14.463           14.463       -
+  commit.append.p999_us                          1           29.567           29.567           29.567       -
+  commit.append.p99_us                           1           18.815           18.815           18.815       -
+  commits_per_s                                  1        101,272.0        101,272.0        101,272.0       -
+  gclog.pause.max_ms                             1           52.044           52.044           52.044       -
+  gclog.pause.total_ms                           1           86.642           86.642           86.642       -
+  gclog.safepoint.max_ms                         1           52.083           52.083           52.083       -
+  gclog.safepoint.total_ms                       1           86.920           86.920           86.920       -
+  heap.after_gc_mb_max                           1           58.720           58.720           58.720       -
+  puts_per_s                                     1        101,272.0        101,272.0        101,272.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,223.2          1,223.2          1,223.2       -
+  rec.user_index_bytes_per_put                   1            137.3            137.3            137.3       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6714           0.6714           0.6714       -
+  rss_mb_max                                     1          1,195.9          1,195.9          1,195.9       -
+  slowest_commit_ms                              1           34.939           34.939           34.939       -
+  storage.disk_mb_max                            1            839.9            839.9            839.9       -
+  user_mb_per_s                                  1            101.7            101.7            101.7       -
+  we                                             1           0.8208           0.8208           0.8208       -
+  longest GC pauses of run1 (2 in the window, total 86.642 ms): 52.0 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 4.7 s); 34.6 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.6 s);
+  slowest commits of run1:
+    34.94 ms at 311 ms into the phase, 1 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 34.6 ms; safepoint G1CollectForAllocation 34.8 ms;
+    0.18 ms at 4930 ms into the phase, 1 index nodes written; overlapping: none
+    0.11 ms at 4931 ms into the phase, 1 index nodes written; overlapping: none
+    0.09 ms at 333 ms into the phase, 13 index nodes written; overlapping: none
+    0.08 ms at 430 ms into the phase, 15 index nodes written; overlapping: none
+
+a-1k-b20  [write, 1 runs, workload 50c2ac98ea4aaeed]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,223.2          1,223.2          1,223.2       -
+  bytes_appended_per_user_byte                   1            1.218            1.218            1.218       -
+  commit.append.max_us                           1         55,654.1         55,654.1         55,654.1       -
+  commit.append.mean_us                          1            9.615            9.615            9.615       -
+  commit.append.p50_us                           1            7.935            7.935            7.935       -
+  commit.append.p95_us                           1           14.975           14.975           14.975       -
+  commit.append.p999_us                          1           31.487           31.487           31.487       -
+  commit.append.p99_us                           1           19.455           19.455           19.455       -
+  commits_per_s                                  1         97,878.9         97,878.9         97,878.9       -
+  gclog.pause.max_ms                             1           55.501           55.501           55.501       -
+  gclog.pause.total_ms                           1           90.284           90.284           90.284       -
+  gclog.safepoint.max_ms                         1           55.552           55.552           55.552       -
+  gclog.safepoint.total_ms                       1           90.505           90.505           90.505       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1         97,878.9         97,878.9         97,878.9       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,223.2          1,223.2          1,223.2       -
+  rec.user_index_bytes_per_put                   1            137.3            137.3            137.3       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6447           0.6447           0.6447       -
+  rss_mb_max                                     1          1,200.3          1,200.3          1,200.3       -
+  slowest_commit_ms                              1           55.654           55.654           55.654       -
+  storage.disk_mb_max                            1            839.6            839.6            839.6       -
+  user_mb_per_s                                  1           98.270           98.270           98.270       -
+  we                                             1           0.8208           0.8208           0.8208       -
+  longest GC pauses of run1 (2 in the window, total 90.284 ms): 55.5 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 4.6 s); 34.8 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.6 s);
+  slowest commits of run1:
+    55.65 ms at 2277 ms into the phase, 0 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 55.5 ms; safepoint G1CollectForAllocation 55.6 ms;
+    2.43 ms at 4176 ms into the phase, 0 index nodes written; overlapping: none
+    0.63 ms at 4192 ms into the phase, 1 index nodes written; overlapping: none
+    0.63 ms at 4193 ms into the phase, 0 index nodes written; overlapping: none
+    0.48 ms at 4185 ms into the phase, 1 index nodes written; overlapping: none
+
+a-1k-b50  [write, 1 runs, workload 347d1a4e5ae2382e]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,223.2          1,223.2          1,223.2       -
+  bytes_appended_per_user_byte                   1            1.218            1.218            1.218       -
+  commit.append.max_us                           1            130.4            130.4            130.4       -
+  commit.append.mean_us                          1            9.395            9.395            9.395       -
+  commit.append.p50_us                           1            7.839            7.839            7.839       -
+  commit.append.p95_us                           1           14.783           14.783           14.783       -
+  commit.append.p999_us                          1           30.847           30.847           30.847       -
+  commit.append.p99_us                           1           19.199           19.199           19.199       -
+  commits_per_s                                  1         99,121.9         99,121.9         99,121.9       -
+  gclog.pause.max_ms                             1           55.676           55.676           55.676       -
+  gclog.pause.total_ms                           1           90.841           90.841           90.841       -
+  gclog.safepoint.max_ms                         1           55.721           55.721           55.721       -
+  gclog.safepoint.total_ms                       1           91.073           91.073           91.073       -
+  heap.after_gc_mb_max                           1           54.526           54.526           54.526       -
+  puts_per_s                                     1         99,121.9         99,121.9         99,121.9       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,223.2          1,223.2          1,223.2       -
+  rec.user_index_bytes_per_put                   1            137.3            137.3            137.3       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.6433           0.6433           0.6433       -
+  rss_mb_max                                     1          1,210.2          1,210.2          1,210.2       -
+  slowest_commit_ms                              1           0.1304           0.1304           0.1304       -
+  storage.disk_mb_max                            1            839.2            839.2            839.2       -
+  user_mb_per_s                                  1           99.518           99.518           99.518       -
+  we                                             1           0.8208           0.8208           0.8208       -
+  longest GC pauses of run1 (2 in the window, total 90.841 ms): 55.7 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 4.5 s); 35.2 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 2.6 s);
+  slowest commits of run1:
+    0.13 ms at 351 ms into the phase, 13 index nodes written; overlapping: none
+    0.13 ms at 4371 ms into the phase, 1 index nodes written; overlapping: none
+    0.13 ms at 4370 ms into the phase, 0 index nodes written; overlapping: none
+    0.11 ms at 4363 ms into the phase, 0 index nodes written; overlapping: none
+    0.11 ms at 361 ms into the phase, 12 index nodes written; overlapping: none
+
+a-1k-x100-b100  [write, 1 runs, workload ea30c808b5b79d19]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,177.6          1,177.6          1,177.6       -
+  bytes_appended_per_user_byte                   1            1.173            1.173            1.173       -
+  commit.append.max_us                           1         33,206.2         33,206.2         33,206.2       -
+  commit.append.mean_us                          1            889.1            889.1            889.1       -
+  commit.append.p50_us                           1            880.6            880.6            880.6       -
+  commit.append.p95_us                           1            987.1            987.1            987.1       -
+  commit.append.p999_us                          1          2,441.2          2,441.2          2,441.2       -
+  commit.append.p99_us                           1          1,089.5          1,089.5          1,089.5       -
+  commits_per_s                                  1          1,072.4          1,072.4          1,072.4       -
+  gclog.pause.max_ms                             1           34.158           34.158           34.158       -
+  gclog.pause.total_ms                           1           66.248           66.248           66.248       -
+  gclog.safepoint.max_ms                         1           34.204           34.204           34.204       -
+  gclog.safepoint.total_ms                       1           66.478           66.478           66.478       -
+  heap.after_gc_mb_max                           1           58.720           58.720           58.720       -
+  puts_per_s                                     1        107,239.0        107,239.0        107,239.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,177.6          1,177.6          1,177.6       -
+  rec.user_index_bytes_per_put                   1            135.3            135.3            135.3       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.5888           0.5888           0.5888       -
+  rss_mb_max                                     1          1,640.9          1,640.9          1,640.9       -
+  slowest_commit_ms                              1           33.206           33.206           33.206       -
+  storage.disk_mb_max                            1          1,399.6          1,399.6          1,399.6       -
+  user_mb_per_s                                  1            107.7            107.7            107.7       -
+  we                                             1           0.8526           0.8526           0.8526       -
+  longest GC pauses of run1 (2 in the window, total 66.248 ms): 34.2 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 5.9 s); 32.1 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 3.0 s);
+  slowest commits of run1:
+    33.21 ms at 842 ms into the phase, 17 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 32.1 ms; safepoint G1CollectForAllocation 32.3 ms;
+    4.45 ms at 5244 ms into the phase, 38 index nodes written; overlapping: none
+    3.97 ms at 2569 ms into the phase, 25 index nodes written; overlapping: none
+    3.11 ms at 5249 ms into the phase, 26 index nodes written; overlapping: none
+    3.10 ms at 2263 ms into the phase, 61 index nodes written; overlapping: none
+
+a-1k-x100-b20  [write, 1 runs, workload 573dda5d2b194027]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,177.6          1,177.6          1,177.6       -
+  bytes_appended_per_user_byte                   1            1.173            1.173            1.173       -
+  commit.append.max_us                           1          2,590.8          2,590.8          2,590.8       -
+  commit.append.mean_us                          1            881.6            881.6            881.6       -
+  commit.append.p50_us                           1            876.5            876.5            876.5       -
+  commit.append.p95_us                           1            983.0            983.0            983.0       -
+  commit.append.p999_us                          1          2,072.6          2,072.6          2,072.6       -
+  commit.append.p99_us                           1          1,048.6          1,048.6          1,048.6       -
+  commits_per_s                                  1          1,077.7          1,077.7          1,077.7       -
+  gclog.pause.max_ms                             1           33.566           33.566           33.566       -
+  gclog.pause.total_ms                           1           66.532           66.532           66.532       -
+  gclog.safepoint.max_ms                         1           33.607           33.607           33.607       -
+  gclog.safepoint.total_ms                       1           66.746           66.746           66.746       -
+  heap.after_gc_mb_max                           1           58.720           58.720           58.720       -
+  puts_per_s                                     1        107,765.0        107,765.0        107,765.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,177.6          1,177.6          1,177.6       -
+  rec.user_index_bytes_per_put                   1            135.3            135.3            135.3       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.5939           0.5939           0.5939       -
+  rss_mb_max                                     1          1,639.4          1,639.4          1,639.4       -
+  slowest_commit_ms                              1            2.591            2.591            2.591       -
+  storage.disk_mb_max                            1          1,399.2          1,399.2          1,399.2       -
+  user_mb_per_s                                  1            108.2            108.2            108.2       -
+  we                                             1           0.8526           0.8526           0.8526       -
+  longest GC pauses of run1 (2 in the window, total 66.532 ms): 33.6 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 5.8 s); 33.0 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 3.0 s);
+  slowest commits of run1:
+    2.59 ms at 4863 ms into the phase, 0 index nodes written; overlapping: none
+    2.58 ms at 4860 ms into the phase, 0 index nodes written; overlapping: none
+    2.49 ms at 6901 ms into the phase, 30 index nodes written; overlapping: none
+    2.48 ms at 4848 ms into the phase, 30 index nodes written; overlapping: none
+    2.18 ms at 6892 ms into the phase, 34 index nodes written; overlapping: none
+
+a-1k-x100-b50  [write, 1 runs, workload 5d03558eabc86b45]
+  metric                                         n           median              min              max      CV
+  bytes_appended_per_put                         1          1,177.6          1,177.6          1,177.6       -
+  bytes_appended_per_user_byte                   1            1.173            1.173            1.173       -
+  commit.append.max_us                           1         35,418.8         35,418.8         35,418.8       -
+  commit.append.mean_us                          1            883.2            883.2            883.2       -
+  commit.append.p50_us                           1            876.5            876.5            876.5       -
+  commit.append.p95_us                           1            974.8            974.8            974.8       -
+  commit.append.p999_us                          1          1,982.5          1,982.5          1,982.5       -
+  commit.append.p99_us                           1          1,044.5          1,044.5          1,044.5       -
+  commits_per_s                                  1          1,081.1          1,081.1          1,081.1       -
+  gclog.pause.max_ms                             1           34.374           34.374           34.374       -
+  gclog.pause.total_ms                           1           67.310           67.310           67.310       -
+  gclog.safepoint.max_ms                         1           34.419           34.419           34.419       -
+  gclog.safepoint.total_ms                       1           67.532           67.532           67.532       -
+  heap.after_gc_mb_max                           1           58.720           58.720           58.720       -
+  puts_per_s                                     1        108,106.0        108,106.0        108,106.0       -
+  rec.other_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.step_bytes_per_put                         1           0.0000           0.0000           0.0000       -
+  rec.table_bytes_per_put                        1           0.0000           0.0000           0.0000       -
+  rec.user_bytes_per_put                         1          1,177.6          1,177.6          1,177.6       -
+  rec.user_index_bytes_per_put                   1            135.3            135.3            135.3       -
+  rec.user_value_bytes_per_put                   1          1,036.0          1,036.0          1,036.0       -
+  restart.startup_sec                            1           0.5822           0.5822           0.5822       -
+  rss_mb_max                                     1          1,645.7          1,645.7          1,645.7       -
+  slowest_commit_ms                              1           35.419           35.419           35.419       -
+  storage.disk_mb_max                            1          1,399.6          1,399.6          1,399.6       -
+  user_mb_per_s                                  1            108.5            108.5            108.5       -
+  we                                             1           0.8526           0.8526           0.8526       -
+  longest GC pauses of run1 (2 in the window, total 67.310 ms): 34.4 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 5.7 s); 32.9 ms (Pause Young (Normal) (G1 Evacuation Pause) at uptime 3.0 s);
+  slowest commits of run1:
+    35.42 ms at 3524 ms into the phase, 32 index nodes written; overlapping: GC pause Pause Young (Normal) (G1 Evacuation Pause) 34.4 ms; safepoint G1CollectForAllocation 34.4 ms;
+    7.14 ms at 4006 ms into the phase, 56 index nodes written; overlapping: none
+    2.49 ms at 4017 ms into the phase, 31 index nodes written; overlapping: none
+    2.39 ms at 4009 ms into the phase, 57 index nodes written; overlapping: none
+    2.22 ms at 282 ms into the phase, 16 index nodes written; overlapping: none
++ tool summary /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic --md
++ /opt/homebrew/opt/openjdk/bin/java -cp /Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/java/build/bergdb.jar:/Users/f/fl/repos/bergdb/java/build/perf/builds/005-76-after-20261102/harness-fc8a9162db0c bergdb.core.PerfTool summary /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic --md
++ echo 'PERFORMANCE RUN DONE: /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic (summary.txt, summary.md)'
+PERFORMANCE RUN DONE: /Users/f/fl/repos/bergdb/java/build/perf/runs/3ad171d3-dacb0cb-20261102T123102-/Users/f/fl/repos/bergdb/items/005-todo/76-wake-at-a-quarter/throughput.suite-g1-8g-admission-diagnostic (summary.txt, summary.md)
++ exit 0

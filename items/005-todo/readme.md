@@ -8,6 +8,9 @@ decisions to make. Each entry is a subitem with its own ID and a short
 definition: what, why, the questions, when it is done, the first step. An
 entry that grows into real work gets an item of its own, linked from here.
 
+Since 2026-11-03, new entries go to 015-todo, numbered from 015-01. An
+entry closely related to a 005 entry may still be added here, for now.
+
 
 The list
 ========
@@ -36,14 +39,12 @@ Open
 | [005-69](69-system-clock-promise.md) | Fix | `SystemClock`, `DbBuilder`'s default clock, promises strictly increasing times but never sets its last time, so it returns equal times within a millisecond and earlier ones when the system clock is set back. No harm: `DbClock` makes transaction and current times increase itself. Options: make the code keep the promise (one line and a test), or the comment say what the code does. Found by 012's planning (012-01, 4.4) | open |
 | [005-71](71-dbclock-read-time-after-start.md) | Fix | `DbClock` forgets `lastReadTime` at a start, so with a clock that has not moved, `currentTime()` before a restart changes the next transaction's time by one unit and the stream's bytes (P2). Found by 012-02's audit (C3), with a probe. Recommended: no code change, a note in P2 | open |
 | [005-72](72-file-layout-after-cut.md) | Decide | The files after reclaim's physical cut depend on timing (when the durable length reached the decision), while the bytes from the decided cut do not; a restart also changes the layout (not a bug). The C clone, without threads, cannot match Java's files after a cut. Frans, 2026-10-29: A for 012's cross tests (done); the entry stays open to consider B, a layout from the decided cut | open |
-| [005-76](76-wake-at-a-quarter.md) | Fix | `BufferedStream` checks the quarter-full rule only when its thread wakes, every bufferTime / 4 (about 32 ms on macOS at 100 ms); nothing wakes it when an append passes a quarter of the buffer, so at 100 to 170 MB/s of stream 3 to 5 MB arrive between checks, a flush takes at most 5 MB, and writers wait for room: at 100 ms 13 to 16 % fewer puts a second with 1 KB values and a p99.9 of 16 to 25 ms for large transactions (005-64's runs). Proposed: an append that takes the buffer past a quarter wakes the thread (010-P3); then the buffer time costs no throughput. Frans's request when he set 50 ms (005-64) | open |
 | [005-77](77-cap-pace-factor.md) | Investigate | A decrease's commits grow with the keys: after a one-call decrease (D4:B) from 1000 to 100 MB at 50M keys, the catch-up's records are 12 to 14 times the new mean (largest 13.3 to 15.4 MB, against 2.3 to 3.6 MB at 10M), written by the committing threads; the cause is the pace's factor S/sd in the share, which starts at 10 (007-07, section 11). Only bytes measured, not commit times; 100M keys not run. Proposed: cap S/sd at 2 or at 4 (two variants); the deadline at the span still keeps the section from growing, the catch-up gets longer, and T3_take and T3_take_decrease hold for any pace (007-08). Frans's decision on 006-10's point 4 | open |
 | [005-78](78-retain-duration-in-stream.md) | Investigate | The retain duration is not kept in the stream: it decides when reclaim's iterations start and where it cuts, so the stream's bytes, but a start takes the builder's value (default forever), against the rule of 005-53 and 005-52 (a setting that changes the stream's bytes is kept in the stream, 010-P2) and without a word in its Javadoc. Frans: it must be in the stream; study first. Forms: the meta blocks (as the startup distance), an internal KV, or reclaim's table | open |
 | [005-79](79-integers-not-doubles.md) | Implement | Integers instead of doubles in the Core's decisions, so that the stream's bytes are the same in every language and on every target (Frans, 2026-10-29: "Integer operations are well-defined on all targets"): the take's share and dither (`TransSeq.take`), reclaim's iteration spacing and internal fraction, eviction's low watermark. Decided (Frans, 15:48): the take in fixed point (option B), `setReclaimInternalFraction` takes an integer, on its own (not with 005-77 or 005-78, which have notes), not before Frans says so; the other three keep their bytes below 2^53. A check in the gates that keeps doubles out; the C clone and Lean's `share` and `dither` follow | open |
 | [005-80](80-setbudget-race-record.md) | Decide | `setBudget`'s race (005-52), fixed inside 005-65's commit `988fe1a`: a batch that ended while `setBudget` lowered the budget could put back the old budget's trigger, so an idle database kept the memory; now the batch computes the trigger under the monitor `setBudget` holds. Not recorded in 005-52, no test forces the interleaving, no commit of its own. Options: A nothing more, B a line in 005-52 and a forced-interleaving test (recommended), C a commit of its own (not possible, `main` is pushed). Frans's request, 2026-10-29 | open |
 | [005-81](81-overload-and-retries.md) | Investigate | Client overload, backpressure and retries | open |
 | [005-82](82-gettrans-corruption.md) | Fix | Corrupt getTrans leaves Db active | open |
-| [005-83](83-recovery-before-refusal.md) | Investigate | Recovery writes before refusing corruption | open |
 
 
 Closed
@@ -51,6 +52,8 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-83](83-recovery-before-refusal.md) | Investigate | Correction: 014-01 | moved | 2026-11-03 |
+| [005-76](76-wake-at-a-quarter.md) | Fix | Wake at a quarter | done | 2026-11-02 |
 | [005-73](73-db-api-small-findings.md) | Fix | Core API fixes | done | 2026-11-02 |
 | [005-75](75-core-checks-and-comments.md) | Fix | Core checks and comments | done | 2026-11-02 |
 | [005-74](74-parser-corrupt-sizes.md) | Fix | Reject corrupt sizes | done | 2026-11-02 |
@@ -405,9 +408,9 @@ Files
   005-75, Core time/order and append-offset checks fixed, two dead checks
   removed, comments corrected; done, with regressions and validation.
 * [76-wake-at-a-quarter.md](76-wake-at-a-quarter.md). 005-76,
-  `BufferedStream` checks the quarter-full rule only when its thread
-  wakes: the issue from 005-64's runs, the proposed fix, when it is done;
-  open.
+  `BufferedStream` wakes at a quarter and continues without a timer wait
+  when a flush leaves a quarter ready; done, with regressions, full level
+  checks and F53/s1 performance runs. Evidence in `76-wake-at-a-quarter/`.
 * [77-cap-pace-factor.md](77-cap-pace-factor.md). 005-77, cap the pace's
   factor S/sd, so that a decrease's records stay near the steady ones:
   the issue from 007-07's runs at 50M keys, the two variants, the
@@ -428,8 +431,8 @@ Files
 * [82-gettrans-corruption.md](82-gettrans-corruption.md). 005-82,
   parsing errors in `getTrans` must fail the database; split from 005-74.
 * [83-recovery-before-refusal.md](83-recovery-before-refusal.md). 005-83,
-  distinguish a corrupt size from a torn record before recovery writes;
-  split from 005-74.
+  power-loss tail experiment and initial designs; moved to 014-01,
+  with the original artifacts kept here.
 
 Log
 ===
@@ -1583,3 +1586,23 @@ digests unchanged. Java only; entry stays open for F4.
 refused before changing the reclaim fraction; double API retained,
 005-79 separate. Regression fails before and passes after. BEFORE COMMIT
 OK (1,090 unit, 78 f-tests), all 36 stream digests identical.
+
+2026-11-02. 005-83 experiment complete on 3ad171d: 56 ordinary controls
+recover, all 56 hole images fail at startup or later reads (112 checks),
+all already-forced bytes preserved in admitted images. The original
+refused-start case appends 1,057,153 bytes before refusing. Item remains
+open for a recovery contract and design; 005-82 remains unimplemented.
+
+2026-11-02. 005-76 done, as Frans requested: BufferedStream notifies once
+at a quarter crossing and does not wait with a quarter ready after a
+flush. Three regressions fail before and pass after, with assertions on
+and off. BEFORE COMMIT OK (1,093 unit, 78 f-tests), full LEVEL 2 OK (70
+traces), full LEVEL 3 OK (25 traces, power loss and interrupts). All 36
+logical StreamDigest cases match main; one physical cut differs with
+flush timing. Three admitted performance rounds on each of F53 and s1
+no longer reproduce the 100 ms penalty. Evidence and the strict digest
+comparison's physical-cut difference are recorded in 005-76.
+
+2026-11-03. New entries go to 015-todo from now on, numbered from 015-01,
+at Frans's request. An entry closely related to a 005 entry may still be
+added here, for now.

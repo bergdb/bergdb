@@ -164,7 +164,7 @@ Frans says so. Then it:
      gate results to today's coordinator (SendMessage), which commits;
    * or it hands the task over. It writes the task's State note in its
      item and names the task to today's coordinator, or registers it as a
-     005 entry.
+     015 entry.
 3. **Writes the plan's Outcome** and a `news.md` entry if anything
    changed since the morning summary.
 4. **Cleans up.** It deletes its check-ins (CronDelete), stops its
@@ -209,8 +209,8 @@ Several sessions share the main tree, the Git index, the CPU and
 
 * **commits to `main`.** Other sessions report finished, gated files to
   it, with their hunks of shared files, and it commits them;
-* **new item numbers** in shared series such as 005 and 006. A session
-  asks it before taking one;
+* **new item numbers** in shared series such as 005, 006 and 015. A
+  session asks it before taking one;
 * **heavy runs**: the four gates (about 45 minutes on all cores), timed
   runs, and anything that loads the machine for long. They run one at a
   time; a session asks before starting one;
@@ -326,30 +326,38 @@ keeps the Mac from idle sleep while it runs.
 
 ## 9. Effort and usage
 
-* **The coordinator's effort follows its mode** (Frans, 2026-10-28):
-  * attended: xhigh, which gives quicker answers. Frans finds it better
-    for interaction than max;
-  * unattended: max, where speed does not matter, unless the usage level
-    is tight;
-  * closing: xhigh.
+* **xhigh for everything** (Frans, 2026-11-03): the coordinator in every
+  mode, and every subagent.
+
+  > Effort level should be xhigh by default for everything unless
+  > explicitely told by Frans to use something else. If usage is tight or
+  > limit, use effort level High. Do not use Medium.
+
+  * When the usage level is tight or limit: high.
+  * Another level, such as max for a hard task, only when Frans asks for
+    it. His word goes into the day's plan and the state file.
+  * Never medium or low.
+
+  This replaces the rules of 27 and 28 October: max unattended, and max
+  for subagents on hard problems or when usage was plentiful.
 
   xhigh is the default for Opus 5.5 in `~/.claude/settings.json`
-  (`modelSettings`), so a new session starts there. `/effort LEVEL`
-  switches for the session only and leaves the settings alone. Claude
-  Code sends the effort inside the conversation, so a switch keeps the
-  prompt cache. A max turn costs about twice an xhigh one (Claude Code's
-  effort cost index for Opus 5: high 1, xhigh 1.66, max 3.44).
+  (`modelSettings`), so a new session starts there, and a switch of mode
+  needs no switch of effort. `/effort LEVEL` switches for the session
+  only and leaves the settings alone. Claude Code sends the effort inside
+  the conversation, so a switch keeps the prompt cache. Claude Code's
+  effort cost index for Opus 5: high 1, xhigh 1.66, max 3.44.
 
-  Frans switches the effort; the coordinator cannot. A scheduled prompt
-  (CronCreate) of `/effort xhigh` reached the model as plain text, not as
-  the command (tested 2026-10-28, 13:03). So the coordinator ends its
-  switch to unattended with "type `/effort max`", and its switch back with
-  "type `/effort xhigh`". If he forgets, little is lost: the heavy work is
-  done by subagents, whose effort the coordinator sets on every call.
-* **Subagents get their effort set on every call** (Frans, 2026-10-27):
-  * max for hard problems (Lean proofs, concurrency, algorithm design),
-    or when usage is plentiful;
-  * high for mechanical work, or when usage is tight.
+  Frans switches the session's effort; the coordinator cannot. A
+  scheduled prompt (CronCreate) of `/effort xhigh` reached the model as
+  plain text, not as the command (tested 2026-10-28, 13:03). So when the
+  usage level turns tight while Frans is there, the coordinator ends its
+  turn with "type `/effort high`", and with "type `/effort xhigh`" when
+  the level is back. While he is away, the session's effort stays where it
+  is. Little is lost: the heavy work is done by subagents, whose effort
+  the coordinator sets on every call.
+* **Subagents get their effort set on every call**, by the rule above:
+  xhigh, or high when the usage level is tight or limit.
 * **The usage, read by the coordinator itself.** The plan has a 5-hour
   window and a weekly one. `skill/usage.sh` runs Claude Code's `/usage`
   headless (`claude -p /usage`). That is a local command: it calls no
@@ -365,15 +373,15 @@ keeps the Mac from idle sleep while it runs.
 
   | Level | When | The coordinator |
   |---|---|---|
-  | plenty | 5h below 50 %, and the week at most 15 points ahead of its time (Frans, 2026-10-28) | max where it helps, up to the agent limit |
-  | normal | otherwise | max for hard problems only, high otherwise |
+  | plenty | 5h below 50 %, and the week at most 15 points ahead of its time (Frans, 2026-10-28) | xhigh, up to the agent limit |
+  | normal | otherwise | xhigh, up to the agent limit |
   | tight | 5h at 80 % or more; or the week at 85 % or more, or 25 points ahead of its time; or the server warns | high only, at most two agents, puts off what can wait |
   | limit | 5h or the week at 98 % or more | starts nothing; a one-off check-in 3 minutes after the reset resumes the work |
 
 * **When the level is read:**
   * at the start;
   * at every check-in, logged in the state directory's `usage.log`;
-  * before starting an agent at max, or a second agent at a time.
+  * before starting a second agent at a time.
 
   A night's `usage.log` shows how much each part of the work used.
 * **Frans's word overrides the level** ("usage is tight", "plenty of

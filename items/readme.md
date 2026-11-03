@@ -100,7 +100,8 @@ Index
   table) for BergDB: the literature, measurements, a design sketch, pros and
   cons; implemented in 009.
 * **005-todo** (open). A list of things to do on BergDB: issues to fix,
-  things to investigate, decisions to make; one subitem per entry.
+  things to investigate, decisions to make; one subitem per entry. New
+  entries go to 015 since 2026-11-03.
 * **006-2026-q4** (open). Small pieces of work in October to December
   2026, one subitem each; see "Small work".
 * **007-bounds** (open). Bounds on BergDB's costs, the planned T3 and T4:
@@ -126,3 +127,12 @@ Index
 * **013-ai-work** (open). How AI agents work on BergDB: ways of working
   that have worked, for Frans, Claude and other AI agents; first, the
   unattended night (013-01).
+* **014-stream** (open). The stream format and the contract between
+  append-only storage and the database; first, startup correction and its
+  historical fault model (014-01), promoted from 005-83.
+* **015-todo** (open). The list of things to do on BergDB after 005, with
+  a new numbering from 015-01; an entry closely related to a 005 entry may
+  still go to 005, for now.
+* **016-release-2026-2** (open). Release 2026.2: its scope, the work
+  before it and how it is made; the first release with handles (009) and
+  bounded startup (007), measured against 2026.1 in turns.

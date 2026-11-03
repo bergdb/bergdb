@@ -1,0 +1,3 @@
+12:05:59 start in /opt/bergdb-bench/005-76-20261102 (root@s1): 005-76-after-20261102, ROUNDS=3, budget 0 min, FORCE=0
+12:13:50 fetching the summaries
+12:13:51 runner exit 0; CHECK OK: 6 rows, every cell parsed

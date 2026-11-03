@@ -1,0 +1,11 @@
+replay-s11	zero-record-size	hole	values	123	27720	126712	27720	4	-1	start	RECOVERY_FAILURE	0	0	0	false		false	StreamFormatException: Bad transaction size in db stream, 0, spos 27720. Stream length: 126712
+bergdb.storage.StreamFormatException: Bad transaction size in db stream, 0, spos 27720. Stream length: 126712
+	at bergdb.storage.RecoverableStream.fixLastTransactionIfNeeded(RecoverableStream.java:256)
+	at bergdb.storage.RecoverableStream.recover(RecoverableStream.java:152)
+	at bergdb.core.NodeStream.recover(NodeStream.java:68)
+	at bergdb.core.Db.startInner(Db.java:665)
+	at bergdb.core.Db.start(Db.java:608)
+	at bergdb.core.Db.start(Db.java:570)
+	at bergdb.core.PowerLossTailProbe.runCase(PowerLossTailProbe.java:322)
+	at bergdb.core.PowerLossTailProbe.runSource(PowerLossTailProbe.java:295)
+	at bergdb.core.PowerLossTailProbe.main(PowerLossTailProbe.java:140)

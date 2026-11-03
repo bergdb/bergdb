@@ -18,8 +18,8 @@
 #   tight   5h at 80% or more, week at 85% or more, the week 25 points or more ahead of
 #           its time (used minus the share of the week gone), or the server's severity
 #           warning or critical: high effort, fewer agents, put off what can wait.
-#   plenty  5h below 50% and the week at most 15 points ahead of its time: max is fine.
-#   normal  otherwise: max for hard problems only.
+#   plenty  5h below 50% and the week at most 15 points ahead of its time: xhigh.
+#   normal  otherwise: xhigh, as plenty.
 #
 # Exit codes: 0 read; 1 not read (offline, or no rows): the line then says "level unknown".
 # The claude binary is $CLAUDE_BIN, else claude on the PATH, else the newest one of the VS

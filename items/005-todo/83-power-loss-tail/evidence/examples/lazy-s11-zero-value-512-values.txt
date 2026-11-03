@@ -1,0 +1,23 @@
+lazy-s11	zero-value-512	hole	values	123	4335336	4588096	4336184	512	211	values	RECOVERY_FAILURE	0	0	0	false		false	DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted. <- StreamChecksumException: spos: 4336096, storedSum: 21299, computedSum: 50480, nodeType: 30
+bergdb.pub.util.DbFailedException: A read failed on the storage (the cause). The database takes no more transactions or reads and must be restarted.
+	at bergdb.core.Db.failOnStorage(Db.java:2024)
+	at bergdb.core.Db.readFailed(Db.java:1643)
+	at bergdb.core.Db.getOneInternal(Db.java:1528)
+	at bergdb.core.Db.getOne(Db.java:1435)
+	at bergdb.core.DbUtil.get(DbUtil.java:70)
+	at bergdb.core.PowerLossTailProbe.checkValues(PowerLossTailProbe.java:424)
+	at bergdb.core.PowerLossTailProbe.runCase(PowerLossTailProbe.java:343)
+	at bergdb.core.PowerLossTailProbe.runSource(PowerLossTailProbe.java:295)
+	at bergdb.core.PowerLossTailProbe.main(PowerLossTailProbe.java:140)
+Caused by: bergdb.core.StreamChecksumException: spos: 4336096, storedSum: 21299, computedSum: 50480, nodeType: 30
+	at bergdb.core.NodeStream.checkChecksum(NodeStream.java:282)
+	at bergdb.core.NodeStream.bytesToNode(NodeStream.java:253)
+	at bergdb.core.NodeStream.readNode(NodeStream.java:197)
+	at bergdb.core.NodeCollection.followValuePointer(NodeCollection.java:573)
+	at bergdb.core.NodeCollection.followStreamPointer(NodeCollection.java:390)
+	at bergdb.core.NodeCollection.followPointer(NodeCollection.java:218)
+	at bergdb.dag.OpData.followPointer(OpData.java:41)
+	at bergdb.dag.Dag.getEqNodeInSegment(Dag.java:336)
+	at bergdb.dag.Dag.getOne(Dag.java:274)
+	at bergdb.core.Db.getOneInternal(Db.java:1526)
+	... 6 more

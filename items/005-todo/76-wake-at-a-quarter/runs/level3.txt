@@ -1,0 +1,32 @@
+1. Unit tests
+SUCCESS, 1093 successful tests in 13.2 s.
+SUCCESS, 78 successful tests in 68.8 s.
+2. ReclaimStress, random configurations
+   reclaim-0: Done: 50 rounds, 0 failures, 50 rounds with a cut, 15 s, 820 exhaustive verifications.
+   reclaim-1: Done: 50 rounds, 0 failures, 50 rounds with a cut, 15 s, 984 exhaustive verifications.
+   reclaim-2: Done: 50 rounds, 0 failures, 50 rounds with a cut, 15 s, 832 exhaustive verifications.
+   reclaim-3: Done: 50 rounds, 0 failures, 50 rounds with a cut, 16 s, 892 exhaustive verifications.
+3. RestartInvariance with reclaim
+   inv-every1: stream identical, same cut, all checks OK
+   inv-node14: stream identical, same cut, all checks OK
+   inv-node62: stream identical, same cut, all checks OK
+   inv-node8: stream identical, same cut, all checks OK
+4. CrashTest with reclaim
+   crash-0: Done: 5 rounds, 0 failures, 6 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-1: Done: 5 rounds, 0 failures, 7 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-2: Done: 5 rounds, 0 failures, 6 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-3: Done: 5 rounds, 0 failures, 7 s. Cuts where a transaction ends at a meta block's position: 0.
+   crash-node8: Done: 5 rounds, 0 failures, 7 s. Cuts where a transaction ends at a meta block's position: 0.
+5. ReclaimReaders, readers while reclaim cuts
+   readers-0: Done: 12 rounds, 0 failures, 12 rounds with a cut, 828345 gets and 338952 scans correct, expired at admission 5, expired during 35, 8 s.
+   readers-1: Done: 12 rounds, 0 failures, 12 rounds with a cut, 1092518 gets and 415205 scans correct, expired at admission 2, expired during 22, 5 s.
+   readers-disk: Done: 12 rounds, 0 failures, 12 rounds with a cut, 30371810 gets and 10201675 scans correct, expired at admission 9, expired during 1, 75 s.
+6. LoadTest with reclaim, a restart at every cut
+   restarts with a full check after a cut: 6
+7. PowerLossTest, forced bytes and durable names before deletion
+POWERLOSS OK: 8 seeds, 440 cold recoveries; negative controls caught
+8. Conformance with the Lean model, with reclaim
+   conformance: traces: 25, TRACECHECK OK: 25; C-CUT 0 of 305 CUT lines fail; traces without a cut: 0
+9. InterruptStress, interrupts everywhere
+   InterruptStress: 60 s, 12289012 calls, 469532 of them with an interrupt, the flag kept by all; syncs ended by an interrupt 31618; reads expired by a cut 0; restarts 15; storage threads interrupted 587; first available lookup time 28787400001
+LEVEL 3 OK
