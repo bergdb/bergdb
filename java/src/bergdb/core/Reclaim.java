@@ -1733,6 +1733,16 @@ public class Reclaim implements Db.TransactionListener {
          * reclaim): the last step of an iteration stored the row as done, and tEnd and pEnd
          * followed in the next transaction. After a crash between the two, the row was 
          * done with tEnd = 0, and the cut there made 0 the first available lookup time.
+         * 
+         * <p>Durability follows the transactions, not the clock (2026-11-03, bergdb 015-09):
+         * the main stream's buffer flushes only when the test syncs, after each transaction
+         * (startForCrashTest). With the tests' 10 ms buffer time, a flush could reach the
+         * stream between the iteration's last records and a physical cut in the same
+         * transaction, under load (a before-commit.sh beside other gates): the cut then
+         * recorded a length past the crash position, which no crash can lose, and
+         * CutStream.truncate refused the crash ("truncate to 241352, before the length at
+         * the last cut, 246952"). Now a cut in the transaction of the iteration's end comes
+         * before the transaction's records reach the stream.</p>
          */
         @Nano
         public static void testCrashBeforeIterationEnd() {
@@ -1740,7 +1750,7 @@ public class Reclaim implements Db.TransactionListener {
             long time = Clock.UNITS_PER_SEC;
             clock.setTime(time);
             CutStream stream = new CutStream();
-            Db db = startForCutTest(stream, clock);
+            Db db = startForCrashTest(stream, clock);
             java.util.Random r = new java.util.Random(6);
             java.util.Map<String, java.util.TreeMap<Long, byte[]>> model = 
                     new java.util.HashMap<String, java.util.TreeMap<Long, byte[]>>();
@@ -1774,7 +1784,7 @@ public class Reclaim implements Db.TransactionListener {
                     stream.truncate(crashPos);
                     clock = new CoreTestClock();
                     clock.setTime(time);
-                    db = startForCutTest(stream, clock);
+                    db = startForCrashTest(stream, clock);
                     crashed = true;
                     cutAtCrash = stream.getCut();
                     
@@ -1790,6 +1800,7 @@ public class Reclaim implements Db.TransactionListener {
                     Assert.assertTrue("first available lookup time 0, after a cut at " 
                             + db.getFirstAvailablePos(), db.getFirstAvailableLookupTime() > 0);
                 }
+                db.sync(SyncLevel.ORDINARY);    // the only flush (startForCrashTest)
             }
             
             Assert.assertTrue("no crash", crashed);
@@ -1804,6 +1815,19 @@ public class Reclaim implements Db.TransactionListener {
                 }
             }
             db.stop();
+        }
+        
+        /**
+         * As startForCutTest, with a buffer time of 60 s, so that the main stream's buffer
+         * is flushed only by a sync (or when full), not by the clock (bergdb 015-09).
+         */
+        private static Db startForCrashTest(CutStream stream, CoreTestClock clock) {
+            DbBuilder b = Db.builder();
+            b.testSetupExceptStream();
+            Db db = b.stream("main", stream, 100 * 1000, 60 * 1000).clock(clock)
+                    .maxNodeSize8().startupDistance(2000).start();
+            db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+            return db;
         }
         
         private static Db startForCutTest(CutStream stream, CoreTestClock clock) {
