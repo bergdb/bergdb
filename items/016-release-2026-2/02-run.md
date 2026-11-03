@@ -321,6 +321,22 @@ section 3). Unless he chooses before the release, it is a known issue of
 * 20:06 015-24 committed, done: the directory lock across class loaders,
   new in 2026.2; gate `BEFORE COMMIT OK (107 s)`. The docs agent started
   (016-03, 016-04).
+* 20:10 015-14 handed off; its review (20:30): no fault. The new jcstress
+  tests show that F53 reordered the two loads of the fast path on the
+  code before (a harmless outcome, as `usable` checks it); R1-F3's wrong
+  answer was not seen. The fix makes the order hold by the memory model.
+  Its doc nits are being fixed; the read path's cost is unmeasured.
+* 20:10 to 20:30 the docs agent: next.md complete (`e5bd275`), the draft
+  notes (outside the repository until R9), replication's Javadoc
+  (`777f75f`), README.md and docs/levels.md (`fe72238`, `b6515aa`, with
+  015-27's correction of section 3), 2026.1's post-release notes
+  (`44bfaae`); D4 and D6 no change. N4 at about 01:00.
+* 20:31 015-20, 015-22 and 015-21 committed (`9971100`, `7cd4cdb`,
+  `377fe7d`), done; review: no fault; gate `BEFORE COMMIT OK (104 s)`.
+  The review met two more faults of 2026.1, registered as 015-28 and
+  015-29, and 015-30 (time only).
+* 20:29 Usage at 35% with 20% of the window gone: at most two agents until
+  00:30.
 
 
 ## 7. For Frans to decide
