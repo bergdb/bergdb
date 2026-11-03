@@ -28,6 +28,12 @@ Open
 
 | ID | Kind | What | Status |
 |---|---|---|---|
+| [015-01](01-empty-directory.md) | Fix | A directory without its stream starts as a new one | in progress |
+| [015-02](02-c-follows-2026-2.md) | Implement | The C clone follows 2026.2's Java changes | open |
+| [015-03](03-lean-follows-005-79.md) | Implement | Lean follows 005-79's integer take | open |
+| [015-04](04-deps-helper-rule.md) | Investigate | deps.py counts take and dither as test code | open |
+| [015-05](05-empty-or-missing-directory.md) | Decide | A start on an empty or missing directory creates a database | open |
+| [015-06](06-refused-start-leaves-file.md) | Fix | A refused start leaves an empty first stream file | open |
 
 
 Closed
@@ -45,7 +51,20 @@ decided change).
 Files
 =====
 
-None yet.
+* [01-empty-directory.md](01-empty-directory.md). 015-01, Fix: a database
+  directory whose stream files are gone, or whose only file is empty,
+  starts as a new, empty database; options A to G; A with A+ chosen.
+* [02-c-follows-2026-2.md](02-c-follows-2026-2.md). 015-02, Implement: the
+  C clone follows 2026.2's Java changes (005-79, 005-69, 005-78).
+* [03-lean-follows-005-79.md](03-lean-follows-005-79.md). 015-03,
+  Implement: Lean's take follows 005-79's fixed point (optional).
+* [04-deps-helper-rule.md](04-deps-helper-rule.md). 015-04, Investigate:
+  `deps.py`'s helper rule counts `TransSeq.take` and `dither` as test code.
+* [05-empty-or-missing-directory.md](05-empty-or-missing-directory.md).
+  015-05, Decide: 015-01's case 3, a start on an empty or missing
+  directory; B1 (`createIfMissing()`) recommended for after 2026.2.
+* [06-refused-start-leaves-file.md](06-refused-start-leaves-file.md).
+  015-06, Fix: a refused start leaves an empty `00000000000000.bergdb`.
 
 
 Log

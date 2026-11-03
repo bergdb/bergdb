@@ -4,7 +4,8 @@
 Status: open. Measured (Results, 2026-10-28 night); Frans decided on
 2026-10-29 (Decision and fix): the fix, in `main` since 2026-10-29
 (`988fe1a`), and the rest of the long gets accepted as a full machine. Open
-until the thread sweep reruns with the fix in a quiet block (State). Kind:
+until the thread sweep reruns with the fix in a quiet block (State),
+planned for night 1 of release 2026.2 (see Plan for 2026.2). Kind:
 investigate. Created 2026-10-28.
 
 Registered at Frans's decision on item 009's target 2 (2026-10-28,
@@ -782,3 +783,100 @@ Size and order
 S, measurements only, unless a change follows. Needs a quiet F53. Comes
 from item 009 (target 2) and 005-46, which made the readers faster;
 touches 005-51 (the eviction thread's waits).
+
+
+Plan for 2026.2
+---------------
+
+Written 2026-11-03 for 016-05 (W4): State's steps 2 and 3, in night 1's
+quiet block, then the explanation and the close. The fix it measures is in
+the release; the rerun changes no code. With Frans's message of 15:40
+("try your best to finish this work by 07:00 tomorrow in the morning"),
+the block is in window 2 only, from `night.sh`'s end (about 03:00) to
+06:05 (the conductor's end of window 2), and this step runs first
+(016-05, section 6).
+
+**The builds**, checked on 2026-11-03 (read only): in
+`/Users/f/fl/bench/006-10/e65-builds`, four clones, each at its commit
+with a clean tree and its jar, the jars those of State's step 1 (the first
+8 hex digits of their SHA-256):
+
+| Build     | What                                       | Jar SHA-256 |
+|---|---|---|
+| `bf19075` | 005-50, the first night's reference        | `308e7d01`  |
+| `5a6befd` | `main` before the fix (012-16's commit)    | `79925f95`  |
+| `988fe1a` | the fix                                    | `2b5202f0`  |
+| `4f7cd60` | 006-09's HEAD, the first night's; the load | `517165ee`  |
+
+And `sb/`: `src` (ScaleBench with `ScaleBench-065.diff`), `classes-` of
+each build, `pidio`; `smoke/`, the smoke of 2026-10-29 (24 of 24 rows).
+The JVM is `/opt/homebrew/opt/openjdk` (JDK 27; Q2's JDK 17 is installed
+as `openjdk@17` beside it and changes nothing here). Disk: 439 GB free
+for the 10M database in `$B/sbdata`.
+
+The steps, by agent F2 (016-05), first in its row:
+
+1. **The step script** (written 2026-11-03):
+   [night/rerun-016.sh](65-gets-with-8-readers/night/rerun-016.sh), a
+   wrapper with `# minutes: 30` that sets `B` and `BUILDS` (above) and
+   runs `threads.sh`, which checks every jar, class and tool it needs
+   (exit 2 if one is missing), keeps its own quiet check (two checks 15 s
+   apart) and its deadline of 30 minutes, and checks its parsed summary
+   (24 rows: 8 runs, three thread phases each). Not `performance.sh`, so
+   no `FORCE=1`.
+2. **The smoke and READY** (0.3 hours, by day, untimed): `SMOKE=1 sh
+   /Users/f/fl/repos/bergdb/items/005-todo/65-gets-with-8-readers/night/rerun-016.sh`,
+   about a minute (outputs in `$B/smoke`, outside the repository); it
+   must print `threads (SMOKE): OK, 0 problems; ...`. Then `touch
+   .../night/rerun-016.sh.READY`, and the last line with its time in
+   this entry's Log. Planned by 18:00; at the latest by 01:30.
+3. **The block**: the conductor's step `65-rerun` (its `steps.txt` line in
+   016-05, section 6), about 21 minutes. Its outputs land in this
+   entry's `night/out/` in the main tree (untracked; `threads.sh`'s
+   `OUTROOT`) and in `$B/raw/threads`.
+4. **The morning** (1.2 hours, F2 or another agent, from about 05:00 or
+   06:00):
+   * `night/out/summary.txt` copied to
+     `night/results-2026-11-04.txt`; `night/out/` moved to
+     `/Users/f/fl/bench/016/005-65/out-2026-11-04/` (raw outputs stay out
+     of the repository).
+   * A section "Results, 2026-11-04 night" here, as the 2026-10-28 one:
+     per build and thread count, the gets a second, the longest get, the
+     gets over 10 ms, the after-load calls over 10 ms, the entries into
+     `evictorLock` a second, the readers blocked.
+   * The explanation, against State's step 3 (expected by (a)): with 8
+     threads, the fix against `5a6befd`, the entries into `evictorLock`
+     from about 78,000 a second to a few hundred, the after-load call near
+     its 4-thread cost, the after-load calls over 10 ms near 0, the gets
+     over 10 ms down by about a fifth, not to 0. Confirmed or refuted, by
+     which numbers.
+   * The recommendation of "Done when": with the expectation met,
+     nothing (as many readers as cores is outside the target, Frans's
+     decision of 2026-10-29); otherwise more measurements or a change,
+     which is Frans's to decide (a stop, 016-05, section 8).
+   * With the expectation met: an Outcome, Status "done (2026-11-04)";
+     docs/levels.md, section 7's "not yet explained" is updated by 016-04's
+     agent from it. The hand-off as 016-05, section 4 (no `java/`, no
+     gate).
+   * If the step did not run, was `NOT QUIET` (the conductor's
+     `results.txt`), or failed: the entry stays open, its State says so,
+     and the release notes keep 005-65's known issue as it is (016-01,
+     section 4.2); the release does not wait for it.
+5. **The review** (0.2 hours): another agent reads the results' section
+   against `summary.txt`, the numbers only.
+
+Size: about 1.5 agent-hours and 30 minutes of the block (about 21 used).
+Depends on nothing of tonight's code: the four builds are fixed. No stop
+for Frans unless the results go against the expectation.
+
+**State** (2026-11-03): the wrapper is written, not smoke-tested, no
+READY marker. `prep.sh` need not run again (State's step 1: only if `B`
+is lost).
+
+
+Log
+---
+
+2026-11-03. Planned for night 1 of release 2026.2 (016-05): the rerun in
+window 2, by `night/rerun-016.sh` (written, not yet smoke-tested), then
+the results, the explanation and the close in the morning.

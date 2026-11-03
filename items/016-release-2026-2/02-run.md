@@ -91,24 +91,38 @@ empty directory (agent P3).
 
 ## 4. The timeline
 
-Night 1, 2026-11-03 to 04 (times planned; the progress below has the
-real ones):
+Frans, 15:40: "Regarding the plan of 016-01. I want you to try your best
+to finish this work by 07:00 tomorrow in the morning. I know you are fast,
+so give it your best to finish by then instead of in three days or so.
+Note, you only need before-commit.sh to be successful to commit your
+work."
+
+So 016-01, section 8's four days become one night, and the only commit
+gate is `java/before-commit.sh` (`BEFORE COMMIT OK`) on the combined tree.
+The plan (times planned; the progress below has the real ones):
 
 * 15:30 to 16:50: the four planning agents.
-* 16:50 to 17:30: the coordinator checks the plans, chooses 015-01's
+* 16:50 to 17:15: the coordinator checks the plans, chooses 015-01's
   design, and commits the plans.
-* 17:30 to 22:10: implementation, four agents (016-05's order), each
-  change gated in its clone and reviewed by another agent (H5), then
-  copied into `main`, gated combined, and committed.
-* 22:10: CPU-heavy work stops; agents write their State notes.
-* 22:30 to 23:55, the quiet block (window 1 only): the conductor in
-  `/Users/f/fl/bench/016/night1/` runs 005-65's `threads.sh` and 005-52's
-  runs, if their scripts are READY. The session is idle.
-* From 00:07: the work goes on (check-ins every 20 minutes, none from
-  22:00 to 23:59).
-* 02:05 to about 03:00: `night.sh` (launchd, 02:10); no gates meanwhile.
-* 06:00 to 07:00: the morning (013-01, section 8): results into the
-  items, this subitem's Outcome, the summary in `news.md`.
+* From 16:50: implementation and the search at once, four agents at a
+  time: the fixes (016-05), the reviews H1 to H3 (016-06, 016-07), the
+  documents (016-03, 016-04), the JDK 17 and Linux runs (016-08). Each
+  change is reviewed by another agent (H5), copied into `main`, gated and
+  committed.
+* By about 01:30: every fix and verified finding committed; the night
+  scripts READY; the release commit A (016-09) by 01:45, and its jar.
+* 01:45 to 02:05: W6's tests on the jar on F53 where they fit.
+* 02:00: s1's runs (W7, and the jar's tests there) from the conductor.
+* 02:10: `night.sh` on A, the release's gate (about 45 minutes).
+* From night.sh's end (about 03:00) to 06:05, the quiet block (window 2):
+  005-65's `threads.sh`, 005-52's runs, then W7's F53 block. The session
+  is idle; no check-ins from 03:00 to 05:59.
+* 06:07 to 07:00: the numbers into the notes, commit B and the tag, this
+  subitem's Outcome and the summary in `news.md`.
+
+005-78 waits for Frans's choice of a form (a format question, 016-01,
+section 3). Unless he chooses before the release, it is a known issue of
+2026.2, and its design is in "For Frans to decide".
 
 
 ## 5. If the session stops
@@ -132,11 +146,38 @@ real ones):
   (016-06 to 016-08).
 * 15:31 Frans: Java only (D7); the agents told.
 * 15:32 Conductor started for window 1, 22:30 to 23:55.
+* 15:33 Committed 6d81050: 016-01 with Frans's answers and D7, this
+  subitem, 016's readme.
+* 15:40 Frans: the release by 07:00; only `before-commit.sh` to commit.
+  The agents told; the timeline above replaces the earlier one.
+* 15:42 Conductor restarted: window 1 empty (s1 steps from 02:00),
+  window 2 from night.sh's end to 06:05. Check-ins: none 03:00 to 05:59.
+* 15:43 JDK 17 on s1: Temurin 17.0.21+9 in `/opt/bergdb-bench/jdk-17`
+  (Q2). On F53, `brew install openjdk@17`: 17.0.21.0.3 in
+  `/opt/homebrew/opt/openjdk@17` (not linked; the default java stays 27).
+* 15:50 P2's plans done, in 005-79 and 005-78. Chosen: 005-79 as two
+  commits, A (no byte change) and B (the take in fixed point), with A
+  alone in the release if B is not gated by 00:30; no Lean step (D7);
+  005-78 tonight only the study, the probe and the design for Frans.
+* 15:51 005-79's implementation started (its plan is complete; the
+  longest task goes first).
+* 15:55 P3's plans done: 016-05, the plans in 005-82, 005-69, 005-71,
+  005-80, 005-52 and 005-65, their night scripts, and 015-01.
+* 15:57 Agent F1 started: 005-82, 005-69, 005-80, 005-71, in that order.
+* 15:57 015-01 decided by the coordinator: A with A+ (`created.txt` as the
+  mark of a database, the creation forced before it; a start refuses a
+  directory with `created.txt` and no stream byte). Registered from the
+  plans: 015-02 (C follows), 015-03 (Lean follows 005-79), 015-04
+  (`deps.py`), 015-05 (an empty or missing directory, for Frans), 015-06
+  (a refused start leaves an empty first file; fixed with 015-01).
 
 
 ## 7. For Frans to decide
 
-None yet.
+1. **015-05: a start on an empty or missing directory** (015-01's case
+   3), for after the release. Recommended: B1, `createIfMissing()`, in the
+   first release with a public API; until then the recipe in
+   `DatabaseBuilder.start()`'s Javadoc.
 
 
 ## 8. Outcome

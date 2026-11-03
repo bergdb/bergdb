@@ -1,0 +1,76 @@
+005-79: doubles and floats in the production code of the Core Layer's packages
+(java/deps.py --layer core: common, core, dag, nanotest, pub.util, storage, stream),
+at 6d81050 (java/ as at df6ad50), 2026-11-03. Test code left out by deps.py's direct
+markers only (Tester files, Pack, nested Tester classes, @Nano, static void test...),
+not by its helper rule, which counts TransSeq.take and dither as test code. Matched:
+double, float, Double, Float, decimal literals with a point or a d/f suffix, hex floats.
+0x7f in StringUtil.java:149 is a false match of the pattern (a hex int).
+
+common/Bytes.java:100: Bytes.intToBytesLE(Float.floatToRawIntBits(v), bytes, offset);
+common/Bytes.java:103: public static float bytesToFloatLE(byte[] arr, int offset) {
+common/Bytes.java:105: return Float.intBitsToFloat(myInt);
+common/Bytes.java:123: public static void doubleToBytesLE(final double v, final byte[] bytes, final int offset) {
+common/Bytes.java:124: Bytes.longToBytesLE(Double.doubleToRawLongBits(v), bytes, offset);
+common/Bytes.java:127: public static double bytesToDoubleLE(byte[] arr, int offset) {
+common/Bytes.java:129: return Double.longBitsToDouble(myLong);
+common/Bytes.java:99: public static void floatToBytesLE(final float v, final byte[] bytes, final int offset) {
+common/SeedGenerator.java:187: offset = offset + (int) (Math.random() * 8.0);
+common/StringUtil.java:149: if (ch <= 0x7f) {
+common/StringUtil.java:23: public static String oneDecimal(double value) {
+common/StringUtil.java:25: double d = Math.round(value * 10.0) / 10.0;
+common/StringUtil.java:49: public static String twoDecimals(double value) {
+common/StringUtil.java:51: double d = Math.round(value * 100.0) / 100.0;
+common/StringUtil.java:98: public static String wholeNumber(double value) {
+core/Db.java:422: public void setReclaimInternalFraction(double internalFraction) {
+core/Db.java:426: public double getInternalFraction() {
+core/Eviction.java:108: static final double LOW = 0.75;
+core/Jmx.java:138: double secs = (double) d / Clock.UNITS_PER_SEC;
+core/Jmx.java:164: public double getActualRetainDurationInSeconds() {
+core/Jmx.java:166: return ((double) duration) / Clock.UNITS_PER_SEC;
+core/Jmx.java:169: public double getActualRetainDurationInDays() {
+core/Jmx.java:171: return duration / (Clock.UNITS_PER_SEC * (24.0 * 3600.0));
+core/Jmx.java:217: public double getReclaimInternalFraction() {
+core/Jmx.java:221: public void setReclaimInternalFraction(double internalFraction) {
+core/Jmx.java:238: public double getStreamSizeSpeed();
+core/Jmx.java:239: public double getStreamSizeSpeedM();
+core/Jmx.java:240: public double getTransactionSpeed();
+core/Jmx.java:241: public double getKvSpeed();
+core/Jmx.java:242: public double getGetSpeed();
+core/Jmx.java:251: volatile double streamSizeSpeed = 0.0;
+core/Jmx.java:252: volatile double transactionSpeed = 0.0;
+core/Jmx.java:253: volatile double kvSpeed = 0.0;
+core/Jmx.java:254: volatile double getSpeed = 0.0;
+core/Jmx.java:264: public double getStreamSizeSpeed() {
+core/Jmx.java:268: public double getStreamSizeSpeedM() {
+core/Jmx.java:272: public double getTransactionSpeed() {
+core/Jmx.java:276: public double getKvSpeed() {
+core/Jmx.java:280: public double getGetSpeed() {
+core/Jmx.java:340: double secs = time * 1e-9;
+core/Jmx.java:41: public double getActualRetainDurationInSeconds();
+core/Jmx.java:42: public double getActualRetainDurationInDays();
+core/Jmx.java:52: public double getReclaimInternalFraction();
+core/Jmx.java:53: public void setReclaimInternalFraction(double internalFraction);
+core/KeyFactory.java:109: if (r.nextDouble() < 0.02) {
+core/NodeCollection.java:72: private final Map<Long, Long> idByPos = new LinkedHashMap<Long, Long>(1024, 0.75f, true) {
+core/Reclaim.java:118: static final double ITERATION_SPACING = 0.25;
+core/Reclaim.java:140: private static final double DEFAULT_INTERNAL_FRACTION = 0.25;
+core/Reclaim.java:141: private volatile double internalFraction;
+core/Reclaim.java:237: public void setInternalFraction(double internalFraction) {
+core/Reclaim.java:238: if (Double.isNaN(internalFraction) || internalFraction < 0.001 || internalFraction > 0.90) {
+core/Reclaim.java:279: public double getInternalFraction() {
+core/StoredTrans.java:808: this.prevPos = new long[(int) (transNodes.keyCount * 1.20)];
+core/StoredTrans.java:847: Math.min((long) (totalSize * 1.20), MAX_RECORD_SIZE));
+core/TransSeq.java:160: final double share = (double) dirtyCount * recordOwnBytes / ownBytes
+core/TransSeq.java:162: final double u = dither(streamLength);
+core/TransSeq.java:233: static double dither(long pos) {
+core/TransSeq.java:237: return ((z ^ (z >>> 31)) >>> 11) * 0x1.0p-53;
+dag/KeyAccessPath.java:64: int newSize = (int) (size * 1.6);
+nanotest/Assert.java:261: public static void assertArrayEquals(float[] expected, float[] actual) {
+nanotest/Assert.java:289: public static void assertArrayEquals(double[] expected, double[] actual) {
+nanotest/Assert.java:379: public static void assertEquals(double expected, double actual, double tolerance) {
+nanotest/Assert.java:380: double diff = Math.abs(actual - expected);
+nanotest/ConsoleUI.java:144: long rounded = Math.round(exeTime * 1000.0);
+nanotest/ConsoleUI.java:21: protected double exeTime;
+nanotest/ConsoleUI.java:222: double rounded = Math.round(10.0 * totalExeTime) / 10.0;
+nanotest/ConsoleUI.java:22: protected double totalExeTime = 0.0;
+storage/StorageManager.java:413: int progressValue = (int) (100.0 * bytesWritten / (double) totalBytesToWrite);

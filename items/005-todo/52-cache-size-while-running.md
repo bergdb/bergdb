@@ -4,7 +4,9 @@
 Status: open (reopened by Frans, 2026-10-29: one point of "Done when" is
 left, the pause probe with a lowered budget; see Left to do. The API is
 done: option B, decided by Frans and implemented with 005-53 on
-2026-10-28; see Outcome). Kind: fix. Created 2026-10-26.
+2026-10-28; see Outcome). Planned for release 2026.2: the probe's two
+properties, six runs in night 1's quiet block, the table (see Plan for
+2026.2). Kind: fix. Created 2026-10-26.
 
 Found in [010-01](../010-principles/01-principles.md), 010-P6 ("No
 interruption for changes"); registered at Frans's request (2026-10-26:
@@ -412,3 +414,150 @@ Done when the table is here and no wait in (b) is longer than in (a)
 beyond the spread between two runs of (a); then the entry closes. If one
 is longer: its cause, and a proposal for Frans, before any change to
 `java/`.
+
+
+Plan for 2026.2
+---------------
+
+Written 2026-11-03 for 016-05 (W4), by Left to do's three steps, with two
+changes:
+
+* **Six runs, not four.** Left to do's "Done when" compares (b) with (a)
+  "beyond the spread between two runs of (a)", so each collector has two
+  runs of (a), one before and one after (b): ZGC a1, b, a2, then G1 a1, b,
+  a2. About 17 minutes, not 15.
+* **Window 2.** Frans, 2026-11-03, 15:40: "try your best to finish this
+  work by 07:00 tomorrow in the morning". The quiet block of night 1 is
+  in window 2 only, from `night.sh`'s end (about 03:00) to 06:15, after
+  005-65's rerun (016-05, section 6). The probe's change is committed
+  before the release commit, by about 22:00.
+
+The steps, by agent F2 (016-05), after 005-65's step 1, in
+`/Users/f/fl/bench/016/005-52/repo` (a clone of `main`):
+
+1. **The probe's properties** (0.75 hours), `java/stress/PauseProbe.java`:
+   * `lower=MB` (default 0: off) and `lowerAt=S` (default 10). Without
+     `lower` the probe runs and prints exactly as now, so that its earlier
+     tables (009-03, 005-46) stay comparable and W7 can run it on 2026.1's
+     jar (016-10).
+   * With `lower`, in each phase: at its start the probe sets the budget
+     back to `budget`; `lowerAt` seconds in, the writer's loop, between two
+     commits, sets it to `lower`. Both by reflection, `Db`'s
+     `setCacheSizeIndicator(long)` (since `fd8f513`), found once at the
+     start; a jar without it fails the probe at once with a clear message,
+     and only when `lower` is set.
+   * At the lowering, a sampler thread reads the resident bytes every
+     10 ms (by reflection, `db.internal().cache().residents().bytes()`,
+     found once), until they are at most `lower` or the phase ends.
+   * The header line gets ` lower=L MB lowerAt=S s` when `lower` is set.
+     Each phase gets one line more, before its `gets` line:
+     `  lowered: budget B to L MB at uptime U s, resident R MB; reached
+     in X s` (or `; not reached, resident R MB at the phase's end`).
+   * The Javadoc's list of properties names both.
+2. **The probe's smoke** (0.1 hours, untimed, by day): in the clone,
+   `sh java/build.sh`, then `java -Xmx512m -cp
+   java/build/bergdb.jar:java/build/stress -Dkeys=20000 -Dseconds=3
+   -Dbudget=8 -Dlower=2 -DlowerAt=1 -Ddir=/Users/f/fl/bench/016/005-52/smoke-db
+   bergdb.core.PauseProbe` prints two `lowered:` lines and `PAUSE PROBE
+   OK`; the same without `lower` prints no `lowered:` line.
+3. **The gate**: `java/before-commit.sh` (`BEFORE COMMIT OK`; `build.sh`
+   compiles `java/stress/`). No level script: no mechanism changes.
+4. **The review** (016-05, section 5): 0.5 hours of another agent: that
+   the probe without `lower` is unchanged, the reflection, the sampler's
+   end, the writer's timing (the setter is called outside the timed
+   commit).
+5. **The hand-off** of the probe (016-05, section 4); the coordinator
+   commits it, by about 22:00. Agent F1's line for 005-80 in this entry's
+   Outcome comes in its own hand-off.
+6. **The step script**, [night/lowered.sh](52-cache-size-while-running/night/lowered.sh),
+   and its parser, [night/sum52.py](52-cache-size-while-running/night/sum52.py),
+   written with this plan on 2026-11-03 in the main tree's `night/`
+   (night scripts are the agents' to write there; 016-05, section 3). F2
+   reads them against the probe as made, and adjusts them to its output
+   (0.2 hours). `sum52.py` was tried on made-up outputs of the format
+   below (12 rows, complete); `lowered.sh` only by `sh -n`. What they do:
+   * `# minutes: 25` on its second line; the header says what, the runs,
+     the time (about 17 minutes), the usage, the outputs and the exit
+     status, as `budget.sh` does.
+   * It uses only `R=/Users/f/fl/bench/016/005-52/run`: `bergdb.jar`,
+     `stress/` and `jar.txt` (the commit and the jar's SHA-256), from
+     step 7, and `/opt/homebrew/opt/openjdk/bin/java` (JDK 27). It
+     compiles nothing. It exits 2 if one of these is missing, or if
+     `stress/bergdb/core/PauseProbe.class` lacks the string `lowerAt`.
+   * The runs, in this order, one JVM each, the database in `$R/db`
+     (the probe empties it first):
+     * `zgc-a1`, `zgc-b`, `zgc-a2` with `-XX:+UseZGC`; `g1-a1`, `g1-b`,
+       `g1-a2` with `-XX:+UseG1GC`;
+     * all: `-Xms2g -Xmx2g -XX:+AlwaysPreTouch
+       -Xlog:gc*,safepoint:file=$OUT/RUN.gc.log:uptime,level,tags
+       -Dkeys=1000000 -Dvalsize=100 -Dreaders=4 -Dseconds=60
+       -Dtsize=1,1000 -Ddir=$R/db`;
+     * (a): `-Dbudget=100`, above the about 55 MB that the default
+       startup distance pins; (b): `-Dbudget=400 -Dlower=100 -DlowerAt=10`.
+   * The deadline, as `budget.sh`'s: a run that would start with less
+     than 4 minutes left is skipped and counted as failed; a JVM still
+     running at 24 minutes is killed.
+   * The outputs, outside the repository: `$OUT=$R/out`: `RUN.txt`,
+     `RUN.gc.log`, `runs.txt` (each run's start, end and last line), and
+     `summary.txt` from `python3 night/sum52.py $OUT`.
+   * `sum52.py` prints one row per run and phase: the run; the phase; the
+     gets' count, p99.9 and max; the commits' count, p99.9 and max; the
+     longest batch so far (`ms at most` of the eviction line); for (b),
+     the lowering's `reached in X s`; and the five longest gets' and
+     commits' uptimes, for the GC log. It exits 1 if a run's phases are
+     missing.
+   * The exit status: 0 if all six runs printed `PAUSE PROBE OK` and the
+     summary has 12 rows, with a `lowered` value in each of (b)'s 4; then
+     it prints `lowered: OK`, else `lowered: FAILED, N problems`, exit 1.
+   * `SMOKE=1`: `$OUT=$R/smoke`, `-Xms512m -Xmx512m`, `-Dkeys=20000
+     -Dseconds=3`, (a) `-Dbudget=4`, (b) `-Dbudget=8 -Dlower=2
+     -DlowerAt=1`, no skip; about a minute; the same checks of the
+     summary; it prints `lowered (SMOKE): OK`.
+   * Not `performance.sh`, so no `FORCE=1`.
+7. **The prep** (0.2 hours), after the probe's commit: in the clone,
+   `git pull -q` (to `main` with the probe), `sh java/build.sh`; copy
+   `java/build/bergdb.jar` and `java/build/stress/` to `$R`; write
+   `$R/jar.txt` (`git rev-parse HEAD`, `shasum -a 256 bergdb.jar`).
+8. **READY** (0.1 hours): `SMOKE=1 sh night/lowered.sh` from the main
+   tree's path prints `lowered (SMOKE): OK`; then `touch
+   night/lowered.sh.READY`, and its last line and the time in this
+   entry's Log (in the clone's next hand-off, or by the coordinator).
+   Planned by 20:30; at the latest by 01:30 (016-05, section 6).
+9. **The block** (window 2): the conductor's step `52-lowered`, after
+   `65-rerun`. The session and the agents are idle.
+10. **The morning** (1 hour, F2 or another agent): the table here, from
+    `summary.txt`, one row per run and phase, as 009-03's; the comparison
+    for each collector and phase: (b)'s p99.9 and longest wait of the gets
+    and of the commits against the larger of a1 and a2, and the spread
+    between a1 and a2; the time to reach the lowered budget; for each wait
+    of (b) above (a)'s, the GC log at its uptime. Then:
+    * no wait of (b) longer than (a)'s beyond that spread: Left to do's
+      point is met, the entry closes (Outcome, Status "done");
+    * one longer: its cause, and a proposal for Frans, before any change
+      to `java/` (a stop, 016-05, section 8); the entry stays open, and
+      the notes (016-03) name it.
+    A run marked `NOT QUIET` in the conductor's `results.txt` is said in
+    the table and does not close the entry by itself.
+
+Size: about 3 agent-hours (0.85 for the probe and its smoke, 0.5 the
+review, 0.6 for the scripts, the prep and READY, 1 in the morning), and 25
+minutes of the block.
+Depends on the probe's commit for steps 7 and 8, and on 005-65's step
+running first in the block. Stop for Frans: only if a wait is longer
+(step 10).
+
+**State** (2026-11-03): planned, not started. `PauseProbe` read at
+`df6ad50` (its properties, `phase`, `evictionFigures`, the reflection on
+`cacheStats`); `CacheStats.toString` gives the longest batch ("ms at
+most"). `night/lowered.sh` and `night/sum52.py` are written, not
+smoke-tested (the probe has no `lower` yet); no READY marker; `$R` does
+not exist.
+
+
+Log
+---
+
+2026-11-03. Planned for release 2026.2 (016-05): `PauseProbe`'s `lower`
+and `lowerAt`, six runs (two of the fixed budget per collector, for the
+spread) in night 1's window 2, the table in the morning. Nothing changed
+yet.
