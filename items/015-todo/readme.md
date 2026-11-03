@@ -37,6 +37,12 @@ Open
 | [015-07](07-node-fields-unchecked.md) | Fix | A node's inner fields unchecked; such a read does not fail the database | open |
 | [015-08](08-streamdigest-compare-cut.md) | Fix | StreamDigest's compare reports the physical cut, which depends on timing | open |
 | [015-09](09-reclaim-test-timing.md) | Fix | Reclaim.Tester.testCrashBeforeIterationEnd depends on timing under load | open |
+| [015-10](10-capacity-test-under-load.md) | Investigate | CapacityTester's lowered budget fails under load on s1 | open |
+| [015-11](11-tempdircreator-tmp.md) | Fix | The tests' TempDirCreator writes to /tmp, whatever java.io.tmpdir says | open |
+| [015-12](12-keynode-growth-publication.md) | Fix | After a key node's growth, a reader can see its arrays without contents | open |
+| [015-13](13-handles-not-counted.md) | Decide | The resident bytes count no handle, where 009-02, 4.7 counts them | open |
+| [015-14](14-fast-path-jmm-argument.md) | Decide | The fast path's plain reads rest on the address dependency, not the JMM | open |
+| [015-15](15-resident-count-drift.md) | Fix | A batch subtracts values never counted; a count driven to 0 stays 0 | open |
 
 
 Closed
@@ -77,6 +83,21 @@ Files
 * [09-reclaim-test-timing.md](09-reclaim-test-timing.md). 015-09, Fix: a
   test of `before-commit.sh` that fails under load (the physical cut's
   timing).
+* [10-capacity-test-under-load.md](10-capacity-test-under-load.md). 015-10,
+  Investigate: `CapacityTester.testBudgetLoweredAndRaisedUnderReads` fails
+  under load on s1.
+* [11-tempdircreator-tmp.md](11-tempdircreator-tmp.md). 015-11, Fix: the
+  tests' `TempDirCreator` ignores `java.io.tmpdir`.
+* [12-keynode-growth-publication.md](12-keynode-growth-publication.md).
+  015-12, Fix: a key node's growth publishes its arrays before their
+  contents (R1-F1).
+* [13-handles-not-counted.md](13-handles-not-counted.md). 015-13, Decide:
+  the resident bytes count no handle (R1-F2).
+* [14-fast-path-jmm-argument.md](14-fast-path-jmm-argument.md). 015-14,
+  Decide: the fast path's argument rests on the address dependency
+  (R1-F3).
+* [15-resident-count-drift.md](15-resident-count-drift.md). 015-15, Fix:
+  the resident count drifts below the real bytes (R1-F4).
 
 
 Log

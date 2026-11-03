@@ -225,6 +225,26 @@ section 3). Unless he chooses before the release, it is a known issue of
   `BEFORE COMMIT OK (97 s)`. Committed: `dde82e8` (005-79 Part A),
   `b281d39` (005-69), `af6e762` (005-71), `522b645` (005-80). 005-69,
   005-71 and 005-80 are done.
+* 16:24 005-82 gated on `main` (`BEFORE COMMIT OK (110 s)`) and committed,
+  `3e32f02`; done.
+* 16:30 005-79's Part B handed off (`BEFORE COMMIT OK (140 s)`; the
+  decided digests change in 1 of 12 configurations, by one take of 2,158).
+  Its review (H5) by an agent started at 16:42.
+* 16:39 Review R1 (handles and the node table) done, in 41 minutes: four
+  faults and two doubts (`06-reviews/R1.md`). Registered: 015-12 (Fix: a
+  key node's growth publishes its arrays before their contents; a search
+  can miss a key or read a later transaction's value; seen by probes on
+  F53, rare; also in 2026.1), 015-15 (Fix: the resident count drifts
+  below the real bytes), 015-13 and 015-14 (Decide, for Frans: the
+  handles' bytes not counted; the fast path's argument rests on the
+  address dependency). The coordinator chose 015-12's fix: a release
+  fence on the writer's side, no cost to readers.
+* 16:43 s1: the night tests pass on JDK 27 and 17 with `/tmp` on the
+  disk, the first on Linux on record. 015-10 (CapacityTester failed twice
+  in the tools agent's runs on s1 under load) not reproduced in six runs;
+  open. 015-11 registered (the tests' temp files ignore
+  `java.io.tmpdir`). 16:44 s1: jcstress, then the disk stress programs
+  until 23:30 (016-08, L3 and L4).
 
 
 ## 7. For Frans to decide
@@ -241,6 +261,14 @@ section 3). Unless he chooses before the release, it is a known issue of
    release commit. The run goes on with A: tonight the large conformance
    set without its two `l-big62` traces, and the whole of `night.sh large`
    on the release commit after the quiet block.
+4. **015-13: the resident bytes count no handle** (review R1, R1-F2): a
+   database uses 34 to 49 percent more memory than its budget in R1's
+   probe. Recommended: count them as 009-02, 4.7 says, after the release;
+   a known issue of 2026.2.
+5. **015-14: the fast path's plain reads rest on the address dependency**
+   (R1-F3), not on the JMM as 009-02, 3.4 says. Recommended: state it in
+   009-02 for 2026.2, then measure acquire reads (T6a) and take them if
+   they cost little.
 
 
 ## 8. Outcome
