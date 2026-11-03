@@ -38,7 +38,6 @@ Open
 | [015-09](09-reclaim-test-timing.md) | Fix | Reclaim.Tester.testCrashBeforeIterationEnd depends on timing under load | open |
 | [015-10](10-capacity-test-under-load.md) | Investigate | CapacityTester's lowered budget fails under load on s1 | open |
 | [015-11](11-tempdircreator-tmp.md) | Fix | The tests' TempDirCreator writes to /tmp, whatever java.io.tmpdir says | open |
-| [015-12](12-keynode-growth-publication.md) | Fix | After a key node's growth, a reader can see its arrays without contents | open |
 | [015-13](13-handles-not-counted.md) | Decide | The resident bytes count no handle, where 009-02, 4.7 counts them | open |
 | [015-14](14-fast-path-jmm-argument.md) | Decide | The fast path's plain reads rest on the address dependency, not the JMM | open |
 | [015-15](15-resident-count-drift.md) | Fix | A batch subtracts values never counted; a count driven to 0 stays 0 | open |
@@ -51,6 +50,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-12](12-keynode-growth-publication.md) | Fix | After a key node's growth, a reader can see its arrays without contents | done | 2026-11-03 |
 | [015-07](07-node-fields-unchecked.md) | Fix | A node's inner fields unchecked; such a read does not fail the database | done | 2026-11-03 |
 
 Status values: open, in progress, done, dropped, moved (to an item of its

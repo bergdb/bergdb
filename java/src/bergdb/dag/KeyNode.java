@@ -2,6 +2,7 @@ package bergdb.dag;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.lang.invoke.VarHandle;
 
 import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
@@ -22,6 +23,11 @@ import bergdb.nanotest.Assert;
  * unused area at the end of the arrays (range: size..array.length-1) while readers concurrently 
  * read the range 0..size-1 of the arrays. Once KeyNode.size is increased by the writer, all writes 
  * are visible for the readers as they read the KeyNode.size field.</p>
+ *
+ * <p>A growth (growCapacity, setContentFrom) replaces the three arrays by copies, and a reader
+ * that read size before it may read the new arrays: a release fence orders the copies before
+ * the stores of the fields, and the reader reads the elements through the field it read
+ * (bergdb 015-12; 015-14).</p>
  * 
  * <p>Two exceptions, both for klongs of the current transaction, which no reader sees: readers
  * use lookup times before the transaction time, and every read stops at the first time klong
@@ -77,7 +83,8 @@ public class KeyNode implements Node {
         // Synch note: Used for synch action between writer and readers. Handles synch for 
         // the arrays too (klongs, pointers, pos).
     public long[] klongs;
-        // Synch note: Writes to "klongs" and its elements published by a write to this.size.
+        // Synch note: Writes to "klongs" and its elements published by a write to this.size,
+        // and a growth's copies by its release fence (growCapacity, bergdb 015-12).
         // Readers should first read this.size, before accessing klongs or elements in klongs.
     
     public Pointee[] pointers;           
@@ -940,6 +947,12 @@ public class KeyNode implements Node {
             System.arraycopy(this.pointers, 0, pointers, 0, sz);
             System.arraycopy(this.pos, 0, pos, 0, sz);
             
+            // The copies before the new arrays (bergdb 015-12): a reader that read size before
+            // this growth can read the fields after it. The fence orders the copies' stores
+            // before the fields' stores, on every machine, and costs the readers nothing. A
+            // reader reads the elements through the address its plain read of the field gave
+            // (015-14: the reliance on that dependency, as the fast path's).
+            VarHandle.releaseFence();
             this.klongs = klongs;
             this.pointers = pointers;
             this.pos = pos;
@@ -1011,6 +1024,11 @@ public class KeyNode implements Node {
         System.arraycopy(other.klongs, 0, k, 0, sz);
         System.arraycopy(other.pointers, 0, p, 0, sz);
         System.arraycopy(other.pos, 0, ps, 0, sz);
+        
+        // The copies before the new arrays, as in growCapacity (bergdb 015-12): a reader that
+        // read the old size can read the fields after this, and must see the first klong,
+        // the time klong of the transaction, where it stops.
+        VarHandle.releaseFence();
         
         // The same monitor as ensureCapacity(): a reader that swizzles a pointer must not see
         // the old pointer arrays with the new klongs.
