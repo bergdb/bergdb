@@ -36,6 +36,7 @@ Open
 | [015-06](06-refused-start-leaves-file.md) | Fix | A refused start leaves an empty first stream file | open |
 | [015-07](07-node-fields-unchecked.md) | Fix | A node's inner fields unchecked; such a read does not fail the database | open |
 | [015-08](08-streamdigest-compare-cut.md) | Fix | StreamDigest's compare reports the physical cut, which depends on timing | open |
+| [015-09](09-reclaim-test-timing.md) | Fix | Reclaim.Tester.testCrashBeforeIterationEnd depends on timing under load | open |
 
 
 Closed
@@ -73,6 +74,9 @@ Files
 * [08-streamdigest-compare-cut.md](08-streamdigest-compare-cut.md).
   015-08, Fix: `StreamDigest compare` reports the physical cut's fields,
   which differ between runs.
+* [09-reclaim-test-timing.md](09-reclaim-test-timing.md). 015-09, Fix: a
+  test of `before-commit.sh` that fails under load (the physical cut's
+  timing).
 
 
 Log

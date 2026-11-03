@@ -212,6 +212,19 @@ section 3). Unless he chooses before the release, it is a known issue of
   fail the database; verified by a probe; F1 takes it next) and 015-08
   (Fix: StreamDigest's compare reports the physical cut, which depends on
   timing).
+* 16:16 to 16:18 Reviews (H5) by the coordinator, to keep the commits
+  moving while the four slots are busy: 005-69, 005-71 and 005-82, no
+  faults (one nit in 005-82, taken); 005-79's Part A, no faults (its
+  integer forms checked: `fractionOf`'s split, `lowOf`, the buffer
+  sizes; a non-default internal fraction is now the nearest multiple of
+  2^-16, for the notes). 015-09 registered (Fix: a reclaim test of
+  `before-commit.sh` that fails under load).
+* 16:18 The combined gate of 005-79 A, 005-69 and 005-71 queued behind the
+  agents' gates (one at a time).
+* 16:21 Combined gate of 005-79 A, 005-69, 005-71 and 005-80:
+  `BEFORE COMMIT OK (97 s)`. Committed: `dde82e8` (005-79 Part A),
+  `b281d39` (005-69), `af6e762` (005-71), `522b645` (005-80). 005-69,
+  005-71 and 005-80 are done.
 
 
 ## 7. For Frans to decide
