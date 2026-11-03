@@ -49,8 +49,7 @@ Log
 
 2026-11-03. Created the item, at Frans's request ("Create bergdb item
 016-release-2026-2. This is for planning the 2026-2 release. The scope of
-it and the work needed."), with the plan drafted by Claude (Opus 5.5,
-Claude Code) in 016-01. Nothing done yet; the plan waits for Frans's
+it and the work needed."), with the plan in 016-01. Nothing done yet; the plan waits for Frans's
 decisions (016-01, section 8).
 
 2026-11-03. 016-01 reviewed and revised, at Frans's request (15:01, "Now,

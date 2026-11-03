@@ -245,6 +245,12 @@ section 3). Unless he chooses before the release, it is a known issue of
   open. 015-11 registered (the tests' temp files ignore
   `java.io.tmpdir`). 16:44 s1: jcstress, then the disk stress programs
   until 23:30 (016-08, L3 and L4).
+* 16:47 005-52's PauseProbe change gated on `main` (`BEFORE COMMIT OK (89
+  s)`) and committed, `87d1e2c`. 005-79's agent done: Part B is
+  `ddbba95` in its clone, `BEFORE COMMIT OK (139 s)`, LEVEL 2 OK
+  (RestartInvariance identical in 8 configurations, TRACECHECK OK); its
+  review runs.
+* 16:48 Agent K started: 015-12, then 015-15 (R1's faults).
 
 
 ## 7. For Frans to decide

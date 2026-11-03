@@ -1,10 +1,10 @@
 016-01. Plan: release 2026.2
 ============================
 
-Created 2026-11-03 by Claude (Opus 5.5, Claude Code) for Frans Lundberg, at
-his request: "Create bergdb item 016-release-2026-2. This is for planning
+Created 2026-11-03 by Frans Lundberg, from his request: "Create bergdb
+item 016-release-2026-2. This is for planning
 the 2026-2 release. The scope of it and the work needed." Revised the same
-day, at max effort, at his request (14:50 and 15:01): "Create item 016-01.
+day, at max effort (14:50 and 15:01): "Create item 016-01.
 This collects known bugs and other issues that should be resolved before
 the release. Create the item, then create a list of all unsolved issues
 that should potentially be resolved before release. We do not want unknown
