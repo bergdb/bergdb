@@ -361,3 +361,24 @@ Each line: what the fault is, its effect on 2026.1, where it was fixed
 `df6ad50`); nothing of N1 to N6 is done. Open: N3's checks against
 2026.1's code; 005-82 and 005-69 are checked, the others' expectations
 are from their entries.
+
+2026-11-03, 20:10, the notes agent (in `/Users/f/fl/bench/016/docs/repo`,
+with 016-04): **N1 done**, on `main` at `5c9d0f6`. `releases/next.md` has
+section 1's entries, in new sections Requirements, Documentation, Build
+and tools and The Lean model; the corrections of section 1 (the dates and
+commits, `Factory` and .NET with `216fc8b`, 005-64's figures and replicas,
+005-52's batches with 005-80's line, 005-76's date and commit, 005-70
+under Reliability, 005-49's figures from docs/levels.md); and the commits
+of tonight up to `c72a02b`: 005-82, 015-07, 015-12, 015-01 with 015-06's
+part, 005-69 under Reliability; 015-17 in 005-73's close entry, 015-24 in
+005-63's, 015-10 in 005-52's and with 015-15 in Handles' (faults of the
+development, never in a release); 005-79 under Format; `DatabaseMissingException`
+and `Database.PRIMARY` under API changes; `doubles.py`, PauseProbe's
+`lower` and the growth's jcstress test under Build and tools. The walk is
+`/Users/f/fl/bench/016/docs/walk.sh` (outside the repository; `walk.sh
+REPO`); its list of commits not for the notes, with reasons, adds to
+section 1's: `7f3dab4` (a `@throws` line), `cc8effb`, `b348922`,
+`413f72c`, `6180a32` (comments and citations), `d91b619` and `cf6c8e7`
+(tests only, 015-09 and 015-16). `27ec238` is 005-64's code, not only a
+suite comment, and is cited. It printed nothing at 20:10. Hand-off:
+`/Users/f/fl/bench/016/docs/handoff-N1/`.
