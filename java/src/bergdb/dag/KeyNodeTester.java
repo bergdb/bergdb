@@ -1022,6 +1022,45 @@ public class KeyNodeTester {
         Assert.assertEquals(true, p.isNull());
     }
     
+    @Nano private static void testPointerInPlace() {
+        // bergdb 015-14: pointer 0 changed in place as a reader's slow path and the writer
+        // change it (raiseRef, swizzle, setPointer), read as the fast path and the searches
+        // read it (getPointee, then getPointerPos), before and after a growth copies it.
+        KeyNode x = new KeyNode(false);
+        Handle a = new Handle(7);
+        Handle b = new Handle(7);
+        KeyNode v = new KeyNode(true);
+        v.setSpos(300);
+        b.obj = v;
+        x.addToEnd(Klong.createKey(new byte[] {1}), a, 200);
+        x.raiseRef(0, 100);
+        Assert.assertEquals("never lowered", 200, x.getPointerPos(0));
+        x.raiseRef(0, 300);
+        Assert.assertEquals("a swizzle expects what it read", false, x.swizzle(0, b, b));
+        Assert.assertEquals(true, x.swizzle(0, a, b));
+        Assert.assertEquals(true, x.getPointee(0) == b);
+        Assert.assertEquals(true, x.getPointerNode(0) == v);
+        for (int i = 2; i <= 30; i++) {
+            x.addToEnd(Klong.createKey(new byte[] {(byte) i}), null, 8 * i);
+        }
+        Assert.assertEquals(true, x.pointers.length >= 30);
+        Assert.assertEquals(true, x.getPointee(0) == b);
+        Assert.assertEquals(300, x.getPointerPos(0));
+        Assert.assertEquals(8 * 30, x.getPointerPos(29));
+        KlongWithPointer kwi = new KlongWithPointer();
+        x.searchEq(Long.MAX_VALUE, Klong.getCompareValue(x.getKlong(0)), kwi);
+        Assert.assertEquals(0, kwi.pointerIndex);
+        Assert.assertEquals(true, kwi.node == v);
+        Assert.assertEquals(300, kwi.pos);
+        x.setPointer(0, null, 400);
+        Assert.assertEquals(true, x.getPointee(0) == null);
+        Assert.assertEquals(400, x.getPointerPos(0));
+        Assert.assertEquals(true, x.getPointerNode(0) == null);
+        b.obj = null;
+        x.setPointee(0, b);
+        Assert.assertEquals("no object: the slow path", true, x.getPointerNode(0) == null);
+    }
+    
     public static void main(String[] args) throws Exception {
         testGt1();
     }

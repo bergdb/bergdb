@@ -36,7 +36,6 @@ Open
 | [015-08](08-streamdigest-compare-cut.md) | Fix | StreamDigest's compare reports the physical cut, which depends on timing | open |
 | [015-11](11-tempdircreator-tmp.md) | Fix | The tests' TempDirCreator writes to /tmp, whatever java.io.tmpdir says | open |
 | [015-13](13-handles-not-counted.md) | Fix | The resident bytes count no handle, where 009-02, 4.7 counts them | open |
-| [015-14](14-fast-path-jmm-argument.md) | Fix | The fast path's plain reads rest on the address dependency, not the JMM | open |
 | [015-18](18-night-large-after-release.md) | Implement | Run night.sh large on the release, after 2026.2 | open |
 | [015-19](19-tools-after-005-79.md) | Fix | Tools in items still use what 005-79 removed | open |
 | [015-23](23-refused-index-delete.md) | Fix | A refused index deletion leaves the index active and unmaintained | open |
@@ -53,6 +52,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-14](14-fast-path-jmm-argument.md) | Fix | The fast path's plain reads rest on the address dependency, not the JMM | done | 2026-11-03 |
 | [015-20](20-filtered-scan-empty-page.md) | Fix | A filtered scan takes an empty page for the end of its range | done | 2026-11-03 |
 | [015-22](22-index-build-after-delete.md) | Fix | A deleted index's build job writes into its replacement | done | 2026-11-03 |
 | [015-21](21-index-delete-twice.md) | Fix | A second delete job lets the first delete a replacement index | done | 2026-11-03 |

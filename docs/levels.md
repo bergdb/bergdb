@@ -405,9 +405,11 @@ named, with a sweep that walked every resident object (item 004).
   transactions and gives way to a waiting writer. A load that finds the
   resident bytes far over the trigger waits up to 2 ms for that thread.
 * **Readers** follow a pointer without a lock when its handle holds an
-  object that may serve it (`Handle.usable`): a plain read of a pointer to
-  a handle, an acquire read of a pointer to a value (the barriers of
-  009-02, section 3.4, and their jcstress tests, `java/stress/jcstress/`).
+  object that may serve it (`Handle.usable`): an acquire read of the
+  pointer, then its reference and the handle's object, ordered by it;
+  edges of the Java Memory Model, not the hardware's address dependency
+  (the barriers of 009-02, section 3.4, since 015-14, and their jcstress
+  tests, `java/stress/jcstress/`).
   Else the slow path reads the pointer under the node's monitor and loads
   under the handle's, so two readers do not read the same node; its swizzle
   is a compare-and-set, and its write-back of the reference only raises it.

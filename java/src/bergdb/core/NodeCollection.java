@@ -181,14 +181,14 @@ public class NodeCollection implements PointerFollower {
         assert op.accessData == AccessData.ZERO || AccessData.isValid(op.accessData);
 
         // The fast path, without a lock (bergdb item 009, step 3c; 009-02, 3.3 and 3.4):
-        // a plain read of a pointer to a handle (T6b: C1 to C4), an acquire read of a pointer
-        // to a value (C5), the handle's object by its volatile read (Handle.obj), and the
-        // test of Handle.usable. Until step 3c the whole follow held the pointer's lock
-        // (PointerLocks), the read of the stream included.
-        Pointee pointee = predecessor instanceof KeyNode
-                && !pointsToIndexNode(predecessor, pointerIndex)
-                ? ((KeyNode) predecessor).getPointeeAcquire(pointerIndex)
-                : predecessor.getPointee(pointerIndex);
+        // an acquire read of the pointer, a handle or a value (getPointee), which pairs with
+        // the release store that put it there; then, ordered by it, the opaque read of the
+        // reference, the handle's object by its volatile read (Handle.obj), and the test of
+        // Handle.usable. Before bergdb 015-14, a pointer to a handle was read plainly (T6b),
+        // and the reads after it were ordered by the address dependency only (016-06/R1,
+        // R1-F3). Until step 3c the whole follow held the pointer's lock (PointerLocks), the
+        // read of the stream included.
+        Pointee pointee = predecessor.getPointee(pointerIndex);
         long pointerPos = predecessor.getPointerPos(pointerIndex);
 
         Node mem = memoryObject(pointee, pointerPos);

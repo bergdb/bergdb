@@ -13,10 +13,10 @@ import bergdb.dag.Pointee;
 import bergdb.dag.ValueNode;
 
 /**
- * C5 (bergdb item 009; 009-02, 3.4 point 5): a reader's load puts a value into a pointer
+ * C5 (bergdb item 009; 009-02, 3.4 point 8): a reader's load puts a value into a pointer
  * (KeyNode.setPointee: a release store, under the node's monitor); another reader reads the
- * pointer with an acquire (getPointeeAcquire, as the fast path does for a pointer to a
- * value), then the value's position (volatile, set in its constructor) and its bytes (final).
+ * pointer with an acquire (getPointee, as the fast path does for every pointer since bergdb
+ * 015-14), then the value's position (volatile, set in its constructor) and its bytes (final).
  * r1: -2 the pointer seen empty, 1 the value with its position and bytes, 0 without them.
  */
 @JCStressTest
@@ -39,7 +39,7 @@ public class ValuePublication {
 
     @Actor
     public void reader(I_Result r) {
-        Pointee p = x.getPointeeAcquire(0);
+        Pointee p = x.getPointee(0);
         if (p == null) {
             r.r1 = -2;
             return;

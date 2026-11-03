@@ -208,13 +208,14 @@ public class TopDs {
         
         for (int i = n.pointersLength - 1; i >= 0; i--) {
             TopNode top = (TopNode) n.getPointerNode(i + 1);
-            if (Pointer.isNull(top, n.pointersPos[i])) {
+            long ref = n.getPointerPos(i + 1);      // after the pointer's acquire (015-14)
+            if (Pointer.isNull(top, ref)) {
                 continue;
             }
             
             if (n.pointersTime[i] >= t) {
                 p.node = top;
-                p.pos = n.pointersPos[i];
+                p.pos = ref;
                 p.index = i + 1;      // +1 because root pointer has index 0.
                 break;
             }
@@ -227,14 +228,15 @@ public class TopDs {
         
         for (int i = 0; i < pointersLength; i++) {
             TopNode top = (TopNode) n.getPointerNode(i + 1);
+            long ref = n.getPointerPos(i + 1);      // after the pointer's acquire (015-14)
             
-            if (Pointer.isNull(top, n.pointersPos[i])) {
+            if (Pointer.isNull(top, ref)) {
                 continue;
             }
             
             if (t >= n.pointersTime[i]) {
                 p.node = top;
-                p.pos = n.pointersPos[i];
+                p.pos = ref;
                 p.index = i + 1;  // +1 since root pointer has index 0.
             }
             

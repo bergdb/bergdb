@@ -12,6 +12,7 @@ measurements are in [02-implementation-plan/](02-implementation-plan/).
 **Status: decided.** Frans, 2026-10-25: T1a, T2a, T4b, T5a, T7a, and T6b,
 which section 3.4 argues safe (19:10); T3a, and the name `Pointee` (19:34:
 "I decide T3a. T4b, Pointee is a good name."). Nothing is implemented.
+Since 2026-11-03 (bergdb 015-14), T6a: section 3.4 is the argument for it.
 
 Terms, as in BergDB: a memory pointer, a stream pointer, pointer i of x.
 "Slot" is the Lean model's word only. A *handle* is 009's per-node handle.
@@ -37,7 +38,8 @@ that an address (section 5, phase 2).
   (median, ZGC) at 30M entries, against 11.6 ms with today's 256 maps.
 * **Reads** (4.4): a lock-free fast path when the node's object is in its
   handle and new enough: a plain read of the pointer (T6b, argued safe in
-  3.4), an acquire read of the handle's object, a test. Everything else
+  3.4; an acquire read since 015-14, T6a), an acquire read of the
+  handle's object, a test. Everything else
   (resolve, load, install, re-resolve) is the slow path, and locks: a
   load costs microseconds to a millisecond, a lock tens of nanoseconds.
 * **Eviction** (4.7, T2): CLOCK over the table, one map at a time, in
@@ -236,94 +238,235 @@ From the JLS, chapter 17 (17.4, the memory model; 17.5, final fields;
 ## 3.3 What handles need, field by field
 
 The protocol, first version. The proofs of these claims are the argument
-in the right-hand column; phase 2's model and step 3c's jcstress tests
-check them.
+in the last part of each item ("safe"); phase 2's model and step 3c's
+jcstress tests check them. (A table until 2026-11-03; a list since, as
+015-14's changes made its rows too long. The words "since 015-14" mark
+what changed then.)
 
-| Field | Written by, how | Read by, how | Why a reader is safe |
-|---|---|---|---|
-| node `size` | writer, volatile, after the arrays | everyone, first, volatile | as today |
-| node arrays (`klongs`, `pos`, `pointers` at creation) | writer, plain, before `size` | after `size` | published by `size` |
-| `pointers[i]` (a handle, a value, or null) | writer: at creation, before `size`; in place (`resolvePointers`, rule 4, a value's unswizzle): under the node's monitor; a resolver: `compareAndSet` | fast path: plain for a handle (T6b), acquire for a value | section 3.4 |
-| `pos[i]` | writer only (a new pointer; Rule R in `resolvePointers`) | slow path; the fast path's test | opaque: no tearing; a stale value only sends the reader to the slow path, or names an older version that lemma M covers (to check in the model: section 7, point 2) |
-| handle `id` | constructor | anyone | final |
-| handle `obj` | an install, a replace, the writer's promote: under the handle's monitor, release; an eviction: release (null) | fast path: acquire | the loader's writes to the object happen before the reader's use; null sends the reader to the slow path |
-| handle `state` | loader, writer, evictor: `compareAndSet` | slow path, evictor | one state machine (4.4); the evictor never waits on a lock a loader holds |
-| handle `writtenPos` | writer, plain | writer (records), evictor | both hold the write lock |
-| handle CLOCK bit | fast path: plain, and only when clear; evictor: clears | evictor | a lost bit changes only which object goes |
-| object `isCanonical`, `spos` | writer, under the handle's monitor; an eviction clears the flag | the fast path's test, plain | a canonical object holds its node's whole history (CC); a snapshot's `spos` never changes; a stale "not canonical" sends the reader to the slow path; a stale "canonical" on an evicted object is still the version at its position (M31) |
-| database state, reclaim's first position | writer, volatile | each get, first, volatile | replaces the readers' `readSync` blocks (1c) |
+* **Node `size`.** Written by the writer, volatile, after the arrays;
+  read by everyone, first, volatile. Safe: as today.
+* **Node arrays** (`klongs`, `pos`, `pointers` at creation). Written by
+  the writer, plain, before `size`; read after `size`. Safe: published by
+  `size`; a growth's new arrays by the fields' volatile stores (015-12,
+  015-14).
+* **`pointers[i]`** (a handle, a value, or null). Written by the writer at
+  creation, before `size`; in place (`resolvePointers`, rule 4, a value's
+  unswizzle) under the node's monitor; by a resolver with
+  `compareAndSet`; by a reader's load of a value (`followValuePointer`),
+  under the node's monitor. Read by the fast path: plainly for a handle
+  (T6b), with an acquire for a value; with an acquire for both since
+  015-14. Safe: section 3.4.
+* **`pos[i]`.** Written by the writer (a new pointer; Rule R in
+  `resolvePointers`); by a reader's slow path too, the raised reference
+  under the node's monitor (section 9); opaque in place since 015-14.
+  Read by the slow path and by the fast path's test. Safe: opaque, no
+  tearing; a stale value only sends the reader to the slow path, or names
+  an older version that lemma M covers (to check in the model: section
+  7, point 2).
+* **Handle `id`.** Written by the constructor; read by anyone. Safe:
+  final.
+* **Handle `obj`.** Written by an install, a replace, the writer's
+  promote: under the handle's monitor, release; by an eviction: release
+  (null). Read by the fast path, acquire. Safe: the loader's writes to
+  the object happen before the reader's use; null sends the reader to the
+  slow path.
+* **Handle `state`.** Written by the loader, the writer and the evictor
+  with `compareAndSet`; read by the slow path and the evictor. Safe: one
+  state machine (4.4); the evictor never waits on a lock a loader holds.
+* **Handle `writtenPos`.** Written by an eviction (`Cache3.kill`), before
+  its null; plain, volatile since 015-14. Read by the writer (records),
+  the evictor, and the slow path. Safe: the writer and the evictor hold
+  the write lock; the slow path reads it through the eviction's null, and
+  since 015-14 with a volatile read, as it may race with the eviction.
+* **Handle CLOCK bit.** Written by the fast path, plainly and only when
+  clear; cleared by the evictor. Read by the evictor. Safe: a lost bit
+  changes only which object goes.
+* **Object `isCanonical`, `spos`.** Written by the writer, under the
+  handle's monitor; an eviction clears the flag. Read by the fast path's
+  test, plainly. Safe: a canonical object holds its node's whole history
+  (CC); a snapshot's `spos` never changes; a stale "not canonical" sends
+  the reader to the slow path; a stale "canonical" on an evicted object
+  is still the version at its position (M31).
+* **Database state, reclaim's first position.** Written by the writer,
+  volatile; read by each get, first, volatile. Safe: replaces the
+  readers' `readSync` blocks (1c).
 
 What the fast path then costs per hop: a plain read of the pointer, an
 acquire read of the handle's object, the test, and a read of the CLOCK
-bit. This is 004-01's `handleacq` variant (5.1): on F53 72.1 ns a lookup
-in cache against 70.7 with a plain read of the object, and 583 against
-564 out of cache.
+bit (since 015-14, more acquire reads: 3.4, "What it costs"). This is
+004-01's `handleacq` variant (5.1): on F53 72.1 ns a lookup in cache
+against 70.7 with a plain read of the object, and 583 against 564 out of
+cache.
 
-## 3.4 Why a plain read of the pointer is safe (T6b)
+## 3.4 Why the fast path's reads are safe (T6a since 015-14)
 
-Frans: "T6. Use T6b if you argue it is safe." The fast path reads
-`pointers[i]` with a plain read, and then the handle's object with an
-acquire read. The argument, from the rules of 3.1:
+Rewritten on 2026-11-03 for bergdb 015-14, to what the code does since
+then. Frans, 2026-10-25: "T6. Use T6b if you argue it is safe." The first
+version of this section argued that a plain read of a pointer to a handle
+(T6b) is safe by the Java Memory Model. Review R1 found the gap (016-06/R1,
+R1-F3): the argument covered the contents of the object that the read of
+`h.obj` returns, but not which of the handle's objects it is, nor the
+reference read beside the pointer. With no edge from the swizzle that put
+h into the pointer, the JMM lets a reader pair h with the pointer's
+reference from before the swizzle's raise and with h's object from before
+its install, which `usable` accepts: a version older than the reader's
+lookup time needs. HotSpot did not give the older object, as the read of
+`h.obj` depends on the address that the read of the pointer gave; that
+order was the hardware's, not the JLS's. The reference, read beside the
+pointer, had no order at all: F53 read it before the pointer (point 10).
+Frans, 2026-11-03: ""thread safety rests on today's JVM behaviour". This
+is not acceptable." Since 015-14 a follow reads every pointer with an
+acquire, which is T6a, and this is the argument, edge by edge.
 
-1. **What the read can return.** A read of a reference is atomic (JLS
-   17.7), and it returns a value that some write stored there, never one
-   out of thin air (17.4.8): null, a handle, or a value node. In a race it
-   may be an older value than the newest.
-2. **A pointer's pointee never changes** (C1). Pointer i of a node names
-   the same node, or the same value, for as long as a reader can read it:
-   a node's arrays only grow, and the two exceptions are behind the
-   transaction's time klong, where every reader stops (KeyNode's class
-   comment). What changes in place is only how the pointer holds its
-   pointee: nothing, a dead handle, or the live handle; a value node or
-   nothing. So whatever the read returns belongs to the right node or
-   value, however old it is.
-3. **Null** sends the reader to the slow path (C2). The slow path reads the
-   pair, `pointers[i]` and `pos[i]`, under the node's monitor, as
-   `KeyNode.getPointer` does today for a stream pointer; and every in-place
-   change of `pos[i]` or of a value pointer is made under that monitor, as
-   `setPointer` does today. So the slow path sees the newest of those
-   changes. A resolver's `compareAndSet` only puts a live handle where
-   there was null or a dead handle; if it fails, the resolver reads the
-   pointer again with a volatile read and takes the handle it finds.
-4. **A handle h** (C3, C4). The fast path reads two things of it:
-   * `h.obj`, with an acquire read. It returns null, which sends the reader
-     to the slow path, or an object o that an install stored with a
-     volatile write. The read then synchronizes with that write, so all
-     the installer did before it, the load of o from the stream with o's
-     fields and arrays, is visible to the reader. That is what T6a gives
-     after the handle too; T6a's acquire read of the pointer would add an
-     edge to whoever published h, and the fast path reads nothing of h
-     that needs one.
-   * The CLOCK bit, a byte, plainly. Fields do not tear or disturb each
-     other (17.6); a stale or lost bit changes only which handle the
-     evictor takes.
-   The fast path reads neither `state` nor `writtenPos`. The slow path
-   needs `h.id`, which is final, so a thread that sees h through a race
-   sees the id its constructor set (17.5; the constructor only assigns its
-   fields). It changes `state` only by `compareAndSet`, which works on the
-   newest value. And `LIVE` is 0, the default: a new handle is LIVE without
-   a write in its constructor, because a non-final field's constructor
-   value is not guaranteed through a race, and nothing may rely on one.
-5. **A value node v** (C5). Its bytes are final (`ValueNode.value`), and so
-   safe through a race, with the array's contents (17.5). But its position,
-   `spos`, is volatile and set in the constructor, which 17.5 does not
-   cover, and `getTpos()` reads it (`transactionInfo()`, 005-42). So a
-   pointer to a value is read with an acquire: one barrier per get, not
-   one per hop.
-6. **The compiler** may reuse an earlier read of `pointers[i]`. That is
-   the same as an older value: one of the cases above.
+**The model.** The JLS, chapter 17: happens-before from program order,
+monitors and volatile accesses (17.4.4, 17.4.5), final fields (17.5), and
+longs (17.7); with the VarHandle access modes of 3.1. An acquire read that
+sees a release store orders everything before the store, in the storing
+thread, before everything after the read, in the reading thread (the
+release/acquire edge; a volatile write and a volatile read that sees it
+give the same edge, 17.4.4). An opaque access is atomic, a long's too, and
+makes no edge. Nothing below rests on an address dependency, on a 64-bit
+JVM, or on the hardware. The acquire, release and opaque modes are the
+VarHandle specification's (the Java SE API, `java.lang.invoke.VarHandle`),
+not 17.4's own words; for 17.4 to the letter, `getVolatile` and
+`setVolatile` give the same edges by 17.4.4, at the same reads on HotSpot
+(`ldar` on AArch64, a plain load on x86) and a fence per in-place store
+on x86 (016-05's review of 015-14, doubt 2).
 
-So a plain read is safe for a pointer to a handle, as long as the code
-keeps C1 (a pointee never changes), C2 (the slow path, and every in-place
-change of a pair, under the node's monitor), C3 (a handle's id final, its
-object volatile, `LIVE` the default) and C4 (the fast path reads nothing
-of a handle but its object and the CLOCK bit); and reads a pointer to a
-value with an acquire (C5). The argument is the JMM's, not the
-hardware's: it holds on x86 and on AArch64 alike. The code's comments
-name the conditions where they apply, and the jcstress tests of 3.5 check
-the outcomes: a handle published by `compareAndSet` and read plainly, its
-object installed before, after or never; allowed are null, or the object
-with its contents, never an object with default contents.
+**What a follow reads, in its order** (`NodeCollection.followPointer`; the
+searches' `KeyNode.pointerInto`; `getPointee` and `getPointerPos` of
+`KeyNode` and `TopNode`):
+
+1. **The node x** came from a volatile read: the handle's object of the
+   hop before (point 5), the super root (`TopDs.superRoot`), or the
+   startup's, before the readers start. So x's fields, as its loader or
+   the writer made them before that write, are visible.
+2. **x's size and arrays.** `size` is volatile: the writer writes the
+   elements below it before it raises it, and a search reads it first.
+   The fields `klongs`, `pointers` and `pos` are volatile too (since
+   015-14; 015-12 had a release fence before plain stores): only the
+   writer stores them, in a growth (`growCapacity`, `setContentFrom`,
+   under x's monitor), after its copies. A reader that reads a new array
+   sees its copies, whatever size it read. A top node's arrays are final,
+   filled before the top node is published.
+3. **Pointer i**, `pointers[i]` (a top node's `rootPointer` or
+   `pointers[i-1]`), with an acquire, for a handle as for a value. The
+   write it sees is (a) the writer's, before it published the pointer by
+   `size` or by the top node's publication; (b) a growth's copy; or (c) an
+   in-place change under x's monitor, a release store: a reader's swizzle
+   (`followStreamPointer`, step 5), a reader's `setPointee` of a value it
+   loaded (`followValuePointer`), the writer's `setPointee` (its slow
+   path; the pinned case of `resolvePointers`; rule 4 at startup) or
+   `setPointer` (a value's unswizzle; a new super root's root pointer in
+   the same transaction). In case (c) the acquire synchronizes with that
+   store; in (a) and (b) points 1 and 2 give the edge, and a growth makes
+   its copy under x's monitor, after every earlier change. Either way,
+   whatever happened before that store happens before the reader's next
+   reads. For a swizzle, that is the raise of `pos[i]` (step 2) and the
+   install of the handle's object (step 4), which come before the swizzle
+   in the swizzling thread.
+4. **Its reference**, `pos[i]` (`rootPointerPos`, `pointersPos[i-1]`),
+   with an opaque read after point 3, so ordered by its acquire. It is the
+   reference the pointer had at the store the reader saw, or a later one.
+   A reference only rises (`raiseRef`; Rule R's `setRef`), so a later one
+   only makes the test of point 6 stricter; a pair changed together
+   (`setPointer`) stores the reference first. Opaque, as a reader may read
+   it in a race with a raise, and a plain long may tear (17.7); every
+   store of it that a reader may see after the pointer's publication is
+   opaque. (The writer's `replaceKlong` changes a pointer of the current
+   transaction in place, plainly, behind the transaction's time klong,
+   where every reader stops: C1.)
+5. **The handle's object**, `h.obj`, volatile, after point 3: the object
+   h held at the store the reader saw, or a later one. While h is live, a
+   later object is a better one (`Cache3.install` replaces only by a
+   canonical object or a newer version, `makeCanonical` by the newest);
+   an eviction makes it null for good, which sends the reader to the slow
+   path. The volatile write that installed the object orders the loader's
+   writes, the object's fields and arrays, before the reader's reads.
+6. **The test**, `Handle.usable(o, ref)`: `o.isCanonical` (plain) and
+   `o.getSpos()` (`size`, then `spos`). The writes they may see in a race:
+   `makeCanonical`'s true, an eviction's false, a record's new position of
+   a canonical object (`StoredTrans`, `setSpos`). A stale false sends the
+   reader to the position test, or to the slow path. A stale true is on an
+   object the reader read before the kill's null. An eviction
+   (`Cache3.evict`, `clockStep`) kills under the write lock between
+   transactions, so the commit of every later transaction comes after it,
+   and a reader whose lookup time includes such a transaction read the
+   clock after the kill and reads null (17.4.5); the object, canonical
+   until the kill, holds the node's history up to it (M31). A reader's
+   `Cache3.dropIfEmpty` kills without the write lock, under the map's
+   lock, a handle it found with no object; one that a loader filled
+   meanwhile is R1's doubt D2 (016-06/R1), outside this argument, as
+   before 015-14. A version's `spos` is set before its install
+   and never changes; a canonical object's changes, but a canonical object
+   serves every reference, so a stale or torn value only decides whether
+   the reader takes the object here or on the slow path.
+7. **The CLOCK bit**, a byte, read and written plainly: no word tearing
+   (17.6); a stale or lost bit changes only which handle the evictor
+   takes.
+8. **A value** (C5): its bytes are final (17.5); its position, `spos`, is
+   volatile but set in the constructor, which 17.5 does not cover, and is
+   published by point 3's acquire, as for a handle.
+9. **The slow path** reads the pair under x's monitor (C2), the handle's
+   object under the handle's, `h.id` (final: 17.5), and `h.writtenPos`,
+   volatile since 015-14 (a long it may read in a race), which the
+   eviction writes before its null. Whatever write a read of points 3 to 6
+   sees, newest or not, the points hold for it.
+10. **R1-F3's interleaving**, with this code: reader R3's acquire read of
+    `pointers[i]` sees R1's swizzle (w2); R1's raise (w_r) and install
+    (w1) come before w2 in R1's thread, so both happen before R3's reads of
+    `pos[i]` and of `h_b.obj`. R3 reads W or later, and the version at W,
+    a later object, or null: the install of the version at P1 (w0) happens
+    before w1, so R3 cannot see it (17.4.5). An R3 whose acquire sees the
+    store before the swizzle reads the dead handle h_a, its null, and
+    takes the slow path. What jcstress `SwizzleOrder` and
+    `TopSwizzleOrder` (3.5) show: on the code before, F53 reordered the
+    reads of the pointer and of the reference, and gave the new handle with
+    the reference before the raise and the new object, "1, 2" (21 and 56
+    times in about 85 million, quick mode; the review's run 13 and 42 in
+    about 90 million). That outcome is harmless: `usable` accepts the
+    version at W for P1, and it is the right one. R1-F3's wrong answer, the
+    older object, "1, 0", was not seen: the JMM allows it on the code
+    before, HotSpot does not give it. So the tests show the order that the
+    fix adds, and that this code keeps it (none of either in about 80
+    million), not a wrong answer of the code before.
+
+**The conditions** that the code keeps, and its comments name:
+
+* C1. A pointer's pointee never changes: a node's arrays only grow, and
+  the two exceptions are behind the transaction's time klong, where every
+  reader stops (KeyNode's class comment).
+* C2. Every in-place change of a pointer is made under the node's
+  monitor: what it holds by a release store, its reference by an opaque
+  one; the slow path and the writer read the pair under the monitor.
+* C3. A handle's id is final, its object volatile, `LIVE` the default; a
+  live handle's object is replaced only by a better one.
+* C4. A follow reads the pointer with an acquire, then its reference, the
+  handle's object and the CLOCK bit, and nothing else of the handle.
+* C5. A value's fields are final, or published by the release store that
+  put the value into the pointer.
+* C6. A key node's array fields are volatile, stored only by the writer,
+  after a growth's copies.
+* C7. A long that a reader may read in a race is read and written opaque
+  or volatile: `pos[i]`, a top node's references, `Handle.writtenPos`;
+  but for `KeyNode.spos`, plain, which changes after publication only on a
+  canonical object, where any value, stale or torn, is harmless (point
+  6).
+
+**What it costs**, per hop (a search and a follow), on AArch64 (F53, Apple
+M1): the search reads `klongs`, and for the pointer it chose `pointers`,
+`pointers[i]` and `pos`, with load-acquires (`ldar`), four more than
+before; the follow reads `pointers`, `pointers[i]` and `pos` with
+load-acquires, three more, and no longer reads the klong to choose
+between a plain read and an acquire. `pos[i]` is an opaque read, a plain
+load. On x86 (s1) every one of these is a plain load (TSO): the cost is
+only what the JIT may no longer reorder. Stores: a release or opaque
+store is a plain store on x86, a `stlr` or a plain store on AArch64; a
+volatile store of an array field (a growth, a new key node) adds a fence
+on x86. 004-01's `handleacq` measured one load-acquire per hop at 72.1
+against 70.7 ns a lookup in cache on F53, and 583 against 564 out of
+cache; seven per hop are to be measured after the release (015-14,
+`performance.sh` on a quiet F53).
 
 ## 3.5 How to test it
 
@@ -417,7 +560,7 @@ and I understand it."
 
 **The fast path**, for a pointer to an index node:
 
-    h = pointers[i]                      // plain (T6b, 3.4)
+    h = pointers[i]                      // plain (T6b, 3.4); acquire since 015-14
     if h != null:
         o = acquire(h.obj)
         p = opaque(pos[i])
@@ -429,7 +572,7 @@ and I understand it."
 No lock, and no write to shared memory but the CLOCK bit when it is clear.
 A vpos names no stream position, so a pointer that holds one takes the fast
 path only to a canonical object. Values: `pointers[i]`, read with an
-acquire (3.4, point 5), is the `ValueNode`, or null and the slow path.
+acquire (3.4, point 8), is the `ValueNode`, or null and the slow path.
 
 **The slow path** (locks allowed, Frans):
 
@@ -655,8 +798,9 @@ against 2026.1; `level4.sh` in full at 3b and 3d.
   LargerThanMemory; K. Size: M.
 * **3c. The lock-free fast path.** Section 3.3's barriers; PointerLocks
   and the stamp off the fast path; the slow path under the handle's
-  monitor and the map's lock; the conditions C1 to C5 of 3.4 in the
-  code's comments; the jcstress tests of 3.5 on F53 and s1. Size: M to L.
+  monitor and the map's lock; the conditions C1 to C5 of 3.4 (C1 to C7
+  since 015-14) in the code's comments; the jcstress tests of 3.5 on F53
+  and s1. Size: M to L.
 * **3d. The audit and the tests:** 4.10's invariants; EvictionReaderTester
   and ReclaimReaders for the races of 3.5; Eviction's twin tests; the docs
   of the classes. Size: M.
@@ -844,6 +988,10 @@ to a value (3.4, point 5).
 * Proposed at first: T6a (Frans: "A barrier is needed."); T6b only if step
   3c measured the second acquire as dear and the jcstress tests passed
   with it.
+* 2026-11-03, bergdb 015-14: T6a. Review R1 found the gap in 3.4's
+  argument for T6b (016-06/R1, R1-F3), and Frans: ""thread safety rests on
+  today's JVM behaviour". This is not acceptable." Section 3.4 is
+  rewritten for T6a.
 
 **T7. Loads under the handle's monitor: T7a, decided.**
 
@@ -996,8 +1144,9 @@ found each:
   reader that stores a handle that an eviction killed meanwhile leaves a
   dead handle in the pointer, which the next follow resolves again
   (`EvictionReaderTester.testDeadHandleInAPointer`).
-* **`pos[i]` is read and written plainly**, not opaque (3.3): BergDB
-  relies on a 64-bit JVM, where a plain long does not tear (JLS 17.7 allows
+* **`pos[i]` is read and written plainly**, not opaque (3.3; opaque since
+  bergdb 015-14, 2026-11-03, with the fast path's acquire, 3.4): BergDB
+  relied on a 64-bit JVM, where a plain long does not tear (JLS 17.7 allows
   it elsewhere), as it did before 009, whose searches read `pos[i]` without
   a lock. A reader's slow path writes `pos[i]` too, the raised reference,
   under the node's monitor; 3.3 had the writer only.

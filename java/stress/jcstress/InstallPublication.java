@@ -13,11 +13,12 @@ import bergdb.dag.Klong;
 import bergdb.dag.Node;
 
 /**
- * An install against a fast-path read (bergdb item 009; 009-02, 3.4 point 4, 3.5): the
+ * An install against a fast-path read (bergdb item 009; 009-02, 3.4 point 5, 3.5): the
  * pointer holds a live handle with no object (an eviction took it); a loader reads the node
  * again and installs the new object under the handle's monitor, between compareAndSets of
- * the state (NodeCollection.followStreamPointer); a reader reads the pointer plainly and the
- * object with a volatile read, and tests it as the fast path does (Handle.usable). r1: -1 no
+ * the state (NodeCollection.followStreamPointer); a reader reads the pointer with an acquire
+ * (getPointee; plainly before bergdb 015-14) and the object with a volatile read, and tests
+ * it as the fast path does (Handle.usable). r1: -1 no
  * object yet (the slow path), 1 the object with its contents and usable, 0 the object seen
  * without its contents.
  */

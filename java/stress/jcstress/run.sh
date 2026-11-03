@@ -1,7 +1,9 @@
 #!/bin/sh
 # The jcstress tests of bergdb item 009 (items/009-handles/02-implementation-plan.md, 3.5):
-# the barriers of the lock-free fast path (3.4, C1 to C5), a key node's growth against a
-# reader (GrowthPublication, bergdb 015-12), and a control that shows a race.
+# the barriers of the lock-free fast path (3.4, C1 to C7), a key node's growth against a
+# reader (GrowthPublication, bergdb 015-12), a swizzle against a fast-path read in a key node
+# and in a top node (SwizzleOrder, TopSwizzleOrder, bergdb 015-14), and a control that shows
+# a race.
 # A tool of item 009, not a gate: jcstress is not in BergDB's build.
 #
 # Usage, from java/: stress/jcstress/run.sh JCSTRESS_DIR [MODE [JAR]]

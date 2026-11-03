@@ -16,8 +16,9 @@ import bergdb.dag.Pointee;
  * A key node's growth against a reader (bergdb 015-12; 016-06/R1, R1-F1): the node is full,
  * 14 klongs in arrays of 14, each with a pointer to a handle and a reference; the writer
  * appends one more (KeyNode.addToEnd), which replaces the three arrays by copies of 30
- * (growCapacity) before it raises the size; a reader reads the size, then the three arrays
- * plainly, as the searches and the fast path do, and every element below the size it read.
+ * (growCapacity) before it raises the size; a reader reads the size, then the three array
+ * fields, volatile since bergdb 015-14 (plain, after a release fence of the writer's, in
+ * 015-12), as the searches and the fast path do, and every element below the size it read.
  * Allowed: the old arrays, or the new ones with the copies; never a new array without them (a
  * klong 0, a null pointer, a reference 0 below the size). r1: the size read, 14 or 15; r2: 1
  * if the reader saw a new array, 0 if only old ones; r3: 1 if every element below the size is
@@ -55,9 +56,9 @@ public class GrowthPublication {
     @Actor
     public void reader(III_Result r) {
         int s = x.size;                 // volatile, as the searches
-        long[] kl = x.klongs;           // plain, as the searches
-        Pointee[] p = x.pointers;       // plain, as getPointee
-        long[] ps = x.pos;              // plain, as getPointerPos
+        long[] kl = x.klongs;           // volatile, as the searches
+        Pointee[] p = x.pointers;       // volatile, as getPointee
+        long[] ps = x.pos;              // volatile, as getPointerPos
         boolean full = true;
         for (int i = 0; i < s; i++) {
             if (kl[i] != KEYS[i] || p[i] != h || ps[i] != 1000 + 8 * i) full = false;

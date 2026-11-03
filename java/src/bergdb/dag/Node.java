@@ -78,13 +78,15 @@ public interface Node {
     
     /**
      * Pointer i's reference: the position or vpos it named when it was made, loaded, or last
-     * resolved (since bergdb item 009, step 3a always this, never access data).
+     * resolved (since bergdb item 009, step 3a always this, never access data). An opaque
+     * read (bergdb 015-14): atomic, also in a race; a follow reads it after getPointee.
      */
     public long getPointerPos(int index);
     
     /**
      * What pointer i holds (bergdb item 009, step 3a): the pointee's handle, a value, or null
-     * (not followed yet, or a value unswizzled).
+     * (not followed yet, or a value unswizzled). An acquire read (bergdb 015-14; 009-02, 3.4),
+     * which pairs with the release store of setPointee, setPointer and swizzle.
      */
     public Pointee getPointee(int index);
     

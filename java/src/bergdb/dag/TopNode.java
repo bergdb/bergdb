@@ -1,6 +1,8 @@
 package bergdb.dag;
 
 import java.io.PrintStream;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
@@ -10,15 +12,23 @@ import bergdb.nanotest.Nano;
  * A TopNode is a node in the data structure (a type of Skip List) 
  * used to find the space root node given a lookup time.
  * 
+ * <p>Pointers change in place, as a key node's (KeyNode's class comment; 009-02, 3.4): what
+ * a pointer holds (rootPointer, pointers[i]) under the node's monitor with a release store,
+ * its reference (rootPointerPos, pointersPos[i]) with an opaque store; a reader reads the
+ * handle with an acquire (getPointee) and then the reference with an opaque read
+ * (getPointerPos), without a lock (bergdb 015-14; before, plain reads and stores).</p>
+ * 
  * @author Frans Lundberg
  */
 public final class TopNode implements Node {
     public final Handle[] pointers;
         // Backward pointers in skip list: the handles of the top nodes they point to, or
-        // null (bergdb item 009, step 3a; before, the top node objects).
+        // null (bergdb item 009, step 3a; before, the top node objects). Synch note: an
+        // element changed in place with a release store, read with an acquire (getPointee).
     public final long[] pointersPos;     
         // The skip pointers' references, positions or vpos (since step 3a; before, access
-        // data while a pointer was a memory pointer).
+        // data while a pointer was a memory pointer). Synch note: an element changed in
+        // place with an opaque store, read with an opaque read (getPointerPos).
     public final long[] pointersTime;
         // The rootTime of each skip pointer's target, cached here so that a search can choose
         // a pointer without following it (TopDs.findSuperRootAtTime); -1 for an unused slot.
@@ -31,6 +41,7 @@ public final class TopNode implements Node {
     
     public Handle rootPointer;     // the handle of the space root, or null (009, step 3a)
     public long rootPointerPos;    // the root pointer's reference
+        // Synch note: as pointers[i] and pointersPos[i], by ROOT and ROOT_REF (015-14).
     public Handle handle;
         // The handle this object is in, or was in (bergdb item 009, step 3a; KeyNode.handle).
     public long rootTime;
@@ -51,7 +62,8 @@ public final class TopNode implements Node {
         // Read and written under the object's monitor.
     public boolean isDirty = false;
     public boolean isCanonical = false;     // See Node.isCanonical().
-        // Synch note: access from threads holding Db.writeLock only.
+        // Synch note: written by the writer and by an eviction; read plainly by the readers'
+        // Handle.usable, where a stale value is harmless (009-02, 3.4).
     
     private static final int MAX_HEIGHT = 48;
     
@@ -299,36 +311,42 @@ public final class TopNode implements Node {
     
     /** See Node.getPointerNode(): the handle's object if it may serve the pointer. */
     public final Node getPointerNode(int index) {
-        Handle h = index == 0 ? rootPointer : pointers[index - 1];
+        Handle h = getPointee(index);       // an acquire, then the rest (bergdb 015-14)
         if (h == null) return null;
         Node o = h.obj;
         return o != null && Handle.usable(o, getPointerPos(index)) ? o : null;
     }
     
+    /** Pointer i's reference, with an opaque read, as KeyNode.getPointerPos (015-14). */
     public final long getPointerPos(int index) {
-        return index == 0 ? rootPointerPos : pointersPos[index - 1];
+        return index == 0 ? (long) ROOT_REF.getOpaque(this)
+                : (long) REFS.getOpaque(pointersPos, index - 1);
     }
     
-    public final Pointee getPointee(int index) {
-        return index == 0 ? rootPointer : pointers[index - 1];
+    /** What pointer i holds, with an acquire, as KeyNode.getPointee (bergdb 015-14). */
+    public final Handle getPointee(int index) {
+        return index == 0 ? (Handle) ROOT.getAcquire(this)
+                : (Handle) HANDLES.getAcquire(pointers, index - 1);
     }
     
+    /** Under the node's monitor, with a release store, as KeyNode.setPointee (015-14). */
     public final void setPointee(int index, Pointee pointee) {
         synchronized (this) {
             if (index == 0) {
-                rootPointer = (Handle) pointee;
+                ROOT.setRelease(this, (Handle) pointee);
             } else {
-                pointers[index - 1] = (Handle) pointee;
+                HANDLES.setRelease(pointers, index - 1, (Handle) pointee);
             }
         }
     }
     
+    /** Under the node's monitor, with an opaque store, as KeyNode.setRef (015-14). */
     public final void setRef(int index, long ref) {
         synchronized (this) {
             if (index == 0) {
-                rootPointerPos = ref;
+                ROOT_REF.setOpaque(this, ref);
             } else {
-                pointersPos[index - 1] = ref;
+                REFS.setOpaque(pointersPos, index - 1, ref);
             }
         }
     }
@@ -348,15 +366,28 @@ public final class TopNode implements Node {
     }
     
     public final void setPointer(int index, Pointee pointee, long ref) {
-        synchronized (this) {   // See getPointer().
+        synchronized (this) {   // See getPointer(); the reference first (015-14).
             if (index == 0) {
-                rootPointer = (Handle) pointee;
-                rootPointerPos = ref;
+                ROOT_REF.setOpaque(this, ref);
+                ROOT.setRelease(this, (Handle) pointee);
             } else {
                 index -= 1;
-                pointers[index] = (Handle) pointee;
-                pointersPos[index] = ref;
+                REFS.setOpaque(pointersPos, index, ref);
+                HANDLES.setRelease(pointers, index, (Handle) pointee);
             }
+        }
+    }
+    
+    private static final VarHandle ROOT, ROOT_REF;
+    private static final VarHandle HANDLES = MethodHandles.arrayElementVarHandle(Handle[].class);
+    private static final VarHandle REFS = MethodHandles.arrayElementVarHandle(long[].class);
+    static {
+        try {
+            MethodHandles.Lookup l = MethodHandles.lookup();
+            ROOT = l.findVarHandle(TopNode.class, "rootPointer", Handle.class);
+            ROOT_REF = l.findVarHandle(TopNode.class, "rootPointerPos", long.class);
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
         }
     }
     
@@ -409,6 +440,30 @@ public final class TopNode implements Node {
             refused = true;
         }
         Assert.assertTrue("above the bound", refused);
+    }
+
+    @Nano
+    public static void testPointerInPlace() {
+        // bergdb 015-14: the root pointer and a skip pointer changed in place (raiseRef,
+        // swizzle, setPointer) and read as a follow reads them (getPointee, getPointerPos).
+        TopNode t = new TopNode(1, null, 200, 5, Spos.NULL);
+        Handle a = new Handle(7);
+        Handle b = new Handle(7);
+        for (int i = 0; i <= 1; i++) {
+            t.setPointer(i, a, 200);
+            t.raiseRef(i, 100);
+            Assert.assertEquals("never lowered", 200, t.getPointerPos(i));
+            t.raiseRef(i, 300);
+            Assert.assertEquals(300, t.getPointerPos(i));
+            Assert.assertEquals(false, t.swizzle(i, b, b));
+            Assert.assertEquals(true, t.swizzle(i, a, b));
+            Assert.assertEquals(true, t.getPointee(i) == b);
+            t.setRef(i, 400);
+            Assert.assertEquals(400, t.getPointerPos(i));
+        }
+        Assert.assertEquals(true, t.rootPointer == b && t.pointers[0] == b);
+        Assert.assertEquals(400, t.rootPointerPos);
+        Assert.assertEquals(400, t.pointersPos[0]);
     }
 
     public boolean isKeyNode() { return false; }

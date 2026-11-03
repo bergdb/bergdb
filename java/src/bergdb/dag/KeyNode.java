@@ -25,9 +25,10 @@ import bergdb.nanotest.Assert;
  * are visible for the readers as they read the KeyNode.size field.</p>
  *
  * <p>A growth (growCapacity, setContentFrom) replaces the three arrays by copies, and a reader
- * that read size before it may read the new arrays: a release fence orders the copies before
- * the stores of the fields, and the reader reads the elements through the field it read
- * (bergdb 015-12; 015-14).</p>
+ * that read size before it may read the new arrays. The three fields are volatile (bergdb
+ * 015-14; in 015-12 a release fence before plain stores): a growth stores them after its
+ * copies, and a reader reads each with a volatile read, so it sees the copies of every array
+ * it reads (JLS 17.4.4 and 17.4.5), whichever size it read. Only the writer stores them.</p>
  * 
  * <p>Two exceptions, both for klongs of the current transaction, which no reader sees: readers
  * use lookup times before the transaction time, and every read stops at the first time klong
@@ -46,11 +47,16 @@ import bergdb.nanotest.Assert;
  * 3.3 and 3.4): what pointer i holds (pointers[i]: nothing, a handle of its node, live or
  * dead, or its value) and its reference (pos[i], raised by Rule R or by a reader's slow
  * path). What it names, the node or the value, never changes (C1). Every such change is made
- * under the node's monitor (C2), and a change of what a pointer holds is a release store
- * (setPointee, setPointer). A reader's fast path reads pointers[i] without a lock: plainly
- * for a pointer to a handle (T6b), with an acquire for a pointer to a value
- * (getPointeeAcquire, C5). pos[i] is a long read and written plainly: BergDB relies on a
- * 64-bit JVM, where a plain long does not tear.</p>
+ * under the node's monitor (C2); a change of what a pointer holds is a release store
+ * (setPointee, setPointer, swizzle), and a change of a reference an opaque store (setRef,
+ * raiseRef, setPointer). A reader reads pointers[i] without a lock with an acquire
+ * (getPointee), for a handle as for a value, and then pos[i] with an opaque read
+ * (getPointerPos). The acquire pairs with the release store that put the pointee there, so
+ * the reader sees what came before that store: for a handle, the raise of the reference and
+ * the install of the handle's object; for a value, its fields (C5). Opaque, as a reader may
+ * read pos[i] in a race and a plain long may tear (JLS 17.7). Before bergdb 015-14, a pointer
+ * to a handle and pos[i] were read plainly, which rested on the address dependency and on a
+ * 64-bit JVM (016-06/R1, R1-F3).</p>
  * 
  * @author Frans Lundberg
  */
@@ -83,22 +89,30 @@ public class KeyNode implements Node {
         // Size of klong array actually used. 
         // Synch note: Used for synch action between writer and readers. Handles synch for 
         // the arrays too (klongs, pointers, pos).
-    public long[] klongs;
-        // Synch note: Writes to "klongs" and its elements published by a write to this.size,
-        // and a growth's copies by its release fence (growCapacity, bergdb 015-12).
+    public volatile long[] klongs;
+        // Synch note: Writes to elements of "klongs" published by a write to this.size. The
+        // field is volatile, as pointers and pos, so that a growth's copies are published with
+        // the new array (growCapacity; bergdb 015-12, 015-14). Only the writer stores it.
         // Readers should first read this.size, before accessing klongs or elements in klongs.
     
-    public Pointee[] pointers;           
+    public volatile Pointee[] pointers;           
         // What each pointer holds (bergdb item 009, step 3a): the handle of a key node it
         // points to, or the ValueNode it points to, or null (not followed yet; a value
         // unswizzled). Before 2026-10-25 the key node objects themselves.
-        // Synch note: written under "this" lock (setPointee, setPointer), and by the writer
-        // before it publishes a new pointer with this.size; read plainly (009-02, 3.4, T6b).
-    public long[] pos;
+        // Synch note: an element is written under "this" lock with a release store
+        // (setPointee, setPointer, swizzle), or by the writer before it publishes a new
+        // pointer with this.size, or by the writer's replaceKlong in place, plainly, for a
+        // klong of the current transaction, behind its time klong, where every reader stops;
+        // read with an acquire (getPointee; 009-02, 3.4; bergdb 015-14). The field is
+        // volatile, as klongs.
+    public volatile long[] pos;
         // The pointer's reference, its position or vpos (009-02, 4.2): what it named when it
         // was made, loaded, or last resolved. No access data since step 3a.
-        // Synch note: written under "this" lock and by the writer before it publishes a new
-        // pointer with this.size.
+        // Synch note: an element is written under "this" lock with an opaque store (setRef,
+        // raiseRef, setPointer), or by the writer before it publishes a new pointer with
+        // this.size, or by replaceKlong, as pointers; a reader reads it with an opaque read
+        // after the pointer's acquire (getPointerPos; bergdb 015-14). The field is volatile,
+        // as klongs.
     public Handle handle;
         // The handle this object is in, or was in (bergdb item 009, step 3a): set when the
         // object is put into a handle (Cache3.register, install, makeCanonical; Handle.of).
@@ -246,60 +260,80 @@ public class KeyNode implements Node {
     /** See Node.getPointerNode(): the value, or the handle's object if it may serve. */
     public final Node getPointerNode(int index) {
         assert index < pointers.length : "bad index, " + index + ", length:" + pointers.length;
-        Pointee p = pointers[index];
-        if (p == null) return null;
+        Pointee p = getPointee(index);      // an acquire, then the rest (bergdb 015-14)
+        return p == null ? null : nodeOf(p, getPointerPos(index));
+    }
+
+    /** What pointee p gives a pointer with reference ref, as getPointerNode. */
+    private static Node nodeOf(Pointee p, long ref) {
         if (p instanceof ValueNode) return (ValueNode) p;
         Node o = ((Handle) p).obj;
-        return o != null && Handle.usable(o, pos[index]) ? o : null;
-    }
-    
-    public final long getPointerPos(int index) {
-        return pos[index];
-    }
-    
-    public final Pointee getPointee(int index) {
-        return pointers[index];
+        return o != null && Handle.usable(o, ref) ? o : null;
     }
 
     /**
-     * What pointer i holds, read with an acquire (bergdb item 009, step 3c; 009-02, 3.4,
-     * C5): for a pointer to a value, whose position (ValueNode.spos, volatile but set in the
-     * constructor) the JLS does not promise through a race. A pointer to a handle is read
-     * plainly (getPointee; T6b, 3.4).
+     * A search's result for pointer i (bergdb 015-14): kwi.node as getPointerNode, kwi.pos
+     * the reference; the pointer read first, with its acquire, then the reference, each once.
      */
-    public final Pointee getPointeeAcquire(int index) {
+    private void pointerInto(KlongWithPointer kwi, int index) {
+        Pointee p = getPointee(index);
+        long ref = getPointerPos(index);
+        kwi.node = p == null ? null : nodeOf(p, ref);
+        kwi.pos = ref;
+    }
+    
+    /**
+     * Pointer i's reference, with an opaque read (bergdb 015-14): a reader may read it in a
+     * race with a raise, and a plain long may tear (JLS 17.7). A follow reads it after
+     * getPointee, whose acquire orders it (009-02, 3.4).
+     */
+    public final long getPointerPos(int index) {
+        return (long) REFS.getOpaque(pos, index);
+    }
+    
+    /**
+     * What pointer i holds, read with an acquire (bergdb 015-14; 009-02, 3.4). It pairs with
+     * the release store that put the pointee there (setPointee, setPointer, swizzle), so a
+     * reader that sees the pointee sees what came before that store: a value's position
+     * (ValueNode.spos, volatile but set in the constructor; C5); for a handle, the raise of
+     * the pointer's reference and the install of the handle's object before the swizzle.
+     * Before 015-14, a pointer to a handle was read plainly (T6b), which left the reader's
+     * next reads ordered by the address dependency only (016-06/R1, R1-F3).
+     */
+    public final Pointee getPointee(int index) {
         return (Pointee) POINTEES.getAcquire(pointers, index);
     }
 
-    private static final java.lang.invoke.VarHandle POINTEES =
+    private static final VarHandle POINTEES =
             java.lang.invoke.MethodHandles.arrayElementVarHandle(Pointee[].class);
+    private static final VarHandle REFS =
+            java.lang.invoke.MethodHandles.arrayElementVarHandle(long[].class);
     
     public final void setPointee(int index, Pointee pointee) {
         synchronized (this) {
-            // A release store (bergdb item 009, step 3c; 009-02, 3.4, C5): a reader reads a
-            // pointer to a value with an acquire, which pairs with it, so the value's fields
-            // as they were before are visible to it. A pointer to a handle needs no edge
-            // (T6b), but gets the same store.
+            // A release store (bergdb item 009, step 3c; 009-02, 3.4): the reader's acquire
+            // in getPointee pairs with it, so what came before is visible to the reader: a
+            // value's fields (C5); a handle's object and the raised reference (bergdb 015-14).
             POINTEES.setRelease(pointers, index, pointee);
         }
     }
     
     public final void setRef(int index, long ref) {
         synchronized (this) {
-            pos[index] = ref;
+            REFS.setOpaque(pos, index, ref);        // atomic, as getPointerPos (015-14)
         }
     }
     
     public final void raiseRef(int index, long ref) {
         synchronized (this) {
-            if (Spos.newer(ref, pos[index])) pos[index] = ref;
+            if (Spos.newer(ref, pos[index])) REFS.setOpaque(pos, index, ref);     // as setRef
         }
     }
     
     public final boolean swizzle(int index, Pointee expected, Pointee pointee) {
         synchronized (this) {
             if (pointers[index] != expected) return false;
-            POINTEES.setRelease(pointers, index, pointee);      // C5, as setPointee
+            POINTEES.setRelease(pointers, index, pointee);      // as setPointee
             return true;
         }
     }
@@ -310,8 +344,8 @@ public class KeyNode implements Node {
      */
     public final void setPointer(int index, Pointee pointee, long ref) {
         synchronized (this) {   // See getPointer().
-            pos[index] = ref;
-            POINTEES.setRelease(pointers, index, pointee);      // C5, as setPointee
+            REFS.setOpaque(pos, index, ref);                    // as setRef
+            POINTEES.setRelease(pointers, index, pointee);      // as setPointee
         }
     }
     
@@ -406,8 +440,7 @@ public class KeyNode implements Node {
                     kwi.klong = klong;
                     kwi.pointerIndex = index;
                     kwi.klongTime = arrayTime;
-                    kwi.node = getPointerNode(index);      // Warning, unsynched access to pointer.
-                    kwi.pos = this.pos[index];
+                    pointerInto(kwi, index);
                 }
                 break;
             case Klong.INT_TYPE_DELETE_BITMAP:
@@ -499,8 +532,7 @@ public class KeyNode implements Node {
             kwi.klong = klongs[bestPointerIndex];
             kwi.pointerIndex = bestPointerIndex;
             kwi.klongTime = bestKlongTime;
-            kwi.pos = this.pos[bestPointerIndex];     // Warning, unsynched access to pointer.
-            kwi.node = getPointerNode(bestPointerIndex);
+            pointerInto(kwi, bestPointerIndex);
         }
     }
     
@@ -574,8 +606,7 @@ public class KeyNode implements Node {
         
         if (bestCompareValue != -1) {
             kwi.klong = klongs[bestPointerIndex];
-            kwi.pos = this.pos[bestPointerIndex];
-            kwi.node = getPointerNode(bestPointerIndex);
+            pointerInto(kwi, bestPointerIndex);
             kwi.pointerIndex = bestPointerIndex;
             kwi.klongTime = bestKlongTime;
         }
@@ -649,8 +680,7 @@ public class KeyNode implements Node {
         
         if (bestCompareValue != -1) {
             kwi.klong = klongs[bestPointerIndex];
-            kwi.pos = this.pos[bestPointerIndex];
-            kwi.node = getPointerNode(bestPointerIndex);
+            pointerInto(kwi, bestPointerIndex);
             kwi.pointerIndex = bestPointerIndex;
             kwi.klongTime = bestKlongTime;
         }
@@ -724,8 +754,7 @@ public class KeyNode implements Node {
         
         if (bestCompareValue != -1) {
             kwi.klong = klongs[bestPointerIndex];
-            kwi.pos = this.pos[bestPointerIndex];
-            kwi.node = getPointerNode(bestPointerIndex);
+            pointerInto(kwi, bestPointerIndex);
             kwi.pointerIndex = bestPointerIndex;
             kwi.klongTime = bestKlongTime;
         }
@@ -790,8 +819,7 @@ public class KeyNode implements Node {
         
         if (bestCompareValue != -1) {
             kwi.klong = klongs[bestPointerIndex];
-            kwi.pos = this.pos[bestPointerIndex];
-            kwi.node = getPointerNode(bestPointerIndex);
+            pointerInto(kwi, bestPointerIndex);
             kwi.pointerIndex = bestPointerIndex;
             kwi.klongTime = bestKlongTime;
         }
@@ -948,12 +976,11 @@ public class KeyNode implements Node {
             System.arraycopy(this.pointers, 0, pointers, 0, sz);
             System.arraycopy(this.pos, 0, pos, 0, sz);
             
-            // The copies before the new arrays (bergdb 015-12): a reader that read size before
-            // this growth can read the fields after it. The fence orders the copies' stores
-            // before the fields' stores, on every machine, and costs the readers nothing. A
-            // reader reads the elements through the address its plain read of the field gave
-            // (015-14: the reliance on that dependency, as the fast path's).
-            VarHandle.releaseFence();
+            // The copies before the new arrays (bergdb 015-12, 015-14): a reader that read size
+            // before this growth can read the fields after it. The fields are volatile: their
+            // stores come after the copies, so a reader whose volatile read of a field sees a
+            // new array sees its copies (JLS 17.4.5). In 015-12, a release fence before plain
+            // stores, whose reader side rested on the address dependency.
             this.klongs = klongs;
             this.pointers = pointers;
             this.pos = pos;
@@ -1026,10 +1053,10 @@ public class KeyNode implements Node {
         System.arraycopy(other.pointers, 0, p, 0, sz);
         System.arraycopy(other.pos, 0, ps, 0, sz);
         
-        // The copies before the new arrays, as in growCapacity (bergdb 015-12): a reader that
-        // read the old size can read the fields after this, and must see the first klong,
-        // the time klong of the transaction, where it stops.
-        VarHandle.releaseFence();
+        // The copies before the new arrays, as in growCapacity (bergdb 015-12, 015-14): a
+        // reader that read the old size can read the fields after this, and must see the
+        // first klong, the time klong of the transaction, where it stops. The fields are
+        // volatile, and stored after the copies.
         
         // The same monitor as ensureCapacity(): a reader that swizzles a pointer must not see
         // the old pointer arrays with the new klongs.

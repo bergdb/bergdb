@@ -14,15 +14,17 @@ import bergdb.dag.Node;
 import bergdb.dag.Pointee;
 
 /**
- * T6b (bergdb item 009; items/009-handles/02-implementation-plan.md, 3.4): a resolver puts a
- * new handle into a pointer that held nothing (KeyNode.swizzle, a reader's compare-and-set
+ * T6b, T6a since bergdb 015-14 (item 009; items/009-handles/02-implementation-plan.md, 3.4):
+ * a resolver puts a new handle into a pointer that held nothing (KeyNode.swizzle, a reader's
+ * compare-and-set
  * under the node's monitor since step 3d, with a release store), the handle's object
  * installed before it with a volatile write (Handle.obj); a reader on the
- * fast path reads the pointer plainly (getPointee, as NodeCollection.followPointer does for a
- * pointer to an index node) and then the object with a volatile read. r1: -2 the pointer seen
+ * fast path reads the pointer with an acquire (getPointee, as NodeCollection.followPointer
+ * does since bergdb 015-14; plainly before) and then the object with a volatile read; the
+ * object's contents are published by that volatile read either way. r1: -2 the pointer seen
  * empty, -1 the handle seen without its object (the slow path), 1 the object with its
  * contents (its position, set before the install), 0 the object without them; r2: the
- * handle's id (final, 3.4 point 4), 0 if seen without it.
+ * handle's id (final, 3.4 point 9), 0 if seen without it.
  */
 @JCStressTest
 @Outcome(id = "-2, 0", expect = Expect.ACCEPTABLE, desc = "The pointer not seen yet.")
@@ -49,7 +51,7 @@ public class HandlePublication {
 
     @Actor
     public void reader(II_Result r) {
-        Pointee p = x.getPointee(0);    // plain (T6b)
+        Pointee p = x.getPointee(0);    // an acquire (T6a, 015-14; plain before, T6b)
         if (p == null) {
             r.r1 = -2;
             r.r2 = 0;
