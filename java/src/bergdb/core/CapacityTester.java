@@ -8,7 +8,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 
 import bergdb.dag.GetMany;
+import bergdb.dag.KeyNode;
 import bergdb.dag.Kvt;
+import bergdb.dag.Node;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.SyncLevel;
@@ -515,5 +517,119 @@ public class CapacityTester {
         Assert.assertEquals(auditFailures, Audit.failures());
         ref.stop();
         db.stop();
+    }
+
+    /**
+     * A batch on a pinned leaf (bergdb 015-15; 016-06/R1, R1-F4, and its probe): with a
+     * startup distance of 100 kB a leaf stays in D, dirty, while the writer puts 20 values of
+     * 1,000 bytes into it, which are counted from its write, not before; a batch (a budget of
+     * 1,000 bytes) takes them as stream pointers (Eviction.unswizzleValues). The leaf's count
+     * goes down to its own bytes, no further, and after its write it is its bytes again; its
+     * eviction, written, takes the object counter down by one. Throughout,
+     * every resident index object is counted (checkCounts). Before the fix the batch took the
+     * leaf's count to 0, which meant "not counted", and it stayed 0 after the leaf's write.
+     */
+    @Nano
+    public static void testBatchOnPinnedLeaf() {
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(new MemoryStream()).clock(clock).testId()
+                .startupDistance(100 * 1000).start();
+        try {
+            Db.Internal in = db.internal();
+            StringBuilder big = new StringBuilder();
+            while (big.length() < 1000) big.append('x');
+            long time = 100 * STEP;
+            for (int t = 0; t < 20; t++) {
+                clock.setTime(time += STEP);
+                db.execute(db.trans().put("k" + (100 + t), big.toString() + t).build());
+            }
+            KeyNode leaf = null;
+            for (Node o : in.cache().nodes()) {
+                if (o instanceof KeyNode && ((KeyNode) o).isSegmentLeaf() && o.isDirty()
+                        && Residents.bytesOf(o) > o.getMemSize() + 10 * 1000) {
+                    leaf = (KeyNode) o;
+                }
+            }
+            Assert.assertTrue("a dirty leaf with the values", leaf != null);
+            Assert.assertTrue("its values not all counted: " + leaf.countedMemSize,
+                    leaf.countedMemSize < Residents.bytesOf(leaf));
+            checkCounts(db);
+
+            // A batch ends after 2 ms (Eviction.BATCH_NANOS): under load one may not reach the
+            // leaf's map, the next goes on from the hand.
+            for (int i = 0; i < 1000 && Residents.bytesOf(leaf) > leaf.getMemSize(); i++) {
+                batch(db, 1000);
+            }
+            Assert.assertTrue("dirty", leaf.isDirty());
+            Assert.assertEquals("its values taken", leaf.getMemSize(), Residents.bytesOf(leaf));
+            Assert.assertEquals("its count after the batch", Residents.bytesOf(leaf),
+                    leaf.countedMemSize);
+            checkCounts(db);
+
+            for (int t = 20; t < 420 && leaf.isDirty(); t++) {
+                clock.setTime(time += STEP);
+                db.execute(db.trans().put("k" + (100 + t), big.toString() + t).build());
+            }
+            Assert.assertFalse("the leaf written", leaf.isDirty());
+            Assert.assertTrue("in its handle", in.cache().getNode(leaf.getId()) == leaf);
+            Assert.assertEquals("its count after its write", Residents.bytesOf(leaf),
+                    leaf.countedMemSize);
+            checkCounts(db);
+
+            long objects = in.cache().residents().objects();
+            synchronized (in.getWriteLock()) {
+                Assert.assertTrue("the leaf evicted", in.cache().evict(leaf.handle));
+            }
+            Assert.assertEquals("not counted", -1, leaf.countedMemSize);
+            Assert.assertEquals("one object less", objects - 1, in.cache().residents().objects());
+            checkCounts(db);
+        } finally {
+            db.stop();
+        }
+    }
+
+    /** One batch of the capacity controller with the budget 'budget', then the budget back. */
+    private static void batch(Db db, long budget) {
+        Db.Internal in = db.internal();
+        long old = in.eviction().budget();
+        in.eviction().setBudget(budget);
+        synchronized (in.getWriteLock()) {
+            in.eviction().sweep(db, false);
+        }
+        in.eviction().setBudget(old);
+    }
+
+    /**
+     * The accounting against a walk of the resident objects, between transactions (bergdb
+     * 015-15): each resident index object is counted, with at most its bytes
+     * (Residents.bytesOf), and with its bytes unless the writer changed it since its last
+     * count (dirty: D's objects, counted with their size at the last count until written,
+     * docs/levels.md, section 7); the resident bytes are the sum of the counts and the
+     * object counter their number.
+     */
+    private static void checkCounts(Db db) {
+        Db.Internal in = db.internal();
+        synchronized (in.getWriteLock()) {
+            final List<Node> d = new ArrayList<Node>();
+            in.transSeq().visitGotDirtyNodes(Long.MAX_VALUE, new TransSeq.NodeVisitor() {
+                public void node(Node node, long tpos, long lastTpos) {
+                    d.add(node);
+                }
+            });
+            long sum = 0, n = 0;
+            for (Node o : Residents.walk(in.superRoot(), in.cache().nodes(), d)) {
+                if (!o.isIndexNode()) continue;
+                int c = Residents.counted(o);
+                int b = Residents.bytesOf(o);
+                String what = (o.isDirty() ? "dirty " : "") + "object " + o.getId()
+                        + ": counted " + c + ", bytes " + b;
+                Assert.assertTrue(what, c >= 0 && c <= b);
+                if (!o.isDirty()) Assert.assertEquals(what, b, c);
+                sum += c;
+                n++;
+            }
+            Assert.assertEquals("the resident bytes", sum, in.cache().residents().bytes());
+            Assert.assertEquals("the objects counted", n, in.cache().residents().objects());
+        }
     }
 }

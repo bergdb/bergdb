@@ -576,7 +576,8 @@ public final class Eviction {
      * passed) gets a second chance; one with the bit clear goes if it is detachable, with the
      * values its pointers hold. No walk of the resident objects, and no count of who points
      * to what: the work is bounded by the maps a batch takes, whatever the size of the
-     * database and of the budget. The accounting is exact without walks (Residents). If the
+     * database and of the budget. The accounting is without walks, exact but for the objects
+     * the writer changed since their last count (Residents; bergdb 015-15). If the
      * resident bytes stay above the budget, the next trigger goes on from the hand; pinned
      * state is never taken: its bytes, which the hand's rounds count, raise the trigger if
      * they are above the budget (trigger). Until step

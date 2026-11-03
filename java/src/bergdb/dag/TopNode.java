@@ -45,10 +45,10 @@ public final class TopNode implements Node {
         // May be removed in future versions. For debug only.
     public boolean isInTransNodes;
         // Synch note: protected by Db.writeLock.
-    public int countedMemSize = 0;
-        // The size the resident registry counted this object with, 0 if not counted (bergdb
-        // item 001, WP J1; item 009, step 3b; core/Residents.java). Read and written under the
-        // object's monitor.
+    public int countedMemSize = -1;
+        // The size the resident registry counted this object with, -1 if not counted (bergdb
+        // item 001, WP J1; item 009, step 3b; core/Residents.java; 0 before bergdb 015-15).
+        // Read and written under the object's monitor.
     public boolean isDirty = false;
     public boolean isCanonical = false;     // See Node.isCanonical().
         // Synch note: access from threads holding Db.writeLock only.

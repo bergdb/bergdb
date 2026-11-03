@@ -209,10 +209,11 @@ public class Cache3 {
     }
 
     /**
-     * A pointer from 'from' to 'to' was made by the writer, or swizzled by a follow (Dag,
-     * TopDs, NodeCollection). An index node's handle is in the table since its object was made
-     * or installed; a value counts as resident from here (Residents; a value that two leaves
-     * hold is counted for each until the next resync, 009-02, 4.8).
+     * A pointer from 'from' to 'to' was made by the writer (Dag, TopDs). An index node's
+     * handle is in the table since its object was made or installed. A value is counted with
+     * 'from' at the next count of 'from', its write (Residents.grown), not here: Residents.added
+     * counts no value alone (bergdb 015-15; a value that two leaves hold is counted for each,
+     * 009-02, 4.8).
      */
     public void pointerCreated(Node from, int index, Node to) {
         if (!to.isIndexNode()) {

@@ -352,9 +352,17 @@ named, with a sweep that walked every resident object (item 004).
   newer of the reference and the position its dead handle's canonical
   object had when it was evicted.
 * **What is in memory.** The objects of the live handles and the values
-  that their pointers hold. `Residents` counts their bytes exactly, without
-  walks: each object with its values, from when it enters a handle until it
-  leaves it.
+  that their pointers hold. `Residents` counts their bytes without walks:
+  each object with its values, from when it enters a handle until it
+  leaves it. The count is exact but for the objects that the writer changed
+  since their last count, D's above all: each is counted with its size at
+  its last count (when it entered its handle, or its last write) until its
+  next write, so the growth of its arrays and the values that the writer put
+  into it are not counted meanwhile, and the resident bytes are below the
+  bytes in memory by those (015-15; in R1's probe with the default startup
+  distance of 50 MB, 1,896 bytes counted of 72,726 after 50 transactions
+  of 1,000-byte values). A batch that takes a pinned leaf's values takes
+  its count down to the leaf's own bytes, no further.
 * **What is pinned** (never evicted): the super root, the canonical objects
   of D (the nodes dirty since the startup position) and of the record being
   written, and the newest written top node.
