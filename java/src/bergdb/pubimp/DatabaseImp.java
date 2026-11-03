@@ -122,6 +122,13 @@ public class DatabaseImp implements Database {
     static volatile Consumer<Db> testHookAfterStart = null;
     
     /**
+     * For tests (bergdb 015-21): if set, deleteIndexInternal() calls it with "call" once the
+     * index is deleting, before it starts or finds the index's job; and a deletion job calls
+     * it with "start" when it starts, in its thread.
+     */
+    volatile Consumer<String> testHookDelete = null;
+    
+    /**
      * Not Pub API.
      */
     public final Db getDb() {
@@ -310,11 +317,21 @@ public class DatabaseImp implements Database {
             // index directory (IKP/i/<indexName>/).
         sync(SyncLevel.ORDINARY);
         
+        final Consumer<String> callHook = testHookDelete;
+        if (callHook != null) {
+            callHook.accept("call");
+        }
+        
         final long[] deletedCounter = new long[1];    
             // Shared between anonymous classes and removeIndexEntries()
         
         final Thread thread = new Thread(new Runnable() {
             public void run() {
+                final Consumer<String> hook = testHookDelete;
+                if (hook != null) {
+                    hook.accept("start");
+                }
+                
                 try {
                     indexManager.deleteIndexEntries(indexName, db, deletedCounter);
                     indexManager.deleteIndexInfo(connection, index);
@@ -334,9 +351,8 @@ public class DatabaseImp implements Database {
         thread.setDaemon(true);
         thread.setName(DatabaseImp.class.getSimpleName() + "-delete-" 
                 + indexName + "-" + thread.getId());
-        thread.start();
         
-        return new Job() {
+        final Job job = new Job() {
             public JobStatus getStatus() {
                 final int progress = thread.isAlive() ? -1 : 100;
                 final long count = deletedCounter[0];
@@ -370,5 +386,7 @@ public class DatabaseImp implements Database {
                 return getStatus();
             }
         };
+        
+        return indexManager.startDeletionJob(index, job, thread);
     }
 }

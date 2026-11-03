@@ -300,6 +300,7 @@ public interface Database extends AutoCloseable {
 
     /**
      * Starts and returns a Job that deletes an index in the background.
+     * If a job that deletes the index runs already, returns that job.
      * 
      * @param indexName
      *            Unique name of the index.

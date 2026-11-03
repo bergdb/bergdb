@@ -459,6 +459,7 @@ public class IndexManager {
         Trans trans = db.trans().delete(key).build();
         
         synchronized (lock) {
+            assert nameToIndex.get(index.name) == index : "Not the index of its name (bergdb 015-21).";
             db.execute(trans);
             nameToIndex.remove(index.name);
         }
@@ -628,6 +629,30 @@ public class IndexManager {
     }
     
     /**
+     * Starts the deletion job of a deleting index, unless it has one that runs or it is
+     * deleted already; returns the index's job (bergdb 015-21). So an index has at most one
+     * deletion job that runs, and none starts once another index can have its name: a second
+     * deleteIndex() returns the running job. Before, each call started a job, and one that
+     * ran late deleted, by its name, an index created again after the other had finished.
+     * 
+     * @param job     The new job, for 'thread'.
+     * @param thread  The job's thread, not started; started here if the job is.
+     */
+    Job startDeletionJob(Index index, Job job, Thread thread) {
+        synchronized (lock) {
+            final Job current = index.deletionJob;
+            final boolean deleted = nameToIndex.get(index.name) != index;
+            if (current != null && (deleted || current.getStatus().progress() != 100)) {
+                return current;
+            }
+            assert !deleted : "Index " + index.name + " deleted, by no job.";
+            index.deletionJob = job;
+            thread.start();
+            return job;
+        }
+    }
+    
+    /**
      * Ensures that an index is in a deleting state.
      * 
      * @throws NoSuchIndexException  If no index exists with the given name.
@@ -655,7 +680,8 @@ public class IndexManager {
     }
     
     /**
-     * Immutable index class.
+     * An index: its definition is immutable; its state and its deletion job (bergdb 015-21)
+     * change, under IndexManager's lock.
      */
     public static class Index {
         static final int STATE_CREATING = 10;
@@ -675,6 +701,7 @@ public class IndexManager {
         final char[] types;              // TYPE_x
         final KCollator[] kcollators;    // Non-null when type == TYPE_STRING;
         private int state;
+        Job deletionJob = null;     // Its deletion's job; protected by IndexManager's lock (bergdb 015-21).
         final long keyHash;
         final int levelCount;       // Number of user-specified composite parts
         private final Object lock;
