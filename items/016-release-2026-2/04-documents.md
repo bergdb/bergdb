@@ -257,3 +257,56 @@ replication among what power-loss testing has not established, which
 stays. The draft notes (016-03, N2) have the same four in their known
 issues. Hand-off: `/Users/f/fl/bench/016/docs/handoff-D2/`.
 
+2026-11-03, 20:30, the documents agent: **D3 done for what is in `main`
+at `fe72238`**; the lines that tonight's open fixes may change are listed
+below for their entries. Each line changed in docs/levels.md, with what
+made it out of date (the list for 016-02):
+
+* Section 1, the status date: 2026-10-26 to 2026-11-04, the release's
+  date. No row changed: no level's status changed.
+* Section 2, `before-commit.sh`: it also runs `deps.py` (005-56,
+  `04f1546`) and `doubles.py` (005-79, `f04cefe`); one sentence.
+* Section 3, the second bullet and a new third: the claim that "the
+  transaction's time never becomes a lookup time" after any failure past
+  the go point is true only for a failure in `putKvs()`; the new bullet
+  says what a read may see of a transaction that fails later, an append
+  error above all, as the code does it (015-27, review R3's R3-F8,
+  confirmed in verify-1; the same in 2026.1). The code stays. `getTrans`
+  in the next bullet is right since 005-82 (`3e32f02`), and corrupt
+  inner fields since 015-07 (`12610c7`): unchanged.
+* Section 5, the Lean model's take: one clause, that the model's share
+  and dither are the double rule and Java's take computes in integers
+  since 005-79, with lean/README.md's figures (300 cases the same; 13 of 3
+  million differ) and 015-03; `T3_take` holds for any share.
+* Section 8, holes in an unforced tail: "(014-01; found in 005-83, ...), a
+  known issue of release 2026.2".
+* Section 8, `sync()`: group commit (005-48, `e611709`), with its figures
+  on s1; the F53 figures of 005-13 marked as before it, as F53 is not
+  measured with it.
+* Section 8, "Open": group commit removed; 005-47 stays.
+
+Checked, not changed: 005-79's other lines are in section 6 (its own
+commit); section 5 describes no arithmetic of the take. 015-15 changed
+section 7 itself (`f82e7e7`). 015-01: docs/levels.md describes no start
+of a directory and no `created.txt` (`grep -n -i creat` finds none), so
+nothing is missing; the same for 015-24 (no directory lock in it), as its
+entry says. 005-82, 015-07, 015-10, 015-12 and 015-17 each found
+docs/levels.md right. 005-78 is not made. The C clone is named nowhere in
+docs/levels.md. Section 7's 005-65 line is D5's, in the morning.
+
+For the open fixes, not written by this agent (section 2, D3: the entry's
+author knows the change):
+
+* 015-14: section 7, "Readers", says the fast path's plain read of a
+  pointer to a handle rests on 009-02, section 3.4's barriers. If 015-14's
+  fix (acquire reads) gets in, the bullet changes with it; if not, it must
+  say that the plain read rests on the address dependency that HotSpot
+  keeps, not on the JMM (Frans, 17:18: "clearly documented").
+* 015-13: section 7, "What is in memory", counts each object with its
+  values; if the handles are counted (009-02, 4.7), the bullet says so,
+  and the 130 bytes per KV are unchanged (the heap, not the count).
+* 015-20 and 015-22 (indexes): docs/levels.md does not describe indexes;
+  nothing expected.
+
+Hand-off: `/Users/f/fl/bench/016/docs/handoff-D3/`.
+

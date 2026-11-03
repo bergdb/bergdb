@@ -16,7 +16,7 @@ Level 3.
 
 ## 1. Levels
 
-| Level | Features | Status, 2026-10-26 | Evidence |
+| Level | Features | Status, 2026-11-04 | Evidence |
 |---|---|---|---|
 | 0 | Multiversion map in memory: puts, deletes, latest and historical lookups, scans; no restart | Passes the tests run | 011-04, "Evidence" |
 | 1 | + restart by replaying the whole stream | Passes the tests run | `level1.sh`; 011-04, "The level 1 bugs" |
@@ -39,7 +39,10 @@ and resource bounds are not in it.
 
 * `java/before-commit.sh`, the unit tests and the f-tests (about 2
   minutes), must print `BEFORE COMMIT OK` before a change to the Java code is
-  committed. Since 2026-10-20 it is the only requirement (006-03).
+  committed. Since 2026-10-20 it is the only requirement (006-03). Before
+  the tests it checks the packages' dependencies against their
+  `package.html` (`deps.py`, 005-56) and that no double or float decides
+  anything in the Core Layer (`doubles.py`, 005-79).
 * The level scripts in `java/stress/` are deeper checks, run after larger
   changes; each prints `LEVEL n OK`, and its header lists its steps.
   `level2.sh` to `level4.sh` need Lean (elan) for their conformance steps.
@@ -90,11 +93,27 @@ environment has failed, or that has a bug, does not run on.
   corrupt node when a put loads an index node, an append error, an `Error`,
   reclaim's work after the transaction), the database fails
   (`DbState.FAILED`). The call throws a `DbFailedException` (an `Error` is
-  thrown as it is), the transaction's time never becomes a lookup time,
-  every later transaction and read throws a `DbFailedException` with the
-  first failure as the cause, and nothing more is appended. `sync()` still
-  works for the transactions before the failure, and so do `stop()` and
-  `close()`.
+  thrown as it is), every later transaction and read throws a
+  `DbFailedException` with the first failure as the cause, and nothing
+  more is appended. `sync()` still works for the transactions before the
+  failure, and so do `stop()` and `close()`.
+* What a read may see of a transaction that fails after its go point
+  (015-27; the same in 2026.1). The transaction's time becomes a lookup
+  time when its changes are in memory (`dbClock.transactionEnd()`), before
+  its record is appended (`store()`) and before the steps after it: the
+  statistics, eviction, the audit and reclaim's work. A failure while the
+  changes are made (`putKvs()`: a read error or a corrupt node when a put
+  loads an index node) comes before that, so the time never becomes a
+  lookup time, and a read sees the state before the transaction. After a
+  failure in a later step, an append error above all (in practice while
+  the append waits for room in the write buffer and the storage then
+  fails): until the database has failed, a read at the latest lookup time
+  can return the transaction's values, and after a restart they are gone
+  unless the record was appended before the failure. A read of a
+  transaction that is not synced risks the same in a crash (section 8);
+  no transaction that a sync has returned for is lost. Whether a
+  transaction should become visible only after its record is appended is
+  015-27's question, for after the release.
 * A read that fails on the storage fails the database in the same way: an
   I/O error, or corrupt data (a checksum or format error), in `getOne`,
   `getMany`, `getTrans` (`transactionInfo()`) and `sync()`. Not failures: a
@@ -226,7 +245,13 @@ Limits:
   is where the new record begins (`getNextPos()`), as a meta block is written
   with the record that ends at its position
   ([005-68](../items/005-todo/68-fix-take-stream-length.md)). The model's
-  take gives Java's startup pos on 300 generated cases. T3 is not all of
+  take gives Java's startup pos on 300 generated cases. Its share and
+  dither are the double rule of 2026-10-28, where Java's take computes
+  them in integers, in units of 2^-16, since 005-79: on the 300 cases the
+  two give the same startup pos, and over 3 million of TakeCheck's cases
+  the integer take differs in 13, each taking one transaction more
+  ([lean/README.md](../lean/README.md); the model in integers is 015-03).
+  `T3_take` holds for any share, so the bound covers both. T3 is not all of
   bounded startup: the records at the ends of the section (T4) and a cold
   start's reads through references into older records are not bounded by a
   proof. The take's pace
@@ -471,7 +496,8 @@ Limits:
   but holes in that write (later bytes surviving while earlier ones are
   missing) can refuse startup or fail a later read after startup succeeds.
   The experiment preserves every already-forced byte and name; recovery
-  for this fault class is open (005-83, "Power-loss tail experiment").
+  for this fault class is open (014-01; found in 005-83, "Power-loss tail
+  experiment"), a known issue of release 2026.2.
 * `BufferedStream`, above it, collects the database's appends and writes
   them in chunks from a thread of its own, when the buffer time (50 ms by
   default since 005-64; 20 ms from 005-13) has passed or its buffer is
@@ -480,9 +506,13 @@ Limits:
   ready (005-76). One force per chunk, not one per transaction. `execute()` only
   appends to that buffer.
 * `sync()` waits until the transaction's last byte, its commit byte, is
-  durable (005-44). The transactions of many threads share one force: on
-  F53, one thread that syncs after every transaction gets 29 durable
-  commits a second (35 ms each), 64 threads about 1,800 (005-13).
+  durable (005-44). A sync that waits has the buffer written at once, and
+  the transactions that arrive during a force go out together (group
+  commit, 005-48, since 2026-10-27): on s1, one thread that syncs after
+  every transaction went from 38 to 213 durable commits a second (the
+  sync's median from 24.8 to 3.8 ms), 64 threads from 2,364 to 6,429.
+  Before group commit, on F53, one thread got 29 a second (35 ms each) and
+  64 threads about 1,800 (005-13); F53 is not measured with it.
 * `stop()` returns at once, and the buffered transactions are written in
   the background; `close()` waits for them. Call `sync()` before `stop()`
   when the transactions must be durable when it returns.
@@ -498,8 +528,7 @@ Limits:
   the flushes before it, whose bytes are forced, stay acknowledged (Frans,
   2026-10-27), where until then a failed pending cut kept its flush from
   being acknowledged (011-07).
-* Open: group commit (005-48), and a durability of "written, not forced"
-  (005-47).
+* Open: a durability of "written, not forced" (005-47).
 
 
 ## 9. Replication
