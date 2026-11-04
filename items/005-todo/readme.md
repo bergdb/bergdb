@@ -29,7 +29,6 @@ Open
 |---|---|---|---|
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API set it only at start (`cacheSizeInMb`), against 010-P6. Decided (Frans, 2026-10-28): option B, `Database.setCacheSizeInMb` and `getCacheSizeInMb`, clamped as the builder, for the run only, through `Db.setCacheSizeIndicator` and its getter, which JMX uses too; after a decrease the setter wakes the eviction thread, so that an idle database gives the memory back. Implemented with 005-53 (`fd8f513`). Reopened by Frans 2026-10-29: left is "Done when"'s pause probe, no get or commit waiting longer while the resident bytes converge to a lowered budget than with a fixed one; `PauseProbe` needs two properties to lower its budget mid-phase, then four runs (ZGC and G1, fixed and lowered) in a quiet block, about 15 minutes; the steps in the entry's Left to do | open |
-| [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
 | [005-60](60-block-storage.md) | Investigate | Block storage: the stream on a raw block device without a file system, as a ring of a fixed size, kept until the room is needed (retention by space); feasible in Java? And on a Linux device in a C or C++ clone. Frans's idea | open |
 | [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Measured 2026-10-28 night, quiet: only with 8 threads, on `eaec93e` (005-46) and `4f7cd60` alike; no load waited for a batch; the machine at 9.6 of 10 cores, and the loads' entries into `evictorLock` in `Eviction.wake` (78,000 a second) a fifth of the gets over 10 ms. Frans decided 2026-10-29: the fix, in `main` (`988fe1a`): a load skips that monitor when a request to the eviction thread is pending (an untimed count with 8 readers: 116,000 to 128,000 entries a second before, about 570 after); the rest accepted as a full machine. Open until the thread sweep reruns with the fix in a quiet block | open |
 | [005-72](72-file-layout-after-cut.md) | Decide | The files after reclaim's physical cut depend on timing (when the durable length reached the decision), while the bytes from the decided cut do not; a restart also changes the layout (not a bug). The C clone, without threads, cannot match Java's files after a cut. Frans, 2026-10-29: A for 012's cross tests (done); the entry stays open to consider B, a layout from the decided cut | open |
@@ -43,6 +42,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-54](54-open-bounds.md) | Investigate | The bounds still open: moved to 017-04 | moved | 2026-11-04 |
 | [005-11](11-replication.md) | Decide | Replication: removed, copies left to the OS and the file system (Frans: "A with C2 now"); a future design is 017-03 | done | 2026-11-04 |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: obsolete since handles (009) | dropped | 2026-11-04 |
 | [005-06](06-publication-literature.md) | Investigate | The literature and a publication: moved to 017-02 | moved | 2026-11-04 |
@@ -317,7 +317,8 @@ Files
   gates and StreamDigest of the change in
   [53-startup-distance-on-the-fly/](53-startup-distance-on-the-fly/).
 * [54-open-bounds.md](54-open-bounds.md). 005-54, the bounds still open in
-  the problem statement (011-01): Q1, Q2, Q3, Q5 and Q8; open.
+  the problem statement (011-01): Q1, Q2, Q3, Q5 and Q8; moved to 017-04
+  on 2026-11-04.
 * [55-fix-finalize.md](55-fix-finalize.md). 005-55, the deprecated API in
   the build, `finalize()` first: what `Db.finalize()` was for, the probes,
   the decision (no safety net; a `Cleaner` not chosen), the outcome; done.
@@ -1618,3 +1619,9 @@ replicas and the startup's copying, their tests), copies left to the OS and
 the file system; the stream's bytes unchanged. docs/levels.md, section 9,
 and README.md say so. The removed design and the options for a future
 replication are 017-03. `before-commit.sh` passes.
+
+2026-11-04. 005-54 moved to 017-04, cost bounds beyond startup, at
+Frans's decision: a long-term topic, not item 007's (concrete work with a
+plan, T3 proved and T4 a bound on D for startup) and not closed (Q1 points
+at real behaviour; Q5 and Q8 have measurements that could become the
+accepted answer). A question that becomes a real theorem goes to 007 then.

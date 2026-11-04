@@ -40,6 +40,11 @@ Files
   The design that BergDB had until 2026-11-04, when it was removed (005-11,
   Frans: "A with C2 now"), Frans's question on durability and waiting for
   replication, and the options for a future design. Open; notes only.
+* [017-04](04-cost-bounds/readme.md). Cost bounds beyond startup: the
+  problem statement's Q1 the lookup bound, Q2 long keys, Q3 the cost
+  model, Q5 the write overhead and Q8 the space bound with reclaim, with
+  the measurements for Q5 and Q8. Moved from 005-54 on 2026-11-04. Open;
+  notes only.
 
 
 Log
@@ -60,3 +65,11 @@ approach to transactions (STM and historic queries) is novel.
 2026-11-04. 017-03, replication, created when 005-11 was decided ("A with
 C2 now") and replication was removed from BergDB: the removed design in
 full, Frans's question, and the options for a future design.
+
+2026-11-04. 017-04, cost bounds beyond startup, moved from 005-54 by
+Frans: not to item 007, which is concrete work with a plan (T3 proved, T4
+a bound on D for startup) that five general theory questions would keep
+open with no end in sight; and not closed, as Q1 points at real behaviour
+(a tree split but never merged keeps its largest size after mass deletes)
+and Q5 and Q8 have measurements that could become the accepted answer. A
+question that becomes a real theorem goes to 007 then.
