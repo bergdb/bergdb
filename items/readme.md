@@ -136,3 +136,6 @@ Index
 * **016-release-2026-2** (open). Release 2026.2: its scope, the work
   before it and how it is made; the first release with handles (009) and
   bounded startup (007), measured against 2026.1 in turns.
+* **017-long-term** (open). The long-term topics of BergDB: open-ended
+  questions and directions that need Frans's input and may never be done;
+  notes, one subitem per topic, taken up one at a time with Frans.
