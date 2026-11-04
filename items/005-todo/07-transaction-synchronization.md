@@ -1,7 +1,9 @@
 005-07. Synchronization of transactions
 =======================================
 
-Status: open. Kind: investigate. Created 2026-10-19.
+Status: dropped (2026-11-04; obsolete: the synchronization model has
+changed substantially since handles, item 009). Kind: investigate.
+Created 2026-10-19.
 
 
 The task
@@ -146,3 +148,16 @@ Size and order
 M for the description and the review; reading, no machine time. Best before
 or together with 005-01 (the go point), and before 005-03's fix (the sweep
 and the read path).
+
+
+Closed
+------
+
+2026-11-04. Dropped at Frans's decision: obsolete. The entry was written
+on 2026-10-19, before handles (009, from 2026-10-25), and the
+synchronization model has changed substantially since: a handle per index
+node in the node table, eviction in CLOCK batches on the database's
+eviction thread, readers that follow a resident node's handle without a
+lock (docs/levels.md, Level 4). The notes above are kept as history. Today's
+synchronization is reviewed for release 2026.2 in 016-07 (H3), which took
+this entry's questions 1 and 2 as its question.
