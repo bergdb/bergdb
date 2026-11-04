@@ -75,6 +75,7 @@ Open
 | [015-62](62-transactioninfo-after-miss.md) | Fix | transactionInfo() after a get() that found no entry throws ... | open |
 | [015-63](63-time-tostring-threads.md) | Fix | Time.toString() from several threads gives wrong strings and throws | open |
 | [015-64](64-key-replace-last-only.md) | Fix | Key replace replaces only the last "${transactionTime}" of a key | open |
+| [015-65](65-memory-builder-second-start.md) | Fix | A second start() of a memory() builder whose database runs is not refused | open |
 
 
 Closed
@@ -201,6 +202,7 @@ Files
 * [62-transactioninfo-after-miss.md](62-transactioninfo-after-miss.md). 015-62, Fix: R8-F7.
 * [63-time-tostring-threads.md](63-time-tostring-threads.md). 015-63, Fix: R8-F8.
 * [64-key-replace-last-only.md](64-key-replace-last-only.md). 015-64, Fix: R8-F9.
+* [65-memory-builder-second-start.md](65-memory-builder-second-start.md). 015-65, Fix: a second start of a memory() builder.
 
 
 Log
