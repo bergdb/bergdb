@@ -473,7 +473,58 @@ recommended":
    indexes and objects experimental, as replication; or hold the release
    for fixes (days, not hours).
 
+10. **005-65's fix and the long gets** (005-65, Results 2026-11-04): with
+    8 readers the fix (`988fe1a`) cut the eviction lock's entries from
+    81,877 to 484 a second, but gets over 10 ms rose (298 to 492) and the
+    longest get stayed at about 48 ms. Recommended: keep the fix; one more
+    quiet run of the two builds, four rounds (about 20 minutes), before
+    closing. 2026.2's notes say gets of up to 39 ms with 8 readers; this
+    night's longest were 47.8 and 49.3 ms: to correct with the W7 numbers.
+11. **005-52: the first commit after a lowered budget** waited 195 ms
+    (ZGC) and 97 ms (G1) while eviction brought the cache down (not quiet;
+    005-52, options A to C). Recommended: B, a commit's warmup reads do not
+    wait for eviction batches; and the six runs again on a quiet machine.
+12. **015-66, a gap in 015-25's fix** (review R4): a failed eviction batch
+    releases the write lock before the database fails. Recommended: the
+    first fix after the release, in a 2026.2.1 if you want one.
+13. **015-73: a corrupt startupPos is accepted** (review R6). A fix needs a
+    design choice: a header checksum (a format change) or structural checks
+    as 005-75. Recommended: structural checks first, the checksum with the
+    next format change (014).
+14. **R6's doubt D1**: after a cut inside `setStartupDistance`'s record, the
+    new setting survives a restart while its record is lost. Does a setting
+    count as database state under INV-CRASH? Recommended: yes; then the
+    setting is written with its record.
+15. **The unattended night's stop** (docs/log.md, 2026-11-04): the watchdog
+    probes the login when the heartbeat is stale and alerts at once, the
+    helpers use a token of their own, the release's scripted steps go into
+    the conductor. Recommended: all three, in 013-02, before the next
+    unattended night; you choose the alert's channel.
+
 
 ## 8. Outcome
 
-Not yet.
+2026-11-04, 09:35. Release 2026.2 is made: commit A `95bde62` (BuildInfo
+2026.2, version int 262, build `2026.2.261104.0759`), the tag
+`release-2026.2` on it (annotated, local, not pushed), and commit B
+`eed4ca9` with `releases/2026.2/` (the jar, SHA-256 `f22e1938...008f`, the
+source and Javadoc zips, the notes, `baseline.zip`, `SHA256SUMS`) and
+BuildInfo 2026.3-dev. The checks: `night.sh` NIGHT OK on its code
+(`3386ade`); `before-commit.sh` on A; the jar's tests on F53 and s1 with
+JDK 27 and 17 (on s1 the night tests with `/tmp` on the disk); the Lean
+axioms of 44 theorems; the digests.
+
+What went in: 22 entries closed (005-69, 005-71, 005-79, 005-80, 005-82;
+015-01, 015-07, 015-09, 015-10, 015-12 to 015-17, 015-20 to 015-22, 015-24,
+015-25, 015-40, 015-56), with 015-06 in part. The reviews R1 to R8, S1 and
+S2 (two verifiers for R2 and R3) found the rest, registered as 015-23 to
+015-83 and listed in the notes as known issues; most are in 2026.1 too, and
+the index and object layers have the most (015-49). Not done: the W7
+numbers (night 2's quiet block, then a commit), `night.sh large` (015-18),
+the verification of S1's, S2's and R4 to R8's faults by a second agent.
+
+What did not go as planned: the coordinator's session stopped from 22:20 to
+07:24 (a refused OAuth refresh), so the release came at 09:17 instead of
+about 07:00; Codex's reviews stopped three times at its content filter and
+once at its usage limit; s1's `/tmp` and heap are too small for the night
+tests and ScaleBench at 10M keys. Section 7 lists what waits for Frans.
