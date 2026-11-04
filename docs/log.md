@@ -1699,3 +1699,17 @@ usage.sh reading); a watchdog that probes the login when the heartbeat is
 stale and alerts at once; helpers on a token of their own (`claude
 setup-token`, to be tested); the scripted release steps in the conductor,
 not in the session.
+
+2026-11-04. Release 2026.2, internal, as planned in item 016: the tag
+`release-2026.2` on `95bde62`, where `BuildInfo` says 2026.2. The night run
+passed on its code (NIGHT OK, 38 minutes, on `3386ade`, which differs from
+it in 015-56's fix and `BuildInfo`), and the tests again on the jar itself,
+on F53 and s1, with JDK 27 and 17. `releases/2026.2/` holds the jar, the
+source, the Pub API's Javadoc, the release notes and the outputs of the
+runs; the numbers against 2026.1 (016-10) follow in a later commit. The
+first release with handles (009) and with startup bounded for BergDB's own
+take (007-07, 007-08); its streams differ from 2026.1's, which it refuses
+(005-50). Reviews of the code before the release (016-06) found faults that
+2026.1 has too, in the index and object layers above all; the notes list
+them as known issues. After the tag, `BuildInfo` says 2026.3-dev.
+

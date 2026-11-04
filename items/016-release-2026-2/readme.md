@@ -75,3 +75,12 @@ Nothing done yet.
 (013-02), unattended until 07:00; at 15:31 he limited the release to Java
 (D7). Both are in 016-01, section 10. The run is 016-02. The detailed
 plans are being written as 016-03 to 016-10, and in the entries of W4.
+
+2026-11-04. Release 2026.2 made: commit A `95bde62` (BuildInfo 2026.2), the
+tag `release-2026.2` on it, and commit B with `releases/2026.2/` and
+BuildInfo 2026.3-dev. The night's session stopped from 22:20 to 07:24 (a
+refused OAuth refresh; docs/log.md), so the release steps ran in the
+morning. 22 entries were closed for it (5 of 005, 17 of 015, two of them
+fixes of tests), and the reviews registered their other faults as 015
+entries (known issues in the notes). The W7 numbers follow from night
+2's quiet block (016-10). The run and its outcome: 016-02.
