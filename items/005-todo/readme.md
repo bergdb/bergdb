@@ -27,7 +27,6 @@ Open
 
 | ID | Kind | What | Status |
 |---|---|---|---|
-| [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10). For release 2026.1: kept, documented as experimental | open |
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API set it only at start (`cacheSizeInMb`), against 010-P6. Decided (Frans, 2026-10-28): option B, `Database.setCacheSizeInMb` and `getCacheSizeInMb`, clamped as the builder, for the run only, through `Db.setCacheSizeIndicator` and its getter, which JMX uses too; after a decrease the setter wakes the eviction thread, so that an idle database gives the memory back. Implemented with 005-53 (`fd8f513`). Reopened by Frans 2026-10-29: left is "Done when"'s pause probe, no get or commit waiting longer while the resident bytes converge to a lowered budget than with a fixed one; `PauseProbe` needs two properties to lower its budget mid-phase, then four runs (ZGC and G1, fixed and lowered) in a quiet block, about 15 minutes; the steps in the entry's Left to do | open |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open in the problem statement, 011-01: Q1 the lookup bound, Q2 long keys, Q3 the cost model, Q5 write overhead, Q8 the space bound with reclaim; carried forward when it left `docs/` (006-07) | open |
@@ -44,6 +43,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-11](11-replication.md) | Decide | Replication: removed, copies left to the OS and the file system (Frans: "A with C2 now"); a future design is 017-03 | done | 2026-11-04 |
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: obsolete since handles (009) | dropped | 2026-11-04 |
 | [005-06](06-publication-literature.md) | Investigate | The literature and a publication: moved to 017-02 | moved | 2026-11-04 |
 | [005-05](05-bergdb-future.md) | Decide | What to do with BergDB: moved to 017-01 | moved | 2026-11-04 |
@@ -126,16 +126,15 @@ Order, as proposed, of what is open: 005-03 is done by item 009, whose
 handles removed the sweep; 005-05 and 005-06 beside the rest, as they are mostly reading and thinking,
 and 005-06 feeds 005-05. The go point that 005-07
 asks about is in `Db.executeInner` since 005-01. 005-09 is done. What is left of 005-10 waits for Frans; a removal is best made
-when no other change to `java/` is under way. 005-11 can go any time, best
-before 005-05's decision on publishing, as it concerns the Pub API; 005-12
+when no other change to `java/` is under way. 005-12
 is done. 005-27, 005-28 and 005-29, the fixes found in 005-11, are done.
 005-30 is done, and so is 005-34, found in it. 005-31 is done, which item
 007's deadline for `TransSeq.take` (007-01, D1) needed. 005-32
 is done, which 005-33's change needed; 005-33 is decided, A, and done. 005-35,
 005-36 and 005-37 are done, and so are 005-39, 005-40, 005-43 and 005-44.
 005-41 is decided: not now. 005-42 is decided, A1 and B2, and done, and so
-is 005-45. 005-11 is kept as it is for release 2026.1, documented as
-experimental; its decision waits for Frans. 005-55 is done; it did not
+is 005-45. 005-11 is decided, A with C2, and done: replication is
+removed. 005-55 is done; it did not
 change the eviction thread, so 005-51 does not depend on it; 005-51 is
 done. 005-57 is done (part 1); 005-58, its Lean theorem, is done.
 005-46 is done. 005-56 is done. 005-68 is dropped: its finding did not
@@ -176,7 +175,8 @@ Files
   the removal as Frans decided it in
   [10-unused-code/applied/](10-unused-code/applied/).
 * [11-replication.md](11-replication.md). 005-11, replication: the
-  decision material for Frans; the study, with its probes and runs, in
+  decision material for Frans, his decision (A with C2) and the removal;
+  the study, with its probes and runs, in
   [11-replication/](11-replication/).
 * [12-transaction-outputs.md](12-transaction-outputs.md). 005-12,
   transaction outputs: they stay; the API made consistent, with unit
@@ -1610,3 +1610,11 @@ added here, for now.
 2026-11-04. 005-07 dropped at Frans's decision: obsolete, as the
 synchronization model has changed substantially since handles (009).
 Today's synchronization is reviewed in 016-07.
+
+2026-11-04. 005-11 decided by Frans, "A with C2 now", and done: replication
+removed from `java/` (the Pub API's `replica`, `addReplica`,
+`removeReplica`, `getStorageInfos` and `SyncLevel.STRONG`, StorageManager's
+replicas and the startup's copying, their tests), copies left to the OS and
+the file system; the stream's bytes unchanged. docs/levels.md, section 9,
+and README.md say so. The removed design and the options for a future
+replication are 017-03. `before-commit.sh` passes.

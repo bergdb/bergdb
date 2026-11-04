@@ -147,7 +147,7 @@ public class ReclaimReaderTester {
             }
         }
 
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.close();         // Closed before the directory opens again (bergdb 005-63).
         stream = kit.reopen(stream);
         clock = new CoreTestClock();

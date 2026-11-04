@@ -246,7 +246,7 @@ public class RestartInvariance {
 
             boolean restartHere = withRestarts && (i + 1) % every == 0 && i + 1 < n;
             if (restartHere) {
-                r.db.sync(SyncLevel.STRONG);
+                r.db.sync(SyncLevel.ORDINARY);
                 long before = r.stream.getLength();
                 r.db.stop();
                 r.stream = r.stream.copy();
@@ -273,7 +273,7 @@ public class RestartInvariance {
                 if (l != null) r.lookups.put(i, l);
             }
         }
-        r.db.sync(SyncLevel.STRONG);
+        r.db.sync(SyncLevel.ORDINARY);
         return r;
     }
 

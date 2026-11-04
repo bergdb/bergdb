@@ -76,9 +76,6 @@ ALLOWED = [
      "the LinkedHashMap's load factor, a JDK parameter"),
     ("storage/BufferedStream.java", "method", "take", False,
      "text of statistics: Waits.take, the waits for room in the write buffer"),
-    ("storage/StorageManager.java", "line",
-     r"int progressValue = \(int\) \(100\.0 \* bytesWritten / \(double\) totalBytesToWrite\);",
-     False, "the progress percentage of a copy, a statistic"),
     ("nanotest", "package", None, False, "the test framework"),
 ]
 

@@ -250,7 +250,7 @@ public class LargerThanMemory {
     void restart(int r) throws Exception {
         phase = "restart " + r;
         iterations += db.internal().reclaim().getIterationCount();
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.close();     // Closed before the directory opens again (bergdb 005-63).
         db = null;
         System.gc();

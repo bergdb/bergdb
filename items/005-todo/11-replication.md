@@ -1,10 +1,9 @@
 005-11. Replication: study it, for Frans to decide
 =================================================
 
-Status: open; the study is done (2026-10-22), and Frans thinks it over, to
-discuss it (2026-10-23). For release 2026.1: kept as it is, documented as
-experimental (Frans, 2026-10-25; "For release 2026.1" below). Kind: decide.
-Created 2026-10-20.
+Status: done (2026-11-04; Frans decided "A with C2 now": replication
+removed, copies left to the OS and the file system; see "Frans's
+decision"). Kind: decide. Created 2026-10-20.
 
 
 The question
@@ -418,6 +417,89 @@ the questions). His decision is recorded here; carrying it out is a
 following entry, as this one's definition says.
 
 
+Frans's decision
+----------------
+
+2026-11-04. Frans: "A with C2 now". Replication is removed from BergDB
+(option A), and copies are left to the OS and the file system (option C2).
+Carried out the same day, in this entry rather than in a following one, by
+Claude (Opus 5.5, Claude Code), on `19e9409`; release 2026.2
+(`release-2026.2`, `95bde62`) still has replication.
+
+* **Removed from `java/`.** The Pub API's `DatabaseBuilder.replica`,
+  `Database.addReplica`, `removeReplica`, `getStorageInfos` and
+  `SyncLevel.STRONG`, with their implementations; `BadReplicaException` and
+  `StorageInfo` in `pub.util`; `Db.addReplica`, `removeReplica`,
+  `getStorageInfos` and the startup's `syncStreams`;
+  `DbHelper.checkReplicaId` and `AddReplicaClass`; in `StorageManager`, the
+  replicas, the startup's copying (`checkStreamIds`, `syncMainStream`,
+  `syncReplicaStreams`), `addReplica`, `syncReplica`, `removeReplica`,
+  `getStorageInfo(s)`, `setD2`, `syncStrong`, and the classes `Internal`,
+  `MyStorage`, `SynchingStorage` and `ErrorStorage` (1,296 lines to 446);
+  the rules `DurabilityRule`,
+  `ErrorRule`, `MainConfirmedRule`, `OneActiveReplicaRule` and `MainErrorRule`.
+  `StorageManager` now holds one stream, the main, with rule D1 (its
+  confirmed length) and its error; `start()` takes the place of the
+  startup's copying. `DbBuilder` holds one stream: a `stream()` of another
+  name than the stream set, until now a replica, throws an
+  `IllegalStateException` (`DbTester.testSecondStreamRefused`).
+  `PayDemo`'s `addReplica` (Frans's demo, `src-dev/frans/`) is removed, as
+  the build compiles it. About 2,000 lines in all.
+* **The tests removed**, 17: in `StorageManagerTester`, `testSync1` to
+  `testSync4`, `testAddReplica1` to `testAddReplica5`,
+  `testAddReplicaWhileAppending`, `testRemoveReplica1` and
+  `testRemoveReplica2`; `DbTester.testBadReplica1`;
+  `PubTester.testBadStartReplica`, `testReplicaBeforeDir` (005-66) and
+  `testRefusedStartClosesOnlyItsOwn` (015-56, whose second directory was a
+  replica's; `testSecondStartOfOneBuilder` keeps 015-56's regression);
+  `DbTesterFailure.testFailedStartOfTwoHistories` (005-32). Changed:
+  `testMultipleClose` and `testSyncStartsTheFlush` without their replica,
+  and `PubInterruptTester` without the join of `addReplica`'s job
+  (`testDirByInterruptedThread`). `doubles.py` lost its allowance for the
+  copy's progress percentage.
+* **`SyncLevel.STRONG` goes.** "Proposal" says so: with Frans's thought of
+  a special call instead of a sync level, "STRONG goes with A, and C1 brings
+  the call". Kept as the same as ORDINARY, it would be a level that names a
+  copy elsewhere and waits for none, the silent fallback that P6 found; and a
+  future design may want the wait as a call of its own, not as this level
+  (017-03). `SyncLevel` keeps NONE and ORDINARY; its about 130 uses of STRONG,
+  nearly all in tests and stress programs that ran without a replica, so
+  already ORDINARY syncs, are ORDINARY. `RestartStress` still draws the
+  random choice it used for it, so that its seeds run as before.
+* **The stream is unchanged.** Nothing in the stream records replicas: the
+  meta block holds the magic bytes, the version, the time, the last
+  transaction's position, the database ID, the startup distance and the
+  node size, and the records hold transactions. A replica was a stream of
+  its own, linked to the main only by the database ID in its meta blocks,
+  which the startup and `addReplica` compared. So a database without
+  replicas writes the same bytes as before (the C clone's cross tests,
+  012). An old database that had replicas: its directory starts as before,
+  alone, and nothing copies between streams at startup. A replica's
+  directory is a database of its own, with the same database ID, a copy of
+  the main up to where it was last written (with the faults of P2 and P9
+  possible), which nothing writes any more. Bytes that only a replica held,
+  past the main's end after a crash, are no longer copied onto the main;
+  no sync promised them, as D2 was never above D1. An application that
+  calls the removed methods or `STRONG` no longer compiles.
+* **Lean.** `lean/` has nothing on replicas (its "replicate" is
+  `List.replicate`); the model has one stream. Unchanged.
+* **C2.** No code. docs/levels.md, section 9, and README.md say what is
+  true now. C2's test, that a copy of the files made while the database
+  writes starts as the database, is not made.
+* **Checked.** `java/before-commit.sh`: BEFORE COMMIT OK, unit tests
+  1,127 and f-tests 79 (before, on the same commit: 1,143 and 79; 17 tests
+  removed, 1 added). `java/stress/core-build.sh`: CORE BUILD OK. The level
+  scripts were not run: for a database without replicas the removal
+  changes none of the levels' mechanisms (the main stream's append, sync,
+  cut and recovery are as before), and no level check had a replica.
+* **The design for later.** The removed design, in full, with Frans's
+  question and the options B, C1 and C3 for a future replication:
+  [017-03](../017-long-term/03-replication/readme.md).
+* This entry's probes (`11-replication/tools/`) compile against `19e9409`
+  or earlier, not against today's `java/`. The leak of "Found on the way"
+  below (a replica being copied in at a close) went with the code.
+
+
 Found on the way
 ----------------
 
@@ -477,3 +559,5 @@ Files
   `cbeb9bd`, and the existing tests' run; in
   [runs/78cc5f3/](11-replication/runs/78cc5f3/), the same run again on
   `78cc5f3`, after 005-01 (all but P8).
+* [017-03](../017-long-term/03-replication/readme.md): the removed design,
+  Frans's question and the options for a future replication.

@@ -180,7 +180,7 @@ public class CrashTest {
             times.add(r[0]);
             lastPos.add(r[1]);
         }
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.stop();
         long length = ms.getLength();
         long first = Math.max(lastPos.get(0) + 1, ms.getLengthAtCut());
@@ -250,7 +250,7 @@ public class CrashTest {
             o.add(m);
             t.add(x[0]);
         }
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.stop();
         CoreTestClock clock2 = new CoreTestClock();
         clock2.setTime(time + 1);

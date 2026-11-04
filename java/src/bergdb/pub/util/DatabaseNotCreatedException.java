@@ -7,8 +7,8 @@ package bergdb.pub.util;
  * transaction. The database holds no data, and the start has written nothing.</p>
  *
  * <p>To create the database, remove its files and start it again: in its directory, the
- * stream's files (*.bergdb) and created.txt, and the replicas' files. A stream that holds
- * a committed transaction never gives this exception. Before, such a database failed every
+ * stream's files (*.bergdb) and created.txt. A stream that holds a committed transaction
+ * never gives this exception. Before, such a database failed every
  * start with a StreamFormatException that did not say what had happened, or what to do.</p>
  */
 public class DatabaseNotCreatedException extends DbException {

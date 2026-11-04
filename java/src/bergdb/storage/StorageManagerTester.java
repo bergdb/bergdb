@@ -2,14 +2,10 @@ package bergdb.storage;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 
-import bergdb.common.NullProgressListener;
-import bergdb.common.ProgressListener;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
-import bergdb.pub.util.StorageInfo;
 import bergdb.stream.CutStream;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
@@ -17,109 +13,6 @@ import bergdb.stream.ReadBelowFirstPosException;
 
 public class StorageManagerTester {
 
-    @Nano
-    public static void testSync1() throws IOException {
-        MemoryStream m1 = new MemoryStream();
-        MemoryStream m2 = new MemoryStream();
-        
-        byte[] buffer = new byte[100];
-        buffer[0] = 1;
-        buffer[99] = 2;
-        
-        m1.append(buffer, 0, buffer.length);
-        m1.append(buffer, 0, buffer.length);
-        m2.append(buffer, 0, buffer.length);
-        
-        Assert.assertEquals(200, m1.getLength());
-        Assert.assertEquals(100, m2.getLength());
-        
-        Object writeLock = new Object();
-        
-        synchronized (writeLock) {
-            StorageManager manager = new StorageManager.Builder(writeLock)
-                .stream("m1", m1).stream("m2", m2).build();
-            manager.syncStreams(new NullProgressListener());
-            manager.syncStrong(200);
-            Assert.assertEquals(200, m1.getLength());
-            Assert.assertEquals(200, m2.getLength());
-            
-            manager.stop();
-        }
-    }
-    
-    @Nano
-    public static void testSync2() throws IOException {
-        MemoryStream m1 = new MemoryStream();
-        MemoryStream m2 = new MemoryStream();
-        MemoryStream m3 = new MemoryStream();
-        
-        byte[] buffer = new byte[100];
-        buffer[0] = 1;
-        buffer[99] = 2;
-        
-        m1.append(buffer, 0, buffer.length);
-        m1.append(buffer, 0, buffer.length);
-        m2.append(buffer, 0, buffer.length);
-        m2.append(buffer, 0, buffer.length);
-        m2.append(buffer, 0, buffer.length);
-        m3.append(buffer, 0, buffer.length);
-        
-        Assert.assertEquals(200, m1.getLength());
-        Assert.assertEquals(300, m2.getLength());
-        Assert.assertEquals(100, m3.getLength());
-        
-        Object writeLock = new Object();
-        
-        synchronized (writeLock) {
-            StorageManager manager = new StorageManager.Builder(writeLock)
-                .stream("m1", m1)
-                .stream("m2", m2)
-                .stream("m3", m3).build();
-            
-            // Demand all stream to be confirmed.
-            manager.setD2(new DurabilityRule() {
-                public long computeSize(StorageInfo[] storages) {
-                    long min = Long.MAX_VALUE;
-                    for (int i = 0; i < storages.length; i++) {
-                        long confirmedSize = storages[i].getConfirmedLength();
-                        if (confirmedSize < min) {
-                            min = confirmedSize;
-                        }
-                    }
-                    return min;
-                }
-            });
-            
-            manager.syncStreams(new NullProgressListener());
-            manager.syncStrong(300);
-            manager.stop();
-        }
-        
-        Assert.assertEquals(300, m1.getLength());
-        Assert.assertEquals(300, m2.getLength());
-        Assert.assertEquals(300, m3.getLength());
-    }
-    
-    @Nano
-    public static void testSync3() throws IOException {
-        MemoryStream m1 = new MemoryStream();
-        MemoryStream m2 = new MemoryStream();
-        
-        byte[] bytes = new byte[1000];
-        m1.append(bytes, 0, 700);
-        m2.append(bytes, 0, 200);
-        
-        Object writeLock = new Object();
-        StorageManager manager = new StorageManager.Builder(writeLock)
-                .stream("main", m1).stream("r", m2).build();
-        manager.syncStreams(new NullProgressListener());
-        manager.syncStrong(700);
-        
-        Assert.assertEquals(700, m1.getLength());
-        Assert.assertEquals(700, m2.getLength());
-        manager.stop();
-    }
-    
     /**
      * 2026-10-13 (bergdb 011-04, W1). A read of bytes that a cut removed
      * fails alone. Before, StorageManager closed the stream and set an error state, so that
@@ -130,8 +23,8 @@ public class StorageManagerTester {
         CutStream cut = new CutStream();
         byte[] bytes = new byte[1000];
         cut.append(bytes, 0, 1000);
-        StorageManager m = new StorageManager.Builder(new Object()).stream("main", cut).build();
-        m.syncStreams(new NullProgressListener());
+        StorageManager m = new StorageManager.Builder().stream(cut).build();
+        m.start();
         m.pretruncate(600);
 
         try {
@@ -146,83 +39,20 @@ public class StorageManagerTester {
         m.read(1000, new byte[10], 0, 10);
         m.stop();
     }
-
-    @Nano
-    public static void testSync4(TestEnvironment c) throws IOException, InterruptedException {
-        // Testing with real files.
-        
-        File temp = c.createTempDir();
-        
-        File mainDir = new File(temp, "main");
-        File rDir = new File(temp, "r");
-        
-        FileStream main = new FileStream(mainDir);
-        FileStream r = new FileStream(rDir);
-        
-        byte[] bytes = new byte[200*1000];
-        bytes[0] = 1;
-        bytes[999] = 2;
-        
-        main.append(bytes, 0, 200*1000);
-        main.append(bytes, 0, 200*1000);
-        main.append(bytes, 0, 200*900);
-        
-        //for (String s : mainDir.list()) {
-        //    System.out.println("- " + s);
-        //}
-        
-        main.pretruncate(200*1000);    // Removes first file
-        
-        //for (String s : mainDir.list()) {
-        //    System.out.println("* " + s);
-        //}
-        
-        StorageManager m = new StorageManager.Builder(new Object())
-                .stream("main", main).stream("r", r).build();
-        m.syncStreams(new NullProgressListener());
-        m.close();
-        
-        // The stream's files, not bergdb.lock (bergdb 005-63).
-        java.io.FilenameFilter streamFiles = (d, name) -> name.endsWith(".bergdb");
-        String[] fileNames = mainDir.list(streamFiles);
-        Arrays.sort(fileNames);
-        Assert.assertEquals(2, fileNames.length);
-        Assert.assertEquals("00000000000002.bergdb", fileNames[0]);
-        Assert.assertEquals("00000000000004.bergdb", fileNames[1]);
-        
-        fileNames = rDir.list(streamFiles);
-        Arrays.sort(fileNames);
-        Assert.assertEquals(2, fileNames.length);
-        Assert.assertEquals("00000000000002.bergdb", fileNames[0]);
-        Assert.assertEquals("00000000000004.bergdb", fileNames[1]);
-        
-        File[] files = mainDir.listFiles(streamFiles);
-        Arrays.sort(files);
-        Assert.assertEquals(200*1000, files[0].length());
-        Assert.assertEquals(200*900, files[1].length());
-        
-        files = rDir.listFiles(streamFiles);
-        Arrays.sort(files);
-        Assert.assertEquals(200*1000, files[0].length());
-        Assert.assertEquals(200*900, files[1].length());
-    }
     
     @Nano
     public static void testMultipleClose(TestEnvironment c) throws IOException, InterruptedException {
         File temp = c.createTempDir();
         
         File mainDir = new File(temp, "main");
-        File rDir = new File(temp, "r");
         FileStream main = new FileStream(mainDir);
-        FileStream r = new FileStream(rDir);
         
         byte[] bytes = new byte[1000];
         main.append(bytes, 0, 1000);
         main.append(bytes, 0, 1000);
         
-        StorageManager m = new StorageManager.Builder(new Object())
-                .stream("main", main).stream("r", r).build();
-        m.syncStreams(new NullProgressListener());
+        StorageManager m = new StorageManager.Builder().stream(main).build();
+        m.start();
         
         m.close();
         m.close();
@@ -233,12 +63,7 @@ public class StorageManagerTester {
         // Tests a call to sync() that should return immediately.
         
         MemoryStream m = new MemoryStream();
-        Object writeLock = new Object();
-        final StorageManager manager;
-        
-        synchronized (writeLock) {
-            manager = new StorageManager.Builder(writeLock).stream("s1", m).build();
-        }
+        final StorageManager manager = new StorageManager.Builder().stream(m).build();
         
         long t = System.nanoTime();
         manager.sync(0);
@@ -256,8 +81,8 @@ public class StorageManagerTester {
         final StorageManager manager;
         
         synchronized (writeLock) {
-            manager = new StorageManager.Builder(writeLock).stream("s1", m, 10*1000, 100).build();
-            manager.syncStreams(new NullProgressListener());
+            manager = new StorageManager.Builder().stream(m, 10*1000, 100).build();
+            manager.start();
         }
         
         final double[] time = new double[1];
@@ -294,20 +119,18 @@ public class StorageManagerTester {
     }
     
     /**
-     * Group commit (2026-10-27, bergdb 005-48): sync() and syncStrong() have the buffers of
-     * their streams written at once, here those of a main stream and a replica, with buffer
-     * times of 4 s. Before, each waited for the timers, about a buffer time.
+     * Group commit (2026-10-27, bergdb 005-48): sync() has the buffer of the stream written
+     * at once, with a buffer time of 4 s. Before, it waited for the timer, about a buffer
+     * time. Until 2026-11-04 (bergdb 005-11) the test also had a replica, and syncStrong().
      */
     @Nano
     public static void testSyncStartsTheFlush() throws IOException {
         MemoryStream m1 = new MemoryStream();
-        MemoryStream m2 = new MemoryStream();
         Object writeLock = new Object();
         StorageManager manager;
         synchronized (writeLock) {
-            manager = new StorageManager.Builder(writeLock)
-                    .stream("main", m1, 10 * 1000, 4000).stream("r", m2, 10 * 1000, 4000).build();
-            manager.syncStreams(new NullProgressListener());
+            manager = new StorageManager.Builder().stream(m1, 10 * 1000, 4000).build();
+            manager.start();
         }
         
         try {
@@ -319,405 +142,9 @@ public class StorageManagerTester {
             manager.sync(100);
             long ms1 = (System.nanoTime() - t0) / 1000000;
             Assert.assertEquals(100, m1.getLength());
-            
-            synchronized (writeLock) {
-                manager.append(bytes, 0, bytes.length);
-            }
-            t0 = System.nanoTime();
-            manager.syncStrong(200);
-            long ms2 = (System.nanoTime() - t0) / 1000000;
-            Assert.assertEquals(200, m1.getLength());
-            Assert.assertEquals(200, m2.getLength());
-            Assert.assertTrue("sync() took " + ms1 + " ms, syncStrong() " + ms2 + " ms",
-                    ms1 < 1000 && ms2 < 1000);
+            Assert.assertTrue("sync() took " + ms1 + " ms", ms1 < 1000);
         } finally {
             manager.close();
         }
-    }
-    
-    @Nano
-    public static void testAddReplica1() throws IOException, InterruptedException {
-        final MemoryStream m1 = new MemoryStream();
-        final MemoryStream m2 = new MemoryStream();
-        
-        byte[] bytes = new byte[1000];
-        m1.append(bytes, 0, 700);
-        m2.append(bytes, 0, 200);
-        
-        Object writeLock = new Object();
-        final StorageManager manager = new StorageManager.Builder(writeLock)
-                .stream("main", m1).build();
-        manager.syncStreams(new NullProgressListener());
-        
-        Assert.assertEquals(700, m1.getLength());
-        Assert.assertEquals(200, m2.getLength());
-        
-        final ProgressListener nullListener = new ProgressListener() {
-            public void progress(int progressValue, String note) {
-                // empty
-            }
-        };
-        
-        final StorageManager.SynchingStorage ss = manager.addReplica("r", m2, 1000, 10);
-        
-        Thread thread = new Thread(new Runnable() {
-            public void run() {
-                manager.syncReplica(ss, nullListener);
-            }
-        });
-        thread.start();
-        
-        while (manager.getStorageInfo("r") == null) {
-            Thread.sleep(10);
-        }
-        
-        StorageInfo s = manager.getStorageInfo("r");
-        
-        while (true) {
-            s = manager.getStorageInfo("r");
-            assert s != null : "s is null";
-            
-            if (s.getStatus() == StorageInfo.STATUS_ACTIVE) {
-                break;
-            }
-            
-            Thread.sleep(5);
-        }
-        
-        manager.close();
-        Assert.assertEquals(700, m1.getLength());
-        Assert.assertEquals(700, m2.getLength());
-    }
-    
-    @Nano
-    public static void testAddReplica2() throws IOException, InterruptedException {
-        // Creates streams, adds replica, appends to StorageManager, asserts.
-        
-        /*
-        NOTE Frans: got non-reproducable unit test error, on Cissi, 150723:
-        FAILED! bergdb.storage.StorageManagerTester.testAddReplica2
-        java.lang.AssertionError: Expected 800, got 1200.
-            at bergdb.nanotest.Assert.assertEquals(Assert.java:37)
-            at bergdb.storage.StorageManagerTester.testAddReplica2(StorageManagerTester.java:359)
-            ...
-        2026-10-28 (bergdb 005-67): reproduced with the BufferedStream of 2015, whose close()
-        could flush 0 bytes, which appended stale bytes of the ring buffer to the replica;
-        fixed 2026-10-21 (bergdb 005-14).
-        */
-        
-        final MemoryStream m1 = new MemoryStream();
-        final MemoryStream m2 = new MemoryStream();
-        
-        final byte[] bytes = new byte[1000];
-        m1.append(bytes, 0, 700);
-        m2.append(bytes, 0, 200);
-        
-        Object writeLock = new Object();
-        final StorageManager manager = new StorageManager.Builder(writeLock)
-                .stream("main", m1).build();
-        manager.syncStreams(new NullProgressListener());
-        
-        Assert.assertEquals(700, m1.getLength());
-        Assert.assertEquals(200, m2.getLength());
-        
-        final StorageManager.SynchingStorage ss = manager.addReplica("r", m2, 1000, 10);
-                
-        Thread thread = new Thread(new Runnable() { public void run() {
-            manager.syncReplica(ss, new NullProgressListener());
-        }});
-        thread.start();
-        
-        while (manager.getStorageInfo("r") == null) {
-            Thread.sleep(5);
-        }
-        
-        StorageInfo s = manager.getStorageInfo("r");
-        while (true) {
-            s = manager.getStorageInfo("r");
-            if (s.getStatus() == StorageInfo.STATUS_ACTIVE) {
-                break;
-            }
-            
-            Thread.sleep(10);
-        }
-        
-        // 2026-10-28 (bergdb 005-67): active means that the sync has appended the main's last
-        // bytes to the replica's buffer, which writes them to m2 a little later, and an append
-        // reaches the streams when their buffers are written. The test asserted 700 for both
-        // right after the append below, and failed when m2's write came after the poll that
-        // saw the replica active ("Expected 700, got 200", about one run in 12 on a busy
-        // machine) or a buffer wrote the 100 bytes before the assertions ("got 800"). Now it
-        // waits for the writes it asserts, by the storages' confirmed lengths.
-        waitForConfirmedLength(s, 700);
-        Assert.assertEquals(700, m1.getLength());
-        Assert.assertEquals(700, m2.getLength());
-        
-        synchronized (writeLock) {     // As StorageManager.append() requires.
-            manager.append(bytes, 0, 100);
-        }
-        waitForConfirmedLength(manager.getStorageInfo("main"), 800);
-        waitForConfirmedLength(s, 800);
-        Assert.assertEquals(800, m1.getLength());
-        Assert.assertEquals(800, m2.getLength());
-        
-        manager.close();
-        
-        Assert.assertEquals(800, m1.getLength());
-        Assert.assertEquals(800, m2.getLength());
-    }
-    
-    /**
-     * Waits until the storage's confirmed length, the bytes written to its stream, is at
-     * least 'length'; fails after 10 s (bergdb 005-67).
-     */
-    private static void waitForConfirmedLength(StorageInfo s, long length)
-            throws InterruptedException {
-        long t0 = System.nanoTime();
-        while (s.getConfirmedLength() < length) {
-            if (System.nanoTime() - t0 > 10L * 1000 * 1000 * 1000) {
-                throw new AssertionError("Storage " + s.getName() + ": confirmed length "
-                        + s.getConfirmedLength() + " after 10 s, expected " + length + ".");
-            }
-            Thread.sleep(1);
-        }
-    }
-    
-    @Nano
-    public static void testAddReplica3(TestEnvironment c) throws IOException, InterruptedException {
-        // Adds an empty replica, main stream has getFirstPos() > 0.
-        
-        File mainDir = c.createTempDir();
-        File rDir = c.createTempDir();
-        FileStream main = new FileStream(mainDir);
-        FileStream r = new FileStream(rDir);
-        
-        byte[] bytes = new byte[200*1000];
-        bytes[0] = 1;
-        bytes[999] = 2;
-        main.append(bytes, 0, 200*1000);
-        main.append(bytes, 0, 200*1000);
-        main.append(bytes, 0, 200*1000);
-        main.pretruncate(200*1000);
-        
-        Object writeLock = new Object();
-        final StorageManager manager = new StorageManager.Builder(writeLock)
-                .stream("main", main).build();
-        manager.syncStreams(new NullProgressListener());
-        
-        Assert.assertEquals("main length", 200*3000, main.getLength());
-        Assert.assertEquals("main first pos", 200*1000, main.getFirstPos());
-        
-        final StorageManager.SynchingStorage ss = manager.addReplica("r", r, 200*1000, 10);
-        manager.syncReplica(ss, new NullProgressListener());
-        manager.close();
-        
-        Assert.assertEquals("r first pos", 200*1000, r.getFirstPos());
-        Assert.assertEquals("r length", 200*3000, r.getLength());
-    }
-    
-
-    @Nano
-    public static void testAddReplica4(TestEnvironment c) throws IOException {
-        // Adds a replica with existing obsolete data.
-        
-        File mainDir = c.createTempDir();
-        File rDir = c.createTempDir();
-        FileStream main = new FileStream(mainDir);
-        FileStream r = new FileStream(rDir);
-        
-        final byte[] bytes = new byte[200*1000];
-        bytes[0] = 1;
-        bytes[999] = 2;
-        main.append(bytes, 0, 200*1000);
-        r.append(bytes, 0, 200*1000);
-        main.append(bytes, 0, 200*1000);
-        main.append(bytes, 0, 200*1000);
-        main.pretruncate(200*2000);
-        
-        Object writeLock = new Object();
-        StorageManager manager = new StorageManager.Builder(writeLock)
-                .stream("main", main).build();
-        manager.syncStreams(new NullProgressListener());
-        
-        Assert.assertEquals("main length", 200*3000, main.getLength());
-        Assert.assertEquals("main first pos", 200*2000, main.getFirstPos());
-        
-        StorageManager.SynchingStorage ss = manager.addReplica("r", r, 100*1000, 10);
-        manager.syncReplica(ss, new NullProgressListener());
-        manager.close();
-        
-        Assert.assertEquals("r first pos", 200*2000, r.getFirstPos());
-        Assert.assertEquals("r length", 200*3000, r.getLength());
-    }
-    
-    @Nano
-    public static void testAddReplica5(TestEnvironment c) throws IOException {
-        // Adds a replica with existing obsolete and non-obsolete data.
-        
-        File mainDir = c.createTempDir();
-        File rDir = c.createTempDir();
-        FileStream main = new FileStream(mainDir);
-        FileStream r = new FileStream(rDir);
-        
-        byte[] bytes = new byte[200*1000];
-        bytes[0] = 1;
-        bytes[999] = 2;
-        main.append(bytes, 0, 200*1000);
-        r.append(bytes, 0, 200*1000);
-        main.append(bytes, 0, 200*1000);
-        r.append(bytes, 0, 200*1000);
-        main.append(bytes, 0, 200*1000);
-        r.append(bytes, 0, 200*500);
-        
-        main.pretruncate(200*2000);
-        r.pretruncate(200*1000);
-        
-        Object writeLock = new Object();
-        StorageManager manager = new StorageManager.Builder(writeLock)
-                .stream("main", main).build();
-        manager.syncStreams(new NullProgressListener());
-        
-        Assert.assertEquals("main length", 200*3000, main.getLength());
-        Assert.assertEquals("main first pos", 200*2000, main.getFirstPos());
-        
-        StorageManager.SynchingStorage ss = manager.addReplica("r", r, 1000*1000, 10);
-        manager.syncReplica(ss, new NullProgressListener());
-        manager.close();
-        
-        Assert.assertEquals("r first pos", 200*1000, r.getFirstPos());
-        Assert.assertEquals("r length", 200*3000, r.getLength());
-    }
-    
-    @Nano
-    public static void testAddReplicaWhileAppending() throws IOException, InterruptedException {
-        final MemoryStream m1 = new MemoryStream();
-        final MemoryStream m2 = new MemoryStream();
-        
-        final byte[] bytes = new byte[1000];
-        m1.append(bytes, 0, 700);
-        m2.append(bytes, 0, 200);
-        
-        Object writeLock = new Object();
-        final StorageManager manager = new StorageManager.Builder(writeLock)
-                .stream("main", m1).build();
-        manager.syncStreams(new NullProgressListener());
-        
-        Assert.assertEquals(700, m1.getLength());
-        Assert.assertEquals(200, m2.getLength());
-        
-        // The writer appends with the write lock, as StorageManager.append() requires (2026-10-28,
-        // bergdb 005-67): without it, an append made while the sync had the lock, after it read
-        // the lengths and before the replica was active, reached the main only, and
-        // syncStrong(750) below waited for ever.
-        Thread writer = new Thread(new Runnable() {
-            public void run() {
-                for (int i = 0; i < 5; i++) {
-                    try {
-                        synchronized (writeLock) {
-                            manager.append(bytes, 0, 10);
-                        }
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    
-                    try {
-                        Thread.sleep(10);
-                    } catch (InterruptedException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }
-        });
-        writer.setName("DBStorageManager.testAddReplicaWhileAppending");
-        writer.start();
-        
-        final ProgressListener nullListener = new ProgressListener() {
-            public void progress(int progressValue, String note) {}   // empty
-        };
-        
-        final StorageManager.SynchingStorage ss = manager.addReplica("r", m2, 1000, 10);
-        
-        Thread thread = new Thread(new Runnable() { public void run() {
-            manager.syncReplica(ss, nullListener);
-        }});
-        thread.start();
-        
-        while (manager.getStorageInfo("r") == null) {
-            Thread.sleep(5);
-        }
-        
-        StorageInfo s = manager.getStorageInfo("r");
-        while (true) {
-            s = manager.getStorageInfo("r");
-            if (s.getStatus() == StorageInfo.STATUS_ACTIVE) {
-                break;
-            }
-            
-            Thread.sleep(10);
-        }
-        
-        writer.join();
-        manager.syncStrong(750);
-        
-        Assert.assertEquals(750, m1.getLength());
-        Assert.assertEquals(750, m2.getLength());
-        
-        manager.close();
-    }
-    
-    @Nano
-    public static void testRemoveReplica1() throws IOException {
-        MemoryStream m1 = new MemoryStream();
-        MemoryStream m2 = new MemoryStream();
-        
-        byte[] bytes = new byte[1000];
-        m1.append(bytes, 0, 700);
-        m2.append(bytes, 0, 200);
-        
-        Object writeLock = new Object();
-        StorageManager manager = new StorageManager.Builder(writeLock)
-                .stream("main", m1).stream("r", m2).build();
-        manager.syncStreams(new NullProgressListener());
-        manager.syncStrong(700);
-        
-        Assert.assertEquals(700, m1.getLength());
-        Assert.assertEquals(700, m2.getLength());
-        
-        manager.removeReplica("nonExistantNameDoesNothing");
-        Assert.assertTrue(manager.getStorageInfo("r") != null);
-        manager.removeReplica("r");
-        Assert.assertTrue(manager.getStorageInfo("r") == null);
-        
-        manager.stop();
-    }
-    
-    @Nano
-    public static void testRemoveReplica2() throws IOException {
-        MemoryStream m1 = new MemoryStream();
-        MemoryStream m2 = new MemoryStream();
-        
-        byte[] bytes = new byte[1000];
-        m1.append(bytes, 0, 700);
-        m2.append(bytes, 0, 200);
-        
-        Object writeLock = new Object();
-        StorageManager manager = new StorageManager.Builder(writeLock)
-                .stream("main", m1).stream("r", m2).build();
-        manager.syncStreams(new NullProgressListener());
-        manager.syncStrong(700);
-        
-        Assert.assertEquals(700, m1.getLength());
-        Assert.assertEquals(700, m2.getLength());
-        
-        Assert.assertTrue(manager.getStorageInfo("r") != null);
-        manager.removeReplica("r");
-        Assert.assertTrue(manager.getStorageInfo("r") == null);
-        
-        manager.append(bytes, 0, 20);
-        manager.syncStrong(720);
-        Assert.assertEquals(720, m1.getLength());
-        Assert.assertEquals(700, m2.getLength());
-        
-        manager.stop();
     }
 }

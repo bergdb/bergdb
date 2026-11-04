@@ -468,7 +468,7 @@ public class ReclaimCost {
         }
 
         // Phase 4: restart and check.
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         long firstTime = db.getFirstAvailableLookupTime();
         db.close();
         db = start(false);

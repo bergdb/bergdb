@@ -909,7 +909,7 @@ public final class Eviction {
 
         /** Restarts 'sub' (only) from its stream. */
         void restart() {
-            sub.sync(SyncLevel.STRONG);
+            sub.sync(SyncLevel.ORDINARY);
             sub.stop();
             s2 = s2.copy();
             sub = start(s2, schedule);
@@ -927,8 +927,8 @@ public final class Eviction {
         /** The comparison, at every time so far (all) or the latest only. */
         void check(boolean all) {
             if (quick && !all) return;
-            ref.sync(SyncLevel.STRONG);
-            sub.sync(SyncLevel.STRONG);
+            ref.sync(SyncLevel.ORDINARY);
+            sub.sync(SyncLevel.ORDINARY);
             Assert.assertEquals(s1.getLength(), s2.getLength());
             Assert.assertTrue("same bytes", sameBytes(s1, s2));
             Assert.assertEquals(ref.getFirstAvailableLookupTime(), sub.getFirstAvailableLookupTime());
@@ -1421,7 +1421,7 @@ public final class Eviction {
             for (int k = i; k < i + 50; k++) b.put("k" + k, k + pad);
             db0.execute(b.build());
         }
-        db0.sync(SyncLevel.STRONG);
+        db0.sync(SyncLevel.ORDINARY);
         db0.stop();
         final Db db = Db.builder().testSetup(s.copy()).clock(clock).testId().maxNodeSize8()
                 .startupDistance(2000).cacheSizeIndicator(50 * 1000)
@@ -1649,7 +1649,7 @@ public final class Eviction {
             for (int k = i; k < i + 50; k++) b.put("k" + k, "value " + k);
             db0.execute(b.build());
         }
-        db0.sync(SyncLevel.STRONG);
+        db0.sync(SyncLevel.ORDINARY);
         db0.stop();
         Db db = Db.builder().testSetup(s.copy()).clock(clock).testId().maxNodeSize8()
                 .startupDistance(2000).cacheSizeIndicator(100L * 1000 * 1000)

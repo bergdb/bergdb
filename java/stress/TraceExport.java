@@ -759,7 +759,7 @@ public class TraceExport {
         } finally {
             Db.testHooks = null;
         }
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         return stream;
     }
 
@@ -938,7 +938,7 @@ public class TraceExport {
             // A restart after every probe transactions, and right after each cut decided.
             boolean restart = ((i + 1) % probe == 0 || cutCalls.contains(i)) && i + 1 < n;
             if (!restart) continue;
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             db.stop();
             stream = copyOf(stream);
             curFirsts = recA.firsts;
@@ -955,7 +955,7 @@ public class TraceExport {
             if (problem == null) problem = lookupProblem(db, history, i);
             recA.probes.add("PROBE " + recA.index + (problem == null ? " ok" : " fail " + problem));
         }
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         long diff = firstDiff(streamA, stream);
         Rec last = recs.get(recs.size() - 1);
         last.probes.add("PROBE " + last.index + (diff < 0 ? " ok streams identical"
@@ -1008,7 +1008,7 @@ public class TraceExport {
                 }
             }
             if (eRestart > 0 && (i + 1) % eRestart == 0 && i + 1 < n) {
-                db.sync(SyncLevel.STRONG);
+                db.sync(SyncLevel.ORDINARY);
                 db.stop();
                 stream = copyOf(stream);
                 try {
@@ -1034,7 +1034,7 @@ public class TraceExport {
                 }
             }
         }
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         evictionSummary = db.internal().eviction().summary();
         long diff = firstDiff(streamA, stream);
         Rec last = recs.get(recs.size() - 1);

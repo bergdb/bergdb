@@ -1,8 +1,6 @@
 package bergdb.core;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 import bergdb.pub.util.Clock;
 import bergdb.storage.StorageManager;
@@ -21,7 +19,8 @@ public class DbBuilder {
     long cacheSizeIndicator;
     long retainDurationInTimeUnits;
     DatabaseId id;
-    List<DbBuilder.StreamInfo> streamInfos = new ArrayList<DbBuilder.StreamInfo>();
+    /** The database's one stream, or null (bergdb 005-11: no replicas since 2026-11-04). */
+    DbBuilder.StreamInfo streamInfo = null;
     File createdTxtDir;
     String createdTxtCryptoKeyInfo;
     Eviction.Schedule evictionSchedule = Eviction.defaultSchedule();
@@ -78,36 +77,17 @@ public class DbBuilder {
         return new DbBuilder();
     }
     
-    public int getStreamCount() {
-        return streamInfos.size();
+    /** True if the stream is set. */
+    public boolean hasStream() {
+        return streamInfo != null;
     }
     
     public AppendOnlyStream getMainStream() {
-        if (streamInfos.size() == 0) {
+        if (streamInfo == null) {
             return null;
         } else {
-            return streamInfos.get(0).stream;
+            return streamInfo.stream;
         }
-    }
-
-    /**
-     * Returns index to stream with given name, or -1 if no stream with the given 
-     * name exists in streamInfos.
-     */
-    private int indexOfStream(String name) {
-        if (name == null) throw new IllegalArgumentException("name == null");
-        final int size = streamInfos.size();
-        int result = -1;
-        
-        for (int i = 0; i < size; i++) {
-            DbBuilder.StreamInfo info = streamInfos.get(i);
-            if (info.name.equals(name)) {
-                result = i;
-                break;
-            }
-        }
-        
-        return result;
     }
     
     /**
@@ -280,46 +260,32 @@ public class DbBuilder {
     }
     
     /**
-     * Sets main db stream.
+     * Sets main db stream, named "main", with the default buffer parameters; it replaces a
+     * stream set before, whatever its name.
      */
     public DbBuilder mainStream(AppendOnlyStream appendOnlyStream) {
-        if (this.streamInfos.size() == 0) {
-            stream("main", appendOnlyStream);
-        } else {
-            DbBuilder.StreamInfo info = new StreamInfo();
-            info.name = "main";
-            info.stream = appendOnlyStream;
-            info.bufferSize = StorageManager.DEFAULT_BUFFER_SIZE;
-            info.bufferTime = StorageManager.DEFAULT_BUFFER_TIME;
-            
-            streamInfos.set(0, info);
-        }
-        
-        return this;
+        this.streamInfo = null;
+        return stream("main", appendOnlyStream);
     }
     
     /** 
-     * Adds a storage stream, default buffer parameters are used.
-     * If 'name' is the same as an existing stream, the existing one is replaced.
+     * Sets the database's stream, default buffer parameters are used.
+     * If 'name' is the same as the stream set before, that one is replaced.
      */
     public DbBuilder stream(String name, AppendOnlyStream aos) {
-        if (streamInfos.size() == 0) {
-            return stream(name, aos, 
-                    StorageManager.DEFAULT_BUFFER_SIZE, 
-                    StorageManager.DEFAULT_BUFFER_TIME);
-        } else {
-            return stream(name, aos,
-                    StorageManager.DEFAULT_REPLICA_BUFFER_SIZE,
-                    StorageManager.DEFAULT_REPLICA_BUFFER_TIME);
-        }
+        return stream(name, aos, 
+                StorageManager.DEFAULT_BUFFER_SIZE, 
+                StorageManager.DEFAULT_BUFFER_TIME);
     }
     
     /** 
-     * Adds a storage stream with the given buffer parameters.
-     * If 'name' is the same as an existing stream, the existing one is replaced.
+     * Sets the database's stream with the given buffer parameters.
+     * If 'name' is the same as the stream set before, that one is replaced. A database has
+     * one stream: since 2026-11-04 (bergdb 005-11) a stream of another name, until then a
+     * replica, is refused with an IllegalStateException.
      * 
      * @param name
-     *      Name of the stream. The "main" stream is special.
+     *      Name of the stream.
      * @param stream
      *      The output database stream.
      * @param bufferSize
@@ -359,12 +325,12 @@ public class DbBuilder {
         info.bufferSize = bufferSize;
         info.bufferTime = bufferTime;
         
-        int index = this.indexOfStream(name);
-        if (index == -1) {
-            streamInfos.add(info);
-        } else {
-            streamInfos.set(index, info);     // replaces previous value
+        if (streamInfo != null && !streamInfo.name.equals(name)) {
+            throw new IllegalStateException("A stream, '" + streamInfo.name + "', is set "
+                    + "already; a database has one stream, and '" + name + "' would be a "
+                    + "replica, removed in bergdb 005-11.");
         }
+        streamInfo = info;     // replaces a previous value
         
         return this;
     }
@@ -419,8 +385,8 @@ public class DbBuilder {
         // At this time, we know all Db settings. Time to create the Db object.
         //
 
-        if (streamInfos.size() == 0) {
-            throw new IllegalStateException("No streams. At least one is required.");
+        if (streamInfo == null) {
+            throw new IllegalStateException("No stream. One is required.");
         }
 
         return new Db(this);

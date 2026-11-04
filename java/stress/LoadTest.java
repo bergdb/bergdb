@@ -349,7 +349,7 @@ public class LoadTest {
                 streamLength / 1e6, sp / 1e6, (streamLength - sp) / 1e6);
 
         // Phase 3: restart.
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.close();
         db = null;
         heapMB();
@@ -384,7 +384,7 @@ public class LoadTest {
     }
 
     void restartAndCheck(String what) throws Exception {
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.close();
         db = start(false);
         db.start();

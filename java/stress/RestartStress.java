@@ -56,7 +56,7 @@ public class RestartStress {
     CoreTestClock clock = new CoreTestClock();
     long time = 10;
     int startupDistance, maxNode, keyCount, sessions;   // 0 means default
-    boolean stopBeforeRestart, strongSync;
+    boolean stopBeforeRestart;
     Map<String, TreeMap<Long, byte[]>> model = new HashMap<String, TreeMap<Long, byte[]>>();
     List<Long> times = new ArrayList<Long>();
     int histBad;                // wrong historical lookups (history=count)
@@ -75,7 +75,7 @@ public class RestartStress {
         sessions = 2 + rnd.nextInt(25);
         rnd.nextBoolean();      // Unused; keeps the seeds of 2026-10-12 reproducible.
         stopBeforeRestart = rnd.nextBoolean() || FILE;
-        strongSync = rnd.nextBoolean();
+        rnd.nextBoolean();      // Was strongSync (STRONG went in 005-11); keeps the seeds.
 
         if (Boolean.getBoolean("defaults")) {
             startupDistance = 0;
@@ -89,7 +89,7 @@ public class RestartStress {
 
         config = "seed=" + seed + " startupDistance=" + startupDistance + " maxNode=" + maxNode
                 + " keys=" + keyCount + " sessions=" + sessions
-                + " stop=" + stopBeforeRestart + " strong=" + strongSync;
+                + " stop=" + stopBeforeRestart;
     }
 
     Db start(boolean create) {
@@ -214,7 +214,7 @@ public class RestartStress {
             }
             verify(db, "session " + s + " before restart");
             long sum1 = DbUtil.checksum(db);
-            db.sync(strongSync ? SyncLevel.STRONG : SyncLevel.ORDINARY);
+            db.sync(SyncLevel.ORDINARY);
             if (!RESTART) continue;
             if (stopBeforeRestart) db.close();     // closed before the reopen (bergdb 005-63)
             if (!FILE) memStream = memStream.copy();    // Without stop: like a crash after sync.

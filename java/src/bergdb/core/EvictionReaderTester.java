@@ -118,7 +118,7 @@ public class EvictionReaderTester {
         Db ref = start(s1, clock, Eviction.Schedule.NONE, 0);
         Db db = start(s2, clock, Eviction.Schedule.NONE, 0);
         load(ref, db, clock, 60, 30, 1);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         Db.Internal in = db.internal();
         TopNode top = in.superRoot();
         int checked = 0;
@@ -206,8 +206,8 @@ public class EvictionReaderTester {
                     d.execute(d.trans().put("k" + (j * 7 % keys), "w" + j).build());
                 }
             }
-            ref.sync(SyncLevel.STRONG);
-            db.sync(SyncLevel.STRONG);
+            ref.sync(SyncLevel.ORDINARY);
+            db.sync(SyncLevel.ORDINARY);
             Assert.assertTrue("same stream", sameBytes(s1, s2));
             assertSameReads(ref, db, keys, times);
             Assert.assertEquals(auditFailures, Audit.failures());

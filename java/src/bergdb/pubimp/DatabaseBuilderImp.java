@@ -3,9 +3,7 @@ package bergdb.pubimp;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import bergdb.common.Util;
 import bergdb.core.Db;
@@ -18,7 +16,6 @@ import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Duration;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.DatabaseMissingException;
-import bergdb.storage.StorageManager;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
@@ -40,9 +37,6 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     
     /** The directory of dir(), opened by start() (bergdb 005-66), or null. */
     private File dir = null;
-    
-    /** The directories of replica(), by name, in the order given; opened by start(). */
-    private final Map<String, File> replicaDirs = new LinkedHashMap<String, File>();
     
     
     public DatabaseBuilderImp() {
@@ -83,14 +77,6 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
             this.cryptoKey = cryptoKey;
         }
         
-        return this;
-    }
-    
-    public DatabaseBuilder replica(String name, String dir) throws IOException {
-        if (name == null) {
-            throw new IllegalArgumentException("name == null not allowed");
-        }
-        replicaDirs.put(name, new File(dir));
         return this;
     }
     
@@ -188,7 +174,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         dbBuilder.startupDistance(startupDistance);
         dbBuilder.cacheSizeIndicator(cacheSizeIndicator);
         
-        if (dir == null && dbBuilder.getStreamCount() == 0) {
+        if (dir == null && !dbBuilder.hasStream()) {
             throw new IllegalStateException("no streams, please provide a database stream");
         }
         
@@ -220,23 +206,16 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     /**
-     * Opens the directories of dir() and replica() (bergdb 005-66): the database's first,
-     * then the replicas in the order given. Each stream goes to 'opened' as it is opened,
-     * so that a failure closes those before it (start(); bergdb 015-56), and then to the
-     * DbBuilder.
+     * Opens the directory of dir() (bergdb 005-66). The stream goes to 'opened' as it is
+     * opened, so that a later failure of the start closes it (start(); bergdb 015-56), and
+     * then to the DbBuilder. Until 2026-11-04 (bergdb 005-11) it opened the directories of
+     * replica() too, after the database's own.
      */
     private void openDirs(List<FileStream> opened) {
         if (dir != null) {
             FileStream main = openDir(dir);
             opened.add(main);
             dbBuilder.mainStream(main);
-        }
-        for (Map.Entry<String, File> replica : replicaDirs.entrySet()) {
-            int bufferSize = StorageManager.DEFAULT_REPLICA_BUFFER_SIZE;
-            int bufferTime = StorageManager.DEFAULT_BUFFER_TIME;
-            FileStream stream = openDir(replica.getValue());
-            opened.add(stream);
-            dbBuilder.stream(replica.getKey(), stream, bufferSize, bufferTime);
         }
     }
     
@@ -281,8 +260,8 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
      * (Db.handleEmptyStream), and no *.bergdb file with a byte (FileStream.hasStreamBytes).
      * Before the directory is opened, so that the start opens, creates and writes nothing;
      * safe without the directory's lock, as a running database always has a stream file
-     * with bytes. Also when replicas are given. A directory without created.txt, also an
-     * empty or a missing one, is a new database, as before.
+     * with bytes. A directory without created.txt, also an empty or a missing one, is a new
+     * database, as before.
      *
      * @throws DatabaseMissingException
      */
@@ -310,7 +289,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         // Note, that we do not handle buffer size, buffer time. Using defaults.
         // This is fine now (July 2015) since those parameters are not yet exposed to Pub API.
         
-        if (dbBuilder.getStreamCount() == 0) {
+        if (!dbBuilder.hasStream()) {
             throw new IllegalStateException("no streams, please provide a database stream");
         }
         

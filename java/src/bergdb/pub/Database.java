@@ -1,14 +1,10 @@
 package bergdb.pub;
 
-import java.io.IOException;
-
 import bergdb.common.Util;
-import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.Job;
-import bergdb.pub.util.StorageInfo;
 import bergdb.pub.util.SyncLevel;
 
 /**
@@ -78,11 +74,10 @@ public interface Database extends AutoCloseable {
      * </p>
      * 
      * <p>Call sync() before stop() when the transactions must be durable when stop()
-     * returns: with a file storage, sync() waits until they are forced to the device, and
-     * sync(SyncLevel.STRONG) also for a replica. After this method has been called
-     * this Database object must not be used anymore. This method is OK to call multiple times
-     * from multiple unsynchronized threads; only the first call to this method has any
-     * effect (idempotent method).
+     * returns: with a file storage, sync() waits until they are forced to the device. After
+     * this method has been called this Database object must not be used anymore. This method
+     * is OK to call multiple times from multiple unsynchronized threads; only the first call
+     * to this method has any effect (idempotent method).
      * </p>
      * 
      * <p>stop() or close() must be called once the Database is no longer used, as close() for
@@ -308,47 +303,4 @@ public interface Database extends AutoCloseable {
      *             if there is not index with the given name.
      */
     public Job deleteIndex(String indexName);
-
-    /**
-     * Adds a replica storage to this database while it is running. The replicated data is storage
-     * in the provided directory.
-     * 
-     * <p>Experimental, with known faults, and not to be used in production; its API will
-     * change in a later release (2026-11-03; bergdb 005-11, and bergdb 016-01, section 3).</p>
-     * 
-     * <p>Its known faults: those of DatabaseBuilder.replica(), and a cut of reclaim's during
-     * the copy fails the database. The job reports done also when the copy failed;
-     * getStorageInfos() shows the error.</p>
-     * 
-     * @param name
-     *            Name of the storage to add.
-     * @param dir
-     *            Directory where to store the replica. May have previous existing data of this
-     *            database.
-     * @throws IOException
-     *             If the directory does not exist and cannot be created or if the database file in
-     *             the directory cannot be opened, or any other file access problem.
-     * @throws BadReplicaException
-     *             If the replica stream is longer than the main stream; if the replica stream has a
-     *             different database ID than the main stream.
-     */
-    public Job addReplica(String name, String dir) throws IOException;
-
-    /**
-     * Removes a replica storage from the database. The existing replica data is not deleted but
-     * will no longer be updated. Experimental, as addReplica(): not to be used in production,
-     * and its API will change (bergdb 005-11).
-     * 
-     * @param name
-     *            Name of the storage.
-     */
-    public void removeReplica(String name);
-
-    /**
-     * Returns information about the storages currently used by the database. Experimental, as
-     * addReplica(): not to be used in production, and its API will change (bergdb 005-11).
-     */
-    // NOTE Consider making the returned data immutable? Or not? Should it be used for
-    // custom durability rules?
-    public StorageInfo[] getStorageInfos();
 }

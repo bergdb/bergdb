@@ -14,16 +14,16 @@ import bergdb.pub.WBuilder;
 
 /**
  * Pay demo, 1M accounts and a few actions: create, pay, iterate, random access.
- * Replication is used.
+ * Replication was used, until it was removed on 2026-11-04 (bergdb 005-11): the
+ * database had a replica in /a/data/pay-demo-replica, added after each start.
  * 
  * @author Frans Lundberg
  */
 public class PayDemo {
     private static final long n = 1*1000000;
     private static final String dir = "/a/data/pay-demo";
-    private static final String replicaDir = "/a/data/pay-demo-replica";
     
-    /** Creates database, starts it and adds the replica. */
+    /** Creates database and starts it. */
     private static Database createDatabase() throws IOException {
         DatabaseBuilder builder = Factory.database().dir(dir);
         
@@ -31,9 +31,6 @@ public class PayDemo {
         Database database = builder.start();
         double time = 1e-9 * (System.nanoTime() - t0);
         System.out.printf("Database started in %.1f s. Data dir: " + dir + "\n", time);
-        
-        database.addReplica("replica", replicaDir);
-        System.out.printf("Replica: %s\n", replicaDir);
         
         return database;
     }

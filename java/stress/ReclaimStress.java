@@ -275,7 +275,7 @@ public class ReclaimStress {
                         + ", iterations " + db.getReclaimIterationCount());
             }
             long sum1 = DbUtil.checksum(db);
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             if (stopBeforeRestart) db.stop();
             stream = stream.copy();
             sessionCount++;

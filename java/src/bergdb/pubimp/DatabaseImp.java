@@ -1,7 +1,5 @@
 package bergdb.pubimp;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.function.Consumer;
@@ -21,11 +19,8 @@ import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
-import bergdb.pub.util.StorageInfo;
 import bergdb.pub.util.SyncLevel;
-import bergdb.storage.StorageManager;
 import bergdb.storage.StreamIoException;
-import bergdb.stream.FileStream;
 
 /**
  * Implementation of pub.Database, a started database. 
@@ -77,7 +72,6 @@ public class DatabaseImp implements Database {
      * @throws StreamIoException
      * @throws StreamFormatException
      * @throws IllegalDbStateException  If db has been started already.
-     * @throws BadReplicaException
      */
     public static synchronized DatabaseImp createAndStart(final Db db) {
         @SuppressWarnings("unused")
@@ -205,37 +199,6 @@ public class DatabaseImp implements Database {
         }
         
         db.close();
-    }
-    
-    public Job addReplica(String name, String dir) throws IOException {
-        if (name == null) {
-            throw new IllegalArgumentException("name == null not allowed");
-        }
-        
-        if (name.length() == 0) {
-            throw new IllegalArgumentException("Empty string not allowed for 'name'.");
-        }
-        
-        if (dir == null) {
-            throw new IllegalArgumentException("dir == null not allowed");
-        }
-        
-        if (dir.length() == 0) {
-            throw new IllegalArgumentException("Empty string not allowed for 'dir'.");
-        }
-        
-        FileStream stream = new FileStream(new File(dir));
-        int bufferSize = StorageManager.DEFAULT_REPLICA_BUFFER_SIZE;
-        int bufferTime = StorageManager.DEFAULT_REPLICA_BUFFER_TIME;
-        return db.addReplica(name, stream, bufferSize, bufferTime);
-    }
-    
-    public void removeReplica(String name) {
-        db.removeReplica(name);
-    }
-    
-    public StorageInfo[] getStorageInfos() {
-        return db.getStorageInfos();
     }
     
     public final Time currentTime() {

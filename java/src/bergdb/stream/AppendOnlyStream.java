@@ -95,7 +95,8 @@ public interface AppendOnlyStream {
      * The getFirstPos() method will return 'position' and getLength() will return 'position' after 
      * this method returns. This method must be called before any calls to append().
      * 
-     * This method was added to support replication.
+     * This method was added to support replication, which was removed on 2026-11-04 (bergdb
+     * 005-11); FileStream's tests use it to make large positions.
      * 
      * @param position
      * @throws IOException

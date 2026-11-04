@@ -61,7 +61,7 @@ public class ReclaimRetentionTester {
         }
 
         void restart(long retain) {
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             db.stop();
             stream = stream.copy();
             start(retain);

@@ -103,7 +103,7 @@ public class CapacityTester {
         CoreTestClock clock = new CoreTestClock();
         Db db = builder(s, clock, 0).start();
         String[] last = load(db, clock, n, updates, 300);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.stop();
         db = builder(s.copy(), clock, budget).start();
         Random r = new Random(2);
@@ -127,7 +127,7 @@ public class CapacityTester {
         CoreTestClock clock = new CoreTestClock();
         Db db = builder(s, clock, 0).start();
         String[] last = load(db, clock, n, 0, 300);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.stop();
         db = builder(s.copy(), clock, budget).start();
         for (int k = 0; k < n; k++) {
@@ -210,7 +210,7 @@ public class CapacityTester {
         Db db = builder(s, clock, 0).start();
         int n = 6000;
         String[] last = load(db, clock, n, 0, 100);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.stop();
         long budget = 60 * 1000;
         db = builder(s.copy(), clock, budget).start();
@@ -250,7 +250,7 @@ public class CapacityTester {
         Db db = builder(s, clock, 0).start();
         int n = 4000;
         String[] last = load(db, clock, n, 0, 300);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.stop();
         final long budget = 200 * 1000;
         final Db db2 = builder(s.copy(), clock, budget).start();
@@ -322,7 +322,7 @@ public class CapacityTester {
         Db db0 = builder(s, clock, 0).start();
         final int n = 2000;
         final String[] base = load(db0, clock, n, 0, 300);
-        db0.sync(SyncLevel.STRONG);
+        db0.sync(SyncLevel.ORDINARY);
         db0.stop();
         final long budget = 150 * 1000;
         final Db db = builder(s.copy(), clock, budget).start();
@@ -412,8 +412,8 @@ public class CapacityTester {
         Assert.assertTrue("sweeps above the budget: " + c[3], c[3] > 0);
         // Not a sweep at every transaction: the next waits for growth (Eviction.trigger).
         Assert.assertTrue("sweeps " + c[0] + " in 600 transactions", c[0] < 100);
-        ref.sync(SyncLevel.STRONG);
-        db.sync(SyncLevel.STRONG);
+        ref.sync(SyncLevel.ORDINARY);
+        db.sync(SyncLevel.ORDINARY);
         Assert.assertEquals(s1.getLength(), s2.getLength());
         byte[] b1 = new byte[(int) s1.getLength()], b2 = new byte[(int) s2.getLength()];
         try {
@@ -496,14 +496,14 @@ public class CapacityTester {
                 }
             }
             if (i % 250 == 249) {
-                db.sync(SyncLevel.STRONG);
+                db.sync(SyncLevel.ORDINARY);
                 db.stop();
                 s2 = s2.copy();
                 db = builder(s2, clock, 60 * 1000).audit(1).start();
             }
         }
-        ref.sync(SyncLevel.STRONG);
-        db.sync(SyncLevel.STRONG);
+        ref.sync(SyncLevel.ORDINARY);
+        db.sync(SyncLevel.ORDINARY);
         Assert.assertEquals(s1.getLength(), s2.getLength());
         byte[] b1 = new byte[(int) s1.getLength()], b2 = new byte[(int) s2.getLength()];
         try {

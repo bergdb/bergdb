@@ -859,11 +859,11 @@ public class Perf {
                 System.out.flush();
                 Runtime.getRuntime().halt(0);
             }
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             db.close();
         } else {
             t0 = System.nanoTime();
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             db.close();
             restartAndVerify();
             phase("verify", t0);

@@ -270,7 +270,7 @@ public class DbTesterRestart {
         Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(startupDistance).start();
         db.execute(db.trans().put("key", "value"));
         Assert.assertEquals("before restart", startupDistance, db.getStartupDistance());
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         
         // Restart
         
@@ -319,7 +319,7 @@ public class DbTesterRestart {
             CoreTestClock clock = new CoreTestClock();
             MemoryStream created = new MemoryStream();
             Db db = nodeSize(Db.builder().testSetup(created).clock(clock), a).start();
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             db.close();
             
             MemoryStream torn = new MemoryStream();
@@ -328,7 +328,7 @@ public class DbTesterRestart {
                 clock.setTime(10 + i);
                 db.execute(db.trans().put("key" + i, "value" + i));
             }
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             db.close();
             torn.truncate(torn.getLength() - 3);
             
@@ -373,7 +373,7 @@ public class DbTesterRestart {
         Db db = Db.builder().testSetup(s).clock(clock).start();
         clock.setTime(10);
         db.execute(db.trans().put("key1", "value1"));
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.close();
         Assert.assertTrue("one meta block", s.getLength() < RecoverableStream.META_BLOCK_DISTANCE);
         MemoryStream.TestAccess.write(s, new byte[2], 44);      // As before 005-50.
@@ -469,7 +469,7 @@ public class DbTesterRestart {
         clock.setTime(40);
         db.execute(db.trans().put("/b", "b-value"));
         long sum1 = DbUtil.checksum(db);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.stop();
 
         // Restart, put, restart
@@ -481,7 +481,7 @@ public class DbTesterRestart {
         clock.setTime(50);
         db.execute(db.trans().put("/c", "c-value"));
         long sum2 = DbUtil.checksum(db);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.stop();
 
         s = s.copy();
@@ -526,7 +526,7 @@ public class DbTesterRestart {
             db.execute(b.build());
             
             if (i % 250 == 249) {
-                db.sync(SyncLevel.STRONG);
+                db.sync(SyncLevel.ORDINARY);
                 db.stop();
                 s = s.copy();
                 db = Db.builder().testSetup(s).clock(clock).start();
@@ -685,7 +685,7 @@ public class DbTesterRestart {
                 restart = restartEvery > 0;
             }
             if (restart) {
-                db.sync(SyncLevel.STRONG);
+                db.sync(SyncLevel.ORDINARY);
                 db.close();
                 stream = stream.copy();     // db.close() closed it
                 db = Db.builder().testSetup(stream).clock(clock).start();
@@ -695,7 +695,7 @@ public class DbTesterRestart {
             random.nextBytes(value);
             db.execute(db.trans().put("/k/" + random.nextInt(1000), value).build());
         }
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.close();
         return stream;
     }
@@ -764,7 +764,7 @@ public class DbTesterRestart {
                 db.execute(b.build());
                 
                 if (doRestarts && restartEvery > 0 && i % restartEvery == restartEvery - 1) {
-                    db.sync(SyncLevel.STRONG);
+                    db.sync(SyncLevel.ORDINARY);
                     db.stop();
                     stream = stream.copy();
                     try {
@@ -780,7 +780,7 @@ public class DbTesterRestart {
                 }
             }
             
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             db.close();
         }
         
@@ -836,7 +836,7 @@ public class DbTesterRestart {
         }
         Assert.assertEquals("before restart", lastTpos, 
                 db.internal().nodeStream().getMetaBlock().getLastTransSpos());
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.stop();
         
         db = Db.builder().testSetup(s.copy()).clock(clock).start();
@@ -870,7 +870,7 @@ public class DbTesterRestart {
                     if (mode == 1) b.delete("/missing/" + round + "/" + i);
                     db.execute(b.build());
                 }
-                db.sync(SyncLevel.STRONG);
+                db.sync(SyncLevel.ORDINARY);
                 db.stop();
                 s = s.copy();
                 db = Db.builder().testSetup(s).clock(clock).startupDistance(100).maxNodeSize8()
@@ -906,7 +906,7 @@ public class DbTesterRestart {
             n++;
         }
         long superRoot = db.internal().superRoot().topNodeId;
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.stop();
         s = s.copy();
         db = Db.builder().testSetup(s).clock(clock).startupDistance(10000).maxNodeSize8().start();
@@ -960,7 +960,7 @@ public class DbTesterRestart {
                 }
                 checkHotHistory(db, n, what + ", before the restart");
                 long superRoot = db.internal().superRoot().topNodeId;
-                db.sync(SyncLevel.STRONG);
+                db.sync(SyncLevel.ORDINARY);
                 db.stop();
                 s = s.copy();
                 db = startOrdinalTest(s, clock, setup, boundary - 20);
@@ -1011,7 +1011,7 @@ public class DbTesterRestart {
             Assert.assertArrayEquals(what + ", /hot", StringUtil.toBytes("v" + (n - 1)),
                     DbUtil.get(db, Long.MAX_VALUE, "/hot"));
             checkHotHistory(db, n, what);
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             db.stop();
             s = s.copy();
             db = startOrdinalTest(s, clock, "sd1000", Db.LAST_TOP_ORDINAL - 10);
@@ -1079,7 +1079,7 @@ public class DbTesterRestart {
                 secondTime = time;
             }
             if (i % 150 == 149) {
-                db.sync(SyncLevel.STRONG);
+                db.sync(SyncLevel.ORDINARY);
                 db.stop();
                 s = s.copy();
                 db = startReclaimOrdinalTest(s, clock, second);
@@ -1098,7 +1098,7 @@ public class DbTesterRestart {
             assertRefused(db, db.trans().put("/hot", "x").build(), what);
         }
         checkModel(db, model, times, what + ", at the end");
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.stop();
         db = startReclaimOrdinalTest(s.copy(), clock, second);
         Assert.assertEquals(what + ", super root after the last restart", superRoot,

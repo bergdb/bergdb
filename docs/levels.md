@@ -25,10 +25,10 @@ Level 3.
 | 4 | + eviction: data larger than memory | Passes the tests run; on by default; with handles since 2026-10-26, eviction in bounded steps, without a stop-the-world of its own; a database six times its memory budget runs on disk; aligned with the proved Lean model, with handles | [009-05](../items/009-handles/05-handles-alignment.md), [001-08](../items/001-lean-model-levels-3-4/08-level4-alignment.md), [001-10](../items/001-lean-model-levels-3-4/10-level4-evidence.md), [009-03](../items/009-handles/03-measurements.md) |
 
 Each level includes the ones before it; Level 3 needs Level 2, as startup
-cannot replay a stream whose front is cut. Replication is in no level
-(section 9). What BergDB is to do, the requirements R1 to R7 and the
-invariants INV-LOOKUP, INV-RESTART, INV-CRASH, INV-RECLAIM and INV-EVICT,
-is the problem statement, [011-01](../items/011-docs-archive/01-problem.md);
+cannot replay a stream whose front is cut. BergDB has no replication
+since 2026-11-04 (section 9). What BergDB is to do, the requirements R1 to
+R7 and the invariants INV-LOOKUP, INV-RESTART, INV-CRASH, INV-RECLAIM and
+INV-EVICT, is the problem statement, [011-01](../items/011-docs-archive/01-problem.md);
 its design principles are [010-01](../items/010-principles/01-principles.md).
 The Lean proofs concern the abstract model, which includes reclaim and
 eviction; Java's runs are checked against it, not proved, and concurrency
@@ -500,7 +500,7 @@ Limits:
   confirm `F_FULLFSYNC` on macOS/APFS and `fsync` in a Linux VM
   ([011-07](../items/011-docs-archive/07-level3-durability.md);
   `PowerLossTest` in `level3.sh`). Not established: physical power cycling,
-  other storage providers and Windows, replication.
+  other storage providers and Windows.
 * Recovery tolerates the tested truncated prefixes of an unforced write,
   but holes in that write (later bytes surviving while earlier ones are
   missing) can refuse startup or fail a later read after startup succeeds.
@@ -542,17 +542,25 @@ Limits:
 
 ## 9. Replication
 
-Replication is in no level, and no check of the levels has a replica. It is
-experimental, with known faults (005-11; Frans, 2026-10-25: kept as it is
-for releases 2026.1 and 2026.2, documented as experimental; since 2026.2
-also: its API will change in a later release, and it must not be used in
-production, 016-01, section 3):
-with reclaim, a crash can leave a replica that does not start or gives wrong
-answers; a replica whose storage fails fails the database at reclaim's next
-cut; a start without a replica that was ahead of the main mixes two
-histories; a replica is written in plain text when the database is
-encrypted. The Javadoc of `DatabaseBuilder.replica` and
-`Database.addReplica` lists them.
+None since 2026-11-04 (005-11, "Frans's decision": "A with C2 now"). A
+database writes one stream, its main storage; `SyncLevel` has NONE and
+ORDINARY, and a sync waits for the main storage only. The Pub API's
+`DatabaseBuilder.replica`, `Database.addReplica`, `removeReplica`,
+`getStorageInfos` and `SyncLevel.STRONG` went, with `StorageManager`'s
+replicas and the startup's copying between streams. Until then replication
+was in no level, experimental, with the faults of 005-11's study (releases
+2026.1 and 2026.2 have it so).
+
+Copies are left to the OS and the file system (005-11, option C2): a
+mirrored disk or volume (RAID 1, a ZFS or btrfs mirror) for the loss of a
+disk, and a copy of the stream's files for a backup. As the stream is
+append-only, a copy of its files in their order, made while the database
+writes, is expected to be a prefix and so to start as the database, if no
+cut deletes a file during the copy; not tested. The stream and its meta
+blocks never recorded replicas: a directory that was a replica is a
+database of its own, with the same database ID, which nothing writes any
+more. Ways to implement replication in the future, and the removed design,
+are a long-term topic, 017-03.
 
 
 ## 10. Open work

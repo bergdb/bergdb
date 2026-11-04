@@ -91,13 +91,16 @@ eviction; Java's runs are checked against it, not proved, and concurrency and
 resource bounds are not in it. Whether the concept is novel is open; see
 the study of prior art, [011-02](items/011-docs-archive/02-prior-art.md).
 
-A known limit. Replication (`DatabaseBuilder.replica`,
-`Database.addReplica`) is experimental, with known faults; its API will
-change, and it must not be used in production
-([005-11](items/005-todo/11-replication.md); Frans, 2026-11-03). The bound on
-the startup section (T3) is proved for BergDB's own startup pos policy since
-2026-10-28, in the Lean model of its take
-([007-08](items/007-bounds/08-step4-take-in-lean.md)): the startup section
+BergDB has no replication since 2026-11-04: a database writes one stream,
+and copies are left to the OS and the file system, a mirrored disk for the
+loss of a disk and a copy of the stream's files for a backup
+([005-11](items/005-todo/11-replication.md); Frans: "A with C2 now"); ways
+to implement it later are a long-term topic,
+[017-03](items/017-long-term/03-replication/readme.md).
+
+A known limit. The bound on the startup section (T3) is proved for
+BergDB's own startup pos policy since 2026-10-28, in the Lean model of its
+take ([007-08](items/007-bounds/08-step4-take-in-lean.md)): the startup section
 without its last record stays below twice the startup distance, and after a
 decrease of it comes down with every commit until it is below twice the new
 one. That is not all of bounded startup: the records at the ends of the

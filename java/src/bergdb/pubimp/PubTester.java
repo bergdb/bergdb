@@ -36,7 +36,6 @@ import bergdb.pub.Transaction;
 import bergdb.pub.TransactionInfo;
 import bergdb.pub.WBuilder;
 import bergdb.pub.util.BadCryptoKey;
-import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.DatabaseMissingException;
 import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.IllegalDbStateException;
@@ -237,25 +236,6 @@ public class PubTester {
     }
     
     /**
-     * bergdb 005-66: a replica given before dir() is kept and written. Until 005-66 dir()
-     * replaced it, and its directory stayed held.
-     */
-    @Nano
-    public static void testReplicaBeforeDir(TestEnvironment env) throws Exception {
-        File tmp = env.createTempDir();
-        String dir = new File(tmp, "db").getPath();
-        String replica = new File(tmp, "replica").getPath();
-        Database d = Factory.database().replica("r", replica).dir(dir).start();
-        d.connection().put("/k", "v");
-        d.sync(SyncLevel.STRONG);
-        d.close();
-        
-        Database r = Factory.database().dir(replica).start();
-        Assert.assertEquals("v", r.connection().get("/k", String.class));
-        r.close();
-    }
-    
-    /**
      * Regression test for bergdb 015-56 (review R8, R8-F10): a second start() of a builder
      * whose database runs is refused, as one of another builder on the directory is, and the
      * refusal leaves the running database as it was: its stream, its lock and its files.
@@ -287,42 +267,8 @@ public class PubTester {
     }
     
     /**
-     * bergdb 015-56: a refused start closes what it opened, and nothing of a database that
-     * runs. The builder's database runs with a replica; given a new directory, the builder is
-     * started again: it opens the new directory, and is refused at the replica's, which the
-     * running database has. The new directory is closed and free, and the replica stays the
-     * running database's. Until 015-56 the refused starts closed the running database's
-     * replica stream too, and released its lock.
-     */
-    @Nano
-    public static void testRefusedStartClosesOnlyItsOwn(TestEnvironment env) throws Exception {
-        File tmp = env.createTempDir();
-        String replica = new File(tmp, "replica").getPath();
-        DatabaseBuilder builder = Factory.database().dir(new File(tmp, "db").getPath())
-                .replica("r", replica);
-        Database d = builder.start();
-        d.connection().put("/k", "v");
-        d.sync();
-        
-        assertStartRefused("the same builder", builder);
-        assertStartRefused("the replica's directory", Factory.database().dir(replica));
-        String other = new File(tmp, "other").getPath();
-        assertStartRefused("the builder on a new directory", builder.dir(other));
-        assertStartRefused("the replica's directory, after", Factory.database().dir(replica));
-        Database onOther = Factory.database().dir(other).start();
-        onOther.close();
-        
-        d.connection().put("/k2", "v2");
-        d.sync(SyncLevel.STRONG);
-        d.close();
-        Database r = Factory.database().dir(replica).start();
-        Assert.assertEquals("v2", r.connection().get("/k2", String.class));
-        r.close();
-    }
-    
-    /**
-     * Asserts that start() of 'builder' is refused as its directory, or a replica's, is in
-     * use (bergdb 005-63); a database that starts is closed.
+     * Asserts that start() of 'builder' is refused as its directory is in use (bergdb
+     * 005-63); a database that starts is closed.
      */
     private static void assertStartRefused(String what, DatabaseBuilder builder) {
         Database started;
@@ -1071,7 +1017,7 @@ public class PubTester {
     
     @Nano
     public static void testSync2() {
-        // Tests Transaction.syncStrong().
+        // Tests Transaction.sync(SyncLevel); STRONG until 2026-11-04 (bergdb 005-11).
         
         MyDouble a = new MyDouble(1.2);
         a.key = "/a";
@@ -1080,7 +1026,7 @@ public class PubTester {
         Connection c = d.connection();
         
         Transaction t = c.w().put(a).execute();
-        t.sync(SyncLevel.STRONG);
+        t.sync(SyncLevel.ORDINARY);
      
         assertThatTransWrittenCompletely(d, t);
         d.stop();
@@ -1105,7 +1051,7 @@ public class PubTester {
     
     @Nano
     public static void testSync4() {
-        // Tests Connection.syncStrong().
+        // Tests Connection.sync(SyncLevel); STRONG until 2026-11-04 (bergdb 005-11).
         
         MyDouble a = new MyDouble(1.2);
         a.key = "/a";
@@ -1114,7 +1060,7 @@ public class PubTester {
         Connection c = d.connection();
         
         Transaction t = c.w().put(a).execute();
-        c.sync(SyncLevel.STRONG);
+        c.sync(SyncLevel.ORDINARY);
         
         assertThatTransWrittenCompletely(d, t);
         d.stop();
@@ -1139,7 +1085,7 @@ public class PubTester {
     
     @Nano
     public static void testSync6() {
-        // Tests Database.syncStrong().
+        // Tests Database.sync(SyncLevel); STRONG until 2026-11-04 (bergdb 005-11).
         
         MyDouble a = new MyDouble(1.2);
         a.key = "/a";
@@ -1148,42 +1094,10 @@ public class PubTester {
         Connection c = d.connection();
         
         Transaction t = c.w().put(a).execute();
-        d.sync(SyncLevel.STRONG);
+        d.sync(SyncLevel.ORDINARY);
         
         assertThatTransWrittenCompletely(d, t);
         d.stop();
-    }
-    
-    @Nano
-    public static void testBadStartReplica() {
-        MemoryStream m0 = new MemoryStream();
-        DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
-        Database d = b.mainStream(m0).start();
-        Connection c = d.connection();
-        c.w().put("/s1.txt", "S1-m0").execute();
-        d.sync();
-        d.stop();
-        
-        MemoryStream m1 = new MemoryStream();
-        b = (DatabaseBuilderImp) Factory.database();
-        d = b.mainStream(m1).start();
-        c = d.connection();
-        c.w().put("/s1.txt", "S1-m1-hej").execute();
-        d.sync();
-        d.stop();
-        
-        b = (DatabaseBuilderImp) Factory.database();
-        b.stream("m0", m0);
-        b.stream("m1", m1);
-        
-        BadReplicaException ex = null;
-        try {
-            b.start();
-        } catch (BadReplicaException e) {
-            ex = e;
-        }
-        
-        Assert.assertTrue("We should get BadReplicaException", ex != null);
     }
     
     private static class A {
@@ -1865,7 +1779,7 @@ public class PubTester {
         MemoryStream m = new MemoryStream();
         Db db = Db.builder().testSetup(m).maxNodeSize8().start();
         db.execute(db.trans().put("key", "value"));
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.close();
         final long length = m.getLength();
         try {

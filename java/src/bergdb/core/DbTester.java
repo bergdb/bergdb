@@ -23,7 +23,6 @@ import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import static bergdb.nanotest.Assert.*;
 import bergdb.nanotest.Nano;
-import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.DbFailedException;
@@ -1171,12 +1170,12 @@ public class DbTester {
         
         Trans trans = db.trans().put("key", "the-first-value").build();
         db.execute(trans);
-        db.sync(trans.lastPos, SyncLevel.STRONG);
+        db.sync(trans.lastPos, SyncLevel.ORDINARY);
         long size1 = mstream.getLength();
         
         trans = db.trans().put("key", "the-second-value").build();
         db.execute(trans);
-        db.sync(trans.lastPos, SyncLevel.STRONG);
+        db.sync(trans.lastPos, SyncLevel.ORDINARY);
         long size2 = mstream.getLength();
         Assert.assertEquals("the-second-value", DbUtil.getString(db, "key"));
         db.stop();
@@ -1206,14 +1205,14 @@ public class DbTester {
         //
         MemoryStream mstream = new MemoryStream();
         Db db = testDb(mstream);
-        db.sync(SyncLevel.STRONG);      // The creation is written: the cuts come after it.
+        db.sync(SyncLevel.ORDINARY);      // The creation is written: the cuts come after it.
         
         long size1 = mstream.getLength();
         db.execute(db.trans().put("key", "value1").build());
         db.execute(db.trans().put("a-significantly-longer-key", "value2").build());
         Trans trans = db.trans().put("another-key-that-is-longer-than-most", "value3").build();
         db.execute(trans);
-        db.sync(trans.lastPos, SyncLevel.STRONG);
+        db.sync(trans.lastPos, SyncLevel.ORDINARY);
         db.stop();
         db = null;
         
@@ -1251,7 +1250,7 @@ public class DbTester {
         
         Trans trans = db.trans().put("key2", v2).build();
         db.execute(trans);
-        db.sync(trans.lastPos, SyncLevel.STRONG);
+        db.sync(trans.lastPos, SyncLevel.ORDINARY);
         db.stop();
         db = null;
         
@@ -1276,12 +1275,12 @@ public class DbTester {
         Db db = testDb(mstream);
         Trans trans = db.trans().put("key1", "value1").build();
         db.execute(trans);
-        db.sync(trans.lastPos, SyncLevel.STRONG);
+        db.sync(trans.lastPos, SyncLevel.ORDINARY);
         long size1 = mstream.getLength();
         
         trans = db.trans().put("key2", "value2").build();
         db.execute(trans);
-        db.sync(trans.lastPos, SyncLevel.STRONG);
+        db.sync(trans.lastPos, SyncLevel.ORDINARY);
         
         Assert.assertTrue(mstream.getLength() >= trans.lastPos);
         mstream.truncate(size1 + 3);
@@ -1312,12 +1311,12 @@ public class DbTester {
         Db db = testDb(mstream);
         Trans trans = db.trans().put("key1", "value1").build();
         db.execute(trans);
-        db.sync(trans.lastPos, SyncLevel.STRONG);
+        db.sync(trans.lastPos, SyncLevel.ORDINARY);
         long size1 = mstream.getLength();
         
         trans = db.trans().put("key2", "value2").build();
         db.execute(trans);
-        db.sync(trans.lastPos, SyncLevel.STRONG);
+        db.sync(trans.lastPos, SyncLevel.ORDINARY);
         db.stop();
         
         // The first byte of the size of the second transaction is written, and it is 8.
@@ -1330,7 +1329,7 @@ public class DbTester {
         Assert.assertTrue(DbUtil.getString(db2, "key2") == null);
         trans = db2.trans().put("key3", "value3").build();
         db2.execute(trans);
-        db2.sync(trans.lastPos, SyncLevel.STRONG);
+        db2.sync(trans.lastPos, SyncLevel.ORDINARY);
         db2.stop();
         
         Db db3 = testDb(mstream.copy());
@@ -1369,7 +1368,7 @@ public class DbTester {
         trans = db.trans().put("key3", v3).build();
         db.execute(trans);
         Assert.assertTrue(trans.tpos < 2 * dist && trans.lastPos > 2 * dist);
-        db.sync(trans.lastPos, SyncLevel.STRONG);
+        db.sync(trans.lastPos, SyncLevel.ORDINARY);
         db.stop();
         
         long[] cuts = {dist, dist + RecoverableStream.META_BLOCK_SIZE, 2 * dist};
@@ -1382,7 +1381,7 @@ public class DbTester {
             Assert.assertTrue(DbUtil.get(db2, "key3") == null);
             trans = db2.trans().put("key4", "value4").build();
             db2.execute(trans);
-            db2.sync(trans.lastPos, SyncLevel.STRONG);
+            db2.sync(trans.lastPos, SyncLevel.ORDINARY);
             db2.stop();
             
             Db db3 = Db.builder().testSetup(m.copy()).start();
@@ -1454,7 +1453,7 @@ public class DbTester {
         Db db = testDb(mstream);
         Trans trans = db.trans().put("key1", "value1").build();
         db.execute(trans);
-        db.sync(trans.lastPos, SyncLevel.STRONG);
+        db.sync(trans.lastPos, SyncLevel.ORDINARY);
         
         mstream.stop();     // Appends to mstream now fail.
         trans = db.trans().put("key2", "value2").build();
@@ -1462,7 +1461,7 @@ public class DbTester {
         
         DbFailedException syncEx = null;
         try {
-            db.sync(trans.lastPos, SyncLevel.STRONG);
+            db.sync(trans.lastPos, SyncLevel.ORDINARY);
         } catch (DbFailedException e) {
             syncEx = e;
         }
@@ -1695,27 +1694,25 @@ public class DbTester {
         db.stop();
     }
     
+    /**
+     * bergdb 005-11: a database has one stream. A second stream of another name, until
+     * 2026-11-04 a replica, is refused; one of the same name replaces the first.
+     */
     @Nano
-    public static void testBadReplica1() throws IOException {
+    public static void testSecondStreamRefused() {
         MemoryStream m0 = new MemoryStream();
         MemoryStream m1 = new MemoryStream();
-        
-        Db db = Db.builder().stream("m0", m0, 10*1000, 10).start();
-        db.execute(db.trans().put("a.txt", "v1").build());
-        db.sync(0, SyncLevel.ORDINARY);
-        db.close();
-        
-        db = Db.builder().stream("m1", m1, 10*1000, 10).start();
-        db.execute(db.trans().put("b.txt", "v2-b").build());
-        
-        BadReplicaException ex = null;
+        DbBuilder b = Db.builder().stream("m0", m0, 10*1000, 10);
+        IllegalStateException ex = null;
         try {
-            db.addReplica("m0", m0, 10*1000, 10);
-        } catch (BadReplicaException e) {
+            b.stream("m1", m1, 10*1000, 10);
+        } catch (IllegalStateException e) {
             ex = e;
         }
-        Assert.assertTrue(ex != null);
-        db.stop();
+        Assert.assertTrue("a second stream is refused", ex != null);
+        Assert.assertTrue(b.getMainStream() == m0);
+        b.stream("m0", m1, 10*1000, 10);
+        Assert.assertTrue(b.getMainStream() == m1);
     }
     
     @Nano
@@ -2276,7 +2273,7 @@ public class DbTester {
                         t.nextPos - t.tpos <= limit + 2 * RecoverableStream.META_BLOCK_SIZE);
             }
             long checksum = DbUtil.checksum(db);
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             db.stop();
             
             CoreTestClock clock2 = new CoreTestClock();
@@ -2386,7 +2383,7 @@ public class DbTester {
                 }
             }
             checkGetTrans(db, ts);
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             db.stop();
             
             Db db2 = Db.builder().testSetup(s.copy()).startupDistance(startupDistance).start();
@@ -2521,7 +2518,7 @@ public class DbTester {
         b.testSetupExceptStream();
         b.stream("main", s, 100 * 1000, 10);
         final Db db = b.start();
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         final byte[] big = new byte[400 * 1000];
         Thread w = new Thread() {
             public void run() {
@@ -2559,7 +2556,7 @@ public class DbTester {
             b.testSetupExceptStream();
             b.stream("main", s, 100 * 1000, 10);
             final Db db = b.start();
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             for (int i = 0; i < 100; i++) {
                 db.execute(db.trans().put("/k" + i, "v" + i).build());
             }
@@ -2606,7 +2603,7 @@ public class DbTester {
         b.testSetupExceptStream();
         b.stream("main", s, 100 * 1000, 10);
         final Db db = b.start();
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         s.failAppends = true;
         Throwable thrown = DbTesterFailure.within(10 * 1000, new Runnable() {
             public void run() {
@@ -2680,7 +2677,7 @@ public class DbTester {
             b.testSetupExceptStream();
             b.stream("main", s, 100 * 1000, 60 * 1000);
             Db db = b.start();
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             db.execute(db.trans().put("/buffered", "value").build());
             s.failAppends = true;
             if (mode == 1) db.stop();

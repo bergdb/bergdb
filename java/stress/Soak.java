@@ -951,7 +951,7 @@ public class Soak {
         synchronized (dbLock) {
             harvestStats(index - 1);
             long t0 = System.nanoTime();
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             diskWaits.add(TimedIo.writeBufferWaits(db));
             db.close();
             closeSec = 1e-9 * (System.nanoTime() - t0);
@@ -1250,7 +1250,7 @@ public class Soak {
         sampler.finish();
         harvestStats(restartsDone);
         long t0 = System.nanoTime();
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         diskWaits.add(TimedIo.writeBufferWaits(db));
         db.close();
         phases.put("close", 1e-9 * (System.nanoTime() - t0));

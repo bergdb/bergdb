@@ -22,7 +22,7 @@ public class DeleteRepro {
         db.execute(db.trans().delete(delKey).build());      // key does not exist
         clock.setTime(30);
         db.execute(db.trans().put("/b", "y").build());
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.stop();
         stream = stream.copy();
         try {
@@ -30,7 +30,7 @@ public class DeleteRepro {
             System.out.println("restart OK; /a=" + DbUtil.getString(db, "/a") + ", /b=" + DbUtil.getString(db, "/b"));
             clock.setTime(40);
             db.execute(db.trans().put("/c", "z").build());
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             db.stop();
             stream = stream.copy();
             db = Db.builder().testSetup(stream).clock(clock).start();

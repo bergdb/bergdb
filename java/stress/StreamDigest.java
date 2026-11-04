@@ -190,7 +190,7 @@ public class StreamDigest {
 
             boolean checkpoint = (i + 1) % every == 0 || i == n - 1;
             if (restarts && (i + 1) % every == 0 && i + 1 < n) {
-                db.sync(SyncLevel.STRONG);
+                db.sync(SyncLevel.ORDINARY);
                 db.stop();
                 stream = stream.copy();
                 db = start(stream, clock);
@@ -200,7 +200,7 @@ public class StreamDigest {
                 lookups += lookups(db, i);
             }
         }
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         long cut = Math.max(stream.getFirstPos(), db.getFirstAvailablePos());
         String line = "DIGEST " + name + " " + mode + " length=" + stream.getLength()
                 + " firstPos=" + stream.getFirstPos()

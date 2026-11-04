@@ -116,7 +116,7 @@ public class DbJunk {
                 samples++;
             }
         }
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         System.out.println("n=" + N + " keys=" + KEYS + " ops=" + (EXACT ? "" : "1..") + OPS
                 + " maxnode=" + MAXNODE + " sd=" + SD + " del=" + DEL + "% seed=" + SEED);
         System.out.println("  stream bytes " + stream.getLength() + ", nodes written " + nodes

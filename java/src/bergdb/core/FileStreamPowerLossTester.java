@@ -17,7 +17,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import bergdb.common.NullProgressListener;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
@@ -287,10 +286,10 @@ public class FileStreamPowerLossTester {
         ModelIo io = new ModelIo(dir, 3, 1);
         FileStream stream = new FileStream(dir, io);
         Object lock = new Object();
-        StorageManager manager = new StorageManager.Builder(lock)
-                .stream("main", stream, 500000, 10).build();
+        StorageManager manager = new StorageManager.Builder()
+                .stream(stream, 500000, 10).build();
         try {
-            synchronized (lock) { manager.syncStreams(new NullProgressListener()); }
+            synchronized (lock) { manager.start(); }
             if (directory) io.failDirectoryForce = true;
             else io.failFileForce = true;
             byte[] data = new byte[directory ? 200100 : 100];
@@ -331,10 +330,10 @@ public class FileStreamPowerLossTester {
             }
         };
         Object lock = new Object();
-        StorageManager manager = new StorageManager.Builder(lock)
-                .stream("main", new FileStream(dir, io), 1000, 10).build();
+        StorageManager manager = new StorageManager.Builder()
+                .stream(new FileStream(dir, io), 1000, 10).build();
         try {
-            synchronized (lock) { manager.syncStreams(new NullProgressListener()); manager.append(new byte[100], 0, 100); }
+            synchronized (lock) { manager.start(); manager.append(new byte[100], 0, 100); }
             Assert.assertTrue("force not reached", entered.await(5, TimeUnit.SECONDS));
             Assert.assertEquals(0, manager.getDurableLength());
             release.countDown();
@@ -375,11 +374,11 @@ public class FileStreamPowerLossTester {
         };
         Object lock = new Object();
         FileStream stream = new FileStream(dir, io);
-        StorageManager manager = new StorageManager.Builder(lock)
-                .stream("main", stream, 500000, 10).build();
+        StorageManager manager = new StorageManager.Builder()
+                .stream(stream, 500000, 10).build();
         try {
             synchronized (lock) {
-                manager.syncStreams(new NullProgressListener());
+                manager.start();
                 manager.append(new byte[200100], 0, 200100);
             }
             Assert.assertTrue("append force not reached", entered.await(5, TimeUnit.SECONDS));

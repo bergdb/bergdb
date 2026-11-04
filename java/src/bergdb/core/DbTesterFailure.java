@@ -21,7 +21,6 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
-import bergdb.pub.util.StorageInfo;
 import bergdb.pub.util.SyncLevel;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
@@ -62,7 +61,7 @@ public class DbTesterFailure {
         MemoryStream s = new MemoryStream();
         Db db = Db.builder().testSetup(s).audit(1).start();
         db.execute(db.trans().put("/a", "a0").put("/b", "b0").build());
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         final long time = db.lookupTime(Long.MAX_VALUE);
         final long length = s.getLength();
 
@@ -80,7 +79,7 @@ public class DbTesterFailure {
         Assert.assertEquals("the lookup time", time, db.lookupTime(Long.MAX_VALUE));
         assertRefused(db, thrown);
 
-        db.sync(SyncLevel.STRONG);      // Still works, for the transactions before.
+        db.sync(SyncLevel.ORDINARY);      // Still works, for the transactions before.
         Assert.assertEquals("the stream's length", length, s.getLength());
         db.close();
 
@@ -149,7 +148,7 @@ public class DbTesterFailure {
         final FaultStream s = new FaultStream();
         Db db = startEvicting(s, 0);
         fill(db);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         final long time = db.lookupTime(Long.MAX_VALUE);
         final long length = s.getLength();
 
@@ -182,7 +181,7 @@ public class DbTesterFailure {
         assertRefused(db, e.getCause());
 
         if (corrupt) {
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             Assert.assertEquals("the stream's length", length, s.getLength());
         }
         s.failReads = false;
@@ -214,7 +213,7 @@ public class DbTesterFailure {
         FaultStream s = new FaultStream();
         Db db = Db.builder().testSetup(s).start();
         db.execute(db.trans().put("/a", "a0").build());
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
 
         s.failAppends = true;
         db.execute(db.trans().put("/a", "a1").build());     // In memory and buffered only.
@@ -241,7 +240,7 @@ public class DbTesterFailure {
         final MemoryStream s = new MemoryStream();
         final Db db = Db.builder().testSetup(s).start();
         db.execute(db.trans().put("/a", "a0").build());
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
 
         final Throwable[] waiting = new Throwable[1];
         final Thread writer2 = new Thread(new Runnable() {
@@ -346,7 +345,7 @@ public class DbTesterFailure {
         final FaultStream s = new FaultStream();
         Db db = startEvicting(s, 0);
         fill(db);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         final long length = s.getLength();
 
         if (corrupt) {
@@ -377,7 +376,7 @@ public class DbTesterFailure {
         s.failReads = false;
         s.corruptReads = false;
         if (corrupt) {
-            db.sync(SyncLevel.STRONG);      // The storage is healthy.
+            db.sync(SyncLevel.ORDINARY);      // The storage is healthy.
         }
         Assert.assertEquals("the stream's length", length, s.getLength());
         db.close();
@@ -427,7 +426,7 @@ public class DbTesterFailure {
         final KeyCountStream s = new KeyCountStream();
         Db db = startEvicting(s, 0);
         fill(db);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         final long length = s.getLength();
 
         s.damage = true;
@@ -452,7 +451,7 @@ public class DbTesterFailure {
                 && e.getCause().getMessage().startsWith("Bad key count"));
         assertRefused(db, e.getCause());
         s.damage = false;
-        db.sync(SyncLevel.STRONG);      // The storage is healthy.
+        db.sync(SyncLevel.ORDINARY);      // The storage is healthy.
         Assert.assertEquals("the stream's length", length, s.getLength());
         db.close();
 
@@ -473,7 +472,7 @@ public class DbTesterFailure {
         final FaultStream s = new FaultStream();
         Db db = startEvicting(s, 0);
         fill(db);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         final long time = db.lookupTime(Long.MAX_VALUE);
         final long length = s.getLength();
 
@@ -504,13 +503,13 @@ public class DbTesterFailure {
         FaultStream s = new FaultStream();
         Db db = Db.builder().testSetup(s).start();
         db.execute(db.trans().put("/a", "a0").build());
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
 
         s.failAppends = true;
         db.execute(db.trans().put("/a", "a1").build());     // In memory and buffered only.
         DbFailedException e = null;
         try {
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
         } catch (DbFailedException ex) {
             e = ex;
         }
@@ -535,7 +534,7 @@ public class DbTesterFailure {
         final FaultStream s = new FaultStream();
         final Db db = Db.builder().testSetup(s).start();
         db.execute(db.trans().put("/a", "a0").build());
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
 
         s.holdAppends = true;       // The flush waits, and so does the sync.
         db.execute(db.trans().put("/a", "a1").build());
@@ -543,7 +542,7 @@ public class DbTesterFailure {
         Thread syncer = new Thread(new Runnable() {
             public void run() {
                 try {
-                    db.sync(SyncLevel.STRONG);
+                    db.sync(SyncLevel.ORDINARY);
                 } catch (Throwable e) {
                     thrown[0] = e;
                 }
@@ -561,7 +560,7 @@ public class DbTesterFailure {
                 && thrown[0].getCause() instanceof InterruptedIOException);
 
         s.holdAppends = false;
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         db.execute(db.trans().put("/b", "b1").build());
         Assert.assertEquals("a1", DbUtil.getString(db, "/a"));
         Assert.assertEquals("b1", DbUtil.getString(db, "/b"));
@@ -581,7 +580,7 @@ public class DbTesterFailure {
         final FaultStream s = new FaultStream();
         final Db db = startEvicting(s, 0);
         fill(db);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
 
         GetMany g = db.newGetMany();
         g.lookupTime = Long.MAX_VALUE;
@@ -634,7 +633,7 @@ public class DbTesterFailure {
             final CloseRaceStream s = new CloseRaceStream(new FileStream(dir));
             final Db db = startEvicting(s, 0);
             fill(db);
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             final Throwable[] thrown = new Throwable[1];
             Thread reader = new Thread(new Runnable() {
                 public void run() {
@@ -768,7 +767,7 @@ public class DbTesterFailure {
             Db db = Db.builder().testSetup(s).start();
             Trans t = db.trans().put("/a", "a0").build();
             db.execute(t);
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             Assert.assertEquals("the transaction", t.tt, db.getTrans(t.tpos).tt);
 
             if (corrupt) {
@@ -805,7 +804,7 @@ public class DbTesterFailure {
         db.execute(t1);
         Trans t2 = db.trans().put("/b", "b0").build();
         db.execute(t2);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         s.pretruncate(t2.tpos);
 
         LookupTimeNotAvailableException expired = null;
@@ -900,7 +899,7 @@ public class DbTesterFailure {
         db.execute(t1);
         Trans t2 = db.trans().put("/b", "b0").build();
         db.execute(t2);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         final long length = s.getLength();
         
         // The value node of /a, as stored: size 4, type 1, version 1, checksum 2, id 8,
@@ -962,7 +961,7 @@ public class DbTesterFailure {
         Assert.assertTrue("getTrans of the second refused",
                 refused != null && refused.getCause() == e.getCause());
         s.patch = null;
-        db.sync(SyncLevel.STRONG);      // The storage is healthy.
+        db.sync(SyncLevel.ORDINARY);      // The storage is healthy.
         Assert.assertEquals("the stream's length", length, s.getLength());
         db.close();
 
@@ -1012,62 +1011,6 @@ public class DbTesterFailure {
     }
     
     /**
-     * bergdb 005-32: a start with a main and a replica of two histories fails (005-28, 005-11's
-     * P9 in small), after it has copied the replica's last transaction to the main. The copy
-     * is written before the exception leaves, both streams are closed, and no thread runs.
-     * Before, a start of the main alone right after it raced with the failed start's thread,
-     * which wrote the copy later, and lost a synced transaction 4 times in 20.
-     */
-    @Nano
-    public static void testFailedStartOfTwoHistories() throws IOException {
-        MemoryStream m0 = new MemoryStream();
-        MemoryStream r0 = new MemoryStream();
-        DbBuilder b = Db.builder();
-        b.testSetupExceptStream();
-        b.stream("main", m0, 100 * 1000, 10);
-        b.stream("r", r0, 100 * 1000, 10);
-        b.startupDistance(10);
-        Db db = b.start();
-        Trans x = null;
-        Trans t = null;
-        for (int k = 0; k < 4; k++) {
-            x = t;
-            t = db.trans().put("/k" + k, "v" + k).build();
-            db.execute(t);
-        }
-        db.close();
-        Assert.assertTrue("t's startup pos is x", t.startupPos == x.tpos && x.nextPos == t.tpos);
-        MemoryStream m1 = m0.copy();
-        m1.truncate(x.lastPos);             // A crash: x torn, t lost.
-        DbBuilder alone = Db.builder();
-        alone.testSetupExceptStream();
-        alone.stream("main", m1, 100 * 1000, 10);
-        alone.start().close();              // Recovery zero-fills x.
-        
-        MemoryStream m = m1.copy();
-        MemoryStream r = r0.copy();
-        Assert.assertTrue("the replica is longer", r.getLength() > m.getLength());
-        Set<Thread> before = storageThreads();
-        DbBuilder both = Db.builder();
-        both.testSetupExceptStream();
-        both.stream("main", m, 100 * 1000, 10);
-        both.stream("r", r, 100 * 1000, 10);
-        Db db2 = both.build();
-        StreamFormatException e = null;
-        try {
-            db2.start();
-        } catch (StreamFormatException ex) {
-            e = ex;
-        }
-        Assert.assertTrue("the start throws", e != null);
-        Assert.assertEquals("the copy to the main is written", r.getLength(), m.getLength());
-        assertNoNewStorageThreads(before);
-        assertClosed(m);
-        assertClosed(r);
-        assertStopped(db2);
-    }
-    
-    /**
      * bergdb 005-32: an Error in a flush (as an assertion of FileStream) ended the storage
      * thread without telling the storage, and a sync waited for ever. Now the flush fails the
      * stream, and the sync fails the database (005-30); close() returns.
@@ -1076,12 +1019,12 @@ public class DbTesterFailure {
     public static void testErrorInFlushFailsSync() throws Exception {
         final FaultStream s = new FaultStream();
         final Db db = Db.builder().testSetup(s).start();
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         s.errorInAppends = true;
         db.execute(db.trans().put("/a", "a0").build());
         Throwable thrown = within(10000, new Runnable() {
             public void run() {
-                db.sync(SyncLevel.STRONG);
+                db.sync(SyncLevel.ORDINARY);
             }
         });
         Assert.assertTrue("the sync fails: " + thrown, thrown instanceof DbFailedException);
@@ -1122,7 +1065,7 @@ public class DbTesterFailure {
     /** Waits, up to 10 s, until the main storage has failed, as after a failed flush. */
     private static void waitForStorageError(Db db) {
         final long end = System.nanoTime() + 10L * 1000 * 1000 * 1000;
-        while (db.getStorageInfos()[0].getStatus() != StorageInfo.STATUS_ERROR) {
+        while (!db.internal().storageFailed()) {
             if (System.nanoTime() > end) {
                 throw new AssertionError("the storage did not fail");
             }

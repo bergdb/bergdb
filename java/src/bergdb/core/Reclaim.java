@@ -1315,10 +1315,10 @@ public class Reclaim implements Db.TransactionListener {
                 db.execute(t);
             }
             
-            db.sync(SyncLevel.STRONG);    // The cut waits until the table is durable,
+            db.sync(SyncLevel.ORDINARY);    // The cut waits until the table is durable,
             clock.setTime(size * Clock.UNITS_PER_SEC + 1);
             db.execute(db.trans().put("k2", value).build());    // and is made at a transaction.
-            db.sync(SyncLevel.STRONG);    // A cut in bytes not yet flushed waits for the flush.
+            db.sync(SyncLevel.ORDINARY);    // A cut in bytes not yet flushed waits for the flush.
             Assert.assertTrue("" + ints[0], ints[0] > 0);
             Assert.assertTrue("" + ints[1], ints[1] > value.length);
             db.close();
@@ -1345,7 +1345,7 @@ public class Reclaim implements Db.TransactionListener {
             MemoryStream stream = new MemoryStream();
             Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(2000).start();
             distancePuts(db, clock, time, 2000);
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             db.close();
             
             long t0 = time[0];
@@ -1492,7 +1492,7 @@ public class Reclaim implements Db.TransactionListener {
             }
             
             Assert.assertTrue("no cut", stream.getCut() > 0);
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             db.stop();
             clock = new CoreTestClock();
             clock.setTime(time);
@@ -1583,7 +1583,7 @@ public class Reclaim implements Db.TransactionListener {
                 // A restart right after an iteration is done: it is not yet cut there.
                 if (db.getReclaimIterationCount() > 0 && stream.getCut() > 0) {
                     long first = db.getFirstAvailableLookupTime();
-                    db.sync(SyncLevel.STRONG);
+                    db.sync(SyncLevel.ORDINARY);
                     db.stop();
                     stream = stream.copy();
                     clock = new CoreTestClock();
@@ -1621,7 +1621,7 @@ public class Reclaim implements Db.TransactionListener {
                 db.execute(db.trans().put("/k/" + r.nextInt(50), v).build());
                 
                 if (!restarted && stream.getCut() > 0) {
-                    db.sync(SyncLevel.STRONG);
+                    db.sync(SyncLevel.ORDINARY);
                     db.stop();
                     stream = stream.copy();
                     clock = new CoreTestClock();
@@ -1676,7 +1676,7 @@ public class Reclaim implements Db.TransactionListener {
             }
             
             Assert.assertTrue("cuts: " + cuts, cuts >= 3);
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             db.stop();
             clock = new CoreTestClock();
             clock.setTime(time);
@@ -1714,7 +1714,7 @@ public class Reclaim implements Db.TransactionListener {
                     db.execute(db.trans().put("/k/" + r.nextInt(5), v).build());
                     if (stream.getCut() > cut) {
                         cut = stream.getCut();
-                        db.sync(SyncLevel.STRONG);
+                        db.sync(SyncLevel.ORDINARY);
                         db.stop();
                         stream = stream.copy();
                         clock = new CoreTestClock();
@@ -1778,7 +1778,7 @@ public class Reclaim implements Db.TransactionListener {
                     Assert.assertTrue(iter.next());
                     Assert.assertTrue(iter.next());
                     long crashPos = iter.getStoredTrans().tpos;
-                    db.sync(SyncLevel.STRONG);
+                    db.sync(SyncLevel.ORDINARY);
                     db.stop();
                     stream = stream.copy();
                     stream.truncate(crashPos);
@@ -2058,7 +2058,7 @@ public class Reclaim implements Db.TransactionListener {
             }
 
             Assert.assertTrue("steps: " + steps, steps >= 3);
-            db.sync(SyncLevel.STRONG);
+            db.sync(SyncLevel.ORDINARY);
             db.stop();
             clock = new CoreTestClock();
             clock.setTime(time);
@@ -2109,7 +2109,7 @@ public class Reclaim implements Db.TransactionListener {
                     // database has most of them in memory.
                     cuts++;
                     lastCut = stream.getCut();
-                    db.sync(SyncLevel.STRONG);
+                    db.sync(SyncLevel.ORDINARY);
                     db.stop();
                     stream = stream.copy();
                     clock = new CoreTestClock();
@@ -2188,7 +2188,7 @@ public class Reclaim implements Db.TransactionListener {
                 steps[pass] = st.steps;
                 maxNodes[pass] = st.maxStepNodes;
                 
-                db.sync(SyncLevel.STRONG);
+                db.sync(SyncLevel.ORDINARY);
                 db.stop();
                 stream = stream.copy();
                 clock = new CoreTestClock();

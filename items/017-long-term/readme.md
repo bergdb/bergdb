@@ -36,6 +36,10 @@ Files
   a publication: self-indexed streams, BergDB as a whole, the
   verification, and the code-only transactions. Moved from 005-06 on
   2026-11-04. Open; explored now, Frans decides later.
+* [017-03](03-replication/readme.md). Replication: ways to implement it.
+  The design that BergDB had until 2026-11-04, when it was removed (005-11,
+  Frans: "A with C2 now"), Frans's question on durability and waiting for
+  replication, and the options for a future design. Open; notes only.
 
 
 Log
@@ -52,3 +56,7 @@ later.
 moved from 005-06 by Frans, who asked for an exploration now: a paper on
 self-indexed streams, the other options, and whether the code-only
 approach to transactions (STM and historic queries) is novel.
+
+2026-11-04. 017-03, replication, created when 005-11 was decided ("A with
+C2 now") and replication was removed from BergDB: the removed design in
+full, Frans's question, and the options for a future design.

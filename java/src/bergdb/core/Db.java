@@ -10,9 +10,7 @@ import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.Set;
 import bergdb.common.Bug;
-import bergdb.common.NullProgressListener;
 import bergdb.common.Util;
-import bergdb.core.DbHelper.AddReplicaClass;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.GetData;
@@ -28,14 +26,11 @@ import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.pub.util.BadCryptoKey;
-import bergdb.pub.util.BadReplicaException;
 import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
-import bergdb.pub.util.Job;
 import bergdb.pub.util.LookupTimeNotAvailableException;
-import bergdb.pub.util.StorageInfo;
 import bergdb.pub.util.SyncLevel;
 import bergdb.storage.BadMagicBytes;
 import bergdb.storage.BufferedStream;
@@ -287,11 +282,9 @@ public class Db implements AutoCloseable {
     }
 
     private StorageManager createStorageManager(DbBuilder b) {
-        StorageManager.Builder smBuilder = new StorageManager.Builder(writeLock);
-        for (int i = 0; i < b.streamInfos.size(); i++) {
-            DbBuilder.StreamInfo info = b.streamInfos.get(i);
-            smBuilder.stream(info.name, info.stream, info.bufferSize, info.bufferTime);
-        }
+        DbBuilder.StreamInfo info = b.streamInfo;
+        StorageManager.Builder smBuilder = new StorageManager.Builder();
+        smBuilder.stream(info.stream, info.bufferSize, info.bufferTime);
         
         StorageManager sm = smBuilder.build();
         return sm;
@@ -497,62 +490,6 @@ public class Db implements AutoCloseable {
     }
     
     /**
-     * Adds a replica stream while the database is running. The replica will be
-     * synched with the main stream in a background Job that is returned to the
-     * caller.
-     * 
-     * @param name
-     *            Name of the storage.
-     * @param replicaStream
-     *            The replica stream.
-     * @param bufferSize
-     *            Buffer size in of BufferedStream that will wrap 'stream'. In
-     *            bytes.
-     * @param bufferTime
-     *            Buffer time in milliseconds.
-     * @throws BadReplicaException
-     *            If the replica stream is longer than the main stream; if the
-     *            replica stream has a different database ID than the main
-     *            stream.
-     * @throws IOException
-     *            If there was an IO error with the replica.
-     */
-    public Job addReplica(final String name, final AppendOnlyStream replicaStream,
-            final int bufferSize, final int bufferTime) throws IOException {
-        // Note, the dummy write followed by syncStrong call are needed to make
-        // sure replica is really synched once the Job finishes.
-        
-        if (name == null) {
-            throw new IllegalArgumentException("name == null not allowed.");
-        }
-        
-        if (name.length() == 0) {
-            throw new IllegalArgumentException("Empty string for 'name' not allowed.");
-        }
-        
-        if (replicaStream == null) {
-            throw new IllegalArgumentException("replicaStream == null not allowed.");
-        }
-        
-        if (replicaStream instanceof BufferedStream) {
-            throw new IllegalArgumentException("'replica' is instance of BufferedStream; not allowed.");
-        }
-        
-        // Checks database id of main and replica; must match. 
-        DbHelper.checkReplicaId(metaBlock.getId(), replicaStream);
-        
-        return AddReplicaClass.addReplica(storageManager, this, name, replicaStream, bufferSize, bufferTime);
-    }
-
-    public void removeReplica(String name) {
-        storageManager.removeReplica(name);
-    }
-    
-    public StorageInfo[] getStorageInfos() {
-        return storageManager.getStorageInfos();
-    }
-    
-    /**
      * @see bergdb.core.DbClock
      */
     public long currentTime() {
@@ -581,7 +518,6 @@ public class Db implements AutoCloseable {
      *             transaction (bergdb 005-33). The start writes nothing.
      * @throws IllegalStateException
      *             If start() has been called already.
-     * @throws BadReplicaException
      * @throws DbFailedException
      *             If a read of reclaim's table, the last step of the startup, fails on the
      *             storage (bergdb 005-30).
@@ -595,12 +531,13 @@ public class Db implements AutoCloseable {
      * after constructor and before the get/set methods.
      * 
      * <p>A start that throws closes the storage before the exception leaves (2026-10-24,
-     * bergdb 005-32): what it appended is written (recovery's zero fill, the copies between
-     * the main stream and its replicas, as any start writes them), the streams are closed
-     * and their threads have ended, and the database is stopped: later calls are refused as
-     * after stop(). A failure of that close is added to the exception as suppressed. Before,
-     * the storage ran on until the garbage collector finalized the Db, and its threads wrote
-     * into a database started after it on the same files.</p>
+     * bergdb 005-32): what it appended is written (recovery's zero fill, as any start writes
+     * it; until 2026-11-04, bergdb 005-11, also the copies between the main stream and its
+     * replicas), the stream is closed and its thread has ended, and the database is
+     * stopped: later calls are refused as after stop(). A failure of that close is added to
+     * the exception as suppressed. Before, the storage ran on until the garbage collector
+     * finalized the Db, and its threads wrote into a database started after it on the same
+     * files.</p>
      * 
      * @param params  
      *          Used for testing, normally set to StartParams.NULL as default.
@@ -614,7 +551,6 @@ public class Db implements AutoCloseable {
      *          transaction (bergdb 005-33). The start writes nothing.
      * @throws IllegalStateException
      *          If start() has been called already, or stop(): nothing is closed then.
-     * @throws BadReplicaException
      * @throws DbFailedException
      *          If a read of reclaim's table, the last step of the startup, fails on the
      *          storage (bergdb 005-30).
@@ -668,7 +604,6 @@ public class Db implements AutoCloseable {
      * 
      * @throws StreamIoException
      * @throws StreamFormatException
-     * @throws BadReplicaException
      * @throws IllegalDbStateException
      * @throws BadCryptoKey
      * @throws DatabaseNotCreatedException
@@ -676,7 +611,7 @@ public class Db implements AutoCloseable {
     private StartInfo startInner(StartParams params) {
         assertStateIsZero();
 
-        syncStreams();
+        storageManager.start();
         handleEmptyStream();
         refuseIncompleteCreation();
         
@@ -1286,19 +1221,6 @@ public class Db implements AutoCloseable {
     }
 
     /**
-     * Syncs raw storage streams.
-     */
-    private void syncStreams() {
-        storageManager.checkStreamIds();
-        
-        try {
-            storageManager.syncStreams(new NullProgressListener());
-        } catch (IOException e) {
-            throw new StreamIoException(e);
-        }
-    }
-
-    /**
      * <p>Stops the database and closes it properly, without waiting (2026-10-24, bergdb
      * 005-35). No transaction or read starts after this method; a transaction that runs
      * completes, and is written. A thread of its own then writes what is buffered, closes
@@ -1800,13 +1722,8 @@ public class Db implements AutoCloseable {
         
         switch (syncLevel) {
         case ORDINARY:
-        case STRONG:
             try {
-                if (syncLevel == SyncLevel.ORDINARY) {
-                    storageManager.sync(length);
-                } else {
-                    storageManager.syncStrong(length);
-                }
+                storageManager.sync(length);
             } catch (InterruptedIOException e) {
                 // Not a failure of the storage (bergdb 005-30).
                 throw new StreamIoException(e);
@@ -2605,6 +2522,15 @@ public class Db implements AutoCloseable {
 
         public AppendOnlyStream getMainStream() {
             return storageManager.getMainStream();
+        }
+        
+        /**
+         * True when the main stream has failed, as after a failed flush; see
+         * StorageManager.hasFailed(). For tests; until 2026-11-04 (bergdb 005-11) they asked
+         * getStorageInfos().
+         */
+        public boolean storageFailed() {
+            return storageManager.hasFailed();
         }
         
         /**

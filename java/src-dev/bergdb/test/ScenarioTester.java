@@ -53,7 +53,7 @@ public class ScenarioTester {
         }
         
         long checksum1 = DbUtil.checksum(db);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         
         //db.getStream().print(System.out);
         
@@ -131,7 +131,7 @@ public class ScenarioTester {
         db.execute(db.trans().put("/direct/key2", "v2"));     
         db.execute(db.trans().put("/z2", new byte[200*1000]));
         long sum1 = DbUtil.checksum(db, Long.MAX_VALUE, true, true);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         
         //System.out.println("==== printGraph");
         //db.printGraph(System.out);
@@ -173,7 +173,7 @@ public class ScenarioTester {
         }
         
         long sum1 = DbUtil.checksum(db, Long.MAX_VALUE, true, true);
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         
         db.close();
         
