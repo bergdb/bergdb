@@ -1681,3 +1681,21 @@ historical prefix model from a proposed unforced-tail-damage model. Moved
 005-83's investigation to 014-01; original artifacts stay usable in 005.
 Added an AppendOnlyStream Javadoc reference. No executable source changes;
 F1 files preserved. Contract and protocol remain open; no commit.
+
+2026-11-04. Release 2026.2's unattended night (016-02) stopped at 22:20
+on 3 November: the coordinator session's routine OAuth token refresh was
+refused (HTTP 400), and every later request failed with "OAuth refresh token
+is no longer valid; run /login to re-authenticate" (the Claude Code
+extension's log). The session process lived and the network was up, so the
+watchdog (013-02) did not count it as a pause and wrote news.md only at its
+end, 07:05. Lost: the 00:45 to 02:50 release steps, the Codex reviews after
+23:06 and the morning summary. What ran without the session: night.sh at
+02:10 (NIGHT OK on `3386ade`, all the night's fixes in) and the conductor's
+quiet block. The cause is not proven: a plan change, or a second Claude Code
+process on the same login (usage.sh's headless `claude -p /usage`, last at
+22:14) that renewed the token first. Frans logged in again at 07:24. To do
+(013-02): check the login before a night (`claude auth status` and one
+usage.sh reading); a watchdog that probes the login when the heartbeat is
+stale and alerts at once; helpers on a token of their own (`claude
+setup-token`, to be tested); the scripted release steps in the conductor,
+not in the session.
