@@ -21,3 +21,5 @@ Log
 ---
 
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
+
+2026-11-04. Review R8 found the same (R8-F1, items/016-release-2026-2/06-reviews/R8.md).

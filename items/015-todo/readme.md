@@ -67,6 +67,15 @@ Open
 | [015-53](53-stop-during-step-committed.md) | Fix | A transaction that runs when `stop()` comes is committed, but ... | open |
 | [015-54](54-safe-pos-javadoc.md) | Fix | pSafe is not "the stream length now", as `markSafePositions`'s ... | open |
 | [015-55](55-database-time-margin.md) | Fix | A user transaction at the last database time is taken, and ... | open |
+| [015-56](56-second-start-closes-stream.md) | Fix | A refused second start() of one builder closes the running ... | open |
+| [015-57](57-resolve-ignores-timezone.md) | Fix | Time.resolve(TimeZone, String) ignores its time zone | open |
+| [015-58](58-testclock-current-time.md) | Fix | TestClock.setTime() refuses the clock's current time, which its ... | open |
+| [015-59](59-new-connection-lookup-time.md) | Fix | Connection.getLookupTime() of a new connection throws ... | open |
+| [015-60](60-connections-per-thread-kept.md) | Fix | Database.connection() keeps a connection for every thread that ... | open |
+| [015-61](61-deletion-job-done-at-stop.md) | Fix | A deletion job that stop() or close() ends early reports "Done! ... | open |
+| [015-62](62-transactioninfo-after-miss.md) | Fix | transactionInfo() after a get() that found no entry throws ... | open |
+| [015-63](63-time-tostring-threads.md) | Fix | Time.toString() from several threads gives wrong strings and throws | open |
+| [015-64](64-key-replace-last-only.md) | Fix | Key replace replaces only the last "${transactionTime}" of a key | open |
 
 
 Closed
@@ -183,6 +192,15 @@ Files
 * [53-stop-during-step-committed.md](53-stop-during-step-committed.md). 015-53, Fix: R7-F4.
 * [54-safe-pos-javadoc.md](54-safe-pos-javadoc.md). 015-54, Fix: R7-F5.
 * [55-database-time-margin.md](55-database-time-margin.md). 015-55, Fix: R7-F6.
+* [56-second-start-closes-stream.md](56-second-start-closes-stream.md). 015-56, Fix: R8-F10.
+* [57-resolve-ignores-timezone.md](57-resolve-ignores-timezone.md). 015-57, Fix: R8-F2.
+* [58-testclock-current-time.md](58-testclock-current-time.md). 015-58, Fix: R8-F3.
+* [59-new-connection-lookup-time.md](59-new-connection-lookup-time.md). 015-59, Fix: R8-F4.
+* [60-connections-per-thread-kept.md](60-connections-per-thread-kept.md). 015-60, Fix: R8-F5.
+* [61-deletion-job-done-at-stop.md](61-deletion-job-done-at-stop.md). 015-61, Fix: R8-F6.
+* [62-transactioninfo-after-miss.md](62-transactioninfo-after-miss.md). 015-62, Fix: R8-F7.
+* [63-time-tostring-threads.md](63-time-tostring-threads.md). 015-63, Fix: R8-F8.
+* [64-key-replace-last-only.md](64-key-replace-last-only.md). 015-64, Fix: R8-F9.
 
 
 Log

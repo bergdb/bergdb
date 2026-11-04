@@ -1,0 +1,288 @@
+diff --git a/java/src/bergdb/pubimp/Pack.java b/java/src/bergdb/pubimp/Pack.java
+index dffb226..7fe2104 100644
+--- a/java/src/bergdb/pubimp/Pack.java
++++ b/java/src/bergdb/pubimp/Pack.java
+@@ -31,6 +31,7 @@ public class Pack implements IPack {
+         Pack.class,
+         PubKeys.class,
+         PubInterruptTester.class,
++        R8Tester.class,
+         PubTester.class,
+         PubTesterComposite.class,
+         PubTesterIndex.class,
+diff --git a/java/src/bergdb/pubimp/R8Tester.java b/java/src/bergdb/pubimp/R8Tester.java
+new file mode 100644
+index 0000000..e9d08f5
+--- /dev/null
++++ b/java/src/bergdb/pubimp/R8Tester.java
+@@ -0,0 +1,270 @@
++package bergdb.pubimp;
++
++import java.util.List;
++import java.util.TimeZone;
++
++import bergdb.nanotest.Assert;
++import bergdb.nanotest.Nano;
++import bergdb.pub.Connection;
++import bergdb.pub.Database;
++import bergdb.pub.Factory;
++import bergdb.pub.Kv;
++import bergdb.pub.TestClock;
++import bergdb.pub.Time;
++import bergdb.pub.TransactionInfo;
++import bergdb.pub.util.IllegalDbStateException;
++import bergdb.pub.util.Job;
++
++/**
++ * Review R8 (bergdb 016-06): tests that fail on 3386ade, one per finding.
++ */
++public class R8Tester {
++    private R8Tester() {}
++
++    public static class Item {
++        public long amount;
++        public Item() {}
++        public Item(long amount) { this.amount = amount; }
++    }
++
++    /**
++     * R8-F1. Database's Javadoc (bergdb 005-46): every call but sync(), join() and a rerun's
++     * wait ignores an interrupt until it is done. deleteIndex() by an interrupted thread.
++     */
++    @Nano
++    public static void testDeleteIndexByInterruptedThread() throws Exception {
++        Database db = Factory.database().memory().start();
++        try {
++            db.indexBuilder("by-amount").dir("/items/").type("long").field("amount").createFast();
++            Connection c = db.connection();
++            for (int i = 0; i < 10; i++) {
++                c.w().put("/items/" + i, new Item(i)).execute();
++            }
++            Job job;
++            Thread.currentThread().interrupt();
++            try {
++                job = db.deleteIndex("by-amount");
++                Assert.assertTrue("the flag was lost", Thread.currentThread().isInterrupted());
++            } finally {
++                Thread.interrupted();
++            }
++            Assert.assertEquals(100, job.join().progress());
++        } finally {
++            Thread.interrupted();
++            db.close();
++        }
++    }
++
++    /** R8-F2. Time.resolve(TimeZone, String): "Resolves the time string using the given time zone." */
++    @Nano
++    public static void testTimeResolveUsesTheTimeZone() {
++        TimeZone stockholm = TimeZone.getTimeZone("Europe/Stockholm");
++        Time local = Time.resolve(stockholm, "2013-08-19 14:29");
++        Time utc = Time.utc("2013-08-19 12:29");
++        Assert.assertEquals(utc, local);
++    }
++
++    /** R8-F3. TestClock.setTime(): "The time must be larger than or equal to the current time." */
++    @Nano
++    public static void testTestClockSetTimeEqual() {
++        TestClock clock = new TestClock();
++        clock.setTime(Time.units(1000));
++        clock.setTime(Time.units(1000));
++        Assert.assertEquals(1000, clock.getTime());
++    }
++
++    /** TransactionInfo.kvs(): "Value == null is used to represent delete operations." */
++    @Nano
++    public static void testTransactionInfoHasTheDelete() {
++        Database db = Factory.database().memory().start();
++        try {
++            Connection c = db.connection();
++            c.put("/b", "old");
++            c.w().put("/a", "1").delete("/b").execute();
++            Assert.assertEquals("1", c.get("/a", String.class));
++            TransactionInfo info = c.transactionInfo();
++            List<Kv<byte[]>> kvs = info.kvs();
++            StringBuilder sb = new StringBuilder();
++            for (Kv<byte[]> kv : kvs) {
++                sb.append(kv.key()).append('=').append(kv.value() == null ? "null" : new String(kv.value())).append(' ');
++            }
++            Assert.assertEquals("kvs: " + sb, 2, kvs.size());
++        } finally {
++            db.close();
++        }
++    }
++
++    /** Database.setStartupDistanceInMb(): IllegalDbStateException when stopped. */
++    @Nano
++    public static void testSetStartupDistanceAfterClose() {
++        Database db = Factory.database().memory().start();
++        db.close();
++        try {
++            db.setStartupDistanceInMb(7);
++            throw new AssertionError("no exception");
++        } catch (IllegalDbStateException e) {
++            // Right.
++        }
++        Assert.assertEquals(50, db.getStartupDistanceInMb());
++    }
++
++    /** Database.setCacheSizeInMb(): "After stop() the method has no effect." */
++    @Nano
++    public static void testSetCacheSizeAfterClose() {
++        Database db = Factory.database().memory().cacheSizeInMb(100).start();
++        db.close();
++        db.setCacheSizeInMb(10);
++    }
++
++    /** sync() after close() returns (the transactions are written). */
++    @Nano
++    public static void testSyncAfterClose() throws Exception {
++        Database db = Factory.database().memory().start();
++        db.connection().put("/a", "1");
++        db.close();
++        db.sync();
++        db.connection().sync();
++    }
++
++    /**
++     * Database.currentTime(): at least the time of the last completed transaction, and less
++     * than the time of any future one.
++     */
++    @Nano
++    public static void testCurrentTime() {
++        Database db = Factory.database().memory().start();
++        try {
++            Connection c = db.connection();
++            for (int i = 0; i < 1000; i++) {
++                Time t0 = c.put("/a", "v" + i).getTime();
++                Time now = db.currentTime();
++                Assert.assertTrue(now.units() >= t0.units());
++                Time t1 = c.put("/a", "w" + i).getTime();
++                Assert.assertTrue(now + " " + t1, now.units() < t1.units());
++            }
++        } finally {
++            db.close();
++        }
++    }
++    /**
++     * R8-F4. Connection.getLookupTime() on a new connection: the requested lookup time is
++     * Time.MAX by default (Connection.setLookupTime()).
++     */
++    @Nano
++    public static void testNewConnectionLookupTime() {
++        Database db = Factory.database().memory().start();
++        try {
++            Connection c = db.newConnection();
++            Assert.assertEquals(Time.MAX, c.getLookupTime());
++        } finally {
++            db.close();
++        }
++    }
++
++    /** transactionInfo() after a get() of a key that has no entry. */
++    @Nano
++    public static void testTransactionInfoAfterGetOfMissingKey() {
++        Database db = Factory.database().memory().start();
++        try {
++            Connection c = db.newConnection();
++            c.put("/a", "1");
++            Assert.assertTrue(c.get("/missing", String.class) == null);
++            String r;
++            try {
++                TransactionInfo info = c.transactionInfo();
++                r = "info, kvs " + info.kvs().size();
++            } catch (RuntimeException e) {
++                r = e.getClass().getSimpleName() + ": " + e.getMessage();
++            }
++            System.out.println("R8 transactionInfo after a missing key: " + r);
++        } finally {
++            db.close();
++        }
++    }
++
++    /**
++     * R8-F5. Database.connection() keeps the Connection of every thread that called it, also
++     * after the thread has ended, until stop().
++     */
++    @Nano
++    public static void testConnectionOfEndedThreadsKept() throws Exception {
++        final Database db = Factory.database().memory().start();
++        try {
++            for (int i = 0; i < 200; i++) {
++                Thread t = new Thread(new Runnable() {
++                    public void run() {
++                        db.connection();
++                    }
++                });
++                t.start();
++                t.join();
++            }
++            java.lang.reflect.Field f = DatabaseImp.class.getDeclaredField("threadLocalConnections");
++            f.setAccessible(true);
++            int size = ((java.util.Map<?, ?>) f.get(db)).size();
++            Assert.assertTrue("connections of ended threads kept: " + size, size < 10);
++        } finally {
++            db.close();
++        }
++    }
++
++    /**
++     * R8-F7. A deletion job that stop() ends before it has deleted the index reports it
++     * deleted: progress 100 and "Done! Deleted ...", while the index's entries are there.
++     */
++    @Nano
++    public static void testDeletionJobStoppedSaysDone() throws Exception {
++        final DatabaseImp db = (DatabaseImp) Factory.database().memory().start();
++        try {
++            db.indexBuilder("by-amount").dir("/items/").type("long").field("amount").createFast();
++            Connection c = db.connection();
++            for (int i = 0; i < 10; i++) {
++                c.w().put("/items/" + i, new Item(i)).execute();
++            }
++            db.testHookDelete = new java.util.function.Consumer<String>() {
++                public void accept(String s) {
++                    if (s.equals("start")) {
++                        db.close();
++                    }
++                }
++            };
++            Job job = db.deleteIndex("by-amount");
++            bergdb.pub.util.JobStatus status = job.join();
++            System.out.println("R8 deletion job after close: " + status.progress() + ", " + status.note());
++            Assert.assertTrue(status.note(), !status.note().startsWith("Done"));
++        } finally {
++            db.close();
++        }
++    }
++
++    /**
++     * R8-F8. Time.toString() from several threads: Time is immutable and shared, and its
++     * static SimpleDateFormat is not thread-safe.
++     */
++    @Nano
++    public static void testTimeToStringFromThreads() throws Exception {
++        final int n = 8;
++        final java.util.concurrent.atomic.AtomicInteger wrong = new java.util.concurrent.atomic.AtomicInteger();
++        final java.util.concurrent.atomic.AtomicReference<String> example = new java.util.concurrent.atomic.AtomicReference<String>();
++        Thread[] ts = new Thread[n];
++        for (int k = 0; k < n; k++) {
++            final int year = 2000 + k * 7;
++            ts[k] = new Thread(new Runnable() {
++                public void run() {
++                    String s = year + "-0" + (1 + year % 9) + "-1" + (year % 10) + " 1" + (year % 10) + ":2" + (year % 10) + ":3" + (year % 10) + ".1234567";
++                    Time t = Time.utc(s);
++                    for (int i = 0; i < 20000; i++) {
++                        String got = t.toString();
++                        if (!got.equals(s)) {
++                            wrong.incrementAndGet();
++                            example.compareAndSet(null, "expected " + s + ", got " + got);
++                        }
++                    }
++                }
++            });
++        }
++        for (Thread t : ts) t.start();
++        for (Thread t : ts) t.join();
++        Assert.assertEquals("wrong strings, e.g. " + example.get(), 0, wrong.get());
++    }
++}
