@@ -118,6 +118,8 @@ public class Perf {
     // The main stream's buffer time in ms (bergdb item 005-13); 0: the default of DbBuilder.
     // In the workload id only when set, so that the ids of the other scenarios do not change.
     final int buffTime = optional("bufftime");
+    /** perf.noforce=1: the FileStream without per-append forces (bergdb 005-47); recorded when given. */
+    final boolean noForce = optional("noforce") == 1;
 
     final String scenario = rs("scenario", "adhoc");
     final String outDir = rs("out", "build/perf/out");
@@ -301,7 +303,7 @@ public class Perf {
     }
 
     Db openDb() throws IOException {
-        stream = new FileStream(dir);
+        stream = new FileStream(dir, !noForce);
         // (FileStream ignores the marker file: it reads only its own files.)
         counting = new CountingStream(stream);
         DbBuilder b = Db.builder();
@@ -315,7 +317,8 @@ public class Perf {
     /**
      * The stream under the database's buffer: counts the appends that reach it and their
      * bytes. FileStream forces the file in each append, so an append is a force (two when a
-     * flush wraps around the ring buffer or crosses a file).
+     * flush wraps around the ring buffer or crosses a file); with perf.noforce=1 it does not
+     * (bergdb 005-47).
      */
     static final class CountingStream implements bergdb.stream.AppendOnlyStream {
         final FileStream s;

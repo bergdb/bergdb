@@ -27,7 +27,7 @@ Open
 
 | ID | Kind | What | Status |
 |---|---|---|---|
-| [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
+| [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced". Decided (Frans, 2026-11-04): A, a setting of `FileStream`, per-append forcing on (the default) or off, in the core API only, no force at an interval; implemented, with forces kept at a new file, its predecessor, a cut and `close()`, and a power-loss mode without per-append forces. Left: the sync latency on and off (F53, s1); holes in the unforced tail are 014-01's | open |
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API set it only at start (`cacheSizeInMb`), against 010-P6. Decided (Frans, 2026-10-28): option B, `Database.setCacheSizeInMb` and `getCacheSizeInMb`, clamped as the builder, for the run only, through `Db.setCacheSizeIndicator` and its getter, which JMX uses too; after a decrease the setter wakes the eviction thread, so that an idle database gives the memory back. Implemented with 005-53 (`fd8f513`). Reopened by Frans 2026-10-29: left is "Done when"'s pause probe, no get or commit waiting longer while the resident bytes converge to a lowered budget than with a fixed one; `PauseProbe` needs two properties to lower its budget mid-phase, then four runs (ZGC and G1, fixed and lowered) in a quiet block, about 15 minutes; the steps in the entry's Left to do | open |
 | [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Measured 2026-10-28 night, quiet: only with 8 threads, on `eaec93e` (005-46) and `4f7cd60` alike; no load waited for a batch; the machine at 9.6 of 10 cores, and the loads' entries into `evictorLock` in `Eviction.wake` (78,000 a second) a fifth of the gets over 10 ms. Frans decided 2026-10-29: the fix, in `main` (`988fe1a`): a load skips that monitor when a request to the eviction thread is pending (an untimed count with 8 readers: 116,000 to 128,000 entries a second before, about 570 after); the rest accepted as a full machine. Open until the thread sweep reruns with the fix in a quiet block | open |
 | [005-72](72-file-layout-after-cut.md) | Decide | The files after reclaim's physical cut depend on timing (when the durable length reached the decision), while the bytes from the decided cut do not; a restart also changes the layout (not a bug). The C clone, without threads, cannot match Java's files after a cut. Frans, 2026-10-29: A for 012's cross tests (done); the entry stays open to consider B, a layout from the decided cut | open |
@@ -284,7 +284,8 @@ Files
   [46-stream-file-lock/](46-stream-file-lock/).
 * [47-written-not-forced.md](47-written-not-forced.md). 005-47, a
   durability of "written, not forced": Frans's question, the options and
-  the constraints; open.
+  the constraints, his decision (A, a setting) and its implementation;
+  open for the latency measurement.
 * [48-group-commit.md](48-group-commit.md). 005-48, group commit: a
   waiting sync starts the flush; the change, the questions, the
   measurements on s1, the outcome; done. The scripts of the runs, the two
@@ -1631,3 +1632,11 @@ accepted answer). A question that becomes a real theorem goes to 007 then.
 (19:05): "This is a big thing, long term, open-ended. Not a todo for 005."
 Its contents, the idea, the seven questions, the principles and the notes
 of 2026-10-27, are 017-05's now.
+
+2026-11-04. 005-47 decided by Frans: "Use A, a setting. No force at an
+interval. Nothing in the Pub API for now." Implemented: `FileStream(dir,
+forceAppends)`, forcing on by default; with it off, forces stay at a file
+opened for appends, the last file before a new one, before a cut's
+deletes and at `close()`; `FileStreamPowerLossTester` has a mode without
+per-append forces, with hole images, counted (014-01), and two negative
+controls. Left: the sync latency on and off.

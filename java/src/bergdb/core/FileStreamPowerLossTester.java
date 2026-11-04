@@ -34,6 +34,15 @@ import bergdb.stream.FileStreamIo;
  * In bergdb.core, not bergdb.stream: it also runs StorageManager and Db over
  * the model, and stream must not depend on storage or core (package.html).
  * 
+ * Without per-append forces (2026-11-04, bergdb 005-47): runTraceWithoutAppendForces runs
+ * the trace on a FileStream with per-append forcing off. A sync then means written, and an
+ * image keeps what was acknowledged when the last file force began, not the last sync. Its
+ * images also have holes in the unforced tail (hole_write: a page, or a part of a short
+ * tail, zeros with later bytes intact). Recovery does not handle holes (bergdb 005-83; open
+ * in 014-01), so the hole images are counted, recovered or failed, and do not fail the
+ * trace; every other image must recover. Its negative controls leave out the force before
+ * a new file (SWITCH) or before a cut's deletes (CUT), and must fail.
+ * 
  * @author Frans Lundberg
  */
 public class FileStreamPowerLossTester {
@@ -88,6 +97,16 @@ public class FileStreamPowerLossTester {
         final List<RandomAccessFile> handles = new ArrayList<RandomAccessFile>();
         boolean recording;
         boolean omitFileForce, omitDirectoryForce;
+        /** The FileStream's per-append forcing (bergdb 005-47); off, the images have holes. */
+        boolean appendForces = true;
+        /** A kind of file force left out, a negative control without per-append forces. */
+        FileStreamIo.Force omitForce;
+        /** What was acknowledged when the last modeled file force began (bergdb 005-47). */
+        long forcedAcknowledged, forcedFrontier;
+        final Map<FileStreamIo.Force, Integer> forces =
+                new TreeMap<FileStreamIo.Force, Integer>();
+        final List<Image> holes = new ArrayList<Image>();
+        int holeCount;
         boolean failFileForce, failDirectoryForce;
         int failDeleteAt, deletes, deletesSinceDirectoryForce, maxDeleteBatch;
 
@@ -108,8 +127,21 @@ public class FileStreamPowerLossTester {
         }
 
         synchronized Image image(String event) {
-            return new Image(event, durableFiles(), acknowledged.get(),
-                    logicalNow.get(), acknowledgedFrontier.get());
+            return new Image(event, durableFiles(), acknowledgedTime(),
+                    logicalNow.get(), acknowledgedFrontier());
+        }
+        
+        /**
+         * The acknowledged time an image must keep. Without per-append forces, a sync does
+         * not force: what it acknowledged is durable only after a file force (bergdb 005-47).
+         */
+        synchronized long acknowledgedTime() {
+            return appendForces ? acknowledged.get() : forcedAcknowledged;
+        }
+        
+        /** The acknowledged frontier an image must keep; as acknowledgedTime(). */
+        synchronized long acknowledgedFrontier() {
+            return appendForces ? acknowledgedFrontier.get() : forcedFrontier;
         }
 
         synchronized void checkpoint(String event) throws IOException {
@@ -153,15 +185,77 @@ public class FileStreamPowerLossTester {
                 int previous = old == null ? 0 : old.length;
                 int end = previous + (current.length - previous) / 2;
                 partial.put(file.getName(), Arrays.copyOf(current, end));
-                keep("partial_write", new Image("partial_write", partial, acknowledged.get(),
-                        logicalNow.get(), acknowledgedFrontier.get()));
+                keep("partial_write", new Image("partial_write", partial, acknowledgedTime(),
+                        logicalNow.get(), acknowledgedFrontier()));
+                if (!appendForces) {
+                    keepHole(file.getName(), current, previous);
+                }
             }
+        }
+        
+        /**
+         * Without per-append forces (bergdb 005-47), the OS may write the unforced tail out of
+         * order: keeps an image of the whole tail with a hole of zeros in it, and later bytes
+         * intact. The hole is a random 4,096-byte page of the file inside the unforced tail
+         * and before its last byte, or, in a tail too short for that, its middle third. A
+         * hole that changes no byte is no hole and is not kept. At most 4 * perEvent images,
+         * by reservoir sampling.
+         */
+        void keepHole(String name, byte[] current, int previous) {
+            final int page = 4096;
+            int from, to;
+            int firstPage = (previous + page - 1) / page;
+            int pages = (current.length - 1) / page - firstPage;   // Pages that end before the last byte.
+            if (pages > 0) {
+                from = (firstPage + random.nextInt(pages)) * page;
+                to = from + page;
+            } else {
+                int n = current.length - previous;
+                if (n < 3) return;
+                from = previous + n / 3;
+                to = previous + 2 * n / 3;
+            }
+            boolean changes = false;
+            for (int i = from; i < to; i++) {
+                if (current[i] != 0) { changes = true; break; }
+            }
+            if (!changes) return;
+            Map<String, byte[]> files = durableFiles();
+            byte[] bytes = current.clone();
+            Arrays.fill(bytes, from, to, (byte) 0);
+            files.put(name, bytes);
+            Image hole = new Image("hole_write " + name + " [" + from + ", " + to + ")", files, 
+                    acknowledgedTime(), logicalNow.get(), acknowledgedFrontier());
+            holeCount++;
+            if (holes.size() < 4 * perEvent) holes.add(hole);
+            else {
+                int replace = random.nextInt(holeCount);
+                if (replace < holes.size()) holes.set(replace, hole);
+            }
+        }
+
+        protected synchronized void forceFile(File file, RandomAccessFile handle, 
+                FileStreamIo.Force why) throws IOException {
+            forces.put(why, forces.containsKey(why) ? forces.get(why) + 1 : 1);
+            if (why == omitForce) {
+                checkpoint("omitted_force");
+                return;
+            }
+            super.forceFile(file, handle, why);
         }
 
         protected synchronized void forceFile(File file, RandomAccessFile handle) throws IOException {
             checkpoint("before_file_force");
             if (failFileForce) throw new IOException("injected file force failure");
-            if (!omitFileForce) forced.put(file.getName(), Files.readAllBytes(file.toPath()));
+            if (!omitFileForce) {
+                // What was acknowledged before the force is written, in this file or in an
+                // earlier one, forced before the stream moved on (bergdb 005-47).
+                long acknowledgedBefore = acknowledged.get();
+                long frontierBefore = acknowledgedFrontier.get();
+                forced.put(file.getName(), Files.readAllBytes(file.toPath()));
+                forcedAcknowledged = acknowledgedBefore;
+                forcedFrontier = frontierBefore;
+            }
             checkpoint("after_file_force");
         }
 
@@ -207,13 +301,13 @@ public class FileStreamPowerLossTester {
                 for (Map.Entry<String, byte[]> deleted : pendingDeleted.entrySet()) {
                     if (!deleted.getKey().equals(file.getName())) unordered.put(deleted.getKey(), deleted.getValue());
                 }
-                keep("unordered_delete", new Image("unordered_delete", unordered, acknowledged.get(),
-                        logicalNow.get(), acknowledgedFrontier.get()));
+                keep("unordered_delete", new Image("unordered_delete", unordered, acknowledgedTime(),
+                        logicalNow.get(), acknowledgedFrontier()));
                 Map<String, byte[]> rollback = durableFiles();
                 byte[] before = pendingDeleted.get(file.getName());
                 if (before != null) rollback.put(file.getName(), before);
-                keep("unpersisted_delete", new Image("unpersisted_delete", rollback, acknowledged.get(),
-                        logicalNow.get(), acknowledgedFrontier.get()));
+                keep("unpersisted_delete", new Image("unpersisted_delete", rollback, acknowledgedTime(),
+                        logicalNow.get(), acknowledgedFrontier()));
             }
             return result;
         }
@@ -511,6 +605,12 @@ public class FileStreamPowerLossTester {
         if (image.files.isEmpty() && image.acknowledgedTime > 0) {
             throw new AssertionError(image.event + ": lost all backing file names after an acknowledged commit");
         }
+        // No stream byte: the start makes a new database, with no history. Without per-append
+        // forces, the image before the first force of a file with bytes (bergdb 005-47).
+        boolean fresh = image.end() == 0;
+        if (fresh && image.acknowledgedTime > 0) {
+            throw new AssertionError(image.event + ": lost all stream bytes after an acknowledged commit");
+        }
         File dir = image.restore();
         Db db = null;
         try {
@@ -523,13 +623,13 @@ public class FileStreamPowerLossTester {
                         + " lost; recovered " + actual);
             }
             long first = db.getFirstAvailableLookupTime();
-            if (first > actual || first > image.logicalNow - 2 * SEC
-                    || first < image.acknowledgedFrontier) {
+            if (!fresh && (first > actual || first > image.logicalNow - 2 * SEC
+                    || first < image.acknowledgedFrontier)) {
                 throw new AssertionError(image.event + ": invalid retained frontier " + first);
             }
             TreeMap<String, TreeMap<Long, byte[]>> model = new TreeMap<String, TreeMap<Long, byte[]>>();
             List<Long> times = new ArrayList<Long>();
-            for (Change change : changes) {
+            for (Change change : fresh ? new ArrayList<Change>() : changes) {
                 TreeMap<Long, byte[]> history = model.get(change.key);
                 if (history == null) model.put(change.key, history = new TreeMap<Long, byte[]>());
                 history.put(change.time, change.value);
@@ -571,10 +671,31 @@ public class FileStreamPowerLossTester {
     /** Called by the full gate and stress runner; parameters are reproducible. */
     public static int runTrace(long seed, int transactions, int perEvent, boolean negativeFile,
             boolean negativeDirectory, boolean exhaustive) throws Exception {
+        return trace(seed, transactions, perEvent, true, negativeFile, negativeDirectory, null,
+                exhaustive)[0];
+    }
+    
+    /**
+     * As runTrace, on a FileStream without per-append forces (2026-11-04, bergdb 005-47), with
+     * hole images. 'omit', if not null, is a kind of force left out, a negative control: an
+     * image without a hole that does not recover throws DetectedLoss. Returns the images
+     * checked that must recover, the hole images that recovered and those that failed (bergdb
+     * 014-01); the hole images are not checked with 'omit'.
+     */
+    public static int[] runTraceWithoutAppendForces(long seed, int transactions, int perEvent,
+            FileStreamIo.Force omit, boolean exhaustive) throws Exception {
+        return trace(seed, transactions, perEvent, false, false, false, omit, exhaustive);
+    }
+    
+    static int[] trace(long seed, int transactions, int perEvent, boolean appendForces,
+            boolean negativeFile, boolean negativeDirectory, FileStreamIo.Force omit, 
+            boolean exhaustive) throws Exception {
         File dir = Files.createTempDirectory("bergdb-power-trace-").toFile();
         ModelIo io = new ModelIo(dir, seed, perEvent);
+        io.appendForces = appendForces;
+        boolean negative = negativeFile || negativeDirectory || omit != null;
         CoreTestClock clock = new CoreTestClock(); clock.setTime(SEC);
-        FileStream stream = new FileStream(dir, io);
+        FileStream stream = new FileStream(dir, io, appendForces);
         Db db = start(stream, clock);
         Random random = new Random(seed);
         List<Change> changes = new ArrayList<Change>();
@@ -619,6 +740,7 @@ public class FileStreamPowerLossTester {
                         io.recording = true;
                         io.omitFileForce = negativeFile;
                         io.omitDirectoryForce = negativeDirectory;
+                        io.omitForce = omit;
                     }
                     io.checkpoint("after_durable_publication");
                 }
@@ -629,30 +751,141 @@ public class FileStreamPowerLossTester {
             io.checkpoint("final_acknowledgement");
             db.close(); db = null;
             if (io.deletes < 2) throw new AssertionError("trace did not exercise physical deletion: " + io.deletes);
-            List<Image> cases = negativeFile || negativeDirectory ? io.images.get("after_delete") : io.snapshots();
+            List<Image> cases;
+            if (appendForces) {
+                cases = negative ? io.images.get("after_delete") : io.snapshots();
+            } else {
+                cases = io.snapshots();
+                // close() forced the last file (bergdb 005-47): all that was acknowledged.
+                cases.add(new Image("after_close", io.durableFiles(), io.acknowledged.get(),
+                        io.logicalNow.get(), io.acknowledgedFrontier.get()));
+                if (omit == null) checkForcesWithoutAppendForces(io);
+            }
             if (cases == null || cases.isEmpty()) throw new AssertionError("no power-loss checkpoints");
             int checked = 0;
             for (Image image : cases) {
                 try {
                     verify(image, changes, keys, time, exhaustive);
-                } catch (BadDirStateException failure) {
-                    if (negativeFile || negativeDirectory) throw new DetectedLoss(image.event, failure);
-                    throw failure;
-                } catch (AssertionError failure) {
-                    if (negativeFile || negativeDirectory) throw new DetectedLoss(image.event, failure);
+                } catch (Exception | AssertionError failure) {
+                    // Without per-append forces, any failure of a negative control is a detection.
+                    if (omit != null || ((negativeFile || negativeDirectory) 
+                            && (failure instanceof BadDirStateException || failure instanceof AssertionError))) {
+                        throw new DetectedLoss(image.event, failure);
+                    }
                     throw failure;
                 }
                 checked++;
             }
+            int holesRecovered = 0, holesFailed = 0;
+            String firstFailure = null;
+            if (!appendForces && omit == null) {
+                // Holes are a known limit (bergdb 005-83; open in 014-01): counted, not failed.
+                for (Image image : io.holes) {
+                    try {
+                        verify(image, changes, keys, time, false);
+                        holesRecovered++;
+                    } catch (Exception | AssertionError failure) {
+                        holesFailed++;
+                        if (firstFailure == null) firstFailure = image.event + ": " + failure;
+                    }
+                }
+            }
             System.out.println("POWER TRACE seed=" + seed + " checkpoints=" + checked
-                    + " physical_deletes=" + io.deletes + " stages=" + io.seen);
-            return checked;
+                    + " physical_deletes=" + io.deletes + " stages=" + io.seen
+                    + (appendForces ? "" : " append_forces=off forces=" + io.forces 
+                            + " hole_images=" + io.holes.size() + " of " + io.holeCount 
+                            + " recovered=" + holesRecovered + " failed=" + holesFailed
+                            + (firstFailure == null ? "" : " first_failure=" + firstFailure)));
+            return new int[] {checked, holesRecovered, holesFailed};
         } finally { if (db != null) db.close(); remove(dir); }
+    }
+    
+    /**
+     * Without per-append forces, the trace forced no append, and forced the last file before
+     * a new file, before a cut's deletes and at close() (bergdb 005-47).
+     */
+    static void checkForcesWithoutAppendForces(ModelIo io) {
+        Map<FileStreamIo.Force, Integer> f = io.forces;
+        if (f.containsKey(FileStreamIo.Force.APPEND)) {
+            throw new AssertionError("an append was forced: " + f);
+        }
+        for (FileStreamIo.Force why : new FileStreamIo.Force[] {FileStreamIo.Force.SWITCH, 
+                FileStreamIo.Force.CUT, FileStreamIo.Force.CLOSE}) {
+            if (!f.containsKey(why)) {
+                throw new AssertionError("the trace made no " + why + " force: " + f);
+            }
+        }
     }
 
     @Nano("f")
     public static void testColdRecoveryAtPersistenceBoundaries() throws Exception {
         runTrace(17, 600, 1, false, false, true);
+    }
+
+    /**
+     * Without per-append forces (bergdb 005-47), a crash of the process loses nothing that
+     * was written: a synced commit is in the files, which the OS keeps, before any close. Here
+     * the files are copied while the database runs, as a crash leaves them, and a new
+     * database on the copy finds the commit.
+     */
+    @Nano
+    public static void testProcessCrashKeepsWhatWasWritten() throws Exception {
+        File dir = Files.createTempDirectory("bergdb-power-process-").toFile();
+        File copy = Files.createTempDirectory("bergdb-power-process-copy-").toFile();
+        CoreTestClock clock = new CoreTestClock(); clock.setTime(SEC);
+        Db db = start(new FileStream(dir, false), clock);
+        Db again = null;
+        try {
+            byte[] value = new byte[] {5, 0, 4, 7};
+            clock.setTime(2 * SEC);
+            db.execute(db.trans().put(key(1), value).build());
+            db.sync(SyncLevel.ORDINARY);
+            File[] files = dir.listFiles();
+            if (files == null) throw new IOException("cannot list " + dir);
+            for (File f : files) {
+                if (f.getName().endsWith(".bergdb")) {
+                    Files.copy(f.toPath(), new File(copy, f.getName()).toPath());
+                }
+            }
+            CoreTestClock clock2 = new CoreTestClock(); clock2.setTime(3 * SEC);
+            again = start(new FileStream(copy), clock2);
+            Assert.assertTrue("the synced commit is in the files", 
+                    Arrays.equals(value, DbUtil.get(again, Long.MAX_VALUE, key(1))));
+        } finally {
+            db.close();
+            if (again != null) again.close();
+            remove(dir);
+            remove(copy);
+        }
+    }
+    
+    /**
+     * Without per-append forces (bergdb 005-47): every image without a hole recovers, and
+     * the hole images are counted (bergdb 014-01).
+     */
+    @Nano("f")
+    public static void testColdRecoveryWithoutAppendForces() throws Exception {
+        int[] result = runTraceWithoutAppendForces(17, 600, 1, null, true);
+        Assert.assertTrue("no hole images", result[1] + result[2] > 0);
+    }
+    
+    /**
+     * Without per-append forces (bergdb 005-47), the negative controls: without the force of
+     * the last file before a new file, or before a cut's deletes, an image fails recovery.
+     */
+    @Nano("f")
+    public static void testWeakenedForcesWithoutAppendForcesAreDetected() throws Exception {
+        for (FileStreamIo.Force omit : new FileStreamIo.Force[] {FileStreamIo.Force.SWITCH, 
+                FileStreamIo.Force.CUT}) {
+            boolean caught = false;
+            try { runTraceWithoutAppendForces(19, 600, 2, omit, false); }
+            catch (DetectedLoss expected) {
+                caught = true;
+                System.out.println("NEGATIVE CONTROL without append forces, no " + omit 
+                        + " force caught: " + expected.getCause());
+            }
+            Assert.assertTrue("no " + omit + " force escaped recovery tests", caught);
+        }
     }
 
     @Nano("f")

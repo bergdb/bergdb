@@ -37,7 +37,10 @@
 #      written (Reclaim, pEnd); the small configurations above do not reach it.
 #   7. PowerLossTest: production FileStream ordering with independent volatile
 #      bytes, forced bytes and durable names, surviving deletion, partial tails,
-#      cold recovery, and weakened data/directory-force negative controls.
+#      cold recovery, and weakened data/directory-force negative controls; each
+#      seed again with per-append forcing off (bergdb 005-47), with its negative
+#      controls (no force before a new file, or before a cut's deletes) and hole
+#      images, which are counted, not failed (a known limit, bergdb 014-01).
 #   8. Conformance with the Lean model, with reclaim (bergdb item 001, K3,
 #      2026-10-17; bergdb 001-07, section 8): conformance.sh reclaim,
 #      the small reclaim set (2 seeds quick, 5 full): each trace's every record

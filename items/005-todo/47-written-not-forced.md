@@ -1,7 +1,9 @@
 005-47. Decide: a durability of "written, not forced"
 =====================================================
 
-Status: open. Kind: decide. Created 2026-10-26.
+Status: open; decided by Frans 2026-11-04 (A, a setting) and implemented,
+see "Frans's decision" and "Done"; left: the sync latency with forcing on
+and off ("Left"). Kind: decide. Created 2026-10-26.
 
 Frans's question, 2026-10-26, added as an entry at his request, by Claude
 (Opus 5.5, Claude Code).
@@ -289,3 +291,141 @@ tested fault model. The new durability mode remains unimplemented; a
 hole-tolerant recovery design is open before either mode changes. On
 2026-11-03 the correction/contract investigation moved from 005-83 to
 014-01; the experiment and evidence remain at their original location.
+
+
+Frans's decision
+----------------
+
+2026-11-04. Frans: "Use A, a setting. No force at an interval. Nothing in
+the Pub API for now."
+
+* **A, a setting.** Per-append forcing is a setting of the storage,
+  `FileStream`: on, the default and today's behaviour, or off. With it
+  off, `DbFile.append` writes and returns, and the storage's confirmed
+  length means written, not forced.
+* **No force at an interval.** With forcing off, what a power loss costs
+  is bounded only by the forces that stay, not by a time.
+* **Nothing in the Pub API for now.** The setting is in the core API
+  only, `FileStream`'s constructor; `DatabaseBuilderImp` keeps forcing on.
+
+Replication was removed the same day (005-11, "A with C2 now"), so what
+the options say about replicas, D2 and STRONG no longer applies: the
+setting concerns the one storage, and ORDINARY is the only sync that
+waits.
+
+
+Done
+----
+
+2026-11-04, by Claude (Opus 5.5, Claude Code), at Frans's request.
+
+* **The setting.** `new FileStream(dir, forceAppends)`, and for tests
+  `FileStream(dir, io, forceAppends)`; `forcesAppends()` tells which.
+  `FileStream(dir)` and `FileStream(dir, io)` force every append, as
+  before, and so does the Pub API. Off, `DbFile.append` writes with
+  `write()` (RandomAccessFile, no buffer in Java) and returns: its
+  completion, the confirmed length that `BufferedStream` reports, the
+  durable length and a returned `sync(ORDINARY)` mean written.
+* **The forces that stay.** Each `DbFile` keeps its forced length, under
+  its monitor, so a force is made only for bytes not yet forced: with
+  forcing on, none of the new ones ever finds any, and the forces are
+  today's.
+  * `openForRw`: a file opened for appends, and the directory, before the
+    file takes appends; as before.
+  * `newFile`: the old last file, before the new file is opened. A power
+    loss then cannot leave a short file before a newer one, which
+    `checkDbFiles` refuses.
+  * The cut's thread, `runCuts`: before each delete, the last file, if it
+    starts before the stream's length at the cut (`cutForceTo`). Every
+    file before the last is forced by `newFile`, so reclaim's decision,
+    which the cut waits for (`Reclaim.java`, `pendingCutDurableAt`), is on
+    the device before a file goes. `pretruncate` still returns at once
+    (005-46); the directory force after each delete stays.
+  * `close()`: the last file, unless the stream has failed, so that a
+    clean stop is durable; a second `close()` finds nothing to force.
+  * `deleteAllFiles` (`seekFirstPos`) removes the whole stream, so it
+    needs no force of the data before it.
+* **A reason for each force.** `FileStreamIo.forceFile(file, handle,
+  why)`, with `FileStreamIo.Force`: APPEND, OPEN, SWITCH, CUT and CLOSE.
+  It calls the two-argument `forceFile`, which stays the physical force,
+  so the existing test boundaries are unchanged; a test can count the
+  forces by reason or leave one kind out.
+* **A crash of the process loses nothing written.** An append returns
+  after `write()`; the bytes, the file's length and its name are the OS's,
+  and a crash of the process alone keeps them. Nothing in the change
+  weakens that.
+* **Javadoc.** `AppendOnlyStream.append`: the completion advances the
+  durable length, and the storage says what it means, forced or written.
+  `FileStream`'s class Javadoc and its new constructor: both modes, the
+  forces that stay, and the limit below. `Db.stop()`: with forcing off,
+  the close forces.
+* **docs/levels.md**, section 8: the setting, in the core API only; what a
+  sync means with it off; the forces; the limit; `PowerLossTest`.
+* **Unit tests**, in `FileStream`: `testForcingOnForcesEveryAppend` (the
+  default; one force per append, none of SWITCH, CUT or CLOSE),
+  `testForcingOffWritesAppends` (no append forced, the bytes in the file
+  and readable), `testForcingOffForcesTheFileBeforeANewFile` (the old file
+  forced, whole, before the new one is opened),
+  `testForcingOffForcesBeforeACutDeletes` (the last file forced before the
+  first delete, once; a cut with nothing unforced forces nothing),
+  `testForcingOffForcesAtClose` (the force at close, none at a second
+  close, the bytes after a restart). In `FileStreamPowerLossTester`:
+  `testProcessCrashKeepsWhatWasWritten` (a synced commit, the files copied
+  while the database runs, as a crash of the process leaves them, a new
+  database on the copy finds it).
+* **The power-loss tester without per-append forces.**
+  `FileStreamPowerLossTester.runTraceWithoutAppendForces` runs the trace
+  on a `FileStream` with forcing off. An image keeps what was acknowledged
+  when the last file force began, not at the last sync, since a sync no
+  longer forces. Its images also have holes (`hole_write`): after each
+  write, the whole file with a random 4,096-byte page of the unforced tail
+  zeroed, later bytes intact (in a tail too short for a page, its middle
+  third); at most 4 per `perEvent`, by reservoir sampling, and a hole that
+  changes no byte is not kept. Every image without a hole must recover,
+  and so must one after `close()` with all that was acknowledged; the hole
+  images are counted, recovered or failed, and do not fail the run. The
+  trace must have made no APPEND force and at least one SWITCH, CUT and
+  CLOSE force. f-tests: `testColdRecoveryWithoutAppendForces` (seed 17,
+  exhaustive) and `testWeakenedForcesWithoutAppendForcesAreDetected`, the
+  negative controls, no SWITCH force and no CUT force, both caught: the
+  first by `checkDbFiles` ("Bad size of file ... should have been a
+  multiple of 100000"), the second by a read below the first position at
+  the start. `PowerLossTest`, in `level3.sh`, runs each seed in both modes
+  and the four negative controls, and its line counts the hole images.
+* **The oracle and an empty stream.** With forcing off, the images before
+  the first force of a file with bytes (a switch, a cut or a close) have no
+  stream byte, and a start makes a new database. The oracle took it for a
+  lost history, in 14 of 24 runs of seeds 1 to 8, before it was taught
+  that; such an image must have nothing acknowledged. The same holds for a
+  real database: with forcing off, a power loss before the first such force
+  loses the database's creation too, and the next start makes a new one,
+  with a new ID unless the builder gives one. The Pub API, whose start
+  refuses a directory that held a database and has no stream byte (015-01),
+  forces.
+* **Perf.** `-Dperf.noforce=1` (through `JFLAGS` in `performance.sh`)
+  makes Perf's `FileStream` without per-append forces; in the workload ID
+  only when given.
+* **Gates**, on `16fb228` (005-11's removal) with this change:
+  `java/before-commit.sh` printed `BEFORE COMMIT OK` (unit 1133, f 81
+  tests); `java/stress/level3.sh` (full) printed `LEVEL 3 OK`, with
+  PowerLossTest's line: "8 seeds, 440 cold recoveries; without per-append
+  forces 448, and of 96 hole images 0 recovered, 96 failed (a known limit,
+  bergdb 014-01); negative controls caught". Conformance: 25 traces, C-CUT
+  0 of 305; InterruptStress 60 s.
+
+
+Left
+----
+
+* **Holes in the unforced tail: a known limit, 014-01's.** With forcing
+  off, a power loss or a crash of the OS can leave a hole in the unforced
+  tail, and recovery does not handle it (005-83: all 56 hole images
+  failed; here, in level3.sh, all 96 hole images failed, at the start or
+  at a read). The database may then refuse to start or fail reads, which is
+  more than a loss of its last transactions. "Done when"'s "recovery takes
+  the valid prefix in every image" holds for every image without a hole,
+  not for these; hole-tolerant recovery is open in 014-01. Said in
+  `FileStream`'s Javadoc and docs/levels.md, section 8.
+* **The sync latency**, with forcing on and off, on F53 and on s1
+  (`Perf`'s `d-1k-t1`, `-Dperf.noforce=1` for off): to be measured after
+  the commit, on a quiet machine.

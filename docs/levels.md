@@ -491,8 +491,8 @@ Limits:
 
 ## 8. Durability
 
-* `FileStream`, the file storage, forces every append to the device before
-  the append returns (`FileChannel.force(true)`: `F_FULLFSYNC` on macOS,
+* `FileStream`, the file storage, by default forces every append to the
+  device before the append returns (`FileChannel.force(true)`: `F_FULLFSYNC` on macOS,
   `fsync` on Linux), and a new file and its directory entry before the file
   takes appends. Its power-loss ordering (the file and directory forces, a
   force between the prefix removals of reclaim's cuts, the failures of
@@ -537,7 +537,19 @@ Limits:
   the flushes before it, whose bytes are forced, stay acknowledged (Frans,
   2026-10-27), where until then a failed pending cut kept its flush from
   being acknowledged (011-07).
-* Open: a durability of "written, not forced" (005-47).
+* Per-append forcing can be turned off, in the core API only: `FileStream`'s
+  constructor, `new FileStream(dir, false)` (005-47; Frans, 2026-11-04). The
+  Pub API keeps it on. Off, an append is written to the OS and not forced:
+  a completed append, the durable length and a returned `sync()` then mean
+  "written", which survives a crash of the process, not one of the OS or a
+  power loss. The forces that keep the database whole stay: a file opened
+  for appends and its directory entry, the last file before a new one, the
+  last file before a cut's deletes, and the last file at `close()`, so a
+  clean stop is durable. A known limit: a power loss or OS crash can leave
+  a hole in the unforced tail, which recovery does not handle (the second
+  point above, 014-01): the database may then not start, or fail reads,
+  more than a loss of its last transactions. `PowerLossTest` runs each seed
+  in this mode too, with its negative controls, and counts the hole images.
 
 
 ## 9. Replication

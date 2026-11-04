@@ -58,10 +58,14 @@ public interface AppendOnlyStream {
      * When this method returns, it is guaranteed that the data just written 
      * can be read by the read method and the new size of the stream is available from
      * getSize().
-     * Persistent streams supplied to StorageManager must also force the bytes
-     * and any newly created backing-file names before append returns: that
-     * completion advances the durable frontier. Memory-backed test streams
-     * do not provide a hardware-durability guarantee.
+     * The completion advances StorageManager's durable length, which sync() waits for, and
+     * the storage says what it means (2026-11-04, bergdb 005-47). FileStream, by default,
+     * forces the bytes and any newly created backing-file names before append returns: a
+     * completed append survives a power loss. With its per-append forcing off, append writes
+     * the bytes to the operating system and returns: a completed append survives a crash of
+     * the process, not one of the OS or a power loss, and such a crash can also leave a hole
+     * that recovery does not handle (bergdb 014-01; see FileStream). Memory-backed test
+     * streams do not provide a hardware-durability guarantee.
      * 
      * @throws IllegalArgumentException if 'length' is less than 0 or greater than source.length.
      * @throws IOException if the data could not be added to the stream.
@@ -113,6 +117,7 @@ public interface AppendOnlyStream {
 
 /*
 ---- Log ----
+261104 append(): the storage says what a completed append means, forced or written (bergdb 005-47).
 261024 pretruncate(): a position past the length is refused (bergdb 005-37).
 130326 Added seekTo().
 130322 Added "throws IOException" to close().

@@ -43,18 +43,36 @@ import bergdb.pub.util.BadFormatException;
  * position divided by 100,000, padded with zeros (indexToString).
  * The first two files are: 00000000000000.bergdb, 00000000000002.bergdb.
  * 
- * Hard sync. Every append is forced to the device before it returns: the bytes are
- * written, then FileChannel.force(true) (F_FULLFSYNC on macOS, fsync on Linux). A new
- * file and its directory entry are forced before the file takes appends. So a completed
+ * Hard sync, the default. Every append is forced to the device before it returns: the
+ * bytes are written, then FileChannel.force(true) (F_FULLFSYNC on macOS, fsync on Linux). A
+ * new file and its directory entry are forced before the file takes appends. So a completed
  * append means durable bytes, not only bytes in the OS cache, and StorageManager's
  * durable length, which sync() waits for, holds after a power loss, not only after a
  * process crash (2026-10-14, bergdb 011-07).
+ * 
+ * Per-append forcing off (the constructor's forceAppends false; 2026-11-04, bergdb 005-47).
+ * An append writes its bytes, handing them to the operating system, and returns: a
+ * completed append means written, not forced, and so does StorageManager's durable length.
+ * The bytes survive a crash of the process, when the OS goes on and writes them later; a
+ * crash of the OS or a power loss can lose them, also after a sync returned. These forces
+ * stay, each a no-op with forcing on, where every byte is forced already:
+ * a file opened for appends and its directory entry, before the file takes appends; the
+ * last file before the stream moves to a new file, so that no file before the last is
+ * short; the last file before the files of a cut are deleted, so that reclaim's decision,
+ * which the cut waits for, is on the device before the files it replaces are gone; and the
+ * last file at close(), so that a clean stop is durable.
+ * A known limit: the OS may write the unforced tail out of order, and a power loss or a
+ * crash of the OS can then leave a hole in it, zeros with later bytes intact. Recovery does
+ * not handle such a hole (bergdb 005-83, "Power-loss tail experiment": all 56 hole images
+ * failed; open in bergdb 014-01): the database may refuse to start, or start and fail
+ * reads, which is more than a loss of the last transactions. With forcing on, the window
+ * is the one append between its write and its force.
  * 
  * A force costs a device round trip: well under a millisecond on a fast SSD, more
  * on a slow virtual disk. This class is meant to be used below BufferedStream,
  * which controls the buffering: it collects the database's appends and writes them
  * here in chunks, from a thread of its own, when a buffer time has passed or its
- * buffer is full. So there is one force per chunk, not one
+ * buffer is full. So with forcing on there is one force per chunk, not one
  * per transaction, and a transaction waits for a force only when it asks for a sync.
  * 
  * Reads wait for no write (2026-10-27, bergdb 005-46). A read takes no lock: it reads
@@ -158,6 +176,9 @@ public class FileStream implements AppendOnlyStream {
     
     private final File dir;
     private final FileStreamIo io;
+    
+    /** Per-append forcing (bergdb 005-47): on, every append is forced before it returns. */
+    private final boolean forceAppends;
     private volatile long firstPos = 0;
     private volatile long length = 0;
     private int fileSizeIndex = 0;
@@ -186,6 +207,12 @@ public class FileStream implements AppendOnlyStream {
     private Object lockKey = null;
     
     /**
+     * The stream length at the latest cut (bergdb 005-47): the cut's thread has every byte
+     * before it forced before it deletes. Under this.
+     */
+    private long cutForceTo = 0;
+    
+    /**
      * Creates a new stream if it does not exist or opens an existing one if it exists.
      * If the directory 'dir' does not exist an attempt to create it is made.
      * 
@@ -202,7 +229,19 @@ public class FileStream implements AppendOnlyStream {
      *      are not in a valid state. The files in the directory were modified by some other software.
      */
     public FileStream(File dir) throws IOException {
-        this(dir, new FileStreamIo());
+        this(dir, new FileStreamIo(), true);
+    }
+    
+    /**
+     * As FileStream(dir), with per-append forcing on or off (2026-11-04, bergdb 005-47); see
+     * the class's Javadoc. True is FileStream(dir): every append is forced to the device
+     * before it returns. False: an append is written and returns; its bytes survive a crash of
+     * the process, not one of the OS or a power loss. A power loss or a crash of the OS can
+     * also leave a hole in the unforced tail, which recovery does not handle (bergdb 014-01):
+     * the database may then refuse to start, or fail reads. Throws as FileStream(dir).
+     */
+    public FileStream(File dir, boolean forceAppends) throws IOException {
+        this(dir, new FileStreamIo(), forceAppends);
     }
 
     /** 
@@ -210,6 +249,14 @@ public class FileStream implements AppendOnlyStream {
      * As FileStream(dir), with the given persistence boundary; for fault tests.
      */
     public FileStream(File dir, FileStreamIo io) throws IOException {
+        this(dir, io, true);
+    }
+    
+    /** 
+     * Internal, for testing.
+     * As FileStream(dir, forceAppends), with the given persistence boundary; for fault tests.
+     */
+    public FileStream(File dir, FileStreamIo io, boolean forceAppends) throws IOException {
         if (dir == null) {
             throw new IllegalArgumentException("dir == null not allowed");
         }
@@ -219,6 +266,7 @@ public class FileStream implements AppendOnlyStream {
             throw new IllegalArgumentException("io == null not allowed");
         }
         this.io = io;
+        this.forceAppends = forceAppends;
         try {
             createDirIfNeeded();
             lockDir();
@@ -317,7 +365,9 @@ public class FileStream implements AppendOnlyStream {
      * (bergdb 005-46), and then releases the directory's lock (bergdb 005-63). Throws the
      * stream's failure, such as a failed delete of a cut; also when called again, as
      * BufferedStream.close() does after its thread's close. A read of a file that the close
-     * has closed is not a failure of the stream (bergdb 015-17).
+     * has closed is not a failure of the stream (bergdb 015-17). With per-append forcing off,
+     * it first forces the last file, unless the stream has failed, so that a clean stop is
+     * durable (bergdb 005-47).
      */
     public void close() throws IOException {
         awaitCutThread();
@@ -325,6 +375,13 @@ public class FileStream implements AppendOnlyStream {
         // including handles left after a partially completed pretruncate.
         IOException failure = ioException;
         synchronized (this) {
+            if (failure == null && dbFiles.length > 0) {
+                try {
+                    findLastFile().forceWritten(FileStreamIo.Force.CLOSE);
+                } catch (IOException e) {
+                    failure = e;
+                }
+            }
             List<DbFile> all = new ArrayList<DbFile>(Arrays.asList(dbFiles));
             all.addAll(cutFiles);       // Left by a failed cut.
             for (DbFile file : all) {
@@ -378,6 +435,11 @@ public class FileStream implements AppendOnlyStream {
      */
     public File getDir() {
         return dir;
+    }
+    
+    /** Whether every append is forced before it returns, the default (bergdb 005-47). */
+    public boolean forcesAppends() {
+        return forceAppends;
     }
     
     /**
@@ -465,6 +527,7 @@ public class FileStream implements AppendOnlyStream {
             
             this.firstPos = newFiles[0].spos;
             this.dbFiles = newFiles;
+            this.cutForceTo = len;
             
             if (cutThread == null) {
                 cutThread = new Thread(new Runnable() {
@@ -486,10 +549,17 @@ public class FileStream implements AppendOnlyStream {
      * a newer one, which would leave a hole before recovery can read the cut table. A crash
      * before a file is deleted leaves it, and the next start cuts again (Reclaim). It ends
      * when nothing is left to delete, or at a failure, which it keeps as the stream's.
+     * 
+     * Before a delete, it has the stream forced up to its length at the cut (2026-11-04,
+     * bergdb 005-47), a no-op with per-append forcing on. Reclaim cuts when the durable length
+     * has passed its decision (Reclaim, pendingCutDurableAt); with forcing off that length
+     * means written, and a power loss after the delete would keep the cut and lose the
+     * decision.
      */
     private void runCuts() {
         while (true) {
             DbFile k;
+            long forceTo;
             synchronized (this) {
                 k = cutFiles.peekFirst();
                 if (k == null || ioException != null) {
@@ -497,9 +567,11 @@ public class FileStream implements AppendOnlyStream {
                     notifyAll();
                     return;
                 }
+                forceTo = cutForceTo;
             }
             
             try {
+                forceTo(forceTo);
                 k.delete();
                 forceDirectory(dir);
             } catch (IOException e) {
@@ -513,6 +585,18 @@ public class FileStream implements AppendOnlyStream {
                     cutFiles.removeFirst();
                 }
             }
+        }
+    }
+
+    /**
+     * Has every byte before 'pos' forced (bergdb 005-47). Every file before the last is
+     * whole and forced, by the force before a new file (SWITCH); so only the last file can
+     * hold unforced bytes, and only if it starts before 'pos'. The cut's thread.
+     */
+    private void forceTo(long pos) throws IOException {
+        DbFile last = findLastFile();
+        if (last.spos < pos) {
+            last.forceWritten(FileStreamIo.Force.CUT);
         }
     }
 
@@ -936,6 +1020,10 @@ public class FileStream implements AppendOnlyStream {
      * creates and forces the file and the directory before it takes the stream's monitor, and
      * takes it only to publish the new list (2026-10-27, bergdb 005-46): every read waited for
      * the forces. No read needs the new file before an append to it has returned.
+     * 
+     * With per-append forcing off, it forces the old last file first (2026-11-04, bergdb
+     * 005-47): a power loss must not leave a short file before a newer one, which the
+     * constructor refuses (BadDirStateException). With forcing on, it is forced already.
      */
     private void newFile() throws IOException {
         if (this.length % BYTES_PER_INDEX_UNIT != 0) {
@@ -945,6 +1033,7 @@ public class FileStream implements AppendOnlyStream {
         DbFile[] files = dbFiles;
         if (files.length > 0) {
             // The last file takes no more appends; its read channel stays.
+            files[files.length - 1].forceWritten(FileStreamIo.Force.SWITCH);
             files[files.length - 1].closeWriter();
         }
         
@@ -1065,9 +1154,10 @@ public class FileStream implements AppendOnlyStream {
         try {
             // Persist both the file and its directory entry before it can
             // contribute to StorageManager's confirmed (durable) length.
-            k.force();
+            k.force(FileStreamIo.Force.OPEN);
             forceDirectory(dir);
             k.fileLength = k.rfile.length();
+            k.forcedLength = k.fileLength;
             k.channel = io.openRead(file);
         } catch (IOException e) {
             try {
@@ -1125,6 +1215,7 @@ public class FileStream implements AppendOnlyStream {
         private volatile FileChannel channel;       // the read channel
         private final Object channelLock = new Object();
         private volatile long fileLength;   // current length of the file
+        private long forcedLength = 0;      // its bytes forced so far (bergdb 005-47); under this
         private boolean isRw = false;
         private final long spos;    // spos of first byte in file
         private long maxSize;
@@ -1333,12 +1424,12 @@ public class FileStream implements AppendOnlyStream {
          * it again after. If an interrupt during the force closes the channel anyway, which
          * closes 'rfile' too, its parent, it opens the file again and forces again.
          */
-        void force() throws IOException {
+        void force(FileStreamIo.Force why) throws IOException {
             boolean interrupted = Thread.interrupted();
             try {
                 while (true) {
                     try {
-                        io.forceFile(file, rfile);
+                        io.forceFile(file, rfile, why);
                         return;
                     } catch (ClosedByInterruptException e) {
                         Thread.interrupted();
@@ -1354,7 +1445,27 @@ public class FileStream implements AppendOnlyStream {
         }
         
         /**
-         * Appends bytes to the file, returns actual number of bytes appended.
+         * Forces what the writer has written and not forced (bergdb 005-47); nothing with
+         * per-append forcing on, or when the writer is done with the file: it was forced
+         * before (SWITCH). A failure is the stream's.
+         */
+        synchronized void forceWritten(FileStreamIo.Force why) throws IOException {
+            if (rfile == null || forcedLength == fileLength) {
+                return;
+            }
+            try {
+                force(why);
+            } catch (IOException e) {
+                ioException = e;
+                throw e;
+            }
+            forcedLength = fileLength;
+        }
+        
+        /**
+         * Appends bytes to the file, returns actual number of bytes appended. With per-append
+         * forcing on, the bytes are forced before it returns; off, only written (bergdb
+         * 005-47).
          */
         synchronized int append(byte[] bytes, int offset, int len) throws IOException {
             if (!isRw) {
@@ -1389,10 +1500,15 @@ public class FileStream implements AppendOnlyStream {
                 rfile.seek(this.fileLength);
                 if (toAppend > 0) {
                     io.write(file, rfile, bytes, offset, toAppend);
-                    force();
+                    if (forceAppends) {
+                        force(FileStreamIo.Force.APPEND);
+                    }
                 }
-                // Published to reads after the force (volatile).
+                // Published to reads after the force, or the write (volatile).
                 fileLength += toAppend;
+                if (forceAppends) {
+                    forcedLength = fileLength;
+                }
                 assert fileLength == rfile.length() : fileLength + " != " + rfile.length();
             } catch (IOException e) {
                 ioException = e;
@@ -1753,6 +1869,188 @@ public class FileStream implements AppendOnlyStream {
         Assert.assertEquals(1000*1000, f.dbFiles[f.dbFiles.length - 1].fileLength);
         
         f.close();
+    }
+    
+    // ---- bergdb 005-47: per-append forcing off ----
+    
+    /**
+     * A FileStreamIo that logs, in order, the file forces with their reason, the file and its
+     * length, and the opens and deletes (bergdb 005-47).
+     */
+    static final class ForceLogIo extends FileStreamIo {
+        final List<String> log = Collections.synchronizedList(new ArrayList<String>());
+        
+        protected void forceFile(File file, RandomAccessFile handle, FileStreamIo.Force why)
+                throws IOException {
+            log.add(why + " " + file.getName() + " " + handle.length());
+            super.forceFile(file, handle, why);
+        }
+        
+        protected RandomAccessFile open(File file) throws IOException {
+            log.add("open " + file.getName());
+            return super.open(file);
+        }
+        
+        protected boolean delete(File file) throws IOException {
+            log.add("delete " + file.getName());
+            return super.delete(file);
+        }
+        
+        /** The log's entries that start with 'prefix'. */
+        List<String> starting(String prefix) {
+            List<String> result = new ArrayList<String>();
+            synchronized (log) {
+                for (String entry : log) {
+                    if (entry.startsWith(prefix + " ")) result.add(entry);
+                }
+            }
+            return result;
+        }
+        
+        int indexOf(String entry) {
+            return log.indexOf(entry);
+        }
+    }
+    
+    private static String fileName(long spos) {
+        return indexToString(spos / BYTES_PER_INDEX_UNIT) + SUFFIX;
+    }
+    
+    /**
+     * Forcing on, the default, is today's hard sync: one force per append, and none at a new
+     * file's predecessor, a cut or close(), where nothing is left unforced (bergdb 005-47).
+     */
+    @Nano
+    public static void testForcingOnForcesEveryAppend(TestEnvironment c) throws IOException {
+        FileStream plain = new FileStream(c.createTempDir());
+        Assert.assertTrue("forcing on by default", plain.forcesAppends());
+        plain.close();
+        
+        ForceLogIo io = new ForceLogIo();
+        FileStream f = new FileStream(c.createTempDir(), io, true);
+        Assert.assertTrue(f.forcesAppends());
+        f.append(new byte[100], 0, 100);
+        f.append(new byte[100], 0, 100);
+        f.append(new byte[250 * 1000], 0, 250 * 1000);     // 199,800 to the first file, 50,200 to the next.
+        f.pretruncate(200 * 1000);
+        f.awaitDeletes();
+        f.close();
+        Assert.assertEquals(Arrays.asList("APPEND " + fileName(0) + " 100", 
+                "APPEND " + fileName(0) + " 200", "APPEND " + fileName(0) + " 200000", 
+                "APPEND " + fileName(200000) + " 50200"), io.starting("APPEND"));
+        Assert.assertEquals(2, io.starting("OPEN").size());
+        Assert.assertEquals(0, io.starting("SWITCH").size());
+        Assert.assertEquals(0, io.starting("CUT").size());
+        Assert.assertEquals(0, io.starting("CLOSE").size());
+    }
+    
+    /**
+     * Forcing off (bergdb 005-47): an append is written, not forced. The bytes are in the file,
+     * where another reader, after a crash of the process, finds them; reads see them at once.
+     */
+    @Nano
+    public static void testForcingOffWritesAppends(TestEnvironment c) throws IOException {
+        ForceLogIo io = new ForceLogIo();
+        File dir = c.createTempDir();
+        FileStream f = new FileStream(dir, io, false);
+        try {
+            Assert.assertTrue(!f.forcesAppends());
+            byte[] bytes = new byte[300];
+            new Random(47).nextBytes(bytes);
+            f.append(bytes, 0, 100);
+            f.append(bytes, 100, 200);
+            Assert.assertEquals(0, io.starting("APPEND").size());
+            Assert.assertEquals(Arrays.asList("OPEN " + fileName(0) + " 0"), io.starting("OPEN"));
+            Assert.assertTrue("written to the file", 
+                    Arrays.equals(bytes, Files.readAllBytes(new File(dir, fileName(0)).toPath())));
+            byte[] read = new byte[300];
+            f.read(0, read, 0, 300);
+            Assert.assertTrue(Arrays.equals(bytes, read));
+        } finally {
+            f.close();
+        }
+    }
+    
+    /**
+     * Forcing off (bergdb 005-47): the stream forces its last file before it moves to a new
+     * one, before the new file is opened, so that a power loss leaves no short file before a
+     * newer one.
+     */
+    @Nano
+    public static void testForcingOffForcesTheFileBeforeANewFile(TestEnvironment c) 
+            throws IOException {
+        ForceLogIo io = new ForceLogIo();
+        FileStream f = new FileStream(c.createTempDir(), io, false);
+        try {
+            f.append(new byte[250 * 1000], 0, 250 * 1000);
+            String sw = "SWITCH " + fileName(0) + " 200000";
+            Assert.assertEquals(Arrays.asList(sw), io.starting("SWITCH"));
+            Assert.assertTrue("forced before the new file is opened", 
+                    io.indexOf(sw) < io.indexOf("open " + fileName(200000)));
+            Assert.assertEquals(0, io.starting("APPEND").size());
+        } finally {
+            f.close();
+        }
+    }
+    
+    /**
+     * Forcing off (bergdb 005-47): the cut's thread forces the last file, which holds the
+     * cut's decision, before it deletes the first file of the cut; once, as nothing is left
+     * unforced for the next delete.
+     */
+    @Nano
+    public static void testForcingOffForcesBeforeACutDeletes(TestEnvironment c) 
+            throws IOException {
+        ForceLogIo io = new ForceLogIo();
+        FileStream f = new FileStream(c.createTempDir(), io, false);
+        try {
+            f.append(new byte[1000 * 1000], 0, 1000 * 1000);    // Five files of 200,000 bytes.
+            f.append(new byte[100], 0, 100);                    // A sixth, at 1,000,000.
+            Assert.assertEquals(5, io.starting("SWITCH").size());
+            f.pretruncate(800 * 1000);
+            f.awaitDeletes();
+            String cut = "CUT " + fileName(1000 * 1000) + " 100";
+            Assert.assertEquals(Arrays.asList(cut), io.starting("CUT"));
+            Assert.assertEquals(4, io.starting("delete").size());
+            Assert.assertTrue("forced before the deletes", 
+                    io.indexOf(cut) < io.indexOf("delete " + fileName(0)));
+            
+            // A cut with nothing unforced forces nothing.
+            f.pretruncate(1000 * 1000);
+            f.awaitDeletes();
+            Assert.assertEquals(5, io.starting("delete").size());
+            Assert.assertEquals(1, io.starting("CUT").size());
+        } finally {
+            f.close();
+        }
+    }
+    
+    /**
+     * Forcing off (bergdb 005-47): close() forces the last file, so that a clean stop is
+     * durable; a second close() forces nothing, and a restart reads the bytes.
+     */
+    @Nano
+    public static void testForcingOffForcesAtClose(TestEnvironment c) throws IOException {
+        ForceLogIo io = new ForceLogIo();
+        File dir = c.createTempDir();
+        FileStream f = new FileStream(dir, io, false);
+        byte[] bytes = new byte[] {4, 7};
+        f.append(bytes, 0, 2);
+        Assert.assertEquals(0, io.starting("CLOSE").size());
+        f.close();
+        String close = "CLOSE " + fileName(0) + " 2";
+        Assert.assertEquals(Arrays.asList(close), io.starting("CLOSE"));
+        f.close();
+        Assert.assertEquals(1, io.starting("CLOSE").size());
+        
+        FileStream again = new FileStream(dir, false);
+        try {
+            byte[] read = new byte[2];
+            again.read(0, read, 0, 2);
+            Assert.assertTrue(Arrays.equals(bytes, read));
+        } finally {
+            again.close();
+        }
     }
     
     // ---- bergdb 005-46: reads that wait for no write, and interrupts ----

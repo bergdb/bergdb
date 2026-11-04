@@ -1229,7 +1229,8 @@ public class Db implements AutoCloseable {
      * still writes all it had. close() waits for it.</p>
      * 
      * <p>Every transaction that has returned is written, as with close(), and with a file
-     * storage forced to the device (FileStream forces every append); only close() waits
+     * storage forced to the device (FileStream forces every append, or with per-append
+     * forcing off its last file at its close, bergdb 005-47); only close() waits
      * for that. This method returns at once.
      * Call close() to wait for completion and report a failed flush or storage close
      * (bergdb 005-73, F5).
