@@ -528,3 +528,20 @@ What did not go as planned: the coordinator's session stopped from 22:20 to
 about 07:00; Codex's reviews stopped three times at its content filter and
 once at its usage limit; s1's `/tmp` and heap are too small for the night
 tests and ScaleBench at 10M keys. Section 7 lists what waits for Frans.
+
+Open for the next coordinator (2026-11-04, 14:50, when this session
+closed):
+
+1. Night 2's conductor (`/Users/f/fl/bench/016/night2/`, a shell process
+   independent of any session) runs the five W7 steps on F53 in the quiet
+   block of 2026-11-05, from `night.sh`'s end to 06:05, and writes
+   news.md. In the morning: `sh /Users/f/fl/bench/016/release/collect.sh`,
+   then the numbers into `releases/2026.2/readme.md` (the text "follow in
+   a later commit") and a new `baseline.zip` and `SHA256SUMS` in one
+   commit (016-10, N9; 016-09, R8); correct the notes' "gets of up to 39
+   ms with 8 readers" (2026-11-04: 47.8 and 49.3 ms, 005-65).
+2. s1's W7 runs: 4 of 10 ended with OutOfMemoryError (2.5 GB heap on a
+   3 GB machine); 016-10 decides how to redo them.
+3. Section 7's items for Frans; 005 and 015 one entry at a time with
+   Frans; 017-long-term is empty, and Frans moves entries into it himself.
+
