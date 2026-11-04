@@ -344,7 +344,7 @@ Limits:
 * Reclaim added 26 to 38 percent of all stream writes in the cells
   measured (011-04, W4), and in the grids of 2026-10-13 the stream kept was
   the retention window plus one or two iteration spans. The bound on the
-  stream (R5, Q8) is measured, not derived (005-54).
+  stream (R5, Q8) is measured, not derived (017-04).
 * `FileStream` cuts whole files: the disk holds 6 to 9 percent more than the
   kept stream on average (011-04, W5d).
 * Protected long-lived snapshots, which a cut would not overtake, are not
