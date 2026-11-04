@@ -76,6 +76,12 @@ Open
 | [015-63](63-time-tostring-threads.md) | Fix | Time.toString() from several threads gives wrong strings and throws | open |
 | [015-64](64-key-replace-last-only.md) | Fix | Key replace replaces only the last "${transactionTime}" of a key | open |
 | [015-65](65-memory-builder-second-start.md) | Fix | A second start() of a memory() builder whose database runs is not refused | open |
+| [015-66](66-evictor-failure-lock-window.md) | Fix | A failed batch releases the writer lock before failing the database | open |
+| [015-67](67-batch-whole-map.md) | Fix | A batch processes a whole map even past its handle limit | open |
+| [015-68](68-startup-large-values-kept.md) | Fix | Startup leaves large values retained in the writer's admission list | open |
+| [015-69](69-resync-overwrites-readers.md) | Fix | A test-schedule resync overwrites concurrent readers' accounting | open |
+| [015-70](70-budget-decrease-above-budget.md) | Fix | A budget decrease can settle above budget although the pins fit | open |
+| [015-71](71-audit-empty-handle-cleanup.md) | Fix | The audit reports a valid empty-handle cleanup as a bad table entry | open |
 
 
 Closed
@@ -203,6 +209,12 @@ Files
 * [63-time-tostring-threads.md](63-time-tostring-threads.md). 015-63, Fix: R8-F8.
 * [64-key-replace-last-only.md](64-key-replace-last-only.md). 015-64, Fix: R8-F9.
 * [65-memory-builder-second-start.md](65-memory-builder-second-start.md). 015-65, Fix: a second start of a memory() builder.
+* [66-evictor-failure-lock-window.md](66-evictor-failure-lock-window.md). 015-66, Fix: R4-F1.
+* [67-batch-whole-map.md](67-batch-whole-map.md). 015-67, Fix: R4-F2.
+* [68-startup-large-values-kept.md](68-startup-large-values-kept.md). 015-68, Fix: R4-F3.
+* [69-resync-overwrites-readers.md](69-resync-overwrites-readers.md). 015-69, Fix: R4-F4.
+* [70-budget-decrease-above-budget.md](70-budget-decrease-above-budget.md). 015-70, Fix: R4-F5.
+* [71-audit-empty-handle-cleanup.md](71-audit-empty-handle-cleanup.md). 015-71, Fix: R4-F6.
 
 
 Log

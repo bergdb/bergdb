@@ -1,0 +1,9 @@
+Compiled and run against the supplied f5a5f66 jar, 2026-11-04.
+From /Users/f/fl/bench/016/R4:
+  javac -cp repo/java/build/bergdb.jar -d out/R4/classes out/R4/R4BatchBound.java
+  java -ea -cp out/R4/classes:repo/java/build/bergdb.jar bergdb.core.R4BatchBound
+
+ordinary batch limit=4096; pressure=false; colliding resident nodes=5000
+one sweep released=5000; maps=1
+
+Exit 0 means the documented bound was exceeded. This checks work, not elapsed time.

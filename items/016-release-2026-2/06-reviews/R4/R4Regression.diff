@@ -1,0 +1,167 @@
+diff --git a/java/src/bergdb/core/Pack.java b/java/src/bergdb/core/Pack.java
+index cbaf61c..c31438a 100644
+--- a/java/src/bergdb/core/Pack.java
++++ b/java/src/bergdb/core/Pack.java
+@@ -17,7 +17,8 @@ public class Pack implements IPack {
+         DbTesterRestart.class,
+         DbTesterStream.class,
+         DbUtil.class,
+-        CapacityTester.class,
++            CapacityTester.class,
++            R4EvictionTester.class,
+         Eviction.class,
+         EvictionReaderTester.class,
+         FileStreamPowerLossTester.class,
+diff --git a/java/src/bergdb/core/R4EvictionTester.java b/java/src/bergdb/core/R4EvictionTester.java
+new file mode 100644
+index 0000000..7592d01
+--- /dev/null
++++ b/java/src/bergdb/core/R4EvictionTester.java
+@@ -0,0 +1,147 @@
++package bergdb.core;
++
++import java.lang.reflect.Field;
++import java.util.Arrays;
++import java.util.List;
++import java.util.concurrent.TimeUnit;
++import java.util.concurrent.atomic.AtomicReference;
++import bergdb.dag.KeyNode;
++import bergdb.dag.Klong;
++import bergdb.dag.ValueNode;
++import bergdb.nanotest.Assert;
++import bergdb.nanotest.Nano;
++import bergdb.stream.MemoryStream;
++
++/** Regression cases for the eviction review of f5a5f66. */
++public final class R4EvictionTester {
++    @Nano
++    public static void testBatchHandleLimit() {
++        try (Db db = Db.builder().testSetup(new MemoryStream()).audit(0).start()) {
++            Db.Internal in = db.internal();
++            synchronized (in.getWriteLock()) {
++                int added = 0;
++                for (long id = 100001; added < 5000; id += 2) {
++                    if (Cache3.mapIndex(id) != 0) continue;
++                    KeyNode node = KeyNode.nodeWithTime(10);
++                    node.setId(id);
++                    node.setSpos(1000000000L + 8L * added);
++                    in.cache().register(node);
++                    added++;
++                }
++                Eviction eviction = in.eviction();
++                long full = in.cache().residents().bytes();
++                long budget = full / 10 * 9;
++                eviction.setBudget(budget);
++                Assert.assertTrue("ordinary batch",
++                        full <= budget + budget - Eviction.lowOf(budget));
++                long before = eviction.figures()[1];
++                eviction.sweep(db, false);
++                long released = eviction.figures()[1] - before;
++                Assert.assertTrue("ordinary batch released " + released
++                        + " objects, limit " + Eviction.BATCH, released <= Eviction.BATCH);
++            }
++        }
++    }
++
++    @Nano
++    public static void testStartupDrainsLargeValueAdmission() throws Exception {
++        MemoryStream stream = new MemoryStream();
++        CoreTestClock clock = new CoreTestClock();
++        try (Db db = Db.builder().testSetup(stream).clock(clock).audit(0).start()) {
++            clock.setTime(1000000);
++            byte[] value = new byte[1200 * 1024];
++            db.execute(db.trans().put("a", value).put("b", value).put("c", value).build());
++        }
++        try (Db db = Db.builder().testSetup(stream.copy()).clock(clock)
++                .cacheSizeIndicator(1).evictionSchedule(Eviction.Schedule.BUDGET, 1)
++                .audit(0).start()) {
++            Eviction eviction = db.internal().eviction();
++            eviction.awaitBatch();
++            Field field = Eviction.class.getDeclaredField("largeValues");
++            field.setAccessible(true);
++            synchronized (db.internal().getWriteLock()) {
++                List<?> pending = (List<?>) field.get(eviction);
++                Assert.assertTrue("startup retained " + pending.size()
++                        + " large-value admission entries", pending.isEmpty());
++            }
++        }
++    }
++
++    @Nano
++    public static void testResyncPreservesConcurrentValueAdmission() throws Exception {
++        Residents residents = new Residents();
++        KeyNode holder = KeyNode.nodeWithTime(10);
++        holder.addToEnd(Klong.createKey(new byte[] {1}), null, 1000);
++        KeyNode last = KeyNode.nodeWithTime(10);
++        residents.added(holder);
++        residents.added(last);
++        ValueNode value = new ValueNode(new byte[100], 1000);
++        AtomicReference<Throwable> problem = new AtomicReference<>();
++        Object writeLock = new Object();
++        Thread resync = new Thread(() -> {
++            try {
++                synchronized (writeLock) { residents.resync(Arrays.asList(holder, last)); }
++            } catch (Throwable x) { problem.set(x); }
++        }, "resync-writer");
++        try {
++            synchronized (last) {
++                resync.start();
++                long end = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(500);
++                while (resync.getState() != Thread.State.BLOCKED && System.nanoTime() < end)
++                    Thread.yield();
++                Assert.assertEquals("resync reached the last node",
++                        Thread.State.BLOCKED, resync.getState());
++                synchronized (holder) {
++                    holder.setPointee(1, value);
++                    residents.valueIn(holder, value);
++                }
++            }
++        } finally {
++            resync.join(500);
++        }
++        Assert.assertFalse("resync ended", resync.isAlive());
++        Assert.assertTrue("resync failure: " + problem.get(), problem.get() == null);
++        long sum = (long) Residents.counted(holder) + Residents.counted(last);
++        residents.released(holder);
++        residents.released(last);
++        Assert.assertEquals("after every resident was released (sum before release " + sum + ")",
++                0L, residents.bytes());
++    }
++
++    @Nano
++    public static void testBudgetDecreaseAfterPinsFall() throws Exception {
++        CoreTestClock clock = new CoreTestClock();
++        try (Db db = Db.builder().testSetup(new MemoryStream()).clock(clock).testId()
++                .maxNodeSize8().startupDistance(2000).audit(0).start()) {
++            Db.Internal in = db.internal();
++            Eviction eviction = in.eviction();
++            long time = 1000000;
++            for (int i = 0; i < 500; i++) {
++                clock.setTime(time += 10000);
++                db.execute(db.trans().put("k" + i, new byte[100]).build());
++            }
++            db.setCacheSizeIndicator(1);
++            eviction.awaitBatch();
++            Field field = Eviction.class.getDeclaredField("pinnedOfLastRound");
++            field.setAccessible(true);
++            long oldPin;
++            synchronized (in.getWriteLock()) { oldPin = field.getLong(eviction); }
++            db.setCacheSizeIndicator(Long.MAX_VALUE);
++            clock.setTime(time += 10000);
++            db.execute(db.trans().put("flush", new byte[10000]).build());
++            long pin = 0;
++            synchronized (in.getWriteLock()) {
++                for (bergdb.dag.Node node : in.cache().nodes())
++                    if (!Eviction.detachable(node, in.superRoot(), in.newestWrittenTop()))
++                        pin += Residents.bytesWithoutValues(node);
++            }
++            Assert.assertTrue("fixture released former pins", pin < oldPin);
++            long budget = (pin + oldPin) / 2;
++            db.setCacheSizeIndicator(budget);
++            eviction.awaitBatch();
++            long bytes = in.cache().residents().bytes();
++            Assert.assertTrue("lowered budget " + budget + ", resident " + bytes
++                    + ", pinned " + pin, bytes <= budget);
++        }
++    }
++}

@@ -1,0 +1,11 @@
+Compiled and run against the supplied f5a5f66 jar, 2026-11-04.
+From /Users/f/fl/bench/016/R4:
+  javac -cp repo/java/build/bergdb.jar -d out/R4/classes out/R4/R4FailureWindow.java
+  java -ea -cp out/R4/classes:repo/java/build/bergdb.jar bergdb.core.R4FailureWindow
+
+batch threw; next writer passed its go point; database active=true
+database FAILED before next writer appends; stream=384
+next writer returned=true; appended after FAILED=true; stream=384 -> 472
+later read refused; cause is batch failure=true
+
+Exit 0 means the forced interleaving reproduced. No timing benchmark is run.

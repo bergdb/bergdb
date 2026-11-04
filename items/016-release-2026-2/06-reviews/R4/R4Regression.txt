@@ -1,0 +1,13 @@
+Against f5a5f66 plus R4Regression.diff, built with sh build.sh; 2026-11-04.
+From /Users/f/fl/bench/016/R4/repo/java, one command/JVM at a time:
+  java -ea -cp build/bergdb.jar bergdb.dev.Unit -c bergdb.core.R4EvictionTester -m METHOD
+
+METHOD                                      Observed assertion
+testBatchHandleLimit                        ordinary batch released 5000 objects, limit 4096
+testStartupDrainsLargeValueAdmission         startup retained 3 large-value admission entries
+testResyncPreservesConcurrentValueAdmission  expected 0, got -156 after every resident was released
+testBudgetDecreaseAfterPinsFall              lowered budget 3447, resident 3703, pinned 3016
+
+Each selected test prints FAILURE, total: 2, failed: 1 (the second test is databasesStopped,
+which passed). Each takes 0.0 or 0.1 s as printed by Nano. Unit exits 0 even on this printed
+failure; the assertion and selected class/method, not exit status, identify these failures.
