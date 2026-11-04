@@ -88,6 +88,12 @@ Open
 | [015-75](75-start-checks-asserts.md) | Fix | Checks of stream data at a start that are asserts: without -ea a ... | open |
 | [015-76](76-startup-distance-clamp.md) | Fix | Db.setStartupDistance clamps to 400,000 to 10^9 bytes without ... | open |
 | [015-77](77-canonical-node-javadoc.md) | Fix | DbStarter.canonicalNode's Javadoc gives a reason for the stored ... | open |
+| [015-78](78-close-ioexception-discarded.md) | Fix | The consumer discards the first storage-close IOException | open |
+| [015-79](79-storage-negative-append.md) | Fix | A negative append is accepted and decreases StorageManager's length | open |
+| [015-80](80-buffer-concurrent-writes.md) | Fix | The buffer issues concurrent writes to a single-writer underlying ... | open |
+| [015-81](81-close-error-strands-sync.md) | Fix | An unchecked close error can kill the consumer before publishing a ... | open |
+| [015-82](82-pending-cut-after-close.md) | Fix | A pending cut arriving during another cut can be left unapplied ... | open |
+| [015-83](83-read-past-end-exception.md) | Fix | A read past the end throws IOException instead of the documented ... | open |
 
 
 Closed
@@ -227,6 +233,12 @@ Files
 * [75-start-checks-asserts.md](75-start-checks-asserts.md). 015-75, Fix: R6-F4.
 * [76-startup-distance-clamp.md](76-startup-distance-clamp.md). 015-76, Fix: R6-F5.
 * [77-canonical-node-javadoc.md](77-canonical-node-javadoc.md). 015-77, Fix: R6-F6.
+* [78-close-ioexception-discarded.md](78-close-ioexception-discarded.md). 015-78, Fix: R5-F1.
+* [79-storage-negative-append.md](79-storage-negative-append.md). 015-79, Fix: R5-F4.
+* [80-buffer-concurrent-writes.md](80-buffer-concurrent-writes.md). 015-80, Fix: R5-F5.
+* [81-close-error-strands-sync.md](81-close-error-strands-sync.md). 015-81, Fix: R5-F6.
+* [82-pending-cut-after-close.md](82-pending-cut-after-close.md). 015-82, Fix: R5-F7.
+* [83-read-past-end-exception.md](83-read-past-end-exception.md). 015-83, Fix: R5-F8.
 
 
 Log

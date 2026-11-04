@@ -1,0 +1,41 @@
+Focused checks on f5a5f66 production code, with review tests added.
+Each was run as a separate JVM, sequentially, with assertions enabled.
+Command template from repo/java:
+java -ea -cp build/bergdb.jar bergdb.dev.RUNNER -c CLASS -m METHOD
+
+Unit bergdb.storage.BufferedStream.testQuarterWakesConsumer: SUCCESS, 2 successful tests in 0.0 s.
+Unit bergdb.storage.BufferedStream.testQuarterBacklogDoesNotWait: SUCCESS, 2 successful tests in 0.0 s.
+Unit bergdb.storage.BufferedStream.testIdleConsumerWaitsForAppend: SUCCESS, 2 successful tests in 0.0 s.
+Unit bergdb.storage.BufferedStream.testNoFlushOfNothingWhenClosing: SUCCESS, 2 successful tests in 0.0 s.
+Unit bergdb.storage.BufferedStream.testCloseAfterFailedFlush: SUCCESS, 2 successful tests in 0.0 s.
+Unit bergdb.storage.BufferedStream.testAppendWaitIgnoresInterrupt: SUCCESS, 2 successful tests in 0.1 s.
+Unit bergdb.storage.BufferedStream.testCloseIgnoresInterrupt: SUCCESS, 2 successful tests in 0.1 s.
+Unit bergdb.storage.BufferedStream.testConsumerIgnoresInterrupt: SUCCESS, 2 successful tests in 0.1 s.
+Unit bergdb.storage.BufferedStream.testWriteMuch: SUCCESS, 2 successful tests in 0.0 s.
+Unit bergdb.storage.BufferedStream.testWriteLittle: SUCCESS, 2 successful tests in 0.0 s.
+Unit bergdb.storage.StorageManagerTester.testReadBelowFirstPosIsNotAStreamError: SUCCESS, 2 successful tests in 0.0 s.
+Unit bergdb.storage.StorageManagerTester.testWait2: SUCCESS, 2 successful tests in 0.0 s.
+Unit bergdb.core.DbTesterStream.testSyncAfterOneCommitWaitsForOneForce: SUCCESS, 2 successful tests in 0.1 s.
+Unit bergdb.core.DbTesterFailure.testInterruptedSync: SUCCESS, 2 successful tests in 0.0 s.
+Unit bergdb.core.DbTesterFailure.testErrorInFlushFailsSync: SUCCESS, 2 successful tests in 0.5 s.
+Unit bergdb.core.DbTester.testStopWritesAll: SUCCESS, 2 successful tests in 0.1 s.
+Unit bergdb.core.DbTester.testWriterWaitingForRoomAfterFailedFlush: SUCCESS, 2 successful tests in 0.0 s.
+Unit bergdb.core.DbTester.testCloseReportsFinalFlushFailure: SUCCESS, 2 successful tests in 0.0 s.
+Unit bergdb.core.DbTester.testCloseFailureSuppressedByBlockFailure: SUCCESS, 2 successful tests in 0.0 s.
+F bergdb.core.DbTester.testSyncWaitsForTheCommitByte: SUCCESS, 2 successful tests in 0.2 s.
+F bergdb.core.DbTester.testStopWithRunningTransaction: SUCCESS, 2 successful tests in 0.4 s.
+F bergdb.core.DbTester.testCloseWaits: SUCCESS, 2 successful tests in 0.5 s.
+Unit bergdb.core.InterruptTester.testSync: SUCCESS, 2 successful tests in 0.1 s.
+Unit bergdb.core.InterruptTester.testStartCommitAndClose: SUCCESS, 2 successful tests in 0.1 s.
+Unit bergdb.core.InterruptTester.testStorageThreadInterrupted: SUCCESS, 2 successful tests in 0.1 s.
+Unit bergdb.core.InterruptTester.testCommitThatWaitsForRoom: SUCCESS, 2 successful tests in 0.4 s.
+
+Nano includes the database-leak check in its count of two successful tests.
+The 26 entries above are 26 selected test methods, not 52 independent regressions.
+
+Additional probe (compiled output comes before bergdb.jar):
+javac --release 17 -cp build/bergdb.jar -d ../../out/R5/classes ../../out/R5/R5MainOnlyProbe.java
+java -ea -cp ../../out/R5/classes:build/bergdb.jar bergdb.core.R5MainOnlyProbe
+group: 3 syncs; 2 appends; durable length 300; no early ack; PASS
+ring: nonempty start; odd capacity 1001; 10294 bytes exact; PASS
+

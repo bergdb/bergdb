@@ -1,0 +1,9 @@
+Command (repo/java):
+java -ea -cp build/bergdb.jar bergdb.dev.Unit -c bergdb.core.DbTesterFailure -m testR5CachedReadAfterBackgroundFlushFailure
+
+At f5a5f66 with only review tests added:
+AssertionError: cached read succeeded after the storage consumer failed: unwritten
+FAILURE, total: 2, failed: 1. Time: 0.0 s.
+
+The failed append was observed and the consumer was joined before the read.
+The database is closed in finally. No replication is used.

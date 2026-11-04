@@ -1,0 +1,44 @@
+diff --git a/java/src/bergdb/core/DbTesterFailure.java b/java/src/bergdb/core/DbTesterFailure.java
+index 4f2c3c5..2de45b4 100644
+--- a/java/src/bergdb/core/DbTesterFailure.java
++++ b/java/src/bergdb/core/DbTesterFailure.java
+@@ -93,6 +93,39 @@ public class DbTesterFailure {
+         Assert.assertEquals("audit failures", auditFailures, Audit.failures());
+     }
+ 
++    /** P7: a known asynchronous main-storage failure must also refuse cached reads. */
++    @Nano
++    public static void testR5CachedReadAfterBackgroundFlushFailure() throws Exception {
++        Set<Thread> before = storageThreads();
++        FaultStream s = new FaultStream();
++        Db db = Db.builder().testSetup(s).start();
++        try {
++            Set<Thread> added = storageThreads();
++            added.removeAll(before);
++            Assert.assertEquals(1, added.size());
++            Thread consumer = added.iterator().next();
++            db.execute(db.trans().put("/r5", "before"));
++            db.sync(SyncLevel.ORDINARY);
++            s.failAppends = true;
++            db.execute(db.trans().put("/r5", "unwritten"));
++            consumer.join(500);
++            Assert.assertFalse("the background flush did not fail", consumer.isAlive());
++            Assert.assertTrue("the underlying append did not throw", s.faults > 0);
++            DbFailedException failed = null;
++            String value = null;
++            try {
++                value = DbUtil.getString(db, "/r5");
++            } catch (DbFailedException e) {
++                failed = e;
++            }
++            Assert.assertTrue("cached read succeeded after the storage consumer failed: " + value,
++                    failed != null);
++        } finally {
++            s.failAppends = false;
++            db.close();
++        }
++    }
++
+     /**
+      * An Error after the go point is thrown as it is, and fails the database: later calls
+      * get a DbFailedException with the Error as the cause.

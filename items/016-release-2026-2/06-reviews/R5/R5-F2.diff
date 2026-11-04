@@ -1,0 +1,43 @@
+diff --git a/java/src/bergdb/storage/BufferedStream.java b/java/src/bergdb/storage/BufferedStream.java
+index cef5f77..9a9152e 100644
+--- a/java/src/bergdb/storage/BufferedStream.java
++++ b/java/src/bergdb/storage/BufferedStream.java
+@@ -738,6 +738,38 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
+         }
+     }
+     
++    // R5 review regressions; production code above is unchanged.
++
++    /** A stop racing an interrupt must still close the underlying stream. */
++    @Nano
++    public static void testR5StopWhileConsumerInterruptedClosesStream() throws Exception {
++        final java.util.concurrent.atomic.AtomicInteger closes =
++                new java.util.concurrent.atomic.AtomicInteger();
++        MemoryStream m = new MemoryStream() {
++            @Override public void close() {
++                closes.incrementAndGet();
++                super.close();
++            }
++        };
++        BufferedStream b = new BufferedStream(m, 1000, 10);
++        b.start();
++        try {
++            awaitIdle(b);
++            synchronized (b) {
++                // Interrupt first: removes the consumer from the wait set. It cannot
++                // reacquire b to throw InterruptedException until stop is set below.
++                b.consumer.interrupt();
++                b.stop();
++            }
++            b.consumer.join(500);
++            Assert.assertFalse("consumer did not stop", b.consumer.isAlive());
++            Assert.assertTrue("stop ended the consumer without closing its stream",
++                    closes.get() > 0);
++        } finally {
++            b.close();
++        }
++    }
++
+     // ======== Test ========
+ 
+     /** bergdb 005-76: reaching a quarter wakes a consumer in its timed wait. */

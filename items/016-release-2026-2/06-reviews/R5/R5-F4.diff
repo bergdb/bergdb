@@ -1,0 +1,40 @@
+diff --git a/java/src/bergdb/storage/StorageManagerTester.java b/java/src/bergdb/storage/StorageManagerTester.java
+index e4e9c6c..89fbd6b 100644
+--- a/java/src/bergdb/storage/StorageManagerTester.java
++++ b/java/src/bergdb/storage/StorageManagerTester.java
+@@ -17,6 +17,35 @@ import bergdb.stream.ReadBelowFirstPosException;
+ 
+ public class StorageManagerTester {
+ 
++    /** AppendOnlyStream refuses negative lengths and its logical length never decreases. */
++    @Nano
++    public static void testR5NegativeAppendDoesNotDecreaseLength() throws IOException {
++        Object lock = new Object();
++        StorageManager manager;
++        synchronized (lock) {
++            manager = new StorageManager.Builder(lock)
++                    .stream("main", new MemoryStream(), 1000, 10).build();
++            manager.syncStreams(new NullProgressListener());
++        }
++        try {
++            boolean refused = false;
++            synchronized (lock) {
++                manager.append(new byte[100], 0, 100);
++                try {
++                    manager.append(new byte[1], 0, -1);
++                } catch (IllegalArgumentException expected) {
++                    refused = true;
++                }
++                Assert.assertTrue("negative append returned normally; manager length="
++                        + manager.getLength() + ", buffer length="
++                        + manager.getMainStream().getLength(), refused);
++                Assert.assertEquals(100, manager.getLength());
++            }
++        } finally {
++            manager.closeAndThrow();
++        }
++    }
++
+     @Nano
+     public static void testSync1() throws IOException {
+         MemoryStream m1 = new MemoryStream();

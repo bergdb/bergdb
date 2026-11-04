@@ -1,0 +1,48 @@
+diff --git a/java/src/bergdb/core/DbTesterStream.java b/java/src/bergdb/core/DbTesterStream.java
+index 13541a8..ac8bc67 100644
+--- a/java/src/bergdb/core/DbTesterStream.java
++++ b/java/src/bergdb/core/DbTesterStream.java
+@@ -743,4 +743,43 @@ public class DbTesterStream {
+             db.close();
+         }
+     }
++    /** The first storage-close failure must survive the consumer's close. */
++    @Nano
++    public static void testR5FirstCloseFailureIsReported() {
++        final AtomicInteger closes = new AtomicInteger();
++        final MemoryStream inner = new MemoryStream();
++        AppendOnlyStream s = new AppendOnlyStream() {
++            public long getLength() { return inner.getLength(); }
++            public long getFirstPos() { return inner.getFirstPos(); }
++            public void append(byte[] bytes, int off, int len) throws IOException {
++                inner.append(bytes, off, len);
++            }
++            public void read(long pos, byte[] bytes, int off, int len) throws IOException {
++                inner.read(pos, bytes, off, len);
++            }
++            public void pretruncate(long pos) throws IOException { inner.pretruncate(pos); }
++            public void seekFirstPos(long pos) throws IOException { inner.seekFirstPos(pos); }
++            public void close() throws IOException {
++                inner.close();
++                if (closes.incrementAndGet() == 1) {
++                    throw new IOException("R5: the first storage close failed");
++                }
++            }
++        };
++        Db db = Db.builder().testSetup(s).start();
++        try {
++            db.execute(db.trans().put("/r5", "committed"));
++            StreamIoException failure = null;
++            try {
++                db.close();
++            } catch (StreamIoException e) {
++                failure = e;
++            }
++            Assert.assertTrue("close() returned successfully after its storage close failed; "
++                    + "underlying closes=" + closes.get(), failure != null);
++            Assert.assertTrue(failure.getCause().getMessage().contains("first storage close failed"));
++        } finally {
++            try { db.close(); } catch (StreamIoException expected) { }
++        }
++    }
+ }

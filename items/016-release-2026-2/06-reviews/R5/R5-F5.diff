@@ -1,0 +1,93 @@
+diff --git a/java/src/bergdb/storage/Pack.java b/java/src/bergdb/storage/Pack.java
+index 76807a7..1be3c38 100644
+--- a/java/src/bergdb/storage/Pack.java
++++ b/java/src/bergdb/storage/Pack.java
+@@ -6,6 +6,7 @@ public class Pack implements IPack {
+     
+     private static Class<?>[] classes = new Class<?>[] {
+         BufferedStream.class,
++        BufferedStreamReviewTester.class,
+         MetaBlock.class,
+         MetaBlock.Tester.class,
+         Pack.class,
+diff --git a/java/src/bergdb/storage/BufferedStreamReviewTester.java b/java/src/bergdb/storage/BufferedStreamReviewTester.java
+new file mode 100644
+index 0000000..b02aeeb
+--- /dev/null
++++ b/java/src/bergdb/storage/BufferedStreamReviewTester.java
+@@ -0,0 +1,75 @@
++package bergdb.storage;
++
++import java.io.IOException;
++import java.util.concurrent.CountDownLatch;
++import java.util.concurrent.TimeUnit;
++import bergdb.nanotest.Assert;
++import bergdb.nanotest.Nano;
++import bergdb.stream.AppendOnlyStream;
++import bergdb.stream.MemoryStream;
++
++/** Regression tests for the R5 review. */
++public class BufferedStreamReviewTester {
++    /** An implementation may assume that all non-read calls share one write lock. */
++    private static final class SingleWriterStream implements AppendOnlyStream {
++        final MemoryStream inner = new MemoryStream();
++        final CountDownLatch entered = new CountDownLatch(1);
++        final CountDownLatch release = new CountDownLatch(1);
++        volatile boolean appending;
++
++        SingleWriterStream() throws IOException { inner.append(new byte[100], 0, 100); }
++        public long getLength() { return inner.getLength(); }
++        public long getFirstPos() { return inner.getFirstPos(); }
++        public void read(long pos, byte[] dest, int off, int len) throws IOException {
++            inner.read(pos, dest, off, len);
++        }
++        public void append(byte[] bytes, int off, int len) throws IOException {
++            appending = true;
++            entered.countDown();
++            try {
++                if (!release.await(500, TimeUnit.MILLISECONDS)) {
++                    throw new IOException("test did not release the append");
++                }
++                inner.append(bytes, off, len);
++            } catch (InterruptedException e) {
++                Thread.currentThread().interrupt();
++                throw new IOException(e);
++            } finally { appending = false; }
++        }
++        public void pretruncate(long pos) throws IOException {
++            if (appending) {
++                throw new IOException("R5: pretruncate overlaps append on a single-writer stream");
++            }
++            inner.pretruncate(pos);
++        }
++        public void seekFirstPos(long pos) throws IOException { inner.seekFirstPos(pos); }
++        public void close() { inner.close(); }
++    }
++
++    @Nano
++    public static void testR5UnderlyingWritesAreSerialized() throws Exception {
++        Object writeLock = new Object();
++        SingleWriterStream s;
++        BufferedStream b;
++        synchronized (writeLock) {
++            s = new SingleWriterStream();
++            b = new BufferedStream(s, 1000, 10);
++            b.start();
++        }
++        IOException cutFailed = null;
++        try {
++            synchronized (writeLock) { b.append(new byte[300], 0, 300); }
++            Assert.assertTrue("consumer did not enter append",
++                    s.entered.await(500, TimeUnit.MILLISECONDS));
++            // 50 is below the 100-byte prefix already flushed before b was created.
++            // Every public non-read call on b holds the same write lock.
++            synchronized (writeLock) {
++                try { b.pretruncate(50); } catch (IOException e) { cutFailed = e; }
++            }
++        } finally {
++            s.release.countDown();
++            synchronized (writeLock) { b.close(); }
++        }
++        Assert.assertTrue("a valid buffered cut failed: " + cutFailed, cutFailed == null);
++    }
++}
