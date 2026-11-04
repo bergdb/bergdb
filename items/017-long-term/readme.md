@@ -45,6 +45,11 @@ Files
   model, Q5 the write overhead and Q8 the space bound with reclaim, with
   the measurements for Q5 and Q8. Moved from 005-54 on 2026-11-04. Open;
   notes only.
+* [017-05](05-block-storage/readme.md). Block storage: the stream on a
+  raw block device without a file system, as a ring of a fixed size whose
+  front is given up when the room is needed (retention by space); in Java,
+  and in a C or C++ clone on a Linux device. Moved from 005-60 on
+  2026-11-04. Open; notes only.
 
 
 Log
@@ -73,3 +78,6 @@ open with no end in sight; and not closed, as Q1 points at real behaviour
 (a tree split but never merged keeps its largest size after mass deletes)
 and Q5 and Q8 have measurements that could become the accepted answer. A
 question that becomes a real theorem goes to 007 then.
+
+2026-11-04. 017-05, block storage, moved from 005-60 by Frans, in his
+words: "This is a big thing, long term, open-ended. Not a todo for 005."
