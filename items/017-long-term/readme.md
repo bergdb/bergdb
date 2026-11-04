@@ -23,13 +23,19 @@ Rules
   at a time with Frans; a bounded piece of it can become an entry of a todo
   list.
 * An entry of 005 or 015 that turns out to be long-term is moved here by
-  Frans, one at a time: its row moves, its file stays where it is.
+  Frans, one at a time: its contents become a new subitem here, its row
+  moves to its list's Closed table (status moved), and its file stays as a
+  short note with a link, so links to it keep working.
 
 
 Files
 =====
 
-None yet.
+* 017-01. Not in the public repository.
+* [017-02](02-publication/readme.md). The literature and the options for
+  a publication: self-indexed streams, BergDB as a whole, the
+  verification, and the code-only transactions. Moved from 005-06 on
+  2026-11-04. Open; explored now, Frans decides later.
 
 
 Log
@@ -37,3 +43,12 @@ Log
 
 2026-11-04. Created the item, at Frans's request, for the long-term
 topics that are not ordinary todos.
+
+2026-11-04. 017-01, what to do with BergDB, moved from 005-05 by
+Frans, who asked for the options to be prepared now and will decide
+later.
+
+2026-11-04. 017-02, the literature and the options for a publication,
+moved from 005-06 by Frans, who asked for an exploration now: a paper on
+self-indexed streams, the other options, and whether the code-only
+approach to transactions (STM and historic queries) is novel.

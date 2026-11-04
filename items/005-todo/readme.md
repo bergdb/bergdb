@@ -27,8 +27,6 @@ Open
 
 | ID | Kind | What | Status |
 |---|---|---|---|
-| [005-05](05-bergdb-future.md) | Decide | What to do with BergDB: publish it, when, money, paid work | open |
-| [005-06](06-publication-literature.md) | Investigate | The literature and the options for a publication | open |
 | [005-11](11-replication.md) | Decide | Replication: study the implementation and its tests; remove it, complete it, or change its design (005-10). For release 2026.1: kept, documented as experimental | open |
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": a sync that returns when the bytes have left the process (`write()`), not when they are forced to the device; Frans's question. Options: a property of the storage (`FileStream` without per-append forces), a new sync level, or nothing. Forces stay at new files, cuts and deletes; holes in an unforced tail are untested (after 005-46) | open |
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API set it only at start (`cacheSizeInMb`), against 010-P6. Decided (Frans, 2026-10-28): option B, `Database.setCacheSizeInMb` and `getCacheSizeInMb`, clamped as the builder, for the run only, through `Db.setCacheSizeIndicator` and its getter, which JMX uses too; after a decrease the setter wakes the eviction thread, so that an idle database gives the memory back. Implemented with 005-53 (`fd8f513`). Reopened by Frans 2026-10-29: left is "Done when"'s pause probe, no get or commit waiting longer while the resident bytes converge to a lowered budget than with a fixed one; `PauseProbe` needs two properties to lower its budget mid-phase, then four runs (ZGC and G1, fixed and lowered) in a quiet block, about 15 minutes; the steps in the entry's Left to do | open |
@@ -47,6 +45,8 @@ Closed
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
 | [005-07](07-transaction-synchronization.md) | Investigate | Synchronization of transactions: obsolete since handles (009) | dropped | 2026-11-04 |
+| [005-06](06-publication-literature.md) | Investigate | The literature and a publication: moved to 017-02 | moved | 2026-11-04 |
+| [005-05](05-bergdb-future.md) | Decide | What to do with BergDB: moved to 017-01 | moved | 2026-11-04 |
 | [005-79](79-integers-not-doubles.md) | Implement | Integers, not doubles, in the Core's decisions | done | 2026-11-03 |
 | [005-82](82-gettrans-corruption.md) | Fix | getTrans fails the database on a corrupt record | done | 2026-11-03 |
 | [005-69](69-system-clock-promise.md) | Fix | SystemClock keeps its promise | done | 2026-11-03 |
