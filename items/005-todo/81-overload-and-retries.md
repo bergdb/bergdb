@@ -1,16 +1,29 @@
-005-81. Investigate: client overload and transaction retries
-==========================================================
+005-81. Investigate: transaction retries
+========================================
 
-Status: open. Kind: investigate. Created 2026-10-30.
+Status: open. Kind: investigate. Created 2026-10-30. Split on 2026-11-04
+at Frans's decision: the broad question, overload, backpressure and
+admission control, is now a long-term topic,
+[017-06](../017-long-term/06-overload/readme.md); this entry keeps the
+retries.
 
 Plan and source review only. No implementation or new performance runs
 have been made for this entry.
 
-Registered at Frans's request after 006-11's STM benchmarks. Keep STM;
-investigate how clients experience storage, CPU and memory pressure before
-choosing a replacement for the hard-coded retry sleeps. A change to
+Registered at Frans's request after 006-11's STM benchmarks, as "client
+overload and transaction retries": keep STM; investigate how clients
+experience storage, CPU and memory pressure before choosing a replacement
+for the hard-coded retry sleeps. Since the split, that pressure is
+017-06's, and this entry is the retries. A change to
 `RwTransaction.executeRw()` is the expected first implementation outcome,
 but its algorithm, defaults and public settings remain to be decided.
+
+The problem, in short: `executeRw()` reruns a conflicting transaction
+after hard-coded exponential sleeps, 10, 20, 40 ms and so on, capped at
+10,240 ms. There is no jitter, attempt limit, time budget or setting, so a
+client on a hot key can sleep over 20 s across eleven reruns. The same
+`RerunException` also fires when a long action outlives `KeyModSet`'s
+history, where sleeping longer does not help (section 2.5).
 
 ## 1. Purpose and scope
 
@@ -18,27 +31,32 @@ Answer these questions:
 
 * Where does BergDB slow or refuse a client today? What resources and locks
   does the client hold while waiting?
-* At and above sustainable capacity, do throughput, latency, memory and
-  individual clients' progress remain acceptable? How quickly does the
-  database recover when offered load falls?
-* Which controls belong in BergDB, and which belong in the application
-  that owns its threads and incoming requests?
 * What retry algorithm should replace the 10 ms exponential sleep? Should
   callers have a retry time budget, an attempt limit, or both? What does
   an exception guarantee about whether the transaction committed?
-* Is a retry change enough, or is bounded admission of client work also
-  justified? What is the runtime and code-complexity cost of each option?
+* How is a rerun after history exhaustion told from a changed-key
+  conflict, and does it need a different treatment?
 
-The initial scope is the local Java Pub API over one main storage, with
-the Core and storage paths traced underneath. Cover reads, write-only
-transactions, read-write actions, and durability waits. Include eviction
-and reclaim as competing maintenance work. Replication is experimental:
-record its additional waits, but a full replicated overload policy is a
-separate extension. The C implementation is not a target of this entry.
+The other questions of the plan before the split moved to 017-06,
+section 1: throughput, latency, memory and progress at and above capacity,
+and recovery when the load falls; which controls belong in BergDB and
+which in the application; and whether bounded admission of client work is
+justified beyond a retry change.
+
+The scope is the local Java Pub API over one main storage, with the Core
+and storage paths traced underneath. Cover read-write actions and the W
+transactions that take the same retry loop (section 2.5), with the waits
+an attempt meets: its reads, the commit, durability waits, and eviction
+and reclaim as competing maintenance work, as far as they shape a retry's
+cost. Replication, which the plan called experimental, was removed on
+2026-11-04 (005-11, `16fb228`; Frans: "A with C2 now"), and its waits with
+it; a future design is 017-03. The C implementation is not a target of
+this entry.
 
 Keep 006-11's conclusion: concurrent STM actions have demonstrated value.
-This entry studies progress and resource control, not removal of STM or a
-general redesign of the write lock.
+This entry studies retries and the progress of retrying clients, not
+removal of STM or a general redesign of the write lock. Resource control
+is 017-06's.
 
 ## 2. What the code does today
 
@@ -55,6 +73,13 @@ the write buffer and eviction, supported by earlier investigations and
 tests. The client paths inspected below contain no common admission limit,
 request deadline or overload-result policy. This is evidence about today's
 implementation, not proof that no historical design discussion exists.
+
+2026-11-04, at the split. The code was not reviewed again. Where a commit
+of 2026-11-04 changed what a section describes, a dated note says so:
+005-47 and 005-11 in section 2.1, 005-52 in section 2.4. Sections 2.2,
+2.3 (but its first paragraph) and the memory part of 2.4 serve the broad
+question and moved to 017-06, section 2; their headings stay here, so that
+citations of this section keep working.
 
 ### 2.1. Storage write throughput and durability
 
@@ -84,6 +109,13 @@ and eventually stalls committing clients. There is no overall room-wait
 deadline. Interrupts are remembered and restored rather than aborting this
 wait: it is after the transaction's go point.
 
+2026-11-04 note: since 005-47 (`188facf`), per-append forcing is a
+setting of `FileStream`, `FileStream(dir, forceAppends)`, on by default and
+in the core API only. With it off, an append is written but not forced,
+and the forces stay at a file opened for appends, the last file before a
+new one, a cut's deletes and `close()`. The Pub API's file storage forces
+each append, as before.
+
 The consumer checks the quarter-full flush rule when it wakes. Appends
 currently notify an idle consumer, but do not notify on crossing a quarter
 while it is already on its timed wait. This is the known, still-open
@@ -97,9 +129,12 @@ not a 500 ms overall timeout or an obligatory delay: completion notifies
 it. Its interrupt is a wait cancellation; the transaction stays committed.
 Measure execution and execution-plus-sync separately.
 
-`StorageManager.append()` also appends to active replica buffers in
-sequence. A slow active replica can impose another buffer wait in this
-same path. Do not generalize one-main-storage measurements to replication.
+At the review, `StorageManager.append()` also appended to active replica
+buffers in sequence, so a slow active replica could impose another buffer
+wait in this same path, and the review said not to generalize
+one-main-storage measurements to replication. 2026-11-04 note: replication
+was removed (005-11, `16fb228`); that wait is gone. The removed design and
+the options for a future one are 017-03.
 
 Sources: [Db.java](../../java/src/bergdb/core/Db.java),
 [StorageManager.java](../../java/src/bergdb/storage/StorageManager.java),
@@ -109,26 +144,11 @@ Sources: [Db.java](../../java/src/bergdb/core/Db.java),
 
 ### 2.2. Storage read throughput
 
-`ConnectionImp` performs reads synchronously on the calling thread.
-Cache misses reach the stream on that thread. `FileStream` uses positional
-channel reads and allows separate readers alongside the writer; it has no
-general semaphore or request-rate limit for read I/O.
-
-This does not make the entire read path lock-free. The cache slow path
-uses node/handle monitors, a read of buffered bytes uses the buffer's
-monitor, and cache loads can trigger eviction waits. Some repeated loads
-of the same index node serialize through its handle. Storage, OS scheduling
-and those waits determine the latency observed by callers.
-
-No explicit database-wide cap on concurrent read I/O was found on this
-path. Application thread limits provide an external bound. A stream read
-from the OS page cache is not a physical disk read: report them separately
-and do not assume a fixed ratio between disk and memory latency.
-
-Sources: [ConnectionImp.java](../../java/src/bergdb/pubimp/ConnectionImp.java),
-[NodeCollection.java](../../java/src/bergdb/core/NodeCollection.java),
-`BufferedStream.read()` and `FileStream.read()/DbFile.read()`;
-009-02, section 3.4; 005-46.
+Moved to [017-06](../017-long-term/06-overload/readme.md), section 2.1,
+on 2026-11-04: the read path's synchronous I/O, its monitors, and the
+absence of a database-wide cap on read I/O. For a retry it matters that a
+rerun repeats the action's reads on the calling thread, cache misses
+included, and that a load can wait for eviction (section 2.4).
 
 ### 2.3. CPU and concurrent client work
 
@@ -136,27 +156,11 @@ Sources: [ConnectionImp.java](../../java/src/bergdb/pubimp/ConnectionImp.java),
 reads, index preparation and core transaction construction precede the
 serialized commit. Each connection is intended for one thread.
 
-There is no general CPU admission controller or bounded executor on this
-path. `Db.writersWaiting` counts writers approaching the monitor and lets
-eviction yield; it does not cap them, promise fair order, or bound their
-prepared transaction memory. Waiting client threads are a queue even though
-there is no explicit request-queue object in BergDB.
-
-Increasing client concurrency can compete with the storage and eviction
-threads and GC, and can increase retries. This needs measurement rather
-than a rule based only on CPU percentage or number of cores.
-
-005-65 already studied a relevant case: its quiet runs found CPU saturation
-and contention entering `evictorLock`, not loads waiting for eviction
-batches. A change to avoid redundant monitor entries is in `988fe1a`;
-the entry remains open for the specified quiet rerun. Frans accepted the
-remaining scheduler delays at a full machine as outside the earlier
-BergDB pause target. This investigation must respect that decision while
-still measuring the total latency clients experience.
-
-Sources: `ConnectionImp.rw()`, `RwTransaction.executeRw()`,
-`Db.executeInner()/Internal.writersWaiting()`, `Eviction.EvictorRun`;
-005-65, "Results", "Decision and fix" and "State"; 010-01, P1.
+The rest of this section moved to
+[017-06](../017-long-term/06-overload/readme.md), section 2.2, on
+2026-11-04: no CPU admission controller, `Db.writersWaiting` (which counts
+writers but neither caps them nor promises fair order), client concurrency
+against the maintenance threads and GC, and 005-65's CPU saturation.
 
 ### 2.4. Cache, eviction and total memory
 
@@ -182,25 +186,20 @@ map's work or a monitor wait can overrun it even without descheduling.
 This wait is skipped during startup and when the current thread holds the
 database write lock. A transaction's boundary handles its eviction work.
 
-`Residents` accounts for node/value memory using `getMemSize()`, not all
-JVM heap allocations. It excludes, for example, the application's request
-queue, prepared transaction maps/buffers and uncached temporary objects;
-it is not a whole-process memory limit. Shared values can be counted more
-than once, and a growing pinned node's accounting catches up when written.
-Dirty/pinned objects cannot simply be evicted. The controller raises its
-trigger to at least the last round's pinned bytes plus the watermark gap
-when that exceeds the configured budget.
+2026-11-04 note: 005-52 found that a large transaction's warmup, which
+runs before the write lock, waited about as long as the convergence after
+a lowered budget, each of its loads parked up to 2 ms for a batch.
+Its option (B) makes a warmup's loads wake the eviction thread without
+parking; a reader's loads still park. That change was coming, not yet in
+`main`, when 005-81 was split (HEAD `2753f80`); see 005-52's log for its
+state.
 
-Thus a small cache budget does not guarantee a small heap, and limiting
-concurrent actions can matter independently of cache eviction. Measure
-resident/pinned accounting, actual heap and allocation pressure separately.
-The Pub builder normally chooses about a fifth of maximum heap; the direct
-Core builder's default is 200 MB, so record the actual settings.
+The memory part of this section, `Residents`' accounting against the whole
+heap, moved to [017-06](../017-long-term/06-overload/readme.md),
+section 2.3, on 2026-11-04.
 
-Sources: [Eviction.java](../../java/src/bergdb/core/Eviction.java),
-[Residents.java](../../java/src/bergdb/core/Residents.java),
-`DatabaseBuilderImp` and `DbBuilder`;
-009-02; 005-52; 005-65; 005-80; 010-01, P1.
+Sources: [Eviction.java](../../java/src/bergdb/core/Eviction.java);
+009-02; 005-52; 010-01, P1.
 
 ### 2.5. Transaction retries: exact current policy
 
@@ -265,47 +264,38 @@ Sources: `RwTransaction.executeRw()`,
 
 ## 3. Establish the client contract first
 
-Propose and review a short contract before selecting public settings:
+Propose and review a short contract before selecting public settings.
+Before the split the contract had six points. Two of them and part of a
+third, the bound on outstanding work, where an admission wait occurs, and
+the drain after a burst, are about admission and moved to
+[017-06](../017-long-term/06-overload/readme.md), section 3. The points
+the retries need stay:
 
-1. **Bound outstanding work.** Identify limits on running attempts,
-   queued requests, bytes retained by waiting/prepared transactions and
-   durability waiters. Blocking one caller provides backpressure only if
-   the application also bounds its incoming work.
-2. **State where waiting occurs.** Prefer any new admission wait before
-   running the action or allocating large transaction state. Do not hold
-   the database write lock while waiting for an admission permit. Define
-   nested calls and maintenance exemptions to avoid self-deadlock.
-3. **Specify refusal precisely.** An admission refusal or exhausted retry
+1. **Specify refusal precisely.** An admission refusal or exhausted retry
    budget should mean that this transaction did not commit. It is not a
    storage failure and must not fail the database. Distinguish it from
    actual I/O/corruption failure and from cancellation of a durability wait.
-4. **Respect the go point.** `Db.executeInner()` changes memory without
+2. **Respect the go point.** `Db.executeInner()` changes memory without
    rollback once its checks have passed. A deadline must not throw out of
    the later append/eviction/reclaim path as an ordinary overload refusal.
    Existing monitor acquisition, synchronous I/O and arbitrary action code
    have no hard overall deadline. Merely adding a timer in `executeRw()`
    cannot promise a hard timeout for the whole call. Distinguish a retry
    time budget, a pre-commit deadline, and a durability-wait timeout.
-5. **Preserve progress.** Measure per-client completion gaps and fairness,
+3. **Preserve progress.** Measure per-client completion gaps and fairness,
    including fresh callers competing with retriers. Shorter sleeps may
    improve latency but waste CPU on doomed attempts. Define acceptable
    throughput/latency tradeoffs from the baseline, not from one mean.
-6. **Recover and be observable.** After a burst, queued work and memory
-   should drain and waits return towards baseline. Expose enough evidence
-   to distinguish conflicts, history exhaustion, storage waits, CPU
-   saturation and eviction pressure, without expensive always-on tracing.
+4. **Be observable.** Expose enough evidence to distinguish conflicts,
+   history exhaustion, storage waits, CPU saturation and eviction pressure,
+   without expensive always-on tracing.
 
-Tentative API placement: shared resource limits at the database level;
-caller patience as a per-call option or connection default. If a connection
-setting is chosen, specify it on the public `Connection` API and implement
-it in `ConnectionImp`; an implementation-only knob is insufficient.
-Keep the number of settings small. A maximum-attempt setting may be useful,
-but "a few attempts" alone gives no predictable time budget.
-
-An application-owned bounded executor is a candidate baseline, not an
-assumption that BergDB must own another executor. Protect the first
-admission queue as well as later database waits. Adding a global read gate
-could penalize cheap cache hits, so justify placement by measured costs.
+Tentative API placement: caller patience as a per-call option or connection
+default; shared resource limits, if any, at the database level (017-06).
+If a connection setting is chosen, specify it on the public `Connection`
+API and implement it in `ConnectionImp`; an implementation-only knob is
+insufficient. Keep the number of settings small. A maximum-attempt setting
+may be useful, but "a few attempts" alone gives no predictable time budget.
 
 ## 4. Retry policies to compare
 
@@ -338,9 +328,9 @@ running callback or a thread blocked acquiring the commit monitor. A final
 check before the go point would require deliberate Core integration.
 
 Test one cause at a time: jitter/cap first, exhaustion behaviour second,
-shared admission limits only if the overload results justify them. Releasing
-an active-attempt permit before backoff and reacquiring it before the next
-read is a candidate; waiting requests still consume memory and need a bound.
+shared admission limits only if the overload results justify them (those
+results, and an active-attempt permit released across a backoff, are
+017-06's, sections 3 and 4).
 
 If hot-key starvation remains, compare a queued/fair admission experiment.
 A mutex used only by retriers cannot guarantee progress against fresh
@@ -356,64 +346,37 @@ settings is assumed. Evaluate those only if simpler measured controls fail.
 ### 5.1. Workloads
 
 Use one connection per worker and fixed, reproducible data/operation
-sequences. Establish a sustainable baseline for each case, then exercise
-below, near and above that rate. Start with these separate pressures:
+sequences. Start with the two retry cases:
 
 | Case | Deliberate pressure | Important control |
 |---|---|---|
-| CPU | Resident, independent RW actions with useful computation | Tiny actions; varying concurrency |
-| Write | File appends with larger values and batches | Unsynced execution versus ordinary sync |
-| Read | Random reads with a working set above cache budget | OS-cache reads versus device reads |
-| Memory | Small cache, loading reads and concurrent prepared writes | Fixed versus lowered cache budget |
 | Conflict | Hot counter, skewed keys and different action costs | Disjoint keys; unrelated writes |
-| History | Long action plus many unrelated modifications | Trace history exhaustion separately |
+| History  | Long action plus many unrelated modifications       | Trace history exhaustion separately |
 
-Then combine read/write traffic, eviction and reclaim in a small number of
-cases chosen by the isolated results. Include indexed W transactions and
-RW actions, large versus small transactions, a new caller arriving behind
-retriers, and short bursts followed by quiet recovery.
+Include indexed W transactions and RW actions, large versus small
+transactions, and a new caller arriving behind retriers. Reuse 006-11's
+counter/integrity checks and useful computation. Fixed workers, as in
+006-11, are the arrival model of the retry baselines.
 
-Reuse 006-11's counter/integrity checks and useful computation, 005-65's
-thread sweep, and the existing `PauseProbe`/`LoadTest` mechanisms where
-appropriate. Its existing write benchmark `Perf` serializes part of
-transaction preparation, so do not use it unmodified to judge parallel
-action admission.
+The CPU, write, read and memory cases, their combinations with eviction
+and reclaim, short bursts followed by quiet recovery, and the other
+harnesses to reuse for them moved to
+[017-06](../017-long-term/06-overload/readme.md), section 4.1.
 
 ### 5.2. Arrival model and attribution
 
-006-11's fixed workers wait for their previous operation before issuing the
-next. That is a useful capacity baseline, but it reduces arrival rate when
-latency rises. Add independently scheduled arrivals through a deliberately
-bounded harness queue. Count arrivals refused by the harness separately
-from refusals by BergDB. Never manufacture an unbounded queue to test one.
-
-Record scheduled arrival, actual enqueue/start, database return and durable
-completion. Measure end-to-end latency from scheduled arrival, including
-queueing and missed dispatch time; report generator lag so a saturated load
-generator cannot masquerade as database stability. Use a separate process
-or CPU allocation for the generator if needed. Retain fixed-client runs to
-separate application admission effects from database effects.
-
-Pilot at roughly 50%, 90%, 110% and 150% of each baseline's sustainable
-rate. Choose concurrency and queue caps explicitly. Use below-capacity,
-overload and recovery phases long enough to see buffer/cache convergence
-and retry drain; determine final durations from the pilot, then freeze
-them. A run that ends with requests in flight must report their completion,
-refusal or watchdog expiry, not drop them from throughput or latency.
-
-Use controlled slow-stream wrappers to isolate read and append stalls and
-test recovery deterministically, followed by real FileStream measurements.
-Call injected delays simulated I/O, and warm OS-cache results cache results.
-Confirm device I/O with host counters for any claimed disk-bound run.
-Vary read and write pressure independently before a shared-device run.
+Moved to [017-06](../017-long-term/06-overload/readme.md), section 4.2,
+on 2026-11-04: independently scheduled arrivals through a bounded harness
+queue, end-to-end latency from the scheduled arrival, the load levels
+around capacity, and controlled slow-stream wrappers.
 
 ### 5.3. What to record
 
-* Offered, admitted, completed, refused and still-outstanding requests;
-  useful transactions/second and application/stream bytes/second.
-* p50, p95, p99, p99.9 and maximum whole-call and end-to-end latency,
-  separately for successful and refused requests; per-client completions,
-  longest completion gap and drain/recovery time.
+* p50, p95, p99, p99.9 and maximum whole-call latency, separately for
+  successful and refused requests; per-client completions and longest
+  completion gap. (End-to-end latency from a scheduled arrival, the
+  counts of offered and admitted requests, and drain/recovery time are
+  017-06's, section 4.3.)
 * Attempts per committed and per refused request; retry reason, requested
   and actual wait, cumulative backoff, snapshot age and history coverage.
   Existing `RerunException` carries only a hash, and `getRunCount()` is
@@ -421,9 +384,6 @@ Vary read and write pressure independently before a shared-device run.
 * Time in action/preparation, warmup, commit-lock acquisition and holding,
   buffer-room wait, underlying append/force, sync, read I/O and eviction.
   Keep overlapping times distinct: a buffer wait is part of lock holding.
-* Active/waiting threads, process and per-thread CPU (including maintenance),
-  allocation, heap/GC pauses or stalls, resident/pinned bytes, buffer
-  occupancy, eviction work and storage throughput/latency.
 
 Use existing `takeRoomWaits()`, eviction figures and writer counts where
 their semantics fit. In particular, `takeRoomWaits()` measures from the
@@ -449,10 +409,6 @@ Verify final values against acknowledged commits, validate each transaction's
 invariants, and check a sync/reopen subset. Account for every scheduled
 request exactly once. Failures and watchdog expiry are results, not samples
 to omit. Record durable completion separately from committed completion.
-
-The original STM benchmark used shorter synthetic runs with a warmed OS
-cache. It is evidence to reuse, not evidence for cold-disk overload,
-long-running resource bounds or all client workloads.
 
 ## 6. Implementation checks and decision criteria
 
@@ -495,11 +451,8 @@ Before selecting a default, report:
 * added production lines, public settings, synchronization, timers and
   maintenance burden, together with the smallest supported recommendation.
 
-Acceptable overload need not mean constant latency or successful admission
-of every request. The aim is bounded outstanding work, useful throughput,
-understandable refusal/wait semantics and observable progress. The old
-20 ms internal-pause target is not a promise of 20 ms end-to-end service
-under arbitrary CPU, storage or memory pressure.
+What acceptable overload means, and that the 20 ms internal-pause target is
+not a promise of end-to-end service, is 017-06's, section 4.5.
 
 Any production Java change runs `java/before-commit.sh` and must print
 `BEFORE COMMIT OK`, plus targeted performance comparisons. Changes to
@@ -513,48 +466,51 @@ between different concurrent histories. No Lean concurrency proof is implied.
 First implement a small diagnostic extension of 006-11's harness in this
 item's support directory, over an isolated baseline. Reproduce the hot-key
 latency while recording each request's attempts and actual sleep time.
-Pair it with a disjoint-key case, then add bounded, independently scheduled
-arrivals and a controlled slow-append case. This tests the measurement
-method before expanding to the other resources or selecting a policy.
+Pair it with a disjoint-key case. This tests the measurement method before
+selecting a policy. (The plan's first step went on with bounded,
+independently scheduled arrivals and a controlled slow-append case; they
+are 017-06's first step now.)
 
 Deliver in order:
 
 1. A reviewed map of wait points and the proposed client contract, extending
    section 2 with any findings from the diagnostic runs.
-2. A baseline overload/recovery report with raw results and correctness
-   checks, identifying each bottleneck.
+2. A baseline report for the hot-key, disjoint-key and history cases with
+   raw results and correctness checks, identifying where a retrying
+   client's time goes. (The overload/recovery report is 017-06's.)
 3. A measured comparison of the small retry variants and a concrete
    `executeRw()` change proposal, including public API/defaults if needed.
-4. An explicit decision on whether further database admission controls are
-   needed; if so, their justified scope and cost rather than an automatic
-   expansion of this item.
 
-Done when the source findings are checked by the relevant probes, the
-measurements support a retry recommendation and overload policy, and every
-remaining implementation has a recorded decision or linked follow-up.
-A completed plan alone does not close the investigation.
+The plan's deliverable 4, an explicit decision on whether further database
+admission controls are needed, is 017-06's (section 5).
+
+Done when the source findings that the retries rely on are checked by the
+relevant probes, the measurements support a retry recommendation, and the
+`executeRw()` change proposal has Frans's decision, with every remaining
+implementation recorded as a decision or a linked follow-up. A completed
+plan alone does not close the investigation. An overload policy is not a
+condition: it is 017-06's.
 
 Related work:
 
+* [017-06](../017-long-term/06-overload/readme.md): overload, backpressure
+  and admission control, split from this entry on 2026-11-04.
 * [006-11](../006-2026-q4/11-stm-concurrency.md), sections 9 and 10:
   STM critical section, benefits/costs and the hot-key evidence.
 * [005-07](07-transaction-synchronization.md), "Questions": the broader
-  synchronization investigation. Its historical descriptions are not all
-  current; this entry owns overload and retries.
+  synchronization investigation this entry cited, dropped on 2026-11-04 as
+  obsolete since handles (009); today's synchronization is reviewed in
+  [016-07](../016-release-2026-2/07-concurrency.md). This entry owned
+  overload and retries before the split; it owns the retries now.
 * [005-46](46-stream-file-lock.md), "Interrupts":
   storage/read concurrency and cancellation boundaries.
 * [005-48](48-group-commit.md): group commit.
-* [005-52](52-cache-size-while-running.md), "Left to do": budget-change
-  pause probe; reuse it without claiming it has passed.
-* [005-65](65-gets-with-8-readers.md), "State": the remaining quiet
-  thread sweep after its monitor fix.
+* [005-52](52-cache-size-while-running.md): a transaction's warmup and the
+  eviction park (section 2.4); its pause probe is in 017-06's related work.
 * [005-70](70-keymodset-after-start.md): STM restart fix, done separately
   in `7d967d7`; include it in the new baseline.
 * [005-76](76-wake-at-a-quarter.md), "The issue": a known source of
   buffer waits before physical storage is necessarily saturated.
-* [005-77](77-cap-pace-factor.md): catch-up work after startup-distance
-  changes, a potential additional source of commit cost.
-* [005-80](80-setbudget-race-record.md): eviction-budget race evidence.
 * [010-01](../010-principles/01-principles.md), P1 and P3:
   bounded internal pauses and calm when idle.
 
@@ -566,3 +522,15 @@ read I/O path, eviction watermarks and timing qualifications, memory
 accounting, and existing related work against source. No Java changes or
 new benchmark/test runs in this planning step.
 
+2026-11-04. Split at Frans's decision (19:11): "005-81, I like your idea
+to split this. So, split it." This entry keeps the retries: the wait-point
+map and the client contract they need, the diagnostic harness, the
+hot-key and disjoint-key baselines, the retry variants and the
+`executeRw()` proposal, its deliverables 1 to 3. The broad question moved
+to 017-06: the read, CPU and memory parts of section 2, the admission
+points of the contract, the overload workloads, the arrival model, the
+recovery measures and deliverable 4. Title, purpose, scope, "Done when"
+and first step rewritten for the retries; replication's waits dropped
+(removed, 005-11); the mention of 005-07 corrected (dropped; 016-07);
+dated notes for 005-47, 005-11 and 005-52 in section 2. The code was not
+reviewed again. By Claude (Opus 5.5, Claude Code).

@@ -50,6 +50,12 @@ Files
   front is given up when the room is needed (retention by space); in Java,
   and in a C or C++ clone on a Linux device. Moved from 005-60 on
   2026-11-04. Open; notes only.
+* [017-06](06-overload/readme.md). Overload, backpressure and admission
+  control: whether BergDB needs database-wide admission control and
+  backpressure for CPU, reads and memory under overload, which controls
+  belong in BergDB and which in the application, and the behaviour at and
+  above capacity and after it. Split from 005-81 on 2026-11-04; the
+  retries stay in 005-81. Open; notes only.
 
 
 Log
@@ -81,3 +87,9 @@ question that becomes a real theorem goes to 007 then.
 
 2026-11-04. 017-05, block storage, moved from 005-60 by Frans, in his
 words: "This is a big thing, long term, open-ended. Not a todo for 005."
+
+2026-11-04. 017-06, overload, backpressure and admission control, split
+from 005-81 by Frans (19:11): "005-81, I like your idea to split this. So,
+split it." The retry fix stays in 005-81, narrowed to bounded work; the
+broad, open-ended question of admission control and backpressure under
+overload is this topic.

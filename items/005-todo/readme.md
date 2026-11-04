@@ -33,7 +33,7 @@ Open
 | [005-72](72-file-layout-after-cut.md) | Decide | The files after reclaim's physical cut depend on timing (when the durable length reached the decision), while the bytes from the decided cut do not; a restart also changes the layout (not a bug). The C clone, without threads, cannot match Java's files after a cut. Frans, 2026-10-29: A for 012's cross tests (done); the entry stays open to consider B, a layout from the decided cut | open |
 | [005-77](77-cap-pace-factor.md) | Investigate | A decrease's commits grow with the keys: after a one-call decrease (D4:B) from 1000 to 100 MB at 50M keys, the catch-up's records are 12 to 14 times the new mean (largest 13.3 to 15.4 MB, against 2.3 to 3.6 MB at 10M), written by the committing threads; the cause is the pace's factor S/sd in the share, which starts at 10 (007-07, section 11). Only bytes measured, not commit times; 100M keys not run. Proposed: cap S/sd at 2 or at 4 (two variants); the deadline at the span still keeps the section from growing, the catch-up gets longer, and T3_take and T3_take_decrease hold for any pace (007-08). Frans's decision on 006-10's point 4 | open |
 | [005-78](78-retain-duration-in-stream.md) | Investigate | The retain duration is not kept in the stream: it decides when reclaim's iterations start and where it cuts, so the stream's bytes, but a start takes the builder's value (default forever), against the rule of 005-53 and 005-52 (a setting that changes the stream's bytes is kept in the stream, 010-P2) and without a word in its Javadoc. Frans: it must be in the stream; study first. Forms: the meta blocks (as the startup distance), an internal KV, or reclaim's table | open |
-| [005-81](81-overload-and-retries.md) | Investigate | Client overload, backpressure and retries | open |
+| [005-81](81-overload-and-retries.md) | Investigate | Transaction retries: `executeRw()` reruns a conflict after hard-coded sleeps from 10 ms doubling to 10,240 ms, with no jitter, attempt limit, time budget or setting (over 20 s across eleven reruns on a hot key), and the same `RerunException` for a long action that outlives `KeyModSet`'s history. Left: the wait points and client contract the retries need, a diagnostic harness from 006-11's, hot-key and disjoint-key baselines, the retry variants measured, and an `executeRw()` proposal. Split 2026-11-04: overload and admission control are 017-06 | open |
 
 
 Closed
@@ -427,9 +427,10 @@ Files
   the record and a test of `setBudget`'s race, fixed inside 005-65's
   commit: the issue, options A to C, when it is done; open.
 * [81-overload-and-retries.md](81-overload-and-retries.md). 005-81,
-  client overload and transaction retries: verified current waits and
-  resource controls, the client contract, retry/sleep variants, and the
-  overload/recovery investigation plan; open.
+  transaction retries: verified current waits, the client contract the
+  retries need, retry/sleep variants, and the plan for the hot-key and
+  disjoint-key baselines and an `executeRw()` proposal; open. Split on
+  2026-11-04: the overload/recovery investigation is 017-06.
 
 * [82-gettrans-corruption.md](82-gettrans-corruption.md). 005-82,
   parsing errors in `getTrans` must fail the database; split from 005-74.
@@ -1644,3 +1645,13 @@ controls. Left: the sync latency on and off.
 2026-11-04. 005-47: the sync latency on s1, `d-1k-t1`, 10 runs each on
 `188facf`: the durable commit's p50 4.2 ms with forcing on, 0.1 ms off;
 p99 12.3 and 1.1 ms. F53's runs are left for a quiet block.
+
+2026-11-04. 005-81 split at Frans's decision (19:11): "005-81, I like
+your idea to split this. So, split it." 005-81 stays open, narrowed to the
+retries: the wait points and client contract they need, the diagnostic
+harness, the hot-key and disjoint-key baselines, the retry variants and an
+`executeRw()` proposal (its deliverables 1 to 3). The broad part, whether
+BergDB needs database-wide admission control and backpressure for CPU,
+reads and memory under overload (deliverable 4), is a long-term topic,
+017-06. Replication's waits dropped from 005-81 (removed, 005-11), and its
+mention of 005-07 corrected (dropped; 016-07).
