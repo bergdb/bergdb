@@ -98,7 +98,14 @@ public class Trans {
     public long startupPos = Spos.NULL;
     
     /** GetData for Db.warmup() method. */
-    GetData warmupGetData;
+    WarmupGetData warmupGetData;
+    
+    /**
+     * The GetData of a transaction's warmup (Db.warmup), a class of its own so that the load
+     * listener tells a warmup's load from a reader's by its type (bergdb 005-52, option B: a
+     * warmup's load does not wait for eviction; Eviction.afterLoad).
+     */
+    static final class WarmupGetData extends GetData {}
     
     /**
      * Private constructor, use the builder: new Trans.Builder().
@@ -153,7 +160,7 @@ public class Trans {
         private ArrayList<Kv> kvs;
         private ArrayList<Long> readHashes;    // hashes of keys read.
         private ArrayList<Long> virtualWriteHashes;    // virtual key hashes for virtual writes
-        private GetData warmupGetData;
+        private WarmupGetData warmupGetData;
         
         public Builder() {
             kvs = new ArrayList<Kv>();
@@ -161,7 +168,7 @@ public class Trans {
             virtualWriteHashes = new ArrayList<Long>();
             builderLookupTime = Long.MAX_VALUE;
 
-            warmupGetData = new GetData();
+            warmupGetData = new WarmupGetData();
             warmupGetData.pointerListener = Dag.DO_NOTHING_POINTER_LISTENER;        
             warmupGetData.cachePolicy = Dag.CACHE_ALL;
         }

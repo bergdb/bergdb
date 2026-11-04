@@ -194,6 +194,105 @@ public class CapacityTester {
     }
 
     /**
+     * A transaction's warmup does not wait for eviction, and a reader's load still does
+     * (bergdb 005-52, option B; 009-02, step 3d). 3,000 keys of 300 bytes, started cold with
+     * a budget of 10 MB, keys k0 to k999 read. Then, with the write lock held by the test, so
+     * that the eviction thread cannot run a batch and the pressure stays: the budget lowered
+     * to a quarter of the resident bytes, under pressure (over the trigger by more than the
+     * gap); a writer's transaction of 1,000 puts, to k1000 to k1999, whose values are not
+     * resident, so that its warmup loads at least 1,000 times. None of those loads waits
+     * (Eviction.loadWaits), and the writer goes on to wait for the write lock
+     * (Db.writersWaiting). A reader then gets 20 keys of k2000 to k2999, not resident either:
+     * each get waits for a batch, up to LOAD_WAIT_NANOS, as none ends. With the lock let go,
+     * the transaction commits and its end runs a batch (afterTransaction). Counts, not times,
+     * so that a busy machine does not fail it. Without option B each load of the warmup
+     * waited here 2 ms (1,281 waits, 2.6 s in all, on F53); in 005-52's runs the first
+     * transaction of 1,000 puts after a lower budget waited about as long as the convergence.
+     */
+    @Nano
+    public static void testWarmupDoesNotWait() throws InterruptedException {
+        MemoryStream s = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db0 = builder(s, clock, 0).start();
+        load(db0, clock, 3000, 0, 300);
+        db0.sync(SyncLevel.ORDINARY);
+        db0.stop();
+        final Db db = builder(s.copy(), clock, 10 * 1000 * 1000).start();
+        Thread writer = null;
+        try {
+            for (int k = 0; k < 1000; k++) DbUtil.get(db, "k" + k);
+            final Db.Internal in = db.internal();
+            final Eviction e = in.eviction();
+            final long full = bytes(db);
+            final long budget = full / 4;
+            clock.setTime(1000 * STEP);
+            Trans.Builder b = db.trans();
+            for (int k = 1000; k < 2000; k++) b.put("k" + k, "new " + k);
+            final Trans t = b.build();
+            final Throwable[] failure = new Throwable[1];
+            long writerBatches;
+            synchronized (in.getWriteLock()) {
+                db.setCacheSizeIndicator(budget);       // wakes the thread: it waits for the lock
+                Assert.assertTrue("under pressure: " + full + " bytes, budget " + budget,
+                        full > budget + (budget - Eviction.lowOf(budget)));
+                long[] c = e.sweepCounts();
+                writerBatches = c[0] - c[1];
+                long loads = in.nodeCollection().loads();
+                long waits = e.loadWaits();
+                writer = new Thread(new Runnable() {
+                    public void run() {
+                        try {
+                            db.execute(t);
+                        } catch (Throwable x) {
+                            failure[0] = x;
+                        }
+                    }
+                }, "the test's writer");
+                writer.start();
+                long end = System.nanoTime() + 60L * 1000 * 1000 * 1000;
+                while (in.writersWaiting() == 0 && writer.isAlive() && System.nanoTime() < end) {
+                    Thread.sleep(1);
+                }
+                Assert.assertEquals("the writer waits for the write lock (" + failure[0] + ")",
+                        1, in.writersWaiting());
+                long warmupLoads = in.nodeCollection().loads() - loads;
+                Assert.assertTrue("the warmup's loads: " + warmupLoads, warmupLoads >= 1000);
+                Assert.assertEquals("the warmup's loads that waited", 0, e.loadWaits() - waits);
+                Assert.assertTrue("still under pressure", in.cache().residents().bytes()
+                        > budget + (budget - Eviction.lowOf(budget)));
+
+                final Throwable[] readerFailure = new Throwable[1];
+                Thread reader = new Thread(new Runnable() {
+                    public void run() {
+                        try {
+                            for (int k = 2000; k < 2020; k++) DbUtil.get(db, "k" + k);
+                        } catch (Throwable x) {
+                            readerFailure[0] = x;
+                        }
+                    }
+                }, "the test's reader");
+                reader.start();
+                reader.join(60 * 1000);
+                Assert.assertTrue("the reader has ended (" + readerFailure[0] + ")",
+                        !reader.isAlive() && readerFailure[0] == null);
+                Assert.assertTrue("the reader's loads that waited: " + (e.loadWaits() - waits),
+                        e.loadWaits() - waits >= 20);
+            }
+            writer.join(60 * 1000);
+            Assert.assertTrue("the transaction has ended (" + failure[0] + ")",
+                    !writer.isAlive() && failure[0] == null);
+            for (int k = 1000; k < 2000; k += 111) {
+                Assert.assertEquals("new " + k, new String(DbUtil.get(db, "k" + k)));
+            }
+            long[] c = e.sweepCounts();
+            Assert.assertTrue("the transaction's end ran a batch", c[0] - c[1] > writerBatches);
+        } finally {
+            db.close();
+            if (writer != null) writer.join(60 * 1000);
+        }
+    }
+
+    /**
      * A sweep stops near the low watermark: reads with no writes on a cold database whose
      * index alone is several times the budget, as at the end of the run of
      * bergdb 001-10: a scan of every key (one operation, so the slots it follows

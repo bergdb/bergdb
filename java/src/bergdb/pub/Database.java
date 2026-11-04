@@ -248,9 +248,11 @@ public interface Database extends AutoCloseable {
      * returns. After a decrease the database evicts what it holds above the budget in
      * batches of at most 2 ms, which this call and the database's commits and reads start,
      * until the memory it holds is at most the budget, also if no call follows; reads may
-     * wait for a batch meanwhile, at most 2 ms each. What the database must keep in memory
-     * (the nodes changed since its startup position) is never evicted and may exceed the
-     * budget. After an increase, the cache grows as data is read.</p>
+     * wait for a batch meanwhile, at most 2 ms each. A commit's own reads of the keys it
+     * writes do not wait, and the commit runs one batch at its end (bergdb 005-52); the
+     * memory held may rise by what those reads load until then. What the database must keep
+     * in memory (the nodes changed since its startup position) is never evicted and may
+     * exceed the budget. After an increase, the cache grows as data is read.</p>
      *
      * <p>The setting is for this run only: it changes no byte of the stream, so it is not
      * kept there, and a restart takes the builder's value, or its default, a fifth of the

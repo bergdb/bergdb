@@ -409,8 +409,12 @@ named, with a sweep that walked every resident object (item 004).
   most 2 ms, 4,096 handles (65,536 under pressure) and two rounds of the
   hand: in the writer at a transaction's end, and after a reader's load in
   the database's eviction thread, which takes the write lock between
-  transactions and gives way to a waiting writer. A load that finds the
-  resident bytes far over the trigger waits up to 2 ms for that thread.
+  transactions and gives way to a waiting writer. A reader's load that
+  finds the resident bytes far over the trigger waits up to 2 ms for that
+  thread. A transaction's own reads of its keys before the write lock
+  (`Db.warmup`) wake it and do not wait (005-52), so the resident bytes may
+  rise by what they load (the paths of the keys and their present values)
+  until the transaction's end runs a batch.
 * **Readers** follow a pointer without a lock when its handle holds an
   object that may serve it (`Handle.usable`): an acquire read of the
   pointer, then its reference and the handle's object, ordered by it;

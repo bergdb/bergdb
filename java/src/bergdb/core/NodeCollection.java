@@ -98,7 +98,11 @@ public class NodeCollection implements PointerFollower {
      * (bergdb item 001, WP J7: the capacity controller's load-triggered sweeps, Eviction).
      */
     public interface LoadListener {
-        void loaded();
+        /**
+         * op is the follow's: a reader's GetData, or a transaction's warmup's
+         * (Trans.WarmupGetData), whose loads do not wait for eviction (bergdb 005-52).
+         */
+        void loaded(OpData op);
     }
     
     private volatile LoadListener loadListener = null;
@@ -218,9 +222,9 @@ public class NodeCollection implements PointerFollower {
         result = followStreamPointer(predecessor, pointerIndex, pointerPos,
                 (Handle) (pointee instanceof Handle ? pointee : null), op, false, null);
 
-        // The capacity controller (WP J7).
+        // The capacity controller (WP J7), told the follow's op (bergdb 005-52).
         final LoadListener l = loadListener;
-        if (l != null) l.loaded();
+        if (l != null) l.loaded(op);
         return result;
     }
 

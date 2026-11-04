@@ -360,15 +360,29 @@ public final class Eviction {
      * stay within the budget (Q8, Q9). The reader does not take the write lock: it wakes the
      * thread, which takes it between transactions (bergdb item 009, step 3b; 009-02, T5a).
      * If the resident bytes are over the trigger by more than the gap between the
-     * watermarks, the thread is behind the loads, and the reader waits for its next batch, at
-     * most LOAD_WAIT_NANOS (step 3d): loads, which grow the resident bytes, go at the pace
+     * watermarks, the thread is behind the loads, and a paced load waits for its next batch,
+     * at most LOAD_WAIT_NANOS (step 3d): loads, which grow the resident bytes, go at the pace
      * of eviction. Until step 3b the reader took the write lock itself, and waited for any
      * transaction in progress and for a sweep of the resident objects. Not inside a
      * transaction (the thread holds the write lock: the user's own read in a value
      * transformation; the transaction's end runs a batch) and not before the database is
      * active (startup).
+     *
+     * <p>A reader's load is paced; a load of a transaction's warmup is not (Db's
+     * LoadListener, by Trans.WarmupGetData): it wakes the thread and does not wait, as a load
+     * under the write lock does not (bergdb 005-52, option B, Frans's decision of
+     * 2026-11-04). The warmup gets each of the transaction's keys before the write lock;
+     * when each of its loads under pressure waited, each wait was bounded and their sum was
+     * not: in 005-52's runs the first transaction of 1,000 puts after a lower budget waited
+     * about as long as the convergence, 194.9 ms under ZGC, against at most 40.6 ms with a
+     * fixed budget. So the resident bytes may now rise above the readers' pace by what the
+     * warmups in progress load, each at most the index paths of its transaction's keys and
+     * their present values, until the transaction's end runs a batch (afterTransaction) and
+     * the thread goes on; the readers still wait. The waits are counted (loadWaits).</p>
+     *
+     * @param paced  True for a reader's load, false for a load of a transaction's warmup.
      */
-    public void afterLoad(Db db) {
+    public void afterLoad(Db db, boolean paced) {
         if (schedule != Schedule.BUDGET) return;
         Db.Internal in = db.internal();
         long bytes = in.cache().residents().bytes();
@@ -376,7 +390,8 @@ public final class Eviction {
         if (Thread.holdsLock(in.getWriteLock()) || !in.isActive()) return;
         long batch = batches;
         wake(db);
-        if (bytes > trigger + (high - low)) {
+        if (paced && bytes > trigger + (high - low)) {
+            loadWaits.incrementAndGet();
             long end = System.nanoTime() + LOAD_WAIT_NANOS;
             while (batches == batch && in.isActive() && System.nanoTime() < end) {
                 java.util.concurrent.locks.LockSupport.parkNanos(50 * 1000);
@@ -386,6 +401,18 @@ public final class Eviction {
 
     /** The longest a reader's load waits for the eviction thread (afterLoad): 2 ms. */
     static final long LOAD_WAIT_NANOS = 2L * 1000 * 1000;
+
+    /**
+     * The loads that waited for a batch (afterLoad) since the start, for the tests (bergdb
+     * 005-52); counted only by a load that then waits.
+     */
+    private final java.util.concurrent.atomic.AtomicLong loadWaits =
+            new java.util.concurrent.atomic.AtomicLong();
+
+    /** See loadWaits. */
+    long loadWaits() {
+        return loadWaits.get();
+    }
 
     /** The batches the eviction thread has run, for afterLoad's wait. */
     private volatile long batches = 0;
@@ -417,7 +444,8 @@ public final class Eviction {
      * 015-25 a batch that threw ended the thread and nothing else: the database went on
      * without eviction, and every later request was left on the dead thread.)</li>
      * <li>A reader under pressure (afterLoad) reads batches before wake and parks until a batch
-     * has ended, at most LOAD_WAIT_NANOS, whether its request is new or was pending.</li>
+     * has ended, at most LOAD_WAIT_NANOS, whether its request is new or was pending. A load
+     * of a transaction's warmup does not park (bergdb 005-52).</li>
      * </ol>
      */
     private void wake(Db db) {

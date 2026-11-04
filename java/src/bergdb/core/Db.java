@@ -257,8 +257,14 @@ public class Db implements AutoCloseable {
         
         this.nodeCollection = new NodeCollection(dbInfo, nodeStream, cache);
         nodeCollection.setLoadListener(new NodeCollection.LoadListener() {
-            public void loaded() {
-                eviction.afterLoad(Db.this);      // the capacity controller (WP J7)
+            public void loaded(bergdb.dag.OpData op) {
+                // The capacity controller (WP J7). A load of a transaction's warmup wakes the
+                // eviction thread and does not wait for its batch, as a reader's load does
+                // under pressure (bergdb 005-52, option B; Eviction.afterLoad). The warmup's
+                // GetData has a class of its own, Trans.WarmupGetData: the test is a type
+                // check, made only here, after a read from the stream; a follow that finds
+                // its object in memory makes no call.
+                eviction.afterLoad(Db.this, !(op instanceof Trans.WarmupGetData));
             }
         });
         
