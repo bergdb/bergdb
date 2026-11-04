@@ -90,3 +90,39 @@ Size
 ----
 
 M to L: mostly reading and web research.
+
+
+Files
+-----
+
+* [literature.md](literature.md). The literature of 2026-11-04's search,
+  with sources, years, links and what was read: storage and recovery
+  (Berkeley DB JE, bcachefs, LeanStore, FineLine, FOEDUS, LLAMA and more)
+  and transactions (OCC, STM, JVSTM, Hyder, FoundationDB, Datomic,
+  Convex and more).
+* [self-indexed-streams.md](self-indexed-streams.md). The case for a paper
+  on self-indexed streams: the method as it is in 2026, which of P1 to P4
+  survive, what a paper would claim, the evaluation it needs, a reading
+  list by priority.
+* [transactions.md](transactions.md). The code-only transactions: where
+  the 2012 to 2013 description is, the mechanism and its isolation, the
+  comparison with other work, what may be new, whether it is worth a
+  publication.
+* [options.md](options.md). The candidate publications ranked by value
+  and effort, the venues with their next deadlines, what each needs,
+  suggestions of new angles, a tentative order, and questions for Frans.
+
+
+Log
+---
+
+2026-11-04. Explored by Claude (Opus 5.5) at Frans's request, with three
+web searches by subagents (storage and recovery, transactions, venues)
+and a reading of the 2008 to 2013 notes and the 2013 to 2017 Git bundle
+in F1-007: wrote literature.md, self-indexed-streams.md, transactions.md
+and options.md. Found: P1 to P4 are each known, their combination and
+BergDB's way of avoiding the wandering tree were not found; the
+code-only transactions are known as a combination (JVSTM, Hyder,
+FoundationDB, Convex), their description is KissDB's get-started page of
+release 2013.1.130606. The text above this section is unchanged. Frans
+decides later.
