@@ -26,10 +26,10 @@ public interface DatabaseBuilder {
      * opened it and threw the errors that start() now throws.
      * 
      * <p>One database at a time has the directory (bergdb 005-63): while another database
-     * has it open, in this process or in another, also one that is closing after stop(),
-     * start() throws a StreamIoException whose cause is a
+     * has it open, in this process or in another, also one that this builder started or one
+     * that is closing after stop(), start() throws a StreamIoException whose cause is a
      * bergdb.stream.DirectoryInUseException. Nothing in the directory has been read or
-     * changed then.</p>
+     * changed then, and the database that has it runs on as before (bergdb 015-56).</p>
      * 
      * <p>A directory that holds a database has created.txt, written once the database's
      * creation is durable; start() refuses one that has created.txt and no stream file

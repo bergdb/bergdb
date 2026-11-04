@@ -67,7 +67,6 @@ Open
 | [015-53](53-stop-during-step-committed.md) | Fix | A transaction that runs when `stop()` comes is committed, but ... | open |
 | [015-54](54-safe-pos-javadoc.md) | Fix | pSafe is not "the stream length now", as `markSafePositions`'s ... | open |
 | [015-55](55-database-time-margin.md) | Fix | A user transaction at the last database time is taken, and ... | open |
-| [015-56](56-second-start-closes-stream.md) | Fix | A refused second start() of one builder closes the running ... | open |
 | [015-57](57-resolve-ignores-timezone.md) | Fix | Time.resolve(TimeZone, String) ignores its time zone | open |
 | [015-58](58-testclock-current-time.md) | Fix | TestClock.setTime() refuses the clock's current time, which its ... | open |
 | [015-59](59-new-connection-lookup-time.md) | Fix | Connection.getLookupTime() of a new connection throws ... | open |
@@ -83,6 +82,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-56](56-second-start-closes-stream.md) | Fix | A refused second start() of one builder closes the running ... | done | 2026-11-04 |
 | [015-40](40-two-writes-one-key.md) | Fix | Two writes of one key in a transaction: the later one can lose | done | 2026-11-03 |
 | [015-25](25-evictor-failure.md) | Fix | An exception in the evictor strands its requests on a dead worker | done | 2026-11-03 |
 | [015-13](13-handles-not-counted.md) | Fix | The resident bytes count no handle, where 009-02, 4.7 counts them | done | 2026-11-03 |

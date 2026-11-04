@@ -2,7 +2,9 @@ package bergdb.pubimp;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import bergdb.common.Util;
@@ -199,14 +201,19 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         }
         
         Db db;
+        List<FileStream> opened = new ArrayList<FileStream>();
         try {
-            openDirs();
+            openDirs(opened);
             handleCryptoKeyAndCreatedTxt();
             db = dbBuilder.build();
         } catch (RuntimeException | Error e) {
-            // The streams that openDirs() opened are closed (2026-10-24, bergdb 005-32): a
-            // crypto key of an unknown algorithm left the directory's file open.
-            dbBuilder.closeStreams(e);
+            // A start that throws closes the streams that it opened (2026-10-24, bergdb
+            // 005-32), and no other (2026-11-04, bergdb 015-56): the DbBuilder also holds the
+            // streams of an earlier start of this builder, which its database uses. Until
+            // 015-56 this closed every stream of the DbBuilder, so a second start(), refused
+            // as the first's database has the directory, closed that database's stream: it
+            // failed at its next sync, and its lock was released (bergdb 016-06, R8-F10).
+            closeStreams(opened, e);
             throw e;
         }
         return DatabaseImp.createAndStart(db);
@@ -214,17 +221,36 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     
     /**
      * Opens the directories of dir() and replica() (bergdb 005-66): the database's first,
-     * then the replicas in the order given. Each stream goes to the DbBuilder as it is
-     * opened, so that a failure closes those before it (start(), closeStreams).
+     * then the replicas in the order given. Each stream goes to 'opened' as it is opened,
+     * so that a failure closes those before it (start(); bergdb 015-56), and then to the
+     * DbBuilder.
      */
-    private void openDirs() {
+    private void openDirs(List<FileStream> opened) {
         if (dir != null) {
-            dbBuilder.mainStream(openDir(dir));
+            FileStream main = openDir(dir);
+            opened.add(main);
+            dbBuilder.mainStream(main);
         }
         for (Map.Entry<String, File> replica : replicaDirs.entrySet()) {
             int bufferSize = StorageManager.DEFAULT_REPLICA_BUFFER_SIZE;
             int bufferTime = StorageManager.DEFAULT_BUFFER_TIME;
-            dbBuilder.stream(replica.getKey(), openDir(replica.getValue()), bufferSize, bufferTime);
+            FileStream stream = openDir(replica.getValue());
+            opened.add(stream);
+            dbBuilder.stream(replica.getKey(), stream, bufferSize, bufferTime);
+        }
+    }
+    
+    /**
+     * Closes the streams that a start opened, for a start that throws (bergdb 005-32,
+     * 015-56). A failure of a close is added to 'failure' as suppressed.
+     */
+    private static void closeStreams(List<FileStream> streams, Throwable failure) {
+        for (FileStream stream : streams) {
+            try {
+                stream.close();
+            } catch (IOException | RuntimeException e) {
+                failure.addSuppressed(e);
+            }
         }
     }
     

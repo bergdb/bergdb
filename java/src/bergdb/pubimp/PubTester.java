@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Set;
@@ -252,6 +253,99 @@ public class PubTester {
         Database r = Factory.database().dir(replica).start();
         Assert.assertEquals("v", r.connection().get("/k", String.class));
         r.close();
+    }
+    
+    /**
+     * Regression test for bergdb 015-56 (review R8, R8-F10): a second start() of a builder
+     * whose database runs is refused, as one of another builder on the directory is, and the
+     * refusal leaves the running database as it was: its stream, its lock and its files.
+     * Until 015-56 the refused start closed the streams that the builder still held from the
+     * first start, the running database's: its next sync failed the database, which lost
+     * "/b", and its lock was released.
+     */
+    @Nano
+    public static void testSecondStartOfOneBuilder(TestEnvironment env) throws Exception {
+        File dir = new File(env.createTempDir(), "db");
+        DatabaseBuilder builder = Factory.database().dir(dir.getPath());
+        Database d = builder.start();
+        d.connection().put("/a", "a0");
+        d.sync();
+        String files = filesAndLengths(dir);
+        
+        assertStartRefused("the same builder", builder);
+        Assert.assertEquals("the files", files, filesAndLengths(dir));
+        d.connection().put("/b", "b0");
+        d.sync();
+        assertStartRefused("another builder", Factory.database().dir(dir.getPath()));
+        Assert.assertEquals("b0", d.connection().get("/b", String.class));
+        d.close();
+        
+        Database again = builder.start();
+        Assert.assertEquals("a0", again.connection().get("/a", String.class));
+        Assert.assertEquals("b0", again.connection().get("/b", String.class));
+        again.close();
+    }
+    
+    /**
+     * bergdb 015-56: a refused start closes what it opened, and nothing of a database that
+     * runs. The builder's database runs with a replica; given a new directory, the builder is
+     * started again: it opens the new directory, and is refused at the replica's, which the
+     * running database has. The new directory is closed and free, and the replica stays the
+     * running database's. Until 015-56 the refused starts closed the running database's
+     * replica stream too, and released its lock.
+     */
+    @Nano
+    public static void testRefusedStartClosesOnlyItsOwn(TestEnvironment env) throws Exception {
+        File tmp = env.createTempDir();
+        String replica = new File(tmp, "replica").getPath();
+        DatabaseBuilder builder = Factory.database().dir(new File(tmp, "db").getPath())
+                .replica("r", replica);
+        Database d = builder.start();
+        d.connection().put("/k", "v");
+        d.sync();
+        
+        assertStartRefused("the same builder", builder);
+        assertStartRefused("the replica's directory", Factory.database().dir(replica));
+        String other = new File(tmp, "other").getPath();
+        assertStartRefused("the builder on a new directory", builder.dir(other));
+        assertStartRefused("the replica's directory, after", Factory.database().dir(replica));
+        Database onOther = Factory.database().dir(other).start();
+        onOther.close();
+        
+        d.connection().put("/k2", "v2");
+        d.sync(SyncLevel.STRONG);
+        d.close();
+        Database r = Factory.database().dir(replica).start();
+        Assert.assertEquals("v2", r.connection().get("/k2", String.class));
+        r.close();
+    }
+    
+    /**
+     * Asserts that start() of 'builder' is refused as its directory, or a replica's, is in
+     * use (bergdb 005-63); a database that starts is closed.
+     */
+    private static void assertStartRefused(String what, DatabaseBuilder builder) {
+        Database started;
+        try {
+            started = builder.start();
+        } catch (StreamIoException e) {
+            Assert.assertTrue(what + ", the cause, " + e.getCause(), 
+                    e.getCause() instanceof DirectoryInUseException);
+            return;
+        }
+        started.close();
+        throw new AssertionError("started, " + what);
+    }
+    
+    /** The names and lengths of the files in 'dir', sorted by name. */
+    private static String filesAndLengths(File dir) {
+        File[] files = dir.listFiles();
+        Arrays.sort(files);
+        StringBuilder sb = new StringBuilder();
+        for (File f : files) {
+            sb.append(f.getName()).append(' ').append(f.length()).append('\n');
+        }
+        return sb.toString();
     }
     
     private static String v1;
