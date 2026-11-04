@@ -1,0 +1,27 @@
+diff --git a/java/src/bergdb/core/DbTester.java b/java/src/bergdb/core/DbTester.java
+index 9e1b5e9..f07eb9e 100644
+--- a/java/src/bergdb/core/DbTester.java
++++ b/java/src/bergdb/core/DbTester.java
+@@ -1814,6 +1814,22 @@ public class DbTester {
+         db.close();
+     }
+     
++    /**
++     * R6-F5 (bergdb 016-06/R6): "A call with the setting in force writes nothing", also for a
++     * setting the builder allows below setStartupDistance's clamp, 400,000. On f5a5f66 the
++     * call writes the 200 kB transaction and sets 400,000.
++     */
++    @Nano
++    public static void testSetStartupDistanceInForceBelowClamp() {
++        try (Db db = Db.builder().testSetup().startupDistance(2000).start()) {
++            db.execute(db.trans().put("key", "value").build());
++            long length = db.getStreamLength();
++            db.setStartupDistance(2000);
++            Assert.assertEquals("the setting", 2000, db.getStartupDistance());
++            Assert.assertEquals("nothing written", length, db.getStreamLength());
++        }
++    }
++    
+     @Nano
+     public static void testGetOp() {
+         Db db = Db.builder().testSetup().start();

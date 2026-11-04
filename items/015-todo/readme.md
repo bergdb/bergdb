@@ -82,6 +82,12 @@ Open
 | [015-69](69-resync-overwrites-readers.md) | Fix | A test-schedule resync overwrites concurrent readers' accounting | open |
 | [015-70](70-budget-decrease-above-budget.md) | Fix | A budget decrease can settle above budget although the pins fit | open |
 | [015-71](71-audit-empty-handle-cleanup.md) | Fix | The audit reports a valid empty-handle cleanup as a bad table entry | open |
+| [015-72](72-record-size-unchecked.md) | Fix | A record whose size field is larger than its content is accepted, ... | open |
+| [015-73](73-startup-pos-unchecked.md) | Fix | A corrupt startupPos in the last record is accepted, and the ... | open |
+| [015-74](74-metablock-comment.md) | Fix | MetaBlock's format comment: the last byte is 10, not 1, and the ... | open |
+| [015-75](75-start-checks-asserts.md) | Fix | Checks of stream data at a start that are asserts: without -ea a ... | open |
+| [015-76](76-startup-distance-clamp.md) | Fix | Db.setStartupDistance clamps to 400,000 to 10^9 bytes without ... | open |
+| [015-77](77-canonical-node-javadoc.md) | Fix | DbStarter.canonicalNode's Javadoc gives a reason for the stored ... | open |
 
 
 Closed
@@ -215,6 +221,12 @@ Files
 * [69-resync-overwrites-readers.md](69-resync-overwrites-readers.md). 015-69, Fix: R4-F4.
 * [70-budget-decrease-above-budget.md](70-budget-decrease-above-budget.md). 015-70, Fix: R4-F5.
 * [71-audit-empty-handle-cleanup.md](71-audit-empty-handle-cleanup.md). 015-71, Fix: R4-F6.
+* [72-record-size-unchecked.md](72-record-size-unchecked.md). 015-72, Fix: R6-F1.
+* [73-startup-pos-unchecked.md](73-startup-pos-unchecked.md). 015-73, Fix: R6-F2.
+* [74-metablock-comment.md](74-metablock-comment.md). 015-74, Fix: R6-F3.
+* [75-start-checks-asserts.md](75-start-checks-asserts.md). 015-75, Fix: R6-F4.
+* [76-startup-distance-clamp.md](76-startup-distance-clamp.md). 015-76, Fix: R6-F5.
+* [77-canonical-node-javadoc.md](77-canonical-node-javadoc.md). 015-77, Fix: R6-F6.
 
 
 Log

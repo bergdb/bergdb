@@ -1,0 +1,47 @@
+diff --git a/java/src/bergdb/core/DbTesterRestart.java b/java/src/bergdb/core/DbTesterRestart.java
+index 94347b6..4e57412 100644
+--- a/java/src/bergdb/core/DbTesterRestart.java
++++ b/java/src/bergdb/core/DbTesterRestart.java
+@@ -81,6 +81,42 @@ public class DbTesterRestart {
+         }
+     }
+ 
++    /**
++     * R6-F1 (bergdb 016-06/R6): a record whose size field is enlarged to cover the next
++     * record must be refused at a start. On f5a5f66 the start succeeds and the next
++     * record's transaction, /b, is gone.
++     */
++    @Nano
++    public static void testEnlargedRecordSizeRefused() throws IOException {
++        MemoryStream stream = new MemoryStream();
++        CoreTestClock clock = new CoreTestClock();
++        long a, c;
++        try (Db db = Db.builder().testSetup(stream).clock(clock)
++                .startupDistance(1000000).retainForever().start()) {
++            clock.setTime(10);
++            Trans t = db.trans().put("/a", "1").build();
++            db.execute(t);
++            a = t.tpos;
++            clock.setTime(20);
++            db.execute(db.trans().put("/b", "2"));
++            clock.setTime(30);
++            t = db.trans().put("/c", "3").build();
++            db.execute(t);
++            c = t.tpos;
++        }
++        MemoryStream corrupt = stream.copy();
++        byte[] size = new byte[4];
++        Bytes.intToBytesLE((int) (c - a), size, 0);     // A's size + B's: B's last byte
++        MemoryStream.TestAccess.write(corrupt, size, a);
++        try (Db db = Db.builder().testSetup(corrupt).clock(clock)
++                .startupDistance(1000000).retainForever().start()) {
++            throw new AssertionError("started with A's size over B; /b = " 
++                    + (DbUtil.get(db, Long.MAX_VALUE, "/b") == null ? "lost" : "found"));
++        } catch (StreamFormatException expected) {
++            // The record's content ends before its size says.
++        }
++    }
++
+     /** Real read results carried to a new Db: bergdb 005-70, option A. */
+     @Nano
+     public static void testStmAfterRestart() {
