@@ -3,10 +3,12 @@
 
 Status: open. Measured (Results, 2026-10-28 night); Frans decided on
 2026-10-29 (Decision and fix): the fix, in `main` since 2026-10-29
-(`988fe1a`), and the rest of the long gets accepted as a full machine. Open
-until the thread sweep reruns with the fix in a quiet block (State),
-planned for night 1 of release 2026.2 (see Plan for 2026.2). Kind:
-investigate. Created 2026-10-28.
+(`988fe1a`), and the rest of the long gets accepted as a full machine.
+Rerun with the fix in night 1 of release 2026.2 (Results, 2026-11-04
+night): the fix does what it was made for (the loads' entries into
+`evictorLock` with 8 readers from 81,877 to 484 a second), but the gets
+over 10 ms rose (298 to 492), against State's step 3; open for Frans's
+decision (State). Kind: investigate. Created 2026-10-28.
 
 Registered at Frans's decision on item 009's target 2 (2026-10-28,
 decision 2 of 006-09, section 8): "Register the 8-thread case as a new 005
@@ -720,14 +722,167 @@ second against 526 and 564. The output:
   mode, for both builds.
 
 
+Results, 2026-11-04 night
+-------------------------
+
+From [night/rerun-016.sh](65-gets-with-8-readers/night/rerun-016.sh)
+(`threads.sh` on State's four builds), the conductor's step `65-rerun` in
+window 2 of night 1 of release 2026.2 (016-02, 016-05 section 6):
+2026-11-04, 02:53 to 03:13, quiet by the conductor's check and by
+`threads.sh`'s (1-minute load 1.54 at 02:54, six minutes after `night.sh`
+ended; AC power; one idle session), exit 0, `threads: OK, 0 problems`.
+The 10M load with `4f7cd60`'s jar, then the builds in turns, ABCD DCBA;
+the jars of State's step 1; JDK 27 and macOS 27.0.1, as on the first
+night. `sum.py`'s summary is kept as
+[night/results-2026-11-04.txt](65-gets-with-8-readers/night/results-2026-11-04.txt).
+The raw outputs stay out of the repository (013-01, section 4): the runs'
+text and JSON, `runs.txt` and `summary.txt` in
+`/Users/f/fl/bench/016/night1/005-65-out/`, the GC logs in
+`/Users/f/fl/bench/006-10/e65-builds/raw/threads/`; the conductor's
+record in `/Users/f/fl/bench/016/night1/out/65-rerun.txt` and
+`results.txt`.
+
+Each row is a build's two runs: counts summed, the longest the most of
+the two, the rest means. "Into `evictorLock`": the after-load calls that
+enter the monitor in `Eviction.wake`; before the fix every call over the
+trigger, with it an estimate (the calls that found `wanted` clear just
+before the call; State).
+
+| Build | Threads | Gets a second | Longest get, ms | Gets > 10 ms | After-load > 10 ms | After-load, ns a call | Into `evictorLock`, a second | Readers blocked, % |
+|---|---|---|---|---|---|---|---|---|
+| `bf19075` | 4 | 608,542 | 19.2 |   4 |  0 |  74 |  2,295 |  0.60 |
+| `bf19075` | 6 | 437,382 | 18.9 |   7 |  0 | 142 |  1,096 | 16.14 |
+| `bf19075` | 8 | 402,390 | 16.5 |  18 |  1 | 141 |    915 | 27.00 |
+| `5a6befd` | 4 | 689,380 | 12.5 |   4 |  0 | 103 |  3,147 |  0.01 |
+| `5a6befd` | 6 | 736,479 |  9.2 |   0 |  0 | 173 |  7,072 |  0.10 |
+| `5a6befd` | 8 | 713,827 | 49.3 | 298 | 49 | 459 | 81,877 |  2.57 |
+| `988fe1a` | 4 | 676,100 | 11.7 |   1 |  0 | 117 |    341 |  0.01 |
+| `988fe1a` | 6 | 746,254 |  9.5 |   0 |  0 | 148 |    445 |  0.03 |
+| `988fe1a` | 8 | 726,532 | 47.8 | 492 | 20 | 194 |    484 |  0.89 |
+| `4f7cd60` | 4 | 677,051 | 10.8 |   3 |  0 | 109 |  3,032 |  0.01 |
+| `4f7cd60` | 6 | 745,716 | 13.8 |   7 |  0 | 160 |  7,407 |  0.11 |
+| `4f7cd60` | 8 | 725,154 | 30.5 | 268 | 51 | 443 | 70,300 |  2.31 |
+
+**Further figures, with 8 threads** (from the summary, the runs' JSON and
+the GC logs):
+
+* No reader parked in any phase, and none of the after-load calls over
+  10 ms began under pressure, as on 2026-10-28.
+* The gets over 10 ms run by run: the fix 238 and 254; `5a6befd` 164 and
+  134; `4f7cd60` 144 and 124. On 2026-10-28 `eaec93e` and `4f7cd60` had
+  122 to 175 a run. In gets: 11.3 in a million with the fix, 7.0 on
+  `5a6befd`, 6.2 on `4f7cd60`. The longest gets: 47.8 and 24.4 ms with the
+  fix, 31.8 and 49.3 on `5a6befd`, 30.5 and 21.0 on `4f7cd60`.
+* p99.9 of the gets: 69.6 and 68.1 microseconds with the fix, 74.8 and
+  120.3 on `5a6befd`, 72.2 and 70.7 on `4f7cd60`. Gets a second: the fix
+  1.8 percent above `5a6befd`, 0.2 above `4f7cd60`, within the noise.
+* The machine: 9.64 of its 10 cores with the fix, 9.75 on `5a6befd`, 9.54
+  on `4f7cd60`, 7.86 on `bf19075`.
+* The eviction thread: 0.354 cores with the fix, 0.301 on `5a6befd`, 0.315
+  on `4f7cd60`; about 5,400 batches a phase with the fix against 5,100;
+  the batches' time by the clock 1.03 times its CPU time (1.06 and 1.02),
+  so on its core. The longest batch so far: 14 and 39 ms with the fix, 7
+  and 13 on `5a6befd`, 18 and 10 on `4f7cd60`.
+* The sampled readers (8, 20 s): BLOCKED in `Eviction.wake` on
+  `java.lang.Object` in 1.3 and 0.6 percent of the samples on `5a6befd`,
+  0.7 and 0.4 on `4f7cd60`, in none with the fix; with the fix BLOCKED
+  most in `BufferedStream.read` (1.1 and 0.3 percent).
+* The safepoints of the 8-thread phases (GC logs): with the fix 0 of 350
+  took over 2 ms to reach, `5a6befd` 2 of 337 (3.4 and 2.0 ms), `4f7cd60`
+  2 of 358 (2.1 and 2.4 ms). As on 2026-10-28 (Reading), running readers
+  rarely lost their cores for long, so the long gets most likely fall
+  where a safepoint does not wait for a reader: in the kernel's read, or
+  blocked on a monitor.
+
+**The night's floor.** This night was noisier than 2026-10-28 for every
+build: gets of 6.1 to 19.2 ms with 4 threads (the first night at most
+5.9), and on `bf19075` with 8 threads 18 gets over 10 ms, a longest of
+16.5 ms and one after-load call of 10.2 ms (the first night none, 0.6 ms
+and none). The other processes used 0.13 to 0.72 cores in the phases, but
+1.35 to 1.39 in `bf19075`'s second run, the last (03:11 to 03:13). What
+made the floor is not known. The builds ran in turns, so the comparison
+between them stands; this night's counts and the first night's are not
+comparable one to one.
+
+**Against the expectation** (State, step 3), with 8 threads, the fix
+against `5a6befd`:
+
+* The entries into `evictorLock` from about 78,000 a second to a few
+  hundred: **met**. 81,877 to 484 a second (`4f7cd60`: 70,300): 5 in
+  1,000 of the calls over the trigger (97,540 a second with the fix), and
+  fewer than 1 in 1,000 of all after-load calls (about 600,000 a
+  second).
+* The after-load call near its cost with 4 threads: **met, in the main**.
+  459 to 194 ns, against 117 with 4 threads: 1.7 times the 4-thread cost,
+  where it was 4.5 times (`bf19075`: 1.9).
+* The after-load calls over 10 ms near 0: **not met**. 49 to 20 (8 and
+  12), down three fifths. With the fix fewer than 1 in 1,000 calls
+  enters the monitor; the numbers do not tell whether the 20 are among
+  those or readers that lost their core within the call (the call is
+  timed whole).
+* The gets over 10 ms down by about a fifth, not to 0: **refuted**. Up
+  from 298 to 492, and 268 on `4f7cd60`. Each of the fix's two runs is
+  above each of the eight runs with 8 threads of the builds with 005-46
+  and without the fix (`eaec93e`, `5a6befd`, `4f7cd60`), on both nights.
+  The longest get did not change.
+
+**What is shown, and what is not.**
+
+* Shown: the fix does what it was made for. With 8 readers the loads no
+  longer queue on `evictorLock`: 484 entries a second instead of 81,877,
+  the readers blocked 0.89 percent of their time instead of 2.57, no
+  sample BLOCKED in `Eviction.wake`, the after-load call 2.4 times
+  cheaper, its calls over 10 ms down three fifths. Nothing got worse with
+  4 and 6 threads, and the gets a second and the p99.9 are as before.
+* Not shown: that the fix shortens the long gets. With 8 readers their
+  count rose by about two thirds, and the longest stayed where it was
+  (24.4 and 47.8 ms, against 21.0 to 49.3 before the fix). The runs, two a
+  build on a night with a higher floor, do not tell whether the rise is
+  the fix's or the night's, nor where in the get the time goes: only the
+  after-load call is timed. Two readings, not tested: readers that no
+  longer block on the monitor stay runnable on a full machine (9.6 of 10
+  cores) and meet the path's other monitors and the kernel's read more
+  often (with the fix BLOCKED most in `BufferedStream.read`); or the
+  eviction thread, which runs more with the fix (0.354 cores against
+  0.301), holds a map's monitor that readers enter while it is off its
+  core (its longest batch 39 ms in one run).
+* 2026.2's release notes (Limits) say "gets of up to 39 ms with 8 readers
+  and ZGC's workers on F53's 10 cores": this night's longest were 47.8 ms
+  with the fix and 49.3 ms before it.
+
+**Recommendation** (for Frans; a stop, 016-05 section 8, as the result
+goes against State's step 3). Keep the fix: it removes BergDB's own share,
+the hot monitor, as designed; the only cost seen is the rise of the gets
+over 10 ms, not yet known to be its. Before the close, one more step in a
+quiet block: `threads.sh` with
+`BUILDS="5a6befd 988fe1a" ROUNDS=4` and State's `B` (the two builds in
+turns AB BA AB BA, about 20 minutes, the database loaded by the fix's jar;
+no new build), to tell whether the rise of the gets over 10 ms is the
+fix's. If it is not: the entry closes, the rest of the long gets accepted
+as a full machine (Frans's decision of 2026-10-29). If it is: the
+Recommendation's measurements of 2026-10-28 (7 threads; 8 threads with
+`-XX:ConcGCThreads=1`; the get's parts timed in ScaleBench, as the
+after-load call is) before any change to `java/`, which is Frans's to
+decide.
+
+
 State
 -----
 
-Open until the thread sweep reruns with the fix in a quiet block on F53,
-as on 2026-10-28 ([night/](65-gets-with-8-readers/night/)), with four
-builds in turns: `bf19075` and `4f7cd60` (the first night's reference and
-HEAD), `5a6befd` (`main` before the fix) and `988fe1a` (the fix). Made
-for it on 2026-10-29: the third version of `ScaleBench-065.diff` counts the
+Rerun on 2026-11-04 (Results, 2026-11-04 night): the expectation of step
+3 is met for the monitor (the entries into `evictorLock`, the after-load
+call's cost) and not for the long gets, which rose. The entry stays open
+for Frans's decision on the Recommendation of that section; docs/levels.md
+section 7's "not yet explained" stays (016-04), and the release notes'
+known issue stays as it is (016-01, section 4.2). Steps 1 and 2 below are
+done; `B` still holds the four builds and `sb/`.
+
+As written on 2026-10-29: open until the thread sweep reruns with the fix
+in a quiet block on F53, as on 2026-10-28
+([night/](65-gets-with-8-readers/night/)), with four builds in turns:
+`bf19075` and `4f7cd60` (the first night's reference and HEAD), `5a6befd`
+(`main` before the fix) and `988fe1a` (the fix). Made for it on
+2026-10-29: the third version of `ScaleBench-065.diff` counts the
 after-load calls that enter `evictorLock` (an estimate: with the fix, the
 calls that found `wanted` clear just before the call), `sum.py` prints
 them in its tables of where the time went, and `prep.sh` compiles
@@ -773,8 +928,9 @@ First step
 
 `threads.sh` in the next quiet block on F53 (006-10, W2), after its
 `.READY` marker. Done 2026-10-28, 19:34 to 19:50 (Results). Frans decided
-and the fix is in `main`, 2026-10-29 (Decision and fix). Next: the rerun
-(State).
+and the fix is in `main`, 2026-10-29 (Decision and fix). The rerun ran
+2026-11-04 (Results, 2026-11-04 night). Next: Frans's decision on its
+Recommendation (State).
 
 
 Size and order
@@ -874,6 +1030,15 @@ its step `65-rerun` is in night 1's `steps.txt`
 (`/Users/f/fl/bench/016/night1/`). `prep.sh` need not run again (State's step 1: only if `B`
 is lost).
 
+**State** (2026-11-04): steps 1 to 4 done. Step 3 ran 02:53 to 03:13,
+quiet, exit 0. Step 4: the summary kept as `night/results-2026-11-04.txt`;
+`night/out/` moved to `/Users/f/fl/bench/016/night1/005-65-out/` (not to
+the `out-2026-11-04/` named above); the markers `rerun-016.sh.READY` and
+`.DONE` removed; the results, the explanation and the recommendation in
+Results, 2026-11-04 night. The expectation is not met for the long gets,
+so the entry stays open, a stop for Frans (016-05, section 8). Left: step
+5, the review of the results' numbers against `summary.txt`.
+
 
 Log
 ---
@@ -886,3 +1051,14 @@ the results, the explanation and the close in the morning.
 OK, 0 problems" (16:04 to 16:05, beside other runs, so its numbers mean
 nothing). `rerun-016.sh.READY` written; the step `65-rerun` (30 minutes)
 added to night 1's `steps.txt`, first in window 2.
+
+2026-11-04. The rerun, by the conductor's step `65-rerun` in night 1's
+window 2: 02:53 to 03:13, quiet, exit 0, `threads: OK, 0 problems`.
+Written up in Results, 2026-11-04 night: with 8 readers the fix takes the
+loads' entries into `evictorLock` from 81,877 to 484 a second and the
+after-load call from 459 to 194 ns, its calls over 10 ms from 49 to 20;
+the gets over 10 ms rose from 298 to 492, the longest unchanged (47.8 ms
+with the fix, 49.3 before it). Against State's step 3: open, for Frans's
+decision. The summary kept as `night/results-2026-11-04.txt`; the raw
+outputs moved to `/Users/f/fl/bench/016/night1/005-65-out/`; the markers
+removed.

@@ -1,0 +1,161 @@
+# ScaleBench C, 665 MB, ZGC: 4, 6 and 8 threads (bergdb 005-65)
+
+Per run and thread count. Max and p99.9: the gets; waits: a reader's load waiting for the
+eviction thread over 10 ms, and the longest; batch wall: the eviction batches' time by the
+clock; CPU in cores (CPU time over the phase's seconds): the readers, the rest of the
+process (the collector, the compiler), the eviction thread.
+
+| run | threads | gets a second | p99.9 us | max ms | waits > 10 ms | longest wait ms | batches | batch wall ms | eviction CPU ms | readers | rest | eviction |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| f53-c-10m-b665-zgc-bf19075-1 | 4 | 612,860 | 32.4 | 12.51 | 0 | 0.1 | 3364 | 4043 | 4109 | 3.98 | 1.21 | 0.137 |
+| f53-c-10m-b665-zgc-bf19075-1 | 6 | 442,242 | 138.2 | 18.87 | 0 | 7.0 | 2422 | 3011 | 3046 | 5.22 | 0.87 | 0.102 |
+| f53-c-10m-b665-zgc-bf19075-1 | 8 | 406,180 | 227.3 | 16.42 | 0 | 5.6 | 2218 | 2799 | 2833 | 6.23 | 0.71 | 0.094 |
+| f53-c-10m-b665-zgc-bf19075-2 | 4 | 604,223 | 32.4 | 19.21 | 0 | 0.4 | 3313 | 3843 | 3900 | 3.98 | 1.23 | 0.130 |
+| f53-c-10m-b665-zgc-bf19075-2 | 6 | 432,522 | 140.3 | 9.68 | 0 | 0.2 | 2367 | 2947 | 2982 | 5.24 | 0.83 | 0.099 |
+| f53-c-10m-b665-zgc-bf19075-2 | 8 | 398,601 | 235.5 | 16.53 | 1 | 10.2 | 2174 | 2669 | 2711 | 6.17 | 0.73 | 0.090 |
+| f53-c-10m-b665-zgc-5a6befd-1 | 4 | 693,116 | 22.3 | 10.65 | 0 | 1.2 | 3793 | 4465 | 4544 | 3.99 | 1.52 | 0.151 |
+| f53-c-10m-b665-zgc-5a6befd-1 | 6 | 738,245 | 44.0 | 7.31 | 0 | 6.3 | 4557 | 7596 | 7562 | 5.96 | 1.76 | 0.252 |
+| f53-c-10m-b665-zgc-5a6befd-1 | 8 | 719,393 | 74.8 | 31.77 | 22 | 15.2 | 5160 | 9818 | 9614 | 7.37 | 1.70 | 0.320 |
+| f53-c-10m-b665-zgc-5a6befd-2 | 4 | 685,644 | 23.0 | 12.48 | 0 | 1.3 | 3765 | 4543 | 4624 | 3.99 | 1.46 | 0.154 |
+| f53-c-10m-b665-zgc-5a6befd-2 | 6 | 734,713 | 43.5 | 9.24 | 0 | 4.0 | 4387 | 7064 | 7068 | 5.97 | 1.62 | 0.236 |
+| f53-c-10m-b665-zgc-5a6befd-2 | 8 | 708,261 | 120.3 | 49.28 | 27 | 36.7 | 5035 | 9212 | 8445 | 7.30 | 1.60 | 0.282 |
+| f53-c-10m-b665-zgc-988fe1a-1 | 4 | 679,929 | 23.0 | 6.09 | 0 | 4.7 | 3732 | 4730 | 4809 | 3.99 | 1.53 | 0.160 |
+| f53-c-10m-b665-zgc-988fe1a-1 | 6 | 761,908 | 41.2 | 8.69 | 0 | 1.2 | 4759 | 8232 | 8213 | 5.96 | 1.74 | 0.274 |
+| f53-c-10m-b665-zgc-988fe1a-1 | 8 | 721,668 | 69.6 | 47.81 | 8 | 16.2 | 5350 | 10862 | 10551 | 7.37 | 1.71 | 0.352 |
+| f53-c-10m-b665-zgc-988fe1a-2 | 4 | 672,270 | 23.0 | 11.75 | 0 | 6.1 | 3686 | 4362 | 4426 | 3.99 | 1.42 | 0.148 |
+| f53-c-10m-b665-zgc-988fe1a-2 | 6 | 730,601 | 43.0 | 9.50 | 0 | 2.6 | 4475 | 7409 | 7376 | 5.97 | 1.57 | 0.246 |
+| f53-c-10m-b665-zgc-988fe1a-2 | 8 | 731,395 | 68.1 | 24.43 | 12 | 15.2 | 5443 | 10984 | 10709 | 7.35 | 1.74 | 0.357 |
+| f53-c-10m-b665-zgc-4f7cd60-1 | 4 | 675,407 | 23.4 | 10.76 | 0 | 1.0 | 3702 | 4471 | 4542 | 3.99 | 1.50 | 0.151 |
+| f53-c-10m-b665-zgc-4f7cd60-1 | 6 | 743,370 | 43.5 | 13.82 | 0 | 5.6 | 4491 | 7345 | 7333 | 5.96 | 1.71 | 0.244 |
+| f53-c-10m-b665-zgc-4f7cd60-1 | 8 | 723,773 | 72.2 | 30.46 | 29 | 30.4 | 5071 | 9563 | 9362 | 7.39 | 1.64 | 0.312 |
+| f53-c-10m-b665-zgc-4f7cd60-2 | 4 | 678,695 | 23.2 | 10.55 | 0 | 1.7 | 3718 | 4417 | 4497 | 3.99 | 1.48 | 0.150 |
+| f53-c-10m-b665-zgc-4f7cd60-2 | 6 | 748,062 | 42.5 | 9.00 | 0 | 4.1 | 4534 | 7400 | 7390 | 5.96 | 1.67 | 0.246 |
+| f53-c-10m-b665-zgc-4f7cd60-2 | 8 | 726,536 | 70.7 | 20.99 | 22 | 14.4 | 5122 | 9716 | 9548 | 7.43 | 1.70 | 0.318 |
+
+## Each build, the mean of its runs (longest: the most of its runs)
+
+| build | threads | runs | gets a second | longest get ms | waits > 10 ms a run | longest wait ms | eviction cores | batch wall over eviction CPU | rest cores |
+|---|---|---|---|---|---|---|---|---|---|
+| bf19075 | 4 | 2 | 608,542 | 19.21 | 0.0 | 0.4 | 0.133 | 0.98 | 1.22 |
+| bf19075 | 6 | 2 | 437,382 | 18.87 | 0.0 | 7.0 | 0.100 | 0.99 | 0.85 |
+| bf19075 | 8 | 2 | 402,390 | 16.53 | 0.5 | 10.2 | 0.092 | 0.99 | 0.72 |
+| 5a6befd | 4 | 2 | 689,380 | 12.48 | 0.0 | 1.3 | 0.153 | 0.98 | 1.49 |
+| 5a6befd | 6 | 2 | 736,479 | 9.24 | 0.0 | 6.3 | 0.244 | 1.00 | 1.69 |
+| 5a6befd | 8 | 2 | 713,827 | 49.28 | 24.5 | 36.7 | 0.301 | 1.06 | 1.65 |
+| 988fe1a | 4 | 2 | 676,100 | 11.75 | 0.0 | 6.1 | 0.154 | 0.98 | 1.48 |
+| 988fe1a | 6 | 2 | 746,254 | 9.50 | 0.0 | 2.6 | 0.260 | 1.00 | 1.66 |
+| 988fe1a | 8 | 2 | 726,532 | 47.81 | 10.0 | 16.2 | 0.354 | 1.03 | 1.72 |
+| 4f7cd60 | 4 | 2 | 677,051 | 10.76 | 0.0 | 1.7 | 0.151 | 0.98 | 1.49 |
+| 4f7cd60 | 6 | 2 | 745,716 | 13.82 | 0.0 | 5.6 | 0.245 | 1.00 | 1.69 |
+| 4f7cd60 | 8 | 2 | 725,154 | 30.46 | 25.5 | 30.4 | 0.315 | 1.02 | 1.67 |
+
+Longest get with 4 threads, each run: bf19075 12.5 and 19.2 ms (0 waits); 5a6befd 10.6 and 12.5 ms (0 waits); 988fe1a 6.1 and 11.7 ms (0 waits); 4f7cd60 10.8 and 10.6 ms (0 waits)
+Longest get with 6 threads, each run: bf19075 18.9 and 9.7 ms (0 waits); 5a6befd 7.3 and 9.2 ms (0 waits); 988fe1a 8.7 and 9.5 ms (0 waits); 4f7cd60 13.8 and 9.0 ms (0 waits)
+Longest get with 8 threads, each run: bf19075 16.4 and 16.5 ms (1 waits); 5a6befd 31.8 and 49.3 ms (49 waits); 988fe1a 47.8 and 24.4 ms (20 waits); 4f7cd60 30.5 and 21.0 ms (51 waits)
+5a6befd against bf19075, gets a second: 4 +13.3%, 6 +68.4%, 8 +77.4%
+988fe1a against bf19075, gets a second: 4 +11.1%, 6 +70.6%, 8 +80.6%
+4f7cd60 against bf19075, gets a second: 4 +11.3%, 6 +70.5%, 8 +80.2%
+
+## Where the time went: gets and after-load calls
+
+Gets over 10 ms (from the histogram); after-load calls over 10 ms, and of them those that
+began under pressure (the resident bytes over the trigger by more than the gap between the
+watermarks, so that afterLoad may park for a batch); the mean after-load call; the calls
+over the trigger and of them those that entered the monitor evictorLock in Eviction.wake
+(every call over the trigger before 005-65's fix; with it, only one that finds no request
+pending: an estimate, from the flag read just before the call; ? for a run without the
+figure); the calls under pressure; the longest call without pressure; the readers' time
+blocked on monitors (percent of their time, and the times a second) and parked (LockSupport:
+afterLoad's wait).
+
+| run | threads | gets > 10 ms | after-load > 10 ms | of them under pressure | after-load ns a call | over the trigger, k a second | entering evictorLock, k a second | under pressure | longest without pressure ms | readers blocked % | blocked, k a second | readers parked ms |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| bf19075 r1 | 4 | 1 | 0 | 0 | 73 | 2 | 2 | 0 | 0.1 | 0.61 | 3.2 | 0 |
+| bf19075 r1 | 6 | 7 | 0 | 0 | 140 | 1 | 1 | 0 | 7.0 | 16.30 | 44.5 | 0 |
+| bf19075 r1 | 8 | 6 | 0 | 0 | 140 | 1 | 1 | 0 | 5.6 | 26.67 | 60.9 | 0 |
+| bf19075 r2 | 4 | 3 | 0 | 0 | 75 | 2 | 2 | 0 | 0.4 | 0.59 | 3.3 | 0 |
+| bf19075 r2 | 6 | 0 | 0 | 0 | 144 | 1 | 1 | 0 | 0.2 | 15.98 | 43.8 | 0 |
+| bf19075 r2 | 8 | 12 | 1 | 0 | 142 | 1 | 1 | 0 | 10.2 | 27.34 | 59.8 | 0 |
+| 5a6befd r1 | 4 | 2 | 0 | 0 | 99 | 3 | 3 | 0 | 1.2 | 0.01 | 0.2 | 0 |
+| 5a6befd r1 | 6 | 0 | 0 | 0 | 168 | 8 | 8 | 0 | 6.3 | 0.11 | 0.5 | 0 |
+| 5a6befd r1 | 8 | 164 | 22 | 0 | 437 | 73 | 73 | 0 | 15.2 | 2.39 | 1.4 | 0 |
+| 5a6befd r2 | 4 | 2 | 0 | 0 | 107 | 3 | 3 | 0 | 1.3 | 0.01 | 0.1 | 0 |
+| 5a6befd r2 | 6 | 0 | 0 | 0 | 178 | 7 | 7 | 0 | 4.0 | 0.09 | 0.4 | 0 |
+| 5a6befd r2 | 8 | 134 | 27 | 0 | 481 | 91 | 91 | 0 | 36.7 | 2.75 | 1.5 | 0 |
+| 988fe1a r1 | 4 | 0 | 0 | 0 | 112 | 3 | 0 | 0 | 4.7 | 0.00 | 0.0 | 0 |
+| 988fe1a r1 | 6 | 0 | 0 | 0 | 142 | 9 | 0 | 0 | 1.2 | 0.03 | 0.3 | 0 |
+| 988fe1a r1 | 8 | 238 | 8 | 0 | 193 | 94 | 0 | 0 | 16.2 | 0.80 | 0.6 | 0 |
+| 988fe1a r2 | 4 | 1 | 0 | 0 | 123 | 3 | 0 | 0 | 6.1 | 0.01 | 0.0 | 0 |
+| 988fe1a r2 | 6 | 0 | 0 | 0 | 155 | 9 | 0 | 0 | 2.6 | 0.02 | 0.3 | 0 |
+| 988fe1a r2 | 8 | 254 | 12 | 0 | 196 | 101 | 0 | 0 | 15.2 | 0.99 | 0.5 | 0 |
+| 4f7cd60 r1 | 4 | 2 | 0 | 0 | 112 | 3 | 3 | 0 | 1.0 | 0.01 | 0.2 | 0 |
+| 4f7cd60 r1 | 6 | 7 | 0 | 0 | 155 | 6 | 6 | 0 | 5.6 | 0.13 | 0.5 | 0 |
+| 4f7cd60 r1 | 8 | 144 | 29 | 0 | 457 | 69 | 69 | 0 | 30.4 | 2.43 | 1.3 | 0 |
+| 4f7cd60 r2 | 4 | 1 | 0 | 0 | 105 | 3 | 3 | 0 | 1.7 | 0.01 | 0.2 | 0 |
+| 4f7cd60 r2 | 6 | 0 | 0 | 0 | 166 | 8 | 8 | 0 | 4.1 | 0.10 | 0.5 | 0 |
+| 4f7cd60 r2 | 8 | 124 | 22 | 0 | 428 | 72 | 72 | 0 | 14.4 | 2.20 | 1.4 | 0 |
+
+## Where the time went: the eviction thread and the machine
+
+Batches: their number, mean and the longest of the run so far (Eviction keeps no maximum
+per phase), by the clock, and their time by the clock over the eviction thread's CPU time.
+The eviction thread's share of the phase: running (its CPU time); waiting for a request
+(Object.wait, with the re-entry into evictorLock after it); the rest: runnable without a
+core, or blocked on a monitor outside a wait; and its contended monitor entries outside
+waits. The machine's busy cores (every process, of the cpus column) and the other
+processes' (the machine's less this process's).
+
+| run | threads | batches | mean batch ms | longest batch so far ms | batch wall over eviction CPU | eviction running % | waiting % | the rest % | contended entries outside waits | machine cores | other processes' cores |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| bf19075 r1 | 4 | 3364 | 1.20 | 2 | 0.98 | 13.7 | 86.4 | -0.1 | 0 | 5.47 | 0.14 |
+| bf19075 r1 | 6 | 2422 | 1.24 | 4 | 0.99 | 10.2 | 89.9 | -0.0 | 0 | 6.46 | 0.26 |
+| bf19075 r1 | 8 | 2218 | 1.26 | 4 | 0.99 | 9.4 | 90.6 | -0.0 | 0 | 7.38 | 0.35 |
+| bf19075 r2 | 4 | 3313 | 1.16 | 5 | 0.99 | 13.0 | 87.1 | -0.1 | 0 | 6.70 | 1.36 |
+| bf19075 r2 | 6 | 2367 | 1.25 | 5 | 0.99 | 9.9 | 90.1 | -0.0 | 0 | 7.57 | 1.39 |
+| bf19075 r2 | 8 | 2174 | 1.23 | 5 | 0.98 | 9.0 | 91.0 | -0.1 | 0 | 8.34 | 1.35 |
+| 5a6befd r1 | 4 | 3793 | 1.18 | 4 | 0.98 | 15.1 | 85.0 | -0.1 | 0 | 5.83 | 0.17 |
+| 5a6befd r1 | 6 | 4557 | 1.67 | 5 | 1.00 | 25.2 | 74.5 | 0.3 | 0 | 8.13 | 0.16 |
+| 5a6befd r1 | 8 | 5160 | 1.90 | 7 | 1.02 | 32.0 | 67.0 | 1.0 | 1 | 9.59 | 0.20 |
+| 5a6befd r2 | 4 | 3765 | 1.21 | 2 | 0.98 | 15.4 | 84.7 | -0.1 | 0 | 5.78 | 0.18 |
+| 5a6befd r2 | 6 | 4387 | 1.61 | 2 | 1.00 | 23.6 | 76.3 | 0.2 | 0 | 7.97 | 0.15 |
+| 5a6befd r2 | 8 | 5035 | 1.83 | 13 | 1.09 | 28.2 | 68.9 | 3.0 | 1 | 9.91 | 0.72 |
+| 988fe1a r1 | 4 | 3732 | 1.27 | 4 | 0.98 | 16.0 | 84.1 | -0.1 | 0 | 5.87 | 0.19 |
+| 988fe1a r1 | 6 | 4759 | 1.73 | 4 | 1.00 | 27.4 | 72.3 | 0.3 | 0 | 8.11 | 0.13 |
+| 988fe1a r1 | 8 | 5350 | 2.03 | 14 | 1.03 | 35.2 | 63.4 | 1.4 | 1 | 9.63 | 0.20 |
+| 988fe1a r2 | 4 | 3686 | 1.18 | 9 | 0.99 | 14.8 | 85.3 | -0.1 | 0 | 5.73 | 0.16 |
+| 988fe1a r2 | 6 | 4475 | 1.66 | 9 | 1.00 | 24.6 | 75.1 | 0.3 | 0 | 7.96 | 0.17 |
+| 988fe1a r2 | 8 | 5443 | 2.02 | 39 | 1.03 | 35.7 | 63.1 | 1.2 | 1 | 9.65 | 0.20 |
+| 4f7cd60 r1 | 4 | 3702 | 1.21 | 8 | 0.98 | 15.1 | 84.9 | -0.1 | 0 | 5.81 | 0.17 |
+| 4f7cd60 r1 | 6 | 4491 | 1.64 | 8 | 1.00 | 24.4 | 75.3 | 0.2 | 0 | 8.06 | 0.15 |
+| 4f7cd60 r1 | 8 | 5071 | 1.89 | 18 | 1.02 | 31.2 | 67.8 | 0.9 | 1 | 9.51 | 0.16 |
+| 4f7cd60 r2 | 4 | 3718 | 1.19 | 2 | 0.98 | 15.0 | 85.1 | -0.1 | 0 | 5.78 | 0.16 |
+| 4f7cd60 r2 | 6 | 4534 | 1.63 | 3 | 1.00 | 24.6 | 75.1 | 0.3 | 1 | 8.05 | 0.18 |
+| 4f7cd60 r2 | 8 | 5122 | 1.90 | 10 | 1.02 | 31.8 | 67.3 | 0.9 | 0 | 9.58 | 0.13 |
+
+## Each build, the reading's figures (sums or means of its runs)
+
+| build | threads | gets > 10 ms | after-load > 10 ms | of them under pressure | after-load ns a call | entering evictorLock, k a second | readers blocked % | eviction thread, the rest % | machine cores | other processes' cores |
+|---|---|---|---|---|---|---|---|---|---|---|
+| bf19075 | 4 | 4 | 0 | 0 | 74 | 2 | 0.60 | -0.1 | 6.08 | 0.75 |
+| bf19075 | 6 | 7 | 0 | 0 | 142 | 1 | 16.14 | -0.0 | 7.01 | 0.83 |
+| bf19075 | 8 | 18 | 1 | 0 | 141 | 1 | 27.00 | -0.0 | 7.86 | 0.85 |
+| 5a6befd | 4 | 4 | 0 | 0 | 103 | 3 | 0.01 | -0.1 | 5.81 | 0.17 |
+| 5a6befd | 6 | 0 | 0 | 0 | 173 | 7 | 0.10 | 0.3 | 8.05 | 0.15 |
+| 5a6befd | 8 | 298 | 49 | 0 | 459 | 82 | 2.57 | 2.0 | 9.75 | 0.46 |
+| 988fe1a | 4 | 1 | 0 | 0 | 117 | 0 | 0.01 | -0.1 | 5.80 | 0.17 |
+| 988fe1a | 6 | 0 | 0 | 0 | 148 | 0 | 0.03 | 0.3 | 8.04 | 0.15 |
+| 988fe1a | 8 | 492 | 20 | 0 | 194 | 0 | 0.89 | 1.3 | 9.64 | 0.20 |
+| 4f7cd60 | 4 | 3 | 0 | 0 | 109 | 3 | 0.01 | -0.1 | 5.79 | 0.16 |
+| 4f7cd60 | 6 | 7 | 0 | 0 | 160 | 7 | 0.11 | 0.3 | 8.05 | 0.16 |
+| 4f7cd60 | 8 | 268 | 51 | 0 | 443 | 70 | 2.31 | 0.9 | 9.54 | 0.15 |
+
+## The sampled readers' states (the five most frequent, and any in Eviction)
+
+f53-c-10m-b665-zgc-bf19075-1, sampled-8, 1456 samples: 61.6% RUNNABLE reading the stream; 17.9% BLOCKED reading the stream on bergdb.stream.FileStream$DbFile; 3.2% RUNNABLE in BufferedStream.read; 3.2% RUNNABLE in Dag.getEqNodeInSegment; 2.5% RUNNABLE in KeyNode.searchEq; 0.5% BLOCKED reading the stream on bergdb.stream.FileStream
+f53-c-10m-b665-zgc-bf19075-2, sampled-8, 1456 samples: 60.0% RUNNABLE reading the stream; 19.9% BLOCKED reading the stream on bergdb.stream.FileStream$DbFile; 4.2% RUNNABLE in Dag.getEqNodeInSegment; 3.4% RUNNABLE in BufferedStream.read; 2.8% RUNNABLE in KeyNode.searchEq; 1.0% BLOCKED reading the stream on bergdb.stream.FileStream
+f53-c-10m-b665-zgc-5a6befd-1, sampled-8, 1424 samples: 62.4% RUNNABLE reading the stream; 7.2% RUNNABLE in Dag.getEqNodeInSegment; 5.7% RUNNABLE in KeyNode.searchEq; 4.8% RUNNABLE in NodeChecksum.sumWithZeroReplace; 4.3% RUNNABLE in NodeCollection.followPointer; 1.3% BLOCKED in Eviction.wake on java.lang.Object; 1.0% RUNNABLE in Eviction.wake; 0.8% RUNNABLE in Eviction.afterLoad; 0.4% BLOCKED in BufferedStream.read on bergdb.storage.BufferedStream; 0.1% BLOCKED reading the stream on sun.nio.ch.NativeThreadSet
+f53-c-10m-b665-zgc-5a6befd-2, sampled-8, 1448 samples: 63.3% RUNNABLE reading the stream; 7.5% RUNNABLE in Dag.getEqNodeInSegment; 5.9% RUNNABLE in KeyNode.searchEq; 5.2% RUNNABLE in NodeChecksum.sumWithZeroReplace; 3.0% RUNNABLE in KeyNode.searchLte; 0.6% BLOCKED in Eviction.wake on java.lang.Object; 0.6% RUNNABLE in Eviction.wake; 0.4% RUNNABLE in Eviction.afterLoad; 0.3% BLOCKED in BufferedStream.read on bergdb.storage.BufferedStream; 0.1% BLOCKED in Cache3.liveOrNewHandle on java.util.HashMap; 0.1% BLOCKED reading the stream on sun.nio.ch.NativeThreadSet
+f53-c-10m-b665-zgc-988fe1a-1, sampled-8, 1424 samples: 66.2% RUNNABLE reading the stream; 6.5% RUNNABLE in Dag.getEqNodeInSegment; 5.2% RUNNABLE in NodeChecksum.sumWithZeroReplace; 5.1% RUNNABLE in KeyNode.searchEq; 2.7% RUNNABLE in KeyNode.getDeleteBitmapAtTime; 1.1% BLOCKED in BufferedStream.read on bergdb.storage.BufferedStream; 0.5% RUNNABLE in Eviction.afterLoad; 0.1% BLOCKED reading the stream on sun.nio.ch.NativeThreadSet
+f53-c-10m-b665-zgc-988fe1a-2, sampled-8, 1432 samples: 64.5% RUNNABLE reading the stream; 7.2% RUNNABLE in Dag.getEqNodeInSegment; 5.4% RUNNABLE in NodeCollection.followPointer; 5.0% RUNNABLE in KeyNode.searchEq; 4.8% RUNNABLE in NodeChecksum.sumWithZeroReplace; 0.4% RUNNABLE in Eviction.afterLoad; 0.3% BLOCKED in BufferedStream.read on bergdb.storage.BufferedStream; 0.1% BLOCKED in Cache3.liveOrNewHandle on java.util.HashMap; 0.1% RUNNABLE in Eviction.wake
+f53-c-10m-b665-zgc-4f7cd60-1, sampled-8, 1432 samples: 63.3% RUNNABLE reading the stream; 6.1% RUNNABLE in Dag.getEqNodeInSegment; 5.9% RUNNABLE in KeyNode.searchEq; 4.7% RUNNABLE in NodeChecksum.sumWithZeroReplace; 3.9% RUNNABLE in NodeCollection.followPointer; 1.0% BLOCKED in BufferedStream.read on bergdb.storage.BufferedStream; 0.8% RUNNABLE in Eviction.afterLoad; 0.7% BLOCKED in Eviction.wake on java.lang.Object; 0.7% RUNNABLE in Eviction.wake; 0.1% BLOCKED in Cache3.liveOrNewHandle on java.util.HashMap
+f53-c-10m-b665-zgc-4f7cd60-2, sampled-8, 1432 samples: 62.5% RUNNABLE reading the stream; 7.1% RUNNABLE in Dag.getEqNodeInSegment; 6.1% RUNNABLE in KeyNode.searchEq; 5.5% RUNNABLE in NodeChecksum.sumWithZeroReplace; 3.3% RUNNABLE in NodeCollection.followPointer; 0.7% RUNNABLE in Eviction.wake; 0.5% RUNNABLE in Eviction.afterLoad; 0.4% BLOCKED in Eviction.wake on java.lang.Object; 0.3% BLOCKED in BufferedStream.read on bergdb.storage.BufferedStream
