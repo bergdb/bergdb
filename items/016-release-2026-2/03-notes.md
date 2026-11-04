@@ -438,3 +438,33 @@ N3 found no fault that was not registered already, so section 4's stop
 does not apply: the faults of 2026.1 left open are 016-02's item 7.
 Hand-off: `/Users/f/fl/bench/016/docs/handoff-N3/`.
 
+2026-11-04, 07:59, the notes agent: **N4 done** on `main` at `94cb406`,
+from the coordinator's list of 07:56.
+
+* `next.md`: lines for 015-14, 015-20, 015-21 and 015-22, 015-40
+  (Reliability); 015-56 in 005-66's entry; 015-13 and 015-25 in Handles'
+  (015-25 new in 2026.2); 015-12's entry says that 015-14 made the array
+  fields volatile and removed the fence. 015-10 was in since N1. `walk.sh`
+  on `main` at `94cb406`: printed nothing. (Before the lines, it passed
+  4e10aa2 only because next.md named 015-14; each commit now has its own
+  line.)
+* The draft (`/Users/f/fl/bench/016/docs/out/readme.md`): the changes
+  above; Lean: the night's fixes changed Java only, and are outside the
+  model or in the eviction schedule it proves for any value; Verification:
+  `night.sh` on `3386ade` (NIGHT OK, 38 minutes; the release commit adds
+  015-56 and `BuildInfo`), the reviews R1 to R3, R7, R8, S1, S2 and the
+  index fixes' review, which faults have a second check, the fixes, and
+  016-08's tests; Release Props and Baseline: the numbers follow, from the
+  night after the release (`[[W7-NUMBERS]]`); Known issues: 015-13, 015-14,
+  015-20 to 015-22 and 015-25 out, and the index and object layers' faults
+  named plainly, as Frans decided (07:39, item 9), with the other faults of
+  the reviews by area. Markers left (16 names, in `out/markers.txt`): the
+  release's identity and runs (R2 to R5, R8, N8, LINES, R2-GATE),
+  `W7-NUMBERS`, and `N4-R4-R6` for reviews R4 to R6, running until about
+  10:30.
+* 2026.1's post-release notes: 015-20, 015-21, 015-22 and 015-40 moved to
+  the fixed list (each checked at the tag: `UseIndexBuilderImp` the same,
+  `IndexManager` the same but for 005-46, `MapKey.equals` tested for a
+  `long[]`); the other review faults in 2026.1's code listed by their
+  entries, by the reviewers' checks at the tag, not checked again here.
+

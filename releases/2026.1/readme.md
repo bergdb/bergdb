@@ -344,6 +344,21 @@ release 2026.2 (bergdb 016-03, N3).
   later or uncommitted transaction. Rare (8 misses in 477 million searches
   in a probe, none seen through a database); `growCapacity` is the same in
   2026.1.
+* **A typed primary scan took a page of non-objects for the end of its
+  range** (015-20, `9971100`): a scan of `usePrimary` left out every later
+  object when one page of about 100 entries held no object, without a
+  word; `UseIndexBuilderImp` is the same in 2026.1.
+* **An index deleted and created again under its name** while an old job
+  ran (015-21, 015-22; `377fe7d`, `7cd4cdb`): a second `deleteIndex` let
+  the first job delete the new index and its entries, and a deleted
+  index's build wrote into its replacement, which then returned extra
+  objects, duplicates and the wrong order; both lasted after a restart.
+  `IndexManager`'s logic is the same in 2026.1 but for 005-46's
+  interrupts.
+* **The last call on a key in a transaction did not win** (015-40,
+  `f7974d3`): `RwEnvironmentImp`'s `MapKey.equals` tested for a `long[]`
+  and was never true, so a put and then a delete of a key committed the
+  put, and of several puts an earlier value could win.
 * **A directory whose stream files were gone, or whose only file was
   empty, started as a new, empty database** without a word (015-01,
   `ed16384`): 2026.1 creates a database for every empty stream, whatever
@@ -365,18 +380,6 @@ release 2026.2 (bergdb 016-03, N3).
 
 * **Holes in an unforced tail** after a power loss can refuse a start or
   fail a later read (014-01, found in 005-83). Not fixed.
-* **A filtered scan takes an empty page for the end of its range**
-  (015-20): a typed primary scan (`usePrimary`) leaves out every later
-  object when one page of about 100 entries holds no object; the same code
-  in 2026.1 (`UseIndexBuilderImp`). Not fixed when this note was written
-  (2026-11-03).
-* **Indexes deleted and created again under the same name** while an old
-  job runs: a second `deleteIndex` lets the first job delete the new index
-  and its entries (015-21); a deleted index's build writes into its
-  replacement (015-22). Also after a restart. Not fixed when this note was
-  written.
-* **A refused index deletion** leaves the index active but no longer
-  maintained (015-23). Not fixed.
 * **A failed append's transaction was visible** to a read before the
   failure, where 2026.1's documents said that its time never becomes a
   lookup time (015-27): `transactionEnd()` comes before `store()`. The
@@ -386,6 +389,17 @@ release 2026.2 (bergdb 016-03, N3).
   length (015-26). Internal: no path from the Pub API gives one.
 * **A start on an empty or missing directory creates a database**
   (015-05), as above.
+* **The faults that the reviews before release 2026.2 found** in code that
+  2026.1 has, each with its entry in `items/015-todo/` and the reviewer's
+  check at the tag (bergdb 016-06): in the indexes, the objects and the
+  rw-transactions, 015-23, 015-28 to 015-30, 015-36, 015-37, 015-39,
+  015-41 to 015-43, 015-46 to 015-48, 015-59 to 015-62, 015-64, and review
+  S2's 27 faults (015-49); in the storage, 015-31 to 015-35; in the Core
+  and reclaim, 015-50, 015-51, 015-53 to 015-55; elsewhere, 015-38,
+  015-44, 015-45, 015-57, 015-58, 015-63 and 015-65. Release 2026.2's
+  notes, "Known issues and limits", say what each does. Those of reviews
+  R2 and R3 (015-23, 015-31 to 015-39) were verified by a second reviewer;
+  the others have the reviewer's own test or probe.
 
 **Documentation of 2026.1 that was wrong:**
 

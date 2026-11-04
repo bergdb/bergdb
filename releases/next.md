@@ -95,8 +95,41 @@ Reliability
   their contents: a search could miss a key that was there long before
   its lookup time, or return the value of a later or uncommitted
   transaction. Rare (8 misses in 477 million searches in a probe; none
-  seen through a database), on AArch64. A release fence now orders the
-  copies before the stores. The readers' side is 015-14.
+  seen through a database), on AArch64. A release fence ordered the
+  copies before the stores (`dc42409`); since 015-14 the node's array
+  fields are volatile, and the fence is gone.
+
+* **The fast path reads every pointer with an acquire** (bergdb 015-14,
+  2026-11-03, `4e10aa2`), so that a lock-free read is correct by the Java
+  Memory Model, not by the hardware's address dependency: a key node or a
+  top node reads each pointer with an acquire, paired with the release
+  store of each change in place, then its reference with an opaque read;
+  a key node's array fields and `Handle.writtenPos` are volatile. Before,
+  the plain read of a pointer to a handle allowed, by the JMM, a version
+  older than the reader needed; HotSpot was not seen to give it. The cost
+  on the read path is not measured: an estimate of seven more
+  load-acquires a hop on AArch64, none on x86 (015-14).
+
+* **A typed primary scan goes on after a page of non-objects** (bergdb
+  015-20, 2026-11-03, `9971100`). A scan of `usePrimary` ended a page
+  after 100 entries, filtered ones included, and took the empty page for
+  the end of the range, so it left out every later object, without a
+  word. In 2026.1 too.
+
+* **An index deleted and created again under its name** (bergdb 015-21
+  and 015-22, 2026-11-03, `377fe7d`, `7cd4cdb`). A second `deleteIndex`
+  returns the running deletion's job, so an old job can no longer delete
+  a new index of the name and its entries; an index build stops when its
+  index is deleted, and writes nothing into a new index of the name, which
+  returned extra objects, duplicates and the wrong order. Both lasted
+  after a restart. In 2026.1 too.
+
+* **The last call on a key in a transaction wins** (bergdb 015-40,
+  2026-11-03, `f7974d3`), for put and delete in an rw-transaction. Before,
+  every call on a key was kept and the last put won, over a delete
+  whatever the order: a put and then a delete of a key committed the put,
+  and of several puts an earlier value could win. In an index's own
+  operations a put stays over a delete, as before. In 2026.1 too.
 
 * **A directory whose stream is missing is refused** (bergdb 015-01,
   2026-11-03, `ed16384`). `created.txt` now marks a database whose
@@ -196,7 +229,12 @@ API changes
   before `dir()`. A replica given before `dir()` is now kept; before,
   `dir()` dropped it. A directory that cannot be opened, or that another
   database has, is reported by `start()`, with the same `StreamIoException`
-  that `dir()` threw; `replica()` no longer throws its `IOException`.
+  that `dir()` threw; `replica()` no longer throws its `IOException`. A
+  start that is refused closes only the streams it opened itself: a
+  second `start()` of one builder whose database runs, refused as the
+  directory is in use, closed that database's stream, which then failed
+  and lost its lock (015-56, 2026-11-04, `30e1b61`; a fault of the
+  development, never in a release).
 * **The startup distance changes while the database runs** (bergdb 005-53,
   2026-10-28, `fd8f513`). `Database.setStartupDistanceInMb(int)` and
   `getStartupDistanceInMb()`: the setter clamps as
@@ -293,7 +331,8 @@ Performance
     table, in batches that end after 2 ms (`Eviction.BATCH_NANOS`), and a
     reader's load over the trigger waits up to 2 ms (`LOAD_WAIT_NANOS`)
     (`4a1fc5e`, `66c8f3a`, `a04a418`);
-  * reads of resident nodes without a lock (`19a8c58`); the pointer locks
+  * reads of resident nodes without a lock (`19a8c58`), each pointer read
+    with an acquire since 015-14 (`4e10aa2`, above); the pointer locks
     gone (`7831909`);
   * the node table in 4,096 maps with a lock each: a resize stops one map
     for 0.23 ms, where it took 11.6 ms (`be4534a`); reads no longer
@@ -311,7 +350,16 @@ Performance
     budget (015-15, 2026-11-03, `f82e7e7`); the eviction thread stopped
     after one batch that freed nothing, which left the resident bytes over
     a lowered budget when every object was just read (015-10, 2026-11-03,
-    `24bdae5`).
+    `24bdae5`); an exception in a batch of the eviction thread ended the
+    thread and nothing else, so the database went on without eviction,
+    where now it fails the database (015-25, 2026-11-03, `fa08db4`).
+  * the resident bytes count the handles (015-13, 2026-11-03, `e427a4c`):
+    each live handle with its node-table entry, 79 bytes, and 32 bytes for
+    each pointer that holds one, as 009-02, 4.7 says. Before, the count
+    left them out, and a database used 34 to 49 percent more memory than
+    its budget in a probe. At a given cache size about a third fewer
+    objects stay in memory than in 2026.1. The constants are JDK 27's,
+    with compact object headers; on other JVMs they are an estimate.
 * **MEM 129 to 130 bytes per KV** since handles, against 191 in 2026.1;
   `level1.sh`'s limit lowered from 228 to 131 (2026-10-29, `f648f96`).
   `level1.sh`'s SS limits raised after 007-07 (2026-10-29, `f6fc56b`).
