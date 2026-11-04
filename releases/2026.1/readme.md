@@ -394,12 +394,18 @@ release 2026.2 (bergdb 016-03, N3).
   check at the tag (bergdb 016-06): in the indexes, the objects and the
   rw-transactions, 015-23, 015-28 to 015-30, 015-36, 015-37, 015-39,
   015-41 to 015-43, 015-46 to 015-48, 015-59 to 015-62, 015-64, and review
-  S2's 27 faults (015-49); in the storage, 015-31 to 015-35; in the Core
-  and reclaim, 015-50, 015-51, 015-53 to 015-55; elsewhere, 015-38,
-  015-44, 015-45, 015-57, 015-58, 015-63 and 015-65. Release 2026.2's
-  notes, "Known issues and limits", say what each does. Those of reviews
-  R2 and R3 (015-23, 015-31 to 015-39) were verified by a second reviewer;
-  the others have the reviewer's own test or probe.
+  S2's 27 faults (015-49); in the storage, 015-31 to 015-35 and 015-78 to
+  015-83; in the Core and reclaim, 015-50, 015-51, 015-53 to 015-55; in
+  startup, 015-74, 015-75 and 015-77; in eviction, 015-67 and 015-69;
+  elsewhere, 015-38, 015-44, 015-45, 015-57, 015-58, 015-63 and 015-65.
+  Release 2026.2's notes, "Known issues and limits", say what each does.
+  Those of reviews R2 and R3 (015-23, 015-31 to 015-39) were verified by a
+  second reviewer; the others have the reviewer's own test or probe.
+* **A start can accept a corrupt stream and lose committed data** (015-72,
+  015-73, found by review R6 on 2026-11-04; in 2026.1 too, not fixed): a
+  record whose size field is larger than its content is accepted, and the
+  records it covers are lost; a corrupt `startupPos` in the last record is
+  accepted, and the transactions before it are lost.
 
 **Documentation of 2026.1 that was wrong:**
 

@@ -468,3 +468,14 @@ from the coordinator's list of 07:56.
   `long[]`); the other review faults in 2026.1's code listed by their
   entries, by the reviewers' checks at the tag, not checked again here.
 
+2026-11-04, 08:31, the notes agent: the draft's markers filled from the
+coordinator's facts of 08:30 (commit A `95bde62`, `build-a.txt`,
+`tests-f53.out`, the axioms, the digests, `git ls-files` at A for the
+lines), all but `[[R5-TESTS-S1]]` (s1's tests on the jar, about 10:30);
+the W7 numbers are said to come in a later commit (016-10), and reviews
+R4 to R6's faults (015-66 to 015-83) are in the known issues. 2026.1's
+post-release notes get the faults of R4 to R6 that 2026.1 has (015-67,
+015-69, 015-72 to 015-75, 015-77 to 015-83), with 015-72 and 015-73, a
+start that accepts a corrupt stream and loses committed data, in a line
+of their own. Hand-off: `/Users/f/fl/bench/016/docs/handoff-N4b/`.
+
