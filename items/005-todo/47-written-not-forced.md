@@ -2,8 +2,9 @@
 =====================================================
 
 Status: open; decided by Frans 2026-11-04 (A, a setting) and implemented,
-see "Frans's decision" and "Done"; left: the sync latency with forcing on
-and off ("Left"). Kind: decide. Created 2026-10-26.
+see "Frans's decision" and "Done"; the sync latency measured on s1
+("Sync latency on s1"); left: the same on F53, in a quiet block ("Left").
+Kind: decide. Created 2026-10-26.
 
 Frans's question, 2026-10-26, added as an entry at his request, by Claude
 (Opus 5.5, Claude Code).
@@ -414,6 +415,43 @@ Done
   0 of 305; InterruptStress 60 s.
 
 
+
+Sync latency on s1
+------------------
+
+2026-11-04, 19:12 to 19:17, by Claude (Opus 5.5, Claude Code). s1 was
+idle before (load 0.06, no JVM), and each run checked that no other JVM
+ran. The jar of `188facf`, built on s1 from `git archive` with its
+OpenJDK 27 (`/opt/bergdb-bench/jdk-27`; s1 has no `unzip`, so a Python
+shim for `build.sh` in `/opt/bergdb-bench/005-47/bin`). `d-1k-t1` of
+`performance.suite` run directly by `/opt/bergdb-bench/005-47/run.sh`:
+`Perf write` with n=100000, valsize=1000, commit=durable, threads=1,
+ops=100, warmup=100000, G1, a heap of 1 GB, assertions off; forcing on
+and off (`-Dperf.noforce=1`) in turns, 10 runs each, 5 s apart. Every run
+printed `PERF OK`. Outputs on s1 in `/opt/bergdb-bench/005-47/out/` and
+`runs.txt`.
+
+The durable commit's latency (execute() then sync(ORDINARY)), in ms: the
+median of the 10 runs' p50 and p99, and the range of their maximum. The
+append is Perf's time of an append to `FileStream` (Perf calls it a force;
+with forcing off it is the `write()`).
+
+| Forcing | p50 | p99  | max         | append             |
+|---|---:|---:|---|---|
+| on      | 4.2 | 12.3 | 13.8 to 39.0 | 4.5 (4.1 to 7.1) |
+| off     | 0.1 | 1.1  | 1.0 to 3.2   | 0.01 to 0.03     |
+
+* Forcing off takes the force out of a sync: a durable commit of 1 KB on
+  s1 goes from 4.2 to 0.1 ms at the median, and from 12.3 to 1.1 ms at
+  p99. A run's commits a second, in Perf's line of its appends, are 134 to
+  226 with forcing on and 2,862 to 9,503 with it off.
+* s1's forces were short this time, 4 to 7 ms; 005-46 and 009-03,
+  section 4, saw waits of seconds there. The gain where a force takes
+  seconds is larger, and not measured here.
+* One thread and 100 commits a run, as the scenario has it; 16 and 64
+  threads (`d-1k-t16`, `d-1k-t64`) not run.
+
+
 Left
 ----
 
@@ -426,6 +464,20 @@ Left
   the valid prefix in every image" holds for every image without a hole,
   not for these; hole-tolerant recovery is open in 014-01. Said in
   `FileStream`'s Javadoc and docs/levels.md, section 8.
-* **The sync latency**, with forcing on and off, on F53 and on s1
-  (`Perf`'s `d-1k-t1`, `-Dperf.noforce=1` for off): to be measured after
-  the commit, on a quiet machine.
+* **The sync latency on F53**, with forcing on and off, in a quiet block
+  (not measured on 2026-11-04: the 005-52 agent's gates and timing runs
+  had the machine). The same runs as on s1, in a clone at `188facf` or
+  later, from its `java/`, after `JAVA_HOME=/opt/homebrew/opt/openjdk
+  ./build.sh`:
+
+      for i in 1 2 3 4 5 6 7 8 9 10; do for x in "" -Dperf.noforce=1; do
+        rm -rf build/perf/d47 build/perf/d47-out; mkdir -p build/perf/d47-out
+        $JAVA_HOME/bin/java -XX:+UseG1GC -da -Xms1g -Xmx1g $x \
+          -Dperf.n=100000 -Dperf.valsize=1000 -Dperf.commit=durable \
+          -Dperf.threads=1 -Dperf.ops=100 -Dperf.warmup=100000 \
+          -Dperf.scenario=d-1k-t1 -Dperf.out=build/perf/d47-out \
+          -Dperf.dir=build/perf/d47 -cp build/bergdb.jar:build/stress \
+          bergdb.core.Perf write | grep -E 'durable p50|forces,|PERF OK'
+        sleep 5; done; done
+
+  About 4 minutes. Then the table above for F53, and this entry done.
