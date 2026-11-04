@@ -349,6 +349,27 @@ section 3). Unless he chooses before the release, it is a known issue of
   and objects): 27 faults with probes, all in 2026.1 too: 015-49. Item 9 of
   section 7.
 
+* 22:20 to 07:24 the session stopped: its OAuth token refresh was refused
+  (HTTP 400; "OAuth refresh token is no longer valid"), and every later
+  request failed; docs/log.md, 2026-11-04. Not done: the release steps of
+  00:45 to 02:50, Codex's reviews after 23:06, the morning. Done without
+  the session: `night.sh` 02:10, NIGHT OK on `3386ade` in 38 minutes (all
+  the night's fixes; the gate on the release's code, as commit A adds
+  BuildInfo only); the quiet block's 65-rerun and 52-lowered, exit 0; s1's
+  L4 stress on `3e32f02` failed once in `interrupt`, 015-17's fault (fixed
+  in `6105d21`). R8 wrote its report before it stopped: 10 faults,
+  015-56 to 015-64 (R8-F1 is 015-36); 015-56 (R8-F10) is new in 2026.2.
+* 07:39 Frans: unattended until 12:00; the W7 numbers in tonight's quiet
+  block; section 7's items 6 to 9 as recommended. The plan to 12:00:
+  015-56's fix (agent, review, gate, commit); the rehearsal; commit A
+  (`set-buildinfo.sh 2026.2 262`, before-commit); `build-a.sh`;
+  `tests-f53.sh` and `s1-chain.sh`; N4 (the notes agent); `collect.sh`,
+  `axioms.sh`, `finish.sh`; R9 (`stage-b.sh`, commit B, the tag
+  `release-2026.2` on A, local); news.md by 12:00. Codex reviews R4, R5
+  and R6 again on `f5a5f66` (stop 10:30); their faults go into the notes as
+  known issues. Tonight: the W7 numbers on A's jar (016-10), a conductor
+  of night 2.
+
 
 ## 7. For Frans to decide
 
@@ -396,8 +417,8 @@ open todo item. This needs an investigation and a fix."
    009-02 for 2026.2, then measure acquire reads (T6a) and take them if
    they cost little.
 
-Open since 19:45 (no answer needed tonight; the work goes on as
-recommended):
+Open since 19:45; Frans, 2026-11-04, 07:39, items 6 to 9: "Yes, as
+recommended":
 
 6. **015-27: a failed append's transaction was already visible** (review
    R3, R3-F8, confirmed by verify-1): a get beside a put whose append
