@@ -369,6 +369,26 @@ section 3). Unless he chooses before the release, it is a known issue of
   and R6 again on `f5a5f66` (stop 10:30); their faults go into the notes as
   known issues. Tonight: the W7 numbers on A's jar (016-10), a conductor
   of night 2.
+* 07:47 REHEARSAL OK on `f5a5f66`. 07:52 015-56 fixed, reviewed, gated
+  (`BEFORE COMMIT OK (108 s)`), committed `30e1b61`; 015-65 registered.
+* 07:59 N4 (`8ca243d`): next.md and 2026.1's post-release notes with the
+  night's changes; the walk over every commit printed nothing. The freeze.
+* 08:01 commit A, `95bde62`: BuildInfo 2026.2, 262, `2026.2.261104.0759`;
+  `BEFORE COMMIT OK (107 s)` in its clone. 08:03 `BUILD A OK`, the jar's
+  SHA-256 `f22e193877ef178173671c2488805be7de4d23f77c4edca5e4f23523371a008f`.
+* 08:06 `TESTS F53 OK` (JDK 27 and 17: Unit 1143, F 79, Night 8, the user's
+  program); `PREP A OK` (the five W7 steps READY for night 2's conductor,
+  `/Users/f/fl/bench/016/night2/`, started 08:07); `DIGESTS OK`. 08:06 s1's
+  chain started. 08:07 `AXIOMS OK`, 44 theorems.
+* 08:13 to 08:26 the last reviews: R4 (Codex, ended by the content filter
+  after its faults), 015-66 to 015-71, of which 015-66 is a gap in
+  015-25's fix (a fix first after the release); R6 (Claude, as Codex's was
+  stopped at once by the filter), 015-72 to 015-77; R5 (Codex), 015-78 to
+  015-83. Known issues, as found after 01:00 (item 7).
+* 08:17 s1: Unit and F OK on JDK 27 and 17, the user's program OK; the
+  night tests failed only in `BryanIssueNight`, "No space left on device"
+  (s1's `/tmp` is a 1.9 GB tmpfs, 015-11); again with `/tmp` on the disk
+  after s1's W7 run.
 
 
 ## 7. For Frans to decide
