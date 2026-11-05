@@ -63,8 +63,9 @@ Files
 * [017-07](07-to-consider/readme.md). To consider: small ideas that
   Frans may take up some day, one section each; first, a get that always
   copies a `byte[]` value (from 019-03); second, startupDistance in the
-  meta block rather than in an internal KV (from 015-87's F1). Open; a
-  collection.
+  meta block rather than in an internal KV (from 015-87's F1); third,
+  refusing a value transformation's result above the value limit (from
+  015-51). Open; a collection.
 
 
 Log
@@ -113,3 +114,7 @@ until that morning) by Frans (14:12), as 06-overload/retries.md, with his
 question whether `rw()` should ever give up under overload; 015-88 keeps
 only the cap of the retry sleep at 640 ms for release 2026.3 and stays
 open until it lands.
+
+2026-11-05. 017-07, section 3, refusing a value transformation's result
+above the value limit, added at Frans's request (21:03) when he decided
+015-51: such a result is the caller's fault and fails the database.

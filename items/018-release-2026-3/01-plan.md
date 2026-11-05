@@ -117,7 +117,7 @@ This is the goal's list.
 | FileStream                                | 015-06 (its rest), 26, 31, 32, 33; 014-01 | 6 |
 | BufferedStream, StorageManager, MetaBlock | 015-34, 35, 74, 78, 79, 80, 81, 82, 83    | 9 |
 | Startup                                   | 015-72, 75, 76, 77, 87                    | 5 |
-| Db and reclaim                            | 015-27, 50, 51, 52, 53, 54, 55            | 7 |
+| Db and reclaim                            | 015-27, 50, 52, 53, 54, 55                | 6 |
 | Eviction                                  | 015-66, 67, 68, 69, 70, 71                | 6 |
 | JMX                                       | 015-38                                    | 1 |
 | The Core Layer's tests and tools          | 015-04, 08, 11                            | 3 |
@@ -147,7 +147,11 @@ the broader model (014-01, section 7). 015-73 left the list (Frans, 15:35;
 the table's row "Startup" follows): a last record's startupPos changed to
 an earlier record's start is outside the fault model for 2026.3, option
 (a); 015-75's checks stay, and a checksum of the record header waits for
-the next change of the record format (019-07).
+the next change of the record format (019-07). 015-51 left the list
+(Frans, 21:03; the table's row "Db and reclaim" follows): a value
+transformation's result above the value limit is the caller's fault, as
+an exception from it is, and fails the database (P7); a refusal is
+017-07, section 3, to consider.
 
 
 ### 3.2. Outside the goal
@@ -313,7 +317,7 @@ for 2026.3: they are experimental (D2).
 
 ### 6.4. Sizes and times at their limits
 
-* Known faults: 015-50, 51, 55, 76.
+* Known faults: 015-50, 55, 76.
 * What it does: makes transactions at the edge of every limit: values
   near `valueLimit()`, value transformations that grow a value, times near
   the last database time, settings at their bounds; with reclaim and
@@ -321,6 +325,14 @@ for 2026.3: they are experimental (D2).
 * What it checks: each transaction is either refused before its go point,
   with the database going on, or committed. The database never fails, and
   after a restart it takes commits.
+* The exception: a value transformation's result above the value limit
+  is the caller's fault, as 015-51 decided (Frans, 2026-11-05, 21:03). One
+  whose record does not fit fails the database (P7), and the transaction
+  is not in the stream. As in 015-27 (intended), readers may see that
+  transaction before the failure: `Db.executeInner` calls
+  `dbClock.transactionEnd()` before `store()`, where the record check
+  throws. The harness counts such a run as the caller's fault, not as a
+  failure. A refusal is 017-07, section 3, to consider.
 
 
 ### 6.5. Eviction's accounting
@@ -481,3 +493,14 @@ stay. It leaves section 3.1's list, as 015-27 and 014-01 did, and harness
 of the record header, is 019-07, for the next change of the record
 format, with Frans's approval (section 2). Sections 3.1 and 6.1 updated;
 `releases/next.md` names the limit.
+
+2026-11-05, 21:06. 015-51 decided by Frans, to the coordinator of the
+night 006-12 (21:03: "'a' for 015-51. And also add the possibility of a
+refusal to the to-consider list of the long-term item."): R7's first
+option, the contract written down and the code unchanged (8427ff0). A
+value transformation's result above the value limit is the caller's
+fault, as an exception from it is, and one whose record does not fit
+fails the database (P7). It leaves section 3.1's list, as 015-27 and
+015-73 did, and harness 6.4 counts it as the caller's fault. A refusal,
+which needs a design of when transformations run, is 017-07, section 3.
+Sections 3.1 and 6.4 updated.

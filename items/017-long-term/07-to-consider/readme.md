@@ -95,3 +95,59 @@ existing database (its meta block's value wins), and the same reasoning as
 015-87's (Log, 2026-11-05, 13:23: set only by the setter, no builder
 value) would apply. Frans, 13:23: "that is for 017-07 unless we work on it
 to be included in 2026.3. Tempting. But let's get 87 done first."
+
+
+## 3. Refusing an oversized transformation result
+
+Added 2026-11-05. State: to consider.
+
+What: a value transformation's result above `StoredTrans.valueLimit()`
+fails the database today when its record does not fit (015-51, decided
+2026-11-05): it is the caller's fault, as an exception from the
+transformation is, and the transaction is not in the stream. A refusal
+would leave the database running, as for a value given directly above
+the limit, which `Db.checkSize` refuses before the go point. Only Core
+API callers can meet it: the Pub API uses no value transformation.
+
+Where it came from: Frans, 2026-11-05, 21:03, choosing R7's first option
+for 015-51: "'a' for 015-51. And also add the possibility of a refusal to
+the to-consider list of the long-term item."
+
+Why it is not simple: a refusal must come before the go point; after it,
+whatever throws fails the database (005-01), so a check there cannot
+refuse. A transformation runs after the go point, in `Db.putKvs`, and it
+needs what is known only there:
+
+* the transaction's time, its `transTime`, which
+  `dbClock.transactionBegin()` gives at the go point;
+* the previous value, which `putKvs` reads at that time
+  (`getOne(x.trans.tt, ...)`), for the key that a key transformation may
+  have changed;
+* for reclaim's row (`Reclaim.step`), the bytes of the index nodes that
+  the step's touch and puts made dirty (`Trans.dirtiedBytes`), known only
+  after the puts.
+
+The options:
+
+* **(a) As it is.** The contract is written down: the Javadoc of
+  `ValueTransformation.transform` and docs/levels.md, section 3 (015-51).
+  Nothing to add.
+* **(b) The transformations run before the go point**, R7's second option
+  (016-06's R7, section R7-F2), so that a result can be refused. It
+  changes when they run: the time and the previous value need another
+  source, and reclaim's row cannot run there at all.
+* **(c) A refusal for user transformations only.** Reclaim's own row is
+  kept as it is: 015-50 keeps a step's values within the limit, and the
+  1/8 of the record left besides `valueLimit()` takes the row. A user
+  transaction's transformations would run after
+  `dbClock.transactionBegin()`, which gives the time, and before the
+  puts; a result above the limit refuses the transaction. `DbClock` then
+  needs a way to give the begun time back (it has `transactionBegin` and
+  `transactionEnd`, nothing between), and the previous values read before
+  the puts must be checked against today's reading, for a transaction
+  that puts a key twice or whose key transformation changes the key.
+* **(d) A declared bound.** A transformation states the largest result it
+  can return, and `Db.checkSize` counts that bound instead of the input
+  value, before the go point. A result above its own bound stays the
+  caller's fault, as in (a). It narrows the fault, it does not remove it;
+  one more method of `ValueTransformation`.

@@ -1,7 +1,8 @@
 015-51. Fix: a value transformation's result is not size-checked: one above the value limit fails the database
 ==============================================================================================================
 
-Status: done 2026-11-05, night 006-12. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
+Status: done (decided 2026-11-05: the caller's fault, R7's first option).
+Kind: Fix. Created 2026-11-03 by Frans Lundberg.
 
 After release 2026.2 (a known issue of it); in 2026.1 too.
 
@@ -54,3 +55,14 @@ limit, 100000").
   transformation result, as for its exception. If he wants such a result refused
   instead, it needs a design of when transformations run (and of reclaim's row);
   not tonight.
+
+2026-11-05, 21:03. Frans, to the coordinator of the night 006-12, which asked him to
+accept R7's first option ("a") or to have such a result refused instead ("b": a
+redesign of when transformations run): "'a' for 015-51. And also add the possibility
+of a refusal to the to-consider list of the long-term item." Option (a): a value
+transformation's result above `StoredTrans.valueLimit()` is the caller's fault, as an
+exception from the transformation is; one whose record does not fit fails the
+database (P7), and the transaction is not in the stream. Decided; nothing in `java/`
+changed after 8427ff0. Out of 018-01's list of the Core's faults (section 3.1);
+harness 6.4 counts such a result as the caller's fault (018-01, section 6.4). A
+refusal is 017-07, section 3, to consider.

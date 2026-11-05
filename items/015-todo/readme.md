@@ -80,7 +80,7 @@ Closed
 | [015-75](75-start-checks-asserts.md) | Fix | Checks of stream data at a start that were asserts | done | 2026-11-05 |
 | [015-72](72-record-size-unchecked.md) | Fix | A record whose size field is larger than its content is accepted | done | 2026-11-05 |
 | [015-52](52-warmup-read-expired.md) | Fix | `execute()` can be refused with `LookupTimeNotAvailableException`, ... | done | 2026-11-05 |
-| [015-51](51-transform-size-unchecked.md) | Fix | A value transformation's result is not size-checked: one above the ... | done | 2026-11-05 |
+| [015-51](51-transform-size-unchecked.md) | Fix | A transformation's result above the value limit: the caller's fault | done | 2026-11-05 |
 | [015-50](50-reclaim-step-too-large.md) | Fix | A reclaim step that rewrites old values beyond the value limit ... | done | 2026-11-05 |
 | [015-68](68-startup-large-values-kept.md) | Fix | Startup leaves large values retained in the writer's admission list | done | 2026-11-05 |
 | [015-67](67-batch-whole-map.md) | Fix | A batch processes a whole map even past its handle limit | done | 2026-11-05 |
@@ -217,7 +217,7 @@ Files
 * [48-exists-freezes-time.md](48-exists-freezes-time.md). 015-48, Fix: S1-F9.
 * [49-review-s2-faults.md](49-review-s2-faults.md). 015-49, Fix: review S2's 27 faults.
 * [50-reclaim-step-too-large.md](50-reclaim-step-too-large.md). 015-50, Fix: R7-F1.
-* [51-transform-size-unchecked.md](51-transform-size-unchecked.md). 015-51, Fix: R7-F2.
+* [51-transform-size-unchecked.md](51-transform-size-unchecked.md). 015-51, Fix: R7-F2; decided 2026-11-05 (21:03): the caller's fault, R7's first option; a refusal is 017-07, section 3.
 * [52-warmup-read-expired.md](52-warmup-read-expired.md). 015-52, Fix: R7-F3.
 * [53-stop-during-step-committed.md](53-stop-during-step-committed.md). 015-53, Fix: R7-F4.
 * [54-safe-pos-javadoc.md](54-safe-pos-javadoc.md). 015-54, Fix: R7-F5.
