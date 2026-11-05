@@ -303,7 +303,7 @@ public class Perf {
     }
 
     Db openDb() throws IOException {
-        stream = new FileStream(dir, !noForce);
+        stream = noForce ? fileStreamWithoutForces(dir) : new FileStream(dir);
         // (FileStream ignores the marker file: it reads only its own files.)
         counting = new CountingStream(stream);
         DbBuilder b = Db.builder();
@@ -312,6 +312,34 @@ public class Perf {
         b.clock(clock).noEvict().retainForever().testId();
         if (sd > 0) b.startupDistance(sd);
         return b.build();
+    }
+
+    /**
+     * FileStream(dir, false), 005-47's stream without per-append forces, called by reflection:
+     * the harness must also compile against 2026.2's jar, which lacks that constructor
+     * (performance.sh ab 2026.2 current; bergdb 019-06). A jar without it forces every append,
+     * so there perf.noforce=1 cannot be honoured: the run fails and says so, rather than force.
+     */
+    static FileStream fileStreamWithoutForces(File dir) throws IOException {
+        java.lang.reflect.Constructor<FileStream> c;
+        try {
+            c = FileStream.class.getConstructor(File.class, boolean.class);
+        } catch (NoSuchMethodException e) {
+            throw new PerfFailure("perf.noforce=1 cannot be honoured with this jar: its FileStream"
+                    + " has no FileStream(File, boolean) (bergdb 005-47, after 2026.2) and forces"
+                    + " every append");
+        }
+        try {
+            return c.newInstance(dir, false);
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            Throwable t = e.getCause();
+            if (t instanceof IOException) throw (IOException) t;
+            if (t instanceof RuntimeException) throw (RuntimeException) t;
+            if (t instanceof Error) throw (Error) t;
+            throw new IOException(t);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     /**

@@ -116,6 +116,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-06](06-perf-harness-old-jar.md) | Fix | Harness fails on 2026.2's jar | none | done | 2026-11-05 |
 | [019-04](04-remove-seekfirstpos.md) | Implement | Remove seekFirstPos() from AppendOnlyStream | none | done | 2026-11-05 |
 | [019-03](03-get-that-copies.md) | Decide | A get that always copies a byte[] value | decision | moved | 2026-11-05 |
 
@@ -144,6 +145,10 @@ Files
 * [05-exists-malformed-key.md](05-exists-malformed-key.md). 019-05, Fix:
   `Connection.exists()` answers `false` for a malformed key, where `get()`
   and an rw-transaction's `exists()` throw; options for Frans.
+* [06-perf-harness-old-jar.md](06-perf-harness-old-jar.md). 019-06, Fix:
+  `performance.sh`'s harness does not compile against 2026.2's jar:
+  `Perf.java` uses 005-47's `FileStream(File, boolean)`, which 2026.2
+  lacks.
 
 
 Log
@@ -183,3 +188,13 @@ relax the thing about fixing within one day. Make it 'a day or two'.").
 2026-11-05. 019-04 done: `seekFirstPos()` removed from
 `AppendOnlyStream` and every stream, with harness 6.3's checks of it;
 BEFORE COMMIT OK, CORE BUILD OK, LEVEL 3 OK.
+
+2026-11-05. 019-06 registered by session bergdb-e8, from 019-04's
+agent's finding (`Perf.java` uses `FileStream(File, boolean)`, which
+2026.2's jar lacks), and taken by its agent.
+
+2026-11-05. 019-06 done: `Perf.java` opens its stream with
+`FileStream(dir)`, and with `perf.noforce=1` finds 005-47's
+`FileStream(File, boolean)` by reflection, failing plainly where it is
+missing; the harness compiles against 2026.2's jar and main's again
+(2026.1's lacks `bergdb.pub.util.SyncLevel`, 005-56); BEFORE COMMIT OK.
