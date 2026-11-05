@@ -44,12 +44,18 @@ the goal; while working we may make exceptions."
    tests and the medium conformance set), `night.sh large`, and the
    harnesses of section 6; and the jar's tests on F53 and s1 with JDK 27
    and 17, as for 2026.2 (016-09).
-3. The documentation is up to date with the code: the Javadoc, README.md,
+3. The stream's bytes are explained: StreamDigest's digests of the
+   release's commit are compared with 2026.2's, the reference of its
+   notes' "Verification" (`baseline.zip`, `f53/digests.txt`), and every
+   configuration whose decided digests differ is named by a line of
+   `releases/next.md` (section 2). The release's digests then become the
+   reference for the next release, as 2026.2's did.
+4. The documentation is up to date with the code: the Javadoc, README.md,
    docs/levels.md and lean/README.md, with the experimental parts marked
    (W1), and the release notes.
-4. The release notes' known issues are all of the experimental code, but
+5. The release notes' known issues are all of the experimental code, but
    Frans's exceptions.
-5. Frans says that it is ready. The release is made at his command.
+6. Frans says that it is ready. The release is made at his command.
 
 
 ## 2. Rules for the work
@@ -76,8 +82,14 @@ Frans."
     node encodings, reclaim's table, the version numbers and the reserved
     internal keys.
   * A change of which bytes a workload writes, within the format, is not
-    a change of the format (005-79's take was one). It is recorded: a new
-    StreamDigest reference, and a line in `releases/next.md`.
+    a change of the format (005-79's take was one). It is recorded in the
+    change's own entry (or item): its folder keeps StreamDigest's digests
+    before and after the change, and its line in `releases/next.md` names
+    the configurations whose digests changed and the entry that holds
+    them, as 015-54's does (`digests-base.txt`, `digests-new.txt`). No
+    file holds a reference between releases: the reference stays 2026.2's
+    digests, and the release explains every difference from them (section
+    1, "Ready", 3). Frans, 2026-11-05, 12:46, option (a).
   * A proposal that changes the format is written in its entry, with what
     changes and why, and waits for Frans's explicit approval; his words go
     into the entry's log. Likely: 015-87 (the retain duration in the
@@ -347,10 +359,13 @@ Fixed one at a time:
   and the level script of a mechanism it changes (AGENTS.md), within
   section 2's rules. A new fault becomes a 019 entry (D3); one of the Core
   joins the goal's list. 015-87 and 014-01 wait for Frans's decisions.
-* **W4. The documentation** (section 1, "Ready", 3): kept up to date as
+* **W4. The documentation** (section 1, "Ready", 4): kept up to date as
   the fixes go in, and read through before the release.
 * **W5. The release**, made as 2026.2 was (016-09, by 008-01's steps),
-  when section 1's "Ready" holds, at Frans's command.
+  when section 1's "Ready" holds, at Frans's command. Its StreamDigest
+  run is compared with 2026.2's digests, every difference explained by
+  `releases/next.md` ("Ready", 3), and its digests are the next
+  release's reference.
 
 
 ## 8. Log
@@ -397,3 +412,13 @@ and 7 updated. It found 019-02, which joins the goal's list (section
 `DatabaseBuilder.create(p)`, as today's `dir(p)`, and `open(p)`, which
 refuses a directory without a database; `dir(p)` removed. No new setting
 (P10). The change started by session bergdb-e8's agent.
+
+2026-11-05, 12:46. Where StreamDigest's reference lives between
+releases, which section 2 did not say. (a) Each change of the bytes keeps
+its before and after digests in its own entry, as 005-79 and 015-54 did,
+and its `releases/next.md` line names the changed configurations and the
+entry; the release compares its digests with 2026.2's and explains every
+difference. (b) One living file, such as `releases/next-digests.txt`,
+that each such change regenerates. Frans: "As recommended", (a).
+Sections 1 ("Ready", 3, new; W4 now cites 4), 2 and 7 (W5) updated, and
+`releases/next.md`'s intro.
