@@ -1971,7 +1971,9 @@ public class Db implements AutoCloseable {
         // This is handled by dbClock.
         //
         
-        checkSize(t);
+        if (!t.isInternal()) {
+            checkSize(t);
+        }
         t.warmupGetData.pointerFollower = x.getData.pointerFollower;
         warmup(t);
         
@@ -2141,6 +2143,11 @@ public class Db implements AutoCloseable {
      * the transaction had changed the Dag (M49), and every later transaction failed too.
      * A transaction whose index nodes could not be written in one record is refused too,
      * under the write lock (checkDirtyNodes(), bergdb 005-31).
+     * 
+     * <p>Not for reclaim's internal transactions (bergdb 015-50), which run inside a user
+     * transaction's go point, where a refusal fails the database: a step keeps its value
+     * nodes within valueLimit() itself (Reclaim.step), each value as its user transaction
+     * did, and adds its row; the table and the settings are small.</p>
      *
      * @throws DbException
      */

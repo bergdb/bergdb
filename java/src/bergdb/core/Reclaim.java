@@ -578,6 +578,20 @@ public class Reclaim implements Db.TransactionListener {
         long rewritten = 0;
         long values = 0, valueBytes = 0;    // For stats.
         
+        // bergdb 015-50 (016-06's R7-F1): the step's value nodes stay within
+        // StoredTrans.valueLimit(), as a user transaction's do (Db.checkSize). The scan adds
+        // KVs until their size passes writeSize, so its last one can be a value of any size;
+        // the step's internal transaction, refused for its size inside the go point of the
+        // user transaction that allowed it, failed the database, and again after every
+        // restart. A value that would take the step's value nodes past the limit ends the
+        // step before it, unless it is the step's first: then it is the first of the next
+        // step. Alone, it is within the limit, as its user transaction was (or the transaction
+        // of a step before); the step's row comes on top of it, so Db.checkSize does not apply
+        // to internal transactions. A step that did not pass the limit is the same as before.
+        final long valueLimit = StoredTrans.valueLimit();
+        long valueNodeBytes = 0;
+        int kvs = 0;                        // The KVs of the scan that the step covers.
+        
         for (Kvt kvt : g.result) {
             GetData gd = db.newGetData();
             gd.pointerFollower = maintenance;
@@ -600,17 +614,25 @@ public class Reclaim implements Db.TransactionListener {
             // A value not yet written (tpos Spos.NULL, bergdb 005-34) is after the cut, as
             // its vpos was.
             if (value != null && gd.tpos != Spos.NULL && gd.tpos < it.pCut) {
+                final long nodeBytes = StoredValueNode.getByteSizeLong(value, kvt.key);
+                if (values > 0 && valueNodeBytes + nodeBytes > valueLimit) {
+                    lastKeyOfStep[0] = g.result.get(kvs - 1).key;
+                    eod[0] = false;
+                    break;
+                }
+                valueNodeBytes += nodeBytes;
                 b.keyRead(kvt.key);
                 b.put(kvt.key, value);      // Note, no mem copy of key and value.
                 rewritten += kvt.key.length * 8 + value.length + VALUE_NODE_BYTES;
                 values++;
                 valueBytes += kvt.key.length * 8 + value.length;
             }
+            kvs++;
         }
         
         final IterationInfo next = it.copy();
         next.lastKey = lastKeyOfStep[0];
-        next.kvCount += g.result.size();
+        next.kvCount += kvs;
         next.rewritten += rewritten;
         final Trans[] stepTrans = new Trans[1];
         final byte[][] tableBytes = new byte[1][];
@@ -661,7 +683,7 @@ public class Reclaim implements Db.TransactionListener {
         
         if (st != null) {
             st.steps++;
-            st.kvs += g.result.size();
+            st.kvs += kvs;
             st.values += values;
             st.valueBytes += valueBytes;
             st.recordBytes += t.nextPos - t.tpos;
@@ -1798,6 +1820,98 @@ public class Reclaim implements Db.TransactionListener {
                 Assert.assertTrue(DbUtil.get(db, Long.MAX_VALUE, "/long/" + i) == null);
             }
             db.stop();
+        }
+        
+        /**
+         * Regression test for 015-50 (016-06's R7-F1): a step rewrote the old values of its
+         * scan in one internal transaction, which Db.checkSize (bergdb 005-17) refused when
+         * they passed StoredTrans.valueLimit() together, each committed within it; the
+         * refusal came inside a user transaction's go point and failed the database, and
+         * again at the first commit after every restart. The record limit lowered to 100 kB,
+         * as StoredTrans's own test does: ten old values of 4 kB, then /b, whose node takes
+         * valueLimit() - 1000 bytes (a step's scan takes the last of the ten and /b), and in
+         * a second run valueLimit() (alone with the step's row it passes the limit).
+         * Before the fix: "The transaction is too large: its values and keys take 90596
+         * bytes in the stream, more than 87500", at about the 400th put.
+         */
+        @Nano("f")
+        public static void testStepWithinValueLimit() {
+            final long saved = StoredTrans.recordLimit;
+            StoredTrans.recordLimit = 100 * 1000;
+            try {
+                stepWithinValueLimit(1000);
+                stepWithinValueLimit(0);
+            } finally {
+                StoredTrans.recordLimit = saved;
+            }
+        }
+        
+        private static void stepWithinValueLimit(long slack) {
+            final long limit = StoredTrans.valueLimit();
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            CutStream stream = new CutStream();
+            Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(2000).start();
+            try {
+                stepWithinValueLimit(db, stream, clock, time, limit, slack);
+            } finally {
+                db.stop();
+            }
+        }
+        
+        private static void stepWithinValueLimit(Db db, CutStream stream, CoreTestClock clock,
+                long time, long limit, long slack) {
+            db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+            for (int i = 0; i < 10; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                db.execute(db.trans().put("/a/" + i, new byte[4000]).build());
+            }
+            final long[] key = Keys.toSegments("/b");
+            int n = (int) (limit - slack);
+            while (StoredValueNode.getByteSizeLong(new byte[n], key) > limit - slack) {
+                n--;
+            }
+            time += Clock.UNITS_PER_SEC / 20;
+            clock.setTime(time);
+            db.execute(db.trans().put("/b", new byte[n]).build());
+            final long bEnd = db.getStreamLength();
+            
+            java.util.Random r = new java.util.Random(1);
+            long cut = 0;
+            int cuts = 0;
+            for (int i = 0; i < 4000 && cuts < 3; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                db.execute(db.trans().put("/k/" + r.nextInt(50), new byte[1 + r.nextInt(60)])
+                        .build());
+                if (stream.getCut() > cut) {
+                    cut = stream.getCut();
+                    cuts++;
+                }
+            }
+            Assert.assertTrue("slack " + slack + ", cuts: " + cuts, cuts >= 3);
+            Assert.assertTrue("slack " + slack + ", cut " + cut + " not past /b's record, "
+                    + bEnd, cut > bEnd);
+            
+            db.sync(SyncLevel.ORDINARY);
+            clock = new CoreTestClock();
+            clock.setTime(time);
+            Db db2 = Db.builder().testSetup(stream.copy()).clock(clock).start();
+            try {
+                for (int j = 0; j < 20; j++) {
+                    time += Clock.UNITS_PER_SEC / 20;
+                    clock.setTime(time);
+                    db2.execute(db2.trans().put("/k/" + j, new byte[10]).build());
+                }
+                Assert.assertEquals(n, DbUtil.get(db2, Long.MAX_VALUE, "/b").length);
+                for (int i = 0; i < 10; i++) {
+                    Assert.assertEquals(4000, DbUtil.get(db2, Long.MAX_VALUE, "/a/" + i).length);
+                }
+            } finally {
+                db2.stop();
+            }
         }
         
         /**

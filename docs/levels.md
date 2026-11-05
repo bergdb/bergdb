@@ -326,7 +326,10 @@ How it works (`Reclaim`; the class comment has the details):
   most about 16 KB of KVs at tStart, with maintenance reads that swizzle
   nothing; in one internal transaction it touches its key range at the
   current time (making its index nodes dirty, also those of deleted keys)
-  and rewrites each live value stored before pCut.
+  and rewrites each live value stored before pCut. Its value nodes stay
+  within 7/8 of the record limit, as a user transaction's: a value that
+  would pass it ends the step before it and starts the next one, where it is
+  within the limit alone, with the step's row (015-50).
 * When the scan ends, the iteration is done; tEnd and pEnd are the time and
   the position of its last step. The cut at pCut waits until tEnd is older
   than R, the startup pos has passed pEnd and then pSafe, and the last valid

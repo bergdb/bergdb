@@ -68,6 +68,15 @@ Pub API
 Reliability
 -----------
 
+* **A reclaim step keeps its values within the value limit** (bergdb
+  015-50, 016-06's R7-F1; 2026-11-05). A step rewrote the old values of
+  its scan, about 16 KB, in one transaction, whose last value could be of
+  any size; when they passed 7/8 of the record limit together (a value
+  within about 16 KB of 1.88 GB, each committed within the limit), the step
+  was refused inside a user transaction's commit, which failed the
+  database, and again at the first commit after every restart. A value
+  that would pass the limit now starts the next step. The stream's bytes
+  are unchanged by this: StreamDigest's digests are those before it.
 * **Reclaim's pSafe is the stream length after the call's own records**
   (bergdb 015-54, 016-06's R7-F5; 2026-11-05). The cut waits until the
   startup pos has passed an iteration's pSafe. `Reclaim` set pSafe to the
