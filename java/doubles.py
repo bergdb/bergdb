@@ -17,8 +17,9 @@ convert to integers (int, long) internally."
 What is production code: everything but test code as deps.py's direct markers
 find it (deps.test_regions with helpers=False): a Tester file or a Pack, a
 nested Tester class, a method annotated @Nano, a static void test... method.
-deps.py's helper rule (a method used only by tests) is left out here: in its
-own file, TransSeq.take is used only by tests, and so would count as test code.
+deps.py's helper rule (a method used only by tests) is left out here: it compares
+names, not declarations, and until 015-04 it counted TransSeq.take, used only by
+tests in its own file, as test code.
 
 What is refused in production code, comments and string literals left out:
   * the words double, float, Double and Float, also as a part of a name in

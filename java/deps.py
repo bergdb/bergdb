@@ -24,7 +24,12 @@ Each use is production code or test code. Test code is:
   * a method annotated @Nano, from the annotation to the method's last brace;
   * a static void method named test..., which Nanotest runs without @Nano;
   * a method or nested class of the file whose name is used only in test code
-    (a helper of the tests), found again until nothing changes.
+    (a helper of the tests), found again until nothing changes. A name that
+    the production code of another file uses (by the markers above) is no
+    helper: TransSeq.take, called only by tests in TransSeq.java but by
+    Db, is production code (bergdb 015-04). Names are
+    compared, not declarations, so a helper whose name another file also
+    uses in production code counts as production code.
 An import counts as test code if every use of its simple name in the file is in
 test code (an import used nowhere counts as production code). Everything else
 is production code.
@@ -121,9 +126,11 @@ def block_end(code, start):
     return len(code)
 
 
-def test_regions(code, filename, helpers=True):
+def test_regions(code, filename, helpers=True, used_elsewhere=lambda name: False):
     """The (start, end) ranges of test code in a stripped file; with helpers=False, without
-    the helper rule (java/doubles.py, bergdb 005-79)."""
+    the helper rule (java/doubles.py, bergdb 005-79). used_elsewhere(name): whether the
+    production code of another file uses the name (production_words); such a name is
+    no helper."""
     if "Tester" in filename or re.search(r"\bimplements\s+IPack\b", code):
         return [(0, len(code))]
     regions = []
@@ -149,6 +156,8 @@ def test_regions(code, filename, helpers=True):
         name = m.group(2) or m.group(3)
         if name in ("if", "for", "while", "switch", "catch", "synchronized", "return"):
             continue
+        if used_elsewhere(name):
+            continue
         decls.append((name, m.start(1), block_end(code, m.start(1))))
     words = {}
     for w in re.finditer(r"\b[A-Za-z_]\w*", code):
@@ -170,10 +179,27 @@ def in_regions(pos, regions):
     return any(a <= pos < b for a, b in regions)
 
 
+def production_words(code, filename):
+    """The words of a stripped file outside its test code, without the helper rule."""
+    regions = test_regions(code, filename, False)
+    return set(w.group(0) for w in re.finditer(r"\b[A-Za-z_]\w*", code)
+               if not in_regions(w.start(), regions))
+
+
 def scan(src_dir):
     """Package -> (allowed or None, {used: {"prod": set(files), "test": set(files)}})."""
     packages = {}
     base = os.path.join(src_dir, "bergdb")
+    # The names used in production code, and in how many files (for the helper rule).
+    codes, words, counts = {}, {}, {}
+    for d, _, files in os.walk(base):
+        for f in files:
+            if f.endswith(".java"):
+                p = os.path.join(d, f)
+                codes[p] = strip(open(p, encoding="utf-8").read())
+                words[p] = production_words(codes[p], f)
+                for w in words[p]:
+                    counts[w] = counts.get(w, 0) + 1
     for d, _, files in os.walk(base):
         pkg = os.path.relpath(d, base).replace(os.sep, ".")
         java = sorted(f for f in files if f.endswith(".java"))
@@ -182,8 +208,10 @@ def scan(src_dir):
         allowed, problem = read_allowed(os.path.join(d, "package.html"))
         uses = {}
         for f in java:
-            code = strip(open(os.path.join(d, f), encoding="utf-8").read())
-            regions = test_regions(code, f)
+            p = os.path.join(d, f)
+            code = codes[p]
+            own = words[p]
+            regions = test_regions(code, f, True, lambda w: counts.get(w, 0) > (w in own))
             found = []      # (name, is test code)
             body_start = 0
             for m in re.finditer(r"^\s*import\s+(?:static\s+)?(bergdb\.[\w.]+)\s*;", code, re.M):
