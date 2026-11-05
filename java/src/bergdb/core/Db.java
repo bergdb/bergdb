@@ -759,7 +759,7 @@ public class Db implements AutoCloseable {
             
             StoredTrans storedTrans = iter.getStoredTrans();
             result = storedTrans.startupPos;            
-            assert result >= 0 : "Bad storedTrans.startupPos: " + storedTrans.startupPos;
+            checkStartupPos(storedTrans);
             lastTpos = storedTrans.tpos;
         }
         
@@ -771,6 +771,33 @@ public class Db implements AutoCloseable {
         }
         
         return result;
+    }
+    
+    /**
+     * Refuses a record whose startupPos cannot be one that the take wrote: negative, not a
+     * multiple of the record alignment, in the first meta block (only 0 is), or after the
+     * record's own position. Checks, not asserts, as no checksum covers a record's header
+     * (bergdb 015-75; before, an assert only). They do not show that the position is a
+     * record that the take reached (015-73).
+     * 
+     * @throws StreamFormatException
+     */
+    private static void checkStartupPos(StoredTrans storedTrans) {
+        final long sp = storedTrans.startupPos;
+        final String problem;
+        if (sp < 0) {
+            problem = "negative";
+        } else if (sp % RecoverableStream.TRANS_ALIGNMENT != 0) {
+            problem = "not a multiple of " + RecoverableStream.TRANS_ALIGNMENT;
+        } else if (sp != 0 && sp < RecoverableStream.META_BLOCK_SIZE) {
+            problem = "in the first meta block";
+        } else if (sp > storedTrans.tpos) {
+            problem = "after the record";
+        } else {
+            return;
+        }
+        throw new StreamFormatException("The record at " + storedTrans.tpos + " has startupPos "
+                + sp + ", " + problem + ".");
     }
     
     /** 

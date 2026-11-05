@@ -310,13 +310,15 @@ public class DbStarter {
             id = db.internal().nodeStream().readNodeHeader(pos).id();
         }
         
-        Long newPos = newById.get(id);     // Rule R; topPos names the latest version anyway
-        assert newPos == null || newPos == pos : "topPos " + pos + " is not the newest version "
-                + newPos + " of top node " + id;
-        long ref = newPos != null && Spos.newer(newPos, pos) ? newPos : pos;
+        // topPos names the latest version (Rule R). A check, not an assert (bergdb 015-75).
+        Long newPos = newById.get(id);
+        if (newPos != null && newPos != pos) {
+            throw new StreamFormatException("The last transaction's topPos " + pos 
+                    + " is not the newest version " + newPos + " of top node " + id + ".");
+        }
         
         Node node;
-        StoredNode stored = posMap.get(ref);
+        StoredNode stored = posMap.get(pos);
         if (stored != null) {
             node = stored.getNode();        // canonical, registerSectionNodes()
         } else {
@@ -325,7 +327,7 @@ public class DbStarter {
             if (inTable != null && inTable.isCanonical()) {
                 node = inTable;
             } else {
-                node = db.internal().nodeStream().readNode(ref);
+                node = db.internal().nodeStream().readNode(pos);
                 node.setCanonical(true);
                 node = nodeTable.register(node);
             }
@@ -475,6 +477,8 @@ public class DbStarter {
      * stored, so it is not rerun; and a node that the still-dirty test keeps dirty is a
      * got-dirty node of the record that wrote it, whose puts need not reach it. D is
      * rebuilt from the stored ids (docs/sis-model.md, 6.2, step 2), not from the rerun.
+     * 
+     * @throws StreamFormatException  If the node read has another id.
      */
     private Node canonicalNode(long id, long spos) {
         Cache3 nodeTable = db.internal().cache();
@@ -488,8 +492,13 @@ public class DbStarter {
             return null;
         }
         
-        node = db.internal().nodeStream().readNode(newPos != null ? newPos : spos);
-        assert node.getId() == id : "ids differ, " + node.getId() + " != " + id;
+        long pos = newPos != null ? newPos : spos;
+        node = db.internal().nodeStream().readNode(pos);
+        if (node.getId() != id) {
+            // A check, not an assert (bergdb 015-75): the got-dirty list is stream data.
+            throw new StreamFormatException("The got-dirty entry of node " + id 
+                    + " names position " + pos + ", where node " + node.getId() + " is.");
+        }
         if (node.getType() == Node.TYPE_KEY_NODE) {
             ((KeyNode) node).toPreviousState(startupTime);
         }

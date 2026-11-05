@@ -151,6 +151,15 @@ Reliability
   later record was taken, and the records it covered were skipped without a
   word: the start succeeded with their transactions lost. Valid streams are
   read as before; the stream's bytes are unchanged.
+* **A corrupt got-dirty id, topPos or startupPos is refused at a start**
+  (bergdb 015-75, 016-06's R6-F4; 2026-11-05), with a
+  `StreamFormatException` that names it. These were checked by asserts
+  only: without `-ea` a got-dirty entry whose id was not the node's at its
+  position was accepted, and a negative startupPos gave an
+  `IllegalArgumentException`; with `-ea` they were `AssertionError`s. A
+  startupPos that is not a multiple of 8, is in the first meta block, or is
+  after its record is refused too. Valid streams are read as before; the
+  stream's bytes are unchanged.
 
 Format
 ------

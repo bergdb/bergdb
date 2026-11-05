@@ -119,6 +119,166 @@ public class DbTesterRestart {
         }
     }
 
+    /**
+     * A corrupt startupPos in the last record is refused with a StreamFormatException
+     * (bergdb 015-75, 016-06/R6, R6-F4): negative, not a multiple of 8, in the first meta
+     * block, or after the record's own position. Before the fix, -8 failed an assert, or
+     * without -ea gave an IllegalArgumentException from the stream's read.
+     */
+    @Nano
+    public static void testCorruptStartupPosRefused() throws IOException {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        long c;
+        try (Db db = Db.builder().testSetup(stream).clock(clock)
+                .startupDistance(1000000).start()) {
+            clock.setTime(10);
+            db.execute(db.trans().put("/a", "1"));
+            clock.setTime(20);
+            Trans t = db.trans().put("/b", "2").build();
+            db.execute(t);
+            c = t.tpos;
+        }
+        for (long sp : new long[] {-8, Long.MIN_VALUE, 4, 8, 120, c + 4, c + 8, c | (1L << 40)}) {
+            MemoryStream corrupt = stream.copy();
+            byte[] bytes = new byte[8];
+            Bytes.longToBytesLE(sp, bytes, 0);
+            MemoryStream.TestAccess.write(corrupt, bytes, c + 16);
+            try (Db db = Db.builder().testSetup(corrupt).clock(clock)
+                    .startupDistance(1000000).start()) {
+                throw new AssertionError("started with startupPos " + sp);
+            } catch (StreamFormatException expected) {
+                Assert.assertTrue(expected.getMessage(), 
+                        expected.getMessage().contains("startupPos " + sp));
+            }
+        }
+    }
+
+    /**
+     * A got-dirty entry whose id is not the id of the node at its position is refused
+     * with a StreamFormatException (bergdb 015-75, 016-06/R6, R6-F4). Before the fix, the
+     * ids were compared by an assert only: without -ea the start succeeded, with -ea it
+     * failed with an AssertionError.
+     */
+    @Nano
+    public static void testCorruptGotDirtyIdRefused() throws IOException {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        long a;
+        try (Db db = Db.builder().testSetup(stream).clock(clock)
+                .startupDistance(1000000).start()) {
+            clock.setTime(10);
+            Trans t = db.trans().put("/a", "1").build();
+            db.execute(t);
+            a = t.tpos;
+            clock.setTime(20);
+            db.execute(db.trans().put("/b", "2"));
+            clock.setTime(30);
+            db.execute(db.trans().put("/c", "3"));
+        }
+        
+        // A's record holds the got-dirty entries (B and C dirty no new node); an entry
+        // whose position is a node written before, at the creation.
+        byte[] record = readRecord(stream, a);
+        long[] dirty = StoredTrans.parse(a, record).gotDirtyIdsAndSpos;
+        int entry = -1;
+        for (int i = 0; i < dirty.length / 2 && entry < 0; i++) {
+            if (bergdb.dag.Spos.isValid(dirty[2 * i + 1]) 
+                    && !bergdb.dag.Spos.isVpos(dirty[2 * i + 1])) {
+                entry = i;
+            }
+        }
+        Assert.assertTrue("an entry with a stream position", entry >= 0);
+        
+        // The entry's 16 bytes, in the list before the last byte and the padding.
+        int at = -1;
+        for (int i = record.length - 16; i >= 0 && at < 0; i--) {
+            if (Bytes.bytesToLongLE(record, i) == dirty[2 * entry] 
+                    && Bytes.bytesToLongLE(record, i + 8) == dirty[2 * entry + 1]) {
+                at = i;
+            }
+        }
+        Assert.assertTrue("the entry's bytes", at > 0);
+        
+        MemoryStream corrupt = stream.copy();
+        byte[] id = new byte[8];
+        Bytes.longToBytesLE(123456789L, id, 0);
+        MemoryStream.TestAccess.write(corrupt, id, a + at);
+        try (Db db = Db.builder().testSetup(corrupt).clock(clock)
+                .startupDistance(1000000).start()) {
+            throw new AssertionError("started with got-dirty id 123456789");
+        } catch (StreamFormatException expected) {
+            Assert.assertTrue(expected.getMessage(), 
+                    expected.getMessage().contains("123456789"));
+        }
+    }
+
+    /**
+     * A last record whose topPos names an older version of a top node than the newest
+     * in the startup section is refused with a StreamFormatException (bergdb 015-75,
+     * 016-06/R6, R6-F4). Before the fix, it was an assert only: without -ea the start took
+     * the newer version, with -ea it failed with an AssertionError.
+     */
+    @Nano
+    public static void testOlderTopPosRefused() throws IOException {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        ArrayList<Long> tposes = new ArrayList<Long>();
+        try (Db db = Db.builder().testSetup(stream).clock(clock)
+                .startupDistance(100).start()) {
+            for (int i = 1; i <= 6; i++) {
+                clock.setTime(10 * i);
+                Trans t = db.trans().put("/k" + i, "" + i).build();
+                db.execute(t);
+                tposes.add(t.tpos);
+            }
+        }
+        long last = tposes.get(tposes.size() - 1);
+        StoredTrans lastTrans = StoredTrans.parse(last, readRecord(stream, last));
+        long topPos = lastTrans.topPos;
+        long id = -1;
+        long older = -1;
+        for (long tpos : tposes) {
+            for (StoredNode n : StoredTrans.parse(tpos, readRecord(stream, tpos)).nodes) {
+                Node node = n.getNode();
+                if (node.getType() == Node.TYPE_TOP_NODE && node.getSpos() == topPos) {
+                    id = node.getId();
+                }
+            }
+        }
+        for (long tpos : tposes) {
+            for (StoredNode n : StoredTrans.parse(tpos, readRecord(stream, tpos)).nodes) {
+                Node node = n.getNode();
+                if (node.getType() == Node.TYPE_TOP_NODE && node.getId() == id 
+                        && node.getSpos() < topPos) {
+                    older = node.getSpos();
+                }
+            }
+        }
+        Assert.assertTrue("an older version of top node " + id + " at " + topPos, older > 0);
+        
+        MemoryStream corrupt = stream.copy();
+        byte[] bytes = new byte[8];
+        Bytes.longToBytesLE(older, bytes, 0);
+        MemoryStream.TestAccess.write(corrupt, bytes, last + 24);
+        try (Db db = Db.builder().testSetup(corrupt).clock(clock)
+                .startupDistance(100).start()) {
+            throw new AssertionError("started with topPos " + older + ", not " + topPos);
+        } catch (StreamFormatException expected) {
+            Assert.assertTrue(expected.getMessage(), 
+                    expected.getMessage().contains("not the newest version"));
+        }
+    }
+
+    /** The bytes of the record at 'tpos', which must not span a meta block. */
+    private static byte[] readRecord(MemoryStream stream, long tpos) throws IOException {
+        byte[] size = new byte[4];
+        stream.read(tpos, size, 0, 4);
+        byte[] record = new byte[Bytes.bytesToIntLE(size, 0)];
+        stream.read(tpos, record, 0, record.length);
+        return record;
+    }
+
     /** Real read results carried to a new Db: bergdb 005-70, option A. */
     @Nano
     public static void testStmAfterRestart() {
