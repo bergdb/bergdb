@@ -9,8 +9,12 @@ definition: what, why, the questions, when it is done, the first step. An
 entry that grows into real work gets an item of its own, linked from here.
 
 It continues 005-todo with a new numbering: the next entry is 015-01, not
-005-84. Since 2026-11-05, 005 is done, and every new entry goes here; the
-entries still open in 005 then moved here as 015-84 to 015-88.
+005-84. Since 2026-11-05, 005 is done; the entries still open in 005 then
+moved here as 015-84 to 015-88.
+
+Since 2026-11-05, new entries go to 019-todo, the list of short tasks, or
+to 017-long-term; none are added here. The entries open here stay until
+they close.
 
 
 The list
@@ -297,3 +301,8 @@ in 005-todo.
 coordinator's second quiet block (p50 4.5 ms with forcing on, 0.0 ms off).
 015-86: the AB/BA step run; the rise of the gets over 10 ms is the fix's,
 so the Recommendation's measurements and Frans's decision are left.
+
+2026-11-05, 09:38. New entries go to 019-todo from now on, at Frans's
+request: the list here is getting full. 019 takes short tasks, done and
+closed in about a day; open-ended, long-term and strategy topics go to
+017. The entries open here stay.

@@ -132,11 +132,16 @@ Index
   append-only storage and the database; first, startup correction and its
   historical fault model (014-01), promoted from 005-83.
 * **015-todo** (open). The list of things to do on BergDB after 005, with
-  a new numbering from 015-01; it holds every new entry since 005 was
-  closed on 2026-11-05, and 005's last open entries (015-84 to 015-88).
+  a new numbering from 015-01; it took the new entries from 2026-11-03 to
+  2026-11-05, and 005's last open entries (015-84 to 015-88). New entries
+  go to 019 since 2026-11-05.
 * **016-release-2026-2** (open). Release 2026.2: its scope, the work
   before it and how it is made; the first release with handles (009) and
   bounded startup (007), measured against 2026.1 in turns.
 * **017-long-term** (open). The long-term topics of BergDB: open-ended
   questions and directions that need Frans's input and may never be done;
   notes, one subitem per topic, taken up one at a time with Frans.
+* **019-todo** (open). Short tasks on BergDB, each done and closed in
+  about a day, mostly by an AI agent, unattended or after a decision or
+  answers from Frans; every new todo entry since 2026-11-05. Long-term
+  topics go to 017.

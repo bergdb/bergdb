@@ -7,8 +7,8 @@ The long-term topics of BergDB: open-ended questions, directions and
 possible work that need Frans's thinking as input, have no fixed "Done
 when", and may never be done, such as publishing BergDB or block storage.
 Notes about them are kept here, one subitem per topic. The todo lists
-(015) hold bounded work that an AI agent can do together with Frans now;
-this item holds the rest.
+(015, and 019 since 2026-11-05) hold bounded work that an AI agent can do
+together with Frans now; this item holds the rest.
 
 
 Rules
@@ -22,10 +22,10 @@ Rules
 * An AI agent does not take up a topic on its own. A topic is taken up one
   at a time with Frans; a bounded piece of it can become an entry of a todo
   list.
-* An entry of 005 or 015 that turns out to be long-term is moved here by
-  Frans, one at a time: its contents become a new subitem here, its row
-  moves to its list's Closed table (status moved), and its file stays as a
-  short note with a link, so links to it keep working.
+* An entry of 005, 015 or 019 that turns out to be long-term is moved
+  here by Frans, one at a time: its contents become a new subitem here,
+  its row moves to its list's Closed table (status moved), and its file
+  stays as a short note with a link, so links to it keep working.
 
 
 Files

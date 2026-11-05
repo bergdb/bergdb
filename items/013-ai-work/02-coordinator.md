@@ -164,7 +164,7 @@ Frans says so. Then it:
      gate results to today's coordinator (SendMessage), which commits;
    * or it hands the task over. It writes the task's State note in its
      item and names the task to today's coordinator, or registers it as a
-     015 entry.
+     019 entry.
 3. **Writes the plan's Outcome** and a `news.md` entry if anything
    changed since the morning summary.
 4. **Cleans up.** It deletes its check-ins (CronDelete), stops its
@@ -209,7 +209,7 @@ Several sessions share the main tree, the Git index, the CPU and
 
 * **commits to `main`.** Other sessions report finished, gated files to
   it, with their hunks of shared files, and it commits them;
-* **new item numbers** in shared series such as 005, 006 and 015. A
+* **new item numbers** in shared series such as 006 and 019. A
   session asks it before taking one;
 * **heavy runs**: the four gates (about 45 minutes on all cores), timed
   runs, and anything that loads the machine for long. They run one at a
