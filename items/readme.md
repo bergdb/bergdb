@@ -99,9 +99,10 @@ Index
 * **004-indirect-swizzling** (done). Indirect swizzling (handles, a mapping
   table) for BergDB: the literature, measurements, a design sketch, pros and
   cons; implemented in 009.
-* **005-todo** (open). A list of things to do on BergDB: issues to fix,
+* **005-todo** (done). A list of things to do on BergDB: issues to fix,
   things to investigate, decisions to make; one subitem per entry. New
-  entries go to 015 since 2026-11-03.
+  entries go to 015 since 2026-11-03; every entry closed on 2026-11-05,
+  the last open ones moved to 015.
 * **006-2026-q4** (open). Small pieces of work in October to December
   2026, one subitem each; see "Small work".
 * **007-bounds** (open). Bounds on BergDB's costs, the planned T3 and T4:

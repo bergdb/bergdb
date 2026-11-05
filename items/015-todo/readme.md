@@ -95,6 +95,10 @@ Open
 | [015-82](82-pending-cut-after-close.md) | Fix | A pending cut arriving during another cut can be left unapplied ... | open |
 | [015-83](83-read-past-end-exception.md) | Fix | A read past the end throws IOException instead of the documented ... | open |
 | [015-84](84-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: a decrease's records grow with the keys | open |
+| [015-85](85-written-not-forced.md) | Decide | "Written, not forced", decided and implemented (005-47); left: F53's sync latency, in a quiet block | open |
+| [015-86](86-gets-with-8-readers.md) | Investigate | Gets over 10 ms with 8 readers (005-65); left: the AB/BA step Frans approved, in a quiet block | open |
+| [015-87](87-retain-duration-in-stream.md) | Investigate | The retain duration in the stream (005-78); left: Frans's answers to F1 to F7, then U6, the change | open |
+| [015-88](88-overload-and-retries.md) | Investigate | Transaction retries (005-81); left: Frans's review of sections 2.6 and 3.1, then the rest of 8.9 | open |
 
 
 Closed
@@ -245,6 +249,29 @@ Files
   steady ones: the issue from 007-07's runs at 50M keys, the two variants,
   the questions, when it is done; moved from 005-77 on 2026-11-05,
   untouched.
+* [85-written-not-forced.md](85-written-not-forced.md). 015-85, Decide:
+  a durability of "written, not forced": Frans's question, the options
+  and the constraints, his decision (A, a setting), its implementation,
+  the sync latency on s1; moved from 005-47 on 2026-11-05; open for the
+  latency on F53.
+* [86-gets-with-8-readers.md](86-gets-with-8-readers.md). 015-86, Investigate:
+  gets of 27 and 36 ms with 8 readers at 665 MB under ZGC: the issue,
+  the test, the results of 2026-10-28 and 2026-11-04 nights, Frans's
+  decision and the fix, the AB/BA step left; moved from 005-65 on
+  2026-11-05. Its scripts and results stay in
+  [../005-todo/65-gets-with-8-readers/](../005-todo/65-gets-with-8-readers/).
+* [87-retain-duration-in-stream.md](87-retain-duration-in-stream.md). 015-87,
+  Investigate: the retain duration is not kept in the stream: the issue,
+  the study (U1), the probe (U2) and the design (U3), Frans's questions
+  F1 to F7; moved from 005-78 on 2026-11-05. The design, the probe and
+  its output stay in
+  [../005-todo/78-retain-duration-in-stream/](../005-todo/78-retain-duration-in-stream/).
+* [88-overload-and-retries.md](88-overload-and-retries.md). 015-88, Investigate:
+  transaction retries: verified current waits, the client contract the
+  retries need, retry/sleep variants, the diagnostic harness and the
+  hot-key, disjoint-key and history baselines (section 8); moved from
+  005-81 on 2026-11-05. The harness and its results stay in
+  [../005-todo/81-overload-and-retries/](../005-todo/81-overload-and-retries/).
 
 
 Log
@@ -257,3 +284,10 @@ to 005, for now.
 2026-11-05. 015-84, cap the pace's factor S/sd, moved from 005-77
 untouched, at Frans's decision (decided 2026-11-04/05): "005-77 (cap
 pace factor, about a day of F53) moves to 015 untouched."
+
+2026-11-05. 015-85 to 015-88 moved from 005-47, 005-65, 005-78 and 005-81,
+each with its contents as it was and a new Status line that says what is
+left, at Frans's plan, approved 2026-11-05, 07:17: "By morning, every 005
+entry still open, decisions or remaining runs, moves to 015 with its work
+recorded, and 005 itself is marked done." Their support directories stay
+in 005-todo.

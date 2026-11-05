@@ -1,15 +1,18 @@
 005-todo
 ========
 
-Created 2026-10-19 by Frans Lundberg. Status: open.
+Created 2026-10-19 by Frans Lundberg. Status: done (2026-11-05).
 
 A list of things to do on BergDB: issues to fix, things to investigate,
 decisions to make. Each entry is a subitem with its own ID and a short
 definition: what, why, the questions, when it is done, the first step. An
 entry that grows into real work gets an item of its own, linked from here.
 
-Since 2026-11-03, new entries go to 015-todo, numbered from 015-01. An
-entry closely related to a 005 entry may still be added here, for now.
+Since 2026-11-03, new entries go to 015-todo, numbered from 015-01.
+Since 2026-11-05 every entry here is closed (done, dropped or moved),
+and 005 is done: the open work continues in 015-todo, where the last
+four open entries moved (005-47, 005-65, 005-78 and 005-81, as 015-85
+to 015-88).
 
 
 The list
@@ -25,12 +28,8 @@ them keep working.
 Open
 ----
 
-| ID | Kind | What | Status |
-|---|---|---|---|
-| [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced". Decided (Frans, 2026-11-04): A, a setting of `FileStream`, per-append forcing on (the default) or off, in the core API only, no force at an interval; implemented, with forces kept at a new file, its predecessor, a cut and `close()`, and a power-loss mode without per-append forces. Sync latency on s1 (1 thread): p50 4.2 ms on, 0.1 ms off. Left: the same on F53, in a quiet block (not quiet on 2026-11-05, not run); holes in the unforced tail are 014-01's | open |
-| [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Measured 2026-10-28 night, quiet: only with 8 threads, on `eaec93e` (005-46) and `4f7cd60` alike; no load waited for a batch; the machine at 9.6 of 10 cores, and the loads' entries into `evictorLock` in `Eviction.wake` (78,000 a second) a fifth of the gets over 10 ms. Frans decided 2026-10-29: the fix, in `main` (`988fe1a`): a load skips that monitor when a request to the eviction thread is pending (an untimed count with 8 readers: 116,000 to 128,000 entries a second before, about 570 after); the rest accepted as a full machine. Rerun 2026-11-04: the entries a second 81,877 to 484, but the gets over 10 ms rose, 298 to 492. Frans approved an AB/BA step (2026-11-05), to close the entry if the rise is not the fix's; not run on 2026-11-05, F53 not quiet | open |
-| [005-78](78-retain-duration-in-stream.md) | Investigate | The retain duration is not kept in the stream: it decides when reclaim's iterations start and where it cuts, so the stream's bytes, but a start takes the builder's value (default forever), against the rule of 005-53 and 005-52 (a setting that changes the stream's bytes is kept in the stream, 010-P2) and without a word in its Javadoc. Frans: it must be in the stream; study first. Forms: the meta blocks (as the startup distance), an internal KV, or reclaim's table | open |
-| [005-81](81-overload-and-retries.md) | Investigate | Transaction retries: `executeRw()` reruns a conflict after hard-coded sleeps from 10 ms doubling to 10,240 ms, with no jitter, attempt limit, time budget or setting (over 20 s across eleven reruns on a hot key), and the same `RerunException` for a long action that outlives `KeyModSet`'s history. Left: the wait points and client contract the retries need, a diagnostic harness from 006-11's, hot-key and disjoint-key baselines, the retry variants measured, and an `executeRw()` proposal. Split 2026-11-04: overload and admission control are 017-06 | open |
+None: every entry is closed (2026-11-05); the open work continues in
+015-todo.
 
 
 Closed
@@ -38,6 +37,10 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced": moved to 015-85 | moved | 2026-11-05 |
+| [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers: moved to 015-86 | moved | 2026-11-05 |
+| [005-78](78-retain-duration-in-stream.md) | Investigate | The retain duration is not kept in the stream: moved to 015-87 | moved | 2026-11-05 |
+| [005-81](81-overload-and-retries.md) | Investigate | Transaction retries: moved to 015-88 | moved | 2026-11-05 |
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: `Database.setCacheSizeInMb` (`fd8f513`); after a decrease a transaction's warmup no longer waits for eviction (option B, `0c6c4be`) | done | 2026-11-05 |
 | [005-72](72-file-layout-after-cut.md) | Decide | The files after a physical cut depend on timing: B dropped, A covers it | done | 2026-11-05 |
 | [005-77](77-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: moved to 015-84 | moved | 2026-11-05 |
@@ -139,7 +142,8 @@ change the eviction thread, so 005-51 does not depend on it; 005-51 is
 done. 005-57 is done (part 1); 005-58, its Lean theorem, is done.
 005-46 is done. 005-56 is done. 005-68 is dropped: its finding did not
 hold. 005-07 is dropped: obsolete since handles (009). 005-52 is done:
-option B (`0c6c4be`).
+option B (`0c6c4be`). As of 2026-11-05 all entries are closed or moved
+to 015.
 
 
 Files
@@ -286,7 +290,7 @@ Files
 * [47-written-not-forced.md](47-written-not-forced.md). 005-47, a
   durability of "written, not forced": Frans's question, the options and
   the constraints, his decision (A, a setting) and its implementation;
-  open for the latency measurement.
+  moved to 015-85 on 2026-11-05, open there for the latency on F53.
 * [48-group-commit.md](48-group-commit.md). 005-48, group commit: a
   waiting sync starts the flush; the change, the questions, the
   measurements on s1, the outcome; done. The scripts of the runs, the two
@@ -372,7 +376,8 @@ Files
   hypothesis and what would refute it, the test, the results of
   2026-10-28 night, a recommendation, Frans's decision and the fix
   (2026-10-29), and how to rerun the sweep with it; the results of
-  2026-11-04 night; the AB/BA step left; open. The night step
+  2026-11-04 night; the AB/BA step left; moved to 015-86 on
+  2026-11-05. The night step
   (`prep.sh`, `threads.sh`, `sum.py`, `ScaleBench-065.diff`) in
   [65-gets-with-8-readers/night/](65-gets-with-8-readers/night/); the
   fix's untimed count, its race tests on broken versions, its gates and
@@ -427,15 +432,21 @@ Files
   005-78, the retain duration is not kept in the stream: the issue with
   the code, how the startup distance is kept, three forms of "in the
   stream", StreamDigest and the Lean model, the questions, when it is
-  done; open.
+  done, the study, the probe and the design (U1 to U3), F1 to F7; moved
+  to 015-87 on 2026-11-05. The design, `RetainProbe.java` and
+  `probe.txt` in
+  [78-retain-duration-in-stream/](78-retain-duration-in-stream/).
 * [80-setbudget-race-record.md](80-setbudget-race-record.md). 005-80,
   the record and a test of `setBudget`'s race, fixed inside 005-65's
   commit: the issue, options A to C, when it is done; open.
 * [81-overload-and-retries.md](81-overload-and-retries.md). 005-81,
   transaction retries: verified current waits, the client contract the
   retries need, retry/sleep variants, and the plan for the hot-key and
-  disjoint-key baselines and an `executeRw()` proposal; open. Split on
-  2026-11-04: the overload/recovery investigation is 017-06.
+  disjoint-key baselines and an `executeRw()` proposal; the first step
+  of section 7 made (section 8); moved to 015-88 on 2026-11-05. Split
+  on 2026-11-04: the overload/recovery investigation is 017-06. The
+  diagnostic harness, its probes and results in
+  [81-overload-and-retries/](81-overload-and-retries/).
 
 * [82-gettrans-corruption.md](82-gettrans-corruption.md). 005-82,
   parsing errors in `getTrans` must fail the database; split from 005-74.
@@ -1690,3 +1701,16 @@ Frans's word from 07:32 to 07:56; the 1-minute load still stayed at 1.33
 to 3.11, and was 3.02 at 07:55. Both are left for the next quiet block,
 with their commands, a built clone for 005-47 and a script for both in
 `/Users/f/fl/bench/`.
+
+2026-11-05. 005-47, 005-65, 005-78 and 005-81 moved to 015-85, 015-86,
+015-87 and 015-88, each with its contents as it was, at Frans's plan,
+approved 2026-11-05, 07:17: "By morning, every 005 entry still open,
+decisions or remaining runs, moves to 015 with its work recorded, and 005
+itself is marked done." Left: 015-85, F53's sync latency in a quiet block;
+015-86, the AB/BA step; 015-87, Frans's answers to F1 to F7, then U6;
+015-88, Frans's review of sections 2.6 and 3.1, then the rest of section
+8.9. Their support directories stay here, as scripts and commits cite
+them.
+
+2026-11-05. 005 done: every entry is closed (done, dropped or moved);
+the open work continues in 015-todo.
