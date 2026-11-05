@@ -1,7 +1,9 @@
 005-todo
 ========
 
-Created 2026-10-19 by Frans Lundberg. Status: done (2026-11-05).
+Created 2026-10-19 by Frans Lundberg. 
+
+*Status: done, 2026-11-05*.
 
 A list of things to do on BergDB: issues to fix, things to investigate,
 decisions to make. Each entry is a subitem with its own ID and a short

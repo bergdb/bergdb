@@ -143,6 +143,10 @@ Index
 * **017-long-term** (open). The long-term topics of BergDB: open-ended
   questions and directions that need Frans's input and may never be done;
   notes, one subitem per topic, taken up one at a time with Frans.
+* **018-release-2026-3** (open). Release 2026.3: a bug-free Core, with no
+  known issue at the release but in DbObject and user indexes, which are
+  experimental; 010's principles hold, and Frans approves any change of
+  the stream format. The plan, its decisions and the work towards it.
 * **019-todo** (open). Short tasks on BergDB, each done and closed in
   about a day, mostly by an AI agent, unattended or after a decision or
   answers from Frans; every new todo entry since 2026-11-05. Long-term

@@ -1,0 +1,355 @@
+018-01. Plan: release 2026.3, a bug-free Core
+=============================================
+
+Created 2026-11-05 by Frans Lundberg, from his request: "Create item
+nnn-release-2026-3 with this plan for working towards 2026.3." The plan
+answers a strategy that Claude proposed the same morning (section 4).
+
+**Status: the goal, the rules and Frans's decisions made (2026-11-05,
+09:28 and 09:43).** The way of working is worked out step by step with
+Frans, and this plan is updated with it.
+
+
+## 1. The goal
+
+Frans, 2026-11-05, 09:28: "let's make the goal of [Release] 2026.3 "a
+bug-free Core". DbObject and user indexes is experimental. For the Core,
+we aim for no known issues at all. All A, B, C, and D are fixed. That is
+the goal; while working we may make exceptions."
+
+* **The Core**, in this plan, is everything that is not experimental:
+  * the Core Layer (010-01, P12): `Db`'s public methods and what is under
+    them, the packages `bergdb.core`, `dag`, `storage`, `stream`,
+    `common`, `pub.util` and `nanotest`, as `java/stress/core-build.sh`
+    builds them;
+  * the Pub API, but DbObject and user indexes (D4);
+  * their tests and tools.
+
+  Where the Core Layer alone is meant, the plan says "the Core Layer".
+* **No known issue of the Core** at the release: every known fault of the
+  Core is fixed, whatever its severity, A to D (D1).
+* **Experimental** in 2026.3: DbObject and user indexes (D2; the methods
+  are D6's). Their faults stay open, outside the goal.
+* **Exceptions**: while the work goes on, Frans may leave a fault of the
+  Core as a known issue of 2026.3. Each exception goes into section 5 with
+  his words and the date. An agent makes none.
+
+**Ready** (D7), when all of these hold:
+
+1. No known fault of the Core is open: section 3.1's list is closed, and
+   no open entry of 015 or 019 is a fault of the Core, but Frans's
+   exceptions.
+2. All tests pass, on the release's commit: `night.sh` (with
+   `before-commit.sh`, `core-build.sh`, the four level scripts, the night
+   tests and the medium conformance set), `night.sh large`, and the
+   harnesses of section 6; and the jar's tests on F53 and s1 with JDK 27
+   and 17, as for 2026.2 (016-09).
+3. The documentation is up to date with the code: the Javadoc, README.md,
+   docs/levels.md and lean/README.md, with the experimental parts marked
+   (W1), and the release notes.
+4. The release notes' known issues are all of the experimental code, but
+   Frans's exceptions.
+5. Frans says that it is ready. The release is made at his command.
+
+
+## 2. Rules for the work
+
+Frans, 2026-11-05, 09:43: "The principles 010 must hold unless Frans makes
+an exception. All changes to the stream format must be approved by
+Frans."
+
+* **010's principles hold**, P1 to P12 (010-01), unless Frans makes an
+  exception.
+  * Before a commit, the agent that makes a change checks it against P1
+    to P12. If the change would break one, the agent stops and asks
+    Frans, and commits nothing until he answers. His exception goes into
+    section 5.
+  * The principles most likely to meet this work: P7 (a failed database
+    stops), which the failure paths of section 6.2 must keep; P10 (few
+    settings), met by 015-05's `createIfMissing()`; P12 (a small Core
+    Layer), met by any new method of `Db`; P2 (a deterministic stream),
+    met by 015-87.
+* **Every change to the stream format is approved by Frans** before it is
+  made.
+  * The format is, as in 016-01, section 3, the layout and meaning of
+    what a start reads: the meta blocks, record headers and records, the
+    node encodings, reclaim's table, the version numbers and the reserved
+    internal keys.
+  * A change of which bytes a workload writes, within the format, is not
+    a change of the format (005-79's take was one). It is recorded: a new
+    StreamDigest reference, and a line in `releases/next.md`.
+  * A proposal that changes the format is written in its entry, with what
+    changes and why, and waits for Frans's explicit approval; his words go
+    into the entry's log. Likely: 015-87 (the retain duration in the
+    stream) and 014-01 (the recovery of holes in an unforced tail).
+
+
+## 3. Where we start
+
+On 2026-11-05, 015 has 70 open entries. Most come from one search for
+unknown faults: the reviews of release 2026.2 on the evening of 2026-11-03
+(016-06). Of the 60 open Fix entries, 50 are in 2026.1 too, and 6 are new
+in 2026.2. The lists below are as of 2026-11-05; the entries' own
+`Status:` lines and 015's tables are the source. 015 takes no new
+entries: since 2026-11-05, 09:38, they go to 019 (D3).
+
+
+### 3.1. The Core's known faults
+
+52 entries of 015, S2-F24 of 015-49, and the fault of 014-01: 54 faults.
+This is the goal's list.
+
+| Area | Entries | Count |
+|---|---|---|
+| FileStream                                | 015-06 (its rest), 26, 31, 32, 33; 014-01 | 6 |
+| BufferedStream, StorageManager, MetaBlock | 015-34, 35, 74, 78, 79, 80, 81, 82, 83    | 9 |
+| Startup                                   | 015-72, 73, 75, 76, 77, 87                | 6 |
+| Db and reclaim                            | 015-27, 50, 51, 52, 53, 54, 55            | 7 |
+| Eviction                                  | 015-66, 67, 68, 69, 70, 71                | 6 |
+| JMX                                       | 015-38                                    | 1 |
+| The Core Layer's tests and tools          | 015-04, 08, 11                            | 3 |
+| Pub API: rw-transactions, connections     | 015-41, 42, 47, 48, 59, 60, 62, 64        | 8 |
+| Pub API: builder, keys, Time, CryptoKey   | 015-05, 44, 45, 57, 58, 63, 65; S2-F24    | 8 |
+
+Of these:
+
+* New in 2026.2: 015-52, 66, 68, 70, 71 and 76.
+* Javadoc and comments only: 015-54, 74 and 77.
+* A decision by Frans comes first: 015-05 (a start on an empty or missing
+  directory), 015-27 (a failed append's transaction was visible), 015-87
+  (his answers to F1 to F7) and 014-01 (the recovery of holes in an
+  unforced tail).
+* Checked by a second agent: R2's and R3's faults (015-26, 27, 31 to 35,
+  38). The others have the reviewer's own test or probe. Each fix starts
+  with its failing test anyway, by its entry's "Done when".
+
+
+### 3.2. Outside the goal
+
+| Group | Entries |
+|---|---|
+| Experimental: objects, user indexes | 015-23, 28, 29, 30, 36, 37, 39, 43, 46, 61; 49 but S2-F24 |
+| Limits (D5)                         | 015-84, 86, 88                                             |
+| Not the Java code                   | 015-02 (C clone), 03 (Lean), 18 (a night run), 19 (items)  |
+
+015-49 holds review S2's 27 faults. All but S2-F24 (keys with a lone
+surrogate, in the goal's list) are in the objects, the user indexes and
+their scans. 015-18, `night.sh large` on 2026.2, is a run, not a fault;
+`night.sh large` on 2026.3 is part of "Ready" (section 1).
+
+
+## 4. The strategy and the decisions
+
+Claude proposed six points in the morning of 2026-11-05, in a chat; they
+are summed up here with Frans's answers of 09:28. His words on 3 to 6:
+"About 3-6, let's gradually work on this strategy, it will be updated."
+
+1. **Define "bug-free" so that it can be checked**, with severities A to
+   D, and a fresh review of each area that finds nothing. Answered by D1.
+2. **Decide the supported surface**: DbObject and user indexes
+   experimental. Answered by D2.
+3. **Triage once**: a second agent checks each fault that has none, each
+   fault gets a severity, 015-49 is split, and entries are made only
+   after triage. Frans: "3. is not required right now." With D3.
+4. **Fix by fault class**, with a harness that finds the whole class,
+   including faults nobody has reviewed. Frans: "I like 4, it seems like
+   a good idea." Section 6.
+5. **An order**: A first, then the harnesses, B, and C in batches; a fresh
+   review of each area after its fixes. Frans: "No, no particular order
+   needs to be enforced, we will fix everything."
+6. **A stopping rule and tracking**: a weekly table of faults found, fixed
+   and open by severity; the release when A and B are zero and a fresh
+   round of reviews finds none. Frans: "No, not as stated." Replaced by
+   D7.
+
+The decisions:
+
+* **D1.** "1. as above, A, B, C, and D, but only for Core." Every known
+  fault of the Core is fixed, whatever its severity:
+  * A: committed data lost or wrong, or a database that cannot run again;
+  * B: the database fails, or gives wrong answers, in ordinary use;
+  * C: misuse, edge cases, a wrong exception, a leak;
+  * D: Javadoc, comments, tests, tools.
+
+  The severities matter only for exceptions (section 5).
+* **D2.** "2. Yes, experimental." DbObject and user indexes are
+  experimental in 2026.3 (W1).
+* **D3.** "3. No changes now." The existing entries stay as they are: no
+  triage, no split of 015-49. A new fault is registered by 019's rules:
+  since 2026-11-05, 09:38, every new entry goes to 019, and 015 takes no
+  new entries (Frans, through session bergdb-34).
+
+Frans answered the plan's first questions at 09:43:
+
+* **D4.** The rest of the Pub API is in the goal: "1. Yes, included."
+  That is: `String` and `byte[]` puts, gets and deletes, rw-transactions,
+  connections, `Time`, `TestClock`, `CryptoKey`, `DatabaseBuilder`.
+* **D5.** The limits: "2. As default." A limit of 2026.2's notes (the
+  collectors, gets with 8 readers, a decrease of the startup distance at
+  50M keys, D's loose bound, T4 not proved, overload and more) is not a
+  known issue. It stays in the notes' limits, and 015-84, 86 and 88 go on
+  as Frans decides, outside the goal.
+* **D6.** What is experimental: "3. OK." `Database.indexBuilder` and
+  `deleteIndex`, `Connection.useIndex` and `usePrimary`, the classes
+  `IndexBuilder`, `UseIndexBuilder` and `UsePrimaryBuilder`, and a value
+  that is neither a `String` nor a `byte[]`: `put(Object)`, a put of an
+  object at a key, and a get into another class.
+* **D7.** When 2026.3 is ready: "4. When we have no known Core bugs. When
+  all tests pass, when documentation is updated. When the list of known
+  issues are all for experimental code. When Frans say it is ready."
+  Section 1, "Ready".
+
+
+## 5. Exceptions
+
+None yet. Two kinds, each made by Frans only:
+
+* a fault of the Core left as a known issue of 2026.3: its ID, his words,
+  the date, and what the release notes say of it;
+* a change that breaks one of 010's principles (section 2): the change,
+  the principle, his words and the date.
+
+
+## 6. Harnesses by fault class
+
+The known faults of the Core fall into a few classes. A harness that
+finds a class finds the faults of it that no review has met yet. Each
+harness below is a proposal. They are worked out one at a time with
+Frans, and this section is updated.
+
+A harness is shown to work when it fails on each known fault of its class,
+on the code before that fault's fix; the fixes then make it pass. Where it
+runs (`before-commit.sh`, a level script, `night.sh`) is decided for each
+harness; `before-commit.sh` stays at about 2 minutes.
+
+The differential test of the user indexes, proposed with point 4, is not
+for 2026.3: they are experimental (D2).
+
+
+### 6.1. Corrupt streams at a start
+
+* Known faults: 015-72, 73, 75 (and 015-07, 005-74 and 005-75, fixed).
+* What it does: takes streams written by real runs and makes damaged
+  copies of them: a byte flipped, a range cut out, the tail cut at and
+  inside each record, a record's size or `startupPos` changed with its
+  checksum made right again, as R6's probes did.
+* What it checks: each start either refuses the copy before it writes
+  anything, or starts with exactly the transactions of a committed prefix
+  and passes the audit. It never starts and drops a transaction that the
+  copy still holds whole.
+* 014-01's holes in an unforced tail are one kind of damage; what a start
+  must do with them waits for 014-01's recovery contract.
+
+
+### 6.2. Failures and interrupts in storage
+
+* Known faults: 015-06's rest, 32, 34, 35, 38, 53, 66, 78, 81, 82.
+* What it does: a test stream wraps `FileStream` or `MemoryStream` and,
+  at its Nth call, throws an `IOException`, throws an unchecked exception
+  or an `Error`, or interrupts the calling thread. A short workload
+  (start, puts, gets, reclaim and eviction on, stop or close) runs for
+  N = 1, 2, ... until it ends with no injection. BergDB's own threads (the
+  storage consumer, the evictor, JMX's monitor) are interrupted too.
+* What it checks, after each run: the database went on, or it failed and
+  every later call says so (P7); `close()` returns and reports the
+  failure; the directory's lock is released, and a new start on the
+  directory works; no BergDB thread is left; a restart holds every
+  transaction that a `sync()` confirmed, and none that was refused.
+
+
+### 6.3. The stream contract
+
+* Known faults: 015-26, 31, 33, 79, 80, 83.
+* What it does: a strict `AppendOnlyStream` for tests checks each call
+  against the interface's Javadoc: one writer at a time (as R5-F5's test
+  stream does), no negative length, a cut within the length, `EOFException`
+  for a read past the end. It throws at once on a breach. `BufferedStream`
+  and `StorageManager` run on it. `FileStream` and `MemoryStream` pass one
+  shared contract tester, with the edges: an empty stream, a cut at the
+  length, the file-size limit.
+* What it checks: no breach in any run, and every implementation passes
+  the contract tester.
+
+
+### 6.4. Sizes and times at their limits
+
+* Known faults: 015-50, 51, 55, 76.
+* What it does: makes transactions at the edge of every limit: values
+  near `valueLimit()`, value transformations that grow a value, times near
+  the last database time, settings at their bounds; with reclaim and
+  eviction on, and restarts.
+* What it checks: each transaction is either refused before its go point,
+  with the database going on, or committed. The database never fails, and
+  after a restart it takes commits.
+
+
+### 6.5. Eviction's accounting
+
+* Known faults: 015-67, 68, 69, 70, 71.
+* What it does: random eviction schedules and budget changes, during
+  reads and writes, with `Audit` after each batch, and the resident bytes
+  compared with a recount.
+* What it checks: the audit reports nothing that is right; the resident
+  bytes equal the recount; no batch passes its handle limit; a budget
+  decrease settles within the budget when the pins fit.
+
+
+### 6.6. Concurrency
+
+* Known faults: 015-35, 80, 82 (and 015-12 and 015-14, fixed).
+* What it does: the jcstress tests planned in 016-07, for the shared
+  fields that reviews R1, R2, R4 and R5 list in their section 6.
+* What it checks: no forbidden outcome.
+
+
+### 6.7. The Pub API's promises
+
+* Known faults: 015-41, 42, 47, 48, 59, 62.
+* What it does: random sequences of the Pub API's calls on `String` and
+  `byte[]` values (put, get, delete, exists, `w()`, `rw()`, lookup times,
+  `freezeLookupTime()`, `transactionInfo()`, restarts), run against
+  BergDB and against a simple reference in the test: a map of each key's
+  versions by time.
+* What it checks: every answer equals the reference's, as the Javadoc
+  promises it; a change of an array after its put does not change the
+  stored value.
+
+
+### 6.8. Faults outside the harnesses
+
+Fixed one at a time:
+
+* in the Core Layer: 015-04, 08, 11, 27, 52, 54, 74, 77, 87, and 014-01;
+* in the Pub API: 015-05, 44, 45, 57, 58, 60, 63, 64, 65, and S2-F24.
+
+
+## 7. The work
+
+* **W1. DbObject and user indexes marked experimental** (D2, D6): the
+  Javadoc of each method and class in D6's list, README.md and
+  docs/levels.md where they describe the Pub API, and a line in
+  `releases/next.md`. Their tests stay in `before-commit.sh`. Not started.
+* **W2. The harnesses** (section 6), one at a time, the first chosen with
+  Frans. Not started.
+* **W3. The Core's faults** (section 3.1), in any order (point 5). Each
+  is fixed by its entry: its failing test, the fix, `BEFORE COMMIT OK`,
+  and the level script of a mechanism it changes (AGENTS.md), within
+  section 2's rules. A new fault becomes a 019 entry (D3); one of the Core
+  joins the goal's list. 015-05, 015-27, 015-87 and 014-01 wait for
+  Frans's decisions.
+* **W4. The documentation** (section 1, "Ready", 3): kept up to date as
+  the fixes go in, and read through before the release.
+* **W5. The release**, made as 2026.2 was (016-09, by 008-01's steps),
+  when section 1's "Ready" holds, at Frans's command.
+
+
+## 8. Log
+
+2026-11-05, 09:35. Written from Frans's goal and answers of 09:28, with
+the lists of section 3 from 015's tables and the reviews' reports
+(016-06, 016-07). Nothing started.
+
+2026-11-05, 09:50. Frans's answers of 09:43 to Q1 to Q4 (D4 to D7) and his
+rules (section 2) added: the rest of the Pub API joins the goal's list
+(54 faults), "Ready" is D7, and harness 6.7 is new. New entries go to 019
+since 2026-11-05 (D3).
