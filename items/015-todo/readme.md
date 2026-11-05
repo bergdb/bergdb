@@ -45,7 +45,6 @@ Open
 | [015-30](30-build-scans-past-dir.md) | Fix | An index build step scans past its directory, over non-objects | open |
 | [015-31](31-cut-at-length.md) | Fix | A cut at the stream's length throws an internal Bug | open |
 | [015-32](32-failed-open-leaks.md) | Fix | An unchecked failure during an open leaks handles; an Error keeps the lock | open |
-| [015-33](33-max2g-cap.md) | Fix | setMax2G(true) still allows files over two billion bytes | open |
 | [015-34](34-consumer-stop-interrupt.md) | Fix | A storage thread interrupted at its stop skips closing its stream | open |
 | [015-35](35-background-write-failure.md) | Fix | A failed background write fails the database only at a caller's next storage call | open |
 | [015-36](36-interrupted-delete-index.md) | Fix | An interrupted deleteIndex leaves the index deleting with no job | open |
@@ -91,6 +90,7 @@ Closed
 | [015-68](68-startup-large-values-kept.md) | Fix | Startup leaves large values retained in the writer's admission list | done | 2026-11-05 |
 | [015-67](67-batch-whole-map.md) | Fix | A batch processes a whole map even past its handle limit | done | 2026-11-05 |
 | [015-66](66-evictor-failure-lock-window.md) | Fix | A failed batch releases the writer lock before failing the database | done | 2026-11-05 |
+| [015-33](33-max2g-cap.md) | Fix | setMax2G(true) still allows files over two billion bytes | done | 2026-11-05 |
 | [015-79](79-storage-negative-append.md) | Fix | A negative append is accepted and decreases StorageManager's length | done | 2026-11-05 |
 | [015-26](26-negative-append-length.md) | Fix | A negative append length corrupts FileStream's length | done | 2026-11-05 |
 | [015-87](87-retain-duration-in-stream.md) | Investigate | The retain duration kept in the stream | done | 2026-11-05 |

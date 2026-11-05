@@ -453,6 +453,9 @@ public class FileStream implements AppendOnlyStream {
      * Call this method with "true" to never use stream files larger than 2e9 bytes.
      * This is useful on file systems with a limited maximum file size; for example FAT32 
      * has a maximum file size of 2^32−1 (about 4.29e9 bytes).
+     * It holds for the files that the stream creates after the call (bergdb 015-33); call it
+     * right after the constructor. A stream written without it can have larger files, and
+     * its last file can still grow to the size chosen at the start.
      */
     public void setMax2G(boolean b) {
         synchronized (this) {
@@ -1118,7 +1121,10 @@ public class FileStream implements AppendOnlyStream {
             }
         }
         
-        if (max2G && currentFileSizeIndex > INDEX_2G) {
+        // The result is capped, not the current index (2026-11-05, bergdb 015-33): a start
+        // chooses the size from the last two files, so a small current size could jump to
+        // the rule's size, such as 10 GB, past the cap.
+        if (max2G && result > INDEX_2G) {
             result = INDEX_2G;
         }
         

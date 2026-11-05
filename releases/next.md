@@ -254,6 +254,10 @@ Internal
   appended bytes and failed the next append; `BufferedStream` returned, and
   `StorageManager` lowered its length. No layer of BergDB passes a negative
   length; the stream's bytes are unchanged.
+* **`FileStream.setMax2G(true)` caps the size of every new file at 2 GB**
+  (bergdb 015-33; 2026-11-05): after a start that chose small files from
+  the last two, the next file could take the size rule's 10 GB. Nothing in
+  BergDB sets it; the stream's bytes are unchanged.
 
 
 Documentation
