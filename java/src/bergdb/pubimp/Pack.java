@@ -44,6 +44,7 @@ public class Pack implements IPack {
         TimeResolver.class,
         WTransaction.class,
         RwEnvironmentImp.class,
+        RwTransaction.class,
         DbObjectTester.class
     };
     

@@ -6,6 +6,8 @@ import java.util.Map;
 import bergdb.core.InternalDataException;
 import bergdb.core.RerunException;
 import bergdb.core.Trans;
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.Nano;
 import bergdb.pub.Action;
 import bergdb.pub.Time;
 import bergdb.pub.Transaction;
@@ -16,6 +18,11 @@ import bergdb.storage.StreamIoException;
 
 
 public class RwTransaction implements Transaction {
+    /** The sleep before the first rerun of a conflicting transaction, ms (bergdb 015-88). */
+    static final long FIRST_SLEEP = 10;
+    /** The longest sleep between reruns, ms (Frans, 2026-11-05, bergdb 015-88). */
+    static final long MAX_SLEEP = 640;
+    
     private ConnectionImp connection;
     private Action action;
     private int runCount;
@@ -98,7 +105,7 @@ public class RwTransaction implements Transaction {
      * @throws DbException
      */
     public static Trans executeRw(RwEnvironmentImp env, ConnectionImp connection, RwTransaction rw) {
-        long sleepTime = 10;
+        long sleepTime = FIRST_SLEEP;
         final IndexManager m = connection.getDatabaseImp().getIndexManager();
         int runCount = 0;
         Trans trans;
@@ -124,9 +131,7 @@ public class RwTransaction implements Transaction {
                 
                 try {
                     Thread.sleep(sleepTime);
-                    if (sleepTime < 10*1000) {
-                        sleepTime = sleepTime * 2;
-                    }
+                    sleepTime = nextSleep(sleepTime);
                 } catch (InterruptedException e1) {
                     // A refusal: the transaction was not run, and the database goes on. The
                     // interrupt flag is set again (2026-10-27, bergdb 005-46).
@@ -146,6 +151,14 @@ public class RwTransaction implements Transaction {
     }
     
     /**
+     * The sleep before the next rerun, given the last one: it doubles up to MAX_SLEEP,
+     * so 10, 20, 40, 80, 160, 320, 640, 640, ... ms (bergdb 015-88).
+     */
+    static long nextSleep(long sleepTime) {
+        return Math.min(sleepTime * 2, MAX_SLEEP);
+    }
+    
+    /**
      * Same as: sync(SyncLevel.ORDINARY).
      * 
      * @throws StreamIoException
@@ -159,5 +172,15 @@ public class RwTransaction implements Transaction {
      */
     public void sync(SyncLevel syncLevel) {
         connection.getDb().sync(trans.lastPos, syncLevel);
+    }
+    
+    @Nano
+    private static void testSleepsBetweenReruns() {
+        long[] expected = {10, 20, 40, 80, 160, 320, 640, 640};
+        long sleepTime = FIRST_SLEEP;
+        for (int i = 0; i < expected.length; i++) {
+            Assert.assertEquals("sleep " + i, expected[i], sleepTime);
+            sleepTime = nextSleep(sleepTime);
+        }
     }
 }

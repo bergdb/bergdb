@@ -111,6 +111,16 @@ Reliability
   only the last was replaced. A key with two or more occurrences is stored
   under another key than before; one with a single occurrence is unchanged.
   StreamDigest's digests are unchanged: its workloads use the Core API.
+* **The sleep between reruns of a conflicting rw-transaction is capped at
+  640 ms** (bergdb 015-88; Frans, 2026-11-05): 10, 20, 40, 80, 160, 320,
+  640, then 640 ms for every further rerun; it was capped at 10,240 ms. On
+  a hot key a call took up to 10.23 s, eleven attempts whose ten sleeps
+  were 10 + 20 + ... + 5,120 ms. The same holds for a write-only
+  transaction with object operations, which uses the same loop. The
+  contract is unchanged: a transaction is rerun until it commits. The
+  Javadoc of `Connection.rw` now says so, and that under overload it may
+  never commit: a long action while other transactions write more than
+  about 100,000 keys, the conflict history, has every attempt refused.
 
 
 Internal

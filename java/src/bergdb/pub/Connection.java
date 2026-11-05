@@ -238,6 +238,12 @@ public interface Connection extends ReadInterface {
      * through outputs: RwEnvironment.setOutput() in the action, Transaction.getOutput()
      * on the returned transaction.
      * 
+     * <p>A transaction that conflicts with another is rerun after a short sleep (10 ms,
+     * doubling up to 640 ms) until it commits. Under overload it may never commit: for
+     * example, a long action while other transactions write more than about 100,000 keys,
+     * since the conflict history covers only the last 96,000 to 128,000 written keys and
+     * every attempt is then refused (bergdb 015-88).</p>
+     * 
      * @throws DbFailedException
      *             If the database has failed, in this transaction or before: it then
      *             refuses every transaction and read until it is restarted. See
