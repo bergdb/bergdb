@@ -76,10 +76,14 @@ smaller faults; fixed in the night, in one change with 015-81's entry.
   `finally`); so `close()` returns after the stream's close, whichever
   thread made it. That also closes the older window above. `stop()` is as
   before.
-* Not taken: R1's suggestion, the old order in `handleStreamException`
-  (close, then publish). It brings back the window of 2026.2 (a failed
-  concurrent append fails the database during the close) and delays the
-  failure that this entry makes visible at once. Nor a latch: not needed.
+* Not taken: the old order in `handleStreamException` (close, then
+  publish), which the night's coordinator considered. It brings back the
+  window of 2026.2 (a failed concurrent append fails the database during
+  the close) and delays the failure that this entry makes visible at once.
+  Nor R1's suggestion, a latch that `handleStreamException` counts down
+  after its close and `closeInner` waits for: not needed, as `closeInner`
+  now closes the stream itself and that close waits. (Corrected after R1's
+  re-review, C3: this point named the old order as R1's suggestion.)
 * Checks: 015-35's and 015-81's tests pass, unchanged in what they assert;
   R1's probes `R1ReadFailCloseProbe` ("Db.close() returned after 1923 ms;
   stream closed: true") and `R1CloseRaceProbe` ("stream closed: true",

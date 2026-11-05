@@ -107,6 +107,7 @@ Open
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
 | [019-07](07-record-header-checksum.md) | Implement | A checksum of the record header, at the next RECORD_FORMAT change | decision | waiting |
+| [019-09](09-close-unreported-background-failure.md) | Fix | close() silent on a failed flush | decision | waiting |
 
 
 Closed
@@ -161,6 +162,10 @@ Files
   Fix: `DbUtil.dbTimeToUtc()` formatted with one static `SimpleDateFormat`,
   so readers that built a `LookupTimeNotAvailableException` at once got
   another thread's time (015-63's fault in the Core; review R2, B1).
+* [09-close-unreported-background-failure.md](09-close-unreported-background-failure.md).
+  019-09, Fix: `close()` returns normally after a background write
+  failure that no call met, and reports it nowhere (review R1 of night
+  006-12, B2); Frans decides whether `close()` throws there.
 
 
 Log
@@ -236,3 +241,7 @@ BEFORE COMMIT OK.
 2026-11-05. 019-08 registered in night 006-12, from review R2's finding
 B1, and done: `DbUtil.dbTimeToUtc()` formats with a `DateTimeFormatter`,
 as `Time` does since 015-63; the strings are unchanged; BEFORE COMMIT OK.
+2026-11-05. 019-09 registered in night 006-12, from review R1's
+re-review of 3cb19f7 (B2): `close()` returns normally after a background
+write failure that no call met. Status waiting: Frans decides whether
+`close()` throws there (options (a) to (c), (a) recommended).
