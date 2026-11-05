@@ -102,6 +102,7 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
+| [019-01](01-metablock-version-high-bytes.md) | Fix | A meta block's version is read as 2 bytes; bytes 6 and 7 are not checked | none | open |
 
 
 Closed
@@ -120,7 +121,9 @@ Frans: none, answers, decision.
 Files
 =====
 
-None yet.
+* [01-metablock-version-high-bytes.md](01-metablock-version-high-bytes.md).
+  019-01, Fix: a meta block's version is read as 2 bytes, so bytes 6 and
+  7 are not checked (R6-F3, from 015-74).
 
 
 Log
@@ -135,3 +138,6 @@ long-term tasks, strategy tasks belong to 017. The new nnn entries
 unattended after limited input from Frans like decisions and answers to
 questions." Since then every new todo entry goes here; 015 keeps its open
 entries.
+
+2026-11-05. 019-01 registered by session bergdb-e8, at Frans's word
+(10:47), from 015-74's optional code change (R6-F3).

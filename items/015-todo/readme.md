@@ -42,7 +42,6 @@ Open
 | [015-19](19-tools-after-005-79.md) | Fix | Tools in items still use what 005-79 removed | open |
 | [015-23](23-refused-index-delete.md) | Fix | A refused index deletion leaves the index active and unmaintained | open |
 | [015-26](26-negative-append-length.md) | Fix | A negative append length corrupts FileStream's length | open |
-| [015-27](27-failed-append-visible.md) | Decide | A failed append's transaction was already visible to readers | open |
 | [015-28](28-write-racing-index-create.md) | Fix | A write racing an index's creation is never indexed | open |
 | [015-29](29-delete-primary-index.md) | Fix | deleteIndex(Database.PRIMARY) throws Bug and leaves the primary deleting | open |
 | [015-30](30-build-scans-past-dir.md) | Fix | An index build step scans past its directory, over non-objects | open |
@@ -106,6 +105,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-27](27-failed-append-visible.md) | Decide | A failed append's transaction was visible to readers: intended | done | 2026-11-05 |
 | [015-77](77-canonical-node-javadoc.md) | Fix | DbStarter.canonicalNode's Javadoc gives a reason for the stored ... | done | 2026-11-05 |
 | [015-74](74-metablock-comment.md) | Fix | MetaBlock's format comment: the last byte is 10, not 1, and the ... | done | 2026-11-05 |
 | [015-02](02-c-follows-2026-2.md) | Implement | The C clone follows release 2026.2 | done | 2026-11-05 |

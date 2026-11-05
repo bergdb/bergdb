@@ -118,9 +118,9 @@ environment has failed, or that has a bug, does not run on.
   can return the transaction's values, and after a restart they are gone
   unless the record was appended before the failure. A read of a
   transaction that is not synced risks the same in a crash (section 8);
-  no transaction that a sync has returned for is lost. Whether a
-  transaction should become visible only after its record is appended is
-  015-27's question, for after the release.
+  no transaction that a sync has returned for is lost. This is intended
+  (015-27, Frans, 2026-11-05): durability is `sync()`'s promise, not
+  visibility's.
 * A read that fails on the storage fails the database in the same way: an
   I/O error, or corrupt data (a checksum or format error), in `getOne`,
   `getMany`, `getTrans` (`transactionInfo()`) and `sync()`. Not failures: a

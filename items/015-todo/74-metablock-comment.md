@@ -31,3 +31,7 @@ says so: offset 4, 2 bytes, the version as an unsigned short; offset 6, 2
 bytes, zero, not checked; the last byte 10. A comment only, so no test
 fails before it. Left: R6-F3's optional code change (`readMetaBlock` reads
 the 4 bytes and refuses nonzero bytes 6 and 7), a decision for Frans.
+
+2026-11-05, 10:47. Frans, to session bergdb-e8, on the optional code
+change: "74, as recommended": registered as 019-01, for harness 6.1's
+class (018-01, section 6.1).

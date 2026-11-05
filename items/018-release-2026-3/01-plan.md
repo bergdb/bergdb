@@ -116,9 +116,9 @@ Of these:
 * New in 2026.2: 015-52, 66, 68, 70, 71 and 76.
 * Javadoc and comments only: 015-54, 74 and 77.
 * A decision by Frans comes first: 015-05 (a start on an empty or missing
-  directory), 015-27 (a failed append's transaction was visible), 015-87
-  (his answers to F1 to F7) and 014-01 (the recovery of holes in an
-  unforced tail).
+  directory), 015-27 (a failed append's transaction was visible; decided
+  2026-11-05: intended, not a fault), 015-87 (his answers to F1 to F7)
+  and 014-01 (the recovery of holes in an unforced tail).
 * Checked by a second agent: R2's and R3's faults (015-26, 27, 31 to 35,
   38). The others have the reviewer's own test or probe. Each fix starts
   with its failing test anyway, by its entry's "Done when".
@@ -336,8 +336,8 @@ Fixed one at a time:
   is fixed by its entry: its failing test, the fix, `BEFORE COMMIT OK`,
   and the level script of a mechanism it changes (AGENTS.md), within
   section 2's rules. A new fault becomes a 019 entry (D3); one of the Core
-  joins the goal's list. 015-05, 015-27, 015-87 and 014-01 wait for
-  Frans's decisions.
+  joins the goal's list. 015-05, 015-87 and 014-01 wait for Frans's
+  decisions.
 * **W4. The documentation** (section 1, "Ready", 3): kept up to date as
   the fixes go in, and read through before the release.
 * **W5. The release**, made as 2026.2 was (016-09, by 008-01's steps),
@@ -372,3 +372,10 @@ go ahead with those five." Marked too: `Database.PRIMARY`,
 belong to the experimental parts, as `BadReplicaException` said of
 replication (016-04). README.md's and docs/levels.md's paragraphs stay.
 The entry of `releases/next.md` lists them.
+
+2026-11-05, 10:50. Frans's answers of 10:47, to session bergdb-e8: 015-54
+"as recommended", R7-F5's code fix (an agent on it); 015-27 "as
+recommended, this is intended, durability is handled separately": done,
+not a fault, and out of the goal's list; 015-74's optional check "as
+recommended": registered as 019-01, a fault of the Core that joins the
+list, for harness 6.1's class. 015-05 is to be discussed further.
