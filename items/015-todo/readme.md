@@ -87,7 +87,7 @@ Open
 | [015-84](84-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: a decrease's records grow with the keys | open |
 | [015-86](86-gets-with-8-readers.md) | Investigate | Gets over 10 ms with 8 readers (005-65): the rise is the fix's (AB/BA); left: measurements, then Frans | open |
 | [015-87](87-retain-duration-in-stream.md) | Investigate | The retain duration in the stream (005-78); left: Frans's answers to F1 to F7, then U6, the change | open |
-| [015-88](88-overload-and-retries.md) | Investigate | Transaction retries (005-81); left: Frans's review of sections 2.6 and 3.1, then the rest of 8.9 | open |
+| [015-88](88-overload-and-retries.md) | Investigate | Transaction retries (005-81): the sleep capped at 640 ms; the rest moved to 017-06 | in progress |
 
 
 Closed
@@ -273,10 +273,13 @@ Files
   its output stay in
   [../005-todo/78-retain-duration-in-stream/](../005-todo/78-retain-duration-in-stream/).
 * [88-overload-and-retries.md](88-overload-and-retries.md). 015-88, Investigate:
-  transaction retries: verified current waits, the client contract the
-  retries need, retry/sleep variants, the diagnostic harness and the
-  hot-key, disjoint-key and history baselines (section 8); moved from
-  005-81 on 2026-11-05. The harness and its results stay in
+  transaction retries; moved from 005-81 on 2026-11-05. Decided by Frans
+  that day (14:12): the retry sleep capped at 640 ms for release 2026.3,
+  the contract unchanged; the investigation (the waits, the client
+  contract, the retry variants, the harness and the baselines) moved to
+  [017-06](../017-long-term/06-overload/retries.md), with Frans's question
+  whether `rw()` should ever give up under overload. The harness and its
+  results stay in
   [../005-todo/81-overload-and-retries/](../005-todo/81-overload-and-retries/).
 
 

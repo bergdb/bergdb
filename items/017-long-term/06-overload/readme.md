@@ -6,14 +6,19 @@ from it by Frans on 2026-11-04, as a long-term topic. The questions, the
 review of reads, CPU and memory, the admission points of the client
 contract, the overload workloads, the arrival model, the recovery
 measures and the decision on admission controls below are 005-81's as
-they were when it was split. The retries stay in
-[005-81](../../005-todo/81-overload-and-retries.md).
+they were when it was split. The retries stayed in 005-81 (015-88 from
+2026-11-05) until 2026-11-05, 14:12, when Frans decided to cap the retry
+sleep at 640 ms for release 2026.3 and move the rest here:
+[retries.md](retries.md), section 8 below. Where this file cites 005-81,
+section n, that section is retries.md's section n.
 
 What this topic holds: whether BergDB needs database-wide admission
 control and backpressure for CPU, reads and memory under overload; which
 controls belong in BergDB and which in the application that owns its
 threads and incoming requests; throughput, latency and memory at and above
-capacity, and recovery when the load falls.
+capacity, and recovery when the load falls. Since 2026-11-05 also the
+transaction retries, with Frans's question whether `rw()` should ever
+give up under overload (section 8).
 
 ## 1. Questions
 
@@ -277,7 +282,7 @@ other resources or selecting a policy.
 
 ## 7. Related work
 
-* [005-81](../../005-todo/81-overload-and-retries.md): the retries, and
+* [retries.md](retries.md) (005-81, then 015-88): the retries, and
   the wait-point map and client contract they need; its related work lists
   006-11, 005-46, 005-48, 005-70 and 005-76.
 * [005-52](../../005-todo/52-cache-size-while-running.md), "Left to do":
@@ -296,7 +301,28 @@ other resources or selecting a policy.
 * [010-01](../../010-principles/01-principles.md), P1 and P3:
   bounded internal pauses and calm when idle.
 
-## 8. Frans's notes
+## 8. Transaction retries
+
+[retries.md](retries.md), moved from 015-88 on 2026-11-05 at Frans's
+decision (14:12), cited as "017-06, retries, section n": the retries'
+purpose and scope, what the code does today (the exact retry policy, its
+section 2.5, with a note on 2026.3's cap at 640 ms), the wait points of a
+retrying attempt, the client contract and its draft (section 3.1), the
+retry policies to compare, the experiments, the implementation checks,
+the first step, the harness and the baselines on s1 with their findings,
+and what is left (section 8.9). The harness stays in 005-81's directory.
+
+At its top, the open question Frans raised that day: should `rw()` ever
+give up, as a last resort under overload, like an `OutOfMemoryError`
+("should never happen. But it can if we have overload."), with option A,
+five attempts and then an exception, as one of the answers to weigh.
+Whether overload shows to a client as a hang or as an exception is this
+topic's question; release 2026.3 keeps the contract (the call retries
+until it commits) and says in the Javadoc that under overload a
+transaction may never commit.
+
+
+## 9. Frans's notes
 
 2026-11-04, 19:11, Frans's decision: "005-81, I like your idea to split
 this. So, split it." The idea he approved: keep the retry fix in 005, as
@@ -307,7 +333,23 @@ proposal); move the broad part, whether BergDB needs database-wide
 admission control and backpressure for CPU, reads and memory under
 overload, here, as an open-ended, design-level topic.
 
-## 9. Log
+2026-11-05, 14:09, on 015-88, to session bergdb-e8: "Getting cold feet.
+This may be a more fundamental thing than I first thought. How about
+keeping things essentially as is. We could just change to go to around
+640 ms and then repeat there at that sleep time. Clients today count on
+eventual success. This is a very small change. I hesitate. This should
+always work. It is almost like an OutOfMemoryException, should never
+happen. But it can if we have overload." And at 14:12, to cap the sleep
+at 640 ms for 2026.3 and move the rest of the retries here: "Yes, do it."
+The discussion is at the top of [retries.md](retries.md).
+
+## 10. Log
 
 2026-11-04. Split here from 005-81 at Frans's decision, with the parts of
 005-81 named in the Status line, by Claude (Opus 5.5, Claude Code).
+
+2026-11-05. The transaction retries moved here from 015-88 (sections 1 to
+8, as they were, with their numbers) as retries.md, at Frans's decision
+of 14:12, with his question whether `rw()` should ever give up under
+overload at its top (section 8); 015-88 keeps only the cap of the retry
+sleep at 640 ms for release 2026.3. By Claude (Opus 5.5, Claude Code).

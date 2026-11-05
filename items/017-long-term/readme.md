@@ -56,8 +56,10 @@ Files
   control: whether BergDB needs database-wide admission control and
   backpressure for CPU, reads and memory under overload, which controls
   belong in BergDB and which in the application, and the behaviour at and
-  above capacity and after it. Split from 005-81 on 2026-11-04; the
-  retries stay in 005-81. Open; notes only.
+  above capacity and after it. Split from 005-81 on 2026-11-04. And the
+  transaction retries ([retries.md](06-overload/retries.md)), moved from
+  015-88 on 2026-11-05, with Frans's question whether `rw()` should ever
+  give up under overload. Open; notes only.
 * [017-07](07-to-consider/readme.md). To consider: small ideas that
   Frans may take up some day, one section each; first, a get that always
   copies a `byte[]` value (from 019-03); second, startupDistance in the
@@ -105,3 +107,9 @@ overload is this topic.
 for small ideas that are not todos for the next release; its first
 section is 019-03, a get that always copies a `byte[]` value, moved from
 019.
+
+2026-11-05. The transaction retries moved to 017-06 from 015-88 (005-81
+until that morning) by Frans (14:12), as 06-overload/retries.md, with his
+question whether `rw()` should ever give up under overload; 015-88 keeps
+only the cap of the retry sleep at 640 ms for release 2026.3 and stays
+open until it lands.

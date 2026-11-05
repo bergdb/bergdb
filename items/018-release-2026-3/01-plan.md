@@ -422,3 +422,12 @@ difference. (b) One living file, such as `releases/next-digests.txt`,
 that each such change regenerates. Frans: "As recommended", (a).
 Sections 1 ("Ready", 3, new; W4 now cites 4), 2 and 7 (W5) updated, and
 `releases/next.md`'s intro.
+
+2026-11-05, 14:12. 015-88 decided by Frans, in a discussion with
+session bergdb-e8: the retry sleep capped at 640 ms (10, 20, 40, 80,
+160, 320, 640, then 640 ms), the contract unchanged; the rest of the
+retries moved to 017-06, with his question whether `rw()` should ever
+give up under overload. The overload limit is documented: the Javadoc
+says that under overload a transaction may never commit, a limit in the
+release notes (D5), not a known fault. 015-88 stays in section 3.2's
+limits until the cap lands.

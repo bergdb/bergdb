@@ -52,7 +52,9 @@ Frans's answers, 2026-11-05, 09:02:
 2. "Yes, as the current plan."
 3. "Yes, as the current plan."
 4. "W3, I need to look at this." Open: W3 waits for Frans; without his
-   word by 15:00 it does not run tonight.
+   word by 15:00 it does not run tonight. Dropped for tonight by Frans's
+   decision of 14:12 on 015-88: the retry variants and the `executeRw()`
+   proposal moved to 017-06 (section 3, W3).
 5. "To be done during the day." The decisions are Frans's during the day;
    the change of any that he decides joins W1.
 
@@ -199,10 +201,18 @@ of `make-probe.py`, measured on s1 (2 vCPUs) with the harness of
 2026-11-05 on the hot-key, disjoint-key and history cases; then a concrete
 `executeRw()` proposal in the entry, for Frans. `ps` on s1 first.
 
+Dropped for tonight by Frans's decision of 2026-11-05, 14:12, with
+session bergdb-e8: 015-88 only caps the retry sleep at 640 ms for
+release 2026.3 (a day change, by bergdb-e8's agent), and the retry
+variants and the `executeRw()` proposal moved to 017-06, a long-term
+topic, with his question whether `rw()` should ever give up under
+overload. Nothing runs on s1 tonight for it.
+
 ### Not tonight
 
 * Decisions: 015-05, 015-27, 015-87's F1 to F7 (unless answered by
-  15:00), 015-88's sections 2.6 and 3.1, and 015-86's decision.
+  15:00), 015-88's sections 2.6 and 3.1 (017-06's since 14:12), and
+  015-86's decision.
 * 015-84, the cap of the pace's factor: about a day of F53 at the lowest
   priority, which tonight's gates would disturb. A later night.
 * 015-02 (bergdb-2c), 015-03 (Lean), 015-18 (`night.sh large`, by hand).
@@ -227,7 +237,7 @@ Times in CET.
 |---|---|
 | 09:00–14:45 | Frans works interactively; this plan, the questions; Q-A's ScaleBench change prepared without load |
 | 14:45 | coord-1105 started, reads this plan; the check-ins scheduled (section 6) |
-| 15:00–22:15 | W1 groups 1 and 2, then 3 and 4; W3 on s1 |
+| 15:00–22:15 | W1 groups 1 and 2, then 3 and 4 |
 | 22:15 | CPU-heavy work on F53 stops |
 | 22:30–23:45 | Q-A, 015-86's measurements |
 | 23:45–01:20 | Q-W7, release 2026.2's numbers (its own marker from 23:40; at the latest to 02:05) |
