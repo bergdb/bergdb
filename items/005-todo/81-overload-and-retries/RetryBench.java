@@ -537,8 +537,10 @@ public final class RetryBench {
         }
     }
 
-    Map<String, Object> verify(long expected) {
-        Connection connection = db.connection();
+    Map<String, Object> verify(long expected) { return verify(db, expected); }
+
+    Map<String, Object> verify(Database database, long expected) {
+        Connection connection = database.connection();
         connection.freezeLookupTime();
         long total = 0, digest = 0;
         for (int i = 0; i < keys; i++) {
@@ -658,6 +660,25 @@ public final class RetryBench {
             bench = new RetryBench(args);
             Map<String, Object> result = bench.run();
             bench.db.close();
+            if (bench.storage.equals("file") && Boolean.parseBoolean(bench.value("reopen", "false"))) {
+                // bergdb 005-81, section 5.4: the reopen subset; the same checks on the database
+                // started again from its files after close().
+                long expected = (Long) ((Map<?, ?>) result.get("verification")).get("expected_commits");
+                long begin = System.nanoTime();
+                DbBuilder builder = Db.builder().retainForever().testId();
+                if (bench.startupBytes > 0) builder.startupDistance(bench.startupBytes);
+                if (bench.cacheBytes == 0) builder.noEvict();
+                else builder.cacheSizeIndicator(bench.cacheBytes);
+                Db core = builder.mainStream(new FileStream(new File(bench.value("dir", "")))).build();
+                Database reopened = DatabaseImp.createAndStart(core);
+                try {
+                    Map<String, Object> check = bench.verify(reopened, expected);
+                    check.put("reopen_ms", (System.nanoTime() - begin) / 1e6);
+                    result.put("reopen_verification", check);
+                } finally {
+                    reopened.close();
+                }
+            }
             bench = null;
             System.out.println("RESULT " + json(result));
         } finally {

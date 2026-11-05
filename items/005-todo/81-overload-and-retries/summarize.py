@@ -19,6 +19,7 @@ for d in sorted(root.iterdir()):
         continue
     r = json.loads(text)
     assert r["verification"]["passed"], d
+    assert r.get("reopen_verification", {"passed": True})["passed"], d
     m = r["measured"]
     runs.append((d, r, m))
 
@@ -27,13 +28,14 @@ def key(item):
     return (r["workload"], r["threads"], r["variant"], d.name)
 
 print("| Run | Active/s | Drained/s | Requests | Retried | Requests by attempts | Max latency ms "
-      "| Longest completion gap ms | Between attempts, % of worker time | Drain s |")
-print("|---|--:|--:|--:|--:|---|--:|--:|--:|--:|")
+      "| Longest completion gap ms | Between attempts, % of worker time | Drain s | Reopen check |")
+print("|---|--:|--:|--:|--:|---|--:|--:|--:|--:|---|")
 for d, r, m in sorted(runs, key=key):
     print(f"| {d.name} | {m['active_commits_per_second']:.0f} | {m['batch_commits_per_second']:.0f} "
           f"| {m['commits']} | {m['retried_requests']} | {m['requests_by_attempts']} "
           f"| {m['latency']['max_ns'] / 1e6:.1f} | {m['max_completion_gap_ns'] / 1e6:.1f} "
-          f"| {100 * m['between_attempts_share_of_worker_time']:.1f} | {m['drain_seconds']:.2f} |")
+          f"| {100 * m['between_attempts_share_of_worker_time']:.1f} | {m['drain_seconds']:.2f} "
+          f"| {'passed, %.0f ms' % r['reopen_verification']['reopen_ms'] if 'reopen_verification' in r else '-'} |")
 
 print()
 print("| Run | Retries | Requested sleep ms | Measured sleep ms | Oversleep ms per retry "

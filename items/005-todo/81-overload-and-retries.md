@@ -576,7 +576,7 @@ are 017-06's first step now.)
 2026-11-05: this first step is done, in section 8, with the history case
 added. Deliverable 1 has a first draft (sections 2.6 and 3.1), not yet
 reviewed; deliverable 2 has its hot-key, disjoint-key and history runs
-(sections 8.3 to 8.6) on memory storage, without a sync/reopen subset.
+(sections 8.3 to 8.6) and the file, durable and reopen runs (8.7).
 
 Deliver in order:
 
@@ -640,7 +640,9 @@ In [81-overload-and-retries/](81-overload-and-retries/):
   and a CSV row for every request of more than one attempt. A new option,
   `longActionMs=N`, makes worker 0 sleep N ms in its action after its
   reads: the history case. The 45 s drain limit is a setting,
-  `drainSeconds` (default 180 s).
+  `drainSeconds` (default 180 s). With file storage, `reopen=true` closes
+  the database after the run, starts it again from its files and repeats
+  the checks (section 5.4's reopen subset; added at 07:40 for 8.7).
 * `make-probe.py`: makes the probe build from a copy of the source (never
   the repo's `java/`): a static hook `RwTransaction.retryProbe`, called
   after each retry sleep with the run count, the requested sleep, the
@@ -649,7 +651,9 @@ In [81-overload-and-retries/](81-overload-and-retries/):
   it runs without it.
 * `run-s1.sh`: compiles the harness against both jars and runs the cases
   with the stock and the probe jar in turns (the order reversed on even
-  repetitions); stops if another JVM runs; logs the load before each run.
+  repetitions); stops if another JVM runs; logs the load before each run;
+  with `storage=file`, gives each run an empty data directory and removes
+  it after.
 * `summarize.py`: the tables below from a session directory.
 
 The two builds are the isolated baseline: the stock jar, unchanged, for
@@ -703,13 +707,21 @@ The sessions, in `/opt/bergdb-bench/005-81` on s1:
     sh in/run-s1.sh history-1000 2 partitioned:2 reads=8 work=3000 \
         seconds=10 warmupSeconds=2 longActionMs=1000
 
-and `history-3000` and `history-6000` alike. Then, on F53:
+and `history-3000` and `history-6000` alike; for section 8.7:
+
+    sh in/run-s1.sh file-append 2 "hot:2 partitioned:2" reads=8 work=3000 \
+        seconds=10 warmupSeconds=2 storage=file reopen=true
+    sh in/run-s1.sh file-durable 2 "hot:2 partitioned:2" reads=8 work=3000 \
+        seconds=10 warmupSeconds=2 storage=file durable=true reopen=true
+
+Then, on F53:
 `python3 -I summarize.py /Users/f/fl/bench/005-81/2026-11-05/main`.
 
 The session `main` ran the harness before `longActionMs` was added
-(SHA-256 `dcc8ead2…2bf9`, kept in `out/main/RetryBench.java`); the
-others ran the committed one (`89619c52…d26b`), which differs only by
-that option, off by default. A smoke session (`smoke`, 2 s windows) came
+(SHA-256 `dcc8ead2…2bf9`, kept in `out/main/RetryBench.java`); `ref` and
+the history sessions ran the one of the first commit (`89619c52…d26b`);
+the file sessions the one with `reopen` (`1bc32a8a…9b5d`, committed
+second; each session's `identity.txt` has its hash). The additions are options, off by default. A smoke session (`smoke`, 2 s windows) came
 first and is not reported.
 
 ### 8.3. Hot key and disjoint keys
@@ -889,7 +901,7 @@ is. Worker 1 adds that many in about 2.4 to 3.5 s.
 | Long action | Worker 0's requests, each run | Commits in the window | Longest gap ms |
 |---|---|---|---|
 | 1,000 ms | 10 of one attempt, in every run | 9, 9, 9, 9 | 1,001 to 1,005 |
-| 3,000 ms | stock 1: two of 2 attempts; the others: one of 3 attempts | 1, 1, 1, 1 | 6,011; 9,031 (3 runs) |
+| 3,000 ms | one of 3 attempts, one of 1; stock 1: two of 2 | 1, 1, 1, 1 | 9,031; stock 1: 6,011 |
 | 6,000 ms | one of 3 attempts, 18,032 ms, in every run | 0, 0, 0, 0 | 18,032 to 18,033 |
 
 With 6,000 ms every attempt under load was refused: the first (0 to
@@ -901,23 +913,64 @@ were 10 + 20 = 30 ms of the 18 s (the probe build measured 30.2 to
 edge of the history, attempts passed or not, presumably by the bins'
 phase.
 
-7. **History exhaustion is a different failure from a hot key.** A hot
+8. **History exhaustion is a different failure from a hot key.** A hot
    key's time goes to sleeping (99.8%, section 8.5); a long action's goes
    to rerunning it, and no sleep length helps while the load lasts: an
-   action longer than about 96,000 additions' worth of other writes
-   cannot commit. On s1 with one other writer that is 2.4 to 3.5 s. The
-   caller sees the same endless loop, and today the two cannot be told
-   apart (section 2.5): the case for contract point 3 (section 3.1).
+   attempt during which the other transactions write more than 128,000
+   keys cannot commit, and one over 96,000 may not. On s1 with one other
+   writer that is an action of 2.4 to 3.5 s. The caller sees the same
+   endless loop, and today the two cannot be told apart (section 2.5):
+   the case for contract point 3 (section 3.1).
 
-### 8.7. What is left
+### 8.7. File storage, durable commits and the reopen check
+
+Sessions `file-append` (07:41 to 07:44) and `file-durable` (07:44 to
+07:46), s1, 2 vCPUs: `hot` and `partitioned` with 2 workers, the same
+workload, `storage=file` (the Pub API's `FileStream`, each append forced
+by the storage thread) in an empty directory on s1's disk, `reopen=true`;
+`file-durable` also calls `sync()` after each commit, outside the retry
+loop. Two runs per build and case; every run passed its checks, and the
+reopen check (the database started again from its files, the same checks)
+passed in all 16, in 2.0 to 3.8 s (append, 59 to 94 MB of stream) and
+0.2 to 0.3 s (durable).
+
+| Case | Stock active/s | Probe active/s | Max latency ms | Longest worker gap ms | Most attempts | Retried |
+|---|---|---|---|---|--:|---|
+| append, hot | 35,856, 32,492 | 32,478, 32,273 | 10,234 to 10,236 | 10,234 to 10,236 | 11 | 6 to 54 |
+| append, partitioned | 48,359, 49,945 | 49,725, 47,168 | 4.9 to 9.1 | 4 to 9 | 1 | 0 |
+| durable, hot | 272, 243 | 265, 217 | 34.2 to 47.8 | 32 to 47 | 3 | 16 to 25 |
+| durable, partitioned | 259, 254 | 252, 242 | 31.3 to 38.0; 1,690.5 | 29 to 37; 1,690 | 1 | 0 |
+
+The probe build's sleeps: append, hot: 48 and 42 retries, 11,150 and
+11,240 ms requested, 11,164 and 11,246 ms slept, the refused
+`execute()` 238 and 117 us per retry; durable, hot: 20 and 17 retries,
+210 and 180 ms requested, 212 and 182 ms slept, 129 and 134 us.
+
+9. **File appends do not change the hot-key picture.** With the buffered,
+   forced appends the hot runs are the memory runs again: one worker
+   does the work (1.0 to 1.1 cores), the other's request of 11 attempts
+   ends after the window, 10.23 s; partitioned runs have no retry.
+10. **Durable commits hide it.** With a `sync()` per commit, each worker
+    spends about 7 to 9 ms (the p50 latency) waiting for its force, and
+    the hot key is written about 220 times a second: an attempt of tens
+    of microseconds rarely meets a commit of the key, a refused request
+    is retried once or twice after 10 or 20 ms, and its latency stays
+    near the partitioned case's. The tail is a property of fast commits
+    on a shared key, not of every hot key.
+11. **One stall that is not a retry**: in one durable partitioned run
+    (probe 2) both workers waited about 1.69 s at once, with no retry;
+    a `sync()` on s1's disk, outside the loop (sections 2.1 and 2.6,
+    step 8). A note for 017-06, not for the retries.
+
+### 8.8. What is left
 
 * Deliverable 1: Frans's review of sections 2.6 and 3.1.
-* Deliverable 2: the same cases with file storage and a sync/reopen
-  subset of the checks; indexed W transactions (the other caller of
-  `executeRw()`); a new caller arriving behind retriers; and, if wanted,
-  the lock wait separated from the rest of a refused `execute()` (it
-  needs a probe in `Db`, a second patch). F53's runs, if wanted, in a
-  quiet block.
+* Deliverable 2: indexed W transactions (the other caller of
+  `executeRw()`); a new caller arriving behind retriers; the reason of
+  each refusal recorded by a probe (conflict or history), to check
+  section 8.6's reading; and, if wanted, the lock wait separated from the
+  rest of a refused `execute()`. Both need a probe in `Db`, a second patch
+  of `make-probe.py`'s kind. F53's runs, if wanted, in a quiet block.
 * Deliverable 3: the variants R0 to R2 (section 4) as further patches of
   `make-probe.py`'s kind over the same archive, measured against this
   baseline; then the `executeRw()` proposal, Frans's decision.
@@ -944,14 +997,15 @@ and first step rewritten for the retries; replication's waits dropped
 dated notes for 005-47, 005-11 and 005-52 in section 2. The code was not
 reviewed again. By Claude (Opus 5.5, Claude Code).
 
-2026-11-05, 07:20 to 07:45. Section 7's first step, at Frans's approval
+2026-11-05, 07:20 to 07:50. Section 7's first step, at Frans's approval
 ("005-81 (retries) gets its harness and the hot-key and disjoint-key
 baselines, timed on s1."). Built the harness (`RetryBench.java`, from
 006-11's), the probe patch (`make-probe.py`), the runner and the
 summarizer in [81-overload-and-retries/](81-overload-and-retries/);
 built stock and probe jars on s1 from `git archive` of `0c6c4be`; ran 24
 hot-key and disjoint-key runs, 6 one-worker references and 12
-history-exhaustion runs on s1 (2 vCPUs), all checks passed (section 8).
+history-exhaustion runs on s1 (2 vCPUs), then 16 runs with file storage
+and durable commits, with a reopen check; all checks passed (section 8).
 The 10 s hot-key tail reproduces as 11 attempts of accumulating sleeps;
 a long action under unrelated writes never commits while the load lasts.
 Drafted the wait-point map (section 2.6) and the contract (section 3.1)

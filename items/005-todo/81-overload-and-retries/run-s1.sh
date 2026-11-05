@@ -3,7 +3,8 @@
 # Usage: run-s1.sh SESSION REPS "CASE ..." where a CASE is workload:threads, such as hot:2.
 # Needs /opt/bergdb-bench/005-81/{stock,probe}/java/build/bergdb.jar (built from a git
 # archive; probe/ patched by make-probe.py) and RetryBench.java in /opt/bergdb-bench/005-81/in.
-# Stops if another JVM runs. Outputs in /opt/bergdb-bench/005-81/out/SESSION/.
+# Stops if another JVM runs. Outputs in /opt/bergdb-bench/005-81/out/SESSION/. With storage=file,
+# each run gets an empty /opt/bergdb-bench/005-81/data, removed after the run.
 set -e
 R=/opt/bergdb-bench/005-81
 SESSION=$1; REPS=$2; CASES=$3; shift 3
@@ -24,9 +25,12 @@ for rep in $(seq 1 $REPS); do
     for b in $order; do
       if pgrep -x java > /dev/null; then echo "another JVM runs; stopped"; exit 2; fi
       d=$O/$w-t$t-$b-$rep; rm -rf $d; mkdir -p $d
+      dir=""
+      case "$*" in *storage=file*) rm -rf $R/data; mkdir -p $R/data; dir=dir=$R/data;; esac
       echo "$(date +%T) $(cut -d' ' -f1-3 /proc/loadavg) $w t$t $b rep $rep" | tee -a $O/runs.txt
       $JAVA/java $FLAGS -Xlog:gc:file=$d/gc.log -cp $R/classes-$b:$R/$b/java/build/bergdb.jar RetryBench \
-        threads=$t workload=$w out=$d "$@" > $d/stdout.txt 2> $d/stderr.txt
+        threads=$t workload=$w out=$d $dir "$@" > $d/stdout.txt 2> $d/stderr.txt
+      [ -n "$dir" ] && du -sk $R/data > $d/data-size.txt && rm -rf $R/data
       grep -v '^RESULT' $d/stdout.txt >> $d/stderr.txt || true
       grep '^RESULT' $d/stdout.txt | cut -c8- > $d/result.json
       sed 's/^/    /' $d/stderr.txt | tee -a $O/runs.txt
