@@ -42,11 +42,39 @@ import bergdb.stream.AppendOnlyStream;
  * completions, and a CSV row for every request that took more than one attempt. On a jar
  * made by make-probe.py, RwTransaction.retryProbe also gives each retry's requested sleep,
  * its measured Thread.sleep() and the refused Db.execute() call; on a stock jar the hook is
- * absent and the harness runs without it (variant "stock").
+ * absent and the harness runs without it (variant "stock"). On a jar also patched by
+ * make-probe-db.py (variant "probe2"), Db's hooks give each attempt's wait for Db.writeLock
+ * and the reason of each refusal: a changed key or history exhaustion.
  */
 public final class RetryBench {
     static final java.util.function.Consumer<long[]> HOOK = RetryBench::probeEvent;
+    static final java.util.function.LongConsumer LOCK_HOOK = RetryBench::lockWaitEvent;
+    static final java.util.function.IntConsumer REASON_HOOK = RetryBench::reasonEvent;
     static final boolean PROBE = installProbe();
+    /** The Db probes of make-probe-db.py: the lock wait and the reason of each refusal. */
+    static final boolean DB_PROBE = installDbProbe();
+
+    static boolean installDbProbe() {
+        try {
+            Db.class.getField("lockWaitProbe").set(null, LOCK_HOOK);
+            Db.class.getField("rerunReasonProbe").set(null, REASON_HOOK);
+            return true;
+        } catch (NoSuchFieldException e) {
+            return false;
+        } catch (IllegalAccessException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    static void lockWaitEvent(long ns) {
+        Thread t = Thread.currentThread();
+        if (t instanceof RetryBench.Worker) ((RetryBench.Worker) t).lockWaited(ns);
+    }
+
+    static void reasonEvent(int reason) {
+        Thread t = Thread.currentThread();
+        if (t instanceof RetryBench.Worker) ((RetryBench.Worker) t).refusedFor(reason);
+    }
 
     static boolean installProbe() {
         try {
@@ -104,7 +132,7 @@ public final class RetryBench {
         mode = value("mode", "optimistic");
         workload = value("workload", "partitioned");
         storage = value("storage", "memory");
-        variant = PROBE ? "probe" : "stock";
+        variant = DB_PROBE ? "probe2" : PROBE ? "probe" : "stock";
         drainSeconds = decimal("drainSeconds", 180);
         longActionMs = integer("longActionMs", 0);
         outDir = value("out", "");
@@ -309,6 +337,7 @@ public final class RetryBench {
             long[] attemptCounts = new long[64];
             long retriedRequests = 0, invocations = 0, gapNs = 0, requestedMs = 0, sleptNs = 0;
             long refusedNs = 0, probeRetries = 0, maxCompletionGap = 0, maxSleptNs = 0;
+            long lockWaits = 0, lockWaitNs = 0, refusedLockWaitNs = 0, maxLockWaitNs = 0, conflicts = 0, histories = 0;
             for (Worker worker : workers) {
                 firstTry.merge(worker.firstTry); retried.merge(worker.retriedLatency);
                 for (int i = 0; i < 64; i++) attemptCounts[i] += worker.attemptCounts[i];
@@ -317,6 +346,9 @@ public final class RetryBench {
                 refusedNs += worker.refusedNs; probeRetries += worker.probeRetries;
                 maxCompletionGap = Math.max(maxCompletionGap, worker.maxCompletionGap);
                 maxSleptNs = Math.max(maxSleptNs, worker.maxSleptNs);
+                lockWaits += worker.lockWaits; lockWaitNs += worker.lockWaitNs;
+                refusedLockWaitNs += worker.refusedLockWaitNs; maxLockWaitNs = Math.max(maxLockWaitNs, worker.maxLockWaitNs);
+                conflicts += worker.conflicts; histories += worker.histories;
                 perWorkerRetried.add(worker.retriedRequests);
                 perWorkerGapMs.add(worker.maxCompletionGap / 1000000);
                 perWorkerMaxLatencyMs.add(worker.latency.max / 1000000);
@@ -362,6 +394,15 @@ public final class RetryBench {
             out.put("eviction_summary", core.internal().eviction().summary());
             if (attempts != invocations) throw new AssertionError("attempts " + attempts + " != action invocations " + invocations);
             if (PROBE && probeRetries != attempts - total) throw new AssertionError("probe retries " + probeRetries + " != " + (attempts - total));
+            if (DB_PROBE && conflicts + histories != attempts - total)
+                throw new AssertionError("refusal reasons " + (conflicts + histories) + " != " + (attempts - total));
+            if (DB_PROBE && lockWaits != attempts) throw new AssertionError("lock waits " + lockWaits + " != attempts " + attempts);
+            out.put("probe_lock_waits", lockWaits);
+            out.put("probe_lock_wait_ns", lockWaitNs);
+            out.put("probe_lock_wait_ns_refused", refusedLockWaitNs);
+            out.put("probe_max_lock_wait_ns", maxLockWaitNs);
+            out.put("probe_refused_conflict", conflicts);
+            out.put("probe_refused_history", histories);
             List<Long> attemptDistribution = new ArrayList<>();
             int top = 63;
             while (top > 1 && attemptCounts[top] == 0) top--;
@@ -385,12 +426,12 @@ public final class RetryBench {
             if (record && !outDir.isEmpty()) {
                 try (PrintWriter w = new PrintWriter(new File(outDir, "retried-requests.csv"), "UTF-8")) {
                     w.println("worker,begin_ms,latency_ms,attempts,between_attempts_ms,requested_sleep_ms,"
-                            + "slept_ms,refused_execute_ms,max_one_sleep_ms,in_window");
+                            + "slept_ms,refused_execute_ms,max_one_sleep_ms,in_window,history_refusals");
                     for (Worker worker : workers)
                         for (long[] r : worker.rows)
-                            w.printf(Locale.ROOT, "%d,%.3f,%.3f,%d,%.3f,%d,%.3f,%.3f,%.3f,%d%n",
+                            w.printf(Locale.ROOT, "%d,%.3f,%.3f,%d,%.3f,%d,%.3f,%.3f,%.3f,%d,%d%n",
                                     r[0], (r[1] - start) / 1e6, r[2] / 1e6, r[3], r[4] / 1e6, r[5],
-                                    r[6] / 1e6, r[7] / 1e6, r[8] / 1e6, r[9]);
+                                    r[6] / 1e6, r[7] / 1e6, r[8] / 1e6, r[9], r[10]);
                 }
             }
             return out;
@@ -412,6 +453,15 @@ public final class RetryBench {
         long reqActionEnd, reqGapNs, reqRequestedMs, reqSleptNs, reqRefusedNs, reqProbeRetries, reqMaxSleptNs;
         long invocations, retriedRequests, gapNs, requestedMs, sleptNs, refusedNs, probeRetries;
         long maxSleptNs, maxCompletionGap;
+        long lastLockWait, lockWaits, lockWaitNs, refusedLockWaitNs, maxLockWaitNs, conflicts, histories;
+        long reqHistories;
+        void lockWaited(long ns) {
+            lastLockWait = ns; lockWaits++; lockWaitNs += ns; maxLockWaitNs = Math.max(maxLockWaitNs, ns);
+        }
+        void refusedFor(int reason) {
+            refusedLockWaitNs += lastLockWait;
+            if (reason == 2) { histories++; reqHistories++; } else conflicts++;
+        }
         /** The probe build's event, {runCount, requestedMs, sleptNs, failedExecuteNs}. */
         void retried(long[] e) {
             if (e[0] != reqInvocations) throw new AssertionError("probe runCount " + e[0] + " != " + reqInvocations);
@@ -482,7 +532,7 @@ public final class RetryBench {
                 while (System.nanoTime() < phase.deadline) {
                     chooseKeys();
                     reqInvocations = 0; reqGapNs = 0; reqRequestedMs = 0; reqSleptNs = 0;
-                    reqRefusedNs = 0; reqProbeRetries = 0; reqMaxSleptNs = 0;
+                    reqRefusedNs = 0; reqProbeRetries = 0; reqMaxSleptNs = 0; reqHistories = 0;
                     long begin = System.nanoTime();
                     Transaction transaction;
                     long executionBegin;
@@ -520,7 +570,7 @@ public final class RetryBench {
                         retriedRequests++;
                         retriedLatency.add(end - begin);
                         if (phase.record) rows.add(new long[] {id, begin, end - begin, runs, reqGapNs, reqRequestedMs,
-                                reqSleptNs, reqRefusedNs, reqMaxSleptNs, end <= phase.deadline ? 1 : 0});
+                                reqSleptNs, reqRefusedNs, reqMaxSleptNs, end <= phase.deadline ? 1 : 0, reqHistories});
                     }
                 }
             } catch (Throwable t) {

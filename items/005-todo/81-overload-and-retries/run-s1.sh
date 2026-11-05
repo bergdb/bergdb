@@ -1,6 +1,7 @@
 #!/bin/sh
 # bergdb 005-81: runs RetryBench on s1 (2 vCPUs), stock and probe jars in turns.
 # Usage: run-s1.sh SESSION REPS "CASE ..." where a CASE is workload:threads, such as hot:2.
+# BUILDS (default "stock probe") names the builds, such as BUILDS="stock probe2".
 # Needs /opt/bergdb-bench/005-81/{stock,probe}/java/build/bergdb.jar (built from a git
 # archive; probe/ patched by make-probe.py) and RetryBench.java in /opt/bergdb-bench/005-81/in.
 # Stops if another JVM runs. Outputs in /opt/bergdb-bench/005-81/out/SESSION/. With storage=file,
@@ -11,15 +12,18 @@ SESSION=$1; REPS=$2; CASES=$3; shift 3
 JAVA=/opt/bergdb-bench/jdk-27/bin
 O=$R/out/$SESSION
 mkdir -p $O
-for b in stock probe; do
+BUILDS=${BUILDS:-stock probe}
+for b in $BUILDS; do
   mkdir -p $R/classes-$b
   $JAVA/javac --release 17 -nowarn -Xlint:-options -cp $R/$b/java/build/bergdb.jar -d $R/classes-$b $R/in/RetryBench.java
 done
 sha256sum $R/in/RetryBench.java $R/*/java/build/bergdb.jar > $O/identity.txt
+echo "builds $BUILDS" >> $O/identity.txt
 FLAGS="-Xms1500m -Xmx1500m -XX:+UseZGC -da"
 echo "flags $FLAGS; args $*" >> $O/identity.txt
 for rep in $(seq 1 $REPS); do
-  if [ $((rep % 2)) = 1 ]; then order="stock probe"; else order="probe stock"; fi
+  order=$BUILDS
+  if [ $((rep % 2)) = 0 ]; then order=$(echo $BUILDS | awk '{for (i = NF; i > 0; i--) printf "%s ", $i}'); fi
   for c in $CASES; do
     w=${c%%:*}; t=${c##*:}
     for b in $order; do

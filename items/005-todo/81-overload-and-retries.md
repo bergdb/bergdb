@@ -312,9 +312,9 @@ Sources: `RwTransaction.executeRw()`,
    stays committed.
 
 What the runs add (section 8): on a resident hot key, a refused attempt's
-`Db.execute()` (steps 3 to 5) took 54 to 156 us on s1 on average per run,
-most of it, presumably, the wait for the busy writer's lock (not
-separated); the requested sleep was over 99.8% of the time between
+`Db.execute()` (steps 3 to 5) took 54 to 268 us on s1 on average per
+run, of which the wait for the busy writer's lock was 10% to 78%
+(section 8.8); the requested sleep was over 99.8% of the time between
 attempts, and the measured `Thread.sleep()` overshot the request by 0.17
 to 0.34 ms. The policy's sleeps, not the refused work, are where a
 retrying client's time goes on this workload. Storage waits in steps 4
@@ -364,7 +364,7 @@ with object operations) gets today, from the code at `0c6c4be`:
 | Outcome | When | Committed? | Database |
 |---|---|---|---|
 | Returns | an attempt passed the go point | yes; durable after `sync()` | goes on |
-| Waits, without bound | each attempt refused, others commit its keys (8.5) | not yet | goes on |
+| Waits, without bound | each attempt refused, under load (8.5, 8.6) | not yet | goes on |
 | The action's exception | thrown in any attempt | no | goes on |
 | `DbException`, interrupted | an interrupt during a retry sleep | no; flag set | goes on |
 | `DbStoppingException`, `DbFailedException` | at `Db.execute()`'s state checks | no | stopping or failed |
@@ -576,7 +576,8 @@ are 017-06's first step now.)
 2026-11-05: this first step is done, in section 8, with the history case
 added. Deliverable 1 has a first draft (sections 2.6 and 3.1), not yet
 reviewed; deliverable 2 has its hot-key, disjoint-key and history runs
-(sections 8.3 to 8.6) and the file, durable and reopen runs (8.7).
+(sections 8.3 to 8.6), the file, durable and reopen runs (8.7) and the
+lock wait and refusal reasons (8.8).
 
 Deliver in order:
 
@@ -649,9 +650,18 @@ In [81-overload-and-retries/](81-overload-and-retries/):
   measured `Thread.sleep()` and the refused `Db.execute()` call. The policy
   is unchanged. The harness finds the hook by reflection; on a stock jar
   it runs without it.
-* `run-s1.sh`: compiles the harness against both jars and runs the cases
+* `make-probe-db.py` (added at 07:50 for section 8.8; jar SHA-256
+  `bb2f83d5…7653`): on top of
+  `make-probe.py`, two static hooks in `Db`: `lockWaitProbe`, each
+  attempt's wait for `Db.writeLock` in `executeInner()`, and
+  `rerunReasonProbe`, the reason of each refusal, a changed key or
+  history exhaustion (the read time older than `KeyModSet`'s oldest bin,
+  where `modifiedAfter()` answers yes for any key). The jar with both
+  patches is the "probe2" build.
+* `run-s1.sh`: compiles the harness against the jars and runs the cases
   with the stock and the probe jar in turns (the order reversed on even
-  repetitions); stops if another JVM runs; logs the load before each run;
+  repetitions; `BUILDS` names the builds, default `stock probe`); stops
+  if another JVM runs; logs the load before each run;
   with `storage=file`, gives each run an empty data directory and removes
   it after.
 * `summarize.py`: the tables below from a session directory.
@@ -714,6 +724,14 @@ and `history-3000` and `history-6000` alike; for section 8.7:
     sh in/run-s1.sh file-durable 2 "hot:2 partitioned:2" reads=8 work=3000 \
         seconds=10 warmupSeconds=2 storage=file durable=true reopen=true
 
+and for section 8.8, after building `probe2/` as `probe/` above, with
+`make-probe-db.py` applied after `make-probe.py`:
+
+    BUILDS="stock probe2" sh in/run-s1.sh probe2-hot 2 "hot:2 hot:4" \
+        reads=8 work=3000 seconds=10 warmupSeconds=2
+    BUILDS="stock probe2" sh in/run-s1.sh probe2-history-3000 2 \
+        partitioned:2 reads=8 work=3000 seconds=10 warmupSeconds=2 longActionMs=3000
+
 Then, on F53:
 `python3 -I summarize.py /Users/f/fl/bench/005-81/2026-11-05/main`.
 
@@ -721,7 +739,8 @@ The session `main` ran the harness before `longActionMs` was added
 (SHA-256 `dcc8ead2…2bf9`, kept in `out/main/RetryBench.java`); `ref` and
 the history sessions ran the one of the first commit (`89619c52…d26b`);
 the file sessions the one with `reopen` (`1bc32a8a…9b5d`, committed
-second; each session's `identity.txt` has its hash). The additions are options, off by default. A smoke session (`smoke`, 2 s windows) came
+second); the probe2 sessions the one with the Db hooks (`84ed9d7a…eb9d`,
+committed third). Each session's `identity.txt` has its hash. The additions are options, off by default. A smoke session (`smoke`, 2 s windows) came
 first and is not reported.
 
 ### 8.3. Hot key and disjoint keys
@@ -962,15 +981,48 @@ The probe build's sleeps: append, hot: 48 and 42 retries, 11,150 and
     a `sync()` on s1's disk, outside the loop (sections 2.1 and 2.6,
     step 8). A note for 017-06, not for the retries.
 
-### 8.8. What is left
+### 8.8. The lock wait and the reason of each refusal
+
+Sessions `probe2-hot` (07:50 to 07:53; `hot`, 2 and 4 workers) and
+`probe2-history-3000` (07:53 to 07:54; section 8.6's 3,000 ms case), s1,
+2 vCPUs, `BUILDS="stock probe2"`, two runs per build and case, the
+workload of 8.3. All passed their checks; in the probe2 build the
+refusal reasons and the lock waits matched the attempts for every run.
+The stock runs repeat 8.3 and 8.6: every hot run had a request of 11
+attempts, 10,233 to 10,235 ms.
+
+| Run | Refused, changed key | Refused, history | Lock wait us per refusal | Refused execute us per retry |
+|---|--:|--:|--:|--:|
+| hot t2 probe2 1 | 11 | 0 | 67.6 | 119.0 |
+| hot t2 probe2 2 | 39 | 0 | 5.5 | 56.2 |
+| hot t4 probe2 1 | 85 | 0 | 209.6 | 267.6 |
+| hot t4 probe2 2 | 48 | 0 | 57.8 | 157.6 |
+| history 3,000 probe2 1 | 0 | 2 | 3.2 | 166.7 |
+| history 3,000 probe2 2 | 0 | 2 | 1.8 | 183.4 |
+
+The attempts that were not refused waited 44 to 56 ns on average for the
+lock; the longest single wait was 0.2 to 6.0 ms. Requested and measured
+sleeps as in 8.4: 0.12 to 0.29 ms over the request per retry.
+
+12. **The reasons are what the setup says.** Every refusal on the hot
+    key was a changed key, every refusal of the long action history
+    exhaustion: the probe confirms section 8.6's reading and is a way to
+    tell the two apart (contract point 3).
+13. **A refused attempt costs about 0.1 to 0.3 ms, partly the lock.** On
+    the hot key the wait for `Db.writeLock` behind the busy writer was
+    10% to 78% of the refused `execute()`; the rest (the warmup, the
+    checks, being descheduled on 2 vCPUs) was not split further. Either
+    way it is three orders of magnitude below the sleeps.
+
+### 8.9. What is left
 
 * Deliverable 1: Frans's review of sections 2.6 and 3.1.
 * Deliverable 2: indexed W transactions (the other caller of
-  `executeRw()`); a new caller arriving behind retriers; the reason of
-  each refusal recorded by a probe (conflict or history), to check
-  section 8.6's reading; and, if wanted, the lock wait separated from the
-  rest of a refused `execute()`. Both need a probe in `Db`, a second patch
-  of `make-probe.py`'s kind. F53's runs, if wanted, in a quiet block.
+  `executeRw()`, through `WTransaction.execute()` with object operations);
+  a new caller arriving behind retriers (the hot runs show that the busy
+  worker's fresh requests win over the sleeper, but no separate arrival
+  was measured); a baseline report that gathers sections 8.3 to 8.8 for
+  review. F53's runs, if wanted, in a quiet block.
 * Deliverable 3: the variants R0 to R2 (section 4) as further patches of
   `make-probe.py`'s kind over the same archive, measured against this
   baseline; then the `executeRw()` proposal, Frans's decision.
@@ -997,7 +1049,7 @@ and first step rewritten for the retries; replication's waits dropped
 dated notes for 005-47, 005-11 and 005-52 in section 2. The code was not
 reviewed again. By Claude (Opus 5.5, Claude Code).
 
-2026-11-05, 07:20 to 07:50. Section 7's first step, at Frans's approval
+2026-11-05, 07:20 to 08:00. Section 7's first step, at Frans's approval
 ("005-81 (retries) gets its harness and the hot-key and disjoint-key
 baselines, timed on s1."). Built the harness (`RetryBench.java`, from
 006-11's), the probe patch (`make-probe.py`), the runner and the
@@ -1005,7 +1057,8 @@ summarizer in [81-overload-and-retries/](81-overload-and-retries/);
 built stock and probe jars on s1 from `git archive` of `0c6c4be`; ran 24
 hot-key and disjoint-key runs, 6 one-worker references and 12
 history-exhaustion runs on s1 (2 vCPUs), then 16 runs with file storage
-and durable commits, with a reopen check; all checks passed (section 8).
+and durable commits, with a reopen check, and 12 with a probe of the lock
+wait and the refusal's reason in `Db`; all checks passed (section 8).
 The 10 s hot-key tail reproduces as 11 attempts of accumulating sleeps;
 a long action under unrelated writes never commits while the load lasts.
 Drafted the wait-point map (section 2.6) and the contract (section 3.1)
