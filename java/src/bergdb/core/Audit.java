@@ -195,14 +195,22 @@ public final class Audit {
         // The handles (bergdb item 009, step 3a): the table's are live, each with its node's
         // object or none; a handle's object is of its node. A handle may hold a version that
         // is not canonical (until step 3a the node table named canonical objects only).
+        // Each is looked at under its map's lock, and only if it is still the table's: a
+        // reader that kept nothing removes its empty handle (Cache3.dropIfEmpty) under that
+        // lock, without the write lock, also after the copy (handles()) has passed its map
+        // (bergdb 015-71; 016-06, R4-F6: until then such a handle was reported as a dead
+        // handle of the table).
         for (Handle h : table.handles()) {
-            if (h.isDead()) {
-                fail(failures, "handles: the node table has a dead handle of node " + h.id);
-            }
-            Node o = h.obj;
-            if (o != null && o.getId() != h.id) {
-                fail(failures, "handles: the handle of node " + h.id + " holds an object of node "
-                        + o.getId());
+            synchronized (table.getLock(h.id)) {
+                if (table.liveHandle(h.id) != h) continue;      // removed since the copy
+                if (h.isDead()) {
+                    fail(failures, "handles: the node table has a dead handle of node " + h.id);
+                }
+                Node o = h.obj;
+                if (o != null && o.getId() != h.id) {
+                    fail(failures, "handles: the handle of node " + h.id
+                            + " holds an object of node " + o.getId());
+                }
             }
         }
 
@@ -232,7 +240,9 @@ public final class Audit {
 
         // The handles in the pointers (bergdb item 009, step 3d): a live handle that a pointer
         // of a resident object holds is the table's handle for its node (one live handle per
-        // node id, 009-02, 4.10); a dead one has no object.
+        // node id, 009-02, 4.10); a dead one has no object. Its state and the table looked at
+        // together, under its map's lock, under which a reader's cleanup (dropIfEmpty) makes
+        // a handle dead and removes it (bergdb 015-71).
         for (Node x : resident) {
             if (!x.isIndexNode()) continue;
             int size = x.getSize();
@@ -240,13 +250,17 @@ public final class Audit {
                 Pointee pe = x.getPointee(i);
                 if (!(pe instanceof Handle)) continue;
                 Handle h = (Handle) pe;
-                if (h.isDead()) {
-                    if (h.obj != null) {
-                        fail(failures, "handles: a dead handle of node " + h.id + " has an object");
+                synchronized (table.getLock(h.id)) {
+                    if (h.isDead()) {
+                        if (h.obj != null) {
+                            fail(failures, "handles: a dead handle of node " + h.id
+                                    + " has an object");
+                        }
+                    } else if (h.state() == Handle.LIVE && table.liveHandle(h.id) != h) {
+                        fail(failures, "handles: pointer " + i + " of node " + x.getId()
+                                + " holds a live handle of node " + h.id
+                                + " that is not the table's");
                     }
-                } else if (h.state() == Handle.LIVE && table.liveHandle(h.id) != h) {
-                    fail(failures, "handles: pointer " + i + " of node " + x.getId()
-                            + " holds a live handle of node " + h.id + " that is not the table's");
                 }
             }
         }

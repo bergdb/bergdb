@@ -570,4 +570,98 @@ public class EvictionReaderTester {
         }
         db.close();
     }
+
+    /**
+     * The audit and a reader's cleanup of an empty handle (bergdb 015-71; 016-06, R4-F6): a
+     * reader that kept nothing removes its empty handle from the node table
+     * (Cache3.dropIfEmpty) under the handle's map lock, without the write lock, which the
+     * audit's caller holds. The audit is paused after its copy of the table's handles
+     * (Cache3.handles) has passed map 0, which holds the empty handle, and before it has
+     * finished: the test holds the oracle's monitor until the audit waits for it, takes the
+     * lock of a later map, which holds no handle, lets the audit go on until it waits for
+     * that lock, then runs the reader's cleanup and lets go of the lock. The audit passes:
+     * the handle left the table before the audit looked at it. Until 015-71 it reported
+     * "the node table has a dead handle" of the handle the reader had removed.
+     */
+    @Nano
+    public static void testAuditWithReaderCleanup() throws Exception {
+        final Db db = Db.builder().testSetup(new MemoryStream()).audit(1).start();
+        Thread auditor = null, blocker = null;
+        final CountDownLatch mapHeld = new CountDownLatch(1), mapRelease = new CountDownLatch(1);
+        try {
+            final Db.Internal in = db.internal();
+            Cache3 cache = in.cache();
+            long earlyId = 100001;
+            while (Cache3.mapIndex(earlyId) != 0) earlyId += 2;
+            Handle empty = cache.liveOrNewHandle(earlyId);      // a reader's, before its load
+            int late = Cache3.maps() - 1;
+            Set<Integer> used = new java.util.HashSet<Integer>();
+            for (Handle h : cache.handles()) used.add(Cache3.mapIndex(h.id));
+            while (used.contains(late)) late--;
+            Assert.assertTrue("a later map without handles", late > 0);
+            long lateId = earlyId + 2;
+            while (Cache3.mapIndex(lateId) != late) lateId += 2;
+            final Object lateMap = cache.getLock(lateId);
+            final List<String> result = new ArrayList<String>();
+            final Throwable[] problem = new Throwable[1];
+            blocker = new Thread(new Runnable() {
+                public void run() {
+                    synchronized (lateMap) {
+                        mapHeld.countDown();
+                        try {
+                            mapRelease.await(5, TimeUnit.SECONDS);
+                        } catch (InterruptedException e) {
+                            // ends
+                        }
+                    }
+                }
+            }, "map-holder");
+            auditor = new Thread(new Runnable() {
+                public void run() {
+                    try {
+                        synchronized (in.getWriteLock()) {
+                            result.addAll(Audit.check(db));
+                        }
+                    } catch (Throwable x) {
+                        problem[0] = x;
+                    }
+                }
+            }, "auditor");
+            synchronized (in.oracle()) {
+                auditor.start();
+                blockedIn(auditor, "bergdb.core.Audit$Oracle", "latest");
+                blocker.start();                    // the table's objects copied: holds lateMap
+                Assert.assertTrue(mapHeld.await(5, TimeUnit.SECONDS));
+            }
+            blockedIn(auditor, "bergdb.core.Cache3", "handles");    // past map 0
+            cache.dropIfEmpty(empty);               // the reader's cleanup
+            Assert.assertTrue("removed", empty.isDead() && cache.liveHandle(earlyId) == null);
+            mapRelease.countDown();
+            auditor.join(5000);
+            Assert.assertFalse("the audit ended", auditor.isAlive());
+            Assert.assertTrue("the audit threw " + problem[0], problem[0] == null);
+            Assert.assertTrue("the audit: " + result, result.isEmpty());
+        } finally {
+            mapRelease.countDown();
+            if (blocker != null) blocker.join(5000);
+            if (auditor != null) auditor.join(5000);
+            db.close();
+        }
+    }
+
+    /** Waits until 'thread' is blocked on a monitor in className.method, at most 5 s. */
+    private static void blockedIn(Thread thread, String className, String method) {
+        long end = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (System.nanoTime() < end) {
+            if (thread.getState() == Thread.State.BLOCKED) {
+                for (StackTraceElement f : thread.getStackTrace()) {
+                    if (f.getClassName().equals(className) && f.getMethodName().equals(method)) {
+                        return;
+                    }
+                }
+            }
+            Thread.yield();
+        }
+        throw new AssertionError("not blocked in " + className + "." + method);
+    }
 }
