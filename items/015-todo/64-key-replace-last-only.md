@@ -41,3 +41,9 @@ one directory).
   unchanged, and StreamDigest's workloads use the Core API, so its digests are
   unchanged (P2; 018-01, section 2). A line in `releases/next.md`.
 * Gate: `before-commit.sh`: `BEFORE COMMIT OK (104 s)`, unit 1154, f 81.
+
+2026-11-05, 11:49. Frans, to session bergdb-e8, on whether to keep the
+code fix (a), revert it and say "the last occurrence" in the Javadoc (b),
+or refuse a key with more than one occurrence (c): "as recommended", (a).
+A key with two or more occurrences is stored under another key than in
+2026.2; `releases/next.md` says so.
