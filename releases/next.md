@@ -178,6 +178,12 @@ Reliability
   database one batch, which a writer may wait for, did more work than its
   bound. A map with more handles than a batch has left is now taken in
   parts, and the next batch goes on where one stopped.
+* **A start no longer keeps the large values of its rerun in memory**
+  (bergdb 015-68, 016-06's R4-F3; 2026-11-05). A start reruns the
+  transactions after the startup position; their values over 1 MiB stayed
+  in memory, outside the cache's budget, until the database's next write,
+  so a database opened for reads kept them for as long as it ran. They are
+  now treated as after any write: read from the stream when needed.
 
 * **A record whose size field is larger than its content is refused** at a
   start (bergdb 015-72, 016-06's R6-F1; 2026-11-05), with a

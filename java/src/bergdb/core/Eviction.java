@@ -804,7 +804,10 @@ public final class Eviction {
         return new long[] {bytes, n};
     }
 
-    /** The large values the writer made in this transaction: {holder, index, value}. */
+    /**
+     * The large values the writer made in this transaction, or the start in its rerun of the
+     * transactions (bergdb 015-68): {holder, index, value}.
+     */
     private final java.util.ArrayList<Object[]> largeValues = new java.util.ArrayList<Object[]>();
 
     /**
@@ -823,7 +826,9 @@ public final class Eviction {
      * key node to a value over 1 MiB becomes a stream pointer, as a read does not cache such
      * a value either (Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES). With eviction on (any schedule
      * but none). Until step 3b a sweep took them, first. The work is the record's: its key
-     * nodes' pointers. The caller holds Db.writeLock (Db.store).
+     * nodes' pointers. The caller holds Db.writeLock (Db.store; and Db's start, with no
+     * written nodes, for the large values of its rerun of the transactions, whose records are
+     * in the stream: bergdb 015-68).
      */
     public void recordWritten(Db db, java.util.Iterator<Node> written) {
         if (schedule == Schedule.NONE) {
@@ -2059,6 +2064,58 @@ public final class Eviction {
                 for (long id : ids) if (in.cache().liveHandle(id) != null) left++;
                 Assert.assertEquals("the next batch took the rest of map 0", 0, left);
             }
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * A start applies the admission to the large values that its rerun of transactions made,
+     * and leaves no pending one (bergdb 015-68; 016-06, R4-F3): three values of 1,200 KiB,
+     * over 1 MiB, written, the database restarted from the stream with a budget of 100 MB,
+     * so that no batch takes them. After the start the admission list is empty, and no
+     * resident pointer holds a value over 1 MiB: they are stream pointers, as after the
+     * record of a transaction that a running database writes (recordWritten). Until 015-68
+     * the rerun's pointer listener (Db.newPutData) put them on the list, which only a later
+     * write drained: a database opened for reads kept them in memory for as long as it ran,
+     * outside the resident bytes.
+     */
+    @Nano
+    public static void testStartAdmitsLargeValues() {
+        MemoryStream s = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        byte[] value = new byte[1200 * 1024];
+        Db db0 = Db.builder().testSetup(s).clock(clock).testId().audit(0).start();
+        try {
+            clock.setTime(100 * STEP);
+            db0.execute(db0.trans().put("a", value).put("b", value).put("c", value).build());
+        } finally {
+            db0.close();
+        }
+        Db db = Db.builder().testSetup(s.copy()).clock(clock).testId()
+                .cacheSizeIndicator(100L * 1000 * 1000).evictionSchedule(Schedule.BUDGET, 1)
+                .audit(0).start();
+        try {
+            Db.Internal in = db.internal();
+            Eviction e = in.eviction();
+            synchronized (in.getWriteLock()) {
+                Assert.assertEquals("pending large values after the start", 0,
+                        e.largeValues.size());
+                int large = 0;
+                for (Node x : in.cache().nodes()) {
+                    for (int i = 0; i < x.getSize(); i++) {
+                        Pointee p = x.getPointee(i);
+                        if (p instanceof ValueNode
+                                && !Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES.shouldCache(
+                                        (ValueNode) p)) {
+                            large++;
+                        }
+                    }
+                }
+                Assert.assertEquals("resident pointers to values over 1 MiB", 0, large);
+            }
+            Assert.assertTrue("the value read", java.util.Arrays.equals(value,
+                    DbUtil.get(db, "b")));
         } finally {
             db.close();
         }

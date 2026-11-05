@@ -684,6 +684,13 @@ public class Db implements AutoCloseable {
         this.state = DbState.ACTIVE;
         reclaim.initFromDb();
         synchronized (writeLock) {
+            // The admission of the large values that the rerun of the transactions made, as
+            // after a record that this database writes (Eviction.recordWritten): their records
+            // are in the stream, and their pointers become stream pointers; the list is empty
+            // after it (bergdb 015-68). Until 015-68 the rerun's pointer listener (newPutData)
+            // put them on the list, and only the next transaction's record took them off: a
+            // database opened for reads kept them in memory, outside the resident bytes.
+            eviction.recordWritten(this, java.util.Collections.<Node>emptyIterator());
             eviction.afterTransaction(this);    // the controller, after startup's loads (J7)
         }
         if (auditEvery > 0) {
