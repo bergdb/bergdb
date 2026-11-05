@@ -22,6 +22,8 @@ Rules
 * An AI agent does not take up a topic on its own. A topic is taken up one
   at a time with Frans; a bounded piece of it can become an entry of a todo
   list.
+* A small idea to consider, too small for a topic of its own, is a
+  section of 017-07, "To consider" (Frans, 2026-11-05).
 * An entry of 005, 015 or 019 that turns out to be long-term is moved
   here by Frans, one at a time: its contents become a new subitem here,
   its row moves to its list's Closed table (status moved), and its file
@@ -56,6 +58,9 @@ Files
   belong in BergDB and which in the application, and the behaviour at and
   above capacity and after it. Split from 005-81 on 2026-11-04; the
   retries stay in 005-81. Open; notes only.
+* [017-07](07-to-consider/readme.md). To consider: small ideas that
+  Frans may take up some day, one section each; first, a get that always
+  copies a `byte[]` value (from 019-03). Open; a collection.
 
 
 Log
@@ -93,3 +98,8 @@ from 005-81 by Frans (19:11): "005-81, I like your idea to split this. So,
 split it." The retry fix stays in 005-81, narrowed to bounded work; the
 broad, open-ended question of admission control and backpressure under
 overload is this topic.
+
+2026-11-05. 017-07, "To consider", created at Frans's request (12:16)
+for small ideas that are not todos for the next release; its first
+section is 019-03, a get that always copies a `byte[]` value, moved from
+019.

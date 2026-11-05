@@ -147,7 +147,8 @@ Index
   known issue at the release but in DbObject and user indexes, which are
   experimental; 010's principles hold, and Frans approves any change of
   the stream format. The plan, its decisions and the work towards it.
-* **019-todo** (open). Short tasks on BergDB, each done and closed in
-  about a day, mostly by an AI agent, unattended or after a decision or
-  answers from Frans; every new todo entry since 2026-11-05. Long-term
-  topics go to 017.
+* **019-todo** (open). Short tasks on BergDB, each done and closed in a
+  day or two, mostly by an AI agent, unattended or after a decision or
+  answers from Frans, and all done before the next release but Frans's
+  exceptions; every new todo entry since 2026-11-05. Long-term topics and
+  ideas to consider go to 017.

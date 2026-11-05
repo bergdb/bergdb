@@ -4,7 +4,7 @@
 Created 2026-11-05 by Frans Lundberg. Status: open.
 
 Short tasks on BergDB: faults to fix, things to investigate, decisions to
-prepare, changes to make, each done and closed in about a day. Most are
+prepare, changes to make, each done and closed in a day or two. Most are
 for an AI agent to do unattended, alone or after a limited input from
 Frans: a decision between options, or answers to questions. Each entry is
 a subitem with its own ID.
@@ -21,15 +21,19 @@ What goes where
 ---------------
 
 * **Here**: a task with a clear "Done when" that an agent can finish and
-  close in about a day, its gates and timed runs included.
+  close in a day or two, its gates and timed runs included. Every open
+  entry is done before the next release, unless Frans makes an exception
+  (Frans, 2026-11-05, 12:16).
+* **017-07, "To consider"**: an idea that Frans may consider some day,
+  not a todo for the next release.
 * **017-long-term**: open-ended, long-term and strategy topics, with no
   fixed "Done when", that need Frans's thinking (017's rules).
-* **An item of its own**: bounded work larger than a day, with a plan,
+* **An item of its own**: bounded work larger than a day or two, with a plan,
   several steps or a status that stays open for a while (the items
   readme, "Small work").
 * **006-2026-q4**: small work done at once at Frans's request, such as a
   summary or a review. An entry here is a task registered for later.
-* An entry that turns out larger than a day moves to an item of its own;
+* An entry that turns out larger than a day or two moves to an item of its own;
   one that turns out open-ended is moved to 017 by Frans (017's rules).
   Its row moves to Closed with status moved, and its file stays with a
   link to where the work went.
@@ -102,9 +106,8 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
-| [019-01](01-metablock-version-high-bytes.md) | Fix | A meta block's version is read as 2 bytes; bytes 6 and 7 are not checked | none | open |
-| [019-02](02-stream-bad-length-exceptions.md) | Fix | The streams refuse a bad length with other exceptions | none | open |
-| [019-03](03-get-that-copies.md) | Decide | A get that always copies a byte[] value | decision | waiting |
+| [019-01](01-metablock-version-high-bytes.md) | Fix | A meta block's version: bytes 6 and 7 unchecked | none | open |
+| [019-02](02-stream-bad-length-exceptions.md) | Fix | Streams refuse a bad length with other exceptions | none | open |
 
 
 Closed
@@ -112,6 +115,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-03](03-get-that-copies.md) | Decide | A get that always copies a byte[] value | decision | moved | 2026-11-05 |
 
 Status values: open, waiting (for Frans's input), in progress, done,
 dropped, moved (to an item of its own or to 017). Kinds: Fix (a known
@@ -131,8 +135,7 @@ Files
   array, with other exceptions than the `IllegalArgumentException` that
   `AppendOnlyStream` promises; found by 018-02's harness.
 * [03-get-that-copies.md](03-get-that-copies.md). 019-03, Decide: a get
-  that always copies a `byte[]` value, beside 015-47's zero-copy gets;
-  for Frans, another time.
+  that always copies a `byte[]` value; moved to 017-07, section 1.
 
 
 Log
@@ -156,3 +159,9 @@ contract (018-02).
 
 2026-11-05. 019-03 registered by session bergdb-e8, from Frans's words
 of 12:00 on 015-47 ("for another time").
+
+2026-11-05, 12:16. Frans: every open entry is done before the next
+release, unless he makes an exception; an entry takes "a day or two", not
+"about a day" (in his words: "Yes, this is a good rule. Add this. And
+relax the thing about fixing within one day. Make it 'a day or two'.").
+019-03 moved to 017-07, "To consider", section 1: an idea, not a todo.
