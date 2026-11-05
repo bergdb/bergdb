@@ -19,3 +19,9 @@ Log
 ---
 
 2026-11-04. Registered by the coordinator of release 2026.2 (016-02).
+
+2026-11-05. The harness of 018-02 (the stream contract, 018-01, section
+6.3) catches it: `StorageContractTester.testBufferedStream` and
+`testStorageManager`, checks "a read past the end" and "an empty stream",
+fail and name 015-83. Its fix removes the skip line "015-83" from
+`StreamContract.SKIP`.

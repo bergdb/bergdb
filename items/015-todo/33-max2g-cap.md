@@ -21,3 +21,9 @@ Log
 ---
 
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
+
+2026-11-05. The harness of 018-02 (the stream contract, 018-01, section
+6.3) catches it: `StreamContractTester.testFileStreamSizeLimit` makes
+R2-F4's directory directly, with sparse files, in 0.07 s, and fails and
+names 015-33 (a file of 2,100,000,000 bytes). Its fix removes the skip
+line "015-33" from `StreamContract.SKIP`.

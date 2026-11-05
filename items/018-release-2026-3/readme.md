@@ -22,6 +22,13 @@ Files
   * his exceptions (none yet);
   * the harnesses by fault class, proposed;
   * the work W1 to W5.
+* [02-harness-stream-contract.md](02-harness-stream-contract.md). 018-02,
+  harness 6.3, the stream contract, built: a strict `AppendOnlyStream`
+  for tests, a contract tester that every implementation passes,
+  `BufferedStream` and `StorageManager` on the strict stream; it fails on
+  the six known faults of its class and found 019-02; its skip list, where
+  it runs (the unit tests, 0.6 s; the night tests, 20 s), what it does not
+  cover.
 
 
 Log
@@ -36,3 +43,9 @@ morning, and Frans answered it at 09:28. Nothing started.
 rest of the Pub API in the goal, the limits not known issues, the
 experimental methods, when the release is ready) and his rules (010's
 principles; the stream format).
+
+2026-11-05. 018-02: harness 6.3, the stream contract, built (W2), the
+first harness, as Frans chose at 10:27. It fails on 015-26, 31, 33, 79, 80
+and 83, each failure named by its entry, and found a seventh fault,
+019-02; with its skip list of the seven it passes, in the unit tests of
+`before-commit.sh` and in the night tests. BEFORE COMMIT OK.

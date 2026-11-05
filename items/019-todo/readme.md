@@ -103,6 +103,7 @@ Open
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
 | [019-01](01-metablock-version-high-bytes.md) | Fix | A meta block's version is read as 2 bytes; bytes 6 and 7 are not checked | none | open |
+| [019-02](02-stream-bad-length-exceptions.md) | Fix | The streams refuse a bad length with other exceptions | none | open |
 
 
 Closed
@@ -124,6 +125,10 @@ Files
 * [01-metablock-version-high-bytes.md](01-metablock-version-high-bytes.md).
   019-01, Fix: a meta block's version is read as 2 bytes, so bytes 6 and
   7 are not checked (R6-F3, from 015-74).
+* [02-stream-bad-length-exceptions.md](02-stream-bad-length-exceptions.md).
+  019-02, Fix: the streams refuse a negative length, or one past the
+  array, with other exceptions than the `IllegalArgumentException` that
+  `AppendOnlyStream` promises; found by 018-02's harness.
 
 
 Log
@@ -141,3 +146,6 @@ entries.
 
 2026-11-05. 019-01 registered by session bergdb-e8, at Frans's word
 (10:47), from 015-74's optional code change (R6-F3).
+
+2026-11-05. 019-02 registered: found by the harness of the stream
+contract (018-02).

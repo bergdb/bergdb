@@ -24,3 +24,8 @@ Log
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-04. Review R5 found the same, or its counterpart in StorageManager (R5-F4, items/016-release-2026-2/06-reviews/R5.md).
+
+2026-11-05. The harness of 018-02 (the stream contract, 018-01, section
+6.3) catches it: `StreamContractTester.testFileStream`, check "a negative
+append", fails and names 015-26. Its fix removes the skip line "015-26"
+from `StreamContract.SKIP`.

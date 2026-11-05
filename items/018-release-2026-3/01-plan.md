@@ -123,6 +123,11 @@ Of these:
   38). The others have the reviewer's own test or probe. Each fix starts
   with its failing test anyway, by its entry's "Done when".
 
+Changed since, 2026-11-05: 015-27 left the list (intended, not a fault);
+019-01 joined (a meta block's version read as 2 bytes, from 015-74), and
+019-02 (the streams' refusals of a bad length, found by harness 6.3,
+018-02).
+
 
 ### 3.2. Outside the goal
 
@@ -269,6 +274,10 @@ for 2026.3: they are experimental (D2).
   length, the file-size limit.
 * What it checks: no breach in any run, and every implementation passes
   the contract tester.
+* Built on 2026-11-05: see 018-02. It fails on each of the six, and found
+  019-02. It runs in the unit tests of `before-commit.sh`, at no cost to
+  its time, and in the night tests; its skip list holds the seven until
+  their fixes remove their lines.
 
 
 ### 6.4. Sizes and times at their limits
@@ -331,7 +340,8 @@ Fixed one at a time:
   `releases/next.md`. Their tests stay in `before-commit.sh`. Done
   2026-11-05.
 * **W2. The harnesses** (section 6), one at a time, the first chosen with
-  Frans. Not started.
+  Frans. Frans chose 6.3 first (2026-11-05, 10:27); built that day
+  (018-02). Next: 6.2, on 6.3's strict stream.
 * **W3. The Core's faults** (section 3.1), in any order (point 5). Each
   is fixed by its entry: its failing test, the fix, `BEFORE COMMIT OK`,
   and the level script of a mechanism it changes (AGENTS.md), within
@@ -379,3 +389,7 @@ recommended, this is intended, durability is handled separately": done,
 not a fault, and out of the goal's list; 015-74's optional check "as
 recommended": registered as 019-01, a fault of the Core that joins the
 list, for harness 6.1's class. 015-05 is to be discussed further.
+
+2026-11-05, 10:52. W2's first harness, 6.3, built (018-02): sections 6.3
+and 7 updated. It found 019-02, which joins the goal's list (section
+3.1).

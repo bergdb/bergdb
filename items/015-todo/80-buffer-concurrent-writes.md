@@ -19,3 +19,13 @@ Log
 ---
 
 2026-11-04. Registered by the coordinator of release 2026.2 (016-02).
+
+2026-11-05. The harness of 018-02 (the stream contract, 018-01, section
+6.3) catches it: `StorageContractTester.testOneWriterBufferedStream` and
+`testOneWriterStorageManager` force R5-F5's order on a `StrictStream` and
+fail and name 015-80, and so do the workloads, most runs. The harness
+also counts `getFirstPos()`, which the Javadoc puts under the write lock
+too: `BufferedStream.getFirstPos()` calls the stream below beside the
+thread's append, the same fault; a fix that leaves it still fails the
+harness, under 015-80. Its fix removes the skip line "015-80" from
+`StreamContract.SKIP`.

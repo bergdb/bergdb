@@ -11,6 +11,7 @@ public class Pack implements IPack {
         Pack.class,
         RecoverableStream.class,
         RecoverableStream.Tester.class,
+        StorageContractTester.class,
         StorageManager.class,
         StorageManagerTester.class,
         StreamException.class,

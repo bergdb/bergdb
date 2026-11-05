@@ -21,3 +21,8 @@ Log
 ---
 
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
+
+2026-11-05. The harness of 018-02 (the stream contract, 018-01, section
+6.3) catches it: `StreamContractTester.testFileStream`, checks "a cut at
+the length", 0 and 3, fail and name 015-31. Its fix removes the skip line
+"015-31" from `StreamContract.SKIP`.
