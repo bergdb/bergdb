@@ -271,10 +271,9 @@ public class FileStream implements AppendOnlyStream {
             createDirIfNeeded();
             lockDir();
             handleExistingFiles();
-        } catch (IOException e) {
-            closeAfterFailedOpen(e);
-            throw e;
-        } catch (RuntimeException e) {
+        } catch (IOException | RuntimeException | Error e) {
+            // An Error too (2026-11-05, bergdb 015-32): it left the directory in LOCKED_DIRS,
+            // and a new FileStream on it was refused until the JVM ended.
             closeAfterFailedOpen(e);
             throw e;
         }
@@ -1180,13 +1179,18 @@ public class FileStream implements AppendOnlyStream {
             k.fileLength = k.rfile.length();
             k.forcedLength = k.fileLength;
             k.channel = io.openRead(file);
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException | Error e) {
+            // The file is closed whatever is thrown (2026-11-05, bergdb 015-32): it stayed open
+            // after an unchecked exception or an Error, as 'k' is in no list that a close or
+            // closeAfterFailedOpen() reaches.
             try {
                 k.rfile.close();
             } catch (IOException closeFailure) {
                 e.addSuppressed(closeFailure);
             }
-            ioException = e;
+            if (e instanceof IOException) {
+                ioException = (IOException) e;
+            }
             throw e;
         }
         k.isRw = true;
@@ -1890,6 +1894,54 @@ public class FileStream implements AppendOnlyStream {
         Assert.assertEquals(1000*1000, f.dbFiles[f.dbFiles.length - 1].fileLength);
         
         f.close();
+    }
+    
+    /**
+     * Regression test for bergdb 015-32 (review R2-F3): a new stream whose open of its first
+     * file fails closes that file and releases the directory, whatever it throws. Before, an
+     * unchecked exception left the file open (only an IOException closed it), and an Error
+     * left the directory locked within the JVM: a new FileStream on it was refused with a
+     * DirectoryInUseException until the JVM ended.
+     */
+    @Nano
+    public static void testFailedOpenClosesFileAndUnlocks(TestEnvironment c) throws IOException {
+        String[] kinds = {"an IOException", "an unchecked exception", "an Error"};
+        for (int kind = 0; kind < kinds.length; kind++) {
+            final int k = kind;
+            final RandomAccessFile[] opened = new RandomAccessFile[1];
+            FileStreamIo io = new FileStreamIo() {
+                protected RandomAccessFile open(File file) throws IOException {
+                    return opened[0] = super.open(file);
+                }
+                protected void forceFile(File file, RandomAccessFile handle,
+                        FileStreamIo.Force why) throws IOException {
+                    if (why == FileStreamIo.Force.OPEN) {
+                        if (k == 0) throw new IOException("injected");
+                        if (k == 1) throw new IllegalStateException("injected");
+                        throw new AssertionError("injected");
+                    }
+                    super.forceFile(file, handle, why);
+                }
+            };
+            File dir = c.createTempDir();
+            Throwable thrown = null;
+            try {
+                new FileStream(dir, io).close();
+            } catch (IOException | RuntimeException | Error e) {
+                thrown = e;
+            }
+            Assert.assertTrue("the open throws " + kinds[k] + ": " + thrown,
+                    thrown != null && "injected".equals(thrown.getMessage()));
+            Assert.assertTrue("a file was opened", opened[0] != null);
+            boolean open = opened[0].getFD().valid();
+            opened[0].close();
+            Assert.assertFalse("the file is closed after " + kinds[k], open);
+            try {
+                new FileStream(dir).close();
+            } catch (DirectoryInUseException e) {
+                throw new AssertionError("the directory is locked after " + kinds[k], e);
+            }
+        }
     }
     
     // ---- bergdb 005-47: per-append forcing off ----

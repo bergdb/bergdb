@@ -245,6 +245,13 @@ Reliability
   interrupted as it stopped, ended without closing the stream (reached
   only by the Core's `BufferedStream.stop()` and `StorageManager.stop()`).
   The stream's bytes are unchanged.
+* **A failed open of a directory closes its file and releases the
+  directory** (bergdb 015-32, 016-06's R2-F3; 2026-11-05), whatever it
+  throws. After an unchecked exception (such as from a file system) the
+  opened stream file stayed open; after an `Error` (such as
+  `OutOfMemoryError`) the directory also stayed locked within the JVM, and
+  a new start on it was refused with `DirectoryInUseException` until the
+  JVM ended. The stream's bytes are unchanged.
 
 Format
 ------
