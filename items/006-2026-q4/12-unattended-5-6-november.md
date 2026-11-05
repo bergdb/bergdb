@@ -45,9 +45,16 @@ the work does not wait for the answers):
    during the day, its change (U6) joins W1 after the stream fixes.
    015-05 and 015-27 (Decide) likewise. Otherwise they stay for him.
 
-Frans's answers:
+Frans's answers, 2026-11-05, 09:02:
 
-* (none yet)
+1. "Yes, as proposed. I will call it coord-1105 and start it in the
+   afternoon."
+2. "Yes, as the current plan."
+3. "Yes, as the current plan."
+4. "W3, I need to look at this." Open: W3 waits for Frans; without his
+   word by 15:00 it does not run tonight.
+5. "To be done during the day." The decisions are Frans's during the day;
+   the change of any that he decides joins W1.
 
 
 ## 2. Ground rules
