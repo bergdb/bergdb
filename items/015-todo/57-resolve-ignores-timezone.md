@@ -1,7 +1,7 @@
 015-57. Fix: time.resolve(TimeZone, String) ignores its time zone
 =================================================================
 
-Status: open. Kind: Fix. Created 2026-11-04 by Frans Lundberg.
+Status: done 2026-11-05, night 006-12. Kind: Fix. Created 2026-11-04 by Frans Lundberg.
 
 After release 2026.2 (a known issue of it); in 2026.1 too.
 
@@ -19,3 +19,18 @@ Log
 ---
 
 2026-11-04. Registered by the coordinator of release 2026.2 (016-02).
+
+2026-11-05. Done in night 006-12. Verified with R8's test, made
+`Time.testResolveUsesTheTimeZone` (in `Time`, beside its other resolve
+tests, with a winter time too): before the fix "Expected 2013-08-19
+12:29:00.0000000, got 2013-08-19 14:29:00.0000000."; it passes after.
+
+* Fix, R8's: `Time.resolve(TimeZone, String)` passes its zone to
+  `TimeResolver.resolveAbsolute`, as `resolve(TimeZone, Time, String)`
+  does; `Time.utc(String)` keeps UTC. A null zone is now refused with
+  `IllegalArgumentException` (`TimeResolver`'s check, as the three-argument
+  method), where it was ignored; the Javadoc says so.
+* 010-01: no setting, method or state. The stream's bytes are unchanged
+  (P2): the Core does not call it, and StreamDigest's workloads use the
+  Core API.
+* Tests: the new test; `Time` (15) and `PubTester` pass.

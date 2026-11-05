@@ -89,6 +89,27 @@ public class PubTester {
     }
     
     /**
+     * Regression test for bergdb 015-58 (016-06's R8-F3): TestClock.setTime() refused the
+     * clock's current time, which its Javadoc allows ("larger than or equal to"), also time
+     * 0 on a new clock. An earlier time is still refused.
+     */
+    @Nano
+    public static void testTestClockSetTimeEqual() {
+        TestClock clock = new TestClock();
+        clock.setTime(Time.units(0));
+        Assert.assertEquals(0, clock.getTime());
+        clock.setTime(Time.units(1000));
+        clock.setTime(Time.units(1000));
+        Assert.assertEquals(1000, clock.getTime());
+        try {
+            clock.setTime(Time.units(999));
+            throw new AssertionError("an earlier time was taken");
+        } catch (IllegalArgumentException e) {
+            Assert.assertEquals(1000, clock.getTime());
+        }
+    }
+    
+    /**
      * bergdb 005-59: Database is AutoCloseable, and its close() waits. A try-with-resources
      * block closes the database when it ends, also when it throws: with a buffer time of a
      * minute nothing is written before the close, and right after the block the stream is

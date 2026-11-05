@@ -63,6 +63,16 @@ Pub API
   `Db.setReclaimInternalFraction` (JMX only) keep their values in the
   stream the same way. The step reserve (`DbBuilder.reclaimStepReserve`)
   is a setting for tests, not kept. The format: under Format, below.
+* **`Time.resolve(TimeZone, String)` uses its time zone** (bergdb 015-57,
+  016-06's R8-F2; 2026-11-05); it resolved in UTC whatever zone was given,
+  so `Time.resolve(Europe/Stockholm, "2013-08-19 14:29")` was 14:29 UTC, not
+  12:29 UTC. A null zone is refused with `IllegalArgumentException`, as by
+  `resolve(TimeZone, Time, String)`; it was ignored. `Time.utc(String)` is
+  unchanged.
+* **`TestClock.setTime()` takes the clock's current time** (bergdb 015-58,
+  016-06's R8-F3; 2026-11-05), as its Javadoc says ("larger than or equal
+  to"); it threw `IllegalArgumentException`, also for time 0 on a new clock.
+  An earlier time is still refused.
 
 
 Reliability

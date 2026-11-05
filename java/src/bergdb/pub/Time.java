@@ -89,10 +89,12 @@ public class Time {
      * Since this method takes no current time, the time string must
      * be an absolute time (time string rule ABSOLUTE-TIME).
      * 
+     * @throws IllegalArgumentException If timeZone is null.
      * @see #resolve(TimeZone, Time, String)
      */
     public static Time resolve(TimeZone timeZone, String timeString) {
-        long units = TimeResolver.resolveAbsolute(UTC, timeString);
+        // The given zone, not UTC, since 2026-11-05 (bergdb 015-57).
+        long units = TimeResolver.resolveAbsolute(timeZone, timeString);
         return Time.units(units);
     }
     
@@ -332,6 +334,19 @@ public class Time {
         Time t2 = Time.resolve(zone, t1, "-1 d 14:00:00");
         Time t3 = Time.resolve(zone, "2001-09-08 14:00");
         Assert.assertEquals(t3, t2);
+    }
+    
+    /**
+     * Regression test for bergdb 015-57 (016-06's R8-F2): resolve(TimeZone, String) resolved
+     * in UTC, whatever time zone was given.
+     */
+    @Nano
+    private static void testResolveUsesTheTimeZone() {
+        TimeZone stockholm = TimeZone.getTimeZone("Europe/Stockholm");
+        Assert.assertEquals(Time.utc("2013-08-19 12:29"),          // Summer time, UTC+2.
+                Time.resolve(stockholm, "2013-08-19 14:29"));
+        Assert.assertEquals(Time.utc("2013-01-19 13:29"),          // Winter, UTC+1.
+                Time.resolve(stockholm, "2013-01-19 14:29"));
     }
 
     

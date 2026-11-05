@@ -44,9 +44,10 @@ public final class TestClock implements Clock {
             throw new IllegalArgumentException("time is too large, was " + time + ".");
         }
         
-        if (time <= this.time) {
-            throw new IllegalArgumentException("Bad time, must be larger than current time, " 
-                    + this.time + ".");
+        // The current time is allowed, as the Javadoc says, since 2026-11-05 (bergdb 015-58).
+        if (time < this.time) {
+            throw new IllegalArgumentException("Bad time, " + time + ", must not be less than "
+                    + "the current time, " + this.time + ".");
         }
         this.time = time;
     }
