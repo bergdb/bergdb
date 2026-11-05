@@ -350,49 +350,96 @@ public class Cache3 {
 
     /**
      * One CLOCK step (bergdb item 009, step 3b; 009-02, 4.7, T2a): the handles of map k,
-     * under its lock. A handle whose CLOCK bit is set gets it cleared (a second chance); one
-     * with the bit clear and a detachable object is evicted; a live handle with no object
-     * (a read that kept nothing) leaves the table too. A handle that a loader holds (LOADING)
-     * is skipped. The work is one map's: 1/4,096 of the handles. Returns the bytes freed, the
-     * objects evicted, the handles examined and the detachable objects met; adds the objects
-     * that are not detachable (pinned) to 'pinned', for their values and their bytes.
+     * under its lock, if it has at most 'max' (else null, and nothing done: the caller takes
+     * the map in parts, clockStep(int, Handle[], ...); bergdb 015-67). A handle whose CLOCK
+     * bit is set gets it cleared (a second chance); one with the bit clear and a detachable
+     * object is evicted; a live handle with no object (a read that kept nothing) leaves the
+     * table too. A handle that a loader holds (LOADING) is skipped. Returns the bytes freed,
+     * the objects evicted, the handles examined and the detachable objects met; adds the
+     * objects that are not detachable (pinned) to 'pinned', for their values and their bytes.
      */
-    long[] clockStep(int k, Detachable d, java.util.List<Node> pinned) {
+    long[] clockStep(int k, Detachable d, java.util.List<Node> pinned, long max) {
         HashMap<Long, Handle> m = maps[k];
-        long bytes = 0, objects = 0, examined = 0, candidates = 0;
+        long[] c = new long[4];
         synchronized (m) {
+            if (m.size() > max) return null;
             java.util.Iterator<Handle> it = m.values().iterator();
             while (it.hasNext()) {
-                Handle h = it.next();
-                examined++;
-                Node o = h.obj;
-                if (o == null) {
-                    if (h.casState(Handle.LIVE, Handle.DEAD)) {
-                        o = h.obj;      // a loader may have installed one since (kill)
-                        if (o != null) {
-                            bytes += kill(h, o);
-                            objects++;
-                        }
-                        it.remove();
-                    }
-                    continue;
-                }
-                if (!d.detachable(o)) {
-                    pinned.add(o);
-                    continue;
-                }
-                candidates++;
-                if (h.ref != 0) {
-                    h.ref = 0;
-                    continue;
-                }
-                if (!h.casState(Handle.LIVE, Handle.DEAD)) continue;
-                bytes += kill(h, h.obj);    // again: a loader may have replaced o (kill)
-                objects++;
-                it.remove();
+                if (clockStep(it.next(), d, pinned, c)) it.remove();
             }
         }
-        return new long[] {bytes, objects, examined, candidates};
+        return c;
+    }
+
+    /**
+     * The handles of map k, copied under its lock: for a map that a CLOCK step takes in parts
+     * (bergdb 015-67). A map has no maximum size; the copy is its only work that grows with
+     * it, a reference a handle.
+     */
+    Handle[] mapHandles(int k) {
+        HashMap<Long, Handle> m = maps[k];
+        synchronized (m) {
+            return m.values().toArray(new Handle[m.size()]);
+        }
+    }
+
+    /**
+     * One part of a CLOCK step over map k (bergdb 015-67): handles from to to-1 of 'part',
+     * a copy of the map's handles (mapHandles), under the map's lock, as clockStep(int, ...)
+     * does with each; one that has left the map since the copy (an eviction, dropIfEmpty) is
+     * skipped, and one added since is met in the next round. So the work of a step is
+     * bounded by its handles however large the map, and the next batch goes on in the same
+     * map where this one stopped. Returns as clockStep(int, ...) does; the handles examined
+     * are to - from.
+     */
+    long[] clockStep(int k, Handle[] part, int from, int to, Detachable d,
+            java.util.List<Node> pinned) {
+        HashMap<Long, Handle> m = maps[k];
+        long[] c = new long[4];
+        synchronized (m) {
+            for (int j = from; j < to; j++) {
+                Handle h = part[j];
+                if (m.get(h.id) != h) {
+                    c[2]++;
+                    continue;
+                }
+                if (clockStep(h, d, pinned, c)) m.remove(h.id);
+            }
+        }
+        return c;
+    }
+
+    /**
+     * Handle h in a CLOCK step, under its map's lock; adds to c, as the step returns it.
+     * Returns true if h leaves the map (the caller removes it).
+     */
+    private boolean clockStep(Handle h, Detachable d, java.util.List<Node> pinned, long[] c) {
+        c[2]++;
+        Node o = h.obj;
+        if (o == null) {
+            if (h.casState(Handle.LIVE, Handle.DEAD)) {
+                o = h.obj;      // a loader may have installed one since (kill)
+                if (o != null) {
+                    c[0] += kill(h, o);
+                    c[1]++;
+                }
+                return true;
+            }
+            return false;
+        }
+        if (!d.detachable(o)) {
+            pinned.add(o);
+            return false;
+        }
+        c[3]++;
+        if (h.ref != 0) {
+            h.ref = 0;
+            return false;
+        }
+        if (!h.casState(Handle.LIVE, Handle.DEAD)) return false;
+        c[0] += kill(h, h.obj);    // again: a loader may have replaced o (kill)
+        c[1]++;
+        return true;
     }
 
     /** The number of maps, for the CLOCK hand. */

@@ -620,6 +620,14 @@ public final class Eviction {
     private int hand = 0;
 
     /**
+     * A map that the hand takes in parts, as it has more handles than a batch has left to
+     * examine (bergdb 015-67): a copy of its handles (Cache3.mapHandles), and the next of
+     * them; null when the hand is at the start of a map. Under the write lock (sweep()).
+     */
+    private Handle[] part = null;
+    private int partNext = 0;
+
+    /**
      * The counted bytes of the objects that were not detachable (pinned) in the hand's
      * current round, and in its last complete round (sweep(); the trigger). Under the write
      * lock.
@@ -633,27 +641,32 @@ public final class Eviction {
      * first may only clear the CLOCK bits); and at most BATCH_NANOS, 2 ms, of time (step 3d:
      * on s1, a batch of 65,536 handles took up to 100 ms, and a writer waits for the batch
      * in progress). The work of a batch is bounded by these, whatever the size of the
-     * database. A batch of the eviction thread also ends when a writer waits for the write
-     * lock.
+     * database: a map with more handles than a batch has left to examine is taken in parts,
+     * the next batch going on where one stopped (bergdb 015-67; until then a step took a
+     * whole map, and a map has no maximum size); the copy of such a map's handles
+     * (Cache3.mapHandles), a reference a handle, is the one work that grows with a map. A
+     * batch of the eviction thread also ends when a writer waits for the write lock.
      */
     static final int BATCH = 4096, BATCH_UNDER_PRESSURE = 65536;
     static final long BATCH_NANOS = 2L * 1000 * 1000;
 
     /**
      * One batch of the capacity controller (bergdb item 009, step 3b; 009-02, 4.7): CLOCK
-     * steps over the node table, one map at a time (Cache3.clockStep), from where the last
-     * batch stopped, until the resident bytes are below the low watermark or the batch has
-     * taken its maps. An object whose handle's CLOCK bit is set (a follow since the hand last
+     * steps over the node table, one map at a time (Cache3.clockStep), or a part of one that
+     * has more handles than the batch has left (bergdb 015-67), from where the last batch
+     * stopped, until the resident bytes are below the low watermark or the batch has
+     * examined its handles or taken its maps. An object whose handle's CLOCK bit is set (a follow since the hand last
      * passed) gets a second chance; one with the bit clear goes if it is detachable, with the
      * values its pointers hold. No walk of the resident objects, and no count of who points
-     * to what: the work is bounded by the maps a batch takes, whatever the size of the
-     * database and of the budget. The accounting is without walks, exact but for the objects
+     * to what: the work is bounded by the handles and the maps a batch takes, whatever the
+     * size of the database and of the budget. The accounting is without walks, exact but for the objects
      * the writer changed since their last count (Residents; bergdb 015-15). If the
      * resident bytes stay above the budget, the next trigger goes on from the hand; pinned
      * state is never taken: its bytes, which the hand's rounds count, raise the trigger if
      * they are above the budget (trigger). Until step
      * 3b a sweep walked every resident object, twice. Returns the bytes freed and the maps
-     * taken (the eviction thread's stop rule, EvictorRun). The caller holds Db.writeLock,
+     * finished (the eviction thread's stop rule, EvictorRun; a map taken in parts counts in
+     * the batch that finishes it). The caller holds Db.writeLock,
      * between transactions.
      */
     long[] sweep(Db db, boolean afterLoad) {
@@ -687,7 +700,22 @@ public final class Eviction {
         while (freed < need && examined < maxHandles && maps < maxMaps
                 && System.nanoTime() - t0 < BATCH_NANOS
                 && !(afterLoad && in.writersWaiting() > 0)) {
-            long[] fr = table.clockStep(hand, d, pinned);
+            // A map with more handles than the batch has left is taken in parts, and the
+            // next batch goes on where this one stopped (bergdb 015-67): a map has no maximum
+            // size, and until 015-67 a step took a whole map, whatever its size.
+            long[] fr = null;
+            if (part == null) {
+                fr = table.clockStep(hand, d, pinned, maxHandles - examined);
+                if (fr == null) {
+                    part = table.mapHandles(hand);
+                    partNext = 0;
+                }
+            }
+            if (part != null) {
+                int to = (int) Math.min(part.length, partNext + (maxHandles - examined));
+                fr = table.clockStep(hand, part, partNext, to, d, pinned);
+                partNext = to;
+            }
             freed += fr[0];
             r += fr[1];
             examined += fr[2];
@@ -706,6 +734,10 @@ public final class Eviction {
                 roundPinned += Residents.countedBytes(x);
             }
             pinned.clear();
+            if (part != null) {
+                if (partNext < part.length) continue;      // the map's rest in the next batch
+                part = null;
+            }
             maps++;
             if (++hand == all) {
                 hand = 0;
@@ -1979,6 +2011,55 @@ public final class Eviction {
             e.testBeforeTrigger = null;
             throwNow.countDown();
             if (writer != null && writer.getState() != Thread.State.NEW) writer.join(5000);
+            db.close();
+        }
+    }
+
+    /**
+     * A batch examines at most its handles also in a map that holds more (bergdb 015-67;
+     * 016-06, R4-F2): 5,000 detachable key nodes in map 0, more than BATCH, the budget 9/10
+     * of the resident bytes, so not under pressure; one batch from map 0 releases at most
+     * BATCH objects and leaves the map unfinished (no map taken); the next, under pressure,
+     * goes on in the same map and takes the rest. Until 015-67 a CLOCK step took a whole
+     * map, whatever its size, and the first batch released all 5,000.
+     */
+    @Nano
+    public static void testBatchWithinItsHandlesInALargeMap() {
+        Db db = Db.builder().testSetup(new MemoryStream()).audit(0).start();
+        try {
+            Db.Internal in = db.internal();
+            Eviction e = in.eviction();
+            final int n = 5000;
+            long[] ids = new long[n];
+            synchronized (in.getWriteLock()) {
+                int added = 0;
+                for (long id = 100001; added < n; id += 2) {
+                    if (Cache3.mapIndex(id) != 0) continue;
+                    KeyNode node = KeyNode.nodeWithTime(10);
+                    node.setId(id);
+                    node.setSpos(1000L * 1000 * 1000 + 8L * added);
+                    in.cache().register(node);
+                    ids[added++] = id;
+                }
+                long full = in.cache().residents().bytes();
+                long budget = full / 10 * 9;
+                e.setBudget(budget);
+                Assert.assertTrue("not under pressure",
+                        full <= budget + (budget - lowOf(budget)));
+                e.hand = 0;
+                long before = e.figures()[1];
+                long[] fm = e.sweep(db, false);
+                long released = e.figures()[1] - before;
+                Assert.assertTrue("released " + released + ", at most BATCH",
+                        released > 0 && released <= BATCH);
+                Assert.assertEquals("map 0 not finished, no map taken", 0L, fm[1]);
+                e.setBudget(1);
+                e.sweep(db, false);
+                int left = 0;
+                for (long id : ids) if (in.cache().liveHandle(id) != null) left++;
+                Assert.assertEquals("the next batch took the rest of map 0", 0, left);
+            }
+        } finally {
             db.close();
         }
     }

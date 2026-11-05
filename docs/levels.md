@@ -425,7 +425,8 @@ named, with a sweep that walked every resident object (item 004).
   bytes pass the trigger (the budget, or the pinned bytes plus the gap
   between the watermarks if that is more), a batch of CLOCK steps runs, at
   most 2 ms, 4,096 handles (65,536 under pressure) and two rounds of the
-  hand: in the writer at a transaction's end, and after a reader's load in
+  hand, a map with more handles than a batch has left taken in parts
+  (015-67): in the writer at a transaction's end, and after a reader's load in
   the database's eviction thread, which takes the write lock between
   transactions and gives way to a waiting writer. A reader's load that
   finds the resident bytes far over the trigger waits up to 2 ms for that

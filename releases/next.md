@@ -171,6 +171,13 @@ Reliability
   transaction that waited for the lock could still commit and append, on
   the memory state the batch left. The failure is now set before the lock
   goes, and such a transaction is refused with `DbFailedException`.
+* **An eviction batch examines at most its handles** (bergdb 015-67,
+  016-06's R4-F2; 2026-11-05): 4,096, or 65,536 under pressure, as the
+  documentation says. A batch took each of the node table's 4,096 maps
+  whole, and a map grows with the resident index nodes, so in a large
+  database one batch, which a writer may wait for, did more work than its
+  bound. A map with more handles than a batch has left is now taken in
+  parts, and the next batch goes on where one stopped.
 
 * **A record whose size field is larger than its content is refused** at a
   start (bergdb 015-72, 016-06's R6-F1; 2026-11-05), with a
