@@ -353,6 +353,22 @@ Times from `date`, CET.
   tested). 015-51: he chose (a) at 21:03, "And also add the possibility
   of a refusal to the to-consider list of the long-term item": decided,
   018-01's sections 3.1 and 6.4, and 017-07, section 3 (8710e89).
+* 21:23 to 21:47 Frans on his mobile. 015-11: (a) at 21:25, the night
+  tests on s1 tonight; they passed at 21:35 with `java.io.tmpdir` on the
+  disk, JDK 27 and 17 (e60ab74). 21:33: "Will you fix all bugs? I don't
+  want performance testing to take up all night. There is plenty of time
+  for you to code as well, right?!" So, at 21:38, 018-01's next step (W2,
+  the harnesses) at high: 6.2, failures and interrupts in storage
+  (018-03); 6.7, the Pub API's promises (018-04); 6.5, eviction's
+  accounting (018-05), each to build its harness, run it, register what it
+  finds (019-10 to 019-24) and fix the simple ones. 015-80: "Yes. I also
+  lean towards option 2. So option 2 unless the agent strongly suggests
+  something else. The agent can choose, dont wait for me. Run this agent
+  at XHigh effort level." (21:46); its agent started at 21:47, xhigh, with
+  a review agent to check its fix before it lands.
+* 21:53 Q-A prepared: the four agents write their State notes by 22:10 and
+  are resumed after the W7 block; Q-A (pid 74282), Q-W7 (20050) and Q-B
+  (74284) alive and ready.
 
 
 ## 8. Outcome
