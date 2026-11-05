@@ -1,7 +1,7 @@
 015-34. Fix: a storage thread interrupted at its stop skips closing its stream
 ==============================================================================
 
-Status: open. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
+Status: done 2026-11-05, night 006-12. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
 
 After release 2026.2 (a known issue of it); in 2026.1 too.
 
@@ -23,3 +23,19 @@ Log
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-04. Review R5 found the same, or its counterpart in StorageManager (R5-F2, items/016-release-2026-2/06-reviews/R5.md).
+
+2026-11-05. Done in night 006-12, with 015-78. R5's form of the probe
+(R5/R5-F2.diff: the test holds the buffer's monitor, interrupts the idle
+consumer and calls `stop()`), made
+`BufferedStream.testStopWhileInterruptedClosesStream`: before the fix "the
+consumer closed the stream, expected 1, got 0".
+
+* Fix: `BufferedStream.runConsumer` closes the stream in a `finally`
+  around the consumer's loop (now `consume()`), so every way the thread
+  ends closes it: the interrupt's `return` at a stop, the loop's end, and
+  an unchecked exception.
+* Reach today: `BufferedStream.stop()` and `StorageManager.stop()` only;
+  `removeReplica`, the Pub API's way in, went with replication (005-11),
+  and `Db.stop()` and `close()` close through `BufferedStream.close()`.
+* 010-01: no setting, thread or format change; the stream's bytes are
+  unchanged.

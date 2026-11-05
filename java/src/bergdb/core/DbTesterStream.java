@@ -743,4 +743,46 @@ public class DbTesterStream {
             db.close();
         }
     }
+    
+    /**
+     * bergdb 015-78 (review R5-F1): a close of the stream that fails, once, is reported by
+     * the database's close(), and by every later close(). The storage thread closed the
+     * stream as it ended and dropped the IOException; BufferedStream.close() closed it again,
+     * which worked, and close() returned as if the close had worked.
+     */
+    @Nano
+    public static void testFirstCloseFailureIsReported() {
+        final AtomicInteger closes = new AtomicInteger();
+        final MemoryStream inner = new MemoryStream();
+        AppendOnlyStream s = new AppendOnlyStream() {
+            public long getLength() { return inner.getLength(); }
+            public long getFirstPos() { return inner.getFirstPos(); }
+            public void append(byte[] bytes, int off, int len) throws IOException {
+                inner.append(bytes, off, len);
+            }
+            public void read(long pos, byte[] bytes, int off, int len) throws IOException {
+                inner.read(pos, bytes, off, len);
+            }
+            public void pretruncate(long pos) throws IOException { inner.pretruncate(pos); }
+            public void close() throws IOException {
+                inner.close();
+                if (closes.incrementAndGet() == 1) {
+                    throw new IOException("the first close fails");
+                }
+            }
+        };
+        Db db = Db.builder().testSetup(s).start();
+        db.execute(db.trans().put("/a", "a0").build());
+        for (int i = 0; i < 2; i++) {
+            StreamIoException failure = null;
+            try {
+                db.close();
+            } catch (StreamIoException e) {
+                failure = e;
+            }
+            Assert.assertTrue("close() " + i + " reports the failed close; closes: "
+                    + closes.get(), failure != null);
+            Assert.assertEquals("the first close fails", failure.getCause().getMessage());
+        }
+    }
 }

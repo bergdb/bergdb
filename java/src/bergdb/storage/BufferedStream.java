@@ -56,6 +56,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                                            // flushAndStop() only.
     private IOException exception = null;
     private IOException failure = null;     // the first failed flush (bergdb 005-32)
+    private IOException closeFailure = null;    // the first failed close (bergdb 015-78)
     private long pendingCut = 0;    // a pretruncate position not yet flushed; see pretruncate()
     private final int waitTime;
     private final int waitsBeforeFlush;
@@ -141,6 +142,18 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     }
 
     private void runConsumer() {
+        try {
+            consume();
+        } finally {
+            // In a finally (2026-11-05, bergdb 015-34): an interrupt that met stop() returned
+            // from consume() before the close, and the stream's files and directory lock
+            // stayed open.
+            closeStream();
+        }
+    }
+    
+    /** The consumer's loop: flushes what is buffered until stop() or a failed flush. */
+    private void consume() {
         waitCount = 0;
 
         A: while (!stop) {
@@ -200,11 +213,27 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
 
             flushToStream();
         }
-
+    }
+    
+    /**
+     * Closes the underlying stream, and keeps its first failure for close() to throw
+     * (2026-11-05, bergdb 015-78): the thread closes it as it ends, and dropped the
+     * IOException; close() closed it again, which could work, and returned as if the close
+     * had worked. An unchecked exception or an Error of the close is kept too, as the cause.
+     */
+    private void closeStream() {
+        IOException failed = null;
         try {
             stream.close();
         } catch (IOException e) {
-            // Empty, nothing we can do about it.
+            failed = e;
+        } catch (RuntimeException | Error e) {
+            failed = new IOException("The close of the stream failed (the cause).", e);
+        }
+        if (failed != null) {
+            synchronized (this) {
+                if (closeFailure == null) closeFailure = failed;
+            }
         }
     }
 
@@ -610,9 +639,10 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
      * the thread has ended, also after a flush that failed, and then throws that failure
      * (2026-10-24, bergdb 005-32): it waited for ever, as the buffer never empties after a
      * failed flush. After stop(), it writes nothing more, and returns when the thread has
-     * ended; it returned at once.
+     * ended; it returned at once. Every call throws the failure, of a flush, else of the
+     * first close of the underlying stream (by the thread or by close(); bergdb 015-78).
      * 
-     * @throws IOException  If a flush failed, or the close of the underlying stream.
+     * @throws IOException  If a flush failed, or a close of the underlying stream.
      */
     public void close() throws IOException {
         // Not interruptible (2026-10-27, bergdb 005-46): an interrupt returned at once, before
@@ -653,11 +683,11 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             Thread.currentThread().interrupt();
         }
 
-        stream.close();
+        closeStream();
         
         IOException failed;
         synchronized (this) {
-            failed = failure;
+            failed = failure != null ? failure : closeFailure;
         }
         if (failed != null) {
             throw failed;
@@ -1360,6 +1390,39 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 Thread.sleep(1);
             }
             Assert.assertTrue(b.consumer.isAlive());
+        } finally {
+            b.close();
+        }
+    }
+    
+    /**
+     * Regression test for bergdb 015-34 (reviews R3-F6, R5-F2): a consumer interrupted as
+     * stop() comes closes the underlying stream as it ends. The interrupt takes the consumer
+     * out of its idle wait, and it must take the monitor again, which the test holds until
+     * stop() has run; before, the consumer then returned without closing the stream: a
+     * FileStream's files and its directory lock stayed open until the JVM ended.
+     */
+    @Nano
+    public static void testStopWhileInterruptedClosesStream() throws Exception {
+        final java.util.concurrent.atomic.AtomicInteger closes =
+                new java.util.concurrent.atomic.AtomicInteger();
+        MemoryStream m = new MemoryStream() {
+            @Override public void close() {
+                closes.incrementAndGet();
+                super.close();
+            }
+        };
+        BufferedStream b = new BufferedStream(m, 1000, 10);
+        b.start();
+        try {
+            awaitIdle(b);
+            synchronized (b) {
+                b.consumer.interrupt();
+                b.stop();
+            }
+            b.consumer.join(2000);
+            Assert.assertFalse("the consumer ended", b.consumer.isAlive());
+            Assert.assertEquals("the consumer closed the stream", 1, closes.get());
         } finally {
             b.close();
         }

@@ -236,6 +236,15 @@ Reliability
   And if the stream's close then threw an unchecked exception, a sync
   waited for ever and the database ran on; now the sync throws. The
   stream's bytes are unchanged.
+* **A failed close of the stream is reported by `close()`** (bergdb
+  015-78 and 015-34, 016-06's R5-F1, R3-F6 and R5-F2; 2026-11-05). The
+  storage thread closed the stream as it ended and dropped a failure of
+  that close; the close that followed could work, and `Db.close()`
+  returned as if all was well. Now `close()`, and every later one, throws
+  a `StreamIoException` with the first failure. And the storage thread,
+  interrupted as it stopped, ended without closing the stream (reached
+  only by the Core's `BufferedStream.stop()` and `StorageManager.stop()`).
+  The stream's bytes are unchanged.
 
 Format
 ------
