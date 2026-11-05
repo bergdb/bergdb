@@ -17,8 +17,8 @@ public interface WBuilder {
     /**
      * Adds a set operation to the write transaction. The operation sets the
      * specified key to the provided object. Special handling is provided for
-     * object of type byte[] and java.lang.String. A byte[] is copied: a change of
-     * the array after the call does not change the value.
+     * object of type byte[] and java.lang.String. A byte[] is copied at the put:
+     * the caller may change or reuse its array afterwards.
      *
      * <p>Experimental in 2026.3 for an object that is neither a String nor a byte[], with
      * known faults; such a put may change in a later release (bergdb 018-01, D6).</p>

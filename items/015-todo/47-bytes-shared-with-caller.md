@@ -62,3 +62,32 @@ these two places.
   `Connection.put` and `WBuilder.put` (a byte[] is copied), which `RwEnvironment` and
   `ReadInterface` refer to.
 * Gate: `before-commit.sh`: `BEFORE COMMIT OK (104 s)`, unit 1154, f 81.
+
+2026-11-05. Frans decided (12:00) on option (c), copy at the put only: "Option (c). I
+want the zero copy gets. Performance is significantly better (more than x2) for some
+cases. Javadoc should be clear." Changed by session bergdb-e8's agent; the status stays
+done: the put side is fixed, the get side is documented behaviour by his decision.
+
+* Removed: the get's two copies in `KvToObjectImp.createObject` (byte[].class, and
+  Object.class at a value of bytes), so `RwEnvironment.exists` no longer copies either.
+  `KvToObjectImp.testByteArray` again expects the very same array, as before 015-47.
+  The put's copy in `RwEnvironmentImp.put` is kept.
+* Javadoc: `Connection.get`, `ReadInterface.get` and `RwEnvironment.get`: a byte[]
+  returned is the database's own array, not a copy, and must not be changed; a change
+  changes what later reads return, in every connection, until the value leaves memory
+  or the database restarts, while the stream keeps the committed bytes; to change the
+  bytes, copy them first, with clone(). `Connection.useIndex` and `usePrimary` (their
+  objects come from the same conversion): with byte[].class or Object.class, an array
+  is the database's own. `Connection.put`, `WBuilder.put` and `RwEnvironment.put`: a
+  byte[] is copied at the put, so the caller may change or reuse its array. `Db.getOne`
+  now says that the Pub API returns the database's array too; `Trans.Builder` unchanged.
+* Test: `PubTester.testByteArrayValueIsNotShared` renamed
+  `testByteArrayCopiedAtPutNotAtGet`: the put-side checks kept (the three puts, the
+  caller's arrays changed after them, each value still `[1, 2, 3]`), the get-side checks
+  dropped, and one line added as a statement of the decided behaviour: two gets of a
+  value in memory return the same array.
+* 010-01: P1, less work per get; P2, the stream's bytes are unchanged; P8, a caller
+  that changes a returned array makes later reads depend on whether the value is still
+  in memory, which the Javadoc forbids; P10, no setting; P11, the simplest code, as
+  before 015-47; P12, the Core Layer unchanged.
+* Gate: `java/javadoc-pub.sh` passes; `before-commit.sh`: `BEFORE COMMIT OK (105 s)`, unit 1167, f 81.

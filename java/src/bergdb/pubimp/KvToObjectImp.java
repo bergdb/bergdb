@@ -66,7 +66,7 @@ public class KvToObjectImp implements KvToObjectConverter, ClassToObject {
         if (c.equals(String.class)) {
             result = (TYPE) entryToString(value);
         } else if (c.equals(byte[].class)) {
-            result = (TYPE) value.clone();      // not the value in memory, bergdb 015-47
+            result = (TYPE) value;      // the database's own array, bergdb 015-47
         } else if (c.equals(DbObject.class)) {
             result = (TYPE) entryToDbObject(ukey, value);
         } else if (c.equals(Object.class)) {
@@ -93,7 +93,7 @@ public class KvToObjectImp implements KvToObjectConverter, ClassToObject {
         } else if (ikey.endsWith(".txt")) {
             result = entryToString(value);
         } else {
-            result = value.clone();     // not the value in memory, bergdb 015-47
+            result = value;     // the database's own array, bergdb 015-47
         }
         return result;
     }
@@ -180,8 +180,7 @@ public class KvToObjectImp implements KvToObjectConverter, ClassToObject {
         
         byte[] value2 = k.createObject(byte[].class, PubKeys.u2i(key), value);
         
-        Assert.assertTrue("the same bytes", java.util.Arrays.equals(value, value2));
-        Assert.assertTrue("a copy, bergdb 015-47", value != value2);
+        Assert.assertEquals(value, value2);
     }
     
     @Nano

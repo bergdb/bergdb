@@ -81,17 +81,17 @@ Reliability
 * **`CryptoKey` has a `hashCode()` that agrees with `equals()`** (bergdb
   015-45, S1-F6; 2026-11-05): equal keys were not found in a `HashSet` or a
   `HashMap`.
-* **A `byte[]` value is copied at its put and at its get** (bergdb 015-47,
-  S1-F8; 2026-11-05). The database kept the caller's array as the value in
-  memory and returned it to every `get(key, byte[].class)`: a change of the
-  array after a put, or of one a get returned, changed what reads returned
+* **A `byte[]` value is copied at its put** (bergdb 015-47, S1-F8;
+  2026-11-05). The database kept the caller's array as the value in
+  memory: a change of the array after a put changed what reads returned
   until the value left memory or the database restarted, while the stream
-  had the bytes of the commit. A get of a value in memory now costs a copy:
-  none measurable up to 100 bytes, about 0.4 µs more at 4 KB and 2.8 µs at
-  64 KB (on F53, 2026-11-05); a put's copy is lost in its commit. The
-  Javadoc of `Connection.put` and `get` and `WBuilder.put` says it; the
-  Core API keeps its arrays, and `Db.getOne`'s and `Trans.Builder`'s
-  Javadoc says so.
+  had the bytes of the commit. A get still returns the database's own
+  array, zero-copy, as before (Frans, 2026-11-05): it must not be changed,
+  and the Javadoc of `Connection.get`, `ReadInterface.get`,
+  `RwEnvironment.get`, `useIndex()` and `usePrimary()` now says so, and
+  what a change does. The Javadoc of `Connection.put`, `WBuilder.put` and
+  `RwEnvironment.put` says that a `byte[]` is copied. The Core API keeps
+  its arrays, and `Db.getOne`'s and `Trans.Builder`'s Javadoc says so.
 * **Key replace replaces every `${transactionTime}` of a key** (bergdb
   015-64, R8-F9; 2026-11-05), as `Connection.setEnableKeyReplace()` says;
   only the last was replaced. A key with two or more occurrences is stored

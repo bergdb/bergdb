@@ -484,14 +484,14 @@ public class PubTester {
     }
     
     /**
-     * bergdb 015-47: the database keeps its own copy of a byte[] value. A change of the
-     * array of a put, after the put, by Connection.put, WBuilder.put or RwEnvironment.put,
-     * does not change the stored value; nor does a change of an array that a get
-     * returned, by get(key, byte[].class) or get(key, Object.class). Before 015-47, the
-     * value in memory was the caller's array, and a get returned it.
+     * bergdb 015-47: a byte[] value is copied at its put, not at its get (Frans's option
+     * (c), 2026-11-05). A change of the array of a put, after the put, by Connection.put,
+     * WBuilder.put or RwEnvironment.put, does not change the stored value; before 015-47,
+     * the value in memory was the caller's array. A get returns the database's own array,
+     * zero-copy, as its Javadoc says: two gets of a value in memory return the same array.
      */
     @Nano
-    public static void testByteArrayValueIsNotShared() {
+    public static void testByteArrayCopiedAtPutNotAtGet() {
         Database db = Factory.database().memory().start();
         try {
             Connection c = db.connection();
@@ -508,18 +508,13 @@ public class PubTester {
             b1[0] = 9;
             b2[0] = 9;
             b3[0] = 9;
-            c.get("/b1.bin", byte[].class)[1] = 9;
-            ((byte[]) c.get("/b2.bin", Object.class))[1] = 9;
-            c.rw(new Action() {
-                public void run(RwEnvironment env) {
-                    env.get("/b3.bin", byte[].class)[1] = 9;
-                }
-            });
             
             for (String key : new String[] {"/b1.bin", "/b2.bin", "/b3.bin"}) {
                 Assert.assertEquals("the value at " + key, "[1, 2, 3]", 
                         Arrays.toString(c.get(key, byte[].class)));
             }
+            Assert.assertTrue("a get returns the database's own array", 
+                    c.get("/b1.bin", byte[].class) == c.get("/b1.bin", byte[].class));
         } finally {
             db.close();
         }

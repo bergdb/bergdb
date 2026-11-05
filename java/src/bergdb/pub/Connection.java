@@ -120,6 +120,12 @@ public interface Connection extends ReadInterface {
      *
      * <p>Experimental in 2026.3 for a class other than String and byte[], with known
      * faults; such a get may change in a later release (bergdb 018-01, D6).</p>
+     *
+     * <p>A byte[] returned (by byte[].class, or by Object.class at a value of bytes) is
+     * the database's own array, not a copy: do not change it. A change of it changes
+     * what later reads return, in every connection, until the value leaves memory or
+     * the database restarts, while the stream keeps the committed bytes. To change
+     * the bytes, copy them first, with clone() (bergdb 015-47).</p>
      * 
      * @param key
      *            Database key of the object.
@@ -127,8 +133,7 @@ public interface Connection extends ReadInterface {
      *            Class of the object to create. The class must in general have
      *            a public no-argument constructor. Use DbObject.class to get
      *            the object data as it is stored in the database. Use
-     *            byte[].class to get the raw bytes as stored in the database,
-     *            in a new array that the caller may change.
+     *            byte[].class to get the raw bytes as stored in the database.
      *            Use String.class to read a String directly from the raw value
      *            bytes assuming that the value stored consists of UTF-8 bytes.
      * @throws DbException
@@ -179,8 +184,8 @@ public interface Connection extends ReadInterface {
      * @param key
      *            The key of the key-value entry. Must begin with "/".
      * @param object
-     *            The object to store. Cannot be null. A byte[] is copied: a
-     *            change of the array after the call does not change the value.
+     *            The object to store. Cannot be null. A byte[] is copied at
+     *            the put: the caller may change or reuse its array afterwards.
      * @throws DbException
      *             If the transaction could not be processed because the
      *             database is faulty.
@@ -239,7 +244,9 @@ public interface Connection extends ReadInterface {
      * @param indexName
      *            The name of the index to use.
      * @param type
-     *            The type of the objects to iterate.
+     *            The type of the objects to iterate. With byte[].class or
+     *            Object.class, an array returned is the database's own, as
+     *            with get(String, Class): do not change it.
      * @throws NoSuchIndexException
      *             if the index does not exist.
      */
@@ -254,7 +261,9 @@ public interface Connection extends ReadInterface {
      * (bergdb 018-01, D6).</p>
      * 
      * @param type
-     *            The type of the objects to iterate.
+     *            The type of the objects to iterate. With byte[].class or
+     *            Object.class, an array returned is the database's own, as
+     *            with get(String, Class): do not change it.
      * @throws NoSuchIndexException
      *             if the index does not exist.
      */

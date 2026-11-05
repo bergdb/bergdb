@@ -18,6 +18,12 @@ public interface RwEnvironment extends ReadInterface {
      * <p>Experimental in 2026.3 for a class other than String and byte[], with known
      * faults; such a get may change in a later release (bergdb 018-01, D6).</p>
      *
+     * <p>A byte[] returned (by byte[].class, or by Object.class at a value of bytes) is
+     * the database's own array, not a copy: do not change it. A change of it changes
+     * what later reads return, in every connection, until the value leaves memory or
+     * the database restarts, while the stream keeps the committed bytes. To change
+     * the bytes, copy them first, with clone() (bergdb 015-47).</p>
+     *
      * @see Connection#get(String, Class)
      */
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);
@@ -44,7 +50,8 @@ public interface RwEnvironment extends ReadInterface {
     public void put(Object object) throws MissingKeyFieldException;
     
     /**
-     * Sets the key-value entry with the given key to the provided object.
+     * Sets the key-value entry with the given key to the provided object. A byte[] is
+     * copied at the put: the caller may change or reuse its array afterwards.
      *
      * <p>Experimental in 2026.3 for an object that is neither a String nor a byte[], with
      * known faults; such a put may change in a later release (bergdb 018-01, D6).</p>
