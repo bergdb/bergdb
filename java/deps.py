@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Checks each bergdb package's uses of other bergdb packages against the list
 of allowed packages in its package.html (bergdb 005-56). A step of
-before-commit.sh. By Claude (Opus 5.5, Claude Code), 2026-10-27, from 006-08's
-deps.py (005-56's check-deps.py).
+before-commit.sh. 2026-10-27, from 006-08's deps.py (005-56's
+check-deps.py).
 
 Usage: python3 -I java/deps.py [JAVA_SRC] [--layer PKG [--list]]
   Under a second.
