@@ -43,7 +43,6 @@ Open
 | [015-28](28-write-racing-index-create.md) | Fix | A write racing an index's creation is never indexed | open |
 | [015-29](29-delete-primary-index.md) | Fix | deleteIndex(Database.PRIMARY) throws Bug and leaves the primary deleting | open |
 | [015-30](30-build-scans-past-dir.md) | Fix | An index build step scans past its directory, over non-objects | open |
-| [015-31](31-cut-at-length.md) | Fix | A cut at the stream's length throws an internal Bug | open |
 | [015-36](36-interrupted-delete-index.md) | Fix | An interrupted deleteIndex leaves the index deleting with no job | open |
 | [015-37](37-interrupted-build-step.md) | Fix | An interrupted retry of a build step ends the build for this run | open |
 | [015-39](39-job-status-mutable.md) | Fix | An index build's status object reads the worker's changing counter | open |
@@ -81,6 +80,7 @@ Closed
 | [015-60](60-connections-per-thread-kept.md) | Fix | Database.connection() keeps a connection for every thread that ... | done | 2026-11-05 |
 | [015-41](41-object-key-two-maps.md) | Fix | A String or bytes and an object, or a delete, of one key: the call ... | done | 2026-11-05 |
 | [015-38](38-jmx-monitor-interrupt.md) | Fix | JMX's monitor thread ends on an interrupt, and stop loses the caller's flag | done | 2026-11-05 |
+| [015-31](31-cut-at-length.md) | Fix | A cut at the stream's length throws an internal Bug | done | 2026-11-05 |
 | [015-82](82-pending-cut-after-close.md) | Fix | A pending cut arriving during another cut can be left unapplied ... | done | 2026-11-05 |
 | [015-73](73-startup-pos-unchecked.md) | Fix | A startupPos on an earlier record's start: outside the fault model | done | 2026-11-05 |
 | [015-58](58-testclock-current-time.md) | Fix | TestClock.setTime() refused the clock's current time | done | 2026-11-05 |

@@ -341,6 +341,10 @@ Internal
   a next write, and `close()` returned without it. BergDB's reclaim cuts
   behind the durable length and does not meet it; the stream's bytes are
   unchanged.
+* **`FileStream` accepts a cut at its length** (bergdb 015-31; 2026-11-05)
+  and keeps its last file; it threw an internal `Bug`, and through
+  `BufferedStream` that failed the storage. BergDB's reclaim cuts behind
+  the stream's end and does not meet it; the stream's bytes are unchanged.
 
 * **`Jmx.Speed`'s monitor thread goes on after an interrupt** (bergdb
   015-38, 016-06's R3-F4; 2026-11-05): it ended, its speeds stayed as they

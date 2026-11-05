@@ -518,8 +518,11 @@ public class FileStream implements AppendOnlyStream {
             throw new IllegalArgumentException("pos > length of stream (" + len + ").");
         }
         
+        // The last file is kept, as a file that the cut ends in is (2026-11-05, bergdb
+        // 015-31): a cut at the length took every file, also the empty one of a new stream,
+        // and threw a Bug.
         DbFile[] files = dbFiles;
-        for (int i = 0; i < files.length; i++) {
+        for (int i = 0; i < files.length - 1; i++) {
             DbFile k = files[i];
             if (k.spos + k.fileLength - 1 < pos) {
                 index = i;
@@ -530,10 +533,6 @@ public class FileStream implements AppendOnlyStream {
         
         if (index != -1) {
             int newSize = files.length - (index + 1);
-            if (newSize < 1) {
-                throw new Bug("Unexpected newSize: " + newSize + ". pos=" + pos 
-                        + ", kfiles.length=" + files.length);
-            }
             
             DbFile[] newFiles = new DbFile[newSize];
             System.arraycopy(files, index + 1, newFiles, 0, newSize);
