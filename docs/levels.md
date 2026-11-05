@@ -384,7 +384,7 @@ heap); `DbBuilder.noEvict()` turns it off. `Database.setCacheSizeInMb`
 (`Db.setCacheSizeIndicator`) changes it while the database runs, for that
 run: after a decrease the call wakes the eviction thread, which evicts in
 its batches until the resident bytes are at most the budget, also when no
-other call follows (005-52).
+other call follows (005-52), or until what is left cannot go (015-70).
 
 How it works, with handles since 2026-10-26 (item
 [009](../items/009-handles/readme.md); `dag/Handle.java`,
@@ -429,12 +429,14 @@ named, with a sweep that walked every resident object (item 004).
   and writes it back. The values of a pinned leaf become stream pointers.
 * **The capacity controller.** CLOCK over the node table: when the resident
   bytes pass the trigger (the budget, or the pinned bytes plus the gap
-  between the watermarks if that is more), a batch of CLOCK steps runs, at
-  most 2 ms, 4,096 handles (65,536 under pressure) and two rounds of the
-  hand, a map with more handles than a batch has left taken in parts
-  (015-67): in the writer at a transaction's end, and after a reader's load in
-  the database's eviction thread, which takes the write lock between
-  transactions and gives way to a waiting writer. A reader's load that
+  between the watermarks if that is more; pinned bytes counted by a round
+  of the hand that began after the last decrease of the budget, 015-70),
+  a batch of CLOCK steps runs, at most 2 ms, 4,096 handles (65,536 under
+  pressure) and two rounds of the hand, a map with more handles than a
+  batch has left taken in parts (015-67): in the writer at a transaction's
+  end, and after a reader's load in the database's eviction thread, which
+  takes the write lock between transactions and gives way to a waiting
+  writer. A reader's load that
   finds the resident bytes far over the trigger waits up to 2 ms for that
   thread. A transaction's own reads of its keys before the write lock
   (`Db.warmup`) wake it and do not wait (005-52), so the resident bytes may

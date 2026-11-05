@@ -129,11 +129,39 @@ public final class Eviction {
 
     /**
      * The resident bytes above which the controller runs a batch: the budget, or the pinned
-     * bytes that the hand's last round found plus the gap between the watermarks if that is
+     * bytes that the hand's last round found (if it began after the last decrease of the
+     * budget, pins(); bergdb 015-70) plus the gap between the watermarks if that is
      * more (bergdb item 009, step 3d; sweep()), so that pinned state above the budget does
      * not keep the controller running for nothing.
      */
     private volatile long trigger;
+
+    /**
+     * A decrease of the budget that the eviction thread has not ended yet (bergdb 015-70;
+     * 016-06, R4-F5): set by setBudget when it lowers the budget. Meanwhile the thread's
+     * batches go on until the resident bytes are at most the budget (goal()), not the
+     * trigger, which may be above the budget by the gap between the watermarks. The decrease
+     * ends when the thread's batches end, at the budget or with the hand gone over the maps
+     * twice without freeing anything (EvictorRun): what is left cannot go now, pinned or held
+     * by loaders; or when a round of the hand that began after the decrease found pinned
+     * bytes above the budget (sweep()): the budget cannot be reached, and the trigger, raised
+     * by those pins, applies again, so that readers' loads do not keep the thread running for
+     * nothing. Written under this monitor. budgetSets counts the decreases (written under
+     * this monitor), so that the thread does not end one that came after its batches began
+     * (that one's call woke it again, wake, and its next batches serve it), and so that a
+     * batch tells the pins of a round that began after the last decrease (pinnedSets) from
+     * those of an older one, which may have fallen since: the writer has written nodes that
+     * were dirty. Until 015-70 the thread stopped at the trigger, and a batch counted down to
+     * the pins of the hand's last round, whatever its age: an idle database could stay above
+     * a lowered budget although the pins fitted it.
+     */
+    private volatile boolean decrease = false;
+    private volatile long budgetSets = 0;
+
+    /** The resident bytes the eviction thread's batches go down to: see decrease. */
+    private long goal() {
+        return decrease ? high : trigger;
+    }
 
     /**
      * A test's hook in sweep(), under the monitor, between the computation of the trigger and
@@ -180,6 +208,10 @@ public final class Eviction {
     public void setBudget(long budget) {
         if (budget < 1) throw new IllegalArgumentException("Illegal budget, " + budget);
         synchronized (this) {
+            if (budget < this.high) {
+                decrease = true;            // bergdb 015-70
+                budgetSets++;
+            }
             this.high = budget;
             this.low = lowOf(budget);
             this.trigger = budget;
@@ -190,7 +222,8 @@ public final class Eviction {
      * Sets the budget as setBudget(long) does, for Db.setCacheSizeIndicator (bergdb 005-52),
      * and wakes the eviction thread if the resident bytes are over the new trigger, so that
      * a decrease is reached also when no transaction or load follows: work that the call
-     * starts (010-P3). Not when the database is not active: its thread has ended or ends.
+     * starts (010-P3); its batches go on until the resident bytes are at most the budget, or
+     * nothing more can go (decrease; bergdb 015-70). Not when the database is not active: its thread has ended or ends.
      */
     public void setBudget(Db db, long budget) {
         setBudget(budget);
@@ -511,8 +544,9 @@ public final class Eviction {
 
     /**
      * The eviction thread: when a reader or the writer asks, batches until the resident bytes
-     * are at most the trigger, or until the hand has gone over the maps twice without freeing
-     * anything (bergdb 015-10), each under the write lock. It ends when the database is no
+     * are at most the trigger (during a decrease of the budget, the budget: bergdb 015-70), or
+     * until the hand has gone over the maps twice without freeing anything (bergdb 015-10),
+     * each under the write lock. It ends when the database is no
      * longer active. Between requests it waits with no timeout, so that the thread of a
      * database that is not used does not wake (010-P3, bergdb 005-51); the database's close
      * wakes it (endThread). Until 005-51 it woke once a second, to see whether the database
@@ -550,7 +584,8 @@ public final class Eviction {
                 }
                 try {
                     // Batches until the resident bytes are at most the trigger (bergdb item
-                    // 009, step 3d: a batch ends after BATCH_NANOS). Before each, a writer
+                    // 009, step 3d: a batch ends after BATCH_NANOS), or at most the budget
+                    // during a decrease (goal(); bergdb 015-70). Before each, a writer
                     // that waits for the write lock goes first: a monitor is not fair, and a
                     // busy eviction thread would keep the writer out for as long as readers
                     // load; the end of the writer's transaction runs a batch anyway.
@@ -565,13 +600,17 @@ public final class Eviction {
                     // time or its handles in the first round frees nothing, and when every
                     // object is resident no load comes to start them again.
                     long idleMaps = 0;      // the maps taken without freeing
-                    while (in.isActive() && in.cache().residents().bytes() > trigger) {
+                    long sets;              // the decreases so far (bergdb 015-70)
+                    synchronized (Eviction.this) {
+                        sets = budgetSets;
+                    }
+                    while (in.isActive() && in.cache().residents().bytes() > goal()) {
                         while (in.writersWaiting() > 0 && in.isActive()) {
                             java.util.concurrent.locks.LockSupport.parkNanos(100 * 1000);
                         }
                         long[] fm = null;
                         synchronized (in.getWriteLock()) {
-                            if (in.isActive() && in.cache().residents().bytes() > trigger) {
+                            if (in.isActive() && in.cache().residents().bytes() > goal()) {
                                 try {
                                     fm = sweep(db, true);
                                 } catch (RuntimeException | Error x) {
@@ -588,6 +627,9 @@ public final class Eviction {
                         if (fm == null) break;
                         idleMaps = fm[0] > 0 ? 0 : idleMaps + fm[1];
                         if (idleMaps >= 2 * Cache3.maps()) break;
+                    }
+                    synchronized (Eviction.this) {      // a decrease ends (bergdb 015-70)
+                        if (budgetSets == sets) decrease = false;
                     }
                 } catch (RuntimeException | Error x) {
                     // A batch that throws (a bug, an OutOfMemoryError) has changed the memory
@@ -634,6 +676,21 @@ public final class Eviction {
      * lock.
      */
     private long roundPinned = 0, pinnedOfLastRound = 0;
+
+    /**
+     * budgetSets when the hand's current round began, and when its last complete round began
+     * (bergdb 015-70): the pins of that round are of the budget in force if pinnedSets equals
+     * budgetSets (pins()). Under the write lock.
+     */
+    private long roundSets = 0, pinnedSets = 0;
+
+    /**
+     * The pinned bytes of the hand's last complete round if it began after the last decrease
+     * of the budget, else 0 (bergdb 015-70; see decrease). Under the write lock.
+     */
+    private long pins() {
+        return pinnedSets == budgetSets ? pinnedOfLastRound : 0;
+    }
 
     /**
      * The handles a batch examines at most (bergdb item 009, step 3b; 009-02, 4.7, K):
@@ -685,8 +742,9 @@ public final class Eviction {
 
         long before = res.bytes();
         // Down to the low watermark, or to the pinned bytes of the hand's last round if they
-        // are above it: the rest cannot go.
-        long need = before - Math.max(low, pinnedOfLastRound);
+        // are above it: the rest cannot go. Not those of a round that began before the last
+        // decrease of the budget: they may have fallen since (pins(), bergdb 015-70).
+        long need = before - Math.max(low, pins());
         boolean pressure = before > trigger + (high - low);
         long maxHandles = pressure ? BATCH_UNDER_PRESSURE : BATCH;
         final int all = Cache3.maps();
@@ -745,12 +803,15 @@ public final class Eviction {
                 complete = true;
                 pinnedOfLastRound = roundPinned;
                 roundPinned = 0;
+                pinnedSets = roundSets;
+                roundSets = budgetSets;
             }
         }
 
         long after = res.bytes();
         // The trigger (bergdb item 009, step 3d): the budget, or the pinned bytes of the
-        // hand's last round plus the gap between the watermarks if that is more: then the
+        // hand's last round (if it began after the last decrease of the budget, pins(); bergdb
+        // 015-70) plus the gap between the watermarks if that is more: then the
         // controller runs once the detachable objects have grown by the gap. (In step 3b the
         // trigger was raised only after a round that met no detachable object, so readers
         // that kept loading kept the batches going with pinned state above the budget.)
@@ -759,10 +820,15 @@ public final class Eviction {
         // The hook, a test's, stops the batch between the two (testSetBudgetAtBatchEnd).
         long dt = System.nanoTime() - t0;
         synchronized (this) {
-            final long next = Math.max(high, pinnedOfLastRound + (high - low));
+            final long next = Math.max(high, pins() + (high - low));
             final Runnable hook = testBeforeTrigger;
             if (hook != null) hook.run();
             trigger = next;
+            // A decrease that cannot be reached ends (bergdb 015-70): a round that began
+            // after it found pinned bytes above the budget.
+            if (decrease && pinnedSets == budgetSets && pinnedOfLastRound > high) {
+                decrease = false;
+            }
             released += r + values;
             unswizzled += values;
             sweeps++;
@@ -2117,6 +2183,83 @@ public final class Eviction {
             }
             Assert.assertTrue("the value read", java.util.Arrays.equals(value,
                     DbUtil.get(db, "b")));
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * A lowered budget is reached when the pins of the hand's last round have fallen since
+     * (bergdb 015-70; 016-06, R4-F5): 500 transactions of one key, nodes of at most 8
+     * entries, and a startup distance of 2,000 bytes, so that much of the tree is dirty
+     * (pinned); the budget lowered to 1 byte, so that the hand's rounds count the pinned
+     * bytes (pinnedOfLastRound, P0); the budget raised, and a transaction that writes the
+     * dirty nodes, so that the pinned bytes fall to P1, below P0. Then detachable objects
+     * are evicted, as a batch does, until the resident bytes are at most P0, the target of a
+     * batch that counts with P0 (R4's probe reached this state through the eviction
+     * thread's batches; whether they do depends on where the hand stops, so the test makes
+     * it); and the budget is lowered to between P1 and P0, with no other call. The eviction
+     * thread brings the resident bytes to at most the budget: the pins fit. Until 015-70 a
+     * batch took the resident bytes down to P0 only, the pins of a round before the
+     * decrease, here nothing, and the trigger was P0 or more: the thread stopped above the
+     * budget, with detachable objects resident. Then a budget of half P1, below the pins: the
+     * decrease ends, and the thread waits for a request.
+     */
+    @Nano
+    public static void testLoweredBudgetAfterPinsFell() throws InterruptedException {
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(new MemoryStream()).clock(clock).testId()
+                .maxNodeSize8().startupDistance(2000).evictionSchedule(Schedule.BUDGET, 1)
+                .audit(0).start();
+        try {
+            Db.Internal in = db.internal();
+            Eviction e = in.eviction();
+            long time = 100 * STEP;
+            for (int i = 0; i < 500; i++) {
+                clock.setTime(time += STEP);
+                db.execute(db.trans().put("k" + i, new byte[100]).build());
+            }
+            db.setCacheSizeIndicator(1);
+            e.awaitBatch();
+            long p0;
+            synchronized (in.getWriteLock()) {
+                p0 = e.pinnedOfLastRound;
+            }
+            db.setCacheSizeIndicator(Long.MAX_VALUE);
+            clock.setTime(time += STEP);
+            db.execute(db.trans().put("flush", new byte[100]).build());
+            long p1 = 0, bytes;
+            synchronized (in.getWriteLock()) {
+                TopNode superRoot = in.superRoot(), newest = in.newestWrittenTop();
+                for (Node x : in.cache().nodes()) {
+                    if (!detachable(x, superRoot, newest)) p1 += Residents.countedBytes(x);
+                }
+                for (Handle h : in.cache().handles()) {
+                    if (in.cache().residents().bytes() <= p0) break;
+                    if (h.obj != null && detachable(h.obj, superRoot, newest)) {
+                        in.cache().evict(h);
+                    }
+                }
+                bytes = in.cache().residents().bytes();
+                Assert.assertEquals("the hand's last round, before the pins fell", p0,
+                        e.pinnedOfLastRound);
+            }
+            long budget = (p1 + p0) / 2;
+            Assert.assertTrue("the pins fell: " + p1 + " of " + p0, p1 < budget);
+            Assert.assertTrue("detachable objects resident: " + bytes + " bytes, budget "
+                    + budget + ", P0 " + p0, budget < bytes && bytes <= p0);
+            db.setCacheSizeIndicator(budget);
+            String state = settled(e, db, 2000);
+            bytes = in.cache().residents().bytes();
+            Assert.assertTrue("at most the budget " + budget + ": " + bytes + " bytes, pinned "
+                    + p1 + ", trigger " + e.trigger, bytes <= budget);
+            Assert.assertTrue("idle after: " + state, state == null);
+            Assert.assertFalse("the decrease ended", e.decrease);
+            // A budget below the pins: the decrease ends, and the thread waits.
+            db.setCacheSizeIndicator(p1 / 2);
+            state = settled(e, db, 2000);
+            Assert.assertTrue("idle after: " + state, state == null);
+            Assert.assertFalse("the decrease ended", e.decrease);
         } finally {
             db.close();
         }

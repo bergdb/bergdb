@@ -200,6 +200,13 @@ Reliability
   in memory, outside the cache's budget, until the database's next write,
   so a database opened for reads kept them for as long as it ran. They are
   now treated as after any write: read from the stream when needed.
+* **A lowered cache size is reached when what must stay in memory fits**
+  (bergdb 015-70, 016-06's R4-F5; 2026-11-05). After
+  `Database.setCacheSizeInMb` lowered the budget, eviction could stop
+  above it, with memory that could go still held, when the nodes that must
+  stay in memory (those changed since the startup position) had shrunk
+  since eviction last counted them. It now goes on until the cache is
+  within the budget, or until what is left cannot go.
 
 * **A record whose size field is larger than its content is refused** at a
   start (bergdb 015-72, 016-06's R6-F1; 2026-11-05), with a
