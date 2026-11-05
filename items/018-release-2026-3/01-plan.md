@@ -93,7 +93,8 @@ Frans."
   * A proposal that changes the format is written in its entry, with what
     changes and why, and waits for Frans's explicit approval; his words go
     into the entry's log. Likely: 015-87 (the retain duration in the
-    stream) and 014-01 (the recovery of holes in an unforced tail).
+    stream). 014-01 needs none for 2026.3: Frans decided its contract,
+    prefix interruption, at 14:36 (section 3.1).
 
 
 ## 3. Where we start
@@ -130,7 +131,8 @@ Of these:
 * A decision by Frans comes first: 015-05 (a start on an empty or missing
   directory), 015-27 (a failed append's transaction was visible; decided
   2026-11-05: intended, not a fault), 015-87 (his answers to F1 to F7)
-  and 014-01 (the recovery of holes in an unforced tail).
+  and 014-01 (the recovery of holes in an unforced tail; decided
+  2026-11-05: outside the crash contract, not a fault).
 * Checked by a second agent: R2's and R3's faults (015-26, 27, 31 to 35,
   38). The others have the reviewer's own test or probe. Each fix starts
   with its failing test anyway, by its entry's "Done when".
@@ -138,7 +140,10 @@ Of these:
 Changed since, 2026-11-05: 015-27 left the list (intended, not a fault);
 019-01 joined (a meta block's version read as 2 bytes, from 015-74), and
 019-02 (the streams' refusals of a bad length, found by harness 6.3,
-018-02).
+018-02). 014-01's fault left the list (Frans, 14:30 and 14:36): the crash
+contract is prefix interruption, under which a hole in an unforced tail
+is damage outside the contract, not a fault; 014-01 stays open in 014 for
+the broader model (014-01, section 7).
 
 
 ### 3.2. Outside the goal
@@ -247,15 +252,18 @@ for 2026.3: they are experimental (D2).
 
 * Known faults: 015-72, 73, 75 (and 015-07, 005-74 and 005-75, fixed).
 * What it does: takes streams written by real runs and makes damaged
-  copies of them: a byte flipped, a range cut out, the tail cut at and
-  inside each record, a record's size or `startupPos` changed with its
-  checksum made right again, as R6's probes did.
-* What it checks: each start either refuses the copy before it writes
-  anything, or starts with exactly the transactions of a committed prefix
-  and passes the audit. It never starts and drops a transaction that the
-  copy still holds whole.
-* 014-01's holes in an unforced tail are one kind of damage; what a start
-  must do with them waits for 014-01's recovery contract.
+  copies of them: a byte flipped, a range cut out, the tail cut at every
+  byte, a record's size or `startupPos` changed with its checksum made
+  right again, as R6's probes did.
+* What it checks: its core is the crash contract (014-01, section 7), a
+  hard requirement: a copy truncated at any byte starts with exactly the
+  transactions of its committed prefix and passes the audit. Other damage
+  is outside the contract, and its detection is best effort: the start
+  refuses the copy before it writes anything, or a read fails the
+  database (P7). The cheap refusals of 015-72, 73, 75 and 019-01 stay in
+  the goal's list: a violation is refused rather than used.
+* 014-01's holes in an unforced tail are such other damage, not a fault
+  (Frans, 2026-11-05, 14:36).
 
 
 ### 6.2. Failures and interrupts in storage
@@ -358,7 +366,8 @@ Fixed one at a time:
   is fixed by its entry: its failing test, the fix, `BEFORE COMMIT OK`,
   and the level script of a mechanism it changes (AGENTS.md), within
   section 2's rules. A new fault becomes a 019 entry (D3); one of the Core
-  joins the goal's list. 015-87 and 014-01 wait for Frans's decisions.
+  joins the goal's list. 015-87 is done (14:25), and 014-01's contract
+  for 2026.3 is decided (14:36; section 3.1): neither waits.
 * **W4. The documentation** (section 1, "Ready", 4): kept up to date as
   the fixes go in, and read through before the release.
 * **W5. The release**, made as 2026.2 was (016-09, by 008-01's steps),
@@ -437,3 +446,14 @@ duration and the internal fraction are kept in the stream, in the reserved
 internal KV `/#i/dreclaim/-settings.txt` (the format change Frans approved
 at 13:12; F5's option 1 at 13:52), with no builder value; StreamDigest's 4
 `l3-*` configurations change, their digests in 015-87's folder.
+
+2026-11-05, 14:40. 014-01 for 2026.3, decided by Frans with session
+bergdb-e8 (14:30, his assumption; 14:36: "Yes, do it."): the crash
+contract is prefix interruption: written bytes are correct, only a
+truncated tail is recovered, and the provider ensures it (014-01, section
+7). Its fault, the recovery of holes in an unforced tail, leaves section
+3.1's list, as 015-27 did; 014-01 stays open in 014 for the broader model.
+Harness 6.1's core is a truncation at every byte; other damage is outside
+the contract, its detection best effort. Sections 2, 3.1, 6.1 and 7 (W3)
+updated; the contract is stated in AppendOnlyStream's Javadoc,
+docs/levels.md, section 8, and `releases/next.md`.

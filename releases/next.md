@@ -215,3 +215,20 @@ Documentation
   docs/levels.md, section 1. Their tests still run in `before-commit.sh`.
   The notes say it in "What it is" and in the known issues, as 2026.2's say
   it of replication; their faults are those of 018-01, section 3.2.
+* **The crash contract is stated** (bergdb 014-01, section 7; Frans,
+  2026-11-05). BergDB assumes that its stream's bytes are read back
+  exactly as they were written, and that a crash leaves a prefix of what
+  was appended, at least up to what was forced to storage; the storage
+  under the stream (a file system, block storage, flash) ensures this, not
+  BergDB. A transaction is then seen whole or not at all, and `sync()`
+  adds durability: a transaction it returned for survives. A start
+  recovers only a truncated tail, as before: it completes a torn last
+  record as an aborted one, by appending. Other damage is an integrity
+  failure outside the contract: a start may refuse it, or a read fail the
+  database. `FileStream` relies on a file system that keeps appends in
+  order: POSIX does not promise it for writes that are not forced, though
+  common file systems keep it. 2026.2's known issue "Holes in an unforced
+  tail" is such damage, outside the contract, and not a known issue of
+  2026.3. `AppendOnlyStream`'s Javadoc states an implementation's duty,
+  and docs/levels.md, section 8, the assumption. The code, the format and
+  the stream's bytes are unchanged.

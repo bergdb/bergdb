@@ -12,6 +12,14 @@ import java.io.IOException;
  * <p>The stream format and storage/database contract are being specified in bergdb 014.
  * Historical crash assumptions and startup stream correction are investigated in
  * bergdb 014-01, sections 2 to 5.</p>
+ *
+ * <p>CRASHES. BergDB assumes that the bytes read back are exactly the bytes appended, and that
+ * after a crash (of the process, the OS or the power) the stream is a prefix of the bytes
+ * appended: it ends at some position, at least as far as the bytes forced to storage, and
+ * holds every byte before it and none after it. The implementation, with the storage under
+ * it (file system, block device, flash), must ensure this; BergDB does not.
+ * A start recovers only a truncated tail; other damage is an integrity failure outside this
+ * contract (bergdb 014-01, section 7).</p>
  * 
  * <p>CONCURRENCY.
  * Implementations can assume that the interface user adheres to the following concurrency rules:
@@ -102,6 +110,7 @@ public interface AppendOnlyStream {
 
 /*
 ---- Log ----
+261105 Class Javadoc: the crash contract, a prefix of the bytes appended (bergdb 014-01).
 261105 Removed seekFirstPos(), added for replication, which is gone (bergdb 019-04).
 261104 append(): the storage says what a completed append means, forced or written (bergdb 005-47).
 261024 pretruncate(): a position past the length is refused (bergdb 005-37).

@@ -35,7 +35,8 @@ Files
 
 * [01-correction.md](01-correction.md). 014-01, stream correction: the
   discussion, historical evidence from F1-007, terminology, possible
-  recovery contracts and the decisions/tests still needed; open.
+  recovery contracts and the decisions/tests still needed; open, its
+  contract for release 2026.3 decided: prefix interruption (section 7).
 
 
 Related work
@@ -62,3 +63,9 @@ storage/database interface work. Added 014-01 after searching F1-007's
 old notes, ODT drafts and the original Git bundle read-only. Promoted
 005-83's investigation without moving its reproducible artifacts. Added
 an item reference in AppendOnlyStream's Javadoc; no executable change.
+
+2026-11-05. Frans decided 014-01's contract for release 2026.3 (14:30 and
+14:36): prefix interruption; written bytes are correct, only a truncated
+tail is recovered, and the provider ensures it (014-01, section 7). Stated
+in AppendOnlyStream's Javadoc, docs/levels.md and the release notes; the
+fault leaves 018-01's goal list; the broader model stays open here.

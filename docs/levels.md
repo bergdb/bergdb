@@ -516,12 +516,20 @@ Limits:
   ([011-07](../items/011-docs-archive/07-level3-durability.md);
   `PowerLossTest` in `level3.sh`). Not established: physical power cycling,
   other storage providers and Windows.
-* Recovery tolerates the tested truncated prefixes of an unforced write,
-  but holes in that write (later bytes surviving while earlier ones are
-  missing) can refuse startup or fail a later read after startup succeeds.
-  The experiment preserves every already-forced byte and name; recovery
-  for this fault class is open (014-01; found in 005-83, "Power-loss tail
-  experiment"), a known issue of release 2026.2.
+* The crash contract (014-01, section 7; Frans, 2026-11-05): BergDB
+  assumes that its stream's bytes are read back exactly as written, and
+  that a crash leaves a prefix of what was appended, at least up to what
+  was forced; the storage provider ensures this, not BergDB. A transaction
+  is then seen whole or not at all, and `sync()` adds durability. A start
+  recovers only a truncated tail: it completes a torn last record as an
+  aborted one, by appending (005-83's 56 truncation cases all recover).
+  Other damage is an integrity failure outside the contract: a start may
+  refuse it, or a read fail the database. Holes in an unforced write
+  (later bytes surviving while earlier ones are missing; 005-83,
+  "Power-loss tail experiment") are such damage. POSIX does not promise a
+  prefix for writes that are not forced, though common file systems keep
+  appends in order: `FileStream` relies on a file system that does. A
+  broader crash model is open in 014-01.
 * `BufferedStream`, above it, collects the database's appends and writes
   them in chunks from a thread of its own, when the buffer time (50 ms by
   default since 005-64; 20 ms from 005-13) has passed or its buffer is
@@ -560,11 +568,12 @@ Limits:
   power loss. The forces that keep the database whole stay: a file opened
   for appends and its directory entry, the last file before a new one, the
   last file before a cut's deletes, and the last file at `close()`, so a
-  clean stop is durable. A known limit: a power loss or OS crash can leave
-  a hole in the unforced tail, which recovery does not handle (the second
-  point above, 014-01): the database may then not start, or fail reads,
-  more than a loss of its last transactions. `PowerLossTest` runs each seed
-  in this mode too, with its negative controls, and counts the hole images.
+  clean stop is durable. On a file system that does not keep appends in
+  order, a power loss or OS crash can leave a hole in the unforced tail,
+  outside the contract (the second point above): the database may then not
+  start, or fail reads, more than a loss of its last transactions.
+  `PowerLossTest` runs each seed in this mode too, with its negative
+  controls, and counts the hole images.
 
 
 ## 9. Replication

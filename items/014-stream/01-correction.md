@@ -2,8 +2,10 @@
 ====================================
 
 Created 2026-11-03 by Frans Lundberg. Status: open; investigation/discussion.
-Promoted from 005-83. Historical search complete for this revision;
-recovery contract and protocol remain undecided. No implementation change.
+The contract for release 2026.3 decided (Frans, 2026-11-05): prefix
+interruption, section 7; the broader crash model and its protocol remain
+open. Promoted from 005-83. Historical search complete for this revision.
+No implementation change.
 
 
 1. Question and present position
@@ -26,7 +28,7 @@ format, checkpoint or other mechanism is still open.
 2. Historical evidence
 -----------------------
 
-Source IDs H1–H8 are resolved in section 7. These are original notes and
+Source IDs H1–H8 are resolved in section 8. These are original notes and
 code, not retrospective assumptions about the behavior of disks.
 
 **2008: an explicit choice against tail truncation.** H1, 2008-09-22,
@@ -203,7 +205,60 @@ appropriate crash/conformance evidence. This document records the
 investigation and discussion; it does not authorize code changes.
 
 
-7. Sources and search scope
+7. The decision for release 2026.3
+-----------------------------------
+
+Frans, 2026-11-05, 14:30: “The assumption is the following. A stream is
+written correctly or not. The only errors BergDB should recover from is
+truncation at the end. The database can assume all written bytes are
+correct but that the end of the stream may be truncated. The user can
+assume transactions are written correctly or not at all. With force to
+storage, we get additional durability guarantees, but what is written is
+always assumed to be correct. It is the responsibility of the underlying
+stream storage (file system, block storage, flash, whatever) to ensure
+this. With this assumption, can we mostly settle 014-01? At least enough
+to get 2026.3 done.”
+
+This is prefix interruption (section 3), the 2012 intent (sections 1 and
+2), and what recovery implements today: a torn last record is completed
+as an aborted record by appending, and 005-83's 56 truncation cases all
+recover (section 4). Session bergdb-e8 answered with points 1 to 4, and
+Frans accepted them at 14:36: “Yes, do it.”
+
+1. **The contract is written down.** As the provider's duty, in
+   AppendOnlyStream's Javadoc: the bytes are read back exactly as they
+   were appended; after a crash the stream is a prefix of what was
+   appended, at least up to what was forced; the provider, with the
+   storage under it, ensures this, not BergDB. As BergDB's assumption, in
+   docs/levels.md, section 8, and the release notes: a transaction is
+   seen whole or not at all; `sync()` adds durability; a start recovers
+   only a truncated tail; any other damage is an integrity failure outside
+   the contract.
+2. **014-01's fault leaves release 2026.3's goal list** (018-01, section
+   3.1), as 015-27 did: under the decided contract the recovery of holes
+   in an unforced tail is not a fault. 014-01 stays open in item 014 as
+   the longer investigation: a broader crash model (unforced-tail damage,
+   sections 3 and 5) and what each provider guarantees.
+3. **Harness 6.1** (018-01, section 6.1): its core is that a stream
+   truncated at any byte starts with exactly the committed prefix, the
+   contract and a hard requirement. Other damage is outside the contract;
+   its detection is best effort: the start refuses it, or a read fails the
+   database (010-01, P7).
+4. **Consequences**, confirmed by Frans:
+   * (a) the corrupt-stream checks 015-72, 73, 75 and 019-01 stay in the
+     goal list as cheap refusals: a violation is refused rather than used;
+   * (b) FileStream, BergDB's own provider, must keep the prefix across
+     its files (checked by another agent, 2026-11-05);
+   * (c) POSIX does not promise prefix behaviour for unforced appends,
+     though common file systems keep appends in order: the release notes
+     say that FileStream relies on a file system that does.
+
+Of section 6's decisions, the first is made for 2026.3: each provider must
+give prefix interruption. For the broader model, decisions 1 to 5 and
+section 6's completion criteria remain open.
+
+
+8. Sources and search scope
 ----------------------------
 
 F1-007 is the read-only archive at
