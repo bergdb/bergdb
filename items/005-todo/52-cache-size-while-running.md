@@ -1,15 +1,18 @@
 005-52. Change the cache size while the database runs
 =====================================================
 
-Status: open (reopened by Frans, 2026-10-29: one point of "Done when" is
-left, the pause probe with a lowered budget; see Left to do. The API is
-done: option B, decided by Frans and implemented with 005-53 on
-2026-10-28; see Outcome). Planned for release 2026.2: the probe's two
-properties, six runs in night 1's quiet block, the table (see Plan for
-2026.2). Run 2026-11-04, not quiet (Results, 2026-11-04 night): the first
-large transaction after a decrease waits about as long as the
-convergence (a commit of 194.9 ms under ZGC, against at most 40.6 ms with
-a fixed budget); the point is not met, a stop for Frans. Kind: fix.
+Status: done (2026-11-05). Reopened by Frans on 2026-10-29 for one point
+of "Done when", the pause probe with a lowered budget (Left to do); the API
+was done with 005-53 on 2026-10-28 (Outcome). The night run of 2026-11-04
+found the first large transaction after a decrease waiting about as long
+as the convergence, through its warmup's loads (Results, 2026-11-04
+night). Frans decided option B on 2026-11-04 (Decision, 2026-11-04): the
+warmup does not wait for eviction; done in `0c6c4be` (Option B, done). The
+six runs again, on s1 as F53 was not quiet (Results, 2026-11-04 evening):
+no wait from the lowering on is longer than with a fixed budget; the four
+LONGER verdicts all come before the lowering, the collector's and the
+machine's. Closed on the coordinator's reading of the rule (The verdict,
+there); Frans may reopen it if he reads the rule otherwise. Kind: fix.
 Created 2026-10-26.
 
 Found in [010-01](../010-principles/01-principles.md), 010-P6 ("No
@@ -730,6 +733,247 @@ then the six runs again in a quiet block, which also settles waits 3 and
 4 and the spread of (a).
 
 
+Decision, 2026-11-04
+--------------------
+
+Frans, 2026-11-04, 18:51: "52, do as recommend, Option B." So (B) of the
+proposal in Results, 2026-11-04 night: the writer's warmup does not wait for
+eviction; then the six runs again in a quiet block.
+
+
+Option B, done
+--------------
+
+2026-11-04, by Claude (Opus 5.5, Claude Code), in a clone of `main`; the code
+is one commit, `0c6c4be` (on `13e9db7`).
+
+* **The mechanism.** `Eviction.afterLoad(Db, boolean paced)`: a load that
+  finds the resident bytes over the trigger wakes the eviction thread, as
+  before; under pressure (over the trigger by more than the gap between the
+  watermarks) only a paced load waits for the thread's next batch, at most
+  `LOAD_WAIT_NANOS`, 2 ms. A reader's load is paced (009-02, step 3d); a load
+  of a transaction's warmup (`Db.warmup`) is not: it wakes the thread and
+  goes on. A load under the write lock neither waits nor wakes, as before.
+* **How a warmup's load is told from a reader's.** The load listener gets
+  the follow's `OpData`: `NodeCollection.LoadListener.loaded(OpData op)`,
+  called by `NodeCollection.followPointer` after a read from the stream, as
+  before. The warmup's `GetData` has a class of its own,
+  `Trans.WarmupGetData` (package-private; `Trans.Builder` makes it, the only
+  maker of `t.warmupGetData`), and `Db`'s listener calls
+  `eviction.afterLoad(Db.this, !(op instanceof Trans.WarmupGetData))`. The
+  cost on the read path: an argument and a type check, only after a read
+  from the stream; a follow that finds its object in memory makes no call,
+  as before. The comments in `Db`'s constructor, `Trans`, `NodeCollection`
+  and `Eviction` cite bergdb 005-52.
+* **A counter**, `Eviction.loadWaits` (an `AtomicLong`, incremented only by a
+  load that then waits; a package-private getter), for the tests.
+* **Unchanged:** the readers' pace; the batches, their bounds and the
+  trigger; `setBudget` and the trigger's write under the monitor (005-80:
+  `Eviction.testSetBudgetAtBatchEnd` passes); the stream's bytes
+  (EvictionInvariance in `level4.sh`); `Db`'s public methods.
+
+**The statements that changed.** No documented bound on the resident bytes
+was a hard one: the budget is what the batches converge to, and pinned
+state may exceed it. What changed is who waits, and so how far the resident
+bytes may rise above the readers' pace:
+
+* docs/levels.md, section 7, the capacity controller: "A reader's load that
+  finds the resident bytes far over the trigger waits up to 2 ms for that
+  thread. A transaction's own reads of its keys before the write lock
+  (`Db.warmup`) wake it and do not wait (005-52), so the resident bytes may
+  rise by what they load (the paths of the keys and their present values)
+  until the transaction's end runs a batch." Before: "A load that finds
+  the resident bytes far over the trigger waits up to 2 ms for that
+  thread."
+* `Database.setCacheSizeInMb`: "reads may wait for a batch meanwhile, at
+  most 2 ms each" stays, and: "A commit's own reads of the keys it writes
+  do not wait, and the commit runs one batch at its end (bergdb 005-52); the
+  memory held may rise by what those reads load until then."
+* `Eviction.afterLoad`'s Javadoc and the wake protocol's item 4 (`wake`).
+
+**What one warmup may add, a correction of the proposal.** The proposal
+said the rise is "bounded by the transaction's size (`checkSize`)". That is
+not exact. The warmup reads the index paths of the transaction's keys and
+the keys' present values, not the transaction's new ones, and it reads with
+`Dag.CACHE_ALL`, so a present value over 1 MiB is kept too (a reader's
+`CACHE_ALL_EXCEPT_LARGE_VALUE_NODES` does not keep one). `checkSize` bounds
+the transaction's new values and keys, not these bytes; the present values
+were written by earlier transactions. And several writers may be in their
+warmups at once, outside the write lock. So the rise is bounded by the
+index paths and present values of the keys of the warmups in progress,
+summed over them, until each transaction's end runs a batch. B changes
+what a warmup loads in nothing, only that it no longer waits between its
+loads; the thread, woken by the first, runs meanwhile.
+
+**The Lean model and the alignment.** Nothing to change. Concurrency is
+outside the model, and 009-05's R3 says that "the bytes, the CLOCK bit, the
+trigger and the thread are not in the model"; no invariant (INV-CAN, the
+pins, INV-SLOT, the handles') is about when a load returns, and B changes
+nothing that is evicted or written.
+
+**The test**, `CapacityTester.testWarmupDoesNotWait` (unit, about 0.09 s):
+3,000 keys of 300 bytes, started cold with a budget of 10 MB, k0 to k999
+read. With the write lock held by the test (the eviction thread cannot run
+a batch, so the pressure stays and no wait ends early): the budget lowered
+to a quarter of the resident bytes, under pressure; a writer's transaction
+of 1,000 puts to k1000 to k1999, whose values are not resident: its warmup
+loads at least 1,000 times, none of its loads waits (`loadWaits`), and the
+writer goes on to wait for the write lock (`Db.Internal.writersWaiting`).
+A reader then gets k2000 to k2019, not resident either: at least 20 of its
+loads wait. With the lock let go, the transaction commits, its values are
+read back, and its end ran a batch (`afterTransaction`). Counts, not times:
+no bound on the wall clock, so that a busy machine does not fail it; the
+runs below time it. Mutations, in a copy: every load paced (B undone): "the
+warmup's loads that waited, expected 0, got 1281" (2.7 s, a wait of 2 ms
+for each); no load paced: "the reader's loads that waited: 0".
+
+**The gates**, on the tree committed: `java/` and `lean/` of `188facf` (005-47)
+with the change, the same as at `13e9db7`, the commit's parent, which
+changed only documents.
+
+* `java/before-commit.sh`, 2026-11-04, 19:11 to 19:13: `BEFORE COMMIT OK
+  (104 s)`, 1,134 unit tests and 81 f-tests. Before, on `16fb228`: 1,128
+  and 79, also OK.
+* `java/stress/level4.sh`, full, 19:13 to 19:27: `LEVEL 4 OK`.
+  EvictionInvariance 9 of 9; RestartInvariance, CrashTest and ReclaimStress
+  with the schedules every and random, the audit on; ReclaimReaders 5 of 5;
+  the conformance with the Lean model with eviction (45 traces `TRACECHECK
+  OK`; C-P and C-H, 0 of 10,344 transactions fail); LargerThanMemory (50 MB
+  resident at a budget of 50 MB).
+* Also, `java/night.sh` on `0c6c4be`, 2026-11-05 at 02:10: `NIGHT OK (39
+  minutes)`: before-commit, the core build, Levels 1 to 4, the night tests
+  and the medium conformance, each ok (`java/build/night/2026-11-05-0210/`,
+  `report.txt`).
+
+
+Results, 2026-11-04 evening
+---------------------------
+
+The six runs again, by Claude (Opus 5.5, Claude Code), on the jar of
+`0c6c4be` (SHA-256 `7b80b9f9`), JDK 27, by the step's script with its runs
+as they were (2 GB heap, 1M keys of 100 bytes, 4 readers, 60 s a phase; (a)
+a fixed budget of 100 MB; (b) 400 MB, lowered to 100 MB 10 s into each
+phase; ZGC a1, b, a2, then G1 a1, b, a2).
+
+**On s1, not F53.** F53 did not get quiet: a wrapper waited 45 minutes,
+19:28 to 20:13, for a 1-minute load of at most 1.3 and no gate, perf or
+stress run, and gave up ("NOT QUIET after 2700 s"). The load stayed at
+about 3.2, most of it macOS's `mediaanalysisd` at about 80 percent of a
+CPU; no gate ran. s1 was quiet (load 0.12, no JVM; 005-47's measurement
+there had ended, `2753f80`), so all six ran there, 20:14 to 20:27: `lowered:
+OK, 0 problems`, six runs `PAUSE PROBE OK`, two lowerings in each (b), 12 of
+12 rows; nothing but the probe's JVM used over 20 percent of a CPU meanwhile
+(sampled every 30 s). s1 has two virtual CPUs (x86) and 3.8 GB: the 4
+readers, the writer, the eviction thread and the collector share two CPUs,
+so these times are not comparable with F53's table in Results, 2026-11-04
+night; only (b) against (a) on s1 is. The step's copy for s1 changes the
+JDK's path, drops `caffeinate` and reads the load from `/proc/loadavg`.
+
+The outputs, outside the repository, in
+`/Users/f/fl/bench/016/005-52/run-2026-11-04-B/`: `out/` (each run's text
+and GC log, `runs.txt`, `summary.txt`), `load.txt` (s1's load during the
+runs), `quiet.txt` (F53's wait), `jar.txt`; beside it the scripts
+`prep-B.sh`, `quiet-run-B.sh` and `s1-B/night/`.
+
+Per run and phase; times in ms. Batch: the longest eviction batch so far in
+the run. Reached: seconds from the lowering to the resident bytes at most
+100 MB. A p99.9 is the lower bound of the probe's bucket (a quarter of a
+power of two).
+
+| Run | Phase | Gets | Gets p99.9 | Gets max | Commits | Commits p99.9 | Commits max | Batch | Reached |
+|---|---|---|---|---|---|---|---|---|---|
+| zgc-a1 | tsize=1    | 11,044,450 | 3.67 |   57.87 | 410,733 |  10.49 |   51.69 |  23.59 | -           |
+| zgc-a1 | tsize=1000 |  7,110,336 | 5.24 |   19.12 |   1,513 |  83.89 |   97.33 |  23.59 | -           |
+| zgc-b  | tsize=1    | 11,700,551 | 3.67 |  354.57 | 423,475 |  10.49 |  395.54 |  15.18 | 0.604       |
+| zgc-b  | tsize=1000 |  7,853,375 | 4.19 |   27.56 |   1,607 |  67.11 |   84.59 |  17.63 | not reached |
+| zgc-a2 | tsize=1    |  9,733,500 | 3.67 | 1042.58 | 397,352 |  10.49 | 1036.90 |  12.04 | -           |
+| zgc-a2 | tsize=1000 |  7,057,664 | 5.24 |   20.66 |   1,616 |  83.89 |   89.45 |  15.41 | -           |
+| g1-a1  | tsize=1    | 11,089,840 | 3.67 |  114.10 | 618,804 |   8.39 |  109.23 | 105.00 | -           |
+| g1-a1  | tsize=1000 |  9,620,165 | 3.67 |  126.95 |   1,461 | 134.22 |  170.84 | 128.78 | -           |
+| g1-b   | tsize=1    | 11,920,005 | 3.67 |  115.29 | 666,070 |   8.39 |  115.15 | 111.42 | 0.336       |
+| g1-b   | tsize=1000 | 10,056,525 | 3.67 |  423.87 |   1,509 | 234.88 |  704.60 | 125.12 | not reached |
+| g1-a2  | tsize=1    | 10,307,639 | 3.67 |  122.12 | 592,030 |   8.39 |  120.78 | 120.74 | -           |
+| g1-a2  | tsize=1000 | 10,110,983 | 3.67 |  127.86 |   1,477 | 134.22 |  174.72 | 120.74 | -           |
+
+In the phase tsize=1000 the resident bytes stayed above 100 MB with the
+fixed budget too, 127 to 132 MB at the phase's end, so "not reached" in (b)
+(130 and 133 MB) is the phase's state on s1, not the lowering's.
+
+**(b) against (a).** The longest waits, by `sum52.py`'s rule (LONGER: above
+the larger of a1 and a2 by more than their spread, |a1 - a2|), with (b)'s
+uptime, before or after its phase's lowering (zgc-b at 22.130 and 82.178 s,
+g1-b at 20.295 and 80.321 s), and the cause in its GC log:
+
+| GC | Phase | Longest | a1 | a2 | b | Spread | Verdict | (b)'s: uptime, s; cause |
+|---|---|---|---|---|---|---|---|---|
+| ZGC | tsize=1    | get    |  57.87 | 1042.58 | 354.57 | 984.71 | ok     | 17.665, before: a ZGC stall   |
+| ZGC | tsize=1    | commit |  51.69 | 1036.90 | 395.54 | 985.21 | ok     | 17.696, before: the stall     |
+| ZGC | tsize=1000 | get    |  19.12 |   20.66 |  27.56 |   1.54 | LONGER | 78.705, before: no GC event   |
+| ZGC | tsize=1000 | commit |  97.33 |   89.45 |  84.59 |   7.87 | ok     | 92.092, after                 |
+| G1  | tsize=1    | get    | 114.10 |  122.12 | 115.29 |   8.02 | ok     | 26.302, after: a young pause  |
+| G1  | tsize=1    | commit | 109.23 |  120.78 | 115.15 |  11.55 | ok     | 26.302, after: the pause      |
+| G1  | tsize=1000 | get    | 126.95 |  127.86 | 423.87 |   0.91 | LONGER | 77.323, before: a Full GC     |
+| G1  | tsize=1000 | commit | 170.84 |  174.72 | 704.60 |   3.88 | LONGER | 77.336, before: the full heap |
+
+Of the p99.9s, one is LONGER: G1's commits with 1,000 puts, 234.88 against
+134.22 ms. With 1,509 commits it is about the second longest: the waits of
+213 to 254 ms that end at 73.405 to 73.434 s, before the lowering (a G1
+pause, below).
+
+The causes, from the GC logs:
+
+1. **G1, tsize=1000, before the lowering: the heap ran out.** At 73.194 to
+   73.405 s a young pause of 210.5 ms with an evacuation failure (1,869 to
+   820 MB); the waits of 213 to 254 ms end there. At 76.649 to 77.320 s a
+   young pause of 246.8 ms with an evacuation failure (1,888 to 2,046 MB of
+   2,048), another of 82.8 ms, and a Full GC of 337.1 ms (2,047 to 254 MB),
+   one safepoint of 420.6 ms: the gets of 420 to 424 ms end at 77.320 to
+   77.323 s, and the commit of 704.6 ms, from 76.631 s, spans the three
+   pauses. (a)'s G1 runs had neither: no Full GC, no evacuation failure,
+   the longest pause 123.3 ms (a1) and 118.5 ms (a2); after g1-b's lowering
+   its longest pause is 116.1 ms. So (b)'s budget of 400 MB, before it was
+   lowered, left G1 too little of a 2 GB heap on two CPUs: the collector's
+   waits, not BergDB's, and not the decrease's.
+2. **ZGC, tsize=1, before the lowering: allocation stalls.** Stalls of 352
+   to 366 ms in every thread at 17.665 to 17.669 s, 4.5 s before the
+   lowering: the get of 354.6 ms and the commit of 395.5 ms. (a) has them
+   too: zgc-a2 a stall of 1,042.5 ms at 49.9 s (its get of 1,042.6 ms and
+   commit of 1,036.9 ms), so (a)'s spread is 985 ms; zgc-a1 none, and zgc-b
+   none after a lowering. ZGC's stalls on two CPUs, not BergDB's.
+3. **ZGC, tsize=1000, a get of 27.56 ms before the lowering** (78.705 s,
+   3.5 s before it), 6.9 ms above (a)'s 20.66 ms: no pause or stall near it
+   (a pause of 0.019 ms at 78.463 s). Most likely the scheduling of the
+   probe's threads and the collector's on two CPUs.
+
+After the lowerings no wait of (b) is longer than (a)'s maximum. Under ZGC
+the longest commits after them are 84.6 ms with 1,000 puts ((a) 89.5 and
+97.3 ms) and at most 34.3 ms with one put; under G1, waits of at most
+115.3 ms with one put, at young pauses of 104 to 111 ms ((a)'s longest
+waits 109 to 122 ms), and commits of at most 169.8 ms with 1,000 puts ((a)
+170.8 and 174.7 ms). The first
+transaction after each lowering, which the writer starts at once, is not
+among the five longest commits of its phase; on 2026-11-04 night it was the
+longest (194.9 ms under ZGC, 96.8 ms under G1).
+
+**The verdict.** As written, Left to do's rule ("no wait in (b) is longer
+than in (a) beyond the spread between two runs of (a)") has four LONGER
+verdicts, so it is not met to the letter. The coordinator's reading
+(2026-11-05), recorded as such, so that Frans can reopen the entry if he
+reads the rule otherwise: the point reopened was the decrease's own wait,
+and it is gone. No wait from the lowering on is longer than (a)'s maximum,
+and the first large transaction after a decrease no longer waits for the
+convergence. All four LONGER verdicts come before the lowering, while (b)
+ran at 400 MB, on a machine of two CPUs whose (a) runs were noisy
+themselves (1,042 ms in zgc-a2); three are the collector's (G1's
+evacuation failures and Full GC, ZGC's stalls), one (27.6 ms) the
+machine's. So the point is met, and the entry is done.
+
+For release 2026.2 (016-05): the point is met on `main` by B, `0c6c4be`.
+The release's commit, `eed4ca9`, came before B, so 2026.2 keeps the wait of
+Results, 2026-11-04 night: a large transaction right after a decrease may
+wait about as long as the convergence.
+
+
 Log
 ---
 
@@ -809,3 +1053,13 @@ the other two came before the lowering (a stall of about 11 ms under ZGC,
 a G1 pause). Not met: a stop for Frans, with options (A) to (C) and (B)
 recommended. The raw outputs stay in `/Users/f/fl/bench/016/005-52/run/out/`;
 the markers removed.
+
+2026-11-04 and 05. Option B, decided by Frans at 18:51, done by Claude
+(Opus 5.5, Claude Code) in `0c6c4be`: a transaction's warmup no longer
+waits for eviction; `CapacityTester.testWarmupDoesNotWait`;
+`before-commit.sh` and `level4.sh` OK, and `night.sh` OK on it (2026-11-05,
+02:10). The six runs again, 2026-11-04, 20:14 to 20:27, on s1 (F53 not
+quiet for 45 minutes): no wait after a lowering longer than (a)'s; four
+LONGER verdicts, all before the lowerings, the collector's and the
+machine's. Closed 2026-11-05 on the coordinator's reading of the rule
+(Results, 2026-11-04 evening).

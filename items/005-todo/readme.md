@@ -28,7 +28,6 @@ Open
 | ID | Kind | What | Status |
 |---|---|---|---|
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced". Decided (Frans, 2026-11-04): A, a setting of `FileStream`, per-append forcing on (the default) or off, in the core API only, no force at an interval; implemented, with forces kept at a new file, its predecessor, a cut and `close()`, and a power-loss mode without per-append forces. Sync latency on s1 (1 thread): p50 4.2 ms on, 0.1 ms off. Left: the same on F53, in a quiet block; holes in the unforced tail are 014-01's | open |
-| [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API set it only at start (`cacheSizeInMb`), against 010-P6. Decided (Frans, 2026-10-28): option B, `Database.setCacheSizeInMb` and `getCacheSizeInMb`, clamped as the builder, for the run only, through `Db.setCacheSizeIndicator` and its getter, which JMX uses too; after a decrease the setter wakes the eviction thread, so that an idle database gives the memory back. Implemented with 005-53 (`fd8f513`). Reopened by Frans 2026-10-29: left is "Done when"'s pause probe, no get or commit waiting longer while the resident bytes converge to a lowered budget than with a fixed one; `PauseProbe` needs two properties to lower its budget mid-phase, then four runs (ZGC and G1, fixed and lowered) in a quiet block, about 15 minutes; the steps in the entry's Left to do | open |
 | [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Measured 2026-10-28 night, quiet: only with 8 threads, on `eaec93e` (005-46) and `4f7cd60` alike; no load waited for a batch; the machine at 9.6 of 10 cores, and the loads' entries into `evictorLock` in `Eviction.wake` (78,000 a second) a fifth of the gets over 10 ms. Frans decided 2026-10-29: the fix, in `main` (`988fe1a`): a load skips that monitor when a request to the eviction thread is pending (an untimed count with 8 readers: 116,000 to 128,000 entries a second before, about 570 after); the rest accepted as a full machine. Open until the thread sweep reruns with the fix in a quiet block | open |
 | [005-78](78-retain-duration-in-stream.md) | Investigate | The retain duration is not kept in the stream: it decides when reclaim's iterations start and where it cuts, so the stream's bytes, but a start takes the builder's value (default forever), against the rule of 005-53 and 005-52 (a setting that changes the stream's bytes is kept in the stream, 010-P2) and without a word in its Javadoc. Frans: it must be in the stream; study first. Forms: the meta blocks (as the startup distance), an internal KV, or reclaim's table | open |
 | [005-81](81-overload-and-retries.md) | Investigate | Transaction retries: `executeRw()` reruns a conflict after hard-coded sleeps from 10 ms doubling to 10,240 ms, with no jitter, attempt limit, time budget or setting (over 20 s across eleven reruns on a hot key), and the same `RerunException` for a long action that outlives `KeyModSet`'s history. Left: the wait points and client contract the retries need, a diagnostic harness from 006-11's, hot-key and disjoint-key baselines, the retry variants measured, and an `executeRw()` proposal. Split 2026-11-04: overload and admission control are 017-06 | open |
@@ -39,6 +38,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: `Database.setCacheSizeInMb` (`fd8f513`); after a decrease a transaction's warmup no longer waits for eviction (option B, `0c6c4be`) | done | 2026-11-05 |
 | [005-72](72-file-layout-after-cut.md) | Decide | The files after a physical cut depend on timing: B dropped, A covers it | done | 2026-11-05 |
 | [005-77](77-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: moved to 015-84 | moved | 2026-11-05 |
 | [005-60](60-block-storage.md) | Investigate | Block storage: moved to 017-05 | moved | 2026-11-04 |
@@ -138,7 +138,8 @@ removed. 005-55 is done; it did not
 change the eviction thread, so 005-51 does not depend on it; 005-51 is
 done. 005-57 is done (part 1); 005-58, its Lean theorem, is done.
 005-46 is done. 005-56 is done. 005-68 is dropped: its finding did not
-hold. 005-07 is dropped: obsolete since handles (009).
+hold. 005-07 is dropped: obsolete since handles (009). 005-52 is done:
+option B (`0c6c4be`).
 
 
 Files
@@ -306,10 +307,12 @@ Files
   against 010-P3, the questions, the outcome; done.
 * [52-cache-size-while-running.md](52-cache-size-while-running.md). 005-52,
   the cache size while the database runs: the issue, the questions, the
-  first step measured, options A to C, the decision (B), the outcome and
-  what is left (the pause probe with a lowered budget); open. The first
-  step's night script, `BudgetBench` and their output in
-  [52-cache-size-while-running/](52-cache-size-while-running/).
+  first step measured, options A to C, the decision (B), the outcome, the
+  pause probe with a lowered budget and its runs, the decision on them
+  (option B: a transaction's warmup does not wait for eviction), its change
+  and the runs again; done. The first step's night script, `BudgetBench`
+  and their output, and the probe runs' script `lowered.sh` and summary
+  `sum52.py`, in [52-cache-size-while-running/](52-cache-size-while-running/).
 * [53-startup-distance-on-the-fly.md](53-startup-distance-on-the-fly.md).
   005-53, the startup distance on the fly: the issue, the questions,
   question 3 (fixed as 005-61), options A to E after D4:B, the decision (E)
@@ -1666,3 +1669,11 @@ layout that depends on timing has no effect a user can see.
 2026-11-05. 005-77, cap the pace's factor S/sd, moved to 015-84
 untouched, at Frans's decision (decided 2026-11-04/05): "005-77 (cap
 pace factor, about a day of F53) moves to 015 untouched."
+
+2026-11-05. 005-52 done: option B, decided by Frans on 2026-11-04 ("52,
+do as recommend, Option B."), in `0c6c4be`: a transaction's warmup no
+longer waits for eviction after a decrease. The six runs again, on s1 as
+F53 was not quiet: no wait from the lowering on is longer than with a
+fixed budget; four LONGER verdicts, all before the lowering, the
+collector's and the machine's. Closed on the coordinator's reading of the
+rule, recorded in the entry, so that Frans can reopen it.
