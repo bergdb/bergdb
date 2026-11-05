@@ -30,8 +30,6 @@ Open
 | [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced". Decided (Frans, 2026-11-04): A, a setting of `FileStream`, per-append forcing on (the default) or off, in the core API only, no force at an interval; implemented, with forces kept at a new file, its predecessor, a cut and `close()`, and a power-loss mode without per-append forces. Sync latency on s1 (1 thread): p50 4.2 ms on, 0.1 ms off. Left: the same on F53, in a quiet block; holes in the unforced tail are 014-01's | open |
 | [005-52](52-cache-size-while-running.md) | Fix | Change the cache size while the database runs: the Pub API set it only at start (`cacheSizeInMb`), against 010-P6. Decided (Frans, 2026-10-28): option B, `Database.setCacheSizeInMb` and `getCacheSizeInMb`, clamped as the builder, for the run only, through `Db.setCacheSizeIndicator` and its getter, which JMX uses too; after a decrease the setter wakes the eviction thread, so that an idle database gives the memory back. Implemented with 005-53 (`fd8f513`). Reopened by Frans 2026-10-29: left is "Done when"'s pause probe, no get or commit waiting longer while the resident bytes converge to a lowered budget than with a fixed one; `PauseProbe` needs two properties to lower its budget mid-phase, then four runs (ZGC and G1, fixed and lowered) in a quiet block, about 15 minutes; the steps in the entry's Left to do | open |
 | [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Measured 2026-10-28 night, quiet: only with 8 threads, on `eaec93e` (005-46) and `4f7cd60` alike; no load waited for a batch; the machine at 9.6 of 10 cores, and the loads' entries into `evictorLock` in `Eviction.wake` (78,000 a second) a fifth of the gets over 10 ms. Frans decided 2026-10-29: the fix, in `main` (`988fe1a`): a load skips that monitor when a request to the eviction thread is pending (an untimed count with 8 readers: 116,000 to 128,000 entries a second before, about 570 after); the rest accepted as a full machine. Open until the thread sweep reruns with the fix in a quiet block | open |
-| [005-72](72-file-layout-after-cut.md) | Decide | The files after reclaim's physical cut depend on timing (when the durable length reached the decision), while the bytes from the decided cut do not; a restart also changes the layout (not a bug). The C clone, without threads, cannot match Java's files after a cut. Frans, 2026-10-29: A for 012's cross tests (done); the entry stays open to consider B, a layout from the decided cut | open |
-| [005-77](77-cap-pace-factor.md) | Investigate | A decrease's commits grow with the keys: after a one-call decrease (D4:B) from 1000 to 100 MB at 50M keys, the catch-up's records are 12 to 14 times the new mean (largest 13.3 to 15.4 MB, against 2.3 to 3.6 MB at 10M), written by the committing threads; the cause is the pace's factor S/sd in the share, which starts at 10 (007-07, section 11). Only bytes measured, not commit times; 100M keys not run. Proposed: cap S/sd at 2 or at 4 (two variants); the deadline at the span still keeps the section from growing, the catch-up gets longer, and T3_take and T3_take_decrease hold for any pace (007-08). Frans's decision on 006-10's point 4 | open |
 | [005-78](78-retain-duration-in-stream.md) | Investigate | The retain duration is not kept in the stream: it decides when reclaim's iterations start and where it cuts, so the stream's bytes, but a start takes the builder's value (default forever), against the rule of 005-53 and 005-52 (a setting that changes the stream's bytes is kept in the stream, 010-P2) and without a word in its Javadoc. Frans: it must be in the stream; study first. Forms: the meta blocks (as the startup distance), an internal KV, or reclaim's table | open |
 | [005-81](81-overload-and-retries.md) | Investigate | Transaction retries: `executeRw()` reruns a conflict after hard-coded sleeps from 10 ms doubling to 10,240 ms, with no jitter, attempt limit, time budget or setting (over 20 s across eleven reruns on a hot key), and the same `RerunException` for a long action that outlives `KeyModSet`'s history. Left: the wait points and client contract the retries need, a diagnostic harness from 006-11's, hot-key and disjoint-key baselines, the retry variants measured, and an `executeRw()` proposal. Split 2026-11-04: overload and admission control are 017-06 | open |
 
@@ -41,6 +39,8 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [005-72](72-file-layout-after-cut.md) | Decide | The files after a physical cut depend on timing: B dropped, A covers it | done | 2026-11-05 |
+| [005-77](77-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: moved to 015-84 | moved | 2026-11-05 |
 | [005-60](60-block-storage.md) | Investigate | Block storage: moved to 017-05 | moved | 2026-11-04 |
 | [005-54](54-open-bounds.md) | Investigate | The bounds still open: moved to 017-04 | moved | 2026-11-04 |
 | [005-11](11-replication.md) | Decide | Replication: removed, copies left to the OS and the file system (Frans: "A with C2 now"); a future design is 017-03 | done | 2026-11-04 |
@@ -400,7 +400,8 @@ Files
   probe, the options; open.
 * [72-file-layout-after-cut.md](72-file-layout-after-cut.md). 005-72, the
   files after reclaim's physical cut depend on timing: the issue, the
-  probe, the options; open.
+  probe, the options, the decisions (A for 012's cross tests, 2026-10-29;
+  B dropped, 2026-11-05); done.
 * [73-db-api-small-findings.md](73-db-api-small-findings.md). 005-73,
   seven small findings in `Db`'s API (012-03): the findings, what to do;
   open.
@@ -417,7 +418,7 @@ Files
 * [77-cap-pace-factor.md](77-cap-pace-factor.md). 005-77, cap the pace's
   factor S/sd, so that a decrease's records stay near the steady ones:
   the issue from 007-07's runs at 50M keys, the two variants, the
-  questions, when it is done; open.
+  questions, when it is done; moved to 015-84 on 2026-11-05.
 * [78-retain-duration-in-stream.md](78-retain-duration-in-stream.md).
   005-78, the retain duration is not kept in the stream: the issue with
   the code, how the startup distance is kept, three forms of "in the
@@ -1655,3 +1656,13 @@ BergDB needs database-wide admission control and backpressure for CPU,
 reads and memory under overload (deliverable 4), is a long-term topic,
 017-06. Replication's waits dropped from 005-81 (removed, 005-11), and its
 mention of 005-07 corrected (dropped; 016-07).
+
+2026-11-05. 005-72 closed as done at Frans's decision (decided
+2026-11-04/05; asked 2026-11-04, 19:23, answered 2026-11-05, 07:17):
+"Drop B, close." A covers what matters: the bytes from the decided cut
+are deterministic, and the C clone's cross tests compare them; a file
+layout that depends on timing has no effect a user can see.
+
+2026-11-05. 005-77, cap the pace's factor S/sd, moved to 015-84
+untouched, at Frans's decision (decided 2026-11-04/05): "005-77 (cap
+pace factor, about a day of F53) moves to 015 untouched."

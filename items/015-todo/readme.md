@@ -94,6 +94,7 @@ Open
 | [015-81](81-close-error-strands-sync.md) | Fix | An unchecked close error can kill the consumer before publishing a ... | open |
 | [015-82](82-pending-cut-after-close.md) | Fix | A pending cut arriving during another cut can be left unapplied ... | open |
 | [015-83](83-read-past-end-exception.md) | Fix | A read past the end throws IOException instead of the documented ... | open |
+| [015-84](84-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: a decrease's records grow with the keys | open |
 
 
 Closed
@@ -239,6 +240,11 @@ Files
 * [81-close-error-strands-sync.md](81-close-error-strands-sync.md). 015-81, Fix: R5-F6.
 * [82-pending-cut-after-close.md](82-pending-cut-after-close.md). 015-82, Fix: R5-F7.
 * [83-read-past-end-exception.md](83-read-past-end-exception.md). 015-83, Fix: R5-F8.
+* [84-cap-pace-factor.md](84-cap-pace-factor.md). 015-84, Investigate:
+  cap the pace's factor S/sd, so that a decrease's records stay near the
+  steady ones: the issue from 007-07's runs at 50M keys, the two variants,
+  the questions, when it is done; moved from 005-77 on 2026-11-05,
+  untouched.
 
 
 Log
@@ -247,3 +253,7 @@ Log
 2026-11-03. Created the item, at Frans's request, to continue 005-todo
 with a new numbering. Entries closely related to a 005 entry may still go
 to 005, for now.
+
+2026-11-05. 015-84, cap the pace's factor S/sd, moved from 005-77
+untouched, at Frans's decision (decided 2026-11-04/05): "005-77 (cap
+pace factor, about a day of F53) moves to 015 untouched."

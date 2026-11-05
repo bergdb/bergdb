@@ -1,7 +1,8 @@
 005-72. Decide: the files after reclaim's physical cut depend on timing
 ======================================================================
 
-Status: open. Kind: decide. Created 2026-10-28.
+Status: done (decided: B dropped; 2026-11-05, see "Decision,
+2026-11-05"). Kind: decide. Created 2026-10-28.
 
 Registered by Claude (Opus 5.5, Claude Code), the conductor of 012, from
 012-02's determinism audit (012-02, section 10.3, finding C2; question Q1
@@ -65,3 +66,22 @@ Done when
 B decided; if taken, the change with its gates (and the C clone's
 `FileStream` port, in 012's `c/`, brought in line by hand, as C is a
 separate project).
+
+
+Decision, 2026-11-05
+--------------------
+
+Frans, decided 2026-11-04/05 (asked 2026-11-04, 19:23; answered
+2026-11-05, 07:17): "Drop B, close". A covers what matters: the bytes from
+the decided cut are deterministic, and the C clone's cross tests compare
+them (012-11). A file layout that depends on timing has no effect a user
+can see. So B is dropped and nothing changes in `java/` or in 012's `c/`;
+"Done when" is met (B decided, not taken). 015-08, `StreamDigest compare`
+reporting the physical cut's fields, is a fix of its own and stays open.
+
+
+Log
+---
+
+2026-11-05. Closed as done at Frans's decision ("Drop B, close"): A
+covers what matters; B dropped.
