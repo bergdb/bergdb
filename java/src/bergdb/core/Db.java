@@ -2342,13 +2342,24 @@ public class Db implements AutoCloseable {
      * [enum ThreadOptimization { SINGLE_WRITE_THREAD, MULTIPLE_WRITE_THREADS }].
      * But, until proven important enough, we keep variability as low as possible and focus
      * on good worst-case performance.
+     * 
+     * <p>A read that a cut overtakes ends the warmup (bergdb 015-52, 016-06's R7-F3): it
+     * reads at the latest time when it starts, and other writers commit while it waits on
+     * the storage, so a cut can overtake that time. It threw LookupTimeNotAvailableException
+     * out of execute(), which refused the transaction with an exception that its Javadoc
+     * does not list. The warmup only loads nodes; the transaction reads again under the
+     * lock, at the latest time.</p>
      */
     private final void warmup(Trans t) {
         final long readTime = dbClock.lookupTime(Long.MAX_VALUE);
         final GetData gd = t.warmupGetData;
 
-        for (Kv kv : t.kvs) {
-            this.getOneInternal(readTime, kv.getKey(), gd);
+        try {
+            for (Kv kv : t.kvs) {
+                this.getOneInternal(readTime, kv.getKey(), gd);
+            }
+        } catch (LookupTimeNotAvailableException e) {
+            // A cut overtook readTime; see above.
         }
     }
 

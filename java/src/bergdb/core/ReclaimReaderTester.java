@@ -25,6 +25,7 @@ import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;
 import bergdb.stream.FileStream;
+import bergdb.stream.MemoryStream;
 import bergdb.stream.ReadBelowFirstPosException;
 
 /**
@@ -440,5 +441,140 @@ public class ReclaimReaderTester {
     @Nano("f")
     public static void testReaderExpiresWhenFilesAreDeleted(TestEnvironment c) throws Exception {
         checkSomeSeed(new FileKit(c.createTempDir()), 1000, 2);
+    }
+
+    /**
+     * Regression test for bergdb 015-52 (016-06's R7-F3): a transaction's warmup reads its
+     * keys before the write lock, at the latest time when it starts. When a cut overtook a
+     * warmup read held on the storage, execute() threw LookupTimeNotAvailableException,
+     * which its Javadoc does not list, and the transaction was not run. Now the warmup ends
+     * there, as it only loads nodes, and the transaction runs as any other. The warmup's
+     * read of a key whose nodes are not resident (behind the startup pos at the restart)
+     * is held by a stream that makes the writer's thread wait; meanwhile other puts make
+     * the cut. Before the fix: "The lookup at time 160000000 ... expired while it ran".
+     */
+    @Nano("f")
+    public static void testWarmupReadOvertakenByCut() throws Exception {
+        long time = SEC;
+        CoreTestClock clock = new CoreTestClock();
+        clock.setTime(time);
+        MemoryStream ms = new MemoryStream();
+        Db db = Db.builder().testSetup(ms).clock(clock).startupDistance(2000).start();
+        Random r = new Random(1);
+        try {
+            db.execute(db.trans().put("/old/x", new byte[100]).build());
+            for (int i = 0; i < 300; i++) {
+                time += SEC / 20;
+                clock.setTime(time);
+                db.execute(db.trans().put("/k/" + r.nextInt(50), new byte[1 + r.nextInt(60)])
+                        .build());
+            }
+            db.sync(SyncLevel.ORDINARY);
+        } finally {
+            db.close();
+        }
+        
+        final HoldStream hs = new HoldStream(ms.copy());
+        clock = new CoreTestClock();
+        clock.setTime(time);
+        DbBuilder b = Db.builder();
+        b.testSetupExceptStream();
+        final Db db2 = b.stream("main", hs, 100 * 1000, 10).clock(clock).startupDistance(2000)
+                .start();
+        final AtomicReference<Throwable> thrown = new AtomicReference<Throwable>();
+        Thread w = new Thread(new Runnable() {
+            public void run() {
+                try {
+                    db2.execute(db2.trans().put("/old/x", "new").build());
+                } catch (Throwable e) {
+                    thrown.set(e);
+                }
+            }
+        });
+        try {
+            db2.setRetainDuration(1 * SEC);
+            hs.holdThread = w;
+            final long readTime = db2.lookupTime(Long.MAX_VALUE);
+            w.start();
+            synchronized (hs.lock) {
+                final long until = System.currentTimeMillis() + WAIT_SEC * 1000;
+                while (hs.heldPos == -1 && w.isAlive() && System.currentTimeMillis() < until) {
+                    hs.lock.wait(100);
+                }
+            }
+            Assert.assertTrue("the warmup's read was not held: " + thrown.get(), 
+                    hs.heldPos != -1);
+            
+            int i = 0;
+            for (; i < 6000 && !(hs.getFirstPos() > hs.heldPos 
+                    && db2.getFirstAvailableLookupTime() > readTime); i++) {
+                time += SEC / 20;
+                clock.setTime(time);
+                db2.execute(db2.trans().put("/k/" + r.nextInt(50), new byte[1 + r.nextInt(60)])
+                        .build());
+            }
+            Assert.assertTrue("no cut past the held read after " + i + " puts", 
+                    hs.getFirstPos() > hs.heldPos);
+        } finally {
+            synchronized (hs.lock) {
+                hs.released = true;
+                hs.lock.notifyAll();
+            }
+            w.join(WAIT_SEC * 1000);
+            db2.close();
+        }
+        Assert.assertTrue("the transaction threw " + thrown.get(), thrown.get() == null);
+        Assert.assertTrue(!w.isAlive());
+    }
+    
+    /** Makes holdThread's first read wait until released (bergdb 015-52). */
+    private static final class HoldStream implements AppendOnlyStream {
+        final MemoryStream s;
+        final Object lock = new Object();
+        volatile Thread holdThread;
+        volatile boolean released;
+        volatile long heldPos = -1;
+        
+        HoldStream(MemoryStream s) {
+            this.s = s;
+        }
+        
+        public long getLength() {
+            return s.getLength();
+        }
+        
+        public long getFirstPos() {
+            return s.getFirstPos();
+        }
+        
+        public void read(long position, byte[] dest, int off, int len) throws IOException {
+            if (Thread.currentThread() == holdThread && !released) {
+                synchronized (lock) {
+                    heldPos = position;
+                    lock.notifyAll();
+                    while (!released) {
+                        try {
+                            lock.wait();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                    }
+                }
+            }
+            s.read(position, dest, off, len);
+        }
+        
+        public void append(byte[] src, int off, int len) throws IOException {
+            s.append(src, off, len);
+        }
+        
+        public void pretruncate(long position) throws IOException {
+            s.pretruncate(position);
+        }
+        
+        public void close() throws IOException {
+            s.close();
+        }
     }
 }

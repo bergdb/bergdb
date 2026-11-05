@@ -68,6 +68,17 @@ Pub API
 Reliability
 -----------
 
+* **A transaction is no longer refused because a cut overtook its warmup**
+  (bergdb 015-52, 016-06's R7-F3; 2026-11-05). Before the write lock, a
+  transaction reads its keys once to load their nodes, at the latest time
+  when it starts. When such a read waited on the storage while other
+  writers committed and reclaim cut the stream past that time, `execute()`
+  (and a Pub API transaction through it) threw
+  `LookupTimeNotAvailableException`, which its Javadoc does not list, and
+  the transaction was not run. Now that read just ends, and the
+  transaction runs. It needed a read stalled for longer than the retain
+  duration, at least a second, with other writers busy. The stream's bytes
+  are unchanged.
 * **A reclaim step keeps its values within the value limit** (bergdb
   015-50, 016-06's R7-F1; 2026-11-05). A step rewrote the old values of
   its scan, about 16 KB, in one transaction, whose last value could be of
