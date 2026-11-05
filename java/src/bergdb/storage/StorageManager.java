@@ -72,8 +72,8 @@ public class StorageManager implements AppendOnlyStream {
     /** Set once, by the first handleStreamException, which closes the main stream. */
     private final AtomicBoolean mainFailing = new AtomicBoolean();
     
-    /** True when the main stream has failed and the error is set; see hasFailed(). */
-    private volatile boolean mainFailed = false;
+    /** The main stream's failure, once the error is set, else null; see hasFailed(). */
+    private volatile IOException mainFailure = null;
     
     private volatile boolean isStarted = false;
 
@@ -284,30 +284,43 @@ public class StorageManager implements AppendOnlyStream {
     }
     
     /**
-     * The main stream failed: it is closed, and the storage gets its error, once.
+     * The main stream failed: the storage gets its error, and the stream is closed, once.
+     * The error comes first (2026-11-05, bergdb 015-81): an unchecked exception of the close
+     * left here before it, and ended the storage thread, so a sync waited for ever and the
+     * database ran on. What the close throws is kept with 'e', as suppressed.
      */
     private void handleStreamException(IOException e) {
         if (!mainFailing.compareAndSet(false, true)) {
             return;     // Already handled.
         }
         
+        setError("Main storage not active. " + e.toString());
+        mainFailure = e;
+        
         try {
             mainStream.close();
-        } catch (IOException e1) {
-            // Empty. NOTE We could issue a warning.
+        } catch (IOException | RuntimeException | Error e1) {
+            if (e1 != e) {      // BufferedStream.close() throws a failed flush's 'e' again.
+                e.addSuppressed(e1);
+            }
         }
-        
-        setError("Main storage not active. " + e.toString());
-        mainFailed = true;
     }
     
     /**
      * True when the main stream has failed: an append, a read or a flush of it threw an
-     * IOException, the stream is closed, and every later append, read and waiting sync
-     * throws. Not after a close alone.
+     * IOException, the stream is closed (or being closed, by handleStreamException), and
+     * every later append, read and waiting sync throws. Not after a close alone.
      */
     public boolean hasFailed() {
-        return mainFailed;
+        return mainFailure != null;
+    }
+    
+    /**
+     * What failed the main stream, as hasFailed() says, else null: the IOException of its
+     * append, read or flush. The database fails with it at its next call (Db, bergdb 015-35).
+     */
+    public IOException getFailure() {
+        return mainFailure;
     }
 
     /**

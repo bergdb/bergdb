@@ -141,9 +141,10 @@ public class Db implements AutoCloseable {
     
     /**
      * What failed the database, the first time, or null; the state is then FAILED: what a
-     * transaction threw after its go point (bergdb 005-01, fail()), or what a read or a sync
-     * met on the storage (bergdb 005-30, failOnStorage()). Written under readSync, with the
-     * state (setFailed()).
+     * transaction threw after its go point (bergdb 005-01, fail()), what a read or a sync
+     * met on the storage (bergdb 005-30, failOnStorage()), or a failure of the storage that
+     * the next call finds (bergdb 015-35, assertDbStateIsActive()). Written under readSync,
+     * with the state (setFailed()).
      */
     private volatile Throwable failure = null;
     
@@ -1919,6 +1920,14 @@ public class Db implements AutoCloseable {
 
     private void assertDbStateIsActive(String methodName) {
         DbState myState = state;
+        if (myState == DbState.ACTIVE && storageManager.hasFailed()) {
+            // 2026-11-05 (bergdb 015-35): the storage failed with no call of ours on it, as a
+            // write of its thread (BufferedStream), and the database fails now (010-01, P7).
+            // It stayed active, and gets served from memory went on, until a transaction, a
+            // sync or a load met the failure.
+            setFailed(new StreamIoException(storageManager.getFailure()));
+            myState = state;
+        }
         if (myState != DbState.ACTIVE) {
             if (myState == DbState.STOPPING) {
                 throw new DbStoppingException("Cannot call " + methodName + "() while DB is stopping.");
@@ -2115,8 +2124,9 @@ public class Db implements AutoCloseable {
 
     /**
      * Fails the database with 'e' if it is active: keeps 'e' as the first failure and sets
-     * FAILED, in one step under readSync (bergdb 005-30). The writer (fail()) and the readers
-     * (failOnStorage()) both come here, and stop() and close() set STOPPING under readSync
+     * FAILED, in one step under readSync (bergdb 005-30). The writer (fail()), the readers
+     * (failOnStorage()) and a call that finds the storage failed (assertDbStateIsActive(),
+     * bergdb 015-35) come here, and stop() and close() set STOPPING under readSync
      * too, so the first failure is the one kept, and no failure comes after a stop.
      *
      * @return The state before.

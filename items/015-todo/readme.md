@@ -46,7 +46,6 @@ Open
 | [015-31](31-cut-at-length.md) | Fix | A cut at the stream's length throws an internal Bug | open |
 | [015-32](32-failed-open-leaks.md) | Fix | An unchecked failure during an open leaks handles; an Error keeps the lock | open |
 | [015-34](34-consumer-stop-interrupt.md) | Fix | A storage thread interrupted at its stop skips closing its stream | open |
-| [015-35](35-background-write-failure.md) | Fix | A failed background write fails the database only at a caller's next storage call | open |
 | [015-36](36-interrupted-delete-index.md) | Fix | An interrupted deleteIndex leaves the index deleting with no job | open |
 | [015-37](37-interrupted-build-step.md) | Fix | An interrupted retry of a build step ends the build for this run | open |
 | [015-38](38-jmx-monitor-interrupt.md) | Fix | JMX's monitor thread ends on an interrupt, and stop loses the caller's flag | open |
@@ -69,7 +68,6 @@ Open
 | [015-76](76-startup-distance-clamp.md) | Fix | Db.setStartupDistance clamps to 400,000 to 10^9 bytes without ... | open |
 | [015-78](78-close-ioexception-discarded.md) | Fix | The consumer discards the first storage-close IOException | open |
 | [015-80](80-buffer-concurrent-writes.md) | Fix | The buffer issues concurrent writes to a single-writer underlying ... | open |
-| [015-81](81-close-error-strands-sync.md) | Fix | An unchecked close error can kill the consumer before publishing a ... | open |
 | [015-82](82-pending-cut-after-close.md) | Fix | A pending cut arriving during another cut can be left unapplied ... | open |
 | [015-83](83-read-past-end-exception.md) | Fix | A read past the end throws IOException instead of the documented ... | open |
 | [015-84](84-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: a decrease's records grow with the keys | open |
@@ -94,6 +92,8 @@ Closed
 | [015-68](68-startup-large-values-kept.md) | Fix | Startup leaves large values retained in the writer's admission list | done | 2026-11-05 |
 | [015-67](67-batch-whole-map.md) | Fix | A batch processes a whole map even past its handle limit | done | 2026-11-05 |
 | [015-66](66-evictor-failure-lock-window.md) | Fix | A failed batch releases the writer lock before failing the database | done | 2026-11-05 |
+| [015-81](81-close-error-strands-sync.md) | Fix | An unchecked close error can kill the consumer before publishing a ... | done | 2026-11-05 |
+| [015-35](35-background-write-failure.md) | Fix | A failed background write fails the database only at a later call's ... | done | 2026-11-05 |
 | [015-33](33-max2g-cap.md) | Fix | setMax2G(true) still allows files over two billion bytes | done | 2026-11-05 |
 | [015-79](79-storage-negative-append.md) | Fix | A negative append is accepted and decreases StorageManager's length | done | 2026-11-05 |
 | [015-26](26-negative-append-length.md) | Fix | A negative append length corrupts FileStream's length | done | 2026-11-05 |

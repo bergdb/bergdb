@@ -1032,6 +1032,73 @@ public class DbTesterFailure {
             }
         }) == null);
     }
+
+    /**
+     * bergdb 015-35 (review R3-F10, R5-F3): a write of the storage thread that fails, with
+     * no call of the application on the storage, fails the database too (010-01, P7). Before,
+     * the storage failed but the database stayed active: a get served from memory went on and
+     * returned /a = a1, whose record the failure kept off the stream, until a transaction, a
+     * sync or a load met the failure.
+     */
+    @Nano
+    public static void testBackgroundWriteFailureFailsReads() throws Exception {
+        final FaultStream s = new FaultStream();
+        final Db db = Db.builder().testSetup(s).start();
+        try {
+            db.execute(db.trans().put("/a", "a0").build());
+            db.sync(SyncLevel.ORDINARY);
+            s.failAppends = true;
+            db.execute(db.trans().put("/a", "a1").build());
+            waitForStorageError(db);
+
+            DbFailedException failed = null;
+            String value = null;
+            try {
+                value = DbUtil.getString(db, "/a");
+            } catch (DbFailedException e) {
+                failed = e;
+            }
+            Assert.assertTrue("a get from memory after the failed write: " + value,
+                    failed != null);
+            Assert.assertTrue("the write's failure: " + failed.getCause(),
+                    failed.getCause() instanceof StreamIoException
+                    && String.valueOf(failed.getCause().getCause()).contains("an append error"));
+            assertRefused(db, failed.getCause());
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * bergdb 015-81 (review R5-F6): a failed write whose stream then throws an unchecked
+     * exception from its close, as the storage closes it, fails a sync and the database.
+     * Before, the close's exception left StorageManager.handleStreamException before the
+     * storage had its error, and ended the storage thread: the sync waited for ever, and the
+     * database stayed active.
+     */
+    @Nano
+    public static void testUncheckedCloseErrorAfterFailedWriteFailsSync() throws Exception {
+        final FaultStream s = new FaultStream();
+        final Db db = Db.builder().testSetup(s).start();
+        try {
+            db.execute(db.trans().put("/a", "a0").build());
+            db.sync(SyncLevel.ORDINARY);
+            s.failAppends = true;
+            s.errorInClose = true;
+            db.execute(db.trans().put("/a", "a1").build());
+            Throwable thrown = within(5000, new Runnable() {
+                public void run() {
+                    db.sync(SyncLevel.ORDINARY);
+                }
+            });
+            Assert.assertTrue("the sync fails: " + thrown, thrown instanceof DbFailedException);
+            Assert.assertTrue("the close's error was met", s.faults >= 2);
+            assertRefused(db, thrown.getCause());
+        } finally {
+            s.errorInClose = false;
+            db.close();
+        }
+    }
     
     /**
      * Node size 8, a startup distance of 1,000 bytes, so that index nodes are written and
@@ -1212,6 +1279,7 @@ public class DbTesterFailure {
         volatile boolean failAppends = false;
         volatile boolean errorInAppends = false;    // an Error, as an assertion (bergdb 005-32)
         volatile boolean holdAppends = false;
+        volatile boolean errorInClose = false;  // unchecked, after the close (bergdb 015-81)
         volatile long patchAt = -1;
         volatile byte[] patch = null;
         volatile int faults = 0;
@@ -1271,6 +1339,10 @@ public class DbTesterFailure {
 
         public void close() throws IOException {
             inner.close();
+            if (errorInClose) {
+                faults++;
+                throw new IllegalStateException("FaultStream: an unchecked close error, as set");
+            }
         }
     }
 

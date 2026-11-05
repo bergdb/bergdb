@@ -226,6 +226,16 @@ Reliability
   transaction. One at the last time was taken, the reclaim step it allowed
   found no time left, and the database failed although the transaction was
   committed. Only a wrong or a test clock reaches these times.
+* **A failed background write fails the database at the next call**
+  (bergdb 015-35 and 015-81, 016-06's R3-F10, R5-F3 and R5-F6;
+  2026-11-05). When the storage thread's write failed (a disk error), the
+  database stayed active until a transaction, a sync or a read from the
+  disk met the failure: gets served from memory went on, also of the
+  transaction whose record was never written. Now every call after it
+  throws `DbFailedException`, as after a failed transaction (010-01, P7).
+  And if the stream's close then threw an unchecked exception, a sync
+  waited for ever and the database ran on; now the sync throws. The
+  stream's bytes are unchanged.
 
 Format
 ------

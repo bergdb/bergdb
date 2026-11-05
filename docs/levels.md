@@ -134,6 +134,10 @@ environment has failed, or that has a bug, does not run on.
   `LookupTimeNotAvailableException` (section 6), and so does `getTrans` of
   a transaction that reclaim has removed; the database goes on. A read or a
   sync while the database stops throws as it did.
+* A write of the storage thread that fails (a background flush) fails the
+  database at the next call (015-35, 2026-11-05): a transaction, a read or
+  a sync throws as above, also a read served from memory. Before, the
+  database stayed active until a call met the failure on the storage.
 * Interrupts (since 2026-10-27, 005-46): an interrupt never fails the
   database or hangs it. Three calls only wait, and an interrupt ends the
   wait: `sync()` throws a `StreamIoException` with an

@@ -1,7 +1,7 @@
 015-35. Fix: a failed background write does not fail the database until a caller touches storage
 ================================================================================================
 
-Status: open. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
+Status: done 2026-11-05, night 006-12. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
 
 After release 2026.2 (a known issue of it); in 2026.1 too.
 
@@ -23,3 +23,23 @@ Log
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-04. Review R5 found the same, or its counterpart in StorageManager (R5-F3, items/016-release-2026-2/06-reviews/R5.md).
+
+2026-11-05. Done in night 006-12, with 015-81 (the same path). R5-F3's test
+made `DbTesterFailure.testBackgroundWriteFailureFailsReads`: a put synced,
+the next put's background write fails, and a get served from memory then
+returns its value: before the fix "a get from memory after the failed
+write: a1".
+
+* Fix: `Db.assertDbStateIsActive`, the admission of every transaction,
+  read and setter, fails the database (`setFailed`) when it finds the
+  storage failed (`StorageManager.hasFailed()`, a volatile read), with a
+  `StreamIoException` of the storage's failure as the cause; the call and
+  every later one throw `DbFailedException`. `StorageManager` keeps the
+  failure (`getFailure()`). R5's other option, a callback from the storage
+  thread into `Db`, was not taken: it would take `readSync` on that thread.
+* A sync already failed the database (its wait sees the storage's error
+  within 500 ms); a call admitted before the failure ends as before.
+* 010-01: P7 now holds for a failure that no call meets. No setting,
+  thread, global state or format change; the stream's bytes are unchanged
+  (nothing that writes changed). The get's cost: one more volatile read.
+* `docs/levels.md`, section 3, has a line on it.
