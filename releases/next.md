@@ -345,6 +345,10 @@ Internal
   and keeps its last file; it threw an internal `Bug`, and through
   `BufferedStream` that failed the storage. BergDB's reclaim cuts behind
   the stream's end and does not meet it; the stream's bytes are unchanged.
+* **`BufferedStream` and `StorageManager` throw `EOFException` for a read
+  past the end** (bergdb 015-83; 2026-11-05), as `AppendOnlyStream`'s
+  Javadoc says; it was an `IOException`. The storage fails at it as before;
+  the stream's bytes are unchanged.
 
 * **`Jmx.Speed`'s monitor thread goes on after an interrupt** (bergdb
   015-38, 016-06's R3-F4; 2026-11-05): it ended, its speeds stayed as they

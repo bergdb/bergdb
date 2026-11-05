@@ -1,6 +1,7 @@
 package bergdb.storage;
 
 import java.io.Closeable;
+import java.io.EOFException;
 import java.io.IOException;
 
 import bergdb.common.Bug;
@@ -388,7 +389,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     public void read(long position, byte[] dest, int destOffset, int length) throws IOException {
         //
         // Different cases.
-        // 1. Out of bounds: position + length > totalSize. --> IOException
+        // 1. Out of bounds: position + length > totalSize. --> EOFException
         // 2. All in stream. position + length < streamSize.
         // 3. All in buffer. position + length >= streamSize AND <= totalSize
         // 4. One part in buffer, one part in stream.
@@ -412,9 +413,10 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
 
             // ">=" since 2026-10-21 (bergdb 005-25): pos2 is the last byte read, and
             // totalLength - 1 the last byte there is. A read of the byte after the end gave
-            // a stale byte of the ring buffer.
+            // a stale byte of the ring buffer. EOFException, as AppendOnlyStream.read()'s
+            // Javadoc says, since 2026-11-05 (bergdb 015-83); it was an IOException.
             if (pos2 >= totalLength) {
-                throw new IOException("Cannot read " + length + " bytes at position " + position
+                throw new EOFException("Cannot read " + length + " bytes at position " + position
                         + ", stream size is " + totalLength + ".");
             }
 

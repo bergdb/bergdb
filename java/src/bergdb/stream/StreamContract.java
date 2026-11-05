@@ -41,7 +41,6 @@ public final class StreamContract {
      */
     static final String[] SKIP = {
         "015-80",
-        "015-83",
         "019-02",
     };
 
@@ -204,10 +203,10 @@ public final class StreamContract {
         expect("the length of a new stream", 0, s.getLength());
         expect("the first position of a new stream", 0, s.getFirstPos());
         s.read(0, new byte[1], 0, 0);
+        // Last: a StorageManager fails at a read past the end, by design (bergdb 018-02,
+        // section 2.2, item 8). The first append of a new stream is checked by lengthZero.
         expectThrows("read(0, 1) of an empty stream", EOFException.class,
                 () -> s.read(0, new byte[1], 0, 1));
-        append(s, 1);
-        readAndCompare(s, 0, 1);
     }
 
     private static void lengthZero(AppendOnlyStream s, Impl impl) throws IOException {
