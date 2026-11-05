@@ -1,10 +1,11 @@
 005-78. Investigate: the retain duration is not kept in the stream
 =================================================================
 
-Status: open, planned for release 2026.2: the study, the probe and the
-design tonight, then a stop for Frans (016-01, section 4.1, item 3;
-"Plan for 2026.2" below); nothing done yet. Kind: investigate.
-Created 2026-10-29.
+Status: open; the study (U1), the probe (U2) and the design (U3) done
+2026-11-05, on `0c6c4be`, after release 2026.2: [design.md](78-retain-duration-in-stream/design.md),
+the probe `78-retain-duration-in-stream/RetainProbe.java` and its output
+`probe.txt`; waiting for Frans's choice, F1 to F7 ("For Frans", at the
+end). Nothing in `java/` changed. Kind: investigate. Created 2026-10-29.
 
 Registered as Frans decided (2026-10-29, 10:09), on 006-10's decision 6
 (006-10, section 8: "The retain duration changes the stream's bytes but is
@@ -374,6 +375,13 @@ Decisions of 2026-11-03
 Plan for 2026.2
 ---------------
 
+History: this plan was made for the night of 2026-11-03 and was not run
+then. 2026.2 shipped (2026-11-04, `release-2026.2`) with the fault as a
+known issue in its notes (`releases/2026.2/readme.md`, "The retain duration
+is not kept in the stream"); the Javadoc of U5 was not changed. U1 to U3
+were done on 2026-11-05 (section 8, State); U5 and U6 now belong to the
+next release.
+
 ### 1. Tonight, and later
 
 | Step | What | Who | Size | Gate or check |
@@ -698,18 +706,38 @@ for the plan of that day:
 
 ### 8. State
 
-* **Done** (2026-11-03, before 16:50): this plan.
-* **Nothing studied, run or changed yet.** The base is `main` at the
-  start (`6d81050`, with `java/` as at `df6ad50`).
-* **Next**: U0 (the coordinator), then U1 and U2 in the clone.
-* **For the agent**:
-  * A probe in `bergdb.core` goes before `build/bergdb.jar` on `-cp`.
+* **2026-11-03:** this plan; nothing run (the night went to the release).
+* **2026-11-05, U0 (07:20):** the clone `/Users/f/fl/bench/016/005-78`, at
+  `0c6c4be` (`main`); `java/build.sh` there at 07:20 (5 s). The base of
+  all answers and runs is `0c6c4be`.
+* **U2, first run (07:22):** `RetainProbe.java` (in this entry's directory)
+  compiled against the clone's jar and run on the four `l3-*` workloads,
+  5 s. restarts-each gives plain's stream (the same length and sha256
+  from the cut in all four); restarts-once, restarts-50 and after-call do
+  not: after the first restart no iteration starts and no cut is made
+  (`l3-node8`: 1 iteration and 0 cuts against 24 and 22; 4,355,752 bytes
+  kept against 2,094,096). P3: both internal KVs found after 21 to 26
+  cuts and after a restart on the cut stream. P4: no split step at the
+  default reserve. P5: A 204 to 227 kB a call, B 160 to 176 bytes. That
+  run's first-difference column was wrong (it compared bytes from the
+  larger first position, past the divergence); fixed at 07:24 to compare
+  the stream lengths after each commit. QUIET-BLOCK from 07:23: no run
+  until it is gone.
+* **U1 and U3 (07:24 to 07:30):** the study's answers (questions 1 to 10,
+  with the code) and the design, in `design.md`: F1 to F7, the forms side
+  by side, the evidence, the change, the release.
+* **Next:** the probe again after the quiet block (the fixed comparison,
+  and P4 with `-Dstepreserve=2000`); its table into `design.md`, section
+  4.1 (the line `PROBE-TABLE`), and `probe.txt`; then U4, the stop
+  (the coordinator's).
+* **For the agent:**
+  * A probe in `bergdb.core` goes before `build/bergdb.jar` on `-cp`;
+    the probe's header gives the commands.
   * Every database the probe starts is stopped. Restart on
     `MemoryStream.copy()`, as StreamDigest does: a closed `MemoryStream`
     refuses appends.
   * Record the outcome of each step here, with the times, so that a fresh
     agent can resume.
-
 
 Log
 ---
@@ -723,3 +751,37 @@ Log
   first.
 * Frans's changes of 15:31 (Java only) and 15:40 (tonight) are in
   "Decisions of 2026-11-03".
+
+2026-11-05.
+* U1 to U3 done on `0c6c4be` (section 8, State): the study, the probe,
+  the design (`design.md`). The probe confirms the fault: a restart that
+  does not set the retain duration again stops reclaim for good.
+
+
+For Frans
+---------
+
+The design, `design.md`, sets out each choice in full; "as recommended"
+answers all seven.
+
+* **F1, the form** (the approval of a format change, 016-01, section 3):
+  A, the meta blocks; B, an internal KV `/#i/dreclaim/-settings.txt`; or
+  C, reclaim's table. Recommended: B.
+* **F2, the builder against a stream with a value:** the stream's value
+  wins, as the startup distance's (recommended), or the builder's written
+  at the start when it differs.
+* **F3, unset against forever in `DbBuilder`:** not needed with F2's
+  recommendation (recommended), or a distinct unset value.
+* **F4, a stream without a value** (2026.2's, and new databases): the
+  builder's value, written at that start if finite (recommended), or
+  written only at the first call.
+* **F5, forever:** writes nothing, so StreamDigest's 8 configurations
+  without a retain duration keep their streams (recommended), or every
+  new database writes its value.
+* **F6, the setter:** a commit under the write lock, refused when the
+  database is not active, nothing written when the value is in force; the
+  Javadoc's "before start()" removed. Recommended as stated.
+* **F7, the internal fraction and the step reserve:** the fraction kept in
+  the same record (recommended with B), documented as lasting for the run,
+  or its setters removed; the step reserve documented as a setting for
+  tests (recommended).
