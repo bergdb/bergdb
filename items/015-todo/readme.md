@@ -87,7 +87,6 @@ Open
 | [015-84](84-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: a decrease's records grow with the keys | open |
 | [015-86](86-gets-with-8-readers.md) | Investigate | Gets over 10 ms with 8 readers (005-65): the rise is the fix's (AB/BA); left: measurements, then Frans | open |
 | [015-87](87-retain-duration-in-stream.md) | Investigate | The retain duration in the stream (005-78); left: Frans's answers to F1 to F7, then U6, the change | open |
-| [015-88](88-overload-and-retries.md) | Investigate | Transaction retries (005-81): the sleep capped at 640 ms; the rest moved to 017-06 | in progress |
 
 
 Closed
@@ -95,6 +94,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-88](88-overload-and-retries.md) | Investigate | Transaction retries: sleep capped at 640 ms | done | 2026-11-05 |
 | [015-05](05-empty-or-missing-directory.md) | Decide | A start on an empty or missing directory creates a database | done | 2026-11-05 |
 | [015-44](44-cryptokey-null.md) | Fix | DatabaseBuilder.cryptoKey(CryptoKey.NULL) after a key keeps the key | done | 2026-11-05 |
 | [015-45](45-cryptokey-hashcode.md) | Fix | CryptoKey has equals() and no hashCode() | done | 2026-11-05 |

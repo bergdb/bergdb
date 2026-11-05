@@ -1,9 +1,9 @@
 015-88. Investigate: transaction retries
 ========================================
 
-Status: in progress: the cap of the retry sleep at 640 ms for release
-2026.3, by session bergdb-e8's agent; this entry closes when the cap
-lands. Kind: investigate. Created 2026-10-30 as 005-81; split on
+Status: done (2026-11-05): the cap of the retry sleep at 640 ms for
+release 2026.3 landed in 8b97f24; the rest of the retries is in 017-06.
+Kind: investigate. Created 2026-10-30 as 005-81; split on
 2026-11-04 (overload, backpressure and admission control to 017-06);
 moved here from 005-81 on 2026-11-05; decided by Frans on 2026-11-05,
 14:12: the cap now, the rest moved to 017-06.
@@ -116,3 +116,12 @@ retries.md), with Frans's question whether `rw()` should ever give up
 under overload. This entry now holds only the cap; status in progress.
 006-12's W3, the retry variants on s1 tonight, dropped. By Claude (Opus
 5.5, Claude Code).
+
+2026-11-05. Done: the cap landed in 8b97f24, by session bergdb-e8's agent:
+`RwTransaction.nextSleep` sleeps 10, 20, 40, 80, 160, 320 and 640 ms, then
+640 ms after every further refusal; the Nano test
+`RwTransaction.testSleepsBetweenReruns`; the Javadoc of
+`Connection.rw(Action)` says it retries until it commits and that under
+overload it may never commit; a line in `releases/next.md`. JAVADOC PUB
+OK, BEFORE COMMIT OK (106 s). The rest of the retries is in 017-06. By
+Claude (Opus 5.5, Claude Code).
