@@ -122,6 +122,15 @@ enum err_code sn_parse_top(const uint8_t *buf, int32_t len, const int32_t firstO
         return err_set(e, ERR_FORMAT, "StreamFormatException",
                 "TopNode at %lld with %d skip pointers.", (long long) spos, (int) pointerCount);
     }
+    /* The node's size is its pointers' (getByteSize), checked before the
+     * arrays (bergdb 015-07, as Java's since release 2026.2). */
+    NEED(firstOffset, 4);
+    const int32_t nodeSize = bytes_get_int_le(buf + firstOffset);
+    if (nodeSize != 40 + 16 * pointerCount || nodeSize > len - firstOffset) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "TopNode at %lld with %d skip "
+                "pointers has the size %d, not %d, or more than its buffer.", (long long) spos,
+                (int) pointerCount, (int) nodeSize, (int) (40 + 16 * pointerCount));
+    }
     offset += 1;    /* rest of header (reserved) */
 
     NEED(firstOffset + 8, 8);
@@ -194,6 +203,14 @@ enum err_code sn_parse_top(const uint8_t *buf, int32_t len, const int32_t firstO
 enum err_code sn_parse_key(const uint8_t *buf, int32_t len, int32_t offset, int64_t spos,
         struct sn_node *out, struct err *e) {
     const int32_t firstOffset = offset;
+    /* The key count is checked against the node's size (bergdb 015-07, as
+     * Java's since release 2026.2). */
+    NEED(offset, 4);
+    const int32_t nodeSize = bytes_get_int_le(buf + offset);
+    if (nodeSize < 32 || nodeSize > len - offset) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad key node size, %d, at spos "
+                "%lld.", (int) nodeSize, (long long) spos);
+    }
     offset += 4;    /* Skip size. */
     NEED(offset, 1);
     int8_t type = j_l2b(buf[offset]);
@@ -235,6 +252,10 @@ enum err_code sn_parse_key(const uint8_t *buf, int32_t len, int32_t offset, int6
     if (size < 0) {
         return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad Node size, %d.", (int) size);
     }
+    if (size > (nodeSize - 32) / 16) {         /* getByteSize() */
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad key count, %d, of key node "
+                "at spos %lld, size %d.", (int) size, (long long) spos, (int) nodeSize);
+    }
     NEED(offset, (int64_t) 16 * size);
 
     init_node(out, NODE_KEY, spos, buf + firstOffset);
@@ -248,6 +269,15 @@ enum err_code sn_parse_key(const uint8_t *buf, int32_t len, int32_t offset, int6
 enum err_code sn_parse_value(const uint8_t *buf, int32_t len, int32_t offset, int64_t spos,
         struct sn_node *out, struct err *e) {
     const int32_t firstOffset = offset;
+    /* The sizes are checked against the node's (bergdb 015-07, as Java's
+     * since release 2026.2): 'end' is the node's end. */
+    NEED(offset, 4);
+    const int32_t nodeSize = bytes_get_int_le(buf + offset);
+    if (nodeSize < SN_VALUE_MIN_SIZE || nodeSize > len - offset) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad value node size, %d, at "
+                "spos %lld.", (int) nodeSize, (long long) spos);
+    }
+    const int32_t end = offset + nodeSize;
     offset += 4;    /* Skips byte size. */
     NEED(offset, 1);
     int8_t type = j_l2b(buf[offset]);
@@ -278,8 +308,10 @@ enum err_code sn_parse_value(const uint8_t *buf, int32_t len, int32_t offset, in
         NEED(offset, 4);
         valueSize = bytes_get_int_le(buf + offset);
         offset += 4;
-        if (valueSize < 0) {
-            return err_set(e, ERR_FORMAT, "NegativeArraySizeException", "%d", (int) valueSize);
+        if (valueSize < 0 || valueSize > end - offset - 4) {      /* and the key's size */
+            return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad value size, %d, of "
+                    "value node at spos %lld, size %d.", (int) valueSize, (long long) spos,
+                    (int) nodeSize);
         }
         NEED(offset, valueSize);
         value = buf + offset;
@@ -289,9 +321,10 @@ enum err_code sn_parse_value(const uint8_t *buf, int32_t len, int32_t offset, in
     NEED(offset, 4);
     int32_t keySize = bytes_get_int_le(buf + offset);
     offset += 4;
-    if (keySize % 8 != 0 || keySize <= 0) {
+    if (keySize % 8 != 0 || keySize <= 0 || keySize > end - offset) {
         return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad key size when reading value"
-                " node at spos %lld, keySize: %d.", (long long) spos, (int) keySize);
+                " node at spos %lld, keySize: %d, node size: %d.", (long long) spos,
+                (int) keySize, (int) nodeSize);
     }
     NEED(offset, keySize);
     const uint8_t *key = buf + offset;

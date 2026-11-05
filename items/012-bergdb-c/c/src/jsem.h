@@ -141,6 +141,32 @@ static inline int j_cmpu64(int64_t a, int64_t b) {
     return ua < ub ? -1 : (ua == ub ? 0 : 1);
 }
 
+/* Java's Long.divideUnsigned and Long.remainderUnsigned, for d != 0. */
+static inline int64_t j_divu64(int64_t n, int64_t d) {
+    return (int64_t) ((uint64_t) n / (uint64_t) d);
+}
+
+static inline int64_t j_remu64(int64_t n, int64_t d) {
+    return (int64_t) ((uint64_t) n % (uint64_t) d);
+}
+
+/* Java's Math.multiplyHigh: the high 64 bits of the signed 128-bit product,
+ * line for line as Java writes it (Hacker's Delight, 2nd edition, 8-2), with
+ * -fwrapv's wrapping products. */
+static inline int64_t j_mulhi64(int64_t x, int64_t y) {
+    const int64_t x1 = x >> 32;                 /* arithmetic, as Java's >> */
+    const int64_t x2 = x & INT64_C(0xFFFFFFFF);
+    const int64_t y1 = y >> 32;
+    const int64_t y2 = y & INT64_C(0xFFFFFFFF);
+    const int64_t z2 = x2 * y2;
+    const int64_t t = x1 * y2 + (int64_t) ((uint64_t) z2 >> 32);
+    int64_t z1 = t & INT64_C(0xFFFFFFFF);
+    const int64_t z0 = t >> 32;
+    z1 += x2 * y1;
+    return x1 * y1 + z0 + (z1 >> 32);
+}
+_Static_assert((INT64_C(-1) >> 1) == -1, "j_mulhi64 needs an arithmetic >> of int64_t");
+
 /* Java's Long.numberOfLeadingZeros: 64 for 0. */
 static inline int j_nlz64(int64_t v) {
     uint64_t u = (uint64_t) v;
@@ -179,6 +205,24 @@ static inline float j_bits_float(int32_t i) {
     union { float f; int32_t i; } u;
     u.i = i;
     return u.f;
+}
+
+/* Java's Math.round(double), line for line as the JDK computes it: the
+ * floor of d + 1/2, exact (no addition that rounds); NaN gives 0, and values
+ * beyond the range Long.MIN_VALUE or Long.MAX_VALUE, as j_d2l. The API's
+ * conversion of a double setting to an integer (bergdb 005-79). */
+static inline int64_t j_round(double d) {
+    const int64_t bits = j_double_bits(d);
+    const int64_t biasedExp = (bits & INT64_C(0x7FF0000000000000)) >> 52;
+    const int64_t shift = (53 - 2 + 1023) - biasedExp;
+    if ((shift & -64) == 0) {                   /* 0 <= shift < 64: 2^-64 <= ulp(d) < 1 */
+        int64_t r = (bits & INT64_C(0x000FFFFFFFFFFFFF)) | INT64_C(0x0010000000000000);
+        if (bits < 0) {
+            r = -r;
+        }
+        return ((r >> shift) + 1) >> 1;
+    }
+    return j_d2l(d);    /* |d| < 1/2, or an integer, an infinity or NaN */
 }
 
 #endif

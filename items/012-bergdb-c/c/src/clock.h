@@ -13,13 +13,14 @@
  * the options' clock is given as it is. Three clocks:
  *
  *   - the system clock (SystemClock), the default: milliseconds since
- *     1970 times 10,000, from plat_time_millis. Ported as its code is, not
- *     as its comment promises (005-69): its last time is set only when the
- *     system's time is at or below it, which from 0 never happens, so it
- *     returns equal times within a millisecond and earlier ones when the
- *     system clock is set back. DbClock makes transaction times increase
- *     in any case. Its state is the database's (struct dbclock), not
- *     global (P9);
+ *     1970 times 10,000, from plat_time_millis, strictly increasing: a
+ *     system time that is not later than the last time returned gives the
+ *     last time plus one, 100 ns later, until the system clock passes it
+ *     (bergdb 005-69, as Java's since release 2026.2; before, the last
+ *     time stayed 0, and calls within a millisecond, or after the system
+ *     clock was set back, gave equal or earlier times). DbClock makes
+ *     transaction times increase in any case. Its state is the database's
+ *     (struct dbclock), not global (P9);
  *   - the test clock (CoreTestClock): the API's struct bergdb_test_clock,
  *     with bergdb_test_clock_time and bergdb_test_clock_set, implemented
  *     here; a time that the caller sets, forward only;
@@ -48,6 +49,10 @@ struct clk_system {
 
 /* SystemClock.getTime, ctx a struct clk_system. */
 int64_t clk_system_time(void *ctx);
+
+/* SystemClock.getTime(millis): as clk_system_time, with millis as the
+ * system's time, in ms since 1970; for the tests. */
+int64_t clk_system_time_at(struct clk_system *c, int64_t millis);
 
 /* DbClock. */
 struct dbclock {

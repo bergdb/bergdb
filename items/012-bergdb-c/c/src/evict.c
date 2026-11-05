@@ -26,11 +26,16 @@ void ev_free(struct ev *ev) {
     ev->nlarge = ev->cap_large = 0;
 }
 
-/* Eviction.setBudget: high the budget, low LOW of it, the trigger the budget. */
+int64_t ev_low_of(int64_t budget) {
+    return budget == INT64_MAX ? INT64_MAX : budget / 4 * 3 + budget % 4 * 3 / 4;
+}
+
+/* Eviction.setBudget: high the budget, low lowOf(budget), the trigger the
+ * budget. */
 void ev_set_budget(struct ev *ev, int64_t budget) {
     assert(budget >= 1);
     ev->high = budget;
-    ev->low = budget == INT64_MAX ? INT64_MAX : j_d2l((double) budget * EV_LOW);
+    ev->low = ev_low_of(budget);
     ev->trigger = budget;
 }
 

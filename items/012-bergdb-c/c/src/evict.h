@@ -77,8 +77,11 @@
 #include "transnodes.h"
 #include "transseq.h"
 
-/* Eviction.LOW: the low watermark, as a fraction of the budget. */
-#define EV_LOW 0.75
+/* Eviction.lowOf: the low watermark of a budget, floor(3 budget / 4) in
+ * integers, without overflow; INT64_MAX for none (bergdb 005-79, as Java's
+ * since release 2026.2; (long) (budget * 0.75) until then, the same below
+ * 2^53 / 3). */
+int64_t ev_low_of(int64_t budget);
 
 /* Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES' limit: a value of more bytes is
  * large. */
@@ -96,7 +99,7 @@ struct ev {
     struct mem *mem;
     struct obj_ctx *cx;
     int64_t high;               /* the budget, the high watermark; INT64_MAX: none */
-    int64_t low;                /* EV_LOW of it */
+    int64_t low;                /* ev_low_of(high) */
     int64_t trigger;            /* a sweep runs when the resident bytes are over it */
     int64_t floor;              /* the resident bytes after the last sweep of two rounds */
     int64_t floor_dirty;        /* D's got-dirty nodes then (TransSeq.dirtyCount) */

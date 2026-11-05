@@ -45,13 +45,17 @@ void st_free(struct st_record *r, struct mem *m);
 /* StoredTrans.Parser.parse: the record at tpos, its bytes buf[0] to
  * buf[len - 1] (len may exceed the record). Its checks, in order: len at
  * least 17 ("buffer too short"); tpos not negative and a multiple of 8
- * (ERR_ARG); the size field at most len; the format 5
- * ("VersioningStreamException", with Java's text of
+ * (ERR_ARG); the size field from 41 to len ("Bad transaction size in
+ * header"); the format 5 ("VersioningStreamException", with Java's text of
  * StoredTrans.formatRefused); the nodes (sn_bytes_to_node) until a node
- * size of 0, or until fewer than 5 bytes are left; the got-dirty count 0 to
- * (len - offset) / 16; lastPos 7 modulo 8 (Java's assert). A node size
- * below 0, which Java takes (its offset goes back, and a crafted record can
- * make it loop for ever), is refused: ERR_FORMAT, "none: C refuses". */
+ * size of 0, each size from 8 to what is left of the record ("Bad node
+ * size"), and the end marker within it ("Missing node end marker"); room
+ * for the got-dirty count and the last byte, and the count 0 to (size -
+ * offset - 1) / 16; room for the padding; lastPos 7 modulo 8 (Java's
+ * assert). Each a "StreamFormatException" but the assert's. Within the
+ * record's size since bergdb 005-74 (release 2026.2): before, within the
+ * buffer, and a node size below 0, which Java took (its offset went back),
+ * was refused by C alone, as "none: C refuses". */
 enum err_code st_parse(struct st_record *r, int64_t tpos, const uint8_t *buf, int32_t len,
         struct mem *m, struct err *e);
 

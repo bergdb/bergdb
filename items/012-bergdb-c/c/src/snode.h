@@ -31,6 +31,8 @@
 #define SN_TOP_ID_OFFSET 16     /* StoredTopNode.ID_OFFSET */
 #define SN_KEY_ID_OFFSET 24     /* StoredKeyNode.ID_OFFSET */
 #define SN_VALUE_ID_OFFSET 8    /* StoredValueNode.ID_OFFSET */
+#define SN_VALUE_MIN_SIZE 24    /* StoredValueNode.MIN_SIZE: the header, the id, the offset
+                                   from the transaction, a size (015-07) */
 
 /* TopNode.MAX_TOP_NODE_ID_VALUE, 2^48 - 1 */
 #define SN_MAX_ORDINAL ((INT64_C(1) << 48) - 1)
@@ -72,23 +74,31 @@ enum err_code sn_bytes_to_node(int64_t spos, const uint8_t *buf, int32_t len, in
         int32_t size, struct sn_node *out, struct err *e);
 
 /* StoredTopNode.parse: the format 2 (else "VersioningStreamException");
- * h, a signed byte, not negative; the ordinal at most 2^48 - 1; the root
- * time 0 to 2^56 - 1; the root pointer not negative; the size field 40 +
- * 16 h (Java's assert, a check with -ea: "AssertionError"); h the ordinal's
- * bit length; a skip pointer set exactly at the ordinal's set bits. */
+ * h, a signed byte, not negative; the size field 40 + 16 h and within the
+ * buffer, before the arrays ("StreamFormatException", bergdb 015-07, release
+ * 2026.2); the ordinal at most 2^48 - 1; the root time 0 to 2^56 - 1; the
+ * root pointer not negative; the size field again after the arrays (Java's
+ * assert, a check with -ea: "AssertionError"); h the ordinal's bit length;
+ * a skip pointer set exactly at the ordinal's set bits. */
 enum err_code sn_parse_top(const uint8_t *buf, int32_t len, int32_t offset, int64_t spos,
         struct sn_node *out, struct err *e);
 
-/* StoredKeyNode.parse: the format 2; prevPos a position or -1; the leaf
- * byte 0 or 1; n, a signed short, not negative (checked after the id is
- * read, as Java does). */
+/* StoredKeyNode.parse: the size field at least 32 and within the buffer
+ * (015-07); the format 2; prevPos a position or -1; the leaf byte 0 or 1;
+ * n, a signed short, not negative and within the size field ("Bad key
+ * count", 015-07), checked after the id is read, as Java does. */
 enum err_code sn_parse_key(const uint8_t *buf, int32_t len, int32_t offset, int64_t spos,
         struct sn_node *out, struct err *e);
 
-/* StoredValueNode.parse, for a value and a delete node: the format 4; a
- * value's length not negative ("NegativeArraySizeException") and within the
- * buffer; the key size a positive multiple of 8; the stored offset one that
- * getStartSpos takes ("Bad offset from transaction"). */
+/* StoredValueNode.parse, for a value and a delete node: the size field at
+ * least SN_VALUE_MIN_SIZE and within the buffer; the format 4; a value's
+ * length not negative and within the size field, with room for the key's
+ * size ("Bad value size"); the key size a positive multiple of 8 within the
+ * size field; the stored offset one that getStartSpos takes ("Bad offset
+ * from transaction"). Each a "StreamFormatException"; the sizes against the
+ * node's since bergdb 015-07 (release 2026.2; before, a negative value
+ * length was a "NegativeArraySizeException" and the others were checked
+ * against the buffer only). */
 enum err_code sn_parse_value(const uint8_t *buf, int32_t len, int32_t offset, int64_t spos,
         struct sn_node *out, struct err *e);
 

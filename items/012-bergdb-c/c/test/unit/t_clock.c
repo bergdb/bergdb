@@ -177,17 +177,33 @@ TEST(clock_test_clock) {
     CHECK_EQ(bergdb_test_clock_set(NULL, 1), BERGDB_ARG);
 }
 
-/* SystemClock as its code is (005-69): milliseconds times 10,000, and its
- * last time is set only when the system's time is at or below it. */
+/* SystemClock (bergdb 005-69): milliseconds times 10,000, strictly
+ * increasing; SystemClock.testStrictlyIncreasing (100,000 calls in a row,
+ * each later than the one before) and testClockSetBack (a system time equal
+ * to the last one, or earlier, gives the last time plus one, until the
+ * system clock passes it). */
 TEST(clock_system_clock) {
     struct clk_system s = { 0 };
     int64_t a = clk_system_time(&s);
-    int64_t b = clk_system_time(&s);
     CHECK(a % 10000 == 0);
-    CHECK(b >= a);
     CHECK(a > INT64_C(1700000000000) * 10000);      /* after 2023 */
     CHECK(a < KL_MAX_TIME);
-    CHECK_EQ(s.lastTime, 0);                        /* never set from 0 */
+    CHECK_EQ(s.lastTime, a);
+    int64_t last = a;
+    for (int i = 0; i < 100 * 1000; i++) {
+        const int64_t time = clk_system_time(&s);
+        if (time <= last) {
+            CHECK_EQ(time, last + 1);               /* fails, with both */
+            break;
+        }
+        last = time;
+    }
+    struct clk_system b = { 0 };
+    CHECK_EQ(clk_system_time_at(&b, 1000), 1000 * INT64_C(10000));
+    CHECK_EQ(clk_system_time_at(&b, 1000), 1000 * INT64_C(10000) + 1);
+    CHECK_EQ(clk_system_time_at(&b, 999), 1000 * INT64_C(10000) + 2);
+    CHECK_EQ(clk_system_time_at(&b, 2000), 2000 * INT64_C(10000));
+    CHECK_EQ(clk_system_time_at(&b, 0), 2000 * INT64_C(10000) + 1);
     /* A last time at or above the system's: it counts up from there. */
     s.lastTime = KL_MAX_TIME - 10;
     CHECK_EQ(clk_system_time(&s), KL_MAX_TIME - 9);

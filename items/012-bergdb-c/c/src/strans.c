@@ -68,8 +68,11 @@ enum err_code st_parse(struct st_record *r, int64_t tpos, const uint8_t *buffer,
     int32_t byteSize = bytes_get_int_le(buffer + offset);
     offset += 4;
     r->size = byteSize;
-    if (len < byteSize) {
-        return err_set(e, ERR_FORMAT, "StreamFormatException", "buffer too small, size in "
+    /* Header, node end marker, got-dirty count and last byte (bergdb 005-74,
+     * option A, as Java's since release 2026.2; before, only len < byteSize,
+     * "buffer too small"). */
+    if (byteSize < 32 + 4 + 4 + 1 || len < byteSize) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad transaction size in "
                 "header: %d, buffer size: %d.", (int) byteSize, (int) len);
     }
 
@@ -93,18 +96,25 @@ enum err_code st_parse(struct st_record *r, int64_t tpos, const uint8_t *buffer,
     r->top_pos = bytes_get_long_le(buffer + offset);
     offset += 8;
 
-    /* The nodes: Parser.next until it gives null. */
+    /* The nodes: Parser.next until it gives null. Within the record's size
+     * since bergdb 005-74 (release 2026.2): before, the end of the buffer
+     * ended the nodes, and a negative size went back (C refused it). */
     while (true) {
-        if (offset + 4 >= len) {
-            break;
-        }
-        if (!in(len, offset, 4)) {
-            return oob(e, offset, len);
+        if (offset > byteSize - 4) {
+            return err_set(e, ERR_FORMAT, "StreamFormatException", "Missing node end marker at "
+                    "offset %d, transaction size %d.", (int) offset, (int) byteSize);
         }
         int32_t nodeSize = bytes_get_int_le(buffer + offset);
         if (nodeSize == 0) {
             offset += 4;
             break;
+        }
+        /* The common node header is 8 bytes; checked before parsing or
+         * advancing. */
+        if (nodeSize < 8 || nodeSize > byteSize - offset) {
+            return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad node size, %d, at offset "
+                    "%d of transaction at %lld, size %d.", (int) nodeSize, (int) offset,
+                    (long long) tpos, (int) byteSize);
         }
         if (r->nnodes == r->cap) {
             int32_t c2 = r->cap == 0 ? 16 : 2 * r->cap;
@@ -122,21 +132,17 @@ enum err_code st_parse(struct st_record *r, int64_t tpos, const uint8_t *buffer,
             return rc;
         }
         r->nnodes++;
-        if (nodeSize < 0) {
-            return err_set(e, ERR_FORMAT, "none: C refuses", "node size %d at offset %d of the"
-                    " record at %lld: below 0, Java's parser goes back", (int) nodeSize,
-                    (int) offset, (long long) tpos);
-        }
         offset += nodeSize;
     }
 
     /* The got-dirty node ids. */
-    if (!in(len, offset, 4)) {
-        return oob(e, offset, len);
+    if (offset > byteSize - 5) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "No room for gotDirtyCount and "
+                "last byte.");
     }
     int32_t gotDirtyCount = bytes_get_int_le(buffer + offset);
     offset += 4;
-    if (gotDirtyCount < 0 || gotDirtyCount > (len - offset) / 16) {
+    if (gotDirtyCount < 0 || gotDirtyCount > (byteSize - offset - 1) / 16) {
         return err_set(e, ERR_FORMAT, "StreamFormatException", "bad gotDirtyCount, %d",
                 (int) gotDirtyCount);
     }
@@ -148,6 +154,11 @@ enum err_code st_parse(struct st_record *r, int64_t tpos, const uint8_t *buffer,
     offset += 1;
     int32_t transSizeBefore = offset;
     int32_t count = st_compute_zero_count(transSizeBefore);
+    if (count > byteSize - transSizeBefore) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "No room for transaction "
+                "padding, size %d, required %lld.", (int) byteSize,
+                (long long) ((int64_t) transSizeBefore + count));
+    }
     int32_t transSize = transSizeBefore + count;
     r->last_pos = rs_get_spos(tpos, transSize - 1);
     if (r->last_pos % RS_TRANS_ALIGNMENT != RS_TRANS_ALIGNMENT - 1) {

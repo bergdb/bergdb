@@ -407,9 +407,9 @@ void bergdb_options_init(struct bergdb_options *opt);
 /* What the open read (Java's StartInfo, start()'s result). */
 struct bergdb_start_info {
     int64_t start_pos;          /* startPos: the startup position, where the open read from */
-    /* startupDistance: Java's start gives the test-only StartParams' value,
-     * which is -1 for every start without them, so -1; the startup
-     * distance in force is bergdb_stats' (012-03, 6.8). */
+    /* startupDistance: the startup distance in force after the open, the
+     * stream's setting at a restart (bergdb 005-73, F1, as Java's since
+     * release 2026.2; -1 before), as bergdb_stats' */
     int32_t startup_distance;
     int64_t start_time;         /* startTime: the time of the first transaction read */
     int32_t trans_count;        /* transCount: the transactions read */
@@ -854,8 +854,12 @@ int bergdb_set_cache_size_indicator(bergdb_db *db, int64_t size);
 int bergdb_set_retain_duration(bergdb_db *db, int64_t duration);
 
 /* Sets reclaim's internal fraction (Java's setReclaimInternalFraction;
- * 0.25 at the open), with Java's check: BERGDB_ARG under 0.001 or over 0.90
- * (as Java's, the check lets NaN through). BERGDB_STATE. */
+ * 0.25 at the open), with Java's check: BERGDB_ARG for NaN, under 0.001 or
+ * over 0.90, and the setting stays (bergdb 005-73). Reclaim keeps the
+ * nearest multiple of 2^-16, an integer, and the double decides nothing
+ * (bergdb 005-79): 0.25 exactly, 0.1 as 6,554 / 65,536, which
+ * bergdb_stats' internal_fraction gives. As Java's since release 2026.2.
+ * BERGDB_STATE. */
 int bergdb_set_reclaim_internal_fraction(bergdb_db *db, double fraction);
 
 /* The status, Db's getters, each a field (012-03, 6.2). */
@@ -884,7 +888,8 @@ struct bergdb_stats {
                                            the newest top nodes, with what they hold, and the
                                            node table (a walk of D, for reports) */
     int64_t retain_duration;            /* getRetainDuration() */
-    double internal_fraction;           /* getInternalFraction() */
+    double internal_fraction;           /* getInternalFraction(): reclaim's units of 2^-16
+                                           over 65,536, exact (005-79) */
     int64_t reclaim_iteration_count;    /* getReclaimIterationCount() */
     int64_t transaction_count;          /* getTransactionCount(): since the open, reclaim's too */
     int64_t kv_count;                   /* getKvCount(): the puts and deletes since the open */

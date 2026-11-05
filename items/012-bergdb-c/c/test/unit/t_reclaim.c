@@ -18,6 +18,7 @@
 #include "../../tools/sha256.h"
 #include "bergdb.h"
 #include "db.h"
+#include "jsem.h"
 #include "keys.h"
 #include "nstream.h"
 #include "reclaim.h"
@@ -218,20 +219,60 @@ TEST(reclaim_settings) {
     struct reclaim r;
     rc_init(&r, &m);
     CHECK_EQ(r.retainDuration, INT64_MAX);
-    CHECK(r.internalFraction == 0.25);
+    CHECK_EQ(r.internalFraction, 16384);       /* 0.25 in units of 2^-16 (005-79) */
     CHECK_EQ(r.stepReserve, INT64_C(4) << 20);
     CHECK(rc_set_retain_duration(&r, CLK_UNITS_PER_SEC - 1, &e) == ERR_ARG);
     CHECK(rc_set_retain_duration(&r, CLK_UNITS_PER_SEC, &e) == ERR_OK);
     CHECK_EQ(r.retainDuration, CLK_UNITS_PER_SEC);
-    CHECK(rc_set_internal_fraction(&r, 0.0009, &e) == ERR_ARG);
-    CHECK(rc_set_internal_fraction(&r, 0.91, &e) == ERR_ARG);
-    CHECK(rc_set_internal_fraction(&r, 0.001, &e) == ERR_OK);
-    CHECK(rc_set_internal_fraction(&r, 0.90, &e) == ERR_OK);
-    CHECK(rc_set_internal_fraction(&r, NAN, &e) == ERR_OK);     /* as Java's comparisons */
+    /* Reclaim.setInternalFractionUnits: 66 to 58,982 (0.001 and 0.90
+     * rounded); the setting stays after a refusal. */
+    CHECK(rc_set_internal_fraction_units(&r, 65, &e) == ERR_ARG);
+    CHECK(rc_set_internal_fraction_units(&r, 58983, &e) == ERR_ARG);
+    CHECK_EQ(r.internalFraction, 16384);
+    CHECK(rc_set_internal_fraction_units(&r, 66, &e) == ERR_OK);
+    CHECK_EQ(r.internalFraction, 66);
+    CHECK(rc_set_internal_fraction_units(&r, 58982, &e) == ERR_OK);
+    CHECK_EQ(r.internalFraction, 58982);
     CHECK(rc_set_step_reserve(&r, 0, &e) == ERR_ARG);
     CHECK(rc_set_step_reserve(&r, 1, &e) == ERR_OK);
     rc_free(&r);
     CHECK_MEM_ZERO(&m);
+}
+
+/* The exact reference: clang's and gcc's 128-bit integers. */
+__extension__ typedef __int128 i128;
+
+static void check_fraction_of(int64_t g, int32_t f) {
+    const i128 x = (i128) g * f;
+    /* floor(g f / 2^16): >> of a negative __int128 is arithmetic on clang
+     * and gcc, the floor. */
+    CHECK_EQ(rc_fraction_of(g, f), (int64_t) (x >> 16));
+}
+
+/* Reclaim.Tester.testFractionOfExact (bergdb 005-79): floor(g f / 2^16)
+ * for every int64_t g, against the exact product, on the edges and on
+ * 10^5 random pairs; for the default fraction it is floor(g / 4). */
+TEST(reclaim_fraction_of_exact) {
+    const int64_t gs[] = {0, 1, 3, 4, 0xFFFF, 0x10000, INT64_C(1) << 47,
+            (INT64_C(1) << 53) / 3, INT64_C(1) << 53, INT64_MAX - 1, INT64_MAX, -1, -0x10001,
+            INT64_MIN};
+    const int32_t fs[] = {0, 1, RC_MIN_INTERNAL_FRACTION, RC_DEFAULT_INTERNAL_FRACTION,
+            RC_MAX_INTERNAL_FRACTION, RC_FRACTION_ONE - 1};
+    for (size_t i = 0; i < sizeof gs / sizeof gs[0]; i++) {
+        for (size_t j = 0; j < sizeof fs / sizeof fs[0]; j++) {
+            check_fraction_of(gs[i], fs[j]);
+        }
+    }
+    uint64_t z = 79;
+    for (int i = 0; i < 100000; i++) {
+        z += UINT64_C(0x9E3779B97F4A7C15);
+        uint64_t x = (z ^ (z >> 30)) * UINT64_C(0xBF58476D1CE4E5B9);
+        x = (x ^ (x >> 27)) * UINT64_C(0x94D049BB133111EB);
+        x ^= x >> 31;
+        const int64_t g = j_shr64((int64_t) x, (int) (x >> 58));
+        check_fraction_of(g, (int32_t) (x & 0xFFFF));
+    }
+    CHECK_EQ(rc_fraction_of(1000003, RC_DEFAULT_INTERNAL_FRACTION), 1000003 / 4);
 }
 
 /* ======== A database in memory ======== */
@@ -793,6 +834,7 @@ const struct test reclaim_tests[] = {
     TEST_ENTRY(reclaim_row_parse),
     TEST_ENTRY(reclaim_table_text),
     TEST_ENTRY(reclaim_settings),
+    TEST_ENTRY(reclaim_fraction_of_exact),
     TEST_ENTRY(reclaim_iterations_rewrite_old_values),
     TEST_ENTRY(reclaim_iterations_spaced),
     TEST_ENTRY(reclaim_lookups_from_first_available_time),

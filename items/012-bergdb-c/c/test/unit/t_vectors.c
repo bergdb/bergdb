@@ -483,20 +483,10 @@ TEST(vectors_keys) {
 
 /* ---- jsem.txt: Java's arithmetic ---- */
 
-/* TransSeq.dither (bergdb 005-49), line for line: wrapping products with
- * Java's negative long literals, >>>, and a long times a double. A test of
- * the rules here; the module that ports TransSeq (012-09) has its own. */
-static double dither(int64_t pos) {
-    int64_t z = pos * J64(0x9E3779B97F4A7C15);
-    z = (z ^ j_ushr64(z, 30)) * J64(0xBF58476D1CE4E5B9);
-    z = (z ^ j_ushr64(z, 27)) * J64(0x94D049BB133111EB);
-    return (double) j_ushr64(z ^ j_ushr64(z, 31), 11) * 0x1.0p-53;
-}
-
 TEST(vectors_jsem) {
     static const char *const kinds[] = {
-        "d2", "l2d", "narrow", "sh64", "sh32", "div", "idiv", "cmp", "nlz", "share", "dither",
-        NULL
+        "d2", "l2d", "narrow", "sh64", "sh32", "div", "idiv", "cmp", "nlz", "mulhi", "divu",
+        "round", "sharefp", "ditherfp", NULL
     };
     struct vfile *v = &vf;
     REQUIRE(v_open(v, "jsem.txt", kinds));
@@ -545,23 +535,22 @@ TEST(vectors_jsem) {
             CHECK_EQ(j_cmpu64(a, b), v_dec(v->tok[4]));
         } else if (v_is(v, "nlz", 2)) {
             CHECK_EQ(j_nlz64(v_dec(v->tok[1])), v_dec(v->tok[2]));
-        } else if (v_is(v, "share", 6)) {
-            /* As TransSeq.take writes it: (double) dirtyCount * recordOwnBytes / ownBytes
-             * * (streamLength - currentSp) / startupDistance. */
-            int64_t dirtyCount = v_dec(v->tok[1]);
-            int64_t recordOwnBytes = v_dec(v->tok[2]);
-            int64_t ownBytes = v_dec(v->tok[3]);
-            int64_t distance = v_dec(v->tok[4]);
-            int32_t startupDistance = j_l2i(v_dec(v->tok[5]));
-            const double share = (double) dirtyCount * (double) recordOwnBytes
-                    / (double) ownBytes * (double) distance / startupDistance;
-            CHECK_EQ(j_double_bits(share), v_hex(v->tok[6]));
-            /* And the module's (012-09). */
-            CHECK_EQ(j_double_bits(ts_share(dirtyCount, recordOwnBytes, ownBytes, distance,
-                    startupDistance)), v_hex(v->tok[6]));
-        } else if (v_is(v, "dither", 2)) {
-            CHECK_EQ(j_double_bits(dither(v_dec(v->tok[1]))), v_hex(v->tok[2]));
-            CHECK_EQ(j_double_bits(ts_dither(v_dec(v->tok[1]))), v_hex(v->tok[2]));
+        } else if (v_is(v, "mulhi", 3)) {
+            CHECK_EQ(j_mulhi64(v_dec(v->tok[1]), v_dec(v->tok[2])), v_dec(v->tok[3]));
+        } else if (v_is(v, "divu", 4)) {
+            int64_t n = v_dec(v->tok[1]);
+            int64_t d = v_dec(v->tok[2]);
+            REQUIRE(d != 0);
+            CHECK_EQ(j_divu64(n, d), v_dec(v->tok[3]));
+            CHECK_EQ(j_remu64(n, d), v_dec(v->tok[4]));
+        } else if (v_is(v, "round", 2)) {
+            CHECK_EQ(j_round(j_bits_double(v_hex(v->tok[1]))), v_dec(v->tok[2]));
+        } else if (v_is(v, "sharefp", 6)) {
+            /* TransSeq.shareFp (bergdb 005-79), the module's (012-09). */
+            CHECK_EQ(ts_share_fp(v_dec(v->tok[1]), v_dec(v->tok[2]), v_dec(v->tok[3]),
+                    v_dec(v->tok[4]), j_l2i(v_dec(v->tok[5]))), v_dec(v->tok[6]));
+        } else if (v_is(v, "ditherfp", 2)) {
+            CHECK_EQ(ts_dither_fp(v_dec(v->tok[1])), v_dec(v->tok[2]));
         }
     }
     v_end(v);

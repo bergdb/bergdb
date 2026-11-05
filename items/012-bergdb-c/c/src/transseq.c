@@ -115,17 +115,62 @@ int64_t ts_own_bytes(int64_t valueBytes) {
     return 48 + valueBytes;
 }
 
-double ts_dither(int64_t pos) {
+int32_t ts_dither_fp(int64_t pos) {
     int64_t z = pos * J64(0x9E3779B97F4A7C15);
     z = (z ^ j_ushr64(z, 30)) * J64(0xBF58476D1CE4E5B9);
     z = (z ^ j_ushr64(z, 27)) * J64(0x94D049BB133111EB);
-    return (double) j_ushr64(z ^ j_ushr64(z, 31), 11) * 0x1.0p-53;
+    return (int32_t) j_ushr64(z ^ j_ushr64(z, 31), 48);
 }
 
-double ts_share(int64_t dirtyCount, int64_t recordOwnBytes, int64_t ownBytes,
-        int64_t distance, int32_t startupDistance) {
-    return (double) dirtyCount * (double) recordOwnBytes / (double) ownBytes
-            * (double) distance / (double) startupDistance;
+int64_t ts_share_fp(int64_t D, int64_t o, int64_t O, int64_t S, int32_t sd) {
+    if (j_ushr64(D, 32) != 0 || j_ushr64(o, 31) != 0 || j_ushr64(S, 47) != 0 || O < 1
+            || sd < 1) {
+        return INT64_MAX;
+    }
+    const int64_t p = D * o;
+    const int64_t q = S << 16;
+    const int64_t xHi = j_mulhi64(p, q);       /* the unsigned high word, as p, q >= 0 */
+    const int64_t xLo = p * q;
+    /* Y = X / O: xHi is below 2^62, so its signed division is the unsigned one. */
+    const int64_t yHi = xHi / O;
+    const int64_t yLo = ts_divlu(xHi % O, xLo, O);
+    const int64_t qHi = yHi / sd;
+    const int64_t qLo = ts_divlu(yHi % sd, yLo, sd);
+    const int64_t max = D << 16;
+    return qHi != 0 || j_cmpu64(qLo, max) > 0 ? max : qLo;
+}
+
+int64_t ts_divlu(int64_t u1, int64_t u0, int64_t v) {
+    assert(v != 0 && j_cmpu64(u1, v) < 0);
+    const int64_t b = INT64_C(1) << 32;         /* the number base, 32-bit digits */
+    const int s = j_nlz64(v);                   /* 0 to 63 */
+    v = j_shl64(v, s);                          /* normalized */
+    const int64_t vn1 = j_ushr64(v, 32), vn0 = v & INT64_C(0xFFFFFFFF);
+    const int64_t un32 = j_shl64(u1, s) | (s == 0 ? 0 : j_ushr64(u0, 64 - s));
+    const int64_t un10 = j_shl64(u0, s);
+    const int64_t un1 = j_ushr64(un10, 32), un0 = un10 & INT64_C(0xFFFFFFFF);
+
+    int64_t q1 = j_divu64(un32, vn1);
+    int64_t rhat = j_remu64(un32, vn1);
+    while (q1 >= b || j_cmpu64(q1 * vn0, j_shl64(rhat, 32) + un1) > 0) {
+        q1--;
+        rhat += vn1;
+        if (rhat >= b) {
+            break;
+        }
+    }
+
+    const int64_t un21 = j_shl64(un32, 32) + un1 - q1 * v;  /* below v, modulo 2^64 */
+    int64_t q0 = j_divu64(un21, vn1);
+    rhat = j_remu64(un21, vn1);
+    while (q0 >= b || j_cmpu64(q0 * vn0, j_shl64(rhat, 32) + un0) > 0) {
+        q0--;
+        rhat += vn1;
+        if (rhat >= b) {
+            break;
+        }
+    }
+    return j_shl64(q1, 32) + q0;
 }
 
 int64_t ts_take(struct ts_seq *s, int64_t currentSp, int64_t streamLength,
@@ -147,9 +192,10 @@ int64_t ts_take(struct ts_seq *s, int64_t currentSp, int64_t streamLength,
     const int64_t twice = 2 * (int64_t) startupDistance;
     const int64_t span = ts_span(s);
     const int64_t hardSp = streamLength - (twice >= span ? twice : span);
-    const double share = ts_share(s->dirtyCount, recordOwnBytes, s->ownBytes,
+    /* The share and the dither in units of 2^-16 (bergdb 005-79). */
+    const int64_t share = ts_share_fp(s->dirtyCount, recordOwnBytes, s->ownBytes,
             streamLength - currentSp, startupDistance);
-    const double u = ts_dither(streamLength);
+    const int64_t u = ts_dither_fp(streamLength);
 
     int64_t taken = 0;
     int64_t bytes = 0;
@@ -160,9 +206,9 @@ int64_t ts_take(struct ts_seq *s, int64_t currentSp, int64_t streamLength,
 
         /* Before the deadline, a transaction that does not fit in what is
          * left of the share is taken if the part that fits is larger than
-         * u. */
-        if (first->tpos > hardSp && (double) (taken + count) > share
-                && share - (double) taken <= u * (double) count) {
+         * u. In units of 2^-16. */
+        if (first->tpos > hardSp && ((taken + count) << 16) > share
+                && share - (taken << 16) <= u * count) {
             break;
         }
 

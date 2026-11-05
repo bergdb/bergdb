@@ -409,3 +409,10 @@ the report is the whole file, sections 1 to 8 (section 0 and the plan's
 stubs gone; the log's earlier "section 0" means sections 1 to 8 now),
 with Frans's answers beside each question, the sizes, and 012-17's
 figures.
+
+2026-11-05. The C clone follows release 2026.2 (015-02; Frans: C matches a
+release, not the Java of the day): 005-79's integers in the take, reclaim
+and eviction, 005-69's clock, 005-73's F1 and F4, the checks of 005-74,
+005-75 and 015-07, and the doubles check in the gate. The cross harness
+compiles the release's source zip by default (`JAVA_REF`, `c/readme.md`).
+The work and its evidence are in 015-02.

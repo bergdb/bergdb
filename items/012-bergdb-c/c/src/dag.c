@@ -36,10 +36,12 @@ static void node_split(const struct dag_split_listener *l, int32_t splitType) {
 
 /* ======== KeyAccessPath ======== */
 
-/* KeyAccessPath.enlargeArrays: 16 at first, then (int) (size * 1.6). */
+/* KeyAccessPath.enlargeArrays: 16 at first, then floor(1.6 size) in
+ * integers (bergdb 005-79, as Java's since release 2026.2; (int) (size *
+ * 1.6) before). */
 static bool kap_enlarge(struct kap *p) {
     int32_t size = p->cap;
-    int32_t newSize = size == 0 ? 16 : j_d2i(size * 1.6);
+    int32_t newSize = size == 0 ? 16 : size + size * 3 / 5;
     int64_t *klongs = mem_alloc(p->mem, (size_t) newSize * sizeof *klongs, MEM_STATE);
     struct knode **nodes = mem_alloc(p->mem, (size_t) newSize * sizeof *nodes, MEM_STATE);
     if (klongs == NULL || nodes == NULL) {

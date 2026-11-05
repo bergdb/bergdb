@@ -461,7 +461,38 @@ TEST(evict_alloc_failures) {
             "databases\n", (long long) runs, (long long) refused, (long long) failed);
 }
 
+/* The exact reference: clang's and gcc's 128-bit integers. */
+__extension__ typedef unsigned __int128 u128;
+
+static void check_low_of(int64_t budget) {
+    CHECK_EQ(ev_low_of(budget), (int64_t) ((u128) (uint64_t) budget * 3 >> 2));
+}
+
+/* Eviction.testLowOfExact (bergdb 005-79): floor(3 budget / 4) for every
+ * budget from 1, without overflow, against the exact product; INT64_MAX for
+ * none. */
+TEST(evict_low_of_exact) {
+    CHECK_EQ(ev_low_of(INT64_MAX), INT64_MAX);
+    const int64_t edges[] = {1, 2, 3, 4, 5, 0xFFFF, INT64_C(1) << 47, (INT64_C(1) << 53) / 3,
+            (INT64_C(1) << 53) / 3 + 1, INT64_C(1) << 53, INT64_MAX - 2, INT64_MAX - 1};
+    for (size_t i = 0; i < sizeof edges / sizeof edges[0]; i++) {
+        check_low_of(edges[i]);
+    }
+    uint64_t z = 79;
+    for (int i = 0; i < 100000; i++) {
+        z += UINT64_C(0x9E3779B97F4A7C15);
+        uint64_t x = (z ^ (z >> 30)) * UINT64_C(0xBF58476D1CE4E5B9);
+        x = (x ^ (x >> 27)) * UINT64_C(0x94D049BB133111EB);
+        x ^= x >> 31;
+        const int64_t b = (int64_t) ((x >> 1) >> (x & 63));
+        if (b >= 1 && b < INT64_MAX) {
+            check_low_of(b);
+        }
+    }
+}
+
 const struct test evict_tests[] = {
+    TEST_ENTRY(evict_low_of_exact),
     TEST_ENTRY(evict_table),
     TEST_ENTRY(evict_floor_after_shrink),
     TEST_ENTRY(evict_detachable),

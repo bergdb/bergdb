@@ -101,13 +101,18 @@ enum err_code rc_set_retain_duration(struct reclaim *r, int64_t d, struct err *e
     return ERR_OK;
 }
 
-enum err_code rc_set_internal_fraction(struct reclaim *r, double f, struct err *e) {
-    if (f < 0.001 || f > 0.90) {
+enum err_code rc_set_internal_fraction_units(struct reclaim *r, int32_t units,
+        struct err *e) {
+    if (units < RC_MIN_INTERNAL_FRACTION || units > RC_MAX_INTERNAL_FRACTION) {
         return err_set(e, ERR_ARG, "IllegalArgumentException", "Illegal internalFraction "
-                "value, %.17g", f);
+                "value, %d", (int) units);
     }
-    r->internalFraction = f;
+    r->internalFraction = units;
     return ERR_OK;
+}
+
+int64_t rc_fraction_of(int64_t g, int32_t f) {
+    return j_shr64(g, 16) * f + j_ushr64((g & 0xFFFF) * f, 16);
 }
 
 enum err_code rc_set_step_reserve(struct reclaim *r, int64_t bytes, struct err *e) {
@@ -927,8 +932,7 @@ enum err_code rc_transaction_completed(struct db *db, const struct trans *t, str
 
     if (current == -1 && r->retainDuration != INT64_MAX
             && streamSize > last_p_start(r) + INT64_C(2) * db->startup_distance
-            && t->tt - last_t_start(r) >= j_d2l(RC_ITERATION_SPACING
-                    * (double) r->retainDuration)) {
+            && t->tt - last_t_start(r) >= r->retainDuration / RC_ITERATION_DIVISOR) {
         if (!rows_room(r)) {
             return nomem(e);
         }
@@ -950,7 +954,7 @@ enum err_code rc_transaction_completed(struct db *db, const struct trans *t, str
 
     if (current != -1) {
         const struct rc_row *it = &r->rows[current];
-        int64_t allowed = j_d2l(r->internalFraction * (double) (streamSize - it->pStart))
+        int64_t allowed = rc_fraction_of(streamSize - it->pStart, r->internalFraction)
                 - it->rewritten;
         if (allowed > RC_MIN_STEP_SIZE) {
             rc = step(db, current, allowed < RC_MAX_STEP_SIZE ? allowed : RC_MAX_STEP_SIZE, e);

@@ -27,17 +27,21 @@ static enum err_code ensure(struct ns_buf *b, struct mem *m, int64_t n, struct e
     return ERR_OK;
 }
 
-/* A read of n record bytes at pos would pass the end of the stream: the error that
- * the read gives, without the allocation of its buffer: RecoverableStream's
- * StreamIoException of the stream's EOFException (012-14, 7.4). */
-static bool past_end(struct stream *s, int64_t pos, int64_t n, struct err *e) {
-    if (rs_trans_pos(pos) + n <= rs_trans_pos(stream_length(s))) {
+/* NodeStream.checkReadSize (bergdb 005-74, option A, as Java's since release
+ * 2026.2): an untrusted size, checked before its buffer is allocated: at
+ * least 8, and its last byte before the end of the stream (the last byte,
+ * not the next position: a record may end just before a meta block that a
+ * crash has not written). Before, C gave the error that the read would
+ * give, RecoverableStream's StreamIoException of the stream's EOFException
+ * (012-14, 7.4), as Java did then. */
+static bool bad_read_size(struct stream *s, int64_t pos, int32_t size, struct err *e) {
+    const int64_t length = stream_length(s);
+    if (size >= 8 && rs_get_spos(pos, (int64_t) size - 1) < length) {
         return false;
     }
-    err_set(e, ERR_IO, "StreamIoException", "EOFException: Cannot read %lld record bytes at "
-            "%lld, past the end of"
-            " the stream, %lld.", (long long) n, (long long) pos,
-            (long long) stream_length(s));
+    err_set(e, ERR_FORMAT, "StreamFormatException", "Bad item byte size, %d, at spos %lld: "
+            "beyond the stream's record bytes, length %lld.", (int) size, (long long) pos,
+            (long long) length);
     return true;
 }
 
@@ -92,7 +96,7 @@ enum err_code ns_iter_next(struct ns_iter *it, bool *has, struct err *e) {
                     (long long) it->tpos, (long long) stream_length(it->s),
                     (long long) it->trans_count);
         }
-        if (past_end(it->s, it->tpos, size, e)) {
+        if (bad_read_size(it->s, it->tpos, size, e)) {
             return e->code;
         }
         rc = ensure(&it->buf, it->m, size, e);
@@ -143,7 +147,7 @@ enum err_code ns_read_node(struct stream *s, struct mem *m, int64_t spos, struct
         return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad node byte size, %d. At spos"
                 " %lld.", (int) size, (long long) spos);
     }
-    if (past_end(s, spos, size, e)) {
+    if (bad_read_size(s, spos, size, e)) {
         return e->code;
     }
     int32_t length = size < 1024 ? 1024 : size;
@@ -200,7 +204,7 @@ enum err_code ns_read_trans_bytes(struct stream *s, struct mem *m, int64_t tpos,
         return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad transaction byte size, %d. "
                 "At spos %lld.", (int) n, (long long) tpos);
     }
-    if (past_end(s, tpos, n, e)) {
+    if (bad_read_size(s, tpos, n, e)) {
         return e->code;
     }
     rc = ensure(buf, m, n, e);

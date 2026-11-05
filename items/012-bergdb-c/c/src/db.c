@@ -619,7 +619,7 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
         kms_set_first_time(&db->key_mod_set, res.last_trans_time);
         create_put_and_get_data(db);
         info->start_pos = res.start_pos;
-        info->startup_distance = -1;
+        info->startup_distance = db->startup_distance;    /* in force (005-73, F1) */
         info->start_time = res.start_time;
         info->trans_count = res.trans_count;
         info->last_pos = res.last_pos;
@@ -1241,7 +1241,16 @@ enum err_code db_set_retain_duration(struct db *db, int64_t d, struct err *e) {
 }
 
 enum err_code db_set_reclaim_internal_fraction(struct db *db, double f, struct err *e) {
-    return rc_set_internal_fraction(&db->reclaim, f, e);
+    if (isnan(f) || f < 0.001 || f > 0.90) {
+        return err_set(e, ERR_ARG, "IllegalArgumentException", "Illegal internalFraction "
+                "value, %.17g", f);
+    }
+    return rc_set_internal_fraction_units(&db->reclaim,
+            j_l2i(j_round(f * (double) RC_FRACTION_ONE)), e);
+}
+
+double db_internal_fraction(const struct db *db) {
+    return (double) db->reclaim.internalFraction / (double) RC_FRACTION_ONE;
 }
 
 enum err_code db_set_cache_size_indicator(struct db *db, int64_t size, struct err *e) {

@@ -225,8 +225,10 @@ TEST(rs_read_across) {
     CHECK(strcmp(e.java, "StreamIoException") == 0);
     CHECK(strncmp(e.text, "EOFException: ", 14) == 0);
     /* Below the first position: the code stays NOT_AVAILABLE (isReadBelowCut). */
-    /* NodeStream's read of a record whose size passes the end: the read's error,
-     * StreamIoException of an EOFException, without the buffer (012-14, 7.4). */
+    /* NodeStream's read of a record whose size passes the end: refused before
+     * the buffer, NodeStream.checkReadSize's StreamFormatException (bergdb
+     * 005-74, as Java's since release 2026.2; before, the read's error, a
+     * StreamIoException of an EOFException, 012-14, 7.4). */
     {
         struct ns_buf nb = {0};
         int32_t got;
@@ -236,9 +238,10 @@ TEST(rs_read_across) {
         t_append(&s2, &mb, tbuf, 100);          /* a meta block and 100 bytes */
         bytes_put_int_le(1000000, hdr);
         memcpy(s2.bytes + M, hdr, 4);           /* the record at M claims 1,000,000 bytes */
-        CHECK_EQ(ns_read_trans_bytes(&s2, &m, M, &nb, &got, &e), ERR_IO);
-        CHECK(strcmp(e.java, "StreamIoException") == 0);
-        CHECK(strncmp(e.text, "EOFException: ", 14) == 0);
+        CHECK_EQ(ns_read_trans_bytes(&s2, &m, M, &nb, &got, &e), ERR_FORMAT);
+        CHECK(strcmp(e.java, "StreamFormatException") == 0);
+        CHECK(strncmp(e.text, "Bad item byte size, 1000000, at spos 128: beyond the stream's "
+                "record bytes", 74) == 0);
         ns_buf_free(&nb, &m);
         stream_close(&s2);
     }
@@ -584,9 +587,9 @@ TEST(ns_walk) {
     CHECK_EQ(ns_iter_next(&it, &has, &e), ERR_FORMAT);
     ns_iter_free(&it);
     s.bytes[c] = 24;
-    s.bytes[c + 1] = 0x10;                                    /* past the end: a read error */
+    s.bytes[c + 1] = 0x10;                                    /* past the end (005-74) */
     ns_iter_init(&it, &s, &m, c, true);
-    CHECK_EQ(ns_iter_next(&it, &has, &e), ERR_IO);
+    CHECK_EQ(ns_iter_next(&it, &has, &e), ERR_FORMAT);
     CHECK_EQ(it.buf.cap, 0);                                  /* nothing allocated for it */
     ns_iter_free(&it);
     stream_close(&s);

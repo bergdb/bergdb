@@ -77,15 +77,16 @@ static void stats_line(bergdb_db *db, const char *at, bool durable, char *text, 
     strncat(text, line, cap - strlen(text) - 1);
 }
 
-/* StatsProbe's lines on Java's Db (main at ca9e583, 2026-10-29). */
+/* StatsProbe's lines on Java's Db (release 2026.2, bergdb 015-02: the fraction 0.1 is
+ * kept as 6,554 units of 2^-16, 005-79). */
 static const char java_stats[] =
     "at=open length=264 durable=0 lastMeta=-1 firstTime=0 firstPos=0 sd=1000 cache=9223372036854775807 retain=10000000 fraction=0.25 iterations=0 trans=0 kvs=0 gets=1\n"
     "at=t50 length=58712 lastMeta=-1 firstTime=0 firstPos=0 sd=1000 cache=9223372036854775807 retain=10000000 fraction=0.25 iterations=1 trans=56 kvs=118 gets=179\n"
     "at=setsd length=273296 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=9223372036854775807 retain=10000000 fraction=0.25 iterations=2 trans=70 kvs=144 gets=309\n"
     "at=setsd-same length=273296 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=9223372036854775807 retain=10000000 fraction=0.25 iterations=2 trans=70 kvs=144 gets=309\n"
-    "at=setters length=276680 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=150000000 retain=20000000 fraction=0.1 iterations=2 trans=80 kvs=166 gets=338\n"
-    "at=sync length=286592 durable=286592 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=150000000 retain=20000000 fraction=0.1 iterations=2 trans=110 kvs=230 gets=423\n"
-    "at=end length=303864 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=150000000 retain=20000000 fraction=0.1 iterations=2 trans=159 kvs=336 gets=557\n"
+    "at=setters length=276680 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=150000000 retain=20000000 fraction=0.100006103515625 iterations=2 trans=80 kvs=166 gets=338\n"
+    "at=sync length=286592 durable=286592 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=150000000 retain=20000000 fraction=0.100006103515625 iterations=2 trans=110 kvs=230 gets=423\n"
+    "at=end length=303864 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=150000000 retain=20000000 fraction=0.100006103515625 iterations=2 trans=159 kvs=336 gets=557\n"
     "at=reopen length=303864 durable=303864 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=9223372036854775807 retain=10000000 fraction=0.25 iterations=0 trans=0 kvs=0 gets=2\n"
     "at=reopen-sync length=304088 durable=304088 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=9223372036854775807 retain=10000000 fraction=0.25 iterations=0 trans=2 kvs=2 gets=4\n";
 
@@ -327,16 +328,28 @@ TEST(settings_setters) {
     REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
     CHECK_EQ(s.retain_duration, BERGDB_FOREVER);
 
-    /* setReclaimInternalFraction: 0.001 to 0.90; NaN passes, as Java's
-     * check lets it through (012-03, 6.8, F4). */
+    /* setReclaimInternalFraction: 0.001 to 0.90; NaN refused, and the
+     * setting stays (bergdb 005-73, F4, as Java's since release 2026.2;
+     * before, NaN passed, 012-03, 6.8). Kept as the nearest multiple of
+     * 2^-16, which the getter gives (005-79): 0.5 exactly, 0.1 as 6,554 / 2^16,
+     * the range's ends as 66 and 58,982 units. */
     CHECK(bergdb_set_reclaim_internal_fraction(db, 0.0009) == BERGDB_ARG);
     CHECK(bergdb_set_reclaim_internal_fraction(db, 0.91) == BERGDB_ARG);
     CHECK(bergdb_set_reclaim_internal_fraction(db, 0.5) == BERGDB_OK);
     REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
     CHECK(s.internal_fraction == 0.5);
-    CHECK(bergdb_set_reclaim_internal_fraction(db, NAN) == BERGDB_OK);
+    CHECK(bergdb_set_reclaim_internal_fraction(db, NAN) == BERGDB_ARG);
     REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
-    CHECK(isnan(s.internal_fraction));
+    CHECK(s.internal_fraction == 0.5);
+    CHECK(bergdb_set_reclaim_internal_fraction(db, 0.1) == BERGDB_OK);
+    REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
+    CHECK(s.internal_fraction == 6554 / 65536.0);
+    CHECK(bergdb_set_reclaim_internal_fraction(db, 0.001) == BERGDB_OK);
+    REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
+    CHECK(s.internal_fraction == 66 / 65536.0);
+    CHECK(bergdb_set_reclaim_internal_fraction(db, 0.90) == BERGDB_OK);
+    REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
+    CHECK(s.internal_fraction == 58982 / 65536.0);
     CHECK(bergdb_set_reclaim_internal_fraction(db, 0.25) == BERGDB_OK);
 
     /* A NULL database. */
@@ -362,7 +375,7 @@ TEST(settings_setters) {
     CHECK_EQ(s.startup_distance, 400000);
     CHECK_EQ(s.cache_size_indicator, 123456789);
     CHECK_EQ(s.retain_duration, 5 * BERGDB_UNITS_PER_SEC);
-    CHECK(s.internal_fraction == 0.2);
+    CHECK(s.internal_fraction == 13107 / 65536.0);     /* 0.2 to units of 2^-16 (005-79) */
     CHECK(bergdb_close(db) == BERGDB_OK);
     CHECK_EQ(m.live_total, 0);
 }
@@ -413,7 +426,7 @@ TEST(settings_open_checks) {
     REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
     CHECK_EQ(s.startup_distance, 10);
     CHECK_EQ(info.trans_count, 2);
-    CHECK_EQ(info.startup_distance, -1);        /* Java's StartInfo (012-03, 6.8, F1) */
+    CHECK_EQ(info.startup_distance, 10);        /* the stream's, in force (005-73, F1) */
     CHECK(bergdb_close(db) == BERGDB_OK);
     CHECK_EQ(m.live_total, 0);
 
@@ -545,13 +558,17 @@ TEST(settings_sync_and_times) {
     CHECK(bergdb_close(db) == BERGDB_OK);
     CHECK_EQ(m.live_total, 0);
 
-    /* The system clock (the default): milliseconds times 10,000, now. */
+    /* The system clock (the default): milliseconds times 10,000, now; one
+     * unit more than the last time when the millisecond has not passed
+     * (bergdb 005-69), as after the creation's read here. */
     struct bergdb_mem m2 = {0};
     bergdb_options_init(&o);
     o.mem = &m2;
     REQUIRE(bergdb_open(NULL, &o, &db, NULL, NULL) == BERGDB_OK);
     CHECK(bergdb_current_time(db, &now) == BERGDB_OK);
-    CHECK(now % 10000 == 0);
+    int64_t later;
+    CHECK(bergdb_current_time(db, &later) == BERGDB_OK);
+    CHECK(later > now);
     CHECK(now > INT64_C(17600000000000000) && now < INT64_C(40000000000000000));
     CHECK(bergdb_close(db) == BERGDB_OK);
     CHECK_EQ(m2.live_total, 0);

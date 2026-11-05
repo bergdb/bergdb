@@ -393,9 +393,9 @@ TEST(records_walk_and_reads) {
     CHECK_MEM_ZERO(&m);
 }
 
-/* 012-06's finding F2: a node size below 0, which Java's parser takes (its offset goes
- * back, and this record makes it loop until it runs out of memory), is refused. The record
- * of the finding's probe. */
+/* 012-06's finding F2: a node size below 0, which Java's parser took until 005-74 (its
+ * offset went back, and this record made it loop until it ran out of memory), is refused,
+ * as Java's parser refuses it since release 2026.2. The record of the finding's probe. */
 TEST(records_negative_node_size) {
     struct mem m;
     struct err e;
@@ -426,7 +426,8 @@ TEST(records_negative_node_size) {
     bytes_put_long_le(INT64_C(0x0058c00000000010), b + 88);
     b[111] = 10;
     CHECK_EQ(st_parse(&r, 128, b, 112, &m, &e), ERR_FORMAT);
-    CHECK(strcmp(e.java, "none: C refuses") == 0);
+    CHECK(strcmp(e.java, "StreamFormatException") == 0);    /* as Java's since 005-74 */
+    CHECK(strncmp(e.text, "Bad node size, -32,", 19) == 0);
     bytes_put_int_le(0, b + 64);            /* the end of the nodes there, and no got-dirty */
     bytes_put_int_le(0, b + 68);            /* pairs: taken */
     CHECK_EQ(st_parse(&r, 128, b, 112, &m, &e), ERR_OK);

@@ -398,14 +398,15 @@ static void check_dir(struct check *c, const char *dir) {
             c->taken += ntaken;
             if (taken != NULL || !ts_is_empty(&d)) {
                 const int64_t twice = 2 * (int64_t) sd;
-                const double share = ts_share(dcount, own, obytes, r.tpos - sp, sd);
-                const double u = ts_dither(r.tpos);
+                /* In units of 2^-16, as the take (bergdb 005-79). */
+                const int64_t share = ts_share_fp(dcount, own, obytes, r.tpos - sp, sd);
+                const int64_t u = ts_dither_fp(r.tpos);
                 int64_t got = 0;
                 for (struct ts_info *t = taken; t != NULL; t = t->next) {
                     const int32_t count = t->ndirty;
-                    if (!((double) (got + count) > share)) {
+                    if (!(((got + count) << 16) > share)) {
                         c->fits++;
-                    } else if (share - (double) got > u * (double) count) {
+                    } else if (share - (got << 16) > u * count) {
                         c->dither++;
                     } else {
                         c->deadline++;

@@ -157,7 +157,7 @@ TEST(api_create_and_read) {
     CHECK_EQ(info.start_time, 1000);
     CHECK_EQ(info.trans_count, 1);
     CHECK_EQ(info.last_pos, 263);
-    CHECK_EQ(info.startup_distance, -1);
+    CHECK_EQ(info.startup_distance, o.startup_distance);   /* in force (005-73, F1) */
 
     struct bergdb_executed ex;
     CHECK(put_keys(db, &clock, 2000, 0, 30, &ex) == BERGDB_OK);

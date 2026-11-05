@@ -46,11 +46,18 @@ struct db;
 struct trans;
 
 /* Reclaim's constants. */
-#define RC_ITERATION_SPACING 0.25           /* ITERATION_SPACING */
+#define RC_ITERATION_DIVISOR INT64_C(4)     /* ITERATION_DIVISOR: a quarter of the retain
+                                               duration; (long) (0.25 * d) until 005-79 */
 #define RC_MIN_STEP_SIZE INT64_C(10000)     /* MIN_STEP_SIZE */
 #define RC_MAX_STEP_SIZE INT64_C(16000)     /* MAX_STEP_SIZE */
 #define RC_VALUE_NODE_BYTES 28              /* VALUE_NODE_BYTES */
-#define RC_DEFAULT_INTERNAL_FRACTION 0.25   /* DEFAULT_INTERNAL_FRACTION */
+/* The internal fraction in units of 2^-16, an int (bergdb 005-79, as Java's
+ * since release 2026.2; a double until then): FRACTION_ONE units are 1, the
+ * default is 0.25 exactly, and 0.001 and 0.90 round to 66 and 58,982. */
+#define RC_FRACTION_ONE (1 << 16)           /* FRACTION_ONE */
+#define RC_DEFAULT_INTERNAL_FRACTION 16384  /* DEFAULT_INTERNAL_FRACTION */
+#define RC_MIN_INTERNAL_FRACTION 66         /* MIN_INTERNAL_FRACTION */
+#define RC_MAX_INTERNAL_FRACTION 58982      /* MAX_INTERNAL_FRACTION */
 #define RC_DEFAULT_STEP_RESERVE (INT64_C(4) << 20)  /* DEFAULT_STEP_RESERVE, 4 MiB */
 
 /* The ikeys of the table and of the current row (TABLE_KEY_NAME,
@@ -84,7 +91,7 @@ struct reclaim {
     int32_t tableKey_n;
     int64_t currentKey[8];          /* Keys.toSegments(CURRENT_KEY_NAME) */
     int32_t currentKey_n;
-    double internalFraction;
+    int32_t internalFraction;       /* in units of 2^-16 (005-79) */
     int64_t retainDuration;         /* Long.MAX_VALUE: forever */
     int64_t stepReserve;
     int64_t firstAvailableLookupTime;
@@ -108,9 +115,17 @@ void rc_free(struct reclaim *r);
  * ("IllegalArgumentException"). */
 enum err_code rc_set_retain_duration(struct reclaim *r, int64_t d, struct err *e);
 
-/* setInternalFraction: 0.001 to 0.90 inclusive (NaN passes, as Java's
- * comparisons let it), else ERR_ARG. */
-enum err_code rc_set_internal_fraction(struct reclaim *r, double f, struct err *e);
+/* setInternalFractionUnits: in units of 2^-16, RC_MIN_INTERNAL_FRACTION to
+ * RC_MAX_INTERNAL_FRACTION inclusive, else ERR_ARG ("IllegalArgumentException")
+ * and the setting stays (bergdb 005-79). db_set_reclaim_internal_fraction
+ * converts the API's double. */
+enum err_code rc_set_internal_fraction_units(struct reclaim *r, int32_t units,
+        struct err *e);
+
+/* Reclaim.fractionOf: floor(g * f / 2^16), the part f (in units of 2^-16,
+ * 0 to 2^16 - 1) of g bytes, exact for every int64_t g without overflow
+ * (bergdb 005-79). */
+int64_t rc_fraction_of(int64_t g, int32_t f);
 
 /* setStepReserve: at least 1, else ERR_ARG. */
 enum err_code rc_set_step_reserve(struct reclaim *r, int64_t bytes, struct err *e);

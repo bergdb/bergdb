@@ -8,6 +8,19 @@ the library, its tests, the tools, and the Java side of the cross tests.
 Its first parts, the build, the tests, the gate and the rules below, are
 012-04's.
 
+**Which Java.** C matches a release of BergDB, not the Java of the day
+(Frans, 2026-11-05; bergdb 015-02): since 2026-11-05, **release 2026.2**
+(the tag `release-2026.2`, `95bde62`, 2026-11-04). It writes that release's
+bytes, opens its databases and refuses what it refuses, and its API follows
+`Db`'s public methods there. The cross tests compare with that release's
+Java by default: `test/cross/java-build.sh` compiles the Core Layer from
+`releases/2026.2/bergdb-2026.2-src.zip`, checked against its `SHA256SUMS`
+and extracted once into `build/java-src/`. `JAVA_REF=tree` compiles the
+repository's `java/` instead, `JAVA_REF=DIR` another Java tree, and
+`JAVA_REF=2026.3` a later release, once C follows it. Java's changes after
+the release are not in C until a new item ports them. Until 2026-11-05 C
+followed `main` as of 2026-10-29 (`ae4aaf9`).
+
 
 # 1. Build and test
 
@@ -83,8 +96,10 @@ argument; `-l` lists them:
 give for fixed inputs (compare values, segments, hashes, checksums, the
 byte codecs, and Java's arithmetic in `jsem.txt`). They are written by
 `test/cross/java/Vectors.java` and committed, so that the unit tests run
-without Java; `t_vectors.c` reads them. To write them again from Java, and
-to check C against Java's latest without changing the committed ones:
+without Java; `t_vectors.c` reads them. They are release 2026.2's (written
+again on 2026-11-05, 015-02). To write them again from Java, and to check
+C against the Java that `JAVA_REF` chooses (above; the release by default)
+without changing the committed ones:
 
     JAVA_HOME=/opt/homebrew/opt/openjdk test/cross/java-build.sh
     /opt/homebrew/opt/openjdk/bin/java -ea -cp build/java/classes bergdb.core.Vectors DIR
@@ -209,7 +224,7 @@ computes, bit for bit, where the bytes depend on it. The helpers are in
    `0xc000000000000000L` is a negative long, C's `0xc000000000000000` an
    unsigned one, which would turn the whole expression unsigned.
    `Klong.getType`'s `value & 0xc000000000000000L` is
-   `value & J64(0xc000000000000000)`; `TransSeq.dither`'s
+   `value & J64(0xc000000000000000)`; `TransSeq.ditherFp`'s
    `pos * 0x9E3779B97F4A7C15L` is `pos * J64(0x9E3779B97F4A7C15)`.
 4. **Shifts.** `>>>` is `j_ushr64` or `j_ushr32` (a shift of the unsigned
    type). A shift whose count is not a constant in 0 to 63 (0 to 31 for an
@@ -236,24 +251,32 @@ computes, bit for bit, where the bytes depend on it. The helpers are in
    0 is undefined. Where the divisor can be -1, `j_div64`, `j_rem64`,
    `j_div32`, `j_rem32` give Java's `MIN / -1 == MIN`. `Math.floorDiv` is
    `j_floor_div64` (`MemoryStream`).
-8. **Doubles.** IEEE doubles in both, rounded to the nearest. Write Java's
-   expression as it is, in its order and with its parentheses: C groups
-   `a * b / c * d / e` as Java does, left to right. A `long` in a double
-   expression needs a written `(double)` in C (Java widens it silently;
-   section 6). No fused multiply-add: `-ffp-contract=off`, checked by
-   `t_jsem.c` (`jsem_no_fma`); never `-ffast-math`. `TransSeq.take`'s share,
-   `(double) dirtyCount * recordOwnBytes / ownBytes * (streamLength -
-   currentSp) / startupDistance`, is
-   `(double) dirtyCount * (double) recordOwnBytes / (double) ownBytes *
-   (double) (streamLength - currentSp) / startupDistance`, and `jsem.txt`
-   has Java's bits of it. A double divided by 0 gives infinity or NaN in
-   both, not an error. Java's `Math` functions beyond the exact ones
-   (`log`, `pow`, `exp`) may differ from C's in the last bit; on
-   2026-10-28 the Core used them only in tests and in `StringUtil`'s text.
+8. **No doubles decide** (bergdb 005-79, as Java's Core since release
+   2026.2): the stream's bytes and the memory are decided in integers.
+   The take's share and dither are in units of 2^-16 (`ts_share_fp`, with
+   Java's 128-bit product `j_mulhi64` and its division `ts_divlu`, and
+   `ts_dither_fp`), reclaim's fraction is an integer in units of 2^-16
+   (`rc_fraction_of`), its spacing `retainDuration / 4`, and eviction's low
+   watermark `ev_low_of`. A double is left only at the API, converted at
+   once (`bergdb_set_reclaim_internal_fraction`), or as a statistic
+   (`bergdb_stats`' `internal_fraction`), and in `jsem.h`'s conversions and
+   `bytes`' codecs of a user's value. The gate's rules step refuses any
+   other (`test/doubles.py`, the counterpart of `java/doubles.py`).
+   Where a double remains: IEEE doubles in both, rounded to the nearest;
+   Java's expression as it is, in its order and with its parentheses; a
+   `long` in a double expression with a written `(double)` (section 6); no
+   fused multiply-add (`-ffp-contract=off`, checked by `t_jsem.c`'s
+   `jsem_no_fma`); never `-ffast-math`. Until 005-79 the take's share was
+   such an expression, `(double) dirtyCount * (double) recordOwnBytes /
+   (double) ownBytes * (double) (streamLength - currentSp) /
+   startupDistance`.
 9. **Double to integer** is `j_d2l` or `j_d2i`: NaN gives 0, values out of
    range give the limits, others are truncated, as Java's cast; C's cast
-   is undefined out of range. `StoredTrans`'s
-   `(long) (totalSize * 1.20)` is `j_d2l(totalSize * 1.20)`.
+   is undefined out of range. `Math.round` is `j_round`, line for line as
+   the JDK's: `Db.setReclaimInternalFraction`'s
+   `(int) Math.round(internalFraction * 65536)` is
+   `j_l2i(j_round(f * (double) RC_FRACTION_ONE))`. `jsem.txt` has Java's
+   results of each.
 10. **Comparisons** are the Java code's own: signed where it uses `<` or
     `Long.compare` (`j_cmp64`), unsigned where it uses
     `Long.compareUnsigned` (`j_cmpu64`) or masks. `Keys.compareKeys`
@@ -295,7 +318,9 @@ computes, bit for bit, where the bytes depend on it. The helpers are in
 `before-commit.sh` checks three of these: no allocation or free outside
 `src/mem.c` (a `grep` of `src/`), no writable data in the library (`nm -m`
 of the release build's objects: nothing in `__DATA,__data`, `__bss`,
-`__common` or thread-local sections), and a `.h` for each `.c`.
+`__common` or thread-local sections), and a `.h` for each `.c`. And
+section 3, rule 8: no double or float in `src/` outside the allowed places
+of `test/doubles.py`, each with its reason (005-79), with a self-test.
 
 
 # 5. The allocator

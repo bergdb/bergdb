@@ -13,8 +13,9 @@
  * The take (ts_take, TransSeq.take, the paced take since f89846d): before
  * a record is written, it takes whole transactions from D, oldest first,
  * as many as the record's share and the deadline ask for, within a byte
- * budget, and gives the new startup position. Java's doubles, in Java's
- * order (c/readme.md, section 3, rule 8; -ffp-contract=off).
+ * budget, and gives the new startup position. In 64-bit integers, as
+ * Java's since bergdb 005-79 (release 2026.2; bergdb 015-02): the share and
+ * the dither in units of 2^-16. Until then Java's doubles, in Java's order.
  *
  * The got-dirty nodes are the caller's objects (012-07's index nodes),
  * which this module does not look into: each is held with its id and type
@@ -107,16 +108,27 @@ int64_t ts_pos_of_trans_before(const struct ts_seq *s, int64_t limit);
 /* TransSeq.ownBytes: a record's own bytes, 48 and its value nodes' bytes. */
 int64_t ts_own_bytes(int64_t valueBytes);
 
-/* TransSeq.dither: a number in [0, 1) from a stream position, SplitMix64's
- * finalizer, exact. */
-double ts_dither(int64_t pos);
+/* TransSeq.ditherFp: a number from 0 to 65,535 (in units of 2^-16 a number
+ * in [0, 1)) from a stream position, the top 16 bits of SplitMix64's
+ * finalizer (bergdb 005-79; a double until then). */
+int32_t ts_dither_fp(int64_t pos);
 
-/* The take's share: (double) dirtyCount * recordOwnBytes / ownBytes *
- * distance / startupDistance, each long or int converted to double where it
- * meets a double, left to right, as TransSeq.take's expression (with
- * distance = streamLength - currentSp, subtracted as longs). */
-double ts_share(int64_t dirtyCount, int64_t recordOwnBytes, int64_t ownBytes,
-        int64_t distance, int32_t startupDistance);
+/* TransSeq.shareFp: the take's share in units of 2^-16 of a node,
+ * floor(D o S 2^16 / (O sd)), at most D 2^16, in 64-bit integers with a
+ * 128-bit product (j_mulhi64) and two divisions of 128 by 64 bits
+ * (ts_divlu), exact (bergdb 005-79; a double until then). D is the got-dirty
+ * nodes of the section's transactions, o the record's own bytes, O the
+ * section's own bytes, S the section's length (streamLength - currentSp)
+ * and sd the startup distance. Outside the bounds, D or S not below 2^32 and
+ * 2^47, o not below 2^31, or O or sd not positive, it is INT64_MAX
+ * (Long.MAX_VALUE): the share is all of D. */
+int64_t ts_share_fp(int64_t D, int64_t o, int64_t O, int64_t S, int32_t sd);
+
+/* TransSeq.divlu: the quotient of the 128-bit unsigned number u1 2^64 + u0
+ * by v, where u1 < v, both unsigned (asserted): Hacker's Delight, 2nd
+ * edition, 9-4, with 64-bit words in two 32-bit digits, as Java's. Private
+ * in Java; here for ts_share_fp and the unit tests. */
+int64_t ts_divlu(int64_t u1, int64_t u0, int64_t v);
 
 /* What a transaction's got-dirty nodes may add to a record
  * (TransSeq.recordBytes): each node's size now and 16. The caller's. */
@@ -127,12 +139,13 @@ typedef int64_t (*ts_cost_fn)(void *ctx, const struct ts_info *info);
  * none (at once if D is empty).
  *
  *   hardSp = streamLength - max(2 * startupDistance, span())   (longs)
- *   share  = (double) D * recordOwnBytes / O * (streamLength - currentSp)
- *            / startupDistance                                  (doubles)
- *   u      = ts_dither(streamLength)
+ *   share  = ts_share_fp(D, recordOwnBytes, O, streamLength - currentSp,
+ *            startupDistance)                         (units of 2^-16)
+ *   u      = ts_dither_fp(streamLength)               (units of 2^-16)
  *
- * A transaction of count got-dirty nodes ends the take when it begins
- * after hardSp, taken + count > share and share - taken <= u * count; or,
+ * A transaction of count got-dirty nodes ends the take when it begins after
+ * hardSp, ((taken + count) << 16) > share and share - (taken << 16) <= u *
+ * count, below 2^49 within the bounds (TransSeq.take's comment); or,
  * unless maxBytes is INT64_MAX (Long.MAX_VALUE), when bytes + cost(ctx,
  * info) > maxBytes. Else it is taken: removed from D, with the sums.
  *

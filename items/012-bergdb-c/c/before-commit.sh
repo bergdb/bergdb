@@ -15,7 +15,8 @@
 #   rules         the module rules of readme.md (section 4) that a tool can
 #                 check: no malloc, free or the like outside src/mem.c; no
 #                 writable global or static data in the library (P9); a .h
-#                 for each .c of src/
+#                 for each .c of src/; no double or float in src/ outside the
+#                 allowed places of test/doubles.py (bergdb 005-79, 015-02)
 #   unit          the unit tests in the test build (AddressSanitizer and
 #                 UndefinedBehaviorSanitizer)
 #   unit-release  the unit tests in the release build, under macOS's leaks
@@ -86,7 +87,15 @@ rules() {
             bad=1
         fi
     done
-    [ $bad = 0 ] && echo "rules ok: $(ls src/*.c | wc -l | tr -d ' ') modules"
+    # No double or float decides the stream's bytes or the memory (005-79).
+    if ! python3 -I test/doubles.py > "$G/doubles.txt" 2>&1; then
+        cat "$G/doubles.txt"
+        echo "rules: floating point in src/ outside the allowed places (bergdb 005-79): decide"
+        echo "  with integers, or add an API conversion or a statistic to ALLOWED in"
+        echo "  test/doubles.py with its reason"
+        bad=1
+    fi
+    [ $bad = 0 ] && echo "rules ok: $(ls src/*.c | wc -l | tr -d ' ') modules; $(tail -1 "$G/doubles.txt")"
 }
 
 # A test program of the release build: its own result, then under leaks

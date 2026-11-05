@@ -185,9 +185,16 @@ enum err_code db_set_startup_distance(struct db *db, int32_t n, struct err *e);
 /* setRetainDuration: under one second ERR_ARG (Reclaim's check). */
 enum err_code db_set_retain_duration(struct db *db, int64_t d, struct err *e);
 
-/* setReclaimInternalFraction: Java's range check (0.001 to 0.90, NaN let
- * through), used from the next step. */
+/* setReclaimInternalFraction: NaN and values outside 0.001 to 0.90 are
+ * ERR_ARG ("IllegalArgumentException"), and the setting stays (bergdb
+ * 005-73); else reclaim keeps the nearest multiple of 2^-16, in units,
+ * (int) Math.round(f * 65536) (bergdb 005-79), used from the next step. The
+ * API's double is converted here, at once: no double decides the stream. */
 enum err_code db_set_reclaim_internal_fraction(struct db *db, double f, struct err *e);
+
+/* getInternalFraction: reclaim's units over 65,536, exact (bergdb 005-79):
+ * 0.25 after 0.25, 6554 / 65536.0 after 0.1. A statistic. */
+double db_internal_fraction(const struct db *db);
 
 /* setCacheSizeIndicator: at least 1; the budget for this run, and on an
  * active database eviction to it at once (005-52; 012-12). */

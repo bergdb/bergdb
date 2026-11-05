@@ -39,7 +39,8 @@ import bergdb.stream.MemoryStream;
  * Writes what Java's classes give for a fixed set of inputs, as the test vectors of the C
  * clone's unit tests (bergdb 012-04): bytes.txt (Bytes), checksum.txt (NodeChecksum),
  * klong.txt (Klong), keys.txt (Keys) and jsem.txt (Java's own arithmetic: casts, shifts,
- * division, comparisons, and the take's double expressions in TransSeq), and (012-06)
+ * division, comparisons, Math.multiplyHigh and Math.round, and the take's share and dither
+ * in integers, TransSeq.shareFp and ditherFp, since bergdb 005-79), and (012-06)
  * records.txt (a small stream that Db writes, its records as StoredTrans.parse parses them,
  * and records it refuses), and (012-07) knode.txt (KeyNode's operations as the Dag makes them,
  * and the node's stored bytes after each) and top.txt (TopDs's chains of top nodes), and
@@ -506,30 +507,71 @@ public class Vectors {
             w.print("nlz " + v + " " + Long.numberOfLeadingZeros(v) + "\n");
         }
 
-        // The take's share (TransSeq.take): a double expression of longs and an int,
-        // evaluated left to right, without a fused multiply-add.
-        w.print("# share DIRTY OWN TOTAL DIST SD BITS: the bits of\n"
-                + "# (double) DIRTY * OWN / TOTAL * DIST / SD, as TransSeq.take computes its share\n");
-        for (int i = 0; i < 12; i++) {
-            long dirty = 1 + r.nextInt(i < 6 ? 50 : 1_000_000);
-            long own = 48 + r.nextInt(i < 6 ? 2000 : 100_000_000);
-            long total = own + r.nextInt(i < 6 ? 100_000 : Integer.MAX_VALUE);
-            long dist = r.nextLong() >>> (i < 6 ? 40 : 20);
-            int sd = 1 + r.nextInt(i < 6 ? 1_000_000 : Integer.MAX_VALUE - 1);
-            double share = (double) dirty * own / total * dist / sd;
-            w.print("share " + dirty + " " + own + " " + total + " " + dist + " " + sd + " "
-                    + hex16(Double.doubleToRawLongBits(share)) + "\n");
+        w.print("# mulhi A B HIGH: Math.multiplyHigh(A, B), the high word of the signed product\n");
+        long[] ms = new long[] {0, 1, -1, Long.MAX_VALUE, Long.MIN_VALUE, 0xFFFFFFFFL,
+                1L << 32, 0x9E3779B97F4A7C15L, r.nextLong(), r.nextLong(), r.nextLong() >>> 1};
+        for (long a : ms) {
+            for (long b : ms) {
+                w.print("mulhi " + a + " " + b + " " + Math.multiplyHigh(a, b) + "\n");
+            }
         }
 
-        w.print("# dither POS BITS: the bits of TransSeq.dither(POS), SplitMix64's finalizer\n");
-        List<Long> ps = new ArrayList<>(List.of(0L, 1L, 128L, 200_000L, 1L << 40,
-                Long.MAX_VALUE));
+        w.print("# divu N D QUOT REM: Long.divideUnsigned and Long.remainderUnsigned\n");
+        long[][] dus = new long[][] {{7, 2}, {-1, 2}, {-1, -1}, {-2, -1}, {Long.MIN_VALUE, 3},
+                {5, -5}, {-5, 5}, {r.nextLong(), r.nextLong() >>> 30}, {r.nextLong(), 0xFFFFFFFFL}};
+        for (long[] p : dus) {
+            w.print("divu " + p[0] + " " + p[1] + " " + Long.divideUnsigned(p[0], p[1]) + " "
+                    + Long.remainderUnsigned(p[0], p[1]) + "\n");
+        }
+
+        // Math.round, which the API uses to convert a double setting to an integer: the
+        // reclaim fraction to units of 2^-16 (bergdb 005-79, Db.setReclaimInternalFraction).
+        w.print("# round BITS LONG: Math.round of the double with BITS\n");
+        List<Double> rs = new ArrayList<>(List.of(0.0, -0.0, 0.5, -0.5, 1.5, 2.5, -1.5, -2.5,
+                0.49999999999999994, -0.49999999999999994, Math.nextDown(0.5), 4503599627370495.5,
+                4503599627370497.0, -4503599627370495.5, 0x1.0p52, 0x1.0p63, -0x1.0p63, 1e19,
+                -1e19, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY,
+                Double.MIN_VALUE, 0.001 * 65536, 0.9 * 65536, 0.1 * 65536, 0.25 * 65536,
+                0.37 * 65536, 0.05 * 65536));
+        for (int i = 0; i < 8; i++) {
+            rs.add((0.05 + 0.45 * r.nextDouble()) * 65536);     // Gen's fractions, as units
+        }
+        for (double d : rs) {
+            w.print("round " + hex16(Double.doubleToRawLongBits(d)) + " " + Math.round(d) + "\n");
+        }
+
+        // The take's share (TransSeq.shareFp, bergdb 005-79): in units of 2^-16 of a node,
+        // floor(D o S 2^16 / (O sd)) at most D 2^16, Long.MAX_VALUE outside the bounds.
+        w.print("# sharefp D OWN TOTAL DIST SD SHARE: TransSeq.shareFp(D, OWN, TOTAL, DIST, SD)\n");
+        long[][] edges = new long[][] {{100, 100, 1000, 2000, 800}, {6, 1000, 1000, 49606, 65536},
+                {1L << 32, 48, 1000, 2000, 800}, {100, 48, 1000, 1L << 47, 800},
+                {100, 1L << 31, 1000, 2000, 800}, {100, 48, 0, 2000, 800},
+                {100, 48, 1000, 2000, 0}, {-1, 48, 1000, 2000, 800},
+                {(1L << 32) - 1, (1L << 31) - 1, 1, (1L << 47) - 1, 10},
+                {0, 48, 48, 1000, 10}, {1000, 0, 48, 1000, 10}};
+        for (long[] e : edges) {
+            w.print("sharefp " + e[0] + " " + e[1] + " " + e[2] + " " + e[3] + " " + e[4] + " "
+                    + TransSeq.shareFp(e[0], e[1], e[2], e[3], (int) e[4]) + "\n");
+        }
+        for (int i = 0; i < 24; i++) {
+            long dirty = 1 + r.nextInt(i < 12 ? 50 : 1_000_000);
+            long own = 48 + r.nextInt(i < 12 ? 2000 : 100_000_000);
+            long total = own + r.nextInt(i < 12 ? 100_000 : Integer.MAX_VALUE);
+            int sd = 1 + r.nextInt(i < 12 ? 1_000_000 : Integer.MAX_VALUE - 1);
+            long dist = i % 3 == 0 ? r.nextLong() >>> 17 : (long) (r.nextDouble() * 4 * sd);
+            w.print("sharefp " + dirty + " " + own + " " + total + " " + dist + " " + sd + " "
+                    + TransSeq.shareFp(dirty, own, total, dist, sd) + "\n");
+        }
+
+        w.print("# ditherfp POS U: TransSeq.ditherFp(POS), the top 16 bits of SplitMix64's "
+                + "finalizer\n");
+        List<Long> ps = new ArrayList<>(List.of(0L, 1L, 128L, 1200L, 1300L, 200_000L, 531_776L,
+                1L << 40, Long.MAX_VALUE, -1L));
         for (int i = 0; i < 6; i++) {
             ps.add(r.nextLong() >>> 1);
         }
         for (long pos : ps) {
-            w.print("dither " + pos + " " + hex16(Double.doubleToRawLongBits(TransSeq.dither(pos)))
-                    + "\n");
+            w.print("ditherfp " + pos + " " + TransSeq.ditherFp(pos) + "\n");
         }
         w.close();
     }
@@ -838,7 +880,10 @@ public class Vectors {
                         + hex16(secondKlong) + " " + knodeState(other) + "\n");
                 continue;
             } else if (what == 2) {
-                long tp = t - r.nextInt(6);
+                // Before t, so that the next change at t adds a later time, as in a database,
+                // whose key nodes' times increase (KeyNode.checkIncreasingTime, which checks
+                // that since bergdb 005-75; a tp of t made two TIME klongs of t).
+                long tp = t - 1 - r.nextInt(5);
                 node.toPreviousState(tp);
                 line = "p " + tp;
             } else if (what <= 5) {

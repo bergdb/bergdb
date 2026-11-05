@@ -8,11 +8,16 @@
 #include "plat.h"
 
 int64_t clk_system_time(void *ctx) {
-    struct clk_system *c = ctx;
-    int64_t time = plat_time_millis() * 10 * 1000;
+    return clk_system_time_at(ctx, plat_time_millis());
+}
+
+int64_t clk_system_time_at(struct clk_system *c, int64_t millis) {
+    int64_t time = millis * 10 * 1000;
     if (time <= c->lastTime) {
         c->lastTime++;
         time = c->lastTime;
+    } else {
+        c->lastTime = time;     /* bergdb 005-69 */
     }
     return time;
 }

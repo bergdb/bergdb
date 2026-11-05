@@ -44,12 +44,11 @@ enum err_code sr_check_and_recover(struct sr_env *env, struct rs_recovery *plan,
                 "005-33).", stream_length(s));
     }
 
-    /* refuseOtherNodeSize (005-50), then nodeStream.recover() */
+    /* refuseOtherNodeSize (005-50), then nodeStream.recover(). Its check of a
+     * stream shorter than the first meta block is gone, as in Java since
+     * bergdb 005-75 (release 2026.2): such a stream is an incomplete creation,
+     * refused above. */
     rc = rs_check_node_size(s, env->max_node_size, e);
-    if (rc == ERR_OK && stream_length(s) < M) {
-        rc = err_set(e, ERR_FORMAT, "StreamFormatException", "Cannot recover stream without "
-                "complete first meta block, length: %" PRId64, stream_length(s));
-    }
     if (rc == ERR_OK) {
         rc = rcv_recover(env->rs, plan, e);
     }
@@ -278,8 +277,8 @@ static enum err_code validate_transactions(struct starter *st, struct err *e) {
         return err_set(e, ERR_FORMAT, "StreamFormatException",
                 "No transactions for startup algorithm.");
     }
-    const int64_t tpos = -1;
-    const int64_t tt = -1;
+    int64_t tpos = -1;
+    int64_t tt = -1;
     for (int32_t i = 0; i < st->nrecs; i++) {
         const struct st_record *t = &st->recs[i].st;
         if (t->tpos < M) {
@@ -290,12 +289,20 @@ static enum err_code validate_transactions(struct starter *st, struct err *e) {
             return err_set(e, ERR_FORMAT, "StreamFormatException", "non-increasing tpos, tpos=%"
                     PRId64, t->tpos);
         }
+        if (t->tt < KL_MIN_TIME || t->tt > KL_MAX_TIME) {
+            return err_set(e, ERR_FORMAT, "StreamFormatException", "Transaction time out of "
+                    "range, tpos=%" PRId64 ", tt=%" PRId64, t->tpos, t->tt);
+        }
         if (t->tt <= tt) {
             return err_set(e, ERR_FORMAT, "StreamFormatException", "non-increasing tt, tpos=%"
                     PRId64 ", tt=%" PRId64, t->tpos, t->tt);
         }
-        /* Java never updates tpos and tt here, so the two checks above compare
-         * with -1 only (012-10, 6.4: a finding); C does as Java. */
+        /* Each record against the one before, and its time in the 56-bit
+         * range, before replay (bergdb 005-75, as Java's since release
+         * 2026.2; before, tpos and tt were never updated, and the checks
+         * compared with -1 only: 012-10, 6.4). */
+        tpos = t->tpos;
+        tt = t->tt;
         for (int32_t j = 0; j < t->nnodes; j++) {
             enum err_code rc = validate_node(st, &t->nodes[j], e);
             if (rc != ERR_OK) {

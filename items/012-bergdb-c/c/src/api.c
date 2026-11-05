@@ -959,7 +959,7 @@ int bergdb_stats(bergdb_db *db, struct bergdb_stats *s) {
     s->evicted = db->db.ev.evicted + db->db.ev.unswizzled;
     s->pinned_bytes = db_pinned_bytes(&db->db);
     s->retain_duration = db->db.reclaim.retainDuration;
-    s->internal_fraction = db->db.reclaim.internalFraction;
+    s->internal_fraction = db_internal_fraction(&db->db);
     s->reclaim_iteration_count = db->db.reclaim.iterationCount;
     s->transaction_count = db->db.transaction_count;
     s->kv_count = db->db.kv_count;

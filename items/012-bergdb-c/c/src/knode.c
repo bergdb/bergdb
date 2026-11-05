@@ -848,8 +848,9 @@ static const char *check_last_time_index(const struct knode *k) {
     return NULL;
 }
 
-/* KeyNode.checkIncreasingTime, as Java's: 'time' is never updated in the
- * loop, so no node fails it (012-07, section 5). */
+/* KeyNode.checkIncreasingTime: the TIME klongs' times increase strictly.
+ * Since bergdb 005-75 (release 2026.2) 'time' follows the loop; before, it
+ * was never updated, and no node failed (012-07, section 5). */
 static const char *check_increasing_time(const struct knode *k) {
     int64_t time = INT64_MIN;
     int16_t sz = k->size;
@@ -861,6 +862,7 @@ static const char *check_increasing_time(const struct knode *k) {
             if (klongTime <= time) {
                 return "Time not increasing";
             }
+            time = klongTime;
         }
     }
     return NULL;

@@ -27,3 +27,9 @@ Log
 ---
 
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
+
+2026-11-05, in 015-02's work: `items/012-bergdb-c/c/test/cross/java/Vectors.java`
+writes `TransSeq.ditherFp` and `shareFp` (and `Math.multiplyHigh` and
+`Math.round`) in place of `dither`, and compiles against release 2026.2,
+whose Java the cross harness now compiles by default (015-02). The other two
+tools are as they were.

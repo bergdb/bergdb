@@ -28,7 +28,6 @@ Open
 
 | ID | Kind | What | Status |
 |---|---|---|---|
-| [015-02](02-c-follows-2026-2.md) | Implement | The C clone follows 2026.2's Java changes | open |
 | [015-03](03-lean-follows-005-79.md) | Implement | Lean follows 005-79's integer take | open |
 | [015-04](04-deps-helper-rule.md) | Investigate | deps.py counts take and dither as test code | open |
 | [015-05](05-empty-or-missing-directory.md) | Decide | A start on an empty or missing directory creates a database | open |
@@ -105,6 +104,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-02](02-c-follows-2026-2.md) | Implement | The C clone follows release 2026.2 | done | 2026-11-05 |
 | [015-85](85-written-not-forced.md) | Decide | "Written, not forced" (005-47): done, measured on s1 and F53 | done | 2026-11-05 |
 | [015-56](56-second-start-closes-stream.md) | Fix | A refused second start() of one builder closes the running ... | done | 2026-11-04 |
 | [015-40](40-two-writes-one-key.md) | Fix | Two writes of one key in a transaction: the later one can lose | done | 2026-11-03 |
@@ -137,7 +137,8 @@ Files
   directory whose stream files are gone, or whose only file is empty,
   starts as a new, empty database; options A to G; A with A+ chosen.
 * [02-c-follows-2026-2.md](02-c-follows-2026-2.md). 015-02, Implement: the
-  C clone follows 2026.2's Java changes (005-79, 005-69, 005-78).
+  C clone follows release 2026.2 (005-79, 005-69, 005-73, 005-74, 005-75,
+  015-07), and its cross tests compare with that release's Java; done.
 * [03-lean-follows-005-79.md](03-lean-follows-005-79.md). 015-03,
   Implement: Lean's take follows 005-79's fixed point (optional).
 * [04-deps-helper-rule.md](04-deps-helper-rule.md). 015-04, Investigate:

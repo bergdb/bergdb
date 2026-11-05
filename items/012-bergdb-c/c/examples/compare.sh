@@ -12,13 +12,13 @@
 # Usage: examples/compare.sh [BUILD]   (BUILD: build/release by default)
 # Needs build.sh's programs, a JDK (JAVA_HOME, or /opt/homebrew/opt/openjdk,
 # or java on PATH) and the Core Layer's classes in build/java/classes, which
-# test/cross/java-build.sh makes (run here if missing). Prints EXAMPLES OK.
+# test/cross/java-build.sh makes (run here if missing), from the Java that
+# JAVA_REF chooses (the release that C matches by default, bergdb 015-02);
+# CoreDemo.java is taken from the same Java tree. Prints EXAMPLES OK.
 
 set -e
 C=$(cd "$(dirname "$0")/.." && pwd)
 B=$C/${1:-build/release}
-REPO=$(cd "$C/../../.." && pwd)
-DEMO=$REPO/java/stress/core-build/CoreDemo.java   # 006-08's, with SyncLevel's package since 005-56
 if [ -z "${JAVA_HOME:-}" ] && [ -d /opt/homebrew/opt/openjdk ]; then
     JAVA_HOME=/opt/homebrew/opt/openjdk
 fi
@@ -41,8 +41,10 @@ cmp -s "$OUT/get_many_prefix.txt" "$OUT/get_many_prefix-java.txt" \
 echo "get_many_prefix: Java's output ($(wc -l < "$OUT/get_many_prefix.txt" | tr -d ' ') lines)"
 
 # 2. core_demo and CoreDemo on each other's databases.
-[ -d "$C/build/java/classes/bergdb/core" ] || sh "$C/test/cross/java-build.sh" > "$OUT/java-build.txt" \
+[ -d "$C/build/java/classes/bergdb/core" ] && [ -f "$C/build/java/java-dir.txt" ] \
+    || sh "$C/test/cross/java-build.sh" > "$OUT/java-build.txt" \
     || { cat "$OUT/java-build.txt"; fail "the Java build"; }
+DEMO=$(cat "$C/build/java/java-dir.txt")/stress/core-build/CoreDemo.java   # 006-08's
 javac --release 17 -encoding UTF-8 -nowarn -cp "$C/build/java/classes" -d "$OUT/classes" "$DEMO" \
     || fail "javac CoreDemo.java"
 java_demo() {

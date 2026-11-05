@@ -574,9 +574,11 @@ static int dump(struct dump *d, const char *dir, const char *scan_path, int32_t 
                 b->start.section_bytes, b->nc.reads, b->nc.loads, b->nc.header_reads,
                 b->start.rerun_pairs);
     }
-    fprintf(out, "start startPos=%" PRId64 " startupDistance=-1 startTime=%" PRId64
-            " transCount=%d lastPos=%" PRId64 "\n", startPos, startTime, (int) transCount,
-            lastPos);
+    /* Java's StartInfo.startupDistance: the distance in force after the start
+     * since bergdb 005-73, F1 (release 2026.2); -1 before. */
+    fprintf(out, "start startPos=%" PRId64 " startupDistance=%d startTime=%" PRId64
+            " transCount=%d lastPos=%" PRId64 "\n", startPos, (int) startupDistance, startTime,
+            (int) transCount, lastPos);
 
     fprintf(out, "status length=%" PRId64 " firstAvailablePos=%" PRId64 " firstAvailableTime=%"
             PRId64 " startupDistance=%d\n", length, firstPos, firstTime, (int) startupDistance);

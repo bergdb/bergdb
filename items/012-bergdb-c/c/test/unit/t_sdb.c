@@ -13,6 +13,7 @@
 #include <string.h>
 #include "getmany.h"
 #include "keys.h"
+#include "klong.h"
 #include "mdb.h"
 #include "mem.h"
 #include "meta.h"
@@ -384,6 +385,32 @@ TEST(sdb_refusals) {
                 || strcmp(e.java, "AssertionError") == 0);
         stream_close(&s);
     }
+
+    /* The records' times, checked before replay (bergdb 005-75, as Java's
+     * since release 2026.2; before, C aborted on such a time, 012-14): the
+     * last record's time beyond the 56 bits, and equal to the time of the
+     * record before it, when both are in the startup section. The record's
+     * header has no checksum. */
+    const struct jtrans *before = &v.t[v.nt - 2];
+    memcpy(copy, v.stream, (size_t) v.len);
+    for (int k = 0; k < 8; k++) {
+        copy[last->tpos + 8 + k] = (uint8_t) ((KL_MAX_TIME + 1) >> (8 * k));
+    }
+    open_stream(&s, &m, copy, v.len);
+    CHECK_EQ(sdb_open(&b, &s, &m, 8, false, &e), ERR_FORMAT);
+    CHECK(strcmp(e.java, "StreamFormatException") == 0);
+    CHECK(strncmp(e.text, "Transaction time out of range", 29) == 0);
+    stream_close(&s);
+    REQUIRE(before->tpos >= last->startup_pos && before->tt < last->tt);
+    memcpy(copy, v.stream, (size_t) v.len);
+    for (int k = 0; k < 8; k++) {
+        copy[last->tpos + 8 + k] = (uint8_t) (before->tt >> (8 * k));
+    }
+    open_stream(&s, &m, copy, v.len);
+    CHECK_EQ(sdb_open(&b, &s, &m, 8, false, &e), ERR_FORMAT);
+    CHECK(strcmp(e.java, "StreamFormatException") == 0);
+    CHECK(strncmp(e.text, "non-increasing tt", 17) == 0);
+    stream_close(&s);
     free(copy);
     CHECK_MEM_ZERO(&m);
     free(v.stream);
