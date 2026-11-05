@@ -27,8 +27,8 @@ Open
 
 | ID | Kind | What | Status |
 |---|---|---|---|
-| [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced". Decided (Frans, 2026-11-04): A, a setting of `FileStream`, per-append forcing on (the default) or off, in the core API only, no force at an interval; implemented, with forces kept at a new file, its predecessor, a cut and `close()`, and a power-loss mode without per-append forces. Sync latency on s1 (1 thread): p50 4.2 ms on, 0.1 ms off. Left: the same on F53, in a quiet block; holes in the unforced tail are 014-01's | open |
-| [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Measured 2026-10-28 night, quiet: only with 8 threads, on `eaec93e` (005-46) and `4f7cd60` alike; no load waited for a batch; the machine at 9.6 of 10 cores, and the loads' entries into `evictorLock` in `Eviction.wake` (78,000 a second) a fifth of the gets over 10 ms. Frans decided 2026-10-29: the fix, in `main` (`988fe1a`): a load skips that monitor when a request to the eviction thread is pending (an untimed count with 8 readers: 116,000 to 128,000 entries a second before, about 570 after); the rest accepted as a full machine. Open until the thread sweep reruns with the fix in a quiet block | open |
+| [005-47](47-written-not-forced.md) | Decide | A durability of "written, not forced". Decided (Frans, 2026-11-04): A, a setting of `FileStream`, per-append forcing on (the default) or off, in the core API only, no force at an interval; implemented, with forces kept at a new file, its predecessor, a cut and `close()`, and a power-loss mode without per-append forces. Sync latency on s1 (1 thread): p50 4.2 ms on, 0.1 ms off. Left: the same on F53, in a quiet block (not quiet on 2026-11-05, not run); holes in the unforced tail are 014-01's | open |
+| [005-65](65-gets-with-8-readers.md) | Investigate | Gets of 27 and 36 ms with 8 readers in ScaleBench from the OS's cache at 665 MB under ZGC (`bf19075`: 2.1 ms), with 22 and 26 waits of a reader's load for the eviction thread over 10 ms (item 009's target 2, not yet met there). Measured 2026-10-28 night, quiet: only with 8 threads, on `eaec93e` (005-46) and `4f7cd60` alike; no load waited for a batch; the machine at 9.6 of 10 cores, and the loads' entries into `evictorLock` in `Eviction.wake` (78,000 a second) a fifth of the gets over 10 ms. Frans decided 2026-10-29: the fix, in `main` (`988fe1a`): a load skips that monitor when a request to the eviction thread is pending (an untimed count with 8 readers: 116,000 to 128,000 entries a second before, about 570 after); the rest accepted as a full machine. Rerun 2026-11-04: the entries a second 81,877 to 484, but the gets over 10 ms rose, 298 to 492. Frans approved an AB/BA step (2026-11-05), to close the entry if the rise is not the fix's; not run on 2026-11-05, F53 not quiet | open |
 | [005-78](78-retain-duration-in-stream.md) | Investigate | The retain duration is not kept in the stream: it decides when reclaim's iterations start and where it cuts, so the stream's bytes, but a start takes the builder's value (default forever), against the rule of 005-53 and 005-52 (a setting that changes the stream's bytes is kept in the stream, 010-P2) and without a word in its Javadoc. Frans: it must be in the stream; study first. Forms: the meta blocks (as the startup distance), an internal KV, or reclaim's table | open |
 | [005-81](81-overload-and-retries.md) | Investigate | Transaction retries: `executeRw()` reruns a conflict after hard-coded sleeps from 10 ms doubling to 10,240 ms, with no jitter, attempt limit, time budget or setting (over 20 s across eleven reruns on a hot key), and the same `RerunException` for a long action that outlives `KeyModSet`'s history. Left: the wait points and client contract the retries need, a diagnostic harness from 006-11's, hot-key and disjoint-key baselines, the retry variants measured, and an `executeRw()` proposal. Split 2026-11-04: overload and admission control are 017-06 | open |
 
@@ -371,7 +371,8 @@ Files
   27 and 36 ms with 8 readers at 665 MB under ZGC: the issue, the
   hypothesis and what would refute it, the test, the results of
   2026-10-28 night, a recommendation, Frans's decision and the fix
-  (2026-10-29), and how to rerun the sweep with it; open. The night step
+  (2026-10-29), and how to rerun the sweep with it; the results of
+  2026-11-04 night; the AB/BA step left; open. The night step
   (`prep.sh`, `threads.sh`, `sum.py`, `ScaleBench-065.diff`) in
   [65-gets-with-8-readers/night/](65-gets-with-8-readers/night/); the
   fix's untimed count, its race tests on broken versions, its gates and
@@ -1677,3 +1678,15 @@ F53 was not quiet: no wait from the lowering on is longer than with a
 fixed budget; four LONGER verdicts, all before the lowering, the
 collector's and the machine's. Closed on the coordinator's reading of the
 rule, recorded in the entry, so that Frans can reopen it.
+
+2026-11-05. 005-47 and 005-65: the morning's quiet block on F53 (marker
+from 07:22, limit 07:55) was not quiet, so neither timing run ran: 005-47's
+sync latency on F53 and 005-65's AB/BA step (`threads.sh` with
+`BUILDS="5a6befd 988fe1a" ROUNDS=4`), which Frans approved (decided
+2026-11-04/05: "Run the AB/BA step in tonight's quiet block. Close the
+entry if the fix isn't the cause; otherwise take the measurements and move
+the decision to 015."). `mediaanalysisd` was paused by the coordinator at
+Frans's word from 07:32 to 07:56; the 1-minute load still stayed at 1.33
+to 3.11, and was 3.02 at 07:55. Both are left for the next quiet block,
+with their commands, a built clone for 005-47 and a script for both in
+`/Users/f/fl/bench/`.

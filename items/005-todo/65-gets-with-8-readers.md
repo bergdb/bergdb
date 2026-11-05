@@ -8,7 +8,9 @@ Rerun with the fix in night 1 of release 2026.2 (Results, 2026-11-04
 night): the fix does what it was made for (the loads' entries into
 `evictorLock` with 8 readers from 81,877 to 484 a second), but the gets
 over 10 ms rose (298 to 492), against State's step 3; open for Frans's
-decision (State). Kind: investigate. Created 2026-10-28.
+decision (State). Frans approved the Recommendation's AB/BA step
+(decided 2026-11-04/05); not run on 2026-11-05, F53 not quiet (State).
+Kind: investigate. Created 2026-10-28.
 
 Registered at Frans's decision on item 009's target 2 (2026-10-28,
 decision 2 of 006-09, section 8): "Register the 8-thread case as a new 005
@@ -869,6 +871,44 @@ decide.
 State
 -----
 
+**2026-11-05: Frans's decision, and the AB/BA step not yet run.** Frans,
+decided 2026-11-04/05 (asked 2026-11-04, 19:23; answered 2026-11-05,
+07:17), on the Recommendation of Results, 2026-11-04 night: "Run the AB/BA
+step in tonight's quiet block. Close the entry if the fix isn't the cause;
+otherwise take the measurements and move the decision to 015." The step
+was to run in the morning's quiet block on F53, after 005-47's runs, by
+Claude (Opus 5.5, Claude Code), and did not: F53 was not quiet by the
+block's limit of 07:55. macOS's `mediaanalysisd` was paused by the
+coordinator at Frans's word from 07:32:35 to 07:56:17, but the 1-minute
+load stayed at 1.33 to 3.11 (VS Code; from 07:50 another session's C
+build), below 1.5 only three times and never twice in a row, and 3.02 at
+07:55:59; so the runs were skipped (005-47, Left, has the details; the
+block's log in `/Users/f/fl/bench/quiet-block-2026-11-05/block.log`).
+
+Left, for the next quiet block (about 24 minutes: the 10M load with the
+fix's jar, then 8 runs, AB BA AB BA, within `threads.sh`'s 30):
+
+    cd /Users/f/fl/repos/bergdb/items/005-todo/65-gets-with-8-readers/night
+    B=/Users/f/fl/bench/006-10/e65-builds BUILDS="5a6befd 988fe1a" ROUNDS=4 sh threads.sh
+
+* `B` checked 2026-11-05: the clones `5a6befd` and `988fe1a` at their
+  commits, clean, their jars those of step 1 (`79925f95` and `2b5202f0`),
+  `sb/classes-5a6befd` and `sb/classes-988fe1a` in place. No `prep.sh`.
+* Before the run, set `$B/raw/threads` aside: it holds the GC logs of
+  2026-11-04, and the run writes logs of the same names for both builds'
+  rounds 1 and 2. After it, move `night/out/` and this run's
+  `$B/raw/threads` out of the repository to a dated directory under
+  `/Users/f/fl/bench/`, and put the old logs back.
+  `/Users/f/fl/bench/quiet-block-2026-11-05/block.sh` does all of this
+  (after 005-47's runs); its time limit (07:55) is to be changed for
+  another block.
+* How to read it, written before any run: the rise is the fix's if, with
+  8 threads, the fix has more gets over 10 ms than `5a6befd` in at least
+  3 of the 4 rounds and at least 1.3 times as many in sum (2026-11-04:
+  492 against 298, 1.65 times); otherwise it is not shown to be the fix's,
+  and the entry closes as Frans decided. If it is the fix's: the
+  measurements of the Recommendation, and the decision moves to 015.
+
 Rerun on 2026-11-04 (Results, 2026-11-04 night): the expectation of step
 3 is met for the monitor (the entries into `evictorLock`, the after-load
 call's cost) and not for the long gets, which rose. The entry stays open
@@ -1062,3 +1102,8 @@ with the fix, 49.3 before it). Against State's step 3: open, for Frans's
 decision. The summary kept as `night/results-2026-11-04.txt`; the raw
 outputs moved to `/Users/f/fl/bench/016/night1/005-65-out/`; the markers
 removed.
+
+2026-11-05. Frans approved the Recommendation's AB/BA step (decided
+2026-11-04/05). Not run in the morning's quiet block: F53 not quiet by
+07:55, although `mediaanalysisd` was paused from 07:32 to 07:56 (State).
+Left for the next quiet block, with the command and how to read it.
