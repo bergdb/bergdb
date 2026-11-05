@@ -7,8 +7,11 @@ admission control, is now a long-term topic,
 [017-06](../017-long-term/06-overload/readme.md); this entry keeps the
 retries.
 
-Plan and source review only. No implementation or new performance runs
-have been made for this entry.
+Plan and source review until 2026-11-05; on that day the first step of
+section 7 was made: a diagnostic harness in
+[81-overload-and-retries/](81-overload-and-retries/) and the hot-key,
+disjoint-key and history baselines on s1, in section 8. No change to
+`java/`.
 
 Registered at Frans's request after 006-11's STM benchmarks, as "client
 overload and transaction retries": keep STM; investigate how clients
@@ -254,6 +257,12 @@ despite a low average attempts/commit. It did not trace individual sleeps.
 That observation must not be described as proof of one 10.24-second sleep;
 several accumulating sleeps can also explain it.
 
+2026-11-05 note: section 8 traced the sleeps. The stock hot-key runs on
+s1 reproduce a whole-call latency of 10.23 s: one request of eleven
+attempts, whose ten sleeps request 10 + 20 + ... + 5,120 = 10,230 ms,
+measured in the probe build as asked plus about 0.2 ms each. Several
+accumulating sleeps, not one 10.24 s sleep.
+
 Sources: `RwTransaction.executeRw()`,
 [WTransaction.java](../../java/src/bergdb/pubimp/WTransaction.java),
 [RwEnvironmentImp.java](../../java/src/bergdb/pubimp/RwEnvironmentImp.java)
@@ -261,6 +270,55 @@ Sources: `RwTransaction.executeRw()`,
 `Db.stmCheckConflicts()`,
 [KeyModSet.java](../../java/src/bergdb/core/KeyModSet.java);
 006-11, sections 10.3 and 10.7.
+
+### 2.6. A retrying attempt's wait points
+
+2026-11-05, deliverable 1's map, read from the source at `0c6c4be` (after
+005-52's option B) and checked against section 8's runs. One attempt of
+`executeRw()`, in order, on the caller's thread:
+
+1. **The action** (RW only): the user's reads and work. The first read
+   picks the snapshot. Reads take no database lock; a node load is
+   synchronous I/O, and a reader's load may park up to about 2 ms for an
+   eviction batch (section 2.4). A rerun repeats all of it.
+2. **Index entries and the core transaction**: `env.indexEntries()` (the
+   internal reads of indexes) and `env.createTrans()`; no lock.
+3. **`Db.execute()`**: an empty `synchronized (readSync) {}`, the state
+   check, then `executeInner()`: `checkSize()` and `warmup()`, which reads
+   every write key at the newest lookup time with no lock held; since
+   005-52 (`0c6c4be`) the warmup's loads do not park for eviction.
+4. **`Db.writeLock`**: `writersWaiting` is counted, then the monitor is
+   taken. The wait is for whoever holds it: another writer's whole
+   commit, including its buffer-room wait (section 2.1), its inline
+   eviction batch and reclaim's steps and internal transactions, or the
+   eviction thread's batch. No deadline, and not interruptible.
+5. **The checks under the lock**: the state again, the top-node ordinal
+   bound, `checkDirtyNodes()` (a cheap bound, or a walk that can load
+   paths for a large transaction), `x.begin()`, then
+   `stmCheckConflicts()`. **A refused attempt is refused here**, after it
+   has waited for the lock and paid the preflight: the order is the one
+   006-11, section 9.4 proposes to change.
+6. **The go point** (`dbClock.transactionBegin()`): after it nothing
+   refuses; `putKvs()`, `store()` with its buffer-room wait, the recorded
+   write hashes, eviction and reclaim run to the end or fail the database.
+7. **After a refusal**: `prepareForRWRerun()` or `prepareForWRerun()`,
+   `clearOutput()`, then `Thread.sleep()` with the doubling time. The
+   caller holds no database lock and no monitor while it sleeps; it holds
+   its connection's thread, the environment (a W transaction's user
+   operations) and whatever the action keeps. An interrupt here refuses
+   the call with `DbException` and restores the flag.
+8. **After the commit**, if the caller asks: `sync()` waits for the durable
+   position (section 2.1); its interrupt ends the wait, the transaction
+   stays committed.
+
+What the runs add (section 8): on a resident hot key, a refused attempt's
+`Db.execute()` (steps 3 to 5) took 54 to 156 us on s1 on average per run,
+most of it, presumably, the wait for the busy writer's lock (not
+separated); the requested sleep was over 99.8% of the time between
+attempts, and the measured `Thread.sleep()` overshot the request by 0.17
+to 0.34 ms. The policy's sleeps, not the refused work, are where a
+retrying client's time goes on this workload. Storage waits in steps 4
+and 6 did not take part: memory storage, no eviction.
 
 ## 3. Establish the client contract first
 
@@ -296,6 +354,50 @@ If a connection setting is chosen, specify it on the public `Connection`
 API and implement it in `ConnectionImp`; an implementation-only knob is
 insufficient. Keep the number of settings small. A maximum-attempt setting
 may be useful, but "a few attempts" alone gives no predictable time budget.
+
+### 3.1. A draft of the contract
+
+2026-11-05, deliverable 1's second half, for Frans's review; not decided.
+First, what a caller of `Connection.rw(action)` (and of a W transaction
+with object operations) gets today, from the code at `0c6c4be`:
+
+| Outcome | When | Committed? | Database |
+|---|---|---|---|
+| Returns | an attempt passed the go point | yes; durable after `sync()` | goes on |
+| Waits, without bound | each attempt refused, others commit its keys (8.5) | not yet | goes on |
+| The action's exception | thrown in any attempt | no | goes on |
+| `DbException`, interrupted | an interrupt during a retry sleep | no; flag set | goes on |
+| `DbStoppingException`, `DbFailedException` | at `Db.execute()`'s state checks | no | stopping or failed |
+| `DbException`, top ordinals | the bound of 005-02 | no | takes no more transactions |
+| A failure after the go point | storage, memory, a bug | unknown to the caller | failed |
+| `sync()` interrupted | during the durability wait | yes; durability unknown | goes on |
+
+`RerunException` never reaches the caller: the loop retries it without
+end. Earlier attempts' side effects outside the database stand in every
+row.
+
+Proposed, as the frame for the retry variants (section 4):
+
+1. **One new refusal**: when a retry budget is exhausted, the call throws
+   an exception meaning "not committed, the database goes on", thrown
+   only between attempts, never after the go point. Whether it is a
+   `DbException` subclass and what it is called is for the proposal.
+2. **What a budget bounds**: it is checked before each new attempt and
+   clamps the sleep to what remains. It bounds the waiting between
+   attempts and the number of new attempts started, not the action, the
+   lock wait or the commit (section 2.6, steps 1 to 6); a hard end-to-end
+   deadline is not on offer from `executeRw()` alone.
+3. **The two reasons told apart**: a changed-key conflict and history
+   exhaustion (`KeyModSet.modifiedAfter()` with no bin old enough) are
+   different outcomes inside the loop, so that a policy can treat them
+   differently; section 8.6 shows why.
+4. **Observable per call**: the attempts and the total time slept. Today
+   `getRunCount()` is on `pubimp.RwTransaction` only, and the sleeps are
+   not recorded; the harness's figures (section 8.1) are cheap enough to
+   keep in a call's result, but whether to is for the proposal.
+5. **Progress is a measured property, not promised**: the baseline
+   (section 8) is the reference for a variant's per-worker completion
+   gaps, not a fairness guarantee.
 
 ## 4. Retry policies to compare
 
@@ -471,6 +573,11 @@ selecting a policy. (The plan's first step went on with bounded,
 independently scheduled arrivals and a controlled slow-append case; they
 are 017-06's first step now.)
 
+2026-11-05: this first step is done, in section 8, with the history case
+added. Deliverable 1 has a first draft (sections 2.6 and 3.1), not yet
+reviewed; deliverable 2 has its hot-key, disjoint-key and history runs
+(sections 8.3 to 8.6) on memory storage, without a sync/reopen subset.
+
 Deliver in order:
 
 1. A reviewed map of wait points and the proposed client contract, extending
@@ -514,7 +621,309 @@ Related work:
 * [010-01](../010-principles/01-principles.md), P1 and P3:
   bounded internal pauses and calm when idle.
 
-## 8. Log
+## 8. The harness and the first baselines
+
+2026-11-05, section 7's first step, approved by Frans that morning:
+"005-81 (retries) gets its harness and the hot-key and disjoint-key
+baselines, timed on s1." By Claude (Opus 5.5, Claude Code).
+
+### 8.1. What was built
+
+In [81-overload-and-retries/](81-overload-and-retries/):
+
+* `RetryBench.java`: 006-11's `RwBench` (006-11, section 10), with its
+  workload, checks and timing unchanged, and per request: the number of
+  attempts (the action's invocations, checked against `getRunCount()`),
+  the time between attempts as the action sees it (from the end of one
+  invocation to the start of the next: the refused commit, the rerun
+  reset and the sleep), each worker's longest gap between completions,
+  and a CSV row for every request of more than one attempt. A new option,
+  `longActionMs=N`, makes worker 0 sleep N ms in its action after its
+  reads: the history case. The 45 s drain limit is a setting,
+  `drainSeconds` (default 180 s).
+* `make-probe.py`: makes the probe build from a copy of the source (never
+  the repo's `java/`): a static hook `RwTransaction.retryProbe`, called
+  after each retry sleep with the run count, the requested sleep, the
+  measured `Thread.sleep()` and the refused `Db.execute()` call. The policy
+  is unchanged. The harness finds the hook by reflection; on a stock jar
+  it runs without it.
+* `run-s1.sh`: compiles the harness against both jars and runs the cases
+  with the stock and the probe jar in turns (the order reversed on even
+  repetitions); stops if another JVM runs; logs the load before each run.
+* `summarize.py`: the tables below from a session directory.
+
+The two builds are the isolated baseline: the stock jar, unchanged, for
+the timing, and the probe jar to explain it; their rates are compared as
+the overhead check.
+
+### 8.2. Method
+
+* Source: `git archive` of `0c6c4be` (HEAD that morning, with 005-52's
+  option B), built on s1 by `java/build.sh` with JDK 27 and 005-47's
+  `unzip` shim on `PATH` for the build only. Jar SHA-256: stock
+  `b4f49819…23af7`, probe `61669197…aacc0`.
+* s1: 2 vCPUs, 3.8 GB, JDK 27 (`/opt/bergdb-bench/jdk-27`). JVM:
+  `-Xms1500m -Xmx1500m -XX:+UseZGC -da`. Before the first session no other
+  JVM ran and the load was 0.06; `run-s1.sh` checked before every run
+  that no other JVM ran. The load during the sessions, 0.8 to 2.4, is
+  their own runs.
+* Workload (006-11's): 4,096 counters, `reads=8`, `work=3000` (8.9 us of
+  computation on s1, median of the runs' calibrations, 8.7 to 9.7; 9.4 us
+  on F53 in 006-11), memory storage, retention
+  forever, no eviction; `seconds=10` after `warmupSeconds=2`; one
+  connection per worker; fixed seeds. `hot`: 90% of the actions write
+  counter 0; `partitioned`: disjoint keys per worker. Threads 2 (one per
+  vCPU) and 4 (oversubscribed; a sleeping worker uses no CPU).
+* Every run verified the sum of the counters against every commit and
+  recomputed the stored work; the attempts counted by the action matched
+  `getRunCount()` for every request; in the probe build the hook's
+  retries matched the attempts.
+* Raw outputs: s1 `/opt/bergdb-bench/005-81/out/SESSION/`, copied to F53
+  `/Users/f/fl/bench/005-81/2026-11-05/`. Each run's directory has
+  `result.json`, `retried-requests.csv`, `stderr.txt` and `gc.log`; the
+  session's `identity.txt` has the hashes, `runs.txt` the load and the
+  summary lines.
+
+The build, from the repo on F53 and then on s1:
+
+    git archive --format=tar.gz -o bergdb-0c6c4be.tar.gz 0c6c4be java
+    # copy it, RetryBench.java, run-s1.sh and make-probe.py to
+    # s1:/opt/bergdb-bench/005-81/in/; then, in /opt/bergdb-bench/005-81:
+    for b in stock probe; do mkdir $b; tar -xzf in/bergdb-0c6c4be.tar.gz -C $b; done
+    python3 -I in/make-probe.py probe/java
+    for b in stock probe; do (cd $b/java && \
+        PATH=/opt/bergdb-bench/jdk-27/bin:/opt/bergdb-bench/005-47/bin:$PATH \
+        sh build.sh); done
+
+The sessions, in `/opt/bergdb-bench/005-81` on s1:
+
+    sh in/run-s1.sh main 3 "hot:2 partitioned:2 hot:4 partitioned:4" \
+        reads=8 work=3000 seconds=10 warmupSeconds=2
+    sh in/run-s1.sh ref 3 hot:1 reads=8 work=3000 seconds=10 warmupSeconds=2
+    sh in/run-s1.sh history-1000 2 partitioned:2 reads=8 work=3000 \
+        seconds=10 warmupSeconds=2 longActionMs=1000
+
+and `history-3000` and `history-6000` alike. Then, on F53:
+`python3 -I summarize.py /Users/f/fl/bench/005-81/2026-11-05/main`.
+
+The session `main` ran the harness before `longActionMs` was added
+(SHA-256 `dcc8ead2…2bf9`, kept in `out/main/RetryBench.java`); the
+others ran the committed one (`89619c52…d26b`), which differs only by
+that option, off by default. A smoke session (`smoke`, 2 s windows) came
+first and is not reported.
+
+### 8.3. Hot key and disjoint keys
+
+Session `main`, 07:24 to 07:31, 24 runs: four cases, two builds, three
+repetitions; all passed their checks. Medians of three runs, ranges in
+parentheses; s1, 2 vCPUs. "Active/s" counts the commits that ended inside
+the 10 s window; latency is the whole call, all attempts and sleeps
+included; percentiles are histogram upper bounds.
+
+| Case, build | Active/s | p50 us | p99 us | Max latency ms | Retried requests | CPU cores |
+|---|--:|--:|--:|---|---|--:|
+| hot t2 stock | 37,535 (37,315–37,687) | 24.6 | 61.4 | 10,233, 10,233, 10,233 | 6, 1, 1 | 1.07 |
+| hot t2 probe | 37,165 (36,378–38,590) | 24.6 | 61.4 | 5,115, 5,116, 10,234 | 23, 31, 1 | 1.07 |
+| hot t4 stock | 36,383 (36,240–38,780) | 24.6 | 65.5 | 10,236, 10,237, 10,235 | 9, 33, 34 | 1.07 |
+| hot t4 probe | 38,631 (36,827–38,769) | 23.6 | 59.4 | 10,233, 10,236, 10,236 | 72, 29, 45 | 1.05 |
+| partitioned t2 stock | 54,978 (44,531–56,294) | 26.6 | 94.2 | 5.1, 22.8, 9.3 | 0, 0, 0 | 1.91 |
+| partitioned t2 probe | 52,652 (51,296–61,527) | 26.6 | 102.4 | 6.1, 8.1, 6.2 | 0, 0, 0 | 1.91 |
+| partitioned t4 stock | 39,339 (39,277–42,315) | 27.6 | 2,031.6 | 11.1, 11.1, 15.1 | 0, 0, 0 | 1.47 |
+| partitioned t4 probe | 42,831 (40,135–43,624) | 26.6 | 2,031.6 | 12.1, 13.0, 12.1 | 0, 0, 0 | 1.48 |
+
+"CPU cores" is the process's CPU time over the phase, median. A
+reference session `ref` (07:31 to 07:33, hot with one worker, so no
+conflicts, both builds, three runs each) gave 39,062/s stock (38,345 to
+39,402) and 38,064/s probe (37,516 to 38,986), p50 24 us, p99 51 to
+59 us, max 1.2 to 2.6 ms, 1.1 cores.
+
+Per worker, the commits inside the window and the longest gap between
+two of its completions (ms), each run:
+
+| Run | Commits in the window | Longest completion gap ms |
+|---|---|---|
+| hot t2 stock 1 | 50,482; 322,672 | 10,233; 1,276 |
+| hot t2 stock 2 | 375,354; 0 | 1; 10,233 |
+| hot t2 stock 3 | 376,868; 0 | 2; 10,232 |
+| hot t2 probe 1 | 169,130; 194,647 | 5,115; 5,112 |
+| hot t2 probe 2 | 181,510; 204,393 | 5,115; 5,113 |
+| hot t2 probe 3 | 0; 371,646 | 10,234; 2 |
+| hot t4 stock 1 | 717; 429; 1,945; 384,705 | 10,236; 10,235; 10,235; 75 |
+| hot t4 stock 2 | 1,683; 349,549; 12,473; 122 | 10,233; 152; 10,233; 10,237 |
+| hot t4 stock 3 | 7,287; 354,957; 157; 0 | 10,235; 32; 10,235; 10,234 |
+| hot t4 probe 1 | 373,690; 5,104; 3,083; 4,436 | 32; 10,232; 10,232; 10,233 |
+| hot t4 probe 2 | 1,056; 379,704; 2,410; 4,520 | 10,235; 77; 10,234; 10,234 |
+| hot t4 probe 3 | 3,604; 92,808; 31,984; 239,874 | 10,235; 10,232; 10,234; 2,552 |
+
+In the partitioned runs every worker's longest gap was 5 to 22 ms and the
+workers' commits were within 12% of each other.
+
+### 8.4. Attempts and sleeps per request
+
+Requests by number of attempts, each run (the first number is the
+requests of one attempt):
+
+| Run | Requests by attempts, 1, 2, 3, ... |
+|---|---|
+| hot t2 stock 1 | 373,150, 4, 0, 0, 0, 0, 0, 1, 0, 0, 1 |
+| hot t2 stock 2 | 375,355, then one of 11 |
+| hot t2 stock 3 | 376,869, then one of 11 |
+| hot t2 probe 1 | 363,756, 19, 2, 0, 0, 0, 0, 0, 0, 2 |
+| hot t2 probe 2 | 385,874, 24, 3, 1, 0, 0, 0, 1, 0, 2 |
+| hot t2 probe 3 | 371,647, then one of 11 |
+| hot t4 stock 1 | 387,791, 3, 2, 1, 0, 0, 0, 0, 0, 0, 3 |
+| hot t4 stock 2 | 363,798, 24, 3, 2, 1, 0, 0, 0, 0, 0, 3 |
+| hot t4 stock 3 | 362,371, 25, 5, 1, 0, 0, 0, 0, 0, 0, 3 |
+| hot t4 probe 1 | 386,245, 57, 8, 2, 2, 0, 0, 0, 0, 0, 3 |
+| hot t4 probe 2 | 387,665, 19, 5, 2, 0, 0, 0, 0, 0, 0, 3 |
+| hot t4 probe 3 | 368,229, 23, 3, 4, 5, 4, 1, 1, 1, 0, 3 |
+
+The partitioned runs had no retried request. The probe build's sleeps,
+summed over each run's retries:
+
+| Run | Retries | Requested ms | Slept ms | Oversleep ms/retry | Refused execute us/retry | Between ms |
+|---|--:|--:|--:|--:|--:|--:|
+| hot t2 probe 1 | 41 | 10,470 | 10,478.4 | 0.21 | 153 | 10,485.5 |
+| hot t2 probe 2 | 58 | 11,890 | 11,899.9 | 0.17 | 97 | 11,906.6 |
+| hot t2 probe 3 | 10 | 10,230 | 10,232.2 | 0.22 | 54 | 10,233.0 |
+| hot t4 probe 1 | 117 | 31,940 | 31,974.3 | 0.29 | 124 | 31,991.7 |
+| hot t4 probe 2 | 65 | 31,170 | 31,191.9 | 0.34 | 156 | 31,204.4 |
+| hot t4 probe 3 | 132 | 37,730 | 37,754.2 | 0.18 | 102 | 37,770.1 |
+
+The long requests, every request of 9 or more attempts (the CSV rows;
+"begin" is from the start of the window; the measured sleep from the
+probe build). The policy requests 2,550 ms of sleep over 9 attempts,
+5,110 ms over 10 and 10,230 ms over 11; the probe build's requested sleep
+matched that for every row.
+
+| Run | Worker | Begin ms | Latency ms | Attempts | Between attempts ms | Measured sleep ms |
+|---|--:|--:|--:|--:|--:|--:|
+| hot t2 stock 1 | 0 | 1,327 | 10,233.3 | 11 | 10,232.1 |  |
+| hot t2 stock 2 | 1 | 0 | 10,233.4 | 11 | 10,232.7 |  |
+| hot t2 stock 3 | 1 | 0 | 10,232.6 | 11 | 10,231.9 |  |
+| hot t2 probe 1 | 0 | 316 | 5,115.0 | 10 | 5,113.3 | 5,112.6 |
+| hot t2 probe 1 | 1 | 5,431 | 5,112.3 | 10 | 5,111.7 | 5,111.1 |
+| hot t2 probe 2 | 0 | 477 | 5,115.9 | 10 | 5,113.6 | 5,112.8 |
+| hot t2 probe 2 | 1 | 6,865 | 5,113.8 | 10 | 5,112.8 | 5,112.0 |
+| hot t2 probe 3 | 0 | 1 | 10,233.6 | 11 | 10,233.0 | 10,232.2 |
+| hot t4 stock 1 | 0 | 35 | 10,236.3 | 11 | 10,233.4 |  |
+| hot t4 stock 1 | 1 | 75 | 10,235.8 | 11 | 10,234.4 |  |
+| hot t4 stock 1 | 2 | 71 | 10,235.9 | 11 | 10,235.4 |  |
+| hot t4 stock 2 | 0 | 86 | 10,233.8 | 11 | 10,233.3 |  |
+| hot t4 stock 2 | 2 | 554 | 10,233.8 | 11 | 10,232.3 |  |
+| hot t4 stock 2 | 3 | 81 | 10,237.4 | 11 | 10,234.7 |  |
+| hot t4 stock 3 | 0 | 548 | 10,235.1 | 11 | 10,232.6 |  |
+| hot t4 stock 3 | 2 | 12 | 10,235.1 | 11 | 10,233.6 |  |
+| hot t4 stock 3 | 3 | 2 | 10,233.2 | 11 | 10,232.5 |  |
+| hot t4 probe 1 | 1 | 425 | 10,232.8 | 11 | 10,232.4 | 10,231.9 |
+| hot t4 probe 1 | 2 | 458 | 10,232.8 | 11 | 10,231.5 | 10,231.0 |
+| hot t4 probe 1 | 3 | 550 | 10,233.4 | 11 | 10,231.7 | 10,231.2 |
+| hot t4 probe 2 | 0 | 95 | 10,235.9 | 11 | 10,232.2 | 10,231.5 |
+| hot t4 probe 2 | 2 | 215 | 10,234.2 | 11 | 10,233.3 | 10,232.6 |
+| hot t4 probe 2 | 3 | 275 | 10,234.7 | 11 | 10,232.1 | 10,231.2 |
+| hot t4 probe 3 | 0 | 403 | 10,235.6 | 11 | 10,233.1 | 10,231.9 |
+| hot t4 probe 3 | 1 | 3,148 | 10,232.2 | 11 | 10,231.6 | 10,231.1 |
+| hot t4 probe 3 | 2 | 3,608 | 10,234.9 | 11 | 10,232.1 | 10,231.2 |
+| hot t4 probe 3 | 3 | 1,055 | 2,552.9 | 9 | 2,552.6 | 2,552.2 |
+
+### 8.5. Findings
+
+1. **The hot-key tail reproduces on s1 with 2 and 4 workers.** In every
+   hot run the largest latency is a request of 10 or 11 attempts: 5.1 or
+   10.2 s, made of the policy's sleeps (10 + 20 + ... = 5,110 or 10,230
+   ms requested). 006-11's 10,258.8 ms is the same shape: several
+   accumulating sleeps, not one 10.24 s sleep (section 2.5).
+2. **The time between attempts is the sleep.** The probe build measured
+   `Thread.sleep()` at the requested time plus 0.17 to 0.34 ms per retry
+   on s1; the refused `Db.execute()` took 54 to 156 us per retry on
+   average (the warmup, the wait for `Db.writeLock` behind the busy writer
+   and the checks, section 2.6; not separated); requested sleep is over
+   99.8% of the time between attempts in every probe run. A retrying client's time goes to the
+   policy's sleeps, not to refused work, on this workload.
+3. **A sleeper commits only when the others stop or by luck.** A retried
+   request keeps its keys, so a hot-key request conflicts on each wake-up
+   as long as another worker commits the hot key, about 34,000 times a
+   second here. The
+   11-attempt requests ended after the window's end (begin + 10,230 ms >
+   10,000 ms), when the other workers had stopped: under continued load
+   they would have gone on at 10,240 ms a sleep. With 2 workers the
+   probe runs show turn-taking: one worker does all the work for about
+   5.1 s, its turn ends when the sleeper wins one wake-up, and the roles
+   swap.
+4. **Averages hide it.** Retried requests were 1 to 132 of about 370,000
+   per run, attempts per commit 1.00003 to 1.00036, the p99 latency 55 to
+   70 us; yet in 10 of 12 hot runs a worker went 10.2 s without a
+   completion, and in each of the six 4-worker runs three of the four
+   did.
+5. **The hot key turns the workers into one.** Hot runs used 0.8 to 1.1
+   CPU cores of 2, against 1.9 for partitioned t2: the sleepers leave a
+   vCPU idle. Their commit rate, 36,000 to 38,800/s, is one uncontended
+   worker's (`ref`: 39,062/s, 1.1 cores), against 55,000/s for two
+   disjoint workers. With today's policy, more workers on a hot key buy
+   nothing, and a request may wait 10 s for a turn.
+6. **Disjoint keys: no retries, no stalls.** No request of the
+   partitioned runs took a second attempt; the longest completion gap was
+   22 ms (t2) and 15 ms (t4), from scheduling and GC on 2 vCPUs. With 4
+   workers on 2 vCPUs the rate falls to about 40,000/s and the p99 rises
+   to 2 ms: oversubscription, not retries.
+7. **The probe build costs nothing measurable here.** Probe against stock
+   medians: hot t2 −1.0%, hot t4 +6.2%, partitioned t2 −4.2%,
+   partitioned t4 +8.9%, inside the run-to-run ranges (partitioned t2
+   stock: 44,531 to 56,294/s). Its code runs once per attempt (one
+   `nanoTime()`) and on retries. s1's noise is about ±10% between runs.
+
+### 8.6. History exhaustion
+
+Sessions `history-1000`, `history-3000` and `history-6000`, 07:33 to
+07:38, s1, 2 vCPUs: `partitioned`, 2 workers, the same workload, and
+`longActionMs` 1,000, 3,000 and 6,000: worker 0 sleeps that long in its
+action after its reads, while worker 1 commits its own keys, one written
+key each, at 37,000 to 40,000/s. Worker 0 reads only its own keys, so
+every refusal of its requests is history exhaustion, not a changed key.
+Two runs per build and session, all passed their checks.
+
+`KeyModSet` keeps four bins of 32,000 key-hash additions; it covers the
+last 96,000 to 128,000 additions, depending on how full the newest bin
+is. Worker 1 adds that many in about 2.4 to 3.5 s.
+
+| Long action | Worker 0's requests, each run | Commits in the window | Longest gap ms |
+|---|---|---|---|
+| 1,000 ms | 10 of one attempt, in every run | 9, 9, 9, 9 | 1,001 to 1,005 |
+| 3,000 ms | stock 1: two of 2 attempts; the others: one of 3 attempts | 1, 1, 1, 1 | 6,011; 9,031 (3 runs) |
+| 6,000 ms | one of 3 attempts, 18,032 ms, in every run | 0, 0, 0, 0 | 18,032 to 18,033 |
+
+With 6,000 ms every attempt under load was refused: the first (0 to
+6 s) and the second (6 to 12 s, the load ending at 10 s). The third
+began at 12.03 s, after the other worker had stopped, and committed.
+Under continued load the request would never commit. The policy's sleeps
+were 10 + 20 = 30 ms of the 18 s (the probe build measured 30.2 to
+30.3 ms); the time went to rerunning the action. With 3,000 ms, at the
+edge of the history, attempts passed or not, presumably by the bins'
+phase.
+
+7. **History exhaustion is a different failure from a hot key.** A hot
+   key's time goes to sleeping (99.8%, section 8.5); a long action's goes
+   to rerunning it, and no sleep length helps while the load lasts: an
+   action longer than about 96,000 additions' worth of other writes
+   cannot commit. On s1 with one other writer that is 2.4 to 3.5 s. The
+   caller sees the same endless loop, and today the two cannot be told
+   apart (section 2.5): the case for contract point 3 (section 3.1).
+
+### 8.7. What is left
+
+* Deliverable 1: Frans's review of sections 2.6 and 3.1.
+* Deliverable 2: the same cases with file storage and a sync/reopen
+  subset of the checks; indexed W transactions (the other caller of
+  `executeRw()`); a new caller arriving behind retriers; and, if wanted,
+  the lock wait separated from the rest of a refused `execute()` (it
+  needs a probe in `Db`, a second patch). F53's runs, if wanted, in a
+  quiet block.
+* Deliverable 3: the variants R0 to R2 (section 4) as further patches of
+  `make-probe.py`'s kind over the same archive, measured against this
+  baseline; then the `executeRw()` proposal, Frans's decision.
+
+
+## 9. Log
 
 2026-10-30. Registered and planned at Frans's request. Validated the retry
 sequence and shared W/RW call sites, buffer-room and durability waits,
@@ -534,3 +943,16 @@ and first step rewritten for the retries; replication's waits dropped
 (removed, 005-11); the mention of 005-07 corrected (dropped; 016-07);
 dated notes for 005-47, 005-11 and 005-52 in section 2. The code was not
 reviewed again. By Claude (Opus 5.5, Claude Code).
+
+2026-11-05, 07:20 to 07:45. Section 7's first step, at Frans's approval
+("005-81 (retries) gets its harness and the hot-key and disjoint-key
+baselines, timed on s1."). Built the harness (`RetryBench.java`, from
+006-11's), the probe patch (`make-probe.py`), the runner and the
+summarizer in [81-overload-and-retries/](81-overload-and-retries/);
+built stock and probe jars on s1 from `git archive` of `0c6c4be`; ran 24
+hot-key and disjoint-key runs, 6 one-worker references and 12
+history-exhaustion runs on s1 (2 vCPUs), all checks passed (section 8).
+The 10 s hot-key tail reproduces as 11 attempts of accumulating sleeps;
+a long action under unrelated writes never commits while the load lasts.
+Drafted the wait-point map (section 2.6) and the contract (section 3.1)
+for review. No change to `java/`. By Claude (Opus 5.5, Claude Code).
