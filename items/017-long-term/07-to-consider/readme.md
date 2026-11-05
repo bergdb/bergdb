@@ -57,3 +57,35 @@ Claude's view when it was registered: (a), with the line in the Javadoc;
 Related, from the same discussion: skipping the put's copy is not
 proposed; skipping a get's copy for values read from the stream became
 moot with option (c).
+
+
+## 2. startupDistance in the meta block, not in an internal KV
+
+Added 2026-11-05. State: to consider.
+
+What: the startup distance is the only setting in the meta block
+(`MetaBlock` v154, offset 40, 4 bytes) that a start does not need before
+it can read a KV. A start takes the startup position from the last
+record; only the writer uses the distance afterwards (`Db`: the start
+reads `meta.getStartupDistance()` into its params, and the writer's take
+uses it). To get a change into the stream, `Db.setStartupDistance`
+writes a dummy transaction (`/#i/-dummy`) of
+`RecoverableStream.META_BLOCK_DISTANCE` bytes, to force a meta block with
+the new value.
+
+Where it came from: the discussion of 015-87's F1 (2026-11-05), where
+Frans set the rule that the meta block is for what cannot be stored in
+other ways (13:04): "I think the general idea of the meta block is for
+settings that cannot be stored in other ways. Only for this. Once the
+database has started, further settings should be storage in internal
+KVs." Frans, 13:12: "Add a note to 017-07 about startupDistance in the
+meta block. Startup distance was not in each transaction before, so it is
+in the meta block for historical reasons."
+
+What a move would mean: an internal KV (beside 015-87's
+`/#i/dreclaim/-settings.txt`, or its own), read at the end of a start and
+written by a transaction when it changes; the dummy transaction goes. It
+is a change of the format (018-01, section 2: Frans approves). Old streams
+keep the distance in their meta blocks, so a start reads the meta block's
+value when the KV is missing. The C clone (012) follows only when it ports
+a release that has it.

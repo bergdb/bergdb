@@ -772,6 +772,28 @@ Log
   the design (`design.md`). The probe confirms the fault: a restart that
   does not set the retain duration again stops reclaim for good.
 
+2026-11-05, 13:12. Frans's answer to F1. He goes through F1 to F7 with
+session bergdb-e8 today; nothing is implemented until the discussion is
+done.
+* The discussion. Frans, 13:04: "I think the general idea of the meta
+  block is for settings that cannot be stored in other ways. Only for
+  this. Once the database has started, further settings should be
+  storage in internal KVs." bergdb-e8's findings: the meta block
+  (`MetaBlock`, v154) holds what a start needs before it can read a KV
+  (magic and version, the database ID, time and lastTrans,
+  maxNodeSize), and one setting, startupDistance. Internal KVs (`/#i/`,
+  `DbConstants.INTERNAL_PREFIX`) are a Core concept: Core's reclaim
+  keeps `/#i/dreclaim/-table.txt` and `-current.txt`,
+  `Db.setStartupDistance` writes `/#i/-dummy`, and the Pub layer's user
+  indexes use `/#i/di/`, `/#i/dii/` and `/#i/div/`. The C clone (012)
+  already reads and writes reclaim's two KVs and the dummy key, so a
+  Core-only clone handles internal KVs.
+* His answer, 13:12: "Yes, let's do B as recommended." F1 = B: the
+  retain duration in the internal KV `/#i/dreclaim/-settings.txt`. As a
+  change of the format's reserved internal keys (018-01, section 2),
+  this is his approval of that format change. F2 to F7 are still being
+  discussed; nothing is implemented yet.
+
 
 For Frans
 ---------
@@ -781,7 +803,7 @@ answers all seven.
 
 * **F1, the form** (the approval of a format change, 016-01, section 3):
   A, the meta blocks; B, an internal KV `/#i/dreclaim/-settings.txt`; or
-  C, reclaim's table. Recommended: B.
+  C, reclaim's table. Recommended: B. Answered 2026-11-05: B.
 * **F2, the builder against a stream with a value:** the stream's value
   wins, as the startup distance's (recommended), or the builder's written
   at the start when it differs.

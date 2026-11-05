@@ -60,7 +60,9 @@ Files
   retries stay in 005-81. Open; notes only.
 * [017-07](07-to-consider/readme.md). To consider: small ideas that
   Frans may take up some day, one section each; first, a get that always
-  copies a `byte[]` value (from 019-03). Open; a collection.
+  copies a `byte[]` value (from 019-03); second, startupDistance in the
+  meta block rather than in an internal KV (from 015-87's F1). Open; a
+  collection.
 
 
 Log
