@@ -1,6 +1,6 @@
 # 006-12 Unattended work, 5 to 6 November 2026
 
-Created 2026-11-05 by Frans Lundberg. Status: planned (preliminary). The
+Created 2026-11-05 by Frans Lundberg. Status: in progress (since 14:38). The
 plan for the unattended work from 2026-11-05, 15:00, to 2026-11-06,
 07:00, the progress through the night, and the outcome. The way of
 working is 013-01's (the night) and 013-02's (the coordinator), as in
@@ -258,7 +258,33 @@ each entry's State. A fresh session reads those and goes on.
 
 ## 7. Progress
 
-(to be written through the night)
+Times from `date`, CET.
+
+* 14:38 coord-1105 started (Frans: "You are my coordinator for the
+  unattended work 006-12. Do the work as planned."; 14:42: "You are
+  called coord-1105."). The day session bergdb-e8 handed over
+  (`/Users/f/fl/bench/day-1105/handover.md`): 015-87 (U6) and 015-88 done
+  in the day, W1's queue shorter, the day's gates under one lock, and
+  Q-A's ScaleBench change not prepared. Its last commits, d0d408d and
+  1068442, at 14:43; main at 15:00 is 1068442, Q-B's reference.
+* 14:40 Last-minute questions to Frans, each with a default that goes
+  ahead: (1) the session's name; (2) Q-A's ScaleBench change prepared by
+  an agent in the afternoon, compiled only against the AB/BA builds'
+  jars; without it by 21:45, Q-A runs the two `threads.sh` variants only;
+  (3) Q-B as planned, reference 1068442; (4) W1 as one fresh agent per
+  batch of 2 to 4 entries, 015-80 skipped. Answered: (1) coord-1105.
+* 14:44 The night's tools in `/Users/f/fl/bench/006-12/`: `gate.sh` (every
+  gate under the day's lock, `/Users/f/fl/bench/day-1105/gate.lock`, and
+  refused in a quiet block or window: 22:15 to midnight, 02:05 to 02:55,
+  04:58 to 06:20, or with a QUIET-BLOCK marker), `land.sh` (the
+  coordinator's landing: cherry-pick onto main in a landing clone,
+  `before-commit.sh` on the combined tree, `git merge --ff-only` in the
+  main tree), `brief-w1.md` (the W1 agents' common brief). Started at
+  high: W1 g1a (015-72, 73, 75), g2a (015-66, 67, 68), g3a (015-50, 51,
+  52), and the preparation of Q-A and Q-B (scripts in `qa/` and `qb/`,
+  smoke tests, started by 20:30). Check-ins every 20 minutes but 22:00 to
+  00:59 and 05:00 to 05:59; a one-off at 21:53; the watchdog until 07:00.
+  Usage at 14:43: 5h 29 %, week 45 % (ceiling 80 %).
 
 
 ## 8. Outcome
