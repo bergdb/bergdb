@@ -322,6 +322,30 @@ Times from `date`, CET.
   about 30 fixes were made at high effort unattended and several touch
   concurrency. Findings in `/Users/f/fl/bench/006-12/review-r1.md` and
   `review-r2.md`, faults as 019 entries; they stop by 21:45.
+* 17:13 W1's last batch landed: 019-01 (f95840e) and 019-02 (669f0ef);
+  harness 6.3's SKIP is down to 015-80. W1 is done but 015-80, which
+  waits for a day session.
+* 17:14 to 17:51 The reviews. R1 (the stream, its storage, the start): 9
+  of 10 commits OK; in dc46c1e (015-35, 015-81) a regression, B1, shown by
+  a probe: `Db.close()` could return before a failed storage had closed
+  its stream; fixed by 7a80d0d (`closeInner` closes the stream also after
+  a failure; the close's failure kept as suppressed, C2), and R1's
+  re-review found the fix right. That re-review found B2, older than
+  tonight (2026.1 and 2026.2 have it): `close()` after a background write
+  failure that no call met returns normally and reports nothing; it is
+  019-09, waiting for Frans (112ab21). R2 (eviction, transactions,
+  reclaim, the Pub API): all 19 commits OK, 23 of their 25 new tests fail
+  without their fix (the other two pin documented behaviour); B1 outside
+  the commits, the Core's `DbUtil.dbTimeToUtc` with 015-63's fault,
+  registered and fixed as 019-08 (5a2e6d6); 015-60's Javadoc made exact
+  and four long lines wrapped (7476107); and C1, 15 closed rows left in
+  015's Open table by the coordinator's union merges, removed (57ad705;
+  no union merge for the readmes since). R3 (019-01, 019-02 and group 5):
+  all OK; 015-11 closed although the s1 half of its "Done when" was not
+  run (for Frans).
+* 17:48 On the combined main 669f0ef, all of W1: LEVEL 2 OK (70 traces,
+  TRACECHECK OK), LEVEL 3 OK, LEVEL 4 OK. 17:56 the same again on
+  112ab21, with the review fixes.
 
 
 ## 8. Outcome
