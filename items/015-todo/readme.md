@@ -33,9 +33,7 @@ Open
 | ID | Kind | What | Status |
 |---|---|---|---|
 | [015-03](03-lean-follows-005-79.md) | Implement | Lean follows 005-79's integer take | open |
-| [015-04](04-deps-helper-rule.md) | Investigate | deps.py counts take and dither as test code | open |
 | [015-06](06-refused-start-leaves-file.md) | Fix | A refused start leaves an empty first stream file | in progress |
-| [015-08](08-streamdigest-compare-cut.md) | Fix | StreamDigest's compare reports the physical cut, which depends on timing | open |
 | [015-18](18-night-large-after-release.md) | Implement | Run night.sh large on the release, after 2026.2 | open |
 | [015-19](19-tools-after-005-79.md) | Fix | Tools in items still use what 005-79 removed | open |
 | [015-23](23-refused-index-delete.md) | Fix | A refused index deletion leaves the index active and unmaintained | open |
@@ -86,6 +84,8 @@ Closed
 | [015-31](31-cut-at-length.md) | Fix | A cut at the stream's length throws an internal Bug | done | 2026-11-05 |
 | [015-82](82-pending-cut-after-close.md) | Fix | A pending cut arriving during another cut can be left unapplied ... | done | 2026-11-05 |
 | [015-65](65-memory-builder-second-start.md) | Fix | A second start() of a memory() builder whose database runs is not refused | done | 2026-11-05 |
+| [015-04](04-deps-helper-rule.md) | Investigate | deps.py counted take and dither as test code | done | 2026-11-05 |
+| [015-08](08-streamdigest-compare-cut.md) | Fix | StreamDigest's compare checked the physical cut, which depends on timing | done | 2026-11-05 |
 | [015-11](11-tempdircreator-tmp.md) | Fix | The tests' TempDirCreator wrote to /tmp, whatever java.io.tmpdir said | done | 2026-11-05 |
 | [015-73](73-startup-pos-unchecked.md) | Fix | A startupPos on an earlier record's start: outside the fault model | done | 2026-11-05 |
 | [015-58](58-testclock-current-time.md) | Fix | TestClock.setTime() refused the clock's current time | done | 2026-11-05 |

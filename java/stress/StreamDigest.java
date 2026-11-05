@@ -54,9 +54,13 @@ import bergdb.stream.MemoryStream;
  *        java -cp ... bergdb.core.StreamDigest compare FILE FILE
  *   all        every configuration below; quick: all but l2-default-100MB.
  *   NAME       configurations by name, as printed.
- *   compare    compares the DIGEST lines of two outputs, whole (both digests, the
- *              lengths and the cuts); prints DIGESTS IDENTICAL or the differences, and
- *              exits with 1 if they differ.
+ *   compare    compares the DIGEST lines of two outputs on the fields that reclaim
+ *              decides: length, firstAvailablePos, firstAvailableTime and sha256; prints
+ *              DIGESTS IDENTICAL or the differences, and exits with 1 if they differ.
+ *              The physical cut's fields, firstPos and sha256all, wait for durability
+ *              and differ between runs of the same jar (in l3-node62: firstPos 8000000
+ *              or 9000000, bergdb 005-79); where the decided fields are the same, a
+ *              PHYSICAL CUT line shows them, as information (bergdb 015-08).
  * Properties:
  *   modes=M,M  the modes to run (default plain,reads,restarts,restarts-once).
  *   metamask=O:N  the digests take bytes O to O+N-1 of every meta block as zero: for a
@@ -304,27 +308,68 @@ public class StreamDigest {
         return result;
     }
 
+    /** The fields of a DIGEST line that compare checks: those reclaim decides. */
+    static final String[] DECIDED = {"length", "firstAvailablePos", "firstAvailableTime", "sha256"};
+
+    /** The physical cut's fields: they depend on timing, so compare only shows them. */
+    static final String[] PHYSICAL = {"firstPos", "sha256all"};
+
+    /** The name=value fields of a DIGEST line. */
+    static Map<String, String> fields(String line) {
+        Map<String, String> result = new HashMap<String, String>();
+        String[] parts = line.split(" ");
+        for (int i = 3; i < parts.length; i++) {
+            int eq = parts[i].indexOf('=');
+            if (eq > 0) result.put(parts[i].substring(0, eq), parts[i].substring(eq + 1));
+        }
+        return result;
+    }
+
+    /** "name x -> y" for each of the fields 'names' that differ, joined by ", "; "" if none. */
+    static String differences(Map<String, String> x, Map<String, String> y, String[] names) {
+        StringBuilder b = new StringBuilder();
+        for (String name : names) {
+            if (Objects.equals(x.get(name), y.get(name))) continue;
+            if (b.length() > 0) b.append(", ");
+            b.append(name + " " + x.get(name) + " -> " + y.get(name));
+        }
+        return b.toString();
+    }
+
     static int compare(String file1, String file2) throws IOException {
         Map<String, String> a = readDigests(file1), b = readDigests(file2);
         Set<String> all = new TreeSet<String>(a.keySet());
         all.addAll(b.keySet());
-        int same = 0, differ = 0;
+        int same = 0, differ = 0, physical = 0;
         for (String key : all) {
             String x = a.get(key), y = b.get(key);
-            if (x != null && x.equals(y)) {
-                same++;
-            } else {
+            if (x == null || y == null) {
                 differ++;
-                System.out.println("DIFFERENT " + key + ":");
-                System.out.println("  " + file1 + ": " + (x == null ? "missing" : x));
-                System.out.println("  " + file2 + ": " + (y == null ? "missing" : y));
+                System.out.println("MISSING " + key + " in " + (x == null ? file1 : file2));
+                continue;
+            }
+            Map<String, String> fx = fields(x), fy = fields(y);
+            String decided = differences(fx, fy, DECIDED);
+            if (!decided.isEmpty()) {
+                differ++;
+                System.out.println("DIFFERENT " + key + ": " + decided);
+                System.out.println("  " + file1 + ": " + x);
+                System.out.println("  " + file2 + ": " + y);
+                continue;
+            }
+            same++;
+            String cut = differences(fx, fy, PHYSICAL);
+            if (!cut.isEmpty()) {
+                physical++;
+                System.out.println("PHYSICAL CUT " + key + " (timing, not compared): " + cut);
             }
         }
+        String info = "; of the identical, the physical cut differs in " + physical + ")";
         if (differ == 0 && same > 0) {
-            System.out.println("DIGESTS IDENTICAL (" + same + " of " + same + ")");
+            System.out.println("DIGESTS IDENTICAL (" + same + " of " + same + info);
             return 0;
         }
-        System.out.println("DIGESTS DIFFER (" + differ + " of " + all.size() + ")");
+        System.out.println("DIGESTS DIFFER (" + differ + " of " + all.size() + info);
         return 1;
     }
 
