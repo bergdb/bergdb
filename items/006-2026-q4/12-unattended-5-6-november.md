@@ -66,9 +66,22 @@ how.
 
 013-01, section 4, and 013-02, with these for tonight:
 
-* **Effort and agents.** At most 4 subagents at a time, each at xhigh
-  effort (high only if usage is tight); the coordinator does little work
-  itself.
+* **Effort and agents.** At most 4 subagents at a time, each at high
+  effort; the coordinator at xhigh, the default of a new session, and it
+  does little work itself (Frans, 2026-11-05, 12:04: "Let's run agents at
+  High tonight. Coordinator at XHigh, though."). An entry that needs a
+  concurrency or safety argument, such as 015-80 (the buffer's concurrent
+  writes), or whose gate fails twice at high, is written up and skipped:
+  it waits for a day session at xhigh and is not retried at xhigh tonight.
+* **The weekly ceiling, 80 %** (Frans, 12:04). The coordinator reads
+  `usage.sh` before every agent it starts and at every check-in, and
+  starts no agent once the week is at 80 % or more; a running agent
+  finishes its entry, hands it over if its gate passes, and stops. The
+  rest, to the reset on Monday 9 November at 22:00, is the day work's.
+  Tonight the ceiling takes the place of the week's tests in 013-02's
+  levels (85 %, or 25 points ahead of its time); the 5-hour window's tests
+  stay (tight at 80 %: at most two agents; limit at 98 %: none until the
+  reset).
 * **Clones.** Each agent works in its own scratch clone under
   `/Users/f/fl/bench/006-12/`, gates there, and hands its change to the
   coordinator, which lands one change at a time on `main`: rebase,
