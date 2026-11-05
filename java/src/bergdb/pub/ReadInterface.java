@@ -15,6 +15,9 @@ public interface ReadInterface {
     /**
      * Checks whether a key-value entry with the given key exists.
      *
+     * @throws IllegalArgumentException
+     *             If key does not follow the allowed format, or is null, as for get(), in
+     *             a connection and in an rw-transaction alike (bergdb 019-05).
      * @see Connection#exists(String)
      */
     public boolean exists(String key) throws DbException;

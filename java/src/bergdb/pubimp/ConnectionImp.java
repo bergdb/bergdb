@@ -196,7 +196,8 @@ public class ConnectionImp implements Connection {
 
     /**
      * @throws IllegalArgumentException
-     *             Ff ukey is null or not of a valid format.
+     *             If ukey is null or not of a valid format: PubKeys.u2i() throws it, as
+     *             for get() and an rw-transaction's exists() (bergdb 019-05).
      */
     public final boolean exists(String ukey) {
         // NOTE Maybe we should have separate method for this. Or a boolean
@@ -207,14 +208,7 @@ public class ConnectionImp implements Connection {
             throw new IllegalArgumentException("ukey == null not allowed");
         }
 
-        String ikey;
-
-        try {
-            ikey = PubKeys.u2i(ukey);
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
-
+        String ikey = PubKeys.u2i(ukey);
         byte[] bytes = getBytesAtLookupTime(lookupTime, Keys.toSegments(ikey));
         return bytes != null;
     }

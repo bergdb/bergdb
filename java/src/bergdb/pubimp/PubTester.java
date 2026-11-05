@@ -520,6 +520,49 @@ public class PubTester {
         }
     }
     
+    /**
+     * bergdb 019-05: exists() of a key that does not follow the allowed format throws
+     * IllegalArgumentException, as get() does, in a connection and in an rw-transaction
+     * alike: an empty key, one without the leading '/', '/' alone, one ending with '/'
+     * and one with "//". Until 019-05 a connection's exists() answered false for it; an
+     * rw-transaction's threw, and c.rw() throws it (the test pins that).
+     */
+    @Nano
+    public static void testExistsOfMalformedKeyThrows() {
+        Database db = Factory.database().memory().start();
+        try {
+            final Connection c = db.connection();
+            c.put("/a/b", "v");
+            for (final String key : new String[] {"", "a/b", "/", "/a/", "/a//b"}) {
+                String k = "key '" + key + "'";
+                assertIllegalKey(k + ", connection get()", () -> c.get(key, String.class));
+                assertIllegalKey(k + ", connection exists()", () -> c.exists(key));
+                assertIllegalKey(k + ", rw-transaction get()", () -> c.rw(new Action() {
+                    public void run(RwEnvironment env) {
+                        env.get(key, String.class);
+                    }
+                }));
+                assertIllegalKey(k + ", rw-transaction exists()", () -> c.rw(new Action() {
+                    public void run(RwEnvironment env) {
+                        env.exists(key);
+                    }
+                }));
+            }
+            Assert.assertTrue("a valid key after the refused ones", c.exists("/a/b"));
+        } finally {
+            db.close();
+        }
+    }
+    
+    private static void assertIllegalKey(String what, Runnable read) {
+        try {
+            read.run();
+        } catch (IllegalArgumentException e) {
+            return;
+        }
+        throw new AssertionError(what + ": expected IllegalArgumentException");
+    }
+    
     public static class Person {
         public String name;
         

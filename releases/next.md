@@ -30,6 +30,16 @@ Pub API
   `open(p)`. 2026.2's recipe for that (check `created.txt` before
   `start()`) is no longer needed. `memory()` is unchanged; the Core API
   and the stream are unchanged.
+* **`exists()` of a malformed key throws `IllegalArgumentException`, as
+  `get()` does** (bergdb 019-05; Frans, 2026-11-05). A connection's
+  `exists()` answered `false` for a key that does not follow the allowed
+  format (empty, without the leading `/`, `/` alone, ending with `/`, or
+  with `//`), where `get()` threw, and an rw-transaction's `exists()` threw
+  too; now the two agree with `get()`. A program that passed such a key to
+  a connection's `exists()` gets the exception where it got `false`: a call
+  that is a programming error, as a null key already was. The Javadoc of
+  `Connection.exists` and `ReadInterface.exists` says so. The Core API and
+  the stream are unchanged.
 
 
 Reliability

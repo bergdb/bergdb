@@ -1,7 +1,7 @@
 019-05. Fix: Connection.exists() answers false for a malformed key, where get() throws
 =====================================================================================
 
-Status: waiting. Kind: Fix. Frans: decision.
+Status: done. Kind: Fix. Frans: decision.
 Created 2026-11-05 by Frans Lundberg.
 
 What: `ConnectionImp.exists(ukey)` catches the `IllegalArgumentException`
@@ -72,3 +72,25 @@ Log
 2026-11-05. Registered by session bergdb-e8 at Frans's word (12:35: "OK,
 register it as 019-05."). Status waiting, for Frans's choice between (a)
 and (b).
+
+2026-11-05, 12:56. Frans chose option (a): "as recommended". Status in
+progress, taken by session bergdb-e8's agent.
+
+2026-11-05. Done by session bergdb-e8's agent. The test,
+`PubTester.testExistsOfMalformedKeyThrows`, calls `get()` and `exists()`
+of a connection, and of an rw-transaction (through `c.rw()`), with each
+malformed form above (`""`, `"a/b"`, `"/"`, `"/a/"`, `"/a//b"`), and
+expects `IllegalArgumentException` from each; then `exists("/a/b")` is
+true. Before the fix it failed at the first connection `exists()` ("key
+'', connection exists(): expected IllegalArgumentException"); the
+rw-transaction's calls threw already, and the test pins them. The fix:
+`ConnectionImp.exists()` drops its catch and lets `PubKeys.u2i` throw,
+and its comment says so. The Javadoc of `Connection.exists` and
+`ReadInterface.exists`: `@throws IllegalArgumentException` "If key does
+not follow the allowed format, or is null", as `get()`'s. No other code
+in `java/` (src, src-dev, stress, bench) calls `exists()` with a
+malformed key. `releases/next.md` notes the change under Pub API. 010-01's
+P1 to P12: a check of the argument before the read; no write, no
+setting, no global state, the stream and the Core API unchanged (P2,
+P12); a refused call, not a failure: the database goes on (P7); simpler
+code (P11). JAVADOC PUB OK; BEFORE COMMIT OK (105 s; unit 1168, f 81).

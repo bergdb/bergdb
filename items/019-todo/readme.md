@@ -108,7 +108,6 @@ Open
 |---|---|---|---|---|
 | [019-01](01-metablock-version-high-bytes.md) | Fix | A meta block's version: bytes 6 and 7 unchecked | none | open |
 | [019-02](02-stream-bad-length-exceptions.md) | Fix | Streams refuse a bad length with other exceptions | none | open |
-| [019-05](05-exists-malformed-key.md) | Fix | exists() answers false for a malformed key | decision | waiting |
 
 
 Closed
@@ -116,6 +115,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-05](05-exists-malformed-key.md) | Fix | exists() answers false for a malformed key | decision | done | 2026-11-05 |
 | [019-06](06-perf-harness-old-jar.md) | Fix | Harness fails on 2026.2's jar | none | done | 2026-11-05 |
 | [019-04](04-remove-seekfirstpos.md) | Implement | Remove seekFirstPos() from AppendOnlyStream | none | done | 2026-11-05 |
 | [019-03](03-get-that-copies.md) | Decide | A get that always copies a byte[] value | decision | moved | 2026-11-05 |
@@ -143,8 +143,9 @@ Files
   Implement: `seekFirstPos()` removed from `AppendOnlyStream` and every
   stream, with harness 6.3's checks of it (Frans, 2026-11-05, option (a)).
 * [05-exists-malformed-key.md](05-exists-malformed-key.md). 019-05, Fix:
-  `Connection.exists()` answers `false` for a malformed key, where `get()`
-  and an rw-transaction's `exists()` throw; options for Frans.
+  `Connection.exists()` answered `false` for a malformed key, where `get()`
+  and an rw-transaction's `exists()` throw; now it throws too (Frans,
+  2026-11-05, option (a)).
 * [06-perf-harness-old-jar.md](06-perf-harness-old-jar.md). 019-06, Fix:
   `performance.sh`'s harness does not compile against 2026.2's jar:
   `Perf.java` uses 005-47's `FileStream(File, boolean)`, which 2026.2
@@ -198,3 +199,8 @@ agent's finding (`Perf.java` uses `FileStream(File, boolean)`, which
 `FileStream(File, boolean)` by reflection, failing plainly where it is
 missing; the harness compiles against 2026.2's jar and main's again
 (2026.1's lacks `bergdb.pub.util.SyncLevel`, 005-56); BEFORE COMMIT OK.
+
+2026-11-05. 019-05 done: at Frans's choice (12:56, option (a)), a
+connection's `exists()` throws `IllegalArgumentException` for a malformed
+key, as `get()` and an rw-transaction's `exists()` do; the Javadoc says
+so; BEFORE COMMIT OK.

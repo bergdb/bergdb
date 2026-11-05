@@ -107,7 +107,8 @@ public interface Connection extends ReadInterface {
      *            The key to check for.
      * @return true if the key exists.
      * @throws IllegalArgumentException
-     *             if 'key' is null.
+     *             If key does not follow the allowed format, or is null, as for get(),
+     *             and in an rw-transaction (bergdb 019-05).
      * @throws DbException
      *             Thrown if the database is faulty.
      * @throws DbFailedException
