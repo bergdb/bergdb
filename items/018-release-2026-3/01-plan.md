@@ -346,8 +346,7 @@ Fixed one at a time:
   is fixed by its entry: its failing test, the fix, `BEFORE COMMIT OK`,
   and the level script of a mechanism it changes (AGENTS.md), within
   section 2's rules. A new fault becomes a 019 entry (D3); one of the Core
-  joins the goal's list. 015-05, 015-87 and 014-01 wait for Frans's
-  decisions.
+  joins the goal's list. 015-87 and 014-01 wait for Frans's decisions.
 * **W4. The documentation** (section 1, "Ready", 3): kept up to date as
   the fixes go in, and read through before the release.
 * **W5. The release**, made as 2026.2 was (016-09, by 008-01's steps),
@@ -393,3 +392,8 @@ list, for harness 6.1's class. 015-05 is to be discussed further.
 2026-11-05, 10:52. W2's first harness, 6.3, built (018-02): sections 6.3
 and 7 updated. It found 019-02, which joins the goal's list (section
 3.1).
+
+2026-11-05, 11:40. 015-05 decided by Frans (11:34 and 11:39):
+`DatabaseBuilder.create(p)`, as today's `dir(p)`, and `open(p)`, which
+refuses a directory without a database; `dir(p)` removed. No new setting
+(P10). The change started by session bergdb-e8's agent.

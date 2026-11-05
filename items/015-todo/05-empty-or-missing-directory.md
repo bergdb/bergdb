@@ -1,7 +1,9 @@
 015-05. Decide: a start on an empty or missing directory creates a database
 ===========================================================================
 
-Status: open. Kind: Decide. Created 2026-11-03 by Frans Lundberg.
+Status: in progress (decided 2026-11-05: `create(p)` and `open(p)`; the
+change by session bergdb-e8's agent). Kind: Decide. Created 2026-11-03
+by Frans Lundberg.
 
 For Frans, after release 2026.2. 015-01's case 3: a volume that is not
 mounted, or a wrong path. The directory is empty or missing; the start
@@ -79,6 +81,43 @@ Recommendation: B1 in the next release with a public API, since it is
 the only option that covers case 3, and 2026.2 is internal (016-01, D1);
 until then the recipe. Frans decides.
 
+The decision
+------------
+
+Frans, 2026-11-05, 11:34, in a discussion with session bergdb-e8 (after
+his view at 11:12 that an application checks its own state after a start
+anyway, and that he likes the simple `dir(p).start()`):
+
+    Factory.database().create(p).start();  // like today, creates if needed
+    Factory.database().open(p).start();  // opens an existing database in p or throws
+
+"'Create' obviously allows creation. I think 'open' is for things that
+exists already. Like opening a file. I would expect an exception from
+open(p) if p does not exist."
+
+What it means (proposed by bergdb-e8, and Frans's answers at 11:39: "do as
+proposed"):
+
+* `DatabaseBuilder.create(p)` is today's `dir(p)`: it opens the database
+  in `p`, or creates `p` (with its missing parents) and a new database
+  when `p` holds none. 015-01's refusal stays: a directory with
+  `created.txt` and no stream byte is a lost database, not a new one. A
+  directory with other files and no database gets a new database, as
+  today. Java's `StandardOpenOption.CREATE` has the same meaning (create
+  if missing, else open); `CREATE_NEW` would refuse an existing one.
+* `DatabaseBuilder.open(p)` opens the database in `p`, or throws 015-01's
+  `DatabaseMissingException` when `p` is missing, is not a directory, or
+  holds no stream byte; it then creates and writes nothing. It covers
+  case 3 whole, an empty mount point too.
+* `dir(p)` is removed. Its call sites take `create(p)`, and the tools
+  that only read an existing database take `open(p)`. `memory()` is
+  unchanged.
+* No new setting (P10): the intent is in the method that names the
+  directory. The check is in `DatabaseBuilderImp.start()`, beside
+  015-01's; the Core Layer does not change (P12), nor does the stream.
+
+Superseded: B1 (`createIfMissing()`), chosen on 2026-11-03.
+
 Done when: Frans has chosen, and the choice is an Implement entry or a
 known issue.
 
@@ -95,3 +134,7 @@ issue of 2026.2 until then, with the recipe in `DatabaseBuilder`'s Javadoc.
 
 2026-11-05, 11:12. Opened again for discussion by Frans with session
 bergdb-e8; "What other databases do" added at his request.
+
+2026-11-05, 11:39. Decided by Frans: `create(p)` and `open(p)`, `dir(p)`
+removed (section "The decision"); B1 superseded. The change started by
+session bergdb-e8's agent.
