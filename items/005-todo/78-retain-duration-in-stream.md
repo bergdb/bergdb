@@ -712,24 +712,34 @@ for the plan of that day:
   all answers and runs is `0c6c4be`.
 * **U2, first run (07:22):** `RetainProbe.java` (in this entry's directory)
   compiled against the clone's jar and run on the four `l3-*` workloads,
-  5 s. restarts-each gives plain's stream (the same length and sha256
-  from the cut in all four); restarts-once, restarts-50 and after-call do
-  not: after the first restart no iteration starts and no cut is made
-  (`l3-node8`: 1 iteration and 0 cuts against 24 and 22; 4,355,752 bytes
-  kept against 2,094,096). P3: both internal KVs found after 21 to 26
-  cuts and after a restart on the cut stream. P4: no split step at the
-  default reserve. P5: A 204 to 227 kB a call, B 160 to 176 bytes. That
-  run's first-difference column was wrong (it compared bytes from the
+  5 s. Its first-difference column was wrong (it compared bytes from the
   larger first position, past the divergence); fixed at 07:24 to compare
-  the stream lengths after each commit. QUIET-BLOCK from 07:23: no run
-  until it is gone.
-* **U1 and U3 (07:24 to 07:30):** the study's answers (questions 1 to 10,
+  the stream lengths after each commit. QUIET-BLOCK from 07:23 to 07:56:
+  no build or run in it.
+* **U1 and U3 (07:24 to 07:31):** the study's answers (questions 1 to 10,
   with the code) and the design, in `design.md`: F1 to F7, the forms side
-  by side, the evidence, the change, the release.
-* **Next:** the probe again after the quiet block (the fixed comparison,
-  and P4 with `-Dstepreserve=2000`); its table into `design.md`, section
-  4.1 (the line `PROBE-TABLE`), and `probe.txt`; then U4, the stop
-  (the coordinator's).
+  by side, the evidence, the change, the release. Committed `44936c0`,
+  `9d37877`.
+* **U2, done (07:56):** the fixed probe, and P4 with `-Dstepreserve=2000`;
+  output in `probe.txt`, the table in `design.md`, section 4.1.
+  * restarts-each gives plain's stream in all four (lengths after every
+    commit, sha256 from the cut, bytes): no other fault.
+  * restarts-once, restarts-50 and after-call do not: each parts at the
+    first iteration the reference starts after the first restart
+    (`l3-node8`: commit 51), and after it no iteration starts and no cut
+    is made (`l3-node8`: 1 iteration and 0 cuts against 24 and 22;
+    4,355,752 bytes against 1,111,232 from plain's cut).
+  * P3: both internal KVs, under `/#i/dreclaim/` and outside it, found
+    after 21 to 26 cuts and after a restart on the cut stream.
+  * P4: no split step at the default reserve; 763 to 1,858 at 2,000
+    bytes, and other streams.
+  * P5: A 204,152 to 226,848 bytes a call; B 160 to 176 bytes (more when
+    the take adds earlier commits' index nodes).
+* **Not done:** Lean was not run (question 10 confirmed by reading:
+  `lean/Check/Trace.lean` skips the `#` line that carries `kind=`).
+* **Next:** U4, the stop for Frans (the coordinator's): F1 to F7, "For
+  Frans" below. Then U6 after his choice, by `design.md`, section 5; U5's
+  Javadoc goes with U6 (2026.2's notes already carry the known issue).
 * **For the agent:**
   * A probe in `bergdb.core` goes before `build/bergdb.jar` on `-cp`;
     the probe's header gives the commands.

@@ -13,10 +13,12 @@ this file; its output `probe.txt`). The entry is 005-78; its "Plan for
   default, not the one the database ran with. In the probe, `l3-node8` with
   a retain duration of 1 s set once and a restart every 50 commits makes
   1 iteration and no cut, against 24 iterations and 22 cuts without
-  restarts; it keeps 4,355,752 bytes of stream where the run without
-  restarts keeps 2,094,096 (2.1 times), and the gap grows with every
-  commit, as nothing is cut again. With the value set after each start, as
-  every test does today, the streams are the same.
+  restarts: the streams part at commit 51, the first after the first
+  restart, where the run without restarts starts an iteration; at the end
+  it keeps 4,355,752 bytes of stream where the run without restarts keeps
+  1,111,232 from its cut (3.9 times), and the gap grows with every commit,
+  as nothing is cut again. With the value set after each start, as every
+  test does today, the streams are the same, byte for byte.
 * **What Frans decides:** F1 to F7 below; F1, the form, is the approval of
   a format change that 016-01, section 3, asks for.
 * **The recommendation:** B, an internal KV of reclaim's
@@ -39,7 +41,7 @@ this file; its output `probe.txt`). The entry is 005-78; its "Plan for
   back on failure. A start reads it in `Db.handleStartParams`, from the
   last valid meta block, and gives it to `Reclaim`. Cost: about 205 kB of
   stream a call (P5: 204,152 to 226,848 bytes). Checked by the restart test
-  (section 5) and by StreamDigest with a mask of the field.
+  (section 5) and by StreamDigest.
 * **B, an internal KV.** The setter commits, under the write lock, an
   internal transaction (`Trans.isInternal`, as `Reclaim.storeTable`'s) that
   puts `/#i/dreclaim/-settings.txt` with the text `retain=<time units>`
@@ -278,7 +280,72 @@ the full output is `probe.txt`. Modes: `plain` (set at the start),
 100), `after-call` (as `call-100`, a restart right after the call and every
 50 commits after it), `p3` (form B's KV, question 6).
 
-PROBE-TABLE
+| Config | Mode | Iterations | Cuts | Bytes from the cut | Against its reference |
+|---|---|---|---|---|---|
+| l3-every1 | plain | 24 | 22 | 210,496 | the reference |
+| l3-every1 | restarts-each | 24 | 22 | 210,496 | the same stream |
+| l3-every1 | restarts-once | 0 | 0 | 1,430,000 | parts at commit 3, an iteration not started |
+| l3-every1 | restarts-50 | 1 | 0 | 1,438,040 | parts at commit 53, an iteration not started |
+| l3-every1 | call-100 | 22 | 20 | 227,584 | parts at commit 3 |
+| l3-every1 | after-call | 0 | 0 | 1,430,000 | parts at commit 101, an iteration not started |
+| l3-node8 | plain | 24 | 22 | 1,111,232 | the reference |
+| l3-node8 | restarts-each | 24 | 22 | 1,111,232 | the same stream |
+| l3-node8 | restarts-once | 1 | 0 | 4,355,752 | parts at commit 51, an iteration not started |
+| l3-node8 | restarts-50 | 1 | 0 | 4,355,752 | parts at commit 51, an iteration not started |
+| l3-node8 | call-100 | 22 | 20 | 974,400 | parts at commit 5 |
+| l3-node8 | after-call | 0 | 0 | 4,355,480 | parts at commit 101, an iteration not started |
+| l3-node14 | plain | 34 | 22 | 144,840 | the reference |
+| l3-node14 | restarts-each | 34 | 22 | 144,840 | the same stream |
+| l3-node14 | restarts-once | 1 | 0 | 1,372,632 | parts at commit 99, an iteration not started |
+| l3-node14 | restarts-50 | 1 | 0 | 1,372,632 | parts at commit 99, an iteration not started |
+| l3-node14 | call-100 | 31 | 22 | 154,504 | parts at commit 27 |
+| l3-node14 | after-call | 0 | 0 | 1,388,128 | parts at commit 101, an iteration not started |
+| l3-node62 | plain | 27 | 25 | 953,992 | the reference |
+| l3-node62 | restarts-each | 27 | 25 | 953,992 | the same stream |
+| l3-node62 | restarts-once | 2 | 0 | 6,133,176 | parts at commit 126, an iteration not started |
+| l3-node62 | restarts-50 | 1 | 0 | 5,906,824 | parts at commit 81, an iteration not started |
+| l3-node62 | call-100 | 25 | 23 | 1,274,280 | parts at commit 16 |
+| l3-node62 | after-call | 0 | 0 | 5,961,488 | parts at commit 101, an iteration not started |
+
+* "Bytes from the cut": the stream's length minus the decided cut
+  (`max(firstPos, getFirstAvailablePos())`, as StreamDigest's sha256); 0
+  without a cut. "Parts at commit n" (counted from 1): the first commit
+  after which the two streams have other lengths; "an iteration not
+  started": the reference starts one there and this run does not.
+* **restarts-each gives plain's stream** in all four: the lengths after
+  every commit, the sha256 from the cut and the bytes from the larger
+  first position are equal. So nothing else differs; the check of U2 holds.
+* **restarts-once, restarts-50 and after-call do not.** Each parts at the
+  first iteration that the reference starts after the first restart
+  (`l3-node8`: commit 51, right after the restart that follows commit 50;
+  after-call: commit 101, right after the call and its restart). An
+  iteration already in progress at the restart goes on to its end (its row
+  is in the table; `transactionCompleted` steps whatever the retain
+  duration), but none starts after it (`retainDuration != Long.MAX_VALUE`
+  fails), and no cut is ever made (`pretruncateIfPossible`: `timeNow -
+  Long.MAX_VALUE` is never past `tEnd`). The stream then grows without a
+  bound: at the end of these short runs, 3.9 to 9.5 times the bytes that
+  plain keeps from its cut (after-call: 4.5 to 9.0 times call-100's).
+* call-100 differs from plain only because the call comes later; it is
+  after-call's reference.
+* **P3, question 6** (form B): an internal transaction after commit 10
+  puts `/#i/dreclaim/-probe.txt` and `/#i/probe/retain.txt` (at stream
+  position 2,288 to 6,664). After 21 to 26 cuts, the first position at 1
+  to 9 MB, both are found by `getOne` at `Long.MAX_VALUE`, and again after
+  a restart on the cut stream: the steps rewrote them.
+* **P4, question 9.** At the default step reserve (4 MiB) no step is split
+  in any of the four. With `-Dstepreserve=2000` (the smallest that the
+  stress programs use, 001-08) 763 to 1,858 steps are split, and every
+  plain stream differs from the default's (`l3-node8`: 9,309,144 bytes
+  against 7,094,096); restarts-each still equals plain, as each start
+  reads the same property. So the reserve changes the bytes only below
+  its default.
+* **P5, the costs**, after plain's run: one call as `setStartupDistance`
+  makes it (A) 204,152 to 226,848 bytes; one internal transaction with a
+  30-byte value (B) 160 and 176 bytes in `l3-node14` and `l3-node62`, and
+  1,976 and 12,744 in `l3-every1` and `l3-node8`, whose small startup
+  distances (500 and 1,000 bytes) make the take put earlier commits' index
+  nodes in it (they would go in the next commit otherwise).
 
 ## 4.2 The study: questions 1 to 10, from `0c6c4be`
 

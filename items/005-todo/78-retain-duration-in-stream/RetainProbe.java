@@ -35,11 +35,12 @@ import bergdb.stream.MemoryStream;
  *
  *   cd java && ./build.sh
  *   mkdir -p /tmp/probe && javac -nowarn -d /tmp/probe -cp build/bergdb.jar:build/stress \
- *       ../items/.../78-retain-duration-in-stream/RetainProbe.java
+ *       ../items/005-todo/78-retain-duration-in-stream/RetainProbe.java
  *   java -ea -cp /tmp/probe:build/bergdb.jar:build/stress bergdb.core.RetainProbe all
  *   java -ea -Dstepreserve=N ... bergdb.core.RetainProbe l3-node8     (P4: the step reserve)
  *
- * Every database it starts is stopped; a restart starts on MemoryStream.copy(), as
+ * The output of 2026-11-05 on 0c6c4be is probe.txt, beside this file (design.md, section
+ * 4.1). Every database it starts is stopped; a restart starts on MemoryStream.copy(), as
  * StreamDigest does (a closed MemoryStream refuses appends).
  */
 public class RetainProbe {
