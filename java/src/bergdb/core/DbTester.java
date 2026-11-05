@@ -1810,6 +1810,51 @@ public class DbTester {
         db.close();
     }
     
+    /**
+     * setStartupDistance clamps its argument to 400,000 (twice META_BLOCK_DISTANCE) to
+     * 10^9 bytes and sets the clamped value; a call whose clamped value is the setting in
+     * force writes nothing (bergdb 015-76, 016-06's R6-F5). The builder allows settings
+     * outside that range (the tests use 100 to 2,000): on such a database a call with the
+     * setting in force sets the clamped value and writes the 200 kB transaction, as the
+     * Javadoc now says. A negative value is refused and changes nothing.
+     */
+    @Nano
+    public static void testSetStartupDistanceClamped() {
+        int min = bergdb.storage.RecoverableStream.META_BLOCK_DISTANCE * 2;
+        int max = 1000 * 1000000;
+        Assert.assertEquals(400 * 1000, min);
+        try (Db db = Db.builder().testSetup().startupDistance(2000).start()) {
+            db.execute(db.trans().put("key", "value").build());
+            long length = db.getStreamLength();
+            
+            db.setStartupDistance(2000);
+            Assert.assertEquals("below the range", min, db.getStartupDistance());
+            Assert.assertTrue("written", db.getStreamLength() > length);
+            
+            length = db.getStreamLength();
+            db.setStartupDistance(100);
+            db.setStartupDistance(min);
+            Assert.assertEquals("the clamped value in force", min, db.getStartupDistance());
+            Assert.assertEquals("nothing written", length, db.getStreamLength());
+            
+            db.setStartupDistance(Integer.MAX_VALUE);
+            Assert.assertEquals("above the range", max, db.getStartupDistance());
+            length = db.getStreamLength();
+            db.setStartupDistance(max + 1);
+            Assert.assertEquals("nothing written above", length, db.getStreamLength());
+            
+            Exception ex = null;
+            try {
+                db.setStartupDistance(-1);
+            } catch (IllegalArgumentException e) {
+                ex = e;
+            }
+            Assert.assertTrue("negative refused", ex != null);
+            Assert.assertEquals(max, db.getStartupDistance());
+            Assert.assertEquals("nothing written, negative", length, db.getStreamLength());
+        }
+    }
+    
     @Nano
     public static void testGetOp() {
         Db db = Db.builder().testSetup().start();

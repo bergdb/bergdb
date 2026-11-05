@@ -63,6 +63,7 @@ Open
 | [015-70](70-budget-decrease-above-budget.md) | Fix | A budget decrease can settle above budget although the pins fit | open |
 | [015-71](71-audit-empty-handle-cleanup.md) | Fix | The audit reports a valid empty-handle cleanup as a bad table entry | open |
 | [015-76](76-startup-distance-clamp.md) | Fix | Db.setStartupDistance clamps to 400,000 to 10^9 bytes without ... | open |
+| [015-78](78-close-ioexception-discarded.md) | Fix | The consumer discards the first storage-close IOException | open |
 | [015-80](80-buffer-concurrent-writes.md) | Fix | The buffer issues concurrent writes to a single-writer underlying ... | open |
 | [015-82](82-pending-cut-after-close.md) | Fix | A pending cut arriving during another cut can be left unapplied ... | open |
 | [015-83](83-read-past-end-exception.md) | Fix | A read past the end throws IOException instead of the documented ... | open |
@@ -75,6 +76,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-76](76-startup-distance-clamp.md) | Fix | Db.setStartupDistance clamped without saying so | done | 2026-11-05 |
 | [015-63](63-time-tostring-threads.md) | Fix | Time.toString() from several threads gave wrong strings | done | 2026-11-05 |
 | [015-73](73-startup-pos-unchecked.md) | Fix | A startupPos on an earlier record's start: outside the fault model | done | 2026-11-05 |
 | [015-58](58-testclock-current-time.md) | Fix | TestClock.setTime() refused the clock's current time | done | 2026-11-05 |

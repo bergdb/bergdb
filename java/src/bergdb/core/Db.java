@@ -330,8 +330,13 @@ public class Db implements AutoCloseable {
      * of about 1.4 times the bytes of the dirty index nodes at the decrease. This method
      * commits a transaction with a value of 200 kB, so that a meta block in the stream
      * records the new setting: a start reads it from there, as the setting decides the
-     * stream's bytes (010-P2). A call with the setting in force writes nothing (bergdb
-     * 005-53). On a database that is not active the call throws as a transaction does
+     * stream's bytes (010-P2). The value is clamped to 400,000 to 1,000,000,000 bytes
+     * (twice RecoverableStream.META_BLOCK_DISTANCE to 10^9), and the clamped value is set; a
+     * call whose clamped value is the setting in force writes nothing (bergdb 005-53). So on
+     * a database whose setting is outside that range, which DbBuilder.startupDistance allows
+     * (10 bytes and up), any call writes and sets a value inside it (bergdb 015-76). A
+     * negative value is refused with IllegalArgumentException and changes nothing. On a
+     * database that is not active the call throws as a transaction does
      * (IllegalDbStateException, DbStoppingException, DbFailedException), and a call that
      * is refused leaves the setting as it was.
      */

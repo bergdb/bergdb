@@ -321,6 +321,16 @@ Internal
 Documentation
 -------------
 
+* **`Db.setStartupDistance` says that it clamps its value** (bergdb
+  015-76, 016-06's R6-F5; 2026-11-05). In the Core API (and JMX's
+  `setStartupDistance`), the value is clamped to 400,000 to 1,000,000,000
+  bytes and the clamped value is set; a call whose clamped value is the
+  setting in force writes nothing. The Javadoc said that a call with the
+  setting in force writes nothing, which did not hold for a setting outside
+  the range, which `DbBuilder.startupDistance` allows: there any call
+  writes its 200 kB transaction and sets a value inside the range. The
+  Pub API clamps to 5 to 1000 MB first and is not affected. The code and
+  the stream's bytes are unchanged.
 * **A value transformation's result is the caller's to keep within the
   limit** (bergdb 015-51, 016-06's R7-F2; 2026-11-05). In the Core API, a
   transaction's size is checked before its go point (005-17), with a value
