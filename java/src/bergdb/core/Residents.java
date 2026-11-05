@@ -49,7 +49,8 @@ import bergdb.nanotest.Nano;
  * taken away with the object or the pointer it was added for, and no more; it is exact but for
  * the objects the writer changed since their last count, which it counts below their bytes
  * (bergdb 015-15). Before step 3b the estimate was made exact by walks of the resident objects
- * after each sweep (resync, which the audit and the test schedules still use).</p>
+ * after each sweep (resync, which the test schedules still use, since bergdb 015-69 by
+ * differences).</p>
  *
  * <p><b>Pins</b> (the model's `HMem.pinned`, lean/SIS/Handle.lean): the objects that eviction
  * must keep: the canonical objects of the nodes of D (TransSeq; dirty), those of the record
@@ -222,23 +223,29 @@ public final class Residents {
     }
 
     /**
-     * Sets the estimate to the bytes of the resident objects 'objects' (a walk's), each index
-     * object counted with its bytes now (bytesOf), values with their holders; for the test
-     * schedules and the audit. The caller holds Db.writeLock, between transactions.
+     * Counts each index object of 'objects' (a walk's resident objects) that is counted with
+     * its bytes now (bytesOf), values with their holders, and moves the total by the
+     * difference, under the object's monitor; for the test schedules. An object that is not
+     * counted is skipped: it left its handle since the walk (released), or it is not
+     * resident. The caller holds Db.writeLock, between transactions. Readers do not take that
+     * lock: a load puts a value into an object, under the object's monitor (valueIn), before
+     * or after the object's count here, and its bytes stay in the total either way. Until
+     * bergdb 015-69 (016-06's R4-F4) the total was set to the sum of the walk's counts, and
+     * so lost the bytes of a load into an object counted before the sum ended.
      */
     public void resync(Iterable<Node> objects) {
-        long b = 0, n = 0;
         for (Node o : objects) {
             if (!o.isIndexNode()) continue;
             synchronized (o) {
+                int old = counted(o);
+                if (old < 0) continue;
                 int size = bytesOf(o);
-                setCounted(o, size);
-                b += size;
-                n++;
+                if (size != old) {
+                    setCounted(o, size);
+                    bytes.addAndGet(size - old);
+                }
             }
         }
-        bytes.set(b);
-        this.objects.set(n);
     }
 
     /** The estimated bytes of the resident objects. */
@@ -433,6 +440,56 @@ public final class Residents {
         Assert.assertEquals(0L, r.objects());
         Assert.assertEquals(0L, r.bytes());
         Assert.assertEquals(0, r.released(k));              // released once
+        Assert.assertEquals(0L, r.objects());
+    }
+
+    /**
+     * A resync (the test schedules) while a reader loads a value (bergdb 015-69, 016-06's
+     * R4-F4): the reader does not take the write lock that the resync's caller holds, and
+     * puts a value into an object that the resync has counted, under the object's monitor,
+     * while the resync waits for the monitor of the next. The reader's bytes stay in the
+     * total: once every object is released, the total is 0. Until 015-69 the resync set the
+     * total to its own sum when it ended, which did not have them: -156 here.
+     */
+    @Nano
+    public static void testResyncWithConcurrentLoad() throws InterruptedException {
+        final Residents r = new Residents();
+        final KeyNode holder = KeyNode.nodeWithTime(10);
+        holder.addToEnd(Klong.createKey(new byte[] {1}), null, 1000);  // a stream pointer
+        final KeyNode last = KeyNode.nodeWithTime(10);
+        r.added(holder);
+        r.added(last);
+        ValueNode v = new ValueNode(new byte[100], 1000);
+        final Throwable[] problem = new Throwable[1];
+        Thread resync = new Thread(new Runnable() {
+            public void run() {
+                try {
+                    r.resync(java.util.Arrays.<Node>asList(holder, last));
+                } catch (Throwable x) {
+                    problem[0] = x;
+                }
+            }
+        }, "resync");
+        synchronized (last) {
+            resync.start();
+            long end = System.nanoTime() + 5000L * 1000 * 1000;
+            while (resync.getState() != Thread.State.BLOCKED && System.nanoTime() < end) {
+                Thread.yield();
+            }
+            Assert.assertEquals(Thread.State.BLOCKED, resync.getState());  // at last's monitor
+            synchronized (holder) {                         // a reader's load
+                holder.setPointee(1, v);
+                r.valueIn(holder, v);
+            }
+        }
+        resync.join(5000);
+        Assert.assertFalse(resync.isAlive());
+        Assert.assertTrue("resync threw " + problem[0], problem[0] == null);
+        Assert.assertEquals((long) counted(holder) + counted(last), r.bytes());
+        Assert.assertEquals(bytesOf(holder), counted(holder));
+        r.released(holder);
+        r.released(last);
+        Assert.assertEquals(0L, r.bytes());
         Assert.assertEquals(0L, r.objects());
     }
 

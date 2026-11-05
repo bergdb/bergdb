@@ -335,7 +335,8 @@ public final class Eviction {
             allReleased += r;
         }
 
-        // 3. The accounting, exact again: the objects that are still resident.
+        // 3. The accounting, exact again: the objects that are still resident, each counted
+        //    with its bytes now (bergdb 015-69: by differences, as readers load meanwhile).
         table.residents().resync(Residents.walk(superRoot, table.nodes(), dObjects));
     }
 
