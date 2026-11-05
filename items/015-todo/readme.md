@@ -55,6 +55,9 @@ Open
 | [015-51](51-transform-size-unchecked.md) | Fix | A value transformation's result is not size-checked: one above the ... | open |
 | [015-52](52-warmup-read-expired.md) | Fix | `execute()` can be refused with `LookupTimeNotAvailableException`, ... | open |
 | [015-60](60-connections-per-thread-kept.md) | Fix | Database.connection() keeps a connection for every thread that ... | open |
+| [015-55](55-database-time-margin.md) | Fix | A user transaction at the last database time is taken, and ... | open |
+| [015-57](57-resolve-ignores-timezone.md) | Fix | Time.resolve(TimeZone, String) ignores its time zone | open |
+| [015-58](58-testclock-current-time.md) | Fix | TestClock.setTime() refuses the clock's current time, which its ... | open |
 | [015-61](61-deletion-job-done-at-stop.md) | Fix | A deletion job that stop() or close() ends early reports "Done! ... | open |
 | [015-65](65-memory-builder-second-start.md) | Fix | A second start() of a memory() builder whose database runs is not refused | open |
 | [015-76](76-startup-distance-clamp.md) | Fix | Db.setStartupDistance clamps to 400,000 to 10^9 bytes without ... | open |
@@ -76,6 +79,7 @@ Closed
 | [015-71](71-audit-empty-handle-cleanup.md) | Fix | The audit reports a valid empty-handle cleanup as a bad table entry | done | 2026-11-05 |
 | [015-70](70-budget-decrease-above-budget.md) | Fix | A budget decrease can settle above budget although the pins fit | done | 2026-11-05 |
 | [015-69](69-resync-overwrites-readers.md) | Fix | A test-schedule resync overwrites concurrent readers' accounting | done | 2026-11-05 |
+| [015-60](60-connections-per-thread-kept.md) | Fix | Database.connection() keeps a connection for every thread that ... | done | 2026-11-05 |
 | [015-41](41-object-key-two-maps.md) | Fix | A String or bytes and an object, or a delete, of one key: the call ... | done | 2026-11-05 |
 | [015-38](38-jmx-monitor-interrupt.md) | Fix | JMX's monitor thread ends on an interrupt, and stop loses the caller's flag | done | 2026-11-05 |
 | [015-73](73-startup-pos-unchecked.md) | Fix | A startupPos on an earlier record's start: outside the fault model | done | 2026-11-05 |

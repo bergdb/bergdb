@@ -121,6 +121,7 @@ public interface Database extends AutoCloseable {
      * specific thread that calls this method. Two different threads calling this method are
      * guaranteed to get different Connection instances. Each call sets the requested lookup
      * time of the returned Connection to Time.MAX, the latest state (Connection.setLookupTime()).
+     * The database does not keep the connection of a thread that has ended (bergdb 015-60).
      */
     public Connection connection();
 

@@ -911,6 +911,46 @@ public class PubTester {
     }
     
     /**
+     * bergdb 015-60 (review 016-06/R8, R8-F5): Database.connection() keeps no connection for
+     * a thread that has ended. Until 015-60 a map of each thread's connection kept every
+     * thread that had called it, and its connection, until the database stopped: memory
+     * without a bound in a program whose threads come and go.
+     */
+    @Nano
+    public static void testConnectionOfEndedThreadNotKept() throws Exception {
+        final Database db = Factory.database().memory().start();
+        try {
+            final int n = 20;
+            final java.util.List<java.lang.ref.WeakReference<Connection>> refs =
+                    new java.util.ArrayList<java.lang.ref.WeakReference<Connection>>();
+            for (int i = 0; i < n; i++) {
+                Thread t = new Thread(new Runnable() {
+                    public void run() {
+                        refs.add(new java.lang.ref.WeakReference<Connection>(db.connection()));
+                    }
+                });
+                t.start();
+                t.join();
+            }
+            int kept = n;
+            for (int round = 0; round < 50 && kept > 0; round++) {
+                System.gc();
+                db.connection();
+                kept = 0;
+                for (java.lang.ref.WeakReference<Connection> ref : refs) {
+                    if (ref.get() != null) {
+                        kept++;
+                    }
+                }
+            }
+            Assert.assertEquals("the threads' connections", n, refs.size());
+            Assert.assertEquals("connections of ended threads kept", 0, kept);
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
      * bergdb 015-59 (016-06, R8-F4): the requested lookup time of a connection is Time.MAX
      * by default (Connection.setLookupTime()). A new connection had Long.MAX_VALUE, above
      * Time's range, and getLookupTime() threw IllegalArgumentException.

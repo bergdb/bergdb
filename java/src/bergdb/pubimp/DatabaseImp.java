@@ -1,7 +1,7 @@
 package bergdb.pubimp;
 
-import java.util.HashMap;
 import java.util.List;
+import java.util.WeakHashMap;
 import java.util.function.Consumer;
 
 import bergdb.core.Db;
@@ -43,13 +43,15 @@ public class DatabaseImp implements Database {
         // "final" for now, could become a setting.
     private final ClassToObject classToObject;
         // "final" for now, could become a setting.
-    private final HashMap<Thread, Connection> threadLocalConnections;
+    private final WeakHashMap<Thread, Connection> threadLocalConnections;
+        // Weak keys: an ended thread's connection is not kept (bergdb 015-60). Not a
+        // ThreadLocal, whose value in a long-lived thread would keep a stopped database.
     
     private DatabaseImp(final Db db) {
         synchronized (this) {
             assert db != null;
             this.db = db;
-            this.threadLocalConnections = new HashMap<Thread, Connection>();
+            this.threadLocalConnections = new WeakHashMap<Thread, Connection>();
             
             // Note: we could dependency inject CollatorFactory instead of letting this class itself
             // determine based on whether a class in bergdb.pubimpicu exists.

@@ -124,6 +124,11 @@ Reliability
   one key now leave the String; the object stayed (an object put is
   experimental). The last call on a key wins, as for a key with a suffix
   (015-40).
+* **`Database.connection()` keeps no connection for an ended thread**
+  (bergdb 015-60, 016-06's R8-F5; 2026-11-05). Each thread that had called
+  it, and its connection, stayed in the database's map until the database
+  stopped: memory without a bound in a program whose threads come and go.
+  The map now holds its threads weakly.
 * **An `rw()` keeps the connection's frozen lookup time** (bergdb 015-42,
   016-06's S1-F3; 2026-11-05). The reads of an rw-transaction, and the read
   of an object's previous value by a put in a directory with an index, went
