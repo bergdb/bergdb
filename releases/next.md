@@ -71,7 +71,7 @@ Reliability
   been made. It threw `IllegalArgumentException` ("Not a position of a
   transaction, 0."), which the Javadoc does not name. After a get that
   found a value, a later get that finds none leaves `transactionInfo()`
-  describing the value found, as before.
+  describing the value found, as before, and its Javadoc now says so.
 * **`DatabaseBuilder.cryptoKey(CryptoKey.NULL)` after a key means no
   encryption** (bergdb 015-44, 016-06's S1-F5; 2026-11-05), as its Javadoc
   says; NULL was ignored, and the database was encrypted with the earlier

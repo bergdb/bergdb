@@ -155,6 +155,8 @@ public interface Connection extends ReadInterface {
      * value retreived with the get() method: its time and its KVs. The KVs
      * are the user's; those that the database writes itself in the
      * transaction, the entries of an index, are left out.
+     * A get() that finds no entry does not change the value this method describes:
+     * after one, it describes the value retrieved by an earlier get().
      * This method call will always require a read from the database
      * storage, no caching for this query.
      *

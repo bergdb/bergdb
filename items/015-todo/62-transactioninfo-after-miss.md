@@ -49,3 +49,14 @@ transaction, 0.`.
 * A line in `releases/next.md` (Reliability).
 * Gate, with 015-42, 48, 59 and 62: `before-commit.sh`: `BEFORE COMMIT OK
   (103 s)`, unit 1155, f 81.
+
+2026-11-05, 12:24. Frans decided the open question. The options as given
+to him, for a get that finds no entry after a get that found a value
+(written by transaction T1), where `transactionInfo()` still describes T1:
+(a) keep it; (b) throw `IllegalStateException` after a get that found
+nothing (R8-F7's proposal); (c) keep it and say it in the Javadoc. His
+answer: "as recommended", (c). Changed: the Javadoc of
+`Connection.transactionInfo()` now says "A get() that finds no entry does
+not change the value this method describes: after one, it describes the
+value retrieved by an earlier get()."; no code change. A clause in
+`releases/next.md`'s line.
