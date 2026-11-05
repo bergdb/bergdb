@@ -51,18 +51,24 @@ this file; its output `probe.txt`). The entry is 005-78; its "Plan for
   Checked by the restart test and by StreamDigest.
 * **C, reclaim's table.** A field `retain=` in `-table.txt`, stored by the
   setter with `storeTable`. Read at the start by `initFromDb`'s parse.
-  Cost: the table's size a call (estimated: hundreds of bytes to a few kB,
-  with about 30 rows for a long retention; not measured). But the table has no place for a field of
-  its own (each part is a row, and a part without `pStart` throws), it is
-  not stored before the first iteration, and a table without rows makes
+  Cost: the table's size a call (estimated: hundreds of bytes to a few
+  kB, with about 30 rows for a long retention; not measured). But the table
+  has no place for a field of its own (each part is a row, and a part
+  without `pStart` throws), so the field must go in every row; the table is
+  not stored before the first iteration; and a table without rows makes
   today's and older parsers throw (`IterationTable.parse`, "Error in bergdb
   data"); so C changes the table's grammar, and 2026.1 and 2026.2 refuse a
   stream whose table has only the setting.
 * **Recommended: B.** Tens of bytes, not 200 kB; the value lives with
   reclaim's other state and is read where that state is read; older
   versions ignore the key and keep it (their steps rewrite it); nothing in
-  the meta blocks or the table's grammar changes. A is the precedent and
-  close second; C is out on its grammar change.
+  the meta blocks or the table's grammar changes. A is the precedent (one
+  way for both kept settings) and a close second: its value needs no
+  rewrite to survive cuts, and a new database can write it in its first
+  transaction's meta block at no cost, as the startup distance; but every
+  later call, and a first start on a stream without the value (F4), costs
+  a 200 kB transaction, which is an external one that reclaim counts. C is
+  out on its grammar change.
 * **What follows:** the format gains one reserved internal key (016-01,
   section 3's list: "the reserved internal keys"); the C clone reads and
   writes the KV later (U7).
@@ -232,9 +238,9 @@ a table that may have no rows).
 
 **The C clone later (U7).** A: the meta block's field, read and written.
 B: the key read at the start, the record written by the setter, as the
-clone's reclaim reads and stores its table. C: the table's parser and
-writer. B and A are about the same; C the most. Not checked in the clone's
-code today.
+clone's reclaim reads and stores its table under the same prefix (012's
+`c/src/reclaim.h`: `RC_TABLE_KEY_NAME`, `RC_CURRENT_KEY_NAME`). C: the
+table's parser and writer. B and A are about the same; C the most.
 
 **Lean and the traces.** Nothing in the model changes in any form (Q10):
 A's meta blocks are not modelled and its 200 kB transaction is an ordinary
@@ -251,7 +257,10 @@ every `TX` alike.
 * B: one more reserved key; the record is internal, so
   `Reclaim.transactionCompleted` makes no decision at it (as for a table
   store), and `Connection.transactionInfo` never reaches it (no user value
-  points to it); the start's read is one more `getOne`.
+  points to it); the start's read is one more `getOne`. Its survival rests
+  on the step's scan reaching internal keys, as the table's and the current
+  row's do; a change that made the scan skip them would lose it, so a unit
+  test checks it (section 5).
 * C: older versions fail on a table without rows; the table's grammar
   and every table store carry the setting; the C clone's parser.
 
@@ -366,7 +375,47 @@ in force from `handleStartParams`; a KV (B) or a table field (C) from
   * a call with the value in force writes nothing (the length unchanged);
   * a stream without the value starts with the builder's, and writes it
     once if finite (F4);
-  * with F7 option 1, the fraction kept across a restart.
+  * with F7 option 1, the fraction kept across a restart;
+  * B: the setting's KV found after three cuts or more, and after a restart
+    on the cut stream (the probe's P3).
+
+  The restart test, as a sketch (`RetainProbe.run` has the working code,
+  with `StreamDigest`'s workload):
+
+  ```java
+  /** The retain duration set once is kept over restarts (bergdb 005-78). */
+  @Nano private static void retainDurationKeptOverRestarts() {
+      String plain = run(false), restarts = run(true);
+      Assert.assertEquals(plain, restarts);   // fails on 0c6c4be
+  }
+
+  /** The digest from the decided cut; restarts: after the call, then every 50. */
+  private static String run(boolean restarts) {
+      MemoryStream stream = new MemoryStream();
+      CoreTestClock clock = new CoreTestClock();
+      Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(1000)
+              .maxNodeSize8().start();       // the builder's default: forever
+      Random rnd = new Random(1);
+      for (int i = 1; i <= 2000; i++) {
+          clock.setTime(i * Clock.UNITS_PER_SEC / 10);
+          db.execute(db.trans().put("/k/" + rnd.nextInt(500), new byte[1 + rnd.nextInt(40)]));
+          if (i == 100) db.setRetainDuration(Clock.UNITS_PER_SEC);
+          if (restarts && i >= 100 && i % 50 == 0 && i < 2000) {
+              db.sync(SyncLevel.ORDINARY);
+              db.stop();
+              stream = stream.copy();
+              db = Db.builder().testSetup(stream).clock(clock).startupDistance(1000)
+                      .maxNodeSize8().start();   // the value not set again
+          }
+      }
+      db.sync(SyncLevel.ORDINARY);
+      long cut = Math.max(stream.getFirstPos(), db.getFirstAvailablePos());
+      String digest = sha256(stream, cut) + " " + stream.getLength();
+      Assert.assertTrue("cuts", stream.getFirstPos() > 0);
+      db.stop();
+      return digest;
+  }
+  ```
 * **StreamDigest:** a fourth mode, `restarts-once`, that sets the value
   after the first start only, and must give plain's stream; the 8
   configurations without a retain duration unchanged (F5 option 1); the 4
