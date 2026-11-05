@@ -457,6 +457,73 @@ public class PubTester {
         }
     }
     
+    /**
+     * bergdb 015-64: key replace replaces every "${transactionTime}" of a key, as
+     * Connection.setEnableKeyReplace() says ("occurrences"); before 015-64, only the last.
+     */
+    @Nano
+    public static void testKeyReplaceEveryOccurrence() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.connection();
+            c.setEnableKeyReplace(true);
+            String key = "/a/${transactionTime}/b/${transactionTime}${transactionTime}.txt";
+            Transaction t = c.put(key, "v");
+            String time = String.format(Locale.US, "%018d", t.getTime().units());
+            String replaced = "/a/" + time + "/b/" + time + time + ".txt";
+            Assert.assertEquals("every occurrence replaced", "v", c.get(replaced, String.class));
+            assertNoEntry("only the last two replaced", 
+                    c.get("/a/${transactionTime}/b/" + time + time + ".txt", String.class));
+            assertNoEntry("only the last replaced", 
+                    c.get("/a/${transactionTime}/b/${transactionTime}" + time + ".txt", 
+                    String.class));
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * bergdb 015-47: the database keeps its own copy of a byte[] value. A change of the
+     * array of a put, after the put, by Connection.put, WBuilder.put or RwEnvironment.put,
+     * does not change the stored value; nor does a change of an array that a get
+     * returned, by get(key, byte[].class) or get(key, Object.class). Before 015-47, the
+     * value in memory was the caller's array, and a get returned it.
+     */
+    @Nano
+    public static void testByteArrayValueIsNotShared() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.connection();
+            final byte[] b1 = {1, 2, 3};
+            final byte[] b2 = {1, 2, 3};
+            final byte[] b3 = {1, 2, 3};
+            c.put("/b1.bin", b1);
+            c.w().put("/b2.bin", b2).execute();
+            c.rw(new Action() {
+                public void run(RwEnvironment env) {
+                    env.put("/b3.bin", b3);
+                }
+            });
+            b1[0] = 9;
+            b2[0] = 9;
+            b3[0] = 9;
+            c.get("/b1.bin", byte[].class)[1] = 9;
+            ((byte[]) c.get("/b2.bin", Object.class))[1] = 9;
+            c.rw(new Action() {
+                public void run(RwEnvironment env) {
+                    env.get("/b3.bin", byte[].class)[1] = 9;
+                }
+            });
+            
+            for (String key : new String[] {"/b1.bin", "/b2.bin", "/b3.bin"}) {
+                Assert.assertEquals("the value at " + key, "[1, 2, 3]", 
+                        Arrays.toString(c.get(key, byte[].class)));
+            }
+        } finally {
+            db.close();
+        }
+    }
+    
     public static class Person {
         public String name;
         

@@ -152,6 +152,9 @@ public class Trans {
     
     /**
      * Used to create a transaction.
+     * A value's array is not copied: once put, it is the database's, and the caller must not
+     * change it; the value in memory is that array. The Pub API copies a byte[] value at
+     * its put (bergdb 015-47).
      */
     public static class Builder {
         // Note This class does not enforce uniqueness of elements in keyReadSet, kvs, vkeyHashes.

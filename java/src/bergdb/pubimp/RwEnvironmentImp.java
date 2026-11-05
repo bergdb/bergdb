@@ -307,7 +307,9 @@ public class RwEnvironmentImp implements RwEnvironment {
         
         if (clazz.equals(byte[].class)) {
             // NOTE, No check here, but we could force suffix != EMPTY.
-            setBytes(ikey, (byte[]) object);
+            // A copy: the value in memory must not be the caller's array, which the caller
+            // may change after the put (bergdb 015-47).
+            setBytes(ikey, ((byte[]) object).clone());
         } else if (clazz.equals(String.class)) {
             setBytes(ikey, StringUtil.toBytes((String) object));
         } else {
@@ -509,19 +511,25 @@ public class RwEnvironmentImp implements RwEnvironment {
             assert timeBytes.length == REPLACE_ME_LENGTH;
             boolean found = false;
             
+            // Every occurrence is replaced, from the end of the key (bergdb 015-64; until
+            // 015-64 only the last). The time's digits cannot form a new occurrence.
             if (bytes.length >= REPLACE_ME_BYTES.length) {
-                for (int startIndex = bytes.length - REPLACE_ME_LENGTH; startIndex >= 0; startIndex--) {
-                    found = true;
+                int startIndex = bytes.length - REPLACE_ME_LENGTH;
+                while (startIndex >= 0) {
+                    boolean match = true;
                     for (int i = 0; i < REPLACE_ME_LENGTH; i++) {
                         if (bytes[startIndex + i] != REPLACE_ME_BYTES[i]) {
-                            found = false;
+                            match = false;
                             break;
                         }
                     }
                     
-                    if (found) {
+                    if (match) {
                         System.arraycopy(timeBytes, 0, bytes, startIndex, REPLACE_ME_LENGTH);
-                        break;
+                        found = true;
+                        startIndex -= REPLACE_ME_LENGTH;
+                    } else {
+                        startIndex--;
                     }
                 }
             }

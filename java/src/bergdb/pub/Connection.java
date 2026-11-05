@@ -127,7 +127,8 @@ public interface Connection extends ReadInterface {
      *            Class of the object to create. The class must in general have
      *            a public no-argument constructor. Use DbObject.class to get
      *            the object data as it is stored in the database. Use
-     *            byte[].class to get the raw bytes as stored in the database.
+     *            byte[].class to get the raw bytes as stored in the database,
+     *            in a new array that the caller may change.
      *            Use String.class to read a String directly from the raw value
      *            bytes assuming that the value stored consists of UTF-8 bytes.
      * @throws DbException
@@ -178,7 +179,8 @@ public interface Connection extends ReadInterface {
      * @param key
      *            The key of the key-value entry. Must begin with "/".
      * @param object
-     *            The object to store. Cannot be null.
+     *            The object to store. Cannot be null. A byte[] is copied: a
+     *            change of the array after the call does not change the value.
      * @throws DbException
      *             If the transaction could not be processed because the
      *             database is faulty.

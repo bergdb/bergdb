@@ -49,6 +49,8 @@ public interface DatabaseBuilder {
      * 
      * @param cryptoKey  
      *      The crypto key to use or CryptoKey.NULL to not use any encryption.
+     *      The last call counts: CryptoKey.NULL after a key means no encryption.
+     * @throws IllegalArgumentException If cryptoKey is null.
      */
     public DatabaseBuilder cryptoKey(CryptoKey cryptoKey);
     

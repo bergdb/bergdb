@@ -72,11 +72,16 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         return this;
     }
     
+    /**
+     * CryptoKey.NULL removes a key given before (bergdb 015-44); until 015-44 it was
+     * ignored, and the database was encrypted with the earlier key.
+     */
     public DatabaseBuilder cryptoKey(CryptoKey cryptoKey) {
-        if (!cryptoKey.isNull()) {
-            this.cryptoKey = cryptoKey;
+        if (cryptoKey == null) {
+            throw new IllegalArgumentException("cryptoKey == null not allowed, "
+                    + "use CryptoKey.NULL for no encryption");
         }
-        
+        this.cryptoKey = cryptoKey.isNull() ? null : cryptoKey;
         return this;
     }
     
@@ -344,6 +349,40 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         database.stop();
         
         Assert.assertEquals(3000L * 1000000, budget);
+    }
+    
+    /**
+     * bergdb 015-44: cryptoKey(CryptoKey.NULL) means no encryption, also after a key: the
+     * stream then starts with the plain magic bytes "berg". Before 015-44, NULL was ignored
+     * and the database was encrypted with the earlier key.
+     */
+    @Nano private static void testCryptoKeyNullAfterKey() throws IOException {
+        MemoryStream m = new MemoryStream();
+        DatabaseBuilderImp b = new DatabaseBuilderImp();
+        b.mainStream(m);
+        b.cryptoKey(CryptoKey.generate()).cryptoKey(CryptoKey.NULL);
+        Database database = b.start();
+        try {
+            database.connection().put("/a.txt", "v");
+        } finally {
+            database.close();
+        }
+        
+        byte[] magic = new byte[4];
+        m.read(0, magic, 0, 4);
+        Assert.assertEquals("the stream's first bytes, plain without encryption", "berg",
+                new String(magic, java.nio.charset.StandardCharsets.ISO_8859_1));
+    }
+    
+    /** bergdb 015-44: cryptoKey(null) is refused, as dir(null) is. */
+    @Nano private static void testCryptoKeyNullRefused() {
+        IllegalArgumentException e = null;
+        try {
+            new DatabaseBuilderImp().cryptoKey(null);
+        } catch (IllegalArgumentException e1) {
+            e = e1;
+        }
+        Assert.assertTrue("IllegalArgumentException for cryptoKey(null)", e != null);
     }
     
     @Nano private static void testStartupDistance2() {

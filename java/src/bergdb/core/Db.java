@@ -1410,6 +1410,8 @@ public class Db implements AutoCloseable {
     /**
      * Gets a value given an exact match with a key. This is the primary and fastest 
      * GET method with no memory allocation.
+     * The array returned is the database's own when the value is in memory: the caller
+     * must not change it. The Pub API returns a copy (bergdb 015-47).
      * 
      * @param lookupTime
      *            The requested lookup time. The time for which to make the lookup. 

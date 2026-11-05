@@ -56,10 +56,7 @@ Open
 | [015-39](39-job-status-mutable.md) | Fix | An index build's status object reads the worker's changing counter | open |
 | [015-41](41-object-key-two-maps.md) | Fix | A String or bytes and an object, or a delete, of one key: the call ... | open |
 | [015-43](43-object-index-read-time.md) | Fix | Index work reads the indexes before the read time: a new or ... | open |
-| [015-44](44-cryptokey-null.md) | Fix | DatabaseBuilder.cryptoKey(CryptoKey.NULL) after a key keeps the key | open |
-| [015-45](45-cryptokey-hashcode.md) | Fix | CryptoKey has equals() and no hashCode() | open |
 | [015-46](46-string-at-object-key-index.md) | Fix | A String or byte[] at an object key in an indexed directory breaks ... | open |
-| [015-47](47-bytes-shared-with-caller.md) | Fix | A byte[] value is shared with the caller: a change of the array ... | open |
 | [015-49](49-review-s2-faults.md) | Fix | Review S2's 27 faults of the indexes and the objects | open |
 | [015-50](50-reclaim-step-too-large.md) | Fix | A reclaim step that rewrites old values beyond the value limit ... | open |
 | [015-51](51-transform-size-unchecked.md) | Fix | A value transformation's result is not size-checked: one above the ... | open |
@@ -71,7 +68,6 @@ Open
 | [015-60](60-connections-per-thread-kept.md) | Fix | Database.connection() keeps a connection for every thread that ... | open |
 | [015-61](61-deletion-job-done-at-stop.md) | Fix | A deletion job that stop() or close() ends early reports "Done! ... | open |
 | [015-63](63-time-tostring-threads.md) | Fix | Time.toString() from several threads gives wrong strings and throws | open |
-| [015-64](64-key-replace-last-only.md) | Fix | Key replace replaces only the last "${transactionTime}" of a key | open |
 | [015-65](65-memory-builder-second-start.md) | Fix | A second start() of a memory() builder whose database runs is not refused | open |
 | [015-66](66-evictor-failure-lock-window.md) | Fix | A failed batch releases the writer lock before failing the database | open |
 | [015-67](67-batch-whole-map.md) | Fix | A batch processes a whole map even past its handle limit | open |
@@ -100,6 +96,10 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-44](44-cryptokey-null.md) | Fix | DatabaseBuilder.cryptoKey(CryptoKey.NULL) after a key keeps the key | done | 2026-11-05 |
+| [015-45](45-cryptokey-hashcode.md) | Fix | CryptoKey has equals() and no hashCode() | done | 2026-11-05 |
+| [015-47](47-bytes-shared-with-caller.md) | Fix | A byte[] value is shared with the caller: a change of the array ... | done | 2026-11-05 |
+| [015-64](64-key-replace-last-only.md) | Fix | Key replace replaces only the last "${transactionTime}" of a key | done | 2026-11-05 |
 | [015-42](42-rw-changes-frozen-time.md) | Fix | An rw() on a connection changes its frozen lookup time | done | 2026-11-05 |
 | [015-48](48-exists-freezes-time.md) | Fix | freezeLookupTime(), then exists(): the frozen time is the read ... | done | 2026-11-05 |
 | [015-59](59-new-connection-lookup-time.md) | Fix | Connection.getLookupTime() of a new connection throws ... | done | 2026-11-05 |

@@ -159,6 +159,14 @@ public class CryptoKey {
         return this.serialize().equals(that.serialize());
     }
     
+    /**
+     * Returns a hash code consistent with equals(): equal keys have equal hash codes
+     * (bergdb 015-45; until 015-45, Object's, by identity).
+     */
+    public int hashCode() {
+        return serialize().hashCode();
+    }
+    
     private static SecureRandom createSecureRandom() {
         SecureRandom r1 = new SecureRandom();
         byte[] seedBytes1 = new byte[64];
@@ -211,6 +219,25 @@ public class CryptoKey {
         }
         
         Assert.assertTrue(ex != null);
+    }
+    
+    /**
+     * bergdb 015-45: equal keys have equal hash codes, as Object.hashCode() requires of a
+     * class that overrides equals(); a HashSet then finds a key parsed again from its
+     * serialized form.
+     */
+    @Nano private static void testHashCode() {
+        CryptoKey key1 = CryptoKey.generate();
+        CryptoKey key2 = CryptoKey.parse(key1.serialize());
+        Assert.assertTrue("equal", key1.equals(key2));
+        Assert.assertEquals("the hash codes of equal keys", key1.hashCode(), key2.hashCode());
+        
+        java.util.HashSet<CryptoKey> set = new java.util.HashSet<CryptoKey>();
+        set.add(key1);
+        Assert.assertTrue("a HashSet finds the equal key", set.contains(key2));
+        Assert.assertTrue("NULL equals NULL, with equal hash codes", 
+                CryptoKey.NULL.equals(CryptoKey.NULL) 
+                && CryptoKey.NULL.hashCode() == CryptoKey.NULL.hashCode());
     }
     
     @Nano private static void testNull1() {
