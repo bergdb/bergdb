@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import bergdb.common.Util;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.ReadBelowFirstPosException;
 
@@ -269,6 +270,7 @@ public class StorageManager implements AppendOnlyStream {
         if (e0 != null) {
             throw new IOException(e0);
         }
+        Util.checkRange(dest, destOffset, length);     // Bergdb 019-02, whatever the stream.
         
         try {
             mainStream.read(position, dest, destOffset, length);
@@ -333,11 +335,11 @@ public class StorageManager implements AppendOnlyStream {
             throw new IOException(e0);
         } else if (!isStarted) {
             throw new IllegalStateException("Storage manager not started, call start().");
-        } else if (length < 0) {
-            // Refused before anything changes (2026-11-05, bergdb 015-79): the length was
-            // lowered by it. Not an IOException, so the storage does not fail.
-            throw new IllegalArgumentException("negative length, " + length);
         }
+        // Refused before anything changes (2026-11-05, bergdb 015-79): a negative length
+        // lowered the length; and one past the array (bergdb 019-02), whatever the stream
+        // does. Not an IOException, so the storage does not fail.
+        Util.checkRange(source, sourceOffset, length);
         
         try {
             mainStream.append(source, sourceOffset, length);

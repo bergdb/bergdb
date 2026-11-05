@@ -5,6 +5,7 @@ import java.io.EOFException;
 import java.io.IOException;
 
 import bergdb.common.Bug;
+import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.stream.AppendOnlyStream;
@@ -397,7 +398,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         // Reads from buffer are made in synchronized block; it is very fast.
         //
 
-        assert dest.length - destOffset >= length;
+        Util.checkRange(dest, destOffset, length);     // Bergdb 019-02: was an assert.
 
         long pos1 = position;
         long pos2 = position + length - 1;
@@ -516,10 +517,9 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 }
                 // Refused before anything changes (2026-11-05, bergdb 015-79): a negative
                 // length returned as an append of nothing, and StorageManager lowered its
-                // length by it.
-                if (length < 0) {
-                    throw new IllegalArgumentException("negative length, " + length);
-                }
+                // length by it. A length past the array, an array exception at the copy, too
+                // (bergdb 019-02).
+                Util.checkRange(source, sourceOffset, length);
 
                 while (length > 0) {
                     int available = availableBufferSize();

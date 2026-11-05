@@ -41,7 +41,6 @@ public final class StreamContract {
      */
     static final String[] SKIP = {
         "015-80",
-        "019-02",
     };
 
     /**

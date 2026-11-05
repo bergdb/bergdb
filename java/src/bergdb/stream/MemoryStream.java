@@ -179,6 +179,7 @@ public class MemoryStream implements AppendOnlyStream {
             throw new IllegalArgumentException("Negative position not allowed, " 
                     + position + ".");
         }
+        Util.checkRange(dest, off, len);     // Bergdb 019-02: was an array exception.
         
         if (len == 0) {
             return;

@@ -131,6 +131,37 @@ public class Util {
         return result;
     }
     
+    /**
+     * Refuses a range that is not in 'array': a negative 'offset' or 'length', or an
+     * 'offset' + 'length' greater than array.length, with IllegalArgumentException. For the
+     * streams' read() and append(), whose Javadoc in AppendOnlyStream promises it, before
+     * anything changes (2026-11-05, bergdb 019-02).
+     */
+    public static void checkRange(byte[] array, int offset, int length) {
+        if (offset < 0 || length < 0 || length > array.length - offset) {
+            throw new IllegalArgumentException("bad offset or length, offset " + offset
+                    + ", length " + length + ", array length " + array.length);
+        }
+    }
+    
+    /** Bergdb 019-02: the ranges that checkRange() refuses, and those it accepts. */
+    @Nano private static void testCheckRange() {
+        byte[] a = new byte[4];
+        int[][] refused = {{0, -1}, {-1, 0}, {-1, 2}, {0, 5}, {1, 4}, {5, 0},
+                {2, Integer.MAX_VALUE}, {Integer.MAX_VALUE, 1}};
+        for (int[] r : refused) {
+            try {
+                checkRange(a, r[0], r[1]);
+                throw new AssertionError("accepted offset " + r[0] + ", length " + r[1]);
+            } catch (IllegalArgumentException e) {
+                // Expected.
+            }
+        }
+        for (int[] r : new int[][] {{0, 0}, {0, 4}, {1, 3}, {4, 0}}) {
+            checkRange(a, r[0], r[1]);
+        }
+    }
+    
     public static byte[] subarray(byte[] arr, int offset, int size) {
         byte[] result = new byte[size];
         System.arraycopy(arr, offset, result, 0, size);

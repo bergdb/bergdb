@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Random;
 
 import bergdb.common.Salsa;
+import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -92,6 +93,8 @@ public class SalsaStream implements AppendOnlyStream {
      * other read's I/O, and for what that one waited for, such as the writer's force.
      */
     public void read(long position, byte[] dest, int destOffset, int length) throws IOException {
+        // Bergdb 019-02: array exceptions, after the inner read.
+        Util.checkRange(dest, destOffset, length);
         long blockPos = (position / Salsa.BLOCK_SIZE) * Salsa.BLOCK_SIZE;
         long blockOffset = position % Salsa.BLOCK_SIZE;
         long lengthToRead = blockOffset + length;
@@ -121,6 +124,8 @@ public class SalsaStream implements AppendOnlyStream {
         // 150804 Frans: Memory management substantially improved.
         // no memory allocation in this method.
         
+        // Bergdb 019-02: a negative length returned, a long one threw an array exception.
+        Util.checkRange(source, sourceOffset, length);
         int remainingBytes = length;
         int offset = sourceOffset;
         

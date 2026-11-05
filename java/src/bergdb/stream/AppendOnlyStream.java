@@ -55,7 +55,9 @@ public interface AppendOnlyStream {
      * Reads some bytes from the stream. This method blocks until exactly
      * 'length' number of bytes have been read or an exception has been thrown.
      * 
-     * @throws IllegalArgumentException if 'length' is negative or greater than dest.length.
+     * @throws IllegalArgumentException if 'destOffset' or 'length' is negative, or their sum
+     *      is greater than dest.length (so if 'length' is greater than dest.length); the
+     *      stream is left as it was.
      * @throws IOException if there is an error when reading the data.
      * @throws EOFException if there is not enough data to read.
      */
@@ -75,7 +77,9 @@ public interface AppendOnlyStream {
      * that recovery does not handle (bergdb 014-01; see FileStream). Memory-backed test
      * streams do not provide a hardware-durability guarantee.
      * 
-     * @throws IllegalArgumentException if 'length' is less than 0 or greater than source.length.
+     * @throws IllegalArgumentException if 'sourceOffset' or 'length' is negative, or their
+     *      sum is greater than source.length (so if 'length' is greater than source.length);
+     *      the stream is left as it was.
      * @throws IOException if the data could not be added to the stream.
      */
     public void append(byte[] source, int sourceOffset, int length) throws IOException;

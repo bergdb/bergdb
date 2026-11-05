@@ -297,6 +297,7 @@ public class FileStream implements AppendOnlyStream {
         // and for the writer's append to it.
         //
         checkIOException();
+        Util.checkRange(dest, destOffset, length);     // Bergdb 019-02: IndexOutOfBounds.
         
         int actuallyRead;
         int leftToRead;
@@ -338,10 +339,9 @@ public class FileStream implements AppendOnlyStream {
         
         // Refused before anything changes (2026-11-05, bergdb 015-26): a negative len was
         // added to the last file's length and to the stream's, which hid appended bytes and
-        // failed the next append.
-        if (len < 0) {
-            throw new IllegalArgumentException("negative len, " + len);
-        }
+        // failed the next append. A len past the array, an IndexOutOfBoundsException before,
+        // too (bergdb 019-02).
+        Util.checkRange(source, sourceOffset, len);
         
         int actuallyAppended;
         int leftToAppend;

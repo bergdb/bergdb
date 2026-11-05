@@ -5,6 +5,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import bergdb.common.Util;
+
 /**
  * A simple AppendOnlyStream stored in a single file.
  * Good for testing, but not useful for most real applications since 
@@ -40,6 +42,7 @@ public class OneFileStream implements AppendOnlyStream {
     }
 
     public void append(byte[] source, int sourceOffset, int length) throws IOException {   
+        Util.checkRange(source, sourceOffset, length);     // Bergdb 019-02: IndexOutOfBounds.
         synchronized (rfile) {
             rfile.seek(rfile.length());
             rfile.write(source, sourceOffset, length);
@@ -51,6 +54,7 @@ public class OneFileStream implements AppendOnlyStream {
     }
 
     public void read(long position, byte[] dest, int destOffset, int length) throws IOException {
+        Util.checkRange(dest, destOffset, length);     // Bergdb 019-02.
         synchronized (rfile) {
             rfile.seek(position);
             rfile.readFully(dest, destOffset, length);

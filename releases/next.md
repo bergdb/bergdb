@@ -356,6 +356,17 @@ Internal
   appended bytes and failed the next append; `BufferedStream` returned, and
   `StorageManager` lowered its length. No layer of BergDB passes a negative
   length; the stream's bytes are unchanged.
+* **Every stream refuses a read or an append of a range outside its array
+  with `IllegalArgumentException`** (bergdb 019-02; 2026-11-05), as
+  `AppendOnlyStream`'s Javadoc says, before anything changes: a negative
+  offset or length, or an offset and length that go past the array.
+  `FileStream`, `MemoryStream`, `CutStream`, `OneFileStream`,
+  `SalsaStream`, `BufferedStream` and `StorageManager` threw
+  `IndexOutOfBoundsException`, `ArrayIndexOutOfBoundsException`,
+  `NegativeArraySizeException` or an `AssertionError` (with `-ea`) for
+  some of them, and `SalsaStream` returned on a negative append. The
+  Javadoc now names the offset too. No layer of BergDB passes such a
+  range; the stream's bytes are unchanged.
 * **`FileStream.setMax2G(true)` caps the size of every new file at 2 GB**
   (bergdb 015-33; 2026-11-05): after a start that chose small files from
   the last two, the next file could take the size rule's 10 GB. Nothing in

@@ -2,6 +2,8 @@ package bergdb.stream;
 
 import java.io.IOException;
 
+import bergdb.common.Util;
+
 /**
  * A test stream that enforces pretruncate exactly, written 2026-10-13 for the
  * level 3 tests (docs/levels.md). It wraps a MemoryStream; after
@@ -58,6 +60,7 @@ public class CutStream implements AppendOnlyStream {
     }
 
     public void read(long position, byte[] dest, int destOffset, int length) throws IOException {
+        Util.checkRange(dest, destOffset, length);     // Bergdb 019-02, also below the cut.
         synchronized (this) {
             if (position < cut && length > 0) {
                 throw new ReadBelowFirstPosException("CutStream: read of " + length
