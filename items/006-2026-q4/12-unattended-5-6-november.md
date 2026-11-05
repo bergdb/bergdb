@@ -305,6 +305,23 @@ Times from `date`, CET.
   queue): landings first since then (`land-waiting`); a waiter of the
   coordinator's that matched itself in `pgrep -f` held the gates for five
   minutes.
+* 16:00 to 17:06 W1 landed, each with `before-commit.sh` on the combined
+  tree: 015-53 (fddaf1f), 015-55 (f679430), 015-57 and 015-58 (e24276a),
+  LEVEL 3 OK; 015-35 and 015-81 (dc46c1e), 015-78 and 015-34 (1b66a34),
+  015-32 (37ce61f); 015-63 (825e5b1), 015-76 (f5e73ea, Javadoc only, R6-F5's
+  first option); 015-69 (27d1b07), 015-70 (611d9c5), 015-71 (70d8ec2),
+  LEVEL 4 OK; 015-38 (bf80659), 015-41 (439ec79), 015-60 (3dea90a); 015-82
+  (6b7f5b2), 015-31 (fc87e5c), 015-83 (d9b8dc5), harness 6.3's SKIP down to
+  015-80 and 019-02; 015-65 and S2-F24 of 015-49 (to 95d52c3); 015-11,
+  015-08, 015-04, and 015-19 but ScaleBench, which tonight's blocks use
+  (to b6838e5). W1's groups 2 to 5 are done; group 1 has 019-01 and 019-02
+  left (g1e, started 16:58) and 015-80, which waits for a day session.
+* 17:01 Not in the plan, the coordinator's decision: two read-only review
+  agents check tonight's fixes with fresh eyes (R1 the stream, its storage
+  and the start; R2 eviction, transactions, reclaim and the Pub API), as
+  about 30 fixes were made at high effort unattended and several touch
+  concurrency. Findings in `/Users/f/fl/bench/006-12/review-r1.md` and
+  `review-r2.md`, faults as 019 entries; they stop by 21:45.
 
 
 ## 8. Outcome
