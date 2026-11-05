@@ -540,6 +540,11 @@ closed):
    a later commit") and a new `baseline.zip` and `SHA256SUMS` in one
    commit (016-10, N9; 016-09, R8); correct the notes' "gets of up to 39
    ms with 8 readers" (2026-11-04: 47.8 and 49.3 ms, 005-65).
+   2026-11-05: night 2 ran none of the five; each skipped every run for
+   "the deadline", as `lib.sh` had night 1's (2026-11-04 06:05) as a
+   fixed default; since 10:40 it requires `DEADLINE`. Rerun in the night of
+   5 to 6 November as 006-12's Q-W7 (`/Users/f/fl/bench/016/night3/`);
+   `collect.sh` then takes `C=/Users/f/fl/bench/016/night3`.
 2. s1's W7 runs: 4 of 10 ended with OutOfMemoryError (2.5 GB heap on a
    3 GB machine); 016-10 decides how to redo them.
 3. Section 7's items for Frans; 005 and 015 one entry at a time with

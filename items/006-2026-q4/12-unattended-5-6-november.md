@@ -151,6 +151,26 @@ will be done tonight; the morning's Outcome lists what was.
   ab` with the quick suite: `main` at 15:00 against `main` at 05:00,
   ABBA. No scenario may lose more than its CV; a loss is traced to its
   commit and written up for Frans, not reverted.
+* **Q-W7, after Q-A, from about 23:45 to 01:20: release 2026.2's
+  numbers** (016-10; 016-02, "Open for the next coordinator", item 1).
+  Added at Frans's word, 2026-11-05, 10:34: the night of 4 to 5 November
+  ran none of W7's five F53 steps, as their `lib.sh` had a fixed deadline,
+  night 1's 2026-11-04 06:05; since 10:40 it requires `DEADLINE`. A shell
+  process started at 10:43, independent of any session, runs the block:
+  `/Users/f/fl/bench/016/night3/block.sh` (pid in `pid`, its rules in its
+  header). At 23:40 it writes its marker
+  `/Users/f/fl/bench/quiet-block-2026-11-05-w7/QUIET-BLOCK`, so W1 does
+  not resume after Q-A; when no other marker (Q-A's) and no JVM, gate or
+  Lean is left, it pauses `mediaanalysisd`, waits for a load below 1.5
+  (until 00:15 at the latest), and runs props, sb-m, sb-c, pp and quick-ab
+  (8, 22, 32, 10 and 22 minutes; none that would end after 02:05). Then it
+  removes the marker, resumes `mediaanalysisd` and writes `news.md`. The
+  coordinator: Q-A's own marker stays until Q-A's last run ends (the block
+  waits for it), and W1 resumes when the W7 marker is gone. To stop it or
+  to move it: `kill $(cat /Users/f/fl/bench/016/night3/pid)`, then start
+  it again with `START`, `LATEST` and `DEADLINE` (epochs) as its header
+  says. In the morning, not tonight's work: `collect.sh` with
+  `C=/Users/f/fl/bench/016/night3` and the commit of 016-02's item 1.
 
 ### W3. 015-88 on s1
 
@@ -190,7 +210,8 @@ Times in CET.
 | 15:00–22:15 | W1 groups 1 and 2, then 3 and 4; W3 on s1 |
 | 22:15 | CPU-heavy work on F53 stops |
 | 22:30–23:45 | Q-A, 015-86's measurements |
-| 23:45–02:05 | W1 goes on |
+| 23:45–01:20 | Q-W7, release 2026.2's numbers (its own marker from 23:40; at the latest to 02:05) |
+| 01:20–02:05 | W1 goes on |
 | 02:10–02:50 | `night.sh` (launchd); no gates |
 | 02:50–05:00 | W1 goes on; the last landing by 05:00 |
 | 05:00–06:15 | Q-B, the performance check |
