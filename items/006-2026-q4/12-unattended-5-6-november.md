@@ -56,6 +56,11 @@ Frans's answers, 2026-11-05, 09:02:
 5. "To be done during the day." The decisions are Frans's during the day;
    the change of any that he decides joins W1.
 
+Frans, 2026-11-05, 10:18, to session bergdb-e8, after 018 was created
+(09:28 to 09:50): "Yes, do as you suggest." The night works on 018-01's
+goal list and leaves the experimental code alone; W1 in section 3 says
+how.
+
 
 ## 2. Ground rules
 
@@ -101,6 +106,12 @@ group is one agent's queue, in this order within it. The coordinator
 reads each entry first: an entry that turns out to need a decision, a
 format change or more than a few hours is written up and skipped.
 
+The night follows release 2026.3's goal (018-01, section 1): it fixes the
+Core's known faults (018-01, section 3.1) and leaves the entries of the
+experimental code, DbObject and user indexes (018-01, D2 and D6), alone.
+An entry that the day's session, bergdb-e8, has marked `in progress` or
+`done` in its file is skipped.
+
 1. **The stream and its storage** (the integrity of what is written and
    read back):
    * a start's checks: 015-72 (a record's size larger than its content),
@@ -117,9 +128,9 @@ format change or more than a few hours is written up and skipped.
 3. **Transactions, reclaim and time:** 015-50, 015-51, 015-52, 015-53,
    015-55, 015-57, 015-58, 015-63, 015-64; the comments and Javadoc
    015-54, 015-74, 015-76, 015-77. `level3.sh` for a change to reclaim.
-4. **The Pub API and the indexes:** 015-23, 015-28, 015-29, 015-30,
-   015-36, 015-37, 015-38, 015-39, 015-41 to 015-48, 015-49 (review S2's
-   faults), 015-59 to 015-62, 015-65.
+4. **The Pub API, the Core's part** (018-01, D4): 015-38, 015-41,
+   015-42, 015-44, 015-45, 015-47, 015-48, 015-59, 015-60, 015-62,
+   015-65, and S2-F24 of 015-49 (keys with a lone surrogate).
 5. **Tools and tests:** 015-04, 015-08, 015-11, 015-19.
 
 Groups 1 and 2 start at 15:00, 3 and 4 when an agent is free; 5 fills
@@ -155,6 +166,9 @@ of `make-probe.py`, measured on s1 (2 vCPUs) with the harness of
 * 015-84, the cap of the pace's factor: about a day of F53 at the lowest
   priority, which tonight's gates would disturb. A later night.
 * 015-02 (bergdb-2c), 015-03 (Lean), 015-18 (`night.sh large`, by hand).
+* The experimental code's entries (018-01, section 3.2): 015-23, 015-28,
+  015-29, 015-30, 015-36, 015-37, 015-39, 015-43, 015-46, 015-61, and
+  015-49 but S2-F24.
 
 
 ## 4. The principles (010)
