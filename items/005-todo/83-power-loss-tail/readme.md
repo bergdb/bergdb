@@ -209,3 +209,7 @@ scratch paths may later be removed; the source regenerates the main
 experiment. `evidence/full-run-artifacts.sha256` identifies the full
 run's jar and probe; the regression manifest also identifies its copied
 runner and checker.
+
+2026-11-05 (015-19): `PowerLossTailProbe.java` is kept for the code of its time, not
+changed: it calls `DbBuilder.retainForever` (removed by 015-87; forever is
+the default). It compiles against release 2026.2's jar, not against main's.

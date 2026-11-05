@@ -95,7 +95,7 @@ public final class RwBench {
 
         keyNames = new String[keys];
         for (int i = 0; i < keys; i++) keyNames[i] = String.format(Locale.ROOT, "/bench/c/%08d", i);
-        DbBuilder builder = Db.builder().retainForever().testId();
+        DbBuilder builder = Db.builder().testId();
         if (startupBytes > 0) builder.startupDistance(startupBytes);
         if (cacheBytes == 0) builder.noEvict();
         else builder.cacheSizeIndicator(cacheBytes);
@@ -135,7 +135,9 @@ public final class RwBench {
         }
         public void append(byte[] source, int offset, int length) throws IOException { delegate.append(source, offset, length); }
         public void pretruncate(long position) throws IOException { delegate.pretruncate(position); }
-        public void seekFirstPos(long position) throws IOException { delegate.seekFirstPos(position); }
+        // Kept so that the tool compiles against older jars, whose AppendOnlyStream has it;
+        // main's has not (bergdb 019-04). No layer of BergDB calls it.
+        public void seekFirstPos(long position) { throw new UnsupportedOperationException(); }
         public void close() throws IOException { delegate.close(); }
     }
 

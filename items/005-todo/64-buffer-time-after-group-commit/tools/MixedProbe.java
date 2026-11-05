@@ -67,7 +67,9 @@ public class MixedProbe {
             bytes.addAndGet(length);
         }
         public void pretruncate(long position) throws IOException { s.pretruncate(position); }
-        public void seekFirstPos(long position) throws IOException { s.seekFirstPos(position); }
+        // Kept so that the tool compiles against older jars, whose AppendOnlyStream has it;
+        // main's has not (bergdb 019-04). No layer of BergDB calls it.
+        public void seekFirstPos(long position) { throw new UnsupportedOperationException(); }
         public void close() throws IOException { s.close(); }
     }
 
@@ -190,7 +192,7 @@ public class MixedProbe {
         FileStream fs = new FileStream(dir);
         cs[0] = new CountingStream(fs);
         Db d = Db.builder().stream("main", cs[0], StorageManager.DEFAULT_BUFFER_SIZE, bufferMs)
-                .noEvict().retainForever().build();
+                .noEvict().build();
         d.start();
         return d;
     }
@@ -282,7 +284,7 @@ public class MixedProbe {
         System.out.println(sb);
 
         // The end: a final sync, close, reopen, and every key's last value checked.
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);    // STRONG was ORDINARY without a replica (bergdb 005-11)
         db.close();
         db = open(dir, bufferMs, cs);
         GetData gd = db.newGetData();

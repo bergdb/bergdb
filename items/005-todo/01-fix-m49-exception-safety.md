@@ -282,3 +282,8 @@ called every `DbException` fatal, so that the database should not be used
 after one; a refusal before the go point leaves it as it was. It now names
 the two kinds, refusals and failures, and says that taking any
 `DbException` as a reason to restart is always safe.
+
+2026-11-05 (015-19): `M49Probe.java` is kept for the code of its time, not changed: it calls
+`AppendOnlyStream.seekFirstPos` (removed by 019-04) and `SyncLevel` as it was
+before 005-56. It compiles against a jar of its time, not against release
+2026.2's or main's.

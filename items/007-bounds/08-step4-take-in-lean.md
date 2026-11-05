@@ -541,3 +541,9 @@ say only that the meta blocks are not modelled: they still are not, but
 equals `getNextPos()` whenever `take` runs), while the record limit is
 still left out. `nice -n 10 lake build`: "Build completed successfully (148
 jobs)", no warnings, no `sorry`; `sh test-traces/run.sh`: "TRACE TESTS OK".
+
+2026-11-05 (015-19): `TakeCheck.java` is kept for the code before 005-79, not changed: it
+prints `TransSeq.dither`, the double take that 005-79 replaced with integers
+(`ditherFp`, `shareFp`), and this item's Lean model is still the double
+take. 015-03 brings the model to 005-79's integer take, and `TakeCheck` with
+it. It compiles against a jar from before 005-79 only.

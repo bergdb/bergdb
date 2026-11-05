@@ -385,3 +385,9 @@ to 20 s); not added, as the commit gate is Frans's call.
 
 2026-10-28: `core-build.sh` is now `java/stress/core-build.sh`, a step of
 `java/night.sh`, not of `before-commit.sh` (005-56, "Follow-ups").
+
+2026-11-05 (015-19): `08-core-layer/CoreSame.java` is kept as it was: it calls
+`DbBuilder.retainDuration` (removed by 015-87) and `SyncLevel` as it was
+before 005-56, so it compiles against a jar of its time only. 012's cross
+harness, which runs it, compares the C clone with release 2026.2 and is
+015-02's (bergdb-2c).

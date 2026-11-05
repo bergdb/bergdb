@@ -14,10 +14,10 @@ import javax.management.ObjectName;
 
 import bergdb.common.Bytes;
 import bergdb.core.Db;
-import bergdb.core.SyncLevel;
 import bergdb.core.Trans;
 import bergdb.dag.Keys;
 import bergdb.pub.TestClock;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.DummyStream;
 import bergdb.stream.MemoryStream;
 
@@ -200,7 +200,6 @@ public class Probe006 {
     static Db createSetDb(int distance) {
         return Db.builder()
                 .clock(new TestClock())
-                .retainForever()
                 .noEvict()
                 .stream("main", new DummyStream())
                 .startupDistance(distance)

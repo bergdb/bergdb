@@ -149,7 +149,9 @@ public class StartupBench {
             s.append(source, sourceOffset, length);
         }
         public void pretruncate(long position) throws IOException { s.pretruncate(position); }
-        public void seekFirstPos(long position) throws IOException { s.seekFirstPos(position); }
+        // Kept so that the tool compiles against older jars, whose AppendOnlyStream has it;
+        // main's has not (bergdb 019-04). No layer of BergDB calls it.
+        public void seekFirstPos(long position) { throw new UnsupportedOperationException(); }
         public void close() throws IOException { s.close(); }
     }
 
@@ -158,7 +160,7 @@ public class StartupBench {
     Db open(boolean create) throws IOException {
         stream = new PhaseStream(new FileStream(dir));
         clock.setTime(time);
-        DbBuilder b = Db.builder().stream("main", stream).clock(clock).testId().retainForever()
+        DbBuilder b = Db.builder().stream("main", stream).clock(clock).testId()
                 .maxNodeSize30();
         if (create) b.startupDistance(sd);
         if (budget > 0) b.cacheSizeIndicator(budget).evictionSchedule(Eviction.Schedule.BUDGET, 1);
@@ -252,7 +254,7 @@ public class StartupBench {
         }
         Db.testHooks = null;
         double updSec = (System.nanoTime() - a) / 1e9;
-        db.sync(SyncLevel.STRONG);
+        db.sync(bergdb.pub.util.SyncLevel.ORDINARY);    // STRONG without a replica (005-11, 005-56)
         long end = db.internal().nodeStream().getNextPos();
         long lag = end - db.internal().getStartupPosForEvict();
         long[] d = dSize(db);

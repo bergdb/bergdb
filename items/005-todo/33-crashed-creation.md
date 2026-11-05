@@ -354,3 +354,8 @@ Outcome
 * `java/before-commit.sh`: BEFORE COMMIT OK (1020 unit tests, 69
   f-tests). Also `java/stress/level2.sh quick`, as the change is in the
   start: LEVEL 2 OK.
+
+2026-11-05 (015-19): `tools/CreationCrashProbe.java` is kept for the code of its time, not
+changed: it calls `DatabaseBuilder.dir` (removed by 015-05) and
+`AppendOnlyStream.seekFirstPos` (removed by 019-04). It compiles against
+release 2026.2's jar, not against main's.

@@ -432,7 +432,7 @@ public class WriteBench {
         if (!recFile.isEmpty()) rec = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(recFile), 1 << 20));
         stream = new RingStream(ring);
         clock.setTime(time);
-        DbBuilder b = Db.builder().stream("main", stream).clock(clock).testId().retainForever().noEvict();
+        DbBuilder b = Db.builder().stream("main", stream).clock(clock).testId().noEvict();
         if (nodeSize == 8) b.maxNodeSize8();
         else if (nodeSize == 14) b.maxNodeSize14();
         else if (nodeSize == 30) b.maxNodeSize30();

@@ -271,3 +271,8 @@ LEVEL 2 OK (70 traces, TRACECHECK OK), LEVEL 3 OK (25 traces, no failing
 CUT line), LEVEL 4 OK.
 
 `before-commit.sh`: BEFORE COMMIT OK (1007 unit tests, 66 f-tests).
+
+2026-11-05 (015-19): `tools/StopCloseProbe.java` is kept for the code of its time, not
+changed: it calls `DatabaseBuilder.dir` (removed by 015-05) and
+`AppendOnlyStream.seekFirstPos` (removed by 019-04). It compiles against
+release 2026.2's jar, not against main's.

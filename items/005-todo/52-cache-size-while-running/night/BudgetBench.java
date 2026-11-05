@@ -171,7 +171,7 @@ public class BudgetBench {
     void open() throws IOException {
         if (dir.exists()) throw new IllegalStateException(dir + " exists; the load needs a new directory");
         dir.mkdirs();
-        DbBuilder b = Db.builder().stream("main", new FileStream(dir)).testId().retainForever()
+        DbBuilder b = Db.builder().stream("main", new FileStream(dir)).testId()
                 .maxNodeSize30().cacheSizeIndicator(high)
                 .evictionSchedule(Eviction.Schedule.BUDGET, 1);
         db = b.build();

@@ -561,3 +561,8 @@ Files
   `78cc5f3`, after 005-01 (all but P8).
 * [017-03](../017-long-term/03-replication/readme.md): the removed design,
   Frans's question and the options for a future replication.
+
+2026-11-05 (015-19): the tools in `11-replication/tools/` (`ReplicaProbe.java`) are kept for
+the code of their time, not changed: they use replication, removed by this
+entry, and `AppendOnlyStream.seekFirstPos` (removed by 019-04). They
+compile against a jar from before the removal only.

@@ -160,3 +160,8 @@ parts A and B, through the Pub API; `probe.sh JAR WORK_DIR` compiles it
 against a build and runs it; `probe-output.txt`, its output on `98ac9eb`
 with 005-40 and 005-43, uncommitted at the time; `probe-after.txt`, on
 `da8bbc1` with the change.
+
+2026-11-05 (015-19): `TransactionInfoProbe.java` is kept for the code of its time, not
+changed: it calls `DatabaseBuilder.retainDuration` (removed by 015-87; now
+`Database.setRetainDuration` after the start). It compiles against release
+2026.2's jar, not against main's.

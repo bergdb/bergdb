@@ -869,3 +869,8 @@ Nothing in it shows a read or a commit waiting for the stream's writer, so
   threads 25 percent), startup 2 to 4 percent faster; the only flags are
   maxima of the collector, G1's pause in r-1k-fin 24 to 39 ms; long keys
   3.8 percent slower within a CV of 4.9 percent.
+
+2026-11-05 (015-19): `InterruptCutProbe.java` is kept for the code of its time, not changed:
+it calls `DbBuilder.retainDuration` (removed by 015-87) and `SyncLevel` as
+it was before 005-56. It compiles against a jar of its time, not against
+release 2026.2's or main's.

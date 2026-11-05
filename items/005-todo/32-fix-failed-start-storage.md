@@ -271,3 +271,8 @@ The probe again, on the fixed build
   lock on the directory is not part of this entry).
 
 `before-commit.sh`: BEFORE COMMIT OK (1004 unit tests, 63 f-tests).
+
+2026-11-05 (015-19): `tools/FailedStartProbe.java` is kept for the code of its time, not
+changed: it calls `DatabaseBuilder.dir` (removed by 015-05) and `SyncLevel`
+as it was before 005-56. It compiles against a jar of its time, not against
+release 2026.2's or main's.

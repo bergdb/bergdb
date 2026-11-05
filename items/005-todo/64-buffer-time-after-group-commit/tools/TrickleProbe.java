@@ -52,7 +52,9 @@ public class TrickleProbe {
             appends.incrementAndGet();
         }
         public void pretruncate(long position) throws IOException { s.pretruncate(position); }
-        public void seekFirstPos(long position) throws IOException { s.seekFirstPos(position); }
+        // Kept so that the tool compiles against older jars, whose AppendOnlyStream has it;
+        // main's has not (bergdb 019-04). No layer of BergDB calls it.
+        public void seekFirstPos(long position) { throw new UnsupportedOperationException(); }
         public void close() throws IOException { s.close(); }
     }
 

@@ -155,7 +155,9 @@ public class StartBench {
             s.append(source, sourceOffset, length);
         }
         public void pretruncate(long position) throws IOException { s.pretruncate(position); }
-        public void seekFirstPos(long position) throws IOException { s.seekFirstPos(position); }
+        // Kept so that the tool compiles against older jars, whose AppendOnlyStream has it;
+        // main's has not (bergdb 019-04). No layer of BergDB calls it.
+        public void seekFirstPos(long position) { throw new UnsupportedOperationException(); }
         public void close() throws IOException { s.close(); }
 
         synchronized Map<String, Object> take(String prefix) {
@@ -177,7 +179,7 @@ public class StartBench {
     Db open() throws IOException {
         stream = new CountingStream(new FileStream(dir));
         clock.setTime(time);
-        DbBuilder b = Db.builder().stream("main", stream).clock(clock).testId().retainForever()
+        DbBuilder b = Db.builder().stream("main", stream).clock(clock).testId()
                 .maxNodeSize30();
         if (budget > 0) b.cacheSizeIndicator(budget).evictionSchedule(Eviction.Schedule.BUDGET, 1);
         else b.noEvict();
@@ -335,7 +337,7 @@ public class StartBench {
             db.execute(tb.build());
             if (t + 1 == after / 2) half = System.nanoTime();
         }
-        db.sync(SyncLevel.STRONG);
+        db.sync(bergdb.pub.util.SyncLevel.ORDINARY);    // STRONG without a replica (005-11, 005-56)
         double sec = (System.nanoTime() - a) / 1e9;
         result.put("afterTrans", after);
         result.put("afterSec", sec);
