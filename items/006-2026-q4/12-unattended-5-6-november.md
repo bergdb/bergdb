@@ -122,7 +122,14 @@ An entry that the day's session, bergdb-e8, has marked `in progress` or
      015-78 (close errors), 015-34 (an interrupt at the stop), 015-32 (a
      failed open);
    * cuts and reads: 015-82 (a pending cut), 015-31 (a cut at the
-     length), 015-83 (a read past the end).
+     length), 015-83 (a read past the end);
+   * 019's: 019-01 (a meta block's version read as 2 bytes), 019-02
+     (the streams' refusals of a bad length).
+
+   Harness 6.3 (018-02, built 2026-11-05) is the failing test of 015-26,
+   31, 33, 79, 80, 83 and 019-02: each fix deletes its own line in
+   `StreamContract.SKIP`, and a line left after its fix fails the unit
+   tests.
 2. **Eviction and the capacity controller:** 015-66, 015-67, 015-68,
    015-69, 015-70, 015-71. `level4.sh` before landing.
 3. **Transactions, reclaim and time:** 015-50, 015-51, 015-52, 015-53,
