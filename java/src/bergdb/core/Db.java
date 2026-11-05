@@ -1092,7 +1092,7 @@ public class Db implements AutoCloseable {
         
         // transactionBegin() before the try (bergdb 005-18): when it throws, no transaction
         // has begun, and there is none to end.
-        long tt = dbClock.transactionBegin();
+        long tt = dbClock.transactionBegin(true);
         dbClock.transactionEnd();
         
         // The root's id first, and canonical: the super root's pointer holds the root's
@@ -2009,9 +2009,11 @@ public class Db implements AutoCloseable {
             
             stmCheckConflicts(t);
 
-            // transactionBegin() refuses a clock out of range (bergdb 005-18); before the try,
-            // so that nothing has begun or changed when it throws.
-            t.tt = dbClock.transactionBegin();
+            // transactionBegin() refuses a clock out of range (bergdb 005-18), and a user
+            // transaction in the times kept for reclaim's internal transactions after it
+            // (bergdb 015-55); before the try, so that nothing has begun or changed when it
+            // throws.
+            t.tt = dbClock.transactionBegin(!t.isInternal());
             
             // The go point. From here nothing refuses the transaction and nothing is undone:
             // whatever throws fails the database (bergdb 005-01).

@@ -209,6 +209,13 @@ Reliability
   retried it applied it twice. `setStartupDistance()` at that moment put
   back the old distance in memory and threw, while the stream kept the new
   one. The stream's bytes are unchanged.
+* **A user transaction in the last 1,024 database times is refused**
+  (bergdb 015-55, 016-06's R7-F6; 2026-11-05), with a `DbException`, and the
+  database goes on: those times, before 2^56 - 1 units (about the year
+  2198), are kept for reclaim's internal transactions after a user
+  transaction. One at the last time was taken, the reclaim step it allowed
+  found no time left, and the database failed although the transaction was
+  committed. Only a wrong or a test clock reaches these times.
 
 Format
 ------

@@ -59,7 +59,6 @@ Open
 | [015-50](50-reclaim-step-too-large.md) | Fix | A reclaim step that rewrites old values beyond the value limit ... | open |
 | [015-51](51-transform-size-unchecked.md) | Fix | A value transformation's result is not size-checked: one above the ... | open |
 | [015-52](52-warmup-read-expired.md) | Fix | `execute()` can be refused with `LookupTimeNotAvailableException`, ... | open |
-| [015-55](55-database-time-margin.md) | Fix | A user transaction at the last database time is taken, and ... | open |
 | [015-57](57-resolve-ignores-timezone.md) | Fix | Time.resolve(TimeZone, String) ignores its time zone | open |
 | [015-58](58-testclock-current-time.md) | Fix | TestClock.setTime() refuses the clock's current time, which its ... | open |
 | [015-60](60-connections-per-thread-kept.md) | Fix | Database.connection() keeps a connection for every thread that ... | open |
@@ -85,6 +84,7 @@ Closed
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
 | [015-73](73-startup-pos-unchecked.md) | Fix | A startupPos on an earlier record's start: outside the fault model | done | 2026-11-05 |
+| [015-55](55-database-time-margin.md) | Fix | A user transaction at the last database time failed the database | done | 2026-11-05 |
 | [015-53](53-stop-during-step-committed.md) | Fix | A transaction committed at a stop threw DbStoppingException | done | 2026-11-05 |
 | [015-75](75-start-checks-asserts.md) | Fix | Checks of stream data at a start that were asserts | done | 2026-11-05 |
 | [015-72](72-record-size-unchecked.md) | Fix | A record whose size field is larger than its content is accepted | done | 2026-11-05 |

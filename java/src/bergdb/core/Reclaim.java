@@ -1555,6 +1555,66 @@ public class Reclaim implements Db.TransactionListener {
         }
         
         /**
+         * Regression test for bergdb 015-55 (016-06's R7-F6): a user transaction at the last
+         * database time, Klong.MAX_TIME, was taken; the reclaim step it allowed then found no
+         * time left, inside the transaction's go point, and the database failed. Now a user
+         * transaction after DbClock.LAST_USER_TIME is refused and the database goes on; one
+         * at LAST_USER_TIME is taken, and its step runs in the times kept for it.
+         */
+        @Nano
+        public static void testUserTransactionLeavesTimesForReclaim() {
+            final long[] now = {Clock.UNITS_PER_SEC};
+            Clock clock = new Clock() {         // Can go back, as CoreTestClock cannot.
+                public long getTime() {
+                    return now[0];
+                }
+            };
+            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
+            try {
+                db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+                Reclaim rc = db.internal().reclaim();
+                java.util.Random r = new java.util.Random(1);
+                boolean armed = false;
+                for (int i = 0; i < 4000 && !armed; i++) {
+                    now[0] += Clock.UNITS_PER_SEC / 20;
+                    IterationInfo cur = rc.currentIteration();
+                    armed = cur != null && fractionOf(db.getStreamLength() + 150 - cur.pStart,
+                            DEFAULT_INTERNAL_FRACTION) - cur.rewritten > 10000;
+                    if (!armed) {
+                        db.execute(db.trans().put("/k/" + r.nextInt(50), 
+                                new byte[1 + r.nextInt(60)]).build());
+                    }
+                }
+                Assert.assertTrue("no step was armed", armed);
+                
+                // The next put makes a step. At Klong.MAX_TIME it is refused before its go
+                // point, and the database goes on.
+                now[0] = bergdb.dag.Klong.MAX_TIME;
+                try {
+                    db.execute(db.trans().put("/last", "a").build());
+                    throw new AssertionError("a user transaction at Klong.MAX_TIME was taken");
+                } catch (bergdb.pub.util.DbFailedException e) {
+                    throw new AssertionError("the database failed", e);
+                } catch (bergdb.pub.util.DbException e) {
+                    Assert.assertTrue(e.getMessage(), 
+                            e.getMessage().contains("for a user transaction"));
+                }
+                Assert.assertEquals(null, db.getOne(Long.MAX_VALUE, Keys.toSegments("/last"), 
+                        db.newGetData()));
+                
+                // At the last user time it is taken, and its step has times after it.
+                now[0] = DbClock.LAST_USER_TIME;
+                long count = db.getTransactionCount();
+                db.execute(db.trans().put("/last", "b").build());
+                Assert.assertTrue("the put made a step", db.getTransactionCount() > count + 1);
+                Assert.assertEquals("b", StringUtil.toString(db.getOne(Long.MAX_VALUE, 
+                        Keys.toSegments("/last"), db.newGetData())));
+            } finally {
+                db.close();
+            }
+        }
+        
+        /**
          * Regression test for a bug found 2026-10-13 (java/stress/ReclaimStress.java):
          * when an iteration is done, every live value must be stored at or after its
          * pStart, or the cut at pStart removes it. The iteration chose the values to

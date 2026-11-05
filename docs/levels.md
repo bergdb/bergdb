@@ -86,7 +86,9 @@ environment has failed, or that has a bug, does not run on.
   the transaction is checked, and nothing is changed: the STM check
   (`RerunException`), the end of the top node ordinals (005-02), the size of
   the transaction (005-17), the index nodes it can make dirty (005-31) and
-  the clock (005-18). The Pub API runs the application's code before it too.
+  the clock (005-18), whose last 1,024 times are kept for reclaim's internal
+  transactions after a user transaction (015-55). The Pub API runs the
+  application's code before it too.
   A refused transaction leaves the database as it was, and it goes on.
   The size check counts a Core API value transformation's input: its
   result, made after the go point, must keep the transaction within the
