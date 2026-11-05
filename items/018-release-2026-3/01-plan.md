@@ -348,8 +348,12 @@ for 2026.3: they are experimental (D2).
 
 Fixed one at a time:
 
-* in the Core Layer: 015-04, 08, 11, 27, 52, 54, 74, 77, 87, and 014-01;
+* in the Core Layer: 015-04, 08, 11, 52, 54, 74, 77, 87;
 * in the Pub API: 015-05, 44, 45, 57, 58, 60, 63, 64, 65, and S2-F24.
+
+015-27 and 014-01 left this list on 2026-11-05: decided as not faults
+(015-27 intended; 014-01's holes outside the crash contract, 014-01,
+section 7). The entries' own Status lines say which are done.
 
 
 ## 7. The work
