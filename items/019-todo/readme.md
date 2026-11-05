@@ -114,6 +114,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-08](08-dbtime-to-utc-threads.md) | Fix | dbTimeToUtc() from several threads gave wrong strings | none | done | 2026-11-05 |
 | [019-02](02-stream-bad-length-exceptions.md) | Fix | Streams refuse a bad length with other exceptions | none | done | 2026-11-05 |
 | [019-01](01-metablock-version-high-bytes.md) | Fix | A meta block's version: bytes 6 and 7 unchecked | none | done | 2026-11-05 |
 | [019-05](05-exists-malformed-key.md) | Fix | exists() answers false for a malformed key | decision | done | 2026-11-05 |
@@ -156,6 +157,10 @@ Files
   the next change of `RECORD_FORMAT`, with Frans's approval of the format
   change; from 015-73's option (c). Not for 2026.3 (Frans, 2026-11-05,
   15:35).
+* [08-dbtime-to-utc-threads.md](08-dbtime-to-utc-threads.md). 019-08,
+  Fix: `DbUtil.dbTimeToUtc()` formatted with one static `SimpleDateFormat`,
+  so readers that built a `LookupTimeNotAvailableException` at once got
+  another thread's time (015-63's fault in the Core; review R2, B1).
 
 
 Log
@@ -227,3 +232,7 @@ BEFORE COMMIT OK.
 `IllegalArgumentException` before anything changes (`Util.checkRange`);
 harness 6.3 passes without the line "019-02" in `StreamContract.SKIP`;
 BEFORE COMMIT OK.
+
+2026-11-05. 019-08 registered in night 006-12, from review R2's finding
+B1, and done: `DbUtil.dbTimeToUtc()` formats with a `DateTimeFormatter`,
+as `Time` does since 015-63; the strings are unchanged; BEFORE COMMIT OK.

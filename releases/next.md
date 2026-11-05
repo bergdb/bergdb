@@ -304,6 +304,13 @@ Reliability
   with a `VersioningStreamException`, as a block of another version is.
   Every version of BergDB writes 0 in those bytes, so no database that was
   valid is refused; the stream's bytes are unchanged.
+* **The message of `LookupTimeNotAvailableException` names the right
+  times when several readers are refused at once** (bergdb 019-08;
+  2026-11-05). The Core formatted the times of the message, and the JMX
+  bean's time strings, with one shared `SimpleDateFormat`, which is not
+  thread-safe, so readers refused at once (a cut that overtakes several)
+  could get another reader's time, or another exception from the read.
+  The strings are unchanged.
 
 Format
 ------

@@ -1,11 +1,11 @@
 package bergdb.core;
 
-import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.TimeZone;
 import java.util.zip.CRC32;
 import java.util.zip.Checksum;
 
@@ -88,19 +88,21 @@ public class DbUtil {
         return value == null ? null : StringUtil.toString(value);
     }
     
-    private static final SimpleDateFormat DATE_FORMAT;
-    
-    static { 
-        DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US);
-        DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
-    }
+    /**
+     * Immutable and thread-safe; a static SimpleDateFormat, which is neither, gave threads
+     * that formatted at once wrong strings (bergdb 019-08).
+     */
+    private static final DateTimeFormatter DATE_FORMAT = 
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
+            .withZone(ZoneOffset.UTC);
     
     /**
      * Database time (long) to human-readable UTC time string.
+     * May be called from any thread.
      */
     public static String dbTimeToUtc(long dbTime) {
         long ms = dbTime / (Clock.UNITS_PER_SEC / 1000);
-        return DATE_FORMAT.format(new Date(ms)) + " UTC";
+        return DATE_FORMAT.format(Instant.ofEpochMilli(ms)) + " UTC";
     }
     
     /**
@@ -418,5 +420,53 @@ public class DbUtil {
         Assert.assertTrue(nodes.get(3).isValueNode());
         Assert.assertArrayEquals(StringUtil.toBytes("value"), ((ValueNode) nodes.get(3)).value);
         db.close();
+    }
+    
+    @Nano
+    private static void testDbTimeToUtc() {
+        Assert.assertEquals("1970-01-01 00:00:00.000 UTC", DbUtil.dbTimeToUtc(0));
+        Assert.assertEquals("2014-08-14 14:24:34.123 UTC", 
+                DbUtil.dbTimeToUtc(1408026274123L * 10000 + 4567));
+        Assert.assertEquals("2198-05-04 23:50:03.792 UTC", DbUtil.dbTimeToUtc((1L << 56) - 1));
+    }
+    
+    /**
+     * Regression test for bergdb 019-08: dbTimeToUtc used one static SimpleDateFormat, which is
+     * not thread-safe, so threads that formatted at once (readers that build the message of a
+     * LookupTimeNotAvailableException) got another thread's time or an exception.
+     */
+    @Nano
+    private static void testDbTimeToUtcFromThreads() throws InterruptedException {
+        final int n = 8;
+        final java.util.concurrent.atomic.AtomicInteger wrong = 
+                new java.util.concurrent.atomic.AtomicInteger();
+        final java.util.concurrent.atomic.AtomicReference<String> example = 
+                new java.util.concurrent.atomic.AtomicReference<String>();
+        Thread[] threads = new Thread[n];
+        for (int k = 0; k < n; k++) {
+            final long time = (1000000000000L + k * 222222222222L) * 10000 + k;
+            final String expected = DbUtil.dbTimeToUtc(time);
+            threads[k] = new Thread(() -> {
+                for (int i = 0; i < 20000; i++) {
+                    String got;
+                    try {
+                        got = DbUtil.dbTimeToUtc(time);
+                    } catch (RuntimeException e) {
+                        got = e.toString();
+                    }
+                    if (!got.equals(expected)) {
+                        wrong.incrementAndGet();
+                        example.compareAndSet(null, "expected " + expected + ", got " + got);
+                    }
+                }
+            });
+        }
+        for (Thread t : threads) {
+            t.start();
+        }
+        for (Thread t : threads) {
+            t.join();
+        }
+        Assert.assertEquals("wrong strings, e.g. " + example.get(), 0, wrong.get());
     }
 }
