@@ -285,6 +285,26 @@ Times from `date`, CET.
   smoke tests, started by 20:30). Check-ins every 20 minutes but 22:00 to
   00:59 and 05:00 to 05:59; a one-off at 21:53; the watchdog until 07:00.
   Usage at 14:43: 5h 29 %, week 45 % (ceiling 80 %).
+* 15:00 to 15:59 W1's first batches landed, each with `before-commit.sh`
+  on the combined tree: 015-72 (9a315e6) and 015-75 (eb9ab4b); 015-73
+  skipped for Frans (8616162), then decided by him at 15:35 in session
+  bergdb-a2, (a) outside the fault model for 2026.3 and a new 019-07 for
+  a record header checksum at the next format change (49a814e); 015-50
+  (bb3be64, StreamDigest 48 of 48 the same, LEVEL 3 OK), 015-51
+  (8427ff0, Javadoc only, R7's first option: for Frans to confirm),
+  015-52 (0b99498); 015-66 (578c263), 015-67 (4d706da), 015-68 (ec57528),
+  LEVEL 4 OK; 015-26 and 015-79 (7a3d317), 015-33 (8ae7969), their lines
+  gone from `StreamContract.SKIP`. Started: g1c (015-35, 81, 78, 34, 32),
+  g2b (015-69, 70, 71), g3b (015-53, 55, 57, 58).
+* 15:38 Q-A (pid 74282) and Q-B (pid 74284) ready and started, smoke
+  tests OK; Q-A has all three measurements, the get's parts timed by
+  `ScaleBench-086-parts.diff` on top of 065 (scripts and READMEs in
+  `/Users/f/fl/bench/006-12/qa/` and `qb/`; a guard process removes each
+  marker at its hard stop, 00:03 and 06:15).
+* 15:45 to 15:50 Landings starved by the agents' gates (`lockf` serves no
+  queue): landings first since then (`land-waiting`); a waiter of the
+  coordinator's that matched itself in `pgrep -f` held the gates for five
+  minutes.
 
 
 ## 8. Outcome
