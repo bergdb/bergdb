@@ -64,10 +64,6 @@ public final class ReadOnlyStream implements AppendOnlyStream {
         throw new ReadOnlyException("Cannot do pretruncate on ReadOnlyStream.");
     }
 
-    public void seekFirstPos(long position) throws IOException {
-        stream.seekFirstPos(position);
-    }
-
     public void close() throws IOException {
         if (enableClose) {
             stream.close();

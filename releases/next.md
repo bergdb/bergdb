@@ -103,6 +103,21 @@ Reliability
   StreamDigest's digests are unchanged: its workloads use the Core API.
 
 
+Internal
+--------
+
+* **`AppendOnlyStream.seekFirstPos()` is gone** (bergdb 019-04; Frans,
+  2026-11-05), from the interface and from every stream. It made an empty
+  stream start at a later position, for replication, which is gone since
+  2026-11-04 (005-11); no layer of BergDB called it, and `MemoryStream`,
+  `OneFileStream`, `DummyStream` and `StorageManager` threw
+  `UnsupportedOperationException`. `FileStream` keeps it as a
+  package-private method for its own tests. An `AppendOnlyStream` of a
+  program's own that has the method still compiles, unless it marks it
+  `@Override` or calls it on the interface. The Core API, the Pub API, the
+  stream format and the stream's bytes are unchanged.
+
+
 Documentation
 -------------
 

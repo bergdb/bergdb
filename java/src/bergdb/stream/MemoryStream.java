@@ -260,11 +260,6 @@ public class MemoryStream implements AppendOnlyStream {
         firstValidPos = (long) firstArrayIndex * ARRAY_SIZE;
     }
     
-    public synchronized void seekFirstPos(long pos) {
-        // A new instance always has length == 0, no need to call this method.
-        throw new UnsupportedOperationException("should be no need to call MemoryStream.seekFirstPos()");
-    }
-    
     /**
      * Truncates the stream to a specific size by removing data from the end of the stream. 
      * Useful for stream crash testing.

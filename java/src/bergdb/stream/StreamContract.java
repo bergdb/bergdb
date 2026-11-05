@@ -25,8 +25,7 @@ import java.util.TreeMap;
  * it, across it and beyond it; a read below the first position after a cut; cuts within the
  * length; a cut at the length, on an empty stream and on one with bytes; a cut beyond the
  * length, refused (or held, or ignored, as the Javadoc says of BufferedStream and
- * OneFileStream); seekFirstPos(), where it is supported; close(). And FileStream's file-size
- * limit, fileSizeLimit().</p>
+ * OneFileStream); close(). And FileStream's file-size limit, fileSizeLimit().</p>
  *
  * <p>A failed check is a fault. If FAULTS names its entry and SKIP has the entry, it is a
  * known fault and is skipped; else the test fails, and names the entry, or says that the
@@ -88,7 +87,6 @@ public final class StreamContract {
         final String name;
         final Factory factory;
         CutBeyond cutBeyond = CutBeyond.REFUSED;
-        long seekUnit = 1;
 
         public Impl(String name, Factory factory) {
             this.name = name;
@@ -97,12 +95,6 @@ public final class StreamContract {
 
         public Impl cutBeyond(CutBeyond c) {
             this.cutBeyond = c;
-            return this;
-        }
-
-        /** seekFirstPos() takes multiples of this, as FileStream's of its smallest file. */
-        public Impl seekUnit(long unit) {
-            this.seekUnit = unit;
             return this;
         }
     }
@@ -130,8 +122,6 @@ public final class StreamContract {
         check(results, impl, "a cut at the length, 0", StreamContract::cutAtLengthEmpty);
         check(results, impl, "a cut at the length, 3", StreamContract::cutAtLength);
         check(results, impl, "a cut beyond the length", StreamContract::cutBeyond);
-        check(results, impl, "seekFirstPos()", StreamContract::seekFirstPos);
-        check(results, impl, "seekFirstPos() after an append", StreamContract::seekAfterAppend);
         check(results, impl, "close()", (s, i) -> {
             append(s, 5);
             s.close();
@@ -364,32 +354,6 @@ public final class StreamContract {
             throw new AssertionError("the first position after a cut at 11 is "
                     + s.getFirstPos());
         }
-    }
-
-    private static void seekFirstPos(AppendOnlyStream s, Impl impl) throws IOException {
-        long pos = 2 * impl.seekUnit;
-        try {
-            s.seekFirstPos(pos);
-        } catch (UnsupportedOperationException e) {
-            return;     // Not supported: replication used it; bergdb 005-11.
-        }
-        expect("the length after seekFirstPos(" + pos + ")", pos, s.getLength());
-        expect("the first position after seekFirstPos(" + pos + ")", pos, s.getFirstPos());
-        append(s, 5);
-        readAndCompare(s, pos, 5);
-    }
-
-    private static void seekAfterAppend(AppendOnlyStream s, Impl impl) throws IOException {
-        append(s, 1);
-        try {
-            s.seekFirstPos(0);
-            throw new AssertionError("seekFirstPos(0) with length 1 returned; expected "
-                    + "IllegalStateException");
-        } catch (UnsupportedOperationException | IllegalStateException e) {
-            // Not supported, or refused as the Javadoc says.
-        }
-        expect("the length after a refused seekFirstPos()", 1, s.getLength());
-        readAndCompare(s, 0, 1);
     }
 
     // ======== FileStream's file-size limit ========

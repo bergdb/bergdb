@@ -339,7 +339,8 @@ public class Perf {
             bytes.addAndGet(length);
         }
         public void pretruncate(long position) throws IOException { s.pretruncate(position); }
-        public void seekFirstPos(long position) throws IOException { s.seekFirstPos(position); }
+        // Kept so that the harness compiles against older jars, whose AppendOnlyStream has it (bergdb 019-04).
+        public void seekFirstPos(long position) { throw new UnsupportedOperationException(); }
         public void close() throws IOException { s.close(); }
     }
 

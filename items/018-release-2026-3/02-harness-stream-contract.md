@@ -41,7 +41,8 @@ The promises, from the Javadoc of `AppendOnlyStream` (and of
   it was. `BufferedStream` holds such a position until it has written
   that far; `OneFileStream` ignores every position.
 * `seekFirstPos()`: only before any append; `IllegalStateException` if
-  the length is greater than the position.
+  the length is greater than the position. Removed from the interface by
+  019-04 (2026-11-05), with the harness's checks of it.
 * CONCURRENCY: `read()` from many threads; every other call, `getLength()`
   and `getFirstPos()` too, by threads that hold one write lock. An
   implementation may rely on it.
@@ -80,7 +81,8 @@ that there was none. Its kinds:
 * The caller's side, the layer above: OVERLAP, a call but `read()` while
   another is in progress, in another thread (one writer at a time, as
   R5-F5's test stream checked); ARGUMENT, a negative length or position,
-  or a length past the array; CUT_BEYOND_LENGTH; SEEK_AFTER_APPEND.
+  or a length past the array; CUT_BEYOND_LENGTH; SEEK_AFTER_APPEND, a
+  `seekFirstPos()` after an append, until 019-04 removed the method.
 * The stream's side, the one below: LENGTH, a length that is not the bytes
   appended or that decreases; FIRST_POS, a first position that decreases
   or passes the length or the last cut; NOT_EOF, a read past the end that
@@ -136,7 +138,8 @@ implementation, each on a new stream from its factory, which it closes:
 12. A cut beyond the length: refused and the stream as it was (or held,
     or ignored, for `BufferedStream`, `StorageManager` and
     `OneFileStream`); the stream goes on.
-13. `seekFirstPos()` on a new stream, and after an append.
+13. `seekFirstPos()` on a new stream, and after an append; removed with
+    the method by 019-04 (2026-11-05).
 14. `close()`.
 
 And `FileStream`'s file-size limit (`fileSizeLimit()`): with
@@ -212,11 +215,13 @@ The contract tester runs on `FileStream`, `MemoryStream`, `OneFileStream`,
   `DbTesterFailure.FaultStream` and others): each wraps a `MemoryStream`
   or a `FileStream` to slow or fail calls for one test.
 
-`seekFirstPos()` is checked where it is supported: `MemoryStream`,
+`seekFirstPos()` was checked where it was supported: `MemoryStream`,
 `OneFileStream`, `CutStream` (through `MemoryStream`) and
-`StorageManager` throw `UnsupportedOperationException`. The Javadoc does
-not say that it is optional, but it was added for replication, which is
-gone (005-11), and only `FileStream`'s tests use it.
+`StorageManager` threw `UnsupportedOperationException`, which the Javadoc
+did not allow. It was added for replication, which is gone (005-11), and
+only `FileStream`'s tests used it; 019-04 removed it from the interface
+(2026-11-05), and `FileStream` keeps a package-private method for its
+tests.
 
 
 ## 3. Where it runs, and its cost
@@ -414,3 +419,8 @@ passes such a length: the strict stream under `BufferedStream` and
 fails on the six known faults of 6.3 and found 019-02; the skip list has
 the seven. In the unit tests (0.6 s, nothing added to `before-commit.sh`'s
 time) and the night tests (20 s). BEFORE COMMIT OK.
+
+2026-11-05. 019-04 removed `seekFirstPos()` from `AppendOnlyStream`
+(Frans, 12:30), and with it check 13, `StrictStream`'s kind
+SEEK_AFTER_APPEND and call SEEK_FIRST_POS, and `Impl.seekUnit()`;
+sections 1, 2.1, 2.2 and 2.4 say so.

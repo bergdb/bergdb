@@ -30,8 +30,7 @@ public class StreamContractTester {
     @Nano
     public static void testFileStream(final TestEnvironment c) {
         check(c, new StreamContract.Impl("FileStream",
-                () -> new FileStream(c.createTempDir(), new StreamContract.NoForceIo()))
-                .seekUnit(FileStream.getSmallestFileSize()));
+                () -> new FileStream(c.createTempDir(), new StreamContract.NoForceIo())));
     }
 
     /** bergdb 015-33: with setMax2G(true), no file over 2 GB. */
@@ -101,10 +100,9 @@ public class StreamContractTester {
         s.append(new byte[10], 0, 10);
         Assert.assertEquals(Kind.CUT_BEYOND_LENGTH, kindOf(s, () -> s.pretruncate(11)));
         Assert.assertEquals(Kind.ARGUMENT, kindOf(s, () -> s.pretruncate(-1)));
-        Assert.assertEquals(Kind.SEEK_AFTER_APPEND, kindOf(s, () -> s.seekFirstPos(20)));
         Assert.assertEquals(null, kindOf(s, () -> s.pretruncate(10)));
         Assert.assertEquals(10, s.getLength());
-        Assert.assertEquals(7, s.breaches().size());
+        Assert.assertEquals(6, s.breaches().size());
 
         // One writer: an append held by the hook, and a cut from another thread.
         final CountDownLatch entered = new CountDownLatch(1);
@@ -136,7 +134,7 @@ public class StreamContractTester {
         t.join();
         s.setHook(null);
         Assert.assertEquals(11, s.getLength());
-        Assert.assertEquals(10, s.breaches().size());
+        Assert.assertEquals(9, s.breaches().size());
         s.close();
     }
 

@@ -344,10 +344,6 @@ public class StorageManager implements AppendOnlyStream {
         mainStream.pretruncate(position);
     }
     
-    public void seekFirstPos(long position) {
-        throw new UnsupportedOperationException();
-    }
-    
     public AppendOnlyStream getMainStream() {
         return mainStream;
     }

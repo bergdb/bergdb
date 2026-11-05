@@ -80,8 +80,4 @@ public class OneFileStream implements AppendOnlyStream {
         // advanced, the file could be copied while the DB is running and a switch-over to the 
         // new file and a delete of the old one is done.
     }
-    
-    public void seekFirstPos(long pos) {
-        throw new UnsupportedOperationException();
-    }
 }

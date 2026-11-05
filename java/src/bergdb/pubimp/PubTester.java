@@ -2666,10 +2666,6 @@ public class PubTester {
             inner.pretruncate(position);
         }
         
-        public void seekFirstPos(long position) throws IOException {
-            inner.seekFirstPos(position);
-        }
-        
         public void close() {
             inner.close();
         }

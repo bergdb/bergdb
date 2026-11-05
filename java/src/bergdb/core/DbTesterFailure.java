@@ -736,10 +736,6 @@ public class DbTesterFailure {
             inner.pretruncate(position);
         }
 
-        public void seekFirstPos(long position) throws IOException {
-            inner.seekFirstPos(position);
-        }
-
         public void close() throws IOException {
             final boolean first;
             synchronized (this) {
@@ -1273,10 +1269,6 @@ public class DbTesterFailure {
             inner.pretruncate(position);
         }
 
-        public void seekFirstPos(long position) throws IOException {
-            inner.seekFirstPos(position);
-        }
-
         public void close() throws IOException {
             inner.close();
         }
@@ -1322,10 +1314,6 @@ public class DbTesterFailure {
 
         public void pretruncate(long position) throws IOException {
             inner.pretruncate(position);
-        }
-
-        public void seekFirstPos(long position) throws IOException {
-            inner.seekFirstPos(position);
         }
 
         public void close() throws IOException {

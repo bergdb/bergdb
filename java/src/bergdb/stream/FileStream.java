@@ -457,7 +457,15 @@ public class FileStream implements AppendOnlyStream {
         return firstPos;
     }
 
-    public synchronized void seekFirstPos(long pos) throws IOException {
+    /**
+     * Erases the stream and makes it start at 'pos', at or above the length and a multiple of
+     * the smallest file size: the length and the first position are 'pos'. For this class's
+     * own tests, which use it to make large positions (bergdb 019-04); AppendOnlyStream had it,
+     * as seekFirstPos(), until 2026-11-05, for replication, which is gone (bergdb 005-11).
+     * 
+     * @throws IllegalStateException  If the length is greater than 'pos'.
+     */
+    synchronized void seekFirstPos(long pos) throws IOException {
         checkIOException();
         
         long len = this.length;

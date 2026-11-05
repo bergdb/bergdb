@@ -68,10 +68,6 @@ public class DummyStream implements AppendOnlyStream {
         }
     }
     
-    public void seekFirstPos(long pos) throws IOException {
-        throw new UnsupportedOperationException("seekFirstPos not implemented for DummyStream");
-    }
-    
     public synchronized void stop() {
         // empty
     }

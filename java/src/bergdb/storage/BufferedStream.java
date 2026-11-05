@@ -60,7 +60,6 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     private final int waitTime;
     private final int waitsBeforeFlush;
     private AppendListener appendListener;
-    private volatile boolean appendHasBeenCalled = false;
     private boolean idle = false;   // the consumer waits without a timeout, see runConsumer()
     private long flushTo = 0;       // a sync waits for the bytes before it, see flushSoon()
     private final Waits roomWaits = new Waits();    // the writer's, for test reports (005-46)
@@ -460,7 +459,6 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
      * until after this method returns.
      */
     public void append(byte[] source, int sourceOffset, int length) throws IOException {
-        this.appendHasBeenCalled = true;
         boolean interrupted = false;
         long waitStart = 0;
 
@@ -592,25 +590,6 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         if (cut > 0) {
             stream.pretruncate(cut);
         }
-    }
-
-    /**
-     * @throws IOException
-     * @throws IllegalStateException
-     */
-    public void seekFirstPos(long position) throws IOException {
-        if (appendHasBeenCalled) {
-            throw new IllegalStateException("append() has been called, cannot call seekTo("
-                    + position + ").");
-        }
-
-        stream.seekFirstPos(position);
-
-        long length = stream.getLength();
-        totalLength = length;
-        streamLength = length;
-        pStart = length;
-        cStart = length;
     }
 
     public void setAppendListener(AppendListener appendListener) {
@@ -1251,10 +1230,6 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         
         public void pretruncate(long position) throws IOException {
             inner.pretruncate(position);
-        }
-        
-        public void seekFirstPos(long position) throws IOException {
-            inner.seekFirstPos(position);
         }
         
         public void close() {

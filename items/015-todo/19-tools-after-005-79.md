@@ -33,3 +33,14 @@ writes `TransSeq.ditherFp` and `shareFp` (and `Math.multiplyHigh` and
 `Math.round`) in place of `dither`, and compiles against release 2026.2,
 whose Java the cross harness now compiles by default (015-02). The other two
 tools are as they were.
+
+2026-11-05. 019-04 removed `AppendOnlyStream.seekFirstPos()`. As with
+005-79's removals, the item tools that call it on an `AppendOnlyStream`
+no longer compile against `main`: 005-57's `StartBench`, 005-64's
+`TrickleProbe` and `MixedProbe`, 005-81's `RetryBench`, 007-05's
+`StartupBench`, 006-11's `RwBench`, 004-02's `ScaleBench`, 016-06's
+`R7WarmupExpiryProbe`, 005-01's `M49Probe`, 005-33's
+`CreationCrashProbe`, 005-35's `StopCloseProbe` and 005-11's
+`ReplicaProbe`. The same fix works for each: a `seekFirstPos(long)`
+without `@Override` that does not call the inner stream, as `Perf.java`
+has, so that the tool compiles against `main` and against older jars.

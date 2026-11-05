@@ -2841,10 +2841,6 @@ public class DbTester {
             inner.pretruncate(position);
         }
         
-        public void seekFirstPos(long position) throws IOException {
-            inner.seekFirstPos(position);
-        }
-        
         public void close() {
             closed = true;
             inner.close();

@@ -85,10 +85,6 @@ public class CutStream implements AppendOnlyStream {
         inner.pretruncate(position);
     }
 
-    public void seekFirstPos(long position) throws IOException {
-        inner.seekFirstPos(position);
-    }
-
     public void close() throws IOException {
         inner.close();
     }

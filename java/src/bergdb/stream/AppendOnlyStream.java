@@ -94,21 +94,6 @@ public interface AppendOnlyStream {
     public void pretruncate(long position) throws IOException;
     
     /**
-     * If getLength() is less than 'position' this method can be used to erase any previous
-     * data in the stream before 'position' and to set the length of the stream to 'position'.
-     * The getFirstPos() method will return 'position' and getLength() will return 'position' after 
-     * this method returns. This method must be called before any calls to append().
-     * 
-     * This method was added to support replication, which was removed on 2026-11-04 (bergdb
-     * 005-11); FileStream's tests use it to make large positions.
-     * 
-     * @param position
-     * @throws IOException
-     * @throws IllegalStateException  If getLength() is greater than 'position'.
-     */
-    public void seekFirstPos(long position) throws IOException;
-    
-    /**
      * Flushes the stream to the underlying storage and releases resources allocated by
      * this object.
      */
@@ -117,6 +102,7 @@ public interface AppendOnlyStream {
 
 /*
 ---- Log ----
+261105 Removed seekFirstPos(), added for replication, which is gone (bergdb 019-04).
 261104 append(): the storage says what a completed append means, forced or written (bergdb 005-47).
 261024 pretruncate(): a position past the length is refused (bergdb 005-37).
 130326 Added seekTo().

@@ -116,6 +116,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-04](04-remove-seekfirstpos.md) | Implement | Remove seekFirstPos() from AppendOnlyStream | none | done | 2026-11-05 |
 | [019-03](03-get-that-copies.md) | Decide | A get that always copies a byte[] value | decision | moved | 2026-11-05 |
 
 Status values: open, waiting (for Frans's input), in progress, done,
@@ -137,6 +138,9 @@ Files
   `AppendOnlyStream` promises; found by 018-02's harness.
 * [03-get-that-copies.md](03-get-that-copies.md). 019-03, Decide: a get
   that always copies a `byte[]` value; moved to 017-07, section 1.
+* [04-remove-seekfirstpos.md](04-remove-seekfirstpos.md). 019-04,
+  Implement: `seekFirstPos()` removed from `AppendOnlyStream` and every
+  stream, with harness 6.3's checks of it (Frans, 2026-11-05, option (a)).
 * [05-exists-malformed-key.md](05-exists-malformed-key.md). 019-05, Fix:
   `Connection.exists()` answers `false` for a malformed key, where `get()`
   and an rw-transaction's `exists()` throw; options for Frans.
@@ -170,5 +174,12 @@ release, unless he makes an exception; an entry takes "a day or two", not
 relax the thing about fixing within one day. Make it 'a day or two'.").
 019-03 moved to 017-07, "To consider", section 1: an idea, not a todo.
 
+2026-11-05. 019-04 registered by session bergdb-e8, at Frans's decision
+(12:30, option (a)), and taken by its agent.
+
 2026-11-05. 019-05 registered by session bergdb-e8, at Frans's word
 (12:35), from the agent that wrote 015-62's Javadoc of `exists()`.
+
+2026-11-05. 019-04 done: `seekFirstPos()` removed from
+`AppendOnlyStream` and every stream, with harness 6.3's checks of it;
+BEFORE COMMIT OK, CORE BUILD OK, LEVEL 3 OK.

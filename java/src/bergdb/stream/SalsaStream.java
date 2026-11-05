@@ -139,10 +139,6 @@ public class SalsaStream implements AppendOnlyStream {
         stream.pretruncate(position);
     }
 
-    public void seekFirstPos(long position) throws IOException {
-        stream.seekFirstPos(position);
-    }
-
     public void close() throws IOException {
         stream.close();
     }

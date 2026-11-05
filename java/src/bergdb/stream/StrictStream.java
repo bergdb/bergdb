@@ -19,9 +19,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * <p>The caller's side, the layer above: one writer at a time, every call but read() made
  * by one thread at a time, as CONCURRENCY says (OVERLAP; getLength() and getFirstPos()
  * included, which need the write lock too); no negative length, no length past the array,
- * no negative position (ARGUMENT); no cut past the length (CUT_BEYOND_LENGTH); no
- * seekFirstPos() after an append (SEEK_AFTER_APPEND). The Javadoc says what a stream does
- * with such a call; a layer of BergDB must not make one.</p>
+ * no negative position (ARGUMENT); no cut past the length (CUT_BEYOND_LENGTH). The Javadoc
+ * says what a stream does with such a call; a layer of BergDB must not make one.</p>
  *
  * <p>The wrapped stream's side: after an append, the length grows by the bytes appended;
  * getLength() returns that length, which never decreases (LENGTH); getFirstPos() never
@@ -44,11 +43,11 @@ import java.util.concurrent.atomic.AtomicReference;
 public class StrictStream implements AppendOnlyStream {
 
     /** The calls of AppendOnlyStream. */
-    public enum Op { GET_LENGTH, GET_FIRST_POS, READ, APPEND, PRETRUNCATE, SEEK_FIRST_POS, CLOSE }
+    public enum Op { GET_LENGTH, GET_FIRST_POS, READ, APPEND, PRETRUNCATE, CLOSE }
 
     /** The kinds of breach; see the class's Javadoc. */
     public enum Kind {
-        OVERLAP, ARGUMENT, CUT_BEYOND_LENGTH, SEEK_AFTER_APPEND,
+        OVERLAP, ARGUMENT, CUT_BEYOND_LENGTH,
         LENGTH, FIRST_POS, NOT_EOF, LOST, BYTES, UNCHECKED
     }
 
@@ -86,11 +85,10 @@ public class StrictStream implements AppendOnlyStream {
     private volatile long length;
     /** The length and the bytes of an append in progress: a read may see them already. */
     private volatile long lengthUpper;
-    /** The highest cut so far, or the position of seekFirstPos(): bytes from it are kept. */
+    /** The highest cut so far: bytes from it are kept. */
     private volatile long keptFrom;
     /** The highest first position returned so far. Writer only. */
     private long firstPos;
-    private boolean appended = false;
     /** After a failed call or close(), a read may fail as the stream likes. */
     private volatile boolean failedOrClosed = false;
 
@@ -218,7 +216,6 @@ public class StrictStream implements AppendOnlyStream {
             callHook(Op.APPEND);
             long before = length;
             lengthUpper = before + len;
-            appended = true;
             try {
                 inner.append(source, sourceOffset, len);
             } catch (IOException e) {
@@ -270,38 +267,6 @@ public class StrictStream implements AppendOnlyStream {
             }
             checkFirstPos(inner.getFirstPos(), "getFirstPos() after pretruncate(" + position
                     + ")");
-        } finally {
-            exit(w);
-        }
-    }
-
-    public void seekFirstPos(long position) throws IOException {
-        boolean w = enter(Op.SEEK_FIRST_POS);
-        try {
-            if (appended) {
-                breach(Kind.SEEK_AFTER_APPEND, "seekFirstPos(" + position + ") after an append",
-                        null);
-            }
-            if (position < length) {
-                breach(Kind.ARGUMENT, "seekFirstPos(" + position + ") below the length, "
-                        + length, null);
-            }
-            callHook(Op.SEEK_FIRST_POS);
-            inner.seekFirstPos(position);
-            length = position;
-            lengthUpper = position;
-            keptFrom = position;
-            firstPos = position;
-            synchronized (keptLock) {
-                keptStart = position;
-                keptLength = 0;
-            }
-            long l = inner.getLength();
-            long f = inner.getFirstPos();
-            if (l != position || f != position) {
-                breach(Kind.LENGTH, "after seekFirstPos(" + position + "), the length is " + l
-                        + " and the first position " + f, null);
-            }
         } finally {
             exit(w);
         }
