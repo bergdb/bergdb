@@ -3,7 +3,8 @@
 
 Status: open; decided by Frans 2026-11-04 (A, a setting) and implemented,
 see "Frans's decision" and "Done"; the sync latency measured on s1
-("Sync latency on s1"); left: the same on F53, in a quiet block ("Left").
+("Sync latency on s1"); left: the same on F53, in a quiet block ("Left";
+the block of 2026-11-05 was not quiet, so not run).
 Kind: decide. Created 2026-10-26.
 
 Frans's question, 2026-10-26, added as an entry at his request, by Claude
@@ -481,3 +482,28 @@ Left
         sleep 5; done; done
 
   About 4 minutes. Then the table above for F53, and this entry done.
+
+  **2026-11-05: not run, F53 not quiet.** The quiet block of the morning,
+  by Claude (Opus 5.5, Claude Code): the marker
+  `/Users/f/fl/bench/coord/2026-11-05/QUIET-BLOCK` from 07:22, then a
+  wait for quiet (the 1-minute load below 1.5 in two checks 30 s apart,
+  no other JVM or gate) until 07:55, the limit set for the block. macOS's
+  `mediaanalysisd`, at 51 to 146 percent of a core in the block's
+  samples, was paused by the coordinator at Frans's word from 07:32:35
+  to 07:56:17 (`kill -STOP`, then `-CONT`; launchd then started a new
+  one). The load still stayed up: from 07:33 to 07:55 the 1-minute load
+  was 1.33 to 3.11, below 1.5 only at 07:34:52, 07:47:56 and 07:48:56,
+  never twice in a row (VS Code's peaks of about 80 percent; from 07:50
+  another session's C build, `clang` and `ld`). At 07:55:59 it was 3.02,
+  not below 2, so both of the block's runs were skipped, as the block's
+  rule says. Nothing ran; nothing to compare with s1.
+
+  Ready for the next quiet block: the clone at `188facf`, built
+  (`build/bergdb.jar` and `build/stress`), in
+  `/Users/f/fl/bench/005-47-f53-2026-11-05/clone/java`, so the loop above
+  can run there without `build.sh`; and the block's script
+  `/Users/f/fl/bench/quiet-block-2026-11-05/block.sh`, which waits for
+  quiet, runs this loop (each run's full output in
+  `005-47-f53-2026-11-05/out/`, the summary lines in its `runs.txt`) and
+  then 005-65's AB/BA step, with its log `block.log`; the time limit in
+  it (07:55) is to be changed for another block.
