@@ -516,7 +516,8 @@ public final class Eviction {
      * database that is not used does not wake (010-P3, bergdb 005-51); the database's close
      * wakes it (endThread). Until 005-51 it woke once a second, to see whether the database
      * had stopped. A batch that throws, a bug or the JVM's failure, fails the database, as the
-     * writer's batch does within its transaction (bergdb 015-25), and the thread ends.
+     * writer's batch does within its transaction (bergdb 015-25), before the thread lets go of
+     * the write lock (bergdb 015-66), and the thread ends.
      */
     private final class EvictorRun implements Runnable {
         private final Db db;
@@ -570,7 +571,16 @@ public final class Eviction {
                         long[] fm = null;
                         synchronized (in.getWriteLock()) {
                             if (in.isActive() && in.cache().residents().bytes() > trigger) {
-                                fm = sweep(db, true);
+                                try {
+                                    fm = sweep(db, true);
+                                } catch (RuntimeException | Error x) {
+                                    // Failed before the write lock goes (bergdb 015-66): a
+                                    // writer that waits for it then finds the database failed
+                                    // (Db.executeInner checks the state under the lock), and
+                                    // does not run on what the batch left or append after it.
+                                    in.failByEviction(x);
+                                    throw x;
+                                }
                             }
                         }
                         batches++;      // this thread's only (afterLoad reads it)
@@ -583,7 +593,9 @@ public final class Eviction {
                     // state part of the way, which nothing undoes: the database fails, as when
                     // the writer's batch throws within its transaction's go point (Db.fail;
                     // 010-01, P7), and every later read and transaction is refused with a
-                    // DbFailedException whose cause is x (bergdb 015-25). Then the thread
+                    // DbFailedException whose cause is x (bergdb 015-25). A batch's failure is
+                    // set under the write lock, above (bergdb 015-66); this call is for
+                    // anything else that throws here, and keeps the first failure. Then the thread
                     // ends, with no request pending and none named, so that no waiter waits
                     // for it; a wake after the failure starts a thread that ends at once. As
                     // BufferedStream's consumer (bergdb 005-32), it does not rethrow: x is the
@@ -1857,6 +1869,116 @@ public final class Eviction {
             }
         } finally {
             e.testBeforeTrigger = null;
+            db.close();
+        }
+    }
+
+    /**
+     * A batch of the eviction thread that throws fails the database before it lets go of the
+     * write lock (bergdb 015-66; 016-06, R4-F1): a writer that waits for the lock meanwhile
+     * gets it only after the failure, and is refused (Db.executeInner checks the state under
+     * the lock), so that no transaction runs on what the batch left or appends after it. The
+     * hook testBeforeTrigger, in the thread's first batch only, starts the writer and throws
+     * once it waits for the lock; the test holds readSync meanwhile, so that the thread's
+     * setFailed waits for it, and looks at whom the writer waits for: the eviction thread,
+     * which still holds the write lock, or (the fault) the test, at the writer's own
+     * synchronized (readSync) after its go point. Then the writer is refused with a
+     * DbFailedException whose cause is the Error, and the stream is as before. Until 015-66
+     * the thread failed the database after it had let go of the lock: the writer got it with
+     * the database active, committed and appended.
+     */
+    @Nano
+    public static void testBatchFailureBeforeTheLockGoes() throws Exception {
+        MemoryStream s = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        final Db db = Db.builder().testSetup(s).clock(clock).testId()
+                .cacheSizeIndicator(1000 * 1000).evictionSchedule(Schedule.BUDGET, 1).audit(0)
+                .start();
+        final Eviction e = db.internal().eviction();
+        final Error injected = new AssertionError("an Error in a batch (the test's)");
+        final java.util.concurrent.CountDownLatch inHook =
+                new java.util.concurrent.CountDownLatch(1);
+        final java.util.concurrent.CountDownLatch throwNow =
+                new java.util.concurrent.CountDownLatch(1);
+        final Thread[] evictor = new Thread[1];
+        final Throwable[] refused = new Throwable[1];
+        Thread writer = null;
+        try {
+            long time = 100 * STEP;
+            clock.setTime(time);
+            db.execute(db.trans().put("k", "before").build());
+            final long length = db.internal().getMainStream().getLength();
+            time += STEP;
+            clock.setTime(time);
+            final Trans t = db.trans().put("k", "after").build();
+            writer = new Thread(new Runnable() {
+                public void run() {
+                    try {
+                        db.execute(t);
+                    } catch (Throwable x) {
+                        refused[0] = x;
+                    }
+                }
+            }, "test-writer");
+            writer.setDaemon(true);
+            final Thread w = writer;
+            e.testBeforeTrigger = new Runnable() {
+                public void run() {
+                    if (!"bergdb-evictor".equals(Thread.currentThread().getName())
+                            || w.getState() != Thread.State.NEW) {
+                        return;
+                    }
+                    evictor[0] = Thread.currentThread();
+                    w.start();
+                    long end = System.nanoTime() + 2000L * 1000 * 1000;
+                    while (db.internal().writersWaiting() == 0 && System.nanoTime() < end) {
+                        Thread.yield();
+                    }
+                    inHook.countDown();
+                    try {
+                        throwNow.await(2, java.util.concurrent.TimeUnit.SECONDS);
+                    } catch (InterruptedException x) {
+                        Thread.currentThread().interrupt();
+                    }
+                    throw injected;
+                }
+            };
+            db.setCacheSizeIndicator(1);        // wakes the thread
+            Assert.assertTrue("the batch's hook ran",
+                    inHook.await(2, java.util.concurrent.TimeUnit.SECONDS));
+            Assert.assertTrue("the writer waits", db.internal().writersWaiting() > 0);
+            java.lang.management.ThreadMXBean mx =
+                    java.lang.management.ManagementFactory.getThreadMXBean();
+            long owner = -1;
+            synchronized (db.internal().getReadSynch()) {
+                throwNow.countDown();
+                long end = System.nanoTime() + 2000L * 1000 * 1000;
+                while (System.nanoTime() < end) {
+                    java.lang.management.ThreadInfo wi = mx.getThreadInfo(w.getId());
+                    owner = wi == null ? -1 : wi.getLockOwnerId();
+                    if (evictor[0].getState() == Thread.State.BLOCKED
+                            && (owner == evictor[0].getId()
+                                || owner == Thread.currentThread().getId())) {
+                        break;
+                    }
+                    Thread.yield();
+                }
+            }
+            writer.join(5000);
+            Assert.assertTrue("the writer has ended", !writer.isAlive());
+            Assert.assertEquals("the writer waits for the eviction thread's write lock while "
+                    + "it fails the database (not the test's readSync, after its go point)",
+                    evictor[0].getId(), owner);
+            Assert.assertFalse("the database failed", db.internal().isActive());
+            Assert.assertTrue("the writer refused: " + refused[0],
+                    refused[0] instanceof bergdb.pub.util.DbFailedException
+                    && refused[0].getCause() == injected);
+            Assert.assertEquals("nothing appended", length,
+                    db.internal().getMainStream().getLength());
+        } finally {
+            e.testBeforeTrigger = null;
+            throwNow.countDown();
+            if (writer != null && writer.getState() != Thread.State.NEW) writer.join(5000);
             db.close();
         }
     }

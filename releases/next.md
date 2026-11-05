@@ -164,6 +164,13 @@ Reliability
   Javadoc of `Connection.rw` now says so, and that under overload it may
   never commit: a long action while other transactions write more than
   about 100,000 keys, the conflict history, has every attempt refused.
+* **A failed eviction batch lets no transaction in before the failure**
+  (bergdb 015-66, 016-06's R4-F1; 2026-11-05). A batch of the eviction
+  thread that throws (a bug, an `OutOfMemoryError`) fails the database
+  (2026.2, 015-25), but it did so after it had let go of the write lock: a
+  transaction that waited for the lock could still commit and append, on
+  the memory state the batch left. The failure is now set before the lock
+  goes, and such a transaction is refused with `DbFailedException`.
 
 * **A record whose size field is larger than its content is refused** at a
   start (bergdb 015-72, 016-06's R6-F1; 2026-11-05), with a

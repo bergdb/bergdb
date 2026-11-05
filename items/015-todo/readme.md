@@ -65,7 +65,6 @@ Open
 | [015-61](61-deletion-job-done-at-stop.md) | Fix | A deletion job that stop() or close() ends early reports "Done! ... | open |
 | [015-63](63-time-tostring-threads.md) | Fix | Time.toString() from several threads gives wrong strings and throws | open |
 | [015-65](65-memory-builder-second-start.md) | Fix | A second start() of a memory() builder whose database runs is not refused | open |
-| [015-66](66-evictor-failure-lock-window.md) | Fix | A failed batch releases the writer lock before failing the database | open |
 | [015-67](67-batch-whole-map.md) | Fix | A batch processes a whole map even past its handle limit | open |
 | [015-68](68-startup-large-values-kept.md) | Fix | Startup leaves large values retained in the writer's admission list | open |
 | [015-69](69-resync-overwrites-readers.md) | Fix | A test-schedule resync overwrites concurrent readers' accounting | open |
@@ -93,6 +92,7 @@ Closed
 | [015-52](52-warmup-read-expired.md) | Fix | `execute()` can be refused with `LookupTimeNotAvailableException`, ... | done | 2026-11-05 |
 | [015-51](51-transform-size-unchecked.md) | Fix | A value transformation's result is not size-checked: one above the ... | done | 2026-11-05 |
 | [015-50](50-reclaim-step-too-large.md) | Fix | A reclaim step that rewrites old values beyond the value limit ... | done | 2026-11-05 |
+| [015-66](66-evictor-failure-lock-window.md) | Fix | A failed batch releases the writer lock before failing the database | done | 2026-11-05 |
 | [015-87](87-retain-duration-in-stream.md) | Investigate | The retain duration kept in the stream | done | 2026-11-05 |
 | [015-88](88-overload-and-retries.md) | Investigate | Transaction retries: sleep capped at 640 ms | done | 2026-11-05 |
 | [015-05](05-empty-or-missing-directory.md) | Decide | A start on an empty or missing directory creates a database | done | 2026-11-05 |
