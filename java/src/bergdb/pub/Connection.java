@@ -96,6 +96,12 @@ public interface Connection extends ReadInterface {
 
     /**
      * Checks whether a key-value entry with the given key exists.
+     *
+     * <p>A read like get(): it reads at the connection's lookup time, and after
+     * freezeLookupTime(), as the first read, it freezes the time it read at (bergdb
+     * 015-48). When it finds the key, transactionInfo() then describes the transaction
+     * that wrote the value, as after a get() that retrieved it; when it does not, it
+     * leaves transactionInfo() as a get() that finds no entry does.</p>
      * 
      * @param key
      *            The key to check for.
@@ -157,6 +163,8 @@ public interface Connection extends ReadInterface {
      * transaction, the entries of an index, are left out.
      * A get() that finds no entry does not change the value this method describes:
      * after one, it describes the value retrieved by an earlier get().
+     * An exists() of this connection counts as a get() here: one that finds the key as
+     * a get() that retrieved its value, one that does not as a get() that found no entry.
      * This method call will always require a read from the database
      * storage, no caching for this query.
      *

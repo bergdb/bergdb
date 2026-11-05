@@ -72,6 +72,8 @@ Reliability
   transaction, 0."), which the Javadoc does not name. After a get that
   found a value, a later get that finds none leaves `transactionInfo()`
   describing the value found, as before, and its Javadoc now says so.
+  The Javadoc of `exists()` and `transactionInfo()` now says that an
+  `exists()` that finds the key counts as a get for it, as in 2026.2.
 * **`DatabaseBuilder.cryptoKey(CryptoKey.NULL)` after a key means no
   encryption** (bergdb 015-44, 016-06's S1-F5; 2026-11-05), as its Javadoc
   says; NULL was ignored, and the database was encrypted with the earlier

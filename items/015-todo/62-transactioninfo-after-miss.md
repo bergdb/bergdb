@@ -60,3 +60,23 @@ answer: "as recommended", (c). Changed: the Javadoc of
 not change the value this method describes: after one, it describes the
 value retrieved by an earlier get()."; no code change. A clause in
 `releases/next.md`'s line.
+
+2026-11-05, 12:27. Frans decided the second question: `exists()` sets
+what `transactionInfo()` describes, though the Javadoc named only `get()`.
+In `ConnectionImp`, `exists()` reads through `getBytesAtLookupTime()`, with
+the connection's `GetData`: one that finds the key sets `tpos` as a get
+does; one that does not sets the actual lookup time and keeps `tpos`, as a
+get that finds no entry. An `exists()` of an rw-transaction reads with the
+transaction's own `GetData` (015-42) and changes neither. The options as
+given to him: (a) keep it and document it; (b) make `exists()` leave
+`transactionInfo()` alone. His answer: "as recommended", (a). Changed, the
+Javadoc only, no code change: `Connection.exists()` now says that it is a
+read like `get()` (the lookup time, the frozen time of 015-48) and that,
+when it finds the key, `transactionInfo()` then describes the transaction
+that wrote the value; when it does not, it leaves `transactionInfo()` as a
+get that finds no entry does. `Connection.transactionInfo()` says "An
+exists() of this connection counts as a get() here: one that finds the key
+as a get() that retrieved its value, one that does not as a get() that
+found no entry." `ReadInterface.exists`, `RwEnvironment` and the class
+comment of `TransactionInfo` are unchanged. A clause in `releases/next.md`'s
+line.
