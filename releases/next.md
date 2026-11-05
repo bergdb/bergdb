@@ -73,6 +73,12 @@ Pub API
   016-06's R8-F3; 2026-11-05), as its Javadoc says ("larger than or equal
   to"); it threw `IllegalArgumentException`, also for time 0 on a new clock.
   An earlier time is still refused.
+* **`Time.toString()` and `toUtcString()` may be called from any thread**
+  (bergdb 015-63, 016-06's R8-F8; 2026-11-05). They formatted with one
+  shared `SimpleDateFormat`, which is not thread-safe, so threads that
+  formatted times at once (a `Transaction.getTime()` or
+  `Database.currentTime()` in a log line, say) could get another thread's
+  time or an `ArrayIndexOutOfBoundsException`. The strings are unchanged.
 
 
 Reliability

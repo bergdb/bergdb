@@ -1,7 +1,8 @@
 package bergdb.pub;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.TimeZone;
 
@@ -19,6 +20,7 @@ import bergdb.pubimp.TimeResolver;
  * Leap seconds are not counted; a day is always 24*60*60 seconds.
  * The minimum valid time value is 0 clock units (UTC 1970-01-01 00:00:00); 
  * the maximum valid time value is 2^56-1 clock units (UTC 2198-05-04 23:50:04).
+ * A Time is immutable, and its methods may be called from any thread.
  * 
  * @see Clock
  * @author Frans Lundberg
@@ -153,7 +155,7 @@ public class Time {
      * </pre>
      * 
      * <p>The format of the time string loosely follows ISO 8601.
-     * This class is not thread-safe. The Gregorian calendar is used (the ordinary Western calendar).
+     * The Gregorian calendar is used (the ordinary Western calendar).
      * Leap seconds are never considered. One day is always 24*3600 seconds, 
      * one minute is 60 seconds and one hour is always 3600 seconds.</p>
      */
@@ -211,11 +213,12 @@ public class Time {
         return toUtcString();
     }
     
-    private static final SimpleDateFormat UTC_DATE_FORMAT;
-    static { 
-        UTC_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US);
-        UTC_DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
-    }
+    /**
+     * Immutable and thread-safe; a static SimpleDateFormat, which is neither, gave threads
+     * that formatted at once wrong strings and exceptions (bergdb 015-63).
+     */
+    private static final DateTimeFormatter UTC_DATE_FORMAT = 
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).withZone(ZoneOffset.UTC);
     
     /**
      * Returns the time in UTC formatted like this: yyyy-MM-dd HH:mm:ss.SSSSSSS. 
@@ -224,7 +227,7 @@ public class Time {
     public String toUtcString() {       
         long millis = units / Time.UNITS_PER_MILLISECOND;
         long unitsLeft = units % Time.UNITS_PER_MILLISECOND;
-        String firstPart = UTC_DATE_FORMAT.format(new Date(millis));
+        String firstPart = UTC_DATE_FORMAT.format(Instant.ofEpochMilli(millis));
         String secondPart = String.format(Locale.US, "%04d", unitsLeft);
         return firstPart + secondPart;
     }
@@ -264,6 +267,48 @@ public class Time {
     private static void testToUtcStringRoundDown() {
         Time time = Time.utc("2000-01-01 18:01:12.123456701");
         Assert.assertEquals("2000-01-01 18:01:12.1234567", time.toUtcString());
+    }
+    
+    /**
+     * Regression test for bergdb 015-63 (016-06's R8-F8): toUtcString() used one static
+     * SimpleDateFormat, which is not thread-safe, so threads that formatted at once got
+     * another thread's string or an exception.
+     */
+    @Nano
+    private static void testToUtcStringFromThreads() throws InterruptedException {
+        final int n = 8;
+        final java.util.concurrent.atomic.AtomicInteger wrong = 
+                new java.util.concurrent.atomic.AtomicInteger();
+        final java.util.concurrent.atomic.AtomicReference<String> example = 
+                new java.util.concurrent.atomic.AtomicReference<String>();
+        Thread[] threads = new Thread[n];
+        for (int k = 0; k < n; k++) {
+            final int year = 2000 + k * 7;
+            threads[k] = new Thread(() -> {
+                String s = year + "-0" + (1 + year % 9) + "-1" + (year % 10) 
+                        + " 1" + (year % 10) + ":2" + (year % 10) + ":3" + (year % 10) + ".1234567";
+                Time t = Time.utc(s);
+                for (int i = 0; i < 20000; i++) {
+                    String got;
+                    try {
+                        got = t.toString();
+                    } catch (RuntimeException e) {
+                        got = e.toString();
+                    }
+                    if (!got.equals(s)) {
+                        wrong.incrementAndGet();
+                        example.compareAndSet(null, "expected " + s + ", got " + got);
+                    }
+                }
+            });
+        }
+        for (Thread t : threads) {
+            t.start();
+        }
+        for (Thread t : threads) {
+            t.join();
+        }
+        Assert.assertEquals("wrong strings, e.g. " + example.get(), 0, wrong.get());
     }
     
     @Nano
