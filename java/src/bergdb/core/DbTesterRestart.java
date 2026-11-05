@@ -82,6 +82,43 @@ public class DbTesterRestart {
         }
     }
 
+    /**
+     * A record whose size field is larger than its content is refused (bergdb 015-72,
+     * 016-06/R6, R6-F1): record A's size is set to A's and B's together, so that it ends on
+     * B's last byte. Before the fix, the start succeeded and B's transaction, /b, was lost.
+     */
+    @Nano
+    public static void testEnlargedRecordSizeRefused() throws IOException {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        long a, c;
+        try (Db db = Db.builder().testSetup(stream).clock(clock)
+                .startupDistance(1000000).start()) {
+            clock.setTime(10);
+            Trans t = db.trans().put("/a", "1").build();
+            db.execute(t);
+            a = t.tpos;
+            clock.setTime(20);
+            db.execute(db.trans().put("/b", "2"));
+            clock.setTime(30);
+            t = db.trans().put("/c", "3").build();
+            db.execute(t);
+            c = t.tpos;
+        }
+        MemoryStream corrupt = stream.copy();
+        byte[] size = new byte[4];
+        Bytes.intToBytesLE((int) (c - a), size, 0);     // A's size + B's: B's last byte
+        MemoryStream.TestAccess.write(corrupt, size, a);
+        try (Db db = Db.builder().testSetup(corrupt).clock(clock)
+                .startupDistance(1000000).start()) {
+            throw new AssertionError("started with A's size over B; /b = " 
+                    + (DbUtil.get(db, Long.MAX_VALUE, "/b") == null ? "lost" : "found"));
+        } catch (StreamFormatException expected) {
+            Assert.assertTrue(expected.getMessage(), 
+                    expected.getMessage().contains("its size says"));
+        }
+    }
+
     /** Real read results carried to a new Db: bergdb 005-70, option A. */
     @Nano
     public static void testStmAfterRestart() {

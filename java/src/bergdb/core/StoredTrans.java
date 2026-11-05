@@ -366,6 +366,14 @@ public class StoredTrans {
                         + byteSize + ", required " + ((long) transSizeBefore + count) + ".");
             }
             int transSize = transSizeBefore + count;
+            
+            // The content fills the record exactly, as the serializer writes it (bergdb
+            // 015-72): a size field larger than the content would make the iterator skip the
+            // records it covers.
+            if (transSize != byteSize) {
+                throw new StreamFormatException("The record at " + tpos + " ends at offset "
+                        + transSize + " by its content, and its size says " + byteSize + ".");
+            }
             lastPos = RecoverableStream.getSpos(tpos, transSize - 1);
             
             assert lastPos % NodeStream.TRANS_ALIGNMENT == (NodeStream.TRANS_ALIGNMENT - 1) 

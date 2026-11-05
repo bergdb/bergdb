@@ -145,6 +145,12 @@ Reliability
   never commit: a long action while other transactions write more than
   about 100,000 keys, the conflict history, has every attempt refused.
 
+* **A record whose size field is larger than its content is refused** at a
+  start (bergdb 015-72, 016-06's R6-F1; 2026-11-05), with a
+  `StreamFormatException`. A corrupt size that ended on the last byte of a
+  later record was taken, and the records it covered were skipped without a
+  word: the start succeeded with their transactions lost. Valid streams are
+  read as before; the stream's bytes are unchanged.
 
 Format
 ------
