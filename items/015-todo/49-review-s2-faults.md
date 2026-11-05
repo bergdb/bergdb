@@ -54,9 +54,59 @@ First step: verify the faults that can lose or invent data or give a wrong
 answer in normal use (016-06, section 2.6), and split them into entries.
 
 
+
+S2-F24 fixed (night 006-12, 2026-11-05)
+---------------------------------------
+
+S2-F24 is the one fault of this entry in release 2026.3's goal (018-01,
+section 3.1); it is fixed, and the entry stays open for the others, the
+experimental code's (018-01, section 3.2).
+
+**The fault**, as S2 found it: `PubKeys.u2i` (with `createIKey`),
+`PubKeys.udir2idir` and `IndexManager.checkIndexName` took a string with a
+lone surrogate, a char of U+D800 to U+DFFF that is not part of a surrogate
+pair; `Keys.toBytes` encodes with `getBytes("UTF-8")`, which writes it as
+`?`. So "/k/a" followed by U+D800 and "/k/a?" were one stored key, and a
+put of one overwrote the other; two index names so were one info key and
+one entry directory.
+
+**The fix**, the review's: `PubKeys.hasLoneSurrogate(String)` (new) finds
+such a char, and `u2i`, `udir2idir` and `checkIndexName` refuse a string
+that has one with `IllegalArgumentException`, as a malformed key ("If
+'key' is null or otherwise invalid"). Every key of the Pub API passes
+`u2i` (connections' and rw-transactions' get, put, delete and exists, and
+`w()`), every directory of a scan or an index `udir2idir`, and every index
+name `checkIndexName` (`Database.indexBuilder`).
+
+**The stream's bytes** (P2): unchanged for every key that was taken and
+stays taken: `u2i` returns the same ikey, and `Keys.toBytes` is untouched.
+A key that was stored with `?` in a database stays as it is and is read
+by its `?`; only a new call with a lone surrogate is refused. StreamDigest
+does not apply: its workloads use the Core API, below `PubKeys`.
+
+**Tests**, each failing before the fix:
+
+* `PubTester.testKeyWithLoneSurrogateRefused`: put, get, exists, delete
+  and `w().put` of four keys with a lone surrogate are refused, "/k/a?"
+  keeps its value, and a key with a surrogate pair (U+1F600) is put and
+  read. Before: "put took a key with a lone surrogate, /k/a\uD800".
+* `PubKeys.testLoneSurrogateRefused`: `u2i` and `udir2idir` refuse lone
+  surrogates (high or low, at the end, inside, reversed), and a pair keeps
+  its ikey. Before: "Expected true, but was false".
+* `IndexManager.Tester.testIndexNameWithLoneSurrogate`. Before: "taken, 2
+  chars".
+
+**Principles** (010-01): no setting, state, thread or format change; P11,
+the review's own fix.
+
+
 Log
 ---
 
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02), as
 one entry for now: the review ended at 21:26 and no fix of it fits before
 the freeze.
+
+2026-11-05, night 006-12 (W1): S2-F24 fixed (its section above), in the
+clone `/Users/f/fl/bench/006-12/g4b`, branch `w1-g4b`; the entry stays
+open for the other faults, which are outside 2026.3's goal.

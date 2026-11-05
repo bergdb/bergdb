@@ -332,6 +332,52 @@ public class PubTester {
         }
     }
     
+    /**
+     * Regression test for bergdb 015-49, S2-F24 (review S2): a key with a lone surrogate is
+     * refused with IllegalArgumentException, by put(), get(), exists() and delete(); until
+     * then the UTF-8 encoder stored it with '?' in the surrogate's place (005-26), so
+     * "/k/a" followed by U+D800 and "/k/a?" were one key, and a put of one overwrote the
+     * other. A key with a surrogate pair is taken and kept, as before.
+     */
+    @Nano
+    public static void testKeyWithLoneSurrogateRefused() {
+        Database d = Factory.database().memory().start();
+        try {
+            Connection c = d.connection();
+            c.put("/k/a?", "question mark");
+            String[] bad = {"/k/a\uD800", "/k/\uDC00a", "/k\uD800/a", "/k/\uDC00\uD800"};
+            for (String key : bad) {
+                assertKeyRefused("put", key, () -> c.put(key, "lone"));
+                assertKeyRefused("get", key, () -> c.get(key, String.class));
+                assertKeyRefused("exists", key, () -> c.exists(key));
+                assertKeyRefused("delete", key, () -> c.delete(key));
+                assertKeyRefused("w().put", key, () -> c.w().put(key, "lone").execute());
+            }
+            Assert.assertEquals("question mark", c.get("/k/a?", String.class));
+
+            String pair = "/k/\uD83D\uDE00";        // U+1F600, a surrogate pair
+            c.put(pair, "pair");
+            Assert.assertEquals("pair", c.get(pair, String.class));
+            Assert.assertEquals("question mark", c.get("/k/a?", String.class));
+        } finally {
+            d.close();
+        }
+    }
+
+    /** Asserts that 'call' throws IllegalArgumentException for 'key' (bergdb 015-49, S2-F24). */
+    private static void assertKeyRefused(String what, String key, Runnable call) {
+        try {
+            call.run();
+        } catch (IllegalArgumentException e) {
+            return;
+        }
+        StringBuilder escaped = new StringBuilder();
+        for (char ch : key.toCharArray()) {
+            escaped.append(ch < 128 ? String.valueOf(ch) : String.format("\\u%04X", (int) ch));
+        }
+        throw new AssertionError(what + " took a key with a lone surrogate, " + escaped);
+    }
+
     /** Closes 'd'; what the close throws is dropped. */
     private static void closeQuietly(Database d) {
         try {

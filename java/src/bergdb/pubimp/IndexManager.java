@@ -247,6 +247,13 @@ public class IndexManager {
                 throw new IllegalArgumentException("Illegal indexName: '" + indexName + "'.");
             }
         }
+
+        // Its UTF-8 bytes would have '?' in the surrogate's place, so the index and the one
+        // named with '?' would be one in the database (bergdb 015-49, S2-F24).
+        if (PubKeys.hasLoneSurrogate(indexName)) {
+            throw new IllegalArgumentException("Illegal indexName: it has a lone surrogate "
+                    + "(bergdb 015-49, S2-F24).");
+        }
     }
     
     /**
@@ -1029,6 +1036,21 @@ public class IndexManager {
     
     public static class Tester {
         private Tester() {}
+        
+        /** bergdb 015-49, S2-F24: an index name with a lone surrogate is refused. */
+        @Nano
+        public static void testIndexNameWithLoneSurrogate() {
+            for (String name : new String[] {"i\uD800", "\uDC00i"}) {
+                try {
+                    checkIndexName(name);
+                    throw new AssertionError("taken, " + name.length() + " chars");
+                } catch (IllegalArgumentException e) {
+                    // Expected.
+                }
+            }
+            checkIndexName("i\uD83D\uDE00");
+            checkIndexName("i?");
+        }
         
         @Nano
         public static void testCheckType1() {

@@ -163,6 +163,15 @@ Reliability
   key. `cryptoKey(null)` throws `IllegalArgumentException`, as `dir(null)`
   did and `create(null)` and `open(null)` do (015-05), not a
   `NullPointerException`.
+* **A key with a lone surrogate is refused** (bergdb 015-49, S2-F24;
+  2026-11-05) with `IllegalArgumentException`, as a malformed key, by
+  every call that takes a key, a directory or an index name: a char of
+  U+D800 to U+DFFF that is not part of a surrogate pair. It was stored
+  with `?` in its place, so "/k/a" followed by U+D800 and "/k/a?" were one
+  key, and a put of one overwrote the other (two index names, likewise
+  one index in the database). Keys with surrogate pairs, and every key
+  taken before, are stored as before; a key that was stored with `?`
+  stays and is read by its `?`.
 * **A second `start()` of a `memory()` builder whose database runs is
   refused** (bergdb 015-65; 2026-11-05), with `IllegalStateException`, also
   while that database is closing after `stop()`; it gave the running

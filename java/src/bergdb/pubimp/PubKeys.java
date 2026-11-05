@@ -22,6 +22,10 @@ public class PubKeys {
      * This method should always be applied to all keys as they cross the border between
      * the user application and the Pub Layer.
      * 
+     * A key with a lone surrogate is invalid (bergdb 015-49, S2-F24): the UTF-8 encoding of
+     * the key (Keys.toBytes) writes it as '?', so that the key and the one with '?' in its
+     * place were one stored key; until 2026-11-05 it was taken.
+     *
      * @param ukey The input ukey (user string key).
      * @return The ukey converted to an ikey.
      * @throws IllegalArgumentException  If ukey is null or invalid.
@@ -43,6 +47,12 @@ public class PubKeys {
         
         if (length < 2) { 
             throw new IllegalArgumentException("Key is too short: " + ukey);
+        }
+
+        if (hasLoneSurrogate(ukey)) {
+            throw new IllegalArgumentException("Key has a lone surrogate, a char of "
+                    + "U+D800 to U+DFFF that is not part of a surrogate pair (bergdb 015-49, "
+                    + "S2-F24).");
         }
         
         String ikey = createIKey(ukey);
@@ -83,11 +93,32 @@ public class PubKeys {
     }
     
     /**
+     * True if 's' has a lone surrogate: a char of U+D800 to U+DFFF that is not part of a
+     * surrogate pair, a high surrogate followed by a low one (bergdb 015-49, S2-F24). Its
+     * UTF-8 encoding writes such a char as '?'.
+     */
+    public static boolean hasLoneSurrogate(String s) {
+        int length = s.length();
+        for (int i = 0; i < length; i++) {
+            char c = s.charAt(i);
+            if (Character.isSurrogate(c)) {
+                if (Character.isHighSurrogate(c) && i + 1 < length
+                        && Character.isLowSurrogate(s.charAt(i + 1))) {
+                    i++;
+                } else {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Converts a directory ukey to a directory ikey according to doc/2013-key-encoding.txt.
      * 
      * @throws IllegalArgumentException  If udir is null or empty, does not end with '/', or
      *      contains "//". As u2i() does for a key; it was a BadFormatException (2026-10-25,
-     *      bergdb 005-43).
+     *      bergdb 005-43). Also if it has a lone surrogate, as a key (bergdb 015-49, S2-F24).
      */
     public static final String udir2idir(String udir) throws IllegalArgumentException {
         
@@ -103,6 +134,12 @@ public class PubKeys {
         
         if (udir.charAt(length - 1) != '/') {
             throw new IllegalArgumentException("udir must end with '/', was: " + udir);
+        }
+
+        if (hasLoneSurrogate(udir)) {
+            throw new IllegalArgumentException("udir has a lone surrogate, a char of "
+                    + "U+D800 to U+DFFF that is not part of a surrogate pair (bergdb 015-49, "
+                    + "S2-F24).");
         }
         
         StringBuilder b = new StringBuilder();
@@ -224,6 +261,33 @@ public class PubKeys {
         assertI2uException("/slash at end not allowed/");
     }
     
+    /**
+     * bergdb 015-49, S2-F24: a key or a directory with a lone surrogate is refused; one with
+     * a surrogate pair is taken, its ikey as before.
+     */
+    @Nano
+    public static void testLoneSurrogateRefused() {
+        String[] badKeys = {"/a\uD800", "/\uDC00", "/a\uD800/b", "/a/b\uDBFF", "/\uDC00\uD800"};
+        for (String ukey : badKeys) {
+            assertI2uException(ukey);
+        }
+        String[] badDirs = {"/a\uD800/", "/\uDC00/b/"};
+        for (String udir : badDirs) {
+            try {
+                udir2idir(udir);
+                throw new AssertionError("taken, " + udir);
+            } catch (IllegalArgumentException e) {
+                // Expected.
+            }
+        }
+        Assert.assertEquals("/da/-\uD83D\uDE00", u2i("/a/\uD83D\uDE00"));
+        Assert.assertEquals("/d\uD83D\uDE00/", udir2idir("/\uD83D\uDE00/"));
+        Assert.assertTrue(!hasLoneSurrogate("x\uD83D\uDE00y"));
+        Assert.assertTrue(hasLoneSurrogate("x\uD83D"));
+        Assert.assertTrue(hasLoneSurrogate("\uDE00x"));
+        Assert.assertTrue(hasLoneSurrogate("\uD83D\uD83D\uDE00"));
+    }
+
     /** bergdb 005-43: a bad directory is an IllegalArgumentException, as a bad key is. */
     @Nano
     public static void testUdir2idirRefusesBadDirs() {
