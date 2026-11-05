@@ -119,15 +119,16 @@ public interface Database extends AutoCloseable {
     /**
      * Gets a connection to the database. The returned object is always the same object for one
      * specific thread that calls this method. Two different threads calling this method are
-     * guaranteed to get different Connection instances. The lookupTime of the returned Connection
-     * is always Long.MAX_VALUE.
+     * guaranteed to get different Connection instances. Each call sets the requested lookup
+     * time of the returned Connection to Time.MAX, the latest state (Connection.setLookupTime()).
      */
     public Connection connection();
 
     /**
      * Creates and returns a new connection to the database. The returned object is always newly
      * created in this method and is guaranteed not to be returned from subsequent calls to
-     * newConnection() or connection().
+     * newConnection() or connection(). Its requested lookup time is Time.MAX, the latest state
+     * (Connection.setLookupTime()).
      */
     public Connection newConnection();
 

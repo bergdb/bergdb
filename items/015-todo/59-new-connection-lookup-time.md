@@ -1,7 +1,7 @@
 015-59. Fix: connection.getLookupTime() of a new connection throws IllegalArgumentException
 ===========================================================================================
 
-Status: open. Kind: Fix. Created 2026-11-04 by Frans Lundberg.
+Status: done. Kind: Fix. Created 2026-11-04 by Frans Lundberg.
 
 After release 2026.2 (a known issue of it); in 2026.1 too.
 
@@ -19,3 +19,27 @@ Log
 ---
 
 2026-11-04. Registered by the coordinator of release 2026.2 (016-02).
+
+2026-11-05. In progress: session bergdb-e8's agent verifies and fixes it, with
+015-42, 48, 59 and 62 as one group.
+
+2026-11-05. Done by session bergdb-e8's agent. Verified: `ConnectionImp`'s
+constructor set `lookupTime = Long.MAX_VALUE`, above `Time`'s range, and
+`getLookupTime()` threw `IllegalArgumentException` on a connection from
+`newConnection()` (and the internal ones); `connection()`'s initializer
+sets `Time.MAX`, which `Database.connection()`'s Javadoc called
+"Long.MAX_VALUE".
+
+* Test (`PubTester`, unit): `testNewConnectionLookupTime`: `Time.MAX` from
+  `newConnection()` and `connection()`, and a read. Before the fix:
+  "IllegalArgumentException: Time ouf of range, units:
+  9223372036854775807."
+* Fix: the constructor sets `Time.MAX.units()`. The reads are the same
+  (`DbClock.lookupTime` takes the last transaction's time for both values).
+  Javadoc: `Database.connection()` says that each call sets the lookup time
+  to `Time.MAX`, and `newConnection()` that its connection has `Time.MAX`.
+* Checked against 010-01's P1 to P12: no new work, wait, setting, public
+  method or global state; the Core Layer and the stream are unchanged.
+* A line in `releases/next.md` (Reliability).
+* Gate, with 015-42, 48, 59 and 62: `before-commit.sh`: `BEFORE COMMIT OK
+  (103 s)`, unit 1155, f 81.

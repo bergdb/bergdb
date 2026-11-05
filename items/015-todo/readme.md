@@ -55,13 +55,11 @@ Open
 | [015-38](38-jmx-monitor-interrupt.md) | Fix | JMX's monitor thread ends on an interrupt, and stop loses the caller's flag | open |
 | [015-39](39-job-status-mutable.md) | Fix | An index build's status object reads the worker's changing counter | open |
 | [015-41](41-object-key-two-maps.md) | Fix | A String or bytes and an object, or a delete, of one key: the call ... | open |
-| [015-42](42-rw-changes-frozen-time.md) | Fix | An rw() on a connection changes its frozen lookup time | open |
 | [015-43](43-object-index-read-time.md) | Fix | Index work reads the indexes before the read time: a new or ... | open |
 | [015-44](44-cryptokey-null.md) | Fix | DatabaseBuilder.cryptoKey(CryptoKey.NULL) after a key keeps the key | open |
 | [015-45](45-cryptokey-hashcode.md) | Fix | CryptoKey has equals() and no hashCode() | open |
 | [015-46](46-string-at-object-key-index.md) | Fix | A String or byte[] at an object key in an indexed directory breaks ... | open |
 | [015-47](47-bytes-shared-with-caller.md) | Fix | A byte[] value is shared with the caller: a change of the array ... | open |
-| [015-48](48-exists-freezes-time.md) | Fix | freezeLookupTime(), then exists(): the frozen time is the read ... | open |
 | [015-49](49-review-s2-faults.md) | Fix | Review S2's 27 faults of the indexes and the objects | open |
 | [015-50](50-reclaim-step-too-large.md) | Fix | A reclaim step that rewrites old values beyond the value limit ... | open |
 | [015-51](51-transform-size-unchecked.md) | Fix | A value transformation's result is not size-checked: one above the ... | open |
@@ -70,10 +68,8 @@ Open
 | [015-55](55-database-time-margin.md) | Fix | A user transaction at the last database time is taken, and ... | open |
 | [015-57](57-resolve-ignores-timezone.md) | Fix | Time.resolve(TimeZone, String) ignores its time zone | open |
 | [015-58](58-testclock-current-time.md) | Fix | TestClock.setTime() refuses the clock's current time, which its ... | open |
-| [015-59](59-new-connection-lookup-time.md) | Fix | Connection.getLookupTime() of a new connection throws ... | open |
 | [015-60](60-connections-per-thread-kept.md) | Fix | Database.connection() keeps a connection for every thread that ... | open |
 | [015-61](61-deletion-job-done-at-stop.md) | Fix | A deletion job that stop() or close() ends early reports "Done! ... | open |
-| [015-62](62-transactioninfo-after-miss.md) | Fix | transactionInfo() after a get() that found no entry throws ... | open |
 | [015-63](63-time-tostring-threads.md) | Fix | Time.toString() from several threads gives wrong strings and throws | open |
 | [015-64](64-key-replace-last-only.md) | Fix | Key replace replaces only the last "${transactionTime}" of a key | open |
 | [015-65](65-memory-builder-second-start.md) | Fix | A second start() of a memory() builder whose database runs is not refused | open |
@@ -104,6 +100,10 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-42](42-rw-changes-frozen-time.md) | Fix | An rw() on a connection changes its frozen lookup time | done | 2026-11-05 |
+| [015-48](48-exists-freezes-time.md) | Fix | freezeLookupTime(), then exists(): the frozen time is the read ... | done | 2026-11-05 |
+| [015-59](59-new-connection-lookup-time.md) | Fix | Connection.getLookupTime() of a new connection throws ... | done | 2026-11-05 |
+| [015-62](62-transactioninfo-after-miss.md) | Fix | transactionInfo() after a get() that found no entry throws ... | done | 2026-11-05 |
 | [015-54](54-safe-pos-javadoc.md) | Fix | pSafe is not "the stream length now", as `markSafePositions`'s ... | done | 2026-11-05 |
 | [015-27](27-failed-append-visible.md) | Decide | A failed append's transaction was visible to readers: intended | done | 2026-11-05 |
 | [015-77](77-canonical-node-javadoc.md) | Fix | DbStarter.canonicalNode's Javadoc gives a reason for the stored ... | done | 2026-11-05 |

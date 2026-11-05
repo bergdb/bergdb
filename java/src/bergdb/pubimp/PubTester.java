@@ -616,6 +616,162 @@ public class PubTester {
         database.stop();
     }
     
+    /**
+     * bergdb 015-42 (016-06, S1-F3): Connection.freezeLookupTime(): "The lookup time of
+     * this Connection will not change until setLookupTime() is called or this method is
+     * called again." An rw() whose action read, on the same connection, set the frozen time
+     * to the rw's read time, the latest.
+     */
+    @Nano
+    public static void testRwKeepsFrozenLookupTime() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.connection();
+            Connection other = db.newConnection();
+            c.put("/f.txt", "1");
+            c.freezeLookupTime();
+            Assert.assertEquals("1", c.get("/f.txt", String.class));
+            other.put("/f.txt", "2");
+            Assert.assertEquals("frozen before rw", "1", c.get("/f.txt", String.class));
+            c.rw(new Action() {
+                public void run(RwEnvironment env) {
+                    env.get("/g.txt", String.class);
+                }
+            });
+            Assert.assertEquals("frozen after rw", "1", c.get("/f.txt", String.class));
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * bergdb 015-42 (016-06, S1-F3), through a w-transaction: the put of an object in a
+     * directory with an index reads the object's previous value, and that read set the
+     * frozen time too.
+     */
+    @Nano
+    public static void testObjectPutKeepsFrozenLookupTime() {
+        Database db = Factory.database().memory().start();
+        try {
+            db.indexBuilder("area").type("long").dir("/houses/").field("area").createFast();
+            Connection c = db.connection();
+            Connection other = db.newConnection();
+            c.put("/f.txt", "1");
+            c.freezeLookupTime();
+            Assert.assertEquals("1", c.get("/f.txt", String.class));
+            other.put("/f.txt", "2");
+            House h = new House();
+            h.area = 120;
+            c.put("/houses/h1", h);
+            Assert.assertEquals("frozen after an object put", "1", c.get("/f.txt", String.class));
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * bergdb 015-42 (016-06, S1-F3): Connection.transactionInfo() is of "the last value
+     * retrieved with the get() method"; after an rw() whose action read, it was of the rw's
+     * last read.
+     */
+    @Nano
+    public static void testRwKeepsTransactionInfo() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.connection();
+            final long ta = c.put("/a.txt", "a").getTime().units();
+            final long tb = c.put("/b.txt", "b").getTime().units();
+            Assert.assertTrue("tb differs", tb != ta);
+            Assert.assertEquals("a", c.get("/a.txt", String.class));
+            Assert.assertEquals("before rw", ta, c.transactionInfo().time().units());
+            c.rw(new Action() {
+                public void run(RwEnvironment env) {
+                    env.get("/b.txt", String.class);
+                }
+            });
+            Assert.assertEquals("after rw", ta, c.transactionInfo().time().units());
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * bergdb 015-48 (016-06, S1-F9): freezeLookupTime(), then exists() as the first read.
+     * exists() froze the time of the read before it, or -1 if there was none, and read at
+     * the time asked for. Now the frozen time is that of the exists(), as for a get().
+     */
+    @Nano
+    public static void testFreezeThenExists() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.newConnection();
+            Connection other = db.newConnection();
+            other.put("/a.txt", "1");
+            c.freezeLookupTime();
+            Assert.assertTrue("exists, no read before", c.exists("/a.txt"));
+            Assert.assertEquals("get after exists, no read before", "1", 
+                    c.get("/a.txt", String.class));
+            
+            Connection c2 = db.newConnection();
+            Assert.assertEquals("1", c2.get("/a.txt", String.class));
+            other.put("/a.txt", "2");
+            c2.freezeLookupTime();
+            Assert.assertTrue("exists, a read before", c2.exists("/a.txt"));
+            Assert.assertEquals("get after exists, a read before", "2", 
+                    c2.get("/a.txt", String.class));
+            other.put("/a.txt", "3");
+            Assert.assertEquals("frozen", "2", c2.get("/a.txt", String.class));
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * bergdb 015-59 (016-06, R8-F4): the requested lookup time of a connection is Time.MAX
+     * by default (Connection.setLookupTime()). A new connection had Long.MAX_VALUE, above
+     * Time's range, and getLookupTime() threw IllegalArgumentException.
+     */
+    @Nano
+    public static void testNewConnectionLookupTime() {
+        Database db = Factory.database().memory().start();
+        try {
+            db.connection().put("/a", "1");
+            Connection c = db.newConnection();
+            Assert.assertEquals("newConnection()", Time.MAX, c.getLookupTime());
+            Assert.assertEquals("1", c.get("/a", String.class));
+            Assert.assertEquals("connection()", Time.MAX, db.connection().getLookupTime());
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * bergdb 015-62 (016-06, R8-F7): transactionInfo() after a get() that found no entry,
+     * on a connection whose gets have retrieved no value, threw IllegalArgumentException
+     * (from Db.getTrans(0)). It is IllegalStateException, as when no get() has been made.
+     */
+    @Nano
+    public static void testTransactionInfoAfterGetOfMissingKey() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.newConnection();
+            c.put("/a", "1");
+            Assert.assertNull(c.get("/missing", String.class));
+            try {
+                c.transactionInfo();
+                throw new AssertionError("transactionInfo() returned");
+            } catch (IllegalStateException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("found no entry"));
+            }
+            
+            Assert.assertEquals("1", c.get("/a", String.class));
+            Assert.assertEquals("1", new String(c.transactionInfo().kvs().get(0).value(), 
+                    java.nio.charset.StandardCharsets.UTF_8));
+        } finally {
+            db.close();
+        }
+    }
+    
     @Nano
     public static void nullStringField() {
         // Tests storing an object with a null field.

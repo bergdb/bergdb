@@ -44,7 +44,10 @@ public class ConnectionImp implements Connection {
         this.db = database.getDb();
         this.getData = db.newGetData();
         this.getData.actualLookupTime = -1;
-        this.lookupTime = Long.MAX_VALUE;
+        this.lookupTime = Time.MAX.units();
+            // Time.MAX, as Connection.setLookupTime() says (bergdb 015-59). It was
+            // Long.MAX_VALUE, above Time's range: getLookupTime() threw. The reads are the
+            // same, as DbClock.lookupTime() takes the last transaction's time for both.
         this.enableKeyReplace = false;
         this.lastSposOfLastTrans = 0;
     }
@@ -115,6 +118,14 @@ public class ConnectionImp implements Connection {
                     + "get() again.");
         }
         
+        if (getData.tpos == 0) {
+            // No read has found a value (bergdb 015-62): the gets found no entry. 0 is no
+            // transaction's position (a meta block is there), and Db.getTrans(0) threw
+            // IllegalArgumentException.
+            throw new IllegalStateException("No available transaction info: the get() found "
+                    + "no entry, and no get() before it retrieved a value.");
+        }
+        
         final StoredTrans storedTrans = db.getTrans(getData.tpos);
         
         // The user's KVs only (2026-10-25, bergdb 005-42): those under the internal prefix,
@@ -171,11 +182,16 @@ public class ConnectionImp implements Connection {
      * specified lookup time. No argument checking.
      */
     final byte[] getBytesAtLookupTime(long lookupTime, long[] key) {
+        byte[] value = db.getOne(lookupTime, key, getData);
+        
+        // After the read, as in getInternal() (bergdb 015-48). Before it, a frozen time was
+        // set to the time of the read before, or to -1 if there was none, and an exists()
+        // as the first read after freezeLookupTime() froze that time, not its own.
         if (this.freezeLookupTime && this.lookupTime != getData.actualLookupTime) {
             this.lookupTime = getData.actualLookupTime;
         }
 
-        return db.getOne(lookupTime, key, getData);
+        return value;
     }
 
     /**
@@ -263,9 +279,9 @@ public class ConnectionImp implements Connection {
 
     /**
      * Get method for internal use. All gets (calls to Db.get() from Pub Layer)
-     * should go through this method or getBytesAtLookupTime(). Sources of gets:
-     * Connection, RwEnvironment, IndexManager,
-     * IndexIterBuilderImp.IndexIterator.
+     * should go through this method, getBytesAtLookupTime() or getInTransaction().
+     * Sources of gets: Connection, IndexManager, IndexIterBuilderImp.IndexIterator; and
+     * RwEnvironment, with getInTransaction().
      */
     public final <TYPE> TYPE getInternal(long lookupTime, String ikey, Class<TYPE> clazz) {
         byte[] value = db.getOne(lookupTime, Keys.toSegments(ikey), getData);
@@ -276,6 +292,20 @@ public class ConnectionImp implements Connection {
 
         TYPE result = database.getKvToObjectConverter().createObject(clazz, ikey, value);
         return result;
+    }
+    
+    /**
+     * A read of an rw- or w-transaction on this connection (RwEnvironmentImp), with the
+     * transaction's own GetData, gd, which gives the read's actual lookup time. It leaves
+     * the connection's read state as it was: its frozen lookup time, and the last get() that
+     * transactionInfo() describes (bergdb 015-42). Before, a transaction's reads went
+     * through getInternal() and the connection's GetData: the first set a frozen lookup time
+     * to the latest, and transactionInfo() then described the transaction's last read.
+     */
+    final <TYPE> TYPE getInTransaction(GetData gd, long lookupTime, String ikey, 
+            Class<TYPE> clazz) {
+        byte[] value = db.getOne(lookupTime, Keys.toSegments(ikey), gd);
+        return database.getKvToObjectConverter().createObject(clazz, ikey, value);
     }
 
     public final DatabaseImp getDatabaseImp() {

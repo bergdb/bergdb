@@ -10,6 +10,7 @@ import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.KeyTransformation;
 import bergdb.core.Trans;
+import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Klong;
@@ -36,6 +37,7 @@ public class RwEnvironmentImp implements RwEnvironment {
     private boolean firstRead;
     private long readTime;
     private MyLongSet readHashes;
+    private GetData readData;       // The reads' own (bergdb 015-42); made at the first read.
     
     // The writes, one operation a key in each map (bergdb 015-40): a value, or null for a
     // delete. In kvOps the last call on a key wins (setKv); in indexOps a put of an index
@@ -77,10 +79,10 @@ public class RwEnvironmentImp implements RwEnvironment {
         addReadHash(Keys.hash(keySegments));
         long lookupTime = firstRead ? Long.MAX_VALUE : this.readTime;
         
-        TYPE result = connection.getInternal(lookupTime, ikey, clazz);
+        TYPE result = connection.getInTransaction(readData(), lookupTime, ikey, clazz);
         
         if (firstRead) {
-            readTime = connection.getActualLookupTime();
+            readTime = readData.actualLookupTime;
             firstRead = false;
         }
         
@@ -92,14 +94,26 @@ public class RwEnvironmentImp implements RwEnvironment {
         addReadHash(Keys.hash(keySegments));
         long lookupTime = firstRead ? Long.MAX_VALUE : this.readTime;
         
-        TYPE result = connection.getInternal(lookupTime, ikey, clazz);
+        TYPE result = connection.getInTransaction(readData(), lookupTime, ikey, clazz);
         
         if (firstRead) {
-            readTime = connection.getActualLookupTime();
+            readTime = readData.actualLookupTime;
             firstRead = false;
         }
         
         return result;
+    }
+    
+    /**
+     * The GetData of this transaction's reads, its own, not the connection's: a read here
+     * leaves the connection's frozen lookup time and its transactionInfo() as they were
+     * (bergdb 015-42).
+     */
+    private GetData readData() {
+        if (readData == null) {
+            readData = connection.getDb().newGetData();
+        }
+        return readData;
     }
     
     /**
