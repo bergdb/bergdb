@@ -43,3 +43,47 @@ write: a1".
   thread, global state or format change; the stream's bytes are unchanged
   (nothing that writes changed). The get's cost: one more volatile read.
 * `docs/levels.md`, section 3, has a line on it.
+
+Review R1, night 006-12
+-----------------------
+
+2026-11-05. Review R1 of the night (`/Users/f/fl/bench/006-12/review-r1.md`,
+findings B1, C1 and C2 on this fix and 015-81's) found a regression and two
+smaller faults; fixed in the night, in one change with 015-81's entry.
+
+* B1, a regression: `Db.close()` could return before the failed storage had
+  closed its stream. `StorageManager.closeInner` skipped the close of a
+  failed main stream ("handleStreamException closed it"); since 015-81 the
+  failure is set before that close, and since this entry the database fails
+  at once on it, so an application closed and restarted while the thread
+  that met the failure was still closing (for a failed read, the reader's
+  `BufferedStream.close()`, which first writes all that is buffered): the
+  stream open, a `FileStream`'s directory locked, `DirectoryInUseException`
+  for a start in the same JVM. Before tonight the window was there only for
+  a close that had not seen the failure, as one after a failed concurrent
+  append.
+* Test first: `DbTesterFailure.testCloseWaitsForTheFailedStreamsClose`,
+  R1's probe made a test: a write held in the stream's append, a read that
+  fails (the reader's close waits for the write), a get that fails, and a
+  `close()` on another thread must not return while the write is held, and
+  the stream is closed when it returns. Before the fix: "close() waits for
+  the stream's close; the stream closed: false". After: passes.
+* Fix: `closeInner` closes the main stream also when it has failed, and
+  returns no failure for it (the storage's failure is reported by the call
+  that met it, with the close's as suppressed). `BufferedStream.close()` is
+  safe from several threads at once and returns when its thread has ended,
+  and the thread closes the underlying stream as it ends (015-34's
+  `finally`); so `close()` returns after the stream's close, whichever
+  thread made it. That also closes the older window above. `stop()` is as
+  before.
+* Not taken: R1's suggestion, the old order in `handleStreamException`
+  (close, then publish). It brings back the window of 2026.2 (a failed
+  concurrent append fails the database during the close) and delays the
+  failure that this entry makes visible at once. Nor a latch: not needed.
+* Checks: 015-35's and 015-81's tests pass, unchanged in what they assert;
+  R1's probes `R1ReadFailCloseProbe` ("Db.close() returned after 1923 ms;
+  stream closed: true") and `R1CloseRaceProbe` ("stream closed: true",
+  no consumer thread left) against the fix.
+* 010-01: no setting, thread, global state or format change; the stream's
+  bytes are unchanged. `releases/next.md`: a sentence in this entry's
+  note (Reliability).

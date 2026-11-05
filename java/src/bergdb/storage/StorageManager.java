@@ -125,24 +125,34 @@ public class StorageManager implements AppendOnlyStream {
         }
     }
     
-    /** Returns the first failure of the stream's close, or null. */
+    /**
+     * Returns the first failure of the stream's close, or null. A close of a failed main
+     * stream returns no failure: the storage's failure is the main stream's (getFailure()),
+     * reported by the call that met it, with what its close threw as suppressed.
+     */
     private IOException closeInner(boolean close) {
         IOException first = null;
         
         error.compareAndSet(null, "Storage is closing.");
         
-        if (!mainFailing.get()) {
-            // A failed main stream was closed by handleStreamException.
-            if (close) {
-                try {
-                    mainStream.close();
-                } catch (IOException e) {
-                    // NOTE We could issue warning.
+        final boolean failed = mainFailing.get();
+        if (close) {
+            // Also when the main stream has failed (2026-11-05, bergdb 015-35, review R1 of
+            // night 006-12): handleStreamException closes it on the thread that met the
+            // failure, and the database fails at once (015-81, 015-35), but that close can
+            // take long, a flush of what is buffered first. This close was skipped, and
+            // returned while the stream was still open, a FileStream's directory locked.
+            // BufferedStream.close() returns when its thread, which closes the stream as it
+            // ends, has ended.
+            try {
+                mainStream.close();
+            } catch (IOException e) {
+                if (!failed) {
                     first = e;
                 }
-            } else {
-                mainStream.stop();
             }
+        } else if (!failed) {
+            mainStream.stop();
         }
         return first;
     }
@@ -289,7 +299,9 @@ public class StorageManager implements AppendOnlyStream {
      * The main stream failed: the storage gets its error, and the stream is closed, once.
      * The error comes first (2026-11-05, bergdb 015-81): an unchecked exception of the close
      * left here before it, and ended the storage thread, so a sync waited for ever and the
-     * database ran on. What the close throws is kept with 'e', as suppressed.
+     * database ran on. What the close throws is kept with 'e', as suppressed (for a failed
+     * flush, BufferedStream.close() keeps it on 'e', which it throws). A close() of the
+     * storage closes the stream too, and so waits for this close (closeInner).
      */
     private void handleStreamException(IOException e) {
         if (!mainFailing.compareAndSet(false, true)) {

@@ -277,8 +277,10 @@ Reliability
   transaction whose record was never written. Now every call after it
   throws `DbFailedException`, as after a failed transaction (010-01, P7).
   And if the stream's close then threw an unchecked exception, a sync
-  waited for ever and the database ran on; now the sync throws. The
-  stream's bytes are unchanged.
+  waited for ever and the database ran on; now the sync throws. After
+  such a failure, `close()` returns when the stream is closed and its
+  directory released, also while the failed call still closes it (review
+  R1 of night 006-12). The stream's bytes are unchanged.
 * **A failed close of the stream is reported by `close()`** (bergdb
   015-78 and 015-34, 016-06's R5-F1, R3-F6 and R5-F2; 2026-11-05). The
   storage thread closed the stream as it ended and dropped a failure of

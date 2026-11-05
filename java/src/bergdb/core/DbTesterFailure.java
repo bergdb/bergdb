@@ -1074,7 +1074,10 @@ public class DbTesterFailure {
      * exception from its close, as the storage closes it, fails a sync and the database.
      * Before, the close's exception left StorageManager.handleStreamException before the
      * storage had its error, and ended the storage thread: the sync waited for ever, and the
-     * database stayed active.
+     * database stayed active. Two fixes guard it, and the test fails only without both (review
+     * R1 of night 006-12, C1): 015-81's order (the error before the close) and 015-78's
+     * BufferedStream.closeStream(), which catches the unchecked close error. The order alone
+     * is pinned by testCloseWaitsForTheFailedStreamsClose.
      */
     @Nano
     public static void testUncheckedCloseErrorAfterFailedWriteFailsSync() throws Exception {
@@ -1096,6 +1099,73 @@ public class DbTesterFailure {
             assertRefused(db, thrown.getCause());
         } finally {
             s.errorInClose = false;
+            db.close();
+        }
+    }
+
+    /**
+     * Review R1 of night 006-12, B1 (bergdb 015-35, 015-81): Db.close() returns only after
+     * the stream is closed, also when a failure of the storage has another thread closing
+     * it. Here a read fails while a write is held in the stream's append, so the reader's
+     * close of the storage waits for that write. The failure is seen during that close (015-81
+     * sets it first, and a get fails at it, 015-35), and a close() then waits for the stream.
+     * Before, StorageManager.closeInner skipped the close of a failed storage, which
+     * "handleStreamException closed", and close() returned while the reader still closed: the
+     * stream open, a FileStream's directory lock held, so that a start in the same JVM could
+     * meet DirectoryInUseException.
+     */
+    @Nano
+    public static void testCloseWaitsForTheFailedStreamsClose() throws Exception {
+        final FaultStream s = new FaultStream();
+        final Db db = Db.builder().testSetup(s).start();
+        Thread reader = null;
+        try {
+            final Trans t = db.trans().put("/a", "a0").build();
+            db.execute(t);
+            db.sync(SyncLevel.ORDINARY);
+            s.holdAppends = true;
+            db.execute(db.trans().put("/b", "b0").build());     // Held in the stream's append.
+            s.failReads = true;
+            reader = new Thread() {
+                public void run() {
+                    try {
+                        db.getTrans(t.tpos);
+                    } catch (RuntimeException e) {
+                        // Expected: the read fails the storage, and its close waits; the
+                        // database is failed, or stopping when the read returns.
+                    }
+                }
+            };
+            reader.setDaemon(true);
+            reader.start();
+            waitForStorageError(db);
+            DbFailedException failed = null;
+            try {
+                DbUtil.get(db, "/a");
+            } catch (DbFailedException e) {
+                failed = e;
+            }
+            Assert.assertTrue("a get fails while the stream's close waits", failed != null);
+            
+            Thread closer = new Thread() {
+                public void run() {
+                    db.close();
+                }
+            };
+            closer.setDaemon(true);
+            closer.start();
+            closer.join(300);
+            Assert.assertTrue("close() waits for the stream's close; the stream closed: "
+                    + s.closed, closer.isAlive());
+            s.holdAppends = false;
+            closer.join(10000);
+            Assert.assertFalse("close() returns", closer.isAlive());
+            Assert.assertTrue("the stream is closed as close() returns", s.closed);
+        } finally {
+            s.holdAppends = false;
+            if (reader != null) {
+                reader.join(10000);
+            }
             db.close();
         }
     }
@@ -1280,6 +1350,7 @@ public class DbTesterFailure {
         volatile boolean errorInAppends = false;    // an Error, as an assertion (bergdb 005-32)
         volatile boolean holdAppends = false;
         volatile boolean errorInClose = false;  // unchecked, after the close (bergdb 015-81)
+        volatile boolean closed = false;        // set by close(), before an errorInClose
         volatile long patchAt = -1;
         volatile byte[] patch = null;
         volatile int faults = 0;
@@ -1339,6 +1410,7 @@ public class DbTesterFailure {
 
         public void close() throws IOException {
             inner.close();
+            closed = true;
             if (errorInClose) {
                 faults++;
                 throw new IllegalStateException("FaultStream: an unchecked close error, as set");

@@ -234,7 +234,14 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         }
         if (failed != null) {
             synchronized (this) {
-                if (closeFailure == null) closeFailure = failed;
+                if (closeFailure == null) {
+                    closeFailure = failed;
+                    // Kept with a failed flush's failure, which close() throws (2026-11-05,
+                    // bergdb 015-81, review R1 of night 006-12): it was dropped.
+                    if (failure != null) {
+                        failure.addSuppressed(failed);
+                    }
+                }
             }
         }
     }
@@ -641,7 +648,9 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
      * (2026-10-24, bergdb 005-32): it waited for ever, as the buffer never empties after a
      * failed flush. After stop(), it writes nothing more, and returns when the thread has
      * ended; it returned at once. Every call throws the failure, of a flush, else of the
-     * first close of the underlying stream (by the thread or by close(); bergdb 015-78).
+     * first close of the underlying stream (by the thread or by close(); bergdb 015-78); a
+     * flush's failure has the close's as suppressed. Safe to call from several threads at
+     * once: each returns when the thread has ended, after its close of the underlying stream.
      * 
      * @throws IOException  If a flush failed, or a close of the underlying stream.
      */
@@ -1284,10 +1293,43 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         }
     }
     
+    /**
+     * Review R1 of night 006-12, C2 (bergdb 015-81): a close that fails after a failed flush
+     * is kept, as suppressed, on the flush's failure, which close() throws; once, however
+     * often the stream is closed. Before, close() threw the flush's failure and dropped the
+     * close's (closeFailure), and StorageManager.handleStreamException, which says it keeps
+     * the close's failure on the storage's, found nothing to keep: the same object came back.
+     */
+    @Nano
+    public static void testCloseFailureKeptOnFlushFailure() throws Exception {
+        final FailingStream failing = new FailingStream();
+        failing.failure = new IOException("the disk fails");
+        failing.closeError = new IllegalStateException("the close fails");
+        final BufferedStream b = new BufferedStream(failing, 1000, 20);
+        b.start();
+        b.append(new byte[100], 0, 100);
+        IOException thrown = null;
+        for (int i = 0; i < 2; i++) {
+            try {
+                b.close();
+            } catch (IOException e) {
+                thrown = e;
+            }
+            Assert.assertTrue("close() " + i + " throws the flush's failure: " + thrown,
+                    thrown == failing.failure);
+        }
+        Throwable[] kept = thrown.getSuppressed();
+        Assert.assertEquals("the close's failure, once: " + java.util.Arrays.toString(kept), 1,
+                kept.length);
+        Assert.assertTrue("its cause: " + kept[0].getCause(),
+                kept[0].getCause() == failing.closeError);
+    }
+    
     /** A MemoryStream whose appends throw 'failure' while it is set (bergdb 005-32). */
     private static class FailingStream implements AppendOnlyStream {
         final MemoryStream inner = new MemoryStream();
         volatile Throwable failure = null;
+        volatile RuntimeException closeError = null;    // thrown by close() (bergdb 015-81)
         
         public long getLength() {
             return inner.getLength();
@@ -1320,6 +1362,10 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         
         public void close() {
             inner.close();
+            RuntimeException e = closeError;
+            if (e != null) {
+                throw e;
+            }
         }
     }
     

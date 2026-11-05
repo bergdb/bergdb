@@ -40,3 +40,27 @@ exception.
   published: 015-78's change.
 * 010-01: P7 holds; no setting, thread or format change; the stream's
   bytes are unchanged.
+
+Review R1, night 006-12
+-----------------------
+
+2026-11-05. Review R1 of the night (`/Users/f/fl/bench/006-12/review-r1.md`,
+findings B1, C1, C2) on this fix and 015-35's; B1 is in 015-35's entry.
+
+* C1: `testUncheckedCloseErrorAfterFailedWriteFailsSync` passes without
+  this entry's change, since 015-78's `BufferedStream.closeStream()`
+  catches the unchecked close error (R1 ran it with the old
+  `handleStreamException`). The test now says so: it fails only without
+  both fixes. This entry's order (the error before the close) is pinned by
+  015-35's new `testCloseWaitsForTheFailedStreamsClose`, which waits for
+  the storage's failure while the close is held: with the old order it
+  fails ("the storage did not fail"), checked by a run.
+* C2: the close's failure was not kept as suppressed, as the Javadoc and
+  this entry said: after 015-78, `BufferedStream.close()` keeps a failed
+  close in `closeFailure` and throws the flush's failure, which is `e`
+  itself, so nothing was added. Now `BufferedStream.closeStream()` adds the
+  first close failure to the flush's failure as suppressed, once. Test
+  `BufferedStream.testCloseFailureKeptOnFlushFailure` (a failed flush, a
+  close that throws an `IllegalStateException`, `close()` twice): before
+  "the close's failure, once: [], expected 1, got 0", passes after; R1's
+  `R1SuppressedProbe` shows it on the database's failure chain.
