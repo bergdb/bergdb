@@ -1,7 +1,7 @@
 015-74. Fix: metaBlock's format comment: the last byte is 10, not 1, and the version is read as 2 bytes, not an int
 ===================================================================================================================
 
-Status: open. Kind: Fix. Created 2026-11-04 by Frans Lundberg.
+Status: done. Kind: Fix. Created 2026-11-04 by Frans Lundberg.
 
 After release 2026.2 (a known issue of it); in 2026.1 too.
 
@@ -19,3 +19,15 @@ Log
 ---
 
 2026-11-04. Registered by the coordinator of release 2026.2 (016-02).
+
+2026-11-05. In progress: session bergdb-e8's agent verifies it and fixes the comment.
+
+2026-11-05. Done, by session bergdb-e8's agent. Verified in the code
+(016-06, R6-F3): `META_BLOCK_LAST_BYTE` is 10; `initBlock` writes the
+version with `intToBytesLE` at offset 4, and `MetaBlock.getVersion` and
+`RecoverableStream.readMetaBlock` read it with `bytesToUShortLE`, so bytes
+6 and 7 are written as 0 and never checked. MetaBlock's format comment now
+says so: offset 4, 2 bytes, the version as an unsigned short; offset 6, 2
+bytes, zero, not checked; the last byte 10. A comment only, so no test
+fails before it. Left: R6-F3's optional code change (`readMetaBlock` reads
+the 4 bytes and refuses nonzero bytes 6 and 7), a decision for Frans.

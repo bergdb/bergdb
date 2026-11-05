@@ -470,8 +470,10 @@ public class DbStarter {
      * the version at 'spos', the position stored with the got-dirty id, which is then the
      * node's latest version. Null if none of these. 
      * 
-     * The rerun does not reach every node in D: a delete of a key that does not exist
-     * makes the nodes on its path dirty, but it is not stored, so it is not rerun. D is
+     * The rerun does not reach every node in D: a transaction with a touch (a reclaim
+     * step, Trans.touch) makes dirty every index node of its range, and the touch is not
+     * stored, so it is not rerun; and a node that the still-dirty test keeps dirty is a
+     * got-dirty node of the record that wrote it, whose puts need not reach it. D is
      * rebuilt from the stored ids (docs/sis-model.md, 6.2, step 2), not from the rerun.
      */
     private Node canonicalNode(long id, long spos) {

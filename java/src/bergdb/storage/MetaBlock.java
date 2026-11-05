@@ -15,7 +15,9 @@ import bergdb.nanotest.Nano;
  * FORMAT OF A META BLOCK, v154
  * Offset  Size    Description
  * 0       4       Magic bytes, meta block signature. Always the bytes for ASCII "berg".
- * 4       4       Version of BergDB stream format as an int (154 for this version).
+ * 4       2       Version of BergDB stream format, an unsigned short (154 for this version).
+ * 6       2       Zero. The version is written as an int at offset 4 and read as the
+ *                 unsigned short above; these two bytes are not checked.
  * 8       8       time, database time as a long.
  * 16      8       lastTrans, spos of last valid transaction completely written
  *                 before the meta block.
@@ -26,7 +28,7 @@ import bergdb.nanotest.Nano;
  *                 is refused, and so is a stream whose meta block has 0, as those written
  *                 before 2026-10-27 have (bergdb 005-50).
  * 46     81       Reserved, must be set to zero.
- * 127     1       META_BLOCK_LAST_BYTE. 1 is used to indicate that the block is valid.
+ * 127     1       META_BLOCK_LAST_BYTE, 10. It indicates that the block is valid.
  * </pre>
  */
 public class MetaBlock {    

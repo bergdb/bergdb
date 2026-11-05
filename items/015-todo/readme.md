@@ -87,10 +87,8 @@ Open
 | [015-71](71-audit-empty-handle-cleanup.md) | Fix | The audit reports a valid empty-handle cleanup as a bad table entry | open |
 | [015-72](72-record-size-unchecked.md) | Fix | A record whose size field is larger than its content is accepted, ... | open |
 | [015-73](73-startup-pos-unchecked.md) | Fix | A corrupt startupPos in the last record is accepted, and the ... | open |
-| [015-74](74-metablock-comment.md) | Fix | MetaBlock's format comment: the last byte is 10, not 1, and the ... | open |
 | [015-75](75-start-checks-asserts.md) | Fix | Checks of stream data at a start that are asserts: without -ea a ... | open |
 | [015-76](76-startup-distance-clamp.md) | Fix | Db.setStartupDistance clamps to 400,000 to 10^9 bytes without ... | open |
-| [015-77](77-canonical-node-javadoc.md) | Fix | DbStarter.canonicalNode's Javadoc gives a reason for the stored ... | open |
 | [015-78](78-close-ioexception-discarded.md) | Fix | The consumer discards the first storage-close IOException | open |
 | [015-79](79-storage-negative-append.md) | Fix | A negative append is accepted and decreases StorageManager's length | open |
 | [015-80](80-buffer-concurrent-writes.md) | Fix | The buffer issues concurrent writes to a single-writer underlying ... | open |
@@ -108,6 +106,8 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-77](77-canonical-node-javadoc.md) | Fix | DbStarter.canonicalNode's Javadoc gives a reason for the stored ... | done | 2026-11-05 |
+| [015-74](74-metablock-comment.md) | Fix | MetaBlock's format comment: the last byte is 10, not 1, and the ... | done | 2026-11-05 |
 | [015-02](02-c-follows-2026-2.md) | Implement | The C clone follows release 2026.2 | done | 2026-11-05 |
 | [015-85](85-written-not-forced.md) | Decide | "Written, not forced" (005-47): done, measured on s1 and F53 | done | 2026-11-05 |
 | [015-56](56-second-start-closes-stream.md) | Fix | A refused second start() of one builder closes the running ... | done | 2026-11-04 |
