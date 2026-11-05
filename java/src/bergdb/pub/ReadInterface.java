@@ -23,6 +23,9 @@ public interface ReadInterface {
      * Gets the object stored under the key, created from 'clazz', or null if no entry
      * exists for the key.
      *
+     * <p>Experimental in 2026.3 for a class other than String and byte[], with known
+     * faults; such a get may change in a later release (bergdb 018-01, D6).</p>
+     *
      * @see Connection#get(String, Class)
      */
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);

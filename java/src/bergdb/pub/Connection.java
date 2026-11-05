@@ -117,6 +117,9 @@ public interface Connection extends ReadInterface {
      * class must in general have a no-argement constructor which will be used
      * to create the object returned. The matching field of the object create
      * will be set based on the fields of the DbObject stored in the database.
+     *
+     * <p>Experimental in 2026.3 for a class other than String and byte[], with known
+     * faults; such a get may change in a later release (bergdb 018-01, D6).</p>
      * 
      * @param key
      *            Database key of the object.
@@ -167,6 +170,9 @@ public interface Connection extends ReadInterface {
      * Puts a key-value entry to the database. If an entry with the given key
      * already exists, it is overwritten. The transaction is executed
      * immediately in this method.
+     *
+     * <p>Experimental in 2026.3 for an object that is neither a String nor a byte[], with
+     * known faults; such a put may change in a later release (bergdb 018-01, D6).</p>
      * 
      * @param key
      *            The key of the key-value entry. Must begin with "/".
@@ -223,6 +229,9 @@ public interface Connection extends ReadInterface {
     /**
      * Returns a builder use to create an iterator that can iterate objects
      * indexed by a secondary index called 'indexName'.
+     *
+     * <p>Experimental in 2026.3, with known faults; it may change in a later release
+     * (bergdb 018-01, D6).</p>
      * 
      * @param indexName
      *            The name of the index to use.
@@ -237,6 +246,9 @@ public interface Connection extends ReadInterface {
     /**
      * Returns a builder used to create an iterator that can iterate objects
      * according to the primary key of the database.
+     *
+     * <p>Experimental in 2026.3, with known faults; it may change in a later release
+     * (bergdb 018-01, D6).</p>
      * 
      * @param type
      *            The type of the objects to iterate.

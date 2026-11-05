@@ -98,6 +98,13 @@ loss of a disk and a copy of the stream's files for a backup
 to implement it later are a long-term topic,
 [017-03](items/017-long-term/03-replication/readme.md).
 
+In the Pub API, DbObject and the user indexes are experimental in 2026.3,
+with known faults, and may change in a later release: a value that is
+neither a `String` nor a `byte[]` (`put(Object)`, a put of an object at a
+key, a get into another class), and `Database.indexBuilder`,
+`deleteIndex`, `Connection.useIndex` and `usePrimary` with their builders
+([018-01](items/018-release-2026-3/01-plan.md), D2 and D6).
+
 A known limit. The bound on the startup section (T3) is proved for
 BergDB's own startup pos policy since 2026-10-28, in the Lean model of its
 take ([007-08](items/007-bounds/08-step4-take-in-lean.md)): the startup section

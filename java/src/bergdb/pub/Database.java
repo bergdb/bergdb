@@ -284,6 +284,9 @@ public interface Database extends AutoCloseable {
 
     /**
      * Returns an IndexBuilder used to create a secondary index.
+     *
+     * <p>Experimental in 2026.3, with known faults; it may change in a later release
+     * (bergdb 018-01, D6).</p>
      * 
      * @param indexName
      *            Unique name of the index. Cannot be the empty string. Cannot contain the forward
@@ -298,6 +301,9 @@ public interface Database extends AutoCloseable {
     /**
      * Starts and returns a Job that deletes an index in the background.
      * If a job that deletes the index runs already, returns that job.
+     *
+     * <p>Experimental in 2026.3, with known faults; it may change in a later release
+     * (bergdb 018-01, D6).</p>
      * 
      * @param indexName
      *            Unique name of the index.

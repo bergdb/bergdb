@@ -12,6 +12,12 @@ package bergdb.pub;
 public interface RwEnvironment extends ReadInterface {
     
     /**
+     * Gets the object stored under the key, created from 'clazz', or null if no entry
+     * exists for the key.
+     *
+     * <p>Experimental in 2026.3 for a class other than String and byte[], with known
+     * faults; such a get may change in a later release (bergdb 018-01, D6).</p>
+     *
      * @see Connection#get(String, Class)
      */
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);
@@ -26,6 +32,9 @@ public interface RwEnvironment extends ReadInterface {
     
     /**
      * Stores an object using the 'key' field as the database key.
+     *
+     * <p>Experimental in 2026.3, with known faults; it may change in a later release
+     * (bergdb 018-01, D6).</p>
      * 
      * @param object The object to store in the database.
      * @throws MissingKeyFieldException if 'object' does not have a String field named 'key'.
@@ -36,6 +45,9 @@ public interface RwEnvironment extends ReadInterface {
     
     /**
      * Sets the key-value entry with the given key to the provided object.
+     *
+     * <p>Experimental in 2026.3 for an object that is neither a String nor a byte[], with
+     * known faults; such a put may change in a later release (bergdb 018-01, D6).</p>
      *
      * @see WBuilder#put(String, Object)
      * @throws IllegalArgumentException if 'key' is null or otherwise of an invalid format.

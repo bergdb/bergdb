@@ -328,7 +328,8 @@ Fixed one at a time:
 * **W1. DbObject and user indexes marked experimental** (D2, D6): the
   Javadoc of each method and class in D6's list, README.md and
   docs/levels.md where they describe the Pub API, and a line in
-  `releases/next.md`. Their tests stay in `before-commit.sh`. Not started.
+  `releases/next.md`. Their tests stay in `before-commit.sh`. Done
+  2026-11-05.
 * **W2. The harnesses** (section 6), one at a time, the first chosen with
   Frans. Not started.
 * **W3. The Core's faults** (section 3.1), in any order (point 5). Each
@@ -353,3 +354,11 @@ the lists of section 3 from 015's tables and the reviews' reports
 rules (section 2) added: the rest of the Pub API joins the goal's list
 (54 faults), "Ready" is D7, and harness 6.7 is new. New entries go to 019
 since 2026-11-05 (D3).
+
+2026-11-05, 10:19. W1 done: the Javadoc of D6's methods and classes says
+that they are experimental in 2026.3, with known faults, and may change in
+a later release; for a put and a get, when the value is neither a `String`
+nor a `byte[]`. So do the Pub API's overview and `bergdb.pub`'s package
+description, and a paragraph in README.md and docs/levels.md, section 1,
+which did not describe them; `releases/next.md` has the entry. JAVADOC PUB
+OK, BEFORE COMMIT OK.

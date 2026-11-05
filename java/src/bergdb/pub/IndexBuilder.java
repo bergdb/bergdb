@@ -7,6 +7,9 @@ import bergdb.pub.util.Job;
  * It is mandatory to call the three methods: dir(), type(), and field()  
  * before calling createFast() or start() to create the index.
  * The type() method must be called before field().</p>
+ *
+ * <p>Experimental in 2026.3, with known faults; it may change in a later release (bergdb
+ * 018-01, D6).</p>
  * 
  * <p>An example of creating an index that indexes employee salaries (long field 'salary' of 
  * Employee objects) could look like this:</p>

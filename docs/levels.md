@@ -34,6 +34,13 @@ The Lean proofs concern the abstract model, which includes reclaim and
 eviction; Java's runs are checked against it, not proved, and concurrency
 and resource bounds are not in it.
 
+In the Pub API, DbObject and the user indexes are experimental in 2026.3,
+with known faults, and may change in a later release: a value that is
+neither a `String` nor a `byte[]` (`put(Object)`, a put of an object at a
+key, a get into another class), and `Database.indexBuilder`,
+`deleteIndex`, `Connection.useIndex` and `usePrimary` with their builders
+([018-01](../items/018-release-2026-3/01-plan.md), D2 and D6).
+
 
 ## 2. Checks
 
