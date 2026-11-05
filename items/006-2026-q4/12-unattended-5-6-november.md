@@ -346,6 +346,13 @@ Times from `date`, CET.
 * 17:48 On the combined main 669f0ef, all of W1: LEVEL 2 OK (70 traces,
   TRACECHECK OK), LEVEL 3 OK, LEVEL 4 OK. 17:56 the same again on
   112ab21, with the review fixes.
+* 20:45 to 21:06 Frans on his mobile. 019-09: he chose (a) at 20:50;
+  done by 7295fc5 (`close()` throws `StreamIoException` for a background
+  write failure that no call has reported, also after `stop()`, and is
+  quiet for a database that a call has already failed; try-with-resources
+  tested). 015-51: he chose (a) at 21:03, "And also add the possibility
+  of a refusal to the to-consider list of the long-term item": decided,
+  018-01's sections 3.1 and 6.4, and 017-07, section 3 (8710e89).
 
 
 ## 8. Outcome
