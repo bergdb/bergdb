@@ -221,6 +221,17 @@ Internal
 Documentation
 -------------
 
+* **A value transformation's result is the caller's to keep within the
+  limit** (bergdb 015-51, 016-06's R7-F2; 2026-11-05). In the Core API, a
+  transaction's size is checked before its go point (005-17), with a value
+  transformation's input; the transformation runs after it, and its result
+  is not checked. `ValueTransformation`'s Javadoc now says that the result
+  must keep the transaction's value nodes within 7/8 of the record limit
+  (about 1.88 GB), as a value given directly must, and that a result whose
+  record does not fit fails the database, as an exception of the
+  transformation does; `KeyTransformation`'s says the same of its key, and
+  docs/levels.md, section 3. The Pub API uses no value transformation. The
+  code and the stream's bytes are unchanged.
 * **DbObject and user indexes are experimental** (bergdb 018-01, D2 and D6,
   W1; 2026-11-05). The Javadoc says that they are experimental in 2026.3,
   with known faults, and may change in a later release:

@@ -88,6 +88,10 @@ environment has failed, or that has a bug, does not run on.
   the transaction (005-17), the index nodes it can make dirty (005-31) and
   the clock (005-18). The Pub API runs the application's code before it too.
   A refused transaction leaves the database as it was, and it goes on.
+  The size check counts a Core API value transformation's input: its
+  result, made after the go point, must keep the transaction within the
+  limit, and one whose record does not fit fails the database, as a
+  transformation that throws does (015-51).
   The STM also refuses a read set whose snapshot predates the last
   recovered commit at startup: its in-memory write history cannot validate
   it (005-70). A snapshot at that commit is covered. RW read dependencies

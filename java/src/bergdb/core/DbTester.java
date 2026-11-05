@@ -2159,6 +2159,61 @@ public class DbTester {
     }
     
     /**
+     * bergdb 015-51 (016-06's R7-F2): a value transformation runs after the go point, so
+     * checkSize sees its input, not its result. A result that takes the transaction past
+     * StoredTrans.valueLimit() is the caller's fault, as an exception of the transformation
+     * is (ValueTransformation's Javadoc): one that does not fit the record fails the
+     * database when the record is made, which appends nothing, and a restart has the state
+     * before the transaction. The record limit is lowered to 100 kB. The test pins the
+     * contract that the Javadoc now states; the code was not changed.
+     */
+    @Nano
+    public static void testTransformedValueBeyondRecordLimit() {
+        final long saved = StoredTrans.recordLimit;
+        StoredTrans.recordLimit = 100 * 1000;
+        MemoryStream stream = new MemoryStream();
+        try {
+            Db db = Db.builder().testSetup(stream).start();
+            try {
+                db.execute(db.trans().put("/a", "a").build());
+                Trans.Builder b = db.trans();
+                b.put(Keys.toSegments("/t"), null, new byte[0], new ValueTransformation() {
+                    public byte[] transform(long transTime, byte[] in, byte[] previous) {
+                        return new byte[120 * 1000];
+                    }
+                });
+                try {
+                    db.execute(b.build());
+                    throw new AssertionError("a transformed value above the limit was taken");
+                } catch (DbFailedException e) {
+                    assertTrue(String.valueOf(e.getCause()), 
+                            e.getCause().getMessage().contains("more than the limit"));
+                }
+                try {
+                    db.execute(db.trans().put("/x", "x").build());
+                    throw new AssertionError("a failed database took a transaction");
+                } catch (DbFailedException e) {
+                    // expected
+                }
+            } finally {
+                db.close();
+            }
+        } finally {
+            StoredTrans.recordLimit = saved;
+        }
+        
+        Db db = Db.builder().testSetup(stream.copy()).start();
+        try {
+            assertArrayEquals(StringUtil.toBytes("a"), DbUtil.get(db, Long.MAX_VALUE, "/a"));
+            assertTrue(DbUtil.get(db, Long.MAX_VALUE, "/t") == null);
+            db.execute(db.trans().put("/x", "x").build());
+            assertArrayEquals(StringUtil.toBytes("x"), DbUtil.get(db, Long.MAX_VALUE, "/x"));
+        } finally {
+            db.stop();
+        }
+    }
+    
+    /**
      * Regression test for bergdb 005-31 (007-02's probe, in small): a transaction whose index
      * nodes, those it makes dirty, did not fit in one record was never taken, as
      * TransSeq.take takes transactions whole, and the startup pos stayed before it for good.

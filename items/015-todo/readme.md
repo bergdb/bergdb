@@ -57,7 +57,6 @@ Open
 | [015-43](43-object-index-read-time.md) | Fix | Index work reads the indexes before the read time: a new or ... | open |
 | [015-46](46-string-at-object-key-index.md) | Fix | A String or byte[] at an object key in an indexed directory breaks ... | open |
 | [015-49](49-review-s2-faults.md) | Fix | Review S2's 27 faults of the indexes and the objects | open |
-| [015-51](51-transform-size-unchecked.md) | Fix | A value transformation's result is not size-checked: one above the ... | open |
 | [015-52](52-warmup-read-expired.md) | Fix | `execute()` can be refused with `LookupTimeNotAvailableException`, ... | open |
 | [015-53](53-stop-during-step-committed.md) | Fix | A transaction that runs when `stop()` comes is committed, but ... | open |
 | [015-55](55-database-time-margin.md) | Fix | A user transaction at the last database time is taken, and ... | open |
@@ -92,6 +91,7 @@ Closed
 |---|---|---|---|---|
 | [015-75](75-start-checks-asserts.md) | Fix | Checks of stream data at a start that were asserts | done | 2026-11-05 |
 | [015-72](72-record-size-unchecked.md) | Fix | A record whose size field is larger than its content is accepted | done | 2026-11-05 |
+| [015-51](51-transform-size-unchecked.md) | Fix | A value transformation's result is not size-checked: one above the ... | done | 2026-11-05 |
 | [015-50](50-reclaim-step-too-large.md) | Fix | A reclaim step that rewrites old values beyond the value limit ... | done | 2026-11-05 |
 | [015-87](87-retain-duration-in-stream.md) | Investigate | The retain duration kept in the stream | done | 2026-11-05 |
 | [015-88](88-overload-and-retries.md) | Investigate | Transaction retries: sleep capped at 640 ms | done | 2026-11-05 |
