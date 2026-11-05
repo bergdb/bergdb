@@ -740,8 +740,9 @@ The session `main` ran the harness before `longActionMs` was added
 the history sessions ran the one of the first commit (`89619c52…d26b`);
 the file sessions the one with `reopen` (`1bc32a8a…9b5d`, committed
 second); the probe2 sessions the one with the Db hooks (`84ed9d7a…eb9d`,
-committed third). Each session's `identity.txt` has its hash. The additions are options, off by default. A smoke session (`smoke`, 2 s windows) came
-first and is not reported.
+committed third). Each session's `identity.txt` has its hash. The additions are options, off by default. The smoke sessions (`smoke`,
+`smoke-file`, `smoke-probe2`; 2 s windows), each before the first use of
+a new option or build, are kept with the outputs and not reported.
 
 ### 8.3. Hot key and disjoint keys
 
