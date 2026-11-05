@@ -458,6 +458,63 @@ public class PubTester {
     }
     
     /**
+     * bergdb 015-41 (review 016-06/S1, S1-F2): in an rw-transaction, a String put and then a
+     * delete of a key without a suffix leave no entry. Until 015-41 the put stayed: the put
+     * went to kvOps and the delete of an object key to objectOps, and Trans.Builder.build
+     * keeps a put over a delete. A delete and then a put, and a put, a delete and a put,
+     * leave the last put.
+     */
+    @Nano
+    public static void testRwStringPutThenDeleteOfObjectKey() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.connection();
+            c.put("/d", "old");
+            c.rw(new Action() {
+                public void run(RwEnvironment env) {
+                    env.put("/d", "new");
+                    env.delete("/d");
+                }
+            });
+            assertNoEntry("rw: String put, then delete", c.get("/d", String.class));
+            c.w().put("/d", "new").delete("/d").execute();
+            assertNoEntry("w: String put, then delete", c.get("/d", String.class));
+            c.w().put("/d", new byte[] {1}).delete("/d").execute();
+            Assert.assertTrue("w: byte[] put, then delete", c.get("/d", byte[].class) == null);
+            c.w().delete("/d").put("/d", "again").execute();
+            Assert.assertEquals("w: delete, then put", "again", c.get("/d", String.class));
+            c.w().put("/d", "1").delete("/d").put("/d", "2").execute();
+            Assert.assertEquals("w: put, delete, put", "2", c.get("/d", String.class));
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * bergdb 015-41 (S1-F2, its second half): an object put and then a String put of one key
+     * leave the String. Until 015-41 the object stayed: objectOps is added to the
+     * transaction after kvOps, and Trans.Builder.build keeps the later put. An object put is
+     * experimental in 2026.3 (bergdb 018-01, D6).
+     */
+    @Nano
+    public static void testRwObjectPutThenStringPut() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.connection();
+            c.rw(new Action() {
+                public void run(RwEnvironment env) {
+                    env.put("/e", new Person("Ann"));
+                    env.put("/e", "text");
+                }
+            });
+            Assert.assertEquals("object put, then String put", "text",
+                    c.get("/e", String.class));
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
      * bergdb 015-40: a delete and then a put of a key with ${transactionTime}: the put wins,
      * with its key transformation. A HashMap keeps its first key object when a put replaces
      * an entry, so RwEnvironmentImp removes the key first; without that, the delete's MapKey,

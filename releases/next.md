@@ -117,6 +117,13 @@ Reliability
   decided digests differ from 2026.2's in its 4 configurations with
   reclaim (`l3-*`, 12 of 36), and are 2026.2's in the 8 without. The new
   reference is in 015-54's `digests-new.txt`.
+* **A String or `byte[]` put and then a delete of a key without a suffix
+  leave no entry** (bergdb 015-41, 016-06's S1-F2; 2026-11-05), in an
+  `rw()` or a `w()`: the put stayed, as the delete of such a key, an object
+  key, was kept apart from the put. An object put and then a String put of
+  one key now leave the String; the object stayed (an object put is
+  experimental). The last call on a key wins, as for a key with a suffix
+  (015-40).
 * **An `rw()` keeps the connection's frozen lookup time** (bergdb 015-42,
   016-06's S1-F3; 2026-11-05). The reads of an rw-transaction, and the read
   of an object's previous value by a put in a directory with an index, went

@@ -41,9 +41,12 @@ public class RwEnvironmentImp implements RwEnvironment {
     
     // The writes, one operation a key in each map (bergdb 015-40): a value, or null for a
     // delete. In kvOps the last call on a key wins (setKv); in indexOps a put of an index
-    // entry stays over a delete of it (deleteIndexEntry). A key may be in kvOps and in
-    // objectOps both: createTrans adds kvOps first, and Trans.Builder.build keeps the later
-    // put and a put over a delete (bergdb 015-41).
+    // entry stays over a delete of it (deleteIndexEntry). An object key (no suffix) may be
+    // in kvOps, with a String or byte[] put, and in objectOps both: createTrans adds kvOps
+    // first, and Trans.Builder.build keeps the later put and a put over a delete. So that the
+    // last call on the key wins (bergdb 015-41), a delete of it removes its kvOps entry, and
+    // a String or byte[] put turns an object put in objectOps into a delete, which keeps the
+    // removal of the previous object's index entries; an object put needs no change.
     private HashMap<MapKey, byte[]> kvOps;
     private HashMap<String, ObjectInfo> objectOps;
     private HashMap<MapKey, byte[]> indexOps;
@@ -228,6 +231,11 @@ public class RwEnvironmentImp implements RwEnvironment {
         if (value == null) {
             throw new IllegalArgumentException("value == null not allowed.");
         }
+        
+        ObjectInfo info = objectOps.get(ikey);
+        if (info != null && info.dbo != null) {
+            objectOps.put(ikey, new ObjectInfo(ikey, null, null));    // bergdb 015-41
+        }
 
         setKv(new MapKey(Keys.toSegments(ikey), 
                 enableKeyReplace ? getKeyTransformation(ikey) : null), value);
@@ -259,6 +267,7 @@ public class RwEnvironmentImp implements RwEnvironment {
         String ikey = PubKeys.u2i(ukey);
 
         if (Entries.isObjectKey(ikey)) {
+            kvOps.remove(new MapKey(Keys.toSegments(ikey), null));     // bergdb 015-41
             objectOps.put(ikey, new ObjectInfo(ikey, null, null));
         } else {
             setKv(new MapKey(Keys.toSegments(ikey), null), null);   
