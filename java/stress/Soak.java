@@ -393,7 +393,7 @@ public class Soak {
 
     Db openDb() throws IOException {
         FileStream s = new FileStream(dir, io);   // (FileStream reads its own files only, not the marker.)
-        DbBuilder b = Db.builder().stream("main", s).systemClock().noEvict().retainForever().testId();
+        DbBuilder b = Db.builder().stream("main", s).systemClock().noEvict().testId();
         if (sd > 0) b.startupDistance(sd);
         if (maxnode == 8) b.maxNodeSize8();
         if (maxnode == 14) b.maxNodeSize14();

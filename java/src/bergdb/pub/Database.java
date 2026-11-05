@@ -169,15 +169,25 @@ public interface Database extends AutoCloseable {
     public Time currentTime();
 
     /**
-     * Returns the minimum duration for which data should be available for historic lookups.
+     * Returns the minimum duration for which data should be available for historic lookups:
+     * the retain duration kept in the stream, as the last setRetainDuration() set it, or
+     * Duration.MAX (forever) if it was never called.
      */
     public Duration getRetainDuration();
 
     /**
      * <p>
      * Sets the retain duration of the database. The retain duration is the amount of time that
-     * historic data states should stay available for lookup operations. This method can be called
-     * before start() or while the database is running.
+     * historic data states should stay available for lookup operations. A new database keeps
+     * old states forever (Duration.MAX) until this method is called.
+     * </p>
+     * 
+     * <p>
+     * The value is kept in the stream (bergdb 015-87): the call commits a small transaction
+     * of the database's own with it, and a start reads it, so a restart keeps the value; it
+     * need not, and cannot, be given to the DatabaseBuilder. The new value is in force when
+     * the method returns. A call with the value in force writes nothing. A setting that
+     * changes the stream's bytes, as this one does, is kept in the stream.
      * </p>
      * 
      * <p>
@@ -205,6 +215,11 @@ public interface Database extends AutoCloseable {
      * 
      * @param duration
      *            The duration to retain historic data states available for lookup operations.
+     * @throws IllegalArgumentException  If duration is shorter than one second.
+     * @throws IllegalDbStateException  If the database is stopping or stopped, as a
+     *     transaction does; the retain duration is then unchanged.
+     * @throws DbFailedException  If the database has failed, as a transaction does; the
+     *     retain duration is then unchanged.
      */
     public void setRetainDuration(Duration duration);
 

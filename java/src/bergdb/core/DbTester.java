@@ -1124,7 +1124,6 @@ public class DbTester {
         DbBuilder b = Db.builder();
         b.clock(new TestClock());
         b.noEvict();
-        b.retainForever();
         b.id(DatabaseId.TEST_ID);
         b.stream("main", stream, 10*1000, 10);
         return b.start();
@@ -2645,7 +2644,9 @@ public class DbTester {
                     Reclaim.MAX_INTERNAL_FRACTION + 1, 0, -1}) {
                 boolean refused = false;
                 try {
-                    reclaim.setInternalFractionUnits(invalid);
+                    synchronized (db.internal().getWriteLock()) {
+                        reclaim.setSettings(reclaim.getRetainDuration(), invalid);
+                    }
                 } catch (IllegalArgumentException expected) {
                     refused = true;
                 }

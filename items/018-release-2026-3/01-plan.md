@@ -431,3 +431,9 @@ give up under overload. The overload limit is documented: the Javadoc
 says that under overload a transaction may never commit, a limit in the
 release notes (D5), not a known fault. 015-88 stays in section 3.2's
 limits until the cap lands.
+
+2026-11-05, 14:25. 015-87 done (session bergdb-e8's agents): the retain
+duration and the internal fraction are kept in the stream, in the reserved
+internal KV `/#i/dreclaim/-settings.txt` (the format change Frans approved
+at 13:12; F5's option 1 at 13:52), with no builder value; StreamDigest's 4
+`l3-*` configurations change, their digests in 015-87's folder.

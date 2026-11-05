@@ -156,7 +156,7 @@ public class ReclaimCost {
             stream = cutStream;
         }
         DbBuilder b = Db.builder().stream("main", stream).clock(clock).noEvict()
-                .retainForever().testId().startupDistance(sd);
+                .testId().startupDistance(sd);
         return b.build();
     }
 

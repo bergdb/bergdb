@@ -37,7 +37,6 @@ public class StartupDistanceTester {
         random = new Random(0);
         stream = new MemoryStream();
         db = Db.builder().mainStream(stream).startupDistance(500*1000)
-                .retainForever()
                 .build();
         db.start();
         createAccounts();
@@ -125,7 +124,7 @@ public class StartupDistanceTester {
             
             Assert.assertEquals(newLength, stream.getLength());
             
-            Db myDb = Db.builder().mainStream(stream).retainForever().start();
+            Db myDb = Db.builder().mainStream(stream).start();
             out.println(counter++ + ", truncated stream to length: " + newLength 
                     + ", startupDistance: " + myDb.getStartupDistance());
 

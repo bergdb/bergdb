@@ -2,6 +2,7 @@ package bergdb.core;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -64,7 +65,13 @@ import bergdb.stream.MemoryStream;
  * tEnd.</li>
  * <li>All state that decides what reclaim writes is in the table or follows from stream
  * positions, so a restart changes nothing (INV-RESTART).</li>
- * <li>The retain duration may change at any time, also by a restart, since it is not stored.
+ * <li>The retain duration and the internal fraction, reclaim's settings, are kept in the
+ * stream, in the internal KV SETTINGS_KEY_NAME (bergdb 015-87): Db.setRetainDuration and
+ * Db.setReclaimInternalFraction commit it (setSettings), and a start reads it with the
+ * table (initFromDb), so a restart keeps them (010-P2). Before 015-87 a start took the
+ * builder's retain duration and the default fraction, and a restart that did not set them
+ * again stopped reclaim, or changed what it wrote.</li>
+ * <li>The retain duration may change at any time, by Db.setRetainDuration.
  * Every cut keeps the guarantee of the duration in force when it is decided (the first
  * available lookup time is then before the decision time minus the duration); the first
  * available lookup time never moves back, and a larger duration does not bring back what was
@@ -111,6 +118,29 @@ public class Reclaim implements Db.TransactionListener {
     private final long[] currentKey;
     private static final String CURRENT_KEY_NAME = 
             DbConstants.INTERNAL_PREFIX + "dreclaim/-current.txt";
+    
+    /**
+     * Reclaim's settings, kept in the stream (bergdb 015-87, Frans's decision F1 = B): the
+     * retain duration and the internal fraction, as text in the style of the table's rows,
+     * two lines in this order, each a decimal long:
+     * 
+     * <pre>
+     * retain=&lt;the retain duration in time units&gt;
+     * fraction=&lt;the internal fraction in units of 2^-16&gt;
+     * </pre>
+     * 
+     * Forever is Long.MAX_VALUE, 9223372036854775807, as getRetainDuration() gives it; the
+     * default fraction is 16384, 0.25. Each line ends with a newline, and the numbers have
+     * no sign and no leading zeros (serializeSettings).
+     * 
+     * Written by setSettings, in an internal transaction of its own, as the table is, and
+     * only when a setting changes: a database whose settings were never changed has no
+     * such KV, and runs with the defaults (forever, 16384). Read by initFromDb at every
+     * start, which refuses a value in any other form (parseSettings). Reclaim's steps
+     * rewrite it as any live value, so a cut never removes it.
+     */
+    static final String SETTINGS_KEY_NAME = DbConstants.INTERNAL_PREFIX + "dreclaim/-settings.txt";
+    private final long[] settingsKey;
     
     /**
      * An iteration starts when the retain duration over this divisor has passed since the
@@ -189,6 +219,7 @@ public class Reclaim implements Db.TransactionListener {
         table = new IterationTable();
         tableKey = Keys.toSegments(TABLE_KEY_NAME);
         currentKey = Keys.toSegments(CURRENT_KEY_NAME);
+        settingsKey = Keys.toSegments(SETTINGS_KEY_NAME);
         if (db == null) {
             throw new IllegalArgumentException("db == null not allowed");
         }
@@ -211,17 +242,90 @@ public class Reclaim implements Db.TransactionListener {
     }
     
     /**
-     * Called to set the currently wanted retain duration.
-     * The caller has no synch requirements ("thread-safe" method).
+     * Sets reclaim's settings, the retain duration (in time units, Long.MAX_VALUE is
+     * forever) and the internal fraction (in units of 2^-16), and keeps them in the stream
+     * (bergdb 015-87): if they differ from those in force, an internal transaction puts
+     * SETTINGS_KEY_NAME with both, and the fields are set after it is committed, so the next
+     * transaction uses them; if they are those in force, nothing is written. A value out of
+     * range is refused with an IllegalArgumentException before anything is written, and a
+     * change once the top node ordinals are used up as a user transaction is
+     * (Db.refuseIfTopOrdinalsUsed). If the commit throws, the settings in force stay as
+     * they were: refused before its go point, it wrote nothing; failed after it, it failed
+     * the database, and a restart takes what the stream holds. The caller holds Db's write
+     * lock and has checked that the database is active (Db.setRetainDuration,
+     * Db.setReclaimInternalFraction).
      */
-    public void setRetainDuration(long retainDuration) {
-        final long SMALLEST = 1 * Clock.UNITS_PER_SEC;
+    void setSettings(long retainDuration, int internalFraction) {
+        assert Thread.holdsLock(this.writeLock);
+        checkRetainDuration(retainDuration);
+        checkInternalFraction(internalFraction);
+        if (retainDuration == this.retainDuration && internalFraction == this.internalFraction) {
+            return;     // In force: nothing is written.
+        }
+        db.refuseIfTopOrdinalsUsed();   // As a user transaction is refused.
         
-        if (retainDuration < SMALLEST) {
-            throw new IllegalArgumentException("retainDuration = " + retainDuration + " is too small.");
+        Trans t = db.trans().put(settingsKey, serializeSettings(retainDuration, internalFraction))
+                .build();
+        t.isInternal = true;
+        try {
+            db.execute(t);
+        } catch (RerunException e) {
+            throw new Bug("RerunException for write-only trans unexpected, " + e.getMessage());
         }
         
         this.retainDuration = retainDuration;
+        this.internalFraction = internalFraction;
+    }
+    
+    /** Refuses a retain duration below one second with an IllegalArgumentException. */
+    static void checkRetainDuration(long retainDuration) {
+        if (retainDuration < 1 * Clock.UNITS_PER_SEC) {
+            throw new IllegalArgumentException("retainDuration = " + retainDuration
+                    + " is too small, must be at least one second (" + Clock.UNITS_PER_SEC
+                    + " time units).");
+        }
+    }
+    
+    /**
+     * Refuses an internal fraction outside MIN_INTERNAL_FRACTION to MAX_INTERNAL_FRACTION,
+     * units of 2^-16, with an IllegalArgumentException.
+     */
+    static void checkInternalFraction(int internalFraction) {
+        if (internalFraction < MIN_INTERNAL_FRACTION || internalFraction > MAX_INTERNAL_FRACTION) {
+            throw new IllegalArgumentException("Illegal internalFraction value, " + internalFraction);
+        }
+    }
+    
+    /** The value of SETTINGS_KEY_NAME for the given settings. */
+    static byte[] serializeSettings(long retainDuration, int internalFraction) {
+        return StringUtil.toBytes("retain=" + retainDuration + "\nfraction=" + internalFraction
+                + "\n");
+    }
+    
+    /**
+     * Sets the fields from a value of SETTINGS_KEY_NAME. The value must be in the one form
+     * that serializeSettings writes, byte for byte: the two lines in their order, the
+     * numbers in range. Only setSettings writes the KV, so any other value is refused, one
+     * with a line of its own too: it is damage, or the settings of a later version, which
+     * this one must neither run without nor drop at its next setSettings (bergdb 015-87).
+     * 
+     * @throws InternalDataException  If the value is not in that form.
+     */
+    private void parseSettings(byte[] value) {
+        String s = StringUtil.toString(value);
+        StringMap m = new StringMap(s);
+        long retain = m.hasLong("retain") ? m.getLong("retain") : -1;
+        long fraction = m.hasLong("fraction") ? m.getLong("fraction") : -1;
+        if (retain < Clock.UNITS_PER_SEC || fraction < MIN_INTERNAL_FRACTION
+                || fraction > MAX_INTERNAL_FRACTION
+                || !Arrays.equals(value, serializeSettings(retain, (int) fraction))) {
+            throw new InternalDataException("Bad value of " + SETTINGS_KEY_NAME + ", reclaim's "
+                    + "settings: not the two lines retain=<time units> and fraction=<units of "
+                    + "2^-16>, in range, that this version writes (bergdb 015-87): '"
+                    + (s.length() <= 200 ? s : s.substring(0, 200) + "...") + "'.");
+        }
+        this.retainDuration = retain;
+        this.internalFraction = (int) fraction;
     }
     
     /**
@@ -253,20 +357,6 @@ public class Reclaim implements Db.TransactionListener {
     }
     
     /**
-     * Sets the internal fraction, in units of 2^-16 (FRACTION_ONE), used from the next step.
-     * Must be between MIN_INTERNAL_FRACTION and MAX_INTERNAL_FRACTION inclusive, 66 and
-     * 58,982 (0.001 and 0.90); otherwise IllegalArgumentException, and the setting stays as
-     * it was. Db.setReclaimInternalFraction converts the API's double to this unit.
-     */
-    public void setInternalFractionUnits(int internalFraction) {
-        if (internalFraction < MIN_INTERNAL_FRACTION || internalFraction > MAX_INTERNAL_FRACTION) {
-            throw new IllegalArgumentException("Illegal internalFraction value, " + internalFraction);
-        }
-        
-        this.internalFraction = internalFraction;
-    }
-    
-    /**
      * Sets the reserve for the pinned bytes of a reclaim step (bergdb item 001, WP J6): the
      * index nodes that its touch and its rewrites make dirty, which stay pinned until they
      * are written. A step's scan stops at the KV where the index nodes it has followed
@@ -275,6 +365,11 @@ public class Reclaim implements Db.TransactionListener {
      * it exceeds the reserve by at most the nodes of one path. With the default, 4 MiB,
      * steps are not split in practice (a step scans about 16 kB of KVs). Thread-safe; used
      * from the next step.
+     * 
+     * <p>A setting for tests (bergdb 015-87, F7): below the default it splits steps, and so
+     * changes the stream's bytes, but it is not kept in the stream; a start takes the
+     * builder's (DbBuilder.reclaimStepReserve). At the default no step is split in the
+     * stress workloads (bergdb 005-78, probe P4).</p>
      */
     public void setStepReserve(long bytes) {
         if (bytes < 1) {
@@ -626,15 +721,25 @@ public class Reclaim implements Db.TransactionListener {
     }
 
     /**
-     * Initializes the iteration table, 'table' from what is stored in the database.
-     * Db must be in state ACTIVE when this method is called.
+     * Initializes reclaim's settings (SETTINGS_KEY_NAME; the defaults if the stream has
+     * none, bergdb 015-87) and the iteration table, 'table', from what is stored in the
+     * database. Db must be in state ACTIVE when this method is called; the start calls it
+     * last, before any transaction, so the settings are in force from the first one.
      * 
      * @throws StreamFormatException
      * @throws StreamIoException
-     * @throws InternalDataException  If DB data "table.txt" is badly formatted.
+     * @throws InternalDataException  If DB data "table.txt" or the settings are badly
+     *      formatted.
      */
     public void initFromDb() {
         GetData g = db.newGetData();
+        
+        // The settings kept in the stream (bergdb 015-87).
+        byte[] settings = db.getOne(Long.MAX_VALUE, settingsKey, g);
+        if (settings != null) {
+            parseSettings(settings);    // throws InternalDataException
+        }
+        
         byte[] value = db.getOne(Long.MAX_VALUE, tableKey, g);
         
         if (value != null) {

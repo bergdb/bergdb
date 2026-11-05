@@ -271,7 +271,8 @@ public class Db implements AutoCloseable {
         this.reclaim = new Reclaim(this, aos);
         reclaim.setStepReserve(b.reclaimStepReserve);
         this.reclaimTransactionListener = reclaim;
-        reclaim.setRetainDuration(b.retainDurationInTimeUnits);
+        // The retain duration and the internal fraction: the stream's, read by
+        // Reclaim.initFromDb at the start (bergdb 015-87); not the builder's.
         
         this.databaseIdFromBuilder = b.id;
         
@@ -404,18 +405,40 @@ public class Db implements AutoCloseable {
         eviction.setBudget(this, sizeIndicator);
     }
 
+    /**
+     * The retain duration in force, in time units: the stream's, as the last
+     * setRetainDuration() wrote it; Long.MAX_VALUE, forever, if it was never called.
+     */
     public long getRetainDuration() {
         return reclaim.getRetainDuration();
     }
 
     /**
-     * Sets retain duration.
+     * Sets the retain duration, and keeps it in the stream (bergdb 015-87): the time for
+     * which old states stay available for lookups; Long.MAX_VALUE is forever, in force
+     * until a call sets another. A finite duration makes reclaim rewrite live values and
+     * cut the front of the stream. The value decides the stream's bytes, so it is kept in
+     * the stream, as the startup distance is (010-P2): the call commits a small internal
+     * transaction with reclaim's settings (Reclaim.SETTINGS_KEY_NAME), and a start reads
+     * them; a restart keeps the value, and there is no builder setting. The new value is in
+     * force when the method returns, from the next transaction on. A call with the value in
+     * force writes nothing. On a database that is not active the call throws as a
+     * transaction does (IllegalDbStateException, DbStoppingException, DbFailedException),
+     * and so it does, with a DbException, on one that has used its top node ordinals
+     * (bergdb 005-02); a call that is refused, or whose commit fails, leaves the value as
+     * it was.
      * 
      * @param duration
-     *            Number of time units (see Clock.UNITS_PER_SEC).
+     *            Number of time units (see Clock.UNITS_PER_SEC), at least one second.
+     * @throws IllegalArgumentException  If duration is less than one second.
      */
     public void setRetainDuration(long duration) {
-        reclaim.setRetainDuration(duration);
+        Reclaim.checkRetainDuration(duration);
+        synchronized (writeLock) {
+            // The state first, so that a refused call changes nothing (bergdb 015-87, F6).
+            assertDbStateIsActive("setRetainDuration");
+            reclaim.setSettings(duration, reclaim.getInternalFractionUnits());
+        }
     }
     
     /**
@@ -424,6 +447,11 @@ public class Db implements AutoCloseable {
      * 
      * <p>It must be between 0.001 and 0.90 inclusive. NaN and other values are refused with
      * an IllegalArgumentException, and the setting stays as it was (bergdb 005-73).</p>
+     * 
+     * <p>Kept in the stream with the retain duration, as setRetainDuration() keeps that
+     * (bergdb 015-87, F7): a commit of reclaim's settings, nothing written when the value
+     * is in force, refused as a transaction is on a database that is not active, the value
+     * unchanged when refused; a restart keeps it.</p>
      * 
      * <p>Reclaim keeps the fraction as an integer in units of 2^-16 (bergdb 005-79): the
      * nearest one, (int) Math.round(internalFraction * 65536), so 0.25 is kept exactly and
@@ -434,7 +462,11 @@ public class Db implements AutoCloseable {
         if (Double.isNaN(internalFraction) || internalFraction < 0.001 || internalFraction > 0.90) {
             throw new IllegalArgumentException("Illegal internalFraction value, " + internalFraction);
         }
-        reclaim.setInternalFractionUnits((int) Math.round(internalFraction * Reclaim.FRACTION_ONE));
+        int units = (int) Math.round(internalFraction * Reclaim.FRACTION_ONE);
+        synchronized (writeLock) {
+            assertDbStateIsActive("setReclaimInternalFraction");
+            reclaim.setSettings(reclaim.getRetainDuration(), units);
+        }
     }
     
     /**
@@ -558,8 +590,8 @@ public class Db implements AutoCloseable {
      * @throws IllegalStateException
      *          If start() has been called already, or stop(): nothing is closed then.
      * @throws DbFailedException
-     *          If a read of reclaim's table, the last step of the startup, fails on the
-     *          storage (bergdb 005-30).
+     *          If a read of reclaim's settings or table, the last step of the startup,
+     *          fails on the storage (bergdb 005-30).
      */
     public StartInfo start(StartParams params) {
         Throwable failure;
@@ -1877,6 +1909,20 @@ public class Db implements AutoCloseable {
     static final long LAST_TOP_ORDINAL = TopNode.MAX_TOP_NODE_ID_VALUE - TOP_ORDINAL_MARGIN;
     
     /**
+     * Refuses a user transaction, or a call of a setter that commits reclaim's settings
+     * (bergdb 015-87), once the top node ordinals are used up to LAST_TOP_ORDINAL. The
+     * caller holds the write lock.
+     * 
+     * @throws DbException
+     */
+    void refuseIfTopOrdinalsUsed() {
+        if (dag.getTopDs().getSuperRoot().topNodeId >= LAST_TOP_ORDINAL) {
+            throw new DbException("The database has used its top node ordinals (up to "
+                    + LAST_TOP_ORDINAL + "); it takes no more transactions.");
+        }
+    }
+    
+    /**
      * Executes a transaction; this is the heart of the transaction handling.
      * 
      * <p>The go point (bergdb 005-01, register M49; Frans's design, from 2008: no rollback,
@@ -1912,11 +1958,13 @@ public class Db implements AutoCloseable {
             // The end of the top node ordinals (bergdb item 005-02, register M46): checked
             // before the transaction changes anything. A transaction makes at most one top
             // node, and reclaim's internal transactions run only after a user transaction,
-            // within the margin; so no transaction reaches the bound, where TopNode throws.
+            // within the margin, or at a call of a setter of reclaim's settings, which
+            // Reclaim.setSettings refuses before it as this refuses a user transaction
+            // (refuseIfTopOrdinalsUsed; bergdb 015-87); so no transaction reaches the bound,
+            // where TopNode throws.
             // A database that ends here can still be read and restarted.
-            if (!t.isInternal() && dag.getTopDs().getSuperRoot().topNodeId >= LAST_TOP_ORDINAL) {
-                throw new DbException("The database has used its top node ordinals (up to "
-                        + LAST_TOP_ORDINAL + "); it takes no more transactions.");
+            if (!t.isInternal()) {
+                refuseIfTopOrdinalsUsed();
             }
             if (!t.isInternal()) {
                 checkDirtyNodes(t);

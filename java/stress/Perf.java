@@ -309,7 +309,7 @@ public class Perf {
         DbBuilder b = Db.builder();
         if (buffTime > 0) b.stream("main", counting, StorageManager.DEFAULT_BUFFER_SIZE, buffTime);
         else b.stream("main", counting);
-        b.clock(clock).noEvict().retainForever().testId();
+        b.clock(clock).noEvict().testId();
         if (sd > 0) b.startupDistance(sd);
         return b.build();
     }

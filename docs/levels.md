@@ -303,10 +303,14 @@ Limits:
 
 Reclaim cuts the front of the stream, so that the stream does not grow
 forever. It is on when a retain duration R is set
-(`DbBuilder.retainDuration`, `Db.setRetainDuration`); the default is to
-retain forever, as since 2013. Lookups work for every time in [now - R,
-now]; the first available lookup time is the API's actual frontier, and
-increasing R cannot restore history already cut.
+(`Db.setRetainDuration`, `Database.setRetainDuration`); the default is to
+retain forever, as since 2013. R and the internal fraction are kept in the
+stream (015-87): a setter call that changes one commits both in reclaim's
+internal KV `/#i/dreclaim/-settings.txt`, a start reads it, and the steps
+rewrite it like any live value; a stream without it has the defaults
+(forever, and a quarter). There is no builder value. Lookups work for
+every time in [now - R, now]; the first available lookup time is the API's
+actual frontier, and increasing R cannot restore history already cut.
 
 How it works (`Reclaim`; the class comment has the details):
 
@@ -332,8 +336,8 @@ How it works (`Reclaim`; the class comment has the details):
 * A read admitted before a cut may expire: a read that the cut overtakes
   throws `LookupTimeNotAvailableException`, and the database goes on
   (decision D1 = A, 2026-10-13; 011-04, W1). The retain duration may change
-  while the database runs and at restarts; every cut keeps the guarantee of
-  the duration in force when it was decided (011-04, W2).
+  while the database runs, and a restart keeps it (015-87); every cut keeps
+  the guarantee of the duration in force when it was decided (011-04, W2).
 
 Evidence: the Lean model of reclaim is proved (recovery, reads and restarts
 after safe cuts) and Java's reclaim is aligned with it,

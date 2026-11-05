@@ -13,7 +13,6 @@ import bergdb.nanotest.Nano;
 import bergdb.pub.CryptoKey;
 import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
-import bergdb.pub.Duration;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.DatabaseMissingException;
 import bergdb.storage.StreamIoException;
@@ -115,11 +114,6 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     
     public DatabaseBuilder clock(final Clock clock) {
         dbBuilder.clock(clock);
-        return this;
-    }
-    
-    public DatabaseBuilder retainDuration(Duration retainDuration) {
-        dbBuilder.retainDuration(retainDuration.units());
         return this;
     }
     

@@ -77,8 +77,11 @@ still reads format 1) adds, from the item's plan (001-01, 8.2):
 With reclaim (the exporter's `retain=S`, since 2026-10-17, bergdb item 001,
 WP R2; 001-07, 2.7), every executed transaction is a record:
 the user transactions, and reclaim's steps and table stores, each an ordinary
-`TX` block, with `kind=user`, `step` or `table` in its comment line. Format 2
-then also has:
+`TX` block, with `kind=user`, `step` or `table` in its comment line. Since
+bergdb 015-87 the exporter's call of `setRetainDuration`, before the first
+user transaction, commits reclaim's settings (`/#i/dreclaim/-settings.txt`)
+in a record of their own, R(1), internal and marked `kind=table`; its calls
+after a restart write nothing. Format 2 then also has:
 
     TOUCH x1 x2 ...              in TX i, after the ADD lines: the index nodes
                                  T(i)'s touch visited (Db.touchRange), sorted

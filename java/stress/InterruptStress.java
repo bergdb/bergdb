@@ -121,10 +121,12 @@ public class InterruptStress {
     Db open() throws Exception {
         DbBuilder b = Db.builder();
         b.testSetupExceptStream();
-        return b.stream("main", new FileStream(dir), 1000 * 1000, 10).clock(clock)
-                .startupDistance(20000).retainDuration(2 * SEC)
+        Db db = b.stream("main", new FileStream(dir), 1000 * 1000, 10).clock(clock)
+                .startupDistance(20000)
                 .cacheSizeIndicator(2 * 1000 * 1000).evictionSchedule(Eviction.Schedule.BUDGET, 1)
                 .start();
+        db.setRetainDuration(2 * SEC);      // Writes nothing after the first start (bergdb 015-87).
+        return db;
     }
 
     void run() throws Exception {

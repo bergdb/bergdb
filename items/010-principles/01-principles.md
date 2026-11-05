@@ -174,6 +174,19 @@ Where BergDB stands:
   "005-79, yes implement this internally. The Pub API can use doubles at
   the interface, then immediately convert to integers (int, long)
   internally."
+* Kept in the stream since 2026-11-05 (015-87): reclaim's settings, the
+  retain duration and the internal fraction, which decide reclaim's
+  records. A setter call that changes one commits both in the internal KV
+  `/#i/dreclaim/-settings.txt`, a call with the values in force writes
+  nothing, and a start reads the KV; a stream without it has the defaults
+  (forever, and a quarter). Before, a start took the builder's retain
+  duration and the default fraction, so a restart that did not set them
+  again stopped reclaim. Checked by
+  `DbTesterRestart.testReclaimSettingsKeptOverRestarts` and StreamDigest's
+  mode `restarts-once` (the value set after the first start only), and by
+  RestartInvariance in `level3.sh`, which sets it after the first start
+  only. The step reserve (`DbBuilder.reclaimStepReserve`) is a setting for
+  tests: below its default it changes the bytes, and it is not kept.
 * To check: that the memory budget and eviction (Level 4, item 009) leave
   the bytes unchanged, or, where a setting changes the bytes, that the
   principle says so.
@@ -334,7 +347,8 @@ Where BergDB stands:
   database runs (P3's list).
 * Replicas: `addReplica` and `removeReplica` while it runs; experimental,
   with known faults (005-11).
-* The retain duration: `setRetainDuration` while it runs.
+* The retain duration: `setRetainDuration` while it runs; kept in the
+  stream since 2026-11-05 (015-87).
 * The startup distance: `Database.setStartupDistanceInMb` while it runs,
   since 2026-10-28 ([005-53](../005-todo/53-startup-distance-on-the-fly.md),
   option E), with one call: the setting is in force when the call returns
@@ -464,11 +478,14 @@ performance; most often, the default settings are fine." (BergDB features,
 Where BergDB stands:
 
 * The Pub API's settings (`DatabaseBuilder`): the directory, or memory;
-  the crypto key; the clock; the retain duration; the startup distance
-  (default 50 MB, clamped to 5 to 1000 MB); the cache size (default a fifth
-  of the JVM's maximum heap). The retain duration, the startup distance
-  and the cache size also change while the database runs (`Database`'s
-  setters; P6).
+  the crypto key; the clock; the startup distance (default 50 MB, clamped
+  to 5 to 1000 MB); the cache size (default a fifth of the JVM's maximum
+  heap). The startup distance and the cache size also change while the
+  database runs (`Database`'s setters; P6). The retain duration is set
+  only by `Database.setRetainDuration` and kept in the stream; its builder
+  methods, `DatabaseBuilder.retainDuration` and `DbBuilder.retainDuration`,
+  were removed on 2026-11-05 (015-87, Frans: "Yes, remove it from both
+  layers").
 * The default startup distance does not suit a large database: from about
   10M keys, 200 to 1000 MB does (005-38), chosen when the database is
   created, or later with `Database.setStartupDistanceInMb` (P6, since

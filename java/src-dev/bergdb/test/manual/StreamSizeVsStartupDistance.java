@@ -35,7 +35,7 @@ public class StreamSizeVsStartupDistance {
         AppendOnlyStream stream = new MemoryStream();
         //AppendOnlyStream stream = new NullStream();
         Db db = Db.builder().mainStream(stream).startupDistance(startupDistance)
-                .noEvict().retainForever().start();
+                .noEvict().start();
         
         int n = 1000*1000;
         int batchSize = 100;

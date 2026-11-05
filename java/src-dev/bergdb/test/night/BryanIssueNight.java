@@ -42,6 +42,5 @@ public class BryanIssueNight extends BryanIssue {
         b.mainStream(new FileStream(new File(dbPath)));
         b.testSetupExceptStream();
         b.startupDistance(20 * 1000000);
-        b.retainForever();
     }
 }

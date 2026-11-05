@@ -34,7 +34,7 @@ import bergdb.stream.MemoryStream;
  * Db, Trans, MemoryStream, CoreTestClock and DbUtil. It must not use
  * RestartInvariance, which reaches internals that change.
  *
- * Each configuration runs in three modes, which must give the same stream
+ * Each configuration runs in four modes, which must give the same stream
  * from the decided cut (sha256). The physical cut may differ between them:
  * it waits for durability, and a restart syncs (bergdb 011-04, Level 3):
  *   plain     the transactions only;
@@ -43,6 +43,10 @@ import bergdb.stream.MemoryStream;
  *             state and the lookups of RestartInvariance.lookupViolations;
  *   restarts  as its run B: the same, with a restart (sync, stop, copy the
  *             stream, start) before each checkpoint but the last.
+ *   restarts-once  as restarts, but the retain duration is set after the first
+ *             start only: a restart must keep it, as it is kept in the stream
+ *             (bergdb 015-87). Before 015-87 a start forgot it, and the l3-*
+ *             configurations differed from plain in this mode.
  * The workloads are those of RestartInvariance, draw for draw, so the stream
  * lengths equal those it prints ("stream length A=... B=...").
  *
@@ -54,7 +58,7 @@ import bergdb.stream.MemoryStream;
  *              lengths and the cuts); prints DIGESTS IDENTICAL or the differences, and
  *              exits with 1 if they differ.
  * Properties:
- *   modes=M,M  the modes to run (default plain,reads,restarts).
+ *   modes=M,M  the modes to run (default plain,reads,restarts,restarts-once).
  *   metamask=O:N  the digests take bytes O to O+N-1 of every meta block as zero: for a
  *              change that writes a field there and nothing else, compared with the build
  *              before it (bergdb 005-50: metamask=44:2, the node size).
@@ -158,6 +162,11 @@ public class StreamDigest {
     }
 
     Db start(MemoryStream stream, CoreTestClock clock) {
+        return start(stream, clock, true);
+    }
+
+    /** Starts the database; sets the retain duration of the configuration if 'setRetain'. */
+    Db start(MemoryStream stream, CoreTestClock clock, boolean setRetain) {
         DbBuilder b = Db.builder().testSetup(stream).clock(clock);
         if (startupDistance > 0) b.startupDistance(startupDistance);
         if (maxNode == 8) b.maxNodeSize8();
@@ -165,14 +174,15 @@ public class StreamDigest {
         if (maxNode == 30) b.maxNodeSize30();
         if (maxNode == 62) b.maxNodeSize62();
         Db db = b.start();
-        if (retain > 0) db.setRetainDuration(retain * Clock.UNITS_PER_SEC);
+        if (setRetain && retain > 0) db.setRetainDuration(retain * Clock.UNITS_PER_SEC);
         return db;
     }
 
     /** One run in the given mode; returns its DIGEST line. */
     String run(String mode) {
         boolean reads = !mode.equals("plain");
-        boolean restarts = mode.equals("restarts");
+        boolean restarts = mode.startsWith("restarts");
+        boolean setRetainAtRestart = !mode.equals("restarts-once");
         MemoryStream stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         Db db = start(stream, clock);
@@ -193,7 +203,7 @@ public class StreamDigest {
                 db.sync(SyncLevel.ORDINARY);
                 db.stop();
                 stream = stream.copy();
-                db = start(stream, clock);
+                db = start(stream, clock, setRetainAtRestart);
             }
             if (reads && checkpoint) {
                 DbUtil.checksum(db);
@@ -327,7 +337,7 @@ public class StreamDigest {
             System.exit(2);
         }
         Set<String> wanted = new LinkedHashSet<String>(Arrays.asList(args));
-        String[] modes = System.getProperty("modes", "plain,reads,restarts").split(",");
+        String[] modes = System.getProperty("modes", "plain,reads,restarts,restarts-once").split(",");
         if (MASK != null) {
             System.out.println("METAMASK " + MASK[0] + ":" + MASK[1]);
         }

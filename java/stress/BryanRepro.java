@@ -120,8 +120,8 @@ public class BryanRepro {
     /** One run of the original program: start, read, delete, create, sync, stop (here close()). */
     static int runJob(File dir, int startId, int expectedExisting) {
         int lastId = startId + COUNT;
-        Database db = Factory.database().create(dir.getPath())
-                .retainDuration(Duration.seconds(10.0)).start();
+        Database db = Factory.database().create(dir.getPath()).start();
+        db.setRetainDuration(Duration.seconds(10.0));   // bergdb 015-87: no builder value
         Connection conn = db.connection();
 
         List<Integer> list = new ArrayList<Integer>();

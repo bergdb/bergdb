@@ -17,7 +17,6 @@ public class DbBuilder {
     int maxNodeSize;
     int startupDistance;
     long cacheSizeIndicator;
-    long retainDurationInTimeUnits;
     DatabaseId id;
     /** The database's one stream, or null (bergdb 005-11: no replicas since 2026-11-04). */
     DbBuilder.StreamInfo streamInfo = null;
@@ -55,6 +54,8 @@ public class DbBuilder {
         // 150103 Frans: keeping maxNodeSize30() after renewed investigation. 
         //      See end comments of Db class.
         // 130707 Frans: default retain duration = forever. Was one week before.
+        // 2026-11-05 (bergdb 015-87): the retain duration is no longer a builder setting;
+        // it is kept in the stream and set by Db.setRetainDuration. Forever until then.
         //
         
         // 2026-10-13 (bergdb 011-04, "Level 2 under load"): was 20 MB. With
@@ -66,7 +67,6 @@ public class DbBuilder {
         clock = new SystemClock();
         
         maxNodeSize30();
-        retainDurationInTimeUnits = Long.MAX_VALUE;
     }
     
     /**
@@ -181,26 +181,6 @@ public class DbBuilder {
         return this;
     }
     
-    public DbBuilder retainDuration(long retainDurationInTimeUnits) {
-        final long MIN = 1 * Clock.UNITS_PER_SEC;
-        
-        if (retainDurationInTimeUnits < 0) {
-            throw new IllegalArgumentException("Negative retainDuration not allowed.");
-        }
-        
-        if (retainDurationInTimeUnits < MIN) {
-            throw new IllegalArgumentException("retainDuration is too small, must be at " +
-            		"least one second (" + MIN + "), was " + retainDurationInTimeUnits + ".");
-        }
-        
-        this.retainDurationInTimeUnits = retainDurationInTimeUnits;
-        return this;
-    }
-    
-    public DbBuilder retainForever() {
-        return retainDuration(Long.MAX_VALUE);
-    }
-
     /**
      * The eviction schedule (Eviction; bergdb item 001, WPs J2, J3 and J7): the capacity
      * controller (budget, the default: the budget is the cache size indicator); or, for
@@ -217,7 +197,9 @@ public class DbBuilder {
     /**
      * The reserve for a reclaim step's pinned bytes (Reclaim.setStepReserve; bergdb item 001,
      * WP J6). The default is Reclaim.DEFAULT_STEP_RESERVE, or the system property
-     * stepreserve, so that the stress programs can split the steps.
+     * stepreserve, so that the stress programs can split the steps. A setting for tests
+     * (bergdb 015-87, F7): below the default it changes the stream's bytes, and it is not
+     * kept in the stream.
      */
     public DbBuilder reclaimStepReserve(long bytes) {
         // Here, not in the Db's constructor after the storage has started (bergdb 005-32).
@@ -370,13 +352,13 @@ public class DbBuilder {
     }
     
     /**
-     * Tests setup except stream; test clock, no evict, retain forever and testId().
+     * Tests setup except stream; test clock, no evict and testId(). The retain duration is
+     * forever until Db.setRetainDuration is called (bergdb 015-87).
      */
     public void testSetupExceptStream() {
         // Test setup except for stream.
         clock(new CoreTestClock());
         noEvict();
-        retainForever();
         testId();
     }
 

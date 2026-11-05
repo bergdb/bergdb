@@ -194,15 +194,22 @@ public class TraceExport {
 
     /** With an eviction schedule (run E; the random schedule's seed: evictseed, else seed). */
     Db start(AppendOnlyStream stream, CoreTestClock clock, Eviction.Schedule schedule) {
+        Db db = startOnly(stream, clock, schedule);
+        // Since bergdb 015-87 kept in the stream: the first call commits reclaim's settings
+        // (an internal record, kind=table), the calls after a restart write nothing.
+        if (retain > 0) db.setRetainDuration(retain * bergdb.pub.util.Clock.UNITS_PER_SEC);
+        return db;
+    }
+
+    /** Starts the database without setting the retain duration (run A sets it later). */
+    Db startOnly(AppendOnlyStream stream, CoreTestClock clock, Eviction.Schedule schedule) {
         DbBuilder b = Db.builder().testSetup(stream).clock(clock).startupDistance(startupDistance)
                 .evictionSchedule(schedule, Long.getLong("evictseed", seed));
         if (maxNode == 8) b.maxNodeSize8();
         if (maxNode == 14) b.maxNodeSize14();
         if (maxNode == 30) b.maxNodeSize30();
         if (maxNode == 62) b.maxNodeSize62();
-        Db db = b.start();
-        if (retain > 0) db.setRetainDuration(retain * bergdb.pub.util.Clock.UNITS_PER_SEC);
-        return db;
+        return b.start();
     }
 
     /** A new stream: with reclaim a CutStream, which refuses reads below the cut. */
@@ -698,7 +705,9 @@ public class TraceExport {
         final AppendOnlyStream stream = newStream();
         CoreTestClock clock = new CoreTestClock();
         clock.setTime(1);
-        final Db db = start(stream, clock);
+        // The retain duration is set below, once the hooks record: its call commits a
+        // record of reclaim's settings, R(1) (bergdb 015-87).
+        final Db db = startOnly(stream, clock, Eviction.Schedule.NONE);
         final NodeStream ns = db.internal().nodeStream();
 
         // R(0), the primordial record.
@@ -738,6 +747,7 @@ public class TraceExport {
 
         Db.testHooks = hooks;
         try {
+            if (retain > 0) db.setRetainDuration(retain * bergdb.pub.util.Clock.UNITS_PER_SEC);
             for (int i = 0; i < n; i++) {
                 clock.setTime(times[i]);
                 Trans.Builder b = db.trans();

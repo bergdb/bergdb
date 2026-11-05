@@ -44,7 +44,9 @@ import bergdb.stream.MemoryStream;
  *   nodel=P    P percent of the transactions only delete keys that never exist (default 0).
  *   retain=S   Reclaim on, with a retain duration of S seconds (level 3); transactions
  *              are then 0.01 to 0.2 s apart. Lookups are checked from the first
- *              available lookup time, and the streams from the cut.
+ *              available lookup time, and the streams from the cut. The duration is
+ *              set after the first start only: the restarts of run B keep it, as it is
+ *              kept in the stream (bergdb 015-87; until then each start set it again).
  * Debug aids:
  *   trace=true         Print the path of the first bad lookup per checkpoint.
  *   watch=ID, at=I     Print node ID and its children before transaction I.
@@ -209,7 +211,8 @@ public class RestartInvariance {
         return result;
     }
 
-    Db start(MemoryStream stream, CoreTestClock clock) {
+    /** Starts the database; sets the retain duration only if 'first' (bergdb 015-87). */
+    Db start(MemoryStream stream, CoreTestClock clock, boolean first) {
         DbBuilder b = Db.builder().testSetup(stream).clock(clock);
         if (startupDistance > 0) b.startupDistance(startupDistance);
         if (maxNode == 8) b.maxNodeSize8();
@@ -217,7 +220,7 @@ public class RestartInvariance {
         if (maxNode == 30) b.maxNodeSize30();
         if (maxNode == 62) b.maxNodeSize62();
         Db db = b.start();
-        if (retain > 0) db.setRetainDuration(retain * bergdb.pub.util.Clock.UNITS_PER_SEC);
+        if (first && retain > 0) db.setRetainDuration(retain * bergdb.pub.util.Clock.UNITS_PER_SEC);
         return db;
     }
 
@@ -225,7 +228,7 @@ public class RestartInvariance {
         Run r = new Run();
         r.stream = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
-        r.db = start(r.stream, clock);
+        r.db = start(r.stream, clock, true);
         r.tpos = new long[n];
 
         for (int i = 0; i < n; i++) {
@@ -251,7 +254,7 @@ public class RestartInvariance {
                 r.db.stop();
                 r.stream = r.stream.copy();
                 try {
-                    r.db = start(r.stream, clock);
+                    r.db = start(r.stream, clock, false);
                 } catch (RuntimeException e) {
                     r.startupFailure = "restart after trans " + i + " failed: " + e;
                     r.executed = i + 1;

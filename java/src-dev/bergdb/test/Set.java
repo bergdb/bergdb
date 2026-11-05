@@ -47,7 +47,6 @@ public class Set {
         
         DbBuilder b = Db.builder()
                 .clock(new TestClock())
-                .retainForever()
                 .noEvict()
                 .stream("main", nullStream);
         

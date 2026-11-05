@@ -1,16 +1,20 @@
 015-87. Investigate: the retain duration is not kept in the stream
 =================================================================
 
-Status: open; moved from 005-78 on 2026-11-05, with its contents as
-they were in 005-78 (Frans's plan, approved 2026-11-05, 07:17); its
-files stay in [005-todo/78-retain-duration-in-stream/](../005-todo/78-retain-duration-in-stream/).
+Status: done (2026.3), 2026-11-05: the retain duration and the internal
+fraction are kept in the stream, in reclaim's internal KV
+`/#i/dreclaim/-settings.txt`, with no builder value (Frans's answers to F1
+to F7, the Log's entries of 13:12, 13:23, 13:33 and 13:52; U6, the
+change, the Log's last entry). Moved from 005-78 on 2026-11-05, with its
+contents as they were in 005-78 (Frans's plan, approved 2026-11-05,
+07:17); its files stay in [005-todo/78-retain-duration-in-stream/](../005-todo/78-retain-duration-in-stream/),
+the change's in [87-retain-duration-in-stream/](87-retain-duration-in-stream/).
 The study (U1), the probe (U2) and the design (U3) done 2026-11-05, on
 `0c6c4be`, after release 2026.2:
 [design.md](../005-todo/78-retain-duration-in-stream/design.md), the
-probe `RetainProbe.java` and its output `probe.txt` beside it. Nothing
-in `java/` changed. Left: Frans's answers to F1 to F7 ("For Frans", at
-the end, and design.md), then U6, the change.
-Kind: investigate. Created 2026-10-29 as 005-78.
+probe `RetainProbe.java` and its output `probe.txt` beside it. U7, the C
+clone, is left for later (the Log's last entry).
+Kind: investigate. Created 2026-10-29 as 005-78. Closed 2026-11-05.
 
 Registered as Frans decided (2026-10-29, 10:09), on 006-10's decision 6
 (006-10, section 8: "The retain duration changes the stream's bytes but is
@@ -859,6 +863,247 @@ done.
   it to be included in 2026.3. Tempting. But let's get 87 done first."
   017-07, section 2, notes it.
 
+2026-11-05, 13:33. Frans's answers to F5 to F7, in the discussion with
+session bergdb-e8.
+* F5: the settings KV is always written. Every database has it from its
+  creation, with the defaults (forever; the internal fraction 16,384),
+  written by the creation, so that it cannot be missing even after a
+  crash: "Special cases smell complexity." Streams of older releases are
+  not supported (13:30: "We don't need to care about streams created with
+  older releases of BergDB."): a start that finds no settings KV refuses
+  the database with a clear message, as 005-50 refused databases without
+  the node size. The audit checks that the KV exists, if that is cheap.
+* F6, as recommended: the setter is a commit under the write lock; the
+  state checked first (a refused call changes nothing), nothing written
+  when the value is in force, else the KV committed and `Reclaim`'s field
+  set under the same lock; on failure the old value stays. JMX's setters
+  go through it. `Database.setRetainDuration`'s Javadoc loses "can be
+  called before start()".
+* F7: the internal fraction is kept in the same KV, by the same rule (set
+  only by its setter). The step reserve was not discussed; it is taken as
+  the design recommends: documented as a setting for tests, not kept.
+* U6, the change, is under way, by session bergdb-e8's agent, in a clone
+  of `6d829b5`.
+
+2026-11-05, 14:20. U6's state, by session bergdb-e8's agent, in the clone
+`/Users/f/fl/bench/day-1105/015-87` (uncommitted).
+* F5 is open again: the "always written at creation" part waits for
+  Frans (the coordinator asked him at about 13:40, with the cost found by
+  a read-only check: the primordial record is hand-built with exactly two
+  nodes in Java, the C clone and the trace exporter, so the KV would be a
+  second record of the creation, option S, about 2 to 3 hours more).
+* Done either way, and passing `before-commit.sh`, `javadoc-pub.sh`,
+  `reclaimtraces.sh small 2` and `conformance.sh reclaim 2` (no Lean
+  change): the KV `/#i/dreclaim/-settings.txt` (`retain=` and `fraction=`
+  lines), read at the start by `Reclaim.initFromDb`; the setters as
+  commits; the builder methods removed in both layers and at every call
+  site; JMX; the Javadoc; TraceExport records the setter's record;
+  RestartInvariance sets the duration after the first start only;
+  StreamDigest's mode `restarts-once`; five tests in `DbTesterRestart`.
+* As it stands, a stream without the KV runs with the defaults (F5's
+  former option 1). StreamDigest: before, the 4 `l3-*` configurations
+  differ in `restarts-once`; after, the 4 modes agree in all 12, and only
+  the 4 `l3-*` change (`digests-base.txt` in
+  [87-retain-duration-in-stream/](87-retain-duration-in-stream/)). The
+  restart test fails before and passes after (`probe-output.txt` there).
+* Not done: the Audit's check of the KV (a read loads nodes into the node
+  table, and the audit changes nothing by its contract; the start's read
+  is the check).
+
+2026-11-05, 13:52. Frans's final answer to F5, in the discussion with
+session bergdb-e8; F6 and F7 as at 13:33.
+* F5 = option 1, as the design recommended, in place of his answer of
+  13:30 and 13:33 (every database writes the KV at its creation, and a
+  start refuses a stream without it). bergdb-e8's check of what that
+  costs: 10 to 14 hours of work; a creation of two records (the
+  primordial transaction and the settings'); all 36 StreamDigest streams
+  changed; the Core's tests that scan the whole key range broken by the
+  new KV; and every database made by the C clone (012, a port of 2026.2)
+  refused. Frans, 13:52: "Good catch. I agree with your updated
+  assessment. Implement your recommended (1)". So a stream without the
+  KV runs with the defaults (forever; the internal fraction 16,384); the
+  KV holds the settings and is written by a setter call that changes a
+  value, and only then; no start refuses a stream without it; the
+  creation is untouched. The audit's check that the KV exists (13:33) is
+  moot, as the KV may be absent.
+* F6, as recommended: the setter is a commit under the write lock; the
+  state checked first (a refused call changes nothing), nothing written
+  when the value is in force, else the KV committed and `Reclaim`'s
+  fields set under the same lock; on failure the old value stays. JMX's
+  setters go through it. `Database.setRetainDuration`'s Javadoc loses
+  "can be called before start()", and says that the value is kept in the
+  stream, and the exceptions of a refused call.
+* F7: the internal fraction kept in the same KV, set only by its setter
+  (`Db.setReclaimInternalFraction`, and JMX through it). The step reserve
+  (`DbBuilder.reclaimStepReserve`, the property `stepreserve`): as the
+  design recommends, documented as a setting for tests, not kept; Frans
+  did not discuss it.
+
+2026-11-05. Done by session bergdb-e8's agents (U6: one agent made the
+change in a clone of `6d829b5`, a second reviewed and finished it there).
+The retain duration and the internal fraction are kept in the stream, in
+reclaim's internal KV `/#i/dreclaim/-settings.txt` (F1 = B); there is no
+builder value (13:23); a stream without the KV runs with the defaults
+(F5, 13:52).
+* **The KV** (`Reclaim.SETTINGS_KEY_NAME`): its value is two lines, in
+  this order, each ending with a newline: `retain=R` and `fraction=F`, R
+  the retain duration in time units (forever is 9223372036854775807,
+  `Long.MAX_VALUE`) and F the internal fraction in units of 2^-16 (16384
+  by default), in decimal (`Reclaim.serializeSettings`); for example
+  `retain=10000000\nfraction=6554\n` for 1 s and 0.1. It is written only
+  by a setter call that changes a value, so a database whose settings were
+  never changed has none, and the creation is as before. A start reads it
+  in `Reclaim.initFromDb`, before the table: under the write lock, after
+  `state = ACTIVE`, before `start()` returns, so before any transaction
+  after the start, a step or an index job's. It refuses a value in any
+  other form with an `InternalDataException` (`Reclaim.parseSettings`):
+  the value must be, byte for byte, what `serializeSettings` writes for
+  its two numbers, and they must be in range (at least one second; 66 to
+  58,982 units). So a line of its own is refused too, a later version's
+  setting, rather than ignored here and dropped at this version's next
+  setter call. The review chose this: the first version parsed with
+  `StringMap`, which ignores unknown lines, takes the last of two, and
+  trims spaces; for Frans, below.
+* **The setter** (F6): `Db.setRetainDuration` and
+  `Db.setReclaimInternalFraction` check the argument, then, under the
+  write lock, the database's state (`assertDbStateIsActive`), then call
+  `Reclaim.setSettings`. It returns when both values are in force;
+  refuses a change once the top node ordinals are used up, as a user
+  transaction is refused (`Db.refuseIfTopOrdinalsUsed`, taken out of
+  `executeInner`; bergdb 005-02), since its transaction does not come
+  after a user transaction, within the margin, as reclaim's others do;
+  commits the KV with both values in an internal transaction
+  (`Trans.isInternal`, as the table's stores, so `transactionCompleted`
+  makes no decision at it); and sets the two volatile fields after the
+  commit. A commit refused before its go point (a stop, a clock out of
+  range) leaves the fields as they were; one that fails after it fails
+  the database, and a restart takes what the stream holds. JMX's setters
+  go through `Db`. `Reclaim.setRetainDuration` and
+  `setInternalFractionUnits` are gone. The Pub API's
+  `DatabaseImp.setRetainDuration` calls `Db.setRetainDuration`, as
+  before.
+* **The builder** (13:23): `DatabaseBuilder.retainDuration` and
+  `DatabaseBuilderImp.retainDuration` (Pub), `DbBuilder.retainDuration`,
+  `retainForever` and its field (Core) are removed, and `Db`'s
+  constructor gives `Reclaim` no value. Their callers set it after the
+  start, or drop `retainForever()`, the default: in `java/src`
+  (`DbTester`, `DbTesterRestart`, `FileStreamPowerLossTester`,
+  `InterruptTester`), `src-dev` (12 files) and `stress` (`BryanRepro`,
+  `InterruptStress`, `LargerThanMemory`, `LoadTest`, `Perf`,
+  `ReclaimCost`, `RestartInvariance`, `Soak`, `StreamDigest`,
+  `TraceExport`); `java/bench` has none. Tools under `items/` keep
+  `retainForever()` and `retainDuration(...)`, as 015-19 keeps 005-79's
+  removals; the C clone's cross harness (`012-bergdb-c/c/test/cross/java/`)
+  builds against 2026.2's jar by default (`JAVA_REF`) and, against this
+  tree (`JAVA_REF=tree`), no longer compiles until U7.
+* **The checks that restart:** `RestartInvariance` (`level3.sh`, step 3,
+  every configuration with reclaim) and `LoadTest` set the retain
+  duration after the first start only, so their restarts check that it
+  is kept: the design's "a RestartInvariance configuration with the value
+  set once". StreamDigest has a fourth mode, `restarts-once`.
+  `TraceExport`'s run A sets it under its test hooks, so the settings'
+  record is R(1), `kind=table`; its other runs set it after each start,
+  which writes nothing after the first (docs/trace-format.md says so).
+* **The Javadoc and the documents:** `Database.setRetainDuration` and
+  `getRetainDuration` (Pub); `Db.setRetainDuration`, `getRetainDuration`,
+  `setReclaimInternalFraction` and `start`'s throws; `Reclaim`'s class
+  comment, `setSettings`, `initFromDb` and `setStepReserve`, and
+  `DbBuilder.reclaimStepReserve` (a setting for tests, F7); JMX's
+  interface; docs/levels.md, section 6; docs/trace-format.md; 010-01's P2,
+  P6 and P10.
+* **Tests**, in `DbTesterRestart` but the last two:
+  * `testReclaimSettingsKeptOverRestarts` (f), the design's restart test:
+    the retain duration (1 s) and the internal fraction (0.1) set once,
+    after commit 100, restarts right after the call and every 50 commits
+    without setting them again; the stream from the decided cut is the
+    one without restarts. On `6d829b5` it fails ("retain after a
+    restart, expected 10000000, got 9223372036854775807"); without that
+    check the streams differ: no cut after the first restart, 2,047,056
+    bytes against 2,425,200 with a cut at 967,496. Shown with
+    `87-retain-duration-in-stream/SettingsRestartProbe.java`, the test's
+    run as a probe, on both jars (`probe-output.txt`).
+  * `testRefusedReclaimSettingChangesNothing`: arguments out of range,
+    and calls on a stopped database (`IllegalDbStateException`), write
+    nothing and leave the values, also for a restart.
+  * `testReclaimSettingRefusedAtGoPoint`: a commit refused before its go
+    point (a clock out of range) writes nothing and leaves the values;
+    the database goes on, and the next call writes.
+  * `testReclaimSettingAtEndOfOrdinals`: at `Db.LAST_TOP_ORDINAL` a change
+    is refused as a user transaction is, and writes nothing; a call with
+    the values in force is not refused.
+  * `testReclaimSettingInForceWritesNothing`: a call with the value in
+    force writes nothing, the defaults of a new database too; a new value
+    writes one record and is in force; the KV's bytes.
+  * `testReclaimSettingsKeptAcrossRestart`: the fraction kept by a
+    restart, and forever after a finite duration too.
+  * `testReclaimSettingsSurviveCuts` (f): the KV, written before the
+    first user transaction, is found after three cuts or more past its
+    record, and after a restart on the cut stream, which goes on cutting.
+  * `testStreamWithoutSettingsHasDefaults`: no KV without a setter call;
+    a start on such a stream has the defaults.
+  * `testMalformedSettingsRefusedAtStart`: 13 malformed values refused at
+    the start with an `InternalDataException`; the well-formed one starts.
+  * `PubTester.testSetRetainDurationKept`: through the Pub API, forever
+    when never set, kept by a restart (forever too), nothing appended for
+    the value in force, and the refused calls (less than a second; after
+    `stop()`) change nothing.
+  * `DbTester.testReclaimInternalFractionValidation`'s invalid units go
+    to `setSettings`.
+* **StreamDigest** (`87-retain-duration-in-stream/digest-summary.txt`,
+  `digests-base.txt`, `digests-new.txt`): `6d829b5` against the change,
+  12 configurations in 4 modes, one compiled copy of the change's
+  StreamDigest on both jars. The 8 without reclaim: the same 32 digests,
+  2026.2's. The 4 `l3-*`: their 16 digests change, by the settings'
+  record that StreamDigest's first start now writes (216 bytes), and
+  what follows from it (iterations and cuts at other positions). On
+  `6d829b5` `restarts-once` differs from plain in each `l3-*` (the fault;
+  `l3-node8`: 4,355,752 bytes and no cut, against 7,094,096 with a cut);
+  with the change the 4 modes agree in all 12. `6d829b5`'s other 36
+  digests are 015-54's `digests-new.txt`.
+* **Lean and the traces:** nothing in `lean/` changes (the design's Q10):
+  the settings' record is a transaction like a table store, and the
+  checker treats every `TX` alike. `level3.sh`'s step 8 (`conformance.sh
+  reclaim`, with the checker built by lake): 25 traces, TRACECHECK OK 25;
+  C-CUT 0 of 301 CUT lines fail.
+* **The C clone** (012) is a port of 2026.2 and does not follow yet
+  (U7): a C start reads such a stream, as the KV is an ordinary internal
+  KV to it (`rc_init_from_db` reads the table and the current row only),
+  but does not honour it: it runs with the retain duration and fraction
+  of its own API, forever by default; its steps rewrite the KV as any
+  live value (the step's scan has no key filter), as 2026.2's do. So C
+  and Java differ on a stream whose settings were set, after a restart
+  that does not set them again; `cross.sh` compares C with 2026.2.
+* **010-01, P1 to P12:** P2 holds for the two settings (a restart keeps
+  them: the restart test, StreamDigest's `restarts-once`,
+  RestartInvariance); a refused call changes nothing (P2's refused
+  requests); a failure after the go point fails the database (P7); one
+  builder setting fewer in each layer (P10); no public method of `Db`
+  added (P12: `setSettings` and `refuseIfTopOrdinalsUsed` are
+  package-private, and `Reclaim` lost two public setters); a call writes
+  one record of about 200 bytes, and only when a value changes, as the
+  application's response (P3, P4); a start reads one KV more (P5); no
+  global state (P9). P1, P6 (the setters work while the database runs, as
+  before), P8 and P11 are not otherwise touched.
+* **`releases/next.md`:** under "Pub API" (the builder method removed,
+  the fault fixed, the Core API's setters) and a new "Format" section
+  (the reserved internal key and Frans's approval; StreamDigest's changed
+  configurations and this entry's digests).
+* **Gates**, from `java/` in the clone: `before-commit.sh`: `BEFORE
+  COMMIT OK (106 s)`, unit 1176, f 83; `stress/core-build.sh unit`:
+  `CORE BUILD OK` (754 tests); `stress/level3.sh`: `LEVEL 3 OK` (with
+  RestartInvariance's restarts keeping the duration set once, and
+  LoadTest's 6 restarts after cuts); `javadoc-pub.sh`: `JAVADOC PUB OK`;
+  and, as "Done when" asks, `stress/level2.sh quick`: `LEVEL 2 OK`
+  (BryanRepro with the setter after each start). Level 3 ran on the tree
+  before an unused import was removed from `DatabaseBuilderImp`; the
+  other gates on the committed tree.
+* **For Frans:** the start refuses a settings value in any other form
+  than the one written, an unknown line included (above, "The KV"). The
+  alternative is to ignore unknown lines, as `IterationInfo` ignores
+  unknown fields of the table's rows; then a version that does not know a
+  later version's setting runs without it, and its next setter call drops
+  it. Kept strict unless Frans says otherwise.
+
 
 For Frans
 ---------
@@ -882,11 +1127,17 @@ answers all seven.
   setter is called.
 * **F5, forever:** writes nothing, so StreamDigest's 8 configurations
   without a retain duration keep their streams (recommended), or every
-  new database writes its value.
+  new database writes its value. Answered 2026-11-05, 13:52: as
+  recommended, nothing written until a setter changes a value (his
+  answer of 13:30, written at the creation and a stream without it
+  refused, withdrawn on bergdb-e8's check of its cost).
 * **F6, the setter:** a commit under the write lock, refused when the
   database is not active, nothing written when the value is in force; the
   Javadoc's "before start()" removed. Recommended as stated.
+  Answered 2026-11-05 (13:33, 13:52): as recommended.
 * **F7, the internal fraction and the step reserve:** the fraction kept in
   the same record (recommended with B), documented as lasting for the run,
   or its setters removed; the step reserve documented as a setting for
-  tests (recommended).
+  tests (recommended). Answered 2026-11-05 (13:33, 13:52): the fraction
+  kept in the same KV, set only by its setter; the step reserve as
+  recommended (not discussed).

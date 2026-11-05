@@ -1017,6 +1017,67 @@ public class PubTester {
     }
     
     /**
+     * The retain duration through the Pub API (bergdb 015-87): set only by
+     * setRetainDuration, after the start, and kept in the stream, so a restart keeps it,
+     * forever (Duration.MAX) too; a call with the value in force appends nothing; a call
+     * with less than one second, or after stop(), throws and changes nothing. Before 015-87
+     * a start took the builder's value, forever by default.
+     */
+    @Nano
+    public static void testSetRetainDurationKept() {
+        MemoryStream m = new MemoryStream();
+        Database d = ((DatabaseBuilderImp) Factory.database()).mainStream(m).start();
+        Db db = ((DatabaseImp) d).getDb();
+        Assert.assertEquals("forever when never set", Duration.MAX, d.getRetainDuration());
+        d.connection().w().put("/a", "1").execute();
+        
+        long length = db.getStreamLength();
+        d.setRetainDuration(Duration.seconds(30));
+        Assert.assertEquals(Duration.seconds(30), d.getRetainDuration());
+        Assert.assertTrue("the call's transaction", db.getStreamLength() > length);
+        length = db.getStreamLength();
+        d.setRetainDuration(Duration.seconds(30));
+        Assert.assertEquals("the value in force: nothing appended", length,
+                db.getStreamLength());
+        
+        IllegalArgumentException tooShort = null;
+        try {
+            d.setRetainDuration(Duration.seconds(0.5));
+        } catch (IllegalArgumentException e) {
+            tooShort = e;
+        }
+        Assert.assertTrue("less than one second throws", tooShort != null);
+        Assert.assertEquals("unchanged", Duration.seconds(30), d.getRetainDuration());
+        Assert.assertEquals("nothing appended", length, db.getStreamLength());
+        d.connection().w().put("/a", "2").execute();
+        d.sync();
+        d.stop();
+        
+        IllegalDbStateException ex = null;
+        try {
+            d.setRetainDuration(Duration.seconds(40));
+        } catch (IllegalDbStateException e) {
+            ex = e;
+        }
+        Assert.assertTrue("a call after stop() throws", ex != null);
+        Assert.assertEquals("the refused call changed nothing", Duration.seconds(30),
+                d.getRetainDuration());
+        d.close();
+        
+        m = m.copy();
+        d = ((DatabaseBuilderImp) Factory.database()).mainStream(m).start();
+        Assert.assertEquals("kept by the restart", Duration.seconds(30), d.getRetainDuration());
+        Assert.assertEquals("2", d.connection().get("/a", String.class));
+        d.setRetainDuration(Duration.MAX);
+        d.sync();
+        d.stop();
+        
+        d = ((DatabaseBuilderImp) Factory.database()).mainStream(m.copy()).start();
+        Assert.assertEquals("forever kept by the restart", Duration.MAX, d.getRetainDuration());
+        d.stop();
+    }
+    
+    /**
      * A decrease of the startup distance through the Pub API pays the startup section's
      * index nodes over several records (bergdb 007-03, D4:B; 007-07; 005-53): a database at
      * 50 MB, 15,000 transactions of 20 puts of small values over a million keys (a section of

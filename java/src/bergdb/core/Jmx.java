@@ -35,6 +35,10 @@ public class Jmx {
         public void setStartupDistance(int newDistance);
         public long getRetainDuration();
         public String getRetainDurationH();
+        /**
+         * Sets the retain duration through Db.setRetainDuration, which keeps it in the
+         * stream (bergdb 015-87); so do the two setters below.
+         */
         public void setRetainDuration(long durationTimeUnits);
         public void setRetainDurationInSeconds(int seconds);
         public void setRetainDurationInDays(int days);
@@ -54,7 +58,7 @@ public class Jmx {
         /**
          * Sets reclaim's internal fraction through Db.setReclaimInternalFraction: 0.001 to
          * 0.90, NaN and other values refused; kept as the nearest multiple of 2^-16, so 0.25
-         * exactly and 0.1 as 0.100006 (bergdb 005-79).
+         * exactly and 0.1 as 0.100006 (bergdb 005-79); kept in the stream (bergdb 015-87).
          */
         public void setReclaimInternalFraction(double internalFraction);
         public String[] getDummyStrings();

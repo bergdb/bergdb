@@ -27,7 +27,7 @@ public class Concurrency2 {
     
     public Concurrency2() {
         AppendOnlyStream stream = new DummyStream();
-        db = Db.builder().clock(new TestClock()).retainForever().noEvict().mainStream(stream).start();
+        db = Db.builder().clock(new TestClock()).noEvict().mainStream(stream).start();
     }
     
     /**

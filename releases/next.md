@@ -40,6 +40,29 @@ Pub API
   that is a programming error, as a null key already was. The Javadoc of
   `Connection.exists` and `ReadInterface.exists` says so. The Core API and
   the stream are unchanged.
+* **The retain duration is kept in the stream;
+  `DatabaseBuilder.retainDuration` is gone** (bergdb 015-87; Frans,
+  2026-11-05). A start took the builder's retain duration, forever by
+  default, not the one the database ran with (2026.2's known issue "The
+  retain duration is not kept in the stream"): a program that set it with
+  `Database.setRetainDuration` after the start got no reclaim after a
+  restart, and a stream that grew without a bound; one that opened the
+  database with another value got other bytes than without the restart
+  (010-01, P2). Now `Database.setRetainDuration` commits the value in a
+  small transaction of the database's own, and a start reads it: a restart
+  keeps it. A call with the value in force writes nothing; a call on a
+  database that is stopping, stopped or failed throws as a transaction
+  does and changes nothing; its Javadoc no longer says that it can be
+  called before `start()`. The builder's `retainDuration(Duration)` is
+  removed (Frans: "remove it from both layers"): a program that used it
+  does not compile, and calls `Database.setRetainDuration` once, after
+  `start()`, instead. A database whose duration was never set keeps every
+  state (forever), as before. The Core API follows:
+  `DbBuilder.retainDuration` and `retainForever` are removed, and
+  `Db.setRetainDuration` (JMX's three setters go through it) and
+  `Db.setReclaimInternalFraction` (JMX only) keep their values in the
+  stream the same way. The step reserve (`DbBuilder.reclaimStepReserve`)
+  is a setting for tests, not kept. The format: under Format, below.
 
 
 Reliability
@@ -121,6 +144,39 @@ Reliability
   Javadoc of `Connection.rw` now says so, and that under overload it may
   never commit: a long action while other transactions write more than
   about 100,000 keys, the conflict history, has every attempt refused.
+
+
+Format
+------
+
+* **A reserved internal key: reclaim's settings,
+  `/#i/dreclaim/-settings.txt`** (bergdb 015-87), beside reclaim's table
+  and current row; a format change that Frans approved (2026-11-05, 13:12:
+  "Yes, let's do B as recommended"). Its value is two lines, each ending
+  with a newline: `retain=` and the retain duration in time units
+  (9223372036854775807, `Long.MAX_VALUE`, for forever), and `fraction=`
+  and the internal fraction in units of 2^-16 (16384, a quarter, by
+  default), in decimal. A setter call writes it when it changes a value,
+  and only then (Frans, 13:52: "Implement your recommended (1)"), so a
+  database whose settings were never changed has none and runs with the
+  defaults, as do 2026.2's databases, which open as before. A start
+  refuses a value in another form with an `InternalDataException`.
+  Reclaim's steps rewrite it like any live value, so cuts keep it. 2026.2,
+  and the C clone (012, a port of 2026.2), read such a stream and keep the
+  KV (their steps rewrite it) but do not honour it: they run with the
+  values their own API sets.
+* **The stream's bytes change only where a setter is called.**
+  StreamDigest's 8 configurations without reclaim give 2026.2's digests.
+  Its 4 with reclaim (`l3-*`, 16 of 48 digests) change: StreamDigest sets
+  their retain duration after the first start, which now writes the
+  settings' record before the first user transaction. In each
+  configuration the modes plain, reads, restarts and the new
+  `restarts-once` (the duration set after the first start only, which
+  differs from plain on 2026.2's jar: the fault) give the same stream. The
+  digests before and after are in 015-87's folder
+  (`items/015-todo/87-retain-duration-in-stream/`: `digests-base.txt`,
+  `digests-new.txt`, `digest-summary.txt`). 2026.2's reference has three
+  modes: compare with it with `-Dmodes=plain,reads,restarts`.
 
 
 Internal

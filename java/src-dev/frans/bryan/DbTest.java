@@ -39,7 +39,8 @@ public class DbTest
 
     // Orig:
     // Database db = Factory.database().create(path).retainDuration(Duration.seconds(10.0)).start();
-    Database db = Factory.database().create(path).retainDuration(Duration.seconds(10.0)).clock(new TestClock()).start();
+    Database db = Factory.database().create(path).clock(new TestClock()).start();
+    db.setRetainDuration(Duration.seconds(10.0));   // bergdb 015-87: no builder value
     
     Connection conn = db.connection();
 

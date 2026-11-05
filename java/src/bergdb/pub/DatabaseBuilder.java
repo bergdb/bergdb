@@ -81,11 +81,6 @@ public interface DatabaseBuilder {
     public DatabaseBuilder clock(Clock clock);
     
     /**
-     * Sets the wanted retain duration.
-     */
-    public DatabaseBuilder retainDuration(Duration duration);
-    
-    /**
      * Sets the startup distance to a non-default value.
      * A small startup distance can decrease database startup time; while a larger
      * startup distance can improve the overall database performance.

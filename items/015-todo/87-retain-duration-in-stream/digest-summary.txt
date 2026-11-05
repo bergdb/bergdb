@@ -1,0 +1,33 @@
+StreamDigest: main 6d829b5 (digests-base.txt) against 015-87's change (digests-new.txt),
+2026-11-05, all 12 configurations in the 4 modes plain, reads, restarts and the new
+restarts-once (the retain duration set after the first start only); one compiled copy of
+the change's StreamDigest (built against 6d829b5's jar; it uses no API that the change
+adds) on both jars. 'digest' compares the decided fields of plain (length,
+firstAvailablePos, firstAvailableTime, sha256; 005-79's digest-compare.py), the physical
+cut left out; 'modes' says whether the 4 modes give plain's stream (length and sha256).
+6d829b5's plain, reads and restarts digests are 015-54's digests-new.txt, 36 of 36.
+
+configuration                base     change  change  digest   modes base  modes change
+l2-sd100                  5131920    5131920   +0.0%  same     agree       agree
+l2-sd1000-node8           4355480    4355480   +0.0%  same     agree       agree
+l2-sd10000-node14         2556312    2556312   +0.0%  same     agree       agree
+l2-sd100000-node62        2531344    2531344   +0.0%  same     agree       agree
+l2-every1                  514616     514616   +0.0%  same     agree       agree
+l2-idle-1                  222152     222152   +0.0%  same     agree       agree
+l2-idle-2                  222112     222112   +0.0%  same     agree       agree
+l2-default-100MB         79056128   79056128   +0.0%  same     agree       agree
+l3-every1                 1947712    1883528   -3.3%  differs  differ      agree
+l3-node8                  7094096    7195952   +1.4%  differs  differ      agree
+l3-node14                 1604576    1651552   +2.9%  differs  differ      agree
+l3-node62                10334560   10343584   +0.1%  differs  differ      agree
+
+The 8 configurations without reclaim: the same digests in all 4 modes (32 of 48), so
+2026.2's (015-54's summary). The 4 l3-* configurations: their 16 digests change, as
+intended: StreamDigest sets the retain duration (1 s) after the first start, which now
+commits reclaim's settings in a record of their own, /#i/dreclaim/-settings.txt (216
+bytes here), before the first user transaction; every later record moves, and so do the
+iterations' starts and the cuts (the decided first available positions above). The base
+shows the fault: in each l3-* configuration restarts-once differs from plain (4 mode
+differences; l3-node8 restarts-once: length 4355752, no cut, against plain's 7094096 with
+a cut at 5982864). With the change the 4 modes agree in all 12 configurations ("the modes
+give the same stream"). digests-new.txt is the new reference.

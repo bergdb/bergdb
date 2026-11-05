@@ -26,6 +26,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.DbException;
+import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.SyncLevel;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
@@ -49,7 +50,7 @@ public class DbTesterRestart {
         CoreTestClock clock = new CoreTestClock();
         long lastPos;
         try (Db db = Db.builder().testSetup(stream).clock(clock)
-                .startupDistance(1000000).retainForever().start()) {
+                .startupDistance(1000000).start()) {
             clock.setTime(10);
             db.execute(db.trans().put("/k1", "1"));
             clock.setTime(20);
@@ -71,7 +72,7 @@ public class DbTesterRestart {
             Bytes.longToBytesLE(b[1], timeBytes, 0);
             MemoryStream.TestAccess.write(corrupt, timeBytes, b[0] + 8);
             try (Db ignored = Db.builder().testSetup(corrupt).clock(clock)
-                    .startupDistance(1000000).retainForever().start()) {
+                    .startupDistance(1000000).start()) {
                 throw new AssertionError("started with corrupt record time " + b[1]);
             } catch (StreamFormatException expected) {
                 String message = b[1] < 0 || b[1] > Klong.MAX_TIME
@@ -90,7 +91,7 @@ public class DbTesterRestart {
             long oldReadTime;
             long boundary;
             try (Db db = Db.builder().testSetup(stream).clock(clock)
-                    .startupDistance(startupDistance).retainForever().start()) {
+                    .startupDistance(startupDistance).start()) {
                 clock.setTime(10);
                 db.execute(db.trans().put("/k", "1"));
                 GetData read = db.newGetData();
@@ -107,7 +108,7 @@ public class DbTesterRestart {
                 assertStmRefused(db, oldReadTime);
             }
             try (Db db = Db.builder().testSetup(stream.copy()).clock(clock)
-                    .startupDistance(startupDistance).retainForever().start()) {
+                    .startupDistance(startupDistance).start()) {
                 assertStmRefused(db, oldReadTime);
                 // An empty commit must not erase the boundary either.
                 db.execute(db.trans().build());
@@ -283,6 +284,404 @@ public class DbTesterRestart {
         
         Assert.assertEquals("after restart", startupDistance, db.getStartupDistance());
         db.close();
+    }
+    
+    // ======== Reclaim's settings kept in the stream, bergdb 015-87 ========
+    
+    /**
+     * Bergdb 015-87, the restart test: the retain duration and the internal fraction, set
+     * once after commit 100 and never again, are kept over restarts, right after the call
+     * and after every 50 commits, so the stream from the decided cut is the one of the run
+     * without restarts (010-P2). Before 015-87 a start took the builder's retain duration,
+     * forever, and the default fraction: after the first restart no iteration started and
+     * no cut was made, and the streams parted at commit 101.
+     */
+    @Nano("f")
+    private static void testReclaimSettingsKeptOverRestarts() throws IOException {
+        Object[] plain = settingsRun(false);
+        Object[] restarts = settingsRun(true);
+        Assert.assertEquals("the decided cut", plain[0], restarts[0]);
+        Assert.assertEquals("the stream's length", plain[1], restarts[1]);
+        Assert.assertArrayEquals("the stream from the decided cut", (byte[]) plain[2],
+                (byte[]) restarts[2]);
+    }
+    
+    /**
+     * The workload of testReclaimSettingsKeptOverRestarts: 2000 commits, one every 0.1 s,
+     * retain duration 1 s and internal fraction 0.1 set once, after commit 100. Returns the
+     * decided cut, the length and the bytes from the cut; checks that reclaim cut.
+     */
+    private static Object[] settingsRun(boolean restarts) throws IOException {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(1000)
+                .maxNodeSize8().start();
+        try {
+            Random rnd = new Random(1);
+            for (int i = 1; i <= 2000; i++) {
+                clock.setTime(i * Clock.UNITS_PER_SEC / 10);
+                byte[] value = new byte[1 + rnd.nextInt(40)];
+                rnd.nextBytes(value);
+                db.execute(db.trans().put("/k/" + rnd.nextInt(500), value));
+                if (i == 100) {
+                    db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+                    db.setReclaimInternalFraction(0.1);
+                }
+                if (restarts && i >= 100 && i % 50 == 0 && i < 2000) {
+                    db.sync(SyncLevel.ORDINARY);
+                    db.stop();
+                    stream = stream.copy();
+                    db = Db.builder().testSetup(stream).clock(clock).startupDistance(1000)
+                            .maxNodeSize8().start();    // The settings not set again.
+                    Assert.assertEquals("retain after a restart", 1 * Clock.UNITS_PER_SEC,
+                            db.getRetainDuration());
+                    Assert.assertTrue("fraction after a restart",
+                            db.getInternalFraction() == 6554 / 65536.0);
+                }
+            }
+            db.sync(SyncLevel.ORDINARY);
+            long cut = Math.max(stream.getFirstPos(), db.getFirstAvailablePos());
+            Assert.assertTrue("reclaim cut, restarts=" + restarts, db.getFirstAvailablePos() > 0);
+            byte[] bytes = new byte[(int) (stream.getLength() - cut)];
+            stream.read(cut, bytes, 0, bytes.length);
+            return new Object[] {cut, stream.getLength(), bytes};
+        } finally {
+            db.stop();
+        }
+    }
+    
+    /**
+     * Bergdb 015-87, F6: a call of setRetainDuration or setReclaimInternalFraction that is
+     * refused changes nothing: on a stopped database (IllegalDbStateException) nothing is
+     * written, and the values in force, also after a restart, are the old ones; an argument
+     * out of range (IllegalArgumentException) changes nothing either.
+     */
+    @Nano
+    private static void testRefusedReclaimSettingChangesNothing() {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(stream).clock(clock).start();
+        clock.setTime(10);
+        db.execute(db.trans().put("/k", "1"));
+        db.setRetainDuration(5 * Clock.UNITS_PER_SEC);
+        db.setReclaimInternalFraction(0.5);
+        final long length = db.getStreamLength();
+        
+        for (int i = 0; i < 4; i++) {
+            boolean refused = false;
+            try {
+                if (i == 0) db.setRetainDuration(Clock.UNITS_PER_SEC - 1);
+                if (i == 1) db.setRetainDuration(-1);
+                if (i == 2) db.setReclaimInternalFraction(0.95);
+                if (i == 3) db.setReclaimInternalFraction(Double.NaN);
+            } catch (IllegalArgumentException expected) {
+                refused = true;
+            }
+            Assert.assertTrue("refused " + i, refused);
+        }
+        Assert.assertEquals("nothing written", length, db.getStreamLength());
+        db.sync(SyncLevel.ORDINARY);
+        db.stop();
+        
+        for (int i = 0; i < 2; i++) {
+            boolean refused = false;
+            try {
+                if (i == 0) db.setRetainDuration(7 * Clock.UNITS_PER_SEC);
+                if (i == 1) db.setReclaimInternalFraction(0.3);
+            } catch (IllegalDbStateException expected) {
+                refused = true;
+            }
+            Assert.assertTrue("refused on a stopped database " + i, refused);
+        }
+        Assert.assertEquals("retain unchanged", 5 * Clock.UNITS_PER_SEC, db.getRetainDuration());
+        Assert.assertTrue("fraction unchanged", db.getInternalFraction() == 0.5);
+        Assert.assertEquals("nothing written on a stopped database", length, stream.getLength());
+        
+        db = Db.builder().testSetup(stream.copy()).clock(clock).start();
+        Assert.assertEquals("retain after the restart", 5 * Clock.UNITS_PER_SEC,
+                db.getRetainDuration());
+        Assert.assertTrue("fraction after the restart", db.getInternalFraction() == 0.5);
+        db.stop();
+    }
+    
+    /**
+     * Bergdb 015-87, F6: a call with the value in force writes nothing; a call with another
+     * value writes one record, and the value is in force when it returns.
+     */
+    @Nano
+    private static void testReclaimSettingInForceWritesNothing() {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(stream).clock(clock).start();
+        clock.setTime(10);
+        db.execute(db.trans().put("/k", "1"));
+        Assert.assertEquals("a new database: forever", Long.MAX_VALUE, db.getRetainDuration());
+        Assert.assertTrue("a new database: 0.25", db.getInternalFraction() == 0.25);
+        
+        long length = db.getStreamLength();
+        db.setRetainDuration(Long.MAX_VALUE);
+        db.setReclaimInternalFraction(0.25);
+        Assert.assertEquals("the defaults in force", length, db.getStreamLength());
+        
+        db.setRetainDuration(3 * Clock.UNITS_PER_SEC);
+        Assert.assertTrue("a new value written", db.getStreamLength() > length);
+        Assert.assertEquals("in force", 3 * Clock.UNITS_PER_SEC, db.getRetainDuration());
+        length = db.getStreamLength();
+        db.setRetainDuration(3 * Clock.UNITS_PER_SEC);
+        Assert.assertEquals("the same value", length, db.getStreamLength());
+        
+        db.setReclaimInternalFraction(0.1);
+        Assert.assertTrue("a new fraction written", db.getStreamLength() > length);
+        length = db.getStreamLength();
+        db.setReclaimInternalFraction(0.1);
+        Assert.assertEquals("the same fraction", length, db.getStreamLength());
+        
+        Assert.assertEquals("the KV", "retain=" + 3 * Clock.UNITS_PER_SEC + "\nfraction=6554\n",
+                StringUtil.toString(DbUtil.get(db, Long.MAX_VALUE, Reclaim.SETTINGS_KEY_NAME)));
+        db.stop();
+    }
+    
+    /**
+     * Bergdb 015-87: the internal fraction is kept across a restart, and so is the retain
+     * duration forever after a finite one (the KV holds both, whatever was set last).
+     */
+    @Nano
+    private static void testReclaimSettingsKeptAcrossRestart() {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(stream).clock(clock).start();
+        clock.setTime(10);
+        db.setReclaimInternalFraction(0.001);
+        db.sync(SyncLevel.ORDINARY);
+        db.stop();
+        
+        stream = stream.copy();
+        db = Db.builder().testSetup(stream).clock(clock).start();
+        Assert.assertTrue("fraction", db.getInternalFraction() == 66 / 65536.0);
+        Assert.assertEquals("retain", Long.MAX_VALUE, db.getRetainDuration());
+        db.setRetainDuration(2 * Clock.UNITS_PER_SEC);
+        db.setRetainDuration(Long.MAX_VALUE);
+        db.sync(SyncLevel.ORDINARY);
+        db.stop();
+        
+        db = Db.builder().testSetup(stream.copy()).clock(clock).start();
+        Assert.assertTrue("fraction, second restart", db.getInternalFraction() == 66 / 65536.0);
+        Assert.assertEquals("retain, second restart", Long.MAX_VALUE, db.getRetainDuration());
+        db.stop();
+    }
+    
+    /**
+     * Bergdb 015-87, design 005-78 Q6: the settings KV, written once at the start of the
+     * stream, survives reclaim's cuts (reclaim's steps rewrite it as any live value): it is
+     * found after three cuts or more, past its record, and a restart on the cut stream
+     * finds it and goes on cutting.
+     */
+    @Nano("f")
+    private static void testReclaimSettingsSurviveCuts() {
+        CutStream stream = new CutStream();
+        CoreTestClock clock = new CoreTestClock();
+        clock.setTime(Clock.UNITS_PER_SEC);
+        Db db = Db.builder().testSetup(stream).clock(clock).startupDistance(1000)
+                .maxNodeSize8().start();
+        db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+        final long settingsEnd = db.getStreamLength();
+        final String kv = "retain=" + Clock.UNITS_PER_SEC + "\nfraction=16384\n";
+        Random rnd = new Random(2);
+        int i = 0;
+        int cuts = 0;
+        long firstPos = stream.getFirstPos();
+        while (cuts < 3 || firstPos <= settingsEnd || i < 1000) {
+            Assert.assertTrue("cuts within 20,000 commits", i < 20000);
+            i++;
+            clock.setTime(Clock.UNITS_PER_SEC + i * Clock.UNITS_PER_SEC / 10);
+            db.execute(db.trans().put("/k/" + rnd.nextInt(100), "v" + i));
+            if (stream.getFirstPos() != firstPos) {
+                cuts++;
+                firstPos = stream.getFirstPos();
+            }
+        }
+        Assert.assertTrue("the front is cut past the settings record",
+                stream.getFirstPos() > settingsEnd);
+        Assert.assertEquals("the KV after " + cuts + " cuts", kv,
+                StringUtil.toString(DbUtil.get(db, Long.MAX_VALUE, Reclaim.SETTINGS_KEY_NAME)));
+        db.sync(SyncLevel.ORDINARY);
+        db.stop();
+        
+        stream = stream.copy();
+        db = Db.builder().testSetup(stream).clock(clock).startupDistance(1000)
+                .maxNodeSize8().start();
+        Assert.assertEquals("after a restart on the cut stream", 1 * Clock.UNITS_PER_SEC,
+                db.getRetainDuration());
+        final long firstPosAtRestart = stream.getFirstPos();
+        for (int k = 0; k < 1000; k++) {
+            i++;
+            clock.setTime(Clock.UNITS_PER_SEC + i * Clock.UNITS_PER_SEC / 10);
+            db.execute(db.trans().put("/k/" + rnd.nextInt(100), "v" + i));
+        }
+        Assert.assertTrue("cuts after the restart", stream.getFirstPos() > firstPosAtRestart);
+        Assert.assertEquals("the KV after the restart's cuts", kv,
+                StringUtil.toString(DbUtil.get(db, Long.MAX_VALUE, Reclaim.SETTINGS_KEY_NAME)));
+        db.stop();
+    }
+    
+    /**
+     * Bergdb 015-87, F5's option 1: a database whose settings were never set has no settings
+     * KV, as its creation and its transactions write none, and a start on its stream runs
+     * with the defaults, forever and 16,384 units (0.25); so does a stream written before
+     * 015-87.
+     */
+    @Nano
+    private static void testStreamWithoutSettingsHasDefaults() {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(stream).clock(clock).start();
+        for (int i = 1; i <= 20; i++) {
+            clock.setTime(10 * i);
+            db.execute(db.trans().put("/k/" + i, "v" + i));
+        }
+        Assert.assertTrue("no settings KV",
+                DbUtil.get(db, Long.MAX_VALUE, Reclaim.SETTINGS_KEY_NAME) == null);
+        db.sync(SyncLevel.ORDINARY);
+        db.stop();
+        
+        db = Db.builder().testSetup(stream.copy()).clock(clock).start();
+        Assert.assertTrue("no settings KV after the restart",
+                DbUtil.get(db, Long.MAX_VALUE, Reclaim.SETTINGS_KEY_NAME) == null);
+        Assert.assertEquals("forever", Long.MAX_VALUE, db.getRetainDuration());
+        Assert.assertTrue("0.25", db.getInternalFraction() == 0.25);
+        db.stop();
+    }
+    
+    /**
+     * Bergdb 015-87: a start refuses a settings KV in another form than the one that
+     * Reclaim.setSettings writes, with an InternalDataException, as it refuses a bad table:
+     * a number that is not one, or out of range; a line missing, of its own, or out of
+     * order; a sign, a leading zero, or no newline at the end. The KV is put here by an
+     * internal transaction, as only the database writes it; the well-formed value starts.
+     */
+    @Nano
+    private static void testMalformedSettingsRefusedAtStart() {
+        final long sec = Clock.UNITS_PER_SEC;
+        final String good = "retain=" + sec + "\nfraction=16384\n";
+        final String[] bad = {
+            "retain=x\nfraction=16384\n",
+            "retain=" + (sec - 1) + "\nfraction=16384\n",
+            "retain=" + sec + "\nfraction=65\n",
+            "retain=" + sec + "\nfraction=58983\n",
+            "retain=" + sec + "\n",
+            "fraction=16384\n",
+            "",
+            good + "other=1\n",
+            "fraction=16384\nretain=" + sec + "\n",
+            "retain=+" + sec + "\nfraction=16384\n",
+            "retain=0" + sec + "\nfraction=16384\n",
+            "retain=" + sec + "\nfraction=16384",
+            "retain=" + sec + "\r\nfraction=16384\r\n",
+        };
+        for (int i = -1; i < bad.length; i++) {
+            MemoryStream stream = new MemoryStream();
+            CoreTestClock clock = new CoreTestClock();
+            Db db = Db.builder().testSetup(stream).clock(clock).start();
+            clock.setTime(10);
+            Trans t = db.trans().put(Reclaim.SETTINGS_KEY_NAME, i < 0 ? good : bad[i]).build();
+            t.isInternal = true;
+            db.execute(t);
+            db.sync(SyncLevel.ORDINARY);
+            db.stop();
+            
+            String message = null;
+            try {
+                Db db2 = Db.builder().testSetup(stream.copy()).clock(clock).start();
+                long retain = db2.getRetainDuration();
+                db2.stop();
+                Assert.assertEquals("the well-formed value", sec, retain);
+            } catch (InternalDataException e) {
+                message = e.getMessage();
+            }
+            Assert.assertTrue("value " + i + ", refused: " + message,
+                    (i >= 0) == (message != null && message.contains(Reclaim.SETTINGS_KEY_NAME)));
+        }
+    }
+    
+    /**
+     * Bergdb 015-87, F6: a setter call whose commit is refused before its go point (a clock
+     * out of range, bergdb 005-18) leaves the settings in force as they were and writes
+     * nothing, and the database goes on: the next call, with the clock back in range,
+     * writes and is in force.
+     */
+    @Nano
+    private static void testReclaimSettingRefusedAtGoPoint() {
+        final long[] now = {1000};
+        Clock clock = new Clock() {
+            public long getTime() {
+                return now[0];
+            }
+        };
+        Db db = Db.builder().testSetup(new MemoryStream()).clock(clock).start();
+        db.execute(db.trans().put("/k", "1"));
+        final long length = db.getStreamLength();
+        
+        now[0] = Klong.MAX_TIME + 1;
+        for (int i = 0; i < 2; i++) {
+            String message = null;
+            try {
+                if (i == 0) db.setRetainDuration(5 * Clock.UNITS_PER_SEC);
+                if (i == 1) db.setReclaimInternalFraction(0.5);
+            } catch (DbException e) {
+                message = e.getMessage();
+            }
+            Assert.assertTrue("refused " + i + ": " + message,
+                    message != null && message.contains("outside the range"));
+        }
+        Assert.assertEquals("retain unchanged", Long.MAX_VALUE, db.getRetainDuration());
+        Assert.assertTrue("fraction unchanged", db.getInternalFraction() == 0.25);
+        Assert.assertEquals("nothing written", length, db.getStreamLength());
+        
+        now[0] = 2000;
+        db.setRetainDuration(5 * Clock.UNITS_PER_SEC);
+        db.setReclaimInternalFraction(0.5);
+        Assert.assertEquals("retain set", 5 * Clock.UNITS_PER_SEC, db.getRetainDuration());
+        Assert.assertTrue("fraction set", db.getInternalFraction() == 0.5);
+        Assert.assertTrue("written", db.getStreamLength() > length);
+        db.stop();
+    }
+    
+    /**
+     * Bergdb 015-87: once the top node ordinals are used up to Db.LAST_TOP_ORDINAL, a setter
+     * call that would write is refused as a user transaction is (bergdb 005-02), and
+     * changes nothing; a call with the value in force writes nothing and is not refused.
+     */
+    @Nano private static void testReclaimSettingAtEndOfOrdinals() {
+        MemoryStream s = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        Db db = startOrdinalTest(s, clock, "sd1000", Db.LAST_TOP_ORDINAL - 10);
+        int n = 0;
+        while (db.internal().superRoot().topNodeId < Db.LAST_TOP_ORDINAL) {
+            Assert.assertTrue("transactions " + n, n < 1000);
+            clock.setTime(10L * (n + 1));
+            db.execute(db.trans().put("/hot", "v" + n).build());
+            n++;
+        }
+        final long length = db.getStreamLength();
+        for (int i = 0; i < 2; i++) {
+            String message = null;
+            try {
+                if (i == 0) db.setRetainDuration(5 * Clock.UNITS_PER_SEC);
+                if (i == 1) db.setReclaimInternalFraction(0.5);
+            } catch (DbException e) {
+                message = e.getMessage();
+            }
+            Assert.assertTrue("refused " + i + ": " + message, message != null
+                    && message.startsWith("The database has used its top node ordinals"));
+        }
+        Assert.assertEquals("retain unchanged", Long.MAX_VALUE, db.getRetainDuration());
+        Assert.assertTrue("fraction unchanged", db.getInternalFraction() == 0.25);
+        db.setRetainDuration(Long.MAX_VALUE);       // In force: not refused.
+        db.setReclaimInternalFraction(0.25);
+        Assert.assertEquals("nothing written", length, db.getStreamLength());
+        Assert.assertEquals("super root", Db.LAST_TOP_ORDINAL,
+                db.internal().superRoot().topNodeId);
+        db.stop();
     }
     
     /** A builder with maximum node size 'size', 8, 14, 30 or 62. */

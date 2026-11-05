@@ -37,7 +37,7 @@ public class Get {
         db = Db.builder()
                 .stream("main", new DummyStream())
                 .systemClock()
-                .retainForever().start();
+                .start();
         
         int bs = 10000;   // batch size
         if (bs > n) {

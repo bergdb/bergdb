@@ -31,7 +31,7 @@ public class StreamSizeFourCases {
     
     void createDatabase() {
         MemoryStream stream = new MemoryStream();
-        db = Db.builder().mainStream(stream).noEvict().retainForever().start();
+        db = Db.builder().mainStream(stream).noEvict().start();
     }
     
     void createKeysForCase1() {

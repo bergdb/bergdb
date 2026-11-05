@@ -57,7 +57,6 @@ public class Issue150420 {
                 .startupDistance(100*1000)
                 .mainStream(stream)
                 .noEvict()
-                .retainForever()
                 .start();
         
         for (String key : keys) {

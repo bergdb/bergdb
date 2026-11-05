@@ -75,7 +75,7 @@ public class TransThroughput {
         
         FileStream stream = new FileStream(dir);
         TestClock clock = new TestClock();
-        db = Db.builder().mainStream(stream).retainForever().noEvict().clock(clock).start();
+        db = Db.builder().mainStream(stream).noEvict().clock(clock).start();
         
         startJmxSilently();
         System.out.println("JMX started, starting in a few seconds.");

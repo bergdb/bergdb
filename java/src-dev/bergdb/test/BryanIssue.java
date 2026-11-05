@@ -54,7 +54,6 @@ public class BryanIssue {
         DbBuilder b = ((DatabaseBuilderImp) builder).getDbBuilder();
         b.mainStream(memoryStream);
         b.testSetupExceptStream();
-        b.retainForever();
     }   
 
     public int runJob(final int startId) throws Exception {

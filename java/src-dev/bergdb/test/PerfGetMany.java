@@ -32,7 +32,7 @@ public class PerfGetMany {
         this.done = false;
         
         db = Db.builder().stream("m", new MemoryStream())
-                .clock(new SystemClock()).retainForever().build();
+                .clock(new SystemClock()).build();
         db.start();
         
         int batchSize = 10000;

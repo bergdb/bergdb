@@ -1,0 +1,16 @@
+== before the change (6d829b5's jar)
+-- getters
+FAILED in the run with restarts: retain after a restart, expected 10000000, got 9223372036854775807.
+-- streams only
+plain:    cut=967496 length=2425200
+restarts: cut=0 length=2047056
+STREAMS DIFFER from the decided cut
+== after the change (the clone's jar)
+-- getters
+plain:    cut=957408 length=2427488
+restarts: cut=957408 length=2427488
+SAME STREAM from the decided cut
+-- streams only
+plain:    cut=957408 length=2427488
+restarts: cut=957408 length=2427488
+SAME STREAM from the decided cut

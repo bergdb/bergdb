@@ -86,7 +86,6 @@ Open
 | [015-83](83-read-past-end-exception.md) | Fix | A read past the end throws IOException instead of the documented ... | open |
 | [015-84](84-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: a decrease's records grow with the keys | open |
 | [015-86](86-gets-with-8-readers.md) | Investigate | Gets over 10 ms with 8 readers (005-65): the rise is the fix's (AB/BA); left: measurements, then Frans | open |
-| [015-87](87-retain-duration-in-stream.md) | Investigate | The retain duration in the stream (005-78); left: Frans's answers to F1 to F7, then U6, the change | open |
 
 
 Closed
@@ -94,6 +93,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-87](87-retain-duration-in-stream.md) | Investigate | The retain duration kept in the stream | done | 2026-11-05 |
 | [015-88](88-overload-and-retries.md) | Investigate | Transaction retries: sleep capped at 640 ms | done | 2026-11-05 |
 | [015-05](05-empty-or-missing-directory.md) | Decide | A start on an empty or missing directory creates a database | done | 2026-11-05 |
 | [015-44](44-cryptokey-null.md) | Fix | DatabaseBuilder.cryptoKey(CryptoKey.NULL) after a key keeps the key | done | 2026-11-05 |
@@ -272,6 +272,10 @@ Files
   F1 to F7; moved from 005-78 on 2026-11-05. The design, the probe and
   its output stay in
   [../005-todo/78-retain-duration-in-stream/](../005-todo/78-retain-duration-in-stream/).
+  Done 2026-11-05: Frans's answers, and the change (the settings in
+  reclaim's internal KV `/#i/dreclaim/-settings.txt`, no builder value);
+  its StreamDigest digests and the restart probe are in
+  [87-retain-duration-in-stream/](87-retain-duration-in-stream/).
 * [88-overload-and-retries.md](88-overload-and-retries.md). 015-88, Investigate:
   transaction retries; moved from 005-81 on 2026-11-05. Decided by Frans
   that day (14:12): the retry sleep capped at 640 ms for release 2026.3,
