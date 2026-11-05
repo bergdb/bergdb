@@ -11,11 +11,15 @@ the fix in night 1 of release 2026.2 (Results, 2026-11-04 night): the
 loads' entries into `evictorLock` with 8 readers from 81,877 to 484 a
 second, but the gets over 10 ms rose (298 to 492). Left: the
 Recommendation's AB/BA step, about 24 minutes in a quiet block,
-approved by Frans (decided 2026-11-04/05); not run on 2026-11-05,
-F53 not quiet. Its command, the rule for reading it, and the
-2026-11-04 GC logs to set aside first are in State; the script
-`/Users/f/fl/bench/quiet-block-2026-11-05/block.sh` runs it after
-015-85's step, once its 07:55 limit is changed.
+approved by Frans (decided 2026-11-04/05). **Run 2026-11-05, 08:11 to
+08:31 (State): the rise is the fix's.** With 8 threads the fix had more
+gets over 10 ms than `5a6befd` in 4 of 4 rounds, 1,009 against 513 in
+sum (1.97 times), and its longest gets were longer (37 to 71 ms against
+21 to 37 ms), while its readers' waits over 10 ms fell (20 against 90).
+So, as Frans decided, the decision is his: left, the Recommendation's
+measurements (7 threads; 8 threads with `-XX:ConcGCThreads=1`; the get's
+parts timed in ScaleBench) before any change to `java/`, then his
+decision.
 Kind: investigate. Created 2026-10-28 as 005-65.
 
 Registered at Frans's decision on item 009's target 2 (2026-10-28,
@@ -915,6 +919,51 @@ fix's jar, then 8 runs, AB BA AB BA, within `threads.sh`'s 30):
   and the entry closes as Frans decided. If it is the fix's: the
   measurements of the Recommendation, and the decision moves to 015.
 
+**2026-11-05, 08:11:47 to 08:31:41: the AB/BA step, run.** In the
+coordinator's second quiet block of the morning
+(`/Users/f/fl/bench/quiet-block-2026-11-05-2/block.sh` and its
+`block.log`), after 015-85's runs; `mediaanalysisd` paused at Frans's
+word for the block. Not quite quiet: the 1-minute load 1.77 at the
+block's start of runs, 1.88 at `threads.sh`'s own check (08:12:02, "3
+idle" sessions); at the block's end VS Code's `cpptools` took about 70
+percent of a core, so the last rounds may have had it too, for both
+builds alike (the rounds in turns). `threads: OK, 0 problems`. The
+outputs in `/Users/f/fl/bench/005-65-abba-2026-11-05/` (`out/summary.txt`,
+`out/runs.txt`, `gc-logs/`); the 2026-11-04 GC logs put back in
+`$B/raw/threads`.
+
+With 8 threads, per round (A is `5a6befd`, `main` before the fix; B is
+`988fe1a`, the fix):
+
+| Round | Gets > 10 ms, A | Gets > 10 ms, B | Longest get ms, A | Longest get ms, B | Waits > 10 ms, A | Waits > 10 ms, B |
+|---|---:|---:|---:|---:|---:|---:|
+| 1     | 116 | 244 | 25.7 | 62.2 | 18 | 2 |
+| 2     | 114 | 287 | 23.3 | 57.1 | 23 | 5 |
+| 3     | 162 | 216 | 37.2 | 70.8 | 27 | 7 |
+| 4     | 121 | 262 | 21.5 | 37.1 | 22 | 6 |
+| Sum   | 513 | 1,009 | | | 90 | 20 |
+
+* By the rule written before the run, **the rise is the fix's**: B has
+  more gets over 10 ms in 4 of 4 rounds, 1.97 times as many in sum.
+* The fix does what it was made for: no load enters `evictorLock` (0
+  against 66 to 76 thousand a second), the after-load call is cheaper,
+  and the readers' waits for the eviction thread over 10 ms fall from 90
+  to 20. With 4 and 6 threads nothing changes (no get over 10 ms but two
+  in A's 6-thread runs); gets a second are the same within 0.4 percent.
+* With the fix the eviction thread runs more (0.318 against 0.280
+  cores, more batches: 4,899 to 4,981 against 4,612 to 4,799 a phase),
+  and its batches take longer by the clock (9.8 to 9.9 s against 8.4 to
+  8.8 s a phase). One explanation, not checked: before the fix the
+  loads' entries into `evictorLock` slowed the readers a little, and so
+  the loads; with the fix the readers go faster into the eviction
+  thread's batches, and on a machine with as many runnable threads as
+  cores a reader that is off its core during a batch waits longer. The
+  sampled readers' states show more `BLOCKED in BufferedStream.read` with
+  the fix in rounds 2 and 4 (1.5 and 1.8 percent).
+* Left, as Frans decided ("otherwise take the measurements and move the
+  decision to 015"; the entry is in 015 since the morning): the
+  Recommendation's measurements, then his decision. Not run today.
+
 Rerun on 2026-11-04 (Results, 2026-11-04 night): the expectation of step
 3 is met for the monitor (the entries into `evictorLock`, the after-load
 call's cost) and not for the long gets, which rose. The entry stays open
@@ -1113,3 +1162,8 @@ removed.
 2026-11-04/05). Not run in the morning's quiet block: F53 not quiet by
 07:55, although `mediaanalysisd` was paused from 07:32 to 07:56 (State).
 Left for the next quiet block, with the command and how to read it.
+
+2026-11-05, 08:11 to 08:31. The AB/BA step, run in the coordinator's
+second quiet block: the rise of the gets over 10 ms is the fix's (1,009
+against 513 with 8 threads, more in 4 of 4 rounds). Left: the
+Recommendation's measurements, then Frans's decision (State).

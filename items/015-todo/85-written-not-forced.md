@@ -1,15 +1,12 @@
 015-85. Decide: a durability of "written, not forced"
 =====================================================
 
-Status: open; moved from 005-47 on 2026-11-05, with its contents as
-they were in 005-47 (Frans's plan, approved 2026-11-05, 07:17).
-Decided by Frans 2026-11-04 (A, a setting) and implemented, see
+Status: done (2026-11-05). Moved from 005-47 on 2026-11-05, with its
+contents as they were in 005-47 (Frans's plan, approved 2026-11-05,
+07:17). Decided by Frans 2026-11-04 (A, a setting) and implemented, see
 "Frans's decision" and "Done"; the sync latency measured on s1 ("Sync
-latency on s1"). Left: the same on F53, about 4 minutes in a quiet
-block ("Left"; the block of 2026-11-05, 07:22 to 07:55, was not quiet,
-so not run; a clone built at `188facf` is in
-`/Users/f/fl/bench/005-47-f53-2026-11-05/clone/java`). Then the entry
-closes; holes in the unforced tail stay with 014-01.
+latency on s1") and on F53 ("Sync latency on F53", the second quiet block
+of 2026-11-05). Holes in the unforced tail stay with 014-01 ("Left").
 Kind: decide. Created 2026-10-26 as 005-47.
 
 Frans's question, 2026-10-26, added as an entry at his request, by Claude
@@ -458,6 +455,41 @@ with forcing off it is the `write()`).
   threads (`d-1k-t16`, `d-1k-t64`) not run.
 
 
+Sync latency on F53
+-------------------
+
+2026-11-05, 08:08:51 to 08:11:47, in the coordinator's second quiet block
+of the morning (`/Users/f/fl/bench/quiet-block-2026-11-05-2/block.sh`, a
+copy of the first block's script with the limit 08:08; its log
+`block.log` there). The block's marker was up from 08:00:48, the other
+sessions held their builds, and macOS's `mediaanalysisd` was paused at
+Frans's word (07:32) for the block, 08:00:48 to 08:31:41. Not quite
+quiet: at the limit the 1-minute load was 1.77 (the block's rule: quiet
+is below 1.5 twice; below 2.0 it runs, recorded as not quiet), with no
+other JVM or gate. The loop of "Left" in the clone at `188facf`
+(`/Users/f/fl/bench/005-47-f53-2026-11-05/clone/java`), OpenJDK 27,
+forcing on and off in turns, 10 runs each, 5 s apart; every run printed
+`PERF OK`. Full outputs in `/Users/f/fl/bench/005-47-f53-2026-11-05/out/`,
+the summary lines in its `runs.txt`.
+
+As for s1: the median of the 10 runs' p50 and p99, and the range of their
+maximum, in ms; the append as Perf times it (the force with forcing on,
+the `write()` with it off).
+
+| Forcing | p50 | p99 | max         | append              | commits a second |
+|---|---:|---:|---|---|---|
+| on      | 4.5 | 6.0 | 5.7 to 14.9 | 4.66 (4.46 to 4.72) | 205 to 220       |
+| off     | 0.0 | 0.1 | 0.1 to 0.2  | 0.01                | 16,547 to 18,925 |
+
+* On F53 a force (`F_FULLFSYNC`) of a 1,243-byte append takes about
+  4.7 ms, as 005-13 found (4.2 to 5.2 ms for 100 bytes), and it is nearly
+  all of a durable commit's time: with forcing off the commit takes under
+  0.1 ms at p99, about 80 times more commits a second with one thread.
+* F53's forces are steadier than s1's (p99 6.0 against 12.3 ms with
+  forcing on); with forcing off both machines are under about 1 ms.
+* One thread, 100 commits a run, as on s1.
+
+
 Left
 ----
 
@@ -512,3 +544,6 @@ Left
   `005-47-f53-2026-11-05/out/`, the summary lines in its `runs.txt`) and
   then 005-65's AB/BA step, with its log `block.log`; the time limit in
   it (07:55) is to be changed for another block.
+
+  **2026-11-05, 08:08 to 08:12: run** in the second quiet block; see
+  "Sync latency on F53". With it the entry is done.

@@ -95,8 +95,7 @@ Open
 | [015-82](82-pending-cut-after-close.md) | Fix | A pending cut arriving during another cut can be left unapplied ... | open |
 | [015-83](83-read-past-end-exception.md) | Fix | A read past the end throws IOException instead of the documented ... | open |
 | [015-84](84-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: a decrease's records grow with the keys | open |
-| [015-85](85-written-not-forced.md) | Decide | "Written, not forced", decided and implemented (005-47); left: F53's sync latency, in a quiet block | open |
-| [015-86](86-gets-with-8-readers.md) | Investigate | Gets over 10 ms with 8 readers (005-65); left: the AB/BA step Frans approved, in a quiet block | open |
+| [015-86](86-gets-with-8-readers.md) | Investigate | Gets over 10 ms with 8 readers (005-65): the rise is the fix's (AB/BA); left: measurements, then Frans | open |
 | [015-87](87-retain-duration-in-stream.md) | Investigate | The retain duration in the stream (005-78); left: Frans's answers to F1 to F7, then U6, the change | open |
 | [015-88](88-overload-and-retries.md) | Investigate | Transaction retries (005-81); left: Frans's review of sections 2.6 and 3.1, then the rest of 8.9 | open |
 
@@ -106,6 +105,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-85](85-written-not-forced.md) | Decide | "Written, not forced" (005-47): done, measured on s1 and F53 | done | 2026-11-05 |
 | [015-56](56-second-start-closes-stream.md) | Fix | A refused second start() of one builder closes the running ... | done | 2026-11-04 |
 | [015-40](40-two-writes-one-key.md) | Fix | Two writes of one key in a transaction: the later one can lose | done | 2026-11-03 |
 | [015-25](25-evictor-failure.md) | Fix | An exception in the evictor strands its requests on a dead worker | done | 2026-11-03 |
@@ -252,12 +252,12 @@ Files
 * [85-written-not-forced.md](85-written-not-forced.md). 015-85, Decide:
   a durability of "written, not forced": Frans's question, the options
   and the constraints, his decision (A, a setting), its implementation,
-  the sync latency on s1; moved from 005-47 on 2026-11-05; open for the
-  latency on F53.
+  the sync latency on s1 and on F53; moved from 005-47 on 2026-11-05;
+  done 2026-11-05.
 * [86-gets-with-8-readers.md](86-gets-with-8-readers.md). 015-86, Investigate:
   gets of 27 and 36 ms with 8 readers at 665 MB under ZGC: the issue,
   the test, the results of 2026-10-28 and 2026-11-04 nights, Frans's
-  decision and the fix, the AB/BA step left; moved from 005-65 on
+  decision and the fix, the AB/BA step of 2026-11-05; moved from 005-65 on
   2026-11-05. Its scripts and results stay in
   [../005-todo/65-gets-with-8-readers/](../005-todo/65-gets-with-8-readers/).
 * [87-retain-duration-in-stream.md](87-retain-duration-in-stream.md). 015-87,
@@ -291,3 +291,8 @@ left, at Frans's plan, approved 2026-11-05, 07:17: "By morning, every 005
 entry still open, decisions or remaining runs, moves to 015 with its work
 recorded, and 005 itself is marked done." Their support directories stay
 in 005-todo.
+
+2026-11-05, 08:35. 015-85 done: the sync latency on F53, in the
+coordinator's second quiet block (p50 4.5 ms with forcing on, 0.0 ms off).
+015-86: the AB/BA step run; the rise of the gets over 10 ms is the fix's,
+so the Recommendation's measurements and Frans's decision are left.
