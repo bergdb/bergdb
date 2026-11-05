@@ -21,8 +21,11 @@ public class TempDirCreator {
         
         random = new Random();
         
-        File tmp = new File("/tmp");
-        if (tmp.exists() && tmp.isDirectory()) {
+        // The JVM's temporary directory (bergdb 015-11): its default is /tmp
+        // on Linux, and -Djava.io.tmpdir moves it, for example off a small tmpfs.
+        String tmpPath = System.getProperty("java.io.tmpdir");
+        File tmp = tmpPath == null ? null : new File(tmpPath);
+        if (tmp != null && tmp.isDirectory()) {
             File file = new File(tmp, "bergdb-TempDirCreator-" + System.currentTimeMillis() + ".temp");
             file.deleteOnExit();
             
@@ -44,7 +47,7 @@ public class TempDirCreator {
         randomInt = Math.abs(random.nextInt());
         
         if (tmpDir != null) {
-            // Using /tmp directory on Unix-like system.
+            // Using the directory java.io.tmpdir names.
             file = new File(tmpDir, "temp-bergdb-" + randomInt);
         } else {
             // Using current directory
@@ -119,5 +122,18 @@ public class TempDirCreator {
         c.createTempDir();
         c.createTempDir();
         c.deleteTempDirs();
+    }
+    
+    /** bergdb 015-11: the directories are made in java.io.tmpdir, not in /tmp. */
+    static void testUsesJavaIoTmpdir() throws IOException {
+        File tmp = new File(System.getProperty("java.io.tmpdir")).getCanonicalFile();
+        TempDirCreator c = new TempDirCreator();
+        try {
+            File dir = c.createTempDir();
+            Assert.assertEquals("the parent of a temporary directory", 
+                    tmp.getPath(), dir.getCanonicalFile().getParentFile().getPath());
+        } finally {
+            c.deleteTempDirs();
+        }
     }
 }
