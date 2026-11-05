@@ -267,4 +267,67 @@ public class InterruptTester {
             remove(dir);
         }
     }
+
+    /** Waits for Jmx.Speed's monitor thread to sleep, and returns it. */
+    private static Thread sleepingMonitor() throws InterruptedException {
+        long end = System.nanoTime() + 5 * 1000 * 1000 * 1000L;
+        while (System.nanoTime() < end) {
+            for (Thread t : Thread.getAllStackTraces().keySet()) {
+                if (t.getName().equals("DBMonitor.MThread")
+                        && t.getState() == Thread.State.TIMED_WAITING) {
+                    return t;
+                }
+            }
+            Thread.sleep(1);
+        }
+        throw new AssertionError("no sleeping monitor thread");
+    }
+
+    /**
+     * Jmx.Speed's monitor thread interrupted (bergdb 015-38, R3-F4 of 016-06): it ended, its
+     * speeds stayed as they were, and registerAndStart() did not start it again, as its
+     * thread was still set. Now it goes on. About a second: stop() waits for its sleep.
+     */
+    @Nano("f")
+    public static void testJmxMonitorInterrupted() throws Exception {
+        Db db = Db.builder().testSetup().start();
+        Jmx.Speed speed = new Jmx.Speed(db);
+        try {
+            speed.registerAndStart();
+            Thread monitor = sleepingMonitor();
+            monitor.interrupt();
+            monitor.join(200);
+            Assert.assertTrue("the monitor ended on an interrupt", monitor.isAlive());
+        } finally {
+            speed.stop();
+            db.close();
+        }
+    }
+
+    /**
+     * Jmx.Speed.stop() with the caller's interrupt flag set (bergdb 015-38, R3-F4 of 016-06):
+     * it returned before the monitor thread ended, and cleared the flag. Now it waits for the
+     * monitor and keeps the flag. About a second: stop() waits for the monitor's sleep.
+     */
+    @Nano("f")
+    public static void testJmxStopInterrupted() throws Exception {
+        Db db = Db.builder().testSetup().start();
+        Jmx.Speed speed = new Jmx.Speed(db);
+        try {
+            speed.registerAndStart();
+            final Thread monitor = sleepingMonitor();
+            interrupted(new Runnable() {
+                public void run() {
+                    try {
+                        speed.stop();
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+            Assert.assertTrue("stop() returned before the monitor ended", !monitor.isAlive());
+        } finally {
+            db.close();
+        }
+    }
 }

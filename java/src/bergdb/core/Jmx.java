@@ -311,17 +311,32 @@ public class Jmx {
             thread.start();
         }
         
+        /**
+         * Stops the monitoring thread, waits for it to end, and unregisters the object. An
+         * interrupt does not cut the wait short; the caller's interrupt flag is kept (bergdb
+         * 015-38, as 005-46's rule says).
+         */
         public synchronized void stop() throws Exception {
             stop = true;
+            boolean interrupted = false;
             try {
-                thread.join();
-            } catch (InterruptedException e) {
-                // empty
+                while (true) {
+                    try {
+                        thread.join();
+                        break;
+                    } catch (InterruptedException e) {
+                        interrupted = true;
+                    }
+                }
+                
+                MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+                mbs.unregisterMBean(new ObjectName(NAME));
+                thread = null;
+            } finally {
+                if (interrupted) {
+                    Thread.currentThread().interrupt();
+                }
             }
-            
-            MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
-            mbs.unregisterMBean(new ObjectName(NAME));
-            thread = null;
         }
         
         public void run() {
@@ -342,7 +357,7 @@ public class Jmx {
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException e) {
-                        break A;
+                        // Goes on: only stop() ends the thread (bergdb 015-38, 005-46).
                     }
                 }
                 

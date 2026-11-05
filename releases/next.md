@@ -324,6 +324,13 @@ Internal
   the last two, the next file could take the size rule's 10 GB. Nothing in
   BergDB sets it; the stream's bytes are unchanged.
 
+* **`Jmx.Speed`'s monitor thread goes on after an interrupt** (bergdb
+  015-38, 016-06's R3-F4; 2026-11-05): it ended, its speeds stayed as they
+  were, and `registerAndStart()` did not start it again. `stop()` waits for
+  the thread to end, also when the caller is interrupted, and keeps the
+  caller's interrupt flag; it returned early and cleared it. Nothing in
+  BergDB starts `Jmx.Speed`.
+
 
 Documentation
 -------------
