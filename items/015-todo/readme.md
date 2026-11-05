@@ -9,8 +9,8 @@ definition: what, why, the questions, when it is done, the first step. An
 entry that grows into real work gets an item of its own, linked from here.
 
 It continues 005-todo with a new numbering: the next entry is 015-01, not
-005-84. An entry closely related to a 005 entry may still be added to 005,
-for now.
+005-84. Since 2026-11-05, 005 is done, and every new entry goes here; the
+entries still open in 005 then moved here as 015-84 to 015-88.
 
 
 The list

@@ -132,8 +132,8 @@ Index
   append-only storage and the database; first, startup correction and its
   historical fault model (014-01), promoted from 005-83.
 * **015-todo** (open). The list of things to do on BergDB after 005, with
-  a new numbering from 015-01; an entry closely related to a 005 entry may
-  still go to 005, for now.
+  a new numbering from 015-01; it holds every new entry since 005 was
+  closed on 2026-11-05, and 005's last open entries (015-84 to 015-88).
 * **016-release-2026-2** (open). Release 2026.2: its scope, the work
   before it and how it is made; the first release with handles (009) and
   bounded startup (007), measured against 2026.1 in turns.
