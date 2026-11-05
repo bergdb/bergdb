@@ -41,3 +41,11 @@ encryption"); `cryptoKey(null)` threw a `NullPointerException`.
   encrypted, as documented: no change of the format, and no workload in StreamDigest
   sets a key (P2).
 * Gate: `before-commit.sh`: `BEFORE COMMIT OK (104 s)`, unit 1154, f 81.
+
+2026-11-05, 12:20. Frans, to session bergdb-e8, on what
+`cryptoKey(null)` should do: (a) `IllegalArgumentException`, as this
+morning's fix made it, with a message pointing to `CryptoKey.NULL`, as
+`create(null)` and `open(null)` throw; (b) treat `null` as
+`CryptoKey.NULL`; or (c) a documented `NullPointerException` at once.
+His answer: "As recommended", (a): an accidental null must never
+quietly mean no encryption. Nothing in `java/` changes.
