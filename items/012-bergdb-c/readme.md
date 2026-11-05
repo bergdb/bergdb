@@ -9,6 +9,14 @@ public methods of `Db`, and its stream is Java's, byte for byte: a
 database made by Java opens in C, and one made by C opens in Java. 006-08
 found such a clone feasible; this item plans it and does it.
 
+**A port of Java release 2026.2.** The C code in `c/` matches BergDB's
+release 2026.2 (the tag `release-2026.2`), the Java it was brought up to
+on 2026-11-05 (015-02). It does not follow Java's changes after that
+release, and its cross tests compare with that release's Java
+(`c/readme.md`, "Which Java"). The item is meant to stay stable as it is
+(Frans, 2026-11-05): a port of a later release would most likely be done
+in another item or in another repository, not here.
+
 
 Files
 =====

@@ -8,18 +8,20 @@ the library, its tests, the tools, and the Java side of the cross tests.
 Its first parts, the build, the tests, the gate and the rules below, are
 012-04's.
 
-**Which Java.** C matches a release of BergDB, not the Java of the day
-(Frans, 2026-11-05; bergdb 015-02): since 2026-11-05, **release 2026.2**
-(the tag `release-2026.2`, `95bde62`, 2026-11-04). It writes that release's
-bytes, opens its databases and refuses what it refuses, and its API follows
-`Db`'s public methods there. The cross tests compare with that release's
-Java by default: `test/cross/java-build.sh` compiles the Core Layer from
-`releases/2026.2/bergdb-2026.2-src.zip`, checked against its `SHA256SUMS`
-and extracted once into `build/java-src/`. `JAVA_REF=tree` compiles the
-repository's `java/` instead, `JAVA_REF=DIR` another Java tree, and
-`JAVA_REF=2026.3` a later release, once C follows it. Java's changes after
-the release are not in C until a new item ports them. Until 2026-11-05 C
-followed `main` as of 2026-10-29 (`ae4aaf9`).
+**Which Java.** C is a port of **Java release 2026.2** (the tag
+`release-2026.2`, `95bde62`, 2026-11-04; bergdb 015-02), not of the Java
+of the day: it writes that release's bytes, opens its databases and
+refuses what it refuses, and its API follows `Db`'s public methods there.
+It does not follow Java's changes after the release, and it is meant to
+stay as it is (Frans, 2026-11-05): a port of a later release would most
+likely be done in another item or in another repository. The cross tests
+compare with the release's Java: `test/cross/java-build.sh` compiles the
+Core Layer from `releases/2026.2/bergdb-2026.2-src.zip`, checked against
+its `SHA256SUMS` and extracted once into `build/java-src/`.
+`JAVA_REF=tree` compiles the repository's `java/` instead, and
+`JAVA_REF=DIR` another Java tree; both differ from C where Java changed
+after the release. Until 2026-11-05 C followed `main` as of 2026-10-29
+(`ae4aaf9`).
 
 
 # 1. Build and test
