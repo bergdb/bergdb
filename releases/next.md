@@ -335,6 +335,12 @@ Internal
   (bergdb 015-33; 2026-11-05): after a start that chose small files from
   the last two, the next file could take the size rule's 10 GB. Nothing in
   BergDB sets it; the stream's bytes are unchanged.
+* **`BufferedStream` makes a cut that arrives while it makes another**
+  (bergdb 015-82; 2026-11-05): a cut kept for the bytes being written,
+  asked for while the storage thread made an earlier kept cut, waited for
+  a next write, and `close()` returned without it. BergDB's reclaim cuts
+  behind the durable length and does not meet it; the stream's bytes are
+  unchanged.
 
 * **`Jmx.Speed`'s monitor thread goes on after an interrupt** (bergdb
   015-38, 016-06's R3-F4; 2026-11-05): it ended, its speeds stayed as they

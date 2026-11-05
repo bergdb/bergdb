@@ -303,40 +303,56 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         // flush is published. It was made after, so close() could return, and close the
         // stream, before the cut (BufferedStream.testPretruncateBeyondFlushed failed now
         // and then). And before the listener, which releases syncs.
+        // 2026-11-05 (bergdb 015-82): the last check for a pending cut and the publication
+        // of the flush are one step under the lock, so a pretruncate() either sees the new
+        // streamLength or leaves its cut for this loop. The pending cut was taken once,
+        // before the publication: a cut that pretruncate() kept while the consumer made
+        // that one, against the old streamLength, waited for a next flush, and close()
+        // returned without it.
 
-        try {
-            applyPendingCut(streamLength + sizeToFlush);
-        } catch (IOException e) {
-            // A failed deletion/directory force is a storage failure too.
-            // Do not publish this flush or release durability waiters.
-            stopAfterFailure(e);
-            return;
-        } catch (RuntimeException | Error e) {
-            stopAfterFailure(flushFailure(e));
-            return;
-        }
+        final long flushedLength = streamLength + sizeToFlush;
+        long myStreamSize;
 
-        final long myStreamSize;
+        while (true) {
+            long cut;
+            synchronized (this) {
+                if (pendingCut > 0 && pendingCut <= flushedLength) {
+                    cut = pendingCut;
+                    pendingCut = 0;
+                } else {
+                    // this.exception set only when not set before.
+                    // This method is called by flushAndClose() which sets
+                    // this.exception before
+                    // flushToStream() is called.
 
-        synchronized (this) {
-            // this.exception set only when not set before.
-            // This method is called by flushAndClose() which sets
-            // this.exception before
-            // flushToStream() is called.
+                    if (this.exception == null) {
+                        this.exception = ex;
+                    }
 
-            if (this.exception == null) {
-                this.exception = ex;
+                    streamLength += sizeToFlush;
+                    cStart += sizeToFlush;
+                    cSize -= sizeToFlush;
+
+                    myStreamSize = streamLength;
+
+                    notifyAll();
+                    // notifies producer thread or caller of flushAndStop() that data
+                    // has been flushed.
+                    break;
+                }
             }
 
-            streamLength += sizeToFlush;
-            cStart += sizeToFlush;
-            cSize -= sizeToFlush;
-
-            myStreamSize = streamLength;
-
-            notifyAll();
-            // notifies producer thread or caller of flushAndStop() that data
-            // has been flushed.
+            try {
+                stream.pretruncate(cut);
+            } catch (IOException e) {
+                // A failed deletion/directory force is a storage failure too.
+                // Do not publish this flush or release durability waiters.
+                stopAfterFailure(e);
+                return;
+            } catch (RuntimeException | Error e) {
+                stopAfterFailure(flushFailure(e));
+                return;
+            }
         }
 
         appendListener.dataAppended(myStreamSize);
@@ -610,23 +626,6 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         stream.pretruncate(position);
     }
     
-    /**
-     * Applies a pending pretruncate that the flushed bytes reach; flushedLength is the
-     * length of the underlying stream. Consumer only.
-     */
-    private void applyPendingCut(long flushedLength) throws IOException {
-        long cut = 0;
-        synchronized (this) {
-            if (pendingCut > 0 && pendingCut <= flushedLength) {
-                cut = pendingCut;
-                pendingCut = 0;
-            }
-        }
-        if (cut > 0) {
-            stream.pretruncate(cut);
-        }
-    }
-
     public void setAppendListener(AppendListener appendListener) {
         if (appendListener == null) {
             throw new IllegalArgumentException("appendListener == null not allowed");
@@ -948,6 +947,55 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         b.start();
         b.close();
         Assert.assertEquals(200L, c.getCut());
+    }
+
+    /**
+     * Regression test for bergdb 015-82 (016-06's R5-F7): a cut that pretruncate() kept while
+     * the consumer made the pending cut of a flush, against the old streamLength, was not
+     * made by that flush, and close() returned without it (the last cut 200, not 300).
+     */
+    @Nano
+    public static void testPendingCutDuringACut() throws Exception {
+        java.util.concurrent.CountDownLatch entered = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch flushed = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.atomic.AtomicLong lastCut = new java.util.concurrent.atomic.AtomicLong();
+        MemoryStream m = new MemoryStream() {
+            @Override public void pretruncate(long position) {
+                lastCut.accumulateAndGet(position, Math::max);
+                if (position == 200) {      // The first cut waits until the test releases it.
+                    entered.countDown();
+                    try {
+                        release.await(2, java.util.concurrent.TimeUnit.SECONDS);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                }
+                super.pretruncate(position);
+            }
+        };
+        m.append(new byte[100], 0, 100);
+        BufferedStream b = new BufferedStream(m, 1000, 10);
+        b.setAppendListener(new AppendListener() {
+            public void dataAppended(long length) { flushed.countDown(); }
+            public void appendFailed(IOException e) {}
+        });
+        b.append(new byte[300], 0, 300);
+        b.pretruncate(200);                 // Not started: kept for the flush.
+        b.start();
+        try {
+            Assert.assertTrue("the first cut did not start",
+                    entered.await(2, java.util.concurrent.TimeUnit.SECONDS));
+            b.pretruncate(300);             // Within the bytes of the flush that is cutting.
+            release.countDown();
+            Assert.assertTrue("the flush was not published",
+                    flushed.await(2, java.util.concurrent.TimeUnit.SECONDS));
+        } finally {
+            release.countDown();
+            b.close();
+        }
+        Assert.assertEquals(400L, m.getLength());
+        Assert.assertEquals(300L, lastCut.get());
     }
 
     /**

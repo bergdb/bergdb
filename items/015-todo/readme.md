@@ -63,7 +63,6 @@ Open
 | [015-76](76-startup-distance-clamp.md) | Fix | Db.setStartupDistance clamps to 400,000 to 10^9 bytes without ... | open |
 | [015-78](78-close-ioexception-discarded.md) | Fix | The consumer discards the first storage-close IOException | open |
 | [015-80](80-buffer-concurrent-writes.md) | Fix | The buffer issues concurrent writes to a single-writer underlying ... | open |
-| [015-82](82-pending-cut-after-close.md) | Fix | A pending cut arriving during another cut can be left unapplied ... | open |
 | [015-83](83-read-past-end-exception.md) | Fix | A read past the end throws IOException instead of the documented ... | open |
 | [015-84](84-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: a decrease's records grow with the keys | open |
 | [015-86](86-gets-with-8-readers.md) | Investigate | Gets over 10 ms with 8 readers (005-65): the rise is the fix's (AB/BA); left: measurements, then Frans | open |
@@ -82,6 +81,7 @@ Closed
 | [015-60](60-connections-per-thread-kept.md) | Fix | Database.connection() keeps a connection for every thread that ... | done | 2026-11-05 |
 | [015-41](41-object-key-two-maps.md) | Fix | A String or bytes and an object, or a delete, of one key: the call ... | done | 2026-11-05 |
 | [015-38](38-jmx-monitor-interrupt.md) | Fix | JMX's monitor thread ends on an interrupt, and stop loses the caller's flag | done | 2026-11-05 |
+| [015-82](82-pending-cut-after-close.md) | Fix | A pending cut arriving during another cut can be left unapplied ... | done | 2026-11-05 |
 | [015-73](73-startup-pos-unchecked.md) | Fix | A startupPos on an earlier record's start: outside the fault model | done | 2026-11-05 |
 | [015-58](58-testclock-current-time.md) | Fix | TestClock.setTime() refused the clock's current time | done | 2026-11-05 |
 | [015-57](57-resolve-ignores-timezone.md) | Fix | Time.resolve(TimeZone, String) ignored its time zone | done | 2026-11-05 |
