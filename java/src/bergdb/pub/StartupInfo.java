@@ -10,7 +10,10 @@ import bergdb.pub.util.Job;
 public interface StartupInfo {
     
     /**
-     * Returns the startup jobs if any.
+     * Returns the startup jobs if any: the jobs of the user indexes that the start resumed.
+     *
+     * <p>Experimental in 2026.3, with known faults; it may change in a later release
+     * (bergdb 018-01, D6).</p>
      */
     public Job[] getStartupJobs();
     

@@ -26,6 +26,9 @@ import bergdb.pub.util.BadFormatException;
  * </pre>
  * 
  * <p>The array may be of zero length and it may have the value null.</p>
+ *
+ * <p>Experimental in 2026.3, with known faults; it may change in a later release (bergdb
+ * 018-01, D6).</p>
  * 
  * @author Frans Lundberg
  */

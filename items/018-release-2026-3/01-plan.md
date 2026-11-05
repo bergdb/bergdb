@@ -362,3 +362,13 @@ nor a `byte[]`. So do the Pub API's overview and `bergdb.pub`'s package
 description, and a paragraph in README.md and docs/levels.md, section 1,
 which did not describe them; `releases/next.md` has the entry. JAVADOC PUB
 OK, BEFORE COMMIT OK.
+
+2026-11-05, 10:32. W1's five questions answered by Frans at 10:31: "Sure,
+go ahead with those five." Marked too: `Database.PRIMARY`,
+`StartupInfo.getStartupJobs()` (the index jobs a start resumes), and
+`DbObject` and `DbArray` in `bergdb.pubimp`; the exceptions
+`IndexAlreadyExistsException`, `NoSuchIndexException`,
+`MissingKeyFieldException` and `ObjectCreationException` say that they
+belong to the experimental parts, as `BadReplicaException` said of
+replication (016-04). README.md's and docs/levels.md's paragraphs stay.
+The entry of `releases/next.md` lists them.

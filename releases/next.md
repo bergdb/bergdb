@@ -19,8 +19,13 @@ Documentation
   `UsePrimaryBuilder`, and a value that is neither a `String` nor a
   `byte[]`: `put(Object)` (`WBuilder`, `RwEnvironment`), a put of an object
   at a key (`Connection`, `WBuilder`, `RwEnvironment`) and a get into
-  another class (`Connection`, `ReadInterface`, `RwEnvironment`). So do the
-  Pub API's overview, `bergdb.pub`'s package description, README.md and
+  another class (`Connection`, `ReadInterface`, `RwEnvironment`); also
+  `Database.PRIMARY`, `StartupInfo.getStartupJobs()` (the index jobs a
+  start resumes), and `DbObject` and `DbArray` (`bergdb.pubimp`), and the
+  exceptions `IndexAlreadyExistsException`, `NoSuchIndexException`,
+  `MissingKeyFieldException` and `ObjectCreationException` say that they
+  belong to these parts (Frans, 2026-11-05, 10:31). So do the Pub API's
+  overview, `bergdb.pub`'s package description, README.md and
   docs/levels.md, section 1. Their tests still run in `before-commit.sh`.
   The notes say it in "What it is" and in the known issues, as 2026.2's say
   it of replication; their faults are those of 018-01, section 3.2.

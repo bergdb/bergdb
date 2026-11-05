@@ -1,7 +1,8 @@
 package bergdb.pub;
 
 /**
- * Thrown to indicate that no index with the given name exists.
+ * Thrown to indicate that no index with the given name exists. It belongs to the user
+ * indexes, experimental in 2026.3 (see Database.indexBuilder(); bergdb 018-01, D6).
  * 
  * @author Frans Lundberg
  */
