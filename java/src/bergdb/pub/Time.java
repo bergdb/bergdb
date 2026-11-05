@@ -218,7 +218,8 @@ public class Time {
      * that formatted at once wrong strings and exceptions (bergdb 015-63).
      */
     private static final DateTimeFormatter UTC_DATE_FORMAT = 
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).withZone(ZoneOffset.UTC);
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
+            .withZone(ZoneOffset.UTC);
     
     /**
      * Returns the time in UTC formatted like this: yyyy-MM-dd HH:mm:ss.SSSSSSS. 

@@ -223,7 +223,8 @@ public final class Eviction {
      * and wakes the eviction thread if the resident bytes are over the new trigger, so that
      * a decrease is reached also when no transaction or load follows: work that the call
      * starts (010-P3); its batches go on until the resident bytes are at most the budget, or
-     * nothing more can go (decrease; bergdb 015-70). Not when the database is not active: its thread has ended or ends.
+     * nothing more can go (decrease; bergdb 015-70). Not when the database is not active: its
+     * thread has ended or ends.
      */
     public void setBudget(Db db, long budget) {
         setBudget(budget);
@@ -713,18 +714,17 @@ public final class Eviction {
      * steps over the node table, one map at a time (Cache3.clockStep), or a part of one that
      * has more handles than the batch has left (bergdb 015-67), from where the last batch
      * stopped, until the resident bytes are below the low watermark or the batch has
-     * examined its handles or taken its maps. An object whose handle's CLOCK bit is set (a follow since the hand last
-     * passed) gets a second chance; one with the bit clear goes if it is detachable, with the
-     * values its pointers hold. No walk of the resident objects, and no count of who points
-     * to what: the work is bounded by the handles and the maps a batch takes, whatever the
-     * size of the database and of the budget. The accounting is without walks, exact but for the objects
-     * the writer changed since their last count (Residents; bergdb 015-15). If the
-     * resident bytes stay above the budget, the next trigger goes on from the hand; pinned
-     * state is never taken: its bytes, which the hand's rounds count, raise the trigger if
-     * they are above the budget (trigger). Until step
-     * 3b a sweep walked every resident object, twice. Returns the bytes freed and the maps
-     * finished (the eviction thread's stop rule, EvictorRun; a map taken in parts counts in
-     * the batch that finishes it). The caller holds Db.writeLock,
+     * examined its handles or taken its maps. An object whose handle's CLOCK bit is set (a follow
+     * since the hand last passed) gets a second chance; one with the bit clear goes if it is
+     * detachable, with the values its pointers hold. No walk of the resident objects, and no count
+     * of who points to what: the work is bounded by the handles and the maps a batch takes,
+     * whatever the size of the database and of the budget. The accounting is without walks, exact
+     * but for the objects the writer changed since their last count (Residents; bergdb 015-15). If
+     * the resident bytes stay above the budget, the next trigger goes on from the hand; pinned
+     * state is never taken: its bytes, which the hand's rounds count, raise the trigger if they are
+     * above the budget (trigger). Until step 3b a sweep walked every resident object, twice.
+     * Returns the bytes freed and the maps finished (the eviction thread's stop rule, EvictorRun; a
+     * map taken in parts counts in the batch that finishes it). The caller holds Db.writeLock,
      * between transactions.
      */
     long[] sweep(Db db, boolean afterLoad) {

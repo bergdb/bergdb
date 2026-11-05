@@ -44,8 +44,9 @@ public class DatabaseImp implements Database {
     private final ClassToObject classToObject;
         // "final" for now, could become a setting.
     private final WeakHashMap<Thread, Connection> threadLocalConnections;
-        // Weak keys: an ended thread's connection is not kept (bergdb 015-60). Not a
-        // ThreadLocal, whose value in a long-lived thread would keep a stopped database.
+        // Weak keys: an ended thread's connection goes once the collector has taken the
+        // thread, at the map's next use (bergdb 015-60). Not a ThreadLocal, whose value in a
+        // long-lived thread would keep a stopped database.
     
     private DatabaseImp(final Db db) {
         synchronized (this) {

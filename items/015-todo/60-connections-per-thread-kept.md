@@ -42,3 +42,11 @@ only `stop()` and `close()` cleared.
 * 010-01: no setting, no global state, no thread (P3, P9, P10); the stream is
   not touched (P2).
 * Gate: `before-commit.sh`: `BEFORE COMMIT OK (111 s)`, unit 1188, f 87.
+
+2026-11-05, night 006-12. The Javadoc of `Database.connection()`, the
+field's comment and the line in `releases/next.md` made exact (review R2,
+C2): they said that the database does not keep an ended thread's
+connection, but the entry goes only once the thread is no longer
+referenced (an application's list of its workers keeps it) and the
+collector has taken it, at a later call of `connection()`. Now they say
+so. The code is unchanged.
