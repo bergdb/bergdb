@@ -29,6 +29,12 @@ Files
   the six known faults of its class and found 019-02; its skip list, where
   it runs (the unit tests, 0.6 s; the night tests, 20 s), what it does not
   cover.
+* [04-harness-pub-promises.md](04-harness-pub-promises.md). 018-04,
+  harness 6.7, the Pub API's promises, built: random sequences of the Pub
+  API's calls on `String` and `byte[]` values against a reference of each
+  key's versions by time; it fails on the six known faults of its class
+  and found 019-15; five questions for Frans; where it runs (the unit
+  tests, 1 s; the night tests, 80 s).
 
 
 Log
@@ -49,3 +55,10 @@ first harness, as Frans chose at 10:27. It fails on 015-26, 31, 33, 79, 80
 and 83, each failure named by its entry, and found a seventh fault,
 019-02; with its skip list of the seven it passes, in the unit tests of
 `before-commit.sh` and in the night tests. BEFORE COMMIT OK.
+
+2026-11-05, night 006-12. 018-04: harness 6.7, the Pub API's promises,
+built (W2). It fails on 015-41, 42, 47, 48, 59 and 62, each with its fix
+reverted, and found 019-15 (a delete under key replace), registered for
+Frans's decision and in its skip list; five questions for Frans on the
+Javadoc. In the unit tests of `before-commit.sh` (1 s) and the night
+tests (80 s).

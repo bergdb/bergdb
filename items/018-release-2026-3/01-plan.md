@@ -365,6 +365,10 @@ for 2026.3: they are experimental (D2).
 * What it checks: every answer equals the reference's, as the Javadoc
   promises it; a change of an array after its put does not change the
   stored value.
+* Built on 2026-11-05: see 018-04. It fails on each of the six, and found
+  019-15 (key replace and a delete), in its skip list; five questions for
+  Frans where the Javadoc is not clear. It runs in the unit tests of
+  `before-commit.sh` (1 s) and in the night tests (80 s).
 
 
 ### 6.8. Faults outside the harnesses
@@ -504,3 +508,9 @@ fails the database (P7). It leaves section 3.1's list, as 015-27 and
 015-73 did, and harness 6.4 counts it as the caller's fault. A refusal,
 which needs a design of when transformations run, is 017-07, section 3.
 Sections 3.1 and 6.4 updated.
+
+2026-11-05, night 006-12. Harness 6.7, the Pub API's promises, built
+(018-04): random calls on `String` and `byte[]` values against a reference
+of each key's versions by time. It fails on 015-41, 42, 47, 48, 59 and 62,
+each with its fix reverted, and found 019-15, which waits for Frans; five
+questions on the Javadoc (018-04, section 6). Section 6.7 updated.

@@ -107,6 +107,7 @@ Open
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
 | [019-07](07-record-header-checksum.md) | Implement | A checksum of the record header, at the next RECORD_FORMAT change | decision | waiting |
+| [019-15](15-delete-key-replace.md) | Fix | Key replace: a delete's key is not replaced | decision | waiting |
 
 
 Closed
@@ -167,6 +168,11 @@ Files
   failure that no call met, and reports it nowhere (review R1 of night
   006-12, B2); now it throws `StreamIoException` (Frans, 2026-11-05,
   option (a)).
+
+* [15-delete-key-replace.md](15-delete-key-replace.md). 019-15, Fix:
+  with key replace enabled, a delete's key is not replaced, where the
+  Javadoc says every key's `${transactionTime}` is; found by harness 6.7
+  (018-04); waiting for Frans's decision.
 
 
 Log
@@ -251,3 +257,7 @@ write failure that no call met. Status waiting: Frans decides whether
 2026-11-05, 20:50. 019-09: Frans chose option (a). Done in night 006-12:
 `close()` throws `StreamIoException` for a failure of the storage that no
 call reported; a close of a database that has failed returns normally.
+
+2026-11-05. 019-15 registered by harness 6.7's agent of the night 006-12:
+found by the harness of the Pub API's promises (018-04); waiting for
+Frans's decision.

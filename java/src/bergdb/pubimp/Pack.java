@@ -31,6 +31,7 @@ public class Pack implements IPack {
         Pack.class,
         PubKeys.class,
         PubInterruptTester.class,
+        PubPromiseTester.class,
         PubTester.class,
         PubTesterComposite.class,
         PubTesterIndex.class,
