@@ -278,3 +278,19 @@ Documentation
   2026.3. `AppendOnlyStream`'s Javadoc states an implementation's duty,
   and docs/levels.md, section 8, the assumption. The code, the format and
   the stream's bytes are unchanged.
+
+
+Known issues and limits
+-----------------------
+
+* **A corrupt record header can still lose data at a start that
+  succeeds** (bergdb 015-73, 016-06's R6-F2; Frans, 2026-11-05). No
+  checksum covers a record's header. 015-72 and 015-75 refuse a corrupt
+  size, got-dirty id, topPos or startupPos in most forms. What is left:
+  the last record's startupPos damaged to an aligned value that is exactly
+  the start of an earlier record, one that the take never reached. The
+  start then begins there, and the transactions before it are lost without
+  a word. Such damage is outside the crash contract (014-01, section 7),
+  and its detection is best effort. A checksum of the record header would
+  catch it, at the next change of the record format (019-07). In 2026.2
+  and 2026.1 too.

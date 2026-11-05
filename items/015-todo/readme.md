@@ -71,7 +71,6 @@ Open
 | [015-69](69-resync-overwrites-readers.md) | Fix | A test-schedule resync overwrites concurrent readers' accounting | open |
 | [015-70](70-budget-decrease-above-budget.md) | Fix | A budget decrease can settle above budget although the pins fit | open |
 | [015-71](71-audit-empty-handle-cleanup.md) | Fix | The audit reports a valid empty-handle cleanup as a bad table entry | open |
-| [015-73](73-startup-pos-unchecked.md) | Fix | A corrupt startupPos in the last record is accepted, and the ... | open |
 | [015-76](76-startup-distance-clamp.md) | Fix | Db.setStartupDistance clamps to 400,000 to 10^9 bytes without ... | open |
 | [015-78](78-close-ioexception-discarded.md) | Fix | The consumer discards the first storage-close IOException | open |
 | [015-79](79-storage-negative-append.md) | Fix | A negative append is accepted and decreases StorageManager's length | open |
@@ -88,6 +87,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-73](73-startup-pos-unchecked.md) | Fix | A startupPos on an earlier record's start: outside the fault model | done | 2026-11-05 |
 | [015-75](75-start-checks-asserts.md) | Fix | Checks of stream data at a start that were asserts | done | 2026-11-05 |
 | [015-72](72-record-size-unchecked.md) | Fix | A record whose size field is larger than its content is accepted | done | 2026-11-05 |
 | [015-52](52-warmup-read-expired.md) | Fix | `execute()` can be refused with `LookupTimeNotAvailableException`, ... | done | 2026-11-05 |
@@ -239,7 +239,7 @@ Files
 * [70-budget-decrease-above-budget.md](70-budget-decrease-above-budget.md). 015-70, Fix: R4-F5.
 * [71-audit-empty-handle-cleanup.md](71-audit-empty-handle-cleanup.md). 015-71, Fix: R4-F6.
 * [72-record-size-unchecked.md](72-record-size-unchecked.md). 015-72, Fix: R6-F1.
-* [73-startup-pos-unchecked.md](73-startup-pos-unchecked.md). 015-73, Fix: R6-F2.
+* [73-startup-pos-unchecked.md](73-startup-pos-unchecked.md). 015-73, Fix: R6-F2; decided 2026-11-05 (15:35): outside the fault model for 2026.3, option (a); a record header checksum is 019-07.
 * [74-metablock-comment.md](74-metablock-comment.md). 015-74, Fix: R6-F3.
 * [75-start-checks-asserts.md](75-start-checks-asserts.md). 015-75, Fix: R6-F4.
 * [76-startup-distance-clamp.md](76-startup-distance-clamp.md). 015-76, Fix: R6-F5.

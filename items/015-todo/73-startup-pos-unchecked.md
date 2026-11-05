@@ -1,7 +1,8 @@
 015-73. Fix: a corrupt startupPos in the last record is accepted, and the transactions before it are lost
 =========================================================================================================
 
-Status: open. Kind: Fix. Created 2026-11-04 by Frans Lundberg.
+Status: done (decided 2026-11-05: outside the fault model for 2026.3,
+option (a)). Kind: Fix. Created 2026-11-04 by Frans Lundberg.
 
 After release 2026.2 (a known issue of it); in 2026.1 too. A fix needs a design choice (a header checksum, a format change, or structural checks as 005-75).
 
@@ -74,3 +75,13 @@ record start the take never reached?
 Recommendation: (a) for 2026.3, and (c) noted for the next change of the
 record format, when its cost is shared with other changes. (b) costs the
 most and protects against one field only.
+
+2026-11-05, 15:35. Frans, to session bergdb-a2, which asked "do you take
+(a), plus a 019 entry for (c)?": "Yes. Go ahead." Option (a): a
+startupPos that names the start of an earlier record that the take never
+reached is outside the fault model for 2026.3, as all damage other than
+truncation is (018-01, section 6.1). 015-75's checks stay. Done; nothing
+in `java/` changed. Out of 018-01's list of the Core's faults; harness 6.1
+counts such a copy as known to pass undetected. 2026.3's notes
+(`releases/next.md`) name it as a known limit. Option (c), a checksum of
+the record header, is 019-07, for the next change of `RECORD_FORMAT`.

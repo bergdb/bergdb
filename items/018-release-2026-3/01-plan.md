@@ -116,7 +116,7 @@ This is the goal's list.
 |---|---|---|
 | FileStream                                | 015-06 (its rest), 26, 31, 32, 33; 014-01 | 6 |
 | BufferedStream, StorageManager, MetaBlock | 015-34, 35, 74, 78, 79, 80, 81, 82, 83    | 9 |
-| Startup                                   | 015-72, 73, 75, 76, 77, 87                | 6 |
+| Startup                                   | 015-72, 75, 76, 77, 87                    | 5 |
 | Db and reclaim                            | 015-27, 50, 51, 52, 53, 54, 55            | 7 |
 | Eviction                                  | 015-66, 67, 68, 69, 70, 71                | 6 |
 | JMX                                       | 015-38                                    | 1 |
@@ -143,7 +143,11 @@ Changed since, 2026-11-05: 015-27 left the list (intended, not a fault);
 018-02). 014-01's fault left the list (Frans, 14:30 and 14:36): the crash
 contract is prefix interruption, under which a hole in an unforced tail
 is damage outside the contract, not a fault; 014-01 stays open in 014 for
-the broader model (014-01, section 7).
+the broader model (014-01, section 7). 015-73 left the list (Frans, 15:35;
+the table's row "Startup" follows): a last record's startupPos changed to
+an earlier record's start is outside the fault model for 2026.3, option
+(a); 015-75's checks stay, and a checksum of the record header waits for
+the next change of the record format (019-07).
 
 
 ### 3.2. Outside the goal
@@ -250,7 +254,7 @@ for 2026.3: they are experimental (D2).
 
 ### 6.1. Corrupt streams at a start
 
-* Known faults: 015-72, 73, 75 (and 015-07, 005-74 and 005-75, fixed).
+* Known faults: 015-72, 75 (and 015-07, 005-74 and 005-75, fixed).
 * What it does: takes streams written by real runs and makes damaged
   copies of them: a byte flipped, a range cut out, the tail cut at every
   byte, a record's size or `startupPos` changed with its checksum made
@@ -260,10 +264,17 @@ for 2026.3: they are experimental (D2).
   transactions of its committed prefix and passes the audit. Other damage
   is outside the contract, and its detection is best effort: the start
   refuses the copy before it writes anything, or a read fails the
-  database (P7). The cheap refusals of 015-72, 73, 75 and 019-01 stay in
-  the goal's list: a violation is refused rather than used.
+  database (P7). The cheap refusals of 015-72, 75 and 019-01 stay in the
+  goal's list: a violation is refused rather than used.
 * 014-01's holes in an unforced tail are such other damage, not a fault
   (Frans, 2026-11-05, 14:36).
+* So is 015-73's (Frans, 2026-11-05, 15:35, option (a)): a last record's
+  startupPos changed to the exact start of an earlier record that the
+  take never reached passes 015-72's and 015-75's checks, and the start
+  succeeds without the transactions before it. The harness counts such a
+  copy as known to pass undetected, not as a failure. A checksum of the
+  record header would catch it, at the next change of the record format
+  (019-07).
 
 
 ### 6.2. Failures and interrupts in storage
@@ -461,3 +472,12 @@ Harness 6.1's core is a truncation at every byte; other damage is outside
 the contract, its detection best effort. Sections 2, 3.1, 6.1 and 7 (W3)
 updated; the contract is stated in AppendOnlyStream's Javadoc,
 docs/levels.md, section 8, and `releases/next.md`.
+
+2026-11-05, 15:41. 015-73 decided by Frans, to session bergdb-a2 (15:35:
+"Yes. Go ahead."): option (a), a startupPos changed to an earlier
+record's start is outside the fault model for 2026.3; 015-75's checks
+stay. It leaves section 3.1's list, as 015-27 and 014-01 did, and harness
+6.1 counts such a copy as known to pass undetected. Option (c), a checksum
+of the record header, is 019-07, for the next change of the record
+format, with Frans's approval (section 2). Sections 3.1 and 6.1 updated;
+`releases/next.md` names the limit.

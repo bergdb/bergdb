@@ -108,6 +108,7 @@ Open
 |---|---|---|---|---|
 | [019-01](01-metablock-version-high-bytes.md) | Fix | A meta block's version: bytes 6 and 7 unchecked | none | open |
 | [019-02](02-stream-bad-length-exceptions.md) | Fix | Streams refuse a bad length with other exceptions | none | open |
+| [019-07](07-record-header-checksum.md) | Implement | A checksum of the record header, at the next RECORD_FORMAT change | decision | waiting |
 
 
 Closed
@@ -150,6 +151,11 @@ Files
   `performance.sh`'s harness does not compile against 2026.2's jar:
   `Perf.java` uses 005-47's `FileStream(File, boolean)`, which 2026.2
   lacks.
+* [07-record-header-checksum.md](07-record-header-checksum.md). 019-07,
+  Implement: a checksum of the record header, in its 3 unused bytes, at
+  the next change of `RECORD_FORMAT`, with Frans's approval of the format
+  change; from 015-73's option (c). Not for 2026.3 (Frans, 2026-11-05,
+  15:35).
 
 
 Log
@@ -204,3 +210,9 @@ missing; the harness compiles against 2026.2's jar and main's again
 connection's `exists()` throws `IllegalArgumentException` for a malformed
 key, as `get()` and an rw-transaction's `exists()` do; the Javadoc says
 so; BEFORE COMMIT OK.
+
+2026-11-05. 019-07 registered in night 006-12, at Frans's decision on
+015-73 (15:35, to session bergdb-a2: "Yes. Go ahead."): option (a) for
+2026.3, and (c), a checksum of the record header, here, for the next
+change of `RECORD_FORMAT`. Status waiting: not for 2026.3, Frans's
+exception to the rule that an open entry is done before the release.
