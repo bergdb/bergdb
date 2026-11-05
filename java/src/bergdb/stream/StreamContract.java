@@ -40,10 +40,8 @@ public final class StreamContract {
      * entry. A fix removes its entry's line.
      */
     static final String[] SKIP = {
-        "015-26",
         "015-31",
         "015-33",
-        "015-79",
         "015-80",
         "015-83",
         "019-02",

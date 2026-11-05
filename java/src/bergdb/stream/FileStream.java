@@ -337,6 +337,13 @@ public class FileStream implements AppendOnlyStream {
     public void append(byte[] source, int sourceOffset, int len) throws IOException {
         checkIOException();
         
+        // Refused before anything changes (2026-11-05, bergdb 015-26): a negative len was
+        // added to the last file's length and to the stream's, which hid appended bytes and
+        // failed the next append.
+        if (len < 0) {
+            throw new IllegalArgumentException("negative len, " + len);
+        }
+        
         int actuallyAppended;
         int leftToAppend;
         

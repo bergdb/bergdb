@@ -1,7 +1,7 @@
 015-26. Fix: a negative append length corrupts FileStream's length bookkeeping
 ==============================================================================
 
-Status: open. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
+Status: done 2026-11-05, night 006-12. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
 
 After the release (internal; in 2026.1 too).
 
@@ -29,3 +29,21 @@ Log
 6.3) catches it: `StreamContractTester.testFileStream`, check "a negative
 append", fails and names 015-26. Its fix removes the skip line "015-26"
 from `StreamContract.SKIP`.
+
+2026-11-05, night 006-12. Done. Verified with the harness: with the line
+"015-26" removed from `StreamContract.SKIP`, `StreamContractTester.testFileStream`
+failed before the fix, "FileStream, a negative append: append(byte[1], 0, -1)
+threw java.lang.AssertionError: 2 != 3, expected IllegalArgumentException" (the
+assert in `DbFile.append`, after the length had changed), and passes after it.
+
+* Fix: `FileStream.append` throws `IllegalArgumentException` for a negative
+  length at its top, after the stream's own failure check and before it finds
+  or changes any file, as `AppendOnlyStream.append`'s Javadoc says. The length,
+  the bytes and the next append are as before the call (the harness checks all
+  three). The other bad arguments (an offset or length beyond the array) are
+  019-02's.
+* Test: harness 6.3's check "a negative append" of FileStream; the skip line
+  is removed.
+* 010-01: no setting, no state, no thread (P3, P9, P10); a valid database never
+  passes a negative length, so its bytes are unchanged (P2).
+* Gate: `before-commit.sh`: `BEFORE COMMIT OK (106 s)`, unit 1177, f 83.

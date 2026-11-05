@@ -40,7 +40,6 @@ Open
 | [015-18](18-night-large-after-release.md) | Implement | Run night.sh large on the release, after 2026.2 | open |
 | [015-19](19-tools-after-005-79.md) | Fix | Tools in items still use what 005-79 removed | open |
 | [015-23](23-refused-index-delete.md) | Fix | A refused index deletion leaves the index active and unmaintained | open |
-| [015-26](26-negative-append-length.md) | Fix | A negative append length corrupts FileStream's length | open |
 | [015-28](28-write-racing-index-create.md) | Fix | A write racing an index's creation is never indexed | open |
 | [015-29](29-delete-primary-index.md) | Fix | deleteIndex(Database.PRIMARY) throws Bug and leaves the primary deleting | open |
 | [015-30](30-build-scans-past-dir.md) | Fix | An index build step scans past its directory, over non-objects | open |
@@ -70,7 +69,6 @@ Open
 | [015-71](71-audit-empty-handle-cleanup.md) | Fix | The audit reports a valid empty-handle cleanup as a bad table entry | open |
 | [015-76](76-startup-distance-clamp.md) | Fix | Db.setStartupDistance clamps to 400,000 to 10^9 bytes without ... | open |
 | [015-78](78-close-ioexception-discarded.md) | Fix | The consumer discards the first storage-close IOException | open |
-| [015-79](79-storage-negative-append.md) | Fix | A negative append is accepted and decreases StorageManager's length | open |
 | [015-80](80-buffer-concurrent-writes.md) | Fix | The buffer issues concurrent writes to a single-writer underlying ... | open |
 | [015-81](81-close-error-strands-sync.md) | Fix | An unchecked close error can kill the consumer before publishing a ... | open |
 | [015-82](82-pending-cut-after-close.md) | Fix | A pending cut arriving during another cut can be left unapplied ... | open |
@@ -93,6 +91,8 @@ Closed
 | [015-68](68-startup-large-values-kept.md) | Fix | Startup leaves large values retained in the writer's admission list | done | 2026-11-05 |
 | [015-67](67-batch-whole-map.md) | Fix | A batch processes a whole map even past its handle limit | done | 2026-11-05 |
 | [015-66](66-evictor-failure-lock-window.md) | Fix | A failed batch releases the writer lock before failing the database | done | 2026-11-05 |
+| [015-79](79-storage-negative-append.md) | Fix | A negative append is accepted and decreases StorageManager's length | done | 2026-11-05 |
+| [015-26](26-negative-append-length.md) | Fix | A negative append length corrupts FileStream's length | done | 2026-11-05 |
 | [015-87](87-retain-duration-in-stream.md) | Investigate | The retain duration kept in the stream | done | 2026-11-05 |
 | [015-88](88-overload-and-retries.md) | Investigate | Transaction retries: sleep capped at 640 ms | done | 2026-11-05 |
 | [015-05](05-empty-or-missing-directory.md) | Decide | A start on an empty or missing directory creates a database | done | 2026-11-05 |

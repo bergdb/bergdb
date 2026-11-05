@@ -467,6 +467,12 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 if (this.exception != null) {
                     throw exception;
                 }
+                // Refused before anything changes (2026-11-05, bergdb 015-79): a negative
+                // length returned as an append of nothing, and StorageManager lowered its
+                // length by it.
+                if (length < 0) {
+                    throw new IllegalArgumentException("negative length, " + length);
+                }
 
                 while (length > 0) {
                     int available = availableBufferSize();

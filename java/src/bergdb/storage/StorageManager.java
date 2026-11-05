@@ -320,6 +320,10 @@ public class StorageManager implements AppendOnlyStream {
             throw new IOException(e0);
         } else if (!isStarted) {
             throw new IllegalStateException("Storage manager not started, call start().");
+        } else if (length < 0) {
+            // Refused before anything changes (2026-11-05, bergdb 015-79): the length was
+            // lowered by it. Not an IOException, so the storage does not fail.
+            throw new IllegalArgumentException("negative length, " + length);
         }
         
         try {

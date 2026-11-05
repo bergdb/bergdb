@@ -247,6 +247,13 @@ Internal
   program's own that has the method still compiles, unless it marks it
   `@Override` or calls it on the interface. The Core API, the Pub API, the
   stream format and the stream's bytes are unchanged.
+* **`FileStream`, `BufferedStream` and `StorageManager` refuse an append
+  of a negative length** (bergdb 015-26 and 015-79; 2026-11-05) with
+  `IllegalArgumentException`, as `AppendOnlyStream`'s Javadoc says, and
+  leave the stream as it was. `FileStream` lowered its length, which hid
+  appended bytes and failed the next append; `BufferedStream` returned, and
+  `StorageManager` lowered its length. No layer of BergDB passes a negative
+  length; the stream's bytes are unchanged.
 
 
 Documentation
