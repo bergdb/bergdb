@@ -632,7 +632,7 @@ public class Db implements AutoCloseable {
             closeBegun = true;      // A later stop() or close() has nothing to do.
         }
         try {
-            IOException e = closeStorage();
+            IOException e = closeStorage(true);
             if (e != null && e != failure) {
                 failure.addSuppressed(e);
             }
@@ -1336,7 +1336,7 @@ public class Db implements AutoCloseable {
         }
         Thread closer = new Thread(new Runnable() {
             public void run() {
-                closeStorage();
+                closeStorage(false);
             }
         });
         closer.setName("Db-close-" + closer.getId());
@@ -1355,7 +1355,11 @@ public class Db implements AutoCloseable {
      * different threads. It is AutoCloseable's close() (bergdb 005-59): a try-with-resources
      * block calls it when the block ends, also when the block throws.
      * A failed final flush or storage close throws StreamIoException, also after stop()
-     * or an earlier close() (bergdb 005-73, F5).
+     * or an earlier close() (bergdb 005-73, F5). So does an earlier failure of the storage
+     * that no call has reported, such as a failed write of the storage thread while the
+     * application made no call (2026-11-05, bergdb 019-09): the transactions that were
+     * buffered are lost. A close of a database that has failed (DbFailedException) returns
+     * normally, as that failure was reported.
      */
     public void close() {
         // Under readSync, as a failure (setFailed(), bergdb 005-30).
@@ -1368,16 +1372,19 @@ public class Db implements AutoCloseable {
             closeBegun = true;
         }
         if (mine) {
-            closeStorage();
+            closeStorage(false);
         } else if (Thread.holdsLock(writeLock)) {
             // Waiting for the other closer would deadlock on this transaction's lock.
+            final boolean storageFailedBefore = storageManager.hasFailed();
             try {
                 storageManager.closeAndThrow();
             } catch (IOException e) {
-                synchronized (closeLock) {
-                    if (closeFailure == null) closeFailure = e;
+                if (!reportedBefore(storageFailedBefore, false)) {
+                    synchronized (closeLock) {
+                        if (closeFailure == null) closeFailure = e;
+                    }
+                    throw new StreamIoException(e);
                 }
-                throw new StreamIoException(e);
             }
         } else {
             waitUntilClosed();
@@ -1396,18 +1403,29 @@ public class Db implements AutoCloseable {
      * thread (bergdb 005-51), then closes the storage, which writes what is buffered, closes
      * the streams and ends their threads.
      * 
-     * @return The first failure of a stream's close, such as a failed flush, or null.
+     * <p>The storage's close fails also when the storage had failed before it, with that
+     * failure (StorageManager.closeInner, 2026-11-05, bergdb 019-09), and close() throws it,
+     * unless reportedBefore().</p>
+     * 
+     * @param startThrew  True for the close of a start that threw (closeAfterFailedStart()).
+     * @return The first failure of a stream's close, such as a failed flush, or null; null
+     *      also when reportedBefore().
      */
-    private IOException closeStorage() {
+    private IOException closeStorage(boolean startThrew) {
+        boolean storageFailedBefore = false;
         try {
             synchronized (writeLock) {
                 // A transaction that runs has ended.
             }
             // The eviction thread waits with no timeout; it ends now (bergdb 005-51).
             eviction.endThread(!Thread.holdsLock(writeLock));
+            storageFailedBefore = storageManager.hasFailed();
             storageManager.closeAndThrow();
             return null;
         } catch (IOException e) {
+            if (reportedBefore(storageFailedBefore, startThrew)) {
+                return null;
+            }
             synchronized (closeLock) {
                 if (closeFailure == null) closeFailure = e;
             }
@@ -1420,6 +1438,21 @@ public class Db implements AutoCloseable {
         }
     }
             
+    /**
+     * True when close() does not throw the close's failure, as a call has reported it
+     * (2026-11-05, bergdb 019-09, Frans's option (a)): the storage had failed before its
+     * close, and the database had failed before it stopped (the state FAILED, which stop()
+     * and close() then set to STOPPING; 'failure' is set only while the state is ACTIVE, by
+     * setFailed()), so a call threw DbFailedException; or the start threw. Otherwise,
+     * close() is the one call left to report the failure, such as a failed write of the
+     * storage thread with no call of the application on the storage (010-01, P7). A failure
+     * of the close itself, such as a failed final flush, is thrown as before (bergdb 005-73,
+     * F5).
+     */
+    private boolean reportedBefore(boolean storageFailedBefore, boolean startThrew) {
+        return storageFailedBefore && (startThrew || failure != null);
+    }
+    
     /** Waits, without being interrupted, until closeStorage() is done (bergdb 005-35). */
     private void waitUntilClosed() {
         boolean interrupted = false;

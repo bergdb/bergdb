@@ -117,6 +117,7 @@ public class StorageManager implements AppendOnlyStream {
     /**
      * As close(), and throws the first failure of a stream's close, such as a flush that
      * failed (2026-10-24, bergdb 005-32): for a start that throws, which adds it to its own.
+     * Also the storage's failure, when the main stream had failed before (bergdb 019-09).
      */
     public void closeAndThrow() throws IOException {
         IOException e = closeInner(true);
@@ -126,9 +127,12 @@ public class StorageManager implements AppendOnlyStream {
     }
     
     /**
-     * Returns the first failure of the stream's close, or null. A close of a failed main
-     * stream returns no failure: the storage's failure is the main stream's (getFailure()),
-     * reported by the call that met it, with what its close threw as suppressed.
+     * Returns the first failure of the stream's close, or null. A close of a main stream that
+     * had failed before it returns the storage's failure, the main stream's (getFailure()),
+     * with what its close threw as suppressed (2026-11-05, bergdb 019-09): a call may have
+     * met and reported it, or none, as for a failed write of the storage thread while no call
+     * was on the storage; Db.close() throws it unless the database has failed. A stop() (no
+     * close) returns null.
      */
     private IOException closeInner(boolean close) {
         IOException first = null;
@@ -150,6 +154,11 @@ public class StorageManager implements AppendOnlyStream {
                 if (!failed) {
                     first = e;
                 }
+            }
+            if (failed) {
+                // Set by now, unless a read that met the failure is between the two steps
+                // of handleStreamException; that read then throws the failure itself.
+                first = mainFailure;
             }
         } else if (!failed) {
             mainStream.stop();

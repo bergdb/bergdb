@@ -107,7 +107,6 @@ Open
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
 | [019-07](07-record-header-checksum.md) | Implement | A checksum of the record header, at the next RECORD_FORMAT change | decision | waiting |
-| [019-09](09-close-unreported-background-failure.md) | Fix | close() silent on a failed flush | decision | waiting |
 
 
 Closed
@@ -115,6 +114,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-09](09-close-unreported-background-failure.md) | Fix | close() silent on a failed flush | decision | done | 2026-11-05 |
 | [019-08](08-dbtime-to-utc-threads.md) | Fix | dbTimeToUtc() from several threads gave wrong strings | none | done | 2026-11-05 |
 | [019-02](02-stream-bad-length-exceptions.md) | Fix | Streams refuse a bad length with other exceptions | none | done | 2026-11-05 |
 | [019-01](01-metablock-version-high-bytes.md) | Fix | A meta block's version: bytes 6 and 7 unchecked | none | done | 2026-11-05 |
@@ -165,7 +165,8 @@ Files
 * [09-close-unreported-background-failure.md](09-close-unreported-background-failure.md).
   019-09, Fix: `close()` returns normally after a background write
   failure that no call met, and reports it nowhere (review R1 of night
-  006-12, B2); Frans decides whether `close()` throws there.
+  006-12, B2); now it throws `StreamIoException` (Frans, 2026-11-05,
+  option (a)).
 
 
 Log
@@ -241,7 +242,12 @@ BEFORE COMMIT OK.
 2026-11-05. 019-08 registered in night 006-12, from review R2's finding
 B1, and done: `DbUtil.dbTimeToUtc()` formats with a `DateTimeFormatter`,
 as `Time` does since 015-63; the strings are unchanged; BEFORE COMMIT OK.
+
 2026-11-05. 019-09 registered in night 006-12, from review R1's
 re-review of 3cb19f7 (B2): `close()` returns normally after a background
 write failure that no call met. Status waiting: Frans decides whether
 `close()` throws there (options (a) to (c), (a) recommended).
+
+2026-11-05, 20:50. 019-09: Frans chose option (a). Done in night 006-12:
+`close()` throws `StreamIoException` for a failure of the storage that no
+call reported; a close of a database that has failed returns normally.

@@ -1171,6 +1171,109 @@ public class DbTesterFailure {
     }
     
     /**
+     * bergdb 019-09 (review R1 of night 006-12, re-review of 3cb19f7, B2): a write of the
+     * storage thread fails, and the application's next call is close(), which throws
+     * StreamIoException with the write's failure as the cause (Frans's option (a)): the
+     * transactions that were buffered are lost, and close() is the one call left to say so
+     * (010-01, P7). Before, close() set STOPPING first, so 015-35's check never failed the
+     * database, StorageManager.closeInner returned no failure for a failed main stream, and
+     * close() returned normally: no call reported the failure.
+     */
+    @Nano
+    public static void testCloseReportsBackgroundWriteFailure() throws Exception {
+        final FaultStream s = new FaultStream();
+        final Db db = Db.builder().testSetup(s).start();
+        try {
+            db.execute(db.trans().put("/a", "a0").build());
+            db.sync(SyncLevel.ORDINARY);
+            s.failAppends = true;
+            db.execute(db.trans().put("/a", "a1").build());
+            waitForStorageError(db);
+            Throwable thrown = within(10000, new Runnable() {
+                public void run() {
+                    db.close();
+                }
+            });
+            Assert.assertTrue("close() throws StreamIoException: " + thrown,
+                    thrown instanceof StreamIoException);
+            Assert.assertTrue("the write's failure: " + thrown.getCause(),
+                    String.valueOf(thrown.getCause()).contains("an append error"));
+            Assert.assertTrue("the stream is closed", s.closed);
+        } finally {
+            db.stop();
+        }
+    }
+    
+    /**
+     * bergdb 019-09: as testCloseReportsBackgroundWriteFailure, with stop() before close():
+     * close() after stop() throws the failure too, as it does for a failed final flush.
+     */
+    @Nano
+    public static void testCloseAfterStopReportsBackgroundWriteFailure() throws Exception {
+        final FaultStream s = new FaultStream();
+        final Db db = Db.builder().testSetup(s).start();
+        try {
+            db.execute(db.trans().put("/a", "a0").build());
+            db.sync(SyncLevel.ORDINARY);
+            s.failAppends = true;
+            db.execute(db.trans().put("/a", "a1").build());
+            waitForStorageError(db);
+            db.stop();
+            Throwable thrown = within(10000, new Runnable() {
+                public void run() {
+                    db.close();
+                }
+            });
+            Assert.assertTrue("close() after stop() throws StreamIoException: " + thrown,
+                    thrown instanceof StreamIoException);
+            Assert.assertTrue("the write's failure: " + thrown.getCause(),
+                    String.valueOf(thrown.getCause()).contains("an append error"));
+        } finally {
+            db.stop();
+        }
+    }
+    
+    /**
+     * bergdb 019-09, option (a): a database that a call has failed with the storage's
+     * failure closes normally, also after stop(): the failure was reported, by the get here
+     * (a DbFailedException), and DbFailedException asks the application to close the
+     * database and start it again. With option (b) this close would throw too.
+     */
+    @Nano
+    public static void testCloseOfFailedDatabaseReturnsNormally() throws Exception {
+        for (final boolean stopFirst : new boolean[] {false, true}) {
+            final FaultStream s = new FaultStream();
+            final Db db = Db.builder().testSetup(s).start();
+            try {
+                db.execute(db.trans().put("/a", "a0").build());
+                db.sync(SyncLevel.ORDINARY);
+                s.failAppends = true;
+                db.execute(db.trans().put("/a", "a1").build());
+                waitForStorageError(db);
+                DbFailedException failed = null;
+                try {
+                    DbUtil.get(db, "/a");
+                } catch (DbFailedException e) {
+                    failed = e;
+                }
+                Assert.assertTrue("a get fails", failed != null);
+                if (stopFirst) {
+                    db.stop();
+                }
+                Throwable thrown = within(10000, new Runnable() {
+                    public void run() {
+                        db.close();
+                    }
+                });
+                Assert.assertTrue("close() returns normally (stop first: " + stopFirst
+                        + "): " + thrown, thrown == null);
+            } finally {
+                db.stop();
+            }
+        }
+    }
+    
+    /**
      * Node size 8, a startup distance of 1,000 bytes, so that index nodes are written and
      * can be evicted; every evictable object evicted after every transaction; the audit
      * after every 'audit'-th transaction and at startup, or off (0).

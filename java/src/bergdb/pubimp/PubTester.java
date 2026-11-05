@@ -172,6 +172,47 @@ public class PubTester {
     }
     
     /**
+     * bergdb 019-09: through the Pub API, a failed write of the storage thread that no call
+     * met is thrown by Database.close() as StreamIoException, here at the end of a
+     * try-with-resources block; when the block throws, the close's exception is added to the
+     * block's as suppressed. Before, close() returned normally.
+     */
+    @Nano
+    public static void testCloseReportsBackgroundWriteFailure() throws Exception {
+        for (int c = 0; c < 2; c++) {
+            final FailingStream s = new FailingStream();
+            Throwable thrown = null;
+            try (Database d = DatabaseImp.createAndStart(Db.builder().testSetup(s).build())) {
+                d.connection().put("/a", "a0");
+                d.sync();
+                s.fail = true;
+                d.connection().put("/a", "a1");
+                final long end = System.nanoTime() + 10L * 1000 * 1000 * 1000;
+                while (!((DatabaseImp) d).getDb().internal().storageFailed()) {
+                    Assert.assertTrue("the storage fails", System.nanoTime() < end);
+                    Thread.sleep(1);
+                }
+                if (c == 1) {
+                    throw new IllegalStateException("the block throws");
+                }
+            } catch (StreamIoException | IllegalStateException e) {
+                thrown = e;
+            }
+            Throwable fromClose = thrown;
+            if (c == 1) {
+                Assert.assertTrue("the block's exception: " + thrown,
+                        thrown instanceof IllegalStateException);
+                Assert.assertEquals("suppressed", 1, thrown.getSuppressed().length);
+                fromClose = thrown.getSuppressed()[0];
+            }
+            Assert.assertTrue("close() throws StreamIoException (block " + c + "): "
+                    + fromClose, fromClose instanceof StreamIoException);
+            Assert.assertTrue("the write's failure: " + fromClose.getCause(),
+                    String.valueOf(fromClose.getCause()).contains("a failed append"));
+        }
+    }
+    
+    /**
      * bergdb 005-63: a start on a directory whose database is still closing after stop() is
      * refused at once, with DirectoryInUseException as the cause; after close() it starts.
      * The close waits here for a write whose force is held on a latch.
@@ -2942,6 +2983,40 @@ public class PubTester {
         syncer.join();
         Assert.assertTrue("sync(ORDINARY) waited for a later transaction", returned);
         d.stop();
+    }
+    
+    /** A MemoryStream whose appends fail once 'fail' is set (bergdb 019-09). */
+    private static class FailingStream implements AppendOnlyStream {
+        private final MemoryStream inner = new MemoryStream();
+        volatile boolean fail = false;
+        
+        public long getLength() {
+            return inner.getLength();
+        }
+        
+        public long getFirstPos() {
+            return inner.getFirstPos();
+        }
+        
+        public void read(long position, byte[] dest, int destOffset, int length) 
+                throws IOException {
+            inner.read(position, dest, destOffset, length);
+        }
+        
+        public void append(byte[] source, int sourceOffset, int length) throws IOException {
+            if (fail) {
+                throw new IOException("a failed append");
+            }
+            inner.append(source, sourceOffset, length);
+        }
+        
+        public void pretruncate(long position) throws IOException {
+            inner.pretruncate(position);
+        }
+        
+        public void close() {
+            inner.close();
+        }
     }
     
     /** A MemoryStream whose appends wait while it is held (bergdb 005-45). */

@@ -1,7 +1,7 @@
 019-09. Fix: close() returns normally after a background write failure that no call met
 =======================================================================================
 
-Status: waiting. Kind: Fix. Frans: decision.
+Status: done 2026-11-05, night 006-12. Kind: Fix. Frans: decision.
 Created 2026-11-05 by Frans Lundberg.
 
 What: the buffer's consumer fails to write (a disk error) while the
@@ -93,3 +93,57 @@ Log
 2026-11-05. Registered in night 006-12, from review R1's re-review of
 3cb19f7 (B2). Status waiting: the contract of `Database.close()` needs
 Frans's decision.
+
+2026-11-05, 20:50. Frans chose option (a), in his words to the night's
+coordinator, after its summary of the three options: "a". Status open,
+then in progress: taken by a W1 agent of night 006-12 (clone f3, branch
+w1-f3).
+
+2026-11-05. Done in night 006-12, option (a); see "Fix" below.
+
+
+Fix
+---
+
+* Tests first, in `DbTesterFailure`:
+  * `testCloseReportsBackgroundWriteFailure`, R1's probe case 1: a failed
+    write of the storage thread, then `close()` with no call between, must
+    throw `StreamIoException` with the write's failure as the cause. Before
+    the fix: "close() throws StreamIoException: null". After: passes.
+  * `testCloseAfterStopReportsBackgroundWriteFailure`: the same with
+    `stop()` before `close()`. Before: "close() after stop() throws
+    StreamIoException: null". After: passes.
+  * `testCloseOfFailedDatabaseReturnsNormally` pins (a): a get fails first
+    (`DbFailedException`), then `close()` returns normally, with and
+    without `stop()` before it. Passes before and after; with (b) it would
+    fail.
+  * Through the Pub API, `PubTester.testCloseReportsBackgroundWriteFailure`:
+    a try-with-resources block whose database's write failed; `close()`
+    throws `StreamIoException` at the block's end, or adds it as suppressed
+    to the block's exception. Before: "close() throws StreamIoException
+    (block 0): null". After: passes. `DatabaseImp.close()` calls
+    `Db.close()` and passes its exception through.
+* Fix:
+  * `StorageManager.closeInner` returns the storage's failure
+    (`getFailure()`) when the main stream had failed before the close,
+    read after the stream's close. It is null only while a read that met
+    the failure is between the two steps of `handleStreamException`; that
+    read throws the failure itself.
+  * `Db.closeStorage` reads `storageManager.hasFailed()` before the close,
+    and keeps the close's failure for `close()` to throw unless
+    `Db.reportedBefore()`: the storage had failed before the close, and
+    the database had failed (`Db.failure` is set; it is set only while the
+    state is ACTIVE, so it was FAILED before the first `stop()` or
+    `close()`), or the start threw (`closeAfterFailedStart`, as before).
+    That covers both of the entry's conditions (the state FAILED before the
+    close, or `Db.failure` a `StreamIoException` with that cause), and also
+    `close()` after `stop()` of a failed database. The same in `close()`'s
+    branch for a call within a transaction. A failure of the close itself,
+    such as a failed final flush, is thrown as before (005-73, F5).
+* Javadoc: `Database.close()`, `Db.close()`, `closeStorage`, `closeInner`
+  (its "reported by the call that met it" corrected) and `closeAndThrow`;
+  015-35's entry (the B1 part) points here. `releases/next.md`, a line in
+  Reliability.
+* 010-01: no setting, thread, global state or format change; the stream's
+  bytes are unchanged. P7 now holds for this case: the failure is reported
+  once at least.

@@ -283,6 +283,17 @@ Reliability
   such a failure, `close()` returns when the stream is closed and its
   directory released, also while the failed call still closes it (review
   R1 of night 006-12). The stream's bytes are unchanged.
+* **`close()` reports a failed background write that no call met**
+  (bergdb 019-09, review R1 of night 006-12; Frans, 2026-11-05). When the
+  storage thread's write failed and the application's next call was
+  `close()`, close returned normally: the transactions that were buffered
+  were lost, and no call said so (also in 2026.2 and 2026.1). Now
+  `Database.close()` throws `StreamIoException` with the write's failure as
+  the cause, also after `stop()`; in a try-with-resources block it is thrown
+  when the block ends, or added as suppressed to the block's exception. A
+  close of a database that has already failed (a call threw
+  `DbFailedException`) returns normally, as before. The stream's bytes are
+  unchanged.
 * **A failed close of the stream is reported by `close()`** (bergdb
   015-78 and 015-34, 016-06's R5-F1, R3-F6 and R5-F2; 2026-11-05). The
   storage thread closed the stream as it ended and dropped a failure of

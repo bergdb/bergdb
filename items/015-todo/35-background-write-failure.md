@@ -70,7 +70,11 @@ smaller faults; fixed in the night, in one change with 015-81's entry.
   the stream's close; the stream closed: false". After: passes.
 * Fix: `closeInner` closes the main stream also when it has failed, and
   returns no failure for it (the storage's failure is reported by the call
-  that met it, with the close's as suppressed). `BufferedStream.close()` is
+  that met it, with the close's as suppressed). Corrected by 019-09 (R1's
+  re-review, B2): when no call met the failure, as for a failed write of
+  the storage thread followed by `close()`, nothing reported it; now
+  `closeInner` returns the storage's failure, and `Db.close()` throws it
+  unless the database has already failed (Frans's option (a)). `BufferedStream.close()` is
   safe from several threads at once and returns when its thread has ended,
   and the thread closes the underlying stream as it ends (015-34's
   `finally`); so `close()` returns after the stream's close, whichever

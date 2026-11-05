@@ -111,7 +111,11 @@ public interface Database extends AutoCloseable {
      * <p>This is AutoCloseable's close(), without its checked exception: a try-with-resources
      * block calls it when the block ends, also when the block throws.
      * A failed final flush or storage close throws StreamIoException, also after stop()
-     * or an earlier close() (bergdb 005-73, F5).
+     * or an earlier close() (bergdb 005-73, F5). So does an earlier failure of the storage
+     * that no call has reported, such as a failed write of the storage thread while the
+     * application made no call (bergdb 019-09): the transactions that were buffered are
+     * lost. A close of a database that has failed (a call threw DbFailedException) returns
+     * normally, as that failure was reported.
      * </p>
      */
     public void close();
