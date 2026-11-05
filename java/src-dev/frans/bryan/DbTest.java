@@ -38,8 +38,8 @@ public class DbTest
     int currentId = startId;
 
     // Orig:
-    // Database db = Factory.database().dir(path).retainDuration(Duration.seconds(10.0)).start();
-    Database db = Factory.database().dir(path).retainDuration(Duration.seconds(10.0)).clock(new TestClock()).start();
+    // Database db = Factory.database().create(path).retainDuration(Duration.seconds(10.0)).start();
+    Database db = Factory.database().create(path).retainDuration(Duration.seconds(10.0)).clock(new TestClock()).start();
     
     Connection conn = db.connection();
 

@@ -10,7 +10,7 @@ class Person {
 public class GetStarted1 {
     public static void main(String[] args) throws java.io.IOException {
         Person adam = new Person("Adam");
-        Database db = Factory.database().dir("db-GetStarted1").start();
+        Database db = Factory.database().create("db-GetStarted1").start();
         Connection c = db.connection();
         
         c.put("/p", adam);

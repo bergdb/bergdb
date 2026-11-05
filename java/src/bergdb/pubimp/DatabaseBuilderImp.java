@@ -35,8 +35,11 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     private int cacheSizeInMb;         // cache size indicator from user
     private int startupDistanceInMb;
     
-    /** The directory of dir(), opened by start() (bergdb 005-66), or null. */
+    /** The directory of create() or open(), opened by start() (bergdb 005-66), or null. */
     private File dir = null;
+    
+    /** True for open(): start() refuses a directory without a database (bergdb 015-05). */
+    private boolean mustExist = false;
     
     
     public DatabaseBuilderImp() {
@@ -69,6 +72,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     public DatabaseBuilder memory() {
         dbBuilder.mainStream(new MemoryStream());
         this.dir = null;
+        this.mustExist = false;
         return this;
     }
     
@@ -85,21 +89,27 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         return this;
     }
     
-    public DatabaseBuilder dir(String dirname) {
-        File d = new File(dirname);
-        return dir(d);
+    /** Records the directory, in which start() may create a database (bergdb 015-05). */
+    public DatabaseBuilder create(String dirname) {
+        return directory(dirname, false);
+    }
+    
+    /** Records the directory, in which start() must find a database (bergdb 015-05). */
+    public DatabaseBuilder open(String dirname) {
+        return directory(dirname, true);
     }
     
     /**
-     * Records the directory; start() opens it (bergdb 005-66). Until 005-66 this method
-     * opened it, and a builder that was never started held it, since 005-63 its lock too,
-     * until the JVM ended.
+     * Records the directory; start() opens it (bergdb 005-66). Until 005-66 the builder's
+     * dir() opened it, and a builder that was never started held it, since 005-63 its lock
+     * too, until the JVM ended. Until 015-05 dir() was create(), and open() did not exist.
      */
-    public DatabaseBuilder dir(File dir) {
-        if (dir == null) {
-            throw new IllegalArgumentException("dir == null not allowed");
+    private DatabaseBuilder directory(String dirname, boolean mustExist) {
+        if (dirname == null) {
+            throw new IllegalArgumentException("dirname == null not allowed");
         }
-        this.dir = dir;
+        this.dir = new File(dirname);
+        this.mustExist = mustExist;
         return this;
     }
     
@@ -119,6 +129,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     public DatabaseBuilder mainStream(final AppendOnlyStream stream) {
         dbBuilder.mainStream(stream);
         this.dir = null;
+        this.mustExist = false;
         return this;
     }
     
@@ -185,10 +196,14 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         
         // What can refuse the start is checked before openDirs() opens a directory, which
         // creates it, its lock file and an empty first stream file (2026-11-03, bergdb 015-01,
-        // 015-06): a refused start opens, creates and writes nothing.
+        // 015-06; open()'s refusal 2026-11-05, 015-05): a refused start opens, creates and
+        // writes nothing.
         checkCryptoKey();
         if (dir != null) {
             refuseMissingStream(dir);
+            if (mustExist) {
+                refuseNoDatabase(dir);
+            }
         }
         
         Db db;
@@ -211,9 +226,9 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     /**
-     * Opens the directory of dir() (bergdb 005-66). The stream goes to 'opened' as it is
-     * opened, so that a later failure of the start closes it (start(); bergdb 015-56), and
-     * then to the DbBuilder. Until 2026-11-04 (bergdb 005-11) it opened the directories of
+     * Opens the directory of create() or open() (bergdb 005-66). The stream goes to
+     * 'opened' as it is opened, so that a later failure of the start closes it (start();
+     * bergdb 015-56), and then to the DbBuilder. Until 2026-11-04 (bergdb 005-11) it opened the directories of
      * replica() too, after the database's own.
      */
     private void openDirs(List<FileStream> opened) {
@@ -280,6 +295,32 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
                     + "empty database there, remove created.txt and the *.bergdb files and "
                     + "start again (bergdb 015-01).");
         }
+    }
+    
+    /**
+     * For open(), which never creates a database (2026-11-05, bergdb 015-05): refuses a
+     * directory that is missing, is not a directory, or holds no *.bergdb file with a byte
+     * (FileStream.hasStreamBytes); after refuseMissingStream, whose message tells more of a
+     * directory with created.txt. Before the directory is opened, so that the start creates
+     * and writes nothing; safe without the lock, as for refuseMissingStream.
+     *
+     * @throws DatabaseMissingException
+     */
+    private static void refuseNoDatabase(File dir) {
+        String what;
+        if (!dir.exists()) {
+            what = "the directory does not exist";
+        } else if (!dir.isDirectory()) {
+            what = "it is not a directory";
+        } else if (!FileStream.hasStreamBytes(dir)) {
+            what = "it has no stream file (*.bergdb) with a byte";
+        } else {
+            return;
+        }
+        throw new DatabaseMissingException("No database in " + dir + ": " + what + ". "
+                + "DatabaseBuilder.open() never creates one; the start has created and written "
+                + "nothing. Check the path, and that its volume is mounted; to create a new "
+                + "database there, use DatabaseBuilder.create() (bergdb 015-05).");
     }
     
     private static FileStream openDir(File dir) {
@@ -374,7 +415,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
                 new String(magic, java.nio.charset.StandardCharsets.ISO_8859_1));
     }
     
-    /** bergdb 015-44: cryptoKey(null) is refused, as dir(null) is. */
+    /** bergdb 015-44: cryptoKey(null) is refused, as create(null) and open(null) are. */
     @Nano private static void testCryptoKeyNullRefused() {
         IllegalArgumentException e = null;
         try {

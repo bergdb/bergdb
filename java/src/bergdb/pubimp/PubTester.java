@@ -182,7 +182,7 @@ public class PubTester {
         d.stop();
         
         try {
-            Factory.database().dir(dir).start().close();
+            Factory.database().create(dir).start().close();
             throw new AssertionError("a database started while the other was closing");
         } catch (StreamIoException e) {
             Assert.assertTrue("the cause, " + e.getCause(), 
@@ -191,17 +191,18 @@ public class PubTester {
         
         release.countDown();
         d.close();
-        Database d2 = Factory.database().dir(dir).start();
+        Database d2 = Factory.database().create(dir).start();
         Assert.assertEquals("a", d2.connection().get("/a", String.class));
         Assert.assertEquals("b", d2.connection().get("/b", String.class));
         d2.close();
     }
     
     /**
-     * bergdb 005-66: the builder opens its directories in start(). dir() of a directory that
-     * a database holds returns, and start() is refused; dir() of a new directory creates
-     * nothing; a builder that is dropped, and the first of two dir(), hold nothing. Until
-     * 005-66 dir() opened the directory, and those held its lock until the JVM ended.
+     * bergdb 005-66: the builder opens its directories in start(). create() of a directory
+     * that a database holds returns, and start() is refused; create() of a new directory
+     * creates nothing; a builder that is dropped, and the first of two create(), hold
+     * nothing. Until 005-66 the builder's dir(), create() since 015-05, opened the
+     * directory, and those held its lock until the JVM ended.
      */
     @Nano
     public static void testBuilderOpensInStart(TestEnvironment env) throws Exception {
@@ -209,8 +210,8 @@ public class PubTester {
         String a = new File(tmp, "a").getPath();
         File b = new File(tmp, "b");
         
-        Database d = Factory.database().dir(a).start();
-        DatabaseBuilder held = Factory.database().dir(a);
+        Database d = Factory.database().create(a).start();
+        DatabaseBuilder held = Factory.database().create(a);
         try {
             held.start().close();
             throw new AssertionError("started on a directory that a database holds");
@@ -220,17 +221,17 @@ public class PubTester {
         }
         d.close();
         
-        Factory.database().dir(b.getPath());        // Dropped.
-        Assert.assertFalse("dir() created the directory", b.exists());
+        Factory.database().create(b.getPath());        // Dropped.
+        Assert.assertFalse("create() created the directory", b.exists());
         
-        Database d2 = Factory.database().dir(a).dir(b.getPath()).start();
+        Database d2 = Factory.database().create(a).create(b.getPath()).start();
         d2.connection().put("/k", "b");
-        Database d3 = Factory.database().dir(a).start();      // The first dir() holds nothing.
+        Database d3 = Factory.database().create(a).start();   // The first create() holds nothing.
         Assert.assertTrue(d3.connection().get("/k", String.class) == null);
         d3.close();
         d2.close();
         
-        Database d4 = Factory.database().dir(b.getPath()).start();
+        Database d4 = Factory.database().create(b.getPath()).start();
         Assert.assertEquals("b", d4.connection().get("/k", String.class));
         d4.close();
     }
@@ -246,7 +247,7 @@ public class PubTester {
     @Nano
     public static void testSecondStartOfOneBuilder(TestEnvironment env) throws Exception {
         File dir = new File(env.createTempDir(), "db");
-        DatabaseBuilder builder = Factory.database().dir(dir.getPath());
+        DatabaseBuilder builder = Factory.database().create(dir.getPath());
         Database d = builder.start();
         d.connection().put("/a", "a0");
         d.sync();
@@ -256,7 +257,7 @@ public class PubTester {
         Assert.assertEquals("the files", files, filesAndLengths(dir));
         d.connection().put("/b", "b0");
         d.sync();
-        assertStartRefused("another builder", Factory.database().dir(dir.getPath()));
+        assertStartRefused("another builder", Factory.database().create(dir.getPath()));
         Assert.assertEquals("b0", d.connection().get("/b", String.class));
         d.close();
         
@@ -2034,7 +2035,7 @@ public class PubTester {
         File dir = env.createTempDir();
         CryptoKey cryptoKey = CryptoKey.parse("8184a9f2-salsa-75ac20b68ccdbf95b9999287bc4da0caf67b4c8edc40d7615bebf1beae3578b800cfc3dfbaad319c");
         
-        Database database = Factory.database().dir(dir.getPath()).cryptoKey(cryptoKey).start();
+        Database database = Factory.database().create(dir.getPath()).cryptoKey(cryptoKey).start();
         database.stop();
         
         File file = new File(dir, "created.txt");
@@ -2051,7 +2052,7 @@ public class PubTester {
         }
         
         File dir = env.createTempDir();
-        Database database = Factory.database().dir(dir.getPath()).start();
+        Database database = Factory.database().create(dir.getPath()).start();
         database.stop();
         
         File file = new File(dir, "created.txt");
@@ -2110,7 +2111,7 @@ public class PubTester {
         }
         assertMissing(dir);
         Assert.assertTrue(new File(dir, "created.txt").delete());
-        Database d = Factory.database().dir(dir.getPath()).start();
+        Database d = Factory.database().create(dir.getPath()).start();
         Assert.assertNull(d.connection().get("/k", String.class));
         d.close();
         Assert.assertTrue("a new created.txt", new File(dir, "created.txt").isFile());
@@ -2132,11 +2133,11 @@ public class PubTester {
         Assert.assertTrue(new File(dir, "bergdb.lock").isFile());
         File[] streams = streamFiles(dir);
         Assert.assertTrue(streams.length == 1 && streams[0].length() == 0);
-        Database d = Factory.database().dir(dir.getPath()).start();
+        Database d = Factory.database().create(dir.getPath()).start();
         d.connection().put("/k", "v");
         d.close();
         Assert.assertTrue("created.txt", new File(dir, "created.txt").isFile());
-        Database d2 = Factory.database().dir(dir.getPath()).start();
+        Database d2 = Factory.database().create(dir.getPath()).start();
         Assert.assertEquals("v", d2.connection().get("/k", String.class));
         d2.close();
     }
@@ -2155,7 +2156,7 @@ public class PubTester {
         File txt = new File(dir, "created.txt");
         String before = new String(Util.fileToBytes(txt.getPath()), "UTF-8");
         Assert.assertTrue(txt.delete());
-        Database d = Factory.database().dir(dir.getPath()).start();
+        Database d = Factory.database().create(dir.getPath()).start();
         Assert.assertEquals("v", d.connection().get("/k", String.class));
         d.close();
         Assert.assertTrue("created.txt written", txt.isFile());
@@ -2225,7 +2226,7 @@ public class PubTester {
                 + "dc40d7615bebf1beae3578b800cfc3dfbaad319c");
         for (File dir : new File[] {empty, missing}) {
             try {
-                Factory.database().dir(dir.getPath()).cryptoKey(other).start();
+                Factory.database().create(dir.getPath()).cryptoKey(other).start();
                 throw new AssertionError("started");
             } catch (IllegalStateException e) {
                 Assert.assertTrue(e.getMessage(), e.getMessage().contains("other"));
@@ -2238,7 +2239,7 @@ public class PubTester {
     /** A database with /k = v in a new temporary directory, closed (bergdb 015-01's tests). */
     private static File createdWithData(TestEnvironment env) throws IOException {
         File dir = env.createTempDir();
-        Database d = Factory.database().dir(dir.getPath()).start();
+        Database d = Factory.database().create(dir.getPath()).start();
         d.connection().put("/k", "v");
         d.close();
         Assert.assertTrue(new File(dir, "created.txt").isFile());
@@ -2283,7 +2284,7 @@ public class PubTester {
         String before = listing(dir);
         byte[] txt = Util.fileToBytes(new File(dir, "created.txt").getPath());
         try {
-            Database d = Factory.database().dir(dir.getPath()).start();
+            Database d = Factory.database().create(dir.getPath()).start();
             d.close();
             throw new AssertionError("a new database started in " + dir);
         } catch (DatabaseMissingException e) {
@@ -2291,6 +2292,186 @@ public class PubTester {
         }
         Assert.assertEquals("the directory's files", before, listing(dir));
         Assert.assertArrayEquals(txt, Util.fileToBytes(new File(dir, "created.txt").getPath()));
+    }
+    
+    /**
+     * bergdb 015-05: open() of a missing directory, here with a missing parent too, is
+     * refused, and creates nothing; also when it follows a create() of the directory (the
+     * last call counts). Before 015-05 there was no open(); dir(), now create(), created the
+     * directory, its parents and a new, empty database.
+     */
+    @Nano
+    private static void testOpenRefusesMissingDirectory(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File tmp = env.createTempDir();
+        File p = new File(new File(tmp, "parent"), "db");
+        assertOpenRefused(tmp, Factory.database().open(p.getPath()), "does not exist");
+        assertOpenRefused(tmp, Factory.database().create(p.getPath()).open(p.getPath()),
+                "does not exist");
+        Assert.assertTrue("the parent", !p.getParentFile().exists());
+    }
+    
+    /** bergdb 015-05: open() of a file, not a directory, is refused; the file is unchanged. */
+    @Nano
+    private static void testOpenRefusesFile(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File tmp = env.createTempDir();
+        File p = new File(tmp, "db");
+        Util.bytesToFile(new byte[] {1, 2, 3}, p.getPath());
+        assertOpenRefused(tmp, Factory.database().open(p.getPath()), "not a directory");
+    }
+    
+    /**
+     * bergdb 015-05: open() of an empty directory, as an unmounted volume's mount point, is
+     * refused and leaves it empty; so is a directory with other files, or with an empty
+     * first stream file (a creation that crashed before its first write, bergdb 005-33),
+     * which create() makes a database in.
+     */
+    @Nano
+    private static void testOpenRefusesDirectoryWithoutStream(TestEnvironment env)
+            throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File tmp = env.createTempDir();
+        File p = new File(tmp, "mnt");
+        Assert.assertTrue(p.mkdir());
+        assertOpenRefused(tmp, Factory.database().open(p.getPath()), "no stream file");
+        Assert.assertEquals("the empty directory", 0, p.list().length);
+        
+        Util.bytesToFile(new byte[] {1, 2, 3}, new File(p, "other.txt").getPath());
+        assertOpenRefused(tmp, Factory.database().open(p.getPath()), "no stream file");
+        
+        File crashed = env.createTempDir();
+        new FileStream(crashed).close();
+        File[] streams = streamFiles(crashed);
+        Assert.assertTrue(streams.length == 1 && streams[0].length() == 0);
+        assertOpenRefused(crashed, Factory.database().open(crashed.getPath()), "no stream file");
+        Database d = Factory.database().create(crashed.getPath()).start();
+        d.close();
+        Assert.assertTrue("created.txt", new File(crashed, "created.txt").isFile());
+    }
+    
+    /**
+     * bergdb 015-05: open() of a directory with created.txt and no stream byte, a database
+     * whose stream files were removed, is refused with 015-01's message, and writes nothing.
+     */
+    @Nano
+    private static void testOpenRefusesCreatedTxtWithoutStream(TestEnvironment env)
+            throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = createdWithData(env);
+        for (File f : streamFiles(dir)) {
+            Assert.assertTrue(f.delete());
+        }
+        assertOpenRefused(dir, Factory.database().open(dir.getPath()), "015-01");
+    }
+    
+    /**
+     * bergdb 015-05: open() opens a database that create() made, with its data, and the
+     * database takes writes; create() opens it again, and does not make a new one.
+     */
+    @Nano
+    private static void testOpenExisting(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = createdWithData(env);
+        Database d = Factory.database().open(dir.getPath()).start();
+        Assert.assertEquals("v", d.connection().get("/k", String.class));
+        d.connection().put("/k2", "v2");
+        d.close();
+        
+        Database d2 = Factory.database().create(dir.getPath()).start();
+        Assert.assertEquals("v", d2.connection().get("/k", String.class));
+        Assert.assertEquals("v2", d2.connection().get("/k2", String.class));
+        d2.close();
+    }
+    
+    /**
+     * bergdb 015-05: create() makes a missing directory with its missing parents, and an
+     * empty directory, into a new database; open() then opens each.
+     */
+    @Nano
+    private static void testCreateMissingAndEmpty(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File missing = new File(new File(new File(env.createTempDir(), "a"), "b"), "db");
+        File empty = env.createTempDir();
+        for (File p : new File[] {missing, empty}) {
+            Database d = Factory.database().create(p.getPath()).start();
+            Assert.assertNull(d.connection().get("/k", String.class));
+            d.connection().put("/k", "v");
+            d.close();
+            Assert.assertTrue("created.txt in " + p, new File(p, "created.txt").isFile());
+            Database d2 = Factory.database().open(p.getPath()).start();
+            Assert.assertEquals("v", d2.connection().get("/k", String.class));
+            d2.close();
+        }
+    }
+    
+    /** bergdb 015-05: open() of an encrypted database, with its key, opens it. */
+    @Nano
+    private static void testOpenEncrypted(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = new File(env.createTempDir(), "db");
+        CryptoKey key = CryptoKey.generate();
+        Database d = Factory.database().create(dir.getPath()).cryptoKey(key).start();
+        d.connection().put("/k", "secret");
+        d.close();
+        
+        Database d2 = Factory.database().open(dir.getPath()).cryptoKey(key).start();
+        Assert.assertEquals("secret", d2.connection().get("/k", String.class));
+        d2.close();
+    }
+    
+    /**
+     * Asserts that the start of 'builder', an open(), throws a DatabaseMissingException
+     * whose message has 'expected', and that the files under 'root' are as they were: the
+     * start created and wrote nothing (bergdb 015-05).
+     */
+    private static void assertOpenRefused(File root, DatabaseBuilder builder, String expected)
+            throws IOException {
+        String before = tree(root);
+        try {
+            Database d = builder.start();
+            d.close();
+            throw new AssertionError("a database started under " + root);
+        } catch (DatabaseMissingException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains(expected));
+        }
+        Assert.assertEquals("the files under " + root, before, tree(root));
+    }
+    
+    /** The files and directories under 'root', sorted, each file with its length and bytes. */
+    private static String tree(File root) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        tree(root, "", sb);
+        return sb.toString();
+    }
+    
+    private static void tree(File f, String path, StringBuilder sb) throws IOException {
+        if (f.isDirectory()) {
+            sb.append(path).append("/\n");
+            String[] names = f.list();
+            java.util.Arrays.sort(names);
+            for (String n : names) {
+                tree(new File(f, n), path + "/" + n, sb);
+            }
+        } else {
+            byte[] bytes = Util.fileToBytes(f.getPath());
+            sb.append(path).append(' ').append(bytes.length).append(' ')
+                    .append(java.util.Arrays.hashCode(bytes)).append('\n');
+        }
     }
     
     @Nano
@@ -2512,7 +2693,7 @@ public class PubTester {
         }
         File dir = env.createTempDir();
         CryptoKey right = CryptoKey.generate();
-        Database d = Factory.database().dir(dir.getPath()).cryptoKey(right).start();
+        Database d = Factory.database().create(dir.getPath()).cryptoKey(right).start();
         d.connection().put("/k", "v");
         d.sync();
         ((DatabaseImp) d).getDb().close();
@@ -2521,7 +2702,7 @@ public class PubTester {
         long files = openFiles();
         for (int i = 0; i < 10; i++) {
             try {
-                Factory.database().dir(dir.getPath()).cryptoKey(CryptoKey.generate()).start();
+                Factory.database().create(dir.getPath()).cryptoKey(CryptoKey.generate()).start();
                 throw new AssertionError("started with a wrong key");
             } catch (BadCryptoKey e) {
                 // Expected.
@@ -2533,7 +2714,7 @@ public class PubTester {
                     openFiles() <= files);
         }
         
-        Database d2 = Factory.database().dir(dir.getPath()).cryptoKey(right).start();
+        Database d2 = Factory.database().create(dir.getPath()).cryptoKey(right).start();
         Assert.assertEquals("v", d2.connection().get("/k", String.class));
         ((DatabaseImp) d2).getDb().close();
     }
@@ -2549,7 +2730,7 @@ public class PubTester {
             return;
         }
         File d = new File(env.createTempDir(), "db");
-        Database first = Factory.database().dir(d.getPath()).start();
+        Database first = Factory.database().create(d.getPath()).start();
         first.sync();
         ((DatabaseImp) first).getDb().close();
         File[] streams = d.listFiles();
@@ -2566,7 +2747,7 @@ public class PubTester {
         Set<Thread> before = DbTesterFailure.storageThreads();
         long files = openFiles();
         try {
-            Factory.database().dir(d.getPath()).start();
+            Factory.database().create(d.getPath()).start();
             throw new AssertionError("started");
         } catch (DatabaseNotCreatedException e) {
             // Expected (005-33; until 2026-10-25 a StreamFormatException, 005-28).
@@ -2582,7 +2763,7 @@ public class PubTester {
         }
         Assert.assertTrue("removed " + d, d.delete());
         
-        Database again = Factory.database().dir(d.getPath()).start();
+        Database again = Factory.database().create(d.getPath()).start();
         again.connection().put("/a", "a0");
         Assert.assertEquals("a0", again.connection().get("/a", String.class));
         ((DatabaseImp) again).getDb().close();
@@ -2637,7 +2818,7 @@ public class PubTester {
         long files = openFiles();
         for (int i = 0; i < 3; i++) {
             try {
-                Factory.database().dir(dir.getPath()).cryptoKey(key).start();
+                Factory.database().create(dir.getPath()).cryptoKey(key).start();
                 throw new AssertionError("started");
             } catch (IllegalStateException e) {
                 Assert.assertTrue(e.getMessage(), e.getMessage().contains("other"));
@@ -2695,7 +2876,7 @@ public class PubTester {
         String output = new String(Util.fileToBytes(out.getPath()), "UTF-8");
         Assert.assertEquals("the child's exit, " + output, 0, p.exitValue());
         
-        Database d = Factory.database().dir(dir.getPath()).start();
+        Database d = Factory.database().open(dir.getPath()).start();
         Connection c = d.connection();
         int found = 0;
         for (int i = 0; i < StopAndReturn.N; i++) {
@@ -2712,7 +2893,7 @@ public class PubTester {
         static final int N = 2000;
         
         public static void main(String[] args) {
-            Database d = Factory.database().dir(args[0]).start();
+            Database d = Factory.database().create(args[0]).start();
             Connection c = d.connection();
             for (int i = 0; i < N; i++) {
                 c.put("/k" + i, "v" + i);

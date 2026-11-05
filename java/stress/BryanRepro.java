@@ -120,7 +120,7 @@ public class BryanRepro {
     /** One run of the original program: start, read, delete, create, sync, stop (here close()). */
     static int runJob(File dir, int startId, int expectedExisting) {
         int lastId = startId + COUNT;
-        Database db = Factory.database().dir(dir.getPath())
+        Database db = Factory.database().create(dir.getPath())
                 .retainDuration(Duration.seconds(10.0)).start();
         Connection conn = db.connection();
 

@@ -18,7 +18,7 @@ public class MultipleWriters {
         int runId = (int) (Math.random() * 1000);
         String id = "" + runId;
         
-        Database d = Factory.database().dir("temp-MultipleWriters").start();
+        Database d = Factory.database().create("temp-MultipleWriters").start();
         Connection c = d.connection();
         System.out.println("Started run " + id + ".");
         

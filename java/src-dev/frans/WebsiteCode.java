@@ -17,7 +17,7 @@ public class WebsiteCode {
         
         Person adam = new Person("Adam");
         
-        Database database = Factory.database().dir("db1").start();
+        Database database = Factory.database().create("db1").start();
         Connection c = database.connection();
         c.put("/adam", adam);
         
@@ -32,7 +32,7 @@ public class WebsiteCode {
         System.out.println("== m2() ==");
         Person adam = new Person("Adam");
         Person eve = new Person("Eve");
-        Database database = Factory.database().dir("db2").start();
+        Database database = Factory.database().create("db2").start();
         Connection c = database.connection();
         
         c.w().put("/adam", adam)
@@ -55,7 +55,7 @@ public class WebsiteCode {
     
     void m3() {
         System.out.println("== m3() ==");
-        Database database = Factory.database().dir("db2").start();
+        Database database = Factory.database().create("db2").start();
         Connection c = database.connection();
         
         c.put("/key", "v1");

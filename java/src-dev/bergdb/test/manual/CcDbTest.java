@@ -98,7 +98,7 @@ public class CcDbTest {
         }
         
         database = Factory.database()
-                .dir(dir)
+                .create(dir)
                 .cryptoKey(key)
                 .startupDistanceInMb(5)
                 .start();

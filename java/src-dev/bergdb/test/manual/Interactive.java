@@ -86,7 +86,7 @@ public class Interactive {
 
     private void start() throws Exception {
         DatabaseBuilderImp imp = (DatabaseBuilderImp)
-                Factory.database().dir(dirname).cryptoKey(cryptoKey)
+                Factory.database().create(dirname).cryptoKey(cryptoKey)
                 .startupDistanceInMb(startupDistance).cacheSizeInMb(cacheSize);
         
         database = imp.start();

@@ -25,7 +25,7 @@ public class PayDemo {
     
     /** Creates database and starts it. */
     private static Database createDatabase() throws IOException {
-        DatabaseBuilder builder = Factory.database().dir(dir);
+        DatabaseBuilder builder = Factory.database().create(dir);
         
         long t0 = System.nanoTime();
         Database database = builder.start();

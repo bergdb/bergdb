@@ -8,6 +8,11 @@ package bergdb.pub.util;
  * was emptied. The start has opened, created and written nothing. Before, such a start
  * created a new, empty database there, and said nothing.</p>
  *
+ * <p>Also thrown by a start of DatabaseBuilder.open(), which never creates a database, when
+ * its directory is missing, is not a directory, or holds no stream file with a byte
+ * (2026-11-05, bergdb 015-05): a wrong path, or a volume that is not mounted. The start has
+ * then created and written nothing; DatabaseBuilder.create() creates a database there.</p>
+ *
  * <p>To start the database, restore its stream's files (*.bergdb) from a backup, into the
  * directory, and start again. To create a new, empty database there instead, remove
  * created.txt and the empty *.bergdb files, and start again.</p>

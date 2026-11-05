@@ -25,7 +25,7 @@ class Demo {
     }
     
     private static Connection createDatabase() {
-        Database database = Factory.database().dir("db-demo").start();
+        Database database = Factory.database().create("db-demo").start();
         return database.connection();
     }
     

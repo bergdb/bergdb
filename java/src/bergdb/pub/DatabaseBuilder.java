@@ -8,7 +8,7 @@ import bergdb.pub.util.DbException;
 
 /**
  * A DatabaseBuilder is used to create a Database.
- * Use the settings methods (dir, memory, clock, ...) and then 
+ * Use the settings methods (create or open, memory, clock, ...) and then 
  * call start() to create and start the database.
  * 
  * @see Database
@@ -17,25 +17,45 @@ import bergdb.pub.util.DbException;
 public interface DatabaseBuilder {
     
     /**
-     * Use the given directory to store the database stream in files. start() opens the
-     * directory, and creates it if it does not exist; this method only records it (bergdb
-     * 005-66), so a builder that is not started holds nothing. Until 005-66 this method
-     * opened it and threw the errors that start() now throws.
-     * 
-     * <p>One database at a time has the directory (bergdb 005-63): while another database
-     * has it open, in this process or in another, also one that this builder started or one
-     * that is closing after stop(), start() throws a StreamIoException whose cause is a
-     * bergdb.stream.DirectoryInUseException. Nothing in the directory has been read or
-     * changed then, and the database that has it runs on as before (bergdb 015-56).</p>
+     * Opens the database in the given directory, or creates one there if the directory holds
+     * none, as NIO's {@code StandardOpenOption.CREATE} opens a file or creates it (bergdb
+     * 015-05). The database's stream is stored in files in the directory. start() opens the
+     * directory, and creates it, with its missing parents, if it does not exist; a directory
+     * that holds no stream file (*.bergdb) with a byte, a missing or an empty one, or one
+     * with other files only, gets a new, empty database. This method only records the
+     * directory (bergdb 005-66), so a builder that is not started holds nothing. Until
+     * 015-05 this method was dir(String); until 005-66 dir() opened the directory and threw
+     * the errors that start() now throws.
      * 
      * <p>A directory that holds a database has created.txt, written once the database's
      * creation is durable; start() refuses one that has created.txt and no stream file
      * (*.bergdb) with a byte, with a DatabaseMissingException (bergdb 015-01). A directory
      * without created.txt, also an empty or a missing one, gets a new, empty database, as a
      * wrong path or a volume that is not mounted does too. An application that must never
-     * create a database there checks, before start(), that created.txt exists in it.</p>
+     * create a database there uses {@link #open(String)}.</p>
+     * 
+     * @param dirname  The database's directory.
+     * @throws IllegalArgumentException If dirname is null.
      */
-    public DatabaseBuilder dir(String dirname);
+    public DatabaseBuilder create(String dirname);
+    
+    /**
+     * Opens the existing database in the given directory, and never creates one: start()
+     * throws a DatabaseMissingException if the directory is missing, is not a directory, or
+     * holds no stream file (*.bergdb) with a byte (bergdb 015-05). Such a start creates and
+     * writes nothing: no directory, no lock file, no created.txt and no stream file. So a
+     * wrong path, or a volume that is not mounted, is refused, where {@link #create(String)}
+     * would give a new, empty database; an application whose database must be there, and a
+     * tool that reads a database, use this method. This method only records the directory
+     * (bergdb 005-66), as create(String) does; start() opens it.
+     * 
+     * <p>A directory with created.txt and no stream byte is refused as by create(String),
+     * with that DatabaseMissingException's message (bergdb 015-01).</p>
+     * 
+     * @param dirname  The database's directory.
+     * @throws IllegalArgumentException If dirname is null.
+     */
+    public DatabaseBuilder open(String dirname);
     
     /**
      * An in-memory database stream will be used.
@@ -110,11 +130,18 @@ public interface DatabaseBuilder {
      * exception leaves (bergdb 005-32): the start can be tried again, or the directory
      * removed, at once.</p>
      * 
+     * <p>One database at a time has the directory of create() or open() (bergdb 005-63):
+     * while another database has it open, in this process or in another, also one that this
+     * builder started or one that is closing after stop(), start() throws a
+     * StreamIoException whose cause is a bergdb.stream.DirectoryInUseException. Nothing in
+     * the directory has been read or changed then, and the database that has it runs on as
+     * before (bergdb 015-56).</p>
+     * 
      * @throws DbException
      *             If a functioning database could not be started; among them a
-     *             StreamIoException if the directory of dir() cannot be opened, or
-     *             another database has it (the cause a DirectoryInUseException, bergdb
-     *             005-63).
+     *             StreamIoException if the directory of create() or open() cannot be
+     *             opened, or another database has it (the cause a DirectoryInUseException,
+     *             bergdb 005-63).
      * @throws BadCryptoKey
      *             If the wrong crypto key is used, or none is used with an encrypted
      *             database or a crypto key is used with an unencrypted database. The
@@ -128,12 +155,15 @@ public interface DatabaseBuilder {
      *             its directory the stream's files (*.bergdb) and created.txt, and start
      *             again. A database that holds data never gives this exception.
      * @throws DatabaseMissingException
-     *             If the directory of dir() held a database and its stream is missing: it
-     *             has created.txt, and no stream file (*.bergdb) with a byte; the files
-     *             were removed, not restored, or emptied (bergdb 015-01). The start has
-     *             opened, created and written nothing. Restore the *.bergdb files and start
-     *             again; or, for a new, empty database there, remove created.txt and the
-     *             *.bergdb files. Before, such a start created a new, empty database.
+     *             If the directory of create() or open() held a database and its stream is
+     *             missing: it has created.txt, and no stream file (*.bergdb) with a byte;
+     *             the files were removed, not restored, or emptied (bergdb 015-01). The
+     *             start has opened, created and written nothing. Restore the *.bergdb files
+     *             and start again; or, for a new, empty database there, remove created.txt
+     *             and the *.bergdb files. Before, such a start created a new, empty
+     *             database. Also, for open(), if the directory is missing, is not a
+     *             directory, or holds no stream file with a byte (bergdb 015-05); the start
+     *             has then created and written nothing.
      */
     public abstract Database start();
 }

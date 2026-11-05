@@ -24,7 +24,7 @@ class Account {
  */
 public class GetStarted4 {
     public static void main(String[] args) throws java.io.IOException {
-        Database db = Factory.database().dir("db-GetStarted4").start();
+        Database db = Factory.database().create("db-GetStarted4").start();
         Connection c = db.connection();
         
         Account a0 = c.get("/accounts/0", Account.class);

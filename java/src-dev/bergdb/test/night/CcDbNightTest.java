@@ -87,7 +87,7 @@ public class CcDbNightTest {
         }
         
         database = Factory.database()
-                .dir(dir)
+                .create(dir)
                 .cryptoKey(key)
                 .startupDistanceInMb(5)
                 .cacheSizeInMb(cacheSizeInMb)

@@ -34,7 +34,6 @@ Open
 |---|---|---|---|
 | [015-03](03-lean-follows-005-79.md) | Implement | Lean follows 005-79's integer take | open |
 | [015-04](04-deps-helper-rule.md) | Investigate | deps.py counts take and dither as test code | open |
-| [015-05](05-empty-or-missing-directory.md) | Decide | A start on an empty or missing directory creates a database | open |
 | [015-06](06-refused-start-leaves-file.md) | Fix | A refused start leaves an empty first stream file | in progress |
 | [015-08](08-streamdigest-compare-cut.md) | Fix | StreamDigest's compare reports the physical cut, which depends on timing | open |
 | [015-11](11-tempdircreator-tmp.md) | Fix | The tests' TempDirCreator writes to /tmp, whatever java.io.tmpdir says | open |
@@ -96,6 +95,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-05](05-empty-or-missing-directory.md) | Decide | A start on an empty or missing directory creates a database | done | 2026-11-05 |
 | [015-44](44-cryptokey-null.md) | Fix | DatabaseBuilder.cryptoKey(CryptoKey.NULL) after a key keeps the key | done | 2026-11-05 |
 | [015-45](45-cryptokey-hashcode.md) | Fix | CryptoKey has equals() and no hashCode() | done | 2026-11-05 |
 | [015-47](47-bytes-shared-with-caller.md) | Fix | A byte[] value is shared with the caller: a change of the array ... | done | 2026-11-05 |
@@ -149,7 +149,8 @@ Files
   `deps.py`'s helper rule counts `TransSeq.take` and `dither` as test code.
 * [05-empty-or-missing-directory.md](05-empty-or-missing-directory.md).
   015-05, Decide: 015-01's case 3, a start on an empty or missing
-  directory; B1 (`createIfMissing()`) recommended for after 2026.2.
+  directory; decided and done: `create(p)` and `open(p)`, `dir(p)`
+  removed (B1, `createIfMissing()`, superseded).
 * [06-refused-start-leaves-file.md](06-refused-start-leaves-file.md).
   015-06, Fix: a refused start leaves an empty `00000000000000.bergdb`.
 * [07-node-fields-unchecked.md](07-node-fields-unchecked.md). 015-07, Fix:

@@ -12,7 +12,7 @@ import bergdb.pub.*;
  */
 public class StorageOverhead {
     public static void main(String[] args) throws IOException {
-        Database d = Factory.database().dir("temp-1").start();
+        Database d = Factory.database().create("temp-1").start();
         d.connection().w().put("/key", "value").execute();
         d.sync();
     }

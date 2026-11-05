@@ -25,7 +25,7 @@ public class PubInterruptTester {
         try {
             Thread.currentThread().interrupt();
             try {
-                db = Factory.database().dir(new File(root, "db").getPath()).start();
+                db = Factory.database().create(new File(root, "db").getPath()).start();
                 Assert.assertTrue("the flag was lost", Thread.currentThread().isInterrupted());
             } finally {
                 Thread.interrupted();

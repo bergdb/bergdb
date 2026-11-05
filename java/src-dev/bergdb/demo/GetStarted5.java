@@ -8,7 +8,7 @@ import bergdb.pub.*;
  */
 public class GetStarted5 {
     public static void main(String[] args) throws java.io.IOException {
-        Database db = Factory.database().dir("db-GetStarted5").start();
+        Database db = Factory.database().create("db-GetStarted5").start();
         Connection c = db.connection();
         
         c.put("/key", "a");

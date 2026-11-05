@@ -3,7 +3,7 @@ import bergdb.pub.*;
 
 public class GetStarted3 {
     public static void main(String[] args) throws java.io.IOException {
-        Database db = Factory.database().dir("db-GetStarted2").start();
+        Database db = Factory.database().open("db-GetStarted2").start();
         Connection c = db.connection();
         
         for (Person p : c.usePrimary(Person.class).dir("/genesis/")

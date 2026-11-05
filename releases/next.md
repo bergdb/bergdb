@@ -8,6 +8,28 @@ again. The release folds them into its `releases/VERSION/readme.md`, as
 empties this file.
 
 
+Pub API
+-------
+
+* **`DatabaseBuilder.dir(p)` is gone: `create(p)` or `open(p)`** (bergdb
+  015-05; Frans, 2026-11-05). A program that used `dir(p)` does not
+  compile; it takes `create(p)`, which does what `dir(p)` did: it opens the
+  database in `p`, or creates `p` (with its missing parents) and a new,
+  empty database when `p` holds none, as NIO's `StandardOpenOption.CREATE`
+  does for a file. 015-01's refusal stays: a directory with `created.txt`
+  and no stream byte is refused with `DatabaseMissingException`. The new
+  `open(p)` never creates a database: `start()` throws
+  `DatabaseMissingException` when `p` is missing, is not a directory, or
+  holds no stream file (`*.bergdb`) with a byte, and then creates and
+  writes nothing (no directory, lock file, `created.txt` or stream file).
+  So a wrong path, or a volume that is not mounted (015-01's case 3, a
+  known issue of 2026.2), is refused where `create(p)` would give a new,
+  empty database; an application whose database must be there uses
+  `open(p)`. 2026.2's recipe for that (check `created.txt` before
+  `start()`) is no longer needed. `memory()` is unchanged; the Core API
+  and the stream are unchanged.
+
+
 Reliability
 -----------
 
@@ -54,7 +76,8 @@ Reliability
   encryption** (bergdb 015-44, 016-06's S1-F5; 2026-11-05), as its Javadoc
   says; NULL was ignored, and the database was encrypted with the earlier
   key. `cryptoKey(null)` throws `IllegalArgumentException`, as `dir(null)`
-  does, not a `NullPointerException`.
+  did and `create(null)` and `open(null)` do (015-05), not a
+  `NullPointerException`.
 * **`CryptoKey` has a `hashCode()` that agrees with `equals()`** (bergdb
   015-45, S1-F6; 2026-11-05): equal keys were not found in a `HashSet` or a
   `HashMap`.

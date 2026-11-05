@@ -1,9 +1,9 @@
 015-05. Decide: a start on an empty or missing directory creates a database
 ===========================================================================
 
-Status: in progress (decided 2026-11-05: `create(p)` and `open(p)`; the
-change by session bergdb-e8's agent). Kind: Decide. Created 2026-11-03
-by Frans Lundberg.
+Status: done (2026.3): decided 2026-11-05, `create(p)` and `open(p)`,
+`dir(p)` removed; made the same day (see Log). Kind: Decide. Created
+2026-11-03 by Frans Lundberg. Closed 2026-11-05.
 
 For Frans, after release 2026.2. 015-01's case 3: a volume that is not
 mounted, or a wrong path. The directory is empty or missing; the start
@@ -138,3 +138,55 @@ bergdb-e8; "What other databases do" added at his request.
 2026-11-05, 11:39. Decided by Frans: `create(p)` and `open(p)`, `dir(p)`
 removed (section "The decision"); B1 superseded. The change started by
 session bergdb-e8's agent.
+
+2026-11-05. Done by session bergdb-e8's agent, as decided:
+
+* `DatabaseBuilder.create(String)` is `dir(String)` renamed, with its
+  Javadoc: its first sentence says that it opens the database in the
+  directory or creates one there, as NIO's `StandardOpenOption.CREATE`;
+  015-01's paragraph on `created.txt` follows, and the recipe for an
+  application that must never create a database is now "use
+  `open(String)`". The directory lock's paragraph (005-63, 015-56) moved
+  to `start()`, as it holds for both methods.
+* `DatabaseBuilder.open(String)` is new. Its first sentence: it opens the
+  existing database in the directory and never creates one, and `start()`
+  throws a `DatabaseMissingException` if the directory is missing, is not
+  a directory, or holds no stream file with a byte. The check,
+  `DatabaseBuilderImp.refuseNoDatabase`, is in `start()` after 015-01's
+  `refuseMissingStream` (whose message tells more of a directory with
+  `created.txt`), before the directory is opened, with
+  `FileStream.hasStreamBytes`; so the start creates and writes nothing.
+  The builder keeps the directory and a flag; the last of `create()`,
+  `open()`, `memory()` counts. `DatabaseMissingException`'s Javadoc names
+  the new case.
+* `dir(String)` is gone, and so is `DatabaseBuilderImp.dir(File)`, which
+  no code called. 49 builder calls moved: 47 to `create(p)` (tests in
+  `PubTester` and `PubInterruptTester`, the demos and manual and night
+  tests in `src-dev`, `stress/BryanRepro.java`, the overview's example)
+  and 2 to `open(p)`: `bergdb.demo.GetStarted3`, which reads the database
+  that `GetStarted2` made, and `PubTester.testStopThenReturnFromMain`'s
+  read of the child's database. README.md and docs/levels.md show no
+  builder call; `java/bench` has none. Tools under `items/` keep `dir(`
+  (015-19).
+* Tests, in `PubTester`: `testOpenRefusesMissingDirectory` (a missing
+  directory with a missing parent; also `create(p).open(p)`),
+  `testOpenRefusesFile`, `testOpenRefusesDirectoryWithoutStream` (an empty
+  directory, the unmounted mount point; one with another file; one with
+  an empty first stream file, which `create()` then makes a database in),
+  `testOpenRefusesCreatedTxtWithoutStream`: each asserts the exception and
+  that the files under the test's directory, their names, lengths and
+  bytes, are as before; `testOpenExisting`, `testCreateMissingAndEmpty`
+  (a missing directory with two missing parents, and an empty one) and
+  `testOpenEncrypted`. Before the change `open()` and `create()` did not
+  exist, so the tests could not fail on the old code; with
+  `refuseNoDatabase` switched off, the first three fail.
+* 010-01: no new setting (P10), the intent is in the method that names
+  the directory; the Core Layer and `DbBuilder` are unchanged (P12), and
+  so is the stream (P2); the refusal says what happened and what to do,
+  and writes nothing (P7's spirit); no global state (P9); the check lists
+  the directory once, as 015-01's (P5); P1, P3, P4, P6, P8 and P11 are not
+  touched.
+* `releases/next.md`: a "Pub API" section with the change.
+* Gate: `before-commit.sh`: `BEFORE COMMIT OK (104 s)`, unit 1167, f 81;
+  `stress/core-build.sh unit`: `CORE BUILD OK` (747 tests);
+  `javadoc-pub.sh`: `JAVADOC PUB OK`.
