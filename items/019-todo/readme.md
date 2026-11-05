@@ -104,6 +104,7 @@ Open
 |---|---|---|---|---|
 | [019-01](01-metablock-version-high-bytes.md) | Fix | A meta block's version is read as 2 bytes; bytes 6 and 7 are not checked | none | open |
 | [019-02](02-stream-bad-length-exceptions.md) | Fix | The streams refuse a bad length with other exceptions | none | open |
+| [019-03](03-get-that-copies.md) | Decide | A get that always copies a byte[] value | decision | waiting |
 
 
 Closed
@@ -129,6 +130,9 @@ Files
   019-02, Fix: the streams refuse a negative length, or one past the
   array, with other exceptions than the `IllegalArgumentException` that
   `AppendOnlyStream` promises; found by 018-02's harness.
+* [03-get-that-copies.md](03-get-that-copies.md). 019-03, Decide: a get
+  that always copies a `byte[]` value, beside 015-47's zero-copy gets;
+  for Frans, another time.
 
 
 Log
@@ -149,3 +153,6 @@ entries.
 
 2026-11-05. 019-02 registered: found by the harness of the stream
 contract (018-02).
+
+2026-11-05. 019-03 registered by session bergdb-e8, from Frans's words
+of 12:00 on 015-47 ("for another time").
