@@ -241,6 +241,11 @@ public class StorageManager implements AppendOnlyStream {
     /**
      * Reads from the storage.
      * Caller must have Read Access.
+     * <p>A read past the end (EOFException) fails the storage, and so the database, as any
+     * IOException of the main stream does: the database reads only at positions it got from
+     * the stream, so such a read means corrupt data or a bug, and the database then stops
+     * (bergdb 018-02). A read below the first position, which a cut overtook, does not: its
+     * ReadBelowFirstPosException leaves the storage as it was.</p>
      */
     public void read(long position, byte[] dest, int destOffset, int length) throws IOException {
         //

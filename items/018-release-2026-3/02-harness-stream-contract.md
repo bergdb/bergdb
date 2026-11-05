@@ -119,7 +119,14 @@ implementation, each on a new stream from its factory, which it closes:
    `IllegalArgumentException`, and the stream goes on.
 8. A read past the end, three of them: at the end, across it, beyond it;
    each `EOFException`, each on a new stream (a `StorageManager` fails
-   at a read's `IOException`, by design).
+   at a read's `IOException`, by design). Whether that is a fault was
+   asked; Frans, 2026-11-05, 12:35: "as recommended", option (a), not a
+   fault. The database reads only at positions it got from the stream, so
+   a read past the end means corrupt data or a bug, and it then stops (P7
+   of 010-01, as 015-07 decided for corrupt data); a read below the first
+   position is `ReadBelowFirstPosException`, and the database goes on. Not
+   chosen: (b), do not fail on `EOFException`. `StorageManager.read()`'s
+   Javadoc says so; the harness keeps a new stream for each of the three.
 9. A read below the first position, after a cut at 2.1 MB of 2.5 MB:
    `ReadBelowFirstPosException`, and the bytes from the cut are read.
 10. Cuts within the length: at 0, 300, 300 again, 999 of 1,000; the
