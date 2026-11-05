@@ -67,7 +67,6 @@ Open
 | [015-51](51-transform-size-unchecked.md) | Fix | A value transformation's result is not size-checked: one above the ... | open |
 | [015-52](52-warmup-read-expired.md) | Fix | `execute()` can be refused with `LookupTimeNotAvailableException`, ... | open |
 | [015-53](53-stop-during-step-committed.md) | Fix | A transaction that runs when `stop()` comes is committed, but ... | open |
-| [015-54](54-safe-pos-javadoc.md) | Fix | pSafe is not "the stream length now", as `markSafePositions`'s ... | open |
 | [015-55](55-database-time-margin.md) | Fix | A user transaction at the last database time is taken, and ... | open |
 | [015-57](57-resolve-ignores-timezone.md) | Fix | Time.resolve(TimeZone, String) ignores its time zone | open |
 | [015-58](58-testclock-current-time.md) | Fix | TestClock.setTime() refuses the clock's current time, which its ... | open |
@@ -105,6 +104,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-54](54-safe-pos-javadoc.md) | Fix | pSafe is not "the stream length now", as `markSafePositions`'s ... | done | 2026-11-05 |
 | [015-27](27-failed-append-visible.md) | Decide | A failed append's transaction was visible to readers: intended | done | 2026-11-05 |
 | [015-77](77-canonical-node-javadoc.md) | Fix | DbStarter.canonicalNode's Javadoc gives a reason for the stored ... | done | 2026-11-05 |
 | [015-74](74-metablock-comment.md) | Fix | MetaBlock's format comment: the last byte is 10, not 1, and the ... | done | 2026-11-05 |

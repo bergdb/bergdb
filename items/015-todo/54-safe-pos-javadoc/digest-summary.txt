@@ -1,0 +1,28 @@
+StreamDigest: main 7413ceb (digests-base.txt, quick: all but l2-default-100MB) against
+015-54's fix (digests-new.txt, all; l2-default-100MB run on its own and merged),
+2026-11-05, one compiled copy of StreamDigest (the base's) on both jars. 'digest'
+compares the decided fields (length, firstAvailablePos, firstAvailableTime, sha256;
+005-79's digest-compare.py), the physical cut left out;
+'modes' says whether plain, reads and restarts give the same stream (sha256) with the fix.
+The base's decided digests are 2026.2's (baseline.zip, f53/digests.txt), 33 of 33.
+
+configuration                base        fix  change  digest   modes
+l2-sd100                  5131920    5131920   +0.0%  same     agree
+l2-sd1000-node8           4355480    4355480   +0.0%  same     agree
+l2-sd10000-node14         2556312    2556312   +0.0%  same     agree
+l2-sd100000-node62        2531344    2531344   +0.0%  same     agree
+l2-every1                  514616     514616   +0.0%  same     agree
+l2-idle-1                  222152     222152   +0.0%  same     agree
+l2-idle-2                  222112     222112   +0.0%  same     agree
+l2-default-100MB         79056128   79056128   +0.0%  same     agree
+l3-every1                 1947712    1947712   +0.0%  differs  agree
+l3-node8                  7094096    7094096   +0.0%  differs  agree
+l3-node14                 1604576    1604576   +0.0%  differs  agree
+l3-node62                10118752   10334560   +2.1%  differs  agree
+
+l3-every1, l3-node8, l3-node14: the same lengths and decided cut; the table's pSafe
+values differ (sha256 only). l3-node62: the last cut decided is one iteration earlier,
+firstAvailablePos 9164760 -> 9052928, firstAvailableTime 2066400011 -> 2040900011.
+l2-default-100MB has no reclaim; its base row is 2026.2's reference. The fix against
+2026.2's reference: decided digests the same in 24 of 36, the 12 of the l3 configurations
+differ. digests-new.txt is the new reference.

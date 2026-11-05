@@ -8,6 +8,24 @@ again. The release folds them into its `releases/VERSION/readme.md`, as
 empties this file.
 
 
+Reliability
+-----------
+
+* **Reclaim's pSafe is the stream length after the call's own records**
+  (bergdb 015-54, 016-06's R7-F5; 2026-11-05). The cut waits until the
+  startup pos has passed an iteration's pSafe. `Reclaim` set pSafe to the
+  end of the user transaction's record, read before the internal records
+  that the same call appends before the marking (an iteration's table, a
+  step, the table of an iteration done), whose takes can keep nodes dirty
+  that the wait is for; it is now the stream's length when it is set, after
+  them, as its Javadoc says. Cuts come a little later; no harm was shown
+  before. The format is unchanged; the stream's bytes change with reclaim
+  on (the table's pSafe values, and where cuts come): StreamDigest's
+  decided digests differ from 2026.2's in its 4 configurations with
+  reclaim (`l3-*`, 12 of 36), and are 2026.2's in the 8 without. The new
+  reference is in 015-54's `digests-new.txt`.
+
+
 Documentation
 -------------
 

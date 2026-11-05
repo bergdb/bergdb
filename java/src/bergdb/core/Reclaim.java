@@ -55,7 +55,11 @@ import bergdb.stream.MemoryStream;
  * <li>The cut waits until the startup pos has passed pEnd (every touched node written
  * once), and then passed pSafe, the stream length at that moment (nodes written before
  * their children and kept dirty by the still-dirty test written once more, now naming the
- * children's new positions). Then, when tEnd is older than the retention duration, the
+ * children's new positions). That moment is after the internal records that the external
+ * transaction's call appends before the marking (an iteration's table, a step, the table
+ * of the iteration done): their takes may move the startup pos past pEnd and keep such
+ * nodes dirty, so pSafe is the length after them (bergdb 015-54; it was the end of the
+ * external transaction's record). Then, when tEnd is older than the retention duration, the
  * stream is cut at pCut, the row is marked cut and the first available lookup time is
  * tEnd.</li>
  * <li>All state that decides what reclaim writes is in the table or follows from stream
@@ -377,7 +381,7 @@ public class Reclaim implements Db.TransactionListener {
             }
         }
         
-        markSafePositions(streamSize);
+        markSafePositions();    // The length after the records above (bergdb 015-54).
         pretruncateIfPossible(t.tt);
         cutIfDurable();
     }
@@ -601,15 +605,17 @@ public class Reclaim implements Db.TransactionListener {
     
     /**
      * Sets pSafe of done iterations whose last step the startup pos has passed: the stream
-     * length now. See the class comment.
+     * length now, after the internal records that the call of transactionCompleted appended
+     * before it (bergdb 015-54). See the class comment.
      */
-    private void markSafePositions(long streamSize) {
+    private void markSafePositions() {
         final long startupPos = db.internal().getStartupPosForEvict();
+        final long streamLength = db.getStreamLength();     // The write lock is held.
         boolean changed = false;
         
         for (IterationInfo row : table.rows) {
             if (row.done && row.pSafe == -1 && startupPos >= row.pEnd) {
-                row.pSafe = streamSize;
+                row.pSafe = streamLength;
                 changed = true;
             }
         }
@@ -2267,6 +2273,68 @@ public class Reclaim implements Db.TransactionListener {
 
             Assert.assertTrue("cuts: " + cuts, cuts >= wanted);
             db.stop();
+        }
+
+        /**
+         * bergdb 015-54 (016-06, R7-F5): pSafe is the stream length when it is set, after
+         * the internal records that the same call appended before it: the table of an
+         * iteration started, a step, the table of the iteration done (step() stores it).
+         * It was the user record's end, read before them, so the cut did not wait for the
+         * nodes that those records wrote before their children. The workload is R7-F5's
+         * probe's; in its first 4000 puts, each of the 57 markings comes in a call that
+         * made a step before it. Five are checked.
+         */
+        @Nano
+        public static void testSafePosAfterTheCallsRecords() {
+            CoreTestClock clock = new CoreTestClock();
+            long time = Clock.UNITS_PER_SEC;
+            clock.setTime(time);
+            Db db = Db.builder().testSetup().clock(clock).startupDistance(2000).start();
+            db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+            Reclaim reclaim = db.internal().reclaim();
+            Stats stats = reclaim.enableStats();
+            java.util.Random r = new java.util.Random(1);
+            Set<IterationInfo> marked =
+                    Collections.newSetFromMap(new IdentityHashMap<IterationInfo, Boolean>());
+            int markings = 0;
+            int afterRecords = 0;
+
+            for (int i = 0; i < 4000 && afterRecords < 5; i++) {
+                time += Clock.UNITS_PER_SEC / 20;
+                clock.setTime(time);
+                long stepBytes = stats.step.bytes;
+                Trans t = db.trans().put("/k/" + r.nextInt(50), new byte[1 + r.nextInt(60)])
+                        .build();
+                db.execute(t);
+
+                // The call's records before the marking: at least its steps', and the
+                // table of an iteration it started.
+                long steps = stats.step.bytes - stepBytes;
+                boolean started = false;
+                for (IterationInfo row : reclaim.table.rows) {
+                    started |= row.pStart == t.nextPos;
+                }
+                long atLeast = t.nextPos + steps + (started ? 1 : 0);
+                for (IterationInfo row : reclaim.table.rows) {
+                    if (row.pSafe != -1 && marked.add(row)) {
+                        markings++;
+                        if (atLeast > t.nextPos) {
+                            afterRecords++;
+                        }
+                        Assert.assertTrue("put " + i + ": pSafe " + row.pSafe + ", the user record"
+                                + " ends at " + t.nextPos + ", the call's steps wrote " + steps
+                                + " bytes, an iteration started: " + started,
+                                row.pSafe >= atLeast);
+                        Assert.assertTrue("put " + i + ": pSafe " + row.pSafe + " after the stream's"
+                                + " length " + db.getStreamLength(),
+                                row.pSafe <= db.getStreamLength());
+                    }
+                }
+            }
+
+            Assert.assertTrue("markings " + markings + ", after the call's records "
+                    + afterRecords, afterRecords >= 5);
+            db.close();
         }
     }
 }
