@@ -108,6 +108,7 @@ Open
 |---|---|---|---|---|
 | [019-01](01-metablock-version-high-bytes.md) | Fix | A meta block's version: bytes 6 and 7 unchecked | none | open |
 | [019-02](02-stream-bad-length-exceptions.md) | Fix | Streams refuse a bad length with other exceptions | none | open |
+| [019-05](05-exists-malformed-key.md) | Fix | exists() answers false for a malformed key | decision | waiting |
 
 
 Closed
@@ -136,6 +137,9 @@ Files
   `AppendOnlyStream` promises; found by 018-02's harness.
 * [03-get-that-copies.md](03-get-that-copies.md). 019-03, Decide: a get
   that always copies a `byte[]` value; moved to 017-07, section 1.
+* [05-exists-malformed-key.md](05-exists-malformed-key.md). 019-05, Fix:
+  `Connection.exists()` answers `false` for a malformed key, where `get()`
+  and an rw-transaction's `exists()` throw; options for Frans.
 
 
 Log
@@ -165,3 +169,6 @@ release, unless he makes an exception; an entry takes "a day or two", not
 "about a day" (in his words: "Yes, this is a good rule. Add this. And
 relax the thing about fixing within one day. Make it 'a day or two'.").
 019-03 moved to 017-07, "To consider", section 1: an idea, not a todo.
+
+2026-11-05. 019-05 registered by session bergdb-e8, at Frans's word
+(12:35), from the agent that wrote 015-62's Javadoc of `exists()`.
