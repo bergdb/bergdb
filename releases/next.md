@@ -163,6 +163,15 @@ Reliability
   key. `cryptoKey(null)` throws `IllegalArgumentException`, as `dir(null)`
   did and `create(null)` and `open(null)` do (015-05), not a
   `NullPointerException`.
+* **A second `start()` of a `memory()` builder whose database runs is
+  refused** (bergdb 015-65; 2026-11-05), with `IllegalStateException`, also
+  while that database is closing after `stop()`; it gave the running
+  database's stream to a second database: both appended to it, each missed
+  the other's puts, and the close of one closed the stream of the other
+  (with a crypto key, the second start wrapped the stream's encryption
+  again). The running database runs on as before; `memory()` again gives a
+  new database, as a directory of `create()` is refused while a database
+  has it (005-63). The stream is unchanged.
 * **`CryptoKey` has a `hashCode()` that agrees with `equals()`** (bergdb
   015-45, S1-F6; 2026-11-05): equal keys were not found in a `HashSet` or a
   `HashMap`.

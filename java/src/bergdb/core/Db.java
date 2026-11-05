@@ -2637,6 +2637,18 @@ public class Db implements AutoCloseable {
         public boolean isActive() { return state == DbState.ACTIVE; }
 
         /**
+         * True when the database's close has ended: its storage streams are closed, also
+         * after a failed close (closeStorage()). False while it runs or is closing after
+         * stop(). For DatabaseBuilderImp's refusal of a second start on the stream of a
+         * database that it started (bergdb 015-65).
+         */
+        public boolean isClosed() {
+            synchronized (closeLock) {
+                return closeDone;
+            }
+        }
+
+        /**
          * Fails the database with what a batch of the eviction thread threw (bergdb 015-25;
          * Eviction.EvictorRun), as a transaction that throws after its go point fails it,
          * the writer's own batch included (fail(); 010-01, P7): the batch's changes in memory

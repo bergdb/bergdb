@@ -40,6 +40,14 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     /** True for open(): start() refuses a directory without a database (bergdb 015-05). */
     private boolean mustExist = false;
     
+    /**
+     * The database of this builder's last start on a stream of memory() or mainStream(), and
+     * that stream as the database got it (the SalsaStream, with a crypto key), or null; for
+     * refuseStreamInUse() (bergdb 015-65).
+     */
+    private Db streamDb = null;
+    private AppendOnlyStream streamDbStream = null;
+    
     
     public DatabaseBuilderImp() {
         // Sets some default values.
@@ -188,6 +196,10 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
             throw new IllegalStateException("no streams, please provide a database stream");
         }
         
+        if (dir == null) {
+            refuseStreamInUse();
+        }
+        
         // What can refuse the start is checked before openDirs() opens a directory, which
         // creates it, its lock file and an empty first stream file (2026-11-03, bergdb 015-01,
         // 015-06; open()'s refusal 2026-11-05, 015-05): a refused start opens, creates and
@@ -216,7 +228,36 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
             closeStreams(opened, e);
             throw e;
         }
-        return DatabaseImp.createAndStart(db);
+        DatabaseImp database = DatabaseImp.createAndStart(db);
+        if (dir == null) {
+            streamDb = db;
+            streamDbStream = dbBuilder.getMainStream();
+        }
+        return database;
+    }
+    
+    /**
+     * Refuses a start on the stream of memory() or mainStream() that this builder gave to a
+     * database that has not closed: it runs, or is closing after stop() (2026-11-05, bergdb
+     * 015-65), as start() refuses a directory that a database has (bergdb 005-63). Until
+     * 015-65 a second start gave the running database's stream to a second database: both
+     * appended to it, each missed the other's puts, and the close of one closed the stream
+     * of the other; with a crypto key, the start wrapped the first's SalsaStream again.
+     * memory() and mainStream() give the builder another stream, which is not refused.
+     */
+    private void refuseStreamInUse() {
+        if (streamDb == null) {
+            return;
+        }
+        if (dbBuilder.getMainStream() != streamDbStream || streamDb.internal().isClosed()) {
+            streamDb = null;
+            streamDbStream = null;
+            return;
+        }
+        throw new IllegalStateException("The database that this builder started on its "
+                + "stream of memory() has not closed: it runs, or is closing after stop(). "
+                + "A second database on the stream would append to it too. Close that "
+                + "database first, or call memory() for a new database (bergdb 015-65).");
     }
     
     /**

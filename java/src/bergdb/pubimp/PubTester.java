@@ -289,6 +289,59 @@ public class PubTester {
     }
     
     /**
+     * Regression test for bergdb 015-65: a second start() of a memory() builder whose
+     * database runs is refused, without and with a crypto key, and the running database runs
+     * on as before; memory() again gives the builder a new stream, and a new database. Until
+     * 015-65 the second start gave the first database's MemoryStream to a second database
+     * (with a key, it wrapped the first's SalsaStream again): both appended to it, each missed
+     * the other's puts, and the close of one closed the stream of the other.
+     */
+    @Nano
+    public static void testSecondStartOfMemoryBuilder() {
+        for (boolean crypto : new boolean[] {false, true}) {
+            String what = crypto ? "with a crypto key" : "without a crypto key";
+            DatabaseBuilder builder = Factory.database().memory();
+            if (crypto) {
+                builder.cryptoKey(CryptoKey.generate());
+            }
+            Database d = builder.start();
+            d.connection().put("/a", "a0");
+            
+            Database second;
+            try {
+                second = builder.start();
+            } catch (IllegalStateException e) {
+                second = null;
+            }
+            if (second != null) {
+                closeQuietly(second);
+                closeQuietly(d);
+                throw new AssertionError("the second start returned, " + what);
+            }
+            
+            d.connection().put("/b", "b0");
+            d.sync();
+            Assert.assertEquals("a0", d.connection().get("/a", String.class));
+            Assert.assertEquals("b0", d.connection().get("/b", String.class));
+            
+            Database other = builder.memory().start();
+            Assert.assertTrue("a new database, " + what,
+                    other.connection().get("/a", String.class) == null);
+            other.close();
+            d.close();
+        }
+    }
+    
+    /** Closes 'd'; what the close throws is dropped. */
+    private static void closeQuietly(Database d) {
+        try {
+            d.close();
+        } catch (RuntimeException e) {
+            // Dropped.
+        }
+    }
+    
+    /**
      * Asserts that start() of 'builder' is refused as its directory is in use (bergdb
      * 005-63); a database that starts is closed.
      */
