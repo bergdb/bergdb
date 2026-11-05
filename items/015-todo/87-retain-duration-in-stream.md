@@ -794,6 +794,71 @@ done.
   this is his approval of that format change. F2 to F7 are still being
   discussed; nothing is implemented yet.
 
+2026-11-05, 13:23. Frans's answers: no builder value, in both layers.
+* His question, 13:16: "Why should this be in the builder at all? Does it
+  have to be there? For an existing database, it does not make sense, does
+  it?" bergdb-e8's answer: the builder needs only what a start needs
+  before it can run, or what is fixed for the database's life (the
+  directory, the crypto key, the node size, the clock). The retain
+  duration can change at any time and changes nothing until reclaim's
+  next step. Reclaim works inside transactions, so a setter call right
+  after `start()` comes before any reclaim work.
+* The check of that claim (read-only, lines at `281da42`). It holds for
+  the Core; for the Pub API it holds unless the previous run left an index
+  job unfinished, and that exception does no harm under the decision.
+  * Core: reclaim works only in `Reclaim.transactionCompleted`, which
+    `Db.executeInner` calls after each transaction, under the write lock
+    (`Db.java:1976`), and which returns at once for an internal one
+    (`Reclaim.java:357`: the creation's primordial transaction, a step's,
+    a table store). No thread does reclaim work: the evictor
+    (`Eviction.java:456`) only evicts, `StorageManager` has no dependency
+    on `Db`, and JMX's monitor (`Jmx.Speed`) reads counters and is started
+    only by tools in `src-dev`. A start's one piece of reclaim work is
+    `Reclaim.initFromDb` (`Db.java:653`): it reads the table, and when the
+    table marks a cut that the stream lacks (a crash between the table's
+    write and the cut) it makes that cut (`Reclaim.java:675`). That cut was
+    decided before the crash, at a position the table holds; no retain
+    duration enters it. A start makes no step, starts no iteration and
+    writes no table. The primordial transaction is appended directly, not
+    executed (`Db.java:1051`); `created.txt` is a file.
+  * Pub API: `DatabaseImp.createAndStart` calls
+    `IndexManager.finishOngoingJobs` (`DatabaseImp.java:98`), which
+    starts, before `start()` returns, a thread for each index left
+    creating or deleting. A creation's thread commits its steps
+    (`connection.rw`, `IndexBuilderImp.java:463`) and at the end the index
+    info (`IndexManager.storeIndex`, `IndexManager.java:373`); a
+    deletion's commits the removal of the entries and of the index info
+    (`IndexManager.java:442` and `463`). These are ordinary transactions:
+    `transactionCompleted` runs after each and can do any reclaim work (a
+    step, an iteration start, a table write, a cut), racing with the
+    program's setter call. Without such a job the Pub start commits
+    nothing: `initFromDatabase` only reads.
+  * Why the race does no harm under the decision: those transactions run
+    with the value in force at the start, the stream's (the last setter
+    call's), or forever for a stream without one. Forever starts no
+    iteration (`Reclaim.java:365`) and cuts nothing (`Reclaim.java:706`).
+    A step of an iteration in progress, and the table write that marks a
+    finished iteration safe, run at any retain duration, with the internal
+    fraction (by F7, also from the stream). Today the value in force is the
+    builder's.
+  * Also: `Db.setStartupDistance` commits an ordinary transaction
+    (`/#i/-dummy`, `Db.java:364`), so reclaim runs after it; no start
+    calls it.
+* His decisions, 13:23: "1. Yes, remove it from both layers. 2. Yes,
+  internal fraction should follow the same rule." So
+  `DatabaseBuilder.retainDuration` (Pub API) and `DbBuilder.retainDuration`
+  (Core) are removed; the retain duration is set only by
+  `Database.setRetainDuration` or `Db.setRetainDuration` after the start,
+  and kept in the stream (F1's B). The internal fraction follows the same
+  rule: set by its setter, kept in the same record (F7). F2 (the builder
+  against the stream) and F3 (unset against forever) are moot; F4 becomes:
+  a stream without a value has forever in force until the setter is
+  called. F5 to F7 are still to be discussed. Nothing is implemented yet.
+* The startup distance has the same shape (a builder value ignored for an
+  existing database); Frans, 13:23: "that is for 017-07 unless we work on
+  it to be included in 2026.3. Tempting. But let's get 87 done first."
+  017-07, section 2, notes it.
+
 
 For Frans
 ---------
@@ -806,12 +871,15 @@ answers all seven.
   C, reclaim's table. Recommended: B. Answered 2026-11-05: B.
 * **F2, the builder against a stream with a value:** the stream's value
   wins, as the startup distance's (recommended), or the builder's written
-  at the start when it differs.
+  at the start when it differs. Moot 2026-11-05: no builder value (Frans,
+  13:23).
 * **F3, unset against forever in `DbBuilder`:** not needed with F2's
-  recommendation (recommended), or a distinct unset value.
+  recommendation (recommended), or a distinct unset value. Moot
+  2026-11-05: no builder value (Frans, 13:23).
 * **F4, a stream without a value** (2026.2's, and new databases): the
   builder's value, written at that start if finite (recommended), or
-  written only at the first call.
+  written only at the first call. Changed 2026-11-05: forever until the
+  setter is called.
 * **F5, forever:** writes nothing, so StreamDigest's 8 configurations
   without a retain duration keep their streams (recommended), or every
   new database writes its value.

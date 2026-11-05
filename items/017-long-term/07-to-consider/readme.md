@@ -89,3 +89,9 @@ is a change of the format (018-01, section 2: Frans approves). Old streams
 keep the distance in their meta blocks, so a start reads the meta block's
 value when the KV is missing. The C clone (012) follows only when it ports
 a release that has it.
+
+The builder side: `DatabaseBuilder.startupDistanceInMb` is ignored for an
+existing database (its meta block's value wins), and the same reasoning as
+015-87's (Log, 2026-11-05, 13:23: set only by the setter, no builder
+value) would apply. Frans, 13:23: "that is for 017-07 unless we work on it
+to be included in 2026.3. Tempting. But let's get 87 done first."
