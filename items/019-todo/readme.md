@@ -106,7 +106,6 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
-| [019-01](01-metablock-version-high-bytes.md) | Fix | A meta block's version: bytes 6 and 7 unchecked | none | open |
 | [019-02](02-stream-bad-length-exceptions.md) | Fix | Streams refuse a bad length with other exceptions | none | open |
 | [019-07](07-record-header-checksum.md) | Implement | A checksum of the record header, at the next RECORD_FORMAT change | decision | waiting |
 
@@ -116,6 +115,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-01](01-metablock-version-high-bytes.md) | Fix | A meta block's version: bytes 6 and 7 unchecked | none | done | 2026-11-05 |
 | [019-05](05-exists-malformed-key.md) | Fix | exists() answers false for a malformed key | decision | done | 2026-11-05 |
 | [019-06](06-perf-harness-old-jar.md) | Fix | Harness fails on 2026.2's jar | none | done | 2026-11-05 |
 | [019-04](04-remove-seekfirstpos.md) | Implement | Remove seekFirstPos() from AppendOnlyStream | none | done | 2026-11-05 |
@@ -216,3 +216,8 @@ so; BEFORE COMMIT OK.
 2026.3, and (c), a checksum of the record header, here, for the next
 change of `RECORD_FORMAT`. Status waiting: not for 2026.3, Frans's
 exception to the rule that an open entry is done before the release.
+
+2026-11-05. 019-01 done in night 006-12: a meta block's version is read
+as an int, and a block whose bytes 6 or 7 are not 0 is refused at the
+start with `VersioningStreamException`; every BergDB writes 0 there;
+BEFORE COMMIT OK.

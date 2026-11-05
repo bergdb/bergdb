@@ -678,7 +678,7 @@ public class RecoverableStream {
      * @throws VersioningStreamException
      */
     private static MetaBlock readMetaBlock(AppendOnlyStream aos, long blockPos) {
-        byte[] header = new byte[6];
+        byte[] header = new byte[8];
         
         try {
             aos.read(blockPos, header, 0, header.length);
@@ -694,7 +694,7 @@ public class RecoverableStream {
                     + StringUtil.toHex(expectedMagic) + ", got: " + StringUtil.toHex(actualMagic));
         }
         
-        int version = Bytes.bytesToUShortLE(header, 4);
+        int version = Bytes.bytesToIntLE(header, 4);    // An int, bergdb 019-01.
         
         if (version != MetaBlock.VERSION_154) {
             throw new VersioningStreamException("Cannot read meta block with version " 
@@ -1244,6 +1244,13 @@ public class RecoverableStream {
             Assert.assertFalse("version 155", isIncompleteCreation(version, creation));
             version.truncate(4);
             Assert.assertTrue("the magic bytes only", isIncompleteCreation(version, creation));
+            for (int offset : new int[] {6, 7}) {     // Bergdb 019-01: the version is an int.
+                MemoryStream high = created.copy();
+                MemoryStream.TestAccess.write(high, new byte[] {1}, offset);
+                high.truncate(10);
+                Assert.assertFalse("byte " + offset + " of the version",
+                        isIncompleteCreation(high, creation));
+            }
             
             // A complete block that is invalid, or that names a transaction.
             MemoryStream invalid = created.copy();

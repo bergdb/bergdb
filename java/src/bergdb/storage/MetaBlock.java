@@ -15,9 +15,9 @@ import bergdb.nanotest.Nano;
  * FORMAT OF A META BLOCK, v154
  * Offset  Size    Description
  * 0       4       Magic bytes, meta block signature. Always the bytes for ASCII "berg".
- * 4       2       Version of BergDB stream format, an unsigned short (154 for this version).
- * 6       2       Zero. The version is written as an int at offset 4 and read as the
- *                 unsigned short above; these two bytes are not checked.
+ * 4       4       Version of BergDB stream format, an int (154 for this version). Until
+ *                 2026-11-05 it was read as an unsigned short, so bytes 6 and 7 were not
+ *                 checked; every version of BergDB writes 0 there (bergdb 019-01).
  * 8       8       time, database time as a long.
  * 16      8       lastTrans, spos of last valid transaction completely written
  *                 before the meta block.
@@ -55,7 +55,7 @@ public class MetaBlock {
     
     static {
         System.arraycopy(MAGIC, 0, FILL_OUT_TEMPLATE, 0, 4);
-        Bytes.ushortToBytesLE(CURRENT_VERSION, FILL_OUT_TEMPLATE, 4);
+        Bytes.intToBytesLE(CURRENT_VERSION, FILL_OUT_TEMPLATE, 4);
     }
     
     private byte[] block;
@@ -162,7 +162,7 @@ public class MetaBlock {
      * Returns the version of the stream format.
      */
     public int getVersion() {
-        return Bytes.bytesToUShortLE(block, 4);
+        return Bytes.bytesToIntLE(block, 4);
     }
     
     public void setTime(long time) {
@@ -261,7 +261,7 @@ public class MetaBlock {
      * For a stream that a crash has cut in its first meta block.
      */
     static boolean beginsAsBlock(byte[] bytes) {
-        final int n = Math.min(bytes.length, 4 + 2);    // FILL_OUT_TEMPLATE begins with them.
+        final int n = Math.min(bytes.length, 4 + 4);    // FILL_OUT_TEMPLATE begins with them.
         for (int i = 0; i < n; i++) {
             if (bytes[i] != FILL_OUT_TEMPLATE[i]) {
                 return false;

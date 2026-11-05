@@ -295,6 +295,13 @@ Reliability
   `OutOfMemoryError`) the directory also stayed locked within the JVM, and
   a new start on it was refused with `DirectoryInUseException` until the
   JVM ended. The stream's bytes are unchanged.
+* **A start refuses a meta block whose version is not 154 as an int**
+  (bergdb 019-01, 016-06's R6-F3; 2026-11-05). The version at offset 4 is
+  written as an int, but it was read as 2 bytes, so a block with 154 there
+  and nonzero bytes 6 or 7 was taken as version 154. Now it is refused
+  with a `VersioningStreamException`, as a block of another version is.
+  Every version of BergDB writes 0 in those bytes, so no database that was
+  valid is refused; the stream's bytes are unchanged.
 
 Format
 ------

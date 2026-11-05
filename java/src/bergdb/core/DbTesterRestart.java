@@ -987,6 +987,48 @@ public class DbTesterRestart {
         }
     }
     
+    /**
+     * Bergdb 019-01: the version at offset 4 of a meta block is an int, and a block whose
+     * bytes 6 or 7 are not 0 is refused with a VersioningStreamException, as a block of
+     * another version is, and the start writes nothing. Every BergDB writes 154 as an int
+     * there; until 2026-11-05 the version was read as 2 bytes, and such a block was taken as
+     * version 154 (016-06, R6-F3).
+     */
+    @Nano
+    private static void testVersionHighBytesRefused() throws IOException {
+        CoreTestClock clock = new CoreTestClock();
+        MemoryStream s = new MemoryStream();
+        Db db = Db.builder().testSetup(s).clock(clock).start();
+        clock.setTime(10);
+        db.execute(db.trans().put("key1", "value1"));
+        db.sync(SyncLevel.ORDINARY);
+        db.close();
+        Assert.assertTrue("one meta block", s.getLength() < RecoverableStream.META_BLOCK_DISTANCE);
+        
+        for (int offset : new int[] {6, 7}) {
+            MemoryStream m = s.copy();
+            MemoryStream.TestAccess.write(m, new byte[] {1}, offset);
+            int version = 154 + (1 << (8 * (offset - 4)));
+            try {
+                Db.builder().testSetup(m).clock(clock).start().close();
+                throw new AssertionError("started a database whose meta block has version "
+                        + version + " (byte " + offset + " is 1)");
+            } catch (VersioningStreamException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("version " + version));
+            }
+            MemoryStream.TestAccess.write(m, new byte[] {0}, offset);
+            Assert.assertArrayEquals("the stream as it was", bytesOf(s), bytesOf(m));
+        }
+        
+        Db again = Db.builder().testSetup(s.copy()).clock(clock).start();
+        try {
+            Assert.assertEquals("value1", StringUtil.toString(DbUtil.get(again, Long.MAX_VALUE,
+                    "key1")));
+        } finally {
+            again.close();
+        }
+    }
+    
     /** Simplest possible delete-and-restart test. */
     @Nano private static void testDelete1() {
         MemoryStream s = new MemoryStream();

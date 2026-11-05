@@ -1,7 +1,7 @@
 019-01. Fix: a meta block's version is read as 2 bytes; bytes 6 and 7 are not checked
 ====================================================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: done 2026-11-05, night 006-12. Kind: Fix. Frans: none.
 Created 2026-11-05 by Frans Lundberg.
 
 What: `MetaBlock.initBlock` writes the stream format's version as an int
@@ -40,3 +40,34 @@ Log
 
 2026-11-05. Registered by session bergdb-e8, at Frans's word (10:47), from
 015-74's log.
+
+2026-11-05. Done in night 006-12. The test first:
+`DbTesterRestart.testVersionHighBytesRefused` starts copies of a database
+whose first meta block has byte 6 or byte 7 set to 1 (versions 65,690 and
+16,777,370 as an int; the meta block has no checksum); before the fix the
+start was accepted ("started a database whose meta block has version
+65690"), after it the start throws `VersioningStreamException` naming the
+int and writes nothing, and the copy as it was starts. A new case of
+`RecoverableStream.Tester.testIsIncompleteCreation` (a creation cut at 10
+bytes with byte 6 or 7 set) failed before ("expected false, but was
+true") and passes after.
+
+* Fix: `RecoverableStream.readMetaBlock` reads 8 bytes and the version as
+  an int, `MetaBlock.getVersion` reads an int, and
+  `MetaBlock.beginsAsBlock` (005-33's incomplete creation) compares the 8
+  bytes; `FILL_OUT_TEMPLATE` writes the version as an int (the same bytes:
+  the template's bytes 6 and 7 were 0). The format comment says 4 bytes.
+* P2, every database that was valid is accepted: 2026.1 and 2026.2
+  (`git show release-2026.1:java/src/bergdb/storage/MetaBlock.java`, and
+  2026.2's) write the version with `intToBytesLE(154, block, 4)` and fill
+  out a torn block from a template with 0 in bytes 6 and 7, as `main` does;
+  no code writes other bytes there, and a block is copied only from one it
+  read. The stream's bytes are unchanged.
+* A stream that ends within a meta block's first 8 bytes:
+  `readMetaBlock` reads the whole block after the header, so such a read
+  failed with `StreamIoException` before too, unless the version was
+  wrong; then it is now that exception instead of a
+  `VersioningStreamException`. Recovery reads only blocks that it knows
+  are complete.
+* 010-01: no setting, thread, global state or format change. Harness 6.1
+  does not exist yet; the case is for its damaged copies when it does.
