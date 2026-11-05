@@ -200,6 +200,15 @@ Reliability
   startupPos that is not a multiple of 8, is in the first meta block, or is
   after its record is refused too. Valid streams are read as before; the
   stream's bytes are unchanged.
+* **A transaction that runs when `stop()` or `close()` comes returns** as
+  committed (bergdb 015-53, 016-06's R7-F4; 2026-11-05). With a finite
+  retain duration, a reclaim step or table write that the transaction
+  allowed was refused as the database was stopping, and `execute()` threw
+  `DbStoppingException`, which says the call was refused, although the
+  transaction was committed and was there after a restart; a caller that
+  retried it applied it twice. `setStartupDistance()` at that moment put
+  back the old distance in memory and threw, while the stream kept the new
+  one. The stream's bytes are unchanged.
 
 Format
 ------

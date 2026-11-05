@@ -2555,6 +2555,72 @@ public class Reclaim implements Db.TransactionListener {
                     + afterRecords, afterRecords >= 5);
             db.close();
         }
+        
+        /**
+         * Regression test for bergdb 015-53 (016-06's R7-F4): stop() comes while a user
+         * transaction runs, after its record is appended and before reclaim's work for it
+         * (Db.testHooks' transExecuted calls stop() as another thread would at that moment).
+         * The step's read and internal transaction are refused, as the database is stopping;
+         * execute() threw that DbStoppingException, which says the call was refused, but the
+         * transaction was committed and was there after a restart. Now the call returns, and
+         * the put is there after the restart.
+         */
+        @Nano
+        public static void testStopDuringStepCommits() {
+            long time = Clock.UNITS_PER_SEC;
+            CoreTestClock clock = new CoreTestClock();
+            clock.setTime(time);
+            MemoryStream ms = new MemoryStream();
+            final Db db = Db.builder().testSetup(ms).clock(clock).startupDistance(2000).start();
+            db.setRetainDuration(1 * Clock.UNITS_PER_SEC);
+            final Reclaim rc = db.internal().reclaim();
+            final boolean[] armed = {false};
+            Db.testHooks = new Db.TestHooks() {
+                public void transExecuted(Db.ExecuteData x) {
+                    if (armed[0] && !x.trans.isInternal()) {
+                        armed[0] = false;
+                        db.stop();
+                    }
+                }
+                public void valueNodeCreated(bergdb.dag.ValueNode node, long[] key) {}
+                public void nodeTouched(Node node) {}
+                public void nodeReplaced(Node node) {}
+            };
+            String key = null;
+            byte[] v = null;
+            try {
+                java.util.Random r = new java.util.Random(1);
+                for (int i = 0; i < 4000 && key == null; i++) {
+                    time += Clock.UNITS_PER_SEC / 20;
+                    clock.setTime(time);
+                    IterationInfo cur = rc.currentIteration();
+                    boolean step = cur != null && fractionOf(db.getStreamLength() + 150 
+                            - cur.pStart, DEFAULT_INTERNAL_FRACTION) - cur.rewritten > 10000;
+                    String k = "/k/" + r.nextInt(50);
+                    byte[] value = new byte[1 + r.nextInt(60)];
+                    value[0] = 42;
+                    armed[0] = step;    // This put's transactionCompleted makes a step.
+                    db.execute(db.trans().put(k, value).build());
+                    if (step) {
+                        Assert.assertTrue("the hook stopped the database", !armed[0]);
+                        key = k;
+                        v = value;
+                    }
+                }
+            } finally {
+                Db.testHooks = null;
+                db.close();
+            }
+            Assert.assertTrue("no step was armed", key != null);
+            
+            Db d2 = Db.builder().testSetup(ms.copy()).start();
+            try {
+                byte[] got = d2.getOne(Long.MAX_VALUE, Keys.toSegments(key), d2.newGetData());
+                Assert.assertTrue("the put's value after the restart", Arrays.equals(v, got));
+            } finally {
+                d2.close();
+            }
+        }
     }
 }
 

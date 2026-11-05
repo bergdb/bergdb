@@ -2057,7 +2057,17 @@ public class Db implements AutoCloseable {
                 // 1301 Frans. The below line moved to inside the synchronized (writeLock) block 
                 // to KISS the reclaim stuff. However, fundamentally, it does not have to 
                 // belong to the block.
-                reclaimTransactionListener.transactionCompleted(t);    
+                try {
+                    reclaimTransactionListener.transactionCompleted(t);    
+                } catch (DbStoppingException e) {
+                    // stop() or close() came during reclaim's work for this transaction
+                    // (bergdb 015-53). Reclaim's reads and internal transactions are refused
+                    // at their entry, an internal transaction before its go point, so none is
+                    // half written. This transaction is committed (its record is appended, and
+                    // the close writes it), so the call returns, as stop()'s Javadoc says;
+                    // reclaim's work goes on at the next start, as after a crash here. Any
+                    // other exception fails the database, as before.
+                }
             } catch (Throwable e) {
                 throw fail(t, e);
             }
