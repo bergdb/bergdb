@@ -29,6 +29,15 @@ BergDB, or the collector, does work for the whole database at once. The
 target is a worst case of about 20 ms.
 The measure is the longest pause, not the mean or a percentile.
 
+The target is a guide, not a hard limit (Frans, 2026-11-06, 12:28, on
+019-36): "20 ms is just a target for a fast server. I see it more like: a
+wait at 20 ms or more is interesting to have a look at. May be worth
+fixing. We don't expect to remove all such cases. A loaded machine, slow
+network-based storage, small VPS." For a wait such as 019-36's, under
+50 ms on F53 is good and under 20 ms great, under 100 ms on s1 good: "It
+is a trade-off. Between complexity, time to fix, other performance
+figures, maintenance cost etc."
+
 Readers too (010-02's candidate 2, merged here on 2026-10-26): no
 stop-the-world for readers. A reader may wait a short time to take a lock,
 but never long. Frans: "What is really meant is that we should not have

@@ -1,7 +1,8 @@
-019-36. Fix: Reclaim's cut waits for the storage thread's append, holding the write lock
-=========================================================================================
+019-36. Investigate: Reclaim's cut waits for the storage thread's append, holding the write lock
+===============================================================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: open. Kind: Investigate (performance, not a fault; Frans,
+2026-11-06, 12:28). Frans: none.
 Created 2026-11-06 by Frans Lundberg.
 
 What: since 015-80's fix (night 006-12), every call that `BufferedStream`
@@ -45,14 +46,18 @@ Done when:
    append under `ioLock`: the old file's force, the new file's creation
    and the forces of it and the directory; review R7 of 006-13, C4). The
    numbers go into this entry and into 010-01's P1 line.
-2. If a wait is over 20 ms on either machine: the fix above, with a test
+2. Frans's guide (2026-11-06, 12:28), not a hard limit: under 50 ms on
+   F53 is good and under 20 ms great; under 100 ms on s1 is good. If the
+   waits are above that, weigh the fix below against its complexity, its
+   time, other performance figures and its maintenance (KISS, 010-P13).
+   If the fix is made: the fix above, with a test
    that fails before it (a cut made while the thread holds the lock in an
    append that a test stream holds back: the commit returns at once, and
    the cut is made at a later commit), the stream's bytes unchanged
    (`StreamDigest`), level 3's script (`java/stress/level3.sh`, reclaim)
-   and `BEFORE COMMIT OK`; 010-01's P1 line says it is fixed. If no wait
-   is over 20 ms: 010-01's P1 line gets the numbers, and the entry closes
-   without a change of the code.
+   and `BEFORE COMMIT OK`; 010-01's P1 line says it is fixed. If not:
+   010-01's P1 line gets the numbers, and the entry closes without a
+   change of the code. Not a blocker for release 2026.3.
 
 First step: read 015-80 ("The cost", "Locks and their order") and R4's
 C1, then the probe for step 1.
@@ -66,3 +71,6 @@ Frans's word (09:47).
 
 2026-11-06. Review R7 of 006-13, C4: the longest wait is an append that
 crosses into a new file; step 1 measures that case too.
+
+2026-11-06, 12:28. Frans: "I don't see 019-36 as a bug. It is about performance. 20 ms is just a target for a fast server. I see it more like: a wait at 20 ms or more is interesting to have a look at. May be worth fixing. We don't expect to remove all such cases. A loaded machine, slow network-based storage, small VPS. In this case, if we can get this under 50 ms on F53, this is good. Under 20 ms is great. Under 100 ms on s1 is good. Something like this. It is a trade-off. Between complexity, time to fix, other performance figures, maintenance cost etc. No a hard limit." The entry is an Investigate, not a
+Fix, and does not block release 2026.3.
