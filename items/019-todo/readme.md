@@ -111,6 +111,7 @@ Open
 | [019-36](36-reclaim-cut-waits-for-append.md) | Investigate | Reclaim's cut waits for the thread's append (performance) | none | open |
 | [019-40](40-review-r6-c-findings.md) | Fix | Review R6's C findings: tests, words, small faults | none | open |
 | [019-41](41-review-r7-c-findings.md) | Fix | Review R7's C findings: a test missing a hot loop, a sync, an interrupt | none | open |
+| [019-42](42-index-build-bricks-database.md) | Fix | An index build over an object it cannot index fails the database at every start | none | open |
 
 
 Closed
