@@ -109,7 +109,7 @@ Open
 | [019-07](07-record-header-checksum.md) | Implement | A checksum of the record header, at the next RECORD_FORMAT change | decision | waiting |
 | [019-15](15-delete-key-replace.md) | Fix | Key replace: a delete's key is not replaced | decision | waiting |
 | [019-30](30-header-time-toppos-undetected.md) | Decide | A record's time or topPos changed within the checks passes | decision | waiting |
-| [019-31](31-records-cut-out-undetected.md) | Investigate | Whole records cut out of a stream's middle pass a start | decision | open |
+| [019-31](31-records-cut-out-undetected.md) | Decide | Whole records cut out of a stream's middle pass a start | decision | waiting |
 | [019-32](32-key-node-klongs-unchecked.md) | Fix | A node's klongs and pointers unchecked: an assert at a start or a read | none | open |
 | [019-33](33-node-checksum-00-ff.md) | Decide | A node byte changed between 0x00 and 0xff passes the checksum | decision | waiting |
 
@@ -200,9 +200,9 @@ Files
   checks passes undetected (015-73's class, no header checksum); found by
   harness 6.1 (018-07); waiting for Frans's decision.
 * [31-records-cut-out-undetected.md](31-records-cut-out-undetected.md).
-  019-31, Investigate: whole records cut out of a stream's middle pass a
-  start undetected; found by harness 6.1 (018-07); the cause first, then
-  Frans's decision.
+  019-31, Decide: whole records cut out of a stream's middle pass a
+  start undetected (nothing links a record to the one before it); found
+  by harness 6.1 (018-07); waiting for Frans's decision.
 * [32-key-node-klongs-unchecked.md](32-key-node-klongs-unchecked.md).
   019-32, Fix: a node's klongs and pointers are not checked at a parse,
   and a start or a read meets an assert (015-07's class); found by

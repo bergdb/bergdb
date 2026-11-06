@@ -11,9 +11,9 @@ night.
 truncation starts with exactly its committed transactions and passes the
 audit. It fails on each of the five known faults of its class (018-01,
 section 6.1), with each fix's main hunk reverted, and found five more:
-019-30 and 019-33 for Frans's decision (damage that the format's checks
-cannot see), 019-31 to investigate, 019-32 a fault of the Core to fix,
-and 019-34, fixed the same night. The four open ones are in its skip
+019-30, 019-31 and 019-33 for Frans's decision (damage that the
+format's checks cannot see), 019-32 a fault of the Core to fix, and
+019-34, fixed the same night. The four open ones are in its skip
 list, and it passes on `main`.
 
 
@@ -312,9 +312,11 @@ On `main` each of these copies is refused with a `StreamFormatException`.
   and the last record's `topPos` set to a version of its top node before
   the startup section, pass undetected; 015-73's class (no header
   checksum, 019-07). Recommendation: (a), as 015-73.
-* **019-31** (Investigate): whole records cut out of the stream's middle
-  pass a start undetected (the `all` configuration, startup pos 0); why
-  the start finds nothing is the first question.
+* **019-31** (Decide): whole records cut out of the stream's middle
+  pass a start undetected (the `all` configuration, startup pos 0): the
+  stream left is a valid stream of fewer transactions, as nothing links a
+  record to the one before it. Recommendation: (a), as 015-73; a link
+  between records with 019-07.
 * **019-32** (Fix): a node's klongs and pointers are not checked: a
   key node changed with its checksum made right (a klong's type, a key
   klong's pointer) meets an assert at the start, or an
@@ -362,8 +364,8 @@ Clone `/Users/f/fl/bench/006-12/h61`, branch `h61`; the old-code clone
 `/Users/f/fl/bench/006-12/h61-old`; outputs and scripts in
 `/Users/f/fl/bench/006-12/h61-patches`. Done: the harness, this item,
 019-30 to 019-34, and 019-34's fix. Next: 019-32's fix (test first: the
-harness's copies), 019-31's investigation, Frans's decisions on 019-30
-and 019-33; then the lines leave `SKIP`.
+harness's copies); Frans's decisions on 019-30, 019-31 and 019-33;
+then the lines leave `SKIP`.
 
 
 ## 9. Log
@@ -378,3 +380,6 @@ tests (the full set). BEFORE COMMIT OK.
 2026-11-06, night 006-12. 019-34 fixed: recovery refuses a meta block
 that names a transaction outside the stream, before it writes; its line
 left `SKIP`, and the full set of seed 20398 passes. BEFORE COMMIT OK.
+
+2026-11-06, 04:14, night 006-12. 019-31's cause found by a probe: the
+copy left is a valid stream of fewer transactions; it became a Decide.

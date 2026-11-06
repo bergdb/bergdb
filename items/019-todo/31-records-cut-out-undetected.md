@@ -1,7 +1,7 @@
-019-31. Investigate: whole records cut out of a stream's middle pass a start undetected
-======================================================================================
+019-31. Decide: whole records cut out of a stream's middle pass a start undetected
+==================================================================================
 
-Status: open. Kind: Investigate. Frans: decision.
+Status: waiting. Kind: Decide. Frans: decision.
 Created 2026-11-06 by Frans Lundberg.
 
 What: a copy of a stream with a range of whole records cut out of its
@@ -34,26 +34,41 @@ detection is best effort (018-01, section 6.1; 014-01, section 7); but
 018-01's goal list keeps cheap refusals of violations (015-72, 015-75,
 019-01), and a position that names no node of the stream may be one.
 
-Frans: a decision, after the investigation:
+The cause (night 006-12, 04:14, a probe on the harness's copy, bytes 264
+to 7392 cut out of the `all` stream of seed 1): the stream left is a
+valid stream of fewer transactions. With startup distance 1 MB the take
+writes no index node: every record's `startupPos` is 0 and its `topPos`
+is 160, the creation's top node in the first record, which the cut does
+not touch. The start reads the section from 0, finds 3 records (the
+creation's and the two after the cut, now at 264 and 584), and reruns
+their transactions; their nodes' positions are computed from their own
+records, and no field names a cut record. So the start holds the
+creation and the last two transactions (`/d/f`, `/d/g/h` and `/x/y/z` as
+the original; `/a`, `/c`, `/d/g/i`, `/k1` and `/k6`, written by the cut
+records, null), with the counter of the last. Nothing in the format links
+a record to the one before it (a sequence number, the previous record's
+position, a running checksum), so no check of the fields that are there
+can tell; a gap in the times is legal.
+
+Frans: a decision:
 
 * (a) outside the fault model for 2026.3, as 015-73 and (if chosen)
   019-30: the harness counts such copies as known to pass undetected;
-* (b) a cheap check that the investigation finds (such as: a `topPos`
-  or a got-dirty position names a node of the right id and type, inside
-  the stream), with a test that fails before it, `BEFORE COMMIT OK`, and
-  the stream's bytes unchanged.
+* (b) a link between records at the next change of the record format,
+  with 019-07's header checksum: the previous record's position or a
+  sequence number in the header, checked at a start. A change of the
+  stream format, which needs Frans's approval (018-01, section 2).
 
-Recommendation: investigate first; (b) if a check of a few lines catches
-it without reading records before the startup section (007's bounded
-startup), else (a).
+No cheap check was found: every field of the records left is right.
 
-Done when: the cause is written here, Frans has chosen, and the harness's
-skip list line "019-31" is gone (fixed, or moved to `KNOWN`).
+Recommendation: (a) for 2026.3, as 015-73; (b) considered with 019-07.
 
-First step: `CorruptStreamTester.cutOut` on the `all` original of seed 1
-(`CorruptStreamTester.write(ALL, 1 * 31 + "all".hashCode())`), bytes 264
-to 7392, started with a print of the start's `StartInfo` and of the
-top node it takes.
+Done when: Frans has chosen, and the harness's skip list line "019-31"
+is gone (moved to `KNOWN`, or fixed with (b)).
+
+First step: Frans's decision. The probe:
+`/Users/f/fl/bench/006-12/h61-patches/probe/bergdb/core/Probe31.java`
+(arguments 264 7392; `-cp` the probe's directory before the jar).
 
 
 Log
@@ -61,3 +76,7 @@ Log
 
 2026-11-06. Registered in night 006-12 by the agent of harness 6.1
 (018-07), with the line "019-31" in `CorruptStreamTester.SKIP`.
+
+2026-11-06, 04:14. The cause found by a probe (above): the copy is a
+valid stream of fewer transactions, which no field shows; the entry
+became a Decide, waiting for Frans, with (a) recommended.
