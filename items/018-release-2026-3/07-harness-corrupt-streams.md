@@ -12,8 +12,9 @@ truncation starts with exactly its committed transactions and passes the
 audit. It fails on each of the five known faults of its class (018-01,
 section 6.1), with each fix's main hunk reverted, and found five more:
 019-30 and 019-33 for Frans's decision (damage that the format's checks
-cannot see), 019-31 to investigate, 019-32 and 019-34 faults of the Core
-to fix; all five are in its skip list, and it passes on `main`.
+cannot see), 019-31 to investigate, 019-32 a fault of the Core to fix,
+and 019-34, fixed the same night. The four open ones are in its skip
+list, and it passes on `main`.
 
 
 ## 1. What it checks, and why
@@ -197,7 +198,6 @@ static final String[] SKIP = {
     "019-31",   // whole records cut out of the stream's middle: undetected
     "019-32",   // a node's klongs and pointers unchecked: an assert at a start or read
     "019-33",   // a node byte changed between 0x00 and 0xff: the checksum misses it
-    "019-34",   // a meta block's position past the stream: IllegalArgumentException
 };
 ```
 
@@ -208,9 +208,10 @@ static final String[] SKIP = {
   checksum made right, or flipped in a way the checksum misses) that
   throws an `AssertionError`, an `IllegalStateException` (without `-ea`)
   or a `ClassCastException`;
-* 019-33: an undetected outcome of a node byte flipped by 0xff;
-* 019-34: a flip in a meta block that makes the start throw
-  `IllegalArgumentException: spos >= streamSize`.
+* 019-33: an undetected outcome of a node byte flipped by 0xff.
+
+019-34 had its line until its fix the same night: a flip in a meta block
+that made the start throw `IllegalArgumentException: spos >= streamSize`.
 
 A fix (019-32) or a decision ((a) of 019-30, 019-33) removes its line:
 a decided kind moves to `KNOWN`, with 015-73's and 014-01's, and is
@@ -259,7 +260,8 @@ The full set, seed 20398 (the day's number of 2026-11-06), 278,484
 copies in 64 s on 4 threads: no failure but the skip list's. Every one
 of the 52,690 truncations held its committed prefix (52,117), all (3),
 or was refused as an incomplete creation with nothing written (570).
-Skipped: 019-30 132, 019-31 3, 019-32 200, 019-33 1,016, 019-34 4. The
+Skipped: 019-30 132, 019-31 3, 019-32 200, 019-33 1,016; and 019-34's
+4 until its fix, after which they are refused. The
 first full run, before 019-32's pointer cases and 019-34 were in the
 list, failed with 111 copies, all of these two (section 6).
 
@@ -325,9 +327,13 @@ On `main` each of these copies is refused with a `StreamFormatException`.
   back changed. Recommendation: (a) for 2026.3, a stronger checksum with
   019-07.
 * **019-34** (Fix): a meta block's last-transaction position flipped
-  past the stream's end passes the meta block's checks, and recovery
-  throws an `IllegalArgumentException`; 019-01's class, a fault of the
-  Core. Found by the first full run (03:44), too late to fix that night.
+  past the stream's end passed the meta block's checks, and recovery
+  threw an `IllegalArgumentException`; 019-01's class, a fault of the
+  Core. Found by the first full run (03:44) and fixed the same night:
+  recovery refuses such a block with a `StreamFormatException` before it
+  writes (`RecoverableStream.checkLastTransSpos`; test
+  `DbTesterRestart.testMetaBlockLastTransPosRefused`, which failed
+  before the fix).
 
 The crash contract held: no truncation failed, in the samples of seeds 1
 to 5 and in the full set.
@@ -355,7 +361,7 @@ to 5 and in the full set.
 Clone `/Users/f/fl/bench/006-12/h61`, branch `h61`; the old-code clone
 `/Users/f/fl/bench/006-12/h61-old`; outputs and scripts in
 `/Users/f/fl/bench/006-12/h61-patches`. Done: the harness, this item,
-019-30 to 019-34. Next: 019-32's and 019-34's fixes (test first: the
+019-30 to 019-34, and 019-34's fix. Next: 019-32's fix (test first: the
 harness's copies), 019-31's investigation, Frans's decisions on 019-30
 and 019-33; then the lines leave `SKIP`.
 
@@ -368,3 +374,7 @@ passes the audit. It fails on 005-74, 005-75, 015-07, 015-72 and 015-75,
 each with its fix's main hunk reverted, and found 019-30 to 019-34, all
 in its skip list. In the unit tests (a sample, about 2 s) and the night
 tests (the full set). BEFORE COMMIT OK.
+
+2026-11-06, night 006-12. 019-34 fixed: recovery refuses a meta block
+that names a transaction outside the stream, before it writes; its line
+left `SKIP`, and the full set of seed 20398 passes. BEFORE COMMIT OK.

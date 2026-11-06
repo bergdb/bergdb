@@ -137,6 +137,7 @@ public class RecoverableStream {
             throw new StreamFormatException("Could not find *any* valid meta block. "
                     + "At least the very first meta block must be valid in a db stream.");
         }
+        checkLastTransSpos(lastBlock);
         
         fixMetaBlockIfNeeded();
         
@@ -150,6 +151,28 @@ public class RecoverableStream {
         }
         
         fixLastTransactionIfNeeded(spos);
+    }
+    
+    /**
+     * Refuses a meta block whose last transaction's position cannot be one: not SposNULL and
+     * before the first transaction byte, or not inside the stream (2026-11-06, bergdb 019-34).
+     * This layer does not require aligned records (TRANS_ALIGNMENT is the caller's check), so
+     * an unaligned position is taken. Before, a position past the stream's end made
+     * fixLastTransactionIfNeeded throw an IllegalArgumentException. Called before recovery
+     * writes anything.
+     * 
+     * @throws StreamFormatException
+     */
+    private void checkLastTransSpos(MetaBlock block) {
+        final long spos = block.getLastTransSpos();
+        if (spos == Constants.SposNULL) {
+            return;
+        }
+        if (spos < META_BLOCK_SIZE || spos >= aos.getLength()) {
+            throw new StreamFormatException("The meta block at " + block.getPos()
+                    + " names the last transaction at " + spos + ", which cannot be one in a "
+                    + "stream of " + aos.getLength() + " bytes.");
+        }
     }
     
     /**

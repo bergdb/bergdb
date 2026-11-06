@@ -54,9 +54,9 @@ Files
   018-07, harness 6.1, corrupt streams at a start, built: copies of
   streams written by `Db`, cut at every byte (the crash contract, a hard
   requirement) and damaged otherwise (best effort); it fails on the five
-  known faults of its class and found 019-30 to 019-34, all in its
-  skip list; where it runs (the unit tests, a sample;
-  the night tests, the full set).
+  known faults of its class and found 019-30 to 019-34 (019-34 fixed,
+  the others in its skip list); where it runs (the unit tests, a
+  sample, 3 s; the night tests, the full set, 64 s).
 
 
 Log
@@ -102,4 +102,5 @@ LEVEL 4 OK.
 start, built (W2). Every truncation of its streams starts with exactly
 its committed transactions; it fails on 005-74, 005-75, 015-07, 015-72
 and 015-75, each with its fix reverted, and found 019-30 to 019-34,
-in its skip list (019-32 and 019-34 to fix, the others for Frans).
+in its skip list (019-32 to fix, 019-34 fixed that night, the others
+for Frans).

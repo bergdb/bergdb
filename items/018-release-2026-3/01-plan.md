@@ -288,7 +288,8 @@ for 2026.3: they are experimental (D2).
 * Built on 2026-11-06: see 018-07. It fails on each of the five, and
   found 019-30 to 019-34. It runs in the unit tests of
   `before-commit.sh` (a sample) and in the night tests (the full set);
-  its skip list holds the five until they are fixed or decided.
+  its skip list holds the four open ones until they are fixed or decided
+  (019-34 was fixed the same night).
 
 
 ### 6.2. Failures and interrupts in storage
@@ -562,4 +563,4 @@ record's time or `topPos` changed within the checks, 015-73's class),
 and pointers unchecked, 015-07's class) and 019-34 (a meta block's
 position unchecked, 019-01's class), faults of the Core that join section
 3.1's list, and 019-33 (Fletcher-16's 0x00 and 0xff); all in its skip
-list. Every truncation passes. Section 6.1 updated.
+list. 019-34 was fixed the same night. Every truncation passes. Section 6.1 updated.

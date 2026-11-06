@@ -1,7 +1,7 @@
 019-34. Fix: a meta block's last-transaction position past the stream gives an IllegalArgumentException at a start
 ==================================================================================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: done 2026-11-06, night 006-12. Kind: Fix. Frans: none.
 Created 2026-11-06 by Frans Lundberg.
 
 What: recovery starts at the transaction that the last valid meta block
@@ -55,3 +55,24 @@ Log
 (018-07), with the line "019-34" in `CorruptStreamTester.SKIP`. Not fixed
 that night: found at 03:44 by the first full run, too late for a fix and
 its gate before the night's stop.
+
+2026-11-06, night 006-12. Done, by the same agent, after the harness's
+commit. `RecoverableStream.recover` checks the last valid meta block's
+last-transaction position before it writes anything
+(`checkLastTransSpos`): SposNULL, or at least `META_BLOCK_SIZE` and
+inside the stream; else a
+`StreamFormatException` that names the block and the position. A valid
+meta block names a transaction written before it, so no valid stream is
+refused. (A first version also refused a position that is not a multiple
+of `TRANS_ALIGNMENT`; `RecoverableStream.Tester.recoverFromMiddleOfStream`
+failed: this layer does not align records, the record format above it
+does.) Test `DbTesterRestart.testMetaBlockLastTransPosRefused` (the
+first meta block's byte 23 xor 0x80 and 0xff; the stream's length
+unchanged): before the fix "java.lang.IllegalArgumentException: spos >= streamSize,
+9223372036854775807, 472"; after, it passes. The line
+"019-34" and its case in `CorruptStreamTester.entryOf` are gone, and the
+full set of seed 20398 passes (278,484 copies; before the fix,
+without the line, it failed with the 4 copies above; after, the same 4
+are refused with a `StreamFormatException`, and nothing else changed). 010-01: no setting, method or
+thread; a start's check only. The stream's bytes are unchanged (P2):
+nothing that writes changed. A line in `releases/next.md`.

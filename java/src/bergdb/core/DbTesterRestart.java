@@ -270,6 +270,41 @@ public class DbTesterRestart {
         }
     }
 
+    /**
+     * A meta block whose last transaction's position is past the stream's end is refused
+     * with a StreamFormatException, and nothing is written (bergdb 019-34, found by harness
+     * 6.1, bergdb 018-07: the first meta block's byte 23 flipped). Before the fix, recovery
+     * threw an IllegalArgumentException ("spos >= streamSize").
+     */
+    @Nano
+    public static void testMetaBlockLastTransPosRefused() throws IOException {
+        MemoryStream stream = new MemoryStream();
+        CoreTestClock clock = new CoreTestClock();
+        try (Db db = Db.builder().testSetup(stream).clock(clock)
+                .startupDistance(1000000).start()) {
+            clock.setTime(10);
+            db.execute(db.trans().put("/a", "1"));
+            clock.setTime(20);
+            db.execute(db.trans().put("/b", "2"));
+        }
+        for (int mask : new int[] {0x80, 0xff}) {
+            MemoryStream corrupt = stream.copy();
+            byte[] b = new byte[1];
+            corrupt.read(23, b, 0, 1);
+            b[0] ^= (byte) mask;
+            MemoryStream.TestAccess.write(corrupt, b, 23);
+            long length = corrupt.getLength();
+            try (Db db = Db.builder().testSetup(corrupt).clock(clock)
+                    .startupDistance(1000000).start()) {
+                throw new AssertionError("started with byte 23 xor " + mask);
+            } catch (StreamFormatException expected) {
+                Assert.assertTrue(expected.getMessage(),
+                        expected.getMessage().contains("names the last transaction at"));
+            }
+            Assert.assertEquals(length, corrupt.getLength());
+        }
+    }
+
     /** The bytes of the record at 'tpos', which must not span a meta block. */
     private static byte[] readRecord(MemoryStream stream, long tpos) throws IOException {
         byte[] size = new byte[4];

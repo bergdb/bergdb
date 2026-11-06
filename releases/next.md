@@ -338,6 +338,12 @@ Reliability
   with a `VersioningStreamException`, as a block of another version is.
   Every version of BergDB writes 0 in those bytes, so no database that was
   valid is refused; the stream's bytes are unchanged.
+* **A start refuses a meta block that names a transaction outside the
+  stream** (bergdb 019-34, found by harness 6.1, 018-07; 2026-11-06), with
+  a `StreamFormatException`, before anything is written. A meta block whose
+  last transaction's position was past the stream's end (such as one with
+  its high byte flipped) made recovery throw an `IllegalArgumentException`.
+  Valid streams are read as before; the stream's bytes are unchanged.
 * **The message of `LookupTimeNotAvailableException` names the right
   times when several readers are refused at once** (bergdb 019-08;
   2026-11-05). The Core formatted the times of the message, and the JMX

@@ -112,7 +112,6 @@ Open
 | [019-31](31-records-cut-out-undetected.md) | Investigate | Whole records cut out of a stream's middle pass a start | decision | open |
 | [019-32](32-key-node-klongs-unchecked.md) | Fix | A node's klongs and pointers unchecked: an assert at a start or a read | none | open |
 | [019-33](33-node-checksum-00-ff.md) | Decide | A node byte changed between 0x00 and 0xff passes the checksum | decision | waiting |
-| [019-34](34-metablock-last-trans-pos-unchecked.md) | Fix | A meta block's position past the stream: IllegalArgumentException | none | open |
 
 
 Closed
@@ -120,6 +119,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-34](34-metablock-last-trans-pos-unchecked.md) | Fix | A meta block's position past the stream: IllegalArgumentException | none | done | 2026-11-06 |
 | [019-22](22-warmup-keeps-large-value.md) | Fix | A transaction's warmup kept a value over 1 MiB | none | done | 2026-11-06 |
 | [019-21](21-start-rerun-undercounted.md) | Fix | A start's rerun changes counted nodes, no recount | none | done | 2026-11-06 |
 | [019-20](20-replaced-node-undercounted.md) | Fix | A node grown and replaced stays counted below its bytes | none | done | 2026-11-06 |
@@ -213,8 +213,8 @@ Files
   decision.
 * [34-metablock-last-trans-pos-unchecked.md](34-metablock-last-trans-pos-unchecked.md).
   019-34, Fix: a meta block's last-transaction position past the stream
-  gives an `IllegalArgumentException` at a start (019-01's class); found
-  by harness 6.1 (018-07).
+  gave an `IllegalArgumentException` at a start (019-01's class); found
+  by harness 6.1 (018-07); done 2026-11-06.
 
 
 Log
@@ -324,3 +324,6 @@ and (b) in the entry.
 night 006-12: found by the harness of corrupt streams at a start
 (018-07); 019-32 and 019-34 faults to fix, 019-30, 019-31 and 019-33 for
 Frans; all five in its skip list.
+
+2026-11-06. 019-34 done in night 006-12: recovery refuses a meta block
+whose last-transaction position is outside the stream, before it writes.

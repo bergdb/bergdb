@@ -69,7 +69,6 @@ public class CorruptStreamTester {
         "019-31",   // whole records cut out of the stream's middle: undetected
         "019-32",   // a node's klongs and pointers unchecked: an assert at a start or read
         "019-33",   // a node byte changed between 0x00 and 0xff: the checksum misses it
-        "019-34",   // a meta block's position past the stream: IllegalArgumentException
     };
 
     /**
@@ -95,10 +94,6 @@ public class CorruptStreamTester {
                 || failure.contains("threw java.lang.IllegalStateException")
                 || failure.contains("threw java.lang.ClassCastException"))) {
             return "019-32";
-        }
-        if (c.what.endsWith("(meta block)")
-                && failure.contains("threw java.lang.IllegalArgumentException: spos >= ")) {
-            return "019-34";
         }
         if (!failure.startsWith("undetected")) {
             return null;
