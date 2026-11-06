@@ -50,6 +50,13 @@ Files
   decreases checked after each batch; it fails on the five known faults
   of its class and found 019-20, 019-21 and 019-22; where it runs (the
   unit tests, about 1 s; the night tests, under 2 minutes).
+* [06-harness-sizes-and-times.md](06-harness-sizes-and-times.md).
+  018-06, harness 6.4, sizes and times at their limits, built: random
+  transactions of the Core Layer at the value limit, the index nodes'
+  bound, the last database times and top node ordinals, and the setters
+  at their bounds, with reclaim, eviction and restarts; it fails on the
+  three known faults of its class, found no new one; where it runs (the
+  unit tests, 2 s; the night tests, 97 s).
 * [07-harness-corrupt-streams.md](07-harness-corrupt-streams.md).
   018-07, harness 6.1, corrupt streams at a start, built: copies of
   streams written by `Db`, cut at every byte (the crash contract, a hard
@@ -104,3 +111,9 @@ its committed transactions; it fails on 005-74, 005-75, 015-07, 015-72
 and 015-75, each with its fix reverted, and found 019-30 to 019-34,
 in its skip list (019-32 to fix, 019-34 fixed that night, the others
 for Frans).
+
+2026-11-06, night 006-12. 018-06: harness 6.4, sizes and times at their
+limits, built (W2). It fails on 015-50 and 015-55, each with its fix
+reverted, and on 015-76 with the old Javadoc's promise as its oracle; no
+new fault. In the unit tests of `before-commit.sh` (2 s) and the
+night tests (97 s).

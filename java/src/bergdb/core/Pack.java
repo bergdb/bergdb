@@ -27,6 +27,7 @@ public class Pack implements IPack {
         InterruptTester.class,
         KeyModSet.class,
         Kv.class,
+        LimitsTester.class,
         NodeChecksum.class,
         NodeCollection.class,
         NodeStream.class,

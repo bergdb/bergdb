@@ -352,6 +352,9 @@ for 2026.3: they are experimental (D2).
   `dbClock.transactionEnd()` before `store()`, where the record check
   throws. The harness counts such a run as the caller's fault, not as a
   failure. A refusal is 017-07, section 3, to consider.
+* Built on 2026-11-06: see 018-06. It fails on each of the three, and
+  found no new fault. It runs in the unit tests of `before-commit.sh`
+  (2 s) and in the night tests (97 s).
 
 
 ### 6.5. Eviction's accounting
@@ -564,3 +567,11 @@ and pointers unchecked, 015-07's class) and 019-34 (a meta block's
 position unchecked, 019-01's class), faults of the Core that join section
 3.1's list, and 019-33 (Fletcher-16's 0x00 and 0xff); all in its skip
 list. 019-34 was fixed the same night. Every truncation passes. Section 6.1 updated.
+
+2026-11-06, night 006-12. Harness 6.4, sizes and times at their limits,
+built (018-06): random transactions of the Core Layer at the value limit,
+the index nodes' bound, the last times and top node ordinals, and setters
+at their bounds, with reclaim, eviction and restarts, and a lowered
+record limit. It fails on 015-50 and 015-55, each with its fix reverted,
+and on 015-76 with the old Javadoc's promise as its oracle; no new fault.
+Section 6.4 updated.
