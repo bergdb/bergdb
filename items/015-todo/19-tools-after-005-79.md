@@ -1,7 +1,7 @@
 015-19. Fix: tools in items still use what 005-79 removed
 =========================================================
 
-Status: open. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
+Status: done 2026-11-06, night 006-12. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
 
 After release 2026.2. 005-79 (`f04cefe`) removed `Eviction.LOW` and
 `TransSeq.dither`. Some tools in items, outside `java/` and so outside
@@ -94,13 +94,55 @@ Left as they are:
 
 Status stays open for `ScaleBench` and its `-065.diff`.
 
+2026-11-06, night 006-12. The rest: 004-02's `ScaleBench` and 005-65's
+`ScaleBench-065.diff`.
 
+* `ScaleBench`: `seekFirstPos(long)` without the inner call (throws
+  `UnsupportedOperationException`, as `Perf.java`), `retainForever()`
+  dropped, and `SyncLevel.STRONG` is `ORDINARY` (STRONG is gone with
+  005-11; it was `ORDINARY` without a replica).
+* `ScaleBench` again: 005-52 (after 2026.2) changed what its timed load
+  listener uses, `NodeCollection.LoadListener.loaded()` to `loaded(OpData)`
+  and `Eviction.afterLoad(Db)` to `afterLoad(Db, boolean paced)`. The
+  listener now has both `loaded` methods (no `@Override`), and calls
+  `afterLoad` through a `MethodHandle` found once, with `paced` false for a
+  transaction's warmup (`Trans.WarmupGetData`, tested by its class name), as
+  Db's own listener; before 005-52 it is the old call. 009-03's
+  `ScaleBench-009.diff` still applies, at an offset (`patch -s` says
+  nothing).
+* `ScaleBench-065.diff`: the one line that used `Eviction.LOW` now calls a
+  new `lowWatermark(budget)` in the diff, which takes `Eviction.lowOf` by
+  reflection in a jar that has it (005-79's integer take, the line that
+  016-10's `prep-tools.sh` puts in) and the budget times `LOW` in a jar
+  before 005-79. So one diff compiles against all of them, and 2026.1, which
+  016's W7 runs compare with 2026.2, keeps working: `lowOf` alone (as
+  `prep-tools.sh` writes it) would not compile against 2026.1, which has no
+  `lowOf`. `prep-tools.sh`'s change of that line now finds nothing to
+  change, and its check that `Eviction.LOW` is gone passes; it is not
+  changed. Regenerated against `ScaleBench` with the `-009.diff`, as
+  005-65's `prep.sh` and `prep-tools.sh` apply them; else as before.
 
-State (night 006-12)
---------------------
+Compile checks (2026-11-06, `javac --release 17`, JDK of
+`/opt/homebrew/opt/openjdk`): 016-10's `prep-tools.sh` itself, run with
+this branch's tree as TREE and the output in a scratch directory
+(`ScaleBench` with the `-009.diff` and the `-065.diff`, the `SyncLevel`
+import where the jar has it, `PauseProbe`, `StreamDigest`, `pidio`), prints
+`PREP TOOLS OK` against each of
 
-Clone `/Users/f/fl/bench/006-12/g5a`, branch `w1-g5a`. Done: the tools
-above, committed (items only, compiled with `javac` against the branch's
-jar and 2026.2's). Next step, after the night's quiet blocks (not before
-06:20 on 2026-11-06): `ScaleBench` (004-02) and `ScaleBench-065.diff`
-(005-65), then this entry is done.
+* the `main` jar of this branch (`java/build.sh`; `lowOf 1`);
+* `releases/2026.2/bergdb-2026.2.jar` (`lowOf 1`);
+* `releases/2026.1/bergdb-2026.1.jar` (`lowOf 0`: it has `LOW`).
+
+Against each, `lowWatermark` gives 0.75 times the budget (750,000,000 for
+10^9; 9,259,259,175 for 12,345,678,901), as `budget * LOW` and `lowOf` do.
+`ScaleBench` alone, without the `-009.diff`, still does not compile with
+`--release 17` against any of the three (`Thread.threadId()`, Java 19; and
+`KeyNode.setPointerAccessData`, gone with 009): as before, it is used only
+with that diff (005-65's `prep.sh`, `prep-tools.sh`). 005-65's `prep.sh`
+applies the same diffs; its default builds (`bf19075`, `eaec93e`,
+`4f7cd60`) are before 005-79, 005-52 and 019-04, as 2026.1 is, and were not
+compiled again.
+
+The Done when holds: each tool compiles against `main`, and `ScaleBench`
+gives 005-79's integer low watermark there; the tools that do not are
+kept, with a note in their items, for the code of their time (above).

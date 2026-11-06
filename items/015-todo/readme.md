@@ -35,7 +35,6 @@ Open
 | [015-03](03-lean-follows-005-79.md) | Implement | Lean follows 005-79's integer take | open |
 | [015-06](06-refused-start-leaves-file.md) | Fix | A refused start leaves an empty first stream file | in progress |
 | [015-18](18-night-large-after-release.md) | Implement | Run night.sh large on the release, after 2026.2 | open |
-| [015-19](19-tools-after-005-79.md) | Fix | Tools in items still use what 005-79 removed | open |
 | [015-23](23-refused-index-delete.md) | Fix | A refused index deletion leaves the index active and unmaintained | open |
 | [015-28](28-write-racing-index-create.md) | Fix | A write racing an index's creation is never indexed | open |
 | [015-29](29-delete-primary-index.md) | Fix | deleteIndex(Database.PRIMARY) throws Bug and leaves the primary deleting | open |
@@ -56,6 +55,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-19](19-tools-after-005-79.md) | Fix | Tools in items still use what 005-79 removed | done | 2026-11-06 |
 | [015-80](80-buffer-concurrent-writes.md) | Fix | The buffer issues concurrent writes to a single-writer underlying ... | done | 2026-11-06 |
 | [015-76](76-startup-distance-clamp.md) | Fix | Db.setStartupDistance clamped without saying so | done | 2026-11-05 |
 | [015-63](63-time-tostring-threads.md) | Fix | Time.toString() from several threads gave wrong strings | done | 2026-11-05 |

@@ -18,18 +18,23 @@
  
      volatile boolean done = false;
      volatile long maxHeap = 0, maxResident = 0, maxRss = 0;
-@@ -324,16 +335,26 @@
+@@ -324,6 +335,8 @@
      void wrapLoadListener() {
          final Eviction ev = db.internal().eviction();
          final Db d = db;
 +        final Residents res = db.internal().cache().residents();
-+        final long gap = ev.budget() - (long) (ev.budget() * Eviction.LOW);     // afterLoad's high - low
++        final long gap = ev.budget() - lowWatermark(ev.budget());     // afterLoad's high - low
          db.internal().nodeCollection().setLoadListener(new NodeCollection.LoadListener() {
-             public void loaded() {
+             public void loaded() {      // before 005-52
+                 loaded(true);
+@@ -332,14 +345,22 @@
+                 loaded(!op.getClass().getSimpleName().equals("WarmupGetData"));
+             }
+             void loaded(boolean paced) {
 +                long bytes = res.bytes(), trigger = trigger(ev);        // 005-65: before the call
 +                boolean pending = FAST_WAKE && wanted(ev);
                  long t0 = System.nanoTime();
-                 ev.afterLoad(d);
+                 afterLoad(ev, d, paced);
                  long dt = System.nanoTime() - t0;
                  alCalls.increment();
                  alNanos.add(dt);
@@ -45,10 +50,12 @@
                      if (alEvents.size() < 100000) alEvents.add(new long[] {t0, dt});
                  }
              }
-@@ -420,9 +441,120 @@
-         return db.internal().cache().residents().bytes();
-     }
+@@ -455,11 +476,143 @@
  
+     long resident() {
+         return db.internal().cache().residents().bytes();
++    }
++
 +    // bergdb 005-65: the CPU of the eviction thread, the readers and the rest of the process
 +    // (the collector's threads, the compiler) in each threads phase. getThreadInfo with depth 0
 +    // and getThreadCpuTime stop no thread (no safepoint).
@@ -82,6 +89,27 @@
 +    /** The trigger, or the budget if the field cannot be read (TRIGGER null). */
 +    static long trigger(Eviction ev) {
 +        return TRIGGER == null ? ev.budget() : (long) TRIGGER.getVolatile(ev);
++    }
++
++    /**
++     * Eviction's low watermark for a budget: Eviction.lowOf(budget) in a jar that has it (since
++     * 005-79, in integers), else the budget times Eviction's double LOW, as afterLoad had it;
++     * by reflection, so that this compiles against both (bergdb 015-19).
++     */
++    static long lowWatermark(long budget) {
++        try {
++            try {
++                java.lang.reflect.Method m = Eviction.class.getDeclaredMethod("lowOf", long.class);
++                m.setAccessible(true);
++                return (Long) m.invoke(null, budget);
++            } catch (NoSuchMethodException e) {
++                java.lang.reflect.Field f = Eviction.class.getDeclaredField("LOW");
++                f.setAccessible(true);
++                return (long) (budget * f.getDouble(null));
++            }
++        } catch (ReflectiveOperationException e) {
++            throw new RuntimeException(e);
++        }
 +    }
 +
 +    /**
@@ -146,8 +174,8 @@
 +            return ((com.sun.management.OperatingSystemMXBean) os).getCpuLoad();
 +        }
 +        return -1;
-+    }
-+
+     }
+ 
 +    /** The CPU time of the process so far (ns), or -1. */
 +    static long processCpu() {
 +        java.lang.management.OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
@@ -166,7 +194,7 @@
          final long loads = db.internal().nodeCollection().loads();
          final long sreads = stream.reads.sum(), sbytes = stream.readBytes.sum();
          final long dev = deviceReadBytes();
-@@ -430,6 +562,8 @@
+@@ -467,6 +620,8 @@
          final long[] cpu = cpuStat();
          final long[] sw = sweeps();
          final long alc = alCalls.sum(), aln = alNanos.sum(), als = alSlow.sum();
@@ -175,7 +203,7 @@
          final long[] gc = PerfUtil.gcTotals();
      }
  
-@@ -466,6 +600,21 @@
+@@ -503,6 +658,21 @@
          m.put("afterLoadOver10ms", b.als - a.als);
          m.put("gcCount", b.gc[0] - a.gc[0]);
          m.put("gcMs", b.gc[1] - a.gc[1]);
@@ -197,7 +225,7 @@
          m.put("residentBytes", resident());
          m.put("heapUsedBytes", Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
          m.put("uptimeFrom", uptime(a.nanos));
-@@ -508,6 +657,64 @@
+@@ -545,6 +715,64 @@
          return s.toString();
      }
  
@@ -262,7 +290,7 @@
      void say(String s) {
          System.out.printf(Locale.ROOT, "[%7.1f s] %s%n", (System.nanoTime() - nano0) / 1e9, s);
          System.out.flush();
-@@ -779,6 +986,8 @@
+@@ -816,6 +1044,8 @@
          final CyclicBarrier barrier;
          final PerfUtil.Hist h = new PerfUtil.Hist();
          long gets;
@@ -271,7 +299,7 @@
  
          Reader(int t, double sec, CyclicBarrier barrier) {
              this.t = t;
-@@ -797,6 +1006,8 @@
+@@ -834,6 +1064,8 @@
              } catch (Exception e) {
                  throw new RuntimeException(e);
              }
@@ -280,7 +308,7 @@
              long stop = System.nanoTime() + (long) (sec * 1e9);
              long n = 0;
              do {
-@@ -811,21 +1022,35 @@
+@@ -848,21 +1080,35 @@
                  n += 64;
              } while (System.nanoTime() < stop);
              gets = n;
@@ -317,7 +345,7 @@
                  h.add(r.h);
              }
              Snap b = new Snap();
-@@ -833,9 +1058,21 @@
+@@ -870,9 +1116,21 @@
              m.put("phase", "threads-" + threads);
              m.put("threads", threads);
              m.put("latency", hist(h));

@@ -302,13 +302,13 @@ public class ScaleBench {
             s.append(source, sourceOffset, length);
         }
         public void pretruncate(long position) throws IOException { s.pretruncate(position); }
-        public void seekFirstPos(long position) throws IOException { s.seekFirstPos(position); }
+        public void seekFirstPos(long position) { throw new UnsupportedOperationException(); }  // older jars (019-04)
         public void close() throws IOException { s.close(); }
     }
 
     Db open() throws IOException {
         stream = new CountingStream(new FileStream(dir));
-        DbBuilder b = Db.builder().stream("main", stream).clock(clock).testId().retainForever()
+        DbBuilder b = Db.builder().stream("main", stream).clock(clock).testId()
                 .maxNodeSize30();
         if (sd > 0) b.startupDistance(sd);
         if (budget > 0) b.cacheSizeIndicator(budget).evictionSchedule(Eviction.Schedule.BUDGET, 1);
@@ -325,9 +325,15 @@ public class ScaleBench {
         final Eviction ev = db.internal().eviction();
         final Db d = db;
         db.internal().nodeCollection().setLoadListener(new NodeCollection.LoadListener() {
-            public void loaded() {
+            public void loaded() {      // before 005-52
+                loaded(true);
+            }
+            public void loaded(OpData op) {     // since 005-52: a warmup's load is not paced, as Db's listener
+                loaded(!op.getClass().getSimpleName().equals("WarmupGetData"));
+            }
+            void loaded(boolean paced) {
                 long t0 = System.nanoTime();
-                ev.afterLoad(d);
+                afterLoad(ev, d, paced);
                 long dt = System.nanoTime() - t0;
                 alCalls.increment();
                 alNanos.add(dt);
@@ -338,6 +344,37 @@ public class ScaleBench {
                 }
             }
         });
+    }
+
+    /**
+     * Eviction.afterLoad, (Db, boolean paced) since 005-52 and (Db) before it, found once so
+     * that this compiles against both (bergdb 015-19).
+     */
+    static final java.lang.invoke.MethodHandle AFTER_LOAD = afterLoadHandle();
+
+    static java.lang.invoke.MethodHandle afterLoadHandle() {
+        java.lang.invoke.MethodHandles.Lookup l = java.lang.invoke.MethodHandles.lookup();
+        try {
+            try {
+                return l.findVirtual(Eviction.class, "afterLoad",
+                        java.lang.invoke.MethodType.methodType(void.class, Db.class, boolean.class));
+            } catch (NoSuchMethodException e) {
+                return java.lang.invoke.MethodHandles.dropArguments(l.findVirtual(Eviction.class, "afterLoad",
+                        java.lang.invoke.MethodType.methodType(void.class, Db.class)), 2, boolean.class);
+            }
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    static void afterLoad(Eviction ev, Db d, boolean paced) {
+        try {
+            AFTER_LOAD.invokeExact(ev, d, paced);
+        } catch (RuntimeException | Error e) {
+            throw e;
+        } catch (Throwable t) {
+            throw new RuntimeException(t);
+        }
     }
 
     long streamFilesBytes() {
@@ -574,7 +611,7 @@ public class ScaleBench {
                         streamFilesBytes() / 1000000));
             }
         }
-        db.sync(SyncLevel.STRONG);
+        db.sync(SyncLevel.ORDINARY);
         Snap b = new Snap();
         order = null;
         Properties p = new Properties();
