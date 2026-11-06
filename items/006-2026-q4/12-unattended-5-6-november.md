@@ -369,6 +369,59 @@ Times from `date`, CET.
 * 21:53 Q-A prepared: the four agents write their State notes by 22:10 and
   are resumed after the W7 block; Q-A (pid 74282), Q-W7 (20050) and Q-B
   (74284) alive and ready.
+* 21:56 Harness 6.7 landed (4d7a1bb, 018-04): it fails on 015-41, 42, 47,
+  48, 59 and 62, each with its fix reverted, and found 019-15 (a delete's
+  key is not replaced under key replace; for Frans).
+* 22:15 to 00:48 The quiet blocks. Q-A ran 22:15 to 23:33 (015-86's
+  measurements). W7 ran to 00:48 and ended FAILED, NOT QUIET (load 1.82 at
+  00:15 with no other run: the Wi-Fi drivers and the Claude app); props,
+  pp and quick-ab exit 0; sb-m exit 1 (2026.2 uniform 667156 against
+  2026.1 723598), sb-c ran nothing (no 2026.1 key24-10000000 database).
+  Results in `/Users/f/fl/bench/016/night3/`, for the morning.
+* 00:49 The four agents resumed. 01:15 `gate.sh` refused every gate while
+  a gated `night.sh tests -c ...` ran (its `pgrep` matched it); fixed to
+  match only the night run itself.
+* 01:05 to 01:29 015-80, option 2 (xhigh): `BufferedStream` makes one call
+  at a time to the stream below (a fair `ioLock`; `getFirstPos` from a
+  value kept after each cut). Review R4 (`review-r4.md`): land, no A or B;
+  landed 33a81b9 with `before-commit.sh`, LEVEL 2 quick and LEVEL 3 OK;
+  R4's C2 and C3 (an ownership rule in the Javadoc, two tests made real)
+  5214825. R4's C1 for Frans: reclaim's cut now waits for the storage
+  thread's append (up to 5 MB) and its force under the write lock.
+  Harness 6.7's second part (e9fc032): directories and a small cache, 103
+  more seeds, no new fault.
+* 01:24 to 01:53 015-19 done (8e2453e): ScaleBench and its 005-65 diff
+  compile against main, 2026.2 and 2026.1.
+* 01:57 Two more harnesses at high, as Frans's word of 21:33 asks: 6.4,
+  sizes and times (018-06), and 6.1, corrupt streams at a start (018-07).
+* 01:58 Harness 6.2 landed (e7e9d3e, b45b2fa, 8130710; 018-03): it fails
+  on 015-32, 35, 53, 78 and 019-09 before their fixes, and found 019-10
+  (an unchecked exception or `Error` of a read left the database going
+  on), fixed. Unit sample about 4 s beside the f-tests; night tests 3.5
+  minutes.
+* 02:10 to 02:54 `night.sh` at 8130710: NIGHT OK (44 minutes; levels 1 to
+  4, the night tests, conformance medium).
+* 02:56 Harness 6.5 landed (ed58892, c4dc699, 024a876; 018-05): it fails on
+  015-67 to 015-71 with their fixes taken out, and found 019-20 and 019-21
+  (index nodes counted below their bytes) and 019-22 (a warmup kept a
+  value over 1 MiB), fixed; LEVEL 4 OK.
+* 02:02 to 03:02 Review R5 (`review-r5.md`) of 019-10, 019-20 to 019-22: no
+  A or B. F1 and F2, for Frans: an `Error` of a read now reaches the
+  caller wrapped, against docs/levels.md, section 3 (options in 019-10's
+  entry). F3, words, fixed (59588db, with 015-80 out of harness 6.2's skip
+  list). F4, a gap in 019-21's fix (the start's recount ran before linkD),
+  fixed (c73daba, LEVEL 4 quick OK). F5: the start's recount costs about
+  0.7 µs per object, 110 ms of a 3 s restart at 1M keys.
+* 03:48 LEVEL 4 quick OK on 59588db, all of the night's fixes combined.
+* 04:20 Harness 6.1 landed (fcc3a62, 45b75fb, f86e62e; 018-07): every
+  truncation at every byte (52,690) starts with exactly its committed
+  transactions; it fails on 005-74, 005-75, 015-07, 015-72 and 015-75
+  before their fixes, and found 019-30 to 019-34: 019-34 fixed (a meta
+  block's position outside the stream refused), 019-32 a fix left open,
+  019-30, 31 and 33 for Frans.
+* 04:24 Harness 6.4 landed (18b374d; 018-06): it fails on 015-50, 015-55
+  and 015-76, and found no new fault in 584 runs. All agents stopped; the
+  last landing of the night.
 
 
 ## 8. Outcome
