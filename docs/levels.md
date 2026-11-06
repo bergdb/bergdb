@@ -174,7 +174,11 @@ The details:
   threads (the storage thread, eviction, the cut's file deletion, index
   jobs) fail the database on anything that ends their work. An index job's
   refused transaction or expired read is not a failure: the job waits as
-  after a conflict and takes its step again (019-38). A start that
+  after a conflict and takes its step again (019-38). Any other exception
+  of an index build that is not an `Error`, such as an object it cannot
+  index (a null indexed `String`), ends the build as failed, its status
+  says so, and the database goes on; a start takes the build again, and
+  the index can be deleted (019-42). A start that
   throws stops the database instead (005-32). Before, an `Error` before a
   transaction's go point, as in a read, passed through, and the database
   went on.

@@ -336,7 +336,8 @@ Reliability
   `Error` before a transaction's go point, as in a read, passed through and
   the database went on. BergDB's own threads fail the database on anything
   that ends their work (an index job's refusal or expired read is retried,
-  bergdb 019-38): an index job's thread ended, the database went on,
+  bergdb 019-38; an index build's other exceptions end it, 019-42): an
+  index job's thread ended, the database went on,
   and after a restart the job said "done"; the storage thread ended, and
   syncs waited for ever. The stream's bytes are unchanged.
 * **`stop()` and `close()` no longer hang when a thread cannot start or
@@ -556,6 +557,8 @@ Documentation
   docs/levels.md, section 1. Their tests still run in `before-commit.sh`.
   The notes say it in "What it is" and in the known issues, as 2026.2's say
   it of replication; their faults are those of 018-01, section 3.2.
+  An index build that meets an object it cannot index (a null indexed
+  `String`) ends as failed and the database goes on (bergdb 019-42).
 * **The crash contract is stated** (bergdb 014-01, section 7; Frans,
   2026-11-05). BergDB assumes that its stream's bytes are read back
   exactly as they were written, and that a crash leaves a prefix of what

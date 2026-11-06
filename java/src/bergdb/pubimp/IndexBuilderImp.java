@@ -350,11 +350,18 @@ public class IndexBuilderImp implements IndexBuilder {
                         // it failed the database; before, it ended the thread.
                         retryWait = waitToRetry(retryWait);
                         continue;
+                    } catch (RuntimeException e) {
+                        // Any other exception of the build, such as an object that the index
+                        // function cannot index, ends the build as failed, and the database
+                        // goes on; a start takes the build again (2026-11-06, bergdb 019-42).
+                        // Since 019-10 it failed the database, at every start.
+                        createState.fail(e);
+                        break;
                     } catch (Throwable e) {
-                        // Anything else, a bug or an Error such as an OutOfMemoryError, fails
-                        // the database, as on BergDB's other threads, with no call to throw
-                        // it to (2026-11-06, bergdb 019-10; 010-01, P7). It ended the thread,
-                        // and the database went on without the index's creation.
+                        // An Error, such as an OutOfMemoryError, fails the database, as on
+                        // BergDB's other threads, with no call to throw it to (2026-11-06,
+                        // bergdb 019-10; 010-01, P7). It ended the thread, and the database
+                        // went on without the index's creation.
                         connection.getDb().internal().fail(e);
                         break;
                     }
@@ -574,6 +581,7 @@ public class IndexBuilderImp implements IndexBuilder {
         public boolean isDone;
         
         private boolean stopped = false;    // Done because the index was deleted (bergdb 015-22).
+        private Throwable failure = null;   // Done because the build failed (bergdb 019-42).
         
         public IndexCreateState(IndexManager.Index index) {
             assert index != null;
@@ -601,11 +609,18 @@ public class IndexBuilderImp implements IndexBuilder {
             update(true, processedEntries);
         }
         
+        /** Done, without activating the index: the build failed with 'e' (bergdb 019-42). */
+        public synchronized void fail(Throwable e) {
+            this.failure = e;
+            update(true, processedEntries);
+        }
+        
         public synchronized JobStatus getJobStatus() {
             // May be called from any thread; synch accordingly.
             
             final int progress = isDone ? 100 : -1;
             final boolean stopped = this.stopped;
+            final Throwable failure = this.failure;
             
             return new JobStatus() {
                 public int progress() {
@@ -614,7 +629,12 @@ public class IndexBuilderImp implements IndexBuilder {
 
                 public String note() {
                     String result = 
-                            stopped ?
+                            failure != null ?
+                              "Failed: the build of the index " + index.getName()
+                                    + " ended with an exception (" + failure + "). The index "
+                                    + "is not built; a start takes the build again. Processed "
+                                    + processedEntries + " entries."
+                            : stopped ?
                               "Stopped: the index " + index.getName() + " was deleted before "
                                     + "it was built. Processed " + processedEntries + " entries."
                             : progress == 100 ? 

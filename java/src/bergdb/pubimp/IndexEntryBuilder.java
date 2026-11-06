@@ -130,7 +130,11 @@ public class IndexEntryBuilder {
 
     public static byte[] sortBytesFromString(KCollator collator, String stringValue) {
         assert collator != null : "collator is null";
-        assert stringValue != null: "stringValue is null";
+        if (stringValue == null) {
+            // Not an assert: a null field of the user's object is no Error, which would fail
+            // the database (bergdb 019-42).
+            throw new IllegalArgumentException("A null String cannot be indexed.");
+        }
         
         byte[] sortBytes = collator.getSortBytes(stringValue);
         return sortBytes;

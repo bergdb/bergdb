@@ -109,7 +109,6 @@ Open
 | [019-35](35-night-read-losses.md) | Investigate | The Core's warm reads lost 1 to 6 % in night 006-12 | none | open |
 | [019-36](36-reclaim-cut-waits-for-append.md) | Investigate | Reclaim's cut waits for the thread's append (performance) | none | open |
 | [019-40](40-review-r6-c-findings.md) | Fix | Review R6's C findings: tests, words, small faults | none | open |
-| [019-42](42-index-build-bricks-database.md) | Fix | An index build over an object it cannot index fails the database at every start | none | open |
 | [019-43](43-stop-at-first-read-unreported.md) | Fix | Harness 6.2 on s1: a failed first read unreported at close() | none | open |
 
 
@@ -118,6 +117,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-42](42-index-build-bricks-database.md) | Fix | An index build over an object it cannot index fails the database at every start | none | done | 2026-11-06 |
 | [019-32](32-key-node-klongs-unchecked.md) | Fix | A node's klongs and pointers unchecked: an assert at a start or a read | none | done | 2026-11-06 |
 | [019-41](41-review-r7-c-findings.md) | Fix | Review R7's C findings: a test missing a hot loop, a sync, an interrupt | none | done | 2026-11-06 |
 | [019-39](39-error-path-hangs.md) | Fix | Hangs in the error path: a thread not started, a second Error | none | done | 2026-11-06 |
@@ -242,6 +242,10 @@ Files
   in the error path (review R6 of 006-13, B2 and B3; R7, B1): a thread
   that cannot start, and a second `OutOfMemoryError` while a thread
   records its failure; with the limit of a heap that stays full.
+* [42-index-build-bricks-database.md](42-index-build-bricks-database.md).
+  019-42, Fix: since 019-10 an index build that met an object it cannot
+  index (a null indexed `String`) failed the database at every start; now
+  the build ends as failed and the database goes on (020-01, N1).
 
 
 Log
@@ -387,3 +391,9 @@ checks the type of the node a pointer names, one id names nodes of one
 type, and a put meets a non-leaf without a klong for its key with an
 exception, not an assert; harness 6.1's skip list is empty; BEFORE
 COMMIT OK.
+
+2026-11-06. 019-42 done by coord-1106's agent f42, option (b): a
+`RuntimeException` of an index build ends the build as failed, and the
+database goes on; a null indexed `String` throws an
+`IllegalArgumentException`, no longer an assert's `AssertionError`;
+BEFORE COMMIT OK.

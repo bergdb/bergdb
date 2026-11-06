@@ -43,6 +43,17 @@ public class PubTesterIndexJobs {
         }
     }
 
+    /** An object with an indexed String field, which may be null (bergdb 019-42). */
+    public static class Named {
+        public String name;
+
+        public Named() {}
+
+        public Named(String name) {
+            this.name = name;
+        }
+    }
+
     private static Database start(MemoryStream stream) {
         DatabaseBuilder builder = Factory.database();
         ((DatabaseBuilderImp) builder).getDbBuilder().testSetup(stream);
@@ -165,7 +176,8 @@ public class PubTesterIndexJobs {
      * after its transaction (the hook "step"), fails the database, as on BergDB's other
      * threads, and the build's thread ends: every later call is refused with a
      * DbFailedException whose cause is the Error. Before, the thread ended, and the database
-     * went on without the build. So does an unexpected RuntimeException, a bug (bergdb 019-38).
+     * went on without the build. A RuntimeException ends the build as failed, and the database
+     * goes on (bergdb 019-42); from 019-38 to 019-42 it failed the database too.
      */
     @Nano
     public static void testErrorInBuildFailsTheDatabase() {
@@ -181,7 +193,13 @@ public class PubTesterIndexJobs {
                             throwIt(thrown);
                         }
                     });
-                    builder.dir("/items/").type("long").field("amount").start().join();
+                    JobStatus status = builder.dir("/items/").type("long").field("amount")
+                            .start().join();
+                    if (!(thrown instanceof Error)) {
+                        putNew(db);     // DbFailedException if the build failed the database.
+                        checkFailed(status);
+                        continue;
+                    }
                     DbFailedException refused = null;
                     try {
                         putNew(db);
@@ -194,6 +212,53 @@ public class PubTesterIndexJobs {
                     db.close();
                 }
             }
+        }
+    }
+    
+    /** The build has ended as failed, without activating its index (bergdb 019-42). */
+    private static void checkFailed(JobStatus status) {
+        Assert.assertEquals(100, status.progress());
+        Assert.assertTrue(status.note(), status.note().startsWith("Failed"));
+    }
+    
+    /**
+     * bergdb 019-42 (020-01, N1, its probe V1Probe): a build over an object that its index
+     * cannot index, a null indexed String, ends as failed, and the database goes on. A start
+     * takes the build again, which ends as failed again; the index can be deleted, and the
+     * next start has no job. Since 019-10 the database failed, at every start.
+     */
+    @Nano
+    public static void testBuildOverAnObjectItCannotIndex() {
+        MemoryStream stream = new MemoryStream();
+        Database db = start(stream);
+        try {
+            db.newConnection().w().put("/named/1", new Named("a")).put("/named/2", new Named(null))
+                    .put("/named/3", new Named("c")).execute();
+            checkFailed(db.indexBuilder("by-name").dir("/named/").type("string").field("name")
+                    .start().join());
+            putNew(db);         // DbFailedException if the build failed the database.
+        } finally {
+            db.close();
+        }
+        
+        MemoryStream restarted = stream.copy();
+        db = start(restarted);
+        try {
+            Job[] jobs = db.getStartupInfo().getStartupJobs();
+            Assert.assertEquals(1, jobs.length);
+            checkFailed(jobs[0].join());
+            putNew(db);
+            Assert.assertEquals(100, db.deleteIndex("by-name").join().progress());
+        } finally {
+            db.close();
+        }
+        
+        db = start(restarted.copy());
+        try {
+            Assert.assertEquals(0, db.getStartupInfo().getStartupJobs().length);
+            putNew(db);
+        } finally {
+            db.close();
         }
     }
     

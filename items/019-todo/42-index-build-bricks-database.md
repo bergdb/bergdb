@@ -1,7 +1,7 @@
 019-42. Fix: an index build that meets an object it cannot index fails the database at every start
 ==================================================================================================
 
-Status: open. Kind: Fix. Frans: none (the coordinator's default, below;
+Status: done. Kind: Fix. Frans: none (the coordinator's default, below;
 Frans may choose otherwise).
 Created 2026-11-06 by Frans Lundberg.
 
@@ -58,3 +58,34 @@ Log
 
 2026-11-06. Registered by coord-1106 from 020-01's N1, with the
 coordinator's default (b).
+
+2026-11-06. Done by coord-1106's agent f42, option (b). The build's
+thread (`IndexBuilderImp.createInThread`) catches a `RuntimeException`
+after 019-38's catches (the stops, the failure, a refusal or an expiry)
+and ends the build as failed (`IndexCreateState.fail`): the exception
+is kept, the status has progress 100 and a note "Failed: the build of
+the index ... ended with an exception (...)", and the database goes on.
+An `Error` still fails the database. The index stays creating, as its
+definition in the stream says: the next start takes the build again
+(`getStartupJobs()` has it), which ends as failed again, without failing
+the database; the simplest, as nothing new is stored. `deleteIndex`
+works, and the start after it has no job. With `-ea`, a null indexed
+`String` threw an `AssertionError` (`IndexEntryBuilder
+.sortBytesFromString`'s assert), an `Error` that the transaction's own
+catch (019-10) turns into a failure of the database before the build's
+thread sees it; the assert is now a check that throws
+`IllegalArgumentException`, with and without `-ea`. So a `w()` or `rw()`
+put of such an object in an indexed directory, and an `eq(null)` or
+`startAt(null)` of a string index, throw `IllegalArgumentException` and
+the database goes on (with `-ea` the put failed the database: 020-01,
+N2's last case); what a null field means stays 2026.4's (020). The
+behaviour of `testErrorInBuildFailsTheDatabase` changes for its
+`RuntimeException`: the build ends as failed, the database goes on.
+Test: `PubTesterIndexJobs.testBuildOverAnObjectItCannotIndex` (V1Probe's
+shape: three objects, one with a null name; the build, two restarts, a
+deletion); it fails on the code before (the database failed, the status
+stayed -1), and also with the build's change alone, under `-ea`.
+V1Probe's `build` with and without `-ea`: "job 100 Failed", "database:
+goes on", restarts 1 and 2 with one startup job each and the database
+going on. docs/levels.md, section 3: one sentence; releases/next.md: the
+experimental bullet and 019-10's bullet. BEFORE COMMIT OK.

@@ -959,6 +959,8 @@ on the clone's jar (`92844c2`), with and without `-ea`.
   silently, and the database went on. By 018-01's severities (its D1),
   class A, "a database that cannot run again", in experimental code;
   whether it is a 2026.3 matter is question 1 of section 14.
+  Fixed by 019-42 (b) (2026-11-06): the build ends as failed and the
+  database goes on, with and without `-ea`; a start takes it again.
 * **N2. The user's data turns into an `Error` that fails the database in
   `rw()` and not outside it** (019-10 with S2-F6, F8, F26, probed; S2-F21
   and F15 by the same paths, not probed). Probes:
