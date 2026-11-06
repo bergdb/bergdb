@@ -152,3 +152,8 @@ Index
   answers from Frans, and all done before the next release but Frans's
   exceptions; every new todo entry since 2026-11-05. Long-term topics and
   ideas to consider go to 017.
+* **020-release-2026-4** (open). Release 2026.4: a bug-free database,
+  user indexes and the serialization of Java objects (DbObject) included;
+  no backwards compatibility needed, the API may change. The plan, its
+  decisions and the work towards it; first, an inventory of the non-Core
+  part for Frans's keep, simplify or drop decisions.
