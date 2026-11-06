@@ -147,7 +147,8 @@ the broader model (014-01, section 7). 015-73 left the list (Frans, 15:35;
 the table's row "Startup" follows): a last record's startupPos changed to
 an earlier record's start is outside the fault model for 2026.3, option
 (a); 015-75's checks stay, and a checksum of the record header waits for
-the next change of the record format (019-07). 015-51 left the list
+the next change of the record format (019-07; since 2026-11-06 in
+017-08, checksums in the stream). 015-51 left the list
 (Frans, 21:03; the table's row "Db and reclaim" follows): a value
 transformation's result above the value limit is the caller's fault, as
 an exception from it is, and fails the database (P7); a refusal is
@@ -158,6 +159,14 @@ joined and left, fixed the night they were found by harness 6.5
 Changed since, 2026-11-06: 019-10 joined (an unchecked exception or
 `Error` from a read of the storage leaves the database going on, found by
 harness 6.2, 018-03), and was fixed the same night.
+
+019-30, 019-31 and 019-33, found by harness 6.1 (018-07), left the list
+as 015-73 did (Frans, 10:42; the table never had them): a record's time
+or `topPos` changed within the start's checks, whole records cut out of
+a stream's middle, and a node byte changed between 0x00 and 0xff are
+outside the fault model for 2026.3. BergDB assumes correct storage.
+Checksums in the stream that would catch them are 017-08, not for
+2026.3.
 
 
 ### 3.2. Outside the goal
@@ -284,12 +293,22 @@ for 2026.3: they are experimental (D2).
   succeeds without the transactions before it. The harness counts such a
   copy as known to pass undetected, not as a failure. A checksum of the
   record header would catch it, at the next change of the record format
-  (019-07).
+  (019-07; since 2026-11-06 part of 017-08, checksums in the stream).
+* So are 019-30, 019-31 and 019-33 (Frans, 2026-11-06, 10:42, option
+  (a) of each): a record's time or `topPos` changed to a value that
+  passes the start's checks, whole records cut out of a stream's middle,
+  and a node byte changed between 0x00 and 0xff, which Fletcher-16
+  modulo 255 does not see. BergDB assumes correct storage; its checksums
+  and checks are a best effort. The harness counts such copies as known
+  to pass undetected. Checksums that cover the whole stream (a header
+  checksum, a link between records, a stronger node checksum) are
+  017-08: they may or may not come in a future release, not in 2026.3.
 * Built on 2026-11-06: see 018-07. It fails on each of the five, and
   found 019-30 to 019-34. It runs in the unit tests of
   `before-commit.sh` (a sample) and in the night tests (the full set);
-  its skip list holds the four open ones until they are fixed or decided
-  (019-34 was fixed the same night).
+  its skip list held the four open ones until they were fixed or
+  decided (019-34 fixed the same night; 019-30, 019-31 and 019-33
+  decided on 2026-11-06); it holds 019-32.
 
 
 ### 6.2. Failures and interrupts in storage
@@ -575,3 +594,15 @@ at their bounds, with reclaim, eviction and restarts, and a lowered
 record limit. It fails on 015-50 and 015-55, each with its fix reverted,
 and on 015-76 with the old Javadoc's promise as its oracle; no new fault.
 Section 6.4 updated.
+
+2026-11-06, 10:42. 019-30, 019-31 and 019-33 decided by Frans, to
+coord-1106: "Yes, as recommended. BergDB assumes correct storage. Which
+makes sense. [...] However, use of checksums in the stream is also a
+reasonable design. Going in that direction is definitely not for 2026.3.
+Remember the target: bug-free Core. Move the possibility of checksums in
+the stream to a new item in 017. This may or may not be added in some
+future release." Option (a) of each: outside the fault model for 2026.3,
+as 015-73; not on section 3.1's list. Harness 6.1 counts such copies as
+known, and its skip list holds 019-32 only. Checksums in the stream are
+017-08, and 019-07 moved there. Sections 3.1 and 6.1 updated;
+`releases/next.md` names the limit.

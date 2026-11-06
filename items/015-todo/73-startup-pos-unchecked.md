@@ -84,4 +84,11 @@ truncation is (018-01, section 6.1). 015-75's checks stay. Done; nothing
 in `java/` changed. Out of 018-01's list of the Core's faults; harness 6.1
 counts such a copy as known to pass undetected. 2026.3's notes
 (`releases/next.md`) name it as a known limit. Option (c), a checksum of
-the record header, is 019-07, for the next change of `RECORD_FORMAT`.
+the record header, is 019-07, for the next change of `RECORD_FORMAT`
+(since 2026-11-06 in 017-08, checksums in the stream).
+
+2026-11-06, 10:42. Frans decided 019-30, 019-31 and 019-33, more damage
+of this class that a start does not detect, in the same way (option (a),
+outside the fault model for 2026.3: "BergDB assumes correct storage.").
+019-07, option (c) here, moved to 017-08, checksums in the stream, a
+long-term topic: "This may or may not be added in some future release."

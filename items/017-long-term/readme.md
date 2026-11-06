@@ -66,6 +66,12 @@ Files
   meta block rather than in an internal KV (from 015-87's F1); third,
   refusing a value transformation's result above the value limit (from
   015-51). Open; a collection.
+* [017-08](08-stream-checksums/readme.md). Checksums in the stream: a
+  checksum of the record header, a link between records, a stronger node
+  checksum, so that a start or a read detects damage that passes today
+  (015-73, 019-30, 019-31, 019-33). Created on 2026-11-06 at Frans's
+  decision on the last three, with 019-07 moved here. Open; notes only;
+  may or may not be added in some future release, not 2026.3.
 
 
 Log
@@ -118,3 +124,11 @@ open until it lands.
 2026-11-05. 017-07, section 3, refusing a value transformation's result
 above the value limit, added at Frans's request (21:03) when he decided
 015-51: such a result is the caller's fault and fails the database.
+
+2026-11-06. 017-08, checksums in the stream, created at Frans's
+decision on 019-30, 019-31 and 019-33 (10:42): "However, use of checksums
+in the stream is also a reasonable design. Going in that direction is
+definitely not for 2026.3. [...] Move the possibility of checksums in
+the stream to a new item in 017. This may or may not be added in some
+future release." 019-07, a checksum of the record header, moved here
+from 019 by the rule for moved entries.

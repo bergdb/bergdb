@@ -239,7 +239,7 @@ Files
 * [70-budget-decrease-above-budget.md](70-budget-decrease-above-budget.md). 015-70, Fix: R4-F5.
 * [71-audit-empty-handle-cleanup.md](71-audit-empty-handle-cleanup.md). 015-71, Fix: R4-F6.
 * [72-record-size-unchecked.md](72-record-size-unchecked.md). 015-72, Fix: R6-F1.
-* [73-startup-pos-unchecked.md](73-startup-pos-unchecked.md). 015-73, Fix: R6-F2; decided 2026-11-05 (15:35): outside the fault model for 2026.3, option (a); a record header checksum is 019-07.
+* [73-startup-pos-unchecked.md](73-startup-pos-unchecked.md). 015-73, Fix: R6-F2; decided 2026-11-05 (15:35): outside the fault model for 2026.3, option (a); a record header checksum is 019-07, since 2026-11-06 in 017-08.
 * [74-metablock-comment.md](74-metablock-comment.md). 015-74, Fix: R6-F3.
 * [75-start-checks-asserts.md](75-start-checks-asserts.md). 015-75, Fix: R6-F4.
 * [76-startup-distance-clamp.md](76-startup-distance-clamp.md). 015-76, Fix: R6-F5.

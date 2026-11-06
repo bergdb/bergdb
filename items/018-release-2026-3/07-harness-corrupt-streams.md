@@ -13,8 +13,10 @@ audit. It fails on each of the five known faults of its class (018-01,
 section 6.1), with each fix's main hunk reverted, and found five more:
 019-30, 019-31 and 019-33 for Frans's decision (damage that the
 format's checks cannot see), 019-32 a fault of the Core to fix, and
-019-34, fixed the same night. The four open ones are in its skip
-list, and it passes on `main`.
+019-34, fixed the same night. The four open ones were in its skip
+list, and it passes on `main`. Since 2026-11-06 (Frans, 10:42),
+019-30, 019-31 and 019-33 are outside the fault model for 2026.3 and
+counted as known; the skip list holds 019-32 only.
 
 
 ## 1. What it checks, and why
@@ -67,13 +69,24 @@ real runs of `Db`, and starts each damaged copy. Two kinds of checks:
   `OutOfMemoryError`, `IllegalArgumentException`), one that does not
   end in 60 s, a read that fails and the database goes on, and a copy
   that answers other values than the original's without failing
-  ("undetected"). Two kinds of damage pass undetected by Frans's
-  decision and are counted as known, not failed:
+  ("undetected"). Five kinds of damage pass undetected by Frans's
+  decision and are counted as known, not failed; BergDB assumes correct
+  storage, and its checksums and checks are a best effort:
   * 015-73 (2026-11-05, 15:35, option (a)): a record's `startupPos`
     set to the start of a later record than its own startup pos, which
     the take never reached;
   * 014-01 (005-83's case, moved to 014-01 on 2026-11-03): a start that
-    refuses a damaged size after recovery's zero fill has written.
+    refuses a damaged size after recovery's zero fill has written;
+  * 019-30 (2026-11-06, 10:42, option (a)): a record's time or `topPos`
+    set, or a byte of them flipped, to a value that passes the start's
+    checks;
+  * 019-31 (the same): a range cut out of the stream's middle, such as
+    whole records, which leaves a valid stream of fewer transactions;
+  * 019-33 (the same): a node byte flipped by 0xff, between 0x00 and
+    0xff, which Fletcher-16 modulo 255 does not see.
+
+  Checksums in the stream that would catch them are 017-08, not for
+  2026.3.
 
 
 ## 2. How it works
@@ -124,9 +137,10 @@ package's `Pack`; test code only, nothing in the production code.
     4-byte field set to -8, 0x7ffffff8 and 0x10000. A node so changed
     is a valid node with another meaning: a start that takes it, and
     reads that answer other values, are outside the fault model (019-07,
-    "a change made with the checksum made right again"); only a start or
-    a read that throws another exception than a `DbException`, or a
-    database that goes on after a failed read, is a fault here;
+    now in 017-08: "a change made with the checksum made right again");
+    only a start or a read that throws another exception than a
+    `DbException`, or a database that goes on after a failed read, is a
+    fault here;
   * a range cut out: whole records (pairs of record starts), and
     random ranges of up to 2,000 bytes.
 * **The check of a copy** (`check`): the start, then the reads (the
@@ -136,9 +150,10 @@ package's `Pack`; test code only, nothing in the production code.
 * `SKIP`, as 6.3's and 6.7's (018-02, section 4): an open known fault
   of the class is listed, its failures are printed and skipped, so that
   the harness passes on `main`; a fix removes its line.
-  `-Dbergdb.corrupt.skip=none` skips nothing. `KNOWN` lists the two
-  decided kinds of section 1. `entryOf` says which failures are a
-  listed entry's (section 4).
+  `-Dbergdb.corrupt.skip=none` skips nothing. `KNOWN` lists the five
+  decided kinds of section 1: a copy is marked with its kind when it is
+  made, and an undetected outcome of it is counted as known. `entryOf`
+  says which failures are a listed entry's (section 4).
 * A start may append at most 1 MB to a copy (`MAX_APPENDED`): a
   damaged size field makes recovery zero-fill up to 2 GB before the
   start refuses the stream (014-01, 005-83's case), which took minutes
@@ -182,7 +197,7 @@ Adapted from 018-01's proposal, and why:
 java -ea -cp build/bergdb.jar bergdb.core.CorruptStreamTester 1        # the sample, seed 1
 java -ea -cp build/bergdb.jar bergdb.core.CorruptStreamTester 20398 full 4   # the full set
 java -ea -Dbergdb.corrupt.skip=none -cp build/bergdb.jar bergdb.core.CorruptStreamTester 1
-                                                     # nothing skipped: 019-30 to 019-33
+                                                     # nothing skipped: 019-32
 ```
 
 
@@ -194,32 +209,31 @@ skipped" and counts, and `entryOf` says which failures are whose:
 
 ```java
 static final String[] SKIP = {
-    "019-30",   // a record's time or topPos changed within the checks: undetected
-    "019-31",   // whole records cut out of the stream's middle: undetected
     "019-32",   // a node's klongs and pointers unchecked: an assert at a start or read
-    "019-33",   // a node byte changed between 0x00 and 0xff: the checksum misses it
 };
 ```
 
-* 019-30: an undetected outcome of a header field's change or a byte
-  flip in the header's time or `topPos`;
-* 019-31: an undetected outcome of a range cut out;
 * 019-32: a start or a read of a damaged node (changed with its
   checksum made right, or flipped in a way the checksum misses) that
   throws an `AssertionError`, an `IllegalStateException` (without `-ea`)
-  or a `ClassCastException`;
-* 019-33: an undetected outcome of a node byte flipped by 0xff.
+  or a `ClassCastException`.
 
 019-34 had its line until its fix the same night: a flip in a meta block
 that made the start throw `IllegalArgumentException: spos >= streamSize`.
+019-30, 019-31 and 019-33 had theirs until Frans's decision of
+2026-11-06 (10:42, option (a) of each); they are `KNOWN` since:
 
-A fix (019-32) or a decision ((a) of 019-30, 019-33) removes its line:
-a decided kind moves to `KNOWN`, with 015-73's and 014-01's, and is
-counted as known. Unlike 6.3's list, a line whose failures no longer
-come does not fail the test: the copies of a sample depend on the seed.
-`-Dbergdb.corrupt.skip=none` skips nothing: seed 1 then fails with 50
+* 019-30: a header's time or `topPos` set, or a byte flipped in them;
+* 019-31: a range cut out;
+* 019-33: a node byte flipped by 0xff.
+
+A fix (019-32) or a decision removes its line: a decided kind moves to
+`KNOWN`, with 015-73's and 014-01's, and is counted as known. Unlike
+6.3's list, a line whose failures no longer come does not fail the test:
+the copies of a sample depend on the seed.
+`-Dbergdb.corrupt.skip=none` skips nothing: seed 1 then failed with 50
 copies (2 cut out, 7 flips and 40 header fields, 1 node), all of the
-listed entries.
+listed entries; since 2026-11-06 with 1, 019-32's.
 
 
 ## 5. The evidence
@@ -306,17 +320,33 @@ sample, with `-ea` as the unit tests run:
 On `main` each of these copies is refused with a `StreamFormatException`.
 
 
+### 5.3. After the decisions of 2026-11-06
+
+019-30, 019-31 and 019-33 counted as known (agent d4 of coord-1106, on
+`main` at 33a8713 with the change):
+
+* `unit.sh -c CorruptStreamTester`: SUCCESS. Seed 1's sample: no
+  failure; known 019-30 46 (7 flips, 39 header fields), 019-31 2, 015-73
+  2; 019-32 skipped 1. With nothing skipped: 1 failure, 019-32's.
+* Seeds 2 to 5 of the sample: no failure.
+* `night.sh tests -c CorruptStreamTester` (seed 20398): SUCCESS. By
+  hand, the full sets of seed 20398 (278,484 copies) and seed 20399
+  (294,184): no failure. Known 019-30 132 and 149, 019-31 3 and 51,
+  019-33 1,016 and 1,132, 015-73 4 and 5; 019-32 skipped 200 and 209.
+
+
 ## 6. What it found
 
 * **019-30** (Decide): a record's time changed within its neighbours',
   and the last record's `topPos` set to a version of its top node before
   the startup section, pass undetected; 015-73's class (no header
-  checksum, 019-07). Recommendation: (a), as 015-73.
+  checksum, 019-07). Recommendation: (a), as 015-73. Decided (a) on
+  2026-11-06.
 * **019-31** (Decide): whole records cut out of the stream's middle
   pass a start undetected (the `all` configuration, startup pos 0): the
   stream left is a valid stream of fewer transactions, as nothing links a
   record to the one before it. Recommendation: (a), as 015-73; a link
-  between records with 019-07.
+  between records with 019-07. Decided (a) on 2026-11-06.
 * **019-32** (Fix): a node's klongs and pointers are not checked: a
   key node changed with its checksum made right (a klong's type, a key
   klong's pointer) meets an assert at the start, or an
@@ -327,7 +357,9 @@ On `main` each of these copies is refused with a `StreamFormatException`.
 * **019-33** (Decide): Fletcher-16 modulo 255 does not see a byte
   changed between 0x00 and 0xff, so a value byte flipped by 0xff is read
   back changed. Recommendation: (a) for 2026.3, a stronger checksum with
-  019-07.
+  019-07. Decided (a) on 2026-11-06; a header checksum, a link between
+  records and a stronger node checksum are 017-08, checksums in the
+  stream.
 * **019-34** (Fix): a meta block's last-transaction position flipped
   past the stream's end passed the meta block's checks, and recovery
   threw an `IllegalArgumentException`; 019-01's class, a fault of the
@@ -365,7 +397,8 @@ Clone `/Users/f/fl/bench/006-12/h61`, branch `h61`; the old-code clone
 `/Users/f/fl/bench/006-12/h61-patches`. Done: the harness, this item,
 019-30 to 019-34, and 019-34's fix. Next: 019-32's fix (test first: the
 harness's copies); Frans's decisions on 019-30, 019-31 and 019-33;
-then the lines leave `SKIP`.
+then the lines leave `SKIP`. Decided 2026-11-06: their lines left
+`SKIP` (section 4); 019-32's stays.
 
 
 ## 9. Log
@@ -383,3 +416,11 @@ left `SKIP`, and the full set of seed 20398 passes. BEFORE COMMIT OK.
 
 2026-11-06, 04:14, night 006-12. 019-31's cause found by a probe: the
 copy left is a valid stream of fewer transactions; it became a Decide.
+
+2026-11-06, 10:42. 019-30, 019-31 and 019-33 decided by Frans, option
+(a) of each: outside the fault model for 2026.3, as 015-73 ("BergDB
+assumes correct storage."). Their lines left `SKIP`, and their kinds
+are in `KNOWN`, marked when a copy is made and counted as known;
+checksums in the stream are 017-08. Seed 1's sample, seeds 2 to 5, and
+the full sets of seeds 20398 and 20399 pass (section 5.3). Sections 1,
+2, 3, 4, 6 and 8 updated. BEFORE COMMIT OK.

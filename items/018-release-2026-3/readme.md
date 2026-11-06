@@ -61,9 +61,11 @@ Files
   018-07, harness 6.1, corrupt streams at a start, built: copies of
   streams written by `Db`, cut at every byte (the crash contract, a hard
   requirement) and damaged otherwise (best effort); it fails on the five
-  known faults of its class and found 019-30 to 019-34 (019-34 fixed,
-  the others in its skip list); where it runs (the unit tests, a
-  sample, 3 s; the night tests, the full set, 64 s).
+  known faults of its class and found 019-30 to 019-34 (019-34 fixed;
+  019-30, 019-31 and 019-33 decided outside the fault model on
+  2026-11-06 and counted as known; 019-32 in its skip list); where it
+  runs (the unit tests, a sample, 3 s; the night tests, the full set,
+  64 s).
 
 
 Log

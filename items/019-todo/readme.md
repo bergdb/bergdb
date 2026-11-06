@@ -106,11 +106,7 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
-| [019-07](07-record-header-checksum.md) | Implement | A checksum of the record header, at the next RECORD_FORMAT change | decision | waiting |
-| [019-30](30-header-time-toppos-undetected.md) | Decide | A record's time or topPos changed within the checks passes | decision | waiting |
-| [019-31](31-records-cut-out-undetected.md) | Decide | Whole records cut out of a stream's middle pass a start | decision | waiting |
 | [019-32](32-key-node-klongs-unchecked.md) | Fix | A node's klongs and pointers unchecked: an assert at a start or a read | none | open |
-| [019-33](33-node-checksum-00-ff.md) | Decide | A node byte changed between 0x00 and 0xff passes the checksum | decision | waiting |
 | [019-35](35-night-read-losses.md) | Investigate | The Core's warm reads lost 1 to 6 % in night 006-12 | none | open |
 | [019-36](36-reclaim-cut-waits-for-append.md) | Fix | Reclaim's cut waits for the thread's append under the write lock | none | open |
 
@@ -120,6 +116,10 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-33](33-node-checksum-00-ff.md) | Decide | A node byte between 0x00 and 0xff: outside the model | decision | done | 2026-11-06 |
+| [019-31](31-records-cut-out-undetected.md) | Decide | Records cut out of the middle: outside the model | decision | done | 2026-11-06 |
+| [019-30](30-header-time-toppos-undetected.md) | Decide | Time or topPos within the checks: outside the model | decision | done | 2026-11-06 |
+| [019-07](07-record-header-checksum.md) | Implement | A checksum of the record header: to 017-08 | decision | moved | 2026-11-06 |
 | [019-15](15-delete-key-replace.md) | Fix | Key replace: a delete's key is not replaced | decision | done | 2026-11-06 |
 | [019-34](34-metablock-last-trans-pos-unchecked.md) | Fix | A meta block's position past the stream: IllegalArgumentException | none | done | 2026-11-06 |
 | [019-22](22-warmup-keeps-large-value.md) | Fix | A transaction's warmup kept a value over 1 MiB | none | done | 2026-11-06 |
@@ -169,7 +169,7 @@ Files
   Implement: a checksum of the record header, in its 3 unused bytes, at
   the next change of `RECORD_FORMAT`, with Frans's approval of the format
   change; from 015-73's option (c). Not for 2026.3 (Frans, 2026-11-05,
-  15:35).
+  15:35). Moved to 017-08, checksums in the stream, on 2026-11-06.
 * [08-dbtime-to-utc-threads.md](08-dbtime-to-utc-threads.md). 019-08,
   Fix: `DbUtil.dbTimeToUtc()` formatted with one static `SimpleDateFormat`,
   so readers that built a `LookupTimeNotAvailableException` at once got
@@ -201,19 +201,22 @@ Files
 * [30-header-time-toppos-undetected.md](30-header-time-toppos-undetected.md).
   019-30, Decide: a record's time or `topPos` changed within the start's
   checks passes undetected (015-73's class, no header checksum); found by
-  harness 6.1 (018-07); waiting for Frans's decision.
+  harness 6.1 (018-07). Decided 2026-11-06: outside the fault model for
+  2026.3, option (a); a header checksum is 017-08.
 * [31-records-cut-out-undetected.md](31-records-cut-out-undetected.md).
   019-31, Decide: whole records cut out of a stream's middle pass a
   start undetected (nothing links a record to the one before it); found
-  by harness 6.1 (018-07); waiting for Frans's decision.
+  by harness 6.1 (018-07). Decided 2026-11-06: outside the fault model
+  for 2026.3, option (a); a link between records is 017-08.
 * [32-key-node-klongs-unchecked.md](32-key-node-klongs-unchecked.md).
   019-32, Fix: a node's klongs and pointers are not checked at a parse,
   and a start or a read meets an assert (015-07's class); found by
   harness 6.1 (018-07).
 * [33-node-checksum-00-ff.md](33-node-checksum-00-ff.md). 019-33,
   Decide: a node byte changed between 0x00 and 0xff passes Fletcher-16
-  modulo 255; found by harness 6.1 (018-07); waiting for Frans's
-  decision.
+  modulo 255; found by harness 6.1 (018-07). Decided 2026-11-06:
+  outside the fault model for 2026.3, option (a); a stronger node
+  checksum is 017-08.
 * [34-metablock-last-trans-pos-unchecked.md](34-metablock-last-trans-pos-unchecked.md).
   019-34, Fix: a meta block's last-transaction position past the stream
   gave an `IllegalArgumentException` at a start (019-01's class); found
@@ -341,3 +344,11 @@ summary: the read losses to trace to their commits.
 `Connection.setEnableKeyReplace`'s Javadoc says that a delete's key is
 taken as written; no code change; harness 6.7's reference follows it and
 its skip list is empty; BEFORE COMMIT OK.
+
+2026-11-06, 10:42. 019-30, 019-31 and 019-33 decided by Frans, each as
+recommended, option (a): outside the fault model for 2026.3, as 015-73
+("BergDB assumes correct storage. Which makes sense."); harness 6.1
+counts such copies as known, and `releases/next.md` names them. Their
+options for the future, a header checksum, a link between records and a
+stronger node checksum, are 017-08, checksums in the stream ("This may
+or may not be added in some future release."); 019-07 moved there.

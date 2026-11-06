@@ -529,5 +529,15 @@ Known issues and limits
   start then begins there, and the transactions before it are lost without
   a word. Such damage is outside the crash contract (014-01, section 7),
   and its detection is best effort. A checksum of the record header would
-  catch it, at the next change of the record format (019-07). In 2026.2
+  catch it, with a change of the format that may come in a future release
+  (017-08). In 2026.2 and 2026.1 too.
+* **Other damage that a start does not detect** (bergdb 019-30, 019-31,
+  019-33; Frans, 2026-11-06). BergDB assumes correct storage; its
+  checksums and checks are a best effort. A start can take a damaged
+  stream without an error, and reads then answer other values than were
+  written, when: a record's time or `topPos` is changed to a value that
+  passes the checks; whole records are cut out of a stream's middle; or a
+  node byte is changed between 0x00 and 0xff, which the node checksum
+  (Fletcher-16 modulo 255) does not see. Checksums that cover the whole
+  stream may come in a future release (017-08), not in 2026.3. In 2026.2
   and 2026.1 too.

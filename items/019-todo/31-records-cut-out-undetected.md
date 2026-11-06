@@ -1,7 +1,8 @@
 019-31. Decide: whole records cut out of a stream's middle pass a start undetected
 ==================================================================================
 
-Status: waiting. Kind: Decide. Frans: decision.
+Status: done (decided 2026-11-06: outside the fault model for 2026.3,
+option (a)). Kind: Decide. Frans: decision.
 Created 2026-11-06 by Frans Lundberg.
 
 What: a copy of a stream with a range of whole records cut out of its
@@ -50,7 +51,7 @@ a record to the one before it (a sequence number, the previous record's
 position, a running checksum), so no check of the fields that are there
 can tell; a gap in the times is legal.
 
-Frans: a decision:
+Frans: a decision; he chose (a), 2026-11-06, 10:42 (the log):
 
 * (a) outside the fault model for 2026.3, as 015-73 and (if chosen)
   019-30: the harness counts such copies as known to pass undetected;
@@ -80,3 +81,24 @@ Log
 2026-11-06, 04:14. The cause found by a probe (above): the copy is a
 valid stream of fewer transactions, which no field shows; the entry
 became a Decide, waiting for Frans, with (a) recommended.
+
+2026-11-06, 10:42. Frans decided 019-30, 019-31 and 019-33 together, to
+coord-1106, which asked for each as recommended: "Yes, as recommended.
+BergDB assumes correct storage. Which makes sense. Ensure this is
+documented in the relevant Javadoc comments. However, use of checksums
+in the stream is also a reasonable design. Going in that direction is
+definitely not for 2026.3. Remember the target: bug-free Core. Move the
+possibility of checksums in the stream to a new item in 017. This may or
+may not be added in some future release." Option (a): whole records cut
+out of a stream's middle are outside the fault model for 2026.3, as
+015-73. Option (b), a link between records, is part 2 of 017-08,
+checksums in the stream: not for 2026.3, and it may or may not come in a
+future release.
+
+2026-11-06. Done by agent d4 of coord-1106, option (a); nothing in the
+Core changed. Harness 6.1 (018-07): a range cut out is marked known
+("019-31") when the copy is made, and an undetected one is counted as
+"known 019-31: undetected"; its line left `CorruptStreamTester.SKIP`.
+The full set of seed 20399 had 51 such copies, of 1,982 ranges cut out
+(3 in seed 20398's). `releases/next.md`'s known limit names the kind.
+BEFORE COMMIT OK; the runs are in 019-30's log.

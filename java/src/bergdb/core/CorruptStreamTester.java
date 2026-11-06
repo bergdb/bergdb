@@ -65,23 +65,27 @@ public class CorruptStreamTester {
      * -Dbergdb.corrupt.skip=none, nothing is skipped.
      */
     static final String[] SKIP = {
-        "019-30",   // a record's time or topPos changed within the checks: undetected
-        "019-31",   // whole records cut out of the stream's middle: undetected
         "019-32",   // a node's klongs and pointers unchecked: an assert at a start or read
-        "019-33",   // a node byte changed between 0x00 and 0xff: the checksum misses it
     };
 
     /**
      * Damage that passes undetected by Frans's decision, not a fault (bergdb 018-01, section
-     * 6.1): counted, not failed.
+     * 6.1): counted, not failed. BergDB assumes correct storage; its checksums and checks of
+     * damage other than a cut tail are a best effort (checksums in the stream: bergdb 017-08).
      * <ul>
      * <li>015-73 (2026-11-05, 15:35, option (a)): a record's startupPos set to the start of
      * another record, which the take never reached.</li>
      * <li>014-01 (005-83's case, moved to 014-01): a start that refuses a corrupt record size
      * after recovery's zero fill has written.</li>
+     * <li>019-30 (2026-11-06, 10:42, option (a)): a record's time or topPos set, or a byte of
+     * them flipped, to a value that passes the start's checks.</li>
+     * <li>019-31 (2026-11-06, 10:42, option (a)): a range cut out of the stream's middle,
+     * such as whole records: the stream left is a valid stream of fewer transactions.</li>
+     * <li>019-33 (2026-11-06, 10:42, option (a)): a node byte flipped by 0xff, between 0x00
+     * and 0xff, which Fletcher-16 modulo 255 does not see.</li>
      * </ul>
      */
-    static final String[] KNOWN = {"015-73", "014-01"};
+    static final String[] KNOWN = {"015-73", "014-01", "019-30", "019-31", "019-33"};
 
     /**
      * The open entry of SKIP that a failure belongs to, or null: a new fault. Each entry
@@ -94,21 +98,6 @@ public class CorruptStreamTester {
                 || failure.contains("threw java.lang.IllegalStateException")
                 || failure.contains("threw java.lang.ClassCastException"))) {
             return "019-32";
-        }
-        if (!failure.startsWith("undetected")) {
-            return null;
-        }
-        if (c.kind.equals("flip") && c.what.startsWith("xor 255 ")
-                && c.what.contains(": node at offset")) {
-            return "019-33";
-        }
-        boolean header = c.kind.equals("header") || c.kind.equals("flip");
-        if (header && (c.what.startsWith("time ") || c.what.startsWith("topPos ")
-                || c.what.endsWith(": time)") || c.what.endsWith(": topPos)"))) {
-            return "019-30";
-        }
-        if (c.kind.equals("cut out")) {
-            return "019-31";
         }
         return null;
     }
@@ -669,7 +658,7 @@ public class CorruptStreamTester {
         }
         if (c.kind.equals("node")) {
             // A node changed with its checksum made right is a valid node: outside the fault
-            // model (bergdb 019-07); only a crash or a database that goes on is a fault here.
+            // model (bergdb 017-08); only a crash or a database that goes on is a fault here.
             return Outcome.ok("undetected, its checksum made right");
         }
         return Outcome.fail("undetected: " + what);
@@ -772,15 +761,31 @@ public class CorruptStreamTester {
     /** A byte flipped (xor 'mask') at each position. */
     static void flips(Original o, Iterable<Integer> positions, int[] masks, List<Copy> out) {
         for (int p : positions) {
+            String where = region(o, p);
             for (int mask : masks) {
-                out.add(new Copy("flip", "xor " + mask + " at " + p + " (" + region(o, p) + ")",
+                out.add(new Copy("flip", "xor " + mask + " at " + p + " (" + where + ")",
                         () -> {
                             byte[] b = o.bytes.clone();
                             b[p] ^= (byte) mask;
                             return b;
-                        }, -1, -1, null));
+                        }, -1, -1, flipKnown(where, mask)));
             }
         }
+    }
+
+    /**
+     * The entry of KNOWN that a byte flipped by 'mask' at 'where' (a region) belongs to if
+     * it passes undetected, or null: 019-30 in a record's time or topPos, 019-33 by 0xff in
+     * a node.
+     */
+    static String flipKnown(String where, int mask) {
+        if (where.endsWith(": time") || where.endsWith(": topPos")) {
+            return "019-30";
+        }
+        if (mask == 0xff && where.contains(": node at offset")) {
+            return "019-33";
+        }
+        return null;
     }
 
     /** Every position of the stream. */
@@ -902,8 +907,9 @@ public class CorruptStreamTester {
         for (long t : new long[] {tt - 1, tt + 1, tt - TIME_STEP, tt + TIME_STEP, 0, -1,
                 Klong.MAX_TIME, Klong.MAX_TIME + 1, Long.MAX_VALUE, Long.MIN_VALUE,
                 tt ^ (1L << 40)}) {
+            // 019-30: a time that passes the start's checks is taken.
             out.add(patched(o, "header", "time " + t + " (was " + tt + ") of the record at "
-                    + rec.tpos, rec, 8, le8(t), null));
+                    + rec.tpos, rec, 8, le8(t), "019-30"));
         }
 
         long sp = rec.startupPos();
@@ -941,8 +947,10 @@ public class CorruptStreamTester {
         }
         tops.remove(top);
         for (long x : tops) {
+            // 019-30: a topPos that passes the start's checks, such as an older version of
+            // the top node before the startup section, is taken.
             out.add(patched(o, "header", "topPos " + x + " (was " + top + ") of the record at "
-                    + rec.tpos, rec, 24, le8(x), null));
+                    + rec.tpos, rec, 24, le8(x), "019-30"));
         }
 
         int list = rec.endMarker + 8;
@@ -1018,14 +1026,17 @@ public class CorruptStreamTester {
                 rec, node[0], nb, null);
     }
 
-    /** The bytes from 'from' to 'to' cut out of the stream. */
+    /**
+     * The bytes from 'from' to 'to' cut out of the stream. If it passes undetected, it is
+     * 019-31's: nothing links a record to the one before it.
+     */
     static Copy cutOut(Original o, int from, int to) {
         return new Copy("cut out", "bytes " + from + " to " + to + " cut out", () -> {
             byte[] b = new byte[o.bytes.length - (to - from)];
             System.arraycopy(o.bytes, 0, b, 0, from);
             System.arraycopy(o.bytes, to, b, from, o.bytes.length - to);
             return b;
-        }, -1, -1, null);
+        }, -1, -1, "019-31");
     }
 
     /** Ranges cut out: whole records (pairs of record starts), and 'random' ranges. */

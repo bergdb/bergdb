@@ -1,7 +1,8 @@
 019-30. Decide: a record's time or topPos changed within the checks passes undetected
 =====================================================================================
 
-Status: waiting. Kind: Decide. Frans: decision.
+Status: done (decided 2026-11-06: outside the fault model for 2026.3,
+option (a)). Kind: Decide. Frans: decision.
 Created 2026-11-06 by Frans Lundberg.
 
 What: no checksum covers a record's header (019-07). A start checks its
@@ -44,7 +45,7 @@ its detection is best effort (018-01, section 6.1; 014-01, section 7).
 019-07, the header checksum at the next change of `RECORD_FORMAT`, names
 the time as one of the fields it would protect.
 
-Frans: a decision.
+Frans: a decision; he chose (a), 2026-11-06, 10:42 (the log).
 
 * **(a) Outside the fault model for 2026.3, as 015-73.** The harness counts
   such a copy as known to pass undetected, and 019-07's checksum catches
@@ -74,3 +75,33 @@ Log
 
 2026-11-06. Registered in night 006-12 by the agent of harness 6.1
 (018-07), with the line "019-30" in `CorruptStreamTester.SKIP`.
+
+2026-11-06, 10:42. Frans decided 019-30, 019-31 and 019-33 together, to
+coord-1106, which asked for each as recommended: "Yes, as recommended.
+BergDB assumes correct storage. Which makes sense. Ensure this is
+documented in the relevant Javadoc comments. However, use of checksums
+in the stream is also a reasonable design. Going in that direction is
+definitely not for 2026.3. Remember the target: bug-free Core. Move the
+possibility of checksums in the stream to a new item in 017. This may or
+may not be added in some future release." Option (a): a record's time or
+`topPos` changed to a value that passes the start's checks is outside
+the fault model for 2026.3, as 015-73's `startupPos`. Option (c), a
+checksum of the record header, is part 1 of 017-08, checksums in the
+stream (019-07 moved there): not for 2026.3, and it may or may not come
+in a future release.
+
+2026-11-06. Done by agent d4 of coord-1106, option (a); nothing in the
+Core changed. Harness 6.1 (018-07): a copy with a record's time or
+`topPos` set, or a byte of them flipped, is marked known ("019-30") when
+it is made, and an undetected one is counted as "known 019-30:
+undetected", as 015-73's case is; its line left
+`CorruptStreamTester.SKIP`, which keeps 019-32's only. Runs on the clone
+d4: `unit.sh -c CorruptStreamTester` SUCCESS; the samples of seeds 1 to
+5 and the full sets of seeds 20398 and 20399 (278,484 and 294,184
+copies) with no failure; with nothing skipped
+(`-Dbergdb.corrupt.skip=none`), seed 1's sample fails with one copy
+only, 019-32's (it failed with 50 before). `releases/next.md`'s known
+limit names the kind, with "BergDB assumes correct storage"; 018-01,
+sections 3.1 and 6.1, and 018-07 follow. The statement in the Javadoc of
+the Pub API, `Db` and `AppendOnlyStream` is agent i10's, with 019-10's
+error model. BEFORE COMMIT OK.
