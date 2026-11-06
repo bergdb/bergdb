@@ -229,6 +229,19 @@ xhigh); at most about 6 at a time, more when some only wait for their
 runs; usage up to 90 % of the week.
 
 
+### For Frans to decide (in the morning)
+
+1. From d30's read-through (12:44), not fixed: `DataFormatException`
+   belongs to the object code but is not marked experimental (W1's list
+   is Frans's); lean/README.md holds about 740 lines of dated progress
+   log (AGENTS.md: logs belong in an item), two tables with rows up to
+   1,500 characters, "Written by Claude" in its line 4 (sis-model.md the
+   same; as for 018-02's header, 006-12's point 10), TakeCheck that no
+   longer compiles (015-03), and sistest, phystest and reclaimtest run by
+   hand only; dated history sentences in the user Javadoc; `Time.utc` and
+   `resolve` do not document `BadFormatException`. Recommended: after the
+   release; the "Written by Claude" lines as point 10's (b).
+
 ## 6. If the coordinator stops
 
 The state is in `/Users/f/fl/bench/coord/2026-11-06/state.md`; a new
@@ -273,6 +286,12 @@ session continues with `/coordinator resume` (013-02).
 * 12:28 019-36 made an Investigate (Frans: performance, not a fault; 727c8d3). 020-01 done (e8ab9ae); its N1 (an index build bricks a database since 019-10) registered as 019-42 with the coordinator's default (b); agent f42 started.
 * 12:30 019-41 done: 8f0d117 (LEVEL 4 OK).
 * 12:31 Frans: a Core fault found tonight is fixed at once, without waiting for him.
+* 12:33 Usage tight (5-hour window 76 %, reset 13:10): no new agent until then.
+* 12:35 019-43 registered (r30's rehearsal: harness 6.2's sample flaky on s1 with JDK 17); its agent at 13:13.
+* 12:36 Early `night.sh` scheduled for 15:00 (Frans, 12:35).
+* 12:38 019-32 done: 00b184e (LEVEL 2 quick OK).
+* 12:42 019-42 done: e687400 (gated on the combined tree).
+* 12:44 d30's read-through done (1dde232, landing as 6a7d6f4 after a merge of `releases/next.md`); its four small Pub API faults registered as 019-44; the rest for Frans (above).
 
 
 ## 8. Outcome
