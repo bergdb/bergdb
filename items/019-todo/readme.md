@@ -115,6 +115,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-22](22-warmup-keeps-large-value.md) | Fix | A transaction's warmup kept a value over 1 MiB | none | done | 2026-11-06 |
 | [019-21](21-start-rerun-undercounted.md) | Fix | A start's rerun changes counted nodes, no recount | none | done | 2026-11-06 |
 | [019-20](20-replaced-node-undercounted.md) | Fix | A node grown and replaced stays counted below its bytes | none | done | 2026-11-06 |
 | [019-10](10-read-unchecked-goes-on.md) | Fix | An unchecked read failure leaves the database going on | none | done | 2026-11-06 |
@@ -186,6 +187,9 @@ Files
 * [21-start-rerun-undercounted.md](21-start-rerun-undercounted.md).
   019-21, Fix: a start counted the startup section's nodes before its
   rerun of the transactions changed them; found by 018-05's harness.
+* [22-warmup-keeps-large-value.md](22-warmup-keeps-large-value.md).
+  019-22, Fix: a transaction's warmup read with `Dag.CACHE_ALL` and so
+  kept a key's old value over 1 MiB in memory; found by 018-05's harness.
 
 
 Log
@@ -283,3 +287,6 @@ found by the harness of failures and interrupts in storage (018-03).
 
 2026-11-06. 019-20 and 019-21 registered and done in night 006-12: found
 by harness 6.5, eviction's accounting (018-05).
+
+2026-11-06. 019-22 registered and done in night 006-12: found by harness
+6.5 (018-05).

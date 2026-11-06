@@ -246,6 +246,13 @@ Reliability
   the transactions changed. The difference, small, stayed until the node
   left memory, and in a database opened for reads for as long as it ran.
   Both are now counted with their size.
+* **A transaction no longer keeps a large value in memory** (bergdb
+  019-22; 2026-11-06). Before the write lock, a transaction reads its keys
+  once to load their nodes; that read kept a key's current value over
+  1 MiB in memory, against the rule that such values are read from the
+  stream when needed, so a transaction that replaced a large value
+  brought the old one back into memory, until eviction took it. It now
+  keeps no value over 1 MiB, as a get does.
 
 * **A record whose size field is larger than its content is refused** at a
   start (bergdb 015-72, 016-06's R6-F1; 2026-11-05), with a

@@ -173,7 +173,9 @@ public class Trans {
 
             warmupGetData = new WarmupGetData();
             warmupGetData.pointerListener = Dag.DO_NOTHING_POINTER_LISTENER;        
-            warmupGetData.cachePolicy = Dag.CACHE_ALL;
+            // As a get's: a value over 1 MiB is not kept (Eviction's admission). Until bergdb
+            // 019-22, CACHE_ALL: the warmup put a key's old large value into its leaf.
+            warmupGetData.cachePolicy = Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES;
         }
         
         public Builder put(byte[] key, byte[] value) {

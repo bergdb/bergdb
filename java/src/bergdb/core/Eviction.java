@@ -2189,6 +2189,53 @@ public final class Eviction {
     }
 
     /**
+     * A transaction's warmup does not keep a value over 1 MiB (bergdb 019-22; found by harness
+     * 6.5, 018-05): a key's large value is written, and the admission takes it from its
+     * pointer; a transaction then puts a small value for the key. Its warmup (Db.warmup) reads
+     * the key first, without the write lock. Until 019-22 its cache policy was
+     * Dag.CACHE_ALL, so the read put the old large value back into the leaf's pointer, where
+     * it stayed, against the admission rule (the class comment); now
+     * CACHE_ALL_EXCEPT_LARGE_VALUE_NODES, as a get's.
+     */
+    @Nano
+    public static void testWarmupKeepsNoLargeValue() {
+        CoreTestClock clock = new CoreTestClock();
+        byte[] value = new byte[1200 * 1024];
+        Db db = Db.builder().testSetup(new MemoryStream()).clock(clock).testId()
+                .cacheSizeIndicator(100L * 1000 * 1000).evictionSchedule(Schedule.BUDGET, 1)
+                .audit(0).start();
+        try {
+            clock.setTime(100 * STEP);
+            db.execute(db.trans().put("a", value).build());
+            Assert.assertEquals("after the large value's record", 0, largeResident(db));
+            clock.setTime(101 * STEP);
+            db.execute(db.trans().put("a", "small").build());
+            Assert.assertEquals("after the transaction that replaces it", 0, largeResident(db));
+            Assert.assertTrue("the old value read", java.util.Arrays.equals(value,
+                    DbUtil.get(db, 100 * STEP, "a")));
+        } finally {
+            db.close();
+        }
+    }
+
+    /** The resident pointers that hold a value over 1 MiB; under the write lock. */
+    private static int largeResident(Db db) {
+        int large = 0;
+        synchronized (db.internal().getWriteLock()) {
+            for (Node x : db.internal().cache().nodes()) {
+                for (int i = 0; i < x.getSize(); i++) {
+                    Pointee p = x.getPointee(i);
+                    if (p instanceof ValueNode && !Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES
+                            .shouldCache((ValueNode) p)) {
+                        large++;
+                    }
+                }
+            }
+        }
+        return large;
+    }
+
+    /**
      * A lowered budget is reached when the pins of the hand's last round have fallen since
      * (bergdb 015-70; 016-06, R4-F5): 500 transactions of one key, nodes of at most 8
      * entries, and a startup distance of 2,000 bytes, so that much of the tree is dirty
