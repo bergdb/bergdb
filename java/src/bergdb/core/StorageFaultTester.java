@@ -75,7 +75,6 @@ public class StorageFaultTester {
      * test. A fix removes its line. With -Dbergdb.storagefault.skip=none nothing is skipped.
      */
     static final String[] SKIP = {
-        "015-80",
     };
 
     /**
@@ -84,6 +83,7 @@ public class StorageFaultTester {
      * a new fault.
      */
     static final String[][] FAULTS = {
+        // One writer at a time: a call beside the storage thread's append (bergdb 015-80).
         {"015-80", "contract OVERLAP", ".*"},
         // A read in a transaction or a get throws an unchecked exception or an Error from the
         // stream, and the database goes on (bergdb 019-10).
@@ -104,7 +104,6 @@ public class StorageFaultTester {
 
     /** The entries whose findings depend on timing: their lines are not checked for passing. */
     static final String[] TIMING = {
-        "015-80",
     };
 
     /** The names of BergDB's threads start with one of these. */

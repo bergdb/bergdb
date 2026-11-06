@@ -146,12 +146,12 @@ Its parts:
   `StorageFaultTester LAYER FAULT N` makes one run and prints its state
   (each transaction's fate, the reclaims, the calls).
 
-On `main`, the skipped entries are 015-80 (one writer at a time), open
-and not for tonight: in most runs the workload's `getFirstPos()` meets the
-storage thread's append (OVERLAP). 019-10, which the harness found (section 5), was in it until
-its fix. `StrictStream` tolerates every kind,
-so that the run goes on past it, and the harness reports each breach
-after the run.
+The skip list is empty since 2026-11-06. It held 015-80 (one writer at a
+time: in most runs the workload's `getFirstPos()` met the storage
+thread's append, OVERLAP) until its fix (33a81b9, `BufferedStream`'s
+`ioLock`), and 019-10, which the harness found (section 5), until its
+fix. `StrictStream` tolerates every kind, so that a run goes on past a
+breach, and the harness reports each breach after the run.
 
 
 ## 3. Where it runs, and its cost
@@ -342,11 +342,18 @@ only. BEFORE COMMIT OK.
 2026-11-06. The night test of the STREAM layer runs every 5th call from
 an offset of the day: 152 s, not 806 s with every call. BEFORE COMMIT OK.
 
+2026-11-06, 03:20. 015-80 fixed on `main` (33a81b9): out of `SKIP` and
+`TIMING`, its `FAULTS` line kept to name a regression; the skip list is
+now empty. On it, through gate.sh: `testSample` passes (5.5 s), the night
+tests pass (1,187 IO runs, 3,508 STREAM runs, 166 s), no OVERLAP. With
+it, review R5's F3 on 019-10 (docs/levels.md's reflow, the Javadoc of
+`StorageManager.hasFailed()` and `getFailure()`). BEFORE COMMIT OK.
+
 
 ## State (night 006-12)
 
-2026-11-06, 01:55. Clone `/Users/f/fl/bench/006-12/h62`, branch `h62`:
-the harness, 019-10's fix and the night tests' cut committed (each
-BEFORE COMMIT OK). Nothing open. Possible later: 015-81's stranded sync
-needs a second application thread (a `sync()` waiting during the close),
-which the workload does not have.
+2026-11-06, 03:20. Clone `/Users/f/fl/bench/006-12/h62`, branch `h62b`
+(from `main` at 8130710): the follow-up (015-80 out of the skip list,
+R5's F3) committed. Nothing open here; 019-10 waits for Frans's decision
+on R5's F1 and F2 (its entry). Possible later: 015-81's stranded sync
+needs a second application thread, which the workload does not have.

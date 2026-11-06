@@ -1,7 +1,8 @@
 019-10. Fix: an unchecked exception or Error from a read of the storage leaves the database going on
 ================================================================================================
 
-Status: done 2026-11-06, night 006-12. Kind: Fix. Frans: none.
+Status: done 2026-11-06, night 006-12; R5's F1 and F2 wait for Frans (below). Kind:
+Fix. Frans: decision.
 Created 2026-11-06 by Frans Lundberg.
 
 What: when the stream under the storage throws an unchecked exception or
@@ -78,6 +79,41 @@ find nothing but 015-80's OVERLAP. docs/levels.md, section 3, and
 `releases/next.md` (Reliability) say so.
 
 
+For Frans (R5 F1, F2)
+---------------------
+
+Review R5 of the night 006-12 (`/Users/f/fl/bench/006-12/review-r5.md`,
+F1 and F2): since this fix, an `Error` of the stream's read reaches the
+caller wrapped (`DbFailedException` → `StreamIoException` → `IOException`
+→ the `Error`), in a get, a warm-up, a transaction's own reads (`fail()`
+gets the `StreamIoException`) and a start, where docs/levels.md, section
+3, says that an `Error` is thrown as it is (005-32, `Db.fail()`). And an
+`OutOfMemoryError` fails the database only when it is thrown below
+`StorageManager` (in `SalsaStream`'s or `FileChannel`'s buffer), not one
+frame up (`NodeStream`'s `new byte[size]`, the parse), which still passes
+through and leaves the database going on. The behaviour is left as it is
+until Frans decides; levels.md's sentence on Errors is unchanged.
+
+* (a) Keep the wrap and document it: levels.md's transaction bullet and
+  `Db.fail()`'s Javadoc say that an `Error` of the stream's read is the
+  cause of the `DbFailedException`, not thrown as it is. No code change.
+  An `OutOfMemoryError` above the stream stays as it is today.
+* (b) Rethrow the `Error` as it is after failing the storage:
+  `StorageManager.read()` fails the storage (its error and the stream's
+  close, before it builds any message) and rethrows the `Error`; `Db`'s
+  read sites (`getOneInternal`, `getMany`, `dirtyNodeBound`, `getTrans`)
+  catch an `Error` too, fail the database, and rethrow it, as a
+  transaction does after its go point. One rule for every `Error` of a
+  read, wherever it is thrown (R5's F2), and levels.md stays true.
+
+Recommendation: (b). It keeps the one rule that the rest of the Core
+follows (an `Error` is thrown as it is, and the database fails), and it
+closes F2's gap: an `OutOfMemoryError` in `NodeStream` or the parse
+fails the database too. It is a few lines at four read sites and in
+`StorageManager.read()`, with `testUncheckedReadFailsTheDatabase`
+extended (the `Error` case expects the `Error` itself, then refusals).
+
+
 Log
 ---
 
@@ -86,3 +122,7 @@ by the harness (018-03, section 5); in its skip list until fixed.
 
 2026-11-06. Fixed in the night 006-12 by the same agent (the simplest fix
 by the entry's First step; no decision needed, docs/levels.md's rule).
+
+2026-11-06, 03:10. R5's F1 and F2 written up for Frans's decision (above);
+its F3 (words: docs/levels.md's reflow, `StorageManager.hasFailed()` and
+`getFailure()`) fixed with 018-03's follow-up.

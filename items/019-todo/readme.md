@@ -118,7 +118,7 @@ Closed
 | [019-22](22-warmup-keeps-large-value.md) | Fix | A transaction's warmup kept a value over 1 MiB | none | done | 2026-11-06 |
 | [019-21](21-start-rerun-undercounted.md) | Fix | A start's rerun changes counted nodes, no recount | none | done | 2026-11-06 |
 | [019-20](20-replaced-node-undercounted.md) | Fix | A node grown and replaced stays counted below its bytes | none | done | 2026-11-06 |
-| [019-10](10-read-unchecked-goes-on.md) | Fix | An unchecked read failure leaves the database going on | none | done | 2026-11-06 |
+| [019-10](10-read-unchecked-goes-on.md) | Fix | An unchecked read failure leaves the database going on | decision | done | 2026-11-06 |
 | [019-09](09-close-unreported-background-failure.md) | Fix | close() silent on a failed flush | decision | done | 2026-11-05 |
 | [019-08](08-dbtime-to-utc-threads.md) | Fix | dbTimeToUtc() from several threads gave wrong strings | none | done | 2026-11-05 |
 | [019-02](02-stream-bad-length-exceptions.md) | Fix | Streams refuse a bad length with other exceptions | none | done | 2026-11-05 |
@@ -290,3 +290,7 @@ by harness 6.5, eviction's accounting (018-05).
 
 2026-11-06. 019-22 registered and done in night 006-12: found by harness
 6.5 (018-05).
+
+2026-11-06, 03:10. 019-10: review R5's F1 and F2 (an `Error` of a read is
+now wrapped, not thrown as it is) wait for Frans's decision, options (a)
+and (b) in the entry.

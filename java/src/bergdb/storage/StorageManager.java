@@ -339,8 +339,9 @@ public class StorageManager implements AppendOnlyStream {
     
     /**
      * True when the main stream has failed: an append, a read or a flush of it threw an
-     * IOException, the stream is closed (or being closed, by handleStreamException), and
-     * every later append, read and waiting sync throws. Not after a close alone.
+     * IOException, or a read threw an unchecked exception or an Error (bergdb 019-10), the
+     * stream is closed (or being closed, by handleStreamException), and every later append,
+     * read and waiting sync throws. Not after a close alone.
      */
     public boolean hasFailed() {
         return mainFailure != null;
@@ -348,7 +349,9 @@ public class StorageManager implements AppendOnlyStream {
     
     /**
      * What failed the main stream, as hasFailed() says, else null: the IOException of its
-     * append, read or flush. The database fails with it at its next call (Db, bergdb 015-35).
+     * append, read or flush, or, for an unchecked exception or an Error of a read, an
+     * IOException with it as the cause (bergdb 019-10). The database fails with it at its next
+     * call (Db, bergdb 015-35).
      */
     public IOException getFailure() {
         return mainFailure;

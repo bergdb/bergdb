@@ -131,11 +131,10 @@ environment has failed, or that has a bug, does not run on.
   I/O error, an unchecked exception or an `Error` of the stream's read
   (019-10, 2026-11-06), or corrupt data (a checksum or format error), in
   `getOne`, `getMany`, `getTrans` (`transactionInfo()`) and `sync()`. Not
-  failures: a
-  read that a cut has overtaken expires with a
+  failures: a read that a cut has overtaken expires with a
   `LookupTimeNotAvailableException` (section 6), and so does `getTrans` of
-  a transaction that reclaim has removed; the database goes on. A read or a
-  sync while the database stops throws as it did.
+  a transaction that reclaim has removed; the database goes on. A read or
+  a sync while the database stops throws as it did.
 * A write of the storage thread that fails (a background flush) fails the
   database at the next call (015-35, 2026-11-05): a transaction, a read or
   a sync throws as above, also a read served from memory. Before, the
