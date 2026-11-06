@@ -113,6 +113,7 @@ Open
 | [019-32](32-key-node-klongs-unchecked.md) | Fix | A node's klongs and pointers unchecked: an assert at a start or a read | none | open |
 | [019-33](33-node-checksum-00-ff.md) | Decide | A node byte changed between 0x00 and 0xff passes the checksum | decision | waiting |
 | [019-35](35-night-read-losses.md) | Investigate | The Core's warm reads lost 1 to 6 % in night 006-12 | none | open |
+| [019-36](36-reclaim-cut-waits-for-append.md) | Fix | Reclaim's cut waits for the thread's append under the write lock | none | open |
 
 
 Closed

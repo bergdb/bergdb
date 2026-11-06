@@ -45,6 +45,9 @@ and why they are made.
 * **P12**. *A small Core Layer*. All data passes through four methods (`getOne`,
   `getMany`, `getTrans`, `execute`); what can be built on top is built on
   top.
+* **P13**. *KISS*. Keep it simple: the design, the API and its error model,
+  the code, the tests and the tools. Also with AI, which can sustain more
+  complexity.
 
 
 Names

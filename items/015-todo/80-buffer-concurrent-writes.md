@@ -247,6 +247,11 @@ that fails without it. Its C findings:
   `MemoryStream` (a `CutStream` refuses the writer's later, lower cut).
 
 
+2026-11-06, 09:47. C1 decided by Frans ("As recommended.", 006-12,
+section 8, point 2): a line under P1 in 010-01, and 019-36 to measure the
+cut's wait on F53 and s1 and, if it is over the target, R4's `tryLock`
+fix.
+
 State (night 006-12)
 --------------------
 

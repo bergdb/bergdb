@@ -26,6 +26,7 @@ The list
 | [006-10](10-unattended-28-29-october.md) | 2026-10-28 | Unattended work from 28 October, noon, to 29 October, 07:00, in 013-01's way: the plan (007-07's performance check, 005-65's 8-thread case, 005-64's buffer time), its principles, the progress and the outcome |
 | [006-11](11-stm-concurrency.md) | 2026-10-30 | STM and concurrent writers, investigated and benchmarked: keep STM for read-dependent work (1.7x to 6.9x the partially stripped serial control); tiny resident updates and hot keys do not automatically benefit; 276 checked measurements, code costs, critical-section review and reproducible evidence |
 | [006-12](12-unattended-5-6-november.md) | 2026-11-05 | Unattended work from 5 November, 15:00, to 6 November, 07:00, with a coordinator: the plan (015's open fixes, 015-86's measurements, a performance check, 015-88 on s1), the progress and the outcome |
+| [006-13](13-day-and-night-6-november.md) | 2026-11-06 | Day and night work of 6 to 7 November, with the coordinator coord-1106: 006-12's decisions with Frans, the plan, the progress and the outcome |
 
 
 Files
@@ -76,6 +77,9 @@ Files
   the plan for the unattended work of 5 to 6 November, with the day's
   coordinator: the questions for Frans, the work in order, the timeline
   and the quiet blocks, the progress and the outcome.
+* [13-day-and-night-6-november.md](13-day-and-night-6-november.md). 006-13:
+  the plan for the day and night of 6 to 7 November (coord-1106): the
+  decisions on 006-12's points, the work, the progress and the outcome.
 
 
 Log

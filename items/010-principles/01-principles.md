@@ -63,6 +63,15 @@ Where BergDB stands:
   section 7.3): a deviation, now fixed. A writer that fills the write
   buffer still waits for the disk: the device's limit, not BergDB's work
   (005-46, decision 5).
+* A deviation since 2026-11-06 (015-80): Reclaim's cut, made by a
+  committing writer under the write lock, waits for the storage thread's
+  append in progress and its force. An append is up to 5 MB, half the
+  default buffer; one of 2.5 MB with its force took 17 ms on average and
+  144 ms at the longest on F53 (005-46), and a force on s1 can take
+  seconds. The other writers wait with it; readers do not. Not measured
+  yet; [019-36](../019-todo/36-reclaim-cut-waits-for-append.md) measures
+  it and, if a wait is over the target, lets the cut wait for a later
+  commit instead (review R4 of night 006-12, C1; Frans, 2026-11-06).
 * To look at (Frans, 2026-10-26): every place where a reader can wait
   today, and for how long.
 * Eviction: the sweep that walked the resident set under the write lock,
@@ -564,3 +573,16 @@ with an empty class path, and its tests run on it, nightly in `night.sh`
 (`java/stress/core-build.sh`, from 006-08; 2026-10-28). A candidate: the
 number of Db's public methods.
 
+
+P13. KISS
+---------
+
+Keep it simple: the design, the API and its error model, the code, the
+tests and the tools. What is simple can be understood, checked and kept
+correct, by the user of the database as by its developers. Frans
+(2026-11-06): "KISS is an important principle. Important that the
+database user understands the error model. That is part of the
+interface." And: "Always important. Also with AI, even though more
+complexity can be sustained now."
+
+P11 is the same rule weighed against speed; P13 holds everywhere.
