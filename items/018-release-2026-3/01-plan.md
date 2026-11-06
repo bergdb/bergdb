@@ -401,6 +401,12 @@ for 2026.3: they are experimental (D2).
 * What it does: the jcstress tests planned in 016-07, for the shared
   fields that reviews R1, R2, R4 and R5 list in their section 6.
 * What it checks: no forbidden outcome.
+* Scope decided on 2026-11-06 (Frans, 11:46, Option 1 of 006-13): the
+  eight jcstress tests of `java/stress/jcstress/` rerun on today's code
+  on F53 and s1; tests added only for the shared fields that review R7 of
+  006-13 flags, and it flags none. See 018-08. On s1 (`e446bb2`), each
+  `[OK]`, no forbidden outcome; F53's run is scheduled for the night of
+  2026-11-06 to 07.
 
 
 ### 6.7. The Pub API's promises
@@ -617,3 +623,8 @@ known, and its skip list holds 019-32 only. Checksums in the stream are
 each, and each `freezeLookupTime()` freezes anew at the latest state (Q2,
 a change of behaviour, one line); the harness's reference checks each.
 No new fault. Section 6.7 updated.
+
+2026-11-06, 12:30. Harness 6.6's scope (Frans, 11:46, Option 1): the
+eight jcstress tests rerun, no new test (review R7 of 006-13 flags no
+shared field that needs one). On s1, each `[OK]`, no forbidden outcome
+(018-08); F53's run in the night's chain. Section 6.6 updated.

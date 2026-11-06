@@ -67,6 +67,12 @@ Files
   2026-11-06 and counted as known; 019-32 in its skip list); where it
   runs (the unit tests, a sample, 3 s; the night tests, the full set,
   64 s).
+* [08-harness-concurrency.md](08-harness-concurrency.md). 018-08,
+  harness 6.6, concurrency: the eight jcstress tests of
+  `java/stress/jcstress/` rerun on `main` (Option 1, Frans, 2026-11-06),
+  no test added (review R7 of 006-13 flags no shared field that needs
+  one); on s1 in default mode each `[OK]`, no forbidden outcome, 26
+  minutes; F53's run scripted for the night's chain.
 
 
 Log
@@ -120,3 +126,9 @@ limits, built (W2). It fails on 015-50 and 015-55, each with its fix
 reverted, and on 015-76 with the old Javadoc's promise as its oracle; no
 new fault. In the unit tests of `before-commit.sh` (2 s) and the
 night tests (97 s).
+
+2026-11-06. 018-08: harness 6.6, concurrency, as Frans chose at 11:46
+(Option 1): the eight jcstress tests compiled against `main`'s jar
+unchanged and run on s1 in default mode, each `[OK]`, no forbidden
+outcome; F53's run prepared for the night's chain. No test added: review
+R7 of 006-13 flags no shared field that needs one.
