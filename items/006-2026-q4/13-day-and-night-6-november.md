@@ -292,6 +292,8 @@ session continues with `/coordinator resume` (013-02).
 * 12:38 019-32 done: 00b184e (LEVEL 2 quick OK).
 * 12:42 019-42 done: e687400 (gated on the combined tree).
 * 12:44 d30's read-through done (1dde232, landing as 6a7d6f4 after a merge of `releases/next.md`); its four small Pub API faults registered as 019-44; the rest for Frans (above).
+* 12:48 The documentation landed: 8996de0. 12:56 019-40 done: 35f5b72. 12:57 018-09, the release's plan (r30), committed: the candidate scheduled for 20:14. 13:03 q1 done: block-q started (it waits for 02:00); 019-36 on s1, longest wait 19.85 ms.
+* 13:14 Agents f43 (019-43, the blocker) and f44 (019-44) started.
 
 
 ## 8. Outcome
