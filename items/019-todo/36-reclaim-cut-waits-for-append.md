@@ -74,3 +74,18 @@ crosses into a new file; step 1 measures that case too.
 
 2026-11-06, 12:28. Frans: "I don't see 019-36 as a bug. It is about performance. 20 ms is just a target for a fast server. I see it more like: a wait at 20 ms or more is interesting to have a look at. May be worth fixing. We don't expect to remove all such cases. A loaded machine, slow network-based storage, small VPS. In this case, if we can get this under 50 ms on F53, this is good. Under 20 ms is great. Under 100 ms on s1 is good. Something like this. It is a trade-off. Between complexity, time to fix, other performance figures, maintenance cost etc. No a hard limit." The entry is an Investigate, not a
 Fix, and does not block release 2026.3.
+
+2026-11-06, 13:00. Step 1 on s1, by coord-1106's agent q1 (a probe build,
+branch probe-019-36; `/Users/f/fl/bench/006-13/q1/s1-results.txt`): a
+write load at w-uni-1k-fin's settings, the default buffer, an eviction
+budget of 700 MB. At full speed for 20 minutes (41.6M commits, about
+34,800 a second): 658 cuts, 11 waited (1.7 %), mean 0.25 ms, longest
+19.85 ms, none over 20 ms, none met an append crossing into a new file
+(a new file took up to 207 ms, so R7's C4 is possible but was not seen).
+Paced at 5,000 commits a second for 10 minutes: 44 cuts, none waited.
+Why the waits are rare (q1's reading): Reclaim cuts when the durable
+length passes, right after the thread's append has released `ioLock`;
+the next flush comes up to 50 ms later. By Frans's guide (12:28), under
+100 ms on s1 is good: s1 is under 20 ms. A smoke on a loaded F53 had 16 %
+of the cuts wait, the longest 27 ms; tonight's quiet F53 run (block-q)
+gives F53's figure.
