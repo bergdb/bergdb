@@ -347,6 +347,11 @@ Reliability
   interrupted as it stopped, ended without closing the stream (reached
   only by the Core's `BufferedStream.stop()` and `StorageManager.stop()`).
   The stream's bytes are unchanged.
+* **A failed background write no longer ends the storage thread with
+  "Self-suppression not permitted"** (bergdb 019-37; 2026-11-06): when the
+  stream's close threw the write's own `IOException` again, as `FileStream`
+  can, the thread ended with an `IllegalArgumentException` (printed on
+  stderr) after it had failed the database; now it ends quietly.
 * **A failed open of a directory closes its file and releases the
   directory** (bergdb 015-32, 016-06's R2-F3; 2026-11-05), whatever it
   throws. After an unchecked exception (such as from a file system) the

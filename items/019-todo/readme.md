@@ -109,7 +109,6 @@ Open
 | [019-32](32-key-node-klongs-unchecked.md) | Fix | A node's klongs and pointers unchecked: an assert at a start or a read | none | open |
 | [019-35](35-night-read-losses.md) | Investigate | The Core's warm reads lost 1 to 6 % in night 006-12 | none | open |
 | [019-36](36-reclaim-cut-waits-for-append.md) | Fix | Reclaim's cut waits for the thread's append under the write lock | none | open |
-| [019-37](37-close-self-suppression.md) | Fix | A failed flush and the close's same IOException: self-suppression | none | open |
 | [019-38](38-index-jobs-fail-on-refusal.md) | Fix | Index jobs fail the database on an interrupt, an expiry, a refusal | none | open |
 | [019-39](39-error-path-hangs.md) | Fix | Hangs in the error path: a thread not started, a second Error | none | open |
 | [019-40](40-review-r6-c-findings.md) | Fix | Review R6's C findings: tests, words, small faults | none | open |
@@ -120,6 +119,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-37](37-close-self-suppression.md) | Fix | A failed flush and the close's same IOException: self-suppression | none | done | 2026-11-06 |
 | [019-33](33-node-checksum-00-ff.md) | Decide | A node byte between 0x00 and 0xff: outside the model | decision | done | 2026-11-06 |
 | [019-31](31-records-cut-out-undetected.md) | Decide | Records cut out of the middle: outside the model | decision | done | 2026-11-06 |
 | [019-30](30-header-time-toppos-undetected.md) | Decide | Time or topPos within the checks: outside the model | decision | done | 2026-11-06 |
@@ -230,6 +230,11 @@ Files
 * [35-night-read-losses.md](35-night-read-losses.md). 019-35,
   Investigate: the Core's warm reads lost 1 to 6 % and the restart 2 to
   3 % in night 006-12 (its Q-B); to trace to their commits.
+* [37-close-self-suppression.md](37-close-self-suppression.md). 019-37,
+  Fix: `BufferedStream.closeStream` kept a stream's failed close as
+  suppressed on the failed flush's `IOException` also when the two were
+  the same object, and `addSuppressed` threw "Self-suppression not
+  permitted" on the storage thread; found by agent i10 (019-10).
 
 
 Log
@@ -358,3 +363,7 @@ counts such copies as known, and `releases/next.md` names them. Their
 options for the future, a header checksum, a link between records and a
 stronger node checksum, are 017-08, checksums in the stream ("This may
 or may not be added in some future release."); 019-07 moved there.
+
+2026-11-06. 019-37 done by coord-1106's agent f32: the close's failure
+is kept as suppressed only when it is not the flush's own `IOException`;
+BEFORE COMMIT OK.

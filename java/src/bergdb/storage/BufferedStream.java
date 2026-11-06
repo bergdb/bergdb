@@ -271,8 +271,11 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 if (closeFailure == null) {
                     closeFailure = failed;
                     // Kept with a failed flush's failure, which close() throws (2026-11-05,
-                    // bergdb 015-81, review R1 of night 006-12): it was dropped.
-                    if (failure != null) {
+                    // bergdb 015-81, review R1 of night 006-12): it was dropped. Not when the
+                    // close threw the flush's own IOException (2026-11-06, bergdb 019-37):
+                    // addSuppressed threw "Self-suppression not permitted", which ended the
+                    // thread, or left close() when the listener closed the stream.
+                    if (failure != null && failure != failed) {
                         failure.addSuppressed(failed);
                     }
                 }
@@ -1493,11 +1496,63 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 kept[0].getCause() == failing.closeError);
     }
     
+    /**
+     * Regression test for bergdb 019-37: a stream whose close throws the failed flush's own
+     * IOException again (harness 6.2, bergdb 018-03). closeStream() kept it as suppressed on
+     * itself, and addSuppressed threw IllegalArgumentException ("Self-suppression not
+     * permitted"): it ended the thread (i = 0), or left close() when the listener closed the
+     * stream from the thread, as StorageManager.handleStreamException does (i = 1). Now
+     * close() throws the flush's failure, and the thread ends without another exception.
+     */
+    @Nano
+    public static void testCloseThrowsFlushFailureAgain() throws Exception {
+        for (int i = 0; i < 2; i++) {
+            final FailingStream failing = new FailingStream();
+            failing.failure = new IOException("the disk fails");
+            failing.closeThrowsFailure = true;
+            final BufferedStream b = new BufferedStream(failing, 1000, 20);
+            final Throwable[] escaped = new Throwable[1];
+            b.consumer.setUncaughtExceptionHandler((t, e) -> escaped[0] = e);
+            final Throwable[] listenerClose = new Throwable[1];
+            if (i == 1) {
+                b.setAppendListener(new AppendListener() {
+                    public void dataAppended(long length) {}
+                    public void appendFailed(IOException e) {
+                        try {
+                            b.close();
+                        } catch (Throwable e1) {
+                            listenerClose[0] = e1;
+                        }
+                    }
+                });
+            }
+            b.start();
+            b.append(new byte[100], 0, 100);
+            IOException thrown = null;
+            try {
+                b.close();
+            } catch (IOException e) {
+                thrown = e;
+            }
+            Assert.assertTrue("close() throws the flush's failure, " + i + ": " + thrown,
+                    thrown == failing.failure);
+            Assert.assertFalse("the thread has ended, " + i, b.consumer.isAlive());
+            Assert.assertTrue("nothing escapes the thread, " + i + ": " + escaped[0],
+                    escaped[0] == null);
+            if (i == 1) {
+                Assert.assertTrue("the listener's close throws the flush's failure: "
+                        + listenerClose[0], listenerClose[0] == failing.failure);
+            }
+            Assert.assertEquals("nothing suppressed, " + i, 0, thrown.getSuppressed().length);
+        }
+    }
+    
     /** A MemoryStream whose appends throw 'failure' while it is set (bergdb 005-32). */
     private static class FailingStream implements AppendOnlyStream {
         final MemoryStream inner = new MemoryStream();
         volatile Throwable failure = null;
         volatile RuntimeException closeError = null;    // thrown by close() (bergdb 015-81)
+        volatile boolean closeThrowsFailure = false;    // close() throws 'failure' (019-37)
         
         public long getLength() {
             return inner.getLength();
@@ -1528,11 +1583,14 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             inner.pretruncate(position);
         }
         
-        public void close() {
+        public void close() throws IOException {
             inner.close();
             RuntimeException e = closeError;
             if (e != null) {
                 throw e;
+            }
+            if (closeThrowsFailure && failure instanceof IOException) {
+                throw (IOException) failure;
             }
         }
     }
