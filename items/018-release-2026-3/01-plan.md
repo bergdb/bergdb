@@ -285,6 +285,10 @@ for 2026.3: they are experimental (D2).
   copy as known to pass undetected, not as a failure. A checksum of the
   record header would catch it, at the next change of the record format
   (019-07).
+* Built on 2026-11-06: see 018-07. It fails on each of the five, and
+  found 019-30 to 019-34. It runs in the unit tests of
+  `before-commit.sh` (a sample) and in the night tests (the full set);
+  its skip list holds the five until they are fixed or decided.
 
 
 ### 6.2. Failures and interrupts in storage
@@ -547,3 +551,15 @@ in its skip list until fixed. Section 6.2 updated.
 their fixes taken out, and found three faults of the Core, 019-20 and
 019-21 (index nodes counted below their bytes) and 019-22 (a warmup kept
 a large value), fixed the same night (section 3.1).
+
+2026-11-06, night 006-12. Harness 6.1, corrupt streams at a start, built
+(018-07): copies of streams written by `Db`, truncated at every byte (the
+crash contract) and damaged otherwise (bytes flipped, ranges cut out,
+header and node fields set). It fails on 005-74, 005-75, 015-07, 015-72
+and 015-75, each with its fix's main hunk reverted, and found 019-30 (a
+record's time or `topPos` changed within the checks, 015-73's class),
+019-31 (whole records cut out of the middle), 019-32 (a node's klongs
+and pointers unchecked, 015-07's class) and 019-34 (a meta block's
+position unchecked, 019-01's class), faults of the Core that join section
+3.1's list, and 019-33 (Fletcher-16's 0x00 and 0xff); all in its skip
+list. Every truncation passes. Section 6.1 updated.

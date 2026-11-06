@@ -1,0 +1,76 @@
+019-30. Decide: a record's time or topPos changed within the checks passes undetected
+=====================================================================================
+
+Status: waiting. Kind: Decide. Frans: decision.
+Created 2026-11-06 by Frans Lundberg.
+
+What: no checksum covers a record's header (019-07). A start checks its
+fields only against each other: the times increase (005-75), the time is
+in range, the `startupPos` is one the take can have written (015-75), and
+the last record's `topPos` is the newest version of its top node among the
+startup section's nodes (015-75). A change that stays within these checks
+is taken, and the database answers other values than it wrote, with no
+error:
+
+* **The time** of a record raised or lowered within its neighbours' (one
+  unit, one step of 10, a high bit of the last record's, or
+  `Klong.MAX_TIME` for the last record): the transaction is taken at the
+  new time, so a read at its own time misses it. A byte flip (xor 0x80) of
+  the time's bytes 1 to 5 of the last record gives the same.
+* **The last record's `topPos`** set to a top node's version that lies
+  before the startup section (in the `take` configuration, `topPos` 6672
+  for 27120): the section has no newer version of that node to compare
+  with, so the start takes the older index, and reads answer older values.
+
+Why: found by harness 6.1, corrupt streams at a start (018-07), in the
+night 006-12; seed 1 of its sample (`CorruptStreamTester` 1, on `main`
+with the harness), among others:
+
+```text
+all, flip, xor 128 at 7721 (record at 7712, offset 9: time): undetected: the counter
+  at time 300 is "29", not 30
+all, header, time 301 (was 300) of the record at 7712: undetected: the counter at time
+  300 is "29", not 30
+all, header, time 31 (was 30) of the record at 1016: undetected: the counter at time 30
+  is "2", not 3
+take, header, topPos 6672 (was 27120) of the record at 27088: undetected: holds 50
+  transactions by the counter, and /a is 9 bytes, not 126 bytes
+```
+
+This is the class of 015-73, which Frans decided at 2026-11-05, 15:35
+(option (a)): a header field changed to a value that passes the cheap
+checks. Damage other than a cut tail is outside the crash contract, and
+its detection is best effort (018-01, section 6.1; 014-01, section 7).
+019-07, the header checksum at the next change of `RECORD_FORMAT`, names
+the time as one of the fields it would protect.
+
+Frans: a decision.
+
+* **(a) Outside the fault model for 2026.3, as 015-73.** The harness counts
+  such a copy as known to pass undetected, and 019-07's checksum catches
+  it at the next change of the record format. Nothing changes in the
+  code; the release notes' limit for 015-73 names the time and `topPos`
+  too. Cost: none. The damage stays undetected until 019-07.
+* **(b) More cheap checks.** None found that catches these: a time within
+  its neighbours' is a valid time, and an older version of a top node
+  before the section is known only by reading records before it, which
+  the bounded startup (007) does not do (the argument of 015-73's (b)).
+* **(c) The checksum now** (019-07): a change of the stream format,
+  which needs Frans's approval (018-01, section 2), the C clone (012)
+  with it, and a new `RECORD_FORMAT`; streams of format 5 are refused.
+
+Recommendation: (a), as for 015-73, with the release notes' limit
+extended.
+
+Done when: Frans has chosen; for (a), the entry is closed as decided and
+the harness's skip list line becomes a `KNOWN` line (018-07, section 4);
+for (c), 019-07's Done when.
+
+First step: Frans's decision.
+
+
+Log
+---
+
+2026-11-06. Registered in night 006-12 by the agent of harness 6.1
+(018-07), with the line "019-30" in `CorruptStreamTester.SKIP`.

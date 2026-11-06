@@ -108,6 +108,11 @@ Open
 |---|---|---|---|---|
 | [019-07](07-record-header-checksum.md) | Implement | A checksum of the record header, at the next RECORD_FORMAT change | decision | waiting |
 | [019-15](15-delete-key-replace.md) | Fix | Key replace: a delete's key is not replaced | decision | waiting |
+| [019-30](30-header-time-toppos-undetected.md) | Decide | A record's time or topPos changed within the checks passes | decision | waiting |
+| [019-31](31-records-cut-out-undetected.md) | Investigate | Whole records cut out of a stream's middle pass a start | decision | open |
+| [019-32](32-key-node-klongs-unchecked.md) | Fix | A node's klongs and pointers unchecked: an assert at a start or a read | none | open |
+| [019-33](33-node-checksum-00-ff.md) | Decide | A node byte changed between 0x00 and 0xff passes the checksum | decision | waiting |
+| [019-34](34-metablock-last-trans-pos-unchecked.md) | Fix | A meta block's position past the stream: IllegalArgumentException | none | open |
 
 
 Closed
@@ -190,6 +195,26 @@ Files
 * [22-warmup-keeps-large-value.md](22-warmup-keeps-large-value.md).
   019-22, Fix: a transaction's warmup read with `Dag.CACHE_ALL` and so
   kept a key's old value over 1 MiB in memory; found by 018-05's harness.
+* [30-header-time-toppos-undetected.md](30-header-time-toppos-undetected.md).
+  019-30, Decide: a record's time or `topPos` changed within the start's
+  checks passes undetected (015-73's class, no header checksum); found by
+  harness 6.1 (018-07); waiting for Frans's decision.
+* [31-records-cut-out-undetected.md](31-records-cut-out-undetected.md).
+  019-31, Investigate: whole records cut out of a stream's middle pass a
+  start undetected; found by harness 6.1 (018-07); the cause first, then
+  Frans's decision.
+* [32-key-node-klongs-unchecked.md](32-key-node-klongs-unchecked.md).
+  019-32, Fix: a node's klongs and pointers are not checked at a parse,
+  and a start or a read meets an assert (015-07's class); found by
+  harness 6.1 (018-07).
+* [33-node-checksum-00-ff.md](33-node-checksum-00-ff.md). 019-33,
+  Decide: a node byte changed between 0x00 and 0xff passes Fletcher-16
+  modulo 255; found by harness 6.1 (018-07); waiting for Frans's
+  decision.
+* [34-metablock-last-trans-pos-unchecked.md](34-metablock-last-trans-pos-unchecked.md).
+  019-34, Fix: a meta block's last-transaction position past the stream
+  gives an `IllegalArgumentException` at a start (019-01's class); found
+  by harness 6.1 (018-07).
 
 
 Log
@@ -294,3 +319,8 @@ by harness 6.5, eviction's accounting (018-05).
 2026-11-06, 03:10. 019-10: review R5's F1 and F2 (an `Error` of a read is
 now wrapped, not thrown as it is) wait for Frans's decision, options (a)
 and (b) in the entry.
+
+2026-11-06. 019-30 to 019-34 registered by harness 6.1's agent of the
+night 006-12: found by the harness of corrupt streams at a start
+(018-07); 019-32 and 019-34 faults to fix, 019-30, 019-31 and 019-33 for
+Frans; all five in its skip list.

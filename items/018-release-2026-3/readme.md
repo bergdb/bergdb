@@ -50,6 +50,13 @@ Files
   decreases checked after each batch; it fails on the five known faults
   of its class and found 019-20, 019-21 and 019-22; where it runs (the
   unit tests, about 1 s; the night tests, under 2 minutes).
+* [07-harness-corrupt-streams.md](07-harness-corrupt-streams.md).
+  018-07, harness 6.1, corrupt streams at a start, built: copies of
+  streams written by `Db`, cut at every byte (the crash contract, a hard
+  requirement) and damaged otherwise (best effort); it fails on the five
+  known faults of its class and found 019-30 to 019-34, all in its
+  skip list; where it runs (the unit tests, a sample;
+  the night tests, the full set).
 
 
 Log
@@ -90,3 +97,9 @@ file call, every 5th stream call). 019-10 fixed the same night.
 006-12 (W2). It fails on 015-67 to 015-71 with their fixes taken out, and
 found 019-20, 019-21 and 019-22, fixed the same night. BEFORE COMMIT OK,
 LEVEL 4 OK.
+
+2026-11-06, night 006-12. 018-07: harness 6.1, corrupt streams at a
+start, built (W2). Every truncation of its streams starts with exactly
+its committed transactions; it fails on 005-74, 005-75, 015-07, 015-72
+and 015-75, each with its fix reverted, and found 019-30 to 019-34,
+in its skip list (019-32 and 019-34 to fix, the others for Frans).

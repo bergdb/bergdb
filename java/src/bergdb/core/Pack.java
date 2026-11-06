@@ -18,6 +18,7 @@ public class Pack implements IPack {
         DbTesterStream.class,
         DbUtil.class,
         CapacityTester.class,
+        CorruptStreamTester.class,
         Eviction.class,
         EvictionAccountingTester.class,
         EvictionReaderTester.class,
