@@ -208,6 +208,16 @@ the available Claude usage." Unattended from 12:20 to 2026-11-07, 07:00.
 * **At Frans's word**: R8 and R9 (the files of `releases/2026.3/`, commit
   B and the tag `release-2026.3`, local), about 30 minutes.
 
+Frans, 12:31, on the defaults: 019-35 "traced tonight but not blocking
+[...]": "Agreed." On a fault found tonight: "If the bug is in Core,
+register it and fix it to your best ability. Do not wait for me." So a
+Core fault found by `night.sh large` or jcstress is registered and fixed
+at once (gated, outside the quiet block, 02:00 to 06:00); the release's
+commit is then made again from `main` in the morning, with `night.sh` on
+it (about 45 minutes; `night.sh large`'s 6 hours do not fit), and the
+morning report says what ran on which commit. 019-36 is not a fault
+(Frans, 12:28): its figures are for a later decision.
+
 Check-ins every 20 minutes from 06:00 to 01:59; none from 02:00 to 05:59
 (the quiet block). The watchdog runs to 07:00. Agents at high (v1 at
 xhigh); at most about 6 at a time, more when some only wait for their
@@ -253,6 +263,11 @@ session continues with `/coordinator resume` (013-02).
 * 12:08 v1 restarted at xhigh (Frans, 12:07: "This is important.").
 * 12:15 Unattended set up: the night chain (night.sh large at 20:45, then jcstress on F53), the watchdog to 07:00, check-ins; agents r30 (the release's scripts, 018-09) and d30 (the documentation, Ready 4) started.
 * 12:16 015-06 done: 4248141 on `main` (`BEFORE COMMIT OK`, LEVEL 2 OK).
+* 12:19 Harness 6.6 on s1: 8 of 8 jcstress tests OK (018-08, 2691750).
+* 12:24 019-39 done: 940e603 (LEVEL 2 OK). Agent i40 started (019-40).
+* 12:28 019-36 made an Investigate (Frans: performance, not a fault; 727c8d3). 020-01 done (e8ab9ae); its N1 (an index build bricks a database since 019-10) registered as 019-42 with the coordinator's default (b); agent f42 started.
+* 12:30 019-41 done: 8f0d117 (LEVEL 4 OK).
+* 12:31 Frans: a Core fault found tonight is fixed at once, without waiting for him.
 
 
 ## 8. Outcome
