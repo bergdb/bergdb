@@ -403,8 +403,11 @@ public class NodeCollection implements PointerFollower {
         } else if (Spos.isVpos(pointerPos)) {
             id = pointerPos;
         } else {
-            assert pointerPos >= 0 : "bad pointerPos (" + pointerPos + "), to read from stream"
-                    + ", pointerIndex:" + pointerIndex + ", predecessor:" + predecessor.print();
+            // A check, not an assert (2026-11-06, bergdb 019-32): stream data.
+            if (pointerPos < 0) {
+                throw new StreamFormatException("Bad pointer " + pointerPos + ", index "
+                        + pointerIndex + " of node " + predecessor.getId() + ".");
+            }
             id = nodeStream.readNodeHeader(pointerPos).id();
         }
 
@@ -484,6 +487,9 @@ public class NodeCollection implements PointerFollower {
             }
         }
 
+        // Also an object of the handle (bergdb 019-32): a damaged node's id names another.
+        checkPointeeType(predecessor, pointerIndex, result, ref);
+
         final FirstTouchListener ftl = firstTouchListener;
         if (ftl != null) {
             ftl.firstTouch(id, ref, result, read, cutBack);
@@ -553,6 +559,7 @@ public class NodeCollection implements PointerFollower {
                     + " of node " + predecessor.getId() + ".");
         }
         Node node = nodeStream.readNode(pos);
+        checkPointeeType(predecessor, pointerIndex, node, pos);     // before an install
         assert node.getId() == id : "ids differ, " + node.getId() + " != " + id;
         cache.tickAccessClock();
         loads.incrementAndGet();
@@ -581,9 +588,14 @@ public class NodeCollection implements PointerFollower {
     private Node followValuePointer(Node predecessor, int pointerIndex, long pointerPos,
             OpData op, MaintenanceFollower maintenance) {
         final boolean isMaintenance = maintenance != null;
-        assert pointerPos >= 0 && !Spos.isVpos(pointerPos) : "bad value pointer " + pointerPos
-                + ", index " + pointerIndex + " of " + predecessor.getId();
+        // Checks, not an assert (2026-11-06, bergdb 019-32): the pointer is stream data, and
+        // the node it names is a value.
+        if (pointerPos < 0 || Spos.isVpos(pointerPos)) {
+            throw new StreamFormatException("Bad value pointer " + pointerPos + ", index "
+                    + pointerIndex + " of node " + predecessor.getId() + ".");
+        }
         Node node = nodeStream.readNode(pointerPos);
+        checkPointeeType(predecessor, pointerIndex, node, pointerPos);
         cache.tickAccessClock();
         loads.incrementAndGet();
         if (isMaintenance) maintenance.loaded(node);
@@ -773,6 +785,25 @@ public class NodeCollection implements PointerFollower {
                     + (linked == null ? "no canonical object" : "node " + linked.id)
                     + ", by node id " + (expected == null ? "no canonical object"
                             : "node " + expected.id + "'s, at " + o.getSpos()));
+        }
+    }
+
+    /**
+     * Checks that 'pointee', the node at 'pos' that pointer i of 'node' names, is of the type
+     * the pointer names (2026-11-06, bergdb 019-32): a top node's root pointer (0) names a
+     * key node and its skip pointers top nodes; a key node's pointers name key nodes, and
+     * values where pointsToIndexNode says so. A pointer of a damaged node (its checksum
+     * right) that named a node of another type threw a ClassCastException where it was used.
+     * 
+     * @throws StreamFormatException  If it is of another type.
+     */
+    static void checkPointeeType(Node node, int i, Node pointee, long pos) {
+        byte type = node.isTopNode() ? (i == 0 ? Node.TYPE_KEY_NODE : Node.TYPE_TOP_NODE)
+                : pointsToIndexNode(node, i) ? Node.TYPE_KEY_NODE : Node.TYPE_VALUE;
+        if (pointee.getType() != type) {
+            throw new StreamFormatException("Pointer " + i + " of node " + node.getId()
+                    + " names a node of type " + pointee.getType() + " at " + pos + ", not "
+                    + type + ".");
         }
     }
 

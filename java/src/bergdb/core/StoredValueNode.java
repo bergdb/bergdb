@@ -4,6 +4,7 @@ import bergdb.common.Bug;
 import bergdb.common.Bytes;
 import bergdb.dag.Node;
 import bergdb.dag.Keys;
+import bergdb.dag.Klong;
 import bergdb.dag.Spos;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
@@ -144,6 +145,9 @@ public class StoredValueNode implements StoredNode {
             key[i] = Bytes.bytesToLongLE(buffer, offset);
             offset += 8;
         }
+        if (!isKey(key)) {
+            throw new StreamFormatException("Bad key of value node at spos " + spos + ".");
+        }
         
         // The stored offset is in the record's bytes; the node keeps the distance in the
         // stream, which is longer by the meta blocks in between (2026-10-24, bergdb 005-34).
@@ -162,6 +166,24 @@ public class StoredValueNode implements StoredNode {
         stored.node = valueNode;
         stored.key = key;
         return stored;
+    }
+
+    /**
+     * True if 'segments' is a key as Keys.toSegments makes it (2026-11-06, bergdb 019-32):
+     * each segment a compare value (Klong.getCompareValue: bits 0 to 2, 62 and 63 zero), all
+     * but the last of length 7, the last shorter. A start reruns a value node's key into the
+     * graph (Dag.putKv), whose segments it takes for this; a key with a type bit set was taken,
+     * and the rerun met an assert of the Core (Dag.setValue).
+     */
+    static boolean isKey(long[] segments) {
+        for (int i = 0; i < segments.length; i++) {
+            long s = segments[i];
+            if ((s & 0xc000000000000007L) != 0
+                    || (Klong.getLength(s) == Klong.MAX_SIZE) != (i < segments.length - 1)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static int getByteSize(ValueNode node, long[] key) {
@@ -399,6 +421,42 @@ public class StoredValueNode implements StoredNode {
             Assert.assertTrue("at " + c[0] + ", " + c[1] + ": " + refused,
                     refused.startsWith((String) c[2]));
         }
+    }
+    
+    /**
+     * A value node whose checksum is right but whose key is not one that Keys.toSegments
+     * makes is refused with a StreamFormatException (2026-11-06, bergdb 019-32): a segment
+     * with bit 63 (a klong's type) or bit 0 set, a last segment of length 7, and a segment
+     * of length 6 before the last. Before, each was parsed, and a start's rerun of the
+     * value's key met an assert of the Core (harness 6.1, bergdb 018-07: a key's byte 7 xor
+     * 0x80).
+     */
+    @Nano
+    private static void testRefusesBadKey() {
+        long[] key = Keys.toSegments("/-mykey.txt");      // two segments, of 7 and 4 bytes
+        Assert.assertEquals(2, key.length);
+        ValueNode node = new ValueNode(new byte[10], Spos.NULL);
+        final int size = getByteSize(node, key);
+        final int keyAt = 24 + 10 + 4;
+        long[][] bad = {
+            {key[0], key[1] ^ (1L << 63)},
+            {key[0], key[1] | 1},
+            {key[0], key[1] | (7 << 3)},
+            {key[0] & ~(1L << 3), key[1]},
+        };
+        for (long[] b : bad) {
+            byte[] buffer = new byte[size];
+            toBytes(node, key, buffer, 0);
+            Bytes.longToBytesLE(b[0], buffer, keyAt);
+            Bytes.longToBytesLE(b[1], buffer, keyAt + 8);
+            String refused = parseWithRightChecksum(buffer, size);
+            Assert.assertTrue(Long.toHexString(b[0]) + " " + Long.toHexString(b[1]) + ": "
+                    + refused, refused.startsWith("Bad key of value node"));
+        }
+        byte[] buffer = new byte[size];
+        toBytes(node, key, buffer, 0);
+        Bytes.ushortToBytesLE(NodeChecksum.sumWithZeroReplace(buffer, 0, size, 6), buffer, 6);
+        NodeStream.bytesToNode(128, buffer, 0, size);       // The key as it is: taken.
     }
     
     /**

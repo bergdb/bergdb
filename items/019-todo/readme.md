@@ -106,7 +106,6 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
-| [019-32](32-key-node-klongs-unchecked.md) | Fix | A node's klongs and pointers unchecked: an assert at a start or a read | none | open |
 | [019-35](35-night-read-losses.md) | Investigate | The Core's warm reads lost 1 to 6 % in night 006-12 | none | open |
 | [019-36](36-reclaim-cut-waits-for-append.md) | Investigate | Reclaim's cut waits for the thread's append (performance) | none | open |
 | [019-40](40-review-r6-c-findings.md) | Fix | Review R6's C findings: tests, words, small faults | none | open |
@@ -119,6 +118,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-32](32-key-node-klongs-unchecked.md) | Fix | A node's klongs and pointers unchecked: an assert at a start or a read | none | done | 2026-11-06 |
 | [019-41](41-review-r7-c-findings.md) | Fix | Review R7's C findings: a test missing a hot loop, a sync, an interrupt | none | done | 2026-11-06 |
 | [019-39](39-error-path-hangs.md) | Fix | Hangs in the error path: a thread not started, a second Error | none | done | 2026-11-06 |
 | [019-38](38-index-jobs-fail-on-refusal.md) | Fix | Index jobs fail the database on an interrupt, an expiry, a refusal | none | done | 2026-11-06 |
@@ -220,7 +220,7 @@ Files
 * [32-key-node-klongs-unchecked.md](32-key-node-klongs-unchecked.md).
   019-32, Fix: a node's klongs and pointers are not checked at a parse,
   and a start or a read meets an assert (015-07's class); found by
-  harness 6.1 (018-07).
+  harness 6.1 (018-07); done 2026-11-06, harness 6.1's skip list empty.
 * [33-node-checksum-00-ff.md](33-node-checksum-00-ff.md). 019-33,
   Decide: a node byte changed between 0x00 and 0xff passes Fletcher-16
   modulo 255; found by harness 6.1 (018-07). Decided 2026-11-06:
@@ -380,3 +380,10 @@ on its own thread when its closer cannot start, the cut's thread is set
 once started, and the storage thread and the cut's thread record their
 failure as an `IOException` made with the stream; the limit of a full
 heap in the entry and docs/levels.md; BEFORE COMMIT OK.
+
+2026-11-06. 019-32 done by coord-1106's agent f32: the parsers check a
+key node's klongs, pointers and count and a value node's key, a read
+checks the type of the node a pointer names, one id names nodes of one
+type, and a put meets a non-leaf without a klong for its key with an
+exception, not an assert; harness 6.1's skip list is empty; BEFORE
+COMMIT OK.

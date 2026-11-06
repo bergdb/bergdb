@@ -15,7 +15,8 @@ format's checks cannot see), 019-32 a fault of the Core to fix, and
 019-34, fixed the same night. The four open ones were in its skip
 list, and it passes on `main`. Since 2026-11-06 (Frans, 10:42),
 019-30, 019-31 and 019-33 are outside the fault model for 2026.3 and
-counted as known; the skip list holds 019-32 only.
+counted as known; 019-32 was fixed the same day, and the skip list is
+empty.
 
 
 ## 1. What it checks, and why
@@ -196,7 +197,7 @@ Adapted from 018-01's proposal, and why:
 java -ea -cp build/bergdb.jar bergdb.core.CorruptStreamTester 1        # the sample, seed 1
 java -ea -cp build/bergdb.jar bergdb.core.CorruptStreamTester 20398 full 4   # the full set
 java -ea -Dbergdb.corrupt.skip=none -cp build/bergdb.jar bergdb.core.CorruptStreamTester 1
-                                                     # nothing skipped: 019-32
+                                       # nothing skipped (the list is empty since 019-32)
 ```
 
 
@@ -208,16 +209,14 @@ skipped" and counts, and `entryOf` says which failures are whose:
 
 ```java
 static final String[] SKIP = {
-    "019-32",   // a node's klongs and pointers unchecked: an assert at a start or read
 };
 ```
 
-* 019-32: a start or a read of a damaged node (changed with its
-  checksum made right, or flipped in a way the checksum misses) that
-  throws an `AssertionError`, an `IllegalStateException` (without `-ea`)
-  or a `ClassCastException`.
-
-019-34 had its line until its fix the same night: a flip in a meta block
+The list is empty since 019-32's fix (2026-11-06). 019-32 had its line
+until then: a start or a read of a damaged node (changed with its
+checksum made right, or flipped in a way the checksum misses) that
+threw an `AssertionError`, an `IllegalStateException` (without `-ea`)
+or a `ClassCastException`; `entryOf` returns null since. 019-34 had its line until its fix the same night: a flip in a meta block
 that made the start throw `IllegalArgumentException: spos >= streamSize`.
 019-30, 019-31 and 019-33 had theirs until Frans's decision of
 2026-11-06 (10:42, option (a) of each); they are `KNOWN` since:
@@ -334,6 +333,27 @@ On `main` each of these copies is refused with a `StreamFormatException`.
   019-33 1,016 and 1,132, 015-73 4 and 5; 019-32 skipped 200 and 209.
 
 
+### 5.4. After 019-32's fix
+
+019-32 fixed (coord-1106's agent f32, on `main` at f0a47f3 with the
+change), its line out of `SKIP`, which is empty:
+
+* `unit.sh -c CorruptStreamTester` (`testSample` and `testFound019_32`):
+  SUCCESS. The samples of seeds 1 to 5: no failure; seed 1's also
+  without `-ea`.
+* `night.sh tests -c CorruptStreamTester` (seed 20398): SUCCESS, 104 s.
+* By hand, the full set of seed 20400 (296,805 copies, 108 s on a loaded
+  F53): no failure; seed 20398 without `-ea` (278,484 copies): no
+  failure; seeds 20398 and 20399 with `-ea`: no failure.
+
+Before the fix, with nothing skipped, the full set of seed 20398 failed
+with 200 copies (the skip list's count, section 5.1): asserts on klong
+types, value pointers and stream pointers, a key klong with no pointer,
+and `ClassCastException`s from pointers and ids that named a node of
+another type; with the fix, none. The test `testFound019_32` keeps ten of
+them, each of which failed before the fix.
+
+
 ## 6. What it found
 
 * **019-30** (Decide): a record's time changed within its neighbours',
@@ -352,7 +372,11 @@ On `main` each of these copies is refused with a `StreamFormatException`.
   `IllegalStateException` without `-ea`; a damaged value pointer an
   assert at a read; a pointer to a node of another type a
   `ClassCastException`. 015-07's class, a fault of the Core. Found at
-  03:38 and 03:44, too late to fix that night.
+  03:38 and 03:44, too late to fix that night. Fixed on 2026-11-06
+  (section 5.4): the parsers check a key node's klongs, pointers and
+  count and a value node's key, a read checks the type of the node a
+  pointer names, one id names nodes of one type, and a put meets no
+  assert in a non-leaf without a klong for its key.
 * **019-33** (Decide): Fletcher-16 modulo 255 does not see a byte
   changed between 0x00 and 0xff, so a value byte flipped by 0xff is read
   back changed. Recommendation: (a) for 2026.3, a stronger checksum with
@@ -397,7 +421,8 @@ Clone `/Users/f/fl/bench/006-12/h61`, branch `h61`; the old-code clone
 019-30 to 019-34, and 019-34's fix. Next: 019-32's fix (test first: the
 harness's copies); Frans's decisions on 019-30, 019-31 and 019-33;
 then the lines leave `SKIP`. Decided 2026-11-06: their lines left
-`SKIP` (section 4); 019-32's stays.
+`SKIP` (section 4); 019-32's stays. Fixed 2026-11-06 (coord-1106's agent
+f32): its line left too, and the list is empty.
 
 
 ## 9. Log
@@ -427,3 +452,12 @@ the full sets of seeds 20398 and 20399 pass (section 5.3). Sections 1,
 2026-11-06. Built by Claude (Opus 5.5, Claude Code), a harness agent of
 the night 006-12. (Moved here from the header at Frans's word, 11:35:
 006-12, section 8, point 10, option (b).)
+
+2026-11-06. 019-32 fixed by coord-1106's agent f32 (019-32's entry): the
+parsers check a key node's klongs, pointers and count and a value node's
+key; a read checks that a pointer names a node of the type it expects;
+`Cache3` keeps one type per id; `Dag`'s put meets a non-leaf without a
+klong for its key with a `DbException`, not an assert. The line "019-32"
+left `SKIP`, which is empty, and `entryOf` returns null. The test
+`testFound019_32`, ten of the harness's copies, in the unit tests.
+Sections 4, 5.4, 6 and 8 updated. BEFORE COMMIT OK.

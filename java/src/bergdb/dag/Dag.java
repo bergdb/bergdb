@@ -668,8 +668,7 @@ public class Dag {
         
         while (!node.isSegmentLeaf()) {
             node.searchLte(pd.tt, compareValue, pd.kwi);
-            assert pd.kwi.klong != Klong.NULL : 
-                "pd.kwi.klong is Klong.NULL, non-null expected, node: " + node.print();
+            checkFound(node, pd);
             
             node = (KeyNode) pd.followPointer(node, pd.kwi.pointerIndex);
             assert node != null;
@@ -713,6 +712,20 @@ public class Dag {
      * If 'create' is false, nothing is created and null is returned if the
      * node does not exist.
      */
+    /**
+     * A put finds a klong at or below its key in every key node on its way that is not a
+     * segment leaf (the graph's invariant). A node from a damaged stream may have none
+     * (2026-11-06, bergdb 019-32: a segment leaf's flag changed, its checksum right): the put
+     * fails, and so the database, or the start's rerun, which refuses the stream. It was an
+     * assert: an AssertionError, and without -ea the put followed another pointer.
+     */
+    private static void checkFound(KeyNode node, PutData pd) {
+        if (pd.kwi.klong == Klong.NULL) {
+            throw new DbException("Key node " + node.getId() + ", not a segment leaf, has no "
+                    + "klong at or below the key at time " + pd.tt + ": corrupt data.");
+        }
+    }
+
     private KeyNode setNode(KeyNode segmentRoot, long compareValue, boolean create, PutData pd) {
         KeyNode current = segmentRoot;
         KeyNode result;
@@ -721,8 +734,7 @@ public class Dag {
         
         while (!current.isSegmentLeaf()) {
             current.searchLte(pd.tt, compareValue, pd.kwi);
-            assert pd.kwi.klong != Klong.NULL 
-                    : "LTE search -> Klong.NULL, tt=" + pd.tt + ", node:" + current.print();
+            checkFound(current, pd);
             assert pd.kwi.pointerIndex >= 0 
                     : "LTE search found klong, but pointerIndex=" + pd.kwi.pointerIndex;
             

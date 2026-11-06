@@ -248,6 +248,8 @@ public class DbStarter {
                 StoredNode storedPointee = posMap.get(p.pos);
                 if (storedPointee != null) {
                     Node pointee = storedPointee.getNode();
+                    // As a follow checks it (2026-11-06, bergdb 019-32).
+                    NodeCollection.checkPointeeType(node, i, pointee, p.pos);
                     node.setPointer(i, Handle.pointeeOf(pointee), p.pos);
                 }
             }

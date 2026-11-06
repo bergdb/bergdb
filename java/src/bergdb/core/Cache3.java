@@ -10,6 +10,7 @@ import bergdb.dag.Spos;
 import bergdb.dag.TopNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.storage.StreamFormatException;
 
 /**
  * A deterministic node cache; size is known, weak references are *not* used.
@@ -242,6 +243,7 @@ public class Cache3 {
                 internalPut(id, h);
             }
             Node old = h.obj;
+            checkType(old, node);
             if (old == null || (old != node && isBetter(node, old))) {
                 setHandle(node, h);
                 residents.added(node);
@@ -257,6 +259,21 @@ public class Cache3 {
     }
 
     /**
+     * One node, one type (2026-11-06, bergdb 019-32): a node from a damaged stream whose id
+     * was changed to that of a node of another type (its checksum right) went into that
+     * node's handle, and a pointer to the other node got it: a ClassCastException.
+     * 
+     * @throws StreamFormatException  If 'old', the handle's object, is of another type.
+     */
+    private static void checkType(Node old, Node node) {
+        if (old != null && old.getType() != node.getType()) {
+            throw new StreamFormatException("Two nodes with the id " + node.getId()
+                    + ": of type " + old.getType() + " at " + old.getSpos() + ", and of type "
+                    + node.getType() + " at " + node.getSpos() + ".");
+        }
+    }
+
+    /**
      * Installs 'node', a version read from the stream, in its live handle 'h', unless the
      * handle has a better object (canonical, or a newer version). The caller holds h's
      * monitor (a load, 009-02, T7a). Returns the handle's object after the call.
@@ -264,6 +281,7 @@ public class Cache3 {
     public Node install(Handle h, Node node) {
         assert Thread.holdsLock(h);
         Node old = h.obj;
+        checkType(old, node);
         if (old == null || (old != node && isBetter(node, old))) {
             setHandle(node, h);
             residents.added(node);

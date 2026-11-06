@@ -65,7 +65,6 @@ public class CorruptStreamTester {
      * -Dbergdb.corrupt.skip=none, nothing is skipped.
      */
     static final String[] SKIP = {
-        "019-32",   // a node's klongs and pointers unchecked: an assert at a start or read
     };
 
     /**
@@ -89,16 +88,9 @@ public class CorruptStreamTester {
 
     /**
      * The open entry of SKIP that a failure belongs to, or null: a new fault. Each entry
-     * says which damage and which failure are its.
+     * says which damage and which failure are its. None since 019-32's fix (2026-11-06).
      */
     static String entryOf(Copy c, String failure) {
-        boolean node = c.kind.equals("node")
-                || c.kind.equals("flip") && c.what.contains(": node at offset");
-        if (node && (failure.contains("threw java.lang.AssertionError")
-                || failure.contains("threw java.lang.IllegalStateException")
-                || failure.contains("threw java.lang.ClassCastException"))) {
-            return "019-32";
-        }
         return null;
     }
 
@@ -1210,6 +1202,56 @@ public class CorruptStreamTester {
     }
 
     // ======== Tests ========
+
+    /**
+     * The copies that found 019-32 (2026-11-06; bergdb 018-07, section 6), each now refused,
+     * a read that fails the database, or what the original held (check). Before 019-32's
+     * fix, each failed: a start or a read threw an AssertionError or a ClassCastException.
+     * A row: the workload, the Original's seed, the record, then the node's offset in it,
+     * its byte and the xor (its checksum made right); or -1, the stream's byte and the xor.
+     */
+    @Nano
+    public static void testFound019_32() {
+        Object[][] rows = {
+            {META, 3348004L, 365024, 104, 39, 0x80},    // a klong of type 2, at the start
+            {TAKE, 3552484L, 31880, 156, 37, 0x80},     // a value node's key, at the start
+            {TAKE, 4184729L, 2808, 72, 17, 0x01},       // a key count, at a read
+            {TAKE, 4184729L, 2808, 72, 24, 0x01},       // a key node's id 0 to 1, at a read
+            {TAKE, 4184729L, 2808, 32, 16, 0x01},       // a top node's id 1 to 0, at a read
+            {ALL, 729011L, 4528, 72, 16, 0x01},         // a leaf's flag, at the start
+            {ALL, 729042L, 128, 72, 16, 0x01},          // the flag of a leaf without keys
+            {META, 3980311L, 180568, 88, 56, 0x80},     // a skip pointer to a key node
+            {TAKE, 4184729L, 2808, -1, 3151, 0xff},     // a value pointer negative, a read
+            {TAKE, 4184729L, 2808, -1, 3336, 0xff},     // a value pointer odd, a read
+        };
+        Map<String, Original> originals = new TreeMap<String, Original>();
+        for (Object[] row : rows) {
+            Config config = (Config) row[0];
+            long seed = (Long) row[1];
+            Original o = originals.computeIfAbsent(config.name + seed, k -> write(config, seed));
+            int offset = (Integer) row[3], at = (Integer) row[4], mask = (Integer) row[5];
+            Copy c;
+            if (offset < 0) {
+                List<Copy> out = new ArrayList<Copy>();
+                flips(o, Arrays.asList(at), new int[] {mask}, out);
+                c = out.get(0);
+            } else {
+                Record rec = o.recordAt((Integer) row[2]);
+                int[] node = null;
+                for (int[] n : rec.nodes) {
+                    if (n[0] == offset) node = n;
+                }
+                byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
+                nb[at] ^= (byte) mask;
+                c = nodeCopy(o, rec, node, nb, "xor " + mask + " at its byte " + at);
+            }
+            Outcome out = check(o, c);
+            if (out.failure != null) {
+                throw new AssertionError(config.name + ", seed " + seed + ", " + c.what + ": "
+                        + out.failure);
+            }
+        }
+    }
 
     /** A sample on a fixed seed: the unit tests. */
     @Nano

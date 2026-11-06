@@ -146,7 +146,10 @@ public class StoredKeyNode implements StoredNode {
         if (size < 0) {
             throw new StreamFormatException("Bad Node size, " + size + ".");
         }
-        if (size > (nodeSize - 32) / 16) {      // getByteSize()
+        // The node's size is its count's exactly, getByteSize() (2026-11-06, bergdb 019-32):
+        // a count below what the size holds read the pointers from the wrong bytes, and a
+        // key klong got a time klong's Spos.NULL; a read met an assert.
+        if (nodeSize != 32 + 16 * size) {
             throw new StreamFormatException("Bad key count, " + size + ", of key node at spos "
                     + spos + ", size " + nodeSize + ".");
         }
@@ -159,9 +162,23 @@ public class StoredKeyNode implements StoredNode {
             offset += 8;
         }
 
+        // Each klong's type, and a key klong's pointer (2026-11-06, bergdb 019-32): a klong of
+        // type 2, which no klong has, or a key klong whose pointer was negative, was taken,
+        // and a start or a read met an assert of the Core (an AssertionError; without -ea an
+        // IllegalStateException). Spos.NULL is allowed, as DbStarter.validateNode allows it.
         for (int i = 0; i < size; i++) {
             positions[i] = Bytes.bytesToLongLE(buffer, offset);
             offset += 8;
+            int klongType = Klong.getIntType(klongs[i]);
+            if (klongType != Klong.INT_TYPE_TIME && klongType != Klong.INT_TYPE_KEY
+                    && klongType != Klong.INT_TYPE_DELETE_BITMAP) {
+                throw new StreamFormatException("Bad klong type, " + klongType + ", of klong "
+                        + i + " of key node at spos " + spos + ".");
+            }
+            if (klongType == Klong.INT_TYPE_KEY && !Spos.isValidOrNull(positions[i])) {
+                throw new StreamFormatException("Bad pointer, " + positions[i] + ", of klong "
+                        + i + " of key node at spos " + spos + ".");
+            }
         }
 
         KeyNode keyNode = new KeyNode(isSegmentLeaf);
@@ -244,6 +261,43 @@ public class StoredKeyNode implements StoredNode {
             buffer[18] = (byte) (count >>> 8);
             String refused = StoredValueNode.parseWithRightChecksum(buffer, size);
             Assert.assertTrue(count + ": " + refused, refused.startsWith("Bad key count"));
+        }
+    }
+    
+    /**
+     * A key node whose checksum is right but whose klongs, pointers or count cannot be a
+     * node's is refused with a StreamFormatException (2026-11-06, bergdb 019-32): a klong of
+     * type 2, a key klong's pointer of -8, and a key count below what the node's size holds
+     * (the pointers read from the wrong bytes). Before, each was parsed, and a start or a
+     * read met an assert of the Core (harness 6.1, bergdb 018-07).
+     */
+    @Nano
+    private static void testRefusesBadKlongs() {
+        KeyNode node = new KeyNode();
+        node.addToEnd(Klong.createTime(5000), null, Spos.NULL);
+        node.addToEnd(Klong.createKey(StringUtil.toBytes("key")), null, 1234);
+        final int size = getByteSize(node);
+        long[] longs = new long[size / 8];
+        toLongs(node, longs, 0, 200);
+        // What changes the node (the offset of an 8-byte field, its new value; or a byte, its
+        // xor), and what the message starts with. Klong i is at 32 + 8 * i, its pointer at
+        // 48 + 8 * i, the count at 17.
+        Object[][] cases = {
+            {"byte", 39, 0x80, "Bad klong type"},
+            {"long", 56, -8L, "Bad pointer"},
+            {"byte", 17, 3, "Bad key count"},
+        };
+        for (Object[] c : cases) {
+            byte[] buffer = Bytes.longsToBytesLE(longs);
+            int at = (Integer) c[1];
+            if (c[0].equals("byte")) {
+                buffer[at] ^= (byte) (int) (Integer) c[2];
+            } else {
+                Bytes.longToBytesLE((Long) c[2], buffer, at);
+            }
+            String refused = StoredValueNode.parseWithRightChecksum(buffer, size);
+            Assert.assertTrue(c[0] + " at " + at + ": " + refused,
+                    refused.startsWith((String) c[3]));
         }
     }
 }

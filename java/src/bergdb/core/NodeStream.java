@@ -177,7 +177,11 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
      * @throws StreamIoException
      */
     public Node readNode(long spos) {
-        assert spos >= RecoverableStream.META_BLOCK_SIZE : "bad spos, " + spos;
+        // A check, not an assert (2026-11-06, bergdb 019-32): a pointer of a damaged node
+        // reaches here.
+        if (spos < RecoverableStream.META_BLOCK_SIZE) {
+            throw new StreamFormatException("Bad node position, " + spos + ".");
+        }
 
         byte[] buffer = new byte[1024];      
         rstream.read(spos, buffer, 0, 4);

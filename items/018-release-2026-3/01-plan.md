@@ -312,7 +312,8 @@ for 2026.3: they are experimental (D2).
   `before-commit.sh` (a sample) and in the night tests (the full set);
   its skip list held the four open ones until they were fixed or
   decided (019-34 fixed the same night; 019-30, 019-31 and 019-33
-  decided on 2026-11-06); it holds 019-32.
+  decided on 2026-11-06); it held 019-32 until its fix on 2026-11-06,
+  and is empty since.
 
 
 ### 6.2. Failures and interrupts in storage
@@ -628,3 +629,9 @@ No new fault. Section 6.7 updated.
 eight jcstress tests rerun, no new test (review R7 of 006-13 flags no
 shared field that needs one). On s1, each `[OK]`, no forbidden outcome
 (018-08); F53's run in the night's chain. Section 6.6 updated.
+
+2026-11-06. 019-32 fixed (coord-1106's agent f32): a damaged node that
+its checksum misses is refused at a start or fails the database at a
+read, with a `StreamFormatException`, where an assert or a
+`ClassCastException` met it; harness 6.1's skip list is empty (018-07,
+section 5.4). Section 6.1 updated.

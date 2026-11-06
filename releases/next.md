@@ -396,6 +396,14 @@ Reliability
   last transaction's position was past the stream's end (such as one with
   its high byte flipped) made recovery throw an `IllegalArgumentException`.
   Valid streams are read as before; the stream's bytes are unchanged.
+* **A start or a read refuses a damaged node that its checksum misses**
+  (bergdb 019-32, found by harness 6.1, 018-07; 2026-11-06): a key node's
+  klong of no type, a negative pointer or a count below its size, a value
+  node's key that is no key, a pointer to a node of another type, or two
+  nodes of different types with one id now refuse the start or fail the
+  database (`StreamFormatException`), where an `AssertionError`, an
+  `IllegalStateException` or a `ClassCastException` was thrown. Valid
+  streams are read as before; the stream's bytes are unchanged.
 * **The message of `LookupTimeNotAvailableException` names the right
   times when several readers are refused at once** (bergdb 019-08;
   2026-11-05). The Core formatted the times of the message, and the JMX
