@@ -17,9 +17,12 @@ import bergdb.pub.IndexAlreadyExistsException;
 import bergdb.pub.IndexBuilder;
 import bergdb.pub.RwEnvironment;
 import bergdb.pub.util.BadFormatException;
+import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
+import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
+import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.storage.StreamIoException;
 
 /**
@@ -316,6 +319,7 @@ public class IndexBuilderImp implements IndexBuilder {
                     event.waitForEvent();
                 }
                 
+                long retryWait = RwTransaction.FIRST_SLEEP;
                 while (!createState.isDone) {
                     long t0 = System.nanoTime();
                     
@@ -334,6 +338,18 @@ public class IndexBuilderImp implements IndexBuilder {
                         // next transaction or read gets the failure. The index creation
                         // will continue when the database is restarted.
                         break;
+                    } catch (IllegalDbStateException e) {
+                        // Empty. The database has stopped; the index creation will continue
+                        // when the database is restarted.
+                        break;
+                    } catch (DbException | LookupTimeNotAvailableException e) {
+                        // A refusal of the step's transaction, also after an interrupt of its
+                        // wait to run again after a conflict, or an expired read: not a
+                        // failure. The step is taken again after a wait, as after a conflict
+                        // (2026-11-06, bergdb 019-38; docs/levels.md, section 3). Since 019-10
+                        // it failed the database; before, it ended the thread.
+                        retryWait = waitToRetry(retryWait);
+                        continue;
                     } catch (Throwable e) {
                         // Anything else, a bug or an Error such as an OutOfMemoryError, fails
                         // the database, as on BergDB's other threads, with no call to throw
@@ -342,6 +358,7 @@ public class IndexBuilderImp implements IndexBuilder {
                         connection.getDb().internal().fail(e);
                         break;
                     }
+                    retryWait = RwTransaction.FIRST_SLEEP;
                     
                     long duration = (System.nanoTime() - t0);
                     
@@ -357,6 +374,22 @@ public class IndexBuilderImp implements IndexBuilder {
         t.setName("IndexBuilderImp-CreateIndex-" + createState.index.getName() + "-" + t.getId());
         t.start();
         return t;
+    }
+    
+    /**
+     * Waits 'ms' milliseconds before an index job takes its step again after a refusal or an
+     * expired read, as an rw-transaction waits after a conflict (bergdb 019-38). An interrupt
+     * ends the wait, and the job goes on (bergdb 005-46).
+     * 
+     * @return The wait before the next try, ms.
+     */
+    static long waitToRetry(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            // BergDB's own thread goes on (bergdb 005-46).
+        }
+        return RwTransaction.nextSleep(ms);
     }
     
     /**

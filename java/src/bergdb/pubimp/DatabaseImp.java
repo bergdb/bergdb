@@ -15,10 +15,12 @@ import bergdb.pub.IndexBuilder;
 import bergdb.pub.StartupInfo;
 import bergdb.pub.Time;
 import bergdb.pub.util.Clock;
+import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
+import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.pub.util.SyncLevel;
 import bergdb.storage.StreamIoException;
 
@@ -121,7 +123,8 @@ public class DatabaseImp implements Database {
     /**
      * For tests (bergdb 015-21): if set, deleteIndexInternal() calls it with "call" once the
      * index is deleting, before it starts or finds the index's job; and a deletion job calls
-     * it with "start" when it starts, in its thread.
+     * it with "start" when it starts its work, in its thread, also when it takes it again
+     * (bergdb 019-38).
      */
     volatile Consumer<String> testHookDelete = null;
     
@@ -293,27 +296,40 @@ public class DatabaseImp implements Database {
         
         final Thread thread = new Thread(new Runnable() {
             public void run() {
-                final Consumer<String> hook = testHookDelete;
-                if (hook != null) {
-                    hook.accept("start");
-                }
-                
-                try {
-                    indexManager.deleteIndexEntries(indexName, db, deletedCounter);
-                    indexManager.deleteIndexInfo(connection, index);
-                    sync(SyncLevel.ORDINARY);
-                } catch (DbStoppingException e) {
-                    // empty, delete job will continue when database is started again.
-                } catch (DbFailedException e) {
-                    // empty, the database has failed (bergdb 005-01); the delete job will
-                    // continue when the database is started again.
-                } catch (StreamIoException e) {
-                    // empty, this will only happen when database is stopping, so it is
-                    // expected. The delete job will continue when database is started again.
-                } catch (Throwable e) {
-                    // Anything else, a bug or an Error, fails the database, as on BergDB's
-                    // other threads (2026-11-06, bergdb 019-10; 010-01, P7).
-                    db.internal().fail(e);
+                long retryWait = RwTransaction.FIRST_SLEEP;
+                while (true) {
+                    try {
+                        final Consumer<String> hook = testHookDelete;
+                        if (hook != null) {
+                            hook.accept("start");
+                        }
+                        indexManager.deleteIndexEntries(indexName, db, deletedCounter);
+                        indexManager.deleteIndexInfo(connection, index);
+                        sync(SyncLevel.ORDINARY);
+                    } catch (DbStoppingException e) {
+                        // empty, delete job will continue when database is started again.
+                    } catch (DbFailedException e) {
+                        // empty, the database has failed (bergdb 005-01); the delete job will
+                        // continue when the database is started again.
+                    } catch (StreamIoException e) {
+                        // empty, this will only happen when database is stopping, so it is
+                        // expected. The delete job will continue when database is started again.
+                    } catch (IllegalDbStateException e) {
+                        // empty, the database has stopped; the delete job will continue when
+                        // the database is started again.
+                    } catch (DbException | LookupTimeNotAvailableException e) {
+                        // A refusal of a transaction of the job, or an expired read: not a
+                        // failure. The job takes its work again after a wait, as after a
+                        // conflict (2026-11-06, bergdb 019-38; docs/levels.md, section 3).
+                        // Since 019-10 it failed the database; before, it ended the thread.
+                        retryWait = IndexBuilderImp.waitToRetry(retryWait);
+                        continue;
+                    } catch (Throwable e) {
+                        // Anything else, a bug or an Error, fails the database, as on BergDB's
+                        // other threads (2026-11-06, bergdb 019-10; 010-01, P7).
+                        db.internal().fail(e);
+                    }
+                    return;
                 }
             }
         });

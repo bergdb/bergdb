@@ -16,9 +16,11 @@ import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Factory;
 import bergdb.pub.IndexAlreadyExistsException;
 import bergdb.pub.NoSuchIndexException;
+import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
+import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -163,34 +165,113 @@ public class PubTesterIndexJobs {
      * after its transaction (the hook "step"), fails the database, as on BergDB's other
      * threads, and the build's thread ends: every later call is refused with a
      * DbFailedException whose cause is the Error. Before, the thread ended, and the database
-     * went on without the build.
+     * went on without the build. So does an unexpected RuntimeException, a bug (bergdb 019-38).
      */
     @Nano
     public static void testErrorInBuildFailsTheDatabase() {
         for (final String point : new String[] {"action", "step"}) {
+            for (final Throwable thrown : new Throwable[] {new Error("an Error in the build"),
+                    new IllegalStateException("a bug in the build")}) {
+                final Database db = start(new MemoryStream());
+                try {
+                    db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
+                    IndexBuilderImp builder = (IndexBuilderImp) db.indexBuilder("by-field");
+                    builder.testHook(p -> {
+                        if (p.equals(point)) {
+                            throwIt(thrown);
+                        }
+                    });
+                    builder.dir("/items/").type("long").field("amount").start().join();
+                    DbFailedException refused = null;
+                    try {
+                        putNew(db);
+                    } catch (DbFailedException e) {
+                        refused = e;
+                    }
+                    Assert.assertTrue(point + ", " + thrown + ", the database failed: " + refused,
+                            refused != null && refused.getCause() == thrown);
+                } finally {
+                    db.close();
+                }
+            }
+        }
+    }
+    
+    /** Throws 'thrown', an Error or a RuntimeException. */
+    private static void throwIt(Throwable thrown) {
+        if (thrown instanceof Error) {
+            throw (Error) thrown;
+        }
+        throw (RuntimeException) thrown;
+    }
+    
+    /**
+     * bergdb 019-38 (review R6 of 006-13, B1, its probe): an interrupt of an index build's
+     * thread while its step waits to run again after a conflict. The hook "action" writes the
+     * object that the step read, then interrupts the thread; the step's transaction conflicts,
+     * and its wait to run again ends with a refusal (DbException). The build takes the step
+     * again and ends done, and the database goes on (bergdb 005-46). Since 019-10 the database
+     * failed, and every later call threw DbFailedException.
+     */
+    @Nano
+    public static void testInterruptInBuildIsNotAFailure() {
+        final Database db = start(new MemoryStream());
+        try {
+            db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
+            final AtomicBoolean once = new AtomicBoolean(true);
+            IndexBuilderImp builder = (IndexBuilderImp) db.indexBuilder("by-field");
+            builder.testHook(p -> {
+                if (p.equals("action") && once.compareAndSet(true, false)) {
+                    db.newConnection().w().put("/items/old", new Item(2, 300)).execute();
+                    Thread.currentThread().interrupt();
+                }
+            });
+            checkBuildDone(db, builder, once, "[300, 100]");
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * bergdb 019-38: an expired read (LookupTimeNotAvailableException, as when a cut overtakes
+     * the step's getMany) and a refusal of the step's transaction (a DbException), each thrown
+     * once in an index build's step by the hook "action". The build takes the step again and
+     * ends done, and the database goes on. Since 019-10 the database failed.
+     */
+    @Nano
+    public static void testExpiryOrRefusalInBuildIsNotAFailure() {
+        for (final RuntimeException thrown : new RuntimeException[] {
+                new LookupTimeNotAvailableException("an expired read, by the test"),
+                new DbException("a refusal, by the test")}) {
             final Database db = start(new MemoryStream());
             try {
                 db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
-                final Error error = new Error("an Error in the build, at " + point);
+                final AtomicBoolean once = new AtomicBoolean(true);
                 IndexBuilderImp builder = (IndexBuilderImp) db.indexBuilder("by-field");
                 builder.testHook(p -> {
-                    if (p.equals(point)) {
-                        throw error;
+                    if (p.equals("action") && once.compareAndSet(true, false)) {
+                        throw thrown;
                     }
                 });
-                builder.dir("/items/").type("long").field("amount").start().join();
-                DbFailedException refused = null;
-                try {
-                    putNew(db);
-                } catch (DbFailedException e) {
-                    refused = e;
-                }
-                Assert.assertTrue(point + ", the database failed: " + refused,
-                        refused != null && refused.getCause() == error);
+                checkBuildDone(db, builder, once, "[200, 100]");
             } finally {
                 db.close();
             }
         }
+    }
+    
+    /**
+     * Runs the build of the index 'by-field' on the field 'amount' to its end: the hook has
+     * thrown, the database takes a put, the build is done, and the index gives 'expected'.
+     */
+    private static void checkBuildDone(Database db, IndexBuilderImp builder,
+            AtomicBoolean once, String expected) {
+        JobStatus status = builder.dir("/items/").type("long").field("amount").start().join();
+        Assert.assertFalse(once.get());
+        putNew(db);         // DbFailedException if the build failed the database.
+        Assert.assertEquals(100, status.progress());
+        Assert.assertTrue(status.note(), status.note().startsWith("Done"));
+        Assert.assertEquals(expected, others(db));
     }
     
     private static void putNew(Database db) {
@@ -204,6 +285,63 @@ public class PubTesterIndexJobs {
             return true;
         } catch (IndexAlreadyExistsException e) {
             return false;
+        }
+    }
+    
+    /**
+     * bergdb 019-38: an expired read in an index deletion's job, thrown once by its hook
+     * "start": the job takes its work again and ends, the index's name is free, and the
+     * database goes on. Since 019-10 the database failed; before, the job ended and left the
+     * index deleting.
+     */
+    @Nano
+    public static void testExpiryInDeletionIsNotAFailure() {
+        final Database db = start(new MemoryStream());
+        try {
+            db.indexBuilder("by-field").dir("/items/").type("long").field("amount").createFast();
+            db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
+            final AtomicInteger starts = new AtomicInteger();
+            ((DatabaseImp) db).testHookDelete = p -> {
+                if (p.equals("start") && starts.incrementAndGet() == 1) {
+                    throw new LookupTimeNotAvailableException("an expired read, by the test");
+                }
+            };
+            Assert.assertEquals(100, db.deleteIndex("by-field").join().progress());
+            Assert.assertEquals(2, starts.get());
+            Assert.assertTrue(createIfFree(db));
+            putNew(db);
+            Assert.assertEquals("[100]", others(db));
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * bergdb 019-38: an unexpected RuntimeException, a bug, in an index deletion's job (its
+     * hook "start") fails the database (bergdb 019-10).
+     */
+    @Nano
+    public static void testBugInDeletionFailsTheDatabase() {
+        final Database db = start(new MemoryStream());
+        try {
+            db.indexBuilder("by-field").dir("/items/").type("long").field("amount").createFast();
+            final RuntimeException bug = new IllegalStateException("a bug in the deletion");
+            ((DatabaseImp) db).testHookDelete = p -> {
+                if (p.equals("start")) {
+                    throw bug;
+                }
+            };
+            db.deleteIndex("by-field").join();
+            DbFailedException refused = null;
+            try {
+                putNew(db);
+            } catch (DbFailedException e) {
+                refused = e;
+            }
+            Assert.assertTrue("the database failed: " + refused,
+                    refused != null && refused.getCause() == bug);
+        } finally {
+            db.close();
         }
     }
     

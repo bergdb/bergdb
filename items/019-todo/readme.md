@@ -109,7 +109,6 @@ Open
 | [019-32](32-key-node-klongs-unchecked.md) | Fix | A node's klongs and pointers unchecked: an assert at a start or a read | none | open |
 | [019-35](35-night-read-losses.md) | Investigate | The Core's warm reads lost 1 to 6 % in night 006-12 | none | open |
 | [019-36](36-reclaim-cut-waits-for-append.md) | Fix | Reclaim's cut waits for the thread's append under the write lock | none | open |
-| [019-38](38-index-jobs-fail-on-refusal.md) | Fix | Index jobs fail the database on an interrupt, an expiry, a refusal | none | open |
 | [019-39](39-error-path-hangs.md) | Fix | Hangs in the error path: a thread not started, a second Error | none | open |
 | [019-40](40-review-r6-c-findings.md) | Fix | Review R6's C findings: tests, words, small faults | none | open |
 | [019-41](41-review-r7-c-findings.md) | Fix | Review R7's C findings: a test missing a hot loop, a sync, an interrupt | none | open |
@@ -120,6 +119,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-38](38-index-jobs-fail-on-refusal.md) | Fix | Index jobs fail the database on an interrupt, an expiry, a refusal | none | done | 2026-11-06 |
 | [019-37](37-close-self-suppression.md) | Fix | A failed flush and the close's same IOException: self-suppression | none | done | 2026-11-06 |
 | [019-33](33-node-checksum-00-ff.md) | Decide | A node byte between 0x00 and 0xff: outside the model | decision | done | 2026-11-06 |
 | [019-31](31-records-cut-out-undetected.md) | Decide | Records cut out of the middle: outside the model | decision | done | 2026-11-06 |

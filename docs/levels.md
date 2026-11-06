@@ -170,7 +170,9 @@ The details:
   transaction, whose `Action` runs before the Core's `execute`) catch it at
   their edge, fail the database, and throw it as it is. BergDB's own
   threads (the storage thread, eviction, the cut's file deletion, index
-  jobs) fail the database on anything that ends their work. A start that
+  jobs) fail the database on anything that ends their work. An index job's
+  refused transaction or expired read is not a failure: the job waits as
+  after a conflict and takes its step again (019-38). A start that
   throws stops the database instead (005-32). Before, an `Error` before a
   transaction's go point, as in a read, passed through, and the database
   went on.

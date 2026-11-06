@@ -1,7 +1,7 @@
 019-38. Fix: index jobs fail the database on an interrupt, an expired read or a refusal
 =======================================================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: done. Kind: Fix. Frans: none.
 Created 2026-11-06 by Frans Lundberg.
 
 What: 019-10's change (01b0493) gave the index build's thread
@@ -40,3 +40,29 @@ Log
 ---
 
 2026-11-06. Registered by coord-1106 from review R6.
+
+2026-11-06. Done by coord-1106's agent i38. Both threads, the build's
+(`IndexBuilderImp.createInThread`) and the deletion's
+(`DatabaseImp.deleteIndexInternal`), now catch a `DbException` (a
+refusal; the interrupted wait to rerun after a conflict is one) and a
+`LookupTimeNotAvailableException` (an expired read) after their catches of
+the stops and the failure, wait as an rw-transaction after a conflict
+(`IndexBuilderImp.waitToRetry`: 10, 20, ... 640 ms, `RwTransaction.nextSleep`;
+reset after a step that works) and take the step, or the deletion's work,
+again. Anything else, an `Error` or another `RuntimeException`, still fails
+the database. A new catch of `IllegalDbStateException` ends the thread
+when the database has stopped (before, `fail()` did nothing then, and the
+thread ended; without it, the retry would loop on a stopped database). The
+deletion's hook "start" moved into the loop's `try`, so that a test can
+throw there. On the interrupt: the wait clears the flag, as
+`sleepFiftyPercentOfDuration` does, and the thread goes on; with the flag
+kept set, every later wait of the thread would end at once. A refusal that
+lasts (the top node ordinals used up, 005-02) makes the job retry every
+640 ms; the application's own transactions are refused too. Tests in
+`PubTesterIndexJobs`: `testInterruptInBuildIsNotAFailure` (R6's probe),
+`testExpiryOrRefusalInBuildIsNotAFailure` (a hook throws once),
+`testExpiryInDeletionIsNotAFailure`, `testBugInDeletionFailsTheDatabase`,
+and `testErrorInBuildFailsTheDatabase` with a `RuntimeException` too; the
+first three build and deletion tests fail on the code before (the
+database failed, or the deletion's thread ended). docs/levels.md, section
+3: one sentence; releases/next.md: 019-10's bullet. `BEFORE COMMIT OK`.

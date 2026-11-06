@@ -335,7 +335,8 @@ Reliability
   should end its process (`-XX:+ExitOnOutOfMemoryError`). In 2026.2 an
   `Error` before a transaction's go point, as in a read, passed through and
   the database went on. BergDB's own threads fail the database on anything
-  that ends their work: an index job's thread ended, the database went on,
+  that ends their work (an index job's refusal or expired read is retried,
+  bergdb 019-38): an index job's thread ended, the database went on,
   and after a restart the job said "done"; the storage thread ended, and
   syncs waited for ever. The stream's bytes are unchanged.
 * **A failed close of the stream is reported by `close()`** (bergdb
