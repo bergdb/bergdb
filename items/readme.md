@@ -157,3 +157,7 @@ Index
   no backwards compatibility needed, the API may change. The plan, its
   decisions and the work towards it; first, an inventory of the non-Core
   part for Frans's keep, simplify or drop decisions.
+* **021-todo** (open). Short tasks for release 2026.4, a bug-free
+  database (020): each done and closed in a day or two, mostly by an AI
+  agent; every open entry done before 2026.4 but Frans's exceptions. 019
+  keeps 2026.3's entries until that release.

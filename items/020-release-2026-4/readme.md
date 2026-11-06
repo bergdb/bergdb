@@ -30,6 +30,8 @@ lookup time; an object makes a round trip), and the fixes, as for 2026.3
 Files
 =====
 
+Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
+
 * [01-inventory.md](01-inventory.md). 020-01, the inventory of the
   non-Core part, written 2026-11-06, nothing decided:
   * seven features and a boundary: objects and their format, the get

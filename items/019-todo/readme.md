@@ -13,6 +13,9 @@ It takes the new entries after 015-todo, whose list is getting full:
 since 2026-11-05, every new todo entry goes here. The entries open in 015
 stay there until they close.
 
+Since 2026-11-06, entries for release 2026.4 go to 021-todo; this list
+keeps release 2026.3's (Frans, 15:51).
+
 
 Rules
 =====
