@@ -112,6 +112,7 @@ Open
 | [019-38](38-index-jobs-fail-on-refusal.md) | Fix | Index jobs fail the database on an interrupt, an expiry, a refusal | none | open |
 | [019-39](39-error-path-hangs.md) | Fix | Hangs in the error path: a thread not started, a second Error | none | open |
 | [019-40](40-review-r6-c-findings.md) | Fix | Review R6's C findings: tests, words, small faults | none | open |
+| [019-41](41-review-r7-c-findings.md) | Fix | Review R7's C findings: a test missing a hot loop, a sync, an interrupt | none | open |
 
 
 Closed

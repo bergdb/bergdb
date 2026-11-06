@@ -131,6 +131,11 @@ B1 to B3 and C1 to C9 registered as 019-38 (index jobs fail the database
 on an interrupt, an expiry or a refusal: a regression of today's change),
 019-39 (hangs in the error path) and 019-40 (the C findings).
 
+Review R7 (11:55): the night's concurrency fixes 015-66, 67, 70, 82 and
+80 OK, no A finding, no lock-order cycle; its B1 is 019-39's B3,
+confirmed by a run; C findings registered as 019-41, with C4 a line in
+019-36 and C5 in 019-40. No shared field needs a new jcstress test.
+
 ### W3. `night.sh` without a fixed time
 
 Frans, 11:21: "By the way, I think we should remove the fixed-time
@@ -198,6 +203,8 @@ session continues with `/coordinator resume` (013-02).
 * 11:44 Review R6 done; 019-38, 019-39, 019-40 registered.
 * 11:47 Agent w7 done: tonight's block `/Users/f/fl/bench/016/night4/block.sh` ready and rehearsed (quiet check: load below 2.5 twice; not started).
 * 11:48 Agents i38, i39, j66, f06 started (high).
+* 11:50 019-37 done: e7102b2 on `main`.
+* 11:55 Review R7 done; 019-41 registered; agent f41 started.
 
 
 ## 8. Outcome

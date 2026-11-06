@@ -40,8 +40,11 @@ Done when:
 1. Measured, on F53 and on s1, with the default buffer and a steady write
    load with reclaim on: how many reclaim cuts wait for `ioLock`, and the
    longest and the mean wait (a counter and a timer around the cut's lock,
-   in a probe or a test, not in `main`). The numbers go into this entry
-   and into 010-01's P1 line.
+   in a probe or a test, not in `main`), including cuts that meet an
+   append which crosses into a new file (`FileStream.newFile`, within the
+   append under `ioLock`: the old file's force, the new file's creation
+   and the forces of it and the directory; review R7 of 006-13, C4). The
+   numbers go into this entry and into 010-01's P1 line.
 2. If a wait is over 20 ms on either machine: the fix above, with a test
    that fails before it (a cut made while the thread holds the lock in an
    append that a test stream holds back: the commit returns at once, and
@@ -60,3 +63,6 @@ Log
 
 2026-11-06. Registered by coord-1106 from 006-12, section 8, point 2, at
 Frans's word (09:47).
+
+2026-11-06. Review R7 of 006-13, C4: the longest wait is an append that
+crosses into a new file; step 1 measures that case too.
