@@ -164,6 +164,9 @@ Also, Frans, 10:58, on a todo list for 2026.4 ("Is this needed?"): "As
 you propose about the todo lists, sounds good": the list for 2026.4 opens
 when 2026.3 is released; until then, bounded work for after 2026.3 waits
 in 017-07.
+Changed at Frans's request, 15:51: "I would like us to start preparing
+for 2026.4 work. I would like a new todo list for this work." 021-todo
+was created (19b8ad1); 019 keeps 2026.3's entries until that release.
 
 ### W2. KISS as a principle
 
@@ -307,6 +310,8 @@ session continues with `/coordinator resume` (013-02).
 * 13:16 f43: 019-43 is the harness's oracle (a read racing the stop's close), being checked that nothing a user sees says "failed".
 * 13:20 019-44 done: a9da30c.
 * 13:35 019-43 done: b63273d, harness 6.2's oracle, not the Core (a read that the stop's close overtook; nothing a user sees reports it; the Core unchanged); loops of 100 runs on s1 (JDK 17, 27) and F53 (JDK 17) clean. 019's open entries are now 019-35 and 019-36 only, both Investigate: no known fault of the Core is open (018-01, "Ready", 1), pending tonight's runs.
+* 15:00 The early `night.sh` started on 3aa2d93.
+* 15:52 021-todo created for 2026.4 (Frans, 15:51).
 
 
 ## 8. Outcome
