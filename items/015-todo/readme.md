@@ -47,7 +47,6 @@ Open
 | [015-49](49-review-s2-faults.md) | Fix | Review S2's 27 faults of the indexes and the objects | open |
 | [015-61](61-deletion-job-done-at-stop.md) | Fix | A deletion job that stop() or close() ends early reports "Done! ... | open |
 | [015-84](84-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: a decrease's records grow with the keys | open |
-| [015-86](86-gets-with-8-readers.md) | Investigate | Gets over 10 ms with 8 readers (005-65): the rise is the fix's (AB/BA), readers off core on a full machine (Q-A); left: Frans | open |
 
 
 Closed
@@ -55,6 +54,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-86](86-gets-with-8-readers.md) | Investigate | Long gets with 8 readers: a full machine | done | 2026-11-06 |
 | [015-19](19-tools-after-005-79.md) | Fix | Tools in items still use what 005-79 removed | done | 2026-11-06 |
 | [015-80](80-buffer-concurrent-writes.md) | Fix | The buffer issues concurrent writes to a single-writer underlying ... | done | 2026-11-06 |
 | [015-76](76-startup-distance-clamp.md) | Fix | Db.setStartupDistance clamped without saying so | done | 2026-11-05 |
@@ -263,9 +263,13 @@ Files
 * [86-gets-with-8-readers.md](86-gets-with-8-readers.md). 015-86, Investigate:
   gets of 27 and 36 ms with 8 readers at 665 MB under ZGC: the issue,
   the test, the results of 2026-10-28 and 2026-11-04 nights, Frans's
-  decision and the fix, the AB/BA step of 2026-11-05; moved from 005-65 on
-  2026-11-05. Its scripts and results stay in
+  decision and the fix, the AB/BA step of 2026-11-05, the measurements of
+  Q-A of night 006-12; moved from 005-65 on 2026-11-05. Its scripts and
+  results stay in
   [../005-todo/65-gets-with-8-readers/](../005-todo/65-gets-with-8-readers/).
+  Done 2026-11-06: Frans kept the fix and closed it as explained (readers
+  off their cores on a full machine); its Option 4 went to 017-07,
+  section 5.
 * [87-retain-duration-in-stream.md](87-retain-duration-in-stream.md). 015-87,
   Investigate: the retain duration is not kept in the stream: the issue,
   the study (U1), the probe (U2) and the design (U3), Frans's questions

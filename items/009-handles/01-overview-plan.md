@@ -109,6 +109,10 @@ Where the targets stand, 2026-10-28 (the numbers in 009-03, section 0):
    above 20 ms, but for 005-65, is the collector's (G1's pauses, ZGC's
    allocation stalls) and s1's disk; a writer's wait for room in the write
    buffer is the disk's too, and does not count (005-46, decision 5).
+   Since 2026-11-06 the 8-thread case is explained and closed (015-86,
+   formerly 005-65; Frans): readers off their cores on a full machine, the
+   operating system's scheduling, outside the target; with 7 readers on
+   F53, 0.4 gets in a million over 10 ms.
 3. Met (009-03, section 5): in memory on one thread 3 and 11 percent fewer
    gets (G1, ZGC); with 4 threads 12 and 3 percent more, with 8 threads
    101 and 61 percent more; from the OS cache 1.4 to 4.6 times as many.

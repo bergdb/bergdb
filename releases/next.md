@@ -554,3 +554,11 @@ Known issues and limits
   (Fletcher-16 modulo 255) does not see. Checksums that cover the whole
   stream may come in a future release (017-08), not in 2026.3. In 2026.2
   and 2026.1 too.
+* **At most as many busy readers as the cores less the collector's
+  workers: 7 on F53** (bergdb 015-86; Frans, 2026-11-06). With more, a
+  reader waits for a core, the operating system's scheduling, not
+  BergDB's work. On F53 (10 cores, ZGC with up to 3 workers, 10M keys from
+  the OS's cache at a 665 MB budget), 7 readers had 0.4 gets over 10 ms in
+  a million, the longest 33 ms, and 8 readers 11 to 12 in a million, the
+  longest 49 to 89 ms. It is 2026.2's limit "As many readers as cores",
+  now measured.

@@ -65,7 +65,9 @@ Files
   copies a `byte[]` value (from 019-03); second, startupDistance in the
   meta block rather than in an internal KV (from 015-87's F1); third,
   refusing a value transformation's result above the value limit (from
-  015-51). Open; a collection.
+  015-51); fourth, a clear place for the database's design (from 019-10);
+  fifth, reads wholly in the file without `BufferedStream`'s monitor, for
+  reader scaling (from 015-86's Option 4). Open; a collection.
 * [017-08](08-stream-checksums/readme.md). Checksums in the stream: a
   checksum of the record header, a link between records, a stronger node
   checksum, so that a start or a read detects damage that passes today
@@ -132,3 +134,8 @@ definitely not for 2026.3. [...] Move the possibility of checksums in
 the stream to a new item in 017. This may or may not be added in some
 future release." 019-07, a checksum of the record header, moved here
 from 019 by the rule for moved entries.
+
+2026-11-06. 017-07, section 5, reads wholly in the file without
+`BufferedStream`'s monitor (reader scaling), added at Frans's decision on
+015-86 (11:09 to 11:11), from its Option 4: to consider after release
+2026.3, measured first.

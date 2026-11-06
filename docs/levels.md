@@ -538,19 +538,24 @@ Limits:
   the write buffer still waits for the disk; that does not count against
   item 009's pause target (Frans, 2026-10-27), and the test reports show it
   apart.
-* So the waits above 20 ms left in item 009's runs are not BergDB's own,
-  but for one case: the collector's (G1's pauses; ZGC's allocation stalls,
-  129 and 300 ms on s1 when its heap ran short), s1's disk (gets from the
-  device of 64 to 74 ms, where single random reads take up to 58 ms, and
-  one get of 2,760 ms under the kernel's memory reclaim;
-  [009-03](../items/009-handles/03-measurements.md), section 9), and a
-  writer's waits for room in the write buffer when the disk stalls. Item
-  009's target 2 is met in P4's soak and the pause probe (009-01, section
-  1). The case: in ScaleBench from the OS's cache on F53 with 8 readers at
-  665 MB under ZGC, gets of 27 and 36 ms, with readers' loads waiting for
-  the eviction thread over 10 ms (with 4 readers at most 6 ms; before
-  005-46, 2.1 ms), not yet explained
-  ([005-65](../items/005-todo/65-gets-with-8-readers.md)).
+* So the waits above 20 ms left in item 009's runs are not BergDB's own:
+  the collector's (G1's pauses; ZGC's allocation stalls, 129 and 300 ms on
+  s1 when its heap ran short), s1's disk (gets from the device of 64 to 74
+  ms, where single random reads take up to 58 ms, and one get of 2,760 ms
+  under the kernel's memory reclaim;
+  [009-03](../items/009-handles/03-measurements.md), section 9), a
+  writer's waits for room in the write buffer when the disk stalls, and
+  readers' waits for a core. Item 009's target 2 is met in P4's soak and
+  the pause probe (009-01, section 1). Readers' waits for a core: in
+  ScaleBench from the OS's cache on F53 at 665 MB under ZGC, 8 readers and
+  ZGC's workers fill F53's 8 performance and 2 efficiency cores, and gets
+  take up to 89 ms, 99.7 percent of their time off core: the operating
+  system's scheduling, outside the target (Frans, 2026-10-29 and
+  2026-11-06). With 7 readers 0.4 gets in a million take over 10 ms, the
+  longest 33 ms, off core too. So use at most as many readers as the
+  cores less the collector's workers
+  ([015-86](../items/015-todo/86-gets-with-8-readers.md), Results, Q-A of
+  night 006-12).
 * Loads in memory, with no eviction, are 8 to 20 percent slower than before
   handles.
 * D, which cannot be evicted, is bounded only loosely by the startup

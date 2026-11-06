@@ -173,3 +173,48 @@ date with the code; the error model goes into its section 3 for now),
 `docs/sis-model.md`, the principles (010-01), the Javadoc of `Db` and the
 Pub API, and design subitems such as 001-08 to 001-11 and 009-05
 (006-07 moved them out of `docs/`).
+
+
+## 5. Reads wholly in the file without BufferedStream's monitor (reader scaling)
+
+From 015-86's Option 4, 2026-11-06. State: to consider, after release
+2026.3.
+
+What: every read of the stream enters `BufferedStream`'s monitor for its
+bounds check (`BufferedStream.read`: the failure flag, and the lengths
+that tell which part of the read is in the file and which in the write
+buffer): about 1.2 million entries a second with 8 readers. A read wholly
+in the file could check volatile lengths and the failure flag without the
+monitor, and only a read that touches the buffer would take it.
+
+Where it came from: 015-86's Option 4 (Options for Frans's decision,
+2026-11-06). With the fix and 8 readers on F53, the samples found readers
+BLOCKED most in `BufferedStream.read`, and the class "blocked" was 110 of
+the 1,026 gets over 10 ms, 17 percent of their time: the most such a
+change could remove there. But on a full machine blocking less may not
+lower the count: by the fix's experience, readers that block less stay
+runnable more and lose their cores more often. So it is not 015-86's fix.
+
+Why it may matter: reader scaling, on machines with more cores, where one
+monitor that every read enters may limit the readers; and 010-01, P1's aim
+that readers are never blocked, and its "To look at" (Frans, 2026-10-26):
+"every place where a reader can wait today, and for how long".
+
+The measurement to make first: with fewer readers than cores (4 to 7 on
+F53), or on a machine with more cores, the readers' share of time blocked
+on this monitor, and how it grows with the readers. If it is small, there
+is nothing to do.
+
+The risks and costs: a second, lock-free path in a class that is critical
+for concurrency, beside the storage thread's appends, cuts and failures;
+its argument (a read that passes the check without the monitor reads only
+bytes that are in the file), its tests, `before-commit.sh` and the level
+scripts, and a `parts` run as 015-86's; about 3 to 5 agent-hours (015-86's
+estimate). KISS (010-01, P13): only if the measurement shows that the
+monitor holds the readers back.
+
+Frans, 2026-11-06, 11:09 to 11:11, when he closed 015-86: "How about
+Option 4 for a later release. Should that be a thing to consider?" To the
+coordinator's answer (yes, as reader scaling rather than as 015-86's fix;
+not 2026.3, because of its target of a bug-free Core and the risk in a
+core storage class under concurrent appends; measure first): "Yes, both."

@@ -1,7 +1,11 @@
 015-86. Investigate: gets of 27 and 36 ms with 8 readers at 665 MB under ZGC
 ==============================================================================
 
-Status: open; moved from 005-65 on 2026-11-05, with its contents as
+Status: done (2026-11-06; see Outcome). Frans chose Option 1 of "Options
+for Frans's decision, 2026-11-06": the fix stays, and the long gets with 8
+readers are readers off their cores on a full machine, closed as
+explained; Option 4 is to consider after release 2026.3 (017-07, section
+5). Moved from 005-65 on 2026-11-05, with its contents as
 they were in 005-65 (Frans's plan, approved 2026-11-05, 07:17); its
 files stay in [005-todo/65-gets-with-8-readers/](../005-todo/65-gets-with-8-readers/).
 Measured (Results, 2026-10-28 night); Frans decided on 2026-10-29
@@ -25,8 +29,7 @@ off their cores on a full machine.** With 7 readers both builds have 32
 to 38 gets over 10 ms in four runs, no rise with the fix; with 8 readers
 and `-XX:ConcGCThreads=1`, 22 and 85 (ZGC then stalls allocations); the
 long gets' time is 99.7 percent off core, half of them within the
-kernel's read. Left: Frans's decision (Options for Frans's decision,
-2026-11-06).
+kernel's read. Decided by Frans on 2026-11-06, 11:09 to 11:11 (Outcome).
 Kind: investigate. Created 2026-10-28 as 005-65.
 
 Registered at Frans's decision on item 009's target 2 (2026-10-28,
@@ -1135,7 +1138,8 @@ Frans's to decide (Done when).
   run; about 3 to 5 agent-hours. It leaves the off-core gets (over 80
   percent of the time), and by the fix's experience readers that block less
   stay runnable more on a full machine, so it may not lower the count.
-  Not recommended now.
+  Not recommended now. Since 2026-11-06 a topic to consider after release
+  2026.3, as reader scaling (017-07, section 5; Outcome).
 
 **Recommended:** Option 1. The fix removes BergDB's own share as designed;
 the gets it seems to add are the scheduler's on a full machine, and they
@@ -1144,8 +1148,38 @@ leave a core. Option 3 only if Frans wants a JVM setting to recommend for
 as many readers as cores.
 
 
+Outcome
+-------
+
+**Frans's decision, 2026-11-06, 11:09 to 11:11: Option 1**, keep the fix
+(`988fe1a`) and close this entry as explained. The long gets with 8
+readers on F53 are readers off their cores on a full machine: 8 readers
+and ZGC's workers on F53's 8 performance and 2 efficiency cores, so the
+operating system's scheduling, outside the ~20 ms target for BergDB's own
+code (Frans, 2026-10-29). With 7 readers the fix adds none (32 against 36
+gets over 10 ms; Results, Q-A of night 006-12). The texts that cite it:
+docs/levels.md, section 7 (explained, no longer the open case); the next
+release's notes, under Known issues and limits (at most as many readers as
+the cores less the collector's workers, 7 on F53, with the figures);
+010-01, P1, and 009-01's target 2 (a sentence each). No change to `java/`.
+
+**Option 4 to consider after 2026.3.** Frans, in the same exchange: "How
+about Option 4 for a later release. Should that be a thing to consider?"
+The coordinator's answer: yes, as reader scaling rather than as this
+entry's fix, and not for 2026.3 (the bug-free Core is its target, and the
+change is a risk in a core storage class under concurrent appends);
+measure first. Frans: "Yes, both." It is 017-07, section 5.
+
+Left, not measured: what the off-core time is (runnable without a core,
+or waiting in the kernel; that needs a scheduler trace, and root on F53),
+and why with 7 readers the longest gets still reach 24 to 33 ms.
+
+
 State
 -----
+
+**2026-11-06, 11:09 to 11:11: done, by Frans's decision** (Outcome):
+Option 1, and Option 4 to 017-07, section 5.
 
 **2026-11-06: Q-A run (night 006-12); Frans's decision left.** Known
 (Results, Q-A of night 006-12): the gets over 10 ms with 8 readers, and the
@@ -1309,8 +1343,7 @@ and the fix is in `main`, 2026-10-29 (Decision and fix). The rerun ran
 2026-11-04 (Results, 2026-11-04 night). Next: Frans's decision on its
 Recommendation (State). The AB/BA step ran 2026-11-05 (State), and
 the Recommendation's measurements in Q-A of night 006-12 (Results, Q-A of
-night 006-12). Next: Frans's decision (Options for Frans's decision,
-2026-11-06).
+night 006-12). Frans decided on 2026-11-06 (Outcome): done.
 
 
 Size and order
@@ -1462,3 +1495,8 @@ up to 246 ms; the long gets' time 99.7 percent off core, about half within
 the kernel's read. Written up in Results, Q-A of night 006-12, with Options
 for Frans's decision (Option 1 recommended: keep the fix, close as
 explained); State updated.
+
+2026-11-06, 11:09 to 11:11. Frans chose Option 1, and Option 4 to
+consider after 2026.3 (Outcome). Done: the Outcome, docs/levels.md
+section 7, the next release's notes (Known issues and limits), 010-01's
+P1, 009-01's target 2, 017-07's section 5, and 015's readme (Closed).

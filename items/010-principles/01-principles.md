@@ -49,11 +49,14 @@ Where BergDB stands:
   load over the budget: with 8 readers from the OS's cache at 665 MB under
   ZGC on F53, 78,000 loads a second entered it, and its queue made
   after-load calls of over 10 ms, a fifth of the gets over 10 ms
-  ([005-65](../005-todo/65-gets-with-8-readers.md); a rerun with the fix
-  in a quiet block is to come). The rest of those gets, up to 39 ms, came
-  with every core busy (8 readers and ZGC's workers on 10 cores): waits
-  for a core, from the operating system's scheduling, outside BergDB's
-  target (Frans, 2026-10-29: accepted as a full machine).
+  ([015-86](../015-todo/86-gets-with-8-readers.md), formerly 005-65). The
+  rest of those gets, up to 39 ms, came with every core busy (8 readers
+  and ZGC's workers on 10 cores): waits for a core, from the operating
+  system's scheduling, outside BergDB's target (Frans, 2026-10-29:
+  accepted as a full machine). Measured again with the fix (015-86,
+  2026-11-05): the long gets' time is 99.7 percent off core, and with 7
+  readers, one fewer than F53's performance cores, the fix adds none (0.4
+  in a million over 10 ms); closed as explained (Frans, 2026-11-06).
 * No read waits for the stream's writer since 2026-10-27
   ([005-46](../005-todo/46-stream-file-lock.md)): a read takes no lock, a
   new file is made outside the stream's monitor, and a cut's files are
