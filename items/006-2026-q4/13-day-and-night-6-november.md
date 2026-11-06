@@ -194,6 +194,11 @@ the available Claude usage." Unattended from 12:20 to 2026-11-07, 07:00.
   and it can land in time; the documentation read through (d30, Ready
   4); harness 6.6's jcstress run on s1 (j66). The inventory 020-01 (v1,
   xhigh) is for 2026.4 and lands any time (items only).
+* **15:00, an early `night.sh`** (the normal run, about 50 minutes) on
+  `main` under the gate lock (`/Users/f/fl/bench/006-13/night/early.sh`),
+  so that the day's landings are tested hours before the candidate
+  (Frans, 12:35: "Should we start with a faster set of tests to catch and
+  fix bugs from that first?").
 * **20:15, `main` frozen** for the release.
 * **About 20:30, the release candidate** (018-09, agent r30's scripts):
   commit A (`BuildInfo` at 2026.3), the jar, its tests on F53 with JDK 27
