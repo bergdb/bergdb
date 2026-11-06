@@ -22,7 +22,7 @@ whatever does the same job.
 * **In the evening**, timed measurements are prepared as scripts and
   smoke-tested. CPU-heavy work stops.
 * **At night**, a shell script outside the AI session (the *conductor*)
-  runs the measurements on a quiet machine, around the nightly `night.sh`.
+  runs the measurements on a quiet machine.
 * **In the morning**, the session writes the results into the items, gives
   the plan an Outcome with a numbered list of decisions for Frans, and
   writes one summary entry in `news.md` by 07:00.
@@ -43,7 +43,7 @@ Two things make it work:
 | The lead session | Plans, briefs and checks the subagents, runs the gates, commits, writes the plan's progress, the Outcome and `news.md`. The only one that commits. |
 | Subagents (Agent) | One task each, in a scratch clone of their own, from a brief that points to an item; they write their state into that item as they go and report back. They do not commit to `main`. |
 | The conductor | A shell script started with `nohup` outside the session. It runs the timed steps at night and writes a fallback news entry if the session is gone. |
-| `night.sh` | The nightly test run, from launchd at 02:10. Left alone. |
+| `night.sh` | The night test run, at no fixed time: the lead session starts it as a step of the plan (section 7). |
 | Other sessions | Frans's sessions on other items. Their uncommitted edits are preserved; they are asked before their code is touched. |
 
 
@@ -80,7 +80,6 @@ Two things make it work:
    * may the session commit to `main`;
    * may it put a given change into `java/`;
    * who decides when an item is done;
-   * may `night.sh` move or be skipped;
    * how much usage, and at which effort.
 5. **Set up the safety net** of section 6 before he leaves.
 
@@ -205,11 +204,13 @@ Timing on F53 is disturbed by any other activity, including the AI session
 itself and Frans's other sessions. So timed runs happen at night, one at a
 time, on a quiet machine.
 
-**Windows.** `night.sh` runs at 02:10 from launchd and takes about 40 to
-60 minutes; it is not moved. So the block has two windows:
-
-* window 1, 22:30 to 02:05;
-* window 2, from `night.sh`'s end to 06:15.
+**Windows.** `night.sh` takes about 40 to 60 minutes and has no fixed
+time (013-02, section 2): the lead session starts it as a step of the
+plan, outside the block, for example after the day's landings. The block
+is then one window, 22:30 to 06:15: set `W1_END` and `NIGHT_LATEST` to
+`W2_END`. (006-09's block had two windows, around launchd's `night.sh`
+at 02:10; the conductor still waits between them for a process
+`bergdb/java/night.sh` to end, at the latest until `NIGHT_LATEST`.)
 
 The time before 07:00 is left for the write-up.
 

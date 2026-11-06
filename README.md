@@ -46,7 +46,7 @@ and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
     java/f.sh                      # runs the f-tests
     java/perf.sh                   # runs the perf-tests
     java/props.sh                  # runs the Props tests: MEM, CORE, SS (about 50 s)
-    java/night.sh                  # the night run, at 02:10: all of the below (about 50 minutes)
+    java/night.sh                  # the night run: all of the below (about 50 minutes)
     java/night.sh large            # the same and the large conformance set (about 6 hours)
     java/night.sh tests            # only the night-tests (about 4.5 minutes)
     java/stress/core-build.sh      # the Core Layer built alone, its tests on it (about 15 s; unit f: 50 s)
@@ -65,10 +65,10 @@ performance tests. `java/night.sh`, the night run, is not a gate either:
 on a clean clone of the committed code, the check before a commit, the Core
 Layer built alone (`core-build.sh`), the four level scripts, the night tests
 (the long-running tests of 2013 to 2015) and the medium conformance set;
-launchd starts it at 02:10, and its report is in
-`java/build/night/`. `java/night.sh large` adds the large conformance set;
-it is started by hand. Set `JAVAC` and `JAR` if the JDK tools are not on the
-path.
+it is started when the machine has room for it, at no fixed time, and its
+report is in `java/build/night/`. `java/night.sh large` adds the large
+conformance set; it is started by hand. Set `JAVAC` and `JAR` if the JDK
+tools are not on the path.
 
 
 

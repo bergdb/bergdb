@@ -1713,3 +1713,17 @@ take (007-07, 007-08); its streams differ from 2026.1's, which it refuses
 2026.1 has too, in the index and object layers above all; the notes list
 them as known issues. After the tag, `BuildInfo` says 2026.3-dev.
 
+2026-11-06. `java/night.sh` no longer runs at a fixed time. Frans, 11:21: "I
+think we should remove the fixed-time scheduling of night.sh. You can decide
+when to run it, right. Like with other things." And at 11:25, to a launchd
+fallback for days without a planned run: "No, no such thing is needed. If we
+don't plan, we don't code anyway. So little need for night.sh then. If there
+are exceptions, I will handle them manually." The launchd job (02:10 since
+2026-10-22, 02:00 before) is unloaded; its plist is kept, to restore by
+hand, in `/Users/f/fl/bench/launchd-retired/local.bergdb.nightly.plist`. The
+day's coordinator (013-02, section 2) starts `night.sh` as a step of its
+plan when the machine has room for it, Frans by hand otherwise;
+`night.sh large` is started by hand, as before. AGENTS.md, the README,
+`docs/levels.md`, night.sh's header, 013-01, 013-02 and the coordinator
+skill say so.
+

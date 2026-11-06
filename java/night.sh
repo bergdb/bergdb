@@ -1,9 +1,14 @@
 #!/bin/sh
 # The night run (since 2026-10-20, bergdb 006-03): the checks that
 # before-commit.sh leaves out, on a clean copy of the committed code. Not a
-# gate; read its report in the morning. launchd starts it at 02:10
-# (~/Library/LaunchAgents/local.bergdb.nightly.plist, with ProcessType
-# Interactive: without it launchd throttles the job and timing tests fail).
+# gate; read its report when it ends. No fixed time (since 2026-11-06,
+# bergdb 013-02, section 2): the day's coordinator starts it as a step of
+# its plan when the machine has room for it, or Frans by hand, from the
+# main tree:
+#     nohup caffeinate -i sh java/night.sh >/dev/null 2>&1 &
+# caffeinate -i keeps the Mac awake. Run it at normal priority: throttled,
+# as launchd's job was before ProcessType Interactive (2026-10-22) or a
+# background process is (nice, taskpolicy -b), the timing tests fail.
 #
 # Usage: java/night.sh          the night run, about 50 minutes on F53
 #        java/night.sh large    the same and the large conformance set,

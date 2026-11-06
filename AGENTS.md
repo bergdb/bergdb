@@ -31,10 +31,12 @@ algorithm. [README.md](README.md) describes the repo; start reading at
   performance runs the performance tests (`java/stress/performance.sh` with
   a suite, or `java/perf.sh`); a change to a level's mechanism runs that
   level's script. The task's item says what it needs.
-- `java/night.sh` runs at 02:10 (launchd), on a clone of the committed
-  code: the level scripts, the night tests and more; its reports are in
-  `java/build/night/`. `java/night.sh large` adds the large conformance set
-  and is started by hand.
+- `java/night.sh` runs on a clone of the committed code: the level scripts,
+  the night tests and more; its reports are in `java/build/night/`. It has
+  no fixed time: the day's coordinator (013-02) starts it as a step of its
+  plan when the machine has room for it, or Frans by hand (the command is
+  in its header). `java/night.sh large` adds the large conformance set and
+  is started by hand.
 - Do not edit a shell script while it runs; `sh` reads it as it goes.
 
 ## News

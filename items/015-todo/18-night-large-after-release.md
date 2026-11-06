@@ -14,7 +14,7 @@ in 016-08's results and in 2026.2's post-release notes if it finds a
 fault.
 
 First step: start it by hand on a quiet F53 after the release (016-08,
-section 6, the commands), not overlapping the 02:10 `night.sh`.
+section 6, the commands), not overlapping another `night.sh`.
 
 
 Log

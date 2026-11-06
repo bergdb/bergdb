@@ -89,6 +89,34 @@ The ten points of 006-12, section 8, one at a time with Frans.
    each undoing the other), Frans, 11:04: "Q2, c, as recommended. Q3, a,
    as recommended. Q4, a, as recommended." Agent p5 (clone p5).
 
+6. 015-86 (gets over 10 ms with 8 readers). Frans, 11:09: "How about
+   Option 4 for a later release. Should that be a thing to consider?";
+   to the answer (Option 1 now; Option 4, reads wholly in the file
+   without `BufferedStream`'s monitor, to 017-07 as reader scaling, to
+   measure first), 11:11: "Yes, both. Do it in a new subagent." Agent c6:
+   ada8608 (015-86 done, docs/levels.md section 7, `releases/next.md`'s
+   limit, 017-07 section 5); README's "Pauses" line by the coordinator
+   (db67ca6).
+7. W7's rerun (016-10). Frans, 11:21: "Yes." to (A): the flag fixed, all
+   five steps in one quiet block on F53 tonight, with a quiet check that
+   an idle F53 can pass. Agent w7 prepares it (`/Users/f/fl/bench/016/night4/`).
+
+8. A review of what landed unreviewed. Frans, 11:28: "Item 8, as you
+   recommend.": R6 (01b0493, 8e9eccc, c73daba) and R7 (the night's
+   concurrency fixes: 015-66, 67, 70, 82, 80), read-only, at xhigh.
+
+### W3. `night.sh` without a fixed time
+
+Frans, 11:21: "By the way, I think we should remove the fixed-time
+scheduling of night.sh. You can decide when to run it, right. Like with
+other things. What do you think?" To a proposed launchd fallback, 11:25:
+"No, no such thing is needed. If we don't plan, we don't code anyway. So
+little need for night.sh then. If there are exceptions, I will handle them
+manually." Done: the launchd job unloaded, its plist kept in
+`/Users/f/fl/bench/launchd-retired/`; agent n1 changed the words (AGENTS.md,
+README, docs/levels.md, night.sh's header, 013-01, 013-02, the skill,
+docs/log.md). Tonight's plan starts `night.sh` as one of its steps.
+
 Also, Frans, 10:58, on a todo list for 2026.4 ("Is this needed?"): "As
 you propose about the todo lists, sounds good": the list for 2026.4 opens
 when 2026.3 is released; until then, bounded work for after 2026.3 waits
@@ -134,6 +162,12 @@ session continues with `/coordinator resume` (013-02).
 * 10:57 019-30, 019-31, 019-33 done as decided, 017-08 made, 019-07 moved: ad7187f on `main` (`BEFORE COMMIT OK`; harness 6.1's full sets of seeds 20398 and 20399, 0 failures).
 * 11:05 019-10 done, the simple error model: 01b0493 on `main` (`BEFORE COMMIT OK`; harnesses 6.2 and 6.7's night sets). 019-37 registered (i10's find).
 * 11:05 Point 5 decided; agent p5 started.
+* 11:12 Point 6 decided; agent c6. 11:17 ada8608 on `main`; 11:19 db67ca6 (README).
+* 11:21 Point 7 decided; agent w7 started (preparation only).
+* 11:22 018-04's Q1 to Q5 done: b13991a on `main` (`BEFORE COMMIT OK`; harness 6.7 now checks all five; its night set OK).
+* 11:26 `night.sh`'s launchd job unloaded; 11:27 agent n1 (the words).
+* 11:29 Point 8 decided; reviewers R6 and R7 started.
+* 11:33 n1's words committed.
 
 
 ## 8. Outcome

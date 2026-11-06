@@ -100,7 +100,8 @@ UNTIL is when Frans is back, such as `07:00` (the next one) or
    usual ones. Quote the answers in the day's plan.
 2. Write in the plan what will run while he is away, and when. For a
    night, set up 013-01: the conductor, the steps with READY markers, the
-   quiet block, the morning.
+   quiet block, the morning. `night.sh` has no fixed time: it is a step
+   of the plan that the coordinator starts (013-02, section 2).
 3. Start the watchdog until UNTIL (section "The watchdog").
 4. Delete the attended check-in; set the unattended one, without night
    hours if there is a quiet block. Write the job IDs in the state file.

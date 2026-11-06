@@ -8,8 +8,9 @@
 # conductor writes SCRIPT.DONE). A "# minutes: N" line in the script overrides MINUTES.
 # f53 steps run one at a time, after a quiet check, and only if they end inside the window:
 # window 1 from W1_START to W1_END, window 2 from night.sh's end (at the latest NIGHT_LATEST)
-# to W2_END; night.sh runs at 02:10 from launchd, untouched. s1 steps run one after another
-# in the background from W1_START (they check s1 themselves).
+# to W2_END; night.sh has no fixed time since 2026-11-06 (bergdb 013-01, section 7: one
+# window). s1 steps run one after another in the background from W1_START (they check s1
+# themselves).
 # Writes status.txt (one line, the state), conductor.log and out/LABEL.txt; one news entry
 # when the block ends; at FALLBACK, a summary entry if the session has not written one
 # (marker summary-written).

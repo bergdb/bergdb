@@ -72,7 +72,18 @@ for the night:
 | Frans's own sessions | Work he wants to follow. They use scratch clones, report finished files to the coordinator, and ask it before heavy runs. |
 | The watchdog | A shell script outside the session, started for unattended mode: keeps the Mac awake, logs whether the session lives and the network works, and writes `news.md` if the session is gone (section 8). |
 | The conductor | 013-01's script for the night's timed steps. |
-| `night.sh` | The nightly test run, from launchd at 02:10. Left alone. |
+| `night.sh` | The night test run, about 50 minutes, at no fixed time: a step of the coordinator's plan, like the other heavy runs (section 6). |
+
+2026-11-06: `night.sh` no longer runs at 02:10 from launchd. Frans, 11:21:
+"I think we should remove the fixed-time scheduling of night.sh. You can
+decide when to run it, right. Like with other things." And at 11:25, to a
+fallback run when none was planned: "No, no such thing is needed. If we
+don't plan, we don't code anyway. So little need for night.sh then. If there
+are exceptions, I will handle them manually." The coordinator starts it from
+the main tree when the machine has room for it, typically after the day's
+landings and outside quiet blocks; it clones the committed code itself:
+
+    nohup caffeinate -i sh java/night.sh >/dev/null 2>&1 &
 
 
 ## 3. The day
