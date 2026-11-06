@@ -1,7 +1,7 @@
 019-15. Fix: with key replace enabled, a delete's key is not replaced
 ====================================================================
 
-Status: waiting. Kind: Fix. Frans: decision.
+Status: done. Kind: Fix. Frans: decision.
 Created 2026-11-05 by Frans Lundberg.
 
 What: `Connection.setEnableKeyReplace(true)` makes a transaction replace
@@ -53,7 +53,7 @@ reading: the delete has had no transformation since key replace was
 written; 015-40 (2026-11-05) states it ("the delete's MapKey, which has
 no transformation").
 
-Frans: decision. The options:
+Frans: decision; he chose (b), 2026-11-06, 10:00 (the log). The options:
 
 * **(a) A delete's key is replaced too, as the Javadoc says.**
   `RwEnvironmentImp.delete` gives its `MapKey` the key transformation
@@ -91,3 +91,33 @@ Log
 2026-11-05. Registered by harness 6.7's agent of the night 006-12
 (018-04). Waiting for Frans's decision: a change of what a delete does
 under key replace, and of the bytes it writes.
+
+2026-11-06, 09:57 and 10:00. Frans chose (b). On recommendation (a), at
+09:57: "This seems very hypothetical. I fail to understand why the user
+would want to delete delete("/r/${transactionTime}". Does not really
+make sense, does it?" The coordinator (coord-1106) then recommended (b):
+one sentence in `Connection.setEnableKeyReplace`'s Javadoc, no code
+change, no change of bytes, and the harness's reference follows the
+sentence (KISS, 010-P13). At 10:00: "OK, do this." Status in progress,
+taken by coord-1106's agent f15 (clone f15, branch f15).
+
+2026-11-06. Done by agent f15, option (b):
+
+* Javadoc of `Connection.setEnableKeyReplace`: occurrences of
+  "${transactionTime}" "in the key of a put will be replaced by the
+  unique transactionTime of the transaction when it is executed. A
+  delete's key is taken as written (bergdb 019-15)." It said "in a
+  database key". No other Javadoc in `java/src` states the promise
+  (`Connection`, `WBuilder`, `RwEnvironment` and their implementations).
+  No code change; the stream's bytes are unchanged.
+* Harness 6.7 (018-04): `PubPromiseTester`'s reference replaces
+  `${transactionTime}` in a put's key only, always; the line "019-15"
+  left `SKIP`, which is now empty.
+* Runs, in the clone: `unit.sh -c PubPromiseTester` (`testSeeds`, seeds
+  1 to 4 of 2,000 steps, and `testSeedDirectory`) SUCCESS; seed 3 of
+  5,000 steps, past the entry's step 4493, OK; seeds 1 to 30 of 5,000
+  steps with `-Dbergdb.promise.skip=none` OK; `night.sh tests -c
+  PubPromiseTester` (`testSeedsLong`, seeds 20763000 to 20763039 of
+  10,000 steps) SUCCESS, 87 s.
+* 018-04 and 018-01, section 6.7, updated; `releases/next.md`, a line
+  in Documentation. JAVADOC PUB OK; BEFORE COMMIT OK (114 s).

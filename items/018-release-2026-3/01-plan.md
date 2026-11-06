@@ -392,7 +392,7 @@ for 2026.3: they are experimental (D2).
   promises it; a change of an array after its put does not change the
   stored value.
 * Built on 2026-11-05: see 018-04. It fails on each of the six, and found
-  019-15 (key replace and a delete), in its skip list; five questions for
+  019-15 (key replace and a delete), done 2026-11-06; five questions for
   Frans where the Javadoc is not clear. It runs in the unit tests of
   `before-commit.sh` (1 s) and in the night tests (80 s).
 

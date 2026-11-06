@@ -8,8 +8,9 @@ by Claude (Opus 5.5, Claude Code), a harness agent of that night.
 **Status: built; runs in `before-commit.sh`'s unit tests (1.5 s) and in
 `night.sh`'s night tests (100 s).** It fails on each of the six known
 faults of its class (018-01, section 6.7), with each fix reverted, and
-found one more, 019-15, which waits for Frans's decision and is in its
-skip list. It passes on `main`. Five questions for Frans (section 6).
+found one more, 019-15, closed on 2026-11-06 by the Javadoc (option
+(b)); its skip list is empty. It passes on `main`. Five questions for
+Frans (section 6).
 
 
 ## 1. What it checks, and why
@@ -74,7 +75,7 @@ KVs. The promises it holds BergDB to:
   duration is forever).
 * Key replace: a put's key has each `${transactionTime}` replaced by
   the time, 18 digits (`%018d`, as `RwEnvironmentImp` does; the Javadoc
-  gives no form).
+  gives no form); a delete's key is taken as written (019-15).
 * A restart keeps every committed transaction, and new connections
   start with `Time.MAX`, no frozen time and no `transactionInfo()`.
 
@@ -153,7 +154,7 @@ From `java/`:
 ./night.sh tests -c PubPromiseTester                # the night's seeds, 100 s
 java -ea -cp build/bergdb.jar bergdb.pubimp.PubPromiseTester SEED STEPS RUNS [DIR]
 java -ea -Dbergdb.promise.skip=none -cp build/bergdb.jar bergdb.pubimp.PubPromiseTester 1 5000 30
-                                                    # nothing skipped: 019-15
+                                                    # nothing skipped
 ```
 
 
@@ -161,12 +162,12 @@ java -ea -Dbergdb.promise.skip=none -cp build/bergdb.jar bergdb.pubimp.PubPromis
 
 ```java
 static final String[] SKIP = {
-    "019-15",   // a delete with key replace enabled deletes the key as written
 };
 ```
 
-While 019-15 is listed, the reference does not replace
-`${transactionTime}` in a delete's key, as the code does today.
+Empty since 2026-11-06. It listed 019-15 until Frans chose its option
+(b): the Javadoc says that a delete's key is taken as written, and the
+reference does not replace `${transactionTime}` in it.
 
 
 ## 5. The evidence
@@ -204,7 +205,7 @@ directory and small runs were added (night 006-12, second part): 80
 seeds of 10,000 steps (600 to 679, 20 of them small), 15 seeds of 20,000
 steps in directories (500 to 514) and 8 more (702 to 709, two of them
 small), and the night test: all pass. With
-nothing skipped, seed 3 fails at step 4493 on 019-15.
+nothing skipped, seed 3 failed at step 4493 on 019-15, until it closed.
 
 
 ### 5.1. A fault it found: 019-15
@@ -214,8 +215,11 @@ and a delete's has not: `delete("/r/${transactionTime}")` deletes the
 key as written. The Javadoc says that occurrences "in a database key"
 are replaced. Registered as 019-15 with two options (replace in a
 delete's key too, or the Javadoc says that it is not), recommendation
-(a); it changes what a delete does and the bytes it writes, so it waits
-for Frans, and is in the skip list.
+(a); it changes what a delete does and the bytes it writes, so it waited
+for Frans, in the skip list. Frans chose (b) (2026-11-06, 10:00):
+`Connection.setEnableKeyReplace`'s Javadoc says that a delete's key is
+taken as written, the reference follows it, and the line left the skip
+list.
 
 
 ## 6. Questions for Frans
@@ -300,9 +304,10 @@ Q4 kvs of a delete of a missing key with a put: 1
 
 Clone `/Users/f/fl/bench/006-12/h67`, branch `h67`. Done: the harness,
 this item and 019-15 (landed as 4d7a1bb), and the second part, runs in
-directories and small runs, which found no new fault. 019-15 waits for
-Frans; the questions Q1 to Q5 too. Next, if the harness is extended:
-more threads (harness 6.6), a finite retain duration (6.4).
+directories and small runs, which found no new fault. 019-15 is done
+(2026-11-06, option (b)); the questions Q1 to Q5 wait for Frans. Next,
+if the harness is extended: more threads (harness 6.6), a finite retain
+duration (6.4).
 
 
 ## 9. Log
@@ -318,3 +323,9 @@ and `open()`, on `FileStream`) and small runs (startup distance 5 MB,
 cache 4 MB, 300 more keys, values of up to 60 KB, so that eviction
 drops nodes and values) added; no new fault in 103 seeds. The unit
 tests take 1.5 s, the night tests 101 s.
+
+2026-11-06. 019-15 done, option (b) (Frans, 10:00): the reference takes
+a delete's key as written under key replace, and the skip list is
+empty. Seed 3 (5,000 steps, past step 4493), seeds 1 to 30 (5,000 steps,
+nothing skipped), the unit tests and the night tests pass. By agent f15
+of coord-1106.

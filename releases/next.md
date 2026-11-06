@@ -513,6 +513,8 @@ Documentation
   2026.3. `AppendOnlyStream`'s Javadoc states an implementation's duty,
   and docs/levels.md, section 8, the assumption. The code, the format and
   the stream's bytes are unchanged.
+* **Key replace leaves a delete's key as written** (bergdb 019-15; Frans,
+  2026-11-06): `Connection.setEnableKeyReplace()` now says so; no code change.
 
 
 Known issues and limits

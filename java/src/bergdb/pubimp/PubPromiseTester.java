@@ -46,7 +46,6 @@ public class PubPromiseTester {
      * fault. With -Dbergdb.promise.skip=none, nothing is skipped.
      */
     static final String[] SKIP = {
-        "019-15",   // a delete with key replace enabled deletes the key as written
     };
 
     static boolean skips(String entry) {
@@ -102,14 +101,14 @@ public class PubPromiseTester {
             lastTime = time;
             // The last operation on a key in a transaction is the one kept.
             // The last call on a key wins, a key as written; then ${transactionTime} is
-            // replaced, but in a delete's key while 019-15 is in SKIP.
+            // replaced in a put's key; a delete's key is taken as written (bergdb 019-15).
             TreeMap<String, RefKv> last = new TreeMap<String, RefKv>();
             for (RefKv kv : kvs) {
                 last.put(kv.key, kv);
             }
             TreeMap<String, RefKv> made = new TreeMap<String, RefKv>();
             for (RefKv kv : last.values()) {
-                boolean r = replace && (kv.value != null || !skips("019-15"));
+                boolean r = replace && kv.value != null;
                 RefKv k = r ? new RefKv(replaced(kv.key, time), kv.value) : kv;
                 made.put(k.key, k);
             }

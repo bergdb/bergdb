@@ -107,7 +107,6 @@ Open
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
 | [019-07](07-record-header-checksum.md) | Implement | A checksum of the record header, at the next RECORD_FORMAT change | decision | waiting |
-| [019-15](15-delete-key-replace.md) | Fix | Key replace: a delete's key is not replaced | decision | waiting |
 | [019-30](30-header-time-toppos-undetected.md) | Decide | A record's time or topPos changed within the checks passes | decision | waiting |
 | [019-31](31-records-cut-out-undetected.md) | Decide | Whole records cut out of a stream's middle pass a start | decision | waiting |
 | [019-32](32-key-node-klongs-unchecked.md) | Fix | A node's klongs and pointers unchecked: an assert at a start or a read | none | open |
@@ -121,6 +120,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-15](15-delete-key-replace.md) | Fix | Key replace: a delete's key is not replaced | decision | done | 2026-11-06 |
 | [019-34](34-metablock-last-trans-pos-unchecked.md) | Fix | A meta block's position past the stream: IllegalArgumentException | none | done | 2026-11-06 |
 | [019-22](22-warmup-keeps-large-value.md) | Fix | A transaction's warmup kept a value over 1 MiB | none | done | 2026-11-06 |
 | [019-21](21-start-rerun-undercounted.md) | Fix | A start's rerun changes counted nodes, no recount | none | done | 2026-11-06 |
@@ -186,7 +186,8 @@ Files
 * [15-delete-key-replace.md](15-delete-key-replace.md). 019-15, Fix:
   with key replace enabled, a delete's key is not replaced, where the
   Javadoc says every key's `${transactionTime}` is; found by harness 6.7
-  (018-04); waiting for Frans's decision.
+  (018-04). Now the Javadoc says that a delete's key is taken as written
+  (Frans, 2026-11-06, option (b)).
 * [20-replaced-node-undercounted.md](20-replaced-node-undercounted.md).
   019-20, Fix: a key node that its transaction grew and then replaced
   stayed counted below its bytes until its eviction; found by 018-05's
@@ -335,3 +336,8 @@ whose last-transaction position is outside the stream, before it writes.
 
 2026-11-06. 019-35 registered by night 006-12's coordinator, from Q-B's
 summary: the read losses to trace to their commits.
+
+2026-11-06. 019-15 done: at Frans's choice (10:00, option (b)),
+`Connection.setEnableKeyReplace`'s Javadoc says that a delete's key is
+taken as written; no code change; harness 6.7's reference follows it and
+its skip list is empty; BEFORE COMMIT OK.
