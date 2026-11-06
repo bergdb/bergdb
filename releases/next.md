@@ -239,6 +239,13 @@ Reliability
   stay in memory (those changed since the startup position) had shrunk
   since eviction last counted them. It now goes on until the cache is
   within the budget, or until what is left cannot go.
+* **The cache's measure of memory counts changed index nodes** (bergdb
+  019-20 and 019-21; 2026-11-06). Two kinds of index node stayed counted
+  below their size: a node that a transaction changed and then replaced
+  (a split), and the nodes of the startup section that a start's rerun of
+  the transactions changed. The difference, small, stayed until the node
+  left memory, and in a database opened for reads for as long as it ran.
+  Both are now counted with their size.
 
 * **A record whose size field is larger than its content is refused** at a
   start (bergdb 015-72, 016-06's R6-F1; 2026-11-05), with a

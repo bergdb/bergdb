@@ -34,7 +34,9 @@ import bergdb.nanotest.Nano;
  * handles its pointers hold, and the values they hold (bytesOf; the handles since bergdb
  * 015-13), in its field `countedMemSize` (KeyNode, TopNode; -1 if not counted, so that a count
  * is never taken for "not counted", bergdb 015-15): from when it enters a handle (added) until
- * it leaves it (released); again when the writer writes it, as it may have grown (grown); and a
+ * it leaves it (released); again when the writer writes it, as it may have grown, or replaces
+ * it in the transaction that changed it (grown; bergdb 019-20), and after a start's rerun of the
+ * transactions, which changes nodes of the startup section (resync; bergdb 019-21); and a
  * handle a follow puts into a pointer that held none, and a value a reader puts into, or
  * eviction takes from, a pointer of a counted object move that object's count (handleIn,
  * valueIn, valueOut). A dead handle stays counted in the pointers that hold it. A handle or a
@@ -151,7 +153,10 @@ public final class Residents {
         added(node);
     }
 
-    /** A canonical index object may have grown (it was written): counted with its bytes now. */
+    /**
+     * A canonical index object may have grown (it was written, or its transaction replaced it
+     * after it changed it, bergdb 019-20): counted with its bytes now.
+     */
     public void grown(Node node) {
         synchronized (node) {
             int old = counted(node);
@@ -225,7 +230,8 @@ public final class Residents {
     /**
      * Counts each index object of 'objects' (a walk's resident objects) that is counted with
      * its bytes now (bytesOf), values with their holders, and moves the total by the
-     * difference, under the object's monitor; for the test schedules. An object that is not
+     * difference, under the object's monitor; for the test schedules, and for a start after
+     * its rerun of the transactions (DbStarter, bergdb 019-21). An object that is not
      * counted is skipped: it left its handle since the walk (released), or it is not
      * resident. The caller holds Db.writeLock, between transactions. Readers do not take that
      * lock: a load puts a value into an object, under the object's monitor (valueIn), before
@@ -509,4 +515,98 @@ public final class Residents {
         k.setIsInTransNodes(true);
         Assert.assertTrue(isPinned(k, top));
     }
+
+    /**
+     * The first object of a live handle of db that is clean and not counted with its bytes
+     * now (bytesOf), as a line of text; null if none. The writer's changes to a dirty object
+     * are counted at its write (the class comment), so dirty objects are not checked. The
+     * caller holds db's write lock, with no reader in a get.
+     */
+    static String misCounted(Db db) {
+        for (Node o : db.internal().cache().nodes()) {
+            if (o.isDirty()) continue;
+            int c = counted(o);
+            if (c >= 0 && c != bytesOf(o)) {
+                return "the clean object of node " + o.getId() + " is counted with " + c
+                        + " bytes, its bytes now " + bytesOf(o);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * A key node that a transaction changes and then replaces is counted with its bytes
+     * after the transaction (bergdb 019-20; found by harness 6.5, 018-05): transactions of
+     * three keys of 50, nodes of at most 8 entries. The writer adds a key to a written leaf
+     * (KeyNode.addKlong grows its arrays), a later key of the transaction finds it full and
+     * replaces it (Dag.handleFullNode), and toPreviousState cuts it back to its written
+     * version; the transaction's end makes it clean again (Db.endOfTrans). Until 019-20 it
+     * stayed counted with its bytes of before the growth, below its bytes, until it was
+     * evicted: after transaction 10, 747 bytes against 939.
+     */
+    @Nano
+    public static void testReplacedNodeCounted() {
+        CoreTestClock clock = new CoreTestClock();
+        Db db = Db.builder().testSetup(new bergdb.stream.MemoryStream()).clock(clock).testId()
+                .maxNodeSize8().startupDistance(200).audit(0).start();
+        try {
+            java.util.Random rnd = new java.util.Random(1);
+            long time = 100 * STEP;
+            for (int i = 0; i < 200; i++) {
+                clock.setTime(time += STEP);
+                Trans.Builder b = db.trans();
+                java.util.TreeSet<Integer> keys = new java.util.TreeSet<Integer>();
+                for (int j = 0; j < 3; j++) keys.add(rnd.nextInt(50));
+                for (int k : keys) b.put("k" + k, "v" + i + "x".repeat(rnd.nextInt(100)));
+                db.execute(b.build());
+                synchronized (db.internal().getWriteLock()) {
+                    String m = misCounted(db);
+                    Assert.assertTrue("after transaction " + i + ": " + m, m == null);
+                }
+            }
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * A start counts the nodes of the startup section with their bytes after its rerun of
+     * the transactions (bergdb 019-21; found by harness 6.5, 018-05): the rerun
+     * (DbStarter.rerunTransactions) adds klongs to nodes that registerSectionNodes counted
+     * before it: 20 transactions of three keys of 50, a startup distance of 3,000 bytes.
+     * Until 019-21 they stayed counted below their bytes: 303 bytes against 362.
+     */
+    @Nano
+    public static void testSectionNodesCountedAfterRerun() {
+        CoreTestClock clock = new CoreTestClock();
+        bergdb.stream.MemoryStream s = new bergdb.stream.MemoryStream();
+        Db db0 = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
+                .startupDistance(3000).audit(0).start();
+        long time = 100 * STEP;
+        try {
+            java.util.Random rnd = new java.util.Random(1);
+            for (int i = 0; i < 20; i++) {
+                clock.setTime(time += STEP);
+                Trans.Builder b = db0.trans();
+                java.util.TreeSet<Integer> keys = new java.util.TreeSet<Integer>();
+                for (int j = 0; j < 3; j++) keys.add(rnd.nextInt(50));
+                for (int k : keys) b.put("k" + k, "v" + i);
+                db0.execute(b.build());
+            }
+        } finally {
+            db0.close();
+        }
+        Db db = Db.builder().testSetup(s.copy()).clock(clock).testId().maxNodeSize8()
+                .startupDistance(3000).audit(0).start();
+        try {
+            synchronized (db.internal().getWriteLock()) {
+                String m = misCounted(db);
+                Assert.assertTrue("after the start: " + m, m == null);
+            }
+        } finally {
+            db.close();
+        }
+    }
+
+    private static final long STEP = bergdb.pub.util.Clock.UNITS_PER_SEC / 100;
 }

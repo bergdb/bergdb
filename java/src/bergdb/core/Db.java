@@ -1261,6 +1261,9 @@ public class Db implements AutoCloseable {
                 Node n = gotDirty.get(i);
                 if (i >= keep && replacedInTrans.contains(n)) {
                     n.setDirty(false);
+                    // Counted with its bytes now: the transaction may have grown its arrays
+                    // before it replaced it, and it is not written (bergdb 019-20).
+                    cache.residents().grown(n);
                 } else {
                     kept.add(n);
                 }

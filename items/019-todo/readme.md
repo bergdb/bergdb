@@ -115,6 +115,8 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-21](21-start-rerun-undercounted.md) | Fix | A start's rerun changes counted nodes, no recount | none | done | 2026-11-06 |
+| [019-20](20-replaced-node-undercounted.md) | Fix | A node grown and replaced stays counted below its bytes | none | done | 2026-11-06 |
 | [019-10](10-read-unchecked-goes-on.md) | Fix | An unchecked read failure leaves the database going on | none | done | 2026-11-06 |
 | [019-09](09-close-unreported-background-failure.md) | Fix | close() silent on a failed flush | decision | done | 2026-11-05 |
 | [019-08](08-dbtime-to-utc-threads.md) | Fix | dbTimeToUtc() from several threads gave wrong strings | none | done | 2026-11-05 |
@@ -169,16 +171,21 @@ Files
   failure that no call met, and reports it nowhere (review R1 of night
   006-12, B2); now it throws `StreamIoException` (Frans, 2026-11-05,
   option (a)).
-
 * [10-read-unchecked-goes-on.md](10-read-unchecked-goes-on.md).
   019-10, Fix: an unchecked exception or `Error` from a read of the
   storage is thrown as it is, and the database goes on, where an
   `IOException` fails it; found by harness 6.2 (018-03).
-
 * [15-delete-key-replace.md](15-delete-key-replace.md). 019-15, Fix:
   with key replace enabled, a delete's key is not replaced, where the
   Javadoc says every key's `${transactionTime}` is; found by harness 6.7
   (018-04); waiting for Frans's decision.
+* [20-replaced-node-undercounted.md](20-replaced-node-undercounted.md).
+  019-20, Fix: a key node that its transaction grew and then replaced
+  stayed counted below its bytes until its eviction; found by 018-05's
+  harness.
+* [21-start-rerun-undercounted.md](21-start-rerun-undercounted.md).
+  019-21, Fix: a start counted the startup section's nodes before its
+  rerun of the transactions changed them; found by 018-05's harness.
 
 
 Log
@@ -273,3 +280,6 @@ found by the harness of failures and interrupts in storage (018-03).
 
 2026-11-06. 019-10 done in the night 006-12: an unchecked exception or
 `Error` of the stream's read fails the storage, and so the database.
+
+2026-11-06. 019-20 and 019-21 registered and done in night 006-12: found
+by harness 6.5, eviction's accounting (018-05).

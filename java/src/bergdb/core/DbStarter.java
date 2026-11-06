@@ -133,6 +133,9 @@ public class DbStarter {
         findSuperNodeAtStartupTime();
         prepareDb();
         rerunTransactions();
+        // The rerun changed nodes of the section after their count (Cache3.register): each
+        // object of the node table counted with its bytes now (bergdb 019-21).
+        db.internal().cache().residents().resync(db.internal().cache().nodes());
         linkD();
         postStartupCheck();
         db.internal().nodeCollection().endReconstruction();
