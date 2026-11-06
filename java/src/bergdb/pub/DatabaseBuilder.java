@@ -76,7 +76,10 @@ public interface DatabaseBuilder {
     
     /**
      * Sets a non-default database clock. Use this method together with a TestClock to do
-     * deterministic testing.
+     * deterministic testing. The database's threads call the clock, so it must be
+     * thread-safe (bergdb 019-44).
+     * 
+     * @throws IllegalArgumentException If clock is null (bergdb 019-44).
      */
     public DatabaseBuilder clock(Clock clock);
     
@@ -138,7 +141,10 @@ public interface DatabaseBuilder {
      * @throws IllegalStateException
      *             If no database was given: neither create(), open() nor memory() was
      *             called; or if the database that this builder started on its stream of
-     *             memory() has not closed (bergdb 015-65).
+     *             memory() has not closed (bergdb 015-65); or if the crypto key of
+     *             cryptoKey() has another algorithm than 'salsa' (CryptoKey.getAlgo()), as
+     *             one parsed from another string can: the start has then opened, created
+     *             and written nothing (bergdb 015-06, 019-44).
      * @throws DbException
      *             If a functioning database could not be started; among them a
      *             StreamIoException if the directory of create() or open() cannot be

@@ -2,6 +2,8 @@ package bergdb.pub.util;
 
 /**
  * A database clock with high resolution used to timestamp transactions.
+ * An implementation must be thread-safe: the database's threads call getTime() (bergdb
+ * 019-44).
  * 
  * @author Frans Lundberg
  */

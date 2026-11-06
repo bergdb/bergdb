@@ -3,12 +3,14 @@ package bergdb.pub;
 import bergdb.pub.util.Clock;
 
 /**
- * Deterministic clock suitable for testing.
+ * Deterministic clock suitable for testing. It is thread-safe: a time set by one thread
+ * is the one that getTime() returns in the database's threads (bergdb 019-44).
  * 
  * @author Frans Lundberg
  */
 public final class TestClock implements Clock {
-    private long time = 0;
+    /** Volatile: the database's threads read it (bergdb 019-44). */
+    private volatile long time = 0;
 
     /**
      * Creates a test clock. Its time is 0 until setTime() is called.

@@ -223,7 +223,8 @@ public interface Connection extends ReadInterface {
      *             refuses every transaction and read until it is restarted. See
      *             Database.
      * @throws IllegalArgumentException
-     *             If 'key' is null or otherwise invalid, or if object is null.
+     *             If 'key' is null or otherwise invalid, or if object is null; or if it
+     *             is a String with a lone surrogate, as for WBuilder.put() (bergdb 019-44).
      */
     public Transaction put(String key, Object object);
 

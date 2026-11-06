@@ -71,7 +71,8 @@ public interface RwEnvironment extends ReadInterface {
      *
      * @see WBuilder#put(String, Object)
      * @throws IllegalArgumentException if 'key' is null or otherwise of an invalid format.
-     * @throws IllegalArgumentException if 'object' is null.
+     * @throws IllegalArgumentException if 'object' is null, or if it is a String with a
+     *             lone surrogate, as for WBuilder.put() (bergdb 019-44).
      */
     public void put(String key, Object object);
     

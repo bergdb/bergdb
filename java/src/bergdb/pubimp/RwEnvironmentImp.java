@@ -320,6 +320,13 @@ public class RwEnvironmentImp implements RwEnvironment {
             // may change after the put (bergdb 015-47).
             setBytes(ikey, ((byte[]) object).clone());
         } else if (clazz.equals(String.class)) {
+            // A lone surrogate is refused, as in a key (bergdb 015-49): its UTF-8 bytes would
+            // have '?' in its place, and a get would return another string (bergdb 019-44).
+            if (PubKeys.hasLoneSurrogate((String) object)) {
+                throw new IllegalArgumentException("String value has a lone surrogate, a "
+                        + "char of U+D800 to U+DFFF that is not part of a surrogate pair "
+                        + "(bergdb 019-44).");
+            }
             setBytes(ikey, StringUtil.toBytes((String) object));
         } else {
             if (!Entries.isObjectKey(ikey)) {

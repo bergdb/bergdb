@@ -1,7 +1,7 @@
 019-44. Fix: four small faults of the Pub API found by the documentation's read-through
 ========================================================================================
 
-Status: open. Kind: Fix. Frans: none (the coordinator's defaults below;
+Status: done. Kind: Fix. Frans: none (the coordinator's defaults below;
 Frans may choose otherwise).
 Created 2026-11-06 by Frans Lundberg.
 
@@ -45,3 +45,30 @@ Log
 ---
 
 2026-11-06. Registered by coord-1106 from agent d30's read-through.
+
+2026-11-06. Done by agent f44 of coord-1106, with the coordinator's
+defaults, each in the Pub API's Javadoc too:
+
+1. `DatabaseBuilderImp.clock` refuses null with
+   `IllegalArgumentException` (`DatabaseBuilder.clock`'s `@throws`), so
+   no start begins. Test `DatabaseBuilderImp.testClockNullRefused`, which
+   fails without it.
+2. Documented: `start()`'s `@throws IllegalStateException` names a crypto
+   key of another algorithm than salsa, refused before anything is opened
+   (015-06). No code change; the existing
+   `PubTester.testRefusedStartCreatesNothing` (015-06) shows the exception.
+3. `RwEnvironmentImp.put` refuses a String value with a lone surrogate
+   with `IllegalArgumentException` (`PubKeys.hasLoneSurrogate`, 015-49);
+   the `@throws` of `WBuilder.put`, `Connection.put` and
+   `RwEnvironment.put` say so. Test
+   `PubTester.testValueWithLoneSurrogateRefused` (put, w().put, an
+   rw-transaction's put; a surrogate pair kept), which fails without it.
+   Strings inside an object (the experimental object code, 018-01, D6)
+   keep 005-26's `?`, as `DbObjectTester.testLoneSurrogates` expects.
+4. `TestClock`'s time is volatile; `Clock`, `DatabaseBuilder.clock` and
+   `TestClock` say that a clock must be, and `TestClock` is, thread-safe.
+   Test `PubTester.testTestClockTimeIsVolatile` (reflection), which fails
+   without it; a visibility race itself is not shown by a test.
+
+`releases/next.md`: two Pub API bullets, (3) and (1) with (4). `BEFORE COMMIT OK`,
+`JAVADOC PUB OK`.

@@ -120,7 +120,14 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         return this;
     }
     
+    /**
+     * Refuses null here (bergdb 019-44); until 019-44 it was taken, and start() threw
+     * IllegalArgumentException after it had made the directory and bergdb.lock.
+     */
     public DatabaseBuilder clock(final Clock clock) {
+        if (clock == null) {
+            throw new IllegalArgumentException("clock == null not allowed");
+        }
         dbBuilder.clock(clock);
         return this;
     }
@@ -461,6 +468,20 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
             e = e1;
         }
         Assert.assertTrue("IllegalArgumentException for cryptoKey(null)", e != null);
+    }
+    
+    /**
+     * bergdb 019-44: clock(null) is refused, as cryptoKey(null) is; before, it was taken and
+     * start() threw after it had made the directory and bergdb.lock.
+     */
+    @Nano private static void testClockNullRefused() {
+        IllegalArgumentException e = null;
+        try {
+            new DatabaseBuilderImp().clock(null);
+        } catch (IllegalArgumentException e1) {
+            e = e1;
+        }
+        Assert.assertTrue("IllegalArgumentException for clock(null)", e != null);
     }
     
     @Nano private static void testStartupDistance2() {

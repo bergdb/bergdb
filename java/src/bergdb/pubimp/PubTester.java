@@ -489,7 +489,49 @@ public class PubTester {
         }
     }
 
-    /** Asserts that 'call' throws IllegalArgumentException for 'key' (bergdb 015-49, S2-F24). */
+    /**
+     * Regression test for bergdb 019-44: a String value with a lone surrogate is refused with
+     * IllegalArgumentException, by put(), w().put() and an rw-transaction's put(), as a key
+     * with one is (bergdb 015-49); before, its UTF-8 bytes had '?' in its place, silently,
+     * and get() returned another string than was put. A value with a surrogate pair is
+     * taken and kept.
+     */
+    @Nano
+    public static void testValueWithLoneSurrogateRefused() {
+        Database d = Factory.database().memory().start();
+        try {
+            Connection c = d.connection();
+            String[] bad = {"a\uD800", "\uDC00a", "a\uD800b", "\uDC00\uD800", "\uD83D\uD83D\uDE00"};
+            for (String value : bad) {
+                assertKeyRefused("put", value, () -> c.put("/k", value));
+                assertKeyRefused("w().put", value, () -> c.w().put("/k", value).execute());
+                assertKeyRefused("rw put", value, () -> c.rw(env -> env.put("/k", value)));
+            }
+            Assert.assertTrue("nothing put", !c.exists("/k"));
+
+            String pair = "a\uD83D\uDE00b";        // U+1F600, a surrogate pair
+            c.put("/k", pair);
+            Assert.assertEquals(pair, c.get("/k", String.class));
+        } finally {
+            d.close();
+        }
+    }
+
+    /**
+     * bergdb 019-44: TestClock's time is volatile, as the database's threads read it while
+     * the test's thread sets it.
+     */
+    @Nano
+    public static void testTestClockTimeIsVolatile() throws NoSuchFieldException {
+        int modifiers = TestClock.class.getDeclaredField("time").getModifiers();
+        Assert.assertTrue("TestClock.time is volatile",
+                java.lang.reflect.Modifier.isVolatile(modifiers));
+    }
+
+    /**
+     * Asserts that 'call' throws IllegalArgumentException for 'key' (bergdb 015-49, S2-F24),
+     * or for a value (bergdb 019-44).
+     */
     private static void assertKeyRefused(String what, String key, Runnable call) {
         try {
             call.run();
@@ -500,7 +542,7 @@ public class PubTester {
         for (char ch : key.toCharArray()) {
             escaped.append(ch < 128 ? String.valueOf(ch) : String.format("\\u%04X", (int) ch));
         }
-        throw new AssertionError(what + " took a key with a lone surrogate, " + escaped);
+        throw new AssertionError(what + " took a lone surrogate, " + escaped);
     }
 
     /** Closes 'd'; what the close throws is dropped. */

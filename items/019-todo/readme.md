@@ -109,7 +109,6 @@ Open
 | [019-35](35-night-read-losses.md) | Investigate | The Core's warm reads lost 1 to 6 % in night 006-12 | none | open |
 | [019-36](36-reclaim-cut-waits-for-append.md) | Investigate | Reclaim's cut waits for the thread's append (performance) | none | open |
 | [019-43](43-stop-at-first-read-unreported.md) | Fix | Harness 6.2 on s1: a failed first read unreported at close() | none | open |
-| [019-44](44-pub-api-small-faults-d30.md) | Fix | Four small Pub API faults: clock(null), a CryptoKey, a value's surrogate | none | open |
 
 
 Closed
@@ -117,6 +116,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-44](44-pub-api-small-faults-d30.md) | Fix | Four small Pub API faults: clock(null), a CryptoKey, a value's surrogate | none | done | 2026-11-06 |
 | [019-40](40-review-r6-c-findings.md) | Fix | Review R6's C findings: tests, words, small faults | none | done | 2026-11-06 |
 | [019-42](42-index-build-bricks-database.md) | Fix | An index build over an object it cannot index fails the database at every start | none | done | 2026-11-06 |
 | [019-32](32-key-node-klongs-unchecked.md) | Fix | A node's klongs and pointers unchecked: an assert at a start or a read | none | done | 2026-11-06 |

@@ -94,6 +94,15 @@ Pub API
   `stop()`, a `close()` or a failure ended reported progress 100 and
   "Done! Deleted ..."; now its note starts with "Stopped", as an index
   build's does, and the deletion goes on at the next start.
+* **A String value with a lone surrogate is refused** (bergdb 019-44;
+  2026-11-06) with `IllegalArgumentException` at the put, as a key with
+  one is (015-49): it was stored with `?` in its place, silently, and a get
+  returned other characters than were put. Values with surrogate pairs are
+  stored as before; strings inside an object (experimental) keep the `?`.
+* **`DatabaseBuilder.clock(null)` throws `IllegalArgumentException`**
+  (bergdb 019-44; 2026-11-06); it was taken, and `start()` threw after it
+  had made the directory and `bergdb.lock`. `TestClock` is thread-safe
+  (its time volatile), and a `Clock` must be.
 
 
 Reliability

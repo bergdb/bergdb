@@ -24,7 +24,9 @@ public interface WBuilder {
      * known faults; such a put may change in a later release (bergdb 018-01, D6).</p>
      * 
      * @throws IllegalArgumentException
-     *             If 'key' is null or otherwise invalid, or if object is null.
+     *             If 'key' is null or otherwise invalid, or if object is null; or if it
+     *             is a String with a lone surrogate, a char of U+D800 to U+DFFF that is not
+     *             part of a surrogate pair, as a key with one is (bergdb 019-44).
      */
     public WBuilder put(String key, Object object);
     
