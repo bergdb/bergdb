@@ -70,6 +70,29 @@ The ten points of 006-12, section 8, one at a time with Frans.
    i10 implements it (019-10, clone i10). And: "I would like a clear place
    to put database design information like this. [...] We could look at
    it wholistically after 2026.3." Registered as 017-07, section 4.
+4. 019-30, 019-31, 019-33 (damage a start does not detect). Frans, 10:42:
+   "Yes, as recommended. BergDB assumes correct storage. Which makes
+   sense. Ensure this is documented in the relevant Javadoc comments.
+   However, use of checksums in the stream is also a reasonable design.
+   Going in that direction is definitely not for 2026.3. Remember the
+   target: bug-free Core. Move the possibility of checksums in the stream
+   to a new item in 017. This may or may not be added in some future
+   release." The Javadoc's words go to agent i10 (with the error model);
+   agent d4 (clone d4): the entries closed, harness 6.1, the known
+   limitation, 017-08 "Checksums in the stream", 019-07 moved there.
+5. 018-04, section 6, Q1 to Q5 (the Pub API's unclear Javadoc). Frans,
+   10:58: "Q1, as recommended. Q2, let's go through this one in more
+   detail. Q3, tell me more. Q4, expand a little [...] Q5, as recommended."
+   After the details (Q2's options (a) document, (b) freeze anew from the
+   requested time, (c) each call freezes anew at the latest state: one
+   lookup time, set by `setLookupTime(t)` or by `freezeLookupTime()`,
+   each undoing the other), Frans, 11:04: "Q2, c, as recommended. Q3, a,
+   as recommended. Q4, a, as recommended." Agent p5 (clone p5).
+
+Also, Frans, 10:58, on a todo list for 2026.4 ("Is this needed?"): "As
+you propose about the todo lists, sounds good": the list for 2026.4 opens
+when 2026.3 is released; until then, bounded work for after 2026.3 waits
+in 017-07.
 
 ### W2. KISS as a principle
 
@@ -106,6 +129,11 @@ session continues with `/coordinator resume` (013-02).
 * 10:01 Point 3 decided, (b); agent f15 started.
 * 10:08 019-15 done, 5394276 on `main` (`BEFORE COMMIT OK`; harness 6.7's night set OK, its skip list empty).
 * 10:31 Point 1 decided: the simple error model; agent i10 to start; 017-07 section 4.
+* 10:32 Agent i10 started (019-10, clone i10).
+* 10:44 Point 4 decided; agent d4 started (clone d4); i10 told to add "BergDB assumes correct storage".
+* 10:57 019-30, 019-31, 019-33 done as decided, 017-08 made, 019-07 moved: ad7187f on `main` (`BEFORE COMMIT OK`; harness 6.1's full sets of seeds 20398 and 20399, 0 failures).
+* 11:05 019-10 done, the simple error model: 01b0493 on `main` (`BEFORE COMMIT OK`; harnesses 6.2 and 6.7's night sets). 019-37 registered (i10's find).
+* 11:05 Point 5 decided; agent p5 started.
 
 
 ## 8. Outcome

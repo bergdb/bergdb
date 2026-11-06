@@ -109,6 +109,7 @@ Open
 | [019-32](32-key-node-klongs-unchecked.md) | Fix | A node's klongs and pointers unchecked: an assert at a start or a read | none | open |
 | [019-35](35-night-read-losses.md) | Investigate | The Core's warm reads lost 1 to 6 % in night 006-12 | none | open |
 | [019-36](36-reclaim-cut-waits-for-append.md) | Fix | Reclaim's cut waits for the thread's append under the write lock | none | open |
+| [019-37](37-close-self-suppression.md) | Fix | A failed flush and the close's same IOException: self-suppression | none | open |
 
 
 Closed
