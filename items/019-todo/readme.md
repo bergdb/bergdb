@@ -108,7 +108,6 @@ Open
 |---|---|---|---|---|
 | [019-35](35-night-read-losses.md) | Investigate | The Core's warm reads lost 1 to 6 % in night 006-12 | none | open |
 | [019-36](36-reclaim-cut-waits-for-append.md) | Investigate | Reclaim's cut waits for the thread's append (performance) | none | open |
-| [019-43](43-stop-at-first-read-unreported.md) | Fix | Harness 6.2 on s1: a failed first read unreported at close() | none | open |
 
 
 Closed
@@ -116,6 +115,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-43](43-stop-at-first-read-unreported.md) | Fix | Harness 6.2 took a read that a stop overtook as a failure | none | done | 2026-11-06 |
 | [019-44](44-pub-api-small-faults-d30.md) | Fix | Four small Pub API faults: clock(null), a CryptoKey, a value's surrogate | none | done | 2026-11-06 |
 | [019-40](40-review-r6-c-findings.md) | Fix | Review R6's C findings: tests, words, small faults | none | done | 2026-11-06 |
 | [019-42](42-index-build-bricks-database.md) | Fix | An index build over an object it cannot index fails the database at every start | none | done | 2026-11-06 |
@@ -251,6 +251,10 @@ Files
   019-42, Fix: since 019-10 an index build that met an object it cannot
   index (a null indexed `String`) failed the database at every start; now
   the build ends as failed and the database goes on (020-01, N1).
+* [43-stop-at-first-read-unreported.md](43-stop-at-first-read-unreported.md).
+  019-43, Fix: harness 6.2 took as an unreported failure a read that a
+  stop's close overtook ("File closed"), with JDK 17 now and then; the
+  database was right, the harness's check is fixed.
 
 
 Log
@@ -402,3 +406,7 @@ COMMIT OK.
 database goes on; a null indexed `String` throws an
 `IllegalArgumentException`, no longer an assert's `AssertionError`;
 BEFORE COMMIT OK.
+
+2026-11-06. 019-43 done by coord-1106's agent f43: the harness's oracle,
+not the Core; check 7 of harness 6.2 takes the storage's state before a
+STOP's close, and a hook forces the timing in a test; BEFORE COMMIT OK.

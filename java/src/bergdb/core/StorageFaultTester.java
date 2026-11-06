@@ -137,6 +137,24 @@ public class StorageFaultTester {
         }
     }
 
+    /**
+     * For a test: after a STOP, the call waits until the stop's close has ended (up to 2 s),
+     * so that a read goes on on the closed stream (bergdb 019-43).
+     */
+    static volatile boolean waitForCloseAtStop = false;
+
+    private static void waitUntilClosed(Db db) {
+        long end = System.nanoTime() + 2000L * 1000 * 1000;
+        while (!db.internal().isClosed() && System.nanoTime() < end) {
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
+    }
+
     /** Counts the calls of one layer, and makes the fault at call number 'at'. */
     static final class Injector {
         final Layer layer;
@@ -200,6 +218,9 @@ public class StorageFaultTester {
                 break;
             case STOP:
                 db.stop();      // as if another thread called it now; it does not wait
+                if (waitForCloseAtStop) {
+                    waitUntilClosed(db);
+                }
                 break;
             default:
                 throw new AssertionError(fault);
@@ -703,7 +724,11 @@ public class StorageFaultTester {
                 Thread.currentThread().interrupt();
             }
         }
-        boolean storageFailed = db.internal().storageFailed();
+        // Before the close begins (bergdb 019-09). A stop() at the fault began it there: a read
+        // that ran on and met the stream that its close had closed threw, and the storage
+        // records that as failed; it is the close, not a failure before it (bergdb 019-43).
+        boolean storageFailed = !(run.fault == Fault.STOP && inj.fired)
+                && db.internal().storageFailed();
         inj.closing = true;
         try {
             if (run.stopFirst) {
@@ -960,6 +985,34 @@ public class StorageFaultTester {
     }
 
     /**
+     * A stop() at a read of the workload's thread, which then goes on only when the stop's
+     * close has ended (2026-11-06, bergdb 019-43): the read meets the closed stream ("File
+     * closed"), the storage records it as failed, and the call throws StreamIoException, as a
+     * read while the database stops does (docs/levels.md, section 3). Nothing that returned is
+     * lost, and close() returns normally. Harness 6.2's oracle counted it as a failure before
+     * the close that no call reported; with JDK 17 the stop's thread sometimes closed the
+     * stream before the read, on s1 and F53. Calls 1 (a transaction's warm-up) and 3 (a get).
+     */
+    @Nano
+    public static void testStopWhileReading() throws Exception {
+        Results r = new Results();
+        waitForCloseAtStop = true;
+        try {
+            for (long at : new long[] {1, 3}) {
+                Run run = run(Layer.STREAM, Fault.STOP, at, false, true);
+                if (!(run.thrown instanceof StreamIoException)) {
+                    throw new AssertionError("call " + at + ": the read did not meet the "
+                            + "closed stream: " + run.thrownCall + " threw " + run.thrown);
+                }
+                r.add(run);
+            }
+        } finally {
+            waitForCloseAtStop = false;
+        }
+        report(r, false);
+    }
+
+    /**
      * Every 5th call of the stream (and the first three), for each fault, new and reopened,
      * from an offset of the day, so that five nights run every call: about 3,900 runs, 160 s
      * on F53 in a night's load. Every call took 806 s with the file calls' test (2026-11-06).
@@ -1045,9 +1098,11 @@ public class StorageFaultTester {
 
     /**
      * For a run by hand: StorageFaultTester LAYER STRIDE (a sweep), LAYER FAULT N [stop]
-     * [reopen] (one run), or SAMPLE (the unit test's sample).
+     * [reopen] (one run), or SAMPLE (the unit test's sample). With
+     * -Dbergdb.storagefault.waitclose=true a STOP waits for the stop's close (bergdb 019-43).
      */
     public static void main(String[] args) throws Exception {
+        waitForCloseAtStop = Boolean.getBoolean("bergdb.storagefault.waitclose");
         if (args.length == 1 && args[0].equals("SAMPLE")) {
             try {
                 testSample();

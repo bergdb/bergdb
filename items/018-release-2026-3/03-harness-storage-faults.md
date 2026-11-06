@@ -92,7 +92,9 @@ The checks, after each run:
    (`storageFailed()`); if it has, the call must fail the database.
 7. **A failed close is reported**: if the storage had failed before the
    close and no call reported it, or the close met the fault, `close()`
-   throws (its Javadoc; 015-78, 019-09).
+   throws (its Javadoc; 015-78, 019-09). A STOP begins the close at the
+   fault: a read that runs on and meets the stream it closed is the
+   close, not a failure before it (019-43).
 8. **A stop fails nothing**: after a `stop()` at any call, no call
    throws `DbFailedException`, a transaction that threw is not in the
    stream, and every transaction that returned is (015-53).
@@ -357,6 +359,12 @@ coord-1106): check 1 takes the fault's `Error`, thrown as it is, as the
 failure, and every later transaction and read must be refused; the close
 check after a reported failure too. The night tests pass (1,187 IO runs,
 3,508 STREAM runs, 162 s). BEFORE COMMIT OK.
+
+2026-11-06. 019-43 (agent f43 of coord-1106): check 7 counted as an
+unreported failure a read that a STOP's close overtook ("File closed");
+the database was right. Check 7 now takes the storage's state before the
+stop, and `testStopWhileReading` forces the timing with a hook
+(`waitForCloseAtStop`). BEFORE COMMIT OK.
 
 
 ## State (night 006-12)
