@@ -107,7 +107,9 @@ returned for are safe; `stop()` and `close()` still work, and so does
 `sync()` while the storage does. The application should then end its
 process; the next start recovers the database as after a crash. For
 `OutOfMemoryError`, the JVM option `-XX:+ExitOnOutOfMemoryError` ends the
-process at once.
+process at once, and that is the advice: while the heap stays full, BergDB
+cannot promise even to fail cleanly (the JVM itself may need memory to
+record the failure), so a `sync()` or `close()` may then wait (019-39).
 
 Everything else the database throws fails only that call, and the database
 goes on: a transaction refused before its go point, a lookup time no longer

@@ -17,6 +17,7 @@ import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.function.Consumer;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
@@ -30,6 +31,20 @@ public class Util {
 
     /** No reason to create an instance. */
     private Util() {
+    }
+    
+    /**
+     * For tests (2026-11-06, bergdb 019-39): called with each thread that start() starts,
+     * before its start(), and may throw, as start() itself may (an OutOfMemoryError). null,
+     * the default, does nothing.
+     */
+    public static volatile Consumer<Thread> testHookStart = null;
+    
+    /** Starts 't', after testHookStart (bergdb 019-39). */
+    public static void start(Thread t) {
+        Consumer<Thread> hook = testHookStart;
+        if (hook != null) hook.accept(t);
+        t.start();
     }
     
     /**

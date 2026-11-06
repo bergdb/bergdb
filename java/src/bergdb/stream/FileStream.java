@@ -201,6 +201,14 @@ public class FileStream implements AppendOnlyStream {
     /** If not null, this stream should be considered faulty and not used any further. */
     private volatile IOException ioException = null;
     
+    /**
+     * The cut's failure for an exception other than an IOException, made in advance, so that
+     * the cut's thread records it without allocating, also when the heap is full (2026-11-06,
+     * bergdb 019-39). Its stack trace is the stream's opening; its cause has the cut's.
+     */
+    private final IOException cutFailure =
+            new IOException("The delete of a cut failed (the cause).");
+    
     /** The open lock file, which holds the directory's lock, or null. Under this. */
     private RandomAccessFile lockFile = null;
     
@@ -566,14 +574,18 @@ public class FileStream implements AppendOnlyStream {
             this.cutForceTo = len;
             
             if (cutThread == null) {
-                cutThread = new Thread(new Runnable() {
+                Thread t = new Thread(new Runnable() {
                     public void run() {
                         runCuts();
                     }
                 });
-                cutThread.setName("FileStream-cut");
-                cutThread.setDaemon(true);
-                cutThread.start();
+                t.setName("FileStream-cut");
+                t.setDaemon(true);
+                Util.start(t);
+                // Set once started (2026-11-06, bergdb 019-39): a thread that could not start
+                // stayed set, and close() waited for it for ever. The thread waits for this
+                // monitor, so it finds itself set.
+                cutThread = t;
             }
         }
     }
@@ -593,32 +605,46 @@ public class FileStream implements AppendOnlyStream {
      * decision.
      */
     private void runCuts() {
-        while (true) {
-            DbFile k;
-            long forceTo;
+        try {
+            while (true) {
+                DbFile k;
+                long forceTo;
+                synchronized (this) {
+                    k = cutFiles.peekFirst();
+                    if (k == null || ioException != null) {
+                        cutThread = null;
+                        notifyAll();
+                        return;
+                    }
+                    forceTo = cutForceTo;
+                }
+                
+                try {
+                    forceTo(forceTo);
+                    k.delete();
+                    forceDirectory(dir);
+                } catch (IOException e) {
+                    ioException = e;
+                } catch (RuntimeException | Error e) {
+                    // Recorded with nothing allocated (2026-11-06, bergdb 019-39): a new
+                    // IOException could throw too, and the thread ended with no failure.
+                    // At most once: no cut follows a failure.
+                    cutFailure.initCause(e);
+                    ioException = cutFailure;
+                }
+                
+                synchronized (this) {
+                    if (ioException == null) {
+                        cutFiles.removeFirst();
+                    }
+                }
+            }
+        } finally {
+            // Also when the thread dies (2026-11-06, bergdb 019-39): close() waits for it.
             synchronized (this) {
-                k = cutFiles.peekFirst();
-                if (k == null || ioException != null) {
+                if (cutThread == Thread.currentThread()) {
                     cutThread = null;
                     notifyAll();
-                    return;
-                }
-                forceTo = cutForceTo;
-            }
-            
-            try {
-                forceTo(forceTo);
-                k.delete();
-                forceDirectory(dir);
-            } catch (IOException e) {
-                ioException = e;
-            } catch (RuntimeException | Error e) {
-                ioException = new IOException("The delete of a cut failed (the cause).", e);
-            }
-            
-            synchronized (this) {
-                if (ioException == null) {
-                    cutFiles.removeFirst();
                 }
             }
         }
@@ -1803,6 +1829,78 @@ public class FileStream implements AppendOnlyStream {
         Assert.assertEquals(200*1000, f.getFirstPos());
         Assert.assertEquals(500*1000, f.getLength());
         f.close();
+    }
+    
+    /**
+     * bergdb 019-39 (review R6 of 006-13, B2): a cut whose thread cannot start, as at an
+     * OutOfMemoryError, throws the Error, and close() returns. Before, cutThread stayed set,
+     * and close() waited for it for ever.
+     */
+    @Nano
+    public static void testCutThreadThatCannotStart(TestEnvironment c) throws Exception {
+        final FileStream f = new FileStream(c.createTempDir());
+        byte[] bytes = new byte[500*1000];
+        f.append(bytes, 0, bytes.length);
+        final OutOfMemoryError oom = new OutOfMemoryError("test: no cut thread");
+        Util.testHookStart = t -> {
+            if (t.getName().equals("FileStream-cut")) throw oom;
+        };
+        Throwable thrown = null;
+        try {
+            f.pretruncate(200*1000);
+        } catch (OutOfMemoryError e) {
+            thrown = e;
+        } finally {
+            Util.testHookStart = null;
+        }
+        Assert.assertTrue("pretruncate() throws the Error: " + thrown, thrown == oom);
+        Thread closer = new Thread(() -> {
+            try {
+                f.close();
+            } catch (IOException e) {
+                // Not this test's concern.
+            }
+        });
+        closer.setDaemon(true);
+        closer.start();
+        closer.join(10000);
+        Assert.assertFalse("close() still waits", closer.isAlive());
+    }
+    
+    /**
+     * bergdb 019-39 (review R6 of 006-13, B3; review R7, B1): an Error of a cut's delete is
+     * recorded as the IOException made with the stream, with the Error as its cause: the
+     * cut's thread makes none, so that it records the failure also when the heap is full.
+     * Before, a new IOException that threw too ended the thread with nothing recorded, and
+     * close() waited for ever (review R7, R7CutOomProbe).
+     */
+    @Nano
+    public static void testCutErrorRecordedAsMadeBefore(TestEnvironment c) throws Exception {
+        final Error error = new Error("test: a delete's Error");
+        FileStream f = new FileStream(c.createTempDir(), new FileStreamIo() {
+            protected boolean delete(File file) throws IOException {
+                throw error;
+            }
+        });
+        try {
+            byte[] bytes = new byte[500*1000];
+            f.append(bytes, 0, bytes.length);
+            f.pretruncate(200*1000);
+            IOException thrown = null;
+            try {
+                f.awaitDeletes();
+            } catch (IOException e) {
+                thrown = e;
+            }
+            Assert.assertTrue("made before: " + thrown, thrown == f.cutFailure);
+            Assert.assertTrue("the cause", thrown.getCause() == error);
+        } finally {
+            try {
+                f.close();
+            } catch (IOException e) {
+                // The cut's failure.
+            }
+        }
     }
     
     /**

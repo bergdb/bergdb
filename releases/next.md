@@ -339,6 +339,13 @@ Reliability
   bergdb 019-38): an index job's thread ended, the database went on,
   and after a restart the job said "done"; the storage thread ended, and
   syncs waited for ever. The stream's bytes are unchanged.
+* **`stop()` and `close()` no longer hang when a thread cannot start or
+  its failure cannot be wrapped** (bergdb 019-39; 2026-11-06): a `stop()`
+  whose closer thread could not start (an `OutOfMemoryError`) left
+  `close()` waiting for ever, and so did a cut whose thread could not
+  start; the storage thread and the cut's thread now record an `Error`
+  without allocating. While the heap stays full, a `sync()` or `close()`
+  may still wait: use `-XX:+ExitOnOutOfMemoryError`.
 * **A failed close of the stream is reported by `close()`** (bergdb
   015-78 and 015-34, 016-06's R5-F1, R3-F6 and R5-F2; 2026-11-05). The
   storage thread closed the stream as it ended and dropped a failure of

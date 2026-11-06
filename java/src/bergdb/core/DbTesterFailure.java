@@ -13,6 +13,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import bergdb.common.Bytes;
+import bergdb.common.Util;
 import bergdb.common.StringUtil;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
@@ -1384,6 +1385,35 @@ public class DbTesterFailure {
                 db.stop();
             }
         }
+    }
+    
+    /**
+     * bergdb 019-39 (review R6 of 006-13, B2): a stop() whose closer thread cannot start, as
+     * at an OutOfMemoryError, closes the database on its own thread and throws the Error;
+     * close() then returns. Before, closeBegun stayed set with no closer, and close() waited
+     * for ever.
+     */
+    @Nano
+    public static void testStopWhoseCloserCannotStart() throws Exception {
+        final MemoryStream s = new MemoryStream();
+        final Db db = Db.builder().testSetup(s).start();
+        db.execute(db.trans().put("/a", "a0").build());
+        final OutOfMemoryError oom = new OutOfMemoryError("test: no closer thread");
+        Util.testHookStart = t -> {
+            if (t.getName().startsWith("Db-close-")) throw oom;
+        };
+        Throwable thrown;
+        try {
+            thrown = within(10000, () -> db.stop());
+        } finally {
+            Util.testHookStart = null;
+        }
+        Assert.assertTrue("stop() throws the Error: " + thrown, thrown == oom);
+        thrown = within(10000, () -> db.close());
+        Assert.assertTrue("close() returns: " + thrown, thrown == null);
+        Db db2 = Db.builder().testSetup(s.copy()).start();
+        Assert.assertEquals("a0", DbUtil.getString(db2, "/a"));
+        db2.close();
     }
     
     /**

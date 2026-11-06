@@ -82,6 +82,8 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     private IOException exception = null;
     private IOException failure = null;     // the first failed flush (bergdb 005-32)
     private IOException closeFailure = null;    // the first failed close (bergdb 015-78)
+    /** See flushFailure() (bergdb 019-39). */
+    private final IOException flushFailure = new IOException("The flush failed (the cause).");
     private long pendingCut = 0;    // a pretruncate position not yet flushed; see pretruncate()
     private final int waitTime;
     private final int waitsBeforeFlush;
@@ -432,9 +434,16 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
      * Anything else that a flush throws stops the stream too (2026-10-24, bergdb 005-32): an
      * Error, such as an assertion of FileStream, ended the thread without telling the
      * listener, and every later sync waited for ever.
+     * 
+     * <p>Allocates nothing (2026-11-06, bergdb 019-39): the IOException is made with the
+     * stream, and gets the first such failure as its cause; its stack trace is the stream's
+     * making. It was made here, and when the heap was still full, that threw too: the thread
+     * ended with nothing failed, and syncs, a writer that waited for room and close() waited
+     * for ever. The consumer thread only.</p>
      */
-    private static IOException flushFailure(Throwable e) {
-        return new IOException("The flush failed (the cause).", e);
+    private IOException flushFailure(Throwable e) {
+        if (flushFailure.getCause() == null) flushFailure.initCause(e);
+        return flushFailure;
     }
 
     private void stopAfterFailure(IOException failure) {
@@ -1745,6 +1754,27 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             b.consumer.join(2000);
             Assert.assertFalse("the consumer ended", b.consumer.isAlive());
             Assert.assertEquals("the consumer closed the stream", 1, closes.get());
+        } finally {
+            b.close();
+        }
+    }
+    
+    /**
+     * bergdb 019-39 (review R6 of 006-13, B3; review R7, B1): the consumer thread records an
+     * Error of a flush as the IOException made with the stream, with the first Error as its
+     * cause; it makes none, so that it records the failure also when the heap is full.
+     * Before, a new IOException that threw too ended the thread with nothing failed, and
+     * syncs, a writer that waited for room and close() waited for ever (review R7,
+     * R7OomProbe).
+     */
+    @Nano
+    public static void testFlushFailureMadeBefore() throws IOException {
+        BufferedStream b = new BufferedStream(new MemoryStream(), 1000, 10);
+        try {
+            Error first = new Error("test: the first");
+            IOException failure = b.flushFailure(first);
+            Assert.assertTrue("made before", failure == b.flushFailure(new Error("a second")));
+            Assert.assertTrue("the first as the cause", failure.getCause() == first);
         } finally {
             b.close();
         }

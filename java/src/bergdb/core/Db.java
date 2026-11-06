@@ -1345,7 +1345,9 @@ public class Db implements AutoCloseable {
      * <p>Every transaction that has returned is written, as with close(), and with a file
      * storage forced to the device (FileStream forces every append, or with per-append
      * forcing off its last file at its close, bergdb 005-47); only close() waits
-     * for that. This method returns at once.
+     * for that. This method returns at once; if its thread cannot be made or started, as at
+     * an OutOfMemoryError, it closes on the calling thread and throws what it met (bergdb
+     * 019-39).
      * Call close() to wait for completion and report a failed flush or storage close
      * (bergdb 005-73, F5).
      * It is safe to call it several times and from different threads; only the first call
@@ -1370,14 +1372,21 @@ public class Db implements AutoCloseable {
             }
             closeBegun = true;
         }
-        Thread closer = new Thread(new Runnable() {
-            public void run() {
-                closeStorage(false);
-            }
-        });
-        closer.setName("Db-close-" + closer.getId());
-        closer.setDaemon(false);
-        closer.start();
+        try {
+            Thread closer = new Thread(new Runnable() {
+                public void run() {
+                    closeStorage(false);
+                }
+            });
+            closer.setName("Db-close-" + closer.getId());
+            closer.setDaemon(false);
+            Util.start(closer);
+        } catch (Throwable e) {
+            // No closer, as at an OutOfMemoryError: this thread closes (2026-11-06, bergdb
+            // 019-39). closeBegun stayed set with no closer, and close() waited for ever.
+            closeStorage(false);
+            throw e;
+        }
     }
     
     /**
