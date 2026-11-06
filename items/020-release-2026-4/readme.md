@@ -30,7 +30,18 @@ lookup time; an object makes a round trip), and the fixes, as for 2026.3
 Files
 =====
 
-* 020-01, the inventory (to come).
+* [01-inventory.md](01-inventory.md). 020-01, the inventory of the
+  non-Core part, written 2026-11-06, nothing decided:
+  * seven features and a boundary: objects and their format, the get
+    into another class, index definition, index maintenance, index jobs,
+    index reads, the primary scan, and what else a user can reach;
+  * for each, its promises, how it is built, its size, its known faults
+    (10 entries of 015 and 26 of review S2), its tests, its open
+    questions of meaning, and options with a recommendation;
+  * ten new findings (N1 to N10), among them a build over a null indexed
+    `String` that fails the database at every start since 019-10;
+  * a summary table, the order of Frans's decisions, and the first
+    harness of each kept feature.
 
 
 Log
