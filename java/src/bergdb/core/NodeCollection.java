@@ -748,7 +748,11 @@ public class NodeCollection implements PointerFollower {
                     checkLinkById(node, i, pos, live);
                 }
                 if (live != null) {
+                    // The pointer held nothing: its holder's count takes the handle's bytes,
+                    // as a follow's swizzle does (Residents.handleIn; bergdb 019-21, R5's F4
+                    // of night 006-12: the start's recount runs before linkD).
                     node.setPointee(i, live);
+                    cache.residents().handleIn(node);
                 }
             }
         }

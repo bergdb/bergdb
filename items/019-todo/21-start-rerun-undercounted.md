@@ -49,3 +49,26 @@ fixed there.
   objects the start itself made (the section's nodes and the rerun's): no
   more than the start's own work (P5, 007's bounded start); no setting,
   thread or API. Eviction does not change the stream's bytes.
+
+2026-11-06, 03:05. Review R5 of night 006-12, F4 (confirmed by its probe):
+the start's recount ran before `DbStarter.linkD`, which puts handles into
+the pointers of D's objects (`NodeCollection.linkToCanonical`) without
+counting them, so in a database opened for reads D's objects stayed 32
+bytes (`HANDLE_BYTES`) a linked pointer below their bytes (R5: 128 and
+1,664 bytes after starts with startup distances of 30,000 and 200,000).
+The test did not see it: `misCounted` skipped dirty objects.
+
+* Fix: `linkToCanonical` counts the handle it puts into a pointer that held
+  none (`Residents.handleIn`, under the node's monitor, which it holds), as
+  a follow's swizzle does. No second pass over the node table (R5's F5:
+  the start's recount costs about 0.7 us an object, about 3.7% of a start
+  at 1M keys; one pass is enough).
+* Test: `Residents.testLinkedHandlesCountedAtStart` (unit group): 400
+  transactions of three keys of 500, a startup distance of 30,000 bytes, a
+  restart; every object of a live handle, dirty ones included
+  (`misCounted(db, true)`), is counted with its bytes. Before the fix: "the
+  dirty object of node 190021 is counted with 527 bytes, its bytes now
+  559"; after it, none. Harness 6.5 (018-05) now recounts dirty objects too
+  after a restart: without the fix it fails in 24 of unit seeds 1 to 100,
+  seed 1 among them; with it, none.
+* Javadoc of `Residents` (the class, `handleIn`).

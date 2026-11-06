@@ -123,6 +123,7 @@ public final class EvictionAccountingTester {
         long time = 100 * STEP;
         int restarts = 0, decreases = 0, decreasesChecked = 0, evictNows = 0, budgetSets = 0;
         int pinsFell = 0, pinsFellChecked = 0;
+        boolean started = false;        // a restart since the last check
         int audits = 0, recounts = 0, larges = 0;
         String failure = null;
 
@@ -346,6 +347,7 @@ public final class EvictionAccountingTester {
             run.stream = run.stream.copy();
             run.db = run.start(run.budget(run.db));
             run.restarts++;
+            run.started = true;
         } finally {
             run.pause.writeLock().unlock();
         }
@@ -371,7 +373,8 @@ public final class EvictionAccountingTester {
         try {
             // 2. The recount, and 3. the handle limit.
             synchronized (in.getWriteLock()) {
-                String r = recount(db);
+                String r = recount(db, run.started);
+                run.started = false;
                 run.recounts++;
                 if (r != null) {
                     run.fail("batch " + b + ": the recount: " + r);
@@ -524,6 +527,15 @@ public final class EvictionAccountingTester {
      * else what differs. The caller holds the write lock, with no reader in a get.
      */
     static String recount(Db db) {
+        return recount(db, false);
+    }
+
+    /**
+     * As recount(db), and with 'all', every object of a live handle counted with its bytes
+     * now, dirty ones too: after a start, which counts D's objects with their bytes (019-21;
+     * R5's F4 of night 006-12, the handles that linkD puts into their pointers).
+     */
+    static String recount(Db db, boolean all) {
         Db.Internal in = db.internal();
         Cache3 table = in.cache();
         Residents res = table.residents();
@@ -552,10 +564,11 @@ public final class EvictionAccountingTester {
             }
             sum += c;
             n++;
-            if (!o.isDirty() && !dSet.contains(o)) {
+            if (all || (!o.isDirty() && !dSet.contains(o))) {
                 int now = Residents.bytesOf(o);
                 if (now != c && bads++ < 5) {
-                    bad.append("; the clean object of node " + o.getId() + " is counted with " + c
+                    bad.append("; the " + (o.isDirty() ? "dirty" : "clean") + " object of node "
+                            + o.getId() + " is counted with " + c
                             + " bytes, its bytes now " + now + " (" + o.getClass().getSimpleName()
                             + ", canonical " + o.isCanonical() + ", size " + o.getSize() + ", mem "
                             + o.getMemSize() + ", handles " + (Residents.bytesWithoutValues(o)

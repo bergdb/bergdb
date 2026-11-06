@@ -37,7 +37,8 @@ import bergdb.nanotest.Nano;
  * it leaves it (released); again when the writer writes it, as it may have grown, or replaces
  * it in the transaction that changed it (grown; bergdb 019-20), and after a start's rerun of the
  * transactions, which changes nodes of the startup section (resync; bergdb 019-21); and a
- * handle a follow puts into a pointer that held none, and a value a reader puts into, or
+ * handle that a follow, or the start's linkD, puts into a pointer that held none (R5's F4 of
+ * night 006-12), and a value a reader puts into, or
  * eviction takes from, a pointer of a counted object move that object's count (handleIn,
  * valueIn, valueOut). A dead handle stays counted in the pointers that hold it. A handle or a
  * value that two resident objects hold is counted for each, and a live handle that a pointer
@@ -187,7 +188,7 @@ public final class Residents {
 
     /**
      * A handle went into a pointer of 'holder' that held none (a follow's swizzle,
-     * NodeCollection): the holder's count takes the handle's bytes (bergdb 015-13). The
+     * NodeCollection; a start's linkD, NodeCollection.linkToCanonical): the holder's count takes the handle's bytes (bergdb 015-13). The
      * caller holds the holder's monitor. Nothing if the holder is not counted.
      */
     public void handleIn(Node holder) {
@@ -523,12 +524,22 @@ public final class Residents {
      * caller holds db's write lock, with no reader in a get.
      */
     static String misCounted(Db db) {
+        return misCounted(db, false);
+    }
+
+    /**
+     * As misCounted(db), and with 'dirty', the dirty objects too: for a database just
+     * started, whose dirty objects (D, linked by DbStarter.linkD) the start counts with
+     * their bytes (bergdb 019-21; R5's F4 of night 006-12).
+     */
+    static String misCounted(Db db, boolean dirty) {
         for (Node o : db.internal().cache().nodes()) {
-            if (o.isDirty()) continue;
+            if (o.isDirty() && !dirty) continue;
             int c = counted(o);
             if (c >= 0 && c != bytesOf(o)) {
-                return "the clean object of node " + o.getId() + " is counted with " + c
-                        + " bytes, its bytes now " + bytesOf(o);
+                return "the " + (o.isDirty() ? "dirty" : "clean") + " object of node "
+                        + o.getId() + " is counted with " + c + " bytes, its bytes now "
+                        + bytesOf(o);
             }
         }
         return null;
@@ -601,6 +612,47 @@ public final class Residents {
         try {
             synchronized (db.internal().getWriteLock()) {
                 String m = misCounted(db);
+                Assert.assertTrue("after the start: " + m, m == null);
+            }
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * A start counts the handles that linkD puts into the pointers of D's objects (bergdb
+     * 019-21, R5's F4 of night 006-12): 400 transactions of three keys of 500, a startup
+     * distance of 30,000 bytes, a restart; then every object of a live handle, dirty ones
+     * included, is counted with its bytes now. Until the fix, the start's recount (019-21) ran
+     * before linkD, whose links (NodeCollection.linkToCanonical) were not counted: in a
+     * database opened for reads, D's objects stayed 32 bytes (HANDLE_BYTES) a linked pointer
+     * below their bytes.
+     */
+    @Nano
+    public static void testLinkedHandlesCountedAtStart() {
+        CoreTestClock clock = new CoreTestClock();
+        bergdb.stream.MemoryStream s = new bergdb.stream.MemoryStream();
+        Db db0 = Db.builder().testSetup(s).clock(clock).testId().maxNodeSize8()
+                .startupDistance(30000).audit(0).start();
+        long time = 100 * STEP;
+        try {
+            java.util.Random rnd = new java.util.Random(1);
+            for (int i = 0; i < 400; i++) {
+                clock.setTime(time += STEP);
+                Trans.Builder b = db0.trans();
+                java.util.TreeSet<Integer> keys = new java.util.TreeSet<Integer>();
+                for (int j = 0; j < 3; j++) keys.add(rnd.nextInt(500));
+                for (int k : keys) b.put("k" + k, "v" + i);
+                db0.execute(b.build());
+            }
+        } finally {
+            db0.close();
+        }
+        Db db = Db.builder().testSetup(s.copy()).clock(clock).testId().maxNodeSize8()
+                .startupDistance(30000).audit(0).start();
+        try {
+            synchronized (db.internal().getWriteLock()) {
+                String m = misCounted(db, true);
                 Assert.assertTrue("after the start: " + m, m == null);
             }
         } finally {
