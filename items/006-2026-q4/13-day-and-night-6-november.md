@@ -313,6 +313,8 @@ session continues with `/coordinator resume` (013-02).
 * 15:00 The early `night.sh` started on 3aa2d93.
 * 15:49 The early `night.sh`: NIGHT OK (48 minutes) on 3aa2d93 (`java/build/night/2026-11-06-1500/report.txt`).
 * 15:52 021-todo created for 2026.4 (Frans, 15:51).
+* 15:55 and 15:59 020-01 and DbObject.java printed for Frans.
+* 16:13 Frans, 16:12: "What is going on? Are you waiting for something?" Every fix had landed by 13:35 and the early `night.sh` was OK, so the evening moved earlier: the release's candidate now (chain2: commit A, the jar, StreamDigest, the axioms, s1's chain, the jar's tests on F53), then `night.sh large` from about 17:00 to 23:00, then jcstress on F53; W7's block back in, from 22:00 when F53 is quiet (to 02:40 at the latest), then block-q from 00:30 to 06:00.
 
 
 ## 8. Outcome
