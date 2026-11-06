@@ -126,9 +126,10 @@ Its parts:
 * `run(layer, fault, N, stopFirst, reopen)`: one run. The workload runs in a
   thread of its own, which the harness joins for 10 s; a run that has not
   ended is a finding ("close returns"), with the thread's stack.
-* `sweep(layer, stride)`: the runs for N = 1, 2, 3, then every
-  `stride`th, for each fault, new and reopened, until the workload ends
-  before call N in four runs in a row.
+* `sweep(layer, stride, seed)`: the runs for N = 1, 2, 3, then every
+  `stride`th from 4 + seed % stride, for each fault, new and reopened,
+  until a run with eviction (which makes the most calls) ends before call
+  N, or eight runs in a row do.
   `Results` keeps one example of each finding's signature: the check, the
   layer and fault, and the call with its numbers taken out.
 * The skip list, as 018-02's (section 4 there): `FAULTS` says which entry
@@ -164,16 +165,19 @@ after the run.
   so that the sample alone fails on the known faults that the harness
   catches (section 4).
 * `testStreamLayerAll` and `testIoLayerAll`, in the Nano group "night",
-  run by `night.sh`'s step night-tests: every N. 1,187 IO runs and 19,399
-  STREAM runs, 806 s on F53 in the night's load (35 % of a core: the runs
-  mostly wait, for the storage thread's 10 ms and the syncs). Too long
-  beside the other night tests (about 4.5 minutes); to cut (State note).
+  run by `night.sh`'s step night-tests: every IO call (1,187 runs, about
+  50 s), and every 5th STREAM call (and the first three), from an offset
+  of the day of the year, so that five nights run every call (about 3,900
+  runs, 152 s on F53 in the night's load). Every STREAM call took 806 s
+  with the IO test (19,399 runs, 35 % of a core: the runs mostly wait, for
+  the storage thread's 10 ms and the syncs), too long beside the other
+  night tests (about 4.5 minutes); cut on 2026-11-06.
 
 From `java/`:
 
 ```sh
 ./unit.sh -c StorageFaultTester                      # the sample
-./night.sh tests -c StorageFaultTester               # every N
+./night.sh tests -c StorageFaultTester               # the night tests
 java -ea -cp build/bergdb.jar bergdb.core.StorageFaultTester IO 1        # a sweep, every N
 java -ea -cp build/bergdb.jar bergdb.core.StorageFaultTester STREAM 13   # every 13th N
 java -ea -cp build/bergdb.jar bergdb.core.StorageFaultTester IO ERROR 2  # one run, its state
@@ -335,11 +339,14 @@ BEFORE COMMIT OK.
 2026-11-06. 019-10 fixed the same night (its entry): `SKIP` holds 015-80
 only. BEFORE COMMIT OK.
 
+2026-11-06. The night test of the STREAM layer runs every 5th call from
+an offset of the day: 152 s, not 806 s with every call. BEFORE COMMIT OK.
+
 
 ## State (night 006-12)
 
-2026-11-06, 01:50. Clone `/Users/f/fl/bench/006-12/h62`, branch `h62`:
-the harness committed; 019-10's fix (`StorageManager.read()`, its test,
-the skip list's line removed, its documents) in its gate. Next: the night
-tests cut to every 5th STREAM call, from an offset of the day (now 806 s
-in the night's load), a commit of its own.
+2026-11-06, 01:55. Clone `/Users/f/fl/bench/006-12/h62`, branch `h62`:
+the harness, 019-10's fix and the night tests' cut committed (each
+BEFORE COMMIT OK). Nothing open. Possible later: 015-81's stranded sync
+needs a second application thread (a `sync()` waiting during the close),
+which the workload does not have.

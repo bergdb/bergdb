@@ -305,7 +305,7 @@ for 2026.3: they are experimental (D2).
   53, 78 and on 019-09, each before its fix, and found 019-10; 015-06's
   rest, 34, 38, 66, 81 and 82 it does not reach (018-03, section 6). It
   runs in the unit tests of `before-commit.sh` (a sample, about 4 s,
-  beside the f-tests) and in the night tests (every call); its skip list
+  beside the f-tests) and in the night tests (3.5 minutes); its skip list
   holds 015-80 (019-10 until its fix, the same night).
 
 

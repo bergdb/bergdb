@@ -36,7 +36,7 @@ Files
   `FileStream`, in a short workload, with P7, the close, the lock, the
   threads and a restart checked after each run; it fails on 015-32, 35,
   53, 78 and 019-09, each before its fix, and found 019-10; where it runs
-  (the unit tests, a sample, about 4 s; the night tests, every call).
+  (the unit tests, a sample, about 4 s; the night tests, 3.5 minutes).
 * [04-harness-pub-promises.md](04-harness-pub-promises.md). 018-04,
   harness 6.7, the Pub API's promises, built: random sequences of the Pub
   API's calls on `String` and `byte[]` values against a reference of each
@@ -77,4 +77,4 @@ the code before its fix, and found 019-10 (an unchecked read failure
 leaves the database going on), registered and in its skip list; 015-06's
 rest, 34, 38, 66, 81 and 82 it does not reach (018-03, section 6). In the
 unit tests of `before-commit.sh` (a sample) and the night tests (every
-call).
+file call, every 5th stream call). 019-10 fixed the same night.

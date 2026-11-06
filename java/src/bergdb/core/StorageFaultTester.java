@@ -909,7 +909,9 @@ public class StorageFaultTester {
                 // The end: a run with eviction (which makes the most calls) whose workload
                 // ended before call N, or eight runs in a row.
                 int ended = 0;
-                for (long at = 1; ended < 8; at += (at < 3 ? 1 : stride)) {
+                // After N = 1 to 3, every stride'th N from 4 + (seed % stride).
+                for (long at = 1; ended < 8;
+                        at = at < 3 ? at + 1 : at == 3 ? 4 + seed % stride : at + stride) {
                     long t0 = System.nanoTime();
                     Run run = run(layer, fault, at, ((at + seed) & 1) == 0, reopen);
                     long ms = (System.nanoTime() - t0) / 1000000;
@@ -948,13 +950,19 @@ public class StorageFaultTester {
         report(r, false);
     }
 
-    /** Every call of the stream, for each fault: about 9,600 runs, 140 s. */
+    /**
+     * Every 5th call of the stream (and the first three), for each fault, new and reopened,
+     * from an offset of the day, so that five nights run every call: about 3,900 runs, 160 s
+     * on F53 in a night's load. Every call took 806 s with the file calls' test (2026-11-06).
+     */
     @Nano("night")
     public static void testStreamLayerAll() throws Exception {
-        report(sweep(Layer.STREAM, 1, 0), true);
+        long day = java.time.LocalDate.now().getDayOfYear();
+        System.out.println("StorageFaultTester: every 5th stream call from " + (4 + day % 5));
+        report(sweep(Layer.STREAM, 5, day), true);
     }
 
-    /** Every file call, for each fault: about 750 runs, 17 s. */
+    /** Every file call, for each fault, new and reopened: about 1,190 runs, 40 s. */
     @Nano("night")
     public static void testIoLayerAll() throws Exception {
         report(sweep(Layer.IO, 1, 0), true);
