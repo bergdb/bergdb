@@ -469,6 +469,23 @@ tree (`land.sh`); items-only commits without it.
 * **This morning, items only**: 019-35 (Q-B's losses), Q-A's results
   (015-86), W7's results (016-10, 016-02), this Outcome.
 
+### Open todo entries
+
+The rows of the Open tables in 015's and 019's readmes, at 15:00 on
+2026-11-05 (`main` at 1068442) and at 07:00 on 2026-11-06 (8df56fc):
+
+| List  | 15:00, 2026-11-05 | 07:00, 2026-11-06 |
+|---|---|---|
+| 015   | 54 | 16 |
+| 019   | 2  | 7  |
+| Total | 56 | 23 |
+
+015 lost the 38 entries closed in the night. 019's two open entries at
+15:00, 019-01 and 019-02, were fixed in the night; the seven open now
+are all new since 15:00: 019-07 (from Frans's decision on 015-73 at
+15:35; it waits for the next change of the record format), 019-15, 30,
+31, 32 and 33 (found by the harnesses), and 019-35 (Q-B).
+
 ### The night
 
 * Q-A (22:15 to 23:33, 015-86's measurements): the start's check not
