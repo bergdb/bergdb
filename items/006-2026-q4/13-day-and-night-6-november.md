@@ -105,6 +105,13 @@ The ten points of 006-12, section 8, one at a time with Frans.
    recommend.": R6 (01b0493, 8e9eccc, c73daba) and R7 (the night's
    concurrency fixes: 015-66, 67, 70, 82, 80), read-only, at xhigh.
 
+9. Behaviour changes in `releases/next.md` (015-55, 015-57, 015-41's
+   touch of the experimental object path). Frans, 11:33: "Yes." to keep
+   all three.
+10. "Built by Claude" in the headers of 018-02, 018-04 and 018-07.
+    Frans, 11:35: "As recommended.": (b), the lines moved to each item's
+    Log; done by the coordinator.
+
 ### W3. `night.sh` without a fixed time
 
 Frans, 11:21: "By the way, I think we should remove the fixed-time
@@ -168,6 +175,7 @@ session continues with `/coordinator resume` (013-02).
 * 11:26 `night.sh`'s launchd job unloaded; 11:27 agent n1 (the words).
 * 11:29 Point 8 decided; reviewers R6 and R7 started.
 * 11:33 n1's words committed.
+* 11:35 Points 9 and 10 decided; 006-12's list done. Agent f32 started (019-37, then 019-32).
 
 
 ## 8. Outcome

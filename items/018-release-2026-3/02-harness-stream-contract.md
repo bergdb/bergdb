@@ -2,8 +2,7 @@
 ========================================
 
 Created 2026-11-05 by Frans Lundberg, who chose harness 6.3 of 018-01 as
-the first (2026-11-05, 10:27). Built by Claude (Opus 5.5, Claude Code)
-for the day's session bergdb-e8.
+the first (2026-11-05, 10:27).
 
 **Status: built; runs in `before-commit.sh`'s unit tests and in
 `night.sh`'s night tests.** It fails on each of the six known faults of
@@ -424,3 +423,7 @@ time) and the night tests (20 s). BEFORE COMMIT OK.
 (Frans, 12:30), and with it check 13, `StrictStream`'s kind
 SEEK_AFTER_APPEND and call SEEK_FIRST_POS, and `Impl.seekUnit()`;
 sections 1, 2.1, 2.2 and 2.4 say so.
+
+2026-11-05. Built by Claude (Opus 5.5, Claude Code) for the day's session
+bergdb-e8. (Moved here from the header on 2026-11-06, at Frans's word,
+11:35: 006-12, section 8, point 10, option (b).)

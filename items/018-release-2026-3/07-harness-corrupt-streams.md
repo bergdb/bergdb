@@ -3,8 +3,7 @@
 
 Created 2026-11-06 by Frans Lundberg, as harness 6.1 of 018-01 (W2), in
 the night 006-12 (Frans, 2026-11-05, 21:33: "Will you fix all bugs?
-[...]"). Built by Claude (Opus 5.5, Claude Code), a harness agent of that
-night.
+[...]").
 
 **Status: built; runs in `before-commit.sh`'s unit tests (a sample, about
 2 s) and in `night.sh`'s night tests (the full set, 64 s).** Every
@@ -424,3 +423,7 @@ are in `KNOWN`, marked when a copy is made and counted as known;
 checksums in the stream are 017-08. Seed 1's sample, seeds 2 to 5, and
 the full sets of seeds 20398 and 20399 pass (section 5.3). Sections 1,
 2, 3, 4, 6 and 8 updated. BEFORE COMMIT OK.
+
+2026-11-06. Built by Claude (Opus 5.5, Claude Code), a harness agent of
+the night 006-12. (Moved here from the header at Frans's word, 11:35:
+006-12, section 8, point 10, option (b).)

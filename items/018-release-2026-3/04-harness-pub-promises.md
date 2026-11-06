@@ -2,8 +2,7 @@
 ===========================================
 
 Created 2026-11-05 by Frans Lundberg, as harness 6.7 of 018-01 (W2), in
-the night 006-12 (Frans, 21:33: "Will you fix all bugs? [...]"). Built
-by Claude (Opus 5.5, Claude Code), a harness agent of that night.
+the night 006-12 (Frans, 21:33: "Will you fix all bugs? [...]").
 
 **Status: built; runs in `before-commit.sh`'s unit tests (1.5 s) and in
 `night.sh`'s night tests (100 s).** It fails on each of the six known
@@ -425,3 +424,7 @@ the new database's own transaction. The unit tests, the night tests and
 seeds 1 to 30 with nothing skipped pass (section 5).
 `releases/next.md`: Pub API (Q2) and Documentation. By agent p5 of
 coord-1106.
+
+2026-11-05. Built by Claude (Opus 5.5, Claude Code), a harness agent of
+the night 006-12. (Moved here from the header on 2026-11-06, at Frans's
+word, 11:35: 006-12, section 8, point 10, option (b).)
