@@ -136,6 +136,18 @@ Review R7 (11:55): the night's concurrency fixes 015-66, 67, 70, 82 and
 confirmed by a run; C findings registered as 019-41, with C4 a line in
 019-36 and C5 in 019-40. No shared field needs a new jcstress test.
 
+### W4. Release 2026.4: a bug-free database
+
+Frans, 11:58: "I would like to discuss next release, 2026.4. The overall
+theme is: a bug-free database. We add the non-Core part of the database
+covering all functionality available to a user of it. Including indexing,
+and serialization of Java objects." To the proposed first step (an
+inventory, keep, simplify or drop per feature) and two questions, 12:05:
+"Create a new item for it. nnn-release-2026-4. I like your plan. Start
+the agent now." "No, nothing in particular is off the table. No need for
+any backwards-compatibility. API can change." User indexes: "Yes. That is
+included." Done: 020-release-2026-4 (92844c2); agent v1 writes 020-01.
+
 ### W3. `night.sh` without a fixed time
 
 Frans, 11:21: "By the way, I think we should remove the fixed-time
@@ -169,7 +181,37 @@ on), and P13, KISS (Frans, 09:38 and 09:47).
 
 ## 5. Timeline
 
-None yet.
+Frans, 12:14: "I am about to go soon. Is your plan for working unattended
+in place? [...] From now on I expect to check in occasionally during the
+afternoon. Likely from my mobile. I expect a morning report by 07:00 with
+the status of the unattended work session. [...] Hopefully release 2026.3
+can be made tomorrow in the morning. That is our goal. Use up to 90% of
+the available Claude usage." Unattended from 12:20 to 2026-11-07, 07:00.
+
+* **Until 20:15, the day's fixes land** (each gated, under the gate lock):
+  019-32 (f32), 019-39 (i39), 019-41 (f41), then 019-40 (R6's C
+  findings); 019-36's fix if q1's s1 measurement shows waits over 20 ms
+  and it can land in time; the documentation read through (d30, Ready
+  4); harness 6.6's jcstress run on s1 (j66). The inventory 020-01 (v1,
+  xhigh) is for 2026.4 and lands any time (items only).
+* **20:15, `main` frozen** for the release.
+* **About 20:30, the release candidate** (018-09, agent r30's scripts):
+  commit A (`BuildInfo` at 2026.3), the jar, its tests on F53 with JDK 27
+  and 17, s1's chain, StreamDigest against 2026.2's decided digests.
+* **20:45 to about 02:45, `night.sh large`** on `main` under the gate
+  lock (`/Users/f/fl/bench/006-13/night/chain.sh`, started 12:15), then
+  jcstress on F53 (harness 6.6).
+* **02:00 to 06:00, block-q** (q1's script; it waits for the chain): 019-36
+  measured on F53, then 019-35's pairs. W7's rerun moves to another night.
+* **06:00 to 07:00, the morning**: the results into the items, this plan's
+  Outcome, a summary in `news.md`, the report to Frans by 07:00.
+* **At Frans's word**: R8 and R9 (the files of `releases/2026.3/`, commit
+  B and the tag `release-2026.3`, local), about 30 minutes.
+
+Check-ins every 20 minutes from 06:00 to 01:59; none from 02:00 to 05:59
+(the quiet block). The watchdog runs to 07:00. Agents at high (v1 at
+xhigh); at most about 6 at a time, more when some only wait for their
+runs; usage up to 90 % of the week.
 
 
 ## 6. If the coordinator stops
@@ -205,6 +247,12 @@ session continues with `/coordinator resume` (013-02).
 * 11:48 Agents i38, i39, j66, f06 started (high).
 * 11:50 019-37 done: e7102b2 on `main`.
 * 11:55 Review R7 done; 019-41 registered; agent f41 started.
+* 12:00 i39: a full heap in a fresh JVM can still hang a sync (first CAS links); the coordinator: no warming (Frans, 10:18), a sentence on the limit instead.
+* 12:02 019-38 done: cecaf4c on `main`. Agent q1 started (tonight's block for 019-35 and 019-36).
+* 12:07 020 created; agent v1 started (020-01).
+* 12:08 v1 restarted at xhigh (Frans, 12:07: "This is important.").
+* 12:15 Unattended set up: the night chain (night.sh large at 20:45, then jcstress on F53), the watchdog to 07:00, check-ins; agents r30 (the release's scripts, 018-09) and d30 (the documentation, Ready 4) started.
+* 12:16 015-06 done: 4248141 on `main` (`BEFORE COMMIT OK`, LEVEL 2 OK).
 
 
 ## 8. Outcome
