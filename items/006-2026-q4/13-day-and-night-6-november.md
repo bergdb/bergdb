@@ -306,6 +306,7 @@ session continues with `/coordinator resume` (013-02).
 * 13:14 Agents f43 (019-43, the blocker) and f44 (019-44) started.
 * 13:16 f43: 019-43 is the harness's oracle (a read racing the stop's close), being checked that nothing a user sees says "failed".
 * 13:20 019-44 done: a9da30c.
+* 13:35 019-43 done: b63273d, harness 6.2's oracle, not the Core (a read that the stop's close overtook; nothing a user sees reports it; the Core unchanged); loops of 100 runs on s1 (JDK 17, 27) and F53 (JDK 17) clean. 019's open entries are now 019-35 and 019-36 only, both Investigate: no known fault of the Core is open (018-01, "Ready", 1), pending tonight's runs.
 
 
 ## 8. Outcome
