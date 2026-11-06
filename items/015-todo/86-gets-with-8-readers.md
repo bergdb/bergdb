@@ -19,7 +19,14 @@ sum (1.97 times), and its longest gets were longer (37 to 71 ms against
 So, as Frans decided, the decision is his: left, the Recommendation's
 measurements (7 threads; 8 threads with `-XX:ConcGCThreads=1`; the get's
 parts timed in ScaleBench) before any change to `java/`, then his
-decision.
+decision. **Measured in Q-A of night 006-12, 2026-11-05, 22:50 to 23:33
+(Results, Q-A of night 006-12): the long gets with 8 readers are readers
+off their cores on a full machine.** With 7 readers both builds have 32
+to 38 gets over 10 ms in four runs, no rise with the fix; with 8 readers
+and `-XX:ConcGCThreads=1`, 22 and 85 (ZGC then stalls allocations); the
+long gets' time is 99.7 percent off core, half of them within the
+kernel's read. Left: Frans's decision (Options for Frans's decision,
+2026-11-06).
 Kind: investigate. Created 2026-10-28 as 005-65.
 
 Registered at Frans's decision on item 009's target 2 (2026-10-28,
@@ -878,8 +885,283 @@ after-load call is) before any change to `java/`, which is Frans's to
 decide.
 
 
+Results, Q-A of night 006-12
+----------------------------
+
+Written 2026-11-06 by the night's coordinator's agent, from the block's
+files; the numbers from its digest (`out/summary.txt`) and the steps'
+`sum.py`, `gcsum.py` and `parts.py` outputs, the stalls by phase counted
+from the GC logs.
+
+**What ran.** Q-A, the first quiet block of night 006-12 on F53 (006-12,
+section 3, W2, "Q-A"): the marker at 22:15, the runs 2026-11-05,
+22:50:22 to 23:33:31. Everything is outside the repository (013-01,
+section 4) in `/Users/f/fl/bench/006-12/qa/`: `README.md` (how it ran),
+`block.sh`, `step.sh` (a copy of `threads.sh` that only reads the
+repository), `results.txt`, `block.log`, `out/summary.txt` (the digest),
+and per step `out/STEP/` (`runs.txt`, the runs' text and JSON, the GC
+logs, `summary.txt`, `gc.txt`, for step 3 `parts.txt`). ScaleBench C as
+in the AB/BA step (State): 10M key24 keys, 665 MB budget, ZGC, 2,660 MB
+heap; the builds of `/Users/f/fl/bench/006-10/e65-builds`, A `5a6befd`
+(`main` before the fix, jar `79925f95`) and B `988fe1a` (the fix, jar
+`2b5202f0`); four rounds in turns, AB BA AB BA; each run 30 s of 7
+threads, then 30 s of 8 threads, then 20 s of 8 sampled readers, so each
+step has its own 8-thread control in the same JVMs. One 10M load for all
+steps, with B's jar (118.9 s). The steps, in Frans's order, each exit 0,
+"OK, 0 problems", 13 minutes each:
+
+1. `t7`: 7 and 8 threads.
+2. `cgc1`: the same with `-XX:ConcGCThreads=1` (otherwise ZGC used up to
+   3 workers a cycle).
+3. `parts`: as `t7`, with ScaleBench patched by `ScaleBench-086-parts.diff`
+   on top of `ScaleBench-065.diff` (`qa/sb3/`, compiled against the two
+   jars). For each reader it times the stream's reads (the `FileStream`
+   under `BufferedStream`: the kernel's read and the `FileChannel`'s own
+   locks) and the after-load calls, and reads the reader's CPU time and
+   monitor counts at each batch of 64 gets. Each get over 10 ms is
+   recorded with its parts and the GC pauses and safepoints that overlap
+   it, and `parts.py` puts it in the first class that holds at least half
+   its time: read (the stream's reads), after-load, safepoint, shared
+   batch (another long get in its batch), blocked (on a monitor, outside
+   the reads), off core (the batch's wall time less its CPU time, not
+   blocked: runnable without a core, or waiting in the kernel), on core,
+   mixed. Blocked time is in whole ms; a batch's figures include its
+   other 63 gets (about 0.7 ms).
+
+**The quiet verdict.** `results.txt` has every step "NOT QUIET (load 1.72
+at 22:50)": the block waited from 22:15 for a 1-minute load below 1.5
+twice 30 s apart, and it was below 1.5 only twice, not in a row (1.39 at
+22:27:14, 1.48 at 22:45:50; otherwise 1.49 to 3.33). Nothing else was
+running that the check looks for (no other JVM, gate, build, Lean or
+`night.sh` in any check); the top processes were `sysmond`, the Claude
+sessions, Finder, VS Code, the Wi-Fi drivers, and once ControlCenter and
+WindowServer (22:41). At 22:50 it ran, as planned. The loads of 9.76 to
+11.56 at the later steps' starts and at the end are the benchmark's own:
+each step started as the one before ended, and within the phases the
+machine was at 8.62 to 9.77 of its 10 cores, of which the other processes
+used 0.14 to 0.29 (one phase 0.45: `cgc1`, A's round 2, 8 threads), as in
+the AB/BA step (0.16 to 0.24). The noise is that of the AB/BA step or
+less, with 8 threads:
+
+| Runs                | Build | Gets > 10 ms, per round | Sum   | CV, rounds | CV, gets a second |
+|---|---|---|---|---|---|
+| AB/BA, 2026-11-05   | A     | 116 114 162 121         |   513 | 18 %       | 0.84 %            |
+| AB/BA, 2026-11-05   | B     | 244 287 216 262         | 1,009 | 12 %       | 1.42 %            |
+| Q-A, `t7`           | A     | 139 134 124 163         |   560 | 12 %       | 1.60 %            |
+| Q-A, `t7`           | B     | 239 252 246 231         |   968 |  4 %       | 0.76 %            |
+| Q-A, `parts`        | A     | 157 151 153 179         |   640 |  8 %       | 0.55 %            |
+| Q-A, `parts`        | B     | 256 264 217 284         | 1,021 | 11 %       | 1.32 %            |
+
+So the verdict does not weaken these comparisons: the builds ran in turns,
+the 8-thread counts are within 10 percent of the AB/BA step's (560 and
+968 against 513 and 1,009), and the fix has more in 4 of 4 rounds again.
+
+**The three measurements.** Sums of the four runs; the longest get the
+most of the four; machine cores the mean of the phases.
+
+| Step    | Build     | Threads | Gets a second | Gets > 10 ms | Per round       | Longest, ms | After-load > 10 ms | Machine cores |
+|---|---|---|---|---|---|---|---|---|
+| `t7`    | `5a6befd` | 7 | 725,011 |    36 | 20 3 3 10       |  24.0 |   6 | 9.00 |
+| `t7`    | `988fe1a` | 7 | 732,643 |    32 | 6 6 16 4        |  33.2 |   0 | 9.10 |
+| `t7`    | `5a6befd` | 8 | 706,957 |   560 | 139 134 124 163 |  52.5 | 107 | 9.56 |
+| `t7`    | `988fe1a` | 8 | 710,889 |   968 | 239 252 246 231 |  48.8 |  22 | 9.64 |
+| `cgc1`  | `5a6befd` | 7 | 742,355 |    93 | 35 0 42 16      | 219.1 |   2 | 8.79 |
+| `cgc1`  | `988fe1a` | 7 | 751,203 |   184 | 37 70 35 42     | 246.1 |   0 | 8.75 |
+| `cgc1`  | `5a6befd` | 8 | 699,004 |    22 | 6 2 12 2        |  16.9 |   3 | 9.70 |
+| `cgc1`  | `988fe1a` | 8 | 716,414 |    85 | 19 43 17 6      | 111.6 |   4 | 9.70 |
+| `parts` | `5a6befd` | 7 | 703,578 |    37 | 9 6 11 11       |  30.8 |   5 | 8.97 |
+| `parts` | `988fe1a` | 7 | 707,185 |    38 | 4 6 16 12       |  26.3 |   2 | 9.02 |
+| `parts` | `5a6befd` | 8 | 687,716 |   640 | 157 151 153 179 |  34.4 |  99 | 9.56 |
+| `parts` | `988fe1a` | 8 | 696,008 | 1,021 | 256 264 217 284 |  89.1 |  22 | 9.60 |
+
+**(1) 7 threads (`t7`).** With 7 readers the gets over 10 ms fall from 560
+to 36 (A) and from 968 to 32 (B): 0.41 and 0.36 in a million gets, against
+6.6 and 11.4 with 8. **The rise with the fix is gone**: B has fewer than A
+in sum (0.89 times), more in 2 of the 4 rounds; by the AB/BA step's rule
+(at least 3 of 4 rounds and 1.3 times) it is not the fix's. `parts`
+repeats it: 37 and 38 (1.03 times; B more in 2 rounds, as many in 1). The
+longest gets with 7 readers are still 24.0 and 33.2 ms (`parts`: 30.8 and
+26.3): rare, not gone. The readers' CPU: with 7, 6.77 to 6.81 cores of 7
+(97 percent of their time), with 8, 7.33 to 7.44 of 8 (92 to 93 percent);
+blocked on monitors, A 0.80 and B 0.24 percent with 7, A 2.40 and B 1.08
+with 8. 7 is one fewer than F53's 8 performance cores, and with it the
+machine is at 9.0 of 10 cores rather than 9.6; the step does not tell
+which of the two matters (the 2 efficiency cores' share is not
+measured).
+
+**(2) 8 threads with `-XX:ConcGCThreads=1` (`cgc1`).** With the same 8
+readers, ZGC limited to one worker, the gets over 10 ms fall from 560 to 22
+(A, minus 96 percent) and from 968 to 85 (B, minus 91 percent): 0.26 and
+0.99 in a million. The fix has more in 4 of 4 rounds (3.9 times, 63 more;
+without B's round 2, which had allocation stalls in its 8-thread phase, 42
+against A's 20 in the other three rounds). The longest with 8: A 11.4 to
+16.9 ms, B 16.8 to 20.9 ms and 111.6 ms (that stall). The machine was as
+busy as without the setting (9.70 cores); the readers got more of it, 7.65
+to 7.71 cores of 8 in 7 of the 8 phases (one 7.32) against 7.33 to 7.44,
+and the rest of the process less, 1.42 to 1.64 cores against 1.66 to
+1.82. **The cost: one worker does not keep ZGC ahead.** The GC logs
+have 1,196 allocation-stall cycle counts (`gcsum.py`; 0 in `t7` and
+`parts`) and 65 safepoints over 2 ms, the
+longest 53.2 ms (`t7`: 33, the longest 19.4 ms). Counted by phase (the
+GC logs' stall lines): in the 7-thread phase, the first after the
+warm-up, in 7 of 8 runs (14 to 72 stalls a run, the longest 100.2 to
+246.0 ms: the 7-thread rows' longest
+gets and most of their 93 and 184); in the 8-thread phase only in B's
+round 2 (34, the longest 111.3 ms); after it, in the sampled phase, in 3
+of B's runs. So the setting is no option for this heap (2,660 MB, 4 times
+the budget); it shows that with a core left by the collector, 8 readers
+have about as few long gets as 7.
+
+**(3) The get's parts (`parts`).** The instrumentation cost 2.1 to 3.5
+percent of the gets a second against `t7`; the counts are 3 to 19 percent
+above `t7`'s. The recorded gets over 10 ms (643 and 1,026 with 8 threads,
+the histogram's 640 and 1,021), sums of the four runs:
+
+| Build     | Threads | Recorded | Read | After-load | Blocked | Off core | Other | Their ms | Off core ms | Read ms | Blocked ms |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `5a6befd` | 7 |    37 |  12 |   5 |   2 |  16 | 2 |    513 |    511 |   183 |    67 |
+| `988fe1a` | 7 |    38 |  19 |   2 |   4 |  13 | 0 |    512 |    510 |   246 |    89 |
+| `5a6befd` | 8 |   643 | 267 | 100 |  61 | 215 | 0 |  7,893 |  7,869 | 3,321 | 2,192 |
+| `988fe1a` | 8 | 1,026 | 499 |  22 | 110 | 393 | 2 | 12,980 | 12,949 | 6,187 | 2,236 |
+
+"Other": shared batch (A 2 with 7 threads, B 2 with 8); no get was in the
+classes safepoint, on core or mixed (safepoints overlapping the long gets:
+2 and 3 ms in all, with 8). After-load ms with 8: A 1,147, B 282.
+
+* **The long gets' time is off core.** 99.7 and 99.8 percent of it is wall
+  time without CPU time (with 7 threads too): the reader was not running.
+  It is not BergDB's code running, not the collector's pauses, not a
+  safepoint. The batches of the 40 longest gets had 0.5 to 1.7 ms of CPU
+  for wall times of 23 to 91 ms.
+* **About half of it falls within the stream's read**, the kernel's read
+  from the OS cache: the class read 267 of 643 (A) and 499 of 1,026 (B),
+  42 and 48 percent of the time; the stream reads over 10 ms 260 and 490
+  (with 7 threads 13 and 19), the longest 34.4 and 35.2 ms. The readers'
+  stream reads are 1.674 a get for both builds and take 131 to 136 s of
+  each 8-thread phase's 240 reader-seconds. The rest is off core outside
+  the read (215 and 393), and blocked on a monitor (61 and 110; 2,192 and
+  2,236 ms, 28 and 17 percent of the time; the monitor is not recorded,
+  and the samples have the readers BLOCKED most in `BufferedStream.read`
+  with B, 0.5 to 1.0 percent, in `Eviction.wake` with A).
+* **The fix's extra long gets** (383 more): read +232, off core +178,
+  blocked +49, after-load -78. The fix removes most of the after-load
+  class (100 to 22: the hot monitor, as designed); what it adds are gets
+  off core, in the read and outside it.
+* What `parts.py` cannot tell: whether a reader off core was runnable
+  without a core or waiting in the kernel (for example on the file's
+  locks in the read); the efficiency cores' share. Not measured.
+
+**What they explain.** The hypothesis of 2026-10-28 (a machine with as
+many runnable threads as cores) is supported for the gets over 10 ms with
+8 readers, and so for the fix's rise:
+
+* With 8 readers, ZGC's 3 workers and the eviction thread there are more
+  runnable threads than F53's 10 cores at times; a reader off its core for
+  10 to 90 ms makes a long get, wherever it is in the get (half the time
+  in the kernel's read, where most of its time goes).
+* One reader fewer (`t7`) or two ZGC workers fewer (`cgc1`, the same 8
+  readers reading the same file) take the count down by 91 to 96 percent.
+  A cause in the kernel's read that grew with the readers would not go
+  with fewer collector workers; a cause in BergDB's code would show as on
+  core or blocked time, which is at most 28 percent of it.
+* The rise with the fix comes only where the machine is full: with 7
+  readers none (32 against 36), with 8 readers 1.6 to 1.7 times. A
+  reading, not shown: the fix's readers block less (1.08 against 2.40
+  percent of their time) and its eviction thread runs more (0.313 against
+  0.285 cores), so more threads are runnable on a full machine and readers
+  lose their cores more often. On an oversubscribed scheduler a small
+  change of demand makes a large change in the waits.
+* Not explained: why with 7 readers the longest gets still reach 24 to 33
+  ms (off core too, rare: 0.4 in a million).
+
+
+Options for Frans's decision, 2026-11-06
+----------------------------------------
+
+The evidence is in Results, Q-A of night 006-12. A change to `java/` is
+Frans's to decide (Done when).
+
+* **Option 1: keep the fix and close 015-86 as explained (recommended).**
+  What changes: no code. This entry gets its Outcome (the long gets with 8
+  readers on F53 are readers off their cores with as many runnable threads
+  as cores, the operating system's scheduling, outside the ~20 ms target
+  for BergDB's code, Frans's decision of 2026-10-29), and Status "done".
+  The text that cites it changes with it: docs/levels.md section 7's case
+  "not yet explained" (it still cites 005-65) becomes explained, and the
+  next release's notes (`releases/next.md`; 2026.2's notes have "As many
+  readers as cores" in their Limits) get the measured advice: readers at
+  most the cores less the collector's workers (on F53 7 readers: 0.4 gets
+  over 10 ms in a million, the same with and without the fix). Frans may
+  also have 009's target 2 stated that way (the first Recommendation's (b);
+  not reworded on 2026-10-29). Cost: items and docs text, about half an
+  agent-hour, no gate. It leaves: with 8 readers on F53, 1.6 to 2.0 times
+  as many gets over 10 ms as before the fix (about 11 to 12 in a million),
+  longest gets of 30 to 89 ms; with 7 readers rare gets of up to 33 ms;
+  and the open split of off core (runnable or waiting in the kernel).
+* **Option 2: revert the fix (`988fe1a`).** What changes: `Eviction.wake`,
+  `afterLoad` and `EvictorRun` back to `5a6befd`'s, every load over the
+  trigger into `evictorLock` again; the commit's other two changes should
+  stay (`sweep`'s trigger computed under its monitor, against the
+  `setBudget` race, and an interrupt with a request pending not ending the
+  thread), so it is a partial revert, with `testNoLostRequest` adjusted.
+  Cost: a change in `Eviction`, `before-commit.sh`, `level4.sh` (the
+  eviction mechanism), one 15-minute run in a quiet block; about 2
+  agent-hours. Gain: with 8 readers about 40 percent fewer gets over 10 ms
+  (560 against 968, 513 against 1,009), none with 7. It brings back
+  BergDB's own share (`t7`, 8 threads): 67,000 to 78,000 entries into
+  `evictorLock` a second, readers blocked 2.40 percent of their time
+  against 1.08, 107 after-load calls over 10 ms against 22, 26.8 waits over
+  10 ms a run against 5.5. It trades a cost in BergDB's code for fewer of the scheduler's
+  gets, on a full machine only.
+* **Option 3: keep the fix and measure more before closing.** What: 8
+  readers with `-XX:ConcGCThreads=2` (does ZGC keep up, with no
+  allocation stall, while most long gets go?), as `step.sh` with that
+  option, both builds in turns; it would give users with as many readers
+  as cores a measured JVM setting, as a separate recommendation (the GC
+  choice is not BergDB's code; Frans, 2026-10-27). The split of off core
+  into runnable and waiting in the kernel needs a scheduler trace, which
+  needs root on F53 (no passwordless sudo): not proposed. Cost: about 15
+  minutes of a quiet block, an agent-hour, no change to `java/`. It leaves
+  the entry open until then; the outcome would be Option 1 with one more
+  line of advice.
+* **Option 4: a change against the blocked share.** Every stream read
+  enters `BufferedStream`'s monitor (the bounds check in `read`, about 1.2
+  million entries a second with 8 readers), and with the fix it is where
+  the samples find readers BLOCKED most. The blocked class is 110 of B's
+  1,026 long gets (17 percent of their time): the most such a change could
+  remove. Change: the lengths read without the monitor for a read wholly in
+  the file. Cost: a change to a core storage class under concurrent
+  appends, its tests, `before-commit.sh` and the level scripts, a `parts`
+  run; about 3 to 5 agent-hours. It leaves the off-core gets (over 80
+  percent of the time), and by the fix's experience readers that block less
+  stay runnable more on a full machine, so it may not lower the count.
+  Not recommended now.
+
+**Recommended:** Option 1. The fix removes BergDB's own share as designed;
+the gets it seems to add are the scheduler's on a full machine, and they
+go, for both builds alike, when one reader or two collector workers fewer
+leave a core. Option 3 only if Frans wants a JVM setting to recommend for
+as many readers as cores.
+
+
 State
 -----
+
+**2026-11-06: Q-A run (night 006-12); Frans's decision left.** Known
+(Results, Q-A of night 006-12): the gets over 10 ms with 8 readers, and the
+fix's rise of them, are readers off their cores on a full machine: with 7
+readers 36 and 32 in four runs (no rise), with 8 readers and
+`-XX:ConcGCThreads=1` 22 and 85 (but allocation stalls of up to 246 ms),
+with 8 readers 560 and 968; their time 99.7 percent off core, about half
+within the kernel's read, the after-load class cut from 100 to 22 by the
+fix. Q-A ran NOT QUIET by its start check (load 1.72 at 22:50), with noise
+as low as the AB/BA step's. Frans decides: Options for Frans's decision,
+2026-11-06 (1, keep the fix and close as explained, recommended; 2, revert
+the fix; 3, measure `ConcGCThreads=2` first; 4, the `BufferedStream`
+monitor). Next step: by his decision; with Option 1, this entry's Outcome
+and Status "done", 015's readme line, and the texts of docs/levels.md
+section 7 and `releases/next.md` by whoever keeps them; no `java/`, no
+gate.
 
 **2026-11-05: Frans's decision, and the AB/BA step not yet run.** Frans,
 decided 2026-11-04/05 (asked 2026-11-04, 19:23; answered 2026-11-05,
@@ -1025,7 +1307,10 @@ First step
 `.READY` marker. Done 2026-10-28, 19:34 to 19:50 (Results). Frans decided
 and the fix is in `main`, 2026-10-29 (Decision and fix). The rerun ran
 2026-11-04 (Results, 2026-11-04 night). Next: Frans's decision on its
-Recommendation (State).
+Recommendation (State). The AB/BA step ran 2026-11-05 (State), and
+the Recommendation's measurements in Q-A of night 006-12 (Results, Q-A of
+night 006-12). Next: Frans's decision (Options for Frans's decision,
+2026-11-06).
 
 
 Size and order
@@ -1167,3 +1452,13 @@ Left for the next quiet block, with the command and how to read it.
 second quiet block: the rise of the gets over 10 ms is the fix's (1,009
 against 513 with 8 threads, more in 4 of 4 rounds). Left: the
 Recommendation's measurements, then Frans's decision (State).
+
+2026-11-06. Q-A of night 006-12, written by the night's coordinator's
+agent: the three measurements, run 2026-11-05, 22:50 to 23:33, NOT QUIET
+by the start check (load 1.72), noise as in the AB/BA step. Gets over
+10 ms, A against B: 7 threads 36 and 32 (no rise); 8 threads 560 and 968;
+8 threads with `-XX:ConcGCThreads=1` 22 and 85, with allocation stalls of
+up to 246 ms; the long gets' time 99.7 percent off core, about half within
+the kernel's read. Written up in Results, Q-A of night 006-12, with Options
+for Frans's decision (Option 1 recommended: keep the fix, close as
+explained); State updated.

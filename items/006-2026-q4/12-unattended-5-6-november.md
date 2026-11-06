@@ -1,8 +1,8 @@
 # 006-12 Unattended work, 5 to 6 November 2026
 
-Created 2026-11-05 by Frans Lundberg. Status: in progress (since 14:38). The
-plan for the unattended work from 2026-11-05, 15:00, to 2026-11-06,
-07:00, the progress through the night, and the outcome. The way of
+Created 2026-11-05 by Frans Lundberg. Status: done (2026-11-06; see
+Outcome). The plan for the unattended work from 2026-11-05, 15:00, to
+2026-11-06, 07:00, the progress through the night, and the outcome. The way of
 working is 013-01's (the night) and 013-02's (the coordinator), as in
 006-10.
 
@@ -422,8 +422,139 @@ Times from `date`, CET.
 * 04:24 Harness 6.4 landed (18b374d; 018-06): it fails on 015-50, 015-55
   and 015-76, and found no new fault in 584 runs. All agents stopped; the
   last landing of the night.
+* 05:08 to 05:49 Q-B, quiet: `performance.sh ab`, quick suite, 1068442
+  against 417e555, three ABBA passes, each exit 0. Losses beyond the CV
+  in every pass: the Core's warm reads of `read-1k` (gets -1.0 to -2.4 %,
+  `get_longkey` -3.0 to -6.4 %, scans -1.5 to -3.6 %) and the restart of
+  `w-uni-1k-inf` (+2.3 to +2.7 %); the writes within 0.7 %. Not traced
+  in the night: registered as 019-35, with the leads (dc46c1e's check
+  in every call; the cache's accounting; R5's F5 for the restart).
+* 06:12 The morning: two agents at high write Q-A's results into 015-86
+  and W7's into 016-02 (items only).
 
 
 ## 8. Outcome
 
-(to be written by 07:00 on 2026-11-06)
+Written 2026-11-06, 06:20, by coord-1105.
+
+### Done in `main`
+
+69 commits, 1068442..417e555, and this morning's, items only. Each
+that changed `java/` landed after `before-commit.sh` on the combined
+tree (`land.sh`); items-only commits without it.
+
+* **W1, 015's fixes**: 38 entries closed: 015-04, 08, 11, 19, 26, 31 to
+  35, 38, 41, 50 to 53, 55, 57, 58, 60, 63, 65 to 73, 75, 76, 78 to 83;
+  015-73 and 015-51 by Frans's decisions (15:35, 21:03), 015-76 in
+  Javadoc only; and 015-49's S2-F24 (the entry stays open for its other
+  faults). 015-80 by option 2 (Frans, 21:46: a fair `ioLock` in
+  `BufferedStream`), checked by review R4 before it landed.
+* **Reviews R1 to R5** (`/Users/f/fl/bench/006-12/review-r1.md` to
+  `review-r5.md`), read-only, of the night's fixes but two (item 8
+  below): one regression (R1's B1 in dc46c1e, fixed by 7a80d0d), older
+  faults registered and fixed (019-08, 019-09), the rest words and
+  tests, fixed.
+* **W2, the harnesses of 018-01, section 6** (Frans, 21:33: code, not
+  only performance tests): 6.1 corrupt streams (018-07), 6.2 storage
+  failures (018-03), 6.4 sizes and times (018-06), 6.5 eviction's
+  accounting (018-05), 6.7 the Pub API's promises (018-04). Each fails on
+  the known faults of its class with their fixes taken out, passes on
+  `main`, runs a sample in the unit tests (seconds) and its full set in
+  the night tests. 6.6 (concurrency) not built.
+* **New faults found and fixed** (019): 019-01, 02, 08, 09 (Frans's (a)),
+  10, 20, 21 (and R5's F4), 22, 34.
+* **Checks**: LEVEL 2, 3 and 4 OK on 669f0ef and 112ab21 (W1 combined);
+  `night.sh` NIGHT OK at 8130710 (02:10 to 02:54); LEVEL 4 quick OK on
+  59588db.
+* **This morning, items only**: 019-35 (Q-B's losses), Q-A's results
+  (015-86), W7's results (016-10, 016-02), this Outcome.
+
+### The night
+
+* Q-A (22:15 to 23:33, 015-86's measurements): the start's check not
+  quiet (load 1.72), but other processes took 0.14 to 0.29 cores in the
+  runs. With 7 reader threads the fix's rise of the gets over 10 ms is
+  gone (36 without the fix, 32 with it); with 8, 560 and 968.
+  `-XX:ConcGCThreads=1` lowers them (22, 85) but stalls ZGC's
+  allocations up to 246 ms. The long gets' time is 99.7 % off core,
+  about half in the kernel's read. 015-86.
+* Q-W7 (00:15 to 00:48, release 2026.2's numbers), NOT QUIET: props, the
+  pause probe and quick-ab exit 0; sb-m's ZGC runs failed at the JVM's
+  start, as the scripts make `-XX:+Use${gc}GC` and so `UseZGCGC`, and
+  sb-c had no databases (sb-m's runs delete them first). Usable: MEM 191
+  to 129, the heap 243.6 to 185.9 bytes a key, the pause probe's longest
+  get (G1 430.8 to 26.1 ms, ZGC 630.9 to 6.9 ms; upper bounds). 016-10,
+  section 6.
+* Q-B (05:08 to 05:49, quiet): the warm reads of `read-1k` lose 1 to
+  6 % and the restart 2 to 3 %, in every pass; the writes are within
+  0.7 %. Registered as 019-35 with its leads, to trace in a quiet hour.
+* No usage limit, no pause; usage at 06:11: 5h 18 %, week 62 %
+  (ceiling 80 %). Landings conflicted four times in shared readmes
+  (019, 018, 018-01's log); each rebuilt on `main` with both sides kept.
+  `gate.sh` refused every gate for a few minutes at 01:12, its `pgrep`
+  matching a gated `night.sh tests` run; fixed at 01:15.
+
+### For Frans to decide
+
+1. **019-10, R5's F1 and F2**: an `Error` of a stream read now reaches
+   the caller wrapped (`DbFailedException` > `StreamIoException` >
+   `IOException` > `Error`), against docs/levels.md, section 3. (a)
+   document the wrapping; (b) fail the storage, then rethrow the `Error`
+   as it is. Recommended: (b). 019-10, section "For Frans (R5 F1, F2)".
+2. **015-80's C1** (review R4): Reclaim's cut now waits, holding the
+   write lock, for the storage thread's append (up to 5 MB) and its
+   force: tens of ms on F53, seconds on s1, above P1's 20 ms. Recommended:
+   a 019 entry for R4's `tryLock` fix (the cut kept for the next commit
+   while the thread appends), measured on s1; until then a line under P1
+   in 010-01. `review-r4.md`, C1; 015-80.
+3. **019-15**: under key replace, a delete's key keeps
+   `${transactionTime}`, a put's is replaced; the Javadoc says every key.
+   (a) replace the delete's too (a delete's bytes change), (b) words.
+   Recommended: (a). 019-15.
+4. **019-30, 019-31, 019-33** (harness 6.1): a record's time or topPos
+   changed within the checks, whole records cut out of a stream's
+   middle, and a node byte changed between 0x00 and 0xff (Fletcher-16)
+   pass a start. Recommended: (a) for each, outside the fault model for
+   2026.3 as 015-73, and a stronger check with 019-07's record checksum
+   at the next format change. Their entries.
+5. **018-04, section 6, Q1 to Q5**: five points where the Pub API's
+   Javadoc is unclear (an rw transaction's reads of its own writes, a
+   second freeze, `getLookupTime` of a frozen one, a delete of an absent
+   key in `kvs()`, `currentTime` across a restart with a still clock).
+   Answers, then words or harness checks. 018-04.
+6. **015-86**, gets over 10 ms with 8 readers: (1) keep the fix and
+   close 015-86 as explained, with a line in docs/levels.md, section 7,
+   and `releases/next.md`: at most as many readers as the cores less
+   the collector's workers (7 on F53); (2) revert the fix in part; (3)
+   measure `ConcGCThreads=2` first; (4) take `BufferedStream.read`'s
+   monitor out of reads wholly in the file. Recommended: (1). 015-86,
+   "Options for Frans's decision, 2026-11-06".
+7. **W7's rerun** (016-10, section 6): (A) the flag fixed, then all five
+   steps in one quiet block on F53, about 75 minutes, before `night.sh`;
+   (B) sb-m and sb-c only, about 50 minutes; (C) the usable figures into
+   the notes now, and again after the rerun. Recommended: (A) tonight,
+   with a quiet check that an idle F53 can pass (load 1.82 at 00:15 with
+   no run going).
+8. **A review of what landed unreviewed**: 019-34's fix (8e9eccc) and the
+   019-21 follow-up (c73daba); and a second look at the night's
+   concurrency fixes (015-66, 67, 70, 82, 80). Recommended: one review
+   agent at high in the day, as R1 to R5.
+9. **Behaviour changes** to see in `releases/next.md`: 015-55 refuses a
+   user transaction in the last 1,024 database times; 015-57 refuses a
+   null zone; 015-41's fix touched the object-key path of the
+   experimental code, which the night was to leave alone (W1). Recommended:
+   keep them; a look at 015-41's diff (439ec79).
+10. **018-04 and 018-07 name Claude in their headers**, as 018-02 does.
+    Keep them if that was your wish for 018-02; otherwise the words go.
+
+### Left
+
+* 019-32 (a fix: a node's klongs and pointers unchecked at a parse;
+  harness 6.1 skips it), 019-35 (Q-B's losses), 015-06's rest; 015-05
+  and 015-87 wait for Frans. 018-01, section 3.1's table is not updated
+  for the night's 019 entries (019-10, 019-32, 019-34), and its count
+  (54) disagrees with its rows (older).
+* Harness 6.6 (concurrency); 018-01, section 7.
+* Clones in `/Users/f/fl/bench/006-12/` (the agents' and the landing
+  clones) may be deleted; `/Users/f/fl/bench/016/release/rel` keeps the
+  old ScaleBench.

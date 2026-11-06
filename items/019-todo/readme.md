@@ -112,6 +112,7 @@ Open
 | [019-31](31-records-cut-out-undetected.md) | Decide | Whole records cut out of a stream's middle pass a start | decision | waiting |
 | [019-32](32-key-node-klongs-unchecked.md) | Fix | A node's klongs and pointers unchecked: an assert at a start or a read | none | open |
 | [019-33](33-node-checksum-00-ff.md) | Decide | A node byte changed between 0x00 and 0xff passes the checksum | decision | waiting |
+| [019-35](35-night-read-losses.md) | Investigate | The Core's warm reads lost 1 to 6 % in night 006-12 | none | open |
 
 
 Closed
@@ -215,6 +216,9 @@ Files
   019-34, Fix: a meta block's last-transaction position past the stream
   gave an `IllegalArgumentException` at a start (019-01's class); found
   by harness 6.1 (018-07); done 2026-11-06.
+* [35-night-read-losses.md](35-night-read-losses.md). 019-35,
+  Investigate: the Core's warm reads lost 1 to 6 % and the restart 2 to
+  3 % in night 006-12 (its Q-B); to trace to their commits.
 
 
 Log
@@ -327,3 +331,6 @@ Frans; all five in its skip list.
 
 2026-11-06. 019-34 done in night 006-12: recovery refuses a meta block
 whose last-transaction position is outside the stream, before it writes.
+
+2026-11-06. 019-35 registered by night 006-12's coordinator, from Q-B's
+summary: the read losses to trace to their commits.

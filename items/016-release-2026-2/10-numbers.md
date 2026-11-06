@@ -1,7 +1,8 @@
 016-10. Plan: the numbers against 2026.1
 =========================================
 
-Created 2026-11-03 by Frans Lundberg. Status: planned, not started.
+Created 2026-11-03 by Frans Lundberg. Status: run in part on
+2026-11-06, not quiet; a rerun waits for Frans (section 6, 2026-11-06).
 
 The plan for W7 of 016-01 (section 5): 2026.2's numbers against 2026.1,
 with both jars run in turns, on F53 and s1, for the release notes and
@@ -506,3 +507,190 @@ again.
   runs: no conclusion"), so the quick `ab` gives medians and changes only;
   2026.1's quick suite took about 34 s a run (its `runs.txt`), so 3 runs a
   scenario would take about 17 minutes, not 35.
+
+2026-11-06, 06:40, W7's F53 steps in night 3's quiet block (006-12's
+Q-W7), read from their files by an agent of the coordinator; no runs, no
+commit. The block's files are in `/Users/f/fl/bench/016/night3/` (B
+below): `block.sh`, `block.log`, `results.txt`, `out/w7-*.txt`; the steps'
+own outputs in `N/night/out/`.
+
+**What ran.** `B/block.sh` (pid 20050, started 2026-11-05, 10:43, under
+`caffeinate`) wrote its marker at 23:40 and paused mediaanalysisd. No other
+marker and no JVM, gate, Lean or `night.sh` was there, but the 1-minute
+load stayed between 1.35 and 2.50 and was never twice below 1.5. Its
+`top` lines show nothing above a few percent of a core but short peaks
+(VS Code 34 to 90 percent at 23:54, 23:59 and 00:12; mobileassetd 86 and
+mds 52 at 00:04); the rest is the Wi-Fi drivers (`DriverKit-AppleBCMWLAN`,
+`airportd`), the Claude app and CLI, Finder and Chrome. At LATEST, 00:15,
+it ran the five steps `NOT QUIET (load 1.82 at 00:15)`, to 00:48, resumed
+mediaanalysisd, removed the marker and wrote news.md (`FAILED`, "3 of 5
+steps exit 0"). In the runs, ScaleBench measured the other processes at
+0.12 to 0.24 cores of 10 ("machine ... other processes"), in both
+versions' runs alike.
+
+| Step     | Time           | Exit | Result                                              |
+|----------|----------------|------|-----------------------------------------------------|
+| props    | 00:15 to 00:19 | 0    | OK, 3 runs each, ABABAB                             |
+| sb-m     | 00:19 to 00:27 | 1    | the G1 runs OK; neither ZGC run started (a fault)   |
+| sb-c     | 00:27          | 2    | nothing run: no database (the same fault)           |
+| pp       | 00:27 to 00:35 | 0    | OK, 4 runs                                          |
+| quick-ab | 00:35 to 00:48 | 0    | OK; the comparison's exit 1, one unconfirmed alert  |
+
+**sb-m's exit 1** is not a comparison: `sb-m.sh` exits 1 when a run fails
+or is not parsed (its header), and compares nothing between the versions.
+Both G1 runs ended with `SCALEBENCH OK` and were parsed; their uniform
+figures, 723,598 and 667,156, are in the step's last line. Both ZGC runs
+failed at the JVM's start, `Unrecognized VM option 'UseZGCGC'`
+(`N/night/out/sb-m/f53-m-10m-zgc-2026.2.txt`). The script builds the flag
+as `-XX:+Use${gc}GC` with `gc` from `RUNS`, `G1` or `ZGC`: `UseG1GC`, but
+`UseZGCGC`. `pp.sh` names its collector `Z` and is right. `sb-c.sh` has
+the same line, with ZGC in two of its six runs. With `SMOKE=1` both
+scripts run G1 only, so the rehearsals of 2026-11-03 and 04 (section 6,
+016-09's `rehearse.sh`) never started a ZGC run.
+
+**sb-c's missing database.** `sb-c.sh` reads `N/night/data/VER/key24-10000000`,
+which `sb-m.sh`'s runs make: `sb_load` (004-02's `sb.sh`) deletes the
+database and loads it anew in every run, so each version keeps the one of
+its last run, the ZGC run. The G1 runs made both (00:19 to 00:27); then
+each failed ZGC run deleted its version's (`rm -rf` before the JVM, which
+did not start). `data/2026.1/` and `data/2026.2/` are empty since 00:27.
+`sb-c.sh` checks 2026.1 first and names it; 2026.2's was gone too.
+
+**The fix**, not made (the scripts are in `N/night/`, outside this item):
+`-XX:+Use${gc%GC}GC` in `sb-m.sh` and `sb-c.sh` (G1 gives `UseG1GC`, ZGC
+`UseZGC`; the run names and `tables.py`'s `f53-m-10m-zgc` stay), and one
+ZGC run in each script's `SMOKE` set, so that a rehearsal reaches it.
+
+**The numbers.** All are `NOT QUIET`, from one block; ScaleBench has one
+run a version, not repeated in turns.
+
+Props (medians of 3 runs; lower is better):
+
+| Version | MEM | CORE | SS   | CORE of each run |
+|---------|-----|------|------|------------------|
+| 2026.1  | 191 | 0.28 | 1.50 | 0.27, 0.28, 0.29 |
+| 2026.2  | 129 | 0.25 | 1.51 | 0.24, 0.25, 0.26 |
+
+ScaleBench, 10M key24 keys in memory (M), G1, 6 GB of heap, startup
+distance 200 MB, 2026.1 then 2026.2; gets a second. The last column is
+009-03, section 5 (2026-10-25, quiet, at 10 MB), 2026.1 and step 3d:
+
+| Figure             | 2026.1    | 2026.2    | Change | 009-03                |
+|--------------------|-----------|-----------|--------|-----------------------|
+| load, seconds      | 41.4      | 46.0      | +11 %  | 98.1, 106.9 at 10 MB  |
+| heap, B a key      | 243.6     | 185.9     | −24 %  | 243.1, 186.0          |
+| on disk, B a key   | 186.6     | 231.3     | +24 %  |                       |
+| uniform, 1 thread  | 723,598   | 667,156   | −7.8 % | 715,203, 693,400      |
+| hot, 1 thread      | 1,499,348 | 1,404,292 | −6.3 % |                       |
+| threads 1          | 720,792   | 658,259   | −8.7 % | 707,118, 684,962      |
+| threads 2          | 1,236,515 | 1,261,666 | +2.0 % | 1,233,169, 1,307,728  |
+| threads 4          | 2,062,154 | 2,305,346 | +12 %  | 2,119,607, 2,381,443  |
+| threads 8          | 2,144,965 | 4,186,839 | +95 %  | 2,111,922, 4,247,964  |
+
+The uniform phase's five windows: 712,176 to 732,476 and 651,578 to
+671,152, so the gap is not within one run's spread. In 2026.1 the 8
+readers were blocked 14.6 s on the pointer locks; in 2026.2 0 ms.
+
+The pause probe (1M keys, 100 MB, 4 readers, 60 s a phase; times in ms,
+the longest of both phases; gets of the `tsize=1` phase):
+
+| Run         | Gets       | Longest get | Longest commit | Longest batch | 009-03's get |
+|-------------|------------|-------------|----------------|---------------|--------------|
+| 2026.1, G1  | 7,032,976  | 430.8       | 430.8          | 791           | 475          |
+| 2026.2, G1  | 29,886,778 | 26.1        | 34.4           | 22.4          | 73           |
+| 2026.2, ZGC | 29,034,186 | 6.9         | 25.7           | 3.0           | 14.5         |
+| 2026.1, ZGC | 6,532,616  | 630.9       | 631.2          | 1,132         | 567          |
+
+2026.2's longest commits are of the `tsize=1000` phase, a commit of 1,000
+puts (009-03, section 5).
+
+The quick suite (`performance.sh ab 2026.1 2026.2`, 3 runs a scenario in
+ABBA order, medians, one round; CV at most 2.6 percent), the changes of
+note; all of them in `N/night/tables.md`:
+
+| Scenario, metric              | 2026.1    | 2026.2    | Change  |
+|-------------------------------|-----------|-----------|---------|
+| r-1k-fin, mix.gets_per_s      | 2,049,800 | 2,320,260 | +13.2 % |
+| r-1k-fin, mix.commits_per_s   | 49,232.1  | 52,229.6  | +6.1 %  |
+| read-1k, get_latest           | 1,305,910 | 1,260,590 | −3.5 %  |
+| read-1k, get_latest_mt4       | 3,508,940 | 4,289,610 | +22.2 % |
+| read-1k, get_longkey          | 951,022   | 893,410   | −6.1 %  |
+| w-uni-1k-fin, commits_per_s   | 63,574.2  | 64,117.1  | +0.9 %  |
+| w-uni-1k-inf, commits_per_s   | 102,727.0 | 99,409.1  | −3.2 %  |
+
+`get_longkey` is the one alert, "worse by more than 5.0% in every
+candidate run; unconfirmed": seen once, as section 2 planned for one round.
+
+**What is usable:**
+
+* As they are: Props' MEM and SS, which do not depend on the machine (191
+  to 129, 1.50 to 1.51); ScaleBench's heap a key (243.6 to 185.9), not a
+  timing, and as 009-03's.
+* Marked `NOT QUIET`: Props' CORE (0.28 to 0.25; 009-03: 0.29 to 0.22 and
+  0.24); the pause probe, whose gap is 16 to 90 times, and a busier machine
+  makes the longest times longer, not shorter, so 2026.2's are upper
+  bounds; the quick suite, in turns within each scenario.
+* With care: ScaleBench M with G1. The direction is 009-03's (the
+  handle's hop costs on one thread, 8 readers twice as fast) and the quick
+  suite's (−3.5 percent on one thread), but −7.8 percent is larger than
+  009-03's −3.0, and one turn cannot tell the code from drift (2026.2 ran
+  second, after 2026.1's 4 minutes on up to 8 cores). Not to be cited as
+  the one-thread change before a quiet rerun in turns. Not a stop
+  (section 4: no cited figure moved by more than 20 percent).
+* Not there: ScaleBench M with ZGC, and every ScaleBench C run (665 MB with
+  G1 and ZGC, 133 MB with G1). So the notes' "gets of up to 39 ms with 8
+  readers" cannot be corrected from W7 yet: it is ScaleBench C at 665 MB
+  with ZGC and 8 threads (005-65's `night/results-2026-11-04.txt`, 47.8 and
+  49.3 ms), which is sb-c's `f53-c-10m-b665-zgc-2026.2`.
+* Not new: s1's runs (016-02, section 8, open item 2) and the digests
+  (2026-11-04).
+* To explain with the rerun: 2026.2's stream at the 10M load is 2,313 MB
+  against 1,866 MB (+24 percent); not checked here. The take at a startup
+  distance of 200 MB (005-49) writes records again, a likely cause. The
+  notes do not cite this figure.
+
+**`collect.sh`** ran at 06:14 as `R=B/collect C=B NOS1=1`, on a copy of
+`/Users/f/fl/bench/016/release/out/baseline` in `B/collect/out/baseline`:
+so the release's directory stays as the published `baseline.zip` has it,
+and s1 is neither fetched nor its data deleted (the s1 part deletes
+`N/night/out/s1` and, over `ssh`, s1's data). It printed `COLLECT OK:
+B/collect/out/baseline (5.3M)`: it checks only that each step's directory
+exists, so the empty `sb-c` and the failed ZGC runs pass it. `tables.sh`
+rewrote `N/night/tables.md` (43 rows; the one of 2026-11-04 is kept as
+`B/collect/tables-2026-11-04.md`, today's as `tables-2026-11-06.md`);
+its s1 lines are 2026-11-04's, with `?` for 2026.1's C and D runs. Not
+done, as the block was not quiet: `releases/2026.2/readme.md`,
+`baseline.zip`, `SHA256SUMS`, `finish.sh`, the commit.
+
+**The rerun needed:**
+
+* The fix above in both scripts, then a smoke of each with its ZGC run.
+* `sb-m` then `sb-c` in one block, in that order: `sb-c` takes the
+  databases that `sb-m` left in the same block (about 1.9 and 2.3 GB) and
+  deletes them at its end. About 16 minutes (4 runs; the G1 runs took 3.8
+  each) and 30 (6 runs of 4 to 5), within their 22 and 32.
+* With `props`, `pp` and `quick-ab` again (4, 8 and 13 minutes last night),
+  so that every figure of the notes is from one quiet block: about 75
+  minutes, within the block's 94.
+* On F53, as 2026.1's baseline and 009-03; not s1 (3 GB; 016-02, open
+  item 2).
+* A quiet block in `block.sh`'s form, a new copy with its own START,
+  LATEST and DEADLINE (not the old file edited), and a quiet check that the
+  idle F53 can meet: last night's load average stayed above 1.5 with
+  0.12 to 0.25 cores in use by others. Either the Claude app, VS Code and
+  Chrome closed for the block (Frans), or a check by CPU use (the other
+  processes' CPU below half a core, as ScaleBench measures it).
+* Then `collect.sh` with `C=` the new block's directory, the tables into
+  the notes, `baseline.zip` and `SHA256SUMS` in one commit (N9; 016-09,
+  R8), with the 39 ms line from `f53-c-10m-b665-zgc-2026.2`'s 8 threads.
+
+**For Frans:**
+
+* **A, recommended**: the fix and a ZGC smoke today; all five steps in
+  tonight's quiet block on F53 (about 75 minutes, before `night.sh` at
+  02:10), with the check by CPU; the notes and `baseline.zip` from it.
+  Night 3's figures stay here as a not-quiet check of them.
+* **B**: only `sb-m` and `sb-c` again (about 50 minutes); Props, the pause
+  probe and the quick suite from night 3, marked `NOT QUIET` in the notes.
+* **C**: night 3's usable figures into the notes now, marked `NOT QUIET`,
+  ScaleBench's "follow"; a second commit after the rerun.

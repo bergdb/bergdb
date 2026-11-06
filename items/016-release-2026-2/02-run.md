@@ -545,6 +545,25 @@ closed):
    fixed default; since 10:40 it requires `DEADLINE`. Rerun in the night of
    5 to 6 November as 006-12's Q-W7 (`/Users/f/fl/bench/016/night3/`);
    `collect.sh` then takes `C=/Users/f/fl/bench/016/night3`.
+   2026-11-06, 06:40: night 3 ran the five from 00:15 to 00:48, `NOT
+   QUIET` (the idle F53's load never twice below 1.5; nothing else ran):
+   props, pp and quick-ab exit 0; sb-m exit 1, sb-c exit 2. sb-m's exit 1
+   is not a loss of 2026.2: its two ZGC runs did not start (`-XX:+Use${gc}GC`
+   with `ZGC` gives `UseZGCGC`; `sb-c.sh` has the same line), and as
+   `sb_load` deletes the database before each run, they deleted both
+   versions' databases, so sb-c found none. Usable, marked `NOT QUIET`:
+   Props (MEM 191 to 129, CORE 0.28 to 0.25, SS 1.50 to 1.51), the pause
+   probe (longest get with G1 430.8 to 26.1 ms, with ZGC 630.9 to 6.9 ms)
+   and the quick suite (one unconfirmed alert, `get_longkey` −6.1 percent);
+   ScaleBench M with G1 only with care (one run each; uniform 723,598 to
+   667,156, −7.8 percent, against 009-03's −3.0; 8 threads 2.14 to 4.19
+   million). Not there: ScaleBench M with ZGC and every C run, so also not
+   the 39 ms line's figure. `collect.sh` ran on a copy (`night3/collect/`,
+   s1 skipped): `COLLECT OK`, as it checks only that directories exist.
+   Not written: `releases/2026.2/`, `baseline.zip`, `SHA256SUMS`. The rerun
+   (the flag fixed, a ZGC smoke, the five steps in one quiet block on F53,
+   about 75 minutes) and Frans's options A to C: 016-10, section 6,
+   2026-11-06.
 2. s1's W7 runs: 4 of 10 ended with OutOfMemoryError (2.5 GB heap on a
    3 GB machine); 016-10 decides how to redo them.
 3. Section 7's items for Frans; 005 and 015 one entry at a time with
