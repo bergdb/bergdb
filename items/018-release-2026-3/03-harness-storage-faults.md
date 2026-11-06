@@ -147,8 +147,8 @@ Its parts:
 
 On `main`, the skipped entries are 015-80 (one writer at a time), open
 and not for tonight: in most runs the workload's `getFirstPos()` meets the
-storage thread's append (OVERLAP); and 019-10, which the harness found
-(section 5). `StrictStream` tolerates every kind,
+storage thread's append (OVERLAP). 019-10, which the harness found (section 5), was in it until
+its fix. `StrictStream` tolerates every kind,
 so that the run goes on past it, and the harness reports each breach
 after the run.
 
@@ -271,7 +271,10 @@ from a stream read in the workload's thread (a get, or a transaction's
 warm-up) is thrown as it is, and the database goes on; an `IOException`
 from the same read fails it. 43 of 1,548 STREAM runs at every 13th N, new
 and reopened; none in the IO layer, whose reads go through an open
-channel. Registered as 019-10 and in `SKIP` until its fix.
+channel. Registered as 019-10, in `SKIP` until its fix, and fixed the
+same night (`StorageManager.read()` fails the storage on it; 019-10's
+entry). Since, the harness finds nothing on `main` but 015-80's
+OVERLAP.
 
 Nothing else: no lost transaction, no refused one in the stream, no lock
 or thread left, no hang, and every interrupt and stop left the database
@@ -329,13 +332,14 @@ unit sample alone, and found 019-10 (section 5), registered and in its
 skip list. In the unit tests (the sample) and the night tests (every N).
 BEFORE COMMIT OK.
 
+2026-11-06. 019-10 fixed the same night (its entry): `SKIP` holds 015-80
+only. BEFORE COMMIT OK.
+
 
 ## State (night 006-12)
 
-2026-11-06, 01:50. The harness is committed in the clone
-`/Users/f/fl/bench/006-12/h62`, branch `h62` (BEFORE COMMIT OK), with
-019-10 registered and in its skip list. Next: 019-10's fix (made and
-tested in the clone `h62-f10`: `StorageManager.read()`; its documents in
-`/Users/f/fl/bench/006-12/h62-out/f10-docs.py`), and the night tests cut
-to every 5th STREAM call, from an offset of the day, about 3 minutes;
-gates after 02:55.
+2026-11-06, 01:50. Clone `/Users/f/fl/bench/006-12/h62`, branch `h62`:
+the harness committed; 019-10's fix (`StorageManager.read()`, its test,
+the skip list's line removed, its documents) in its gate. Next: the night
+tests cut to every 5th STREAM call, from an offset of the day (now 806 s
+in the night's load), a commit of its own.

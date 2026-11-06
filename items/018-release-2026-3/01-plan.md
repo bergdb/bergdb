@@ -155,7 +155,7 @@ an exception from it is, and fails the database (P7); a refusal is
 
 Changed since, 2026-11-06: 019-10 joined (an unchecked exception or
 `Error` from a read of the storage leaves the database going on, found by
-harness 6.2, 018-03).
+harness 6.2, 018-03), and was fixed the same night.
 
 
 ### 3.2. Outside the goal
@@ -306,7 +306,7 @@ for 2026.3: they are experimental (D2).
   rest, 34, 38, 66, 81 and 82 it does not reach (018-03, section 6). It
   runs in the unit tests of `before-commit.sh` (a sample, about 4 s,
   beside the f-tests) and in the night tests (every call); its skip list
-  holds 015-80 and 019-10.
+  holds 015-80 (019-10 until its fix, the same night).
 
 
 ### 6.3. The stream contract

@@ -107,7 +107,6 @@ Open
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
 | [019-07](07-record-header-checksum.md) | Implement | A checksum of the record header, at the next RECORD_FORMAT change | decision | waiting |
-| [019-10](10-read-unchecked-goes-on.md) | Fix | An unchecked read failure leaves the database going on | none | open |
 | [019-15](15-delete-key-replace.md) | Fix | Key replace: a delete's key is not replaced | decision | waiting |
 
 
@@ -116,6 +115,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-10](10-read-unchecked-goes-on.md) | Fix | An unchecked read failure leaves the database going on | none | done | 2026-11-06 |
 | [019-09](09-close-unreported-background-failure.md) | Fix | close() silent on a failed flush | decision | done | 2026-11-05 |
 | [019-08](08-dbtime-to-utc-threads.md) | Fix | dbTimeToUtc() from several threads gave wrong strings | none | done | 2026-11-05 |
 | [019-02](02-stream-bad-length-exceptions.md) | Fix | Streams refuse a bad length with other exceptions | none | done | 2026-11-05 |
@@ -270,3 +270,6 @@ Frans's decision.
 
 2026-11-06. 019-10 registered by harness 6.2's agent of the night 006-12:
 found by the harness of failures and interrupts in storage (018-03).
+
+2026-11-06. 019-10 done in the night 006-12: an unchecked exception or
+`Error` of the stream's read fails the storage, and so the database.

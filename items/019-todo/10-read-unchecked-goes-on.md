@@ -1,7 +1,7 @@
 019-10. Fix: an unchecked exception or Error from a read of the storage leaves the database going on
 ================================================================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: done 2026-11-06, night 006-12. Kind: Fix. Frans: none.
 Created 2026-11-06 by Frans Lundberg.
 
 What: when the stream under the storage throws an unchecked exception or
@@ -53,8 +53,36 @@ catch `StreamException` also fail the database on an `Error`, then
 throw it as it is.
 
 
+Fix
+---
+
+`StorageManager.read()` catches an unchecked exception or an `Error` of
+the main stream's read as it catches an `IOException`: the storage fails
+(`handleStreamException`, its error set and the stream closed), and it
+throws an `IOException` with the exception as the cause. `RecoverableStream`
+makes it a `StreamIoException`, and `Db`'s read sites fail the database
+as for an I/O error (`readFailed()`, `DbFailedException`). The `Error` is
+not thrown as it is: the cause chain keeps it. A read below the first
+position stays as it was (`ReadBelowFirstPosException`, an `IOException`).
+
+Test: `DbTesterFailure.testUncheckedReadFailsTheDatabase`, an unchecked
+exception and an `Error` from `FaultStream`'s read, in a get and in a
+transaction's warm-up: the call throws `DbFailedException` with a
+`StreamIoException` as the cause, every later call is refused with it,
+nothing is appended, and a restart has the key. Before the fix: "an
+unchecked exception in a get fails the database:
+java.lang.IllegalStateException: FaultStream: an unchecked read error, as
+set". Harness 6.2: the line `"019-10",` left `StorageFaultTester.SKIP`,
+and its sweeps (the IO layer at every N, the STREAM layer at every 13th)
+find nothing but 015-80's OVERLAP. docs/levels.md, section 3, and
+`releases/next.md` (Reliability) say so.
+
+
 Log
 ---
 
 2026-11-06. Registered by harness 6.2's agent of the night 006-12: found
 by the harness (018-03, section 5); in its skip list until fixed.
+
+2026-11-06. Fixed in the night 006-12 by the same agent (the simplest fix
+by the entry's First step; no decision needed, docs/levels.md's rule).

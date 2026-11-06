@@ -266,6 +266,10 @@ public class StorageManager implements AppendOnlyStream {
      * the stream, so such a read means corrupt data or a bug, and the database then stops
      * (bergdb 018-02). A read below the first position, which a cut overtook, does not: its
      * ReadBelowFirstPosException leaves the storage as it was.</p>
+     * <p>An unchecked exception or an Error of the main stream's read fails the storage too,
+     * as an IOException with it as the cause (2026-11-06, bergdb 019-10): the stream broke
+     * its contract, or the environment failed. Before, it passed through, and the database
+     * went on.</p>
      */
     public void read(long position, byte[] dest, int destOffset, int length) throws IOException {
         //
@@ -301,6 +305,10 @@ public class StorageManager implements AppendOnlyStream {
         } catch (IOException e) {
             handleStreamException(e);
             throw e;
+        } catch (RuntimeException | Error e) {
+            IOException io = new IOException("The main stream's read threw " + e, e);
+            handleStreamException(io);
+            throw io;
         }
     }
     

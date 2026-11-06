@@ -76,7 +76,6 @@ public class StorageFaultTester {
      */
     static final String[] SKIP = {
         "015-80",
-        "019-10",
     };
 
     /**

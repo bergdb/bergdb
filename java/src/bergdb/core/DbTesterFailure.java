@@ -392,6 +392,57 @@ public class DbTesterFailure {
     }
 
     /**
+     * A get, and a transaction's warm-up, whose read of the storage throws an unchecked
+     * exception or an Error (bergdb 019-10): the database fails, as on an I/O error. The
+     * stream broke its contract (a bug) or the environment failed, so the database does not
+     * run on (docs/levels.md, section 3). Before, the get and the warm-up threw it as it was,
+     * and the next transaction and get worked.
+     */
+    @Nano
+    public static void testUncheckedReadFailsTheDatabase() {
+        for (int i = 0; i < 4; i++) {
+            final boolean error = i % 2 == 1;
+            final boolean warmup = i >= 2;
+            final FaultStream s = new FaultStream();
+            Db db = startEvicting(s, 0);
+            fill(db);
+            db.sync(SyncLevel.ORDINARY);
+            final long length = s.getLength();
+            if (error) {
+                s.errorInReads = true;
+            } else {
+                s.uncheckedReads = true;
+            }
+            Throwable thrown = null;
+            try {
+                if (warmup) {
+                    db.execute(db.trans().put(key(KEYS / 2), "w").build());
+                } else {
+                    DbUtil.get(db, key(KEYS / 2));
+                }
+            } catch (Throwable e) {
+                thrown = e;
+            }
+            String what = (error ? "an Error" : "an unchecked exception")
+                    + (warmup ? " in the warm-up" : " in a get");
+            Assert.assertTrue(what + ": faults made", s.faults > 0);
+            Assert.assertTrue(what + " fails the database: " + thrown,
+                    thrown instanceof DbFailedException);
+            Throwable cause = thrown.getCause();
+            Assert.assertTrue(what + ", the cause: " + cause, cause instanceof StreamIoException);
+            s.uncheckedReads = false;
+            s.errorInReads = false;
+            assertRefused(db, cause);
+            Assert.assertEquals(what + ": the stream's length", length, s.getLength());
+            db.close();
+
+            Db db2 = startEvicting(s.inner.copy(), 1);
+            Assert.assertEquals(what, "v" + (KEYS / 2), DbUtil.getString(db2, key(KEYS / 2)));
+            db2.close();
+        }
+    }
+
+    /**
      * A get that loads an index node whose checksum is right but whose key count does not
      * fit its size (bergdb 015-07): the parse refuses it with a StreamFormatException, and
      * the read fails the database as for a checksum error. Before, the parse threw an
@@ -1453,6 +1504,8 @@ public class DbTesterFailure {
     static class FaultStream implements AppendOnlyStream {
         final MemoryStream inner = new MemoryStream();
         volatile boolean failReads = false;
+        volatile boolean uncheckedReads = false;    // bergdb 019-10
+        volatile boolean errorInReads = false;      // bergdb 019-10
         volatile boolean corruptReads = false;
         volatile boolean failAppends = false;
         volatile boolean errorInAppends = false;    // an Error, as an assertion (bergdb 005-32)
@@ -1476,6 +1529,14 @@ public class DbTesterFailure {
             if (failReads) {
                 faults++;
                 throw new IOException("FaultStream: a read error, as set");
+            }
+            if (uncheckedReads) {
+                faults++;
+                throw new IllegalStateException("FaultStream: an unchecked read error, as set");
+            }
+            if (errorInReads) {
+                faults++;
+                throw new Error("FaultStream: an Error in a read, as set");
             }
             inner.read(position, dest, destOffset, length);
             if (corruptReads && length > 8) {

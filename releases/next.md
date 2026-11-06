@@ -294,6 +294,13 @@ Reliability
   close of a database that has already failed (a call threw
   `DbFailedException`) returns normally, as before. The stream's bytes are
   unchanged.
+* **An unchecked exception or Error of a read fails the database** (bergdb
+  019-10, found by harness 6.2, 018-03; 2026-11-06). When the stream's
+  read threw an unchecked exception or an `Error` in a get or in a
+  transaction's warm-up, it was thrown as it was and the database went
+  on, where an `IOException` fails it. Now the storage fails, and the call
+  throws `DbFailedException` with a `StreamIoException` as the cause, as
+  for an I/O error (010-01, P7). The stream's bytes are unchanged.
 * **A failed close of the stream is reported by `close()`** (bergdb
   015-78 and 015-34, 016-06's R5-F1, R3-F6 and R5-F2; 2026-11-05). The
   storage thread closed the stream as it ended and dropped a failure of

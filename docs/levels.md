@@ -128,8 +128,10 @@ environment has failed, or that has a bug, does not run on.
   (015-27, Frans, 2026-11-05): durability is `sync()`'s promise, not
   visibility's.
 * A read that fails on the storage fails the database in the same way: an
-  I/O error, or corrupt data (a checksum or format error), in `getOne`,
-  `getMany`, `getTrans` (`transactionInfo()`) and `sync()`. Not failures: a
+  I/O error, an unchecked exception or an `Error` of the stream's read
+  (019-10, 2026-11-06), or corrupt data (a checksum or format error), in
+  `getOne`, `getMany`, `getTrans` (`transactionInfo()`) and `sync()`. Not
+  failures: a
   read that a cut has overtaken expires with a
   `LookupTimeNotAvailableException` (section 6), and so does `getTrans` of
   a transaction that reclaim has removed; the database goes on. A read or a
