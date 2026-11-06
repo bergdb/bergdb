@@ -110,6 +110,9 @@ Open
 | [019-35](35-night-read-losses.md) | Investigate | The Core's warm reads lost 1 to 6 % in night 006-12 | none | open |
 | [019-36](36-reclaim-cut-waits-for-append.md) | Fix | Reclaim's cut waits for the thread's append under the write lock | none | open |
 | [019-37](37-close-self-suppression.md) | Fix | A failed flush and the close's same IOException: self-suppression | none | open |
+| [019-38](38-index-jobs-fail-on-refusal.md) | Fix | Index jobs fail the database on an interrupt, an expiry, a refusal | none | open |
+| [019-39](39-error-path-hangs.md) | Fix | Hangs in the error path: a thread not started, a second Error | none | open |
+| [019-40](40-review-r6-c-findings.md) | Fix | Review R6's C findings: tests, words, small faults | none | open |
 
 
 Closed

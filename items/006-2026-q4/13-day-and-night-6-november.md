@@ -112,6 +112,25 @@ The ten points of 006-12, section 8, one at a time with Frans.
     Frans, 11:35: "As recommended.": (b), the lines moved to each item's
     Log; done by the coordinator.
 
+### W2b. Towards 2026.3's "Ready"
+
+Frans, 11:36: "Overall where are we on the work towards release 2026.3
+-- a bug-free Core? Can we finish today or tonight?" The answer: not
+tonight; the known Core faults by tomorrow morning, a release candidate
+tomorrow (or Sunday or Monday with what the reviews and harness 6.6
+find). Frans, 11:46, on harness 6.6's scope: "As you recommend.": Option
+1, the 8 jcstress tests of `java/stress/jcstress/` rerun on today's code
+on F53 and s1, and tests added only for the shared fields that review R7
+flags. And: "Can we speed things up? More subagents? Use High as effort
+level for subagents from now on. To preserve usage." So: up to 6 agents
+at a time, at high; gates one at a time under a lock
+(`/Users/f/fl/bench/006-13/gate.lock`).
+
+Review R6 (11:44): 01b0493, 8e9eccc and c73daba without A findings;
+B1 to B3 and C1 to C9 registered as 019-38 (index jobs fail the database
+on an interrupt, an expiry or a refusal: a regression of today's change),
+019-39 (hangs in the error path) and 019-40 (the C findings).
+
 ### W3. `night.sh` without a fixed time
 
 Frans, 11:21: "By the way, I think we should remove the fixed-time
@@ -176,6 +195,9 @@ session continues with `/coordinator resume` (013-02).
 * 11:29 Point 8 decided; reviewers R6 and R7 started.
 * 11:33 n1's words committed.
 * 11:35 Points 9 and 10 decided; 006-12's list done. Agent f32 started (019-37, then 019-32).
+* 11:44 Review R6 done; 019-38, 019-39, 019-40 registered.
+* 11:47 Agent w7 done: tonight's block `/Users/f/fl/bench/016/night4/block.sh` ready and rehearsed (quiet check: load below 2.5 twice; not started).
+* 11:48 Agents i38, i39, j66, f06 started (high).
 
 
 ## 8. Outcome

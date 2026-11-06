@@ -2,7 +2,8 @@
 =========================================
 
 Created 2026-11-03 by Frans Lundberg. Status: run in part on
-2026-11-06, not quiet; a rerun waits for Frans (section 6, 2026-11-06).
+2026-11-06, not quiet; the rerun is prepared for the night of 6 to 7
+November, not started (section 6, 2026-11-06, 11:50).
 
 The plan for W7 of 016-01 (section 5): 2026.2's numbers against 2026.1,
 with both jars run in turns, on F53 and s1, for the release notes and
@@ -694,3 +695,134 @@ done, as the block was not quiet: `releases/2026.2/readme.md`,
   probe and the quick suite from night 3, marked `NOT QUIET` in the notes.
 * **C**: night 3's usable figures into the notes now, marked `NOT QUIET`,
   ScaleBench's "follow"; a second commit after the rerun.
+
+2026-11-06, 11:50, the rerun prepared for tonight (Frans, 11:21: option A
+above; 006-13, W1, point 7), by agent w7 of coord-1106: smoke runs only,
+no full step, the block not started, no commit. N is
+`/Users/f/fl/bench/016/numbers/`, B4 `/Users/f/fl/bench/016/night4/`.
+
+**The scripts**, in `N/night/` (the ones of night 3 kept as
+`*.2026-11-06.bak`):
+
+* `sb-m.sh` and `sb-c.sh`: the flag is `-XX:+Use${gc%GC}GC` (G1 gives
+  `UseG1GC`, ZGC `UseZGC`). The run names and `tables.py`'s are as they
+  were.
+* The smoke sets reach ZGC. `sb-m.sh`'s smoke has the night's four runs
+  in the night's order (2026.1 G1, 2026.2 G1, 2026.2 ZGC, 2026.1 ZGC), so
+  each version's database is its ZGC run's, as at night; `sb-c.sh`'s has a
+  third run, 2026.2 with ZGC; `pp.sh`'s a third, 2026.2 with ZGC (its flag
+  was right, `Z`, and its ZGC runs ran in night 3); `tables.py` a smoke
+  row "C 0.5 MB, ZGC".
+* `sb-c.sh` loads a version's database itself when `sb-m.sh` left none,
+  or one without ScaleBench's marker (`scalebench.properties`, written
+  after the load's last sync): a JVM of its own, G1, `sb-m.sh`'s 6 GB, no
+  get phases, about a minute at 10M keys (`f53-c-10m-load-VER`). The order
+  stays `sb-m` then `sb-c` in one block; with the flag fixed, `sb-c` takes
+  `sb-m`'s ZGC loads, as 2026.1's baseline did (its `f53.sh`).
+* No other fault of the kind: `props.sh` and `quick-ab.sh` choose no
+  collector (the suite does), and `s1-w7.sh` writes `-XX:+UseG1GC` out.
+
+**The rehearsal**, 11:27 to 11:32, on `N/rel`'s jars (2026.1
+`4d90eb92...`, 2026.2 `f22e1938...`), with other agents' gates on F53;
+not timed:
+
+* `sb-c.sh` alone, with no databases: it loaded both, then ran its three
+  runs: `W7 sb-c OK (SMOKE)`.
+* Then props, sb-m, sb-c, pp and quick-ab (`ONLY=^w-inf-s$`, as
+  `prep-a.sh`): each `W7 LABEL OK (SMOKE)`. The ZGC runs started: their
+  JSON has `-XX:+UseZGC` in `vmFlags` and the collector ZGC (sb-m with
+  both jars, sb-c and pp with 2026.2).
+* `SMOKE=1 tables.sh`: `W7 TABLES OK` (28 rows; its 2 lines with `?` are
+  2026.1's cells of the smoke's ZGC C row, which has 2026.2 only).
+* Outputs: `B4/rehearsal/`, `N/night/smoke/`, `N/night/tables-smoke.md`.
+
+**The block**, `B4/block.sh`: night 3's, adapted, with 006-12's hard stop
+(`guard.sh`, copied to B4) and its handling of mediaanalysisd.
+
+* `START`, `LATEST` and `HARD`, as `HH:MM`, are required. START is the
+  nearest such time, so a start after it begins at once; LATEST and HARD
+  are the next ones after it. The steps' deadline is HARD less 5 minutes.
+  It warns at its start if the steps' 94 minutes from LATEST do not fit.
+* Its marker is `/Users/f/fl/bench/quiet-block-DATE-w7/QUIET-BLOCK`. At
+  HARD, `guard.sh` stops the block and its steps, resumes mediaanalysisd
+  and removes the marker, whatever happened to the block.
+* The quiet check, every 30 s: no other `QUIET-BLOCK` marker; no process
+  of ours (a JVM but the editor's, `before-commit`, `gate.sh`, `gates.sh`,
+  `level*.sh`, `night.sh`, `performance.sh`, `build.sh`, `core-build`,
+  `cross.sh`, `tracecheck`, `lake`, `bin/lean`: 006-12's pattern); then
+  mediaanalysisd paused (again before each step); then the 1-minute load
+  below 2.5 in two checks in a row. From LATEST, with nothing of ours
+  left, a check at 2.5 or more ends the wait, `NOT QUIET`.
+* Each check's line has the load (1, 5 and 15 minutes), the summed CPU of
+  all processes, the three busiest and the Claude sessions' states; the
+  wait's end and each step's start have the eight busiest; while the
+  steps run, `steps-load.txt` gets a line every 60 s.
+* The five steps and their outputs as night 3's (`results.txt`,
+  `out/w7-LABEL.txt`, for `collect.sh` with `C=B4`). Its news.md entry:
+  OK for 5 of 5 exit 0 in a quiet block; "needs a look" for 5 of 5 not
+  quiet, or when stopped by a signal (the hard stop or a kill); FAILED
+  otherwise.
+
+**The threshold, 2.5.** The 1-minute load of F53 at night in the three
+blocks' waits, with nothing of ours running and mediaanalysisd paused:
+
+| Wait                       | Checks | Range        | Median | 90 % | Twice below 2.5 |
+|----------------------------|--------|--------------|--------|------|-----------------|
+| night 3, 23:40 to 00:15    | 70     | 1.35 to 2.50 | 1.78   | 2.14 | 2nd check       |
+| 006-12 Q-A, 22:15 to 22:50 | 70     | 1.39 to 3.33 | 1.88   | 2.19 | 2nd check       |
+| 006-12 Q-B, 04:58 to 05:09 | 21     | 1.48 to 5.21 | 1.99   | 3.00 | 7th (mds first) |
+
+* 2.5 is above the idle 90th percentile, so an idle F53 passes within a
+  few minutes; the old 1.5 is below the idle median and passed in one wait
+  of three (Q-B, after 10 minutes).
+* A load held at 2.5 or more is about a core of other work (ScaleBench
+  measured the idle machine's others at 0.12 to 0.24 cores of 10), which
+  the check should hold off.
+* The day's F53 does not pass: from 11:24 to 11:27, before the rehearsal,
+  2.9 to 3.8, with mediaanalysisd at 60 to 98 percent of a core (not
+  paused) and the sessions at work (`B4/load-sample-1.txt`). `LOADMAX`
+  changes the threshold.
+
+**Tests of the block**, in `B4/test/` (its own marker there, which no gate
+or block reads; no news entry):
+
+* `DRY=1` (each step a 2-second sleep): the five in order; steps that do
+  not fit before the deadline skipped; a start after LATEST (a passing
+  check: quiet after its second; a failing one: `NOT QUIET` at once); a
+  kill while it waited (the marker removed, `guard.sh` ended). Its process
+  check saw another agent's `before-commit.sh` and JVM.
+* `SMOKE=1` through the block, 11:37 to 11:42: the five steps' smokes, 5
+  of 5 exit 0, `steps-load.txt` written, the marker removed, the guard
+  ended.
+
+**To start it**, the coordinator, when tonight's plan is set (the times
+an example, before `night.sh` at 02:10):
+
+    cd /Users/f/fl/bench/016/night4 && START=22:30 LATEST=23:00 HARD=01:50 nohup caffeinate -i -s sh block.sh > start.log 2>&1 &
+
+About 75 minutes of steps (94 by their headers; night 3's took 4, 8 with
+the G1 runs only, 0, 8 and 13) after a wait of a few minutes: with START
+22:30, done by about 23:50. Nothing else may build, gate or test on F53
+from START to the marker's removal. The steps overwrite `N/night/out/`'s
+step directories; night 3's are kept in
+`/Users/f/fl/bench/016/night3/collect/out/baseline/f53/`.
+
+**s1's half.** `s1-w7.sh` ran once, on 2026-11-04 from 08:17 to 08:39
+(016-09's `s1-chain.sh`, after the jar's tests; the outputs in
+`N/night/out/s1/out/`). 6 of 10 runs OK: both 10M loads (245 s for
+2026.2, 337 s for 2026.1), M at 1M for both, C and D at 66 MB at 1M for
+2026.2. 4 ended with `OutOfMemoryError` in the database's start, with the
+200 MB startup distance: D at 133 MB at 10M for both (600m heap, in
+`DbStarter.rerunTransactions`), and C and D at 66 MB at 1M for 2026.1
+(512m heap, in the eviction's sweep during the start). These heaps are
+2026.1's `s1.sh`'s, chosen at its 10 MB; the 2500m loads passed, so
+016-02's "2.5 GB heap on a 3 GB machine" is not the cause. `s1-w7.sh`
+deleted s1's data at its end. Left: 016-02's open item 2, how to redo the
+four (larger heaps, a smaller startup distance on s1, or s1 out of
+2026.2's notes). Not in tonight's block; nothing was started on s1.
+
+**Left:** tonight's block; in the morning, `collect.sh` with
+`C=/Users/f/fl/bench/016/night4` (`NOS1=1` unless s1 is redone), the
+tables into `releases/2026.2/readme.md`, `baseline.zip` and `SHA256SUMS`
+in one commit (N9; 016-09, R8), with the 39 ms line from
+`f53-c-10m-b665-zgc-2026.2`'s 8 threads.
