@@ -383,7 +383,8 @@ public class PubTesterIndexJobs {
     
     /**
      * bergdb 019-38: an unexpected RuntimeException, a bug, in an index deletion's job (its
-     * hook "start") fails the database (bergdb 019-10).
+     * hook "start") fails the database (bergdb 019-10); the job says "Stopped", not "Done!"
+     * (bergdb 019-40).
      */
     @Nano
     public static void testBugInDeletionFailsTheDatabase() {
@@ -396,7 +397,7 @@ public class PubTesterIndexJobs {
                     throw bug;
                 }
             };
-            db.deleteIndex("by-field").join();
+            checkStopped(db.deleteIndex("by-field").join());
             DbFailedException refused = null;
             try {
                 putNew(db);
@@ -405,6 +406,26 @@ public class PubTesterIndexJobs {
             }
             Assert.assertTrue("the database failed: " + refused,
                     refused != null && refused.getCause() == bug);
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * bergdb 019-40, 015-61 (review R8 of 016-06, R8-F6): a deletion job that a close ends
+     * early says "Stopped", as a build does; it said "Done! Deleted".
+     */
+    @Nano
+    public static void testDeletionEndedByCloseIsStopped() {
+        final Database db = start(new MemoryStream());
+        try {
+            db.indexBuilder("by-field").dir("/items/").type("long").field("amount").createFast();
+            ((DatabaseImp) db).testHookDelete = p -> {
+                if (p.equals("start")) {
+                    db.close();
+                }
+            };
+            checkStopped(db.deleteIndex("by-field").join());
         } finally {
             db.close();
         }

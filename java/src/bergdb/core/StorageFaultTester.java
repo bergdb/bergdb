@@ -428,10 +428,13 @@ public class StorageFaultTester {
                 run.thrownCall = what;
                 run.thrown = t;
             }
-            // The fault's Error is a failure (bergdb 019-10): until then, an Error before a
-            // transaction's go point, as in a read, left the database going on.
-            final boolean failure = t instanceof DbFailedException
-                    || (t instanceof Error && causedByFault(t));
+            // An Error is a failure (bergdb 019-10): until then, an Error before a
+            // transaction's go point, as in a read, left the database going on. One that is
+            // not the fault's fails the database too, and is a bug (bergdb 019-40).
+            final boolean failure = t instanceof DbFailedException || t instanceof Error;
+            if (t instanceof Error && !causedByFault(t)) {
+                run.finding("bug", what + " threw " + t + ", not the fault's Error");
+            }
             if (!failure && causedByFault(t)) {
                 run.metWithoutFailure = what + " threw " + t + " (the fault at "
                         + run.inj.where + ")";

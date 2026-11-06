@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import bergdb.common.Util;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.Handle;
@@ -512,7 +513,7 @@ public final class Eviction {
             if (evictor == null) {
                 evictor = new Thread(new EvictorRun(db), "bergdb-evictor");
                 evictor.setDaemon(true);
-                evictor.start();
+                Util.start(evictor);       // A test may make it throw (bergdb 019-40).
             }
             evictorLock.notifyAll();
         }

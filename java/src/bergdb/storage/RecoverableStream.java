@@ -156,6 +156,10 @@ public class RecoverableStream {
     /**
      * Refuses a meta block whose last transaction's position cannot be one: not SposNULL and
      * before the first transaction byte, or not inside the stream (2026-11-06, bergdb 019-34).
+     * Since bergdb 019-40 the invariant itself: a valid meta block names a transaction written
+     * before it, and a cut never removes the one that the last valid block names
+     * (getPosOfTransCompletedBefore()); so the position is from the first transaction byte
+     * and the stream's first position up to the block.
      * This layer does not require aligned records (TRANS_ALIGNMENT is the caller's check), so
      * an unaligned position is taken. Before, a position past the stream's end made
      * fixLastTransactionIfNeeded throw an IllegalArgumentException. Called before recovery
@@ -168,10 +172,10 @@ public class RecoverableStream {
         if (spos == Constants.SposNULL) {
             return;
         }
-        if (spos < META_BLOCK_SIZE || spos >= aos.getLength()) {
+        if (spos < Math.max(META_BLOCK_SIZE, aos.getFirstPos()) || spos >= block.getPos()) {
             throw new StreamFormatException("The meta block at " + block.getPos()
                     + " names the last transaction at " + spos + ", which cannot be one in a "
-                    + "stream of " + aos.getLength() + " bytes.");
+                    + "stream from " + aos.getFirstPos() + ": not before the block.");
         }
     }
     

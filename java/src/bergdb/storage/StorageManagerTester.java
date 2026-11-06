@@ -202,4 +202,36 @@ public class StorageManagerTester {
             m.close();
         }
     }
+
+    /**
+     * bergdb 019-40 (review R6 of 006-13, C2): a failed read records the failure before
+     * anything that allocates (bergdb 019-10). Before, the error's message came first, with
+     * the failure's toString(), and an OutOfMemoryError there lost the failure for good.
+     */
+    @Nano
+    public static void testReadFailureRecordedFirst() throws IOException {
+        final OutOfMemoryError oom = new OutOfMemoryError("test: no memory for the message");
+        final IOException failure = new IOException("test: a read error") {
+            public String toString() {
+                throw oom;
+            }
+        };
+        MemoryStream main = new MemoryStream() {
+            public void read(long position, byte[] dest, int off, int len) throws IOException {
+                throw failure;
+            }
+        };
+        main.append(new byte[100], 0, 100);
+        StorageManager m = new StorageManager.Builder().stream(main).build();
+        m.start();
+        Throwable thrown = null;
+        try {
+            m.read(10, new byte[10], 0, 10);
+        } catch (Throwable e) {
+            thrown = e;
+        }
+        Assert.assertTrue("the read throws its failure", thrown == failure);
+        Assert.assertTrue("the storage has failed", m.getFailure() == failure);
+        m.close();
+    }
 }

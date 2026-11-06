@@ -89,6 +89,11 @@ Pub API
   `freezeLookupTime()` before each batch of reads reads the new state each
   time. `getLookupTime()` is `Time.MAX` until that read. The stream is
   unchanged.
+* **A deletion job that ended early says "Stopped"** (bergdb 019-40,
+  015-61; a known issue of 2026.2 and 2026.1). A deletion job that a
+  `stop()`, a `close()` or a failure ended reported progress 100 and
+  "Done! Deleted ..."; now its note starts with "Stopped", as an index
+  build's does, and the deletion goes on at the next start.
 
 
 Reliability
@@ -325,7 +330,8 @@ Reliability
   it. Now the storage fails, and the call throws `DbFailedException` with a
   `StreamIoException` as the cause, as for an I/O error (010-01, P7). The
   stream's bytes are unchanged.
-* **An `Error` in any call fails the database, and is thrown as it is**
+* **An `Error` in a read, a transaction or a sync fails the database, and
+  is thrown as it is**
   (bergdb 019-10; Frans, 2026-11-06). The error model, now in `Database`'s
   and `Db`'s Javadoc and docs/levels.md, section 3: BergDB assumes a sound
   environment (correct storage, enough memory and stack), and an `Error`,

@@ -414,10 +414,10 @@ on (P2).
 Where BergDB stands: as P7 says, since 005-01 for transactions and 005-30
 for reads and syncs (`DbFailedException`; [levels.md](../011-docs-archive/04-levels.md),
 "A transaction or a read that fails"); since 019-10 (Frans, 2026-11-06),
-for an `Error` in any call or on BergDB's own threads too, thrown as it
-is. BergDB assumes a sound environment (storage, memory, stack) and does
-not try to recover from a faulty one: the database fails, and the
-application ends its process.
+for an `Error` in a read, a transaction or a sync, or on BergDB's own
+threads too, thrown as it is. BergDB assumes a sound environment
+(storage, memory, stack) and does not try to recover from a faulty one:
+the database fails, and the application ends its process.
 
 
 P8. Determinism beyond the stream

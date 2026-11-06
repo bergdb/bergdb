@@ -303,6 +303,28 @@ public class DbTesterRestart {
             }
             Assert.assertEquals(length, corrupt.getLength());
         }
+        // The second meta block, which a large value puts in the stream, naming a position
+        // in the first meta block, or one after itself (bergdb 019-40): refused too.
+        final MemoryStream large = stream.copy();     // A closed stream takes no append.
+        try (Db db = Db.builder().testSetup(large).clock(clock)
+                .startupDistance(1000000).start()) {
+            clock.setTime(30);
+            db.execute(db.trans().put("/c", new byte[RecoverableStream.META_BLOCK_DISTANCE]));
+        }
+        final long block = RecoverableStream.META_BLOCK_DISTANCE;
+        for (long spos : new long[] {10, block + RecoverableStream.META_BLOCK_SIZE}) {
+            MemoryStream corrupt = large.copy();
+            byte[] b = new byte[8];
+            Bytes.longToBytesLE(spos, b, 0);
+            MemoryStream.TestAccess.write(corrupt, b, block + 16);
+            try (Db db = Db.builder().testSetup(corrupt).clock(clock)
+                    .startupDistance(1000000).start()) {
+                throw new AssertionError("started with the last transaction at " + spos);
+            } catch (StreamFormatException expected) {
+                Assert.assertTrue(expected.getMessage(),
+                        expected.getMessage().contains("names the last transaction at"));
+            }
+        }
     }
 
     /** The bytes of the record at 'tpos', which must not span a meta block. */

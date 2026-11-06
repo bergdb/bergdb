@@ -1786,4 +1786,34 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             b.close();
         }
     }
+    
+    /**
+     * bergdb 019-40 (review R6 of 006-13, C2): an Error that ends the thread outside a flush,
+     * here the listener's, fails the stream, and the listener is told (bergdb 019-10).
+     * Before, it ended the thread with nothing failed.
+     */
+    @Nano
+    public static void testListenerErrorFailsTheStream() throws Exception {
+        final AssertionError error = new AssertionError("test: the listener's Error");
+        final IOException[] told = new IOException[1];
+        final BufferedStream b = new BufferedStream(new MemoryStream(), 1000, 10);
+        b.setAppendListener(new AppendListener() {
+            public void dataAppended(long length) {
+                throw error;
+            }
+            public void appendFailed(IOException e) {
+                told[0] = e;
+            }
+        });
+        b.start();
+        b.append(new byte[100], 0, 100);
+        b.consumer.join(10000);
+        Assert.assertTrue("the listener is told: " + told[0],
+                told[0] != null && told[0].getCause() == error);
+        try {
+            b.close();
+        } catch (IOException e) {
+            Assert.assertTrue("close() throws the failure", e == told[0]);
+        }
+    }
 }

@@ -4,7 +4,7 @@ package bergdb.pub.util;
  * <p>Thrown when the database has failed, as Database's Javadoc says ("Errors"): its
  * environment failed (an I/O error or corrupt data in the storage, an Error such as an
  * OutOfMemoryError) or a bug, in a read, a transaction or a sync, or a transaction failed
- * after it began. The cause is that failure; for a call refused after it, the first one. The
+ * after its checks. The cause is that failure; for a call refused after it, the first one. The
  * call that met an Error throws the Error itself, and the later calls this exception with
  * the Error as the cause (2026-11-06, bergdb 019-10).</p>
  *

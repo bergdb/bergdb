@@ -1,7 +1,7 @@
 015-61. Fix: a deletion job that stop() or close() ends early reports "Done! Deleted"
 =====================================================================================
 
-Status: open. Kind: Fix. Created 2026-11-04 by Frans Lundberg.
+Status: done. Kind: Fix. Created 2026-11-04 by Frans Lundberg.
 
 After release 2026.2 (a known issue of it); in 2026.1 too.
 
@@ -19,3 +19,9 @@ Log
 ---
 
 2026-11-04. Registered by the coordinator of release 2026.2 (016-02).
+
+2026-11-06. Done in 019-40 (its C5, review R6 of 006-13, the same fault
+after a failure), by coord-1106's agent i40: a done flag after the
+job's last sync; an ended job without it says "Stopped". Test
+`PubTesterIndexJobs.testDeletionEndedByCloseIsStopped`, R8's probe,
+fails before the fix.

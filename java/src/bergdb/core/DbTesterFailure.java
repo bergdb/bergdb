@@ -24,6 +24,7 @@ import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.pub.util.SyncLevel;
 import bergdb.storage.RecoverableStream;
+import bergdb.storage.StorageManager;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
@@ -451,7 +452,7 @@ public class DbTesterFailure {
                     Assert.assertTrue(what + ", the cause: " + failure,
                             failure instanceof StreamIoException);
                 }
-                assertRefused(db, failure);
+                assertRefused(db, failure, what);
                 Assert.assertEquals(what + ": the stream's length", length, s.getLength());
             } finally {
                 db.close();
@@ -1417,6 +1418,47 @@ public class DbTesterFailure {
     }
     
     /**
+     * bergdb 019-40 (review R6 of 006-13, C2): an Error in a sync, and in
+     * setCacheSizeIndicator's start of the eviction thread, fails the database and is thrown
+     * as it is (bergdb 019-10).
+     */
+    @Nano
+    public static void testErrorInSyncOrCacheSizeFailsTheDatabase() {
+        for (int i = 0; i < 2; i++) {
+            final String call = i == 0 ? "sync()" : "setCacheSizeIndicator()";
+            final OutOfMemoryError oom = new OutOfMemoryError("test: in " + call);
+            final Db db = Db.builder().testSetup()
+                    .evictionSchedule(Eviction.Schedule.BUDGET, 1).start();
+            Throwable thrown = null;
+            try {
+                db.execute(db.trans().put("/a", "a0").build());
+                StorageManager.testHookSync = () -> {
+                    throw oom;
+                };
+                Util.testHookStart = t -> {
+                    if (t.getName().equals("bergdb-evictor")) throw oom;
+                };
+                if (i == 0) {
+                    db.sync(SyncLevel.ORDINARY);
+                } else {
+                    db.setCacheSizeIndicator(1);
+                }
+            } catch (Throwable e) {
+                thrown = e;
+            } finally {
+                StorageManager.testHookSync = null;
+                Util.testHookStart = null;
+            }
+            try {
+                Assert.assertTrue(call + " throws the Error: " + thrown, thrown == oom);
+                assertRefused(db, oom, call);
+            } finally {
+                db.close();
+            }
+        }
+    }
+    
+    /**
      * Node size 8, a startup distance of 1,000 bytes, so that index nodes are written and
      * can be evicted; every evictable object evicted after every transaction; the audit
      * after every 'audit'-th transaction and at startup, or off (0).
@@ -1476,6 +1518,11 @@ public class DbTesterFailure {
      * reads: a get, a scan, and getTrans (since bergdb 005-30).
      */
     private static void assertRefused(Db db, Throwable cause) {
+        assertRefused(db, cause, "");
+    }
+
+    /** As assertRefused(db, cause), with the case, 'what', named (bergdb 019-40). */
+    private static void assertRefused(Db db, Throwable cause, String what) {
         for (int i = 0; i < 4; i++) {
             DbFailedException refused = null;
             try {
@@ -1491,7 +1538,8 @@ public class DbTesterFailure {
             } catch (DbFailedException e) {
                 refused = e;
             }
-            Assert.assertTrue("refused, " + i, refused != null && refused.getCause() == cause);
+            Assert.assertTrue("refused, " + what + ", " + i + ": " + refused,
+                    refused != null && refused.getCause() == cause);
         }
     }
 

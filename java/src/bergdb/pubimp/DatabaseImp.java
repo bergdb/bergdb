@@ -293,6 +293,7 @@ public class DatabaseImp implements Database {
         
         final long[] deletedCounter = new long[1];    
             // Shared between anonymous classes and removeIndexEntries()
+        final boolean[] done = new boolean[1];      // Set at the end of the work (bergdb 019-40)
         
         final Thread thread = new Thread(new Runnable() {
             public void run() {
@@ -306,6 +307,7 @@ public class DatabaseImp implements Database {
                         indexManager.deleteIndexEntries(indexName, db, deletedCounter);
                         indexManager.deleteIndexInfo(connection, index);
                         sync(SyncLevel.ORDINARY);
+                        done[0] = true;
                     } catch (DbStoppingException e) {
                         // empty, delete job will continue when database is started again.
                     } catch (DbFailedException e) {
@@ -341,6 +343,7 @@ public class DatabaseImp implements Database {
         final Job job = new Job() {
             public JobStatus getStatus() {
                 final int progress = thread.isAlive() ? -1 : 100;
+                final boolean stopped = progress == 100 && !done[0];  // After isAlive().
                 final long count = deletedCounter[0];
                 
                 return new JobStatus() {
@@ -349,6 +352,12 @@ public class DatabaseImp implements Database {
                     }
 
                     public String note() {
+                        if (stopped) {
+                            // A stop, a close or a failure ended the thread (bergdb 019-40,
+                            // 015-61); the deletion goes on at the next start. It said "Done!".
+                            return "Stopped: the deletion of index '" + indexName + "' goes on "
+                                    + "at the next start; " + count + " entries deleted so far.";
+                        }
                         String result = progress == 100 ? 
                                 "Done! Deleted '" + indexName + "', " + count + " index entries were deleted."
                                 : "Working on deleting index '" + indexName + "', deleted " + count + " entries.";

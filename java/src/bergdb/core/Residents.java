@@ -188,8 +188,9 @@ public final class Residents {
 
     /**
      * A handle went into a pointer of 'holder' that held none (a follow's swizzle,
-     * NodeCollection; a start's linkD, NodeCollection.linkToCanonical): the holder's count takes the handle's bytes (bergdb 015-13). The
-     * caller holds the holder's monitor. Nothing if the holder is not counted.
+     * NodeCollection; a start's linkD, NodeCollection.linkToCanonical): the holder's count
+     * takes the handle's bytes (bergdb 015-13). The caller holds the holder's monitor.
+     * Nothing if the holder is not counted.
      */
     public void handleIn(Node holder) {
         int c = counted(holder);

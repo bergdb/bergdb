@@ -24,7 +24,8 @@ import bergdb.pub.util.SyncLevel;
  * <li>an Error, such as OutOfMemoryError or StackOverflowError, thrown while the database
  * reads, runs a transaction (its Action too) or syncs, or on one of its own threads, such
  * as an index job's;</li>
- * <li>any exception after a transaction began, as nothing is rolled back.</li>
+ * <li>any exception after a transaction's checks, once it changes the database (its
+ * Action and the checks come before), as nothing is rolled back.</li>
  * </ul>
  * <p>A failed database does no more work. The call that met the failure throws it: an Error
  * as it is, anything else as a DbFailedException. Every later read and transaction throws a
@@ -38,9 +39,10 @@ import bergdb.pub.util.SyncLevel;
  * cleanly, so a sync() or close() may then wait (bergdb 019-39).</p>
  *
  * <p>Everything else the database throws fails only that call, and the database goes on: a
- * transaction refused before it began, such as one that is too large, a read whose lookup
+ * transaction refused by its checks, such as one that is too large, a read whose lookup
  * time has expired (LookupTimeNotAvailableException; see getFirstAvailableLookupTime()), a
- * bad argument.</p>
+ * bad argument. The conversion of a read value to your object is not the database's
+ * read: what it throws, an Error too, fails only that call (bergdb 019-40).</p>
  * 
  * <p>Interrupts (bergdb 005-46). An interrupt of the calling thread never fails the
  * database. Three calls only wait, and an interrupt ends the wait: sync() throws a

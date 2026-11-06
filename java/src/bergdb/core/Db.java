@@ -1704,7 +1704,11 @@ public class Db implements AutoCloseable {
     }
     
     
-    public byte[] getOneInternal(long lookupTime, long[] keySegments, GetData gd) {
+    /**
+     * The warm-up's read: no edge and no state check, so not public (bergdb 019-40); the
+     * package's, as item 004's ScaleBench and IndexCensus call it.
+     */
+    byte[] getOneInternal(long lookupTime, long[] keySegments, GetData gd) {
         //
         // Few assumptions of previous state of gd are assumed. db.kwi must be non-null, however.
         //
@@ -2124,33 +2128,40 @@ public class Db implements AutoCloseable {
         writersWaiting.incrementAndGet();
         synchronized (writeLock) {
             writersWaiting.decrementAndGet();
-            // Again under the lock (bergdb 005-01): a writer that waited for the lock while
-            // another one failed must not run on what the failed one left in memory.
-            assertDbStateIsActive("execute");
+            try {
+                // Again under the lock (bergdb 005-01): a writer that waited for the lock while
+                // another one failed must not run on what the failed one left in memory.
+                assertDbStateIsActive("execute");
             
-            // The end of the top node ordinals (bergdb item 005-02, register M46): checked
-            // before the transaction changes anything. A transaction makes at most one top
-            // node, and reclaim's internal transactions run only after a user transaction,
-            // within the margin, or at a call of a setter of reclaim's settings, which
-            // Reclaim.setSettings refuses before it as this refuses a user transaction
-            // (refuseIfTopOrdinalsUsed; bergdb 015-87); so no transaction reaches the bound,
-            // where TopNode throws.
-            // A database that ends here can still be read and restarted.
-            if (!t.isInternal()) {
-                refuseIfTopOrdinalsUsed();
-            }
-            if (!t.isInternal()) {
-                checkDirtyNodes(t);
-            }
-            x.begin(t);
+                // The end of the top node ordinals (bergdb item 005-02, register M46): checked
+                // before the transaction changes anything. A transaction makes at most one top
+                // node, and reclaim's internal transactions run only after a user transaction,
+                // within the margin, or at a call of a setter of reclaim's settings, which
+                // Reclaim.setSettings refuses before it as this refuses a user transaction
+                // (refuseIfTopOrdinalsUsed; bergdb 015-87); so no transaction reaches the bound,
+                // where TopNode throws.
+                // A database that ends here can still be read and restarted.
+                if (!t.isInternal()) {
+                    refuseIfTopOrdinalsUsed();
+                }
+                if (!t.isInternal()) {
+                    checkDirtyNodes(t);
+                }
+                x.begin(t);
             
-            stmCheckConflicts(t);
+                stmCheckConflicts(t);
 
-            // transactionBegin() refuses a clock out of range (bergdb 005-18), and a user
-            // transaction in the times kept for reclaim's internal transactions after it
-            // (bergdb 015-55); before the try, so that nothing has begun or changed when it
-            // throws.
-            t.tt = dbClock.transactionBegin(!t.isInternal());
+                // transactionBegin() refuses a clock out of range (bergdb 005-18), and a user
+                // transaction in the times kept for reclaim's internal transactions after it
+                // (bergdb 015-55); before the try, so that nothing has begun or changed when it
+                // throws.
+                t.tt = dbClock.transactionBegin(!t.isInternal());
+            } catch (Error e) {
+                // Recorded before the lock is released, as fail() does after the go point
+                // (bergdb 019-40): a writer that waits for the lock then finds the database
+                // failed.
+                throw failed(e);
+            }
             
             // The go point. From here nothing refuses the transaction and nothing is undone:
             // whatever throws fails the database (bergdb 005-01).
@@ -2231,8 +2242,9 @@ public class Db implements AutoCloseable {
      * transaction closes the storage under it, so its append can fail (since bergdb 005-35,
      * the close of stop() and close() waits for a running transaction).</p>
      * 
-     * <p>An Error before the go point fails the database too, at the edge of execute()
-     * (failed(); 2026-11-06, bergdb 019-10), as does one of a read or a sync: the class
+     * <p>An Error before the go point fails the database too (failed(); 2026-11-06, bergdb
+     * 019-10): under the write lock, before it is released (bergdb 019-40), and in the
+     * warm-up at the edge of execute(), as does one of a read or a sync: the class
      * Javadoc's "Errors".</p>
      * 
      * @return The exception for the caller to throw: a DbFailedException, or the exception

@@ -113,7 +113,9 @@ record the failure), so a `sync()` or `close()` may then wait (019-39).
 
 Everything else the database throws fails only that call, and the database
 goes on: a transaction refused before its go point, a lookup time no longer
-available, a bad argument.
+available, a bad argument. The conversion of a read value to the
+application's object (the Pub API) is not the database's read: what it
+throws, an `Error` too, fails only that call.
 
 The details:
 
@@ -172,7 +174,10 @@ The details:
   transaction, whose `Action` runs before the Core's `execute`) catch it at
   their edge, fail the database, and throw it as it is. BergDB's own
   threads (the storage thread, eviction, the cut's file deletion, index
-  jobs) fail the database on anything that ends their work. An index job's
+  jobs) fail the database on anything that ends their work; the cut's file
+  deletion fails the stream, and the database fails when the storage next
+  uses it (a flush, a read of the stream, a sync), so reads served from
+  memory go on until then (019-40). An index job's
   refused transaction or expired read is not a failure: the job waits as
   after a conflict and takes its step again (019-38). Any other exception
   of an index build that is not an `Error`, such as an object it cannot

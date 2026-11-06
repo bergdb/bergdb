@@ -217,6 +217,12 @@ public class StorageManager implements AppendOnlyStream {
     }
     
     /**
+     * For tests (2026-11-06, bergdb 019-40): run at the start of each sync(), and may throw,
+     * as an Error there would. null, the default, does nothing.
+     */
+    public static volatile Runnable testHookSync = null;
+    
+    /**
      * Waits until the durable length of rule D1 is at least 'length': every byte before that
      * position is durable. A transaction is durable when its last byte is, so a sync of it
      * waits for its lastPos + 1 (bergdb 005-44).
@@ -227,6 +233,8 @@ public class StorageManager implements AppendOnlyStream {
      * commit, 2026-10-27, bergdb 005-48).</p>
      */
     public void sync(long length) throws IOException {
+        final Runnable hook = testHookSync;
+        if (hook != null) hook.run();
         synchronized (d1Lock) {
             while (d1Size < length) {
                 String e0 = error.get();

@@ -44,7 +44,6 @@ Open
 | [015-43](43-object-index-read-time.md) | Fix | Index work reads the indexes before the read time: a new or ... | open |
 | [015-46](46-string-at-object-key-index.md) | Fix | A String or byte[] at an object key in an indexed directory breaks ... | open |
 | [015-49](49-review-s2-faults.md) | Fix | Review S2's 27 faults of the indexes and the objects | open |
-| [015-61](61-deletion-job-done-at-stop.md) | Fix | A deletion job that stop() or close() ends early reports "Done! ... | open |
 | [015-84](84-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: a decrease's records grow with the keys | open |
 
 
@@ -53,6 +52,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-61](61-deletion-job-done-at-stop.md) | Fix | A deletion job that stop() or close() ends early reports "Done! ... | done | 2026-11-06 |
 | [015-06](06-refused-start-leaves-file.md) | Fix | A refused start leaves an empty first stream file | done | 2026-11-06 |
 | [015-86](86-gets-with-8-readers.md) | Investigate | Long gets with 8 readers: a full machine | done | 2026-11-06 |
 | [015-19](19-tools-after-005-79.md) | Fix | Tools in items still use what 005-79 removed | done | 2026-11-06 |
@@ -229,7 +229,8 @@ Files
 * [58-testclock-current-time.md](58-testclock-current-time.md). 015-58, Fix: R8-F3.
 * [59-new-connection-lookup-time.md](59-new-connection-lookup-time.md). 015-59, Fix: R8-F4.
 * [60-connections-per-thread-kept.md](60-connections-per-thread-kept.md). 015-60, Fix: R8-F5.
-* [61-deletion-job-done-at-stop.md](61-deletion-job-done-at-stop.md). 015-61, Fix: R8-F6.
+* [61-deletion-job-done-at-stop.md](61-deletion-job-done-at-stop.md). 015-61, Fix: R8-F6;
+  done in 019-40.
 * [62-transactioninfo-after-miss.md](62-transactioninfo-after-miss.md). 015-62, Fix: R8-F7.
 * [63-time-tostring-threads.md](63-time-tostring-threads.md). 015-63, Fix: R8-F8.
 * [64-key-replace-last-only.md](64-key-replace-last-only.md). 015-64, Fix: R8-F9.
