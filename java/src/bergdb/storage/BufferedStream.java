@@ -38,6 +38,10 @@ import bergdb.stream.StrictStream;
  * during an append of the thread waits for it, and its force. ioLock is never held with
  * this object's monitor, and read() holds neither while it reads the underlying stream.
  * 
+ * <p>The underlying stream is this object's from the constructor to close(): nothing else
+ * appends to it, cuts it or closes it; others may read it. getFirstPos() depends on this:
+ * it is the first position kept after this object's last cut (bergdb 015-80, review R4).
+ * 
  * @author Frans Lundberg
  */
 public class BufferedStream implements AppendOnlyStream, Closeable {
@@ -440,9 +444,9 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     /**
      * The underlying stream's first position after the last cut (2026-11-06, bergdb 015-80):
      * it called the underlying stream, beside the thread's append. A stream's first position
-     * changes only at a cut, and this object makes every cut of it, and reads the position
-     * after each. Takes no lock: a commit asks it often (NodeCollection.resolvePointers),
-     * and must not wait for the thread's append and its force.
+     * changes only at a cut, every cut of it is made through this object (the class's rule),
+     * and this object reads the position after each. Takes no lock: a commit asks it often
+     * (NodeCollection.resolvePointers), and must not wait for the thread's append and force.
      */
     public long getFirstPos() {
         return firstPos;
@@ -1070,18 +1074,22 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
      * (StorageContractTester) does not reach: a writer's cut, at or below the flushed length,
      * while the thread makes a pending cut, and while the thread closes the stream after
      * stop(). The cut must wait for the thread's call, not call the stream below beside it
-     * (StrictStream: OVERLAP); getFirstPos() is then the stream below's.
+     * (StrictStream: OVERLAP); getFirstPos() is then the stream below's. Below the close, a
+     * CutStream, whose first position is the cut exactly; below the thread's cut at 200, a
+     * MemoryStream, as the writer's cut at 80 comes after it, which a CutStream refuses (a cut
+     * below an earlier one), and whose first position moves in steps of 1 MB, so the check
+     * there is weak (testFirstPosAfterCuts checks the kept value after both kinds of cut).
      */
     @Nano
     public static void testWriterCutBesideThreadsCutAndClose() throws Exception {
-        writerCutBeside(StrictStream.Op.PRETRUNCATE);
-        writerCutBeside(StrictStream.Op.CLOSE);
+        writerCutBeside(StrictStream.Op.PRETRUNCATE, new MemoryStream());
+        writerCutBeside(StrictStream.Op.CLOSE, new CutStream());
     }
 
-    private static void writerCutBeside(final StrictStream.Op held) throws Exception {
+    private static void writerCutBeside(final StrictStream.Op held, AppendOnlyStream below)
+            throws Exception {
         java.util.concurrent.CountDownLatch entered = new java.util.concurrent.CountDownLatch(1);
         java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
-        MemoryStream below = new MemoryStream();
         below.append(new byte[100], 0, 100);
         final StrictStream strict = new StrictStream(below);
         strict.setHook((op, n) -> {
@@ -1134,9 +1142,10 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                         + breach.getMessage(), breach);
             }
         }
-        if (held == StrictStream.Op.PRETRUNCATE) {
-            Assert.assertTrue("the cut threw " + thrown.get(), thrown.get() == null);
-            Assert.assertEquals(below.getFirstPos(), b.getFirstPos());
+        Assert.assertTrue("the cut threw " + thrown.get(), thrown.get() == null);
+        Assert.assertEquals(below.getFirstPos(), b.getFirstPos());
+        if (below instanceof CutStream) {
+            Assert.assertEquals(80L, b.getFirstPos());
         }
     }
 

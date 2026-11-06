@@ -788,9 +788,12 @@ public class DbTesterFailure {
     }
 
     /**
-     * Db.getTrans of a transaction that reclaim has removed (here, a cut of the stream
-     * itself) throws a LookupTimeNotAvailableException, and the database goes on, as for a
-     * read that a cut has overtaken (bergdb 011-04, W1).
+     * Db.getTrans of a transaction that reclaim has removed (here, a cut made as reclaim
+     * makes it, through the storage's buffer, which keeps the database's first position)
+     * throws a LookupTimeNotAvailableException, and the database goes on, as for a read
+     * that a cut has overtaken (bergdb 011-04, W1). The stream below was cut directly until
+     * 2026-11-06, so the database's first position did not see the cut (bergdb 015-80,
+     * review R4's C2).
      */
     @Nano
     public static void testGetTransBelowTheCut() throws IOException {
@@ -801,7 +804,9 @@ public class DbTesterFailure {
         Trans t2 = db.trans().put("/b", "b0").build();
         db.execute(t2);
         db.sync(SyncLevel.ORDINARY);
-        s.pretruncate(t2.tpos);
+        db.internal().getMainStream().pretruncate(t2.tpos);
+        Assert.assertEquals("the database's first position", t2.tpos,
+                db.internal().getMainStream().getFirstPos());
 
         LookupTimeNotAvailableException expired = null;
         try {

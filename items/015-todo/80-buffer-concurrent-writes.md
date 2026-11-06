@@ -217,12 +217,40 @@ same beside CLOSE. After the fix all pass, and so do the long workloads
   failure path".
 
 
+2026-11-06. Landed on `main` at 01:16 after review R4 of night 006-12
+(`/Users/f/fl/bench/006-12/review-r4.md`): verdict land, no A or B
+finding; R4 confirmed by runs that each part of the fix (the lock on cuts
+and appends, the kept first position, the lock on the close) has a test
+that fails without it. Its C findings:
+
+* C1, for Frans's decision, not done: Reclaim's cut now waits for the
+  thread's append and its force, holding the write lock, and under steady
+  writes most cuts will; an append is up to 5 MB (half the default
+  buffer), above the 2.5 MB of the figures in "The cost", and on s1 a
+  force can take seconds; P1's "Where BergDB stands" in 010-01 has no line
+  for it. R4's possible fix: Reclaim's cut tries the lock (`tryLock`) and,
+  when the thread is appending, keeps the cut to its next commit (the
+  writer still makes the cut, so the kept first position stays exact),
+  with a fall-back to the plain lock after some growth.
+* C2, fixed in a follow-up commit (test code and words): the class
+  Javadoc states the rule that the kept first position depends on (the
+  stream given to it is cut, appended to and closed only through it), and
+  `DbTesterFailure.testGetTransBelowTheCut` cuts through the storage's
+  buffer, as reclaim does, not the `CutStream` below it, and checks the
+  database's first position after the cut. It still fails on the fault it
+  was written for (011-04, W1): with `Db.getTrans`'s branch for a read
+  below the cut taken out, "DbFailedException: A read failed on the
+  storage"; it passes with it.
+* C3, fixed in the same commit: `testWriterCutBesideThreadsCutAndClose`
+  has a `CutStream` below the close, so its first-position check compares
+  the cut, 80, with the kept value; below the thread's cut it keeps a
+  `MemoryStream` (a `CutStream` refuses the writer's later, lower cut).
+
+
 State (night 006-12)
 --------------------
 
-2026-11-06, 01:06. Clone `/Users/f/fl/bench/006-12/f80`, branch `w1-f80`
-(on `main` at 4d7a1bb). Done and committed there, one commit: the fix,
-the tests, the entry, 015's readme, `releases/next.md`; the failing tests
-shown on the old code (the log above). Gates through `gate.sh` on that
-tree: BEFORE COMMIT OK, LEVEL 2 OK (quick), LEVEL 3 OK. Next: a review
-agent checks the fix, then the coordinator lands it.
+2026-11-06, 01:20. Clone `/Users/f/fl/bench/006-12/f80`, branch `w1-f80b`
+(from `main` at 33a81b9, the fix landed): the follow-up for R4's C2 and
+C3 (test code and words), gated with `before-commit.sh`, one commit. C1
+waits for Frans.
