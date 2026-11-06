@@ -67,9 +67,11 @@ the Nth call.
 
 The checks, after each run:
 
-1. **P7.** After a call that threw `DbFailedException`, every later
-   transaction and read is refused with `DbFailedException` (`sync()`,
-   `stop()` and `close()` still work, by `Db.execute()`'s Javadoc).
+1. **P7.** After a call that threw `DbFailedException`, or the fault's
+   `Error` as it is (an `Error` during a call fails the database: 019-10,
+   Frans, 2026-11-06), every later transaction and read is refused with
+   `DbFailedException` (`sync()`, `stop()` and `close()` still work, by
+   `Db`'s Javadoc, "Errors").
    **Met**: a call that threw the fault itself, or an exception caused by
    it, must leave the database failed: the next transaction or read
    throws `DbFailedException` (docs/levels.md, section 3: a database
@@ -278,7 +280,8 @@ and reopened; none in the IO layer, whose reads go through an open
 channel. Registered as 019-10, in `SKIP` until its fix, and fixed the
 same night (`StorageManager.read()` fails the storage on it; 019-10's
 entry). Since, the harness finds nothing on `main` but 015-80's
-OVERLAP.
+OVERLAP. Since Frans's decision on 019-10 (2026-11-06), an `Error` fails
+the database and is thrown as it is, and check 1 takes it as the failure.
 
 Nothing else: no lost transaction, no refused one in the stream, no lock
 or thread left, no hang, and every interrupt and stop left the database
@@ -349,11 +352,17 @@ tests pass (1,187 IO runs, 3,508 STREAM runs, 166 s), no OVERLAP. With
 it, review R5's F3 on 019-10 (docs/levels.md's reflow, the Javadoc of
 `StorageManager.hasFailed()` and `getFailure()`). BEFORE COMMIT OK.
 
+2026-11-06. 019-10's error model (Frans, 10:18 and 10:31; agent i10 of
+coord-1106): check 1 takes the fault's `Error`, thrown as it is, as the
+failure, and every later transaction and read must be refused; the close
+check after a reported failure too. The night tests pass (1,187 IO runs,
+3,508 STREAM runs, 162 s). BEFORE COMMIT OK.
+
 
 ## State (night 006-12)
 
 2026-11-06, 03:20. Clone `/Users/f/fl/bench/006-12/h62`, branch `h62b`
 (from `main` at 8130710): the follow-up (015-80 out of the skip list,
-R5's F3) committed. Nothing open here; 019-10 waits for Frans's decision
-on R5's F1 and F2 (its entry). Possible later: 015-81's stranded sync
+R5's F3) committed. Nothing open here; 019-10 decided and done since
+(its entry; the log, 2026-11-06). Possible later: 015-81's stranded sync
 needs a second application thread, which the workload does not have.

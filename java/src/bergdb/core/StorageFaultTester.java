@@ -37,8 +37,9 @@ import bergdb.stream.StrictStream;
  *
  * <p>The checks after each run (bergdb 018-03, section 1):</p>
  * <ul>
- * <li>P7: after a call that threw DbFailedException, every later transaction and read is
- * refused with one;</li>
+ * <li>P7: after a call that threw DbFailedException, or the fault's Error as it is (bergdb
+ * 019-10: an Error during a call fails the database), every later transaction and read is
+ * refused with a DbFailedException;</li>
  * <li>an interrupt fails no call but sync() (bergdb 005-46, InterruptTester);</li>
  * <li>close() returns, within 10 s; normally if an earlier call reported a failure (bergdb
  * 019-09, option (a));</li>
@@ -373,10 +374,12 @@ public class StorageFaultTester {
 
     /**
      * A call of the workload. Returns true if it returned normally. Checks P7: after a
-     * DbFailedException, every later transaction and read is refused with one (sync() still
-     * works, by its Javadoc); and that an interrupt fails no call but sync(). A call that
-     * throws something else may leave the database going on: a transaction that threw, and
-     * after which a call returned, was refused.
+     * DbFailedException, or the fault's Error, which fails the database and is thrown as it
+     * is (2026-11-06, bergdb 019-10), every later transaction and read is refused with a
+     * DbFailedException (sync() still works, by its Javadoc); and that an interrupt fails no
+     * call but sync(). A call that throws something else may leave the database going on: a
+     * transaction that threw, and after which a call returned, was refused; but not after
+     * the fault ("met").
      */
     private static boolean call(Run run, String what, Runnable r) {
         final boolean failedBefore = run.failure != null;
@@ -425,11 +428,15 @@ public class StorageFaultTester {
                 run.thrownCall = what;
                 run.thrown = t;
             }
-            if (!(t instanceof DbFailedException) && causedByFault(t)) {
+            // The fault's Error is a failure (bergdb 019-10): until then, an Error before a
+            // transaction's go point, as in a read, left the database going on.
+            final boolean failure = t instanceof DbFailedException
+                    || (t instanceof Error && causedByFault(t));
+            if (!failure && causedByFault(t)) {
                 run.metWithoutFailure = what + " threw " + t + " (the fault at "
                         + run.inj.where + ")";
             }
-            if (t instanceof DbFailedException) {
+            if (failure) {
                 run.failedCall = what;
                 run.failure = t;
                 for (int i = 0; i < run.made; i++) {
@@ -711,7 +718,7 @@ public class StorageFaultTester {
             }
         } catch (Throwable t) {
             run.closeThrew = true;
-            if (run.failure instanceof DbFailedException) {
+            if (run.failure != null) {
                 run.finding("close", "close() threw " + t + " after the failure was reported by "
                         + run.failedCall + " (019-09, option (a): it returns normally)");
             }

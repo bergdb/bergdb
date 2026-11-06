@@ -16,6 +16,7 @@ import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Factory;
 import bergdb.pub.IndexAlreadyExistsException;
 import bergdb.pub.NoSuchIndexException;
+import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
 import bergdb.stream.MemoryStream;
@@ -155,6 +156,41 @@ public class PubTesterIndexJobs {
             db.close();
         }
         checkAfterRestart(stream);
+    }
+    
+    /**
+     * bergdb 019-10: an Error in an index build, in its step's Action (the hook "action") or
+     * after its transaction (the hook "step"), fails the database, as on BergDB's other
+     * threads, and the build's thread ends: every later call is refused with a
+     * DbFailedException whose cause is the Error. Before, the thread ended, and the database
+     * went on without the build.
+     */
+    @Nano
+    public static void testErrorInBuildFailsTheDatabase() {
+        for (final String point : new String[] {"action", "step"}) {
+            final Database db = start(new MemoryStream());
+            try {
+                db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
+                final Error error = new Error("an Error in the build, at " + point);
+                IndexBuilderImp builder = (IndexBuilderImp) db.indexBuilder("by-field");
+                builder.testHook(p -> {
+                    if (p.equals(point)) {
+                        throw error;
+                    }
+                });
+                builder.dir("/items/").type("long").field("amount").start().join();
+                DbFailedException refused = null;
+                try {
+                    putNew(db);
+                } catch (DbFailedException e) {
+                    refused = e;
+                }
+                Assert.assertTrue(point + ", the database failed: " + refused,
+                        refused != null && refused.getCause() == error);
+            } finally {
+                db.close();
+            }
+        }
     }
     
     private static void putNew(Database db) {

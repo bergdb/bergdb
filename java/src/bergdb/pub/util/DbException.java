@@ -15,7 +15,8 @@ package bergdb.pub.util;
  * or a sync, an I/O error or corrupt data (bergdb 005-30): the call throws a
  * DbFailedException with the StreamIoException or the StreamFormatException as the
  * cause. Corrupt internal data (InternalDataException) means that the stream does not
- * work either; restart the database.</p>
+ * work either; restart the database. An Error, such as an OutOfMemoryError, fails the
+ * database too, and is thrown as it is (bergdb 019-10; Database, "Errors").</p>
  * 
  * <p>An application that does not tell the two apart can take any DbException as a
  * reason to stop and restart the database; that is always safe (2026-10-23, bergdb

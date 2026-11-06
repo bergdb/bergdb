@@ -1,8 +1,8 @@
 019-10. Fix: an unchecked exception or Error from a read of the storage leaves the database going on
 ================================================================================================
 
-Status: done 2026-11-06, night 006-12; R5's F1 and F2 wait for Frans (below). Kind:
-Fix. Frans: decision.
+Status: done 2026-11-06. Kind: Fix. Frans: decision (2026-11-06, 10:18 and
+10:31: the error model; section "The error model, done").
 Created 2026-11-06 by Frans Lundberg.
 
 What: when the stream under the storage throws an unchecked exception or
@@ -36,8 +36,11 @@ Not in the IO layer: `FileStream` reads through an open channel, not
 through `FileStreamIo`. Older than the night: in 2026.2 and 2026.1 by
 reading (the catch of `StreamException` only is from 005-30).
 
-Frans: none. The fix follows section 3's rule; an `Error` is thrown as it
-is, as after the go point (`Db.execute`'s Javadoc).
+Frans: none at first (the night's fix followed docs/levels.md, section 3);
+then R5's F1 and F2, and e1's study, for Frans. Decided 2026-11-06, 10:18
+and 10:31: an `Error` in any call, or on BergDB's own threads, fails the
+database and is thrown as it is; the application ends its process (the
+section "The error model, done", below).
 
 Done when: a regression test (a stream whose read throws an unchecked
 exception, and one whose read throws an `Error`: a get and a
@@ -409,6 +412,124 @@ a separate entry, if Frans wants it. A connection's `transactionInfo()`
 after a get that threw (above): a Pub API detail.
 
 
+The error model, done (2026-11-06)
+----------------------------------
+
+Frans, 10:18, on e1's study: "The complexity cost is too high. Mainly in
+future maintenance. I never before tried to handle OOM or StackOverflow
+in Java. In general, this is considered a bad idea. So, keep the error
+model even simpler. I think this is the original error model. If the
+environment is faulty (storage, memory, stack), then the database cannot
+be garanteed to work. Flag this, throw exception is called. The user
+application should close the process." 10:31, on coord-1106's draft of the
+model and the proposal: "Good. Document this and implement it. Ensure the
+Javadoc is clear about this." 10:42 (019-30, 019-31, 019-33): "BergDB
+assumes correct storage. Which makes sense. Ensure this is documented in
+the relevant Javadoc comments." Done by agent i10 of coord-1106 (clone
+`/Users/f/fl/bench/006-13/i10`, branch `i10`).
+
+**The model**, in docs/levels.md, section 3 ("Errors"), `Db`'s class
+Javadoc, `Database`'s (the Pub API), `DbFailedException`'s, a pointer in
+`Connection`'s and `DbException`'s, and `AppendOnlyStream`'s (correct
+storage assumed; what an unexpected exception of `read()` does). The
+approved words with three changes for accuracy: "during a call to the
+database" became "during a read, a transaction or a sync, also in the
+application's code that it runs" (getters, `newGetData()` and the like do
+not fail the database, nor does the Pub API's conversion of a read value
+to the application's object, below); "Every later call" became "Every
+later read and transaction", and "`stop()` and `close()` still work, and so
+does `sync()` while the storage does" (a sync after a failure works for
+the transactions before it, as before); and correct storage with the
+checksums as a best effort (Frans, 10:42).
+
+**The code.**
+
+* The edge catch: `Db.failed(Error)` (`Db.java:2271`): `setFailed()`
+  first, which allocates nothing, then returns the `Error` for the call to
+  throw. At `getOne` (`:1591`), `getTrans` (`:1621`), `getMany` (`:1767`,
+  also its `StopCondition`), `sync` (`:1914`, at the storage's sync, the
+  call's one step that waits or reads), `execute` (`:2030`, before the go
+  point too; after it `fail()` was first) and `setCacheSizeIndicator`
+  (`:443`: it may start the eviction thread, and an `OutOfMemoryError` in
+  `Eviction.wake` left the thread wanted and never started, e1's first
+  ordering fault). `start()` already caught everything (`:642`): the
+  database is stopped and its storage closed (005-32). Not `stop()` and
+  `close()`: they set the state to STOPPING first, so no later call does
+  work, and their `Error` is thrown as it is. Not the getters and the
+  setters that commit through `execute()` (`setStartupDistance`,
+  `setRetainDuration`, `setReclaimInternalFraction`), whose own steps
+  before it change nothing.
+* The Pub API: a transaction (`RwTransaction.executeRw`,
+  `RwTransaction.java:113`, through `ConnectionImp.failed`, `:226`): the
+  application's `Action` runs there before the Core's `execute()`. Not the
+  conversion of a read value to the application's object
+  (`KvToObjectImp.createObject`): `BlankConstructorFactory` turns any
+  exception of the application's constructor into a `Bug`, an `Error`, so
+  a catch there would fail the database on an application's
+  `RuntimeException`. An `Error` of the Core reaches a Pub caller as it
+  is: no Pub class catches one but the start's, which closes and rethrows
+  (`DatabaseBuilderImp`, `DatabaseImp`'s constructor); tested.
+* `StorageManager.read`: an `Error` passes through as it is, and the
+  storage goes on (the edge fails the database); an unchecked exception
+  stays a storage failure (`:314`). R5's F1 and F2 close by the one rule.
+* `StorageManager.handleStreamException` (`:340`): the failure first, then
+  a fixed error text, before anything is allocated; e1's second ordering
+  fault: an `OutOfMemoryError` in the message, on the storage thread, lost
+  the storage's failure for good, and the database went on, with syncs
+  waiting for ever. The detail is now the cause of what `read()`,
+  `append()` and `sync()` throw after it.
+* BergDB's threads, each listed:
+  * the storage thread (`BufferedStream.runConsumer`, `:173`): anything
+    that ends it outside a flush fails the stream as a failed flush does
+    (new; before, the thread ended with nothing failed);
+  * eviction (`Eviction.EvictorRun`, `:644`, `:669`): already did (015-25);
+    `failByEviction` renamed `Db.Internal.fail` (`Db.java:2787`);
+  * the cut's file deletion (`FileStream.runCuts`, `:595`): already did
+    (the stream's failure);
+  * an index build (`IndexBuilderImp`, `:342`): new, anything else fails
+    the database; the restart's build job (`IndexManager`, `:203`) reports
+    the build's status, not "done" when its thread has ended;
+  * an index deletion (`DatabaseImp.deleteIndexInternal`, `:316`): new;
+  * `Db-close-` (stop()'s close): left, the database is stopping;
+  * `DBMonitor.MThread` (`Jmx`, tests only): left, it reads counters.
+* Not done (Frans's model, coord-1106's proposal, point 4): a guarantee of
+  the cache's state after an `Error`, probe tests, the LOADING spin after a
+  `StackOverflowError`.
+
+**Tests**, each failing on 33a8713 with only the test files changed, and
+passing after:
+
+* `DbTesterFailure.testUncheckedReadFailsTheDatabase`: an unchecked
+  exception and an `Error` of the stream's read in a get, a scan, `getTrans`
+  and a warm-up; the `Error` is thrown as it is (the same instance), then
+  every later transaction and read is refused with it as the cause.
+  Before: "an Error in a get is thrown as it is: DbFailedException".
+* `DbTesterFailure.testErrorInStopConditionFailsTheDatabase`. Before:
+  "refused, 0".
+* `PubTester.testErrorFailsTheDatabase`: an `Error` of an `Action`, and
+  one of a read of the storage reaching a Pub `get` as it is. Before:
+  "refused, 0: null".
+* `PubTesterIndexJobs.testErrorInBuildFailsTheDatabase`: an `Error` in a
+  build's `Action` and after its step's transaction. Before: "action, the
+  database failed: null".
+* `DbTesterFailure.testErrorInFlushFailsSync`: the flush's failure is now
+  looked for in the cause chain.
+* Harness 6.2 (018-03): the fault's `Error` thrown as it is counts as a
+  failure (P7: every later transaction and read refused); `close()`'s
+  check after a reported failure counts it too.
+
+**Left.** The Pub API's own steps around a Core call (key parsing, the
+conversion of a value to the application's object, `transactionInfo()`'s
+list) do not fail the database on an `Error`; the application ends its
+process anyway. The storage thread and the cut's thread allocate one
+`IOException` before they record their failure. Found while gating, older
+than this change (on 33a8713 too): `BufferedStream.closeStream` calls
+`failure.addSuppressed(failed)` when the stream's close throws the flush's
+own `IOException` (harness 6.2, IO `IO_EXCEPTION` at 79), and the storage
+thread ends with "IllegalArgumentException: Self-suppression not
+permitted"; the close's failure is kept before it. For a new entry.
+
+
 Log
 ---
 
@@ -428,3 +549,17 @@ scratch clone, 720 runs, no finding): an `OutOfMemoryError` in a read can
 be ensured to leave the database as it was after two small fixes
 (`Eviction.wake`, the order of `StorageManager.handleStreamException`),
 not every `Error`; recommended (c), with a draft error model. For Frans.
+
+2026-11-06, 10:18 and 10:31. Frans: "The complexity cost is too high.
+[...] So, keep the error model even simpler. [...] If the environment is
+faulty (storage, memory, stack), then the database cannot be garanteed to
+work. Flag this, throw exception is called. The user application should
+close the process."; then, on the drafted model: "Good. Document this and
+implement it. Ensure the Javadoc is clear about this." Status in
+progress, agent i10 of coord-1106.
+
+2026-11-06. Done by agent i10 (section "The error model, done"): an
+`Error` in a read, a transaction, a sync or on BergDB's own threads fails
+the database and is thrown as it is; the model in docs/levels.md, section
+3, and the Javadoc; four new or changed tests that fail before; harness
+6.2's "met" check follows the rule. BEFORE COMMIT OK.

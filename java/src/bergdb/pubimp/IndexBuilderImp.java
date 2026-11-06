@@ -334,6 +334,13 @@ public class IndexBuilderImp implements IndexBuilder {
                         // next transaction or read gets the failure. The index creation
                         // will continue when the database is restarted.
                         break;
+                    } catch (Throwable e) {
+                        // Anything else, a bug or an Error such as an OutOfMemoryError, fails
+                        // the database, as on BergDB's other threads, with no call to throw
+                        // it to (2026-11-06, bergdb 019-10; 010-01, P7). It ended the thread,
+                        // and the database went on without the index's creation.
+                        connection.getDb().internal().fail(e);
+                        break;
                     }
                     
                     long duration = (System.nanoTime() - t0);

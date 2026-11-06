@@ -31,8 +31,9 @@ and why they are made.
   database or how long it has run.
 * **P6**. *No interruption for changes*. Indexes, replicas and settings change
   while the database runs; a large change goes in steps.
-* **P7**. *A failed database stops*. After an I/O error, corrupt data or a bug,
-  every call throws until the application restarts the database.
+* **P7**. *A failed database stops*. After an I/O error, corrupt data, an `Error`
+  (too little memory or stack) or a bug, every call throws; the application ends
+  its process and starts the database again.
 * **P8**. *Determinism beyond the stream*. Where possible, memory, eviction and
   work are the same in each run of the same calls, independent of the JVM
   and timing.

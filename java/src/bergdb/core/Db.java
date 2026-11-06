@@ -70,6 +70,34 @@ import bergdb.stream.SalsaStream;
  * of them. Functionality that can be provided by using the Core API,
  * should not be offered by this class.</p>
  * 
+ * <p><b>Errors</b> (2026-11-06, bergdb 019-10; 010-01, P7). BergDB assumes a sound
+ * environment: correct storage, a stream that returns the bytes appended to it, and enough
+ * memory and stack for its work. Its checksums and checks find some damage of the stored
+ * bytes, not all: they are a best effort, and damage that passes them gives wrong values
+ * with no error. Only a cut tail, as after a crash or a power loss, is recovered. BergDB
+ * does not try to recover when the environment fails; the database fails instead. That
+ * happens on:</p>
+ * <ul>
+ * <li>an I/O error or corrupt data in the storage;</li>
+ * <li>an unexpected exception from the storage's stream;</li>
+ * <li>an Error, such as OutOfMemoryError or StackOverflowError, thrown during a read, a
+ * transaction or a sync, also in the application's code that it runs (a getMany's
+ * StopCondition), or on one of the database's own threads;</li>
+ * <li>any exception after a transaction's go point, as nothing there is undone.</li>
+ * </ul>
+ * <p>A failed database does no more work. The call that met the failure throws it: an Error
+ * as it is, anything else as a DbFailedException. Every later read and transaction throws a
+ * DbFailedException with the first failure as its cause, and nothing more is appended.
+ * Transactions that a sync() has returned for are safe; stop() and close() still work, and
+ * so does sync() while the storage does. The application should then end its process; the
+ * next start recovers the database as after a crash. For OutOfMemoryError, the JVM option
+ * -XX:+ExitOnOutOfMemoryError ends the process at once. (A start that fails throws what it
+ * met, and the database is stopped; see start().)</p>
+ * 
+ * <p>Everything else the database throws fails only that call, and the database goes on: a
+ * transaction refused before its go point, a lookup time no longer available, a bad
+ * argument.</p>
+ * 
  * <p>Db shutdown. The Db typically has allocated resources besides memory: 
  * open files, running threads, open sockets for example. The Db user must call stop() or
  * close() once the Db is no longer used, as for a file or a socket: stop() requests the
@@ -142,9 +170,10 @@ public class Db implements AutoCloseable {
     /**
      * What failed the database, the first time, or null; the state is then FAILED: what a
      * transaction threw after its go point (bergdb 005-01, fail()), what a read or a sync
-     * met on the storage (bergdb 005-30, failOnStorage()), or a failure of the storage that
-     * the next call finds (bergdb 015-35, assertDbStateIsActive()). Written under readSync,
-     * with the state (setFailed()).
+     * met on the storage (bergdb 005-30, failOnStorage()), a failure of the storage that
+     * the next call finds (bergdb 015-35, assertDbStateIsActive()), or an Error that a call
+     * met, or anything that one of the database's own threads met (bergdb 019-10, failed(),
+     * Internal.fail()). Written under readSync, with the state (setFailed()).
      */
     private volatile Throwable failure = null;
     
@@ -407,8 +436,12 @@ public class Db implements AutoCloseable {
         if (sizeIndicator < 1) {
             throw new IllegalArgumentException("Bad sizeIndicator: " + sizeIndicator + ".");
         }
-        cache.setSizeIndicator(sizeIndicator);
-        eviction.setBudget(this, sizeIndicator);
+        try {
+            cache.setSizeIndicator(sizeIndicator);
+            eviction.setBudget(this, sizeIndicator);    // It may start the eviction thread.
+        } catch (Error e) {
+            throw failed(e);
+        }
     }
 
     /**
@@ -1530,6 +1563,9 @@ public class Db implements AutoCloseable {
      * @throws DbFailedException
      *             If the database has failed, or fails now: the read failed on the storage
      *             (an I/O error, corrupt data; the cause; bergdb 005-30).
+     * @throws Error
+     *             As it is, such as an OutOfMemoryError: the database fails (bergdb 019-10;
+     *             "Errors" above).
      * @throws LookupTimeNotAvailableException
      *             If the lookup time is before the first available lookup time, also when
      *             a cut has overtaken the read.
@@ -1548,9 +1584,12 @@ public class Db implements AutoCloseable {
         // last transaction time, read before the Dag, give this read the writes of startup and
         // of the transactions before its lookup time. Until 2026-10-25 an empty
         // synchronized (readSync) block here did, a write of the monitor's word by every get.
-        assertDbStateIsActive("getOne");
-        
-        return getOneInternal(lookupTime, keySegments, gd);
+        try {
+            assertDbStateIsActive("getOne");
+            return getOneInternal(lookupTime, keySegments, gd);
+        } catch (Error e) {
+            throw failed(e);
+        }
     }
     
     /**
@@ -1569,10 +1608,21 @@ public class Db implements AutoCloseable {
      *             corrupt: a node's checksum fails, or the record is malformed. That is
      *             corrupt data, as for the other reads (bergdb 005-30, 005-34, 005-82); the
      *             cause is the read's exception.
+     * @throws Error
+     *             As it is, such as an OutOfMemoryError: the database fails (bergdb 019-10;
+     *             "Errors" above).
      * @throws LookupTimeNotAvailableException
      *             If reclaim has removed the transaction: the time of the get has expired.
      */
     public StoredTrans getTrans(long tpos) {
+        try {
+            return getTransInner(tpos);
+        } catch (Error e) {
+            throw failed(e);
+        }
+    }
+    
+    private StoredTrans getTransInner(long tpos) {
         // Refused before it reads (2026-10-24, bergdb 005-34): it would read the middle of a
         // record as a transaction.
         final long inBlock = tpos % RecoverableStream.META_BLOCK_DISTANCE;
@@ -1688,6 +1738,9 @@ public class Db implements AutoCloseable {
      * @throws DbFailedException
      *              If the database has failed, or fails now: the read failed on the
      *              storage (an I/O error, corrupt data; the cause; bergdb 005-30).
+     * @throws Error
+     *              As it is, such as an OutOfMemoryError, also one of g's StopCondition:
+     *              the database fails (bergdb 019-10; "Errors" above).
      * @throws LookupTimeNotAvailableException
      *              If the lookup time is before the first available lookup time, also
      *              when a cut has overtaken the read.
@@ -1708,6 +1761,14 @@ public class Db implements AutoCloseable {
         assert g.result.size() == 0 : "g.result.size() not 0, but " + g.result.size();
         assert g.stopCondition != null;
 
+        try {
+            getManyInner(g);
+        } catch (Error e) {
+            throw failed(e);        // Also one of the caller's StopCondition (bergdb 019-10).
+        }
+    }
+    
+    private void getManyInner(GetMany g) {
         // Publication: as in getOne (bergdb item 009, step 1c; an empty synchronized (readSync)
         // block until 2026-10-25).
         assertDbStateIsActive("getMany");
@@ -1815,6 +1876,9 @@ public class Db implements AutoCloseable {
      *      If the storage has failed (the cause): the database fails, as on a read that
      *      fails on the storage (bergdb 005-30). After another failure, a sync of the
      *      transactions before it still works while the storage does.
+     * @throws Error
+     *      As it is, such as an OutOfMemoryError: the database fails (bergdb 019-10; "Errors"
+     *      above).
      * @throws StreamIoException
      *      If the thread was interrupted while it waited, or the database is stopping.
      */
@@ -1846,6 +1910,8 @@ public class Db implements AutoCloseable {
                 throw new StreamIoException(e);
             } catch (IOException e) {
                 throw failOnStorage(new StreamIoException(e), "A sync");
+            } catch (Error e) {
+                throw failed(e);
             }
             break;
         
@@ -1911,7 +1977,8 @@ public class Db implements AutoCloseable {
      * read with a DbFailedException until it is restarted. The restart rebuilds it from the
      * stream, which holds whole records only, as after a crash. stop(), close() and sync()
      * still work. A read that fails on the storage, such as one of the warm-up before the
-     * go point, fails the database too (bergdb 005-30).</p>
+     * go point, fails the database too (bergdb 005-30), and so does an Error anywhere in the
+     * call (bergdb 019-10; "Errors" above).</p>
      * 
      * @throws IllegalDbStateException
      *             If start() has not been called or database is stopping.
@@ -1919,9 +1986,10 @@ public class Db implements AutoCloseable {
      *             If the database has failed: this transaction threw after its go point, or
      *             a read of its warm-up failed on the storage (the cause), or the database
      *             failed before (the cause is the first failure). Whether this transaction
-     *             is in the stream is known after the restart. An Error after the go point,
-     *             such as an OutOfMemoryError, is thrown as it is, and the database fails
-     *             too.
+     *             is in the stream is known after the restart.
+     * @throws Error
+     *             As it is, such as an OutOfMemoryError, before the go point too: the
+     *             database fails (bergdb 019-10; "Errors" above).
      * @throws RerunException
      *             Thrown if the transaction was cancelled and should be rerun
      *             because one or more KVs with a key in the read key hash set,
@@ -1955,8 +2023,12 @@ public class Db implements AutoCloseable {
         // We do not hold DB.writeLock yet.
         synchronized (readSync) {}
 
-        assertDbStateIsActive("execute");
-        executeInner(t);
+        try {
+            assertDbStateIsActive("execute");
+            executeInner(t);
+        } catch (Error e) {
+            throw failed(e);        // Also before the go point (bergdb 019-10).
+        }
     }
 
     private void assertDbStateIsActive(String methodName) {
@@ -2144,6 +2216,10 @@ public class Db implements AutoCloseable {
      * transaction closes the storage under it, so its append can fail (since bergdb 005-35,
      * the close of stop() and close() waits for a running transaction).</p>
      * 
+     * <p>An Error before the go point fails the database too, at the edge of execute()
+     * (failed(); 2026-11-06, bergdb 019-10), as does one of a read or a sync: the class
+     * Javadoc's "Errors".</p>
+     * 
      * @return The exception for the caller to throw: a DbFailedException, or the exception
      *      itself while the database is stopping.
      * @throws Error The Error itself, after the database has failed.
@@ -2181,6 +2257,20 @@ public class Db implements AutoCloseable {
             }
             return before;
         }
+    }
+    
+    /**
+     * Fails the database with an Error that a call met, and returns it for the call to throw
+     * as it is (2026-11-06, bergdb 019-10): the edge of each call that reads, writes or syncs
+     * (getOne, getMany, getTrans, execute, sync, setCacheSizeIndicator; start() stops the
+     * database instead). An Error means a failed environment (memory, stack) or a bug, and
+     * the database cannot tell whose it is: its own, or one of the application's code that it
+     * runs, a getMany's StopCondition (010-01, P7). setFailed() first, which allocates
+     * nothing, so that a second OutOfMemoryError cannot lose the failure.
+     */
+    private Error failed(Error e) {
+        setFailed(e);
+        return e;
     }
 
     /**
@@ -2685,14 +2775,16 @@ public class Db implements AutoCloseable {
         }
 
         /**
-         * Fails the database with what a batch of the eviction thread threw (bergdb 015-25;
-         * Eviction.EvictorRun), as a transaction that throws after its go point fails it,
-         * the writer's own batch included (fail(); 010-01, P7): the batch's changes in memory
-         * are not undone, and every later transaction and read is refused with a
-         * DbFailedException whose cause is the first failure, until the database is
-         * restarted; stop(), close() and sync() still work. Nothing while it is stopping.
+         * Fails the database with what one of its own threads, or the Pub API, met: a batch
+         * of the eviction thread (bergdb 015-25; Eviction.EvictorRun), an index job, an Error
+         * in a Pub API call (2026-11-06, bergdb 019-10). As a transaction that throws after
+         * its go point fails it (fail(); 010-01, P7): nothing is undone, and every later
+         * transaction and read is refused with a DbFailedException whose cause is the first
+         * failure, until the database is restarted; stop(), close() and sync() still work.
+         * Nothing while it is stopping. It allocates nothing (setFailed()). Until 019-10
+         * failByEviction().
          */
-        public void failByEviction(Throwable e) { setFailed(e); }
+        public void fail(Throwable e) { setFailed(e); }
 
         public void evictNow(Eviction.Schedule schedule, long seed) {
             synchronized (writeLock) {

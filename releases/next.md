@@ -308,13 +308,26 @@ Reliability
   close of a database that has already failed (a call threw
   `DbFailedException`) returns normally, as before. The stream's bytes are
   unchanged.
-* **An unchecked exception or Error of a read fails the database** (bergdb
-  019-10, found by harness 6.2, 018-03; 2026-11-06). When the stream's
-  read threw an unchecked exception or an `Error` in a get or in a
-  transaction's warm-up, it was thrown as it was and the database went
-  on, where an `IOException` fails it. Now the storage fails, and the call
-  throws `DbFailedException` with a `StreamIoException` as the cause, as
-  for an I/O error (010-01, P7). The stream's bytes are unchanged.
+* **An unchecked exception of a read fails the database** (bergdb 019-10,
+  found by harness 6.2, 018-03; 2026-11-06). When the stream's read threw
+  an unchecked exception in a get or in a transaction's warm-up, it was
+  thrown as it was and the database went on, where an `IOException` fails
+  it. Now the storage fails, and the call throws `DbFailedException` with a
+  `StreamIoException` as the cause, as for an I/O error (010-01, P7). The
+  stream's bytes are unchanged.
+* **An `Error` in any call fails the database, and is thrown as it is**
+  (bergdb 019-10; Frans, 2026-11-06). The error model, now in `Database`'s
+  and `Db`'s Javadoc and docs/levels.md, section 3: BergDB assumes a sound
+  environment (correct storage, enough memory and stack), and an `Error`,
+  such as `OutOfMemoryError`, during a read, a transaction (its `Action`
+  too) or a sync fails the database; the call throws the `Error`, every
+  later read and transaction `DbFailedException`, and the application
+  should end its process (`-XX:+ExitOnOutOfMemoryError`). In 2026.2 an
+  `Error` before a transaction's go point, as in a read, passed through and
+  the database went on. BergDB's own threads fail the database on anything
+  that ends their work: an index job's thread ended, the database went on,
+  and after a restart the job said "done"; the storage thread ended, and
+  syncs waited for ever. The stream's bytes are unchanged.
 * **A failed close of the stream is reported by `close()`** (bergdb
   015-78 and 015-34, 016-06's R5-F1, R3-F6 and R5-F2; 2026-11-05). The
   storage thread closed the stream as it ended and dropped a failure of

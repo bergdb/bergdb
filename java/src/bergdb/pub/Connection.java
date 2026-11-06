@@ -14,6 +14,10 @@ import bergdb.pub.util.SyncLevel;
  * accessed from a single thread. For multi-threaded access to the database,
  * create a Connection object for each thread by calling Database.newConnection().
  * 
+ * <p>After a DbFailedException, or an Error such as an OutOfMemoryError, the application
+ * should end its process: the database, or its environment, has failed (Database,
+ * "Errors"; bergdb 019-10).</p>
+ * 
  * @author Frans Lundberg
  */
 public interface Connection extends ReadInterface {

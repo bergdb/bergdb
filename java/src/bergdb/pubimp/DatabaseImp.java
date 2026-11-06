@@ -310,6 +310,10 @@ public class DatabaseImp implements Database {
                 } catch (StreamIoException e) {
                     // empty, this will only happen when database is stopping, so it is
                     // expected. The delete job will continue when database is started again.
+                } catch (Throwable e) {
+                    // Anything else, a bug or an Error, fails the database, as on BergDB's
+                    // other threads (2026-11-06, bergdb 019-10; 010-01, P7).
+                    db.internal().fail(e);
                 }
             }
         });

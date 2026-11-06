@@ -182,7 +182,9 @@ Files
 * [10-read-unchecked-goes-on.md](10-read-unchecked-goes-on.md).
   019-10, Fix: an unchecked exception or `Error` from a read of the
   storage is thrown as it is, and the database goes on, where an
-  `IOException` fails it; found by harness 6.2 (018-03).
+  `IOException` fails it; found by harness 6.2 (018-03). Decided by Frans
+  (2026-11-06): an `Error` in any call or on BergDB's threads fails the
+  database and is thrown as it is (the error model, docs/levels.md).
 * [15-delete-key-replace.md](15-delete-key-replace.md). 019-15, Fix:
   with key replace enabled, a delete's key is not replaced, where the
   Javadoc says every key's `${transactionTime}` is; found by harness 6.7

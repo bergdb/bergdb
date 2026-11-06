@@ -78,9 +78,41 @@ key, a get into another class), and `Database.indexBuilder`,
 
 ## 3. A transaction or a read that fails
 
-Since 2026-10-22 (005-01) and 2026-10-23 (005-30). The design is Frans's,
-from the start: no rollback of in-memory state, and a database whose
-environment has failed, or that has a bug, does not run on.
+Since 2026-10-22 (005-01) and 2026-10-23 (005-30); the error model since
+2026-11-06 (019-10). The design is Frans's, from the start: no rollback of
+in-memory state, and a database whose environment has failed, or that has a
+bug, does not run on.
+
+**Errors.** BergDB assumes a sound environment: correct storage, a stream
+that returns the bytes appended to it, and enough memory and stack for its
+work. Its checksums and checks find some damage of the stored bytes, not
+all: they are a best effort, and damage that passes them gives wrong values
+with no error. Only a cut tail, as after a crash or a power loss, is
+recovered. BergDB does not try to recover when the environment fails; the
+database fails instead. That happens on:
+
+* an I/O error or corrupt data in the storage;
+* an unexpected exception from the storage's stream;
+* an `Error`, such as `OutOfMemoryError` or `StackOverflowError`, thrown
+  during a read, a transaction or a sync, also in the application's code
+  that it runs, or on one of the database's own threads;
+* any exception after a transaction's go point, as nothing there is undone.
+
+A failed database does no more work. The call that met the failure throws
+it: an `Error` as it is, anything else as a `DbFailedException`. Every later
+read and transaction throws a `DbFailedException` with the first failure as
+its cause, and nothing more is appended. Transactions that a `sync()` has
+returned for are safe; `stop()` and `close()` still work, and so does
+`sync()` while the storage does. The application should then end its
+process; the next start recovers the database as after a crash. For
+`OutOfMemoryError`, the JVM option `-XX:+ExitOnOutOfMemoryError` ends the
+process at once.
+
+Everything else the database throws fails only that call, and the database
+goes on: a transaction refused before its go point, a lookup time no longer
+available, a bad argument.
+
+The details:
 
 * `Db.executeInner` has a go point. Before it, everything that may refuse
   the transaction is checked, and nothing is changed: the STM check
@@ -102,14 +134,10 @@ environment has failed, or that has a bug, does not run on.
   about one second of the current time (guidance, not an enforced timeout;
   010-P2). The timestamp check does not establish the read set's origin.
 * After the go point nothing refuses the transaction and nothing is undone.
-  When something throws there (the environment or a bug: a read error or a
+  Whatever throws there (the environment or a bug: a read error or a
   corrupt node when a put loads an index node, an append error, an `Error`,
-  reclaim's work after the transaction), the database fails
-  (`DbState.FAILED`). The call throws a `DbFailedException` (an `Error` is
-  thrown as it is), every later transaction and read throws a
-  `DbFailedException` with the first failure as the cause, and nothing
-  more is appended. `sync()` still works for the transactions before the
-  failure, and so do `stop()` and `close()`.
+  reclaim's work after the transaction) fails the database
+  (`DbState.FAILED`), as above.
 * What a read may see of a transaction that fails after its go point
   (015-27; the same in 2026.1). The transaction's time becomes a lookup
   time when its changes are in memory (`dbClock.transactionEnd()`), before
@@ -127,14 +155,24 @@ environment has failed, or that has a bug, does not run on.
   no transaction that a sync has returned for is lost. This is intended
   (015-27, Frans, 2026-11-05): durability is `sync()`'s promise, not
   visibility's.
-* A read that fails on the storage fails the database in the same way: an
-  I/O error, an unchecked exception or an `Error` of the stream's read
-  (019-10, 2026-11-06), or corrupt data (a checksum or format error), in
-  `getOne`, `getMany`, `getTrans` (`transactionInfo()`) and `sync()`. Not
-  failures: a read that a cut has overtaken expires with a
+* A read or a sync that fails on the storage fails the database too (since
+  005-30): an I/O error, an unchecked exception of the stream's read
+  (019-10), or corrupt data (a checksum or format error), in `getOne`,
+  `getMany`, `getTrans` (`transactionInfo()`) and `sync()`. Not failures: a
+  read that a cut has overtaken expires with a
   `LookupTimeNotAvailableException` (section 6), and so does `getTrans` of
   a transaction that reclaim has removed; the database goes on. A read or
   a sync while the database stops throws as it did.
+* An `Error` (019-10, Frans, 2026-11-06): the calls that read, write or
+  sync (`getOne`, `getMany` with its `StopCondition`, `getTrans`,
+  `execute`, `sync`, `setCacheSizeIndicator`; in the Pub API also a
+  transaction, whose `Action` runs before the Core's `execute`) catch it at
+  their edge, fail the database, and throw it as it is. BergDB's own
+  threads (the storage thread, eviction, the cut's file deletion, index
+  jobs) fail the database on anything that ends their work. A start that
+  throws stops the database instead (005-32). Before, an `Error` before a
+  transaction's go point, as in a read, passed through, and the database
+  went on.
 * A write of the storage thread that fails (a background flush) fails the
   database at the next call (015-35, 2026-11-05): a transaction, a read or
   a sync throws as above, also a read served from memory. Before, the
@@ -151,7 +189,7 @@ environment has failed, or that has a bug, does not run on.
   commit that waited for room in the write buffer or made a physical cut,
   and hung it when it reached the storage thread (005-46, "Interrupts";
   `InterruptTester`, `InterruptStress` in `level3.sh`).
-* The application restarts the database. The stream holds whole records
+* The next start recovers the database. The stream holds whole records
   only, so the restart rebuilds the state as after a crash at the failure:
   without the failed transaction, or with it if its record was appended
   before the failure (it is then committed, although the call threw). An

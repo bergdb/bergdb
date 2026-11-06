@@ -392,17 +392,23 @@ public class DbTesterFailure {
     }
 
     /**
-     * A get, and a transaction's warm-up, whose read of the storage throws an unchecked
-     * exception or an Error (bergdb 019-10): the database fails, as on an I/O error. The
-     * stream broke its contract (a bug) or the environment failed, so the database does not
-     * run on (docs/levels.md, section 3). Before, the get and the warm-up threw it as it was,
-     * and the next transaction and get worked.
+     * A get, a scan, getTrans and a transaction's warm-up, whose read of the storage throws
+     * an unchecked exception or an Error (bergdb 019-10): the database fails. The unchecked
+     * exception, a breach of the stream's contract, fails the storage as an I/O error does:
+     * the call throws a DbFailedException with a StreamIoException as the cause. The Error
+     * is thrown as it is (Frans, 2026-11-06, 10:18 and 10:31: an Error during a call fails
+     * the database, and the application ends its process; Db, "Errors"). Every later
+     * transaction and read is refused with a DbFailedException whose cause is the first
+     * failure, nothing is appended, and a restart has the key. Before 019-10, the get and the
+     * warm-up threw either as it was, and the next transaction and get worked; after the
+     * night's fix, the Error was a DbFailedException's cause, wrapped in a StreamIoException.
      */
     @Nano
     public static void testUncheckedReadFailsTheDatabase() {
-        for (int i = 0; i < 4; i++) {
+        final String[] calls = {"a get", "a scan", "getTrans", "the warm-up"};
+        for (int i = 0; i < 2 * calls.length; i++) {
             final boolean error = i % 2 == 1;
-            final boolean warmup = i >= 2;
+            final String call = calls[i / 2];
             final FaultStream s = new FaultStream();
             Db db = startEvicting(s, 0);
             fill(db);
@@ -415,30 +421,78 @@ public class DbTesterFailure {
             }
             Throwable thrown = null;
             try {
-                if (warmup) {
-                    db.execute(db.trans().put(key(KEYS / 2), "w").build());
-                } else {
+                if (i / 2 == 0) {
                     DbUtil.get(db, key(KEYS / 2));
+                } else if (i / 2 == 1) {
+                    DbUtil.checksum(db);
+                } else if (i / 2 == 2) {
+                    db.getTrans(RecoverableStream.META_BLOCK_SIZE);     // The first one.
+                } else {
+                    db.execute(db.trans().put(key(KEYS / 2), "w").build());
                 }
             } catch (Throwable e) {
                 thrown = e;
             }
-            String what = (error ? "an Error" : "an unchecked exception")
-                    + (warmup ? " in the warm-up" : " in a get");
-            Assert.assertTrue(what + ": faults made", s.faults > 0);
-            Assert.assertTrue(what + " fails the database: " + thrown,
-                    thrown instanceof DbFailedException);
-            Throwable cause = thrown.getCause();
-            Assert.assertTrue(what + ", the cause: " + cause, cause instanceof StreamIoException);
+            final String what = (error ? "an Error" : "an unchecked exception") + " in " + call;
             s.uncheckedReads = false;
             s.errorInReads = false;
-            assertRefused(db, cause);
-            Assert.assertEquals(what + ": the stream's length", length, s.getLength());
-            db.close();
+            try {
+                Assert.assertTrue(what + ": faults made", s.faults > 0);
+                final Throwable failure;
+                if (error) {
+                    Assert.assertTrue(what + " is thrown as it is: " + thrown,
+                            thrown == s.readError);
+                    failure = thrown;
+                } else {
+                    Assert.assertTrue(what + " fails the database: " + thrown,
+                            thrown instanceof DbFailedException);
+                    failure = thrown.getCause();
+                    Assert.assertTrue(what + ", the cause: " + failure,
+                            failure instanceof StreamIoException);
+                }
+                assertRefused(db, failure);
+                Assert.assertEquals(what + ": the stream's length", length, s.getLength());
+            } finally {
+                db.close();
+            }
 
             Db db2 = startEvicting(s.inner.copy(), 1);
             Assert.assertEquals(what, "v" + (KEYS / 2), DbUtil.getString(db2, key(KEYS / 2)));
             db2.close();
+        }
+    }
+    
+    /**
+     * An Error of the application's code that a call runs, a getMany's StopCondition, fails
+     * the database too (2026-11-06, bergdb 019-10): the database cannot tell whose Error it
+     * is. The Error is thrown as it is, and every later transaction and read is refused with
+     * a DbFailedException with it as the cause. Before, it passed through, and the database
+     * went on.
+     */
+    @Nano
+    public static void testErrorInStopConditionFailsTheDatabase() {
+        Db db = Db.builder().testSetup().start();
+        try {
+            db.execute(db.trans().put("/a", "a0").put("/b", "b0").build());
+            final AssertionError error = new AssertionError("the StopCondition's Error");
+            GetMany g = db.newGetMany();
+            g.lookupTime = Long.MAX_VALUE;
+            g.stopCondition = new GetMany.StopCondition() {
+                public int handleKvt(Kvt kvt) {
+                    throw error;
+                }
+                public void eod() {}
+            };
+            Throwable thrown = null;
+            try {
+                db.getMany(g);
+            } catch (Throwable e) {
+                thrown = e;
+            }
+            Assert.assertTrue("the Error itself: " + thrown, thrown == error);
+            assertRefused(db, error);
+        } finally {
+            db.close();
         }
     }
 
@@ -1080,8 +1134,11 @@ public class DbTesterFailure {
             }
         });
         Assert.assertTrue("the sync fails: " + thrown, thrown instanceof DbFailedException);
-        Assert.assertTrue("the flush's failure: " + thrown.getCause(),
-                String.valueOf(thrown.getCause()).contains("The flush failed"));
+        boolean flush = false;          // In the cause chain (StorageManager, bergdb 019-10).
+        for (Throwable t = thrown.getCause(); t != null && !flush; t = t.getCause()) {
+            flush = String.valueOf(t.getMessage()).contains("The flush failed");
+        }
+        Assert.assertTrue("the flush's failure: " + thrown.getCause(), flush);
         Assert.assertTrue("close() returns", within(10000, new Runnable() {
             public void run() {
                 db.close();
@@ -1506,6 +1563,7 @@ public class DbTesterFailure {
         volatile boolean failReads = false;
         volatile boolean uncheckedReads = false;    // bergdb 019-10
         volatile boolean errorInReads = false;      // bergdb 019-10
+        final Error readError = new Error("FaultStream: an Error in a read, as set");
         volatile boolean corruptReads = false;
         volatile boolean failAppends = false;
         volatile boolean errorInAppends = false;    // an Error, as an assertion (bergdb 005-32)
@@ -1536,7 +1594,7 @@ public class DbTesterFailure {
             }
             if (errorInReads) {
                 faults++;
-                throw new Error("FaultStream: an Error in a read, as set");
+                throw readError;
             }
             inner.read(position, dest, destOffset, length);
             if (corruptReads && length > 8) {

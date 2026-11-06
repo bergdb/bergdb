@@ -166,6 +166,13 @@ public class StorageManager implements AppendOnlyStream {
         return first;
     }
 
+    /**
+     * The error after the main stream failed (handleStreamException); the failure itself is
+     * mainFailure, the cause of what read(), append() and sync() throw.
+     */
+    private static final String MAIN_FAILED = "Main storage not active: the main stream failed "
+            + "(the cause).";
+    
     private void setError(String message) {
         // If error already set, this error is discarded.
         assert message != null;
@@ -219,7 +226,7 @@ public class StorageManager implements AppendOnlyStream {
             while (d1Size < length) {
                 String e0 = error.get();
                 if (e0 != null) {
-                    throw new IOException("StorageManager has error: " + e0);
+                    throw new IOException("StorageManager has error: " + e0, mainFailure);
                 }
                 
                 mainStream.flushSoon(length);   // Group commit (bergdb 005-48).
@@ -266,10 +273,12 @@ public class StorageManager implements AppendOnlyStream {
      * the stream, so such a read means corrupt data or a bug, and the database then stops
      * (bergdb 018-02). A read below the first position, which a cut overtook, does not: its
      * ReadBelowFirstPosException leaves the storage as it was.</p>
-     * <p>An unchecked exception or an Error of the main stream's read fails the storage too,
-     * as an IOException with it as the cause (2026-11-06, bergdb 019-10): the stream broke
-     * its contract, or the environment failed. Before, it passed through, and the database
-     * went on.</p>
+     * <p>An unchecked exception of the main stream's read fails the storage too, as an
+     * IOException with it as the cause (2026-11-06, bergdb 019-10): the stream broke its
+     * contract. Before, it passed through, and the database went on. An Error passes through
+     * as it is, and the storage goes on: the call's edge in Db fails the database with it,
+     * as for an Error anywhere in a call (bergdb 019-10, Frans, 2026-11-06). The night's
+     * fix wrapped it too, so a call threw the Error as a cause.</p>
      */
     public void read(long position, byte[] dest, int destOffset, int length) throws IOException {
         //
@@ -291,7 +300,7 @@ public class StorageManager implements AppendOnlyStream {
         
         String e0 = error.get();
         if (e0 != null) {
-            throw new IOException(e0);
+            throw new IOException(e0, mainFailure);
         }
         Util.checkRange(dest, destOffset, length);     // Bergdb 019-02, whatever the stream.
         
@@ -305,7 +314,7 @@ public class StorageManager implements AppendOnlyStream {
         } catch (IOException e) {
             handleStreamException(e);
             throw e;
-        } catch (RuntimeException | Error e) {
+        } catch (RuntimeException e) {
             IOException io = new IOException("The main stream's read threw " + e, e);
             handleStreamException(io);
             throw io;
@@ -319,14 +328,20 @@ public class StorageManager implements AppendOnlyStream {
      * database ran on. What the close throws is kept with 'e', as suppressed (for a failed
      * flush, BufferedStream.close() keeps it on 'e', which it throws). A close() of the
      * storage closes the stream too, and so waits for this close (closeInner).
+     * 
+     * <p>The failure and the error are set before anything is allocated (2026-11-06, bergdb
+     * 019-10): the error's message was built first, and an OutOfMemoryError there, on the
+     * storage thread, lost the failure for good (every later call returns at the first
+     * line), and the database went on. The error is a fixed text; the failure is
+     * getFailure(), the cause of what read(), append() and sync() then throw.</p>
      */
     private void handleStreamException(IOException e) {
         if (!mainFailing.compareAndSet(false, true)) {
             return;     // Already handled.
         }
         
-        setError("Main storage not active. " + e.toString());
         mainFailure = e;
+        setError(MAIN_FAILED);
         
         try {
             mainStream.close();
@@ -339,9 +354,10 @@ public class StorageManager implements AppendOnlyStream {
     
     /**
      * True when the main stream has failed: an append, a read or a flush of it threw an
-     * IOException, or a read threw an unchecked exception or an Error (bergdb 019-10), the
-     * stream is closed (or being closed, by handleStreamException), and every later append,
-     * read and waiting sync throws. Not after a close alone.
+     * IOException, or a read threw an unchecked exception (bergdb 019-10), the stream is
+     * closed (or being closed, by handleStreamException), and every later append, read and
+     * waiting sync throws. Not after a close alone, nor after an Error of a read, which the
+     * database fails on instead (Db).
      */
     public boolean hasFailed() {
         return mainFailure != null;
@@ -349,9 +365,9 @@ public class StorageManager implements AppendOnlyStream {
     
     /**
      * What failed the main stream, as hasFailed() says, else null: the IOException of its
-     * append, read or flush, or, for an unchecked exception or an Error of a read, an
-     * IOException with it as the cause (bergdb 019-10). The database fails with it at its next
-     * call (Db, bergdb 015-35).
+     * append, read or flush, or, for an unchecked exception of a read, an IOException with it
+     * as the cause (bergdb 019-10). The database fails with it at its next call (Db, bergdb
+     * 015-35).
      */
     public IOException getFailure() {
         return mainFailure;
@@ -364,7 +380,7 @@ public class StorageManager implements AppendOnlyStream {
         String e0 = error.get();
         
         if (e0 != null) {
-            throw new IOException(e0);
+            throw new IOException(e0, mainFailure);
         } else if (!isStarted) {
             throw new IllegalStateException("Storage manager not started, call start().");
         }

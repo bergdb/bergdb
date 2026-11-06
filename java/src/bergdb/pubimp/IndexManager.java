@@ -188,15 +188,19 @@ public class IndexManager {
         return startedJobs;
     }
 
-    /** Creates a Job for finishing creating the index. */
+    /**
+     * Creates a Job for finishing creating the index. Its status is the creation's, as for
+     * IndexBuilder.start() (2026-11-06, bergdb 019-10): it was "done" when the thread had
+     * ended, also when the thread had ended on a failure.
+     */
     private Job createJob(ConnectionImp connection, final Index index) {
         IndexBuilderImp creator = new IndexBuilderImp(index.name, connection.getDatabaseImp());
-        IndexCreateState createState = new IndexCreateState(index);
+        final IndexCreateState createState = new IndexCreateState(index);
         final Thread thread = creator.createInThread(createState);
         
         Job job = new Job() {
             public JobStatus getStatus() {
-                return thread.isAlive() ? new WorkingJobStatus(index) : new DoneJobStatus(index);
+                return createState.getJobStatus();
             }
 
             public JobStatus join() {
@@ -892,38 +896,6 @@ public class IndexManager {
         }
     }
     
-    
-    private static class WorkingJobStatus implements JobStatus {
-        private Index index;
-        
-        WorkingJobStatus(Index index) {
-            this.index = index;
-        }
-        
-        public int progress() {
-            return -1;
-        }
-
-        public String note() {
-            return "Working on creating index '" + index.name + "'.";
-        }
-    }
-    
-    private static class DoneJobStatus implements JobStatus {
-        private Index index;
-        
-        DoneJobStatus(Index index) {
-            this.index = index;
-        }
-        
-        public int progress() {
-            return 100;
-        }
-
-        public String note() {
-            return "Done, created index '" + index.name + "'.";
-        }
-    }
     
     /**
      * Specialized map implementation for string-to-array-of-IndexForDir mapping.

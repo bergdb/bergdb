@@ -170,6 +170,13 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     private void runConsumer() {
         try {
             consume();
+        } catch (Throwable e) {
+            // 2026-11-06 (bergdb 019-10): anything else that ends the thread, outside a flush
+            // (a bug, an Error such as an OutOfMemoryError, also one of the listener's), fails
+            // the stream as a failed flush does, so the storage and the database fail. It
+            // ended the thread with nothing failed: commits waited for room, and syncs for
+            // ever.
+            stopAfterFailure(flushFailure(e));
         } finally {
             // In a finally (2026-11-05, bergdb 015-34): an interrupt that met stop() returned
             // from consume() before the close, and the stream's files and directory lock

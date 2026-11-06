@@ -216,6 +216,17 @@ public class ConnectionImp implements Connection {
     public final Db getDb() {
         return db;
     }
+    
+    /**
+     * Fails the database with an Error that a transaction of the Pub API met, also in the
+     * application's Action, which runs before the Core's execute(), and returns it for the
+     * call to throw as it is (2026-11-06, bergdb 019-10), as the Core's calls do (Db,
+     * "Errors"): the database cannot tell whose Error it is.
+     */
+    final Error failed(Error e) {
+        db.internal().fail(e);
+        return e;
+    }
 
     public Transaction rw(Action action) {
         if (action == null) {

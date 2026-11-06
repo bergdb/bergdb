@@ -14,21 +14,33 @@ import bergdb.pub.util.SyncLevel;
  * be avoided.
  * </p>
  * 
- * <p>A transaction that the database refuses, such as one that is too large, changes nothing,
- * and the database goes on. A transaction that fails after it began fails the database: the
- * storage, the JVM or memory failed (an I/O error, a corrupt stream, an OutOfMemoryError), or
- * there is a bug. Nothing is rolled back. The call throws a DbFailedException with what
- * failed as the cause (an Error is thrown as it is), and every later transaction and read
- * throws one too, until the database is restarted: stop it and start it again. The restart
- * rebuilds the database from its storage, as after a crash: the failed transaction is there
- * if it was written before the failure, and otherwise not. An in-memory database is lost.
- * sync() still works for the transactions before the failure.</p>
+ * <p><b>Errors</b> (2026-11-06, bergdb 019-10). BergDB assumes a sound environment: correct
+ * storage, which returns the bytes written to it, and enough memory and stack for its work.
+ * Its checksums and checks find some damage of the stored bytes, not all: they are a best
+ * effort, and damage that passes them gives wrong values with no error. Only a cut tail, as
+ * after a crash or a power loss, is recovered. BergDB does not try to recover when the
+ * environment fails; the database fails instead. That happens on:</p>
+ * <ul>
+ * <li>an I/O error or corrupt data in the storage;</li>
+ * <li>an Error, such as OutOfMemoryError or StackOverflowError, thrown while the database
+ * reads, runs a transaction (its Action too) or syncs, or on one of its own threads, such
+ * as an index job's;</li>
+ * <li>any exception after a transaction began, as nothing is rolled back.</li>
+ * </ul>
+ * <p>A failed database does no more work. The call that met the failure throws it: an Error
+ * as it is, anything else as a DbFailedException. Every later read and transaction throws a
+ * DbFailedException with the first failure as its cause, and nothing more is written.
+ * Transactions that a sync() has returned for are safe; stop() and close() still work, and
+ * so does sync() while the storage does. The application should then end its process; the
+ * next start recovers the database as after a crash: a failed transaction is there if it was
+ * written before the failure, and otherwise not. An in-memory database is lost. For
+ * OutOfMemoryError, the JVM option -XX:+ExitOnOutOfMemoryError ends the process at
+ * once.</p>
  *
- * <p>A read or a sync that fails on the storage (an I/O error, corrupt data) fails the
- * database in the same way: the call throws a DbFailedException with the failure as the
- * cause, and so does every later transaction and read until the restart (bergdb 005-30).
- * A read whose lookup time has expired throws LookupTimeNotAvailableException instead, and
- * the database goes on (see getFirstAvailableLookupTime()).</p>
+ * <p>Everything else the database throws fails only that call, and the database goes on: a
+ * transaction refused before it began, such as one that is too large, a read whose lookup
+ * time has expired (LookupTimeNotAvailableException; see getFirstAvailableLookupTime()), a
+ * bad argument.</p>
  * 
  * <p>Interrupts (bergdb 005-46). An interrupt of the calling thread never fails the
  * database. Three calls only wait, and an interrupt ends the wait: sync() throws a

@@ -17,6 +17,7 @@ import bergdb.core.DbBuilder;
 import bergdb.core.DbStoppingException;
 import bergdb.core.DbTester;
 import bergdb.core.DbTesterFailure;
+import bergdb.core.Eviction;
 import bergdb.dag.Klong;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
@@ -38,6 +39,7 @@ import bergdb.pub.WBuilder;
 import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.DatabaseMissingException;
 import bergdb.pub.util.DatabaseNotCreatedException;
+import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.pub.util.SyncLevel;
@@ -52,6 +54,7 @@ import bergdb.stream.FileStream;
 import bergdb.stream.FileStreamIo;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.SalsaStream;
+import bergdb.stream.StrictStream;
 
 /**
  * General test class for Layer Pub.
@@ -60,6 +63,87 @@ import bergdb.stream.SalsaStream;
  * @author Frans Lundberg
  */
 public class PubTester {
+    
+    /**
+     * bergdb 019-10 (Frans, 2026-11-06, 10:18 and 10:31): an Error during a call fails the
+     * database and reaches the Pub API's caller as it is: an Error of the application's
+     * Action, which runs before the Core's transaction, and one of a read of the storage,
+     * which the Core throws. Every later put and get is refused with a DbFailedException
+     * whose cause is the Error. Before, both left the database going on.
+     */
+    @Nano
+    public static void testErrorFailsTheDatabase() {
+        Database db = Factory.database().memory().start();
+        try {
+            final Connection c = db.connection();
+            c.put("/a", "a0");
+            final AssertionError error = new AssertionError("the Action's Error");
+            Throwable thrown = null;
+            try {
+                c.rw(new Action() {
+                    public void run(RwEnvironment env) {
+                        env.put("/a", "a1");
+                        throw error;
+                    }
+                });
+            } catch (Throwable e) {
+                thrown = e;
+            }
+            Assert.assertTrue("the Action's Error itself: " + thrown, thrown == error);
+            assertFailedBy(c, error);
+        } finally {
+            db.close();
+        }
+        
+        final StrictStream s = new StrictStream(new MemoryStream());
+        final Error readError = new Error("an Error in a read of the storage");
+        final java.util.concurrent.atomic.AtomicBoolean fail =
+                new java.util.concurrent.atomic.AtomicBoolean();
+        s.setHook((op, n) -> {
+            if (op == StrictStream.Op.READ && fail.get()) {
+                throw readError;
+            }
+        });
+        db = DatabaseImp.createAndStart(Db.builder().testSetup(s).maxNodeSize8()
+                .startupDistance(1000).evictionSchedule(Eviction.Schedule.EVERY, 1).build());
+        try {
+            final Connection c = db.connection();
+            for (int i = 0; i < 100; i++) {
+                c.put("/k" + (1000 + i), "v" + i);
+            }
+            db.sync();      // Read from the stream, not from the write buffer.
+            fail.set(true);
+            Throwable thrown = null;
+            try {
+                c.get("/k1050", String.class);
+            } catch (Throwable e) {
+                thrown = e;
+            }
+            fail.set(false);
+            Assert.assertTrue("the read's Error itself: " + thrown, thrown == readError);
+            assertFailedBy(c, readError);
+        } finally {
+            db.close();
+        }
+    }
+    
+    /** Every later put and get throws a DbFailedException with 'cause' as its cause. */
+    private static void assertFailedBy(Connection c, Throwable cause) {
+        for (int i = 0; i < 2; i++) {
+            DbFailedException refused = null;
+            try {
+                if (i == 0) {
+                    c.put("/later", "x");
+                } else {
+                    c.get("/a", String.class);
+                }
+            } catch (DbFailedException e) {
+                refused = e;
+            }
+            Assert.assertTrue("refused, " + i + ": " + refused,
+                    refused != null && refused.getCause() == cause);
+        }
+    }
     
     @Nano
     public static void test1() {

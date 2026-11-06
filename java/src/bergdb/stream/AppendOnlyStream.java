@@ -19,7 +19,9 @@ import java.io.IOException;
  * holds every byte before it and none after it. The implementation, with the storage under
  * it (file system, block device, flash), must ensure this; BergDB does not.
  * A start recovers only a truncated tail; other damage is an integrity failure outside this
- * contract (bergdb 014-01, section 7).</p>
+ * contract (bergdb 014-01, section 7). BergDB assumes correct storage: its checksums and
+ * checks find some damage of the stored bytes, not all, as a best effort, and damage that
+ * passes them gives wrong values with no error (bergdb 019-10; Db, "Errors").</p>
  * 
  * <p>CONCURRENCY.
  * Implementations can assume that the interface user adheres to the following concurrency rules:
@@ -54,6 +56,11 @@ public interface AppendOnlyStream {
     /**
      * Reads some bytes from the stream. This method blocks until exactly
      * 'length' number of bytes have been read or an exception has been thrown.
+     * 
+     * <p>Anything else that read() throws breaks this contract. Of the database's main
+     * stream, an unchecked exception fails the storage and the database, as an IOException
+     * does, and an Error fails the database and is thrown as it is to the call that read
+     * (2026-11-06, bergdb 019-10; Db, "Errors").</p>
      * 
      * @throws IllegalArgumentException if 'destOffset' or 'length' is negative, or their sum
      *      is greater than dest.length (so if 'length' is greater than dest.length); the
@@ -114,6 +121,7 @@ public interface AppendOnlyStream {
 
 /*
 ---- Log ----
+261106 read(): an unexpected exception fails the database; correct storage assumed (bergdb 019-10).
 261105 Class Javadoc: the crash contract, a prefix of the bytes appended (bergdb 014-01).
 261105 Removed seekFirstPos(), added for replication, which is gone (bergdb 019-04).
 261104 append(): the storage says what a completed append means, forced or written (bergdb 005-47).

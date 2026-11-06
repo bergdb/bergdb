@@ -641,7 +641,7 @@ public final class Eviction {
                                     // writer that waits for it then finds the database failed
                                     // (Db.executeInner checks the state under the lock), and
                                     // does not run on what the batch left or append after it.
-                                    in.failByEviction(x);
+                                    in.fail(x);
                                     throw x;
                                 }
                             }
@@ -666,7 +666,7 @@ public final class Eviction {
                     // for it; a wake after the failure starts a thread that ends at once. As
                     // BufferedStream's consumer (bergdb 005-32), it does not rethrow: x is the
                     // database's failure.
-                    in.failByEviction(x);
+                    in.fail(x);
                     synchronized (evictorLock) {
                         evictor = null;
                         wanted = false;

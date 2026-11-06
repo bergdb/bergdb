@@ -105,6 +105,17 @@ public class RwTransaction implements Transaction {
      * @throws DbException
      */
     public static Trans executeRw(RwEnvironmentImp env, ConnectionImp connection, RwTransaction rw) {
+        try {
+            return executeRwInner(env, connection, rw);
+        } catch (Error e) {
+            // In the application's Action too, before the Core's execute (2026-11-06, bergdb
+            // 019-10): the database fails, and the Error is thrown as it is.
+            throw connection.failed(e);
+        }
+    }
+    
+    private static Trans executeRwInner(RwEnvironmentImp env, ConnectionImp connection,
+            RwTransaction rw) {
         long sleepTime = FIRST_SLEEP;
         final IndexManager m = connection.getDatabaseImp().getIndexManager();
         int runCount = 0;
