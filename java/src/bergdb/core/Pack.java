@@ -21,6 +21,7 @@ public class Pack implements IPack {
         Eviction.class,
         EvictionReaderTester.class,
         FileStreamPowerLossTester.class,
+        StorageFaultTester.class,
         InterruptTester.class,
         KeyModSet.class,
         Kv.class,

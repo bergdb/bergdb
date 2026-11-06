@@ -29,6 +29,14 @@ Files
   the six known faults of its class and found 019-02; its skip list, where
   it runs (the unit tests, 0.6 s; the night tests, 20 s), what it does not
   cover.
+* [03-harness-storage-faults.md](03-harness-storage-faults.md). 018-03,
+  harness 6.2, failures and interrupts in storage, built: a fault (an
+  `IOException`, an unchecked exception, an `Error`, an interrupt, a
+  `stop()`) at every call of the stream and of the file calls under
+  `FileStream`, in a short workload, with P7, the close, the lock, the
+  threads and a restart checked after each run; it fails on 015-32, 35,
+  53, 78 and 019-09, each before its fix, and found 019-10; where it runs
+  (the unit tests, a sample, about 4 s; the night tests, every call).
 * [04-harness-pub-promises.md](04-harness-pub-promises.md). 018-04,
   harness 6.7, the Pub API's promises, built: random sequences of the Pub
   API's calls on `String` and `byte[]` values against a reference of each
@@ -62,3 +70,11 @@ reverted, and found 019-15 (a delete under key replace), registered for
 Frans's decision and in its skip list; five questions for Frans on the
 Javadoc. In the unit tests of `before-commit.sh` (1 s) and the night
 tests (80 s).
+
+2026-11-06, night 006-12. 018-03: harness 6.2, failures and interrupts in
+storage, built (W2). It fails on 015-32, 35, 53, 78 and 019-09, each on
+the code before its fix, and found 019-10 (an unchecked read failure
+leaves the database going on), registered and in its skip list; 015-06's
+rest, 34, 38, 66, 81 and 82 it does not reach (018-03, section 6). In the
+unit tests of `before-commit.sh` (a sample) and the night tests (every
+call).

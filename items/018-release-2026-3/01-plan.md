@@ -153,6 +153,10 @@ transformation's result above the value limit is the caller's fault, as
 an exception from it is, and fails the database (P7); a refusal is
 017-07, section 3, to consider.
 
+Changed since, 2026-11-06: 019-10 joined (an unchecked exception or
+`Error` from a read of the storage leaves the database going on, found by
+harness 6.2, 018-03).
+
 
 ### 3.2. Outside the goal
 
@@ -295,6 +299,14 @@ for 2026.3: they are experimental (D2).
   failure; the directory's lock is released, and a new start on the
   directory works; no BergDB thread is left; a restart holds every
   transaction that a `sync()` confirmed, and none that was refused.
+* Built on 2026-11-06: see 018-03. It wraps `FileStream` from above
+  (6.3's `StrictStream`) and from below (`FileStreamIo`), on a new and a
+  reopened database, and makes a `stop()` too. It fails on 015-32, 35,
+  53, 78 and on 019-09, each before its fix, and found 019-10; 015-06's
+  rest, 34, 38, 66, 81 and 82 it does not reach (018-03, section 6). It
+  runs in the unit tests of `before-commit.sh` (a sample, about 4 s,
+  beside the f-tests) and in the night tests (every call); its skip list
+  holds 015-80 and 019-10.
 
 
 ### 6.3. The stream contract
@@ -392,7 +404,8 @@ section 7). The entries' own Status lines say which are done.
   2026-11-05.
 * **W2. The harnesses** (section 6), one at a time, the first chosen with
   Frans. Frans chose 6.3 first (2026-11-05, 10:27); built that day
-  (018-02). Next: 6.2, on 6.3's strict stream.
+  (018-02). 6.2, on 6.3's strict stream, built in the night 006-12
+  (018-03).
 * **W3. The Core's faults** (section 3.1), in any order (point 5). Each
   is fixed by its entry: its failing test, the fix, `BEFORE COMMIT OK`,
   and the level script of a mechanism it changes (AGENTS.md), within
@@ -514,3 +527,11 @@ Sections 3.1 and 6.4 updated.
 of each key's versions by time. It fails on 015-41, 42, 47, 48, 59 and 62,
 each with its fix reverted, and found 019-15, which waits for Frans; five
 questions on the Javadoc (018-04, section 6). Section 6.7 updated.
+
+2026-11-06, night 006-12. Harness 6.2, failures and interrupts in
+storage, built (018-03): a fault at every call of the stream and of the
+file calls under `FileStream`, on a short workload, with P7, the close,
+the lock, the threads and a restart checked after each run. It fails on
+015-32, 35, 53, 78 and 019-09, each before its fix, and found 019-10 (an
+unchecked exception or `Error` from a read leaves the database going on),
+in its skip list until fixed. Section 6.2 updated.
