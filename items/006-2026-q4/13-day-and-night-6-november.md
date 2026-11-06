@@ -315,6 +315,11 @@ session continues with `/coordinator resume` (013-02).
 * 15:52 021-todo created for 2026.4 (Frans, 15:51).
 * 15:55 and 15:59 020-01 and DbObject.java printed for Frans.
 * 16:13 Frans, 16:12: "What is going on? Are you waiting for something?" Every fix had landed by 13:35 and the early `night.sh` was OK, so the evening moved earlier: the release's candidate now (chain2: commit A, the jar, StreamDigest, the axioms, s1's chain, the jar's tests on F53), then `night.sh large` from about 17:00 to 23:00, then jcstress on F53; W7's block back in, from 22:00 when F53 is quiet (to 02:40 at the latest), then block-q from 00:30 to 06:00.
+* 16:16 Commit A, the release's commit: 929fa33 ("Release 2026.3: BuildInfo says 2026.3"), gated; `night.sh large` on it from 16:16. The coordinator's chain passed "A" for A's hash to `build-a.sh`, so the jar, StreamDigest, the axioms, s1's chain and F53's jar tests did not run; at 16:34 the jar was built by hand and the first four started; F53's jar tests moved to 06:02 (not beside `night.sh large`).
+* 16:34 StreamDigest on A: OK, 4 configurations differ from 2026.2 (l3-every1, l3-node8, l3-node14, l3-node62), all named by `releases/next.md` (015-54, 015-87), and A equals 015-87's digests, 48 of 48 ("Ready", 3). The axioms: 44 theorems OK.
+* 17:11 s1's jar tests on A: S1 TESTS OK, JDK 27 and 17 (unit 1,262, F 87, night 15, the user's program).
+* 17:51 to 18:00 The network was down; nothing local stopped.
+* 21:30 `night.sh large` on A: NIGHT OK (313 minutes; the large conformance set 15,911 s, CONFORMANCE OK). 21:35 jcstress on F53, on A: 8 of 8 OK, 5 minutes (harness 6.6).
 
 
 ## 8. Outcome
