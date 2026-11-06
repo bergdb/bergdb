@@ -176,6 +176,7 @@ public final class Eviction {
     private long sweeps = 0, loadSweeps = 0, completeSweeps = 0, overTarget = 0;
     private long sweepNanos = 0, maxSweepNanos = 0;
     private long lastBefore = 0, lastAfter = 0, lastPinned = 0, maxPinned = 0;
+    private long overHandles = 0;       // batchesOverTheirHandles()
 
     /** Slots unswizzled and objects released by every Db of this process; see totals(). */
     private static long allUnswizzled = 0, allReleased = 0;
@@ -267,6 +268,27 @@ public final class Eviction {
     /** Sweeps, and sweeps after which the resident bytes stayed above the budget. */
     public synchronized long[] sweepCounts() {
         return new long[] {sweeps, loadSweeps, completeSweeps, overTarget};
+    }
+
+    /**
+     * The batches that examined more handles than their limit (BATCH or BATCH_UNDER_PRESSURE;
+     * sweep()), for harness 6.5 of bergdb 018-01 (EvictionAccountingTester; bergdb 018-05):
+     * none, since bergdb 015-67.
+     */
+    synchronized long batchesOverTheirHandles() {
+        return overHandles;
+    }
+
+    /**
+     * Whether the eviction thread is idle: no request pending, no batch running, and the
+     * thread waiting for a request or not started (or ended); for tests (bergdb 018-05).
+     */
+    boolean idle() {
+        synchronized (evictorLock) {
+            if (wanted || running) return false;
+            return evictor == null || evictor.getState() == Thread.State.WAITING
+                    || evictor.getState() == Thread.State.TERMINATED;
+        }
     }
 
     /** Slots unswizzled and objects released by every Db of this process, as a pair. */
@@ -832,6 +854,7 @@ public final class Eviction {
             released += r + values;
             unswizzled += values;
             sweeps++;
+            if (examined > maxHandles) overHandles++;
             if (afterLoad) loadSweeps++;
             if (complete) completeSweeps++;
             if (after > high) overTarget++;

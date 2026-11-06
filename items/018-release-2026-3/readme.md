@@ -43,6 +43,13 @@ Files
   key's versions by time; it fails on the six known faults of its class
   and found 019-15; five questions for Frans; where it runs (the unit
   tests, 1 s; the night tests, 80 s).
+* [05-harness-eviction-accounting.md](05-harness-eviction-accounting.md).
+  018-05, harness 6.5, eviction's accounting, built: random budgets,
+  test-schedule evictions, readers and restarts, with the audit, a
+  recount of the resident bytes, the batches' handle limit and budget
+  decreases checked after each batch; it fails on the five known faults
+  of its class and found 019-20, 019-21 and 019-22; where it runs (the
+  unit tests, about 1 s; the night tests, under 2 minutes).
 
 
 Log
@@ -78,3 +85,8 @@ leaves the database going on), registered and in its skip list; 015-06's
 rest, 34, 38, 66, 81 and 82 it does not reach (018-03, section 6). In the
 unit tests of `before-commit.sh` (a sample) and the night tests (every
 file call, every 5th stream call). 019-10 fixed the same night.
+
+2026-11-06. 018-05: harness 6.5, eviction's accounting, built in night
+006-12 (W2). It fails on 015-67 to 015-71 with their fixes taken out, and
+found 019-20, 019-21 and 019-22, fixed the same night. BEFORE COMMIT OK,
+LEVEL 4 OK.

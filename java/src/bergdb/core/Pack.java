@@ -19,6 +19,7 @@ public class Pack implements IPack {
         DbUtil.class,
         CapacityTester.class,
         Eviction.class,
+        EvictionAccountingTester.class,
         EvictionReaderTester.class,
         FileStreamPowerLossTester.class,
         StorageFaultTester.class,

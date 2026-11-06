@@ -151,7 +151,9 @@ the next change of the record format (019-07). 015-51 left the list
 (Frans, 21:03; the table's row "Db and reclaim" follows): a value
 transformation's result above the value limit is the caller's fault, as
 an exception from it is, and fails the database (P7); a refusal is
-017-07, section 3, to consider.
+017-07, section 3, to consider. 2026-11-06: 019-20, 019-21 and 019-22
+joined and left, fixed the night they were found by harness 6.5
+(018-05).
 
 Changed since, 2026-11-06: 019-10 joined (an unchecked exception or
 `Error` from a read of the storage leaves the database going on, found by
@@ -356,6 +358,10 @@ for 2026.3: they are experimental (D2).
 * What it checks: the audit reports nothing that is right; the resident
   bytes equal the recount; no batch passes its handle limit; a budget
   decrease settles within the budget when the pins fit.
+* Built on 2026-11-06: see 018-05. It fails on each of the five, and
+  found 019-20, 019-21 and 019-22, fixed the same night. It runs in the
+  unit tests of `before-commit.sh` (about 1 s) and in the night tests
+  (under 2 minutes).
 
 
 ### 6.6. Concurrency
@@ -535,3 +541,9 @@ the lock, the threads and a restart checked after each run. It fails on
 015-32, 35, 53, 78 and 019-09, each before its fix, and found 019-10 (an
 unchecked exception or `Error` from a read leaves the database going on),
 in its skip list until fixed. Section 6.2 updated.
+
+2026-11-06. W2: harness 6.5, eviction's accounting, built in night
+006-12 (018-05); section 6.5 updated. It fails on 015-67 to 015-71 with
+their fixes taken out, and found three faults of the Core, 019-20 and
+019-21 (index nodes counted below their bytes) and 019-22 (a warmup kept
+a large value), fixed the same night (section 3.1).
