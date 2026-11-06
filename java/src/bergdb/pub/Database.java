@@ -10,9 +10,8 @@ import bergdb.pub.util.SyncLevel;
 /**
  * <p>A representation of a started BergDB database.</p>
  * 
- * <p>Multiple Database instances representing the same database (same storage location) should 
- * be avoided.
- * </p>
+ * <p>One database at a time has a directory: DatabaseBuilder.start() refuses a second while
+ * the first is open (bergdb 005-63).</p>
  * 
  * <p><b>Errors</b> (2026-11-06, bergdb 019-10). BergDB assumes a sound environment: correct
  * storage, which returns the bytes written to it, and enough memory and stack for its work.
@@ -34,8 +33,9 @@ import bergdb.pub.util.SyncLevel;
  * so does sync() while the storage does. The application should then end its process; the
  * next start recovers the database as after a crash: a failed transaction is there if it was
  * written before the failure, and otherwise not. An in-memory database is lost. For
- * OutOfMemoryError, the JVM option -XX:+ExitOnOutOfMemoryError ends the process at
- * once.</p>
+ * OutOfMemoryError, the JVM option -XX:+ExitOnOutOfMemoryError ends the process at once,
+ * and that is the advice: while the heap stays full, BergDB cannot promise even to fail
+ * cleanly, so a sync() or close() may then wait (bergdb 019-39).</p>
  *
  * <p>Everything else the database throws fails only that call, and the database goes on: a
  * transaction refused before it began, such as one that is too large, a read whose lookup
@@ -90,7 +90,7 @@ public interface Database extends AutoCloseable {
      * 
      * <p>Call sync() before stop() when the transactions must be durable when stop()
      * returns: with a file storage, sync() waits until they are forced to the device. After
-     * this method has been called this Database object must not be used anymore. This method
+     * this method, call only close() on this Database. This method
      * is OK to call multiple times from multiple unsynchronized threads; only the first call
      * to this method has any effect (idempotent method).
      * </p>
@@ -152,7 +152,7 @@ public interface Database extends AutoCloseable {
     public Connection newConnection();
 
     /**
-     * Waits until the last started transaction has been stored durably according to the ordinary
+     * Waits until the last committed transaction has been stored durably according to the ordinary
      * durability rules.
      * 
      * @throws DbException
@@ -166,7 +166,7 @@ public interface Database extends AutoCloseable {
     public void sync();
     
     /**
-     * Waits until the last started transaction has been stored durably according to the
+     * Waits until the last committed transaction has been stored durably according to the
      * specified sync level.
      * 
      * @throws DbException
@@ -178,10 +178,10 @@ public interface Database extends AutoCloseable {
     public void sync(SyncLevel syncLevel);
 
     /**
-     * <p>Returns the current based on the database clock. 
-     * The returned time is guaranteed to be less then
+     * <p>Returns the current time of the database clock.
+     * The returned time is guaranteed to be less than
      * the transaction time of any currently executing transaction (if any transaction is executing)
-     * and less then the transaction time of any future transaction.
+     * and less than the transaction time of any future transaction.
      * The returned time is also guaranteed to be greater than or equal to the transaction 
      * time of the last completed transaction.</p>
      *

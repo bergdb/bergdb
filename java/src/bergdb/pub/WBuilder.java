@@ -16,8 +16,8 @@ public interface WBuilder {
     
     /**
      * Adds a set operation to the write transaction. The operation sets the
-     * specified key to the provided object. Special handling is provided for
-     * object of type byte[] and java.lang.String. A byte[] is copied at the put:
+     * specified key to the provided object. A String is stored as its UTF-8 bytes,
+     * a byte[] as it is. A byte[] is copied at the put:
      * the caller may change or reuse its array afterwards.
      *
      * <p>Experimental in 2026.3 for an object that is neither a String nor a byte[], with
@@ -42,7 +42,8 @@ public interface WBuilder {
     public WBuilder put(Object object);
     
     /** 
-     * Shortcut for <code>build().execute()</code>.
+     * Executes the puts and deletes as one transaction, and returns it when it has
+     * committed.
      * 
      * @throws bergdb.pub.util.DbFailedException
      *             If the database has failed, in this transaction or before: it then

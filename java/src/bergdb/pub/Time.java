@@ -12,14 +12,14 @@ import bergdb.pub.util.Clock;
 import bergdb.pubimp.TimeResolver;
 
 /**
- * A Time instance represents a time instance measure by the database
+ * A Time instance represents a time instance measured by the database
  * clock (see Clock).
  * The resolution of a Time instance is one "clock unit", that is 100 nanoseconds.
  * Internally, the time is stored as the number of 100 nanoseconds that
- * has passed since 00:00:00.0, 1 Jan 1970 UMT (Unix Epoch). 
+ * has passed since 00:00:00.0, 1 Jan 1970 UTC (Unix Epoch). 
  * Leap seconds are not counted; a day is always 24*60*60 seconds.
  * The minimum valid time value is 0 clock units (UTC 1970-01-01 00:00:00); 
- * the maximum valid time value is 2^56-1 clock units (UTC 2198-05-04 23:50:04).
+ * the maximum valid time value is 2^56-1 clock units (UTC 2198-05-04 23:50:03.7927935).
  * A Time is immutable, and its methods may be called from any thread.
  * 
  * @see Clock
@@ -36,7 +36,7 @@ public class Time {
     
     /**
      * The maximum possible Time value.
-     * Corresponds to UTC 2198-05-04 23:50:04.
+     * Corresponds to UTC 2198-05-04 23:50:03.7927935.
      */
     public static final Time MAX = new Time(MAX_IN_UNITS);
     
@@ -78,7 +78,7 @@ public class Time {
     }
     
     /**
-     * Resolves an absolut time string using UTC time zone.
+     * Resolves an absolute time string using UTC time zone.
      * 
      * @see #resolve(TimeZone, Time, String)
      */
@@ -103,7 +103,7 @@ public class Time {
     /**
      * <p>This method resolves a <i>time string</i> to an absolute time
      * given a time zone and the current time. The current time is needed
-     * when a non-absolut time string is used.</p>
+     * when a non-absolute time string is used.</p>
      * 
      * <pre>
      * The following examples with comments define the time format.

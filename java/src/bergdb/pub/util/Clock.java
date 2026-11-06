@@ -14,7 +14,7 @@ public interface Clock {
     
     /**
      * <p>Returns number of 100 ns units (clock units) of time that has passed since 
-     * 00:00:00.0, 1 Jan 1970 UMT (Unix Epoch). Leap seconds are not counted; 
+     * 00:00:00.0, 1 Jan 1970 UTC (Unix Epoch). Leap seconds are not counted; 
      * a day is always 24*60*60 seconds.</p>
      * 
      * <p>The minimum valid time value returned is 0; the maximum valid time value 

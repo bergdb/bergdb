@@ -125,8 +125,9 @@ Reliability
   before. The format is unchanged; the stream's bytes change with reclaim
   on (the table's pSafe values, and where cuts come): StreamDigest's
   decided digests differ from 2026.2's in its 4 configurations with
-  reclaim (`l3-*`, 12 of 36), and are 2026.2's in the 8 without. The new
-  reference is in 015-54's `digests-new.txt`.
+  reclaim (`l3-*`, 12 of 36), and are 2026.2's in the 8 without. The
+  digests before and after are in 015-54's folder (`digests-base.txt`,
+  `digests-new.txt`).
 * **A String or `byte[]` put and then a delete of a key without a suffix
   leave no entry** (bergdb 015-41, 016-06's S1-F2; 2026-11-05), in an
   `rw()` or a `w()`: the put stayed, as the delete of such a key, an object
@@ -263,7 +264,6 @@ Reliability
   stream when needed, so a transaction that replaced a large value
   brought the old one back into memory, until eviction took it. It now
   keeps no value over 1 MiB, as a get does.
-
 * **A record whose size field is larger than its content is refused** at a
   start (bergdb 015-72, 016-06's R6-F1; 2026-11-05), with a
   `StreamFormatException`. A corrupt size that ended on the last byte of a
@@ -335,11 +335,12 @@ Reliability
   should end its process (`-XX:+ExitOnOutOfMemoryError`). In 2026.2 an
   `Error` before a transaction's go point, as in a read, passed through and
   the database went on. BergDB's own threads fail the database on anything
-  that ends their work (an index job's refusal or expired read is retried,
-  bergdb 019-38; an index build's other exceptions end it, 019-42): an
-  index job's thread ended, the database went on,
-  and after a restart the job said "done"; the storage thread ended, and
-  syncs waited for ever. The stream's bytes are unchanged.
+  that ends their work; in 2026.2 an index job's thread ended, the
+  database went on, and after a restart the job said "done"; the storage
+  thread ended, and syncs waited for ever. An index job's refused
+  transaction or expired read is not a failure: the job takes its step
+  again (bergdb 019-38); an index build's other exceptions end the build,
+  not the database (bergdb 019-42). The stream's bytes are unchanged.
 * **`stop()` and `close()` no longer hang when a thread cannot start or
   its failure cannot be wrapped** (bergdb 019-39; 2026-11-06): a `stop()`
   whose closer thread could not start (an `OutOfMemoryError`) left
@@ -506,7 +507,6 @@ Internal
   is the one on a commit's path, once per cut. `FileStream`'s own locks
   covered the overlap; a stream that relies on one writer did not. The
   stream's bytes are unchanged.
-
 * **`Jmx.Speed`'s monitor thread goes on after an interrupt** (bergdb
   015-38, 016-06's R3-F4; 2026-11-05): it ended, its speeds stayed as they
   were, and `registerAndStart()` did not start it again. `stop()` waits for
@@ -578,6 +578,13 @@ Documentation
   the stream's bytes are unchanged.
 * **Key replace leaves a delete's key as written** (bergdb 019-15; Frans,
   2026-11-06): `Connection.setEnableKeyReplace()` now says so; no code change.
+* **The Javadoc read through for the release** (bergdb 018-01, "Ready",
+  4; 2026-11-06): the keys' format (`Connection`), what an `Action` that
+  throws does, the clamps of `startupDistanceInMb` (5 to 1000) and
+  `cacheSizeInMb` (4 to 100,000), `LookupTimeNotAvailableException` for a
+  read that a cut overtakes, `Time.MAX`'s exact time, the refusals of
+  `Db.execute`, and the overview's example, which closes its database and
+  opens it with `open()` to read; stale text and typos. No code change.
 * **The Pub API's Javadoc says what it left open** (bergdb 018-04, Q1, Q3
   to Q5; Frans, 2026-11-06): an rw-transaction's reads see the state as of
   its first read, not its own puts and deletes (`RwEnvironment`, `Action`);
@@ -589,6 +596,10 @@ Documentation
 Known issues and limits
 -----------------------
 
+* **DbObject and the user indexes are experimental**, with known faults
+  (bergdb 018-01, D2 and D6; the parts are listed under Documentation,
+  above): their faults are 018-01's, section 3.2 (015-23, 28, 29, 30, 36,
+  37, 39, 43, 46, 61, and 015-49's S2 faults but S2-F24), and 019-42.
 * **A corrupt record header can still lose data at a start that
   succeeds** (bergdb 015-73, 016-06's R6-F2; Frans, 2026-11-05). No
   checksum covers a record's header. 015-72 and 015-75 refuse a corrupt
@@ -618,3 +629,9 @@ Known issues and limits
   a million, the longest 33 ms, and 8 readers 11 to 12 in a million, the
   longest 49 to 89 ms. It is 2026.2's limit "As many readers as cores",
   now measured.
+* **2026.2's other limits stay** (bergdb 018-01, D5): the collectors, a
+  decrease of the startup distance at 50M keys, a small commit after a
+  large transaction, D's loose bound, the default startup distance, loads
+  in memory, bounded startup (T4), the files after a physical cut,
+  overload (a rerun's sleep is now capped at 640 ms, 015-88, above),
+  concurrency, power loss, JDKs and systems, and the documentation.

@@ -5,7 +5,7 @@ Started 2026-10-12. Written by Claude for Frans Lundberg.
 
 The model of [../docs/sis-model.md](../docs/sis-model.md) in Lean 4:
 the definitions, the assumptions, and the theorems T1 (recovery) and T2
-(restart invariance), with their proofs. See Status.
+(restart invariance), and those below, with their proofs. See Status.
 
 Since bergdb item 001 (2026-10-16 to 18) the model also has the physical
 layer (lazy reading, stage 1), eviction (stage 2) and reclaim (stage 3),
@@ -16,8 +16,8 @@ resource bounds; Java's runs are checked against the model by the trace
 checker (`Check/`, `TraceCheck.lean`). Reviewed 2026-10-13 at the `ebe5f77`
 documentation cutoff, before item 001: the abstract model with the exact
 still-dirty test.
-Java's conservative tracking and reference-resolution obligations are in
-[levels.md](../docs/levels.md).
+What an implementation must meet is in sis-model.md, section 11; how Java
+is checked against the model, in [levels.md](../docs/levels.md).
 
 Since bergdb item 007 (2026-10-23) the model also has the first bound, T3:
 with any cost of a record and a startup pos policy that keeps up with a
@@ -31,8 +31,8 @@ transaction the startup section without its last record costs less than
 the larger of twice the startup distance's setting and what it cost before
 (`T3_take_step`), so less than twice the setting with a constant one, also
 with restarts (`T3_take`, `T3_take_restarts`), and after a decrease of the
-setting it never grows and shrinks with every transaction until it is
-below twice the new one (`T3_take_decrease`); SIS/Proof/BoundTake.lean.
+setting it shrinks with every transaction until it is below twice the new
+one, and then stays below it (`T3_take_decrease`); SIS/Proof/BoundTake.lean.
 `javaTake` gives the startup pos of Java's `TransSeq.take` on 300 generated
 cases (SIS/BoundExample.lean). Its share and dither are the double rule of
 2026-10-28; since bergdb 005-79 (2026-11-03) Java's take computes them in
@@ -46,8 +46,8 @@ guards of `dither` and `share` have no Java counterpart since then, as
 Since bergdb item 009 (2026-10-25) the model also has handles: SIS/Handle.lean
 models 009's design of the physical layer (one handle per node, pointers that
 hold handles, eviction without walks;
-../items/009-handles/02-implementation-plan.md, phase 2), aligned with Java's
-implementation (the branch 009-handles, step 3a), and SIS/HandleTheorems.lean
+009-02, phase 2), aligned with Java's handles (009, on main since
+2026-10-26), and SIS/HandleTheorems.lean
 states T-CACHE, T2-C, T-READ and T-PIN over it, all proved. T-CACHE
 (`tc_handles`, `TC_handles_records`, SIS/Proof/HandleRecords.lean; step 2d):
 with any reads and evictions between transactions, the physical writer with
@@ -57,9 +57,9 @@ time up to the last record gives P at that time. T2-C and T-READ with
 restarts (`t2_handles`, `tr_handles_restarts`, SIS/Proof/HandleRestart.lean),
 and T-PIN (`tp_handles`, SIS/Proof/HandlePin.lean): every live handle whose
 object is not pinned may be evicted (phase 4a, 2026-10-26).
-SIS/HandleExample.lean checks them by running. Its runs found two points where the plan's design needs more
-than it says, and Java does both: the slow path writes the pointer's
-reference, raised to the written position of the dead handle it holds, back
+SIS/HandleExample.lean checks them by running. Its runs found two points
+where the plan's design needs more than it says, and Java does both: the
+slow path writes the pointer's reference, raised to the written position of the dead handle it holds, back
 into the pointer, and compares the live handle's object with that raised
 reference (SIS/Handle.lean's header, choices 1 and 7). Java's handle state
 is checked against the invariants of SIS/HandleTheorems.lean by the trace
@@ -115,7 +115,7 @@ Needs elan (`brew install elan-init`). The toolchain version is in
 `lean-toolchain`; elan downloads it on first use. No Mathlib.
 
     cd lean
-    lake build              # checks every file, runs the #guard tests
+    lake build              # checks every file but the test programs, runs the #guard tests
     lake exe sistest 20 40  # random runs: 20 seeds, 40 transactions each (7 min)
     lake exe phystest 20 40 # the physical layer on random runs (7 min)
     lake exe reclaimtest 20 30     # reclaim: random runs with cuts (1 min)
@@ -158,7 +158,8 @@ Lean's standard axioms (no `sorry`), put this in a file, for example
 
 Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
 (`LM_cutTo`, `T3_section` and `T3_restarts` need no `Classical.choice`).
-SIS/HandleTheorems.lean states the theorems over handles as definitions;
+SIS/HandleTheorems.lean and SIS/HandleReclaimTheorems.lean state the
+theorems over handles as definitions;
 their proofs are checked the same way, each printing
 `[propext, Classical.choice, Quot.sound]`:
 
@@ -214,7 +215,7 @@ its section in sis-model.md.
 | SIS/Reclaim.lean | Level 3, reclaim (bergdb item 001, WP R3): what a cut leaves of a version (`Version.stub`) and of a record (`Record.cut`); the stream after a cut (`cutStream`); the versions that a lookup at a time may read (`ReadsAt`, WP R7); when a cut is safe (`CutOK`); the same lookups from f on (`SameFrom`); policies that a cut does not change (`PolicyCutOK`); a virtual root seen only through its live children (`ExecRootOK`), whose live children are those of its last entry (`VirtLiveOK`, WP R4); runs that restart from cut streams (`runRestartsCut`, `cutMax`) | — (001-07, 5) |
 | SIS/ReclaimTheorems.lean | T13' (`T13_markTouch`, WP R3): with touches, step 3 gives exactly the index nodes not in D (and not a virtual root) that are dirty or touched; T8 (`T8_recoverCut`, WP R4): after a safe cut, startup from the cut stream gives the same lookups at every time from the first available time on (`SameFrom`), and the same D; T12 (`T12_restartCut`, WP R5): a run that restarts from safe cut streams appends the records of the run without restarts (its stream is that run's, cut at the largest cut), with that run's D and lookups from the first available time on. T9 and T12 with eviction are stated over handles (SIS/HandleReclaimTheorems.lean); over Evict.lean they were here until bergdb 005-62 | — (001-07, 2.2, 2.10) |
 | SIS/HandleReclaimTheorems.lean | Level 3's reclaim theorems with eviction over handles (bergdb 005-62), as definitions of type `Prop`: the run with handles that restarts from cut streams (`runHandlesCut`); T9 with handles (`T9_handles`): in a run with handles as in `T2_handles`, after a safe cut, a read through the handles at any time from the first available time on gives the same on the cut stream as on the whole stream (memory and nodes), and gives P; proved (`t9_handles`, SIS/Proof/HandleCutRun.lean); T12 with eviction over handles (`T12_handles`): the run with handles that restarts from safe cut streams appends the records of the run without restarts, cut at the largest cut, with that run's D and lookups from the first available time on; proved (`t12_handles`, SIS/Proof/HandleCutT12.lean); rule 4 by position after a cut (question 2): the run with cuts and Java's rule 4 by position (`runHandlesCutPos`), the startup from a stream cut safely with it is `handleStartup` (`Rule4PosCut_handles`), and so is the run (`RunPosCut_handles`); proved (`rule4PosCut_handles`, `runPosCut_handles`, SIS/Proof/HandleCutPos.lean) | — (001-07, 2.9, 2.10; ../items/005-todo/62-lean-t9-t12-over-handles.md) |
-| SIS/Bound.lean | Bounds, part 1 (bergdb item 007): the cost of the records R(a), ..., R(b-1) for any cost of a record (`Stream.cost`); the startup pos that a startup distance d asks for (`sdTarget`); a policy that keeps up with d (`KeepsUp`); the startup distance policy (`sdPolicy`). BergDB's take (bergdb 007-08; `TransSeq.take` since 007-07): the startup section without its last record, which is the span of its transactions (`Stream.span`); a pace, any rule that decides whether to take the next transaction (`Pace`); the take's loop (`takeLoop`) and the take, whole transactions oldest first, each taken if it begins max(2 sd, span) or more before the end of the stream or if the pace takes it, with the setting sd any function of the transaction (`takePolicy`); BergDB's pace, its share in Java's double arithmetic and its dither (`share`, `dither`, `javaPace`), and the take with it (`javaTake`); no theorem uses these four, kept to check the model against Java's arithmetic (the `#guard`s, TakeCheck) | 10 (../items/007-bounds/01-startup-bound.md, 3; ../items/007-bounds/08-step4-take-in-lean.md, 1) |
+| SIS/Bound.lean | Bounds, part 1 (bergdb item 007): the cost of the records R(a), ..., R(b-1) for any cost of a record (`Stream.cost`); the startup pos that a startup distance d asks for (`sdTarget`); a policy that keeps up with d (`KeepsUp`); the startup distance policy (`sdPolicy`). BergDB's take (bergdb 007-08; `TransSeq.take` since 007-07): the startup section without its last record, which is the span of its transactions (`Stream.span`); a pace, any rule that decides whether to take the next transaction (`Pace`); the take's loop (`takeLoop`) and the take, whole transactions oldest first, each taken if it begins max(2 sd, span) or more before the end of the stream or if the pace takes it, with the setting sd any function of the transaction (`takePolicy`); BergDB's pace, its share and its dither in the double arithmetic of Java's take from 2026-10-28 until 005-79 (`share`, `dither`, `javaPace`), and the take with it (`javaTake`); no theorem uses these four, kept to check the model against that arithmetic (the `#guard`s, TakeCheck); Java's take is in integers since 005-79 (015-03) | 10 (../items/007-bounds/01-startup-bound.md, 3; ../items/007-bounds/08-step4-take-in-lean.md, 1) |
 | SIS/BoundTheorems.lean | T3 (`T3_section`): in every run whose policy keeps up with d, the startup section without its last record costs less than d; also with restarts (`T3_restarts`); what startup reads (`T3_reads`) and reruns (`T3_rerun`), and with records of bounded cost (`T3_bounded`). No assumption but the policy. T3 for BergDB's take (bergdb 007-08), for every pace: after a transaction on any database, the section costs less than max(2 sd, the section before) (`T3_take_step`); with settings at most M, less than 2 M, also with restarts (`T3_take`, `T3_take_restarts`); after a change of the setting to sd', less than 2 sd' or at least one less for each transaction since (`T3_take_decrease`, `T3_take_decrease_restarts`); what startup reruns and reads (`T3_take_rerun`, `T3_take_reads`). No assumption but the policy | 10 (../items/007-bounds/01-startup-bound.md, 3; ../items/007-bounds/08-step4-take-in-lean.md, 2) |
 
 The proofs, in SIS/Proof/ (not needed for reading the statements):
@@ -307,11 +308,11 @@ Not trusted, tests only:
   with lazy restarts (`checkLazy`, also as `#guard`s): after every
   transaction the writer's view is P's, the records are the run's, every
   canonical object is whole, and the memory meets the invariant for the
-  frozen run (`frozenB`). And, for the runs with eviction, the assumptions of
-  stage 2 by running (bergdb item 001, WP E2: TREE, A6' and A-COPY, `treeB`,
-  `adoptB`, `copyB`, `evictRunOKB`) and example 5 (example 3 with drops), in
-  SIS/EvictExample.lean until bergdb 005-62, whose runs of the design before
-  handles went with it.
+  frozen run (`frozenB`). `#guard`s in SIS/PhysExample.lean also check the
+  assumptions of stage 2 (bergdb item 001, WP E2: TREE, A6' and A-COPY;
+  `treeB`, `adoptB`, `copyB`, `evictRunOKB`) on examples 2, 3 and 5 (example
+  3 with drops), moved there from SIS/EvictExample.lean in 005-62; `phystest`
+  does not run them.
 * SIS/HandleExample.lean (bergdb item 009, phase 2, 2b): the physical layer
   with handles by running. The invariants of SIS/HandleTheorems.lean as
   `Bool`s (`hTableOKB`, `hCanOKB`, `hSnapOKB`, `hSlotOKB`, `hRuleROKB`,
@@ -451,9 +452,9 @@ Not trusted, tests only:
   first through the chain of top node ordinals (`r4Fast`, sound by
   `r4Fast_sound`; `PredChain` and `mem_topClosure` are from review-13-claude's
   `R4Bridge.lean`, F1-008-13 in the f1 repository), and the exponential
-  `topClosure` runs only when that test fails. The medium set took 6,770 s and
-  takes 88 s; a trace of 5,000 transactions at node size 30 with 1,000 keys
-  takes 428 s and 128 MB.
+  `topClosure` runs only when that test fails. On 2026-10-16 (001-02) the
+  medium set took 88 s instead of 6,770 s, and a trace of 5,000 transactions
+  at node size 30 with 1,000 keys 428 s and 128 MB.
 
 Choices made in Lean that the text leaves open:
 
@@ -1250,14 +1251,15 @@ in the trusted part to check the model against Java's arithmetic (Frans).
 Stage 1 of bergdb item 001 is done (2026-10-16): lemma M (`LM_newer`, L2),
 T1-L (`T1_lazy`, L3), CC and T2-L (`CC_canonical`, `T2_lazy`, L4) are proved,
 and Java's first touches after restarts are checked against the model's rule
-(C-L, L5). Stage 2: T-CACHE (`TC_records`, E3) and T-READ (`TR_view`, E4)
-are proved for runs without restarts, and T2-C (`T2_cache`, E5), T-CACHE
-with restarts, T-READ with restarts (`TR_view_restarts`, E5) and T-PIN
-(`TP_pins`, E6) (2026-10-17). Stage 3: the definitions and T13' (R3), the
-checker on Java's reclaim traces with the red list (R7), T8 (R4),
+(C-L, L5). Stage 2 (2026-10-17, over the design before handles; since
+005-62 over handles, 009): T-CACHE, T-READ, T2-C and T-PIN (`tc_handles`,
+`tr_handles`, `t2_handles`, `tr_handles_restarts`, `tp_handles`), and rule 4
+by position (005-58). Stage 3 (2026-10-17): the definitions and T13' (R3),
+the checker on Java's reclaim traces with the red list (R7), T8 (R4),
 `CutOK`'s part 2 over `ReadsPhys` (R6, part 1: register M48, option (a),
-Frans), T12 for runs without eviction (R5), T9 (R4), and T12 with eviction
-(R5) (2026-10-17).
+Frans), T12 for runs without eviction (R5); over handles T9 and T12 with
+eviction (`t9_handles`, `t12_handles`), and rule 4 by position after a cut
+(005-62).
 
 Not done:
 

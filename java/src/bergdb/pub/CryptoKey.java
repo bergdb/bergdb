@@ -9,8 +9,8 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * An encryption for database stream encryption together with 
- * information about the encryption and the name of the encryption key.
+ * A key for the encryption of the database stream, with its algorithm and the name of
+ * the key.
  * 
  * @author Frans Lundberg
  */

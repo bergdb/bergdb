@@ -301,8 +301,8 @@ Limits:
   take, with any share (`T3_take`,
   [007-08](../items/007-bounds/08-step4-take-in-lean.md)): the section
   without its last record stays below twice the startup distance, and
-  after a decrease of it, it never grows and shrinks with every commit
-  until it is below twice the new one, by the deadline at the span
+  after a decrease of it, it shrinks with every commit until it is below
+  twice the new one, and then stays below it, by the deadline at the span
   ([007-03](../items/007-bounds/03-plan.md), step 3 and D4). The proof
   leaves out the record limit, which can stop a record from taking what is
   due. It leaves out the stream's meta blocks too, but they make no
@@ -672,7 +672,8 @@ are a long-term topic, 017-03.
 
 What is left to do is in the items, not here: the index of
 [items/readme.md](../items/readme.md), the open entries of
-[005-todo](../items/005-todo/readme.md), and bounded startup in
-[007](../items/007-bounds/readme.md), the top priority since 2026-10-23.
+[015-todo](../items/015-todo/readme.md) and
+[019-todo](../items/019-todo/readme.md), and bounded startup in
+[007](../items/007-bounds/readme.md) (T4).
 Where BergDB departs from its design principles is in
 [010-01](../items/010-principles/01-principles.md).

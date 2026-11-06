@@ -18,6 +18,8 @@ public interface Action {
      * memories) to attaining isolation of transactions.
      * Results for the caller go through outputs (RwEnvironment.setOutput()):
      * the caller gets those of the run that committed (Transaction.getOutput()).
+     * If this method throws a RuntimeException, nothing is written, rw() throws it, and the
+     * database goes on; an Error fails the database (Database, "Errors").
      */
     public void run(RwEnvironment env);
 }

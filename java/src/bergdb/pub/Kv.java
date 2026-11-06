@@ -12,7 +12,8 @@ public interface Kv<TYPE> {
     public String key();
     
     /**
-     * Used internally, not intended for the Pub API user.
+     * Used internally, not intended for the Pub API user; it may throw
+     * UnsupportedOperationException.
      */
     public String ikey();
     

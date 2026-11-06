@@ -91,8 +91,10 @@ import bergdb.stream.SalsaStream;
  * Transactions that a sync() has returned for are safe; stop() and close() still work, and
  * so does sync() while the storage does. The application should then end its process; the
  * next start recovers the database as after a crash. For OutOfMemoryError, the JVM option
- * -XX:+ExitOnOutOfMemoryError ends the process at once. (A start that fails throws what it
- * met, and the database is stopped; see start().)</p>
+ * -XX:+ExitOnOutOfMemoryError ends the process at once, and that is the advice: while the
+ * heap stays full, BergDB cannot promise even to fail cleanly, so a sync() or close() may
+ * then wait (bergdb 019-39). (A start that fails throws what it met, and the database is
+ * stopped; see start().)</p>
  * 
  * <p>Everything else the database throws fails only that call, and the database goes on: a
  * transaction refused before its go point, a lookup time no longer available, a bad
@@ -103,10 +105,10 @@ import bergdb.stream.SalsaStream;
  * close() once the Db is no longer used, as for a file or a socket: stop() requests the
  * release of the resources and returns at once, close() also waits until they are released.
  * Nothing else releases them (2026-10-27, bergdb 005-55: finalize() is gone, with no
- * safety net in its place). A Db that is not stopped keeps its storage threads (one per
- * stream), its open files, its write buffer and its memory until the JVM exits. What it has
- * committed is still written within the buffer time (for the main stream 50 ms by
- * default), as after any commit; the storage threads are daemon threads, so they do not
+ * safety net in its place). A Db that is not stopped keeps its threads, its open files,
+ * its write buffer and its memory until the JVM exits. What it has
+ * committed is still written within the buffer time (50 ms by default), as after any
+ * commit; its threads are daemon threads, so they do not
  * keep the JVM alive, and at its exit what is buffered and not yet written is lost, as in
  * a crash, which the database tolerates.</p>
  * 
@@ -596,8 +598,8 @@ public class Db implements AutoCloseable {
      * @throws IllegalStateException
      *             If start() has been called already.
      * @throws DbFailedException
-     *             If a read of reclaim's table, the last step of the startup, fails on the
-     *             storage (bergdb 005-30).
+     *             If a read of reclaim's settings or table, the last step of the startup,
+     *             fails on the storage (bergdb 005-30).
      */
     public StartInfo start() {        
         return start(StartParams.NULL);
@@ -1567,7 +1569,7 @@ public class Db implements AutoCloseable {
      *            The requested lookup time. The time for which to make the lookup. 
      *            Use Long.MAX_VALUE to lookup the state at the latest possible time.
      * @throws IllegalDbStateException
-     *             If start() has not been called or stop()/stopFast() has been called. 
+     *             If start() has not been called, or stop() or close() has.
      *             The database is not in the active state.
      * @throws DbFailedException
      *             If the database has failed, or fails now: the read failed on the storage
@@ -1861,8 +1863,8 @@ public class Db implements AutoCloseable {
     }
 
     /**
-     * Sync method with parametarized sync level.
-     * 
+     * As sync(0, syncLevel): waits until the last transaction written is durable.
+     *
      * @param syncLevel
      *      The sync level.
      */
@@ -1871,8 +1873,8 @@ public class Db implements AutoCloseable {
     }
     
     /**
-     * Sync method with parametarized sync level.
-     * 
+     * Waits until the stream is durable up to 'pos', at the given sync level.
+     *
      * @param pos
      *      The stream position of the last byte to make durable, a transaction's lastPos, or
      *      0 for the last transaction written. The sync returns when every byte up to and
@@ -2015,9 +2017,13 @@ public class Db implements AutoCloseable {
      * @throws InternalDataException
      *             If BergDB internal data in the database is corrupt.
      * @throws DbException
-     *             If the database has used its top node ordinals, after about 2^48 changes
-     *             of the space root: the transaction is refused before it changes anything,
-     *             as is every later one; reads go on (bergdb item 005-02).
+     *             If the transaction is refused before its go point, and the database goes
+     *             on: it is too large (bergdb 005-17), or its dirty index nodes would not fit
+     *             in one record (005-31); the clock's time is out of range (005-18), or in
+     *             the last 1,024 database times, kept for reclaim (015-55); or the database
+     *             has used its top node ordinals, after about 2^48 changes of the space
+     *             root, and then every later transaction is refused too; reads go on
+     *             (bergdb item 005-02).
      */
     public final void execute(final Trans t) {
         //

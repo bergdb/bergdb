@@ -1,12 +1,14 @@
 <html><head><title>Package bergdb.pub</title></head><body>
 
-<p>Together with pub.util, this package forms the public BergDB API, "Pub"; 
-The package is used to store Java objects easily and efficiently.</p>
+<p>Together with pub.util, this package forms the public BergDB API, "Pub".
+The package is used to store String and byte[] values by key, and Java objects,
+experimental in 2026.3.</p>
 
 <p>Experimental in 2026.3, with known faults: a value that is neither a String nor a byte[]
 (put(Object), a put of an object at a key, a get into another class), and the user indexes
 (Database.indexBuilder() and deleteIndex(), Connection.useIndex() and usePrimary(), and the
-interfaces IndexBuilder, UseIndexBuilder and UsePrimaryBuilder). They may change in a later
+interfaces IndexBuilder, UseIndexBuilder and UsePrimaryBuilder; Database.PRIMARY,
+StartupInfo.getStartupJobs(), and the exceptions of these parts). They may change in a later
 release (bergdb 018-01, D6). The rest of the Pub API, with the puts, gets and deletes of String
 and byte[] values, is not experimental.</p>
 

@@ -14,6 +14,10 @@ import bergdb.pub.util.SyncLevel;
  * accessed from a single thread. For multi-threaded access to the database,
  * create a Connection object for each thread by calling Database.newConnection().
  * 
+ * <p>Keys. A key starts with '/', has at least one more character, does not end with '/',
+ * and has no "//" and no lone surrogate (bergdb 015-49); every call that takes a key refuses
+ * another key, and null, with IllegalArgumentException.</p>
+ *
  * <p>After a DbFailedException, or an Error such as an OutOfMemoryError, the application
  * should end its process: the database, or its environment, has failed (Database,
  * "Errors"; bergdb 019-10).</p>
@@ -27,7 +31,7 @@ public interface Connection extends ReadInterface {
      * in the key of a put will be replaced by the unique transactionTime of
      * the transaction when it is executed. A delete's key is taken as written
      * (bergdb 019-15). By default, the key replace feature
-     * of a connection is disabled. This method must to be called to enable it.
+     * of a connection is disabled. This method must be called to enable it.
      * The transaction time of the transaction functions as a unique transaction ID.
      * It is guaranteed to be unique for every transaction and is strictly increasing.
      * 
@@ -46,7 +50,7 @@ public interface Connection extends ReadInterface {
      * Sets the requested lookup time to use for subsequent calls to: get(),
      * exists(), useIndex(), usePrimary().
      * By default, the requested lookup time is Time.MAX. This means that read 
-     * operations are performed on the lastest database state.
+     * operations are performed on the latest database state.
      * Note that the requested lookup time is not always the same as the *actual*
      * lookup time used. If the requested lookup time is larger than the
      * transaction time of the last transaction, the transaction time of the
@@ -95,10 +99,10 @@ public interface Connection extends ReadInterface {
     public void freezeLookupTime();
     
     /**
-     * <p>Returns the current based on the database clock. 
-     * The returned time is guaranteed to be less then
+     * <p>Returns the current time of the database clock.
+     * The returned time is guaranteed to be less than
      * the transaction time of any currently executing transaction (if any transaction is executing)
-     * and less then the transaction time of any future transaction.
+     * and less than the transaction time of any future transaction.
      * The returned time is also guaranteed to be greater than or equal to the transaction 
      * time of the last completed transaction.</p>
      *
@@ -121,8 +125,8 @@ public interface Connection extends ReadInterface {
      *            The key to check for.
      * @return true if the key exists.
      * @throws IllegalArgumentException
-     *             If key does not follow the allowed format, or is null, as for get(),
-     *             and in an rw-transaction (bergdb 019-05).
+     *             If key does not follow the allowed format, or is null, as for get()
+     *             and an rw-transaction's exists() (bergdb 019-05).
      * @throws DbException
      *             Thrown if the database is faulty.
      * @throws DbFailedException
@@ -133,11 +137,11 @@ public interface Connection extends ReadInterface {
     public boolean exists(String key);
 
     /**
-     * Gets a single object stored in the database, or null if no entry exists
-     * for the key. The caller specifies the class of the returned object. The
-     * class must in general have a no-argement constructor which will be used
-     * to create the object returned. The matching field of the object create
-     * will be set based on the fields of the DbObject stored in the database.
+     * Gets the value at the key, or null if no entry exists for the key, as an object
+     * of the class the caller gives: a String (the value's UTF-8 bytes decoded) or a
+     * byte[]. For another class, which must in general have a no-argument constructor,
+     * that constructor creates the object returned, and the matching fields of the
+     * object created are set from the fields of the DbObject stored in the database.
      *
      * <p>Experimental in 2026.3 for a class other than String and byte[], with known
      * faults; such a get may change in a later release (bergdb 018-01, D6).</p>
@@ -173,7 +177,7 @@ public interface Connection extends ReadInterface {
     
     /**
      * Returns information about the transaction that wrote the last
-     * value retreived with the get() method: its time and its KVs. The KVs
+     * value retrieved with the get() method: its time and its KVs. The KVs
      * are the user's; those that the database writes itself in the
      * transaction, the entries of an index, are left out.
      * A get() that finds no entry does not change the value this method describes:
