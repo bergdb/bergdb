@@ -3,6 +3,7 @@ package bergdb.storage;
 import java.io.Closeable;
 import java.io.EOFException;
 import java.io.IOException;
+import java.util.concurrent.locks.ReentrantLock;
 
 import bergdb.common.Bug;
 import bergdb.common.Util;
@@ -11,6 +12,7 @@ import bergdb.nanotest.Nano;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;
 import bergdb.stream.MemoryStream;
+import bergdb.stream.StrictStream;
 
 /**
  * An active buffer for an AppendOnlyStream that outputs the data to an
@@ -28,6 +30,13 @@ import bergdb.stream.MemoryStream;
  * the buffer time: it calls flushSoon() (group commit, 2026-10-27, bergdb item 005-48).
  * The buffer time is then the longest time that bytes nobody syncs on stay buffered.
  * An append that reaches a quarter of the buffer wakes the thread too (bergdb 005-76).
+ * 
+ * <p>The underlying stream gets one call at a time, but read(), as AppendOnlyStream's
+ * CONCURRENCY says (2026-11-06, bergdb 015-80): the thread's appends, the cuts and the
+ * close hold ioLock, and getFirstPos() returns the first position kept after the last cut.
+ * The thread's append ran beside the writer's cut and getFirstPos(). A cut that comes
+ * during an append of the thread waits for it, and its force. ioLock is never held with
+ * this object's monitor, and read() holds neither while it reads the underlying stream.
  * 
  * @author Frans Lundberg
  */
@@ -48,6 +57,16 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     private long totalLength; // total length: buffered in memory + stream
                               // length
     private final AppendOnlyStream stream;   // underlying stream
+    /**
+     * Held for every call to the underlying stream but read() (2026-11-06, bergdb 015-80):
+     * the thread's appends, the cuts with getFirstPos() after each, and its close.
+     * AppendOnlyStream allows one writer at a time; the thread's append ran beside the
+     * writer's cut and getFirstPos(). Fair, so that a cut waits for at most the append in
+     * progress. Never held together with this object's monitor, and never by read().
+     */
+    private final ReentrantLock ioLock = new ReentrantLock(true);
+    /** The underlying stream's first position after the last cut; see getFirstPos(). */
+    private volatile long firstPos;
     private final Thread consumer;
     private long pStart; // offset for producer (absolute coordinate)
     private long cStart; // offset for consumer (absolute coordinate)
@@ -114,6 +133,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         buffer = new byte[bufferCapacity];
         streamLength = stream.getLength();
         totalLength = streamLength;
+        firstPos = stream.getFirstPos();
 
         // 2026-10-13 (java/stress/CrashTest.java): pStart and cStart were 0 here, but
         // readFromBuffer() takes stream positions. For a stream that was not empty, reads
@@ -225,12 +245,15 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
      */
     private void closeStream() {
         IOException failed = null;
+        ioLock.lock();      // Not beside a writer's cut (bergdb 015-80).
         try {
             stream.close();
         } catch (IOException e) {
             failed = e;
         } catch (RuntimeException | Error e) {
             failed = new IOException("The close of the stream failed (the cause).", e);
+        } finally {
+            ioLock.unlock();
         }
         if (failed != null) {
             synchronized (this) {
@@ -289,10 +312,10 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
 
         try {
             if (index2 >= index1) {     // Was '>', which wrote wrong bytes for a 1-byte flush.
-                stream.append(buffer, index1, sizeToFlush);
+                appendToStream(index1, sizeToFlush);
             } else {
-                stream.append(buffer, index1, bufferCapacity - index1);
-                stream.append(buffer, 0, index2 + 1);
+                appendToStream(index1, bufferCapacity - index1);
+                appendToStream(0, index2 + 1);
             }
         } catch (IOException e) {
             ex = e;
@@ -352,7 +375,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             }
 
             try {
-                stream.pretruncate(cut);
+                cutStream(cut);
             } catch (IOException e) {
                 // A failed deletion/directory force is a storage failure too.
                 // Do not publish this flush or release durability waiters.
@@ -365,6 +388,30 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         }
 
         appendListener.dataAppended(myStreamSize);
+    }
+
+    /** One append to the underlying stream, holding ioLock (bergdb 015-80). */
+    private void appendToStream(int offset, int length) throws IOException {
+        ioLock.lock();
+        try {
+            stream.append(buffer, offset, length);
+        } finally {
+            ioLock.unlock();
+        }
+    }
+
+    /**
+     * Cuts the underlying stream, holding ioLock, and keeps its first position after the cut
+     * (bergdb 015-80): the writer's cut, and the thread's pending one.
+     */
+    private void cutStream(long position) throws IOException {
+        ioLock.lock();
+        try {
+            stream.pretruncate(position);
+            firstPos = stream.getFirstPos();
+        } finally {
+            ioLock.unlock();
+        }
     }
 
     /**
@@ -390,8 +437,15 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         return totalLength;
     }
 
+    /**
+     * The underlying stream's first position after the last cut (2026-11-06, bergdb 015-80):
+     * it called the underlying stream, beside the thread's append. A stream's first position
+     * changes only at a cut, and this object makes every cut of it, and reads the position
+     * after each. Takes no lock: a commit asks it often (NodeCollection.resolvePointers),
+     * and must not wait for the thread's append and its force.
+     */
     public long getFirstPos() {
-        return stream.getFirstPos();
+        return firstPos;
     }
 
     public void read(long position, byte[] dest, int destOffset, int length) throws IOException {
@@ -620,7 +674,9 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
 
     /**
      * Pretruncates the underlying stream. A position past the bytes flushed so far is kept
-     * and applied after the flush that reaches it.
+     * and applied after the flush that reaches it. One at or before them is cut at once,
+     * holding ioLock (2026-11-06, bergdb 015-80): it waits for an append of the thread in
+     * progress, and its force, at most one; it ran beside it.
      * 2026-10-13 (testPretruncateBeyondFlushed): the position was passed on at
      * once, also when it was still in the buffer; MemoryStream then failed, and the
      * underlying stream could be cut past its end.
@@ -632,7 +688,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 return;
             }
         }
-        stream.pretruncate(position);
+        cutStream(position);
     }
     
     public void setAppendListener(AppendListener appendListener) {
@@ -1007,6 +1063,102 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         }
         Assert.assertEquals(400L, m.getLength());
         Assert.assertEquals(300L, lastCut.get());
+    }
+
+    /**
+     * Regression test for bergdb 015-80 (016-06's R5-F5), the paths that harness 6.3
+     * (StorageContractTester) does not reach: a writer's cut, at or below the flushed length,
+     * while the thread makes a pending cut, and while the thread closes the stream after
+     * stop(). The cut must wait for the thread's call, not call the stream below beside it
+     * (StrictStream: OVERLAP); getFirstPos() is then the stream below's.
+     */
+    @Nano
+    public static void testWriterCutBesideThreadsCutAndClose() throws Exception {
+        writerCutBeside(StrictStream.Op.PRETRUNCATE);
+        writerCutBeside(StrictStream.Op.CLOSE);
+    }
+
+    private static void writerCutBeside(final StrictStream.Op held) throws Exception {
+        java.util.concurrent.CountDownLatch entered = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+        MemoryStream below = new MemoryStream();
+        below.append(new byte[100], 0, 100);
+        final StrictStream strict = new StrictStream(below);
+        strict.setHook((op, n) -> {
+            if (op == held && entered.getCount() > 0) {
+                entered.countDown();
+                try {
+                    if (!release.await(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                        throw new IOException("the test did not release " + held);
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException(e);
+                }
+            }
+        });
+        final BufferedStream b = new BufferedStream(strict, 1000, 10);
+        final java.util.concurrent.atomic.AtomicReference<Throwable> thrown =
+                new java.util.concurrent.atomic.AtomicReference<Throwable>();
+        Thread writer = null;
+        try {
+            if (held == StrictStream.Op.PRETRUNCATE) {
+                b.append(new byte[300], 0, 300);
+                b.pretruncate(200);         // Not started: kept, the thread cuts after its append.
+                b.start();
+            } else {
+                b.start();
+                b.stop();                   // The thread closes the stream as it ends.
+            }
+            Assert.assertTrue(held + " of the thread was not held",
+                    entered.await(5, java.util.concurrent.TimeUnit.SECONDS));
+            writer = new Thread(() -> {
+                try {
+                    b.pretruncate(80);      // At or below the flushed length, 100.
+                } catch (Throwable e) {
+                    thrown.set(e);
+                }
+            }, "BufferedStream-test-writer");
+            writer.start();
+            writer.join(200);               // A cut that waits for the thread is no deadlock.
+        } finally {
+            release.countDown();
+            if (writer != null) {
+                writer.join();
+            }
+            b.close();
+        }
+        for (StrictStream.Breach breach : strict.breaches()) {
+            if (breach.kind == StrictStream.Kind.OVERLAP) {
+                throw new AssertionError("the writer's cut beside the thread's " + held + ": "
+                        + breach.getMessage(), breach);
+            }
+        }
+        if (held == StrictStream.Op.PRETRUNCATE) {
+            Assert.assertTrue("the cut threw " + thrown.get(), thrown.get() == null);
+            Assert.assertEquals(below.getFirstPos(), b.getFirstPos());
+        }
+    }
+
+    /**
+     * bergdb 015-80: getFirstPos() is kept, not asked of the underlying stream; it is the
+     * underlying stream's after a cut made at once, and after a kept cut once it is made.
+     */
+    @Nano
+    public static void testFirstPosAfterCuts() throws IOException {
+        CutStream c = new CutStream();      // Its first position is the last cut, exactly.
+        c.append(new byte[100], 0, 100);
+        BufferedStream b = new BufferedStream(c, 1000, 10);
+        Assert.assertEquals(0L, b.getFirstPos());
+        b.pretruncate(50);                  // Within the flushed bytes: made at once.
+        Assert.assertEquals(50L, b.getFirstPos());
+        b.append(new byte[300], 0, 300);
+        b.pretruncate(200);                 // Not started: kept for the flush.
+        Assert.assertEquals(50L, b.getFirstPos());
+        b.start();
+        b.close();
+        Assert.assertEquals(200L, c.getFirstPos());
+        Assert.assertEquals(200L, b.getFirstPos());
     }
 
     /**

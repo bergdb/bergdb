@@ -407,6 +407,17 @@ Internal
   past the end** (bergdb 015-83; 2026-11-05), as `AppendOnlyStream`'s
   Javadoc says; it was an `IOException`. The storage fails at it as before;
   the stream's bytes are unchanged.
+* **`BufferedStream` makes one call at a time to the stream below**
+  (bergdb 015-80, 016-06's R5-F5; 2026-11-06), as `AppendOnlyStream`'s
+  contract allows a stream to require: a cut, and `getFirstPos()`, ran
+  beside the storage thread's append, and a cut beside its close. Now a
+  lock is held for each append, cut and close of the stream below (reads
+  take none), and `getFirstPos()` returns the first position kept after
+  the last cut. A cut that comes during the thread's append waits for it
+  and its force, at most one append (half the write buffer); reclaim's cut
+  is the one on a commit's path, once per cut. `FileStream`'s own locks
+  covered the overlap; a stream that relies on one writer did not. The
+  stream's bytes are unchanged.
 
 * **`Jmx.Speed`'s monitor thread goes on after an interrupt** (bergdb
   015-38, 016-06's R3-F4; 2026-11-05): it ended, its speeds stayed as they
