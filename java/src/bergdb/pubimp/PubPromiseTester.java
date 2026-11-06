@@ -1,5 +1,7 @@
 package bergdb.pubimp;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -12,6 +14,7 @@ import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Action;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
+import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Factory;
 import bergdb.pub.Kv;
 import bergdb.pub.RwEnvironment;
@@ -187,6 +190,14 @@ public class PubPromiseTester {
     final RefConn[] conns = {new RefConn(), new RefConn()};
     final StringBuilder trace = new StringBuilder();
     MemoryStream stream;
+    /** The database's directory, or null for a MemoryStream. */
+    String dir;
+    /**
+     * Small mode, the seeds that are 2 modulo 4: the smallest startup distance (5 MB) and
+     * cache (4 MB), 300 more keys, and values of up to 60 KB, so that a run of 10,000 steps
+     * writes some 30 MB, and eviction drops nodes and values that reads then load again.
+     */
+    final boolean small;
     Database db;
     int step;
     /** Keys made by writes with ${transactionTime}, replaced or not, for reads. */
@@ -197,15 +208,30 @@ public class PubPromiseTester {
     PubPromiseTester(long seed) {
         this.seed = seed;
         this.random = new Random(seed);
+        this.small = seed % 4 == 2;
     }
 
     /** Runs a sequence of steps calls on one seed; fails with the seed and the last calls. */
     public static void run(long seed, int steps) {
+        run(seed, steps, null);
+    }
+
+    /**
+     * Runs a sequence of steps calls on one seed, in a database in the directory dir, which
+     * must not hold one, or, if dir is null, on a MemoryStream; fails with the seed and the
+     * last calls.
+     */
+    public static void run(long seed, int steps, File dir) {
         PubPromiseTester t = new PubPromiseTester(seed);
+        t.dir = dir == null ? null : dir.getPath();
         try {
             t.start(new MemoryStream());
             for (t.step = 0; t.step < steps; t.step++) {
                 t.step();
+            }
+            if (Boolean.getBoolean("bergdb.promise.verbose")) {
+                System.out.println("seed " + seed + (t.small ? ", small" : "") + ": "
+                        + ((DatabaseImp) t.db).getDb().internal().eviction().summary());
             }
         } catch (Throwable e) {
             AssertionError a = new AssertionError("PubPromiseTester, seed " + seed + ", step "
@@ -236,9 +262,24 @@ public class PubPromiseTester {
         }
     }
 
+    /**
+     * Starts the database: on the MemoryStream m, or, with a directory, by the Pub API's
+     * create() the first time and open() at a restart.
+     */
     private void start(MemoryStream m) {
         stream = m;
-        db = ((DatabaseBuilderImp) Factory.database()).mainStream(m).clock(clock).start();
+        DatabaseBuilder b;
+        if (dir == null) {
+            b = ((DatabaseBuilderImp) Factory.database()).mainStream(m);
+        } else if (m == null) {
+            b = Factory.database().open(dir);
+        } else {
+            b = Factory.database().create(dir);
+        }
+        if (small) {
+            b.startupDistanceInMb(5).cacheSizeInMb(4);
+        }
+        db = b.clock(clock).start();
         conns[0] = new RefConn();
         conns[0].c = db.connection();
         conns[1] = new RefConn();
@@ -256,7 +297,7 @@ public class PubPromiseTester {
         // returned, and with a clock that has not moved, the next transaction can have one of
         // them (bergdb 018-04, question Q5).
         lastCurrentTime = NONE;
-        start(stream.copy());
+        start(dir == null ? stream.copy() : null);
     }
 
     private void step() {
@@ -298,7 +339,11 @@ public class PubPromiseTester {
                 invalid(rc);
             }
         } else if (r < 98) {
-            restart();
+            // Small mode restarts one time in 20 as often, so that a run passes its startup
+            // distance and eviction has nodes to drop.
+            if (!small || random.nextInt(20) == 0) {
+                restart();
+            }
         } else {
             getLookupTime(rc);
         }
@@ -308,6 +353,9 @@ public class PubPromiseTester {
     private String key() {
         if (random.nextInt(8) == 0 && !madeKeys.isEmpty()) {
             return madeKeys.get(random.nextInt(madeKeys.size()));
+        }
+        if (small && random.nextBoolean()) {
+            return "/k/" + random.nextInt(300) + (random.nextBoolean() ? ".bin" : "");
         }
         return KEYS[random.nextInt(KEYS.length)];
     }
@@ -322,7 +370,8 @@ public class PubPromiseTester {
 
     /** A String or byte[] value, random; bytes never start with DbObject's magic. */
     private Object value() {
-        int n = random.nextInt(4) == 0 ? random.nextInt(3000) : random.nextInt(12);
+        int n = random.nextInt(4) == 0 ? random.nextInt(small ? 60000 : 3000)
+                : random.nextInt(12);
         if (random.nextBoolean()) {
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < n; i++) {
@@ -439,7 +488,8 @@ public class PubPromiseTester {
         ref.commit(time, kvs, replace);
         for (RefKv kv : ref.transactions.get(time)) {
             if (!Arrays.asList(KEYS).contains(kv.key) && !madeKeys.contains(kv.key)
-                    && !kv.key.contains("${") && madeKeys.size() < 200) {
+                    && !kv.key.contains("${") && !kv.key.startsWith("/k/")
+                    && madeKeys.size() < 200) {
                 madeKeys.add(kv.key);
             }
         }
@@ -852,29 +902,43 @@ public class PubPromiseTester {
         }
     }
 
+    /** A short run in a directory, through the Pub API's create() and open(). */
+    @Nano
+    public static void testSeedDirectory(TestEnvironment c) throws IOException {
+        run(5, 1000, new File(c.createTempDir(), "db"));
+    }
+
     /**
      * Longer runs for the night tests, about a minute: 40 seeds of 10,000 steps, new seeds
      * each day (the day's number times 1000), printed, so that a failure can be repeated with
-     * main(seed, 10000).
+     * main(seed, 10000); one seed in four (the multiples of 4) in a directory, through
+     * FileStream, repeated with main(seed, 10000, 1, DIR).
      */
     @Nano("night")
-    public static void testSeedsLong(TestEnvironment c) {
+    public static void testSeedsLong(TestEnvironment c) throws IOException {
         long base = System.currentTimeMillis() / 86400000L * 1000;
         c.out().println("PubPromiseTester: seeds " + base + " to " + (base + 39)
                 + ", 10000 steps each");
         for (long seed = base; seed < base + 40; seed++) {
-            run(seed, 10000);
+            // One seed in four in a directory, through FileStream.
+            run(seed, 10000, seed % 4 == 0 ? new File(c.createTempDir(), "db" + seed) : null);
         }
     }
 
+    /**
+     * Usage: PubPromiseTester [SEED [STEPS [RUNS [DIR]]]]. With DIR, each run is in a new
+     * directory DIR/dbSEED, which must not exist, as the night's seeds that are multiples of
+     * 4 are.
+     */
     public static void main(String[] args) {
         long seed = args.length > 0 ? Long.parseLong(args[0]) : System.nanoTime();
         int steps = args.length > 1 ? Integer.parseInt(args[1]) : 20000;
         int runs = args.length > 2 ? Integer.parseInt(args[2]) : 1;
+        File parent = args.length > 3 ? new File(args[3]) : null;
         for (int i = 0; i < runs; i++) {
             System.out.println("PubPromiseTester: seed " + (seed + i) + ", " + steps
-                    + " steps");
-            run(seed + i, steps);
+                    + " steps" + (parent == null ? "" : ", in " + parent));
+            run(seed + i, steps, parent == null ? null : new File(parent, "db" + (seed + i)));
         }
         System.out.println("PubPromiseTester OK");
     }

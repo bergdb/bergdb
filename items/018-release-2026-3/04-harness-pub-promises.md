@@ -5,8 +5,8 @@ Created 2026-11-05 by Frans Lundberg, as harness 6.7 of 018-01 (W2), in
 the night 006-12 (Frans, 21:33: "Will you fix all bugs? [...]"). Built
 by Claude (Opus 5.5, Claude Code), a harness agent of that night.
 
-**Status: built; runs in `before-commit.sh`'s unit tests (1 s) and in
-`night.sh`'s night tests (80 s).** It fails on each of the six known
+**Status: built; runs in `before-commit.sh`'s unit tests (1.5 s) and in
+`night.sh`'s night tests (100 s).** It fails on each of the six known
 faults of its class (018-01, section 6.7), with each fix reverted, and
 found one more, 019-15, which waits for Frans's decision and is in its
 skip list. It passes on `main`. Five questions for Frans (section 6).
@@ -97,7 +97,20 @@ package's `Pack`; test code only, nothing in the production code.
 * Each call is logged; a failure throws an `AssertionError` with the
   seed, the step, what differed, and the last 30 calls
   (`-Dbergdb.promise.lines=N` for more). `main(seed, steps, runs)`
-  repeats a run.
+  repeats a run; `main(seed, steps, runs, dir)` runs in directories.
+* Three kinds of run, by the seed (since the night's second part):
+  * on a `MemoryStream`, restarts on a copy of it (the seeds that are 1
+    or 3 modulo 4, and 0 outside the night test);
+  * in a directory (the night test's seeds that are multiples of 4, and
+    the unit test `testSeedDirectory`): the Pub API's `create()`, and
+    `open()` at a restart, on `FileStream`;
+  * small (the seeds that are 2 modulo 4): the smallest startup distance
+    (5 MB) and cache (4 MB), 300 more keys (`/k/N`, with and without
+    `.bin`), values of up to 60 KB, and restarts 20 times rarer, so that
+    a run passes its startup distance and eviction drops nodes and
+    values, which reads then load again from the stream (seed 2, 10,000
+    steps: 26 sweeps, 2,824 objects released, at the last start).
+    `-Dbergdb.promise.verbose=true` prints eviction's summary.
 * `SKIP`, as 6.3's (018-02, section 4): a known fault that is not
   fixed is listed, and the reference then expects what the code does,
   so the harness passes on `main`. A fix makes the harness fail until
@@ -121,22 +134,24 @@ Adapted from 018-01's proposal, and why:
 
 ## 3. Where it runs, and its cost
 
-* **Unit tests** (`testSeeds`, Nano group "unit"): seeds 1 to 4, 2,000
-  steps each, 1.1 s, mostly the 10 ms sleeps before an rw-transaction
-  runs again (one CPU at about half). `before-commit.sh` runs the unit
+* **Unit tests** (Nano group "unit"): `testSeeds`, seeds 1 to 4, 2,000
+  steps each (seed 2 small), and `testSeedDirectory`, seed 5, 1,000
+  steps in a directory; 1.5 s together, mostly the 10 ms sleeps before
+  an rw-transaction runs again (one CPU at about half). `before-commit.sh` runs the unit
   tests beside the f-tests, which take the longest, so it adds nothing
   measurable to its time.
 * **Night tests** (`testSeedsLong`, Nano group "night", run by
-  `night.sh`'s step night-tests): 40 seeds of 10,000 steps, 81 s on F53.
-  Its seeds are new each day, the day's number times 1000 and the 39
-  after it, printed first, so that a failure can be repeated.
+  `night.sh`'s step night-tests): 40 seeds of 10,000 steps, 101 s on
+  F53 (81 s before the directory and small runs). Its seeds are new each
+  day, the day's number times 1000 and the 39 after it, printed first,
+  so that a failure can be repeated: ten in directories, ten small.
 
 From `java/`:
 
 ```sh
-./unit.sh -c PubPromiseTester                       # the unit tests, 1 s
-./night.sh tests -c PubPromiseTester                # the night's seeds, 80 s
-java -ea -cp build/bergdb.jar bergdb.pubimp.PubPromiseTester SEED STEPS RUNS
+./unit.sh -c PubPromiseTester                       # the unit tests, 1.5 s
+./night.sh tests -c PubPromiseTester                # the night's seeds, 100 s
+java -ea -cp build/bergdb.jar bergdb.pubimp.PubPromiseTester SEED STEPS RUNS [DIR]
 java -ea -Dbergdb.promise.skip=none -cp build/bergdb.jar bergdb.pubimp.PubPromiseTester 1 5000 30
                                                     # nothing skipped: 019-15
 ```
@@ -184,7 +199,11 @@ above); for 015-42, `ConnectionImp.getInTransaction` read with
 `getData` and set the frozen time, as `getInternal` did before.
 
 On `main`, with the skip list: 150 seeds of 5,000 steps (100 to 249),
-`PubPromiseTester OK`, and the night test's 40 seeds of 10,000. With
+`PubPromiseTester OK`, and the night test's 40 seeds of 10,000. After the
+directory and small runs were added (night 006-12, second part): 80
+seeds of 10,000 steps (600 to 679, 20 of them small), 15 seeds of 20,000
+steps in directories (500 to 514) and 8 more (702 to 709, two of them
+small), and the night test: all pass. With
 nothing skipped, seed 3 fails at step 4493 on 019-15.
 
 
@@ -267,8 +286,8 @@ Q4 kvs of a delete of a missing key with a put: 1
 * Reclaim and `LookupTimeNotAvailableException` (a finite retain
   duration), large values and times at their limits: harness 6.4.
 * Failures, interrupts, `stop()` and the failed database: harness 6.2.
-* `FileStream` and its directory: restarts are on a copy of a
-  `MemoryStream`; the streams are harness 6.3's.
+* `FileStream`'s own promises: the directory runs only use it; the
+  streams are harness 6.3's.
 * `sync()`, `Transaction.sync()`, the startup distance and the cache
   size settings: nothing to compare.
 * Objects, `DbObject`, `useIndex()`, `usePrimary()` and the indexes:
@@ -280,9 +299,10 @@ Q4 kvs of a delete of a missing key with a put: 1
 ## 8. State (night 006-12)
 
 Clone `/Users/f/fl/bench/006-12/h67`, branch `h67`. Done: the harness,
-this item, 019-15 registered. Next: more promises if time allows (key
-replace in reads, restarts on a `FileStream`), and any new fault from the
-night tests.
+this item and 019-15 (landed as 4d7a1bb), and the second part, runs in
+directories and small runs, which found no new fault. 019-15 waits for
+Frans; the questions Q1 to Q5 too. Next, if the harness is extended:
+more threads (harness 6.6), a finite retain duration (6.4).
 
 
 ## 9. Log
@@ -292,3 +312,9 @@ night tests.
 its fix reverted, and found 019-15 (key replace and a delete), in its
 skip list; five questions for Frans (section 6). In the unit tests (1 s)
 and the night tests (80 s).
+
+2026-11-06, night 006-12. Runs in directories (the Pub API's `create()`
+and `open()`, on `FileStream`) and small runs (startup distance 5 MB,
+cache 4 MB, 300 more keys, values of up to 60 KB, so that eviction
+drops nodes and values) added; no new fault in 103 seeds. The unit
+tests take 1.5 s, the night tests 101 s.
