@@ -74,6 +74,14 @@ Files
   no test added (review R7 of 006-13 flags no shared field that needs
   one); on s1 in default mode each `[OK]`, no forbidden outcome, 26
   minutes; F53's run scripted for the night's chain.
+* [09-release.md](09-release.md). 018-09, the plan of the release (W5),
+  as 2026.2's (016-09) with its scripts adapted, in
+  `/Users/f/fl/bench/018/release/`: the steps and commands for the night
+  of 2026-11-06 (the freeze, commit A, the jar, its tests on F53 and s1,
+  StreamDigest against 2026.2's decided digests) and the morning (the
+  files, commit B, the tag), a morning remake of A after a fix, the stops
+  for Frans; the rehearsal on a scratch commit (4 configurations differ
+  from 2026.2's, all named by next.md; 019-43 found).
 
 
 Log
