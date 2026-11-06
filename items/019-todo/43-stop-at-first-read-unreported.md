@@ -41,3 +41,12 @@ Log
 ---
 
 2026-11-06. Registered by coord-1106 from agent r30's rehearsal.
+
+2026-11-06, 12:46. Also on F53, with JDK 17 (r30's rehearsal, the jar's
+night tests): `StorageFaultTester.testStreamLayerAll`, "019-09: close |
+STREAM STOP reopened | STREAM, READ, in thread StorageFaultTester-runner:
+STREAM STOP at 9, reopened: the storage had failed (the fault at STREAM
+call 9, READ), no call reported it, and close() returned normally";
+output in `/Users/f/fl/bench/018/release/rehearsal-run/jartest/17/Night.txt`.
+JDK 27 on F53 passed all (unit 1,244, F 87, night 15). So not only the
+first call, and not only s1: JDK 17's timing.
