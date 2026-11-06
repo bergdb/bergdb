@@ -151,3 +151,25 @@ The options:
   value, before the go point. A result above its own bound stays the
   caller's fault, as in (a). It narrows the fault, it does not remove it;
   one more method of `ValueTransformation`.
+
+
+## 4. A clear place for the database's design
+
+From Frans, 2026-11-06, 10:31, when the error model was decided (019-10).
+State: to consider, after release 2026.3.
+
+What: one clear place for the database's design, such as its error
+model, in an item that other items, the code and the Javadoc can
+reference by ID.
+
+Where it came from: Frans, 2026-11-06, 10:31: "I would like a clear place
+to put database design information like this. In some item we can
+reference. Not sure how to now. Restructuring design documentation can be
+a separate todo for later, not this 2026.3 release. We could look at it
+wholistically after 2026.3."
+
+What is there now: the design is spread over `docs/levels.md` (kept up to
+date with the code; the error model goes into its section 3 for now),
+`docs/sis-model.md`, the principles (010-01), the Javadoc of `Db` and the
+Pub API, and design subitems such as 001-08 to 001-11 and 009-05
+(006-07 moved them out of `docs/`).

@@ -114,6 +114,301 @@ fails the database too. It is a few lines at four read sites and in
 extended (the `Error` case expects the `Error` itself, then refusals).
 
 
+Can the database go on after an Error in a read? (2026-11-06)
+-------------------------------------------------------------
+
+By agent e1 of coord-1106, for Frans's direction of 2026-11-06, 09:38: "If
+we can really ensure the database as a whole is still in a good state
+after an OOM in a get, we should allow the database to go on. At least if
+this does not become too complex to implement and understand. KISS is an
+important principle. Important that the database user understands the
+error model. That is part of the interface." Read on main at 1cce631 (its
+Java as at 8df56fc), and one probe in a scratch clone; nothing else
+changed.
+
+In short: for an `OutOfMemoryError`, Frans's case, it can be ensured, with
+two fixes of a few lines (`Eviction.wake`, and the order of
+`StorageManager.handleStreamException`; below). For every `Error`
+anywhere it cannot: a `StackOverflowError` can come between two steps that
+allocate nothing, and the JVM's own errors change the JVM. What holds for
+every `Error` is the data: a read changes no data, so an `Error` in it
+cannot make a later read wrong or lose a commit.
+
+**The read paths.** Every read of the storage on a caller's thread loads
+through `NodeCollection.followPointer` (index nodes and values), except
+`getTrans`, which reads its record into a `TransIterator` of its own. No
+read registers with reclaim: a read admitted before a cut expires instead
+(011-04, W1, D1 = A; `Reclaim.java:489`), so there is no reader count that
+a failed read could leave behind.
+
+| Path                               | Thread, lock                | Besides the follow       |
+|------------------------------------|-----------------------------|--------------------------|
+| `getOne` (`Db.java:1646`)          | caller's, none              | a counter, after it      |
+| `getMany` (`Db.java:1701`)         | caller's, none              | the caller's `GetMany`   |
+| `getTrans` (`Db.java:1575`)        | caller's, none              | none: all local          |
+| warm-up (`Db.java:2423`)           | caller's, before write lock | none                     |
+| `checkDirtyNodes` (`Db.java:2254`) | caller's, write lock        | none: its maps are local |
+| `sync()` (`Db.java:1820`)          | reads nothing               | -                        |
+
+**The follow** (`followStreamPointer`, `NodeCollection.java:389`, and
+`followValuePointer`, `:581`), step by step; each changes state that later
+follows use:
+
+1. `raiseRef` (`:429`), before the read: Rule R's newer reference, or a
+   dead handle's written position, into the predecessor's pointer, under
+   its monitor, never lowered. It is the value every later follow writes
+   there, so harmless when the read then fails.
+2. `liveOrNewHandle` (`:435`; `Cache3.java:140`), before the read: an
+   empty live handle in the node table if the node had none (`new
+   Handle`, a `HashMap` put under the map's lock). Left after a failed
+   read, it is a state the table has anyway: the next follow loads into
+   it, and a CLOCK step drops it (`Cache3.java:419`). An OOM inside the
+   put leaves the `HashMap` consistent (a resize raises its threshold,
+   then allocates), but for a tree bin's split, which Cache3's hashing
+   keeps away (005-08).
+3. The handle's LOADING state (`:463`), set back to LIVE in a `finally`
+   (`:482`), under the handle's monitor. An `Error` in the read or the
+   install leaves it LIVE. Only an `Error` of that `finally` itself, a
+   `StackOverflowError` at the call of `casState` (which allocates
+   nothing, so never an OOM), leaves it LOADING: then every later load of
+   the node spins at `:463-465`, which takes a failed compare-and-set for
+   "evicted meanwhile", the writer's load too, and eviction skips it.
+4. The read (`readVersion`, `:548`; `NodeStream.readNode`,
+   `NodeStream.java:179`): its buffers (`new byte[1024]`, `new
+   byte[size]` at `:193`), the checksum and the parse are local; then two
+   atomic counters (`tickAccessClock`, `loads`). Nothing shared.
+5. `install` (`:476`; `Cache3.java:264`), under the handle's monitor: the
+   new object's handle, its count (`Residents.added`,
+   `Residents.java:141`), the handle's object, the old object's release.
+   No allocation; a `StackOverflowError` between the steps leaves one
+   object's count off (accounting, not data).
+6. `dropIfEmpty` (`:495`), and the swizzle (`:510-521`, under the
+   predecessor's monitor: one release store, then `handleIn`'s 32 bytes,
+   `Residents.java:194`); for a value, `setPointee` and `valueIn`
+   (`:597-603`, `Residents.java:205`). No allocation; as 5.
+7. The CLOCK bit (`touch`); a reader's pointer listener does nothing.
+8. After a load, the load listener (`:227`): `Eviction.afterLoad`
+   (`Eviction.java:442`), which may `wake` the eviction thread
+   (`Eviction.java:508-519`). `wake` sets `wanted` before it makes and
+   starts the thread. An `OutOfMemoryError` there (the heap at `new
+   Thread`, or "unable to create native thread" at `start()`) leaves
+   `wanted` set, and after `start()` also `evictor`, a thread that never
+   runs. Every later `wake` returns at its first line, so the eviction
+   thread never runs again: the writer's batch at each transaction's end
+   goes on (`afterTransaction`, `Eviction.java:330-339`), but a read-only
+   workload has no eviction, and a reader under pressure parks 2 ms at
+   every load (`Eviction.java:450`). It can happen only when the thread
+   is made: the first wake, or one after an interrupt ended the thread.
+   This is the one half-done state an OOM of a read can leave; it is in
+   main today, where the `Error` passes through the get and the database
+   goes on.
+
+**Below `StorageManager`.** `RecoverableStream.read`
+(`RecoverableStream.java:450`) keeps no state. `BufferedStream.read`
+(`BufferedStream.java:455`) writes no field. `FileStream.read`
+(`FileStream.java:293`, `DbFile.read` at `:1342`) takes no lock, sets the
+interrupt flag again in a `finally` (`:1401`), and reopens a channel that
+an interrupt closed, which heals itself. `SalsaStream.read`
+(`SalsaStream.java:95`) allocates first, and sets the block counter and
+position before it decrypts (`Salsa.java:196`). `CutStream`,
+`ReadOnlyStream` and `OneFileStream` (a seek before each read) keep none.
+`FileChannel`'s temporary direct buffer is taken before the I/O. So an
+`Error` of the stream's read leaves BergDB's streams as they were, as the
+coordinator found. A stream of the application's (`DbBuilder.mainStream`)
+is bound by `AppendOnlyStream`'s contract only, which says nothing of it.
+One step of `StorageManager` itself: `handleStreamException`
+(`StorageManager.java:324-329`) sets `mainFailing`, then builds a message
+before it sets the error and `mainFailure`; an OOM in that message, after
+an I/O error, loses the storage's failure for good (every later call of
+it returns at its first line), with the stream open. Today and under (c)
+alike; R5's F2 found the same in 019-10's new catch.
+
+**An `Error` before a transaction's go point, today.** All that comes
+before the go point (`Db.java:2066`) is outside the `try`: an `Error` in
+`checkSize`, the warm-up, `checkDirtyNodes`, `x.begin` (`Db.java:2778`;
+what it sets, the next begin sets again, as after a `RerunException`),
+`stmCheckConflicts` or the clock leaves `execute` as it is, the
+transaction is not run, and the database goes on. The write lock is a
+monitor, which the JVM releases. Since b45b2fa, one exception: an `Error`
+of the stream's read, in the warm-up or `dirtyNodeBound`, fails the
+database, wrapped. After the go point, `fail()` (`Db.java:2151`) fails
+the database and throws an `Error` as it is, but, since b45b2fa, not one
+of the stream's read, which it gets wrapped (R5's F1).
+
+**What else an `Error` of a read can leave.**
+
+* Index jobs (Pub API): the job's thread (`IndexBuilderImp.java:313-345`)
+  catches `StreamIoException`, `DbStoppingException` and
+  `DbFailedException` only. Any other `Throwable` of its reads (today an
+  `Error` above the stream; under (c) every `Error`) ends the thread with
+  the database going on: the index creation stops until a restart, its
+  `join()` reports it working, and a restart's job whose thread has died
+  reports it done (`IndexManager.java:197-199`). BergDB's other threads
+  fail the database on an `Error` (the eviction thread, 015-25; the
+  storage thread, 015-35), as there is no caller to tell.
+* A corrupt node size (`NodeStream.java:183-193`): `checkReadSize` bounds
+  it by the stream's length, not by the heap, so a corrupt size can give
+  an `OutOfMemoryError` at `new byte[size]` before the checksum is seen.
+  Under (c) each read of that node then throws it, and the database
+  serves around the node (005-30: worse than one that stops) until the
+  heap allows the read, whose checksum then fails the database. Rare: the
+  4-byte size of one node, corrupted to more than the free heap.
+* The JVM: an OOM in a class's static initializer leaves the class
+  unusable for good (`NoClassDefFoundError`), and metaspace, native
+  threads and `InternalError` are the JVM's state. No Java code can check
+  them.
+* The caller's own objects: after a get that threw, a connection's
+  `transactionInfo()` gives the transaction of the get before
+  (`GetData.tpos` is set only when a value is found), and a `GetMany`
+  holds a partial result. Connection-local, as after any exception of a
+  get.
+
+**Probe.** `E1Probe` in the clone `/Users/f/fl/bench/006-13/e1` (not for
+commit), with `StorageManager.read` changed to throw an `Error` as it is,
+the storage not failed (option c). A `MemoryStream` under a stream that
+throws, 2,000 keys, node size 8, eviction EVERY 1, the audit every 20
+transactions, the record limit 300 kB (so that a transaction of 50 puts
+walks `dirtyNodeBound`, by the arithmetic of its cheap test; not
+instrumented). A workload of gets, a get and its
+`getTrans`, scans (`DbUtil.checksum`), and transactions of 5 and 50 puts.
+An `OutOfMemoryError` thrown once, at the n-th call of one site: the
+stream's read; the first-touch hook (after an install and before the
+swizzle; for a value, before `setPointee`); the load listener (after a
+load, before `afterLoad`). n from 1 to 1,200, every 5th. Then: the
+database active, `Audit.check` and `Residents.misCounted` clean, no
+handle LOADING, every key right, a commit taken, and a restart with every
+key and the same checksum. 720 runs, 63 s:
+
+| Site          | Runs | Thrown as itself | Went on | Failed (after the go point) | Findings |
+|---------------|------|------------------|---------|-----------------------------|----------|
+| stream read   | 240 | 240 | 233 | 7 | 0 |
+| first touch   | 240 | 240 | 240 | 0 | 0 |
+| load listener | 240 | 240 | 240 | 0 | 0 |
+
+The stream's `Error` went on in 37 gets, 6 gets with their `getTrans`, 10
+scans, 21 transactions of 5 puts and 159 of 50 (the warm-up or
+`dirtyNodeBound`); the hooks' mostly in scans (157 each) and transactions
+of 50 puts (59).
+The probe cannot reach `wake`'s thread start, `handleStreamException`'s
+message or a `StackOverflowError` in a `finally`; those are by reading.
+
+**Verdict.**
+
+* "An `OutOfMemoryError` in a read leaves the database as it was" can be
+  ensured, after the fix of `Eviction.wake` (and of
+  `handleStreamException`'s order, for an OOM that comes with an I/O
+  error). On every path above, the allocations are local (buffers, the
+  parse, the walk's maps, a scan's results) or come before the shared
+  changes (step 2's handle, harmless when left), and the shared changes
+  after the read allocate nothing. The argument can be checked: the
+  follow is one method of 140 lines, and the probe tests its sites.
+* For every `Error` anywhere it cannot: a `StackOverflowError` at the
+  `finally` of step 3 hangs one node's loads, the writer's too, and one
+  between the steps of 5 or 6 leaves a count off; the JVM's own errors
+  are outside BergDB. They keep the data: a read changes no data (not the
+  stream, a canonical object, D, the clock or the transaction sequence),
+  only what memory holds of the stream (versions, handles, memory
+  pointers, values in pointers), references that Rule R raises, CLOCK
+  bits and counts. So no later read is wrong, and no commit is lost.
+* An unchecked non-`Error` exception of the stream's read is a bug of the
+  stream (a breach of `AppendOnlyStream`'s contract, `StrictStream`'s
+  UNCHECKED): 019-10's fix, which fails the storage and the database,
+  stays. That is the simplest rule: anything the stream throws but an
+  `Error` fails the database.
+
+**Draft error model**, for docs/levels.md, section 3 (one bullet in place
+of the read bullet and of the transaction bullet's parenthesis), and
+`Db`'s class Javadoc, with `@throws Error` on `getOne`, `getMany`,
+`getTrans` and `execute`:
+
+> A failure of the storage (an I/O error, corrupt data, or an exception of
+> the stream) fails the database, in a read as in a transaction: the call
+> throws a `DbFailedException`, and so does every later call until the
+> database is restarted (005-30). An `Error`, such as an
+> `OutOfMemoryError`, is always thrown as it is. After a transaction's go
+> point it fails the database too, as nothing there is undone. Anywhere
+> else, in a get, a scan, `transactionInfo()` or a transaction before its
+> go point, it fails only that call, and the database goes on: a read
+> changes no data, only what memory holds of the stream. An `Error` on one
+> of BergDB's own threads (the storage thread, eviction, an index job)
+> fails the database, as there is no call to throw it to.
+
+The one rule for the user: the go point decides; an `Error` fails the
+database only after it, or where no caller can be told. And for
+`AppendOnlyStream.read`: "An `Error` thrown by read() leaves the stream as
+it was; BergDB goes on after it."
+
+**The change for (c), and its size.**
+
+1. `StorageManager.read` (`StorageManager.java:308`): an `Error` is thrown
+   as it is, the storage not failed; an unchecked exception as now. About
+   4 lines, and its Javadoc, `hasFailed()`'s and `getFailure()`'s. It
+   also closes R5's F1 (a transaction's `fail()` gets the `Error` itself,
+   and so does a start) and F2 (an `Error` above and below `StorageManager`
+   take the same way).
+2. `Eviction.wake` (`Eviction.java:508-519`): make and start the thread,
+   then set `evictor` and `wanted`, so that an `Error` changes nothing and
+   the next load tries again. The new thread first takes `evictorLock`,
+   which `wake` holds, so it finds `wanted` set. About 4 lines.
+3. `StorageManager.handleStreamException` (`:324-329`): `mainFailure` and
+   a fixed error before any message is built. About 2 lines.
+4. Index jobs (`IndexBuilderImp.java:322-336`): any other `Throwable`
+   fails the database, as the eviction thread's does (015-25;
+   `Db.Internal.failByEviction` is that call, at most renamed). About 5
+   lines.
+5. Words: docs/levels.md section 3 (above), `Db`'s Javadoc,
+   `AppendOnlyStream.read`'s sentence, releases/next.md (019-10's line).
+6. Tests: `DbTesterFailure.testUncheckedReadFailsTheDatabase` keeps its
+   unchecked cases; its `Error` cases expect the `Error` itself, the
+   database active, then the get right, a commit and a restart; with
+   `getMany`, `getTrans`, a transaction of 50 puts (`dirtyNodeBound`,
+   the record limit lowered) and a put's load after the go point (the
+   `Error` itself, the database failed), which R5 found missing. A test of
+   the probe's shape with a sample of n, about 2 s (the first-touch hook
+   and the load listener throw). A test of `wake` with a test hook that
+   throws at the thread's start. Harness 6.2 (018-01, section 6.2): its
+   "met" check takes an ERROR at a READ before a go point as going on by
+   the rule, and after one as a failure; its night set run.
+
+Production code about 15 lines, words about 30, tests about 150: one
+agent, half a day with BEFORE COMMIT OK and harness 6.2's night set. No
+change to the stream's bytes or to Lean.
+
+Not proposed (KISS): a self-heal of a handle left LOADING (a thread that
+holds the handle's monitor and finds LOADING knows that its loader died;
+one line at `NodeCollection.java:463`). It would close step 3's hang, but
+only for a `StackOverflowError` at one call, and no test reaches it.
+
+**(b) for comparison.** Fail the database on every `Error` of a read and
+throw it as it is: the same line in `StorageManager.read` (fail, then
+rethrow), and a catch of `Error` in `getOneInternal`, `getMany`,
+`getTrans` and `dirtyNodeBound`, about 16 lines. It needs no argument
+about the follow, but: `getMany` runs the caller's `StopCondition`
+(`Dag.java:578`; Core API), whose own `Error` would then fail the database
+unless told apart; the model gets two rules before the go point (an
+`Error` in a read fails the database, any other refuses the transaction);
+and an OOM of one get, for one large value, say, stops every connection
+until a restart, which at 10M keys takes tens of seconds (005-57).
+`wake`, `handleStreamException` and the index jobs want their fixes
+either way.
+
+**Recommendation: (c)**, with changes 1 to 6. It is what Frans asked
+for; it can be ensured for an `OutOfMemoryError` by a short argument that
+can be checked, and by the probe; its model is one rule that the user
+already has, the go point; and it takes the wrap of 019-10's fix away
+rather than adding catches. What it does not promise, the state after a
+`StackOverflowError` at one exact call or after the JVM's own errors, no
+Java library can; the data is safe in both.
+
+**Left.** An unchecked exception above the stream in `getOne`, `getMany`
+or `dirtyNodeBound` (a bug in the parse or the Dag) passes through with
+the database going on; `getTrans` wraps its parse's (005-82,
+`Db.java:1634`). Wrapping the node parse's in `NodeStream.bytesToNode` in
+the same way would make every read fail the database on a malformed node:
+a separate entry, if Frans wants it. A connection's `transactionInfo()`
+after a get that threw (above): a Pub API detail.
+
+
 Log
 ---
 
@@ -126,3 +421,10 @@ by the entry's First step; no decision needed, docs/levels.md's rule).
 2026-11-06, 03:10. R5's F1 and F2 written up for Frans's decision (above);
 its F3 (words: docs/levels.md's reflow, `StorageManager.hasFailed()` and
 `getFailure()`) fixed with 018-03's follow-up.
+
+2026-11-06, 09:57. Agent e1 of coord-1106: the section "Can the database
+go on after an Error in a read?" (the read paths traced, and a probe in a
+scratch clone, 720 runs, no finding): an `OutOfMemoryError` in a read can
+be ensured to leave the database as it was after two small fixes
+(`Eviction.wake`, the order of `StorageManager.handleStreamException`),
+not every `Error`; recommended (c), with a draft error model. For Frans.
