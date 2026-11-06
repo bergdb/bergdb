@@ -75,6 +75,9 @@ public class ConnectionImp implements Connection {
     
     public final void freezeLookupTime() {
         this.freezeLookupTime = true;
+        this.lookupTime = Time.MAX.units();
+            // Each call freezes anew, at the latest state as of the next read (bergdb 018-04,
+            // Q2). Before, a second call kept the first frozen time.
     }
     
     public Time currentTime() {

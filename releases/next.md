@@ -79,6 +79,16 @@ Pub API
   formatted times at once (a `Transaction.getTime()` or
   `Database.currentTime()` in a log line, say) could get another thread's
   time or an `ArrayIndexOutOfBoundsException`. The strings are unchanged.
+* **Each `freezeLookupTime()` freezes anew, at the latest state** (bergdb
+  018-04, Q2; Frans, 2026-11-06). A connection has one lookup time:
+  `setLookupTime(t)` sets it to t, and `freezeLookupTime()` to the latest
+  state as of the next read, which the next read fixes; each undoes the
+  other. A second call on a frozen connection kept the first frozen time,
+  and a call after `setLookupTime(t)` froze the state at t; now each call
+  freezes the latest state as of its next read, so a loop that calls
+  `freezeLookupTime()` before each batch of reads reads the new state each
+  time. `getLookupTime()` is `Time.MAX` until that read. The stream is
+  unchanged.
 
 
 Reliability
@@ -528,6 +538,12 @@ Documentation
   the stream's bytes are unchanged.
 * **Key replace leaves a delete's key as written** (bergdb 019-15; Frans,
   2026-11-06): `Connection.setEnableKeyReplace()` now says so; no code change.
+* **The Pub API's Javadoc says what it left open** (bergdb 018-04, Q1, Q3
+  to Q5; Frans, 2026-11-06): an rw-transaction's reads see the state as of
+  its first read, not its own puts and deletes (`RwEnvironment`, `Action`);
+  `getLookupTime()` gives the frozen time after a frozen read;
+  `TransactionInfo.kvs()` leaves out a delete of a key that had no entry;
+  `currentTime()`'s promise is for the started database. No code change.
 
 
 Known issues and limits

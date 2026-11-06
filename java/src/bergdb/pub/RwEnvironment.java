@@ -24,9 +24,22 @@ public interface RwEnvironment extends ReadInterface {
      * the database restarts, while the stream keeps the committed bytes. To change
      * the bytes, copy them first, with clone() (bergdb 015-47).</p>
      *
+     * <p>The action's reads read one state, the latest as of its first read: they do not
+     * see the transaction's own puts and deletes (bergdb 018-04, Q1).</p>
+     *
      * @see Connection#get(String, Class)
      */
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);
+    
+    /**
+     * Checks whether an entry exists for the key, in the state that get() reads: the
+     * transaction's own puts and deletes are not seen (bergdb 018-04, Q1).
+     *
+     * @throws IllegalArgumentException
+     *             If key does not follow the allowed format, or is null, as for get()
+     *             (bergdb 019-05).
+     */
+    public boolean exists(String key);
     
     /**
      * Deletes a database entry if it exists, otherwise, this method does nothing.

@@ -54,8 +54,8 @@ public interface Connection extends ReadInterface {
      * </p>
      * 
      * <p>
-     * A call to this method neutralize any effect from a previous call to
-     * freezeLookupTime().
+     * A call to this method undoes the effect of a previous call to freezeLookupTime(),
+     * and a later call to freezeLookupTime() undoes this one's (bergdb 018-04, Q2).
      * </p>
      * 
      * <p>
@@ -74,15 +74,20 @@ public interface Connection extends ReadInterface {
     public void setLookupTime(Time lookupTime);
     
     /**
-     * Returns the requested lookup time that was set with setLookupTime().
+     * Returns the lookup time of this connection: Time.MAX by default, and t after
+     * setLookupTime(t). After freezeLookupTime(), it is Time.MAX until the next read, and
+     * the frozen time after it: with setLookupTime(), another connection can then read the
+     * same state (bergdb 018-04, Q3).
      */
     public Time getLookupTime();
 
     /**
-     * After this method has been called, the actual lookup time of subsequent
-     * read operations will be constant. The lookup time of this Connection will
-     * not change until setLookupTime() is called or this method is called
-     * again. This method is useful for reading a consistent state of the data
+     * Freezes the lookup time at the latest state as of the next read. It sets the lookup
+     * time to Time.MAX; the next get() or exists() of this connection sets it to the time
+     * it read at, and later reads read at that time, until setLookupTime() or this method
+     * is called again. Each call freezes anew, at the latest state as of the next read,
+     * also after setLookupTime(t): it does not freeze t (bergdb 018-04, Q2).
+     * This method is useful for reading a consistent state of the data
      * at one particular time using multiple read operations. The state stays readable
      * for the retain duration of the database (Database.setRetainDuration()); after that,
      * reads at the frozen time throw LookupTimeNotAvailableException.
@@ -96,6 +101,10 @@ public interface Connection extends ReadInterface {
      * and less then the transaction time of any future transaction.
      * The returned time is also guaranteed to be greater than or equal to the transaction 
      * time of the last completed transaction.</p>
+     *
+     * <p>These promises are for this started database: after a restart, with a clock
+     * that has not moved (a test clock), the first transaction can have the time that
+     * currentTime() returned before the restart (bergdb 018-04, Q5).</p>
      */
     public Time currentTime();
 

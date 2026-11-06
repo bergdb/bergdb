@@ -1135,6 +1135,42 @@ public class PubTester {
     }
     
     /**
+     * bergdb 018-04, Q2 (Frans, 2026-11-06, option (c)): each call of freezeLookupTime()
+     * freezes anew, at the latest state as of the next read; setLookupTime() and
+     * freezeLookupTime() each undo the other. A second call on a frozen connection changed
+     * nothing: the reads after it kept the first frozen time, and missed a write made since.
+     */
+    @Nano
+    public static void testFreezeAgainReadsNewState() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.newConnection();
+            Connection other = db.newConnection();
+            Time t1 = other.put("/a.txt", "1").getTime();
+            c.freezeLookupTime();
+            Assert.assertEquals("first freeze", "1", c.get("/a.txt", String.class));
+            Assert.assertEquals("frozen at t1", t1, c.getLookupTime());
+            Time t2 = other.put("/a.txt", "2").getTime();
+            Assert.assertEquals("frozen", "1", c.get("/a.txt", String.class));
+            
+            c.freezeLookupTime();
+            Assert.assertEquals("second freeze, before a read", Time.MAX, c.getLookupTime());
+            Assert.assertEquals("second freeze", "2", c.get("/a.txt", String.class));
+            Assert.assertEquals("frozen at t2", t2, c.getLookupTime());
+            other.put("/a.txt", "3");
+            Assert.assertEquals("frozen again", "2", c.get("/a.txt", String.class));
+            
+            c.setLookupTime(t1);
+            Assert.assertEquals("setLookupTime(t1)", "1", c.get("/a.txt", String.class));
+            c.freezeLookupTime();
+            Assert.assertEquals("freeze after setLookupTime(t1): the latest state", "3", 
+                    c.get("/a.txt", String.class));
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
      * bergdb 015-60 (review 016-06/R8, R8-F5): Database.connection() keeps no connection for
      * a thread that has ended. Until 015-60 a map of each thread's connection kept every
      * thread that had called it, and its connection, until the database stopped: memory

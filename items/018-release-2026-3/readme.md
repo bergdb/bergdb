@@ -41,8 +41,9 @@ Files
   harness 6.7, the Pub API's promises, built: random sequences of the Pub
   API's calls on `String` and `byte[]` values against a reference of each
   key's versions by time; it fails on the six known faults of its class
-  and found 019-15; five questions for Frans; where it runs (the unit
-  tests, 1 s; the night tests, 80 s).
+  and found 019-15; five questions for Frans, answered and done
+  (2026-11-06); where it runs (the unit tests, 1 s; the night tests,
+  80 s).
 * [05-harness-eviction-accounting.md](05-harness-eviction-accounting.md).
   018-05, harness 6.5, eviction's accounting, built: random budgets,
   test-schedule evictions, readers and restarts, with the audit, a

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -72,7 +73,7 @@ public class PubPromiseTester {
     static final class RefKv {
         final String key;
         final byte[] value;
-        /** A delete of a key that had no entry: in kvs() or not (bergdb 018-04, question Q4). */
+        /** A delete of a key that had no entry: left out of kvs() (bergdb 018-04, Q4). */
         boolean ofMissing;
 
         RefKv(String key, byte[] value) {
@@ -90,7 +91,10 @@ public class PubPromiseTester {
         final TreeMap<String, TreeMap<Long, byte[]>> versions =
                 new TreeMap<String, TreeMap<Long, byte[]>>();
         final TreeMap<Long, List<RefKv>> transactions = new TreeMap<Long, List<RefKv>>();
-        /** The time of the last transaction seen, of any kind; -1 before the first. */
+        /**
+         * The time of the last transaction seen, of any kind; before the harness's first,
+         * that of the database's own, which a new database writes (set at the first start).
+         */
         long lastTime = -1;
 
         void commit(long time, List<RefKv> kvs, boolean replace) {
@@ -165,6 +169,24 @@ public class PubPromiseTester {
             requested = t;
             frozen = false;
             frozenAt = NONE;
+        }
+
+        /**
+         * freezeLookupTime(): the lookup time Time.MAX, frozen at the next read; each call
+         * freezes anew, also after setLookupTime() (bergdb 018-04, Q2).
+         */
+        void freeze() {
+            requested = Time.MAX.units();
+            frozen = true;
+            frozenAt = NONE;
+        }
+
+        /**
+         * getLookupTime(): the requested time, or after freezeLookupTime() and a read, the
+         * frozen time (bergdb 018-04, Q3).
+         */
+        long lookupTime() {
+            return frozen && frozenAt != NONE ? frozenAt : requested;
         }
 
         /** The time a read reads at, freezing it if frozen. */
@@ -279,6 +301,12 @@ public class PubPromiseTester {
             b.startupDistanceInMb(5).cacheSizeInMb(4);
         }
         db = b.clock(clock).start();
+        if (ref.lastTime == -1) {
+            // The time of the new database's own transaction, which a read before the
+            // harness's first transaction reads at, and freezes (getLookupTime(), bergdb
+            // 018-04, Q3). The clock is at 0, before that time, so currentTime() returns it.
+            ref.lastTime = db.currentTime().units();
+        }
         conns[0] = new RefConn();
         conns[0].c = db.connection();
         conns[1] = new RefConn();
@@ -292,9 +320,9 @@ public class PubPromiseTester {
         db.close();
         db = null;
         // currentTime()'s promise, "less than the transaction time of any future
-        // transaction", is kept by a started database only: a restart forgets the times it
-        // returned, and with a clock that has not moved, the next transaction can have one of
-        // them (bergdb 018-04, question Q5).
+        // transaction", is for this started database (its Javadoc): a restart forgets the
+        // times it returned, and with a clock that has not moved, the next transaction can
+        // have one of them (bergdb 018-04, Q5).
         lastCurrentTime = NONE;
         start(dir == null ? stream.copy() : null);
     }
@@ -540,19 +568,12 @@ public class PubPromiseTester {
     }
 
     /**
-     * An rw-transaction: reads first (the first read fixes the transaction's read time, the
-     * latest), then writes; its reads are checked against the reference at the latest state.
-     * A read after a write of the transaction is not made: what it returns is not in the
-     * Javadoc (bergdb 018-04, question Q1).
+     * An rw-transaction: reads and writes in a random order, the reads now and then of a key
+     * that the transaction writes. The reads read one state, the latest as of the first
+     * read, and do not see the transaction's own writes (bergdb 018-04, Q1): each is checked
+     * against the reference at the latest state.
      */
     private void rw(final RefConn rc) {
-        final int reads = random.nextInt(4);
-        final List<String> readKeys = new ArrayList<String>();
-        final List<Integer> readKinds = new ArrayList<Integer>();
-        for (int i = 0; i < reads; i++) {
-            readKeys.add(key());
-            readKinds.add(random.nextInt(3));
-        }
         final int writes = random.nextInt(4);
         final List<RefKv> kvs = new ArrayList<RefKv>();
         final List<Object> values = new ArrayList<Object>();
@@ -567,15 +588,47 @@ public class PubPromiseTester {
                 values.add(value);
             }
         }
+        final int reads = random.nextInt(4);
+        final List<String> readKeys = new ArrayList<String>();
+        final List<Integer> readKinds = new ArrayList<Integer>();
+        for (int i = 0; i < reads; i++) {
+            String key = writes > 0 && random.nextInt(3) == 0
+                    ? kvs.get(random.nextInt(writes)).key : key();
+            readKeys.add(key.contains("${") ? key() : key);
+            readKinds.add(random.nextInt(3));
+        }
+        // The order of the calls: true for a read, false for a write.
+        final List<Boolean> order = new ArrayList<Boolean>();
+        for (int i = 0; i < reads + writes; i++) {
+            order.add(i < reads);
+        }
+        Collections.shuffle(order, random);
         final int output = random.nextInt(1000);
+        StringBuilder o = new StringBuilder();
+        for (boolean read : order) {
+            o.append(read ? 'r' : 'w');
+        }
         log("c" + ci(rc) + ".rw(reads " + readKeys + " kinds " + readKinds + ", writes " + kvs
-                + ", output " + output + ")");
+                + ", order " + o + ", output " + output + ")");
         final long latest = ref.lastTime;
         final int[] runs = {0};
         Transaction t = rc.c.rw(new Action() {
             public void run(RwEnvironment env) {
                 runs[0]++;
-                for (int i = 0; i < reads; i++) {
+                int i = 0;
+                int w = 0;
+                for (boolean read : order) {
+                    if (!read) {
+                        RefKv kv = kvs.get(w);
+                        Object value = values.get(w);
+                        w++;
+                        if (value == null) {
+                            env.delete(kv.key);
+                        } else {
+                            env.put(kv.key, value);
+                        }
+                        continue;
+                    }
                     String key = readKeys.get(i);
                     byte[] expected = ref.value(key, latest);
                     int kind = readKinds.get(i);
@@ -588,15 +641,7 @@ public class PubPromiseTester {
                     } else {
                         check("rw exists(" + key + ")", expected != null, env.exists(key));
                     }
-                }
-                for (int i = 0; i < writes; i++) {
-                    RefKv kv = kvs.get(i);
-                    Object value = values.get(i);
-                    if (value == null) {
-                        env.delete(kv.key);
-                    } else {
-                        env.put(kv.key, value);
-                    }
+                    i++;
                 }
                 env.setOutput("n", output);
             }
@@ -672,9 +717,10 @@ public class PubPromiseTester {
             }
             actual.put(kv.key(), kv.value());
         }
+        // A delete of a key that had no entry is left out (bergdb 018-04, Q4).
         TreeMap<String, byte[]> expected = new TreeMap<String, byte[]>();
         for (RefKv kv : ref.transactions.get(rc.infoTime)) {
-            if (!kv.ofMissing || actual.containsKey(kv.key)) {
+            if (!kv.ofMissing) {
                 expected.put(kv.key, kv.value);
             }
         }
@@ -712,18 +758,15 @@ public class PubPromiseTester {
     }
 
     /**
-     * freezeLookupTime(), on a connection that is not frozen. A second call on a frozen
-     * connection is not made: the Javadoc's "or this method is called again" is not clear
-     * (bergdb 018-04, question Q2).
+     * freezeLookupTime(), also on a frozen connection: each call freezes anew, at the latest
+     * state as of the next read, and getLookupTime() is Time.MAX until it (bergdb 018-04,
+     * Q2 and Q3).
      */
     private void freeze(RefConn rc) {
-        if (rc.frozen) {
-            return;
-        }
-        log("c" + ci(rc) + ".freezeLookupTime()");
+        log("c" + ci(rc) + ".freezeLookupTime()" + (rc.frozen ? " again" : ""));
         rc.c.freezeLookupTime();
-        rc.frozen = true;
-        rc.frozenAt = NONE;
+        rc.freeze();
+        check("getLookupTime() after freezeLookupTime()", Time.MAX, rc.c.getLookupTime());
     }
 
     private void currentTime(RefConn rc) {
@@ -834,15 +877,12 @@ public class PubPromiseTester {
     }
 
     /**
-     * getLookupTime(): the requested time. After freezeLookupTime() and a read it is the
-     * frozen time, not the requested one; whether that is the promise is question Q3 of
-     * bergdb 018-04, so it is checked only on a connection that is not frozen.
+     * getLookupTime(): the requested time, or after freezeLookupTime() and a read, the
+     * frozen time (bergdb 018-04, Q3).
      */
     private void getLookupTime(RefConn rc) {
         log("c" + ci(rc) + ".getLookupTime()");
-        if (!rc.frozen) {
-            check("getLookupTime()", Time.units(rc.requested), rc.c.getLookupTime());
-        }
+        check("getLookupTime()", Time.units(rc.lookupTime()), rc.c.getLookupTime());
     }
 
     // ======== Checks ========

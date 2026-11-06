@@ -184,6 +184,10 @@ public interface Database extends AutoCloseable {
      * and less then the transaction time of any future transaction.
      * The returned time is also guaranteed to be greater than or equal to the transaction 
      * time of the last completed transaction.</p>
+     *
+     * <p>These promises are for this started database: after a restart, with a clock
+     * that has not moved (a test clock), the first transaction can have the time that
+     * currentTime() returned before the restart (bergdb 018-04, Q5).</p>
      */
     public Time currentTime();
 

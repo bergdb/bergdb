@@ -9,8 +9,10 @@ by Claude (Opus 5.5, Claude Code), a harness agent of that night.
 `night.sh`'s night tests (100 s).** It fails on each of the six known
 faults of its class (018-01, section 6.7), with each fix reverted, and
 found one more, 019-15, closed on 2026-11-06 by the Javadoc (option
-(b)); its skip list is empty. It passes on `main`. Five questions for
-Frans (section 6).
+(b)); its skip list is empty. It passes on `main`. Its five questions on
+the Javadoc (section 6) were answered by Frans on 2026-11-06 and are
+done: the Javadoc says each, each `freezeLookupTime()` freezes anew (Q2,
+a change of behaviour), and the reference checks each.
 
 
 ## 1. What it checks, and why
@@ -53,14 +55,19 @@ KVs. The promises it holds BergDB to:
   the actual lookup time is the requested one, or the last
   transaction's if that is earlier (`setLookupTime`).
 * After `freezeLookupTime()`, the first read freezes its actual time,
-  and every read until `setLookupTime()` reads at it, while the other
-  connection writes (015-48: an `exists()` as that first read).
-* An rw-transaction's reads see the latest state when it starts; its
-  reads leave the connection's frozen time and `transactionInfo()` as
-  they were (015-42). One connection at a time, the action runs once;
-  when the other connection puts a key that the action read, during its
-  first run, it runs again, reads the new value, and the output is the
-  second run's (`Connection.rw()`).
+  and every read until `setLookupTime()` or `freezeLookupTime()` reads at
+  it, while the other connection writes (015-48: an `exists()` as that
+  first read). Each call freezes anew, at the latest state as of the next
+  read, also on a frozen connection and after `setLookupTime(t)` (Q2).
+  `getLookupTime()` is the requested time, and after `freezeLookupTime()`
+  `Time.MAX` until the next read and the frozen time after it (Q3).
+* An rw-transaction's reads see the latest state as of its first read,
+  not its own puts and deletes (Q1); its reads leave the connection's
+  frozen time and `transactionInfo()` as they were (015-42). One
+  connection at a time, the action runs once; when the other connection
+  puts a key that the action read, during its first run, it runs again,
+  reads the new value, and the output is the second run's
+  (`Connection.rw()`).
 * In one transaction the last call on a key wins (015-41).
 * A `byte[]` is copied at the put: the harness overwrites the caller's
   array after each put (and, for `w()`, also before `execute()`), and
@@ -68,9 +75,10 @@ KVs. The promises it holds BergDB to:
 * A new connection's `getLookupTime()` is `Time.MAX` (015-59).
 * `transactionInfo()` before any read found a value is
   `IllegalStateException` (015-62); after one, the transaction's time
-  and its user KVs, one per key.
+  and its user KVs, one per key, without the deletes of keys that had no
+  entry (Q4).
 * Transaction times increase, and are after every `currentTime()`
-  returned before them by the same started database; the first
+  returned before them by the same started database (Q5); the first
   available lookup time is not after the first transaction (the retain
   duration is forever).
 * Key replace: a put's key has each `${transactionTime}` replaced by
@@ -121,16 +129,23 @@ Adapted from 018-01's proposal, and why:
 
 * Lookup times: no `LookupTimeNotAvailableException` is checked; the
   retain duration is forever, as reclaim is harness 6.4's and 6.2's.
-* The rw-transaction's reads are made before its writes: a read of a
-  key the transaction has written returns the committed value, not the
-  transaction's own, and the Javadoc does not say which (Q1).
-* `freezeLookupTime()` is not called twice without a `setLookupTime()`
-  between, and `getLookupTime()` is not checked on a frozen connection
-  (Q2, Q3).
-* A delete of a key that had no entry may be in `transactionInfo()`'s
-  KVs or not (Q4).
-* The bound "after every `currentTime()` returned before" is reset at a
-  restart (Q5).
+* The questions of section 6, as Frans answered them (2026-11-06). Until
+  then the harness avoided each; now its reference follows each answer
+  and checks it:
+  * an rw-transaction's reads and writes come in a random order, a read
+    now and then of a key that the transaction writes, and every read
+    must give the state as of the first read (Q1);
+  * `freezeLookupTime()` is called on a frozen connection too, and resets
+    the reference's requested time to `Time.MAX` (Q2);
+  * `getLookupTime()` is checked on every connection, and after each
+    `freezeLookupTime()`: `Time.MAX` until the next read, the frozen time
+    after it (Q3). A read before the harness's first transaction freezes
+    the time of the new database's own transaction; the reference takes
+    it from `currentTime()` at the first start, with the clock at 0;
+  * a delete of a key that had no entry must be left out of
+    `transactionInfo()`'s KVs (Q4);
+  * the bound "after every `currentTime()` returned before" is reset at a
+    restart, as the promise is for the started database (Q5).
 
 
 ## 3. Where it runs, and its cost
@@ -207,6 +222,15 @@ steps in directories (500 to 514) and 8 more (702 to 709, two of them
 small), and the night test: all pass. With
 nothing skipped, seed 3 failed at step 4493 on 019-15, until it closed.
 
+After Q1 to Q5 (2026-11-06, section 6), with the reference checking each
+answer: the unit tests, seeds 1 to 30 of 5,000 steps with nothing
+skipped, 2,000 seeds of 30 steps (1000 to 2999) and 300 of 30 steps in
+directories (5000 to 5299), so that a read before the first
+transaction freezes, and the night test (seeds 20763000 to 20763039 of
+10,000 steps, 91 s): all pass. With Q2's line in `ConnectionImp` taken
+out, seed 1 fails at step 56: a `freezeLookupTime()` after
+`setLookupTime(4018)`, `getLookupTime()` `4018`, not `Time.MAX`.
+
 
 ### 5.1. A fault it found: 019-15
 
@@ -224,8 +248,17 @@ list.
 
 ## 6. Questions for Frans
 
-Differences where the Javadoc is not clear, so not faults. Each is shown
-by a probe on `main`; the harness avoids each, as section 2 says.
+Differences where the Javadoc was not clear, so not faults. Each is shown
+by a probe on `main` (below); the harness avoided each until it was
+answered.
+
+Answered by Frans on 2026-11-06, to coord-1106 (006-13). At 10:58: "Q1,
+as recommended. Q2, let's go through this one in more detail. Q3, tell me
+more. Q4, expand a little [...] Q5, as recommended." After the details,
+with Q2's option (c), at 11:04: "Q2, c, as recommended. Q3, a, as
+recommended. Q4, a, as recommended." Done the same day by agent p5 of
+coord-1106: the Javadoc in `bergdb.pub`, short (010-P13), one line of
+`ConnectionImp` for Q2, a test, and the harness's reference (section 2).
 
 * **Q1. Does an rw-transaction read its own writes?** In an action,
   `env.put("/k", "3")` and then `env.get("/k", String.class)` returns the
@@ -238,6 +271,15 @@ by a probe on `main`; the harness avoids each, as section 2 says.
   (b) the reads see the transaction's own writes (a change of behaviour,
   through `kvOps`; objects and key replace complicate it).
   Recommendation: (a).
+  **Decided: (a)** (10:58). No code change. `RwEnvironment.get`: "The
+  action's reads read one state, the latest as of its first read: they
+  do not see the transaction's own puts and deletes." `RwEnvironment`
+  now declares `exists()`, inherited before from `ReadInterface`, whose
+  `@see` led to `Connection.exists` and its lookup time: "Checks whether
+  an entry exists for the key, in the state that get() reads: the
+  transaction's own puts and deletes are not seen." `Action.run`: "Its
+  reads read the latest state as of its first read, not the
+  transaction's own puts and deletes."
 * **Q2. A second `freezeLookupTime()`.** Its Javadoc: "The lookup time
   of this Connection will not change until setLookupTime() is called or
   this method is called again." After a frozen read, a write, and a
@@ -247,7 +289,32 @@ by a probe on `main`; the harness avoids each, as section 2 says.
   Options: (a) the Javadoc says that a second call keeps the frozen time;
   (b) a second call clears the frozen time, so the next read freezes
   anew (a line in `ConnectionImp.freezeLookupTime`). Recommendation: (b),
-  as the sentence reads.
+  as the sentence reads. In the details that Frans asked for at 10:58
+  (006-13): (a) as above; (b) freezes anew from the requested time; (c)
+  each call freezes anew at the latest state. In (c) a connection has one
+  lookup time: `setLookupTime(t)` sets it to t, `freezeLookupTime()` to
+  the latest state as of the next read, and each undoes the other; so
+  `setLookupTime(t)` and then `freezeLookupTime()` freezes the latest
+  state, not t, and a loop that calls `freezeLookupTime()` before each
+  batch of reads reads the new state each time. Recommendation: (c).
+  **Decided: (c)** (11:04). A change of behaviour (`releases/next.md`,
+  Pub API). `ConnectionImp.freezeLookupTime()` sets the lookup time to
+  `Time.MAX` as well as the flag. `Connection.freezeLookupTime`:
+  "Freezes the lookup time at the latest state as of the next read. It
+  sets the lookup time to Time.MAX; the next get() or exists() of this
+  connection sets it to the time it read at, and later reads read at
+  that time, until setLookupTime() or this method is called again. Each
+  call freezes anew, at the latest state as of the next read, also after
+  setLookupTime(t): it does not freeze t." `setLookupTime`: "A call to
+  this method undoes the effect of a previous call to
+  freezeLookupTime(), and a later call to freezeLookupTime() undoes this
+  one's." The test `PubTester.testFreezeAgainReadsNewState`: a frozen
+  read, another connection's write, a second `freezeLookupTime()`:
+  `getLookupTime()` is `Time.MAX`, the read gives the new value and
+  freezes its time, and `setLookupTime(t1)` and then
+  `freezeLookupTime()` reads the latest. Before the line it fails at the
+  second freeze (`getLookupTime()` the first frozen time; with that
+  check taken out, the read `'1'`, not `'2'`); after, it passes.
 * **Q3. `getLookupTime()` on a frozen connection.** Its Javadoc:
   "Returns the requested lookup time that was set with
   setLookupTime()." After `freezeLookupTime()` and a read, it returns
@@ -255,6 +322,11 @@ by a probe on `main`; the harness avoids each, as section 2 says.
   (a) the Javadoc says so ("after freezeLookupTime() and a read, the
   frozen time"), which is useful, as it is the only way to learn the
   frozen time; (b) it returns the requested time. Recommendation: (a).
+  **Decided: (a)** (11:04). No code change. `Connection.getLookupTime`:
+  "Returns the lookup time of this connection: Time.MAX by default, and
+  t after setLookupTime(t). After freezeLookupTime(), it is Time.MAX
+  until the next read, and the frozen time after it: with
+  setLookupTime(), another connection can then read the same state."
 * **Q4. A delete of a key with no entry in `transactionInfo().kvs()`.**
   `w().delete("/missing").put("/y", "y")` gives one KV, the put: a delete
   of a key that has no entry is not in the transaction (it is not
@@ -262,6 +334,8 @@ by a probe on `main`; the harness avoids each, as section 2 says.
   and `Connection.delete` that such a delete "does nothing". Options:
   (a) the Javadoc of `kvs()` says that a delete of a key with no entry is
   left out; (b) leave it. Recommendation: (a), a clause.
+  **Decided: (a)** (11:04). No code change. `TransactionInfo.kvs()`: "A
+  delete of a key that had no entry is left out, as it writes nothing."
 * **Q5. `currentTime()` across a restart.** "The returned time is
   guaranteed to be less [...] than the transaction time of any future
   transaction." A started database keeps it (`DbClock.lastReadTime`);
@@ -271,6 +345,11 @@ by a probe on `main`; the harness avoids each, as section 2 says.
   only a clock that stands still or goes back meets it. Options: (a) the
   Javadoc says "of this started database"; (b) leave it.
   Recommendation: (a).
+  **Decided: (a)** (10:58). No code change. `Connection.currentTime()`
+  and `Database.currentTime()`, which makes the same promise: "These
+  promises are for this started database: after a restart, with a clock
+  that has not moved (a test clock), the first transaction can have the
+  time that currentTime() returned before the restart."
 
 The probe's output (on `main`, 45cfb4f):
 
@@ -305,7 +384,8 @@ Q4 kvs of a delete of a missing key with a put: 1
 Clone `/Users/f/fl/bench/006-12/h67`, branch `h67`. Done: the harness,
 this item and 019-15 (landed as 4d7a1bb), and the second part, runs in
 directories and small runs, which found no new fault. 019-15 is done
-(2026-11-06, option (b)); the questions Q1 to Q5 wait for Frans. Next,
+(2026-11-06, option (b)); the questions Q1 to Q5 are answered and done
+(2026-11-06, section 6). Next,
 if the harness is extended: more threads (harness 6.6), a finite retain
 duration (6.4).
 
@@ -329,3 +409,19 @@ a delete's key as written under key replace, and the skip list is
 empty. Seed 3 (5,000 steps, past step 4493), seeds 1 to 30 (5,000 steps,
 nothing skipped), the unit tests and the night tests pass. By agent f15
 of coord-1106.
+
+2026-11-06. Q1 to Q5 (section 6) answered by Frans, to coord-1106
+(10:58 and 11:04): (a), (c), (a), (a), (a). The Javadoc of
+`RwEnvironment.get` and `exists()` (now declared there), `Action.run`
+(Q1), `Connection.freezeLookupTime` and `setLookupTime` (Q2),
+`getLookupTime` (Q3), `TransactionInfo.kvs()` (Q4), and
+`Connection.currentTime()` and `Database.currentTime()` (Q5); Q2's
+change of behaviour, one line in `ConnectionImp.freezeLookupTime()`, and
+`PubTester.testFreezeAgainReadsNewState`, which fails before it. The
+reference follows each answer and checks it (section 2): reads after
+writes in rw-transactions, a second freeze, `getLookupTime()` on a frozen
+connection, `kvs()` without the deletes of missing keys; and the time of
+the new database's own transaction. The unit tests, the night tests and
+seeds 1 to 30 with nothing skipped pass (section 5).
+`releases/next.md`: Pub API (Q2) and Documentation. By agent p5 of
+coord-1106.

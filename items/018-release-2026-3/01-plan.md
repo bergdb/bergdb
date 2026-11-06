@@ -412,7 +412,8 @@ for 2026.3: they are experimental (D2).
   stored value.
 * Built on 2026-11-05: see 018-04. It fails on each of the six, and found
   019-15 (key replace and a delete), done 2026-11-06; five questions for
-  Frans where the Javadoc is not clear. It runs in the unit tests of
+  Frans where the Javadoc was not clear, answered and done on 2026-11-06
+  (018-04, section 6). It runs in the unit tests of
   `before-commit.sh` (1 s) and in the night tests (80 s).
 
 
@@ -606,3 +607,9 @@ as 015-73; not on section 3.1's list. Harness 6.1 counts such copies as
 known, and its skip list holds 019-32 only. Checksums in the stream are
 017-08, and 019-07 moved there. Sections 3.1 and 6.1 updated;
 `releases/next.md` names the limit.
+
+2026-11-06, 11:04. Harness 6.7's five questions on the Pub API's Javadoc
+(018-04, section 6) answered by Frans (10:58 and 11:04): the Javadoc says
+each, and each `freezeLookupTime()` freezes anew at the latest state (Q2,
+a change of behaviour, one line); the harness's reference checks each.
+No new fault. Section 6.7 updated.

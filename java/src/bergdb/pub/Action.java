@@ -12,6 +12,8 @@ public interface Action {
      * This method may run more than once if the read data was modified
      * by someone else after being read by this method and before 
      * the modifications were applied.
+     * Its reads read the latest state as of its first read, not the transaction's
+     * own puts and deletes (RwEnvironment.get()).
      * This method is the core of the STM approach (software transactional
      * memories) to attaining isolation of transactions.
      * Results for the caller go through outputs (RwEnvironment.setOutput()):

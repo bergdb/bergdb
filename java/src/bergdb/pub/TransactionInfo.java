@@ -13,6 +13,8 @@ public interface TransactionInfo {
     
     /** 
      * Returns a list of the KVs of the transaction: the user's puts and deletes.
+     * A delete of a key that had no entry is left out, as it writes nothing (bergdb
+     * 018-04, Q4).
      * The KVs that the database writes itself, the entries of an index, are
      * left out.
      * Value == null is used to represent delete operations.
