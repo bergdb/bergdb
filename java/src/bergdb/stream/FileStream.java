@@ -41,7 +41,8 @@ import bergdb.pub.util.BadFormatException;
  * are automatically chosen to store the stream. Decimal factors, M = 1,000,000 bytes.
  * Each file is named <14-digit index>.bergdb. The index is the file's first stream 
  * position divided by 100,000, padded with zeros (indexToString).
- * The first two files are: 00000000000000.bergdb, 00000000000002.bergdb.
+ * The first two files are: 00000000000000.bergdb, 00000000000002.bergdb. A new stream has
+ * no file until its first append, which creates the first (2026-11-06, bergdb 015-06).
  * 
  * Hard sync, the default. Every append is forced to the device before it returns: the
  * bytes are written, then FileChannel.force(true) (F_FULLFSYNC on macOS, fsync on Linux). A
@@ -214,7 +215,9 @@ public class FileStream implements AppendOnlyStream {
     
     /**
      * Creates a new stream if it does not exist or opens an existing one if it exists.
-     * If the directory 'dir' does not exist an attempt to create it is made.
+     * If the directory 'dir' does not exist an attempt to create it is made. A new stream's
+     * first file is created by its first append (bergdb 015-06): a stream closed before one
+     * leaves the directory with no stream file, only bergdb.lock.
      * 
      * @param dir
      *      The directory to use.
@@ -299,6 +302,17 @@ public class FileStream implements AppendOnlyStream {
         checkIOException();
         Util.checkRange(dest, destOffset, length);     // Bergdb 019-02: IndexOutOfBounds.
         
+        if (dbFiles.length == 0 && spos >= getFirstPos()) {
+            // No file before the first append (bergdb 015-06): the stream is empty. As a read
+            // of the empty first file was, it reads 0 bytes at 0, and any other read is past
+            // the end. A file once made stays: a cut keeps the last one.
+            if (spos == 0 && length == 0) {
+                return;
+            }
+            throw new EOFException("Cannot read " + length + " bytes at spos " + spos 
+                    + ", the stream is empty.");
+        }
+        
         int actuallyRead;
         int leftToRead;
         
@@ -342,6 +356,12 @@ public class FileStream implements AppendOnlyStream {
         // failed the next append. A len past the array, an IndexOutOfBoundsException before,
         // too (bergdb 019-02).
         Util.checkRange(source, sourceOffset, len);
+        if (len == 0) {
+            return;
+        }
+        if (dbFiles.length == 0) {
+            newFile();      // The stream's first file (bergdb 015-06).
+        }
         
         int actuallyAppended;
         int leftToAppend;
@@ -824,8 +844,9 @@ public class FileStream implements AppendOnlyStream {
         dbFiles = new DbFile[bergdbFiles.length];
         
         if (bergdbFiles.length == 0) {
-            // Special case, no bergdb files, create one.
-            newFile();
+            // No file: the first append creates the first (2026-11-06, bergdb 015-06). The
+            // constructor created it, and a start refused after the open left it empty, which
+            // breaks the restore in place of a database whose first file has another name.
             return;
         }
         
@@ -1032,7 +1053,7 @@ public class FileStream implements AppendOnlyStream {
     }
 
     /**
-     * Makes a new last file; the writer's (append's, seekFirstPos', the constructor's). It
+     * Makes a new last file; the writer's (append's, seekFirstPos'). It
      * creates and forces the file and the directory before it takes the stream's monitor, and
      * takes it only to publish the new list (2026-10-27, bergdb 005-46): every read waited for
      * the forces. No read needs the new file before an append to it has returned.
@@ -1571,6 +1592,38 @@ public class FileStream implements AppendOnlyStream {
         Assert.assertEquals((byte) 123, b[0]);
     }
     
+    /**
+     * bergdb 015-06: a new stream has no file until its first append, and reads as an empty
+     * one: 0 bytes at 0, and an EOFException past the end, which leaves the stream usable.
+     * An empty append makes no file. Before, the constructor made an empty first file.
+     */
+    @Nano
+    public static void testNoFileUntilFirstAppend(TestEnvironment c) throws IOException {
+        File dir = c.createTempDir();
+        FileStream f = new FileStream(dir);
+        byte[] b = new byte[1];
+        f.read(0, b, 0, 0);
+        try {
+            f.read(0, b, 0, 1);
+            throw new AssertionError("read a byte of an empty stream");
+        } catch (EOFException e) {
+            // Expected.
+        }
+        f.append(b, 0, 0);
+        Assert.assertEquals("[bergdb.lock]", Arrays.toString(dir.list()));
+        f.close();
+        Assert.assertEquals("[bergdb.lock]", Arrays.toString(dir.list()));
+        
+        f = new FileStream(dir);
+        f.append(new byte[] {7}, 0, 1);
+        f.read(0, b, 0, 1);
+        Assert.assertEquals(7, b[0]);
+        f.close();
+        String[] names = dir.list();
+        Arrays.sort(names);
+        Assert.assertEquals("[00000000000000.bergdb, bergdb.lock]", Arrays.toString(names));
+    }
+    
     @Nano
     public static void testFileSizeRules0(TestEnvironment c) throws IOException {
         int newIndex;
@@ -1923,6 +1976,9 @@ public class FileStream implements AppendOnlyStream {
                 }
             };
             File dir = c.createTempDir();
+            FileStream written = new FileStream(dir);     // A file to open: a new stream
+            written.append(new byte[1], 0, 1);           // opens none (bergdb 015-06).
+            written.close();
             Throwable thrown = null;
             try {
                 new FileStream(dir, io).close();

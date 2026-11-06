@@ -2606,7 +2606,7 @@ public class PubTester {
             return;
         }
         File dir = env.createTempDir();
-        new FileStream(dir).close();
+        crashedBeforeFirstWrite(dir);
         Assert.assertTrue(new File(dir, "bergdb.lock").isFile());
         File[] streams = streamFiles(dir);
         Assert.assertTrue(streams.length == 1 && streams[0].length() == 0);
@@ -2711,6 +2711,49 @@ public class PubTester {
         }
         Assert.assertEquals("the empty directory: " + listing(empty), 0, empty.list().length);
         Assert.assertTrue("the missing directory", !missing.exists());
+    }
+    
+    /**
+     * A start refused after the open creates no stream file (bergdb 015-06): its clock is out
+     * of range at the creation (bergdb 005-18), on an empty directory and on a missing one.
+     * Only bergdb.lock is left, which is never deleted (bergdb 005-63), and a start then
+     * creates the database. Before, the open created an empty first stream file,
+     * 00000000000000.bergdb, and the refused start left it, which breaks the restore in
+     * place of a database whose first file has another name.
+     */
+    @Nano
+    private static void testRefusedStartAfterOpenCreatesNoStreamFile(TestEnvironment env)
+            throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File empty = env.createTempDir();
+        File missing = new File(env.createTempDir(), "db");
+        for (File dir : new File[] {empty, missing}) {
+            try {
+                Factory.database().create(dir.getPath()).clock(() -> -1).start();
+                throw new AssertionError("started");
+            } catch (RuntimeException e) {
+                Assert.assertTrue(e.toString(), e.getMessage().contains("outside the range"));
+            }
+            Assert.assertTrue(dir + ": " + listing(dir),
+                    Arrays.equals(new String[] {"bergdb.lock"}, dir.list()));
+            
+            Database d = Factory.database().create(dir.getPath()).start();
+            d.connection().put("/k", "v");
+            d.close();
+            Assert.assertEquals(1, streamFiles(dir).length);
+        }
+    }
+    
+    /**
+     * Makes 'dir' as a creation that crashed before its first write leaves it (bergdb 005-33):
+     * bergdb.lock and an empty first stream file. The first append makes the file and forces
+     * it before it writes; the open makes none (bergdb 015-06), so it is made here.
+     */
+    private static void crashedBeforeFirstWrite(File dir) throws IOException {
+        new FileStream(dir).close();
+        Assert.assertTrue(new File(dir, "00000000000000.bergdb").createNewFile());
     }
     
     /** A database with /k = v in a new temporary directory, closed (bergdb 015-01's tests). */
@@ -2824,7 +2867,7 @@ public class PubTester {
         assertOpenRefused(tmp, Factory.database().open(p.getPath()), "no stream file");
         
         File crashed = env.createTempDir();
-        new FileStream(crashed).close();
+        crashedBeforeFirstWrite(crashed);
         File[] streams = streamFiles(crashed);
         Assert.assertTrue(streams.length == 1 && streams[0].length() == 0);
         assertOpenRefused(crashed, Factory.database().open(crashed.getPath()), "no stream file");

@@ -353,6 +353,15 @@ Reliability
   stream's close threw the write's own `IOException` again, as `FileStream`
   can, the thread ended with an `IllegalArgumentException` (printed on
   stderr) after it had failed the database; now it ends quietly.
+* **A start refused after the open leaves no empty stream file**
+  (bergdb 015-06; 2026-11-06), 2026.2's known issue "A start refused
+  after the open": a start on a directory without a stream file, refused
+  after it opened it (a clock out of range), left an empty
+  `00000000000000.bergdb`, which broke a later restore in place of a
+  database whose first file has another name. Now a stream's first file is
+  made by its first append; such a start leaves `bergdb.lock` only (and
+  the directory, if it was missing), as the lock file is never deleted.
+  The stream's bytes are unchanged.
 * **A failed open of a directory closes its file and releases the
   directory** (bergdb 015-32, 016-06's R2-F3; 2026-11-05), whatever it
   throws. After an unchecked exception (such as from a file system) the

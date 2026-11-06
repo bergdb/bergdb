@@ -201,9 +201,11 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         }
         
         // What can refuse the start is checked before openDirs() opens a directory, which
-        // creates it, its lock file and an empty first stream file (2026-11-03, bergdb 015-01,
-        // 015-06; open()'s refusal 2026-11-05, 015-05): a refused start opens, creates and
-        // writes nothing.
+        // creates it and its lock file (2026-11-03, bergdb 015-01, 015-06; open()'s refusal
+        // 2026-11-05, 015-05): a refused start opens, creates and writes nothing. A start
+        // refused after the open, in Db.start before the creation's first write (a clock out
+        // of range, bergdb 005-18), leaves the lock file, never deleted (bergdb 005-63), and
+        // no stream file: the first append creates the first (2026-11-06, bergdb 015-06).
         checkCryptoKey();
         if (dir != null) {
             refuseMissingStream(dir);

@@ -33,7 +33,6 @@ Open
 | ID | Kind | What | Status |
 |---|---|---|---|
 | [015-03](03-lean-follows-005-79.md) | Implement | Lean follows 005-79's integer take | open |
-| [015-06](06-refused-start-leaves-file.md) | Fix | A refused start leaves an empty first stream file | in progress |
 | [015-18](18-night-large-after-release.md) | Implement | Run night.sh large on the release, after 2026.2 | open |
 | [015-23](23-refused-index-delete.md) | Fix | A refused index deletion leaves the index active and unmaintained | open |
 | [015-28](28-write-racing-index-create.md) | Fix | A write racing an index's creation is never indexed | open |
@@ -54,6 +53,7 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-06](06-refused-start-leaves-file.md) | Fix | A refused start leaves an empty first stream file | done | 2026-11-06 |
 | [015-86](86-gets-with-8-readers.md) | Investigate | Long gets with 8 readers: a full machine | done | 2026-11-06 |
 | [015-19](19-tools-after-005-79.md) | Fix | Tools in items still use what 005-79 removed | done | 2026-11-06 |
 | [015-80](80-buffer-concurrent-writes.md) | Fix | The buffer issues concurrent writes to a single-writer underlying ... | done | 2026-11-06 |
@@ -152,7 +152,9 @@ Files
   directory; decided and done: `create(p)` and `open(p)`, `dir(p)`
   removed (B1, `createIfMissing()`, superseded).
 * [06-refused-start-leaves-file.md](06-refused-start-leaves-file.md).
-  015-06, Fix: a refused start leaves an empty `00000000000000.bergdb`.
+  015-06, Fix: a refused start leaves an empty `00000000000000.bergdb`;
+  done 2026-11-06 (before the open in 2026.2; after it, the first append
+  makes the first file).
 * [07-node-fields-unchecked.md](07-node-fields-unchecked.md). 015-07, Fix:
   the node parsers do not check their inner fields; a read that meets one
   throws an unchecked exception and the database stays active.

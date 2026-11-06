@@ -1,8 +1,8 @@
 015-06. Fix: a refused start leaves an empty first stream file
 ==============================================================
 
-Status: in progress (2026.2: refusals before the open; the rest after). Kind:
-Fix. Created 2026-11-03 by Frans Lundberg.
+Status: done 2026-11-06 (2026.2: refusals before the open; the rest on
+2026-11-06, for 2026.3). Kind: Fix. Created 2026-11-03 by Frans Lundberg.
 
 For release 2026.2, with 015-01.
 
@@ -81,3 +81,48 @@ Log
 the same messages. The coordinator made the case not covered (a start
 refused after the open) this entry's remaining part: it stays open,
 Status "in progress (2026.2: refusals before the open; the rest after)".
+
+2026-11-06. The rest done, by agent f06 of coord-1106 (006-13), for
+release 2026.3 (018-01, section 3.1), in the clone
+`/Users/f/fl/bench/006-13/f06`:
+
+* **The test first**:
+  `PubTester.testRefusedStartAfterOpenCreatesNoStreamFile` (unit): a
+  start by `create(p)` with a clock whose time is -1, out of range at the
+  creation (`DbClock.transactionBegin`, 005-18), on an empty directory and
+  on a missing one; `start()` throws ("outside the range"); the directory
+  then holds `bergdb.lock` only; a start then creates the database. On
+  the code as it was it fails: "00000000000000.bergdb:0 bergdb.lock:225".
+* **The fix**, in `FileStream`: the constructor no longer makes the first
+  file of a directory without a `*.bergdb` file (`createDbFileObjects`);
+  `append` makes it at the first append of a byte (`newFile()`, as for
+  every later file, forced with its directory before the write). An empty
+  append makes no file. A `read` of a stream without a file reads 0 bytes
+  at 0 and throws `EOFException` otherwise, as a read of the empty first
+  file did, without failing the stream; a file once made stays (a cut
+  keeps the last one). `close()` already handled no file. With the fix
+  the test passes; the empty first file of a crash before the first
+  write (005-33, row 0) is still possible, as the first append makes the
+  file and forces it before it writes.
+* **What stays**: `bergdb.lock`, and so the directory if the start made
+  it. The lock file is never deleted (005-63, rule 3: a delete races with
+  a third instance's lock), so a start refused after the open leaves it,
+  as any start that opened the directory does. It does not break a
+  restore in place, the harm of "Why it matters"; this entry's "Done
+  when" ("no new file") is met for the stream files, which the entry is
+  about. A refusal before the open still creates nothing (2026.2's part).
+* **Tests changed**: `FileStream.testNoFileUntilFirstAppend` (new: no
+  file until the first append, the reads of an empty stream, an empty
+  append makes none); `testFailedOpenClosesFileAndUnlocks` opens a
+  directory with a stream file, as the open of an empty one opens no
+  file now; `PubTester.testCrashedCreationBeforeFirstWrite` and
+  `testOpenRefusesDirectoryWithoutStream` make the crashed creation's
+  empty first file themselves (`crashedBeforeFirstWrite`), as
+  `new FileStream(dir).close()` no longer does.
+* Reach: 010-01: no setting, thread or format change; the stream's bytes
+  are unchanged. The Javadoc of `FileStream` (class and constructor) and
+  the comment in `DatabaseBuilderImp.start()` say so; release note under
+  Reliability (`releases/next.md`).
+* Gates: `before-commit.sh` BEFORE COMMIT OK, on the tree rebased onto
+  `main`; `java/stress/level2.sh` (full, with its Lean conformance) LEVEL
+  2 OK, as the change is in `FileStream`'s start.

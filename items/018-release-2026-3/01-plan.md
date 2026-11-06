@@ -160,6 +160,10 @@ Changed since, 2026-11-06: 019-10 joined (an unchecked exception or
 `Error` from a read of the storage leaves the database going on, found by
 harness 6.2, 018-03), and was fixed the same night.
 
+015-06 (its rest) is done (2026-11-06, coord-1106's agent f06): a start
+refused after the open leaves no stream file, as the first append makes
+the first; `bergdb.lock` stays, never deleted (005-63).
+
 019-30, 019-31 and 019-33, found by harness 6.1 (018-07), left the list
 as 015-73 did (Frans, 10:42; the table never had them): a record's time
 or `topPos` changed within the start's checks, whole records cut out of
