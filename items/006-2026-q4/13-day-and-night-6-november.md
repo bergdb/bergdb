@@ -311,6 +311,7 @@ session continues with `/coordinator resume` (013-02).
 * 13:20 019-44 done: a9da30c.
 * 13:35 019-43 done: b63273d, harness 6.2's oracle, not the Core (a read that the stop's close overtook; nothing a user sees reports it; the Core unchanged); loops of 100 runs on s1 (JDK 17, 27) and F53 (JDK 17) clean. 019's open entries are now 019-35 and 019-36 only, both Investigate: no known fault of the Core is open (018-01, "Ready", 1), pending tonight's runs.
 * 15:00 The early `night.sh` started on 3aa2d93.
+* 15:49 The early `night.sh`: NIGHT OK (48 minutes) on 3aa2d93 (`java/build/night/2026-11-06-1500/report.txt`).
 * 15:52 021-todo created for 2026.4 (Frans, 15:51).
 
 
