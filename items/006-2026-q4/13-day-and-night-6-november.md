@@ -241,6 +241,16 @@ runs; usage up to 90 % of the week.
    hand only; dated history sentences in the user Javadoc; `Time.utc` and
    `resolve` do not document `BadFormatException`. Recommended: after the
    release; the "Written by Claude" lines as point 10's (b).
+2. From 019-44 (13:19): a String inside an object (the experimental
+   object code) still gets '?' for a lone surrogate, as
+   `DbObjectTester.testLoneSurrogates` (005-26) requires; a String value
+   and a key now refuse it. Recommended: refuse it in objects too, in
+   2026.4 (020), with F1's closed list of types.
+3. 019-40's C8 (35f5b72): the start's check of a meta block's last
+   transaction is now the invariant itself (between the stream's first
+   position and the block), a tighter check landed the night before the
+   release; tonight's `night.sh large` starts many databases.
+   Recommended: keep it, if the night is clean.
 
 ## 6. If the coordinator stops
 
@@ -294,6 +304,8 @@ session continues with `/coordinator resume` (013-02).
 * 12:44 d30's read-through done (1dde232, landing as 6a7d6f4 after a merge of `releases/next.md`); its four small Pub API faults registered as 019-44; the rest for Frans (above).
 * 12:48 The documentation landed: 8996de0. 12:56 019-40 done: 35f5b72. 12:57 018-09, the release's plan (r30), committed: the candidate scheduled for 20:14. 13:03 q1 done: block-q started (it waits for 02:00); 019-36 on s1, longest wait 19.85 ms.
 * 13:14 Agents f43 (019-43, the blocker) and f44 (019-44) started.
+* 13:16 f43: 019-43 is the harness's oracle (a read racing the stop's close), being checked that nothing a user sees says "failed".
+* 13:20 019-44 done: a9da30c.
 
 
 ## 8. Outcome
