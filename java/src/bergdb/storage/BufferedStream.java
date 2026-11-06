@@ -1147,7 +1147,14 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 }
             }, "BufferedStream-test-writer");
             writer.start();
-            writer.join(200);               // A cut that waits for the thread is no deadlock.
+            // Until the writer waits for ioLock, or has cut beside the thread (bergdb 019-41: a
+            // fixed wait of 200 ms, after which the cut could come after the thread's call).
+            long end = System.nanoTime() + 5000L * 1000 * 1000;
+            while (writer.isAlive() && !b.ioLock.hasQueuedThread(writer)) {
+                Assert.assertTrue("the writer's cut neither waits nor ends",
+                        System.nanoTime() < end);
+                Thread.sleep(1);
+            }
         } finally {
             release.countDown();
             if (writer != null) {

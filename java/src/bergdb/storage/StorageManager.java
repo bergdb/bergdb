@@ -137,7 +137,7 @@ public class StorageManager implements AppendOnlyStream {
     private IOException closeInner(boolean close) {
         IOException first = null;
         
-        error.compareAndSet(null, "Storage is closing.");
+        setError("Storage is closing.");
         
         final boolean failed = mainFailing.get();
         if (close) {
@@ -177,6 +177,11 @@ public class StorageManager implements AppendOnlyStream {
         // If error already set, this error is discarded.
         assert message != null;
         error.compareAndSet(null, message);
+        // A waiting sync throws at once (bergdb 019-41), not at its next poll, up to 500 ms
+        // later. Allocates nothing (bergdb 019-10).
+        synchronized (d1Lock) {
+            d1Lock.notifyAll();
+        }
     }
     
     /**

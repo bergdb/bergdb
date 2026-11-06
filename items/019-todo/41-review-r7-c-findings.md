@@ -1,7 +1,7 @@
 019-41. Fix: review R7's C findings: a test that misses a hot loop, a sync not woken, an interrupted eviction thread spinning
 ==========================================================================================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: done 2026-11-06. Kind: Fix. Frans: none.
 Created 2026-11-06 by Frans Lundberg.
 
 What: review R7 of 006-13 (`/Users/f/fl/bench/006-13/review-r7.md`), a
@@ -50,3 +50,35 @@ Log
 ---
 
 2026-11-06. Registered by coord-1106 from review R7.
+
+2026-11-06. Done by agent f41 of coord-1106, in the clone
+`/Users/f/fl/bench/006-13/f41`, branch `f41`:
+
+* C1: `Eviction.testLoweredBudgetAfterPinsFell` asserts, after the
+  budget lowered to 1 byte (below the pins), that the thread goes idle
+  (`settled`, 2 s) after fewer than 100 batches (2 to 4 seen). With the
+  clause in `sweep` that ends an unreachable decrease taken out it fails
+  ("idle below the pins", after 2 s). `goal()` has no failing test: a
+  line in 015-70's log says why.
+* C2: `testWriterCutBesideThreadsCutAndClose` waits until the writer
+  waits for `ioLock` (`hasQueuedThread`), or has ended, with a deadline
+  of 5 s, instead of 200 ms: about 9 ms instead of 400. With `ioLock` a
+  no-op it fails (OVERLAP).
+* C3: 015-80, "Locks and their order": the close takes I with or
+  without W; `handleStreamException` takes D (C6). A log line there.
+* C6: `StorageManager.setError` notifies `d1Lock` after the error is set
+  (a monitor and `notifyAll`, no allocation); `closeInner` calls it.
+  `computeRules` unchanged: a sync during a close throws at once; before,
+  it threw too, after up to 500 ms (it never returned once the close
+  began).
+  Test `StorageManagerTester.testSyncWokenByAFailure`: the stream's
+  append is held until the sync waits, then throws; the sync throws in
+  about 0 ms, and before the fix 501 to 505 ms (fails 3 of 3, limit 50).
+* C7: `Eviction.EvictorRun` clears the interrupt flag in the loop that
+  parks while writers wait (inside it rather than before it, so that an
+  interrupt during the park is cleared too). Test
+  `Eviction.testInterruptedWhileAWriterWaits`: the test holds the write
+  lock, a writer waits, a lowered budget wakes the thread, which parks,
+  and the test interrupts it; the thread's CPU time in 50 ms is about
+  2 ms, and before the fix about 52 ms (fails 3 of 3, limit 25 ms).
+* `releases/next.md`, Reliability: a line each for C6 and C7.

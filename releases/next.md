@@ -369,6 +369,13 @@ Reliability
   made by its first append; such a start leaves `bergdb.lock` only (and
   the directory, if it was missing), as the lock file is never deleted.
   The stream's bytes are unchanged.
+* **A waiting `sync()` throws at once when the storage fails or closes**
+  (bergdb 019-41, review R7 of 006-13; 2026-11-06), not at its next poll,
+  up to 500 ms later. The stream's bytes are unchanged.
+* **An interrupted eviction thread no longer spins while writers wait**
+  (bergdb 019-41; 2026-11-06): an interrupt from outside, during a batch,
+  made it use a whole core until no writer waited. The stream's bytes are
+  unchanged.
 * **A failed open of a directory closes its file and releases the
   directory** (bergdb 015-32, 016-06's R2-F3; 2026-11-05), whatever it
   throws. After an unchecked exception (such as from a file system) the

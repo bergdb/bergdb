@@ -67,3 +67,15 @@ freed and the thread stops above the budget, although the pins fit it.
   costs at most two rounds of the hand (the one in progress and one that
   began after it). The stream's bytes are
   unchanged (eviction does not write).
+
+2026-11-06. Review R7 of 006-13 (019-41): OK, but the test pinned only
+`pins()`. Since 019-41 it also asserts that, with the budget lowered to
+1 byte, below the pins, the thread goes idle after few batches (2 to 4):
+without `sweep`'s end of a decrease it ran about 17.5 million empty
+batches in a second, each taking the write lock, and the test passed.
+`goal()` (the budget, not the trigger, during a decrease) has no failing
+test: in this fixture a batch that counts with stale pins goes to the
+low watermark anyway; it matters only when the decrease's batches are
+cut short (BATCH, BATCH_NANOS, a waiting writer) while a round that began
+after the decrease ends with pins between budget - (high - low) and the
+budget.

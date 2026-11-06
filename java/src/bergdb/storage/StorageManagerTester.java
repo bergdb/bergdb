@@ -147,4 +147,59 @@ public class StorageManagerTester {
             manager.close();
         }
     }
+
+    /**
+     * A waiting sync throws at once when the main stream fails (bergdb 019-41): the stream's
+     * append is held until the sync waits, then throws. Until 019-41 nothing woke the sync,
+     * which saw the failure at its next poll, up to 500 ms later.
+     */
+    @Nano
+    public static void testSyncWokenByAFailure() throws Exception {
+        final java.util.concurrent.CountDownLatch entered =
+                new java.util.concurrent.CountDownLatch(1);
+        final java.util.concurrent.CountDownLatch release =
+                new java.util.concurrent.CountDownLatch(1);
+        bergdb.stream.StrictStream s = new bergdb.stream.StrictStream(new MemoryStream());
+        s.setHook((op, n) -> {
+            if (op == bergdb.stream.StrictStream.Op.APPEND) {
+                entered.countDown();
+                try {
+                    release.await(5, java.util.concurrent.TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    throw new IOException(e);
+                }
+                throw new IOException("the test's failure");
+            }
+        });
+        final StorageManager m = new StorageManager.Builder().stream(s, 1000, 4000).build();
+        m.start();
+        final long[] thrownAt = new long[1];
+        Thread syncer = new Thread(() -> {
+            try {
+                m.sync(100);
+            } catch (IOException e) {
+                thrownAt[0] = System.nanoTime();
+            }
+        }, "test-sync");
+        try {
+            m.append(new byte[100], 0, 100);
+            syncer.start();
+            Assert.assertTrue("the append was not held",
+                    entered.await(5, java.util.concurrent.TimeUnit.SECONDS));
+            long end = System.nanoTime() + 5000L * 1000 * 1000;
+            while (syncer.getState() != Thread.State.TIMED_WAITING && System.nanoTime() < end) {
+                Thread.sleep(1);
+            }
+            long t0 = System.nanoTime();
+            release.countDown();
+            syncer.join(5000);
+            Assert.assertTrue("the sync threw", thrownAt[0] != 0);
+            long ms = (thrownAt[0] - t0) / 1000000;
+            Assert.assertTrue("the sync threw " + ms + " ms after the failure", ms < 50);
+        } finally {
+            release.countDown();
+            syncer.join(5000);
+            m.close();
+        }
+    }
 }

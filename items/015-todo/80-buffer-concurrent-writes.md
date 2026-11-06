@@ -102,11 +102,14 @@ below's own locks.
   `closeStream` takes B, for `closeFailure`, after it leaves I.
 * Holding I, a thread calls only the stream below (S, leaves: a stream
   below has no reference to the layers above) and writes a volatile.
-* W is held while I is taken (the writer's cut and close); the thread,
-  which takes I, never takes W, and the listener it calls
-  (`computeRules`: D; `handleStreamException`: B, and I through
-  `close()`) is called with neither B nor I held. D is held while B is
-  taken (`sync` calls `flushSoon`), never with I.
+* W is held while the writer's cut takes I; a close takes I with or
+  without W (`Db.closeStorage` releases W before it closes the storage;
+  a close within a transaction holds it; corrected 2026-11-06, 019-41,
+  review R7's C3 of 006-13); the thread, which takes I, never takes W,
+  and the listener it calls (`computeRules`: D; `handleStreamException`:
+  D since 019-41, B, and I through `close()`) is called with neither B
+  nor I held. D is held while B is taken (`sync` calls `flushSoon`),
+  never with I.
 
 So the order is W before B, W before I, D before B, I before S: no
 cycle. The waits on B's condition (`wait()` in `append`, `close`,
@@ -251,6 +254,11 @@ that fails without it. Its C findings:
 section 8, point 2): a line under P1 in 010-01, and 019-36 to measure the
 cut's wait on F53 and s1 and, if it is over the target, R4's `tryLock`
 fix.
+
+2026-11-06. Review R7 of 006-13 (019-41): OK, with C findings done in
+019-41: "Locks and their order" corrected (the close takes I with or
+without W, C3); `testWriterCutBesideThreadsCutAndClose` waits until the
+writer waits for `ioLock`, not a fixed 200 ms (C2).
 
 State (night 006-12)
 --------------------

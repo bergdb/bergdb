@@ -110,7 +110,6 @@ Open
 | [019-35](35-night-read-losses.md) | Investigate | The Core's warm reads lost 1 to 6 % in night 006-12 | none | open |
 | [019-36](36-reclaim-cut-waits-for-append.md) | Investigate | Reclaim's cut waits for the thread's append (performance) | none | open |
 | [019-40](40-review-r6-c-findings.md) | Fix | Review R6's C findings: tests, words, small faults | none | open |
-| [019-41](41-review-r7-c-findings.md) | Fix | Review R7's C findings: a test missing a hot loop, a sync, an interrupt | none | open |
 | [019-42](42-index-build-bricks-database.md) | Fix | An index build over an object it cannot index fails the database at every start | none | open |
 
 
@@ -119,6 +118,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-41](41-review-r7-c-findings.md) | Fix | Review R7's C findings: a test missing a hot loop, a sync, an interrupt | none | done | 2026-11-06 |
 | [019-39](39-error-path-hangs.md) | Fix | Hangs in the error path: a thread not started, a second Error | none | done | 2026-11-06 |
 | [019-38](38-index-jobs-fail-on-refusal.md) | Fix | Index jobs fail the database on an interrupt, an expiry, a refusal | none | done | 2026-11-06 |
 | [019-37](37-close-self-suppression.md) | Fix | A failed flush and the close's same IOException: self-suppression | none | done | 2026-11-06 |

@@ -629,6 +629,9 @@ public final class Eviction {
                     }
                     while (in.isActive() && in.cache().residents().bytes() > goal()) {
                         while (in.writersWaiting() > 0 && in.isActive()) {
+                            // An interrupt, from outside, is cleared (bergdb 019-41): parkNanos
+                            // returns at once while it is set, and the thread spun.
+                            Thread.interrupted();
                             java.util.concurrent.locks.LockSupport.parkNanos(100 * 1000);
                         }
                         long[] fm = null;
@@ -2289,8 +2292,15 @@ public final class Eviction {
                 clock.setTime(time += STEP);
                 db.execute(db.trans().put("k" + i, new byte[100]).build());
             }
+            long sweeps = e.sweepCounts()[0];
             db.setCacheSizeIndicator(1);
-            e.awaitBatch();
+            // Below the pins, the thread goes idle after a few batches (bergdb 019-41): without
+            // sweep()'s end of a decrease, it ran millions of empty batches, each taking the
+            // write lock, until the budget was raised.
+            String state = settled(e, db, 2000);
+            Assert.assertTrue("idle below the pins: " + state, state == null);
+            sweeps = e.sweepCounts()[0] - sweeps;
+            Assert.assertTrue("batches below the pins: " + sweeps, sweeps < 100);
             long p0;
             synchronized (in.getWriteLock()) {
                 p0 = e.pinnedOfLastRound;
@@ -2319,7 +2329,7 @@ public final class Eviction {
             Assert.assertTrue("detachable objects resident: " + bytes + " bytes, budget "
                     + budget + ", P0 " + p0, budget < bytes && bytes <= p0);
             db.setCacheSizeIndicator(budget);
-            String state = settled(e, db, 2000);
+            state = settled(e, db, 2000);
             bytes = in.cache().residents().bytes();
             Assert.assertTrue("at most the budget " + budget + ": " + bytes + " bytes, pinned "
                     + p1 + ", trigger " + e.trigger, bytes <= budget);
@@ -2331,6 +2341,60 @@ public final class Eviction {
             Assert.assertTrue("idle after: " + state, state == null);
             Assert.assertFalse("the decrease ended", e.decrease);
         } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * An interrupt of the eviction thread while it lets a writer go first (bergdb 019-41):
+     * the test holds the write lock and a writer waits for it, the budget lowered wakes the
+     * thread, which parks until the writer has gone, and the test interrupts it. The thread
+     * keeps parking: it takes less than half the CPU time while the writer waits. Until 019-41 parkNanos
+     * returned at once while the flag was set, and the thread spun.
+     */
+    @Nano
+    public static void testInterruptedWhileAWriterWaits() throws Exception {
+        CoreTestClock clock = new CoreTestClock();
+        final Db db = Db.builder().testSetup(new MemoryStream()).clock(clock).testId()
+                .evictionSchedule(Schedule.BUDGET, 1).audit(0).start();
+        Thread writer = null;
+        try {
+            Eviction e = db.internal().eviction();
+            clock.setTime(100 * STEP);
+            db.execute(db.trans().put("k", new byte[100]).build());
+            clock.setTime(101 * STEP);
+            final Trans t = db.trans().put("k2", new byte[100]).build();
+            writer = new Thread(() -> db.execute(t), "test-writer");
+            java.lang.management.ThreadMXBean mx =
+                    java.lang.management.ManagementFactory.getThreadMXBean();
+            synchronized (db.internal().getWriteLock()) {
+                writer.start();
+                long end = System.nanoTime() + 2000L * 1000 * 1000;
+                while (db.internal().writersWaiting() == 0 && System.nanoTime() < end) {
+                    Thread.sleep(1);
+                }
+                db.setCacheSizeIndicator(1);        // wakes the thread
+                Thread ev = null;
+                while (System.nanoTime() < end) {
+                    synchronized (e.evictorLock) {
+                        if (e.running) ev = e.evictor;
+                    }
+                    if (ev != null && ev.getState() == Thread.State.TIMED_WAITING) break;
+                    Thread.sleep(1);
+                }
+                Assert.assertTrue("the thread parks for the writer", ev != null
+                        && ev.getState() == Thread.State.TIMED_WAITING);
+                ev.interrupt();
+                long cpu = mx.getThreadCpuTime(ev.getId());
+                Thread.sleep(50);
+                cpu = mx.getThreadCpuTime(ev.getId()) - cpu;
+                Assert.assertTrue("CPU time of the thread in 50 ms: " + cpu / 1000 + " us",
+                        cpu < 25L * 1000 * 1000);
+            }
+            writer.join(5000);
+            Assert.assertFalse("the writer has ended", writer.isAlive());
+        } finally {
+            if (writer != null) writer.join(5000);
             db.close();
         }
     }
