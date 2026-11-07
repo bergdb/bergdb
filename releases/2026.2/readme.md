@@ -344,9 +344,10 @@ and [items/015-todo/](../../items/015-todo/readme.md).
   * measured during the work, against 2026.1 (009-03; docs/levels.md,
     section 7): the longest get from the OS cache at 10M keys under ZGC
     3.45 ms, against 7.3 s; gets in memory from 8 threads 101 and 61
-    percent more (G1, ZGC), from one thread 3 and 11 percent fewer; loads
-    in memory 8 to 20 percent slower. These figures are before 015-13 and
-    015-14; the release's own runs against 2026.1 follow (Baseline).
+    percent more (G1, ZGC); loads in memory 8 to 20 percent slower. These
+    figures are before 015-13 and 015-14; the release's own runs against
+    2026.1 are in Baseline. Gets in memory from one thread are 9 and 13
+    percent fewer (G1, ZGC) in those runs; 009-03 had 3 and 11.
 * **MEM**, heap bytes per KV: 129 to 130 since handles, against 191 in
   2026.1 (`level1.sh`'s limit lowered from 228 to 131).
 * **Group commit** (005-48, `e611709`). A sync that waits has the buffer
@@ -551,11 +552,15 @@ times of July 2013; SS, stream bytes per user byte.
 |---|---|---|---|
 | 2015.4, cissi, 2015-07-27 | 161 | 0.78 (0.77, 0.99, 0.85, 0.58) | 1.48 (1.16, 1.26, 1.60, 2.06) |
 | 2026.1, F53, 2026-10-25   | 191 | 0.29 (0.26, 0.35, 0.26, 0.32) | 1.50 (1.10, 1.19, 1.62, 2.37) |
+| 2026.1, F53, 2026-11-06   | 192 | 0.29 (0.26, 0.32, 0.26, 0.31) | 1.50 (1.10, 1.19, 1.62, 2.37) |
+| 2026.2, F53, 2026-11-06   | 129 | 0.24 (0.26, 0.17, 0.25, 0.32) | 1.51 (1.10, 1.20, 1.65, 2.40) |
 
-2015.4 ran on Java 7, 2026.1's row is its release's, on JDK 27 (the median
-of 5 runs). 2026.2's row, with 2026.1's again in turns on F53, follows:
-the runs are made in the night after the release, and the rows come in a
-later commit (016-10).
+2015.4 ran on Java 7, 2026.1's first row is its release's, on JDK 27 (the
+median of 5 runs). The last two rows are 2026.1 and 2026.2 in turns
+(ABBAAB) on F53 with JDK 27, in the quiet block of Baseline (below), each
+figure the median of 3 runs (016-10): 2026.2 has a third less heap per KV
+(129 against 192), and its gets from 4 threads (get4t) take about half
+the time.
 MEM and SS do not depend on the machine; CORE does. SS depends on the
 startup distance and the take, which 2026.2 changed (005-49).
 
@@ -578,17 +583,142 @@ kept up to date since 2026-10-26 (006-07).
 Baseline
 --------
 
-The numbers follow. They are measured in the night after the release, as
-planned in 016-10: both jars, 2026.1 and 2026.2, in turns, on the same
-machines and JDK, with each tool compiled once per jar; every ScaleBench
-run at a startup distance of 200 MB, both jars (2026.1's baseline was at
-10 MB, so its published figures are not compared); Props, the quick suite
-(`performance.sh ab`), ScaleBench at 10M keys on F53 and s1, and the pause
-probe. Their tables, and their outputs in this release's `baseline.zip`,
-come in a later commit (016-10).
+2026.2 against 2026.1, as planned in 016-10: both jars in turns, on the
+same machine and JDK, with each tool compiled once per jar; every
+ScaleBench run at a startup distance of 200 MB, with both jars (2026.1's
+baseline was at 10 MB, so its published figures are not compared); Props
+(Release Props, above), the quick suite (`performance.sh ab`), ScaleBench
+at 10M keys on F53 and at 1M and 10M keys on s1, and the pause probe.
+Added on 2026-11-07 (Post-release notes). All outputs, GC logs included,
+are in `baseline.zip` (`f53/`, `s1/w7/`, and the tables in `tables.md`),
+with the scripts (`tools/`).
 
-Until then, the figures measured during the work against 2026.1 are
-009-03's (Changes, Performance), before 015-13 and 015-14.
+* **F53**: as in Identity; Homebrew's OpenJDK 27; AC power; a quiet block
+  on 2026-11-06 from 22:00 to 23:16, after two checks in a row with a
+  1-minute load below 2.5 (1.81 and 1.86), with no other build or test
+  and every other Claude session idle. In the runs the other processes
+  took 0.12 to 0.32 cores of 10, with short peaks of 0.45 to 0.86 in M's
+  ZGC runs.
+* **s1**: Frans's VPS (AMD EPYC, 2 virtual CPUs, 3.8 GB, Linux), OpenJDK
+  27+35, G1; one run of each on 2026-11-04 from 08:17 to 08:39, the
+  morning of the release. 6 of its 10 runs gave figures (below).
+
+**ScaleBench, 10M keys of 24 bytes on F53**, one run each. M: everything
+in memory, no eviction, a 6 GB heap. C: the stream in the OS cache, a
+cache budget of 665 MB, a 2,660 MB heap, on the databases of M's ZGC
+runs. Cells: 2026.1 / 2026.2.
+
+Gets from one thread, uniform keys, a second; latencies from the timed
+pass:
+
+| Run           | Gets/s      | p50               | p99               | Longest get       |
+|---------------|-------------|-------------------|-------------------|-------------------|
+| M, G1         | 722k / 657k | 1.33 µs / 1.46 µs | 1.92 µs / 2.10 µs | 25.6 µs / 30.9 µs |
+| M, ZGC        | 610k / 532k | 1.50 µs / 1.71 µs | 2.05 µs / 2.59 µs | 52.1 µs / 50.5 µs |
+| C 665 MB, G1  | 177k / 265k | 4.96 µs / 3.29 µs | 11.5 µs / 8.96 µs | 176 ms / 45.6 ms  |
+| C 665 MB, ZGC | 166k / 254k | 5.21 µs / 3.55 µs | 12.8 µs / 9.73 µs | 272 µs / 276 µs   |
+
+Gets from 4 and 8 threads, a second; the longest batch of the eviction (a
+sweep in 2026.1); the GC:
+
+| Run           | 4 threads       | 8 threads       | Longest batch    | Longest GC pause  |
+|---------------|-----------------|-----------------|------------------|-------------------|
+| M, G1         | 2.06 M / 2.26 M | 2.14 M / 4.12 M | —                | 721 ms / 394 ms   |
+| M, ZGC        | 1.85 M / 1.98 M | 2.15 M / 3.62 M | —                | 0.01 ms / 0.01 ms |
+| C 665 MB, G1  | 168k / 740k     | 134k / 610k     | 4.78 s / 45.0 ms | 231 ms / 149 ms   |
+| C 665 MB, ZGC | 143k / 612k     | 114k / 609k     | 6.82 s / 21.0 ms | 0.02 ms / 0.03 ms |
+
+* Full GCs with G1: 4 / 4 in M, 53 / 1 in C; none with ZGC.
+* The load (M): 41.7 / 45.9 s with G1, 48.8 / 55.8 s with ZGC; heap per
+  key 244 / 185 bytes with G1, 315 / 225 with ZGC; on disk 187 / 231
+  bytes a key.
+* ScaleBench's runs from the OS cache with a 133 MB budget, which 2026.1's
+  baseline had, are not here: a 600 MB heap (that baseline's) does not
+  start a 10M database at a 200 MB startup distance, in either version
+  (out of heap in the start's rerun of the transactions, on F53 and on s1;
+  019-45).
+
+**Against 2026.1:**
+
+* In memory (M), 2026.2 has 9.0 and 12.7 percent fewer gets from one
+  thread (G1, ZGC), and 92 and 68 percent more from 8 threads. The
+  one-thread gap is outside one run's spread (G1's five windows: 711,694
+  to 728,344 against 655,185 to 660,784 gets a second), was 7.8 percent
+  in the night before (not quiet), and shows in the quick suite's
+  one-thread gets (below). 009-03 had 3 and 11 percent (Changes,
+  Performance).
+* From the OS cache (C), 2026.2 has 50 and 53 percent more gets from one
+  thread, 4.4 and 4.3 times as many from 4 threads and 4.6 and 5.3 times
+  from 8. 2026.1's longest waits are its sweeps, which stop the readers.
+  From 8 threads the longest get was 52.7 ms (G1) and 39.6 ms (ZGC) in
+  2026.2, against 4.07 and 6.03 s in 2026.1; from 4 threads with ZGC,
+  4.96 ms against 6.00 s (Limits: as many readers as cores).
+* Loads in memory are 10 and 14 percent slower (G1, ZGC), and the heap a
+  key 24 and 29 percent smaller. The stream is 24 percent larger, 231
+  against 187 bytes a key, not yet explained; the take at 200 MB (005-49,
+  Changes) is the likely cause.
+
+**The pause probe** (009-03's PauseProbe, 1M keys, values of 100 bytes, a
+cache budget of 100 MB, 4 readers, 60 s a phase, a 1,258 MB heap; times
+in ms, the longest of the `tsize=1` and `tsize=1000` phases; gets in the
+`tsize=1` phase; the longest batch of the eviction over the run, a sweep
+in 2026.1):
+
+| Run         | Gets       | Longest get | Longest commit | Longest batch |
+|-------------|------------|-------------|----------------|---------------|
+| 2026.1, G1  | 7,021,548  | 435.5       | 435.4          | 804           |
+| 2026.2, G1  | 29,891,854 | 24.4        | 31.1           | 24.7          |
+| 2026.1, ZGC | 6,539,045  | 562.9       | 562.6          | 1,163         |
+| 2026.2, ZGC | 29,318,511 | 6.7         | 24.0           | 5.9           |
+
+**The quick suite in turns** (`SUITE=quick performance.sh ab 2026.1
+2026.2`, G1 with an 8 GB heap, 3 runs a scenario in ABBA order, medians,
+one round; the CV at most 1.9 percent, but 6.4 for 2026.1's
+`mix.gets_per_s`; every metric in `tables.md`):
+
+| Scenario, metric                  | 2026.1    | 2026.2    | Change  |
+|-----------------------------------|-----------|-----------|---------|
+| r-1k-fin, mix.gets_per_s          | 1,972,530 | 2,315,870 | +17.4 % |
+| r-1k-fin, mix.commits_per_s       | 49,423.2  | 52,271.4  | +5.8 %  |
+| r-1k-fin, startup.sec             | 0.7122    | 0.7084    | −0.5 %  |
+| read-1k, get_latest               | 1,318,610 | 1,251,380 | −5.1 %  |
+| read-1k, get_historical           | 1,261,980 | 1,217,060 | −3.6 %  |
+| read-1k, get_latest_mt4           | 3,552,820 | 4,261,600 | +19.9 % |
+| read-1k, get_longkey              | 954,804   | 856,410   | −10.3 % |
+| read-1k, scan_fwd.kvs_per_s       | 3,746,100 | 3,816,020 | +1.9 %  |
+| read-1k, scan_back.kvs_per_s      | 3,977,370 | 3,983,000 | +0.1 %  |
+| read-1k, scan_fwd_hist.kvs_per_s  | 3,491,600 | 3,474,620 | −0.5 %  |
+| w-uni-1k-fin, commits_per_s       | 63,318.1  | 64,225.0  | +1.4 %  |
+| w-uni-1k-fin, restart.startup_sec | 0.6107    | 0.6191    | +1.4 %  |
+| w-uni-1k-inf, commits_per_s       | 102,066.0 | 99,371.1  | −2.6 %  |
+| w-uni-1k-inf, restart.startup_sec | 0.6384    | 0.6357    | −0.4 %  |
+
+`get_latest` and `get_longkey` were flagged, worse by more than 5 percent
+in every run; with one round, not confirmed. `get_longkey` was flagged in
+the night before too.
+
+**ScaleBench on s1** (G1, startup distance 200 MB, keys of 24 bytes, one
+run each; 2026.1 / 2026.2; "none" where the run ended with
+`OutOfMemoryError` in the database's start). s1's half is the run of
+2026-11-04 as it was; its gaps are not redone (016-10).
+
+* Load, 10M keys, a cache budget of 600 MB, a 2,500 MB heap: 337 / 245 s
+  (30k / 41k puts a second); longest batch 21.7 s / 208 ms; longest GC
+  pause 404 / 207 ms.
+* M, 1M keys, a 1 GB heap: load 9 / 4 s (106k / 248k puts a second);
+  649k / 642k gets a second from one thread, p50 1.38 / 1.33 µs, longest
+  1.23 ms / 76.4 µs; 917k / 1.12 M from 4 threads; longest GC pause 472 /
+  261 ms.
+* C, 1M keys, a cache budget of 66 MB, a 512 MB heap: 2026.1 none (out of
+  heap in the eviction's sweep during the start); 2026.2 540k gets a
+  second from one thread, p50 1.47 µs, longest 1.44 ms; 1.09 M from 4
+  threads; longest GC pause 173 ms.
+* D, as C with the OS cache dropped and the JVM in a cgroup: 2026.1 none
+  (as C); 2026.2 a cold start of 6.7 s, then 599k gets a second from one
+  thread, p50 1.30 µs, longest 101 µs; 1.20 M from 4 threads; longest GC
+  pause 152 ms.
+* D, 10M keys, a cache budget of 133 MB, a 600 MB heap: none in either
+  version (the 133 MB runs above).
 
 
 How to compare a later version
@@ -770,5 +900,15 @@ morning, with the reviewer's own test or probe):
 Post-release notes
 ------------------
 
-None yet. A fault found later that affects 2026.2, its numbers or its
-correctness, is recorded here.
+A fault found later that affects 2026.2, its numbers or its correctness,
+is recorded here. No fault yet.
+
+**Changes of these notes:**
+
+* 2026-11-07: the numbers against 2026.1 that the notes said would follow
+  (016-10): Release Props' last two rows and Baseline, from a quiet block
+  on F53 on 2026-11-06, and s1's runs of 2026-11-04 with their gaps;
+  `baseline.zip` with their outputs, and its line in `SHA256SUMS`. In
+  Changes, Performance, the gets in memory from one thread are these runs'
+  9 and 13 percent fewer, not 009-03's 3 and 11. The jar, the source zip
+  and the Javadoc zip did not change.

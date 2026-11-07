@@ -3,8 +3,9 @@
 
 Created 2026-11-03 by Frans Lundberg. Status: run in part on
 2026-11-06, not quiet; rerun in a quiet block in the night of 6 to 7
-November, 4 of 5 steps exit 0 (sb-c's two 133 MB runs out of heap); the
-notes and `baseline.zip` wait for Frans (section 6, 2026-11-07).
+November, 4 of 5 steps exit 0 (sb-c's two 133 MB runs out of heap); in
+2026.2's notes and `baseline.zip` on 2026-11-07 (section 6, 07:43 and
+after). Open: s1's half (016-02, open item 2).
 
 The plan for W7 of 016-01 (section 5): 2026.2's numbers against 2026.1,
 with both jars run in turns, on F53 and s1, for the release notes and
@@ -997,3 +998,50 @@ one alert too.
    rerun keeps to the cache budget, which a larger heap would hide.
 3. s1's half (016-02, open item 2) is still open, as is the published
    2026.2 baseline's s1 part.
+
+2026-11-07, after 07:43, the notes and `baseline.zip` from W7's rerun, by
+an agent of coord-1106, in the clone `/Users/f/fl/bench/006-13/w7u`; the
+coordinator lands the commit on `main` after release 2026.3's commit B.
+Frans, 07:43, on both points above: "As recommended".
+
+* **Point 1, yes**, where it gives two ways the first: s1's half as
+  2026-11-04 left it, with its gaps marked; `baseline.zip` with the GC
+  logs. In `releases/2026.2/readme.md`:
+  * Release Props: two rows, 2026.1 and 2026.2 on F53 on 2026-11-06, in
+    turns (ABBAAB); each figure the median of its 3 runs from
+    `f53/props/` (2026.1: MEM 192, CORE 0.29 (0.26, 0.32, 0.26, 0.31), SS
+    1.50; 2026.2: 129, 0.24 (0.26, 0.17, 0.25, 0.32), 1.51), and the
+    paragraph that said they would follow.
+  * Baseline: the block's machine and quiet; `tables.md`'s two ScaleBench
+    tables on F53 as they are (the Full GCs column as a line, to keep the
+    rows under 100 characters), the loads, the pause probe (the compact
+    table of the entry above, rows in version order), 14 rows of the
+    quick suite, s1's six runs as bullets with "none" for 2026.1's C and
+    D at 1M, and a list "Against 2026.1" (one-thread gap, the OS cache
+    runs, the 39.6 ms and 52.7 ms longest gets from 8 threads, the loads
+    and the stream's 231 against 187 bytes a key, not yet explained).
+  * Changes, Performance: "from one thread 3 and 11 percent fewer"
+    (009-03) became "Gets in memory from one thread are 9 and 13 percent
+    fewer (G1, ZGC) in those runs; 009-03 had 3 and 11". The 8-thread
+    figures (101 and 61) and the loads (8 to 20) stay 009-03's, as W7's
+    92 and 68 and 10 and 14 are in Baseline; the 39 ms limit is kept.
+  * Post-release notes: a dated line on what changed in the notes and the
+    files (the jar and the two other zips did not).
+* **`baseline.zip`**: `finish.sh` (016-09, R8) with
+  `R=/Users/f/fl/bench/016/night4/collect`, after the jar and the two
+  zips were copied from `releases/2026.2/` into its `out/`: `FINISH OK`,
+  `baseline.zip` 1,274,274 bytes (was 234,825), GC logs kept; SHA-256
+  `51c9face8beb62f6a06340291adeac73a6ab7714b0b45bee08b8b624a4531ca8`.
+  `SHA256SUMS`'s other three lines are unchanged, and `shasum -a 256 -c
+  SHA256SUMS` passes in `releases/2026.2/`. The zip holds every file of
+  the release's (116 entries, now 178): the new ones are `f53/`'s W7
+  steps, `conductor/` and `w7-runs.txt`. Its `NOTE.txt` got a paragraph
+  of 2026-11-07 (what this zip adds, the b133 runs and s1's four
+  failures, which were not for the 2.5 GB heap the note of 2026-11-04
+  says); the note as it was is `B4/collect/NOTE-2026-11-04.txt`.
+* **Point 2, B**: the 133 MB runs are out of the notes, with one sentence
+  in Baseline (a 600 MB heap does not start a 10M database at a 200 MB
+  startup distance, in either version; 019-45), also for s1's D at 10M.
+  No rerun. 019-45 was registered before (2026-11-07, `d642f14`).
+* Not done: `docs/levels.md` and 2026.1's notes are not touched; no
+  `news.sh` (no figure the notes cite moved by more than 20 percent).

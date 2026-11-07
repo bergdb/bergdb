@@ -84,3 +84,10 @@ morning. 22 entries were closed for it (5 of 005, 17 of 015, two of them
 fixes of tests), and the reviews registered their other faults as 015
 entries (known issues in the notes). The W7 numbers follow from night
 2's quiet block (016-10). The run and its outcome: 016-02.
+
+2026-11-07. W7's numbers in 2026.2's notes and `baseline.zip`, from the
+quiet block of 2026-11-06 on F53 and s1's runs of 2026-11-04 with their
+gaps (Frans, 07:43: "As recommended"; 016-10, section 6): Release Props'
+2026.2 row, the Baseline section, the one-thread figure of Changes
+corrected to 9 and 13 percent, `baseline.zip` (1.3 MB) and its line in
+`SHA256SUMS`.
