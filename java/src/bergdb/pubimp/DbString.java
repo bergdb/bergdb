@@ -5,6 +5,7 @@ import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pub.util.BadFormatException;
 
 /**
  * The DbObject type for a string stored in UTF-8 format.
@@ -107,6 +108,10 @@ public class DbString extends DbValue {
         offset += 4;
         if (size == -1) {
             return null;
+        }
+        
+        if (size < 0 || size > buffer.length - offset) {
+            throw new BadFormatException("Bad string size, " + size + " (bergdb 021-07).");
         }
         
         byte[] stringBytes = new byte[size];

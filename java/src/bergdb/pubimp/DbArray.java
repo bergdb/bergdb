@@ -190,7 +190,9 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
         ElementIterator(byte[] bytes, int offset) {
             assert bytes != null;
             assert offset >= 0;
-            assert offset < bytes.length : "offset=" + offset + ", bytes.length=" + bytes.length;
+            if (offset >= bytes.length) {       // bergdb 021-07: was an assert
+                throw new BadFormatException("No array at the end of the bytes, " + offset + ".");
+            }
             this.bytes = bytes;
             this.offset = offset;
             this.nextType = (char) bytes[offset];
@@ -240,6 +242,11 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
             
             offset += result.getByteSize();
             nextType = (char) bytes[offset];
+            if (nextType == 'Z') {
+                // The null array is 'Z' as its first byte only; after an element, it ended
+                // the array silently (bergdb 021-07).
+                throw new BadFormatException("'Z' after an element of an array.");
+            }
             offset += 1;
             elementCount++;            
             return result;

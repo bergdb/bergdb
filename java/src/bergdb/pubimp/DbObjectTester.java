@@ -6,6 +6,7 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.util.Arrays;
 
+import bergdb.common.Bytes;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.BadFormatException;
@@ -1312,5 +1313,184 @@ public class DbObjectTester {
         Assert.assertTrue(Arrays.equals(o.chars, back.chars));
         
         DbObject.toDbObject(list(3));   // the thread's path is empty again
+    }
+
+    // ---- bergdb 021-07: bytes that are not a well-formed object ----
+
+    /** The offset of the first field of an object's bytes 'b': its type byte. */
+    private static int firstField(byte[] b) {
+        int headerSize = new DbObject.Builder().build().getBytes().length;
+        return Bytes.bytesToIntLE(b, headerSize + 2);
+    }
+
+    /** The offset of the value of the first field of an object's bytes 'b'. */
+    private static int firstValue(byte[] b) {
+        int field = firstField(b);
+        return field + 3 + Bytes.bytesToShortLE(b, field + 1);
+    }
+
+    /** The reader refuses 'b' with a BadFormatException, not another exception or Error. */
+    private static void assertBadFormat(String what, byte[] b) {
+        try {
+            new DbObject(b);
+        } catch (BadFormatException e) {
+            return;
+        } catch (Throwable e) {
+            throw new AssertionError(what + ": not a BadFormatException, " + e, e);
+        }
+        throw new AssertionError(what + ": read without an exception");
+    }
+
+    private static DbObject inner() {
+        return new DbObject.Builder().addInt("i", 1).addString("s", "abc").build();
+    }
+
+    /**
+     * Case 1: a nested object of size -1, which no writer writes; it was read as Java's
+     * null and gave an AssertionError (with -ea) or a NullPointerException.
+     */
+    @Nano
+    public static void testReaderNestedObjectSizeMinusOne() {
+        byte[] b = new DbObject.Builder().addObject("o", inner()).build().getBytes();
+        Bytes.intToBytesLE(-1, b, firstValue(b));
+        assertBadFormat("an object field of size -1", b);
+
+        b = new DbObject.Builder().addArray("a",
+                new DbArray.Builder().add(inner()).build()).build().getBytes();
+        Bytes.intToBytesLE(-1, b, firstValue(b) + 1);     // after the element's type byte
+        assertBadFormat("an object element of size -1", b);
+
+        // A null object as the writer writes it, a field count of -1, is read as before.
+        b = new DbObject.Builder().addObject("o", DbObject.Builder.buildNull()).build()
+                .getBytes();
+        Assert.assertTrue(new DbObject(b).getObject("o").isNull());
+    }
+
+    /**
+     * Case 2: a string or byte array length below -1, or one past the end of the bytes,
+     * and a field name's length of 0 or below, or past the end; it was a
+     * NegativeArraySizeException, an IndexOutOfBoundsException, an AssertionError or,
+     * for a length near 2^31, an OutOfMemoryError.
+     */
+    @Nano
+    public static void testReaderBadLengths() {
+        int[] sizes = {-2, Integer.MIN_VALUE, 4, 1000, Integer.MAX_VALUE};
+        for (int size : sizes) {
+            byte[] b = new DbObject.Builder().addString("s", "abc").build().getBytes();
+            Bytes.intToBytesLE(size, b, firstValue(b));
+            assertBadFormat("a string of size " + size, b);
+
+            b = new DbObject.Builder().addArray("a",
+                    new DbArray.Builder().add(new DbString("abc")).build()).build().getBytes();
+            Bytes.intToBytesLE(size, b, firstValue(b) + 1);
+            assertBadFormat("a string element of size " + size, b);
+
+            b = new DbObject.Builder().addDbValue("b", new DbByteArray(new byte[] {1, 2, 3}))
+                    .build().getBytes();
+            Bytes.intToBytesLE(size, b, firstValue(b));
+            assertBadFormat("a byte array of size " + size, b);
+
+            b = new DbObject.Builder().addObject("o", inner()).build().getBytes();
+            Bytes.intToBytesLE(size, b, firstValue(b));
+            assertBadFormat("an object field of size " + size, b);
+        }
+
+        short[] nameSizes = {-1, Short.MIN_VALUE, 0, 100, Short.MAX_VALUE};
+        for (short size : nameSizes) {
+            byte[] b = new DbObject.Builder().addInt("i", 1).build().getBytes();
+            Bytes.shortToBytesLE(size, b, firstField(b) + 1);
+            assertBadFormat("a field name of size " + size, b);
+        }
+    }
+
+    /** Case 3: a bad field type byte; it was an IllegalArgumentException. */
+    @Nano
+    public static void testReaderBadTypeByte() {
+        byte[] b = new DbObject.Builder().addInt("i", 1).build().getBytes();
+        b[firstField(b)] = 'x';
+        assertBadFormat("the type byte 'x'", b);
+        b[firstField(b)] = 'z';
+        assertBadFormat("the type byte 'z'", b);
+    }
+
+    /**
+     * Case 4: 'Z', the null array, after an element; it ended the array silently, which
+     * read the elements before it as the whole array.
+     */
+    @Nano
+    public static void testReaderNullMarkAfterAnElement() {
+        byte[] b = new DbObject.Builder().addArray("a",
+                new DbArray.Builder().add(new DbInt(3)).build()).build().getBytes();
+        int end = firstValue(b) + 1 + 4;      // after the element's type byte and its int
+        Assert.assertEquals('z', (char) b[end]);
+        b[end] = 'Z';
+        assertBadFormat("'Z' after an element", b);
+
+        // 'Z' as the array's first byte, the null array as the writer writes it, is read.
+        b = new DbObject.Builder().addArray("a", DbArray.Builder.buildNull()).build()
+                .getBytes();
+        Assert.assertTrue(new DbObject(b).getArray("a").isNull());
+    }
+
+    /**
+     * Bytes that end inside a field: every proper prefix of an object's bytes is refused;
+     * an array's value cut at its start gave an AssertionError (with -ea), and other cuts
+     * an IndexOutOfBoundsException.
+     */
+    @Nano
+    public static void testReaderCutBytes() {
+        DbObject o = new DbObject.Builder()
+                .addArray("a", new DbArray.Builder().add(new DbLong(5)).add(inner())
+                        .add(new DbArray.Builder().add(new DbDouble(1.5)).build()).build())
+                .addDbValue("b", new DbByteArray(new byte[] {1, 2}))
+                .addDbValue("d", new DbDouble(2.5))
+                .addInt("i", 1)
+                .addLong("l", 2L)
+                .addDbValue("n", new DbBoolean(true))
+                .addObject("o", inner())
+                .addString("s", "abc")
+                .build();
+        byte[] all = o.getBytes();
+        new DbObject(all);
+        for (int length = 0; length < all.length; length++) {
+            assertBadFormat("the first " + length + " bytes", Arrays.copyOf(all, length));
+        }
+
+        DbObject arrayLast = new DbObject.Builder().addArray("a",
+                new DbArray.Builder().add(new DbInt(3)).build()).build();
+        byte[] b = arrayLast.getBytes();
+        assertBadFormat("an array cut at its start", Arrays.copyOf(b, firstValue(b)));
+    }
+
+    /**
+     * Case 5: DbObject.Builder refuses a null name or value with IllegalArgumentException,
+     * in each add method; addObject, addArray and addDbValue gave an AssertionError (with
+     * -ea) or a NullPointerException, and addString stored a null string.
+     */
+    @Nano
+    public static void testBuilderRefusesNull() {
+        Runnable[] adds = {
+            () -> new DbObject.Builder().addString("s", null),
+            () -> new DbObject.Builder().addObject("o", null),
+            () -> new DbObject.Builder().addArray("a", null),
+            () -> new DbObject.Builder().addDbValue("v", null),
+            () -> new DbObject.Builder().addInt(null, 1),
+            () -> new DbObject.Builder().addLong(null, 1L),
+            () -> new DbObject.Builder().addString(null, "s"),
+            () -> new DbObject.Builder().addObject(null, inner()),
+            () -> new DbObject.Builder().addArray(null, new DbArray.Builder().build()),
+            () -> new DbObject.Builder().addDbValue(null, new DbInt(1)),
+            () -> new DbObject.Builder().addInt("", 1),
+        };
+        for (int i = 0; i < adds.length; i++) {
+            try {
+                adds[i].run();
+            } catch (IllegalArgumentException e) {
+                continue;
+            } catch (Throwable e) {
+                throw new AssertionError("add " + i + ": " + e, e);
+            }
+            throw new AssertionError("add " + i + ": no exception");
+        }
     }
 }

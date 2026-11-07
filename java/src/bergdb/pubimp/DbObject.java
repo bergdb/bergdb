@@ -181,13 +181,19 @@ public class DbObject extends DbValue {
         for (int i = 0; i < fieldCount; i++) {
             hashes[i] = Bytes.bytesToShortLE(bytes, offset);
             int bytePosition = Bytes.bytesToIntLE(bytes, offset + 2);
-            if (bytePosition >= b.length) {
+            if (bytePosition < 0 || bytePosition >= b.length) {
                 throw new BadFormatException("Bad byte position of field " + i + ", " 
                         + bytePosition + ", bytes not long enough, " + b.length + ".");
             }
             
             int fieldOffset = readFieldOffset(i);
-            DbField.parse(b, fieldOffset);
+            try {
+                DbField.parse(b, fieldOffset);
+            } catch (IndexOutOfBoundsException e) {
+                // A value that ends past the bytes, such as a cut int (bergdb 021-07).
+                throw new BadFormatException("Field " + i + " ends past the bytes, "
+                        + b.length + ".");
+            }
             
             offset += FIELD_INFO_SIZE;
         }
@@ -736,12 +742,10 @@ public class DbObject extends DbValue {
         int size = Bytes.bytesToIntLE(buffer, offset);
         offset += 4;
         
-        if (size == -1) {
-            return null;
-        }
-        
-        if (size < 0) {
-            throw new BadFormatException("size = " + size);
+        // A size of -1 was read as Java's null, which no writer writes: an Error at a get
+        // (bergdb 021-07). A null object has a field count of -1.
+        if (size < 0 || size > buffer.length - offset) {
+            throw new BadFormatException("Bad object size, " + size + ".");
         }
         
         byte[] bytes = new byte[size];
@@ -757,9 +761,15 @@ public class DbObject extends DbValue {
         private final DbValue value;
         
         public DbField(String name, DbValue value) {
-            assert name != null;
-            assert name.length() > 0;
-            assert value != null;
+            // Refused, not asserted (bergdb 021-07): an AssertionError in rw() fails the
+            // database (019-10).
+            if (name == null || name.isEmpty()) {
+                throw new IllegalArgumentException("A field's name must not be null or empty.");
+            }
+            if (value == null) {
+                throw new IllegalArgumentException("value == null not allowed, field '" + name
+                        + "'.");
+            }
             
             // A name is a string too: well-formed UTF-8 (bergdb 021-04). javac refuses a
             // lone surrogate in a field's name, but a generated class or the Builder may not.
@@ -815,13 +825,11 @@ public class DbObject extends DbValue {
             
             int nameSize = Bytes.bytesToShortLE(b, offset);
             offset += 2;
-            byte[] nameBytes = new byte[nameSize];
-            
-            try {
-                System.arraycopy(b, offset, nameBytes, 0, nameBytes.length);
-            } catch (ArrayIndexOutOfBoundsException e) {
-                throw new ArrayIndexOutOfBoundsException("nameSize=" + nameSize + ", offset=" + offset + ", b.length=" + b.length);
+            if (nameSize <= 0 || nameSize > b.length - offset) {
+                throw new BadFormatException("Bad field name size, " + nameSize + ".");
             }
+            byte[] nameBytes = new byte[nameSize];
+            System.arraycopy(b, offset, nameBytes, 0, nameBytes.length);
             
             offset += nameBytes.length;
             
@@ -854,7 +862,7 @@ public class DbObject extends DbValue {
                 value = DbObject.parse(b, offset);
                 break;
             default:
-                throw new IllegalArgumentException("Bad type: " + type + ".");
+                throw new BadFormatException("Bad type: " + type + ".");
             }
             
             return new DbField(name, value);
@@ -927,6 +935,9 @@ public class DbObject extends DbValue {
         }
 
         public Builder addString(String name, String value) {
+            if (value == null) {
+                throw new IllegalArgumentException("value == null not allowed (bergdb 021-07)");
+            }
             addField(new DbField(name, new DbString(value)));
             return this;
         }

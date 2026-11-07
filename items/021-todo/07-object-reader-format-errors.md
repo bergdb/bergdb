@@ -1,7 +1,7 @@
 021-07. Fix: the object reader's format errors are not BadFormatException
 =========================================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: done. Kind: Fix. Frans: none.
 Created 2026-11-07 by Frans Lundberg.
 
 What: `DbObject`'s reader, given bytes that are not a well-formed object,
@@ -59,3 +59,63 @@ Log
 ---
 
 2026-11-07. Registered by coord-1107 from 020-04, section 10 (agent p04).
+
+2026-11-07. Taken by agent r07 of coord-1107.
+
+2026-11-07. Done by agent r07 of coord-1107 (006-14), with the
+defaults (1: refused now; 5: `IllegalArgumentException`). Each case is
+refused by the reader with `BadFormatException`; at a get that is an
+`ObjectCreationException` (`KvToObjectImp.entryToDbObject`), not the
+`DataFormatException` that "Done when" says: a get never gave
+`DataFormatException` for bytes that are not an object, while an index
+update that reads the previous value does (`RwEnvironmentImp.indexEntries`).
+
+* Case 1: `DbObject.parse` refuses every size below 0, −1 too, and a
+  size past the end of the bytes. A null object as the writer writes it
+  (a field count of −1) is read as before.
+* Case 2: `DbString.parseToString` refuses a size below −1 or past the
+  end (−1 is still a null string); `DbByteArray.parseToByteArray` a size
+  past the end too; `DbField.parse` a name size of 0 or below, or past the
+  end (a size of 0 gave an `AssertionError`, as an empty name). The
+  past-the-end checks come before the allocation: a size near 2^31 gave an
+  `OutOfMemoryError`, an Error that fails the database in `rw()`.
+* Case 3: `DbField.parse`'s bad type byte is a `BadFormatException`.
+* Case 4: `DbArray`'s iterator refuses `Z` after an element; `Z` as the
+  first byte (the null array) is read as before.
+* Case 5: the `DbField` constructor refuses a null or empty name and a
+  null value with `IllegalArgumentException` (they were asserts), and
+  `Builder.addString` a null value; so every add method refuses a null.
+* Found on the way, the same fault: bytes that end inside a field. An
+  array cut at its start gave an `AssertionError` (`DbArray`'s iterator,
+  an assert, now a `BadFormatException`), other cuts an
+  `IndexOutOfBoundsException`, which the `DbObject` constructor now turns
+  into `BadFormatException` around each field's parse; a negative field
+  position is refused with the others.
+* Tests, each failing on `43ee7a9`'s code: `DbObjectTester`'s
+  `testReaderNestedObjectSizeMinusOne`, `testReaderBadLengths`,
+  `testReaderBadTypeByte`, `testReaderNullMarkAfterAnElement`,
+  `testReaderCutBytes` (every proper prefix of an object with each type)
+  and `testBuilderRefusesNull`, and `PubTester.testMalformedObjectRefused`
+  (case 1 through `get` as a class, `DbObject` and `Object`, outside and
+  inside `rw()`; the database goes on after).
+* No change of the bytes written or of how a well-formed object is read;
+  020-04's no-null design is not started.
+* `releases/next.md`: a Pub API bullet.
+
+Where it meets later work: `DbString.parseToString` has the new size
+check, which 021-06 (its decoding) and 020-04's step A (−1 refused too)
+change; whichever comes later merges. Of 020-04's section 4, this entry
+did the `DbField` constructor's and `DbField.parse`'s lines, `addString`'s
+refusal (in the Builder, not through `DbString`), `DbObject.parse`'s −1,
+and `DbArray`'s `Z` after an element and its failed `o` element; step A
+still refuses `Z` as the first byte, −1 for strings and byte arrays, and
+a field count of −1. 020-04's line numbers are `7edcbe2`'s.
+
+Left open: the reader has no depth limit. An object nested deeper than
+the writer's `MAX_DEPTH` (1000, 005-23), from another writer, recurses
+in the `DbObject` constructor, and deep enough gives a
+`StackOverflowError`, an Error that fails the database in `rw()`; each
+level also copies its bytes. Not fixed here; a new entry if wanted.
+
+`BEFORE COMMIT OK (122 s)` (2026-11-07, 16:41; 1273 unit tests, 87
+f-tests); StreamDigest digests unchanged (the f-tests).

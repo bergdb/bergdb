@@ -31,6 +31,21 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `DbString` refuse it. A `char[]` field keeps any chars and reads back
   exactly; a `byte[]` keeps any bytes. The stream is unchanged: Java has
   only ever written well-formed UTF-8, and old `?`s read as before.
+* **A stored value that is not a well-formed object is refused at a get
+  with `ObjectCreationException`** (bergdb 021-07; 2026-11-07), from the
+  object reader's `BadFormatException`, inside `rw()` and outside, and the
+  database goes on; an index update that reads such a previous value
+  throws `DataFormatException`. A nested object of size −1, which no
+  writer writes, gave an `AssertionError` (with `-ea`), which failed the
+  database inside `rw()`; a bad length, a bad field type byte or bytes
+  that end inside a field gave a `NegativeArraySizeException`, an
+  `IllegalArgumentException`, an `IndexOutOfBoundsException` or, for a
+  length near 2^31, an `OutOfMemoryError`; and `Z` after an array's
+  element ended the array silently. `DbObject.Builder`'s add methods
+  refuse a null name or value with `IllegalArgumentException`:
+  `addString` stored a null string, the others gave an `AssertionError`
+  or a `NullPointerException`. Well-formed objects are read and written
+  as before; the stream is unchanged.
 
 
 ### Core API

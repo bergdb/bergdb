@@ -10,6 +10,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import bergdb.common.Bytes;
 import bergdb.common.EventToWaitFor;
 import bergdb.common.Util;
 import bergdb.core.Db;
@@ -30,6 +31,7 @@ import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Duration;
 import bergdb.pub.Factory;
 import bergdb.pub.Kv;
+import bergdb.pub.ObjectCreationException;
 import bergdb.pub.RwEnvironment;
 import bergdb.pub.TestClock;
 import bergdb.pub.Time;
@@ -142,6 +144,62 @@ public class PubTester {
             }
             Assert.assertTrue("refused, " + i + ": " + refused,
                     refused != null && refused.getCause() == cause);
+        }
+    }
+
+    /** A class to get an object as, for testMalformedObjectRefused. */
+    private static class WithObject {
+        Object o;
+    }
+
+    /**
+     * bergdb 021-07: a value that is not a well-formed object, such as one from another
+     * writer, gives a get of an object an ObjectCreationException (the reader's
+     * BadFormatException), inside rw() and outside, and the database goes on. Before, a
+     * nested object of size -1 gave an AssertionError (with -ea), which failed the
+     * database inside rw() (019-10).
+     */
+    @Nano
+    public static void testMalformedObjectRefused() {
+        DbObject inner = new DbObject.Builder().addInt("i", 1).build();
+        final byte[] b = new DbObject.Builder().addObject("o", inner).build().getBytes();
+        int field = Bytes.bytesToIntLE(b, 8 + 2);   // the field's offset, after the header
+        Bytes.intToBytesLE(-1, b, field + 1 + 2 + 1);   // after its type, name size, name "o"
+
+        Database db = Factory.database().memory().start();
+        try {
+            final Connection c = db.connection();
+            c.put("/bad", b);
+            Class<?>[] classes = {WithObject.class, DbObject.class, Object.class};
+            for (final Class<?> clazz : classes) {
+                Throwable thrown = null;
+                try {
+                    c.get("/bad", clazz);
+                } catch (Throwable e) {
+                    thrown = e;
+                }
+                Assert.assertTrue("a get as " + clazz.getName() + ": " + thrown,
+                        thrown instanceof ObjectCreationException);
+
+                thrown = null;
+                try {
+                    c.rw(new Action() {
+                        public void run(RwEnvironment env) {
+                            env.put("/a", "a1");
+                            env.get("/bad", clazz);
+                        }
+                    });
+                } catch (Throwable e) {
+                    thrown = e;
+                }
+                Assert.assertTrue("a get as " + clazz.getName() + " in rw(): " + thrown,
+                        thrown instanceof ObjectCreationException);
+            }
+            c.put("/later", "x");      // not failed
+            Assert.assertEquals("x", c.get("/later", String.class));
+            Assert.assertNull(c.get("/a", String.class));     // no rw() committed
+        } finally {
+            db.close();
         }
     }
     

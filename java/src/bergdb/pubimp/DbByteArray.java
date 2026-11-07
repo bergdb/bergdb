@@ -78,7 +78,7 @@ public class DbByteArray extends DbValue {
             return null;
         }
         
-        if (size < 0) {
+        if (size < 0 || size > buffer.length - offset) {     // bergdb 021-07
             throw new BadFormatException("Bad byte array size, " + size + ".");
         }
         
