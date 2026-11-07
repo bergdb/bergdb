@@ -10,6 +10,9 @@ after a decision or answers from Frans. Each entry is a subitem with its
 own ID. Every open entry is done before release 2026.4, unless Frans
 makes an exception.
 
+The theme of 2026-4 is "bug-free". This is a theme, a direction. It helps us
+to focus. We mean that there should be no known bugs before the release.
+
 019-todo keeps the entries for release 2026.3 (a bug-free Core, 018);
 its open entries stay there until they close. A new entry goes here when
 it is for 2026.4: the non-Core part (user indexes, objects and their
