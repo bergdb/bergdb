@@ -44,6 +44,10 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
     `String` that fails the database at every start since 019-10;
   * a summary table, the order of Frans's decisions, and the first
     harness of each kept feature.
+* [02-objects-design.md](02-objects-design.md). 020-02, objects: the
+  design worked out with Frans one question at a time, from shape 1
+  (Frans, 2026-11-07, 09:52); question 1, a conversion on a get, exact or
+  best effort.
 
 
 Log
