@@ -1,7 +1,9 @@
 018-release-2026-3
 ==================
 
-Created 2026-11-05 by Frans Lundberg. Status: open.
+Created 2026-11-05 by Frans Lundberg. Status: done 2026-11-07: release
+2026.3 made (tag `release-2026.3` on 929fa33, commit B 0bf0dfd), pushed
+by Frans; closed at his word (08:15).
 
 Release 2026.3 of BergDB: a bug-free Core, with no known issue at the
 release but in DbObject and user indexes, which are experimental. The
@@ -148,3 +150,8 @@ release."): commit A `929fa33` (BuildInfo 2026.3), the tag
 2026.4-dev, by 018-09's scripts. "Ready" held at A (018-01, section 8).
 No numbers at the release: 016-10's W7 follows. The steps and the notes'
 edits by hand: 018-09, section 8.
+
+2026-11-07. Closed at Frans's word (08:15: "Close 018."), after he pushed
+main and the tag. 018-03's and 018-08's status lines brought up to
+date (nothing open in either). Open questions of 2026.3's work went to
+019 (019-45) and 021 (021-01 to 021-04).

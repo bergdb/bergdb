@@ -5,7 +5,9 @@ Created 2026-11-05 by Frans Lundberg, as the next harness of 018-01's W2
 ("Next: 6.2, on 6.3's strict stream"). Built in the unattended night
 006-12.
 
-**Status: in progress (night 006-12).** See the State note at the end.
+**Status: built; runs in `before-commit.sh`'s unit tests
+(`StorageFaultTester`). Nothing open (the State note at the end; 018
+closed 2026-11-07).**
 
 
 ## 1. What it checks, and why

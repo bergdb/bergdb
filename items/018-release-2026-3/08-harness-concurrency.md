@@ -7,8 +7,9 @@ recommend.": Option 1).
 
 **Status: the eight jcstress tests rerun on `main` (`e446bb2`) on s1 in
 default mode: each `[OK]`, no FORBIDDEN outcome in 0.46 to 6.9 billion
-samples a test (section 3). F53's run is prepared and scheduled for the
-night of 2026-11-06 to 07, after `night.sh large` (section 4).** No test
+samples a test (section 3). On F53, on release 2026.3's commit A (929fa33), in the night of
+2026-11-06 to 07: 8 of 8 OK (006-13, Outcome). Done; 018 closed
+2026-11-07.** No test
 added: review R7 of 006-13 (2026-11-06, the night's concurrency fixes
 015-66, 67, 70, 80 and 82) has no A finding, no cycle in its lock-order
 table, and no shared field that needs a new jcstress test.
