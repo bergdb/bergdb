@@ -51,6 +51,7 @@ Open
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
 | [021-06](06-read-side-ill-formed-utf8.md) | Investigate | Ill-formed UTF-8 from another writer, read by Java | answers | open |
+| [021-07](07-object-reader-format-errors.md) | Fix | The object reader's format errors are not BadFormatException | none | open |
 
 
 Closed
@@ -97,6 +98,11 @@ Files
   021-06, Investigate: a key or a string that is not well-formed UTF-8 in
   a stream from another writer (the C clone's keys), which Java repairs so
   that two keys read as one; with 020-01's object spec (F1, question 5).
+* [07-object-reader-format-errors.md](07-object-reader-format-errors.md).
+  021-07, Fix: bytes that are not a well-formed object give an
+  `AssertionError` (failing the database in `rw()`), a
+  `NegativeArraySizeException` or an `IllegalArgumentException` from the
+  reader, not `BadFormatException` (found in 020-04, section 10).
 
 
 Log

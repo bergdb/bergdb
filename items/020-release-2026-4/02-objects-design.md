@@ -293,7 +293,8 @@ program results.
   `name`, and null from one with a null `name`.
 * A null read into a primitive throws `Bug` (S2-F6), or reads as 0: a
   null `String` read into an `int` or an `Integer` field gives 0,
-  silently (BG3, not known before).
+  silently (BG3, not known before; any `String` does, null or not:
+  020-04, section 10).
 * At the top there is no null already: `put(key, null)` is refused with
   `IllegalArgumentException`, and a key with no value reads as null.
 * Indexes meet three kinds of "no value": a missing field and a null
@@ -377,8 +378,9 @@ program results.
     is present with an accepted type; today's three behaviours become
     one, and 019-42's refusal of a put goes.
   * Question 1's two null rows become one, "absent: the constructor's
-    value", for every type, primitives included; S2-F6 and the silent 0
-    of BG3 go by construction.
+    value", for every type, primitives included; the null cases of
+    S2-F6 and BG3 go by construction (the rest is question 1's: 020-04,
+    section 10).
   * Not a round trip in one case: a null put into a field that the
     constructor sets reads back as the constructor's value (`String
     name = "dflt"`, put with null, reads "dflt"). It is Gson's default
@@ -426,7 +428,8 @@ program results.
    value" as a Binson object does, by the field's absence: Binson's
    choice, applied to classes. (b) leaves a class no way to say it.
 3. **Faults go by construction**: a null into a primitive (S2-F6), the
-   silent 0 (BG3), typed nulls of the wrong type (a null `Integer`
+   silent 0 of a null (BG3; a non-null `String` into an `int` gives 0
+   too, which question 1 removes: 020-04, section 10), typed nulls of the wrong type (a null `Integer`
    stored as an object), three index behaviours (019-42); and question
    1's table loses a row.
 4. **(d) rather than (c): no silent change.** It is the rule of 021-04
@@ -504,3 +507,8 @@ it down. It sounds pretty good. No decision yet.").
 
 2026-11-07. Question 1b: Frans leans to no null values (14:31), not yet
 decided; the design and the change plan, without code, go to 020-04.
+
+2026-11-07. 020-04 written (agent p04): the rules, the format, the change
+plan, the tests and the Javadoc for (d), with six questions for Frans
+(020-04, section 8). Section 2b corrected where 020-04, section 10, found
+that BG3's silent 0 is any `String`'s, not only a null's.

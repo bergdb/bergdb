@@ -104,6 +104,11 @@ session continues with `/coordinator resume` (013-02).
 * 14:26. Frans: "About the Conversion design. Write it down. It sounds
   pretty good. No decision yet." Written as 020-02, section 2.5, option
   (D), with seven questions for the detailed design.
+* 14:31. Frans leans to no null values: "Make a note of this and prepare
+  the required changes. But don't code it yet." Agent p04 (high): 020-04.
+* 15:37. p04 done: 020-04, the design and change plan for (d), six
+  questions for Frans, about one day of work in three commits. Its
+  finding of reader faults registered as 021-07.
 
 
 ## 6. Outcome

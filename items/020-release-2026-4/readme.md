@@ -55,6 +55,13 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   does with null today (a probe, BG1 to BG6), and what each option asks
   of a binding in another language; the programs are in
   `/Users/f/fl/bench/006-14/020-null/`.
+* [04-no-null-design.md](04-no-null-design.md). 020-04, the design and
+  the change plan for "no stored null", option (d) of 020-02's question
+  1b (Frans, 2026-11-07, 14:31: "Now it is ok to design and document"),
+  ready for his "ok-and-implement": the rules of the put, the get, the
+  constructor check and the indexes; the format and its spec text; the
+  code sites at `7edcbe2`; the tests, old and new; the Javadoc and
+  release notes drafted; questions Q1 to Q6 for Frans. No code changed.
 
 
 Log
