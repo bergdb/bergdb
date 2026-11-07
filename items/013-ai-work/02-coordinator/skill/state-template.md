@@ -11,8 +11,8 @@ section 7). The record is the day's plan. Times from `date`.
 * Next coordinator: none yet
 * Check-ins: <job ID, cron, next run>
 * Watchdog: none (<pid>, until YYYY-MM-DD HH:MM)
-* Effort: xhigh (xhigh, high when usage is tight or limit, else Frans's
-  word; section "Effort")
+* Effort: the session xhigh, subagents high (xhigh for a hard task; all
+  high when usage is tight or limit; else Frans's word; section "Effort")
 * Usage: <the last line of usage.sh, with its time> (Frans's word, if he
   gave one: "tight since HH:MM")
 * Agents at a time: at most N, as Frans allows

@@ -112,9 +112,10 @@ Two things make it work:
     too.
 * **Subagents.**
   * At most the number Frans allows (4 in 006-09).
-  * Set the effort on every call: xhigh, or high when usage is tight
-    (013-02, section 9). Another level only when Frans asks for it; never
-    medium.
+  * Set the effort on every call: high; xhigh for a hard task, such as
+    finding Lean proofs or coding for correct concurrency, unless usage
+    is tight (013-02, section 9). Another level only when Frans asks for
+    it; never medium.
   * Each brief names the item, the clone, the files in the main tree the
     agent may write (only its own item's), the hard stop time, and the
     length of its report.

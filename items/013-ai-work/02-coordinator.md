@@ -337,20 +337,32 @@ keeps the Mac from idle sleep while it runs.
 
 ## 9. Effort and usage
 
-* **xhigh for everything** (Frans, 2026-11-03): the coordinator in every
-  mode, and every subagent.
+* **The coordinator: xhigh in every mode** (Frans, 2026-11-03).
 
   > Effort level should be xhigh by default for everything unless
   > explicitely told by Frans to use something else. If usage is tight or
   > limit, use effort level High. Do not use Medium.
 
-  * When the usage level is tight or limit: high.
-  * Another level, such as max for a hard task, only when Frans asks for
+* **Subagents: high by default** (Frans, 2026-11-07, 07:51).
+
+  > About the "/coordinator". Let's change it (if needed) so it starts
+  > subagents with effort level High as default. Unless I say otherwise,
+  > of course. That is the default, but the coordinator is allowed to use
+  > XHigh for subagents with hard tasks such as finding Lean proofs or
+  > coding for correct concurrency.
+
+  * xhigh for a subagent with a hard task, such as finding Lean proofs
+    or coding for correct concurrency, at the coordinator's judgment,
+    when the usage level is plenty or normal.
+  * When the usage level is tight or limit: high for everything.
+  * Another level, such as max for one task, only when Frans asks for
     it. His word goes into the day's plan and the state file.
   * Never medium or low.
 
-  This replaces the rules of 27 and 28 October: max unattended, and max
-  for subagents on hard problems or when usage was plentiful.
+  This replaces the rule of 2026-11-03 for the subagents (xhigh for
+  everything, every subagent included). That rule replaced the rules of
+  27 and 28 October: max unattended, and max for subagents on hard
+  problems or when usage was plentiful.
 
   xhigh is the default for Opus 5.5 in `~/.claude/settings.json`
   (`modelSettings`), so a new session starts there, and a switch of mode
@@ -367,8 +379,9 @@ keeps the Mac from idle sleep while it runs.
   the level is back. While he is away, the session's effort stays where it
   is. Little is lost: the heavy work is done by subagents, whose effort
   the coordinator sets on every call.
-* **Subagents get their effort set on every call**, by the rule above:
-  xhigh, or high when the usage level is tight or limit.
+* **Subagents get their effort set on every call**, by the rules above:
+  high, or xhigh for a hard task when the usage level is plenty or
+  normal.
 * **The usage, read by the coordinator itself.** The plan has a 5-hour
   window and a weekly one. `skill/usage.sh` runs Claude Code's `/usage`
   headless (`claude -p /usage`). That is a local command: it calls no
@@ -384,8 +397,8 @@ keeps the Mac from idle sleep while it runs.
 
   | Level | When | The coordinator |
   |---|---|---|
-  | plenty | 5h below 50 %, and the week at most 15 points ahead of its time (Frans, 2026-10-28) | xhigh, up to the agent limit |
-  | normal | otherwise | xhigh, up to the agent limit |
+  | plenty | 5h below 50 %, and the week at most 15 points ahead of its time (Frans, 2026-10-28) | the session xhigh, subagents high (xhigh for a hard task), up to the agent limit |
+  | normal | otherwise | the session xhigh, subagents high (xhigh for a hard task), up to the agent limit |
   | tight | 5h at 80 % or more; or the week at 85 % or more, or 25 points ahead of its time; or the server warns | high only, at most two agents, puts off what can wait |
   | limit | 5h or the week at 98 % or more | starts nothing; a one-off check-in 3 minutes after the reset resumes the work |
 

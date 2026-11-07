@@ -76,3 +76,13 @@ else. If usage is tight or limit, use effort level High. Do not use
 Medium."): high when usage is tight or limit, another level only at
 Frans's word, never medium (013-02, section 9; the skill; 013-01,
 section 4). This replaces max unattended and max for hard problems.
+
+2026-11-07. Subagents at high by default, at Frans's request (07:51:
+"Let's change it (if needed) so it starts subagents with effort level
+High as default. Unless I say otherwise, of course. That is the default,
+but the coordinator is allowed to use XHigh for subagents with hard tasks
+such as finding Lean proofs or coding for correct concurrency."): xhigh
+for such a task at the coordinator's judgment, when usage is plenty or
+normal; the coordinator itself stays at xhigh, all at high when usage is
+tight or limit (013-02, section 9; the skill; 013-01, section 4). This
+replaces xhigh for every subagent.

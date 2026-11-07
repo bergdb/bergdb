@@ -213,14 +213,17 @@ state file. Delete the old job when the mode changes.
 Effort
 ------
 
-xhigh for everything, the session in every mode and every subagent,
-unless Frans says otherwise (Frans, 2026-11-03). High when the usage
-level is `tight` or `limit`. Never medium or low.
+Subagents: high by default (Frans, 2026-11-07). xhigh, at the
+coordinator's judgment, for a hard task such as finding Lean proofs or
+coding for correct concurrency, when the usage level is `plenty` or
+`normal`. The session: xhigh in every mode (Frans, 2026-11-03). When the
+usage level is `tight` or `limit`, everything at high. Frans's word
+overrides either way. Never medium or low.
 
-| Usage level | The session and subagents |
-|---|---|
-| `plenty`, `normal` | xhigh |
-| `tight`, `limit` | high |
+| Usage level | The session | Subagents |
+|---|---|---|
+| `plenty`, `normal` | xhigh | high; xhigh for a hard task |
+| `tight`, `limit` | high | high |
 
 Another level, such as max for one task, only when Frans asks for it.
 Write his word in the day's plan and on the state file's Effort line.
@@ -258,7 +261,7 @@ the thresholds.
 
 | Level | The coordinator |
 |---|---|
-| `plenty`, `normal` | xhigh, up to the agent limit |
+| `plenty`, `normal` | the session xhigh, subagents high (xhigh for a hard task), up to the agent limit |
 | `tight` | high only, at most two agents at a time, puts off what can wait, tells Frans once if he is there and asks for `/effort high` |
 | `limit` | starts nothing; sets a one-off check-in (CronCreate, not recurring) 3 minutes after the reset the line gives; writes the limit in the events |
 | `unknown` | keeps the last known level; the next check-in reads again |
@@ -290,10 +293,11 @@ Rules
   builds, gates, Lean, measurements and reviews as background commands or
   in subagents, never in the foreground.
 * **Subagents.**
-  * Use background agents (Agent). Pass `effort` on every call: `xhigh`,
-    or `high` when the usage level is `tight` or `limit` (section
-    "Effort"). Another level only when Frans asks for it; never `medium`
-    or `low`.
+  * Use background agents (Agent). Pass `effort` on every call: `high`;
+    `xhigh` for a hard task, such as finding Lean proofs or coding for
+    correct concurrency, when the usage level is `plenty` or `normal`
+    (section "Effort"). Another level only when Frans asks for it; never
+    `medium` or `low`.
   * Write the agent's name or ID, task, item, clone, effort and output
     file in the state file at once.
   * The brief: as for a peer who knows nothing of the conversation; it
