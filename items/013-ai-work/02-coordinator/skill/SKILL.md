@@ -177,12 +177,14 @@ network outage, with work half done.
 ### `resume`
 
 After the session was restarted (a crash, VS Code closed, the machine
-restarted): the check-ins and background agents of the old process are
-gone.
+restarted): the background agents of the old process are gone. Its
+check-ins may not be: after a VS Code restart, resumed in the same session,
+they lived on (2026-11-07, coord-1107), and a new one fired as a second.
 
 1. `date`. Find this session's `state.md` (the newest whose session ID
    is this session's). Update the process ID.
-2. Set the check-in for the mode again. Restart the watchdog if the mode
+2. CronList. Keep one check-in for the mode, deleting the others, or
+   set it again if none is left. Restart the watchdog if the mode
    is unattended and its process is gone. A new process starts at the
    settings' effort (xhigh); if the usage level is `tight` or `limit`,
    ask Frans to type `/effort high` (section "Effort").
