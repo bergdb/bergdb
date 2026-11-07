@@ -1,6 +1,7 @@
 # 006-13 Day and night work, 6 to 7 November 2026
 
-Created 2026-11-06 by Frans Lundberg. Status: open. The plan for the
+Created 2026-11-06 by Frans Lundberg. Status: done (2026-11-07; see
+Outcome). The plan for the
 coordinator's day and night of 2026-11-06 (coord-1106), the progress and
 the outcome. The way of working is 013-02's (the coordinator) and, for the
 night, 013-01's.
@@ -324,4 +325,66 @@ session continues with `/coordinator resume` (013-02).
 
 ## 8. Outcome
 
-Not yet.
+Written 2026-11-07, 06:20, by coord-1106. 48 commits on `main`, 8df56fc
+to 7f9e43f; none pushed.
+
+### Done in `main`
+
+* **006-12's ten decisions with Frans** (W1): 019-10 the simple error
+  model (01b0493; R6 reviewed; 019-38, 019-39, 019-40, 019-42 from it);
+  015-80's C1 as 019-36 (closed, measured); 019-15 (b), words (5394276);
+  019-30, 019-31, 019-33 outside the fault model, 017-08 checksums
+  (ad7187f); 018-04's Q1 to Q5 (b13991a); 015-86 Option 1 and 017-07,
+  section 5 (ada8608); W7's rerun (done tonight); reviews R6 and R7;
+  next.md's behaviour changes kept; the "Built by Claude" lines moved to
+  the Logs (b5329c1).
+* **New principle 010-P13, KISS**; 010-P1's 20 ms a guide, not a limit.
+* **The Core's faults fixed today**: 015-06's rest (4248141), 019-32
+  (00b184e), 019-37 (e7102b2), 019-38 (cecaf4c), 019-39 (940e603),
+  019-40 (35f5b72), 019-41 (8f0d117), 019-42 (e687400), 019-43 (b63273d,
+  the harness's oracle), 019-44 (a9da30c). 019-35 and 019-36 closed from
+  the night's figures (7f9e43f). **019's Open table is empty: no known
+  fault of the Core is open** (018-01, "Ready", 1).
+* **Harness 6.6**, jcstress (018-08): s1 8 of 8 OK, F53 8 of 8 OK on A.
+* **The documentation read through** (8996de0, Ready 4).
+* **`night.sh` without a fixed time** (fb85272); the launchd job retired.
+* **Release 2026.4 begun**: 020-release-2026-4, its inventory 020-01
+  (e8ab9ae), the todo list 021-todo.
+* **Release 2026.3's candidate**: commit A, 929fa33 (`BuildInfo` 2026.3),
+  and 018-09, the release's plan and scripts.
+
+### The candidate A (929fa33) and the night
+
+| Check ("Ready")                         | Result                                   |
+|---|---|
+| `night.sh large` on A (2)              | NIGHT OK, 313 minutes, conformance large |
+| jcstress on F53, on A (2, harness 6.6) | 8 of 8 OK                                |
+| s1's jar tests, JDK 27 and 17 (2)      | S1 TESTS OK                              |
+| F53's jar tests, JDK 27 and 17 (2)     | run 06:02, see below                     |
+| StreamDigest against 2026.2 (3)        | OK: 4 configurations, all named          |
+| The axioms (44 theorems)               | OK                                       |
+| The early `night.sh`, 3aa2d93          | NIGHT OK, 48 minutes                     |
+
+* **W7** (016-10), quiet, 22:00 to 23:16: 4 of 5 steps; sb-c's two b133
+  runs ran out of a 600 MB heap at the start in both versions (a setting).
+  Its tables go into 016-10 (agent mw4).
+* **block-q**, quiet, 00:30 to 04:15, 27 of 27 steps: 019-36 on F53, no
+  cut waited; 019-35's trace (019-35's entry).
+* The network was down from 17:51 to 18:00; nothing stopped.
+
+### For Frans to decide
+
+1. **Release 2026.3 at your word**: 018-09's morning steps, about 35
+   minutes (collect, finish, notes with a 10-minute read, commit B and
+   the tag, local). Recommended: yes, if F53's jar tests are OK.
+2. The morning list in section 3 (d30's remaining points, lone
+   surrogates in objects, 019-40's C8).
+3. W7: whether to update `releases/2026.2/`'s notes and `baseline.zip`
+   with night 4's figures, and sb-c's b133 runs (016-10).
+4. 020-01, section 14: the shape of 2026.4's objects and indexes, ICU,
+   the primary scan; then 021's first entries.
+
+### Left
+
+* 2026.4's work (020, 021). The clones in `/Users/f/fl/bench/006-13/`
+  may be deleted after the release.
