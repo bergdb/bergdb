@@ -362,7 +362,7 @@ to 7f9e43f; none pushed.
 | `night.sh large` on A (2)              | NIGHT OK, 313 minutes, conformance large |
 | jcstress on F53, on A (2, harness 6.6) | 8 of 8 OK                                |
 | s1's jar tests, JDK 27 and 17 (2)      | S1 TESTS OK                              |
-| F53's jar tests, JDK 27 and 17 (2)     | run 06:02, see below                     |
+| F53's jar tests, JDK 27 and 17 (2)     | TESTS F53 OK (06:02 to 06:25)            |
 | StreamDigest against 2026.2 (3)        | OK: 4 configurations, all named          |
 | The axioms (44 theorems)               | OK                                       |
 | The early `night.sh`, 3aa2d93          | NIGHT OK, 48 minutes                     |
@@ -378,7 +378,7 @@ to 7f9e43f; none pushed.
 
 1. **Release 2026.3 at your word**: 018-09's morning steps, about 35
    minutes (collect, finish, notes with a 10-minute read, commit B and
-   the tag, local). Recommended: yes, if F53's jar tests are OK.
+   the tag, local). Every check on A is OK. Recommended: yes.
 2. The morning list in section 3 (d30's remaining points, lone
    surrogates in objects, 019-40's C8).
 3. W7 (016-10, 06:06): whether to update `releases/2026.2/`'s notes and
