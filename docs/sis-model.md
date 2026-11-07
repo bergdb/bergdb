@@ -1,7 +1,7 @@
 Self-indexed streams: the model
 ===============================
 
-Draft 2, 2026-10-12. Written by Claude for Frans Lundberg.
+Draft 2, 2026-10-12.
 
 A self-indexed stream is a database that keeps all its data, index
 included, in one append-only stream, and that after a crash rebuilds its
@@ -36,7 +36,7 @@ Review, 2026-10-13: the model and proof scope are unchanged at `ebe5f77`.
 [levels.md](levels.md) records Java's tested status and what remains to
 show that the Java code implements the model. Fresh Lean build, randomized
 and axiom checks passed during the documentation review; details are in
-[lean/README.md](../lean/README.md).
+the Lean model's log, [011-12](../items/011-docs-archive/12-lean-status-log.md).
 
 
 1 Summary
@@ -666,8 +666,8 @@ The model in Lean is in [../lean/](../lean/README.md).
   pseudo-random runs, that the examples meet the assumptions, and T1 and T2.
 * 2026-10-15 and 2026-10-16 (F1-008-11): A5, marking and T13, BergDB's
   still-dirty test, Rule R from R(s), a policy that sees T(i), and the
-  virtual root (sections 3.4, 6 and 9; lean/README.md, the changes to the
-  trusted part). The trace checker (lean/Check/, `tracecheck`) runs the
+  virtual root (sections 3.4, 6 and 9; 011-12, the changes to the trusted
+  part). The trace checker (lean/Check/, `tracecheck`) runs the
   model's `init` and `step` on traces of Java runs
   ([trace-format.md](trace-format.md); [011-11](../items/011-docs-archive/11-level2-alignment.md),
   section 10).
@@ -731,7 +731,7 @@ From 2026-10-15 to 2026-10-16 (F1-008-11):
 15 The physical layer, eviction and reclaim
 ===========================================
 
-Added 2026-10-18 by Claude (Opus 5.5, Claude Code), bergdb item 001. The
+Added 2026-10-18, bergdb item 001. The
 model of sections 2 to 9 is logical: P, D and the stream. Item 001 added
 what Java holds in memory and how it evicts (Level 4 of levels.md), and how
 the front of the stream is cut (Level 3), each with its theorems, proved in

@@ -58,6 +58,11 @@ Files
   [docs/trace-format.md](../../docs/trace-format.md)), the red list, the
   outcome; its evidence in [11-level2-alignment/](11-level2-alignment/).
   Formerly `docs/level2-alignment.md`.
+* [12-lean-status-log.md](12-lean-status-log.md). 011-12, the Lean model's
+  log: `lean/README.md`'s section Status until 2026-11-07, the dated
+  milestones, proofs, checks and changes to the trusted part from
+  2026-10-12 to 2026-10-28, with the line of its header that named its
+  author as the first entry (bergdb 021-02). Formerly in `lean/README.md`.
 
 
 Log
@@ -70,3 +75,9 @@ done."), by Claude (Opus 5.5, Claude Code). 01 to 11 are the documents
 moved, each with a line on where it came from and its links fixed,
 otherwise unchanged; 011-01 got a note on where its open questions went,
 and section 9 of 011-11 a pointer to `docs/trace-format.md`.
+
+2026-11-07. Added 011-12, `lean/README.md`'s section Status, a dated log,
+moved here as it was (links fixed), with the line of its header that named
+its author; `lean/README.md`'s Status keeps the current state without
+dates (bergdb 021-02; Frans, 2026-11-07, 08:00: "For a., do as
+recommended."). By agent f13 of coord-1107.

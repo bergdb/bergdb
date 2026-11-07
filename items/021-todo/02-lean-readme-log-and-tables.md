@@ -1,7 +1,7 @@
 021-02. Fix: lean/README.md: a progress log, wide tables and a "Written by Claude" line
 =======================================================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: done. Kind: Fix. Frans: none.
 Created 2026-11-07 by Frans Lundberg.
 
 What: `lean/README.md` (1,275 lines on `main` at b59e918) breaks three of
@@ -69,3 +69,39 @@ Log
 
 2026-11-07. Registered by coord-1106 from 006-13's morning list, point 1,
 at Frans's word (2026-11-07, 08:00).
+
+2026-11-07. Taken by agent f13 of coord-1107 (006-14).
+
+2026-11-07. Done by agent f13 of coord-1107, with the defaults:
+
+1. `lean/README.md`'s Status (its 750 lines, a dated log from 2026-10-12
+   to 2026-10-28) moved, as it was, to the new subitem 011-12
+   (`items/011-docs-archive/12-lean-status-log.md`; its three kinds of
+   links fixed for the new place; a line in 011's Files and its Log). The
+   README's Status now holds the current state without dates: what is
+   proved (Level 2, stages 1 to 3 of 001, the bounds, each with its
+   theorems), what is checked by running, and the three open points of
+   "Not done", taken from the log's last two paragraphs; it cites 011-12.
+   References that meant the log: `docs/sis-model.md`'s review note of
+   2026-10-13 and its section 13's "lean/README.md, the changes to the
+   trusted part" now cite 011-12. No reference in `lean/`, `java/` or
+   `docs/levels.md` meant the log (levels.md's cites the README's
+   introduction, which stays). Old items are left as they are.
+2. The two tables of "What to read" are lists, one item per file: the
+   file, its sections of sis-model.md (or "not in sis-model.md" with the
+   document that has it), then its contents, word for word; the four paths
+   to items in them became IDs (005-62, 007-01, 007-08, 009-02).
+   `lean/README.md` has no table now and no line over 100 characters but
+   one of prose (108, in the introduction).
+3. `lean/README.md`'s line 4 is the first entry of 011-12's log, with the
+   note. `docs/sis-model.md`'s line 4 is now "Draft 2, 2026-10-12."; its
+   "Written by Claude" went to `docs/log.md` as an entry of 2026-10-12, and
+   section 15's first line, "Added 2026-10-18 by Claude (Opus 5.5, Claude
+   Code)", the same way as an entry of 2026-10-18 (the "Done when" asks
+   that sis-model.md name no AI). The README's "review-13-claude's
+   `R4Bridge.lean`" (a file of the f1 repository) became "the
+   `R4Bridge.lean` of F1-008-13's review".
+
+Not changed: the README's introduction still tells its history in "Since
+bergdb item ... (date)" paragraphs; not in this entry's scope. Text only,
+no `.lean` file changed, so no gate.

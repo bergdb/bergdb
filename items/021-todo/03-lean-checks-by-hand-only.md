@@ -1,7 +1,7 @@
 021-03. Fix: Lean's test programs run by hand only, and TakeCheck does not compile
 ==================================================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: in progress. Kind: Fix. Frans: none.
 Created 2026-11-07 by Frans Lundberg.
 
 What: checks of the Lean model that no script runs, so that nothing tells
@@ -59,3 +59,38 @@ Log
 
 2026-11-07. Registered by coord-1106 from 006-13's morning list, point 1,
 at Frans's word (2026-11-07, 08:00).
+
+2026-11-07. Taken by agent f13 of coord-1107 (006-14).
+
+2026-11-07. By agent f13 of coord-1107. Times on F53, in a clone of `main`
+at bfacd87 (`/Users/f/fl/bench/006-14/f13/`), the machine otherwise quiet
+(no performance.sh, night.sh or level script): `sistest 5 40` 104 s,
+`phystest 5 40` 95 s, `reclaimtest 20 30` 51 s; each scales with its seeds,
+so the README's sizes, 20 40, take about 7 minutes each, as it says. Each
+program counts its failures, prints "N failures" instead of "all checks
+pass", and exits with status 1 (`return (if bad == 0 then 0 else 1)`).
+
+1. New `java/stress/lean-tests.sh`: builds the three with `lake build
+   sistest phystest reclaimtest` (elan needed, as the level scripts),
+   runs `sistest 5 40`, `phystest 5 40` and `reclaimtest 20 30` (`full`:
+   20 40, 20 40, 20 30), and fails a program whose exit code is not 0 or
+   whose last line is not "all checks pass"; one line per program, then
+   LEAN TESTS OK, or LEAN TESTS FAILED with the names and exit status 1;
+   outputs in `java/build/lean-tests/`. In the clone: LEAN TESTS OK in
+   249 s (103, 95, 51 s; lake build 3 s with the main tree's `.lake`).
+   Shown once with a failure made by hand (`bad := bad + 1` before
+   sistest's last line, in the clone only): "sistest 5 40 FAILED 100 s
+   exit 1: 1 failures", LEAN TESTS FAILED: sistest, exit 1, the other two
+   ok. `java/night.sh` runs it as a step after level4 (`step lean-tests`;
+   its header lists it as step 4, the night now about 55 minutes); a
+   failure fails the night, as every step's does. Not in
+   `before-commit.sh`. `lean/README.md`, "Build and run", says so.
+2. TakeCheck: 015-03 is still open, so this entry does not wait for it;
+   015-03's log has the line that TakeCheck joins this step when it
+   compiles.
+3. Open: one `java/night.sh` run with the step, NIGHT OK. night.sh clones
+   HEAD, so it needs this entry committed first; the coordinator runs it
+   when planned and closes the entry after it. `BEFORE COMMIT OK (120 s)` (2026-11-07,
+   08:57), on the tree with this entry's and 021-01's changes.
+
+State: done but for the night run of point 3.

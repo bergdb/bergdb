@@ -45,6 +45,11 @@ still dirty after it is written gets the current transaction as its
 got-dirty index, so it is written only once per startup section, at the
 cost of reconciliation at startup. Wrote `docs/sis-model.md`.
 
+2026-10-12. `docs/sis-model.md`, draft 2: written by Claude for Frans
+Lundberg. (Moved here from sis-model.md's header on 2026-11-07, at Frans's
+word, 2026-11-07, 08:00: 006-13, section 5, morning list, point 1; as
+006-12, section 8, point 10, option (b); bergdb 021-02.)
+
 2026-10-12. Installed Lean 4 (elan, toolchain 4.34.1). Wrote `lean/`:
 milestone 1, the model's definitions, assumptions and the statements of T1
 and T2, with the example of sis-model.md section 7 and a random test on a
@@ -710,6 +715,11 @@ outcome of the plan's 1.2 for Level 4 point by point
 ([level4-alignment.md](../items/001-lean-model-levels-3-4/08-level4-alignment.md), section 8), Level 4 in
 [levels.md](../items/011-docs-archive/04-levels.md), the status in `README.md`, `problem.md` (R5, R6,
 Q10), [sis-model.md](sis-model.md) (section 15) and `lean/README.md`.
+
+2026-10-18. `docs/sis-model.md`, section 15: added by Claude (Opus 5.5,
+Claude Code), bergdb item 001. (Moved here from the section's first line on
+2026-11-07, at Frans's word, 2026-11-07, 08:00: 006-13, section 5, morning
+list, point 1; as 006-12, section 8, point 10, option (b); bergdb 021-02.)
 
 2026-10-18. Bergdb item 001, WP F3: the final report
 ([../items/001-lean-model-levels-3-4/06-final-report.md](../items/001-lean-model-levels-3-4/06-final-report.md)).

@@ -32,3 +32,8 @@ Log
 2026-11-03, 17:35, by the coordinator: `lean/`'s `Bound.lean` (line 133)
 and `BoundExample.lean` (line 83) name `TransSeq.dither`, which 005-79
 removed; 007-08's `TakeCheck.java` calls it (015-19).
+
+2026-11-07, by agent f13 of coord-1107 (021-03): when this entry is done
+and 007-08's `TakeCheck.java` compiles against `main` again, TakeCheck
+joins 021-03's step, `java/stress/lean-tests.sh` (a step of
+`java/night.sh`), if it takes a few minutes or less.

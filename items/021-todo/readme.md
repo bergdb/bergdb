@@ -50,9 +50,7 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
-| [021-01](01-pub-javadoc-d30-rest.md) | Fix | Pub Javadoc: DataFormatException, dated history, Time | none | open |
-| [021-02](02-lean-readme-log-and-tables.md) | Fix | lean/README.md: a log, wide tables, a Claude line | none | open |
-| [021-03](03-lean-checks-by-hand-only.md) | Fix | Lean's test programs by hand only; TakeCheck | none | open |
+| [021-03](03-lean-checks-by-hand-only.md) | Fix | Lean's test programs by hand only; TakeCheck | none | in progress |
 | [021-04](04-lone-surrogates-in-objects.md) | Decide | A lone surrogate in a String inside an object | decision | open |
 
 
@@ -61,6 +59,8 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [021-01](01-pub-javadoc-d30-rest.md) | Fix | Pub Javadoc: DataFormatException, dated history, Time | none | done | 2026-11-07 |
+| [021-02](02-lean-readme-log-and-tables.md) | Fix | lean/README.md: a log, wide tables, a Claude line | none | done | 2026-11-07 |
 
 Status values: open, waiting (for Frans's input), in progress, done,
 dropped, moved (to an item of its own or to 017). Kinds: Fix (a known
