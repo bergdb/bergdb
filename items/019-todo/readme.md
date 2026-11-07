@@ -109,6 +109,7 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
+| [019-45](45-start-rerun-heap.md) | Investigate | Does a start's rerun keep to the cache budget? | none | open |
 
 
 Closed

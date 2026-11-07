@@ -564,6 +564,8 @@ closed):
    (the flag fixed, a ZGC smoke, the five steps in one quiet block on F53,
    about 75 minutes) and Frans's options A to C: 016-10, section 6,
    2026-11-06.
+   2026-11-07: rerun quiet, 4 of 5 exit 0 (sb-c's b133 runs out of heap);
+   the tables and Frans's choices: 016-10, section 6, 2026-11-07.
 2. s1's W7 runs: 4 of 10 ended with OutOfMemoryError (2.5 GB heap on a
    3 GB machine); 016-10 decides how to redo them.
 3. Section 7's items for Frans; 005 and 015 one entry at a time with

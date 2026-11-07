@@ -2,8 +2,9 @@
 =========================================
 
 Created 2026-11-03 by Frans Lundberg. Status: run in part on
-2026-11-06, not quiet; the rerun is prepared for the night of 6 to 7
-November, not started (section 6, 2026-11-06, 11:50).
+2026-11-06, not quiet; rerun in a quiet block in the night of 6 to 7
+November, 4 of 5 steps exit 0 (sb-c's two 133 MB runs out of heap); the
+notes and `baseline.zip` wait for Frans (section 6, 2026-11-07).
 
 The plan for W7 of 016-01 (section 5): 2026.2's numbers against 2026.1,
 with both jars run in turns, on F53 and s1, for the release notes and
@@ -826,3 +827,173 @@ four (larger heaps, a smaller startup distance on s1, or s1 out of
 tables into `releases/2026.2/readme.md`, `baseline.zip` and `SHA256SUMS`
 in one commit (N9; 016-09, R8), with the 39 ms line from
 `f53-c-10m-b665-zgc-2026.2`'s 8 threads.
+
+2026-11-07, 06:06, W7's rerun in night 4's quiet block on F53, read from
+its files by agent mw4 of coord-1106; `collect.sh` and `tables.sh` run
+into the bench directory; no other run, no commit, `releases/` untouched.
+B4 is `/Users/f/fl/bench/016/night4/`, N `/Users/f/fl/bench/016/numbers/`.
+
+**What ran.** `B4/block.sh` (pid 58831, started 2026-11-06, 16:13; START
+22:00, LATEST 01:00, HARD 02:40) wrote its marker at 22:00:04, paused
+mediaanalysisd and found F53 quiet at its second check, 22:00:35 (1-minute
+load 1.81 and 1.86, nothing of ours, the two Claude sessions idle). The
+five steps ran from 22:00 to 23:16, each `quiet` at its start; then
+mediaanalysisd resumed, the marker removed, news.md `FAILED` ("4 of 5
+steps exit 0"); the guard ended with nothing to do. In the runs ScaleBench
+measured the other processes at 0.12 to 0.32 cores of 10, but 0.86 and
+0.49 in sb-m's ZGC run of 2026.2 (4 and 8 threads, 22:15 to 22:16: mds at
+56 percent of a core, a process `top` names `Software` at 95,
+`B4/steps-load.txt`) and 0.45 in 2026.1's ZGC run with 8 threads. VS Code
+peaked at 72 and 67 percent at 22:04 and 22:32. So quiet, with those
+short peaks; night 3's figures (2026-11-06, 06:40, not quiet) agree with
+these within a few percent.
+
+| Step     | Time           | Exit | Result                                                   |
+|----------|----------------|------|----------------------------------------------------------|
+| props    | 22:00 to 22:04 | 0    | OK, 3 runs each, ABBAAB                                  |
+| sb-m     | 22:04 to 22:20 | 0    | OK, 4 runs: G1 and ZGC with each jar; the ZGC runs ran   |
+| sb-c     | 22:20 to 22:54 | 1    | the four 665 MB runs OK; both 133 MB runs out of heap    |
+| pp       | 22:54 to 23:02 | 0    | OK, 4 runs                                               |
+| quick-ab | 23:02 to 23:16 | 0    | OK; the comparison's exit 1, two unconfirmed alerts      |
+
+**sb-c's exit 1.** Both `f53-c-10m-b133-g1-VER` runs (budget 133 MB,
+`-Xmx600m`, the heap of 2026.1's baseline, chosen at its 10 MB startup
+distance) ended 8 s after their start with `OutOfMemoryError: Java heap
+space`, in the database's start, `DbStarter.rerunTransactions`: 2026.1 in
+`KeyNode.growCapacity` (from `StoredKeyNode.parse`), 2026.2 in
+`NodeStream.readNode` (from `NodeCollection.readVersion`). The start
+reruns the transactions after the startup position, up to 200 MB of
+stream, and a 600 MB heap does not hold what they read. It is s1's
+failure of 2026-11-04 (D at 133 MB at 10M, 600m, both versions): not a
+fault of the scripts and not a difference between the versions. The four
+665 MB runs (2660m heap) passed. Not checked: whether the rerun's reads
+should keep to the cache budget at all.
+
+**`collect.sh`** ran at 06:04 as `R=B4/collect C=B4 NOS1=1`, on a copy of
+`/Users/f/fl/bench/016/release/out/baseline` in `B4/collect/out/baseline`,
+as night 3's: the release's directory and s1 are untouched. It printed
+`COLLECT OK: B4/collect/out/baseline (10M)` (it checks only that each
+step's directory exists, so the b133 runs pass it). The GC logs make most
+of the 10 MB: zipped, 1.28 MB with them, 0.21 MB without (the release's
+`baseline.zip` is 0.23 MB). `tables.sh` rewrote `N/night/tables.md` (49
+rows; its 2 lines with `?` are s1's 2026.1 C and D cells, from
+2026-11-04), copied as `B4/collect/tables-2026-11-07.md` and the
+baseline's `tables.md`; night 3's is `B4/collect/tables-2026-11-06.md`.
+
+**The numbers**, F53, JDK 27, both jars in turns. Props (medians of 3
+runs; lower is better):
+
+| Version | MEM | CORE | SS   | CORE of each run |
+|---------|-----|------|------|------------------|
+| 2026.1  | 192 | 0.29 | 1.50 | 0.29, 0.29, 0.29 |
+| 2026.2  | 129 | 0.24 | 1.51 | 0.24, 0.25, 0.24 |
+
+ScaleBench M: 10M key24 keys in memory, 6 GB of heap, startup distance
+200 MB, one run a version and collector (G1: 2026.1 then 2026.2; ZGC:
+2026.2 then 2026.1); gets a second:
+
+| Figure, M            | G1, 2026.1 | G1, 2026.2 | Change | ZGC, 2026.1 | ZGC, 2026.2 | Change  |
+|----------------------|------------|------------|--------|-------------|-------------|---------|
+| load, seconds        | 41.7       | 45.9       | +10 %  | 48.8        | 55.8        | +14 %   |
+| heap, B a key        | 244        | 185        | −24 %  | 315         | 225         | −29 %   |
+| on disk, B a key     | 187        | 231        | +24 %  | 187         | 231         | +24 %   |
+| uniform, 1 thread    | 721,505    | 656,645    | −9.0 % | 609,551     | 532,099     | −12.7 % |
+| threads 4            | 2,063,590  | 2,262,446  | +9.6 % | 1,852,323   | 1,976,197   | +6.7 %  |
+| threads 8            | 2,143,565  | 4,115,138  | +92 %  | 2,154,337   | 3,624,228   | +68 %   |
+| longest get, 8 thr.  | 6.5 ms     | 7.8 ms     |        | 5.1 ms      | 13.4 ms     |         |
+| longest GC pause, ms | 721        | 394        |        | 0.01        | 0.01        |         |
+
+The uniform phase's five windows: 711,694 to 728,344 and 655,185 to
+660,784 (G1), so the one-thread gap is outside one run's spread; night 3
+had 723,598 and 667,156 (−7.8 percent).
+
+ScaleBench C: 10M key24 keys, a cache budget of 665 MB, the rest in the
+OS cache, 2660m heap, the databases of sb-m's ZGC runs; gets a second:
+
+| Figure, C 665 MB      | G1, 2026.1  | G1, 2026.2  | ZGC, 2026.1 | ZGC, 2026.2 |
+|-----------------------|-------------|-------------|-------------|-------------|
+| uniform, 1 thread     | 176,805     | 265,105     | 165,809     | 254,453     |
+| p50 / p99, µs         | 4.96 / 11.5 | 3.29 / 8.96 | 5.22 / 12.8 | 3.55 / 9.73 |
+| longest get, 1 thread | 176 ms      | 45.6 ms     | 272 µs      | 276 µs      |
+| threads 4             | 167,874     | 739,928     | 142,572     | 611,874     |
+| threads 8             | 133,861     | 609,523     | 114,067     | 609,408     |
+| longest get, 8 thr.   | 4.07 s      | 52.7 ms     | 6.03 s      | 39.6 ms     |
+| longest batch         | 4.78 s      | 45 ms       | 6.82 s      | 21 ms       |
+| longest GC pause, ms  | 231         | 149         | 0.02        | 0.03        |
+| full GCs              | 53          | 1           | 0           | 0           |
+
+2026.1's longest batch is the sweep that stops the readers; with 8
+threads 2026.2's gets over 10 ms were 215 in 30 s (ZGC), p99.9 67.6 µs.
+
+The pause probe (1M keys, 100 MB, 4 readers, 60 s a phase; times in ms,
+the longest of the `tsize=1` and `tsize=1000` phases; gets of `tsize=1`):
+
+| Run         | Gets       | Longest get | Longest commit | Longest batch | Night 3's get |
+|-------------|------------|-------------|----------------|---------------|---------------|
+| 2026.1, G1  | 7,021,548  | 435.5       | 435.4          | 804           | 430.8         |
+| 2026.2, G1  | 29,891,854 | 24.4        | 31.1           | 24.7          | 26.1          |
+| 2026.2, ZGC | 29,318,511 | 6.7         | 24.0           | 5.9           | 6.9           |
+| 2026.1, ZGC | 6,539,045  | 562.9       | 562.6          | 1,163         | 630.9         |
+
+The quick suite (`performance.sh ab 2026.1 2026.2`, 3 runs a scenario in
+ABBA order, medians, one round; CV at most 1.9 percent but 2026.1's
+`mix.gets_per_s`, 6.4), the changes of note; all in `N/night/tables.md`:
+
+| Scenario, metric            | 2026.1    | 2026.2    | Change  | Night 3 |
+|-----------------------------|-----------|-----------|---------|---------|
+| r-1k-fin, mix.gets_per_s    | 1,972,530 | 2,315,870 | +17.4 % | +13.2 % |
+| r-1k-fin, mix.commits_per_s | 49,423.2  | 52,271.4  | +5.8 %  | +6.1 %  |
+| read-1k, get_latest         | 1,318,610 | 1,251,380 | −5.1 %  | −3.5 %  |
+| read-1k, get_historical     | 1,261,980 | 1,217,060 | −3.6 %  | −3.5 %  |
+| read-1k, get_latest_mt4     | 3,552,820 | 4,261,600 | +19.9 % | +22.2 % |
+| read-1k, get_longkey        | 954,804   | 856,410   | −10.3 % | −6.1 %  |
+| w-uni-1k-fin, commits_per_s | 63,318.1  | 64,225.0  | +1.4 %  | +0.9 %  |
+| w-uni-1k-inf, commits_per_s | 102,066.0 | 99,371.1  | −2.6 %  | −3.2 %  |
+
+`get_latest` and `get_longkey` are the two alerts, "worse by more than
+5.0% in every candidate run; unconfirmed"; `get_longkey`'s was night 3's
+one alert too.
+
+**Against the notes** (`releases/2026.2/readme.md`, Changes, Performance:
+009-03's figures, before 015-13 and 015-14):
+
+* Gets in memory from 8 threads, "101 and 61 percent more" (G1, ZGC): W7
+  92 and 68.
+* From one thread, "3 and 11 percent fewer": W7 9.0 and 12.7. G1's is 6
+  points worse than the notes say, in two nights (−7.8 not quiet, −9.0
+  quiet) and in the quick suite's one-thread gets (−5.1 and −10.3, two
+  nights). A sentence in the notes; not a stop (section 4: no cited figure
+  moved by more than 20 percent), so no `news.sh "needs a look"`.
+* Loads in memory, "8 to 20 percent slower": W7 10 and 14.
+* The longest get from the OS cache at 10M under ZGC, "3.45 ms, against
+  7.3 s" (009-03, 10 MB): W7, at 200 MB, 39.6 ms against 6.03 s with 8
+  threads, 4.96 ms against 6.00 s with 4.
+* MEM "129 to 130, against 191": W7 129 and 192.
+* The limit "gets of up to 39 ms with 8 readers and ZGC" is
+  `f53-c-10m-b665-zgc-2026.2`'s 8 threads: 39.6 ms, so it holds (005-65's
+  47.8 and 49.3 ms of 2026-11-04 were other runs); with G1 52.7 ms.
+* Not in the notes, still unexplained: the stream at the 10M load, 231
+  against 187 bytes a key (+24 percent, as night 3); the take at 200 MB
+  (005-49) is the likely cause.
+
+**Left for Frans:**
+
+1. **The notes and `baseline.zip`.** Recommended: yes, from this block:
+   2026.2's Props row and these tables into `releases/2026.2/readme.md`'s
+   Release Props and Baseline sections (F53; s1's half as 2026-11-04 left
+   it, with its gaps, or s1 left out), the one-thread sentence of
+   Changes, Performance corrected to W7's 9 and 13 percent, the 39 ms line
+   kept; `baseline.zip` from `B4/collect/out/baseline` (with the GC logs,
+   1.3 MB, or without, 0.2 MB), `SHA256SUMS` and the commit together (N9;
+   016-09, R8, `finish.sh` with `R=B4/collect`). The alternative: the
+   notes as they are, W7's figures only here.
+2. **The b133 runs.** A: again with a larger heap (1200m, say) in a
+   quiet block, after a load of each version (the databases are deleted):
+   about 30 to 40 minutes, as 2026.1's 665 MB runs took 13.5 minutes each
+   and 2026.2's 3.3. B, recommended: dropped from 2026.2's notes with one
+   sentence (a 600 MB heap does not start a 10M database at a 200 MB
+   startup distance, in either version), and the start's heap at a given
+   startup distance registered in 005 as a question: whether the start's
+   rerun keeps to the cache budget, which a larger heap would hide.
+3. s1's half (016-02, open item 2) is still open, as is the published
+   2026.2 baseline's s1 part.
