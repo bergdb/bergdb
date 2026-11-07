@@ -50,6 +50,7 @@ Open
 | [021-01](01-pub-javadoc-d30-rest.md) | Fix | Pub Javadoc: DataFormatException, dated history, Time | none | open |
 | [021-02](02-lean-readme-log-and-tables.md) | Fix | lean/README.md: a log, wide tables, a Claude line | none | open |
 | [021-03](03-lean-checks-by-hand-only.md) | Fix | Lean's test programs by hand only; TakeCheck | none | open |
+| [021-04](04-lone-surrogates-in-objects.md) | Decide | A lone surrogate in a String inside an object | decision | open |
 
 
 Closed
@@ -79,6 +80,10 @@ Files
 * [03-lean-checks-by-hand-only.md](03-lean-checks-by-hand-only.md).
   021-03, Fix: sistest, phystest and reclaimtest into an unattended step
   (`night.sh`), and TakeCheck with 015-03.
+* [04-lone-surrogates-in-objects.md](04-lone-surrogates-in-objects.md).
+  021-04, Decide: a lone surrogate in a String inside an object, stored
+  as '?' (keys and values refuse it): refuse, store faithfully, or keep
+  (006-13, morning list, point 2).
 
 
 Log
