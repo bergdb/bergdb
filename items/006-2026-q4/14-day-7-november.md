@@ -63,6 +63,12 @@ session continues with `/coordinator resume` (013-02).
 * 08:24 to 08:25. VS Code restarted; resumed.
 * 08:34. Agents started: s04 on 021-04's study (xhigh), f13 on 021-01 to
   021-03 (high).
+* 08:57. f13 done, BEFORE COMMIT OK (120 s): 021-01 closed (1132b1d);
+  021-02 closed and 021-03 done but for a night run (aced82e).
+* 08:58. java/night.sh started on aced82e, to close 021-03.
+* 09:06. s04 done: 021-04's study across languages and formats, six
+  options, recommendation (1), refuse everywhere (well-formed UTF-8 for
+  every string), for Frans to decide.
 
 
 ## 6. Outcome
