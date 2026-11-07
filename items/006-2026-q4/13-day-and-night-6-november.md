@@ -394,3 +394,29 @@ to 7f9e43f; none pushed.
 
 * 2026.4's work (020, 021). The clones in `/Users/f/fl/bench/006-13/`
   may be deleted after the release.
+
+### The morning of 2026-11-07 (Frans back at 07:36)
+
+Frans, 07:43, on "For Frans to decide": "1. Yes, make the release. 2.
+Tell more more about "the morning list". 3. As recommended. 4. Later."
+
+* **Release 2026.3 made**: commit B 0bf0dfd (`releases/2026.3/`,
+  `BuildInfo` 2026.4-dev), the annotated tag `release-2026.3` on A
+  929fa33; BEFORE COMMIT OK (119 s), SHA256SUMS checks; not pushed. The
+  notes' two markers edited (the Lean paragraph; 019-35, 019-36 and
+  019-45 in Known issues), and 015-61 and 019-42 no longer listed as open
+  (A fixes them); 018-09, section 8.
+* **W7 in 2026.2's notes** (point 3): 02ecb39, `releases/2026.2/`'s
+  notes, `baseline.zip` (1.27 MB, with the GC logs) and its SHA256SUMS
+  line; the b133 runs dropped with one sentence (019-45); 016-10.
+* **The morning list** (point 2): (a) as recommended, 021-01 to 021-03
+  (4b05a7c); (c) as recommended, 019-40's check kept; (b) 021-04, a
+  Decide entry (0d85d22): Frans, 08:10, "Need to think about it."
+* **The coordinator skill**: subagents at high by default, xhigh at the
+  coordinator's judgment for a hard task (Frans, 07:51; b59e918).
+* coord-1106 closed at Frans's word (08:10); coord-1107 is next.
+
+Left for Frans: the push (`git push origin main release-2026.3`);
+closing item 018 (recommended: yes; commit B could not touch the
+items index); 021-04; 020-01, section 14 (later); his uncommitted theme
+paragraph in 021's readme.
