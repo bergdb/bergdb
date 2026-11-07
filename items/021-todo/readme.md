@@ -47,6 +47,9 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
+| [021-01](01-pub-javadoc-d30-rest.md) | Fix | Pub Javadoc: DataFormatException, dated history, Time | none | open |
+| [021-02](02-lean-readme-log-and-tables.md) | Fix | lean/README.md: a log, wide tables, a Claude line | none | open |
+| [021-03](03-lean-checks-by-hand-only.md) | Fix | Lean's test programs by hand only; TakeCheck | none | open |
 
 
 Closed
@@ -65,7 +68,17 @@ Frans: none, answers, decision.
 Files
 =====
 
-None yet.
+* [01-pub-javadoc-d30-rest.md](01-pub-javadoc-d30-rest.md). 021-01, Fix:
+  the Pub API's Javadoc: `DataFormatException` not marked as the object
+  code's, dated history sentences, `Time.utc` and `resolve` without
+  `BadFormatException` (d30's read-through; 006-13, morning list, point 1).
+* [02-lean-readme-log-and-tables.md](02-lean-readme-log-and-tables.md).
+  021-02, Fix: `lean/README.md`'s dated log to an item, its wide tables,
+  and the "Written by Claude" lines of it and `docs/sis-model.md` to a
+  log (as 006-12's point 10, option (b)).
+* [03-lean-checks-by-hand-only.md](03-lean-checks-by-hand-only.md).
+  021-03, Fix: sistest, phystest and reclaimtest into an unattended step
+  (`night.sh`), and TakeCheck with 015-03.
 
 
 Log

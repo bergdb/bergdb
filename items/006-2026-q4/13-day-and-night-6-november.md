@@ -321,6 +321,7 @@ session continues with `/coordinator resume` (013-02).
 * 17:11 s1's jar tests on A: S1 TESTS OK, JDK 27 and 17 (unit 1,262, F 87, night 15, the user's program).
 * 17:51 to 18:00 The network was down; nothing local stopped.
 * 21:30 `night.sh large` on A: NIGHT OK (313 minutes; the large conformance set 15,911 s, CONFORMANCE OK). 21:35 jcstress on F53, on A: 8 of 8 OK, 5 minutes (harness 6.6).
+* 2026-11-07 08:00 Frans on the morning list: point 1 as recommended (021-01 to 021-03), point 3 as recommended (kept), point 2 asked about.
 
 
 ## 8. Outcome
