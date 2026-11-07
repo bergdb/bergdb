@@ -47,7 +47,14 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
 * [02-objects-design.md](02-objects-design.md). 020-02, objects: the
   design worked out with Frans one question at a time, from shape 1
   (Frans, 2026-11-07, 09:52); question 1, a conversion on a get, exact or
-  best effort.
+  best effort; question 1b, whether BergDB stores null.
+* [03-null-study.md](03-null-study.md). 020-03, the study for 020-02's
+  question 1b (Frans, 2026-11-07, 12:15): null and absence in languages,
+  serialization formats (Binson, JSON, BSON, XML, CBOR, protobuf and
+  more) and databases (MongoDB, SQLite, Prevayler and more), what BergDB
+  does with null today (a probe, BG1 to BG6), and what each option asks
+  of a binding in another language; the programs are in
+  `/Users/f/fl/bench/006-14/020-null/`.
 
 
 Log

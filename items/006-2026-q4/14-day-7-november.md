@@ -88,6 +88,19 @@ session continues with `/coordinator resume` (013-02).
   worked out with Frans in the chat, one question at a time.
 * 09:55. u04 done, BEFORE COMMIT OK (121 s), JAVADOC PUB OK: 021-04 and
   021-05 closed, 021-06 registered (the read side; waits for F1's spec).
+* 10:04. 020-02 created: the objects' design with Frans; question 1 (a
+  conversion on a get: exact or throw) for Frans to read.
+* 12:15. Frans: "020-02. I would like to extend this by one more question:
+  should null be supported? [...] For binson (binson.org), I chose to not
+  support null values. Please analyse this in a new XHigh subagent."
+  12:16 agent n02 (xhigh): question 1b in 020-02, the study in 020-03.
+* 12:31. Frans, thinking out loud on question 1: best effort with feedback
+  on how the conversion went, a ConversionResult, keeping the DbObject.
+  The coordinator's answer: the database promises the exact DbObject; the
+  conversion to a Java object is the binding's own step, with a report.
+* 12:40. n02 done: question 1b in 020-02 (section 2b), the study in
+  020-03; recommendation (d), no stored null: a null field is absent, and
+  a put is refused where the null would not read back.
 
 
 ## 6. Outcome

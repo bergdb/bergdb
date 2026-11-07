@@ -154,6 +154,207 @@ Two consequences of (A) to weigh:
 * Renamed fields: not seen by name; by hand, as above.
 
 
+## 2b. Question 1b: should BergDB store null? (open)
+
+Frans, 12:15: "020-02. I would like to extend this by one more question:
+should null be supported? Let's open up for the option of not supporting
+storing null values. In general, null is a mistake. A billion dollar
+historic mistake. However, many languages support it, so omitting the
+possibility of storing null is not obvious. For binson (binson.org), I
+chose to not support null values."
+
+The study, with the languages, formats and databases, the programs run
+and the sources, is 020-03; the labels below (BG3, JL3, ...) are its
+program results.
+
+### 2b.1. Null in BergDB today
+
+020-03, section 5, from a probe of the jar at `c00e621`:
+
+* Null is a value of four of the eight types: a null `String`, `byte[]`,
+  array or object field is stored as a null `s`, `b`, `a` or `o`; a null
+  `Integer` (any wrapper) as a null `o`, an object. An array element may
+  be null, typed the same way.
+* A null field and a missing field differ. A get leaves a missing field
+  as the class's constructor set it, and sets a null field to null over
+  that value: `String name = "dflt"` reads "dflt" from an object without
+  `name`, and null from one with a null `name`.
+* A null read into a primitive throws `Bug` (S2-F6), or reads as 0: a
+  null `String` read into an `int` or an `Integer` field gives 0,
+  silently (BG3, not known before).
+* At the top there is no null already: `put(key, null)` is refused with
+  `IllegalArgumentException`, and a key with no value reads as null.
+* Indexes meet three kinds of "no value": a missing field and a null
+  `Integer` give no entry; a null `String` in a string index makes the
+  put throw `IllegalArgumentException` (019-42).
+
+### 2b.2. What others do
+
+020-03, sections 2 to 4:
+
+* Most formats and document stores have both null and absence, and each
+  draws its own line between them: MongoDB's `{x: null}` matches a null
+  and a missing field, its `$type` and `$exists` split them; Firestore's
+  `!=` skips both; SQL's `DEFAULT` applies to an absent column, not to a
+  NULL given; Python's `d.get` merges them, JavaScript's `undefined` and
+  `null` do not. Typed nulls, as BergDB's, are Amazon Ion's.
+* No null: Binson; TOML ("just leave it out"); the Protocol Buffers wire
+  format ("the serialization contains no information about not-present
+  values"), whose JSON form reads a null as not set. proto3 had to add
+  presence back (`optional`, release 3.15); it did not add null.
+  Cassandra stores a null as a deleted cell.
+* Serializers that write a null as absence: Gson by default,
+  kotlinx.serialization with `explicitNulls = false`, Swift's `Codable`.
+  kotlinx's documentation warns that "encoding and decoding can become
+  asymmetrical": a null written reads back as the property's default
+  (and Gson does so: JL3).
+* Languages: null in every reference (Java, C#, JavaScript, Python), an
+  explicit optional type (Rust's `Option`, Swift's and Kotlin's `T?`),
+  or zero values (Go, C). Each has a rule for a missing field, as its
+  JSON libraries show; absence must be handled in all of them anyway,
+  since an object written before a field was added lacks it.
+
+### 2b.3. The options
+
+* **(a) Keep null** as a value, as today, for `s`, `b`, `a` and `o`, and
+  fix its faults: a null into a primitive throws (question 1's table,
+  its two null rows); a null in an indexed field gives no entry, as a
+  missing field does; a null wrapper is stored as a null of its number
+  type. A variant (a2): one untyped null, in a format version 2
+  (question 3), for example `z`, which `DbObject`'s Javadoc reserves
+  "for null-capability" (an array needs another byte, since `z` ends an
+  array there). Consequences:
+  * Every Java object reads back into its class exactly, with no rule
+    about initial values and no constructor call at a put.
+  * Two kinds of "no value" in every rule: question 1's table, the index
+    function, the format's spec, the harness and every binding. A
+    binding whose plain types have no null (Rust, Swift, Kotlin, Go, C)
+    must make every `s`, `b`, `a` and `o` field optional, since any
+    stored one may be null, besides handling absence. A binding with an
+    untyped null (Python's `None`, JavaScript's `null` and `undefined`)
+    must choose which typed null to write; (a2) removes that choice.
+  * Three states can be stored: a value, "no value" (null), and "not
+    written" (absent: an object older than the field), the distinction
+    that SQL's `DEFAULT`, Cassandra's `UNSET` and MongoDB's `$exists`
+    keep. A JSON document with null is stored as it is.
+* **(b) No null: a null is refused** at a put, anywhere (a field, an
+  array element, a nested object), with `IllegalArgumentException`
+  naming its place, as for a lone surrogate (021-04). Binson's choice for
+  its API: binson-java refuses a null at a put, and JSON with a null
+  (BN1, BN3). Consequences:
+  * The simplest format and reads: a field is present with a value of
+    its type, or absent from an object older than the field.
+  * A Java class has all its fields always, so it can never say "no
+    value": an optional `String` must be "" or come with a flag, and an
+    optional nested object cannot be said at all. An unset field, a
+    `new String[n]` not filled, any object with a null, fails the put.
+    proto3's lesson (presence was needed) applies. Binson's API avoids
+    this by not adding the field; a put of a class cannot.
+* **(c) Null is absence.** A null field at a put is left out of the
+  stored object, as if the class had no such field; a null array
+  element is refused, naming its index (an array has no absence, as in
+  protobuf and Binson); a null at the top is refused, as today. A get
+  of an absent field keeps the constructor's value, as today and in
+  question 1. Consequences:
+  * The format has no null: a present field always holds a value of its
+    type. The null encodings (length −1, `Z`, field count −1) go with
+    the format version 2 of question 3. Every binding maps its
+    language's "no value" to absence and back, as its JSON libraries do
+    for a missing field (020-03, section 6.2).
+  * One rule for indexes: an object has an entry when each indexed field
+    is present with an accepted type; today's three behaviours become
+    one, and 019-42's refusal of a put goes.
+  * Question 1's two null rows become one, "absent: the constructor's
+    value", for every type, primitives included; S2-F6 and the silent 0
+    of BG3 go by construction.
+  * Not a round trip in one case: a null put into a field that the
+    constructor sets reads back as the constructor's value (`String
+    name = "dflt"`, put with null, reads "dflt"). It is Gson's default
+    (JL3) and kotlinx's documented asymmetry, and a silent change of data
+    in the sense of 021-04 and of question 1's reason 1.
+  * Two states only, a value or none. An application that needs "no
+    value" apart from "not written" stores it explicitly (a flag, or a
+    nested object).
+  * A JSON null member converts to an absent field; a null in a JSON
+    array is refused, as in protobuf's JSON form.
+* **(d) Null is absence, exactly.** As (c), and a put is refused where
+  its null would not read back: a null in a reference field to which
+  the class's no-argument constructor gives a non-null value, with
+  `IllegalArgumentException` naming the field and saying why (a get
+  would read the constructor's value).
+  Consequences:
+  * As (c), and every put that BergDB takes reads back equal: the round
+    trip is exact, and the constructor's value serves only the objects
+    written before the field existed (type evolution).
+  * The fields to check are found once per class and database, from one
+    new instance (which reference fields are not null), as
+    `BlankConstructorFactory` makes one for gets today; a put then costs
+    a look-up per null field.
+  * The class's constructor runs at a put, once per class and database,
+    as it runs at a get today (a constructor that throws, S2-F21,
+    becomes a put's question too). A class without a no-argument
+    constructor cannot be read back into itself, so it is not checked,
+    unless question 2 requires that constructor at a put.
+  * Some puts that work today are refused, each with a message that
+    names the field: the application sets the field, or drops its
+    initial value.
+
+### 2b.4. Recommendation: (d)
+
+1. **One "no value", the one that cannot go.** Absence must be handled
+   by every reader, in every language, for every field: an object older
+   than its class's newest field, or one written in another language.
+   Null adds a second "no value" to every `s`, `b`, `a` and `o` field,
+   and every rule, binding and test doubles for it. Hoare's mistake is
+   that every reference may be null; the languages that fixed it kept
+   one explicit "no value" (`Option`, `T?`). (c) and (d) do the same in
+   the format: a present string is always a string.
+2. **Java's null maps to absence.** A class cannot leave a field out;
+   null is how it says "not set". Under (d) a Java object says "no
+   value" as a Binson object does, by the field's absence: Binson's
+   choice, applied to classes. (b) leaves a class no way to say it.
+3. **Faults go by construction**: a null into a primitive (S2-F6), the
+   silent 0 (BG3), typed nulls of the wrong type (a null `Integer`
+   stored as an object), three index behaviours (019-42); and question
+   1's table loses a row.
+4. **(d) rather than (c): no silent change.** It is the rule of 021-04
+   and of question 1's (A): every value read equals the value stored,
+   or BergDB says why not, here at the put. (c) reads "dflt" where null
+   was put, silently, as Gson does.
+5. **Every language, one rule.** Under (d) a binding in any language
+   writes and reads one kind of "no value", which every language has
+   (`null`, `None`, `nil`, `undefined`, `Option`, a missing key). Under
+   (a) a binding whose plain types have no null must make every string
+   optional, and one with an untyped null must pick a type to write.
+
+What (d) gives up and (a) keeps, for Frans to weigh: a third stored
+state ("no value" apart from "not written"); JSON documents with null
+stored as they are (a null array element is refused under (d)); and a
+put of any Java object, with no rule about initial values and no
+constructor call. If BergDB should store JSON documents as they are,
+(a) is the better choice, with (a2)'s one untyped null. And (c) is the
+fallback to (d) if running the class's constructor at a put is not
+wanted: the same format, with the asymmetry documented.
+
+### 2b.5. What (d) changes, if chosen
+
+* Question 1's table (when both are decided): its rows "null, a
+  reference type: null" and "null, a primitive: throws" become one,
+  "absent, any type: the constructor's value".
+* The put: a null field left out; a null array element, a null at the
+  top, and a null over a non-null initial value refused with
+  `IllegalArgumentException` naming the place (as 021-04's path).
+* Indexes: no entry for an absent field, the one "no value".
+* The format (questions 3 and 4): no null encodings in its version 2;
+  `z` stays `getType`'s answer for "no such field".
+* `DbObject`, the stored object's view (`get(key, DbObject.class)`),
+  has no null values; its `getString` of an absent field returns
+  null, Java's way to say absent.
+* Tests: about a dozen of `DbObjectTester`'s 72 tests put nulls
+  (020-03, section 5.3); they become tests of the new rules, each
+  failing on today's code.
+
+
 ## 3. The next questions
 
 From 020-01, sections 4.5 and 5.5, one at a time after question 1:
@@ -179,3 +380,7 @@ From 020-01, sections 4.5 and 5.5, one at a time after question 1:
 2026-11-07. Created by coord-1107 at Frans's decision of shape 1 (09:52),
 with question 1 for Frans to read (10:03: "Where can I read about it
 later?").
+
+2026-11-07. Question 1b (section 2b), whether BergDB stores null, added
+at Frans's request (12:15) by coord-1107's agent n02, with its study in
+020-03; recommended (d), null as absence with an exact round trip.
