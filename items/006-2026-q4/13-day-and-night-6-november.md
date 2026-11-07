@@ -343,8 +343,10 @@ to 7f9e43f; none pushed.
   (00b184e), 019-37 (e7102b2), 019-38 (cecaf4c), 019-39 (940e603),
   019-40 (35f5b72), 019-41 (8f0d117), 019-42 (e687400), 019-43 (b63273d,
   the harness's oracle), 019-44 (a9da30c). 019-35 and 019-36 closed from
-  the night's figures (7f9e43f). **019's Open table is empty: no known
-  fault of the Core is open** (018-01, "Ready", 1).
+  the night's figures (7f9e43f). **No known fault of the Core is open**
+  (018-01, "Ready", 1). One Investigate opened at 06:06: 019-45 (does a
+  start's rerun keep to the cache budget? W7's b133 runs ran out of a
+  600 MB heap at the start in 2026.1 and 2026.2 alike), not a known fault.
 * **Harness 6.6**, jcstress (018-08): s1 8 of 8 OK, F53 8 of 8 OK on A.
 * **The documentation read through** (8996de0, Ready 4).
 * **`night.sh` without a fixed time** (fb85272); the launchd job retired.
@@ -379,8 +381,11 @@ to 7f9e43f; none pushed.
    the tag, local). Recommended: yes, if F53's jar tests are OK.
 2. The morning list in section 3 (d30's remaining points, lone
    surrogates in objects, 019-40's C8).
-3. W7: whether to update `releases/2026.2/`'s notes and `baseline.zip`
-   with night 4's figures, and sb-c's b133 runs (016-10).
+3. W7 (016-10, 06:06): whether to update `releases/2026.2/`'s notes and
+   `baseline.zip` with night 4's figures (the notes' one-thread figure is
+   too low: 9 and 13 % fewer gets, not 3 and 11), and sb-c's b133 runs
+   (again with a larger heap, or dropped). Recommended: yes, and dropped;
+   019-45 looks at the start's memory.
 4. 020-01, section 14: the shape of 2026.4's objects and indexes, ICU,
    the primary scan; then 021's first entries.
 
