@@ -113,6 +113,9 @@ session continues with `/coordinator resume` (013-02).
 * 16:42. r07 done, BEFORE COMMIT OK (122 s): 021-07 closed (630acb3). Its
   open point, the reader's unlimited nesting depth, registered as 021-08
   and given to r07.
+* 16:58. r07 done, BEFORE COMMIT OK (120 s): 021-08 closed (a7fe143). Its
+  open point, S2-F8 (an `Object[]` holding itself fails the database in
+  `rw()` at a put), noted with 020-02's question 2.
 
 
 ## 6. Outcome

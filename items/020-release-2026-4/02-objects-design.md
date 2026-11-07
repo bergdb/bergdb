@@ -479,6 +479,10 @@ From 020-01, sections 4.5 and 5.5, one at a time after question 1:
   of these, classes and records made of them, with a no-argument
   constructor); what a put of anything else does (refuse, naming the
   field); final fields, a field that hides another's (S2-F9, F19).
+  And S2-F8, open: an `Object[]` that holds itself gives a
+  `StackOverflowError` at the put, which fails the database inside
+  `rw()` (021-08's Log); it goes if `Object[]` is not on the list, else
+  the writer needs a cycle check for arrays, as 005-23 made for objects.
 * **Question 3: the kind of a value.** Is it stored (a format version 2
   with the kind of a value; 020-01, N4), or told by the key's suffix and
   the `bergo` bytes, as today?
