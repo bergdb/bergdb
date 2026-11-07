@@ -1,8 +1,8 @@
 018-09. Plan: the release
 =========================
 
-Created 2026-11-06 by Frans Lundberg. Status: the scripts are written and
-rehearsed (2026-11-06, 13:00); the release is not started.
+Created 2026-11-06 by Frans Lundberg. Status: done 2026-11-07: release
+2026.3 made, the tag `release-2026.3` on `929fa33` (section 8).
 
 The plan for W5 of 018-01 (section 7): release 2026.3, made as 2026.2 was
 (016-09, by 008-01's steps), with 016-09's scripts adapted to 2026.3. Frans,
@@ -316,3 +316,36 @@ main. `rehearse.sh` (2 minutes; `JARTESTS=1` adds the F53 tests) should run
 again at about 20:00, after the last fixes, so that a commit that breaks a
 script is found before the freeze. Left: 019-43 (section 7, point 1); the
 full s1 chain, not rehearsed.
+
+2026-11-07, 07:50: released, at Frans's word (07:43: "Yes, make the
+release."). Commit A is `929fa33` (BuildInfo 2026.3, 2026-11-06, 16:16),
+the first A: no fault of the Core was fixed after it (section 4 not
+needed); main after it had item commits only. On A: `night.sh large`
+NIGHT OK (run 2026-11-06-1616, 313 minutes), jcstress 8 of 8 on F53, the
+jar's tests on F53 and s1 with JDK 27 and 17, StreamDigest (the 4
+configurations with reclaim differ, named by next.md), the Lean axioms
+(44 theorems); no stop of section 5.
+
+* R8, 07:44 (`$S/out/morning-r8.txt`): `collect.sh 929fa33` COLLECT OK,
+  `finish.sh` FINISH OK (SHA256SUMS checks), `notes.sh` NOTES NEED EDITS
+  (2 markers). `finish.sh` not run again: the baseline did not change
+  (SHA256SUMS covers the jar, the zips and baseline.zip, not the notes).
+* The notes edited by hand (`$S/out/readme.md`; notes.sh's output kept
+  as `$S/out/readme-generated.md`):
+  * the Lean paragraph's start (a marker): the model's Lean files are
+    2026.2's; only lean/README.md's text was brought up to date, in the
+    documentation's read-through (8996de0);
+  * the known issues (a marker): a paragraph on 019-35 and 019-36,
+    Investigates of performance open at A and closed after it without a
+    change of the code, and on 019-45, an open Investigate registered
+    2026-11-07, not a known fault (a start's rerun and the cache budget);
+  * the known issues of the experimental parts: 015-61 no longer listed
+    as open (fixed by 019-40, under Changes), and 019-42 named as fixed,
+    not as a fault (next.md at A still listed both);
+  * the intro: a clause for the faults that the reviews of the fixes and
+    the documentation's read-through found (019).
+* R9: `stage-b.sh` STAGE B OK in `$S/B`, a clone of main at `3b3904d`;
+  docs/log.md's entry, 018's and 018-01's logs and this State written
+  there; `COMMIT=1 sh $S/commit-b.sh $S/B 929fa33`: the gate under the
+  gate lock, commit B (this commit), main fast-forwarded, the annotated
+  tag `release-2026.3` on A. Nothing is pushed: Frans pushes.

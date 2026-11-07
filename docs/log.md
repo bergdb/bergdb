@@ -1727,3 +1727,19 @@ plan when the machine has room for it, Frans by hand otherwise;
 `docs/levels.md`, night.sh's header, 013-01, 013-02 and the coordinator
 skill say so.
 
+2026-11-07. Release 2026.3, internal, as planned in item 018: the tag
+`release-2026.3` on `929fa33`, where `BuildInfo` says 2026.3, made at
+Frans's word (07:43: "Yes, make the release."). `night.sh large` passed on
+it (NIGHT OK, 313 minutes, with the large conformance set), and jcstress's
+eight tests, the Lean axioms, and the tests again on the jar itself, on F53
+and s1, with JDK 27 and 17. `releases/2026.3/` holds the jar, the source,
+the Pub API's Javadoc, the release notes and the outputs of the runs; no
+numbers are measured at the release (016-10's W7 comes in a later night).
+A bug-free Core: no fault of the Core is known at the release (018-01).
+The faults that the reviews of 2026.2 found (016-06), those of the new
+harnesses by fault class (018-02 to 018-08) and those of the reviews of
+the fixes are fixed; DbObject and the user indexes are experimental, with
+known faults. Databases of 2026.2 open in 2026.3; the Pub API changed
+(`create(p)` and `open(p)` for `dir(p)`; the retain duration kept in the
+stream). After the tag, `BuildInfo` says 2026.4-dev.
+

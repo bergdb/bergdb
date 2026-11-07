@@ -635,3 +635,14 @@ its checksum misses is refused at a start or fails the database at a
 read, with a `StreamFormatException`, where an assert or a
 `ClassCastException` met it; harness 6.1's skip list is empty (018-07,
 section 5.4). Section 6.1 updated.
+
+2026-11-07, 07:43. "Ready", 6: Frans, "Yes, make the release." "Ready", 1
+to 5 held at commit A, `929fa33`: no fault of the Core open (019's open
+entries at A, 019-35 and 019-36, were Investigates of performance, closed
+after A without a change of the code); `night.sh large` NIGHT OK on A,
+the harnesses (jcstress 8 of 8 on F53, on A), the jar's tests on F53 and
+s1 with JDK 27 and 17; StreamDigest's differing configurations all named
+by next.md; the documentation read through (8996de0); the notes' known
+issues are the experimental code, Frans's decisions and the limits.
+Released: the tag `release-2026.3` on A, and commit B (018-09, section
+8).

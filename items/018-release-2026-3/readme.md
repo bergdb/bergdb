@@ -141,3 +141,10 @@ night tests (97 s).
 unchanged and run on s1 in default mode, each `[OK]`, no forbidden
 outcome; F53's run prepared for the night's chain. No test added: review
 R7 of 006-13 flags no shared field that needs one.
+
+2026-11-07. Release 2026.3 made, at Frans's word (07:43: "Yes, make the
+release."): commit A `929fa33` (BuildInfo 2026.3), the tag
+`release-2026.3` on it, and commit B with `releases/2026.3/` and BuildInfo
+2026.4-dev, by 018-09's scripts. "Ready" held at A (018-01, section 8).
+No numbers at the release: 016-10's W7 follows. The steps and the notes'
+edits by hand: 018-09, section 8.
