@@ -18,6 +18,11 @@ import bergdb.pub.util.SyncLevel;
  * and has no "//" and no lone surrogate (bergdb 015-49); every call that takes a key refuses
  * another key, and null, with IllegalArgumentException.</p>
  *
+ * <p>Strings. Every string BergDB stores, a key, a String value and each string in an
+ * object, is Unicode text stored as well-formed UTF-8; a put refuses a String with a lone
+ * surrogate with IllegalArgumentException. The rule in full: the package's
+ * {@linkplain bergdb.pub##strings Strings} (bergdb 021-04).</p>
+ *
  * <p>After a DbFailedException, or an Error such as an OutOfMemoryError, the application
  * should end its process: the database, or its environment, has failed (Database,
  * "Errors"; bergdb 019-10).</p>
@@ -215,6 +220,8 @@ public interface Connection extends ReadInterface {
      * @param object
      *            The object to store. Cannot be null. A byte[] is copied at
      *            the put: the caller may change or reuse its array afterwards.
+     *            A String, and each string in an object, is stored as well-formed
+     *            UTF-8 (the package's {@linkplain bergdb.pub##strings Strings}).
      * @throws DbException
      *             If the transaction could not be processed because the
      *             database is faulty.
@@ -224,7 +231,9 @@ public interface Connection extends ReadInterface {
      *             Database.
      * @throws IllegalArgumentException
      *             If 'key' is null or otherwise invalid, or if object is null; or if it
-     *             is a String with a lone surrogate, as for WBuilder.put() (bergdb 019-44).
+     *             is a String with a lone surrogate, or an object with a string that has
+     *             one, as for WBuilder.put() (the package's
+     *             {@linkplain bergdb.pub##strings Strings}; bergdb 019-44, 021-04).
      */
     public Transaction put(String key, Object object);
 

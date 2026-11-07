@@ -141,6 +141,11 @@ public class Keys {
 
     /**
      * Converts ikey to bkey according to specification in 2013-key-encoding.txt.
+     * An ikey is Unicode text, stored as well-formed UTF-8 (bergdb 021-04, 021-05).
+     *
+     * @throws IllegalArgumentException  If s is empty, or has a lone surrogate, a char of
+     *      U+D800 to U+DFFF that is not part of a surrogate pair: UTF-8 cannot hold it, and
+     *      its encoding would write '?', so that two keys would be one (bergdb 021-05).
      */
     public static byte[] toBytes(String s) {        
         assert s != null : "s == null not allowed";
@@ -155,10 +160,15 @@ public class Keys {
             throw new IllegalArgumentException("The empty string is not a valid key.");
         }
         
+        boolean question = false;       // a '?', maybe written for a lone surrogate
         for (int i = 0; i < bytes.length; i++) {
             byte b = bytes[i];
             if (b == (byte) 0xff || b == (byte) 0xfe) {
                 throw new Error("Should not happen, illegal UTF-8 byte value, s = " + s);
+            }
+            
+            if (b == '?') {
+                question = true;
             }
             
             if (b == '/') {
@@ -168,6 +178,15 @@ public class Keys {
                 b++;
             }
             bytes[i] = b;
+        }
+        
+        // The encoder writes '?' for a lone surrogate: without a '?', the key has none, and
+        // the chars are scanned only when there is one (bergdb 021-05).
+        if (question && StringUtil.hasLoneSurrogate(s)) {
+            throw new IllegalArgumentException("The key has a lone surrogate, a char of "
+                    + "U+D800 to U+DFFF that is not part of a surrogate pair. BergDB stores "
+                    + "every string as well-formed UTF-8, which cannot hold one (bergdb "
+                    + "021-04, 021-05).");
         }
         
         return bytes;
@@ -380,6 +399,21 @@ public class Keys {
         }
         
         Assert.assertTrue(ex != null);
+    }
+    
+    /** bergdb 021-05: a lone surrogate is refused; it was written as '?', the key "a?". */
+    @Nano
+    public static void testLoneSurrogate() {
+        String[] refused = {"a\uD800", "\uDC00", "?\uD83D", "\uDE00\uD83D\uDE00"};
+        for (String s : refused) {
+            try {
+                toBytes(s);
+                throw new AssertionError("no exception");
+            } catch (IllegalArgumentException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("lone surrogate"));
+            }
+        }
+        Assert.assertEquals("a?\uD83D\uDE00", bkey2ikey(toBytes("a?\uD83D\uDE00")));
     }
     
     @Nano

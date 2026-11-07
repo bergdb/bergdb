@@ -50,8 +50,7 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
-| [021-03](03-lean-checks-by-hand-only.md) | Fix | Lean's test programs by hand only; TakeCheck | none | in progress |
-| [021-04](04-lone-surrogates-in-objects.md) | Decide | A lone surrogate in a String inside an object | decision | open |
+| [021-06](06-read-side-ill-formed-utf8.md) | Investigate | Ill-formed UTF-8 from another writer, read by Java | answers | open |
 
 
 Closed
@@ -59,6 +58,9 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [021-05](05-core-string-puts-lone-surrogate.md) | Fix | The Core's String puts write '?' for a lone surrogate | none | done | 2026-11-07 |
+| [021-04](04-lone-surrogates-in-objects.md) | Decide | A lone surrogate in a String inside an object | decision | done | 2026-11-07 |
+| [021-03](03-lean-checks-by-hand-only.md) | Fix | Lean's test programs by hand only; TakeCheck | none | done | 2026-11-07 |
 | [021-01](01-pub-javadoc-d30-rest.md) | Fix | Pub Javadoc: DataFormatException, dated history, Time | none | done | 2026-11-07 |
 | [021-02](02-lean-readme-log-and-tables.md) | Fix | lean/README.md: a log, wide tables, a Claude line | none | done | 2026-11-07 |
 
@@ -87,6 +89,14 @@ Files
   021-04, Decide: a lone surrogate in a String inside an object, stored
   as '?' (keys and values refuse it): refuse, store faithfully, or keep
   (006-13, morning list, point 2).
+* [05-core-string-puts-lone-surrogate.md](05-core-string-puts-lone-surrogate.md).
+  021-05, Fix: the Core's `Trans.Builder.put(String, String)` and
+  `Keys.toBytes` write '?' for a lone surrogate; refuse it, as 021-04's
+  option (1) says.
+* [06-read-side-ill-formed-utf8.md](06-read-side-ill-formed-utf8.md).
+  021-06, Investigate: a key or a string that is not well-formed UTF-8 in
+  a stream from another writer (the C clone's keys), which Java repairs so
+  that two keys read as one; with 020-01's object spec (F1, question 5).
 
 
 Log

@@ -1,6 +1,7 @@
 package bergdb.pubimp;
 
 import bergdb.common.Bug;
+import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -95,22 +96,11 @@ public class PubKeys {
     /**
      * True if 's' has a lone surrogate: a char of U+D800 to U+DFFF that is not part of a
      * surrogate pair, a high surrogate followed by a low one (bergdb 015-49, S2-F24). Its
-     * UTF-8 encoding writes such a char as '?'.
+     * UTF-8 encoding writes such a char as '?'. BergDB refuses such a string in a key, a
+     * value and an object (bergdb 021-04); the check is StringUtil's, which the Core uses.
      */
     public static boolean hasLoneSurrogate(String s) {
-        int length = s.length();
-        for (int i = 0; i < length; i++) {
-            char c = s.charAt(i);
-            if (Character.isSurrogate(c)) {
-                if (Character.isHighSurrogate(c) && i + 1 < length
-                        && Character.isLowSurrogate(s.charAt(i + 1))) {
-                    i++;
-                } else {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return StringUtil.hasLoneSurrogate(s);
     }
 
     /**

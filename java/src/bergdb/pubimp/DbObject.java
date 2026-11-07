@@ -35,7 +35,7 @@ import bergdb.pub.util.BadFormatException;
  * i - int        A signed 32-bit integer.
  * l - long       A signed 64-bit integer.
  * d - double     A 64-bit floating pointer number (IEEE-754).
- * s - string     A string stored as UTF-8.
+ * s - string     A string stored as well-formed UTF-8.
  * b - byteArray  An array of bytes.
  * a - array      A heterogeneous array (list) of values. See class DbArray.
  * o - object     A nested DbObject.
@@ -48,6 +48,15 @@ import bergdb.pub.util.BadFormatException;
  * The byteArray type stores an array of bytes or have a value of null. The array type stores
  * an array of heterogeneous elements; each element can independently be of any DbObject type. 
  * See class DbArray. The value of an array can be null.</p>
+ *
+ * <p>Strings. A string, and a field's name, is Unicode text: a sequence of Unicode scalar
+ * values, stored as well-formed UTF-8 (RFC 3629), as every string BergDB stores, keys and
+ * values too (the Pub API's package bergdb.pub, "Strings"; bergdb 021-04). A Java String
+ * with a lone surrogate, a char of U+D800 to U+DFFF that is not part of a surrogate pair,
+ * cannot be stored so: toDbObject(), the Builder and DbString refuse it with
+ * IllegalArgumentException, whose message names the field and an array element's index
+ * ("inner.names[3]"). A char[] field keeps any chars, as an array of ints, and reads back
+ * exactly; a byte[] field keeps any bytes.</p>
  * 
  * <p>A DbObject can be serialized to a byte array; actually it is stored in memory in 
  * a form that is nearly identical to its serialized byte format.
@@ -322,6 +331,11 @@ public class DbObject extends DbValue {
      * Copies values of fields that are not transient, not static, and not synthetic (added by 
      * compiler) to the newly created DbObject that is returned.
      * If 'object' is null, Builder.buildNull() is returned (a DbObject representing null).
+     *
+     * @throws IllegalArgumentException  If a String in the object, at any depth, or a
+     *      field's name, has a lone surrogate (see "Strings" above; bergdb 021-04); the
+     *      message names the field, and an array element's index. If the object has a
+     *      reference cycle, or is nested too deep (bergdb 005-23).
      */
     public static DbObject toDbObject(Object object) {        
         if (object == null) {
@@ -443,8 +457,12 @@ public class DbObject extends DbValue {
                 }
                 // Outside the try (bergdb 005-23): an IllegalArgumentException of a nested
                 // object (a cycle, too deep) is not a Bug.
-                DbValue dbValue = DbValue.toDbValue(f.getType(), fieldValue);
-                b.addDbValue(f.getName(), dbValue);
+                try {
+                    DbValue dbValue = DbValue.toDbValue(f.getType(), fieldValue);
+                    b.addDbValue(f.getName(), dbValue);
+                } catch (DbString.LoneSurrogateException e) {
+                    throw e.in(f.getName());        // the field's path (bergdb 021-04)
+                }
             }
         
         }
@@ -743,6 +761,11 @@ public class DbObject extends DbValue {
             assert name.length() > 0;
             assert value != null;
             
+            // A name is a string too: well-formed UTF-8 (bergdb 021-04). javac refuses a
+            // lone surrogate in a field's name, but a generated class or the Builder may not.
+            if (PubKeys.hasLoneSurrogate(name)) {
+                throw new DbString.LoneSurrogateException("field name", "");
+            }
             this.name = name;
             this.hash = hash(name);
             this.nameBytes = StringUtil.toBytes(name);

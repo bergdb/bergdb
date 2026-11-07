@@ -55,10 +55,14 @@ public interface RwEnvironment extends ReadInterface {
      * <p>Experimental in 2026.3, with known faults; it may change in a later release
      * (bergdb 018-01, D6).</p>
      * 
+     * <p>Each string in the object is Unicode text, stored as well-formed UTF-8, as for
+     * WBuilder.put() (the package's {@linkplain bergdb.pub##strings Strings}).</p>
+     * 
      * @param object The object to store in the database.
      * @throws MissingKeyFieldException if 'object' does not have a String field named 'key'.
      * @throws IllegalArgumentException if key field is null or otherwise of an invalid format.
-     * @throws IllegalArgumentException if 'object' is null.
+     * @throws IllegalArgumentException if 'object' is null, or if a string in it has a lone
+     *             surrogate, as for WBuilder.put() (bergdb 021-04).
      */
     public void put(Object object) throws MissingKeyFieldException;
     
@@ -69,10 +73,14 @@ public interface RwEnvironment extends ReadInterface {
      * <p>Experimental in 2026.3 for an object that is neither a String nor a byte[], with
      * known faults; such a put may change in a later release (bergdb 018-01, D6).</p>
      *
+     * <p>A String, and each string in an object, is Unicode text, stored as well-formed
+     * UTF-8, as for WBuilder.put() (the package's {@linkplain bergdb.pub##strings Strings}).</p>
+     *
      * @see WBuilder#put(String, Object)
      * @throws IllegalArgumentException if 'key' is null or otherwise of an invalid format.
      * @throws IllegalArgumentException if 'object' is null, or if it is a String with a
-     *             lone surrogate, as for WBuilder.put() (bergdb 019-44).
+     *             lone surrogate, or an object with a string that has one, as for
+     *             WBuilder.put() (bergdb 019-44, 021-04).
      */
     public void put(String key, Object object);
     

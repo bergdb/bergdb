@@ -9,15 +9,64 @@ import bergdb.nanotest.Nano;
 /**
  * The DbObject type for a string stored in UTF-8 format.
  * The type char for this type is 's'.
+ *
+ * <p>A string is Unicode text, stored as well-formed UTF-8 (RFC 3629), as every string
+ * BergDB stores: one with a lone surrogate is refused (bergdb 021-04; the Pub API's package
+ * bergdb.pub, "Strings").</p>
  * 
  * @author Frans Lundberg
  */
 public class DbString extends DbValue {
     private String value;
     
+    /**
+     * A string value, or null.
+     *
+     * @throws IllegalArgumentException  If 'value' has a lone surrogate, a char of U+D800
+     *      to U+DFFF that is not part of a surrogate pair: UTF-8 cannot hold it (bergdb
+     *      021-04). It is a LoneSurrogateException, which DbObject.toDbObject() gives the
+     *      field's path.
+     */
     public DbString(String value) {
         super('s');
+        if (value != null && PubKeys.hasLoneSurrogate(value)) {
+            throw new LoneSurrogateException("string", "");
+        }
         this.value = value;
+    }
+    
+    /** A string read from UTF-8 bytes: their decoding has no lone surrogate, no check. */
+    private DbString(String value, boolean read) {
+        super('s');
+        this.value = value;
+    }
+    
+    /**
+     * A string of an object, or a field's name, with a lone surrogate (bergdb 021-04). The
+     * message names where it is, from the outermost object: a field's name, and an array
+     * element's index, such as "inner.names[3]"; each object and array on the way out adds
+     * its step with in().
+     */
+    static final class LoneSurrogateException extends IllegalArgumentException {
+        private static final long serialVersionUID = 1L;
+        private final String what;      // "string" or "field name"
+        private final String path;      // "" where not known
+        
+        LoneSurrogateException(String what, String path) {
+            super((path.isEmpty() ? "A " + what : "The " + what + " at '" + path + "'")
+                    + " has a lone surrogate, a char of U+D800 to U+DFFF that is not part of "
+                    + "a surrogate pair. BergDB stores every string as well-formed UTF-8, "
+                    + "which cannot hold one (bergdb 021-04); store such data as a byte[] or "
+                    + "a char[].");
+            this.what = what;
+            this.path = path;
+        }
+        
+        /** The same, one step further out: a field's name, or "[i]" for an array element. */
+        LoneSurrogateException in(String step) {
+            String p = path.isEmpty() || path.startsWith("[") ? step + path : step + "." + path;
+            return new LoneSurrogateException(what, p);
+        }
     }
     
     public int getByteSize() {
@@ -50,7 +99,7 @@ public class DbString extends DbValue {
     }
     
     public static DbString parse(byte[] buffer, int offset) {
-        return new DbString(parseToString(buffer, offset));
+        return new DbString(parseToString(buffer, offset), true);
     }
     
     public static String parseToString(byte[] buffer, int offset) {

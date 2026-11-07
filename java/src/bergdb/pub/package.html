@@ -12,6 +12,30 @@ StartupInfo.getStartupJobs(), and the exceptions of these parts). They may chang
 release (bergdb 018-01, D6). The rest of the Pub API, with the puts, gets and deletes of String
 and byte[] values, is not experimental.</p>
 
+<h2 id="strings">Strings</h2>
+
+<p>Every string that BergDB stores is Unicode text: a sequence of Unicode scalar values,
+stored as well-formed UTF-8 (RFC 3629). It is a rule of BergDB's stream, the same in every
+language that writes or reads a database, not a detail of Java. It holds for every string:
+a key, a String value, each string in an object (a field's value, an array's element, at any
+depth, and a field's name), and an index name.</p>
+
+<p>A put refuses a string that cannot be stored so, with IllegalArgumentException, before
+anything is written. In Java that is a String with a lone surrogate: a char of U+D800 to
+U+DFFF that is not part of a surrogate pair (a high surrogate followed by a low one), such as
+a String cut between the two chars of a pair, or <code>"\ud800"</code> decoded from JSON.
+The reason: UTF-8 cannot hold a lone surrogate, so the string read back would differ from
+the one put, in Java and in every other language, and BergDB does not change data silently.
+A call that takes a key, a get too, refuses a key with one in the same way.</p>
+
+<p>A reader may rely on the rule: a string in the database is well-formed UTF-8, and a
+string put reads back equal, in any language.</p>
+
+<p>Data that is not text, such as a String that may hold a lone surrogate, is stored as
+data: as a byte[] value, or in an object as a byte[] or a char[] field; a char[] keeps any
+chars and reads back exactly. Or the application repairs such a String before the put, for
+example with U+FFFD in place of each lone surrogate.</p>
+
 <p>Depends on: common, nanotest, pub.util, pubimp. Only test code (the @Nano methods)
 uses nanotest. Factory uses pubimp to create a DatabaseBuilder: the circular package
 dependency pub -> pubimp -> pub is by design. Time also uses pubimp's TimeResolver.</p>

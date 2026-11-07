@@ -1,7 +1,7 @@
 021-04. Decide: a lone surrogate in a String inside an object
 =============================================================
 
-Status: open. Kind: Decide. Frans: decision.
+Status: done. Kind: Decide. Frans: decision.
 Created 2026-11-07 by Frans Lundberg.
 
 What: a String inside an object (the object code, `DbObject`, experimental
@@ -72,6 +72,10 @@ subagent at XHigh effort. Check how this works in other languages
 including Rust, Python, JavaScript, WebAssembly, C. Add to the document,
 make no code changes. Note that BergDB is design for multi-langage
 support. So, decisions like this are not specific to Java only."
+
+Frans, 2026-11-07, 09:33, the decision: "021-04, good study. Yes, option
+1, absolutely. Document this, ensure it is clear in the Javadoc API
+comments."
 
 The options:
 
@@ -256,7 +260,9 @@ Two questions remain with (1), for later entries (not for this
 decision): the Core's String puts that still write '?' (section 3.1),
 and the read side, a key or a string that is not well-formed UTF-8 in a
 stream made by another writer (section 4.4). The defaults: a 021 entry
-for each, the second with 020-01's object spec (F1, question 5).
+for each, the second with 020-01's object spec (F1, question 5). They are
+021-05 and 021-06 (Frans, 2026-11-07, 09:34: ""Two problems found". Yes,
+add entries.").
 
 Done when: Frans has chosen; the choice is made in the object code (or
 documented, for 3) with a test that fails before it, `BEFORE COMMIT OK`,
@@ -807,3 +813,50 @@ WebAssembly; JSON, CBOR, Protobuf, MessagePack, BSON, SQLite, PostgreSQL;
 BergDB today, the C clone included; the consequences across languages;
 the programs, run in `/Users/f/fl/bench/006-14/021-04/`; the sources. No
 code changed. Status stays open: Frans decides.
+
+2026-11-07. Taken by agent u04 of coord-1107 (006-14), after Frans's
+decision (09:33): option (1).
+
+2026-11-07. Done by agent u04 of coord-1107 (006-14), option (1) as Frans
+decided (09:33):
+
+* The object code: `DbString`'s constructor refuses a String with a lone
+  surrogate (`PubKeys.hasLoneSurrogate`), and `DbObject`'s field (its
+  `DbField`) a field name with one, with `DbString.LoneSurrogateException`,
+  an `IllegalArgumentException`; `DbObject.toDbObject` and
+  `DbValue.createDbArray` add each field's name and array index on the
+  way out, so the message names the place: "The string at
+  'inner.names[1]' has a lone surrogate ...". That covers every String
+  path into an object: fields, `Object` fields, arrays at any depth, an
+  array put as an object, `DbObject.Builder`. A string read from bytes is
+  not checked again (a private constructor). Not covered: a `DbObject`
+  made from bytes (`new DbObject(byte[])`), put as it is; 021-06.
+* The test: `DbObjectTester.testLoneSurrogates` now expects the refusal
+  at six places (a field, an array element, an `Object` field, a nested
+  object's array, nested arrays, an array put as an object), from the
+  Builder for a value and a field name, and a pair stored and a `char[]`
+  with lone surrogates read back exactly. On `HEAD`'s code (fd94108) it
+  fails: "AssertionError: no exception, 'names[1]'".
+* The rule in the Javadoc: in full in the package doc of `bergdb.pub`,
+  section "Strings" (what, for which strings, what is refused, why, that
+  a reader may rely on it, `byte[]` and `char[]` for data that is not
+  text, option 6); linked from the overview, `Connection` (class doc and
+  `put`), `WBuilder.put` (both) and `RwEnvironment.put` (both), with their
+  `@throws`. `DbObject`'s and `DbString`'s class docs (in `pubimp`, not in
+  the Pub Javadoc) state it for objects.
+* The format: the Core's `doc-files/key-encoding.md` ("Conversion ikey
+  --> bkey") states it for every string of the stream. No other kept-up
+  format description names how strings are stored: `stream-format.txt`
+  and `docs/trace-format.md` do not; 012's format notes (012-02, section
+  7; 012-03, section 6.4) are a finished item's, not updated; the object
+  format's spec does not exist yet (020-01, F1, question 5), and 021-06
+  carries the rule there. 020-01, section 4, still says that a lone
+  surrogate in an object is stored as '?': an inventory read at
+  `92844c2`, not updated.
+* `releases/next.md`: a Pub API bullet (objects) and a Documentation
+  bullet (the rule).
+* The two questions became 021-05 (the Core's String puts, done the same
+  day) and 021-06 (the read side, open).
+
+`JAVADOC PUB OK`. `BEFORE COMMIT OK (121 s)` (2026-11-07, 09:54; 1266 unit
+tests, 87 f-tests), on the tree with 021-04's and 021-05's changes.

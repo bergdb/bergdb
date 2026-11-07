@@ -11,6 +11,7 @@ import bergdb.dag.GetData;
 import bergdb.dag.Keys;
 import bergdb.dag.Spos;
 import bergdb.dag.ValueNode;
+import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
@@ -211,7 +212,21 @@ public class Trans {
             return this;
         }
         
+        /**
+         * Puts the value's UTF-8 bytes at the key's bkey (Keys.toBytes()). The key and the
+         * value are Unicode text, stored as well-formed UTF-8 (bergdb 021-04, 021-05).
+         *
+         * @throws IllegalArgumentException  If the key or the value has a lone surrogate, a
+         *      char of U+D800 to U+DFFF that is not part of a surrogate pair: UTF-8 cannot
+         *      hold it, and its encoding would write '?' (bergdb 021-05). If value is null.
+         */
         public Builder put(String key, String value) {
+            if (value != null && StringUtil.hasLoneSurrogate(value)) {
+                throw new IllegalArgumentException("The value has a lone surrogate, a char "
+                        + "of U+D800 to U+DFFF that is not part of a surrogate pair. BergDB "
+                        + "stores every string as well-formed UTF-8, which cannot hold one "
+                        + "(bergdb 021-04, 021-05).");
+            }
             put(Keys.toBytes(key), value == null ? null : StringUtil.toBytes(value));
             return this;
         }
@@ -353,6 +368,21 @@ public class Trans {
                 return new Trans.Builder();
             }
         }
+    }
+    
+    /** bergdb 021-05: a lone surrogate in a String key or value is refused; it was '?'. */
+    @Nano
+    public static void testLoneSurrogateRefused() {
+        String[][] kvs = {{"k", "a\uD800"}, {"k\uDC00", "v"}};
+        for (String[] kv : kvs) {
+            try {
+                new Trans.Builder().put(kv[0], kv[1]);
+                throw new AssertionError("no exception");
+            } catch (IllegalArgumentException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("lone surrogate"));
+            }
+        }
+        new Trans.Builder().put("k?\uD83D\uDE00", "v?\uD83D\uDE00");     // pairs are text
     }
     
     /** bergdb 005-21: a negative key hash is refused when the transaction is built. */

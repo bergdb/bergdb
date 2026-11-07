@@ -1233,25 +1233,84 @@ public class DbObjectTester {
         Assert.assertEquals(DbObject.MAX_DEPTH, n);
     }
     
-    // ---- bergdb 005-26: strings with lone surrogates ----
+    // ---- bergdb 005-26, 021-04: strings with lone surrogates ----
     
     private static class StringsClass {
         String[] names;
         String one;
         int after;
+        Object any;
+        StringsClass inner;
+        char[] chars;
     }
     
-    /** An array with a lone surrogate failed with "Bad type"; '?' replaces it, as in UTF-8. */
+    /** toDbObject(o) refuses with IllegalArgumentException whose message has 'where'. */
+    private static void assertRefused(Object o, String where) {
+        try {
+            DbObject.toDbObject(o);
+            throw new AssertionError("no exception, " + where);
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("lone surrogate"));
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains(where));
+        }
+    }
+    
+    /**
+     * A String with a lone surrogate, anywhere in an object, is refused with the field's path
+     * (bergdb 021-04, option 1): BergDB stores every string as well-formed UTF-8. It was
+     * stored with '?' in its place (005-26), and the object read back held other strings.
+     * A pair is stored; a char[] keeps lone surrogates and reads back exactly.
+     */
     @Nano
     public static void testLoneSurrogates() {
         StringsClass o = new StringsClass();
-        o.names = new String[] {"x\uD800", "y", "\uDC00z", "\uD83D\uDE00"};
+        o.names = new String[] {"y", "x\uD800"};
+        assertRefused(o, "'names[1]'");
+        
+        o = new StringsClass();
         o.one = "a\uD800b";
+        assertRefused(o, "'one'");
+        
+        o = new StringsClass();
+        o.any = "\uDC00z";                          // a String in an Object field
+        assertRefused(o, "'any'");
+        
+        o = new StringsClass();
+        o.inner = new StringsClass();
+        o.inner.names = new String[] {"\uD83D\uDE00", "\uD83D"};
+        assertRefused(o, "'inner.names[1]'");
+        
+        o = new StringsClass();
+        o.any = new Object[] {"ok", new String[] {"z", "\uDE00"}};
+        assertRefused(o, "'any[1][1]'");
+        
+        assertRefused(new String[] {"\uD800"}, "'[0]'");      // an array put as an object
+        
+        try {
+            new DbObject.Builder().addString("s", "a\uD800");
+            throw new AssertionError("no exception");
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("A string has"));
+        }
+        try {
+            new DbObject.Builder().addInt("n\uD800", 1);
+            throw new AssertionError("no exception");
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("A field name has"));
+        }
+        
+        o = new StringsClass();
+        o.names = new String[] {"y", "\uD83D\uDE00"};
+        o.one = "a\uD83D\uDE00b";
         o.after = 42;
+        o.chars = new char[] {'a', '\uD800', 'b', '\uDC00'};
         StringsClass back = DbObject.toDbObject(o).toJavaObject(StringsClass.class, 
                 new KvToObjectImp());
-        Assert.assertArrayEquals(new String[] {"x?", "y", "?z", "\uD83D\uDE00"}, back.names);
-        Assert.assertEquals("a?b", back.one);
+        Assert.assertArrayEquals(new String[] {"y", "\uD83D\uDE00"}, back.names);
+        Assert.assertEquals("a\uD83D\uDE00b", back.one);
         Assert.assertEquals(42, back.after);
+        Assert.assertTrue(Arrays.equals(o.chars, back.chars));
+        
+        DbObject.toDbObject(list(3));   // the thread's path is empty again
     }
 }

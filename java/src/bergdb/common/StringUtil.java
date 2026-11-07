@@ -208,6 +208,39 @@ public class StringUtil {
     }
 
     /**
+     * True if 's' has a lone surrogate: a char of U+D800 to U+DFFF that is not part of a
+     * surrogate pair, a high surrogate followed by a low one. BergDB stores every string as
+     * well-formed UTF-8 (RFC 3629), which cannot hold one, so a put refuses such a string
+     * (bergdb 021-04); toBytes() would write '?' in its place.
+     *
+     * @throws NullPointerException if s == null.
+     */
+    public static boolean hasLoneSurrogate(String s) {
+        int length = s.length();
+        for (int i = 0; i < length; i++) {
+            char c = s.charAt(i);
+            if (Character.isSurrogate(c)) {
+                if (Character.isHighSurrogate(c) && i + 1 < length
+                        && Character.isLowSurrogate(s.charAt(i + 1))) {
+                    i++;
+                } else {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    @Nano
+    public static void testHasLoneSurrogate() {
+        Assert.assertEquals(false, hasLoneSurrogate(""));
+        Assert.assertEquals(false, hasLoneSurrogate("x\uD83D\uDE00y"));
+        Assert.assertEquals(true, hasLoneSurrogate("x\uD83D"));
+        Assert.assertEquals(true, hasLoneSurrogate("\uDE00x"));
+        Assert.assertEquals(true, hasLoneSurrogate("\uD83D\uD83D\uDE00"));
+    }
+
+    /**
      * Converts UTF-8 bytes to a String.
      * If 'bytes' is null, null will be returned.
      */

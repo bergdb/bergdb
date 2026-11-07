@@ -509,7 +509,12 @@ public abstract class DbValue {
         int length = Array.getLength(javaArray);
         for (int i = 0; i < length; i++) {
             Object element = Array.get(javaArray, i);
-            DbValue dbValue = DbValue.toDbValue(c2, element);
+            DbValue dbValue;
+            try {
+                dbValue = DbValue.toDbValue(c2, element);
+            } catch (DbString.LoneSurrogateException e) {
+                throw e.in("[" + i + "]");      // the element's index (bergdb 021-04)
+            }
             arrayBuilder.add(dbValue);
         }
         return arrayBuilder.build();

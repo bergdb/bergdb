@@ -137,7 +137,15 @@ Example internal data (ikey)
 
 ### Conversion ikey --> bkey ###
 
-First convert ikey to UTF-8 bytes.
+First convert ikey to UTF-8 bytes: well-formed UTF-8 (RFC 3629). Every
+string in a BergDB stream, a key, a String value, a string in an object,
+is a sequence of Unicode scalar values stored as well-formed UTF-8, in
+every language; a writer refuses a string it cannot store so, and a reader
+may rely on it (bergdb 021-04). In Java, a String with a lone surrogate (a
+char of U+D800 to U+DFFF not part of a surrogate pair) is refused with
+IllegalArgumentException, by the Pub API and by `Keys.toBytes` (bergdb
+021-05); a writer in C or Go refuses bytes that are not well-formed UTF-8
+(the C clone, bergdb 012, at release 2026.2, does not yet; bergdb 021-06).
 Then for each byte
     if b == '/', res = 1
     else res = b + 2
