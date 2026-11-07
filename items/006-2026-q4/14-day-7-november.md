@@ -69,6 +69,25 @@ session continues with `/coordinator resume` (013-02).
 * 09:06. s04 done: 021-04's study across languages and formats, six
   options, recommendation (1), refuse everywhere (well-formed UTF-8 for
   every string), for Frans to decide.
+* 09:33. Frans on 021-04: "021-04, good study. Yes, option 1, absolutely.
+  Document this, ensure it is clear in the Javadoc API comments." 09:33
+  agent u04 (high) makes it, and registers 021-05 (the Core's String puts)
+  and 021-06 (the read side).
+* 09:51. java/night.sh on aced82e: NIGHT OK (53 minutes); 021-03 closed
+  (173f1c0).
+* 09:52. Frans on 020-01, section 14, decision 2: "Shape 1, absolutely.
+  Go slow here. I want to work out the details with you. I read
+  DbObject.java yesterday. I really like the concept. Read the comments of
+  it. At the very end too. The design is a limited supported set of types
+  that most (approximately "all") languages will support. It is meant like
+  a data storage format for objects in OO languages. Where the objects are
+  crafted for this purpose, for storage. We do not support serialization
+  of all types of Java objects. A real application will need to deal with
+  long-term stored db objects including type evolution. We need to discuss
+  thowing exceptions vs doing best-effort conversions." The details are
+  worked out with Frans in the chat, one question at a time.
+* 09:55. u04 done, BEFORE COMMIT OK (121 s), JAVADOC PUB OK: 021-04 and
+  021-05 closed, 021-06 registered (the read side; waits for F1's spec).
 
 
 ## 6. Outcome
