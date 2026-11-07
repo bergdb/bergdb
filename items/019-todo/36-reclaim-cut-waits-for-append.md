@@ -1,8 +1,9 @@
 019-36. Investigate: Reclaim's cut waits for the storage thread's append, holding the write lock
 ===============================================================================================
 
-Status: open. Kind: Investigate (performance, not a fault; Frans,
-2026-11-06, 12:28). Frans: none.
+Status: done 2026-11-07 (measured; no change of the code). Kind:
+Investigate (performance, not a fault; Frans, 2026-11-06, 12:28). Frans:
+none.
 Created 2026-11-06 by Frans Lundberg.
 
 What: since 015-80's fix (night 006-12), every call that `BufferedStream`
@@ -89,3 +90,12 @@ the next flush comes up to 50 ms later. By Frans's guide (12:28), under
 100 ms on s1 is good: s1 is under 20 ms. A smoke on a loaded F53 had 16 %
 of the cuts wait, the longest 27 ms; tonight's quiet F53 run (block-q)
 gives F53's figure.
+
+2026-11-07, 06:10. Step 1 on a quiet F53, in block-q of 006-13 (00:30 to
+04:15, quiet; `/Users/f/fl/bench/006-13/night/out/summary.txt`): at full
+speed for 18 minutes (57.6M commits, about 53,000 a second), 913 cuts,
+none waited (the longest 0.012 ms), none over 1 ms; 1,070 new files, up
+to 11 ms each, none met by a cut. Paced at 5,000 commits a second for 10
+minutes: 44 cuts, none waited. With s1's figures (2026-11-06, 13:00: the
+longest 19.85 ms): within Frans's guide on both machines, so step 2's
+fix is not made. 010-01's P1 line has the figures. Closed by coord-1106.

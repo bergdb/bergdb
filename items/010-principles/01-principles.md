@@ -80,10 +80,14 @@ Where BergDB stands:
   append in progress and its force. An append is up to 5 MB, half the
   default buffer; one of 2.5 MB with its force took 17 ms on average and
   144 ms at the longest on F53 (005-46), and a force on s1 can take
-  seconds. The other writers wait with it; readers do not. Not measured
-  yet; [019-36](../019-todo/36-reclaim-cut-waits-for-append.md) measures
-  it and, if a wait is over the target, lets the cut wait for a later
-  commit instead (review R4 of night 006-12, C1; Frans, 2026-11-06).
+  seconds. The other writers wait with it; readers do not. Measured
+  ([019-36](../019-todo/36-reclaim-cut-waits-for-append.md), 2026-11-06
+  and 07, a write load with reclaim on): on s1 at full speed 11 of 658
+  cuts waited, the longest 19.85 ms; on a quiet F53, none of 913 (the
+  longest 0.012 ms), and none of the paced runs' cuts on either. A cut
+  comes right after the thread's append has let go of the lock, so it
+  rarely meets one. Within Frans's guide (F53 under 50 ms good, s1 under
+  100 ms good): no change of the code (review R4 of night 006-12, C1).
 * To look at (Frans, 2026-10-26): every place where a reader can wait
   today, and for how long.
 * Eviction: the sweep that walked the resident set under the write lock,

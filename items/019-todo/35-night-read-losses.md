@@ -1,7 +1,8 @@
 019-35. Investigate: the Core's warm reads lost 1 to 6 % in the night of 5 to 6 November
 =========================================================================================
 
-Status: open. Kind: Investigate. Frans: none.
+Status: done 2026-11-07 (traced; the losses accepted for 2026.3, Frans,
+2026-11-06, 12:31). Kind: Investigate. Frans: none.
 Created 2026-11-06 by Frans Lundberg.
 
 What: the night 006-12 landed about 50 fixes of the Core on `main`
@@ -82,3 +83,27 @@ Log
 
 2026-11-06, 06:15. Registered by the coordinator of night 006-12
 (coord-1105), from Q-B's summary.
+
+2026-11-07, 06:10. Traced in block-q of 006-13 (00:30 to 04:15 on F53,
+quiet; `/Users/f/fl/bench/006-13/night/out/summary.txt`): read-1k and
+w-uni-1k-inf, `performance.sh ab` in eight segments that cover
+1068442..417e555 (each neighbouring builds), three passes each, and one
+pass of the whole range again (tot).
+
+* The whole range (tot, one pass): only w-uni-1k-inf's restart is
+  slower, +1.7 %; the warm reads' losses of Q-B (1 to 6 %) did not come
+  back beyond the CV.
+* Losses in every pass: segment s69 (b45b2fa..417e555: ed58892, c4dc699,
+  c73daba, the 019-21 recount, R5's F5): the restart +3.9, +1.7, +1.6 %;
+  segment s58 (669f0ef..b45b2fa: 33a81b9, 015-80's lock, and b45b2fa,
+  019-10's first fix): `scan_back` -0.9, -2.0, -1.8 %. No other segment
+  lost in every pass (dc46c1e's check in every call, s18, did not).
+* Today's error model (s86, 417e555 against cecaf4c): no loss in every
+  pass.
+
+So the losses are small and come from fixes of faults (the restart's
+recount, the lock of 015-80); Frans, 2026-11-06, 12:31: the loss is
+"accepted for 2026.3 unless the cause is cheap and clear". Neither is
+cheap to win back without the fix it pays for. Closed as accepted; a
+later look at the recount's cost (c73daba) could go to 017-07 if Frans
+wants. Closed by coord-1106.
