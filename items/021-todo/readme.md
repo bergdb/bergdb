@@ -51,7 +51,6 @@ Open
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
 | [021-06](06-read-side-ill-formed-utf8.md) | Investigate | Ill-formed UTF-8 from another writer, read by Java | answers | open |
-| [021-08](08-object-reader-nesting-depth.md) | Fix | The object reader has no limit on nesting depth | none | open |
 
 
 Closed
@@ -59,6 +58,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [021-08](08-object-reader-nesting-depth.md) | Fix | The object reader has no limit on nesting depth | none | done | 2026-11-07 |
 | [021-07](07-object-reader-format-errors.md) | Fix | The object reader's format errors are not BadFormatException | none | done | 2026-11-07 |
 | [021-05](05-core-string-puts-lone-surrogate.md) | Fix | The Core's String puts write '?' for a lone surrogate | none | done | 2026-11-07 |
 | [021-04](04-lone-surrogates-in-objects.md) | Decide | A lone surrogate in a String inside an object | decision | done | 2026-11-07 |

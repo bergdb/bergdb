@@ -147,7 +147,7 @@ public class PubTester {
         }
     }
 
-    /** A class to get an object as, for testMalformedObjectRefused. */
+    /** A class to get an object as, for assertGetRefused. */
     private static class WithObject {
         Object o;
     }
@@ -165,7 +165,26 @@ public class PubTester {
         final byte[] b = new DbObject.Builder().addObject("o", inner).build().getBytes();
         int field = Bytes.bytesToIntLE(b, 8 + 2);   // the field's offset, after the header
         Bytes.intToBytesLE(-1, b, field + 1 + 2 + 1);   // after its type, name size, name "o"
+        assertGetRefused(b);
+    }
 
+    /**
+     * bergdb 021-08: a value nested deeper than the writer writes, such as one from another
+     * writer, is refused as 021-07's faults are. Before, the reader's recursion ended in a
+     * StackOverflowError, or for objects, which it copies at each level, an
+     * OutOfMemoryError, Errors that fail the database inside rw() (019-10).
+     */
+    @Nano
+    public static void testDeepObjectRefused() {
+        assertGetRefused(DbObjectTester.nestedArrays(100 * 1000));
+        assertGetRefused(DbObjectTester.nestedObjects(100 * 1000));
+    }
+
+    /**
+     * A get of the object 'b' as a class, a DbObject and an Object throws
+     * ObjectCreationException, outside rw() and inside, and the database goes on.
+     */
+    private static void assertGetRefused(byte[] b) {
         Database db = Factory.database().memory().start();
         try {
             final Connection c = db.connection();

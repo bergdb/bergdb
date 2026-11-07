@@ -1493,4 +1493,67 @@ public class DbObjectTester {
             throw new AssertionError("add " + i + ": no exception");
         }
     }
+
+    // ---- bergdb 021-08: nesting deeper than the writer writes ----
+
+    /** An object whose field "a" holds arrays nested 'n' deep, the innermost empty. */
+    static byte[] nestedArrays(int n) {
+        byte[] head = new DbObject.Builder().addArray("a", new DbArray.Builder().build())
+                .build().getBytes();
+        int value = firstValue(head);
+        byte[] b = Arrays.copyOf(head, value + 2 * n - 1);
+        Arrays.fill(b, value, value + n - 1, (byte) 'a');
+        Arrays.fill(b, value + n - 1, b.length, (byte) 'z');
+        return b;
+    }
+
+    /** Objects nested 'n' deep through the field "o", the innermost empty. */
+    static byte[] nestedObjects(int n) {
+        byte[] empty = new DbObject.Builder().build().getBytes();
+        byte[] level = new DbObject.Builder().addObject("o", new DbObject(empty)).build()
+                .getBytes();
+        int prefix = level.length - empty.length;        // header, field info, field to size
+        byte[] b = new byte[prefix * (n - 1) + empty.length];
+        for (int k = 0; k < n - 1; k++) {
+            System.arraycopy(level, 0, b, k * prefix, prefix);
+            Bytes.intToBytesLE(b.length - (k + 1) * prefix, b, k * prefix + prefix - 4);
+        }
+        System.arraycopy(empty, 0, b, b.length - empty.length, empty.length);
+        return b;
+    }
+
+    /**
+     * The reader refuses bytes nested deeper than MAX_READ_OBJECTS objects or
+     * MAX_READ_LEVELS objects and arrays, counted alike; it ended in a StackOverflowError,
+     * or for objects, which it copies at each level, an OutOfMemoryError.
+     */
+    @Nano
+    public static void testReaderNestingDepth() {
+        int levels = DbObject.MAX_READ_LEVELS;
+        Assert.assertEquals(1, new DbObject(nestedArrays(levels - 1)).getArray("a").getSize());
+        assertBadFormat("arrays at " + (levels + 1) + " levels", nestedArrays(levels));
+        assertBadFormat("arrays 100,000 deep", nestedArrays(100 * 1000));
+
+        int objects = DbObject.MAX_READ_OBJECTS;
+        Assert.assertEquals(1, new DbObject(nestedObjects(objects)).getFieldCount());
+        assertBadFormat("objects " + (objects + 1) + " deep", nestedObjects(objects + 1));
+        assertBadFormat("objects 100,000 deep", nestedObjects(100 * 1000));
+    }
+
+    /** The Builder refuses to build what the reader refuses, with IllegalArgumentException. */
+    @Nano
+    public static void testBuilderRefusesTooDeep() {
+        DbArray a = new DbArray.Builder().build();
+        for (int i = 1; i < DbObject.MAX_READ_LEVELS - 1; i++) {
+            a = new DbArray.Builder().add(a).build();
+        }
+        new DbObject.Builder().addArray("a", a).build();      // the most levels read
+        a = new DbArray.Builder().add(a).build();
+        try {
+            new DbObject.Builder().addArray("a", a).build();
+            throw new AssertionError("no exception");
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("Nested deeper than"));
+        }
+    }
 }

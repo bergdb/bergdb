@@ -136,6 +136,11 @@ public class DbObject extends DbValue {
      *      serialized byte format defined by this class.
      */
     public DbObject(byte[] b, String key) throws BadFormatException {
+        this(b, key, true);
+    }
+    
+    /** As DbObject(b, key); 'checkNesting' is false for an object nested in checked bytes. */
+    private DbObject(byte[] b, String key, boolean checkNesting) throws BadFormatException {
         super('o');
         this.key = key;
         
@@ -175,6 +180,10 @@ public class DbObject extends DbValue {
                     + b.length + ", fieldCount: " + fieldCount + ".");
         }
         
+        if (checkNesting) {
+            checkNesting(b);
+        }
+        
         this.hashes = new short[fieldCount];
         int offset = HEADER_SIZE;
         
@@ -197,6 +206,108 @@ public class DbObject extends DbValue {
             
             offset += FIELD_INFO_SIZE;
         }
+    }
+    
+    /**
+     * Refuses bytes nested deeper than MAX_READ_OBJECTS or MAX_READ_LEVELS with
+     * BadFormatException (bergdb 021-08), before the reader parses them by recursion, which
+     * ended in a StackOverflowError, and copies each nested object's bytes. It walks the
+     * bytes without copying them, in the reader's order, and stops at the first fault that
+     * the reader refuses there; it must not stop where the reader goes on.
+     */
+    private static void checkNesting(byte[] b) {
+        scanObject(b, 0, b.length, 1, 1);
+    }
+    
+    private static void checkLevels(int objects, int levels) {
+        if (objects > MAX_READ_OBJECTS || levels > MAX_READ_LEVELS) {
+            throw new BadFormatException("Nested deeper than " + MAX_READ_OBJECTS 
+                    + " objects or " + MAX_READ_LEVELS + " objects and arrays.");
+        }
+    }
+    
+    /** Scans the object in b[start, end); false at a fault that the reader refuses. */
+    private static boolean scanObject(byte[] b, int start, int end, int objects, int levels) {
+        checkLevels(objects, levels);
+        if (end - start < HEADER_SIZE) {
+            return false;
+        }
+        int count = Bytes.bytesToShortLE(b, start + MAGIC_SIZE + 1);
+        if (end - start < HEADER_SIZE + count * FIELD_INFO_SIZE) {
+            return false;
+        }
+        for (int i = 0; i < count; i++) {
+            int position = Bytes.bytesToIntLE(b, start + HEADER_SIZE + i * FIELD_INFO_SIZE + 2);
+            if (position < 0 || position > end - start - 3) {
+                return false;
+            }
+            int offset = start + position;
+            char type = (char) b[offset];
+            int nameSize = Bytes.bytesToShortLE(b, offset + 1);
+            offset += 3;
+            if (nameSize <= 0 || nameSize > end - offset) {
+                return false;
+            }
+            if (scanValue(b, type, offset + nameSize, end, objects, levels) < 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
+    /**
+     * Scans a value of 'type' at b[offset] in an object or array at 'objects' and 'levels';
+     * returns the offset after it, or -1 at a fault that the reader refuses.
+     */
+    private static int scanValue(byte[] b, char type, int offset, int end, int objects, 
+            int levels) {
+        int size;
+        switch (type) {
+        case 'n':
+            size = 1;
+            break;
+        case 'i':
+            size = 4;
+            break;
+        case 'l':
+        case 'd':
+            size = 8;
+            break;
+        case 's':
+        case 'b':
+        case 'o':
+            if (end - offset < 4) {
+                return -1;
+            }
+            int n = Bytes.bytesToIntLE(b, offset);
+            offset += 4;
+            if (n == -1 && type != 'o') {
+                return offset;
+            }
+            if (n < 0 || n > end - offset) {
+                return -1;
+            }
+            if (type == 'o' && !scanObject(b, offset, offset + n, objects + 1, levels + 1)) {
+                return -1;
+            }
+            return offset + n;
+        case 'a':
+            checkLevels(objects, levels + 1);
+            while (offset < end) {
+                char elementType = (char) b[offset++];
+                if (elementType == 'z' || elementType == 'Z') {
+                    return offset;
+                }
+                offset = scanValue(b, elementType, offset, end, objects, levels + 1);
+                if (offset < 0) {
+                    return -1;
+                }
+            }
+            return -1;
+        default:
+            return -1;
+        }
+        return size > end - offset ? -1 : offset + size;
     }
     
     private void checkSignature(byte[] b) {
@@ -361,6 +472,22 @@ public class DbObject extends DbValue {
     
     /** The deepest nesting of objects toDbObject() converts (bergdb 005-23). */
     static final int MAX_DEPTH = 1000;
+    
+    /**
+     * The most objects on a path from the top object that the reader reads: the most that
+     * toDbObject() writes, MAX_DEPTH, and a null object for a null field of the deepest
+     * (bergdb 021-08).
+     */
+    static final int MAX_READ_OBJECTS = MAX_DEPTH + 1;
+    
+    /**
+     * The most objects and arrays, counted alike, on a path from the top object that the
+     * reader reads (bergdb 021-08). toDbObject() counts objects only; this leaves room for
+     * an array between each two of them, and the Builder refuses to build deeper. The
+     * reader went to 20,000 levels of arrays on a thread's default stack (2 MB), and to
+     * 2,500 on a 1 MB stack, where 1,000 objects fit too.
+     */
+    static final int MAX_READ_LEVELS = 2 * MAX_DEPTH + 1;
     
     private static final ThreadLocal<Path> PATH = new ThreadLocal<Path>() {
         protected Path initialValue() {
@@ -750,7 +877,7 @@ public class DbObject extends DbValue {
         
         byte[] bytes = new byte[size];
         System.arraycopy(buffer, offset, bytes, 0, bytes.length);
-        return new DbObject(bytes);
+        return new DbObject(bytes, null, false);     // nested in checked bytes (021-08)
     }
     
     private static class DbField {
@@ -1016,7 +1143,12 @@ public class DbObject extends DbValue {
                 offset = f.write(bytes, offset);
             }
             
-            return new DbObject(bytes, null);
+            try {
+                return new DbObject(bytes, null);
+            } catch (BadFormatException e) {
+                // Nested deeper than the reader reads (bergdb 021-08): not built, not put.
+                throw new IllegalArgumentException(e.getMessage());
+            }
                 // Note, we could have a special constructor or static method that does not
                 // do format checking since it is not required when DbObject is created
                 // with its Builder.

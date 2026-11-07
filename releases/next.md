@@ -46,6 +46,16 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `addString` stored a null string, the others gave an `AssertionError`
   or a `NullPointerException`. Well-formed objects are read and written
   as before; the stream is unchanged.
+* **An object nested deeper than the writer writes is refused** (bergdb
+  021-08; 2026-11-07) as 021-07's faults are: more than 1,001 objects
+  (`toDbObject`'s 1,000 and a null object below them), or more than 2,001
+  objects and arrays counted alike, on a path from the top. Before, such
+  bytes from another writer gave a `StackOverflowError`, or, since the
+  reader copies each nested object, an `OutOfMemoryError` (a 2.2 MB value
+  of 100,000 objects), each failing the database inside `rw()`.
+  `DbObject.Builder`, and so a put of an object, refuses to build deeper
+  with `IllegalArgumentException`: a chain of more than 2,000 arrays was
+  stored. The stream is unchanged.
 
 
 ### Core API
