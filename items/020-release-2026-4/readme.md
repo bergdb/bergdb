@@ -62,6 +62,14 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   constructor check and the indexes; the format and its spec text; the
   code sites at `7edcbe2`; the tests, old and new; the Javadoc and
   release notes drafted; questions Q1 to Q6 for Frans. No code changed.
+* [05-binson-for-objects.md](05-binson-for-objects.md). 020-05, Binson
+  (binson.org) as the byte format of objects, a study for 020-02's
+  question 4 (Frans, 2026-11-07, 20:42): the types, the bytes and their
+  sizes, reads measured both ways, the kind of a value, the
+  implementations in other languages, the spec as a BergDB profile, the
+  cost; options (a) to (e), recommended (c1), Binson under a profile
+  behind a short header of kind and version. No code changed; the
+  programs are in `/Users/f/fl/bench/006-14/020-binson/`.
 
 
 Log

@@ -116,6 +116,12 @@ session continues with `/coordinator resume` (013-02).
 * 16:58. r07 done, BEFORE COMMIT OK (120 s): 021-08 closed (a7fe143). Its
   open point, S2-F8 (an `Object[]` holding itself fails the database in
   `rw()` at a put), noted with 020-02's question 2.
+* 20:42. Frans: "Read binson.org [...] study the possibility of using
+  Binson for storing objects in BergDB. The serialization format of
+  DbObject would be Binson instead of the current one. Currently I have no
+  strong preference between those." Agent b05 (xhigh): 020-05.
+* 21:07. b05 done: 020-05, Binson feasible; recommended (c1), Binson
+  under a BergDB profile behind a short header of kind and version.
 
 
 ## 6. Outcome

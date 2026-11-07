@@ -489,7 +489,8 @@ From 020-01, sections 4.5 and 5.5, one at a time after question 1:
 * **Question 4: the format and its spec** (020-01, section 14, decision
   7): under 018-01's rule that Frans approves format changes; a spec for
   other languages, with 021-06 (strings read that are not well-formed
-  UTF-8).
+  UTF-8). Binson as the format, a study: 020-05 (Frans, 20:42), which
+  recommends (c1), Binson under a BergDB profile behind a short header.
 * **Question 5: `put(Object)`, the field `key`, and `Object.class`
   gets.**
 
