@@ -257,7 +257,7 @@ and only the get side converts with a report.
    `ConversionIssue`; in `bergdb.pub` or a package of its own.
 
 
-## 2b. Question 1b: should BergDB store null? (open)
+## 2b. Question 1b: should BergDB store null? (leaning: no null)
 
 Frans, 12:15: "020-02. I would like to extend this by one more question:
 should null be supported? Let's open up for the option of not supporting
@@ -265,6 +265,15 @@ storing null values. In general, null is a mistake. A billion dollar
 historic mistake. However, many languages support it, so omitting the
 possibility of storing null is not obvious. For binson (binson.org), I
 chose to not support null values."
+
+Frans, 14:31: "About null or not. Based on your investigation, I lean
+towards: no null values. Make a note of this and prepare the required
+changes. But don't code it yet. Might sleep on it or study it one more
+time before I give it an ok-and-implement. Now it is ok to design and
+document. Prepare for it."
+
+So: leaning to no stored null; not yet decided, and no code until Frans's
+"ok-and-implement". The design and the change plan are 020-04.
 
 The study, with the languages, formats and databases, the programs run
 and the sources, is 020-03; the labels below (BG3, JL3, ...) are its
@@ -492,3 +501,6 @@ at Frans's request (12:15) by coord-1107's agent n02, with its study in
 conversion apart with a report, written by coord-1107 from Frans's
 thinking (12:31) and the chat's sketch, at Frans's request (14:26: "Write
 it down. It sounds pretty good. No decision yet.").
+
+2026-11-07. Question 1b: Frans leans to no null values (14:31), not yet
+decided; the design and the change plan, without code, go to 020-04.
