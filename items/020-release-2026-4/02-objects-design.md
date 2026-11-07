@@ -38,6 +38,9 @@ The stored types are `DbObject`'s eight: `n` boolean, `i` int (32 bits),
 
 Frans, 10:03: "Will decide later today. Need to read and think."
 
+A fourth option, (D), storage and conversion apart with a report, came
+from Frans at 12:31 (section 2.5); not decided (14:26).
+
 ### 2.1. Where values are converted
 
 1. **At a put**, from a Java value to a stored type. `byte`, `short`,
@@ -152,6 +155,106 @@ Two consequences of (A) to weigh:
 * A field's type change that (A) refuses but the application wants, such
   as `int` to `String`: by hand, through the `DbObject` get, in (A).
 * Renamed fields: not seen by name; by hand, as above.
+
+### 2.5. Option (D): storage and conversion apart, with a report
+
+Frans, 12:31: "Meanwhile, let's discuss conversion between Java object and
+DbObject. I am not sure we can say what is best for the database user
+here. I see throwing as problematic sometimes. Sometimes best effort is
+better, but with feedback how the conversation went. There may be other
+options then either best-effort or exact-or-throw. Feedback about how
+conversation went together with best-effort. Sounds reasonable. Users
+convert and can check what was done. One possibility is to work with a
+ConversionResult object or similar. A possibility is to always retain the
+DbObject so the database client can check exactly what was in the
+database and how it was converted to Java object fields. Just thinking
+out loud..."
+
+Frans, 14:26: "About the Conversion design. Write it down. It sounds
+pretty good. No decision yet. [...] I this is something I want to design
+in detail. Important for usability, public API."
+
+Not decided; a design to work out in detail with Frans.
+
+**The idea: two steps.**
+
+1. **The database** stores and returns a `DbObject`, exactly: what was
+   put is what is read (`get(key, DbObject.class)`). Indexes are over
+   its fields. This is the database's promise, the same in every
+   language.
+2. **The binding** converts a `DbObject` to an object of the
+   application's class: a pure function of the `DbObject` and the class,
+   outside the database, which never changes what is stored. It never
+   throws for the data, and it reports how the conversion went.
+
+So no one policy has to be the best for every user: the binding offers
+the report, and the user decides what to do with it. And each language's
+binding converts in its own way (Rust with a `Result`, Python setting
+attributes), over one stored format.
+
+**The put stays strict.** A best-effort conversion at a get cannot harm
+the stored data; at a put it would store a changed value. So a put
+refuses what it cannot store exactly (question 2, 021-04, question 1b),
+and only the get side converts with a report.
+
+**A sketch** (names to be chosen):
+
+    DbObject o = c.get(key, DbObject.class);         // exactly what is stored
+    Conversion<Person> r = Conversion.of(o, Person.class);  // never throws for the data
+    Person p = r.value();      // the best-effort object
+    r.isExact();               // true if every stored value was set exactly
+    r.issues();                // per field: path, stored type, value, field type, what was done
+    r.dbObject();              // the source, kept
+
+    Person q = c.get(key, Person.class);  // convenience: exact, or throws an exception holding r
+
+* Keeping the `DbObject` costs little: it is a view over the bytes that
+  the get has read anyway.
+* An exact conversion, the common case (the class did not change), can
+  share one empty report: no cost beyond today's.
+* The strict get's exception holds the `Conversion`: a caller that
+  catches it has the best-effort object, the issues and the stored data.
+  Throwing and best effort are then not two designs but one: the strict
+  path is best effort that says so loudly.
+* Question 1's table (section 2.2) still defines what is exact; (D)
+  decides what happens when a value is not.
+
+**What a report holds.** Each event of type evolution, by field path:
+
+* a value set exactly (not listed; the report is about the rest);
+* a value not set, because it cannot be converted exactly: the field
+  keeps the constructor's value;
+* a stored field that the class does not have: ignored;
+* a field of the class that is not stored: keeps the constructor's
+  value (under question 1b's (d), the one "no value").
+
+**Questions for the detailed design:**
+
+1. Best effort for a value that is not exact: leave the field at the
+   constructor's value and report it (the coordinator's lean: it never
+   invents a value), or set the nearest value (1.5 to 1, 2^40 to
+   `Integer.MAX_VALUE`) and report it? A `d` into a `float` field may be
+   the exception: the nearest float, since a float is approximate.
+2. Which events make a conversion not exact: only a value not set, or
+   also a missing or an ignored field (normal evolution)? Perhaps two
+   levels: `isExact()` (no value lost) and `isComplete()` (the class and
+   the stored object have the same fields).
+3. The convenience `get(key, Class)`: strict (throws with the report) or
+   lenient (returns the best-effort object)? Or both, as two methods, or
+   a policy argument?
+4. Unknown fields at a put back. An older version of the application
+   reads an object that a newer version wrote, changes a field and puts
+   it back: the fields its class does not know are lost. Protocol
+   Buffers keeps "unknown fields" for this reason. Keeping the
+   `DbObject` makes it possible: a put of the converted object with its
+   source keeps the fields the class lacks. Wanted, and how?
+5. An application's own conversion of old forms (section 2.4): a hook
+   on the class that gets the `DbObject` and the report, or by hand
+   through `Conversion.of`?
+6. Scans and index reads: each result converted, with a report per
+   result, or `DbObject`s only?
+7. The names and the package: `Conversion`, `ConversionResult`,
+   `ConversionIssue`; in `bergdb.pub` or a package of its own.
 
 
 ## 2b. Question 1b: should BergDB store null? (open)
@@ -384,3 +487,8 @@ later?").
 2026-11-07. Question 1b (section 2b), whether BergDB stores null, added
 at Frans's request (12:15) by coord-1107's agent n02, with its study in
 020-03; recommended (d), null as absence with an exact round trip.
+
+2026-11-07. Option (D) of question 1 (section 2.5), storage and
+conversion apart with a report, written by coord-1107 from Frans's
+thinking (12:31) and the chat's sketch, at Frans's request (14:26: "Write
+it down. It sounds pretty good. No decision yet.").

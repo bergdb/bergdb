@@ -101,6 +101,9 @@ session continues with `/coordinator resume` (013-02).
 * 12:40. n02 done: question 1b in 020-02 (section 2b), the study in
   020-03; recommendation (d), no stored null: a null field is absent, and
   a put is refused where the null would not read back.
+* 14:26. Frans: "About the Conversion design. Write it down. It sounds
+  pretty good. No decision yet." Written as 020-02, section 2.5, option
+  (D), with seven questions for the detailed design.
 
 
 ## 6. Outcome
