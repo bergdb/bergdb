@@ -109,6 +109,10 @@ session continues with `/coordinator resume` (013-02).
 * 15:37. p04 done: 020-04, the design and change plan for (d), six
   questions for Frans, about one day of work in three commits. Its
   finding of reader faults registered as 021-07.
+* 16:33. Agent r07 (high) on 021-07.
+* 16:42. r07 done, BEFORE COMMIT OK (122 s): 021-07 closed (630acb3). Its
+  open point, the reader's unlimited nesting depth, registered as 021-08
+  and given to r07.
 
 
 ## 6. Outcome

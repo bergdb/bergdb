@@ -51,6 +51,7 @@ Open
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
 | [021-06](06-read-side-ill-formed-utf8.md) | Investigate | Ill-formed UTF-8 from another writer, read by Java | answers | open |
+| [021-08](08-object-reader-nesting-depth.md) | Fix | The object reader has no limit on nesting depth | none | open |
 
 
 Closed
@@ -103,6 +104,10 @@ Files
   `AssertionError` (failing the database in `rw()`), a
   `NegativeArraySizeException` or an `IllegalArgumentException` from the
   reader, not `BadFormatException` (found in 020-04, section 10).
+* [08-object-reader-nesting-depth.md](08-object-reader-nesting-depth.md).
+  021-08, Fix: an object nested deeper than the writer's limit, from
+  another writer, can give a `StackOverflowError` at a read, failing the
+  database in `rw()`.
 
 
 Log
