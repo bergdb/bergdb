@@ -19,8 +19,7 @@ package bergdb.pub.util;
  * database too, and is thrown as it is (bergdb 019-10; Database, "Errors").</p>
  * 
  * <p>An application that does not tell the two apart can take any DbException as a
- * reason to stop and restart the database; that is always safe (2026-10-23, bergdb
- * 005-01; before, this comment called every DbException fatal).</p>
+ * reason to stop and restart the database; that is always safe (bergdb 005-01).</p>
  * 
  * @author Frans Lundberg
  */

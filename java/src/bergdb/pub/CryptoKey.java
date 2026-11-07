@@ -161,7 +161,7 @@ public class CryptoKey {
     
     /**
      * Returns a hash code consistent with equals(): equal keys have equal hash codes
-     * (bergdb 015-45; until 015-45, Object's, by identity).
+     * (bergdb 015-45).
      */
     public int hashCode() {
         return serialize().hashCode();

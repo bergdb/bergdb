@@ -125,6 +125,10 @@ public class TimeResolver {
      * Resolves a time string the must be absolute; no current time is needed.
      */
     public static long resolveAbsolute(TimeZone timeZone, String timeString) {
+        if (timeString == null) {
+            // bergdb 021-01: as resolve() refuses it, not a NullPointerException.
+            throw new IllegalArgumentException("timeString == null is not allowed");
+        }
         return new TimeResolver(timeZone).reallyResolveAbsolute(timeString);
     }
     

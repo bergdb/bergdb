@@ -13,7 +13,7 @@ import bergdb.pub.util.SyncLevel;
  * <p>One database at a time has a directory: DatabaseBuilder.start() refuses a second while
  * the first is open (bergdb 005-63).</p>
  * 
- * <p><b>Errors</b> (2026-11-06, bergdb 019-10). BergDB assumes a sound environment: correct
+ * <p><b>Errors</b> (bergdb 019-10). BergDB assumes a sound environment: correct
  * storage, which returns the bytes written to it, and enough memory and stack for its work.
  * Its checksums and checks find some damage of the stored bytes, not all: they are a best
  * effort, and damage that passes them gives wrong values with no error. Only a cut tail, as
@@ -85,7 +85,7 @@ public interface Database extends AutoCloseable {
      * Every transaction that has returned is then written and the files are closed, in the
      * background, typically within a second, also when the program returns from main right
      * after this method. This method returns at once; close() also waits until the database
-     * is closed. Until 005-35, what was still buffered was lost.
+     * is closed.
      * Call close() to wait for completion and report a failed flush or storage close
      * (bergdb 005-73, F5).
      * </p>
@@ -98,12 +98,11 @@ public interface Database extends AutoCloseable {
      * </p>
      * 
      * <p>stop() or close() must be called once the Database is no longer used, as close() for
-     * a file or a socket: nothing else stops it (2026-10-27, bergdb 005-55; until then the
-     * garbage collector stopped a Database that nothing referred to). A Database that is not
-     * stopped keeps its storage threads, its open files, its write buffer and its memory until
-     * the JVM exits. What it has committed is still written within the buffer time, as after any
-     * commit; at the exit of the JVM, what is buffered and not yet written is lost, as in a
-     * crash, which the database tolerates.
+     * a file or a socket: nothing else stops it, not even the garbage collector (bergdb
+     * 005-55). A Database that is not stopped keeps its storage threads, its open files, its
+     * write buffer and its memory until the JVM exits. What it has committed is still
+     * written within the buffer time, as after any commit; at the exit of the JVM, what is
+     * buffered and not yet written is lost, as in a crash, which the database tolerates.
      * </p>
      * 
      * <p>Start another database on the same directory only after this one is closed, when

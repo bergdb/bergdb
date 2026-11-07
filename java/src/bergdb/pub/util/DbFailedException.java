@@ -6,7 +6,7 @@ package bergdb.pub.util;
  * OutOfMemoryError) or a bug, in a read, a transaction or a sync, or a transaction failed
  * after its checks. The cause is that failure; for a call refused after it, the first one. The
  * call that met an Error throws the Error itself, and the later calls this exception with
- * the Error as the cause (2026-11-06, bergdb 019-10).</p>
+ * the Error as the cause (bergdb 019-10).</p>
  *
  * <p>BergDB checks everything that may refuse a transaction before the transaction changes
  * anything; such a refusal leaves the database as it was. After that point a transaction is

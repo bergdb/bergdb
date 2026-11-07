@@ -1,7 +1,7 @@
 021-01. Fix: the Pub API's Javadoc: DataFormatException, dated history, Time's BadFormatException
 =================================================================================================
 
-Status: open. Kind: Fix. Frans: none.
+Status: done. Kind: Fix. Frans: none.
 Created 2026-11-07 by Frans Lundberg.
 
 What: three places where the user Javadoc of the Pub API (`bergdb.pub`,
@@ -76,3 +76,48 @@ Log
 
 2026-11-07. Registered by coord-1106 from 006-13's morning list, point 1,
 at Frans's word (2026-11-07, 08:00).
+
+2026-11-07. Taken by agent f13 of coord-1107 (006-14).
+
+2026-11-07. Done by agent f13 of coord-1107, with the defaults:
+
+1. `DataFormatException`'s Javadoc says what it is thrown for (a stored
+   value that does not fit the Java type or field it is read into, or a
+   stored object that cannot be read when its index entries are updated or
+   built) and that it belongs to the object code and the user indexes,
+   experimental in 2026.3 (bergdb 018-01, D6), as the other exceptions of
+   that code say. The `NOTE 1304` stays.
+2. The grep of the `/** */` comments of `bergdb.pub` and `bergdb.pub.util`
+   for years, "since", "before", "until", "no longer", "was", "now" and
+   the like; each hit checked. The history went from `Database` ("Errors
+   (2026-11-06, ...)", stop()'s "Until 005-35, ...", "2026-10-27, ...;
+   until then the garbage collector ..."), `DatabaseBuilder` (create()'s
+   "Until 015-05 this method was dir(String); until 005-66 ...", "Since
+   2026-10-18", "until 2026-10-25, such a start ...", "Before, such a start
+   created ..."), `CryptoKey.hashCode` ("until 015-45, Object's"),
+   `DbException`, `DbFailedException`, `DatabaseMissingException`,
+   `DatabaseNotCreatedException` and `SyncLevel` (now: no level for a copy
+   elsewhere; one may come with a future replication design). The entry
+   IDs stay as references, the dates go. Kept: the dates of measured
+   figures (`Database`'s "Measured ... (2026-10-13, ...)",
+   `DatabaseBuilder.startupDistanceInMb`'s "measured 2026-10-13"), the
+   "experimental in 2026.3" sentences, and the `//` comments.
+3. `Time.utc(String)` and both `Time.resolve` have `@throws
+   BadFormatException` and `@throws IllegalArgumentException`. On the way:
+   `Time.utc(null)` and `Time.resolve(zone, null)` threw a
+   `NullPointerException` (`TimeResolver.resolveAbsolute` did not check),
+   and `Time.resolve(zone, null, s)` too (`now.units()`); both now throw
+   `IllegalArgumentException`, as the three-argument `resolve` did for a
+   null string or zone. Test `Time.testResolveThrows`: bad strings give
+   `BadFormatException`, nulls `IllegalArgumentException`, for all three
+   methods; it fails without the fix (a `NullPointerException`, checked
+   with the test compiled against `HEAD`'s `TimeResolver`).
+
+Seen, not changed: `TimeResolver` accepts a month or a day out of range
+("2000-13-01", "2013-02-50") and lets the calendar roll it over, on
+purpose by its comment in `parseDate` (it allows "overflow" for now); a
+candidate for a later entry if a user should be told or refused.
+
+`releases/next.md`: a Pub API bullet (the nulls) and a Documentation
+bullet. `JAVADOC PUB OK`. `BEFORE COMMIT OK (120 s)` (2026-11-07, 08:57; 1263 unit
+tests, 87 f-tests), on the tree with this entry's and 021-03's changes.

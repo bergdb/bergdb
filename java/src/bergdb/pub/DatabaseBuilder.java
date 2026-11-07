@@ -23,9 +23,8 @@ public interface DatabaseBuilder {
      * directory, and creates it, with its missing parents, if it does not exist; a directory
      * that holds no stream file (*.bergdb) with a byte, a missing or an empty one, or one
      * with other files only, gets a new, empty database. This method only records the
-     * directory (bergdb 005-66), so a builder that is not started holds nothing. Until
-     * 015-05 this method was dir(String); until 005-66 dir() opened the directory and threw
-     * the errors that start() now throws.
+     * directory (bergdb 005-66), so a builder that is not started holds nothing, and start()
+     * throws what opening the directory throws.
      * 
      * <p>A directory that holds a database has created.txt, written once the database's
      * creation is durable; start() refuses one that has created.txt and no stream file
@@ -106,7 +105,7 @@ public interface DatabaseBuilder {
      * while a larger value likely improves database performance.
      * The actual resulting cache size depends on application code, 
      * the operating system and the JVM. 
-     * Since 2026-10-18 the cache size indicator is the budget of the database's cache: when
+     * The cache size indicator is the budget of the database's cache: when
      * the index nodes and values it holds in memory pass it, it evicts those used least
      * recently, down to three quarters of it. What the database must keep in memory (the
      * nodes changed since its startup position, of the order of the startup distance) is
@@ -154,8 +153,7 @@ public interface DatabaseBuilder {
      *             If the wrong crypto key is used, or none is used with an encrypted
      *             database or a crypto key is used with an unencrypted database. The
      *             start has then written nothing to the database, so it can be started
-     *             with the right key (bergdb 005-40; until 2026-10-25, such a start after
-     *             a crash could make the database unreadable with the right key too).
+     *             with the right key (bergdb 005-40).
      * @throws DatabaseNotCreatedException
      *             If the database's creation did not complete: a crash, as a power loss,
      *             while it was created left a part of it, and no data (bergdb 005-33). The
@@ -168,10 +166,9 @@ public interface DatabaseBuilder {
      *             the files were removed, not restored, or emptied (bergdb 015-01). The
      *             start has opened, created and written nothing. Restore the *.bergdb files
      *             and start again; or, for a new, empty database there, remove created.txt
-     *             and the *.bergdb files. Before, such a start created a new, empty
-     *             database. Also, for open(), if the directory is missing, is not a
-     *             directory, or holds no stream file with a byte (bergdb 015-05); the start
-     *             has then created and written nothing.
+     *             and the *.bergdb files. Also, for open(), if the directory is missing,
+     *             is not a directory, or holds no stream file with a byte (bergdb 015-05);
+     *             the start has then created and written nothing.
      */
     public abstract Database start();
 }

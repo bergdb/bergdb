@@ -8,6 +8,7 @@ import java.util.TimeZone;
 
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pub.util.BadFormatException;
 import bergdb.pub.util.Clock;
 import bergdb.pubimp.TimeResolver;
 
@@ -80,6 +81,8 @@ public class Time {
     /**
      * Resolves an absolute time string using UTC time zone.
      * 
+     * @throws BadFormatException If the time string is not an absolute time string.
+     * @throws IllegalArgumentException If timeString is null.
      * @see #resolve(TimeZone, Time, String)
      */
     public static Time utc(String timeString) {
@@ -91,7 +94,8 @@ public class Time {
      * Since this method takes no current time, the time string must
      * be an absolute time (time string rule ABSOLUTE-TIME).
      * 
-     * @throws IllegalArgumentException If timeZone is null.
+     * @throws BadFormatException If the time string is not an absolute time string.
+     * @throws IllegalArgumentException If timeZone or timeString is null.
      * @see #resolve(TimeZone, Time, String)
      */
     public static Time resolve(TimeZone timeZone, String timeString) {
@@ -158,8 +162,15 @@ public class Time {
      * The Gregorian calendar is used (the ordinary Western calendar).
      * Leap seconds are never considered. One day is always 24*3600 seconds, 
      * one minute is 60 seconds and one hour is always 3600 seconds.</p>
+     * 
+     * @throws BadFormatException If the time string does not follow the format above, or
+     *             is a minus time that goes back before Unix Epoch.
+     * @throws IllegalArgumentException If timeZone, now or timeString is null.
      */
     public static Time resolve(TimeZone timeZone, Time now, String timeString) {
+        if (now == null) {
+            throw new IllegalArgumentException("now == null not allowed");
+        }
         long units = TimeResolver.resolve(timeZone, now.units(), timeString);
         return Time.units(units);
     }
@@ -235,6 +246,46 @@ public class Time {
     
     
     // ======== Tests ========
+    
+    /**
+     * bergdb 021-01: utc() and both resolve() throw BadFormatException for a bad time string,
+     * and IllegalArgumentException for a null one, a null zone or a null current time.
+     */
+    @Nano
+    private static void testResolveThrows() {
+        final Time now = Time.utc("2000-01-01 12:00");
+        final Runnable[] bad = {
+                () -> Time.utc("20a0-01-01"),
+                () -> Time.utc("yesterday"),
+                () -> Time.resolve(UTC, "2000-01-0"),
+                () -> Time.resolve(UTC, now, "-2 x"),
+                () -> Time.resolve(UTC, now, ""),
+        };
+        for (int i = 0; i < bad.length; i++) {
+            try {
+                bad[i].run();
+                throw new AssertionError("no BadFormatException, case " + i);
+            } catch (BadFormatException e) {
+                // Expected.
+            }
+        }
+        final Runnable[] nulls = {
+                () -> Time.utc(null),
+                () -> Time.resolve(UTC, null),
+                () -> Time.resolve(null, "2000-01-01"),
+                () -> Time.resolve(UTC, now, null),
+                () -> Time.resolve(null, now, "now"),
+                () -> Time.resolve(UTC, null, "now"),
+        };
+        for (int i = 0; i < nulls.length; i++) {
+            try {
+                nulls[i].run();
+                throw new AssertionError("no IllegalArgumentException, case " + i);
+            } catch (IllegalArgumentException e) {
+                // Expected.
+            }
+        }
+    }
     
     @Nano
     private static void testIsBetween() {
