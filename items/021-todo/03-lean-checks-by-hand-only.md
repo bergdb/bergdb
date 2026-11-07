@@ -1,7 +1,7 @@
 021-03. Fix: Lean's test programs run by hand only, and TakeCheck does not compile
 ==================================================================================
 
-Status: in progress. Kind: Fix. Frans: none.
+Status: done (2026-11-07). Kind: Fix. Frans: none.
 Created 2026-11-07 by Frans Lundberg.
 
 What: checks of the Lean model that no script runs, so that nothing tells
@@ -88,9 +88,14 @@ pass", and exits with status 1 (`return (if bad == 0 then 0 else 1)`).
 2. TakeCheck: 015-03 is still open, so this entry does not wait for it;
    015-03's log has the line that TakeCheck joins this step when it
    compiles.
-3. Open: one `java/night.sh` run with the step, NIGHT OK. night.sh clones
+3. Done: one `java/night.sh` run with the step, NIGHT OK. night.sh clones
    HEAD, so it needs this entry committed first; the coordinator runs it
    when planned and closes the entry after it. `BEFORE COMMIT OK (120 s)` (2026-11-07,
    08:57), on the tree with this entry's and 021-01's changes.
 
-State: done but for the night run of point 3.
+State: done. Point 3: the night run 2026-11-07-0858 on aced82e, NIGHT OK
+(53 minutes); its step `lean-tests ok 252 s LEAN TESTS OK`
+(`java/build/night/2026-11-07-0858/report.txt`).
+
+2026-11-07. Closed by coord-1107 after the night run 2026-11-07-0858 on
+aced82e: NIGHT OK (53 minutes), its lean-tests step LEAN TESTS OK in 252 s.
