@@ -17,6 +17,12 @@ to design and document. Prepare for it."
 Where the points that need Frans's decision are: section 8, Q1 to Q6,
 each with a recommendation. Where (c) and (b) would differ: section 2.6.
 
+Note (2026-11-08): this design is written for DbObject's format version
+1. 020-05 recommends since 2026-11-08 a new format, option (f), and
+Frans leans to it (020-02, section 4.2). What (f) changes here, and what
+stays: section 11. Some of section 4's lines were done since by 021-07
+and 021-08 (section 11).
+
 
 ## 1. In short
 
@@ -243,6 +249,9 @@ same in (b), (c) and (d); only the put of a null differs.
 
 
 ## 3. The format
+
+For DbObject's format version 1. Under 020-05's option (f) this section
+is replaced but for the spec text on absence (section 11).
 
 ### 3.1. What changes in the bytes
 
@@ -831,6 +840,11 @@ Under "Pub API", draft:
   refused, since such an object cannot be read back into its class? The
   same for a constructor that throws: refuse only a put that needs it (a
   null field; recommended), or every put of the class.
+Note (2026-11-08): under 020-05's option (f), Q3 widens to every object
+of 2026.3 (020-02, section 4.11), Q4 is replaced by (f)'s header (020-02,
+section 4.5), and Q5 was done by 021-07, by that entry's default: every
+add method of the Builder refuses null (section 11).
+
 * **Q3. An object with a null from 2026.3**: refused by the reader
   (recommended: no backward compatibility is needed, the spec stays
   simple, and no binding must know the old encodings), or read with a
@@ -888,6 +902,9 @@ objects hold no null.
 In all, about one day of an agent's work (xhigh is not needed; high),
 plus the gates.
 
+Under 020-05's option (f), step A is not made: (f)'s codec takes its
+place, with no null in it; steps B to D stay (section 11).
+
 What can be done before the ok: nothing in code. Two things are
 independent of null and could be done now if Frans wants, each a 021
 entry: the reader's malformed lengths and type bytes as
@@ -898,6 +915,9 @@ second merges.
 
 
 ## 10. Found in the code, not in 020-03
+
+The second, third and fourth points were fixed on 2026-11-07 by 021-07
+and 021-08 (section 11).
 
 * **BG3's silent 0 is not null's.** Any `String` read into an `int` or
   `Integer` field gives 0, not only a null one: `DbString` has no
@@ -940,8 +960,86 @@ second merges.
   nulls by default and pass (section 5.1).
 
 
-## 11. Log
+## 11. Under 020-05's option (f), and since 021-07
+
+Added 2026-11-08. This design was written for DbObject's format version
+1, with section 4's lines at `7edcbe2`. 020-05 recommends since
+2026-11-08 a new format, option (f), DbObject's table with Binson's
+values (020-05, section 12b), and Frans leans to it, with no null and a
+binary search for fields (2026-11-08, 15:22; 020-02, sections 4.1 to
+4.3). If (f) is chosen:
+
+* **What stays**: the rules of section 2: the put, the constructor check
+  of (d), the get, `DbObject`'s own API but its encodings, and the
+  index rule, where "`l` or `i` for `long`" reads "an integer" (020-02,
+  section 4.7); the spec text's paragraphs on absence, on the writer and
+  on the reader (section 3.3); the documentation of the rule (sections
+  6.1 and 6.2, but `DbObject`'s sentence on the encodings); the tests of
+  the rules, N1 to N8 and N11 to N13, and section 5.1's changes of the
+  existing tests; section 7; Q1, Q2 and Q6.
+* **Section 3.1**: (f) has no null encoding to refuse: none of its type
+  bytes is a null (020-05, section 12b.1). A value of 2026.3 (`bergo`,
+  version 1) is refused as a whole, or read by a reader of version 1
+  kept for it: 020-02, section 4.11, in place of Q3.
+* **Section 3.2**: in place of the version byte 1 and Q4, (f)'s header,
+  0x82, is "format 2" (020-05, section 12b.2; 020-02, section 4.5). 2026.3 does not read 2026.4's objects, so "the new format is a
+  subset of the old" no longer holds; the index definitions are objects,
+  so their bytes change, and a start reads them in (f) (020-02, section
+  4.11). StreamDigest's workloads still put no object: no digest
+  changes.
+* **Section 3.3**: "Encodings (version 1)" and "A reader refuses" are
+  replaced by (f)'s rules (020-05, section 12b.1), which have nothing
+  null to refuse. An array ends with 0x43 in (f), so "`z` is not a type"
+  keeps only its API half: `getType` answers `z` for an absent field.
+* **Section 4**: the lines of the format layer (`DbObject`'s Builder,
+  `parse` and field infos; `DbArray`; the `write` and `parse` of
+  `DbString` and `DbByteArray`; `DbValue.parse`) are rewritten by (f)'s
+  codec (020-05, section 10), and their null branches go with them. The
+  lines of the reflection (`toDbObject`, `toDbObjectOnPath`,
+  `createDbArray`, the new class check), and those of `KvToObjectImp`,
+  `RwEnvironmentImp`, `FieldIndexFunction` (a long index reads the
+  integer), `IndexEntryBuilder`, `IndexBuilderImp`, `Data` and
+  `IndexManager`, stay.
+* **Section 5**: N10 becomes "the reader refuses 2026.3's bytes", or
+  reads them, by 020-02, section 4.11; the `@Nano` tests of `DbString`
+  and `DbArray` go with their classes.
+* **Section 6**: `DbObject`'s Javadoc paragraph on the encodings
+  (section 6.2) and the third bullet of section 6.3 ("an object written
+  now is read by 2026.3 too") change: (f)'s objects are not read by
+  2026.3.
+* **Section 9**: step A is not made; (f)'s codec takes its place, with
+  no null in it. Steps B, C and D stay: they change the reflection, the
+  gets, the indexes and the documentation, which (f) keeps, and can come
+  before or after the codec. 020-05's cost for (f), M, 3 to 5 days,
+  includes this plan (020-05, section 10).
+
+Done since, on today's format (2026-11-07):
+
+* **021-07**: the reader's malformed lengths and bad type bytes give
+  `BadFormatException` (N14; section 10's third point); a nested
+  object's size −1 is refused (section 3.1's fourth encoding; section
+  10's second point); `Z` after an element is refused (`Z` as an array's
+  first byte is still a null array); every add method of
+  `DbObject.Builder` refuses null with `IllegalArgumentException`
+  (section 2.4's "Today ..." sentence; section 10's fourth point; Q5, by
+  that entry's default; N9's Builder part). A string's length −1 still
+  reads as a null string, and a field count of −1 as a null object.
+* **021-08**: the reader refuses an object nested deeper than the
+  writer's limit (1,001 objects, 2,001 objects and arrays).
+* So of section 9's "What can be done before the ok", only the optional
+  cache of the eligible fields per class is left. Section 4's line
+  numbers are `7edcbe2`'s; 021-07 and 021-08 moved some.
+
+
+## 12. Log
 
 2026-11-07. Written by coord-1107's agent p04 at Frans's word (14:31:
 "Now it is ok to design and document. Prepare for it."), read-only at
 `7edcbe2`; no code changed. Not decided: Q1 to Q6 wait for Frans.
+
+2026-11-08. Section 11 added by coord-1108's agent d02 (020-02, section
+4): what 020-05's option (f), which Frans leans to, changes in this plan
+(the format, its spec text, the code sites, the tests, step A) and what
+stays (the rules of the put, the get and the indexes, steps B to D); and
+what 021-07 and 021-08 did since. Notes in the opening, sections 3, 8, 9
+and 10. The log is now section 12. Not decided: Q1 to Q6.

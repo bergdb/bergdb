@@ -52,7 +52,8 @@ was run); "docs" means a document or source of section 8, read on
 * **BergDB today** stores a typed null for `s`, `b`, `a` and `o`, and
   reads a null and a missing field differently; a null meets three
   different index behaviours, and a null `String` read into an `int` or
-  `Integer` field gives 0 silently (BG3, found here). At the top level
+  `Integer` field gives 0 silently (BG3, found here; any `String` does,
+  null or not: 020-04, section 10). At the top level
   BergDB has no null already: `put(key, null)` is refused, and a key
   with no value reads as null (BG5).
 * **The trade-off**: keeping null keeps exact Java round trips with no
@@ -363,7 +364,8 @@ on the jar of that commit.
 * A null into a primitive: a null `Integer` (an `o` null) into an `int`
   throws `Bug` (S2-F6; BG3); a null `String` (an `s` null) into an `int`
   or an `Integer` field reads as 0, silently (BG3: `DbValue.toJavaObject`
-  calls `toInt()`, which is 0 for a string). An `Integer[]` with a null
+  calls `toInt()`, which is 0 for a string; for any string, not only a
+  null one: 020-04, section 10). An `Integer[]` with a null
   read into an `int[]` throws a bare `IllegalArgumentException` from
   `Array.set` (BG4). An `Object[]` of `{null, "x"}` reads back as
   `[null, null]` (S2-F7; BG4).
@@ -398,7 +400,9 @@ on the jar of that commit.
   (`testNullField0` and 1, `testStrings2`, `testStringArray0`,
   `testArray1`, `testStrings2D`, the 4-D and 5-D array tests and the
   null cases of the object tests); none covers a null into a primitive
-  or another type, or null in an index but 019-42's.
+  or another type, or null in an index but 019-42's. (020-04, section
+  10, counted them at `7edcbe2`: 19 of the 72 set a null and 4 more hold
+  nulls by default; note of 2026-11-08.)
 
 
 ## 6. The options across languages
@@ -445,8 +449,9 @@ refused where a null would not read back.
 
 * Under (a) a binding in a language whose plain types have no null
   (Rust, Swift, Kotlin's non-null types, Go's value types, C's numbers)
-  must give every `s`, `b`, `a` and `o` field an optional type, since any stored one may be null, or refuse the
-  object; and it must handle absence besides. A binding in a language
+  must give every `s`, `b`, `a` and `o` field an optional type, since
+  any stored one may be null, or refuse the object; and it must handle
+  absence besides. A binding in a language
   with one untyped null (Python, JavaScript, Go's `nil` interface) must
   choose a type for the null it writes: Java writes a null `Integer` as
   an `o`, so even Java's choice is arbitrary (5.1). JavaScript has two
@@ -678,3 +683,8 @@ Read on 2026-11-07; copies of most are in
 2026-11-07. Written by agent n02 of coord-1107 at Frans's request
 (12:15), with the programs in `/Users/f/fl/bench/006-14/020-null/`;
 the question and its options are in 020-02, question 1b.
+
+2026-11-08. Notes added by coord-1108's agent d02 (020-02, section 4)
+from 020-04, section 10: BG3's silent 0 is any `String`'s (sections 1
+and 5.2), and the count of tests with a null (section 5.3); a long line
+of section 6.2 wrapped. Frans leans to no null (020-02, section 4.1).

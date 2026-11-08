@@ -33,7 +33,7 @@ lookup, the median of the runs' medians.
   100 fields, hot and cold, in Java and C, but in two corners (below).
   Up to 20 fields, the typical objects, hot: hits 1.1 to 1.5 times faster
   in Java (27 against 35 ns at 8 fields, 31 against 46 at 20), 1.7 to 1.9
-  times in C (19 against 32, 22 against 41); misses 2.4 to 3.1 times (8
+  times in C (19 against 32, 22 against 41); misses 2.3 to 3.1 times (8
   against 26 ns, 13 against 33).
 * **Cold, the cache argument shows on misses.** H16 reads 1.3 to 1.6
   cache lines of 64 bytes for a miss at 8 to 20 fields, B 2.8 to 4.5 (T);
@@ -62,14 +62,15 @@ lookup, the median of the runs' medians.
   100 fields (K).
 * **From a Java `String`**, the API case, the hash costs: FNV-1a over the
   chars adds 15 to 19 ns per lookup (hot, 1 to 20 fields), `getBytes`
-  and FNV-1a 23 to 26, today's O(1) hash 1 to 4, the cached
+  and FNV-1a 23 to 26, today's O(1) hash 1 to 5, the cached
   `String.hashCode` 0 to 3. A key held as bytes and hash, as an index
   function holds it, costs nothing.
 * **Recommended for (f)** (section 14): after the count, n 16-bit
   FNV-1a hashes of the UTF-8 names, then the table of offsets; a lookup
   scans the hashes and compares the name where a hash matches; no binary
   search. The cost: 2 bytes a field, 6.6 % of a 20-field object here,
-  `Payment` 41 bytes instead of 35.
+  `Payment` 41 bytes instead of 35. Frans leans to the binary search
+  instead (2026-11-08, 15:22): section 13's note.
 
 
 ## 2. The question and the method
@@ -681,7 +682,7 @@ Cold, misses:
 * The hash, on misses: FNV-1a over the chars adds 15 to 19 ns a lookup
   hot (H16-S against H16, 1 to 20 fields; FNV-1a is a chain of
   multiplies, about 1.3 ns a byte); `getBytes` and FNV-1a 23 to 26;
-  today's O(1) hash 1 to 4; `String.hashCode` 0 to 3 (computed once per
+  today's O(1) hash 1 to 5; `String.hashCode` 0 to 3 (computed once per
   `String`). In C, computing FNV-1a at each lookup adds 8 to 14 ns hot
   (H16-c).
 * A hit also pays the compare by chars: H16J-S 43 against H16's 27 ns at
@@ -826,7 +827,7 @@ first and last bytes at the start):
 * **The hash scan wins where Frans expected**, and most on misses, which
   are common: an index over a field that some objects lack, a filter, a
   `has`. From 1 to 20 fields, hot, 1.1 to 1.5 times faster than B on
-  hits and 2.4 to 3.1 on misses (J); cold, 1.0 to 1.2 on hits and 1.1 to
+  hits and 2.3 to 3.1 on misses (J); cold, 1.0 to 1.2 on hits and 1.1 to
   1.9 on misses (1.5 to 1.9 from 8 fields).
 * **The crossover is above the typical object.** A scalar scan in Java
   loses to B only on hot misses from about 70 fields, and in the index
@@ -845,6 +846,21 @@ first and last bytes at the start):
   faster. D's faster cold hits are real but not understood, and D costs
   2n bytes more and slower misses.
 * **L, a scan of the names**, is never the best choice above 2 fields.
+
+Note (2026-11-08, after this study): Frans leans to B, "binary search
+for fields (no hash list)" (15:22; 020-02, section 4.3). The
+measurements and this section's reading of them stand. The reason is
+scale, in the coordinator's words, which Frans liked: "The big gain is
+reading fields through the table at all: a lookup is about 10 times
+cheaper than today's full parse. Hash scan against binary search is a
+second-order difference within that." Today's read of one field takes
+340 to 720 ns (020-05, section 6.2); a lookup by B 31 to 46 ns for a hit
+at 4 to 20 fields hot, 43 to 65 warm (section 6); B's extra over H16 is
+at most 35 ns hot or warm, next to a Core get of 0.8 to 3.8 µs and a
+commit of 10 to 20 µs on F53 (016-10). Cold, where a lookup is the first
+read of an object's bytes, it is larger: up to 67 ns a hit and 198 a
+miss at 100 fields (section 7), which matters if (f)'s reader does not
+copy the bytes first (020-02, section 4.3).
 
 
 ## 14. Recommendation for 020-05's format
@@ -875,11 +891,15 @@ For (f), variant H of 020-05, section 12b.4, with these choices:
    units).
 
 020-05's recommendation, B unless H is clearly faster under 20 fields:
-it is, hot 1.1 to 1.5 times on hits and 2.4 to 3.1 on misses (J; C 1.7
+it is, hot 1.1 to 1.5 times on hits and 2.3 to 3.1 on misses (J; C 1.7
 to 1.9 on hits), cold 1.5 to 1.9 times on misses from 8 fields; on cold
 hits only 1.0 to 1.2 times. B stays the fallback if 2 bytes a field
 matter more: it costs, at 20 fields (J), 15 ns more per hot hit, 20 per
 hot miss, 56 per cold hit and 143 per cold miss.
+
+2026-11-08, 15:22: Frans leans to B, binary search, no hash list. This
+recommendation stays as measured; the reason for the lean is in section
+13's note and in 020-02, section 4.3.
 
 
 ## 15. Limits
@@ -933,3 +953,10 @@ In `/Users/f/fl/bench/006-15/020-06/`:
 2026-11-08. Written by agent m06 of coord-1108 (006-15) at Frans's
 request (09:32); measured 09:44 to 10:50 on F53; the programs and outputs
 in `/Users/f/fl/bench/006-15/020-06/`. No code changed.
+
+2026-11-08. Frans's lean to B (15:22) added, dated, to sections 1, 13
+and 14 by coord-1108's agent d02 (020-02, section 4.3), the measurements
+and the recommendation left as measured. Two ranges corrected from this
+item's own tables: hot misses up to 20 fields, 2.3 to 3.1 times (2.3 at
+1 field), in sections 1, 13 and 14; today's O(1) hash from a `String`,
+1 to 5 ns (5 at 20 fields), in sections 1 and 10.

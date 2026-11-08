@@ -45,6 +45,14 @@ object in object-oriented languages, we typically have less than 20
 fields, I think."
 
 
+Frans, 15:22: "Create a subagent at XHigh to go through the findings of
+020-02, 03, 04, 05, 06. Summarize, check and make the documents coherent
+and ready for decisions. I lean towards: no nulls, binary search for
+fields (no hash list), binson value format but not the whole Binson
+format. The API and converting between DbObject and Java objects is not
+yet decided, but there are good options that have been researched."
+
+
 ## 2. Ground rules
 
 * Effort: the session high while the usage level is `tight` (013-02);
@@ -65,6 +73,7 @@ fields, I think."
 |---|---|---|---|---|---|
 | The format "DbObject's framing, Binson's values", in detail | 020-05 | f05 | xhigh | `/Users/f/fl/bench/006-15/020-05/` | done, 37e8db7 |
 | Field lookup measured: 16-bit hash scan against binary search | 020-06 | m06 | xhigh | `/Users/f/fl/bench/006-15/020-06/` | done |
+| Objects' storage ready for decisions: 020-02 to 020-06 checked, summarized in 020-02 | 020-02 | d02 | xhigh | none | done |
 
 020-05's programs (`/Users/f/fl/bench/006-14/020-binson/`) were deleted
 after 2026-11-07's handover; the agents write their own.
@@ -89,6 +98,15 @@ session continues with `/coordinator resume` (013-02).
   a word at a time) is faster than binary search under 20 fields, hot
   and on cold misses; recommended for (f), 2 bytes a field. 020-05,
   section 12b.4, cites it.
+* 14:58 to 15:22 Frans and the coordinator on 020-06: binary search's
+  extra cost (5 to 30 ns a lookup, warm) against a whole get (0.8 to
+  3.8 µs); Frans leans to binary search, no hashes (KISS).
+* 15:23 Agent d02 started (xhigh): 020-02 to 020-06 ready for decisions.
+* 15:44 d02 done: 020-02, sections 4 (the decisions 4.1 to 4.12), 5 (the
+  API and conversion, not yet) and 6 (enough to decide: yes); 020-04,
+  section 11, what (f) changes; corrections in 020-02 to 020-06. The
+  coordinator's cache claim corrected: since 015-47 a get returns the
+  database's own array (no copy), so under (f) a lookup can be cold.
 
 
 ## 6. Outcome

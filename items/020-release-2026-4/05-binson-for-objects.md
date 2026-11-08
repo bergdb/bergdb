@@ -59,6 +59,10 @@ means a document of section 15, read on 2026-11-07.
   variant chosen by 020-06; until then (c1), Binson under a profile
   behind a short header of kind and version, which stays the choice if
   BergDB's stored bytes should be Binson as they are.
+* **Frans leans to (f)** (2026-11-08, 15:22): "binson value format but
+  not the whole Binson format", and to a binary search for the lookup,
+  "no hash list", where 020-06 recommends 16-bit hashes (section 12b.4).
+  Not decided; the decisions are summarized in 020-02, section 4.
 
 
 ## 2. The question and the method
@@ -738,8 +742,9 @@ offsets (1, 2 or 4 bytes, the smallest that fits), the field count, the
 end of each field, then the fields in name order, each a name length, the
 name and a value in Binson's encoding; arrays as Binson's; a 1-byte
 header before the top object. A field is found by a binary search on the
-names, or by a scan of a 16-bit hash per field (020-06 measures both);
-a nested path jumps from table to table. Consequences: Binson's size for
+names, or by a scan of a 16-bit hash per field (020-06 measures both;
+Frans leans to the binary search, 12b.4); a nested path jumps from table
+to table. Consequences: Binson's size for
 objects whose fields take under 256 bytes, n + 1 bytes more to 64 KB;
 lookups as fast as a table allows, at any depth; the conversion to and
 from Binson copies every value; BergDB's own spec and codecs, as in (a)
@@ -936,7 +941,7 @@ field is read and no array is walked.
   and a scan of four hashes per 64-bit read.
 
 Frans expects H to be faster, its hashes being compact and first. **The
-choice is open: 020-06 measures both** (being written on 2026-11-08).
+choice is open: 020-06 measures both** (written on 2026-11-08: below).
 Only the hashes differ, so the choice changes no other rule. Recommended:
 B, which costs no byte and no hash function in the spec, unless 020-06
 finds H clearly faster for objects of under 20 fields, the typical ones
@@ -945,10 +950,20 @@ finds H clearly faster for objects of under 20 fields, the typical ones
 020-06 (written 2026-11-08) found it so, and recommends H with 16-bit
 hashes (FNV-1a over the UTF-8 name, folded to 16 bits), scanned a word
 at a time: under 20 fields 1.1 to 1.5 times faster than B on hot hits,
-2.4 to 3.1 times on hot misses, 1.5 to 1.9 times on cold misses, about
-even on cold hits; 2 bytes a field (`Payment` 41). B wins only in two
-corners from 50 to 70 fields (020-06, sections 1 and 14). The choice is
-Frans's.
+2.3 to 3.1 times on hot misses, 1.5 to 1.9 times on cold misses from 8
+fields, about even on cold hits; 2 bytes a field (`Payment` 41). B wins
+only in two corners from 50 to 70 fields (020-06, sections 1 and 14).
+The choice is Frans's.
+
+2026-11-08, 15:22: Frans leans to B, "binary search for fields (no hash
+list)". 020-06's measurements and recommendation stand as measured; the
+reason is the scale of the difference. A lookup by B takes 31 to 46 ns
+for a hit at 4 to 20 fields hot and 43 to 65 warm (020-06, section 6),
+against 340 to 720 ns for today's read of one field (section 6.2); B's
+extra over H16 is at most 35 ns hot or warm, next to a get of 0.8 to 3.8
+µs and a commit of 10 to 20 µs on F53 (016-10); and B adds no byte, no
+hash function and no rule tying a hash to its name. In full, with the
+cold case: 020-02, section 4.3.
 
 For scale (section 6.2, B): today's reader takes 340 to 720 ns for any
 field, as it parses the whole object first; 006-14's sketch of a lookup
@@ -982,7 +997,9 @@ and `DbObject.getX` use lookups: on bytes that BergDB wrote or checked,
 their checks guard against corrupt bytes only, which give
 `BadFormatException` or a wrong value, never an `Error`. Today's
 constructor parses every field at every read (section 6.1); under (f),
-`new DbObject(bytes)` reads the header only.
+`new DbObject(bytes)` reads the header only. (Whether it still copies
+the bytes, as today's constructor does, decides whether its lookups find
+them in the cache: 020-02, section 4.3, note of 2026-11-08.)
 
 **One object, one byte string** (P2): a reader that keeps rules 1 to 7
 accepts only what the writer writes. F7: of 32,867 changed byte strings
@@ -1137,7 +1154,8 @@ UTF-16 hash (DB8).
 
 1. **(f), (c1) or (a)** for 2026.4 (section 13).
 2. **The lookup**: variant B or H. Open until 020-06; recommended B,
-   unless H is clearly faster under 20 fields (12b.4).
+   unless H is clearly faster under 20 fields (12b.4). 020-06 found H16
+   faster and recommends it; Frans leans to B (2026-11-08, 15:22; 12b.4).
 3. **Names**: a 1-byte length, names of 1 to 255 bytes (recommended;
    today 1 to 32,767; Binson recommends at most 50 characters). Or a
    length of w bytes: no limit but the object's size, and n bytes more in
@@ -1146,6 +1164,9 @@ UTF-16 hash (DB8).
    (ii) or (iii) (12b.2).
 5. **Arrays**: Binson's framing (recommended), or a count or a size
    (12b.1).
+
+These, with the rest of object storage, one decision at a time:
+020-02, section 4 (2026-11-08).
 
 
 ## 13. Recommendation: (f)
@@ -1194,6 +1215,12 @@ For Frans to decide, in this order: (f), (c1) or (a); then question 3
 (the header); then the lookup's variant, from 020-06; then the names'
 length, the arrays and the limits (depth, fields, sizes), with the
 bindings that must meet them.
+
+2026-11-08, 15:22: Frans leans to (f), "binson value format but not the
+whole Binson format", with variant B, "binary search for fields (no hash
+list)" (12b.4). Not decided. The decisions, in this order and with the
+smaller ones (integers, doubles, strings, limits, old databases, the
+spec), are in 020-02, section 4.
 
 
 ## 14. The measurements, how they were made
@@ -1297,7 +1324,7 @@ and the clones in `impl/`.
   `sql-common/json_binary.cc` (trunk); [PostgreSQL JSONB]:
   https://github.com/postgres/postgres, `src/include/utils/jsonb.h` and
   `src/backend/utils/adt/jsonb_util.c` (master); [FlatBuffers]:
-  https://flatbuffers.dev/internals/; 020-06 (being written).
+  https://flatbuffers.dev/internals/; 020-06.
 
 
 ## 16. Log
@@ -1313,3 +1340,11 @@ from his idea of 09:18, for the day's plan (006-15). Sections 1, 11, 13,
 14 and 15 updated; the recommendation changed from (c1) to (f), the
 lookup's variant left to 020-06. The programs and the output in
 `/Users/f/fl/bench/006-15/020-05/`. No code changed.
+
+2026-11-08. Checked with 020-02 to 020-06 by coord-1108's agent d02
+(020-02, section 4): Frans's leans of 15:22 added, dated, to sections 1,
+12, 12b.4, 12b.11 and 13, the measured conclusions left as they were;
+12b.4's "2.4 to 3.1 times on hot misses" corrected to 2.3 (020-06's own
+table, 1 field), with "from 8 fields" for the cold misses; a note in
+12b.5 on the copy; "020-06 (being written)" in sections 12b.4 and 15
+made current.
