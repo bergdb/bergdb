@@ -68,8 +68,13 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   sizes, reads measured both ways, the kind of a value, the
   implementations in other languages, the spec as a BergDB profile, the
   cost; options (a) to (e), recommended (c1), Binson under a profile
-  behind a short header of kind and version. No code changed; the
-  programs are in `/Users/f/fl/bench/006-14/020-binson/`.
+  behind a short header of kind and version. Option (f) added on
+  2026-11-08 (Frans, 09:32): DbObject's table with Binson's values,
+  Binson's sizes with a field found without a walk, converted to and
+  from Binson by copying the values; recommended since then, with the
+  lookup's variant from 020-06. No code changed; the programs are in
+  `/Users/f/fl/bench/006-14/020-binson/` and, for (f),
+  `/Users/f/fl/bench/006-15/020-05/`.
 
 
 Log

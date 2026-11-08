@@ -5,7 +5,9 @@ Created 2026-11-07 by Frans Lundberg. Status: open. A study of Binson
 release 2026.4, in place of today's format: the types, the bytes, the
 reads, the kind of a value, other languages, the spec's governance and
 the cost, with measurements, the options and a recommendation, for
-Frans to decide (020-02, question 4).
+Frans to decide (020-02, question 4). Since 2026-11-08 also option (f),
+BergDB's own format with DbObject's table and Binson's values (section
+12b).
 
 Frans, 2026-11-07, 20:42: "I want you to study something for me. [...]
 Read binson.org, the website. I want you to study the possibility of
@@ -18,7 +20,9 @@ format. Consider this in detail, please."
 How each fact is known: **run** with a label (S, B, W, BJ, DB, JS, PY, C,
 SW) means a program's output line, from the programs in
 `/Users/f/fl/bench/006-14/020-binson/` (its `readme.txt` says how each
-was run; section 14); **code** means read in the source named (BergDB at
+was run; section 14), and the label F (option (f), section 12b) from
+those in `/Users/f/fl/bench/006-15/020-05/`, 2026-11-08; **code** means
+read in the source named (BergDB at
 `a7fe143`, the Binson implementations as cloned on 2026-11-07); **docs**
 means a document of section 15, read on 2026-11-07.
 
@@ -39,11 +43,22 @@ means a document of section 15, read on 2026-11-07.
 * **Other languages get less than the list suggests**: binson-js and
   binson-java refuse each other's bytes for some names (JS9, BJ25); Rust
   has no parser. Java and C (binson-c-light, no malloc) are solid.
+* **Option (f)**, 2026-11-08 (section 12b): DbObject's table with
+  Binson's values. An object is a type byte that gives its offsets'
+  width (1, 2 or 4 bytes), the field count, each field's end, then the
+  fields in name order, each a name and a Binson value. Binson's size
+  for every sample (Payment 35 bytes, plus a 1-byte header), n + 1
+  bytes more from 256 bytes to 64 KB (F1, F5); a field found without a
+  walk, at any position and depth; converted to and from Binson by
+  copying every value (F2). BergDB's own spec and codecs.
 * **Options**: (a) keep the format; (b) Binson with a profile; (c) Binson
   behind a BergDB header, with or without a field table; (d) DbObject's
-  format moved towards Binson's types.
-* **Recommended: (c1)**, Binson under a profile behind a short header of
-  kind and version, no stored field table for now (section 13).
+  format moved towards Binson's types; (e) CBOR; (f) DbObject's table
+  with Binson's values.
+* **Recommended: (f)** since 2026-11-08 (section 13), with the lookup's
+  variant chosen by 020-06; until then (c1), Binson under a profile
+  behind a short header of kind and version, which stays the choice if
+  BergDB's stored bytes should be Binson as they are.
 
 
 ## 2. The question and the method
@@ -642,6 +657,34 @@ every binding writes its own codec, the UTF-16 hash included; its reader
 is lenient (DB2 to DB5) until made strict; its objects stay about twice
 as large.
 
+**For (f)** (section 12b):
+
+1. Binson's size for objects whose fields take under 256 bytes, every
+   sample of section 5.1 among them; n + 1 bytes more from 256 bytes to
+   64 KB, 1 % on `Order` (F1, F5).
+2. A field is found without a walk, at any position and depth, behind
+   any array (W's case): an index reads one field without parsing the
+   rest, with no table built in memory.
+3. Binson's model and Binson's value bytes: a conversion either way
+   copies every value and re-frames the objects (F2).
+4. Strict by design: one byte string per object (F7), a full check at
+   the put, and lookups that check what they touch (12b.5).
+5. BergDB's own: its version in a header byte, a type it may add later.
+
+**Risks of (f):**
+
+1. A format with no users or codecs outside BergDB: its spec, a codec
+   in every language and the conformance vectors are BergDB's to write
+   and keep, as for (a) and (d).
+2. A writer that must know each object's size before its table (12b.6):
+   more code than Binson's writer, and a new place for faults.
+3. Two levels of reading (12b.5): corrupt bytes read only by lookups can
+   give a wrong value (never an `Error`) where a full check would refuse
+   them.
+4. Decisions first: the lookup's variant (020-06), the names' length,
+   the header (12b.11).
+5. New code in the bug-free release, as (c1).
+
 
 ## 12. The options
 
@@ -680,6 +723,7 @@ one integer type, no null, a hash over UTF-8 bytes, names non-empty, a
 strict reader, maybe minimal-size integers and lengths. Keeps the table
 and the marker; shrinks the values. BergDB's own spec and codecs in
 every language, and Binson's types without Binson's libraries. Cost: M.
+Option (f) carries (d) through.
 
 **(e) Another standard format**, for completeness, not studied in depth:
 CBOR's deterministic encoding (RFC 8949, section 4.2.1) has mature
@@ -688,47 +732,460 @@ with any keys, which a profile would have to refuse, and it orders map
 keys by their encoded bytes (shorter names first), not Binson's or
 DbObject's order. It has no field table either.
 
+**(f) DbObject's table with Binson's values** (2026-11-08; in full in
+section 12b). An object is a type byte that gives the width of its
+offsets (1, 2 or 4 bytes, the smallest that fits), the field count, the
+end of each field, then the fields in name order, each a name length, the
+name and a value in Binson's encoding; arrays as Binson's; a 1-byte
+header before the top object. A field is found by a binary search on the
+names, or by a scan of a 16-bit hash per field (020-06 measures both);
+a nested path jumps from table to table. Consequences: Binson's size for
+objects whose fields take under 256 bytes, n + 1 bytes more to 64 KB;
+lookups as fast as a table allows, at any depth; the conversion to and
+from Binson copies every value; BergDB's own spec and codecs, as in (a)
+and (d). It is (d) carried through: (d) keeps DbObject's framing and
+moves its values towards Binson's types; (f) takes Binson's value bytes
+as they are and a table as small as the object allows. Cost: M, as (c1).
 
-## 13. Recommendation: (c1)
 
-Binson under a BergDB profile, behind a short BergDB header that holds
-the kind of the value and a version of BergDB's object format; no
-stored field table in this version; `DbObject` kept as the API over the
-new bytes; made in 2026.4 with 020-04's no-null rules.
+## 12b. Option (f) in detail: DbObject's table with Binson's values
 
-1. **The model is already Binson's.** Shape 1 chose a small closed list,
-   as Binson's; question 1b leans to no null, as Binson; question 1's
-   (A) decides by the value, so the int/long split is not used. What
-   is left between the two is null, which question 1b's (d) removes,
-   and the split. Two formats for one model would leave BergDB with
-   a spec to write and codecs to port that Binson already has.
-2. **Half the bytes** for small objects, such as the index definitions
-   and the tests' objects measured (S).
-3. **The header keeps BergDB's decisions BergDB's.** It answers question
-   3 in the value, as Binson's one-byte marker cannot, and its version
-   lets a later format add a field table ((c2)) or change the profile
-   without touching Binson.
-4. **The read cost is known, and small on typical objects.** Reads in
-   order were faster than today's code on the four objects and slower
-   behind an array (B, W); against a table they lose most on objects
-   with large arrays or objects before the indexed field. Until such
-   indexes matter, a table in memory, built at the first lookup, serves
-   repeated lookups; (c2) is the step if they do.
-5. **2026.4 is the time.** No backward compatibility is needed; 020-04
-   opens the format anyway (its null encodings); the spec is to be
-   written now (question 4). After 2026.4 the switch needs a migration.
+Frans, 2026-11-08, 09:18: "I am thinking of a non-Binson format that
+gets both the benefit of variable-length values (compact representation)
+like Binson and fast field lookups like the current DbObject. [...]
+Let's consider DbObject format as today, but with variable-size values
+like Binson. How about that? The idea is that is could support more
+compact representation, fast field lookup, and a virtual representation
+of a DbObject that is very similar to a Binson object, so conversion
+would be straigh-forward." And, 09:32: "Start a subagent at XHigh to
+investigate this in detail and update 020-05."
 
-When another option is better: **(a)** if no new reader should enter
-the bug-free release (then (c1) after it, with a migration); **(d)** if
-field lookups on large objects are a priority and BergDB should own its
-format outright; **(b)** if question 3 is answered by keys or
-directories (section 7, (iii)) and a version outside the value is
-enough: then the header has nothing to hold.
+The labels F1 to F7 are the sections of `out-run.txt`, one run of the
+programs in `/Users/f/fl/bench/006-15/020-05/` (section 14). A new letter
+rather than (d): (d) keeps DbObject's framing (`bergo`, 6-byte infos
+with a hash, 16-bit name lengths) and moves its values towards Binson's
+types; (f) takes Binson's value bytes as they are and changes the
+framing, so that a conversion copies values instead of encoding them
+again. (d) stays as the smaller step.
 
-For Frans to decide, in this order: whether objects go to Binson ((b),
-(c1), (c2)) or stay ((a), (d)); then question 3 (the kind of a value),
-which decides between (b) and (c1); then the profile's limits (depth,
-fields, names), with the bindings that must meet them.
+### 12b.1. The format
+
+    stored = header object            ; the value at a key
+    header = %x82                     ; a BergDB object, format 2 (12b.2)
+    object = %x48 count1 n*end1 n*field   ; w = 1: fields of at most 255 bytes
+           / %x49 count2 n*end2 n*field   ; w = 2: at most 65,535 bytes
+           / %x4a count4 n*end4 n*field   ; w = 4: at most 2^31 - 1 bytes
+    countW = W-byte unsigned integer  ; n, the number of fields
+    endW   = W-byte unsigned integer  ; where a field ends (rule 1)
+    field  = nameLen name value       ; nameLen: 1 byte, 1 to 255
+    value  = boolean / integer / double / string / bytes / array / object
+    array  = %x42 *value %x43         ; Binson's
+    boolean, integer, double, string, bytes: Binson's (section 3), unchanged
+
+Little-endian. The type bytes are Binson's but for objects, 0x48 to 0x4a,
+which Binson does not use (it reserves none). (f) refuses Binson's 0x40
+and 0x41, and a Binson reader refuses an (f) object at its first byte:
+neither is read as the other.
+
+The rules, each one of the full check's (12b.5):
+
+1. **Ends.** `end[i]` is where field i ends, counted from the first byte
+   after the table. Field i is the bytes from `end[i−1]` (0 for the first
+   field) to `end[i]`; the object is `1 + w + n·w + end[n−1]` bytes.
+2. **Width.** w is the smallest of 1, 2 and 4 that holds `end[n−1]`. An
+   empty object is `48 00`, 2 bytes, as Binson's `40 41`. The count has w
+   bytes too: a field takes at least 3 bytes, so the count fits where the
+   ends fit.
+3. **A field** is exactly its name length, its name and one value, which
+   ends at `end[i]`. A nested object's own size is its field's extent.
+4. **Names** are 1 to 255 bytes of well-formed UTF-8 (021-04), the fields
+   in strictly increasing order of the unsigned bytes of their names,
+   Binson's and DbObject's order: no two have one name.
+5. **Values** by Binson's rules: integers and lengths in the fewest bytes;
+   strings well-formed UTF-8; NaN as `0x7ff8000000000000` (section 9,
+   rule 4).
+6. **Limits**: at most 32,767 fields, as today; at most 1,001 objects or
+   2,001 objects and arrays on a path (021-08); 4-byte ends below 2^31.
+7. **Nothing after** the top object.
+
+Why the ends, counted from the fields' first byte (the sketch of 09:18
+stored the starts, `00 0a 15`):
+
+* the width depends on the fields' size only, not on the table that it
+  sizes: no circularity;
+* an object holds its own size, so one in an array is skipped without a
+  walk, and a reader checks it against the parent's table;
+* offset 0 is not stored: the ends `0a 15 1e` take the starts' 3 bytes.
+
+The table and the values' own lengths say the same thing twice (a string
+has its length, an object its size): the price of Binson's value bytes.
+A reader checks that they agree for each value it reads (rule 3).
+
+`Payment`, 36 bytes with the header, 35 without (Binson 35, DbObject 71;
+F3):
+
+    82                               header
+    48 03  0a 15 1e                  1-byte offsets, 3 fields; ends 10, 21, 30
+    06 616d6f756e74  11 f401         "amount" 500
+    04 66726f6d      14 04 31303031  "from" "1001"
+    02 746f          14 04 31303032  "to" "1002"
+
+The fields are the sketch's, byte for byte (F3). Against Binson: per
+object, the type byte and the count in place of 0x40 and 0x41; per field,
+an end in place of the name's 0x14; the values the same. `Dialog` is 37
+bytes (Binson 36, DbObject 102), each nested object with its own table:
+
+    82 48 02 10 20
+    07 706572736f6e41  48 01 05  02 6964 10 01   "personA" {id 1}
+    07 706572736f6e42  48 01 05  02 6964 10 02   "personB" {id 2}
+
+**Variant H** (12b.4) puts a 16-bit hash of each name between the count
+and the ends, `%x48 count1 n*hash n*end1 n*field` and so on: `Payment`
+is `82 48 03 cc39 b815 610a 0a 15 1e ...`, 42 bytes.
+
+**Arrays**, four ways, each with its cost:
+
+* **(A1) Binson's framing**, 0x42, the elements, 0x43, walked, as today's
+  DbObject arrays: Binson's bytes, copied by a conversion where they hold
+  no object. Recommended: no index reads an array (`FieldIndexFunction`
+  reads long, double and string fields), a get reads an array whole, and
+  the table skips an array field without a walk (W's case).
+* **(A2) a count** in place of the end byte: the same size below 256
+  elements (with a width rule, as objects), and a reader allocates before
+  it reads; still walked; not Binson's bytes.
+* **(A3) a size**: an array inside an array is skipped without a walk; w
+  bytes in place of one; not Binson's bytes.
+* **(A4) a table of element ends**: element i without a walk, w bytes per
+  element; for a later version, if element reads or array indexes come.
+
+The top level stays as today (section 5.4): an array is wrapped in a
+field `array`, a primitive in `p`.
+
+### 12b.2. The header
+
+One byte, 0x82, before the top object only, for question 3 and a
+version:
+
+* no well-formed UTF-8 string starts with a byte from 0x80 to 0xbf, so a
+  `String` value is never taken for an object (N4's case for strings; a
+  `byte[]` may still start with it, as with `bergo` today);
+* 0x80 + 2 reads as format 2: today's format starts with `b`, version 1;
+  a later format takes 0x83;
+* if question 3 is answered by the Core's entry or a rule of the keys
+  (section 7, (ii) and (iii)), and the version lives in the database, the
+  header can go: `Payment` is then 35 bytes.
+
+(c1)'s header could be the same byte.
+
+### 12b.3. Sizes
+
+F1, bytes per object; (f) without the header, which adds 1 to a stored
+value; "(f) H" with variant H's hashes; the ratio is DbObject / (f):
+
+| Sample | Fields | DbObject | Binson | (f) | (f) H | Ratio |
+|--------------------------|----|---------|---------|---------|---------|------|
+| `Person`                 | 1  | 30      | 15      | 15      | 17      | 2.00 |
+| `Payment`                | 3  | 71      | 35      | 35      | 41      | 2.03 |
+| `Account`                | 1  | 32      | 13      | 13      | 15      | 2.46 |
+| `Foobar`                 | 7  | 243     | 181     | 181     | 195     | 1.34 |
+| `Dialog`                 | 2  | 102     | 36      | 36      | 44      | 2.83 |
+| `Data.Index`, 1 level    | 5  | 146     | 95      | 95      | 105     | 1.54 |
+| `Data.Index`, 2 levels   | 5  | 168     | 111     | 111     | 121     | 1.51 |
+| `Customer`               | 12 | 349     | 225     | 225     | 249     | 1.55 |
+| `Order` (made up, w 2)   | 4  | 917     | 487     | 492     | 560     | 1.86 |
+| `Blob` (made up, w 4)    | 3  | 100,089 | 100,059 | 100,071 | 100,077 | 1.00 |
+| W, `arr` of 100 ints     | 2  | 539     | 218     | 218     | 222     | 2.47 |
+| W, `arr` of 10,000 (w 2) | 2  | 50,039  | 29,890  | 29,893  | 29,897  | 1.67 |
+
+The first eight are section 5.1's, with the same values; `Order` holds
+10 objects of 3 fields in an array, `Blob` a value of 100,000 bytes, and
+the W objects are section 6.2's. The rule behind the numbers (F1, F4,
+F5):
+
+* **w = 1**, an object whose fields take at most 255 bytes: Binson's size
+  exactly, for names under 128 bytes. So every sample of section 5.1, and
+  every value of S6 (F4: 10, 11, 13, 10, 17, 17, 9, 15 and 26 bytes,
+  Binson's).
+* **w = 2**, 256 bytes to 64 KB: n + 1 bytes more than Binson, the
+  count's and each end's second byte: 21 bytes for 20 fields of 5 to 100
+  byte strings, 6.5 to 0.9 % (F5); `Order` 5 bytes, 1.0 %.
+* **w = 4**: 3n + 3 bytes more: `Blob` 12 in 100,059.
+* Each nested object has its own w: `Order`'s lines have w = 1.
+* **Variant H**: 2 bytes per field, also in nested objects (`Payment` 41,
+  `Customer` 249); an 8-bit hash (020-06's H8) would take 1.
+
+### 12b.4. Finding a field
+
+Both variants use the same table and jump the same way through nested
+objects: a path `a.b` finds `a`, checks that its value is an object
+(0x48 to 0x4a), and searches that object within `a`'s extent. No other
+field is read and no array is walked.
+
+* **Variant B, a binary search on the names**: no bytes added. A probe
+  reads one end from the table and the name at it, and compares the name
+  with the wanted one as unsigned bytes: at most ⌈log2(n + 1)⌉ probes, 2
+  for `Payment`, 4 for `Customer`, 7 at 100 fields. A linear scan of the
+  names that stops at the first one past the wanted name (020-06's L)
+  reads the same bytes.
+* **Variant H, a 16-bit hash per field** right after the count: a scan of
+  2n bytes (40 bytes for 20 fields, one or two cache lines), then a
+  compare of the name where a hash matches. The spec must then define the
+  hash over the UTF-8 bytes; the sketch takes FNV-1a, 32 bits, folded to
+  16, as 020-06's H16. An index computes its field names' hashes once; a
+  `getX(name)` computes one per call. 020-06 also measures an 8-bit hash
+  and a scan of four hashes per 64-bit read.
+
+Frans expects H to be faster, its hashes being compact and first. **The
+choice is open: 020-06 measures both** (being written on 2026-11-08).
+Only the hashes differ, so the choice changes no other rule. Recommended:
+B, which costs no byte and no hash function in the spec, unless 020-06
+finds H clearly faster for objects of under 20 fields, the typical ones
+(Frans).
+
+For scale (section 6.2, B): today's reader takes 340 to 720 ns for any
+field, as it parses the whole object first; 006-14's sketch of a lookup
+in DbObject's table took 10 to 30 ns. (f)'s lookups are of that second
+kind; 020-06 gives their numbers.
+
+### 12b.5. Checking: at a lookup, and in full
+
+A strict reader at two levels:
+
+* **A lookup** checks what it touches: the type byte, the count, the table
+  inside the extent, the object's size against its extent; each table
+  entry it probes (`end[m−1] < end[m] ≤ end[n−1]`); each name it compares
+  (its length inside its field); and the value it returns, by Binson's
+  rules, filling its extent exactly. It does not see faults in fields it
+  does not touch: an order fault can make it answer "absent" for a present
+  field, but it never reads outside the object.
+* **The full check** is every rule of 12b.1, one pass over the bytes,
+  without allocation, recursive with 021-08's counts. Its cost grows with
+  the bytes, like a strict Binson parse; the closest measure in section
+  6.2 is BinsonLight's read of one field in order, which walks the fields
+  before it: 80 to 371 ns, 371 for the last of `Customer`'s 12. Not timed
+  here.
+
+**Checked at the put, bounded at the read.** BergDB's writer writes only
+canonical bytes. Bytes from elsewhere (a `DbObject` made from bytes and
+put, a `byte[]` that will be read as an object, by question 3's answer)
+get the full check at the put. A get into a class and a scan read every
+field anyway, and the full check rides along. Index maintenance, builds
+and `DbObject.getX` use lookups: on bytes that BergDB wrote or checked,
+their checks guard against corrupt bytes only, which give
+`BadFormatException` or a wrong value, never an `Error`. Today's
+constructor parses every field at every read (section 6.1); under (f),
+`new DbObject(bytes)` reads the header only.
+
+**One object, one byte string** (P2): a reader that keeps rules 1 to 7
+accepts only what the writer writes. F7: of 32,867 changed byte strings
+(every byte of ten samples changed in ten ways, and every cut, in both
+variants), the full check accepted 13,417, and each decodes and encodes
+again to the same bytes: another object, as canonical (a changed letter
+of a string, say). It refused the rest.
+
+### 12b.6. Writing
+
+Binson writes in one pass, forward, with no sizes. (f)'s table holds the
+fields' ends before the fields, and its width depends on their total.
+Three ways to write it:
+
+1. **Bottom up**: an object's fields to a buffer, then its table in front;
+   a nested object's bytes are copied once per level. The simplest, and
+   the natural way in Python and JavaScript; the sketch's writer 1.
+2. **Optimistic widths**: forward, with a table of 1-byte entries
+   reserved; an object whose fields pass 255 bytes moves them to widen its
+   table. MySQL's binary JSON is written so: in its small format (2-byte
+   offsets) first, and if a value does not fit, "reset the destination
+   buffer and retry with the large storage format"; "If the parent uses
+   the small storage format, it needs to grow too" (`json_binary.cc`).
+   One pass and no move for every object under 256 bytes. The count is
+   needed before the table: the class's eligible fields, less the null
+   ones (absent under 020-04).
+3. **Back to front**: the last field first, each value before its name,
+   then the table in front of the fields, when every end is known: one
+   pass, no move, no pass for sizes. FlatBuffers "constructs these buffers
+   backwards", "starting at the highest memory address of the buffer",
+   for less bookkeeping. It needs the fields in reverse order (a class's
+   sorted fields, read backwards) and a string's UTF-8 length before its
+   bytes (a scan of the chars, or the encoded bytes). The sketch's writer
+   2 gave the same bytes as writer 1 on all twelve samples, in both
+   variants (F2).
+
+For Java, 3 or 2: the bytes Binson's writer writes, plus each object's
+table. Today's writer also finds every field's size first
+(`getByteSize`), then parses what it built (section 6.3). Not timed.
+
+### 12b.7. Conversion with Binson
+
+**(f) to Binson**, one pass, forward: per object 0x40; per field 0x14,
+the name's length and the name (0x15 and 2 bytes for a name of 128 to 255
+bytes), then the value; 0x41. Every integer, double, boolean, string and
+bytes value is copied as it is; an array element by element, its objects
+re-framed; an object recursively. No sizes are needed. For an object with
+w = 1 and names under 128 bytes, Binson's bytes are as many as (f)'s:
+the count and the ends take the place of 0x41 and the names' 0x14. The
+output is canonical Binson, since (f)'s rules contain Binson's.
+
+**Binson to (f)**: the fields in order, each value copied, each object
+framed bottom up (or back to front, from the positions of a first pass).
+Checked on the way: Binson's rules (order, fewest bytes) and (f)'s:
+names of 1 to 255 bytes, UTF-8, the NaN pattern, depth, at most 32,767
+fields. A Binson object outside them is refused, naming the rule: Binson
+allows the empty name and names of any length.
+
+F2, on all twelve samples and both variants: (f) to Binson gives
+binson-java's bytes for the same object, and binson-java reads them and
+writes the same bytes; Binson to (f) gives the writer's bytes; a decode of
+the (f) bytes gives the object written. So a Binson object under section
+9's profile and an (f) object are one object in two framings, one pass
+apart: Binson can stay BergDB's interchange format (binson-java's JSON,
+other systems) while (f) is the stored one.
+
+### 12b.8. Other languages
+
+The sketch (`Fmt.java`) is about 480 lines of Java without comments: two
+writers, the header, the full check, both lookups, a decoder and both
+converters; the five scalars take about 50. A binding needs one writer,
+the lookup, the full check and the conversion into its objects: some 300
+lines in any language, and the conformance vectors of section 8.2. (c1)
+gives a binding a Binson library where a good one exists (Java, C, Go,
+Python; section 8.1), with BergDB's profile around it; (f) gives it the
+spec and the vectors only, as DbObject's format does today, without its
+UTF-16 hash (DB8).
+
+* **C** (012, 006-08): the reader works in place, without malloc: a lookup
+  is a binary search with `memcmp` over a pointer and a length; the full
+  check recurses with a depth counter, or loops with a stack of fixed
+  size; the writer writes back to front into the caller's buffer, and "no
+  room" is an error to retry with more. The C clone (012) treats objects
+  as bytes: no change. Binson interchange through binson-c-light (no
+  malloc either) and the converter.
+* **Python**: `bytes` compare as unsigned bytes, so a binary search on the
+  names works as it is; `struct.unpack_from` for the table; the writer
+  bottom up (`b"".join`); an `int` beyond 64 bits refused at a put.
+* **JavaScript**: `Uint8Array` and `DataView`; names compared as bytes,
+  never as strings (binson-js's fault JS1, UTF-16 order); `BigInt` beyond
+  2^53; `TextDecoder("utf-8", {fatal: true})` for rule 4.
+* **Rust**: a reader over `&[u8]` without copies, `Option` for absence; a
+  writer to a `Vec<u8>`, back to front or bottom up. The `serde` glue is
+  the larger part, as for any format.
+* **From Binson's libraries** a binding gets the values' code to copy
+  (MIT) and its tests, and through the converter every Binson library and
+  tool for interchange; not a reader of BergDB's stored bytes as they are.
+
+### 12b.9. Safety: 021-07 and 021-08
+
+* **No `Error`**: a reader refuses bad bytes with `BadFormatException`
+  (the sketch's `FormatException`). F7: 32,867 changed byte strings and
+  175,888 lookups on them, with no other exception. F6: 21 bad byte
+  strings, each refused by the rule it breaks.
+* **Bounds before reading or allocating**: a count of 2^32 − 1 in a 6-byte
+  value is refused by the count's limit, an end of 2^31 − 1 by the value's
+  length, before any allocation (F6). The table's size `n·w` is computed
+  in 64 bits.
+* **Depth**: the full check, a get into a class and both converters
+  recurse; each counts objects and levels as 021-08 does: 1,001 objects,
+  and 2,000 arrays in an object, accepted; 1,002 objects and 2,001 arrays
+  refused (F6). A lookup does not recurse over the bytes: a path of k
+  names is k jumps (a path of 1,000 names in F6).
+* **What a lookup does not see** (12b.5): faults outside its probes; hence
+  the full check at the put.
+
+### 12b.10. Against the other options, and prior art
+
+* **(c1)**: the same bytes for small objects, and a header of 1 byte
+  against 2 to 6; a field found without a walk, so section 11's first
+  risk of the switch goes; but not Binson as stored: a Binson library
+  reads BergDB's objects only after the conversion, and every binding
+  writes its own codec.
+* **(c2)**: a Binson payload behind a table of the top-level fields, 6
+  bytes each (`Payment` about 55); (f) is 35, with a table in every
+  object, and one structure.
+* **(d)**: (f) carried through (above).
+* **(a)**: (f) is half the size, its lookups as fast as a table allows,
+  its reader strict by design; but a new reader in 2026.4, as (c1).
+* **Prior art.** MySQL's binary JSON has the same plan: `object ::=
+  element-count size key-entry* value-entry* key* value*`, its offsets
+  "uint16 | // if used in small JSON object" or "uint32 // if used in
+  large JSON object", a lookup by binary search (`json_binary.h`, `.cc`).
+  PostgreSQL's JSONB: "The keys all appear first, in key sort order; then
+  the values appear", and a lookup that does "Binary search the
+  container" (`jsonb.h`, `jsonb_util.c`). Both sort keys by length first
+  ("Keys are ordered on length, so check length first"; PostgreSQL's are
+  "sorted [...] to facilitate cheap binary searches"); (f) keeps Binson's
+  order, so that a conversion copies the fields in order. Both keep the
+  names apart from the values; (f) keeps each name by its value, as
+  Binson.
+* **Considered, not proposed**: (f) inside Binson, the table as the value
+  of a field with the empty name, which sorts first (`40 14 00 18 len
+  table ...`): any Binson reader reads it, a BergDB reader jumps; but 5 +
+  n bytes per object over Binson (`Payment` about 43), a second form when
+  a Binson writer leaves the table out, and a field every Binson user
+  sees. Names apart from values, as in JSONB: a binary search then reads
+  one area, but every writer and converter keeps two; 020-06 can show
+  whether it matters for objects of a few hundred bytes.
+
+### 12b.11. Questions for Frans
+
+1. **(f), (c1) or (a)** for 2026.4 (section 13).
+2. **The lookup**: variant B or H. Open until 020-06; recommended B,
+   unless H is clearly faster under 20 fields (12b.4).
+3. **Names**: a 1-byte length, names of 1 to 255 bytes (recommended;
+   today 1 to 32,767; Binson recommends at most 50 characters). Or a
+   length of w bytes: no limit but the object's size, and n bytes more in
+   objects of 256 bytes to 64 KB.
+4. **The header**: 0x82 (recommended, with question 3's (i)), or none with
+   (ii) or (iii) (12b.2).
+5. **Arrays**: Binson's framing (recommended), or a count or a size
+   (12b.1).
+
+
+## 13. Recommendation: (f)
+
+Changed on 2026-11-08 from (c1) to (f), when (f) was worked out (section
+12b). (f): DbObject's table with Binson's values, behind a 1-byte header
+of kind and version; `DbObject` kept as the API over the new bytes, a
+view that reads its header at construction and each field by a lookup;
+made in 2026.4 with 020-04's no-null rules; the lookup's variant by
+020-06.
+
+1. **The model and the values are Binson's.** Shape 1's small closed
+   list, question 1b's no null and question 1's exactness by value (one
+   integer) are Binson's model, as (c1) argued; under (f) the value bytes
+   are Binson's too, and only an object's framing differs.
+2. **Half the bytes**, as Binson: the same size for objects whose fields
+   take under 256 bytes, the index definitions and every sample measured
+   among them; 1 % more on a 500-byte object (F1, F5).
+3. **A field is found without a walk**, at any position and depth. This
+   was (c1)'s weak point (section 11, risk 1): index maintenance reads one
+   to a few fields of each object put, a build those of every object, so a
+   table built in memory at the first lookup, (c1)'s remedy, does not help
+   them; (c2), its later step, adds 6 bytes per field. (f) needs neither.
+4. **Binson stays one pass away**: a conversion that copies every value
+   (F2) gives every Binson library and tool BergDB's objects, so Binson
+   can be the interchange format and (f) the stored one.
+5. **BergDB's format is BergDB's**, with its version in the header, as
+   (c1)'s header aimed at; and 2026.4 is the time, as before: no backward
+   compatibility needed, 020-04 opens the format, the spec is to be
+   written now.
+
+What it costs, against (c1): BergDB writes the whole spec (Binson's values
+by reference, a page on objects) and a codec in every language, with
+conformance vectors; the writer must know sizes (12b.6); and four small
+decisions come first (12b.11, 2 to 5).
+
+When another option is better: **(c1)** if bindings in other languages
+should use Binson's libraries as they are, or if BergDB's stored bytes
+should be Binson without a conversion; its reads then walk, which is
+cheap on small objects. **(a)** if no new reader should enter the
+bug-free release (then (f) after it, with a migration). **(b)** where
+(c1) is chosen and question 3 needs no header (section 7, (iii)). (c2),
+(d) and (e) lose to (f) on size or lookups.
+
+For Frans to decide, in this order: (f), (c1) or (a); then question 3
+(the header); then the lookup's variant, from 020-06; then the names'
+length, the arrays and the limits (depth, fields, sizes), with the
+bindings that must meet them.
 
 
 ## 14. The measurements, how they were made
@@ -769,6 +1226,32 @@ binson-go (both), binson-swift's use of `String` keys, binson-php,
 binson-erlang, the Rust crate, and BergDB's read paths (section 6.1).
 From documentation: the spec, the licences, the release dates.
 
+**Option (f)** (section 12b; F1 to F7), 2026-11-08:
+
+* **Programs** (`/Users/f/fl/bench/006-15/020-05/`, its `readme.txt` says
+  how to run them): `java/Fmt.java`, the format (a value tree, Binson's
+  writer, (f)'s two writers, the header, the full check, both lookups, a
+  decoder, both converters), and `java/Run.java` (the samples, the sizes,
+  the checks, the changed bytes); the output `out-run.txt`, one run.
+* **Code**: javac and java 27 (Homebrew) on F53; BergDB's
+  `java/build/bergdb.jar` at `a7fe143` for DbObject's sizes (`toDbObject`,
+  the `Builder`, as for S); binson-java `45346ad` (release 3.5), compiled
+  from the local clone `/Users/f/fl/repos/binson-java`, for the
+  cross-checks.
+* **Samples**: section 5.1's eight with the same values, as 006-14's
+  `Study` made them (its source recovered from that session's record into
+  `ref/`, the directory being gone), and four more: `Order`, `Blob` and
+  W's two objects.
+* **Verified by running**: every F line; F2 and F3 compare bytes, F7
+  decodes and encodes again every changed byte string that the full check
+  accepts. About 1 s of CPU.
+* **Not measured**: nothing was timed (the machine ran 020-06's timing,
+  and 020-06 measures the lookups); the costs of writing and checking
+  (12b.5, 12b.6) are reasoned from the code, not measured.
+* **From documents**, read 2026-11-08: MySQL's `json_binary.h` and
+  `json_binary.cc`, PostgreSQL's `jsonb.h` and `jsonb_util.c`,
+  FlatBuffers' internals (section 15).
+
 
 ## 15. Sources
 
@@ -801,6 +1284,12 @@ and the clones in `impl/`.
   Requirements", https://www.rfc-editor.org/rfc/rfc8949.
 * BergDB: `java/src/bergdb/pubimp/` at `a7fe143`; 020-01, 020-02, 020-03,
   020-04; 021-04, 021-06, 021-07, 021-08; 012-01; 006-08.
+* For option (f), read on 2026-11-08: [MySQL binary JSON]:
+  https://github.com/mysql/mysql-server, `sql-common/json_binary.h` and
+  `sql-common/json_binary.cc` (trunk); [PostgreSQL JSONB]:
+  https://github.com/postgres/postgres, `src/include/utils/jsonb.h` and
+  `src/backend/utils/adt/jsonb_util.c` (master); [FlatBuffers]:
+  https://flatbuffers.dev/internals/; 020-06 (being written).
 
 
 ## 16. Log
@@ -808,3 +1297,11 @@ and the clones in `impl/`.
 2026-11-07. Written by agent b05 of coord-1107 (006-14) at Frans's
 request (20:42); the programs and outputs in
 `/Users/f/fl/bench/006-14/020-binson/`. No code changed.
+
+2026-11-08. Option (f), DbObject's table with Binson's values, worked out
+and added (sections 12 and 12b) at Frans's request (09:32: "Start a
+subagent at XHigh to investigate this in detail and update 020-05."),
+from his idea of 09:18, for the day's plan (006-15). Sections 1, 11, 13,
+14 and 15 updated; the recommendation changed from (c1) to (f), the
+lookup's variant left to 020-06. The programs and the output in
+`/Users/f/fl/bench/006-15/020-05/`. No code changed.
