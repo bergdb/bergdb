@@ -28,6 +28,7 @@ The list
 | [006-12](12-unattended-5-6-november.md) | 2026-11-05 | Unattended work from 5 November, 15:00, to 6 November, 07:00, with a coordinator: the plan (015's open fixes, 015-86's measurements, a performance check, 015-88 on s1), the progress and the outcome |
 | [006-13](13-day-and-night-6-november.md) | 2026-11-06 | Day and night work of 6 to 7 November, with the coordinator coord-1106: 006-12's decisions with Frans, the plan, the progress and the outcome |
 | [006-14](14-day-7-november.md) | 2026-11-07 | Day work of 7 November (a Saturday), with the coordinator coord-1107: release 2026.4's work, the plan, the progress and the outcome |
+| [006-15](15-day-8-november.md) | 2026-11-08 | Day work of 8 November (a Sunday), with the coordinator coord-1108: release 2026.4's work, the plan, the progress and the outcome |
 
 
 Files
@@ -83,6 +84,9 @@ Files
   decisions on 006-12's points, the work, the progress and the outcome.
 * [14-day-7-november.md](14-day-7-november.md). 006-14: the plan for the
   day of 7 November (coord-1107): release 2026.4's work, the progress and
+  the outcome.
+* [15-day-8-november.md](15-day-8-november.md). 006-15: the plan for the
+  day of 8 November (coord-1108): release 2026.4's work, the progress and
   the outcome.
 
 
