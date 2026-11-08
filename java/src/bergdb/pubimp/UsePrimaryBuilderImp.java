@@ -73,6 +73,11 @@ public class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
             this.kind = NOT_OBJECTS;
         } else {
             this.kind = OBJECTS;
+            if (!type.equals(DbObject.class)) {
+                // The class first, also for a directory without an object (bergdb 020-09,
+                // section 3.3): ObjectCreationException.
+                DataObjects.checkGet(type);
+            }
         }
         this.lookupTime = connection.scanLookupTime(wantedLookupTime);
     }

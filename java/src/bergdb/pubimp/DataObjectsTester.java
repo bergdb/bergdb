@@ -15,10 +15,12 @@ import java.util.Random;
 
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
+import bergdb.pub.Action;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
 import bergdb.pub.ObjectCreationException;
+import bergdb.pub.RwEnvironment;
 import bergdb.pub.WBuilder;
 
 /**
@@ -2824,5 +2826,123 @@ public class DataObjectsTester {
         byte[] b = new byte[v.getByteSize()];
         v.write(b, 0);
         return b;
+    }
+
+    // ======== The review of step 8 (2026-11-09) ========
+
+    /** A Data Object class that extends Number: a class of the platform below it (V5). */
+    public static class Money extends Number {
+        private static final long serialVersionUID = 1L;
+        public long cents;
+        public Money() {}
+        public int intValue() {
+            return (int) cents;
+        }
+        public long longValue() {
+            return cents;
+        }
+        public float floatValue() {
+            return cents;
+        }
+        public double doubleValue() {
+            return cents;
+        }
+    }
+
+    public static class HoldsMoney {
+        public Money m;
+        public HoldsMoney() {}
+    }
+
+    public static class HoldsMoneyArray {
+        public Money[] ms;
+        public HoldsMoneyArray() {}
+    }
+
+    /** Extends a platform class whose instance fields are transient (V5). */
+    public static class Stamp extends java.util.Date {
+        private static final long serialVersionUID = 1L;
+        public Stamp() {}
+    }
+
+    /** A bounded type variable, erased to Inner (V9). */
+    public static class BoundedBox<T extends Inner> {
+        public T value;
+        public BoundedBox() {}
+    }
+
+    public static class BoundedArrayBox<T extends Inner> {
+        public T[] values;
+        public BoundedArrayBox() {}
+    }
+
+    /** Its static initializer throws: the first use, and every later one, fail. */
+    public static class BadInit {
+        static {
+            if (Boolean.parseBoolean("true")) {
+                throw new IllegalStateException("BadInit");
+            }
+        }
+        public int v;
+        public BadInit() {}
+    }
+
+    /**
+     * The review of step 8 (020-08): (1, 3) a class that extends a class of the Java
+     * platform, such as Number or Date, is not a Data Object (V5 for every superclass below
+     * Object): a Money extends Number was stored as its longValue() and read back as null, a
+     * Stamp extends Date as {} and read back as the time of the read; (4) a bounded type
+     * variable is not on the list (V9); (5) void.class is no class to get; (2) a class whose
+     * static initializer threw is an ObjectCreationException at every get, also in rw(),
+     * and the database goes on (a NoClassDefFoundError escaped at the second); (6) a primary
+     * scan checks its class first, also over an empty directory (020-09, section 3.3).
+     */
+    @Nano
+    public static void testReviewOfStep8() {
+        Check ch = new Check();
+        Database db = memory();
+        try {
+            final Connection c = db.connection();
+            HoldsMoney hm = new HoldsMoney();
+            hm.m = new Money();
+            hm.m.cents = 5;
+            refusedType(ch, c, "Money in a field", HoldsMoney.class, hm, "m");
+            HoldsMoneyArray hms = new HoldsMoneyArray();
+            hms.ms = new Money[] {new Money()};
+            refusedType(ch, c, "Money[] in a field", HoldsMoneyArray.class, hms, "ms");
+            refusedClass(ch, c, "Money", Money.class, new Money(), "Number");
+            refusedClass(ch, c, "Stamp", Stamp.class, new Stamp(), "Date");
+
+            BoundedBox<Inner> bb = new BoundedBox<Inner>();
+            bb.value = new Inner();
+            refusedClass(ch, c, "BoundedBox", BoundedBox.class, bb, "value");
+            BoundedArrayBox<Inner> bab = new BoundedArrayBox<Inner>();
+            refusedClass(ch, c, "BoundedArrayBox", BoundedArrayBox.class, bab, "values");
+
+            ch.creationRefused("void.class", () -> o("p", o()).toJavaObject(void.class), null);
+            ch.creationRefused("void.class at a key", () -> c.get("/void", void.class), null);
+
+            c.put("/bad-init", o("v", l(1)));
+            for (int k = 0; k < 3; k++) {
+                ch.creationRefused("BadInit, get " + k, () -> c.get("/bad-init", BadInit.class),
+                        null);
+                ch.creationRefused("BadInit, get in rw() " + k, () -> c.rw(new Action() {
+                    public void run(RwEnvironment env) {
+                        env.get("/bad-init", BadInit.class);
+                    }
+                }), null);
+            }
+            c.put("/later", "x");       // the database goes on
+            ch.eq("BadInit, the database goes on", "x", c.get("/later", String.class));
+
+            ch.creationRefused("a primary scan of an empty directory as Bad",
+                    () -> c.usePrimary(Bad.class).dir("/empty/").objects().iterator()
+                    .hasNext(), null);
+            ch.creationRefused("a primary scan's builder as Bad",
+                    () -> c.usePrimary(Bad.class), null);
+        } finally {
+            db.close();
+        }
+        ch.done();
     }
 }

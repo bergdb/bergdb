@@ -1100,6 +1100,31 @@ Decided in the step, under Frans's delegation (22:17):
 
 Gate: BEFORE COMMIT OK.
 
+Fixes after the coordinator's review of step 8 (2026-11-09), a commit of
+their own, tests first (`DataObjectsTester.testReviewOfStep8`, which failed
+on step 8's code, the database failing at its second get):
+
+* V5 for every superclass below `Object` too: a class that extends `Number`
+  or `Date` was valid, and a `Money extends Number` field was stored as its
+  `longValue()` and read back as null, a `Stamp extends Date` stored as
+  `{}`; 020-09's V5 says so now. The put names the integer types, so no
+  other class is taken for one.
+* V9: a field of a type variable, bounded or not, or of an array of one,
+  is refused (`T extends Inner` was taken, by its erasure).
+* `void.class` is no class to get (`ObjectCreationException`, was a
+  `NullPointerException`).
+* A class whose static initializer threw is an `ObjectCreationException` at
+  every get: the second met a `NoClassDefFoundError`, which failed the
+  database in `rw()`.
+* A primary scan checks its class first, in `UsePrimaryBuilderImp`'s
+  constructor (P1's file), so a scan of a class that is not a Data Object
+  throws also over a directory without an object (020-09, section 3.3);
+  `UseIndexBuilderImp`'s is I2's and I3's.
+* The class walk names the first field, in name order, that reaches a
+  class that is not a Data Object.
+
+Gate: BEFORE COMMIT OK.
+
 
 ### 8.5. Step 3, done (2026-11-09)
 

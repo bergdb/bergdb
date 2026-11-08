@@ -3,8 +3,11 @@ package bergdb.pubimp;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -149,11 +152,22 @@ final class DataObjects {
         return FAULTS.get(c)[0];
     }
 
-    /** True for the types that are not classes to check: on the list by themselves. */
+    /**
+     * True for the types that are not classes to check: on the list by themselves. Not void,
+     * which is no type of a value.
+     */
     private static boolean isScalarType(Class<?> t) {
-        return t.isPrimitive() || t == String.class || t == Boolean.class || t == Byte.class
-                || t == Short.class || t == Character.class || t == Integer.class
-                || t == Long.class || t == Float.class || t == Double.class;
+        return (t.isPrimitive() && t != void.class) || t == String.class || t == Boolean.class
+                || t == Byte.class || t == Short.class || t == Character.class
+                || t == Integer.class || t == Long.class || t == Float.class
+                || t == Double.class;
+    }
+    
+    /** True for the integer types of 020-09, section 2 but char: stored as the integer. */
+    private static boolean isIntegerType(Class<?> t) {
+        return t == byte.class || t == short.class || t == int.class || t == long.class
+                || t == Byte.class || t == Short.class || t == Integer.class
+                || t == Long.class;
     }
 
     /** The type with every array dimension taken off: byte for byte[][], int for int[]. */
@@ -179,12 +193,12 @@ final class DataObjects {
             if (info.reason != null) {
                 return new Fault(d, path, info.reason, info.cause);
             }
-            for (int i = info.fields.length - 1; i >= 0; i--) {
-                StoredField f = info.fields[i];
+            int top = todo.size();
+            for (StoredField f : info.fields) {     // the first field to reach a class names it
                 Class<?> b = base(f.type);
                 if (!isScalarType(b) && seen.add(b)) {
-                    todo.add(b);
-                    paths.add(join(path, f.name));
+                    todo.add(top, b);               // so taken first from the end
+                    paths.add(top, join(path, f.name));
                 }
             }
         }
@@ -209,9 +223,15 @@ final class DataObjects {
         if (Record.class.isAssignableFrom(c)) {
             return ClassInfo.refused(c, "it is a record, which 2026.4 does not store (V2)");
         }
-        ClassLoader loader = c.getClassLoader();
-        if (loader == null || loader == ClassLoader.getPlatformClassLoader()) {
+        if (isPlatformClass(c)) {
             return ClassInfo.refused(c, "it is a class of the Java platform (V5)");
+        }
+        for (Class<?> d = c.getSuperclass(); d != null && d != Object.class; 
+                d = d.getSuperclass()) {
+            if (isPlatformClass(d)) {
+                return ClassInfo.refused(c, "it extends " + d.getName() + ", a class of the "
+                        + "Java platform (V5)");
+            }
         }
         if (c.isAnonymousClass() || c.isLocalClass()) {
             return ClassInfo.refused(c, "it is an anonymous or a local class, never public "
@@ -272,6 +292,11 @@ final class DataObjects {
                     return ClassInfo.refused(c, "two of its fields are named '" + name
                             + "', one hiding the other (V8)");
                 }
+                if (isTypeVariable(f.getGenericType())) {
+                    return ClassInfo.refused(c, "its field '" + name + "' is of a type "
+                            + "variable, " + f.getGenericType().getTypeName() + ", which "
+                            + "BergDB does not store (V9)");
+                }
                 Class<?> b = base(f.getType());
                 if (b == Object.class || (!isScalarType(b) && !candidate(b))) {
                     return ClassInfo.refused(c, "its field '" + name + "' is of the type "
@@ -289,6 +314,20 @@ final class DataObjects {
         return new ClassInfo(c, null, null, constructor, sorted);
     }
 
+    /** A class of the Java platform: of the bootstrap or the platform class loader (V5). */
+    private static boolean isPlatformClass(Class<?> c) {
+        ClassLoader loader = c.getClassLoader();
+        return loader == null || loader == ClassLoader.getPlatformClassLoader();
+    }
+    
+    /** A type variable, or an array of one, of any dimensions (V9). */
+    private static boolean isTypeVariable(Type t) {
+        while (t instanceof GenericArrayType) {
+            t = ((GenericArrayType) t).getGenericComponentType();
+        }
+        return t instanceof TypeVariable;
+    }
+    
     /**
      * Whether a field's base type may be a Data Object class, to be checked in its turn: not
      * Object, DbObject, DbArray or another DbValue (V9). Interfaces, enums, records and
@@ -476,7 +515,7 @@ final class DataObjects {
                 return new DbDouble((Float) v);
             } else if (t == double.class || t == Double.class) {
                 return new DbDouble((Double) v);
-            } else if (t.isPrimitive() || Number.class.isAssignableFrom(t)) {
+            } else if (isIntegerType(t)) {
                 return new DbLong(((Number) v).longValue());
             } else if (t == String.class) {
                 String s = (String) v;
@@ -565,6 +604,11 @@ final class DataObjects {
         } catch (ExceptionInInitializerError e) {
             throw new ObjectCreationException("The class " + c.getName() + " could not be "
                     + "initialized: " + e.getCause() + " (bergdb 020-09, section 5.2).", e);
+        } catch (LinkageError e) {
+            // At a get after the first that met its initializer's exception: "Could not
+            // initialize class" (a NoClassDefFoundError), the class's fault as the first.
+            throw new ObjectCreationException("The class " + c.getName() + " could not be "
+                    + "initialized or linked: " + e + " (bergdb 020-09, section 5.2).", e);
         } catch (InstantiationException | IllegalAccessException e) {
             throw new ObjectCreationException("A " + c.getName() + " could not be made: " + e
                     + " (bergdb 020-09, section 5.2).", e);

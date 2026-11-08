@@ -156,9 +156,12 @@ A class C is a Data Object class if and only if:
   a stored field is public. A public field of a package-private
   superclass cannot be read or set without `setAccessible`, which the
   rule of 20:44 leaves out.
-* **V5. Not a class of the Java platform (delegated)**: C's class loader
-  is neither the bootstrap loader (`null`) nor
-  `ClassLoader.getPlatformClassLoader()`. Such classes are not made for
+* **V5. Not a class of the Java platform (delegated)**: C's class loader,
+  and that of each superclass of C below `Object`, is neither the
+  bootstrap loader (`null`) nor `ClassLoader.getPlatformClassLoader()`
+  (the superclasses since 2026-11-09, from a review of 020-08's step 8: a
+  `Stamp extends Date` was stored as `{}`, a `Money extends Number` as an
+  integer). Such classes are not made for
   storage, and some pass V1 to V4 by chance: `java.util.Date` has only
   transient instance fields, so it would be stored as `{}` and read back
   as the time of the read (S2-F18), and `java.lang.Object` has none. The
