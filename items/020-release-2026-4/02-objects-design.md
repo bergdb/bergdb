@@ -1111,6 +1111,36 @@ transactions as `rw()` actions; the questions below refine it.
   class's fields, both in name order, with no lookups, or a lookup per
   class field, as today (section 4.3).
 
+### 5.1b. Decided for the API
+
+* **No key field in the object: `put(Object)` goes** (question 5;
+  020-01, section 14, decision 6, as it recommended). Frans first
+  decided, 2026-11-08, 19:10: "Decision: use dbKey for the database key.
+  Allow env.put(Object) when its dbKey field is ok. And as you say,
+  env.put(key, obj) works for an obj with a dbKey field iff key ==
+  dbKey." Then, 19:13: "I am about to change my mind. How about this. We
+  remove this now. No special dbKey field. Main reason: it adds some
+  complexity that is hard to remove. Adding it is easy. Compatible API.
+  Easy to add, hard to remove. So, add if there is demand only.
+  Correct?" Confirmed by the coordinator, with one condition: a later
+  key field must be opt-in (such as an annotation on the field), since a
+  name rule added later would change the meaning of classes that
+  already have a field of that name, stored as an ordinary field. The
+  case for the field, kept for a later demand: read-modify-write without
+  carrying the key, and "read from one key, put at another" refused;
+  `key` was a field of 127 of the 12,700 JDK classes with fields,
+  `dbKey` of none (020-06's name set, counted 2026-11-08). Without it, a
+  scan or an index read gives the key with the object (`kvs()`), and a
+  put names its key: `env.put(k, a)`.
+  * What goes in the code: `put(Object)` in `WBuilder` and
+    `RwEnvironment`, `MissingKeyFieldException`, the key field's
+    handling in `DbObject` and `PubUtil` (a get answers `key` with the
+    database key), their tests (`PubTester`), the Javadoc
+    (`package.html`, `overview-pub.html`, `DataFormatException`), and
+    `PayDemo`'s `env.put(a1)` (java/src-dev/frans/, which the
+    implementer may change). A field named `key` is then an ordinary
+    field. To be added to 020-08 as a step.
+
 ### 5.2. What the storage decisions fix for it
 
 * **One integer type** (4.7): a conversion decides by the value, as (A),
