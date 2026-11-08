@@ -1465,7 +1465,10 @@ public class KeyNode implements Node {
     }
     
     /**
-     * For printing, debug. Prints value of key klong.
+     * For printing, debug. Prints value of key klong: as text if its bytes are printable
+     * ASCII, each less 2, else in hexadecimal. The text is Keys.toDisplayString()'s, as
+     * Klong.getKeyString() shows a klong: a key with the byte 0x31 ('/' + 2), as an index
+     * entry's level may have, has no ikey, and Keys.bkey2ikey() throws for it (bergdb 021-06).
      */
     public static String getKeyString(byte[] bytes) {
         // Assumes bytes created from ukey.
@@ -1476,7 +1479,7 @@ public class KeyNode implements Node {
             result = "null";
         } else {
             if (Keys.isPrintableAscii(bytes)) {
-                result = Keys.bkey2ikey(bytes);
+                result = Keys.toDisplayString(bytes);
             } else {
                 result = "#" + StringUtil.toHex(bytes);
             }

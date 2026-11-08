@@ -51,6 +51,26 @@ public class KeyNodeTester {
         t.createT2();
     }
     
+    /**
+     * bergdb 021-06: print() shows a key node whose keys have no ikey, as its error messages
+     * do (StoredTrans's and KeyNode's checks, the asserts of firstAndSecond and addKlong). A
+     * klong of 7 bytes or less is printed as text when its bytes are printable ASCII, each less
+     * 2; the byte 0x31 ('/' + 2), which an index entry's level has, is such a byte, but a bkey
+     * with it has no ikey, and Keys.bkey2ikey threw IllegalArgumentException there.
+     */
+    @Nano
+    public static void testPrintKeysWithoutIkey() {
+        KeyNode node = new KeyNode();
+        byte[][] keys = {{0x63, 0x31, 0x64}, {0x63, 0x31, 0x64, 0x32, 0x00}, {0x65}};
+        for (byte[] key : keys) {
+            node.addKlong(1, Klong.createKey(key), new KeyNode(), AccessData.DEFAULT_ACCESS_DATA);
+        }
+        Assert.assertEquals("a/b", KeyNode.getKeyString(new byte[] {0x63, 0x31, 0x64}));
+        String printed = node.print();
+        Assert.assertTrue(printed, printed.contains("a/b"));
+        Assert.assertTrue(printed, printed.contains("c"));
+    }
+    
     @Nano
     public static void testSanity2() {
         KeyNodeTester t = new KeyNodeTester();
