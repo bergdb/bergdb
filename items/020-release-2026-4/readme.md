@@ -75,6 +75,18 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   lookup's variant from 020-06. No code changed; the programs are in
   `/Users/f/fl/bench/006-14/020-binson/` and, for (f),
   `/Users/f/fl/bench/006-15/020-05/`.
+* [06-field-lookup-measured.md](06-field-lookup-measured.md). 020-06,
+  a field's lookup in an object's bytes, measured (Frans, 2026-11-08,
+  09:32): a linear scan of 16-bit hashes at the start of the bytes (H16)
+  against a binary search on the names (B) and close variants, in the
+  format of 020-05's option (f), for objects of 1 to 100 fields, Java and
+  C, hot and cold, with the collisions of five hash functions on 16,944
+  JDK field names and the cache lines each lookup reads. H16 is faster
+  but in two corners: under 20 fields 1.1 to 1.5 times on hot hits, 2.4
+  to 3.1 on hot misses, 1.5 to 1.9 on cold misses from 8 fields, 1.0 to
+  1.2 on cold hits. Recommended for (f): 16-bit FNV-1a hashes of the
+  names after the count, then the offsets; a scan, no binary search. The
+  programs are in `/Users/f/fl/bench/006-15/020-06/`.
 
 
 Log

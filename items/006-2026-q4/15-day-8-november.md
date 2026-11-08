@@ -63,8 +63,8 @@ fields, I think."
 
 | Task | Item | Agent | Effort | Scratch | Status |
 |---|---|---|---|---|---|
-| The format "DbObject's framing, Binson's values", in detail | 020-05 | f05 | xhigh | `/Users/f/fl/bench/006-15/020-05/` | running |
-| Field lookup measured: 16-bit hash scan against binary search | 020-06 | m06 | xhigh | `/Users/f/fl/bench/006-15/020-06/` | running |
+| The format "DbObject's framing, Binson's values", in detail | 020-05 | f05 | xhigh | `/Users/f/fl/bench/006-15/020-05/` | done, 37e8db7 |
+| Field lookup measured: 16-bit hash scan against binary search | 020-06 | m06 | xhigh | `/Users/f/fl/bench/006-15/020-06/` | done |
 
 020-05's programs (`/Users/f/fl/bench/006-14/020-binson/`) were deleted
 after 2026-11-07's handover; the agents write their own.
@@ -82,6 +82,13 @@ session continues with `/coordinator resume` (013-02).
 * 09:01 to 09:32 Frans and the coordinator on 020-05: fixed against
   variable value sizes, and a format with both (section 1).
 * 09:35 Agents f05 (020-05) and m06 (020-06) started, xhigh.
+* 09:59 f05 done: 020-05's option (f), DbObject's table with Binson's values
+  (section 12b), now recommended; the lookup's variant waits for 020-06;
+  committed 37e8db7. Questions for Frans: 020-05, section 12b.11.
+* 11:00 m06 done: 020-06 written; a scan of 16-bit hashes (FNV-1a,
+  a word at a time) is faster than binary search under 20 fields, hot
+  and on cold misses; recommended for (f), 2 bytes a field. 020-05,
+  section 12b.4, cites it.
 
 
 ## 6. Outcome

@@ -942,6 +942,14 @@ B, which costs no byte and no hash function in the spec, unless 020-06
 finds H clearly faster for objects of under 20 fields, the typical ones
 (Frans).
 
+020-06 (written 2026-11-08) found it so, and recommends H with 16-bit
+hashes (FNV-1a over the UTF-8 name, folded to 16 bits), scanned a word
+at a time: under 20 fields 1.1 to 1.5 times faster than B on hot hits,
+2.4 to 3.1 times on hot misses, 1.5 to 1.9 times on cold misses, about
+even on cold hits; 2 bytes a field (`Payment` 41). B wins only in two
+corners from 50 to 70 fields (020-06, sections 1 and 14). The choice is
+Frans's.
+
 For scale (section 6.2, B): today's reader takes 340 to 720 ns for any
 field, as it parses the whole object first; 006-14's sketch of a lookup
 in DbObject's table took 10 to 30 ns. (f)'s lookups are of that second
