@@ -1111,7 +1111,12 @@ reserved internal keys' new layout (definitions, entries per generation)
 approved in principle under 018-01's rule, its exact layout written in an
 item for Frans's review; the night's order: objects (020-08), then F4,
 F5, F3, F6, F7, F8. Frans asked, 22:08, what "an application that needs a
-language's order stores its own sort key" means (006-15).
+language's order stores its own sort key" means (006-15); the answer:
+a collation key computed by the application (`java.text.Collator`),
+stored in a field and indexed, which needs an index type `bytes`
+(unsigned byte order). Frans, 22:12: "Yes" to a fourth index type
+`bytes`; and "no "night.sh large" tonight. Focus on unattended coding.
+You can go fast. Use up to 8 subagents as needed."
 
 
 ## 15. The first harness of each kept feature

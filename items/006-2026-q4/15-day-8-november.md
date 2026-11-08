@@ -83,6 +83,36 @@ yet decided, but there are good options that have been researched."
 after 2026-11-07's handover; the agents write their own.
 
 
+## 3b. The night of 8 to 9 November: unattended coding
+
+Frans, 22:03: "Yes, this is ok and implement. Before you start, do you
+need me for more decisions? I want the coding ready at 07:00 tomorrow.
+Keep working until you have a solution for 2026.4 with no known issues.
+[...] Run subagents at xhigh. We can affort it now." 22:08: "All as
+recommended in general" (020-01, section 14.1). 22:12: a fourth index
+type `bytes`, "Yes"; "no "night.sh large" tonight. Focus on unattended
+coding. You can go fast. Use up to 8 subagents as needed."
+
+* Mode: unattended until 2026-11-09 07:00; check-ins every 20 minutes;
+  the watchdog; no quiet block (020-08's step 4, the measurements, waits
+  for a quiet hour, or the morning).
+* The work, in Frans's order: objects (020-08, updated with 020-09), then
+  the indexes (020-01, section 14.1: F4, F5, F3, F6, F7, F8, with the
+  `bytes` type), designed first in an item (020-10, its internal keys'
+  layout for Frans's review), then built in steps.
+* Each coding agent works in its own clone, rebases on `main`, gates with
+  `java/before-commit.sh` under the lock
+  `/Users/f/fl/bench/006-15/gate.lock`, and commits in its clone; the
+  coordinator moves each gated commit to `main` (fast-forward, or a
+  rebase and a new gate). Independent reviews of each step before it
+  goes to `main` where time allows. `level2.sh` after the objects' switch.
+* At most 8 agents at a time, xhigh. A question for Frans goes on the
+  list below with a recommendation; the work goes on with the default.
+* By 07:00: a summary in `news.md` and in section 6.
+
+For Frans to decide (the night's list): none yet.
+
+
 ## 4. If the coordinator stops
 
 The state is in `/Users/f/fl/bench/coord/2026-11-08/state.md`; a new
