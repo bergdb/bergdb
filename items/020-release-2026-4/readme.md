@@ -122,6 +122,20 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   run by Java and a harness against a reference codec; the measurements
   of 020-02, section 6; six steps and commits, about 5 days; the risks.
   No code changed.
+* [10-indexes-design.md](10-indexes-design.md). 020-10, the user indexes
+  of 2026.4 designed for tonight's implementation, from Frans's decisions
+  (020-01, section 14.1, 22:08 to 22:12) and his delegation of the rest
+  (22:17): the API (`IndexBuilder` with one directory, one field per level,
+  types `long`, `double`, `string`, `bytes`; a build's `Job` with three
+  states; `deleteIndex` in one transaction; `UseIndexBuilder`'s `eq`, then
+  a range or a prefix; `UsePrimaryBuilder` promoted); what each type
+  accepts of a stored object; the reserved internal keys' layout
+  (definitions as format-2 objects, entries per generation, cleanup
+  markers) and the level encodings; maintenance with the read time fixed
+  first; the jobs; the boundary; the fault map of F3 to F8 with a test for
+  each; harnesses H2 to H4; nine steps for three agents, with the files
+  each owns. Section 11 lists the decisions taken under the delegation.
+  No code changed.
 
 
 Log
@@ -150,3 +164,7 @@ decided) with its conformance vectors, and 020-08, the implementation
 plan (six steps, about 5 days), drafted at Frans's request (17:12) by
 coord-1108's agent s07; no code. The spec's questions Q1 to Q7 and the
 plan's list of what Frans must say before it starts are for Frans.
+
+2026-11-08. 020-10, the indexes' design for implementation, written after
+Frans's decisions of 22:08 to 22:12 and his delegation of 22:17, by
+coord-1108's agent; no code.
