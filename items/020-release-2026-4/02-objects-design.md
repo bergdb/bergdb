@@ -1113,6 +1113,22 @@ transactions as `rw()` actions; the questions below refine it.
 
 ### 5.1b. Decided for the API
 
+* **Two layers** (question 1's architecture, (D)'s two steps of section
+  2.5). Frans, 2026-11-08, 19:53: "Important, this should be completely
+  separate from DbObject to database storage. So, DbObject to bytes
+  stored. [...] Next layer is the Java object to DbObject conversion.
+  This is separate. The user can choose to work with DbObjects directly,
+  or even with byte[] directly." And, 20:23, to the coordinator's
+  question whether to record it as decided: "About the two layers, yes.
+  Internally, this is two separate layers. The top level API will allow
+  Person a = c.get("/adam", Person.class), that is DbObject is often not
+  used directly at that layer, but it can be. Up to the user. One example
+  is for migration, it can be useful to use DbObject explicitely then."
+  So: layer 1, a `DbObject` and its stored bytes, exact (section 4,
+  020-07); layer 2, the conversion between Java objects and `DbObject`s,
+  a binding apart from storage; the API offers both, and `byte[]`.
+  What stays open is layer 2's policy: (D)'s questions (section 2.5), the
+  put's closed list (question 2) and the put rule of 4.1.
 * **No key field in the object: `put(Object)` goes** (question 5;
   020-01, section 14, decision 6, as it recommended). Frans first
   decided, 2026-11-08, 19:10: "Decision: use dbKey for the database key.
