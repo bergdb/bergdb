@@ -100,6 +100,27 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   search for fields (no hash list)"): a difference of at most 35 ns hot
   or warm, next to a get of 0.8 to 3.8 µs (020-02, section 4.3). The
   programs are in `/Users/f/fl/bench/006-15/020-06/`.
+* [07-object-spec.md](07-object-spec.md). 020-07, the spec of stored
+  objects, format 2, "DbObject's table with Binson's values", as Frans
+  decided it on 2026-11-08 (020-02, section 4), written at his request
+  (17:12) for his approval under 018-01's rule: the model, the grammar,
+  the rules R1 to R15, what a writer must do and a reader must refuse
+  (each condition with a code), the limits, the lookup by binary search,
+  the header and the old format, the conversion with Binson; seven
+  questions for Frans (Q1 to Q7). Its conformance vectors in
+  [07-object-spec/vectors.txt](07-object-spec/vectors.txt): 33 valid
+  values with 343 lookups, 85 invalid byte strings, 8 Binson inputs,
+  checked by two implementations written apart; the programs are in
+  `/Users/f/fl/bench/006-15/020-07/`.
+* [08-implementation-plan.md](08-implementation-plan.md). 020-08, the
+  implementation plan of format 2 and 020-04's no-null rules in the Java
+  code, for Frans's "ok-and-implement" (17:12): a codec, `ObjectFormat`,
+  under `DbObject`'s API; the changes file by file; the provisional
+  choices where the API is open (020-02, section 5) and where each
+  decision joins; 52 existing tests changed, about 25 new, the vectors
+  run by Java and a harness against a reference codec; the measurements
+  of 020-02, section 6; six steps and commits, about 5 days; the risks.
+  No code changed.
 
 
 Log
@@ -122,3 +143,9 @@ readers refuse ill-formed UTF-8; depth 16; old objects refused; the
 format under 018-01's rule. These decisions are his approval of the
 format's design under 018-01's rule; the spec, a subitem of 020, comes
 to him for approval before the release.
+
+2026-11-08. 020-07, the spec of stored objects (format 2, (f) as
+decided) with its conformance vectors, and 020-08, the implementation
+plan (six steps, about 5 days), drafted at Frans's request (17:12) by
+coord-1108's agent s07; no code. The spec's questions Q1 to Q7 and the
+plan's list of what Frans must say before it starts are for Frans.

@@ -59,7 +59,9 @@ yet decided, but there are good options that have been researched."
   agents high, xhigh where Frans says so (both of 09:32).
 * Agents at a time: at most 2 while the level is `tight`.
 * Usage: up to 95% of the week (Frans, 2026-11-07, 08:22, carried over
-  until he says otherwise). Week 82% at 09:33.
+  until he says otherwise). Week 82% at 09:33. From 17:12 Ultra, twice the
+  usage (Frans: "I did upgrade my subscription of Claude to Ultra, twice
+  as much usage"); level plenty.
 * Commits to `main` by the coordinator, by path, in Frans's name, with no
   AI attribution; Java changes after `BEFORE COMMIT OK`. Gate lock, if
   one is needed: `/Users/f/fl/bench/006-15/gate.lock`.
@@ -74,6 +76,7 @@ yet decided, but there are good options that have been researched."
 | The format "DbObject's framing, Binson's values", in detail | 020-05 | f05 | xhigh | `/Users/f/fl/bench/006-15/020-05/` | done, 37e8db7 |
 | Field lookup measured: 16-bit hash scan against binary search | 020-06 | m06 | xhigh | `/Users/f/fl/bench/006-15/020-06/` | done |
 | Objects' storage ready for decisions: 020-02 to 020-06 checked, summarized in 020-02 | 020-02 | d02 | xhigh | none | done |
+| The spec of stored objects, with vectors; the implementation plan (no code) | 020-07, 020-08 | s07 | xhigh | `/Users/f/fl/bench/006-15/020-07/` | done |
 
 020-05's programs (`/Users/f/fl/bench/006-14/020-binson/`) were deleted
 after 2026-11-07's handover; the agents write their own.
@@ -111,6 +114,14 @@ session continues with `/coordinator resume` (013-02).
   4.12, one at a time (no null; (f); binary search; names 1 to 255 bytes;
   0x82; arrays A1; one integer; NaN; UTF-8; depth 16; old refused; the
   spec under 018-01's rule).
+* 17:13 Agent s07 started (xhigh): 020-07, the spec of stored objects
+  with conformance vectors, and 020-08, the implementation plan; no code.
+* 17:26 Frans, reading `WebsiteCode.java` and `PayDemo.java`: keep the Pub
+  API's main design (020-02, section 5).
+* 17:47 s07 done: 020-07 (the spec, 33 valid and 85 invalid vectors, 8
+  Binson inputs, checked by a Java and an independent Python codec) and
+  020-08 (six steps, about 5 days); questions for Frans in 020-07 (Q1 to
+  Q7) and 020-08.
 
 
 ## 6. Outcome

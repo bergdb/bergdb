@@ -1,0 +1,1031 @@
+# bergdb 020-07, conformance vectors of stored objects, format 2.
+#
+# Written 2026-11-08 by Vectors.java (/Users/f/fl/bench/006-15/020-07/) and checked by a
+# second implementation written from the spec alone (check.py, same directory). The format
+# of this file: 020-07, section 13. A draft, with 020-07, for Frans's approval under
+# 018-01's rule (020-02, section 4.12).
+#
+# A record starts with a line "KIND ID"; its attributes follow, one per line, each line
+# starting with two spaces: "  KEY REST". A blank line ends a record. A line starting with
+# '#' is a comment.
+#
+#   valid ID       bytes HEX     a stored value; a reader accepts it, a writer writes it
+#                  value VN      what it means
+#                  binson HEX    the same object in Binson (BINSON-SPEC-1.1)
+#                  lookup PATH RESULT   any number: a field's value by its path, or absent
+#                  note TEXT     optional
+#   invalid ID     bytes HEX     a byte string that is not a stored value; a reader refuses it
+#                  rules CODES   the conditions it breaks, comma-separated
+#                  note TEXT     optional
+#   generated ID   recipe TEXT   how to make the bytes; length N; sha256 HEX of the bytes;
+#                  then "valid", or "rules CODES"
+#   binson-in ID   binson HEX    a Binson object; then "bytes HEX", the stored value it
+#                  converts to, or "rules CODES", why it does not convert
+#
+# HEX:  pairs of hex digits; "(HH..*N)" is the bytes HH.. repeated N times. Spaces none.
+# VN:   {NAME:VALUE,...}  [VALUE,...]  true  false  iDECIMAL  dHHHHHHHHHHHHHHHH (the 64-bit
+#       pattern of a double, most significant digit first)  sTEXT (a string)  bTEXT (bytes);
+#       NAME and TEXT are "..." (printable ASCII; \" \\ and \xHH for any byte) or <HEX>.
+#       No spaces outside "...". The members of an object are listed in the stored order.
+# PATH: NAME.NAME... from the top object. RESULT: a VN value, or absent.
+
+valid empty
+  bytes 824800
+  value {}
+  binson 4041
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  note the empty object: 82 48 00
+
+valid payment
+  bytes 8248030a151e06616d6f756e7411f4010466726f6d14043130303102746f140431303032
+  value {"amount":i500,"from":s"1001","to":s"1002"}
+  binson 401406616d6f756e7411f401140466726f6d1404313030311402746f14043130303241
+  lookup "amount" i500
+  lookup "from" s"1001"
+  lookup "to" s"1002"
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup "amount\x00" absent
+  lookup "amoun" absent
+  lookup "from\x00" absent
+  lookup "fro" absent
+  lookup <746f00> absent
+  lookup "t" absent
+  lookup "amount"."x" absent
+  note Payment of 020-05, sections 3 and 12b.1
+
+valid person
+  bytes 8248010c046e616d6514055031303030
+  value {"name":s"P1000"}
+  binson 4014046e616d651405503130303041
+  lookup "name" s"P1000"
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup "name\x00" absent
+  lookup "nam" absent
+
+valid dialog
+  bytes 824802102007706572736f6e41480105026964100107706572736f6e424801050269641002
+  value {"personA":{"id":i1},"personB":{"id":i2}}
+  binson 401407706572736f6e4140140269641001411407706572736f6e42401402696410024141
+  lookup "personA" {"id":i1}
+  lookup "personB" {"id":i2}
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup "personA\x00" absent
+  lookup "person" absent
+  lookup "personB\x00" absent
+  lookup "person" absent
+  lookup "personB"."id" i2
+  lookup "personA"."id" i1
+  lookup "personB"."name" absent
+  lookup "personC"."id" absent
+  lookup "personB"."id"."x" absent
+  note two nested objects, each with its own table (020-05, section 12b.1)
+
+valid index-definition
+  bytes 8248051322304e58046469727342140a2f7061796d656e74732f43066669656c647342140466726f6d4305737461746514066163746976650b74797065537472696e677342140e737472696e672f756e69636f6465430776657273696f6e1001
+  value {"dirs":[s"/payments/"],"fields":[s"from"],"state":s"active","typeStrings":[s"string/unicode"],"version":i1}
+  binson 4014046469727342140a2f7061796d656e74732f4314066669656c647342140466726f6d43140573746174651406616374697665140b74797065537472696e677342140e737472696e672f756e69636f646543140776657273696f6e100141
+  lookup "dirs" [s"/payments/"]
+  lookup "fields" [s"from"]
+  lookup "state" s"active"
+  lookup "typeStrings" [s"string/unicode"]
+  lookup "version" i1
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup "dirs\x00" absent
+  lookup "dir" absent
+  lookup "fields\x00" absent
+  lookup "field" absent
+  lookup "state\x00" absent
+  lookup "stat" absent
+  note an index definition as IndexManager stores it (Data.Index), one level
+
+valid customer
+  bytes 82480c081622364769718695aac7d306616374697665440463697479140755707073616c6107636f756e7472791402534506636f756e74734210031000101111fa001001430763726561746564138084b6b5a101000005656d61696c141a616e6e612e6c696e647176697374406578616d706c652e636f6d0269641287d61200046e616d65140e416e6e61204c696e6471766973740573636f726546000000000000114006737472656574140c53746f72676174616e2031320474616773421404676f6c64140a6e6577736c65747465721402657543037a69701406373533203230
+  value {"active":true,"city":s"Uppsala","country":s"SE","counts":[i3,i0,i17,i250,i1],"created":i1794050000000,"email":s"anna.lindqvist@example.com","id":i1234567,"name":s"Anna Lindqvist","score":d4011000000000000,"street":s"Storgatan 12","tags":[s"gold",s"newsletter",s"eu"],"zip":s"753 20"}
+  binson 40140661637469766544140463697479140755707073616c611407636f756e747279140253451406636f756e74734210031000101111fa00100143140763726561746564138084b6b5a10100001405656d61696c141a616e6e612e6c696e647176697374406578616d706c652e636f6d140269641287d6120014046e616d65140e416e6e61204c696e647176697374140573636f72654600000000000011401406737472656574140c53746f72676174616e203132140474616773421404676f6c64140a6e6577736c6574746572140265754314037a6970140637353320323041
+  lookup "active" true
+  lookup "city" s"Uppsala"
+  lookup "country" s"SE"
+  lookup "counts" [i3,i0,i17,i250,i1]
+  lookup "created" i1794050000000
+  lookup "email" s"anna.lindqvist@example.com"
+  lookup "id" i1234567
+  lookup "name" s"Anna Lindqvist"
+  lookup "score" d4011000000000000
+  lookup "street" s"Storgatan 12"
+  lookup "tags" [s"gold",s"newsletter",s"eu"]
+  lookup "zip" s"753 20"
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup "active\x00" absent
+  lookup "activ" absent
+  lookup "city\x00" absent
+  lookup "cit" absent
+  lookup "country\x00" absent
+  lookup "countr" absent
+  lookup "tags"."x" absent
+  note Customer of 020-05, section 5.1 (score 4.25)
+
+valid order
+  bytes 824904001d002500d101e10108637573746f6d657214122f637573746f6d6572732f31323334353637026964128a870100056c696e6573424803101f25046974656d14096974656d2d343030300570726963654600000000000023400371747910014803101f25046974656d14096974656d2d343031370570726963654600000000000025400371747910024803101f25046974656d14096974656d2d343033340570726963654600000000000027400371747910034803101f25046974656d14096974656d2d343035310570726963654600000000000029400371747910014803101f25046974656d14096974656d2d34303638057072696365460000000000002b400371747910024803101f25046974656d14096974656d2d34303835057072696365460000000000002d400371747910034803101f25046974656d14096974656d2d34313032057072696365460000000000002f400371747910014803101f25046974656d14096974656d2d343131390570726963654600000000008030400371747910024803101f25046974656d14096974656d2d343133360570726963654600000000008031400371747910034803101f25046974656d14096974656d2d343135330570726963654600000000008032400371747910014306737461747573140773686970706564
+  value {"customer":s"/customers/1234567","id":i100234,"lines":[{"item":s"item-4000","price":d4023000000000000,"qty":i1},{"item":s"item-4017","price":d4025000000000000,"qty":i2},{"item":s"item-4034","price":d4027000000000000,"qty":i3},{"item":s"item-4051","price":d4029000000000000,"qty":i1},{"item":s"item-4068","price":d402b000000000000,"qty":i2},{"item":s"item-4085","price":d402d000000000000,"qty":i3},{"item":s"item-4102","price":d402f000000000000,"qty":i1},{"item":s"item-4119","price":d4030800000000000,"qty":i2},{"item":s"item-4136","price":d4031800000000000,"qty":i3},{"item":s"item-4153","price":d4032800000000000,"qty":i1}],"status":s"shipped"}
+  binson 401408637573746f6d657214122f637573746f6d6572732f3132333435363714026964128a87010014056c696e6573424014046974656d14096974656d2d343030301405707269636546000000000000234014037174791001414014046974656d14096974656d2d343031371405707269636546000000000000254014037174791002414014046974656d14096974656d2d343033341405707269636546000000000000274014037174791003414014046974656d14096974656d2d343035311405707269636546000000000000294014037174791001414014046974656d14096974656d2d3430363814057072696365460000000000002b4014037174791002414014046974656d14096974656d2d3430383514057072696365460000000000002d4014037174791003414014046974656d14096974656d2d3431303214057072696365460000000000002f4014037174791001414014046974656d14096974656d2d343131391405707269636546000000000080304014037174791002414014046974656d14096974656d2d343133361405707269636546000000000080314014037174791003414014046974656d14096974656d2d3431353314057072696365460000000000803240140371747910014143140673746174757314077368697070656441
+  lookup "customer" s"/customers/1234567"
+  lookup "id" i100234
+  lookup "lines" [{"item":s"item-4000","price":d4023000000000000,"qty":i1},{"item":s"item-4017","price":d4025000000000000,"qty":i2},{"item":s"item-4034","price":d4027000000000000,"qty":i3},{"item":s"item-4051","price":d4029000000000000,"qty":i1},{"item":s"item-4068","price":d402b000000000000,"qty":i2},{"item":s"item-4085","price":d402d000000000000,"qty":i3},{"item":s"item-4102","price":d402f000000000000,"qty":i1},{"item":s"item-4119","price":d4030800000000000,"qty":i2},{"item":s"item-4136","price":d4031800000000000,"qty":i3},{"item":s"item-4153","price":d4032800000000000,"qty":i1}]
+  lookup "status" s"shipped"
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup "customer\x00" absent
+  lookup "custome" absent
+  lookup <696400> absent
+  lookup "i" absent
+  lookup "lines\x00" absent
+  lookup "line" absent
+  note w = 2 at the top (487 bytes of fields), w = 1 in each object of the array
+
+valid booleans
+  bytes 8248020306016645017444
+  value {"f":false,"t":true}
+  binson 40140166451401744441
+  lookup "f" false
+  lookup "t" true
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <6600> absent
+  lookup <7400> absent
+
+valid integers
+  bytes 824801520176421000100110ff107f1080118000117fff11ff7f110080120080000012ff7fffff12ffffff7f120000008013000000800000000013ffffff7fffffffff13ffffffffffffff7f13000000000000008043
+  value {"v":[i0,i1,i-1,i127,i-128,i128,i-129,i32767,i-32768,i32768,i-32769,i2147483647,i-2147483648,i2147483648,i-2147483649,i9223372036854775807,i-9223372036854775808]}
+  binson 40140176421000100110ff107f1080118000117fff11ff7f110080120080000012ff7fffff12ffffff7f120000008013000000800000000013ffffff7fffffffff13ffffffffffffff7f1300000000000000804341
+  lookup "v" [i0,i1,i-1,i127,i-128,i128,i-129,i32767,i-32768,i32768,i-32769,i2147483647,i-2147483648,i2147483648,i-2147483649,i9223372036854775807,i-9223372036854775808]
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <7600> absent
+  note each integer in the fewest bytes, at the boundaries of int8, int16, int32, int64
+
+valid integer-fields
+  bytes 8248040409101b016110050162112c01016312a08601000164130000000000010000
+  value {"a":i5,"b":i300,"c":i100000,"d":i1099511627776}
+  binson 401401611005140162112c0114016312a086010014016413000000000001000041
+  lookup "a" i5
+  lookup "b" i300
+  lookup "c" i100000
+  lookup "d" i1099511627776
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <6100> absent
+  lookup <6200> absent
+  lookup <6300> absent
+  note one integer in each width: 10, 11, 12 and 13
+
+valid doubles
+  bytes 8248015501764246000000000000000046000000000000008046000000000000f83f46000000000000f07f46000000000000f0ff46000000000000f87f46010000000000000046ffffffffffffef7f46182d4454fb21094043
+  value {"v":[d0000000000000000,d8000000000000000,d3ff8000000000000,d7ff0000000000000,dfff0000000000000,d7ff8000000000000,d0000000000000001,d7fefffffffffffff,d400921fb54442d18]}
+  binson 401401764246000000000000000046000000000000008046000000000000f83f46000000000000f07f46000000000000f0ff46000000000000f87f46010000000000000046ffffffffffffef7f46182d4454fb2109404341
+  lookup "v" [d0000000000000000,d8000000000000000,d3ff8000000000000,d7ff0000000000000,dfff0000000000000,d7ff8000000000000,d0000000000000001,d7fefffffffffffff,d400921fb54442d18]
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <7600> absent
+  note 0.0, -0.0 (kept), 1.5, +inf, -inf, NaN (the one pattern), the least subnormal, the largest, pi
+
+valid strings
+  bytes 8248013801764214001401611405636166c3a91403e282ac1404f09f98801401001403ed9fbf1403ee80801403efbbbf1403efbfbf1404f48fbfbf43
+  value {"v":[s"",s"a",s<636166c3a9>,s<e282ac>,s<f09f9880>,s<00>,s<ed9fbf>,s<ee8080>,s<efbbbf>,s<efbfbf>,s<f48fbfbf>]}
+  binson 401401764214001401611405636166c3a91403e282ac1404f09f98801401001403ed9fbf1403ee80801403efbbbf1403efbfbf1404f48fbfbf4341
+  lookup "v" [s"",s"a",s<636166c3a9>,s<e282ac>,s<f09f9880>,s<00>,s<ed9fbf>,s<ee8080>,s<efbbbf>,s<efbfbf>,s<f48fbfbf>]
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <7600> absent
+  note empty; ASCII; 2, 3 and 4-byte UTF-8; U+0000; U+D7FF and U+E000 around the surrogates; U+FEFF; U+FFFF; U+10FFFF
+
+valid string-lengths
+  bytes 82490200830008010161147f(61*127)0162158000(62*128)
+  value {"a":s<(61*127)>,"b":s<(62*128)>}
+  binson 40140161147f(61*127)140162158000(62*128)41
+  lookup "a" s<(61*127)>
+  lookup "b" s<(62*128)>
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <6100> absent
+  lookup <6200> absent
+  note a length of 127 in 1 byte (14 7f), 128 in 2 (15 8000)
+
+valid string-lengths-2
+  bytes 824a02000000048000000b000100016115ff7f(61*32767)01621600800000(62*32768)
+  value {"a":s<(61*32767)>,"b":s<(62*32768)>}
+  binson 4014016115ff7f(61*32767)1401621600800000(62*32768)41
+  lookup "a" s<(61*32767)>
+  lookup "b" s<(62*32768)>
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <6100> absent
+  lookup <6200> absent
+  note a length of 32,767 in 2 bytes (15 ff7f), 32,768 in 4 (16 00800000); w = 4
+
+valid bytes
+  bytes 8249020004000901016518000178190001000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff
+  value {"e":b"","x":b<000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff>}
+  binson 401401651800140178190001000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff41
+  lookup "e" b""
+  lookup "x" b<000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff>
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <6500> absent
+  lookup <7800> absent
+  note empty bytes; 256 bytes 00 to ff (19 0001)
+
+valid bytes-lengths
+  bytes 82490200830008010161187f(00*127)0162198000(ff*128)
+  value {"a":b<(00*127)>,"b":b<(ff*128)>}
+  binson 40140161187f(00*127)140162198000(ff*128)41
+  lookup "a" b<(00*127)>
+  lookup "b" b<(ff*128)>
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <6100> absent
+  lookup <6200> absent
+  note 18 7f and 19 8000
+
+valid arrays
+  bytes 824803040e31016142430162424243424243434301634244100146000000000000f83f14017818010142100243480104016b1003480043
+  value {"a":[],"b":[[],[[]]],"c":[true,i1,d3ff8000000000000,s"x",b<01>,[i2],{"k":i3},{}]}
+  binson 40140161424314016242424342424343431401634244100146000000000000f83f140178180101421002434014016b10034140414341
+  lookup "a" []
+  lookup "b" [[],[[]]]
+  lookup "c" [true,i1,d3ff8000000000000,s"x",b<01>,[i2],{"k":i3},{}]
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <6100> absent
+  lookup <6200> absent
+  lookup <6300> absent
+  lookup "c"."k" absent
+  note empty and nested arrays; every type in one array; objects in an array without a header
+
+valid names-order
+  bytes 82480904090e12161a1f252c016110010261611002026162100301621004017a1005017f100602c3a9100703e282ac100804f09f98801009
+  value {"a":i1,"aa":i2,"ab":i3,"b":i4,"z":i5,<7f>:i6,<c3a9>:i7,<e282ac>:i8,<f09f9880>:i9}
+  binson 401401611001140261611002140261621003140162100414017a100514017f10061402c3a910071403e282ac10081404f09f9880100941
+  lookup "a" i1
+  lookup "aa" i2
+  lookup "ab" i3
+  lookup "b" i4
+  lookup "z" i5
+  lookup <7f> i6
+  lookup <c3a9> i7
+  lookup <e282ac> i8
+  lookup <f09f9880> i9
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <6100> absent
+  lookup <616100> absent
+  lookup <616200> absent
+  note the order of unsigned bytes: a prefix first; 7f before c3 (a signed compare would put c3 first)
+
+valid names-odd
+  bytes 82480604080c10161c010010000120100101221004015c100503612c62100203612e621003
+  value {<00>:i0," ":i1,"\"":i4,"\\":i5,"a,b":i2,"a.b":i3}
+  binson 4014010010001401201001140122100414015c10051403612c6210021403612e62100341
+  lookup <00> i0
+  lookup " " i1
+  lookup "\"" i4
+  lookup "\\" i5
+  lookup "a,b" i2
+  lookup "a.b" i3
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <0000> absent
+  lookup <2000> absent
+  lookup <2200> absent
+  note names are any well-formed UTF-8 of 1 to 255 bytes: U+0000, a space, ',', '.', '"', '\'
+
+valid name-255
+  bytes 824901000201ff(61*255)1001
+  value {<(61*255)>:i1}
+  binson 4015ff00(61*255)100141
+  lookup <(61*255)> i1
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <(61*254)> absent
+  note the longest name, 255 bytes: w = 2 (258 bytes of fields)
+
+valid fields-85
+  bytes 8248550306090c0f1215181b1e2124272a2d303336393c3f4245484b4e5154575a5d606366696c6f7275787b7e8184878a8d909396999c9fa2a5a8abaeb1b4b7babdc0c3c6c9cccfd2d5d8dbdee1e4e7eaedf0f3f6f9fcff012144012244012344012444012544012644012744012844012944012a44012b44012c44012d44012e44012f44013044013144013244013344013444013544013644013744013844013944013a44013b44013c44013d44013e44013f44014044014144014244014344014444014544014644014744014844014944014a44014b44014c44014d44014e44014f44015044015144015244015344015444015544015644015744015844015944015a44015b44015c44015d44015e44015f44016044016144016244016344016444016544016644016744016844016944016a44016b44016c44016d44016e44016f44017044017144017244017344017444017544
+  value {"!":true,"\"":true,"#":true,"$":true,"%":true,"&":true,"'":true,"(":true,")":true,"*":true,"+":true,",":true,"-":true,".":true,"/":true,"0":true,"1":true,"2":true,"3":true,"4":true,"5":true,"6":true,"7":true,"8":true,"9":true,":":true,";":true,"<":true,"=":true,">":true,"?":true,"@":true,"A":true,"B":true,"C":true,"D":true,"E":true,"F":true,"G":true,"H":true,"I":true,"J":true,"K":true,"L":true,"M":true,"N":true,"O":true,"P":true,"Q":true,"R":true,"S":true,"T":true,"U":true,"V":true,"W":true,"X":true,"Y":true,"Z":true,"[":true,"\\":true,"]":true,"^":true,"_":true,"`":true,"a":true,"b":true,"c":true,"d":true,"e":true,"f":true,"g":true,"h":true,"i":true,"j":true,"k":true,"l":true,"m":true,"n":true,"o":true,"p":true,"q":true,"r":true,"s":true,"t":true,"u":true}
+  binson 4014012144140122441401234414012444140125441401264414012744140128441401294414012a4414012b4414012c4414012d4414012e4414012f441401304414013144140132441401334414013444140135441401364414013744140138441401394414013a4414013b4414013c4414013d4414013e4414013f441401404414014144140142441401434414014444140145441401464414014744140148441401494414014a4414014b4414014c4414014d4414014e4414014f441401504414015144140152441401534414015444140155441401564414015744140158441401594414015a4414015b4414015c4414015d4414015e4414015f441401604414016144140162441401634414016444140165441401664414016744140168441401694414016a4414016b4414016c4414016d4414016e4414016f4414017044140171441401724414017344140174441401754441
+  lookup "!" true
+  lookup "\"" true
+  lookup "#" true
+  lookup "$" true
+  lookup "%" true
+  lookup "&" true
+  lookup "'" true
+  lookup "(" true
+  lookup ")" true
+  lookup "*" true
+  lookup "+" true
+  lookup "," true
+  lookup "-" true
+  lookup "." true
+  lookup "/" true
+  lookup "0" true
+  lookup "1" true
+  lookup "2" true
+  lookup "3" true
+  lookup "4" true
+  lookup "5" true
+  lookup "6" true
+  lookup "7" true
+  lookup "8" true
+  lookup "9" true
+  lookup ":" true
+  lookup ";" true
+  lookup "<" true
+  lookup "=" true
+  lookup ">" true
+  lookup "?" true
+  lookup "@" true
+  lookup "A" true
+  lookup "B" true
+  lookup "C" true
+  lookup "D" true
+  lookup "E" true
+  lookup "F" true
+  lookup "G" true
+  lookup "H" true
+  lookup "I" true
+  lookup "J" true
+  lookup "K" true
+  lookup "L" true
+  lookup "M" true
+  lookup "N" true
+  lookup "O" true
+  lookup "P" true
+  lookup "Q" true
+  lookup "R" true
+  lookup "S" true
+  lookup "T" true
+  lookup "U" true
+  lookup "V" true
+  lookup "W" true
+  lookup "X" true
+  lookup "Y" true
+  lookup "Z" true
+  lookup "[" true
+  lookup "\\" true
+  lookup "]" true
+  lookup "^" true
+  lookup "_" true
+  lookup "`" true
+  lookup "a" true
+  lookup "b" true
+  lookup "c" true
+  lookup "d" true
+  lookup "e" true
+  lookup "f" true
+  lookup "g" true
+  lookup "h" true
+  lookup "i" true
+  lookup "j" true
+  lookup "k" true
+  lookup "l" true
+  lookup "m" true
+  lookup "n" true
+  lookup "o" true
+  lookup "p" true
+  lookup "q" true
+  lookup "r" true
+  lookup "s" true
+  lookup "t" true
+  lookup "u" true
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <2100> absent
+  lookup <2200> absent
+  lookup <2300> absent
+  note 85 fields of 3 bytes: 255 bytes, the most fields with w = 1
+
+valid width-255
+  bytes 824801ff017315fa00(61*250)
+  value {"s":s<(61*250)>}
+  binson 4014017315fa00(61*250)41
+  lookup "s" s<(61*250)>
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <7300> absent
+  note fields of 255 bytes: w = 1
+
+valid width-256
+  bytes 824901000001017315fb00(61*251)
+  value {"s":s<(61*251)>}
+  binson 4014017315fb00(61*251)41
+  lookup "s" s<(61*251)>
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <7300> absent
+  note fields of 256 bytes: w = 2
+
+valid width-65535
+  bytes 82490100ffff01621af8ff(00*65530)
+  value {"b":b<(00*65528)>}
+  binson 401401621af8ff(00*65530)41
+  lookup "b" b<(00*65528)>
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <6200> absent
+  note fields of 65,535 bytes: w = 2
+
+valid width-65536
+  bytes 824a010000000000010001621af9ff(00*65531)
+  value {"b":b<(00*65529)>}
+  binson 401401621af9ff(00*65531)41
+  lookup "b" b<(00*65529)>
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <6200> absent
+  note fields of 65,536 bytes: w = 4
+
+valid widths-nested
+  bytes 824a020000004d010000c6120100036269674902000f004201036d696448010805736d616c6c100103706164152c01(61*300)037061641a701101(00*70001)
+  value {"big":{"mid":{"small":i1},"pad":s<(61*300)>},"pad":b<(00*70000)>}
+  binson 4014036269674014036d6964401405736d616c6c1001411403706164152c01(61*300)4114037061641a701101(00*70001)41
+  lookup "big" {"mid":{"small":i1},"pad":s<(61*300)>}
+  lookup "pad" b<(00*70000)>
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup "big\x00" absent
+  lookup "bi" absent
+  lookup "pad\x00" absent
+  lookup "pa" absent
+  lookup "big"."mid"."small" i1
+  lookup "big"."mid" {"small":i1}
+  lookup "big"."pad"."x" absent
+  note w = 4 holding w = 2 holding w = 1
+
+valid depth-16-objects
+  bytes 8248014a016f480145016f480140016f48013b016f480136016f480131016f48012c016f480127016f480122016f48011d016f480118016f480113016f48010e016f480109016f480104016f4800
+  value {"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{}}}}}}}}}}}}}}}}
+  binson 4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f40(41*16)
+  lookup "o" {"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{}}}}}}}}}}}}}}}
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <6f00> absent
+  lookup "o"."o"."o"."o"."o"."o"."o"."o"."o"."o"."o"."o"."o"."o"."o" {}
+  note 16 objects on a path: the top and 15 nested
+
+valid depth-16-arrays
+  bytes 824801200161424242424242424242424242424242434343434343434343434343434343
+  value {"a":[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]}
+  binson 4014016142424242424242424242424242424243434343434343434343434343434341
+  lookup "a" [[[[[[[[[[[[[[[]]]]]]]]]]]]]]]
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <6100> absent
+  note the top object and 15 arrays
+
+valid depth-16-mixed
+  bytes 8248013501614248012e01614248012701614248012001614248011901614248011201614248010b0161424801040161424343434343434343
+  value {"a":[{"a":[{"a":[{"a":[{"a":[{"a":[{"a":[{"a":[]}]}]}]}]}]}]}]}
+  binson 4014016142401401614240140161424014016142401401614240140161424014016142401401614243414341434143414341434143414341
+  lookup "a" [{"a":[{"a":[{"a":[{"a":[{"a":[{"a":[{"a":[]}]}]}]}]}]}]}]
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <6100> absent
+  note 8 objects and 8 arrays, alternating
+
+valid depth-16-scalar
+  bytes 8248014f016f48014a016f480145016f480140016f48013b016f480136016f480131016f48012c016f480127016f480122016f48011d016f480118016f480113016f48010e016f480109016f48010401761001
+  value {"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"v":i1}}}}}}}}}}}}}}}}
+  binson 4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f401401761001(41*16)
+  lookup "o" {"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"o":{"v":i1}}}}}}}}}}}}}}}
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <6f00> absent
+  lookup "o"."o"."o"."o"."o"."o"."o"."o"."o"."o"."o"."o"."o"."o"."o"."v" i1
+  note 16 objects and a scalar below them: a scalar is not a level
+
+valid wrapped-array
+  bytes 824801130561727261794210011002109c12ffffff7f43
+  value {"array":[i1,i2,i-100,i2147483647]}
+  binson 40140561727261794210011002109c12ffffff7f4341
+  lookup "array" [i1,i2,i-100,i2147483647]
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup "array\x00" absent
+  lookup "arra" absent
+  note an int[] put at a key, as Java's toDbObject wraps it (not a format rule)
+
+valid wrapped-primitive
+  bytes 8248010401701008
+  value {"p":i8}
+  binson 40140170100841
+  lookup "p" i8
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup <7000> absent
+  note an int put at a key, as Java's toDbObject wraps it
+
+invalid no-bytes
+  bytes 
+  rules past-end
+  note no bytes at all
+
+invalid header-only
+  bytes 82
+  rules past-end
+  note the header and nothing after it
+
+invalid no-header
+  bytes 4800
+  rules header
+  note an object without its header
+
+invalid binson-object
+  bytes 4041
+  rules header
+  note Binson's empty object
+
+invalid header-81
+  bytes 814800
+  rules header
+
+invalid format-3
+  bytes 834800
+  rules header
+  note a later format (3), not read by a reader of format 2
+
+invalid string-value
+  bytes e282ac
+  rules header
+  note a String value (UTF-8 never starts with 80 to bf)
+
+invalid format-1-empty
+  bytes 626572676f010000
+  rules format-1
+  note the empty object of 2026.3 (bergo, version 1)
+
+invalid format-1-payment
+  bytes 626572676f010300391c1a0000007d1b2b000000131d3a0000006c0600616d6f756e74f40100000000000073040066726f6d0400000031303031730200746f0400000031303032
+  rules format-1
+  note Payment as 2026.3 writes it, 71 bytes (020-05, section 3)
+
+invalid top-integer
+  bytes 821005
+  rules type
+  note the top value is not an object
+
+invalid top-binson-object
+  bytes 824041
+  rules type
+
+invalid top-array
+  bytes 824243
+  rules type
+
+invalid trailing
+  bytes 82480000
+  rules trailing
+  note a byte after the object
+
+invalid trailing-payment
+  bytes 8248030a151e06616d6f756e7411f4010466726f6d14043130303102746f14043130303200
+  rules trailing
+
+invalid type-00
+  bytes 82480103016100
+  rules type
+  note type byte 00 as a field's value
+
+invalid type-17
+  bytes 82480103016117
+  rules type
+  note type byte 17 as a field's value
+
+invalid type-1b
+  bytes 8248010301611b
+  rules type
+  note type byte 1b as a field's value
+
+invalid type-40
+  bytes 82480103016140
+  rules type
+  note type byte 40 as a field's value
+
+invalid type-41
+  bytes 82480103016141
+  rules type
+  note type byte 41 as a field's value
+
+invalid type-43
+  bytes 82480103016143
+  rules type
+  note type byte 43 as a field's value
+
+invalid type-47
+  bytes 82480103016147
+  rules type
+  note type byte 47 as a field's value
+
+invalid type-4b
+  bytes 8248010301614b
+  rules type
+  note type byte 4b as a field's value
+
+invalid type-ff
+  bytes 824801030161ff
+  rules type
+  note type byte ff as a field's value
+
+invalid type-in-array
+  bytes 824801050161421b43
+  rules type
+  note type byte 1b as an array's element
+
+invalid cut-count
+  bytes 824901
+  rules past-end
+  note the count cut
+
+invalid cut-table
+  bytes 82480203
+  rules past-end
+  note the table cut
+
+invalid cut-fields
+  bytes 82480105016110
+  rules past-end
+  note the fields cut
+
+invalid value-past-field
+  bytes 8248010401611105
+  rules past-end
+  note an int16 with one byte in its field
+
+invalid string-past-field
+  bytes 824801050161140561
+  rules past-end
+  note a string of 5 with 1 byte in its field
+
+invalid name-past-field
+  bytes 82480103056162
+  rules past-end
+  note a name of 5 bytes in a field of 3
+
+invalid field-no-value
+  bytes 824801020161
+  rules past-end
+  note a name and no value
+
+invalid array-not-ended
+  bytes 8248010401614244
+  rules past-end
+  note an array not ended in its field
+
+invalid array-cut
+  bytes 82480103016142
+  rules past-end
+  note an array cut at the end of the bytes
+
+invalid nested-cut
+  bytes 8248010301614a
+  rules past-end
+  note a nested object cut in its count
+
+invalid nested-past-field
+  bytes 82480106016148010501
+  rules past-end
+  note a nested object whose fields reach past its field
+
+invalid field-size
+  bytes 8248010401614444
+  rules field-size
+  note a value that ends before its field
+
+invalid nested-shorter
+  bytes 8248010a01614801040162100100
+  rules field-size
+  note a nested object that ends before its field
+
+invalid width-2-empty
+  bytes 82490000
+  rules width
+  note the empty object with w = 2
+
+invalid width-4-empty
+  bytes 824a00000000
+  rules width
+
+invalid width-2-small
+  bytes 82490100040001611001
+  rules width
+  note {a: 1} with w = 2
+
+invalid width-4-small
+  bytes 824a010000000400000001611001
+  rules width
+  note {a: 1} with w = 4
+
+invalid ends-equal
+  bytes 824802040401611001
+  rules ends,past-end
+  note two ends equal: field 1 is empty
+
+invalid ends-zero
+  bytes 82480100
+  rules ends,past-end
+  note an end of 0: an empty field
+
+invalid name-empty
+  bytes 82480103001001
+  rules name-length
+  note a name of 0 bytes
+
+invalid name-not-utf8
+  bytes 8248010301ff44
+  rules utf8
+  note a name of the byte ff
+
+invalid name-surrogate
+  bytes 8248010503eda08044
+  rules utf8
+  note a name of ED A0 80 (U+D800 in WTF-8)
+
+invalid order
+  bytes 8248020306016244016144
+  rules order
+  note b before a
+
+invalid order-prefix
+  bytes 824802040702616144016144
+  rules order
+  note aa before a
+
+invalid order-signed
+  bytes 824802040702c3a944017a44
+  rules order
+  note \xc3\xa9 before z: right for signed bytes, wrong for unsigned
+
+invalid duplicate
+  bytes 8248020306016144016145
+  rules duplicate
+  note two fields named a
+
+invalid utf8-80
+  bytes 824801050173140180
+  rules utf8
+  note a lone continuation byte
+
+invalid utf8-c080
+  bytes 8248010601731402c080
+  rules utf8
+  note an overlong U+0000
+
+invalid utf8-c1bf
+  bytes 8248010601731402c1bf
+  rules utf8
+  note an overlong U+007F
+
+invalid utf8-e08080
+  bytes 8248010701731403e08080
+  rules utf8
+  note an overlong 3-byte form
+
+invalid utf8-e09fbf
+  bytes 8248010701731403e09fbf
+  rules utf8
+  note an overlong U+07FF
+
+invalid utf8-eda080
+  bytes 8248010701731403eda080
+  rules utf8
+  note U+D800, a surrogate
+
+invalid utf8-edbfbf
+  bytes 8248010701731403edbfbf
+  rules utf8
+  note U+DFFF, a surrogate
+
+invalid utf8-f0808080
+  bytes 8248010801731404f0808080
+  rules utf8
+  note an overlong 4-byte form
+
+invalid utf8-f08fbfbf
+  bytes 8248010801731404f08fbfbf
+  rules utf8
+  note an overlong U+FFFF
+
+invalid utf8-f4908080
+  bytes 8248010801731404f4908080
+  rules utf8
+  note above U+10FFFF
+
+invalid utf8-f5808080
+  bytes 8248010801731404f5808080
+  rules utf8
+  note a lead byte f5
+
+invalid utf8-ff
+  bytes 8248010501731401ff
+  rules utf8
+  note the byte ff
+
+invalid utf8-e282
+  bytes 8248010601731402e282
+  rules utf8
+  note a cut 3-byte form
+
+invalid utf8-61c3
+  bytes 824801060173140261c3
+  rules utf8
+  note a lead byte at the end
+
+invalid utf8-c362
+  bytes 8248010601731402c362
+  rules utf8
+  note a lead byte before ASCII
+
+invalid int-size-5
+  bytes 824801050161110500
+  rules integer-size
+  note 5 as int16
+
+invalid int-size-127
+  bytes 824801050161117f00
+  rules integer-size
+  note 127 as int16
+
+invalid int-size-m128
+  bytes 8248010501611180ff
+  rules integer-size
+  note -128 as int16
+
+invalid int-size-32767
+  bytes 82480107016112ff7f0000
+  rules integer-size
+  note 32,767 as int32
+
+invalid int-size-m2p31
+  bytes 8248010b01611300000080ffffffff
+  rules integer-size
+  note -2^31 as int64
+
+invalid length-size
+  bytes 82480106016115010062
+  rules integer-size
+  note a string length of 1 in 2 bytes
+
+invalid length-size-bytes
+  bytes 824801050161190000
+  rules integer-size
+  note a bytes length of 0 in 2 bytes
+
+invalid length-negative
+  bytes 82480104016114ff
+  rules length
+  note a string length of -1
+
+invalid length-negative-bytes
+  bytes 8248010401611880
+  rules length
+  note a bytes length of -128
+
+invalid length-negative-32
+  bytes 8248010701611600000080
+  rules length
+  note a string length of -2^31
+
+invalid nan-payload
+  bytes 8248010b016146010000000000f87f
+  rules nan
+  note a quiet NaN with a payload
+
+invalid nan-negative
+  bytes 8248010b016146000000000000f8ff
+  rules nan
+  note the negative quiet NaN
+
+invalid nan-signalling
+  bytes 8248010b016146010000000000f07f
+  rules nan
+  note a signalling NaN
+
+invalid nan-ones
+  bytes 8248010b016146ffffffffffffffff
+  rules nan
+  note all bits set
+
+invalid depth-17-objects
+  bytes 8248014f016f48014a016f480145016f480140016f48013b016f480136016f480131016f48012c016f480127016f480122016f48011d016f480118016f480113016f48010e016f480109016f480104016f4800
+  rules depth
+  note 17 objects on a path
+
+invalid depth-17-arrays
+  bytes 824801220161(42*16)(43*16)
+  rules depth
+  note the top object and 16 arrays
+
+invalid depth-17-mixed
+  bytes 8248013701614248013001614248012901614248012201614248011b01614248011401614248010d01614248010601614248004343434343434343
+  rules depth
+  note an empty object at level 17 under 8 objects and 8 arrays
+
+invalid depth-100-arrays
+  bytes 824801c80161(42*99)(43*99)
+  rules depth
+  note the top object and 99 arrays
+
+invalid count-huge
+  bytes 824affffffff
+  rules fields,past-end
+  note a count of 2^32 - 1 in 6 bytes: refused before any allocation
+
+generated fields-32767
+  recipe an object of 32,767 fields; field k, for k = 0 to 32,766, has the name of 5 ASCII digits, k in decimal with leading zeros (00000 to 32766), and the value true
+  length 360443
+  sha256 5df453cc1cb8cf4ae0e4650621a52f734cb4ca8d58584fee9fbd860544033bcc
+  valid
+
+generated fields-32768
+  recipe as fields-32767, with 32,768 fields (00000 to 32767)
+  length 360454
+  sha256 ddcab5e1c80e23232f86bd262f54a4a475bd902a7a1dcf448ec311e04dd7db4b
+  rules fields
+
+binson-in payment
+  binson 401406616d6f756e7411f401140466726f6d1404313030311402746f14043130303241
+  bytes 8248030a151e06616d6f756e7411f4010466726f6d14043130303102746f140431303032
+  note Binson's Payment (020-05, section 3) to format 2
+
+binson-in nan-rewritten
+  binson 4014016446010000000000f87f41
+  bytes 8248010b016446000000000000f87f
+  note a NaN with a payload, rewritten to the one pattern
+
+binson-in empty-name
+  binson 4014004441
+  rules name-length
+  note Binson allows the empty name
+
+binson-in name-256
+  binson 40150001(61*256)4441
+  rules name-length
+  note a name of 256 bytes
+
+binson-in utf8
+  binson 401401611401ff41
+  rules utf8
+  note a string of the byte ff
+
+binson-in depth-17
+  binson 4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f4014016f40(41*17)
+  rules depth
+  note 17 objects on a path
+
+binson-in not-binson-order
+  binson 40140162441401614441
+  rules binson
+  note names out of order
+
+binson-in not-binson-integer
+  binson 4014016111050041
+  rules binson
+  note 5 as int16
+

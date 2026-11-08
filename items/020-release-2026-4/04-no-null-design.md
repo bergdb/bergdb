@@ -1013,6 +1013,10 @@ binary search for fields (2026-11-08, 15:22; 020-02, sections 4.1 to
   before or after the codec. 020-05's cost for (f), M, 3 to 5 days,
   includes this plan (020-05, section 10).
 
+Since (f) was decided (020-02, section 4.2, 2026-11-08): its spec is
+020-07, and the plan that carries this design's rules into the code with
+it, steps B to D included, is 020-08.
+
 Done since, on today's format (2026-11-07):
 
 * **021-07**: the reader's malformed lengths and bad type bytes give

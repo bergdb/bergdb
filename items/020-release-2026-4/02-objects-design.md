@@ -1069,6 +1069,9 @@ And:
   implementation, come to Frans for approval before the release.
 * **What it leaves open**: the index keys' format (the sort keys, ICU:
   020-01, section 14, decision 3), outside objects.
+* **The spec and the plan** (2026-11-08, at Frans's request, 17:12):
+  020-07, the spec with its vectors, for his approval; 020-08, the
+  implementation plan, for his "ok-and-implement".
 
 
 ## 5. Not yet for decision: the API and the conversion
@@ -1078,6 +1081,14 @@ Java objects is not yet decided, but there are good options that have
 been researched." And 2026-11-07, 14:26, on (D): "I this is something I
 want to design in detail. Important for usability, public API." Kept
 apart from section 4, for later.
+
+Frans, 2026-11-08, 17:26, reading `WebsiteCode.java` and `PayDemo.java`
+(java/src-dev/frans/): "I like this. Everything is just plain Java,
+including index creation and atomic payments. Nice to have such storage
+garantees without the hassle of Java and SQL mixed. I like it. So the main
+design is good as is. Let's keep it." The Pub API's shape stays: plain
+Java objects put and got by key, indexes defined in Java, atomic
+transactions as `rw()` actions; the questions below refine it.
 
 ### 5.1. What is open
 
