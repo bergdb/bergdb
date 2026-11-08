@@ -222,12 +222,14 @@ public class Klong {
     
     /**
      * Slow test method for getting a UTF-8 string key.
-     * Converts from bkey to ikey.
+     * Converts from bkey to ikey, for display: a klong holds at most 7 bytes of a key, which
+     * may end inside a character, and a key may have no ikey (bergdb 021-06), so the bytes
+     * are shown as Keys.toDisplayString() shows them.
      */
     public static String getKeyString(long value) {
         byte[] bytes = new byte[getLength(value)];
         getKey(value, bytes);
-        String result = Keys.bkey2ikey(bytes);
+        String result = Keys.toDisplayString(bytes);
         return result;
     }
     

@@ -145,7 +145,8 @@ may rely on it (bergdb 021-04). In Java, a String with a lone surrogate (a
 char of U+D800 to U+DFFF not part of a surrogate pair) is refused with
 IllegalArgumentException, by the Pub API and by `Keys.toBytes` (bergdb
 021-05); a writer in C or Go refuses bytes that are not well-formed UTF-8
-(the C clone, bergdb 012, at release 2026.2, does not yet; bergdb 021-06).
+(the C clone, bergdb 012, at release 2026.2, does not yet: a later port
+does; until then such a key is a bkey without an ikey, below).
 Then for each byte
     if b == '/', res = 1
     else res = b + 2
@@ -162,12 +163,39 @@ Be careful not to use ikey-to-bkey conversion when the key is binary already.
 
 For each byte b
     if b == 1, res = '/'
-    else if b == 0 --> fail, bkey cannot be converted to an ikey
+    else if b == 0 or b == 0x31 ('/' + 2) --> fail, the bkey has no ikey
     else res = b - 2
-Then convert res bytes to a String with UTF-8.
+Then the res bytes must be well-formed UTF-8 (RFC 3629), else the bkey has
+no ikey; the ikey is the string they encode.
 
 NOTE, there are bytes sequences that are not valid UTF-8 bytes.
 An arbitrary bkey cannot, in general, be converted to an ikey.
+
+A reader never repairs a bkey without an ikey: its bytes are not decoded
+with U+FFFD in place of an ill-formed sequence, or in any other lenient way
+(bergdb 021-06, decided 2026-11-08 under Frans's delegation). So the ikey
+of a bkey, converted back, gives that bkey, and two bkeys never give one
+ikey. Until 2026-11-08 Java decoded with U+FFFD: the bkeys of the ikeys
+"a" ED A0 80 (U+D800 in WTF-8, which the C clone takes) and "a" EF BF BD
+(U+FFFD) read as one String (bergdb 021-04, CK1 and CK2), whose bkey is
+the second's, so the first key's value could not be got by a String key.
+
+A bkey without an ikey is written through the Core API, which takes any
+bkey, or by a writer that does not check its keys. Such a key:
+
+* is reached through the Core API by its bkey, as any key;
+* has no ikey and no ukey: no get by a String key names it (a String key
+  is well-formed UTF-8, so its bkey is another), and the Pub layer's scans
+  (`Connection.usePrimary()`) leave it out;
+* in Java: `Keys.bkey2ikeyOrNull` returns null, `Keys.bkey2ikey` and
+  `Keys.toString(long[])` throw IllegalArgumentException, and
+  `Keys.toDisplayString` shows it, for messages only.
+
+The rule is the one for every string a reader takes from the stream: a
+String value, a string or a field name in an object, that is not
+well-formed UTF-8 is reported, never repaired; in Java a String value read
+as a String gives DataFormatException, and an object fails the object
+format's full check (bergdb 020-07, R6 and R11; bergdb 021-06).
 
 
 ### Implementation ###

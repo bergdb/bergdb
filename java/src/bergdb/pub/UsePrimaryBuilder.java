@@ -9,8 +9,11 @@ package bergdb.pub;
  * <p><b>What it lists.</b> At the lookup time t, the keys of the directory's own values (not
  * its subdirectories', and never one of the database's internal keys), in key order: by
  * the names' code points (their UTF-8 bytes), ascending, or descending after backward();
- * from startAt()'s name if it was called. For each key, its value at t as get(key, type) at
- * t gives it; the keys whose value is not of the type's kind are left out:</p>
+ * from startAt()'s name if it was called. A key that no String key names is not listed: one
+ * written through the Core API, or by another writer, whose bytes are not the bkey of
+ * well-formed UTF-8 (the Core's key-encoding.md; bergdb 021-06). For each key, its value at
+ * t as get(key, type) at t gives it; the keys whose value is not of the type's kind are left
+ * out:</p>
  *
  * <ul>
  * <li>byte[].class: every value, its stored bytes. The array is the database's own, as

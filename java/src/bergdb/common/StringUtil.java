@@ -240,6 +240,132 @@ public class StringUtil {
         Assert.assertEquals(true, hasLoneSurrogate("\uD83D\uD83D\uDE00"));
     }
 
+    /** As isWellFormedUtf8(b, 0, b.length). */
+    public static boolean isWellFormedUtf8(byte[] b) {
+        return isWellFormedUtf8(b, 0, b.length);
+    }
+    
+    /**
+     * True if the 'length' bytes of 'b' from 'offset' are well-formed UTF-8 (RFC 3629; the
+     * Unicode Standard, chapter 3, table 3-7): Unicode scalar values only, each in its
+     * shortest form. Not well-formed: a cut sequence, an overlong form (C0 80), a surrogate
+     * (ED A0 80), a value above U+10FFFF, and the bytes C0, C1 and F5 to FF. BergDB stores
+     * every string so, and a reader reports the bytes that are not, rather than repair
+     * them (bergdb 021-04, 021-06).
+     */
+    public static boolean isWellFormedUtf8(byte[] b, int offset, int length) {
+        final int end = offset + length;
+        int i = offset;
+        while (i < end) {
+            int c = b[i] & 0xff;
+            if (c < 0x80) {
+                i++;
+                continue;
+            }
+            int more;           // the continuation bytes
+            int low = 0x80;     // the first continuation byte's range
+            int high = 0xbf;
+            if (c >= 0xc2 && c <= 0xdf) {
+                more = 1;
+            } else if (c == 0xe0) {
+                more = 2;
+                low = 0xa0;
+            } else if (c == 0xed) {
+                more = 2;
+                high = 0x9f;
+            } else if (c >= 0xe1 && c <= 0xef) {
+                more = 2;
+            } else if (c == 0xf0) {
+                more = 3;
+                low = 0x90;
+            } else if (c == 0xf4) {
+                more = 3;
+                high = 0x8f;
+            } else if (c >= 0xf1 && c <= 0xf3) {
+                more = 3;
+            } else {
+                return false;
+            }
+            if (end - i <= more) {
+                return false;
+            }
+            int c1 = b[i + 1] & 0xff;
+            if (c1 < low || c1 > high) {
+                return false;
+            }
+            for (int k = 2; k <= more; k++) {
+                int ck = b[i + k] & 0xff;
+                if (ck < 0x80 || ck > 0xbf) {
+                    return false;
+                }
+            }
+            i += more + 1;
+        }
+        return true;
+    }
+    
+    /**
+     * isWellFormedUtf8() against the JDK's UTF-8 decoder set to report malformed input:
+     * every sequence of 1 and 2 bytes, the edges, and random sequences of up to 8 bytes
+     * from bytes near the edges.
+     */
+    @Nano
+    public static void testIsWellFormedUtf8() {
+        for (int a = 0; a < 256; a++) {
+            checkWellFormed(new byte[] {(byte) a});
+            for (int b = 0; b < 256; b++) {
+                checkWellFormed(new byte[] {(byte) a, (byte) b});
+            }
+        }
+        int[][] edges = {{0xed, 0x9f, 0xbf}, {0xed, 0xa0, 0x80}, {0xee, 0x80, 0x80}, 
+                {0xe0, 0x9f, 0xbf}, {0xe0, 0xa0, 0x80}, {0xc0, 0x80}, {0xc1, 0xbf}, 
+                {0xc2, 0x80}, {0xf0, 0x8f, 0xbf, 0xbf}, {0xf0, 0x90, 0x80, 0x80}, 
+                {0xf4, 0x8f, 0xbf, 0xbf}, {0xf4, 0x90, 0x80, 0x80}, {0xf5, 0x80, 0x80, 0x80}, 
+                {0xef, 0xbf, 0xbd}, {0xe2, 0x82}, {0x61, 0xe2, 0x82, 0xac, 0x62}, {}};
+        for (int[] e : edges) {
+            byte[] bytes = new byte[e.length];
+            for (int i = 0; i < e.length; i++) {
+                bytes[i] = (byte) e[i];
+            }
+            checkWellFormed(bytes);
+        }
+        Assert.assertEquals(false, isWellFormedUtf8(new byte[] {(byte) 0xed, (byte) 0xa0, 
+                (byte) 0x80}));
+        Assert.assertEquals(true, isWellFormedUtf8(new byte[] {(byte) 0xef, (byte) 0xbf, 
+                (byte) 0xbd}));
+        Assert.assertEquals(true, isWellFormedUtf8(new byte[] {'x', 'a', 'b', 'y'}, 1, 2));
+        Assert.assertEquals(false, isWellFormedUtf8(new byte[] {'x', (byte) 0xe2, (byte) 0x82, 
+                (byte) 0xac}, 0, 3));
+        
+        int[] near = {0x00, 0x41, 0x7f, 0x80, 0x8f, 0x90, 0x9f, 0xa0, 0xbf, 0xc0, 0xc1, 0xc2, 
+                0xdf, 0xe0, 0xe1, 0xec, 0xed, 0xee, 0xef, 0xf0, 0xf1, 0xf3, 0xf4, 0xf5, 0xff};
+        java.util.Random random = new java.util.Random(21_06);
+        for (int n = 0; n < 50000; n++) {
+            byte[] bytes = new byte[1 + random.nextInt(8)];
+            for (int i = 0; i < bytes.length; i++) {
+                bytes[i] = (byte) near[random.nextInt(near.length)];
+            }
+            checkWellFormed(bytes);
+        }
+    }
+    
+    private static void checkWellFormed(byte[] bytes) {
+        boolean jdk;
+        try {
+            java.nio.charset.StandardCharsets.UTF_8.newDecoder()
+                    .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                    .decode(java.nio.ByteBuffer.wrap(bytes));
+            jdk = true;
+        } catch (java.nio.charset.CharacterCodingException e) {
+            jdk = false;
+        }
+        if (jdk != isWellFormedUtf8(bytes)) {
+            throw new AssertionError("isWellFormedUtf8 " + !jdk + ", the JDK's decoder " + jdk 
+                    + ", for " + toHex(bytes));
+        }
+    }
+
     /**
      * Converts UTF-8 bytes to a String.
      * If 'bytes' is null, null will be returned.

@@ -1,7 +1,7 @@
 021-06. Investigate: a string that is not well-formed UTF-8 in a stream from another writer
 =========================================================================================
 
-Status: open. Kind: Investigate. Frans: answers.
+Status: in progress. Kind: Investigate. Frans: answers (delegated, 2026-11-08).
 Created 2026-11-07 by Frans Lundberg.
 
 What: the read side of 021-04's rule. Every stream Java writes holds only
@@ -57,6 +57,60 @@ the Java reader does what it says, with a test of the CK1 and CK2 bkeys
 (the two keys stay two, or are reported); `BEFORE COMMIT OK`; a line in
 `releases/next.md`.
 
+Answers, decided 2026-11-08 under Frans's delegation (22:17, "make the
+decisions needed to get the 2026.4 release ready"; 006-15), as the night's
+coordinator set them:
+
+1. **A reader never repairs ill-formed UTF-8.** A String value or a key
+   that is not well-formed is reported, never turned into U+FFFD. Java:
+   `DataFormatException` for a value read as a String (`get(key,
+   String.class)`, and as `Object.class` at a `.txt` key, where it is a
+   String); a value read as a `byte[]` is its bytes, as always. For
+   objects this is format 2's rule already (020-02, section 4.9; 020-07,
+   R6 and R11), done by the objects' steps (020-08) in `DbObject` and the
+   value classes.
+2. **A bkey that is not well-formed UTF-8 is a bkey without an ikey**, as
+   2013-key-encoding says. The Core API reaches it by its bkey; the Pub
+   layer's scans leave it out; a get by a String key cannot name it (a
+   String key's bkey is well-formed). Java's `Keys.bkey2ikey` no longer
+   decodes with U+FFFD: it throws for such a bkey, and
+   `Keys.bkey2ikeyOrNull` returns null. CK1 and CK2 stay two keys: CK1
+   has no ikey, CK2 is the key with U+FFFD. Also without an ikey: a bkey
+   with the byte 0x31 ('/' + 2), which no ikey gives (its ikey's bkey would
+   have 1 there), so that two bkeys never give one ikey. The C clone's
+   writer (`bergdb_ikey_to_bkey`) refuses such keys at a later port, not
+   in 2026.4.
+3. **A put of a `DbObject` made from bytes** gets format 2's full check:
+   the objects' steps (020-08, 020-07, section 7.4), not this entry.
+
+Done (2026-11-08, commit "021-06: ..."): the rule in the Core's
+`doc-files/key-encoding.md` ("Conversion bkey --> ikey"); `Keys.bkey2ikey`,
+`Keys.toString(long[])` and the new `Keys.bkey2ikeyOrNull` strict, with
+`StringUtil.isWellFormedUtf8` (RFC 3629, tested against the JDK's decoder
+set to report); `Klong.getKeyString`, a debug printer of 7-byte pieces of a
+key, shows the bytes with `Keys.toDisplayString`; the primary scan
+(`UsePrimaryBuilderImp`) leaves out a bkey without an ikey and a key whose
+name in the directory has a '/' (an ikey that no ukey of the directory
+gives, such as "/dd/-x/y" written through the Core). Tests:
+`Keys.testBkeyWithoutIkey`, `Keys.testBkeyIkeyRoundTrip` (100,000 random
+bkeys: none, or the ikey's bkey is the bkey), `StringUtil.testIsWellFormedUtf8`,
+`Utf8ReadTester.testCk1AndCk2StayTwoKeys` and
+`testScanPastKeysWithoutIkey`.
+
+Left, for the coordinator: the String value's read is in
+`KvToObjectImp.entryToString`, a file of the objects' steps tonight (020-08),
+so its fix and its failing test are a patch,
+`/Users/f/fl/bench/006-15/clone-021-06/021-06-string-values.patch`, to apply
+after 020-08's step 2 (it also adds a `@throws DataFormatException` to
+`Connection.get` and a sentence to `UsePrimaryBuilder`). Then this entry is
+done, with a line in `releases/next.md` by the coordinator. Also for others:
+the index build (`IndexBuilderImp`, step I2 of 020-10) converts every key it
+visits with `Keys.toString`, so a key without an ikey after a directory
+fails a build of it (as a `RuntimeException` does, 019-42) until I2's build
+reads only the directory's keys and leaves such keys out
+(`Keys.bkey2ikeyOrNull`); `Connection.transactionInfo()`'s `Kv.key()` throws
+`IllegalArgumentException` for such a key, as for any key without a ukey.
+
 First step: a list of Java's read paths that decode UTF-8
 (`StringUtil.toString` and its callers: `Keys.bkey2ikey`,
 `toDisplayString`, `DbString.parseToString`, the field names, the index
@@ -71,3 +125,8 @@ Log
 2026-11-07. Registered by agent u04 of coord-1107 (006-14) from 021-04's
 "Two questions remain" paragraph and sections 3.2 and 4.4, at Frans's
 word (09:34, quoted above).
+
+2026-11-08. The answers decided under Frans's delegation (22:17), as the
+night's coordinator set them (006-15); the key side done, with its tests,
+and the String value's read as a patch for after 020-08's step 2 (above).
+Status: in progress.

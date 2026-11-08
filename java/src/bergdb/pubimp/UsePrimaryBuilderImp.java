@@ -41,6 +41,10 @@ public class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
     private final long lookupTime;
     /** The bkey of the directory's idir and '-': the prefix of its own keys; null until dir(). */
     private byte[] prefix;
+    /** The length of the prefix's ikey, idir and '-'. */
+    private int prefixIkeyLength;
+    /** True after dirInternal(): every key with an ikey is listed. */
+    private boolean internal = false;
     /** The bkey bytes of startAt()'s name, or null. */
     private byte[] startName;
     private boolean inclusive = true;
@@ -91,6 +95,7 @@ public class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
         }
         String idir = PubKeys.udir2idir(udir);
         prefix = Keys.toBytes(idir + PubKeys.FILE_PREFIX);
+        prefixIkeyLength = idir.length() + 1;
         return this;
     }
 
@@ -107,7 +112,9 @@ public class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
                     + "directory.");
         }
         prefix = Keys.toBytes(idir + PubKeys.FILE_PREFIX);
+        prefixIkeyLength = idir.length() + 1;
         kind = ALL;
+        internal = true;
         return this;
     }
 
@@ -301,7 +308,14 @@ public class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
                     if (kvt.value == null) {
                         continue;
                     }
-                    String ikey = Keys.toString(kvt.key);
+                    // A bkey without an ikey (written through the Core or by another
+                    // writer; bergdb 021-06), or a key whose name has a '/', which is no
+                    // user's key of the directory, is not listed.
+                    String ikey = Keys.bkey2ikeyOrNull(Keys.toBytes(kvt.key));
+                    if (ikey == null 
+                            || (!internal && ikey.indexOf('/', prefixIkeyLength) != -1)) {
+                        continue;
+                    }
                     boolean listed = kind == ALL
                             || (kind == OBJECTS) == isObject(ikey, kvt.value);
                     if (listed) {

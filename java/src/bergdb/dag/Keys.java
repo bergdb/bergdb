@@ -1,6 +1,7 @@
 package bergdb.dag;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 
 import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
@@ -52,25 +53,57 @@ public class Keys {
     }
 
     /**
-     * Converts a segmented key to a String key.
-     * Does not throw exceptions if key != null.
+     * Converts a segmented key to its ikey, as bkey2ikey() does.
      * 
      * @param key  The key segments, null is not allowed.
+     * @throws IllegalArgumentException  If the key has no ikey (bkey2ikeyOrNull()).
      */
     public static final String toString(long[] key) {
         return bkey2ikey(toBytes(key));
     }
 
     /**
-     * Converts a bkey to an ikey.
-     * If bytes != null, this method will always return a String 
-     * (not throw an exception).
-     * bytes == null is not allowed.
+     * Converts a bkey to its ikey, as bkey2ikeyOrNull() does. bytes == null is not allowed.
+     * 
+     * @throws IllegalArgumentException  If the bkey has no ikey.
      */
     public static final String bkey2ikey(byte[] bytes) {
+        String ikey = bkey2ikeyOrNull(bytes);
+        if (ikey == null) {
+            throw new IllegalArgumentException("The bkey has no ikey: it is not the bkey of a "
+                    + "string of well-formed UTF-8 (bergdb 021-06), " + StringUtil.toHex(bytes) 
+                    + ".");
+        }
+        return ikey;
+    }
+    
+    /**
+     * Converts a bkey to its ikey (key-encoding.md, "Conversion bkey --> ikey"), or returns
+     * null if it has none (bergdb 021-06): if it has the byte 0, or 0x31 ('/' + 2, which no
+     * ikey's bkey has, as '/' is 1), or if its bytes, each 1 as '/' and every other less 2,
+     * are not well-formed UTF-8 (StringUtil.isWellFormedUtf8()). Such a bkey, written with
+     * the Core API or by another writer, is reached by its bytes only; its bytes are never
+     * repaired, with U+FFFD or otherwise, so two bkeys never give one ikey: the bkey of the
+     * ikey returned, toBytes(), is 'bytes'. Until 2026-11-08 the bytes were decoded with
+     * U+FFFD in place of each ill-formed sequence: the bkeys of "a" ED A0 80 and "a" EF BF BD
+     * (021-04's CK1 and CK2) read as one String, whose bkey is the second's.
+     * 
+     * @param bytes  The bkey, not null.
+     */
+    public static final String bkey2ikeyOrNull(byte[] bytes) {
         assert bytes != null;
-        byte[] bytes2 = toStringBytes(bytes);
-        return StringUtil.toString(bytes2);
+        byte[] result = new byte[bytes.length];
+        for (int i = 0; i < bytes.length; i++) {
+            int b = bytes[i] & 0xff;
+            if (b == 0 || b == '/' + 2) {
+                return null;
+            }
+            result[i] = b == 1 ? (byte) '/' : (byte) (b - 2);
+        }
+        if (!StringUtil.isWellFormedUtf8(result)) {
+            return null;
+        }
+        return new String(result, StandardCharsets.UTF_8);
     }
     
     private static final byte[] toStringBytes(byte[] bytes) {
@@ -99,6 +132,11 @@ public class Keys {
         return StringUtil.isPrintableAscii(bytes2);
     }
     
+    /**
+     * The bkey as text, for messages and debugging only: as bkey2ikey(), but the byte 0
+     * shows as '!' and bytes that are not well-formed UTF-8 as U+FFFD. Never a key: two
+     * bkeys can show as one (bergdb 021-06).
+     */
     public static final String toDisplayString(byte[] bytes) {
         assert bytes != null;
         bytes = bytes.clone();
@@ -414,6 +452,80 @@ public class Keys {
             }
         }
         Assert.assertEquals("a?\uD83D\uDE00", bkey2ikey(toBytes("a?\uD83D\uDE00")));
+    }
+    
+    /**
+     * bergdb 021-06: a bkey without an ikey. CK1 of 021-04, an ikey with ED A0 80 (U+D800 in
+     * WTF-8, from the C clone), was read as CK2, the ikey with EF BF BD (U+FFFD): two keys as
+     * one String, and that String's bkey was CK2's. Now CK1 has no ikey, and so has a bkey
+     * with an overlong form, a cut sequence, a value above U+10FFFF, the byte 0 or 0x31 ('/' +
+     * 2, which no ikey gives: '/' is 1), 0xFE or 0xFF.
+     */
+    @Nano
+    public static void testBkeyWithoutIkey() {
+        byte[] ck1 = bkey("/dd/-a", 0xef, 0xa2, 0x82);
+        byte[] ck2 = toBytes("/dd/-a\uFFFD");
+        Assert.assertArrayEquals(bkey("/dd/-a", 0xf1, 0xc1, 0xbf), ck2);
+        Assert.assertEquals("/dd/-a\uFFFD", bkey2ikey(ck2));
+        Assert.assertEquals("/dd/-a\uFFFD", bkey2ikeyOrNull(ck2));
+        Assert.assertEquals("/dd/-a\uFFFD", Keys.toString(toSegments(ck2)));
+        
+        byte[][] none = {ck1, bkey("/dd/-a", 0xc2, 0x82), bkey("/dd/-a", 0xe4, 0x84), 
+                bkey("/dd/-a", 0xf6, 0x92, 0x82, 0x82), bkey("/dd/-a", 0x00), 
+                bkey("/dd/-a", 0x31), bkey("/dd/-a", 0xfe), bkey("/dd/-a", 0xff), 
+                bkey("", 0xe4, 0x84, 0x63)};
+        for (byte[] b : none) {
+            Assert.assertNull(bkey2ikeyOrNull(b));
+            for (int k = 0; k < 2; k++) {
+                IllegalArgumentException ex = null;
+                try {
+                    if (k == 0) {
+                        bkey2ikey(b);
+                    } else {
+                        Keys.toString(toSegments(b));
+                    }
+                } catch (IllegalArgumentException e) {
+                    ex = e;
+                }
+                Assert.assertTrue("no exception for " + StringUtil.toHex(b), ex != null);
+                Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("no ikey"));
+            }
+        }
+    }
+    
+    /**
+     * bergdb 021-06: two bkeys never give one ikey. Random bkeys of bytes near UTF-8's
+     * edges: each has no ikey, or its ikey's bkey is itself.
+     */
+    @Nano
+    public static void testBkeyIkeyRoundTrip() {
+        int[] near = {0x00, 0x01, 0x02, 0x03, 0x31, 0x33, 0x63, 0x81, 0x82, 0x91, 0x92, 0xa1, 
+                0xa2, 0xc1, 0xc2, 0xc3, 0xc4, 0xe1, 0xe2, 0xe3, 0xee, 0xef, 0xf0, 0xf1, 0xf2, 
+                0xf3, 0xf5, 0xf6, 0xf7, 0xfe, 0xff};
+        java.util.Random random = new java.util.Random(21_06);
+        int withIkey = 0;
+        for (int n = 0; n < 100000; n++) {
+            byte[] b = new byte[1 + random.nextInt(6)];
+            for (int i = 0; i < b.length; i++) {
+                b[i] = (byte) near[random.nextInt(near.length)];
+            }
+            String ikey = bkey2ikeyOrNull(b);
+            if (ikey != null) {
+                withIkey++;
+                Assert.assertArrayEquals(StringUtil.toHex(b), b, toBytes(ikey));
+            }
+        }
+        Assert.assertTrue("only " + withIkey + " bkeys with an ikey", withIkey > 2000);
+    }
+    
+    /** The bkey of ikey, then the given bytes. */
+    private static byte[] bkey(String ikey, int... more) {
+        byte[] start = ikey.isEmpty() ? new byte[0] : toBytes(ikey);
+        byte[] result = java.util.Arrays.copyOf(start, start.length + more.length);
+        for (int i = 0; i < more.length; i++) {
+            result[start.length + i] = (byte) more[i];
+        }
+        return result;
     }
     
     @Nano
