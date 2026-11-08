@@ -218,3 +218,68 @@ Option 4 for a later release. Should that be a thing to consider?" To the
 coordinator's answer (yes, as reader scaling rather than as 015-86's fix;
 not 2026.3, because of its target of a bug-free Core and the risk in a
 core storage class under concurrent appends; measure first): "Yes, both."
+
+
+## 6. A key field in a stored object (`put(Object)`)
+
+Added 2026-11-08. State: to consider (not in 2026.4).
+
+What: a field of the application's class that holds the object's
+database key, so that read-modify-write needs no key of its own:
+
+    Account a = env.get("/acc/7", Account.class);   // the get sets the field
+    a.balance -= 100;
+    env.put(a);                                      // stored at "/acc/7"
+
+2026.3 had it, experimental: `put(Object)` took the key from a `String`
+field named `key`, and a get answered `key` with the database key
+(020-01, sections 4.5 and 4.6). 2026.4 removes it (020-02, section 5.1b):
+a put names its key, `env.put(k, a)`, and a scan or an index read gives
+the key with each object (`kvs()`).
+
+Where it came from: Frans and the coordinator, 2026-11-08, 19:00 to
+19:21, on the Pub API (020-02, section 5). Frans, 19:00: "read-modify-write
+is a common case. Saving the database key in field .key may reduce errors
+from mixing up the database key. On the other hand it requires a more
+complicated model that users must know." He decided a field `dbKey`
+(19:10), then took it back (19:13): "We remove this now. No special dbKey
+field. Main reason: it adds some complexity that is hard to remove.
+Adding it is easy. Compatible API. Easy to add, hard to remove. So, add
+if there is demand only." And 19:21: "OK, hard to decide. Might add it
+back in a future release, we will see. But for 2026.4, my final decision
+is: no dbKey field. Add the possibility of adding it back in
+017-07-to-consider."
+
+The design worked out on 2026-11-08, if it comes back:
+
+1. A top-level `String` field holds the entry's key; it is not stored as
+   a field (the entry's key is the key; the object format has no special
+   case).
+2. A get, a scan and an index read set it.
+3. `put(obj)` stores at the field's key, which must be a valid key.
+4. `put(key, obj)` of an object with the field is accepted iff `key`
+   equals the field (Frans, 19:10); open then: whether a null field, a
+   new object, is accepted too (the coordinator's lean: yes, as such an
+   object was read from nowhere).
+
+The options for marking the field:
+
+* **(a) Opt-in, by an annotation** on the field, such as `@DbKey`: a
+  class without it is unchanged, so adding it in a later release is
+  compatible. Recommended if it comes back.
+* **(b) A field name**, such as `dbKey`: no annotation to learn, but
+  added in a later release it changes the meaning of classes that
+  already have a field of that name, stored as an ordinary field (and
+  users who make the feature by hand may choose that very name). Only
+  compatible if the name is reserved before it is used.
+
+The evidence on names (020-06's name set of JDK 27 classes, counted
+2026-11-08): of 12,700 classes with instance fields, 127 have a field
+`key` (crypto keys, map entries, caches; often not a `String`), none
+`dbKey`, `dbkey` or `databaseKey`. Other languages would follow their
+conventions (`db_key` in Python and Rust).
+
+What it would cost: one method in `WBuilder` and `RwEnvironment`, the
+annotation, the rules in the conversion, an exception for a missing or
+invalid key, their tests and Javadoc.
+

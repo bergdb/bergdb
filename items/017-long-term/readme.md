@@ -67,7 +67,9 @@ Files
   refusing a value transformation's result above the value limit (from
   015-51); fourth, a clear place for the database's design (from 019-10);
   fifth, reads wholly in the file without `BufferedStream`'s monitor, for
-  reader scaling (from 015-86's Option 4). Open; a collection.
+  reader scaling (from 015-86's Option 4); sixth, a key field in a stored
+  object, `put(Object)`, removed in 2026.4 (from 020-02, section 5.1b).
+  Open; a collection.
 * [017-08](08-stream-checksums/readme.md). Checksums in the stream: a
   checksum of the record header, a link between records, a stronger node
   checksum, so that a start or a read detects damage that passes today

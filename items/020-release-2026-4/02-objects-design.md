@@ -1122,7 +1122,10 @@ transactions as `rw()` actions; the questions below refine it.
   remove this now. No special dbKey field. Main reason: it adds some
   complexity that is hard to remove. Adding it is easy. Compatible API.
   Easy to add, hard to remove. So, add if there is demand only.
-  Correct?" Confirmed by the coordinator, with one condition: a later
+  Correct?" And, final, 19:21: "OK, hard to decide. Might add it back in
+  a future release, we will see. But for 2026.4, my final decision is:
+  no dbKey field. Add the possibility of adding it back in
+  017-07-to-consider." (017-07, section 6.) Confirmed by the coordinator, with one condition: a later
   key field must be opt-in (such as an annotation on the field), since a
   name rule added later would change the meaning of classes that
   already have a field of that name, stored as an ordinary field. The
