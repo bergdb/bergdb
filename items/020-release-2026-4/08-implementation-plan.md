@@ -1,21 +1,25 @@
 # 020-08 Objects in format 2: the implementation plan
 
-Created 2026-11-08 by Frans Lundberg. Status: open; it waits for Frans's
-"ok-and-implement", and no code is written before it. How format 2 of
-stored objects (020-07; 020-02, section 4) and the no-null rules of 020-04
-get into the Java code: the design, the changes file by file and method by
-method, the tests, the measurements, the steps and commits with their
-gates, the documentation, the C clone, an estimate and the risks; and what
-Frans says before it starts.
+Created 2026-11-08 by Frans Lundberg. Status: open; step 1 done (section
+8.1); the other steps decided under Frans's delegation of 2026-11-08,
+22:17 (section 2). How format 2 of stored objects (020-07; 020-02, section
+4), the no-null rules of 020-04 as Frans chose them, (c), the conversion
+rules of 020-09 and the API's removals (020-02, section 5.1b) get into the
+Java code: the design, the changes file by file and method by method, the
+tests, the measurements, the steps and commits with their gates, the
+documentation, the C clone, an estimate and the risks.
 
 Frans, 2026-11-08, 17:12, asked for this plan with 020-07, at XHigh, with
 no code. The decisions it implements are 020-02, section 4 (4.1 to 4.12);
 the spec is 020-07, whose rules (R1 to R15) and condition codes (section
-7.2) are cited here. What waits for the API, 020-02, section 5, is kept out
-of the first steps (section 3).
+7.2) are cited here. The API's decisions since (020-02, sections 2 and
+5.1b) and 020-09's rules are in sections 3, 4.9 and 4.10 and steps 7 and
+8, brought in on 2026-11-08 (section 12).
 
 Code read at `ea5654a` (`java/` unchanged since `a7fe143`); line numbers
-are that commit's, in `java/src/bergdb/pubimp/` unless named.
+are that commit's, in `java/src/bergdb/pubimp/` unless named. Steps 7 and
+8 were read at `b9d87e7`, whose `java/` differs only by step 1 and
+`PayDemo`.
 
 
 ## 1. In short
@@ -23,93 +27,111 @@ are that commit's, in `java/src/bergdb/pubimp/` unless named.
 * **One codec**, a new package-private class `ObjectFormat`: the full
   check with 020-07's conditions, the lookup by binary search, the readers
   of each value and the writer's encodings. `DbObject`, `DbArray` and the
-  value classes keep their roles and API, rewritten onto it.
-* **Six steps, six commits**, each gated by `java/before-commit.sh`
-  ("BEFORE COMMIT OK"): (1) the codec, the vectors and the format's
-  harness, with no change of behaviour; (2) the switch: every object
-  written and read in format 2, one integer, depth 16, the provisional
-  rules of section 3; (3) old objects and index definitions refused with a
-  clear message; (4) the measurements; (5) 020-04's constructor check, if
-  Frans chooses (d); (6) the Javadoc, the release notes and 020-04's index
-  tests.
-* **Tests**: 52 existing test methods and helpers change in step 2 (32 of
-  `DbObjectTester`'s 80, 18 of them for null), 1 more in step 6; about 25
-  new tests, among them the conformance vectors run by Java and a harness
-  against a reference codec in the test.
-* **Size**: about 5 days of an agent's work, plus the gates and an hour of
-  a quiet machine (section 11); 020-05, section 10, said M, 3 to 5 days for
-  the format, and 020-04, section 9, one day for null.
-* **Before it starts** (section 2): the ok; 020-07's Q1 (is a scalar a
-  level); 020-04's Q1 for null fields, or the provisional (c); the
-  provisional API choices of section 3; where the vectors go (020-07, Q6).
+  value classes keep their roles and API, rewritten onto it. Done in step
+  1 (section 8.1).
+* **One binding**, a new package-private class `DataObjects`: 020-09's
+  check of Data Object classes and its conversion both ways, layer 2 of
+  020-02, section 5.1b; `DbObject` and the value classes keep layer 1.
+* **Steps, each a commit** gated by `java/before-commit.sh` ("BEFORE
+  COMMIT OK"), in the order 1, 2, 7, 8, 3, 4, 6: (1) the codec, the
+  vectors and the format's harness, done; (2) the switch: every object
+  written and read in format 2, one integer, depth 16, a null field left
+  out; (7) the removals: `put(Object)`, the key field,
+  `MissingKeyFieldException` and `PubUtil`; (8) the binding, by 020-09;
+  (3) old objects and index definitions refused with a clear message; (4)
+  the measurements; (6) the Javadoc, the release notes and 020-04's index
+  tests. Step 5, (d)'s constructor check, is dropped: Frans chose (c). The
+  numbers stay as first written, so that 020-02, 020-07 and 020-10 keep
+  pointing right. `createFast()` goes in 020-10's step I2, which owns the
+  index API and its testers.
+* **Tests**: 52 existing test methods and helpers change in step 2; 20 in
+  step 7, and `PubUtil`'s 9 go; 7 in step 8, with 51 test classes made
+  Data Objects and 46 calls of `toJavaObject` changed; 1 in step 6. New:
+  the conformance vectors run by Java and the format's harness (step 1,
+  done), about 10 tests of format 2 (steps 2 and 3), and 020-09's 176
+  cases and three properties (step 8).
+* **Size**: about 6 days of an agent's work after step 1, 7 in all, plus
+  the gates and an hour of a quiet machine (section 11).
+* **Before it starts**: nothing is left; Frans's delegation of 22:17
+  settles section 2's points.
 
 
 ## 2. What Frans says before it starts
 
-1. **"ok-and-implement"** of this plan, and so of 020-04's rules as far as
-   they are in it.
-2. **020-07, Q1**: a scalar is not a level (recommended). It fixes the
-   depth vectors and the tests of step 1. 020-07's other questions can
-   wait for the release: none changes steps 1 to 3 (Q2 does not, as Java
-   makes the full check at every read, section 4.2).
-3. **020-04, Q1, the put of a null field**: (b) refused, (c) left out,
-   (d) left out unless the class's constructor gives the field a value
-   (recommended). Format 2 has no null, so step 2 must do something with
-   a null field. Without an answer, step 2 makes (c), the common part of
-   (c) and (d), and step 5 adds (d)'s check; (b) would change one place
-   of step 2 (section 4.6).
-4. **The provisional API choices of section 3**: step 2 needs an answer
-   for each place where format 2 meets `DbObject`'s API, and takes the
-   smallest change; each is listed with where the API decision replaces
-   it.
-5. **020-07, Q6**: the vectors file moves into `java/` in step 1
-   (recommended: `java/src/bergdb/pubimp/doc-files/object-vectors.txt`,
-   copied into the jar by `build.sh` as every non-Java file of `src/`),
-   since a test cannot read `items/`.
-6. **The refusal of a start** that meets index definitions in format 1
-   (4.11): recommended a `VersioningStreamException`, as 005-50 refused
-   databases without the node size, with a message that names the format
-   and what to do (section 5, `IndexManager`).
+The points as written for Frans on 2026-11-08, and their state:
 
-Items 2 to 6 each take a line; the recommended answers are the plan's
-defaults.
+1. **"ok-and-implement"** of this plan, and so of 020-04's rules as far
+   as they are in it: given for step 1 (19:43: "3. Yes, OK."); for the
+   other steps, under the delegation below.
+2. **020-07, Q1**: decided as recommended (19:43: "2. As recommended."):
+   a scalar is not a level.
+3. **020-04, Q1, the put of a null field**: decided, (c) (21:47): a null
+   field is left out, no put is refused for it, and a null array element
+   is refused (020-09, section 4.3). Step 5 is dropped.
+4. **The API choices of section 3**: decided since, by Frans or under the
+   delegation (section 3).
+5. **020-07, Q6**: step 1 took the default, the vectors in
+   `java/src/bergdb/pubimp/doc-files/`.
+6. **The refusal of a start** that meets index definitions in format 1:
+   as recommended, a `VersioningStreamException` with section 5's message
+   (`IndexManager`), under the delegation.
 
-Frans, 2026-11-08, 19:43: item 1 for step 1 ("3. Yes, OK.", to the
-coordinator's "Your 'ok-and-implement' for step 1 of 020-08"); item 2 as
-recommended ("2. As recommended."): a scalar is not a level. Steps 2 to 6
-wait for his ok after the API decisions. Step 1 takes item 5's default
-(the vectors in `java/src/bergdb/pubimp/doc-files/`) until he says
-otherwise. Since then (020-02, section 5.1b): `put(Object)`, the key
-field and `createFast()` go, for a later step.
+Since 19:43 (020-02, sections 2 and 5.1b): question 1 decided, best
+effort, (C) (21:47), with the rules in 020-09 (21:59); Data Objects with
+public fields only (20:44); the layers (20:23, 20:44); no key field and
+no `put(Object)` (19:21); `createFast()` goes (19:43).
+
+Frans, 22:17, delegated the rest: "make the decisions needed to get the
+2026.4 release ready". Under it the coordinator decided, for this plan:
+
+* the steps go ahead in the order 1, 2, 7, 8, 3, 4, 6, each under section
+  8's gate: the delegation stands for Frans's ok of every step but the
+  first. Step 2 comes first, as 020-10's step I1 waits for it (020-10,
+  section 10);
+* section 3's choices, as written there, and 020-09's (its section 6);
+* `createFast()` and its 36 calls in the testers go with 020-10's step
+  I2, which owns `IndexBuilder`, `IndexBuilderImp` and the index testers
+  (020-10, section 10.1), not in a step of this plan; section 6.1 has
+  what I2 meets in `PubTesterIndexJobs`;
+* `java/src-dev/frans/WebsiteCode.java`'s `Person`, a package-private
+  class with a package-private field, becomes a public class with a public
+  field and public constructors in step 8, as `PayDemo`'s changes, which
+  Frans allowed: else its put is refused (020-09, section 3);
+* the files that this plan and 020-10 both change are changed by one step
+  at a time, in the coordinator's order (section 8).
 
 
 ## 3. The API decisions, and where each joins
 
-020-02, section 5, is open, within a shape that stays: plain Java objects
-put and got by key (Frans, 2026-11-08, 17:26: "So the main design is good
-as is. Let's keep it."; 020-02, section 5). Each point where format 2
-meets the API gets a provisional choice in step 2, the smallest change
-from today; the decision replaces it later, in one place.
+020-02, section 5, within a shape that stays: plain Java objects put and
+got by key (Frans, 2026-11-08, 17:26: "So the main design is good as is.
+Let's keep it."). Each point where format 2 and the binding meet the API,
+with its decision and the step that makes it; "delegated" marks the
+coordinator's under Frans's delegation of 22:17:
 
-| Open point (020-02)               | Step 2's provisional choice             | Joins       |
-|-----------------------------------|-----------------------------------------|-------------|
-| 4.1's put rule (020-04, Q1)       | (c): a null field left out              | step 2 or 5 |
-| `getType` of an integer (5.1)     | `'l'` for every integer                 | the API     |
-| `has(name, 'i')`, `getInt` (5.1)  | an integer within `int`'s range         | the API     |
-| `DbObject` copies its bytes (4.3) | yes, and checks them fully, as today    | the API     |
-| `byte[]` at an object key (4.5)   | a guess: the header and the full check  | the API     |
-| question 1, the conversion (D)    | today's rules, one integer type         | the API     |
-| question 2, the closed list       | today's eligible fields                 | the API     |
-| question 5, `key`, `put(Object)`  | as today                                | the API     |
-| `DbObject` public (5.1)           | as today, in `pubimp`                   | the API     |
-| a key form for lookups (5.1)      | names as UTF-8 bytes inside, `FieldRef` | the API     |
+| Point (020-02)                    | Decision                                        | Step       |
+|-----------------------------------|-------------------------------------------------|------------|
+| 4.1's put rule (020-04, Q1)       | (c): a null field left out (Frans)              | 2          |
+| question 1, the conversion        | (C), best effort, by 020-09 (Frans)             | 8          |
+| question 2, the closed list       | public fields only (Frans); 020-09, section 3   | 8          |
+| question 2: final fields, records | refused (delegated; 020-09, V2, V3)             | 8          |
+| question 5, `key`, `put(Object)`  | both go (Frans)                                 | 7          |
+| `createFast()` (5.1b)             | goes, `start().join()` (Frans)                  | 020-10, I2 |
+| `getType` of an integer (5.1)     | `'l'` for every integer (delegated)             | 2          |
+| `has(name, 'i')`, `getInt` (5.1)  | an integer within `int`'s range (delegated)     | 2          |
+| `DbObject` copies its bytes (4.3) | yes, and checks them fully (delegated)          | 2          |
+| `byte[]` at an object key (4.5)   | the header and the full check (delegated)       | 2, 3       |
+| `DbObject` public (5.1)           | into `bergdb.pub` (020-10, step B3)             | 020-10, B3 |
+| a key form for lookups (5.1)      | names as UTF-8 bytes, `FieldRef` (delegated)    | 2          |
+| the conversion by hand (5.1b)     | `toDbObject`, `toJavaObject(Class)` (delegated) | 8          |
 
 * **Copy and full check** (4.3): `new DbObject(bytes)` copies the bytes and
   makes the full check, as today's constructor copies and parses them
   (line 155); its lookups then run on a copy in the cache, 020-02,
   section 4.3's warm rows. A view over the database's own array, with a
   check of the header only and lookups that check what they touch (020-07,
-  section 7.4, Q2), is the API's choice, measured first (section 7).
+  section 7.4, Q2), is for a later release (delegated), measured first
+  (section 7).
 * **The integer's type**: today `i` and `l`; format 2 has one integer
   (4.7). `getType` answers `l` (`DbObject.LONG`) for every integer, and
   `INT` stays for `has` and `getInt`, true and the value for an integer
@@ -121,6 +143,12 @@ from today; the decision replaces it later, in one place.
   `byte[]` that happens to start with `82` (1 in 256 of random bytes, where
   `bergo` was 1 in 2^40) still reads as a `byte[]`. A build skips it, as
   today a `byte[]` starting with `bergo` (`IndexBuilderImp`, line 489).
+* **The conversion by hand** (delegated): `DbObject.toDbObject(Object)`
+  and `DbObject.toJavaObject(Class)` stay the ways to convert between a
+  Data Object and a `DbObject` (Frans, 21:47: "Users who want full control
+  need to get object of type DbObject and from that convert to Data
+  Objects explicitely"); from step 8 they call `DataObjects`, and
+  `toJavaObject` has no `ClassToObject` argument.
 
 
 ## 4. The design
@@ -211,27 +239,29 @@ later, if step 4 shows the writer matters.
 integer (`DbValue.handleSpecialType`), in the fewest bytes. `checkFits`
 (lines 219 to 254) tests the integer type `l` where it tested `i` or
 `l`; its ranges stay. A long index reads the integer
-(`FieldIndexFunction`). The API's part: section 3.
+(`FieldIndexFunction`). The API's part: section 3. Step 8 removes
+`checkFits`: a value that does not fit is clamped (020-09, section 5.4).
 
 ### 4.6. Null: what the switch needs
 
 Format 2 has no encoding for null, so step 2 changes the put (020-04,
-section 4's step B, common to (b), (c) and (d) but for null fields):
+section 4's step B, by (c), which Frans chose, 21:47):
 
 * `toDbObject(null)` throws `IllegalArgumentException` (today
   `Builder.buildNull()`, line 459);
 * a null array element is refused, naming `[i]` (020-04, section 2.1,
   rule 3);
-* a null field is left out ((c), provisional), or refused ((b), if
-  Frans chooses it: one line in `toDbObjectOnPath`); (d)'s constructor
-  check is step 5;
+* a null field is left out ((c), decided); (d)'s constructor check is
+  not made (step 5 dropped);
 * `isNull`, `buildNull`, `defaultValue`, `toNullDbValue` and the null
   branches of the value classes go (020-04, section 4, step A's lines,
   which format 2 replaces: 020-04, section 11).
 
 The path exception of 020-04, section 2.1 (one base class for a lone
 surrogate, a null element, too deep and a name too long, each level adding
-its step on the way out) is made here.
+its step on the way out) is made here. Step 8 carries these rules into
+`DataObjects` (020-09, section 4.3), with two more refusals of the kind (a
+class that is not a Data Object, a value of another class).
 
 ### 4.7. Depth and the path
 
@@ -242,7 +272,8 @@ only, `MAX_DEPTH` 1,000) and refuses level 17 with the path, as
 The Builder refuses a value whose height would put a container above
 level 16, from each container's height, with no walk. `MAX_DEPTH`,
 `MAX_READ_OBJECTS` and `MAX_READ_LEVELS` (lines 474 to 490) become one
-`ObjectFormat.MAX_LEVELS`, 16.
+`ObjectFormat.MAX_LEVELS`, 16. Step 8 moves `toDbObject`'s path into
+`DataObjects` (020-09, section 4.7).
 
 ### 4.8. Old objects, and the kind of a value
 
@@ -256,6 +287,48 @@ fall through as a `byte[]` or be skipped: a new `Entries.isFormat1Object`
 lets it reach the reader, which refuses it, in a get as `Object.class`, a
 primary scan and a build (section 5).
 
+### 4.9. The binding: `DataObjects` (step 8)
+
+A new package-private final class in `pubimp` (`@author Frans Lundberg`,
+or none; its Javadoc cites bergdb 020-09), layer 2 of 020-02, section
+5.1b, written from 020-09:
+
+* **The class check** (020-09, section 3): a `ClassValue` holding a
+  class's result: valid, with its stored fields in the order of their
+  names' UTF-8 bytes (each a `Field`, its name's bytes, its type) and its
+  public no-argument `Constructor`; or not valid, with the reason and the
+  field. Field types are checked recursively, each class once.
+* **The put** (020-09, section 4): `toDbObject(Object)` by the declared
+  types, through `DbObject.Builder` and `DbArray.Builder`, with step 2's
+  path, depth and null rules (sections 4.6 and 4.7) and 005-23's cycle
+  check; every refusal an `IllegalArgumentException` of the path
+  exception.
+* **The get** (020-09, section 5): `toJavaObject(DbObject, Class)`: the
+  check first, then a new object by `Constructor.newInstance()`, each
+  stored field found by its name's bytes (step 2's lookup; a walk of both
+  in name order if step 4 shows it worth it), 020-09's conversions, one
+  static method per field type, and `Field.set`; the top level of 020-09,
+  section 5.9.
+* **Exceptions**: 020-09, sections 3.3 and 5.2.
+* About 700 lines with Javadoc; its tests are a new `DataObjectsTester`
+  (section 6.2: T11, H1). Both join `Pack`'s list.
+
+No `setAccessible` and no `BlankConstructorFactory`: a Data Object's
+constructor and fields are public (020-09, V1 to V6). The code it replaces:
+the bodies of `DbObject.toDbObject` and `toJavaObject`,
+`getEligibleFields`, `DbValue`'s conversions, `DbArray.toJavaObject`,
+`DbByteArray.toJavaObject` and `BlankConstructorFactory` (section 5).
+
+### 4.10. The removals (step 7)
+
+020-02, section 5.1b: `put(Object)`, the key field and
+`MissingKeyFieldException` go. A field named `key` becomes an ordinary
+field, and a `DbObject` read at a key no longer answers `key` with the
+database key: it is the stored object exactly. The tests that call
+`put(Object)` take `put(key, object)`, and those that read the database
+key from the field read what was stored (section 6.1). `createFast()`
+goes too (19:43), in 020-10's step I2 (section 2).
+
 
 ## 5. The changes, file by file
 
@@ -263,6 +336,10 @@ primary scan and a build (section 5).
 
 Section 4.1. About 400 lines with Javadoc. Its tests are in a new
 `ObjectFormatTester` (section 6.2); both join `Pack`'s list.
+
+### `pubimp/DataObjects.java` (new, step 8)
+
+Section 4.9; 020-09.
 
 ### `pubimp/DbObject.java`
 
@@ -280,7 +357,7 @@ Section 4.1. About 400 lines with Javadoc. Its tests are in a new
   for nested views.
 * **`getBytes`** (323 to 328), **`getByteSize`**, **`write`** (856 to 866):
   section 4.2. **`isNull`** (330 to 332) goes.
-* **`getFieldCount`** (337 to 341): n, plus 1 for `key`, as today.
+* **`getFieldCount`** (337 to 341): n, plus 1 for `key` until step 7.
 * **`has`, `internalGet`, `internalNestedGet`, `internalSimpleGet`** (346
   to 419): one private `find(String name)` and `findPath(String[])`, each
   giving the value's offset or −1; `has(name, type)` compares
@@ -292,11 +369,10 @@ Section 4.1. About 400 lines with Javadoc. Its tests are in a new
 * **`toDbObject`, `toDbObjectOnPath`** (457 to 605): null refused at the
   top (section 4.6); a null field per section 4.6; the depth count of
   section 4.7; the wrapping of a top-level array (`array`) and primitive
-  (`p`) stays (020-07, section 12).
+  (`p`) stays (020-07, section 12). Step 8 moves them into `DataObjects`.
 * **`toJavaObject`** (615 to 696): the `isNull` branches go; each eligible
-  field by `find`, as today by `getDbValue` (lines 672 to 693); a merge of
-  the stored fields with the class's, both in name order, waits for the
-  API (020-02, section 5.1).
+  field by `find`, as today by `getDbValue` (lines 672 to 693); step 8
+  moves it into `DataObjects` (section 4.9).
 * **`parse`** (868 to 881): goes into `DbValue.read`.
 * **`DbField`** (883 to 997): holds the name's UTF-8 bytes and the value;
   refuses a name of 0 or more than 255 bytes (today more than 32,767, line
@@ -306,6 +382,15 @@ Section 4.1. About 400 lines with Javadoc. Its tests are in a new
   integer; `addField`'s 32,767 limit stays (line 1029);
   `buildInner(boolean)` becomes `build()` of section 4.4. `main` (1158 to
   1162) goes. The 2013 notes at the end stay.
+* **Step 7**: what step 2 kept of the field `key` goes: the state `key`,
+  the constructor `DbObject(byte[], String)`, `KEY_FIELD` and the `key`
+  branches of the lookups, `getType`, `getDbValue` and `getString` (today
+  lines 102 to 112, 138 to 145, 389 to 398, 705 to 707, 731 to 733 and
+  793 to 795), and the comment of lines 76 to 78.
+* **Step 8**: `getEligibleFields`, `toDbObject`'s path and `toJavaObject`
+  move into `DataObjects`; `toDbObject(Object)` and `toJavaObject(Class)`
+  stay as calls of it (section 3), `toJavaObject` without its
+  `ClassToObject`.
 
 ### `pubimp/DbValue.java`
 
@@ -320,6 +405,13 @@ Section 4.1. About 400 lines with Javadoc. Its tests are in a new
   `DbLong`.
 * `createDbArray` (505 to 521): a null element refused with `[i]`; the
   depth count; the path exception's base class caught.
+* Step 8: the conversions go, as `DataObjects` holds 020-09's:
+  `toJavaObject`, `checkFits`, `isPrimitiveOrWrapper`,
+  `getPrimitiveTypeChar`, `getSpecialTypeChar` and their tables,
+  `toDbValue`, `handleSpecialType`, `createDbArray`, and the cross-type
+  conversions (`toByte`, `toChar`, `toShort`, `toFloat`, and `toBoolean`,
+  `toInt`, `toLong`, `toDouble` where a class does not hold that type).
+  Each value class keeps its own value's getter.
 
 ### `pubimp/DbArray.java`
 
@@ -332,6 +424,10 @@ Section 4.1. About 400 lines with Javadoc. Its tests are in a new
   go (format 2's reader refuses at the check).
 * `Builder` (277 to 310): `buildNull` goes; `add` writes the element's
   encoding; `build` adds `43`; the height of section 4.7.
+* Step 8: `toJavaObject` goes, to `DataObjects`; `toIntArray`,
+  `toLongArray` and `toDoubleArray` take 020-09's element rules
+  (delegated: one set of conversions; 7 asserts of `DbObjectTester` use
+  them, with values that fit).
 
 ### The value classes' files
 
@@ -366,9 +462,19 @@ Section 4.1. About 400 lines with Javadoc. Its tests are in a new
   today.
 * `entryToDbObject` (101 to 114): unchanged; the message now names the
   condition.
+* Step 7: `entryToDbObject` makes `new DbObject(value)`, without the key,
+  which stays in the message.
+* Step 8: a class other than `String`, `byte[]`, `DbObject` and `Object`
+  is checked first, also for a key without a value (020-09, section 3.3),
+  then converted by `DataObjects`; the get's exceptions are 020-09,
+  section 5.2's; `newObject`, `factories` and `implements ClassToObject`
+  go.
 
 ### `pubimp/RwEnvironmentImp.java`
 
+* Step 7: `put(Object)` (lines 277 to 300) goes, with its import of
+  `MissingKeyFieldException`. Step 8: `ObjectInfo` (line 653) converts by
+  `DataObjects`.
 * No change of code in step 2. `indexEntries` (361 to 432) reads the
   previous value with `new DbObject` (line 401): a format-1 value gives a
   `DataFormatException` naming format 1 (step 3's test). `ObjectInfo`
@@ -408,15 +514,60 @@ Section 4.1. About 400 lines with Javadoc. Its tests are in a new
 * `UseIndexBuilderImp`'s filter (738 to 752): a scan of objects keeps a
   format-1 value, which its conversion (line 669) then refuses.
 
-### `pubimp/Data.java`, `PubUtil.java`, `IndexEntryBuilder.java`
+### `pubimp/Data.java`, `IndexEntryBuilder.java`
 
-No change. `Data.Index`'s `int version = 1` is the integer 1. `PubUtil`'s
-`KEY_FIELD` and its reads stay (question 5). `IndexEntryBuilder`'s null
-check (lines 131 to 141) stays, with 020-04's comment in step 6.
+No change. `Data.Index`'s `int version = 1` is the integer 1; it is a
+Data Object (020-09, K18's shape), and it goes in 020-10's step I2.
+`IndexEntryBuilder`'s null check (lines 131 to 141) stays, with 020-04's
+comment in step 6.
+
+### `pubimp/PubUtil.java` (deleted, step 7)
+
+All of it is the field `key`: `KEY_FIELD`, `readExistingKeyField`,
+`setKeyFieldIfItExists` (used by its tests only), `getField`, and 9
+tests. Step 2 keeps it.
 
 ### `pubimp/Pack.java`
 
-`DbInt` out; `ObjectFormat` and `ObjectFormatTester` in.
+`ObjectFormat` and `ObjectFormatTester` in (step 1); `DbInt` out (step 2);
+`PubUtil` out (step 7); `BlankConstructorFactory` out, `DataObjects` and
+`DataObjectsTester` in (step 8).
+
+### The removals' other files (step 7)
+
+* `pub/WBuilder.java` (lines 40 to 56), `pub/RwEnvironment.java` (52 to
+  67), `pubimp/WBuilderImp.java` (32 to 37): `put(Object)` and its
+  Javadoc go.
+* `pub/MissingKeyFieldException.java`: deleted.
+* `pub/DataFormatException.java`: its Javadoc names
+  `WBuilder.put(Object)`; it names `put(String, Object)` instead, and from
+  step 8 no longer "a stored value that does not fit the Java type or
+  field it is read into" (020-09, section 5.2).
+* `pub/package.html` (line 8) and `src/overview-pub.html` (line 12):
+  "put(Object)" leaves the paragraph on what is experimental.
+* `java/src-dev`, which `build.sh` compiles: `bergdb/demo/GetStarted4.java`
+  (`env.put(acc0)`, `env.put(acc1)`), `bergdb/test/DeleteIndexTester.java`
+  and `CreateIndexTester.java` (`put(new Employee(...))`, 5 calls) take
+  `put(key, object)`; `frans/PayDemo.java`'s `Account.key` (line 205)
+  goes (Frans allowed it, 020-02, section 5.1b). The last three are
+  020-10's I2's files too (its `createFast()` in `PayDemo`, line 78): one
+  step at a time.
+
+### The binding's other files (step 8)
+
+* `pubimp/BlankConstructorFactory.java`, `ObjectFactory.java` and
+  `ClassToObject.java`: deleted; `DatabaseImp`'s `classToObject` and
+  `getClassToObject()` (lines 46, 72, 146 and 147) go (`DatabaseImp` is
+  020-10's I2's file too).
+* `pubimp/DbByteArray.java`, `DbDouble.java`, `DbString.java`: their
+  `toJavaObject` and cross-type conversions go (`DbValue`'s bullet).
+* The test classes, 51 in 7 files, become Data Objects: public static,
+  with public fields and a public no-argument constructor (section 6.1).
+* `java/src-dev`: `bergdb/test/night/CcDbNightTest.java`'s `Stats.cards`
+  (a night test) becomes public; `bergdb/demo/GetStarted1.java`'s
+  `Person`, `GetStarted4.java`'s `Account` and `frans/WebsiteCode.java`'s
+  `Person` become public classes with public fields and constructors
+  (section 2).
 
 ### Not touched
 
@@ -429,8 +580,8 @@ object and make no index).
 
 ### 6.1. Existing tests
 
-Counted at `ea5654a`; "changes" means its asserts or its bytes change,
-the test staying.
+Counted at `ea5654a` for step 2; "changes" means its asserts, its calls or
+its bytes change, the test staying.
 
 `DbObjectTester`, 80 `@Nano` methods:
 
@@ -464,9 +615,10 @@ the test staying.
   `testDoubleArray3`, `testPrimitiveArrays2`, `testStrings0`,
   `testStrings2`, `test5DIntArray`, `test4DCustomerArray`,
   `testStrings2D`, `testNullField0`, `testNullField1`, `testStringArray0`,
-  `testArray1`, `testArray4`. Under (d), 5 of them change again in step
-  5: the null over an initial value (`testString1`, `testObject2`,
-  `testSetObjectFields6`, `testNullField0`, `testNullField1`) is refused.
+  `testArray1`, `testArray4`. Under (c), as Frans chose, each changes
+  once: the 5 that put a null over an initial value (`testString1`,
+  `testObject2`, `testSetObjectFields6`, `testNullField0`,
+  `testNullField1`) read that value back.
 
 The value classes' `@Nano` tests: `DbArray` (5): `test1` and
 `testIterator1` change (no `isNull`; an int in an array is 4 bytes, not
@@ -490,14 +642,68 @@ section 3's rule); `PubTesterIndex`, lines 801 to 805, `getInt` and
 
 In all: **52 test methods and helpers** change or go in step 2 (32 of
 `DbObjectTester`, 15 in the value classes, 2 in `PubTester`, 1 in
-`PubPromiseTester`, 1 in `PubTesterIndex`, 1 in `DbObject`), 5 again in
-step 5 under (d), and 1 in step 6. 020-04 counted about 23 for version 1.
+`PubPromiseTester`, 1 in `PubTesterIndex`, 1 in `DbObject`), and 1 in
+step 6. 020-04 counted about 23 for version 1.
+
+**Step 7, the removals**, counted at `b9d87e7`:
+
+* `PubTester`, 19: the 13 that call `put(Object)` take `put(key,
+  object)` (`minimalCodeToStoreObject`, `testSync1` to `testSync6`,
+  `testKeyField1`, `testKeyField3`, `testKeyFieldInSuperClass0`,
+  `testKeyFieldWithDbObject1`, `testAnonymous1`, `testDbObject1`); the 6
+  that read the database key from the field `key` assert what was stored
+  (`testKeyField0`, `testKeyField0Private`, `testKeyField2`,
+  `testKeyFieldInSuperClass1`, `testKeyFieldWithIterator`,
+  `testKeyFieldWithDbObject0`).
+* `PubTesterOutput.testEnvironmentAfterRun`: its `env.put(new
+  Item(...))` takes a key.
+* `PubUtil`'s 9 tests go with it.
+
+**Step 8, the binding**, counted at `b9d87e7`:
+
+* The test classes become Data Objects, public static with public fields
+  and a public no-argument constructor, their tests' code unchanged: 51
+  classes, `DbObjectTester` 24, `PubTester` 10, `PubTesterIndex` 8,
+  `PubTesterNestedFields` 5, `PubTesterComposite` 2, `PubTesterPrimary`
+  1, `KvToObjectImp` 1. `PubTester.WithObject` gets `public int o`, so
+  that `testMalformedObjectRefused` and `testDeepObjectRefused` still test
+  the reader, not the class check. The index testers are 020-10's I2's
+  and I3's files too: one step at a time.
+* The 46 calls of `toJavaObject(c, new KvToObjectImp())` lose the second
+  argument: `DbObjectTester` 41, `PubTesterPrimary` 2, `KvToObjectImp` 2,
+  `PubTesterIndex` 1.
+* 7 change: `DbObjectTester.testPrivateConstructor` becomes a refusal
+  (020-09, K2); `testNarrowingOutOfRange` and `testNarrowingInRange`
+  expect 020-09's clamps in place of 005-22's `DataFormatException`;
+  `PubTester.testAnonymous0` and `testKeyFieldWithDbObject0` put a public
+  class (an anonymous one is refused, 020-09, K16);
+  `PubTester.testKeyField0Private` becomes a refusal (its class's fields
+  are private); and step 2's T4 expects the clamp.
+
+**`createFast()`, for 020-10's step I2**, counted at `b9d87e7`: 36 calls
+in 35 methods of 5 testers, `PubTesterIndex` 21, `PubTesterIndexJobs` 5
+tests and its helpers `createIfFree` and `deleteAndReplace`,
+`PubTesterNestedFields` 4, `PubTester` 2, `PubTesterComposite` 1. In the
+33 tests no object is in the directory when the index is made, so
+`start().join()` does the same. The 2 helpers make the index over a
+directory that holds `/items/old`, and `deleteAndReplace` runs inside a
+build's hook in 2 tests: with `start()`, the 6 tests that use them
+(`testBuildDeletedBeforeItsStep`, `testBuildDeletedInItsStep`,
+`testBuildDeletedBeforeActivation`, `testExpiryInDeletionIsNotAFailure`,
+`testDeleteTwice`, `testDeleteAgainAsTheFirstEnds`) join the job outside
+any hook and expect the old object in the new index too, `[100, 200]` in
+place of `[100]`, their purpose (015-22, 019-38) checked to hold.
+
+So this plan's steps change test methods 80 times (52, 20, 7 and 1),
+remove 9, and change 51 test classes.
 
 Night and level tests: `PayTest` and `CcDbNightTest` (night) and
 `BryanRepro` (`level2.sh`) put objects through the Pub API on new
-databases: they pass unchanged. A database kept between runs with
-objects or an index would be refused (4.11); none is known, and the night
-run after step 3 shows it.
+databases: they pass unchanged through steps 2 and 7; in step 8
+`CcDbNightTest`'s `Stats.cards` becomes public (else its put is refused),
+and `PayTest`'s and `BryanRepro`'s classes are Data Objects already. A
+database kept between runs with objects or an index would be refused
+(4.11); none is known, and the night run after step 3 shows it.
 
 ### 6.2. New tests
 
@@ -516,14 +722,15 @@ step, or is new code's test.
   one refused with `BadFormatException`; a get of each at a key gives
   `ObjectCreationException` in `w()` and `rw()`, and the database goes on.
 * **T3. Writer refusals** (step 2): a name of 0 and of 256 bytes (Builder
-  and `toDbObject`); 32,768 fields (Builder); level 17 by objects, by
-  `int[]` dimensions and by `Object[]`, each naming its path; a null
-  element at every depth naming `[i]`; `toDbObject(null)`.
+  and `toDbObject`); 32,768 fields (Builder); level 17 by objects and by
+  `int[]` dimensions, each naming its path (`Object[]` is refused as a
+  type from step 8, 020-09, V9); a null element at every depth naming
+  `[i]`; `toDbObject(null)`.
 * **T4. One integer** (step 2): `byte`, `short`, `char`, `int`, `long` and
   their wrappers holding 5 give the same bytes (`10 05`); the MIN and MAX
   of each; a stored `long` read into an `int` field when it fits, and
-  `DataFormatException` when it does not (005-22); `getType` and `has`
-  by section 3.
+  `DataFormatException` when it does not (005-22; from step 8, clamped,
+  020-09); `getType` and `has` by section 3.
 * **T5. Doubles** (step 2): a NaN with a payload is stored as
   `0x7ff8000000000000` and read back as NaN; −0.0 reads back as −0.0
   (`doubleToRawLongBits`); a `float` NaN.
@@ -545,9 +752,17 @@ step, or is new code's test.
 * **T10. A long index over one integer** (step 2, in `PubTesterIndex`):
   `int` and `long` fields of one value give one sort key; the entries of
   `Payment`s equal those of 2026.3 (`IndexEntryBuilder` is unchanged).
-* 020-04's new tests (its section 5.2): N1, N3, N4 and N5 in step 2 (as
-  (c)); N2, N6, N7, N8 and N13 in step 5 (under (d)); N10 is T8; N11 and
-  N12 in step 6. N9's Builder part and N14 were done by 021-07.
+* 020-04's new tests (its section 5.2): N1, N3, N4 and N5 in step 2, by
+  (c); N2, N6, N7 and N8, (d)'s, are not made; N13 is H1's R1; N10 is T8;
+  N11 and N12 in step 6. N9's Builder part and N14 were done by 021-07.
+* **T11. 020-09's cases** (step 8, in a new `DataObjectsTester`): G1 to
+  G122, K1 to K18 and W1 to W36 (020-09, sections 8.2 to 8.4), each as
+  written there.
+* **H1. 020-09's properties** (step 8): R1, the round trip; R2, the get
+  against a reference of 020-09, section 5, written in the test; R3,
+  principle 4 (020-09, section 8.5). Seeded, in the unit group under 2
+  seconds, more seeds in a night test (`bergdb.dev.Night`). It is 020-01,
+  section 15's H1, objects into their classes and back.
 
 ### 6.3. H0, the harness of the format
 
@@ -572,9 +787,8 @@ bottom up, a decoder, a lookup by a linear scan):
 In `before-commit.sh`'s unit group with a fixed seed and sizes that take
 under 2 seconds (`before-commit.sh` must stay fast: memory of 2026-11-05);
 a run with more seeds as a night test (`bergdb.dev.Night`), a few
-minutes. H1 of 020-01, section 15 (generated classes, into their classes
-and back), joins with question 1 and 2's decisions; H0a is its storage
-half.
+minutes. H1 (section 6.2, step 8) is 020-01, section 15's H1, generated
+objects into their classes and back; H0a is its storage half.
 
 
 ## 7. Measurements
@@ -630,33 +844,54 @@ Each step is one commit, its tests written first and seen to fail on the
 code before it (or new code's own), gated by `java/before-commit.sh`
 printing "BEFORE COMMIT OK". The coordinator commits (memory of the
 concurrent sessions: work in a scratch clone, gate the combined tree).
+The order is 1, 2, 7, 8, 3, 4, 6 (section 2); the numbers stay as first
+written.
 
-1. **The codec, the vectors and the harness.** `ObjectFormat`,
-   `ObjectFormatTester` (T1, H0a and H0b on the codec), the vectors file
-   moved to `java/src/bergdb/pubimp/doc-files/object-vectors.txt` and
-   020-07, section 13.5, pointing there; `Pack`. Nothing uses the codec
-   yet: no behaviour changes. About 1 day.
-2. **The switch.** `DbObject`, `DbValue`, `DbArray`, the value classes,
-   `DbInt` gone, `Entries`, `KvToObjectImp`, `FieldIndexFunction`,
-   `FieldRef`, `Pack`; section 3's provisional rules and section 4.6's
-   null rules; the 52 tests of section 6.1; T2 to T7 and T10, H0a and
-   H0b through `DbObject`; 020-04's N1, N3, N4, N5. Then
-   `java/stress/level2.sh` once, for `BryanRepro` (objects through
-   restarts and reclaim; it needs Lean for its conformance steps, which
-   this change does not touch). About 2 days.
-3. **Old data refused.** `Entries.isFormat1Object`, `KvToObjectImp`,
-   `IndexBuilderImp`, `UseIndexBuilderImp`, `IndexManager` (the start and
-   `getActiveIndex`); T8, T9. About half a day.
-4. **The measurements** of section 7, and `ObjectBench.java` committed.
-   About half a day, and an hour of the quiet machine.
-5. **(d)'s constructor check** (020-04, section 2.2; its step C), if
-   Frans chooses (d): N2, N6, N7, N8, N13, and the 5 tests of section
-   6.1. Not made for (c); for (b), step 2 refuses instead. About half a
-   day.
-6. **The documentation and 020-04's index part** (its step D): section
-   9's Javadoc and `releases/next.md`; 019-42's comments; N11, N12 and
-   `testBuildOverAnObjectItCannotIndex`. Gate: `before-commit.sh` and
-   `java/javadoc-pub.sh` ("JAVADOC PUB OK"). About half a day.
+* **Step 1. The codec, the vectors and the harness.** `ObjectFormat`,
+  `ObjectFormatTester` (T1, H0a and H0b on the codec), the vectors file
+  moved to `java/src/bergdb/pubimp/doc-files/object-vectors.txt` and
+  020-07, section 13.5, pointing there; `Pack`. Nothing uses the codec
+  yet: no behaviour changes. About 1 day. Done (section 8.1).
+* **Step 2. The switch.** `DbObject`, `DbValue`, `DbArray`, the value
+  classes, `DbInt` gone, `Entries`, `KvToObjectImp`, `FieldIndexFunction`,
+  `FieldRef`, `Pack`; section 3's rules and section 4.6's null rules; the
+  52 tests of section 6.1; T2 to T7 and T10, H0a and H0b through
+  `DbObject`; 020-04's N1, N3, N4, N5. Then `java/stress/level2.sh` once,
+  for `BryanRepro` (objects through restarts and reclaim; it needs Lean
+  for its conformance steps, which this change does not touch). About 2
+  days. 020-10's step I1 waits for it.
+* **Step 7. The removals** (section 4.10): `put(Object)`, the key field,
+  `MissingKeyFieldException`, `PubUtil`, their Javadoc and `src-dev`'s
+  calls (section 5); the 20 tests of section 6.1, `PubUtil`'s 9 gone. No
+  stored byte changes. About half a day.
+* **Step 8. The binding** (section 4.9; 020-09): `DataObjects` and
+  `DataObjectsTester` (T11, H1); the conversions of `DbObject`, `DbValue`,
+  `DbArray` and the value classes moved or removed; `KvToObjectImp`,
+  `BlankConstructorFactory`, `ClassToObject`, `ObjectFactory`,
+  `DatabaseImp`, `RwEnvironmentImp`; the 51 test classes, the 46 calls
+  and the 7 tests of section 6.1; `src-dev`'s classes. About 2 days.
+* **Step 3. Old data refused.** `Entries.isFormat1Object`,
+  `KvToObjectImp`, `IndexBuilderImp`, `UseIndexBuilderImp`, `IndexManager`
+  (the start and `getActiveIndex`); T8, T9. About half a day. Before
+  020-10's step I2, which keeps its refusal (020-10, section 10.2).
+* **Step 4. The measurements** of section 7, and `ObjectBench.java`
+  committed. About half a day, and an hour of the quiet machine.
+* **Step 5. (d)'s constructor check**: dropped. Frans chose (c)
+  (2026-11-08, 21:47; 020-02, section 5.1b): no put is refused for a null
+  field, and no constructor runs at a put.
+* **Step 6. The documentation and 020-04's index part** (its step D):
+  section 9's Javadoc and `releases/next.md`; 019-42's comments; N11, N12
+  and `testBuildOverAnObjectItCannotIndex`. Gate: `before-commit.sh` and
+  `java/javadoc-pub.sh` ("JAVADOC PUB OK"). About 0.75 days.
+
+With 020-10 (section 10.1 there), one step at a time on a shared file:
+`RwEnvironmentImp` and `WBuilderImp` (steps 7 and 8; 020-10's I1 and I2),
+`IndexManager`, `IndexBuilderImp` and `UseIndexBuilderImp` (step 3; I1 to
+I3), `DatabaseImp` (step 8; I2), the index testers and `PubTester` (steps
+2, 7 and 8; I2 and I3), `CreateIndexTester`, `DeleteIndexTester` and
+`PayDemo` (step 7; I2). 020-10's I2 removes `Data.java` and with it
+`IndexManager`'s two conversions (lines 382 and 540); if step 8 comes
+first, it changes them to `toJavaObject(Class)`.
 
 Then the day's coordinator runs `java/night.sh` (the night tests with
 objects, the level scripts) when the machine has room, and a line goes to
@@ -731,6 +966,18 @@ T2 can reuse the tester's `readVectors`, `Vn`, `Ref` and `codecWrite`
   double: `float`, `double`), names of 1 to 255 bytes, depth 16, NaN, no
   null; objects of 2026.3 and before are not read (4.11); the format is
   BergDB's own, its spec 020-07. `src/overview-pub.html`: a sentence.
+* **Step 7's Javadoc**: `put(Object)` and `MissingKeyFieldException` leave
+  the Javadoc (section 5).
+* **Data Objects and the conversion** (step 6): `pub/package.html`'s
+  "Objects" says what a Data Object is (020-09, section 3, in a
+  paragraph), what a put refuses, and how a get converts: by name, the
+  nearest value, the type's zero, never a throw for the data, and
+  `ObjectCreationException` for a class that is not a Data Object; the
+  rules in full by their ID (bergdb 020-09). `Connection.get`'s and
+  `ReadInterface.get`'s Javadoc: the class is a Data Object (not "in
+  general a public no-argument constructor"), and `@throws
+  ObjectCreationException`. `DbObject.toDbObject` and `toJavaObject`: the
+  same, by reference.
 * **`Connection`, `WBuilder`, `RwEnvironment`**: 020-04, section 6.2's
   sentences, and in `put`'s `@throws IllegalArgumentException`: a name
   longer than 255 bytes, a nesting deeper than 16 levels.
@@ -744,13 +991,21 @@ T2 can reuse the tester's `readVectors`, `Vn`, `Ref` and `codecWrite`
     build fails, and a database with an index does not start: such
     databases are made again. StreamDigest's workloads put no object: no
     digest changes.
-  * **One integer type**; `getType` answers `l` (provisional, section 3).
+  * **One integer type**; `getType` answers `l` (section 3).
   * **Depth 16** levels of objects and arrays (was 1,000 objects); **names
     of at most 255 bytes** (was 32,767); **one NaN**, a NaN's payload not
     kept.
   * **No null** (020-04, section 6.3's first two bullets, by Frans's Q1).
   * `DbObject.isNull()`, `DbArray.isNull()`, the `buildNull()` methods,
     `DbObject.MAGIC` and `DbInt` are gone.
+  * **Data Objects** (020-09): a class put or got is public, with a public
+    no-argument constructor and public fields, its other instance fields
+    transient; `put(Object)` and `MissingKeyFieldException` are gone
+    (`put(key, object)`); a field named `key` is an ordinary field. (020-10
+    writes `createFast()`'s line.)
+  * **A get converts best effort** (020-09): the nearest value or the
+    type's zero, no `DataFormatException` for a value that does not fit;
+    `ObjectCreationException` for a class that is not a Data Object.
   * 021-07's and 021-08's bullets (the old reader's refusals and depth)
     are folded into the first bullet: the reader they hardened is gone.
 * **`docs/levels.md`, `README.md`**: "DbObject and the user indexes are
@@ -777,21 +1032,23 @@ T2 can reuse the tester's `readVectors`, `Vn`, `Ref` and `codecWrite`
 
 ## 11. Estimate and risks
 
-**Work**, an agent at high effort (xhigh for step 2, the switch):
+**Work**, an agent at high effort (xhigh for steps 2 and 8):
 
-| Step                         | Code, lines          | Tests, lines | Days |
-|------------------------------|----------------------|--------------|------|
-| 1. Codec, vectors, harness   | +450                 | +600      | 1   |
-| 2. The switch                | +700 −900            | +500 −350 | 2   |
-| 3. Old data refused          | +80                  | +200      | 0.5 |
-| 4. Measurements              | +400 (`ObjectBench`) | -         | 0.5 |
-| 5. (d)'s check               | +80 (020-04, step C) | +150      | 0.5 |
-| 6. Documentation, index part | +40, Javadoc +150    | +100      | 0.5 |
+| Step                             | Code, lines          | Tests, lines | Days |
+|----------------------------------|----------------------|--------------|------|
+| 1. Codec, vectors, harness, done | +831                 | +600      | 1    |
+| 2. The switch                    | +700 −900            | +500 −350 | 2    |
+| 7. The removals                  | −350                 | +100 −200 | 0.5  |
+| 8. The binding (020-09)          | +700 −600            | +1,200    | 2    |
+| 3. Old data refused              | +80                  | +200      | 0.5  |
+| 4. Measurements                  | +400 (`ObjectBench`) | -         | 0.5  |
+| 5. (d)'s check                   | dropped              | -         | 0    |
+| 6. Documentation, index part     | +40, Javadoc +250    | +100      | 0.75 |
 
-About 5 days, plus the gates (2 minutes a commit, `level2.sh` once,
-`javadoc-pub.sh` once) and an hour of a quiet F53 for step 4. The steps
-are in order; step 4 waits for a quiet machine and may come after step 5
-or 6.
+About 7 days in all, 6 after step 1, plus the gates (2 minutes a commit,
+`level2.sh` once, `javadoc-pub.sh` once) and an hour of a quiet F53 for
+step 4. The steps are in the order of section 8; step 4 waits for a quiet
+machine and may come after step 6.
 
 **Risks**, each with what meets it:
 
@@ -804,9 +1061,9 @@ or 6.
    (T8) and the release notes; the night's and benchmarks' databases are
    made new each run (none with objects is kept, as far as known: step 3's
    night run shows it).
-3. **The provisional API choices** (section 3) may be decided otherwise:
-   then `DbObject`'s getters, 3 tests and `releases/next.md` change. Each
-   choice is in one place.
+3. **The API choices taken under the delegation** (section 3) may be
+   changed by Frans later: then `DbObject`'s getters, 3 tests and
+   `releases/next.md` change. Each choice is in one place.
 4. **The cost of the full check at every read**: index maintenance reads
    the previous value of each object put in an indexed directory, and a
    build every object. Today's reader parses everything (340 to 720 ns),
@@ -824,6 +1081,15 @@ or 6.
    vectors at every width boundary.
 8. **Java 17**: `build.sh` compiles with `--release 17`; the codec uses
    nothing newer.
+9. **Public fields only** (step 8): every class put today with a field
+   that is not public, or that is not public itself, is refused: 51 test
+   classes, a night test's, three demos' (section 6.1). Met by the class
+   check's message, which names the field, and the release notes.
+10. **Best effort hides a changed class**: a get converts and never says
+    so (Frans's choice for 2026.4, 020-02, section 2). Met by the
+    documentation (section 9) and the `DbObject` get for full control.
+11. **Two plans on shared files** (section 8): met by one step at a time
+    on each shared file, in the coordinator's order.
 
 
 ## 12. Log
@@ -837,3 +1103,12 @@ the answers of section 2.
 `ObjectFormat`, `ObjectFormatTester` (T1, H0a, H0b, a night test), the
 vectors moved into `java/`; BEFORE COMMIT OK (119 s). Two differences
 from 020-07 noted, the spec followed.
+
+2026-11-08. Brought up to date with Frans's API decisions of 19:10 to
+21:59 (020-02, sections 2 and 5.1b) and with 020-09, what they left open
+decided under his delegation of 22:17 (section 2), and fitted to 020-10's
+steps, by coord-1108's agent: two new steps, 7 (the removals) and 8 (the
+binding, 020-09); step 5 dropped; the order 1, 2, 7, 8, 3, 4, 6;
+`createFast()` left to 020-10's step I2; sections 1 to 6, 8, 9 and 11;
+the tests of steps 7 and 8 counted at `b9d87e7`; about 7 days in all.
+Step 1's record (section 8.1) unchanged. No code changed.

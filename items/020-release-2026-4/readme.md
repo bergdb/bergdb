@@ -120,8 +120,23 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   choices where the API is open (020-02, section 5) and where each
   decision joins; 52 existing tests changed, about 25 new, the vectors
   run by Java and a harness against a reference codec; the measurements
-  of 020-02, section 6; six steps and commits, about 5 days; the risks.
+  of 020-02, section 6; the steps and commits (since 2026-11-08, 22:38:
+  steps 1, 2, 7, 8, 3, 4, 6, step 5 dropped, about 7 days; step 1 done);
+  the risks.
   No code changed.
+* [09-conversion-rules.md](09-conversion-rules.md). 020-09, the rules of
+  the conversion between Data Objects and `DbObject`s in Java for 2026.4,
+  both ways, from Frans's decisions (020-02, section 2's decision and
+  section 5.1b, 19:21 to 21:59) and his delegation of the rest (22:17):
+  which classes are Data Objects (public, a public no-argument
+  constructor, public fields, the closed list of types; one check per
+  class); the put, exact (a null field left out; a null element, a value
+  of another class, a cycle and depth 17 refused, naming the path); the
+  get, best effort (by name, the nearest value, the type's zero, never a
+  throw for the data; `ObjectCreationException` for a class that is not
+  a Data Object); today's code against it; 176 test cases and three
+  properties. Section 6 lists the 24 decisions taken under the
+  delegation. For 020-08's step 8. No code changed.
 * [10-indexes-design.md](10-indexes-design.md). 020-10, the user indexes
   of 2026.4 designed for tonight's implementation, from Frans's decisions
   (020-01, section 14.1, 22:08 to 22:12) and his delegation of the rest
@@ -168,3 +183,10 @@ plan's list of what Frans must say before it starts are for Frans.
 2026-11-08. 020-10, the indexes' design for implementation, written after
 Frans's decisions of 22:08 to 22:12 and his delegation of 22:17, by
 coord-1108's agent; no code.
+
+2026-11-08. 020-09, the conversion rules of Data Objects and `DbObject`s,
+written at Frans's request (21:59), with what was left open decided
+under his delegation of 22:17, by coord-1108's agent; 020-08 brought up
+to date with it and with 020-10 (steps 7 and 8 added, step 5 dropped,
+the order 1, 2, 7, 8, 3, 4, 6, about 7 days in all; `createFast()` left
+to 020-10's step I2); a pointer in 020-02, section 5.1b. No code.

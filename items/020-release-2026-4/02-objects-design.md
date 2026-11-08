@@ -1154,7 +1154,9 @@ transactions as `rw()` actions; the questions below refine it.
   `'\u0000'` for primitives and their wrappers; `null` for `String`,
   `byte[]`, arrays and Data Objects); only a field without a stored
   match keeps the constructor's value. Frans, 21:59: "Yes, do so." The
-  rules in full, with a test for each: 020-09.
+  rules in full, with a test for each: 020-09 (its sections 3 to 5, the
+  tests in its section 8; what was left open, decided under Frans's
+  delegation of 22:17, in its section 6).
 * **Two layers** (question 1's architecture, (D)'s two steps of section
   2.5). Frans, 2026-11-08, 19:53: "Important, this should be completely
   separate from DbObject to database storage. So, DbObject to bytes
@@ -1360,3 +1362,7 @@ of section 4 with the coordinator (coord-1108), one at a time: each
 subsection's "Decided" line holds the question and his answer. Changed
 from the recommendations: the depth limit, 16 levels of objects and
 arrays (4.10, Frans's question); the put rule of 4.1 left for the API.
+
+2026-11-08. Section 5.1b: a pointer to 020-09, the conversion rules
+written with what was left open decided under Frans's delegation of
+22:17, by coord-1108's agent.
