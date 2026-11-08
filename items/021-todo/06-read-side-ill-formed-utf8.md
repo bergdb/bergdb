@@ -1,7 +1,7 @@
 021-06. Investigate: a string that is not well-formed UTF-8 in a stream from another writer
 =========================================================================================
 
-Status: in progress. Kind: Investigate. Frans: answers (delegated, 2026-11-08).
+Status: done. Kind: Investigate. Frans: answers (delegated, 2026-11-08).
 Created 2026-11-07 by Frans Lundberg.
 
 What: the read side of 021-04's rule. Every stream Java writes holds only
@@ -130,3 +130,16 @@ word (09:34, quoted above).
 night's coordinator set them (006-15); the key side done, with its tests,
 and the String value's read as a patch for after 020-08's step 2 (above).
 Status: in progress.
+
+2026-11-09. The patch applied by the objects' agent of the night, in its
+own commit after 020-08's step 3: `KvToObjectImp.entryToString` throws
+`DataFormatException` for a value read as a `String` (or as `Object` at a
+".txt" key) that is not well-formed UTF-8, with `Connection.get`'s
+`@throws`, `UsePrimaryBuilder`'s sentence and `DataFormatException`'s
+Javadoc; `Utf8ReadTester.testStringValueNotWellFormed` and the testers that
+expected U+FFFD. One change for format 2: `PubTesterPrimary.
+testTypesListByKind` listed an object's first 3 bytes as a `String`, which
+were "ber" in format 1 and start with the header 0x82 since 020-08's step
+2, no UTF-8: the test now expects the `DataFormatException` for it, and
+the listing to go on. `BEFORE COMMIT OK`. Status: done; `releases/next.md`
+is the coordinator's.

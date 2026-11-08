@@ -16,6 +16,7 @@ import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Action;
 import bergdb.pub.Connection;
+import bergdb.pub.DataFormatException;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
 import bergdb.pub.Kv;
@@ -260,6 +261,10 @@ public class PrimaryHarness {
 
     /** A value that is not an object as a String: decoded from UTF-8, as get() does. */
     static void checkString(String what, Val expected, Object actual) {
+        if (expected.string == null && !isWellFormed(expected.bytes)) {
+            throw new AssertionError(what + ": expected DataFormatException for bytes that are "
+                    + "not well-formed UTF-8, " + expected + ", got " + actual);
+        }
         String s = expected.string != null ? expected.string
                 : new String(expected.bytes, StandardCharsets.UTF_8);
         if (!s.equals(cast(what, String.class, actual))) {
@@ -609,7 +614,7 @@ public class PrimaryHarness {
                         again.objects());
                 if (!expected.isEmpty()) {
                     Map.Entry<String, Val> e = expected.get(random.nextInt(expected.size()));
-                    if (!(type == Object.class && isTruncatedObject(e))) {
+                    if (!(type == Object.class && isTruncatedObject(e)) && !notUtf8(type, e)) {
                         Object got = c.get(e.getKey(), type);
                         checkValue("get(" + e.getKey() + ") at the frozen time", type,
                                 e.getKey(), e.getValue(), got);
@@ -637,6 +642,13 @@ public class PrimaryHarness {
             } catch (ObjectCreationException e) {
                 if (type == Object.class && i < expected.size()
                         && isTruncatedObject(expected.get(i))) {
+                    i++;
+                    listed++;
+                    continue;
+                }
+                throw e;
+            } catch (DataFormatException e) {
+                if (i < expected.size() && notUtf8(type, expected.get(i))) {
                     i++;
                     listed++;
                     continue;
@@ -687,6 +699,30 @@ public class PrimaryHarness {
                 && Arrays.equals(v.bytes, Arrays.copyOf(objectBytes, v.bytes.length));
     }
 
+    /**
+     * True if the value e, of bytes that are not well-formed UTF-8, is read as a String by
+     * type: get() and the scan throw DataFormatException (bergdb 021-06).
+     */
+    static boolean notUtf8(Class<?> type, Map.Entry<String, Val> e) {
+        Val v = e.getValue();
+        boolean asString = type == String.class 
+                || (type == Object.class && e.getKey().endsWith(".txt"));
+        return asString && v.bytes != null && !isWellFormed(v.bytes);
+    }
+    
+    /** Well-formed UTF-8, by the JDK's decoder set to report. */
+    static boolean isWellFormed(byte[] b) {
+        try {
+            StandardCharsets.UTF_8.newDecoder()
+                    .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                    .decode(java.nio.ByteBuffer.wrap(b));
+            return true;
+        } catch (java.nio.charset.CharacterCodingException e) {
+            return false;
+        }
+    }
+    
     // ======== Tests ========
 
     /** The unit test: 3 seeds of 500 steps (bergdb 020-10, section 9.4). */

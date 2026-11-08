@@ -8,6 +8,7 @@ import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.Connection;
+import bergdb.pub.DataFormatException;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
 import bergdb.pub.Kv;
@@ -102,6 +103,60 @@ public class Utf8ReadTester {
         }
     }
 
+    /**
+     * A String value that is not well-formed UTF-8, written through the Core API or by
+     * another writer, is reported, never repaired (bergdb 021-06): get() as String, and as
+     * Object at a ".txt" key, throws DataFormatException; as byte[] it gives the bytes, and
+     * as Object at another key a byte[]; a scan as String throws it from next() and goes on
+     * with the next value; in rw() it is the action's exception, and the database goes on.
+     * They gave U+FFFD in place of each ill-formed sequence (ED A0 80, C0 80, a cut one).
+     */
+    @Nano
+    public static void testStringValueNotWellFormed() {
+        Database d = Factory.database().memory().start();
+        try {
+            Db db = ((DatabaseImp) d).getDb();
+            final byte[] s = {'a', (byte) 0xed, (byte) 0xa0, (byte) 0x80};
+            final byte[] t = {(byte) 0xc0, (byte) 0x80};
+            final byte[] u = {'b', (byte) 0xe2, (byte) 0x82};
+            db.execute(db.trans().put(Keys.toBytes("/dv/-s"), s)
+                    .put(Keys.toBytes("/dv/-t.txt"), t).put(Keys.toBytes("/dv/-u"), u));
+            final Connection c = d.connection();
+            c.w().put("/v/w", "ok").execute();
+            
+            for (String key : new String[] {"/v/s", "/v/t.txt", "/v/u"}) {
+                assertThrows(DataFormatException.class, () -> c.get(key, String.class));
+            }
+            assertThrows(DataFormatException.class, () -> c.get("/v/t.txt", Object.class));
+            Assert.assertArrayEquals(s, c.get("/v/s", byte[].class));
+            Assert.assertArrayEquals(s, (byte[]) c.get("/v/s", Object.class));
+            Assert.assertEquals("ok", c.get("/v/w", String.class));
+            
+            final java.util.Iterator<String> it = c.usePrimary(String.class).dir("/v/").objects()
+                    .iterator();
+            for (int i = 0; i < 3; i++) {
+                Assert.assertTrue(it.hasNext());
+                assertThrows(DataFormatException.class, () -> it.next());
+            }
+            Assert.assertEquals("ok", it.next());
+            Assert.assertFalse(it.hasNext());
+            
+            assertThrows(DataFormatException.class, () -> c.rw(env -> {
+                env.get("/v/s", String.class);
+                env.put("/v/x", "not put");
+            }));
+            Assert.assertFalse(c.exists("/v/x"));
+            c.w().put("/v/y", "y").execute();
+            Assert.assertEquals("y", c.get("/v/y", String.class));
+        } finally {
+            d.stop();
+        }
+    }
+    
+    static void assertThrows(Class<? extends Throwable> expected, Runnable call) {
+        PubTesterPrimary.assertThrows(expected, call);
+    }
+    
     static <T> String kvs(Iterable<Kv<T>> kvs) {
         StringBuilder b = new StringBuilder();
         for (Kv<T> kv : kvs) {

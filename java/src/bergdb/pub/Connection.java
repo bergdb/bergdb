@@ -175,6 +175,11 @@ public interface Connection extends ReadInterface {
      * @throws IllegalArgumentException
      *             If key does not follow the allowed format, or is null. If
      *             'clazz' is null.
+     * @throws DataFormatException
+     *             If clazz is String.class, or Object.class at a key with the suffix
+     *             ".txt", and the value is not well-formed UTF-8: every string in BergDB
+     *             is, and a reader never repairs one that is not, written through the Core
+     *             API or by another writer (bergdb 021-06). Read it as a byte[].
      * @return The object created based on 'clazz' and the data in the database,
      *             or null if there is no entry for the key.
      */

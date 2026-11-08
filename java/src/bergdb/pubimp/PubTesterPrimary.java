@@ -13,6 +13,7 @@ import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.Connection;
+import bergdb.pub.DataFormatException;
 import bergdb.pub.Database;
 import bergdb.pub.Duration;
 import bergdb.pub.Factory;
@@ -673,14 +674,24 @@ public class PubTesterPrimary {
                  .put("/m/sub/h", "text h")
                  .execute();
             byte[] a = c.get("/m/a", byte[].class);
+            Assert.assertEquals("/m/b=text b /m/c=c\u0001 /m/d.txt=text d /m/f.bin=f ", 
+                    kvs(c.usePrimary(String.class).dir("/m/").kvs()));
+            Assert.assertEquals("[f, text d, c\u0001, text b]", 
+                    list(c.usePrimary(String.class).dir("/m/").backward().objects()));
             byte[] fake = Arrays.copyOf(a, 3);      // an object's first bytes, not an object
             c.w().put("/m/g", fake).execute();
-            String fakeText = StringUtil.toString(fake);
-            
-            Assert.assertEquals("/m/b=text b /m/c=c\u0001 /m/d.txt=text d /m/f.bin=f /m/g=" 
-                    + fakeText + " ", kvs(c.usePrimary(String.class).dir("/m/").kvs()));
-            Assert.assertEquals("[" + fakeText + ", f, text d, c\u0001, text b]", 
-                    list(c.usePrimary(String.class).dir("/m/").backward().objects()));
+            // Format 2's header, 0x82, starts no UTF-8 (bergdb 020-07, section 5.1), so the
+            // fake is no String either: a String listing throws DataFormatException for it,
+            // as get() does, and goes on (bergdb 021-06).
+            Iterator<String> strings = c.usePrimary(String.class).dir("/m/").backward()
+                    .objects().iterator();
+            try {
+                strings.next();
+                throw new AssertionError("the fake read as a String");
+            } catch (DataFormatException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("/m/g"));
+            }
+            Assert.assertEquals("f", strings.next());
             
             String[] keys = {"/m/a", "/m/b", "/m/c", "/m/d.txt", "/m/e.obj", "/m/f.bin", "/m/g"};
             int i = 0;
@@ -742,7 +753,26 @@ public class PubTesterPrimary {
                 n++;
             }
             Assert.assertEquals(2, n);
-            Assert.assertEquals("/t/b ", keys(c.usePrimary(String.class).dir("/t/").kvs()));
+            // As String, the bytes are not well-formed UTF-8 (format 2's header, 0x82, never
+            // starts a character): DataFormatException from next(), as from get() (bergdb
+            // 021-06).
+            Iterator<Kv<String>> strings = c.usePrimary(String.class).dir("/t/").kvs()
+                    .iterator();
+            Assert.assertTrue(strings.hasNext());
+            Object gotString;
+            try {
+                gotString = c.get("/t/b", String.class);
+            } catch (DataFormatException e) {
+                gotString = e;
+            }
+            Object listedString;
+            try {
+                listedString = strings.next().value();
+            } catch (DataFormatException e) {
+                listedString = e;
+            }
+            Assert.assertEquals(gotString.getClass(), listedString.getClass());
+            Assert.assertFalse(strings.hasNext());
             Assert.assertEquals("/t/a /t/b /t/c ", 
                     keys(c.usePrimary(byte[].class).dir("/t/").kvs()));
             

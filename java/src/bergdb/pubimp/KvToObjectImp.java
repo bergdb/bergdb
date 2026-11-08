@@ -5,6 +5,7 @@ import java.io.UnsupportedEncodingException;
 import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pub.DataFormatException;
 import bergdb.pub.ObjectCreationException;
 import bergdb.pub.util.BadFormatException;
 
@@ -66,7 +67,7 @@ public class KvToObjectImp implements KvToObjectConverter {
         TYPE result;
         
         if (c.equals(String.class)) {
-            result = (TYPE) entryToString(value);
+            result = (TYPE) entryToString(ukey == null ? ikey : ukey, value);
         } else if (c.equals(byte[].class)) {
             result = (TYPE) value;      // the database's own array, bergdb 015-47
         } else if (c.equals(DbObject.class)) {
@@ -80,8 +81,19 @@ public class KvToObjectImp implements KvToObjectConverter {
         return result;
     }
 
-    /** Converts a database value to a String, UTF-8 encoding assumed. */
-    private String entryToString(byte[] value) {
+    /**
+     * Converts a database value to a String: its UTF-8 bytes decoded. Bytes that are not
+     * well-formed UTF-8 (written through the Core API, or by another writer) are reported,
+     * never repaired (bergdb 021-06); they were decoded with U+FFFD in place of each
+     * ill-formed sequence.
+     * 
+     * @throws DataFormatException  If the value is not well-formed UTF-8.
+     */
+    private String entryToString(String key, byte[] value) {
+        if (!StringUtil.isWellFormedUtf8(value)) {
+            throw new DataFormatException("The value at " + key + " is not well-formed UTF-8, "
+                    + "so it is not a String; it can be read as a byte[] (bergdb 021-06).");
+        }
         return StringUtil.toString(value);
     }
 
@@ -104,7 +116,7 @@ public class KvToObjectImp implements KvToObjectConverter {
                 result = value;     // the database's own array, bergdb 015-47
             }
         } else if (ikey.endsWith(".txt")) {
-            result = entryToString(value);
+            result = entryToString(ukey == null ? ikey : ukey, value);
         } else {
             result = value;     // the database's own array, bergdb 015-47
         }

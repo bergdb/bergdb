@@ -14,6 +14,7 @@ import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Action;
 import bergdb.pub.Connection;
+import bergdb.pub.DataFormatException;
 import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Factory;
@@ -634,7 +635,7 @@ public class PubPromiseTester {
                     int kind = readKinds.get(i);
                     if (kind == 0) {
                         checkValue("rw get(" + key + ", String.class)", expected, String.class,
-                                env.get(key, String.class));
+                                asString(() -> env.get(key, String.class)));
                     } else if (kind == 1) {
                         checkValue("rw get(" + key + ", byte[].class)", expected, byte[].class,
                                 env.get(key, byte[].class));
@@ -667,11 +668,11 @@ public class PubPromiseTester {
                 + time;
         log(what);
         if (kind == 0) {
-            checkValue(what, expected, String.class, rc.c.get(key, String.class));
+            checkValue(what, expected, String.class, asString(() -> rc.c.get(key, String.class)));
         } else if (kind == 1) {
             checkValue(what, expected, byte[].class, rc.c.get(key, byte[].class));
         } else {
-            Object o = rc.c.get(key, Object.class);
+            Object o = asString(() -> rc.c.get(key, Object.class));
             checkValue(what, expected, key.endsWith(".txt") ? String.class : byte[].class, o);
         }
         if (expected != null) {
@@ -897,6 +898,17 @@ public class PubPromiseTester {
         if (actual == null) {
             throw new AssertionError(what + ": expected " + show(expected) + ", got null");
         }
+        if (clazz == String.class && !Utf8.isWellFormed(expected)) {
+            // A reader never repairs ill-formed UTF-8 (bergdb 021-06).
+            if (actual != NOT_UTF8) {
+                throw new AssertionError(what + ": expected DataFormatException for bytes that "
+                        + "are not well-formed UTF-8, " + show(expected) + ", got " + show(actual));
+            }
+            return;
+        }
+        if (actual == NOT_UTF8) {
+            throw new AssertionError(what + ": DataFormatException, for " + show(expected));
+        }
         if (clazz == String.class) {
             if (!(actual instanceof String)) {
                 throw new AssertionError(what + ": expected a String, got " + actual.getClass());
@@ -921,9 +933,41 @@ public class PubPromiseTester {
     }
 
     /** UTF-8, as the database converts. */
+    /** What asString() gives for a DataFormatException. */
+    static final Object NOT_UTF8 = new Object() {
+        public String toString() {
+            return "DataFormatException";
+        }
+    };
+
+    /**
+     * The value that read gives, or NOT_UTF8 if it throws DataFormatException: a value read
+     * as a String that is not well-formed UTF-8 (bergdb 021-06).
+     */
+    static Object asString(java.util.function.Supplier<Object> read) {
+        try {
+            return read.get();
+        } catch (DataFormatException e) {
+            return NOT_UTF8;
+        }
+    }
+
     static final class Utf8 {
         static byte[] bytes(String s) {
             return s.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+
+        /** Well-formed UTF-8, by the JDK's decoder set to report. */
+        static boolean isWellFormed(byte[] b) {
+            try {
+                java.nio.charset.StandardCharsets.UTF_8.newDecoder()
+                        .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                        .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                        .decode(java.nio.ByteBuffer.wrap(b));
+                return true;
+            } catch (java.nio.charset.CharacterCodingException e) {
+                return false;
+            }
         }
 
         static String string(byte[] b) {
