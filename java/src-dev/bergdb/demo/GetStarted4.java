@@ -1,22 +1,6 @@
 package bergdb.demo;
 import bergdb.pub.*;
 
-class Account {
-    String key;
-    long balance;
-    
-    Account() {}
-    
-    Account(String key, long balance) {
-        this.key = key;
-        this.balance = balance;
-    }
-    
-    public String toString() {
-        return key + ": " + balance;
-    }
-}
-
 /**
  * Demo class, makes a payment.
  * 

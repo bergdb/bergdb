@@ -56,22 +56,6 @@ public class DbByteArray extends DbValue {
         return offset + value.length;
     }
     
-    @SuppressWarnings("unchecked")
-    public <TYPE> TYPE toJavaObject(Class<TYPE> c, ClassToObject c2o) {
-        // Converts only to byte[].class. Conversions to short[] and so on usually does not
-        // make sense. Consider for example the bytes of a JPEG image. Byte array often does
-        // not store a number of integers with integer semantics.
-        
-        Object result;
-        
-        if (c.equals(byte[].class)) {
-            result = value.clone();
-        } else {
-            result = null;
-        }
-        return (TYPE) result;
-    }
-    
     // ---- Tests ----
     
     @Nano

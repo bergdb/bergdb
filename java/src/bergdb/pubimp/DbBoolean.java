@@ -30,10 +30,6 @@ public class DbBoolean extends DbValue {
         return value;
     }
     
-    public String toStringValue() {
-        return "" + value;
-    }
-    
     public String toString() {
         return "" + value;
     }
@@ -53,7 +49,7 @@ public class DbBoolean extends DbValue {
         
         Assert.assertEquals(4, b0.write(bytes, 3));
         Assert.assertEquals(0x45, bytes[3]);
-        DbValue b1 = DbValue.read(bytes, 3);
+        DbBoolean b1 = (DbBoolean) DbValue.read(bytes, 3);
         
         Assert.assertEquals(false, b0.toBoolean());
         Assert.assertEquals(false, b1.toBoolean());
@@ -66,7 +62,7 @@ public class DbBoolean extends DbValue {
         
         Assert.assertEquals(4, b0.write(bytes, 3));
         Assert.assertEquals(0x44, bytes[3]);
-        DbValue b1 = DbValue.read(bytes, 3);
+        DbBoolean b1 = (DbBoolean) DbValue.read(bytes, 3);
         
         Assert.assertEquals(true, b0.toBoolean());
         Assert.assertEquals(true, b1.toBoolean());

@@ -82,10 +82,10 @@ public class WebsiteCode {
         database.stop();
     }
     
-    static class Person {
-        String name;
-        Person() {}
-        Person(String name) { this.name = name; }
+    public static class Person {
+        public String name;
+        public Person() {}
+        public Person(String name) { this.name = name; }
         public String toString() { return name; }
     }
     

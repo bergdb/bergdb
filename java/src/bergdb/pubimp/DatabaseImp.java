@@ -43,8 +43,6 @@ public class DatabaseImp implements Database {
         // "final" for now. Could become a setting.
     private final KvToObjectConverter kvToObjectConverter;
         // "final" for now, could become a setting.
-    private final ClassToObject classToObject;
-        // "final" for now, could become a setting.
     private final WeakHashMap<Thread, Connection> threadLocalConnections;
         // Weak keys: an ended thread's connection goes once the collector has taken the
         // thread, at the map's next use (bergdb 015-60). Not a ThreadLocal, whose value in a
@@ -67,9 +65,7 @@ public class DatabaseImp implements Database {
                 }
             };
             
-            KvToObjectImp k = new KvToObjectImp();
-            this.kvToObjectConverter = k;
-            this.classToObject = k;
+            this.kvToObjectConverter = new KvToObjectImp();
         }
     }
     
@@ -141,10 +137,6 @@ public class DatabaseImp implements Database {
     
     final KvToObjectConverter getKvToObjectConverter() {
         return this.kvToObjectConverter;
-    }
-    
-    final ClassToObject getClassToObject() {
-        return this.classToObject;
     }
     
     public Connection connection() {

@@ -82,21 +82,20 @@ public class DbObjectTester {
         Assert.assertEquals(1940L, obj.getLong("birth"));
     }
     
-    private static class TestClass1 {
+    public static class TestClass1 {
         public String s = "a string";
         public long value = 12;
     }
     
-    private static class TestClass2 extends TestClass1 {
+    public static class TestClass2 extends TestClass1 {
         public String sub = "Sub!";
     }
     
     @Nano
     public static void testSetObjectFields1() {
         // Simplest possible test for setting object fields.
-        TestClass1 object = new TestClass1();
         DbObject t = new DbObject.Builder().addString("s", "Hello there!").build();
-        t.toJavaObject(object, new KvToObjectImp());
+        TestClass1 object = t.toJavaObject(TestClass1.class);
         
         Assert.assertEquals("Hello there!", object.s);
     }
@@ -104,10 +103,9 @@ public class DbObjectTester {
     @Nano
     public static void testSetObjectFields2() {
         // Tests multiple fields and field types.
-        TestClass1 object = new TestClass1();
         DbObject t = new DbObject.Builder()
             .addString("s", "Hello there!").addLong("value", 222L).addString("notMatching", "Not").build();
-        t.toJavaObject(object, new KvToObjectImp());
+        TestClass1 object = t.toJavaObject(TestClass1.class);
         
         Assert.assertEquals("Hello there!", object.s);
         Assert.assertEquals(222L, object.value);
@@ -116,20 +114,19 @@ public class DbObjectTester {
     @Nano
     public static void testSetObjectFields3() {
         // Tests inheritance.
-        TestClass2 object = new TestClass2();
         DbObject t = new DbObject.Builder()
             .addString("s", "Hello there!")
             .addLong("value", 222L)
             .addString("notMatching", "Not")
             .addString("sub", "Nautilus").build();
-        t.toJavaObject(object, new KvToObjectImp());
+        TestClass2 object = t.toJavaObject(TestClass2.class);
         
         Assert.assertEquals("Hello there!", object.s);
         Assert.assertEquals(222L, object.value);
         Assert.assertEquals("Nautilus", object.sub);
     }
     
-    private static class TestClass3 {
+    public static class TestClass3 {
         @SuppressWarnings("unused")
         public String name = "T3";
         public long[] ids = new long[]{123, 444};
@@ -147,7 +144,7 @@ public class DbObjectTester {
             .build();
         
         Assert.assertArrayEquals(new long[]{123, 444}, object.ids);
-        t.toJavaObject(object, new KvToObjectImp());
+        object = t.toJavaObject(TestClass3.class);
         Assert.assertArrayEquals(new long[]{1, 2, 44}, object.ids);
     }
     
@@ -175,13 +172,12 @@ public class DbObjectTester {
         Assert.assertFalse(to.has("s", 's'));       // left out (bergdb 020-04's (c))
         Assert.assertEquals('z', to.getType("s"));
         Assert.assertNull(to.getString("s"));
-        Assert.assertEquals("a string", to.toJavaObject(TestClass1.class, 
-                new KvToObjectImp()).s);       // the constructor's value
+        Assert.assertEquals("a string", to.toJavaObject(TestClass1.class).s);       // the constructor's value
     }
     
-    private static class ByteArrayClass {
+    public static class ByteArrayClass {
         @SuppressWarnings("unused")
-        byte[] field;
+        public byte[] field;
     }
     
     @Nano
@@ -217,8 +213,8 @@ public class DbObjectTester {
         Assert.assertNull(array);
     }
     
-    private static class BooleanClass {
-        boolean field;
+    public static class BooleanClass {
+        public boolean field;
         public BooleanClass() {}
     }
     
@@ -240,13 +236,13 @@ public class DbObjectTester {
         Assert.assertTrue(dbo.has("field", 'n'));
         Assert.assertEquals('n', dbo.getType("field"));
         Assert.assertEquals(false, dbo.getBoolean("field"));
-        BooleanClass b = dbo.toJavaObject(BooleanClass.class, new KvToObjectImp());
+        BooleanClass b = dbo.toJavaObject(BooleanClass.class);
         Assert.assertEquals(false, b.field);
     }
     
     
-    private static class IntClass {
-        int field;
+    public static class IntClass {
+        public int field;
     }
     
     @Nano
@@ -268,9 +264,7 @@ public class DbObjectTester {
         Assert.assertEquals('l', to.getType("field"));      // one integer (bergdb 020-07)
         Assert.assertEquals(-1234567890, to.getInt("field"));
         
-        IntClass o2 = new IntClass();
-        o2.field = 2;
-        to.toJavaObject(o2, new KvToObjectImp());
+        IntClass o2 = to.toJavaObject(IntClass.class);
         Assert.assertEquals(-1234567890, o2.field);
     }
     
@@ -356,8 +350,7 @@ public class DbObjectTester {
         m1.obj.nested.myString = "Alea iacta est";
         
         DbObject to = DbObject.toDbObject(m1);
-        MultiLevelClass m2 = new MultiLevelClass();
-        to.toJavaObject(m2, new KvToObjectImp());
+        MultiLevelClass m2 = to.toJavaObject(MultiLevelClass.class);
         
         Assert.assertEquals(100, m2.myLong);
         Assert.assertEquals(200, m2.obj.myInt);
@@ -376,8 +369,7 @@ public class DbObjectTester {
         m1.obj.nested = null;
         
         DbObject dbo = DbObject.toDbObject(m1);
-        MultiLevelClass m2 = new MultiLevelClass();
-        dbo.toJavaObject(m2, new KvToObjectImp());
+        MultiLevelClass m2 = dbo.toJavaObject(MultiLevelClass.class);
         
         Assert.assertEquals(101, m2.myLong);
         Assert.assertEquals(202, m2.obj.myInt);
@@ -385,9 +377,9 @@ public class DbObjectTester {
         Assert.assertEquals(11, m2.obj.nested.myInt);
     }
     
-    private static class IntArrayClass {
+    public static class IntArrayClass {
         @SuppressWarnings("unused")
-        int[] ints;
+        public int[] ints;
     }
     
     @Nano
@@ -396,7 +388,7 @@ public class DbObjectTester {
         object.ints = new int[]{-1, 1234, Integer.MAX_VALUE};
         DbObject d = DbObject.toDbObject(object);
         Assert.assertEquals('a', d.getType("ints"));
-        int[] ints = d.getArray("ints").toJavaObject(int[].class, new KvToObjectImp());
+        int[] ints = d.getArray("ints").toIntArray();
         Assert.assertEquals(3, ints.length);
         Assert.assertEquals(-1, ints[0]);
         Assert.assertEquals(1234, ints[1]);
@@ -409,7 +401,7 @@ public class DbObjectTester {
         object.ints = new int[0];
         DbObject d = DbObject.toDbObject(object);
         Assert.assertTrue(d.has("ints", 'a'));
-        int[] ints = (int[]) d.getArray("ints").toJavaObject(int[].class, new KvToObjectImp());
+        int[] ints = d.getArray("ints").toIntArray();
         Assert.assertEquals(0, ints.length);
     }
     
@@ -424,12 +416,12 @@ public class DbObjectTester {
     
     
     
-    private static class LongArrayClass {
-        long[] array;
+    public static class LongArrayClass {
+        public long[] array;
     }
     
-    private static class DoubleArrayClass {
-        double[] array;
+    public static class DoubleArrayClass {
+        public double[] array;
     }
     
     @Nano
@@ -470,8 +462,7 @@ public class DbObjectTester {
         object.array = new long[]{-1, 1234, Long.MAX_VALUE};
         DbObject dbo = DbObject.toDbObject(object);
         
-        LongArrayClass object2 = new LongArrayClass();
-        dbo.toJavaObject(object2, new KvToObjectImp());
+        LongArrayClass object2 = dbo.toJavaObject(LongArrayClass.class);
         
         Assert.assertArrayEquals(object.array, object2.array);
     }
@@ -518,22 +509,22 @@ public class DbObjectTester {
         object.array = new double[]{1.2, -123.4};
         DbObject dbo = DbObject.toDbObject(object);
         
-        DoubleArrayClass object2 = dbo.toJavaObject(DoubleArrayClass.class, new KvToObjectImp());
+        DoubleArrayClass object2 = dbo.toJavaObject(DoubleArrayClass.class);
         Assert.assertArrayEquals(object.array, object2.array);
     }
     
     /**
      * Class with fields that are arrays of primitive types.
      */
-    private static class PrimitiveArrays {
-        boolean[] booleans;
-        byte[] bytes;
-        char[] chars;
-        short[] shorts;
-        int[] ints;
-        long[] longs;
-        float[] floats;
-        double[] doubles;
+    public static class PrimitiveArrays {
+        public boolean[] booleans;
+        public byte[] bytes;
+        public char[] chars;
+        public short[] shorts;
+        public int[] ints;
+        public long[] longs;
+        public float[] floats;
+        public double[] doubles;
         
         public PrimitiveArrays() {}
         
@@ -567,7 +558,7 @@ public class DbObjectTester {
         p0.setThem1();
         
         DbObject dbo = DbObject.toDbObject(p0);
-        PrimitiveArrays p1 = dbo.toJavaObject(PrimitiveArrays.class, new KvToObjectImp());
+        PrimitiveArrays p1 = dbo.toJavaObject(PrimitiveArrays.class);
         
         Assert.assertArrayEquals(p0.booleans, p1.booleans);
         Assert.assertArrayEquals(p0.bytes, p1.bytes);
@@ -585,7 +576,7 @@ public class DbObjectTester {
         p0.setThem2();
         
         DbObject dbo = DbObject.toDbObject(p0);
-        PrimitiveArrays p1 = dbo.toJavaObject(PrimitiveArrays.class, new KvToObjectImp());
+        PrimitiveArrays p1 = dbo.toJavaObject(PrimitiveArrays.class);
         
         Assert.assertArrayEquals(p0.booleans, p1.booleans);
         Assert.assertArrayEquals(p0.bytes, p1.bytes);
@@ -606,35 +597,27 @@ public class DbObjectTester {
         
         DbObject dbo = DbObject.toDbObject(p0);
         Assert.assertEquals(0, dbo.getFieldCount());
-        PrimitiveArrays p1 = new PrimitiveArrays();
-        p1.setThem1();
-        dbo.toJavaObject(p1, new KvToObjectImp());
+        PrimitiveArrays p1 = dbo.toJavaObject(PrimitiveArrays.class);
         
-        PrimitiveArrays p2 = new PrimitiveArrays();
-        p2.setThem1();
-        Assert.assertArrayEquals(p2.booleans, p1.booleans);
-        Assert.assertArrayEquals(p2.bytes, p1.bytes);
-        Assert.assertArrayEquals(p2.chars, p1.chars);
-        Assert.assertArrayEquals(p2.shorts, p1.shorts);
-        Assert.assertArrayEquals(p2.ints, p1.ints);
-        Assert.assertArrayEquals(p2.longs, p1.longs);
-        Assert.assertArrayEquals(p2.floats, p1.floats);
-        Assert.assertArrayEquals(p2.doubles, p1.doubles);
+        // The constructor's values: null (bergdb 020-09, section 5.3).
+        Assert.assertTrue(p1.booleans == null && p1.bytes == null && p1.chars == null
+                && p1.shorts == null && p1.ints == null && p1.longs == null 
+                && p1.floats == null && p1.doubles == null);
     }
     
     /**
      * String, String[], String[][], String[][][] fields this class.
      */
     @SuppressWarnings("unused")
-    private static class Strings {
-        String s0a;
-        String s0b;
-        String[] s1a;
-        String[] s1b;
-        String[] s1c;
-        String[][] s2a;
-        String[][] s2b;
-        String[][] s2c;
+    public static class Strings {
+        public String s0a;
+        public String s0b;
+        public String[] s1a;
+        public String[] s1b;
+        public String[] s1c;
+        public String[][] s2a;
+        public String[][] s2b;
+        public String[][] s2c;
         
         public Strings() {}
         
@@ -688,7 +671,7 @@ public class DbObjectTester {
         s0.setThem2();
         
         DbObject dbo = DbObject.toDbObject(s0);
-        Strings s1 = (Strings) dbo.toJavaObject(Strings.class, new KvToObjectImp());
+        Strings s1 = (Strings) dbo.toJavaObject(Strings.class);
         
         Assert.assertEquals(s0.s0a, s1.s0a);
         Assert.assertNull(s1.s0b);
@@ -707,8 +690,7 @@ public class DbObjectTester {
         
         // Stored to bytes, lets try to get it back to a String[].
         DbObject dbo2 = new DbObject(bytes);
-        StringArrayClass obj2 = (StringArrayClass) dbo2.toJavaObject(
-                StringArrayClass.class, new KvToObjectImp());
+        StringArrayClass obj2 = (StringArrayClass) dbo2.toJavaObject(StringArrayClass.class);
         String[] myStrings2 = obj2.strings;
         
         // Assert
@@ -727,10 +709,10 @@ public class DbObjectTester {
         assertNullElementRefused(obj1, "'strings[0]'");
     }
     
-    private static class IntArray5D implements Serializable {
+    public static class IntArray5D implements Serializable {
         private static final long serialVersionUID = 1L;
         
-        int[][][][][] array;
+        public int[][][][][] array;
         
         public IntArray5D() {}
         
@@ -750,18 +732,18 @@ public class DbObjectTester {
         obj0.array[0][0][0] = new int[0][];
         
         DbObject dbo = DbObject.toDbObject(obj0);
-        IntArray5D obj1 = dbo.toJavaObject(IntArray5D.class, new KvToObjectImp());
+        IntArray5D obj1 = dbo.toJavaObject(IntArray5D.class);
         
         byte[] bytes0 = serialize(obj0);
         byte[] bytes1 = serialize(obj1);
         Assert.assertArrayEquals(bytes0, bytes1);
     }
     
-    private static class Customer implements Serializable {
+    public static class Customer implements Serializable {
         private static final long serialVersionUID = 1L;
         
-        String name;
-        int id;
+        public String name;
+        public int id;
         
         public Customer() {}
         public Customer(int id, String name) {
@@ -773,10 +755,10 @@ public class DbObjectTester {
         }
     }
     
-    private static class CustomerArray implements Serializable {
+    public static class CustomerArray implements Serializable {
         private static final long serialVersionUID = 1L;
         
-        Customer[][][][] array;
+        public Customer[][][][] array;
         
         public CustomerArray() {}
         
@@ -803,7 +785,7 @@ public class DbObjectTester {
         obj0.array[0][1] = new Customer[0][];
         
         DbObject dbo = DbObject.toDbObject(obj0);
-        CustomerArray obj1 = dbo.toJavaObject(CustomerArray.class, new KvToObjectImp());
+        CustomerArray obj1 = dbo.toJavaObject(CustomerArray.class);
         byte[] bytes0 = serialize(obj0);
         byte[] bytes1 = serialize(obj1);
         Assert.assertArrayEquals(bytes0, bytes1);
@@ -821,7 +803,7 @@ public class DbObjectTester {
         s0.setThem2();
         
         DbObject dbo = DbObject.toDbObject(s0);
-        Strings s1 = dbo.toJavaObject(Strings.class, new KvToObjectImp());
+        Strings s1 = dbo.toJavaObject(Strings.class);
         
         Assert.assertNull(s1.s2b);
         Assert.assertEquals(3, s1.s2c.length);
@@ -833,14 +815,14 @@ public class DbObjectTester {
         Assert.assertEquals("", s1.s2a[0][1]);
     }
     
-    private static class Circular0 {
-        Circular1 c;
+    public static class Circular0 {
+        public Circular1 c;
         public Circular0() {}
     }
     
-    private static class Circular1 {
+    public static class Circular1 {
         @SuppressWarnings("unused")
-        Circular0 c;
+        public Circular0 c;
         public Circular1() {}
     }
     
@@ -865,14 +847,14 @@ public class DbObjectTester {
         Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("at c.c is also at the top"));
     }
     
-    private static class SuperOne {
-        int a;
-        int b;
+    public static class SuperOne {
+        public int a;
+        public int b;
         public SuperOne() {}
     }
     
-    private static class MyClass extends SuperOne {
-        int c;
+    public static class MyClass extends SuperOne {
+        public int c;
         public MyClass() {
             super();
         }
@@ -886,28 +868,50 @@ public class DbObjectTester {
         obj0.c = 3;
         
         DbObject dbo = DbObject.toDbObject(obj0);
-        MyClass obj1 = dbo.toJavaObject(MyClass.class, new KvToObjectImp());
+        MyClass obj1 = dbo.toJavaObject(MyClass.class);
         
         Assert.assertEquals(1, obj1.a);
         Assert.assertEquals(2, obj1.b);
         Assert.assertEquals(3, obj1.c);
     }
     
-    private static class MyClass2a {
-        long a;
+    public static class MyClass2a {
+        public long a;
     }
     
+    public static class PrivateConstructor {
+        public long a;
+        private PrivateConstructor() {}
+        static PrivateConstructor make() {
+            return new PrivateConstructor();
+        }
+    }
+    
+    /**
+     * A class with a private no-argument constructor is not a Data Object (bergdb 020-09,
+     * V2 and K2): it was made by setAccessible; a put and a get are refused.
+     */
     @Nano
     public static void testPrivateConstructor() {
-        MyClass2a obj0 = new MyClass2a();
+        PrivateConstructor obj0 = PrivateConstructor.make();
         obj0.a = 123;
-        DbObject dbo = DbObject.toDbObject(obj0);
-        MyClass2a obj1 = dbo.toJavaObject(MyClass2a.class, new KvToObjectImp());
-        Assert.assertEquals(123, obj1.a);
+        try {
+            DbObject.toDbObject(obj0);
+            throw new AssertionError("no exception");
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("no public no-argument"));
+        }
+        DbObject dbo = new DbObject.Builder().addLong("a", 123).build();
+        try {
+            dbo.toJavaObject(PrivateConstructor.class);
+            throw new AssertionError("no exception");
+        } catch (bergdb.pub.ObjectCreationException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("no public no-argument"));
+        }
     }
     
-    private static class MyClass2b {
-        long a;
+    public static class MyClass2b {
+        public long a;
     }
     
     @Nano
@@ -915,7 +919,7 @@ public class DbObjectTester {
         MyClass2a obj0 = new MyClass2a();
         obj0.a = -111222333444L;
         DbObject dbo = DbObject.toDbObject(obj0);
-        MyClass2b obj1 = dbo.toJavaObject(MyClass2b.class, new KvToObjectImp());
+        MyClass2b obj1 = dbo.toJavaObject(MyClass2b.class);
         Assert.assertEquals(obj0.a, obj1.a);
     }
     
@@ -934,14 +938,14 @@ public class DbObjectTester {
         TestClass1 obj0 = new TestClass1();
         obj0.s = null;
         DbObject dbo = DbObject.toDbObject(obj0);
-        TestClass1 obj1 = dbo.toJavaObject(TestClass1.class, new KvToObjectImp());
+        TestClass1 obj1 = dbo.toJavaObject(TestClass1.class);
         
         // Left out, so the constructor's value (bergdb 020-04's (c), 020-09, section 4.3).
         Assert.assertEquals("a string", obj1.s);
     }
     
-    private static class A {
-        TestClass1 field = new TestClass1();
+    public static class A {
+        public TestClass1 field = new TestClass1();
     }
     
     @Nano
@@ -949,7 +953,7 @@ public class DbObjectTester {
         A obj0 = new A();
         obj0.field = null;
         DbObject dbo = DbObject.toDbObject(obj0);
-        A obj1 = dbo.toJavaObject(A.class, new KvToObjectImp());
+        A obj1 = dbo.toJavaObject(A.class);
         
         // Left out, so the constructor's value (bergdb 020-04's (c), 020-09, section 4.3).
         Assert.assertEquals("a string", obj1.field.s);
@@ -966,7 +970,7 @@ public class DbObjectTester {
         assertNullElementRefused(obj1, "'array[2]'");       // bergdb 020-04
         obj1.array[2] = "3";
         DbObject dbo = DbObject.toDbObject(obj1);
-        TestClass4 obj2 = dbo.toJavaObject(TestClass4.class, new KvToObjectImp());
+        TestClass4 obj2 = dbo.toJavaObject(TestClass4.class);
         
         Assert.assertEquals(4, obj2.array.length);
         Assert.assertEquals("1", obj2.array[0]);
@@ -978,7 +982,7 @@ public class DbObjectTester {
         String[] myStrings1 = new String[]{"first", "second"};
         DbObject dbo = DbObject.toDbObject(myStrings1);
         Assert.assertTrue("assert dbo not null", dbo != null);        
-        String[] myStrings2 = dbo.toJavaObject(String[].class, new KvToObjectImp());
+        String[] myStrings2 = dbo.toJavaObject(String[].class);
         Assert.assertEquals(2, myStrings2.length);
         Assert.assertEquals("first", myStrings2[0]);
         Assert.assertEquals("second", myStrings2[1]);
@@ -1002,7 +1006,7 @@ public class DbObjectTester {
         
         DbObject dbo = DbObject.toDbObject(c);
         
-        Customer[] c2 = dbo.toJavaObject(Customer[].class, new KvToObjectImp());
+        Customer[] c2 = dbo.toJavaObject(Customer[].class);
         Assert.assertEquals(2, c2.length);
         Assert.assertEquals(c[0].id, c2[0].id);
         Assert.assertEquals(c[0].name, c2[0].name);
@@ -1016,7 +1020,7 @@ public class DbObjectTester {
         
         int[] ints0 = new int[]{1, 2, -100, Integer.MAX_VALUE};
         DbObject dbo = DbObject.toDbObject(ints0);
-        int[] ints1 = dbo.toJavaObject(int[].class, new KvToObjectImp());
+        int[] ints1 = dbo.toJavaObject(int[].class);
         Assert.assertArrayEquals(ints0, ints1);
     }
     
@@ -1033,7 +1037,7 @@ public class DbObjectTester {
         ints0[1] = new int[] {7};
         
         DbObject dbo = DbObject.toDbObject(ints0);
-        int[][] ints1 = dbo.toJavaObject(int[][].class, new KvToObjectImp());
+        int[][] ints1 = dbo.toJavaObject(int[][].class);
         
         Assert.assertEquals(ints0.length, ints1.length);
         for (int i = 0; i < ints0.length; i++) {
@@ -1044,7 +1048,7 @@ public class DbObjectTester {
     @Nano
     public static void testPrimitive0() {
         DbObject dbo1 = DbObject.toDbObject(1234);
-        Integer theInt = dbo1.toJavaObject(Integer.class, new KvToObjectImp());
+        Integer theInt = dbo1.toJavaObject(Integer.class);
         Assert.assertEquals(1234, theInt.intValue());
     }
     
@@ -1052,28 +1056,28 @@ public class DbObjectTester {
     public static void testPrimitive1() {
         // Same as previous, but uses int.class instead of Integer.class.
         DbObject dbo1 = DbObject.toDbObject(1234);
-        int theInt = dbo1.toJavaObject(int.class, new KvToObjectImp());
+        int theInt = dbo1.toJavaObject(int.class);
         Assert.assertEquals(1234, theInt);
     }
     
     @Nano
     public static void testPrimitive2() {
         DbObject dbo1 = DbObject.toDbObject(true);
-        boolean result = dbo1.toJavaObject(boolean.class, new KvToObjectImp());
+        boolean result = dbo1.toJavaObject(boolean.class);
         Assert.assertEquals(true, result);
     }
     
     @Nano
     public static void testPrimitive3() {
         DbObject dbo1 = DbObject.toDbObject(123.45);
-        double result = dbo1.toJavaObject(double.class, new KvToObjectImp());
+        double result = dbo1.toJavaObject(double.class);
         Assert.assertEquals(123.45, result);
     }
     
     @Nano
     public static void testPrimitive4() {
         DbObject dbo1 = DbObject.toDbObject(Double.NaN);
-        double result = dbo1.toJavaObject(double.class, new KvToObjectImp());
+        double result = dbo1.toJavaObject(double.class);
         Assert.assertTrue(Double.isNaN(result));
     }
     
@@ -1131,44 +1135,49 @@ public class DbObjectTester {
     
     // ---- bergdb 005-22: a value that does not fit its Java field ----
     
-    private static class NarrowClass {
-        int i;
-        short s;
-        byte b;
-        char c;
-        long l;
-        float f;
-        int[] ints;
+    public static class NarrowClass {
+        public int i;
+        public short s;
+        public byte b;
+        public char c;
+        public long l;
+        public float f;
+        public int[] ints;
     }
     
     private static NarrowClass narrow(String name, DbValue value) {
         DbObject dbo = new DbObject.Builder().addDbValue(name, value).build();
-        return dbo.toJavaObject(NarrowClass.class, new KvToObjectImp());
+        return dbo.toJavaObject(NarrowClass.class);
     }
     
-    private static void assertDoesNotFit(String name, DbValue value) {
-        try {
-            narrow(name, value);
-            throw new AssertionError("no exception for field " + name + ", value " + value);
-        } catch (bergdb.pub.DataFormatException e) {
-            Assert.assertTrue(e.getMessage(), e.getMessage().contains("'" + name + "'"));
+    private static DbArray longs(long... values) {
+        DbArray.Builder b = new DbArray.Builder();
+        for (long v : values) {
+            b.add(new DbLong(v));
         }
+        return b.build();
     }
     
+    /**
+     * A value that does not fit its field: DataFormatException since 005-22, clamped since
+     * 020-09, section 5.4 (best effort, Frans, 2026-11-08, 21:47): the nearest value, integers
+     * saturated, a double beyond a float's range an infinity.
+     */
     @Nano
     public static void testNarrowingOutOfRange() {
-        assertDoesNotFit("i", new DbLong(3000L * 1000 * 1000));
-        assertDoesNotFit("i", new DbLong(Integer.MIN_VALUE - 1L));
-        assertDoesNotFit("s", new DbLong(444555));
-        assertDoesNotFit("s", new DbLong(-32769));
-        assertDoesNotFit("b", new DbLong(128));
-        assertDoesNotFit("c", new DbLong(-1));
-        assertDoesNotFit("c", new DbLong(65536));
-        assertDoesNotFit("i", new DbDouble(1e10));
-        assertDoesNotFit("l", new DbDouble(Double.NaN));
-        assertDoesNotFit("l", new DbDouble(1e19));
-        assertDoesNotFit("f", new DbDouble(1e300));
-        assertDoesNotFit("ints", DbValue.toDbValue(new long[] {1, 1L << 40}));
+        Assert.assertEquals(Integer.MAX_VALUE, narrow("i", new DbLong(3000L * 1000 * 1000)).i);
+        Assert.assertEquals(Integer.MIN_VALUE, narrow("i", new DbLong(Integer.MIN_VALUE - 1L)).i);
+        Assert.assertEquals(Short.MAX_VALUE, narrow("s", new DbLong(444555)).s);
+        Assert.assertEquals(Short.MIN_VALUE, narrow("s", new DbLong(-32769)).s);
+        Assert.assertEquals(Byte.MAX_VALUE, narrow("b", new DbLong(128)).b);
+        Assert.assertEquals(0, narrow("c", new DbLong(-1)).c);
+        Assert.assertEquals(65535, narrow("c", new DbLong(65536)).c);
+        Assert.assertEquals(Integer.MAX_VALUE, narrow("i", new DbDouble(1e10)).i);
+        Assert.assertEquals(0L, narrow("l", new DbDouble(Double.NaN)).l);
+        Assert.assertEquals(Long.MAX_VALUE, narrow("l", new DbDouble(1e19)).l);
+        Assert.assertTrue(Float.isInfinite(narrow("f", new DbDouble(1e300)).f));
+        Assert.assertArrayEquals(new int[] {1, Integer.MAX_VALUE}, 
+                narrow("ints", longs(1, 1L << 40)).ints);
     }
     
     @Nano
@@ -1180,16 +1189,15 @@ public class DbObjectTester {
         Assert.assertEquals(2, narrow("i", new DbDouble(2.7)).i);
         Assert.assertEquals(1e30f, narrow("f", new DbDouble(1e30)).f);
         Assert.assertTrue(Float.isInfinite(narrow("f", new DbDouble(Double.POSITIVE_INFINITY)).f));
-        Assert.assertArrayEquals(new int[] {1, -5}, 
-                narrow("ints", DbValue.toDbValue(new long[] {1, -5})).ints);
+        Assert.assertArrayEquals(new int[] {1, -5}, narrow("ints", longs(1, -5)).ints);
     }
     
     // ---- bergdb 005-23: cyclic and deeply nested objects ----
     
-    private static class Link {
-        int v;
-        Link next;
-        Link[] more;
+    public static class Link {
+        public int v;
+        public Link next;
+        public Link[] more;
     }
     
     private static Link list(int length) {
@@ -1230,7 +1238,7 @@ public class DbObjectTester {
         Link d = new Link();
         d.next = shared;
         d.more = new Link[] {shared, shared};
-        Link back = DbObject.toDbObject(d).toJavaObject(Link.class, new KvToObjectImp());
+        Link back = DbObject.toDbObject(d).toJavaObject(Link.class);
         Assert.assertEquals(2, back.more.length);
         
         DbObject.toDbObject(list(3));   // the thread's path is empty again
@@ -1250,7 +1258,7 @@ public class DbObjectTester {
     @Nano
     public static void testDeepAtLimit() {
         Link back = DbObject.toDbObject(list(ObjectFormat.MAX_LEVELS))
-                .toJavaObject(Link.class, new KvToObjectImp());
+                .toJavaObject(Link.class);
         int n = 0;
         for (Link l = back; l != null; l = l.next) {
             n++;
@@ -1266,13 +1274,13 @@ public class DbObjectTester {
     
     // ---- bergdb 005-26, 021-04: strings with lone surrogates ----
     
-    private static class StringsClass {
-        String[] names;
-        String one;
-        int after;
-        Object any;
-        StringsClass inner;
-        char[] chars;
+    public static class StringsClass {
+        public String[] names;
+        public String one;
+        public int after;
+        public String[][] any;      // an Object until 020-09 (V9: no Object field)
+        public StringsClass inner;
+        public char[] chars;
     }
     
     /** toDbObject(o) refuses with IllegalArgumentException whose message has 'where'. */
@@ -1303,16 +1311,12 @@ public class DbObjectTester {
         assertRefused(o, "'one'");
         
         o = new StringsClass();
-        o.any = "\uDC00z";                          // a String in an Object field
-        assertRefused(o, "'any'");
-        
-        o = new StringsClass();
         o.inner = new StringsClass();
         o.inner.names = new String[] {"\uD83D\uDE00", "\uD83D"};
         assertRefused(o, "'inner.names[1]'");
         
         o = new StringsClass();
-        o.any = new Object[] {"ok", new String[] {"z", "\uDE00"}};
+        o.any = new String[][] {{"ok"}, {"z", "\uDE00"}};
         assertRefused(o, "'any[1][1]'");
         
         assertRefused(new String[] {"\uD800"}, "'[0]'");      // an array put as an object
@@ -1335,8 +1339,7 @@ public class DbObjectTester {
         o.one = "a\uD83D\uDE00b";
         o.after = 42;
         o.chars = new char[] {'a', '\uD800', 'b', '\uDC00'};
-        StringsClass back = DbObject.toDbObject(o).toJavaObject(StringsClass.class, 
-                new KvToObjectImp());
+        StringsClass back = DbObject.toDbObject(o).toJavaObject(StringsClass.class);
         Assert.assertArrayEquals(new String[] {"y", "\uD83D\uDE00"}, back.names);
         Assert.assertEquals("a\uD83D\uDE00b", back.one);
         Assert.assertEquals(42, back.after);
@@ -1536,7 +1539,7 @@ public class DbObjectTester {
         Assert.assertEquals(3, dbo.getInt("n"));
         Assert.assertArrayEquals(DbObject.toDbObject(new OnlyN()).getBytes(), dbo.getBytes());
 
-        Nulls back = dbo.toJavaObject(Nulls.class, new KvToObjectImp());
+        Nulls back = dbo.toJavaObject(Nulls.class);
         Assert.assertNull(back.s);
         Assert.assertNull(back.bytes);
         Assert.assertNull(back.strings);

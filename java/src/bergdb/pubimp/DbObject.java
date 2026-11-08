@@ -1,16 +1,11 @@
 package bergdb.pubimp;
 
-import java.lang.reflect.Array;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import bergdb.common.Bug;
 import bergdb.common.StringUtil;
-import bergdb.pub.DataFormatException;
 import bergdb.pub.util.BadFormatException;
 
 /**
@@ -62,8 +57,9 @@ import bergdb.pub.util.BadFormatException;
  * when it is made from bytes, and read by lookups. getBytes() gives the stored bytes, and
  * new DbObject(bytes) reads them back.</p>
  * 
- * <p>A DbObject can be created from a Java Object with the method DbObject.toDbObject(Object javaObject).
- * The method toJavaObject() converts a DbObject to a Java object.</p>
+ * <p>A DbObject can be created from a Data Object with the method toDbObject(), and
+ * toJavaObject() converts a DbObject to a Data Object: bergdb 020-09's rules, layer 2 of
+ * bergdb 020-02, section 5.1b, over this class, layer 1.</p>
  * 
  * @author Frans Lundberg
  */
@@ -94,8 +90,6 @@ public class DbObject extends DbValue {
     public static final char ARRAY = 'a';
     public static final char OBJECT = 'o';
     
-    private static final String WRAPPED_ARRAY_FIELD_NAME = "array";
-    private static final String WRAPPED_PRIMITIVE_FIELD_NAME = "p";   // p for primitive.
     
     private final byte[] bytes;     // the stored value, header first; or a parent's bytes
     private final int start;        // the object's type byte in 'bytes'
@@ -241,289 +235,56 @@ public class DbObject extends DbValue {
         return b.length > ObjectFormat.MAX_NAME ? null : b;
     }
     
-    private static final int NOT_ELIGIBLE = Modifier.FINAL | Modifier.STATIC | Modifier.TRANSIENT;
-    
     /**
-     * Returns a list of fields that are eligible to be read or set using methods
-     * toJavaObject() and toDbObject().
-     * The fields are set to accessible (f.setAccessible(true)).
-     */
-    private static ArrayList<java.lang.reflect.Field> getEligibleFields(Class<?> c) {
-        ArrayList<Field> list = new ArrayList<Field>();
-        
-        while (!c.equals(Object.class)) {
-            Field[] fields = c.getDeclaredFields();
-            
-            for (Field f : fields) {
-                int m = f.getModifiers();
-                if ((m & NOT_ELIGIBLE) == 0  && !f.isSynthetic()) {
-                    f.setAccessible(true);
-                    list.add(f);
-                }
-            }
-            c = c.getSuperclass();
-        }
-        return list;
-    }
-    
-    /**
-     * Creates a DbObject given an ordinary Java object as the source.
-     * Copies values of fields that are not transient, not static, and not synthetic (added by 
-     * compiler) to the newly created DbObject that is returned. A null field is left out
-     * (bergdb 020-04's (c), Frans, 2026-11-08): the object has no field of its name.
+     * Converts a Data Object to a DbObject, exactly (bergdb 020-09, section 4): a Data Object
+     * class stores its public, non-static, non-transient fields, each by its declared type; a
+     * null field is left out (absent); an array put at the top is wrapped in the field
+     * "array", a primitive or a wrapper in the field "p". A DbObject is returned as it is.
      *
-     * @throws IllegalArgumentException  If 'object' is null, or an array in it has a null
-     *      element (bergdb 020-04, section 2.1); if a String in the object, at any depth, or a
-     *      field's name, has a lone surrogate (see "Strings" above; bergdb 021-04); if a
-     *      field's name has more than 255 bytes in UTF-8. The message names the field, and an
-     *      array element's index. If the object has a reference cycle (bergdb 005-23), or is
-     *      nested deeper than 16 levels of objects and arrays (bergdb 020-07, R14).
+     * @throws IllegalArgumentException  If 'object' is null, or is not a Data Object, or a
+     *      class it reaches is not (bergdb 020-09, section 3); if an array in it has a null
+     *      element (bergdb 020-04, section 2.1); if a value's class is not its field's type;
+     *      if a String in the object, at any depth, has a lone surrogate (see "Strings" above;
+     *      bergdb 021-04); if the object has a reference cycle (bergdb 005-23), or is nested
+     *      deeper than 16 levels of objects and arrays (bergdb 020-07, R14). The message
+     *      names the class or the place: the field, and an array element's index.
      */
-    public static DbObject toDbObject(Object object) {        
-        if (object == null) {
-            throw new IllegalArgumentException("object == null not allowed: BergDB stores no "
-                    + "null (bergdb 020-04, section 2.1)");
-        }
-        
-        // 2026-10-21 (bergdb 005-23): a cycle, or nesting too deep, is refused with the field
-        // path; the recursion ended in a StackOverflowError. An array that is put is wrapped
-        // in an object, the level above it, with no step of its own in the path.
-        final Path path = PATH.get();
-        boolean wrapper = object.getClass().isArray() || DbValue.isPrimitiveOrWrapper(
-                object.getClass());
-        path.enter(wrapper ? null : object);
-        try {
-            return toDbObjectOnPath(object, path);
-        } finally {
-            path.leave();
-        }
-    }
-    
-    private static final ThreadLocal<Path> PATH = new ThreadLocal<Path>() {
-        protected Path initialValue() {
-            return new Path();
-        }
-    };
-    
-    /** The path of toDbObject() on this thread. */
-    static Path path() {
-        return PATH.get();
+    public static DbObject toDbObject(Object object) {
+        return DataObjects.toDbObject(object);
     }
     
     /**
-     * The objects and arrays toDbObject() is converting on this thread, outermost first: one
-     * a level, the top object level 1 (bergdb 020-07, R14), each with the step taken from it,
-     * a field's name or an element's index.
-     */
-    static final class Path {
-        private final ArrayList<Object> objects = new ArrayList<Object>();  // null: a wrapper
-        private final ArrayList<String> names = new ArrayList<String>();     // the step of each
-        private final java.util.IdentityHashMap<Object, Boolean> set = 
-                new java.util.IdentityHashMap<Object, Boolean>();
-        
-        /**
-         * Enters an object or an array, one level deeper; 'object' null for the object that
-         * wraps an array or a primitive put at the top.
-         * 
-         * @throws IllegalArgumentException  If 'object' is on the path already, a cycle, or
-         *      if the level would be above 16.
-         */
-        void enter(Object object) {
-            if (object != null && set.containsKey(object)) {
-                int first = 0;
-                for (int i = 0; i < objects.size(); i++) {
-                    if (objects.get(i) == object) {
-                        first = i;
-                        break;
-                    }
-                }
-                throw new IllegalArgumentException("The object has a reference cycle: the "
-                        + object.getClass().getName() + " at " + describe(names.size()) 
-                        + " is also at " + describe(first) + ".");
-            }
-            if (objects.size() >= ObjectFormat.MAX_LEVELS) {
-                throw new IllegalArgumentException("The object is nested deeper than " 
-                        + ObjectFormat.MAX_LEVELS + " levels of objects and arrays, at '" 
-                        + describe(names.size()) + "' (bergdb 020-09, section 4.7).");
-            }
-            objects.add(object);
-            if (object != null) {
-                set.put(object, Boolean.TRUE);
-            }
-            names.add("");
-        }
-        
-        void leave() {
-            int last = objects.size() - 1;
-            Object object = objects.remove(last);
-            if (object != null) {
-                set.remove(object);
-            }
-            names.remove(last);
-        }
-        
-        /** Sets the step being taken in the innermost level: a field's name, or "[i]". */
-        void step(String name) {
-            names.set(names.size() - 1, name);
-        }
-        
-        /** The path to the value at level 'depth' + 1 (0: the outermost object). */
-        private String describe(int depth) {
-            if (depth == 0) {
-                return "the top";
-            }
-            StringBuilder b = new StringBuilder();
-            for (int i = 0; i < depth; i++) {
-                if (depth > 12 && i == 5) {
-                    append(b, "(" + (depth - 10) + " more)");
-                    i = depth - 5;
-                }
-                append(b, names.get(i));
-            }
-            return b.toString();
-        }
-        
-        private static void append(StringBuilder b, String step) {
-            if (b.length() > 0 && !step.startsWith("[")) {
-                b.append('.');
-            }
-            b.append(step);
-        }
-    }
-    
-    private static DbObject toDbObjectOnPath(Object object, Path path) {
-        DbObject.Builder b = new DbObject.Builder();
-        Class<?> clazz = object.getClass();
-        
-        if (clazz.isArray()) {
-            // If it is an array, wraps it in a DbObject stored in a field.
-            
-            DbValue array = DbValue.toDbValue(object);
-            if (!(array instanceof DbArray)) {
-                throw new Bug("Unexpected type, expected DbArray, got: " + array.getClass());
-            }
-            b.addArray(WRAPPED_ARRAY_FIELD_NAME, (DbArray) array);            
-        
-        } else if (DbValue.isPrimitiveOrWrapper(clazz)) {
-            // If it is a primitive value, wraps it in a DbObject. Value is stored in a field.  
-            
-            DbValue value = DbValue.toDbValue(object);
-            b.addDbValue(WRAPPED_PRIMITIVE_FIELD_NAME, value);
-            
-        } else {
-            // An ordinary object.
-            
-            ArrayList<Field> fields = getEligibleFields(clazz);
-            for (Field f : fields) {
-                path.step(f.getName());
-                Object fieldValue;
-                try {
-                    fieldValue = f.get(object);
-                } catch (IllegalArgumentException e) {
-                    throw new Bug(e);
-                } catch (IllegalAccessException e) {
-                    throw new Bug("Should not happen, " + e.toString());
-                }
-                if (fieldValue == null) {
-                    continue;       // left out: absent (bergdb 020-04's (c))
-                }
-                // Outside the try (bergdb 005-23): an IllegalArgumentException of a nested
-                // object (a cycle, too deep) is not a Bug.
-                try {
-                    DbValue dbValue = DbValue.toDbValue(fieldValue);
-                    b.addDbValue(f.getName(), dbValue);
-                } catch (PathException e) {
-                    throw e.in(f.getName());        // the field's path (bergdb 021-04)
-                }
-            }
-        
-        }
-        
-        DbObject result = b.build();
-        return result;
-    }
-    
-    /**
-     * Converts this DbObject to a Java object.
+     * Converts this DbObject to an object of the class 'c', best effort (bergdb 020-09,
+     * section 5): each stored field with a matching field of the class is converted to the
+     * field's type, the nearest value where it does not fit, the type's zero where no
+     * sensible conversion exists; a field of the class that is not stored keeps the value its
+     * constructor gives. A primitive class or a wrapper reads the field "p", an array class
+     * the field "array"; null if it is absent.
      * 
-     * @param c     The wanted Class of the Java object that is created and returned.
-     * @param c2o   How to create objects from classes.
+     * @param c     The wanted Class of the Java object that is created and returned: a Data
+     *              Object class, a primitive or a wrapper, or an array class.
      * @return      The newly created object of class c.
+     * @throws bergdb.pub.ObjectCreationException  If 'c', or a class it reaches through its
+     *              fields' types, is not a Data Object class (bergdb 020-09, section 3), or
+     *              a constructor throws (the cause).
      */
-    @SuppressWarnings("unchecked")
-    public <TYPE> TYPE toJavaObject(Class<TYPE> c, ClassToObject c2o) {
-        TYPE result;
-        
-        if (c.isArray()) {
-            DbArray array = this.getArray(WRAPPED_ARRAY_FIELD_NAME);
-            if (array == null) {
-                return (TYPE) null;
-            }
-            
-            Class<?> componentType = c.getComponentType();
-            int size = array.getSize();
-            
-            result = (TYPE) Array.newInstance(componentType, size);
-            
-            int index = 0;
-            for (DbValue dbValue : array) {
-                Array.set(result, index, dbValue.toJavaObject(componentType, c2o));
-                index++;
-            }
-            
-        } else if (DbValue.isPrimitiveOrWrapper(c)) {
-            DbValue value = this.getDbValue(WRAPPED_PRIMITIVE_FIELD_NAME);
-            if (value == null) {
-                return (TYPE) null;
-            }
-            result = value.toJavaObject(c, c2o);
-            
-        } else {            
-            TYPE object1 = c2o.newObject(c);
-            result = (TYPE) toJavaObject(object1, c2o);
-        }
-        
-        return result;
+    public <TYPE> TYPE toJavaObject(Class<TYPE> c) {
+        return DataObjects.toJavaObject(this, c);
     }
     
-    /**
-     * Converts this DbObject to a Java object by setting the fields of 'dest'.
-     * 
-     * @param dest  The object to set the fields of, or null to create a new object.
-     * @param c2o   How to create objects from classes.
-     * @return      Returns 'dest'.
-     */
-    public Object toJavaObject(Object dest, ClassToObject c2o) {        
-        if (dest == null) {
-            throw new IllegalArgumentException("dest == null not allowed");
-        }
-        
-        Class<?> c = dest.getClass();
-        
-        ArrayList<Field> fields = getEligibleFields(c);
-        for (Field f : fields) {
-            final String fieldName = f.getName();
-            DbValue dbValue = getDbValue(fieldName);
-            if (dbValue != null) {
-                Object javaObject;
-                try {
-                    javaObject = dbValue.toJavaObject(f.getType(), c2o);
-                } catch (DataFormatException e) {
-                    // The field's name (2026-10-21, bergdb 005-22).
-                    throw new DataFormatException("Field '" + fieldName + "' of " + c.getName()
-                            + ": " + e.getMessage());
-                }
-                try {
-                    f.set(dest, javaObject);
-                } catch (IllegalArgumentException e) {
-                    throw new Bug(e);
-                } catch (IllegalAccessException e) {
-                    throw new Bug(e);
-                }
-            }
-        }
-        
-        return dest;
+    /** The bytes of the object this one is in, for DataObjects; they must not change. */
+    byte[] bytesInternal() {
+        return bytes;
+    }
+    
+    /** The object's type byte in bytesInternal(). */
+    int startInternal() {
+        return start;
+    }
+    
+    /** The end of the object in bytesInternal(). */
+    int endInternal() {
+        return end;
     }
     
     /**

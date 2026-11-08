@@ -30,14 +30,6 @@ public class DbDouble extends DbValue {
         return ObjectFormat.writeDouble(b, offset, Double.doubleToRawLongBits(value));
     }
     
-    public long toLong() {
-        return (long) value;
-    }
-    
-    public float toFloat() {
-        return (float) value;
-    }
-    
     public double toDouble() {
         return value;
     }
@@ -56,7 +48,7 @@ public class DbDouble extends DbValue {
         byte[] bytes = new byte[20];
         DbDouble d0 = new DbDouble(12.34);
         Assert.assertEquals(4 + 9, d0.write(bytes, 4));
-        DbValue d1 = DbValue.read(bytes, 4);
+        DbDouble d1 = (DbDouble) DbValue.read(bytes, 4);
         
         Assert.assertEquals(d0.toDouble(), d1.toDouble());
         
@@ -64,6 +56,6 @@ public class DbDouble extends DbValue {
         Assert.assertEquals(0x7ff8000000000000L, ObjectFormat.doubleBitsAt(bytes, 0));
         new DbDouble(-0.0).write(bytes, 0);
         Assert.assertEquals(0x8000000000000000L, 
-                Double.doubleToRawLongBits(DbValue.read(bytes, 0).toDouble()));
+                Double.doubleToRawLongBits(((DbDouble) DbValue.read(bytes, 0)).toDouble()));
     }
 }

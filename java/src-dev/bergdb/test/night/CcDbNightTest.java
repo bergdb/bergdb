@@ -252,7 +252,7 @@ public class CcDbNightTest {
     }
     
     public static class Stats {
-        int cards;   // estimated number of cards in database
+        public int cards;   // estimated number of cards in database
         
         public Stats() {}
         

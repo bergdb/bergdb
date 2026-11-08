@@ -8,11 +8,11 @@ public class Pack implements IPack {
     // Pack class in the public Javadoc API description.
     
     private static Class<?>[] classes = new Class<?>[] {
-        BlankConstructorFactory.class,
         ConnectionImp.class,
         CryptoKey.class,
         DatabaseBuilderImp.class,
         DatabaseImp.class,
+        DataObjectsTester.class,
         DbArray.class,
         DbBoolean.class,
         DbByteArray.class,

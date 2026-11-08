@@ -1,7 +1,6 @@
 package bergdb.pubimp;
 
 import java.io.ByteArrayOutputStream;
-import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -76,65 +75,19 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
         return offset;
     }
     
-    @SuppressWarnings("unchecked")
-    public <TYPE> TYPE toJavaObject(Class<TYPE> c, ClassToObject c2o) {
-        if (c == null) {
-            throw new IllegalArgumentException("c == null not allowed");
-        }
-        
-        if (c2o == null) {
-            throw new IllegalArgumentException("c2o == null not allowed");
-        }
-        
-        Object result;
-        
-        if (c.isArray()) {
-            Class<?> componentType = c.getComponentType();
-            assert componentType != null;
-            
-            int size = this.getSize();
-            Object array = Array.newInstance(componentType, size);
-            int index = 0;
-            
-            for (DbValue v : this) {
-                Array.set(array, index++, v.toJavaObject(componentType, c2o));
-            }
-            result = array;
-        } else {
-            result = super.toJavaObject(c, c2o);
-        }
-        
-        return (TYPE) result;
-    }
-    
+    /** The elements as int values, each converted by bergdb 020-09, section 5.4. */
     public int[] toIntArray() {
-        int[] result = new int[elementCount];
-        int index = 0;
-        
-        for (DbValue v : this) {
-            result[index++] = v.toInt();
-        }
-        return result;
+        return (int[]) DataObjects.convert(bytes, 0, int[].class);
     }
     
+    /** The elements as long values, each converted by bergdb 020-09, section 5.4. */
     public long[] toLongArray() {
-        long[] result = new long[elementCount];
-        int index = 0;
-        
-        for (DbValue v : this) {
-            result[index++] = v.toLong();
-        }
-        return result;
+        return (long[]) DataObjects.convert(bytes, 0, long[].class);
     }
     
+    /** The elements as double values, each converted by bergdb 020-09, section 5.4. */
     public double[] toDoubleArray() {
-        double[] result = new double[elementCount];
-        int index = 0;
-        
-        for (DbValue v : this) {
-            result[index++] = v.toDouble();
-        }
-        return result;
+        return (double[]) DataObjects.convert(bytes, 0, double[].class);
     }
     
     public Iterator<DbValue> iterator() {
@@ -266,7 +219,7 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
         
         for (DbValue v : a) {
             Assert.assertEquals(v.getType(), 'l');
-            Assert.assertEquals(3, v.toInt());
+            Assert.assertEquals(3, ((DbLong) v).toLong());
         }
     }
 }

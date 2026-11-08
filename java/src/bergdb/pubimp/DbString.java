@@ -104,7 +104,7 @@ public class DbString extends DbValue {
         DbString d0 = new DbString(s);
         
         Assert.assertEquals(12 + 2 + 3, d0.write(bytes, 12));
-        DbValue d1 = DbValue.read(bytes, 12);
+        DbString d1 = (DbString) DbValue.read(bytes, 12);
         
         Assert.assertEquals("abc", d1.toStringValue());
     }
@@ -115,13 +115,13 @@ public class DbString extends DbValue {
         
         DbString d0 = new DbString("");
         Assert.assertEquals(2, d0.write(bytes, 0));
-        DbValue d1 = DbValue.read(bytes, 0);
+        DbString d1 = (DbString) DbValue.read(bytes, 0);
         Assert.assertEquals("", d1.toStringValue());
         
         String s = "\u00e9".repeat(64);      // 128 bytes: the length in 2 bytes
         bytes = new byte[200];
         Assert.assertEquals(3 + 128, new DbString(s).getByteSize());
         Assert.assertEquals(3 + 128, new DbString(s).write(bytes, 0));
-        Assert.assertEquals(s, DbValue.read(bytes, 0).toStringValue());
+        Assert.assertEquals(s, ((DbString) DbValue.read(bytes, 0)).toStringValue());
     }
 }

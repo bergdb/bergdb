@@ -1041,6 +1041,65 @@ Decided in the step, under Frans's delegation (22:17):
 Gate: BEFORE COMMIT OK.
 
 
+### 8.4. Step 8, done (2026-11-09)
+
+Made in `clone-objects` on step 7's commit, tests first: `DataObjectsTester`
+was written from 020-09 alone, apart from the code, and failed on step 7's
+code in 11 of its 20 tests, for the code's reasons:
+
+* `DataObjects` (new, package-private): 020-09's class check (V1 to V10, a
+  `ClassValue` per class, and the classes it reaches checked once each),
+  the put (exact, by the declared types; null fields left out; a null
+  element, a value of another class, a cycle and level 17 refused, naming
+  the path) and the get (best effort, section 5's table, text by section
+  5.5, `ObjectCreationException` for a class that is not a Data Object and
+  for a constructor that throws, with it as the cause).
+  `DbObject.toDbObject(Object)` and `toJavaObject(Class)` call it;
+  `KvToObjectImp` checks the class first, also at a key without a value.
+* Gone: `BlankConstructorFactory`, `ObjectFactory`, `ClassToObject`,
+  `DatabaseImp.getClassToObject()`, `DbObject.toJavaObject(Class,
+  ClassToObject)` and `getEligibleFields`, and in `DbValue` and the value
+  classes the Java conversions (`toJavaObject`, `checkFits`, `toDbValue`,
+  `isPrimitiveOrWrapper` and the cross-type `toInt()` and the like): each
+  value class keeps its own value's getter; `DbArray.toIntArray()` and the
+  like convert by 020-09. `IndexManager` reads `Data.Index` with
+  `toJavaObject(Class)`.
+* `ObjectCreationException` has a constructor with a cause (G121).
+* Tests: `DataObjectsTester`, 20 unit tests (G1 to G122, K1 to K18, W1 to
+  W36; R1, R2 against its own reference of section 5, R3), 0.6 s, and a
+  night test; the test classes made Data Objects (public static, public
+  fields and constructors) in `DbObjectTester`, `PubTester`,
+  `PubTesterIndex`, `PubTesterComposite`, `PubTesterNestedFields`,
+  `PubTesterPrimary` and `KvToObjectImp`; the 7 tests of section 6.1.
+
+Decided in the step, under Frans's delegation (22:17):
+
+* `DbObject.toJavaObject(Object dest, ClassToObject)`, which set the fields
+  of an existing object, is gone too: a field without a stored match would
+  keep that object's value, not the constructor's (020-09, principle 2).
+  Its 12 calls (9 in `DbObjectTester`, 2 in `PubTesterPrimary`, 1 in
+  `PubTesterIndex`) take `toJavaObject(Class)`.
+* A non-static member class is not a Data Object (V1: "a public static
+  member class"), named so in the message.
+* `toDbObject` of a `DbObject` returns it as it is; of a `String` or a
+  wrapper at the top, an object with the field `p`.
+* Objects that tests put as anonymous classes or by double-brace
+  initialization (`PubTester`'s two `testAnonymous`,
+  `testKeyFieldWithDbObject0`, `PubTesterNestedFields`' two tests,
+  `PubTesterIndex.testRestartWithNestedFieldIndex`) are a public class or a
+  `DbObject` built by the Builder; `testAnonymous0` also checks that the
+  anonymous class is refused. `Object` fields in `DbObjectTester`
+  (`StringsClass.any`) and `DbObjectFormatTester` (`Holder`) take a type on
+  the list (V9).
+* `src-dev`: `GetStarted1`'s `Person` and `GetStarted4`'s `Account`, package
+  classes in those files, move to files of their own, `Person.java` and
+  `Account.java`, as a public top-level class must; `WebsiteCode.Person`,
+  the night test `CcDbNightTest.Stats` and the manual `CcDbTest.Stats` are
+  public with public fields.
+
+Gate: BEFORE COMMIT OK.
+
+
 ## 9. The documentation
 
 * **`DbObject`'s class Javadoc**: section 5's list; the format by its ID

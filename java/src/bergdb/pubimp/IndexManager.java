@@ -537,7 +537,7 @@ public class IndexManager {
             throw new InternalDataException("Bad index info object: '" + key + "', " + e.getMessage());
         }
         
-        indexDo = dbo.toJavaObject(Data.Index.class, connection.getDatabaseImp().getClassToObject());
+        indexDo = dbo.toJavaObject(Data.Index.class);
         indexDo.check(this);
         
         Index index = Data.createIndex(indexName, indexDo, this);

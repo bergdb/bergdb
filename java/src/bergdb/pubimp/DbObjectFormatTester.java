@@ -15,7 +15,6 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.Action;
 import bergdb.pub.Connection;
-import bergdb.pub.DataFormatException;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
 import bergdb.pub.ObjectCreationException;
@@ -186,7 +185,8 @@ public class DbObjectFormatTester {
                 () -> DbObject.toDbObject(new Name256()));
         Holder h = new Holder();
         h.inner = new Name256();
-        assertArgRefused("a nested field name of 256 bytes", "'inner.aaa",
+        // The class check names the class and where it is (bergdb 020-09, V7).
+        assertArgRefused("a nested field name of 256 bytes", "Name256 at 'inner'",
                 () -> DbObject.toDbObject(h));
     }
 
@@ -199,7 +199,17 @@ public class DbObjectFormatTester {
     }
 
     public static class Holder {
-        public Object inner;
+        public Name256 inner;
+    }
+    
+    /** A field of 15 dimensions: the top object level 1, the arrays 2 to 16. */
+    public static class Holder15 {
+        public int[][][][][][][][][][][][][][][] inner;
+    }
+    
+    /** A field of 16 dimensions: the innermost array at level 17. */
+    public static class Holder16 {
+        public int[][][][][][][][][][][][][][][][] inner;
     }
 
     /** T3: an object of 32,767 fields is built; one more field is refused by the Builder. */
@@ -249,12 +259,13 @@ public class DbObjectFormatTester {
         DbObject.toDbObject(nestedIntArray(15));
         assertArgRefused("16 dimensions at the top", "deeper than 16",
                 () -> DbObject.toDbObject(nestedIntArray(16)));
-        Holder h = new Holder();
-        h.inner = nestedIntArray(15);
-        DbObject.toDbObject(h);
-        h.inner = nestedIntArray(16);
+        Holder15 h15 = new Holder15();
+        h15.inner = (int[][][][][][][][][][][][][][][]) nestedIntArray(15);
+        DbObject.toDbObject(h15);
+        Holder16 h16 = new Holder16();
+        h16.inner = (int[][][][][][][][][][][][][][][][]) nestedIntArray(16);
         assertArgRefused("16 dimensions in a field", "'inner[0][0]",
-                () -> DbObject.toDbObject(h));
+                () -> DbObject.toDbObject(h16));
 
         // The Builder: an object of height 16 is built, of 17 refused; an array of height 15
         // is built, of 16 refused (it can only be stored at level 2 or below).
@@ -347,18 +358,13 @@ public class DbObjectFormatTester {
         L big = new L();
         big.x = 3000000000L;
         DbObject o = DbObject.toDbObject(big);
-        Assert.assertEquals(3000000000L, o.toJavaObject(L.class, new KvToObjectImp()).x);
-        try {
-            o.toJavaObject(I.class, new KvToObjectImp());
-            throw new AssertionError("3,000,000,000 read into an int");
-        } catch (DataFormatException e) {
-            Assert.assertTrue(e.getMessage(), e.getMessage().contains("'x'"));
-        }
+        Assert.assertEquals(3000000000L, o.toJavaObject(L.class).x);
+        // Clamped (bergdb 020-09, section 5.4); a DataFormatException until 020-08's step 8.
+        Assert.assertEquals(Integer.MAX_VALUE, o.toJavaObject(I.class).x);
         big.x = -7;
-        Assert.assertEquals(-7, DbObject.toDbObject(big).toJavaObject(I.class,
-                new KvToObjectImp()).x);
+        Assert.assertEquals(-7, DbObject.toDbObject(big).toJavaObject(I.class).x);
         Assert.assertEquals((char) 65, new DbObject.Builder().addLong("x", 65).build()
-                .toJavaObject(C.class, new KvToObjectImp()).x);
+                .toJavaObject(C.class).x);
     }
 
     // ======== T5: doubles ========
@@ -374,7 +380,7 @@ public class DbObjectFormatTester {
         DbObject o = DbObject.toDbObject(d);
         Assert.assertEquals("8248010b017846000000000000f87f", StringUtil.toHex(o.getBytes()));
         Assert.assertTrue(Double.isNaN(new DbObject(o.getBytes()).getDouble("x")));
-        Assert.assertTrue(Double.isNaN(o.toJavaObject(D.class, new KvToObjectImp()).x));
+        Assert.assertTrue(Double.isNaN(o.toJavaObject(D.class).x));
 
         d.x = -0.0;
         o = DbObject.toDbObject(d);
@@ -383,13 +389,13 @@ public class DbObjectFormatTester {
         Assert.assertEquals(0x8000000000000000L, Double.doubleToRawLongBits(
                 new DbObject(o.getBytes()).getDouble("x")));
         Assert.assertEquals(0x8000000000000000L, Double.doubleToRawLongBits(
-                o.toJavaObject(D.class, new KvToObjectImp()).x));
+                o.toJavaObject(D.class).x));
 
         F f = new F();
         f.x = Float.NaN;
         o = DbObject.toDbObject(f);
         Assert.assertEquals("8248010b017846000000000000f87f", StringUtil.toHex(o.getBytes()));
-        Assert.assertTrue(Float.isNaN(o.toJavaObject(F.class, new KvToObjectImp()).x));
+        Assert.assertTrue(Float.isNaN(o.toJavaObject(F.class).x));
 
         byte[] nan = new DbObject.Builder().addDbValue("x",
                 new DbDouble(Double.longBitsToDouble(0xfff8000000000001L))).build().getBytes();
@@ -641,14 +647,15 @@ public class DbObjectFormatTester {
             }
             Assert.assertFalse(where + ": more elements", it.hasNext());
         } else if (want instanceof Boolean) {
-            Assert.assertEquals(where, (Boolean) want, v.toBoolean());
+            Assert.assertEquals(where, (Boolean) want, ((DbBoolean) v).toBoolean());
         } else if (want instanceof Long) {
-            Assert.assertEquals(where, (long) (Long) want, v.toLong());
+            Assert.assertEquals(where, (long) (Long) want, ((DbLong) v).toLong());
         } else if (want instanceof Dbl) {
             Assert.assertEquals(where, ((Dbl) want).bits,
-                    Double.doubleToRawLongBits(v.toDouble()));
+                    Double.doubleToRawLongBits(((DbDouble) v).toDouble()));
         } else if (want instanceof Str) {
-            Assert.assertEquals(where, string(((Str) want).bytes), v.toStringValue());
+            Assert.assertEquals(where, string(((Str) want).bytes), 
+                    ((DbString) v).toStringValue());
         } else {
             Assert.assertArrayEquals(ObjectFormatTester.bytes(((Bin) want).bytes),
                     ((DbByteArray) v).getByteArray());

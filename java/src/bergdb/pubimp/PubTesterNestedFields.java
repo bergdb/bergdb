@@ -14,34 +14,34 @@ import bergdb.pub.Factory;
  * @author Frans Lundberg
  */
 public class PubTesterNestedFields {
-    private static class Person {
-        long id;
+    public static class Person {
+        public long id;
     }
     
-    private static class Dialog {
-        Person personA;
-        Person personB;
+    public static class Dialog {
+        public Person personA;
+        public Person personB;
     }
     
-    private static class Top {
-        Nested1 nested1;
+    public static class Top {
+        public Nested1 nested1;
         
         @SuppressWarnings("unused")
-        Top() {}
+        public Top() {}
         
-        Top(long value) {
+        public Top(long value) {
             nested1 = new Nested1();
             nested1.nested2 = new Nested2();
             nested1.nested2.value = value;
         }
     }
     
-    private static class Nested1 {
-        Nested2 nested2;
+    public static class Nested1 {
+        public Nested2 nested2;
     }
     
-    private static class Nested2 {
-        long value;
+    public static class Nested2 {
+        public long value;
     }
     
     @Nano
@@ -118,30 +118,23 @@ public class PubTesterNestedFields {
         db.stop();
     }
     
+    /** {f: {value: v}}: a nested object, as the put of an object with a nested one gives. */
+    private static DbObject nested(DbValue v) {
+        return new DbObject.Builder().addObject("f", 
+                new DbObject.Builder().addDbValue("value", v).build()).build();
+    }
+    
     @Nano
-    @SuppressWarnings("unused")
     public static void testWithDoubles() {        
         Database db = Factory.database().memory().start();
         Connection c = db.connection();
         
         db.indexBuilder("i1").type("double").dir("/d/").nestedField("f.value").createFast();    
-        c.put("/d/1", new Object() {
-            public Object f = new Object() {
-                public double value = 12.3;
-            };
-        });
+        c.put("/d/1", nested(new DbDouble(12.3)));
         
-        c.put("/d/2", new Object() {
-            public Object f = new Object() {
-                public double value = -1.2;
-            };
-        });
+        c.put("/d/2", nested(new DbDouble(-1.2)));
         
-        c.put("/d/3", new Object() {
-            public Object f = new Object() {
-                public double value = 0.0;
-            };
-        });
+        c.put("/d/3", nested(new DbDouble(0.0)));
         
         double[] expected = new double[]{-1.2, 0.0, 12.3};
         int index = 0;
@@ -158,29 +151,16 @@ public class PubTesterNestedFields {
     }
     
     @Nano
-    @SuppressWarnings("unused")
     public static void testWithStrings() {        
         Database db = Factory.database().memory().start();
         Connection c = db.connection();
         
         db.indexBuilder("i1").type("string").dir("/d/").nestedField("f.value").createFast();    
-        c.put("/d/1", new Object() {
-            public Object f = new Object() {
-                public String value = "anna";
-            };
-        });
+        c.put("/d/1", nested(new DbString("anna")));
         
-        c.put("/d/2", new Object() {
-            public Object f = new Object() {
-                public String value = "zebra";
-            };
-        });
+        c.put("/d/2", nested(new DbString("zebra")));
         
-        c.put("/d/3", new Object() {
-            public Object f = new Object() {
-                public String value = "cecilia";
-            };
-        });
+        c.put("/d/3", nested(new DbString("cecilia")));
         
         String[] expected = new String[]{"anna", "cecilia", "zebra"};
         int index = 0;

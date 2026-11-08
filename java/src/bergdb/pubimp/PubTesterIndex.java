@@ -25,10 +25,10 @@ public class PubTesterIndex {
     /**
      * Test class - payment with 'long' amount.
      */
-    private static class Payment {
-        String from;
-        String to;
-        long amount;
+    public static class Payment {
+        public String from;
+        public String to;
+        public long amount;
         
         @SuppressWarnings("unused")
         public Payment() {}
@@ -47,10 +47,10 @@ public class PubTesterIndex {
     /**
      * Test class - payment with 'int' amount.
      */
-    private static class IPayment {
-        String from;
-        String to;
-        int amount;
+    public static class IPayment {
+        public String from;
+        public String to;
+        public int amount;
         
         @SuppressWarnings("unused")
         public IPayment() {}
@@ -69,10 +69,10 @@ public class PubTesterIndex {
     /**
      * Test class - payment with 'double' amount.
      */
-    private static class DPayment {
-        String from;
-        String to;
-        double amount;
+    public static class DPayment {
+        public String from;
+        public String to;
+        public double amount;
         
         public DPayment() {}
         
@@ -90,10 +90,10 @@ public class PubTesterIndex {
     /**
      * Test class - payment with 'float' amount.
      */
-    private static class FPayment {
-        String from;
-        String to;
-        float amount;
+    public static class FPayment {
+        public String from;
+        public String to;
+        public float amount;
         
         @SuppressWarnings("unused")
         public FPayment() {}
@@ -287,8 +287,7 @@ public class PubTesterIndex {
         t = it.next();
         Assert.assertEquals("1008", t.getString("to"));
         t = it.next();
-        DPayment p15b = new DPayment();
-        t.toJavaObject(p15b, new KvToObjectImp());
+        DPayment p15b = t.toJavaObject(DPayment.class);
         Assert.assertEquals("1000", t.getString("to"));
         Assert.assertEquals("1000", p15b.to);
         Assert.assertEquals(12.3, p15b.amount);
@@ -619,8 +618,8 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    static class MyDouble {
-        private double value;
+    public static class MyDouble {
+        public double value;
         
         public MyDouble() {}
         
@@ -806,7 +805,7 @@ public class PubTesterIndex {
         d.stop();
     }
     
-    static class MyString {
+    public static class MyString {
         public String s;
         
         public MyString() {}
@@ -926,13 +925,21 @@ public class PubTesterIndex {
         db2.stop();
     }
     
-    private static class Name {
-        String first;
-        String last;
+    public static class Name {
+        public String first;
+        public String last;
     }
     
-    private static class NestClass {
-        Name name;
+    public static class NestClass {
+        public Name name;
+    }
+    
+    private static NestClass nest(String first, String last) {
+        NestClass n = new NestClass();
+        n.name = new Name();
+        n.name.first = first;
+        n.name.last = last;
+        return n;
     }
     
     @Nano
@@ -945,13 +952,8 @@ public class PubTesterIndex {
         
         db.indexBuilder("name-last").type("string/unicode").dir("/d/").nestedField("name.last").createFast();
         
-        c.w().put("/d/1", new NestClass() {{
-            name = new Name() {{ first = "Fredrik"; last = "Andersson"; }};
-        }}).put("/d/2", new NestClass() {{
-            name = new Name() {{ first = "John"; last = "Wickersson"; }};
-        }}).put("/d/3", new NestClass() {{
-            name = new Name() {{ first = "Amy"; last = "Dimeon"; }};
-        }}).execute();
+        c.w().put("/d/1", nest("Fredrik", "Andersson")).put("/d/2", nest("John", "Wickersson"))
+            .put("/d/3", nest("Amy", "Dimeon")).execute();
         
         db.sync();
         db.stop();

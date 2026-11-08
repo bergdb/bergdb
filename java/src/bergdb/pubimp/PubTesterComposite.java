@@ -19,10 +19,10 @@ import bergdb.stream.MemoryStream;
  */
 public class PubTesterComposite {
     
-    private static class Payment2 {
-        String from;
-        String to;
-        long time;
+    public static class Payment2 {
+        public String from;
+        public String to;
+        public long time;
         
         public Payment2() {
             from = "";
@@ -51,9 +51,9 @@ public class PubTesterComposite {
         }
     }
     
-    private static class DPayment2 {
-        String from;
-        double time;
+    public static class DPayment2 {
+        public String from;
+        public double time;
         
         public DPayment2() {
             from = "";

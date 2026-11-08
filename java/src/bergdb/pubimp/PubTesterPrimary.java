@@ -412,13 +412,11 @@ public class PubTesterPrimary {
         byte[] bytes;
         
         bytes = it.next();
-        Person p = new Person();
-        new DbObject(bytes).toJavaObject(p, new KvToObjectImp());
+        Person p = new DbObject(bytes).toJavaObject(Person.class);
         Assert.assertEquals("10", p.name);
         
         bytes = it.next();
-        MyDouble myDouble = new MyDouble();
-        new DbObject(bytes).toJavaObject(myDouble, new KvToObjectImp());
+        MyDouble myDouble = new DbObject(bytes).toJavaObject(MyDouble.class);
         Assert.assertEquals(1.2, myDouble.value);
         
         bytes = it.next();
@@ -431,8 +429,8 @@ public class PubTesterPrimary {
         db.stop();
     }
     
-    static class MyDouble {
-        private double value;
+    public static class MyDouble {
+        public double value;
         
         public MyDouble() {}
         

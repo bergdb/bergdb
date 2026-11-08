@@ -1,7 +1,6 @@
 package bergdb.pubimp;
 
 import java.io.UnsupportedEncodingException;
-import java.util.HashMap;
 
 import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
@@ -11,18 +10,15 @@ import bergdb.pub.util.BadFormatException;
 
 /**
  * Default implementation of KvToObject.
- * Special handling is used when c is byte[].class, java.lang.String, or java.lang.Object.
- * Otherwise, this implementation assumes the class has a public no-arg constructor and 
- * creates objects using that constructor.
+ * Special handling is used when c is byte[].class, java.lang.String, DbObject.class or
+ * java.lang.Object. Otherwise, c must be a Data Object class, a primitive or a wrapper, or
+ * an array class, and the stored object is converted by DataObjects (bergdb 020-09).
  * 
  * @author Frans Lundberg
  */
-public class KvToObjectImp implements KvToObjectConverter, ClassToObject {
-    private HashMap<Class<?>, BlankConstructorFactory> factories;
-        // Protected by sync on itself.
+public class KvToObjectImp implements KvToObjectConverter {
     
     public KvToObjectImp() {
-        factories = new HashMap<Class<?>, BlankConstructorFactory>();
     }
 
     @SuppressWarnings("unchecked")
@@ -38,8 +34,8 @@ public class KvToObjectImp implements KvToObjectConverter, ClassToObject {
         //      .txt             -> String
         //      others           -> byte[]
         //
-        // Otherwise, use the dbObject.toJavaObject() to convert to an object
-        // of the specified type.
+        // Otherwise, the class is checked first, also for a key without a value, and the
+        // stored object converted by DataObjects (bergdb 020-09, sections 3.3 and 5).
         //
         
         if (c == null) {
@@ -48,6 +44,12 @@ public class KvToObjectImp implements KvToObjectConverter, ClassToObject {
         
         if (ikey == null) {
             throw new IllegalArgumentException("ikey == null not allowed");
+        }
+        
+        boolean dataObject = !c.equals(String.class) && !c.equals(byte[].class) 
+                && !c.equals(DbObject.class) && !c.equals(Object.class);
+        if (dataObject) {
+            DataObjects.checkGet(c);
         }
         
         if (value == null) {
@@ -72,7 +74,7 @@ public class KvToObjectImp implements KvToObjectConverter, ClassToObject {
         } else if (c.equals(Object.class)) {
             result = (TYPE) entryToMixedTypeObject(ikey, ukey, value);
         } else {
-            result = (TYPE) entryToDbObject(ukey, value).toJavaObject(c, this);
+            result = DataObjects.toJavaObject(entryToDbObject(ukey, value), c);
         }
         
         return result;
@@ -117,43 +119,16 @@ public class KvToObjectImp implements KvToObjectConverter, ClassToObject {
         return dbObject;
     }
     
-    /**
-     * Creates and returns a new object of the specified class.
-     * The newly created object is typically used as a template; its fields will be set
-     * through reflection to match data in the database.
-     * 
-     * @throws ObjectCreationException  If the objection could not be created.
-     */
-    @SuppressWarnings("unchecked")
-    public <TYPE> TYPE newObject(Class<TYPE> c) {
-        BlankConstructorFactory f;
-        synchronized  (factories) {
-            f = factories.get(c);
-            
-            if (f == null) {
-                try {
-                    f = new BlankConstructorFactory(c);
-                    factories.put(c, f);
-                } catch (IllegalArgumentException e) {
-                    throw new ObjectCreationException(e.getMessage());
-                }
-            }
-        }
-        
-        Object object = f.createObject();
-        return (TYPE) object;
-    }
-    
     // -------- Testing ---------------
     
-    private static class ClassA {
+    public static class ClassA {
         public ClassA() {}
         public String greeting = "hello";
         public long count = 123L;
     }
     
     @SuppressWarnings("unused")
-    private static class ClassB {
+    public static class ClassB {
         public ClassB(int myInt) {}
         public long count = 123L;
     }

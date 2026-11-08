@@ -31,10 +31,6 @@ public class DbLong extends DbValue {
         return value;
     }
     
-    public String toStringValue() {
-        return "" + value;
-    }
-    
     public String toString() {
         return "" + value;
     }
@@ -53,7 +49,7 @@ public class DbLong extends DbValue {
         DbLong l0 = new DbLong(111222333444L);
         Assert.assertEquals(3 + 9, l0.write(bytes, 3));
         
-        DbValue l1 = DbValue.read(bytes, 3);
+        DbLong l1 = (DbLong) DbValue.read(bytes, 3);
         
         Assert.assertEquals(111222333444L, l1.toLong());
         
@@ -64,26 +60,7 @@ public class DbLong extends DbValue {
             DbLong v = new DbLong(values[i]);
             Assert.assertEquals(sizes[i], v.getByteSize());
             Assert.assertEquals(sizes[i], v.write(bytes, 0));
-            Assert.assertEquals(values[i], DbValue.read(bytes, 0).toLong());
+            Assert.assertEquals(values[i], ((DbLong) DbValue.read(bytes, 0)).toLong());
         }
-    }
-    
-    @Nano
-    public static void testToMethods0() {
-        DbLong i0 = new DbLong(444555);
-        Assert.assertEquals(444555, i0.toInt());
-        Assert.assertEquals(444555, i0.toLong());
-        Assert.assertEquals(444555.0f, i0.toFloat());
-        Assert.assertEquals(444555.0, i0.toDouble());
-        Assert.assertEquals((short) 444555, i0.toShort());
-        Assert.assertEquals((char) 444555, i0.toChar());
-        Assert.assertEquals((byte) 444555, i0.toByte());
-    }
-    
-    @Nano
-    public static void testToMethods1() {
-        DbLong i0 = new DbLong(444555);
-        Assert.assertEquals("444555", i0.toStringValue());
-        Assert.assertEquals(true, i0.toBoolean());
     }
 }

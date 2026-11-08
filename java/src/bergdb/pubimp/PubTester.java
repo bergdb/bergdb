@@ -1038,10 +1038,10 @@ public class PubTester {
     }
     
     
-    private static class Payment {
-        String from;
-        String to;
-        long amount;
+    public static class Payment {
+        public String from;
+        public String to;
+        public long amount;
         
         @SuppressWarnings("unused")
         public Payment() {}
@@ -1056,7 +1056,7 @@ public class PubTester {
         }
     }
     
-    static class MyDouble {
+    public static class MyDouble {
         public double value;
         public String key;
         
@@ -1068,7 +1068,7 @@ public class PubTester {
     }
     
     
-    static class MyString {
+    public static class MyString {
         public String s;
         
         public MyString() {}
@@ -1082,7 +1082,7 @@ public class PubTester {
         }
     }
     
-    static class House {
+    public static class House {
         public House() {}
         public String key;
         public String name;
@@ -1516,7 +1516,7 @@ public class PubTester {
     }
     
     public static class IntClass {
-        int field;
+        public int field;
     }
     
     @Nano
@@ -2017,7 +2017,7 @@ public class PubTester {
         d.stop();
     }
     
-    private static class A {
+    public static class A {
         public String key;
         public String name;
         public A() {}
@@ -2049,20 +2049,33 @@ public class PubTester {
         d.stop();
     }
     
+    /**
+     * A class with private fields is not a Data Object (bergdb 020-09, V1 and V3; Frans,
+     * 2026-11-08, 20:44: public fields only): a put is refused, and a get too, also at a key
+     * without a value.
+     */
     @Nano
     public static void testKeyField0Private() {
-        // Uses private key field, get.
-        
         A2 a0 = new A2();
         a0.name = "Saltis";
         
         Database d = Factory.database().memory().start();
-        d.connection().w().put("/a", a0).execute();
-        
-        A2 a1 = d.connection().get("/a", A2.class);
-        Assert.assertEquals("Saltis", a1.name);
-        Assert.assertNull(a1.key);      // an ordinary field (bergdb 020-02, section 5.1b)
-        d.stop();
+        try {
+            try {
+                d.connection().w().put("/a", a0).execute();
+                throw new AssertionError("no exception");
+            } catch (IllegalArgumentException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("A2"));
+            }
+            try {
+                d.connection().get("/a", A2.class);
+                throw new AssertionError("no exception");
+            } catch (ObjectCreationException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("A2"));
+            }
+        } finally {
+            d.stop();
+        }
     }
     
     @Nano
@@ -2141,12 +2154,12 @@ public class PubTester {
         database.stop();
     }
     
-    private static class S {
-        String key;
+    public static class S {
+        public String key;
     }
     
-    private static class D extends S {
-        String s;
+    public static class D extends S {
+        public String s;
     }
     
     @Nano
@@ -2206,17 +2219,28 @@ public class PubTester {
         d.stop();
     }
     
+    public static class Named {
+        public String name;
+        public int b;
+        public String key;
+        public Named() {}
+        public Named(String name, int b, String key) {
+            this.name = name;
+            this.b = b;
+            this.key = key;
+        }
+    }
+    
     @Nano
-    @SuppressWarnings("unused")
     public static void testKeyFieldWithDbObject0() {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        c.w().put("/a", new Object() { String name = "Carl"; }).execute();
+        c.w().put("/a", new Named("Carl", 0, null)).execute();
         DbObject dbo = c.get("/a", DbObject.class);
         
         Assert.assertNull(dbo.getString("key"));    // the stored object (bergdb 020-02)
-        Assert.assertEquals(1, dbo.getFieldCount());
+        Assert.assertEquals(2, dbo.getFieldCount());
         Assert.assertEquals("Carl", dbo.getString("name"));
         
         d.stop();
@@ -2238,27 +2262,42 @@ public class PubTester {
         d.stop();
     }
     
+    /**
+     * An anonymous class is not a Data Object (bergdb 020-09, V1 and K16): its put is refused,
+     * naming the class, and writes nothing; a public class with the same fields is stored.
+     */
     @Nano
     @SuppressWarnings("unused")
     public static void testAnonymous0() {
         Database d = Factory.database().memory().start();
-        Connection c = d.connection();
-        
-        c.w().put("/a", new Object() { String name = "Gustav"; int b = 123; }).execute();
-        DbObject dbo = c.get("/a", DbObject.class);
-        
-        Assert.assertEquals("Gustav", dbo.getString("name"));
-        Assert.assertEquals(123, dbo.getInt("b"));
-        d.stop();
+        try {
+            Connection c = d.connection();
+            Object anonymous = new Object() { public String name = "Gustav"; public int b = 123; };
+            try {
+                c.w().put("/a", anonymous).execute();
+                throw new AssertionError("no exception");
+            } catch (IllegalArgumentException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains(
+                        anonymous.getClass().getName()));
+            }
+            Assert.assertNull(c.get("/a", Object.class));
+            
+            c.w().put("/a", new Named("Gustav", 123, null)).execute();
+            DbObject dbo = c.get("/a", DbObject.class);
+            
+            Assert.assertEquals("Gustav", dbo.getString("name"));
+            Assert.assertEquals(123, dbo.getInt("b"));
+        } finally {
+            d.stop();
+        }
     }
     
     @Nano
-    @SuppressWarnings("unused")
     public static void testAnonymous1() {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        c.w().put("/a", new Object() { String key = "/a"; int b = 123; }).execute();
+        c.w().put("/a", new Named(null, 123, "/a")).execute();
         DbObject dbo = c.get("/a", DbObject.class);
         
         Assert.assertEquals("/a", dbo.getString("key"));
