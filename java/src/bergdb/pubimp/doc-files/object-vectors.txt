@@ -108,6 +108,37 @@ valid index-definition
   lookup "stat" absent
   note an index definition as IndexManager stores it (Data.Index), one level
 
+# index-definition-2: added 2026-11-08 by bergdb 020-10, step I0: an index definition of
+# 2026.4 (020-10, section 4.2), two levels, as IndexDefinition writes it; the index's name,
+# "fromAmount", is its key's. Checked by ObjectFormatTester (T1, with its second codec Ref)
+# and by check.py (/Users/f/fl/bench/006-15/020-07/).
+valid index-definition-2
+  bytes 824805101d62707a03646972140a2f7061796d656e74732f0367656e1300b09baaedbd3f00066c6576656c734248020d1a047061746842140466726f6d4304747970651406737472696e6748020f1a0470617468421406616d6f756e7443047479706514046c6f6e674305737461746514066163746976650776657273696f6e1001
+  value {"dir":s"/payments/","gen":i17941752000000000,"levels":[{"path":[s"from"],"type":s"string"},{"path":[s"amount"],"type":s"long"}],"state":s"active","version":i1}
+  binson 401403646972140a2f7061796d656e74732f140367656e1300b09baaedbd3f0014066c6576656c73424014047061746842140466726f6d431404747970651406737472696e674140140470617468421406616d6f756e744314047479706514046c6f6e674143140573746174651406616374697665140776657273696f6e100141
+  lookup "dir" s"/payments/"
+  lookup "gen" i17941752000000000
+  lookup "levels" [{"path":[s"from"],"type":s"string"},{"path":[s"amount"],"type":s"long"}]
+  lookup "state" s"active"
+  lookup "version" i1
+  lookup <01> absent
+  lookup "~~" absent
+  lookup <f48fbfbf> absent
+  lookup "dir\x00" absent
+  lookup "di" absent
+  lookup "gen\x00" absent
+  lookup "ge" absent
+  lookup "levels\x00" absent
+  lookup "level" absent
+  lookup "state\x00" absent
+  lookup "stat" absent
+  lookup "version\x00" absent
+  lookup "versio" absent
+  lookup "levels"."path" absent
+  lookup "gen"."x" absent
+  lookup "dir"."x" absent
+  note an index definition of 2026.4 (bergdb 020-10, section 4.2): version, dir, gen, state, levels
+
 valid customer
   bytes 82480c081622364769718695aac7d306616374697665440463697479140755707073616c6107636f756e7472791402534506636f756e74734210031000101111fa001001430763726561746564138084b6b5a101000005656d61696c141a616e6e612e6c696e647176697374406578616d706c652e636f6d0269641287d61200046e616d65140e416e6e61204c696e6471766973740573636f726546000000000000114006737472656574140c53746f72676174616e2031320474616773421404676f6c64140a6e6577736c65747465721402657543037a69701406373533203230
   value {"active":true,"city":s"Uppsala","country":s"SE","counts":[i3,i0,i17,i250,i1],"created":i1794050000000,"email":s"anna.lindqvist@example.com","id":i1234567,"name":s"Anna Lindqvist","score":d4011000000000000,"street":s"Storgatan 12","tags":[s"gold",s"newsletter",s"eu"],"zip":s"753 20"}

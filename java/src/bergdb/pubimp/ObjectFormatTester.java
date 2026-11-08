@@ -98,12 +98,12 @@ public class ObjectFormatTester {
             }
         }
 
-        // 020-07, section 13.3: every record was read.
-        Assert.assertEquals("valid records", 32, valid);
+        // 020-07, section 13.3: every record was read; and index-definition-2 (020-10, I0).
+        Assert.assertEquals("valid records", 33, valid);
         Assert.assertEquals("invalid records", 84, invalid);
         Assert.assertEquals("generated records", 2, generated);
         Assert.assertEquals("binson-in records", 8, binsonIn);
-        Assert.assertEquals("lookups", 343, lookups);
+        Assert.assertEquals("lookups", 364, lookups);
     }
 
     private static int checkValid(Record rec, String where) {

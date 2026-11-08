@@ -26,6 +26,8 @@ public class Pack implements IPack {
         FieldIndexFunction.Tester.class,
         IndexManager.class,
         IndexManager.Tester.class,
+        IndexDefinitionTester.class,
+        IndexKeysTester.class,
         UseIndexBuilderImp.class,
         KvToObjectImp.class,
         ObjectFormat.class,
