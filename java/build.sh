@@ -1,12 +1,11 @@
 #!/bin/sh
-# Builds BergDB from this directory (src/, src-dev/, src-icu/) with a current JDK.
+# Builds BergDB from this directory (src/, src-dev/) with a current JDK.
 # Output:
-#   build/bergdb.jar          src, src-dev and ICU; Main-Class bergdb.dev.Run. The jar of
-#                             the tests, the level scripts, night.sh and the tools.
+#   build/bergdb.jar          src and src-dev; Main-Class bergdb.dev.Run. The jar of the
+#                             tests, the level scripts, night.sh and the tools.
 #   build/bergdb-release.jar  the jar for users, which a release ships (bergdb 020-10,
 #                             section 7): the classes and resources of src only, no
-#                             Main-Class; until step B2 of 020-10 removes ICU, also those
-#                             of src-icu and ICU (bergdb.icu50).
+#                             Main-Class. Neither jar has ICU since 020-10's step B2.
 #   build/stress/             the stress tests.
 # Run tests: java -ea -jar build/bergdb.jar bergdb.dev.Unit
 # (also bergdb.dev.F and bergdb.dev.Night, with -cp build/bergdb.jar).
@@ -14,8 +13,9 @@
 # Fails unless the release jar passes three checks, about a second in all (files in
 # build/release-jar/):
 #   1. Its entries are bergdb.jar's but for those in a directory of src-dev (so not
-#      bergdb.Help either), none is under bergdb/dev/, bergdb/test/, bergdb/demo/ or
-#      frans/, and its manifest has no Main-Class.
+#      bergdb.Help either), none is under bergdb/dev/, bergdb/test/, bergdb/demo/,
+#      frans/, bergdb/icu50/ or bergdb/pubimpicu/ (ICU's, gone), and its manifest has no
+#      Main-Class.
 #   2. jdeps --missing-deps: every class that it uses is in it or in the JDK.
 #   3. stress/release-jar/ReleaseDemo.java, user code compiled and run with the release
 #      jar alone on the class path: no class of src-dev; the Pub API's String and byte[]
@@ -30,7 +30,6 @@ JAR=${JAR:-jar}
 JAVA=${JAVA:-java}
 JDEPS=${JDEPS:-jdeps}
 SRC=.
-ICU=$SRC/in/icu-for-bergdb.jar
 OUT=build
 REL=$OUT/bergdb-release.jar
 CHECK=$OUT/release-jar
@@ -41,8 +40,8 @@ mkdir -p $OUT/classes $OUT/stress $CHECK
 find $OUT/classes $OUT/stress $CHECK -type f -delete
 rm -f $OUT/bergdb.jar $OUT/MANIFEST.MF $REL
 
-$JAVAC --release 17 -encoding UTF-8 -nowarn -Xlint:-options -d $OUT/classes -cp $ICU \
-    $(find $SRC/src $SRC/src-dev $SRC/src-icu -name '*.java')
+$JAVAC --release 17 -encoding UTF-8 -nowarn -Xlint:-options -d $OUT/classes -cp $OUT/classes \
+    $(find $SRC/src $SRC/src-dev -name '*.java')
 
 # Non-Java resources, as in the original build.xml.
 for d in src src-dev; do
@@ -53,7 +52,6 @@ for d in src src-dev; do
         done
 done
 
-(cd $OUT/classes && unzip -q -o ../../$ICU -x 'META-INF/*')
 find $OUT/classes -name .DS_Store -delete
 printf 'Main-Class: bergdb.dev.Run\n' > $OUT/MANIFEST.MF
 $JAR cfm $OUT/bergdb.jar $OUT/MANIFEST.MF -C $OUT/classes .
@@ -72,11 +70,10 @@ dirs() {
 }
 
 dirs src-dev > $CHECK/dev-dirs.txt
-{ dirs src; dirs src-icu; unzip -Z1 $ICU | grep -v -e '/$' -e '^META-INF/' | sed 's|/[^/]*$||'; } |
-    sort -u > $CHECK/release-dirs.txt
+dirs src > $CHECK/release-dirs.txt
 SPLIT=$(comm -12 $CHECK/dev-dirs.txt $CHECK/release-dirs.txt | tr '\n' ' ')
 if [ -n "$SPLIT" ]; then
-    release_failed "a package of src-dev is one of src, src-icu or ICU too: $SPLIT"
+    release_failed "a package of src-dev is one of src too: $SPLIT"
 fi
 # The files of build/classes in those directories, not in their subdirectories.
 RELFILES=$(while read d; do
@@ -93,9 +90,10 @@ if ! cmp -s $CHECK/expected.txt $CHECK/entries.txt; then
     diff $CHECK/expected.txt $CHECK/entries.txt | head -20 >&2
     release_failed "its entries are not bergdb.jar's without src-dev's (<: bergdb.jar, >: it)"
 fi
-if grep -E '^(bergdb/dev/|bergdb/test/|bergdb/demo/|frans/)' $CHECK/entries.txt > $CHECK/refused.txt; then
+REFUSED='^(bergdb/dev/|bergdb/test/|bergdb/demo/|frans/|bergdb/icu50/|bergdb/pubimpicu/)'
+if grep -E "$REFUSED" $CHECK/entries.txt > $CHECK/refused.txt; then
     head -5 $CHECK/refused.txt >&2
-    release_failed "it holds classes of src-dev"
+    release_failed "it holds classes of src-dev, or of ICU, which 020-10's B2 removed"
 fi
 if unzip -p $REL META-INF/MANIFEST.MF | grep -i '^Main-Class' >&2; then
     release_failed "its manifest has a Main-Class"

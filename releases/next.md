@@ -174,11 +174,19 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `build/bergdb.jar` (unchanged, the jar of the tests and scripts): the
   classes and resources of `src` only, without `src-dev`'s (the packages
   `bergdb`, `bergdb.dev`, `bergdb.test`, `bergdb.demo` and `frans`), and
-  no `Main-Class`; until ICU goes, its classes are in both jars. The build
+  no `Main-Class`. The build
   fails unless its entries are `bergdb.jar`'s without `src-dev`'s, `jdeps`
   finds no class that it uses outside it and the JDK, and a program
   compiled and run with it alone on the class path
   (`java/stress/release-jar/ReleaseDemo.java`) works. The release ships it.
+* **ICU is gone** (bergdb 020-10, step B2; Frans, 2026-11-08, 22:08: no
+  ICU, 020-01, section 14.1): `src-icu/` (the package `bergdb.pubimpicu`),
+  `java/in/icu-for-bergdb.jar` (ICU 50 as `bergdb.icu50`) and its license,
+  and the collator classes of `pubimp`, which 020-10's I2 left unused. Both
+  jars are about 2 MB smaller: `bergdb.jar` 1.8 MB, the release jar 1.6
+  MB, and the build checks that the release jar holds no class of ICU's
+  packages. A string index orders its values by their code points (020-10,
+  step I2).
 
 
 ### Internal

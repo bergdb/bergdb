@@ -4,7 +4,6 @@ import java.io.PrintWriter;
 
 import bergdb.common.Util;
 import bergdb.core.BuildInfo;
-import bergdb.pubimp.IcuInfo;
 
 /**
  * Development tool, prints information about the environment.
@@ -35,15 +34,8 @@ public class Info {
         buildInfo();
         runtime();
         system();
-        pubLayer();
         
         out.flush();
-    }
-    
-    private void pubLayer() {
-        out.println("---- Pub Layer ----");
-        out.println(IcuInfo.class.getSimpleName() + ".hasIcu(): " + IcuInfo.hasIcu());
-        out.println();
     }
     
     private void buildInfo() {

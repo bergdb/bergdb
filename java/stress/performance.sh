@@ -80,7 +80,7 @@ COOLDOWN=${COOLDOWN:-5}
 FORCE=${FORCE:-0}
 KEEPDATA=${KEEPDATA:-0}
 THRESHOLDS=${THRESHOLDS:-$JAVADIR/bench/thresholds.json}
-SRCPATHS="java/src java/src-dev java/src-icu java/stress java/build.sh java/in"
+SRCPATHS="java/src java/src-dev java/stress java/build.sh java/in"
 HARNESS_FILES="PerfUtil.java Perf.java PerfTool.java"
 
 die() { echo "performance.sh: $*" >&2; exit 1; }
@@ -130,7 +130,7 @@ build_snapshot() {
     [ -e "$dest" ] && die "build $label exists: a preserved build is never replaced (choose another label)"
     identity
     mkdir -p "$dest/java" || die "cannot create $dest"
-    (cd "$JAVADIR" && rsync -a --exclude .DS_Store src src-dev src-icu in stress build.sh "$dest/java/") \
+    (cd "$JAVADIR" && rsync -a --exclude .DS_Store src src-dev in stress build.sh "$dest/java/") \
         || die "cannot copy the sources"
     echo "Building $label from $COMMIT (dirty: $DIRTY) in $dest"
     (cd "$dest/java" && ./build.sh) > "$dest/build.log" 2>&1 || { tail -20 "$dest/build.log"; die "build failed (log: $dest/build.log)"; }

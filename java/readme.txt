@@ -4,18 +4,16 @@ readme.txt for BergDB Java project
 To build
 --------
 
-build.sh builds BergDB with a JDK 17 or later (javac --release 17), from src/,
-src-dev/, src-icu/ and in/icu-for-bergdb.jar, in a few seconds. It uses javac,
-jar, jdeps and java from the path, or JAVAC, JAR, JDEPS and JAVA. Its output,
-in build/:
+build.sh builds BergDB with a JDK 17 or later (javac --release 17), from src/
+and src-dev/, in a few seconds. It uses javac, jar, jdeps and java from the
+path, or JAVAC, JAR, JDEPS and JAVA. Its output, in build/:
 
-    bergdb.jar           src, src-dev and ICU; Main-Class bergdb.dev.Run. The
-                         jar of the tests, the level scripts, night.sh and the
+    bergdb.jar           src and src-dev; Main-Class bergdb.dev.Run. The jar
+                         of the tests, the level scripts, night.sh and the
                          tools.
     bergdb-release.jar   The jar for users, which a release ships (bergdb
                          020-10, section 7): the classes and resources of src
-                         only, no Main-Class. Until ICU is removed (020-10,
-                         step B2), also those of src-icu and ICU.
+                         only, no Main-Class.
     stress/              The stress tests, stress/*.java.
 
 The build fails unless the release jar passes its checks (build.sh's header):
@@ -43,11 +41,9 @@ repository's README.md, under "Build and test".
 Files
 -----
 
-in       - Non-source input: ICU and its license, and files of build.xml
-           (in/readme.txt).
+in       - Non-source input: files of build.xml (in/readme.txt).
 build    - Output from the build.
 src      - The main Java source code; the release jar's classes.
-src-icu  - Source code for package bergdb.pubimpicu, BergDB's use of ICU.
 src-dev  - Development and test packages (bergdb, bergdb.dev, bergdb.test,
            bergdb.demo, frans and their subpackages), not in the release jar.
 stress   - The stress tests and the scripts that run them.
