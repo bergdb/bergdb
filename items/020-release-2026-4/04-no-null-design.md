@@ -1047,3 +1047,8 @@ Done since, on today's format (2026-11-07):
 stays (the rules of the put, the get and the indexes, steps B to D); and
 what 021-07 and 021-08 did since. Notes in the opening, sections 3, 8, 9
 and 10. The log is now section 12. Not decided: Q1 to Q6.
+
+2026-11-08, 21:47. Frans decided Q1: (c), a null field is left out at a
+put, no put refused for it (020-02, section 5.1b); and question 1 of
+020-02: best effort on a get, for 2026.4.
+

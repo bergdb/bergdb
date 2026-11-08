@@ -45,7 +45,25 @@ integer type in place of `i` and `l` (4.7): Binson's seven types, which
 are DbObject's eight with one integer and no null.
 
 
-## 2. Question 1: a conversion on a get, exact or best effort? (open)
+## 2. Question 1: a conversion on a get, exact or best effort? (decided: (C) for 2026.4)
+
+**Decided**: (C), best effort, for 2026.4. Frans, 2026-11-08, 21:47: "This was a very hard decision for me. But for
+2026.4, let's go with best-effort. This is how Java object are created
+from DbObjects today. The interfaces stay the same or similar as today.
+The Pub API is similar. We can iterator objects in the database easily.
+This will problably need to evolve one more time, but let's get
+something stable as a foundation. Something that works. Users who want
+full control need to get object of type DbObject and from that convert
+to Data Objects explicitely. Regarding puts and null fields. Allow it a
+null-valued field in the Data Object. Such a field is not written, it is
+not a field in the DbObject. Regarding gets. When a field name matches,
+always make a conversion, best effort. There are many details for how to
+do this. You can propose the exact rules."
+So a get into a Data Object class converts every stored field whose
+name matches a field of the class, best effort, and never throws for the
+data; a caller who wants full control gets the `DbObject` and converts
+by hand. (D)'s report (section 2.5) is not in 2026.4. The exact rules:
+proposed by the coordinator (section 5.1b).
 
 Frans, 10:03: "Will decide later today. Need to read and think."
 
@@ -1113,6 +1131,13 @@ transactions as `rw()` actions; the questions below refine it.
 
 ### 5.1b. Decided for the API
 
+* **A null field at a put: left out, (c)** (020-04's Q1; 4.1's put
+  rule). See section 2's decision (Frans, 21:47): "Allow it a
+  null-valued field in the Data Object. Such a field is not written, it
+  is not a field in the DbObject." No put is refused for a null field;
+  a get then leaves the field at the constructor's value (020-04,
+  section 2.6, where (c) and (d) differ). 020-08's step 5, (d)'s
+  constructor check, is not needed.
 * **Two layers** (question 1's architecture, (D)'s two steps of section
   2.5). Frans, 2026-11-08, 19:53: "Important, this should be completely
   separate from DbObject to database storage. So, DbObject to bytes
