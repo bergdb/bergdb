@@ -63,7 +63,7 @@ import bergdb.pub.util.BadFormatException;
  * 
  * @author Frans Lundberg
  */
-public class DbObject extends DbValue {
+public final class DbObject extends DbValue {
     //
     // 1304 Frans: Little-endian-first (LE) byte order is used to follow the byte ordering used 
     // in the db stream.
@@ -526,6 +526,11 @@ public class DbObject extends DbValue {
             }
             long total = 1 + ObjectFormat.headSize(n, size) + size;
             ObjectFormat.checkStoredSize(total);
+            if (total > ObjectFormat.MAX_ARRAY) {
+                throw new IllegalArgumentException("size: a stored value of " + total 
+                        + " bytes, more than the " + ObjectFormat.MAX_ARRAY + " of Java's "
+                        + "largest array (bergdb 020-07, R15)");
+            }
             
             byte[] b = new byte[(int) total];
             b[0] = HEADER;

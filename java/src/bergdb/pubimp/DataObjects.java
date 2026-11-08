@@ -417,7 +417,7 @@ final class DataObjects {
 
         /** The path to the container at level 'depth' + 1 (0: the top). */
         String describe(int depth) {
-            if (depth == 0) {
+            if (depth == 0 || (depth == 1 && steps.get(0).isEmpty())) {
                 return "the top";
             }
             StringBuilder b = new StringBuilder();

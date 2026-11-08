@@ -222,35 +222,61 @@ public class PubTesterIndexJobs {
     }
     
     /**
-     * bergdb 019-42 (020-01, N1, its probe V1Probe): a build over an object with a null
-     * indexed String ended as failed. Since format 2 (bergdb 020-04, N11; 020-08, step 2) a
-     * null field is left out, absent: the object gives no entry, as one without the field,
-     * and the build ends done, with the entries of the other two; the next start has no job.
+     * bergdb 019-42 (020-01, N1, its probe V1Probe): a build over an object that its index
+     * cannot read, since 2026.4 an object of format 1 (020-08, step 3), ends as failed, and
+     * the database goes on. A start takes the build again, which ends as failed again; the
+     * index can be deleted, and the next start has no job. Since 019-10 the database failed,
+     * at every start. A null String, which failed the build until format 2, is absent: the
+     * object gives no entry, as one without the field, and the build ends done with the
+     * entries of the other two (020-04, N11).
      */
     @Nano
     public static void testBuildOverAnObjectItCannotIndex() {
         MemoryStream stream = new MemoryStream();
         Database db = start(stream);
         try {
+            db.newConnection().w().put("/named/1", new Named("a"))
+                    .put("/named/2", PubTester.format1Payment())
+                    .put("/named/3", new Named("c")).execute();
+            checkFailed(db.indexBuilder("by-name").dir("/named/").type("string").field("name")
+                    .start().join());
+            putNew(db);         // DbFailedException if the build failed the database.
+        } finally {
+            db.close();
+        }
+        
+        MemoryStream restarted = stream.copy();
+        db = start(restarted);
+        try {
+            Job[] jobs = db.getStartupInfo().getStartupJobs();
+            Assert.assertEquals(1, jobs.length);
+            checkFailed(jobs[0].join());
+            putNew(db);
+            Assert.assertEquals(100, db.deleteIndex("by-name").join().progress());
+        } finally {
+            db.close();
+        }
+        
+        db = start(restarted.copy());
+        try {
+            Assert.assertEquals(0, db.getStartupInfo().getStartupJobs().length);
+            putNew(db);
+        } finally {
+            db.close();
+        }
+        
+        db = start(new MemoryStream());
+        try {
             db.newConnection().w().put("/named/1", new Named("a")).put("/named/2", new Named(null))
                     .put("/named/3", new Named("c")).execute();
             JobStatus status = db.indexBuilder("by-name").dir("/named/").type("string")
                     .field("name").start().join();
             Assert.assertTrue(status.note(), status.note().startsWith("Done"));
-            putNew(db);
             StringBuilder names = new StringBuilder();
             for (Named n : db.newConnection().useIndex("by-name", Named.class).objects()) {
                 names.append(n.name);
             }
             Assert.assertEquals("ac", names.toString());
-        } finally {
-            db.close();
-        }
-        
-        db = start(stream.copy());
-        try {
-            Assert.assertEquals(0, db.getStartupInfo().getStartupJobs().length);
-            putNew(db);
         } finally {
             db.close();
         }

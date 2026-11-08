@@ -11,7 +11,7 @@ import bergdb.nanotest.Nano;
  * 
  * @author Frans Lundberg
  */
-public class DbLong extends DbValue {
+public final class DbLong extends DbValue {
     private long value;
     
     public DbLong(long value) {

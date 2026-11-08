@@ -78,6 +78,18 @@ final class ObjectFormat {
     /** The largest stored value, header included: 2^31 - 1 bytes (020-07, R15). */
     static final long MAX_STORED = Integer.MAX_VALUE;
 
+    /**
+     * The largest value in a stored object: MAX_STORED less the smallest object that holds
+     * one field, its header, type byte, count and end of 4 bytes, and a name of 1 byte.
+     */
+    static final long MAX_VALUE = MAX_STORED - 12;
+
+    /**
+     * The largest stored value Java can hold in one array, below R15's limit: an array of
+     * more than this many bytes may not be allocated (Java's soft maximum array length).
+     */
+    static final int MAX_ARRAY = Integer.MAX_VALUE - 8;
+
     /** The one NaN (020-07, R12). */
     static final long NAN = 0x7ff8000000000000L;
 
@@ -806,6 +818,19 @@ final class ObjectFormat {
         if (size > MAX_STORED) {
             throw new IllegalArgumentException("size: a stored value of " + size
                     + " bytes or more; at most 2^31 - 1 (bergdb 020-07, R15)");
+        }
+    }
+
+    /**
+     * @throws IllegalArgumentException  If a value of 'size' bytes, its type byte and length
+     *      included, cannot be in a stored value: above MAX_VALUE (020-07, R15). A writer
+     *      checks it in 64 bits before it allocates or writes, so that no size wraps.
+     */
+    static void checkValueSize(long size) {
+        if (size > MAX_VALUE) {
+            throw new IllegalArgumentException("size: a value of " + size + " bytes; a stored "
+                    + "value has at most 2^31 - 1 bytes, and an object's frame some of them "
+                    + "(bergdb 020-07, R15)");
         }
     }
 

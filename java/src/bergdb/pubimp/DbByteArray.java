@@ -9,7 +9,7 @@ import bergdb.nanotest.Nano;
  * 
  * @author Frans Lundberg
  */
-public class DbByteArray extends DbValue {
+public final class DbByteArray extends DbValue {
     private final byte[] value;
     
     /**
@@ -25,6 +25,7 @@ public class DbByteArray extends DbValue {
             throw new IllegalArgumentException("value == null not allowed: BergDB stores no "
                     + "null, leave the field out (bergdb 020-04, section 2.4)");
         }
+        ObjectFormat.checkValueSize(5L + value.length);       // bergdb 020-07, R15
         this.value = value.clone();
     }
     

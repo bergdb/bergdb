@@ -14,11 +14,13 @@ import bergdb.common.Bytes;
 import bergdb.common.EventToWaitFor;
 import bergdb.common.Util;
 import bergdb.core.Db;
+import bergdb.core.DbConstants;
 import bergdb.core.DbBuilder;
 import bergdb.core.DbStoppingException;
 import bergdb.core.DbTester;
 import bergdb.core.DbTesterFailure;
 import bergdb.core.Eviction;
+import bergdb.dag.Keys;
 import bergdb.dag.Klong;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
@@ -39,6 +41,7 @@ import bergdb.pub.Transaction;
 import bergdb.pub.TransactionInfo;
 import bergdb.pub.WBuilder;
 import bergdb.pub.util.BadCryptoKey;
+import bergdb.pub.util.JobStatus;
 import bergdb.pub.util.DatabaseMissingException;
 import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.DbFailedException;
@@ -49,6 +52,7 @@ import bergdb.storage.BufferedStream;
 import bergdb.storage.RecoverableStream;
 import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
+import bergdb.storage.VersioningStreamException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;
 import bergdb.stream.DirectoryInUseException;
@@ -3772,5 +3776,173 @@ public class PubTester {
                     .getOpenFileDescriptorCount();
         }
         return -1;
+    }
+
+    // ---- bergdb 020-08, step 3: objects of 2026.3 and before (format 1) refused ----
+    
+    /** Payment {from "1001", to "1002", amount 500} as 2026.3 wrote it (020-07's vectors). */
+    static byte[] format1Payment() {
+        return ObjectFormatTester.unhex("626572676f010300391c1a0000007d1b2b000000131d3a0000006c"
+                + "0600616d6f756e74f40100000000000073040066726f6d0400000031303031730200746f04"
+                + "00000031303032");
+    }
+    
+    /** Throws 'expected' from 'r', its message naming format 1. */
+    private static void assertFormat1(String what, Class<? extends Throwable> expected, 
+            Runnable r) {
+        try {
+            r.run();
+        } catch (Throwable e) {
+            Assert.assertTrue(what + ": " + e, expected.isInstance(e));
+            Assert.assertTrue(what + ": " + e.getMessage(), e.getMessage().contains("format 1"));
+            return;
+        }
+        throw new AssertionError(what + ": no exception");
+    }
+    
+    /**
+     * T8 (020-08, section 6.2; 020-02, section 4.11): an object of format 1 at a key is
+     * refused with a message that names the format: a get as a class, as DbObject and as
+     * Object throws ObjectCreationException, in rw() too, and the database goes on; a primary
+     * scan of objects throws it for that object and goes on; a put or a delete of the key in
+     * an indexed directory gives DataFormatException; a build over a directory holding it
+     * ends failed, with the message.
+     */
+    @Nano
+    public static void testFormat1ObjectRefused() {
+        Database d = Factory.database().memory().start();
+        try {
+            final Connection c = d.connection();
+            c.put("/p/a", new Payment("1", "2", 3));
+            c.put("/p/b", format1Payment());
+            c.put("/p/c", new Payment("4", "5", 6));
+            for (final Class<?> clazz : new Class<?>[] {Payment.class, DbObject.class, 
+                    Object.class}) {
+                assertFormat1("a get as " + clazz.getName(), ObjectCreationException.class,
+                        () -> c.get("/p/b", clazz));
+                assertFormat1("a get in rw() as " + clazz.getName(), 
+                        ObjectCreationException.class, () -> c.rw(new Action() {
+                            public void run(RwEnvironment env) {
+                                env.put("/written", "x");
+                                env.get("/p/b", clazz);
+                            }
+                        }));
+            }
+            Assert.assertNull(c.get("/written", String.class));
+            
+            for (final Class<?> clazz : new Class<?>[] {Payment.class, DbObject.class}) {
+                final Iterator<?> it = c.usePrimary(clazz).dir("/p/").objects().iterator();
+                Assert.assertTrue(it.next() != null);
+                assertFormat1("a primary scan as " + clazz.getName(), 
+                        ObjectCreationException.class, () -> it.next());
+                Assert.assertTrue(it.next() != null);
+                Assert.assertFalse(it.hasNext());
+            }
+            Assert.assertArrayEquals(format1Payment(), c.get("/p/b", byte[].class));
+            
+            JobStatus status = d.indexBuilder("from").type("string").dir("/p/").field("from")
+                    .start().join();
+            Assert.assertTrue(status.note(), status.note().startsWith("Failed")
+                    && status.note().contains("format 1") && status.note().contains("/p/b"));
+            
+            c.put("/q/a", new Payment("1", "2", 3));
+            d.indexBuilder("q-from").type("string").dir("/q/").field("from").start().join();
+            assertFormat1("a byte[] put of it in an indexed directory", 
+                    bergdb.pub.DataFormatException.class, () -> c.put("/q/x", format1Payment()));
+            Db db = ((DatabaseImp) d).getDb();     // written as 2026.3 wrote it
+            db.execute(db.trans().put(Keys.toBytes(PubKeys.u2i("/q/b")), format1Payment())
+                    .build());
+            assertFormat1("a put over it in an indexed directory", 
+                    bergdb.pub.DataFormatException.class, 
+                    () -> c.put("/q/b", new Payment("7", "8", 9)));
+            assertFormat1("a delete of it in an indexed directory", 
+                    bergdb.pub.DataFormatException.class, () -> c.w().delete("/q/b").execute());
+            
+            c.put("/later", "x");      // not failed
+            Assert.assertEquals("x", c.get("/later", String.class));
+        } finally {
+            d.close();
+        }
+    }
+    
+    /**
+     * T8: a database whose index definition is in format 1 does not start: the start throws
+     * VersioningStreamException with a message that names the format and says what to do
+     * (020-08, section 5), and closes the database.
+     */
+    @Nano
+    public static void testFormat1IndexDefinitionRefused() {
+        MemoryStream stream = new MemoryStream();
+        DatabaseBuilder builder = Factory.database();
+        ((DatabaseBuilderImp) builder).getDbBuilder().testSetup(stream);
+        Database d = builder.start();
+        try {
+            d.indexBuilder("old").type("long").dir("/p/").field("amount").start().join();
+            Db db = ((DatabaseImp) d).getDb();
+            byte[] key = Util.concat(Keys.toBytes(DbConstants.INTERNAL_PREFIX + "dii/"), 
+                    Keys.toBytes("-old"));
+            db.execute(db.trans().put(key, ObjectFormatTester.unhex("626572676f010000"))
+                    .build());
+        } finally {
+            d.close();
+        }
+        
+        builder = Factory.database();
+        ((DatabaseBuilderImp) builder).getDbBuilder().testSetup(stream.copy());
+        try {
+            builder.start();
+            throw new AssertionError("started");
+        } catch (VersioningStreamException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("format 1")
+                    && e.getMessage().contains("Make the database again"));
+        }
+    }
+    
+    /**
+     * T9 (020-08, sections 3 and 6.2): a String value is never an object; a byte[] that starts
+     * with the header of format 2 but is not a stored object is a byte[] to a get as Object
+     * and is skipped by a build; a stored object's complete bytes put as a byte[] at an object
+     * key is an object, to a get and to a primary scan as DbObject and as its class (the
+     * guess of UsePrimaryBuilder's Javadoc, 020-01, N4).
+     */
+    @Nano
+    public static void testKindOfValue() {
+        Database d = Factory.database().memory().start();
+        try {
+            Connection c = d.connection();
+            c.put("/v/s", "x");
+            Assert.assertArrayEquals(new byte[] {'x'}, (byte[]) c.get("/v/s", Object.class));
+            byte[] notObject = {DbObject.HEADER, 0x48, 1};
+            c.put("/v/t", notObject);
+            Assert.assertArrayEquals(notObject, (byte[]) c.get("/v/t", Object.class));
+            byte[] object = DbObject.toDbObject(new Payment("1", "2", 3)).getBytes();
+            c.put("/v/u", object);
+            Assert.assertEquals("1", ((DbObject) c.get("/v/u", Object.class)).getString("from"));
+            
+            int n = 0;
+            for (DbObject o : c.usePrimary(DbObject.class).dir("/v/").objects()) {
+                Assert.assertArrayEquals(object, o.getBytes());
+                n++;
+            }
+            Assert.assertEquals(1, n);
+            n = 0;
+            for (Payment p : c.usePrimary(Payment.class).dir("/v/").objects()) {
+                Assert.assertEquals(3L, p.amount);
+                n++;
+            }
+            Assert.assertEquals(1, n);
+            
+            JobStatus status = d.indexBuilder("from").type("string").dir("/v/").field("from")
+                    .start().join();
+            Assert.assertTrue(status.note(), status.note().startsWith("Done"));
+            n = 0;
+            for (Payment p : c.useIndex("from", Payment.class).objects()) {
+                Assert.assertEquals("1", p.from);
+                n++;
+            }
+            Assert.assertEquals(1, n);
+        } finally {
+            d.close();
+        }
     }
 }

@@ -10,7 +10,7 @@ import bergdb.nanotest.Nano;
  * 
  * @author Frans Lundberg
  */
-public class DbBoolean extends DbValue {
+public final class DbBoolean extends DbValue {
     private boolean value;
     
     public DbBoolean(boolean value) {

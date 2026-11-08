@@ -16,9 +16,9 @@ import bergdb.nanotest.Nano;
  * 
  * @author Frans Lundberg
  */
-public class DbString extends DbValue {
+public final class DbString extends DbValue {
     private final String value;
-    private byte[] utf8;        // its UTF-8, made once when written
+    private final byte[] utf8;      // its UTF-8
     
     /**
      * A string value.
@@ -26,8 +26,8 @@ public class DbString extends DbValue {
      * @throws IllegalArgumentException  If 'value' is null: BergDB stores no null, a field
      *      without a value is left out (bergdb 020-04). If 'value' has a lone surrogate, a
      *      char of U+D800 to U+DFFF that is not part of a surrogate pair: UTF-8 cannot hold it
-     *      (bergdb 021-04); then it is a DbValue.PathException, which DbObject.toDbObject()
-     *      gives the field's path.
+     *      (bergdb 021-04). If its UTF-8 is too long for a stored value (bergdb 020-07,
+     *      R15).
      */
     public DbString(String value) {
         super('s');
@@ -39,35 +39,28 @@ public class DbString extends DbValue {
             throw PathException.loneSurrogate("string");
         }
         this.value = value;
+        this.utf8 = value.getBytes(StandardCharsets.UTF_8);
+        ObjectFormat.checkValueSize(5L + utf8.length);
     }
     
-    /** A string read from well-formed UTF-8: its decoding has no lone surrogate, no check. */
-    private DbString(String value, boolean read) {
+    /** A string read from well-formed UTF-8, and its bytes: no check. */
+    private DbString(String value, byte[] utf8) {
         super('s');
         this.value = value;
+        this.utf8 = utf8;
     }
     
     /** The string at 'p' of checked bytes (bergdb 020-07, R11). */
     static DbString read(byte[] b, int p) {
-        return new DbString(ObjectFormat.stringAt(b, p), true);
-    }
-    
-    private byte[] utf8() {
-        byte[] u = utf8;
-        if (u == null) {
-            u = value.getBytes(StandardCharsets.UTF_8);
-            utf8 = u;
-        }
-        return u;
+        return new DbString(ObjectFormat.stringAt(b, p), ObjectFormat.bytesAt(b, p));
     }
     
     public int getByteSize() {
-        int length = utf8().length;
-        return ObjectFormat.lengthSize(length) + length;
+        return ObjectFormat.lengthSize(utf8.length) + utf8.length;
     }
     
     public int write(byte[] b, int offset) {
-        byte[] u = utf8();
+        byte[] u = utf8;
         offset = ObjectFormat.writeStringHead(b, offset, u.length);
         System.arraycopy(u, 0, b, offset, u.length);
         return offset + u.length;

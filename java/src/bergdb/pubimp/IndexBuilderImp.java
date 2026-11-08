@@ -488,10 +488,18 @@ public class IndexBuilderImp implements IndexBuilder {
                     try {
                         dbo = new DbObject(kvt.value);
                     } catch (BadFormatException e) {
+                        String ikey = Keys.toString(kvt.key);
+                        if (Entries.isFormat1Object(ikey, kvt.value)) {
+                            // An object of 2026.3 and before ends the build as failed,
+                            // naming its key and the format (bergdb 020-08, step 3).
+                            throw new BadFormatException("The value at " + PubKeys.i2u(ikey)
+                                    + " is not read: " + e.getMessage());
+                        }
                         // We silently ignore values that are not DbObjects.
                         // Most non-object values will not get to this anyway.
                         // There is filtering in TheStopCondition; only values starting
-                        // with DbObject.MAGIC bytes are returned with env.getMany() call.
+                        // with DbObject.HEADER, and objects of format 1, are returned with
+                        // env.getMany() call.
                         continue;
                     }
                     
@@ -681,7 +689,8 @@ public class IndexBuilderImp implements IndexBuilder {
             processedEntries++;
             
             String keyString = Keys.toString(kvt.key);
-            boolean isObject = Entries.isProbablyDbObject(keyString, kvt.value);
+            boolean isObject = Entries.isProbablyDbObject(keyString, kvt.value)
+                    || Entries.isFormat1Object(keyString, kvt.value);     // refused, failed
             
             if (!isObject) {
                 result = GetMany.StopCondition.CONTINUE;

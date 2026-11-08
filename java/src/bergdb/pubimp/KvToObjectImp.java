@@ -88,13 +88,16 @@ public class KvToObjectImp implements KvToObjectConverter {
     /**
      * Converts an entry to a Java Object when c is Object.class: a DbObject if the value is a
      * stored object by the full check; a byte[] that starts with the header but is not one
-     * stays a byte[] (bergdb 020-08, section 3).
+     * stays a byte[] (bergdb 020-08, section 3). An object of format 1 is refused with
+     * ObjectCreationException, naming the format (bergdb 020-02, section 4.11).
      */
     private Object entryToMixedTypeObject(String ikey, String ukey, byte[] value) {
         Object result;
         boolean isObject = Entries.isProbablyDbObject(ikey, value);
         
-        if (isObject) {
+        if (Entries.isFormat1Object(ikey, value)) {
+            result = entryToDbObject(ukey, value);      // throws, naming format 1
+        } else if (isObject) {
             try {
                 result = new DbObject(value);
             } catch (BadFormatException e) {

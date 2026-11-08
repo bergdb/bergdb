@@ -10,7 +10,7 @@ import bergdb.nanotest.Nano;
  * 
  * @author Frans Lundberg
  */
-public class DbDouble extends DbValue {
+public final class DbDouble extends DbValue {
     private double value;
     
     public DbDouble(double value) {

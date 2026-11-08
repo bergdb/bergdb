@@ -1100,6 +1100,55 @@ Decided in the step, under Frans's delegation (22:17):
 Gate: BEFORE COMMIT OK.
 
 
+### 8.5. Step 3, done (2026-11-09)
+
+Made in `clone-objects` on step 8's commit, tests first (each new test
+failed on step 8's code); with the review of step 2 (the coordinator's,
+2026-11-09) and 021-10:
+
+* An object of format 1 (`bergo`, version 1) is refused wherever it is
+  read, the message naming the format: `Entries.isFormat1Object` lets it
+  reach the reader in a get as `Object` (`ObjectCreationException`), a
+  primary scan (`UsePrimaryBuilderImp.isObject`), an index scan's filter
+  and a build (`IndexBuilderImp`: its stop condition takes it, and the
+  build ends failed, naming the key); a put or a delete of it in an
+  indexed directory is a `DataFormatException`, as since step 2; a start
+  that meets an index definition of format 1 throws
+  `VersioningStreamException` with section 5's message
+  (`IndexManager.refuseFormat1`), and closes the database.
+* 021-10: `Entries.suffix` takes the key's last part's suffix.
+* The review of step 2: R15's sizes checked in 64 bits before anything is
+  allocated (`ObjectFormat.checkValueSize`, `MAX_VALUE`, `MAX_ARRAY`: the
+  value classes' constructors, `DbArray.Builder.add`,
+  `DbObject.Builder.build`), each an `IllegalArgumentException` "size";
+  `DbString`'s UTF-8 made in its constructor, a final field; the value
+  classes final and `DbValue`'s constructor package-private, so no user's
+  subclass writes bytes that a get refuses; a cycle's place named below
+  an array put at the top; `PubTesterIndexJobs`' build-failure test has
+  its restart part again, with an object of format 1.
+* Tests: in `PubTester` T8 (`testFormat1ObjectRefused`,
+  `testFormat1IndexDefinitionRefused`) and T9 (`testKindOfValue`, with a
+  stored object's bytes put as a `byte[]` and listed by a primary scan as
+  `DbObject` and as its class, the coordinator's request);
+  `Entries.testIsFormat1Object` and `testSuffixOfTheLastPart`;
+  `DbObjectFormatTester.testSizesRefused`, `testValueClassesClosed`,
+  `testCyclePlaces`; T2's format-1 vectors refused as `Object` too.
+
+Decided in the step, under Frans's delegation (22:17):
+
+* The build's refusal is a `BadFormatException`, not section 5's
+  `DataFormatException`: that is a `DbException`, which the build's loop
+  takes for a refused step and runs again, for ever; any other
+  `RuntimeException` ends the build as failed (019-42).
+* A start does not say whether it wrote before it refused (section 5):
+  the definitions are read after `Db.start()`, which may correct the
+  stream's tail; the message says to make the database again.
+* A stored value above `ObjectFormat.MAX_ARRAY` (2^31 − 9 bytes), within
+  R15 but more than a Java array may hold, is refused too.
+
+Gate: BEFORE COMMIT OK.
+
+
 ## 9. The documentation
 
 * **`DbObject`'s class Javadoc**: section 5's list; the format by its ID

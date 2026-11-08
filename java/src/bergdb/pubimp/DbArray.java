@@ -33,7 +33,7 @@ import bergdb.nanotest.Nano;
  * 
  * @author Frans Lundberg
  */
-public class DbArray extends DbValue implements Iterable<DbValue> {
+public final class DbArray extends DbValue implements Iterable<DbValue> {
     private final byte[] bytes;     // the array's encoding: 0x42, the elements, 0x43
     private final int elementCount;
     private int height;             // its levels, 1 or more; 0 until computed
@@ -140,6 +140,7 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
         private final ByteArrayOutputStream out = new ByteArrayOutputStream();
         private int elementCount = 0;
         private int height = 1;
+        private long size = 1;      // the bytes so far, 0x42 and the elements
         
         public Builder() {
             out.write(ObjectFormat.ARRAY_START);
@@ -149,7 +150,9 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
          * Adds an element.
          * 
          * @throws IllegalArgumentException  If 'value' is null: an array has no absent
-         *      element, and BergDB stores no null (bergdb 020-04, section 2.1).
+         *      element, and BergDB stores no null (bergdb 020-04, section 2.1). If the array
+         *      would be too large for a stored value (bergdb 020-07, R15), checked before
+         *      anything is allocated.
          */
         public Builder add(DbValue value) {
             if (value == null) {
@@ -158,6 +161,8 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
             }
             
             int byteSize = value.getByteSize();
+            ObjectFormat.checkValueSize(size + byteSize + 1);      // with its 0x43
+            size += byteSize;
             byte[] buffer = new byte[byteSize];
             value.write(buffer, 0);
             out.write(buffer, 0, buffer.length);

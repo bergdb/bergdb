@@ -123,9 +123,15 @@ public class DbObjectFormatTester {
                         }
                     }));
                 }
-                Object asObject = c.get(key, Object.class);
-                Assert.assertTrue(rec.id + " as Object: " + asObject, asObject instanceof byte[]
-                        && Arrays.equals(b, (byte[]) asObject));
+                if (rec.one("rules").contains("format-1")) {
+                    // An object of 2026.3 and before is refused, naming the format (020-08,
+                    // step 3).
+                    assertCreationRefused(rec.id + " as Object", () -> c.get(key, Object.class));
+                } else {
+                    Object asObject = c.get(key, Object.class);
+                    Assert.assertTrue(rec.id + " as Object: " + asObject, 
+                            asObject instanceof byte[] && Arrays.equals(b, (byte[]) asObject));
+                }
             }
             Assert.assertEquals(84, n);
             Assert.assertNull(c.get("/written", String.class));     // no rw() committed
@@ -540,6 +546,77 @@ public class DbObjectFormatTester {
         }
         Assert.assertTrue("mutants " + mutants + ", accepted " + accepted, mutants > 5000
                 && accepted > 1000);
+    }
+
+    // ======== The review of step 2 (2026-11-09) ========
+
+    /** A value of 'size' bytes that is never written: the size checks come first. */
+    static DbValue sized(final int size) {
+        return new DbValue('b') {
+            public int getByteSize() {
+                return size;
+            }
+
+            public int write(byte[] b, int offset) {
+                throw new AssertionError("written");
+            }
+        };
+    }
+
+    /**
+     * 020-07, R15 (020-09, section 4.7, item 7): a value too large for a stored value is
+     * refused with IllegalArgumentException "size", before anything is allocated; an int
+     * size overflowed, and the Builders gave an OutOfMemoryError or a
+     * NegativeArraySizeException.
+     */
+    @Nano
+    public static void testSizesRefused() {
+        int big = Integer.MAX_VALUE - 3;
+        assertArgRefused("an element of 2^31 - 4 bytes", "size:",
+                () -> new DbArray.Builder().add(sized(big)));
+        assertArgRefused("a field of 2^31 - 4 bytes", "size:",
+                () -> new DbObject.Builder().addDbValue("v", sized(big)).build());
+        final DbObject.Builder two = new DbObject.Builder().addDbValue("a", sized(1 << 30))
+                .addDbValue("b", sized(1 << 30));
+        assertArgRefused("two fields of 2^30 bytes", "size:", () -> two.build());
+        assertArgRefused("a field near Java's largest array", "size:",
+                () -> new DbObject.Builder().addDbValue("v", sized(Integer.MAX_VALUE - 12))
+                .build());
+        ObjectFormat.checkValueSize(ObjectFormat.MAX_VALUE);
+        assertArgRefused("a value above MAX_VALUE", "size:",
+                () -> ObjectFormat.checkValueSize(ObjectFormat.MAX_VALUE + 1L));
+        assertArgRefused("a bytes value of 2^31 - 5 bytes", "size:",
+                () -> ObjectFormat.checkValueSize(5L + Integer.MAX_VALUE - 5));
+    }
+
+    /**
+     * The value classes are closed: no subclass of a user's can write bytes that a get then
+     * refuses (the Builder does not read back what it writes); DbString's UTF-8 is made in
+     * its constructor, a final field, not cached by a data race.
+     */
+    @Nano
+    public static void testValueClassesClosed() throws ReflectiveOperationException {
+        for (Class<?> c : new Class<?>[] {DbObject.class, DbArray.class, DbBoolean.class,
+                DbLong.class, DbDouble.class, DbString.class, DbByteArray.class}) {
+            Assert.assertTrue(c.getName(), java.lang.reflect.Modifier.isFinal(c.getModifiers()));
+        }
+        for (java.lang.reflect.Constructor<?> k : DbValue.class.getDeclaredConstructors()) {
+            Assert.assertFalse("DbValue's constructor is public",
+                    java.lang.reflect.Modifier.isPublic(k.getModifiers()));
+        }
+        Assert.assertTrue(java.lang.reflect.Modifier.isFinal(DbString.class
+                .getDeclaredField("utf8").getModifiers()));
+    }
+
+    /** A cycle's message names both places, also below an array put at the top. */
+    @Nano
+    public static void testCyclePlaces() {
+        Node n = new Node();
+        n.next = n;
+        assertArgRefused("a cycle below a top-level array", "at [0].next is also at [0]",
+                () -> DbObject.toDbObject(new Node[] {n}));
+        assertArgRefused("a cycle at the top", "at next is also at the top",
+                () -> DbObject.toDbObject(n));
     }
 
     // ======== Helpers ========

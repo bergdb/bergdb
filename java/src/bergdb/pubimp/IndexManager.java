@@ -26,6 +26,7 @@ import bergdb.pub.util.BadFormatException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
 import bergdb.pubimp.IndexBuilderImp.IndexCreateState;
+import bergdb.storage.VersioningStreamException;
 
 /**
  * <p>An object of this class manages secondary indexes.
@@ -155,6 +156,7 @@ public class IndexManager {
      * @throws InternalDataException If internal data in the database is not valid.
      */
     public void initFromDatabase(ConnectionImp connection) throws InternalDataException {        
+        refuseFormat1(connection);
         UsePrimaryBuilderImp<Data.Index> b = (UsePrimaryBuilderImp<Data.Index>) connection.usePrimary(Data.Index.class);
         Iterable<Kv<Data.Index>> kvs = b.dirInternal(INDEX_INFO_DIR).kvs();
         
@@ -175,6 +177,26 @@ public class IndexManager {
             nameToIndex.put(indexName, index);
             if (index.getState() == Index.STATE_ACTIVE || index.getState() == Index.STATE_CREATING) {
                 dirToActiveIndexes.add(index);
+            }
+        }
+    }
+    
+    /**
+     * Refuses a start of a database that holds an index definition of format 1 (bergdb
+     * 020-02, section 4.11; 020-08, section 5): 2026.4 does not read it, and an index whose
+     * definition is not read would not be kept up to date.
+     * 
+     * @throws VersioningStreamException  If a definition is in format 1.
+     */
+    private static void refuseFormat1(ConnectionImp connection) {
+        UsePrimaryBuilderImp<byte[]> b = 
+                (UsePrimaryBuilderImp<byte[]>) connection.usePrimary(byte[].class);
+        for (Kv<byte[]> kv : b.dirInternal(INDEX_INFO_DIR).kvs()) {
+            if (Entries.isFormat1Object(kv.ikey(), kv.value())) {
+                throw new VersioningStreamException("The database holds index definitions in "
+                        + "the object format of BergDB 2026.3 and before (format 1), which "
+                        + "2026.4 does not read (bergdb 020-02, section 4.11). Make the "
+                        + "database again from its data.");
             }
         }
     }

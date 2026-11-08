@@ -217,11 +217,13 @@ public class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
      * String.class lists it. The check makes the scan of a class parse each object twice,
      * once here and once in its conversion.
      *
-     * <p>For 020-08: its step 2 may make this Entries.isStoredObject(ikey, value), and its
-     * step 3 must let a value of format 1 through for a class (Entries.isFormat1Object), for
-     * the conversion to refuse it.</p>
+     * <p>An object of format 1, BergDB 2026.3's and before, is an object here, so that its
+     * conversion refuses it, naming the format (bergdb 020-08, step 3).</p>
      */
     static boolean isObject(String ikey, byte[] value) {
+        if (Entries.isFormat1Object(ikey, value)) {
+            return true;
+        }
         if (!Entries.isProbablyDbObject(ikey, value)) {
             return false;
         }

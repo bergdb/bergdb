@@ -17,7 +17,8 @@ package bergdb.pubimp;
 public abstract class DbValue {
     private char type;
     
-    public DbValue(char type) {
+    /** For the value classes of this package only: no other writes stored bytes. */
+    DbValue(char type) {
         switch (type) {
         case 'n':
         case 'l':
