@@ -1138,6 +1138,23 @@ transactions as `rw()` actions; the questions below refine it.
   a get then leaves the field at the constructor's value (020-04,
   section 2.6, where (c) and (d) differ). 020-08's step 5, (d)'s
   constructor check, is not needed.
+* **The rules of best effort at a get** (question 1, (C)). The
+  coordinator proposed principles and a table (21:48); Frans, 21:56, on
+  its principle 4 (a field kept at the constructor's value where no
+  sensible conversion exists): "Not sure about principle 4. I was
+  leaning towards always converstion for a matching field. If there is a
+  field name match, the fields data always depends only on the database
+  value, not of a Java default. Otherwise, matching fields mean either
+  that depend on default values from a constructor (which can change
+  over time) or the value in the database. Even field values will be
+  "invented", I prefer to have them depent solely on the database value.
+  How about this?" Revised: a matching field always gets a value that
+  depends only on the stored value and the field's type; where no
+  sensible conversion exists, the type's zero (`0`, `0.0`, `false`,
+  `'\u0000'` for primitives and their wrappers; `null` for `String`,
+  `byte[]`, arrays and Data Objects); only a field without a stored
+  match keeps the constructor's value. Frans, 21:59: "Yes, do so." The
+  rules in full, with a test for each: 020-09.
 * **Two layers** (question 1's architecture, (D)'s two steps of section
   2.5). Frans, 2026-11-08, 19:53: "Important, this should be completely
   separate from DbObject to database storage. So, DbObject to bytes
