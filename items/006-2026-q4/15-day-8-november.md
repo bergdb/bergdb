@@ -110,7 +110,15 @@ coding. You can go fast. Use up to 8 subagents as needed."
   list below with a recommendation; the work goes on with the default.
 * By 07:00: a summary in `news.md` and in section 6.
 
-For Frans to decide (the night's list): none yet.
+Frans, 22:17: "What could there be for me to decide? I think you can
+continue to work, you make sensible decisions yourself. Do not wait for
+me, make the decisions needed to get the 2026.4 release ready. What
+layout of internal keys? Not sure I need to look at that. I don't know
+what you mean by this. A stream format change?" So the night decides
+for itself; its decisions are listed for his information in the
+morning, under "Decided under Frans's delegation". The internal keys'
+layout (the Pub layer's own KVs for index definitions and entries; no
+change of the Core's stream bytes) needs no review by him.
 
 
 ## 4. If the coordinator stops
