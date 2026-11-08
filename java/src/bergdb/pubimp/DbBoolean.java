@@ -2,11 +2,11 @@ package bergdb.pubimp;
 
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-import bergdb.pub.util.BadFormatException;
 
 /**
  * The DbObject type for storing a boolean; a type that only have two possible values:
- * true or false. The type char for this type is 'z'.
+ * true or false. The type char for this type is 'n'; stored as Binson's 0x44 or 0x45
+ * (bergdb 020-07).
  * 
  * @author Frans Lundberg
  */
@@ -23,9 +23,7 @@ public class DbBoolean extends DbValue {
     }
     
     public int write(byte[] b, int offset) {
-        b[offset] = value == true ? (byte) 1 : (byte) 0;
-        offset++;
-        return offset;
+        return ObjectFormat.writeBoolean(b, offset, value);
     }
 
     public boolean toBoolean() {
@@ -38,19 +36,6 @@ public class DbBoolean extends DbValue {
     
     public String toString() {
         return "" + value;
-    }
-    
-    public static DbBoolean parse(byte[] buffer, int offset) {
-        return new DbBoolean(parseToBoolean(buffer, offset));
-    }
-    
-    public static boolean parseToBoolean(byte[] buffer, int offset) {
-        byte myByte = buffer[offset];
-        if (myByte != 0 && myByte != 1) {
-            throw new BadFormatException("Expected byte value of 0 or 1, was: " + myByte + ".");
-        }
-        
-        return myByte == 1;
     }
     
     // ---- Tests ----
@@ -66,8 +51,9 @@ public class DbBoolean extends DbValue {
         byte[] bytes = new byte[16];
         DbBoolean b0 = new DbBoolean(false);
         
-        b0.write(bytes, 3);
-        DbBoolean b1 = DbBoolean.parse(bytes, 3);
+        Assert.assertEquals(4, b0.write(bytes, 3));
+        Assert.assertEquals(0x45, bytes[3]);
+        DbValue b1 = DbValue.read(bytes, 3);
         
         Assert.assertEquals(false, b0.toBoolean());
         Assert.assertEquals(false, b1.toBoolean());
@@ -78,8 +64,9 @@ public class DbBoolean extends DbValue {
         byte[] bytes = new byte[16];
         DbBoolean b0 = new DbBoolean(true);
         
-        b0.write(bytes, 3);
-        DbBoolean b1 = DbBoolean.parse(bytes, 3);
+        Assert.assertEquals(4, b0.write(bytes, 3));
+        Assert.assertEquals(0x44, bytes[3]);
+        DbValue b1 = DbValue.read(bytes, 3);
         
         Assert.assertEquals(true, b0.toBoolean());
         Assert.assertEquals(true, b1.toBoolean());

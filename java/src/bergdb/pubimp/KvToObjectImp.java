@@ -83,13 +83,21 @@ public class KvToObjectImp implements KvToObjectConverter, ClassToObject {
         return StringUtil.toString(value);
     }
 
-    /** Converts an entry to a Java Object when c is Object.class. */
+    /**
+     * Converts an entry to a Java Object when c is Object.class: a DbObject if the value is a
+     * stored object by the full check; a byte[] that starts with the header but is not one
+     * stays a byte[] (bergdb 020-08, section 3).
+     */
     private Object entryToMixedTypeObject(String ikey, String ukey, byte[] value) {
         Object result;
         boolean isObject = Entries.isProbablyDbObject(ikey, value);
         
         if (isObject) {
-            result = entryToDbObject(ukey, value);
+            try {
+                result = ukey == null ? new DbObject(value) : new DbObject(value, ukey);
+            } catch (BadFormatException e) {
+                result = value;     // the database's own array, bergdb 015-47
+            }
         } else if (ikey.endsWith(".txt")) {
             result = entryToString(value);
         } else {

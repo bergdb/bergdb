@@ -395,7 +395,7 @@ public class PubPromiseTester {
         return key();
     }
 
-    /** A String or byte[] value, random; bytes never start with DbObject's magic. */
+    /** A String or byte[] value, random; bytes never start with DbObject's header. */
     private Object value() {
         int n = random.nextInt(4) == 0 ? random.nextInt(small ? 60000 : 3000)
                 : random.nextInt(12);
@@ -409,7 +409,7 @@ public class PubPromiseTester {
         } else {
             byte[] b = new byte[n];
             random.nextBytes(b);
-            if (n > 0 && b[0] == DbObject.MAGIC[0]) {
+            if (n > 0 && b[0] == DbObject.HEADER) {
                 b[0] = 0;
             }
             return b;

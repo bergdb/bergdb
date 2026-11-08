@@ -547,6 +547,30 @@ final class ObjectFormat {
         }
     }
 
+    /**
+     * The levels of the value at 'p': 0 for a scalar, 1 for a container that holds no
+     * container, and one more for each level of containers below it (020-07, R14). A walk of
+     * the value; at most MAX_LEVELS deep on checked bytes.
+     */
+    static int heightAt(byte[] b, int p) {
+        int t = b[p] & 0xff;
+        int height = 0;
+        if (t == ARRAY_START) {
+            for (int q = p + 1; (b[q] & 0xff) != ARRAY_END; q = valueEnd(b, q)) {
+                height = Math.max(height, heightAt(b, q));
+            }
+            return 1 + height;
+        } else if (isObjectType(t)) {
+            int n = countAt(b, p);
+            for (int i = 0; i < n; i++) {
+                int f = fieldAt(b, p, i);
+                height = Math.max(height, heightAt(b, f + 1 + (b[f] & 0xff)));
+            }
+            return 1 + height;
+        }
+        return 0;
+    }
+
     /** The width w of the object at 'p': its count and ends take w bytes each. */
     static int widthAt(byte[] b, int p) {
         return 1 << ((b[p] & 0xff) - OBJECT1);

@@ -157,14 +157,17 @@ public class PubTester {
      * writer, gives a get of an object an ObjectCreationException (the reader's
      * BadFormatException), inside rw() and outside, and the database goes on. Before, a
      * nested object of size -1 gave an AssertionError (with -ea), which failed the
-     * database inside rw() (019-10).
+     * database inside rw() (019-10). In format 2 (bergdb 020-07; 020-08, step 2): a nested
+     * object whose field ends past its extent.
      */
     @Nano
     public static void testMalformedObjectRefused() {
-        DbObject inner = new DbObject.Builder().addInt("i", 1).build();
+        DbObject inner = new DbObject.Builder().addLong("i", 1).build();
         final byte[] b = new DbObject.Builder().addObject("o", inner).build().getBytes();
-        int field = Bytes.bytesToIntLE(b, 8 + 2);   // the field's offset, after the header
-        Bytes.intToBytesLE(-1, b, field + 1 + 2 + 1);   // after its type, name size, name "o"
+        // The header, {o: {i: 1}}: the outer object, its field "o", the nested object.
+        Assert.assertEquals("82480109" + "016f" + "48010401691001",
+                bergdb.common.StringUtil.toHex(b));
+        b[8] = 9;       // the nested object's end, 4, past its field
         assertGetRefused(b);
     }
 
@@ -181,15 +184,20 @@ public class PubTester {
     }
 
     /**
-     * A get of the object 'b' as a class, a DbObject and an Object throws
-     * ObjectCreationException, outside rw() and inside, and the database goes on.
+     * A get of the object 'b' as a class and as a DbObject throws ObjectCreationException,
+     * outside rw() and inside, and the database goes on. A get as Object gives the bytes:
+     * they start with the header of format 2 but are not a stored object (bergdb 020-08,
+     * section 3).
      */
     private static void assertGetRefused(byte[] b) {
         Database db = Factory.database().memory().start();
         try {
             final Connection c = db.connection();
             c.put("/bad", b);
-            Class<?>[] classes = {WithObject.class, DbObject.class, Object.class};
+            Object asObject = c.get("/bad", Object.class);
+            Assert.assertTrue("a get as Object: " + asObject, asObject instanceof byte[]
+                    && Arrays.equals(b, (byte[]) asObject));
+            Class<?>[] classes = {WithObject.class, DbObject.class};
             for (final Class<?> clazz : classes) {
                 Throwable thrown = null;
                 try {
@@ -1404,18 +1412,107 @@ public class PubTester {
         d.stop();
     }
     
+    /** A null array element is refused (bergdb 020-04, section 2.1; 020-09, section 4.3). */
     @Nano
     public static void nullStringArrayField2() {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         StringArrayClass a = new StringArrayClass();
         a.strings = new String[]{"", null};
-        c.w().put("/d/a", a).execute();
-        StringArrayClass b = c.get("/d/a", StringArrayClass.class);
-        Assert.assertEquals(2, b.strings.length);
-        Assert.assertEquals("", b.strings[0]);
-        Assert.assertNull(b.strings[1]);
+        try {
+            c.w().put("/d/a", a).execute();
+            throw new AssertionError("no exception");
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("'strings[1]'"));
+        }
+        Assert.assertNull(c.get("/d/a", Object.class));
         d.stop();
+    }
+    
+    /**
+     * bergdb 020-04, N5: a put of a refused object writes nothing, also of the valid objects
+     * of its transaction; inside rw(), the refusal is the action's exception, and the
+     * database goes on.
+     */
+    @Nano
+    public static void testRefusedObjectWritesNothing() {
+        Database d = Factory.database().memory().start();
+        try {
+            final Connection c = d.connection();
+            final StringArrayClass good = new StringArrayClass();
+            good.strings = new String[]{"a"};
+            final StringArrayClass bad = new StringArrayClass();
+            bad.strings = new String[]{"a", null};
+            for (int i = 0; i < 2; i++) {
+                try {
+                    if (i == 0) {
+                        c.w().put("/good", good).put("/bad", bad).execute();
+                    } else {
+                        c.rw(new Action() {
+                            public void run(RwEnvironment env) {
+                                env.put("/good", good);
+                                env.put("/bad", bad);
+                            }
+                        });
+                    }
+                    throw new AssertionError("no exception, " + i);
+                } catch (IllegalArgumentException e) {
+                    Assert.assertTrue(e.getMessage(), e.getMessage().contains("'strings[1]'"));
+                }
+                Assert.assertNull(c.get("/good", Object.class));
+                Assert.assertNull(c.get("/bad", Object.class));
+            }
+            c.put("/good", good);
+            Assert.assertArrayEquals(good.strings, 
+                    c.get("/good", StringArrayClass.class).strings);
+        } finally {
+            d.close();
+        }
+    }
+    
+    public static class IntV {
+        public int v;
+        public IntV() {}
+        public IntV(int v) {
+            this.v = v;
+        }
+    }
+    
+    public static class LongV {
+        public long v;
+        public LongV() {}
+        public LongV(long v) {
+            this.v = v;
+        }
+    }
+    
+    /**
+     * bergdb 020-08, T10: one integer (020-02, section 4.7): an int field and a long field
+     * of one value give one sort key in a long index, and are found by it in its order.
+     */
+    @Nano
+    public static void testLongIndexOverOneInteger() {
+        Database d = Factory.database().memory().start();
+        try {
+            d.indexBuilder("v").type("long").dir("/t/").field("v").start().join();
+            Connection c = d.connection();
+            c.w().put("/t/a", new IntV(7)).put("/t/b", new LongV(7)).put("/t/c", 
+                    new LongV(1L << 40)).put("/t/d", new IntV(-3)).put("/t/e", 
+                    new LongV(Long.MIN_VALUE)).execute();
+            StringBuilder keys = new StringBuilder();
+            for (Kv<DbObject> kv : c.useIndex("v", DbObject.class).kvs()) {
+                keys.append(kv.key()).append(' ').append(kv.value().getLong("v")).append(';');
+            }
+            Assert.assertEquals("/t/e -9223372036854775808;/t/d -3;/t/a 7;/t/b 7;"
+                    + "/t/c 1099511627776;", keys.toString());
+            keys.setLength(0);
+            for (Kv<DbObject> kv : c.useIndex("v", DbObject.class).eq(7).kvs()) {
+                keys.append(kv.key()).append(';');
+            }
+            Assert.assertEquals("/t/a;/t/b;", keys.toString());
+        } finally {
+            d.close();
+        }
     }
     
     public static class IntClass {

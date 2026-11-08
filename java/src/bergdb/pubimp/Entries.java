@@ -73,8 +73,10 @@ public class Entries {
     /**
      * Returns true if the entry is probably a DbObject.
      * This is the case when the key is an object key
-     * (see isObjectKey()) and the value starts with the byte signature for
-     * DbObjects (DbObject.MAGIC).
+     * (see isObjectKey()) and the value starts with the header of a stored object of format
+     * 2, DbObject.HEADER (0x82), with at least an empty object after it (bergdb 020-07). A
+     * String value never does: no UTF-8 starts with a byte of 0x80 to 0xbf. A byte[] may, so
+     * a caller that must tell reads the value with the full check (bergdb 020-08, section 3).
      */
     public static boolean isProbablyDbObject(String key, byte[] value) {
         assert key != null;
@@ -82,19 +84,8 @@ public class Entries {
         assert value != null;
         
         return isObjectKey(key)
-                && value.length > DbObject.MAGIC.length
-                && startsWithMagic(value);
-    }
-    
-    private static boolean startsWithMagic(byte[] arr) {
-        boolean result = true;
-        for (int i = 0; i < DbObject.MAGIC.length; i++) {
-            if (arr[i] != DbObject.MAGIC[i]) {
-                result = false;
-                break;
-            }
-        }
-        return result;
+                && value.length >= 3
+                && value[0] == DbObject.HEADER;
     }
 
     // ======== Tests ========
@@ -120,6 +111,15 @@ public class Entries {
     @Nano
     public static void testIsObject4() {
         Assert.assertFalse(isProbablyDbObject("/dir/1", new byte[10]));
+    }
+    
+    /** The header and at least 2 bytes more (bergdb 020-07): 82 48 00 is the empty object. */
+    @Nano
+    public static void testIsObject5() {
+        Assert.assertTrue(isProbablyDbObject("/dir/1", new byte[] {(byte) 0x82, 0x48, 0}));
+        Assert.assertFalse(isProbablyDbObject("/dir/1", new byte[] {(byte) 0x82, 0x48}));
+        Assert.assertFalse(isProbablyDbObject("/dir/1", new byte[] {'b', 'e', 'r', 'g', 'o', 
+                1, 0, 0}));
     }
     
     @Nano

@@ -240,10 +240,10 @@ public class PubTesterIndex {
             .put("/payments/30", p3)
             .execute();
         
-        // Hack to add value that is not a DbObject, but starts with DbObject.MAGIC bytes.
+        // Hack to add value that is not a DbObject, but starts with DbObject.HEADER.
         
         Db db = ((DatabaseImp) database).getDb();
-        byte[] value = Util.concat(DbObject.MAGIC.clone(), new byte[]{'a'});
+        byte[] value = new byte[] {DbObject.HEADER, 'a', 'b'};
         Trans trans = db.trans().put(Keys.toBytes(PubKeys.u2i("/payments/1b")), value).build();
         db.execute(trans);
 

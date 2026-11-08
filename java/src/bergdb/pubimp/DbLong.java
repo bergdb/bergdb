@@ -1,11 +1,12 @@
 package bergdb.pubimp;
 
-import bergdb.common.Bytes;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * The DbObject type for a 64-bit integer, like Java's long type.
+ * The DbObject type for an integer, a 64-bit integer like Java's long type: the one integer
+ * of format 2, for Java's byte, short, char, int and long, stored in the fewest of 1, 2, 4
+ * and 8 bytes (bergdb 020-07, R9; 020-02, section 4.7).
  * The type char for this type is 'l'.
  * 
  * @author Frans Lundberg
@@ -19,13 +20,11 @@ public class DbLong extends DbValue {
     }
     
     public int getByteSize() {
-        return 8;
+        return ObjectFormat.integerSize(value);
     }
     
     public int write(byte[] b, int offset) {
-        Bytes.longToBytesLE(value, b, offset);
-        offset += 8;
-        return offset;
+        return ObjectFormat.writeInteger(b, offset, value);
     }
     
     public long toLong() {
@@ -40,15 +39,7 @@ public class DbLong extends DbValue {
         return "" + value;
     }
     
-    public static DbLong parse(byte[] buffer, int offset) {
-        return new DbLong(parseToLong(buffer, offset));
-    }
-    
-    public static long parseToLong(byte[] buffer, int offset) {
-        return Bytes.bytesToLongLE(buffer, offset);
-    }
-    
-    
+
     // ---- Tests -------------------------------------------------
     
     @Nano
@@ -60,10 +51,39 @@ public class DbLong extends DbValue {
     public static void testSerialize0() {
         byte[] bytes = new byte[20];
         DbLong l0 = new DbLong(111222333444L);
-        l0.write(bytes, 3);
+        Assert.assertEquals(3 + 9, l0.write(bytes, 3));
         
-        DbLong l1 = DbLong.parse(bytes, 3);
+        DbValue l1 = DbValue.read(bytes, 3);
         
         Assert.assertEquals(111222333444L, l1.toLong());
+        
+        long[] values = {0, -128, 127, 128, -32768, 32768, Integer.MIN_VALUE, 
+                Integer.MAX_VALUE + 1L, Long.MIN_VALUE};
+        int[] sizes = {2, 2, 2, 3, 3, 5, 5, 9, 9};
+        for (int i = 0; i < values.length; i++) {
+            DbLong v = new DbLong(values[i]);
+            Assert.assertEquals(sizes[i], v.getByteSize());
+            Assert.assertEquals(sizes[i], v.write(bytes, 0));
+            Assert.assertEquals(values[i], DbValue.read(bytes, 0).toLong());
+        }
+    }
+    
+    @Nano
+    public static void testToMethods0() {
+        DbLong i0 = new DbLong(444555);
+        Assert.assertEquals(444555, i0.toInt());
+        Assert.assertEquals(444555, i0.toLong());
+        Assert.assertEquals(444555.0f, i0.toFloat());
+        Assert.assertEquals(444555.0, i0.toDouble());
+        Assert.assertEquals((short) 444555, i0.toShort());
+        Assert.assertEquals((char) 444555, i0.toChar());
+        Assert.assertEquals((byte) 444555, i0.toByte());
+    }
+    
+    @Nano
+    public static void testToMethods1() {
+        DbLong i0 = new DbLong(444555);
+        Assert.assertEquals("444555", i0.toStringValue());
+        Assert.assertEquals(true, i0.toBoolean());
     }
 }

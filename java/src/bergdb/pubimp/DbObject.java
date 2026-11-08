@@ -3,14 +3,12 @@ package bergdb.pubimp;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
+import java.util.HashMap;
 
 import bergdb.common.Bug;
-import bergdb.common.ByteArrayComparator;
-import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
 import bergdb.pub.DataFormatException;
 import bergdb.pub.util.BadFormatException;
@@ -22,7 +20,7 @@ import bergdb.pub.util.BadFormatException;
  * The word "field" is not used as the actual Java class fields, but for the conceptual
  * fields that this object contain. The set of types available for a DbObject field does 
  * not correspond directly to Java types, but is a separate small type system with 
- * 8 distinct types.
+ * 7 distinct types, Binson's.
  * </p>
  *
  * <p>Experimental in 2026.3, with known faults; it may change in a later release (bergdb
@@ -32,22 +30,24 @@ import bergdb.pub.util.BadFormatException;
  * 
  * <pre>
  * n - boolean    A type that has a value of either true or false.
- * i - int        A signed 32-bit integer.
- * l - long       A signed 64-bit integer.
- * d - double     A 64-bit floating pointer number (IEEE-754).
+ * l - integer    A signed 64-bit integer, the one integer type: Java's byte, short, char,
+ *                int and long are each stored as an integer, in the fewest bytes.
+ * d - double     A 64-bit floating pointer number (IEEE-754); every NaN is one value.
  * s - string     A string stored as well-formed UTF-8.
  * b - byteArray  An array of bytes.
  * a - array      A heterogeneous array (list) of values. See class DbArray.
  * o - object     A nested DbObject.
- * z - zero       Not a type, character 'z' is reserved for null-capability.
+ * z - absent     Not a type: getType() of a field that the object does not have.
  * </pre>
  * 
- * <p>The types n, i, l, d can have any values permitted by the Java runtime for the primitive 
- * Java types with the same name. The string type can have the value of any Unicode string or
- * null. The object type stores a DbObject, or it can have the value null.
- * The byteArray type stores an array of bytes or have a value of null. The array type stores
- * an array of heterogeneous elements; each element can independently be of any DbObject type. 
- * See class DbArray. The value of an array can be null.</p>
+ * <p>INT, 'i', is not a stored type: has(name, INT) is true, and getInt() gives the value,
+ * for an integer within int's range (bergdb 020-08, section 3).</p>
+ * 
+ * <p>No value is null (bergdb 020-02, section 4.1): a field without a value is absent, an
+ * array has no absent element, and toDbObject() leaves a null field out. The bytes are format
+ * 2 of stored objects, bergdb 020-07: the header byte 0x82, then the object, its fields
+ * found by a binary search on their names; names of 1 to 255 bytes; at most 16 levels of
+ * objects and arrays.</p>
  *
  * <p>Strings. A string, and a field's name, is Unicode text: a sequence of Unicode scalar
  * values, stored as well-formed UTF-8 (RFC 3629), as every string BergDB stores, keys and
@@ -58,14 +58,9 @@ import bergdb.pub.util.BadFormatException;
  * ("inner.names[3]"). A char[] field keeps any chars, as an array of ints, and reads back
  * exactly; a byte[] field keeps any bytes.</p>
  * 
- * <p>A DbObject can be serialized to a byte array; actually it is stored in memory in 
- * a form that is nearly identical to its serialized byte format.
- * The method write() will serialize the DbObject to bytes, and parse() will parse it back
- * from bytes.</p>
- * 
- * <p>The method Builder.build() defines the byte format of DbObjects, that is, how they 
- * are stored as bytes in the database. The byte format needs to stay stable, since objects 
- * are stored in databases for a long time.</p>
+ * <p>A DbObject is held in memory as its stored bytes, checked by every rule of the format
+ * when it is made from bytes, and read by lookups. getBytes() gives the stored bytes, and
+ * new DbObject(bytes) reads them back.</p>
  * 
  * <p>A DbObject can be created from a Java Object with the method DbObject.toDbObject(Object javaObject).
  * The method toJavaObject() converts a DbObject to a Java object.</p>
@@ -81,15 +76,18 @@ public class DbObject extends DbValue {
     // in the db stream.
     // 1309 Frans: Added support for Java arrays; they are wrapped field 'v' of a DbObject.
     // 1311 Frans: Changed byte signature to start with "bergo", then byte value 1 for version.
+    // 2026-11 (bergdb 020-08, step 2): format 2, bergdb 020-07; "bergo" is format 1.
     //
     
-    private static final int HEADER_SIZE = 8;
-    
-    /** The byte signature; the first bytes of the DbObject when serialized. */
-    public static final byte[] MAGIC = new byte[]{'b', 'e', 'r', 'g', 'o'};
+    /** The header of a stored object, format 2: its first byte (bergdb 020-07, R1). */
+    public static final byte HEADER = (byte) ObjectFormat.HEADER;
     
     public static final char BOOLEAN = 'n';
+    
+    /** Not a stored type: an integer within int's range, for has() (bergdb 020-08, section 3). */
     public static final char INT = 'i';
+    
+    /** The integer, 64 bits; getType() of every integer. */
     public static final char LONG = 'l';
     public static final char DOUBLE = 'd';
     public static final char STRING = 's';
@@ -97,17 +95,15 @@ public class DbObject extends DbValue {
     public static final char ARRAY = 'a';
     public static final char OBJECT = 'o';
     
-    private static final int MAGIC_SIZE = MAGIC.length;
-    private static final int FIELD_INFO_SIZE = 6;
     private static final String KEY_FIELD = PubUtil.KEY_FIELD;
-    private static final short KEY_FIELD_HASH = hash(KEY_FIELD);
     private static final String WRAPPED_ARRAY_FIELD_NAME = "array";
     private static final String WRAPPED_PRIMITIVE_FIELD_NAME = "p";   // p for primitive.
     
-    private final byte[] bytes;
-    private final short[] hashes;   // cached data from 'bytes'
-    private final int fieldCount;   // The number of fields.
-    private final boolean isNull;
+    private final byte[] bytes;     // the stored value, header first; or a parent's bytes
+    private final int start;        // the object's type byte in 'bytes'
+    private final int end;          // after its last field
+    private final boolean whole;    // 'bytes' is the stored value of this object
+    private int height;             // its levels, 1 or more; 0 until computed
     private final String key;             
             // If set, represents the database key. Implicitly it is the value of the 'key' field.
             // It may be null.
@@ -124,7 +120,8 @@ public class DbObject extends DbValue {
     }
     
     /**
-     * Creates a new DbObject based in its byte array representation.
+     * Creates a new DbObject based in its byte array representation: a stored object of
+     * format 2, checked by every rule (bergdb 020-07, section 7.1).
      * 
      * @param b 
      *      The serialized format of the DbObject. 
@@ -132,219 +129,74 @@ public class DbObject extends DbValue {
      * @param key 
      *      The database string key of the DbObject, may be null.
      * @throws BadFormatException 
-     *      If the bytes are not formatted OK according to the 
-     *      serialized byte format defined by this class.
+     *      If the bytes are not a stored object of format 2; the message starts with the
+     *      condition's code (bergdb 020-07, section 7.2), "format-1" for an object of
+     *      BergDB 2026.3 and before.
      */
     public DbObject(byte[] b, String key) throws BadFormatException {
-        this(b, key, true);
-    }
-    
-    /** As DbObject(b, key); 'checkNesting' is false for an object nested in checked bytes. */
-    private DbObject(byte[] b, String key, boolean checkNesting) throws BadFormatException {
         super('o');
-        this.key = key;
-        
         if (b == null) {
             throw new IllegalArgumentException("b == null not allowed");
         }
-        
-        if (b.length < HEADER_SIZE) {
-            throw new BadFormatException("bytes too short, " + b.length);
-        }
-        
-        this.bytes = b.clone();
-        
-        checkSignature(b);
-        
-        byte version = bytes[MAGIC_SIZE];
-        if (version != 1) {
-            throw new BadFormatException("Only Version 1 supported, got version " 
-                    + ((int) version) + ".");
-        }
-        
-        int fCount = Bytes.bytesToShortLE(bytes, MAGIC_SIZE + 1);
-        if (fCount < -1) {
-            throw new BadFormatException("Bad fieldCount, " + fCount + ".");
-        }
-        
-        if (fCount == -1) {
-            isNull = true;
-            fieldCount = 0;
-        } else {
-            isNull = false;
-            fieldCount = fCount;
-        }
-        
-        if (b.length < HEADER_SIZE + fieldCount * FIELD_INFO_SIZE) {
-            throw new BadFormatException("bytes.length too small for the fields, " 
-                    + b.length + ", fieldCount: " + fieldCount + ".");
-        }
-        
-        if (checkNesting) {
-            checkNesting(b);
-        }
-        
-        this.hashes = new short[fieldCount];
-        int offset = HEADER_SIZE;
-        
-        for (int i = 0; i < fieldCount; i++) {
-            hashes[i] = Bytes.bytesToShortLE(bytes, offset);
-            int bytePosition = Bytes.bytesToIntLE(bytes, offset + 2);
-            if (bytePosition < 0 || bytePosition >= b.length) {
-                throw new BadFormatException("Bad byte position of field " + i + ", " 
-                        + bytePosition + ", bytes not long enough, " + b.length + ".");
-            }
-            
-            int fieldOffset = readFieldOffset(i);
-            try {
-                DbField.parse(b, fieldOffset);
-            } catch (IndexOutOfBoundsException e) {
-                // A value that ends past the bytes, such as a cut int (bergdb 021-07).
-                throw new BadFormatException("Field " + i + " ends past the bytes, "
-                        + b.length + ".");
-            }
-            
-            offset += FIELD_INFO_SIZE;
-        }
+        byte[] copy = b.clone();
+        ObjectFormat.checkStored(copy);
+        this.bytes = copy;
+        this.start = 1;
+        this.end = copy.length;
+        this.whole = true;
+        this.key = key;
+    }
+    
+    /** The object in [start, end) of checked 'bytes'. */
+    private DbObject(byte[] bytes, int start, int end, boolean whole, int height) {
+        super('o');
+        this.bytes = bytes;
+        this.start = start;
+        this.end = end;
+        this.whole = whole;
+        this.height = height;
+        this.key = null;
+    }
+    
+    /** The object at 'p' of checked bytes, a view on them; 'b' must not change. */
+    static DbObject view(byte[] b, int p) {
+        return new DbObject(b, p, ObjectFormat.objectEnd(b, p), false, 0);
     }
     
     /**
-     * Refuses bytes nested deeper than MAX_READ_OBJECTS or MAX_READ_LEVELS with
-     * BadFormatException (bergdb 021-08), before the reader parses them by recursion, which
-     * ended in a StackOverflowError, and copies each nested object's bytes. It walks the
-     * bytes without copying them, in the reader's order, and stops at the first fault that
-     * the reader refuses there; it must not stop where the reader goes on.
-     */
-    private static void checkNesting(byte[] b) {
-        scanObject(b, 0, b.length, 1, 1);
-    }
-    
-    private static void checkLevels(int objects, int levels) {
-        if (objects > MAX_READ_OBJECTS || levels > MAX_READ_LEVELS) {
-            throw new BadFormatException("Nested deeper than " + MAX_READ_OBJECTS 
-                    + " objects or " + MAX_READ_LEVELS + " objects and arrays.");
-        }
-    }
-    
-    /** Scans the object in b[start, end); false at a fault that the reader refuses. */
-    private static boolean scanObject(byte[] b, int start, int end, int objects, int levels) {
-        checkLevels(objects, levels);
-        if (end - start < HEADER_SIZE) {
-            return false;
-        }
-        int count = Bytes.bytesToShortLE(b, start + MAGIC_SIZE + 1);
-        if (end - start < HEADER_SIZE + count * FIELD_INFO_SIZE) {
-            return false;
-        }
-        for (int i = 0; i < count; i++) {
-            int position = Bytes.bytesToIntLE(b, start + HEADER_SIZE + i * FIELD_INFO_SIZE + 2);
-            if (position < 0 || position > end - start - 3) {
-                return false;
-            }
-            int offset = start + position;
-            char type = (char) b[offset];
-            int nameSize = Bytes.bytesToShortLE(b, offset + 1);
-            offset += 3;
-            if (nameSize <= 0 || nameSize > end - offset) {
-                return false;
-            }
-            if (scanValue(b, type, offset + nameSize, end, objects, levels) < 0) {
-                return false;
-            }
-        }
-        return true;
-    }
-    
-    /**
-     * Scans a value of 'type' at b[offset] in an object or array at 'objects' and 'levels';
-     * returns the offset after it, or -1 at a fault that the reader refuses.
-     */
-    private static int scanValue(byte[] b, char type, int offset, int end, int objects, 
-            int levels) {
-        int size;
-        switch (type) {
-        case 'n':
-            size = 1;
-            break;
-        case 'i':
-            size = 4;
-            break;
-        case 'l':
-        case 'd':
-            size = 8;
-            break;
-        case 's':
-        case 'b':
-        case 'o':
-            if (end - offset < 4) {
-                return -1;
-            }
-            int n = Bytes.bytesToIntLE(b, offset);
-            offset += 4;
-            if (n == -1 && type != 'o') {
-                return offset;
-            }
-            if (n < 0 || n > end - offset) {
-                return -1;
-            }
-            if (type == 'o' && !scanObject(b, offset, offset + n, objects + 1, levels + 1)) {
-                return -1;
-            }
-            return offset + n;
-        case 'a':
-            checkLevels(objects, levels + 1);
-            while (offset < end) {
-                char elementType = (char) b[offset++];
-                if (elementType == 'z' || elementType == 'Z') {
-                    return offset;
-                }
-                offset = scanValue(b, elementType, offset, end, objects, levels + 1);
-                if (offset < 0) {
-                    return -1;
-                }
-            }
-            return -1;
-        default:
-            return -1;
-        }
-        return size > end - offset ? -1 : offset + size;
-    }
-    
-    private void checkSignature(byte[] b) {
-        for (int i = 0; i < MAGIC.length; i++) {
-            if (b[i] != MAGIC[i]) {
-                throw new BadFormatException("Bad byte signature of bytes that were expected "
-                        + "to be DbObject bytes.");
-            }
-        }
-    }
-    
-    /**
-     * Returns a reference to the internal byte buffer.
-     * No value copy is made, the returned reference must not be used to modify the array.
+     * Returns the stored bytes, the header first. For an object made from bytes or by the
+     * Builder, a reference to the internal byte buffer: no value copy is made, and the
+     * returned reference must not be used to modify the array. For an object nested in
+     * another, a new array.
      */
     public byte[] getBytes() {
-        return this.bytes;
-    }
-    
-    public final boolean isNull() {
-        return isNull;
+        if (whole) {
+            return this.bytes;
+        }
+        byte[] b = new byte[1 + end - start];
+        b[0] = HEADER;
+        System.arraycopy(bytes, start, b, 1, end - start);
+        return b;
     }
     
     /**
      * Returns the number of fields of the typeless object.
      */
     public int getFieldCount() {
-        int count = Bytes.bytesToShortLE(bytes, MAGIC_SIZE + 1);
+        int count = ObjectFormat.countAt(bytes, start);
         count = key == null ? count : count + 1;
         return count;
     }
     
     /**
-     * Returns true iff the typeless object has a field with the given name and type.
+     * Returns true iff the typeless object has a field with the given name and type. For
+     * INT, a field of an integer within int's range.
      */
     public boolean has(String name, char type) {
-        return internalSimpleGet(name, type) != null;
+        if (type == STRING && isKey(name)) {
+            return true;
+        }
+        return is(find(name), type);
     }
     
     /**
@@ -352,70 +204,70 @@ public class DbObject extends DbValue {
      * given name parts and the given type.
      */
     public boolean has(String[] nameParts, char type) {
-        return internalGet(nameParts, 0, type) != null;
+        if (nameParts.length == 1) {
+            return has(nameParts[0], type);
+        }
+        return is(find(nameParts), type);
     }
-   
-    private NameAndType internalGet(String[] parts, int offset, char type) {
-        assert offset >= 0;
-        assert parts.length - offset > 0;
-        
-        boolean isNested = (parts.length - offset) > 1;
-        if (isNested) {
-            return internalNestedGet(parts, offset, type);
-        } else {
-            return internalSimpleGet(parts[offset], type);
+    
+    private boolean isKey(String name) {
+        return key != null && KEY_FIELD.equals(name);
+    }
+    
+    /** Whether the value at 'p' is of 'type': false if p is -1, absent. */
+    private boolean is(int p, char type) {
+        if (p < 0) {
+            return false;
+        }
+        char t = ObjectFormat.typeAt(bytes, p);
+        if (type == INT) {
+            return t == LONG && ObjectFormat.integerAt(bytes, p) == (int) ObjectFormat.integerAt(
+                    bytes, p);
+        }
+        return t == type;
+    }
+    
+    /** The start of the value of the field 'name', or -1 if absent (bergdb 020-07, section 8). */
+    private int find(String name) {
+        byte[] b = nameBytes(name);
+        return b == null ? -1 : ObjectFormat.find(bytes, start, end, b);
+    }
+    
+    /** The start of the value of a nested field, or -1 if absent. */
+    private int find(String[] parts) {
+        if (parts.length == 0) {
+            throw new IllegalArgumentException("no name parts");
+        }
+        int p = start;
+        int e = end;
+        for (int k = 0; ; k++) {
+            byte[] b = nameBytes(parts[k]);
+            int q = b == null ? -1 : ObjectFormat.find(bytes, p, e, b);
+            if (q < 0 || k == parts.length - 1) {
+                return q;
+            }
+            if (!ObjectFormat.isObjectAt(bytes, q)) {
+                return -1;
+            }
+            p = q;
+            e = ObjectFormat.objectEnd(bytes, q);
         }
     }
     
-    private NameAndType internalNestedGet(String[] parts, int offset, char type) {
-        if (parts.length - offset < 2) {
-            throw new Bug("parts.length = " + parts.length + ", offset: " + offset);
+    /**
+     * A field's name in UTF-8, or null if no field has it: an empty name, one with a lone
+     * surrogate, which has no UTF-8 form (a replacing encoder would give '?' and find a field
+     * named so), or one longer than 255 bytes.
+     */
+    private static byte[] nameBytes(String name) {
+        if (name == null) {
+            throw new IllegalArgumentException("name == null not allowed");
         }
-        
-        String firstPart = parts[offset];
-        boolean hasFirstPart = (internalSimpleGet(firstPart, DbObject.OBJECT) != null);
-        if (!hasFirstPart) {
+        if (name.isEmpty() || StringUtil.hasLoneSurrogate(name)) {
             return null;
         }
-        
-        return getObject(firstPart).internalGet(parts, offset + 1, type);
-    }
-    
-    private NameAndType internalSimpleGet(String name, char type) {
-        final short hash = hash(name);
-        NameAndType n = null;
-        boolean gotMatch = false;
-        
-        if (type == DbObject.STRING 
-                && this.key != null 
-                && hash == KEY_FIELD_HASH && name.equals(KEY_FIELD)) {
-            NameAndType nat = new NameAndType();
-            nat.name = KEY_FIELD;
-            nat.type = DbObject.STRING;
-            nat.valueOffset = -1;
-            nat.object = this;
-            return nat;
-        }
-        
-        for (int i = 0; i < fieldCount; i++) {
-            if (hash == hashes[i]) {
-                if (n == null) {
-                    n = new NameAndType();
-                }
-                
-                readFieldInfo(i, n);
-                
-                if (n.name.equals(name) && n.type == type) {
-                    gotMatch = true;
-                    break;      
-                    
-                    // Always break here, we matched name, no more match possible.
-                    // Multiple fields with same name not allowed.
-                }
-            }
-        }
-        
-        return gotMatch ? n : null;
+        byte[] b = name.getBytes(StandardCharsets.UTF_8);
+        return b.length > ObjectFormat.MAX_NAME ? null : b;
     }
     
     private static final int NOT_ELIGIBLE = Modifier.FINAL | Modifier.STATIC | Modifier.TRANSIENT;
@@ -446,23 +298,29 @@ public class DbObject extends DbValue {
     /**
      * Creates a DbObject given an ordinary Java object as the source.
      * Copies values of fields that are not transient, not static, and not synthetic (added by 
-     * compiler) to the newly created DbObject that is returned.
-     * If 'object' is null, Builder.buildNull() is returned (a DbObject representing null).
+     * compiler) to the newly created DbObject that is returned. A null field is left out
+     * (bergdb 020-04's (c), Frans, 2026-11-08): the object has no field of its name.
      *
-     * @throws IllegalArgumentException  If a String in the object, at any depth, or a
-     *      field's name, has a lone surrogate (see "Strings" above; bergdb 021-04); the
-     *      message names the field, and an array element's index. If the object has a
-     *      reference cycle, or is nested too deep (bergdb 005-23).
+     * @throws IllegalArgumentException  If 'object' is null, or an array in it has a null
+     *      element (bergdb 020-04, section 2.1); if a String in the object, at any depth, or a
+     *      field's name, has a lone surrogate (see "Strings" above; bergdb 021-04); if a
+     *      field's name has more than 255 bytes in UTF-8. The message names the field, and an
+     *      array element's index. If the object has a reference cycle (bergdb 005-23), or is
+     *      nested deeper than 16 levels of objects and arrays (bergdb 020-07, R14).
      */
     public static DbObject toDbObject(Object object) {        
         if (object == null) {
-            return Builder.buildNull();
+            throw new IllegalArgumentException("object == null not allowed: BergDB stores no "
+                    + "null (bergdb 020-04, section 2.1)");
         }
         
-        // 2026-10-21 (bergdb 005-23): a cycle, or nesting deeper than MAX_DEPTH, is refused
-        // with the field path; the recursion ended in a StackOverflowError.
+        // 2026-10-21 (bergdb 005-23): a cycle, or nesting too deep, is refused with the field
+        // path; the recursion ended in a StackOverflowError. An array that is put is wrapped
+        // in an object, the level above it, with no step of its own in the path.
         final Path path = PATH.get();
-        path.enter(object);
+        boolean wrapper = object.getClass().isArray() || DbValue.isPrimitiveOrWrapper(
+                object.getClass());
+        path.enter(wrapper ? null : object);
         try {
             return toDbObjectOnPath(object, path);
         } finally {
@@ -470,40 +328,37 @@ public class DbObject extends DbValue {
         }
     }
     
-    /** The deepest nesting of objects toDbObject() converts (bergdb 005-23). */
-    static final int MAX_DEPTH = 1000;
-    
-    /**
-     * The most objects on a path from the top object that the reader reads: the most that
-     * toDbObject() writes, MAX_DEPTH, and a null object for a null field of the deepest
-     * (bergdb 021-08).
-     */
-    static final int MAX_READ_OBJECTS = MAX_DEPTH + 1;
-    
-    /**
-     * The most objects and arrays, counted alike, on a path from the top object that the
-     * reader reads (bergdb 021-08). toDbObject() counts objects only; this leaves room for
-     * an array between each two of them, and the Builder refuses to build deeper. The
-     * reader went to 20,000 levels of arrays on a thread's default stack (2 MB), and to
-     * 2,500 on a 1 MB stack, where 1,000 objects fit too.
-     */
-    static final int MAX_READ_LEVELS = 2 * MAX_DEPTH + 1;
-    
     private static final ThreadLocal<Path> PATH = new ThreadLocal<Path>() {
         protected Path initialValue() {
             return new Path();
         }
     };
     
-    /** The objects toDbObject() is converting on this thread, outermost first, by field. */
-    private static final class Path {
-        private final ArrayList<Object> objects = new ArrayList<Object>();
-        private final ArrayList<String> names = new ArrayList<String>();     // field of each
+    /** The path of toDbObject() on this thread. */
+    static Path path() {
+        return PATH.get();
+    }
+    
+    /**
+     * The objects and arrays toDbObject() is converting on this thread, outermost first: one
+     * a level, the top object level 1 (bergdb 020-07, R14), each with the step taken from it,
+     * a field's name or an element's index.
+     */
+    static final class Path {
+        private final ArrayList<Object> objects = new ArrayList<Object>();  // null: a wrapper
+        private final ArrayList<String> names = new ArrayList<String>();     // the step of each
         private final java.util.IdentityHashMap<Object, Boolean> set = 
                 new java.util.IdentityHashMap<Object, Boolean>();
         
+        /**
+         * Enters an object or an array, one level deeper; 'object' null for the object that
+         * wraps an array or a primitive put at the top.
+         * 
+         * @throws IllegalArgumentException  If 'object' is on the path already, a cycle, or
+         *      if the level would be above 16.
+         */
         void enter(Object object) {
-            if (set.containsKey(object)) {
+            if (object != null && set.containsKey(object)) {
                 int first = 0;
                 for (int i = 0; i < objects.size(); i++) {
                     if (objects.get(i) == object) {
@@ -515,27 +370,33 @@ public class DbObject extends DbValue {
                         + object.getClass().getName() + " at " + describe(names.size()) 
                         + " is also at " + describe(first) + ".");
             }
-            if (objects.size() >= MAX_DEPTH) {
+            if (objects.size() >= ObjectFormat.MAX_LEVELS) {
                 throw new IllegalArgumentException("The object is nested deeper than " 
-                        + MAX_DEPTH + " objects, at " + describe(names.size()) + ".");
+                        + ObjectFormat.MAX_LEVELS + " levels of objects and arrays, at '" 
+                        + describe(names.size()) + "' (bergdb 020-09, section 4.7).");
             }
             objects.add(object);
-            set.put(object, Boolean.TRUE);
-            names.add(null);
+            if (object != null) {
+                set.put(object, Boolean.TRUE);
+            }
+            names.add("");
         }
         
         void leave() {
             int last = objects.size() - 1;
-            set.remove(objects.remove(last));
+            Object object = objects.remove(last);
+            if (object != null) {
+                set.remove(object);
+            }
             names.remove(last);
         }
         
-        /** Sets the field being converted in the innermost object. */
-        void field(String name) {
+        /** Sets the step being taken in the innermost level: a field's name, or "[i]". */
+        void step(String name) {
             names.set(names.size() - 1, name);
         }
         
-        /** The field path to the object at depth 'depth' (0: the outermost object). */
+        /** The path to the value at level 'depth' + 1 (0: the outermost object). */
         private String describe(int depth) {
             if (depth == 0) {
                 return "the top";
@@ -543,15 +404,19 @@ public class DbObject extends DbValue {
             StringBuilder b = new StringBuilder();
             for (int i = 0; i < depth; i++) {
                 if (depth > 12 && i == 5) {
-                    b.append("(" + (depth - 10) + " more).");
+                    append(b, "(" + (depth - 10) + " more)");
                     i = depth - 5;
                 }
-                b.append(names.get(i));
-                if (i < depth - 1) {
-                    b.append('.');
-                }
+                append(b, names.get(i));
             }
             return b.toString();
+        }
+        
+        private static void append(StringBuilder b, String step) {
+            if (b.length() > 0 && !step.startsWith("[")) {
+                b.append('.');
+            }
+            b.append(step);
         }
     }
     
@@ -562,7 +427,7 @@ public class DbObject extends DbValue {
         if (clazz.isArray()) {
             // If it is an array, wraps it in a DbObject stored in a field.
             
-            DbValue array = DbValue.toDbValue(clazz, object);
+            DbValue array = DbValue.toDbValue(object);
             if (!(array instanceof DbArray)) {
                 throw new Bug("Unexpected type, expected DbArray, got: " + array.getClass());
             }
@@ -571,7 +436,7 @@ public class DbObject extends DbValue {
         } else if (DbValue.isPrimitiveOrWrapper(clazz)) {
             // If it is a primitive value, wraps it in a DbObject. Value is stored in a field.  
             
-            DbValue value = DbValue.toDbValue(clazz, object);
+            DbValue value = DbValue.toDbValue(object);
             b.addDbValue(WRAPPED_PRIMITIVE_FIELD_NAME, value);
             
         } else {
@@ -579,7 +444,7 @@ public class DbObject extends DbValue {
             
             ArrayList<Field> fields = getEligibleFields(clazz);
             for (Field f : fields) {
-                path.field(f.getName());
+                path.step(f.getName());
                 Object fieldValue;
                 try {
                     fieldValue = f.get(object);
@@ -588,12 +453,15 @@ public class DbObject extends DbValue {
                 } catch (IllegalAccessException e) {
                     throw new Bug("Should not happen, " + e.toString());
                 }
+                if (fieldValue == null) {
+                    continue;       // left out: absent (bergdb 020-04's (c))
+                }
                 // Outside the try (bergdb 005-23): an IllegalArgumentException of a nested
                 // object (a cycle, too deep) is not a Bug.
                 try {
-                    DbValue dbValue = DbValue.toDbValue(f.getType(), fieldValue);
+                    DbValue dbValue = DbValue.toDbValue(fieldValue);
                     b.addDbValue(f.getName(), dbValue);
-                } catch (DbString.LoneSurrogateException e) {
+                } catch (PathException e) {
                     throw e.in(f.getName());        // the field's path (bergdb 021-04)
                 }
             }
@@ -613,10 +481,6 @@ public class DbObject extends DbValue {
      */
     @SuppressWarnings("unchecked")
     public <TYPE> TYPE toJavaObject(Class<TYPE> c, ClassToObject c2o) {
-        if (isNull()) {
-            return null;
-        }
-        
         TYPE result;
         
         if (c.isArray()) {
@@ -656,7 +520,7 @@ public class DbObject extends DbValue {
      * 
      * @param dest  The object to set the fields of, or null to create a new object.
      * @param c2o   How to create objects from classes.
-     * @return      Returns 'dest' or defaultValue(dest.getClass()).
+     * @return      Returns 'dest'.
      */
     public Object toJavaObject(Object dest, ClassToObject c2o) {        
         if (dest == null) {
@@ -664,10 +528,6 @@ public class DbObject extends DbValue {
         }
         
         Class<?> c = dest.getClass();
-        
-        if (isNull()) {
-            return defaultValue(c);
-        }
         
         ArrayList<Field> fields = getEligibleFields(c);
         for (Field f : fields) {
@@ -696,195 +556,134 @@ public class DbObject extends DbValue {
     }
     
     /**
-     * Gets the type of a field, or returns 'z' (think 'zero', nothing) if there is no such field.
+     * Gets the type of a field, or returns 'z' (think 'zero', nothing) if there is no such
+     * field: absent. 'l' for every integer.
      */
     public char getType(String name) {
-        final short hash = hash(name);
-        char result = 'z';
-        
-        if (this.key != null && hash == KEY_FIELD_HASH && name.equals(KEY_FIELD)) {
+        if (isKey(name)) {
             return 's';
         }
-        
-        for (int i = 0; i < fieldCount; i++) {
-            if (hash == hashes[i]) {
-                NameAndType n = new NameAndType();
-                readFieldInfo(i, n);
-                
-                if (n.name.equals(name)) {
-                    result = (char) n.type;
-                    break;
-                }
-            }
-        }
-        
-        return result;
+        int p = find(name);
+        return p < 0 ? 'z' : ObjectFormat.typeAt(bytes, p);
     }
     
     /**
-     * Returns the DbValue of a field with a specified name.
+     * Returns the DbValue of a field with a specified name, or null if absent.
      */
     public DbValue getDbValue(String name) {
-        short hash = hash(name);
-        DbValue result = null;
-        
-        if (this.key != null && hash == KEY_FIELD_HASH && name.equals(KEY_FIELD)) {
+        if (isKey(name)) {
             return new DbString(key);
         }
-        
-        for (int i = 0; i < fieldCount; i++) {
-            if (hash == hashes[i]) {
-                NameAndType n = new NameAndType();
-                readFieldInfo(i, n);
-                
-                if (n.name.equals(name)) {
-                    result = DbValue.parse(n.type, bytes, n.valueOffset);
-                    break;
-                }
-            }
-        }
-        
-        return result;
+        int p = find(name);
+        return p < 0 ? null : DbValue.read(bytes, p);
     }
     
     
     // ======== getType(name) methods ========
+    //
+    // Each gives the value of a field of its type: 0, false or null if the field is absent
+    // or of another type.
     
     public boolean getBoolean(String name) {
-        NameAndType n = internalSimpleGet(name, DbObject.BOOLEAN);
-        return n == null ? false : DbBoolean.parseToBoolean(n.object.bytes, n.valueOffset);
+        int p = find(name);
+        return is(p, BOOLEAN) && ObjectFormat.booleanAt(bytes, p);
     }
     
+    /** An integer within int's range; 0 for another value. */
     public int getInt(String name) {
-        NameAndType n = internalSimpleGet(name, DbObject.INT);
-        return n == null ? 0 : DbInt.parseToInt(n.object.bytes, n.valueOffset);
+        int p = find(name);
+        return is(p, INT) ? (int) ObjectFormat.integerAt(bytes, p) : 0;
     }
     
     public int getInt(String[] nameParts) {
-        NameAndType n = internalGet(nameParts, 0, DbObject.INT);
-        return n == null ? 0 : DbInt.parseToInt(n.object.bytes, n.valueOffset);
+        if (nameParts.length == 1) {
+            return getInt(nameParts[0]);
+        }
+        int p = find(nameParts);
+        return is(p, INT) ? (int) ObjectFormat.integerAt(bytes, p) : 0;
     }
 
     public long getLong(String name) {
-        NameAndType n = internalSimpleGet(name, DbObject.LONG);
-        return n == null ? 0 : DbLong.parseToLong(n.object.bytes, n.valueOffset);
+        int p = find(name);
+        return is(p, LONG) ? ObjectFormat.integerAt(bytes, p) : 0;
     }
     
     public long getLong(String[] nameParts) {
-        NameAndType n = internalGet(nameParts, 0, DbObject.LONG);
-        return n == null ? 0 : DbLong.parseToLong(n.object.bytes, n.valueOffset);
+        if (nameParts.length == 1) {
+            return getLong(nameParts[0]);
+        }
+        int p = find(nameParts);
+        return is(p, LONG) ? ObjectFormat.integerAt(bytes, p) : 0;
     }
     
     public double getDouble(String name) {
-        NameAndType n = internalSimpleGet(name, DbObject.DOUBLE);
-        return n == null ? 0.0 : DbDouble.parseToDouble(n.object.bytes, n.valueOffset);
+        int p = find(name);
+        return is(p, DOUBLE) ? Double.longBitsToDouble(ObjectFormat.doubleBitsAt(bytes, p)) 
+                : 0.0;
     }
     
     public double getDouble(String[] nameParts) {
-        NameAndType n = internalGet(nameParts, 0, DbObject.DOUBLE);
-        return n == null ? 0.0 : DbDouble.parseToDouble(n.object.bytes, n.valueOffset);
+        if (nameParts.length == 1) {
+            return getDouble(nameParts[0]);
+        }
+        int p = find(nameParts);
+        return is(p, DOUBLE) ? Double.longBitsToDouble(ObjectFormat.doubleBitsAt(bytes, p)) 
+                : 0.0;
     }
 
-    /**
-     * @throws BadFormatException
-     */
     public String getString(String name) {
-        short hash = hash(name);
-        if (hash == KEY_FIELD_HASH && this.key != null && name.equals(KEY_FIELD)) {
+        if (isKey(name)) {
             return this.key;
         }
-        
-        NameAndType n = internalSimpleGet(name, DbObject.STRING);
-        return n == null ? null : DbString.parseToString(n.object.bytes, n.valueOffset);
+        int p = find(name);
+        return is(p, STRING) ? ObjectFormat.stringAt(bytes, p) : null;
     }
     
     public String getString(String[] nameParts) {
-        NameAndType n = internalGet(nameParts, 0, DbObject.STRING);
-        return n == null ? null : DbString.parseToString(n.object.bytes, n.valueOffset);
+        if (nameParts.length == 1) {
+            return getString(nameParts[0]);
+        }
+        int p = find(nameParts);
+        return is(p, STRING) ? ObjectFormat.stringAt(bytes, p) : null;
     }
     
     public byte[] getByteArray(String name) {
-        NameAndType n = internalSimpleGet(name, DbObject.BYTE_ARRAY);
-        return n == null ? null : DbByteArray.parseToByteArray(n.object.bytes, n.valueOffset);
+        int p = find(name);
+        return is(p, BYTE_ARRAY) ? ObjectFormat.bytesAt(bytes, p) : null;
     }
     
     public DbArray getArray(String name) {
-        NameAndType n = internalSimpleGet(name, DbObject.ARRAY);
-        return n == null ? null : DbArray.parse(n.object.bytes, n.valueOffset);
+        int p = find(name);
+        return is(p, ARRAY) ? DbArray.read(bytes, p) : null;
     }
     
     public DbObject getObject(String name) {
-        NameAndType n = internalSimpleGet(name, DbObject.OBJECT);
-        return n == null ? null : DbObject.parse(n.object.bytes, n.valueOffset);
+        int p = find(name);
+        return is(p, OBJECT) ? view(bytes, p) : null;
     }
     
     // ====
-
-    /**
-     * Reads field name and type.
-     */
-    private void readFieldInfo(int fieldIndex, NameAndType n) {
-        int fieldOffset = readFieldOffset(fieldIndex);
-        int offset = fieldOffset;
-        n.type = (char) bytes[offset];
-        offset += 1;
-        short nameSize = Bytes.bytesToShortLE(bytes, offset);
-        offset += 2;
-        byte[] nameBytes = new byte[nameSize];
-        System.arraycopy(bytes, offset, nameBytes, 0, nameSize);
-        offset += nameSize;
-        n.name = StringUtil.toString(nameBytes);
-        n.valueOffset = offset;
-        n.object = this;
-    }
     
-    private int readFieldOffset(int fieldIndex) {
-        return Bytes.bytesToIntLE(bytes, HEADER_SIZE + 6 * fieldIndex + 2);
-    }
-    
-    /**
-     * Very simple and fast hash value.
-     */
-    public static short hash(String name) {
-        // Note, this computation cannot be changed easily. Part of serialize format.
-        assert name != null && name.length() > 0;        
-        final int len = name.length();
-        short hash = (short) (len + 23 * name.charAt(0) + 43 * name.charAt(len - 1));
-        return hash;
-    }
-    
+    /** The bytes of the object, without the header: its type byte, count, ends, fields. */
     public int getByteSize() {
-        return 4 + bytes.length;
+        return end - start;
     }
     
     public int write(byte[] b, int offset) {
-        Bytes.intToBytesLE(bytes.length, b, offset);
-        offset += 4;
-        System.arraycopy(bytes, 0, b, offset, bytes.length);
-        offset += bytes.length;
-        return offset;
+        System.arraycopy(bytes, start, b, offset, end - start);
+        return offset + end - start;
     }
     
-    public static DbObject parse(byte[] buffer, int offset) {
-        int size = Bytes.bytesToIntLE(buffer, offset);
-        offset += 4;
-        
-        // A size of -1 was read as Java's null, which no writer writes: an Error at a get
-        // (bergdb 021-07). A null object has a field count of -1.
-        if (size < 0 || size > buffer.length - offset) {
-            throw new BadFormatException("Bad object size, " + size + ".");
+    int height() {
+        if (height == 0) {
+            height = ObjectFormat.heightAt(bytes, start);
         }
-        
-        byte[] bytes = new byte[size];
-        System.arraycopy(buffer, offset, bytes, 0, bytes.length);
-        return new DbObject(bytes, null, false);     // nested in checked bytes (021-08)
+        return height;
     }
     
     private static class DbField {
         private final String name;
         private final byte[] nameBytes;
-        private final char type;
-        private final short hash;
         private final DbValue value;
         
         public DbField(String name, DbValue value) {
@@ -895,155 +694,51 @@ public class DbObject extends DbValue {
             }
             if (value == null) {
                 throw new IllegalArgumentException("value == null not allowed, field '" + name
-                        + "'.");
+                        + "': BergDB stores no null, leave the field out (bergdb 020-04).");
             }
             
             // A name is a string too: well-formed UTF-8 (bergdb 021-04). javac refuses a
             // lone surrogate in a field's name, but a generated class or the Builder may not.
             if (PubKeys.hasLoneSurrogate(name)) {
-                throw new DbString.LoneSurrogateException("field name", "");
+                throw PathException.loneSurrogate("field name");
             }
             this.name = name;
-            this.hash = hash(name);
-            this.nameBytes = StringUtil.toBytes(name);
-            // The byte length, as stored, since 2026-10-21 (bergdb 005-21); the char length
-            // was checked, and a longer UTF-8 name was stored with a wrapped short length.
-            if (nameBytes.length > Short.MAX_VALUE) {
-                throw new IllegalArgumentException("Name is too large, " + this.nameBytes.length 
-                        + " bytes.");
+            this.nameBytes = name.getBytes(StandardCharsets.UTF_8);
+            // 1 to 255 bytes (bergdb 020-07, R6); 32,767 until 2026.3 (bergdb 005-21).
+            if (nameBytes.length > ObjectFormat.MAX_NAME) {
+                throw PathException.longName(nameBytes.length);
             }
-            this.type = value.getType();
             this.value = value;
-        }
-        
-        public int getByteSize() {
-            return 1 + 2 + nameBytes.length + value.getByteSize();
-        }
-        
-        /**
-         * Serializes the field - type, name, value - to the supplied buffer, 'b'.
-         * 
-         * @param b  The buffer to serialize to.
-         * @param offset  The offset into 'b' to start write to.
-         * @return The new offset for 'b'; that is, the original 'offset' plus number of bytes
-         * written to.
-         */
-        public int write(byte[] b, int offset) {
-            int offset0 = offset;
-            b[offset] = (byte) type;
-            offset += 1;
-            Bytes.shortToBytesLE((short) nameBytes.length, b, offset);
-            offset += 2;
-            System.arraycopy(nameBytes, 0, b, offset, nameBytes.length);
-            offset += nameBytes.length;
-            value.write(b, offset);
-            offset += value.getByteSize();
-            assert offset == offset0 + getByteSize();
-            return offset;
         }
         
         public String toString() {
             return name + ": " + value.toString();
         }
-        
-        public static DbField parse(byte[] b, int offset) {
-            char type = (char) b[offset];
-            offset += 1;
-            
-            int nameSize = Bytes.bytesToShortLE(b, offset);
-            offset += 2;
-            if (nameSize <= 0 || nameSize > b.length - offset) {
-                throw new BadFormatException("Bad field name size, " + nameSize + ".");
-            }
-            byte[] nameBytes = new byte[nameSize];
-            System.arraycopy(b, offset, nameBytes, 0, nameBytes.length);
-            
-            offset += nameBytes.length;
-            
-            String name = StringUtil.toString(nameBytes);
-            DbValue value;
-            
-            switch (type) {
-            case 'n':
-                value = DbBoolean.parse(b, offset);
-                break;
-            case 'i':
-                value = DbInt.parse(b, offset);
-                break;
-            case 'l':
-                value = DbLong.parse(b, offset);
-                break;
-            case 'd':
-                value = DbDouble.parse(b, offset);
-                break;
-            case 's':
-                value = DbString.parse(b, offset);
-                break;
-            case 'b':
-                value = DbByteArray.parse(b, offset);
-                break;
-            case 'a':
-                value = DbArray.parse(b, offset);
-                break;
-            case 'o':
-                value = DbObject.parse(b, offset);
-                break;
-            default:
-                throw new BadFormatException("Bad type: " + type + ".");
-            }
-            
-            return new DbField(name, value);
-        }
-    }
-    
-    private static class NameAndType {
-        String name;
-        int valueOffset;
-        char type;
-        
-        /** Object in which the matching field was found. */
-        DbObject object;
     }
     
     /**
      * A builder object used to create a DbObject.
      */
     public static class Builder {
-        private ArrayList<DbField> fields;
+        private final ArrayList<DbField> fields = new ArrayList<DbField>();
+        private final HashMap<String, Integer> indexes = new HashMap<String, Integer>();
         
         public Builder() {
-            fields = new ArrayList<DbField>();
         }
         
-        public static DbObject buildNull() {
-            DbObject result = new Builder().buildInner(true);
-            assert result.isNull() : "result is not null";
-            return result;
-        }
-        
+        /** Adds a field, or replaces the field of its name. */
         private void addField(DbField field) {
-            int index = -1;
-            final byte[] fieldName = field.nameBytes;
-            final int size = fields.size();
-            
-            if (size >= Short.MAX_VALUE) {
-                throw new IllegalStateException("More than " + Short.MAX_VALUE 
-                        + " fields is not allowed.");
-            }
-            
-            for (int i = 0; i < size; i++) {
-                DbField f = fields.get(i);
-                if (Arrays.equals(f.nameBytes, fieldName)) {
-                    index = i;
-                    break;
-                }
-            }
-            
-            if (index == -1) {
-                fields.add(field);
-            } else {
+            Integer index = indexes.get(field.name);
+            if (index != null) {
                 fields.set(index, field);
+                return;
             }
+            if (fields.size() >= ObjectFormat.MAX_FIELDS) {
+                throw new IllegalArgumentException("More than " + ObjectFormat.MAX_FIELDS 
+                        + " fields is not allowed (bergdb 020-07, R3).");
+            }
+            indexes.put(field.name, fields.size());
+            fields.add(field);
         }
         
         public Builder addDbValue(String name, DbValue value) {
@@ -1051,8 +746,9 @@ public class DbObject extends DbValue {
             return this;
         }
         
+        /** Adds an integer: format 2 has one integer type, 'l' (bergdb 020-07, R9). */
         public Builder addInt(String name, int value) {
-            addField(new DbField(name, new DbInt(value)));
+            addField(new DbField(name, new DbLong(value)));
             return this;
         }
         
@@ -1080,99 +776,60 @@ public class DbObject extends DbValue {
         }
         
         /**
-         * Builds a DbObject with its fields in order sorted alphabetically according
-         * to their names.
+         * Builds a DbObject with its fields in order sorted by their names' unsigned bytes:
+         * a stored object of format 2 (bergdb 020-07, sections 4 to 6), written bottom up,
+         * each nested value copied in (bergdb 020-08, section 4.4).
+         * 
+         * @throws IllegalArgumentException  If the object would have more than 16 levels of
+         *      objects and arrays, or more than 2^31 - 1 bytes (bergdb 020-07, R14, R15).
          */
         public DbObject build() {
-            return buildInner(false);
-        }
-        
-        /**
-         * Builds a DbObject with its fields in order sorted alphabetically according
-         * to their names.
-         * This method currently (2013-11) defines the byte format of a DbObject.
-         */
-        private DbObject buildInner(boolean isNull) {            
-            int size = 0;
-            
-            assert fields.size() <= Short.MAX_VALUE;
-            
-            if (isNull && fields.size() != 0) {
-                throw new IllegalStateException("fields.size() = " + fields.size());
+            DbField[] f = fields.toArray(new DbField[0]);
+            Arrays.sort(f, (x, y) -> Arrays.compareUnsigned(x.nameBytes, y.nameBytes));
+            int n = f.length;
+            int[] ends = new int[n];
+            long size = 0;
+            int height = 1;
+            for (int i = 0; i < n; i++) {
+                size += 1 + f[i].nameBytes.length + (long) f[i].value.getByteSize();
+                ObjectFormat.checkStoredSize(size);
+                ends[i] = (int) size;
+                height = Math.max(height, 1 + f[i].value.height());
             }
-            
-            Collections.sort(fields, new Comparator<DbField>() {
-                public int compare(DbField f1, DbField f2) {
-                    return ByteArrayComparator.compareArrays(f1.nameBytes, f2.nameBytes);
-                }
-            });
-            
-            for (DbField f : fields) {
-                size += f.getByteSize();
+            if (height > ObjectFormat.MAX_LEVELS) {
+                throw new IllegalArgumentException("The object has " + height + " levels of "
+                        + "objects and arrays; at most " + ObjectFormat.MAX_LEVELS 
+                        + " (bergdb 020-07, R14).");
             }
+            long total = 1 + ObjectFormat.headSize(n, size) + size;
+            ObjectFormat.checkStoredSize(total);
             
-            size += HEADER_SIZE;
-            size += FIELD_INFO_SIZE * fields.size();  // for fast linear search, hash of name + offset
-            
-            int offset = 0;
-            byte[] bytes = new byte[size];
-            //Bytes.intToBytesLE(MAGIC, bytes, offset);
-            //offset += 4;
-            //bytes[offset] = 0;      // Version 0 of byte format.
-            //offset++;
-            
-            System.arraycopy(MAGIC, 0, bytes, 0, MAGIC.length);
-            offset += MAGIC.length;
-            bytes[offset] = 1;        // Version 1 of byte format.
-            offset++;
-            short fieldSize = isNull ? -1 : (short) fields.size();
-            Bytes.shortToBytesLE(fieldSize, bytes, offset);
-            offset += 2;
-            
-            int fieldOffset = HEADER_SIZE + FIELD_INFO_SIZE * fields.size();
-            
-            for (DbField f : fields) {
-                Bytes.shortToBytesLE(f.hash, bytes, offset);
-                offset += 2;
-                Bytes.intToBytesLE(fieldOffset, bytes, offset);
-                offset += 4;
-                fieldOffset += f.getByteSize();
+            byte[] b = new byte[(int) total];
+            b[0] = HEADER;
+            int p = ObjectFormat.frame(b, 1, ends, n);
+            for (DbField field : f) {
+                p = ObjectFormat.writeName(b, p, field.nameBytes);
+                p = field.value.write(b, p);
             }
-            
-            for (DbField f : fields) {
-                offset = f.write(bytes, offset);
-            }
-            
-            try {
-                return new DbObject(bytes, null);
-            } catch (BadFormatException e) {
-                // Nested deeper than the reader reads (bergdb 021-08): not built, not put.
-                throw new IllegalArgumentException(e.getMessage());
-            }
-                // Note, we could have a special constructor or static method that does not
-                // do format checking since it is not required when DbObject is created
-                // with its Builder.
+            assert p == b.length;
+            return new DbObject(b, 1, b.length, true, height);
         }
     }
     
-    public static void main(String[] args) {
-        DbObject t = new DbObject.Builder().build();
-        System.out.println("size: " + t.getBytes().length);
-        System.out.println("t buffer to string: " + StringUtil.toString(t.getBytes()));
-    }
-    
-    /** bergdb 005-21: a name too long in UTF-8 bytes is refused (the chars were checked). */
+    /** Names of 1 to 255 bytes (bergdb 020-07, R6); 32,767 until 2026.3 (bergdb 005-21). */
     @bergdb.nanotest.Nano
     private static void testLongFieldName() {
-        StringBuilder b = new StringBuilder();
-        for (int i = 0; i < 20000; i++) {
-            b.append('\u00e9');      // two bytes in UTF-8
-        }
-        try {
-            new Builder().addInt(b.toString(), 1).build();
-            throw new AssertionError("no exception");
-        } catch (IllegalArgumentException e) {
-            // Expected.
+        new Builder().addInt("\u00e9".repeat(127) + "a", 1).build();      // 255 bytes
+        for (String name : new String[] {"\u00e9".repeat(128), "a".repeat(256), 
+                "\u00e9".repeat(20000)}) {
+            try {
+                new Builder().addInt(name, 1).build();
+                throw new AssertionError("no exception");
+            } catch (IllegalArgumentException e) {
+                bergdb.nanotest.Assert.assertTrue(e.getMessage(), 
+                        e.getMessage().contains("has " + name.getBytes(StandardCharsets.UTF_8)
+                        .length + " bytes"));
+            }
         }
     }
 }

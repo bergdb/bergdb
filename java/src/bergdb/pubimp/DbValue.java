@@ -8,14 +8,13 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * <p>This is the superclass of all DbObject types: boolean, int, long, double, string, 
- * byteArray, array, object. These types are implemented in subclasses of this class:
- * DbBoolean, DbInt, DbLong, DbDouble, DbString, DbByteArray, DbArray, and DbObject.</p>
+ * <p>This is the superclass of the seven DbObject types of format 2 (bergdb 020-07): boolean,
+ * integer, double, string, byteArray, array, object. They are implemented in subclasses of
+ * this class: DbBoolean, DbLong (the one integer, 64 bits), DbDouble, DbString, DbByteArray,
+ * DbArray, and DbObject. No value is null (bergdb 020-02, section 4.1).</p>
  * 
- * <p>All subclasses must implement a static method like this: 
- * <pre>  public static DbBoolean parse(byte[] buffer, int offset) {...</pre>
- * "DbBoolean" is replaced with the subclass name.
- * The method must be able to read bytes written with the write() method.</p>
+ * <p>Each subclass writes its value in its stored encoding, its type byte included, with
+ * write(), and read() reads any value of checked bytes by its type byte.</p>
  * 
  * @author Frans Lundberg
  */
@@ -73,7 +72,6 @@ public abstract class DbValue {
     public DbValue(char type) {
         switch (type) {
         case 'n':
-        case 'i':
         case 'l':
         case 'd':
         case 's':
@@ -93,8 +91,9 @@ public abstract class DbValue {
     }
     
     /**
-     * Returns the byte size of the serialized form of the DbValue.
-     * The method write(ByteBuffer) must write exactly as many bytes to the byte buffer.
+     * Returns the byte size of the serialized form of the DbValue: its encoding in format 2,
+     * its type byte included (bergdb 020-07, section 4).
+     * The method write() must write exactly as many bytes.
      */
     public abstract int getByteSize();
     
@@ -104,6 +103,15 @@ public abstract class DbValue {
      * Returns the "new offset".
      */
     public abstract int write(byte[] b, int offset);
+    
+    /**
+     * The levels of this value (bergdb 020-07, R14): 0 for a scalar; for an object or an
+     * array, 1 and the most levels of the values in it. The Builders refuse a value that
+     * would put a container above level 16.
+     */
+    int height() {
+        return 0;
+    }
     
     public boolean toBoolean() {
         return toLong() != 0;
@@ -219,7 +227,7 @@ public abstract class DbValue {
     private void checkFits(char typeChar, Class<?> c) {
         final boolean fits;
         final String value;
-        if (type == 'i' || type == 'l') {
+        if (type == 'l') {
             final long v = toLong();
             value = "" + v;
             switch (typeChar) {
@@ -336,110 +344,39 @@ public abstract class DbValue {
         return result;
     }
 
-    public static DbValue parse(char type, byte[] bytes, int offset) {
-        DbValue result = null;
-        
-        switch (type) {
-        case 'n':
-            result = DbBoolean.parse(bytes, offset);
-            break;
-        case 'i':
-            result = DbInt.parse(bytes, offset);
-            break;
-        case 'l':
-            result = DbLong.parse(bytes, offset);
-            break;
-        case 'd':
-            result = DbDouble.parse(bytes, offset);
-            break;
-        case 's':
-            result = DbString.parse(bytes, offset);
-            break;
-        case 'b':
-            result = DbByteArray.parse(bytes, offset);
-            break;
-        case 'a':
-            result = DbArray.parse(bytes, offset);
-            break;
-        case 'o':
-            result = DbObject.parse(bytes, offset);
-            break;
-        default:
-            throw new IllegalArgumentException("bad type: " + type);
-        }
-        return result;
-    }
-    
     /**
-     * Returns default value for a specified Java type, c.
+     * Reads the value at 'p' of checked bytes, by its type byte (bergdb 020-07, section 4): a
+     * DbObject is a view on 'b', which must not change; the other values are copies.
      */
-    public Object defaultValue(Class<?> c) {
-        if (c == null) {
-            throw new IllegalArgumentException("c == null not allowed");
+    static DbValue read(byte[] b, int p) {
+        switch (ObjectFormat.typeAt(b, p)) {
+        case 'n':
+            return new DbBoolean(ObjectFormat.booleanAt(b, p));
+        case 'l':
+            return new DbLong(ObjectFormat.integerAt(b, p));
+        case 'd':
+            return new DbDouble(Double.longBitsToDouble(ObjectFormat.doubleBitsAt(b, p)));
+        case 's':
+            return DbString.read(b, p);
+        case 'b':
+            return DbByteArray.read(b, p);
+        case 'a':
+            return DbArray.read(b, p);
+        default:
+            return DbObject.view(b, p);
         }
-        
-        String typeName = c.getName();
-        int typeNameHash = typeName.hashCode();
-        
-        Object result = null;
-        char typeChar = getPrimitiveTypeChar(typeName, typeNameHash);
-        
-        switch (typeChar) {
-        case 'Z':
-            result = false;
-            break;
-        case 'B':
-            result = (byte) 0;
-            break;
-        case 'C':
-            result = (char) 0;
-            break;
-        case 'S':
-            result = (short) 0;
-            break;
-        case 'I':
-            result = 0;
-            break;
-        case 'J':
-            result = 0L;
-            break;
-        case 'F':
-            result = 0.0f;
-            break;
-        case 'D':
-            result = 0.0;
-            break;
-        }
-        
-        return result;
-    }
-    
-    private static DbValue toNullDbValue(Class<?> c) {
-        DbValue result;
-        
-        if (c.equals(String.class)) {
-            result = new DbString(null);
-        } else if (c.equals(byte[].class)) {
-            result = new DbByteArray(null);
-        } else if (c.isArray()) {
-            result = DbArray.Builder.buildNull();
-        } else {
-            result = DbObject.Builder.buildNull();
-        }
-        
-        return result;
     }
     
     /**
-     * Important method that converts a Java object to a DbValue.
+     * Important method that converts a Java object to a DbValue, by the object's class.
      * 
-     * @param dstType  Only used when object == null.
-     * @param object
+     * @param object  Not null: BergDB stores no null (bergdb 020-04).
      * @return The DbValue created from the input Java Object.
      */
-    public static DbValue toDbValue(Class<?> dstType, Object object) {
+    public static DbValue toDbValue(Object object) {
         if (object == null) {
-            return toNullDbValue(dstType);
+            throw new IllegalArgumentException("object == null not allowed: BergDB stores no "
+                    + "null (bergdb 020-04, section 2.1)");
         }
         
         Class<?> c = object.getClass();
@@ -470,16 +407,16 @@ public abstract class DbValue {
             result = new DbBoolean((Boolean) object);
             break;
         case 'B':
-            result = new DbInt((Byte) object);
+            result = new DbLong((Byte) object);
             break;
         case 'C':
-            result = new DbInt((Character) object);
+            result = new DbLong((Character) object);
             break;
         case 'S':
-            result = new DbInt((Short) object);
+            result = new DbLong((Short) object);
             break;
         case 'I':
-            result = new DbInt((Integer) object);
+            result = new DbLong((Integer) object);
             break;
         case 'J':
             result = new DbLong((Long) object);
@@ -502,21 +439,83 @@ public abstract class DbValue {
         return result;
     }
 
+    /**
+     * The array 'object' as a DbArray. A null element is refused, naming its index: an array
+     * has no absent element (bergdb 020-04, section 2.1, rule 3). The array is a level on the
+     * thread's path of toDbObject() (bergdb 020-08, section 4.7).
+     */
     private static DbValue createDbArray(Class<?> c, Object object) {
         Object javaArray = object;
-        Class<?> c2 = c.getComponentType();
         DbArray.Builder arrayBuilder = new DbArray.Builder();
         int length = Array.getLength(javaArray);
-        for (int i = 0; i < length; i++) {
-            Object element = Array.get(javaArray, i);
-            DbValue dbValue;
-            try {
-                dbValue = DbValue.toDbValue(c2, element);
-            } catch (DbString.LoneSurrogateException e) {
-                throw e.in("[" + i + "]");      // the element's index (bergdb 021-04)
+        DbObject.Path path = DbObject.path();
+        path.enter(object);
+        try {
+            for (int i = 0; i < length; i++) {
+                path.step("[" + i + "]");
+                Object element = Array.get(javaArray, i);
+                DbValue dbValue;
+                try {
+                    if (element == null) {
+                        throw PathException.nullElement();
+                    }
+                    dbValue = DbValue.toDbValue(element);
+                } catch (PathException e) {
+                    throw e.in("[" + i + "]");      // the element's index (bergdb 021-04)
+                }
+                arrayBuilder.add(dbValue);
             }
-            arrayBuilder.add(dbValue);
+        } finally {
+            path.leave();
         }
         return arrayBuilder.build();
+    }
+    
+    /**
+     * A value that has no stored form, refused with the place where it is, from the
+     * outermost object: a field's name, and an array element's index, such as
+     * "inner.names[3]"; each object and array on the way out adds its step with in()
+     * (bergdb 021-04; 020-04, section 2.1). A lone surrogate in a string or a field's name,
+     * a null array element, a field's name of more than 255 bytes.
+     */
+    static final class PathException extends IllegalArgumentException {
+        private static final long serialVersionUID = 1L;
+        private final String what;      // "string", "field name", "array element"
+        private final String rest;      // after the subject and its place
+        private final String path;      // "" where not known
+        
+        private PathException(String what, String rest, String path) {
+            super((path.isEmpty() ? "A " + what : "The " + what + " at '" + path + "'") + " " 
+                    + rest);
+            this.what = what;
+            this.rest = rest;
+            this.path = path;
+        }
+        
+        /** A string or a field's name ('what') with a lone surrogate (bergdb 021-04). */
+        static PathException loneSurrogate(String what) {
+            return new PathException(what, "has a lone surrogate, a char of U+D800 to U+DFFF "
+                    + "that is not part of a surrogate pair. BergDB stores every string as "
+                    + "well-formed UTF-8, which cannot hold one (bergdb 021-04); store such "
+                    + "data as a byte[] or a char[].", "");
+        }
+        
+        /** A null array element (bergdb 020-04, section 2.1; 020-09, section 4.3). */
+        static PathException nullElement() {
+            return new PathException("array element", "is null: BergDB stores no null, and "
+                    + "an array has no absent element (bergdb 020-09, section 4.3).", "");
+        }
+        
+        /** A field's name of 'size' bytes in UTF-8, more than 255 (bergdb 020-07, R6). */
+        static PathException longName(int size) {
+            return new PathException("field name", "has " + size + " bytes in UTF-8; a name "
+                    + "has 1 to " + ObjectFormat.MAX_NAME + " bytes (bergdb 020-07, R6).", "");
+        }
+        
+        /** The same, one step further out: a field's name, or "[i]" for an array element. */
+        PathException in(String step) {
+            String p = path.isEmpty() || path.startsWith("[") ? step + path : step + "." + path;
+            return new PathException(what, rest, p);
+        }
     }
 }

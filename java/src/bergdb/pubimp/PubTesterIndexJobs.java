@@ -222,10 +222,10 @@ public class PubTesterIndexJobs {
     }
     
     /**
-     * bergdb 019-42 (020-01, N1, its probe V1Probe): a build over an object that its index
-     * cannot index, a null indexed String, ends as failed, and the database goes on. A start
-     * takes the build again, which ends as failed again; the index can be deleted, and the
-     * next start has no job. Since 019-10 the database failed, at every start.
+     * bergdb 019-42 (020-01, N1, its probe V1Probe): a build over an object with a null
+     * indexed String ended as failed. Since format 2 (bergdb 020-04, N11; 020-08, step 2) a
+     * null field is left out, absent: the object gives no entry, as one without the field,
+     * and the build ends done, with the entries of the other two; the next start has no job.
      */
     @Nano
     public static void testBuildOverAnObjectItCannotIndex() {
@@ -234,26 +234,20 @@ public class PubTesterIndexJobs {
         try {
             db.newConnection().w().put("/named/1", new Named("a")).put("/named/2", new Named(null))
                     .put("/named/3", new Named("c")).execute();
-            checkFailed(db.indexBuilder("by-name").dir("/named/").type("string").field("name")
-                    .start().join());
-            putNew(db);         // DbFailedException if the build failed the database.
-        } finally {
-            db.close();
-        }
-        
-        MemoryStream restarted = stream.copy();
-        db = start(restarted);
-        try {
-            Job[] jobs = db.getStartupInfo().getStartupJobs();
-            Assert.assertEquals(1, jobs.length);
-            checkFailed(jobs[0].join());
+            JobStatus status = db.indexBuilder("by-name").dir("/named/").type("string")
+                    .field("name").start().join();
+            Assert.assertTrue(status.note(), status.note().startsWith("Done"));
             putNew(db);
-            Assert.assertEquals(100, db.deleteIndex("by-name").join().progress());
+            StringBuilder names = new StringBuilder();
+            for (Named n : db.newConnection().useIndex("by-name", Named.class).objects()) {
+                names.append(n.name);
+            }
+            Assert.assertEquals("ac", names.toString());
         } finally {
             db.close();
         }
         
-        db = start(restarted.copy());
+        db = start(stream.copy());
         try {
             Assert.assertEquals(0, db.getStartupInfo().getStartupJobs().length);
             putNew(db);

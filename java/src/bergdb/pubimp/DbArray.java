@@ -2,22 +2,22 @@ package bergdb.pubimp;
 
 import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-import bergdb.pub.util.BadFormatException;
 
 
 /**
  * <p>An instance of this class represents an array of values as it is stored in the database.
  * A DbArray object is immutable. The array elements each have independent types.
- * Each element can be of any of the eight DbObject types:</p>
+ * Each element can be of any of the seven DbObject types:</p>
  * 
  * <pre>
  * n - boolean
- * i - int 
- * l - long
+ * l - integer, 64 bits
  * d - double
  * s - string
  * b - byteArray
@@ -25,7 +25,9 @@ import bergdb.pub.util.BadFormatException;
  * o - object, a DbObject.
  * </pre>
  * 
- * <p>The array may be of zero length and it may have the value null.</p>
+ * <p>The array may be of zero length. It is never null, and no element is null: an array has
+ * no absent element (bergdb 020-04, section 2.1). Its bytes are Binson's: 0x42, the
+ * elements, 0x43 (bergdb 020-07, section 4.1).</p>
  *
  * <p>Experimental in 2026.3, with known faults; it may change in a later release (bergdb
  * 018-01, D6).</p>
@@ -33,23 +35,17 @@ import bergdb.pub.util.BadFormatException;
  * @author Frans Lundberg
  */
 public class DbArray extends DbValue implements Iterable<DbValue> {
-    private final byte[] bytes;     // bytes that encodes the elements of the array
+    private final byte[] bytes;     // the array's encoding: 0x42, the elements, 0x43
     private final int elementCount;
+    private int height;             // its levels, 1 or more; 0 until computed
     
-    private DbArray(byte[] bytes, int elementCount) {
+    private DbArray(byte[] bytes, int elementCount, int height) {
         super('a');
         assert elementCount >= 0;
-        
-        if (bytes == null) {
-            throw new IllegalArgumentException("bytes == null not allowed");
-        }
-        
-        if (bytes.length < 1) {
-            throw new IllegalArgumentException("bytes.length too small, " + bytes.length);
-        }
-        
+        assert bytes.length >= 2;
         this.bytes = bytes;
         this.elementCount = elementCount;
+        this.height = height;
     }
     
     /**
@@ -60,12 +56,14 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
     }
     
     public String toString() {
-        String result = isNull() ? "a:null" : "a:" + elementCount;
-        return result;
+        return "a:" + elementCount;
     }
     
-    public boolean isNull() {
-        return bytes[0] == 'Z';
+    int height() {
+        if (height == 0) {
+            height = ObjectFormat.heightAt(bytes, 0);
+        }
+        return height;
     }
     
     public int getByteSize() {
@@ -86,10 +84,6 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
         
         if (c2o == null) {
             throw new IllegalArgumentException("c2o == null not allowed");
-        }
-        
-        if (isNull()) {
-            return null;
         }
         
         Object result;
@@ -114,10 +108,6 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
     }
     
     public int[] toIntArray() {
-        if (isNull()) {
-            return null;
-        }
-        
         int[] result = new int[elementCount];
         int index = 0;
         
@@ -128,10 +118,6 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
     }
     
     public long[] toLongArray() {
-        if (isNull()) {
-            return null;
-        }
-        
         long[] result = new long[elementCount];
         int index = 0;
         
@@ -142,10 +128,6 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
     }
     
     public double[] toDoubleArray() {
-        if (isNull()) {
-            return null;
-        }
-        
         double[] result = new double[elementCount];
         int index = 0;
         
@@ -156,99 +138,34 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
     }
     
     public Iterator<DbValue> iterator() {
-        return new ElementIterator(bytes, 0);
+        return new ElementIterator();
     }
     
-    public static DbArray parse(byte[] buffer, int offset) {
-        int offset0 = offset;
-        ElementIterator iter = new ElementIterator(buffer, offset);
-        while (iter.hasNext()) {
-            iter.next();
+    /** The array at 'p' of checked bytes, a copy of its bytes (bergdb 020-07, section 4.1). */
+    static DbArray read(byte[] b, int p) {
+        byte[] bytes = Arrays.copyOfRange(b, p, ObjectFormat.valueEnd(b, p));
+        int count = 0;
+        for (int q = 1; (bytes[q] & 0xff) != ObjectFormat.ARRAY_END; 
+                q = ObjectFormat.valueEnd(bytes, q)) {
+            count++;
         }
-        
-        int size = iter.getOffset() - offset0;
-        byte[] bytes = new byte[size];
-        
-        try {
-            System.arraycopy(buffer, offset, bytes, 0, size);
-        } catch (ArrayIndexOutOfBoundsException e) {
-            throw new ArrayIndexOutOfBoundsException("offset=" + offset 
-                    + ", buffer.length=" + buffer.length + ", bytes.length=" 
-                    + bytes.length + ", size=" + size);
-        }
-        
-        DbArray result = new DbArray(bytes, iter.getElementCount());
-        return result;
+        return new DbArray(bytes, count, 0);
     }
     
-    private static class ElementIterator implements Iterator<DbValue> {
-        private final byte[] bytes;
-        private int offset;
-        private char nextType;
-        private int elementCount = 0;
-        
-        ElementIterator(byte[] bytes, int offset) {
-            assert bytes != null;
-            assert offset >= 0;
-            if (offset >= bytes.length) {       // bergdb 021-07: was an assert
-                throw new BadFormatException("No array at the end of the bytes, " + offset + ".");
-            }
-            this.bytes = bytes;
-            this.offset = offset;
-            this.nextType = (char) bytes[offset];
-            this.offset++;
-        }
+    /** The elements, each read by its type byte. */
+    private class ElementIterator implements Iterator<DbValue> {
+        private int offset = 1;
         
         public boolean hasNext() {
-            return nextType != 'z' && nextType != 'Z';
+            return (bytes[offset] & 0xff) != ObjectFormat.ARRAY_END;
         }
 
         public DbValue next() {
             if (!hasNext()) {
-                throw new IllegalStateException("No next value.");
+                throw new NoSuchElementException();
             }
-            
-            char type = nextType;
-            DbValue result;
-            
-            switch (type) {
-            case 'n':
-                result = DbBoolean.parse(bytes, offset);
-                break;
-            case 'i':
-                result = DbInt.parse(bytes, offset);
-                break;
-            case 'l':
-                result = DbLong.parse(bytes, offset);
-                break;
-            case 'd':
-                result = DbDouble.parse(bytes, offset);
-                break;
-            case 's':
-                result = DbString.parse(bytes, offset);
-                break;
-            case 'b':
-                result = DbByteArray.parse(bytes, offset);
-                break;
-            case 'a':
-                result = DbArray.parse(bytes, offset);
-                break;
-            case 'o':
-                result = DbObject.parse(bytes, offset);
-                break;
-            default:
-                throw new BadFormatException("Bad type: " + type);
-            }
-            
-            offset += result.getByteSize();
-            nextType = (char) bytes[offset];
-            if (nextType == 'Z') {
-                // The null array is 'Z' as its first byte only; after an element, it ended
-                // the array silently (bergdb 021-07).
-                throw new BadFormatException("'Z' after an element of an array.");
-            }
-            offset += 1;
-            elementCount++;            
+            DbValue result = DbValue.read(bytes, offset);
+            offset = ObjectFormat.valueEnd(bytes, offset);
             return result;
         }
 
@@ -260,14 +177,6 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
         public void remove() {
             throw new UnsupportedOperationException();   
         }
-        
-        public int getOffset() {
-            return offset;
-        }
-        
-        public int getElementCount() {
-            return elementCount;
-        }
     }
     
     /**
@@ -277,35 +186,49 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
     public static class Builder {
         private final ByteArrayOutputStream out = new ByteArrayOutputStream();
         private int elementCount = 0;
+        private int height = 1;
         
         public Builder() {
+            out.write(ObjectFormat.ARRAY_START);
         }
         
         /**
-         * Returns the special null-value DbArray that represent an array with the value null.
+         * Adds an element.
+         * 
+         * @throws IllegalArgumentException  If 'value' is null: an array has no absent
+         *      element, and BergDB stores no null (bergdb 020-04, section 2.1).
          */
-        public static DbArray buildNull() {
-            DbArray result = new DbArray(new byte[]{(byte) 'Z'}, 0);
-            return result;
-        }
-        
         public Builder add(DbValue value) {
             if (value == null) {
-                throw new IllegalArgumentException("value == null not allowed");
+                throw new IllegalArgumentException("value == null not allowed: an array has "
+                        + "no absent element (bergdb 020-04, section 2.1)");
             }
             
             int byteSize = value.getByteSize();
             byte[] buffer = new byte[byteSize];
             value.write(buffer, 0);
-            out.write(value.getType());
             out.write(buffer, 0, buffer.length);
             elementCount++;
+            height = Math.max(height, 1 + value.height());
             return this;
         }
         
+        /**
+         * Builds the array.
+         * 
+         * @throws IllegalArgumentException  If it has more than 15 levels of arrays and
+         *      objects: an array is at level 2 or below, and no level is above 16 (bergdb
+         *      020-07, R14).
+         */
         public DbArray build() {
-            out.write('z');     // 'z' to mark end of array. No more elements.
-            return new DbArray(out.toByteArray(), elementCount);
+            if (height > ObjectFormat.MAX_LEVELS - 1) {
+                throw new IllegalArgumentException("The array has " + height + " levels of "
+                        + "arrays and objects; an array is at level 2 or below, and no level "
+                        + "is above " + ObjectFormat.MAX_LEVELS + " (bergdb 020-07, R14).");
+            }
+            byte[] b = Arrays.copyOf(out.toByteArray(), out.size() + 1);
+            b[b.length - 1] = (byte) ObjectFormat.ARRAY_END;
+            return new DbArray(b, elementCount, height);
         }
     }
     
@@ -321,13 +244,8 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
     public static void test1() {
         DbArray a = new DbArray.Builder().add(new DbDouble(1.2)).add(new DbString("hello")).build();
         Assert.assertEquals(2, a.getSize());
-        Assert.assertFalse(a.isNull());
-    }
-    
-    @Nano
-    public static void testNull() {
-        DbArray a = DbArray.Builder.buildNull();
-        Assert.assertTrue(a.isNull());
+        Assert.assertEquals(1 + 9 + 7 + 1, a.getByteSize());
+        Assert.assertEquals(1, a.height());
     }
     
     @Nano
@@ -342,12 +260,12 @@ public class DbArray extends DbValue implements Iterable<DbValue> {
     
     @Nano
     public static void testIterator1() {
-        DbArray a = new DbArray.Builder().add(new DbInt(3)).build();
+        DbArray a = new DbArray.Builder().add(new DbLong(3)).build();
         Assert.assertEquals(1, a.getSize());
-        Assert.assertEquals(1 + 4 + 1, a.getByteSize());
+        Assert.assertEquals(1 + 2 + 1, a.getByteSize());     // 42, the integer 10 03, 43
         
         for (DbValue v : a) {
-            Assert.assertEquals(v.getType(), 'i');
+            Assert.assertEquals(v.getType(), 'l');
             Assert.assertEquals(3, v.toInt());
         }
     }

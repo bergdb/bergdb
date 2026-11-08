@@ -954,6 +954,61 @@ T2 can reuse the tester's `readVectors`, `Vn`, `Ref` and `codecWrite`
 (the Builder's shape). 020's readme still links the vectors' old place.
 
 
+### 8.2. Step 2, done (2026-11-08)
+
+Made in the clone `clone-objects` on `8876480`, tests first (each new test
+failed on the code before); committed by the objects' agent of the night
+(006-15, section 3b):
+
+* `DbObject`: a checked copy of a stored value of format 2 (020-07), read
+  by `ObjectFormat.find`; nested objects are views on the parent's bytes;
+  `getBytes()` of a nested one is a new array, the header first. The
+  Builder writes bottom up, sorts by the names' unsigned bytes, refuses a
+  name of more than 255 bytes, 32,768 fields and a height above 16. `HEADER`
+  (`0x82`) is public; `MAGIC`, `isNull()`, `buildNull()`, `hash()`,
+  `parse()`, `MAX_DEPTH` and the format-1 reader are gone. `getType` gives
+  `l` for every integer; `has(name, INT)` and `getInt` take an integer
+  within `int`'s range (section 3).
+* `DbValue.read` by the type byte; the value classes write Binson's
+  encodings (one NaN, `-0.0` kept); `DbInt` is gone, its tests in `DbLong`;
+  `DbString` and `DbByteArray` refuse null; `DbArray` is `42 ... 43`, its
+  Builder refuses a height above 15.
+* `toDbObject`: null refused at the top; a null field left out; a null
+  array element refused, naming `[i]`; the path counts arrays, level 17
+  refused (`'inner[0][0]...'`); `DbValue.PathException`, one class for a
+  lone surrogate, a null element and a long name, each level adding its
+  step.
+* `Entries.isProbablyDbObject`: an object key and the header, 3 bytes or
+  more; a get as `Object` reads such a value with the full check and gives
+  the `byte[]` if it fails (section 3).
+* Tests: new `DbObjectFormatTester`, 13 tests, 0.5 s (T2 to T7, H0a
+  through the Builder, H0b through `DbObject`); in `DbObjectTester`
+  020-04's N1, N3, N4, and the 32 of section 6.1 changed or gone; N5 and
+  T10 in `PubTester`; the value classes' tests; `Entries.testIsObject5`.
+
+Decided in the step, under Frans's delegation (22:17):
+
+* The tests through `DbObject` are a new class, `DbObjectFormatTester`,
+  not `ObjectFormatTester` (the codec's tests); T10 is in `PubTester`, not
+  in `PubTesterIndex`, which 020-10's I1 and I2 own.
+* `FieldIndexFunction` and `FieldRef` are not changed: `has(path, 'l')` is
+  true for every integer, so a long index reads every integer by its first
+  branch; the `i` branch is dead code, and I2 removes both classes.
+* No `Entries.isStoredObject`: `KvToObjectImp` makes the `DbObject` and
+  gives the `byte[]` on `BadFormatException`, one full check, not two.
+* `PubTesterIndexJobs.testBuildOverAnObjectItCannotIndex` (section 6.1:
+  step 6) changed in this step, as it failed: a null `String` is absent, so
+  the build ends done with two entries (020-04, N11); its body only.
+* The Builder's 32,768th field is an `IllegalArgumentException` (was
+  `IllegalStateException`), as 020-07, section 6.1, says of refusals; a
+  null name to a getter is an `IllegalArgumentException`.
+* `PubTesterIndex.testNonObjects2`'s value that is not an object starts
+  with `DbObject.HEADER` (`82 61 62`); `PubPromiseTester`'s random bytes
+  avoid `HEADER` in place of `MAGIC`.
+
+Gate: BEFORE COMMIT OK (117 s); `level2.sh` afterwards (section 8).
+
+
 ## 9. The documentation
 
 * **`DbObject`'s class Javadoc**: section 5's list; the format by its ID

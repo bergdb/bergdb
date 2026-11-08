@@ -172,8 +172,11 @@ public class DbObjectTester {
         object.value = 123;
         
         DbObject to = DbObject.toDbObject(object);
-        Assert.assertTrue(to.has("s", 's'));
+        Assert.assertFalse(to.has("s", 's'));       // left out (bergdb 020-04's (c))
+        Assert.assertEquals('z', to.getType("s"));
         Assert.assertNull(to.getString("s"));
+        Assert.assertEquals("a string", to.toJavaObject(TestClass1.class, 
+                new KvToObjectImp()).s);       // the constructor's value
     }
     
     private static class ByteArrayClass {
@@ -209,7 +212,7 @@ public class DbObjectTester {
         ByteArrayClass object = new ByteArrayClass();
         object.field = null;
         DbObject to = DbObject.toDbObject(object);
-        Assert.assertTrue(to.has("field", 'b'));
+        Assert.assertFalse(to.has("field", 'b'));   // left out (bergdb 020-04's (c))
         byte[] array = to.getByteArray("field");
         Assert.assertNull(array);
     }
@@ -252,7 +255,7 @@ public class DbObjectTester {
         object.field = 1234567890;
         DbObject to = DbObject.toDbObject(object);
         Assert.assertTrue(to.has("field", 'i'));
-        Assert.assertEquals('i', to.getType("field"));
+        Assert.assertEquals('l', to.getType("field"));      // one integer (bergdb 020-07)
         Assert.assertEquals(1234567890, to.getInt("field"));
     }
     
@@ -262,7 +265,7 @@ public class DbObjectTester {
         object.field = -1234567890;
         DbObject to = DbObject.toDbObject(object);
         Assert.assertTrue(to.has("field", 'i'));
-        Assert.assertEquals('i', to.getType("field"));
+        Assert.assertEquals('l', to.getType("field"));      // one integer (bergdb 020-07)
         Assert.assertEquals(-1234567890, to.getInt("field"));
         
         IntClass o2 = new IntClass();
@@ -295,7 +298,7 @@ public class DbObjectTester {
         DbObject to = DbObject.toDbObject(obj);
         
         Assert.assertTrue(to.has("myInt", 'i'));
-        Assert.assertFalse(to.has("myInt", 'l'));
+        Assert.assertTrue(to.has("myInt", 'l'));        // one integer (bergdb 020-07)
         Assert.assertEquals('o', to.getType("nested"));
         Assert.assertEquals(12, to.getInt("myInt"));
         
@@ -313,11 +316,11 @@ public class DbObjectTester {
         obj.nested = null;
         DbObject dbo = DbObject.toDbObject(obj);
         
-        Assert.assertEquals('o', dbo.getType("nested"));
+        Assert.assertEquals('z', dbo.getType("nested"));      // left out (bergdb 020-04)
         Assert.assertEquals(12, dbo.getInt("myInt"));
         
         DbObject nested = dbo.getObject("nested");
-        Assert.assertTrue("assert nested.isNull()", nested.isNull());
+        Assert.assertNull(nested);
     }
     
     public static class MultiLevelClass {
@@ -378,7 +381,8 @@ public class DbObjectTester {
         
         Assert.assertEquals(101, m2.myLong);
         Assert.assertEquals(202, m2.obj.myInt);
-        Assert.assertNull(m2.obj.nested);
+        // Left out, so the constructor's value (bergdb 020-04's (c)).
+        Assert.assertEquals(11, m2.obj.nested.myInt);
     }
     
     private static class IntArrayClass {
@@ -414,9 +418,8 @@ public class DbObjectTester {
         IntArrayClass object = new IntArrayClass();
         object.ints = null;
         DbObject d = DbObject.toDbObject(object);
-        Assert.assertTrue(d.has("ints", 'a'));
-        int[] ints = d.getArray("ints").toIntArray();
-        Assert.assertNull(ints);
+        Assert.assertFalse(d.has("ints", 'a'));     // left out (bergdb 020-04's (c))
+        Assert.assertNull(d.getArray("ints"));
     }
     
     
@@ -457,9 +460,8 @@ public class DbObjectTester {
         LongArrayClass object = new LongArrayClass();
         object.array = null;
         DbObject to = DbObject.toDbObject(object);
-        Assert.assertEquals('a', to.getType("array"));
-        long[] longs = to.getArray("array").toLongArray();
-        Assert.assertNull(longs);
+        Assert.assertEquals('z', to.getType("array"));     // left out (bergdb 020-04's (c))
+        Assert.assertNull(to.getArray("array"));
     }
     
     @Nano
@@ -506,9 +508,8 @@ public class DbObjectTester {
         DoubleArrayClass object = new DoubleArrayClass();
         object.array = null;
         DbObject to = DbObject.toDbObject(object);
-        Assert.assertTrue(to.has("array", 'a'));
-        double[] array = to.getArray("array").toDoubleArray();
-        Assert.assertNull(array);
+        Assert.assertFalse(to.has("array", 'a'));      // left out (bergdb 020-04's (c))
+        Assert.assertNull(to.getArray("array"));
     }
     
     @Nano
@@ -598,23 +599,27 @@ public class DbObjectTester {
     
     @Nano
     public static void testPrimitiveArrays2() {
-        // Tests arrays values that are null.
+        // Tests arrays values that are null: left out (bergdb 020-04's (c)), so a read into
+        // an object leaves its fields as they are.
         
         PrimitiveArrays p0 = new PrimitiveArrays();
         
         DbObject dbo = DbObject.toDbObject(p0);
+        Assert.assertEquals(0, dbo.getFieldCount());
         PrimitiveArrays p1 = new PrimitiveArrays();
         p1.setThem1();
         dbo.toJavaObject(p1, new KvToObjectImp());
         
-        Assert.assertArrayEquals(p0.booleans, p1.booleans);
-        Assert.assertArrayEquals(p0.bytes, p1.bytes);
-        Assert.assertArrayEquals(p0.chars, p1.chars);
-        Assert.assertArrayEquals(p0.shorts, p1.shorts);
-        Assert.assertArrayEquals(p0.ints, p1.ints);
-        Assert.assertArrayEquals(p0.longs, p1.longs);
-        Assert.assertArrayEquals(p0.floats, p1.floats);
-        Assert.assertArrayEquals(p0.doubles, p1.doubles);
+        PrimitiveArrays p2 = new PrimitiveArrays();
+        p2.setThem1();
+        Assert.assertArrayEquals(p2.booleans, p1.booleans);
+        Assert.assertArrayEquals(p2.bytes, p1.bytes);
+        Assert.assertArrayEquals(p2.chars, p1.chars);
+        Assert.assertArrayEquals(p2.shorts, p1.shorts);
+        Assert.assertArrayEquals(p2.ints, p1.ints);
+        Assert.assertArrayEquals(p2.longs, p1.longs);
+        Assert.assertArrayEquals(p2.floats, p1.floats);
+        Assert.assertArrayEquals(p2.doubles, p1.doubles);
     }
     
     /**
@@ -652,6 +657,23 @@ public class DbObjectTester {
                     null
             };
         }
+        
+        /** As setThem1(), with no null array element (bergdb 020-04, section 2.1). */
+        void setThem2() {
+            s0a = "a";
+            s0b = null;
+            s1a = new String[] { "a", "hello" };
+            s2a = new String[][] {
+                    new String[] { "a", "" },
+                    new String[] { "We spend our time searching for security and hate it when we get it." }
+            };
+            s2b = null;
+            s2c = new String[][] {
+                    new String[] { "a", "b" },
+                    new String[] { "We spend our time searching for security and hate it when we get it." },
+                    new String[] {}
+            };
+        }
     }
 
     public static class StringArrayClass {
@@ -662,6 +684,8 @@ public class DbObjectTester {
     public static void testStrings0() {
         Strings s0 = new Strings();
         s0.setThem1();
+        assertNullElementRefused(s0, "'s2a[0][1]'");
+        s0.setThem2();
         
         DbObject dbo = DbObject.toDbObject(s0);
         Strings s1 = (Strings) dbo.toJavaObject(Strings.class, new KvToObjectImp());
@@ -695,24 +719,12 @@ public class DbObjectTester {
     
     @Nano
     public static void testStrings2() {
-        // Like previous test, but with null-value.
+        // Like previous test, but with null-value: refused (bergdb 020-04, section 2.1).
         
         String[] myStrings1 = new String[]{null, "second"};
         StringArrayClass obj1 = new StringArrayClass();
         obj1.strings = myStrings1;
-        DbObject dbo1 = DbObject.toDbObject(obj1);
-        byte[] bytes = dbo1.getBytes();
-        
-        // Stored to bytes, lets try to get it back to a String[].
-        DbObject dbo2 = new DbObject(bytes);
-        StringArrayClass obj2 = (StringArrayClass) dbo2.toJavaObject(
-                StringArrayClass.class, new KvToObjectImp());
-        String[] myStrings2 = obj2.strings;
-        
-        // Assert
-        
-        Assert.assertNull(myStrings2[0]);
-        Assert.assertEquals("second", myStrings2[1]);
+        assertNullElementRefused(obj1, "'strings[0]'");
     }
     
     private static class IntArray5D implements Serializable {
@@ -734,6 +746,8 @@ public class DbObjectTester {
     public static void test5DIntArray() throws IOException {
         IntArray5D obj0 = new IntArray5D();
         obj0.set();
+        assertNullElementRefused(obj0, "'array[0][0][0]'");     // bergdb 020-04
+        obj0.array[0][0][0] = new int[0][];
         
         DbObject dbo = DbObject.toDbObject(obj0);
         IntArray5D obj1 = dbo.toJavaObject(IntArray5D.class, new KvToObjectImp());
@@ -779,6 +793,14 @@ public class DbObjectTester {
     public static void test4DCustomerArray() throws IOException {
         CustomerArray obj0 = new CustomerArray();
         obj0.set();
+        assertNullElementRefused(obj0, "'array[0][0][0][1]'");      // bergdb 020-04
+        obj0.array[0][0][0][1] = new Customer(22, "Bo");
+        assertNullElementRefused(obj0, "'array[0][0][1]'");
+        obj0.array[0][0][1] = new Customer[0];
+        assertNullElementRefused(obj0, "'array[0][0][2][0]'");
+        obj0.array[0][0][2] = new Customer[] {new Customer(23, "Cy")};
+        assertNullElementRefused(obj0, "'array[0][1][0][0]'");
+        obj0.array[0][1] = new Customer[0][];
         
         DbObject dbo = DbObject.toDbObject(obj0);
         CustomerArray obj1 = dbo.toJavaObject(CustomerArray.class, new KvToObjectImp());
@@ -788,15 +810,15 @@ public class DbObjectTester {
         
         Assert.assertEquals(21, obj1.array[0][0][0][2].id);
         Assert.assertEquals("Anna", obj1.array[0][0][0][2].name);
-        Assert.assertNull(obj1.array[0][0][1]);
+        Assert.assertEquals(0, obj1.array[0][0][1].length);
         
-        Assert.assertNull(obj1.array[0][0][0][1]);
+        Assert.assertEquals("Bo", obj1.array[0][0][0][1].name);
     }
     
     @Nano
     public static void testStrings2D() {
         Strings s0 = new Strings();
-        s0.setThem1();
+        s0.setThem2();
         
         DbObject dbo = DbObject.toDbObject(s0);
         Strings s1 = dbo.toJavaObject(Strings.class, new KvToObjectImp());
@@ -805,9 +827,10 @@ public class DbObjectTester {
         Assert.assertEquals(3, s1.s2c.length);
         Assert.assertEquals(2, s1.s2c[0].length);
         Assert.assertEquals("a", s1.s2c[0][0]);
-        Assert.assertNull(s1.s2c[0][1]);
+        Assert.assertEquals("b", s1.s2c[0][1]);
         Assert.assertEquals(1, s1.s2c[1].length);
-        Assert.assertNull(s1.s2c[2]);
+        Assert.assertEquals(0, s1.s2c[2].length);
+        Assert.assertEquals("", s1.s2a[0][1]);
     }
     
     private static class Circular0 {
@@ -913,7 +936,8 @@ public class DbObjectTester {
         DbObject dbo = DbObject.toDbObject(obj0);
         TestClass1 obj1 = dbo.toJavaObject(TestClass1.class, new KvToObjectImp());
         
-        Assert.assertNull(obj1.s);
+        // Left out, so the constructor's value (bergdb 020-04's (c), 020-09, section 4.3).
+        Assert.assertEquals("a string", obj1.s);
     }
     
     private static class A {
@@ -927,7 +951,8 @@ public class DbObjectTester {
         DbObject dbo = DbObject.toDbObject(obj0);
         A obj1 = dbo.toJavaObject(A.class, new KvToObjectImp());
         
-        Assert.assertNull(obj1.field);
+        // Left out, so the constructor's value (bergdb 020-04's (c), 020-09, section 4.3).
+        Assert.assertEquals("a string", obj1.field.s);
     }
     
     public static class TestClass4 {
@@ -938,12 +963,14 @@ public class DbObjectTester {
     public static void testStringArray0() {
         TestClass4 obj1 = new TestClass4();
         obj1.array = new String[]{"1", "2", null, "4"};
+        assertNullElementRefused(obj1, "'array[2]'");       // bergdb 020-04
+        obj1.array[2] = "3";
         DbObject dbo = DbObject.toDbObject(obj1);
         TestClass4 obj2 = dbo.toJavaObject(TestClass4.class, new KvToObjectImp());
         
         Assert.assertEquals(4, obj2.array.length);
         Assert.assertEquals("1", obj2.array[0]);
-        Assert.assertNull(obj2.array[2]);
+        Assert.assertEquals("3", obj2.array[2]);
     }
     
     @Nano
@@ -959,14 +986,9 @@ public class DbObjectTester {
     
     @Nano
     public static void testArray1() {
-        // Like previous test, but with a null value in array.
+        // Like previous test, but with a null value in array: refused (bergdb 020-04).
         String[] myStrings1 = new String[]{null, "second"};
-        DbObject dbo = DbObject.toDbObject(myStrings1);
-        
-        String[] myStrings2 = dbo.toJavaObject(String[].class, new KvToObjectImp());
-        Assert.assertEquals(2, myStrings2.length);
-        Assert.assertNull(myStrings2[0]);
-        Assert.assertEquals("second", myStrings2[1]);
+        assertNullElementRefused(myStrings1, "'[0]'");
     }
     
     @Nano
@@ -1007,6 +1029,8 @@ public class DbObjectTester {
             null,
             new int[] {}
         };
+        assertNullElementRefused(ints0, "'[1]'");       // bergdb 020-04
+        ints0[1] = new int[] {7};
         
         DbObject dbo = DbObject.toDbObject(ints0);
         int[][] ints1 = dbo.toJavaObject(int[][].class, new KvToObjectImp());
@@ -1135,29 +1159,29 @@ public class DbObjectTester {
     public static void testNarrowingOutOfRange() {
         assertDoesNotFit("i", new DbLong(3000L * 1000 * 1000));
         assertDoesNotFit("i", new DbLong(Integer.MIN_VALUE - 1L));
-        assertDoesNotFit("s", new DbInt(444555));
+        assertDoesNotFit("s", new DbLong(444555));
         assertDoesNotFit("s", new DbLong(-32769));
-        assertDoesNotFit("b", new DbInt(128));
-        assertDoesNotFit("c", new DbInt(-1));
-        assertDoesNotFit("c", new DbInt(65536));
+        assertDoesNotFit("b", new DbLong(128));
+        assertDoesNotFit("c", new DbLong(-1));
+        assertDoesNotFit("c", new DbLong(65536));
         assertDoesNotFit("i", new DbDouble(1e10));
         assertDoesNotFit("l", new DbDouble(Double.NaN));
         assertDoesNotFit("l", new DbDouble(1e19));
         assertDoesNotFit("f", new DbDouble(1e300));
-        assertDoesNotFit("ints", DbValue.toDbValue(long[].class, new long[] {1, 1L << 40}));
+        assertDoesNotFit("ints", DbValue.toDbValue(new long[] {1, 1L << 40}));
     }
     
     @Nano
     public static void testNarrowingInRange() {
         Assert.assertEquals(Integer.MAX_VALUE, narrow("i", new DbLong(Integer.MAX_VALUE)).i);
-        Assert.assertEquals(-32768, narrow("s", new DbInt(-32768)).s);
+        Assert.assertEquals(-32768, narrow("s", new DbLong(-32768)).s);
         Assert.assertEquals(-128, narrow("b", new DbLong(-128)).b);
-        Assert.assertEquals(65535, narrow("c", new DbInt(65535)).c);
+        Assert.assertEquals(65535, narrow("c", new DbLong(65535)).c);
         Assert.assertEquals(2, narrow("i", new DbDouble(2.7)).i);
         Assert.assertEquals(1e30f, narrow("f", new DbDouble(1e30)).f);
         Assert.assertTrue(Float.isInfinite(narrow("f", new DbDouble(Double.POSITIVE_INFINITY)).f));
         Assert.assertArrayEquals(new int[] {1, -5}, 
-                narrow("ints", DbValue.toDbValue(long[].class, new long[] {1, -5})).ints);
+                narrow("ints", DbValue.toDbValue(new long[] {1, -5})).ints);
     }
     
     // ---- bergdb 005-23: cyclic and deeply nested objects ----
@@ -1222,16 +1246,22 @@ public class DbObjectTester {
         }
     }
     
-    /** As deep as allowed: stored and read back (2 s; the nested bytes are copied per level). */
-    @Nano("f")
+    /** As deep as allowed, 16 levels (bergdb 020-07, R14): stored and read back. */
+    @Nano
     public static void testDeepAtLimit() {
-        Link back = DbObject.toDbObject(list(DbObject.MAX_DEPTH))
+        Link back = DbObject.toDbObject(list(ObjectFormat.MAX_LEVELS))
                 .toJavaObject(Link.class, new KvToObjectImp());
         int n = 0;
         for (Link l = back; l != null; l = l.next) {
             n++;
         }
-        Assert.assertEquals(DbObject.MAX_DEPTH, n);
+        Assert.assertEquals(ObjectFormat.MAX_LEVELS, n);
+        try {
+            DbObject.toDbObject(list(ObjectFormat.MAX_LEVELS + 1));
+            throw new AssertionError("no exception");
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("deeper than 16 levels"));
+        }
     }
     
     // ---- bergdb 005-26, 021-04: strings with lone surrogates ----
@@ -1317,18 +1347,6 @@ public class DbObjectTester {
 
     // ---- bergdb 021-07: bytes that are not a well-formed object ----
 
-    /** The offset of the first field of an object's bytes 'b': its type byte. */
-    private static int firstField(byte[] b) {
-        int headerSize = new DbObject.Builder().build().getBytes().length;
-        return Bytes.bytesToIntLE(b, headerSize + 2);
-    }
-
-    /** The offset of the value of the first field of an object's bytes 'b'. */
-    private static int firstValue(byte[] b) {
-        int field = firstField(b);
-        return field + 3 + Bytes.bytesToShortLE(b, field + 1);
-    }
-
     /** The reader refuses 'b' with a BadFormatException, not another exception or Error. */
     private static void assertBadFormat(String what, byte[] b) {
         try {
@@ -1346,96 +1364,9 @@ public class DbObjectTester {
     }
 
     /**
-     * Case 1: a nested object of size -1, which no writer writes; it was read as Java's
-     * null and gave an AssertionError (with -ea) or a NullPointerException.
-     */
-    @Nano
-    public static void testReaderNestedObjectSizeMinusOne() {
-        byte[] b = new DbObject.Builder().addObject("o", inner()).build().getBytes();
-        Bytes.intToBytesLE(-1, b, firstValue(b));
-        assertBadFormat("an object field of size -1", b);
-
-        b = new DbObject.Builder().addArray("a",
-                new DbArray.Builder().add(inner()).build()).build().getBytes();
-        Bytes.intToBytesLE(-1, b, firstValue(b) + 1);     // after the element's type byte
-        assertBadFormat("an object element of size -1", b);
-
-        // A null object as the writer writes it, a field count of -1, is read as before.
-        b = new DbObject.Builder().addObject("o", DbObject.Builder.buildNull()).build()
-                .getBytes();
-        Assert.assertTrue(new DbObject(b).getObject("o").isNull());
-    }
-
-    /**
-     * Case 2: a string or byte array length below -1, or one past the end of the bytes,
-     * and a field name's length of 0 or below, or past the end; it was a
-     * NegativeArraySizeException, an IndexOutOfBoundsException, an AssertionError or,
-     * for a length near 2^31, an OutOfMemoryError.
-     */
-    @Nano
-    public static void testReaderBadLengths() {
-        int[] sizes = {-2, Integer.MIN_VALUE, 4, 1000, Integer.MAX_VALUE};
-        for (int size : sizes) {
-            byte[] b = new DbObject.Builder().addString("s", "abc").build().getBytes();
-            Bytes.intToBytesLE(size, b, firstValue(b));
-            assertBadFormat("a string of size " + size, b);
-
-            b = new DbObject.Builder().addArray("a",
-                    new DbArray.Builder().add(new DbString("abc")).build()).build().getBytes();
-            Bytes.intToBytesLE(size, b, firstValue(b) + 1);
-            assertBadFormat("a string element of size " + size, b);
-
-            b = new DbObject.Builder().addDbValue("b", new DbByteArray(new byte[] {1, 2, 3}))
-                    .build().getBytes();
-            Bytes.intToBytesLE(size, b, firstValue(b));
-            assertBadFormat("a byte array of size " + size, b);
-
-            b = new DbObject.Builder().addObject("o", inner()).build().getBytes();
-            Bytes.intToBytesLE(size, b, firstValue(b));
-            assertBadFormat("an object field of size " + size, b);
-        }
-
-        short[] nameSizes = {-1, Short.MIN_VALUE, 0, 100, Short.MAX_VALUE};
-        for (short size : nameSizes) {
-            byte[] b = new DbObject.Builder().addInt("i", 1).build().getBytes();
-            Bytes.shortToBytesLE(size, b, firstField(b) + 1);
-            assertBadFormat("a field name of size " + size, b);
-        }
-    }
-
-    /** Case 3: a bad field type byte; it was an IllegalArgumentException. */
-    @Nano
-    public static void testReaderBadTypeByte() {
-        byte[] b = new DbObject.Builder().addInt("i", 1).build().getBytes();
-        b[firstField(b)] = 'x';
-        assertBadFormat("the type byte 'x'", b);
-        b[firstField(b)] = 'z';
-        assertBadFormat("the type byte 'z'", b);
-    }
-
-    /**
-     * Case 4: 'Z', the null array, after an element; it ended the array silently, which
-     * read the elements before it as the whole array.
-     */
-    @Nano
-    public static void testReaderNullMarkAfterAnElement() {
-        byte[] b = new DbObject.Builder().addArray("a",
-                new DbArray.Builder().add(new DbInt(3)).build()).build().getBytes();
-        int end = firstValue(b) + 1 + 4;      // after the element's type byte and its int
-        Assert.assertEquals('z', (char) b[end]);
-        b[end] = 'Z';
-        assertBadFormat("'Z' after an element", b);
-
-        // 'Z' as the array's first byte, the null array as the writer writes it, is read.
-        b = new DbObject.Builder().addArray("a", DbArray.Builder.buildNull()).build()
-                .getBytes();
-        Assert.assertTrue(new DbObject(b).getArray("a").isNull());
-    }
-
-    /**
      * Bytes that end inside a field: every proper prefix of an object's bytes is refused;
      * an array's value cut at its start gave an AssertionError (with -ea), and other cuts
-     * an IndexOutOfBoundsException.
+     * an IndexOutOfBoundsException. In format 2 (bergdb 020-07, section 7.1).
      */
     @Nano
     public static void testReaderCutBytes() {
@@ -1455,14 +1386,10 @@ public class DbObjectTester {
         for (int length = 0; length < all.length; length++) {
             assertBadFormat("the first " + length + " bytes", Arrays.copyOf(all, length));
         }
-
-        DbObject arrayLast = new DbObject.Builder().addArray("a",
-                new DbArray.Builder().add(new DbInt(3)).build()).build();
-        byte[] b = arrayLast.getBytes();
-        assertBadFormat("an array cut at its start", Arrays.copyOf(b, firstValue(b)));
     }
 
     /**
+     * Case 5: DbObject.Builder refuses a null name or value    /**
      * Case 5: DbObject.Builder refuses a null name or value with IllegalArgumentException,
      * in each add method; addObject, addArray and addDbValue gave an AssertionError (with
      * -ea) or a NullPointerException, and addString stored a null string.
@@ -1479,8 +1406,12 @@ public class DbObjectTester {
             () -> new DbObject.Builder().addString(null, "s"),
             () -> new DbObject.Builder().addObject(null, inner()),
             () -> new DbObject.Builder().addArray(null, new DbArray.Builder().build()),
-            () -> new DbObject.Builder().addDbValue(null, new DbInt(1)),
+            () -> new DbObject.Builder().addDbValue(null, new DbLong(1)),
             () -> new DbObject.Builder().addInt("", 1),
+            () -> new DbString(null),
+            () -> new DbByteArray(null),
+            () -> new DbArray.Builder().add(null),
+            () -> DbObject.toDbObject(null),
         };
         for (int i = 0; i < adds.length; i++) {
             try {
@@ -1496,47 +1427,61 @@ public class DbObjectTester {
 
     // ---- bergdb 021-08: nesting deeper than the writer writes ----
 
-    /** An object whose field "a" holds arrays nested 'n' deep, the innermost empty. */
+    /**
+     * A stored object whose field "a" holds arrays nested 'n' deep, the innermost empty: the
+     * top object level 1, the arrays levels 2 to n + 1 (bergdb 020-07, R14).
+     */
     static byte[] nestedArrays(int n) {
-        byte[] head = new DbObject.Builder().addArray("a", new DbArray.Builder().build())
-                .build().getBytes();
-        int value = firstValue(head);
-        byte[] b = Arrays.copyOf(head, value + 2 * n - 1);
-        Arrays.fill(b, value, value + n - 1, (byte) 'a');
-        Arrays.fill(b, value + n - 1, b.length, (byte) 'z');
+        long size = 2 + 2L * n;         // the field: its name's length, "a", the arrays
+        int w = ObjectFormat.width(size);
+        byte[] b = new byte[(int) (1 + 1 + 2 * w + size)];
+        b[0] = DbObject.HEADER;
+        ObjectFormat.frame(b, 1, new int[] {(int) size}, 1);
+        int p = 2 + 2 * w;
+        b[p] = 1;
+        b[p + 1] = 'a';
+        Arrays.fill(b, p + 2, p + 2 + n, (byte) ObjectFormat.ARRAY_START);
+        Arrays.fill(b, p + 2 + n, b.length, (byte) ObjectFormat.ARRAY_END);
         return b;
     }
 
-    /** Objects nested 'n' deep through the field "o", the innermost empty. */
+    /** A stored object of 'n' objects nested through the field "o", the innermost empty. */
     static byte[] nestedObjects(int n) {
-        byte[] empty = new DbObject.Builder().build().getBytes();
-        byte[] level = new DbObject.Builder().addObject("o", new DbObject(empty)).build()
-                .getBytes();
-        int prefix = level.length - empty.length;        // header, field info, field to size
-        byte[] b = new byte[prefix * (n - 1) + empty.length];
-        for (int k = 0; k < n - 1; k++) {
-            System.arraycopy(level, 0, b, k * prefix, prefix);
-            Bytes.intToBytesLE(b.length - (k + 1) * prefix, b, k * prefix + prefix - 4);
+        int[] sizes = new int[n];       // sizes[k]: the object at level k + 1
+        sizes[n - 1] = 2;               // 48 00
+        for (int k = n - 2; k >= 0; k--) {
+            int field = 2 + sizes[k + 1];
+            sizes[k] = 1 + 2 * ObjectFormat.width(field) + field;
         }
-        System.arraycopy(empty, 0, b, b.length - empty.length, empty.length);
+        byte[] b = new byte[1 + sizes[0]];
+        b[0] = DbObject.HEADER;
+        int p = 1;
+        for (int k = 0; k < n - 1; k++) {
+            p = ObjectFormat.frame(b, p, new int[] {2 + sizes[k + 1]}, 1);
+            b[p] = 1;
+            b[p + 1] = 'o';
+            p += 2;
+        }
+        ObjectFormat.frame(b, p, new int[0], 0);
         return b;
     }
 
     /**
-     * The reader refuses bytes nested deeper than MAX_READ_OBJECTS objects or
-     * MAX_READ_LEVELS objects and arrays, counted alike; it ended in a StackOverflowError,
-     * or for objects, which it copies at each level, an OutOfMemoryError.
+     * The reader refuses bytes nested deeper than 16 levels of objects and arrays, counted
+     * alike (bergdb 020-07, R14), before it recurses; it ended in a StackOverflowError, or
+     * for objects, which it copied at each level, an OutOfMemoryError (bergdb 021-08).
      */
     @Nano
     public static void testReaderNestingDepth() {
-        int levels = DbObject.MAX_READ_LEVELS;
+        int levels = ObjectFormat.MAX_LEVELS;
         Assert.assertEquals(1, new DbObject(nestedArrays(levels - 1)).getArray("a").getSize());
         assertBadFormat("arrays at " + (levels + 1) + " levels", nestedArrays(levels));
         assertBadFormat("arrays 100,000 deep", nestedArrays(100 * 1000));
 
-        int objects = DbObject.MAX_READ_OBJECTS;
-        Assert.assertEquals(1, new DbObject(nestedObjects(objects)).getFieldCount());
-        assertBadFormat("objects " + (objects + 1) + " deep", nestedObjects(objects + 1));
+        Assert.assertEquals(1, new DbObject(nestedObjects(levels)).getFieldCount());
+        Assert.assertEquals(0, new DbObject(nestedObjects(levels)).getObject("o").getObject("o")
+                .getFieldCount() - 1);
+        assertBadFormat("objects " + (levels + 1) + " deep", nestedObjects(levels + 1));
         assertBadFormat("objects 100,000 deep", nestedObjects(100 * 1000));
     }
 
@@ -1544,16 +1489,116 @@ public class DbObjectTester {
     @Nano
     public static void testBuilderRefusesTooDeep() {
         DbArray a = new DbArray.Builder().build();
-        for (int i = 1; i < DbObject.MAX_READ_LEVELS - 1; i++) {
+        for (int i = 1; i < ObjectFormat.MAX_LEVELS - 1; i++) {
             a = new DbArray.Builder().add(a).build();
         }
         new DbObject.Builder().addArray("a", a).build();      // the most levels read
-        a = new DbArray.Builder().add(a).build();
+        final DbArray a15 = a;
         try {
-            new DbObject.Builder().addArray("a", a).build();
+            new DbObject.Builder().addArray("a", new DbArray.Builder().add(a15).build())
+                    .build();
             throw new AssertionError("no exception");
         } catch (IllegalArgumentException e) {
-            Assert.assertTrue(e.getMessage(), e.getMessage().contains("Nested deeper than"));
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("levels"));
         }
+    }
+
+    // ---- bergdb 020-04 and 020-08, step 2: no null in format 2 ----
+
+    public static class Nulls {
+        public String s;
+        public byte[] bytes;
+        public String[] strings;
+        public Nested nested;
+        public Integer count;
+        public int n = 3;
+        public Nulls() {}
+    }
+
+    public static class OnlyN {
+        public int n = 3;
+        public OnlyN() {}
+    }
+
+    /**
+     * N1: a null field is absent (020-04's (c), Frans, 2026-11-08, 21:47): null String,
+     * byte[], String[], nested object and Integer fields give no field; read back, each is
+     * null. N4: the bytes equal those of an object of a class without the fields.
+     */
+    @Nano
+    public static void testNullFieldsAbsent() {
+        DbObject dbo = DbObject.toDbObject(new Nulls());
+        for (String name : new String[] {"s", "bytes", "strings", "nested", "count"}) {
+            Assert.assertEquals(name, 'z', dbo.getType(name));
+            Assert.assertTrue(name, dbo.getDbValue(name) == null);
+        }
+        Assert.assertEquals(1, dbo.getFieldCount());
+        Assert.assertEquals(3, dbo.getInt("n"));
+        Assert.assertArrayEquals(DbObject.toDbObject(new OnlyN()).getBytes(), dbo.getBytes());
+
+        Nulls back = dbo.toJavaObject(Nulls.class, new KvToObjectImp());
+        Assert.assertNull(back.s);
+        Assert.assertNull(back.bytes);
+        Assert.assertNull(back.strings);
+        Assert.assertNull(back.nested);
+        Assert.assertNull(back.count);
+        Assert.assertEquals(3, back.n);
+    }
+
+    public static class Elements {
+        public String[] names;
+        public Integer[] counts;
+        public Customer2[] customers;
+        public int[][] rows;
+        public Elements inner;
+        public Elements() {}
+    }
+
+    public static class Customer2 {
+        public int id;
+        public Customer2() {}
+    }
+
+    /** toDbObject(o) refuses with IllegalArgumentException naming "is null" and 'where'. */
+    private static void assertNullElementRefused(Object o, String where) {
+        try {
+            DbObject.toDbObject(o);
+            throw new AssertionError("no exception, " + where);
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("is null"));
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains(where));
+        }
+    }
+
+    /**
+     * N3: a null array element is refused at every depth and in an array of any element type,
+     * naming the element (020-04, section 2.1, rule 3; 020-09, section 4.3): a format 2 array
+     * has no absent element. So is an array not filled.
+     */
+    @Nano
+    public static void testNullElementsRefused() {
+        Elements e = new Elements();
+        e.names = new String[] {"a", null};
+        assertNullElementRefused(e, "'names[1]'");
+        e = new Elements();
+        e.counts = new Integer[] {1, null};
+        assertNullElementRefused(e, "'counts[1]'");
+        e = new Elements();
+        e.customers = new Customer2[] {new Customer2(), null};
+        assertNullElementRefused(e, "'customers[1]'");
+        e = new Elements();
+        e.rows = new int[][] {{1}, null};
+        assertNullElementRefused(e, "'rows[1]'");
+        e = new Elements();
+        e.names = new String[2];
+        assertNullElementRefused(e, "'names[0]'");
+        e = new Elements();
+        e.inner = new Elements();
+        e.inner.rows = new int[][] {{1}, {2}, null};
+        assertNullElementRefused(e, "'inner.rows[2]'");
+        assertNullElementRefused(new String[] {"a", null}, "'[1]'");
+        assertNullElementRefused(new String[][] {{"a"}, {null}}, "'[1][0]'");
+
+        DbObject.toDbObject(new int[] {1});     // the thread's path is empty again
     }
 }

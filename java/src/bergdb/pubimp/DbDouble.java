@@ -1,11 +1,11 @@
 package bergdb.pubimp;
 
-import bergdb.common.Bytes;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * The DbObject type for a double value, a 64-bit floating point value.
+ * The DbObject type for a double value, a 64-bit floating point value: its 64 bits, every
+ * NaN stored as the one NaN, 0x7ff8000000000000, and -0.0 kept (bergdb 020-07, R12).
  * The type char for this type is 'd'.
  * 
  * @author Frans Lundberg
@@ -19,7 +19,7 @@ public class DbDouble extends DbValue {
     }
     
     public int getByteSize() {
-        return 8;
+        return ObjectFormat.DOUBLE_SIZE;
     }
     
     public String toString() {
@@ -27,9 +27,7 @@ public class DbDouble extends DbValue {
     }
     
     public int write(byte[] b, int offset) {
-        Bytes.doubleToBytesLE(value, b, offset);
-        offset += 8;
-        return offset;
+        return ObjectFormat.writeDouble(b, offset, Double.doubleToRawLongBits(value));
     }
     
     public long toLong() {
@@ -42,14 +40,6 @@ public class DbDouble extends DbValue {
     
     public double toDouble() {
         return value;
-    }
-    
-    public static DbDouble parse(byte[] buffer, int offset) {
-        return new DbDouble(parseToDouble(buffer, offset));
-    }
-    
-    public static double parseToDouble(byte[] buffer, int offset) {
-        return Bytes.bytesToDoubleLE(buffer, offset);
     }
     
     // ---- Tests -------------------------------------------------
@@ -65,9 +55,15 @@ public class DbDouble extends DbValue {
     public static void testSerialize0() {
         byte[] bytes = new byte[20];
         DbDouble d0 = new DbDouble(12.34);
-        d0.write(bytes, 4);
-        DbDouble d1 = DbDouble.parse(bytes, 4);
+        Assert.assertEquals(4 + 9, d0.write(bytes, 4));
+        DbValue d1 = DbValue.read(bytes, 4);
         
         Assert.assertEquals(d0.toDouble(), d1.toDouble());
+        
+        new DbDouble(Double.longBitsToDouble(0x7ff0000000000001L)).write(bytes, 0);
+        Assert.assertEquals(0x7ff8000000000000L, ObjectFormat.doubleBitsAt(bytes, 0));
+        new DbDouble(-0.0).write(bytes, 0);
+        Assert.assertEquals(0x8000000000000000L, 
+                Double.doubleToRawLongBits(DbValue.read(bytes, 0).toDouble()));
     }
 }

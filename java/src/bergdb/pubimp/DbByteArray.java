@@ -1,9 +1,7 @@
 package bergdb.pubimp;
 
-import bergdb.common.Bytes;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-import bergdb.pub.util.BadFormatException;
 
 /**
  * The DbObject type for a byte array.
@@ -12,26 +10,40 @@ import bergdb.pub.util.BadFormatException;
  * @author Frans Lundberg
  */
 public class DbByteArray extends DbValue {
-    private byte[] value;
+    private final byte[] value;
     
     /**
      * Creates a new object given a byte array, 'value'.
      * 
      * @param value  
-     *      The bytes; copied in this constructor unless
-     *      it is null. Can be null.
+     *      The bytes; copied in this constructor. Not null: BergDB stores no null, a field
+     *      without a value is left out (bergdb 020-04).
      */
     public DbByteArray(byte[] value) {
         super('b');
-        this.value = value == null ? null : value.clone();
+        if (value == null) {
+            throw new IllegalArgumentException("value == null not allowed: BergDB stores no "
+                    + "null, leave the field out (bergdb 020-04, section 2.4)");
+        }
+        this.value = value.clone();
+    }
+    
+    private DbByteArray(byte[] value, boolean own) {
+        super('b');
+        this.value = value;
+    }
+    
+    /** The bytes at 'p' of checked bytes, copied (bergdb 020-07, section 4.1). */
+    static DbByteArray read(byte[] b, int p) {
+        return new DbByteArray(ObjectFormat.bytesAt(b, p), true);
     }
     
     public int getByteSize() {
-        return value == null ? 4 : 4 + value.length;
+        return ObjectFormat.lengthSize(value.length) + value.length;
     }
     
     public String toString() {
-        return value == null ? "b:null" : "b:" + value.length;
+        return "b:" + value.length;
     }
     
     public byte[] getByteArray() {
@@ -39,16 +51,9 @@ public class DbByteArray extends DbValue {
     }
     
     public int write(byte[] b, int offset) {
-        if (value == null) {
-            Bytes.intToBytesLE(-1, b, offset);
-            offset += 4;
-        } else {
-            Bytes.intToBytesLE(value.length, b, offset);
-            offset += 4;
-            System.arraycopy(value, 0, b, offset, value.length);
-            offset += value.length;
-        }
-        return offset;
+        offset = ObjectFormat.writeBytesHead(b, offset, value.length);
+        System.arraycopy(value, 0, b, offset, value.length);
+        return offset + value.length;
     }
     
     @SuppressWarnings("unchecked")
@@ -60,31 +65,11 @@ public class DbByteArray extends DbValue {
         Object result;
         
         if (c.equals(byte[].class)) {
-            result = value == null ? null : value.clone();
+            result = value.clone();
         } else {
             result = null;
         }
         return (TYPE) result;
-    }
-    
-    public static DbByteArray parse(byte[] buffer, int offset) {
-        return new DbByteArray(parseToByteArray(buffer, offset));
-    }
-    
-    public static byte[] parseToByteArray(byte[] buffer, int offset) {
-        int size = Bytes.bytesToIntLE(buffer, offset);
-        offset += 4;
-        if (size == -1) {
-            return null;
-        }
-        
-        if (size < 0 || size > buffer.length - offset) {     // bergdb 021-07
-            throw new BadFormatException("Bad byte array size, " + size + ".");
-        }
-        
-        byte[] value = new byte[size];
-        System.arraycopy(buffer, offset, value, 0, size);
-        return value;
     }
     
     // ---- Tests ----
@@ -100,8 +85,8 @@ public class DbByteArray extends DbValue {
         byte[] buffer = new byte[100];
         byte[] array = new byte[] {1, 2, -3};
         DbByteArray v0 = new DbByteArray(array);
-        v0.write(buffer, 1);
-        DbByteArray v1 = DbByteArray.parse(buffer, 1);
+        Assert.assertEquals(1 + 2 + 3, v0.write(buffer, 1));
+        DbByteArray v1 = (DbByteArray) DbValue.read(buffer, 1);
         Assert.assertArrayEquals(array, v1.getByteArray());
     }
 }
