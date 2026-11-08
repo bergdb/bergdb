@@ -537,6 +537,16 @@ yet decided, but there are good options that have been researched." And:
 closer to a decision. I think we have the investigations needed to
 proceed with decisions on object storage."
 
+**All twelve decided** by Frans on 2026-11-08, 15:55 to 17:09, one at a
+time, each with his words in its subsection: no null in the stored
+format; (f); binary search; names of 1 to 255 bytes; the header 0x82;
+arrays in Binson's framing; one 64-bit integer (question 1's (B)
+dropped); Binson's NaN rule as a must, −0.0 kept; readers refuse
+ill-formed UTF-8; depth 16, other limits as today; old objects refused;
+the format under 018-01's rule, the spec a subitem of 020. Left for the
+API (section 5): the put rule of 4.1 (020-04's Q1) and the `byte[]` case
+of 4.5.
+
 Object storage is what the bytes of a stored object are, and the rules
 that every binding keeps when it writes and reads them: questions 1b, 3
 and 4 of section 3, and the choices that come with a format. Each
@@ -551,18 +561,18 @@ apart, in section 5; whether the studies are enough, in section 6.
 
 | Decision            | Recommended                                   | Frans leans to |
 |---------------------|-----------------------------------------------|-----------------|
-| 4.1 Stored null     | (d): no null; null is absence, exactly        | no null         |
-| 4.2 The byte format | (f): DbObject's table, Binson's values        | (f)             |
-| 4.3 Finding a field | B, binary search (020-06 measured: H16)       | B, no hash list |
-| 4.4 Names           | a 1-byte length, names of 1 to 255 bytes      |                 |
-| 4.5 Header, kind    | 0x82 before the top object                    |                 |
-| 4.6 Arrays          | Binson's framing (A1)                         |                 |
-| 4.7 Integers        | one type, 64 bits, in the fewest bytes        | with 4.2        |
-| 4.8 Doubles         | one NaN pattern; −0.0 kept                    |                 |
-| 4.9 Strings         | well-formed UTF-8; a reader refuses others    | writers: 021-04 |
-| 4.10 Limits         | today's: depth 1,001 and 2,001; 32,767 fields |                 |
-| 4.11 Old databases  | refused, with a message                       |                 |
-| 4.12 The spec       | under 018-01's rule; a subitem of 020         |                 |
+| 4.1 Stored null     | (d): no null; null is absence, exactly        | decided: no null |
+| 4.2 The byte format | (f): DbObject's table, Binson's values        | decided: (f)    |
+| 4.3 Finding a field | B, binary search (020-06 measured: H16)       | decided: B      |
+| 4.4 Names           | a 1-byte length, names of 1 to 255 bytes      | decided: (i)    |
+| 4.5 Header, kind    | 0x82 before the top object                    | decided: (i)    |
+| 4.6 Arrays          | Binson's framing (A1)                         | decided: (A1)   |
+| 4.7 Integers        | one type, 64 bits, in the fewest bytes        | decided: (i)    |
+| 4.8 Doubles         | one NaN pattern; −0.0 kept                    | decided: (i)    |
+| 4.9 Strings         | well-formed UTF-8; a reader refuses others    | decided         |
+| 4.10 Limits         | today's: depth 1,001 and 2,001; 32,767 fields | decided: depth 16 |
+| 4.11 Old databases  | refused, with a message                       | decided: (i)    |
+| 4.12 The spec       | under 018-01's rule; a subitem of 020         | decided         |
 
 ### 4.1. Stored null (question 1b)
 
@@ -590,6 +600,11 @@ apart, in section 5; whether the studies are enough, in section 6.
   field; some puts of today are refused, naming the field. Under (f)
   (4.2) there is no null encoding to remove: 020-04's step A goes, its
   rules stay (020-04, section 11).
+* **Decided**, the format (Frans, 2026-11-08, 15:55): "Yes. Like Binson,
+  no null values in the stored data." The stored bytes have no null
+  value; a field without a value is absent. The put rule, (b), (c) or (d)
+  (020-04's Q1), all three with the same bytes, is left for the API
+  (section 5); (d) stays recommended.
 * **What it leaves open**: 020-04's Q2 (a class without a no-argument
   constructor) and Q6 (`getString` of an absent field), both the API's
   (section 5). Its Q3 (an old object with a null) becomes 4.11 under
@@ -638,6 +653,8 @@ apart, in section 5; whether the studies are enough, in section 6.
   by C reading a database that Java wrote (006-15, section 1, 09:01);
   under (f) such a reader goes through the converter, or (f)'s own
   reader.
+* **Decided** (Frans, 2026-11-08, 16:08): (f), asked "Do you decide (f)
+  as the format of stored objects?", answered "Yes."
 * **What it leaves open**: 4.3 to 4.12.
 
 ### 4.3. Finding a field: binary search or a hash scan
@@ -665,6 +682,10 @@ apart, in section 5; whether the studies are enough, in section 6.
 * **Recommended** (here): B, as 020-05, section 12b.4, did before the
   measurement: no byte and no hash function in the format, for a
   difference that is small next to the work around a lookup.
+* **Decided** (Frans, 2026-11-08, 16:17): B, asked "Do you decide B,
+  binary search with no hash list?", answered "Yes!" A hashed object
+  type can come later under its own type byte, old values staying
+  readable.
 
 The coordinator's summary, which Frans liked (2026-11-08): "The big gain
 is reading fields through the table at all: a lookup is about 10 times
@@ -808,6 +829,8 @@ And:
   well-formed UTF-8, the fields in strictly increasing order of their
   names' unsigned bytes, so no two fields share a name (12b.1, rule 4;
   Binson's order and today's).
+* **Decided** (Frans, 2026-11-08, 16:19): (i), asked "Do you decide (i),
+  names of 1 to 255 UTF-8 bytes with a 1-byte length?", answered "Yes".
 * **What it leaves open**: nothing.
 
 ### 4.5. The header byte and the kind of a value (question 3)
@@ -832,6 +855,10 @@ And:
   0x82, as with `bergo` today, so a build, an `Object.class` get and a
   primary scan still guess for bytes: settled by (iii) beside (i), or
   left as a documented guess; with 020-01's decision 6 and 015-46.
+* **Decided** (Frans, 2026-11-08, 16:22): (i), asked "Do you decide (i),
+  the byte 0x82 before each stored object as its kind and format
+  version?", answered "Yes". The `byte[]` case stays with the API
+  (section 5; 020-01's decision 6).
 
 ### 4.6. Arrays
 
@@ -846,6 +873,8 @@ And:
 * **The consequences**: element i needs a walk; an object in an array
   carries its own table and size, so it is skipped without a walk; the
   elements may be of any types, mixed, as in Binson and today.
+* **Decided** (Frans, 2026-11-08, 16:24): (A1), asked "Do you decide
+  (A1), Binson's framing for arrays?", answered "Yes, A1."
 * **What it leaves open**: (A4), as a new type byte in a later format,
   if element reads or indexes over arrays come.
 
@@ -868,6 +897,11 @@ And:
   and `l` today); a JavaScript or Python binding need not choose a
   width; a value beyond 64 bits (Python's `int`, a JavaScript `BigInt`)
   is refused at its put.
+* **Decided** (Frans, 2026-11-08, 16:25): (i), asked "Do you decide (i),
+  one signed 64-bit integer type, and with it drop question 1's option
+  (B)?", answered "Yes". Question 1's (B), exact by the stored type, is
+  dropped; (A), (C) and (D) remain (section 2). A value beyond the
+  signed 64-bit range is refused at its put.
 * **What it leaves open**: question 1's rules, and what
   `DbObject.getType` answers for an integer (section 5).
 
@@ -890,6 +924,22 @@ And:
   count under 021-04's "no silent change" (the alternative is to refuse
   such a NaN at the put); −0.0 reads back as −0.0; a `float` is stored as
   a double, as today.
+* **Binson** (BINSON-SPEC-1.1, binson.org, read 2026-11-08): "A double is
+  its 64-bit pattern, interpreted as an [IEEE-754] binary64 number";
+  recommendation 6: "A writer should store NaN as the bit pattern
+  0x7ff8000000000000 (a positive, quiet NaN)", because "different
+  programming languages produce different NaN bit patterns by default";
+  −0.0 is not named, so it is its own pattern and value; no rule for a
+  reader (binson-java reads any NaN, 020-05, BJ12). (i) follows Binson:
+  its "should" a must for a writer, which rewrites any NaN to the one
+  pattern rather than refusing it (other patterns come from ordinary
+  computation), and a BergDB reader refuses another pattern, as 021-07's
+  strict reader; bytes from Binson come in through the converter, which
+  rewrites NaN.
+* **Decided** (Frans, 2026-11-08, 16:34): (i), asked "Do you decide that,
+  Binson's NaN rule made a must for writers, readers refusing other NaN
+  patterns, and −0.0 kept as Binson keeps it?", answered "Yes, and this
+  was the recommendation from before my Binson question anyhow."
 * **What it leaves open**: what a double index does with NaN and −0.0
   (020-01, section 6.5, question 1; 020-04, section 2.5), an index
   decision.
@@ -915,6 +965,10 @@ And:
 * **The consequences**: stricter than Binson 1.1, whose rule is a
   recommendation ("A Binson implementation need not check this"); a
   conversion from Binson checks it (12b.7).
+* **Decided for readers** (Frans, 2026-11-08, 16:37): asked "Do you
+  decide that readers refuse ill-formed UTF-8 in names and strings, with
+  `BadFormatException`?", answered "Yes". For objects, 021-06's
+  question 1 is answered: refuse, not repair.
 * **What it leaves open**: 021-06's keys and `String` values, outside
   objects (its questions 1 and 2).
 
@@ -939,6 +993,27 @@ And:
   other numbers.
 * **The consequences**: a reader checks each limit before it recurses or
   allocates (12b.9, F6).
+* **Frans on depth** (2026-11-08, 16:43): "Yes by default. But depth
+  should change. Not sure what is best here. I really see little need
+  for above 5 or something. This is a storage format for single entries
+  in a database. Databases can have depth = 1, like a typical SQL
+  database. So, is there really a reason for depth 1000 or 100?" The
+  coordinator's answer: no; today's 1,001 is the writer's `MAX_DEPTH`
+  (005-23), a guard against a deep stack, not a need. Deep nesting
+  elsewhere serves documents from outside (MongoDB 100 levels, serde_json
+  128, Jackson about 1,000) and recursive structures, which in a database
+  are entries linked by keys; a nested object is a copy, DbObject has no
+  references. A limit can be raised later (stored values stay valid; the
+  header's version can mark it) but not lowered. A deep but real value,
+  arrays counted: `Customer`, `orders` [ ], `Order`, `lines` [ ], `Line`,
+  `product`, `price`: 7.
+* **Decided** (Frans, 2026-11-08, 16:52: "Yes, 16 is good"): one depth
+  limit, 16, counting every level, objects and arrays alike, the top
+  object level 1 (in place of today's 1,001 objects and 2,001 objects and
+  arrays); a put of a deeper object is refused, naming its path, and so is
+  a conversion of deeper Binson. The other limits as today: at most
+  32,767 fields an object, an object under 2^31 bytes ("Yes by
+  default").
 * **What it leaves open**: nothing beyond the numbers.
 
 ### 4.11. Old databases
@@ -963,8 +1038,9 @@ And:
 * **The consequences**: databases with objects or indexes are made again;
   StreamDigest's workloads put no object, so no digest changes (020-04,
   section 3.2); the release notes say so.
-* **What it leaves open**: whether Frans has databases with objects that
-  need (ii) or (iii).
+* **Decided** (Frans, 2026-11-08, 17:06): (i), asked "Do you decide (i),
+  refusing old objects and index definitions with a clear message?",
+  answered "Yes, (i)." No database with objects needs (ii) or (iii).
 
 ### 4.12. The spec, its home, and 018-01's rule
 
@@ -984,6 +1060,13 @@ And:
   12b.1), Binson's values by reference to BINSON-SPEC-1.1 (its licence,
   CC BY-ND 4.0, allows citing it: 020-05, section 9), 020-04, section
   3.3's text on absence, 4.4 to 4.10, and the vectors.
+* **Decided** (Frans, 2026-11-08, 17:09): asked "Do you decide that the
+  object format is under 018-01's approval rule, with today's decisions
+  as your approval of the design and the spec as a subitem of 020 for
+  your approval before release?", answered "Yes". The decisions of 4.1
+  to 4.11 are the approval of the design (020's log, 2026-11-08); the
+  spec and its vectors, a subitem of 020 written with the
+  implementation, come to Frans for approval before the release.
 * **What it leaves open**: the index keys' format (the sort keys, ICU:
   020-01, section 14, decision 3), outside objects.
 
@@ -1116,3 +1199,9 @@ coordinator's numbers for the lookup checked (section 4.3): "about 1 to
 2 % of an in-memory get" is up to 4.4 % at 200,000 keys; the hot and warm
 rows hold today, and under (f) only if `DbObject` copies or checks its
 bytes first (015-47's gets are zero-copy).
+
+2026-11-08, 15:51 to 17:09. Frans decided the twelve storage decisions
+of section 4 with the coordinator (coord-1108), one at a time: each
+subsection's "Decided" line holds the question and his answer. Changed
+from the recommendations: the depth limit, 16 levels of objects and
+arrays (4.10, Frans's question); the put rule of 4.1 left for the API.

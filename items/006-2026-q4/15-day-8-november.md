@@ -107,6 +107,10 @@ session continues with `/coordinator resume` (013-02).
   section 11, what (f) changes; corrections in 020-02 to 020-06. The
   coordinator's cache claim corrected: since 015-47 a get returns the
   database's own array (no copy), so under (f) a lookup can be cold.
+* 15:51 to 17:09 Frans decided object storage, 020-02, sections 4.1 to
+  4.12, one at a time (no null; (f); binary search; names 1 to 255 bytes;
+  0x82; arrays A1; one integer; NaN; UTF-8; depth 16; old refused; the
+  spec under 018-01's rule).
 
 
 ## 6. Outcome

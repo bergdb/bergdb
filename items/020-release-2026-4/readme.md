@@ -112,3 +112,13 @@ started the same day (agent v1, read-only).
 object storage, at Frans's request (15:22), by coord-1108's agent d02:
 the decisions in 020-02, section 4; the entries of 020-02, 020-04,
 020-05 and 020-06 above brought up to date.
+
+2026-11-08. Frans decided object storage, 15:51 to 17:09, one decision
+at a time (020-02, section 4): no null in the stored format; format (f),
+DbObject's table with Binson's values; binary search, no hash list;
+names of 1 to 255 bytes; the header byte 0x82; arrays in Binson's
+framing; one 64-bit integer; Binson's NaN rule as a must, −0.0 kept;
+readers refuse ill-formed UTF-8; depth 16; old objects refused; the
+format under 018-01's rule. These decisions are his approval of the
+format's design under 018-01's rule; the spec, a subitem of 020, comes
+to him for approval before the release.
