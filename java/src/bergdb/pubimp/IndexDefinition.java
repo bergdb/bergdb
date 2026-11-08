@@ -410,14 +410,15 @@ final class IndexDefinition {
      * The levels of the entry of the value at 'ikey', L_1 to L_n, or null if it has none
      * (020-10, section 3.3). The caller gives a key of this index's directory, its own
      * values; a key with a suffix that is not ".obj" (Entries.isObjectKey) has no entry. The
-     * value is its stored bytes; an object's must pass 020-07's full check.
+     * value is its stored bytes; an object's must pass 020-07's full check. Null, no value
+     * (the old value of a new key, the new value of a delete), has no entry.
      *
      * @throws DataFormatException  If the value is an object of format 1, "bergo" and the
      *      version 1, of BergDB 2026.3 and before, at an object key: a write over it is
      *      refused, and a build fails (020-10, sections 3.3, 5.1 and 6.1).
      */
     byte[] entryLevels(String ikey, byte[] value) {
-        if (!Entries.isObjectKey(ikey)) {
+        if (value == null || !Entries.isObjectKey(ikey)) {
             return null;
         }
         if (IndexKeys.startsWith(value, FORMAT_1)) {

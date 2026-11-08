@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import bergdb.common.Bug;
 import bergdb.common.StringUtil;
@@ -94,6 +95,31 @@ public class IndexManager {
      */
     private final Object lock = new Object();
     private final CollatorFactory collatorFactory;
+    
+    // ======== The test hooks (bergdb 020-10, section 9.2) ========
+    
+    /** A write, after its read time is fixed, before it reads the directory's index set. */
+    static final String WRITE_BEFORE_SET = "write: before the index set";
+    
+    /** A write, after it read the directory's index set. */
+    static final String WRITE_AFTER_SET = "write: after the index set";
+    
+    /** A definition's change, under the lock, before its transaction; + create, activate or delete. */
+    static final String DEFINITION_BEFORE = "definition: before the commit of ";
+    
+    /** A definition's change, under the lock, after its transaction; + create, activate or delete. */
+    static final String DEFINITION_AFTER = "definition: after the commit of ";
+    
+    /** For tests only: called with the points above; null else. */
+    volatile Consumer<String> testHook;
+    
+    /** Calls the test hook, if any, with 'point'. */
+    void hook(String point) {
+        Consumer<String> h = testHook;
+        if (h != null) {
+            h.accept(point);
+        }
+    }
     
     /**
      * Creates a new object.
@@ -381,7 +407,11 @@ public class IndexManager {
         }
         DbObject dbo = DbObject.toDbObject(indexDo);
         b.put(key, dbo.getBytes());
+        String what = index.getState() == Index.STATE_CREATING ? "create"
+                : index.getState() == Index.STATE_ACTIVE ? "activate" : "delete";
+        hook(DEFINITION_BEFORE + what);
         db.execute(b.build());
+        hook(DEFINITION_AFTER + what);
     }
     
     public static long vhashOfDir(String dir) {
@@ -1056,5 +1086,13 @@ Needed for indexing. Works like this for the indexing case.
 - Note that this works even when directory has no indexes. We still have a readKeyHash for the 
   directory and can get transaction rerun in case an index is added while Connection.set(String, Object)
   is being executed.
+- 2026-11-08 (bergdb 020-10, sections 5.1 and 5.2): it works only with the transaction's read
+  time R fixed before the index set is read, as RwEnvironmentImp.indexEntries does since then.
+  A change of the set takes 'lock', commits, and changes the maps; a writer reads the set
+  under 'lock' after R. If the change commits after R, the writer's hash of vkey conflicts and
+  it runs again; if at or before R, the writer's set has it. Until then, with no read before
+  the set (a w(), no index), R was Long.MAX_VALUE, and the hash never conflicted (015-28,
+  015-43, S2-F12). Every put and delete at an object key, of any value, takes this path
+  (015-46).
 
 */

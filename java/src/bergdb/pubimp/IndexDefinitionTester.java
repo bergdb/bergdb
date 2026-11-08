@@ -506,6 +506,8 @@ public class IndexDefinitionTester {
         assertNull(".txt", d.entryLevels("/dp/-k.txt", o));
         assertNull(".json", d.entryLevels("/dp/-k.json", o));
         assertNull("empty", d.entryLevels("/dp/-k", new byte[0]));
+        assertNull("no value: absent before, or deleted", d.entryLevels("/dp/-k", null));
+        assertNull("no value, entry()", d.entry("/dp/-k", null));
         assertNull("the header", d.entryLevels("/dp/-k", new byte[] {(byte) 0x82}));
         assertNull("a string", d.entryLevels("/dp/-k", "a1".getBytes(
                 StandardCharsets.UTF_8)));

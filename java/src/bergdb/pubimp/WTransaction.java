@@ -24,6 +24,9 @@ public class WTransaction implements Transaction {
      * @throws InternalDataException
      */
     public Transaction execute() {
+        // A put or a delete at an object key, of any value, keeps the directory's indexes
+        // (bergdb 020-10, section 5.1; 015-46): the transaction has a read time and the
+        // directory's hash, so it runs as an rw() does, and may run again after a conflict.
         if (env.getObjectOpsSize() > 0) {
             trans = RwTransaction.executeRw(env, connection, null);
             connection.lastSposOfLastTrans = trans.lastPos;

@@ -1,5 +1,6 @@
 package bergdb.pubimp;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -39,13 +40,12 @@ public class RwEnvironmentImp implements RwEnvironment {
     private GetData readData;       // The reads' own (bergdb 015-42); made at the first read.
     
     // The writes, one operation a key in each map (bergdb 015-40): a value, or null for a
-    // delete. In kvOps the last call on a key wins (setKv); in indexOps a put of an index
-    // entry stays over a delete of it (deleteIndexEntry). An object key (no suffix) may be
-    // in kvOps, with a String or byte[] put, and in objectOps both: createTrans adds kvOps
-    // first, and Trans.Builder.build keeps the later put and a put over a delete. So that the
-    // last call on the key wins (bergdb 015-41), a delete of it removes its kvOps entry, and
-    // a String or byte[] put turns an object put in objectOps into a delete, which keeps the
-    // removal of the previous object's index entries; an object put needs no change.
+    // delete. Every put and delete at an object key (no suffix, or ".obj"), of any value, is
+    // in objectOps, and keeps the directory's indexes (bergdb 020-10, section 5.1; 015-46: a
+    // String or byte[] put was in kvOps, and left the previous object's index entries);
+    // every other key's is in kvOps. So the last call on a key wins in its one map (bergdb
+    // 015-41). In indexOps a put of an index entry stays over a delete of it
+    // (deleteIndexEntry).
     private HashMap<MapKey, byte[]> kvOps;
     private HashMap<String, ObjectInfo> objectOps;
     private HashMap<MapKey, byte[]> indexOps;
@@ -226,18 +226,21 @@ public class RwEnvironmentImp implements RwEnvironment {
     
     private static final byte[] TRANSACTION_TIME_BYTES = Keys.toBytes("${transactionTime}");
     
+    /**
+     * A put of a String's or a byte[]'s bytes: at an object key in objectOps, which keeps the
+     * indexes (bergdb 020-10, section 5.1; 015-46), else in kvOps.
+     */
     private void setBytes(String ikey, byte[] value) {        
         if (value == null) {
             throw new IllegalArgumentException("value == null not allowed.");
         }
         
-        ObjectInfo info = objectOps.get(ikey);
-        if (info != null && info.dbo != null) {
-            objectOps.put(ikey, new ObjectInfo(ikey, null, null));    // bergdb 015-41
+        KeyTransformation kt = enableKeyReplace ? getKeyTransformation(ikey) : null;
+        if (Entries.isObjectKey(ikey)) {
+            objectOps.put(ikey, ObjectInfo.ofBytes(ikey, value, kt));
+        } else {
+            setKv(new MapKey(Keys.toSegments(ikey), kt), value);
         }
-
-        setKv(new MapKey(Keys.toSegments(ikey), 
-                enableKeyReplace ? getKeyTransformation(ikey) : null), value);
     }
     
     // Used internally, no checking
@@ -266,7 +269,6 @@ public class RwEnvironmentImp implements RwEnvironment {
         String ikey = PubKeys.u2i(ukey);
 
         if (Entries.isObjectKey(ikey)) {
-            kvOps.remove(new MapKey(Keys.toSegments(ikey), null));     // bergdb 015-41
             objectOps.put(ikey, new ObjectInfo(ikey, null, null));
         } else {
             setKv(new MapKey(Keys.toSegments(ikey), null), null);   
@@ -327,10 +329,35 @@ public class RwEnvironmentImp implements RwEnvironment {
     }
     
     /**
-     * Sets/deletes index entries as appropriate.
-     * Called after user Action has run.
+     * Sets and deletes the index entries of this transaction's writes at object keys, after
+     * the user's action has run (or at once for a w()), by bergdb 020-10, section 5.1, for
+     * every put and delete at an object key, of any value:
+     * <ol>
+     * <li>The read time R is fixed first: if nothing was read yet, R is the latest
+     *     transaction's time, as a read at Long.MAX_VALUE resolves it (fixReadTime), before
+     *     anything below. Until 2026-11-08 the index set was read before R existed (015-28,
+     *     015-43, S2-F12): an index created or deleted meanwhile was missed.</li>
+     * <li>The hash of each directory's virtual key goes into the read set, whether the
+     *     directory has an index or not: a creation or deletion of an index of the directory
+     *     writes it, so this transaction runs again if one commits after R.</li>
+     * <li>The index set of each directory is read from the manager, under its lock, after
+     *     R (IndexManager.getActiveIndexesForDir): a change of the set at or before R is in
+     *     it (020-10, section 5.2).</li>
+     * <li>If the set is not empty, the previous value is read at R (its key's hash in the
+     *     read set), the entries of the previous value are deleted and those of the new one
+     *     put. A value that is not a stored object of format 2 (a String's bytes, a byte[]
+     *     that fails 020-07's full check) has no entries, so a String or a byte[] put over an
+     *     object deletes its entries (015-46); a byte[] that passes the check is an object
+     *     (020-10, section 3.3).</li>
+     * <li>The index definitions' keys are not in the read set: an activation does not change
+     *     the set.</li>
+     * </ol>
      * 
-     * @throws DataFormatException
+     * @throws DataFormatException  If, in a directory with an index, the previous value or
+     *      the new one is an object of format 1 (BergDB 2026.3's, "bergo" and the version 1):
+     *      such a write is refused, a byte[] put of such bytes included; in a directory
+     *      without an index they are stored as they are (bergdb 020-08, step 3; 020-10,
+     *      section 5.1).
      */
     public void indexEntries(IndexManager m) throws DataFormatException {
         assert m != null : "m is null";
@@ -340,17 +367,15 @@ public class RwEnvironmentImp implements RwEnvironment {
             return;
         }
         
-        // We should not need to synch over all calls to getIndexes. If index was modified
-        // since read time, we will notice. Would cause a transaction rerun.
-        // We also add virtual read hash values for all directories of the objects.
-        // This is to make sure that the set of indexes for a directory is not changed while
-        // this transaction is running.
-        
+        fixReadTime();
         for (ObjectInfo info : objectOps.values()) {
-            assert info != null : "info is null";
-            info.indexes = m.getActiveIndexesForDir(info.dir);
             addReadHash(IndexManager.vhashOfDir(info.dir));
         }
+        m.hook(IndexManager.WRITE_BEFORE_SET);
+        for (ObjectInfo info : objectOps.values()) {
+            info.indexes = m.getActiveIndexesForDir(info.dir);
+        }
+        m.hook(IndexManager.WRITE_AFTER_SET);
         
         RwEnvironmentImp.IndexSetter setter = new RwEnvironmentImp.IndexSetter() {
             public void setIndexKey(byte[] indexKey, KeyTransformation kt) {
@@ -360,48 +385,78 @@ public class RwEnvironmentImp implements RwEnvironment {
                 indexOps.put(key, emptyByteArray);
             }
         };
+        IndexSetter deleteSetter = new IndexSetter() {
+            public void setIndexKey(byte[] indexKey, KeyTransformation kt) {
+                deleteIndexEntry(indexKey);
+            }
+        };
         
         for (Map.Entry<String, ObjectInfo> entry : objectOps.entrySet()) {
             final ObjectInfo info = entry.getValue();
             final String ikey = entry.getKey();
             
-            if (info.indexes != null) {
-                // We need to know previous object value to delete index entries if needed.
-                byte[] previousBytes = getInternal(ikey, byte[].class);
-                DbObject previousDbo = null;
-                
-                if (previousBytes != null) {
-                    try {
-                        previousDbo = new DbObject(previousBytes);
-                    } catch (BadFormatException e) {
-                        throw new DataFormatException(e.getMessage() + " For ikey: '" + ikey + "'.");
-                    }
+            if (info.indexes == null || info.indexes.length == 0) {
+                continue;
+            }
+            
+            // The previous value, read at R, to delete its entries.
+            DbObject previousDbo = indexedObject(ikey, getInternal(ikey, byte[].class));
+            DbObject newDbo = info.dbo != null ? info.dbo : indexedObject(ikey, info.value);
+            
+            for (IndexManager.IndexForDir indexForDir : info.indexes) {
+                final IndexManager.Index index = indexForDir.index;
+                if (previousDbo != null) {
+                    RwEnvironmentImp.setIndexEntry(previousDbo, info.name, index,
+                            indexForDir.dirId, deleteSetter, enableKeyReplace);
                 }
-                
-                for (IndexManager.IndexForDir indexForDir : info.indexes) {
-                    final IndexManager.Index index = indexForDir.index;
-                    
-                    addReadHash(index.keyHash);
-                    
-                    if (previousDbo != null) {
-                        IndexSetter deleteSetter = new IndexSetter() {
-                            public void setIndexKey(byte[] indexKey, KeyTransformation kt) {
-                                deleteIndexEntry(indexKey);
-                            }
-                        };
-                        
-                        RwEnvironmentImp.setIndexEntry(previousDbo, info.name, index, indexForDir.dirId, 
-                                deleteSetter, enableKeyReplace);
-                    }
-                    
-                    if (info.dbo == null) {    // if delete op
-                        // Empty, we already deleted index entries for previous value.
-                    } else {
-                        RwEnvironmentImp.setIndexEntry(info.dbo, info.name, index, indexForDir.dirId, 
-                                setter, enableKeyReplace);
-                    }
+                if (newDbo != null) {
+                    RwEnvironmentImp.setIndexEntry(newDbo, info.name, index,
+                            indexForDir.dirId, setter, enableKeyReplace);
                 }
             }
+        }
+    }
+    
+    /**
+     * Fixes the read time R if nothing was read yet: the latest transaction's time, as a read
+     * at Long.MAX_VALUE resolves it (bergdb 020-10, section 5.1, step 1). Every later read of
+     * the transaction is at R, and its Core transaction's read set is checked against R.
+     */
+    private void fixReadTime() {
+        if (firstRead) {
+            readTime = connection.getDb().lookupTime(Long.MAX_VALUE);
+            firstRead = false;
+        }
+    }
+    
+    /** The first bytes of an object of format 1, BergDB 2026.3's: "bergo" and the version 1. */
+    private static final byte[] FORMAT_1 = {'b', 'e', 'r', 'g', 'o', 1};
+    
+    /**
+     * The value at an object key as an object to index: a DbObject if it is a stored object
+     * of format 2 (the header and 020-07's full check), else null (bergdb 020-10, section
+     * 3.3, rule 1): no value, a String's bytes, a byte[] that fails the check.
+     * 
+     * @throws DataFormatException  If the value is an object of format 1.
+     */
+    static DbObject indexedObject(String ikey, byte[] value) {
+        if (value == null) {
+            return null;
+        }
+        if (value.length >= FORMAT_1.length
+                && Arrays.equals(value, 0, FORMAT_1.length, FORMAT_1, 0, FORMAT_1.length)) {
+            throw new DataFormatException("The value at " + ikey + " is an object in format 1, "
+                    + "written by BergDB 2026.3 or before, which this version does not read: a "
+                    + "write of the key in a directory with an index is refused (bergdb 020-02, "
+                    + "section 4.11; 020-10, section 5.1).");
+        }
+        if (value.length < 3 || value[0] != DbObject.HEADER) {
+            return null;
+        }
+        try {
+            return new DbObject(value);
+        } catch (BadFormatException e) {
+            return null;
         }
     }
     
@@ -459,10 +514,10 @@ public class RwEnvironmentImp implements RwEnvironment {
             final String key = entry.getKey();
             final ObjectInfo info = entry.getValue();
             
-            if (info.dbo == null) {
+            if (info.value == null) {
                 b.delete(key);
             } else {
-                b.put(Keys.toSegments(key), info.kt, info.dbo.getBytes(), null);
+                b.put(Keys.toSegments(key), info.kt, info.value, null);
             }
         }
         
@@ -597,10 +652,15 @@ public class RwEnvironmentImp implements RwEnvironment {
         return result;
     }
 
+    /**
+     * A put or a delete at an object key: the stored value, or null for a delete; for an
+     * object put, its DbObject too (bergdb 020-10, section 5.1).
+     */
     private static class ObjectInfo {
         String dir;              // The directory where object is stored.
         String name;             // short object name
-        DbObject dbo;       // null use to mark delete operation
+        DbObject dbo;            // The object of an object put, else null
+        byte[] value;            // The value to store, null for a delete
         IndexManager.IndexForDir[] indexes;
         KeyTransformation kt;    // If non-null, the key transformation to use.
         
@@ -626,8 +686,16 @@ public class RwEnvironmentImp implements RwEnvironment {
             } else {
                 dbo = DbObject.toDbObject(object);
             }
+            value = dbo == null ? null : dbo.getBytes();
             
             this.kt = kt;
+        }
+        
+        /** A put of a String's or a byte[]'s bytes at an object key. */
+        static ObjectInfo ofBytes(String ikey, byte[] value, KeyTransformation kt) {
+            ObjectInfo info = new ObjectInfo(ikey, null, kt);
+            info.value = value;
+            return info;
         }
     }
 
