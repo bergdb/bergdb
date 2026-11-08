@@ -2099,7 +2099,7 @@ public class PubTester {
              .put("/dir/a1", new A(null, "a1")).execute();
         
         int index = 0;
-        for (A a : c.usePrimary(A.class).objects()) {
+        for (A a : c.usePrimary(A.class).dir("/dir/").objects()) {
             Assert.assertEquals("/dir/a" + index, a.key);
             index++;
         }

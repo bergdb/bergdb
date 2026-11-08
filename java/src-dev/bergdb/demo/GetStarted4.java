@@ -72,7 +72,7 @@ public class GetStarted4 {
         
         // Lists accounts
         
-        for (Account a : c.usePrimary(Account.class).objects()) {
+        for (Account a : c.usePrimary(Account.class).dir("/accounts/").objects()) {
             System.out.println(a);
         }
     }

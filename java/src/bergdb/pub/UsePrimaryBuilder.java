@@ -1,55 +1,106 @@
 package bergdb.pub;
 
 /**
- * A builder to create an iterator to iterate database objects in the order specified
- * by the primary index.
+ * A listing of a directory's keys and values at a lookup time: the builder that
+ * Connection.usePrimary(type) returns. dir() is the first call, and required; then, in any
+ * order, startAt(), inclusive() and backward(), each at most once; then objects() or kvs(),
+ * which may be called again. Each call is checked at once.
  *
- * <p>Experimental in 2026.3, with known faults; it may change in a later release (bergdb
- * 018-01, D6).</p>
- * 
+ * <p><b>What it lists.</b> At the lookup time t, the keys of the directory's own values (not
+ * its subdirectories', and never one of the database's internal keys), in key order: by
+ * the names' code points (their UTF-8 bytes), ascending, or descending after backward();
+ * from startAt()'s name if it was called. For each key, its value at t as get(key, type) at
+ * t gives it; the keys whose value is not of the type's kind are left out:</p>
+ *
+ * <ul>
+ * <li>byte[].class: every value, its stored bytes. The array is the database's own, as
+ *     get() gives it: do not change it.</li>
+ * <li>Object.class: every value, as get(key, Object.class) gives it.</li>
+ * <li>String.class: every value that is not an object, decoded from UTF-8 as get()
+ *     decodes it.</li>
+ * <li>DbObject.class, or another class: the objects, as get(key, type) gives them.</li>
+ * </ul>
+ *
+ * <p>An object is a value at an object key (a key without a suffix, or with ".obj") that
+ * is a stored object: it starts with the object format's header and passes the format's
+ * full check. A byte[] put at an object key that passes that check is taken as an
+ * object.</p>
+ *
+ * <p><b>The lookup time.</b> t is the connection's lookup time, resolved to an actual time
+ * at the call of Connection.usePrimary(), as a get() resolves it; every iterator of the
+ * builder reads at t, also one made after later writes. usePrimary() is a read for
+ * Connection.freezeLookupTime(): the first read after it fixes the frozen time, whether a
+ * get(), an exists() or a usePrimary(). A listing does not change
+ * Connection.transactionInfo().</p>
+ *
+ * <p>A listing whose t falls behind the first available lookup time while it runs (reclaim,
+ * Database.setRetainDuration()) throws LookupTimeNotAvailableException from its iterator's
+ * hasNext() or next(). A value that the type cannot be made from throws
+ * ObjectCreationException from next(), as get() does; the iterator can go on after it.</p>
+ *
+ * @param <TYPE> The type of the values listed.
  * @author Frans Lundberg
  */
 public interface UsePrimaryBuilder<TYPE> {
     /**
-     * Sets the directory to iterate.
+     * The directory to list, such as "/persons/", or "/" for the root: its own keys, not
+     * its subdirectories'. The first call, and required.
      * 
-     * @param dir  The directory; it must end with '/'.
-     * @throws IllegalArgumentException  If dir is null or empty, does not end with '/', or
-     *      contains "//".
+     * @param dir  The directory; it starts and ends with '/', and has no "//" and no lone
+     *     surrogate.
+     * @throws IllegalArgumentException  If dir is null or not a directory.
+     * @throws IllegalStateException  If dir() was called before, or objects() or kvs().
      */
     public UsePrimaryBuilder<TYPE> dir(String dir);
     
     /**
-     * By default, the iterator will start iterating from the start value if it exists.
-     * Call this method with 'false' will exclude an exact match with start the start value
-     * from the iterated entries.
+     * Whether a key whose name is startAt()'s is listed; true by default. Without
+     * startAt(), it changes nothing.
+     * 
+     * @throws IllegalStateException  If dir() has not been called, or inclusive() was
+     *     called before, or objects() or kvs().
      */
     public UsePrimaryBuilder<TYPE> inclusive(boolean inclusive);
     
     /**
-     * By default, the iterator will iterate forward with increasing indexed value; calling this
-     * method sets the iteration direction to backward (decreasing indexed value order).
+     * Lists in descending key order; ascending by default.
+     * 
+     * @throws IllegalStateException  If dir() has not been called, or backward() was called
+     *     before, or objects() or kvs().
      */
     public UsePrimaryBuilder<TYPE> backward();
     
     /**
-     * Start value to start iterating from. By default, an exact match with 
-     * 'value' will be included in the result.
-     * If startAt(prefixString) has been called, 'value' is a suffix to prefixString.
+     * The first key to list, by its name in the directory: "anna" for "/persons/anna".
+     * Forward, the keys from it on are listed; backward, the keys up to it; a key of this
+     * name is listed unless inclusive(false). No key needs to have the name.
+     * 
+     * @param name  The name: not empty, without '/' and without a lone surrogate.
+     * @throws IllegalArgumentException  If name is null, empty, or has a '/' or a lone
+     *     surrogate.
+     * @throws IllegalStateException  If dir() has not been called, or startAt() was called
+     *     before, or objects() or kvs().
      */
-    public UsePrimaryBuilder<TYPE> startAt(String value);
+    public UsePrimaryBuilder<TYPE> startAt(String name);
     
     /**
-     * Returns an Iterable for iterating over the objects.
+     * Returns the values listed. The Iterable may be iterated several times, and objects()
+     * and kvs() may be called again: each iterator lists from the beginning, at the same
+     * lookup time. After the first objects() or kvs(), the builder's other calls throw
+     * IllegalStateException.
+     * 
+     * @throws IllegalStateException  If dir() has not been called.
      */
     public Iterable<TYPE> objects();
 
     /**
-     * Returns an Iterable for iterating over the KVs.
+     * Returns the values listed with their keys: Kv.key() is the key, Kv.value() the value,
+     * as objects() gives it.
+     * 
+     * @throws IllegalStateException  If dir() has not been called.
      */
     public Iterable<Kv<TYPE>> kvs();
 }
-
 
 /*
 

@@ -198,6 +198,20 @@ public class ConnectionImp implements Connection {
     }
 
     /**
+     * The actual lookup time of a scan that starts now at the wanted time (usePrimary()):
+     * resolved as a get resolves it, and, after freezeLookupTime(), it fixes the frozen time
+     * as the first read after it does (bergdb 020-10, section 3.6). The connection's
+     * GetData is not touched: transactionInfo() still describes the last get() (N3).
+     */
+    final long scanLookupTime(long wantedLookupTime) {
+        long time = db.lookupTime(wantedLookupTime);
+        if (this.freezeLookupTime && this.lookupTime != time) {
+            this.lookupTime = time;
+        }
+        return time;
+    }
+
+    /**
      * @throws IllegalArgumentException
      *             If ukey is null or not of a valid format: PubKeys.u2i() throws it, as
      *             for get() and an rw-transaction's exists() (bergdb 019-05).

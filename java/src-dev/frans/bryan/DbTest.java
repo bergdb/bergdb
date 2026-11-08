@@ -48,7 +48,7 @@ public class DbTest
     // Iterate existing data...
     //
     List<Integer> list = new ArrayList<Integer>();
-    for (Foobar f : conn.usePrimary(Foobar.class).objects())
+    for (Foobar f : conn.usePrimary(Foobar.class).dir("/").objects())
     {
       list.add(f.getId());
     }

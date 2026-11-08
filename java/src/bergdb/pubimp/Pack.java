@@ -41,6 +41,7 @@ public class Pack implements IPack {
         PubTesterNestedFields.class,
         PubTesterOutput.class,
         PubTesterPrimary.class,
+        PrimaryHarness.class,
         PubUtil.class,
         IndexEntryBuilder.class,
         WBuilderImp.class,

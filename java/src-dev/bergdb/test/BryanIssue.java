@@ -78,7 +78,7 @@ public class BryanIssue {
     
             // Iterates existing data
             List<Integer> list = new ArrayList<Integer>();
-            for (Dummy f : c.usePrimary(Dummy.class).objects()) {
+            for (Dummy f : c.usePrimary(Dummy.class).dir("/").objects()) {
                 list.add(f.id);
             }
             out.println(String.format("Iterated: %d items", list.size()));
