@@ -1094,6 +1094,26 @@ of docs/levels.md for the non-Core part, which has none today), before
 the harnesses, as 018-01 did for 2026.3.
 
 
+### 14.1. Decided, 2026-11-08
+
+Frans, 2026-11-08, 22:08, to the coordinator's ten points of 22:04
+(006-15): "All as recommended in general." So: (3) ICU dropped,
+code-point order only; F3 (b), one directory per index, one field per
+composite level, composite levels kept, nested fields kept and checked,
+types `long`, `double`, `string`, a missing field or NaN gives no entry,
+the definition in a small fixed form; F4 (a) and (b), the read time
+fixed and entries per index generation; F5 (b), a deletion in one
+transaction, a build's three states, `getStartupJobs()` gone; F6 (b),
+the smaller scan builder; F7 (b), the primary scan promoted; F8 (b), the
+API named and narrowed, `DbObject` into `bergdb.pub`, `Kv.ikey()` gone, a
+release jar without `src-dev`; N8, no scans in `rw()` in 2026.4; the
+reserved internal keys' new layout (definitions, entries per generation)
+approved in principle under 018-01's rule, its exact layout written in an
+item for Frans's review; the night's order: objects (020-08), then F4,
+F5, F3, F6, F7, F8. Frans asked, 22:08, what "an application that needs a
+language's order stores its own sort key" means (006-15).
+
+
 ## 15. The first harness of each kept feature
 
 Each against a simple reference in the test, as harness 6.7 (018-04):
