@@ -110,6 +110,7 @@ Open
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
 | [019-45](45-start-rerun-heap.md) | Investigate | Does a start's rerun keep to the cache budget? | none | open |
+| [019-46](46-eviction-audit-inv-slot-under-load.md) | Investigate | An INV-SLOT violation in EvictionAccountingTester under load | none | open |
 
 
 Closed
