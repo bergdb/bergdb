@@ -21,6 +21,14 @@ Unicode text stored as well-formed UTF-8; a String with a lone surrogate is refu
 in full: <a href="bergdb/pub/package-summary.html#strings">Strings</a>, in the package
 bergdb.pub.</p>
 
+<p>An object that is neither a String nor a byte[] is a Data Object: a public class with a
+public no-argument constructor and public fields of types on a closed list. A put stores it
+exactly, leaving a null field out (BergDB stores no null) and refusing a null array element;
+a get converts each stored field to its field's type, best effort. In full:
+<a href="bergdb/pub/package-summary.html#objects">Objects</a> and
+<a href="bergdb/pub/package-summary.html#null">Null and absent fields</a>, in the package
+bergdb.pub.</p>
+
 <pre>
 // Example code:
 // A complete program to put/get/delete a string under the name (key) "/a".

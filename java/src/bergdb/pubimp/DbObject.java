@@ -39,7 +39,11 @@ import bergdb.pub.util.BadFormatException;
  * for an integer within int's range (bergdb 020-08, section 3).</p>
  * 
  * <p>No value is null (bergdb 020-02, section 4.1): a field without a value is absent, an
- * array has no absent element, and toDbObject() leaves a null field out. The bytes are format
+ * array has no absent element, and toDbObject() leaves a null field out (the Pub API's
+ * package bergdb.pub, "Null and absent fields"). The Builder, DbString and DbByteArray
+ * refuse null. getString(), getByteArray(), getArray() and getObject() return null for an
+ * absent field, Java's way to say absent; getInt() and the other numbers 0, getBoolean()
+ * false; has() and getType() tell. The bytes are format
  * 2 of stored objects, bergdb 020-07: the header byte 0x82, then the object, its fields
  * found by a binary search on their names; names of 1 to 255 bytes; at most 16 levels of
  * objects and arrays.</p>

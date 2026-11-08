@@ -36,6 +36,70 @@ data: as a byte[] value, or in an object as a byte[] or a char[] field; a char[]
 chars and reads back exactly. Or the application repairs such a String before the put, for
 example with U+FFFD in place of each lone surrogate.</p>
 
+<h2 id="objects">Objects</h2>
+
+<p>A value that is neither a String nor a byte[] is an object: a put of a Data Object stores
+it, and a get of a class reads it into a new object of the class. BergDB stores an object in
+its own format, format 2 (bergdb 020-07): a set of named fields, each of one of seven types,
+Binson's: boolean; integer, signed, 64 bits (Java's byte, short, char, int and long are each
+one integer, stored in the fewest bytes); double (float and double; every NaN is one value,
+its payload not kept, and -0.0 is kept); string; bytes (a byte[]); array, its elements of any
+of the types; object. A field's name has 1 to 255 bytes in UTF-8; an object is nested at most
+16 levels deep, objects and arrays counted alike, the top object level 1. Objects written by
+BergDB 2026.3 and before (format 1) are not read: a get throws ObjectCreationException, index
+maintenance DataFormatException, and a database whose index definitions are of 2026.3 does
+not start (bergdb 020-02, section 4.11); such a database is made again from its data.</p>
+
+<p>A Data Object class is public, with a public no-argument constructor. BergDB stores its
+public fields that are not static and not transient, and those of its superclasses; every
+other instance field must be transient. Each stored field is of a type on a closed list:
+boolean, byte, short, char, int, long, float, double, their wrappers, String, byte[], arrays
+of these of any dimensions, and Data Object classes. Not on it: Object, interfaces, enums,
+records, abstract classes and the classes of the Java platform. A class that is not a Data
+Object, or that reaches one through its fields' types, is refused at a put with
+IllegalArgumentException and at a get with ObjectCreationException, also at a key without a
+value; the message names the class, where it is, and why. The rules in full: bergdb
+020-09.</p>
+
+<p>A put is exact: each field is stored by its declared type, and a get into the same class
+reads it back equal. It refuses, with IllegalArgumentException and before anything is
+written, what cannot be stored so, naming its place from the top object, such as
+"inner.names[3]": a null array element (see below); a value whose class is not its field's
+type, such as a subclass; a reference cycle; nesting deeper than 16 levels; a string with a
+lone surrogate (see Strings); a stored value of more than 2^31 - 1 bytes. An array put at a
+key is stored as an object with the field "array", a primitive's wrapper with the field
+"p".</p>
+
+<p>A get is best effort: a stored field is matched to the class's field of its name; a value
+that fits the field's type is set exactly, else the nearest value (an integer clamped, never
+wrapped; a text read as a number, a number written as a text); where no sensible conversion
+exists, the type's zero (0, false or null); a stored field that the class does not have is
+left out. A get never throws for the data. It throws ObjectCreationException for a class that
+is not a Data Object, for a constructor that throws (its exception the cause), and for a
+value that is not a stored object. To read a stored object exactly as it is, get it as a
+DbObject.</p>
+
+<h2 id="null">Null and absent fields</h2>
+
+<p>BergDB stores no null. An object is a set of named fields, and a field that is there holds
+a value of its type: a string, an array, a nested object, never null. A field that has no
+value is absent. It is a rule of BergDB's object format, the same in every language that
+writes or reads a database, not a detail of Java (bergdb 020-02, section 4.1).</p>
+
+<p>A put leaves a null field of the object out, at any depth: the field is absent. A null
+Integer, or another wrapper, is absent too. A get of an absent field leaves the field as the
+class's no-argument constructor set it: a field without an initial value reads back as null,
+one with an initial value as that value. A get meets absence also in an object written before
+its class had the field, or written in another language.</p>
+
+<p>A put refuses a null element of an array, at any depth, such as an element of
+<code>new String[3]</code> not set (an array has no absent elements), and a null value at a
+key, with IllegalArgumentException, naming its place. An application that needs "no value"
+apart from "not written" stores it explicitly, as a field of its own; an array with gaps
+stores a placeholder.</p>
+
+<p>A user index gives an object no entry for a field that is absent.</p>
+
 <p>Depends on: common, nanotest, pub.util, pubimp. Only test code (the @Nano methods)
 uses nanotest. Factory uses pubimp to create a DatabaseBuilder: the circular package
 dependency pub -> pubimp -> pub is by design. Time also uses pubimp's TimeResolver.</p>

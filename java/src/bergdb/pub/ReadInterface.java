@@ -35,6 +35,10 @@ public interface ReadInterface {
      * the database restarts, while the stream keeps the committed bytes. To change
      * the bytes, copy them first, with clone() (bergdb 015-47).</p>
      *
+     * <p>A class other than String, byte[], DbObject and Object is a Data Object class,
+     * and the stored object is converted to it as by Connection.get() (bergdb 020-09).</p>
+     *
+     * @throws ObjectCreationException  As Connection.get().
      * @see Connection#get(String, Class)
      */
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);

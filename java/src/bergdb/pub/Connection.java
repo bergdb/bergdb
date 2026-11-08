@@ -23,6 +23,13 @@ import bergdb.pub.util.SyncLevel;
  * surrogate with IllegalArgumentException. The rule in full: the package's
  * {@linkplain bergdb.pub##strings Strings} (bergdb 021-04).</p>
  *
+ * <p>Objects. A value that is neither a String nor a byte[] is an object of a Data Object
+ * class: public, with a public no-argument constructor and public fields. A put stores it
+ * exactly and leaves a null field out; a get converts each stored field to its field's type,
+ * best effort, and leaves an absent field as the class's constructor set it. The rules: the
+ * package's {@linkplain bergdb.pub##objects Objects} and
+ * {@linkplain bergdb.pub##null Null and absent fields} (bergdb 020-09).</p>
+ *
  * <p>After a DbFailedException, or an Error such as an OutOfMemoryError, the application
  * should end its process: the database, or its environment, has failed (Database,
  * "Errors"; bergdb 019-10).</p>
@@ -144,9 +151,11 @@ public interface Connection extends ReadInterface {
     /**
      * Gets the value at the key, or null if no entry exists for the key, as an object
      * of the class the caller gives: a String (the value's UTF-8 bytes decoded) or a
-     * byte[]. For another class, which must in general have a no-argument constructor,
-     * that constructor creates the object returned, and the matching fields of the
-     * object created are set from the fields of the DbObject stored in the database.
+     * byte[]. For another class, a Data Object class (the package's
+     * {@linkplain bergdb.pub##objects Objects}), a new object of it is made by its public
+     * no-argument constructor, and each of its stored fields that the stored object has is
+     * set from it, converted to the field's type best effort; a field that the stored
+     * object does not have keeps the constructor's value (bergdb 020-09).
      *
      * <p>Experimental in 2026.3 for a class other than String and byte[], with known
      * faults; such a get may change in a later release (bergdb 018-01, D6).</p>
@@ -160,9 +169,9 @@ public interface Connection extends ReadInterface {
      * @param key
      *            Database key of the object.
      * @param clazz
-     *            Class of the object to create. The class must in general have
-     *            a public no-argument constructor. Use DbObject.class to get
-     *            the object data as it is stored in the database. Use
+     *            Class of the object to create: a Data Object class, or a primitive, its
+     *            wrapper or an array class for a value put as one. Use DbObject.class to
+     *            get the object data as it is stored in the database. Use
      *            byte[].class to get the raw bytes as stored in the database.
      *            Use String.class to read a String directly from the raw value
      *            bytes assuming that the value stored consists of UTF-8 bytes.
@@ -180,6 +189,13 @@ public interface Connection extends ReadInterface {
      *             ".txt", and the value is not well-formed UTF-8: every string in BergDB
      *             is, and a reader never repairs one that is not, written through the Core
      *             API or by another writer (bergdb 021-06). Read it as a byte[].
+     * @throws ObjectCreationException
+     *             If clazz is not a Data Object class, or reaches one that is not through
+     *             its fields' types, checked also when the key has no value; if a
+     *             constructor throws (its exception the cause); if the value is not a stored
+     *             object, such as one of BergDB 2026.3 and before (format 1). Never for a
+     *             stored value that does not fit its field: it is converted (bergdb 020-09,
+     *             section 5.2).
      * @return The object created based on 'clazz' and the data in the database,
      *             or null if there is no entry for the key.
      */
@@ -238,7 +254,8 @@ public interface Connection extends ReadInterface {
      *             If 'key' is null or otherwise invalid, or if object is null; or if it
      *             is a String with a lone surrogate, or an object with a string that has
      *             one, as for WBuilder.put() (the package's
-     *             {@linkplain bergdb.pub##strings Strings}; bergdb 019-44, 021-04).
+     *             {@linkplain bergdb.pub##strings Strings}; bergdb 019-44, 021-04); or if
+     *             the object cannot be stored exactly, as for WBuilder.put().
      */
     public Transaction put(String key, Object object);
 

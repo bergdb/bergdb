@@ -12,7 +12,7 @@ import bergdb.nanotest.Nano;
 import bergdb.pub.util.BadFormatException;
 
 /**
- * Class that tests DbObject and company (DbValue, DbBoolean, DbInt, ...).
+ * Class that tests DbObject and company (DbValue, DbBoolean, DbLong, ...).
  * 
  * @author Frans Lundberg
  */

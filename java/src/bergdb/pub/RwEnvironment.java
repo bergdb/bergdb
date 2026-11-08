@@ -27,6 +27,11 @@ public interface RwEnvironment extends ReadInterface {
      * <p>The action's reads read one state, the latest as of its first read: they do not
      * see the transaction's own puts and deletes (bergdb 018-04, Q1).</p>
      *
+     * <p>A class other than String, byte[], DbObject and Object is a Data Object class,
+     * and the stored object is converted to it as by Connection.get() (bergdb 020-09).</p>
+     *
+     * @throws ObjectCreationException  As Connection.get(): the action's exception, which
+     *             ends the action; the database goes on.
      * @see Connection#get(String, Class)
      */
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);
@@ -63,7 +68,8 @@ public interface RwEnvironment extends ReadInterface {
      * @throws IllegalArgumentException if 'key' is null or otherwise of an invalid format.
      * @throws IllegalArgumentException if 'object' is null, or if it is a String with a
      *             lone surrogate, or an object with a string that has one, as for
-     *             WBuilder.put() (bergdb 019-44, 021-04).
+     *             WBuilder.put() (bergdb 019-44, 021-04); or if the object cannot be stored
+     *             exactly, as for WBuilder.put() (bergdb 020-09).
      */
     public void put(String key, Object object);
     

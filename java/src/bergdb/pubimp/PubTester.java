@@ -3945,4 +3945,73 @@ public class PubTester {
             d.close();
         }
     }
+    
+    public static class Inner12 {
+        public String name;
+        public Inner12() {}
+    }
+    
+    public static class N12 {
+        public Long v;
+        public Inner12 inner;
+        public N12() {}
+        public N12(Long v, Inner12 inner) {
+            this.v = v;
+            this.inner = inner;
+        }
+    }
+    
+    public static class Other12 {
+        public int other = 1;
+        public Other12() {}
+    }
+    
+    private static Inner12 inner12(String name) {
+        Inner12 i = new Inner12();
+        i.name = name;
+        return i;
+    }
+    
+    private static String indexKeys(Connection c, String index) {
+        StringBuilder keys = new StringBuilder();
+        for (Kv<DbObject> kv : c.useIndex(index, DbObject.class).kvs()) {
+            keys.append(kv.key()).append(' ');
+        }
+        return keys.toString();
+    }
+    
+    /**
+     * bergdb 020-04, N12: one index rule. An object has an entry when each indexed field is
+     * present with a type its level takes: a field absent from the class, null (so absent),
+     * or below a null object gives none, and the put is taken; by maintenance at a put and by
+     * a build alike. Until format 2 a null String in a string index refused the put (019-42).
+     */
+    @Nano
+    public static void testOneIndexRule() {
+        Database d = Factory.database().memory().start();
+        try {
+            Connection c = d.connection();
+            d.indexBuilder("v").dir("/n/").type("long").field("v").start().join();
+            d.indexBuilder("name").dir("/n/").type("string").nestedField("inner.name").start()
+                    .join();
+            for (int pass = 0; pass < 2; pass++) {
+                c.w().put("/n/1", new N12(5L, inner12("x")))
+                        .put("/n/2", new N12(null, null))
+                        .put("/n/3", new N12(7L, inner12(null)))
+                        .put("/n/4", new Other12())
+                        .put("/n/5", new N12(null, inner12("y"))).execute();
+                Assert.assertEquals("/n/1 /n/3 ", indexKeys(c, pass == 0 ? "v" : "v2"));
+                Assert.assertEquals("/n/1 /n/5 ", indexKeys(c, pass == 0 ? "name" : "name2"));
+                if (pass == 0) {
+                    d.indexBuilder("v2").dir("/n/").type("long").field("v").start().join();
+                    d.indexBuilder("name2").dir("/n/").type("string")
+                            .nestedField("inner.name").start().join();
+                }
+            }
+            Assert.assertArrayEquals(DbObject.toDbObject(new Other12()).getBytes(),
+                    c.get("/n/4", byte[].class));
+        } finally {
+            d.close();
+        }
+    }
 }

@@ -1,14 +1,14 @@
 # 020-08 Objects in format 2: the implementation plan
 
-Created 2026-11-08 by Frans Lundberg. Status: open; steps 1, 2, 7, 8 and 3
-done (sections 8.1 to 8.5), step 4 prepared (8.6); the other steps decided
-under Frans's delegation of 2026-11-08, 22:17 (section 2). How format 2 of
-stored objects (020-07; 020-02, section 4), the no-null rules of 020-04 as
-Frans chose them, (c), the conversion rules of 020-09 and the API's
-removals (020-02, section 5.1b) get into the Java code: the design, the
-changes file by file and method by method, the tests, the measurements,
-the steps and commits with their gates, the documentation, the C clone, an
-estimate and the risks.
+Created 2026-11-08 by Frans Lundberg. Status: open; steps 1, 2, 7, 8, 3
+and 6 done (sections 8.1 to 8.5 and 8.7), step 4 prepared (8.6); the
+other steps decided under Frans's delegation of 2026-11-08, 22:17 (section
+2). How format 2 of stored objects (020-07; 020-02, section 4), the no-null
+rules of 020-04 as Frans chose them, (c), the conversion rules of 020-09
+and the API's removals (020-02, section 5.1b) get into the Java code: the
+design, the changes file by file and method by method, the tests, the
+measurements, the steps and commits with their gates, the documentation,
+the C clone, an estimate and the risks.
 
 Frans, 2026-11-08, 17:12, asked for this plan with 020-07, at XHigh, with
 no code. The decisions it implements are 020-02, section 4 (4.1 to 4.12);
@@ -1230,6 +1230,35 @@ against 133 (M7); a one-put `w()` at an object key 3.0 µs against 2.5, and
 as `byte[]` (1.46 in the full run, 1.01 in the quick one), M8's one-put
 `w()` at an object key, the cost of I1 (1.20 and 1.09), and M1's `Blob`
 (1.35 in the quick run, 0.45 in the full one).
+
+### 8.7. Step 6, done (2026-11-09)
+
+Section 9's documentation, but `releases/next.md` (the coordinator's),
+and 020-04's index part:
+
+* `pub/package.html`: two new sections after "Strings", "Objects" (the
+  seven types and how Java's map to them, names of 1 to 255 bytes, depth
+  16, one NaN, objects of 2026.3 and before not read; Data Objects; what a
+  put refuses; how a get converts, best effort; the rules by their ID,
+  bergdb 020-07 and 020-09) and "Null and absent fields" (020-04, section
+  6.1, written again for (c): a null field left out, no put refused for
+  it, a null array element refused); `overview-pub.html`: a paragraph
+  pointing to both.
+* `Connection`: a paragraph "Objects" in its class Javadoc; `get`: the
+  class is a Data Object class, converted best effort, `@throws
+  ObjectCreationException`; `put`, `WBuilder.put` and `RwEnvironment.put`:
+  what a put refuses, in `@throws IllegalArgumentException`;
+  `ReadInterface.get` and `RwEnvironment.get`: the Data Object class and
+  `@throws ObjectCreationException`. `DbObject`'s class Javadoc: 020-04,
+  section 6.2's paragraph on absence, for (c).
+* 019-42's comments: `PubTesterIndexJobs.Named`; those of
+  `IndexEntryBuilder` and `IndexBuilderImp` went with 020-10's step I2,
+  which removed the one and rewrote the other.
+* 020-04's N11 (step 2's and step 3's `testBuildOverAnObjectItCannotIndex`)
+  and N12 (`PubTester.testOneIndexRule`: an absent field, a null one and a
+  null nested object give no entry, at a put and by a build alike).
+
+Gate: BEFORE COMMIT OK; `java/javadoc-pub.sh`: JAVADOC PUB OK.
 
 
 ## 9. The documentation

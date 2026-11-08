@@ -49,7 +49,10 @@ public class PubTesterIndexJobs {
         }
     }
 
-    /** An object with an indexed String field, which may be null (bergdb 019-42). */
+    /**
+     * An object with an indexed String field, which may be null (bergdb 019-42), and so
+     * absent since format 2 (bergdb 020-04, N11).
+     */
     public static class Named {
         public String name;
 
