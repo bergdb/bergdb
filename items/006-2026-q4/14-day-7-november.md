@@ -1,6 +1,7 @@
 # 006-14 Day work, 7 November 2026
 
-Created 2026-11-07 by Frans Lundberg. Status: open. The plan for the
+Created 2026-11-07 by Frans Lundberg. Status: done (2026-11-08; see
+Outcome). The plan for the
 coordinator's day of 2026-11-07 (coord-1107), a Saturday: the work on
 release 2026.4 (020), the progress and the outcome. The way of working is
 013-02's (the coordinator).
@@ -126,4 +127,43 @@ session continues with `/coordinator resume` (013-02).
 
 ## 6. Outcome
 
-Not yet.
+Written 2026-11-08, 08:35, at Frans's handover to the next coordinator.
+Everything committed; nothing running; the tree clean at the last commit
+of the day, `aad861e`.
+
+Done:
+
+* 021-01 (1132b1d), 021-02 and 021-03 (aced82e, 173f1c0): the Pub API's
+  Javadoc; lean/README.md's log to 011-12; Lean's test programs as a
+  step of night.sh. java/night.sh on aced82e: NIGHT OK (53 minutes).
+* 021-04 and 021-05 (fd94108, c00e621): every string BergDB stores is
+  well-formed UTF-8, for every language (Frans, 09:33: "option 1,
+  absolutely"); objects and the Core's String puts refuse a lone
+  surrogate; the rule in bergdb.pub's package doc, "Strings".
+* 021-07 (630acb3) and 021-08 (a7fe143): the object reader refuses bytes
+  that are not a well-formed object, and bytes nested deeper than the
+  writer writes, with BadFormatException; before, data could fail the
+  database in rw().
+* 020-01, section 14, decision 2: shape 1 (Frans, 09:52). The design of
+  objects with Frans in 020-02 (40f7de3 and later); the studies 020-03
+  (null, 29146ec), 020-04 (no stored null, the change plan, 43ee7a9) and
+  020-05 (Binson as DbObject's format, aad861e).
+* 013-02's skill: resume keeps one check-in (56d29ec).
+
+For Frans to decide:
+
+1. 020-02, question 1: a conversion on a get. Option (D), storage and
+   conversion apart with a report (section 2.5), is the one Frans wants
+   to design in detail ("Important for usability, public API"); its seven
+   questions.
+2. 020-02, question 1b: no stored null, Frans leaning to it; 020-04's
+   six questions (section 8), and then "ok-and-implement" (about a day,
+   three commits).
+3. 020-05: Binson as DbObject's format; recommended (c1), Binson under a
+   BergDB profile behind a short header of kind and version.
+4. 020-02, section 3: questions 2 to 5 (the closed list, with S2-F8; the
+   kind of a value; the format and its spec; put(Object) and the key
+   field); then 020-01's decisions 3 to 8.
+
+Open entries: 021-06 (the read side of strings; with the object spec).
+Not started: 019-45, 016-02's open item 2.
