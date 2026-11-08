@@ -51,7 +51,9 @@ public class Pack implements IPack {
         WTransaction.class,
         RwEnvironmentImp.class,
         RwTransaction.class,
-        DbObjectTester.class
+        DbObjectTester.class,
+        IndexReference.class,
+        IndexHarness.class
     };
     
     public Class<?>[] getClasses() {
