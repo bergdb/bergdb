@@ -51,7 +51,6 @@ Open
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
 | [021-06](06-read-side-ill-formed-utf8.md) | Investigate | Ill-formed UTF-8 from another writer, read by Java | answers | in progress |
-| [021-09](09-udir-accepts-bad-dirs.md) | Fix | `PubKeys.udir2idir` accepts "p/" and "/p//" | none | open |
 | [021-10](10-entries-suffix-dot-in-dir.md) | Fix | A '.' in a directory makes no key there an object key | none | open |
 
 
@@ -60,6 +59,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [021-09](09-udir-accepts-bad-dirs.md) | Fix | `PubKeys.udir2idir` accepts "p/" and "/p//" | none | done | 2026-11-08 |
 | [021-08](08-object-reader-nesting-depth.md) | Fix | The object reader has no limit on nesting depth | none | done | 2026-11-07 |
 | [021-07](07-object-reader-format-errors.md) | Fix | The object reader's format errors are not BadFormatException | none | done | 2026-11-07 |
 | [021-05](05-core-string-puts-lone-surrogate.md) | Fix | The Core's String puts write '?' for a lone surrogate | none | done | 2026-11-07 |

@@ -148,17 +148,8 @@ final class IndexDefinition {
         this.generationPrefix = IndexKeys.generationPrefix(name, gen);
     }
 
-    /**
-     * The idir of a definition's directory: PubKeys.udir2idir's rules, and a first '/' and no
-     * "//" anywhere, which udir2idir does not check at the start and the end (it takes "p/"
-     * and "/p//").
-     */
+    /** The idir of a definition's directory, by PubKeys.udir2idir's rules (bergdb 021-09). */
     private static String checkDir(String dir) {
-        if (dir == null || !dir.startsWith("/") || dir.contains("//")) {
-            throw new IllegalArgumentException("'dir' " + IndexKeys.quote(dir) + " is not a "
-                    + "directory: it starts and ends with '/' and has no \"//\" (bergdb "
-                    + "020-10, section 4.2).");
-        }
         try {
             return PubKeys.udir2idir(dir);
         } catch (IllegalArgumentException e) {

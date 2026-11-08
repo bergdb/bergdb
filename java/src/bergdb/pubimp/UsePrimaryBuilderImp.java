@@ -86,14 +86,7 @@ public class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
         if (udir == null) {
             throw new IllegalArgumentException("dir == null not allowed");
         }
-        // PubKeys.udir2idir() takes "a/", "//" and "/a//" (2026-11-08).
-        if (!udir.startsWith("/")) {
-            throw new IllegalArgumentException("A directory starts with '/', was: " + udir);
-        }
-        if (udir.contains("//")) {
-            throw new IllegalArgumentException("A directory has no \"//\", was: " + udir);
-        }
-        String idir = PubKeys.udir2idir(udir);
+        String idir = PubKeys.udir2idir(udir);      // its rules (bergdb 021-09)
         prefix = Keys.toBytes(idir + PubKeys.FILE_PREFIX);
         prefixIkeyLength = idir.length() + 1;
         return this;

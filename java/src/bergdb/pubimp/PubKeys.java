@@ -4,6 +4,9 @@ import bergdb.common.Bug;
 import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pub.Connection;
+import bergdb.pub.Database;
+import bergdb.pub.Factory;
 
 /**
  * Class with static methods for handling database keys.
@@ -106,9 +109,12 @@ public class PubKeys {
     /**
      * Converts a directory ukey to a directory ikey according to doc/2013-key-encoding.txt.
      * 
-     * @throws IllegalArgumentException  If udir is null or empty, does not end with '/', or
-     *      contains "//". As u2i() does for a key; it was a BadFormatException (2026-10-25,
-     *      bergdb 005-43). Also if it has a lone surrogate, as a key (bergdb 015-49, S2-F24).
+     * @throws IllegalArgumentException  If udir is null or empty, does not start or end with
+     *      '/', or contains "//" anywhere. As u2i() does for a key; it was a
+     *      BadFormatException (2026-10-25, bergdb 005-43). Also if it has a lone surrogate, as
+     *      a key (bergdb 015-49, S2-F24). Until 2026-11-08 a directory that did not start
+     *      with '/', or that ended with "//", was taken, such as "p/" and "/p//" (bergdb
+     *      021-09): every caller relies on this method for what a directory is.
      */
     public static final String udir2idir(String udir) throws IllegalArgumentException {
         
@@ -122,8 +128,16 @@ public class PubKeys {
         
         int length = udir.length();
         
+        if (udir.charAt(0) != '/') {
+            throw new IllegalArgumentException("udir must start with '/', was: " + udir);
+        }
+        
         if (udir.charAt(length - 1) != '/') {
             throw new IllegalArgumentException("udir must end with '/', was: " + udir);
+        }
+        
+        if (udir.contains("//")) {
+            throw new IllegalArgumentException("udir cannot contain \"//\", was: " + udir);
         }
 
         if (hasLoneSurrogate(udir)) {
@@ -134,16 +148,10 @@ public class PubKeys {
         
         StringBuilder b = new StringBuilder();
         
-        int slashIndex = Integer.MIN_VALUE;
-        
         for (int i = 0; i < length - 1; i++) {
             char c = udir.charAt(i);
             
             if (c == '/') {
-                if (slashIndex == i - 1) {
-                    throw new IllegalArgumentException("udir cannot contain \"//\", was: " + udir);
-                }
-                slashIndex = i;
                 b.append('/');
                 b.append(DIR_PREFIX);
             } else {
@@ -278,10 +286,15 @@ public class PubKeys {
         Assert.assertTrue(hasLoneSurrogate("\uD83D\uD83D\uDE00"));
     }
 
-    /** bergdb 005-43: a bad directory is an IllegalArgumentException, as a bad key is. */
+    /**
+     * bergdb 005-43: a bad directory is an IllegalArgumentException, as a bad key is. Since
+     * 021-09 also one that does not start with '/', or has "//" at its end ("p/", "a/b/",
+     * "//", "/p//"), which were taken.
+     */
     @Nano
     public static void testUdir2idirRefusesBadDirs() {
-        String[] bad = {null, "", "/a", "a", "/a//b/"};
+        String[] bad = {null, "", "/a", "a", "/a//b/", "a/", "p/", "a/b/", "//", "/a//", "///",
+                "a//", "/a/b//", "/a\ud800/"};
         for (String udir : bad) {
             try {
                 udir2idir(udir);
@@ -290,7 +303,60 @@ public class PubKeys {
                 // Expected.
             }
         }
+        Assert.assertEquals("/", udir2idir("/"));
         Assert.assertEquals("/da/", udir2idir("/a/"));
         Assert.assertEquals("/da/db/", udir2idir("/a/b/"));
+        Assert.assertEquals("/d#i/", udir2idir("/#i/"));
+        Assert.assertEquals("/da.b/", udir2idir("/a.b/"));
+        assertDirRefused("p/", "start with '/'");
+        assertDirRefused("/p//", "\"//\"");
+        assertDirRefused("//", "\"//\"");
+    }
+
+    private static void assertDirRefused(String udir, String rule) {
+        try {
+            udir2idir(udir);
+            throw new AssertionError("taken, " + udir);
+        } catch (IllegalArgumentException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains(rule)
+                    && e.getMessage().contains(udir));
+        }
+    }
+
+    /**
+     * bergdb 021-09: every caller of udir2idir refuses what it refuses, with
+     * IllegalArgumentException: IndexBuilder.dir(), UsePrimaryBuilder.dir() and an index's
+     * definition (bergdb 020-10, section 4.2); the root "/" is taken by each.
+     */
+    @Nano
+    public static void testDirCallersRefuseBadDirs() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.newConnection();
+            for (String udir : new String[] {"p/", "a/b/", "//", "/p//", "/p//q/", ""}) {
+                assertThrowsArg("IndexBuilder.dir(" + udir + ")",
+                        () -> db.indexBuilder("n").dir(udir));
+                assertThrowsArg("UsePrimaryBuilder.dir(" + udir + ")",
+                        () -> c.usePrimary(String.class).dir(udir));
+                assertThrowsArg("IndexDefinition, dir " + udir,
+                        () -> new IndexDefinition("n", udir, 1, false, new String[] {"long"},
+                        new String[][] {{"a"}}));
+            }
+            db.indexBuilder("n").dir("/");
+            c.usePrimary(String.class).dir("/").kvs();
+            Assert.assertEquals("/", new IndexDefinition("n", "/", 1, false,
+                    new String[] {"long"}, new String[][] {{"a"}}).idir());
+        } finally {
+            db.close();
+        }
+    }
+
+    private static void assertThrowsArg(String what, Runnable r) {
+        try {
+            r.run();
+        } catch (IllegalArgumentException e) {
+            return;
+        }
+        throw new AssertionError(what + ": taken");
     }
 }

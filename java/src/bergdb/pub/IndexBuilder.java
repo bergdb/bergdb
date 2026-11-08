@@ -14,7 +14,7 @@ import bergdb.pub.util.Job;
  * <p>An example of creating an index that indexes employee salaries (long field 'salary' of 
  * Employee objects) could look like this:</p>
  * 
- * <code>database.indexBuilder("employee-salary").dir("employees/").type("long").field("salary").createFast();</code>
+ * <code>database.indexBuilder("employee-salary").dir("/employees/").type("long").field("salary").createFast();</code>
  * 
  * <p>The builder supports the creation of ordinary indexes, but also composite
  * indexes that consists of multiple parts. To create a composite index, call type()
@@ -188,8 +188,8 @@ public interface IndexBuilder {
      * required.
      * 
      * @param dir  The directory, null is not allowed. Must end with '/'.
-     * @throws IllegalArgumentException  If dir is null or empty, does not end with '/', or
-     *      contains "//".
+     * @throws IllegalArgumentException  If dir is null or empty, does not start or end with
+     *      '/', or contains "//".
      */
     public IndexBuilder dir(String dir);
     
