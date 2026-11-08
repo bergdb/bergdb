@@ -727,10 +727,14 @@ disagreements).
 
 ### 13.5. Where they live
 
-Here, beside the spec, for Frans's approval with it. Java's test cannot
-read `items/` (items/readme.md, "Items and the current state"), so the
-file moves into `java/` with 020-08's first step, and this section then
-points to it (question Q6).
+In `java/src/bergdb/pubimp/doc-files/object-vectors.txt`, beside the code
+that reads them (`ObjectFormatTester`), since 020-08's step 1
+(2026-11-08). They were here, beside the spec, as
+`07-object-spec/vectors.txt`, the place sections 1 and 13 name; a test
+cannot read `items/` (items/readme.md, "Items and the current state"),
+so the file moved into `java/` unchanged, byte for byte, and this section
+points to it (question Q6's recommended answer, 020-08's default until
+Frans says otherwise).
 
 
 ## 14. Questions for Frans

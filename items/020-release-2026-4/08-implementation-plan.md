@@ -668,6 +668,56 @@ commit; P7 (a failed database stops) is kept: no reader path throws an
 `Error` or an unchecked JDK exception (T2, H0b), and a refusal inside
 `rw()` is the action's exception.
 
+### 8.1. Step 1, done (2026-11-08)
+
+Made in a clone at `ade9be7`, tests first (each failed on a stub of the
+API before the code); not committed (the coordinator commits):
+
+* `java/src/bergdb/pubimp/ObjectFormat.java`, new, 831 lines: section
+  4.1's codec, written from 020-07. The full check (`checkStored`,
+  `isStoredObject`; `checkValue` for one value), every message starting
+  with its code; `find`, the binary search, checking what it touches
+  (020-07, section 7.4); the readers of checked bytes (`typeAt` gives `l`
+  for every integer); the writer's encodings (`writeInteger`,
+  `writeDouble` with the one NaN, `writeStringHead`, `frame` and more)
+  and checks (`utf8`, `nameBytes`, `checkName`, `checkCount`,
+  `checkLevel`, `checkStoredSize`), each an `IllegalArgumentException`
+  whose message starts with its code.
+* `ObjectFormatTester.java`, new: T1 on every record (32 valid with 343
+  lookups, 84 invalid, 2 generated, 8 Binson inputs, the counts
+  asserted), the Binson column by a converter in the test; `Ref`, a
+  second codec in the test (another order of checks, Java's strict UTF-8
+  decoder); H0a, 400 random values of seed 1; H0b, the ten vectors of
+  `SAMPLES`, 13,585 mutants; the writer's refusals and encodings; 100,000
+  nested arrays refused at level 17. 7 tests in the unit group, 0.6 s.
+  The night test `testHarnessNight`: 30 seeds a day, each 5,000 values
+  and 40 mutated samples, 103 s; `main(SEED)` repeats a seed.
+* The vectors moved unchanged to
+  `java/src/bergdb/pubimp/doc-files/object-vectors.txt` (section 2, item
+  5's default), which `build.sh` copies into the jar; 020-07, section
+  13.5, points there. `Pack`: `ObjectFormat` and `ObjectFormatTester` in.
+
+Nothing uses the codec: no behaviour changes. 28 faults planted one at a
+time in a copy of the codec (each check off, each boundary moved by one,
+signed compares) were each caught. Gate: BEFORE COMMIT OK (119 s).
+
+Where the plan and the spec differ (the spec wins):
+
+* Section 6.3, H0b: "each lookup on each mutant gives the full read's
+  value or `BadFormatException`". On a refused mutant 020-07, section
+  7.4, lets a lookup answer absent or another field's value; H0b checks
+  the full read's value on an accepted mutant, and on a refused one no
+  exception but `BadFormatException`.
+* Section 4.1, `find`: "local checks as `F2.find`". F2's also refuses an
+  object that does not fill its extent; `find` checks only what 020-07,
+  section 7.4, lists, so a caller may give the parent's extent.
+
+For step 2: the writer's checks name no place, the Builder and
+`toDbObject` add it (020-07, section 6.1; section 4.6's path exception);
+`find` gives the value's start, and `valueEnd` its end on checked bytes;
+T2 can reuse the tester's `readVectors`, `Vn`, `Ref` and `codecWrite`
+(the Builder's shape). 020's readme still links the vectors' old place.
+
 
 ## 9. The documentation
 
@@ -782,3 +832,8 @@ or 6.
 decisions of 15:51 to 17:09 (020-02, section 4), with 020-07; read-only
 at `ea5654a`. No code changed. Waits for Frans's "ok-and-implement" and
 the answers of section 2.
+
+2026-11-08. Step 1 done in a clone at `ade9be7` (section 8.1):
+`ObjectFormat`, `ObjectFormatTester` (T1, H0a, H0b, a night test), the
+vectors moved into `java/`; BEFORE COMMIT OK (119 s). Two differences
+from 020-07 noted, the spec followed.

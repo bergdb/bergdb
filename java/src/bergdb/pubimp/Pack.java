@@ -28,6 +28,8 @@ public class Pack implements IPack {
         IndexManager.Tester.class,
         UseIndexBuilderImp.class,
         KvToObjectImp.class,
+        ObjectFormat.class,
+        ObjectFormatTester.class,
         Pack.class,
         PubKeys.class,
         PubInterruptTester.class,

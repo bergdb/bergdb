@@ -107,8 +107,9 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   the rules R1 to R15, what a writer must do and a reader must refuse
   (each condition with a code), the limits, the lookup by binary search,
   the header and the old format, the conversion with Binson; seven
-  questions for Frans (Q1 to Q7). Its conformance vectors in
-  [07-object-spec/vectors.txt](07-object-spec/vectors.txt): 33 valid
+  questions for Frans (Q1 to Q7; Q1 decided). Its conformance vectors,
+  since 020-08's step 1 in
+  `java/src/bergdb/pubimp/doc-files/object-vectors.txt`: 33 valid
   values with 343 lookups, 85 invalid byte strings, 8 Binson inputs,
   checked by two implementations written apart; the programs are in
   `/Users/f/fl/bench/006-15/020-07/`.

@@ -77,6 +77,7 @@ yet decided, but there are good options that have been researched."
 | Field lookup measured: 16-bit hash scan against binary search | 020-06 | m06 | xhigh | `/Users/f/fl/bench/006-15/020-06/` | done |
 | Objects' storage ready for decisions: 020-02 to 020-06 checked, summarized in 020-02 | 020-02 | d02 | xhigh | none | done |
 | The spec of stored objects, with vectors; the implementation plan (no code) | 020-07, 020-08 | s07 | xhigh | `/Users/f/fl/bench/006-15/020-07/` | done |
+| Step 1 of 020-08: the codec, the vectors as a test, the harness H0 | 020-08 | i01 | xhigh | `/Users/f/fl/bench/006-15/clone-020-08/` | done |
 
 020-05's programs (`/Users/f/fl/bench/006-14/020-binson/`) were deleted
 after 2026-11-07's handover; the agents write their own.
@@ -122,6 +123,15 @@ session continues with `/coordinator resume` (013-02).
   Binson inputs, checked by a Java and an independent Python codec) and
   020-08 (six steps, about 5 days); questions for Frans in 020-07 (Q1 to
   Q7) and 020-08.
+* 17:26 to 19:43 Frans and the coordinator on the Pub API (020-02,
+  section 5.1b): no key field in 2026.4, `put(Object)` goes (017-07,
+  section 6, for later); `createFast()` goes. 020-07, Q1: a scalar is not
+  a level. 19:43 ok-and-implement for 020-08, step 1.
+* 19:44 Agent i01 started (xhigh): 020-08, step 1, in a clone.
+* 20:15 i01 done: `ObjectFormat` and `ObjectFormatTester` (the vectors,
+  H0a, H0b; 28 planted faults caught), the vectors moved into `java/`;
+  BEFORE COMMIT OK in the clone (119 s) and on the main tree with
+  Frans's `PayDemo.java` edit (120 s, 20:18); committed.
 
 
 ## 6. Outcome
