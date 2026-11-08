@@ -1,5 +1,6 @@
 package bergdb.pubimp;
 
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
@@ -28,16 +29,13 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
     private byte[] startValue;
     private byte[] eqValue;
     private final long actualLookupTime;
-    private final byte[] dir;
-    private final boolean isPrimary;
-    private final IndexManager.Index index;
-    private final IndexManager indexManager;
+    private final byte[] dir;               // The prefix of the generation's entries
+    private final IndexDefinition def;
     private boolean forward;
     private boolean inclusive;
     private boolean startAtCalled;
     private int level;              // The composite level we are at.
     private String prefixString;    // The prefix string set with prefix(String) method.
-    private final boolean excludeNonObj;  // If true, non-object KVs are excluded from the result.
     private final Class<TYPE> type;
     
     // Level info for builder
@@ -52,7 +50,14 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
     private long[] prefixKeySegments;           // directory or index dir + EQ value.
     
     /**
-     * @throws NoSuchIndexException if no index with the name exists.
+     * The definition is read at the lookup time, resolved at this call (bergdb 020-10, section
+     * 3.6), with IndexDefinition.read; the keys are IndexKeys' (section 4.4). The grammar is
+     * 2026.3's, which step I3 replaces.
+     * 
+     * @throws NoSuchIndexException  If there is no index of the name at the lookup time, or it
+     *      is building then.
+     * @throws ObjectCreationException  If 'type' is not a class a get takes (bergdb 020-09,
+     *      section 3.3), whatever the data.
      */
     public UseIndexBuilderImp(ConnectionImp connection, String indexName, Class<TYPE> type, 
             long wantedLookupTime) {
@@ -61,35 +66,25 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         if (indexName == null) {
             throw new IllegalArgumentException("indexName == null not allowed");
         }
+        if (!type.equals(String.class) && !type.equals(byte[].class)
+                && !type.equals(DbObject.class) && !type.equals(Object.class)) {
+            DataObjects.checkGet(type);
+        }
         
         this.type = type;
         this.connection = connection;
         this.builderDone = false;
-        this.indexManager = connection.getDatabaseImp().getIndexManager();
-        this.isPrimary = indexName.equals(IndexManager.PRIMARY);
-        
-        this.index = indexManager.getActiveIndex(connection, indexName, wantedLookupTime);
-        if (isPrimary) {
-            this.actualLookupTime = connection.getDb().lookupTime(wantedLookupTime);
-        } else {
-            this.actualLookupTime = connection.getActualLookupTime();
-                // Returns the actual lookup time used in indexManager.getActiveIndex.
+        this.actualLookupTime = connection.scanLookupTime(wantedLookupTime);
+        this.def = IndexDefinition.read(connection.getDb(), indexName, actualLookupTime);
+        if (def == null) {
+            throw new NoSuchIndexException("No index named '" + indexName + "' at the lookup "
+                    + "time.");
         }
-        
-        if (index == null) {
-            throw new NoSuchIndexException("No index named: '" + indexName 
-                    + "' at the given lookup time.");
+        if (!def.isActive()) {
+            throw new NoSuchIndexException("The index '" + indexName + "' is building at the "
+                    + "lookup time.");
         }
-        
-        if (index.getState() != IndexManager.Index.STATE_ACTIVE) {
-            throw new NoSuchIndexException("Index is not active, but in state: " 
-                    + index.getStateString() + ".");
-        }
-        
-        final int typeOfType = Entries.classify(type);
-        this.excludeNonObj = isPrimary && 
-                (typeOfType == Entries.TYPE_ORDINARY || typeOfType == Entries.TYPE_DB_OBJECT);
-        this.dir = isPrimary ? new byte[0] : IndexManager.getIndexDbDirAsBytes(indexName);
+        this.dir = def.generationPrefix();
         
         this.forward = true;
         this.inclusive = true;
@@ -130,17 +125,17 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
             		"same composite level.");
         }
         
-        if (level > index.getLevels() - 1) {
+        if (level > def.levelCount() - 1) {
             throw new IllegalStateException("Illegal composite level " + level 
                     + ".");
         }
         
-        if (index.types[level] != IndexManager.Index.TYPE_STRING) {
+        if (def.type(level) != IndexKeys.STRING) {
             throw new IllegalStateException("Index is not a string index, index type is: " 
-                    + index.typeStrings[0] + ". Cannot call eq(String).");
+                    + def.typeName(level) + ". Cannot call eq(String).");
         }
         
-        byte[] toAdd = IndexEntryBuilder.sortBytesFromString(index.kcollators[level], string);
+        byte[] toAdd = IndexKeys.encodeString(string);
         eqValue = Util.concat(eqValue, toAdd);
         
         levelEqCalled = true;
@@ -161,17 +156,17 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                     "same composite level.");
         }
         
-        if (level > index.getLevels() - 1) {
+        if (level > def.levelCount() - 1) {
             throw new IllegalStateException("Illegal composite level " + level 
                     + ".");
         }
         
-        if (index.types[level] != IndexManager.Index.TYPE_LONG) {
+        if (def.type(level) != IndexKeys.LONG) {
             throw new IllegalStateException("Index is not a long index, index type is: " 
-                    + index.typeStrings[0] + ". Cannot call eq(long).");
+                    + def.typeName(level) + ". Cannot call eq(long).");
         }
         
-        byte[] toAdd = IndexEntryBuilder.sortBytesFromLong(value);
+        byte[] toAdd = IndexKeys.encodeLong(value);
         eqValue = Util.concat(eqValue, toAdd);
         
         levelEqCalled = true;
@@ -192,17 +187,17 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                     "same composite level.");
         }
         
-        if (level > index.getLevels() - 1) {
+        if (level > def.levelCount() - 1) {
             throw new IllegalStateException("Illegal composite level " + level 
                     + ".");
         }
         
-        if (index.types[level] != IndexManager.Index.TYPE_DOUBLE) {
+        if (def.type(level) != IndexKeys.DOUBLE) {
             throw new IllegalStateException("Index is not a double index, index type is: " 
-                    + index.typeStrings[0] + ". Cannot call eq(double).");
+                    + def.typeName(level) + ". Cannot call eq(double).");
         }
         
-        byte[] toAdd = IndexEntryBuilder.sortBytesFromDouble(value);
+        byte[] toAdd = IndexKeys.encodeDouble(value);
         eqValue = Util.concat(eqValue, toAdd);
         
         levelEqCalled = true;
@@ -224,14 +219,14 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
             throw new IllegalStateException("Cannot call eq() more than once per composite level.");
         }
         
-        if (level > index.getLevels() - 1) {
+        if (level > def.levelCount() - 1) {
             throw new IllegalStateException("Illegal composite level " + level 
                     + ".");
         }
         
-        if (index.types[level] != IndexManager.Index.TYPE_STRING) {
+        if (def.type(level) != IndexKeys.STRING) {
             throw new IllegalStateException("Index is not a string index, index type is: " 
-                    + index.typeStrings[0] + ". Cannot call startAt(String).");
+                    + def.typeName(level) + ". Cannot call startAt(String).");
         }
         
         if (prefixString != null) {
@@ -240,7 +235,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         }
         
         startValue = Util.concat(startValue, 
-                IndexEntryBuilder.sortBytesFromString(index.kcollators[level], string));        
+                IndexKeys.encodeString(string));        
         startAtCalled = true;
         levelStartAtCalled = true;
         return this;
@@ -257,17 +252,17 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
             throw new IllegalStateException("Cannot call eq() more than once per composite level.");
         }
         
-        if (level > index.getLevels() - 1) {
+        if (level > def.levelCount() - 1) {
             throw new IllegalStateException("Illegal composite level " + level 
                     + ".");
         }
         
-        if (index.types[level] != IndexManager.Index.TYPE_LONG) {
+        if (def.type(level) != IndexKeys.LONG) {
             throw new IllegalStateException("Index is not a long index, index type is: " 
-                    + index.typeStrings[0] + ". Cannot call startAt(long).");
+                    + def.typeName(level) + ". Cannot call startAt(long).");
         }
         
-        startValue = Util.concat(startValue, IndexEntryBuilder.sortBytesFromLong(value));        
+        startValue = Util.concat(startValue, IndexKeys.encodeLong(value));        
         startAtCalled = true;
         levelStartAtCalled = true;
         
@@ -285,17 +280,17 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
             throw new IllegalStateException("Cannot call eq() more than once per composite level.");
         }
         
-        if (level > index.getLevels() - 1) {
+        if (level > def.levelCount() - 1) {
             throw new IllegalStateException("Illegal composite level " + level 
                     + ".");
         }
         
-        if (index.types[level] != IndexManager.Index.TYPE_DOUBLE) {
+        if (def.type(level) != IndexKeys.DOUBLE) {
             throw new IllegalStateException("Index is not a double index, index type is: " 
-                    + index.typeStrings[0] + ". Cannot call startAt(double).");
+                    + def.typeName(level) + ". Cannot call startAt(double).");
         }
         
-        startValue = Util.concat(startValue, IndexEntryBuilder.sortBytesFromDouble(value));        
+        startValue = Util.concat(startValue, IndexKeys.encodeDouble(value));        
         startAtCalled = true;
         levelStartAtCalled = true;
         
@@ -304,9 +299,9 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
     
     public UseIndexBuilderImp<TYPE> nextLevel() {
         int newLevel = level + 1;
-        if (newLevel >= index.getLevels()) {
+        if (newLevel >= def.levelCount()) {
             throw new IllegalStateException("Cannot increase composite level to " + newLevel
-                    + ", number of levels: " + index.getLevels() + ".");
+                    + ", number of levels: " + def.levelCount() + ".");
         }
         
         if (this.prefixString != null) {
@@ -343,14 +338,14 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
             throw new IllegalStateException("Cannot call prefix() method more than once.");
         }
         
-        if (level >= index.getLevels()) {
+        if (level >= def.levelCount()) {
             throw new IllegalStateException("Cannot call prefix() at composite level " + level 
                     + ".");
         }
         
-        if (index.types[level] != IndexManager.Index.TYPE_STRING) {
+        if (def.type(level) != IndexKeys.STRING) {
             throw new IllegalStateException("Index is not a string index, index type is: " 
-                    + index.typeStrings[0] + ". Cannot call prefix(String).");
+                    + def.typeName(level) + ". Cannot call prefix(String).");
         }
         
         this.prefixString = prefix;
@@ -379,26 +374,12 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         if (this.prefixString == null) {
             prefixBytes = eqBytes;
         } else {
-            prefixBytes = Util.concat(eqBytes, index.kcollators[level].getSortBytes(prefixString));
+            prefixBytes = Util.concat(eqBytes, IndexKeys.encodeStringPrefix(prefixString));
         }
         
         prefixKeySegments = Keys.toSegments(prefixBytes);
         
-        if (isPrimary) {
-            // include = true allowed for this case.
-            // If we have no start value but a prefix string, we set startValue according to 
-            // prefix.
-            
-            if (prefixString != null && startValue.length == 0) {
-                startBytes = prefixBytes.clone();
-                
-                if (forward == false) {
-                    plusOne(startBytes);
-                }
-            }
-            
-            
-        } else {
+        {
             if (forward) {
                 if (inclusive) {
                     // empty
@@ -489,7 +470,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         return new Iterable<TYPE>() {
             public Iterator<TYPE> iterator() {
                 return new Iterator<TYPE>() {
-                    private final Iterator<Kv<TYPE>> iter = new IndexIterator(actualLookupTime, excludeNonObj);
+                    private final Iterator<Kv<TYPE>> iter = new IndexIterator(actualLookupTime);
                     
                     public final boolean hasNext() {
                         return iter.hasNext();
@@ -501,7 +482,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                         assert next != null : "next is null";
                             // 'next' should never be null, if no more elements, next() throws 
                             // NoSuchElementException.
-                        return (TYPE) next.value();
+                        return next.value();
                     }
 
                     public void remove() {
@@ -522,7 +503,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         
         return new Iterable<Kv<TYPE>>() {
             public Iterator<Kv<TYPE>> iterator() {
-                final Iterator<Kv<TYPE>> iter = new IndexIterator(actualLookupTime, excludeNonObj);
+                final Iterator<Kv<TYPE>> iter = new IndexIterator(actualLookupTime);
                 
                 return new Iterator<Kv<TYPE>>() {
                     public boolean hasNext() {
@@ -530,7 +511,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                     }
 
                     public Kv<TYPE> next() {
-                        Kv<TYPE> result = (Kv<TYPE>) iter.next();
+                        Kv<TYPE> result = iter.next();
                         assert result != null : "result is null";
                         return result;
                     }
@@ -551,28 +532,23 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         private long[] startKey;
         private boolean done = false;
         private boolean firstBatch = true;
-        private final IndexManager.Index index;
         private final long wantedLookupTime;
         private long actualLookupTime = -1;
         private final boolean forward;
         private final boolean inclusive2;
-        private final boolean excludeNonObj;
         
-        public IndexIterator(long wantedLookupTime, boolean excludeNonObj) {
+        public IndexIterator(long wantedLookupTime) {
             this.startKey = UseIndexBuilderImp.this.startKeySegments;            
-            this.index = UseIndexBuilderImp.this.index;
-            assert this.index != null;
             this.wantedLookupTime = wantedLookupTime;
             this.forward = UseIndexBuilderImp.this.forward;
             this.inclusive2 = UseIndexBuilderImp.this.inclusive;
-            this.excludeNonObj = excludeNonObj;
         }
         
         private void getMany() {
             assert connection != null : "connection is null";
             assert connection.getDb() != null : "DB is null";
             
-            IterStopCondition stopCondition = new IterStopCondition(excludeNonObj);
+            IterStopCondition stopCondition = new IterStopCondition();
             
             g = connection.getDb().newGetMany();
             g.startKey = this.startKey;
@@ -621,22 +597,20 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
          */
         public Kv<TYPE> next() {
             byte[] value;
-            byte[] objectKey;
+            String ikey;
             
             A: while (true) {           // Used for "continue A;"
                 if (!hasNext()) {
                     throw new NoSuchElementException();
                 }
                 
+                // The entry's key: its generation's prefix, its levels, K (020-10, 4.4).
                 final Kvt kvt = g.result.get(resultIndex);
-                if (isPrimary) {
-                    objectKey = Keys.toBytes(kvt.key);
-                    value = kvt.value;
-                } else {
-                    objectKey = IndexManager.getObjectKey(index, kvt.key);
-                    assert actualLookupTime >= 0;
-                    value = connection.getBytesAtLookupTime(actualLookupTime, Keys.toSegments(objectKey));
-                }
+                IndexKeys.Entry entry = IndexKeys.parseEntry(Keys.toBytes(kvt.key), dir,
+                        def.types());
+                ikey = def.idir() + entry.fileName();
+                assert actualLookupTime >= 0;
+                value = connection.getBytesAtLookupTime(actualLookupTime, Keys.toSegments(ikey));
                 
                 resultIndex++;
                 if (resultIndex == g.result.size()) {
@@ -647,15 +621,17 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                     }
                 }
                 
-                if (value == null) {        
-                    // We have a stale index entry, ignore it. It should be removed.
+                // A stale entry gives no result: the value at its key must have it as its
+                // entry (020-10, section 3.4).
+                byte[] levels = value == null ? null : def.entryLevels(ikey, value);
+                if (levels == null || !Arrays.equals(levels, entry.levels())) {
                     continue A;
                 }
                 
                 break;
             }
             
-            final String ikey = Keys.bkey2ikey(objectKey);
+            final String finalIkey = ikey;
             
             String ukey;
             try {
@@ -665,10 +641,10 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
             }
             final String finalUkey = ukey;
             
+            // Null for a type whose get gives null for this value, as a get of a primitive's
+            // wrapper over an object without the field p (bergdb 020-09, section 5.9).
             final TYPE finalObject = connection.getDatabaseImp()
                     .getKvToObjectConverter().createObject(type, ikey, value);
-            
-            assert finalObject != null : "finalObject is null";
             
             return new Kv<TYPE>() {
                 public String key() {
@@ -676,7 +652,7 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                 }
                 
                 public String ikey() {
-                    return ikey;
+                    return finalIkey;
                 }
                 
                 public TYPE value() {
@@ -703,14 +679,12 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         private int count = 0;
         private boolean gotEod = false;
         private long data = 0;
-        private final boolean excludeNonObj;
         private long[] lastKey = null;      // The last entry visited within the prefix.
         private boolean endedAtLimit = false;
         
-        public IterStopCondition(boolean excludeNonObj) {
+        public IterStopCondition() {
             isFirst = true;
             gotEod = false;
-            this.excludeNonObj = excludeNonObj;
         }
         
         public int handleKvt(Kvt kvt) {
@@ -736,22 +710,6 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
                 endedAtLimit = true;
             }
             
-            if (excludeNonObj) {
-                String keyString = Keys.toString(kvt.key);
-                boolean isObject = Entries.isProbablyDbObject(keyString, kvt.value)
-                        || Entries.isFormat1Object(keyString, kvt.value);     // refused later
-                
-                if (!isObject) {
-                    if (result == GetMany.StopCondition.ADD) {
-                        result = GetMany.StopCondition.CONTINUE;
-                    } else if (result == GetMany.StopCondition.ADD_AND_STOP) {
-                        result = GetMany.StopCondition.STOP;
-                    } else {
-                        throw new Bug("Unexpected state, " + result);
-                    }
-                }
-            }
-        
             return result;
         }
 

@@ -1,6 +1,5 @@
 package bergdb.pubimp;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -20,7 +19,6 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.DataFormatException;
 import bergdb.pub.RwEnvironment;
-import bergdb.pub.util.BadFormatException;
 
 /**
  * Environment for a transaction.
@@ -377,20 +375,6 @@ public class RwEnvironmentImp implements RwEnvironment {
         }
         m.hook(IndexManager.WRITE_AFTER_SET);
         
-        RwEnvironmentImp.IndexSetter setter = new RwEnvironmentImp.IndexSetter() {
-            public void setIndexKey(byte[] indexKey, KeyTransformation kt) {
-                // Removed first, so that the MapKey kept is the put's, with its kt (setKv).
-                MapKey key = new MapKey(Keys.toSegments(indexKey), kt);
-                indexOps.remove(key);
-                indexOps.put(key, emptyByteArray);
-            }
-        };
-        IndexSetter deleteSetter = new IndexSetter() {
-            public void setIndexKey(byte[] indexKey, KeyTransformation kt) {
-                deleteIndexEntry(indexKey);
-            }
-        };
-        
         for (Map.Entry<String, ObjectInfo> entry : objectOps.entrySet()) {
             final ObjectInfo info = entry.getValue();
             final String ikey = entry.getKey();
@@ -400,18 +384,21 @@ public class RwEnvironmentImp implements RwEnvironment {
             }
             
             // The previous value, read at R, to delete its entries.
-            DbObject previousDbo = indexedObject(ikey, getInternal(ikey, byte[].class));
-            DbObject newDbo = info.dbo != null ? info.dbo : indexedObject(ikey, info.value);
-            
-            for (IndexManager.IndexForDir indexForDir : info.indexes) {
-                final IndexManager.Index index = indexForDir.index;
-                if (previousDbo != null) {
-                    RwEnvironmentImp.setIndexEntry(previousDbo, info.name, index,
-                            indexForDir.dirId, deleteSetter, enableKeyReplace);
+            byte[] previous = getInternal(ikey, byte[].class);
+            for (IndexDefinition def : info.indexes) {
+                byte[] old = def.entry(ikey, previous);
+                byte[] put = def.entry(ikey, info.value);
+                if (old != null) {
+                    deleteIndexEntry(old);
                 }
-                if (newDbo != null) {
-                    RwEnvironmentImp.setIndexEntry(newDbo, info.name, index,
-                            indexForDir.dirId, setter, enableKeyReplace);
+                if (put != null) {
+                    // Removed first, so that the MapKey kept is the put's, with its kt.
+                    KeyTransformation kt = enableKeyReplace && getKeyTransformation(ikey) != null
+                            ? entryTransformation(put.length - IndexKeys.fileKey(ikey).length)
+                            : null;
+                    MapKey key = new MapKey(Keys.toSegments(put), kt);
+                    indexOps.remove(key);
+                    indexOps.put(key, emptyByteArray);
                 }
             }
         }
@@ -426,37 +413,6 @@ public class RwEnvironmentImp implements RwEnvironment {
         if (firstRead) {
             readTime = connection.getDb().lookupTime(Long.MAX_VALUE);
             firstRead = false;
-        }
-    }
-    
-    /** The first bytes of an object of format 1, BergDB 2026.3's: "bergo" and the version 1. */
-    private static final byte[] FORMAT_1 = {'b', 'e', 'r', 'g', 'o', 1};
-    
-    /**
-     * The value at an object key as an object to index: a DbObject if it is a stored object
-     * of format 2 (the header and 020-07's full check), else null (bergdb 020-10, section
-     * 3.3, rule 1): no value, a String's bytes, a byte[] that fails the check.
-     * 
-     * @throws DataFormatException  If the value is an object of format 1.
-     */
-    static DbObject indexedObject(String ikey, byte[] value) {
-        if (value == null) {
-            return null;
-        }
-        if (value.length >= FORMAT_1.length
-                && Arrays.equals(value, 0, FORMAT_1.length, FORMAT_1, 0, FORMAT_1.length)) {
-            throw new DataFormatException("The value at " + ikey + " is an object in format 1, "
-                    + "written by BergDB 2026.3 or before, which this version does not read: a "
-                    + "write of the key in a directory with an index is refused (bergdb 020-02, "
-                    + "section 4.11; 020-10, section 5.1).");
-        }
-        if (value.length < 3 || value[0] != DbObject.HEADER) {
-            return null;
-        }
-        try {
-            return new DbObject(value);
-        } catch (BadFormatException e) {
-            return null;
         }
     }
     
@@ -548,19 +504,26 @@ public class RwEnvironmentImp implements RwEnvironment {
     private static final byte[] REPLACE_ME_BYTES = Keys.toBytes(REPLACE_ME);
     private static final int REPLACE_ME_LENGTH = REPLACE_ME_BYTES.length;
     
-    private static final KeyTransformation replaceTransformation = new KeyTransformation() {
-        
-        public void transform(Trans trans, int index) {
-            byte[] bytes = Keys.toBytes(trans.kvs[index].getKey());
-            byte[] timeBytes = Keys.toBytes(transTimeToString(trans.tt));
-            assert timeBytes.length == REPLACE_ME_LENGTH;
-            boolean found = false;
-            
-            // Every occurrence is replaced, from the end of the key (bergdb 015-64; until
-            // 015-64 only the last). The time's digits cannot form a new occurrence.
-            if (bytes.length >= REPLACE_ME_BYTES.length) {
+    private static final KeyTransformation replaceTransformation = entryTransformation(0);
+    
+    /**
+     * A key transformation that replaces every "${transactionTime}" in the key's bytes from
+     * 'from' to its end, from the end of the key (bergdb 015-64; until 015-64 only the last),
+     * with the transaction's time. The time's digits cannot form a new occurrence. For an
+     * index entry 'from' is where its K starts, so that only the value's name is replaced, not
+     * an indexed value that holds the text (bergdb 020-10, section 5.3, N11: until 2026-11-09
+     * every occurrence in the entry's key was).
+     */
+    static KeyTransformation entryTransformation(final int from) {
+        return new KeyTransformation() {
+            public void transform(Trans trans, int index) {
+                byte[] bytes = Keys.toBytes(trans.kvs[index].getKey());
+                byte[] timeBytes = Keys.toBytes(transTimeToString(trans.tt));
+                assert timeBytes.length == REPLACE_ME_LENGTH;
+                boolean found = false;
+                
                 int startIndex = bytes.length - REPLACE_ME_LENGTH;
-                while (startIndex >= 0) {
+                while (startIndex >= from) {
                     boolean match = true;
                     for (int i = 0; i < REPLACE_ME_LENGTH; i++) {
                         if (bytes[startIndex + i] != REPLACE_ME_BYTES[i]) {
@@ -577,81 +540,23 @@ public class RwEnvironmentImp implements RwEnvironment {
                         startIndex--;
                     }
                 }
+                
+                if (!found) {
+                    return;
+                }
+                
+                long[] newKey = Keys.toSegments(bytes);
+                trans.kvs[index].setKey(newKey);
+                trans.writeKeyHashes[index] = Keys.hash(newKey);
             }
-            
-            if (!found) {
-                return;
-            }
-            
-            long[] newKey = Keys.toSegments(bytes);
-            trans.kvs[index].setKey(newKey);
-            trans.writeKeyHashes[index] = Keys.hash(newKey);
-        }
-    };
+        };
+    }
     
     private static final String transTimeToString(long transTime) {
         assert transTime >= Klong.MIN_TIME && transTime <= Klong.MAX_TIME;
         return String.format(Locale.US, "%018d", transTime);
     }
     
-    /**
-     * The core code for creating one or more index entries in the database for a 
-     * given DbObject and a given Index.
-     * 
-     * @param dbo  The object to index.
-     * @param keyname  Database key name of the object.
-     * @param index  The index.
-     * @param dirId  The dirId of the directory where the object is located.
-     * @param setter  Used for output.
-     * @param useKeyReplace  True to use key replace.
-     */
-    public static void setIndexEntry(DbObject dbo, String keyname, IndexManager.Index index,
-            int dirId, RwEnvironmentImp.IndexSetter setter, boolean useKeyReplace) {
-        assert index != null : "index == null";
-        assert dirId < 127;
-        
-        KeyTransformation kt = useKeyReplace ? getKeyTransformation(keyname) : null;
-        byte[] firstPart = IndexManager.getIndexDbDirAsBytes(index.getName());
-        byte[] keynameBytes = Keys.toBytes(keyname);
-        
-        byte[] lastPart = new byte[1 + 1 + keynameBytes.length];
-        lastPart[0] = 0;
-        lastPart[1] = (byte) (dirId + 1);
-        System.arraycopy(keynameBytes, 0, lastPart, 2, keynameBytes.length);
-        
-        // We have first part (dir) and last part (dirId + keyname).
-        // Lets iterate field combinations and add one entry for each combination for which all
-        // fields exist in 'to'.
-        
-        IndexEntryBuilder b = new IndexEntryBuilder();
-        index.function.createIndexEntries(dbo, b);
-        byte[][] sortByteEntries = b.done();
-        
-        for (int i = 0; i < sortByteEntries.length; i++) {
-            byte[] middlePart = sortByteEntries[i];            
-            byte[] indexKeyBytes = concat(firstPart, middlePart, lastPart);
-            setter.setIndexKey(indexKeyBytes, kt);
-        }
-    }
-    
-    private static byte[] concat(byte[] arr1, byte[] arr2, byte[] arr3) {
-        assert arr1 != null;
-        assert arr2 != null;
-        assert arr3 != null;
-        
-        int totalSize = arr1.length + arr2.length + arr3.length;
-        byte[] result = new byte[totalSize];
-        
-        int offset = 0;
-        System.arraycopy(arr1, 0, result, offset, arr1.length);
-        offset += arr1.length;
-        System.arraycopy(arr2, 0, result, offset, arr2.length);
-        offset += arr2.length;
-        System.arraycopy(arr3, 0, result, offset, arr3.length);
-        
-        return result;
-    }
-
     /**
      * A put or a delete at an object key: the stored value, or null for a delete; for an
      * object put, its DbObject too (bergdb 020-10, section 5.1).
@@ -661,7 +566,7 @@ public class RwEnvironmentImp implements RwEnvironment {
         String name;             // short object name
         DbObject dbo;            // The object of an object put, else null
         byte[] value;            // The value to store, null for a delete
-        IndexManager.IndexForDir[] indexes;
+        IndexDefinition[] indexes;
         KeyTransformation kt;    // If non-null, the key transformation to use.
         
         /**
@@ -699,9 +604,6 @@ public class RwEnvironmentImp implements RwEnvironment {
         }
     }
 
-    public static interface IndexSetter {
-        public void setIndexKey(byte[] indexKey, KeyTransformation kt);
-    }
     
     /**
      * Internal class that bounds a key transformation with a database key.

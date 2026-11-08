@@ -1,22 +1,36 @@
 package bergdb.pub.util;
 
 /**
- * Job status, implementations must be immutable.
- * 
+ * The status of an index's build at one moment (bergdb 020-10, section 3.2): immutable.
+ *
  * @see Job
  * @author Frans Lundberg
  */
 public interface JobStatus {
     
-    /**
-     * Returns the progress value. -1 means "unknown progress", 
-     * a value between 0 and 99 roughly corresponds to percentage completed, and
-     * 100 means "finished"
-     */
-    public int progress();
+    /** The state of a build. */
+    public enum State {
+        /** The build runs, or waits for the next start of the database. */
+        BUILDING,
+        /** The index is active: built, and kept by every write. */
+        ACTIVE,
+        /**
+         * The build met an exception that is neither a stop of the database nor a refusal, or
+         * the index was deleted while it was building. The failure is kept in this process
+         * only: the next start takes the build again. The database goes on.
+         */
+        FAILED
+    }
     
-    /**
-     * A human-readable string in English describing the status of the Job.
-     */
+    /** The state. */
+    public State state();
+    
+    /** The values of the directory the build has read, in this process. */
+    public long count();
+    
+    /** If FAILED: why, in English, with the cause's class and message; else null. */
+    public String reason();
+    
+    /** One line in English made from the state, the count and the reason. */
     public String note();
 }

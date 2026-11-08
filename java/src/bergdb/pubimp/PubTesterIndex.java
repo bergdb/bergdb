@@ -2,6 +2,8 @@ package bergdb.pubimp;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import bergdb.common.EventToWaitFor;
 import bergdb.common.Util;
 import bergdb.core.Db;
@@ -14,6 +16,7 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.*;
 import bergdb.pub.util.Job;
+import bergdb.pub.util.JobStatus;
 import bergdb.stream.MemoryStream;
 
 /**
@@ -114,8 +117,8 @@ public class PubTesterIndex {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
         
-        db.indexBuilder("payments-from").type("string").dir("/payments/").field("from")
-            .createFast();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from")
+            .start().join();
         
         Payment p1 = new Payment("1001", "1002", 20);
         
@@ -139,8 +142,8 @@ public class PubTesterIndex {
     public static void test1() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from")
-            .createFast();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from")
+            .start().join();
         
         c.w().put("/payments/2", new Payment("10", "pelle", 46))
              .put("/payments/1", new Payment("20", "jöns", 90))
@@ -161,8 +164,8 @@ public class PubTesterIndex {
     public static void test2() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from")
-            .createFast();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from")
+            .start().join();
         
         final Payment p1 = new Payment("1001", "1002", 20);
         final Payment p2 = new Payment("1002", "1009", 30);
@@ -197,8 +200,8 @@ public class PubTesterIndex {
     public static void testNonObjects1() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").createFast();
-        db.indexBuilder("payments-to").type("string/unicode").dir("/payments/").field("to").createFast();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from").start().join();
+        db.indexBuilder("payments-to").dir("/payments/").type("string").field("to").start().join();
         
         Payment p1 = new Payment("1001", "1002", 20);
         Payment p2 = new Payment("1002", "1009", 30);
@@ -249,7 +252,7 @@ public class PubTesterIndex {
 
         // Create index
         
-        database.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from")
+        database.indexBuilder("payments-from").dir("/payments/").type("string").field("from")
             .start().join();
         
         Iterable<Payment> payments = c.useIndex("payments-from", Payment.class).objects();
@@ -268,7 +271,7 @@ public class PubTesterIndex {
         
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").createFast();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from").start().join();
         
         Payment p10 = new Payment("1010", "1002", 20);
         Payment p20 = new Payment("1020", "1009", 30);
@@ -302,8 +305,8 @@ public class PubTesterIndex {
         
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from")
-            .createFast();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from")
+            .start().join();
         
         Payment p1 = new Payment("1001", "1002", 20);
         Payment p2 = new Payment("1002", "1009", 30);
@@ -329,8 +332,8 @@ public class PubTesterIndex {
         
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        db.indexBuilder("i1").type("double").dir("/payments/").field("value")
-            .createFast();
+        db.indexBuilder("i1").dir("/payments/").type("double").field("value")
+            .start().join();
         
         MyDouble p1 = new MyDouble(20);
         MyDouble p2 = new MyDouble(30);
@@ -356,8 +359,8 @@ public class PubTesterIndex {
         
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from")
-            .createFast();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from")
+            .start().join();
         
         Payment p1 = new Payment("1001", "1002", 20);
         Payment p2 = new Payment("1002", "1009", 30);
@@ -385,8 +388,8 @@ public class PubTesterIndex {
         
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from")
-            .createFast();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from")
+            .start().join();
         
         Iterator<Payment> iter = c.useIndex("payments-from", Payment.class).backward()
                 .objects().iterator();
@@ -400,8 +403,8 @@ public class PubTesterIndex {
         
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from")
-            .createFast();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from")
+            .start().join();
         
         Payment p1 = new Payment("1001", "1002", 20);
         Payment p2 = new Payment("1002", "1009", 30);
@@ -430,7 +433,7 @@ public class PubTesterIndex {
         Database db = Factory.database().memory().clock(clock).start();
         Connection c = db.newConnection();
         
-        db.indexBuilder("payments-from").dir("/payments/").type("string/unicode").field("from").createFast();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from").start().join();
         
         clock.setTime(Time.units(200));
         
@@ -475,7 +478,7 @@ public class PubTesterIndex {
         Database db = Factory.database().memory().clock(clock).start();
         Connection c = db.newConnection();
         
-        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").createFast();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from").start().join();
         
         clock.setTime(Time.units(200));
         
@@ -507,59 +510,7 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @Nano
-    public static void testIterMultiField1() {
-        // A multi-field index.
-        
-        Database db = Factory.database().memory().start();
-        Connection c = db.newConnection();
-        db.indexBuilder("payments-to-from").type("string/unicode").dir("/payments/")
-            .field("to").field("from").start().join();
-        
-        Payment p1 = new Payment("1001", "1002", 20);
-        Payment p2 = new Payment("1002", "1009", 30);
-        Payment p3 = new Payment("1001", "1009", 40);
-        c.w().put("/payments/1", p1).put("/payments/2", p2).put("/payments/3", p3).execute();
-        
-        Iterable<Payment> payments = c.useIndex("payments-to-from", Payment.class).objects();
-        long expected[] = new long[] {20, 40, 20, 30, 30, 40};
-        Iterator<Payment> iter = payments.iterator();
-        for (int i = 0; i < expected.length; i++) {
-            Assert.assertTrue(iter.hasNext());
-            Payment p = iter.next();
-            Assert.assertEquals(expected[i], p.amount);
-        }
-        
-        Assert.assertFalse(iter.hasNext());
-        db.stop();
-    }
     
-    @Nano
-    public static void testIterMultiField2() {
-        // A multi-field index.
-        
-        Database db = Factory.database().memory().start();
-        Connection c = db.newConnection();
-        db.indexBuilder("payments-to-from").type("string/unicode").dir("/payments/")
-                .field("to").field("from").start().join();
-        
-        Payment p1 = new Payment("1001", "1002", 20);
-        Payment p2 = new Payment("1002", "1009", 30);
-        Payment p3 = new Payment("1001", "1009", 40);
-        c.w().put("/payments/1", p1).put("/payments/2", p2).put("/payments/3", p3).execute();
-        
-        Iterable<Payment> payments = c.useIndex("payments-to-from", Payment.class).eq("1002").objects();
-        long expected[] = new long[] {20, 30};
-        Iterator<Payment> iter = payments.iterator();
-        for (int i = 0; i < expected.length; i++) {
-            Assert.assertTrue(iter.hasNext());
-            Payment p = iter.next();
-            Assert.assertEquals(expected[i], p.amount);
-        }
-        
-        Assert.assertFalse(iter.hasNext());
-        db.stop();
-    }
     
     @Nano
     public static void testNegLongs1() {
@@ -567,7 +518,7 @@ public class PubTesterIndex {
         
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        db.indexBuilder("payments-amount").type("long").dir("/payments/").field("amount").start().join();
+        db.indexBuilder("payments-amount").dir("/payments/").type("long").field("amount").start().join();
         
         c.w().put("/payments/1", new Payment("1", "2", -100))
             .put("/payments/2", new Payment("1", "3", 0))
@@ -593,7 +544,7 @@ public class PubTesterIndex {
         
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        db.indexBuilder("payments-amount").type("long").dir("/payments/").field("amount").start().join();
+        db.indexBuilder("payments-amount").dir("/payments/").type("long").field("amount").start().join();
         
         c.w().put("/payments/1", new Payment("1", "1", -100))
             .put("/payments/2", new Payment("1", "2", 0))
@@ -632,7 +583,7 @@ public class PubTesterIndex {
     public static void testDoubles1() {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        db.indexBuilder("value").type("double").dir("/d/").field("value").start().join();
+        db.indexBuilder("value").dir("/d/").type("double").field("value").start().join();
         
         c.w().put("/d/1", new MyDouble(1.23))
             .put("/d/2", new MyDouble(3e10))
@@ -658,7 +609,7 @@ public class PubTesterIndex {
         
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        db.indexBuilder("value").type("double").dir("/d/").field("value").start().join();
+        db.indexBuilder("value").dir("/d/").type("double").field("value").start().join();
         
         double[] values = new double[] {
                 Double.MAX_VALUE, 100.0, 1.2, 1.2, 0.0, -10, -300.0, -9e100 };
@@ -689,7 +640,7 @@ public class PubTesterIndex {
         
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        db.indexBuilder("value").type("double").dir("/d/").field("value").start().join();
+        db.indexBuilder("value").dir("/d/").type("double").field("value").start().join();
         
         double[] values = new double[] {
                 Double.POSITIVE_INFINITY, 
@@ -732,7 +683,7 @@ public class PubTesterIndex {
         String[] expected = new String[] {"5", "1", "2", "3", "4"};
         
         Database d = Factory.database().memory().start();
-        d.indexBuilder("i1").dir("/d/").type("double").field("amount").createFast();
+        d.indexBuilder("i1").dir("/d/").type("double").field("amount").start().join();
         
         Connection c = d.connection();
         WBuilder b = c.w();
@@ -776,7 +727,7 @@ public class PubTesterIndex {
         String[] expected = new String[] {"5", "1", "2", "3", "4"};
         
         Database d = Factory.database().memory().start();
-        d.indexBuilder("i1").dir("/d/").type("long").field("amount").createFast();
+        d.indexBuilder("i1").dir("/d/").type("long").field("amount").start().join();
         
         Connection c = d.connection();
         WBuilder b = c.w();
@@ -823,7 +774,7 @@ public class PubTesterIndex {
         Database db = builder.start();
         Connection c = db.newConnection();
         
-        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").createFast();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from").start().join();
         
         final Payment p1 = new Payment("1001", "1002", 20);
         final Payment p2 = new Payment("1002", "1009", 30);
@@ -892,7 +843,7 @@ public class PubTesterIndex {
         Database db = builder.start();
         Connection c = db.newConnection();
         
-        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").createFast();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from").start().join();
         
         Payment p1 = new Payment("1010", "2", 10);
         Payment p2 = new Payment("1000", "2", 20);
@@ -950,7 +901,7 @@ public class PubTesterIndex {
         Database db = builder.start();
         Connection c = db.newConnection();
         
-        db.indexBuilder("name-last").type("string/unicode").dir("/d/").nestedField("name.last").createFast();
+        db.indexBuilder("name-last").dir("/d/").type("string").nestedField("name.last").start().join();
         
         c.w().put("/d/1", nest("Fredrik", "Andersson")).put("/d/2", nest("John", "Wickersson"))
             .put("/d/3", nest("Amy", "Dimeon")).execute();
@@ -985,7 +936,7 @@ public class PubTesterIndex {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
         
-        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").createFast();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from").start().join();
         
         final Payment p1 = new Payment("1001", "1002", 20);
         final Payment p2 = new Payment("1002", "1009", 30);
@@ -1012,7 +963,7 @@ public class PubTesterIndex {
     private static int getIndexKvCount(Database db) {
         Db db2 = ((DatabaseImp) db).getDb();
         GetMany g = db2.newGetMany();
-        final String prefix = DbConstants.INTERNAL_PREFIX + "di/";
+        final String prefix = DbConstants.INTERNAL_PREFIX + "dient/";   // bergdb 020-10, 4.1
         g.startKey = Keys.toSegments(prefix);
         g.stopCondition = new GetMany.StopCondition() {
             public int handleKvt(Kvt kvt) {
@@ -1037,7 +988,7 @@ public class PubTesterIndex {
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
         
-        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").start().join();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from").start().join();
         
         final Payment p1 = new Payment("1001", "1002", 20);
         final Payment p2 = new Payment("1002", "1009", 30);
@@ -1073,7 +1024,7 @@ public class PubTesterIndex {
         final Payment p3 = new Payment("1000", "1009", 40);
         c.w().put("/payments/1", p1).put("/payments/2", p2).put("/payments/3", p3).execute();
         
-        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").start().join();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from").start().join();
         
         Iterator<Payment> iter = c.useIndex("payments-from", Payment.class).objects().iterator();
         
@@ -1099,8 +1050,8 @@ public class PubTesterIndex {
         final Payment p3 = new Payment("1000", "2004", 40);
         c.w().put("/payments/1", p1).put("/payments/2", p2).put("/payments/3", p3).execute();
         
-        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").start().join();
-        db.indexBuilder("payments-to").type("string/unicode").dir("/payments/").field("to").start().join();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from").start().join();
+        db.indexBuilder("payments-to").dir("/payments/").type("string").field("to").start().join();
         
         Iterable<Payment> iterable = c.useIndex("payments-from", Payment.class).objects();
         Iterator<Payment> iter = iterable.iterator();
@@ -1136,8 +1087,8 @@ public class PubTesterIndex {
         Payment p3 = new Payment("1000", "2040", 40);
         c.w().put("/payments/1", p1).put("/payments/2", p2).put("/payments/3", p3).execute();
         
-        db.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").start().join();
-        db.indexBuilder("payments-to").type("string/unicode").dir("/payments/").field("to").start().join();
+        db.indexBuilder("payments-from").dir("/payments/").type("string").field("from").start().join();
+        db.indexBuilder("payments-to").dir("/payments/").type("string").field("to").start().join();
         
         Payment p4 = new Payment("1005", "2019", 50);
         c.w().put("/payments/4", p4).execute();
@@ -1175,13 +1126,11 @@ public class PubTesterIndex {
             c.w().put("/payments/" + id, p).execute();
         }
         
-        IndexBuilderImp iCreator = (IndexBuilderImp) db.indexBuilder("payments-amount").type("long")
-                .dir("/payments/").field("amount");
-        iCreator.bunchSize(10);
-        
-        IndexBuilderImp.IndexCreateState state = iCreator.createInit();
-        iCreator.createStep(state);    // Creates 10 index entries
-        Assert.assertFalse(state.isDone);
+        // The build's steps of 10 values; held before its second step.
+        Hold hold = new Hold(db, 10, 2);
+        Job job = db.indexBuilder("payments-amount").dir("/payments/").type("long")
+                .field("amount").start();
+        hold.awaitReached();        // The first step made 10 index entries
         
         // Adds one payment in section handled by index creator.
         Payment p = new Payment("1000", "2000", 15);
@@ -1191,9 +1140,8 @@ public class PubTesterIndex {
         p = new Payment("1000", "2000", 125);
         c.w().put("/payments/1125", p).execute();
         
-        while (!state.isDone) {
-            iCreator.createStep(state);
-        }
+        hold.release();
+        Assert.assertEquals(JobStatus.State.ACTIVE, job.join().state());
         
         Iterable<Payment> iterable = c.useIndex("payments-amount", Payment.class).objects();
         Iterator<Payment> iter = iterable.iterator();
@@ -1230,13 +1178,11 @@ public class PubTesterIndex {
             c.w().put("/payments/" + id, p).execute();
         }
         
-        IndexBuilderImp iCreator = (IndexBuilderImp) db.indexBuilder("payments-amount").type("long")
-                .dir("/payments/").field("amount");
-        iCreator.bunchSize(10);
-        
-        IndexBuilderImp.IndexCreateState state = iCreator.createInit();
-        iCreator.createStep(state);    // Creates 10 index entries
-        Assert.assertFalse(state.isDone);
+        // The build's steps of 10 values; held before its second step.
+        Hold hold = new Hold(db, 10, 2);
+        db.indexBuilder("payments-amount").dir("/payments/").type("long").field("amount")
+                .start();
+        hold.awaitReached();        // The first step made 10 index entries
         
         Exception ex = null;
         try {
@@ -1250,10 +1196,9 @@ public class PubTesterIndex {
         
         db.sync();
         db.stop();
+        hold.release();             // Its transaction then finds the database stopped
         db = null;
         c = null;
-        state = null;
-        iCreator = null;
         stream = stream.copy();
         
         builder = Factory.database();
@@ -1269,25 +1214,9 @@ public class PubTesterIndex {
         p = new Payment("1000", "2000", 125);
         c.w().put("/payments/1125", p).execute();
         
-        IndexManager m = ((DatabaseImp) db).getIndexManager();
-        IndexManager.Index index = m.getIndex("payments-amount");
-        Assert.assertTrue("m.getIndex(\"payments-amount\") != null", index != null);
-        
-        // Wait until creation thread has completed.
-        
-        Thread.yield();
-        while (true) {
-            int s = index.getState();
-            if (s != IndexManager.Index.STATE_ACTIVE) {
-                Thread.sleep(50);
-            } else {
-                break;
-            }
-        }
-        
-        // Assert
-        
-        Assert.assertEquals(IndexManager.Index.STATE_ACTIVE, index.getState());
+        // The start took the build again, from the first key of the directory.
+        Assert.assertEquals(JobStatus.State.ACTIVE, db.indexJob("payments-amount").join()
+                .state());
         
         Iterable<Payment> iterable = c.useIndex("payments-amount", Payment.class).objects();
         Iterator<Payment> iter = iterable.iterator();
@@ -1317,13 +1246,10 @@ public class PubTesterIndex {
         }
         
         // Act
-        IndexBuilderImp iCreator = (IndexBuilderImp) db.indexBuilder("p-amount").type("long")
-                .dir("/p/").field("amount");
-        iCreator.bunchSize(10);
-        
-        IndexBuilderImp.IndexCreateState state = iCreator.createInit();
-        iCreator.createStep(state);    // Creates 10 index entries
-        Assert.assertFalse(state.isDone);
+        // The build's steps of 10 values; held before its second step.
+        Hold hold = new Hold(db, 10, 2);
+        Job job = db.indexBuilder("p-amount").dir("/p/").type("long").field("amount").start();
+        hold.awaitReached();        // The first step made 10 index entries
         
         // Adds one payment in section handled by index creator.
         Payment p = new Payment("1000", "2000", 15);
@@ -1347,9 +1273,8 @@ public class PubTesterIndex {
         // Deletes one payment in section not yet handled by index creator.
         c.w().delete("/p/1160").execute();
         
-        while (!state.isDone) {
-            iCreator.createStep(state);
-        }
+        hold.release();
+        Assert.assertEquals(JobStatus.State.ACTIVE, job.join().state());
         
         // Assert
         long[] expected = new long[] {0, 10, 15, 20, 30, 41, 50, 70, 80, 90, 
@@ -1377,7 +1302,7 @@ public class PubTesterIndex {
         Connection c = db.newConnection();
         WBuilder b = c.w();
         
-        db.indexBuilder("p-amount").type("long").dir("/p/").field("amount").createFast();
+        db.indexBuilder("p-amount").dir("/p/").type("long").field("amount").start().join();
         
         for (int i = 0; i < n; i++) {
             String id = "" + (1000 + (i * 10));
@@ -1407,7 +1332,7 @@ public class PubTesterIndex {
         // Arrange
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
-        database.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").createFast();
+        database.indexBuilder("payments-from").dir("/payments/").type("string").field("from").start().join();
         
         final Payment p1 = new Payment("1001", "1002", 20);
         final Payment p2 = new Payment("1000", "1009", 40);
@@ -1418,7 +1343,8 @@ public class PubTesterIndex {
         
         // Act
         
-        database.deleteIndex("payments-from").join();
+        database.deleteIndex("payments-from");
+        PubTesterIndexRaces.awaitCleanups(((DatabaseImp) database).getIndexManager());
         
         // Assert
         
@@ -1430,7 +1356,7 @@ public class PubTesterIndex {
         }
         Assert.assertTrue("Got NoSuchIndexException?", ex != null);
         
-        byte[] indexDbDir = IndexManager.getIndexDbDirAsBytes("payments-from");
+        byte[] indexDbDir = Keys.toBytes("/#i/dient/dpayments-from/");  // every generation
         Db db = ((DatabaseImp) database).getDb();
         
         final GetMany g = db.newGetMany();
@@ -1458,7 +1384,7 @@ public class PubTesterIndex {
         // Arrange
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
-        database.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").createFast();
+        database.indexBuilder("payments-from").dir("/payments/").type("string").field("from").start().join();
         
         final Payment p1 = new Payment("1001", "1002", 20);
         final Payment p2 = new Payment("1000", "1009", 40);
@@ -1469,8 +1395,8 @@ public class PubTesterIndex {
         
         // Act
         
-        Job job = database.deleteIndex("payments-from");
-        job.join();
+        database.deleteIndex("payments-from");
+        PubTesterIndexRaces.awaitCleanups(((DatabaseImp) database).getIndexManager());
         
         // Assert
         
@@ -1482,7 +1408,7 @@ public class PubTesterIndex {
         }
         Assert.assertTrue("Got NoSuchIndexException?", ex != null);
         
-        byte[] indexDbDir = IndexManager.getIndexDbDirAsBytes("payments-from");
+        byte[] indexDbDir = Keys.toBytes("/#i/dient/dpayments-from/");  // every generation
         Db db = ((DatabaseImp) database).getDb();
         final GetMany g = db.newGetMany();
         
@@ -1516,7 +1442,7 @@ public class PubTesterIndex {
         
         c.w().put("/payments/1", p1).put("/payments/2", p2).execute();
         
-        Job job = database.indexBuilder("payments-from").type("string/unicode").dir("/payments/")
+        Job job = database.indexBuilder("payments-from").dir("/payments/").type("string")
                 .field("from").start();
         c.w().put("/payments/3", p3).execute();
         job.join();
@@ -1549,14 +1475,13 @@ public class PubTesterIndex {
         
         c.w().put("/payments/1", p1).put("/payments/2", p2).execute();
         
-        EventToWaitFor waitEvent = new EventToWaitFor();
-        IndexBuilderImp creator = (IndexBuilderImp) database.indexBuilder("payments-from");
-        creator.createInThreadWaitEvent(waitEvent);
-        
-        Job job = creator.type("string/unicode").dir("/payments/")
+        // The build is held before its first step.
+        Hold hold = new Hold(database, 0, 1);
+        Job job = database.indexBuilder("payments-from").dir("/payments/").type("string")
                 .field("from").start();
+        hold.awaitReached();
         c.w().put("/payments/3", p3).execute();
-        waitEvent.happened();
+        hold.release();
         job.join();
         
         // Assert
@@ -1581,7 +1506,7 @@ public class PubTesterIndex {
         Connection c = database.newConnection();
         String key = "/payments/${transactionTime}";
         
-        database.indexBuilder("payments-from").type("string/unicode").dir("/payments/").field("from").start().join();
+        database.indexBuilder("payments-from").dir("/payments/").type("string").field("from").start().join();
         c.setEnableKeyReplace(true);
         clock.setTime(Time.units(100));
         c.w().put(key, new Payment("101", "105", 5)).execute();
@@ -1603,7 +1528,7 @@ public class PubTesterIndex {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
         
-        database.indexBuilder("payments-from").type("string/unicode").dir("/payments/")
+        database.indexBuilder("payments-from").dir("/payments/").type("string")
             .field("from").start().join();
         
         c.w().put("/payments/1", new Payment("101", "105", 1)).execute();
@@ -1627,7 +1552,7 @@ public class PubTesterIndex {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
         
-        database.indexBuilder("pay-from").type("string/unicode").dir("/payments/")
+        database.indexBuilder("pay-from").dir("/payments/").type("string")
             .field("from").start().join();
         
         c.w().put("/payments/1", new Payment("101", "105", 1)).execute();
@@ -1649,7 +1574,7 @@ public class PubTesterIndex {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
         
-        database.indexBuilder("payments-from").type("string/unicode").dir("/payments/")
+        database.indexBuilder("payments-from").dir("/payments/").type("string")
             .field("from").start().join();
         
         c.w().put("/payments/1", new Payment("101", "105", 1)).execute();
@@ -1673,7 +1598,7 @@ public class PubTesterIndex {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
         
-        database.indexBuilder("payments-from").type("string/unicode").dir("/payments/")
+        database.indexBuilder("payments-from").dir("/payments/").type("string")
             .field("from").start().join();
         
         c.w().put("/payments/1", new Payment("101", "105", 1)).execute();
@@ -1695,7 +1620,7 @@ public class PubTesterIndex {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
         
-        database.indexBuilder("i0").type("long").dir("/payments/")
+        database.indexBuilder("i0").dir("/payments/").type("long")
             .field("amount").start().join();
         
         c.w().put("/payments/20", new Payment("101", "105", 20)).execute();
@@ -1718,7 +1643,7 @@ public class PubTesterIndex {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
         
-        database.indexBuilder("aaa").type("long").dir("/payments/")
+        database.indexBuilder("aaa").dir("/payments/").type("long")
             .field("amount").start().join();
         
         c.w().put("/payments/20", new Payment("101", "105", 20)).execute();
@@ -1740,7 +1665,7 @@ public class PubTesterIndex {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
         
-        database.indexBuilder("bb").type("long").dir("/payments/")
+        database.indexBuilder("bb").dir("/payments/").type("long")
             .field("amount").start().join();
         
         c.w().put("/payments/20", new Payment("101", "105", 20)).execute();
@@ -1761,7 +1686,7 @@ public class PubTesterIndex {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
         
-        database.indexBuilder("cc").type("long").dir("/p/")
+        database.indexBuilder("cc").dir("/p/").type("long")
             .field("amount").start().join();
         
         c.w().put("/p/a", new Payment("", "", 2)).execute();
@@ -1782,7 +1707,7 @@ public class PubTesterIndex {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
         
-        database.indexBuilder("i11").type("long").dir("/payments/")
+        database.indexBuilder("i11").dir("/payments/").type("long")
             .field("amount").start().join();
         
         c.w().put("/payments/20", new Payment("101", "105", -20)).execute();
@@ -1813,7 +1738,7 @@ public class PubTesterIndex {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
         
-        database.indexBuilder("i0").type("long").dir("/payments/")
+        database.indexBuilder("i0").dir("/payments/").type("long")
             .field("amount").start().join();
         
         c.w().put("/payments/10", new Payment("101", "105", 10)).execute();
@@ -1842,7 +1767,7 @@ public class PubTesterIndex {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
         
-        database.indexBuilder("i0").type("long").dir("/payments/")
+        database.indexBuilder("i0").dir("/payments/").type("long")
             .field("amount").start().join();
         
         c.w().put("/payments/10", new Payment("101", "105", 10)).execute();
@@ -1871,7 +1796,7 @@ public class PubTesterIndex {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
         
-        database.indexBuilder("i0").type("long").dir("/payments/")
+        database.indexBuilder("i0").dir("/payments/").type("long")
             .field("amount").start().join();
         
         WBuilder b = c.w();
@@ -1896,7 +1821,7 @@ public class PubTesterIndex {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
         
-        database.indexBuilder("i0").type("double").dir("/payments/")
+        database.indexBuilder("i0").dir("/payments/").type("double")
             .field("amount").start().join();
         
         c.w().put("/payments/10", new DPayment("101", "105", 10.0)).execute();
@@ -1925,7 +1850,7 @@ public class PubTesterIndex {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
         
-        database.indexBuilder("i0").type("double").dir("/payments/")
+        database.indexBuilder("i0").dir("/payments/").type("double")
             .field("amount").start().join();
         
         c.w().put("/payments/10", new DPayment("101", "105", 10.0)).execute();
@@ -1954,7 +1879,7 @@ public class PubTesterIndex {
         
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        db.indexBuilder("strings-s").type("string/unicode").dir("/strings/").field("s").start().join();
+        db.indexBuilder("strings-s").dir("/strings/").type("string").field("s").start().join();
         
         WBuilder b = c.w();
         for (int i = 0; i < strings.length; i++) {
@@ -1983,7 +1908,7 @@ public class PubTesterIndex {
         
         Database db = Factory.database().memory().start();
         Connection c = db.newConnection();
-        db.indexBuilder("strings-s").type("string/unicode").dir("/strings/").field("s").start().join();
+        db.indexBuilder("strings-s").dir("/strings/").type("string").field("s").start().join();
         
         WBuilder b = c.w();
         for (int i = 0; i < strings.length; i++) {
@@ -2003,107 +1928,8 @@ public class PubTesterIndex {
         db.stop();
     }
     
-    @Nano
-    public static void collationSv() {
-        if (!IcuInfo.hasIcu()) {
-            return;
-        }
-        
-        String[] strings = new String[] {"a", "å", "ö", "Örjan", "", "Gästar", "Gast", "GB"};
-        String[] expected = new String[]{"", "a", "Gast", "GB", "Gästar", "å", "ö", "Örjan"};
-        
-        Database db = Factory.database().memory().start();
-        Connection c = db.newConnection();
-        db.indexBuilder("strings-s").type("string/sv").dir("/strings/").field("s").start().join();
-        
-        WBuilder b = c.w();
-        for (int i = 0; i < strings.length; i++) {
-            b.put("/strings/" + i, new MyString(strings[i]));
-        }
-        b.execute();
-        
-        Iterable<MyString> iterable = c.useIndex("strings-s", MyString.class).objects();
-        Iterator<MyString> iter = iterable.iterator();
-        
-        for (int i = 0; i < expected.length; i++) {
-            Assert.assertTrue(iter.hasNext());
-            MyString m = iter.next();
-            Assert.assertEquals(expected[i], m.s);
-        }
-        db.stop();
-    }
     
-    @Nano
-    public static void collationSvL3() {
-        if (!IcuInfo.hasIcu()) {
-            return;
-        }
-        
-        // L3 differentiates between "abba" and "Abba". Lower-case sorted first.
-        // This test compares sort of sv/L1 and sv/L3.
-        // We have a stable sort for L1 since object names increase like: 1.obj, 2.obj, ...
-        
-        String[] strings = new String[] {"Bert", "bert", "Abba", "ABBA", "abba"};
-        String[] expectedL1 = new String[]{"Abba", "ABBA", "abba", "Bert", "bert"};
-        String[] expectedL3 = new String[] {"abba", "Abba", "ABBA", "bert", "Bert"};
-        
-        Database db = Factory.database().memory().start();
-        Connection c = db.newConnection();
-        db.indexBuilder("strings-s-L1").type("string/sv/L1").dir("/strings/").field("s").start().join();
-        db.indexBuilder("strings-s-L3").type("string/sv/L3").dir("/strings/").field("s").start().join();
-        
-        WBuilder b = c.w();
-        for (int i = 0; i < strings.length; i++) {
-            b.put("/strings/" + i, new MyString(strings[i]));
-        }
-        b.execute();
-        
-        Iterator<MyString> iter = c.useIndex("strings-s-L3", MyString.class).objects().iterator();
-        for (int i = 0; i < expectedL3.length; i++) {
-            Assert.assertTrue(iter.hasNext());
-            MyString m = iter.next();
-            Assert.assertEquals(expectedL3[i], m.s);
-        }
-        
-        iter = c.useIndex("strings-s-L1", MyString.class).objects().iterator();
-        for (int i = 0; i < expectedL1.length; i++) {
-            Assert.assertTrue(iter.hasNext());
-            MyString m = iter.next();
-            Assert.assertEquals(expectedL1[i], m.s);
-        }
-        db.stop();
-    }
     
-    @Nano
-    public static void collationPl() {
-        if (!IcuInfo.hasIcu()) {
-            return;
-        }
-        
-        String[] strings = new String[] {"a", "Ż", "ź", "zebra", "sz", "środa", "bycie", "być"};
-        String[] expected = new String[]{"a", "bycie", "być", "sz", "środa", "zebra", "ź", "Ż"};
-        
-        Database db = Factory.database().memory().start();
-        Connection c = db.newConnection();
-        db.indexBuilder("strings-s").type("string/pl").dir("/strings/").field("s").start().join();
-        
-        WBuilder b = c.w();
-        for (int i = 0; i < strings.length; i++) {
-            b.put("/strings/" + i, new MyString(strings[i]));
-        }
-        b.execute();
-        
-        Iterable<MyString> iterable = c.useIndex("strings-s", MyString.class).objects();
-        Iterator<MyString> iter = iterable.iterator();
-        
-        for (int i = 0; i < expected.length; i++) {
-            Assert.assertTrue(iter.hasNext());
-            MyString m = iter.next();
-            Assert.assertEquals(expected[i], m.s);
-        }
-        
-        db.stop();
-    }
     
     /**
      * Regression test for bergdb 005-15: a long index value whose low byte is 0xff (255,
@@ -2114,7 +1940,7 @@ public class PubTesterIndex {
     public static void testStartKeyCarry() {
         Database database = Factory.database().memory().start();
         Connection c = database.newConnection();
-        database.indexBuilder("amount").type("long").dir("/payments/")
+        database.indexBuilder("amount").dir("/payments/").type("long")
             .field("amount").start().join();
         
         long[] values = {-300, -257, -256, -255, -2, -1, 0, 1, 254, 255, 256, 257, 300, 510, 511, 512};
@@ -2155,5 +1981,46 @@ public class PubTesterIndex {
     
     public static void main(String[] args) {
         //composite1();
+    }
+    
+    /**
+     * Holds the build of an index of the database before its step n (1 the first), in its
+     * action after its reads, until release(); its steps of 'values' values (0: the
+     * default). For the tests that took a build's steps one by one.
+     */
+    static final class Hold {
+        private final CountDownLatch reached = new CountDownLatch(1);
+        private final CountDownLatch gate = new CountDownLatch(1);
+        
+        Hold(Database database, int values, final int n) {
+            IndexManager m = ((DatabaseImp) database).getIndexManager();
+            m.testStepValues = values;
+            final int[] steps = new int[1];
+            m.testHook = p -> {
+                if (p.equals(IndexManager.BUILD_STEP) && ++steps[0] == n) {
+                    reached.countDown();
+                    await(gate);
+                }
+            };
+        }
+        
+        void awaitReached() {
+            await(reached);
+        }
+        
+        void release() {
+            gate.countDown();
+        }
+        
+        private static void await(CountDownLatch latch) {
+            try {
+                if (!latch.await(10, TimeUnit.SECONDS)) {
+                    throw new AssertionError("not reached in 10 s");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(e);
+            }
+        }
     }
 }

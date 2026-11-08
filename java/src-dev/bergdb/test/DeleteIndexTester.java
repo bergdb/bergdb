@@ -12,8 +12,6 @@ import bergdb.pub.Database;
 import bergdb.pub.Factory;
 import bergdb.pub.NoSuchIndexException;
 import bergdb.pub.Time;
-import bergdb.pub.util.Job;
-import bergdb.pub.util.JobStatus;
 import bergdb.pubimp.DatabaseImp;
 import bergdb.pubimp.PubKeys;
 
@@ -44,7 +42,7 @@ public class DeleteIndexTester {
     
     
     @Nano("f")
-    public static void deleteIndexWhileAddingMore(TestEnvironment coll) {
+    public static void deleteIndexWhileAddingMore(TestEnvironment coll) throws InterruptedException {
         int n = 100;
         Database database = Factory.database().memory().start();
         
@@ -65,10 +63,9 @@ public class DeleteIndexTester {
         
         Time time0 = database.currentTime();
         
-        Job job = database.deleteIndex("e-salary");
-        
-        JobStatus status = job.getStatus();
-        coll.out().println("deleteIndex job status = " + status.note());
+        // The deletion is one transaction; the entries are removed in the background by its
+        // cleanup (bergdb 020-10, section 6.2).
+        database.deleteIndex("e-salary");
         
         Time time1 = database.currentTime();
         
@@ -80,11 +77,24 @@ public class DeleteIndexTester {
             c.w().put(getEmployeeKey(i), new Employee(getEmployeeKey(i), i * 10 + 1)).execute();
         }
         
-        status = job.getStatus();
-        coll.out().println("deleteIndex job status = " + status.note());
-        status = job.join();
+        // The cleanup ends: its marker is gone.
+        long end = System.currentTimeMillis() + 10000;
+        while (true) {
+            GetMany m = db.newGetMany();
+            m.inclusive = false;
+            m.lookupTime = Long.MAX_VALUE;
+            m.startKey = Keys.toSegments(DbConstants.INTERNAL_PREFIX + "didel/");
+            m.stopCondition = new GetMany.PrefixN(m.startKey, 10);
+            db.getMany(m);
+            if (m.result.size() == 0) {
+                break;
+            }
+            if (System.currentTimeMillis() > end) {
+                throw new AssertionError("the cleanup did not end in 10 s");
+            }
+            Thread.sleep(5);
+        }
         database.sync();
-        coll.out().println("deleteIndex job status = " + status.note());
         
         Time time2 = database.currentTime();
         
@@ -108,7 +118,7 @@ public class DeleteIndexTester {
         // Internal check that there are index entries before deletion starts, but they
         // are gone when deletion is done.
         
-        String dir = DbConstants.INTERNAL_PREFIX + "di/de-salary/";  // Note the added d's.
+        String dir = DbConstants.INTERNAL_PREFIX + "dient/de-salary/";  // Note the added d's.
         Assert.assertEquals('d', PubKeys.DIR_PREFIX);
         
         GetMany g;

@@ -1,119 +1,126 @@
 package bergdb.pubimp;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import bergdb.common.Bug;
-import bergdb.common.StringUtil;
-import bergdb.common.Util;
 import bergdb.core.Db;
-import bergdb.core.DbConstants;
 import bergdb.core.InternalDataException;
+import bergdb.core.RerunException;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pub.DataFormatException;
 import bergdb.pub.Database;
 import bergdb.pub.IndexAlreadyExistsException;
-import bergdb.pub.Kv;
 import bergdb.pub.NoSuchIndexException;
-import bergdb.pub.util.BadFormatException;
+import bergdb.pub.util.DbException;
+import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.Job;
-import bergdb.pub.util.JobStatus;
-import bergdb.pubimp.IndexBuilderImp.IndexCreateState;
+import bergdb.pub.util.LookupTimeNotAvailableException;
+import bergdb.storage.StreamIoException;
 import bergdb.storage.VersioningStreamException;
 
 /**
- * <p>An object of this class manages secondary indexes.
- * A single IndexManager object is used for one database (DatabaseImp.indeXManager). 
- * It is used to add and delete indexes,
- * to add/delete index entries (IKP/i/[indexName]). The index information is stored in the database
- * and survives a database restart.
- * All index info from IKP/ii/ is read from database at startup time and kept in memory for
- * fast cached access. We expect not to have more than in the order of 10,000 indexes.<p>
- * 
- * <p><i>Composite indexes</i> are supported. A composite index consists of more than one ordered 
- * <i>composite parts</i>. Each part has a type and one or more field names.</p>
+ * The user indexes of a database: their definitions in memory, their creation, activation
+ * and deletion, the cleanup of a deleted index's entries, and what a start reads (bergdb
+ * 020-10, sections 4 to 6). One object per database (DatabaseImp).
+ *
+ * <p><b>The stored layout</b> (020-10, section 4; IndexKeys, IndexDefinition): a definition
+ * per name at /#i/didef/-NAME, a stored object of format 2; the entries of an index under
+ * bkey(/#i/dient/dNAME/) and its generation G, the creation's time, so that no index ever
+ * sees another's entries; the marker /#i/didel/dNAME/-G16 of a deleted generation until its
+ * cleanup ends. The definitions of format 1 (/#i/dii/) refuse a start.</p>
+ *
+ * <p><b>The lock rule</b> (020-10, section 5.2): a definition's change (a creation, an
+ * activation, a deletion) takes the lock, executes its one transaction, and only when that
+ * succeeded changes the maps; a refused transaction leaves memory as it was (015-23,
+ * S2-F27). A writer reads a directory's index set under the lock after its read time R is
+ * fixed (RwEnvironmentImp.indexEntries): if the change committed after R, the writer's hash of
+ * the directory's virtual key conflicts with the change's write of it (creations and
+ * deletions write it), and the writer runs again; if at or before R, the writer's set has it.
+ * An activation does not change the set and writes no virtual key.</p>
+ *
+ * @author Frans Lundberg
  */
 public class IndexManager {
-    //
-    // The info about indexes are assumed to fit into memory and be fast to read at startup.
-    // This information is fully cached in memory.
-    // A suppose 1000's of indexes are fine, 100*1000 too possibly. But probably not millions?
-    // Well, we need to do it in memory, we do not want a db lookup for method getIndexes.
-    // It should be really fast. Possibly, we could even have a Bloom filter to very quickly 
-    // determine that a directory has no index.
-    //
-    
-    /**
-     * Name of the primary index.
-     */
-    public static final String PRIMARY = Database.PRIMARY;
-    
-    /** 
-     * ikey for where to store index entries, constant database directory. 
-     */
-    private static final byte[] INDEX_DIR_BYTES = Keys.toBytes(DbConstants.INTERNAL_PREFIX + "di/");
 
-    private static final String INDEX_INFO_DIR = Util.identity(DbConstants.INTERNAL_PREFIX + "dii/");
-    
-    /** 
-     * bkey for where to store index info entries (Data.Index objects).
-     */
-    private static final byte[] INDEX_INFO_DIR_BYTES = Keys.toBytes(DbConstants.INTERNAL_PREFIX + "dii/");
-    
-    /** 
-     * ikey for a virtual key directory. 
-     * Just a prefix. Nothing actually stored here.
-     */
-    private static final String INDEX_VDIR = Util.identity(DbConstants.INTERNAL_PREFIX + "div/");
-    
+    /** The name of the primary scan's pseudo-index, until step I3 removes it (020-10, 3.2). */
+    public static final String PRIMARY = Database.PRIMARY;
+
+    /** The keys a cleanup step deletes at most (020-10, section 6.2). */
+    static final int CLEANUP_KEYS = 100;
+
+    /** The virtual keys' directory: only hashes, nothing stored (020-10, section 4.1). */
+    private static final String INDEX_VDIR = "/#i/div/";
+
     /**
-     * Map from database directory to array of active/creating indexes for the directory.
-     * Only indexes in STATE_ACTIVE or STATE_CREATING are included.
-     * Sync note: protected by 'lock'.
-     */
-    private DirToIndexesMap dirToActiveIndexes;
-    
-    /**
-     * Map from index name to Index object. 
-     * Sync note: protected by 'lock'.
-     */
-    private Map<String, Index> nameToIndex;
-    
-    /**
-     * Lock object used to synchronize index creation (index info KV), index deletion (index info
-     * KV) and dir-to-Index lookups. It protects the fields: dirToIndex and nameToIndex.
-     * Locking is also used to ensure that the in-memory maps dirToIndex and nameToIndex matches the 
-     * latest data in the database.
-     * Write access to internal db directory 'indexInfoDir' is only allowed through threads 
-     * holding 'lock'.
+     * Guards byName and byIdir, and orders the definitions' changes and the writers' reads
+     * of the index sets (020-10, section 5.2).
      */
     private final Object lock = new Object();
-    private final CollatorFactory collatorFactory;
-    
-    // ======== The test hooks (bergdb 020-10, section 9.2) ========
-    
+
+    /** The live indexes, building or active, by name. Guarded by 'lock'. */
+    private final Map<String, Live> byName = new HashMap<>();
+
+    /** The definitions of the live indexes by their directory's idir. Guarded by 'lock'. */
+    private final Map<String, IndexDefinition[]> byIdir = new HashMap<>();
+
+    private DatabaseImp database;
+    private Db db;
+
+    /** A live index in this process: its definition, its build's job; deleted once. */
+    static final class Live {
+        volatile IndexDefinition def;          // Changed by the activation, under 'lock'
+        volatile boolean deleted;              // Set by the deletion, under 'lock'
+        final IndexBuilderImp.BuildJob job;
+
+        Live(IndexDefinition def, IndexBuilderImp.BuildJob job) {
+            this.def = def;
+            this.job = job;
+        }
+    }
+
+    public IndexManager() {}
+
+    // ======== The test hooks (bergdb 020-10, sections 9.2 and 9.3) ========
+
     /** A write, after its read time is fixed, before it reads the directory's index set. */
     static final String WRITE_BEFORE_SET = "write: before the index set";
-    
+
     /** A write, after it read the directory's index set. */
     static final String WRITE_AFTER_SET = "write: after the index set";
-    
+
     /** A definition's change, under the lock, before its transaction; + create, activate or delete. */
     static final String DEFINITION_BEFORE = "definition: before the commit of ";
-    
+
     /** A definition's change, under the lock, after its transaction; + create, activate or delete. */
     static final String DEFINITION_AFTER = "definition: after the commit of ";
-    
-    /** For tests only: called with the points above; null else. */
+
+    /** A build step, in its action, after its reads, before its transaction. */
+    static final String BUILD_STEP = "build: step";
+
+    /** A cleanup step, before its transaction. */
+    static final String CLEANUP_STEP = "cleanup: step";
+
+    /** A cleanup's end, before the transaction that deletes the marker. */
+    static final String CLEANUP_END = "cleanup: end";
+
+    /**
+     * For tests only: called with the points above; null else. A hook may throw, to inject a
+     * fault there, interrupt the thread, or stop the database.
+     */
     volatile Consumer<String> testHook;
     
+    /** For tests only: the values of a build step, if above 0; else STEP_VALUES. */
+    volatile int testStepValues;
+
     /** Calls the test hook, if any, with 'point'. */
     void hook(String point) {
         Consumer<String> h = testHook;
@@ -121,1000 +128,392 @@ public class IndexManager {
             h.accept(point);
         }
     }
-    
+
+    // ======== The start (020-10, section 4.5) ========
+
     /**
-     * Creates a new object.
+     * Reads the definitions and the markers at the start's time, after Db.start(): (1) a key
+     * under /#i/dii/ (definitions of format 1) refuses the database; (2) every definition is
+     * checked (IndexDefinition.fromBytes) and held in memory; (3) every marker starts a
+     * cleanup, and one whose generation is a live definition's is an InternalDataException;
+     * (4) every definition in state building starts its build. It reads no entry and no user
+     * value.
+     *
+     * @throws VersioningStreamException  If the database holds definitions of format 1.
+     * @throws InternalDataException  If a definition or a marker breaks 020-10, section 4.
      */
-    public IndexManager(CollatorFactory collatorFactory) {
-        if (collatorFactory == null) {
-            throw new IllegalArgumentException("collationFactory == null not allowed");
+    void start(DatabaseImp database) {
+        this.database = database;
+        this.db = database.getDb();
+        long t = db.lookupTime(Long.MAX_VALUE);
+
+        if (!scan(IndexKeys.format1Prefix(), t, 1).isEmpty()) {
+            throw new VersioningStreamException("The database holds index definitions in the "
+                    + "object format of BergDB 2026.3 and before (format 1), which 2026.4 does "
+                    + "not read (bergdb 020-02, section 4.11). Make the database again from "
+                    + "its data.");
         }
-        
-        this.collatorFactory = collatorFactory;
-        dirToActiveIndexes = new DirToIndexesMap();        
-        nameToIndex = new HashMap<String, Index>();
-        
-        Index primaryIndex = new Index(IndexManager.PRIMARY, new String[]{"DUMMY"}, 
-                new FieldRef[][] {new FieldRef[0]}, 
-                new String[]{"string"}, this);
-        assert primaryIndex.kcollators.length == 1;
-        
+
+        List<Live> builds = new ArrayList<>();
         synchronized (lock) {
-            nameToIndex.put(primaryIndex.getName(), primaryIndex);
-        }
-    }
-    
-    public Index getIndex(String indexName) {
-        synchronized (lock) {
-            return nameToIndex.get(indexName);
-        }
-    }
-    
-    /**
-     * Reads the index info objects from database to the in-memory data structures.
-     * 
-     * @throws InternalDataException If internal data in the database is not valid.
-     */
-    public void initFromDatabase(ConnectionImp connection) throws InternalDataException {        
-        refuseFormat1(connection);
-        UsePrimaryBuilderImp<Data.Index> b = (UsePrimaryBuilderImp<Data.Index>) connection.usePrimary(Data.Index.class);
-        Iterable<Kv<Data.Index>> kvs = b.dirInternal(INDEX_INFO_DIR).kvs();
-        
-        for (Kv<Data.Index> kv : kvs) {
-            Data.Index indexDo = kv.value();
-            indexDo.check(this);
-            
-            String ikey = kv.ikey();
-            
-            int index1 = ikey.lastIndexOf('/');
-            if (index1 == -1) {
-                throw new InternalDataException("Bad ikey in dir " + INDEX_INFO_DIR + ", '" + ikey + "'.");
-            }
-            
-            String indexName = ikey.substring(index1 + 2);
-                // Does not include the '-', that is why we do "+ 2".
-            IndexManager.Index index = Data.createIndex(indexName, indexDo, this);            
-            nameToIndex.put(indexName, index);
-            if (index.getState() == Index.STATE_ACTIVE || index.getState() == Index.STATE_CREATING) {
-                dirToActiveIndexes.add(index);
-            }
-        }
-    }
-    
-    /**
-     * Refuses a start of a database that holds an index definition of format 1 (bergdb
-     * 020-02, section 4.11; 020-08, section 5): 2026.4 does not read it, and an index whose
-     * definition is not read would not be kept up to date.
-     * 
-     * @throws VersioningStreamException  If a definition is in format 1.
-     */
-    private static void refuseFormat1(ConnectionImp connection) {
-        UsePrimaryBuilderImp<byte[]> b = 
-                (UsePrimaryBuilderImp<byte[]>) connection.usePrimary(byte[].class);
-        for (Kv<byte[]> kv : b.dirInternal(INDEX_INFO_DIR).kvs()) {
-            if (Entries.isFormat1Object(kv.ikey(), kv.value())) {
-                throw new VersioningStreamException("The database holds index definitions in "
-                        + "the object format of BergDB 2026.3 and before (format 1), which "
-                        + "2026.4 does not read (bergdb 020-02, section 4.11). Make the "
-                        + "database again from its data.");
-            }
-        }
-    }
-    
-    /**
-     * Starts new Jobs to complete index creation for indexes in state STATE_CREATING,
-     * and to complete index deletion for indexes in state STATE_DELETING.
-     * The previously started index operations where stopped when the database was
-     * stopped.
-     */
-    public List<Job> finishOngoingJobs(DatabaseImp database) {
-        // Assumption: method run before any other operations.
-        
-        List<Job> startedJobs = new ArrayList<Job>();
-        List<Index> indexes = new ArrayList<Index>();
-        ConnectionImp connection = new ConnectionImp(database);
-        
-        synchronized (lock) {
-            for (Index index : nameToIndex.values()) {
-                int state = index.getState();
-                if (state == Index.STATE_CREATING || state == Index.STATE_DELETING) {
-                    indexes.add(index);
+            for (Kvt kvt : scan(IndexKeys.definitionsPrefix(), t, Integer.MAX_VALUE)) {
+                String name = IndexKeys.nameOfDefinitionKey(Keys.toBytes(kvt.key));
+                IndexDefinition def = IndexDefinition.fromBytes(name, kvt.value);
+                IndexBuilderImp.BuildJob job = new IndexBuilderImp.BuildJob(name);
+                if (def.isActive()) {
+                    job.activated(0);
+                }
+                Live live = new Live(def, job);
+                byName.put(name, live);
+                add(def);
+                if (!def.isActive()) {
+                    builds.add(live);
                 }
             }
         }
-        
-        for (final Index index : indexes) {
-            int state = index.getState();
-            
-            if (state == Index.STATE_CREATING) {
-                startedJobs.add(createJob(connection, index));
-            } else if (state == Index.STATE_DELETING) {
-                startedJobs.add(deleteJob(connection, index));
+
+        List<IndexKeys.Marker> markers = markers(t);
+        for (IndexKeys.Marker m : markers) {
+            Live live = byName.get(m.name);
+            if (live != null && live.def.gen() == m.gen) {
+                throw new InternalDataException("The marker of a deleted index " + m.name
+                        + ", generation " + m.gen + ", names a live definition's generation "
+                        + "(bergdb 020-10, section 4.5).");
             }
         }
-        
-        return startedJobs;
+        for (IndexKeys.Marker m : markers) {
+            startCleanup(m.name, m.gen);
+        }
+        for (Live live : builds) {
+            IndexBuilderImp.startBuild(database, this, live);
+        }
     }
+
+    // ======== The writers' side (020-10, section 5) ========
 
     /**
-     * Creates a Job for finishing creating the index. Its status is the creation's, as for
-     * IndexBuilder.start() (2026-11-06, bergdb 019-10): it was "done" when the thread had
-     * ended, also when the thread had ended on a failure.
+     * The definitions of the indexes of a directory, building and active, read under the lock
+     * (020-10, section 5.1, step 3); null if it has none. 'idir' ends with '/'.
      */
-    private Job createJob(ConnectionImp connection, final Index index) {
-        IndexBuilderImp creator = new IndexBuilderImp(index.name, connection.getDatabaseImp());
-        final IndexCreateState createState = new IndexCreateState(index);
-        final Thread thread = creator.createInThread(createState);
-        
-        Job job = new Job() {
-            public JobStatus getStatus() {
-                return createState.getJobStatus();
-            }
-
-            public JobStatus join() {
-                join(0);
-                return getStatus();
-            }
-
-            public JobStatus join(int millis) {
-                try {
-                    thread.join(millis);
-                } catch (InterruptedException e) {
-                    // The caller was interrupted: the wait ends, the job goes on (2026-10-27,
-                    // bergdb 005-46). It threw an Error.
-                    Thread.currentThread().interrupt();
-                }
-                return getStatus();
-            }
-        };
-        
-        return job;
-    }
-
-    private Job deleteJob(ConnectionImp connection, final Index index) {
-        Job job = connection.getDatabaseImp().deleteIndexInternal(index.name);
-        return job;
-    }
-    
-    /**
-     * Throws IllegalArgumentException if the indexName is illegal.
-     */
-    public static void checkIndexName(String indexName) {
-        if (indexName == null) {
-            throw new IllegalArgumentException("indexName cannot be null");
-        }
-        
-        if (indexName.length() == 0) {
-            throw new IllegalArgumentException("The empty string is not allowed as 'indexName'.");
-        }
-        
-        int len = indexName.length();
-        for (int i = 0; i < len; i++) {
-            char c = indexName.charAt(i);
-            if (Character.isWhitespace(c)) {
-                throw new IllegalArgumentException("Illegal indexName: '" + indexName + "'.");
-            }
-            
-            if (c == '/') {
-                throw new IllegalArgumentException("Illegal indexName: '" + indexName + "'.");
-            }
-        }
-
-        // Its UTF-8 bytes would have '?' in the surrogate's place, so the index and the one
-        // named with '?' would be one in the database (bergdb 015-49, S2-F24).
-        if (PubKeys.hasLoneSurrogate(indexName)) {
-            throw new IllegalArgumentException("Illegal indexName: it has a lone surrogate "
-                    + "(bergdb 015-49, S2-F24).");
-        }
-    }
-    
-    /**
-     * Check of index type string.
-     */
-    public boolean typeSupported(String type) {
-        if (type == null || type.length() == 0) {
-            return false;
-        }
-        
-        char first = type.charAt(0);
-        boolean result = false;
-        
-        switch (first) {
-        case 'l':
-            if (type.equals("long")) {
-                result = true;
-            }
-            break;
-            
-        case 'd':
-            if (type.equals("double")) {
-                result = true;
-            }
-            break;
-            
-        case 's':
-            result = checkStringIndexType(type);
-            break;
-        }
-        
-        return result;
-    }
-    
-    private final boolean checkStringIndexType(String type) {
-        return collatorFactory.typeSupported(type);
-    }
-    
-    /**
-     * Adds an index info entry and modifies the in-memory data structures accordingly.
-     * The actual index KVs are not added.
-     * 
-     * @param indexName  Name of the index.
-     * @param dirs  Directories to use the index on.
-     * @param fields  Field names to use the index for.
-     * @param types  The index types.
-     * @throws IndexAlreadyExistsException  If an index with the name 'indexName' already exists.
-     * @throws IllegalArgumentException  If type not supported, or...
-     */
-    public IndexManager.Index addIndex(ConnectionImp connection, String indexName, String[] dirs, 
-            FieldRef[][] fields, String[] types) throws IndexAlreadyExistsException {
-        assert indexName != null;
-        assert indexName.length() > 0;
-        assert dirs != null;
-        assert dirs.length > 0;
-        assert fields != null;
-        assert fields.length > 0;
-        assert types != null;
-        assert types.length > 0;
-        
-        final int levels = types.length;
-        
-        assert fields.length == levels;
-        
-        for (int i = 0; i < levels; i++) {
-            FieldRef[] levelFields = fields[i];
-            
-            for (FieldRef field : levelFields) {
-                assert field != null;
-            }
-            
-            assert types[i] != null;
-            assert types[i].length() > 0;
-        }
-        
-        for (int i = 0; i < dirs.length; i++) {
-            String dir = dirs[i];
-            assert dir != null;
-            assert dir.length() > 0;
-        }
-        
-        // Defensive copy, "call by value".
-        dirs = dirs.clone();
-        fields = fields.clone();
-        
-        Index index;
-        
+    IndexDefinition[] getActiveIndexesForDir(String idir) {
         synchronized (lock) {
-            if (nameToIndex.get(indexName) != null) {
-                throw new IndexAlreadyExistsException("Index '" + indexName + "' already exists.");
-            }
-            
-            index = new Index(indexName, dirs.clone(), fields.clone(), types, this);
-            assert index.name.equals(indexName);
-            assert index.getState() == Index.STATE_CREATING;
-            
-            nameToIndex.put(indexName, index);
-            dirToActiveIndexes.add(index);            
-            storeIndex(connection, index);
+            return byIdir.get(idir);
         }
-        
-        return index;
     }
-    
-    /**
-     * @throws DbException
-     */
-    public void storeIndex(ConnectionImp connection, IndexManager.Index index) {
-        Data.Index indexDo = Data.createIndexDo(index);
-        try {
-            indexDo.check(this);
-        } catch (InternalDataException e) {
-            throw new Bug(e);   // Should never happen
-        }
-        
-        byte[] key = getIndexInfoKeyAsBytes(index.name);
-        Db db = connection.getDb();
-        Trans.Builder b = db.trans();
-        for (String dir : index.dirs) {
-            b.addVirtualWriteHash(vhashOfDir(dir));
-        }
-        DbObject dbo = DbObject.toDbObject(indexDo);
-        b.put(key, dbo.getBytes());
-        String what = index.getState() == Index.STATE_CREATING ? "create"
-                : index.getState() == Index.STATE_ACTIVE ? "activate" : "delete";
-        hook(DEFINITION_BEFORE + what);
-        db.execute(b.build());
-        hook(DEFINITION_AFTER + what);
-    }
-    
-    public static long vhashOfDir(String dir) {
-        String s = INDEX_VDIR + dir;
-        long[] segments = Keys.toSegments(s);
-        long hash = Keys.hash(segments);
+
+    /** The hash of the virtual key of a directory, /#i/div/IDIR (020-10, section 4.1). */
+    public static long vhashOfDir(String idir) {
+        long hash = Keys.hash(Keys.toSegments(INDEX_VDIR + idir));
         assert hash > 0;
         return hash;
     }
-    
-    private final byte[] getIndexInfoKeyAsBytes(String indexName) {
-        return Util.concat(INDEX_INFO_DIR_BYTES, Keys.toBytes("-" + indexName));
+
+    // ======== The definitions' changes (020-10, sections 3 and 6) ========
+
+    /**
+     * Creates an index (020-10, section 3.1): under the lock, its generation G is the latest
+     * transaction's time; one transaction writes its definition, in state building, and the
+     * directory's virtual key; then the maps; then its build starts. Returns the build's job.
+     *
+     * @throws IndexAlreadyExistsException  If an index of the name is live.
+     * @throws IllegalArgumentException  If the definition's values break its rules.
+     * @throws DbException  If the transaction is refused; nothing changed.
+     */
+    Job create(String name, String dir, String[] typeNames, String[][] paths) {
+        Live live;
+        synchronized (lock) {
+            if (byName.containsKey(name)) {
+                throw new IndexAlreadyExistsException("An index named '" + name
+                        + "' exists already.");
+            }
+            IndexDefinition def = null;
+            while (true) {
+                long g = Math.max(1, db.lookupTime(Long.MAX_VALUE));
+                def = new IndexDefinition(name, dir, g, false, typeNames, paths);
+                Trans.Builder b = db.trans();
+                b.lookupTime(g);
+                b.addReadHash(keyHash(def));
+                b.put(def.key(), def.toBytes());
+                b.addVirtualWriteHash(vhashOfDir(def.idir()));
+                if (execute(b, "create")) {
+                    break;
+                }
+            }
+            live = new Live(def, new IndexBuilderImp.BuildJob(name));
+            byName.put(name, live);
+            add(def);
+        }
+        IndexBuilderImp.startBuild(database, this, live);
+        return live.job;
     }
 
     /**
-     * Removes index entries for a an index specified by its name.
-     * 
-     * @param indexName  Index name.
-     * @param db         DB object.
-     * @param deletedCounter
-     *                   A long array of length 1. Number of elements removed so far is written
-     *                   to removedCounter[0]. 
-     *                   Sync note: the counter value is protected by synchronized on removedCounter.
-     *                   The parameter functions as an updating output parameter.
+     * Activates a building index at the end of its build (020-10, section 6.1): under the
+     * lock, one transaction rewrites the definition in state active, with its key's hash in the
+     * read set; then the maps. Returns false, changing nothing, if the index was deleted.
+     *
+     * @throws DbException  If the transaction is refused; nothing changed.
      */
-    void deleteIndexEntries(String indexName, Db db, long[] deletedCounter) {
-        byte[] indexDbDir = IndexManager.getIndexDbDirAsBytes(indexName);
-        long[] startKey = Keys.toSegments(indexDbDir);
-        final long[] dirKey = Keys.toSegments(indexDbDir);
-        final boolean[] isDone = new boolean[] { false };
-        
-        while (!isDone[0]) {
-            GetMany g = db.newGetMany();
-            g.inclusive = false;
-            g.startKey = startKey;
-            g.lookupTime = Long.MAX_VALUE;
-            g.stopCondition = new GetMany.StopCondition() {
-                private int count = 0;
-                private static final int maxCount = 100;
-                
-                public int handleKvt(Kvt kvt) {
-                    int result = GetMany.StopCondition.ADD;
-                    
-                    count++;
-                    if (count == maxCount) {
-                        result = GetMany.StopCondition.ADD_AND_STOP;
-                    }
-                    
-                    if (!Keys.isPrefix(dirKey, kvt.key)) {
-                        result = GetMany.StopCondition.STOP;
-                        isDone[0] = true;
-                    }
-                
-                    return result;
-                }
-                
-                public void eod() {
-                    isDone[0] = true;
-                }
-            };
-            
-            db.getMany(g);
-            Trans.Builder b = db.trans();
-
-            if (g.result.size() > 0) {
-                for (Kvt kvt : g.result) {
-                    b.delete(kvt.key);
-                }
-                db.execute(b.build());
-            }
-            
-            synchronized (deletedCounter) {
-                deletedCounter[0] += g.result.size();
-            }
-            
-            if (!isDone[0]) {
-                assert g.result.size() > 0 : "g.result.size() is 0";
-                startKey = g.result.get(g.result.size() - 1).key;
-            }
-        }
-    }
-    
-    void deleteIndexInfo(ConnectionImp connection, IndexManager.Index index) {
-        byte[] key = getIndexInfoKeyAsBytes(index.name);
-        Db db = connection.getDb();
-        Trans trans = db.trans().delete(key).build();
-        
+    boolean activate(Live live) {
         synchronized (lock) {
-            assert nameToIndex.get(index.name) == index : "Not the index of its name (bergdb 015-21).";
-            db.execute(trans);
-            nameToIndex.remove(index.name);
-        }
-    }
-    
-    public boolean hasIndex(String indexName) {
-        if (indexName == null) {
-            throw new IllegalArgumentException("indexName == null not allowed");
-        }
-        
-        Index index;
-        
-        synchronized (lock) {
-            index = nameToIndex.get(indexName);
-        }
-        
-        return index != null;
-    }
-    
-    /**
-     * Returns an Index object read from the database, or null if it does not exist, or did not 
-     * exist at the given lookup time, or is not active (STATE_ACTIVE).
-     * 
-     * @param connection
-     * @param indexName
-     * @param wantedLookupTime
-     */
-    public Index getActiveIndex(ConnectionImp connection, String indexName, long wantedLookupTime) 
-            throws InternalDataException {
-        //
-        // Note, we are careful to treat internal DB data as any data external to the 
-        // application. It could have been modified with other software.
-        // We must check that it follows the correct format, or throw DBInternalDataException.
-        //
-        
-        assert indexName != null;
-        
-        if (indexName.equals(PRIMARY)) {
-            Index primary;
-            
-            synchronized (lock) {
-                primary = nameToIndex.get(PRIMARY);
-            }
-            
-            if (primary == null) {
-                throw new Bug("Missing 'primary' index, should not happen.");
-            }
-            return primary;
-        }
-        
-        Data.Index indexDo;
-        byte[] key = getIndexInfoKeyAsBytes(indexName);
-        
-        long[] segmentKey = Keys.toSegments(key);
-        byte[] value = connection.getBytesAtLookupTime(wantedLookupTime, segmentKey);
-        if (value == null) {
-            return null;
-        }
-        
-        DbObject dbo;
-        try {
-            dbo = new DbObject(value);
-        } catch (BadFormatException e) {
-            throw new InternalDataException("Bad index info object: '" + key + "', " + e.getMessage());
-        }
-        
-        indexDo = dbo.toJavaObject(Data.Index.class);
-        indexDo.check(this);
-        
-        Index index = Data.createIndex(indexName, indexDo, this);
-        return index.getState() == IndexManager.Index.STATE_ACTIVE ? index : null;
-    }
-    
-    public static final byte[] getIndexDbDirAsBytes(String indexName) {
-        return Util.concat(INDEX_DIR_BYTES, Keys.toBytes(PubKeys.DIR_PREFIX + indexName + "/"));
-    }
-    
-    /**
-     * Returns active (STATE_ACTIVE or STATE_CREATING) indexes for the directory. 
-     * 'dirname' should end with a "/".
-     */
-    public IndexForDir[] getActiveIndexesForDir(String dirname) {
-        IndexForDir[] result;
-        
-        synchronized (lock) {
-            result = dirToActiveIndexes.get(dirname);
-        }
-        
-        return result;
-    }
-    
-    /**
-     * Given the full index key, this method returns the corresponding
-     * object key (the key to the indexed object).
-     */
-    public static byte[] getObjectKey(Index index, long[] key) {
-        assert key != null;
-        assert index != null;
-        assert key.length > 0;
-        
-        int separatorIndex = -1;
-        
-        byte[] keyBytes = Keys.toBytes(key);
-        for (int i = keyBytes.length - 1; i >= 0; i--) {
-            if (keyBytes[i] == 0) {
-                separatorIndex = i;
-                break;
-            }
-        }
-        
-        if (separatorIndex == -1) {
-            throw new InternalDataException("Bad index key: " + StringUtil.toString(keyBytes) + ", " 
-                    + StringUtil.toHex(keyBytes));
-        }
-        
-        if (separatorIndex == 0 || separatorIndex == keyBytes.length - 1) {
-            throw new InternalDataException("Bad index key (separatorIndex): " 
-                    + StringUtil.toString(keyBytes) + ", " + StringUtil.toHex(keyBytes));
-        }
-        
-        int dirId = keyBytes[separatorIndex + 1] - 1;
-        if (dirId < 0) {
-            throw new InternalDataException("Bad index key (bad dirId): " 
-                    + StringUtil.toString(keyBytes) + ", " + StringUtil.toHex(keyBytes));
-        }
-        if (dirId >= index.dirs.length) {
-            throw new InternalDataException("Bad index key (bad dirId, too big): " 
-                    + StringUtil.toString(keyBytes) + ", " + StringUtil.toHex(keyBytes));
-        }
-        
-        int length = keyBytes.length - (separatorIndex + 2);
-        assert length >= 0 : "Neg length: " + length;
-        
-        byte[] dirBytes = index.dirBytes[dirId];
-        byte[] result = Util.concat(dirBytes, 0, dirBytes.length, keyBytes, separatorIndex + 2, length);        
-        return result;
-    }
-    
-    public void setIndexStateToActive(ConnectionImp connection, Index index) {
-        assert connection != null;
-        assert index != null : "index was null";
-        
-        synchronized (lock) {
-            int state = index.getState();
-            if (index.getState() != Index.STATE_CREATING) {
-                throw new IllegalStateException("State not STATE_CREATING, but " + state 
-                        + ", cannot set state to STATE_ACTIVE.");
-            }
-            index.setState(Index.STATE_ACTIVE);
-            assert dirToActiveIndexes.assertHasIndexMappings(index);
-            storeIndex(connection, index);
-        }
-    }
-    
-    /**
-     * As setIndexStateToActive(), for a build at its end; unless the index is deleting: then
-     * returns false and changes nothing (bergdb 015-22).
-     */
-    boolean setIndexStateToActiveUnlessDeleting(ConnectionImp connection, Index index) {
-        synchronized (lock) {
-            if (index.getState() == Index.STATE_DELETING) {
+            if (live.deleted || byName.get(live.def.name()) != live) {
                 return false;
             }
-            setIndexStateToActive(connection, index);
+            IndexDefinition active = live.def.activated();
+            while (true) {
+                if (live.deleted || byName.get(live.def.name()) != live) {
+                    return false;           // Deleted meanwhile (a hook of a test, reentrant)
+                }
+                Trans.Builder b = db.trans();
+                b.lookupTime(db.lookupTime(Long.MAX_VALUE));
+                b.addReadHash(keyHash(active));
+                b.put(active.key(), active.toBytes());
+                if (execute(b, "activate")) {
+                    break;
+                }
+            }
+            remove(live.def);
+            live.def = active;
+            add(active);
             return true;
         }
     }
-    
-    /**
-     * Starts the deletion job of a deleting index, unless it has one that runs or it is
-     * deleted already; returns the index's job (bergdb 015-21). So an index has at most one
-     * deletion job that runs, and none starts once another index can have its name: a second
-     * deleteIndex() returns the running job. Before, each call started a job, and one that
-     * ran late deleted, by its name, an index created again after the other had finished.
-     * 
-     * @param job     The new job, for 'thread'.
-     * @param thread  The job's thread, not started; started here if the job is.
-     */
-    Job startDeletionJob(Index index, Job job, Thread thread) {
-        synchronized (lock) {
-            final Job current = index.deletionJob;
-            final boolean deleted = nameToIndex.get(index.name) != index;
-            if (current != null && (deleted || current.getStatus().progress() != 100)) {
-                return current;
-            }
-            assert !deleted : "Index " + index.name + " deleted, by no job.";
-            index.deletionJob = job;
-            thread.start();
-            return job;
-        }
-    }
-    
-    /**
-     * Ensures that an index is in a deleting state.
-     * 
-     * @throws NoSuchIndexException  If no index exists with the given name.
-     * @throws DbException
-     */
-    public Index ensureDeletingState(ConnectionImp connection, String indexName) {
-        assert indexName != null;
-        Index index;
-        
-        synchronized (lock) {
-            index = nameToIndex.get(indexName);
-            if (index == null) {
-                throw new NoSuchIndexException("No index named '" + indexName + "' exists.");
-            }
-            
-            int state = index.getState();
-            if (state != Index.STATE_DELETING) {
-                index.state = Index.STATE_DELETING;
-                dirToActiveIndexes.remove(index);
-                storeIndex(connection, index);
-            }
-        }
-        
-        return index;
-    }
-    
-    /**
-     * An index: its definition is immutable; its state and its deletion job (bergdb 015-21)
-     * change, under IndexManager's lock.
-     */
-    public static class Index {
-        static final int STATE_CREATING = 10;
-        static final int STATE_ACTIVE = 20;
-        static final int STATE_DELETING = 30;
-        
-        public static final char TYPE_STRING = 's';
-        public static final char TYPE_DOUBLE = 'd';
-        public static final char TYPE_LONG = 'l';
-        
-        private final String name;     // Unique name of the index.
-        final String[] dirs;
-        private final byte[][] dirBytes; // 'dirs' as bytes, for performance.
-        final FieldRef[][] fields;
-        final IndexFunction function;
-        final String[] typeStrings;
-        final char[] types;              // TYPE_x
-        final KCollator[] kcollators;    // Non-null when type == TYPE_STRING;
-        private int state;
-        Job deletionJob = null;     // Its deletion's job; protected by IndexManager's lock (bergdb 015-21).
-        final long keyHash;
-        final int levelCount;       // Number of user-specified composite parts
-        private final Object lock;
-        
-        /**
-         * Created an Index object.
-         * Parameters should have been checked already. 
-         * Only asserts (not IllegalArgumentException) used in this constructor.
-         */
-        public Index(String name, String[] dirs, FieldRef[][] fields, String[] typeStrings, 
-                IndexManager indexManager) {
-            this.name = name;
-            this.dirs = dirs.clone();
-            this.typeStrings = typeStrings.clone();
-            this.fields = fields.clone();
-            
-            this.state = STATE_CREATING;
-            this.keyHash = Keys.hash(Keys.toSegments(indexManager.getIndexInfoKeyAsBytes(name)));
-            this.levelCount = typeStrings.length;
-            this.lock = indexManager.lock;
-            
-            assert levelCount >= 1;
-            assert dirs != null;
-            assert fields.length == levelCount;
-            assert typeStrings != null;
-            
-            for (int i = 0; i < typeStrings.length; i++) {
-                assert indexManager.typeSupported(typeStrings[i]);
-            }
-            
-            this.function = new FieldIndexFunction(fields, typeStrings, indexManager.collatorFactory);
-            this.types = new char[levelCount];
-            this.kcollators = new KCollator[levelCount];
-            this.dirBytes = new byte[dirs.length][];
-            
-            createIndexLevels(indexManager);
-            
-            if (name.equals(PRIMARY)) {
-                // The primary index is a special case. 
-                this.kcollators[0] = new PrimaryKeyCollator();
-                this.state = Index.STATE_ACTIVE;
-            }
-        }
 
-        private void createIndexLevels(IndexManager indexManager) {
-            
-            for (int i = 0; i < dirs.length; i++) {
-                dirBytes[i] = Keys.toBytes(dirs[i]);
-            }
-            
-            for (int level = 0; level < levelCount; level++) {
-                String typeString = typeStrings[level];
-                char type = 'X';
-                KCollator kc = null;
-            
-                char first = typeString.charAt(0);
-                switch (first) {
-                case 'l':
-                    if (!typeString.equals("long")) {
-                        throw new IllegalArgumentException("Unsupported index type: " + typeString);
-                    }
-                    
-                    type = TYPE_LONG;
-                    break;
-                    
-                case 'd':
-                    if (!typeString.equals("double")) {
-                        throw new IllegalArgumentException("Unsupported index type: " + typeString);
-                    }
-                    
-                    type = TYPE_DOUBLE;
-                    break;
-                    
-                case 's':   
-                    kc = indexManager.collatorFactory.createCollator(typeString);
-                    if (kc == null) {
-                        throw new IllegalArgumentException("Unsupported index type: " + typeString);
-                    }
-                    type = TYPE_STRING;
-                    break;
-                    
-                default:
-                    throw new IllegalArgumentException("Unsupported index type: " + typeString);
-                }
-                
-                assert type != 'X';
-                this.types[level] = type;
-                this.kcollators[level] = kc;
-            }
-        }
-        
-        /**
-         * Returns the number of user composite index levels.
-         */
-        public final int getLevels() {
-            return this.levelCount;
-        }
-        
-        public final String getName() {
-            return this.name;
-        }
-        
-        public final int getState() {
-            synchronized (lock) {
-                return state;
-            }
-        }
-        
-        public final void setState(int state) {
-            this.state = state;
-        }
-        
-        public String getStateString() {
-            String result;
-            
-            switch (state) {
-            case STATE_CREATING:
-                result = "creating";
-                break;
-            case STATE_ACTIVE:
-                result = "active";
-                break;
-            case STATE_DELETING:
-                result = "deleting";
-                break;
-            default:
-                throw new IllegalStateException("Bad state: " + state);
-            }
-            return result;
-        }
-        
-        public String toString() {
-            StringBuilder b = new StringBuilder();
-            
-            b.append("name: " + this.name + ". ");
-            
-            b.append("levels: " + this.levelCount + ". ");
-            
-            b.append("dirs: ");
-            for (int i = 0; i < dirs.length; i++) {
-                b.append(dirs[i]);
-                if (i != dirs.length - 1) {
-                    b.append(", ");
-                } else {
-                    b.append(". ");
-                }
-            }
-            
-            b.append("types: ");
-            for (int i = 0; i < typeStrings.length; i++) {
-                b.append(typeStrings[i]);
-                if (i != typeStrings.length - 1) {
-                    b.append("-");
-                } else {
-                    b.append(". ");
-                }
-            }
-            
-            b.append("status:" + getStateString());
-            
-            return b.toString();
-        }
-    }
-    
     /**
-     * Used in map dir -> IndexForDir map.
+     * Deletes an index (020-10, section 6.2): under the lock, one transaction deletes its
+     * definition, puts the marker of its generation and writes the directory's virtual key;
+     * then the maps, and the index is deleted in memory (its build ends at its next step);
+     * then its cleanup starts. When this returns, the name is free.
+     *
+     * @throws NoSuchIndexException  If no index of the name is live.
+     * @throws DbException  If the transaction is refused; nothing changed.
      */
-    static class IndexForDir {
-        /** The Index. */
-        final Index index;
-        
-        /** 
-         * The directory ID used to identify the directory within all directories the index
-         * applies to.
-         */
-        final int dirId;
-        
-        public IndexForDir(Index index, int dirId) {
-            this.index = index;
-            this.dirId = dirId;
-        }
-    }
-    
-    
-    /**
-     * Specialized map implementation for string-to-array-of-IndexForDir mapping.
-     */
-    static class DirToIndexesMap extends HashMap<String, IndexForDir[]> {
-        private static final long serialVersionUID = 1L;
-        
-        /**
-         * Adds indexForDir to array for 'dir' key. If no array exists a one-long array
-         * of IndexForDir is created and put to the Map.
-         */
-        void add(String dir, IndexForDir indexForDir) {
-            IndexForDir[] array = get(dir);
-            IndexForDir[] newArray;
-            
-            if (array == null) {
-                newArray = new IndexForDir[] { indexForDir };
-            } else {
-                newArray = new IndexForDir[1 + array.length];
-                newArray[0] = indexForDir;
-                System.arraycopy(array, 0, newArray, 1, array.length);
+    void delete(String name) {
+        IndexDefinition def;
+        synchronized (lock) {
+            Live live = name == null ? null : byName.get(name);
+            if (live == null) {
+                throw new NoSuchIndexException("No index named '" + name + "'.");
             }
-            put(dir, newArray);
-        }
-        
-        public boolean assertHasIndexMappings(Index index) {
-            for (int i = 0; i < index.dirs.length; i++) {
-                String dir = index.dirs[i];
-                IndexForDir[] array = this.get(dir);
-                assert array != null;
-                assert array.length > 0;
-                
-                boolean found = false;
-                for (IndexForDir indexForDir : array) {
-                    if (index.name.equals(indexForDir.index.name)) {
-                        found = true;
-                        break;
-                    }
+            while (true) {
+                if (live.deleted || byName.get(name) != live) {
+                    throw new NoSuchIndexException("No index named '" + name + "'.");
                 }
-                
-                assert found : "index " + index.name + " not found.";
+                def = live.def;
+                Trans.Builder b = db.trans();
+                b.lookupTime(db.lookupTime(Long.MAX_VALUE));
+                b.addReadHash(keyHash(def));
+                b.delete(def.key());
+                b.put(IndexKeys.markerKey(def.name(), def.gen()), new byte[0]);
+                b.addVirtualWriteHash(vhashOfDir(def.idir()));
+                if (execute(b, "delete")) {
+                    break;
+                }
             }
-            
-            return true;
+            byName.remove(name);
+            remove(def);
+            live.deleted = true;
         }
+        startCleanup(def.name(), def.gen());
+    }
 
-        /**
-         * Add all dir-to-Index mappings for 'index'.
-         */
-        void add(Index index) {
-            for (int i = 0; i < index.dirs.length; i++) {
-                IndexForDir indexForDir = new IndexForDir(index, i);
-                add(index.dirs[i], indexForDir);
-            }
+    /**
+     * Executes a definition's change, with the test hooks around its commit: true if done,
+     * false after a conflict (taken again by the caller, under the lock).
+     */
+    private boolean execute(Trans.Builder b, String what) {
+        hook(DEFINITION_BEFORE + what);
+        try {
+            db.execute(b.build());
+        } catch (RerunException e) {
+            return false;
         }
-        
-        /**
-         * Removes dir-to-index mapping. If mapping does not exist, throws Bug.
-         */
-        void remove(String dir, String indexName) {
-            IndexForDir[] array = get(dir);
-            if (array == null) {
-                throw new Bug("Map dirToIndex did not have mapping dir:'" 
-                        + dir + "' -> index:'" + indexName + "'.");
+        hook(DEFINITION_AFTER + what);
+        return true;
+    }
+
+    /**
+     * The job of the live index's build in this process (020-10, section 3.2).
+     *
+     * @throws NoSuchIndexException  If no index of the name is live.
+     */
+    Job job(String name) {
+        synchronized (lock) {
+            Live live = name == null ? null : byName.get(name);
+            if (live == null) {
+                throw new NoSuchIndexException("No index named '" + name + "'.");
             }
-            
-            if (array.length == 0) {
-                throw new Bug("array.length == 0, index:'" + indexName + "'.");
-            }
-            
-            int deleteIndex = -1;
-            for (int i = 0; i < array.length; i++) {
-                if (array[i].index.name.equals(indexName)) {
-                    deleteIndex = i;
-                    break;
-                }
-            }
-            
-            if (deleteIndex == -1) {
-                throw new Bug("Bad state, dir = " + dir 
-                        + ", but not fould in 'array'. Index name: " + indexName + ".");
-            }
-            
-            if (array.length == 1) {
-                remove(dir);
-            } else {
-                IndexForDir[] newArray = new IndexForDir[array.length - 1];
-                int newIndex = 0;
-                
-                for (int i = 0; i < array.length; i++) {
-                    if (i != deleteIndex) {
-                        newArray[newIndex++] = array[i];
-                    }
-                }
-                
-                if (newIndex != newArray.length) {
-                    throw new Bug("newIndex = " + newIndex + ", " + newArray.length);
-                }
-                
-                put(dir, newArray);
-            }
-        }
-        
-        void remove(Index index) {
-            for (String dir : index.dirs) {
-                remove(dir, index.name);
-            }
+            return live.job;
         }
     }
-    
-    public static class Tester {
-        private Tester() {}
-        
-        /** bergdb 015-49, S2-F24: an index name with a lone surrogate is refused. */
-        @Nano
-        public static void testIndexNameWithLoneSurrogate() {
-            for (String name : new String[] {"i\uD800", "\uDC00i"}) {
+
+    /** Whether the live index is still the name's (not deleted). */
+    boolean isLive(Live live) {
+        synchronized (lock) {
+            return !live.deleted && byName.get(live.def.name()) == live;
+        }
+    }
+
+    private void add(IndexDefinition def) {
+        IndexDefinition[] a = byIdir.get(def.idir());
+        IndexDefinition[] b = a == null ? new IndexDefinition[1] : Arrays.copyOf(a, a.length + 1);
+        b[b.length - 1] = def;
+        byIdir.put(def.idir(), b);
+    }
+
+    private void remove(IndexDefinition def) {
+        IndexDefinition[] a = byIdir.get(def.idir());
+        if (a == null) {
+            return;
+        }
+        List<IndexDefinition> b = new ArrayList<>();
+        for (IndexDefinition d : a) {
+            if (d != def) {
+                b.add(d);
+            }
+        }
+        if (b.isEmpty()) {
+            byIdir.remove(def.idir());
+        } else {
+            byIdir.put(def.idir(), b.toArray(new IndexDefinition[0]));
+        }
+    }
+
+    private static long keyHash(IndexDefinition def) {
+        return Keys.hash(Keys.toSegments(def.key()));
+    }
+
+    // ======== The cleanup (020-10, section 6.2) ========
+
+    /**
+     * Starts the cleanup of a deleted generation, in a daemon thread: steps of a getMany of
+     * up to CLEANUP_KEYS entry keys of the generation at the latest time and one transaction
+     * that deletes them, with no read set (no one writes a deleted generation); when a step
+     * finds none, one transaction deletes the marker, and the thread ends. A stop of the
+     * database ends it (the next start resumes it); a refusal or an expiry waits and takes
+     * the step again; any other RuntimeException ends it, the marker staying; an Error fails
+     * the database.
+     */
+    void startCleanup(final String name, final long gen) {
+        final byte[] prefix = IndexKeys.generationPrefix(name, gen);
+        final byte[] marker = IndexKeys.markerKey(name, gen);
+        Thread thread = new Thread(() -> {
+            long retryWait = RwTransaction.FIRST_SLEEP;
+            while (true) {
+                long t0 = System.nanoTime();
                 try {
-                    checkIndexName(name);
-                    throw new AssertionError("taken, " + name.length() + " chars");
-                } catch (IllegalArgumentException e) {
-                    // Expected.
+                    List<Kvt> keys = scan(prefix, Long.MAX_VALUE, CLEANUP_KEYS);
+                    if (keys.isEmpty()) {
+                        hook(CLEANUP_END);
+                        db.execute(db.trans().delete(marker).build());
+                        return;
+                    }
+                    hook(CLEANUP_STEP);
+                    Trans.Builder b = db.trans();
+                    for (Kvt kvt : keys) {
+                        b.delete(kvt.key);
+                    }
+                    db.execute(b.build());
+                    retryWait = RwTransaction.FIRST_SLEEP;
+                } catch (StreamIoException | IllegalDbStateException e) {
+                    return;         // A stop of the database; the next start resumes it.
+                } catch (DataFormatException | InternalDataException e) {
+                    return;         // Not a refusal: the marker stays.
+                } catch (DbException | LookupTimeNotAvailableException e) {
+                    retryWait = IndexBuilderImp.waitToRetry(retryWait);
+                    continue;
+                } catch (RuntimeException e) {
+                    return;         // The marker stays; the next start resumes the cleanup.
+                } catch (Throwable e) {
+                    db.internal().fail(e);
+                    return;
                 }
+                IndexBuilderImp.pause(System.nanoTime() - t0);
             }
-            checkIndexName("i\uD83D\uDE00");
-            checkIndexName("i?");
-        }
-        
-        @Nano
-        public static void testCheckType1() {
-            String[] types =     {"long", "double", "string", "a", "", "longs", "doublex", "string/"};
-            boolean[] expected = {true,   true,     true,     false, false, false, false,  false};
-            
-            IndexManager m = new IndexManager(new BergCollatorFactory());
-            
-            for (int i = 0; i < types.length; i++) {
-                Assert.assertEquals(expected[i], m.typeSupported(types[i]));
+        });
+        thread.setPriority(Thread.MIN_PRIORITY);
+        thread.setDaemon(true);
+        thread.setName("IndexCleanup-" + name + "-" + gen);
+        thread.start();
+    }
+
+    // ======== Reads of the internal keys ========
+
+    /**
+     * The KVs whose keys start with 'prefix' at 'lookupTime', at most 'max', in key order.
+     */
+    List<Kvt> scan(byte[] prefix, long lookupTime, final int max) {
+        final long[] prefixSegments = Keys.toSegments(prefix);
+        List<Kvt> result = new ArrayList<>();
+        long[] start = prefixSegments;
+        boolean inclusive = true;
+        while (result.size() < max) {
+            final int room = max - result.size();
+            final boolean[] ended = new boolean[1];
+            GetMany g = db.newGetMany();
+            g.startKey = start;
+            g.inclusive = inclusive;
+            g.lookupTime = lookupTime;
+            g.stopCondition = new GetMany.StopCondition() {
+                private int count = 0;
+
+                public int handleKvt(Kvt kvt) {
+                    if (!Keys.isPrefix(prefixSegments, kvt.key)) {
+                        ended[0] = true;
+                        return GetMany.StopCondition.STOP;
+                    }
+                    count++;
+                    return count >= Math.min(room, 1000) ? GetMany.StopCondition.ADD_AND_STOP
+                            : GetMany.StopCondition.ADD;
+                }
+
+                public void eod() {
+                    ended[0] = true;
+                }
+            };
+            db.getMany(g);
+            result.addAll(g.result);
+            if (ended[0] || g.result.isEmpty()) {
+                break;
             }
+            start = g.result.get(g.result.size() - 1).key;
+            inclusive = false;
         }
+        return result;
+    }
+
+    // ======== For tests ========
+
+    /** The live definition of the name, or null. */
+    IndexDefinition definition(String name) {
+        synchronized (lock) {
+            Live live = byName.get(name);
+            return live == null ? null : live.def;
+        }
+    }
+
+    /** The raw entry keys of a generation at 'lookupTime', in key order. */
+    List<byte[]> entries(String name, long gen, long lookupTime) {
+        List<byte[]> keys = new ArrayList<>();
+        for (Kvt kvt : scan(IndexKeys.generationPrefix(name, gen), lookupTime,
+                Integer.MAX_VALUE)) {
+            keys.add(Keys.toBytes(kvt.key));
+        }
+        return keys;
+    }
+
+    /** The markers of deleted generations at 'lookupTime'. */
+    List<IndexKeys.Marker> markers(long lookupTime) {
+        List<IndexKeys.Marker> markers = new ArrayList<>();
+        for (Kvt kvt : scan(IndexKeys.markersPrefix(), lookupTime, Integer.MAX_VALUE)) {
+            markers.add(IndexKeys.parseMarker(Keys.toBytes(kvt.key)));
+        }
+        return markers;
+    }
+
+    @Nano
+    public static void testVhashOfDir() {
+        Assert.assertTrue(vhashOfDir("/dp/") != vhashOfDir("/dq/"));
+        Assert.assertEquals(vhashOfDir("/dp/"), vhashOfDir("/dp/"));
     }
 }
-
-/*
-
----- Virtual keys ----
-
-Concept of "virtual" keys. KVs that does not really exist, but used for synch.
-Corresponding data for the key can exist directly in memory as a Java object, not in the database.
-
-Needed for indexing. Works like this for the indexing case.
-- When index is added, the index info entry is added to the database in IKP/ii/.
-- Virtual keys are also included in the add-index transaction for each directory the index applies to:
-  vkey = IKP/iv/<dir>. This is not a real KV. Only hash(vkey) is added to Trans.writeKeyHashes.
-  This is done in one atomic transaction.
-- When an object is stored/deleted, IndexManager.getActiveIndexesForDir() is used to lookup the indexes for
-  the directory. For this transaction, we will add hash(vkey) of the directory of the object
-  to Trans.readKeyHashes.
-- Note that this works even when directory has no indexes. We still have a readKeyHash for the 
-  directory and can get transaction rerun in case an index is added while Connection.set(String, Object)
-  is being executed.
-- 2026-11-08 (bergdb 020-10, sections 5.1 and 5.2): it works only with the transaction's read
-  time R fixed before the index set is read, as RwEnvironmentImp.indexEntries does since then.
-  A change of the set takes 'lock', commits, and changes the maps; a writer reads the set
-  under 'lock' after R. If the change commits after R, the writer's hash of vkey conflicts and
-  it runs again; if at or before R, the writer's set has it. Until then, with no read before
-  the set (a w(), no index), R was Long.MAX_VALUE, and the hash never conflicted (015-28,
-  015-43, S2-F12). Every put and delete at an object key, of any value, takes this path
-  (015-46).
-
-*/

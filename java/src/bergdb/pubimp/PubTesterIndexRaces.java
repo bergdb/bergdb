@@ -5,10 +5,10 @@ import java.util.List;
 import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 import bergdb.common.StringUtil;
 import bergdb.core.Db;
-import bergdb.core.KeyTransformation;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
@@ -113,23 +113,27 @@ public class PubTesterIndexRaces {
             IndexManager m = d.getIndexManager();
             ConnectionImp c = (ConnectionImp) database.newConnection();
 
-            // Before: for ACTIVATE an index in state creating whose entries the writes made;
-            // for DELETE an active index, built.
-            IndexManager.Index creating = null;
+            // Before: for ACTIVATE an index whose build waits, at its step, for the gate, and
+            // whose entries the writes made; for DELETE an active index, built.
+            final CountDownLatch gate = new CountDownLatch(1);
+            final Job[] jobs = new Job[1];
+            final Consumer<String> wait = p -> {
+                if (change == Change.ACTIVATE && p.equals(IndexManager.BUILD_STEP)) {
+                    await(gate, "the gate of the build");
+                }
+            };
             if (change == Change.ACTIVATE) {
-                creating = m.addIndex(c, NAME, new String[] {PubKeys.udir2idir(DIR)},
-                        new FieldRef[][] {{new FieldRef("n")}}, new String[] {"long"});
+                m.testHook = wait;
+                jobs[0] = create(database);
             }
             c.w().put(KEY, new Item(1)).put(OTHER, new Item(5)).execute();
             if (change == Change.DELETE) {
                 create(database).join();
             }
-            if (creating != null || change == Change.DELETE) {
+            if (change != Change.CREATE) {
                 checkEntries(d, "before");
             }
 
-            final IndexManager.Index toActivate = creating;
-            final Job[] jobs = new Job[1];
             final boolean[] fired = new boolean[1];
             final Throwable[] writerFault = new Throwable[1];
             Runnable doChange = () -> {
@@ -138,10 +142,10 @@ public class PubTesterIndexRaces {
                     jobs[0] = create(database);
                     break;
                 case ACTIVATE:
-                    m.setIndexStateToActive(c, toActivate);
+                    gate.countDown();         // The build's step, then its activation
                     break;
                 default:
-                    jobs[0] = database.deleteIndex(NAME);
+                    database.deleteIndex(NAME);
                     break;
                 }
             };
@@ -153,6 +157,7 @@ public class PubTesterIndexRaces {
                 String at = point == Point.WRITE_BEFORE_SET ? IndexManager.WRITE_BEFORE_SET
                         : IndexManager.WRITE_AFTER_SET;
                 m.testHook = p -> {
+                    wait.accept(p);
                     if (p.equals(at) && !fired[0]) {
                         fired[0] = true;
                         doChange.run();
@@ -171,6 +176,7 @@ public class PubTesterIndexRaces {
                 CountDownLatch reached = new CountDownLatch(1);
                 Thread[] writer = new Thread[1];
                 m.testHook = p -> {
+                    wait.accept(p);
                     if (p.equals(IndexManager.WRITE_BEFORE_SET)) {
                         reached.countDown();
                     } else if (p.equals(at) && !fired[0]) {
@@ -187,6 +193,9 @@ public class PubTesterIndexRaces {
                     }
                 };
                 doChange.run();
+                if (jobs[0] != null) {
+                    jobs[0].join();
+                }
                 Assert.assertTrue("the change reached the point " + at, fired[0]);
                 join(writer[0]);
                 m.testHook = null;
@@ -200,6 +209,7 @@ public class PubTesterIndexRaces {
 
             // After: the entries are the function of the values at the latest time.
             if (change == Change.DELETE) {
+                awaitCleanups(m);
                 Assert.assertEquals("entries after the deletion", "[]",
                         rawEntries(d.getDb(), NAME).toString());
                 create(database).join();            // S2-F12: a new index of the name
@@ -220,7 +230,7 @@ public class PubTesterIndexRaces {
     }
 
     private static Job create(Database database) {
-        return database.indexBuilder(NAME).type("long").dir(DIR).field("n").start();
+        return database.indexBuilder(NAME).dir(DIR).type("long").field("n").start();
     }
 
     private static void write(Connection w, Write write) {
@@ -373,36 +383,33 @@ public class PubTesterIndexRaces {
     // ======== Helpers ========
 
     /**
-     * The raw entries of the index NAME equal its function over the values of DIR at the
-     * latest time (020-10, section 9.2), computed apart from the write path: each value that
-     * is a stored object gives the entries of RwEnvironmentImp.setIndexEntry.
+     * The raw entries of the index NAME, of every generation, equal its function over the
+     * values of DIR at the latest time (020-10, section 9.2), computed apart from the write
+     * path: each value's entry, IndexDefinition.entry().
      */
     static void checkEntries(DatabaseImp d, String what) {
-        IndexManager.Index index = d.getIndexManager().getIndex(NAME);
-        Assert.assertTrue(what + ": the index", index != null);
+        IndexDefinition def = d.getIndexManager().definition(NAME);
+        Assert.assertTrue(what + ": the index", def != null);
         Db db = d.getDb();
         TreeSet<String> want = new TreeSet<>();
         for (String ukey : new String[] {KEY, OTHER}) {
             String ikey = PubKeys.u2i(ukey);
             byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(ikey), db.newGetData());
-            if (value != null && ObjectFormat.isStoredObject(value)) {
-                RwEnvironmentImp.setIndexEntry(new DbObject(value),
-                        ikey.substring(ikey.lastIndexOf('/') + 1), index, 0,
-                        new RwEnvironmentImp.IndexSetter() {
-                            public void setIndexKey(byte[] key, KeyTransformation kt) {
-                                want.add(StringUtil.toHex(key));
-                            }
-                        }, false);
+            byte[] entry = def.entry(ikey, value);
+            if (entry != null) {
+                want.add(StringUtil.toHex(entry));
             }
         }
         Assert.assertEquals(what + ": the index's entries", want.toString(),
                 rawEntries(db, NAME).toString());
     }
 
-    /** The keys under the index's entries' directory at the latest time, in hexadecimal. */
+    /**
+     * The keys of the entries of every generation of the index's name at the latest time,
+     * bkey(/#i/dient/dNAME/), in hexadecimal.
+     */
     static TreeSet<String> rawEntries(Db db, String name) {
-        final byte[] dir = IndexManager.getIndexDbDirAsBytes(name);
-        final long[] dirKey = Keys.toSegments(dir);
+        final long[] dirKey = Keys.toSegments(Keys.toBytes("/#i/dient/d" + name + "/"));
         TreeSet<String> keys = new TreeSet<>();
         GetMany g = db.newGetMany();
         g.startKey = dirKey;
@@ -421,6 +428,22 @@ public class PubTesterIndexRaces {
             keys.add(StringUtil.toHex(Keys.toBytes(kvt.key)));
         }
         return keys;
+    }
+
+    /** Waits, at most 5 s, until no marker of a deleted generation is left. */
+    static void awaitCleanups(IndexManager m) {
+        long end = System.currentTimeMillis() + 5000;
+        while (!m.markers(Long.MAX_VALUE).isEmpty()) {
+            if (System.currentTimeMillis() > end) {
+                throw new AssertionError("the cleanups did not end in 5 s");
+            }
+            try {
+                Thread.sleep(2);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(e);
+            }
+        }
     }
 
     private static void await(CountDownLatch latch, String what) {

@@ -45,7 +45,7 @@ public class CreateIndexTester {
         
         Time time0 = database.currentTime();
         
-        Job job = database.indexBuilder("e-salary").type("long").dir("/e/").field("salary").start();
+        Job job = database.indexBuilder("e-salary").dir("/e/").type("long").field("salary").start();
         
         Time time1 = database.currentTime();
         
@@ -123,7 +123,7 @@ public class CreateIndexTester {
         long length = db.getStreamLength();
         coll.out().println("Created database, stream length: " + (length/1e6));
         
-        Job job = database.indexBuilder("e-salary").type("long").dir("/e/").field("salary").start();
+        Job job = database.indexBuilder("e-salary").dir("/e/").type("long").field("salary").start();
         
         Time time1 = database.currentTime();
         
@@ -144,14 +144,12 @@ public class CreateIndexTester {
         database = builder.start();
         c = database.connection();
         
-        Job[] jobs = database.getStartupInfo().getStartupJobs();
-        Assert.assertEquals("start() jobs.size()", 1, jobs.length);
-        job = jobs[0];
+        job = database.indexJob("e-salary");     // The build the start resumed, or done
         coll.out().println("Job status: " + job.getStatus().note());
         Thread.sleep(100);
         coll.out().println("Job status: " + job.getStatus().note());
         status = job.join();
-        Assert.assertEquals(100, status.progress());
+        Assert.assertEquals(JobStatus.State.ACTIVE, status.state());
         coll.out().println("Job status: " + status.note());
         
         // Checks index by iterating it.

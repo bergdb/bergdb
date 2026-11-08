@@ -1,8 +1,9 @@
 package bergdb.pub;
 
 /**
- * Thrown to indicate that no index with the given name exists. It belongs to the user
- * indexes, experimental in 2026.3 (see Database.indexBuilder(); bergdb 018-01, D6).
+ * Thrown when there is no index of the given name: by Database.deleteIndex() and
+ * Database.indexJob() now, and by Connection.useIndex() at the lookup time, also when the
+ * index is building then (bergdb 020-10, sections 3.2 and 3.6).
  * 
  * @author Frans Lundberg
  */

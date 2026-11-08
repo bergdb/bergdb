@@ -70,8 +70,8 @@ public class PubTesterNestedFields {
         d3.personA = p3;
         d3.personB = p1;
         
-        db.indexBuilder("i1").type("long").dir("/dialogs/")
-            .nestedField(new String[]{"personB", "id"}).createFast();
+        db.indexBuilder("i1").dir("/dialogs/").type("long")
+            .nestedField(new String[]{"personB", "id"}).start().join();
         
         c.put("/dialogs/d1", d1);
         c.put("/dialogs/d2", d2);
@@ -99,7 +99,7 @@ public class PubTesterNestedFields {
         Database db = Factory.database().memory().start();
         Connection c = db.connection();
         
-        db.indexBuilder("i1").type("long").dir("/tops/").nestedField("nested1.nested2.value").createFast();    
+        db.indexBuilder("i1").dir("/tops/").type("long").nestedField("nested1.nested2.value").start().join();    
         c.put("/tops/t1", new Top(20));
         c.put("/tops/t2", new Top(10));
         c.put("/tops/t3", new Top(30));
@@ -129,7 +129,7 @@ public class PubTesterNestedFields {
         Database db = Factory.database().memory().start();
         Connection c = db.connection();
         
-        db.indexBuilder("i1").type("double").dir("/d/").nestedField("f.value").createFast();    
+        db.indexBuilder("i1").dir("/d/").type("double").nestedField("f.value").start().join();    
         c.put("/d/1", nested(new DbDouble(12.3)));
         
         c.put("/d/2", nested(new DbDouble(-1.2)));
@@ -155,7 +155,7 @@ public class PubTesterNestedFields {
         Database db = Factory.database().memory().start();
         Connection c = db.connection();
         
-        db.indexBuilder("i1").type("string").dir("/d/").nestedField("f.value").createFast();    
+        db.indexBuilder("i1").dir("/d/").type("string").nestedField("f.value").start().join();    
         c.put("/d/1", nested(new DbString("anna")));
         
         c.put("/d/2", nested(new DbString("zebra")));

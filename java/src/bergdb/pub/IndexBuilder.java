@@ -3,240 +3,112 @@ package bergdb.pub;
 import bergdb.pub.util.Job;
 
 /**
- * <p>A builder to create a database index.
- * It is mandatory to call the three methods: dir(), type(), and field()  
- * before calling createFast() or start() to create the index.
- * The type() method must be called before field().</p>
+ * A builder of a user index: an index of the values of one directory, ordered by 1 to 8
+ * levels, each a field of the objects (bergdb 020-10, section 3.1). Get one with
+ * Database.indexBuilder(name); call dir() once, then type() and field() (or nestedField())
+ * for each level, then start():
  *
- * <p>Experimental in 2026.3, with known faults; it may change in a later release (bergdb
- * 018-01, D6).</p>
- * 
- * <p>An example of creating an index that indexes employee salaries (long field 'salary' of 
- * Employee objects) could look like this:</p>
- * 
- * <code>database.indexBuilder("employee-salary").dir("/employees/").type("long").field("salary").createFast();</code>
- * 
- * <p>The builder supports the creation of ordinary indexes, but also composite
- * indexes that consists of multiple parts. To create a composite index, call type()
- * followed by field() more than once before eventually calling createFast() or 
- * start(). The call to type() starts a new composite index level. The following calls to 
- * field() apply to the nearest preceding call to type().</p>
- * 
- * <p>dir() can be called multiple times to create an index that spans multiple directories.</p>
- * 
- * <p>field() can be called multiple times to create one index that indexes multiple fields
- * of the objects.</p>
- * 
- * <p>The allowed method call sequence is described by the following ABNF
- * (http://en.wikipedia.org/wiki/Augmented_Backus%E2%80%93Naur_Form). "1*" means "one or more".</p>
- * 
  * <pre>
- *     callSequence = 1*dir 1*(type 1*field) (createFast / start)
+ *     database.indexBuilder("by-salary").dir("/employees/").type("long").field("salary")
+ *             .start().join();
  * </pre>
- * 
+ *
+ * <p>Each call is checked at once, in the order given. The builder is spent after start(),
+ * whatever it threw.</p>
+ *
+ * <p><b>The index function.</b> The index is a function of the data: each value v at a key of
+ * the directory (its own keys, not its subdirectories') has one entry or none, by these
+ * rules (bergdb 020-10, section 3.3):</p>
+ * <ol>
+ * <li>If the key has a suffix other than ".obj", or v is not a stored object (a value whose
+ *     first byte is the header of the object format, 0x82, and that passes the format's full
+ *     check), v has no entry. A String value never is an object; a byte[] value that passes
+ *     the check is taken as one. An object of the format of BergDB 2026.3 and before is
+ *     refused: a write of it in an indexed directory throws DataFormatException, and a build
+ *     over it fails.</li>
+ * <li>Each level's field is followed in the stored object; each part of a nested path but
+ *     the last must name a field that holds an object. The value found must be of the
+ *     level's stored kind: an integer for "long" (Java's long, int, short, byte and char
+ *     fields), a double but NaN for "double" (Java's double and float), a string for
+ *     "string", bytes for "bytes" (byte[]). No kind is converted to another; a boolean, an
+ *     array or an object gives no entry; an absent field gives no entry.</li>
+ * <li>If the levels' encodings take more than 4,096 bytes in all, v has no entry.</li>
+ * </ol>
+ *
+ * <p>The order of a level: "long" by the numbers; "double" by the numbers, -0.0 as 0.0 (one
+ * key), -infinity the least, +infinity the greatest; "string" by the strings' Unicode code
+ * points; "bytes" by unsigned bytes. An application that needs a language's order stores its
+ * own collation key, such as java.text.Collator.getCollationKey(s).toByteArray(), in a byte[]
+ * field and indexes it as "bytes".</p>
+ *
+ * <p>Every put and delete at an object key of the directory, of any value, keeps the index:
+ * a String or a byte[] put over an object deletes its entry.</p>
+ *
  * @author Frans Lundberg
  */
 public interface IndexBuilder {
-    
     /**
-     * The type of the index; the main type is one of: "long", "double", "string".
-     * 
-     * <p>The "long" index type applies to object fields of Java type "long". This index type
-     * sorts objects according to the numerical value of their long fields.</p>
-     * 
-     * <p>The "double" index type applies to object fields of Java type "double". This index type
-     * sorts object according to the numerical value of their double fields. Sorting of 
-     * Double.POSITIVE_INFINITY and Double.NEGATIVE_INFINITY works as expected. Sorting of
-     * Double.NaN (not-a-number) double values are are not supported (result is unspecified).</p>
-     * 
-     * <p>The "string" index type applies to object fields of Java type "String".
-     * This index types sorts objects according to the alphabetical order of the strings.
-     * Without anything else appended to it, "string" creates an index that sorts strings 
-     * lexicographically by the Unicode code points of the characters in the string.
-     * Alternatively, the equivalent "string/unicode" can be used for this sort order.
-     * For natural language strings, this sort is often not suitable. Different languages have 
-     * different conventions for how to sort strings in alphabetical order.
-     * Therefore, a language parameter can be optionally be appended to "string" to create a
-     * string index for a particular language. For example, "string/sv" will create an index
-     * that sorts strings according to the conventions of the Swedish language.</p>
-     * 
-     * <p>A specific way to sort strings is often called a "collation". BergDB uses ICU
-     * (http://icu-project.org/) for collation support (release 50.1). 
-     * ICU has a large collection of collation implementations that follows the UCA (Unicode 
-     * Collation Algorithm) standard, available at http://www.unicode.org/reports/tr10/.</p>
-     * 
-     * <p>The following collations (languages) are supported by BergDB 
-     * (in addition to "string/unicode"):</p>
-     * 
-     * <pre>
-     * af   Afrikaans
-     * ar   Arabic
-     * as   Assamese
-     * az   Azerbaijani
-     * be   Belarusian
-     * bg   Bulgarian
-     * bn   Bengali
-     * bs   Bosnian
-     * ca   Catalan
-     * chr  Cherokee
-     * cs   Czech
-     * cy   Welsh
-     * da   Danish
-     * de   German
-     * dz   Dzongkha
-     * ee   Ewe
-     * el   Greek
-     * en   English
-     * eo   Esperanto
-     * es   Spanish
-     * et   Estonian
-     * fa   Persian
-     * fi   Finnish
-     * fil  Filipino
-     * fo   Faroese
-     * fr   French
-     * ga   Irish
-     * gu   Gujarati
-     * ha   Hausa
-     * haw  Hawaiian
-     * he   Hebrew
-     * hi   Hindi
-     * hr   Croatian
-     * hu   Hungarian
-     * hy   Armenian
-     * id   Indonesian
-     * ig   Igbo
-     * is   Icelandic
-     * it   Italian
-     * ja   Japanese
-     * ka   Georgian
-     * kk   Kazakh
-     * kl   Kalaallisut
-     * km   Khmer
-     * kn   Kannada
-     * ko   Korean
-     * kok  Konkani
-     * ln   Lingala
-     * lt   Lithuanian
-     * lv   Latvian
-     * mk   Macedonian
-     * ml   Malayalam
-     * mr   Marathi
-     * ms   Malay
-     * mt   Maltese
-     * my   Burmese
-     * nb   Norwegian Bokmål
-     * nl   Dutch
-     * nn   Norwegian Nynorsk
-     * om   Oromo
-     * or   Oriya
-     * pa   Punjabi
-     * pl   Polish
-     * ps   Pashto
-     * pt   Portuguese
-     * ro   Romanian
-     * ru   Russian
-     * si   Sinhala
-     * sk   Slovak
-     * sl   Slovenian
-     * sq   Albanian
-     * sr   Serbian
-     * sv   Swedish
-     * sw   Swahili
-     * ta   Tamil
-     * te   Telugu
-     * th   Thai
-     * to   Tongan
-     * tr   Turkish
-     * uk   Ukrainian
-     * ur   Urdu
-     * vi   Vietnamese
-     * yo   Yoruba
-     * zh   Chinese
-     * zu   Zulu
-     * </pre>
-     * 
-     * <p>The language code (2-3 characters) is used to specify the language for a string index.
-     * Optionally a string index type string can include the <em>comparison level</em> to use.
-     * See http://www.unicode.org/reports/tr10/#Multi_Level_Comparison. The default is L1.
-     * This is the most efficient comparison level (smallest index), but sometimes one of the 
-     * other levels (L2, L3, L4, Ln) is required.</p>
-     * 
-     * <p>Examples of valid index type strings:</p>
-     * 
-     * <pre>
-     *   long             - Sorts integer values of long fields.
-     *   double           - Sorts floating point values of double fields.
-     *   string           - Unicode code point sort.
-     *   string/unicode   - Unicode code point sort.
-     *   string/en        - English language, comparison level L1.
-     *   string/sv        - Swedish language, comparison level L1.
-     *   string/sv/L3     - Swedish language, comparison level L3.
-     *   string/zh/L2     - Chinese language, comparison level L2.
-     *   string/pl        - Polish language, comparison level L1.
-     * </pre>
-     * 
-     * <p>Note, alternative builds of BergDB may exclude ICU support and therefore will 
-     * only support the "string/unicode" collator. This means that indexes created with ICU 
-     * collators with a standard BergDB build, can be impossible to use by software using 
-     * an alternative (constrained) BergDB library.</p>
-     */
-    public IndexBuilder type(String indexTypeString);
-    
-    /**
-     * Adds an index to the directories to index. At least one call to this method is 
-     * required.
-     * 
-     * @param dir  The directory, null is not allowed. Must end with '/'.
-     * @throws IllegalArgumentException  If dir is null or empty, does not start or end with
-     *      '/', or contains "//".
+     * The directory whose values are indexed, such as "/persons/": its own values, not its
+     * subdirectories'. Called once, first.
+     *
+     * @param dir  The directory: it starts and ends with '/', and has no "//" and no lone
+     *     surrogate.
+     * @throws IllegalArgumentException  If dir is null or not a directory.
+     * @throws IllegalStateException  If dir() was called before, or the builder is spent.
      */
     public IndexBuilder dir(String dir);
-    
+
     /**
-     * Adds a field to the fields to index.
-     * At least one call to a field method is required per composite part.
-     * 
-     * @param field  The field name, null or the empty string is not allowed.
+     * Starts the next level, of type "long", "double", "string" or "bytes"; at most 8 levels.
+     *
+     * @throws IllegalArgumentException  If the type is another string, or null.
+     * @throws IllegalStateException  If dir() was not called yet, the level before has no
+     *     field, there are 8 levels already, or the builder is spent.
      */
-    public IndexBuilder field(String field);
-    
+    public IndexBuilder type(String type);
+
     /**
-     * Adds a nested field to the fields to index.
-     * This is a utility methods using dots to separate the parts.
-     * If a dot could be part of a field name itself, do not use this method.
-     * 
-     * @param fieldSpec  
-     *      A string with dots to separate the parts. Example: "car.dimensions.length".
+     * The level's field: a top-level field name, one part (a '.' in it is part of the name).
+     * Once per level, after type().
+     *
+     * @throws IllegalArgumentException  If the name is null, empty, has more than 255 UTF-8
+     *     bytes, or has a lone surrogate.
+     * @throws IllegalStateException  If type() was not called for the level, the level has its
+     *     field, or the builder is spent.
      */
-    public IndexBuilder nestedField(String fieldSpec);
-    
+    public IndexBuilder field(String name);
+
     /**
-     * Adds a nested field to the fields to index.
-     * 
-     * @param fieldParts 
-     *      The parts of the nested field. 
-     *      Example: new String[]{"car", "dimensions", "length"}.
+     * The level's field as a nested path: "car.size.length" split at '.', each part a name as
+     * for field(); 1 to 16 parts, no empty part.
+     *
+     * @throws IllegalArgumentException  If the path is null, or a part breaks field()'s rules,
+     *     or there are more than 16 parts.
+     * @throws IllegalStateException  As field().
      */
-    public IndexBuilder nestedField(String[] fieldParts);
-    
-    /** 
-     * Creates this index immediately and makes it active without adding index entries for existing 
-     * database objects. Only new objects (added/updated) will be indexed.
-     */
-    public void createFast();
-    
+    public IndexBuilder nestedField(String path);
+
     /**
-     * Creates a new index in a background job. The index state will be CREATING
-     * until the job finishes and the index state becomes ACTIVE. 
-     * The index cannot be used until the job finishes.
-     * If the database is stopped before the index has been created, the index creation process
-     * will automatically continue when the database is started again.
-     * If the index is deleted before the job finishes, the job stops without making the index
-     * active, and writes nothing to an index created later with the same name; its status then
-     * has progress 100 and a note that says that the index was deleted.
-     * 
-     * @throws IndexAlreadyExistsException if an index with this name already exists.
+     * As nestedField(String), with the parts given; a part may hold '.'.
+     *
+     * @throws IllegalArgumentException  If 'parts' is null or empty, has more than 16 parts,
+     *     or a part breaks field()'s rules.
+     * @throws IllegalStateException  As field().
+     */
+    public IndexBuilder nestedField(String[] parts);
+
+    /**
+     * Creates the index: writes its definition, in state building, in one transaction, and
+     * starts its build in a background thread. From its return, every write of the directory
+     * keeps the index. Returns the build's job: start().join() waits until the index is
+     * active, at once for an empty directory. If the database stops before the build ends,
+     * the next start takes it again, from the first key of the directory.
+     *
+     * @throws IllegalStateException  If dir() was not called, no level was given, a level has
+     *     no field, or start() was called before.
+     * @throws IndexAlreadyExistsException  If an index of the name exists, building or active.
+     * @throws bergdb.pub.util.DbException  If the creation's transaction is refused; then
+     *     nothing changed.
      */
     public Job start();
 }

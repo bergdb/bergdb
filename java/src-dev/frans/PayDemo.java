@@ -74,8 +74,8 @@ public class PayDemo {
         }
         
         database.indexBuilder("payments-from-to")
-                .type("string").dir("/payments/")
-                .field("from").field("to").createFast();
+                .dir("/payments/").type("string")
+                .field("from").field("to").start().join();
         
         database.sync();
         

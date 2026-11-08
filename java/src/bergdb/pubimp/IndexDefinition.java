@@ -422,10 +422,10 @@ final class IndexDefinition {
             return null;
         }
         if (IndexKeys.startsWith(value, FORMAT_1)) {
-            throw new DataFormatException("The value at " + ikey + " is an object in format 1, "
-                    + "written by BergDB 2026.3 or before, which this version does not read; "
-                    + "the index " + IndexKeys.quote(name) + " cannot take it (bergdb 020-02, "
-                    + "section 4.11; 020-10, section 3.3).");
+            throw new DataFormatException("The value at " + ukeyOf(ikey) + " is an object in "
+                    + "format 1, written by BergDB 2026.3 or before, which this version does "
+                    + "not read; the index " + IndexKeys.quote(name) + " cannot take it (bergdb "
+                    + "020-02, section 4.11; 020-10, section 3.3).");
         }
         if (value.length < 2 || (value[0] & 0xff) != ObjectFormat.HEADER
                 || !ObjectFormat.isStoredObject(value)) {
@@ -489,6 +489,15 @@ final class IndexDefinition {
         return levels;
     }
 
+    /** A key as the user gave it, and its ikey: "/p/b (/dp/-b)"; the ikey if it has no ukey. */
+    private static String ukeyOf(String ikey) {
+        try {
+            return PubKeys.i2u(ikey) + " (" + ikey + ")";
+        } catch (IllegalArgumentException e) {
+            return ikey;
+        }
+    }
+    
     /**
      * The entry's key of the value at 'ikey' (020-10, section 4.1): the generation's prefix,
      * the levels (entryLevels) and K of the ikey; or null if the value has no entry.

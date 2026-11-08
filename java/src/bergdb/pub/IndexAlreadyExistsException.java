@@ -1,8 +1,8 @@
 package bergdb.pub;
 
 /**
- * Thrown when an index with the specified name already exists. It belongs to the user
- * indexes, experimental in 2026.3 (see Database.indexBuilder(); bergdb 018-01, D6).
+ * Thrown by IndexBuilder.start() when an index of the name exists, building or active
+ * (bergdb 020-10, section 3.1).
  */
 public class IndexAlreadyExistsException extends RuntimeException {
     private static final long serialVersionUID = 1L;

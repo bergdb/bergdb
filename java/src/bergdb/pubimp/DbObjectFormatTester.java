@@ -441,7 +441,7 @@ public class DbObjectFormatTester {
         Assert.assertEquals(16, person.length);
         ObjectFormatTester.assertBytes("person", vectors.get("person"), person);
 
-        Data.Index index = new Data.Index();
+        DataObjectsTester.Index index = new DataObjectsTester.Index();   // Data.Index's shape
         index.dirs = new String[] {"/payments/"};
         index.fields = new String[] {"from"};
         index.typeStrings = new String[] {"string/unicode"};

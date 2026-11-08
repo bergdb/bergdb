@@ -1192,7 +1192,7 @@ public class PubTester {
     public static void testObjectPutKeepsFrozenLookupTime() {
         Database db = Factory.database().memory().start();
         try {
-            db.indexBuilder("area").type("long").dir("/houses/").field("area").createFast();
+            db.indexBuilder("area").dir("/houses/").type("long").field("area").start().join();
             Connection c = db.connection();
             Connection other = db.newConnection();
             c.put("/f.txt", "1");
@@ -1498,7 +1498,7 @@ public class PubTester {
     public static void testLongIndexOverOneInteger() {
         Database d = Factory.database().memory().start();
         try {
-            d.indexBuilder("v").type("long").dir("/t/").field("v").start().join();
+            d.indexBuilder("v").dir("/t/").type("long").field("v").start().join();
             Connection c = d.connection();
             c.w().put("/t/a", new IntV(7)).put("/t/b", new LongV(7)).put("/t/c", 
                     new LongV(1L << 40)).put("/t/d", new IntV(-3)).put("/t/e", 
@@ -3365,7 +3365,7 @@ public class PubTester {
     @Nano
     private static void testTransactionInfoWithIndex() {
         Database db = Factory.database().memory().start();
-        db.indexBuilder("area").type("long").dir("/houses/").field("area").createFast();
+        db.indexBuilder("area").dir("/houses/").type("long").field("area").start().join();
         Connection c = db.connection();
         House h = new House();
         h.area = 120;
@@ -3840,13 +3840,13 @@ public class PubTester {
             }
             Assert.assertArrayEquals(format1Payment(), c.get("/p/b", byte[].class));
             
-            JobStatus status = d.indexBuilder("from").type("string").dir("/p/").field("from")
+            JobStatus status = d.indexBuilder("from").dir("/p/").type("string").field("from")
                     .start().join();
-            Assert.assertTrue(status.note(), status.note().startsWith("Failed")
-                    && status.note().contains("format 1") && status.note().contains("/p/b"));
+            Assert.assertTrue(status.note(), status.state() == JobStatus.State.FAILED
+                    && status.reason().contains("format 1") && status.reason().contains("/p/b"));
             
             c.put("/q/a", new Payment("1", "2", 3));
-            d.indexBuilder("q-from").type("string").dir("/q/").field("from").start().join();
+            d.indexBuilder("q-from").dir("/q/").type("string").field("from").start().join();
             assertFormat1("a byte[] put of it in an indexed directory", 
                     bergdb.pub.DataFormatException.class, () -> c.put("/q/x", format1Payment()));
             Db db = ((DatabaseImp) d).getDb();     // written as 2026.3 wrote it
@@ -3877,7 +3877,7 @@ public class PubTester {
         ((DatabaseBuilderImp) builder).getDbBuilder().testSetup(stream);
         Database d = builder.start();
         try {
-            d.indexBuilder("old").type("long").dir("/p/").field("amount").start().join();
+            d.indexBuilder("old").dir("/p/").type("long").field("amount").start().join();
             Db db = ((DatabaseImp) d).getDb();
             byte[] key = Util.concat(Keys.toBytes(DbConstants.INTERNAL_PREFIX + "dii/"), 
                     Keys.toBytes("-old"));
@@ -3932,9 +3932,9 @@ public class PubTester {
             }
             Assert.assertEquals(1, n);
             
-            JobStatus status = d.indexBuilder("from").type("string").dir("/v/").field("from")
+            JobStatus status = d.indexBuilder("from").dir("/v/").type("string").field("from")
                     .start().join();
-            Assert.assertTrue(status.note(), status.note().startsWith("Done"));
+            Assert.assertTrue(status.note(), status.state() == JobStatus.State.ACTIVE);
             n = 0;
             for (Payment p : c.useIndex("from", Payment.class).objects()) {
                 Assert.assertEquals("1", p.from);

@@ -2,23 +2,17 @@ package bergdb.pubimp;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
-import bergdb.common.EventToWaitFor;
-import bergdb.core.DbStoppingException;
-import bergdb.core.KeyTransformation;
+import bergdb.core.Db;
+import bergdb.core.InternalDataException;
 import bergdb.dag.GetMany;
-import bergdb.dag.GetMany.StopCondition;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
-import bergdb.pub.Action;
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.Nano;
 import bergdb.pub.DataFormatException;
-import bergdb.pub.IndexAlreadyExistsException;
 import bergdb.pub.IndexBuilder;
-import bergdb.pub.RwEnvironment;
-import bergdb.pub.util.BadFormatException;
 import bergdb.pub.util.DbException;
-import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
@@ -26,368 +20,421 @@ import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.storage.StreamIoException;
 
 /**
+ * The builder of a user index (bergdb 020-10, section 3.1) and its build (section 6.1).
+ *
  * @see bergdb.pub.IndexBuilder
  * @author Frans Lundberg
  */
 public class IndexBuilderImp implements IndexBuilder {
-    private boolean createInited = false;
-    private final List<String> dirList;
-    private List<CompositePart> parts;
-    private CompositePart currentPart;
-    private final IndexManager indexManager;
-    private final ConnectionImp connection;
+
+    /** The values a build step reads at most (020-10, section 6.1). */
+    static final int STEP_VALUES = 25;
+
+    /** The longest pause after a build or cleanup step, ns (020-10, section 6.1; N10). */
+    static final long MAX_PAUSE = 1000000000L;
+
+    private final DatabaseImp database;
     private final String indexName;
-    private IndexManager.Index index;       // The index that was created.
-    private int bunchSize;                  // Max index entries to create in one bunch - in one transaction.
-    
-    public IndexBuilderImp(String indexName, DatabaseImp database) {
+    private String dir;
+    private final List<String> types = new ArrayList<>();
+    private final List<String[]> paths = new ArrayList<>();
+    private boolean spent;
+
+    /** A builder of the index 'indexName', whose name is checked (IndexKeys.checkName). */
+    IndexBuilderImp(String indexName, DatabaseImp database) {
         assert indexName != null;
         assert database != null;
-        
-        bunchSize = 25;
         this.indexName = indexName;
-        indexManager = database.getIndexManager();
-        connection = new ConnectionImp(database);
-        parts = new ArrayList<CompositePart>();
-        dirList = new ArrayList<String>();
-    }
-    
-    public IndexBuilder nextCompositeLevel() {
-        CompositePart part = new CompositePart();
-        parts.add(part);
-        this.currentPart = part;
-        return this;
+        this.database = database;
     }
 
-    public IndexBuilder type(String indexTypeString) {
-        if (indexTypeString == null) {
-            throw new IllegalArgumentException("'indexTypeString' == null not allowed");
+    private void checkNotSpent() {
+        if (spent) {
+            throw new IllegalStateException("The builder is spent: start() was called.");
         }
-        
-        if (!indexManager.typeSupported(indexTypeString)) {
-            throw new IllegalArgumentException("Index type '" + indexTypeString
-                    + "' not supported.");
-        }
-        
-        nextCompositeLevel();
-        
-        this.currentPart.typeString = indexTypeString;
-        return this;
     }
 
-    /**
-     * @throws IllegalArgumentException
-     */
     public IndexBuilder dir(String udir) {
-        String idir = PubKeys.udir2idir(udir);    // throws IllegalArgumentException
-        
-        if (dirList.size() >= 127) {
-            throw new IllegalArgumentException("To many directories, more than 127 is not allowed.");
+        checkNotSpent();
+        if (dir != null) {
+            throw new IllegalStateException("dir() was called before: an index has one "
+                    + "directory (bergdb 020-10, section 3.1).");
         }
-        
-        if (createInited) {
-            throw new IllegalStateException("Dir cannot be added when index creation started, " +
-                    "dir: " + udir + ".");
-        } 
-        
-        dirList.add(idir);
+        PubKeys.udir2idir(udir);    // throws IllegalArgumentException
+        this.dir = udir;
         return this;
     }
 
-    public IndexBuilder field(String field) {
-        if (field == null) {
-            throw new IllegalArgumentException("field == null not allowed");
+    public IndexBuilder type(String type) {
+        checkNotSpent();
+        if (dir == null) {
+            throw new IllegalStateException("Call dir() before type().");
         }
-        
-        if (field.length() == 0) {
-            throw new IllegalArgumentException("The empty string for 'field' is not allowed.");
+        if (!types.isEmpty() && paths.get(paths.size() - 1) == null) {
+            throw new IllegalStateException("The level before has no field: call field() or "
+                    + "nestedField() after type().");
         }
-        
-        if (field.contains(" ")) {
-            throw new IllegalArgumentException("Field name cannot contain a space, " +
-            		"'" + field + "'.");
+        if (types.size() == IndexDefinition.MAX_LEVELS) {
+            throw new IllegalStateException("An index has at most "
+                    + IndexDefinition.MAX_LEVELS + " levels.");
         }
-        
-        if (field.contains(",")) {
-            throw new IllegalArgumentException("Field name cannot contain a comma, '" 
-                    + field + "'.");
-        }
-        
-        if (currentPart == null) {
-            throw new IllegalStateException("Call type() before field().");
-        }
-        
-        if (currentPart.fields.size() >= 127) {
-            throw new IllegalArgumentException("To many fields, more than 127 is not allowed, " +
-            		"field: " + field + ".");
-        }
-        
-        if (createInited) {
-            throw new IllegalStateException("Field cannot be added when index creation started, " +
-            		"field: " + field + ".");
-        }
-        
-        currentPart.fields.add(new FieldRef(field));
+        IndexKeys.type(type);       // throws IllegalArgumentException
+        types.add(type);
+        paths.add(null);
         return this;
     }
-    
-    /**
-     * @param fieldSpec String with dots to separate the parts.
-     */
-    public IndexBuilder nestedField(String fieldSpec) {
-        if (fieldSpec == null) {
-            throw new IllegalArgumentException("fieldSpec == null not allowed");
-        }
-        
-        String[] parts = fieldSpec.split("\\.");
-        return nestedField(parts);
+
+    public IndexBuilder field(String name) {
+        return path(new String[] {name}, "field");
     }
-    
-    public IndexBuilder nestedField(String[] fieldParts) {
-        if (fieldParts == null) {
-            throw new IllegalArgumentException("fieldParts == null not allowed");
+
+    public IndexBuilder nestedField(String path) {
+        checkLevel("nestedField");
+        if (path == null) {
+            throw new IllegalArgumentException("path == null not allowed");
         }
-        
-        if (fieldParts.length == 0) {
-            throw new IllegalArgumentException("The empty array for 'fieldParts' is not allowed.");
-        }
-        
-        if (currentPart == null) {
-            throw new IllegalStateException("Call type() before field().");
-        }
-        
-        if (currentPart.fields.size() >= 127) {
-            throw new IllegalArgumentException("To many fields, more than 127 is not allowed.");
-        }
-        
-        if (createInited) {
-            throw new IllegalStateException("Field cannot be added when index creation started.");
-        }
-        
-        currentPart.fields.add(new FieldRef(fieldParts));
-        return this;
+        return path(path.split("\\.", -1), "nestedField");
     }
-    
-    public void bunchSize(int size) {
-        if (size < 1) {
-            throw new IllegalArgumentException("Bad bunch size: " + size + ".");
+
+    public IndexBuilder nestedField(String[] parts) {
+        checkLevel("nestedField");
+        if (parts == null || parts.length == 0) {
+            throw new IllegalArgumentException("A nested field has 1 to "
+                    + IndexDefinition.MAX_PARTS + " parts, not none.");
         }
-        this.bunchSize = size;
+        return path(parts.clone(), "nestedField");
     }
-    
-    /**
-     * Checks that state is OK for createFast() and start(), throws IllegalStateException to 
-     * the Pub API user if appropriate.
-     * 
-     * @throws IllegalStateException
-     */
-    private void checkStateBeforeCreate() {
-        if (createInited) {
-            throw new IllegalStateException("Cannot call create method (createFast/start) again.");
+
+    private void checkLevel(String method) {
+        checkNotSpent();
+        if (types.isEmpty()) {
+            throw new IllegalStateException("Call type() before " + method + "().");
         }
-        
-        if (dirList.size() == 0) {
-            throw new IllegalStateException("No directory specified, cannot create index '" 
-                    + indexName + "'.");
+        if (paths.get(paths.size() - 1) != null) {
+            throw new IllegalStateException("The level has its field: call type() for the "
+                    + "next level.");
         }
-        
-        if (parts.size() == 0) {
-            throw new IllegalStateException("No index type specified, cannot create index '"
-                    + indexName + "'.");
+    }
+
+    /** The level's path: 1 to 16 parts, each a name of 1 to 255 UTF-8 bytes (S2-F15). */
+    private IndexBuilder path(String[] parts, String method) {
+        checkLevel(method);
+        if (parts.length > IndexDefinition.MAX_PARTS) {
+            throw new IllegalArgumentException("A nested field has 1 to "
+                    + IndexDefinition.MAX_PARTS + " parts, not " + parts.length + ".");
         }
-        
-        for (int i = 0; i < parts.size(); i++) {
-            CompositePart part = parts.get(i);
-            if (part.fields.size() == 0) {
-                String message = parts.size() == 1 ? 
-                        "No fields specified, cannot create index '" + indexName + "'."
-                      : "No fields specified for index composite part " 
-                         + i + " (index type: " + part.typeString + "), cannot create index '"
-                         + indexName + "'.";
-                throw new IllegalStateException(message);
+        for (int i = 0; i < parts.length; i++) {
+            if (parts[i] == null) {
+                throw new IllegalArgumentException("A field's name is null (part " + (i + 1)
+                        + ").");
+            }
+            try {
+                ObjectFormat.nameBytes(parts[i]);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Bad field name " + IndexKeys.quote(parts[i])
+                        + (parts.length > 1 ? " (part " + (i + 1) + ")" : "") + ": "
+                        + e.getMessage(), e);
             }
         }
-    }
-    
-    /**
-     * Package access is for testing only. Otherwise would have been private.
-     * 
-     * @throws IndexAlreadyExistsException
-     */
-    IndexCreateState createInit() throws IndexAlreadyExistsException {
-        String[] dirs = dirList.toArray(new String[0]);
-        FieldRef[][] fields = new FieldRef[parts.size()][];
-        String[] typeStrings = new String[parts.size()];
-        
-        for (int i = 0; i < parts.size(); i++) {
-            CompositePart part = parts.get(i);
-            assert part != null;
-            fields[i] = part.fields.toArray(new FieldRef[0]);
-            assert fields[i].length > 0;
-            typeStrings[i] = part.typeString;
-            assert part.typeString != null;
-            assert part.typeString.length() > 0;
-        }
-        
-        createInited = true;
-        
-        index = indexManager.addIndex(connection, indexName, dirs, fields, typeStrings);
-        assert index.getState() == IndexManager.Index.STATE_CREATING;
-        
-        IndexCreateState createState = new IndexCreateState(index);
-        return createState;
+        paths.set(paths.size() - 1, parts);
+        return this;
     }
 
-    /**
-     * @throws IndexAlreadyExistsException
-     * @throws IllegalStateException
-     */
-    public void createFast() {
-        checkStateBeforeCreate();
-        createInit();
-        indexManager.setIndexStateToActive(connection, index);
-        assert index.getState() == IndexManager.Index.STATE_ACTIVE;
-    }
-    
-    private EventToWaitFor createInThread_waitEvent;
-    
-    /**
-     * Used for testing only.
-     */
-    public void createInThreadWaitEvent(EventToWaitFor event) {
-        createInThread_waitEvent = event;
-    }
-    
-    private volatile Consumer<String> testHook = null;
-    
-    /**
-     * For tests only (bergdb 015-22): the hook is called with "action" at the end of each run
-     * of a step's action, before its transaction, and with "step" after the transaction.
-     */
-    void testHook(Consumer<String> hook) {
-        testHook = hook;
-    }
-    
-    /**
-     * Starts the index creation in a new low-priority thread.
-     * 
-     * @throws IndexAlreadyExistsException
-     * @throws IllegalStateException
-     */
     public Job start() {
-        checkStateBeforeCreate();
-        final IndexCreateState createState = createInit();
-        final Thread thread = createInThread(createState);
-        
-        return new Job() {
-            public JobStatus getStatus() {
-                return createState.getJobStatus();
-            }
+        checkNotSpent();
+        spent = true;
+        if (dir == null) {
+            throw new IllegalStateException("No directory: call dir() before start().");
+        }
+        if (types.isEmpty()) {
+            throw new IllegalStateException("No level: call type() and field() before "
+                    + "start().");
+        }
+        if (paths.get(paths.size() - 1) == null) {
+            throw new IllegalStateException("The last level has no field.");
+        }
+        return database.getIndexManager().create(indexName, dir,
+                types.toArray(new String[0]), paths.toArray(new String[0][]));
+    }
 
-            public JobStatus join() {
-                return join(0);
-            }
+    // ======== The build (020-10, section 6.1) ========
 
-            public JobStatus join(int ms) {
-                // It would be possible for BergDB user to interrupt this.
-                // Threads are globally accessible through ThreadGroup.
-                
+    /**
+     * The build of an index in this process: its status, a snapshot at each getStatus()
+     * (015-39), and its thread.
+     */
+    static final class BuildJob implements Job {
+        private final String name;
+        private JobStatus.State state = JobStatus.State.BUILDING;
+        private long count;
+        private String reason;
+        private Thread thread;
+
+        BuildJob(String name) {
+            this.name = name;
+        }
+
+        synchronized void setThread(Thread thread) {
+            this.thread = thread;
+        }
+
+        synchronized void counted(long n) {
+            count += n;
+        }
+
+        synchronized void activated(long n) {
+            count += n;
+            state = JobStatus.State.ACTIVE;
+        }
+
+        synchronized void failed(String why) {
+            state = JobStatus.State.FAILED;
+            reason = why;
+        }
+
+        public synchronized JobStatus getStatus() {
+            return new Status(name, state, count, reason);
+        }
+
+        public JobStatus join() {
+            return join(0);
+        }
+
+        public JobStatus join(int millis) {
+            Thread t;
+            synchronized (this) {
+                t = thread;
+            }
+            if (t != null) {
                 try {
-                    thread.join(ms);
+                    t.join(millis);
                 } catch (InterruptedException e) {
-                    // The caller was interrupted: the wait ends, the job goes on (2026-10-27,
-                    // bergdb 005-46). It threw an Error.
+                    // The wait ends, the build goes on (bergdb 005-46).
                     Thread.currentThread().interrupt();
                 }
-                return createState.getJobStatus();
             }
-        };
+            return getStatus();
+        }
     }
-    
+
+    /** A status: immutable. */
+    private static final class Status implements JobStatus {
+        private final String name;
+        private final State state;
+        private final long count;
+        private final String reason;
+
+        Status(String name, State state, long count, String reason) {
+            this.name = name;
+            this.state = state;
+            this.count = count;
+            this.reason = reason;
+        }
+
+        public State state() {
+            return state;
+        }
+
+        public long count() {
+            return count;
+        }
+
+        public String reason() {
+            return reason;
+        }
+
+        public String note() {
+            switch (state) {
+            case ACTIVE:
+                return "The index " + name + " is active; its build read " + count
+                        + " values in this process.";
+            case FAILED:
+                return "The build of the index " + name + " failed after " + count
+                        + " values: " + reason + ". The next start takes it again.";
+            default:
+                return "The index " + name + " is building: " + count + " values read.";
+            }
+        }
+
+        public String toString() {
+            return note();
+        }
+    }
+
+    /** Thrown in a build step's action when its index was deleted. */
+    private static final class DeletedException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+    }
+
     /**
-     * Creates a new thread which will create the index.
-     * 
-     * @throws IndexAlreadyExistsException
+     * Starts the build of a live index in state building, in a daemon thread of the lowest
+     * priority, on its own connection, from the first key of its directory (020-10, section
+     * 6.1). A step is an rw(): a getMany of at most STEP_VALUES values of the directory's own
+     * keys after the last key of the step before (its prefix idir and '-', so it stops at the
+     * directory's end: 015-30, S2-F16); the definition's key hash in its read set; if the index
+     * was deleted, the build ends FAILED "deleted"; else each value's entry is put (a value
+     * with no entry is counted and skipped; a key without an ikey is skipped, bergdb 021-06).
+     * The values' hashes are in the read set, so a concurrent write of one makes the step run
+     * again. After a step, a pause of half its time, at most a second (N10). At the end, the
+     * activation. Errors: a stop of the database ends the thread, BUILDING; a refusal or an
+     * expiry waits 10 to 640 ms and takes the step again (019-38); any other RuntimeException,
+     * a DataFormatException or an InternalDataException included, ends the build FAILED, the
+     * database going on (019-42); an Error fails the database (019-10).
      */
-    Thread createInThread(final IndexCreateState createState) {
-        // Event used for testing.
-        final EventToWaitFor event = createInThread_waitEvent;   
-        
-        Thread t = new Thread(new Runnable() {
-            public void run() {
-                if (event != null) {
-                    event.waitForEvent();
+    static void startBuild(DatabaseImp database, IndexManager m, IndexManager.Live live) {
+        Thread thread = new Thread(new Build(database, m, live));
+        thread.setPriority(Thread.MIN_PRIORITY);
+        thread.setDaemon(true);
+        thread.setName("IndexBuild-" + live.def.name() + "-" + live.def.gen());
+        live.job.setThread(thread);
+        thread.start();
+    }
+
+    private static final class Build implements Runnable {
+        private final IndexManager m;
+        private final IndexManager.Live live;
+        private final IndexDefinition def;
+        private final ConnectionImp connection;
+        private final Db db;
+        private final long[] prefix;
+        private final long defKeyHash;
+
+        // The step's results, set by its action (which may run again).
+        private long[] lastKey;
+        private int count;
+        private boolean ended;
+
+        Build(DatabaseImp database, IndexManager m, IndexManager.Live live) {
+            this.m = m;
+            this.live = live;
+            this.def = live.def;
+            this.connection = new ConnectionImp(database);
+            this.db = database.getDb();
+            this.prefix = Keys.toSegments(Keys.toBytes(def.idir() + PubKeys.FILE_PREFIX));
+            this.defKeyHash = Keys.hash(Keys.toSegments(def.key()));
+        }
+
+        public void run() {
+            long[] start = prefix;
+            long retryWait = RwTransaction.FIRST_SLEEP;
+            while (true) {
+                long t0 = System.nanoTime();
+                final long[] from = start;
+                try {
+                    connection.rw(env -> step((RwEnvironmentImp) env, from));
+                } catch (DeletedException e) {
+                    live.job.failed("deleted");
+                    return;
+                } catch (StreamIoException | IllegalDbStateException e) {
+                    return;         // A stop of the database; the next start takes the build.
+                } catch (DataFormatException | InternalDataException e) {
+                    // Data that the build cannot take, such as an object of format 1 (bergdb
+                    // 020-08, step 3): not a refusal, though a DbException.
+                    live.job.failed(e.getClass().getName() + ": " + e.getMessage());
+                    return;
+                } catch (DbException | LookupTimeNotAvailableException e) {
+                    retryWait = waitToRetry(retryWait);
+                    continue;
+                } catch (RuntimeException e) {
+                    live.job.failed(e.getClass().getName() + ": " + e.getMessage());
+                    return;
+                } catch (Throwable e) {
+                    db.internal().fail(e);
+                    return;
                 }
-                
-                long retryWait = RwTransaction.FIRST_SLEEP;
-                while (!createState.isDone) {
-                    long t0 = System.nanoTime();
-                    
-                    try {
-                        createStep(createState);
-                    } catch (StreamIoException e) {
-                        // Empty. This is expected if the database is stopped.
-                        // The index creation will continue when the database is restarted.
-                        break;
-                    } catch (DbStoppingException e) {
-                        // Empty. This is expected if the database is being stopped.
-                        // The index creation will continue when the database is restarted.
-                        break;
-                    } catch (DbFailedException e) {
-                        // Empty. The database has failed (bergdb 005-01); the caller of the
-                        // next transaction or read gets the failure. The index creation
-                        // will continue when the database is restarted.
-                        break;
-                    } catch (IllegalDbStateException e) {
-                        // Empty. The database has stopped; the index creation will continue
-                        // when the database is restarted.
-                        break;
-                    } catch (DbException | LookupTimeNotAvailableException e) {
-                        // A refusal of the step's transaction, also after an interrupt of its
-                        // wait to run again after a conflict, or an expired read: not a
-                        // failure. The step is taken again after a wait, as after a conflict
-                        // (2026-11-06, bergdb 019-38; docs/levels.md, section 3). Since 019-10
-                        // it failed the database; before, it ended the thread.
-                        retryWait = waitToRetry(retryWait);
-                        continue;
-                    } catch (RuntimeException e) {
-                        // Any other exception of the build, such as an object that the index
-                        // function cannot index, ends the build as failed, and the database
-                        // goes on; a start takes the build again (2026-11-06, bergdb 019-42).
-                        // Since 019-10 it failed the database, at every start.
-                        createState.fail(e);
-                        break;
-                    } catch (Throwable e) {
-                        // An Error, such as an OutOfMemoryError, fails the database, as on
-                        // BergDB's other threads, with no call to throw it to (2026-11-06,
-                        // bergdb 019-10; 010-01, P7). It ended the thread, and the database
-                        // went on without the index's creation.
-                        connection.getDb().internal().fail(e);
-                        break;
+                retryWait = RwTransaction.FIRST_SLEEP;
+                if (lastKey != null) {
+                    start = lastKey;
+                }
+                if (ended) {
+                    live.job.counted(count);
+                    activate();
+                    return;
+                }
+                live.job.counted(count);
+                pause(System.nanoTime() - t0);
+            }
+        }
+
+        private void step(RwEnvironmentImp env, long[] from) {
+            lastKey = null;
+            count = 0;
+            final int max = m.testStepValues > 0 ? m.testStepValues : STEP_VALUES;
+            final boolean[] end = new boolean[1];
+            GetMany g = db.newGetMany();
+            g.startKey = from;
+            g.inclusive = false;
+            g.stopCondition = new GetMany.StopCondition() {
+                private int n = 0;
+
+                public int handleKvt(Kvt kvt) {
+                    if (!Keys.isPrefix(prefix, kvt.key)) {
+                        end[0] = true;
+                        return GetMany.StopCondition.STOP;
                     }
-                    retryWait = RwTransaction.FIRST_SLEEP;
-                    
-                    long duration = (System.nanoTime() - t0);
-                    
-                    if (!createState.isDone) {
-                        sleepFiftyPercentOfDuration(duration);
-                    }
+                    n++;
+                    return n >= max ? GetMany.StopCondition.ADD_AND_STOP
+                            : GetMany.StopCondition.ADD;
+                }
+
+                public void eod() {
+                    end[0] = true;
+                }
+            };
+            env.getMany(g);
+            env.addReadHash(defKeyHash);
+            if (!m.isLive(live)) {
+                throw new DeletedException();
+            }
+            m.hook(IndexManager.BUILD_STEP);
+            for (Kvt kvt : g.result) {
+                lastKey = kvt.key;
+                count++;
+                String ikey = Keys.bkey2ikeyOrNull(Keys.toBytes(kvt.key));
+                if (ikey == null) {
+                    continue;
+                }
+                byte[] entry = def.entry(ikey, kvt.value);
+                if (entry != null) {
+                    env.set(entry, new byte[0], null);
                 }
             }
-        });
-        
-        t.setPriority(Thread.MIN_PRIORITY);
-        t.setDaemon(true);
-        t.setName("IndexBuilderImp-CreateIndex-" + createState.index.getName() + "-" + t.getId());
-        t.start();
-        return t;
+            ended = end[0] || g.result.size() < max;
+        }
+
+        private void activate() {
+            long retryWait = RwTransaction.FIRST_SLEEP;
+            while (true) {
+                try {
+                    if (m.activate(live)) {
+                        live.job.activated(0);
+                    } else {
+                        live.job.failed("deleted");
+                    }
+                    return;
+                } catch (StreamIoException | IllegalDbStateException e) {
+                    return;
+                } catch (DataFormatException | InternalDataException e) {
+                    live.job.failed(e.getClass().getName() + ": " + e.getMessage());
+                    return;
+                } catch (DbException | LookupTimeNotAvailableException e) {
+                    retryWait = waitToRetry(retryWait);
+                } catch (RuntimeException e) {
+                    live.job.failed(e.getClass().getName() + ": " + e.getMessage());
+                    return;
+                } catch (Throwable e) {
+                    db.internal().fail(e);
+                    return;
+                }
+            }
+        }
     }
-    
+
     /**
      * Waits 'ms' milliseconds before an index job takes its step again after a refusal or an
      * expired read, as an rw-transaction waits after a conflict (bergdb 019-38). An interrupt
      * ends the wait, and the job goes on (bergdb 005-46).
-     * 
+     *
      * @return The wait before the next try, ms.
      */
     static long waitToRetry(long ms) {
@@ -398,332 +445,32 @@ public class IndexBuilderImp implements IndexBuilder {
         }
         return RwTransaction.nextSleep(ms);
     }
-    
+
     /**
-     * Sleeps 50 per cent of the given duration, but never longer than 1 second.
-     * 
-     * @param duration  The duration in nanoseconds; determines how long to sleep.
+     * The pause after a step of 'stepNanos': half its time, at most MAX_PAUSE (020-10, section
+     * 6.1). Until 2026-11-09 the cap was computed and not used (N10).
      */
-    private static void sleepFiftyPercentOfDuration(long duration) throws Error {
-        final long maxMillis = 1000;
-        long ms = duration / 1000000;
-        int nanos = (int) (duration % 1000000);
-        
-        long msToSleep = ms / 2;
-        int nanosToSleep = nanos / 2;
-        
-        if (msToSleep > maxMillis) {
-            ms = maxMillis;
-            nanos = 0;
-        }
-        
+    static long pauseNanos(long stepNanos) {
+        return Math.max(0, Math.min(stepNanos / 2, MAX_PAUSE));
+    }
+
+    /** Sleeps pauseNanos(stepNanos); an interrupt ends the pause, the job goes on (005-46). */
+    static void pause(long stepNanos) {
+        long ns = pauseNanos(stepNanos);
         try {
-            Thread.sleep(msToSleep, nanosToSleep);
+            Thread.sleep(ns / 1000000, (int) (ns % 1000000));
         } catch (InterruptedException e) {
-            // BergDB's own thread goes on (2026-10-27, bergdb 005-46). It threw an Error.
+            // BergDB's own thread goes on (bergdb 005-46).
         }
-    }
-    
-    /**
-     * Takes one step in index creation.
-     * Dividing the work into steps is useful for testing.
-     * 
-     * @throws DataFormatException
-     */
-    public void createStep(final IndexCreateState createState) throws DataFormatException {
-        if (createState.isDone) {
-            return;
-        }
-        
-        final String dir = createState.index.dirs[createState.dirId];
-        final long[] dirKey = Keys.toSegments(dir);
-        final int dirIndex = createState.dirId;
-        
-        if (createState.startKey == null) {
-            createState.startKey = Keys.toSegments(dir);
-        }
-        
-        final TheStopCondition stopCondition = 
-                new TheStopCondition(dirKey, IndexBuilderImp.this.bunchSize);
-        
-        final GetMany g = connection.getDb().newGetMany();
-        g.startKey = createState.startKey;
-        g.inclusive = false;
-        g.stopCondition = stopCondition;
-        
-        Action action = new Action() {
-            void reset() {
-                g.result.clear();
-                stopCondition.reset();
-            }
-            
-            public void run(final RwEnvironment environment) {
-                // Resetting stuff is important; an Action may be rerun.
-                
-                reset();
-                
-                final RwEnvironmentImp env = (RwEnvironmentImp) environment;
-                
-                env.getMany(g);
-                
-                // The build belongs to its index, this Index object, while it is creating
-                // (bergdb 015-22): a deletion sets the state to deleting, then writes the
-                // index info's key. Read after the first read, so if the deletion's write
-                // comes after that read, the transaction runs again and stops here.
-                env.addReadHash(createState.index.keyHash);
-                if (createState.index.getState() != IndexManager.Index.STATE_CREATING) {
-                    throw new IndexDeletedException();
-                }
-                
-                RwEnvironmentImp.IndexSetter indexSetter = new RwEnvironmentImp.IndexSetter() {
-                    public void setIndexKey(byte[] indexKey, KeyTransformation kt) {
-                        env.set(indexKey, new byte[0], kt);
-                    }
-                };
-
-                for (Kvt kvt : g.result) {
-                    String keyname = Keys.toString(kvt.key).substring(dir.length());
-                    DbObject dbo;
-                    
-                    try {
-                        dbo = new DbObject(kvt.value);
-                    } catch (BadFormatException e) {
-                        String ikey = Keys.toString(kvt.key);
-                        if (Entries.isFormat1Object(ikey, kvt.value)) {
-                            // An object of 2026.3 and before ends the build as failed,
-                            // naming its key and the format (bergdb 020-08, step 3).
-                            throw new BadFormatException("The value at " + PubKeys.i2u(ikey)
-                                    + " is not read: " + e.getMessage());
-                        }
-                        // We silently ignore values that are not DbObjects.
-                        // Most non-object values will not get to this anyway.
-                        // There is filtering in TheStopCondition; only values starting
-                        // with DbObject.HEADER, and objects of format 1, are returned with
-                        // env.getMany() call.
-                        continue;
-                    }
-                    
-                    RwEnvironmentImp.setIndexEntry(dbo, keyname, createState.index, dirIndex, 
-                            indexSetter, false);
-                }
-                
-                final Consumer<String> hook = testHook;
-                if (hook != null) {
-                    hook.accept("action");
-                }
-            }
-        };
-        
-        try {
-            connection.rw(action);
-        } catch (DbStoppingException e) {
-            // Special case, index creation while database is stopping.
-            // This is fine, index creation will continue once database is started again.
-            
-            createState.isDone = true;
-            return;
-        } catch (IndexDeletedException e) {
-            // The index was deleted; the build stops, and wrote nothing after the deletion
-            // (bergdb 015-22).
-            createState.stop(createState.processedEntries);
-            return;
-        }
-        
-        final Consumer<String> hook = testHook;
-        if (hook != null) {
-            hook.accept("step");
-        }
-        
-        handleStepResult(createState, stopCondition, g);
     }
 
-    private void handleStepResult(final IndexCreateState createState,
-            final TheStopCondition stopCondition, final GetMany g) {
-        if (stopCondition.isDone()) {
-            if (createState.dirId == createState.index.dirs.length - 1) {
-                // Done with all directories: activated, then reported done (bergdb 015-22).
-                long processed = createState.processedEntries + stopCondition.getProcessedEntries();
-                if (indexManager.setIndexStateToActiveUnlessDeleting(connection, createState.index)) {
-                    createState.update(true, processed);
-                } else {
-                    createState.stop(processed);
-                }
-            } else {
-                // Done with one directory, prepare to process next directory.
-                createState.update(false, createState.processedEntries + stopCondition.getProcessedEntries());
-                createState.dirId++;
-                createState.startKey = Keys.toSegments(createState.index.dirs[createState.dirId]);
-            }
-        } else {
-            // There is more to process from current directory.
-            createState.update(false, createState.processedEntries + stopCondition.getProcessedEntries());
-            createState.startKey = g.result.get(g.result.size() - 1).key;
-        }
-    }
-    
-    /** Thrown by a step's action when the index of the build is deleting (bergdb 015-22). */
-    private static final class IndexDeletedException extends RuntimeException {
-        private static final long serialVersionUID = 1L;
-    }
-    
-    private static class CompositePart {
-        String typeString;
-        List<FieldRef> fields;
-        
-        public CompositePart() {
-            this.typeString = null;
-            this.fields = new ArrayList<FieldRef>();
-        }
-    }
-    
-    static class IndexCreateState {
-        public final IndexManager.Index index;
-        public long processedEntries = 0;
-        
-        // dirId to use for next step
-        public int dirId;
-        
-        // startKey to use for next step
-        public long[] startKey;
-        
-        public boolean isDone;
-        
-        private boolean stopped = false;    // Done because the index was deleted (bergdb 015-22).
-        private Throwable failure = null;   // Done because the build failed (bergdb 019-42).
-        
-        public IndexCreateState(IndexManager.Index index) {
-            assert index != null;
-            assert index.dirs.length > 0;
-            
-            synchronized (this) {
-                this.dirId = 0;
-                this.index = index;
-                this.startKey = Keys.toSegments(index.dirs[dirId]);
-                this.isDone = false;
-            }
-        }
-        
-        /**
-         * Atomic update to fields needed to getJobStatus().
-         */
-        public synchronized void update(boolean isDone, long processedEntries) {
-            this.isDone = isDone;
-            this.processedEntries = processedEntries;
-        }
-        
-        /** Done, without activating the index: the index was deleted (bergdb 015-22). */
-        public synchronized void stop(long processedEntries) {
-            this.stopped = true;
-            update(true, processedEntries);
-        }
-        
-        /** Done, without activating the index: the build failed with 'e' (bergdb 019-42). */
-        public synchronized void fail(Throwable e) {
-            this.failure = e;
-            update(true, processedEntries);
-        }
-        
-        public synchronized JobStatus getJobStatus() {
-            // May be called from any thread; synch accordingly.
-            
-            final int progress = isDone ? 100 : -1;
-            final boolean stopped = this.stopped;
-            final Throwable failure = this.failure;
-            
-            return new JobStatus() {
-                public int progress() {
-                    return progress;
-                }
-
-                public String note() {
-                    String result = 
-                            failure != null ?
-                              "Failed: the build of the index " + index.getName()
-                                    + " ended with an exception (" + failure + "). The index "
-                                    + "is not built; a start takes the build again. Processed "
-                                    + processedEntries + " entries."
-                            : stopped ?
-                              "Stopped: the index " + index.getName() + " was deleted before "
-                                    + "it was built. Processed " + processedEntries + " entries."
-                            : progress == 100 ? 
-                              "Done! Processed " + processedEntries + " entries for index: " 
-                                    + index.getName() + "." 
-                            : "Working, processed " + processedEntries + " entries for index: " 
-                                    + index.getName() + ".";
-                    return result;
-                }
-            };
-            
-        }
-    }
-    
-    /**
-     * Stop condition for GetMany when building an index.
-     * Stops when maxCount is reached or if we do not have the dirKey prefix
-     * any longer.
-     */
-    private static class TheStopCondition implements StopCondition {
-        private final int maxCount;
-        private final long[] dirKey;        
-        private int count = 0;
-        private int processedEntries = 0;
-        private boolean isDone = false;
-        
-        public TheStopCondition(long[] dirKey, int maxCount) {
-            this.maxCount = maxCount;
-            this.dirKey = dirKey;
-        }
-        
-        /**
-         * Resets the object to the state it was in when
-         * first constructed.
-         */
-        public void reset() {
-            count = 0;
-            processedEntries = 0;
-            isDone = false;
-        }
-        
-        public int handleKvt(Kvt kvt) {
-            int result = GetMany.StopCondition.ADD;
-            processedEntries++;
-            
-            String keyString = Keys.toString(kvt.key);
-            boolean isObject = Entries.isProbablyDbObject(keyString, kvt.value)
-                    || Entries.isFormat1Object(keyString, kvt.value);     // refused, failed
-            
-            if (!isObject) {
-                result = GetMany.StopCondition.CONTINUE;
-                return result;
-            }
-            
-            count++;
-            if (count == maxCount) {
-                result = GetMany.StopCondition.ADD_AND_STOP;
-            }
-            
-            if (!Keys.isPrefix(dirKey, kvt.key)) {
-                result = GetMany.StopCondition.STOP;
-                isDone = true;
-            }
-        
-            return result;
-        }
-        
-        public void eod() {
-            isDone = true;
-        }
-        
-        public boolean isDone() {
-            return isDone;
-        }
-        
-        public int getProcessedEntries() {
-            return processedEntries;
-        }
-        
-        public String toString() {
-            return getClass().getSimpleName() + ":maxCount=" + maxCount;
-        }
+    /** N10: the pause is half the step's time, at most a second. */
+    @Nano
+    public static void testPauseCapped() {
+        Assert.assertEquals(0, pauseNanos(0));
+        Assert.assertEquals(5000000, pauseNanos(10000000));
+        Assert.assertEquals(MAX_PAUSE, pauseNanos(2 * MAX_PAUSE));
+        Assert.assertEquals(MAX_PAUSE, pauseNanos(60L * MAX_PAUSE));
+        Assert.assertEquals(0, pauseNanos(-5));
     }
 }

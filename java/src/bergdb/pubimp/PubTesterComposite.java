@@ -78,13 +78,13 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
+            .type("string").field("from")
             .type("long").field("time")
             .start().join();
         
-        IndexManager.Index index = ((DatabaseImp) database).getIndexManager().getIndex("i0");
-        Assert.assertTrue(index != null);
-        Assert.assertEquals(2, index.levelCount);
+        IndexDefinition def = ((DatabaseImp) database).getIndexManager().definition("i0");
+        Assert.assertTrue(def != null);
+        Assert.assertEquals(2, def.levelCount());
         
         database.stop();
     }
@@ -95,7 +95,7 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
+            .type("string").field("from")
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
@@ -118,35 +118,6 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @Nano
-    public static void testTwoFields() {
-        // Two parts, two fields at in first part.
-        
-        TestClock clock = new TestClock();
-        clock.setTime(Time.units(10));
-        Database database = Factory.database().memory().clock(clock).start();
-        database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from").field("to")
-            .type("long").field("time")
-            .start().join();
-        Connection c = database.newConnection();
-        c.w().put("/p/1", new Payment2("2", "3", 100))
-             .put("/p/2", new Payment2("2", "1", 200))
-             .put("/p/3", new Payment2("1", "3", 300))
-             .put("/p/4", new Payment2("1", "2", 400))
-             .put("/p/5", new Payment2("2", "1", 0)).execute();
-        
-        long[] expected = new long[]{0, 200, 300, 400, 0, 100, 200, 400, 100, 300};
-        
-        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).objects().iterator();
-        for (int i = 0; i < expected.length; i++) {
-            Assert.assertTrue(iter.hasNext());
-            Payment2 p = iter.next();
-            Assert.assertEquals(expected[i], p.time);
-        }
-        Assert.assertFalse(iter.hasNext());
-        database.stop();
-    }
     
     @Nano
     public static void testThreeParts() {
@@ -154,8 +125,8 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
-            .type("string/unicode").field("to")
+            .type("string").field("from")
+            .type("string").field("to")
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
@@ -186,8 +157,8 @@ public class PubTesterComposite {
         Connection c = db.newConnection();
         
         db.indexBuilder("a").dir("/payments/")
-            .type("string/unicode").field("from")
-            .type("long").field("time").createFast();
+            .type("string").field("from")
+            .type("long").field("time").start().join();
         
         c.w().put("/payments/1", new Payment2("1001", 20))
              .put("/payments/2", new Payment2("1002", 30))
@@ -232,7 +203,7 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
+            .type("string").field("from")
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
@@ -260,7 +231,7 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
+            .type("string").field("from")
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
@@ -281,7 +252,7 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
+            .type("string").field("from")
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
@@ -313,7 +284,7 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
+            .type("string").field("from")
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
@@ -349,7 +320,7 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
+            .type("string").field("from")
             .type("double").field("time")
             .start().join();
         Connection c = database.newConnection();
@@ -384,8 +355,8 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
-            .type("string/unicode").field("to")
+            .type("string").field("from")
+            .type("string").field("to")
             .start().join();
         Connection c = database.newConnection();
         c.w().put("/p/1", new Payment2("2", "3", 100))
@@ -415,7 +386,7 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
+            .type("string").field("from")
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
@@ -447,8 +418,8 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
-            .type("string/unicode").field("to")
+            .type("string").field("from")
+            .type("string").field("to")
             .start().join();
         Connection c = database.newConnection();
         c.w().put("/p/1", new Payment2("2", "3", 100))
@@ -478,7 +449,7 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
+            .type("string").field("from")
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
@@ -507,8 +478,8 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
-            .type("string/unicode").field("to")
+            .type("string").field("from")
+            .type("string").field("to")
             .start().join();
         Connection c = database.newConnection();
         c.w().put("/p/1", new Payment2("2", "3", 100))
@@ -538,8 +509,8 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
-            .type("string/unicode").field("to")
+            .type("string").field("from")
+            .type("string").field("to")
             .start().join();
         Connection c = database.newConnection();
         c.w().put("/p/1", new Payment2("2", "3", 100))
@@ -571,8 +542,8 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
-            .type("string/unicode").field("to")
+            .type("string").field("from")
+            .type("string").field("to")
             .start().join();
         Connection c = database.newConnection();
         c.w().put("/p/1", new Payment2("2", "3", 100))
@@ -604,8 +575,8 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
-            .type("string/unicode").field("to")
+            .type("string").field("from")
+            .type("string").field("to")
             .start().join();
         Connection c = database.newConnection();
         c.w().put("/p/1", new Payment2("2", "3", 100))
@@ -639,7 +610,7 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
+            .type("string").field("from")
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
@@ -686,7 +657,7 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
+            .type("string").field("from")
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();
@@ -720,7 +691,7 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
+            .type("string").field("from")
             .type("double").field("time")
             .start().join();
         Connection c = database.newConnection();
@@ -756,7 +727,7 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("i0").dir("/p/")
-            .type("string/unicode").field("from")
+            .type("string").field("from")
             .type("double").field("time")
             .start().join();
         Connection c = database.newConnection();
@@ -783,54 +754,6 @@ public class PubTesterComposite {
         database.stop();
     }
     
-    @Nano
-    public static void tricky1() {
-        // A tricky composite sort. Example with four keys.
-        //
-        //   string  long
-        //   a       Long.MAX 
-        //   ab      1         
-        //   ab      2         
-        //   ab\0    0       
-        //
-        // The strings "ab" and "ab\0" will not sort differently unless we use "Ln" level.
-        //
-        
-        if (!IcuInfo.hasIcu()) {
-            return;
-        }
-        
-        Payment2 p4 = new Payment2("a", "4", Long.MAX_VALUE);
-        Payment2 p3 = new Payment2("ab", "3", 1);
-        Payment2 p2 = new Payment2("ab", "2", 2);
-        Payment2 p1 = new Payment2("ab\0", "1", 0);
-        
-        TestClock clock = new TestClock();
-        clock.setTime(Time.units(10));
-        Database database = Factory.database().memory().clock(clock).start();
-        database.indexBuilder("a").dir("/p/")
-            .type("string/en/Ln").field("from")
-            .type("long").field("time")
-            .start().join();
-        Connection c = database.newConnection();
-        
-        c.w().put("/p/1", p1)
-            .put("/p/2", p2)
-            .put("/p/3", p3)
-            .put("/p/4", p4)
-            .execute();
-        
-        String[] expected = new String[] { "4", "3", "2", "1" };
-        
-        Iterator<Payment2> iter = c.useIndex("a", Payment2.class).objects().iterator();
-        for (int i = 0; i < expected.length; i++) {
-            Assert.assertTrue(iter.hasNext());
-            Payment2 p = iter.next();
-            Assert.assertEquals(expected[i], p.to);
-        }
-        
-        database.stop();
-    }
     
     @Nano
     public static void tricky2() {
@@ -854,7 +777,7 @@ public class PubTesterComposite {
         clock.setTime(Time.units(10));
         Database database = Factory.database().memory().clock(clock).start();
         database.indexBuilder("a").dir("/p/")
-            .type("string/unicode").field("from")
+            .type("string").field("from")
             .type("long").field("time")
             .start().join();
         Connection c = database.newConnection();

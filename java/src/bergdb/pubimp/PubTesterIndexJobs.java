@@ -5,17 +5,20 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
-import bergdb.common.EventToWaitFor;
+import bergdb.core.Db;
+import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Factory;
 import bergdb.pub.IndexAlreadyExistsException;
+import bergdb.pub.IndexBuilder;
+import bergdb.pub.Kv;
 import bergdb.pub.NoSuchIndexException;
+import bergdb.pub.ObjectCreationException;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.Job;
@@ -24,8 +27,11 @@ import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.stream.MemoryStream;
 
 /**
- * Tests of the index jobs, builds and deletions, that meet a later index of the same name:
- * a job belongs to its own index, not to the name (bergdb 015-21, 015-22).
+ * Tests of the user indexes' jobs and definitions (bergdb 020-10, sections 3, 4 and 6): the
+ * builder's checks, the builds and their status, the deletion in one transaction and its
+ * cleanup, the generations (a later index of a name never sees an earlier one's entries:
+ * 015-21, 015-22, S2-F12), and the rows of 020-10, section 8, that are step I2's. The
+ * builds are steered with IndexManager's test hooks.
  *
  * @author Frans Lundberg
  */
@@ -60,6 +66,10 @@ public class PubTesterIndexJobs {
         return builder.start();
     }
 
+    private static IndexManager manager(Database db) {
+        return ((DatabaseImp) db).getIndexManager();
+    }
+
     /** The field 'other' of the objects that the index 'by-field' gives, in its order. */
     private static String others(Database db) {
         List<Long> result = new ArrayList<Long>();
@@ -69,166 +79,295 @@ public class PubTesterIndexJobs {
         return result.toString();
     }
 
+    private static void putNew(Database db) {
+        db.newConnection().w().put("/items/new", new Item(50, 100)).execute();
+    }
+
     /**
-     * Deletes the index 'by-field' and waits for the deletion, creates the index again on the
-     * field 'other', and puts an object (amount 50, other 100): the new index gives [100].
+     * Deletes the index 'by-field', creates it again on the field 'other', and puts an object
+     * (amount 50, other 100): the new index gives [100, 200], the old object's too.
      */
     private static void deleteAndReplace(Database db) {
-        Assert.assertEquals(100, db.deleteIndex("by-field").join().progress());
-        db.indexBuilder("by-field").dir("/items/").type("long").field("other").createFast();
-        db.newConnection().w().put("/items/new", new Item(50, 100)).execute();
-        Assert.assertEquals("[100]", others(db));
+        db.deleteIndex("by-field");
+        db.indexBuilder("by-field").dir("/items/").type("long").field("other").start().join();
+        putNew(db);
+        Assert.assertEquals("[100, 200]", others(db));
     }
 
-    /** The old build has ended, without activating its index, and says so. */
-    private static void checkStopped(JobStatus status) {
-        Assert.assertEquals(100, status.progress());
-        Assert.assertTrue(status.note(), status.note().startsWith("Stopped"));
-    }
-
-    /** After a restart, the new index still gives [100] and nothing of the old build. */
+    /** After a restart, the new index still gives [100, 200] and nothing of the old build. */
     private static void checkAfterRestart(MemoryStream stream) {
         Database db = start(stream.copy());
         try {
-            Assert.assertEquals("[100]", others(db));
+            Assert.assertEquals("[100, 200]", others(db));
+            Assert.assertEquals(JobStatus.State.ACTIVE, db.indexJob("by-field").getStatus()
+                    .state());
         } finally {
             db.close();
         }
     }
+
+    private static void assertDeleted(JobStatus status) {
+        Assert.assertEquals(status.note(), JobStatus.State.FAILED, status.state());
+        Assert.assertEquals("deleted", status.reason());
+    }
+
+    /** A gate: a hook that waits at a point, once, until opened. */
+    static final class Gate {
+        final CountDownLatch reached = new CountDownLatch(1);
+        final CountDownLatch open = new CountDownLatch(1);
+        private final AtomicBoolean once = new AtomicBoolean(true);
+
+        /** Waits at 'point' the first time it is reached, else runs 'other' if not null. */
+        void at(String p, String point) {
+            if (p.equals(point) && once.compareAndSet(true, false)) {
+                reached.countDown();
+                await(open);
+            }
+        }
+
+        void awaitReached() {
+            await(reached);
+        }
+
+        void open() {
+            open.countDown();
+        }
+    }
+
+    static void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(10, TimeUnit.SECONDS)) {
+                throw new AssertionError("not reached in 10 s");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError(e);
+        }
+    }
+
+    // ======== The generations: a build or a cleanup of a deleted index (015-21, 015-22) ========
 
     /**
      * bergdb 015-22 (review R3-F2): a build waits before its first step while its index is
      * deleted and created again on another field. The old build writes nothing into the new
-     * index, does not activate it, and says that it stopped; also after a restart.
+     * index, ends FAILED with the reason "deleted"; also after a restart.
      */
     @Nano
     public static void testBuildDeletedBeforeItsStep() {
-        MemoryStream stream = new MemoryStream();
-        Database db = start(stream);
-        try {
-            db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
-            EventToWaitFor wait = new EventToWaitFor();
-            IndexBuilderImp builder = (IndexBuilderImp) db.indexBuilder("by-field");
-            builder.createInThreadWaitEvent(wait);
-            Job build = builder.dir("/items/").type("long").field("amount").start();
-            deleteAndReplace(db);
-            wait.happened();
-            JobStatus status = build.join();
-            Assert.assertEquals("[100]", others(db));
-            checkStopped(status);
-        } finally {
-            db.close();
-        }
-        checkAfterRestart(stream);
+        buildDeleted(true);
     }
 
     /**
      * bergdb 015-22: the deletion and the new index come in the build's step, after its read
-     * and before its transaction (the hook "action"): the transaction runs again and the
-     * build stops, as in testBuildDeletedBeforeItsStep.
+     * and before its transaction: the transaction runs again (the definition's key is in its
+     * read set) and the build ends FAILED "deleted".
      */
     @Nano
     public static void testBuildDeletedInItsStep() {
-        buildDeletedAt("action");
+        buildDeleted(false);
     }
 
-    /**
-     * bergdb 015-22: the deletion and the new index come after the build's last step, before
-     * its activation (the hook "step"): the build does not activate, and says that it stopped.
-     */
-    @Nano
-    public static void testBuildDeletedBeforeActivation() {
-        buildDeletedAt("step");
-    }
-
-    private static void buildDeletedAt(final String point) {
+    private static void buildDeleted(boolean beforeRead) {
         MemoryStream stream = new MemoryStream();
-        final Database db = start(stream);
+        Database db = start(stream);
         try {
             db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
-            final AtomicBoolean once = new AtomicBoolean(true);
-            final AtomicReference<Throwable> failure = new AtomicReference<Throwable>();
-            IndexBuilderImp builder = (IndexBuilderImp) db.indexBuilder("by-field");
-            builder.testHook(p -> {
-                if (p.equals(point) && once.compareAndSet(true, false)) {
-                    try {
-                        deleteAndReplace(db);
-                    } catch (RuntimeException | Error e) {
-                        failure.set(e);
-                    }
+            // The step waits after its reads; before its read: the step is then refused
+            // once, and taken again after the deletion, from new reads.
+            Gate gate = new Gate();
+            AtomicBoolean refuse = new AtomicBoolean(beforeRead);
+            manager(db).testHook = p -> {
+                gate.at(p, IndexManager.BUILD_STEP);
+                if (p.equals(IndexManager.BUILD_STEP) && refuse.compareAndSet(true, false)) {
+                    throw new DbException("a refusal, by the test");
                 }
-            });
-            JobStatus status = builder.dir("/items/").type("long").field("amount").start().join();
-            if (failure.get() != null) {
-                throw new AssertionError("in the hook: " + failure.get(), failure.get());
-            }
-            Assert.assertFalse(once.get());
-            Assert.assertEquals("[100]", others(db));
-            checkStopped(status);
+            };
+            Job old = db.indexBuilder("by-field").dir("/items/").type("long").field("amount")
+                    .start();
+            gate.awaitReached();
+            deleteAndReplace(db);
+            gate.open();
+            assertDeleted(old.join());
+            Assert.assertEquals("[100, 200]", others(db));
         } finally {
             db.close();
         }
         checkAfterRestart(stream);
     }
-    
+
     /**
-     * bergdb 019-10: an Error in an index build, in its step's Action (the hook "action") or
-     * after its transaction (the hook "step"), fails the database, as on BergDB's other
-     * threads, and the build's thread ends: every later call is refused with a
-     * DbFailedException whose cause is the Error. Before, the thread ended, and the database
-     * went on without the build. A RuntimeException ends the build as failed, and the database
-     * goes on (bergdb 019-42); from 019-38 to 019-42 it failed the database too.
+     * bergdb 015-22: the deletion comes after the build's last step, as its activation starts
+     * (the hook before the activation's commit, under the lock): the activation's transaction
+     * conflicts, and it finds the index deleted; the build ends FAILED "deleted".
+     */
+    @Nano
+    public static void testBuildDeletedBeforeActivation() {
+        MemoryStream stream = new MemoryStream();
+        Database db = start(stream);
+        try {
+            db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
+            AtomicBoolean once = new AtomicBoolean(true);
+            manager(db).testHook = p -> {
+                if (p.equals(IndexManager.DEFINITION_BEFORE + "activate")
+                        && once.compareAndSet(true, false)) {
+                    db.deleteIndex("by-field");
+                }
+            };
+            JobStatus status = db.indexBuilder("by-field").dir("/items/").type("long")
+                    .field("amount").start().join();
+            manager(db).testHook = null;
+            assertDeleted(status);
+            Assert.assertNull(manager(db).definition("by-field"));
+            db.indexBuilder("by-field").dir("/items/").type("long").field("other").start()
+                    .join();
+            putNew(db);
+            Assert.assertEquals("[100, 200]", others(db));
+        } finally {
+            db.close();
+        }
+        Database db2 = start(stream.copy());
+        try {
+            Assert.assertEquals("[100, 200]", others(db2));
+        } finally {
+            db2.close();
+        }
+    }
+
+    /**
+     * bergdb 015-21 (review R3-F1), S2-F12: an index deleted twice (the second call refused:
+     * the name is free at the first's return), and created again at once on another field
+     * while the first deletion's cleanup waits at its step. The cleanup deletes only its own
+     * generation's entries: the new index keeps its entry; also after a restart.
+     */
+    @Nano
+    public static void testDeleteTwice() {
+        MemoryStream stream = new MemoryStream();
+        Database db = start(stream);
+        try {
+            db.indexBuilder("by-field").dir("/items/").type("long").field("amount").start()
+                    .join();
+            db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
+            Gate gate = new Gate();
+            manager(db).testHook = p -> gate.at(p, IndexManager.CLEANUP_STEP);
+            db.deleteIndex("by-field");
+            try {
+                db.deleteIndex("by-field");
+                throw new AssertionError("a second deletion");
+            } catch (NoSuchIndexException e) {
+                // Expected: the name is free.
+            }
+            gate.awaitReached();
+            db.indexBuilder("by-field").dir("/items/").type("long").field("other").start()
+                    .join();
+            putNew(db);
+            gate.open();
+            PubTesterIndexRaces.awaitCleanups(manager(db));
+            manager(db).testHook = null;
+            Assert.assertEquals("[100, 200]", others(db));
+        } finally {
+            db.close();
+        }
+        Database db2 = start(stream.copy());
+        try {
+            Assert.assertEquals("[100, 200]", others(db2));
+        } finally {
+            db2.close();
+        }
+    }
+
+    /**
+     * S2-F12 (020-10, section 8): an index deleted and created again of the same name, with a
+     * write between: the new index holds the entries of its own generation only, and the old
+     * generation's are gone once its cleanup ended.
+     */
+    @Nano
+    public static void testRaceDeleteRecreate() {
+        Database db = start(new MemoryStream());
+        try {
+            Connection c = db.newConnection();
+            db.indexBuilder("by-field").dir("/items/").type("long").field("amount").start()
+                    .join();
+            c.put("/items/a", new Item(1, 10));
+            long g1 = manager(db).definition("by-field").gen();
+            db.deleteIndex("by-field");
+            c.put("/items/b", new Item(2, 20));
+            db.indexBuilder("by-field").dir("/items/").type("long").field("amount").start()
+                    .join();
+            long g2 = manager(db).definition("by-field").gen();
+            Assert.assertTrue("a new generation", g2 > g1);
+            PubTesterIndexRaces.awaitCleanups(manager(db));
+            Assert.assertEquals(0, manager(db).entries("by-field", g1, Long.MAX_VALUE).size());
+            Assert.assertEquals(2, manager(db).entries("by-field", g2, Long.MAX_VALUE).size());
+            Assert.assertEquals("[10, 20]", others(db));
+        } finally {
+            db.close();
+        }
+    }
+
+    // ======== Faults in a build (019-10, 019-38, 019-42) ========
+
+    /**
+     * bergdb 019-10: an Error in an index build's step fails the database, as on BergDB's
+     * other threads; every later call is refused with a DbFailedException whose cause is the
+     * Error. A RuntimeException ends the build FAILED, with its class and message as the
+     * reason, and the database goes on (bergdb 019-42); the definition stays building, so
+     * the next start takes the build again and ends ACTIVE.
      */
     @Nano
     public static void testErrorInBuildFailsTheDatabase() {
-        for (final String point : new String[] {"action", "step"}) {
-            for (final Throwable thrown : new Throwable[] {new Error("an Error in the build"),
-                    new IllegalStateException("a bug in the build")}) {
-                final Database db = start(new MemoryStream());
-                try {
-                    db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
-                    IndexBuilderImp builder = (IndexBuilderImp) db.indexBuilder("by-field");
-                    builder.testHook(p -> {
-                        if (p.equals(point)) {
-                            throwIt(thrown);
+        for (Throwable thrown : new Throwable[] {new OutOfMemoryError("by the test"),
+                new IllegalStateException("by the test")}) {
+            MemoryStream stream = new MemoryStream();
+            Database db = start(stream);
+            try {
+                db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
+                AtomicBoolean once = new AtomicBoolean(true);
+                manager(db).testHook = p -> {
+                    if (p.equals(IndexManager.BUILD_STEP) && once.compareAndSet(true, false)) {
+                        if (thrown instanceof Error) {
+                            throw (Error) thrown;
                         }
-                    });
-                    JobStatus status = builder.dir("/items/").type("long").field("amount")
-                            .start().join();
-                    if (!(thrown instanceof Error)) {
-                        putNew(db);     // DbFailedException if the build failed the database.
-                        checkFailed(status);
-                        continue;
+                        throw (RuntimeException) thrown;
                     }
-                    DbFailedException refused = null;
+                };
+                JobStatus status = db.indexBuilder("by-field").dir("/items/").type("long")
+                        .field("amount").start().join();
+                if (thrown instanceof Error) {
                     try {
                         putNew(db);
+                        throw new AssertionError("the database went on after an Error");
                     } catch (DbFailedException e) {
-                        refused = e;
+                        Assert.assertTrue(e.getCause() == thrown);
                     }
-                    Assert.assertTrue(point + ", " + thrown + ", the database failed: " + refused,
-                            refused != null && refused.getCause() == thrown);
-                } finally {
-                    db.close();
+                    continue;
                 }
+                Assert.assertEquals(JobStatus.State.FAILED, status.state());
+                Assert.assertTrue(status.reason(), status.reason().contains(
+                        "IllegalStateException") && status.reason().contains("by the test"));
+                putNew(db);
+                db.sync();
+            } finally {
+                db.close();
+            }
+            Database db2 = start(stream.copy());
+            try {
+                Assert.assertEquals(JobStatus.State.ACTIVE, db2.indexJob("by-field").join()
+                        .state());
+                Assert.assertEquals("[200, 100]", others(db2));
+            } finally {
+                db2.close();
             }
         }
     }
-    
-    /** The build has ended as failed, without activating its index (bergdb 019-42). */
-    private static void checkFailed(JobStatus status) {
-        Assert.assertEquals(100, status.progress());
-        Assert.assertTrue(status.note(), status.note().startsWith("Failed"));
-    }
-    
+
     /**
      * bergdb 019-42 (020-01, N1, its probe V1Probe): a build over an object that its index
-     * cannot read, since 2026.4 an object of format 1 (020-08, step 3), ends as failed, and
-     * the database goes on. A start takes the build again, which ends as failed again; the
-     * index can be deleted, and the next start has no job. Since 019-10 the database failed,
-     * at every start. A null String, which failed the build until format 2, is absent: the
-     * object gives no entry, as one without the field, and the build ends done with the
-     * entries of the other two (020-04, N11).
+     * cannot read, since 2026.4 an object of format 1 (020-08, step 3), ends FAILED with a
+     * reason that names the key and the format, and the database goes on. A start takes the
+     * build again, which fails again; the index can be deleted, and the next start has no
+     * index. A null String, which failed the build until format 2, is absent: the object
+     * gives no entry, as one without the field, and the build ends ACTIVE with the entries of
+     * the other two (020-04, N11); after a restart its job is ACTIVE with count 0.
      */
     @Nano
     public static void testBuildOverAnObjectItCannotIndex() {
@@ -248,30 +387,31 @@ public class PubTesterIndexJobs {
         MemoryStream restarted = stream.copy();
         db = start(restarted);
         try {
-            Job[] jobs = db.getStartupInfo().getStartupJobs();
-            Assert.assertEquals(1, jobs.length);
-            checkFailed(jobs[0].join());
+            checkFailed(db.indexJob("by-name").join());
             putNew(db);
-            Assert.assertEquals(100, db.deleteIndex("by-name").join().progress());
+            db.deleteIndex("by-name");
+            PubTesterIndexRaces.awaitCleanups(manager(db));
         } finally {
             db.close();
         }
         
         db = start(restarted.copy());
         try {
-            Assert.assertEquals(0, db.getStartupInfo().getStartupJobs().length);
+            Assert.assertNull(manager(db).definition("by-name"));
             putNew(db);
         } finally {
             db.close();
         }
         
-        db = start(new MemoryStream());
+        stream = new MemoryStream();
+        db = start(stream);
         try {
             db.newConnection().w().put("/named/1", new Named("a")).put("/named/2", new Named(null))
                     .put("/named/3", new Named("c")).execute();
             JobStatus status = db.indexBuilder("by-name").dir("/named/").type("string")
                     .field("name").start().join();
-            Assert.assertTrue(status.note(), status.note().startsWith("Done"));
+            Assert.assertEquals(status.note(), JobStatus.State.ACTIVE, status.state());
+            Assert.assertEquals(3, status.count());
             StringBuilder names = new StringBuilder();
             for (Named n : db.newConnection().useIndex("by-name", Named.class).objects()) {
                 names.append(n.name);
@@ -280,23 +420,31 @@ public class PubTesterIndexJobs {
         } finally {
             db.close();
         }
-    }
-    
-    /** Throws 'thrown', an Error or a RuntimeException. */
-    private static void throwIt(Throwable thrown) {
-        if (thrown instanceof Error) {
-            throw (Error) thrown;
+        
+        db = start(stream.copy());
+        try {
+            JobStatus status = db.indexJob("by-name").join();
+            Assert.assertEquals(JobStatus.State.ACTIVE, status.state());
+            Assert.assertEquals(0, status.count());
+            putNew(db);
+        } finally {
+            db.close();
         }
-        throw (RuntimeException) thrown;
     }
     
+    /** FAILED, with a reason that names the format-1 object's key and its format. */
+    private static void checkFailed(JobStatus status) {
+        Assert.assertEquals(status.note(), JobStatus.State.FAILED, status.state());
+        Assert.assertTrue(status.reason(), status.reason().contains("/dnamed/-2")
+                && status.reason().contains("format 1"));
+    }
+
     /**
-     * bergdb 019-38 (review R6 of 006-13, B1, its probe): an interrupt of an index build's
-     * thread while its step waits to run again after a conflict. The hook "action" writes the
-     * object that the step read, then interrupts the thread; the step's transaction conflicts,
-     * and its wait to run again ends with a refusal (DbException). The build takes the step
-     * again and ends done, and the database goes on (bergdb 005-46). Since 019-10 the database
-     * failed, and every later call threw DbFailedException.
+     * bergdb 019-38 (015-37, N6): an interrupt of an index build's thread while its step waits
+     * to run again after a conflict. The hook writes the object that the step read, then
+     * interrupts the thread; the step's transaction conflicts, and its wait to run again ends
+     * with a refusal (DbException). The build takes the step again and ends ACTIVE, and the
+     * database goes on (bergdb 005-46).
      */
     @Nano
     public static void testInterruptInBuildIsNotAFailure() {
@@ -304,24 +452,22 @@ public class PubTesterIndexJobs {
         try {
             db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
             final AtomicBoolean once = new AtomicBoolean(true);
-            IndexBuilderImp builder = (IndexBuilderImp) db.indexBuilder("by-field");
-            builder.testHook(p -> {
-                if (p.equals("action") && once.compareAndSet(true, false)) {
+            manager(db).testHook = p -> {
+                if (p.equals(IndexManager.BUILD_STEP) && once.compareAndSet(true, false)) {
                     db.newConnection().w().put("/items/old", new Item(2, 300)).execute();
                     Thread.currentThread().interrupt();
                 }
-            });
-            checkBuildDone(db, builder, once, "[300, 100]");
+            };
+            checkBuildDone(db, once, "[300, 100]");
         } finally {
             db.close();
         }
     }
-    
+
     /**
-     * bergdb 019-38: an expired read (LookupTimeNotAvailableException, as when a cut overtakes
-     * the step's getMany) and a refusal of the step's transaction (a DbException), each thrown
-     * once in an index build's step by the hook "action". The build takes the step again and
-     * ends done, and the database goes on. Since 019-10 the database failed.
+     * bergdb 019-38: an expired read (LookupTimeNotAvailableException) and a refusal (a
+     * DbException), each thrown once in an index build's step. The build takes the step again
+     * and ends ACTIVE, and the database goes on.
      */
     @Nano
     public static void testExpiryOrRefusalInBuildIsNotAFailure() {
@@ -332,237 +478,554 @@ public class PubTesterIndexJobs {
             try {
                 db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
                 final AtomicBoolean once = new AtomicBoolean(true);
-                IndexBuilderImp builder = (IndexBuilderImp) db.indexBuilder("by-field");
-                builder.testHook(p -> {
-                    if (p.equals("action") && once.compareAndSet(true, false)) {
+                manager(db).testHook = p -> {
+                    if (p.equals(IndexManager.BUILD_STEP) && once.compareAndSet(true, false)) {
                         throw thrown;
                     }
-                });
-                checkBuildDone(db, builder, once, "[200, 100]");
+                };
+                checkBuildDone(db, once, "[200, 100]");
             } finally {
                 db.close();
             }
         }
     }
-    
+
     /**
      * Runs the build of the index 'by-field' on the field 'amount' to its end: the hook has
-     * thrown, the database takes a put, the build is done, and the index gives 'expected'.
+     * thrown, the database takes a put, the build is ACTIVE, and the index gives 'expected'.
      */
-    private static void checkBuildDone(Database db, IndexBuilderImp builder,
-            AtomicBoolean once, String expected) {
-        JobStatus status = builder.dir("/items/").type("long").field("amount").start().join();
+    private static void checkBuildDone(Database db, AtomicBoolean once, String expected) {
+        JobStatus status = db.indexBuilder("by-field").dir("/items/").type("long")
+                .field("amount").start().join();
         Assert.assertFalse(once.get());
         putNew(db);         // DbFailedException if the build failed the database.
-        Assert.assertEquals(100, status.progress());
-        Assert.assertTrue(status.note(), status.note().startsWith("Done"));
+        Assert.assertEquals(status.note(), JobStatus.State.ACTIVE, status.state());
         Assert.assertEquals(expected, others(db));
     }
-    
-    private static void putNew(Database db) {
-        db.newConnection().w().put("/items/new", new Item(50, 100)).execute();
-    }
-    
-    /** Creates the index 'by-field' on the field 'other', if no index has the name. */
-    private static boolean createIfFree(Database db) {
-        try {
-            db.indexBuilder("by-field").dir("/items/").type("long").field("other").createFast();
-            return true;
-        } catch (IndexAlreadyExistsException e) {
-            return false;
-        }
-    }
-    
+
+    // ======== Faults in a cleanup (020-10, section 6.2) ========
+
     /**
-     * bergdb 019-38: an expired read in an index deletion's job, thrown once by its hook
-     * "start": the job takes its work again and ends, the index's name is free, and the
-     * database goes on. Since 019-10 the database failed; before, the job ended and left the
-     * index deleting.
+     * bergdb 019-38: an expired read in a cleanup's step, thrown once: the cleanup takes the
+     * step again and ends, its marker gone, and the database goes on.
      */
     @Nano
-    public static void testExpiryInDeletionIsNotAFailure() {
-        final Database db = start(new MemoryStream());
+    public static void testExpiryInCleanupIsNotAFailure() {
+        Database db = start(new MemoryStream());
         try {
-            db.indexBuilder("by-field").dir("/items/").type("long").field("amount").createFast();
+            db.indexBuilder("by-field").dir("/items/").type("long").field("amount").start()
+                    .join();
             db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
-            final AtomicInteger starts = new AtomicInteger();
-            ((DatabaseImp) db).testHookDelete = p -> {
-                if (p.equals("start") && starts.incrementAndGet() == 1) {
+            AtomicBoolean once = new AtomicBoolean(true);
+            manager(db).testHook = p -> {
+                if (p.equals(IndexManager.CLEANUP_STEP) && once.compareAndSet(true, false)) {
                     throw new LookupTimeNotAvailableException("an expired read, by the test");
                 }
             };
-            Assert.assertEquals(100, db.deleteIndex("by-field").join().progress());
-            Assert.assertEquals(2, starts.get());
-            Assert.assertTrue(createIfFree(db));
+            db.deleteIndex("by-field");
+            PubTesterIndexRaces.awaitCleanups(manager(db));
+            Assert.assertFalse(once.get());
             putNew(db);
-            Assert.assertEquals("[100]", others(db));
         } finally {
             db.close();
         }
     }
-    
+
     /**
-     * bergdb 019-38: an unexpected RuntimeException, a bug, in an index deletion's job (its
-     * hook "start") fails the database (bergdb 019-10); the job says "Stopped", not "Done!"
-     * (bergdb 019-40).
+     * 020-10, section 6.2: an unexpected RuntimeException in a cleanup ends it silently: the
+     * marker stays, the database goes on, and the next start resumes the cleanup to its end.
+     * A deletion has no job (015-61, 019-40 C5: gone).
      */
     @Nano
-    public static void testBugInDeletionFailsTheDatabase() {
-        final Database db = start(new MemoryStream());
-        try {
-            db.indexBuilder("by-field").dir("/items/").type("long").field("amount").createFast();
-            final RuntimeException bug = new IllegalStateException("a bug in the deletion");
-            ((DatabaseImp) db).testHookDelete = p -> {
-                if (p.equals("start")) {
-                    throw bug;
-                }
-            };
-            checkStopped(db.deleteIndex("by-field").join());
-            DbFailedException refused = null;
-            try {
-                putNew(db);
-            } catch (DbFailedException e) {
-                refused = e;
-            }
-            Assert.assertTrue("the database failed: " + refused,
-                    refused != null && refused.getCause() == bug);
-        } finally {
-            db.close();
-        }
-    }
-    
-    /**
-     * bergdb 019-40, 015-61 (review R8 of 016-06, R8-F6): a deletion job that a close ends
-     * early says "Stopped", as a build does; it said "Done! Deleted".
-     */
-    @Nano
-    public static void testDeletionEndedByCloseIsStopped() {
-        final Database db = start(new MemoryStream());
-        try {
-            db.indexBuilder("by-field").dir("/items/").type("long").field("amount").createFast();
-            ((DatabaseImp) db).testHookDelete = p -> {
-                if (p.equals("start")) {
-                    db.close();
-                }
-            };
-            checkStopped(db.deleteIndex("by-field").join());
-        } finally {
-            db.close();
-        }
-    }
-    
-    /**
-     * bergdb 015-21 (review R3-F1): deleteIndex() twice on one name, and the index created
-     * again on another field as soon as the name is free. The first deletion's job waits at
-     * its start (the hook "start"); if the second call has started a job of its own, that one
-     * finishes first, and the new index is made and gets its entry before the first job goes
-     * on, as in R3-F1's probe. The first job must not delete the new index, its definition or
-     * its entries; also after a restart.
-     */
-    @Nano
-    public static void testDeleteTwice() throws InterruptedException {
+    public static void testBugInCleanupLeavesTheMarker() {
         MemoryStream stream = new MemoryStream();
         Database db = start(stream);
-        final CountDownLatch entered = new CountDownLatch(1);
-        final CountDownLatch release = new CountDownLatch(1);
-        final AtomicBoolean once = new AtomicBoolean(true);
+        long gen = 0;
         try {
-            db.indexBuilder("by-field").dir("/items/").type("long").field("amount").createFast();
+            db.indexBuilder("by-field").dir("/items/").type("long").field("amount").start()
+                    .join();
             db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
-            ((DatabaseImp) db).testHookDelete = p -> {
-                if (p.equals("start") && once.compareAndSet(true, false)) {
-                    entered.countDown();
-                    try {
-                        release.await(10, TimeUnit.SECONDS);    // A guard, not a timing.
-                    } catch (InterruptedException e) {
-                        throw new AssertionError(e);
-                    }
+            gen = manager(db).definition("by-field").gen();
+            Gate gate = new Gate();
+            manager(db).testHook = p -> {
+                if (p.equals(IndexManager.CLEANUP_STEP)) {
+                    gate.reached.countDown();
+                    throw new IllegalStateException("a bug, by the test");
                 }
             };
-            
-            Job first = db.deleteIndex("by-field");
-            Assert.assertTrue(entered.await(10, TimeUnit.SECONDS));
-            Job second = db.deleteIndex("by-field");
-            if (second != first) {
-                Assert.assertEquals(100, second.join().progress());
-            }
-            boolean created = createIfFree(db);
-            if (created) {
-                putNew(db);         // The new index has its entry before the first job goes on.
-            }
-            release.countDown();
-            Assert.assertEquals(100, first.join().progress());
-            Assert.assertEquals(100, second.join().progress());
-            if (!created) {
-                Assert.assertTrue(createIfFree(db));
-                putNew(db);
-            }
-            
-            try {
-                Assert.assertEquals("[100]", others(db));
-            } catch (NoSuchIndexException e) {
-                throw new AssertionError("The new index was deleted: " + e.getMessage());
-            }
+            db.deleteIndex("by-field");
+            gate.awaitReached();
+            putNew(db);
+            db.sync();
         } finally {
-            release.countDown();
             db.close();
         }
-        checkAfterRestart(stream);
+        db = start(stream.copy());
+        try {
+            PubTesterIndexRaces.awaitCleanups(manager(db));
+            Assert.assertEquals(0, manager(db).entries("by-field", gen, Long.MAX_VALUE).size());
+        } finally {
+            db.close();
+        }
     }
-    
+
+    // ======== The builder (020-10, section 3.1) ========
+
+    /** S2-F20: dir() twice is refused at once; the builder needs dir() first. */
+    @Nano
+    public static void testDirTwice() {
+        Database db = start(new MemoryStream());
+        try {
+            assertState(() -> db.indexBuilder("d").dir("/a/").dir("/b/"));
+            assertState(() -> db.indexBuilder("d").type("long"));
+            assertState(() -> db.indexBuilder("d").dir("/a/").field("x"));
+            assertState(() -> db.indexBuilder("d").dir("/a/").type("long").field("x")
+                    .field("y"));
+            assertState(() -> db.indexBuilder("d").dir("/a/").type("long").type("long"));
+            assertState(() -> db.indexBuilder("d").start());
+            assertState(() -> db.indexBuilder("d").dir("/a/").start());
+            assertState(() -> db.indexBuilder("d").dir("/a/").type("long").start());
+            IndexBuilder nine = db.indexBuilder("d").dir("/a/");
+            for (int i = 0; i < 8; i++) {
+                nine.type("long").field("f" + i);
+            }
+            assertState(() -> nine.type("long"));
+            assertArgument(() -> db.indexBuilder("d").dir("/a/").type("string/unicode"));
+            assertArgument(() -> db.indexBuilder("d").dir("/a/").type("int"));
+            assertArgument(() -> db.indexBuilder("d").dir("a/"));
+            assertArgument(() -> db.indexBuilder("a b"));
+            assertArgument(() -> db.indexBuilder("a/b"));
+            assertArgument(() -> db.indexBuilder(""));
+
+            // The builder is spent after start(), whatever it threw.
+            IndexBuilder b = db.indexBuilder("d").dir("/a/").type("long");
+            assertState(() -> b.start());
+            assertState(() -> b.field("x"));
+            IndexBuilder c = db.indexBuilder("d").dir("/a/").type("long").field("x");
+            c.start().join();
+            assertState(() -> c.start());
+            try {
+                db.indexBuilder("d").dir("/b/").type("long").field("y").start();
+                throw new AssertionError("an existing name");
+            } catch (IndexAlreadyExistsException e) {
+                // Expected.
+            }
+        } finally {
+            db.close();
+        }
+    }
+
     /**
-     * bergdb 015-21: a second deleteIndex() finds the index deleting; then, before it starts
-     * or finds a job (its hook "call"), the first job, which waited at its start, finishes,
-     * and the index is created again and gets its entry. The second call must not start a job
-     * for the deleted index: the new index and its entry stay; also after a restart.
+     * S2-F15: a nested field's empty part is refused at the call, as a name that is not 1 to
+     * 255 UTF-8 bytes; a part may hold '.' when the parts are given; 16 parts at most.
      */
     @Nano
-    public static void testDeleteAgainAsTheFirstEnds() {
-        MemoryStream stream = new MemoryStream();
-        final Database db = start(stream);
-        final CountDownLatch release = new CountDownLatch(1);
-        final AtomicInteger starts = new AtomicInteger();
-        final AtomicInteger calls = new AtomicInteger();
-        final AtomicReference<Job> first = new AtomicReference<Job>();
-        final AtomicReference<Throwable> failure = new AtomicReference<Throwable>();
+    public static void testNestedFieldEmptyPart() {
+        Database db = start(new MemoryStream());
         try {
-            db.indexBuilder("by-field").dir("/items/").type("long").field("amount").createFast();
-            db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
-            ((DatabaseImp) db).testHookDelete = p -> {
-                if (p.equals("start") && starts.incrementAndGet() == 1) {
-                    try {
-                        release.await(10, TimeUnit.SECONDS);    // A guard, not a timing.
-                    } catch (InterruptedException e) {
-                        throw new AssertionError(e);
-                    }
-                } else if (p.equals("call") && calls.incrementAndGet() == 2) {
-                    try {
-                        release.countDown();
-                        Assert.assertEquals(100, first.get().join().progress());
-                        Assert.assertTrue(createIfFree(db));
-                        putNew(db);
-                    } catch (RuntimeException | Error e) {
-                        failure.set(e);
-                    }
-                }
-            };
-            
-            first.set(db.deleteIndex("by-field"));
-            Job second = db.deleteIndex("by-field");
-            if (failure.get() != null) {
-                throw new AssertionError("in the hook: " + failure.get(), failure.get());
+            for (String path : new String[] {"a..b", ".a", "a.", ".", ""}) {
+                assertArgument(() -> db.indexBuilder("n").dir("/a/").type("long")
+                        .nestedField(path));
             }
-            Assert.assertEquals(2, calls.get());
-            Assert.assertEquals(100, second.join().progress());
-            try {
-                Assert.assertEquals("[100]", others(db));
-            } catch (NoSuchIndexException e) {
-                throw new AssertionError("The new index was deleted: " + e.getMessage());
-            }
+            assertArgument(() -> db.indexBuilder("n").dir("/a/").type("long")
+                    .nestedField(new String[] {"a", ""}));
+            assertArgument(() -> db.indexBuilder("n").dir("/a/").type("long")
+                    .nestedField(new String[0]));
+            assertArgument(() -> db.indexBuilder("n").dir("/a/").type("long")
+                    .nestedField((String[]) null));
+            assertArgument(() -> db.indexBuilder("n").dir("/a/").type("long").field(""));
+            assertArgument(() -> db.indexBuilder("n").dir("/a/").type("long").field(null));
+            assertArgument(() -> db.indexBuilder("n").dir("/a/").type("long")
+                    .field(IndexKeysTester.repeat("x", 256)));
+            assertArgument(() -> db.indexBuilder("n").dir("/a/").type("long")
+                    .field("a\ud800"));
+            String[] seventeen = new String[17];
+            java.util.Arrays.fill(seventeen, "a");
+            assertArgument(() -> db.indexBuilder("n").dir("/a/").type("long")
+                    .nestedField(seventeen));
+            db.indexBuilder("n").dir("/a/").type("long").nestedField(new String[] {"a.b", "c"})
+                    .start().join();
+            Assert.assertEquals("[a.b, c]", java.util.Arrays.toString(
+                    manager(db).definition("n").path(0)));
         } finally {
-            release.countDown();
             db.close();
         }
-        checkAfterRestart(stream);
+    }
+
+    /**
+     * 015-29: "primary" is a name like any other: deleteIndex("primary") of no such index is
+     * NoSuchIndexException (it was a Bug, the primary scan's pseudo-index), and an index of
+     * the name is created and deleted.
+     */
+    @Nano
+    public static void testIndexNamedPrimary() {
+        Database db = start(new MemoryStream());
+        try {
+            try {
+                db.deleteIndex("primary");
+                throw new AssertionError("deleted");
+            } catch (NoSuchIndexException e) {
+                // Expected.
+            }
+            db.newConnection().put("/items/a", new Item(1, 2));
+            Assert.assertEquals(JobStatus.State.ACTIVE, db.indexBuilder("primary").dir("/items/")
+                    .type("long").field("amount").start().join().state());
+            Assert.assertEquals(1, manager(db).entries("primary",
+                    manager(db).definition("primary").gen(), Long.MAX_VALUE).size());
+            db.deleteIndex("primary");
+            Assert.assertNull(manager(db).definition("primary"));
+        } finally {
+            db.close();
+        }
+    }
+
+    // ======== The build (020-10, section 6.1) ========
+
+    /**
+     * 015-30, S2-F16: a build reads its directory's own keys only: not its subdirectories',
+     * not the keys after it; the coordinator's probe (2026-11-09): an index on "/" after an
+     * index on "/p/" with five objects reads neither the other index's entries nor the
+     * internal keys (since 021-06 a key without an ikey failed such a build).
+     */
+    @Nano
+    public static void testBuildStopsAtDir() {
+        Database db = start(new MemoryStream());
+        try {
+            Connection c = db.newConnection();
+            c.put("/a/x", new Item(1, 1));
+            c.put("/a/sub/y", new Item(2, 2));
+            c.put("/b/z", new Item(3, 3));
+            c.put("/az", new Item(4, 4));
+            JobStatus s = db.indexBuilder("a").dir("/a/").type("long").field("amount").start()
+                    .join();
+            Assert.assertEquals(JobStatus.State.ACTIVE, s.state());
+            Assert.assertEquals("values read", 1, s.count());
+            Assert.assertEquals(1, entries(db, "a"));
+
+            db.indexBuilder("p").dir("/p/").type("long").field("amount").start().join();
+            for (int i = 0; i < 5; i++) {
+                c.put("/p/" + i, new Item(i, i));
+            }
+            s = db.indexBuilder("root").dir("/").type("long").field("amount").start().join();
+            Assert.assertEquals(s.note(), JobStatus.State.ACTIVE, s.state());
+            Assert.assertEquals("the root's own values", 1, s.count());
+            Assert.assertEquals(1, entries(db, "root"));
+        } finally {
+            db.close();
+        }
+    }
+
+    /** S2-F16: an index of a directory has no entry of its subdirectories' values. */
+    @Nano
+    public static void testSubdirNotIndexed() {
+        Database db = start(new MemoryStream());
+        try {
+            Connection c = db.newConnection();
+            db.indexBuilder("a").dir("/a/").type("long").field("amount").start().join();
+            c.put("/a/sub/y", new Item(2, 2));
+            c.put("/a/x", new Item(1, 1));
+            Assert.assertEquals(1, entries(db, "a"));
+            int n = 0;
+            for (Kv<Item> kv : c.useIndex("a", Item.class).kvs()) {
+                Assert.assertEquals("/a/x", kv.key());
+                n++;
+            }
+            Assert.assertEquals(1, n);
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * N7: a value whose levels take more than 4,096 bytes has no entry, so no step can be
+     * too large to commit; the build ends ACTIVE.
+     */
+    @Nano
+    public static void testLargeValueNoEntry() {
+        Database db = start(new MemoryStream());
+        try {
+            Connection c = db.newConnection();
+            c.put("/named/big", new Named(IndexKeysTester.repeat("x", 5000)));
+            c.put("/named/small", new Named("s"));
+            JobStatus s = db.indexBuilder("n").dir("/named/").type("string").field("name")
+                    .start().join();
+            Assert.assertEquals(JobStatus.State.ACTIVE, s.state());
+            Assert.assertEquals(1, entries(db, "n"));
+            c.put("/named/big2", new Named(IndexKeysTester.repeat("y", 5000)));
+            Assert.assertEquals(1, entries(db, "n"));
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * 015-39: a status is a snapshot: one read while building stays BUILDING, with its count,
+     * after the build ends.
+     */
+    @Nano
+    public static void testStatusIsSnapshot() {
+        Database db = start(new MemoryStream());
+        try {
+            db.newConnection().put("/items/a", new Item(1, 2));
+            Gate gate = new Gate();
+            manager(db).testHook = p -> gate.at(p, IndexManager.BUILD_STEP);
+            Job job = db.indexBuilder("by-field").dir("/items/").type("long").field("amount")
+                    .start();
+            gate.awaitReached();
+            JobStatus early = job.getStatus();
+            gate.open();
+            JobStatus end = job.join();
+            Assert.assertEquals(JobStatus.State.BUILDING, early.state());
+            Assert.assertEquals(0, early.count());
+            Assert.assertNull(early.reason());
+            Assert.assertEquals(JobStatus.State.ACTIVE, end.state());
+            Assert.assertEquals(1, end.count());
+            Assert.assertTrue(db.indexJob("by-field") == job);
+            Assert.assertEquals(JobStatus.State.BUILDING, early.state());
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * 015-36: deleteIndex() with the caller's interrupt flag set: one transaction, done, the
+     * flag kept; there is no job to interrupt.
+     */
+    @Nano
+    public static void testDeleteWithInterruptFlag() {
+        Database db = start(new MemoryStream());
+        try {
+            db.indexBuilder("by-field").dir("/items/").type("long").field("amount").start()
+                    .join();
+            Thread.currentThread().interrupt();
+            try {
+                db.deleteIndex("by-field");
+                Assert.assertTrue("the flag kept", Thread.currentThread().isInterrupted());
+            } finally {
+                Thread.interrupted();
+            }
+            Assert.assertNull(manager(db).definition("by-field"));
+            try {
+                db.indexJob("by-field");
+                throw new AssertionError("a job of a deleted index");
+            } catch (NoSuchIndexException e) {
+                // Expected.
+            }
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * N11 (020-10, section 5.3): with key replace, only the value's name K of an entry is
+     * replaced, not an indexed string that holds "${transactionTime}".
+     */
+    @Nano
+    public static void testKeyReplaceIndexedText() {
+        Database db = start(new MemoryStream());
+        try {
+            Connection c = db.newConnection();
+            c.setEnableKeyReplace(true);
+            db.indexBuilder("n").dir("/named/").type("bytes").field("raw").start().join();
+            db.indexBuilder("s").dir("/named/").type("string").field("name").start().join();
+            String text = "${transactionTime}";
+            byte[] raw = Keys.toBytes(text);      // Bytes as a key holds the text
+            c.put("/named/k${transactionTime}", new Raw(text, raw));
+            IndexDefinition s = manager(db).definition("s");
+            List<byte[]> e = manager(db).entries("s", s.gen(), Long.MAX_VALUE);
+            Assert.assertEquals(1, e.size());
+            IndexKeys.Entry entry = IndexKeys.parseEntry(e.get(0), s.generationPrefix(),
+                    s.types());
+            Assert.assertEquals(text, entry.value(0));
+            Assert.assertFalse(entry.fileName().contains("${"));
+            IndexDefinition n = manager(db).definition("n");
+            List<byte[]> f = manager(db).entries("n", n.gen(), Long.MAX_VALUE);
+            Assert.assertEquals(1, f.size());
+            IndexKeys.Entry fe = IndexKeys.parseEntry(f.get(0), n.generationPrefix(),
+                    n.types());
+            Assert.assertArrayEquals(raw, (byte[]) fe.value(0));
+            Assert.assertEquals(1, count(c.useIndex("s", Raw.class).eq(text).objects()));
+        } finally {
+            db.close();
+        }
+    }
+
+    /** An object with a String and a byte[]. */
+    public static class Raw {
+        public String name;
+        public byte[] raw;
+
+        public Raw() {}
+
+        public Raw(String name, byte[] raw) {
+            this.name = name;
+            this.raw = raw;
+        }
+    }
+
+    // ======== The scan, as far as the layout needs (020-10, section 10.1) ========
+
+    /**
+     * A scan of a class that a get does not take is refused at the call, before any entry
+     * (020-09, section 3.3); a wrapper class over objects without the field p gives null
+     * values, not an AssertionError (020-09, section 5.9; review of 020-08, step 8).
+     */
+    @Nano
+    public static void testScanTypes() {
+        Database db = start(new MemoryStream());
+        try {
+            Connection c = db.newConnection();
+            db.indexBuilder("by-field").dir("/items/").type("long").field("amount").start()
+                    .join();
+            try {
+                c.useIndex("by-field", Thread.class);
+                throw new AssertionError("Thread.class taken");
+            } catch (ObjectCreationException e) {
+                // Expected, with no entry.
+            }
+            c.put("/items/a", new Item(1, 2));
+            int n = 0;
+            for (Integer i : c.useIndex("by-field", Integer.class).objects()) {
+                Assert.assertNull(i);
+                n++;
+            }
+            Assert.assertEquals(1, n);
+        } finally {
+            db.close();
+        }
+    }
+
+    // ======== The start (020-10, section 4.5) ========
+
+    /**
+     * A start reads the definitions and the markers: a key under /#i/dii/ (a definition of
+     * format 1, 2026.3's) refuses the database with VersioningStreamException (020-08,
+     * section 5); a definition that breaks 4.2 and a marker of a live generation are
+     * InternalDataExceptions; each refused start closes its database.
+     */
+    @Nano
+    public static void testStartRefusesBadIndexData() {
+        MemoryStream stream = new MemoryStream();
+        Database db = start(stream);
+        long gen;
+        try {
+            db.indexBuilder("by-field").dir("/items/").type("long").field("amount").start()
+                    .join();
+            gen = manager(db).definition("by-field").gen();
+            db.sync();
+        } finally {
+            db.close();
+        }
+        byte[][][] bad = {
+            {Keys.toBytes("/#i/dii/-old"), new byte[] {'b', 'e', 'r', 'g', 'o', 1, 0, 0}},
+            {IndexKeys.definitionKey("bad"), new byte[] {(byte) 0x82, 0x48, 0}},
+            {IndexKeys.markerKey("by-field", gen), new byte[0]},
+        };
+        Class<?>[] refusals = {bergdb.storage.VersioningStreamException.class,
+                bergdb.core.InternalDataException.class, bergdb.core.InternalDataException.class};
+        for (int i = 0; i < bad.length; i++) {
+            MemoryStream copy = stream.copy();
+            Database d = start(copy);
+            try {
+                Db core = db(d);
+                core.execute(core.trans().put(bad[i][0], bad[i][1]).build());
+                d.sync();
+            } finally {
+                d.close();
+            }
+            try {
+                Database refused = start(copy.copy());
+                refused.close();
+                throw new AssertionError("started with bad index data " + i);
+            } catch (RuntimeException e) {
+                Assert.assertTrue(e.toString(), refusals[i].isInstance(e));
+            }
+        }
+    }
+
+    /**
+     * A start resumes a build that a stop ended (BUILDING) from the first key of its
+     * directory, and a cleanup whose marker is left; indexJob() gives the build's job.
+     */
+    @Nano
+    public static void testStartResumesBuildsAndCleanups() {
+        MemoryStream stream = new MemoryStream();
+        Database db = start(stream);
+        long gen = 0;
+        try {
+            Connection c = db.newConnection();
+            for (int i = 0; i < 30; i++) {
+                c.put("/items/" + (100 + i), new Item(i, i));
+            }
+            db.indexBuilder("old").dir("/items/").type("long").field("amount").start().join();
+            gen = manager(db).definition("old").gen();
+            Gate cleanup = new Gate();
+            Gate build = new Gate();
+            manager(db).testHook = p -> {
+                cleanup.at(p, IndexManager.CLEANUP_STEP);
+                build.at(p, IndexManager.BUILD_STEP);
+            };
+            db.deleteIndex("old");
+            cleanup.awaitReached();
+            Job job = db.indexBuilder("by-field").dir("/items/").type("long").field("other")
+                    .start();
+            build.awaitReached();
+            Assert.assertEquals(JobStatus.State.BUILDING, job.getStatus().state());
+            db.sync();
+            db.close();
+            cleanup.open();
+            build.open();
+            Assert.assertEquals(JobStatus.State.BUILDING, job.join().state());
+        } finally {
+            db.close();
+        }
+        db = start(stream.copy());
+        try {
+            Assert.assertEquals(JobStatus.State.ACTIVE, db.indexJob("by-field").join().state());
+            Assert.assertEquals(30, db.indexJob("by-field").getStatus().count());
+            PubTesterIndexRaces.awaitCleanups(manager(db));
+            Assert.assertEquals(0, manager(db).entries("old", gen, Long.MAX_VALUE).size());
+            Assert.assertEquals(30, entries(db, "by-field"));
+        } finally {
+            db.close();
+        }
+    }
+
+    // ======== Helpers ========
+
+    /** The raw entries of the live index's generation at the latest time. */
+    private static int entries(Database db, String name) {
+        IndexDefinition def = manager(db).definition(name);
+        return manager(db).entries(name, def.gen(), Long.MAX_VALUE).size();
+    }
+
+    private static int count(Iterable<?> it) {
+        int n = 0;
+        for (Object o : it) {
+            n++;
+        }
+        return n;
+    }
+
+    private static void assertState(Runnable r) {
+        try {
+            r.run();
+        } catch (IllegalStateException e) {
+            return;
+        }
+        throw new AssertionError("no IllegalStateException");
+    }
+
+    private static void assertArgument(Runnable r) {
+        try {
+            r.run();
+        } catch (IllegalArgumentException e) {
+            return;
+        }
+        throw new AssertionError("no IllegalArgumentException");
+    }
+
+    static Db db(Database database) {
+        return ((DatabaseImp) database).getDb();
     }
 }

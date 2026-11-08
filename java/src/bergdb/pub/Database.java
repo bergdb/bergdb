@@ -326,32 +326,33 @@ public interface Database extends AutoCloseable {
     public Time getFirstAvailableLookupTime();
 
     /**
-     * Returns an IndexBuilder used to create a secondary index.
-     *
-     * <p>Experimental in 2026.3, with known faults; it may change in a later release
-     * (bergdb 018-01, D6).</p>
+     * A builder of a user index of the name (bergdb 020-10, section 3.1; see IndexBuilder).
+     * Whether an index of the name exists is checked at the builder's start(), not here.
      * 
-     * @param indexName
-     *            Unique name of the index. Cannot be the empty string. Cannot contain the forward
-     *            slash character (/), or a whitespace character.
-     * @throws IllegalArgumentException
-     *             If 'indexName' is illegal.
-     * @throws IndexAlreadyExistsException
-     *             If an index with the given name already exists.
+     * @param indexName  The index's name: 1 to 255 UTF-8 bytes, without '/', whitespace
+     *     (Character.isWhitespace) or a lone surrogate. "primary" is a name like any other.
+     * @throws IllegalArgumentException  If 'indexName' is not such a name.
      */
     public IndexBuilder indexBuilder(String indexName);
 
     /**
-     * Starts and returns a Job that deletes an index in the background.
-     * If a job that deletes the index runs already, returns that job.
-     *
-     * <p>Experimental in 2026.3, with known faults; it may change in a later release
-     * (bergdb 018-01, D6).</p>
+     * Deletes the index in one transaction: when this returns, the index is gone at every
+     * later lookup time and its name is free; its entries are removed in the background. A
+     * build of the index ends, FAILED with the reason "deleted". A scan at a lookup time when
+     * the index was active still works, until reclaim's cut passes that time.
      * 
-     * @param indexName
-     *            Unique name of the index.
-     * @throws NoSuchIndexException
-     *             if there is not index with the given name.
+     * @throws NoSuchIndexException  If there is no index of the name.
+     * @throws bergdb.pub.util.DbException  If the deletion's transaction is refused; then
+     *     nothing changed.
      */
-    public Job deleteIndex(String indexName);
+    public void deleteIndex(String indexName);
+    
+    /**
+     * The job of the index's build in this process: the one IndexBuilder.start() returned,
+     * or the one a start resumed; for an index that was active at the start, a job whose
+     * status is ACTIVE with count 0, which join() returns at once.
+     * 
+     * @throws NoSuchIndexException  If there is no index of the name now.
+     */
+    public Job indexJob(String indexName);
 }

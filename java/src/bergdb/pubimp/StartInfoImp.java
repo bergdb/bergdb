@@ -1,26 +1,18 @@
 package bergdb.pubimp;
 
-import java.util.List;
-
 import bergdb.pub.StartupInfo;
-import bergdb.pub.util.Job;
 
 /**
- * Information about the database startup.
+ * Information about the database startup. The jobs of the user indexes' builds are
+ * Database.indexJob(name)'s since 2026-11-09 (bergdb 020-10, section 3.2).
  * 
  * @author Frans Lundberg
  */
 public class StartInfoImp implements StartupInfo {
-    private Job[] startJobs;
     private double startTime;
     
-    public StartInfoImp(List<Job> startJobs, double startTime) {
-        this.startJobs = startJobs.toArray(new Job[startJobs.size()]);
+    public StartInfoImp(double startTime) {
         this.startTime = startTime;
-    }
-    
-    public Job[] getStartupJobs() {
-        return startJobs.clone();
     }
     
     public double getStartupDuration() {
