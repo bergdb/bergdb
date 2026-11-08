@@ -116,6 +116,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-47](47-start-keeps-first-transactions-large-value.md) | Fix | A start keeps a large value of its section's first transaction | none | done | 2026-11-09 |
 | [019-46](46-eviction-audit-inv-slot-under-load.md) | Investigate | An INV-SLOT violation in EvictionAccountingTester under load | none | done | 2026-11-09 |
 | [019-45](45-start-rerun-heap.md) | Investigate | A start's heap: D and the section's records, not the budget (a limit) | none | done | 2026-11-08 |
 | [019-36](36-reclaim-cut-waits-for-append.md) | Investigate | Reclaim's cut waits for the thread's append (performance) | none | done | 2026-11-07 |
@@ -266,6 +267,14 @@ Files
   database's, whatever the budget: a limit, not a fault, now in
   docs/levels.md, section 7; its probe in
   [45-start-rerun-heap/](45-start-rerun-heap/RerunHeapProbe.java).
+* [46-eviction-audit-inv-slot-under-load.md](46-eviction-audit-inv-slot-under-load.md).
+  019-46, Investigate: the INV-SLOT of a gate under load was a race of a
+  reader's `Cache3.dropIfEmpty` with the writer's load of the same node,
+  a stale pointer in the Core (review R1's D2); fixed.
+* [47-start-keeps-first-transactions-large-value.md](47-start-keeps-first-transactions-large-value.md).
+  019-47, Fix: a start kept in memory a value over 1 MiB of its startup
+  section's first transaction, which it links without the rerun; the
+  start's admission now takes the resident key nodes too.
 
 
 Log
@@ -426,4 +435,10 @@ STOP's close, and a hook forces the timing in a test; BEFORE COMMIT OK.
 by design, a limit; a start needs about twice the startup distance of
 heap above the running database's, whatever the budget (W7's failure
 reproduced at 2M keys); no code changed; the limit in docs/levels.md;
+BEFORE COMMIT OK.
+
+2026-11-09. 019-46 and 019-47 done in night 006-15 by the agent of
+019-46: a reader's empty-handle drop raced the writer's load (fixed in
+`Cache3.dropIfEmpty`); a start's admission missed the large values of its
+section's first transaction (fixed in `Db.startInner`); level4.sh OK,
 BEFORE COMMIT OK.

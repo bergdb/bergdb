@@ -692,6 +692,18 @@ public final class EvictionAccountingTester {
     }
     
     /**
+     * bergdb 019-47: a longer run of small batches, with six readers, whose restarts come
+     * one after another, so that a start's section can begin with the transaction of a large
+     * value. Seed 1075 restarted with no budget after such a section, and the start kept the
+     * large value in its leaf (the recount: "holds a value of 1126456 bytes"), as did 1133,
+     * 1249, 1267 and 1276 (at batch 37 to 247); about 30 s.
+     */
+    @Nano("night")
+    public static void testAccountingManyRestarts(TestEnvironment c) throws InterruptedException {
+        runSeeds(c, 1070, 10, new Shape(300, 300, 4, 6, 0.002));
+    }
+    
+    /**
      * Ten seeds, larger: more than 4,096 handles resident, so that a batch can reach its
      * handle limit; about 10 s a seed.
      */

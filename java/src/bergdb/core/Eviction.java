@@ -920,9 +920,10 @@ public final class Eviction {
      * key node to a value over 1 MiB becomes a stream pointer, as a read does not cache such
      * a value either (Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES). With eviction on (any schedule
      * but none). Until step 3b a sweep took them, first. The work is the record's: its key
-     * nodes' pointers. The caller holds Db.writeLock (Db.store; and Db's start, with no
-     * written nodes, for the large values of its rerun of the transactions, whose records are
-     * in the stream: bergdb 015-68).
+     * nodes' pointers. The caller holds Db.writeLock (Db.store; and Db's start, for the
+     * large values of its rerun of the transactions, whose records are in the stream, bergdb
+     * 015-68, with the resident key nodes as the written nodes, for the values of the
+     * section's first transaction that the start linked, bergdb 019-47).
      */
     public void recordWritten(Db db, java.util.Iterator<Node> written) {
         if (schedule == Schedule.NONE) {
@@ -2215,6 +2216,52 @@ public final class Eviction {
         }
     }
 
+    /**
+     * A start whose startup section begins with the transaction of a large value does not
+     * keep it either (bergdb 019-47; found by harness 6.5, 018-05, with a longer shape): the
+     * section's first transaction is not rerun, but its values are linked into the section's
+     * node versions (DbStarter.createMemoryPointers), which the rerun's pointer listener
+     * does not see, so the start's admission (015-68) left the value in its leaf. A startup
+     * distance of 200 bytes, so that the section is the large value's transaction alone.
+     * A second large value is put by the rerun of a later transaction: the admission takes
+     * that one as before.
+     */
+    @Nano
+    public static void testStartAdmitsLargeValuesOfTheSectionsFirstTransaction() {
+        CoreTestClock clock = new CoreTestClock();
+        byte[] value = new byte[1200 * 1024];
+        for (int extra = 0; extra < 2; extra++) {
+            MemoryStream s = new MemoryStream();
+            Db db0 = Db.builder().testSetup(s).clock(clock).testId().startupDistance(200)
+                    .audit(0).start();
+            try {
+                clock.setTime(clock.getTime() + 100 * STEP);
+                db0.execute(db0.trans().put("a", value).put("b", "small").build());
+                if (extra == 1) {
+                    clock.setTime(clock.getTime() + STEP);
+                    db0.execute(db0.trans().put("c", value).build());
+                }
+            } finally {
+                db0.close();
+            }
+            long auditFailures = Audit.failures();
+            Db db = Db.builder().testSetup(s.copy()).clock(clock).testId().startupDistance(200)
+                    .cacheSizeIndicator(100L * 1000 * 1000).evictionSchedule(Schedule.BUDGET, 1)
+                    .audit(1).start();
+            try {
+                Assert.assertEquals("resident pointers to values over 1 MiB after the start ("
+                        + extra + " more)", 0, largeResident(db));
+                Assert.assertTrue("the value read", java.util.Arrays.equals(value,
+                        DbUtil.get(db, "a")));
+                Assert.assertEquals("small", new String(DbUtil.get(db, "b")));
+                Assert.assertEquals("after the reads", 0, largeResident(db));
+                Assert.assertEquals("audit failures", auditFailures, Audit.failures());
+            } finally {
+                db.close();
+            }
+        }
+    }
+    
     /**
      * A transaction's warmup does not keep a value over 1 MiB (bergdb 019-22; found by harness
      * 6.5, 018-05): a key's large value is written, and the admission takes it from its
