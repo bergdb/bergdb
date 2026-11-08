@@ -69,14 +69,13 @@ import bergdb.pub.util.BadFormatException;
  */
 public class DbObject extends DbValue {
     //
-    // Special handling of field KEY_FIELD makes this class BergDB specific.
-    // Otherwise, it could be used as a general purpose way to serialize/deserialize Java objects.
-    //
     // 1304 Frans: Little-endian-first (LE) byte order is used to follow the byte ordering used 
     // in the db stream.
     // 1309 Frans: Added support for Java arrays; they are wrapped field 'v' of a DbObject.
     // 1311 Frans: Changed byte signature to start with "bergo", then byte value 1 for version.
     // 2026-11 (bergdb 020-08, step 2): format 2, bergdb 020-07; "bergo" is format 1.
+    // 2026-11 (bergdb 020-08, step 7): no key field; a field named "key" is an ordinary field
+    // (Frans, 2026-11-08, 19:21; bergdb 020-02, section 5.1b).
     //
     
     /** The header of a stored object, format 2: its first byte (bergdb 020-07, R1). */
@@ -95,7 +94,6 @@ public class DbObject extends DbValue {
     public static final char ARRAY = 'a';
     public static final char OBJECT = 'o';
     
-    private static final String KEY_FIELD = PubUtil.KEY_FIELD;
     private static final String WRAPPED_ARRAY_FIELD_NAME = "array";
     private static final String WRAPPED_PRIMITIVE_FIELD_NAME = "p";   // p for primitive.
     
@@ -104,20 +102,6 @@ public class DbObject extends DbValue {
     private final int end;          // after its last field
     private final boolean whole;    // 'bytes' is the stored value of this object
     private int height;             // its levels, 1 or more; 0 until computed
-    private final String key;             
-            // If set, represents the database key. Implicitly it is the value of the 'key' field.
-            // It may be null.
-    
-    /**
-     * Creates a new DbObject based in its byte array representation.
-     * 
-     * @param bytes The serialized format of the DbObject.
-     * @throws BadFormatException If the bytes are not formatted OK according to the 
-     * serialized byte format defined by this class.
-     */
-    public DbObject(byte[] bytes) throws BadFormatException {
-        this(bytes, null);
-    }
     
     /**
      * Creates a new DbObject based in its byte array representation: a stored object of
@@ -126,14 +110,12 @@ public class DbObject extends DbValue {
      * @param b 
      *      The serialized format of the DbObject. 
      *      Will be copied. 
-     * @param key 
-     *      The database string key of the DbObject, may be null.
      * @throws BadFormatException 
      *      If the bytes are not a stored object of format 2; the message starts with the
      *      condition's code (bergdb 020-07, section 7.2), "format-1" for an object of
      *      BergDB 2026.3 and before.
      */
-    public DbObject(byte[] b, String key) throws BadFormatException {
+    public DbObject(byte[] b) throws BadFormatException {
         super('o');
         if (b == null) {
             throw new IllegalArgumentException("b == null not allowed");
@@ -144,7 +126,6 @@ public class DbObject extends DbValue {
         this.start = 1;
         this.end = copy.length;
         this.whole = true;
-        this.key = key;
     }
     
     /** The object in [start, end) of checked 'bytes'. */
@@ -155,7 +136,6 @@ public class DbObject extends DbValue {
         this.end = end;
         this.whole = whole;
         this.height = height;
-        this.key = null;
     }
     
     /** The object at 'p' of checked bytes, a view on them; 'b' must not change. */
@@ -183,9 +163,7 @@ public class DbObject extends DbValue {
      * Returns the number of fields of the typeless object.
      */
     public int getFieldCount() {
-        int count = ObjectFormat.countAt(bytes, start);
-        count = key == null ? count : count + 1;
-        return count;
+        return ObjectFormat.countAt(bytes, start);
     }
     
     /**
@@ -193,9 +171,6 @@ public class DbObject extends DbValue {
      * INT, a field of an integer within int's range.
      */
     public boolean has(String name, char type) {
-        if (type == STRING && isKey(name)) {
-            return true;
-        }
         return is(find(name), type);
     }
     
@@ -208,10 +183,6 @@ public class DbObject extends DbValue {
             return has(nameParts[0], type);
         }
         return is(find(nameParts), type);
-    }
-    
-    private boolean isKey(String name) {
-        return key != null && KEY_FIELD.equals(name);
     }
     
     /** Whether the value at 'p' is of 'type': false if p is -1, absent. */
@@ -560,9 +531,6 @@ public class DbObject extends DbValue {
      * field: absent. 'l' for every integer.
      */
     public char getType(String name) {
-        if (isKey(name)) {
-            return 's';
-        }
         int p = find(name);
         return p < 0 ? 'z' : ObjectFormat.typeAt(bytes, p);
     }
@@ -571,9 +539,6 @@ public class DbObject extends DbValue {
      * Returns the DbValue of a field with a specified name, or null if absent.
      */
     public DbValue getDbValue(String name) {
-        if (isKey(name)) {
-            return new DbString(key);
-        }
         int p = find(name);
         return p < 0 ? null : DbValue.read(bytes, p);
     }
@@ -632,9 +597,6 @@ public class DbObject extends DbValue {
     }
 
     public String getString(String name) {
-        if (isKey(name)) {
-            return this.key;
-        }
         int p = find(name);
         return is(p, STRING) ? ObjectFormat.stringAt(bytes, p) : null;
     }

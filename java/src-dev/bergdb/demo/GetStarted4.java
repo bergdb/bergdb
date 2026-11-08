@@ -60,8 +60,8 @@ public class GetStarted4 {
                 acc0.balance -= amount;
                 acc1.balance += amount;
                 
-                env.put(acc0);
-                env.put(acc1);
+                env.put("/accounts/0", acc0);
+                env.put("/accounts/1", acc1);
                 env.setOutput("balance", acc0.balance);
             }
         });

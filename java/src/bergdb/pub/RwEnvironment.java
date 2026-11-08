@@ -50,23 +50,6 @@ public interface RwEnvironment extends ReadInterface {
     public void delete(String key);
     
     /**
-     * Stores an object using the 'key' field as the database key.
-     *
-     * <p>Experimental in 2026.3, with known faults; it may change in a later release
-     * (bergdb 018-01, D6).</p>
-     * 
-     * <p>Each string in the object is Unicode text, stored as well-formed UTF-8, as for
-     * WBuilder.put() (the package's {@linkplain bergdb.pub##strings Strings}).</p>
-     * 
-     * @param object The object to store in the database.
-     * @throws MissingKeyFieldException if 'object' does not have a String field named 'key'.
-     * @throws IllegalArgumentException if key field is null or otherwise of an invalid format.
-     * @throws IllegalArgumentException if 'object' is null, or if a string in it has a lone
-     *             surrogate, as for WBuilder.put() (bergdb 021-04).
-     */
-    public void put(Object object) throws MissingKeyFieldException;
-    
-    /**
      * Sets the key-value entry with the given key to the provided object. A byte[] is
      * copied at the put: the caller may change or reuse its array afterwards.
      *

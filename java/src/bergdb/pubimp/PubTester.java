@@ -1885,14 +1885,14 @@ public class PubTester {
         
         // With database creation, and a stop when the database is no longer used.
         Database database = Factory.database().memory().start();
-        database.connection().w().put(a).execute();
+        database.connection().w().put("/a", a).execute();
         database.stop();
         
         database = Factory.database().memory().start();
         Connection c = database.connection();
         
-        // Given connection, it is a short one-liner to store an object (assumes key field).
-        c.w().put(a).execute();
+        // Given connection, it is a short one-liner to store an object at its key.
+        c.w().put("/a", a).execute();
         
         // To retrieve it.
         c.get("/a", MyDouble.class);
@@ -1903,7 +1903,7 @@ public class PubTester {
             public void run(RwEnvironment env) {
                 MyDouble a = env.get("/a", MyDouble.class);
                 a.value = a.value + 2.0;
-                env.put(a);
+                env.put("/a", a);
             }
         });
         database.stop();
@@ -1919,7 +1919,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        Transaction t = c.w().put(a).execute();
+        Transaction t = c.w().put("/a", a).execute();
         t.sync();
         
         assertThatTransWrittenCompletely(d, t);
@@ -1942,7 +1942,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        Transaction t = c.w().put(a).execute();
+        Transaction t = c.w().put("/a", a).execute();
         t.sync(SyncLevel.ORDINARY);
      
         assertThatTransWrittenCompletely(d, t);
@@ -1959,7 +1959,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        Transaction t = c.w().put(a).execute();
+        Transaction t = c.w().put("/a", a).execute();
         c.sync();
         
         assertThatTransWrittenCompletely(d, t);
@@ -1976,7 +1976,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        Transaction t = c.w().put(a).execute();
+        Transaction t = c.w().put("/a", a).execute();
         c.sync(SyncLevel.ORDINARY);
         
         assertThatTransWrittenCompletely(d, t);
@@ -1993,7 +1993,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        Transaction t = c.w().put(a).execute();
+        Transaction t = c.w().put("/a", a).execute();
         d.sync();
         
         assertThatTransWrittenCompletely(d, t);
@@ -2010,7 +2010,7 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        Transaction t = c.w().put(a).execute();
+        Transaction t = c.w().put("/a", a).execute();
         d.sync(SyncLevel.ORDINARY);
         
         assertThatTransWrittenCompletely(d, t);
@@ -2045,7 +2045,7 @@ public class PubTester {
         
         A a1 = d.connection().get("/a", A.class);
         Assert.assertEquals("Saltis", a1.name);
-        Assert.assertEquals("/a", a1.key);
+        Assert.assertNull(a1.key);      // an ordinary field (bergdb 020-02, section 5.1b)
         d.stop();
     }
     
@@ -2061,7 +2061,7 @@ public class PubTester {
         
         A2 a1 = d.connection().get("/a", A2.class);
         Assert.assertEquals("Saltis", a1.name);
-        Assert.assertEquals("/a", a1.key);
+        Assert.assertNull(a1.key);      // an ordinary field (bergdb 020-02, section 5.1b)
         d.stop();
     }
     
@@ -2074,7 +2074,7 @@ public class PubTester {
         a0.key = "/a";
         
         Database d = Factory.database().memory().start();
-        d.connection().w().put(a0).execute();
+        d.connection().w().put("/a", a0).execute();
         
         A a1 = d.connection().get("/a", A.class);
         Assert.assertEquals("Saltis", a1.name);
@@ -2101,7 +2101,7 @@ public class PubTester {
         c.rw(new Action() {
             public void run(RwEnvironment env) {
                 House h = env.get("/h", House.class);
-                Assert.assertEquals("/h", h.key);
+                Assert.assertNull(h.key);       // an ordinary field (bergdb 020-02)
                 Assert.assertEquals("MyHome", h.name);
             }
         });
@@ -2128,7 +2128,7 @@ public class PubTester {
         
         c.rw(new Action() {
             public void run(RwEnvironment env) {
-                env.put(house);
+                env.put("/h", house);
             }
         });
         
@@ -2159,7 +2159,7 @@ public class PubTester {
         obj0.key = "/k";
         obj0.s = "hello";
         
-        c.w().put(obj0).execute();
+        c.w().put("/k", obj0).execute();
         
         D obj1 = c.get("/k", D.class);
         Assert.assertEquals("/k", obj1.key);
@@ -2181,7 +2181,7 @@ public class PubTester {
         c.w().put("/k", obj0).execute();
         
         D obj1 = c.get("/k", D.class);
-        Assert.assertEquals("/k", obj1.key);
+        Assert.assertNull(obj1.key);    // an ordinary field (bergdb 020-02, section 5.1b)
         Assert.assertEquals("hello", obj1.s);
         
         d.stop();
@@ -2197,9 +2197,11 @@ public class PubTester {
         
         int index = 0;
         for (A a : c.usePrimary(A.class).dir("/dir/").objects()) {
-            Assert.assertEquals("/dir/a" + index, a.key);
+            Assert.assertNull(a.key);   // an ordinary field (bergdb 020-02, section 5.1b)
+            Assert.assertEquals("a" + index, a.name);
             index++;
         }
+        Assert.assertEquals(2, index);
         
         d.stop();
     }
@@ -2213,7 +2215,8 @@ public class PubTester {
         c.w().put("/a", new Object() { String name = "Carl"; }).execute();
         DbObject dbo = c.get("/a", DbObject.class);
         
-        Assert.assertEquals("/a", dbo.getString("key"));
+        Assert.assertNull(dbo.getString("key"));    // the stored object (bergdb 020-02)
+        Assert.assertEquals(1, dbo.getFieldCount());
         Assert.assertEquals("Carl", dbo.getString("name"));
         
         d.stop();
@@ -2225,7 +2228,7 @@ public class PubTester {
         Connection c = d.connection();
         
         DbObject dbo0 = new DbObject.Builder().addString("key", "/a").addInt("b", 123).build();
-        c.w().put(dbo0).execute();
+        c.w().put("/a", dbo0).execute();
         
         DbObject dbo1 = c.get("/a", DbObject.class);
         
@@ -2255,12 +2258,65 @@ public class PubTester {
         Database d = Factory.database().memory().start();
         Connection c = d.connection();
         
-        c.w().put(new Object() { String key = "/a"; int b = 123; }).execute();
+        c.w().put("/a", new Object() { String key = "/a"; int b = 123; }).execute();
         DbObject dbo = c.get("/a", DbObject.class);
         
         Assert.assertEquals("/a", dbo.getString("key"));
         Assert.assertEquals(123, dbo.getInt("b"));
         d.stop();
+    }
+    
+    public static class K {
+        public String key;
+        public int n;
+        public K() {}
+    }
+    
+    /**
+     * bergdb 020-02, section 5.1b; 020-09, G113 and W31: a field named 'key' is an ordinary
+     * field, at a put and at a get, and a DbObject read at a key is the stored object
+     * exactly; put(Object) and MissingKeyFieldException are gone (Frans, 2026-11-08, 19:21).
+     */
+    @Nano
+    public static void testKeyIsAnOrdinaryField() throws ReflectiveOperationException {
+        Database d = Factory.database().memory().start();
+        try {
+            Connection c = d.connection();
+            K k = new K();
+            k.n = 1;
+            c.put("/k", k);
+            Assert.assertNull(c.get("/k", K.class).key);
+            DbObject dbo = c.get("/k", DbObject.class);
+            Assert.assertNull(dbo.getString("key"));
+            Assert.assertEquals('z', dbo.getType("key"));
+            Assert.assertFalse(dbo.has("key", DbObject.STRING));
+            Assert.assertEquals(1, dbo.getFieldCount());
+            Assert.assertTrue(dbo.getDbValue("key") == null);
+            Assert.assertArrayEquals(DbObject.toDbObject(k).getBytes(), dbo.getBytes());
+            
+            k.key = "x";
+            c.put("/k", k);
+            Assert.assertEquals("x", c.get("/k", K.class).key);
+            Assert.assertEquals("x", c.get("/k", DbObject.class).getString("key"));
+            Assert.assertEquals("x", ((DbObject) c.get("/k", Object.class)).getString("key"));
+        } finally {
+            d.close();
+        }
+        
+        for (Class<?> api : new Class<?>[] {WBuilder.class, RwEnvironment.class}) {
+            try {
+                api.getMethod("put", Object.class);
+                throw new AssertionError(api.getName() + ".put(Object) exists");
+            } catch (NoSuchMethodException e) {
+                // Expected.
+            }
+        }
+        try {
+            Class.forName("bergdb.pub.MissingKeyFieldException");
+            throw new AssertionError("MissingKeyFieldException exists");
+        } catch (ClassNotFoundException e) {
+            // Expected.
+        }
     }
     
     @Nano
@@ -2283,13 +2339,13 @@ public class PubTester {
         Connection c = d.connection();
         DbObject dbo = new DbObject.Builder()
             .addInt("i", 123)
-            .addString(PubUtil.KEY_FIELD, "/a")
+            .addString("key", "/a")
             .build();
         
-        c.w().put(dbo).execute();
+        c.w().put("/a", dbo).execute();
         DbObject o = c.get("/a", DbObject.class);
         
-        Assert.assertEquals("/a", o.getString(PubUtil.KEY_FIELD));
+        Assert.assertEquals("/a", o.getString("key"));
         Assert.assertEquals(123, o.getInt("i"));
         
         d.stop();

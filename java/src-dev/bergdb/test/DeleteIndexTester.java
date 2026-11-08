@@ -56,7 +56,7 @@ public class DeleteIndexTester {
         
         int i = 0;
         for (; i < n; i++) {
-            c.w().put(new Employee(getEmployeeKey(i), i * 10)).execute();
+            c.w().put(getEmployeeKey(i), new Employee(getEmployeeKey(i), i * 10)).execute();
         }
         database.sync();
         
@@ -77,7 +77,7 @@ public class DeleteIndexTester {
         coll.out().println("Setting more objects while deleting index..., i = " + i);
         
         for (; i < n*2; i++) {
-            c.w().put(new Employee(getEmployeeKey(i), i * 10 + 1)).execute();
+            c.w().put(getEmployeeKey(i), new Employee(getEmployeeKey(i), i * 10 + 1)).execute();
         }
         
         status = job.getStatus();

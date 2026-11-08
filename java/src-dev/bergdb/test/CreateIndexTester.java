@@ -35,7 +35,7 @@ public class CreateIndexTester {
         
         int i = 0;
         for (; i < n; i++) {
-            c.w().put(new Employee("/e/" + i, i * 10)).execute();
+            c.w().put("/e/" + i, new Employee("/e/" + i, i * 10)).execute();
         }
         database.sync();
         
@@ -50,7 +50,7 @@ public class CreateIndexTester {
         Time time1 = database.currentTime();
         
         for (; i < n*2; i++) {
-            c.w().put(new Employee("/e/" + i, (i-n) * 10 + 1)).execute();
+            c.w().put("/e/" + i, new Employee("/e/" + i, (i-n) * 10 + 1)).execute();
         }
         
         JobStatus status = job.getStatus();
@@ -115,7 +115,7 @@ public class CreateIndexTester {
         
         int i = 0;
         for (; i < n; i++) {
-            c.w().put(new Employee("/e/" + i, (n - i) * 10)).execute();
+            c.w().put("/e/" + i, new Employee("/e/" + i, (n - i) * 10)).execute();
         }
         database.sync();
         

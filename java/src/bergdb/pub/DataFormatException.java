@@ -6,7 +6,7 @@ import bergdb.pub.util.DbException;
  * Thrown when data in the database has an illegal format: a stored value that does not fit
  * the Java type or field it is read into, or a stored object that cannot be read when its
  * index entries are updated or built. It belongs to the object code and the user indexes,
- * experimental in 2026.3 (see Connection.get(), WBuilder.put(Object) and
+ * experimental in 2026.3 (see Connection.get(), WBuilder.put(String, Object) and
  * Database.indexBuilder(); bergdb 018-01, D6).
  * 
  * @author Frans Lundberg

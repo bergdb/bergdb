@@ -45,7 +45,6 @@ public class Pack implements IPack {
         PubTesterPrimary.class,
         PrimaryHarness.class,
         Utf8ReadTester.class,
-        PubUtil.class,
         IndexEntryBuilder.class,
         WBuilderImp.class,
         TimeResolver.class,

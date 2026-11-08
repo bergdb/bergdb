@@ -202,7 +202,6 @@ public class PayDemo {
     
     /** Simple account class. For direct db storage. */
     public static class Account {
-        public String key;
         public long balance;
     }
     

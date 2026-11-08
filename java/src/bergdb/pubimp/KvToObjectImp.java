@@ -94,7 +94,7 @@ public class KvToObjectImp implements KvToObjectConverter, ClassToObject {
         
         if (isObject) {
             try {
-                result = ukey == null ? new DbObject(value) : new DbObject(value, ukey);
+                result = new DbObject(value);
             } catch (BadFormatException e) {
                 result = value;     // the database's own array, bergdb 015-47
             }
@@ -109,11 +109,7 @@ public class KvToObjectImp implements KvToObjectConverter, ClassToObject {
     private DbObject entryToDbObject(String ukey, byte[] value) {
         DbObject dbObject;
         try {
-            if (ukey == null) {
-                dbObject = new DbObject(value);
-            } else {
-                dbObject = new DbObject(value, ukey);
-            }
+            dbObject = new DbObject(value);     // the stored object exactly (bergdb 020-02)
         } catch (BadFormatException e) {
             throw new ObjectCreationException(e.getMessage() + " ukey=" + ukey);
         }

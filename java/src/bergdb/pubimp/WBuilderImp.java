@@ -29,14 +29,6 @@ public class WBuilderImp implements WBuilder {
         return this;
     }
     
-    /**
-     * @throws MissingKeyFieldException
-     */
-    public WBuilder put(Object object) {
-        env.put(object);
-        return this;
-    }
-
     public WBuilder delete(String ukey) {
         env.delete(ukey);
         return this;

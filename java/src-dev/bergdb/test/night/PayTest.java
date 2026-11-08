@@ -73,6 +73,7 @@ public class PayTest {
                     Account a = new Account();
                     a.balance = 1;
                     String key = accountKey(id);
+                    a.key = key;        // an ordinary field (bergdb 020-02, section 5.1b)
                     builder.put(key, a);
                     id += 1;
                 }

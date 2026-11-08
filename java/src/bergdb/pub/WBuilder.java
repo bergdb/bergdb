@@ -37,24 +37,6 @@ public interface WBuilder {
      */
     public WBuilder put(String key, Object object);
     
-    /**
-     * Adds an operation to the write transaction that sets a key-value entry to the database.
-     * The key string is taken from the 'key' field of 'object'.
-     *
-     * <p>Experimental in 2026.3, with known faults; it may change in a later release
-     * (bergdb 018-01, D6).</p>
-     * 
-     * <p>Each string in the object is Unicode text, stored as well-formed UTF-8, as for
-     * put(String, Object) (the package's {@linkplain bergdb.pub##strings Strings}).</p>
-     * 
-     * @throws MissingKeyFieldException If 'object' does not have a String field named 'key'.
-     * @throws IllegalArgumentException
-     *             If 'key' is null or otherwise invalid, or if object is null; or if a
-     *             string in the object has a lone surrogate, as for put(String, Object)
-     *             (bergdb 021-04).
-     */
-    public WBuilder put(Object object);
-    
     /** 
      * Executes the puts and deletes as one transaction, and returns it when it has
      * committed.

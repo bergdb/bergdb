@@ -291,7 +291,7 @@ public class PubTesterOutput {
                     switch (i) {
                     case 0: env.setOutput("a", "y"); break;
                     case 1: env.put("/k", "v"); break;
-                    case 2: env.put(new Item("/items/b")); break;
+                    case 2: env.put("/items/b", new Item("/items/b")); break;
                     case 3: env.delete("/k"); break;
                     case 4: env.get("/k", String.class); break;
                     default: env.exists("/k"); break;

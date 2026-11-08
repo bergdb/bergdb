@@ -1009,6 +1009,38 @@ Decided in the step, under Frans's delegation (22:17):
 Gate: BEFORE COMMIT OK (117 s); `level2.sh` afterwards (section 8).
 
 
+### 8.3. Step 7, done (2026-11-09)
+
+Made in `clone-objects` on step 2's commit, tests first (each changed test
+failed on step 2's code):
+
+* `put(Object)` gone from `WBuilder`, `RwEnvironment`, `WBuilderImp` and
+  `RwEnvironmentImp`; `MissingKeyFieldException` and `PubUtil` (with its 9
+  tests) deleted; `DbObject`'s key (its state, `DbObject(byte[], String)`
+  and the `key` branches of the getters) gone: a `DbObject` read at a key
+  is the stored object exactly, and a field named `key` an ordinary field.
+  `KvToObjectImp`, `RwEnvironmentImp.indexEntries` and `IndexBuilderImp`'s
+  build make `new DbObject(bytes)`.
+* Javadoc: `DataFormatException` names `put(String, Object)`;
+  `pub/package.html` and `overview-pub.html` drop "put(Object)" from the
+  paragraph on what is experimental (020-10's B2 rewrites both later).
+* `src-dev`: `GetStarted4`, `CreateIndexTester` and `DeleteIndexTester`
+  put at a key; `PayDemo`'s `Account.key` gone (Frans allowed it).
+* Tests: `PubTester`'s 19 of section 6.1 (13 put at a key, 6 assert the
+  stored field) and a new `testKeyIsAnOrdinaryField` (020-09, G113 and
+  W31; that the removed API is gone, by reflection);
+  `PubTesterOutput.testEnvironmentAfterRun` puts at a key.
+
+Decided in the step, under Frans's delegation (22:17):
+
+* The night test `PayTest` (`src-dev/bergdb/test/night/`) read each
+  account's database key from its field `key` after a primary scan, which
+  section 6.1 missed: it now stores the key in the field at its put, one
+  line, so the night run checks the scan's order as before.
+
+Gate: BEFORE COMMIT OK.
+
+
 ## 9. The documentation
 
 * **`DbObject`'s class Javadoc**: section 5's list; the format by its ID

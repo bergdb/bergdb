@@ -486,7 +486,7 @@ public class IndexBuilderImp implements IndexBuilder {
                     DbObject dbo;
                     
                     try {
-                        dbo = new DbObject(kvt.value, null);
+                        dbo = new DbObject(kvt.value);
                     } catch (BadFormatException e) {
                         // We silently ignore values that are not DbObjects.
                         // Most non-object values will not get to this anyway.

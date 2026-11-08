@@ -18,7 +18,6 @@ import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.DataFormatException;
-import bergdb.pub.MissingKeyFieldException;
 import bergdb.pub.RwEnvironment;
 import bergdb.pub.util.BadFormatException;
 
@@ -275,31 +274,6 @@ public class RwEnvironmentImp implements RwEnvironment {
     }
     
     /**
-     * @throws MissingKeyFieldException
-     * @throws IllegalArgumentException if object is null or if the key field is null or 
-     * of an invalid format.
-     */
-    public void put(Object object) throws MissingKeyFieldException {
-        checkOpen();
-        if (object == null) {
-            throw new IllegalArgumentException("object == null not allowed");
-        }
-        
-        String ukey;
-        
-        if (object instanceof DbObject) {
-            ukey = ((DbObject)object).getString(PubUtil.KEY_FIELD);
-            if (ukey == null) {
-                throw new MissingKeyFieldException("No field named " + PubUtil.KEY_FIELD + " in DbObject.");
-            }
-        } else {
-            ukey = PubUtil.readExistingKeyField(object);
-        }
-        
-        put(ukey, object);
-    }
-    
-    /**
      * @throws IllegalArgumentException
      */
     public void put(String ukey, Object object) {
@@ -398,7 +372,7 @@ public class RwEnvironmentImp implements RwEnvironment {
                 
                 if (previousBytes != null) {
                     try {
-                        previousDbo = new DbObject(previousBytes, null);
+                        previousDbo = new DbObject(previousBytes);
                     } catch (BadFormatException e) {
                         throw new DataFormatException(e.getMessage() + " For ikey: '" + ikey + "'.");
                     }
