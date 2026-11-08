@@ -1,13 +1,14 @@
 # 020-08 Objects in format 2: the implementation plan
 
-Created 2026-11-08 by Frans Lundberg. Status: open; step 1 done (section
-8.1); the other steps decided under Frans's delegation of 2026-11-08,
-22:17 (section 2). How format 2 of stored objects (020-07; 020-02, section
-4), the no-null rules of 020-04 as Frans chose them, (c), the conversion
-rules of 020-09 and the API's removals (020-02, section 5.1b) get into the
-Java code: the design, the changes file by file and method by method, the
-tests, the measurements, the steps and commits with their gates, the
-documentation, the C clone, an estimate and the risks.
+Created 2026-11-08 by Frans Lundberg. Status: open; steps 1, 2, 7, 8 and 3
+done (sections 8.1 to 8.5), step 4 prepared (8.6); the other steps decided
+under Frans's delegation of 2026-11-08, 22:17 (section 2). How format 2 of
+stored objects (020-07; 020-02, section 4), the no-null rules of 020-04 as
+Frans chose them, (c), the conversion rules of 020-09 and the API's
+removals (020-02, section 5.1b) get into the Java code: the design, the
+changes file by file and method by method, the tests, the measurements,
+the steps and commits with their gates, the documentation, the C clone, an
+estimate and the risks.
 
 Frans, 2026-11-08, 17:12, asked for this plan with 020-07, at XHigh, with
 no code. The decisions it implements are 020-02, section 4 (4.1 to 4.12);
@@ -1149,6 +1150,63 @@ Decided in the step, under Frans's delegation (22:17):
 Gate: BEFORE COMMIT OK.
 
 
+### 8.6. Step 4, prepared (2026-11-09)
+
+The tool, ready for the quiet run; the measurement itself is not made, as
+the machine was busy with the night's agents and gates (006-15).
+
+* `java/stress/ObjectBench.java` (package `bergdb.core`, compiled by
+  `build.sh` with the stress tests): M1 to M7 of section 7, and M8, the
+  cost of 020-10's step I1: a `w()` of String puts at keys without a
+  suffix (since I1 the index manager's lock and a read time, also without
+  an index) against keys with `.txt`, one put and 100 puts a `w()`.
+  Compiled once against the candidate, it runs on both jars, so it uses
+  only what both have: section 7's list, `start().join()` and
+  `JobStatus.note()`, and the Core's stream length. The index definition's
+  sample is `IndexInfo`, `Data.Index`'s fields, as I2 removes `Data`. M4
+  also gets as `byte[]`, the Core's get with the Pub layer's key, and M5
+  puts into a directory without an index too, for scale. Sizes: full,
+  1,000,000 objects for M4 and M6, 100,000 puts for M5, 200,000 `w()`s
+  for M8; quick, 50,000 objects.
+* `java/stress/objectbench.sh REF [quick|full] [RUNS]`: builds this tree,
+  runs each build in its own JVM in ABBA order, RUNS JVMs a build (5 for
+  full), with `-Xms8g -Xmx8g`, and writes each figure's median, the
+  candidate's beside format 1's and their ratio, into
+  `java/build/objectbench/RUN/summary.txt`; a run with a load average
+  above 1.5 is marked "NOT QUIET".
+* The reference, format 1: `ae68938` (7aca256's parent, 020-10's P1, the
+  last code before step 2 but for I0, H2's first part, 021-06 and 021-09),
+  made outside the repository in `/Users/f/fl/bench/006-15/format1-build/`
+  (its `COMMIT.txt` names it):
+
+      mkdir -p DIR && git archive ae68938 java | tar -x -C DIR && sh DIR/java/build.sh
+
+**The quiet run**, in the morning on F53, quiet (nothing else running;
+other sessions' QUIET-BLOCK markers and `ps` checked first; `JAVA_HOME`
+set), from the repository's root at the commit to measure: after step 3,
+as section 7 says, which is in (section 8.5):
+
+    sh java/stress/objectbench.sh /Users/f/fl/bench/006-15/format1-build/java full
+
+About 8 minutes: 10 JVMs of about 45 s. Then section 7's
+`java/stress/performance.sh quick` against a preserved build of the
+reference, and the subitem with the numbers.
+
+**Tonight's runs, not quiet** (load averages 6 to 15, other agents' gates
+and builds; one JVM a build, quick and full): the tool works at both
+sizes, and the figures are sane, not the costs. In the full run, the
+candidate's figure as a fraction of format 1's: the writer 0.30 to 0.81
+(M1), the read of bytes 0.13 to 0.51 (M2), the lookups 0.29 to 0.47 (M3),
+a get into `Payment` 0.83 (M4), a put in an indexed directory 0.89 (M5),
+the build over 1,000,000 `Payment`s 1.00 (10.0 s each, M6); a `Payment`
+is 36 bytes against 71, as section 7 expects, and 99 bytes of stream
+against 133 (M7); a one-put `w()` at an object key 3.0 µs against 2.5, and
+3.3 against 3.2 at `.txt` keys (M8). For the quiet run to settle: M4's get
+as `byte[]` (1.46 in the full run, 1.01 in the quick one), M8's one-put
+`w()` at an object key, the cost of I1 (1.20 and 1.09), and M1's `Blob`
+(1.35 in the quick run, 0.45 in the full one).
+
+
 ## 9. The documentation
 
 * **`DbObject`'s class Javadoc**: section 5's list; the format by its ID
@@ -1307,3 +1365,9 @@ binding, 020-09); step 5 dropped; the order 1, 2, 7, 8, 3, 4, 6;
 `createFast()` left to 020-10's step I2; sections 1 to 6, 8, 9 and 11;
 the tests of steps 7 and 8 counted at `b9d87e7`; about 7 days in all.
 Step 1's record (section 8.1) unchanged. No code changed.
+
+2026-11-09. Step 4 prepared in night 006-15 by the coordinator's agent C
+(section 8.6): `java/stress/ObjectBench.java` and `objectbench.sh`, the
+format-1 reference built from `ae68938` outside the repository, two runs
+that are not quiet; the quiet run's command for the morning; no code
+under test changed; BEFORE COMMIT OK.
