@@ -749,6 +749,8 @@ check at every read; the others before the release.
   *Recommended*: as R14, containers only; a scalar is a container's
   content, not a level. Else every limit moves down by one and the depth
   vectors change.
+  *Decided* (Frans, 2026-11-08, 19:43: "As recommended"): containers
+  only, as R14; a scalar is not a level.
 * **Q2. Lookups without the full check.** Section 7.4 lets a binding read
   fields of a stored value it has not fully checked, by lookups that check
   what they touch (020-05, section 12b.5): fast for index maintenance and

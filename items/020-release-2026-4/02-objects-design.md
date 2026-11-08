@@ -1144,6 +1144,24 @@ transactions as `rw()` actions; the questions below refine it.
     implementer may change). A field named `key` is then an ordinary
     field. To be added to 020-08 as a step.
 
+* **`createFast()` goes** (020-01, section 14, decision 6, as it
+  recommended; 020-01, F4). Frans, 2026-11-08, 19:24: "Why was this
+  added? What is the reason? Seems a bit strange. But knowing myself,
+  there might be a good reason. Let's find this first." Found (19:25):
+  the 2012-10 notes ("Create index") design an index over existing
+  objects as a background job in many transactions, with a "creating"
+  state: `start()`, returning a `Job`. `createFast()` is in the first Git
+  commit (2013-06-06, before release 2013.1), with today's Javadoc
+  ("Creates this index immediately and makes it active without adding
+  index entries for existing database objects") and today's code (the
+  index set active, no job); it served the setup case, indexes defined
+  on a new, empty database (the `IndexBuilder` Javadoc's example,
+  `PayDemo`'s `/payments/`, 38 tests). `Job.join()` existed in 2013 too,
+  so `start().join()` did the same on empty directories. Frans, 19:43,
+  to "Do you decide (a), drop createFast() in favour of start().join()?":
+  "Yes." The tests that call it switch to `start().join()`; to be added
+  to 020-08 as a step, with `put(Object)`'s removal.
+
 ### 5.2. What the storage decisions fix for it
 
 * **One integer type** (4.7): a conversion decides by the value, as (A),

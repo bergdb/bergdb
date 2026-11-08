@@ -74,6 +74,14 @@ are that commit's, in `java/src/bergdb/pubimp/` unless named.
 Items 2 to 6 each take a line; the recommended answers are the plan's
 defaults.
 
+Frans, 2026-11-08, 19:43: item 1 for step 1 ("3. Yes, OK.", to the
+coordinator's "Your 'ok-and-implement' for step 1 of 020-08"); item 2 as
+recommended ("2. As recommended."): a scalar is not a level. Steps 2 to 6
+wait for his ok after the API decisions. Step 1 takes item 5's default
+(the vectors in `java/src/bergdb/pubimp/doc-files/`) until he says
+otherwise. Since then (020-02, section 5.1b): `put(Object)`, the key
+field and `createFast()` go, for a later step.
+
 
 ## 3. The API decisions, and where each joins
 
