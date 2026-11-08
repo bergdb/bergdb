@@ -51,7 +51,8 @@ public class Pack implements IPack {
         RwTransaction.class,
         DbObjectTester.class,
         IndexReference.class,
-        IndexHarness.class
+        IndexHarness.class,
+        IndexJobsHarness.class
     };
     
     public Class<?>[] getClasses() {
