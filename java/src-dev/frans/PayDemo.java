@@ -114,14 +114,17 @@ public class PayDemo {
                 
                 c.rw(new Action() {
                     public void run(RwEnvironment env) {
-                        Account a1 = env.get(accountKey(p.from), Account.class);
-                        Account a2 = env.get(accountKey(p.to), Account.class);
+                        String key1 = accountKey(p.from);
+                        String key2 = accountKey(p.to);
+                        
+                        Account a1 = env.get(key1, Account.class);
+                        Account a2 = env.get(key2, Account.class);
                         
                         a1.balance -= p.amount;
                         a2.balance += p.amount;
                         
-                        env.put(a1);
-                        env.put(a2);
+                        env.put(key1, a1);
+                        env.put(key2, a2);
                         env.put("/payments/${transactionTime}", p);
                     }
                 });
