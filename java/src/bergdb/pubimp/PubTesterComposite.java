@@ -298,7 +298,7 @@ public class PubTesterComposite {
         long[] expected = new long[]{300, 300};
         
         Iterator<Payment2> iter = c.useIndex("i0", Payment2.class)
-                .eq("1").nextLevel()
+                .eq("1")
                 .eq(300)
                 .objects().iterator();
         
@@ -334,7 +334,7 @@ public class PubTesterComposite {
         double[] expected = new double[]{300.0, 300.0};
         
         Iterator<DPayment2> iter = c.useIndex("i0", DPayment2.class)
-                .eq("1").nextLevel()
+                .eq("1")
                 .eq(300.0)
                 .objects().iterator();
         
@@ -368,7 +368,7 @@ public class PubTesterComposite {
         
         long[] expected = new long[] { 200, 0 };
         
-        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).eq("2").nextLevel().eq("1").objects().iterator();
+        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).eq("2").eq("1").objects().iterator();
         for (int i = 0; i < expected.length; i++) {
             Assert.assertTrue("i="+ i, iter.hasNext());
             Payment2 p = iter.next();
@@ -399,7 +399,7 @@ public class PubTesterComposite {
         
         long[] expected = new long[]{0, 100, 200, 333};
         
-        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).startAt("2").objects().iterator();
+        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).from("2", true).objects().iterator();
         for (int i = 0; i < expected.length; i++) {
             Assert.assertTrue(iter.hasNext());
             Payment2 p = iter.next();
@@ -429,15 +429,12 @@ public class PubTesterComposite {
              .put("/p/6", new Payment2("3", "0", 333))
              .put("/p/5", new Payment2("2", "1", 0)).execute();
         
-        long[] expected = new long[] { 100, 333 };
-        
-        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).startAt("2").nextLevel().startAt("2").objects().iterator();
-        for (int i = 0; i < expected.length; i++) {
-            Assert.assertTrue("i="+ i, iter.hasNext());
-            Payment2 p = iter.next();
-            Assert.assertEquals(expected[i], p.time);
-        }
-        Assert.assertFalse(iter.hasNext());
+        // 2026.3's start at the tuple ("2", "2"), [100, 333], is two scans in the grammar of
+        // bergdb 020-10, section 3.4 (S2-F22: a bound on a later level alone is refused).
+        assertTimes(new long[] {100}, c.useIndex("i0", Payment2.class).eq("2").from("2", true)
+                .objects());
+        assertTimes(new long[] {333}, c.useIndex("i0", Payment2.class).from("2", false)
+                .objects());
         database.stop();
     }
     
@@ -460,15 +457,12 @@ public class PubTesterComposite {
              .put("/p/6", new Payment2("3", "0", 33))
              .put("/p/5", new Payment2("2", "1", 0)).execute();
         
-        long[] expected = new long[] { 100, 200, 33 };
-        
-        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).startAt("2").nextLevel().startAt(77).objects().iterator();
-        for (int i = 0; i < expected.length; i++) {
-            Assert.assertTrue("i="+ i, iter.hasNext());
-            Payment2 p = iter.next();
-            Assert.assertEquals(expected[i], p.time);
-        }
-        Assert.assertFalse(iter.hasNext());
+        // 2026.3's start at the tuple ("2", 77), [100, 200, 33], is two scans in the grammar
+        // of bergdb 020-10, section 3.4.
+        assertTimes(new long[] {100, 200}, c.useIndex("i0", Payment2.class).eq("2")
+                .from(77, true).objects());
+        assertTimes(new long[] {33}, c.useIndex("i0", Payment2.class).from("2", false)
+                .objects());
         database.stop();
     }
     
@@ -492,7 +486,7 @@ public class PubTesterComposite {
         
         long[] expected = new long[] { 100, 444 };
         
-        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).eq("2").nextLevel().startAt("3").objects().iterator();
+        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).eq("2").from("3", true).objects().iterator();
         for (int i = 0; i < expected.length; i++) {
             Assert.assertTrue("i="+ i, iter.hasNext());
             Payment2 p = iter.next();
@@ -523,8 +517,7 @@ public class PubTesterComposite {
         
         long[] expected = new long[] { 444 };
         
-        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).eq("2").nextLevel().startAt("3")
-                .inclusive(false).objects().iterator();
+        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).eq("2").from("3", false).objects().iterator();
         
         for (int i = 0; i < expected.length; i++) {
             Assert.assertTrue("i="+ i, iter.hasNext());
@@ -556,7 +549,7 @@ public class PubTesterComposite {
         
         long[] expected = new long[] { 100, 0, 200 };
         
-        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).eq("2").nextLevel().startAt("3").backward()
+        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).eq("2").to("3", true).backward()
                 .objects().iterator();
         
         for (int i = 0; i < expected.length; i++) {
@@ -589,8 +582,7 @@ public class PubTesterComposite {
         
         long[] expected = new long[] { 0, 200 };
         
-        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).eq("2").nextLevel().startAt("3")
-                .backward().inclusive(false).objects().iterator();
+        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).eq("2").to("3", false).backward().objects().iterator();
         
         for (int i = 0; i < expected.length; i++) {
             Assert.assertTrue("i="+ i, iter.hasNext());
@@ -623,8 +615,8 @@ public class PubTesterComposite {
         
         long[] expected = new long[]{100, 300, 300, 400};
         Iterator<Payment2> iter = c.useIndex("i0", Payment2.class)
-                .eq("1").nextLevel()
-                .startAt(1)
+                .eq("1")
+                .from(1, true)
                 .objects().iterator();
         
         for (int i = 0; i < expected.length; i++) {
@@ -636,9 +628,8 @@ public class PubTesterComposite {
         
         expected = new long[]{400, 300, 300, 100, 0};
         iter = c.useIndex("i0", Payment2.class)
-                .eq("1").nextLevel()
-                .startAt(999)
-                .backward().objects().iterator();
+                .eq("1")
+                .to(999, true).backward().objects().iterator();
         
         for (int i = 0; i < expected.length; i++) {
             Assert.assertTrue(iter.hasNext());
@@ -669,9 +660,9 @@ public class PubTesterComposite {
              .put("/p/5", new Payment2("1", 0)).execute();
         
         long[] expected = new long[]{300, 300, 100, 0};
-        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).backward().inclusive(false)
-                .eq("1").nextLevel()
-                .startAt(400)
+        Iterator<Payment2> iter = c.useIndex("i0", Payment2.class).backward()
+                .eq("1")
+                .to(400, false)
                 .objects().iterator();
         
         for (int i = 0; i < expected.length; i++) {
@@ -703,9 +694,9 @@ public class PubTesterComposite {
              .put("/p/5", new DPayment2("1", 0.0)).execute();
         
         double[] expected = new double[]{300.0, 300.0, 100.0, 0.0};
-        Iterator<DPayment2> iter = c.useIndex("i0", DPayment2.class).backward().inclusive(false)
-                .eq("1").nextLevel()
-                .startAt(400.0)
+        Iterator<DPayment2> iter = c.useIndex("i0", DPayment2.class).backward()
+                .eq("1")
+                .to(400.0, false)
                 .objects().iterator();
         
         for (int i = 0; i < expected.length; i++) {
@@ -740,8 +731,8 @@ public class PubTesterComposite {
         
         double[] expected = new double[]{-99.9, 0.0, 100, 300.0, Double.POSITIVE_INFINITY};
         Iterator<DPayment2> iter = c.useIndex("i0", DPayment2.class)
-                .eq("1").nextLevel()
-                .startAt(Double.NEGATIVE_INFINITY)
+                .eq("1")
+                .from(Double.NEGATIVE_INFINITY, true)
                 .objects().iterator();
         
         for (int i = 0; i < expected.length; i++) {
@@ -802,5 +793,15 @@ public class PubTesterComposite {
     
     public static void main(String[] args) {
         //
+    }
+    
+    /** The scan gives the objects of these times, in this order. */
+    private static void assertTimes(long[] expected, Iterable<Payment2> scan) {
+        Iterator<Payment2> iter = scan.iterator();
+        for (int i = 0; i < expected.length; i++) {
+            Assert.assertTrue("i=" + i, iter.hasNext());
+            Assert.assertEquals(expected[i], iter.next().time);
+        }
+        Assert.assertFalse(iter.hasNext());
     }
 }

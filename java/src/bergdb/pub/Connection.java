@@ -99,9 +99,9 @@ public interface Connection extends ReadInterface {
 
     /**
      * Freezes the lookup time at the latest state as of the next read. It sets the lookup
-     * time to Time.MAX; the next get() or exists() of this connection sets it to the time
-     * it read at, and later reads read at that time, until setLookupTime() or this method
-     * is called again. Each call freezes anew, at the latest state as of the next read,
+     * time to Time.MAX; the next read of this connection, a get(), an exists(), a useIndex()
+     * or a usePrimary(), sets it to the time it read at, and later reads read at that time,
+     * until setLookupTime() or this method is called again (bergdb 020-10, section 3.6). Each call freezes anew, at the latest state as of the next read,
      * also after setLookupTime(t): it does not freeze t (bergdb 018-04, Q2).
      * This method is useful for reading a consistent state of the data
      * at one particular time using multiple read operations. The state stays readable
@@ -302,39 +302,54 @@ public interface Connection extends ReadInterface {
     public Transaction rw(Action action);
 
     /**
-     * Returns a builder use to create an iterator that can iterate objects
-     * indexed by a secondary index called 'indexName'.
+     * A scan of the user index of the name (see UseIndexBuilder; bergdb 020-10, sections 3.4
+     * and 3.6). The index's definition is read at the connection's lookup time, resolved to
+     * an actual time t at this call; the index must exist and be active at t. Every iterator
+     * of the builder reads the index's entries and values at t, also when the index was
+     * deleted since t, until the first available lookup time passes t: then an iterator
+     * throws LookupTimeNotAvailableException from hasNext() or next().
      *
-     * <p>Experimental in 2026.3, with known faults; it may change in a later release
-     * (bergdb 018-01, D6).</p>
+     * <p>A read for freezeLookupTime(): the first read after it, whether a get(), an
+     * exists(), a useIndex() or a usePrimary(), fixes the frozen time. A scan does not change
+     * transactionInfo(), which describes get() and exists() only.</p>
      * 
      * @param indexName
      *            The name of the index to use.
      * @param type
-     *            The type of the objects to iterate. With byte[].class or
-     *            Object.class, an array returned is the database's own, as
+     *            The type of the objects to iterate, as for get(String, Class). With
+     *            byte[].class or Object.class, an array returned is the database's own, as
      *            with get(String, Class): do not change it.
      * @throws NoSuchIndexException
-     *             if the index does not exist.
+     *             If there is no index of the name at t, or it is building at t.
+     * @throws ObjectCreationException
+     *             If 'type' is not a class that a get takes (bergdb 020-09, section 3.3),
+     *             whatever the data.
+     * @throws IllegalArgumentException
+     *             If 'indexName' or 'type' is null.
      */
     public <TYPE> UseIndexBuilder<TYPE> useIndex(String indexName, Class<TYPE> type)
             throws NoSuchIndexException;
 
     /**
-     * Returns a builder used to create an iterator that can iterate objects
-     * according to the primary key of the database.
+     * A listing of one directory's keys in key order, with their values converted to 'type'
+     * (see UsePrimaryBuilder; bergdb 020-10, sections 3.5 and 3.6). Its lookup time is the
+     * connection's, resolved to an actual time at this call; every iterator of the builder
+     * reads at that time.
      *
-     * <p>Experimental in 2026.3, with known faults; it may change in a later release
-     * (bergdb 018-01, D6).</p>
+     * <p>A read for freezeLookupTime(), as useIndex() is; it does not change
+     * transactionInfo().</p>
      * 
      * @param type
-     *            The type of the objects to iterate. With byte[].class or
-     *            Object.class, an array returned is the database's own, as
-     *            with get(String, Class): do not change it.
-     * @throws NoSuchIndexException
-     *             if the index does not exist.
+     *            The type of the values listed, as for get(String, Class). With byte[].class
+     *            or Object.class, an array returned is the database's own, as with
+     *            get(String, Class): do not change it.
+     * @throws ObjectCreationException
+     *             If 'type' is not a class that a get takes (bergdb 020-09, section 3.3),
+     *             whatever the data.
+     * @throws IllegalArgumentException
+     *             If 'type' is null.
      */
-    public <TYPE> UsePrimaryBuilder<TYPE> usePrimary(Class<TYPE> type) throws NoSuchIndexException;
+    public <TYPE> UsePrimaryBuilder<TYPE> usePrimary(Class<TYPE> type);
 
     /**
      * Waits until ordinary durability has been achieved for the last

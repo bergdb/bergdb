@@ -2,6 +2,8 @@ package bergdb.pubimp;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import bergdb.common.EventToWaitFor;
@@ -1535,7 +1537,7 @@ public class PubTesterIndex {
         c.w().put("/payments/2", new Payment("100", "106", 2)).execute();
         c.w().put("/payments/3", new Payment("099", "106", 3)).execute();
         
-        Iterator<Payment> iter = c.useIndex("payments-from", Payment.class).startAt("100")
+        Iterator<Payment> iter = c.useIndex("payments-from", Payment.class).from("100", true)
                 .objects().iterator();
         Payment p = iter.next();
         Assert.assertEquals(2, p.amount);
@@ -1559,8 +1561,7 @@ public class PubTesterIndex {
         c.w().put("/payments/2", new Payment("100", "106", 2)).execute();
         c.w().put("/payments/3", new Payment("099", "106", 3)).execute();
         
-        Iterator<Payment> iter = c.useIndex("pay-from", Payment.class).startAt("100")
-                .inclusive(false).objects().iterator();
+        Iterator<Payment> iter = c.useIndex("pay-from", Payment.class).from("100", false).objects().iterator();
         Payment p = iter.next();
         Assert.assertEquals(1, p.amount);
         Assert.assertFalse(iter.hasNext());
@@ -1581,8 +1582,7 @@ public class PubTesterIndex {
         c.w().put("/payments/2", new Payment("100", "106", 2)).execute();
         c.w().put("/payments/3", new Payment("099", "106", 3)).execute();
         
-        Iterator<Payment> iter = c.useIndex("payments-from", Payment.class).startAt("100")
-                .backward().objects().iterator();
+        Iterator<Payment> iter = c.useIndex("payments-from", Payment.class).to("100", true).backward().objects().iterator();
         
         Payment p = iter.next();
         Assert.assertEquals(2, p.amount);
@@ -1605,8 +1605,7 @@ public class PubTesterIndex {
         c.w().put("/payments/2", new Payment("100", "106", 2)).execute();
         c.w().put("/payments/3", new Payment("099", "106", 3)).execute();
         
-        Iterator<Payment> iter = c.useIndex("payments-from", Payment.class).startAt("100")
-                .backward().inclusive(false).objects().iterator();
+        Iterator<Payment> iter = c.useIndex("payments-from", Payment.class).to("100", false).backward().objects().iterator();
         
         Payment p = iter.next();
         Assert.assertEquals(3, p.amount);
@@ -1627,7 +1626,7 @@ public class PubTesterIndex {
         c.w().put("/payments/30", new Payment("100", "106", 30)).execute();
         c.w().put("/payments/10", new Payment("099", "106", 10)).execute();
         
-        Iterator<Payment> iter = c.useIndex("i0", Payment.class).startAt(20).objects().iterator();
+        Iterator<Payment> iter = c.useIndex("i0", Payment.class).from(20, true).objects().iterator();
         Payment p = iter.next();
         Assert.assertEquals(20, p.amount);
         p = iter.next();
@@ -1650,7 +1649,7 @@ public class PubTesterIndex {
         c.w().put("/payments/30", new Payment("100", "106", 30)).execute();
         c.w().put("/payments/10", new Payment("099", "106", 10)).execute();
         
-        Iterator<Payment> iter = c.useIndex("aaa", Payment.class).startAt(20).inclusive(false)
+        Iterator<Payment> iter = c.useIndex("aaa", Payment.class).from(20, false)
                 .objects().iterator();
         Payment p = iter.next();
         Assert.assertEquals(30, p.amount);
@@ -1672,7 +1671,7 @@ public class PubTesterIndex {
         c.w().put("/payments/30", new Payment("100", "106", 30)).execute();
         c.w().put("/payments/10", new Payment("099", "106", 10)).execute();
         
-        Iterator<Payment> iter = c.useIndex("bb", Payment.class).startAt(20).inclusive(false)
+        Iterator<Payment> iter = c.useIndex("bb", Payment.class).from(20, false)
                 .objects().iterator();
         Payment p = iter.next();
         Assert.assertEquals(30, p.amount);
@@ -1693,7 +1692,7 @@ public class PubTesterIndex {
         c.w().put("/p/b", new Payment("", "", 4)).execute();
         c.w().put("/p/c", new Payment("", "", 6)).execute();
         
-        Iterator<Payment> iter = c.useIndex("cc", Payment.class).startAt(4).inclusive(false)
+        Iterator<Payment> iter = c.useIndex("cc", Payment.class).from(4, false)
                 .objects().iterator();
         Payment p = iter.next();
         Assert.assertEquals(6, p.amount);
@@ -1714,7 +1713,7 @@ public class PubTesterIndex {
         c.w().put("/payments/30", new Payment("100", "106", -30)).execute();
         c.w().put("/payments/10", new Payment("099", "106", 10)).execute();
         
-        Iterator<Payment> iter = c.useIndex("i11", Payment.class).startAt(-25).inclusive(false)
+        Iterator<Payment> iter = c.useIndex("i11", Payment.class).from(-25, false)
                 .objects().iterator();
         Payment p = iter.next();
         Assert.assertEquals(-20, p.amount);
@@ -1722,7 +1721,7 @@ public class PubTesterIndex {
         Assert.assertEquals(10, p.amount);
         Assert.assertFalse(iter.hasNext());
         
-        iter = c.useIndex("i11", Payment.class).startAt(10).inclusive(false).backward()
+        iter = c.useIndex("i11", Payment.class).to(10, false).backward()
                 .objects().iterator();
         p = iter.next();
         Assert.assertEquals(-20, p.amount);
@@ -1949,13 +1948,13 @@ public class PubTesterIndex {
         }
         
         assertAmounts(new long[]{256, 257, 300, 510, 511, 512}, 
-                c.useIndex("amount", Payment.class).startAt(255).inclusive(false).objects());
+                c.useIndex("amount", Payment.class).from(255, false).objects());
         assertAmounts(new long[]{0, 1, 254, 255, 256, 257, 300, 510, 511, 512}, 
-                c.useIndex("amount", Payment.class).startAt(-1).inclusive(false).objects());
+                c.useIndex("amount", Payment.class).from(-1, false).objects());
         assertAmounts(new long[]{255, 254, 1, 0, -1, -2, -255, -256, -257, -300}, 
-                c.useIndex("amount", Payment.class).startAt(255).backward().objects());
+                c.useIndex("amount", Payment.class).to(255, true).backward().objects());
         assertAmounts(new long[]{254, 1, 0, -1, -2, -255, -256, -257, -300}, 
-                c.useIndex("amount", Payment.class).startAt(255).backward().inclusive(false)
+                c.useIndex("amount", Payment.class).to(255, false).backward()
                 .objects());
         assertAmounts(new long[]{255}, 
                 c.useIndex("amount", Payment.class).eq(255).backward().objects());
@@ -1981,6 +1980,371 @@ public class PubTesterIndex {
     
     public static void main(String[] args) {
         //composite1();
+    }
+    
+    // ======== The scan of 2026.4 (bergdb 020-10, section 3.4) ========
+    
+    /** An object of every level type: a string, a long, a double, bytes. */
+    public static class Row {
+        public String s;
+        public long n;
+        public double d;
+        public byte[] b;
+        
+        public Row() {}
+        
+        public Row(String s, long n, double d, byte[] b) {
+            this.s = s;
+            this.n = n;
+            this.d = d;
+            this.b = b;
+        }
+    }
+    
+    private static Database rows() {
+        Database db = Factory.database().memory().start();
+        db.indexBuilder("sn").dir("/r/").type("string").field("s").type("long").field("n")
+                .start().join();
+        db.indexBuilder("db").dir("/r/").type("double").field("d").type("bytes").field("b")
+                .start().join();
+        return db;
+    }
+    
+    private static void assertState(String what, Runnable r) {
+        try {
+            r.run();
+        } catch (IllegalStateException e) {
+            return;
+        }
+        throw new AssertionError(what + ": no IllegalStateException");
+    }
+    
+    private static void assertArgument(String what, Runnable r) {
+        try {
+            r.run();
+        } catch (IllegalArgumentException e) {
+            return;
+        }
+        throw new AssertionError(what + ": no IllegalArgumentException");
+    }
+    
+    /**
+     * The grammar, every call in every state (020-10, section 3.4; S2-F22): eq() on levels 1
+     * to k, then one from() and one to(), or one prefix(), on level k + 1; backward() once,
+     * anywhere; nothing after objects() or kvs() but objects() and kvs(). A call out of the
+     * grammar is IllegalStateException, at once; a type that does not match the level, a
+     * null, NaN, a lone surrogate, IllegalArgumentException.
+     */
+    @Nano
+    public static void testGrammar() {
+        Database db = rows();
+        try {
+            Connection c = db.newConnection();
+            // Fresh: level 1 of "sn" is a string.
+            assertArgument("eq(long) on a string level", () -> c.useIndex("sn", Row.class).eq(1));
+            assertArgument("eq(double)", () -> c.useIndex("sn", Row.class).eq(1.0));
+            assertArgument("eq(byte[])", () -> c.useIndex("sn", Row.class).eq(new byte[0]));
+            assertArgument("from(long)", () -> c.useIndex("sn", Row.class).from(1, true));
+            assertArgument("to(byte[])", () -> c.useIndex("sn", Row.class).to(new byte[0], true));
+            assertArgument("prefix(byte[])", () -> c.useIndex("sn", Row.class)
+                    .prefix(new byte[0]));
+            assertArgument("eq(null)", () -> c.useIndex("sn", Row.class).eq((String) null));
+            assertArgument("from(null)", () -> c.useIndex("sn", Row.class).from((String) null,
+                    true));
+            assertArgument("prefix(null)", () -> c.useIndex("sn", Row.class)
+                    .prefix((String) null));
+            assertArgument("a lone surrogate", () -> c.useIndex("sn", Row.class).eq("a\ud800"));
+            assertArgument("NaN", () -> c.useIndex("db", Row.class).eq(Double.NaN));
+            assertArgument("NaN to", () -> c.useIndex("db", Row.class).to(Double.NaN, true));
+            assertArgument("eq(null bytes)", () -> c.useIndex("db", Row.class).eq(0.0)
+                    .eq((byte[]) null));
+            
+            // After eq() on every level: no level left.
+            assertState("eq past the levels", () -> c.useIndex("sn", Row.class).eq("a").eq(1)
+                    .eq(2));
+            assertState("from past the levels", () -> c.useIndex("sn", Row.class).eq("a").eq(1)
+                    .from(2, true));
+            assertState("to past the levels", () -> c.useIndex("sn", Row.class).eq("a").eq(1)
+                    .to(2, true));
+            assertState("prefix past the levels", () -> c.useIndex("sn", Row.class).eq("a")
+                    .eq(1).prefix("x"));
+            c.useIndex("sn", Row.class).eq("a").eq(1).backward().objects();
+            
+            // After a bound: no eq(), no second bound of its kind, no prefix.
+            assertState("eq after from", () -> c.useIndex("sn", Row.class).from("a", true)
+                    .eq("b"));
+            assertState("eq after to", () -> c.useIndex("sn", Row.class).to("a", true).eq("b"));
+            assertState("eq after prefix", () -> c.useIndex("sn", Row.class).prefix("a")
+                    .eq("b"));
+            assertState("a later level alone (S2-F22)", () -> c.useIndex("sn", Row.class)
+                    .from("a", true).from(1, true));
+            assertState("a second from", () -> c.useIndex("sn", Row.class).from("a", true)
+                    .from("b", true));
+            assertState("a second to", () -> c.useIndex("sn", Row.class).to("a", true)
+                    .to("b", true));
+            assertState("prefix after from", () -> c.useIndex("sn", Row.class).from("a", true)
+                    .prefix("b"));
+            assertState("from after prefix", () -> c.useIndex("sn", Row.class).prefix("a")
+                    .from("b", true));
+            assertState("a second prefix", () -> c.useIndex("sn", Row.class).prefix("a")
+                    .prefix("b"));
+            assertState("a second backward", () -> c.useIndex("sn", Row.class).backward()
+                    .backward());
+            c.useIndex("sn", Row.class).to("z", false).from("a", true).backward().kvs();
+            c.useIndex("sn", Row.class).backward().eq("a").from(1, false).to(9, true).objects();
+            c.useIndex("db", Row.class).eq(-0.0).prefix(new byte[] {0}).objects();
+            
+            // After objects() or kvs(): only objects() and kvs().
+            UseIndexBuilder<Row> b = c.useIndex("sn", Row.class);
+            b.objects();
+            assertState("eq after objects", () -> b.eq("a"));
+            assertState("from after objects", () -> b.from("a", true));
+            assertState("to after objects", () -> b.to("a", true));
+            assertState("prefix after objects", () -> b.prefix("a"));
+            assertState("backward after objects", () -> b.backward());
+            b.kvs();
+            b.objects();
+        } finally {
+            db.close();
+        }
+    }
+    
+    /** The names (s) of a scan, in its order. */
+    private static String names(Iterable<Row> scan) {
+        StringBuilder r = new StringBuilder();
+        for (Row row : scan) {
+            r.append(r.length() == 0 ? "" : ",").append(row.s).append(row.n);
+        }
+        return r.toString();
+    }
+    
+    /**
+     * S2-F2: from() and to(), each inclusive or not, in both directions, on the level after
+     * the eq() levels; from() above to() is an empty scan, not an exception.
+     */
+    @Nano
+    public static void testExclusiveBounds() {
+        Database db = rows();
+        try {
+            Connection c = db.newConnection();
+            for (int i = 1; i <= 5; i++) {
+                c.put("/r/a" + i, new Row("a", i, i, new byte[] {(byte) i}));
+                c.put("/r/b" + i, new Row("b", i, i, new byte[] {(byte) i}));
+            }
+            Assert.assertEquals("a2,a3,a4", names(c.useIndex("sn", Row.class).eq("a")
+                    .from(2, true).to(4, true).objects()));
+            Assert.assertEquals("a3", names(c.useIndex("sn", Row.class).eq("a")
+                    .from(2, false).to(4, false).objects()));
+            Assert.assertEquals("a3,a4", names(c.useIndex("sn", Row.class).eq("a")
+                    .from(2, false).to(4, true).objects()));
+            Assert.assertEquals("a4,a3", names(c.useIndex("sn", Row.class).eq("a")
+                    .from(2, false).to(4, true).backward().objects()));
+            Assert.assertEquals("a5,a4", names(c.useIndex("sn", Row.class).eq("a")
+                    .from(3, false).backward().objects()));
+            Assert.assertEquals("a2,a1", names(c.useIndex("sn", Row.class).eq("a")
+                    .to(3, false).backward().objects()));
+            Assert.assertEquals("", names(c.useIndex("sn", Row.class).eq("a")
+                    .from(4, true).to(2, true).objects()));
+            Assert.assertEquals("", names(c.useIndex("sn", Row.class).eq("a")
+                    .from(3, false).to(3, false).objects()));
+            Assert.assertEquals("a3", names(c.useIndex("sn", Row.class).eq("a")
+                    .from(3, true).to(3, true).objects()));
+            Assert.assertEquals("b1,b2,b3,b4,b5", names(c.useIndex("sn", Row.class)
+                    .from("a", false).objects()));
+            Assert.assertEquals("a1,a2,a3,a4,a5", names(c.useIndex("sn", Row.class)
+                    .to("b", false).objects()));
+            Assert.assertEquals("a1,b1,a2,b2", names(c.useIndex("db", Row.class)
+                    .from(-0.0, true).to(2.0, true).objects()));
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * S2-F13: prefix() on a level after eq(): the strings that start with it by code points,
+     * a "string" level's E' (020-10, section 4.4); and bytes.
+     */
+    @Nano
+    public static void testPrefix() {
+        Database db = rows();
+        try {
+            Connection c = db.newConnection();
+            String[] names = {"Ann", "Anna", "Annie", "An", "Bo", "Ann\u0000", "Ann\ud83d\ude00",
+                    "Anm", "Ao"};
+            for (int i = 0; i < names.length; i++) {
+                c.put("/r/" + i, new Row(names[i], 1, 0.0, new byte[] {1, (byte) i}));
+            }
+            List<String> got = new ArrayList<>();
+            for (Row r : c.useIndex("sn", Row.class).prefix("Ann").objects()) {
+                got.add(r.s);
+            }
+            Assert.assertEquals("[Ann, Ann\u0000, Anna, Annie, Ann\ud83d\ude00]",
+                    got.toString());
+            got.clear();
+            for (Row r : c.useIndex("sn", Row.class).prefix("Ann").backward().objects()) {
+                got.add(r.s);
+            }
+            Assert.assertEquals("[Ann\ud83d\ude00, Annie, Anna, Ann\u0000, Ann]",
+                    got.toString());
+            Assert.assertEquals(9, count(c.useIndex("sn", Row.class).prefix("").objects()));
+            Assert.assertEquals(0, count(c.useIndex("sn", Row.class).prefix("Z").objects()));
+            assertArgument("prefix on a long level", () -> c.useIndex("sn", Row.class)
+                    .eq("Ann").prefix("x"));
+            Assert.assertEquals(9, count(c.useIndex("db", Row.class).eq(0.0)
+                    .prefix(new byte[] {1}).objects()));
+            Assert.assertEquals(1, count(c.useIndex("db", Row.class).eq(0.0)
+                    .prefix(new byte[] {1, 4}).objects()));
+        } finally {
+            db.close();
+        }
+    }
+    
+    private static int count(Iterable<?> it) {
+        int n = 0;
+        for (Object o : it) {
+            n++;
+        }
+        return n;
+    }
+    
+    /**
+     * S2-F23: stale entries, first, inside and last (their values deleted through the Core,
+     * so no maintenance removed the entries): hasNext() looks ahead past them, and never
+     * says true before a next() that throws NoSuchElementException.
+     */
+    @Nano
+    public static void testStaleLastEntries() {
+        Database db = rows();
+        try {
+            Connection c = db.newConnection();
+            for (int i = 1; i <= 5; i++) {
+                c.put("/r/a" + i, new Row("a", i, i, new byte[] {(byte) i}));
+            }
+            Db core = ((DatabaseImp) db).getDb();
+            for (String k : new String[] {"/r/a1", "/r/a3", "/r/a5"}) {
+                core.execute(core.trans().delete(Keys.toBytes(PubKeys.u2i(k))).build());
+            }
+            c.put("/r/a4", "now a String");     // A stale entry, by a maintained write too
+            for (boolean back : new boolean[] {false, true}) {
+                UseIndexBuilder<Row> b = c.useIndex("sn", Row.class);
+                if (back) {
+                    b.backward();
+                }
+                Iterator<Row> it = b.objects().iterator();
+                Assert.assertTrue(it.hasNext());
+                Assert.assertTrue(it.hasNext());
+                Assert.assertEquals(2, it.next().n);
+                Assert.assertFalse("the stale last entries skipped", it.hasNext());
+                try {
+                    it.next();
+                    throw new AssertionError("next() after hasNext() false");
+                } catch (NoSuchElementException e) {
+                    // Expected.
+                }
+            }
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * N3: a scan reads the definition, the entries and the values with Db directly: it leaves
+     * the connection's transactionInfo() as it was, which describes get() and exists() only.
+     */
+    @Nano
+    public static void testScanKeepsTransactionInfo() {
+        Database db = rows();
+        try {
+            Connection c = db.newConnection();
+            c.put("/x.txt", "x");
+            c.get("/x.txt", String.class);
+            long t = c.transactionInfo().time().units();
+            c.put("/r/a", new Row("a", 1, 1, new byte[0]));
+            Assert.assertEquals(1, count(c.useIndex("sn", Row.class).objects()));
+            Assert.assertEquals(1, count(c.useIndex("sn", Row.class).kvs()));
+            Assert.assertEquals("transactionInfo() kept", t, c.transactionInfo().time().units());
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * 020-10, section 3.6: useIndex() is a read for freezeLookupTime(); every iterator of a
+     * builder reads at its lookup time, from the beginning; a deleted index still scans at a
+     * time it was active.
+     */
+    @Nano
+    public static void testScanLookupTime() {
+        Database db = rows();
+        try {
+            Connection c = db.newConnection();
+            c.put("/r/a", new Row("a", 1, 1, new byte[0]));
+            c.freezeLookupTime();
+            UseIndexBuilder<Row> b = c.useIndex("sn", Row.class);
+            Iterable<Row> scan = b.objects();
+            Time frozen = c.getLookupTime();
+            Assert.assertTrue("the scan froze the time", frozen.units() != Time.MAX.units());
+            c.put("/r/b", new Row("b", 2, 2, new byte[0]));
+            Assert.assertEquals(1, count(scan));
+            Assert.assertEquals(1, count(scan));
+            Assert.assertEquals(1, count(b.kvs()));
+            Assert.assertEquals(1, count(c.useIndex("sn", Row.class).objects()));
+            db.deleteIndex("sn");
+            Assert.assertEquals("at the frozen time", 1, count(c.useIndex("sn", Row.class)
+                    .objects()));
+            c.setLookupTime(Time.MAX);
+            try {
+                c.useIndex("sn", Row.class);
+                throw new AssertionError("a deleted index");
+            } catch (NoSuchIndexException e) {
+                // Expected.
+            }
+        } finally {
+            db.close();
+        }
+    }
+    
+    /** 015-29: an index named "primary" is scanned as any other. */
+    @Nano
+    public static void testScanIndexNamedPrimary() {
+        Database db = Factory.database().memory().start();
+        try {
+            db.indexBuilder("primary").dir("/r/").type("long").field("n").start().join();
+            Connection c = db.newConnection();
+            c.put("/r/a", new Row("a", 7, 0, new byte[0]));
+            Assert.assertEquals(7, c.useIndex("primary", Row.class).eq(7).objects().iterator()
+                    .next().n);
+        } finally {
+            db.close();
+        }
+    }
+    
+    /** Pages of 100 entries: 250 values in order, forward and backward, with a bound. */
+    @Nano
+    public static void testScanPages() {
+        Database db = rows();
+        try {
+            Connection c = db.newConnection();
+            WBuilder w = c.w();
+            for (int i = 0; i < 250; i++) {
+                w.put("/r/" + i, new Row("p", i, i, new byte[0]));
+            }
+            w.execute();
+            long expected = 0;
+            for (Row r : c.useIndex("sn", Row.class).objects()) {
+                Assert.assertEquals(expected++, r.n);
+            }
+            Assert.assertEquals(250, expected);
+            expected = 249;
+            for (Row r : c.useIndex("sn", Row.class).backward().objects()) {
+                Assert.assertEquals(expected--, r.n);
+            }
+            Assert.assertEquals(-1, expected);
+            Assert.assertEquals(150, count(c.useIndex("sn", Row.class).eq("p")
+                    .from(50, true).to(200, false).backward().objects()));
+        } finally {
+            db.close();
+        }
     }
     
     /**

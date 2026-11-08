@@ -13,7 +13,6 @@ import bergdb.dag.Keys;
 import bergdb.dag.Spos;
 import bergdb.pub.Action;
 import bergdb.pub.Connection;
-import bergdb.pub.Database;
 import bergdb.pub.Kv;
 import bergdb.pub.Time;
 import bergdb.pub.Transaction;
@@ -348,11 +347,6 @@ public class ConnectionImp implements Connection {
             throw new IllegalArgumentException("type == null not allowed");
         }
 
-        
-        if (indexName.equals(Database.PRIMARY)) {
-            throw new IllegalArgumentException("This method cannot be used for primary index (\""
-                    + Database.PRIMARY + "\"), try Connection.usePrimary().");
-        }
 
         UseIndexBuilderImp<TYPE> b = new UseIndexBuilderImp<TYPE>(this, indexName, type, lookupTime);
             // throws NoSuchIndexException if index does not exists
@@ -360,6 +354,11 @@ public class ConnectionImp implements Connection {
     }
 
     public <TYPE> UsePrimaryBuilder<TYPE> usePrimary(Class<TYPE> type) {
+        // The class first, whatever the data (bergdb 020-09, section 3.3).
+        if (type != null && !type.equals(String.class) && !type.equals(byte[].class)
+                && !type.equals(DbObject.class) && !type.equals(Object.class)) {
+            DataObjects.checkGet(type);
+        }
         return new UsePrimaryBuilderImp<TYPE>(this, type, lookupTime);
     }
 

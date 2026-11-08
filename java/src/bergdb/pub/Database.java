@@ -1,6 +1,5 @@
 package bergdb.pub;
 
-import bergdb.common.Util;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
@@ -65,14 +64,6 @@ import bergdb.pub.util.SyncLevel;
  * @author Frans Lundberg
  */
 public interface Database extends AutoCloseable {
-
-    /**
-     * Name of the primary index.
-     *
-     * <p>Experimental in 2026.3, with known faults; it may change in a later release
-     * (bergdb 018-01, D6).</p>
-     */
-    public static final String PRIMARY = Util.identity("primary");
 
     /**
      * Returns information about the startup of this database.

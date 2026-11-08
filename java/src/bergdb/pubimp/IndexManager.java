@@ -17,7 +17,6 @@ import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.DataFormatException;
-import bergdb.pub.Database;
 import bergdb.pub.IndexAlreadyExistsException;
 import bergdb.pub.NoSuchIndexException;
 import bergdb.pub.util.DbException;
@@ -50,9 +49,6 @@ import bergdb.storage.VersioningStreamException;
  * @author Frans Lundberg
  */
 public class IndexManager {
-
-    /** The name of the primary scan's pseudo-index, until step I3 removes it (020-10, 3.2). */
-    public static final String PRIMARY = Database.PRIMARY;
 
     /** The keys a cleanup step deletes at most (020-10, section 6.2). */
     static final int CLEANUP_KEYS = 100;
