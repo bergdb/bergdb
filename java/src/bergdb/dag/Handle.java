@@ -41,8 +41,9 @@ public final class Handle implements Pointee {
     /**
      * Where the node's canonical object was when an eviction killed this handle, Spos.NULL if
      * none: set only by that eviction (Cache3.kill; live handles have none, as the model's
-     * HLiveWrittenOK says), under the map's lock, and the write lock but for a reader's
-     * Cache3.dropIfEmpty (016-06/R1, D2); read by the record rule (serializedRef; 009-02,
+     * HLiveWrittenOK says), under the map's lock and the write lock (a reader's
+     * Cache3.dropIfEmpty kills no object since bergdb 019-46; 016-06/R1, D2); read by the
+     * record rule (serializedRef; 009-02,
      * 4.6) and by the slow path, which raises a pointer's reference to it
      * (NodeCollection.followStreamPointer) without a lock: volatile (bergdb 015-14), as that
      * read may race with the eviction.

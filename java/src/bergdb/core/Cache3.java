@@ -467,16 +467,53 @@ public class Cache3 {
 
     /**
      * Removes live handle h if it has no object: a read that kept nothing (a cache policy
-     * that caches nothing) leaves no empty handle behind. The caller holds no handle monitor.
+     * that caches nothing) leaves no empty handle behind. The caller holds no handle monitor,
+     * and not the write lock: the writer may be in a transaction meanwhile.
+     *
+     * <p>The test that h is empty decides only after h is DEAD (bergdb 019-46). Until then a
+     * loader could fill h after the test: a reader's version, or the writer's, which its
+     * follow then makes canonical (NodeCollection.followStreamPointer, steps 4 and 6; the
+     * writer takes h from the map before this method takes the map's lock, and fills it
+     * under h's monitor). The drop killed h with that object in it (kill): the writer's
+     * object lost its canonical flag and left the table while the writer went on with it in
+     * its transaction, and the parent's pointer kept h, whose written position names the
+     * version before the transaction: the parent's record named a stale version, readers got
+     * old values, and the audit found INV-SLOT, or an object of D that was not canonical.
+     * Once h is DEAD, no loader fills it (install needs h LOADING, which only a LIVE handle
+     * becomes), register does not take it (it holds the map's lock, which this method holds,
+     * and replaces a dead handle), and the writer's makeCanonical only marks the object that
+     * its follow found in h or installed there, never fills an empty h. So an object seen
+     * after the compareAndSet was put there before it, and h is LIVE again with it; one not
+     * seen will not come, and h leaves the table. The DEAD between is not seen by
+     * liveOrNewHandle (the map's lock); a loader that sees it resolves the node again under
+     * that lock, and so gets h again.</p>
      */
     void dropIfEmpty(Handle h) {
         synchronized (getLock(h.id)) {
-            if (h.obj == null && internalGet(h.id) == h && h.casState(Handle.LIVE, Handle.DEAD)) {
-                kill(h, h.obj);     // a loader may have installed one since the test (kill)
-                internalRemove(h.id);
+            if (h.obj != null || internalGet(h.id) != h) {
+                return;
             }
+            final Runnable hook = dropIfEmptyHook;
+            if (hook != null) {
+                hook.run();
+            }
+            if (!h.casState(Handle.LIVE, Handle.DEAD)) {
+                return;         // a loader holds it (LOADING): not empty for long
+            }
+            if (h.obj != null) {
+                boolean live = h.casState(Handle.DEAD, Handle.LIVE);
+                assert live : "a dead handle changed state";
+                return;
+            }
+            internalRemove(h.id);
         }
     }
+    
+    /**
+     * Run by dropIfEmpty between its test that the handle is empty and its compareAndSet,
+     * if not null: a forced schedule of bergdb 019-46. For tests only.
+     */
+    static volatile Runnable dropIfEmptyHook = null;
 
     /**
      * True if 'node' should replace 'old' in a handle: never a canonical object, otherwise by

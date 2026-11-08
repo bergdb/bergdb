@@ -109,7 +109,6 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
-| [019-46](46-eviction-audit-inv-slot-under-load.md) | Investigate | An INV-SLOT violation in EvictionAccountingTester under load | none | open |
 
 
 Closed
@@ -117,6 +116,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-46](46-eviction-audit-inv-slot-under-load.md) | Investigate | An INV-SLOT violation in EvictionAccountingTester under load | none | done | 2026-11-09 |
 | [019-45](45-start-rerun-heap.md) | Investigate | A start's heap: D and the section's records, not the budget (a limit) | none | done | 2026-11-08 |
 | [019-36](36-reclaim-cut-waits-for-append.md) | Investigate | Reclaim's cut waits for the thread's append (performance) | none | done | 2026-11-07 |
 | [019-35](35-night-read-losses.md) | Investigate | The Core's warm reads lost 1 to 6 % in night 006-12 | none | done | 2026-11-07 |

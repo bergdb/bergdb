@@ -1006,6 +1006,54 @@ public class NodeCollection implements PointerFollower {
     }
     
     /**
+     * Regression test for bergdb 019-46: a reader's Cache3.dropIfEmpty, which runs without the
+     * write lock, found its handle empty, and before its compareAndSet to DEAD the writer
+     * loaded the node into that handle and made the object canonical (the slow path's steps
+     * 4 and 6). The drop then killed the handle with the canonical object in it: the object
+     * lost its canonical flag and left the node table, while the writer went on with it in
+     * its transaction, and the parent's pointer kept the dead handle, whose written position
+     * names the version before the transaction (the INV-SLOT of 019-46: a stale pointer in
+     * the parent's record). A forced schedule: the hook between dropIfEmpty's test and its
+     * compareAndSet runs the writer's follow, on the same thread (the map's lock is
+     * reentrant), as the writer's thread would run it in that window.
+     */
+    @Nano
+    private static void testDropIfEmptyKeepsTheWritersObject() {
+        TestStream stream = new TestStream();
+        stream.nodes.put(100L, testKeyNode(101, 100, 10));
+        final NodeCollection c = new NodeCollection(testDbInfo(), stream);
+        final TopNode parent = testParent(301, 100);
+        final GetData op = testGetData(new int[1]);
+        final Node[] followed = new Node[1];
+        Handle h = c.cache.liveOrNewHandle(101);     // a reader's new handle, which it leaves empty
+        Cache3.dropIfEmptyHook = new Runnable() {
+            public void run() {
+                Cache3.dropIfEmptyHook = null;
+                followed[0] = c.writer().followPointer(parent, 0, op);
+            }
+        };
+        try {
+            c.cache.dropIfEmpty(h);
+        } finally {
+            Cache3.dropIfEmptyHook = null;
+        }
+        Node o = followed[0];
+        Assert.assertTrue("the writer followed to the node", o != null && o.getId() == 101);
+        Assert.assertTrue("the writer's object is canonical", o.isCanonical());
+        Assert.assertTrue("its handle is live", !h.isDead());
+        Assert.assertTrue("the node table's object", c.cache.getNode(101) == o);
+        Assert.assertTrue("the parent's pointer holds the live handle", parent.getPointee(0) == h);
+        Assert.assertEquals("no written position", Spos.NULL, h.writtenPos);
+        Assert.assertEquals("the record's reference", 100, parent.getSerializedRef(0));
+        
+        // An empty handle that stays empty is still dropped.
+        Handle e = c.cache.liveOrNewHandle(102);
+        c.cache.dropIfEmpty(e);
+        Assert.assertTrue("dead", e.isDead());
+        Assert.assertTrue("out of the table", c.cache.liveHandle(102) == null);
+    }
+    
+    /**
      * The maintenance follower (bergdb item 001, WP R8, change 5: M28) loads as the
      * readers' follower does, but leaves the pointer as it is and the node table without
      * the version read (and without a handle for it); it reads a version once; a memory

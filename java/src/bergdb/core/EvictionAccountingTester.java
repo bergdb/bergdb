@@ -671,6 +671,27 @@ public final class EvictionAccountingTester {
     }
 
     /**
+     * bergdb 019-46: the unit shape's seeds with a pause of 0.2 ms in every Cache3.dropIfEmpty
+     * between its test that the handle is empty and its compareAndSet (Cache3.dropIfEmptyHook),
+     * a window that load opens now and then: a gate on a loaded machine failed on it once.
+     * Before the fix, 31 of 300 seeds failed (INV-SLOT, an object of D not canonical, INV-CAN,
+     * readers' old values); about 15 s.
+     */
+    @Nano("night")
+    public static void testAccountingWideDropWindow(TestEnvironment c) throws InterruptedException {
+        Cache3.dropIfEmptyHook = new Runnable() {
+            public void run() {
+                java.util.concurrent.locks.LockSupport.parkNanos(200 * 1000);
+            }
+        };
+        try {
+            runSeeds(c, 1000, 40, UNIT);
+        } finally {
+            Cache3.dropIfEmptyHook = null;
+        }
+    }
+    
+    /**
      * Ten seeds, larger: more than 4,096 handles resident, so that a batch can reach its
      * handle limit; about 10 s a seed.
      */
