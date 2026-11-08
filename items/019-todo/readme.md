@@ -109,7 +109,6 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
-| [019-45](45-start-rerun-heap.md) | Investigate | Does a start's rerun keep to the cache budget? | none | open |
 | [019-46](46-eviction-audit-inv-slot-under-load.md) | Investigate | An INV-SLOT violation in EvictionAccountingTester under load | none | open |
 
 
@@ -118,6 +117,7 @@ Closed
 
 | ID | Kind | What | Frans | Status | Closed |
 |---|---|---|---|---|---|
+| [019-45](45-start-rerun-heap.md) | Investigate | A start's heap: D and the section's records, not the budget (a limit) | none | done | 2026-11-08 |
 | [019-36](36-reclaim-cut-waits-for-append.md) | Investigate | Reclaim's cut waits for the thread's append (performance) | none | done | 2026-11-07 |
 | [019-35](35-night-read-losses.md) | Investigate | The Core's warm reads lost 1 to 6 % in night 006-12 | none | done | 2026-11-07 |
 | [019-43](43-stop-at-first-read-unreported.md) | Fix | Harness 6.2 took a read that a stop overtook as a failure | none | done | 2026-11-06 |
@@ -260,6 +260,12 @@ Files
   019-43, Fix: harness 6.2 took as an unreported failure a read that a
   stop's close overtook ("File closed"), with JDK 17 now and then; the
   database was right, the harness's check is fixed.
+* [45-start-rerun-heap.md](45-start-rerun-heap.md). 019-45, Investigate:
+  a start's heap is D and the startup section's records and maps at
+  once, about twice the startup distance above the running
+  database's, whatever the budget: a limit, not a fault, now in
+  docs/levels.md, section 7; its probe in
+  [45-start-rerun-heap/](45-start-rerun-heap/RerunHeapProbe.java).
 
 
 Log
@@ -415,3 +421,9 @@ BEFORE COMMIT OK.
 2026-11-06. 019-43 done by coord-1106's agent f43: the harness's oracle,
 not the Core; check 7 of harness 6.2 takes the storage's state before a
 STOP's close, and a hook forces the timing in a test; BEFORE COMMIT OK.
+
+2026-11-08. 019-45 done in night 006-15 by the coordinator's agent C:
+by design, a limit; a start needs about twice the startup distance of
+heap above the running database's, whatever the budget (W7's failure
+reproduced at 2M keys); no code changed; the limit in docs/levels.md;
+BEFORE COMMIT OK.

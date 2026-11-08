@@ -576,6 +576,20 @@ Limits:
   distance: its nodes' stream bytes reached 2.9 times the startup distance
   at 50 MB, 2.3 times at 200 MB and 1.6 times at 1000 MB, in runs with 10M
   and 50M keys (005-38); in memory they take more.
+* A start needs more heap than the database it starts, by an amount that
+  the startup distance bounds and the budget does not: until it returns,
+  it holds the startup section's records as read and its maps of their
+  node versions, besides D, which it rebuilds.
+  The rerun's loads are evicted to the budget as a running database's
+  are, and within seconds of the start the heap is the running
+  database's. In 019-45's probe the start's live heap peaked at 3.3 to
+  4.9 times the startup distance, D included, whatever the budget, and
+  0.9 to 2.1 times the section's bytes above the running database's: at
+  2M keys, a startup distance of 200 MB and a budget of 133 MB, 663 MB
+  against 288 MB, so that a database that ran in a 600 MB heap did not
+  start in it (W7's failure on F53 and s1, 016-10) and started in 700 MB.
+  So give the heap about twice the startup distance above what the
+  running database needs.
 
 
 ## 8. Durability
