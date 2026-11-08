@@ -1,8 +1,9 @@
 <html><head><title>Package bergdb.pubimp</title></head><body>
 
-<p>This package implements the public BergDB API.
-It is not directly visible to the Pub user, but it implements the interfaces
-defined in bergdb.pub.</p>
+<p>This package implements the public BergDB API, the interfaces of bergdb.pub. It is not
+API: whatever is public in it may change in any release. The API is bergdb.pub,
+bergdb.pub.util and the Core's bergdb.core.Db (bergdb 020-10, section 7). DbObject, the
+stored object, is here until it moves into bergdb.pub (bergdb 020-10, step B3).</p>
 
 <p>Depends on: common, core, dag, nanotest, pub, pub.util, storage, stream. Note that we allow the circular package 
 dependency: pubimp -> pub -> pubimp.</p>

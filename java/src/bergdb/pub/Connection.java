@@ -157,9 +157,6 @@ public interface Connection extends ReadInterface {
      * set from it, converted to the field's type best effort; a field that the stored
      * object does not have keeps the constructor's value (bergdb 020-09).
      *
-     * <p>Experimental in 2026.3 for a class other than String and byte[], with known
-     * faults; such a get may change in a later release (bergdb 018-01, D6).</p>
-     *
      * <p>A byte[] returned (by byte[].class, or by Object.class at a value of bytes) is
      * the database's own array, not a copy: do not change it. A change of it changes
      * what later reads return, in every connection, until the value leaves memory or
@@ -233,9 +230,6 @@ public interface Connection extends ReadInterface {
      * already exists, it is overwritten. The transaction is executed
      * immediately in this method.
      *
-     * <p>Experimental in 2026.3 for an object that is neither a String nor a byte[], with
-     * known faults; such a put may change in a later release (bergdb 018-01, D6).</p>
-     * 
      * @param key
      *            The key of the key-value entry. Must begin with "/".
      * @param object

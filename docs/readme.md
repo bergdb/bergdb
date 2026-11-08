@@ -5,8 +5,8 @@ The current state of BergDB in words, kept up to date with `java/` and
 `lean/`:
 
 * [levels.md](levels.md). What works, level by level: how the Java code
-  does it, what checks it, its limits, and the evidence by item ID. Start
-  here.
+  does it, what checks it, its limits, and the evidence by item ID; and
+  the Pub API's objects and user indexes (its section 11). Start here.
 * [sis-model.md](sis-model.md). Self-indexed streams, the model that
   `lean/` formalizes and proves.
 * [trace-format.md](trace-format.md). The format of the traces that connect

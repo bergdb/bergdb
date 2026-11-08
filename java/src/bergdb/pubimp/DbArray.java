@@ -28,9 +28,6 @@ import bergdb.nanotest.Nano;
  * no absent element (bergdb 020-04, section 2.1). Its bytes are Binson's: 0x42, the
  * elements, 0x43 (bergdb 020-07, section 4.1).</p>
  *
- * <p>Experimental in 2026.3, with known faults; it may change in a later release (bergdb
- * 018-01, D6).</p>
- * 
  * @author Frans Lundberg
  */
 public final class DbArray extends DbValue implements Iterable<DbValue> {

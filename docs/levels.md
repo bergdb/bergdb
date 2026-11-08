@@ -34,12 +34,11 @@ The Lean proofs concern the abstract model, which includes reclaim and
 eviction; Java's runs are checked against it, not proved, and concurrency
 and resource bounds are not in it.
 
-In the Pub API, DbObject and the user indexes are experimental in 2026.3,
-with known faults, and may change in a later release: a value that is
-neither a `String` nor a `byte[]` (`put(Object)`, a put of an object at a
-key, a get into another class), and `Database.indexBuilder`,
-`deleteIndex`, `Connection.useIndex` and `usePrimary` with their builders
-([018-01](../items/018-release-2026-3/01-plan.md), D2 and D6).
+The levels are the Core's. The Pub API's other part, objects (values
+that are neither a `String` nor a `byte[]`) and user indexes, with the
+primary scan, is section 11: experimental in 2026.3
+([018-01](../items/018-release-2026-3/01-plan.md), D2 and D6), redone for
+2026.4 as part of the API that a release promises.
 
 
 ## 2. Checks
@@ -696,3 +695,138 @@ What is left to do is in the items, not here: the index of
 [007](../items/007-bounds/readme.md) (T4).
 Where BergDB departs from its design principles is in
 [010-01](../items/010-principles/01-principles.md).
+
+
+## 11. Objects and user indexes
+
+The part of the Pub API beside the Core's `String` and `byte[]` values,
+redone for 2026.4 from 2026.3's experimental code (item 020): what it
+promises, where each rule is written, and what checks it. The decisions
+are Frans's of 2026-11-08 and those taken under his delegation of that
+evening, each with its record:
+[020-02](../items/020-release-2026-4/02-objects-design.md), sections 4 and
+5.1b, and [020-01](../items/020-release-2026-4/01-inventory.md), section
+14.1. The Javadoc of `bergdb.pub` states the promises for users (the
+package's "Objects" and "Null and absent fields", `IndexBuilder`,
+`UseIndexBuilder`, `UsePrimaryBuilder`).
+
+**The API.** The packages `bergdb.pub` and `bergdb.pub.util`, and the
+Core's `Db` with the types of its signatures; everything else,
+`bergdb.pubimp` included, is not API, whatever is public in it
+([020-10](../items/020-release-2026-4/10-indexes-design.md), section 7).
+`java/build.sh` makes `build/bergdb-release.jar`, the jar a release ships:
+the classes of `src` only. `DbObject` is still in `bergdb.pubimp` until
+020-10's step B3 moves it into `bergdb.pub`.
+
+**Stored objects, format 2.** The spec is
+[020-07](../items/020-release-2026-4/07-object-spec.md), under 018-01's
+rule that Frans approves a change of the stored format (020-02, section
+4.12). A stored object is the header byte `0x82` and an object: a table of
+its fields' ends and the fields in the order of their names' unsigned
+bytes, each value in Binson's encoding. Seven types (boolean, integer of
+64 bits, double, string, bytes, array, object); one integer type, so Java's
+`byte` to `long` are the same values; one NaN, and −0.0 kept; names of 1
+to 255 bytes of well-formed UTF-8; at most 16 levels of objects and arrays
+and 32,767 fields an object; at most 2^31 − 1 bytes. One object has one
+byte string: a writer writes the canonical bytes, and the full check
+refuses any other, naming the rule it breaks (`BadFormatException`; at a
+get `ObjectCreationException`). A field is found by a binary search on the
+table. There is no null: a field without a value is absent (020-02,
+section 4.1). Objects of 2026.3 and before (format 1) are refused, named so:
+a get, a scan and index maintenance refuse them, a build over one fails,
+and a start that meets an index definition of format 1 is refused; such a
+database is made again from its data (020-02, section 4.11).
+
+**Data Objects and the conversion.** The rules are
+[020-09](../items/020-release-2026-4/09-conversion-rules.md); the code,
+two layers (020-02, section 5.1b): `DbObject` and its stored bytes, exact,
+and `DataObjects`, the binding of Java's classes to them. A Data Object
+class is public, with a public no-argument constructor; it stores its
+public, non-static, non-transient fields and those of its superclasses,
+none of the Java platform, each of a type on a closed list (primitives,
+their wrappers, `String`, `byte[]`, arrays, Data Object classes), and
+every other instance field is transient (020-09, section 3, V1 to V10). A
+put is exact: each field by its declared type, a null field left out
+(020-04's (c)); it refuses, with `IllegalArgumentException` before
+anything is written and naming the place, a class that is not a Data
+Object, a null array element, a value of another class than its field's,
+a cycle, nesting deeper than 16 levels. A get is best effort: by name,
+the nearest value, integers clamped, the type's zero where no conversion
+makes sense, never a throw for the data; `ObjectCreationException` for a
+class that is not a Data Object, checked first also at a key without a
+value, and for a constructor that throws. `put(Object)`, the field `key`
+and `MissingKeyFieldException` are gone: a field named `key` is an
+ordinary field. The plan and its record, step by step:
+[020-08](../items/020-release-2026-4/08-implementation-plan.md), section 8.
+
+**User indexes.** The design is
+[020-10](../items/020-release-2026-4/10-indexes-design.md). An index has
+one directory (its own values, not its subdirectories'), 1 to 8 levels,
+and one field per level, a name or a nested path; a level is of type
+`long`, `double`, `string` (code-point order) or `bytes` (unsigned byte
+order). An index is a function: each value has one entry or none, and a
+field that is absent, of another stored kind, or NaN gives none; a value
+that is not an object has none (020-10, section 3.3). No language's order
+and no ICU: an application that needs one stores its own collation key in
+a `byte[]` field and indexes it as `bytes`.
+
+* **Creation and deletion**: `Database.indexBuilder(name)`, then `dir()`,
+  `type()` and `field()` or `nestedField()` per level, and `start()`,
+  which writes the definition in one transaction and returns the build's
+  `Job`; `start().join()` waits until the index is active. A build's
+  status is a snapshot: building with a count, active, or failed with a
+  reason; a failed build leaves the database running and is taken again
+  at the next start (019-42). `Database.indexJob(name)` gives an index's
+  job; `deleteIndex(name)` is one transaction, and the old entries are
+  removed in the background. `createFast()`, `Database.PRIMARY` and
+  `StartupInfo.getStartupJobs()` are gone.
+* **Maintenance**: every put and delete at an object key of an indexed
+  directory, of any value, removes the old value's entry and writes the
+  new one, read at the transaction's read time, with the index manager's
+  lock rule between writes and index definitions (020-10, section 5).
+* **Scans**: `Connection.useIndex(name, type)`: `eq()` on levels 1 to k,
+  then `from()` and `to()` or `prefix()` on level k + 1, and `backward()`,
+  each call checked at once (020-10, section 3.4). At the scan's lookup
+  time, each entry's value is read and checked against the entry, so a
+  stale entry is skipped, never returned, and the value is converted as a
+  get converts it. No scan in `rw()` in 2026.4.
+* **The primary scan**: `Connection.usePrimary(type).dir(dir)` lists a
+  directory's own keys in order, each value by the kind the type takes
+  (020-10, section 3.5): every value as `byte[]` or `Object`, the values
+  that are not objects as `String`, the objects as `DbObject` or a class.
+* **Stored** under `/#i/`, a definition per name and entries per index
+  generation (020-10, section 4), under 018-01's rule.
+
+**Checks.** Each against a reference written apart from the code, with a
+seed, a size in `before-commit.sh` and a larger run in the night group:
+
+* H0, the format: `ObjectFormatTester`, the codec against a second codec
+  written in the test from 020-07, random values and every mutation of ten
+  samples; the conformance vectors,
+  `java/src/bergdb/pubimp/doc-files/object-vectors.txt` (020-07, section
+  13), made and checked by two programs written apart from the spec, and
+  run by the codec; `DbObjectFormatTester`, the same through `DbObject`
+  and its Builder.
+* H1, the conversion: `DataObjectsTester`, 020-09's 176 cases (G1 to G122,
+  K1 to K18, W1 to W36) and three properties: R1 the round trip, R2 the
+  get against a reference of 020-09, section 5, R3 the constructor's part
+  (principle 4).
+* H2, an index is a function of the data (`IndexHarness`, 020-10, section
+  9.1: its reference and generators; its run against BergDB comes with
+  020-10's step H2); the races of maintenance and definitions
+  (`PubTesterIndexRaces`, 9.2); H3, jobs under faults (9.3, with step I2's
+  second part); H4, the primary scan (`PrimaryHarness`, 9.4). The
+  encodings of the index keys and the definition: `IndexKeysTester`,
+  `IndexDefinitionTester`.
+* The unit tests of the Pub API (`PubTester`, `PubTesterIndex` and its
+  siblings), and the night tests with objects and indexes (`PayTest`,
+  `CcDbNightTest`); `level2.sh`'s BryanRepro puts objects through restarts
+  and reclaim.
+
+**Limits.** The cost of format 2's full check at each read and the writer
+are measured against 2026.3's format in 020-08's step 4, which waits for a
+quiet machine. A `byte[]` put at an object key whose bytes happen to be a
+stored object of format 2 is read as an object by a get as `Object` and by
+a scan, as the format's header is a guess there (020-08, section 3; 020-01,
+N4).
+

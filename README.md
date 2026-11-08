@@ -40,7 +40,7 @@ on JDK 27 and 17, on macOS and Linux) and, for the proofs
 and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
 
     
-    java/build.sh                  # builds java/build/bergdb.jar and the stress tests
+    java/build.sh                  # builds java/build/bergdb.jar, bergdb-release.jar and the stress tests
     java/before-commit.sh          # the check before a commit: unit and f-tests (about 2 minutes)
     java/unit.sh                   # runs the unit tests
     java/f.sh                      # runs the f-tests
@@ -67,8 +67,15 @@ Layer built alone (`core-build.sh`), the four level scripts, the night tests
 (the long-running tests of 2013 to 2015) and the medium conformance set;
 it is started when the machine has room for it, at no fixed time, and its
 report is in `java/build/night/`. `java/night.sh large` adds the large
-conformance set; it is started by hand. Set `JAVAC` and `JAR` if the JDK
-tools are not on the path.
+conformance set; it is started by hand. Set `JAVA_HOME`, or `JAVA`,
+`JAVAC`, `JAR` and `JDEPS`, if the JDK tools are not on the path.
+
+`java/build/bergdb-release.jar` is the jar for users, which a release
+ships: the classes of `java/src` only, without the tests and tools of
+`java/src-dev`; `bergdb.jar` holds both, for the tests and the scripts.
+The API is the packages `bergdb.pub` and `bergdb.pub.util` and the Core's
+`Db`; the rest of the release jar is not API, whatever is public in it
+(bergdb item 020-10, section 7). See `java/readme.txt`.
 
 
 
@@ -98,12 +105,16 @@ loss of a disk and a copy of the stream's files for a backup
 to implement it later are a long-term topic,
 [017-03](items/017-long-term/03-replication/readme.md).
 
-In the Pub API, DbObject and the user indexes are experimental in 2026.3,
-with known faults, and may change in a later release: a value that is
-neither a `String` nor a `byte[]` (`put(Object)`, a put of an object at a
-key, a get into another class), and `Database.indexBuilder`,
-`deleteIndex`, `Connection.useIndex` and `usePrimary` with their builders
-([018-01](items/018-release-2026-3/01-plan.md), D2 and D6).
+Objects and user indexes, the Pub API's part beside `String` and `byte[]`
+values, were experimental in 2026.3
+([018-01](items/018-release-2026-3/01-plan.md), D6) and are redone for
+2026.4 ([item 020](items/020-release-2026-4/readme.md)): objects in
+BergDB's own stored format, format 2, with no null; Data Objects (public
+classes with public fields) put exactly and read best effort; user indexes
+of one directory and up to 8 typed levels, kept by every write and checked
+at every scan; and the primary scan of a directory. Their promises and the
+harnesses that check them are in [docs/levels.md](docs/levels.md),
+section 11.
 
 A known limit. The bound on the startup section (T3) is proved for
 BergDB's own startup pos policy since 2026-10-28, in the Lean model of its

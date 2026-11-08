@@ -25,9 +25,6 @@ public interface WBuilder {
      * is refused. The rule in full: the package's
      * {@linkplain bergdb.pub##strings Strings} (bergdb 021-04).</p>
      *
-     * <p>Experimental in 2026.3 for an object that is neither a String nor a byte[], with
-     * known faults; such a put may change in a later release (bergdb 018-01, D6).</p>
-     * 
      * @throws IllegalArgumentException
      *             If 'key' is null or otherwise invalid, or if object is null; or if it
      *             is a String with a lone surrogate, a char of U+D800 to U+DFFF that is not
