@@ -1129,6 +1129,41 @@ transactions as `rw()` actions; the questions below refine it.
   a binding apart from storage; the API offers both, and `byte[]`.
   What stays open is layer 2's policy: (D)'s questions (section 2.5), the
   put's closed list (question 2) and the put rule of 4.1.
+* **Data Objects: public fields only** (question 2, in part). Frans,
+  2026-11-08, 20:32, reading `DbObject.getEligibleFields()` (every field
+  that is not final, static, transient or synthetic, at any access, made
+  accessible by `setAccessible`): "To me it indicates that private fields
+  are also read and written. Not sure we really want this. I was
+  thinking this serialization is primarily designed with classes created
+  for the purpose. Then fields can be made public. [...] Would be a
+  clean rule to read/write public non-static fields only." The
+  coordinator's case: shape 1's classes crafted for storage; no deep
+  reflection (`setAccessible`), which a modular application must permit
+  by `opens`; to reflection from another package, a package-private or
+  protected field is as closed as a private one, so the line is public
+  against the rest; `transient`, Java's keyword for a field outside an
+  object's stored state, stays the way to leave a field out. Frans,
+  20:44, to "Do you decide (i), public only, with other instance fields
+  refused unless transient?": "Yes, let's go for public fields only. For
+  2026.4." The rule: BergDB stores the public, non-static, non-transient
+  fields of a public class with a public no-argument constructor,
+  inherited public fields included; a put refuses a class with another
+  instance field that is not transient, naming the field (nothing is
+  stored as nothing). Left to question 2: a public final field (the
+  coordinator's lean: refused, as a get cannot set it); records (their
+  components are private final fields: a later addition, by their
+  accessors and canonical constructor, the coordinator's lean).
+* **The layers, in Frans's words** (2026-11-08, 20:44): "I think we can
+  view this as layers: bytes stored in database -- DbObject -- Data
+  Objects (public fields, designed for storage) -- App Objects (ordinary
+  application objects). Converting from bytes stored to Data Objects is
+  good. We can immediately get typed composite data structures from raw
+  bytes. We can immediate use them in ordinary Java code. We allow
+  creation of special Data Object classes, structures really. Instead of
+  aiming for direct application object serialization /
+  deserialization." So BergDB converts between its bytes, `DbObject`s
+  and Data Objects; between Data Objects and an application's own
+  objects is the application's.
 * **No key field in the object: `put(Object)` goes** (question 5;
   020-01, section 14, decision 6, as it recommended). Frans first
   decided, 2026-11-08, 19:10: "Decision: use dbKey for the database key.
