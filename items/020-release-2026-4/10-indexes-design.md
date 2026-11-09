@@ -184,8 +184,9 @@ public interface JobStatus {
   BergDB bug or a format-1 object (020-08, step 3); or the index was
   deleted while it was building (reason "deleted"). A failure is kept in
   memory only: the definition stays building, and the next start takes
-  the build again (019-42's rule). The database goes on; only an `Error`
-  fails it (P7).
+  the build again (019-42's rule); but a deleted index is gone, and no
+  start takes its build again (020-19, F1; 020-18, F2: the note said it
+  did). The database goes on; only an `Error` fails it (P7).
 * **`join()` of a FAILED build throws** (Frans, 2026-11-09, 08:29: "Do as
   you propose"): `join()` and `join(millis)` throw `IndexBuildException`
   (`bergdb.pub.util`, unchecked) at every call, also on the job of
@@ -642,60 +643,119 @@ key with 18 digits in place of `${transactionTime}`.
 
 ### 6.1. The build
 
+As the code is since 020-18's F1, F3, F4 and F5 and 020-16's F16-3
+(`IndexBuilderImp.startBuild` and its class `Build`; 2026-11-09).
+
 * One daemon thread of the lowest priority per building index in this
-  process, started by `start()` or by a start (4.5), on its own
-  connection.
-* **A step** is an `rw()`: a `getMany` of at most 25 values of the
-  directory's own keys (the prefix idir ‖ `-`, so it stops at the
-  directory's end: 015-30, S2-F16) after the last key of the step before,
-  skipping a key whose name holds a `/`, no key of the directory, as the
-  primary scan does (020-16, F16-3; 021-06);
-  the definition's key hash added to the read set; if the in-memory index
-  of this generation is no longer building (deleted), the build ends
-  FAILED "deleted"; else f(v) is put for each value read (3.3; a value
-  with no entry is counted and skipped: a user's value never stops a
-  build, N1). The values' hashes are in the read set, so a concurrent
-  write of one makes the step run again.
-* The status's count is the values read by the committed steps.
-* After a step, a pause of half its time, at most one second (N10: today
-  the cap is computed and not used).
-* **The end**: the activation, one transaction under the lock (5.2):
-  the definition rewritten with state `active`, with its key's hash in the
-  read set; a conflict takes it again. Then the status is ACTIVE.
+  process, `IndexBuild-<name>-<G>`, started by `start()` or by a start
+  (4.5), on its own connection.
+* **The end key E** (020-18, F4): at its first step the build reads the
+  directory's last key, one backward `getMany` at the latest time from the
+  end of the directory's own keys, after the creation's commit, as the
+  build runs after it; E is that key, or the directory's prefix if it has
+  none. The build reads up to E and stops after it. A key after E did not
+  exist when E was read, so it was put after the creation by a writer that
+  keeps the index (its read time at or after the creation's, or it ran
+  again on the directory's virtual hash, 5.1); a key up to E is read by the
+  build, or kept by its writer. Before F4 each step read to the directory's
+  end at its own time, so writers that appended to the directory (keys in
+  increasing order: a log, events, `${transactionTime}`) faster than the
+  build read kept it BUILDING for as long as they wrote.
+* **A step** is one transaction of the build's own, its read time that of
+  its read: a `getMany` of the directory's own keys (the prefix idir ‖
+  `-`, so it stops at the directory's end: 015-30, S2-F16) after the last
+  key of the step before, up to E. It reads at most 25 values
+  (`STEP_VALUES`), and ends after the value that takes it to 1,000,000
+  bytes of values (`STEP_BYTES`; at least one value; 020-18, F3). Then the
+  definition's key hash goes into the read set; if the in-memory index of
+  this generation is no longer live (deleted), the build ends FAILED
+  "deleted"; else, for each value read, in key order:
+  * a key without an ikey, or whose name holds a `/`, is no key of the
+    directory, and is skipped, as the primary scan skips it (020-16, F16-3;
+    021-06);
+  * else f(v) is put (3.3), and the hash of the value's key goes into the
+    read set; a value with no entry adds no hash and is skipped (a user's
+    value never stops a build, N1).
+
+  Every value read is counted. So a concurrent write of a value whose
+  entry the step puts makes the step run again; a write of a value without
+  an entry, such as one at a key with a suffix, does not, as the step
+  writes nothing for it (020-18, F1: such a write takes no index manager's
+  lock, and before F1, when every value's hash was in the read set, it
+  collided with the step under the lock again and again).
+* **Its tries** (ab06e26, the fix of I1-starve): a step refused by a
+  conflict is taken again after a wait of 10, 20 and 40 ms, as an `rw()`
+  waits; after three refused tries it runs under the index manager's lock
+  (5.2), taken again without a wait until it commits. Writers of object
+  keys take that lock before their Core transaction, so under it only the
+  writers that read the index set before can collide with the step. F1
+  keeps the writers that take no lock out of its read set, and F3 bounds
+  what it reads under the lock to about 1 MB and one value; one value of
+  tens of MB still makes a step that long (020-18, section 4).
+* The status's count is the values read by the committed steps, the
+  skipped ones included.
+* After a step, a pause of half its time, at most one second (N10).
+* **The end**: after the step whose read met a key past E or past the
+  directory's prefix, or the end of the data (since F3 not by a step's
+  count), the activation, one transaction under the lock (5.2): the
+  definition rewritten with state `active`, with its key's hash in the read
+  set; a conflict takes it again. Then the status is ACTIVE.
 * **Errors**: a stop of the database (`DbStoppingException`,
   `IllegalDbStateException`, `StreamIoException`, `DbFailedException`)
-  ends the thread, status BUILDING; a refusal (`DbException`) or an
-  expiry (`LookupTimeNotAvailableException`) waits 10 to 640 ms and takes
-  the step again (019-38); any other `RuntimeException` ends the build
-  FAILED with it as the reason, the database going on (019-42); an
-  `Error` fails the database (019-10, P7). A step can no longer be too
-  large to commit: 25 entries of at most 4,096 bytes of levels are far
-  below the transaction's limit (N7); a database that refuses every
-  transaction (005-02's ordinals) makes the build wait, as every writer.
+  ends the thread, status BUILDING; a `DataFormatException` or an
+  `InternalDataException`, data the build cannot take (such as an object
+  of format 1, 020-08, step 3), ends the build FAILED with it as the
+  cause; another refusal (`DbException`) or an expiry
+  (`LookupTimeNotAvailableException`) waits 10 to 640 ms and takes the step
+  again (019-38); any other `RuntimeException` ends the build FAILED with
+  it as the reason, the database going on (019-42); an `Error` fails the
+  database (019-10, P7). A step can no longer be too large to commit: 25
+  entries of at most 4,096 bytes of levels are far below the
+  transaction's limit (N7); a database that refuses every transaction
+  (005-02's ordinals) makes the build wait, as every writer.
 * A start resumes a build from the first key of its directory (entries
-  are idempotent). A long build is redone at each restart: accepted for
-  2026.4 (020-01, 8.5.7), as builds are rare and a start does not wait
-  for them.
+  are idempotent), and reads E anew. A long build is redone at each
+  restart: accepted for 2026.4 (020-01, 8.5.7), as builds are rare and a
+  start does not wait for them.
 
 ### 6.2. The deletion and the cleanup
+
+As the code is since 020-18's F5 (`IndexManager.deleteInner` and
+`startCleanup`; 2026-11-09).
 
 * **`deleteIndex(name)`**: under the lock, the index of the name in
   memory (else `NoSuchIndexException`); one transaction at the latest time:
   delete `/#i/didef/-<name>`, put the marker `/#i/didel/d<name>/-<G16>`,
   write the hash of `/#i/div/<idir>`, with the definition's key hash in the
-  read set. When it succeeded: the index out of the maps, its in-memory
-  state deleted (its build ends at its next step), and the cleanup of
-  (name, G) started. No `sync()`, no thread to wait for, no state
-  `deleting` anywhere (015-36, 015-61, S2-F11).
-* **The cleanup** of (name, G): a daemon thread, steps of a `getMany` of up
-  to 100 keys under the generation's prefix at the latest time and one
-  transaction that deletes them (no read set: no one writes a deleted
-  generation, by 5.2 and 6.1); a pause as a build's; when a step finds
-  none, one transaction deletes the marker, and the thread ends. Errors as
-  a build's, but a `RuntimeException` ends the thread silently (the
-  marker stays, the next start resumes it). No `Job`, no status.
+  read set; a conflict takes it again. When it succeeded: the index out of
+  the maps, its in-memory state deleted (its build ends at its next step),
+  and, after the lock, the cleanup of (name, G) started. No `sync()`, no
+  thread to wait for, no state `deleting` anywhere (015-36, 015-61,
+  S2-F11).
+* **The cleanup** of (name, G): a daemon thread of the lowest priority,
+  `IndexCleanup-<name>-<G>`, in steps. A step reads up to 100 keys
+  (`CLEANUP_KEYS`) of the generation at the latest time, after the last key
+  that the cleanup deleted (at its first step from the generation's
+  prefix, the prefix's own key included, 020-16, F16-2), and deletes them
+  in one transaction (no read set: no one writes a deleted generation, by
+  5.2 and 6.1); then a pause as a build's. When a step finds no key after
+  the last one deleted, one read from the generation's prefix checks that
+  none is left (keys that it finds are deleted, and the cleanup goes on
+  after them); when that read finds none, one transaction deletes the
+  marker, and the thread ends. Before F5 every step read from the prefix;
+  the Core keeps deleted keys for earlier lookup times, and a read at the
+  latest time visits them before the live ones, so the cleanup's work grew
+  as the square of the entries' number (100,000 entries: 8.4 s, now 0.8
+  s; 020-18, F5).
+* **Errors** as a build's, but a `RuntimeException` (a
+  `DataFormatException` or an `InternalDataException` included) ends the
+  thread silently: the marker stays, and the next start resumes the
+  cleanup from the prefix. No `Job`, no status.
 * A deleted index's entries are garbage until their cleanup; they are in
   a generation no definition names, so nothing reads them.
+* One thread per build and per cleanup, as designed here: a burst of
+  deletions, or a start with many markers, starts as many threads; a queue
+  with one thread is for a later release (020-18, O1; 020-11, section 11).
 
 
 ## 7. The boundary (F8 b)
@@ -1064,7 +1124,8 @@ For his information; each with its reason in the section named.
     returns nothing; a deletion during a build makes it FAILED "deleted";
     a failure is kept in memory only (3.2).
 12. A deleted generation's cleanup is resumed from a marker key (6.2).
-13. A build step reads at most 25 values of any kind (6.1).
+13. A build step reads at most 25 values of any kind (6.1); since
+    020-18's F3 also at most about 1,000,000 bytes of values.
 14. `UseIndexBuilder`'s grammar: `eq`, then `from`/`to` or `prefix`,
     `backward`; from above to is an empty scan (3.4).
 15. Scans fix a frozen lookup time as a get does and leave
@@ -1099,3 +1160,13 @@ the code, its tests and the Javadoc changed with it.
 020-22, section 4.2 states, and the promise of its principle A2 (Frans,
 11:13). 020-16's words (its O16-2) for its fixes F16-1 to F16-3 in
 sections 4.4, 4.5 and 6.1.
+
+2026-11-09. Sections 6.1 and 6.2 describe the build and the cleanup as
+the code is since 020-18's F1, F3, F4 and F5 and 020-16's F16-3 (020-23,
+V1-3), checked against `IndexBuilderImp` and `IndexManager` at `b149d12`:
+a step's read set holds the hashes of the values whose entries it puts;
+a step also stops after 1,000,000 bytes of values; the build's end key
+fixed at its first step; the step's tries, the last under the manager's
+lock; the cleanup reads on after its last deleted key, with a final read
+from the prefix. Section 3.2's FAILED and section 11's point 13 with
+them.
