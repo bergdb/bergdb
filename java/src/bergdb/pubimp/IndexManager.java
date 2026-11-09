@@ -99,6 +99,9 @@ class IndexManager {
     /** A definition's change, under the lock, after its transaction; + create, activate or delete. */
     static final String DEFINITION_AFTER = "definition: after the commit of ";
 
+    /** A creation, after its transaction and the lock's release, before its build starts. */
+    static final String CREATE_BEFORE_BUILD = "create: before the build starts";
+    
     /** A build step, in its action, after its reads, before its transaction. */
     static final String BUILD_STEP = "build: step";
 
@@ -158,6 +161,7 @@ class IndexManager {
                 IndexBuilderImp.BuildJob job = new IndexBuilderImp.BuildJob(name);
                 if (def.isActive()) {
                     job.activated(0);
+                    job.ended();
                 }
                 Live live = new Live(def, job);
                 byName.put(name, live);
@@ -216,6 +220,14 @@ class IndexManager {
      * @throws DbException  If the transaction is refused; nothing changed.
      */
     Job create(String name, String dir, String[] typeNames, String[][] paths) {
+        try {
+            return createInner(name, dir, typeNames, paths);
+        } catch (Error e) {
+            throw failed(e);
+        }
+    }
+    
+    private Job createInner(String name, String dir, String[] typeNames, String[][] paths) {
         Live live;
         synchronized (lock) {
             if (byName.containsKey(name)) {
@@ -236,10 +248,21 @@ class IndexManager {
                 }
             }
             live = new Live(def, new IndexBuilderImp.BuildJob(name));
-            byName.put(name, live);
-            add(def);
+            try {
+                afterCommit("create");
+            } finally {
+                byName.put(name, live);
+                add(def);
+            }
         }
-        IndexBuilderImp.startBuild(database, this, live);
+        hook(CREATE_BEFORE_BUILD);
+        try {
+            IndexBuilderImp.startBuild(database, this, live);
+        } catch (RuntimeException e) {
+            live.job.failed(e.getClass().getName() + ": " + e.getMessage());
+            live.job.ended();
+            throw e;
+        }
         return live.job;
     }
 
@@ -251,6 +274,14 @@ class IndexManager {
      * @throws DbException  If the transaction is refused; nothing changed.
      */
     boolean activate(Live live) {
+        try {
+            return activateInner(live);
+        } catch (Error e) {
+            throw failed(e);
+        }
+    }
+    
+    private boolean activateInner(Live live) {
         synchronized (lock) {
             if (live.deleted || byName.get(live.def.name()) != live) {
                 return false;
@@ -268,9 +299,13 @@ class IndexManager {
                     break;
                 }
             }
-            remove(live.def);
-            live.def = active;
-            add(active);
+            try {
+                afterCommit("activate");
+            } finally {
+                remove(live.def);
+                live.def = active;
+                add(active);
+            }
             return true;
         }
     }
@@ -285,6 +320,14 @@ class IndexManager {
      * @throws DbException  If the transaction is refused; nothing changed.
      */
     void delete(String name) {
+        try {
+            deleteInner(name);
+        } catch (Error e) {
+            throw failed(e);
+        }
+    }
+    
+    private void deleteInner(String name) {
         IndexDefinition def;
         synchronized (lock) {
             Live live = name == null ? null : byName.get(name);
@@ -306,15 +349,30 @@ class IndexManager {
                     break;
                 }
             }
-            byName.remove(name);
-            remove(def);
-            live.deleted = true;
+            try {
+                afterCommit("delete");
+            } finally {
+                byName.remove(name);
+                remove(def);
+                live.deleted = true;
+            }
         }
         startCleanup(def.name(), def.gen());
     }
 
     /**
-     * Executes a definition's change, with the test hooks around its commit: true if done,
+     * Fails the database with an Error met in a definition's change, before or after its
+     * commit, and returns it to be thrown as it is (bergdb 019-10; 010-01, P7): the change
+     * runs on the caller's thread, outside executeRw(), whose catch does the same for a
+     * transaction; after the commit, memory and stream would disagree.
+     */
+    private Error failed(Error e) {
+        db.internal().fail(e);
+        return e;
+    }
+    
+    /**
+     * Executes a definition's change, with the test hook before its commit: true if done,
      * false after a conflict (taken again by the caller, under the lock).
      */
     private boolean execute(Trans.Builder b, String what) {
@@ -324,8 +382,22 @@ class IndexManager {
         } catch (RerunException e) {
             return false;
         }
-        hook(DEFINITION_AFTER + what);
         return true;
+    }
+    
+    /**
+     * What comes after a definition's commit, before its change in memory, which its caller
+     * makes in a finally: after the commit the change is made in memory too, whatever is
+     * thrown (H3-F2, F3: a throw there left the change in the stream and not in memory). A
+     * RuntimeException here is swallowed, the change done; an Error is thrown, after the
+     * change in memory, and fails the database (failed()).
+     */
+    private void afterCommit(String what) {
+        try {
+            hook(DEFINITION_AFTER + what);
+        } catch (RuntimeException e) {
+            // The change is committed: it stands, and is made in memory (020-10, 3.2).
+        }
     }
 
     /**
@@ -343,6 +415,16 @@ class IndexManager {
         }
     }
 
+    /**
+     * Runs 'r' under the lock: a build's step after refused tries (IndexBuilderImp), so that
+     * only writers that read the index set before can collide with it.
+     */
+    void underLock(Runnable r) {
+        synchronized (lock) {
+            r.run();
+        }
+    }
+    
     /** Whether the live index is still the name's (not deleted). */
     boolean isLive(Live live) {
         synchronized (lock) {

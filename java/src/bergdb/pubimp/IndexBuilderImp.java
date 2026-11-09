@@ -5,6 +5,7 @@ import java.util.List;
 
 import bergdb.core.Db;
 import bergdb.core.InternalDataException;
+import bergdb.core.RerunException;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
@@ -29,6 +30,9 @@ class IndexBuilderImp implements IndexBuilder {
 
     /** The values a build step reads at most (020-10, section 6.1). */
     static final int STEP_VALUES = 25;
+    
+    /** The refused tries of a build step before it runs under the manager's lock. */
+    static final int LOCKED_AFTER = 3;
 
     /** The longest pause after a build or cleanup step, ns (020-10, section 6.1; N10). */
     static final long MAX_PAUSE = 1000000000L;
@@ -161,21 +165,26 @@ class IndexBuilderImp implements IndexBuilder {
 
     /**
      * The build of an index in this process: its status, a snapshot at each getStatus()
-     * (015-39), and its thread.
+     * (015-39), and its end: set when its thread ends, on every exit (or at once for an index
+     * active at the start), and waited for by join(). Until 2026-11-09 join() waited for the
+     * build's thread, and returned BUILDING at once when it was called before the thread had
+     * started (the review of I2).
      */
     static final class BuildJob implements Job {
         private final String name;
         private JobStatus.State state = JobStatus.State.BUILDING;
         private long count;
         private String reason;
-        private Thread thread;
+        private boolean ended;
 
         BuildJob(String name) {
             this.name = name;
         }
 
-        synchronized void setThread(Thread thread) {
-            this.thread = thread;
+        /** The build ended in this process: join() returns. */
+        synchronized void ended() {
+            ended = true;
+            notifyAll();
         }
 
         synchronized void counted(long n) {
@@ -200,17 +209,23 @@ class IndexBuilderImp implements IndexBuilder {
             return join(0);
         }
 
-        public JobStatus join(int millis) {
-            Thread t;
-            synchronized (this) {
-                t = thread;
-            }
-            if (t != null) {
+        public synchronized JobStatus join(int millis) {
+            long deadline = millis == 0 ? 0 : System.nanoTime() + millis * 1000000L;
+            while (!ended) {
+                long ms = 0;
+                if (deadline != 0) {
+                    long ns = deadline - System.nanoTime();
+                    if (ns <= 0) {
+                        break;
+                    }
+                    ms = Math.max(1, ns / 1000000);
+                }
                 try {
-                    t.join(millis);
+                    wait(ms);
                 } catch (InterruptedException e) {
                     // The wait ends, the build goes on (bergdb 005-46).
                     Thread.currentThread().interrupt();
+                    break;
                 }
             }
             return getStatus();
@@ -286,7 +301,6 @@ class IndexBuilderImp implements IndexBuilder {
         thread.setPriority(Thread.MIN_PRIORITY);
         thread.setDaemon(true);
         thread.setName("IndexBuild-" + live.def.name() + "-" + live.def.gen());
-        live.job.setThread(thread);
         thread.start();
     }
 
@@ -315,13 +329,21 @@ class IndexBuilderImp implements IndexBuilder {
         }
 
         public void run() {
+            try {
+                build();
+            } finally {
+                live.job.ended();
+            }
+        }
+        
+        private void build() {
             long[] start = prefix;
             long retryWait = RwTransaction.FIRST_SLEEP;
             while (true) {
                 long t0 = System.nanoTime();
                 final long[] from = start;
                 try {
-                    connection.rw(env -> step((RwEnvironmentImp) env, from));
+                    runStep(from);
                 } catch (DeletedException e) {
                     live.job.failed("deleted");
                     return;
@@ -356,6 +378,44 @@ class IndexBuilderImp implements IndexBuilder {
             }
         }
 
+        /**
+         * The step's transaction, taken again after a conflict (RerunException): its first
+         * LOCKED_AFTER tries after waits of 10, 20, 40 ms, as an rw() waits; then under the
+         * index manager's lock, tries without a wait until one commits. Writers take that
+         * lock before their Core transaction (IndexManager.getActiveIndexesForDir; 020-10,
+         * 5.2), so under it only the writers that read the index set before can collide, and
+         * they are few. Until 2026-11-09 a step was an rw(), and writers of a small directory
+         * could refuse it for ever (the review of I1: BUILDING after 30 s).
+         */
+        private void runStep(long[] from) {
+            long sleep = RwTransaction.FIRST_SLEEP;
+            for (int tries = 0; tries < LOCKED_AFTER; tries++) {
+                if (tryStep(from)) {
+                    return;
+                }
+                sleep = waitToRetry(sleep);
+            }
+            m.underLock(() -> {
+                while (!tryStep(from)) {
+                    Thread.yield();
+                }
+            });
+        }
+        
+        /** One try of the step: its reads, its entries, its commit; false after a conflict. */
+        private boolean tryStep(long[] from) {
+            RwEnvironmentImp env = new RwEnvironmentImp(connection);
+            try {
+                step(env, from);
+                db.execute(env.createTrans(db));
+                return true;
+            } catch (RerunException e) {
+                return false;
+            } finally {
+                env.close();
+            }
+        }
+        
         private void step(RwEnvironmentImp env, long[] from) {
             lastKey = null;
             count = 0;

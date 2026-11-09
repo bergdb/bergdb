@@ -572,6 +572,162 @@ public class PubTesterIndexJobs {
         }
     }
 
+    // ======== Fixes from the review of I2 (2026-11-09) ========
+
+    /**
+     * Job.join() from another thread waits until the build ends, also when it is called
+     * before the build's thread starts (the review of I2: a thread that called
+     * indexJob(name).join() between the creation's commit and the build's start got
+     * BUILDING at once, the database running). Forced by the hook between the lock's release
+     * and the build's start.
+     */
+    @Nano
+    public static void testJoinFromAnotherThread() throws InterruptedException {
+        Database db = start(new MemoryStream());
+        try {
+            db.newConnection().put("/items/a", new Item(1, 2));
+            final java.util.concurrent.atomic.AtomicReference<JobStatus> got =
+                    new java.util.concurrent.atomic.AtomicReference<>();
+            final Thread[] b = new Thread[1];
+            final boolean[] waited = new boolean[1];
+            manager(db).testHook = p -> {
+                if (p.equals(IndexManager.CREATE_BEFORE_BUILD)) {
+                    b[0] = new Thread(() -> got.set(db.indexJob("by-field").join()));
+                    b[0].start();
+                    try {
+                        b[0].join(200);
+                    } catch (InterruptedException e) {
+                        throw new AssertionError(e);
+                    }
+                    waited[0] = b[0].isAlive();
+                }
+            };
+            Assert.assertEquals(JobStatus.State.ACTIVE, db.indexBuilder("by-field")
+                    .dir("/items/").type("long").field("amount").start().join().state());
+            b[0].join(5000);
+            Assert.assertTrue("join() waited for the build that had not started", waited[0]);
+            Assert.assertEquals(JobStatus.State.ACTIVE, got.get().state());
+            
+            // A job of an index active at a start ends at once; join(millis) waits at most
+            // millis.
+            Assert.assertEquals(JobStatus.State.ACTIVE, db.indexJob("by-field").join(1)
+                    .state());
+            Gate gate = new Gate();
+            manager(db).testHook = p -> gate.at(p, IndexManager.BUILD_STEP);
+            Job job = db.indexBuilder("other").dir("/items/").type("long").field("other")
+                    .start();
+            gate.awaitReached();
+            long t0 = System.nanoTime();
+            Assert.assertEquals(JobStatus.State.BUILDING, job.join(50).state());
+            Assert.assertTrue("join(50) waited", System.nanoTime() - t0 >= 40000000L);
+            gate.open();
+            Assert.assertEquals(JobStatus.State.ACTIVE, job.join().state());
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * An Error in a definition's change, before or after its commit (here thrown by the
+     * hooks), fails the database (bergdb 019-10; 010-01, P7): every later call is refused
+     * with a DbFailedException whose cause is the Error, so memory and stream cannot go on
+     * disagreeing.
+     */
+    @Nano
+    public static void testErrorInDefinitionChangeFailsTheDatabase() {
+        String[] points = {IndexManager.DEFINITION_AFTER + "create",
+                IndexManager.DEFINITION_BEFORE + "create", IndexManager.DEFINITION_AFTER + "delete"};
+        for (String point : points) {
+            Database db = start(new MemoryStream());
+            try {
+                if (point.endsWith("delete")) {
+                    db.indexBuilder("by-field").dir("/items/").type("long").field("amount")
+                            .start().join();
+                }
+                Error thrown = new OutOfMemoryError("by the test, at " + point);
+                manager(db).testHook = p -> {
+                    if (p.equals(point)) {
+                        throw thrown;
+                    }
+                };
+                try {
+                    if (point.endsWith("delete")) {
+                        db.deleteIndex("by-field");
+                    } else {
+                        db.indexBuilder("by-field").dir("/items/").type("long").field("amount")
+                                .start();
+                    }
+                    throw new AssertionError(point + ": no Error");
+                } catch (OutOfMemoryError e) {
+                    Assert.assertTrue(e == thrown);
+                }
+                try {
+                    putNew(db);
+                    throw new AssertionError(point + ": the database went on after an Error");
+                } catch (DbFailedException e) {
+                    Assert.assertTrue(point, e.getCause() == thrown);
+                }
+            } finally {
+                db.close();
+            }
+        }
+    }
+
+    /**
+     * A build ends while writers write its small directory hard (the review of I1: with 3 or
+     * 6 writers on 40 keys at about 130,000 writes a second, each step's transaction was
+     * refused by a write of a value it read, again and again, and the build stayed BUILDING
+     * after 30 s). After a few refused tries a step runs under the index manager's lock,
+     * which writers take before their Core transaction (020-10, 5.2): only the writers that
+     * read the index set before it can collide with it. The entries are then exact.
+     */
+    @Nano
+    public static void testBuildEndsUnderWriters() throws InterruptedException {
+        Database db = start(new MemoryStream());
+        try {
+            int keys = 40;
+            Connection c0 = db.newConnection();
+            for (int k = 0; k < keys; k++) {
+                c0.put("/items/k" + k, new Item(k, k));
+            }
+            AtomicBoolean stop = new AtomicBoolean();
+            Thread[] writers = new Thread[3];
+            for (int t = 0; t < writers.length; t++) {
+                final java.util.Random r = new java.util.Random(t);
+                writers[t] = new Thread(() -> {
+                    Connection c = db.newConnection();
+                    while (!stop.get()) {
+                        if (r.nextBoolean()) {
+                            c.rw(env -> {
+                                env.get("/items/k" + r.nextInt(keys), byte[].class);
+                                env.put("/items/k" + r.nextInt(keys), new Item(r.nextInt(100),
+                                        1));
+                            });
+                        } else {
+                            c.put("/items/k" + r.nextInt(keys), new Item(r.nextInt(100), 1));
+                        }
+                    }
+                });
+                writers[t].start();
+            }
+            JobStatus status;
+            try {
+                Thread.sleep(50);
+                status = db.indexBuilder("by-field").dir("/items/").type("long")
+                        .field("amount").start().join(10000);
+            } finally {
+                stop.set(true);
+                for (Thread t : writers) {
+                    t.join();
+                }
+            }
+            Assert.assertEquals(status.note(), JobStatus.State.ACTIVE, status.state());
+            Assert.assertEquals(keys, entries(db, "by-field"));
+        } finally {
+            db.close();
+        }
+    }
+
     // ======== The builder (020-10, section 3.1) ========
 
     /** S2-F20: dir() twice is refused at once; the builder needs dir() first. */

@@ -1452,7 +1452,11 @@ public final class IndexJobsHarness {
                 return;
             }
             JobStatus first = job.getStatus();
-            if (def.isActive() && (first.state() != State.ACTIVE || first.count() != 0)) {
+            // def is read after the start: a build that the start resumed may have ended
+            // before, with its count the directory's values (a race of this check, seen once
+            // in 54 runs at 57f88ea).
+            if (def.isActive() && (first.state() != State.ACTIVE
+                    || first.count() != 0 && first.count() != own)) {
                 finding("restart", "an index active at the start: its job is " + first.state()
                         + " with count " + first.count() + ", not ACTIVE with 0 (020-10, 3.2)");
             }
@@ -1774,29 +1778,9 @@ public final class IndexJobsHarness {
      * step I2), found by this harness on 2026-11-09 at 5b08db5.
      */
     static final String[][] KNOWN = {
-        // H3-F1: an Error in a creation's or a deletion's call, before or after its commit,
-        // is thrown as it is, and the database goes on; 019-10's error model: an Error in
-        // any call fails the database (docs/levels.md, section 3). IndexManager.execute()
-        // catches nothing around its hooks and the maps' change.
-        {"Error fails the database; ERROR at CREATE_BEFORE", "H3-F1"},
-        {"Error fails the database; ERROR at CREATE_AFTER", "H3-F1"},
-        {"Error fails the database; ERROR at DELETE_BEFORE", "H3-F1"},
-        {"Error fails the database; ERROR at DELETE_AFTER", "H3-F1"},
-        // H3-F2: an exception after a creation's or a deletion's commit, before the maps
-        // change, reaches the caller, and the database goes on with the change in the stream
-        // and not in memory: neither refused nor done (020-10, 3.2); docs/levels.md, section
-        // 3: an exception after a transaction's go point fails the database.
-        {"throw after the commit; REFUSAL at CREATE_AFTER", "H3-F2"},
-        {"throw after the commit; EXPIRY at CREATE_AFTER", "H3-F2"},
-        {"throw after the commit; RUNTIME at CREATE_AFTER", "H3-F2"},
-        {"throw after the commit; REFUSAL at DELETE_AFTER", "H3-F2"},
-        {"throw after the commit; EXPIRY at DELETE_AFTER", "H3-F2"},
-        {"throw after the commit; RUNTIME at DELETE_AFTER", "H3-F2"},
-        // H3-F3: a RuntimeException after the activation's commit, before the maps change,
-        // ends the build FAILED, and the database goes on with the definition active in the
-        // stream and building in memory.
-        {"memory and stream; RUNTIME at ACTIVATE_AFTER", "H3-F3"},
-        {"status; RUNTIME at ACTIVATE_AFTER", "H3-F3"},
+        // H3-F1, H3-F2, H3-F3 (found on 2026-11-09 at 5b08db5) were fixed by "020-10, I2
+        // fixes": an Error in a definition's change fails the database, and after a commit
+        // the change is made in memory whatever is thrown.
     };
 
     /** The known fault of a finding's signature, or null. */
