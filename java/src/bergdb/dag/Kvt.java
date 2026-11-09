@@ -13,7 +13,14 @@ public class Kvt {
     
     public long[] key;
     public byte[] value;
-    public long time;       // Time of the key node entry; not the write time (see GetData.kvTime).
+    /**
+     * The time of the key node entry that points to the value: not the time of the write,
+     * but at or after it and at or before the lookup time, as GetData.kvTime says (bergdb
+     * 021-19). For the time of the write: a getOne() of the key at the scan's
+     * GetMany.actualLookupTime gives the position of the value's transaction, GetData.tpos,
+     * and Db.getTrans(tpos).tt its time.
+     */
+    public long time;
     
     /**
      * Stream position of ValueNode.

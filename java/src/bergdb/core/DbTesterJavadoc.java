@@ -636,4 +636,51 @@ public class DbTesterJavadoc {
             db.close();
         }
     }
+
+    /**
+     * Kvt.time and GetData.kvTime: the time of the key node entry that points to the value,
+     * not the time of the write (bergdb 021-19; 020-24-09, U9-3). T1 puts 27 keys, and T2 a
+     * 28th, which replaces their full key node (a space split), so that T1's keys read T2's
+     * time; at or after the write's time and at or before the lookup time; a read before T2
+     * gives T1's; the write's time is getTrans(tpos).tt. If the time becomes the write's, the
+     * last assertion fails, and the Javadoc of both is to change.
+     */
+    @Nano
+    public static void testKvTimeIsTheEntrysTime() {
+        Db db = Db.builder().testSetup().start();
+        try {
+            Trans.Builder b = db.trans();
+            for (int i = 0; i < 27; i++) {
+                b.put(new byte[] {(byte) (2 * i)}, new byte[] {1});
+            }
+            Trans t1 = b.build();
+            db.execute(t1);
+            Trans t2 = db.trans().put(new byte[] {55}, new byte[] {2}).build();
+            db.execute(t2);
+
+            GetMany g = db.newGetMany();
+            db.getMany(g);
+            Assert.assertEquals("KVs", 28, g.result.size());
+            GetData gd = db.newGetData();
+            int later = 0;
+            for (Kvt kvt : g.result) {
+                boolean ofT2 = Keys.toBytes(kvt.key)[0] == 55;
+                long written = ofT2 ? t2.tt : t1.tt;
+                Assert.assertTrue("at or after the write's time", kvt.time >= written);
+                Assert.assertTrue("at or before the lookup time",
+                        kvt.time <= g.actualLookupTime);
+                Assert.assertTrue("getOne", db.getOne(g.actualLookupTime, kvt.key, gd) != null);
+                Assert.assertEquals("getOne's kvTime", kvt.time, gd.kvTime);
+                Assert.assertEquals("the write's time", written, db.getTrans(gd.tpos).tt);
+                if (!ofT2) {
+                    Assert.assertTrue("before T2", db.getOne(t2.tt - 1, kvt.key, gd) != null);
+                    Assert.assertEquals("kvTime before T2", t1.tt, gd.kvTime);
+                }
+                later += kvt.time != written ? 1 : 0;
+            }
+            Assert.assertEquals("T1's keys with T2's time", 27, later);
+        } finally {
+            db.close();
+        }
+    }
 }

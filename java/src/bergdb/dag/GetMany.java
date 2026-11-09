@@ -65,7 +65,8 @@ public class GetMany {
     public long actualLookupTime;
     
     /**
-     * Contains a list of the resulting KVs including the time it was last written to the DB.
+     * The resulting KVs, in the scan's order. A Kvt's time is the time of its key node entry,
+     * not the time the value was written (Kvt.time; bergdb 021-19).
      */
     public final List<Kvt> result;
     

@@ -23,13 +23,31 @@ public class GetData extends OpData {
     
     public long actualLookupTime;
         // The actual lookup time used. Can be less than the requested lookup time.
+    /**
+     * The time of the key node entry that points to the value found: not the time of the
+     * write, but the time of the transaction that made the entry, the write's or a later one
+     * (bergdb 021-19). A transaction that replaces a full key node, by a time split or a
+     * space split, makes every entry that the node keeps anew, at its own time, also those
+     * of keys that it does not write; and reclaim, which copies a value forward, writes it
+     * anew (see tpos). So the time is at or after the time of the write and at or before the
+     * lookup time, and two reads of a value that did not change, at lookup times before and
+     * after such a transaction, may give two times. For the time of the write, read the
+     * transaction: Db.getTrans(tpos).tt (for a value that reclaim has copied, the step's; see
+     * tpos). Not in the Pub API since 2026-10-13, and no reader of BergDB's own uses it
+     * (bergdb 011-01, Q9: there is no exact value time; 011-04, W3).
+     */
     public long kvTime;
-        // The time of the key node entry of the found kv. Internal. NOT the time the kv was
-        // written: after a time split of the key node it is the time of the split, and reclaim
-        // rewrites values in later transactions. Not in the Pub API since 2026-10-13
-        // (bergdb 011-01, Q9; bergdb 011-04, W3).
+    
+    /**
+     * The stream position of the transaction that stored the value found, for Db.getTrans():
+     * the transaction that wrote it, or, for a value that reclaim has copied forward, reclaim's
+     * step, whose time is the step's (bergdb 021-19). A get of the key at the step's time
+     * less one gives the same value and the position of the transaction that stored it
+     * before, the write's or an earlier step's, as the Pub API's Connection.transactionInfo()
+     * follows it back (bergdb 021-17). Spos.NULL while the value's transaction is being
+     * stored (Db.getTrans).
+     */
     public long tpos;
-        // Set to the tpos of the transaction that wrote the value.
     public long followMemoryPointerCount;
     public long followStreamPointerCount;
     

@@ -667,6 +667,20 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   Pub API's listings, index builds and index scans have bounds of their
   own, and a directory's prefix is no key of the Pub API. In 2026.1 to
   2026.3; found by a new-user application (020-24-09, U9-1).
+* **`Kvt.time` and `GetData.kvTime` are documented as the time of a key
+  node entry, not of the write** (bergdb 021-19; 2026-11-09). `GetMany`'s
+  Javadoc said that a result's KV holds "the time it was last written";
+  it holds the time of the transaction that made the key node entry that
+  points to the value. A transaction that replaces a full key node, by a
+  time or space split, makes every entry the node keeps anew at its own
+  time, so a key that it did not write reads its time: a transaction that
+  puts 27 keys and one that puts a 28th give all 28 the second's time. The
+  time of the write is `Db.getTrans(tpos).tt`, with `GetData.tpos` (for a
+  scan's KV, from a `getOne()` of its key); for a value that reclaim has
+  copied, `tpos` is reclaim's step, also documented now. No change of
+  behaviour: there is no exact value time (bergdb 011-01, Q9, 2026-10-13),
+  and the Pub API has none since 2026.1. Found by a new-user application
+  (020-24-09, U9-3).
 
 
 ### Format

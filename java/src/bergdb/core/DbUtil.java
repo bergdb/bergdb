@@ -119,7 +119,8 @@ public class DbUtil {
      * also internal KVs. Time of Kvs are optionally included.
      * 
      * @param dbTime  Lookup time to use.
-     * @param includeKvTime  If true, the database write time of each KV is included in the result.
+     * @param includeKvTime  If true, the time of each KV, Kvt.time, is included in the result:
+     *     the time of its key node entry, not of its write (bergdb 021-19).
      * @return The checksum.
      */
     public static long checksum(Db db, final long dbTime, final boolean includeKvTime, boolean includeInternal) {
@@ -133,7 +134,8 @@ public class DbUtil {
      * @param dbTime  Lookup time to use. Can be Long.MAX_VALUE.
      * @param from    Key to start checksum computation from (inclusive).
      * @param to      End of interval key (exclusive).
-     * @param includeKvTime  If true, the database write time of each KV is included in the result.
+     * @param includeKvTime  If true, the time of each KV, Kvt.time, is included in the result:
+     *     the time of its key node entry, not of its write (bergdb 021-19).
      * @return The checksum.
      */
     public static long checksumOfRange(Db db, final long dbTime, 
