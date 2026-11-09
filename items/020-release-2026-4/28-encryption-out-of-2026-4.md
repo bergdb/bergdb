@@ -1,6 +1,6 @@
 # 020-28 Encryption out of 2026.4
 
-Created 2026-11-09 by Frans Lundberg. Status: open.
+Created 2026-11-09 by Frans Lundberg. Status: done.
 
 Release 2026.4 has no encryption: the crypto key left the public API, and
 the code stays inside BergDB, tested, for a later design (017-10).
@@ -110,3 +110,5 @@ readme, which may name the removal.
 
 2026-11-09. Created for coord-1109 at Frans's decision (16:12); the
 removal in clone-rx, gated; 017-10 written.
+
+2026-11-09. Done: on main, in release candidate 03ce6ec; encryption done right is 017-10 (coord-1109).

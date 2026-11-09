@@ -1,6 +1,6 @@
 # 020-27 The Core API's Javadoc checked against behaviour
 
-Created 2026-11-09 by Frans Lundberg. Status: open.
+Created 2026-11-09 by Frans Lundberg. Status: done.
 
 The Javadoc of the Core API that release 2026.4 offers users, `bergdb.core.Db` and the types
 of its signatures (`bergdb.pub`'s "The API and its jar"), checked against what the code does,
@@ -458,3 +458,5 @@ that depends on `-ea`), by q27, commit "020-27, Q2: range checks": a key of no s
 `getMany()`'s empty `startKey`, a `result` not empty and a stop condition's answer outside
 the four, `GetN`'s and `PrefixN`'s negative count, `addReadHashes()`'s length; with `-ea`
 three of them failed the database. Test `DbTesterJavadoc.testRangeArguments`, failing before.
+
+2026-11-09. Done: Q1 and Q2 decided by Frans and on main, in release candidate 03ce6ec (coord-1109).

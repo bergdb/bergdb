@@ -1,6 +1,6 @@
 # 020-25 The public Javadoc checked against behaviour: the rest
 
-Created 2026-11-09 by Frans Lundberg. Status: open.
+Created 2026-11-09 by Frans Lundberg. Status: done.
 
 The rest of release 2026.4's public API, after 020-19's priority classes: the classes of
 bergdb.pub and bergdb.pub.util that 020-19 read but did not check promise by promise
@@ -392,3 +392,5 @@ Log
 2026-11-09. Created by coord-1109's agent j25, 12:55. Every listed class checked, C1 to C3
 and J1 to J7 fixed in the clone with their tests, 11 commits on `82edabf`, the tip gated
 (BEFORE COMMIT OK, 13:21). Stopped at 13:25: every listed class done.
+
+2026-11-09. Done: every fix on main (020-11, section 10), in release candidate 03ce6ec (coord-1109).
