@@ -684,6 +684,32 @@ static void found_start(const struct vec *v, const uint8_t *copy, bool check,
     CHECK_MEM_ZERO(&m);
 }
 
+/* NodeStreamTester.testStartupPosAtFailedTrans (bergdb 005-28, as 005-11's probe P9 found
+ * it): the record at the startup position of the last record is a failed one, its last
+ * byte 0, as recovery's zero fill leaves a torn record, in a stream that has later records
+ * whole (two histories mixed). Java's startup looped for ever on it until 005-28; now the
+ * start refuses it with a StreamFormatException that names its position, and writes
+ * nothing. The vectors' last record (3960) has its startup position at 3824. */
+TEST(sdb_startup_pos_at_failed_trans) {
+    struct vec v;
+    REQUIRE(read_vec(&v));
+    REQUIRE(v.nt >= 2);
+    const struct jtrans *last = &v.t[v.nt - 1];
+    const struct jtrans *x = NULL;
+    for (int32_t k = 0; k < v.nt; k++) {
+        if (v.t[k].tpos == last->startup_pos) {
+            x = &v.t[k];
+        }
+    }
+    REQUIRE(x != NULL && x != last);
+    CHECK_EQ(v.stream[x->last_pos], 10);
+    const uint8_t zero[1] = { 0 };
+    char want[40];
+    snprintf(want, sizeof want, " %lld ", (long long) x->tpos);
+    refused(&v, x->last_pos, zero, 1, "StreamFormatException", want, true);
+    free(v.stream);
+}
+
 /* CorruptStreamTester.testFound021_11 (bergdb 021-11, as Java's since release 2026.4), on the
  * vectors' stream: a pointer that the start links by node id (NodeCollection.linkToCanonical,
  * rule 4) set to a version of a node of another type, its node's checksum made right, is
@@ -1120,6 +1146,7 @@ const struct test sdb_tests[] = {
     TEST_ENTRY(sdb_cut_stream),
     TEST_ENTRY(sdb_refusals),
     TEST_ENTRY(sdb_refusals_2026_3),
+    TEST_ENTRY(sdb_startup_pos_at_failed_trans),
     TEST_ENTRY(sdb_found_021_11),
     TEST_ENTRY(sdb_found_021_12),
     TEST_ENTRY(sdb_starter_node_texts),

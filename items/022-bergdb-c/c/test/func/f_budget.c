@@ -301,8 +301,272 @@ TEST(budget_setter) {
     bu_remove_dir(dir);
 }
 
+/* ======== CapacityTester's and Eviction's budgets under reads (022-05) ======== */
+
+enum { CAP_VALUE = 300 };
+
+static size_t cap_key(int i, uint8_t *bkey) {
+    char ikey[32];
+    snprintf(ikey, sizeof ikey, "/c/%d", i);
+    size_t kl = strlen(ikey);
+    bergdb_ikey_to_bkey((const uint8_t *) ikey, kl, bkey);
+    return kl;
+}
+
+/* Key i's value: len bytes made of i. */
+static void cap_value(int i, uint8_t *v, size_t len) {
+    uint32_t x = 2463534242u ^ (uint32_t) (i * 7919 + 1);
+    for (size_t j = 0; j < len; j++) {
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
+        v[j] = (uint8_t) x;
+    }
+}
+
+/* A new database in dir with n keys of CAP_VALUE bytes, 50 to a
+ * transaction, and no eviction; closed. */
+static void cap_fill(const char *dir, int n) {
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock c = {0};
+    struct bergdb_options o;
+    bu_options(&o, &c, &m, BERGDB_NO_EVICT);
+    o.max_node_size = 30;
+    char errbuf[BERGDB_ERRBUF_SIZE];
+    bergdb_db *db;
+    bergdb_test_clock_set(&c, 500);
+    REQUIRE(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_OK);
+    for (int i = 0; i < n; i += 50) {
+        bergdb_trans *t;
+        REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+        for (int j = i; j < i + 50 && j < n; j++) {
+            uint8_t bkey[32], v[CAP_VALUE];
+            size_t kl = cap_key(j, bkey);
+            cap_value(j, v, sizeof v);
+            CHECK(bergdb_trans_put(t, bkey, kl, v, sizeof v) == BERGDB_OK);
+        }
+        bergdb_test_clock_set(&c, 1000 + i);
+        CHECK(bergdb_execute(db, t, NULL) == BERGDB_OK);
+        bergdb_trans_free(t);
+    }
+    CHECK(bergdb_close(db) == BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+}
+
+/* getOne of key i: its value is right. */
+static bool cap_get(bergdb_db *db, bergdb_read *rd, int i) {
+    uint8_t bkey[32], v[CAP_VALUE];
+    size_t kl = cap_key(i, bkey);
+    struct bergdb_one one;
+    cap_value(i, v, sizeof v);
+    return bergdb_get_one(db, rd, BERGDB_LATEST, bkey, kl, &one) == BERGDB_OK
+            && one.value != NULL && one.value_len == sizeof v
+            && memcmp(one.value, v, sizeof v) == 0;
+}
+
+static int64_t cap_resident(bergdb_db *db, struct bergdb_stats *s) {
+    CHECK(bergdb_stats(db, s) == BERGDB_OK);
+    return s->resident_bytes;
+}
+
+/* CapacityTester.testReadsWithoutWrites and testSweepsStopNearLow: reads
+ * with no writes, a database of 2,000 keys of 300 bytes (600 kB of values),
+ * started cold with a budget of 100 kB; every key read in random order,
+ * three times. After each read the resident bytes are at most the budget
+ * (C evicts at the end of the call that loaded, where Java's thread allows
+ * one load's worth more), and every value is right. And a sweep stops near
+ * the low watermark (3/4 of the budget): once one has run, the resident
+ * bytes, sampled after every read, stay above the low watermark less one
+ * key node's worth (16 kB here), not down at the pinned state, as a sweep
+ * that went on past the watermark would leave them. */
+TEST(budget_reads_without_writes) {
+    enum { N = 2000, BUDGET = 100000, SLACK = 16000 };
+    char dir[1024];
+    bu_temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    cap_fill(dir, N);
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock c = {0};
+    struct bergdb_options o;
+    bu_options(&o, &c, &m, BUDGET);
+    o.max_node_size = 30;
+    char errbuf[BERGDB_ERRBUF_SIZE];
+    bergdb_db *db;
+    bergdb_test_clock_set(&c, 500000);
+    REQUIRE(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_OK);
+    bergdb_read *rd;
+    REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+    struct bergdb_stats s;
+    int64_t most = 0, least_after = INT64_MAX;
+    int wrong = 0, over = 0, low = 0;
+    uint64_t rnd = 17;
+    for (int round = 0; round < 3; round++) {
+        for (int k = 0; k < N; k++) {
+            int i = (int) ((uint64_t) (k * 7 + round) * 1031u % N);
+            if (round == 2) {
+                i = test_random_below(&rnd, N);
+            }
+            if (!cap_get(db, rd, i)) {
+                wrong++;
+            }
+            int64_t r = cap_resident(db, &s);
+            most = r > most ? r : most;
+            if (r > BUDGET) {
+                over++;
+            }
+            if (s.evicted > 0) {
+                least_after = r < least_after ? r : least_after;
+                if (r < BUDGET / 4 * 3 - SLACK) {
+                    low++;
+                }
+            }
+        }
+    }
+    CHECK_EQ(wrong, 0);
+    CHECK_EQ(over, 0);
+    CHECK_EQ(low, 0);
+    CHECK(s.evicted > N / 30);
+    CHECK(s.pinned_bytes < BUDGET / 2);
+    printf("  budget_reads_without_writes: resident bytes at most %lld, at least %lld after "
+            "the first sweep (budget %d, low watermark %d); %lld evicted\n", (long long) most,
+            (long long) least_after, BUDGET, BUDGET / 4 * 3, (long long) s.evicted);
+    bergdb_read_free(rd);
+    CHECK(bergdb_close(db) == BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+    bu_remove_dir(dir);
+}
+
+/* Eviction.testLoweredBudgetAfterReads and
+ * CapacityTester.testBudgetLoweredAndRaisedUnderReads (and
+ * testBudgetLoweredWhileIdle, 005-52): 2,000 keys of 300 bytes, started cold
+ * with a budget of 10 MB, every key read twice, so that every value is
+ * resident and every handle's CLOCK bit set; the budget lowered to 9/10 of
+ * the resident bytes, with no other call: the setter's call brings them to
+ * at most the budget, though its sweep's first round only clears the bits
+ * (015-10: a first round that freed nothing ended Java's batches). Then a
+ * quarter of the first resident bytes: at most that after the call, and
+ * after every read of two rounds of random reads, the values right; the
+ * budget raised again: the call keeps what is there, and the reads grow the
+ * resident bytes past the low budget. */
+TEST(budget_lowered_and_raised_under_reads) {
+    enum { N = 2000 };
+    char dir[1024];
+    bu_temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    cap_fill(dir, N);
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock c = {0};
+    struct bergdb_options o;
+    bu_options(&o, &c, &m, 10 * 1000 * 1000);
+    o.max_node_size = 30;
+    char errbuf[BERGDB_ERRBUF_SIZE];
+    bergdb_db *db;
+    bergdb_test_clock_set(&c, 500000);
+    REQUIRE(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_OK);
+    bergdb_read *rd;
+    REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+    struct bergdb_stats s;
+    int wrong = 0;
+    for (int twice = 0; twice < 2; twice++) {
+        for (int i = 0; i < N; i++) {
+            wrong += !cap_get(db, rd, i);
+        }
+    }
+    const int64_t r0 = cap_resident(db, &s);
+    CHECK_EQ(s.evicted, 0);
+    CHECK(r0 > N * CAP_VALUE);
+    const int64_t b1 = r0 / 10 * 9;
+    CHECK(bergdb_set_cache_size_indicator(db, b1) == BERGDB_OK);
+    const int64_t r1 = cap_resident(db, &s);
+    CHECK(r1 <= b1);
+    CHECK(s.evicted > 0);
+    const int64_t b2 = r0 / 4;
+    CHECK(bergdb_set_cache_size_indicator(db, b2) == BERGDB_OK);
+    CHECK(cap_resident(db, &s) <= b2);
+    uint64_t rnd = 5;
+    int over = 0;
+    for (int k = 0; k < 2 * N; k++) {
+        wrong += !cap_get(db, rd, test_random_below(&rnd, N));
+        over += cap_resident(db, &s) > b2;
+    }
+    CHECK_EQ(over, 0);
+    const int64_t r2 = cap_resident(db, &s);
+    CHECK(bergdb_set_cache_size_indicator(db, 10 * 1000 * 1000) == BERGDB_OK);
+    CHECK_EQ(cap_resident(db, &s), r2);
+    for (int i = 0; i < N; i++) {
+        wrong += !cap_get(db, rd, i);
+    }
+    const int64_t r3 = cap_resident(db, &s);
+    CHECK(r3 > b2);
+    CHECK_EQ(wrong, 0);
+    printf("  budget_lowered_and_raised_under_reads: resident bytes %lld; budget %lld: %lld; "
+            "budget %lld: at most it; raised: %lld\n", (long long) r0, (long long) b1,
+            (long long) r1, (long long) b2, (long long) r3);
+    bergdb_read_free(rd);
+    CHECK(bergdb_close(db) == BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+    bu_remove_dir(dir);
+}
+
+/* CapacityTester.testLargePuts: values of 1.5 MiB, over the 1 MiB that a
+ * read does not cache, with a budget of 4 MB, in a database in memory: after
+ * every transaction the resident bytes are within the budget (the admission
+ * takes the large values when their record is written), and every value
+ * reads back right, also after a read of each (which does not keep it). */
+TEST(budget_large_puts) {
+    enum { N = 12, BIG = 3 * 1024 * 1024 / 2, BUDGET = 4 * 1000 * 1000 };
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock c = {0};
+    struct bergdb_options o;
+    bu_options(&o, &c, &m, BUDGET);
+    char errbuf[BERGDB_ERRBUF_SIZE];
+    bergdb_db *db;
+    bergdb_test_clock_set(&c, 500);
+    REQUIRE(bergdb_open(NULL, &o, &db, NULL, errbuf) == BERGDB_OK);
+    uint8_t *v = malloc(BIG);
+    REQUIRE(v != NULL);
+    struct bergdb_stats s;
+    int over = 0;
+    for (int i = 0; i < N; i++) {
+        bergdb_trans *t;
+        REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+        uint8_t bkey[32];
+        size_t kl = cap_key(i, bkey);
+        cap_value(i, v, BIG);
+        CHECK(bergdb_trans_put(t, bkey, kl, v, BIG) == BERGDB_OK);
+        kl = cap_key(1000 + i, bkey);
+        CHECK(bergdb_trans_put(t, bkey, kl, (const uint8_t *) "small", 5) == BERGDB_OK);
+        bergdb_test_clock_set(&c, 1000 + i);
+        CHECK(bergdb_execute(db, t, NULL) == BERGDB_OK);
+        bergdb_trans_free(t);
+        over += cap_resident(db, &s) > BUDGET;
+    }
+    CHECK_EQ(over, 0);
+    bergdb_read *rd;
+    REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+    int wrong = 0;
+    for (int i = N - 1; i >= 0; i--) {
+        uint8_t bkey[32];
+        size_t kl = cap_key(i, bkey);
+        struct bergdb_one one;
+        cap_value(i, v, BIG);
+        wrong += bergdb_get_one(db, rd, BERGDB_LATEST, bkey, kl, &one) != BERGDB_OK
+                || one.value_len != BIG || memcmp(one.value, v, BIG) != 0;
+        over += cap_resident(db, &s) > BUDGET;
+    }
+    CHECK_EQ(wrong, 0);
+    CHECK_EQ(over, 0);
+    bergdb_read_free(rd);
+    free(v);
+    CHECK(bergdb_close(db) == BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+}
+
 const struct test budget_tests[] = {
     TEST_ENTRY(budget_invariance),
     TEST_ENTRY(budget_setter),
+    TEST_ENTRY(budget_reads_without_writes),
+    TEST_ENTRY(budget_lowered_and_raised_under_reads),
+    TEST_ENTRY(budget_large_puts),
     TEST_END
 };

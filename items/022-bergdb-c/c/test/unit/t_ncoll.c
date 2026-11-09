@@ -918,6 +918,115 @@ TEST(lmap_model) {
     CHECK_MEM_ZERO(&m);
 }
 
+/* NodeCollection.testMaintenanceFollower (bergdb item 001, WP R8, change 5:
+ * M28; 022-05): reclaim's follower loads as the readers' does, but leaves
+ * the pointer as it is and the node table without the version read, and
+ * without a handle for it; a memory pointer gives its object, with the
+ * handle's CLOCK bit unchanged; and a reader then reads the version again,
+ * as nothing kept it. Java's follower also keeps a map of the versions it
+ * read, by position, so that it reads a version once; C's leaves it out
+ * (nc_follow_maintenance: it saves reads only), so here the second pointer
+ * reads the version again. */
+TEST(ncoll_maintenance_follower) {
+    struct world w;
+    world_init(&w);
+    const int64_t t10[] = { 10 };
+    stream_put(&w, 100, &test_key_node(&w, 101, 100, 1, t10)->n);
+    int32_t calls = 0;
+    struct opdata op;
+    test_op(&op, &calls);
+    struct tnode *parent = test_parent(&w, 301, 100);
+    struct node *a = nc_follow_maintenance(&w.nc, &parent->n, 0, &op);
+    REQUIRE(a != NULL);
+    CHECK_EQ(a->spos, 100);                             /* the version named */
+    CHECK(node_pointee(&parent->n, 0) == NULL);         /* not swizzled */
+    CHECK_EQ(node_pointer_pos(&parent->n, 0), 100);     /* the pointer's position */
+    CHECK(nt_live_handle(&w.nt, 101) == NULL);          /* no handle, not in the table */
+    struct node *b = nc_follow_maintenance(&w.nc, &test_parent(&w, 401, 100)->n, 0, &op);
+    CHECK(b == a);
+    CHECK_EQ(w.ts.reads, 2);        /* Java's: 1, its map of the versions read */
+    CHECK_EQ(calls, 2);             /* the listener's calls */
+    obj_collect(&w.cx);
+
+    /* A memory pointer, made by a reader's follow, whose CLOCK bit is then
+     * cleared: the maintenance follow gives its object and leaves the bit. */
+    struct tnode *memParent = test_parent(&w, 501, 100);
+    struct node *c = nc_follow_reader(&w.nc, &memParent->n, 0, &op);
+    REQUIRE(c != NULL);
+    CHECK_EQ(w.ts.reads, 3);        /* a reader reads it again: nothing kept it */
+    struct obj *h = node_pointee(&memParent->n, 0);
+    REQUIRE(h != NULL && h->kind == OBJ_HANDLE);
+    h->flags &= (uint16_t) ~OBJ_REF;
+    CHECK(nc_follow_maintenance(&w.nc, &memParent->n, 0, &op) == c);
+    CHECK((h->flags & OBJ_REF) == 0);                   /* the CLOCK bit unchanged */
+    CHECK_EQ(w.ts.reads, 3);
+    obj_collect(&w.cx);
+    world_free(&w);
+}
+
+/* lmap's slot of a key, as lmap.c computes it (SplitMix64's finalizer). */
+static int64_t lmap_home(const struct lmap *map, int64_t key) {
+    uint64_t z = (uint64_t) key;
+    z = (z ^ (z >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
+    z = (z ^ (z >> 27)) * UINT64_C(0x94d049bb133111eb);
+    return (int64_t) ((z ^ (z >> 31)) & (uint64_t) (map->cap - 1));
+}
+
+/* Cache3.testLargeIds and testBinsStaySmall (bergdb 005-08), for C's node
+ * table, one lmap (ntable.h): node ids of 2^31 and more, stream positions
+ * past 2.1 GB, up to Long.MAX_VALUE, are put and found (Java's map index of
+ * such an id was negative, 2026-10-13); and node ids as the writer makes
+ * them, in each transaction consecutive odd numbers from the stream's end,
+ * spread over the slots: linear probing at most half full keeps every id
+ * within a few slots of its own (Java's bins of 8 became red-black trees for
+ * about half the puts before 005-08). 200,000 ids each for Java's three
+ * cases: the first stream position, the nodes and the stream bytes of a
+ * transaction. */
+TEST(lmap_large_ids_and_short_runs) {
+    struct mem m;
+    mem_init(&m);
+    struct lmap map;
+    lmap_init(&map, &m);
+    const int64_t large[] = {INT64_C(1) << 31, (INT64_C(1) << 31) + 0x94, (INT64_C(1) << 32) - 1,
+            INT64_C(5) << 30, INT64_C(1) << 40, INT64_MAX};
+    int64_t v;
+    for (int i = 0; i < 6; i++) {
+        CHECK(!lmap_get(&map, large[i], &v));
+        CHECK(lmap_put(&map, large[i], i));
+    }
+    for (int i = 0; i < 6; i++) {
+        CHECK(lmap_get(&map, large[i], &v) && v == i);
+    }
+    lmap_free(&map);
+    const int64_t cases[3][3] = {{0, 110, 5000}, {(INT64_C(1) << 32) + 77, 4, 150},
+            {(INT64_C(1) << 40) + 12345, 1000, 30000}};
+    for (int c = 0; c < 3; c++) {
+        lmap_init(&map, &m);
+        int64_t pos = cases[c][0];
+        int32_t n = 0;
+        while (n < 200000) {
+            const int64_t first = pos | 1;          /* odd: a vpos, Spos.nextVpos */
+            for (int64_t j = 0; j < cases[c][1] && n < 200000; j++, n++) {
+                REQUIRE(lmap_put(&map, first + 2 * j, n));
+            }
+            pos += cases[c][2];
+        }
+        CHECK_EQ(map.size, 200000);
+        int64_t most = 0;
+        for (int64_t i = 0; i < map.cap; i++) {
+            if (map.used[i]) {
+                int64_t d = (i - lmap_home(&map, map.keys[i])) & (map.cap - 1);
+                most = d > most ? d : most;
+            }
+        }
+        CHECK(most < 64);
+        printf("  lmap_large_ids_and_short_runs: case %d, the longest distance from its slot "
+                "%lld\n", c, (long long) most);
+        lmap_free(&map);
+    }
+    CHECK_MEM_ZERO(&m);
+}
+
 const struct test ncoll_tests[] = {
     TEST_ENTRY(ncoll_follow_newer_version),
     TEST_ENTRY(ncoll_follow_rule_r),
@@ -937,6 +1046,8 @@ const struct test ncoll_tests[] = {
     TEST_ENTRY(ncoll_resolve_pointers_checks_the_type),
     TEST_ENTRY(ncoll_writer_keeps_the_node_whatever_its_policy),
     TEST_ENTRY(ntable_rules),
+    TEST_ENTRY(ncoll_maintenance_follower),
     TEST_ENTRY(lmap_model),
+    TEST_ENTRY(lmap_large_ids_and_short_runs),
     TEST_END
 };

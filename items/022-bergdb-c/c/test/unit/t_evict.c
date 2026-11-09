@@ -21,6 +21,7 @@
 #include "keys.h"
 #include "knode.h"
 #include "ntable.h"
+#include "plat.h"
 #include "trans.h"
 #include "vnode.h"
 
@@ -960,6 +961,346 @@ TEST(evict_low_of_exact) {
     }
 }
 
+/* ======== Harness 6.5, eviction's accounting, in C (022-05) ======== */
+
+#define EA_LARGE (1100 * 1024)      /* a value over 1 MiB */
+
+/* A version of a key: its time and value (len -1: deleted), and the older. */
+struct ea_version {
+    int64_t time;
+    uint8_t *v;
+    int32_t len;
+    struct ea_version *older;
+};
+
+struct ea_run {
+    uint64_t seed, r;
+    struct mem m;
+    struct db db;
+    struct db_config cfg;
+    struct bergdb_test_clock clock;
+    char dir[512];
+    int keys;
+    struct ea_version **history;
+    int64_t time, first;
+    int64_t reads, restarts, larges, decreases, decreasesChecked, budgetSets, evictAlls,
+            wrong;
+    bool failed;
+};
+
+static void ea_fail(struct ea_run *run, int b, const char *what) {
+    if (!run->failed) {
+        printf("  evict_accounting, seed %llu, batch %d: %s\n", (unsigned long long) run->seed,
+                b, what);
+        test_checks_++;
+        test_fail_(__FILE__, __LINE__, "a check of the run");
+    }
+    run->failed = true;
+}
+
+/* A random budget: from one byte to none. */
+static int64_t ea_budget(struct ea_run *run) {
+    static const int64_t budgets[] = {1, 2000, 20000, 200000, INT64_MAX};
+    return budgets[test_random_below(&run->r, 5)];
+}
+
+/* Key k's ikey: "/k/K", or for the last tenth of the keys a long key of
+ * about 300 bytes, whose segments make a subtree of their own (Eviction's
+ * testHistoricalParentsAndLongKeys); returns its length. */
+static int32_t ea_ikey(const struct ea_run *run, int k, char *ikey) {
+    if (k < run->keys / 10 * 9) {
+        return (int32_t) snprintf(ikey, 32, "/k/%d", k);
+    }
+    int32_t n = snprintf(ikey, 32, "/L/%d/", k);
+    memset(ikey + n, 'a' + k % 26, 300);
+    ikey[n + 300] = '\0';
+    return n + 300;
+}
+
+/* getOne of key k at time t: the history's version at t (the newest at or
+ * before it). */
+static void ea_read(struct ea_run *run, int k, int64_t t) {
+    char ikey[400];
+    uint8_t bkey[400];
+    int64_t segs[64];
+    const int32_t kl = ea_ikey(run, k, ikey);
+    keys_ikey_to_bkey((const uint8_t *) ikey, kl, bkey);
+    keys_to_segments(bkey, kl, segs);
+    struct getdata gd;
+    struct vnode *v = NULL;
+    struct err e;
+    db_new_get_data(&run->db, &gd);
+    enum err_code rc = db_get_one(&run->db, t, segs, keys_segment_count(kl), &gd, &v, &e);
+    const struct ea_version *x = run->history[k];
+    while (x != NULL && x->time > t) {
+        x = x->older;
+    }
+    const int32_t expected = x == NULL ? -1 : x->len;
+    const int32_t actual = v == NULL ? -1 : v->len;
+    if (rc != ERR_OK || expected != actual
+            || (actual > 0 && memcmp(v->value, x->v, (size_t) actual) != 0)) {
+        run->wrong++;
+    }
+    run->reads++;
+    db_evict(&run->db);         /* the end of the call */
+}
+
+static enum err_code ea_open(struct ea_run *run, int64_t budget) {
+    struct db_start_info info;
+    struct err e;
+    run->cfg.cache_size_indicator = budget;
+    return db_open(&run->db, run->dir, &run->cfg, &run->m, &info, &e);
+}
+
+/* One transaction of 1 to 5 puts (now and then a value over 1 MiB) and
+ * deletes of random keys; large forces a large value of one key. */
+static void ea_trans(struct ea_run *run, int b, int i, bool large) {
+    struct tr_builder tb;
+    struct trans t;
+    struct err e;
+    tr_builder_init(&tb, &run->m);
+    tr_init(&t, &run->m);
+    run->time += 100000;
+    bergdb_test_clock_set(&run->clock, run->time);
+    const int c = large ? 1 : 1 + test_random_below(&run->r, 5);
+    int ks[5];
+    uint8_t *vs[5];
+    int32_t lens[5];
+    int m = 0;
+    for (int j = 0; j < c; j++) {
+        int k = test_random_below(&run->r, run->keys);
+        bool seen = false;
+        for (int q = 0; q < m; q++) {
+            seen = seen || ks[q] == k;
+        }
+        if (seen) {
+            continue;
+        }
+        char ikey[400];
+        uint8_t bkey[400];
+        const int32_t kl = ea_ikey(run, k, ikey);
+        keys_ikey_to_bkey((const uint8_t *) ikey, kl, bkey);
+        uint8_t *v = NULL;
+        int32_t len = -1;
+        if (!large && test_random_below(&run->r, 20) == 0) {
+            CHECK(tr_delete(&tb, bkey, kl, &e) == ERR_OK);
+        } else {
+            if (large || test_random_below(&run->r, 500) == 0) {
+                len = EA_LARGE;
+                run->larges++;
+            } else {
+                len = 12 + test_random_below(&run->r, 200);
+            }
+            v = malloc((size_t) len);
+            for (int32_t q = 0; q < len; q++) {
+                v[q] = (uint8_t) (q < 12 ? b * 31 + i * 7 + j : test_random(&run->r));
+            }
+            CHECK(tr_put(&tb, bkey, kl, v, len, NULL, &e) == ERR_OK);
+        }
+        ks[m] = k;
+        vs[m] = v;
+        lens[m++] = len;
+    }
+    CHECK(tr_build(&tb, &t, &e) == ERR_OK);
+    enum err_code rc = db_execute(&run->db, &t, &e);
+    if (rc != ERR_OK) {
+        ea_fail(run, b, e.text);
+    }
+    for (int j = 0; j < m; j++) {
+        struct ea_version *x = malloc(sizeof *x);
+        *x = (struct ea_version) { t.tt, vs[j], lens[j], run->history[ks[j]] };
+        run->history[ks[j]] = x;
+    }
+    tr_free(&t);
+    tr_builder_free(&tb);
+}
+
+/* The checks after a batch: the recount (every object's holders), the pins
+ * in the node table, no resident pointer to a value over 1 MiB (the
+ * admission rule: 015-68, 019-47), the resident bytes at most the trigger
+ * and, but for the pins, the budget; 40 keys' answers right at the newest
+ * time; and now and then a decrease of the budget with no write: if the
+ * pins fit it, the resident bytes are at most it after the setter's call. */
+static void ea_check(struct ea_run *run, int b) {
+    struct err e;
+    if (db_recount(&run->db) != 0) {
+        ea_fail(run, b, "the recount");
+    }
+    struct ev_env env = env_of(&run->db);
+    if (ev_check_pins(&env) != 0) {
+        ea_fail(run, b, "a pinned object is not in the node table");
+    }
+    if (large_resident(&run->db) != 0) {
+        ea_fail(run, b, "a resident pointer holds a value over 1 MiB");
+    }
+    if (db_resident_bytes(&run->db) > run->db.ev.trigger
+            || db_resident_bytes(&run->db) - db_pinned_bytes(&run->db) > run->db.ev.high) {
+        ea_fail(run, b, "the resident bytes over the trigger, or over the budget but for the pins");
+    }
+    for (int q = 0; q < 40; q++) {
+        ea_read(run, test_random_below(&run->r, run->keys), INT64_MAX);
+    }
+    if (test_random_below(&run->r, 4) == 0) {
+        const int64_t bytes = db_resident_bytes(&run->db);
+        int64_t budget = bytes / 100 * (10 + test_random_below(&run->r, 86));
+        budget = budget < run->db.ev.high - 1 ? budget : run->db.ev.high - 1;
+        if (budget >= 1) {
+            run->decreases++;
+            run->budgetSets++;
+            CHECK(db_set_cache_size_indicator(&run->db, budget, &e) == ERR_OK);
+            if (db_pinned_bytes(&run->db) <= budget) {
+                run->decreasesChecked++;
+                if (db_resident_bytes(&run->db) > budget) {
+                    ea_fail(run, b, "a decrease of the budget not reached, the pins fitting");
+                }
+            }
+        }
+    }
+}
+
+/* One run of the shape: keys, batches of up to maxTrans transactions, a
+ * restart after one batch in restartOneIn. */
+static void ea_run_seed(uint64_t seed, int keys, int batches, int maxTrans, int restartOneIn) {
+    static struct ea_run run;
+    memset(&run, 0, sizeof run);
+    run.seed = seed;
+    run.r = seed * UINT64_C(0x9E3779B97F4A7C15) + 7;
+    run.keys = keys;
+    run.history = calloc((size_t) keys, sizeof *run.history);
+    mem_init(&run.m);
+    REQUIRE(temp_dir(run.dir, sizeof run.dir));
+    static const int32_t sds[] = {200, 2000, 20000, 200000};
+    config(&run.cfg, &run.clock, 8, sds[test_random_below(&run.r, 4)], INT64_MAX);
+    run.time = 1000000;
+    bergdb_test_clock_set(&run.clock, run.time);
+    REQUIRE(ea_open(&run, ea_budget(&run)) == ERR_OK);
+    run.first = run.time;
+    struct err e;
+    for (int b = 0; b < batches && !run.failed; b++) {
+        const int n = 1 + test_random_below(&run.r, maxTrans);
+        for (int i = 0; i < n && !run.failed; i++) {
+            ea_trans(&run, b, i, false);
+            /* The readers: gets of random keys at random times of the history. */
+            for (int q = test_random_below(&run.r, 5); q > 0; q--) {
+                ea_read(&run, test_random_below(&run.r, keys), run.first
+                        + (int64_t) ((uint64_t) test_random(&run.r)
+                        % (uint64_t) (run.time - run.first + 1)));
+            }
+            const int x = test_random_below(&run.r, 40);
+            if (x == 0) {
+                evict_down_to(&run.db, 0);       /* Java's evictNow(EVERY) */
+                run.evictAlls++;
+            } else if (x == 1) {
+                CHECK(db_set_cache_size_indicator(&run.db, ea_budget(&run), &e) == ERR_OK);
+                run.budgetSets++;
+            }
+        }
+        if (test_random_below(&run.r, restartOneIn) == 0) {
+            if (test_random_below(&run.r, 2) == 0) {
+                /* A large value just before the restart, so that the start's
+                 * rerun makes it again (015-68). */
+                ea_trans(&run, b, -1, true);
+            }
+            CHECK(db_close(&run.db, &e) == ERR_OK);
+            REQUIRE(ea_open(&run, ea_budget(&run)) == ERR_OK);
+            run.restarts++;
+        }
+        ea_check(&run, b);
+    }
+    CHECK_EQ(run.wrong, 0);
+    printf("  evict_accounting seed %llu: %d batches, %lld reads, %lld wrong, %lld evictions of "
+            "everything, %lld budget changes, %lld of %lld decreases checked, %lld restarts, "
+            "%lld large values\n", (unsigned long long) seed, batches, (long long) run.reads,
+            (long long) run.wrong, (long long) run.evictAlls, (long long) run.budgetSets,
+            (long long) run.decreasesChecked, (long long) run.decreases,
+            (long long) run.restarts, (long long) run.larges);
+    db_close(&run.db, &e);
+    CHECK_MEM_ZERO(&run.m);
+    for (int k = 0; k < keys; k++) {
+        while (run.history[k] != NULL) {
+            struct ea_version *x = run.history[k];
+            run.history[k] = x->older;
+            free(x->v);
+            free(x);
+        }
+    }
+    free(run.history);
+    remove_dir(run.dir);
+}
+
+/* EvictionAccountingTester.testAccounting (harness 6.5, 018-05; its faults
+ * 015-67 to 015-71, 019-20, 019-21, 019-46, 019-47), in C's terms: one
+ * caller, so its reader threads are reads between the transactions, at
+ * random times of the history, each checked against the test's own record;
+ * its test schedules' evictions are an eviction of every detachable object
+ * (evict_down_to); a random budget from one byte to none, changed between
+ * transactions; restarts in a directory with a new budget, half of them
+ * right after a value over 1 MiB, so that the start's rerun makes it again;
+ * after each batch the recount, the pins, the admission rule, the budget
+ * and the answers, and now and then a decrease of the budget (ea_check). C's
+ * resident bytes are the allocator's counts (012-12), so Java's comparison
+ * of its estimates with a recount (Residents) is the recount of the holders
+ * here; Java's handle limit of a batch (015-67) is not C's (section 11).
+ * The keys are short, and a tenth of them long (300 bytes), whose deletes
+ * leave subtrees cold (testHistoricalParentsAndLongKeys). Three seeds of
+ * Java's unit shape (300 keys, 25 batches of up to 30 transactions);
+ * BERGDB_ACCOUNTING_SEEDS=N runs N seeds by hand. */
+#ifdef BERGDB_TEST
+/* The test build's seam (plat.h): the forces are no-ops here, as what
+ * reaches the disk is power.sh's part; in the release build they are real. */
+static enum err_code ea_force(int fd, enum plat_force_why why, struct err *e) {
+    (void) fd;
+    (void) why;
+    (void) e;
+    return ERR_OK;
+}
+
+static enum err_code ea_force_dir(const char *dir, struct err *e) {
+    (void) dir;
+    (void) e;
+    return ERR_OK;
+}
+#endif
+
+TEST(evict_accounting) {
+    int seeds = 3;
+    const char *s = getenv("BERGDB_ACCOUNTING_SEEDS");
+    if (s != NULL) {
+        seeds = atoi(s);
+    }
+#ifdef BERGDB_TEST
+    struct plat_io io = *plat_io_real();
+    io.force = ea_force;
+    io.force_dir = ea_force_dir;
+    plat_io_set(&io);
+#endif
+    for (int i = 1; i <= seeds; i++) {
+        ea_run_seed((uint64_t) i, 300, 25, 30, 25);
+    }
+#ifdef BERGDB_TEST
+    plat_io_set(NULL);
+#endif
+}
+
+/* EvictionAccountingTester.testAccountingManyRestarts (bergdb 019-47): many
+ * small batches, so that restarts come one after another and a start's
+ * section can begin with the transaction of a large value. Java's shape is
+ * 300 keys and 300 batches of up to 4 transactions, a restart after one
+ * batch in 25; here 100 batches and a restart after one in 5, about as many
+ * restarts in a third of the time (seed 1070 of C's generator). */
+TEST(evict_accounting_many_restarts) {
+#ifdef BERGDB_TEST
+    struct plat_io io = *plat_io_real();
+    io.force = ea_force;
+    io.force_dir = ea_force_dir;
+    plat_io_set(&io);
+#endif
+    ea_run_seed(1070, 300, 100, 4, 5);
+#ifdef BERGDB_TEST
+    plat_io_set(NULL);
+#endif
+}
+
 const struct test evict_tests[] = {
     TEST_ENTRY(evict_low_of_exact),
     TEST_ENTRY(evict_table),
@@ -972,5 +1313,7 @@ const struct test evict_tests[] = {
     TEST_ENTRY(evict_warmup_keeps_no_large_value),
     TEST_ENTRY(evict_lowered_budget_after_pins_fell),
     TEST_ENTRY(evict_alloc_failures),
+    TEST_ENTRY(evict_accounting),
+    TEST_ENTRY(evict_accounting_many_restarts),
     TEST_END
 };

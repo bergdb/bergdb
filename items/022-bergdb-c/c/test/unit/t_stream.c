@@ -1518,6 +1518,206 @@ TEST(stream_memory_database_frees_cut_bytes) {
     CHECK_EQ(bm.live_total, 0);
 }
 
+#ifdef BERGDB_TEST
+/* A seam that makes chosen calls fail, as Java's ModelIo of FileStreamPowerLossTester
+ * (failFileForce, failDirectoryForce, failDeleteAt): every file force, every directory
+ * force, or the Nth delete, with an IOException; the others pass on. It counts the deletes
+ * made and keeps the stream files open, so that a test can see that none is left open. */
+static bool ff_file, ff_dir;
+static int ff_unlink_at, ff_unlinks, ff_deleted, ff_open;
+static enum err_code ff_open_rw(const char *path, int *fd, struct err *e) {
+    enum err_code rc = plat_io_real()->open_rw(path, fd, e);
+    if (rc == ERR_OK && *fd >= 0 && *fd < 256) {
+        flog_fd_index[*fd] = flog_index(path) + 1;
+        if (flog_fd_index[*fd] > 0) {
+            ff_open++;
+        }
+    }
+    return rc;
+}
+static enum err_code ff_pwrite(int fd, int64_t off, const uint8_t *buf, int64_t n,
+        struct err *e) {
+    return plat_io_real()->pwrite(fd, off, buf, n, e);
+}
+static enum err_code ff_force(int fd, enum plat_force_why why, struct err *e) {
+    if (ff_file) {
+        return err_set(e, ERR_IO, "IOException", "injected file force failure");
+    }
+    return plat_io_real()->force(fd, why, e);
+}
+static enum err_code ff_force_dir(const char *dir, struct err *e) {
+    if (ff_dir) {
+        return err_set(e, ERR_IO, "IOException", "injected directory force failure");
+    }
+    return plat_io_real()->force_dir(dir, e);
+}
+static enum err_code ff_unlink(const char *path, struct err *e) {
+    if (++ff_unlinks == ff_unlink_at) {
+        return err_set(e, ERR_IO, "IOException", "injected delete failure");
+    }
+    enum err_code rc = plat_io_real()->unlink(path, e);
+    ff_deleted += rc == ERR_OK;
+    return rc;
+}
+static void ff_close(int fd) {
+    if (fd >= 0 && fd < 256 && flog_fd_index[fd] > 0) {
+        flog_fd_index[fd] = 0;
+        ff_open--;
+    }
+    plat_io_real()->close(fd);
+}
+static const struct plat_io FF = {
+    ff_open_rw, ff_pwrite, ff_force, ff_force_dir, ff_unlink, ff_close
+};
+
+/* A new directory for the failure tests, the seam set, nothing to fail. */
+static void ff_start(void) {
+    const char *tmp = getenv("TMPDIR");
+    snprintf(tdir, sizeof tdir, "%s/bergdb-t_ffail-XXXXXX", tmp != NULL ? tmp : "/tmp");
+    ff_file = ff_dir = false;
+    ff_unlink_at = ff_unlinks = ff_deleted = ff_open = 0;
+    memset(flog_fd_index, 0, sizeof flog_fd_index);
+    plat_io_set(&FF);
+}
+
+static void ff_end(void) {
+    char cmd[400];
+    plat_io_set(NULL);
+    snprintf(cmd, sizeof cmd, "rm -rf '%s'", tdir);
+    if (system(cmd) != 0) {
+        printf("    could not remove %s\n", tdir);
+    }
+}
+#endif
+
+/* FileStreamPowerLossTester.testSyncDoesNotAdvanceAfterFailedFileForce and
+ * testSyncDoesNotAdvanceAfterFailedDirectoryForce, with testDurableFrontierWaitsForForce's
+ * check: the durable length is the length at the last force that succeeded. Bytes appended
+ * or written (a flush) are not durable; a sync makes them so. A sync whose file force or
+ * directory force fails returns the error, leaves the durable length as it was (0 here, of
+ * a new stream's 100 bytes or 200,100, which make a second file; and 100 when the force of
+ * a sync after a first one fails), and fails the stream, which takes no more writes or
+ * syncs; its close gives the error too and leaves no stream file open. (Java's: the failed
+ * force through StorageManager, whose sync throws; C's sync is the call.) Before the fix of
+ * stream_flush (bergdb 022-05), a sync after the failed force of a sync forced the files
+ * again, and with a force that worked gave ERR_OK and the durable length 200, as did the
+ * close: the stream's failure was checked only when the buffer held bytes. */
+TEST(stream_failed_force_keeps_the_durable_length) {
+#ifdef BERGDB_TEST
+    struct mem m;
+    struct err e;
+    struct stream s;
+    static uint8_t data[200100];
+    mem_init(&m);
+    /* The durable length waits for the force. */
+    ff_start();
+    REQUIRE(mkdtemp(tdir) != NULL);
+    REQUIRE(stream_open_dir_rw(&s, tdir, 0, &m, &e) == ERR_OK);
+    CHECK_EQ(stream_append(&s, data, 100, &e), ERR_OK);
+    CHECK_EQ(stream_durable_length(&s), 0);
+    CHECK_EQ(stream_flush(&s, &e), ERR_OK);
+    CHECK_EQ(stream_durable_length(&s), 0);
+    CHECK_EQ(stream_sync(&s, &e), ERR_OK);
+    CHECK_EQ(stream_durable_length(&s), 100);
+    CHECK_EQ(stream_finish(&s, &e), ERR_OK);
+    CHECK_EQ(ff_open, 0);
+    ff_end();
+    /* A failed force: of a new file, of the directory, of a file at a later sync. */
+    for (int k = 0; k < 3; k++) {
+        const int64_t n = k == 1 ? 200100 : 100;
+        const int64_t durable = k == 2 ? 100 : 0;
+        ff_start();
+        REQUIRE(mkdtemp(tdir) != NULL);
+        REQUIRE(stream_open_dir_rw(&s, tdir, 0, &m, &e) == ERR_OK);
+        if (k == 2) {
+            CHECK_EQ(stream_append(&s, data, 100, &e), ERR_OK);
+            CHECK_EQ(stream_sync(&s, &e), ERR_OK);
+        }
+        ff_file = k != 1;
+        ff_dir = k == 1;
+        CHECK_EQ(stream_append(&s, data, n, &e), ERR_OK);
+        CHECK_EQ(stream_sync(&s, &e), ERR_IO);
+        CHECK(strstr(e.text, "injected") != NULL);
+        CHECK_EQ(stream_durable_length(&s), durable);
+        ff_file = ff_dir = false;
+        CHECK_EQ(stream_sync(&s, &e), ERR_IO);      /* the stream has failed */
+        CHECK_EQ(stream_durable_length(&s), durable);
+        CHECK_EQ(stream_append(&s, data, 10, &e), ERR_IO);
+        CHECK(strcmp(e.text, "The stream has failed: no more writes.") == 0);
+        CHECK_EQ(stream_finish(&s, &e), ERR_IO);
+        CHECK_EQ(ff_open, 0);                       /* no stream file left open */
+        ff_end();
+    }
+    CHECK_MEM_ZERO(&m);
+#endif
+}
+
+/* FileStreamPowerLossTester.testPartialDeletionAndDirectoryFailureKeepForcedBytes and
+ * testPendingCutForceFailureFailsTheStream: a cut whose second delete fails, or whose
+ * directory force after its first delete fails, stops there (one file deleted), returns the
+ * error and fails the stream: no more writes or syncs, and the durable length stays the
+ * last sync's; the files left hold the forced bytes, and a new stream on the directory
+ * reads them (the tail from 800,000). The cut's failure comes from the cut's call here,
+ * where Java's cut thread passes it on to the stream's next operation (C has no thread,
+ * c/readme.md, section 9, point 9). And the cut without a failure deletes the four files
+ * before 800,000, one at a time (testRecoveryBetweenEveryPrefixDeletion's count). */
+TEST(stream_failed_cut_keeps_forced_bytes) {
+#ifdef BERGDB_TEST
+    struct mem m;
+    struct err e;
+    struct stream s;
+    static uint8_t data[1000000];
+    static uint8_t tail[200000];
+    mem_init(&m);
+    memset(data, 7, sizeof data);
+    for (int k = 0; k < 3; k++) {
+        ff_start();
+        REQUIRE(mkdtemp(tdir) != NULL);
+        REQUIRE(stream_open_dir_rw(&s, tdir, 0, &m, &e) == ERR_OK);
+        CHECK_EQ(stream_append(&s, data, (int64_t) sizeof data, &e), ERR_OK);
+        CHECK_EQ(stream_sync(&s, &e), ERR_OK);
+        CHECK_EQ(stream_durable_length(&s), 1000000);
+        if (k == 0) {
+            ff_unlink_at = 2;
+        } else if (k == 1) {
+            ff_dir = true;
+        }
+        enum err_code rc = stream_pretruncate(&s, 800000, &e);
+        CHECK_EQ(ff_deleted, k < 2 ? 1 : 4);
+        if (k < 2) {
+            CHECK_EQ(rc, ERR_IO);
+            CHECK(strstr(e.text, "injected") != NULL);
+            ff_unlink_at = 0;
+            ff_dir = false;
+            CHECK_EQ(stream_append(&s, data, 100, &e), ERR_IO);
+            CHECK_EQ(stream_sync(&s, &e), ERR_IO);
+            CHECK_EQ(stream_durable_length(&s), 1000000);
+            CHECK_EQ(stream_finish(&s, &e), ERR_IO);
+        } else {
+            CHECK_EQ(rc, ERR_OK);
+            CHECK_EQ(stream_first_pos(&s), 800000);
+            CHECK_EQ(stream_finish(&s, &e), ERR_OK);
+        }
+        CHECK_EQ(ff_open, 0);
+        plat_io_set(NULL);
+        /* The files left, read by a new stream. */
+        REQUIRE(stream_open_dir(&s, tdir, &m, &e) == ERR_OK);
+        CHECK_EQ(stream_first_pos(&s), k < 2 ? 200000 : 800000);
+        CHECK_EQ(stream_length(&s), 1000000);
+        memset(tail, 0, sizeof tail);
+        CHECK_EQ(stream_read(&s, 800000, tail, (int32_t) sizeof tail, &e), ERR_OK);
+        bool all = true;
+        for (size_t i = 0; i < sizeof tail; i++) {
+            all = all && tail[i] == 7;
+        }
+        CHECK(all);
+        stream_close(&s);
+        ff_end();
+    }
+    CHECK_MEM_ZERO(&m);
+#endif
+}
+
 const struct test stream_tests[] = {
     TEST_ENTRY(stream_memory),
     TEST_ENTRY(stream_dir),
@@ -1538,5 +1738,7 @@ const struct test stream_tests[] = {
     TEST_ENTRY(stream_reopen_past_214tb),
     TEST_ENTRY(stream_forces_at_close),
     TEST_ENTRY(stream_memory_database_frees_cut_bytes),
+    TEST_ENTRY(stream_failed_force_keeps_the_durable_length),
+    TEST_ENTRY(stream_failed_cut_keeps_forced_bytes),
     TEST_END
 };

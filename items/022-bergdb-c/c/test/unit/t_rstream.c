@@ -955,6 +955,121 @@ TEST(rs_pos_of_trans_completed_before_after_cut) {
     CHECK_MEM_ZERO(&m);
 }
 
+/* NodeStreamTester.testCorruptReadNodeSize, testCorruptReadTransSize and
+ * testCorruptIteratorSize (bergdb 005-74, F3, as Java's since release 2026.2): a size field
+ * of Integer.MAX_VALUE, 2^30, -1, 0, 6 or 7 at 128, in a stream of 132 bytes, is refused by
+ * readNode, readTransBytes and the exact iterator with a StreamFormatException that names
+ * the size, before its buffer is allocated: no allocation at all. */
+TEST(ns_corrupt_read_sizes) {
+    struct mem m;
+    struct err e;
+    const int32_t sizes[] = { INT32_MAX, 1 << 30, -1, 0, 6, 7 };
+    mem_init(&m);
+    for (int reader = 0; reader < 3; reader++) {
+        for (size_t i = 0; i < sizeof sizes / sizeof sizes[0]; i++) {
+            struct stream s;
+            uint8_t bytes[132];
+            memset(bytes, 0, sizeof bytes);
+            bytes_put_int_le(sizes[i], bytes + 128);
+            stream_open_memory(&s, &m);
+            REQUIRE(stream_append_memory(&s, bytes, (int64_t) sizeof bytes, &e) == ERR_OK);
+            const int64_t allocs = m.allocs;
+            struct ns_buf nb = { NULL, 0 };
+            enum err_code rc;
+            err_clear(&e);
+            if (reader == 0) {
+                struct sn_node n;
+                rc = ns_read_node(&s, &m, 128, &nb, &n, &e);
+            } else if (reader == 1) {
+                int32_t got;
+                rc = ns_read_trans_bytes(&s, &m, 128, &nb, &got, &e);
+            } else {
+                struct ns_iter it;
+                bool has;
+                ns_iter_init(&it, &s, &m, 128, true);
+                rc = ns_iter_next(&it, &has, &e);
+                CHECK_EQ(it.buf.cap, 0);
+                ns_iter_free(&it);
+            }
+            CHECK_EQ(rc, ERR_FORMAT);
+            CHECK(strcmp(e.java, "StreamFormatException") == 0);
+            CHECK(strstr(e.text, "size") != NULL);
+            CHECK_EQ(nb.cap, 0);
+            CHECK_EQ(m.allocs, allocs);             /* nothing allocated for it */
+            if (rc != ERR_FORMAT || strstr(e.text, "size") == NULL) {
+                printf("    reader %d, size %d: %s: %s\n", reader, (int) sizes[i], e.java, e.text);
+            }
+            ns_buf_free(&nb, &m);
+            stream_close(&s);
+        }
+    }
+    CHECK_MEM_ZERO(&m);
+}
+
+/* NodeStreamTester.testReadSizeExcludesMetaBlocks: meta blocks are not bytes available to
+ * a node or a record. A record at D - 8 whose size, 136, fits the stream's bytes after it
+ * (D + 144 in all), but only 24 record bytes exist there: refused. */
+TEST(ns_read_size_excludes_meta_blocks) {
+    struct mem m;
+    struct err e;
+    struct stream s;
+    static uint8_t bytes[D + 144];
+    mem_init(&m);
+    memset(bytes, 0, sizeof bytes);
+    const int64_t pos = D - 8;
+    bytes_put_int_le(136, bytes + pos);
+    stream_open_memory(&s, &m);
+    REQUIRE(stream_append_memory(&s, bytes, (int64_t) sizeof bytes, &e) == ERR_OK);
+    struct ns_buf nb = { NULL, 0 };
+    int32_t got;
+    CHECK_EQ(ns_read_trans_bytes(&s, &m, pos, &nb, &got, &e), ERR_FORMAT);
+    CHECK(strcmp(e.java, "StreamFormatException") == 0);
+    CHECK(strstr(e.text, "size") != NULL);
+    CHECK_EQ(nb.cap, 0);
+    struct sn_node n;
+    CHECK_EQ(ns_read_node(&s, &m, pos, &nb, &n, &e), ERR_FORMAT);  /* as a node, too */
+    CHECK(strstr(e.text, "size") != NULL);
+    ns_buf_free(&nb, &m);
+    stream_close(&s);
+    CHECK_MEM_ZERO(&m);
+}
+
+/* NodeStreamTester.testReadSizeAtMetaBlock: a record whose last byte is just before a
+ * meta block, in a stream that ends there (the block not written yet) or holds the block,
+ * and a record across one, are read whole. */
+TEST(ns_read_size_at_meta_block) {
+    struct mem m;
+    struct err e;
+    static uint8_t bytes[200144];
+    const int64_t lengths[] = { 200000, 200128, 200144 };
+    const int64_t pos = D - 32;
+    mem_init(&m);
+    for (int k = 0; k < 3; k++) {
+        const int32_t size = lengths[k] == 200144 ? 48 : 32;
+        uint8_t expected[48];
+        memset(expected, 0, sizeof expected);
+        bytes_put_int_le(size, expected);
+        for (int32_t i = 4; i < size; i++) {
+            expected[i] = (uint8_t) i;
+        }
+        memset(bytes, 0, sizeof bytes);
+        for (int32_t i = 0; i < size; i++) {
+            bytes[rs_get_spos(pos, i)] = expected[i];
+        }
+        struct stream s;
+        stream_open_memory(&s, &m);
+        REQUIRE(stream_append_memory(&s, bytes, lengths[k], &e) == ERR_OK);
+        struct ns_buf nb = { NULL, 0 };
+        int32_t got = -1;
+        CHECK_EQ(ns_read_trans_bytes(&s, &m, pos, &nb, &got, &e), ERR_OK);
+        CHECK_EQ(got, size);
+        CHECK(got == size && memcmp(nb.p, expected, (size_t) size) == 0);
+        ns_buf_free(&nb, &m);
+        stream_close(&s);
+    }
+    CHECK_MEM_ZERO(&m);
+}
+
 const struct test rstream_tests[] = {
     TEST_ENTRY(meta_fields),
     TEST_ENTRY(meta_check_format),
@@ -976,5 +1091,8 @@ const struct test rstream_tests[] = {
     TEST_ENTRY(rs_trans_header_fix_bytes),
     TEST_ENTRY(rs_pos_of_trans_completed_before_java),
     TEST_ENTRY(rs_pos_of_trans_completed_before_after_cut),
+    TEST_ENTRY(ns_corrupt_read_sizes),
+    TEST_ENTRY(ns_read_size_excludes_meta_blocks),
+    TEST_ENTRY(ns_read_size_at_meta_block),
     TEST_END
 };

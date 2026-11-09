@@ -10,11 +10,16 @@
  * setStartupDistance), lookups from the first available time equal to a
  * model and refused before it (getOne, getMany, getTrans of a removed
  * record), the step reserve splitting steps, and the allocation failures in
- * turn over iterations, steps, a table store and a cut. */
+ * turn over iterations, steps, a table store and a cut. Since 022-05:
+ * ReclaimRetentionTester's tests (the retain duration changed while the
+ * database runs and across restarts) and Reclaim.Tester's with restarts
+ * and a crash, in directories. */
 #define _DARWIN_C_SOURCE        /* mkdtemp */
+#include <dirent.h>
 #include <errno.h>
 #include <math.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include "test.h"
 #include "../../tools/sha256.h"
@@ -1466,6 +1471,1036 @@ TEST(reclaim_user_transaction_leaves_times) {
     CHECK_MEM_ZERO(&r.m);
 }
 
+/* ======== ReclaimRetentionTester: the retain duration changed (011-04, W2) ======== */
+
+/* What must hold whatever the changes (ReclaimRetentionTester's class
+ * comment): (1) every cut keeps the guarantee of the retain duration in
+ * force when it was decided, tEnd < the decision's time - retain; (2) the
+ * first available lookup time never moves back, also not over a restart;
+ * (3) every lookup from it on gives what the model says, before and after a
+ * restart; (4) a lookup before it is refused. A run: a database in a
+ * directory (for the restarts), node size 8, startup distance 2000, a put
+ * of one of 50 keys every 1/20 s. Java syncs after one put in ten, so that
+ * its storage thread makes the decided cuts; C forces and cuts in the call
+ * that decides a cut (c/readme.md, section 9, point 9), so the run does not
+ * sync. A cut is seen as a larger first available position after a put:
+ * C decides cuts only there (pretruncate_if_possible, at the put's time). */
+#define RR_CUTS 256
+
+struct rrun {
+    struct rdb r;
+    char dir[1024];
+    struct model *mo;
+    uint64_t rnd;
+    int64_t cutTEnd[RR_CUTS];       /* the decided cuts: tEnd, the time, the retain duration */
+    int64_t cutTime[RR_CUTS];
+    int64_t cutRetain[RR_CUTS];
+    int ncuts;
+    int sessionCuts;                /* decided since the last start (Java's stats.cuts) */
+    int64_t lastFirstPos;
+    int64_t maxFirst;               /* the largest first available time seen, over restarts */
+};
+
+/* Run.start: the database in run->dir started, the retain duration set, and
+ * the first available time not before the largest seen. */
+static bool rr_start(struct rrun *run, int64_t retain) {
+    struct err e;
+    if (rdb_start(&run->r, run->dir, 8, 2000, 0, &e) != ERR_OK) {
+        return false;
+    }
+    if (db_set_retain_duration(&run->r.db, retain, &e) != ERR_OK) {
+        return false;
+    }
+    CHECK(db_first_available_time(&run->r.db) >= run->maxFirst);
+    run->sessionCuts = 0;
+    run->lastFirstPos = db_first_available_pos(&run->r.db);
+    return true;
+}
+
+static bool rr_open(struct rrun *run, uint64_t seed, int64_t retain) {
+    static struct model mo;
+    memset(run, 0, sizeof *run);
+    memset(&mo, 0, sizeof mo);
+    run->mo = &mo;
+    run->rnd = seed;
+    mem_init(&run->r.m);
+    run->r.time = CLK_UNITS_PER_SEC;
+    rs_temp_dir(run->dir, sizeof run->dir);
+    return run->dir[0] != '\0' && rr_start(run, retain);
+}
+
+/* Run.restart: the close (which writes and forces all) and a start with
+ * another retain duration. */
+static bool rr_restart(struct rrun *run, int64_t retain) {
+    struct err e;
+    CHECK_EQ(db_recount(&run->r.db), 0);
+    if (db_close(&run->r.db, &e) != ERR_OK) {
+        return false;
+    }
+    return rr_start(run, retain);
+}
+
+/* Run.put: one put, in the model; a cut decided in its call noted. */
+static bool rr_put(struct rrun *run) {
+    struct rdb *r = &run->r;
+    r->time += CLK_UNITS_PER_SEC / 20;
+    int k = test_random_below(&run->rnd, MK);
+    char key[32];
+    snprintf(key, sizeof key, "/k/%d", k);
+    uint8_t v[32];
+    int32_t len = 1 + test_random_below(&run->rnd, 30);
+    for (int j = 0; j < len; j++) {
+        v[j] = (uint8_t) test_random(&run->rnd);
+    }
+    struct trans t;
+    if (rdb_put(r, key, v, len, &t) != ERR_OK || run->mo->n[k] >= MV) {
+        return false;
+    }
+    struct model *mo = run->mo;
+    mo->times[k][mo->n[k]] = t.tt;
+    memcpy(mo->vals[k][mo->n[k]], v, (size_t) len);
+    mo->lens[k][mo->n[k]] = len;
+    mo->n[k]++;
+    if (db_first_available_pos(&r->db) > run->lastFirstPos && run->ncuts < RR_CUTS) {
+        run->lastFirstPos = db_first_available_pos(&r->db);
+        run->cutTEnd[run->ncuts] = db_first_available_time(&r->db);
+        run->cutTime[run->ncuts] = t.tt;
+        run->cutRetain[run->ncuts] = r->db.reclaim.retainDuration;
+        run->ncuts++;
+        run->sessionCuts++;
+        CHECK_EQ(r->db.reclaim.pendingCut, -1);    /* made in the call (section 9, point 9) */
+    }
+    return true;
+}
+
+static bool rr_puts(struct rrun *run, int n) {
+    for (int i = 0; i < n; i++) {
+        if (!rr_put(run)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* Run.putUntilCuts: puts until at least cuts cuts were decided since the
+ * last start; at most max puts. */
+static bool rr_put_until_cuts(struct rrun *run, int cuts, int max) {
+    for (int i = 0; i < max && run->sessionCuts < cuts; i++) {
+        if (!rr_put(run)) {
+            return false;
+        }
+    }
+    return run->sessionCuts >= cuts;
+}
+
+/* The iteration in progress (Reclaim.currentIteration), or NULL. */
+static const struct rc_row *rr_current(const struct rrun *run) {
+    const struct reclaim *rc = &run->r.db.reclaim;
+    return rc->nrows > 0 && !rc->rows[rc->nrows - 1].done ? &rc->rows[rc->nrows - 1] : NULL;
+}
+
+/* Run.check: (1) to (4). The lookups at about 200 times from the first
+ * available time on (Java: every 1/7 s). */
+static void rr_check(struct rrun *run) {
+    struct rdb *r = &run->r;
+    for (int i = 0; i < run->ncuts; i++) {
+        CHECK(run->cutRetain[i] != INT64_MAX);
+        CHECK(run->cutTEnd[i] < run->cutTime[i] - run->cutRetain[i]);
+    }
+    const int64_t first = db_first_available_time(&r->db);
+    CHECK(first >= run->maxFirst);
+    run->maxFirst = first;
+    const int64_t from = first > 1 ? first : 1;
+    int64_t step = (r->time - from) / 200;
+    if (step < CLK_UNITS_PER_SEC / 7) {
+        step = CLK_UNITS_PER_SEC / 7;
+    }
+    for (int k = 0; k < MK; k++) {
+        const struct model *mo = run->mo;
+        if (mo->n[k] == 0) {
+            continue;
+        }
+        char key[32];
+        snprintf(key, sizeof key, "/k/%d", k);
+        uint8_t v[64];
+        int32_t len;
+        REQUIRE(rdb_get(r, INT64_MAX, key, v, &len, NULL) == ERR_OK);
+        const int32_t last = mo->n[k] - 1;
+        CHECK_EQ(len, mo->lens[k][last]);
+        CHECK(len < 0 || memcmp(v, mo->vals[k][last], (size_t) len) == 0);
+        for (int64_t lt = from; lt <= r->time; lt += step) {
+            REQUIRE(rdb_get(r, lt, key, v, &len, NULL) == ERR_OK);
+            const int32_t i = model_floor(mo, k, lt);
+            if (i < 0) {
+                CHECK_EQ(len, -1);
+            } else {
+                CHECK_EQ(len, mo->lens[k][i]);
+                CHECK(len < 0 || memcmp(v, mo->vals[k][i], (size_t) len) == 0);
+            }
+        }
+    }
+    if (first > 0) {
+        int32_t len;
+        CHECK(rdb_get(r, first - 1, "/k/0", NULL, &len, NULL) == ERR_NOT_AVAILABLE);
+    }
+}
+
+static void rr_close(struct rrun *run) {
+    close_rdb(&run->r);
+    CHECK_MEM_ZERO(&run->r.m);
+    rs_remove_dir(run->dir);
+}
+
+/* ReclaimRetentionTester.testShrinkDuringIteration: a smaller retain
+ * duration while an iteration runs; the cut that follows is decided with
+ * the new duration. */
+TEST(reclaim_retention_shrink_during_iteration) {
+    struct rrun run;
+    REQUIRE(rr_open(&run, 1, 4 * CLK_UNITS_PER_SEC));
+    for (int i = 0; i < 5000 && rr_current(&run) == NULL; i++) {
+        REQUIRE(rr_put(&run));
+    }
+    REQUIRE(rr_current(&run) != NULL);
+    CHECK_EQ(run.ncuts, 0);
+    struct err e;
+    REQUIRE(db_set_retain_duration(&run.r.db, CLK_UNITS_PER_SEC, &e) == ERR_OK);
+    REQUIRE(rr_put_until_cuts(&run, 1, 20000));
+    CHECK_EQ(run.cutRetain[0], CLK_UNITS_PER_SEC);
+    rr_check(&run);
+    REQUIRE(rr_restart(&run, CLK_UNITS_PER_SEC));
+    rr_check(&run);
+    rr_close(&run);
+}
+
+/* ReclaimRetentionTester.testShrinkMakesSeveralRowsCuttable: done
+ * iterations wait for the cut under a long duration (40 s); a short one
+ * makes them all cuttable at once. The newest is chosen, and its
+ * conditions still hold: here the second of three done rows (the third
+ * ended too recently and is not safe yet), not the first, and the rows
+ * before it are gone. */
+TEST(reclaim_retention_shrink_makes_rows_cuttable) {
+    struct rrun run;
+    REQUIRE(rr_open(&run, 2, 40 * CLK_UNITS_PER_SEC));
+    for (int i = 0; i < 6000 && run.r.db.reclaim.iterationCount < 3; i++) {
+        REQUIRE(rr_put(&run));
+    }
+    REQUIRE(run.r.db.reclaim.iterationCount >= 3);
+    CHECK_EQ(run.ncuts, 0);
+    const int64_t oldestDone = run.r.db.reclaim.rows[0].pStart;
+    CHECK(run.r.db.reclaim.rows[0].done && run.r.db.reclaim.rows[1].done);
+    struct err e;
+    REQUIRE(db_set_retain_duration(&run.r.db, CLK_UNITS_PER_SEC, &e) == ERR_OK);
+    REQUIRE(rr_put_until_cuts(&run, 1, 20000));
+    REQUIRE(run.r.db.reclaim.nrows > 0);
+    CHECK(run.r.db.reclaim.rows[0].cut);
+    CHECK(run.r.db.reclaim.rows[0].pStart > oldestDone);
+    rr_check(&run);
+    REQUIRE(rr_restart(&run, CLK_UNITS_PER_SEC));
+    REQUIRE(rr_puts(&run, 500));
+    rr_check(&run);
+    rr_close(&run);
+}
+
+/* ReclaimRetentionTester.testGrowWithPendingCut, in C's terms: a larger
+ * retain duration (100 s) right after the call that decided a cut. Java's
+ * cut is then pending, made at a later transaction once the stream is
+ * durable; C made it in the deciding call (c/readme.md, section 9, point
+ * 9; a cut pending at an open: f_reclaim.c's
+ * api_reclaim_pending_cut_at_open). What Java checks holds: the first
+ * available time does not move back, no new cut comes for a while with
+ * the longer duration, and the data stays, also after a restart. */
+TEST(reclaim_retention_grow_after_cut) {
+    struct rrun run;
+    REQUIRE(rr_open(&run, 3, CLK_UNITS_PER_SEC));
+    REQUIRE(rr_put_until_cuts(&run, 2, 20000));
+    const int64_t first = db_first_available_time(&run.r.db);
+    const int64_t firstPos = db_first_available_pos(&run.r.db);
+    struct err e;
+    REQUIRE(db_set_retain_duration(&run.r.db, 100 * CLK_UNITS_PER_SEC, &e) == ERR_OK);
+    CHECK_EQ(db_first_available_time(&run.r.db), first);
+    rr_check(&run);
+    const int cuts = run.ncuts;
+    REQUIRE(rr_puts(&run, 500));
+    CHECK_EQ(run.ncuts, cuts);
+    CHECK_EQ(db_first_available_time(&run.r.db), first);
+    CHECK_EQ(db_first_available_pos(&run.r.db), firstPos);
+    rr_check(&run);
+    REQUIRE(rr_restart(&run, 100 * CLK_UNITS_PER_SEC));
+    CHECK_EQ(db_first_available_time(&run.r.db), first);
+    rr_check(&run);
+    rr_close(&run);
+}
+
+/* ReclaimRetentionTester.testRestartWithOtherRetention: a restart with
+ * another retain duration is the same as changing it: after cuts, forever,
+ * and then a short one again. */
+TEST(reclaim_retention_restart_with_other) {
+    struct rrun run;
+    REQUIRE(rr_open(&run, 4, CLK_UNITS_PER_SEC));
+    REQUIRE(rr_put_until_cuts(&run, 2, 20000));
+    rr_check(&run);
+    const int64_t first = db_first_available_time(&run.r.db);
+    CHECK(first > 0);
+
+    REQUIRE(rr_restart(&run, INT64_MAX));
+    CHECK_EQ(db_first_available_time(&run.r.db), first);
+    rr_check(&run);
+    REQUIRE(rr_puts(&run, 1000));
+    CHECK_EQ(run.sessionCuts, 0);
+    CHECK_EQ(db_first_available_time(&run.r.db), first);
+    rr_check(&run);
+
+    REQUIRE(rr_restart(&run, 2 * CLK_UNITS_PER_SEC));
+    CHECK_EQ(db_first_available_time(&run.r.db), first);
+    REQUIRE(rr_put_until_cuts(&run, 1, 30000));
+    CHECK(db_first_available_time(&run.r.db) > first);
+    rr_check(&run);
+
+    REQUIRE(rr_restart(&run, 5 * CLK_UNITS_PER_SEC));
+    REQUIRE(rr_puts(&run, 300));
+    rr_check(&run);
+    rr_close(&run);
+}
+
+/* ReclaimRetentionTester.testForeverThenFinite: a long history made with
+ * forever; then a finite duration starts reclaim. */
+TEST(reclaim_retention_forever_then_finite) {
+    struct rrun run;
+    REQUIRE(rr_open(&run, 5, INT64_MAX));
+    REQUIRE(rr_puts(&run, 3000));
+    CHECK_EQ(db_first_available_time(&run.r.db), 0);
+    CHECK_EQ(run.r.db.reclaim.iterationCount, 0);
+    CHECK_EQ(run.r.db.reclaim.nrows, 0);
+    struct err e;
+    REQUIRE(db_set_retain_duration(&run.r.db, CLK_UNITS_PER_SEC, &e) == ERR_OK);
+    REQUIRE(rr_put_until_cuts(&run, 1, 30000));
+    rr_check(&run);
+    REQUIRE(rr_restart(&run, CLK_UNITS_PER_SEC));
+    rr_check(&run);
+    rr_close(&run);
+}
+
+/* ReclaimRetentionTester.testFiniteThenForeverMidIteration: a finite
+ * duration, then forever while an iteration runs: it ends, and no new one
+ * starts. Back to a finite duration, the cuts go on. */
+TEST(reclaim_retention_finite_then_forever_mid_iteration) {
+    struct rrun run;
+    REQUIRE(rr_open(&run, 6, 4 * CLK_UNITS_PER_SEC));
+    for (int i = 0; i < 5000 && rr_current(&run) == NULL; i++) {
+        REQUIRE(rr_put(&run));
+    }
+    REQUIRE(rr_current(&run) != NULL);
+    struct err e;
+    REQUIRE(db_set_retain_duration(&run.r.db, INT64_MAX, &e) == ERR_OK);
+    REQUIRE(rr_puts(&run, 2000));
+    const int64_t done = run.r.db.reclaim.iterationCount;
+    CHECK(done >= 1);
+    CHECK(rr_current(&run) == NULL);
+    REQUIRE(rr_puts(&run, 2000));
+    CHECK_EQ(run.r.db.reclaim.iterationCount, done);
+    CHECK_EQ(run.ncuts, 0);
+    rr_check(&run);
+    REQUIRE(db_set_retain_duration(&run.r.db, CLK_UNITS_PER_SEC, &e) == ERR_OK);
+    REQUIRE(rr_put_until_cuts(&run, 1, 30000));
+    rr_check(&run);
+    REQUIRE(rr_restart(&run, CLK_UNITS_PER_SEC));
+    rr_check(&run);
+    rr_close(&run);
+}
+
+/* ======== Reclaim.Tester's tests with restarts (startForCutTest) ======== */
+
+/* Starts r's database in dir (NULL: in memory) as Reclaim.Tester's
+ * startForCutTest: node size 8, startup distance 2000, and the retain
+ * duration 1 s set after the start (a record only when not in force). */
+static enum err_code cut_start(struct rdb *r, const char *dir) {
+    struct err e;
+    enum err_code rc = rdb_start(r, dir, 8, 2000, 0, &e);
+    if (rc == ERR_OK) {
+        rc = db_set_retain_duration(&r->db, CLK_UNITS_PER_SEC, &e);
+    }
+    return rc;
+}
+
+/* A restart as Java's tests make one on a copy of the stream: the close
+ * (which writes and forces all) and cut_start. */
+static enum err_code cut_restart(struct rdb *r, const char *dir) {
+    struct err e;
+    CHECK_EQ(db_recount(&r->db), 0);
+    enum err_code rc = db_close(&r->db, &e);
+    return rc != ERR_OK ? rc : cut_start(r, dir);
+}
+
+/* A put of a random value (1 to max bytes) to /k/N, N below nkeys, at the
+ * clock 1/20 s later; the key's number and the value into *k, v, *len. */
+static enum err_code cut_put(struct rdb *r, uint64_t *rnd, int nkeys, int max, int *k,
+        uint8_t *v, int32_t *len) {
+    r->time += CLK_UNITS_PER_SEC / 20;
+    *k = test_random_below(rnd, nkeys);
+    *len = 1 + test_random_below(rnd, max);
+    for (int32_t j = 0; j < *len; j++) {
+        v[j] = (uint8_t) test_random(rnd);
+    }
+    char key[32];
+    snprintf(key, sizeof key, "/k/%d", *k);
+    return rdb_put(r, key, v, *len, NULL);
+}
+
+/* Each live value of /k/0 to /k/n-1 reads back at the latest time. */
+static void check_live(struct rdb *r, int n, uint8_t (*vals)[64], const int32_t *lens) {
+    for (int k = 0; k < n; k++) {
+        if (lens[k] <= 0) {
+            continue;
+        }
+        char key[32];
+        snprintf(key, sizeof key, "/k/%d", k);
+        uint8_t v[64];
+        int32_t len;
+        CHECK(rdb_get(r, INT64_MAX, key, v, &len, NULL) == ERR_OK);
+        CHECK_EQ(len, lens[k]);
+        CHECK(len != lens[k] || memcmp(v, vals[k], (size_t) len) == 0);
+    }
+}
+
+/* Reclaim.Tester.testRestartAfterCut and testWritesAfterCut (bugs found
+ * 2026-10-13 by ReclaimStress): a start after a cut, whose meta block before
+ * the last transaction was cut away (the search for a meta block went down
+ * to position 0), reads every live value; and the writes after it, whose
+ * index nodes have dead pointers to versions below the cut in their
+ * history (NodeCollection.resolvePointers read their headers), go on: 500
+ * more puts, every value read back, and again after a second restart. In a
+ * directory, whose physical cut is by whole files; the decided cut is the
+ * first available position. */
+TEST(reclaim_restart_after_cut) {
+    struct rdb r;
+    char dir[1024];
+    static uint8_t vals[50][64];
+    int32_t lens[50];
+    memset(lens, 0, sizeof lens);
+    mem_init(&r.m);
+    rs_temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    r.time = CLK_UNITS_PER_SEC;
+    REQUIRE(cut_start(&r, dir) == ERR_OK);
+    uint64_t rnd = 2;
+    for (int i = 0; i < 3000 && db_first_available_pos(&r.db) == 0; i++) {
+        int k;
+        uint8_t v[64];
+        int32_t len;
+        REQUIRE(cut_put(&r, &rnd, 50, 30, &k, v, &len) == ERR_OK);
+        memcpy(vals[k], v, (size_t) len);
+        lens[k] = len;
+    }
+    REQUIRE(db_first_available_pos(&r.db) > 0);
+    REQUIRE(cut_restart(&r, dir) == ERR_OK);
+    check_live(&r, 50, vals, lens);
+    const int64_t firstPos = db_first_available_pos(&r.db);
+    for (int i = 0; i < 500; i++) {
+        int k;
+        uint8_t v[64];
+        int32_t len;
+        REQUIRE(cut_put(&r, &rnd, 50, 30, &k, v, &len) == ERR_OK);
+        memcpy(vals[k], v, (size_t) len);
+        lens[k] = len;
+    }
+    CHECK(db_first_available_pos(&r.db) > firstPos);       /* cuts after the restart */
+    check_live(&r, 50, vals, lens);
+    REQUIRE(cut_restart(&r, dir) == ERR_OK);
+    check_live(&r, 50, vals, lens);
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+    rs_remove_dir(dir);
+}
+
+/* Reclaim.Tester.testFirstAvailableTimeAfterRestart (a bug found 2026-10-13
+ * by ReclaimStress): after a restart the first available lookup time was
+ * taken from the last completed iteration, also when the stream had not
+ * been cut there yet, and lookups in the retention window failed. Five
+ * restarts, each right after an iteration is done (it is not yet cut
+ * there): the first available time is the one before the restart, a lookup
+ * at it is answered and one before it refused. */
+TEST(reclaim_first_available_time_after_restart) {
+    struct rdb r;
+    char dir[1024];
+    mem_init(&r.m);
+    rs_temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    r.time = CLK_UNITS_PER_SEC;
+    REQUIRE(cut_start(&r, dir) == ERR_OK);
+    uint64_t rnd = 3;
+    int restarts = 0;
+    for (int i = 1; i < 3000 && restarts < 5; i++) {
+        int k;
+        uint8_t v[64];
+        int32_t len;
+        REQUIRE(cut_put(&r, &rnd, 50, 30, &k, v, &len) == ERR_OK);
+        if (r.db.reclaim.iterationCount > 0 && db_first_available_pos(&r.db) > 0) {
+            const int64_t first = db_first_available_time(&r.db);
+            const int64_t firstPos = db_first_available_pos(&r.db);
+            REQUIRE(cut_restart(&r, dir) == ERR_OK);
+            restarts++;
+            CHECK_EQ(db_first_available_time(&r.db), first);
+            CHECK_EQ(db_first_available_pos(&r.db), firstPos);
+            CHECK(rdb_get(&r, first, "/k/1", NULL, &len, NULL) == ERR_OK);
+            CHECK(rdb_get(&r, first - 1, "/k/1", NULL, &len, NULL) == ERR_NOT_AVAILABLE);
+        }
+    }
+    CHECK(restarts >= 5);
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+    rs_remove_dir(dir);
+}
+
+/* A full scan at the latest time (DbUtil.checksum): the live values. */
+static bool count_live(void *ctx, const struct kvt *kvt) {
+    if (kvt->value->len >= 0) {
+        (*(int *) ctx)++;
+    }
+    return true;
+}
+
+/* Reclaim.Tester.testDeletedKeysAfterCut (a bug found 2026-10-13 by
+ * ReclaimStress, Q7 in 011-01): an iteration rewrote live values only, so
+ * nodes that hold only deleted keys, and the segment subtrees of deleted
+ * long keys, kept their versions below the cut, and lookups and scans still
+ * passed through them. 100 keys and 100 long keys put and 60 of each
+ * deleted, then puts to the others until three cuts; a scan and the gets of
+ * the deleted keys. In memory, whose cut is exact (CutStream), and in a
+ * directory with a restart from the cut stream. */
+static void deleted_keys_after_cut(bool restart) {
+    struct rdb r;
+    char dir[1024] = "";
+    mem_init(&r.m);
+    if (restart) {
+        rs_temp_dir(dir, sizeof dir);
+        REQUIRE(dir[0] != '\0');
+    }
+    r.time = CLK_UNITS_PER_SEC;
+    REQUIRE(cut_start(&r, restart ? dir : NULL) == ERR_OK);
+    struct err e;
+    for (int i = 0; i < 160; i++) {
+        r.time += CLK_UNITS_PER_SEC / 20;
+        char k1[32], k2[32];
+        snprintf(k1, sizeof k1, "/k/%d", i % 100);
+        snprintf(k2, sizeof k2, "/long/%d", i % 100);
+        int64_t s1[8], s2[8];
+        int32_t n1, n2;
+        ikey_segments(k1, s1, &n1);
+        ikey_segments(k2, s2, &n2);
+        struct tr_builder b;
+        struct trans t;
+        tr_builder_init(&b, &r.m);
+        tr_init(&t, &r.m);
+        const uint8_t *v = i < 100 ? (const uint8_t *) "v" : NULL;     /* then deletes */
+        const int32_t len = i < 100 ? 1 : -1;
+        REQUIRE(tr_put_segments(&b, s1, n1, v, len, &e) == ERR_OK);
+        REQUIRE(tr_put_segments(&b, s2, n2, v, len, &e) == ERR_OK);
+        REQUIRE(tr_build(&b, &t, &e) == ERR_OK);
+        REQUIRE(db_execute(&r.db, &t, &e) == ERR_OK);
+        tr_free(&t);
+        tr_builder_free(&b);
+    }
+    uint64_t rnd = 5;
+    int64_t cut = 0;
+    int cuts = 0;
+    for (int i = 0; i < 4000 && cuts < 3; i++) {
+        r.time += CLK_UNITS_PER_SEC / 20;
+        char key[32], v[32];
+        snprintf(key, sizeof key, "/k/%d", 60 + test_random_below(&rnd, 40));
+        snprintf(v, sizeof v, "w%d", i);
+        REQUIRE(rdb_put(&r, key, (const uint8_t *) v, (int32_t) strlen(v), NULL) == ERR_OK);
+        if (db_first_available_pos(&r.db) > cut) {
+            cut = db_first_available_pos(&r.db);
+            cuts++;
+        }
+    }
+    CHECK(cuts >= 3);
+    if (!restart) {
+        CHECK_EQ(stream_first_pos(&r.db.stream), cut);      /* the exact cut */
+    } else {
+        REQUIRE(cut_restart(&r, dir) == ERR_OK);
+    }
+    int live = 0;
+    struct getmany g;
+    db_new_get_many(&r.db, &g);
+    g.result.add = count_live;
+    g.result.ctx = &live;
+    CHECK(db_get_many(&r.db, &g, &e) == ERR_OK);
+    CHECK_EQ(live, 80 + 3);         /* and reclaim's table, current row and settings */
+    for (int i = 0; i < 100; i++) {
+        char k1[32], k2[32];
+        snprintf(k1, sizeof k1, "/k/%d", i);
+        snprintf(k2, sizeof k2, "/long/%d", i);
+        int32_t len;
+        CHECK(rdb_get(&r, INT64_MAX, k1, NULL, &len, NULL) == ERR_OK);
+        CHECK(i < 60 ? len == -1 : len > 0);
+        CHECK(rdb_get(&r, INT64_MAX, k2, NULL, &len, NULL) == ERR_OK);
+        CHECK(i < 60 ? len == -1 : len == 1);
+    }
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+    if (restart) {
+        rs_remove_dir(dir);
+    }
+}
+
+TEST(reclaim_deleted_keys_after_cut) {
+    deleted_keys_after_cut(false);
+    deleted_keys_after_cut(true);
+}
+
+/* Reclaim.Tester.testRestartResumesIteration (2026-10-13): steps store only
+ * the row of the iteration (CURRENT_KEY_NAME), not the whole table, and a
+ * restart resumes the iteration from that row. 3,000 keys loaded with
+ * forever, so that the first iteration has steps; then the retain duration
+ * 1 s and puts until three steps: the table's record stays the one that
+ * started the iteration, and after a restart the iteration in progress is
+ * the row as it was, byte for byte in its text. */
+TEST(reclaim_restart_resumes_iteration) {
+    struct rdb r;
+    struct err e;
+    char dir[1024];
+    mem_init(&r.m);
+    rs_temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    r.time = CLK_UNITS_PER_SEC;
+    REQUIRE(cut_start(&r, dir) == ERR_OK);
+    REQUIRE(db_set_retain_duration(&r.db, INT64_MAX, &e) == ERR_OK);
+    static const uint8_t ten[10];
+    for (int i = 0; i < 3000; i += 100) {
+        r.time += CLK_UNITS_PER_SEC / 20;
+        struct tr_builder b;
+        struct trans t;
+        tr_builder_init(&b, &r.m);
+        tr_init(&t, &r.m);
+        for (int j = i; j < i + 100; j++) {
+            char key[32];
+            int64_t seg[8];
+            int32_t n;
+            snprintf(key, sizeof key, "/k/%d", j);
+            ikey_segments(key, seg, &n);
+            REQUIRE(tr_put_segments(&b, seg, n, ten, 10, &e) == ERR_OK);
+        }
+        REQUIRE(tr_build(&b, &t, &e) == ERR_OK);
+        REQUIRE(db_execute(&r.db, &t, &e) == ERR_OK);
+        tr_free(&t);
+        tr_builder_free(&b);
+    }
+    REQUIRE(db_set_retain_duration(&r.db, CLK_UNITS_PER_SEC, &e) == ERR_OK);
+    uint64_t rnd = 4;
+    int64_t tableTpos = -1;
+    int steps = 0;
+    static char before[4096];
+    int64_t lastKey[64];
+    int32_t lastKey_n = -1;
+    before[0] = '\0';
+    for (int i = 0; i < 5000 && steps < 3; i++) {
+        int k;
+        uint8_t v[64];
+        int32_t len;
+        REQUIRE(cut_put(&r, &rnd, 3000, 30, &k, v, &len) == ERR_OK);
+        const struct reclaim *rc = &r.db.reclaim;
+        const struct rc_row *cur = rc->nrows > 0 && !rc->rows[rc->nrows - 1].done
+                ? &rc->rows[rc->nrows - 1] : NULL;
+        if (cur == NULL) {
+            /* The first iteration only: no other gets safe or cut (and stores
+             * the table) while it runs. */
+            CHECK_EQ(tableTpos, -1);
+            continue;
+        }
+        int64_t tpos = -1;
+        CHECK(rdb_get(&r, INT64_MAX, RC_TABLE_KEY_NAME, NULL, &len, &tpos) == ERR_OK);
+        if (tableTpos == -1) {
+            tableTpos = tpos;
+        } else {
+            CHECK_EQ(tpos, tableTpos);      /* the table was not stored by a step */
+        }
+        if (!cur->lastKeyNull && (cur->lastKey_n != lastKey_n
+                || memcmp(cur->lastKey, lastKey, (size_t) lastKey_n * sizeof(int64_t)) != 0)) {
+            steps++;
+            REQUIRE(cur->lastKey_n <= 64);
+            lastKey_n = cur->lastKey_n;
+            memcpy(lastKey, cur->lastKey, (size_t) lastKey_n * sizeof(int64_t));
+        }
+        REQUIRE(rc_row_text_cap(cur) <= sizeof before);
+        rc_row_text(cur, before, sizeof before);
+    }
+    CHECK(steps >= 3);
+    REQUIRE(cut_restart(&r, dir) == ERR_OK);
+    const struct reclaim *rc = &r.db.reclaim;
+    REQUIRE(rc->nrows > 0 && !rc->rows[rc->nrows - 1].done);
+    static char after[4096];
+    REQUIRE(rc_row_text_cap(&rc->rows[rc->nrows - 1]) <= sizeof after);
+    rc_row_text(&rc->rows[rc->nrows - 1], after, sizeof after);
+    CHECK(strcmp(before, after) == 0);
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+    rs_remove_dir(dir);
+}
+
+/* Reclaim.Tester's distancePuts: the retain duration 1 s, count small puts
+ * 1/20 s apart; each iteration that starts does so when the stream has grown
+ * by more than twice the startup distance since the last one started.
+ * Returns the iterations completed. */
+static int64_t distance_puts(struct rdb *r, int count) {
+    struct err e;
+    if (db_set_retain_duration(&r->db, CLK_UNITS_PER_SEC, &e) != ERR_OK) {
+        CHECK(0);
+        return -1;
+    }
+    uint64_t rnd = 1;
+    const int64_t before = r->db.reclaim.iterationCount;
+    static const uint8_t zeros[64];
+    for (int i = 0; i < count; i++) {
+        r->time += CLK_UNITS_PER_SEC / 20;
+        const struct reclaim *rc = &r->db.reclaim;
+        const int64_t pStart = rc->nrows > 0 ? rc->rows[rc->nrows - 1].pStart : 0;
+        char key[32];
+        snprintf(key, sizeof key, "/k/%d", test_random_below(&rnd, 50));
+        if (rdb_put(r, key, zeros, 1 + test_random_below(&rnd, 60), NULL) != ERR_OK) {
+            CHECK(0);
+            return -1;
+        }
+        const int64_t next = rc->nrows > 0 ? rc->rows[rc->nrows - 1].pStart : 0;
+        if (next != pStart) {
+            CHECK(next - pStart > INT64_C(2) * r->db.startup_distance);
+        }
+    }
+    return r->db.reclaim.iterationCount - before;
+}
+
+/* Reclaim.Tester.testIterationsFollowTheStreamsStartupDistance (005-53,
+ * question 3; fixed in 005-61): reclaim kept the builder's startup distance,
+ * not the stream's that the start reads; a database made at 2000 bytes and
+ * restarted with the default (50 MB) nearly stopped reclaiming. Restarted
+ * with the default or with 2000, on copies of one directory, it reclaims
+ * the same: the iterations and the stream's length from the first
+ * available position. */
+TEST(reclaim_iterations_follow_stream_distance) {
+    struct rdb r;
+    struct err e;
+    char dir[1024], copy[1024], cmd[2200];
+    mem_init(&r.m);
+    rs_temp_dir(dir, sizeof dir);
+    rs_temp_dir(copy, sizeof copy);
+    REQUIRE(dir[0] != '\0' && copy[0] != '\0');
+    r.time = CLK_UNITS_PER_SEC;
+    REQUIRE(rdb_start(&r, dir, 30, 2000, 0, &e) == ERR_OK);
+    distance_puts(&r, 300);
+    REQUIRE(db_close(&r.db, &e) == ERR_OK);
+    const int64_t t0 = r.time;
+    int64_t iterations[2], length[2];
+    for (int run = 0; run < 2; run++) {
+        snprintf(cmd, sizeof cmd, "rm -rf '%s' && cp -R '%s' '%s'", copy, dir, copy);
+        REQUIRE(system(cmd) == 0);
+        r.time = t0;
+        REQUIRE(rdb_start(&r, copy, 30, run == 0 ? 2000 : 50 * 1000 * 1000, 0, &e) == ERR_OK);
+        CHECK_EQ(r.db.startup_distance, 2000);
+        iterations[run] = distance_puts(&r, 800);
+        length[run] = db_stream_length(&r.db) - db_first_available_pos(&r.db);
+        close_rdb(&r);
+    }
+    printf("  reclaim_iterations_follow_stream_distance: %lld and %lld "
+            "iterations\n", (long long) iterations[0], (long long) iterations[1]);
+    CHECK(iterations[0] >= 10);
+    CHECK_EQ(iterations[0], iterations[1]);
+    CHECK_EQ(length[0], length[1]);
+    CHECK_MEM_ZERO(&r.m);
+    rs_remove_dir(dir);
+    rs_remove_dir(copy);
+}
+
+/* Reclaim.Tester.testCutKeepsMetaBlockTransaction (a bug found 2026-10-13 by
+ * ReclaimStress): a start after a cut failed when the last valid meta block
+ * named a transaction before the cut, where recovery starts; the cut
+ * checked only that the meta block itself came after the cut position.
+ * Puts to five keys with a startup distance of 10,000 and a restart after
+ * every cut; Java's f-test runs 20 seeds of 3,000 puts, here 3 seeds of
+ * 1,500. */
+TEST(reclaim_cut_keeps_meta_block_transaction) {
+    int restarts = 0;
+    for (uint64_t seed = 0; seed < 3; seed++) {
+        struct rdb r;
+        struct err e;
+        char dir[1024];
+        mem_init(&r.m);
+        rs_temp_dir(dir, sizeof dir);
+        REQUIRE(dir[0] != '\0');
+        r.time = CLK_UNITS_PER_SEC;
+        REQUIRE(rdb_start(&r, dir, 30, 10000, 0, &e) == ERR_OK);
+        REQUIRE(db_set_retain_duration(&r.db, CLK_UNITS_PER_SEC, &e) == ERR_OK);
+        uint64_t rnd = seed + 1;
+        int64_t cut = 0;
+        static const uint8_t zeros[64];
+        for (int i = 0; i < 1500; i++) {
+            r.time += CLK_UNITS_PER_SEC / 20;
+            char key[32];
+            snprintf(key, sizeof key, "/k/%d", test_random_below(&rnd, 5));
+            REQUIRE(rdb_put(&r, key, zeros, 1 + test_random_below(&rnd, 60), NULL) == ERR_OK);
+            if (db_first_available_pos(&r.db) > cut) {
+                cut = db_first_available_pos(&r.db);
+                REQUIRE(db_close(&r.db, &e) == ERR_OK);
+                REQUIRE(rdb_start(&r, dir, 30, 10000, 0, &e) == ERR_OK);
+                CHECK_EQ(db_first_available_pos(&r.db), cut);
+                restarts++;
+            }
+        }
+        CHECK(cut > 0);
+        close_rdb(&r);
+        CHECK_MEM_ZERO(&r.m);
+        rs_remove_dir(dir);
+    }
+    CHECK(restarts >= 6);
+}
+
+/* Reclaim.Tester.testPretruncate: the same key put again and again with a
+ * value of 100,000 bytes, a second apart, the retain duration 1 s and a
+ * startup distance of 100,000: reclaim cuts the stream past the first
+ * value (CutStream's exact cut, in memory). */
+TEST(reclaim_pretruncate) {
+    struct rdb r;
+    mem_init(&r.m);
+    r.time = 10;
+    REQUIRE(rdb_open(&r, 30, 100 * 1000, 0, CLK_UNITS_PER_SEC) == ERR_OK);
+    static uint8_t value[100000];
+    for (int i = 0; i < 40; i++) {
+        r.time = (i + 1) * CLK_UNITS_PER_SEC;
+        REQUIRE(rdb_put(&r, "/k", value, (int32_t) sizeof value, NULL) == ERR_OK);
+    }
+    r.time = 40 * CLK_UNITS_PER_SEC + 1;
+    REQUIRE(rdb_put(&r, "/k2", value, (int32_t) sizeof value, NULL) == ERR_OK);
+    CHECK(stream_first_pos(&r.db.stream) > (int64_t) sizeof value);
+    CHECK_EQ(stream_first_pos(&r.db.stream), db_first_available_pos(&r.db));
+    int32_t len;
+    CHECK(rdb_get(&r, INT64_MAX, "/k", NULL, &len, NULL) == ERR_OK);
+    CHECK_EQ(len, (int32_t) sizeof value);
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+}
+
+/* A crash of a closed directory's stream at pos, as a crash leaves it: the
+ * files from pos on deleted, the one that holds pos cut there. */
+static bool crash_dir(const char *dir, int64_t pos) {
+    DIR *d = opendir(dir);
+    struct dirent *x;
+    bool ok = d != NULL;
+    while (ok && (x = readdir(d)) != NULL) {
+        size_t len = strlen(x->d_name);
+        if (len != 21 || strcmp(x->d_name + 14, ".bergdb") != 0) {
+            continue;
+        }
+        char path[1200];
+        struct stat st;
+        snprintf(path, sizeof path, "%s/%s", dir, x->d_name);
+        const int64_t start = strtoll(x->d_name, NULL, 10) * STREAM_INDEX_UNIT;
+        if (stat(path, &st) != 0) {
+            ok = false;
+        } else if (start >= pos) {
+            ok = unlink(path) == 0;
+        } else if (start + (int64_t) st.st_size > pos) {
+            ok = truncate(path, (off_t) (pos - start)) == 0;
+        }
+    }
+    if (d != NULL) {
+        closedir(d);
+    }
+    return ok;
+}
+
+/* Reclaim.Tester.testCrashBeforeIterationEnd (a bug found 2026-10-13 by
+ * CrashTest with reclaim): the last step of an iteration stored the row as
+ * done, and tEnd and pEnd followed in the next record; after a crash between
+ * the two, the row was done with tEnd 0, and the cut there made 0 the first
+ * available lookup time. A put whose call ends an iteration, after a cut:
+ * the stream crashed after the call's first record and before its second
+ * (Java's crash position), unless the call forced past it (a cut it
+ * decided: C forces in that call, so no crash can lose it; Java's CutStream
+ * refuses such a crash too). After the restart every done row has its tEnd
+ * and pEnd; from then on a cut always comes with a first available time
+ * after it; reclaim cuts again, and the lookups from the first available
+ * time on equal the model, 200 puts after that cut (Java's run goes on to
+ * 2,500 puts). */
+TEST(reclaim_crash_before_iteration_end) {
+    struct rdb r;
+    struct err e;
+    char dir[1024];
+    static struct model mo;
+    memset(&mo, 0, sizeof mo);
+    mem_init(&r.m);
+    rs_temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    r.time = CLK_UNITS_PER_SEC;
+    REQUIRE(cut_start(&r, dir) == ERR_OK);
+    uint64_t rnd = 6;
+    bool crashed = false;
+    int64_t cutAtCrash = 0;
+    int skipped = 0;
+    int after = -1;         /* puts after the first cut after the crash; Java's run goes on */
+    for (int i = 0; i < 2500 && after < 200; i++) {
+        r.time += CLK_UNITS_PER_SEC / 20;
+        const int k = test_random_below(&rnd, MK);
+        char key[32];
+        snprintf(key, sizeof key, "/k/%d", k);
+        uint8_t v[32];
+        const int32_t len = 1 + test_random_below(&rnd, 30);
+        for (int j = 0; j < len; j++) {
+            v[j] = (uint8_t) test_random(&rnd);
+        }
+        const int64_t count = r.db.reclaim.iterationCount;
+        struct trans t;
+        REQUIRE(rdb_put(&r, key, v, len, &t) == ERR_OK);
+        REQUIRE(mo.n[k] < MV);
+        mo.times[k][mo.n[k]] = t.tt;
+        memcpy(mo.vals[k][mo.n[k]], v, (size_t) len);
+        mo.lens[k][mo.n[k]] = len;
+        mo.n[k]++;
+        if (!crashed && r.db.reclaim.iterationCount > count && db_first_available_pos(&r.db) > 0) {
+            /* After t come the iteration's last records; a crash between the
+             * first and the second. */
+            struct ns_iter it;
+            bool has1 = false, has2 = false;
+            ns_iter_init(&it, &r.db.stream, &r.m, t.next_pos, true);
+            CHECK(ns_iter_next(&it, &has1, &e) == ERR_OK);
+            CHECK(ns_iter_next(&it, &has2, &e) == ERR_OK);
+            const int64_t crashPos = it.tpos;
+            ns_iter_free(&it);
+            if (!has1 || !has2 || crashPos < stream_durable_length(&r.db.stream)) {
+                skipped++;
+                continue;
+            }
+            REQUIRE(db_close(&r.db, &e) == ERR_OK);
+            REQUIRE(crash_dir(dir, crashPos));
+            REQUIRE(cut_start(&r, dir) == ERR_OK);
+            crashed = true;
+            cutAtCrash = db_first_available_pos(&r.db);
+            for (int32_t q = 0; q < r.db.reclaim.nrows; q++) {
+                const struct rc_row *row = &r.db.reclaim.rows[q];
+                CHECK(!row->done || (row->tEnd >= row->tStart && row->pEnd >= row->pStart));
+            }
+        }
+        /* A cut always comes with a first available lookup time after it. */
+        if (db_first_available_pos(&r.db) > 0) {
+            CHECK(db_first_available_time(&r.db) > 0);
+        }
+        if (after >= 0 || (crashed && db_first_available_pos(&r.db) > cutAtCrash)) {
+            after++;
+        }
+    }
+    CHECK(crashed);
+    CHECK(db_first_available_pos(&r.db) > cutAtCrash);
+    const int64_t first = db_first_available_time(&r.db);
+    CHECK(first > 0);
+    for (int64_t lt = first; lt <= r.time; lt += CLK_UNITS_PER_SEC / 4) {
+        for (int k = 0; k < MK; k++) {
+            char key[32];
+            snprintf(key, sizeof key, "/k/%d", k);
+            uint8_t v[64];
+            int32_t len;
+            REQUIRE(rdb_get(&r, lt, key, v, &len, NULL) == ERR_OK);
+            const int32_t i = model_floor(&mo, k, lt);
+            if (i < 0) {
+                CHECK_EQ(len, -1);
+            } else {
+                CHECK_EQ(len, mo.lens[k][i]);
+                CHECK(len < 0 || memcmp(v, mo.vals[k][i], (size_t) len) == 0);
+            }
+        }
+    }
+    printf("  reclaim_crash_before_iteration_end: crashed at an iteration's end after %d "
+            "skipped (forced past)\n", skipped);
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+    rs_remove_dir(dir);
+}
+
+/* Counts the pairs of a getMany. */
+static bool count_pairs(void *ctx, const struct kvt *kvt) {
+    (void) kvt;
+    (*(int *) ctx)++;
+    return true;
+}
+
+/* Reclaim.Tester.test1: 40 values of 100,000 bytes put with a startup
+ * distance of 100,000 (no reclaim: the retain duration forever), and a
+ * getMany of all at the latest time gives the 40 (Java allows one more). */
+TEST(reclaim_test1) {
+    struct rdb r;
+    struct err e;
+    mem_init(&r.m);
+    r.time = 10;
+    REQUIRE(rdb_start(&r, NULL, 30, 100 * 1000, 0, &e) == ERR_OK);
+    static uint8_t value[100000];
+    for (int i = 0; i < 40; i++) {
+        r.time = 1000 + i * 10;
+        char key[16];
+        snprintf(key, sizeof key, "%d", i);
+        REQUIRE(rdb_put(&r, key, value, (int32_t) sizeof value, NULL) == ERR_OK);
+    }
+    int n = 0;
+    struct getmany g;
+    db_new_get_many(&r.db, &g);
+    g.result.add = count_pairs;
+    g.result.ctx = &n;
+    CHECK(db_get_many(&r.db, &g, &e) == ERR_OK);
+    CHECK_EQ(n, 40);
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+}
+
+/* Reclaim.Tester.testCutIsMadeAfterDecisionIsDurable (011-04, W5c), in
+ * C's terms: the cut is made only when the stream is durable up to the
+ * decision (the table that marks it, the meta block that recovery starts
+ * from). Java's storage thread makes it durable later, and the cut follows
+ * at a later transaction; C forces in the call that decides the cut and
+ * cuts there (c/readme.md, section 9, point 9). In a directory, with no
+ * sync: after each call that decided a cut, none is pending, the stream is
+ * durable past the length at the decision, and the files before the one
+ * that holds the cut are gone (the first position at or before the cut,
+ * past the files before it). Three cuts or more, until one has deleted a
+ * file. */
+TEST(reclaim_cut_made_when_durable) {
+    struct rdb r;
+    char dir[1024];
+    mem_init(&r.m);
+    rs_temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    r.time = CLK_UNITS_PER_SEC;
+    REQUIRE(cut_start(&r, dir) == ERR_OK);
+    uint64_t rnd = 8;
+    int64_t lastCut = 0;
+    int cuts = 0;
+    int deleted = 0;
+    static uint8_t value[4000];
+    for (int i = 0; i < 30000 && (cuts < 3 || deleted == 0); i++) {
+        r.time += CLK_UNITS_PER_SEC / 20;
+        char key[32];
+        snprintf(key, sizeof key, "/k/%d", test_random_below(&rnd, 50));
+        const int64_t before = stream_durable_length(&r.db.stream);
+        REQUIRE(rdb_put(&r, key, value, 1000 + test_random_below(&rnd, 3000), NULL) == ERR_OK);
+        const int64_t cut = db_first_available_pos(&r.db);
+        if (cut > lastCut) {
+            lastCut = cut;
+            cuts++;
+            CHECK_EQ(r.db.reclaim.pendingCut, -1);
+            CHECK(stream_durable_length(&r.db.stream) > before);
+            CHECK(stream_durable_length(&r.db.stream) >= r.db.reclaim.pendingCutDurableAt);
+            CHECK(stream_first_pos(&r.db.stream) <= cut);
+            if (stream_first_pos(&r.db.stream) > 0) {
+                deleted++;
+            }
+        } else {
+            /* No sync and no cut decided: nothing forced. */
+            CHECK_EQ(stream_durable_length(&r.db.stream), before);
+        }
+    }
+    CHECK(cuts >= 3);
+    CHECK(deleted > 0);
+    printf("  reclaim_cut_made_when_durable: %d cuts, %d with files deleted\n", cuts, deleted);
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+    rs_remove_dir(dir);
+}
+
 const struct test reclaim_tests[] = {
     TEST_ENTRY(reclaim_row_text),
     TEST_ENTRY(reclaim_row_parse),
@@ -1489,5 +2524,21 @@ const struct test reclaim_tests[] = {
     TEST_ENTRY(reclaim_safe_pos_after_the_calls_records),
     TEST_ENTRY(reclaim_step_within_value_limit),
     TEST_ENTRY(reclaim_user_transaction_leaves_times),
+    TEST_ENTRY(reclaim_retention_shrink_during_iteration),
+    TEST_ENTRY(reclaim_retention_shrink_makes_rows_cuttable),
+    TEST_ENTRY(reclaim_retention_grow_after_cut),
+    TEST_ENTRY(reclaim_retention_restart_with_other),
+    TEST_ENTRY(reclaim_retention_forever_then_finite),
+    TEST_ENTRY(reclaim_retention_finite_then_forever_mid_iteration),
+    TEST_ENTRY(reclaim_restart_after_cut),
+    TEST_ENTRY(reclaim_first_available_time_after_restart),
+    TEST_ENTRY(reclaim_deleted_keys_after_cut),
+    TEST_ENTRY(reclaim_restart_resumes_iteration),
+    TEST_ENTRY(reclaim_iterations_follow_stream_distance),
+    TEST_ENTRY(reclaim_cut_keeps_meta_block_transaction),
+    TEST_ENTRY(reclaim_pretruncate),
+    TEST_ENTRY(reclaim_crash_before_iteration_end),
+    TEST_ENTRY(reclaim_test1),
+    TEST_ENTRY(reclaim_cut_made_when_durable),
     TEST_END
 };
