@@ -932,3 +932,19 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `toString()` gives a short tag, "o" for an object, and that the value
   classes have no `equals()` of their own. `Connection.transactionInfo()`
   says how to walk the versions of a key, newest first.
+* **Damaged files, a full disk, the lock file** (bergdb 020-24-08, U8-1,
+  U8-3, U8-4, U8-8 to U8-10, from a new user's log store on a file system
+  that misbehaves): `Database`'s "The files" says that a start cannot tell
+  a crash's cut tail from a lost last stream file, so that a last file
+  deleted, emptied or cut while the database is stopped loses synced
+  transactions without an error (also in `sync()` and `docs/levels.md`,
+  section 8); that a tail of zeros or other bytes, which a power loss can
+  leave on some file systems, is refused with a `StreamFormatException`
+  ("Bad transaction size ... spos P"), and how to cut the stream at P; and
+  that a full disk is freed only from outside, or by copying the files to
+  a larger disk. `DatabaseBuilder.create()` says that a directory with
+  stream files and without `created.txt` is opened, not made new;
+  `start()` says what `bergdb.lock` does, that deleting it lets a second
+  process start on the same files, and that a start may write, so a full
+  disk may refuse it. `Job.join()` says that ACTIVE is not yet durable.
+  A stream message's typo, "Was is modified", is fixed.

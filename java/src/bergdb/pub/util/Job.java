@@ -22,7 +22,11 @@ public interface Job {
      * index is built, or BUILDING if the database stopped or failed (the next start takes
      * the build again). If the build ended already, returns at once. An interrupt of the
      * calling thread ends the wait: the method returns the status, BUILDING while the build
-     * goes on, and the thread's interrupt flag is set (bergdb 005-46).
+     * goes on, and the thread's interrupt flag is set (bergdb 005-46). ACTIVE means that the
+     * build's transactions have committed, not that they are durable: as for any
+     * transaction, a crash or a failure of the database before a sync (Database.sync()) can
+     * undo them, and the next start then takes the build again, or, if the creation was
+     * undone too, the index is absent (IndexBuilder.start(); bergdb 020-24-08, U8-10).
      *
      * <p>If the build failed, the method throws IndexBuildException instead, each time it is
      * called, also on the job that Database.indexJob(name) gives later. A build fails when

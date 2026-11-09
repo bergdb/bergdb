@@ -29,8 +29,10 @@ public interface DatabaseBuilder {
      * <p>A directory that holds a database has created.txt, written once the database's
      * creation is durable; start() refuses one that has created.txt and no stream file
      * (*.bergdb) with a byte, with a DatabaseMissingException (bergdb 015-01). A directory
-     * without created.txt, also an empty or a missing one, gets a new, empty database, as a
-     * wrong path or a volume that is not mounted does too. An application that must never
+     * without created.txt and without a stream file with a byte, also an empty or a missing
+     * one, gets a new, empty database, as a wrong path or a volume that is not mounted does
+     * too. A directory with stream files and without created.txt is opened, and the start
+     * writes created.txt again (bergdb 020-24-08, U8-8). An application that must never
      * create a database there uses {@link #open(String)}.</p>
      * 
      * @param dirname  The database's directory.
@@ -162,7 +164,12 @@ public interface DatabaseBuilder {
      * builder started or one that is closing after stop(), start() throws a
      * StreamIoException whose cause is a bergdb.stream.DirectoryInUseException. Nothing in
      * the directory has been read or changed then, and the database that has it runs on as
-     * before (bergdb 015-56).</p>
+     * before (bergdb 015-56). The lock is the operating system's lock on the file bergdb.lock
+     * in the directory, which the operating system releases when the process ends, also at
+     * a crash: it is never stale, and the file need never be removed. Do not delete
+     * bergdb.lock while a database has the directory: a start in another process then makes
+     * the file again, locks it and starts, and two databases write the same stream files,
+     * which can lose what either writes and damage the stream (bergdb 020-24-08, U8-9).</p>
      * 
      * <p>A start may write to the stream: it completes a cut tail, as a crash leaves it, and
      * writes created.txt if it is missing. On a full disk a start may therefore be refused,

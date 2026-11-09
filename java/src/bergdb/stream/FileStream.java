@@ -1589,9 +1589,9 @@ public class FileStream implements AppendOnlyStream {
                 
                 if (rfileLength != this.fileLength) {
                     throw new IOException("File " + file.getPath() 
-                            + " is not of expected length (" + this.fileLength + "),"
+                            + " is not of expected length (" + this.fileLength + "), "
                             + "but " + rfileLength + " bytes."
-                            + " Was is modified by someone else?");
+                            + " Was it modified by someone else?");
                 }
                 
                 rfile.seek(this.fileLength);

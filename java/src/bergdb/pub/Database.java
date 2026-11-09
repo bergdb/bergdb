@@ -43,6 +43,38 @@ import bergdb.pub.util.SyncLevel;
  * bad argument. The conversion of a read value to your object is not the database's
  * read: what it throws, an Error too, fails only that call (bergdb 019-40).</p>
  * 
+ * <p><b>The files</b> (bergdb 020-24-08). A start recovers a cut tail of the stream, the
+ * end that a crash or a power loss did not write, which holds only transactions that no
+ * sync() had returned for. It cannot tell such a cut from one that took more: nothing
+ * outside the stream records how long the stream was (U8-1). So if the last stream file
+ * (*.bergdb, the one with the largest number) is deleted, emptied or cut while the database
+ * is stopped, by a backup or sync tool, a script or a hand, the next start works without an
+ * error, and the transactions in the lost part are gone, also those that a sync() returned
+ * for; the next write goes where the cut is, so the lost file can no longer be put back. A
+ * stream file deleted or cut anywhere else is refused by the start, and other damage to the
+ * files is refused by the start or fails a read (DbFailedException), or passes the checks
+ * (above). So leave the files alone while the database is stopped, as while it runs, and
+ * copy, move or restore a stopped database's files all together: the stream's files and
+ * created.txt.</p>
+ * 
+ * <p>A power loss must leave a cut tail and no other bytes: the file storage forces each
+ * append to the device before the append returns, and relies on a file system that keeps a
+ * file's appends in order, as common ones do (bergdb 014-01, section 7; 005-83). A tail of
+ * zeros or of other bytes after the last transaction, as a file system that writes a file's
+ * length before its data can leave, is refused: start() throws a StreamFormatException,
+ * "Bad transaction size in db stream, S, spos P. Stream length: L." (U8-3). To start the
+ * database, keep a copy of its files, then cut the stream at P: cut the stream file that
+ * holds P to P less the file's first position, which is the number in its name times
+ * 100,000 (00000000000300.bergdb begins at 30,000,000), and remove the later stream files,
+ * if any. What the stream held from P on is lost.</p>
+ * 
+ * <p>A full disk fails the database as any I/O error does (U8-4). Nothing inside the
+ * database frees space: a delete writes, and reclaim writes the values it keeps before it
+ * cuts. Free space outside the database, or copy the stopped database's files to a larger
+ * disk, and start it again. A start may write too (DatabaseBuilder.start()), so on a full
+ * disk it may be refused. Leave room: with a finite retain duration the stream holds
+ * several times the live data (setRetainDuration()).</p>
+ * 
  * <p>Interrupts (bergdb 005-46). An interrupt of the calling thread never fails the
  * database. Three calls only wait, and an interrupt ends the wait: sync() throws a
  * DbException, and the transaction stays committed; a Job's join() returns the job's
@@ -161,6 +193,9 @@ public interface Database extends AutoCloseable {
     /**
      * Waits until the last committed transaction has been stored durably according to the ordinary
      * durability rules.
+     * Durably means that a crash or a power loss keeps it; damage to the files may not: a
+     * last stream file that is deleted or cut while the database is stopped loses it without
+     * an error ("The files" above; bergdb 020-24-08, U8-1).
      * 
      * @throws DbException
      *             if the database is faulty, or if the thread is interrupted while it waits

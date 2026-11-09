@@ -618,6 +618,11 @@ Limits:
   is then seen whole or not at all, and `sync()` adds durability. A start
   recovers only a truncated tail: it completes a torn last record as an
   aborted one, by appending (005-83's 56 truncation cases all recover).
+  It cannot tell a crash's cut from a cut that took more, as nothing
+  outside the stream records the stream's length: a last stream file
+  deleted, emptied or cut while the database is stopped gives a start
+  without an error that has lost the transactions in it, synced ones too
+  (020-24-08, U8-1; `Database`'s Javadoc, "The files", says so).
   Other damage is an integrity failure outside the contract: a start may
   refuse it, or a read fail the database. Holes in an unforced write
   (later bytes surviving while earlier ones are missing; 005-83,
