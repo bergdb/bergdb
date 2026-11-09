@@ -387,6 +387,8 @@ public interface Connection extends ReadInterface {
      * Waits until the specified sync level (durability) has been achieved 
      * for the last transaction started with this connection.
      *
+     * @throws DbException if the database is faulty, or if the thread is interrupted while
+     *             it waits, as for sync().
      * @throws DbFailedException
      *             If the storage has failed: the database fails. See Database.
      */

@@ -39,14 +39,17 @@ public interface Transaction {
     /**
      * Waits until ordinary durability has been attained for this transaction.
      * 
-     * @throws DbException if the database is faulty or has failed.
+     * @throws DbException if the database is faulty or has failed, or if the thread is
+     *             interrupted while it waits: the transaction stays committed, and the
+     *             thread's interrupt flag is set (Database.sync(); bergdb 005-46).
      */
     public void sync();
     
     /** 
      * Waits until the specific sync level has been attained for this transaction.
      * 
-     * @throws DbException if the database is faulty or has failed.
+     * @throws DbException if the database is faulty or has failed, or if the thread is
+     *             interrupted while it waits, as for sync().
      */
     public void sync(SyncLevel syncLevel);
 }
