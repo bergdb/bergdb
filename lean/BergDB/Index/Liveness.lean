@@ -622,6 +622,7 @@ theorem nuOf_lt (L lw c : Nat) (hc : c ≤ lw) (lk : Bool) (pc : BPc) (t : Nat) 
     nuOf L lw c lk pc t cf < 3 * L + 3 * lw + 12 := by
   cases lk <;> cases pc <;> simp only [nuOf] <;> (try split) <;> omega
 
+omit [DecidableEq W] in
 theorem bMeasure_of {sp : Spec V F L} {ws : List W} {s : Sys V F L W} {n : Name} {g : Gen}
     {b : BSt V F} (h : s.m.bld n g = some b) :
     bMeasure sp ws s n g = (b.E.getD 0 + 1 - b.next) * (3 * sp.lockedAfter + 3 * ws.length + 12) +
@@ -640,6 +641,7 @@ theorem wdef_locked {sp : Spec V F L} {s s' : Sys V F L W} {lb : Lbl W} (hst : S
   | _ => rfl
 
 
+omit [DecidableEq W] in
 theorem bNu_lt (sp : Spec V F L) (ws : List W) (s : Sys V F L W) (n : Name) (b : BSt V F) :
     bNu sp ws s n b < 3 * sp.lockedAfter + 3 * ws.length + 12 :=
   nuOf_lt _ _ _ (cnt_le_length _ ws) _ _ _ _
