@@ -566,6 +566,47 @@ public class PubTesterIndexJobs {
     // ======== join() of a failed build throws (Frans, 2026-11-09) ========
 
     /**
+     * bergdb 020-19, F1: a build that ends because its index was deleted is FAILED with the
+     * reason "deleted" and no cause, and the index is gone (Database.deleteIndex()), so its
+     * note (JobStatus.note()) must not say that the next start takes the build again, as it
+     * said; it says so, rightly, for a build that failed over data that it cannot index.
+     */
+    @Nano
+    public static void testNoteOfADeletedBuild() {
+        try (final Database db = Factory.database().memory().start()) {
+            Connection c = db.connection();
+            c.put("/acc/1", new Item(1, 1));
+            final Gate gate = new Gate();
+            manager(db).testHook = p -> gate.at(p, IndexManager.BUILD_STEP);
+            final Job job = db.indexBuilder("i").dir("/acc/").type("long").field("amount")
+                    .start();
+            gate.awaitReached();
+            db.deleteIndex("i");
+            gate.open();
+            IndexBuildException e = null;
+            try {
+                job.join();
+            } catch (IndexBuildException x) {
+                e = x;
+            }
+            Assert.assertTrue("join() throws", e != null);
+            JobStatus s = e.getStatus();
+            Assert.assertEquals(JobStatus.State.FAILED, s.state());
+            Assert.assertEquals("deleted", s.reason());
+            Assert.assertNull(e.getCause());
+            Assert.assertTrue(s.note(), s.note().contains("deleted"));
+            Assert.assertFalse(s.note(), s.note().contains("next start"));
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("index i failed: deleted"));
+            try {
+                db.indexJob("i");
+                throw new AssertionError("the index is not gone");
+            } catch (NoSuchIndexException x) {
+                // gone
+            }
+        }
+    }
+
+    /**
      * Each kind of failure of a build makes join() and join(millis) throw an
      * IndexBuildException, each time, with the status FAILED and the exception that failed
      * the build as its cause, on the job that start() returned and on indexJob()'s, while

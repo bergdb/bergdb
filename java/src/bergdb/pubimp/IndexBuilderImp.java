@@ -247,6 +247,9 @@ class IndexBuilderImp implements IndexBuilder {
         }
     }
 
+    /** The reason of a build that ended because its index was deleted (JobStatus.reason()). */
+    static final String DELETED = "deleted";
+
     /** A status: immutable; serializable, as an IndexBuildException holds one. */
     private static final class Status implements JobStatus, java.io.Serializable {
         private static final long serialVersionUID = 1L;
@@ -280,6 +283,11 @@ class IndexBuilderImp implements IndexBuilder {
                 return "The index " + name + " is active; its build read " + count
                         + " values in this process.";
             case FAILED:
+                if (DELETED.equals(reason)) {
+                    // The index is gone: no start takes its build again (bergdb 020-19, F1).
+                    return "The build of the index " + name + " ended after " + count
+                            + " values: the index was deleted.";
+                }
                 return "The build of the index " + name + " failed after " + count
                         + " values: " + reason + ". The next start takes it again.";
             default:
@@ -362,7 +370,7 @@ class IndexBuilderImp implements IndexBuilder {
                 try {
                     runStep(from);
                 } catch (DeletedException e) {
-                    live.job.failed("deleted", null);
+                    live.job.failed(DELETED, null);
                     return;
                 } catch (StreamIoException | IllegalDbStateException e) {
                     return;         // A stop of the database; the next start takes the build.
@@ -486,7 +494,7 @@ class IndexBuilderImp implements IndexBuilder {
                     if (m.activate(live)) {
                         live.job.activated(0);
                     } else {
-                        live.job.failed("deleted", null);
+                        live.job.failed(DELETED, null);
                     }
                     return;
                 } catch (StreamIoException | IllegalDbStateException e) {

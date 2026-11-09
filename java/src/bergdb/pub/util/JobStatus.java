@@ -18,8 +18,9 @@ public interface JobStatus {
          * The build failed, and Job.join() throws IndexBuildException: the index was deleted
          * while it was building (the reason "deleted"), or the build met an exception that is
          * neither a stop of the database nor a refusal, such as data that it cannot index
-         * (DataFormatException) or a bug. The failure is kept in this process only: the next
-         * start takes the build again. The database goes on.
+         * (DataFormatException) or a bug. The database goes on. A deleted index is gone; for
+         * any other, the failure is kept in this process only: the next start takes the build
+         * again.
          */
         FAILED
     }
