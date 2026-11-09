@@ -84,30 +84,35 @@ theorem start_accepted {sp : Spec V F L} {s : Sys V F L W} (h : Reach sp s) {t :
     x.mark n d.gen = false :=
   (sinv_at h hx).markerNotLive n d hd
 
-/-- **GenFresh** (020-10, section 4.3): the G that a creation takes, the latest
-transaction's time, is new for its name: no definition, marker, entry, build
-or cleanup of the name has it. So no late writer, build or cleanup of an index
-reaches a new index of the name. -/
+/-- **GenFresh** (020-10, section 4.3): a live generation is at most the latest
+time, and the G that a creation of a name takes, the latest time and at least
+1 (`Math.max(1, ...)` in the code), is in no marker, entry, build or cleanup
+of a name without a live definition. So no late writer, build or cleanup of an
+index reaches a new index of the name. -/
 theorem gen_fresh {sp : Spec V F L} {s : Sys V F L W} (h : Reach sp s) (n : Name) :
-    (∀ d, s.st.dfn n = some d → d.gen ≠ s.st.now) ∧ s.st.mark n s.st.now = false ∧
-      (∀ k l, ¬ s.st.ent n s.st.now k l) ∧ s.m.bld n s.st.now = none ∧
-      s.m.cln n s.st.now = none := by
+    (∀ d, s.st.dfn n = some d → d.gen ≤ s.st.now) ∧
+      (s.st.dfn n = none →
+        s.st.mark n (max 1 s.st.now) = false ∧ (∀ k l, ¬ s.st.ent n (max 1 s.st.now) k l) ∧
+          s.m.bld n (max 1 s.st.now) = none ∧ s.m.cln n (max 1 s.st.now) = none) := by
   have hi := reach_inv h
   have hs := hi.sinv
-  have hmk : s.st.mark n s.st.now = false := by
-    cases hm : s.st.mark n s.st.now with
+  refine ⟨hs.gen_le n, fun hn => ?_⟩
+  have hmk : s.st.mark n (max 1 s.st.now) = false := by
+    cases hm : s.st.mark n (max 1 s.st.now) with
     | false => rfl
-    | true => exact absurd (hs.mark_lt _ _ hm) (Nat.lt_irrefl _)
-  refine ⟨fun d hd he => absurd (hs.gen_lt n d hd) (by rw [he]; exact Nat.lt_irrefl _), hmk,
-    ?_, ?_, ?_⟩
+    | true => have := hs.mark_lt _ _ hm; omega
+  refine ⟨hmk, ?_, ?_, ?_⟩
   · intro k l hl
-    rcases hs.accounted _ _ k l hl with ⟨d, hd, hg⟩ | hm
-    · exact absurd (hs.gen_lt n d hd) (by rw [hg]; exact Nat.lt_irrefl _)
+    rcases hs.accounted _ _ k l hl with ⟨d, hd, _⟩ | hm
+    · rw [hn] at hd; cases hd
     · rw [hmk] at hm; cases hm
-  · cases hb : s.m.bld n s.st.now with
+  · cases hb : s.m.bld n (max 1 s.st.now) with
     | none => rfl
-    | some b => exact absurd (hi.minv.bLt _ _ b hb) (Nat.lt_irrefl _)
-  · cases hc : s.m.cln n s.st.now with
+    | some b =>
+      rcases hi.minv.bLt _ _ b hb with h1 | ⟨d, hd, _⟩
+      · omega
+      · rw [hn] at hd; cases hd
+  · cases hc : s.m.cln n (max 1 s.st.now) with
     | none => rfl
     | some c =>
       have := (hi.minv.cInv _ _ c hc).marked

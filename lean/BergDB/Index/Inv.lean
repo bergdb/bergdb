@@ -47,8 +47,9 @@ def sameOn (sp : Spec V F L) (dir : Dir) : Option (Def F) → Option (Def F) →
 
 /-- What holds of the stream at every time (020-26, section 3), for each name. -/
 structure SInv (sp : Spec V F L) (st : Stream V F L) : Prop where
-  /-- Every generation is before the latest time (4.3), so a creation's G is new. -/
-  gen_lt : ∀ n d, st.dfn n = some d → d.gen < st.now
+  /-- A live generation is at most the latest time, a deleted one before it
+  (4.3), so a creation's G is new. -/
+  gen_le : ∀ n d, st.dfn n = some d → d.gen ≤ st.now
   mark_lt : ∀ n g, st.mark n g = true → g < st.now
   /-- NoStaleEntry: every entry of a live generation is f of its key's value. -/
   noStale : ∀ n d, st.dfn n = some d → ∀ k l, st.ent n d.gen k l →
@@ -113,7 +114,7 @@ structure MInv (sp : Spec V F L) (st : Stream V F L) (m : Mem V F L W) : Prop wh
   bLocked : ∀ n g b, m.bld n g = some b → b.locked = true → m.lock = .bld n g
   wInv : ∀ w, WInv sp st (m.wr w)
   bInv : ∀ n g b, m.bld n g = some b → BInv sp st n g b
-  bLt : ∀ n g b, m.bld n g = some b → g < st.now
+  bLt : ∀ n g b, m.bld n g = some b → g < st.now ∨ ∃ d, st.dfn n = some d ∧ d.gen = g
   cInv : ∀ n g c, m.cln n g = some c → CInv st n g c
 
 /-- The invariant of the system. -/
@@ -251,7 +252,10 @@ theorem MInv.frameS {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
       have h2 := hcov n d hd k (by rw [hf, hg]; exact hc)
       rw [hg, hf] at h2
       exact h2
-  · intro n g b hb; exact Nat.lt_of_lt_of_le (h.bLt n g b hb) hnow
+  · intro n g b hb
+    rcases h.bLt n g b hb with h1 | h1
+    · exact Or.inl (Nat.lt_of_lt_of_le h1 hnow)
+    · rw [hdfn]; exact Or.inr h1
   · intro n g c hc
     have hc' := h.cInv n g c hc
     exact hc'.frame (by rw [hmark]; exact hc'.marked)
@@ -301,7 +305,7 @@ theorem MInv.setB {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
   · intro n' g' b'' hb''
     change upd2 m.bld n g (some b') n' g' = some b'' at hb''
     by_cases hgg : n' = n ∧ g' = g
-    · rw [hgg.2]; exact h.bLt n g b hb
+    · rw [hgg.1, hgg.2]; exact h.bLt n g b hb
     · rw [upd2_ne _ _ hgg] at hb''; exact h.bLt n' g' b'' hb''
 
 /-- A build removed, with the lock free or released. -/
@@ -354,7 +358,7 @@ theorem MInv.setC {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
 
 /-! ### A start -/
 
-theorem minv_restart {sp : Spec V F L} {st : Stream V F L} (hs : SInv sp st) :
+theorem minv_restart {sp : Spec V F L} {st : Stream V F L} :
     MInv sp st (restart (W := W) st) := by
   refine ⟨fun _ => Or.inl rfl, ?_, ?_, ?_, ?_, ?_, fun _ => trivial, ?_, ?_, ?_⟩
   · show Lock.free = .mgr ↔ Admin.idle ≠ (.idle : Admin F)
@@ -409,7 +413,7 @@ theorem minv_restart {sp : Spec V F L} {st : Stream V F L} (hs : SInv sp st) :
       dsimp only at hb
       split at hb
       · rename_i hc
-        rw [← hc.1]; exact hs.gen_lt n d hd
+        exact Or.inr ⟨d, rfl, hc.1⟩
       · cases hb
   · intro n g c hc
     change (if st.mark n g = true then some CSt.init else none) = some c at hc

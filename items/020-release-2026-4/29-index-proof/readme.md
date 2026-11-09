@@ -91,7 +91,13 @@ wins, 015-41).
   `bRefused`, `bLock`, `bActivate`, `bActivateFail` (a build); `cScan`,
   `cScanEnd`, `cDel`, `cEnd` (a cleanup); `crash`, which restarts as
   `IndexManager.start` does. Each is TLA+'s action of the same name; their
-  comments cite 020-10.
+  comments cite 020-10. Three more, of the code's errors (020-10, 6.1 and
+  6.2, "Errors"), which 020-26 left out: `bRetry`, a step's try ended by an
+  exception that the build takes again (`DbException`, an expired read), the
+  step again from its start, unlocked (`underLock` released the lock);
+  `bAbort`, a build's thread that ends without its activation (FAILED, or a
+  stop), its lock released; `cAbort`, a cleanup's thread that ends, its
+  marker kept for the next start.
 * **Where the model allows more than the code**, so that the theorems hold
   for the code's choices too: a build step reads any range of keys up to E
   (the code: 25 values or 1 MB); E is any key after which no value has an
@@ -103,9 +109,10 @@ wins, 015-41).
 * **Left out**, as in 020-26, section 2.4: writes through the Core, key
   replace, reclaim's cut of lookup times, format 1. And liveness (section 7).
 
-`G` is the latest transaction's time when the creation runs, as in the code
-and 020-26's `TimedGen`. With one name, one directory and transactions of
-one key, the model is 020-26's.
+`G` is the latest transaction's time when the creation runs, and at least 1,
+as in the code (`Math.max(1, db.lookupTime(Long.MAX_VALUE))`); 020-26's
+`TimedGen` takes the time. With one name, one directory, transactions of one
+key and none of the three error steps, the model is 020-26's.
 
 
 ## 3. The theorems
@@ -197,8 +204,11 @@ activation changes no generation or function.
 5. The activation: `BInv.done` (every key passed), `step_bActivate`.
 6. No orphans: `SInv.accounted`, `CInv` (a cleanup at its end leaves no entry
    of its generation, and no step puts one), `step_cEnd`.
-7. Fresh generations: `SInv.gen_lt`, `SInv.mark_lt`, `MInv.bLt`: everything
-   is before the latest time, which a creation takes as G (`step_aCreate`).
+7. Fresh generations: `SInv.gen_le`, `SInv.mark_lt`, `MInv.bLt`: a live
+   generation is at most the latest time, and every other one is before it
+   (its deletion committed after it), so the G a creation takes,
+   max(1, latest time), is new for a name without a live definition
+   (`step_aCreate`, `gen_fresh`).
 8. and 9. Builds and cleanups end: liveness, not proved here (section 7).
 
 The step lemmas that commit a transaction are stated over any stream with the
@@ -257,7 +267,7 @@ target.
 transactions of any keys, build steps of any size, generations, deletions,
 creations again and crashes (also crashes that lose committed
 transactions): every invariant of 020-26, section 3 (section 3 above), with
-no `sorry`; 2,283 lines. So 020-26's safety results hold beyond its bounds and
+no `sorry`; 2,469 lines. So 020-26's safety results hold beyond its bounds and
 beyond its one name, one directory and one key per transaction: no design
 fault, for every size, in the protocol as modelled.
 
@@ -308,6 +318,11 @@ Log
   the read set of a transaction has the virtual keys and the keys of its
   object keys only, not of its keys with a suffix (the model asked more of
   the transaction than the code, so it left out some of the code's runs).
+  18:37, on a review of the build, the cleanup and the definition changes
+  against `IndexBuilderImp` and `IndexManager`: the error steps `bRetry`,
+  `bAbort` and `cAbort` (runs of the code the model had not), and G as the
+  code takes it, max(1, the latest time), with the freshness invariant
+  weakened to match (a live generation at most the latest time).
 
 Each step: `lake build BergDB` clean, no `sorry`, the standard axioms only.
 Nothing in 2026.4. For the coordinator: a line for this subitem in 020's

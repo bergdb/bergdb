@@ -109,7 +109,7 @@ theorem step_wSuffix {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
     | false =>
       exact hc.mono (by rw [e1]; exact writeData_no hkk) (fun l hl => by rw [e2]; exact hl)
   refine ⟨⟨?_, ?_, ?_, ?_, ?_, ?_⟩, ?_⟩
-  · intro n d hd; rw [e5] at hd; rw [e4]; exact Nat.lt_succ_of_lt (hs.gen_lt n d hd)
+  · intro n d hd; rw [e5] at hd; rw [e4]; exact Nat.le_succ_of_le (hs.gen_le n d hd)
   · intro n g hg; rw [e6] at hg; rw [e4]; exact Nat.lt_succ_of_lt (hs.mark_lt n g hg)
   · intro n d hd k l hkl
     rw [e5] at hd; rw [e2] at hkl
@@ -283,7 +283,7 @@ theorem step_wCommit {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
     | true => intro l hl; exact (hA n d hd k hk l).mpr hl
     | false => exact hcv.mono (hBd k hk) (fun l hl => (hB n d.gen k l hk).mpr hl)
   refine ⟨⟨?_, ?_, ?_, ?_, ?_, ?_⟩, ?_⟩
-  · intro n d hd; rw [e5] at hd; rw [e4]; exact Nat.lt_succ_of_lt (hs.gen_lt n d hd)
+  · intro n d hd; rw [e5] at hd; rw [e4]; exact Nat.le_succ_of_le (hs.gen_le n d hd)
   · intro n g hg; rw [e6] at hg; rw [e4]; exact Nat.lt_succ_of_lt (hs.mark_lt n g hg)
   · intro n d hd k l hkl
     rw [e5] at hd
@@ -312,17 +312,19 @@ theorem step_aCreate {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
     (hs : SInv sp st) (hm : MInv sp st m) {n : Name} {fn : F}
     (hl : m.lock = .free) (hmem : m.mem n = none)
     (e1 : st'.data = st.data) (e2 : st'.ent = st.ent) (e3 : st'.wk = st.wk)
-    (e4 : st'.now = st.now + 1) (e5 : st'.dfn = upd st.dfn n (some ⟨st.now, fn, false⟩))
+    (e4 : st'.now = st.now + 1)
+    (e5 : st'.dfn = upd st.dfn n (some ⟨max 1 st.now, fn, false⟩))
     (e6 : st'.mark = st.mark) (e7 : st'.wdef = upd st.wdef n (st.now + 1))
     (e8 : st'.wv = upd st.wv (sp.dirF fn) (st.now + 1)) :
-    SInv sp st' ∧ MInv sp st' { m with lock := .mgr, admin := .create n st.now fn } := by
+    SInv sp st' ∧
+      MInv sp st' { m with lock := .mgr, admin := .create n (max 1 st.now) fn } := by
   have hlm : m.lock ≠ .mgr := by rw [hl]; simp
   have hd0 : st.dfn n = none := by rw [← hm.memEq hlm n]; exact hmem
-  have hmk : st.mark n st.now = false := by
-    cases h : st.mark n st.now
+  have hmk : st.mark n (max 1 st.now) = false := by
+    cases h : st.mark n (max 1 st.now)
     · rfl
-    · exact absurd (hs.mark_lt _ _ h) (Nat.lt_irrefl _)
-  have hnoent : ∀ k l, ¬ st.ent n st.now k l := by
+    · have := hs.mark_lt _ _ h; omega
+  have hnoent : ∀ k l, ¬ st.ent n (max 1 st.now) k l := by
     intro k l hl
     rcases hs.accounted _ _ k l hl with ⟨d, hd, _⟩ | h
     · rw [hd0] at hd; cases hd
@@ -331,13 +333,13 @@ theorem step_aCreate {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
     fun n' g b hb => hm.notLocked hb (by rw [hl]; simp)
   have hkf : ∀ k, (st'.wk k = st.wk k ∧ st'.data k = st.data k) ∨ st.now < st'.wk k :=
     fun k => Or.inl ⟨by rw [e3], by rw [e1]⟩
-  have hdn : st'.dfn n = some ⟨st.now, fn, false⟩ := by rw [e5, upd_same]
+  have hdn : st'.dfn n = some ⟨max 1 st.now, fn, false⟩ := by rw [e5, upd_same]
   have hdo : ∀ n', n' ≠ n → st'.dfn n' = st.dfn n' := fun n' h => by rw [e5, upd_ne _ _ h]
   refine ⟨⟨?_, ?_, ?_, ?_, ?_, ?_⟩, ?_⟩
   · intro n' d hd; rw [e4]
     by_cases hn : n' = n
-    · rw [hn, hdn] at hd; cases hd; exact Nat.lt_succ_self _
-    · rw [hdo n' hn] at hd; exact Nat.lt_succ_of_lt (hs.gen_lt n' d hd)
+    · rw [hn, hdn] at hd; cases hd; show max 1 st.now ≤ st.now + 1; omega
+    · rw [hdo n' hn] at hd; exact Nat.le_succ_of_le (hs.gen_le n' d hd)
   · intro n' g hg; rw [e6] at hg; rw [e4]; exact Nat.lt_succ_of_lt (hs.mark_lt n' g hg)
   · intro n' d hd k l hkl
     rw [e2] at hkl; rw [e1]
@@ -364,10 +366,10 @@ theorem step_aCreate {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
       by_cases hn : n' = n
       · right; rw [hn]; rfl
       · left; rw [hdo n' hn]; exact hm.memEq hlm n'
-    · show Lock.mgr = .mgr ↔ Admin.create n st.now fn ≠ .idle
+    · show Lock.mgr = .mgr ↔ Admin.create n (max 1 st.now) fn ≠ .idle
       simp
     · intro n' g fn' h
-      change Admin.create n st.now fn = Admin.create n' g fn' at h
+      change Admin.create n (max 1 st.now) fn = Admin.create n' g fn' at h
       cases h; exact hdn
     · intro n' g h; cases h
     · intro n' g h; cases h
@@ -389,17 +391,24 @@ theorem step_aCreate {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
             · exact absurd hrel.symm hdir
         · rw [hdo n' hn]; exact hx
     · intro n' g b hb
-      have hlt := hm.bLt n' g b hb
       refine (hm.bInv n' g b hb).frame (by omega) hkf ?_ ?_ ?_
       · by_cases hn : n' = n
         · right; rw [e7, hn, upd_same]; omega
         · left; exact ⟨by rw [e7, upd_ne _ _ hn], hdo n' hn⟩
       · intro d' hd' hg
         by_cases hn : n' = n
-        · rw [hn, hdn] at hd'; cases hd'; exfalso; change st.now = g at hg; omega
+        · rw [hn, hdn] at hd'; cases hd'; exfalso; change max 1 st.now = g at hg
+          rcases hm.bLt n' g b hb with h1 | ⟨d0, hdd, _⟩
+          · omega
+          · rw [hn, hd0] at hdd; cases hdd
         · exact ⟨d', by rw [← hdo n' hn]; exact hd', hg, rfl, rfl⟩
       · intro d _ _ k hcv; exact hcv.mono (by rw [e1]) (fun l hl => by rw [e2]; exact hl)
-    · intro n' g b hb; rw [e4]; exact Nat.lt_succ_of_lt (hm.bLt n' g b hb)
+    · intro n' g b hb; rw [e4]
+      rcases hm.bLt n' g b hb with h1 | ⟨d, hd, hdg⟩
+      · left; omega
+      · by_cases hn : n' = n
+        · rw [hn, hd0] at hd; cases hd
+        · right; exact ⟨d, by rw [hdo n' hn]; exact hd, hdg⟩
     · intro n' g c hc
       have hc' := hm.cInv n' g c hc
       exact hc'.frame (by rw [e6]; exact hc'.marked) (fun k l hkl => by rw [e2] at hkl; exact hkl)
@@ -434,10 +443,10 @@ theorem step_aDelete {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
   · intro n' d' hd'
     by_cases hn : n' = n
     · rw [hn, hdn] at hd'; cases hd'
-    · rw [hdo n' hn] at hd'; rw [e4]; exact Nat.lt_succ_of_lt (hs.gen_lt n' d' hd')
+    · rw [hdo n' hn] at hd'; rw [e4]; exact Nat.le_succ_of_le (hs.gen_le n' d' hd')
   · intro n' g hg; rw [e4]
     by_cases hgg : n' = n ∧ g = d.gen
-    · rw [hgg.2]; exact Nat.lt_succ_of_lt (hs.gen_lt n d hd)
+    · rw [hgg.2]; exact Nat.lt_succ_of_le (hs.gen_le n d hd)
     · rw [hmko n' g hgg] at hg; exact Nat.lt_succ_of_lt (hs.mark_lt n' g hg)
   · intro n' d' hd' k l hkl
     by_cases hn : n' = n
@@ -505,7 +514,13 @@ theorem step_aDelete {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
         · rw [hn, hdn] at hd'; cases hd'
         · exact ⟨d', by rw [← hdo n' hn]; exact hd', hg, rfl, rfl⟩
       · intro d' _ _ k hc; exact hc.mono (by rw [e1]) (fun l hl => by rw [e2]; exact hl)
-    · intro n' g b hb; rw [e4]; exact Nat.lt_succ_of_lt (hm.bLt n' g b hb)
+    · intro n' g b hb; rw [e4]
+      rcases hm.bLt n' g b hb with h1 | ⟨d', hd', hdg⟩
+      · left; omega
+      · by_cases hn : n' = n
+        · left; rw [hn, hd] at hd'; cases hd'; rw [← hdg]
+          exact Nat.lt_succ_of_le (hs.gen_le n d hd)
+        · right; exact ⟨d', by rw [hdo n' hn]; exact hd', hdg⟩
     · intro n' g c hc
       have hc' := hm.cInv n' g c hc
       exact hc'.frame (hmk' n' g hc'.marked) (fun k l hkl => by rw [e2] at hkl; exact hkl)
@@ -543,7 +558,7 @@ theorem step_bCommit {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
     fun n' g' fn k hc => hc.mono (by rw [e1]) (fun l hl => hsup _ _ _ _ hl)
   have hsinv : SInv sp st' := by
     refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
-    · intro n' d' hd'; rw [e5] at hd'; rw [e4]; exact Nat.lt_succ_of_lt (hs.gen_lt n' d' hd')
+    · intro n' d' hd'; rw [e5] at hd'; rw [e4]; exact Nat.le_succ_of_le (hs.gen_le n' d' hd')
     · intro n' g' hg'; rw [e6] at hg'; rw [e4]; exact Nat.lt_succ_of_lt (hs.mark_lt n' g' hg')
     · intro n' d' hd' k l hkl
       rw [e5] at hd'
@@ -645,7 +660,7 @@ theorem step_bCommit {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
   · intro n' g' b'' hb''
     change upd2 m.bld n g (some (bAfter b)) n' g' = some b'' at hb''
     by_cases hgg : n' = n ∧ g' = g
-    · rw [hgg.2]; exact hm1.bLt n g b hb
+    · rw [hgg.1, hgg.2]; exact hm1.bLt n g b hb
     · rw [upd2_ne _ _ hgg] at hb''; exact hm1.bLt n' g' b'' hb''
 
 /-- `BActivate`: point 5. Every key is passed, so covered: the index is a
@@ -680,8 +695,8 @@ theorem step_bActivate {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L 
   · intro n' d' hd'; rw [e4]
     by_cases hn : n' = n
     · rw [hn, hdn] at hd'; cases hd'
-      show g < st.now + 1; rw [← hdg]; exact Nat.lt_succ_of_lt (hs.gen_lt n d hd)
-    · rw [hdo n' hn] at hd'; exact Nat.lt_succ_of_lt (hs.gen_lt n' d' hd')
+      show g ≤ st.now + 1; rw [← hdg]; exact Nat.le_succ_of_le (hs.gen_le n d hd)
+    · rw [hdo n' hn] at hd'; exact Nat.le_succ_of_le (hs.gen_le n' d' hd')
   · intro n' g' hg'; rw [e6] at hg'; rw [e4]; exact Nat.lt_succ_of_lt (hs.mark_lt n' g' hg')
   · intro n' d' hd' k l hkl
     rw [e2] at hkl; rw [e1]
@@ -750,7 +765,13 @@ theorem step_bActivate {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L 
       change upd2 m.bld n g none n' g' = some b' at hb'
       by_cases hgg : n' = n ∧ g' = g
       · rw [hgg.1, hgg.2, upd2_same] at hb'; cases hb'
-      · rw [upd2_ne _ _ hgg] at hb'; rw [e4]; exact Nat.lt_succ_of_lt (hm.bLt n' g' b' hb')
+      · rw [upd2_ne _ _ hgg] at hb'; rw [e4]
+        rcases hm.bLt n' g' b' hb' with h1 | ⟨d', hd', hdg'⟩
+        · left; omega
+        · by_cases hn : n' = n
+          · left; rw [hn, hd] at hd'; cases hd'
+            exact absurd ⟨hn, by rw [← hdg', hdg]⟩ hgg
+          · right; exact ⟨d', by rw [hdo n' hn]; exact hd', hdg'⟩
     · intro n' g' c hc
       have hc' := hm.cInv n' g' c hc
       exact hc'.frame (by rw [e6]; exact hc'.marked) (fun k l hkl => by rw [e2] at hkl; exact hkl)
@@ -782,7 +803,7 @@ theorem step_cDel {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
     rw [e2]; exact ⟨hl, fun h => hne ⟨h.1, h.2.1⟩⟩
   have hsinv : SInv sp st' := by
     refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
-    · intro n' d hd; rw [e5] at hd; rw [e4]; exact Nat.lt_succ_of_lt (hs.gen_lt n' d hd)
+    · intro n' d hd; rw [e5] at hd; rw [e4]; exact Nat.le_succ_of_le (hs.gen_le n' d hd)
     · intro n' g' hg'; rw [e6] at hg'; rw [e4]; exact Nat.lt_succ_of_lt (hs.mark_lt n' g' hg')
     · intro n' d hd k l hkl; rw [e5] at hd; rw [e1]
       exact hs.noStale n' d hd k l (hsub _ _ k l hkl)
@@ -811,7 +832,7 @@ theorem step_cEnd {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
   have hmkg : st'.mark n g = false := by rw [e6, upd2_same]
   have hsinv : SInv sp st' := by
     refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
-    · intro n' d hd; rw [e5] at hd; rw [e4]; exact Nat.lt_succ_of_lt (hs.gen_lt n' d hd)
+    · intro n' d hd; rw [e5] at hd; rw [e4]; exact Nat.le_succ_of_le (hs.gen_le n' d hd)
     · intro n' g' hg'; rw [e4]
       by_cases hgg : n' = n ∧ g' = g
       · rw [hgg.1, hgg.2, hmkg] at hg'; cases hg'
@@ -851,7 +872,10 @@ theorem step_cEnd {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
     refine (hm.bInv n' g' b hb).frame (by omega) hkf (Or.inl ⟨by rw [e7], by rw [e5]⟩) ?_ ?_
     · intro d' hd' hg; exact ⟨d', by rw [← e5]; exact hd', hg, rfl, rfl⟩
     · intro d _ _ k hcv; exact hcv.mono (by rw [e1]) (fun l hl => by rw [e2]; exact hl)
-  · intro n' g' b hb; rw [e4]; exact Nat.lt_succ_of_lt (hm.bLt n' g' b hb)
+  · intro n' g' b hb; rw [e4]
+    rcases hm.bLt n' g' b hb with h1 | h1
+    · left; omega
+    · right; rw [e5]; exact h1
   · intro n' g' c' hc'
     change upd2 m.cln n g none n' g' = some c' at hc'
     by_cases hgg : n' = n ∧ g' = g
@@ -895,7 +919,7 @@ theorem minv_wReadS {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W} [Dec
   · rw [upd_ne _ _ hk] at hmm; exact h3 k' mm hmm hv n
 
 theorem minv_aCreateMap {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
-    (hs : SInv sp st) (hm : MInv sp st m) {n : Name} {g : Gen} {fn : F}
+    (hm : MInv sp st m) {n : Name} {g : Gen} {fn : F}
     (ha : m.admin = .create n g fn) :
     MInv sp st { m with mem := upd m.mem n (st.dfn n), lock := .free, admin := .idle,
                         bld := upd2 m.bld n g (some (BSt.init fn)) } := by
@@ -938,7 +962,7 @@ theorem minv_aCreateMap {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
   · intro n' g' b hb
     change upd2 m.bld n g (some (BSt.init fn)) n' g' = some b at hb
     by_cases hgg : n' = n ∧ g' = g
-    · rw [hgg.2]; exact hs.gen_lt n _ hd
+    · rw [hgg.1, hgg.2]; exact Or.inr ⟨_, hd, rfl⟩
     · rw [upd2_ne _ _ hgg] at hb; exact hm.bLt n' g' b hb
 
 theorem minv_aDeleteMap {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
@@ -1062,7 +1086,7 @@ theorem minv_bLock {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
   · intro n' g' b' hb'
     change upd2 m.bld n g (some { b with locked := true, pc := .read }) n' g' = some b' at hb'
     by_cases hgg : n' = n ∧ g' = g
-    · rw [hgg.2]; exact hm.bLt n g b hb
+    · rw [hgg.1, hgg.2]; exact hm.bLt n g b hb
     · rw [upd2_ne _ _ hgg] at hb'; exact hm.bLt n' g' b' hb'
 
 theorem minv_bActivateFail {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
@@ -1086,6 +1110,129 @@ theorem minv_cScanEnd {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
     MInv sp st { m with cln := upd2 m.cln n g (some { c with pc := .done }) } :=
   hm.setC hc ⟨(hm.cInv n g c hc).marked, fun _ => hno⟩
 
+/-- A build's lock released if it held it, and the build replaced by an
+unlocked one. -/
+theorem MInv.relB {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
+    (hm : MInv sp st m) {n : Name} {g : Gen} {b b' : BSt V F} (hb : m.bld n g = some b)
+    (hb' : BInv sp st n g b') (hl' : b'.locked = false) :
+    MInv sp st { m with bld := upd2 m.bld n g (some b'),
+                        lock := if b.locked = true then .free else m.lock } := by
+  refine ⟨hm.memAgrees, ?_, hm.adminCreate, hm.adminDelete, ?_, ?_, hm.wInv, ?_, ?_,
+    hm.cInv⟩
+  · show (if b.locked = true then Lock.free else m.lock) = .mgr ↔ m.admin ≠ .idle
+    by_cases hlk : b.locked = true
+    · rw [ite_eq_left hlk]
+      have hl := hm.bLocked n g b hb hlk
+      have hid := hm.adminIdle (by rw [hl]; simp)
+      rw [hid]; simp
+    · rw [ite_eq_right hlk]; exact hm.lockMgr
+  · intro n' g' hg'
+    change (if b.locked = true then Lock.free else m.lock) = .bld n' g' at hg'
+    show ∃ b'', upd2 m.bld n g (some b') n' g' = some b'' ∧ b''.locked = true
+    by_cases hlk : b.locked = true
+    · rw [ite_eq_left hlk] at hg'; cases hg'
+    · rw [ite_eq_right hlk] at hg'
+      obtain ⟨b'', hb'', hl''⟩ := hm.lockBld n' g' hg'
+      by_cases hgg : n' = n ∧ g' = g
+      · rw [hgg.1, hgg.2, hb] at hb''; cases hb''; exact absurd hl'' hlk
+      · rw [upd2_ne _ _ hgg]; exact ⟨b'', hb'', hl''⟩
+  · intro n' g' b'' hb'' hl''
+    change upd2 m.bld n g (some b') n' g' = some b'' at hb''
+    show (if b.locked = true then Lock.free else m.lock) = .bld n' g'
+    by_cases hgg : n' = n ∧ g' = g
+    · rw [hgg.1, hgg.2, upd2_same] at hb''; cases hb''; rw [hl'] at hl''; cases hl''
+    · rw [upd2_ne _ _ hgg] at hb''
+      have h1 := hm.bLocked n' g' b'' hb'' hl''
+      by_cases hlk : b.locked = true
+      · have h2 := hm.bLocked n g b hb hlk
+        rw [h1] at h2; cases h2; exact absurd ⟨rfl, rfl⟩ hgg
+      · rw [ite_eq_right hlk]; exact h1
+  · intro n' g' b'' hb''
+    change upd2 m.bld n g (some b') n' g' = some b'' at hb''
+    by_cases hgg : n' = n ∧ g' = g
+    · rw [hgg.1, hgg.2, upd2_same] at hb''; cases hb''; rw [hgg.1, hgg.2]; exact hb'
+    · rw [upd2_ne _ _ hgg] at hb''; exact hm.bInv n' g' b'' hb''
+  · intro n' g' b'' hb''
+    change upd2 m.bld n g (some b') n' g' = some b'' at hb''
+    by_cases hgg : n' = n ∧ g' = g
+    · rw [hgg.1, hgg.2]; exact hm.bLt n g b hb
+    · rw [upd2_ne _ _ hgg] at hb''; exact hm.bLt n' g' b'' hb''
+
+/-- `bRetry`: the step again from its start, unlocked. -/
+theorem minv_bRetry {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
+    (hm : MInv sp st m) {n : Name} {g : Gen} {b : BSt V F} (hb : m.bld n g = some b) :
+    MInv sp st { m with
+      bld := upd2 m.bld n g (some { b with pc := .read, tries := 0, locked := false }),
+      lock := if b.locked = true then .free else m.lock } := by
+  have hbi := hm.bInv n g b hb
+  refine hm.relB hb ⟨hbi.fnEq, hbi.cover, ?_, ?_, ?_⟩ rfl
+  · intro h; cases h
+  · intro h; rcases h with h | h <;> cases h
+  · intro h; cases h
+
+/-- `bAbort`: a build's thread ends; its lock released if it held it. -/
+theorem minv_bAbort {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
+    (hm : MInv sp st m) {n : Name} {g : Gen} {b : BSt V F} (hb : m.bld n g = some b) :
+    MInv sp st { m with bld := upd2 m.bld n g none,
+                        lock := if b.locked = true then .free else m.lock } := by
+  by_cases hlk : b.locked = true
+  · have hl := hm.bLocked n g b hb hlk
+    have e : ({ m with bld := upd2 m.bld n g none,
+                       lock := if b.locked = true then .free else m.lock } : Mem V F L W) =
+        { m with bld := upd2 m.bld n g none, lock := .free } := by
+      rw [ite_eq_left hlk]
+    rw [e]; exact hm.delB (Or.inr hl)
+  · have hl : m.lock ≠ .bld n g := fun h => by
+      obtain ⟨b'', hb'', hl''⟩ := hm.lockBld n g h
+      rw [hb] at hb''; cases hb''; exact hlk hl''
+    have e : ({ m with bld := upd2 m.bld n g none,
+                       lock := if b.locked = true then .free else m.lock } : Mem V F L W) =
+        { m with bld := upd2 m.bld n g none } := by
+      rw [ite_eq_right hlk]
+    rw [e]
+    refine ⟨hm.memAgrees, hm.lockMgr, hm.adminCreate, hm.adminDelete, ?_, ?_, hm.wInv, ?_, ?_,
+      hm.cInv⟩
+    · intro n' g' hg'
+      obtain ⟨b'', hb'', hl''⟩ := hm.lockBld n' g' hg'
+      show ∃ b, upd2 m.bld n g none n' g' = some b ∧ b.locked = true
+      by_cases hgg : n' = n ∧ g' = g
+      · rw [hgg.1, hgg.2] at hg'; exact absurd hg' hl
+      · rw [upd2_ne _ _ hgg]; exact ⟨b'', hb'', hl''⟩
+    · intro n' g' b'' hb'' hl''
+      change upd2 m.bld n g none n' g' = some b'' at hb''
+      by_cases hgg : n' = n ∧ g' = g
+      · rw [hgg.1, hgg.2, upd2_same] at hb''; cases hb''
+      · rw [upd2_ne _ _ hgg] at hb''; exact hm.bLocked n' g' b'' hb'' hl''
+    · intro n' g' b'' hb''
+      change upd2 m.bld n g none n' g' = some b'' at hb''
+      by_cases hgg : n' = n ∧ g' = g
+      · rw [hgg.1, hgg.2, upd2_same] at hb''; cases hb''
+      · rw [upd2_ne _ _ hgg] at hb''; exact hm.bInv n' g' b'' hb''
+    · intro n' g' b'' hb''
+      change upd2 m.bld n g none n' g' = some b'' at hb''
+      by_cases hgg : n' = n ∧ g' = g
+      · rw [hgg.1, hgg.2, upd2_same] at hb''; cases hb''
+      · rw [upd2_ne _ _ hgg] at hb''; exact hm.bLt n' g' b'' hb''
+
+/-- `cAbort`: a cleanup's thread ends; its marker stays. -/
+theorem minv_cAbort {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
+    (hm : MInv sp st m) {n : Name} {g : Gen} :
+    MInv sp st { m with cln := upd2 m.cln n g none } := by
+  refine ⟨hm.memAgrees, hm.lockMgr, hm.adminCreate, ?_, hm.lockBld, hm.bLocked, hm.wInv,
+    hm.bInv, hm.bLt, ?_⟩
+  · intro n' g' ha
+    obtain ⟨h1, h2, h3⟩ := hm.adminDelete n' g' ha
+    refine ⟨h1, h2, ?_⟩
+    show upd2 m.cln n g none n' g' = none
+    by_cases hgg : n' = n ∧ g' = g
+    · rw [hgg.1, hgg.2, upd2_same]
+    · rw [upd2_ne _ _ hgg]; exact h3
+  · intro n' g' c hc
+    change upd2 m.cln n g none n' g' = some c at hc
+    by_cases hgg : n' = n ∧ g' = g
+    · rw [hgg.1, hgg.2, upd2_same] at hc; cases hc
+    · rw [upd2_ne _ _ hgg] at hc; exact hm.cInv n' g' c hc
+
 /-! ### Crashes, the start, and the induction -/
 
 theorem inv_crash {sp : Spec V F L} {s : Sys V F L W} (h : Inv sp s)
@@ -1097,7 +1244,7 @@ theorem inv_crash {sp : Spec V F L} {s : Sys V F L W} (h : Inv sp s)
     · rw [hy]; exact h.sinv
     · exact h.past y hy
   have hx : SInv sp x := hall x (by rw [he]; simp)
-  refine ⟨hx, fun y hy => hall y ?_, minv_restart hx⟩
+  refine ⟨hx, fun y hy => hall y ?_, minv_restart⟩
   rw [he]; simp [hy]
 
 theorem inv_init (sp : Spec V F L) (d0 : Key → Option V) : Inv sp (Sys.init (W := W) d0) := by
@@ -1109,7 +1256,7 @@ theorem inv_init (sp : Spec V F L) (d0 : Key → Option V) : Inv sp (Sys.init (W
     · intro n d hd; cases hd
     · intro n g k l hl; exact hl.elim
     · intro n d hd; cases hd
-  refine ⟨hs, ?_, minv_restart hs⟩
+  refine ⟨hs, ?_, minv_restart⟩
   intro _ h; cases h
 
 variable [DecidableEq W]
@@ -1127,7 +1274,7 @@ theorem inv_step {sp : Spec V F L} {s s' : Sys V F L W} (h : Inv sp s) (hst : St
   | wDrop w => exact h.setM (h.minv.setW w trivial)
   | aCreate n fn _ hl hmem =>
     exact h.commit (step_aCreate h.sinv h.minv hl hmem rfl rfl rfl rfl rfl rfl rfl rfl)
-  | aCreateMap n g fn ha => exact h.setM (minv_aCreateMap h.sinv h.minv ha)
+  | aCreateMap n g fn ha => exact h.setM (minv_aCreateMap h.minv ha)
   | aDelete n d _ hl hmem =>
     exact h.commit (step_aDelete h.sinv h.minv hl hmem rfl rfl rfl rfl rfl rfl rfl rfl)
   | aDeleteMap n g ha => exact h.setM (minv_aDeleteMap h.minv ha)
@@ -1144,12 +1291,15 @@ theorem inv_step {sp : Spec V F L} {s s' : Sys V F L W} (h : Inv sp s) (hst : St
     exact h.commit
       (step_bActivate h.sinv h.minv hb hpc hl hmem hdg rfl rfl rfl rfl rfl rfl rfl rfl)
   | bActivateFail n g b _ _ hl _ => exact h.setM (minv_bActivateFail h.minv hl)
+  | bRetry n g b hb _ => exact h.setM (minv_bRetry h.minv hb)
+  | bAbort n g b hb => exact h.setM (minv_bAbort h.minv hb)
   | cScan n g c keys hc _ => exact h.setM (minv_cScan h.minv hc)
   | cScanEnd n g c hc _ hno => exact h.setM (minv_cScanEnd h.minv hc hno)
   | cDel n g c hc _ =>
     exact h.commit (step_cDel h.sinv h.minv hc rfl rfl rfl rfl rfl rfl rfl rfl)
   | cEnd n g c hc hpc =>
     exact h.commit (step_cEnd h.sinv h.minv hc hpc rfl rfl rfl rfl rfl rfl rfl rfl)
+  | cAbort n g c _ => exact h.setM (minv_cAbort h.minv)
   | crash pre x rest he => exact inv_crash h he
 
 /-- Every reachable system has the invariant. -/

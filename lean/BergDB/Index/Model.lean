@@ -317,16 +317,16 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
   any time: more than the code does. -/
   | wDrop (s : Sys V F L W) (w : W) :
       Step sp s { s with m := { s.m with wr := upd s.m.wr w .idle } }
-  /-- `ACreate`: under the lock, G the latest transaction's time (4.3); the
-  definition (building), and the virtual key of its directory, written in one
-  transaction. -/
+  /-- `ACreate`: under the lock, G the latest transaction's time, at least 1
+  (4.3; `Math.max(1, ...)` in the code); the definition (building), and the
+  virtual key of its directory, written in one transaction. -/
   | aCreate (s : Sys V F L W) (n : Name) (fn : F) :
       s.m.admin = .idle → s.m.lock = .free → s.m.mem n = none →
       Step sp s (s.commit
-        { s.st with dfn := upd s.st.dfn n (some ⟨s.st.now, fn, false⟩),
+        { s.st with dfn := upd s.st.dfn n (some ⟨max 1 s.st.now, fn, false⟩),
                     wdef := upd s.st.wdef n (s.st.now + 1),
                     wv := upd s.st.wv (sp.dirF fn) (s.st.now + 1), now := s.st.now + 1 }
-        { s.m with lock := .mgr, admin := .create n s.st.now fn })
+        { s.m with lock := .mgr, admin := .create n (max 1 s.st.now) fn })
   /-- `ACreateMap`: the maps, the lock released, the build's thread started. -/
   | aCreateMap (s : Sys V F L W) (n : Name) (g : Gen) (fn : F) :
       s.m.admin = .create n g fn →
@@ -432,6 +432,27 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
       s.m.bld n g = some b → b.pc = .activate → s.m.lock = .free →
       (∀ d, s.m.mem n = some d → d.gen ≠ g) →
       Step sp s { s with m := { s.m with bld := upd2 s.m.bld n g none } }
+  /-- A step's try ended by an exception that the build takes again (a
+  `DbException` other than a conflict, an expired read; 6.1, "Errors"): the
+  step again from its start, unlocked, its tries from 0; `underLock` released
+  the lock if the step held it. -/
+  | bRetry (s : Sys V F L W) (n : Name) (g : Gen) (b : BSt V F) :
+      s.m.bld n g = some b → (b.pc = .read ∨ b.pc = .check ∨ b.pc = .commit ∨ b.pc = .lock) →
+      Step sp s
+        { s with m :=
+          { s.m with
+            bld := upd2 s.m.bld n g (some { b with pc := .read, tries := 0, locked := false }),
+            lock := if b.locked = true then .free else s.m.lock } }
+  /-- A build's thread ends without its activation: FAILED by an exception that
+  it does not take again, or a stop of the database (6.1, "Errors"); the lock
+  released if it held it. The definition stays building until the next start. -/
+  | bAbort (s : Sys V F L W) (n : Name) (g : Gen) (b : BSt V F) :
+      s.m.bld n g = some b →
+      Step sp s
+        { s with m :=
+          { s.m with
+            bld := upd2 s.m.bld n g none,
+            lock := if b.locked = true then .free else s.m.lock } }
   /-- `CScan`: a scan of the generation's entries at the latest time; what it
   found is deleted next. Any set is allowed (the code's: 100 entries after the
   last deleted, 020-18, F5). -/
@@ -457,6 +478,12 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
       s.m.cln n g = some c → c.pc = .done →
       Step sp s (s.commit { s.st with mark := upd2 s.st.mark n g false, now := s.st.now + 1 }
         { s.m with cln := upd2 s.m.cln n g none })
+  /-- A cleanup's thread ends without its end: an exception that it does not take
+  again, or a stop (6.2, "Errors"); the marker stays, and the next start
+  resumes the cleanup. -/
+  | cAbort (s : Sys V F L W) (n : Name) (g : Gen) (c : CSt L) :
+      s.m.cln n g = some c →
+      Step sp s { s with m := { s.m with cln := upd2 s.m.cln n g none } }
   /-- A crash or a stop, then a start: memory lost. The stream is the latest
   one or, as a crash may lose the last committed transactions (levels.md,
   section 8), one of an earlier time; the times after it are gone. -/
