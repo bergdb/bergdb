@@ -527,6 +527,17 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `AssertionError` (with `-ea`) or ran with a budget of 0 or less. The Pub
   API's `DatabaseBuilder` clamps its value to 4 to 100,000 MB and never
   passed one.
+* **A read at a position near `Long.MAX_VALUE` is a read past the end**
+  (bergdb 021-14; 2026-11-09). The storage's check of a read's end,
+  `position + length`, overflowed for a position within `length` of
+  `Long.MAX_VALUE`, and the read went on: `BufferedStream` took bytes of
+  its ring buffer or threw `IndexOutOfBoundsException`, and `MemoryStream`
+  returned with the array as it was or threw an `IOException` that is not
+  `EOFException`. A damaged stream, its checksums right, can carry such a
+  position in a node's pointer: the start was refused, or the database
+  failed, as at any read past the end, but with an
+  `IndexOutOfBoundsException` as the cause. Now such a read throws
+  `EOFException`, as `AppendOnlyStream.read()` says. In 2026.3 and before.
 
 
 ### Format

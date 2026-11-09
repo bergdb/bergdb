@@ -238,10 +238,17 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
 
     /** Check untrusted sizes before allocating, excluding meta blocks (bergdb 005-74, A). */
     private void checkReadSize(long pos, int size) {
-        long length = rstream.getLength();
+        checkReadSize(pos, size, rstream.getLength());
+    }
+
+    /** checkReadSize() above, for the stream's length 'length'. */
+    static void checkReadSize(long pos, int size, long length) {
         // Check the last byte, not the next position: a record may end just before a meta
         // block that a crash has not written. Recovery handles that incomplete block.
-        if (size < 8 || RecoverableStream.getSpos(pos, (long) size - 1) >= length) {
+        // 'pos >= length' first (2026-11-09, bergdb 021-14): getSpos() overflows for a pos
+        // near Long.MAX_VALUE, and the check passed; for a pos below the length it cannot.
+        if (size < 8 || pos >= length
+                || RecoverableStream.getSpos(pos, (long) size - 1) >= length) {
             throw new StreamFormatException("Bad item byte size, " + size + ", at spos " + pos
                     + ": beyond the stream's record bytes, length " + length + ".");
         }

@@ -495,7 +495,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         Util.checkRange(dest, destOffset, length);     // Bergdb 019-02: was an assert.
 
         long pos1 = position;
-        long pos2 = position + length - 1;
+        long pos2 = position + length - 1;     // Used after the checks below, which bound it.
         long streamBytesToRead;
         long bufferBytesToRead;
 
@@ -510,9 +510,16 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             // totalLength - 1 the last byte there is. A read of the byte after the end gave
             // a stale byte of the ring buffer. EOFException, as AppendOnlyStream.read()'s
             // Javadoc says, since 2026-11-05 (bergdb 015-83); it was an IOException.
-            if (pos2 >= totalLength) {
+            // Without the sum since 2026-11-09 (bergdb 021-14): pos2 overflowed for a
+            // position within 'length' of Long.MAX_VALUE, the check passed, and the read took
+            // bytes of the ring buffer or threw IndexOutOfBoundsException. totalLength and
+            // length are not negative, so totalLength - length does not overflow.
+            if (position > totalLength - length) {
                 throw new EOFException("Cannot read " + length + " bytes at position " + position
                         + ", stream size is " + totalLength + ".");
+            }
+            if (length == 0) {
+                return;     // Reads nothing, as before; pos2 underflows at Long.MIN_VALUE.
             }
 
             if (pos1 >= streamLength) {
@@ -1195,6 +1202,36 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
         b.append(new byte[] {11}, 0, 1);
         b.read(10, d, 0, 1);
         Assert.assertEquals((byte) 11, d[0]);
+    }
+
+    /**
+     * Regression test for bergdb 021-14: a read whose end, position + length, overflows a
+     * long passed the check of the end, and took bytes of the ring buffer (with a buffer of
+     * 1024 bytes, 4 bytes at Long.MAX_VALUE - 2) or threw IndexOutOfBoundsException. It is a
+     * read past the end: EOFException, and the stream is as it was.
+     */
+    @Nano
+    public static void testReadPastEndNearMaxValue() throws IOException {
+        byte[] bytes = new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+        for (int capacity : new int[] {100, 128, 1000, 1024}) {
+            BufferedStream b = new BufferedStream(new MemoryStream(), capacity, 1000);
+            b.append(bytes, 0, bytes.length);       // Not started: in the buffer.
+            for (int length : new int[] {1, 4, 32, 1000}) {
+                for (long k = 0; k <= length; k++) {
+                    long position = Long.MAX_VALUE - k;
+                    try {
+                        b.read(position, new byte[length], 0, length);
+                        throw new AssertionError("read(" + position + ", " + length
+                                + ") returned, buffer " + capacity);
+                    } catch (EOFException e) {
+                        // Expected.
+                    }
+                }
+            }
+            byte[] dest = new byte[bytes.length];
+            b.read(0, dest, 0, dest.length);
+            Assert.assertTrue(java.util.Arrays.equals(bytes, dest));
+        }
     }
     
     /**

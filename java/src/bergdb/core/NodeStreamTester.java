@@ -67,6 +67,24 @@ public class NodeStreamTester {
         }
     }
 
+    /**
+     * bergdb 021-14: a size at a position near Long.MAX_VALUE is refused; the check's
+     * RecoverableStream.getSpos() overflowed, and it passed.
+     */
+    @Nano
+    private static void testReadSizeNearMaxValue() {
+        NodeStream.checkReadSize(200, 40, 1000);
+        for (long pos : new long[] {961, 1000, 1001, Long.MAX_VALUE - 39, Long.MAX_VALUE - 7,
+                Long.MAX_VALUE - 1}) {
+            try {
+                NodeStream.checkReadSize(pos, 40, 1000);
+                throw new AssertionError("a size at " + pos + " was accepted");
+            } catch (StreamFormatException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("size"));
+            }
+        }
+    }
+
     /** Meta blocks are not bytes available to a node or a record. */
     @Nano
     private static void testReadSizeExcludesMetaBlocks() throws IOException {

@@ -190,7 +190,10 @@ public class MemoryStream implements AppendOnlyStream {
                     + ", first valid position is " + firstValidPos + ".");
         }
         
-        if (position + len > size) {
+        // Without the sum (2026-11-09, bergdb 021-14): it overflowed for a position within
+        // 'len' of Long.MAX_VALUE, and the read returned with 'dest' as it was, or threw an
+        // IOException that is not EOFException.
+        if (position > size - len) {
             throw new EOFException("Not enough bytes left in the stream, " +
                     "position is " + position +", length to read is " + 
                     len + " and stream size is " + getLength() + ".");

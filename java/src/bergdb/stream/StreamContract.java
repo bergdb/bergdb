@@ -22,10 +22,11 @@ import java.util.TreeMap;
  * <p>Each check gets a new stream from the implementation's Factory and closes it. The
  * checks: an empty stream; length 0; appends and reads; a negative append, and one longer
  * than its array; a negative read, and one longer than its array; a read past the end, at
- * it, across it and beyond it; a read below the first position after a cut; cuts within the
- * length; a cut at the length, on an empty stream and on one with bytes; a cut beyond the
- * length, refused (or held, or ignored, as the Javadoc says of BufferedStream and
- * OneFileStream); close(). And FileStream's file-size limit, fileSizeLimit().</p>
+ * it, across it and beyond it, also where position + length overflows a long (bergdb
+ * 021-14); a read below the first position after a cut; cuts within the length; a cut at the
+ * length, on an empty stream and on one with bytes; a cut beyond the length, refused (or
+ * held, or ignored, as the Javadoc says of BufferedStream and OneFileStream); close(). And
+ * FileStream's file-size limit, fileSizeLimit().</p>
  *
  * <p>A failed check is a fault. If FAULTS names its entry and SKIP has the entry, it is a
  * known fault and is skipped; else the test fails, and names the entry, or says that the
@@ -106,7 +107,9 @@ public final class StreamContract {
         check(results, impl, "an append longer than its array", StreamContract::longAppend);
         check(results, impl, "a negative read", StreamContract::negativeRead);
         check(results, impl, "a read longer than its array", StreamContract::longRead);
-        for (final long[] r : new long[][] {{10, 1}, {8, 4}, {1000, 1}}) {
+        // The last two: position + length overflows a long (bergdb 021-14).
+        for (final long[] r : new long[][] {{10, 1}, {8, 4}, {1000, 1}, {Long.MAX_VALUE, 1},
+                {Long.MAX_VALUE - 2, 4}}) {
             check(results, impl, "a read past the end, " + r[1] + " bytes at " + r[0]
                     + " of 10", (s, i) -> readPastEnd(s, r[0], (int) r[1]));
         }

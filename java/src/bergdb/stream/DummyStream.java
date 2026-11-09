@@ -50,7 +50,7 @@ public class DummyStream implements AppendOnlyStream {
 
     public synchronized void read(long position, byte[] dest, int destPos, int length) 
             throws IOException {
-        if (position + length > bufferSize) {
+        if (position > bufferSize - length) {     // No sum, it overflowed (bergdb 021-14).
             throw new IOException("DummyStream, cannot read " + length 
                     + " bytes at position " + position + ".");
         }

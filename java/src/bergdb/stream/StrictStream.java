@@ -170,13 +170,15 @@ public class StrictStream implements AppendOnlyStream {
             breach(Kind.ARGUMENT, "read(" + position + ", byte[" + (dest == null ? "null"
                     : dest.length) + "], " + destOffset + ", " + len + ")", null);
         }
-        long end = position + len;
+        // The end, position + len, is compared without the sum, which overflows for a
+        // position within 'len' of Long.MAX_VALUE (2026-11-09, bergdb 021-14).
         long lengthBefore = length;
         callHook(Op.READ);
         try {
             inner.read(position, dest, destOffset, len);
         } catch (EOFException e) {
-            if (end <= lengthBefore && position >= keptFrom && !failedOrClosed) {
+            if (!pastEnd(position, len, lengthBefore) && position >= keptFrom
+                    && !failedOrClosed) {
                 breach(Kind.LOST, "read(" + position + ", " + len + ") threw EOFException, "
                         + "but the length was " + lengthBefore + " when it began", e);
             }
@@ -188,7 +190,7 @@ public class StrictStream implements AppendOnlyStream {
             }
             throw e;
         } catch (IOException e) {
-            if (end > lengthUpper && !failedOrClosed) {
+            if (pastEnd(position, len, lengthUpper) && !failedOrClosed) {
                 breach(Kind.NOT_EOF, "read(" + position + ", " + len + ") past the end, at "
                         + length + ", threw " + e + ", not EOFException", e);
             }
@@ -198,11 +200,16 @@ public class StrictStream implements AppendOnlyStream {
             breach(Kind.UNCHECKED, "read(" + position + ", " + len + ") threw " + e, e);
             throw e;
         }
-        if (end > lengthUpper) {
+        if (pastEnd(position, len, lengthUpper)) {
             breach(Kind.NOT_EOF, "read(" + position + ", " + len + ") past the end, at "
                     + length + ", returned", null);
         }
         compareKept(position, dest, destOffset, len);
+    }
+
+    /** True if position + len > length; 'len' and 'length' are not negative. */
+    private static boolean pastEnd(long position, int len, long length) {
+        return position > length - len;
     }
 
     public void append(byte[] source, int sourceOffset, int len) throws IOException {

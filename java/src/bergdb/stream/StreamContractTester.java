@@ -147,6 +147,9 @@ public class StreamContractTester {
             if (bad.equals("read") && position + len > getLength()) {
                 throw new IOException("past the end");
             }
+            if (bad.equals("silent")) {
+                return;     // 'dest' as it was, as MemoryStream gave near Long.MAX_VALUE
+            }
             super.read(position, dest, off, len);
             if (bad.equals("bytes") && len > 0) {
                 dest[off] ^= 1;
@@ -186,6 +189,18 @@ public class StreamContractTester {
                 // Not a breach.
             }
         }));
+        // A read whose end, position + len, overflows a long (bergdb 021-14): its
+        // EOFException is not a breach (it was LOST), and a return is (it was none).
+        Assert.assertEquals(null, kindOf(s, () -> {
+            try {
+                s.read(Long.MAX_VALUE - 2, new byte[4], 0, 4);
+            } catch (EOFException expected) {
+                // Not a breach.
+            }
+        }));
+        bad.bad = "silent";
+        Assert.assertEquals(Kind.NOT_EOF,
+                kindOf(s, () -> s.read(Long.MAX_VALUE - 2, new byte[4], 0, 4)));
         bad.bad = "read";
         Assert.assertEquals(Kind.NOT_EOF, kindOf(s, () -> s.read(5, new byte[10], 0, 10)));
         bad.bad = "bytes";
@@ -196,7 +211,7 @@ public class StreamContractTester {
         Assert.assertEquals(Kind.UNCHECKED, kindOf(s, () -> s.pretruncate(10)));
         bad.bad = "append";
         Assert.assertEquals(Kind.LENGTH, kindOf(s, () -> s.append(new byte[2], 0, 2)));
-        Assert.assertEquals(5, s.breaches().size());
+        Assert.assertEquals(6, s.breaches().size());
         s.close();
     }
 }
