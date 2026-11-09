@@ -428,3 +428,8 @@ coordinator allowed (11:03): six areas in parallel, 32 minutes, clean;
 then H2 and H3 (section 2.8). Campaign 3 on s1 stopped at 11:41 (61
 turns, clean). The stop rule is met: each area ran clean for at least 32
 minutes after the last fix (F16-3, 10:38).
+
+2026-11-09. O16-1 decided by Frans (11:52): fine as is for 2026.4. "For a
+later release, we need to think long and hard on storing objects, bytes,
+strings at pub layer, indexing on them, and relationship with core layer.
+[...] But 2026.4 should be a stable baseline reference."
