@@ -1,6 +1,8 @@
 package bergdb.pubimp;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -46,6 +48,7 @@ import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.pub.util.SyncLevel;
+import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;
 import bergdb.stream.MemoryStream;
 
@@ -176,8 +179,8 @@ public class PubTesterJavadoc {
         throw new AssertionError(what + ": " + expected.getSimpleName() + " expected, none");
     }
 
-    /** A database on 'stream', which a copy of it restarts. */
-    private static Database start(MemoryStream stream) {
+    /** A database on 'stream'; a copy of a MemoryStream restarts it. */
+    private static Database start(AppendOnlyStream stream) {
         DatabaseBuilder builder = Factory.database();
         ((DatabaseBuilderImp) builder).getDbBuilder().testSetup(stream);
         return builder.start();
@@ -1339,14 +1342,10 @@ public class PubTesterJavadoc {
                 () -> list(c.usePrimary(Account.class).dir("/acc/").objects()),
                 () -> db.indexBuilder("i").dir("/acc/").type("long").field("balance").start(),
                 () -> {
-                    for (int i = 0; i < 1000 && db.indexJob("i").getStatus().state()
-                            != JobStatus.State.ACTIVE; i++) {
-                        try {
-                            Thread.sleep(1);
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                        }
-                    }
+                    // join() ends its wait at the interrupt: the wait without the flag.
+                    Thread.interrupted();
+                    db.indexJob("i").join();
+                    Thread.currentThread().interrupt();
                 },
                 () -> list(c.useIndex("i", Account.class).objects()),
                 () -> db.deleteIndex("i"),
@@ -1498,15 +1497,17 @@ public class PubTesterJavadoc {
      * Database, "Interrupts": sync() only waits, and an interrupt ends the wait: it throws a
      * DbException (a StreamIoException whose cause is an InterruptedIOException), the
      * transaction stays committed, and the flag is set. So do Connection.sync() and
-     * Transaction.sync(), with or without a level; SyncLevel.NONE does not wait.
+     * Transaction.sync(), with or without a level (bergdb 020-19, J6); SyncLevel.NONE does
+     * not wait. The stream holds its appends, so that each sync waits.
      */
     @Nano
-    public static void testSyncInterrupted(TestEnvironment env) throws Exception {
-        String dir = new File(env.createTempDir(), "db").getPath();
-        Database db = Factory.database().create(dir).start();
+    public static void testSyncInterrupted() {
+        HoldStream stream = new HoldStream();
+        Database db = start(stream);
         try {
             final Database d = db;
             final Connection c = db.connection();
+            stream.hold = true;
             List<Runnable> syncs = new ArrayList<>();
             for (int i = 0; i < 6; i++) {
                 final Transaction t = c.put("/a" + i + ".txt", "v" + i);
@@ -1517,24 +1518,67 @@ public class PubTesterJavadoc {
                 DbException e = assertThrows("sync " + i, DbException.class, calls[i]);
                 Assert.assertTrue("flag " + i, Thread.interrupted());
                 Assert.assertTrue(String.valueOf(e.getCause()),
-                        e.getCause() instanceof java.io.InterruptedIOException);
+                        e.getCause() instanceof InterruptedIOException);
                 syncs.add(calls[i]);
             }
             Thread.currentThread().interrupt();
             c.sync(SyncLevel.NONE);
             Assert.assertTrue(Thread.interrupted());
+            stream.hold = false;
             for (Runnable r : syncs) {
                 r.run();
             }
+            Assert.assertEquals("v5", c.get("/a5.txt", String.class));
         } finally {
             Thread.interrupted();
+            stream.hold = false;
             db.close();
         }
-        db = Factory.database().open(dir).start();
+        db = start(stream.inner.copy());
         try {
             Assert.assertEquals("v5", db.connection().get("/a5.txt", String.class));
         } finally {
             db.close();
+        }
+    }
+
+    /** A stream whose appends wait while 'hold' is set: a sync then waits too. */
+    static final class HoldStream implements AppendOnlyStream {
+        final MemoryStream inner = new MemoryStream();
+        volatile boolean hold = false;
+
+        public long getLength() {
+            return inner.getLength();
+        }
+
+        public long getFirstPos() {
+            return inner.getFirstPos();
+        }
+
+        public void read(long position, byte[] dest, int destOffset, int length)
+                throws IOException {
+            inner.read(position, dest, destOffset, length);
+        }
+
+        public void append(byte[] source, int sourceOffset, int length)
+                throws IOException {
+            while (hold) {
+                try {
+                    Thread.sleep(1);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new InterruptedIOException("HoldStream: interrupted");
+                }
+            }
+            inner.append(source, sourceOffset, length);
+        }
+
+        public void pretruncate(long position) throws IOException {
+            inner.pretruncate(position);
+        }
+
+        public void close() throws IOException {
+            inner.close();
         }
     }
 
