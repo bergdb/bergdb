@@ -483,7 +483,13 @@ public final class IndexJobsHarness {
                 }
                 live(c);
             } catch (RuntimeException | Error e) {
-                finding("workload", "it threw " + describe(e) + "\n" + stack(e));
+                // The workload's own reads, not a call's (such as streamDefinition() at a
+                // creation), may meet a stop or a failure that the fault made in another
+                // thread after the last alive(): alive() decides whether it was allowed, as
+                // it does between the calls (020-17, H3-O2).
+                if (!isStopOrFailure(e) || alive("at a read of the workload")) {
+                    finding("workload", "it threw " + describe(e) + "\n" + stack(e));
+                }
             } finally {
                 stopWriter();
                 closeAndCheck(db, "the live database");
