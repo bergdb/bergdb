@@ -4,9 +4,10 @@
  * byte after every transaction, the same answers at every time, the counts
  * right (the recount), the pins in the node table, the resident bytes at
  * most the trigger; the setter's eviction in its call; the admission of a
- * large value, also of a start's rerun (015-68); a lowered budget reached
- * after the pins fell (015-70); and the allocation failures in turn under a
- * budget of one byte. Each test ends with the allocator's count 0. */
+ * large value, also of a start's rerun (015-68); a warmup that keeps no
+ * large value (019-22); a lowered budget reached after the pins fell
+ * (015-70); and the allocation failures in turn under a budget of one
+ * byte. Each test ends with the allocator's count 0. */
 #define _DARWIN_C_SOURCE        /* mkdtemp */
 #include <dirent.h>
 #include <stdlib.h>
@@ -532,6 +533,61 @@ TEST(evict_start_admits_large_values) {
     remove_dir(dir);
 }
 
+/* Eviction.testWarmupKeepsNoLargeValue (bergdb 019-22, as Java's since
+ * release 2026.3): a transaction's warmup keeps no value over 1 MiB. A
+ * key's value of 1,200 KiB is written, and the admission takes it from its
+ * pointer; a transaction then puts a small value for the key. Its warmup
+ * (db.c's warmup, Db.warmup) reads the key first, and the old large value
+ * is the latest; with a cache policy that keeps it, the read puts it back
+ * into the leaf's pointer, where it stays, as the budget of 100 MB starts
+ * no sweep (Java's warmup had Dag.CACHE_ALL until 019-22). C's warmup reads
+ * with the get's policy, cache_all_except_large (dag_new_get_data), as
+ * Java's since 019-22 (012-18, section 3.3): this test shows it. */
+TEST(evict_warmup_keeps_no_large_value) {
+    struct mem m;
+    struct err e;
+    struct db db;
+    struct db_config c;
+    struct db_start_info info;
+    struct bergdb_test_clock k = {0};
+    mem_init(&m);
+    config(&c, &k, 30, 50000000, 100000000);
+    bergdb_test_clock_set(&k, 500);
+    REQUIRE(db_open(&db, NULL, &c, &m, &info, &e) == ERR_OK);
+    const int32_t len = 1200 * 1024;
+    uint8_t *value = calloc((size_t) len, 1);
+    REQUIRE(value != NULL);
+    const char *const keys[] = {"a"};
+    CHECK(exec_puts(&db, &m, &k, 1000, keys, 1, value, len, &e) == ERR_OK);
+    CHECK_EQ(large_resident(&db), 0);       /* after the large value's record */
+    CHECK(exec_puts(&db, &m, &k, 1010, keys, 1, (const uint8_t *) "small", 5, &e) == ERR_OK);
+    CHECK_EQ(large_resident(&db), 0);       /* after the transaction that replaces it */
+    CHECK(db_resident_bytes(&db) < len);
+    CHECK_EQ(db.ev.sweeps, 0);              /* no sweep took it */
+    uint8_t bkey[8];
+    keys_ikey_to_bkey((const uint8_t *) "a", 1, bkey);
+    int64_t segs[8];
+    keys_to_segments(bkey, 1, segs);
+    struct getdata gd;
+    db_new_get_data(&db, &gd);
+    struct vnode *v = NULL;
+    CHECK(db_get_one(&db, 1000, segs, keys_segment_count(1), &gd, &v, &e) == ERR_OK);
+    REQUIRE(v != NULL);                     /* the old value read */
+    CHECK_EQ(v->len, len);
+    CHECK(memcmp(v->value, value, (size_t) len) == 0);
+    db_new_get_data(&db, &gd);
+    v = NULL;
+    CHECK(db_get_one(&db, INT64_MAX, segs, keys_segment_count(1), &gd, &v, &e) == ERR_OK);
+    REQUIRE(v != NULL);
+    CHECK_EQ(v->len, 5);
+    db_evict(&db);
+    CHECK_EQ(large_resident(&db), 0);
+    CHECK_EQ(db_recount(&db), 0);
+    CHECK(db_close(&db, &e) == ERR_OK);
+    CHECK_MEM_ZERO(&m);
+    free(value);
+}
+
 /* Evicts the detachable objects of the node table, as a sweep does, until
  * the resident bytes are at most target. */
 static void evict_down_to(struct db *db, int64_t target) {
@@ -762,6 +818,7 @@ const struct test evict_tests[] = {
     TEST_ENTRY(evict_twins),
     TEST_ENTRY(evict_large_value),
     TEST_ENTRY(evict_start_admits_large_values),
+    TEST_ENTRY(evict_warmup_keeps_no_large_value),
     TEST_ENTRY(evict_lowered_budget_after_pins_fell),
     TEST_ENTRY(evict_alloc_failures),
     TEST_END

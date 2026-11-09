@@ -504,3 +504,30 @@ The gate against 2026.3, on s4a's landing (`714d52b`) and `2929db5`:
 tests; `cross quick` 0 differences (23 workloads, 69 crash cuts, 85
 corrupt variants, 2 in turns, 46 budget runs); `writecheck` 0;
 `corruptset` 57 copies, 2 s; `allocfail` 628 runs. No difference remains.
+
+2026-11-09, step 6 (worker s7). The documents. `c/readme.md`: "Which
+Java" says 2026.3 (`release-2026.3`, `929fa33`, 2026-11-06), that
+`java-build.sh` compiles its source zip by default, that this copy began
+at 012's `be51a78` (the port of 2026.2) and that C is kept at one release
+at a time, 2026.4 next (022-02); section 1 the gate's time, about 4 to 8
+minutes under load; section 9, point 11, C's forces (at a sync and a
+close, at an open for writing, at a file switch, before a cut's deletes)
+and the two differences from Java's; section 10 `allocfail`'s 628 runs;
+a new section 11, the departures from Java with their reasons (NOMEM a
+refusal, the settings' refusal text, a new file and the directory forced
+at the next sync, close or cut, the unforced tail, `StreamIoException`'s
+texts). The report, 022-03 (`03-report-2026-3.md`), with section 9 for
+step 5's results, left to fill, and the open points for Frans. One test:
+`t_evict.c`'s `evict_warmup_keeps_no_large_value`
+(`Eviction.testWarmupKeepsNoLargeValue`, 019-22), which passes, as C's
+warmup reads with the get's policy (012-18, section 3.3); in a copy of
+`c/` whose warmup keeps every node it reads (Java's `CACHE_ALL` before
+019-22) it fails: one resident pointer to a value over 1 MiB after the
+transaction that replaces the value, the resident bytes over 1,200 KiB,
+still after an eviction. 022's readme: 022-02's candidate is `94a1520`,
+not `770d88b` (022-02, section 2.1); 022-03 added. The gate against
+2026.3, on `3e3b704`: `C BEFORE COMMIT OK (450 s)`, F53 under a load of
+about 11 to 18; `unit` 383 tests; `cross quick` 0 differences (23
+workloads, 69 crash cuts, 85 corrupt variants, 2 in turns, 46 budget
+runs); `writecheck` 0; `corruptset` 57 copies; `allocfail` 628 runs. No
+difference remains. 022-01 stays open until step 5 has passed.

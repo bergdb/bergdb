@@ -1,27 +1,31 @@
 BergDB's Core in C
 ==================
 
-The C clone of BergDB's Core (bergdb item 012; the plan is 012-01): the
-same database as Java's `bergdb.core`, with the same stream, byte for byte,
-on F53 (macOS, Apple silicon). This directory is all of it (decision D1):
-the library, its tests, the tools, and the Java side of the cross tests.
-Its first parts, the build, the tests, the gate and the rules below, are
-012-04's.
+The C clone of BergDB's Core, made in bergdb item 012 (the plan is
+012-01) and kept in item 022 since 2026-11-09 (022-01): the same database
+as Java's `bergdb.core`, with the same stream, byte for byte, on F53
+(macOS, Apple silicon). This directory is all of it (012-01's decision
+D1): the library, its tests, the tools, and the Java side of the cross
+tests. Its first parts, the build, the tests, the gate and the rules
+below, are 012-04's.
 
-**Which Java.** C is a port of **Java release 2026.2** (the tag
-`release-2026.2`, `95bde62`, 2026-11-04; bergdb 015-02), not of the Java
+**Which Java.** C is a port of **Java release 2026.3** (the tag
+`release-2026.3`, `929fa33`, 2026-11-06; bergdb 022-01), not of the Java
 of the day: it writes that release's bytes, opens its databases and
-refuses what it refuses, and its API follows `Db`'s public methods there.
-It does not follow Java's changes after the release, and it is meant to
-stay as it is (Frans, 2026-11-05): a port of a later release would most
-likely be done in another item or in another repository. The cross tests
-compare with the release's Java: `test/cross/java-build.sh` compiles the
-Core Layer from `releases/2026.2/bergdb-2026.2-src.zip`, checked against
-its `SHA256SUMS` and extracted once into `build/java-src/`.
-`JAVA_REF=tree` compiles the repository's `java/` instead, and
-`JAVA_REF=DIR` another Java tree; both differ from C where Java changed
-after the release. Until 2026-11-05 C followed `main` as of 2026-10-29
-(`ae4aaf9`).
+refuses what it refuses, with Java's exception names and texts, and its
+API follows `Db`'s public methods there. Where it departs from 2026.3, on
+purpose, section 11 says how and why. The cross tests compare with the
+release's Java: `test/cross/java-build.sh` compiles the Core Layer from
+`releases/2026.3/bergdb-2026.3-src.zip` by default, checked against its
+`SHA256SUMS` and extracted once into `build/java-src/`. `JAVA_REF=2026.2`
+compiles release 2026.2's instead, `JAVA_REF=tree` the repository's
+`java/`, and `JAVA_REF=DIR` another Java tree; each differs from C where
+its Java differs from 2026.3. C is kept at one release at a time, and
+follows Java's releases, not its changes in between: this copy began at
+012's `be51a78`, the port of release 2026.2 (bergdb 015-02), which 012
+keeps; 022-01 brought it to 2026.3, and 2026.4 follows (022-02; 022's
+readme). Until 2026-11-05 C followed `main` as of 2026-10-29 (`ae4aaf9`),
+then release 2026.2 until 2026-11-09.
 
 
 # 1. Build and test
@@ -87,7 +91,11 @@ section 10); the allocation failures in turn on a small workload
 (`bergdb-allocfail`, 012-14, section 10); and `examples/compare.sh`
 (012-13), which runs the examples under the sanitizers and compares them
 with Java (section 8).
-Java's gate, `java/before-commit.sh`, is not touched.
+Java's gate, `java/before-commit.sh`, is not touched. The gate takes
+about 4 to 8 minutes on a loaded F53 (225 to 450 s at 022-01's landings,
+under a load of 10 to 28; 179 s at 015-02 on a quieter one), most of it
+in `cross` and the functional tests under `leaks`; each step's line gives
+its seconds.
 
 The test programs run every test, or those whose names start with an
 argument; `-l` lists them:
@@ -472,8 +480,9 @@ bergdb_close(db);                               /* writes, forces, frees all */
   is the text, which begins with the name of Java's exception for the
   same case. A *refusal* (`BERGDB_RERUN`, `BERGDB_LIMIT`, `BERGDB_ARG`,
   `BERGDB_NOT_AVAILABLE`, `BERGDB_NOMEM`, `BERGDB_STATE`) leaves the
-  database as it was. `BERGDB_FAILED` means that the database has failed
-  (the storage, memory after a transaction's go point, corrupt data):
+  database as it was (NOMEM as a refusal is C's: section 11, point 1).
+  `BERGDB_FAILED` means that the database has failed (the storage,
+  memory after a transaction's go point, corrupt data):
   every later transaction and read gets it too; close the database and
   open it again, which rebuilds it from the stream as after a crash (P7).
 * **One caller at a time.** A database, with its transactions and read
@@ -511,8 +520,9 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
    (point 9). Nothing writes it between calls: the library has no thread
    (012-01, 4.3).
    Java's `BufferedStream` writes it within 20 ms from a thread of its
-   own, and `FileStream` forces each write; the bytes are the same, and
-   only when they reach the disk differs.
+   own, and `FileStream` forces each write (per-append forcing, a setting
+   since 2026.3 and on by default, 005-47); the bytes are the same, and
+   only when they reach the disk differs (section 11, point 4).
 2. **After `bergdb_execute`**, the transaction is committed: reads see it
    and the stream's length counts it, but it is not durable. A process
    that dies (a crash, `kill -9`, `abort`) loses what the buffer holds;
@@ -594,29 +604,47 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
     at least up to what was forced; 005-47). A power loss, or a crash of
     the operating system, can lose what was written and not forced, and
     the file system may make a new file's name durable at once, before
-    any force of the directory. C's other forces are those of Java's
-    `FileStream` with per-append forcing off (`stream.h`; `plat.h`'s
-    reasons, Java's `FileStreamIo.Force`), so that no file before the
-    last is short on the disk, which every open refuses
-    (`BadDirStateException`): the old last file before a new file is made
-    (SWITCH; 022-01, step 3: C forced nothing at a switch before); the
-    last file and the directory at an open for writing (OPEN), so that
-    what a process that died wrote is durable before this one counts it
-    durable or cuts after it; and before a cut's deletes, the files
-    written since the last force and the directory after a new file
-    (CUT), nothing after reclaim's own force (point 9). `power.sh` checks
-    it with a new name durable at its creation (`NAMES=now`, section 10).
-    Within a file, that unforced bytes reach the disk in order is the
-    file system's part, as for Java (014-01, section 7, consequence (c)):
-    a hole in an unforced tail is outside the contract.
+    any force of the directory. C's forces, each an `F_FULLFSYNC`, are
+    those of 2026.3's `FileStream` with per-append forcing off
+    (`stream.c`; `plat.h`'s reasons, Java's `FileStreamIo.Force`), but for
+    the force of each new file and its directory (below):
+
+    * **At a sync and a close** (SYNC): the files written since the last
+      force, then the directory if a file was made since its last force
+      (points 3 and 4); a transaction that decides a reclaim cut forces
+      so too (point 9).
+    * **At an open for writing** (OPEN): the last file, then the
+      directory, so that what a process that died wrote and did not force
+      is durable before this one counts it durable (point 7) or cuts the
+      files before it (point 9). The port of 2026.2 forced nothing at the
+      open (022-01, step 3).
+    * **At a file switch** (SWITCH): the old last file, before the new
+      file is made, so that no file before the last is short on the disk,
+      which every open refuses (`BadDirStateException`, "Bad size of
+      file"). C forced nothing at a switch before 022-01, step 3.
+    * **Before a cut's deletes** (CUT): the files written since the last
+      force, and the directory after a new file; nothing after reclaim's
+      own force (point 9). Then the directory after each delete (005-46).
+
+    The cost: per open a force of the last file and one of the directory
+    (about 1 and 0.4 ms on F53), per new file one force of the old one.
+    `power.sh` checks it with a new name durable at its creation
+    (`NAMES=now`, section 10). Two differences from Java remain, by C's
+    design (section 11, points 3 and 4): a new file and the directory are
+    forced at the next sync, close or cut, where Java's `openForRw`
+    forces them (OPEN) before the file takes appends; and C's unforced
+    tail is all that was written since the last force. Within a file,
+    that unforced bytes reach the disk in order is the file system's
+    part, as for Java (014-01, section 7, consequence (c)): a hole in an
+    unforced tail is outside the contract.
 
 
 # 10. Robustness runs (012-14)
 
 By hand, not in the gate (but for the short allocation-failure run and
 the corrupt-stream set's `quick`); each script's header has its usage,
-and 14-robustness.md the results. Raw output goes to
-`/Users/f/fl/bench/022/out/` by default (`OUT=`).
+012-14 the results of 012's runs, and 022-03 those of the port to 2026.3.
+Raw output goes to `/Users/f/fl/bench/022/out/` by default (`OUT=`).
 
 * `test/stress/random.sh FROM TO`: Gen's seeds by the thousand, Java
   against C, in batches of `cross.sh random`.
@@ -666,10 +694,76 @@ and 14-robustness.md the results. Raw output goes to
   go point, P7), and the closed stream is a prefix of the reference's and
   opens again; the live bytes are 0 after every close. The gate runs it on
   `test/stress/allocfail.wl` (Gen 31: 4 transactions, a restart, reclaim,
-  a budget of 1,000 bytes; 379 runs, about 15 s).
+  a budget of 1,000 bytes): 628 runs, about 50 s on a loaded F53, since
+  022-01, step 1, made its `set retain` a commit after the creation (379
+  runs before).
 * `test/stress/gcc.sh`: **a second compiler**, Homebrew's gcc 16, by hand:
   both builds without `-Werror` (`CC=gcc-16 WERROR= BUILD=DIR ./build.sh`),
   then the unit and functional tests in both. The gate keeps clang and
   `-Werror`. The library has no gcc warning (012-14 silenced its four, none
   a bug); the tests and the examples have about 15 of
   `-Wformat-truncation`, paths into fixed buffers, as meant.
+
+
+# 11. Departures from Java
+
+Where C does not do what release 2026.3's Java does, on purpose; the
+cross tests and the corrupt sets compare around them, and 022-03,
+section 7, gives them with the port's evidence. Those of C's design since
+012 (012-16, section 4): one caller at a time and no thread (section 8),
+so a transaction is durable at a sync or a close (section 9, points 1 to
+4) and a decided cut is forced and made in the call that decides it
+(section 9, point 9); a handle ends at its close (012-13, Q2); a
+directory is opened once per process (section 9, point 10); no `stop()`,
+so the setters' "not active" is a failed database (`BERGDB_FAILED`) or a
+call from a callback (`BERGDB_STATE`); a text is cut at C's limit
+(`ERR_TEXT`, 240 bytes with its end: 239 of text); replication,
+encryption and the layers above the Core left out. Not ported (022-01's
+D4): 015-67's bounded batches (C's sweep at the end of a call has no
+bound on its work, a latency property; 012-16's proposal) and 2026.3's
+limits harness. And those of 2026.3:
+
+1. **NOMEM is a refusal** (Java's 019-10; 012-14's decision, kept by
+   022-01's D4). A failed allocation before a transaction's go point, or
+   in a read, gives `BERGDB_NOMEM` and leaves the database as it was
+   (section 5); after the go point it fails the database (P7). Java since
+   2026.3 fails the database at any `Error` in a read, a transaction or a
+   sync and throws it as it is, as an `OutOfMemoryError` may be the
+   application's and leaves the JVM unsound. That reason does not hold
+   for C's NOMEM: one allocation of the library's own that failed,
+   checked where it happens, with nothing else touched; `bergdb-allocfail`
+   shows that each refusal leaves the database as it was and nothing live
+   (section 10).
+2. **The text of the settings' refusal** (015-87). A start that finds
+   reclaim's settings in another form refuses with
+   `InternalDataException` and Java's words, but the text holds up to 200
+   of the value's bytes as they are, and is cut at C's limit, where
+   Java decodes the value as UTF-8 and gives up to 200 of its characters,
+   whatever the length. C's errors are fixed buffers of bytes, and a
+   damaged value need not be UTF-8. The harness compares the exception's
+   name there (022-01, step 1).
+3. **A new file and the directory are forced at the next sync, close or
+   cut** (section 9, point 11), where Java's `openForRw` forces each new
+   file and the directory before the file takes appends (OPEN). One
+   write of C's 10 MB buffer can make several files with no force of the
+   directory between them, and a file system that made a later name
+   durable before an earlier one would leave a gap in the files, which
+   both opens refuse. APFS keeps such namespace
+   operations in order, as 014-01's consequence (c) relies on for the
+   bytes of a file, so on F53 the case is a theoretical one; on another
+   file system the fix is Java's force at each new file, one force of the
+   directory per new file (022-01, step 3).
+4. **The unforced tail** is all that was written since the last force,
+   by C's design (section 9, point 1): no thread forces between the
+   calls. Java's per-append forcing, on by default, forces each append of
+   its buffer thread, within about 20 ms. So a power loss can lose more in
+   C, never a byte that a sync or a close acknowledged, and a hole within
+   a file, outside 014-01's contract, has more room in C, as in Java with
+   per-append forcing off.
+5. **`StreamIoException`'s text** (012-14, section 6.4, a choice left
+   open). A failed read of the stream is named `StreamIoException`, as
+   Java names it, and its text begins with the inner exception's name, as
+   Java's, and goes on in C's words, where Java's goes on with the inner
+   exception's message. `corruptset.sh`, which compares the messages byte
+   for byte, counts these as known (10 of the 6,247 copies of 022-01,
+   step 4).

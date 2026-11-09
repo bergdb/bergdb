@@ -24,8 +24,13 @@ Files
   the steps, the clones, the gate and how the work lands.
 * [02-update-to-2026-4.md](02-update-to-2026-4.md), 022-02: the study of
   the port from 2026.3 to 2026.4, from the candidate (`main` at
-  `770d88b`): what changed in Java's Core, what C needs, how C is tested
-  before the tag, what may still move, the steps, decisions D1 to D5.
+  `94a1520`, with 021-11; its section 2.1): what changed in Java's Core,
+  what C needs, how C is tested before the tag, what may still move, the
+  steps, decisions D1 to D5.
+* [03-report-2026-3.md](03-report-2026-3.md), 022-03: the report of the
+  port to 2026.3 (022-01): what changed, the evidence, the faults found in
+  C and in Java, the known cases, the departures, the size and the time;
+  step 5's long runs to be added.
 * [c/](c/): BergDB's Core in C.
 
 
