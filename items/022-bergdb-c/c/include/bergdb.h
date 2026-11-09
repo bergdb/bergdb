@@ -276,10 +276,12 @@
  * 2026.4), so a new database at the path keeps its files; it may still
  * have written to its last file, in the old directory. It checks the
  * directory right before each such step and again after it (021-24); a
- * replacement in the moment between the check and the step is not
- * prevented: the step then leaves an empty .bergdb file in the new
- * directory, which an open there refuses until the file is removed, or,
- * at a cut, deletes the new directory's file of that name. An open at the
+ * replacement in the short window between the check and the step,
+ * usually microseconds, is not prevented: the step then leaves an empty
+ * .bergdb file in the new directory, which an open there refuses until
+ * the file is removed (BERGDB_FORMAT, BadDirStateException beside stream
+ * files of its own), or, at a cut, deletes the new directory's file of
+ * that name. An open at the
  * path, in this process or another, is not refused, where Java refuses a
  * start at the path within its JVM until the old database has closed.
  * Several processes may open a directory that does not exist yet at

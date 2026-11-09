@@ -930,6 +930,97 @@ TEST(dag_wrong_pointee_type) {
     tdag_end(&t);
 }
 
+/* ---- KeyAccessPath.clear (bergdb 021-25, fix (c)) ---- */
+
+/* KeyAccessPath's tests: after pd_clear no entry of the array holds a
+ * node. */
+static bool kap_no_nodes(const struct putdata *pd) {
+    const struct kap *p = &pd->key_access_path;
+    bool none = p->size == 0;
+    for (int32_t i = 0; i < p->cap; i++) {
+        none = none && p->nodes[i] == NULL;
+    }
+    return none;
+}
+
+/* Adds count entries, each a distinct non-NULL node pointer (the path
+ * holds them only). */
+static void kap_add_nodes(struct putdata *pd, int32_t count) {
+    static struct knode fake[7];
+    for (int32_t i = 0; i < count; i++) {
+        struct knode *node = &fake[i % 7];
+        CHECK(kap_add(&pd->key_access_path, KL_NULL, node));
+        CHECK(kap_get(&pd->key_access_path, pd->key_access_path.size - 1) == node);
+    }
+}
+
+/* KeyAccessPath.testClearNullsTheNodes, testClearAfterClearFast and
+ * testClearAfterEnlargement: pd_clear leaves no node in the array, also
+ * after pd_clear_fast and later, shorter adds, and after enlargements (16,
+ * 25, 40, 64 entries); and, C's own, it nulls only what was set since the
+ * last clear: an entry above the high-water mark is not touched. Before,
+ * pd_clear nulled the whole array at every transaction, whose length is
+ * that of the longest path ever followed (the last check failed). */
+TEST(dag_kap_clear_nulls_what_was_used) {
+    struct mem m;
+    struct putdata pd;
+    mem_init(&m);
+    dag_new_put_data(NULL, &pd, &m);
+    kap_add_nodes(&pd, 5);
+    pd_clear(&pd);
+    CHECK(kap_no_nodes(&pd));
+    kap_add_nodes(&pd, 3);
+    pd_clear(&pd);
+    CHECK(kap_no_nodes(&pd));
+    pd_clear(&pd);
+    CHECK(kap_no_nodes(&pd));
+
+    kap_add_nodes(&pd, 6);
+    pd_clear_fast(&pd);
+    kap_add_nodes(&pd, 2);
+    pd_clear_fast(&pd);
+    kap_add_nodes(&pd, 4);
+    CHECK_EQ(pd.key_access_path.size, 4);
+    pd_clear_fast(&pd);
+    pd_clear(&pd);
+    CHECK(kap_no_nodes(&pd));
+    kap_add_nodes(&pd, 1);
+    pd_clear_fast(&pd);
+    pd_clear(&pd);
+    CHECK(kap_no_nodes(&pd));
+
+    const int32_t first = 16;
+    kap_add_nodes(&pd, first + 4);
+    CHECK(pd.key_access_path.cap > first);
+    pd_clear_fast(&pd);
+    kap_add_nodes(&pd, 3 * first);
+    CHECK_EQ(pd.key_access_path.size, 3 * first);
+    CHECK(pd.key_access_path.cap >= 3 * first);
+    pd_clear_fast(&pd);
+    kap_add_nodes(&pd, 2);
+    pd_clear(&pd);
+    CHECK(kap_no_nodes(&pd));
+    kap_add_nodes(&pd, 2 * first);
+    pd_clear_fast(&pd);
+    kap_add_nodes(&pd, 1);
+    pd_clear(&pd);
+    CHECK(kap_no_nodes(&pd));
+
+    /* Only what was used: an entry above the mark, here one planted, as
+     * no add set it since the last clear, stays. */
+    static struct knode planted[1];
+    kap_add_nodes(&pd, 2);
+    CHECK_EQ(pd.key_access_path.used, 2);
+    pd.key_access_path.nodes[40] = planted;
+    pd_clear(&pd);
+    CHECK(pd.key_access_path.nodes[40] == planted);
+    CHECK_EQ(pd.key_access_path.used, 0);
+    pd.key_access_path.nodes[40] = NULL;
+    CHECK(kap_no_nodes(&pd));
+    pd_free(&pd);
+    CHECK_MEM_ZERO(&m);
+}
+
 const struct test dag_tests[] = {
     TEST_ENTRY(dag_test0),
     TEST_ENTRY(dag_test1),
@@ -948,5 +1039,6 @@ const struct test dag_tests[] = {
     TEST_ENTRY(dag_check_found),
     TEST_ENTRY(dag_assert_ok_text),
     TEST_ENTRY(dag_wrong_pointee_type),
+    TEST_ENTRY(dag_kap_clear_nulls_what_was_used),
     TEST_END
 };

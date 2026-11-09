@@ -16,11 +16,13 @@
 #                      a release's source zip holds them, extracted once into
 #                      build/java-src/git-HASH/java/. The default, until 2026.4's
 #                      tag, is the pinned candidate of release 2026.4 (bergdb
-#                      022-02, section 2.1, and its log's re-pins), main at
-#                      2566df1, 2026-11-09 17:18, with 021-18, 021-19, 020-28
-#                      and 020-24's U7 to U9 (32f3832, 15:22, 772e09b, 14:40,
+#                      022-02, section 2.1, and its log's re-pins), the
+#                      release candidate, main at 03ce6ec, 2026-11-09 18:42
+#                      (coord-1109's word, 18:58; int.git's candidate-2026.4),
+#                      with 021-20, 021-24 to 021-27, 020-24's U10 and 020-27's
+#                      Q1 and Q2 (2566df1, 17:18, 32f3832, 15:22, 772e09b, 14:40,
 #                      82edabf, 13:04, and 94a1520, 11:57, before):
-#                      git:2566df17ba2c99717bb8bf9a0688351203825aff
+#                      git:03ce6ec5efc6f1c4f56bf809de21d05a9c7a1616
 #                      A clone of int.git without the commit fetches it first:
 #                      git fetch /Users/f/fl/repos/bergdb main:refs/remotes/repo/main
 #   JAVA_REF=2026.3    the release of the 2026.3 port (bergdb 022-01): the
@@ -47,7 +49,7 @@
 set -e
 C=$(cd "$(dirname "$0")/../.." && pwd)
 REPO=$(cd "$C/../../.." && pwd)
-REF=${JAVA_REF:-git:2566df17ba2c99717bb8bf9a0688351203825aff}
+REF=${JAVA_REF:-git:03ce6ec5efc6f1c4f56bf809de21d05a9c7a1616}
 case "$REF" in
 tree)
     JAVA=$REPO/java ;;

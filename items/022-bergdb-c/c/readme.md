@@ -19,12 +19,12 @@ tests compile by default: `test/cross/java-build.sh`'s
 `JAVA_REF=git:HASH`, the commit's `java/src`, `java/stress` and
 `java/deps.py` by `git archive`, as a release's source zip holds them,
 extracted once into `build/java-src/git-HASH/`; `java-ref.txt` names it
-in every report. The candidate is cut from `main` on 2026-11-09 at about
-20:00; until then C follows the newest `main` that 022-02 has pinned and
-checked (each pin, with what it brought, is in 022-02's log). The pin,
-here and as `java-build.sh`'s default:
+in every report. The candidate is `main` at `03ce6ec` (2026-11-09 18:42,
+named by coord-1109 at 18:58); before it C followed the newest `main`
+that 022-02 had pinned and checked (each pin, with what it brought, is
+in 022-02's log). The pin, here and as `java-build.sh`'s default:
 
-    JAVA_REF=git:2566df17ba2c99717bb8bf9a0688351203825aff   main at 2026-11-09 17:18
+    JAVA_REF=git:03ce6ec5efc6f1c4f56bf809de21d05a9c7a1616   the candidate, main at 2026-11-09 18:42
 
 Once 2026.4 is tagged, the default becomes `JAVA_REF=2026.4`, the
 release's `releases/2026.4/bergdb-2026.4-src.zip`, checked against its

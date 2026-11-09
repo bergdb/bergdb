@@ -1888,9 +1888,9 @@ the replacement fails with Java's text, the replacement's file of that
 name deleted; before, the cut returned `ERR_OK`).
 
 2026-11-09, the candidate, part 4 (worker t17). 021-26 and 021-27, at
-the session's word (18:40), from Java's `e7a3b02` and `57cb00a` in
-coord-1109's clone `clone-h31`, before they reached `main`; the pin
-stays at `2566df1`. (a) 021-26: `DbClock.currentTime()` took the clock's
+the session's word (18:40): `main`'s `8d405c9` and `d0a59aa` (18:31),
+taken from coord-1109's clone `clone-h31` (`e7a3b02`, `57cb00a`)
+before they reached `main`; the pin stays at `2566df1`. (a) 021-26: `DbClock.currentTime()` took the clock's
 time at most as `LAST_USER_TIME` (020-23's Z1) and kept it as the time
 that the next transaction must pass, so one call while the clock was
 out of range, or in the 1024 units kept for reclaim, gave
@@ -1924,3 +1924,54 @@ transaction"). Test `f_api.c`'s `api_get_trans_inside_a_record`
 (`DbTester.testGetTransInsideARecord`: a put of 1,000 bytes, offsets 8,
 16, 24 and 512, each `BERGDB_FAILED` and a read after it too), passing
 before, as Java's.
+
+2026-11-09, the candidate (worker t17). The release candidate pinned:
+`main` at `03ce6ec5efc6f1c4f56bf809de21d05a9c7a1616` (18:42), named by
+coord-1109 at 18:58 (also `int.git`'s branch `candidate-2026.4`):
+`java-build.sh`'s default and `c/readme.md`'s "Which Java", which now
+calls it the candidate. Java's vectors written again from it: all
+thirteen files equal. The stream's bytes do not change. Every Core
+commit from `2566df1` to it, nineteen, was read; parts 1 to 4 above
+took those up to 021-27, and this landing the rest. (a) 021-25, fix (c)
+(`e3b9787`): `KeyAccessPath.clear()` nulls only the entries that `add()`
+set since the last `clear()`, below a high-water mark, not the whole
+array, whose length is that of the longest path ever followed (a
+reclaim step's touch records every key node it follows, and every later
+transaction nulled them all: the main cost of 020-24-14's put slowdown).
+C's `pd_clear` nulled the whole capacity at every transaction too: now
+`struct kap`'s `used`, raised by `kap_add` and set to 0 by `pd_clear`,
+which nulls below it; `kap_enlarge` zeroes the new nodes' array, as a
+Java array is, so that no entry above the mark holds a pointer (before,
+`pd_clear`'s whole-array loop zeroed what the allocation left). Test
+`t_dag.c`'s `dag_kap_clear_nulls_what_was_used` (`KeyAccessPath`'s
+`testClearNullsTheNodes`, `testClearAfterClearFast` and
+`testClearAfterEnlargement`: no entry holds a node after `pd_clear`,
+also after `pd_clear_fast` and later shorter adds, and after
+enlargements to 25, 40 and 64 entries; and C's own check that an entry
+above the mark is not touched, which fails with the old loop). (b)
+021-24's wording (`03ce6ec`): the window between the check and the step
+is usually microseconds, not a bound, and the empty file it can leave is
+refused with an exception that depends on what else is in the
+directory: `check_directory`'s comment and `bergdb.h`, section G. (c)
+Nothing for C: 020-24-15's U15-11 (`6cdd63f`, FileStream's three tests
+made package-private) and U15's Javadoc (`ebfd835`, `DbException`'s
+words on `InternalDataException`, which `bergdb.h`, section E, says
+already), 006-18-03's `testOneFileStream` on Android again (`0cbe0a1`).
+Java's build at the candidate has 193 source files (the pin's 192 and
+`nanotest.Platform`); the harness's Java compiles against it unchanged.
+
+The gate against the candidate (`git:03ce6ec`), on `2026.4` at
+`e17528d` with parts 1 to 4 and this: `C BEFORE COMMIT OK (326 s)`, F53
+under a load of about 6; `unit` 529 tests (528 in the release build);
+`func` 51; `cross quick` 0 differences (23 workloads, 69 crash cuts, 85
+corrupt variants, 2 in turns, 46 budget runs); `writecheck` 0;
+`corruptset` 63 copies; `allocfail` 628 runs; `examples` OK. Before the
+rebase onto `448ca60` and `e17528d` (022-06's), on `a125133`: `C BEFORE
+COMMIT OK (370 s)`, `unit` 527, `func` 49; and on that tree the whole
+corrupt set, seed 1, `nice -n 10`: `CORRUPTSET OK`, 6,253 copies (237
+s), 2,628 refused by both with the same exception and message, 3,560
+started, 65 with a later read failing alike, 22 of 014-01's case; and
+`corrupt.sh`, `nice -n 10`: `CORRUPT OK`, 144 variants (84 refused by
+both, 38 started, 22 started with a read failing later), 106 messages
+compared, 0 differ (195 s). No difference remains. 022-04, section 8.2,
+filled.

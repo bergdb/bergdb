@@ -47,6 +47,10 @@
  * root). Its nodes are borrowed (a put's locals). */
 struct kap {
     int32_t size;
+    int32_t used;               /* the high-water mark: the entries of nodes that kap_add
+                                   may have set since the last pd_clear, also through
+                                   pd_clear_fast and later adds; pd_clear nulls only these
+                                   (KeyAccessPath.used, bergdb 021-25, fix (c)) */
     int32_t cap;
     int64_t *klongs;            /* MEM_STATE, with nodes: cap of each */
     struct knode **nodes;

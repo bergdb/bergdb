@@ -38,12 +38,13 @@ static void node_split(const struct dag_split_listener *l, int32_t splitType) {
 
 /* KeyAccessPath.enlargeArrays: 16 at first, then floor(1.6 size) in
  * integers (bergdb 005-79, as Java's since release 2026.2; (int) (size *
- * 1.6) before). */
+ * 1.6) before). The nodes' array is zeroed, as a Java array is, so that an
+ * entry above the high-water mark is NULL (pd_clear, 021-25). */
 static bool kap_enlarge(struct kap *p) {
     int32_t size = p->cap;
     int32_t newSize = size == 0 ? 16 : size + size * 3 / 5;
     int64_t *klongs = mem_alloc(p->mem, (size_t) newSize * sizeof *klongs, MEM_STATE);
-    struct knode **nodes = mem_alloc(p->mem, (size_t) newSize * sizeof *nodes, MEM_STATE);
+    struct knode **nodes = mem_zalloc(p->mem, (size_t) newSize * sizeof *nodes, MEM_STATE);
     if (klongs == NULL || nodes == NULL) {
         mem_free(p->mem, klongs, klongs == NULL ? 0 : (size_t) newSize * sizeof *klongs,
                 MEM_STATE);
@@ -70,6 +71,9 @@ bool kap_add(struct kap *p, int64_t klong, struct knode *node) {
     p->size++;
     p->klongs[p->size - 1] = klong;
     p->nodes[p->size - 1] = node;
+    if (p->used < p->size) {
+        p->used = p->size;
+    }
     return true;
 }
 
@@ -169,6 +173,7 @@ void pd_free(struct putdata *pd) {
     p->nodes = NULL;
     p->cap = 0;
     p->size = 0;
+    p->used = 0;
 }
 
 /* PutData.clearFast */
@@ -178,12 +183,19 @@ void pd_clear_fast(struct putdata *pd) {
     pd->op.kwi.node = NULL;
 }
 
-/* PutData.clear: no borrowed node is left for after a safe point. */
+/* PutData.clear: no borrowed node is left for after a safe point.
+ * KeyAccessPath.clear nulls the entries below the high-water mark, every
+ * one set since the last clear, not the whole array, whose length is that
+ * of the longest path ever followed (bergdb 021-25, fix (c), as Java's
+ * since release 2026.4): a reclaim step's touch records every key node it
+ * follows, and every later transaction nulled all of them. An enlargement
+ * copies the whole array, so no entry is left above the mark. */
 void pd_clear(struct putdata *pd) {
     struct kap *p = &pd->key_access_path;
-    for (int32_t i = 0; i < p->cap; i++) {    /* KeyAccessPath.clear */
+    for (int32_t i = 0; i < p->used; i++) {     /* KeyAccessPath.clear */
         p->nodes[i] = NULL;
     }
+    p->used = 0;
     p->size = 0;
     pd->op.temp_pointer.index = -1;
     pd->op.temp_pointer.node = NULL;

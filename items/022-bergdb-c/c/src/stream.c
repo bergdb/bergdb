@@ -183,12 +183,16 @@ static enum err_code force_written(struct stream *s, enum plat_force_why why, st
  * Called right before each of these steps, with nothing that waits in
  * between, and again after it (bergdb 021-24, as Java's): new_file checked
  * before the switch force, which can take long, so a directory replaced
- * during it got the new file. Left: a replacement between the check and
- * the step, as the step opens or deletes the file by its path; the check
- * after it fails the stream before a byte is written there, but the step
- * is done: an empty stream file in the replacement, which an open there
- * refuses (BadDirStateException) until it is removed, or, at a cut, the
- * replacement's file of that name deleted. A directory replaced and put
+ * during it got the new file. Left: a replacement in the short window
+ * between the check and the step (usually microseconds, longer if the
+ * process is paused), as the step opens or deletes the file by its path;
+ * the check after it fails the stream before a byte is written there, but
+ * the step is done: an empty stream file in the replacement, or, at a
+ * cut, the replacement's file of that name deleted. An open there is
+ * refused until the empty file is removed, with an error that depends on
+ * what else is in the directory, as Java's (021-24's wording, 03ce6ec):
+ * BadDirStateException beside stream files of its own; in a directory
+ * without others, as a stream without a valid meta block. A directory replaced and put
  * back between the two checks is not seen. The check relies on the stream
  * holding bergdb.lock open from the open until stream_close, which closes
  * it after the files (Java's invariant, bergdb 020-23, V5-1): the old
