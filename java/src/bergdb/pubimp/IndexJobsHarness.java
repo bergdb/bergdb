@@ -118,11 +118,18 @@ public final class IndexJobsHarness {
 
     private static final long LATEST = Long.MAX_VALUE;
 
+    /**
+     * The system property harness.slow, a factor of JOIN_MS and CLEANUP_MS (default 1), for
+     * the soak's larger runs (bergdb 020-17): a build of 20,000 objects with the Core's audit
+     * on reads about 1,000 values a second on one CPU of s1, and its join passed the bound.
+     */
+    static final int SLOW = Math.max(1, Integer.getInteger("harness.slow", 1));
+
     /** The bound of a call or a join (a hang beyond it is a finding), ms. */
-    static final int JOIN_MS = 10000;
+    static final int JOIN_MS = 10000 * SLOW;
 
     /** The longest wait for a cleanup to remove its marker, ms. */
-    static final int CLEANUP_MS = 5000;
+    static final int CLEANUP_MS = 5000 * SLOW;
 
     /** The longest wait for BergDB's threads to end after a close, ms. */
     static final int THREADS_MS = 2000;
@@ -1618,7 +1625,12 @@ public final class IndexJobsHarness {
             while (!done) {
                 Map<String, Object> w = new LinkedHashMap<String, Object>();
                 for (int i = 1 + r.nextInt(3); i > 0; i--) {
-                    String key = String.format("%sw%02d", DIR, r.nextInt(20));
+                    // One in two a key of the data (020-17, B14): a build of several steps
+                    // then meets writes behind its last key, which only the writers' index
+                    // maintenance keeps (020-10, section 5.1), as well as ahead of it; the
+                    // names wNN all sort after the data's kNNN.
+                    String key = r.nextBoolean() ? key(r.nextInt(run.cfg.objects))
+                            : String.format("%sw%02d", DIR, r.nextInt(20));
                     int k = r.nextInt(10);
                     w.put(key, k < 2 ? null : k < 3 ? "w" : new Item(r.nextInt(50),
                             STRINGS[r.nextInt(STRINGS.length)]));

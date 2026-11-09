@@ -378,6 +378,23 @@ final class IndexHarness {
                 : OTHER_NAMES[r.nextInt(OTHER_NAMES.length)]);
     }
 
+    /** The pattern of key replace (Connection.setEnableKeyReplace), in a wide run's keys. */
+    static final String REPLACE = "${transactionTime}";
+
+    /**
+     * The writes as committed at 'time': in a put's key, REPLACE becomes the time as 18
+     * digits (RwEnvironmentImp); a delete's key is as written (bergdb 019-15).
+     */
+    static List<Write> replaced(List<Write> writes, long time) {
+        String tt = String.format(java.util.Locale.US, "%018d", time);
+        List<Write> result = new ArrayList<Write>(writes.size());
+        for (Write w : writes) {
+            result.add(w.value != null && w.key.contains(REPLACE)
+                    ? new Write(w.key.replace(REPLACE, tt), w.value) : w);
+        }
+        return result;
+    }
+
     /** The more object names of a run with keys: "j0", "m1", "j2", ..., among OBJECT_NAMES. */
     static String extraName(int i) {
         return (i % 2 == 0 ? "j" : "m") + i;
@@ -483,6 +500,16 @@ final class IndexHarness {
             for (int i = 1 + r.nextInt(4); i > 0; i--) {
                 String key = key(r, keys, wide);
                 writes.add(new Write(key, r.nextInt(5) != 0 ? keyValue(key, r) : null));
+            }
+            if (wide && r.nextInt(30) == 0) {
+                // Key replace (020-17, B8): a new object at a name with the transaction's
+                // time; its field c one time in two a String that holds the pattern, which
+                // an entry keeps as it is (020-10, section 5.3, N11).
+                TreeMap<String, Object> o = object(r);
+                if (r.nextBoolean()) {
+                    o.put("c", "c" + REPLACE + (r.nextBoolean() ? "" : "x"));
+                }
+                writes.add(new Write(DIRS[0] + "r" + REPLACE, o));
             }
             return new Tx(r.nextBoolean(), writes);
         }
@@ -1167,10 +1194,10 @@ final class IndexHarness {
      * has grown by twice the startup distance, so with the Pub API's least, 5 MB, it does
      * not in a run of the unit's size; harness.sd makes it).
      */
-    final long[] counts = new long[6];
+    final long[] counts = new long[7];
     
-    /** The counts of the last run of run(), for the tests. */
-    static long[] lastCounts = new long[6];
+    /** The counts of the last run of run(), for the tests; [6] the stream's bytes at the end. */
+    static long[] lastCounts = new long[7];
 
     IndexHarness(long seed, Fault fault, boolean restarts, int threads) {
         this.seed = seed;
@@ -1219,6 +1246,7 @@ final class IndexHarness {
                 try {
                     long first = h.db.getFirstAvailableLookupTime().units();
                     h.counts[5] = h.m.times.headSet(first).size();
+                    h.counts[6] = ((DatabaseImp) h.db).getDb().getStreamLength();
                 } catch (RuntimeException e) {
                     // The database stopped or failed: the run's own exception says why.
                 }
@@ -1260,6 +1288,7 @@ final class IndexHarness {
         db.setRetainDuration(Duration.units(RETAIN_UNITS));
         startupDistance(db);
         c = db.connection();
+        c.setEnableKeyReplace(gen.wide);
     }
 
     /**
@@ -1300,7 +1329,8 @@ final class IndexHarness {
                 txs((Tx) op);
             } else {
                 Tx tx = (Tx) op;
-                m.commit(execute(c, tx, gen.wide), tx.writes);
+                long time = execute(c, tx, gen.wide);
+                m.commit(time, replaced(tx.writes, time));
             }
         } else if ((op instanceof Create || op instanceof DeleteIndex) && gen.wide
                 && threads > 1) {
@@ -1406,6 +1436,7 @@ final class IndexHarness {
         for (int i = 0; i < txs.size(); i++) {
             final int k = i;
             final Connection ck = k == 0 && main == null ? c : db.newConnection();
+            ck.setEnableKeyReplace(gen.wide);
             Thread th = new Thread(() -> {
                 try {
                     times[k] = execute(ck, txs.get(k), gen.wide);
@@ -1440,7 +1471,7 @@ final class IndexHarness {
             throw new AssertionError("a writer thread: " + failed[0], failed[0]);
         }
         for (int i = 0; i < txs.size(); i++) {
-            m.commit(times[i], txs.get(i).writes);
+            m.commit(times[i], replaced(txs.get(i).writes, times[i]));
         }
     }
 
@@ -1508,7 +1539,20 @@ final class IndexHarness {
      */
     private void checkAt(long t, boolean latest) {
         Connection rc = db.newConnection();
-        rc.setLookupTime(Time.units(t));
+        if (latest && gen.wide && checks.nextInt(4) == 0) {
+            // A frozen lookup time (020-17, B10): the first read fixes it at the latest
+            // state, getLookupTime() gives it, and the scans read at it (020-10, section 3.6).
+            rc.freezeLookupTime();
+            rc.exists(DIRS[0] + "k0");
+            long frozen = rc.getLookupTime().units();
+            long last = m.times.isEmpty() ? 0 : m.times.last();
+            check(frozen >= last && frozen <= t, "the frozen lookup time " + frozen
+                    + ", not from the last transaction's time, " + last + ", to the current "
+                    + "time, " + t);
+            t = frozen;
+        } else {
+            rc.setLookupTime(Time.units(t));
+        }
         for (String name : INDEX_NAMES) {
             List<Generation> gs = m.at(name, t);
             check(gs.size() <= 1, "two generations of " + name + " at " + t + ": " + gs);
@@ -1522,6 +1566,7 @@ final class IndexHarness {
                 active = false;
             } catch (LookupTimeNotAvailableException e) {
                 check(!latest, "the latest time not available");
+                behindCut(t, e);
                 return;
             }
             if (active) {
@@ -1571,6 +1616,7 @@ final class IndexHarness {
                     iterate(iterable, kvs, keys, values, k == 0 ? what : what + ", again");
                 }
             } catch (LookupTimeNotAvailableException e) {
+                behindCut(t, e);
                 return;
             }
             counts[1]++;
@@ -1667,6 +1713,17 @@ final class IndexHarness {
                 && java.util.Objects.equals(x.n.c, y.n.c));
     }
 
+    /**
+     * A LookupTimeNotAvailableException at t is right only if t is behind reclaim's cut,
+     * which only moves forward, so it is when the exception has come (020-10, section 3.6;
+     * bergdb 020-17, B16: it was taken at any time).
+     */
+    private void behindCut(long t, LookupTimeNotAvailableException e) {
+        long first = db.getFirstAvailableLookupTime().units();
+        check(t < first, "LookupTimeNotAvailableException at " + t + ", and the first "
+                + "available lookup time is " + first + ": " + e);
+    }
+
     /** The builder of q on the index. */
     private static <T> UseIndexBuilder<T> use(Connection rc, Def def, Query q, Class<T> type) {
         UseIndexBuilder<T> b = rc.useIndex(def.name, type);
@@ -1727,6 +1784,7 @@ final class IndexHarness {
         try {
             raw = rawEntries(g, t);
         } catch (LookupTimeNotAvailableException e) {
+            behindCut(t, e);
             return;
         }
         List<Entry> expected = ref.expectedEntries(m, g, t);
@@ -1909,7 +1967,7 @@ final class IndexHarness {
                     + ", scans " + lastCounts[1] + ", scan results " + lastCounts[2]
                     + ", raw entries compared " + lastCounts[3] + ", scans of more than a "
                     + "page " + lastCounts[4] + ", times behind reclaim's cut "
-                    + lastCounts[5]);
+                    + lastCounts[5] + ", stream bytes " + lastCounts[6]);
         }
     }
 }
