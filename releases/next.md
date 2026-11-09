@@ -620,6 +620,23 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   count adds a walk of the object to each put of one, without a copy. In
   2026.4's Data Objects (020-09); found by a new-user application
   (020-24-12, U12-1).
+* **A database whose directory was deleted writes nothing into a new one
+  at its path** (bergdb 021-20, from 020-24-10, U10-1; 2026-11-09). A
+  database's directory deleted after `stop()`, while the database still
+  wrote in the background, or while it ran, and a new database created at
+  the path: the start was taken, as the lock was the directory's, and the
+  old database made its next stream files by name in the new directory. The
+  new database then failed to start (`StreamFormatException`, "Could not
+  find *any* valid meta block") or lost its synced data, with no error to
+  either. Now, in the process, a start at the path is refused as in use
+  (`StreamIoException`, cause `DirectoryInUseException`) until a database
+  started there has closed, also when its directory was deleted, moved or
+  replaced since; and a file database checks, before it makes, deletes or
+  opens again a stream file by its name, that the path still has its
+  directory, and fails otherwise (`DbFailedException`, or a
+  `StreamIoException` of `close()`). `Database.stop()` says to delete a
+  database's directory only after `close()` has returned. In 2026.1 to
+  2026.3. Found by a new-user application.
 
 
 ### Core API

@@ -3,8 +3,10 @@ package bergdb.pubimp;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -31,14 +33,15 @@ import bergdb.pub.util.SyncLevel;
 import bergdb.storage.StreamIoException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;
+import bergdb.stream.DirectoryInUseException;
 import bergdb.stream.MemoryStream;
 import bergdb.stream.ReadBelowFirstPosException;
 
 /**
  * The Pub API's Javadoc and messages against what new users' applications met (bergdb
  * 020-24-04, a catalogue larger than memory; 020-24-05, a document store; 020-24-08, a log
- * store where the file system misbehaves). Each test names the finding and the promise it
- * shows.
+ * store where the file system misbehaves; 020-24-10, many small databases opened and closed).
+ * Each test names the finding and the promise it shows.
  *
  * @author Frans Lundberg
  */
@@ -592,5 +595,129 @@ public class PubTesterJavadocNewUsers {
                 () -> Factory.database().create(file.getPath()).start());
         Assert.assertTrue(e.getMessage(), e.getMessage().contains(file.getPath()));
         Assert.assertEquals(3L, file.length());
+    }
+
+    /**
+     * U10-1 (bergdb 020-24-10; 021-20): a database's directory deleted right after stop(),
+     * while the database still writes in the background, and a new database created at the
+     * path. The start is refused as in use until the old database has closed, as stop()
+     * says, and then taken; the old database writes nothing into the new directory. The
+     * start threw StreamFormatException ("The meta block at 200000 names the last
+     * transaction at ...") or was taken: the old database's close made its next stream files
+     * by name in the new directory.
+     */
+    @Nano
+    public static void testNewDatabaseWhereAStoppedOneWasDeleted(TestEnvironment env)
+            throws Exception {
+        File dir = new File(env.createTempDir(), "doc");
+        Database old = Factory.database().create(dir.getPath()).start();
+        try {
+            for (int i = 0; i < 50; i++) {      // 1 MB, still in the write buffer.
+                old.connection().put("/big" + i + ".bin", new byte[20_000]);
+            }
+            old.stop();
+            deleteTree(dir);
+            try (Database db = startRetried(dir)) {
+                db.connection().put("/new.txt", "new");
+                db.sync();
+            }
+        } finally {
+            try {
+                old.close();
+            } catch (StreamIoException e) {
+                // Expected when its close had a new file to make: the directory was gone.
+            }
+        }
+        try (Database again = Factory.database().open(dir.getPath()).start()) {
+            Assert.assertEquals("new", again.connection().get("/new.txt", String.class));
+            Assert.assertFalse("old", again.connection().exists("/big0.bin"));
+        }
+    }
+
+    /**
+     * U10-1 (bergdb 020-24-10; 021-20): a database's directory deleted while the database
+     * runs. A start of a new database at the path is refused as in use while the old one is
+     * open, and the old one fails at its next stream file instead of making it in the
+     * directory now at the path. Once it is closed, a new database at the path starts and
+     * keeps its data. The start was taken, and the old database went on and wrote its next
+     * files into the new directory: the new database's synced value was lost, and its next
+     * start failed ("Bad size of file .../00000000000000.bergdb").
+     */
+    @Nano
+    public static void testDirectoryDeletedWhileTheDatabaseRuns(TestEnvironment env)
+            throws Exception {
+        File dir = new File(env.createTempDir(), "doc");
+        Database old = Factory.database().create(dir.getPath()).start();
+        try {
+            Connection c = old.connection();
+            for (int i = 0; i < 50; i++) {
+                c.put("/big" + i + ".bin", new byte[20_000]);
+            }
+            old.sync();
+            deleteTree(dir);
+            StreamIoException e = PubTesterJavadoc.assertThrows("start", StreamIoException.class,
+                    () -> Factory.database().create(dir.getPath()).start());
+            Assert.assertTrue(e.toString(), e.getCause() instanceof DirectoryInUseException);
+            DbFailedException f = PubTesterJavadoc.assertThrows("the old database",
+                    DbFailedException.class, () -> {
+                        for (int i = 0; i < 500; i++) {     // Up to 10 MB: a new file.
+                            c.put("/more" + i + ".bin", new byte[20_000]);
+                            if (i % 50 == 49) {
+                                old.sync();
+                            }
+                        }
+                    });
+            Assert.assertTrue(f.toString(), causes(f).contains("is no longer"));
+        } finally {
+            old.close();
+        }
+        try (Database db = Factory.database().create(dir.getPath()).start()) {
+            db.connection().put("/new.txt", "new");
+        }
+        try (Database again = Factory.database().open(dir.getPath()).start()) {
+            Assert.assertEquals("new", again.connection().get("/new.txt", String.class));
+            Assert.assertFalse("old", again.connection().exists("/big0.bin"));
+        }
+    }
+
+    /** A start of create(dir), again while it is refused as in use, for up to 10 s. */
+    private static Database startRetried(File dir) throws InterruptedException {
+        long end = System.nanoTime() + 10_000_000_000L;
+        while (true) {
+            try {
+                return Factory.database().create(dir.getPath()).start();
+            } catch (StreamIoException e) {
+                if (!(e.getCause() instanceof DirectoryInUseException)
+                        || System.nanoTime() > end) {
+                    throw e;
+                }
+                Thread.sleep(5);
+            }
+        }
+    }
+
+    /** Deletes 'dir' and everything in it; again if a file was added meanwhile. */
+    private static void deleteTree(File dir) throws IOException {
+        for (int attempt = 0; ; attempt++) {
+            try (java.util.stream.Stream<Path> paths = Files.walk(dir.toPath())) {
+                for (Path p : paths.sorted(Comparator.reverseOrder()).toArray(Path[]::new)) {
+                    Files.deleteIfExists(p);
+                }
+                return;
+            } catch (java.nio.file.DirectoryNotEmptyException e) {
+                if (attempt == 100) {
+                    throw e;
+                }
+            }
+        }
+    }
+
+    /** The messages of 'e' and its causes, as one text. */
+    private static String causes(Throwable e) {
+        StringBuilder sb = new StringBuilder();
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            sb.append(t).append("; ");
+        }
+        return sb.toString();
     }
 }

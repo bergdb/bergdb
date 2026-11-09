@@ -157,7 +157,12 @@ public interface DatabaseBuilder {
      * a crash: it is never stale, and the file need never be removed. Do not delete
      * bergdb.lock while a database has the directory: a start in another process then makes
      * the file again, locks it and starts, and two databases write the same stream files,
-     * which can lose what either writes and damage the stream (bergdb 020-24-08, U8-9).</p>
+     * which can lose what either writes and damage the stream (bergdb 020-24-08, U8-9).
+     * In this process, a start is refused in the same way at the path of a database that
+     * has not closed, also when its directory was deleted, moved or replaced since, so that
+     * a new database at the path of a deleted one waits until that one has closed
+     * (Database.stop(); bergdb 021-20); the start has then made the directory, if it was
+     * missing, and nothing else.</p>
      * 
      * <p>A start may write to the stream: it completes a cut tail, as a crash leaves it, and
      * writes created.txt if it is missing. On a full disk a start may therefore be refused,

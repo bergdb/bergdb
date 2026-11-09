@@ -144,6 +144,16 @@ public interface Database extends AutoCloseable {
      * close() has returned (bergdb 005-63). Until then, a start there is refused:
      * DatabaseBuilder.start() throws.
      * </p>
+     * 
+     * <p>Delete, move or replace the directory only after close() has returned, too (bergdb
+     * 021-20, from 020-24-10, U10-1). In this process, a start at the directory's path is
+     * refused until this database has closed, also when the directory was deleted and made
+     * again since. A database whose directory is deleted, moved or replaced while it runs, or
+     * after stop() while it closes, writes nothing into the directory that is then at the
+     * path: it fails instead (DbFailedException, or a StreamIoException of close()), at
+     * the latest when it needs its next stream file; what it wrote after the delete is lost
+     * with the directory.
+     * </p>
      */
     public void stop();
     

@@ -93,6 +93,10 @@ import bergdb.pub.util.BadFormatException;
  * lock on the file bergdb.lock in the directory before it reads anything, and close()
  * releases it, last. A second FileStream on the directory, in this JVM or in another process,
  * is refused with DirectoryInUseException; so is one while a database closes after stop().
+ * Within the JVM, so is one at the path while a stream that opened the directory at that
+ * path is open, also when the directory was deleted, moved or replaced since; and such a
+ * stream fails before it makes, deletes or opens again a file by its name there
+ * (checkDirectory(), 2026-11-09, bergdb 021-20).
  * The operating system holds the lock and drops it when the process ends, also at a crash,
  * so a lock is never stale; the file is never deleted, and its text is for people. The lock
  * is on one byte far beyond the end of the file: on Windows a lock is mandatory, and the text
@@ -214,6 +218,15 @@ public class FileStream implements AppendOnlyStream {
     
     /** This stream's key in LOCKED_DIRS while it holds the lock. Under this. */
     private Object lockKey = null;
+    
+    /** This stream's path key in LOCKED_DIRS (pathKey()) while it holds the lock. Under this. */
+    private Object lockPathKey = null;
+    
+    /**
+     * The directory's lockKey() when the stream locked it, kept after the close; see
+     * checkDirectory() (bergdb 021-20).
+     */
+    private volatile Object dirKey = null;
     
     /**
      * The stream length at the latest cut (bergdb 005-47): the cut's thread has every byte
@@ -753,14 +766,23 @@ public class FileStream implements AppendOnlyStream {
      * exist, and takes an exclusive lock on one byte far beyond its end, held until close().
      * Refused with DirectoryInUseException: before the file is opened if a FileStream of
      * this JVM holds the directory, of this copy of the class or of another (bergdb 015-24),
-     * after if another process holds the lock. Not interruptible, as the rest of this class.
+     * or holds the directory's path (pathKey(), bergdb 021-20), after if another process
+     * holds the lock. Not interruptible, as the rest of this class.
      */
     private void lockDir() throws IOException {
         Object key = lockKey(dir);
-        if (!LOCKED_DIRS.add(key)) {
-            throw new DirectoryInUseException("Directory " + dir.getPath() 
-                    + " is in use by another BergDB database in this JVM (" + LOCK_NAME 
-                    + " is locked).");
+        Object pathKey = pathKey(dir);
+        synchronized (LOCKED_DIRS) {
+            if (LOCKED_DIRS.contains(key)) {
+                throw new DirectoryInUseException("Directory " + dir.getPath() 
+                        + " is in use by another BergDB database in this JVM (" + LOCK_NAME 
+                        + " is locked).");
+            }
+            if (LOCKED_DIRS.contains(pathKey)) {
+                throw new DirectoryInUseException(pathInUse());
+            }
+            LOCKED_DIRS.add(key);
+            LOCKED_DIRS.add(pathKey);
         }
         
         boolean interrupted = Thread.interrupted();
@@ -774,6 +796,10 @@ public class FileStream implements AppendOnlyStream {
                 throw new DirectoryInUseException("Directory " + dir.getPath() 
                         + " is in use by another BergDB database in this JVM, in another class"
                         + " loader (" + LOCK_NAME + " is locked).");
+            }
+            holder = System.getProperties().putIfAbsent(PROPERTY_PREFIX + pathKey, COPY);
+            if (holder != null && !holder.equals(COPY)) {
+                throw new DirectoryInUseException(pathInUse());
             }
             
             File file = new File(dir, LOCK_NAME);
@@ -815,14 +841,18 @@ public class FileStream implements AppendOnlyStream {
                 synchronized (this) {
                     lockFile = f;
                     lockKey = key;
+                    lockPathKey = pathKey;
                 }
+                dirKey = key;
                 locked = true;
                 return;
             }
         } finally {
             if (!locked) {
                 System.getProperties().remove(PROPERTY_PREFIX + key, COPY);
+                System.getProperties().remove(PROPERTY_PREFIX + pathKey, COPY);
                 LOCKED_DIRS.remove(key);
+                LOCKED_DIRS.remove(pathKey);
             }
             if (interrupted) {
                 Thread.currentThread().interrupt();
@@ -842,6 +872,51 @@ public class FileStream implements AppendOnlyStream {
     }
     
     /**
+     * The directory's path key in LOCKED_DIRS and the system properties, beside its
+     * lockKey() (2026-11-09, bergdb 021-20, from 020-24-10, U10-1): "path " and its real
+     * path. A start at a path is refused while a FileStream of this JVM that opened the
+     * directory at that path is open, also when that directory was deleted, moved or
+     * replaced since. The lock in the directory, and the file key, refused only a start in
+     * the same directory: a new database at the path of one that was deleted while it ran,
+     * or after stop() while it closed, started beside it.
+     */
+    private static Object pathKey(File dir) throws IOException {
+        return "path " + dir.toPath().toRealPath();
+    }
+    
+    private String pathInUse() {
+        return "Directory " + dir.getPath() + " is in use by another BergDB database in this"
+                + " JVM: one started on the directory that was at this path, deleted, moved or"
+                + " replaced since, is still open or closing.";
+    }
+    
+    /**
+     * Throws, and fails the stream, if the directory at the stream's path is no longer the
+     * one that it locked, by lockKey() (2026-11-09, bergdb 021-20, from 020-24-10, U10-1): it
+     * was deleted, moved or replaced while the stream had it. A stream file is made, deleted
+     * and opened again by its name in the directory's path; so a stream whose directory was
+     * deleted made its next files in a new database's directory at the path, and broke it,
+     * or deleted that database's files at a cut. Called before each of these. A replacement
+     * between this check and the step is not caught. Where the key is the path (Windows), a
+     * replacement is not seen, but there a directory with open files cannot be deleted.
+     */
+    private void checkDirectory() throws IOException {
+        Object now;
+        try {
+            now = lockKey(dir);
+        } catch (IOException e) {
+            now = null;     // Gone.
+        }
+        if (now == null || !now.equals(dirKey)) {
+            IOException e = new IOException("Directory " + dir.getPath() + " is no longer the"
+                    + " database's directory: it was deleted, moved or replaced while the"
+                    + " database had it open. Nothing more is written there.");
+            ioException = e;
+            throw e;
+        }
+    }
+    
+    /**
      * Releases the directory's lock, if this stream holds it; the file stays (bergdb 005-63).
      * The lock file is closed before the directory leaves the system properties and
      * LOCKED_DIRS.
@@ -855,8 +930,11 @@ public class FileStream implements AppendOnlyStream {
         } finally {
             lockFile = null;
             System.getProperties().remove(PROPERTY_PREFIX + lockKey, COPY);
+            System.getProperties().remove(PROPERTY_PREFIX + lockPathKey, COPY);
             LOCKED_DIRS.remove(lockKey);
+            LOCKED_DIRS.remove(lockPathKey);
             lockKey = null;
+            lockPathKey = null;
         }
     }
 
@@ -1118,6 +1196,8 @@ public class FileStream implements AppendOnlyStream {
         if (this.length % BYTES_PER_INDEX_UNIT != 0) {
             throw new Bug("Illegal state, length = " + length);
         }
+        
+        checkDirectory();       // Bergdb 021-20.
         
         DbFile[] files = dbFiles;
         if (files.length > 0) {
@@ -1386,6 +1466,7 @@ public class FileStream implements AppendOnlyStream {
          * @throws IOException
          */
         synchronized void delete() throws IOException {
+            checkDirectory();       // Bergdb 021-20.
             isDeleted = true;
             close();
             
@@ -1494,6 +1575,7 @@ public class FileStream implements AppendOnlyStream {
                     throw closedException();
                 }
                 if (channel == closed) {
+                    checkDirectory();       // Bergdb 021-20.
                     channel = io.openRead(file);
                 }
             }
@@ -1531,6 +1613,7 @@ public class FileStream implements AppendOnlyStream {
                     } catch (ClosedByInterruptException e) {
                         Thread.interrupted();
                         interrupted = true;
+                        checkDirectory();       // Bergdb 021-20.
                         rfile = io.open(file);
                     }
                 }
@@ -3006,6 +3089,88 @@ public class FileStream implements AppendOnlyStream {
         String cp = System.getProperty("java.class.path");
         return new ProcessBuilder(javaBin, "-cp", cp, LockChild.class.getName(), mode, 
                 dir.getPath()).redirectErrorStream(true).start();
+    }
+    
+    // ---- bergdb 021-20: the directory deleted or replaced while the stream has it ----
+    
+    /**
+     * bergdb 021-20 (020-24-10, U10-1): the stream's directory deleted, and a new one made at
+     * its path, while the stream is open, as when a database's directory is deleted and a new
+     * database is created there. A FileStream at the path is refused while this one is open,
+     * and this one's next file is refused, and the stream fails: nothing is made in the new
+     * directory. Before, the second FileStream opened, and this one made its next file in the
+     * new directory, by name: a new database there was broken.
+     */
+    @Nano
+    public static void testNoNewFileInAReplacedDirectory(TestEnvironment c) throws IOException {
+        File dir = new File(c.createTempDir(), "db");
+        FileStream f = new FileStream(dir);
+        byte[] bytes = new byte[100 * 1000];
+        f.append(bytes, 0, bytes.length);
+        deleteTree(dir);
+        Assert.assertTrue("made again", dir.mkdir());
+        try {
+            new FileStream(dir).close();
+            throw new AssertionError("a second FileStream at the path");
+        } catch (DirectoryInUseException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("deleted"));
+        }
+        f.append(bytes, 0, bytes.length);       // The first file is full: 200,000 bytes.
+        try {
+            f.append(bytes, 0, 1);
+            throw new AssertionError("a new file in the replaced directory");
+        } catch (IOException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("no longer"));
+        }
+        Assert.assertEquals(0, dir.list().length);
+        try {
+            f.close();
+            throw new AssertionError("close() of the failed stream did not throw");
+        } catch (IOException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("no longer"));
+        }
+        FileStream f2 = new FileStream(dir);    // The path is free.
+        Assert.assertEquals(0L, f2.getLength());
+        f2.close();
+    }
+    
+    /**
+     * bergdb 021-20: a cut after the directory was replaced deletes nothing in the new one,
+     * and the stream fails. It deleted the new directory's file of the same name.
+     */
+    @Nano
+    public static void testNoDeleteInAReplacedDirectory(TestEnvironment c) throws Exception {
+        File dir = new File(c.createTempDir(), "db");
+        FileStream f = new FileStream(dir);
+        byte[] bytes = new byte[1000 * 1000];
+        f.append(bytes, 0, bytes.length);
+        deleteTree(dir);
+        Assert.assertTrue("made again", dir.mkdir());
+        File other = new File(dir, indexToString(0) + SUFFIX);
+        Files.write(other.toPath(), new byte[] {1, 2, 3});
+        f.pretruncate(800 * 1000);
+        try {
+            f.awaitDeletes();
+            throw new AssertionError("a cut in the replaced directory");
+        } catch (IOException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("no longer"));
+        }
+        Assert.assertTrue("the new directory's file is there", other.exists());
+        try {
+            f.close();
+            throw new AssertionError("close() of the failed stream did not throw");
+        } catch (IOException e) {
+            // Expected: the stream's failure.
+        }
+    }
+    
+    /** Deletes 'dir' and everything in it. */
+    private static void deleteTree(File dir) throws IOException {
+        try (java.util.stream.Stream<Path> paths = Files.walk(dir.toPath())) {
+            for (Path p : paths.sorted(Comparator.reverseOrder()).toArray(Path[]::new)) {
+                Files.delete(p);
+            }
+        }
     }
     
     /** Runs a child that tries to open 'dir', and returns the first line it prints. */
