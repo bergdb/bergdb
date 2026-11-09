@@ -147,8 +147,9 @@ public interface DatabaseBuilder {
      * @throws DbException
      *             If a functioning database could not be started; among them a
      *             StreamIoException if the directory of create() or open() cannot be
-     *             opened, or another database has it (the cause a DirectoryInUseException,
-     *             bergdb 005-63).
+     *             opened or listed (an I/O error, no permission to read it; bergdb 020-20),
+     *             or another database has it (the cause a DirectoryInUseException, bergdb
+     *             005-63).
      * @throws BadCryptoKey
      *             If the wrong crypto key is used, or none is used with an encrypted
      *             database or a crypto key is used with an unencrypted database. The

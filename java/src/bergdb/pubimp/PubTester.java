@@ -2914,6 +2914,56 @@ public class PubTester {
     }
     
     /**
+     * A directory that cannot be listed, here one without read permission (SpotBugs, bergdb
+     * 020-20): start() of create() and of open() throws a StreamIoException whose cause is
+     * an IOException, as for a directory that cannot be opened, and leaves the files as they
+     * were; with the permission back, the database starts with its data. Before, the start of
+     * a directory with created.txt threw a DatabaseMissingException whose message said to
+     * remove the database's files, and of one without it a NullPointerException
+     * (FileStream.getSortedDbFiles). Skipped where the permission does not stop the listing
+     * (root).
+     */
+    @Nano
+    private static void testUnlistableDirectory(TestEnvironment env) throws IOException {
+        if (Util.runsAndroid()) {
+            return;
+        }
+        File dir = createdWithData(env);
+        File empty = env.createTempDir();       // no created.txt: a new database
+        String before = listing(dir);
+        Assert.assertTrue(dir.setReadable(false, false) && empty.setReadable(false, false));
+        try {
+            if (dir.listFiles() != null || empty.listFiles() != null) {
+                System.out.println("PubTester.testUnlistableDirectory: skipped, a directory "
+                        + "can be listed without read permission");
+                return;
+            }
+            DatabaseBuilder[] builders = {
+                Factory.database().create(dir.getPath()),
+                Factory.database().open(dir.getPath()),
+                Factory.database().create(empty.getPath()),
+            };
+            for (int i = 0; i < builders.length; i++) {
+                try {
+                    builders[i].start().close();
+                    throw new AssertionError("start " + i + " of a directory that cannot be "
+                            + "listed");
+                } catch (RuntimeException e) {
+                    Assert.assertTrue("start " + i + ": " + e, e instanceof StreamIoException
+                            && e.getCause() instanceof IOException);
+                }
+            }
+        } finally {
+            dir.setReadable(true, false);
+            empty.setReadable(true, false);
+        }
+        Assert.assertEquals("the directory's files", before, listing(dir));
+        Database d = Factory.database().open(dir.getPath()).start();
+        Assert.assertEquals("v", d.connection().get("/k", String.class));
+        d.close();
+    }
+    
+    /**
      * A creation that crashed before its first write (bergdb 005-33, row 0 of its table): the
      * directory holds bergdb.lock and an empty first stream file, and no created.txt. start()
      * creates the database, as before 015-01.

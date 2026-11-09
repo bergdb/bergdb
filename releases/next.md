@@ -273,6 +273,14 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `bergdb.pub` interfaces, whose `Method` objects work. The API is
   `bergdb.pub`, with `DbObject` since step B3, `bergdb.pub.util` and the
   Core's `Db`.
+* **A directory that cannot be listed is refused with `StreamIoException`**
+  (bergdb 020-20; 2026-11-09), as one that cannot be opened: no permission
+  to read it, or an I/O error in its listing. `start()` threw a
+  `DatabaseMissingException` for such a directory with `created.txt`, whose
+  message said to restore or remove the database's files, and a
+  `NullPointerException` for one without it. The cause is the
+  `IOException`. The Core's `FileStream` throws that `IOException` from its
+  constructor, where it threw the `NullPointerException`.
 
 
 ### Core API

@@ -680,13 +680,16 @@ public class FileStream implements AppendOnlyStream {
      * bytes once its database is created, and a cut never removes the last file. For the
      * Pub API's start, which refuses a directory that held a database (created.txt) and has
      * no stream byte.
+     *
+     * @throws IOException  If 'dir' is a directory that cannot be listed: an I/O error, or no
+     *         permission to read it (bergdb 020-20). Until 020-20 that was false, and the Pub
+     *         API's start called such a directory one whose stream is missing.
      */
-    public static boolean hasStreamBytes(File dir) {
-        File[] files = dir.listFiles();
-        if (files == null) {
+    public static boolean hasStreamBytes(File dir) throws IOException {
+        if (!dir.isDirectory()) {
             return false;
         }
-        for (File f : files) {
+        for (File f : listFiles(dir, null)) {
             if (f.getName().endsWith(SUFFIX) && f.isFile() && f.length() > 0) {
                 return true;
             }
@@ -986,8 +989,8 @@ public class FileStream implements AppendOnlyStream {
     /**
      * Returns berg *.bergdb file in this.dir.
      */
-    private File[] getSortedDbFiles() {
-        File[] bergdbFiles = dir.listFiles(new FilenameFilter() {
+    private File[] getSortedDbFiles() throws IOException {
+        File[] bergdbFiles = listFiles(dir, new FilenameFilter() {
             public boolean accept(File dir, String name) {
                 boolean result = name.endsWith(SUFFIX);
                 return result;
@@ -1001,6 +1004,22 @@ public class FileStream implements AppendOnlyStream {
         });
         
         return bergdbFiles;
+    }
+    
+    /**
+     * dir.listFiles(filter), or dir.listFiles() for a null filter; an IOException if 'dir'
+     * cannot be listed: an I/O error, or no permission to read it (SpotBugs, bergdb 020-20).
+     * File.listFiles() gives null then, which getSortedDbFiles dereferenced (a
+     * NullPointerException from the constructor) and hasStreamBytes took for a directory
+     * without a stream byte.
+     */
+    private static File[] listFiles(File dir, FilenameFilter filter) throws IOException {
+        File[] files = filter == null ? dir.listFiles() : dir.listFiles(filter);
+        if (files == null) {
+            throw new IOException("Cannot list the directory " + dir.getPath()
+                    + ": an I/O error, or no permission to read it.");
+        }
+        return files;
     }
     
     private static String indexToString(long fileIndex) {
@@ -1648,6 +1667,55 @@ public class FileStream implements AppendOnlyStream {
         String[] names = dir.list();
         Arrays.sort(names);
         Assert.assertEquals("[00000000000000.bergdb, bergdb.lock]", Arrays.toString(names));
+    }
+    
+    /**
+     * A directory that cannot be listed, here one without read permission (SpotBugs, bergdb
+     * 020-20): the constructor and hasStreamBytes throw an IOException that says so, and the
+     * constructor releases the directory's lock. Before, File.listFiles()'s null for it was
+     * dereferenced in getSortedDbFiles (a NullPointerException), and hasStreamBytes took it
+     * for a directory without a stream byte. Skipped where the permission does not stop the
+     * listing (root).
+     */
+    @Nano
+    public static void testUnlistableDirectory(TestEnvironment c) throws IOException {
+        File dir = c.createTempDir();
+        FileStream f = new FileStream(dir);
+        f.append(new byte[] {7}, 0, 1);
+        f.close();
+        Assert.assertTrue(hasStreamBytes(dir));
+        Assert.assertFalse("a missing directory", hasStreamBytes(new File(dir, "missing")));
+        
+        Assert.assertTrue(dir.setReadable(false, false));
+        try {
+            if (dir.listFiles() != null) {
+                System.out.println("FileStream.testUnlistableDirectory: skipped, the "
+                        + "directory can be listed without read permission");
+                return;
+            }
+            try {
+                new FileStream(dir).close();
+                throw new AssertionError("opened a directory that cannot be listed");
+            } catch (IOException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("Cannot list"));
+            }
+            try {
+                boolean has = hasStreamBytes(dir);
+                throw new AssertionError("hasStreamBytes of a directory that cannot be listed: "
+                        + has);
+            } catch (Exception e) {
+                Assert.assertTrue(e.toString(), e instanceof IOException
+                        && e.getMessage().contains("Cannot list"));
+            }
+        } finally {
+            dir.setReadable(true, false);
+        }
+        
+        f = new FileStream(dir);        // the lock was released
+        byte[] b = new byte[1];
+        f.read(0, b, 0, 1);
+        f.close();
+        Assert.assertEquals(7, b[0]);
     }
     
     @Nano

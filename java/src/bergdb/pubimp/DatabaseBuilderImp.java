@@ -330,7 +330,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
      */
     private static void refuseMissingStream(File dir) {
         File createdTxt = new File(dir, "created.txt");
-        if (createdTxt.isFile() && !FileStream.hasStreamBytes(dir)) {
+        if (createdTxt.isFile() && !hasStreamBytes(dir)) {
             throw new DatabaseMissingException("The directory " + dir + " held a database "
                     + "(its created.txt), and its stream is missing: no stream file (*.bergdb) "
                     + "with a byte. The start has opened, created and written nothing. Restore "
@@ -355,7 +355,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
             what = "the directory does not exist";
         } else if (!dir.isDirectory()) {
             what = "it is not a directory";
-        } else if (!FileStream.hasStreamBytes(dir)) {
+        } else if (!hasStreamBytes(dir)) {
             what = "it has no stream file (*.bergdb) with a byte";
         } else {
             return;
@@ -364,6 +364,20 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
                 + "DatabaseBuilder.open() never creates one; the start has created and written "
                 + "nothing. Check the path, and that its volume is mounted; to create a new "
                 + "database there, use DatabaseBuilder.create() (bergdb 015-05).");
+    }
+    
+    /**
+     * FileStream.hasStreamBytes(dir); a StreamIoException, as for a directory that cannot be
+     * opened, if it cannot be listed: an I/O error, or no permission to read it (bergdb
+     * 020-20). Until 020-20 such a directory with created.txt was refused as one whose stream
+     * is missing, with a message that said to remove its files.
+     */
+    private static boolean hasStreamBytes(File dir) {
+        try {
+            return FileStream.hasStreamBytes(dir);
+        } catch (IOException e) {
+            throw new StreamIoException(e);
+        }
     }
     
     private static FileStream openDir(File dir) {
