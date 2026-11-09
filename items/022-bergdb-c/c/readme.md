@@ -25,7 +25,11 @@ follows Java's releases, not its changes in between: this copy began at
 012's `be51a78`, the port of release 2026.2 (bergdb 015-02), which 012
 keeps; 022-01 brought it to 2026.3, and 2026.4 follows (022-02; 022's
 readme). Until 2026-11-05 C followed `main` as of 2026-10-29 (`ae4aaf9`),
-then release 2026.2 until 2026-11-09.
+then release 2026.2 until 2026-11-09. **On the way to 2026.4** (022-02):
+the harness compiles the pinned candidate of release 2026.4 by default
+(`JAVA_REF=git:94a1520`, `main` at 2026-11-09 11:57), and
+`JAVA_REF=2026.3` no longer compiles (`CorruptSet.java` takes the
+candidate's `Config`); 022-02's step 5 writes this paragraph for 2026.4.
 
 
 # 1. Build and test
