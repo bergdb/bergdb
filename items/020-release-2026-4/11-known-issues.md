@@ -7,7 +7,8 @@ date until the release. Every known fault and open question that release
 gone or not a fault (why), decided or open for Frans (questions). Asked by
 Frans on 2026-11-08 at 22:03: "Keep working until you have a solution for
 2026.4 with no known issues." Written in night 006-15 from `main` at
-`fd6dd09`; brought up to date to `dee3e48` (2026-11-09, about 02:30).
+`fd6dd09`; brought up to date to `dee3e48` (2026-11-09, about 02:30) and
+to `3d8b785` (020-12, step 4's measurements).
 
 How it was checked: each "fixed" by reading the test it names, not the
 commit message, and by running it on `main` (`-ea`, the unit group unless
@@ -23,29 +24,45 @@ section 9; 020-04's and 020-07's questions; the lists of 015, 019 and
 
 ## 1. In short
 
-On `main` at `dee3e48` every fault of 020-01's, 020-08's and 020-10's
+On `main` at `3d8b785` every fault of 020-01's, 020-08's and 020-10's
 lists is fixed, gone or not a fault, and so is every finding of the
-night's reviews (section 6). No known fault is open. Open are a
-measurement, an approval, and three additions put after 2026.4:
+night's reviews (section 6). No known fault of BergDB is open. Open are
+a fault of a measurement tool, an approval, and three additions put
+after 2026.4; one known cost is accepted (below):
 
 | Row | What | With |
 |---|---|---|
-| S4 | 020-08, step 4: the measurements M1 to M8, a quiet run of `objectbench.sh` | this morning, F53 quiet |
+| T-OB | `objectbench.sh` cannot run the format-1 reference since B3 (48378fe) | another agent, fixing it |
 | 020-07 | Frans's approval of the spec's text under 018-01's rule | Frans: a release step |
 | L-F6 | DbObject: the String[] (nested path) form for every typed getter | later (B3's review, F6) |
 | L-rec | Records as Data Objects (020-02, 5.1b; the coordinator's lean) | later |
 | L-key | A key field in a stored object, opt-in (017-07, section 6) | later, on demand |
 
-The night tests and `night.sh` on the final `main` are running: their
-rows (section 9) are the coordinator's. Closed since the first version:
+The night's runs passed (section 9). Closed since the first version:
+S4, step 4's measurements (020-12, 3d8b785; 020-08 done);
 N10-test, N4-doc, BK-015, BK-020 and BK-020-10 (3fa79d9); R3-F1, R3-N2
 and R3-N3 (e92a95a); its review's two low points (c9e6975); N5 and B3
 (48378fe, 7b008af); R46-L1 and R46-L2 (25978bc), and the assert that
 25978bc added (dee3e48).
 
+A known cost, accepted, not a fault:
+
+| Row | What | State |
+|---|---|---|
+| C-M8 | A `w()` of one String or byte[] put at an object key: 2.6 µs, not 2.3 | accepted for 2026.4 |
+
+C-M8 is 13 % (020-12, M8; a `.txt` key and 100 puts in one `w()` are as
+before): the cost of 020-10, section 5.1's rule (I1, 249b684: the read
+time fixed first, the directory's hash in the read set, the index
+manager's lock), which fixes 015-28, 015-43 and 015-46 for every write at
+an object key. Accepted under Frans's delegation of 22:17 for 2026.4. A
+later reduction is possible, such as a lock-free read of an immutable
+snapshot of the index set for directories without an index: Frans's to
+decide.
+
 For Frans to read: the decisions taken under his delegation (020-04 Q6;
-020-07 Q2 to Q5; 020-09's 24; 020-10's 22; and the night's others, each
-in its commit and in 006-15).
+020-07 Q2 to Q5; 020-09's 24; 020-10's 22; C-M8; and the night's others,
+each in its commit and in 006-15).
 
 
 ## 2. Objects: F1, F2 (020-01) and 020-08
@@ -329,23 +346,32 @@ widened window and fixed; 019-47 while 019-46 was reproduced.
   examples in `w()` and `rw()`.
 
 
-## 8. Still to run or measure
+## 8. Measured and checked
 
-* 020-08, step 4: the measurements M1 to M8 (`objectbench.sh`, about 8
-  minutes on a quiet F53; prepared in 01f02db), with I1's cost of the
-  manager's lock on every write at an object key: this morning.
+* 020-08, step 4, done (020-12, 3d8b785): format 2 against format 1 on a
+  quiet F53, M1 to M8, every figure as fast or faster but M8 (C-M8,
+  section 1); `performance.sh ab` (quick) against release 2026.3: NO
+  ALERTS. The tool fault T-OB is open (section 1).
 * The level scripts after the last Core changes: `level4.sh` ran on
-  019-46, 019-47 and 25978bc (LEVEL 4 OK); `level2.sh` on I2 (LEVEL 2 OK);
-  dee3e48 changed only an assert and added a test.
+  019-46, 019-47 and 25978bc (LEVEL 4 OK); `level2.sh` on I2 and on the
+  final `main` (LEVEL 2 OK); dee3e48 changed only an assert and added a
+  test.
 
 
 ## 9. The night's runs (the coordinator's rows)
 
 | Run | On | Result |
 |---|---|---|
-| Night tests (the night group, 24 tests) | c25808e | SUCCESS, 24 tests in 1,332 s (state, 01:58) |
-| `night.sh` #1 | 48378fe | (the coordinator) |
-| Night tests and `level2.sh` | the final `main` | (the coordinator) |
+| Night tests (the night group) | c25808e | SUCCESS, 24 tests in 1,332 s |
+| `night.sh` | 48378fe | NIGHT OK, 65 minutes (java/build/night/2026-11-09-0158/report.txt) |
+| Night tests | 7231771 | SUCCESS, 26 tests in 1,262 s |
+| `level2.sh` | 7231771 | LEVEL 2 OK |
+| Step 4's quiet runs | 7231771 | 020-12: M1 to M8; `performance.sh ab`: NO ALERTS |
+
+`night.sh` ran `before-commit.sh`, the core-build check, `level1.sh` to
+`level4.sh`, the Lean tests, 25 night tests and the conformance set
+(medium). The night tests on 7231771 are the night group of the final
+`main`, 26 tests.
 
 
 ## 10. Log
@@ -375,3 +401,9 @@ notes (d2de9af); each named test read and run, the unit group passed
 measurements, Frans's approval of 020-07, and three additions for later.
 A section on the night's reviews (6); the night's runs left for the
 coordinator (9).
+
+2026-11-09, morning. Brought up to date to `3d8b785`: S4 closed (020-12;
+020-08 done); C-M8, a known cost accepted under the delegation; T-OB, the
+tool fault of `objectbench.sh` since B3, open with another agent; the
+night's runs (section 9): `night.sh` NIGHT OK on 48378fe, the night tests
+and `level2.sh` on 7231771.
