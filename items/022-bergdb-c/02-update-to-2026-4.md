@@ -1705,3 +1705,78 @@ against `git:2566df1`, on the tree of this entry rebased on `448ca60`:
 OK (23 workloads, 69 crash cuts, 85 corrupt variants), `writecheck` 0
 errors, `corruptset` 63 copies, `allocfail` 628 runs, `examples` OK. No
 difference remains.
+
+2026-11-09, the candidate, part 1 (worker t17). The Core commits on
+`main` after the pin (`2566df1`) at 17:40, five, each with C's outcome;
+the pin stays at `2566df1` until the candidate, as no harness compares
+what they change. (a) 021-20 (`2557286`, 020-24-10's U10-1): Java's
+`FileStream.checkDirectory()`, before each new file, each delete of a
+cut and each reopen of a file after an interrupt, fails the stream if
+the directory at its path is no longer the one that it locked, by its
+file key, with IOException "Directory P is no longer the database's
+directory: it was deleted, moved or replaced while the database had it
+open. Nothing more is written there."; and the JVM's set of locked
+directories holds each one's real path too, so that a start at the path
+is refused while the old stream is open. C had the fault, across
+processes and within one: it makes and deletes its files by name in the
+directory's path, so a database whose directory was deleted made its
+next file in a new database's directory at the path, and broke it, or
+deleted that database's files at a cut. Now `stream.c`'s
+`check_directory`, Java's, before `new_file` (after its "Illegal state"
+check and before the switch force, as Java's `newFile`) and before each
+unlink of `stream_pretruncate` (as `DbFile.delete`), with Java's text;
+the identity is `plat_dir_key` (`plat.c`: stat's device and inode,
+following a link as `Files.readAttributes`), taken at the open for
+writing before the lock, as `lockDir` takes `lockKey(dir)` (a stat that
+fails there: Java's `NoSuchFileException`, the path). C reopens no file.
+Java's set of paths is the JVM's, and C has no global state (P9;
+`readme.md`, section 9, point 10), so an open at the path is not refused
+within the process, as neither refuses one of another process;
+`bergdb.h`, section G, `readme.md`, section 9, point 10, and section
+11's opening say so. Tests, each failing before (on a copy of `c/` with
+the old `stream.c`): `t_append.c`'s `append_dir_replaced_no_new_file`
+(`FileStream.testNoNewFileInAReplacedDirectory` without its refusal in
+the JVM: the text, nothing made in the new directory, the stream failed,
+the path open again after the close) and `append_dir_replaced_no_delete`
+(`testNoDeleteInAReplacedDirectory`: the new directory's file of the
+same name kept), and `f_durable.c`'s `durable_directory_replaced`
+(`PubTesterJavadocNewUsers.testDirectoryDeletedWhileTheDatabaseRuns`,
+the new database opened in the process: the old one's sync
+`BERGDB_FAILED` with the cause's text, as far as C's 240 bytes leave
+it, its close `BERGDB_IO`, the new one's transaction whole at a restart
+and none of the old's; before, that restart was refused, "Bad size of
+file .../00000000000000.bergdb, should have been a multiple of 100000,
+but was 520."; then `testNewDatabaseWhereAStoppedOneWasDeleted`'s case,
+closed, deleted and created again, which passes before too: C has no
+`stop()`, and its close returns after its last write). (b) U10-3
+(`2e9ea7d`): nothing for C. Java's `BufferedStream` kept its ring buffer
+of 10 MB in a closed `Database` that the application still referenced;
+C's write buffer is freed by `bergdb_close` with the handle
+(`stream_close`), and no closed handle is left (012-13, Q2). (c) U10-5
+(`5ca4249`): Java's `createDirIfNeeded` threw "Directory P could not be
+created." when `mkdirs()` returned false because another thread had
+just made the directory; now only if it is then not a directory, and
+the lock refuses the others. C's `plat_mkdirs` took `EEXIST` at each
+level already, so several processes' opens of a new directory were
+refused by the lock only; now it takes Java's rule whole: after its
+`mkdir`s, whatever they met, it refuses only if the path is then not a
+directory, with Java's text, where C's own added `strerror`'s reason and
+took `EEXIST` also for a file made at the path. Tests: `t_append.c`'s
+`append_dir_mkdirs_refused` (a directory under a regular file, Java's
+text; failing before, with C's) and `f_durable.c`'s
+`durable_concurrent_opens_of_a_new_directory`
+(`FileStream.testConcurrentOpensOfANewDirectory` with eight processes
+for its threads, the child mode `openat` waiting for a common time, ten
+rounds, the directory two levels below an existing one: each open taken
+or refused with `BERGDB_IN_USE`, at least one taken a round; 17 to 22 of
+80 taken), passing before, as C took `EEXIST`. A copy that refuses
+`EEXIST` passed it too, three runs of ten rounds (also with eleven
+missing levels and a spinning wait): on F53 under a load of about 37 the
+processes did not meet between a stat and a `mkdir`, so the test guards
+the rule and does not show the race. (d) U10-6 (`10335ee`): nothing for
+C. Java's `sync()` after `close()` threw, though the close had made
+every transaction durable; `bergdb_close` writes and forces everything
+before it returns, and frees the handle, so no `bergdb_sync` follows it
+(`bergdb.h`: after the close, db is not valid). (e) 020-24's U10-2,
+U10-4, U10-7 and U10-9 (`41e4da5`): the Pub API's Javadoc, nothing for
+C. 020-27's Q2 was not on `main` yet.

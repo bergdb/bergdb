@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/wait.h>
 #include <unistd.h>
 #include "test.h"
@@ -187,6 +188,24 @@ static int child_open(char **argv) {
     return 0;
 }
 
+/* The system's time in milliseconds. */
+static int64_t du_millis(void) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return (int64_t) tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
+
+/* openat DIR MILLIS: waits until the system's time is MILLIS, then as
+ * open: an open of DIR, its code's name and text, and a close. Several
+ * children open at once so (durable_concurrent_opens_of_a_new_directory). */
+static int child_open_at(char **argv) {
+    const int64_t at = atoll(argv[1]);
+    while (du_millis() < at) {
+        usleep(100);
+    }
+    return child_open(argv);
+}
+
 /* fsize DIR LIMIT: the files of this process limited to LIMIT bytes
  * (RLIMIT_FSIZE; SIGXFSZ ignored, so a write past it fails with EFBIG):
  * 10 transactions of 50,000 bytes, then a sync, which must fail, and every
@@ -285,6 +304,9 @@ int durable_child(int argc, char **argv) {
     }
     if (argc >= 4 && strcmp(argv[2], "open") == 0) {
         return child_open(argv + 3);
+    }
+    if (argc >= 5 && strcmp(argv[2], "openat") == 0) {
+        return child_open_at(argv + 3);
     }
     if (argc >= 5 && strcmp(argv[2], "fsize") == 0) {
         return child_fsize(argv + 3);
@@ -770,6 +792,152 @@ TEST(durable_refused_creation) {
     du_remove_dir(base);
 }
 
+/* bergdb 021-20 (020-24-10, U10-1), Java's
+ * PubTesterJavadocNewUsers.testDirectoryDeletedWhileTheDatabaseRuns: a
+ * database's directory deleted while the database runs, and a new database
+ * created at the path. The old one fails at its next stream file, with
+ * Java's text as the cause, and makes nothing in the directory now at the
+ * path; its close gives BERGDB_IO; the new one keeps its data. Java
+ * refuses the new start within the JVM while the old database is open; C
+ * does not within the process (its lock is the process's: readme.md,
+ * section 9, point 10), and neither refuses another process's, so the new
+ * database here is what another process would open. Before, the old
+ * database made its next file in the new directory, and the new one's next
+ * open was refused (BadDirStateException). Then the case of
+ * testNewDatabaseWhereAStoppedOneWasDeleted: closed, deleted, a new
+ * database at the path, which keeps its data; C has no stop(), and
+ * bergdb_close returns after its last write, so it passed before too. */
+TEST(durable_directory_replaced) {
+    char base[1024], dir[1100], want[1600];
+    du_temp_dir(base, sizeof base);
+    REQUIRE(base[0] != '\0');
+    snprintf(dir, sizeof dir, "%s/doc", base);
+    struct bergdb_mem m = {0}, m2 = {0};
+    struct bergdb_test_clock clock = {0}, clock2 = {0};
+    struct bergdb_options o;
+    struct bergdb_executed ex;
+    struct bergdb_start_info info;
+    bergdb_db *old, *db;
+    bool ok;
+    uint8_t *v = malloc(20000);
+    REQUIRE(v != NULL);
+
+    du_options(&o, &clock, &m);
+    bergdb_test_clock_set(&clock, 1000);
+    REQUIRE(bergdb_open(dir, &o, &old, NULL, NULL) == BERGDB_OK);
+    for (int64_t i = 0; i < 50; i++) {
+        CHECK_EQ(du_trans(old, &clock, i, 20000, v, &ex), BERGDB_OK);
+    }
+    CHECK_EQ(bergdb_sync(old, 0, BERGDB_SYNC_ORDINARY), BERGDB_OK);
+    du_remove_dir(dir);
+
+    du_options(&o, &clock2, &m2);
+    bergdb_test_clock_set(&clock2, 1000);
+    REQUIRE(bergdb_open(dir, &o, &db, NULL, NULL) == BERGDB_OK);
+    CHECK_EQ(du_trans(db, &clock2, 0, 100, v, &ex), BERGDB_OK);
+    CHECK_EQ(bergdb_sync(db, 0, BERGDB_SYNC_ORDINARY), BERGDB_OK);
+
+    int rc = BERGDB_OK;
+    int64_t i = 50;
+    for (; i < 550 && rc == BERGDB_OK; i++) {          /* up to 10 MB: a new file */
+        rc = du_trans(old, &clock, i, 20000, v, &ex);
+        if (rc == BERGDB_OK && i % 50 == 49) {
+            rc = bergdb_sync(old, 0, BERGDB_SYNC_ORDINARY);
+        }
+    }
+    CHECK_EQ(rc, BERGDB_FAILED);
+    /* The cause's text, as far as C's limit leaves it (240 bytes). */
+    snprintf(want, sizeof want, "DbFailedException: A sync failed on the storage (the cause). "
+            "The database takes no more transactions or reads and must be restarted. Cause: "
+            "IOException: Directory %s is no longer the database's directory: it was deleted, "
+            "moved or replaced while the database had it open. Nothing more is written there.",
+            dir);
+    const char *got = bergdb_errmsg(old);
+    const size_t prefix = (size_t) (strstr(want, dir) - want) + strlen(dir);
+    CHECK(strlen(got) >= prefix && strncmp(got, want, strlen(got)) == 0);
+    if (!(strlen(got) >= prefix && strncmp(got, want, strlen(got)) == 0)) {
+        printf("  durable_directory_replaced: after transaction %lld: %s\n", (long long) i,
+                got);
+    }
+    CHECK_EQ(bergdb_sync(old, 0, BERGDB_SYNC_ORDINARY), BERGDB_FAILED);
+    CHECK_EQ(bergdb_close(old), BERGDB_IO);
+    CHECK_EQ(m.live_total, 0);
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    CHECK_EQ(m2.live_total, 0);
+
+    /* The new database's transaction 0, of 100 bytes, and none of the old's. */
+    clock2.time += 1000000;
+    CHECK_EQ(restart_finds(dir, &clock2, &m2, 100, 60, &db, &info, &ok), 0);
+    CHECK(ok);
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    CHECK_EQ(m2.live_total, 0);
+
+    /* Closed, deleted, and a new database at the path. */
+    du_remove_dir(dir);
+    du_options(&o, &clock, &m);
+    bergdb_test_clock_set(&clock, 1000);
+    REQUIRE(bergdb_open(dir, &o, &db, NULL, NULL) == BERGDB_OK);
+    CHECK_EQ(du_trans(db, &clock, 0, 100, v, &ex), BERGDB_OK);
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    clock.time += 1000000;
+    CHECK_EQ(restart_finds(dir, &clock, &m, 100, 60, &db, &info, &ok), 0);
+    CHECK(ok);
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+    free(v);
+    du_remove_dir(base);
+}
+
+/* bergdb 020-24-10, U10-5, Java's
+ * FileStream.testConcurrentOpensOfANewDirectory, with processes for
+ * threads: eight processes open a directory that does not exist yet, two
+ * levels below an existing one, at once, ten rounds. Each open is taken or
+ * refused as in use (BERGDB_IN_USE, DirectoryInUseException), and at least
+ * one is taken: none is refused because another made the directory first.
+ * Java's mkdirs() returned false when another thread had made it, and the
+ * start threw "Directory ... could not be created."; C's plat_mkdirs took
+ * EEXIST already, so this passed before too. */
+TEST(durable_concurrent_opens_of_a_new_directory) {
+    char base[1024], dir[1100], at[32], line[600];
+    du_temp_dir(base, sizeof base);
+    REQUIRE(base[0] != '\0');
+    REQUIRE(func_program != NULL);
+    int taken = 0, refused = 0;
+    for (int round = 0; round < 10; round++) {
+        struct child c[8];
+        bool started[8];
+        snprintf(dir, sizeof dir, "%s/r%d/a/b", base, round);
+        snprintf(at, sizeof at, "%lld", (long long) (du_millis() + 300));
+        const char *args[] = { "openat", dir, at, NULL };
+        for (int k = 0; k < 8; k++) {
+            started[k] = child_start(&c[k], args);
+            CHECK(started[k]);
+        }
+        int taken_now = 0;
+        for (int k = 0; k < 8; k++) {
+            if (!started[k]) {
+                continue;
+            }
+            bool got = child_line(&c[k], line, sizeof line);
+            if (got && strncmp(line, "BERGDB_OK ", 10) == 0) {
+                taken_now++;
+            } else if (got && strncmp(line, "BERGDB_IN_USE DirectoryInUseException: ", 39) == 0) {
+                refused++;
+            } else {
+                CHECK(false);
+                printf("  round %d: %s\n", round, got ? line : "(no line)");
+            }
+            int status = child_wait(&c[k]);
+            CHECK(WIFEXITED(status) && WEXITSTATUS(status) == 0);
+        }
+        CHECK(taken_now >= 1);
+        taken += taken_now;
+    }
+    printf("  durable_concurrent_opens_of_a_new_directory: 10 rounds of 8, %d taken, %d "
+            "refused as in use\n", taken, refused);
+    du_remove_dir(base);
+}
+
 const struct test durable_tests[] = {
     TEST_ENTRY(durable_kill_after_execute_and_sync),
     TEST_ENTRY(durable_kill_at_random),
@@ -777,5 +945,7 @@ const struct test durable_tests[] = {
     TEST_ENTRY(durable_write_fails),
     TEST_ENTRY(durable_write_fails_in_execute),
     TEST_ENTRY(durable_refused_creation),
+    TEST_ENTRY(durable_directory_replaced),
+    TEST_ENTRY(durable_concurrent_opens_of_a_new_directory),
     TEST_END
 };

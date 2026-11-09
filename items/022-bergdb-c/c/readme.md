@@ -641,7 +641,16 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
     `BERGDB_OK` (`bergdb.h`, section G; 022-06, U2-5). Java
     checks a set of the JVM's locked directories; C has no global state
     (P9), so it leaves this to its one caller (012-13's decision on
-    09-write-path.md, 6.4: option A).
+    09-write-path.md, 6.4: option A). The stream keeps its directory's
+    identity (device and inode, Java's file key) from the open, and
+    checks it before each new file and each delete of a cut, as Java's
+    `FileStream.checkDirectory` since 2026.4 (bergdb 021-20): a database
+    whose directory was deleted, moved or replaced while it was open
+    fails there, with Java's text, and makes or deletes nothing in a
+    directory now at the path, so a new database there, which neither C
+    nor Java refuses from another process, keeps its files. Java also
+    refuses a start at the path within the JVM while the old database is
+    open (its path in that set); C, with no such set, does not.
 11. **A power loss leaves a prefix across the files** (bergdb 014-01,
     section 7: after a crash the stream is a prefix of what was appended,
     at least up to what was forced; 005-47). A power loss, or a crash of
@@ -795,7 +804,9 @@ section 6, give them with the ports' evidence. Those of C's design since
 so a transaction is durable at a sync or a close (section 9, points 1 to
 4) and a decided cut is forced and made in the call that decides it
 (section 9, point 9); a handle ends at its close (012-13, Q2); a
-directory is opened once per process (section 9, point 10); no `stop()`,
+directory is opened once per process, and an open at the path of an open
+database's deleted directory is not refused (section 9, point 10;
+021-20's set of paths is the JVM's); no `stop()`,
 so the setters' "not active" is a failed database (`BERGDB_FAILED`) or a
 call from a callback (`BERGDB_STATE`); a text is cut at C's limit
 (`ERR_TEXT`, 240 bytes with its end: 239 of text); replication,

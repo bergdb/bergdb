@@ -87,6 +87,9 @@ struct stream {
     char *dir;              /* the directory's path, for new files */
     int64_t dir_size;       /* its allocation */
     int lock_fd;            /* holds the directory's lock */
+    uint64_t dir_dev;       /* the directory's identity when the stream took it (Java's */
+    uint64_t dir_ino;       /* dirKey, plat_dir_key): checked before each new file and each
+                               delete of a cut (bergdb 021-20) */
     int32_t fileSizeIndex;  /* FileStream.fileSizeIndex: the last file's capacity */
     int64_t maxSize;        /* the last file's capacity, FILE_SIZES[fileSizeIndex] at its
                                making or the open */
@@ -129,8 +132,9 @@ enum err_code stream_open_dir(struct stream *s, const char *dir, struct mem *m, 
  *
  *   - createDirIfNeeded: made with its missing ancestors if it does not
  *     exist (each forced), else its parent forced (plat_mkdirs);
- *   - lockDir: bergdb.lock made with FileStream.LOCK_TEXT if missing, and
- *     its byte at 2^62 locked (plat_lock; ERR_IN_USE,
+ *   - lockDir: the directory's identity kept (plat_dir_key, Java's
+ *     dirKey; bergdb 021-20); bergdb.lock made with FileStream.LOCK_TEXT
+ *     if missing, and its byte at 2^62 locked (plat_lock; ERR_IN_USE,
  *     "DirectoryInUseException", if another process holds it);
  *   - handleExistingFiles: the files checked as stream_open_dir checks
  *     them; the capacity index from the larger of the last two files'
@@ -164,10 +168,16 @@ enum err_code stream_append(struct stream *s, const uint8_t *buf, int64_t n, str
  * the new file is made (the switch force, 005-47: no file before the last
  * is ever short on the disk), then the new file's and the directory's
  * before it takes a byte (OPEN, D7: no name durable without the names
- * before it). Nothing to do for a memory stream or a read-only directory.
- * ERR_IO after an I/O error, also with nothing buffered, so that a sync or
- * a close after a failed force or a failed delete gives the failure, and
- * forces nothing (FileStream.checkIOException; bergdb 022-05). */
+ * before it). Before each new file the directory at the stream's path
+ * must be the one that the open took (FileStream.checkDirectory, bergdb
+ * 021-20, as Java's since release 2026.4): if it was deleted, moved or
+ * replaced, the stream fails (ERR_IO, "IOException", "Directory DIR is no
+ * longer the database's directory: ...") and makes nothing there, so a
+ * new database at the path keeps its files. Nothing to do for a memory
+ * stream or a read-only directory. ERR_IO after an I/O error, also with
+ * nothing buffered, so that a sync or a close after a failed force or a
+ * failed delete gives the failure, and forces nothing
+ * (FileStream.checkIOException; bergdb 022-05). */
 enum err_code stream_flush(struct stream *s, struct err *e);
 
 /* stream_flush, then forces the files written since the last force
@@ -242,7 +252,9 @@ enum err_code stream_pretruncate_memory(struct stream *s, int64_t pos, struct er
  *     file deleted, oldest first, and the directory forced after each
  *     (005-46), here in the call. ERR_IO (the
  *     stream's failure, as Java's) if a delete or a force fails, or the
- *     stream failed before; ERR_ARG if pos is past the bytes in the files;
+ *     stream failed before, or the directory at the path is no longer the
+ *     one that the open took (checked before each delete, as before a new
+ *     file, bergdb 021-20: nothing deleted there); ERR_ARG if pos is past the bytes in the files;
  *   - a memory stream: CutStream.pretruncate, the first position pos
  *     exactly, so that a read just below the cut is refused (Java's
  *     MemoryStream drops whole 1 MB arrays); ERR_IO, "IOException", for a

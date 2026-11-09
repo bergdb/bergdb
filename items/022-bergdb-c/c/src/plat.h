@@ -56,6 +56,18 @@ void plat_close(int fd);
 /* Whether 'path' is a directory. */
 bool plat_is_dir(const char *path);
 
+/* What is at 'path' now, by its identity: Java's file key (FileStream's
+ * lockKey), the device and the inode, from stat, which follows a symbolic
+ * link as Files.readAttributes does. false if stat fails (gone). The
+ * stream keeps its directory's when it opens it for writing, and checks it
+ * before each new file and each delete of a cut (bergdb 021-20). */
+struct plat_dir_key {
+    uint64_t dev;
+    uint64_t ino;
+};
+
+bool plat_dir_key(const char *path, struct plat_dir_key *k);
+
 /* The length of the file at 'path', as File.length(): 0 if stat fails. */
 int64_t plat_file_length(const char *path);
 
@@ -70,9 +82,11 @@ void plat_random(uint8_t *buf, int32_t n);
 /* FileStream.createDirIfNeeded: if 'dir' exists, its parent is forced; else
  * it is made with its missing ancestors (mode 0777, less the umask), and
  * each new directory and its parent are forced, from the deepest up.
- * ERR_IO ("IOException") if it cannot be made, or 'dir' is not a
- * directory ("Directory DIR could not be opened: it exists and is not a
- * directory.", before the lock, as Java's since release 2026.4). */
+ * ERR_IO ("IOException") if it cannot be made ("Directory DIR could not be
+ * created."; not when another process made it meanwhile, bergdb 020-24-10,
+ * U10-5), or 'dir' is not a directory ("Directory DIR could not be opened:
+ * it exists and is not a directory.", before the lock), as Java's since
+ * release 2026.4. */
 enum err_code plat_mkdirs(const char *dir, struct err *e);
 
 /* Opens 'path' for reading and writing, made if missing (Java's

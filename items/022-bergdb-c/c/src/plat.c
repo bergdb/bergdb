@@ -149,6 +149,16 @@ bool plat_is_dir(const char *path) {
     return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
 }
 
+bool plat_dir_key(const char *path, struct plat_dir_key *k) {
+    struct stat st;
+    if (stat(path, &st) != 0) {
+        return false;
+    }
+    k->dev = (uint64_t) st.st_dev;
+    k->ino = (uint64_t) st.st_ino;
+    return true;
+}
+
 int64_t plat_file_length(const char *path) {
     struct stat st;
     return stat(path, &st) == 0 ? (int64_t) st.st_size : 0;
@@ -227,9 +237,18 @@ enum err_code plat_mkdirs(const char *dir, struct err *e) {
     }
     for (int i = nmissing - 1; i >= 0; i--) {
         if (mkdir(missing[i], 0777) != 0 && errno != EEXIST) {
-            return err_set(e, ERR_IO, "IOException", "Directory %s could not be created: %s",
-                    dir, strerror(errno));
+            break;
         }
+    }
+    /* Java's rule and text since release 2026.4 (bergdb 020-24-10, U10-5):
+     * whatever the mkdirs met, also another process that made a directory
+     * meanwhile (EEXIST), the open is refused here only if 'dir' is then not
+     * a directory; else the lock decides (BERGDB_IN_USE). Java's start threw
+     * this when mkdirs() found the directory made by another thread. C took
+     * EEXIST at each level already, but also when a file was made there, and
+     * its text was its own, with strerror's reason. */
+    if (!plat_is_dir(dir)) {
+        return err_set(e, ERR_IO, "IOException", "Directory %s could not be created.", dir);
     }
     for (int i = 0; i < nmissing; i++) {
         char parent[1024];

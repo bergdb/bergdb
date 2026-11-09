@@ -172,6 +172,25 @@ static enum err_code force_written(struct stream *s, enum plat_force_why why, st
     return ERR_OK;
 }
 
+/* FileStream.checkDirectory (bergdb 021-20, as Java's since release
+ * 2026.4): the stream fails if the directory at its path is no longer the
+ * one that it took at the open, by its identity (Java's file key): it was
+ * deleted, moved or replaced while the stream had it. A file is made and
+ * deleted by its name in the directory's path, so a stream whose directory
+ * was deleted made its next file in a new database's directory at the
+ * path, and broke it, or deleted that database's files at a cut. Called
+ * before each of these. A replacement between this check and the step is
+ * not caught. */
+static enum err_code check_directory(struct stream *s, struct err *e) {
+    struct plat_dir_key now;
+    if (!plat_dir_key(s->dir, &now) || now.dev != s->dir_dev || now.ino != s->dir_ino) {
+        return fail(s, err_set(e, ERR_IO, "IOException", "Directory %s is no longer the "
+                "database's directory: it was deleted, moved or replaced while the database "
+                "had it open. Nothing more is written there.", s->dir));
+    }
+    return ERR_OK;
+}
+
 /* FileStream.newFile: the next file, at the stream's length in the files,
  * a multiple of 100,000; it and then the directory forced before it takes
  * a byte. */
@@ -184,6 +203,10 @@ static enum err_code new_file(struct stream *s, struct err *e) {
     if (s->fileLength % STREAM_INDEX_UNIT != 0) {
         return fail(s, err_set(e, ERR_IO, "Bug", "Illegal state, length = %lld",
                 (long long) s->fileLength));
+    }
+    rc = check_directory(s, e);         /* bergdb 021-20 */
+    if (rc != ERR_OK) {
+        return rc;
     }
     /* The old last file forced before the new file's name exists (bergdb
      * 005-47, FileStream.newFile's SWITCH force): a new name may be durable
@@ -340,6 +363,15 @@ static enum err_code open_dir(struct stream *s, const char *dir, bool rw, int32_
             return err_set(e, ERR_NOMEM, "OutOfMemoryError", "opening %s", dir);
         }
         memcpy(s->dir, dir, dlen + 1);
+        /* The directory's identity, Java's dirKey, taken before the lock as
+         * lockDir takes lockKey(dir) (bergdb 021-20; check_directory). */
+        struct plat_dir_key key;
+        if (!plat_dir_key(dir, &key)) {
+            stream_close(s);
+            return err_set(e, ERR_IO, "NoSuchFileException", "%s", dir);
+        }
+        s->dir_dev = key.dev;
+        s->dir_ino = key.ino;
         rc = plat_lock(dir, STREAM_LOCK_NAME, LOCK_TEXT, STREAM_LOCK_POS, &s->lock_fd, e);
         if (rc != ERR_OK) {
             stream_close(s);
@@ -832,6 +864,9 @@ enum err_code stream_pretruncate(struct stream *s, int64_t pos, struct err *e) {
     enum err_code rc = force_written(s, PLAT_FORCE_CUT, e);
     for (int32_t i = 0; i <= index; i++) {
         plat_close(s->files[i].fd);
+        if (rc == ERR_OK) {
+            rc = check_directory(s, e);         /* bergdb 021-20: DbFile.delete's */
+        }
         if (rc == ERR_OK) {
             char path[4096];
             snprintf(path, sizeof path, "%s/%014lld%s", s->dir,

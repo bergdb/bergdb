@@ -846,6 +846,113 @@ TEST(append_dir_open_is_a_directory) {
     CHECK_MEM_ZERO(&am);
 }
 
+/* The text of FileStream.checkDirectory's refusal for the directory adir,
+ * as C cuts it (bergdb 021-20). */
+static void no_longer_text(char *out, size_t size) {
+    snprintf(out, size, "Directory %s is no longer the database's directory: it was deleted, "
+            "moved or replaced while the database had it open. Nothing more is written there.",
+            adir);
+}
+
+/* bergdb 021-20, FileStream.testNoNewFileInAReplacedDirectory: the stream's
+ * directory deleted, and a new one made at its path, while the stream is
+ * open, as when a database's directory is deleted and a new database is
+ * created there. The stream's next file is refused with Java's text, the
+ * stream fails, and nothing is made in the new directory; once closed, a
+ * stream opens at the path. Before, the stream made its next file in the
+ * new directory, by name. Java's first check, a second FileStream at the
+ * path refused within the JVM, is not C's: within one process a directory
+ * is opened once (readme.md, section 9, point 10), and an open there, as
+ * another process's, takes the new directory. A failed stream's close
+ * gives C's own text, where Java's throws the failure again. */
+TEST(append_dir_replaced_no_new_file) {
+    struct stream s;
+    char want[ERR_TEXT], got[512];
+    mem_init(&am);
+    REQUIRE(new_dir());
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);
+    CHECK_EQ(stream_append(&s, zeros, 100000, &ae), ERR_OK);
+    CHECK_EQ(stream_sync(&s, &ae), ERR_OK);
+    remove_dir();
+    REQUIRE(mkdir(adir, 0777) == 0);
+    CHECK_EQ(stream_append(&s, zeros, 100000, &ae), ERR_OK);
+    CHECK_EQ(stream_sync(&s, &ae), ERR_OK);      /* the first file is full: 200,000 bytes */
+    CHECK_EQ(stream_append(&s, zeros, 1, &ae), ERR_OK);       /* buffered */
+    CHECK_EQ(stream_sync(&s, &ae), ERR_IO);
+    no_longer_text(want, sizeof want);
+    CHECK(strcmp(ae.java, "IOException") == 0);
+    CHECK(strcmp(ae.text, want) == 0);
+    entries(got, sizeof got);
+    CHECK(strcmp(got, "") == 0);
+    if (strcmp(got, "") != 0) {
+        printf("  append_dir_replaced_no_new_file: %s\n", got);
+    }
+    CHECK_EQ(stream_append(&s, zeros, 1, &ae), ERR_IO);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_IO);
+    CHECK_MEM_ZERO(&am);
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);      /* the path is free */
+    CHECK_EQ(stream_length(&s), 0);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_OK);
+    remove_dir();
+    CHECK_MEM_ZERO(&am);
+}
+
+/* bergdb 021-20, FileStream.testNoDeleteInAReplacedDirectory: a cut after
+ * the directory was replaced deletes nothing in the new one, and the
+ * stream fails, with Java's text. Before, the cut deleted the new
+ * directory's file of the same name. */
+TEST(append_dir_replaced_no_delete) {
+    struct stream s;
+    char want[ERR_TEXT], path[512];
+    static const uint8_t other[3] = { 1, 2, 3 };
+    mem_init(&am);
+    REQUIRE(new_dir());
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);
+    CHECK_EQ(stream_append(&s, zeros, 1000000, &ae), ERR_OK);
+    CHECK_EQ(stream_sync(&s, &ae), ERR_OK);
+    remove_dir();
+    REQUIRE(mkdir(adir, 0777) == 0);
+    snprintf(path, sizeof path, "%s/00000000000000.bergdb", adir);
+    FILE *f = fopen(path, "wb");
+    REQUIRE(f != NULL);
+    CHECK(fwrite(other, 1, sizeof other, f) == 3);
+    fclose(f);
+    CHECK_EQ(stream_pretruncate(&s, 800000, &ae), ERR_IO);
+    no_longer_text(want, sizeof want);
+    CHECK(strcmp(ae.java, "IOException") == 0);
+    CHECK(strcmp(ae.text, want) == 0);
+    CHECK_EQ(file_size("00000000000000.bergdb"), 3);      /* the new directory's file */
+    CHECK_EQ(stream_append(&s, zeros, 1, &ae), ERR_IO);
+    stream_close(&s);
+    remove_dir();
+    CHECK_MEM_ZERO(&am);
+}
+
+/* bergdb 020-24-10, U10-5: createDirIfNeeded refuses a directory that is
+ * not there after its mkdirs, here one under a regular file, with Java's
+ * text, "Directory P could not be created." (C's own added strerror's
+ * reason); a directory that another process made meanwhile is taken
+ * (f_durable.c's durable_concurrent_opens_of_a_new_directory). */
+TEST(append_dir_mkdirs_refused) {
+    struct stream s;
+    char file[512], dir[600], want[700];
+    mem_init(&am);
+    REQUIRE(new_dir());
+    REQUIRE(mkdir(adir, 0777) == 0);
+    snprintf(file, sizeof file, "%s/file", adir);
+    FILE *f = fopen(file, "wb");
+    REQUIRE(f != NULL);
+    fclose(f);
+    snprintf(dir, sizeof dir, "%s/sub", file);
+    CHECK_EQ(stream_open_dir_rw(&s, dir, 0, &am, &ae), ERR_IO);
+    snprintf(want, sizeof want, "Directory %s could not be created.", dir);
+    CHECK(strcmp(ae.java, "IOException") == 0);
+    CHECK(strcmp(ae.text, want) == 0);
+    CHECK_EQ(plat_file_length(file), 0);
+    CHECK_MEM_ZERO(&am);
+    remove_dir();
+}
+
 const struct test append_tests[] = {
     TEST_ENTRY(append_rs_test1),
     TEST_ENTRY(append_rs_large),
@@ -867,5 +974,8 @@ const struct test append_tests[] = {
     TEST_ENTRY(append_dir_cut_at_length),
     TEST_ENTRY(append_dir_unlistable),
     TEST_ENTRY(append_dir_open_is_a_directory),
+    TEST_ENTRY(append_dir_replaced_no_new_file),
+    TEST_ENTRY(append_dir_replaced_no_delete),
+    TEST_ENTRY(append_dir_mkdirs_refused),
     TEST_END
 };

@@ -264,6 +264,20 @@
  * BERGDB_OK, as their records were in its buffer, and the failure shows at
  * its next write: bergdb_sync gives BERGDB_FAILED with the text, and
  * bergdb_close BERGDB_IO (bergdb 022-06, U2-5).
+ * Delete, move or replace a database's directory only after its
+ * bergdb_close has returned. A database whose directory was deleted,
+ * moved or replaced while it was open fails before it makes its next
+ * .bergdb file or deletes one at a cut (BERGDB_FAILED; the cause Java's
+ * IOException, "Directory DIR is no longer the database's directory: it
+ * was deleted, moved or replaced while the database had it open. Nothing
+ * more is written there."; bergdb 021-20, as Java's since release
+ * 2026.4), so a new database at the path keeps its files; it may still
+ * have written to its last file, in the old directory. An open at the
+ * path, in this process or another, is not refused, where Java refuses a
+ * start at the path within its JVM until the old database has closed.
+ * Several processes may open a directory that does not exist yet at
+ * once: one makes it, and the lock refuses the others (BERGDB_IN_USE;
+ * 020-24-10, U10-5).
  * When the stream is empty (no .bergdb file), the open creates the
  * database, as Java's start does: the first meta block and the primordial
  * transaction (264 bytes), the database id of the options (random by
