@@ -630,6 +630,76 @@ public class PubTesterJavadoc {
         }
     }
 
+    /**
+     * Connection.put(), WBuilder.execute(), Connection.rw(): a transaction too large is
+     * refused with DbException, nothing of it written, and the database goes on (DbException,
+     * "A refusal"; bergdb 005-17): its values and keys take more than 7/8 of the record limit
+     * in the stream, about 1.88 GB; here the limit is lowered to 1 MB, as the Core's tests
+     * lower it.
+     */
+    @Nano
+    public static void testTooLargeRefused() throws Exception {
+        java.lang.reflect.Field limit = bergdb.core.StoredTrans.class
+                .getDeclaredField("recordLimit");
+        limit.setAccessible(true);
+        long saved = limit.getLong(null);
+        limit.setLong(null, 1000 * 1000);
+        try (final Database db = Factory.database().memory().start()) {
+            final Connection c = db.connection();
+            final byte[] big = new byte[900 * 1000];
+            Runnable[] calls = {
+                () -> c.put("/a.bin", big),
+                () -> c.w().put("/b.txt", "b").put("/b.bin", big).execute(),
+                () -> c.rw(env -> {
+                    env.put("/c.txt", "c");
+                    env.put("/c.bin", big);
+                }),
+            };
+            for (int i = 0; i < calls.length; i++) {
+                DbException e = assertThrows("call " + i, DbException.class, calls[i]);
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("too large"));
+            }
+            for (String key : new String[] {"/a.bin", "/b.txt", "/b.bin", "/c.txt", "/c.bin"}) {
+                Assert.assertTrue(key, c.get(key, byte[].class) == null);
+            }
+            c.put("/d.bin", new byte[700 * 1000]);
+            Assert.assertEquals(700 * 1000, c.get("/d.bin", byte[].class).length);
+        } finally {
+            limit.setLong(null, saved);
+        }
+    }
+
+    /**
+     * Database, "Interrupts": an rw() that waits to run again after a conflict, when the
+     * thread is interrupted, throws a DbException and is not run; its writes are not made,
+     * the flag is set, and the database goes on.
+     */
+    @Nano
+    public static void testRwInterruptedAfterConflict() {
+        try (final Database db = Factory.database().memory().start()) {
+            final Connection c = db.connection();
+            final Connection other = db.newConnection();
+            c.put("/x.txt", "0");
+            final int[] runs = new int[1];
+            DbException e = assertThrows("rw", DbException.class, () -> c.rw(env -> {
+                runs[0]++;
+                String x = env.get("/x.txt", String.class);
+                other.put("/x.txt", x + "+other");
+                env.put("/y.txt", "from the action");
+                Thread.currentThread().interrupt();
+            }));
+            Assert.assertTrue("flag", Thread.interrupted());
+            Assert.assertEquals(1, runs[0]);
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("not run"));
+            Assert.assertNull(c.get("/y.txt", String.class));
+            Assert.assertEquals("0+other", c.get("/x.txt", String.class));
+            c.rw(env -> env.put("/y.txt", env.get("/x.txt", String.class)));
+            Assert.assertEquals("0+other", c.get("/y.txt", String.class));
+        } finally {
+            Thread.interrupted();
+        }
+    }
+
     // ======== Database ========
 
     /**
