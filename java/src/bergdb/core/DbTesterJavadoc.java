@@ -611,9 +611,9 @@ public class DbTesterJavadoc {
 
     /**
      * GetMany (bergdb 020-24-09, U9-8): Db.newGetMany()'s defaults, the latest state, from the
-     * first key, inclusive, forward, a DontStop; with -ea, a second getMany() with the same
-     * GetMany, whose result has KVs, is refused with an AssertionError, and the database goes
-     * on.
+     * first key, inclusive, forward, a DontStop; a second getMany() with the same GetMany,
+     * whose result has KVs, is refused with IllegalArgumentException (bergdb 020-27, Q2;
+     * before, an AssertionError with -ea), and the database goes on.
      */
     @Nano
     public static void testGetManyDefaultsAndOneCall() {
@@ -626,12 +626,8 @@ public class DbTesterJavadoc {
             Assert.assertTrue("stopCondition", g.stopCondition instanceof GetMany.DontStop);
             db.getMany(g);
             Assert.assertEquals("every KV", 3, g.result.size());
-            boolean ea = false;
-            assert ea = true;
-            if (ea) {
-                assertThrows("a second call", AssertionError.class, () -> db.getMany(g));
-                Assert.assertEquals("v0", new String(get(db, "k0")));
-            }
+            assertThrows("a second call", IllegalArgumentException.class, () -> db.getMany(g));
+            Assert.assertEquals("v0", new String(get(db, "k0")));
         } finally {
             db.close();
         }
@@ -833,5 +829,73 @@ public class DbTesterJavadoc {
             () -> new GetMany.Prefix(null),
             () -> new GetMany.PrefixN(null, 3)};
         assertNullRefused(params, calls);
+    }
+
+    /**
+     * The Core API refuses an argument out of its range with IllegalArgumentException, never
+     * an assert that depends on -ea (bergdb 020-27, Q2, range checks): a key of no segments
+     * in Trans.Builder's put(), delete() and keyRead() (with -ea a put or a delete of one
+     * failed the database, without it was written) and in getOne() (it gave null); getMany()
+     * with a startKey of no segments (with -ea it failed the database, without it gave no
+     * KV), with a result that is not empty (without -ea it added to it), or with a stop
+     * condition that answers none of the four (with -ea it failed the database, without it
+     * was CONTINUE); GetN and PrefixN with a negative count (no KV); addReadHashes() with a
+     * length outside 0 to hashes.length (without -ea an ArrayIndexOutOfBoundsException, some
+     * hashes added). Each message names the argument; the database goes on, unchanged.
+     */
+    @Nano
+    public static void testRangeArguments() {
+        final Db db = dbWithKeys(2);
+        try {
+            final long[] none = new long[0];
+            final byte[] v = {1};
+            final GetMany emptyStart = db.newGetMany();
+            emptyStart.startKey = none;
+            final GetMany notEmpty = db.newGetMany();
+            db.getMany(notEmpty);
+            Assert.assertEquals("two KVs", 2, notEmpty.result.size());
+            final GetMany badAnswer = db.newGetMany();
+            badAnswer.stopCondition = new GetMany.StopCondition() {
+                public int handleKvt(Kvt kvt) {
+                    return 7;
+                }
+                public void eod() {}
+            };
+            final Trans.Builder b = db.trans();
+            String[] params = {"key", "key", "key", "key", "keySegments", "g.startKey",
+                "g.result", "handleKvt", "maxCount", "maxCount", "length", "length"};
+            Call[] calls = {
+                () -> b.put(none, v),
+                () -> b.put(none, null, v, null),
+                () -> b.delete(none),
+                () -> b.keyRead(none),
+                () -> db.getOne(LATEST, none, db.newGetData()),
+                () -> db.getMany(emptyStart),
+                () -> db.getMany(notEmpty),
+                () -> db.getMany(badAnswer),
+                () -> new GetMany.GetN(-1),
+                () -> new GetMany.PrefixN(Keys.toSegments("k"), -1),
+                () -> b.addReadHashes(new long[] {1}, 2),
+                () -> b.addReadHashes(new long[] {1}, -1)};
+            long length = db.getStreamLength();
+            for (int i = 0; i < calls.length; i++) {
+                String about = "call " + i + ", " + params[i];
+                Throwable e = thrown(calls[i]);
+                Assert.assertTrue(about + ": expected IllegalArgumentException, got " + e,
+                        e instanceof IllegalArgumentException);
+                Assert.assertTrue(about + ": the message names it, " + e.getMessage(),
+                        e.getMessage().contains(params[i]));
+            }
+            Assert.assertEquals("unchanged", 2, notEmpty.result.size());
+            Trans t = b.put("k2", "v2").build();
+            Assert.assertEquals("nothing added", 1, t.kvs.length);
+            Assert.assertEquals("no read hash", 0, t.readKeyHashes.length);
+            db.execute(t);
+            Assert.assertTrue("a commit", db.getStreamLength() > length);
+            Assert.assertEquals("v0", new String(get(db, "k0")));
+            Assert.assertEquals("v2", new String(get(db, "k2")));
+        } finally {
+            db.close();
+        }
     }
 }

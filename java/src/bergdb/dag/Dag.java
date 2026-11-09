@@ -700,8 +700,11 @@ public class Dag {
                 // empty
                 break;
             default:
-                assert false : "Bad int value: " + shouldStop;
-                break;
+                // The application's answer, refused (bergdb 020-27, Q2): an assert until then,
+                // whose AssertionError with -ea failed the database (Db.getMany), and without
+                // -ea the answer was taken as CONTINUE.
+                throw new IllegalArgumentException("handleKvt() returned " + shouldStop
+                        + ", not ADD, STOP, CONTINUE or ADD_AND_STOP.");
             }
         }
     }    

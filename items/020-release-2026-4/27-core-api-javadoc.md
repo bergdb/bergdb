@@ -451,3 +451,10 @@ the data for pub layer. The Core layer is mostly an internal layer to develop Pu
 top." Done by q27, commit "020-27, Q1": a paragraph "The Core API" at the top of `Db`'s
 class Javadoc that names it, and a sentence in `DbBuilder`'s, in the Core's package page and
 in `bergdb.pub`'s "The API and its jar"; Javadoc only.
+
+2026-11-09. Q2's range checks, at coord-1109's word (the same principle as Frans's null
+decision, a user's bad argument refused with IllegalArgumentException, never an assert
+that depends on `-ea`), by q27, commit "020-27, Q2: range checks": a key of no segments,
+`getMany()`'s empty `startKey`, a `result` not empty and a stop condition's answer outside
+the four, `GetN`'s and `PrefixN`'s negative count, `addReadHashes()`'s length; with `-ea`
+three of them failed the database. Test `DbTesterJavadoc.testRangeArguments`, failing before.

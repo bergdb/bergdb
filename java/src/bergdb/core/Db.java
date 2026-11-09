@@ -1799,7 +1799,8 @@ public class Db implements AutoCloseable {
      *            reclaim has copied forward, reclaim's (see getTrans()).
      * @return The value, or null if the key has no value at the lookup time.
      * @throws IllegalArgumentException
-     *             If keySegments or gd is null (bergdb 020-27, Q2).
+     *             If keySegments or gd is null, or keySegments has no segment (bergdb
+     *             020-27, Q2).
      * @throws IllegalDbStateException
      *             If start() has not been called, or stop() or close() has (a
      *             DbStoppingException then).
@@ -1832,6 +1833,11 @@ public class Db implements AutoCloseable {
         }
         if (gd == null) {
             throw new IllegalArgumentException("gd == null not allowed");
+        }
+        if (keySegments.length == 0) {
+            // As a put of it (Trans.Builder); it gave null.
+            throw new IllegalArgumentException("keySegments.length == 0 not allowed: a key has "
+                    + "one segment at least (Keys.toSegments()).");
         }
         assert gd.kwi != null;
         
@@ -2028,7 +2034,9 @@ public class Db implements AutoCloseable {
      * @param g     Input and output parameters: a new GetMany, from newGetMany(), for each
      *              call (GetMany).
      * @throws IllegalArgumentException
-     *              If g or its stopCondition is null (bergdb 020-27, Q2).
+     *              If g or its stopCondition is null, its startKey has no segment, its
+     *              result is not empty, or its stop condition answers a value other than
+     *              the four of StopCondition, which ends the scan (bergdb 020-27, Q2).
      * @throws IllegalDbStateException
      *              If start() has not been called, or stop() or close() has (a
      *              DbStoppingException then).
@@ -2067,8 +2075,17 @@ public class Db implements AutoCloseable {
         if (g.stopCondition == null) {
             throw new IllegalArgumentException("g.stopCondition == null not allowed");
         }
-        assert g.result != null;
-        assert g.result.size() == 0 : "g.result.size() not 0, but " + g.result.size();
+        // Asserts until bergdb 020-27, Q2, range checks. A startKey of no segments: with -ea an
+        // AssertionError of GetMany.Chain failed the database, without -ea no KV. A result not
+        // empty: without -ea the KVs were added to it.
+        if (g.startKey != null && g.startKey.length == 0) {
+            throw new IllegalArgumentException("g.startKey.length == 0 not allowed: a key has "
+                    + "one segment at least; null starts at the first key.");
+        }
+        if (g.result.size() != 0) {
+            throw new IllegalArgumentException("g.result not empty, " + g.result.size()
+                    + " KVs: clear it, or use a new GetMany (newGetMany()).");
+        }
 
         try {
             getManyInner(g);

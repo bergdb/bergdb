@@ -770,6 +770,20 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `start(null)` closed the storage; a null eviction schedule or
   `createdTxt()` directory was taken, and the start threw or wrote no
   `created.txt`. None failed the database. Each method's Javadoc says it.
+* **The Core API refuses an argument out of its range with
+  `IllegalArgumentException`** (bergdb 020-27, Q2, range checks), never an
+  assert that depends on `-ea`: a key of no segments (`long[0]`) in
+  `Trans.Builder`'s `put()`, `delete()` and `keyRead()` and in
+  `Db.getOne()`; `Db.getMany()` with a `startKey` of no segments, a
+  `result` that is not empty, or a stop condition whose `handleKvt()`
+  answers none of its four values; `GetMany.GetN` and `PrefixN` with a
+  negative count; `Trans.Builder.addReadHashes()` with a length outside 0
+  to the array's length. With `-ea`, a put or a delete of such a key, such
+  a `startKey` and such an answer failed the database (an
+  `AssertionError`); without it, the key was written, the scan gave no KV,
+  the answer was taken as CONTINUE, a `result` was added to, and a length
+  too large threw `ArrayIndexOutOfBoundsException` after some hashes were
+  added.
 * **A read at a position near `Long.MAX_VALUE` is a read past the end**
   (bergdb 021-14; 2026-11-09). The storage's check of a read's end,
   `position + length`, overflowed for a position within `length` of

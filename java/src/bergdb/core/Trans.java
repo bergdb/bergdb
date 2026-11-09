@@ -228,11 +228,11 @@ public class Trans {
         /**
          * As put(byte[], byte[]) with the key as segments (Keys.toSegments()).
          * 
-         * @throws IllegalArgumentException  If key or value is null; for a null value, delete()
-         *      deletes.
+         * @throws IllegalArgumentException  If key or value is null, or the key has no segment;
+         *      for a null value, delete() deletes.
          */
         public Builder put(long[] key, byte[] value) {
-            checkKey(key);
+            checkSegments(key);
             checkValue(value);
             kvs.add(new Kv(key, value));
             return this;
@@ -242,10 +242,10 @@ public class Trans {
          * Puts the value at the key, with a key transformation and a value transformation,
          * each null for none.
          * 
-         * @throws IllegalArgumentException  If key or value is null.
+         * @throws IllegalArgumentException  If key or value is null, or the key has no segment.
          */
         public Builder put(long[] key, KeyTransformation kt, byte[] value, ValueTransformation vt) {
-            checkKey(key);
+            checkSegments(key);
             checkValue(value);
             Kv kv = new Kv(key, value, kt, vt);
             kvs.add(kv);
@@ -310,10 +310,10 @@ public class Trans {
          * or without: a put or a delete of it by a transaction after the read time
          * (lookupTime()) is a conflict. Kept as its hash, Keys.hash().
          * 
-         * @throws IllegalArgumentException  If key is null.
+         * @throws IllegalArgumentException  If key is null or has no segment.
          */
         public Builder keyRead(long[] key) {
-            checkKey(key);
+            checkSegments(key);
             long[] segments = key;
             long hash = Keys.hash(segments);
             readHashes.add(hash);
@@ -347,17 +347,24 @@ public class Trans {
         /**
          * As addReadHash() for each of the first 'length' hashes.
          * 
-         * @throws IllegalArgumentException  If hashes is null, or one of them is negative.
+         * @throws IllegalArgumentException  If hashes is null, length is outside 0 to
+         *      hashes.length, or one of the hashes is negative; nothing is added then.
          */
         public final Builder addReadHashes(long[] hashes, final int length) {
             if (hashes == null) {
                 throw new IllegalArgumentException("hashes == null not allowed");
             }
-            assert length <= hashes.length : "length = " + length 
-                    + ", hashes.length = " + hashes.length;
+            if (length < 0 || length > hashes.length) {
+                // An assert until bergdb 020-27, Q2: without -ea, an
+                // ArrayIndexOutOfBoundsException after some hashes were added.
+                throw new IllegalArgumentException("Bad length, " + length + ", for "
+                        + "hashes.length " + hashes.length + ".");
+            }
+            for (int i = 0; i < length; i++) {
+                checkHash(hashes[i]);       // All checked before any is added.
+            }
             
             for (int i = 0; i < length; i++) {
-                checkHash(hashes[i]);
                 readHashes.add(hashes[i]);
             }
             return this;
@@ -389,10 +396,10 @@ public class Trans {
         /**
          * As delete(byte[]) with the key as segments (Keys.toSegments()).
          * 
-         * @throws IllegalArgumentException  If key is null.
+         * @throws IllegalArgumentException  If key is null or has no segment.
          */
         public Builder delete(long[] key) {
-            checkKey(key);
+            checkSegments(key);
             kvs.add(new Kv(key, null));
             return this;
         }
@@ -415,6 +422,19 @@ public class Trans {
         private static void checkKey(Object key) {
             if (key == null) {
                 throw new IllegalArgumentException("key == null not allowed");
+            }
+        }
+        
+        /**
+         * A key of no segments refused (bergdb 020-27, Q2): with -ea a put or a delete of one
+         * failed the database (Dag.putKv's assert, after the go point); without it, it was
+         * written. Keys.toSegments() gives one segment at least.
+         */
+        private static void checkSegments(long[] key) {
+            checkKey(key);
+            if (key.length == 0) {
+                throw new IllegalArgumentException("key.length == 0 not allowed: a key has one "
+                        + "segment at least (Keys.toSegments()).");
             }
         }
         

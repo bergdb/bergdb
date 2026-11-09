@@ -15,9 +15,10 @@ import java.util.List;
  * Long.MAX_VALUE, the latest state; startKey null, from the first key; inclusive; forward;
  * stopCondition a DontStop, every KV to the end. The order is the unsigned order of the
  * keys' bytes (Db, "Keys and values"). A GetMany is for one call of getMany(), by one
- * thread: make a new one for each call. getMany() adds to result, which must be empty (with
- * -ea a GetMany whose result has KVs is refused with an AssertionError; without, the call
- * adds to them), and a stop condition keeps its own state, such as GetN's count.</p>
+ * thread: make a new one for each call. getMany() adds to result, which must be empty: a
+ * GetMany whose result has KVs is refused with IllegalArgumentException (bergdb 020-27, Q2;
+ * before, an AssertionError with -ea, and without it the call added to them), and a stop
+ * condition keeps its own state, such as GetN's count.</p>
  * 
  * @see Dag#getMany(GetMany)
  * @author Frans Lundberg
@@ -34,7 +35,9 @@ public class GetMany {
     /** 
      * Forward, the first key gotten with getMany() is the smallest key GTE 'startKey' (GT
      * if not inclusive); backward, the largest key LTE it (LT if not inclusive).
-     * Use 'null' to start at the first key, or backward at the last.
+     * Use 'null' to start at the first key, or backward at the last. A key has one segment at
+     * least: Db.getMany() refuses an empty array with IllegalArgumentException (bergdb 020-27,
+     * Q2).
      */
     public long[] startKey;
     
@@ -429,6 +432,9 @@ public class GetMany {
          * 2. Stop iterating, do not add the KV to the result.
          * 3. Continue to next KV without adding the current KV to the result.
          * 4. Add the Kv to the result and stop.
+         * Db.getMany() throws IllegalArgumentException for any other value, and the scan ends
+         * (bergdb 020-27, Q2: an assert, whose AssertionError with -ea failed the database,
+         * and without -ea the value was taken as CONTINUE).
          * 
          * @return ADD/STOP/CONTINUE/ADD_AND_STOP.
          */
@@ -521,8 +527,14 @@ public class GetMany {
         private int maxCount;
         private boolean eod;
         
+        /**
+         * @throws IllegalArgumentException  If maxCount is negative (bergdb 020-27, Q2: an
+         *      assert; without -ea it gave no KV).
+         */
         public GetN(int maxCount) {
-            assert maxCount >= 0;
+            if (maxCount < 0) {
+                throw new IllegalArgumentException("Negative maxCount, " + maxCount + ".");
+            }
             this.maxCount = maxCount;
             this.eod = false;
         }
@@ -609,11 +621,14 @@ public class GetMany {
          * The prefix is copied.
          * 
          * @throws IllegalArgumentException  If prefix is null (bergdb 020-27, Q2: it threw
-         *      NullPointerException).
+         *      NullPointerException), or maxCount is negative, as for GetN (it gave no KV).
          */
         public PrefixN(long[] prefix, int maxCount) {
             if (prefix == null) {
                 throw new IllegalArgumentException("prefix == null not allowed");
+            }
+            if (maxCount < 0) {
+                throw new IllegalArgumentException("Negative maxCount, " + maxCount + ".");
             }
             this.prefix = prefix.clone();     // The parameter's clone until bergdb 020-27.
             this.maxCount = maxCount;
