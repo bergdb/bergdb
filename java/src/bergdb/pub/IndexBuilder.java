@@ -13,6 +13,10 @@ import bergdb.pub.util.Job;
  *             .start().join();
  * </pre>
  *
+ * <p>start() creates the index and starts its build; join() waits until the index is built
+ * and active, and throws {@link bergdb.pub.util.IndexBuildException} if the build failed
+ * (see start()).</p>
+ *
  * <p>Each call is checked at once, in the order given. The builder is spent after start(),
  * whatever it threw.</p>
  *
@@ -110,6 +114,14 @@ public interface IndexBuilder {
      * keeps the index. Returns the build's job: start().join() waits until the index is
      * active, at once for an empty directory. If the database stops before the build ends,
      * the next start takes it again, from the first key of the directory.
+     *
+     * <p>If the build fails, the job's join() throws an IndexBuildException, each time it is
+     * called, and its getStatus() gives FAILED (Job.join()). A build fails when the index is
+     * deleted while it builds; when it meets a value that it cannot index, an object of the
+     * format of BergDB 2026.3 and before (rule 1 above; the exception's cause is a
+     * DataFormatException); or when it meets another exception, a bug (the cause). The
+     * database goes on; an index that was not deleted stays, and the next start builds it
+     * again.</p>
      *
      * @throws IllegalStateException  If dir() was not called, no level was given, a level has
      *     no field, or start() was called before.

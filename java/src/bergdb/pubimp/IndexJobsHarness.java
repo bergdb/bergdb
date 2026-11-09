@@ -37,6 +37,7 @@ import bergdb.pub.WBuilder;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
+import bergdb.pub.util.IndexBuildException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus.State;
 import bergdb.pub.util.JobStatus;
@@ -74,9 +75,12 @@ import bergdb.stream.MemoryStream;
  *     deletion frees the name at once.</li>
  * <li><b>Statuses.</b> Each build's last status: ACTIVE; BUILDING after a stop (S2-F11);
  *     FAILED with the cause's class and message after a RuntimeException (019-42); FAILED
- *     "deleted" after a deletion during the build. A refusal, an expiry and an interrupt are
- *     taken again (019-38, 015-37). Every status read earlier is unchanged (a snapshot,
- *     015-39); a status's count is the values that its committed steps read.</li>
+ *     "deleted" after a deletion during the build. join() of a FAILED build throws an
+ *     IndexBuildException, each time, its status FAILED and its cause the RuntimeException,
+ *     none after a deletion; it returns every other status (Frans, 2026-11-09). A refusal,
+ *     an expiry and an interrupt are taken again (019-38, 015-37). Every status read earlier
+ *     is unchanged (a snapshot, 015-39); a status's count is the values that its committed
+ *     steps read.</li>
  * <li><b>Failures.</b> The database fails after an Error, and the call in the caller's thread
  *     throws the Error as it is; it fails after nothing else but a throw after a commit,
  *     where failing is one of the two outcomes allowed (the other: the call returns, its
@@ -1026,7 +1030,7 @@ public final class IndexJobsHarness {
         /** Waits for build b and checks its last status. */
         void joinBuild(int b) {
             long t0 = System.nanoTime();
-            JobStatus st = jobs[b].join(JOIN_MS);
+            JobStatus st = joinJob(jobs[b], JOIN_MS, b, "build " + b);
             long ms = (System.nanoTime() - t0) / 1000000;
             if (Thread.interrupted()) {
                 finding("workload", "the workload's thread was interrupted in join()");
@@ -1063,6 +1067,62 @@ public final class IndexJobsHarness {
                     }
                 }
             }
+        }
+
+        /**
+         * job.join(millis)'s status, or, if it threw an IndexBuildException, the exception's,
+         * after the checks of a failed build's join() (020-10, section 3.2; Frans, 2026-11-09):
+         * only a FAILED build throws, and it does each time; the status is FAILED; the cause
+         * is the exception that the reason names, the RuntimeException injected in build b,
+         * or none for "deleted"; getStatus() gives the status without a throw. b is 0 for the
+         * build that a restart resumed.
+         */
+        JobStatus joinJob(Job job, int millis, int b, String what) {
+            IndexBuildException e;
+            try {
+                JobStatus st = job.join(millis);
+                if (st.state() == State.FAILED) {
+                    finding("join", what + ": join() returned FAILED (" + st.note()
+                            + "), not an IndexBuildException");
+                }
+                return st;
+            } catch (IndexBuildException thrown) {
+                e = thrown;
+            }
+            JobStatus st = e.getStatus();
+            if (st == null || st.state() != State.FAILED) {
+                finding("join", what + ": join() threw " + describe(e) + ", and its status is "
+                        + (st == null ? null : st.note()));
+                return job.getStatus();
+            }
+            Throwable cause = e.getCause();
+            boolean deleted = "deleted".equals(st.reason());
+            if (deleted ? cause != null : cause == null || !st.reason().equals(
+                    cause.getClass().getName() + ": " + cause.getMessage())) {
+                finding("join", what + ": FAILED \"" + st.reason() + "\" with the cause "
+                        + describe(cause));
+            }
+            if (b != 0 && !deleted && fired && firedBuild == b && cfg.fault == Fault.RUNTIME
+                    && cause != injected) {
+                finding("join", what + ": the cause is " + describe(cause) + ", not the "
+                        + "exception injected, " + describe(injected));
+            }
+            try {
+                JobStatus again = job.join(1);
+                finding("join", what + ": a second join() returned " + again.note());
+            } catch (IndexBuildException e2) {
+                if (e2.getCause() != cause || !Objects.equals(e2.getStatus().reason(),
+                        st.reason())) {
+                    finding("join", what + ": a second join() threw " + describe(e2)
+                            + ", the first " + describe(e));
+                }
+            }
+            JobStatus polled = job.getStatus();
+            if (polled.state() != State.FAILED || !Objects.equals(polled.reason(), st.reason())) {
+                finding("join", what + ": join() threw " + describe(e) + ", and getStatus() "
+                        + "gives " + polled.note());
+            }
+            return st;
         }
 
         /** Build b's last status, by the fault (020-10, sections 3.2 and 6.1). */
@@ -1351,7 +1411,11 @@ public final class IndexJobsHarness {
             for (int b = 1; b <= 2; b++) {
                 if (jobs[b] != null && d == db) {
                     long j0 = System.nanoTime();
-                    jobs[b].join(THREADS_MS);
+                    try {
+                        jobs[b].join(THREADS_MS);
+                    } catch (IndexBuildException e) {
+                        // A failed build: joinBuild() checked its join().
+                    }
                     if ((System.nanoTime() - j0) / 1000000 >= THREADS_MS) {
                         finding("thread left", what + ": build " + b + "'s join() did not "
                                 + "return in " + THREADS_MS + " ms after the close");
@@ -1462,7 +1526,7 @@ public final class IndexJobsHarness {
                         + " with count " + first.count() + ", not ACTIVE with 0 (020-10, 3.2)");
             }
             long t0 = System.nanoTime();
-            JobStatus st = job.join(JOIN_MS);
+            JobStatus st = joinJob(job, JOIN_MS, 0, "the build resumed at the start");
             restartStatus = st;
             if (st.state() != State.ACTIVE) {
                 finding("restart", "the build resumed at the start ended " + st.state() + " ("

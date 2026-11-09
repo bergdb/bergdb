@@ -259,7 +259,7 @@ class IndexManager {
         try {
             IndexBuilderImp.startBuild(database, this, live);
         } catch (RuntimeException e) {
-            live.job.failed(e.getClass().getName() + ": " + e.getMessage());
+            live.job.failed(e);
             live.job.ended();
             throw e;
         }

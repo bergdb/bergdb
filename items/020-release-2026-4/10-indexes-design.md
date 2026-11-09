@@ -145,14 +145,24 @@ package bergdb.pub.util;
 
 /** The build of an index, in this process. */
 public interface Job {
-    /** A snapshot: immutable, all its values taken at the call (015-39). */
+    /** A snapshot: immutable, all its values taken at the call (015-39); it
+     *  never throws, also for a FAILED build. */
     JobStatus getStatus();
-    /** Waits until the build ends in this process: the status is then ACTIVE or
-     *  FAILED, or BUILDING if the database stopped (the next start resumes it).
+    /** Waits until the build ends in this process: the status is then ACTIVE,
+     *  or BUILDING if the database stopped (the next start resumes it). A FAILED
+     *  build throws IndexBuildException, at every call (Frans, 2026-11-09).
      *  An interrupt ends the wait and keeps the flag (005-46). */
     JobStatus join();
     /** As join(), at most millis ms; 0 waits as join(). */
     JobStatus join(int millis);
+}
+
+/** Thrown by join() and join(millis) of a FAILED build: unchecked, not a
+ *  DbException. The message names the index and the reason. */
+public class IndexBuildException extends RuntimeException {
+    /** The job's last status, FAILED. The cause is the exception that failed
+     *  the build, null for "deleted". */
+    public JobStatus getStatus();
 }
 
 public interface JobStatus {
@@ -176,6 +186,22 @@ public interface JobStatus {
   memory only: the definition stays building, and the next start takes
   the build again (019-42's rule). The database goes on; only an `Error`
   fails it (P7).
+* **`join()` of a FAILED build throws** (Frans, 2026-11-09, 08:29: "Do as
+  you propose"): `join()` and `join(millis)` throw `IndexBuildException`
+  (`bergdb.pub.util`, unchecked) at every call, also on the job of
+  `Database.indexJob(name)`, as `Future.get()` and
+  `CompletableFuture.join()` throw for work that failed. Its `getStatus()`
+  is the FAILED status, and its cause the exception that failed the build:
+  a `DataFormatException` or an `InternalDataException` (data the build
+  cannot take, such as a format-1 object), another `RuntimeException` (a
+  bug), none for "deleted"; the job keeps that exception, and the reason
+  string is as before. They return ACTIVE, or BUILDING after a stop, a
+  time-out or an interrupt; `getStatus()` never throws and is the way to
+  poll. Why: the natural `start().join()`, the Javadoc's example, passed a
+  failed build silently. Not a `DbException`: that is a refusal, which a
+  caller may make again, or a failure of the database (`DbException`'s
+  Javadoc), and a failed build is neither; a loop that retries on
+  `DbException` would call a `join()` that throws for ever.
 * `Database`:
   ```java
   IndexBuilder indexBuilder(String name);
@@ -1005,3 +1031,7 @@ For his information; each with its reason in the section named.
 2026-11-08. Written at the coordinator's request after Frans's decisions
 of 22:08 to 22:12 (020-01, section 14.1), from the code at `acac9d2`; the
 gaps decided under his delegation of 22:17 (section 11). No code changed.
+
+2026-11-09. Section 3.2: `join()` of a FAILED build throws
+`IndexBuildException` (Frans, 08:29: "Do as you propose"); the code, its
+tests and the Javadoc changed with it.

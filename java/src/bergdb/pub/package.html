@@ -141,8 +141,9 @@ for (Kv&lt;Account&gt; kv : c.usePrimary(Account.class).dir("/acc/").kvs()) {
 
 <p>A user index lists the objects of a directory in the order of their fields: here the
 accounts by balance, from 60 on. start() builds the index from the data there, join() waits
-until it is built, and the database keeps it as the data changes. An index is stored in the
-database: create it once.</p>
+until it is built, and the database keeps it as the data changes. If the build fails, join()
+throws an exception (see Good to know). An index is stored in the database: create it
+once.</p>
 
 <pre>
 db.indexBuilder("by-balance").dir("/acc/").type("long").field("balance").start().join();
@@ -166,6 +167,12 @@ db.newConnection() a new one.</li>
 <li>If the database fails, on an I/O error for example, the call throws DbFailedException, or
 the Error that failed it, and the application should end its process; the next start
 recovers the database as after a crash ({@link Database}, "Errors").</li>
+<li>join() of an index's build throws {@link bergdb.pub.util.IndexBuildException} if the build
+failed: the index was deleted while it was building, the build met a value that it cannot
+index (an object written by BergDB 2026.3 or before), or it met another exception, a bug. The
+exception's getStatus() and getCause() say why. The database goes on, and the next start
+builds an index that was not deleted again. getStatus() of the job follows a build without
+an exception.</li>
 </ul>
 
 <h2 id="more">Where to read more</h2>

@@ -15,9 +15,11 @@ public interface JobStatus {
         /** The index is active: built, and kept by every write. */
         ACTIVE,
         /**
-         * The build met an exception that is neither a stop of the database nor a refusal, or
-         * the index was deleted while it was building. The failure is kept in this process
-         * only: the next start takes the build again. The database goes on.
+         * The build failed, and Job.join() throws IndexBuildException: the index was deleted
+         * while it was building (the reason "deleted"), or the build met an exception that is
+         * neither a stop of the database nor a refusal, such as data that it cannot index
+         * (DataFormatException) or a bug. The failure is kept in this process only: the next
+         * start takes the build again. The database goes on.
          */
         FAILED
     }

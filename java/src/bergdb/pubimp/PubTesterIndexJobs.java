@@ -7,10 +7,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import bergdb.core.Db;
+import bergdb.core.InternalDataException;
 import bergdb.dag.Keys;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.Connection;
+import bergdb.pub.DataFormatException;
 import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Factory;
@@ -21,6 +23,7 @@ import bergdb.pub.NoSuchIndexException;
 import bergdb.pub.ObjectCreationException;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
+import bergdb.pub.util.IndexBuildException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
 import bergdb.pub.util.LookupTimeNotAvailableException;
@@ -109,9 +112,45 @@ public class PubTesterIndexJobs {
         }
     }
 
-    private static void assertDeleted(JobStatus status) {
-        Assert.assertEquals(status.note(), JobStatus.State.FAILED, status.state());
-        Assert.assertEquals("deleted", status.reason());
+    /** The build was deleted: join() throws, FAILED "deleted", with no cause. */
+    private static void assertDeleted(Job job) {
+        IndexBuildException e = assertJoinThrows(job, "by-field");
+        Assert.assertEquals("deleted", e.getStatus().reason());
+        Assert.assertTrue("no cause", e.getCause() == null);
+    }
+
+    /**
+     * The job's build failed: join() throws an IndexBuildException, each time, and so do
+     * join(millis), join(0) and join(1), all with the status FAILED, the same reason and
+     * count, the same cause, and a message that names the index and the reason (Frans,
+     * 2026-11-09); getStatus() gives the status without a throw. Returns the first exception.
+     */
+    static IndexBuildException assertJoinThrows(Job job, String name) {
+        IndexBuildException first = null;
+        for (int i = 0; i < 5; i++) {
+            try {
+                JobStatus s = i < 2 ? job.join() : job.join(i == 2 ? 10000 : i == 3 ? 0 : 1);
+                throw new AssertionError("join() of a failed build returned " + s.note());
+            } catch (IndexBuildException e) {
+                JobStatus s = e.getStatus();
+                Assert.assertEquals(s.note(), JobStatus.State.FAILED, s.state());
+                Assert.assertTrue(e.getMessage(), s.reason() != null
+                        && e.getMessage().contains("index " + name + " ")
+                        && e.getMessage().contains(s.reason()));
+                if (first == null) {
+                    first = e;
+                } else {
+                    Assert.assertTrue("the same cause", e.getCause() == first.getCause());
+                    Assert.assertEquals(first.getStatus().reason(), s.reason());
+                    Assert.assertEquals(first.getStatus().count(), s.count());
+                }
+            }
+        }
+        JobStatus polled = job.getStatus();
+        Assert.assertEquals(polled.note(), JobStatus.State.FAILED, polled.state());
+        Assert.assertEquals(first.getStatus().reason(), polled.reason());
+        Assert.assertEquals(first.getStatus().count(), polled.count());
+        return first;
     }
 
     /** A gate: a hook that waits at a point, once, until opened. */
@@ -190,7 +229,7 @@ public class PubTesterIndexJobs {
             gate.awaitReached();
             deleteAndReplace(db);
             gate.open();
-            assertDeleted(old.join());
+            assertDeleted(old);
             Assert.assertEquals("[100, 200]", others(db));
         } finally {
             db.close();
@@ -216,10 +255,10 @@ public class PubTesterIndexJobs {
                     db.deleteIndex("by-field");
                 }
             };
-            JobStatus status = db.indexBuilder("by-field").dir("/items/").type("long")
-                    .field("amount").start().join();
+            Job job = db.indexBuilder("by-field").dir("/items/").type("long").field("amount")
+                    .start();
+            assertDeleted(job);
             manager(db).testHook = null;
-            assertDeleted(status);
             Assert.assertNull(manager(db).definition("by-field"));
             db.indexBuilder("by-field").dir("/items/").type("long").field("other").start()
                     .join();
@@ -312,9 +351,11 @@ public class PubTesterIndexJobs {
     /**
      * bergdb 019-10: an Error in an index build's step fails the database, as on BergDB's
      * other threads; every later call is refused with a DbFailedException whose cause is the
-     * Error. A RuntimeException ends the build FAILED, with its class and message as the
-     * reason, and the database goes on (bergdb 019-42); the definition stays building, so
-     * the next start takes the build again and ends ACTIVE.
+     * Error, and the build's join() returns BUILDING. A RuntimeException ends the build
+     * FAILED, with its class and message as the reason, and the database goes on (bergdb
+     * 019-42): join() throws an IndexBuildException with the exception as its cause (Frans,
+     * 2026-11-09); the definition stays building, so the next start takes the build again
+     * and ends ACTIVE.
      */
     @Nano
     public static void testErrorInBuildFailsTheDatabase() {
@@ -333,9 +374,11 @@ public class PubTesterIndexJobs {
                         throw (RuntimeException) thrown;
                     }
                 };
-                JobStatus status = db.indexBuilder("by-field").dir("/items/").type("long")
-                        .field("amount").start().join();
+                Job job = db.indexBuilder("by-field").dir("/items/").type("long")
+                        .field("amount").start();
                 if (thrown instanceof Error) {
+                    Assert.assertEquals(JobStatus.State.BUILDING, job.join().state());
+                    Assert.assertEquals(JobStatus.State.BUILDING, job.join(1000).state());
                     try {
                         putNew(db);
                         throw new AssertionError("the database went on after an Error");
@@ -344,9 +387,12 @@ public class PubTesterIndexJobs {
                     }
                     continue;
                 }
-                Assert.assertEquals(JobStatus.State.FAILED, status.state());
+                IndexBuildException e = assertJoinThrows(job, "by-field");
+                Assert.assertTrue("the cause", e.getCause() == thrown);
+                JobStatus status = e.getStatus();
                 Assert.assertTrue(status.reason(), status.reason().contains(
                         "IllegalStateException") && status.reason().contains("by the test"));
+                assertJoinThrows(db.indexJob("by-field"), "by-field");
                 putNew(db);
                 db.sync();
             } finally {
@@ -366,11 +412,12 @@ public class PubTesterIndexJobs {
     /**
      * bergdb 019-42 (020-01, N1, its probe V1Probe): a build over an object that its index
      * cannot read, since 2026.4 an object of format 1 (020-08, step 3), ends FAILED with a
-     * reason that names the key and the format, and the database goes on. A start takes the
-     * build again, which fails again; the index can be deleted, and the next start has no
-     * index. A null String, which failed the build until format 2, is absent: the object
-     * gives no entry, as one without the field, and the build ends ACTIVE with the entries of
-     * the other two (020-04, N11); after a restart its job is ACTIVE with count 0.
+     * reason that names the key and the format, and the database goes on; join() throws, the
+     * DataFormatException the cause, also on the job of indexJob(). A start takes the build
+     * again, which fails again; the index can be deleted, and the next start has no index. A
+     * null String, which failed the build until format 2, is absent: the object gives no
+     * entry, as one without the field, and the build ends ACTIVE with the entries of the
+     * other two (020-04, N11); after a restart its job is ACTIVE with count 0.
      */
     @Nano
     public static void testBuildOverAnObjectItCannotIndex() {
@@ -380,8 +427,11 @@ public class PubTesterIndexJobs {
             db.newConnection().w().put("/named/1", new Named("a"))
                     .put("/named/2", PubTester.format1Payment())
                     .put("/named/3", new Named("c")).execute();
-            checkFailed(db.indexBuilder("by-name").dir("/named/").type("string").field("name")
-                    .start().join());
+            Job job = db.indexBuilder("by-name").dir("/named/").type("string").field("name")
+                    .start();
+            Throwable cause = checkFailed(job);
+            Assert.assertTrue(db.indexJob("by-name") == job);
+            Assert.assertTrue("the same cause", checkFailed(db.indexJob("by-name")) == cause);
             putNew(db);         // DbFailedException if the build failed the database.
         } finally {
             db.close();
@@ -390,7 +440,7 @@ public class PubTesterIndexJobs {
         MemoryStream restarted = stream.copy();
         db = start(restarted);
         try {
-            checkFailed(db.indexJob("by-name").join());
+            checkFailed(db.indexJob("by-name"));
             putNew(db);
             db.deleteIndex("by-name");
             PubTesterIndexRaces.awaitCleanups(manager(db));
@@ -435,11 +485,18 @@ public class PubTesterIndexJobs {
         }
     }
     
-    /** FAILED, with a reason that names the format-1 object's key and its format. */
-    private static void checkFailed(JobStatus status) {
-        Assert.assertEquals(status.note(), JobStatus.State.FAILED, status.state());
+    /**
+     * join() throws: FAILED, with a reason that names the format-1 object's key and its
+     * format, and a DataFormatException as the cause, which is returned.
+     */
+    private static Throwable checkFailed(Job job) {
+        IndexBuildException e = assertJoinThrows(job, "by-name");
+        JobStatus status = e.getStatus();
         Assert.assertTrue(status.reason(), status.reason().contains("/dnamed/-2")
                 && status.reason().contains("format 1"));
+        Assert.assertTrue(String.valueOf(e.getCause()),
+                e.getCause() instanceof DataFormatException);
+        return e.getCause();
     }
 
     /**
@@ -504,6 +561,107 @@ public class PubTesterIndexJobs {
         putNew(db);         // DbFailedException if the build failed the database.
         Assert.assertEquals(status.note(), JobStatus.State.ACTIVE, status.state());
         Assert.assertEquals(expected, others(db));
+    }
+
+    // ======== join() of a failed build throws (Frans, 2026-11-09) ========
+
+    /**
+     * Each kind of failure of a build makes join() and join(millis) throw an
+     * IndexBuildException, each time, with the status FAILED and the exception that failed
+     * the build as its cause, on the job that start() returned and on indexJob()'s, while
+     * getStatus() gives FAILED without a throw (020-10, section 3.2; Frans, 2026-11-09: "Do
+     * as you propose"). Here, thrown once by the hook: data that the build cannot take (a
+     * DataFormatException, an InternalDataException) in a step, and a RuntimeException, a
+     * bug, in a step and in the activation. The deletion ("deleted", no cause) and an object
+     * of format 1 are tested above. The database goes on.
+     */
+    @Nano
+    public static void testJoinThrowsForAFailedBuild() {
+        RuntimeException[] faults = {new DataFormatException("bad data, by the test"),
+                new InternalDataException("bad internal data, by the test"),
+                new IllegalStateException("a bug, by the test"),
+                new IllegalStateException("a bug in the activation, by the test")};
+        for (int i = 0; i < faults.length; i++) {
+            final RuntimeException thrown = faults[i];
+            final String point = i < 3 ? IndexManager.BUILD_STEP
+                    : IndexManager.DEFINITION_BEFORE + "activate";
+            Database db = start(new MemoryStream());
+            try {
+                db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
+                AtomicBoolean once = new AtomicBoolean(true);
+                manager(db).testHook = p -> {
+                    if (p.equals(point) && once.compareAndSet(true, false)) {
+                        throw thrown;
+                    }
+                };
+                Job job = db.indexBuilder("by-field").dir("/items/").type("long")
+                        .field("amount").start();
+                IndexBuildException e = assertJoinThrows(job, "by-field");
+                Assert.assertTrue(thrown + ": the cause", e.getCause() == thrown);
+                String reason = e.getStatus().reason();
+                Assert.assertTrue(reason, reason.contains(thrown.getClass().getName())
+                        && reason.contains(thrown.getMessage()));
+                Assert.assertEquals("the values of the committed steps", i < 3 ? 0 : 1,
+                        e.getStatus().count());
+                Assert.assertTrue(db.indexJob("by-field") == job);
+                Assert.assertTrue("the same cause", assertJoinThrows(db.indexJob("by-field"),
+                        "by-field").getCause() == thrown);
+                putNew(db);         // DbFailedException if the build failed the database.
+            } finally {
+                db.close();
+            }
+        }
+    }
+
+    /**
+     * join() of a build that did not fail returns (Frans, 2026-11-09): BUILDING when the
+     * calling thread is interrupted, the build going on and the flag kept (bergdb 005-46),
+     * then ACTIVE at the end. join() of a failed build throws also with the flag set, and
+     * keeps it. A stop: testStartResumesBuildsAndCleanups; join(millis)'s time:
+     * testJoinFromAnotherThread.
+     */
+    @Nano
+    public static void testJoinReturnsAfterAnInterrupt() {
+        Database db = start(new MemoryStream());
+        try {
+            db.newConnection().put("/items/a", new Item(1, 2));
+            Gate gate = new Gate();
+            manager(db).testHook = p -> gate.at(p, IndexManager.BUILD_STEP);
+            Job job = db.indexBuilder("by-field").dir("/items/").type("long").field("amount")
+                    .start();
+            gate.awaitReached();
+            try {
+                Thread.currentThread().interrupt();
+                Assert.assertEquals(JobStatus.State.BUILDING, job.join().state());
+                Assert.assertTrue("the flag kept", Thread.currentThread().isInterrupted());
+                Assert.assertEquals(JobStatus.State.BUILDING, job.join(10000).state());
+                Assert.assertTrue("the flag kept", Thread.currentThread().isInterrupted());
+            } finally {
+                Thread.interrupted();
+            }
+            gate.open();
+            Assert.assertEquals(JobStatus.State.ACTIVE, job.join().state());
+
+            manager(db).testHook = p -> {
+                if (p.equals(IndexManager.BUILD_STEP)) {
+                    throw new IllegalStateException("a bug, by the test");
+                }
+            };
+            Job failed = db.indexBuilder("other").dir("/items/").type("long").field("other")
+                    .start();
+            assertJoinThrows(failed, "other");
+            Thread.currentThread().interrupt();
+            try {
+                failed.join();
+                throw new AssertionError("join() of a failed build returned");
+            } catch (IndexBuildException e) {
+                Assert.assertTrue("the flag kept", Thread.currentThread().isInterrupted());
+            } finally {
+                Thread.interrupted();
+            }
+        } finally {
+            db.close();
+        }
     }
 
     // ======== Faults in a cleanup (020-10, section 6.2) ========
@@ -1103,8 +1261,9 @@ public class PubTesterIndexJobs {
     }
 
     /**
-     * A start resumes a build that a stop ended (BUILDING) from the first key of its
-     * directory, and a cleanup whose marker is left; indexJob() gives the build's job.
+     * A start resumes a build that a stop ended (BUILDING: join() and join(millis) return
+     * it) from the first key of its directory, and a cleanup whose marker is left; indexJob()
+     * gives the build's job.
      */
     @Nano
     public static void testStartResumesBuildsAndCleanups() {
@@ -1135,6 +1294,7 @@ public class PubTesterIndexJobs {
             cleanup.open();
             build.open();
             Assert.assertEquals(JobStatus.State.BUILDING, job.join().state());
+            Assert.assertEquals(JobStatus.State.BUILDING, job.join(1000).state());
         } finally {
             db.close();
         }

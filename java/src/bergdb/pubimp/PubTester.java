@@ -48,6 +48,7 @@ import bergdb.pub.util.DatabaseMissingException;
 import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
+import bergdb.pub.util.IndexBuildException;
 import bergdb.pub.util.JobStatus;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.pub.util.SyncLevel;
@@ -3809,10 +3810,11 @@ public class PubTester {
      * Object throws ObjectCreationException, in rw() too, and the database goes on; a primary
      * scan of objects throws it for that object and goes on; a byte[] put of it in an indexed
      * directory gives DataFormatException; a build over a directory holding it ends failed,
-     * with the message. A put over it and a delete of it work, also in an indexed directory and
-     * in one whose build failed: a previous value of format 1 has no entries, as no index of
-     * 2026.4 ever indexed one (2026-11-09, the review of e92a95a: such a key could not be
-     * written or deleted while the index existed).
+     * with the message, and its join() throws IndexBuildException. A put over it and a delete
+     * of it work, also in an indexed directory and in one whose build failed: a previous
+     * value of format 1 has no entries, as no index of 2026.4 ever indexed one (2026-11-09,
+     * the review of e92a95a: such a key could not be written or deleted while the index
+     * existed).
      */
     @Nano
     public static void testFormat1ObjectRefused() {
@@ -3846,10 +3848,15 @@ public class PubTester {
             }
             Assert.assertArrayEquals(format1Payment(), c.get("/p/b", byte[].class));
             
-            JobStatus status = d.indexBuilder("from").dir("/p/").type("string").field("from")
-                    .start().join();
-            Assert.assertTrue(status.note(), status.state() == JobStatus.State.FAILED
-                    && status.reason().contains("format 1") && status.reason().contains("/p/b"));
+            try {
+                d.indexBuilder("from").dir("/p/").type("string").field("from").start().join();
+                throw new AssertionError("join() of a failed build returned");
+            } catch (IndexBuildException e) {
+                JobStatus status = e.getStatus();
+                Assert.assertTrue(status.note(), status.state() == JobStatus.State.FAILED
+                        && status.reason().contains("format 1") && status.reason().contains("/p/b")
+                        && e.getCause() instanceof bergdb.pub.DataFormatException);
+            }
             c.delete("/p/b");       // the user cleans up after the failed build
             Assert.assertNull(c.get("/p/b", byte[].class));
             assertFormat1("a byte[] put of it where the build failed",    // the index kept

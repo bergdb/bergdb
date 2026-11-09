@@ -792,7 +792,9 @@ a `byte[]` field and indexes it as `bytes`.
   `Job`; `start().join()` waits until the index is active. A build's
   status is a snapshot: building with a count, active, or failed with a
   reason; a failed build leaves the database running and is taken again
-  at the next start (019-42). `Database.indexJob(name)` gives an index's
+  at the next start (019-42), and its `join()` throws an
+  `IndexBuildException` with the status and the cause (since 2026-11-09,
+  020-10, section 3.2). `Database.indexJob(name)` gives an index's
   job; `deleteIndex(name)` is one transaction, and the old entries are
   removed in the background. `createFast()`, `Database.PRIMARY` and
   `StartupInfo.getStartupJobs()` are gone.

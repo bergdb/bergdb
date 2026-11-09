@@ -15,6 +15,7 @@ import bergdb.pub.DataFormatException;
 import bergdb.pub.IndexBuilder;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.IllegalDbStateException;
+import bergdb.pub.util.IndexBuildException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
 import bergdb.pub.util.LookupTimeNotAvailableException;
@@ -168,13 +169,16 @@ class IndexBuilderImp implements IndexBuilder {
      * (015-39), and its end: set when its thread ends, on every exit (or at once for an index
      * active at the start), and waited for by join(). Until 2026-11-09 join() waited for the
      * build's thread, and returned BUILDING at once when it was called before the thread had
-     * started (the review of I2).
+     * started (the review of I2). A failed build keeps the exception that failed it, and every
+     * join() throws an IndexBuildException with it as the cause (Frans, 2026-11-09: until
+     * then join() returned the status FAILED, and start().join() passed a failure silently).
      */
     static final class BuildJob implements Job {
         private final String name;
         private JobStatus.State state = JobStatus.State.BUILDING;
         private long count;
         private String reason;
+        private Throwable cause;
         private boolean ended;
 
         BuildJob(String name) {
@@ -196,9 +200,16 @@ class IndexBuilderImp implements IndexBuilder {
             state = JobStatus.State.ACTIVE;
         }
 
-        synchronized void failed(String why) {
+        /** The build failed: the reason 'why', and the exception 'e', or null ("deleted"). */
+        synchronized void failed(String why, Throwable e) {
             state = JobStatus.State.FAILED;
             reason = why;
+            cause = e;
+        }
+
+        /** The exception 'e' failed the build: the reason is its class and message. */
+        void failed(RuntimeException e) {
+            failed(e.getClass().getName() + ": " + e.getMessage(), e);
         }
 
         public synchronized JobStatus getStatus() {
@@ -228,12 +239,17 @@ class IndexBuilderImp implements IndexBuilder {
                     break;
                 }
             }
-            return getStatus();
+            JobStatus status = getStatus();
+            if (state == JobStatus.State.FAILED) {
+                throw new IndexBuildException(name, status, cause);
+            }
+            return status;
         }
     }
 
-    /** A status: immutable. */
-    private static final class Status implements JobStatus {
+    /** A status: immutable; serializable, as an IndexBuildException holds one. */
+    private static final class Status implements JobStatus, java.io.Serializable {
+        private static final long serialVersionUID = 1L;
         private final String name;
         private final State state;
         private final long count;
@@ -294,7 +310,8 @@ class IndexBuilderImp implements IndexBuilder {
      * activation. Errors: a stop of the database ends the thread, BUILDING; a refusal or an
      * expiry waits 10 to 640 ms and takes the step again (019-38); any other RuntimeException,
      * a DataFormatException or an InternalDataException included, ends the build FAILED, the
-     * database going on (019-42); an Error fails the database (019-10).
+     * database going on (019-42), and join() then throws an IndexBuildException with it as the
+     * cause; an Error fails the database (019-10).
      */
     static void startBuild(DatabaseImp database, IndexManager m, IndexManager.Live live) {
         Thread thread = new Thread(new Build(database, m, live));
@@ -345,20 +362,20 @@ class IndexBuilderImp implements IndexBuilder {
                 try {
                     runStep(from);
                 } catch (DeletedException e) {
-                    live.job.failed("deleted");
+                    live.job.failed("deleted", null);
                     return;
                 } catch (StreamIoException | IllegalDbStateException e) {
                     return;         // A stop of the database; the next start takes the build.
                 } catch (DataFormatException | InternalDataException e) {
                     // Data that the build cannot take, such as an object of format 1 (bergdb
                     // 020-08, step 3): not a refusal, though a DbException.
-                    live.job.failed(e.getClass().getName() + ": " + e.getMessage());
+                    live.job.failed(e);
                     return;
                 } catch (DbException | LookupTimeNotAvailableException e) {
                     retryWait = waitToRetry(retryWait);
                     continue;
                 } catch (RuntimeException e) {
-                    live.job.failed(e.getClass().getName() + ": " + e.getMessage());
+                    live.job.failed(e);
                     return;
                 } catch (Throwable e) {
                     db.internal().fail(e);
@@ -469,18 +486,18 @@ class IndexBuilderImp implements IndexBuilder {
                     if (m.activate(live)) {
                         live.job.activated(0);
                     } else {
-                        live.job.failed("deleted");
+                        live.job.failed("deleted", null);
                     }
                     return;
                 } catch (StreamIoException | IllegalDbStateException e) {
                     return;
                 } catch (DataFormatException | InternalDataException e) {
-                    live.job.failed(e.getClass().getName() + ": " + e.getMessage());
+                    live.job.failed(e);
                     return;
                 } catch (DbException | LookupTimeNotAvailableException e) {
                     retryWait = waitToRetry(retryWait);
                 } catch (RuntimeException e) {
-                    live.job.failed(e.getClass().getName() + ": " + e.getMessage());
+                    live.job.failed(e);
                     return;
                 } catch (Throwable e) {
                     db.internal().fail(e);

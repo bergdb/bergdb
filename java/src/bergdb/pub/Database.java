@@ -329,8 +329,9 @@ public interface Database extends AutoCloseable {
     /**
      * Deletes the index in one transaction: when this returns, the index is gone at every
      * later lookup time and its name is free; its entries are removed in the background. A
-     * build of the index ends, FAILED with the reason "deleted". A scan at a lookup time when
-     * the index was active still works, until reclaim's cut passes that time.
+     * build of the index ends, FAILED with the reason "deleted": its job's join() throws
+     * IndexBuildException. A scan at a lookup time when the index was active still works,
+     * until reclaim's cut passes that time.
      * 
      * @throws NoSuchIndexException  If there is no index of the name.
      * @throws bergdb.pub.util.DbException  If the deletion's transaction is refused; then
@@ -341,7 +342,9 @@ public interface Database extends AutoCloseable {
     /**
      * The job of the index's build in this process: the one IndexBuilder.start() returned,
      * or the one a start resumed; for an index that was active at the start, a job whose
-     * status is ACTIVE with count 0, which join() returns at once.
+     * status is ACTIVE with count 0, which join() returns at once. If the build failed in
+     * this process, the job's join() throws an IndexBuildException each time it is called,
+     * as on the job that start() returned, and its getStatus() gives FAILED (Job.join()).
      * 
      * @throws NoSuchIndexException  If there is no index of the name now.
      */

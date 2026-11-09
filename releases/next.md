@@ -228,6 +228,20 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   change has committed, the database's memory has it too, whatever is
   thrown, so memory and stream never disagree (the reviews of I1, I2 and
   harness H3).
+* **`Job.join()` throws when the build failed** (bergdb 020-10, section
+  3.2; Frans, 2026-11-09): `join()` and `join(millis)` of a build that
+  ended FAILED throw the new `bergdb.pub.util.IndexBuildException`,
+  unchecked, at every call, also on the job of `Database.indexJob(name)`,
+  as `Future.get()` throws for a task that failed. Its `getStatus()` is
+  the FAILED status, with the reason as before, and its cause the exception
+  that failed the build: a `DataFormatException` for data that the build
+  cannot take, such as an object of format 1, another `RuntimeException`
+  for a bug, none when the index was deleted during its build. Before, they
+  returned the status, and `start().join()`, the natural call, passed a
+  failed build silently. They return as before otherwise: ACTIVE, or
+  BUILDING after a stop, a time-out or an interrupt; `Job.getStatus()`
+  never throws. `IndexBuildException` is not a `DbException`: a failed
+  build is neither a refusal nor a failure of the database, which goes on.
 * **The scan of a user index** (bergdb 020-10, step I3; F6): with
   `UseIndexBuilder`, `eq()` on levels 1 to k, then `from()` and `to()`,
   each inclusive or not, or `prefix()` on level k + 1, and `backward()`,
