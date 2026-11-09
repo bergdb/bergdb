@@ -24,11 +24,19 @@
  * written and forced by a transaction that decides a reclaim cut; eviction
  * runs at the end of a transaction and after loads, as in Java. A database
  * that is not called does nothing (P3). A committed transaction is in the
- * stream's write buffer (10 MB) until bergdb_sync, bergdb_close, a reclaim
+ * stream's write buffer until bergdb_sync, bergdb_close, a reclaim
  * cut or a full buffer writes it to the files, and durable on the device
  * after bergdb_sync, bergdb_close or a reclaim cut, which force it
  * (F_FULLFSYNC); a process that dies loses what the buffer holds, never
  * what was synced (the C directory's readme.md, section 9: durability).
+ * The buffer of a database in a directory has Java's default size, 10 MB
+ * (StorageManager.DEFAULT_BUFFER_SIZE), fixed: this API has no setting of
+ * it, as Java's DbBuilder.stream(stream, bufferSize, bufferTime) has. It
+ * is allocated at the first append (the creation, or the first transaction
+ * after an open) and held until the close, outside the memory budget
+ * (bergdb_options.cache_size_indicator), which bounds the index only; so is
+ * the stream of a database in memory, its bytes from the 1,000,000-byte
+ * boundary at or below its first position (bergdb 022-06, U2-16).
  *
  *
  * B. Errors
@@ -179,7 +187,9 @@
  * database. A range returns them, and the counters of bergdb_stats count
  * their transactions; a stop function that answers BERGDB_CONTINUE for a
  * key that starts with 01 25 leaves them out (bergdb 020-24-09, U9-4, as
- * Java's Db says since release 2026.4).
+ * Java's Db says since release 2026.4). Without one, a range that reaches
+ * them returns them among your pairs, and max_count counts them (bergdb
+ * 022-06, U1-6, U3-5; bergdb_get_many).
  *
  *
  * F. Time and the clock (012-01, 4.4)
@@ -211,13 +221,28 @@
  *     Z1, as Java's since release 2026.4).
  *   - A clock time outside 0 to BERGDB_MAX_TIME, or no time left after the
  *     last transaction's, refuses the transaction (BERGDB_LIMIT; 005-18).
+ *   - A user transaction's time is at most BERGDB_MAX_TIME - 1024 (Java's
+ *     DbClock.LAST_USER_TIME; bergdb 015-55, as Java's since release
+ *     2026.3): bergdb_execute's, the creation's, and the dummy transaction's
+ *     of bergdb_set_startup_distance. The last 1024 units are kept for
+ *     BergDB's internal transactions, reclaim's and the commits of reclaim's
+ *     settings (bergdb_set_retain_duration). A user transaction whose time
+ *     would be later is refused (BERGDB_LIMIT, "DbException: No database
+ *     time is left for a user transaction: ..."), and bergdb_current_time
+ *     gives at most that time (bergdb 022-06, U2-12).
  *     So is an open that creates a database, as it writes the database's
  *     first transaction; an open of an existing database does not read the
  *     clock, and succeeds, and its transactions are refused while the
  *     clock is outside the range (as Java's Clock says since 2026.4,
  *     020-23, Z3).
  *   - A lookup time is clamped to the last transaction's time
- *     (bergdb_lookup_time); BERGDB_LATEST reads the latest state.
+ *     (bergdb_lookup_time); BERGDB_LATEST reads the latest state. A
+ *     negative lookup time, as in Java: bergdb_lookup_time gives it as it
+ *     is (BERGDB_OK; Java's lookupTime(long) takes any time), a read refuses
+ *     it as a time before the first available lookup time
+ *     (BERGDB_NOT_AVAILABLE, LookupTimeNotAvailableException), and
+ *     bergdb_trans_lookup_time refuses it (BERGDB_ARG, as
+ *     Trans.Builder.lookupTime) (bergdb 022-06, U3-7).
  *
  *
  * G. What bergdb_open creates
@@ -231,6 +256,14 @@
  * directory once: the lock is the process's (POSIX), so a second open in
  * the same process is not refused, and its close releases the first
  * open's lock (012-13's decision, after 012-09, 6.4: no global state, P9).
+ * The two then append to the same files, each at the end it knows: once
+ * one has written, the other's next write finds a file of another length
+ * and fails ("IOException: File F is not of expected length (N), but M
+ * bytes. Was it modified by someone else?"), which fails that database. So
+ * its transactions since its last sync are lost: their bergdb_execute gave
+ * BERGDB_OK, as their records were in its buffer, and the failure shows at
+ * its next write: bergdb_sync gives BERGDB_FAILED with the text, and
+ * bergdb_close BERGDB_IO (bergdb 022-06, U2-5).
  * When the stream is empty (no .bergdb file), the open creates the
  * database, as Java's start does: the first meta block and the primordial
  * transaction (264 bytes), the database id of the options (random by
@@ -240,6 +273,14 @@
  * created.txt (the Pub API's). On an existing database, the open reads the
  * stream's tail and rebuilds the database in memory (bounded startup); it
  * may write what Java's start writes: the zero fill of a torn last record.
+ *
+ * So an open writes, and needs a directory that it can write: it opens
+ * bergdb.lock for writing and locks it, forces the last stream file and the
+ * directory (the C directory's readme.md, section 9, point 11), and may
+ * write the zero fill and make a pending cut. A database on a read-only
+ * volume, or in a directory that the process may not write, does not open
+ * (BERGDB_IO). This API has no read-only open (bergdb 022-06, U2-9); Java's
+ * Db can start on a ReadOnlyStream, which C has not ported.
  */
 #ifndef BERGDB_H
 #define BERGDB_H
@@ -276,18 +317,26 @@ enum bergdb_error {
     BERGDB_FAILED = 3,
     /* An I/O error at the open or the close: the directory or a file could
      * not be made, read, written or forced (StreamIoException, IOException
-     * of FileStream). After the open, an I/O error fails the database
+     * of FileStream). At the open, also a stream file missing below the
+     * startup position, such as a first file deleted by hand
+     * ("StreamIoException: Cannot read at spos P, below the first position,
+     * F.", Java's start's; bergdb 022-06, U2-10: it was BERGDB_NOT_AVAILABLE,
+     * a read's code). After the open, an I/O error fails the database
      * (BERGDB_FAILED). */
     BERGDB_IO = 4,
     /* The stream is not a BergDB stream that this version opens: another
      * record format or meta block version, a database written before
      * 2026-10-27, another maximum node size than the options', an
-     * encrypted database, corrupt data, foreign files in the directory
-     * (StreamFormatException, also for bad magic bytes, which was
-     * BadCryptoKey until release 2026.4, bergdb 020-28;
-     * VersioningStreamException, StreamChecksumException,
-     * InternalDataException, BadDirStateException). At the open only;
-     * after it, corrupt data fails the database. */
+     * encrypted database, corrupt data (StreamFormatException, also for bad
+     * magic bytes, which was BadCryptoKey until release 2026.4, bergdb
+     * 020-28; VersioningStreamException, StreamChecksumException,
+     * InternalDataException), a directory whose stream files are not in a
+     * valid state: a file whose name ends with ".bergdb" but is not a
+     * stream file's, a gap between the files, a file before the last of a
+     * bad size (BadDirStateException). The open reads only the files whose
+     * names end with ".bergdb", as Java's FileStream: any other file in the
+     * directory is not the database's, and is left as it is (bergdb 022-06,
+     * U2-11). At the open only; after it, corrupt data fails the database. */
     BERGDB_FORMAT = 5,
     /* A call from a callback of the same database (section D)
      * (IllegalDbStateException, DbStoppingException). */
@@ -446,12 +495,22 @@ struct bergdb_options {
      * check (bergdb 020-27, C3; before, Cache3.setSizeIndicator's
      * "AssertionError"). The index's resident bytes (bergdb_stats) are kept
      * at most this, but for what must stay: the nodes changed since the
-     * startup position and the newest top nodes (Level 4, 012-12). */
+     * startup position and the newest top nodes (Level 4, 012-12), which
+     * bergdb_stats.pinned_bytes gives. Under a budget below them, the
+     * resident bytes are kept within a margin over them: the gap between
+     * eviction's watermarks, a quarter of the budget, or the node table's
+     * bytes if more (bergdb 022-06, U1-4; src/evict.h). The
+     * budget bounds the index only: the stream's write buffer (10 MB,
+     * section A), the transactions and read contexts, and the stream of a
+     * database in memory are outside it (bergdb 022-06, U2-16). */
     int64_t cache_size_indicator;
     /* The clock (clock(Clock)): NULL for the system clock (the default,
      * Java's SystemClock), or a function and its ctx: the test clock's
      * (bergdb_test_clock_time and a struct bergdb_test_clock) or the
-     * caller's. ctx must stay valid until the close. */
+     * caller's. ctx must stay valid until the close. The test clock's ctx
+     * is its struct: NULL there is refused (BERGDB_ARG; bergdb 022-06,
+     * U2-14: the open dereferenced it); a function of the caller's gets ctx
+     * as given, NULL too. */
     bergdb_clock_fn clock;
     void *clock_ctx;
     /* The database id, for a database that the open creates (id(DatabaseId);
@@ -490,8 +549,13 @@ struct bergdb_start_info {
  * "" after a success.
  *
  * Errors: BERGDB_ARG (db NULL; a setting out of range: the node size, a
- * startup distance under 10);
- * BERGDB_IN_USE (another process); BERGDB_IO; BERGDB_FORMAT; BERGDB_NOT_CREATED;
+ * startup distance under 10, a cache size indicator under 1; the test
+ * clock with clock_ctx NULL, "IllegalArgumentException: clock_ctx == NULL
+ * not allowed with bergdb_test_clock_time"); BERGDB_IN_USE (another
+ * process); BERGDB_IO (a file or the directory could not be made, read,
+ * locked, written or forced, as on a read-only volume, section G; a stream
+ * file missing below the startup position, a StreamIoException: bergdb
+ * 022-06, U2-10); BERGDB_FORMAT; BERGDB_NOT_CREATED;
  * BERGDB_LIMIT (the clock's time out of range at the creation);
  * BERGDB_NOMEM. Java's start throws DbFailedException when the read of
  * reclaim's table or settings fails on the storage; here that is
@@ -515,8 +579,17 @@ int bergdb_open(const char *dir, const struct bergdb_options *opt, bergdb_db **d
  * the storage had failed before (the stream takes no write after a
  * failure): the database is closed and freed all the same, and
  * transactions that no sync had made durable may be lost; the code has no
- * text, as the database is gone. Java's close() does not report it
- * (012-03, 6.8). BERGDB_STATE from a callback, and nothing is closed.
+ * text, as the database is gone. Java's close() reports it too, with a
+ * StreamIoException (bergdb 005-73, F5; 019-09), but returns normally for
+ * a database whose failure a call has reported (DbFailedException); C's
+ * gives BERGDB_IO then too: it reports more, never less (the C directory's
+ * readme.md, section 11, point 5). The close's write and force are a
+ * bergdb_sync's, so a
+ * caller that wants the text syncs before the close: a failure there gives
+ * BERGDB_FAILED and bergdb_errmsg the text (and the first failure's, if the
+ * database had failed before); after a sync that succeeded, with no
+ * transaction since, the close has nothing to write or force (bergdb
+ * 022-06, U2-7). BERGDB_STATE from a callback, and nothing is closed.
  * After the close, db is not valid (section C): Java's second close() is
  * harmless and its calls after a close throw IllegalDbStateException, while
  * here the handle is gone (012-13, Q2).
@@ -575,7 +648,13 @@ void bergdb_trans_free(bergdb_trans *t);
  * Puts the value for the key (Trans.Builder.put(byte[], byte[])). The
  * transaction copies both. At the execute, the puts and deletes are sorted
  * by key, and for a key given several times the last one counts, but a
- * delete does not replace a put (Trans.Builder.build).
+ * delete does not replace a put (Trans.Builder.build). The key is the one
+ * given, as Java's: for a put with a key transformation
+ * (bergdb_trans_put_transformed), the given key, before the function
+ * runs. So a plain put and a transformed put of one given key are one key
+ * here, and the earlier one is dropped, though the transformed one writes
+ * another key: give a transformed put a key that no other put or delete of
+ * the transaction gives (bergdb 022-06, U1-7).
  *
  * Errors: BERGDB_ARG (t, key or value NULL, also when its length is 0: an
  * empty key or value has a pointer too; a length over INT32_MAX),
@@ -644,15 +723,19 @@ int bergdb_trans_delete(bergdb_trans *t, const uint8_t *key, size_t key_len);
  * execute is refused with BERGDB_RERUN if a transaction after the lookup
  * time (bergdb_trans_lookup_time) changed the key, or the time is outside
  * the STM's coverage, including before the last recovered commit at open
- * (bergdb 005-70, option A). Errors as
- * bergdb_trans_put.
+ * (bergdb 005-70, option A). Keys are compared by their hashes, as Java's:
+ * a write of another key with the same hash gives a rerun that was not
+ * needed, never a missed one; so BERGDB_RERUN can come for a key that no
+ * transaction changed (bergdb 022-06, U1-10). Errors as bergdb_trans_put.
  */
 int bergdb_trans_key_read(bergdb_trans *t, const uint8_t *key, size_t key_len);
 
 /*
  * Sets the lookup time of the read set (Trans.Builder.lookupTime), the
  * time at which the caller read the keys of the read set; BERGDB_LATEST,
- * the default, never conflicts. BERGDB_ARG for a negative time, or t NULL.
+ * the default, never conflicts. BERGDB_ARG for a negative time (Java's
+ * IllegalArgumentException; a read refuses one with BERGDB_NOT_AVAILABLE,
+ * section F), or t NULL.
  */
 int bergdb_trans_lookup_time(bergdb_trans *t, int64_t time);
 
@@ -727,7 +810,9 @@ struct bergdb_one {
      * step, whose time is the step's (bergdb 021-19). A get of the key at
      * the step's time less one, while that time can be read, gives the same
      * value and the position of the transaction that stored it before, the
-     * write's or an earlier step's (bergdb 021-17). */
+     * write's or an earlier step's (bergdb 021-17). Once reclaim has made
+     * that time unavailable (before first_available_lookup_time), the
+     * write's transaction and its time are gone (bergdb 022-06, U1-9). */
     int64_t tpos;
     int64_t actual_lookup_time;  /* GetData.actualLookupTime (bergdb_lookup_time) */
 };
@@ -739,10 +824,10 @@ struct bergdb_one {
  *
  * Errors: BERGDB_ARG (a NULL, a key over INT32_MAX bytes, rd of another
  * database), BERGDB_STATE, BERGDB_NOT_AVAILABLE (the lookup time is before
- * the first available lookup time, also when a cut has overtaken the
- * read), BERGDB_FAILED (the database had failed, or the read failed on
- * the storage now, which fails it), BERGDB_NOMEM (the database goes on).
- * On an error, *out is not set.
+ * the first available lookup time, a negative one too, section F; also when
+ * a cut has overtaken the read), BERGDB_FAILED (the database had failed,
+ * or the read failed on the storage now, which fails it), BERGDB_NOMEM (the
+ * database goes on). On an error, *out is not set.
  */
 int bergdb_get_one(bergdb_db *db, bergdb_read *rd, int64_t lookup_time,
         const uint8_t *key, size_t key_len, struct bergdb_one *out);
@@ -821,7 +906,13 @@ struct bergdb_range {
     size_t start_key_len;
     bool inclusive;     /* GetMany.inclusive: the start key itself may be read; true */
     bool forward;       /* GetMany.forward: increasing keys; true (false: setBackward()) */
-    const uint8_t *prefix;          /* NULL: none */
+    /* The prefix (Prefix, PrefixN); NULL: none. A stop condition only, as
+     * Java's: it does not move the read's start, which is start_key's. So
+     * set start_key to the prefix too (forward); a read from the first key
+     * stops at once, at a key without the prefix, with no pair and no error
+     * (bergdb 022-06, U3-4). Backward: start_key the prefix with its last
+     * byte raised by one (when it is not 0xff) and inclusive false. */
+    const uint8_t *prefix;
     size_t prefix_len;
     const uint8_t *end_key;         /* NULL: none */
     size_t end_key_len;
@@ -850,6 +941,15 @@ struct bergdb_many {
 /*
  * Reads the pairs of a range in key order at the lookup time (Java's
  * getMany), until a stop condition stops it or the end of the database.
+ *
+ * A read of every key, or of a range that holds them, returns BergDB's own
+ * keys too (section E): those that start with the bytes 01 25 ("/#"), such
+ * as reclaim's under "/#i/dreclaim/" once a retain duration or a fraction
+ * has been set, and "/#i/-dummy" after bergdb_set_startup_distance; and
+ * max_count counts them. Read the range of your own keys (a prefix, or
+ * start and end keys), or leave them out with a stop function that answers
+ * BERGDB_CONTINUE for a key that starts with 01 25, which decides before
+ * the count (bergdb 022-06, U3-5, U1-6).
  *
  * Errors: as bergdb_get_one, and BERGDB_ARG for a range NULL, a key over
  * INT32_MAX bytes, a negative max_count (GetN asserts it), or a stop
@@ -884,10 +984,16 @@ struct bergdb_stored {
  * position where a transaction can start: negative, not a multiple of 8,
  * in a meta block (005-34), at or past the end of the stream (005-43);
  * nothing is read), BERGDB_STATE, BERGDB_NOT_AVAILABLE (reclaim has
- * removed the transaction), BERGDB_FAILED (the database had failed, or the
- * read failed on the storage, or the bytes at tpos are not a committed
- * transaction: corrupt data, which fails it), BERGDB_NOMEM. On an error,
- * *out is not set.
+ * removed the transaction: a cut has deleted the stream file that holds
+ * it), BERGDB_FAILED (the database had failed, or the read failed on the
+ * storage, or the bytes at tpos are not a committed transaction: corrupt
+ * data, which fails it), BERGDB_NOMEM. On an error, *out is not set.
+ *
+ * A cut deletes whole files, the front files before its position, so a
+ * transaction before bergdb_stats' first_available_pos is read while its
+ * file is there, as Java's getTrans reads it: first_available_pos does not
+ * decide it, and a later call that makes a cut can remove it (bergdb
+ * 022-06, U3-3).
  */
 int bergdb_get_trans(bergdb_db *db, bergdb_read *rd, int64_t tpos, struct bergdb_stored *out);
 
@@ -933,8 +1039,9 @@ int bergdb_current_time(bergdb_db *db, int64_t *time);
 
 /*
  * The lookup time a read uses for the wanted one (Java's lookupTime(long)):
- * wanted, but at most the last transaction's time. Errors: BERGDB_ARG
- * (NULL), BERGDB_STATE.
+ * wanted, but at most the last transaction's time; a negative one as it is,
+ * which a read then refuses (BERGDB_NOT_AVAILABLE; section F). Errors:
+ * BERGDB_ARG (NULL), BERGDB_STATE.
  */
 int bergdb_lookup_time(bergdb_db *db, int64_t wanted, int64_t *actual);
 
@@ -1028,12 +1135,17 @@ struct bergdb_stats {
                                            values that left memory (CacheStats.released) */
     int64_t pinned_bytes;               /* of the resident bytes, those that must stay: the
                                            nodes changed since the startup position (D) and
-                                           the newest top nodes, with what they hold, and the
-                                           node table (a walk of D, for reports) */
+                                           the newest top nodes, with their handles and what
+                                           they hold, and the node table (a walk of D, for
+                                           reports); each object once, so at most
+                                           resident_bytes (bergdb 022-06, U2-13: a handle
+                                           counted twice could exceed them) */
     int64_t retain_duration;            /* getRetainDuration() */
     double internal_fraction;           /* getInternalFraction(): reclaim's units of 2^-16
                                            over 65,536, exact (005-79) */
-    int64_t reclaim_iteration_count;    /* getReclaimIterationCount() */
+    int64_t reclaim_iteration_count;    /* getReclaimIterationCount(): the iterations that
+                                           reclaim completed since the open, 0 at each open,
+                                           as Java's since start() (bergdb 022-06, U3-6) */
     int64_t transaction_count;          /* getTransactionCount(): since the open, BergDB's own
                                            too: reclaim's, and those of
                                            bergdb_set_startup_distance and of reclaim's

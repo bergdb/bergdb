@@ -500,7 +500,9 @@ bergdb_close(db);                               /* writes, forces, frees all */
   the directory's lock and frees every byte, the transactions and read
   contexts not yet freed with it; after it the handle is gone, as a
   `FILE` after `fclose` (012-13, Q2). Its `BERGDB_IO` says that the last
-  write or force failed.
+  write or force failed, without a text, as the database is gone; a
+  `bergdb_sync` before the close makes the same write and force and gives
+  the text in `bergdb_errmsg` (022-06, U2-7).
 * **Errors.** Every call returns `BERGDB_OK` or a code; `bergdb_errmsg(db)`
   is the text, which begins with the name of Java's exception for the
   same case. A *refusal* (`BERGDB_RERUN`, `BERGDB_LIMIT`, `BERGDB_ARG`,
@@ -538,7 +540,11 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
 
 1. **The write buffer.** `bergdb_execute` appends the transaction's record
    to the stream's write buffer, in memory: 10 MB, Java's
-   `StorageManager.DEFAULT_BUFFER_SIZE`, fixed. The buffer is written to
+   `StorageManager.DEFAULT_BUFFER_SIZE`, fixed (Java's
+   `DbBuilder.stream(stream, bufferSize, bufferTime)` sets it; C's API has
+   no such setting). It is allocated at the first append and held until
+   the close, outside the memory budget (`cache_size_indicator`, which
+   bounds the index only; 022-06, U2-16). The buffer is written to
    the files (with `write`, not forced) when it is full, which can be in
    the middle of a record, at `bergdb_sync` and at `bergdb_close`, and it
    is written and forced by a transaction that decides a reclaim cut
@@ -577,8 +583,15 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
    a prefix of those committed: every synced one, and later ones as far as
    a full buffer's write took whole records, never one without those
    before it. A record that a write left torn at the end of the stream is
-   cut off by the start's recovery (Java's: the zero fill), and the next
-   transaction follows the last whole one.
+   not cut off: the start's recovery fills it with zeros to the size that
+   its header gives (Java's zero fill, `appendZeros`; a header of fewer
+   than 5 bytes is completed to a record of 5), so that it is a whole
+   record that is not committed (its commit byte is not 10), which every
+   read skips; the next transaction follows it (022-06, U2-15: this point
+   said "cut off" until then). The zeros are the torn record's missing
+   bytes, up to its declared size (at most the record limit, about 2 GB),
+   so the stream grows by them, and the open needs that room on the device
+   and writes them even to read (022-06, U2-2; 014-01).
 7. **The durable length** (`bergdb_stats.durable_length`, Java's
    `getDurableLength`) is the stream's length at the last force: the
    open's (0 after a creation, as Java's; the open forces the last file,
@@ -621,7 +634,11 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
     that another process's open, C's or Java's, gets `BERGDB_IN_USE`
     until the close. The lock belongs to the process (POSIX): within one
     process, open a directory once. A second open in the same process is
-    not refused, and its close would release the first one's lock. Java
+    not refused, and its close would release the first one's lock; and
+    both append to the same files, so the one that writes second finds a
+    file of another length ("Was it modified by someone else?"), fails,
+    and loses its transactions since its last sync, whose execute said
+    `BERGDB_OK` (`bergdb.h`, section G; 022-06, U2-5). Java
     checks a set of the JVM's locked directories; C has no global state
     (P9), so it leaves this to its one caller (012-13's decision on
     09-write-path.md, 6.4: option A).
@@ -825,6 +842,19 @@ the ports to 2026.3 and 2026.4:
    PrefixN stop at their count, none for 0, as Java's (`t_getmany.c`'s
    `gm_at_most_n`); a read of no pair needs no call (`bergdb.h`,
    `struct bergdb_range`; 022-02's log, the pin of 15:22).
+5. **A close after a reported failure** gives `BERGDB_IO` (022-06,
+   worker t12's finding). Java's `close()` throws a `StreamIoException`
+   for a failed final write or force, and for an earlier failure of the
+   storage that no call has reported (005-73, F5; 019-09), but returns
+   normally for a database whose failure a call has reported, as a
+   `DbFailedException` (019-09, `testCloseOfFailedDatabaseReturnsNormally`).
+   C's `bergdb_close` gives `BERGDB_IO` in that case too, whenever the
+   storage has failed: it reports more, never less, and no data is at
+   stake, as the transactions after the failure were refused and the close
+   frees everything all the same. Kept, by the session's default of
+   2026-11-09 (the session `022-bergdb-c`; Frans may change it); until
+   then `bergdb.h` said that Java's `close()` does not report a failure,
+   which was so before 005-73 and 019-09.
 
 **No longer departures.** A new stream file and the directory are forced
 when the file is made, as Java's `openForRw` forces them, since 022-02's

@@ -1672,3 +1672,36 @@ The gate on `2026.4` at `d51d65d` with this change: `C BEFORE COMMIT OK
 the release build); `func` 44; `cross quick` OK (23 workloads, 69 crash
 cuts, 85 corrupt variants, 2 in turns, 46 budget runs); `writecheck` 0
 errors; `corruptset` 63 copies; `allocfail` 628 runs; `examples` OK.
+
+2026-11-09, 022-06, docs (worker f3). The new users' findings that are
+C's own words or small faults (06-user-apps/fixes.md, section 1). Four
+changes of behaviour, each with a test that fails before it: U2-10,
+`bergdb_open` gives `BERGDB_IO` for a read below the stream's first
+position (a front file deleted by hand), Java's `StreamIoException`,
+where it gave `BERGDB_NOT_AVAILABLE` (`f_start.c`'s
+`start_files_of_the_directory`, which also checks U2-11's words); U2-14,
+the test clock with `clock_ctx` NULL refused with `BERGDB_ARG` at the
+open, where the creation dereferenced NULL (`f_settings.c`'s
+`settings_open_checks`); U2-13 and U1-5, `bergdb_stats.pinned_bytes`
+counts each object once (a pinned node's handle that its pinned parent
+holds was counted twice: 6,552 pinned against 6,032 resident) and leaves
+out the written values that pinned key nodes hold, which a sweep lets go
+(10.2 MB pinned after a refused transaction's warm-up, 156 KB after the
+next read): `evict.c`'s `pinned_of` (`f_budget.c`'s
+`budget_pinned_within_resident`). Words, each checked against Java's
+Core, which does the same: `bergdb.h` for U2-5, U2-7, U2-9, U2-11,
+U2-12, U2-16, U3-3 to U3-7, U1-6, U1-7, U1-9 and U1-10; `readme.md`,
+section 9, point 6 for U2-15 (a torn record is zero-filled, not cut
+off), points 1 and 10 and section 8; `cache_size_indicator` names the
+pinned bytes as what must stay, with f4's margin over them (above). A departure kept, by the session's
+default (worker t12's finding): `bergdb_close` gives `BERGDB_IO` also
+after a call has reported the storage's failure, where Java's `close()`
+returns normally since 019-09; `bergdb.h`'s "Java's close() does not
+report it" was older than 005-73 and 019-09 (`readme.md`, section 11,
+point 5). Proposed to Frans, not made: a read-only open, a buffer size
+setting, a close with an error text (fixes.md, section 1.3). The gate
+against `git:2566df1`, on the tree of this entry rebased on `448ca60`:
+`C BEFORE COMMIT OK (459 s)`, `unit` 521 tests, `func` 46, `cross quick`
+OK (23 workloads, 69 crash cuts, 85 corrupt variants), `writecheck` 0
+errors, `corruptset` 63 copies, `allocfail` 628 runs, `examples` OK. No
+difference remains.

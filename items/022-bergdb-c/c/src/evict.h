@@ -201,9 +201,12 @@ void ev_record_written_start(struct ev *ev, const struct ntable *nt);
 
 /* The bytes of what is pinned, as the allocator counts them: each pinned
  * object (D's got-dirty nodes, the super root, the newest written top node)
- * once, with its handle and what its pointers hold (values and handles,
- * once per pointer), and the node table's arrays. A walk of D: for reports
- * and tests (bergdb_stats). */
+ * once, with its handle and what its pointers hold that must stay (handles,
+ * and values not written yet; a written value goes at a sweep,
+ * unswizzle_values), and the node table's arrays: each object once, so at
+ * most the resident bytes (bergdb 022-06, U2-13: a pinned node's handle
+ * that its pinned parent holds was counted twice; U1-5: the written values
+ * were counted). A walk of D: for reports and tests (bergdb_stats). */
 int64_t ev_pinned_bytes(const struct ev_env *env);
 
 /* The debug check: every pinned object (D's got-dirty nodes, the super root,

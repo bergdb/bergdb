@@ -325,18 +325,63 @@ static int64_t obj_bytes(const struct obj *o) {
     }
 }
 
-/* A pinned object's bytes with its handle and what it holds; 0 if seen. */
-static int64_t pinned_of(const struct node *n) {
-    if (n == NULL || (n->o.flags & OBJ_MARK) != 0) {
+/* Object o's bytes, if the walk has not counted it (OBJ_MARK), which it
+ * then marks; 0 for NULL or an object counted. */
+static int64_t once(struct obj *o) {
+    if (o == NULL || (o->flags & OBJ_MARK) != 0) {
         return 0;
     }
-    int64_t b = obj_bytes(&n->o) + (int64_t) sizeof(struct handle);
-    const int32_t count = obj_held_count(&n->o);
-    for (int32_t i = 0; i < count; i++) {
-        const struct obj *p = obj_held(&n->o, i);
-        if (p != NULL) {
-            b += obj_bytes(p);
+    o->flags |= OBJ_MARK;
+    return obj_bytes(o);
+}
+
+static void unmark(struct obj *o) {
+    if (o != NULL) {
+        o->flags &= (uint16_t) ~OBJ_MARK;
+    }
+}
+
+/* Index object n's handle, its back reference (KeyNode.handle,
+ * TopNode.handle); NULL if none. */
+static struct handle *handle_of(const struct node *n) {
+    return n->o.kind == OBJ_KEY ? ((const struct knode *) n)->handle
+            : ((const struct tnode *) n)->handle;
+}
+
+/* A pinned object's bytes with its handle and what it holds that must stay
+ * with it, each object once: 0 for a node counted before, and nothing for a
+ * handle or a value that another pinned object has counted, such as a
+ * pinned node's handle that its pinned parent holds (bergdb 022-06, U2-13:
+ * that handle was counted twice, and the pinned bytes could exceed the
+ * resident bytes). A written value that a pinned key node holds is not
+ * counted: a sweep makes its pointer a stream pointer (unswizzle_values),
+ * so it need not stay (bergdb 022-06, U1-5: after a warm-up's loads, the
+ * pinned bytes counted megabytes that the next read's eviction freed).
+ * With count false, the marks are cleared. */
+static int64_t pinned_of(struct node *n, bool count) {
+    if (n == NULL) {
+        return 0;
+    }
+    struct handle *h = handle_of(n);
+    const int32_t held = obj_held_count(&n->o);
+    if (!count) {
+        unmark(&n->o);
+        unmark(h == NULL ? NULL : &h->o);
+        for (int32_t i = 0; i < held; i++) {
+            unmark(obj_held(&n->o, i));
         }
+        return 0;
+    }
+    if ((n->o.flags & OBJ_MARK) != 0) {
+        return 0;
+    }
+    int64_t b = once(&n->o) + (h == NULL ? 0 : once(&h->o));
+    for (int32_t i = 0; i < held; i++) {
+        struct obj *p = obj_held(&n->o, i);
+        if (p != NULL && p->kind == OBJ_VALUE && written_value((const struct vnode *) p)) {
+            continue;
+        }
+        b += once(p);
     }
     return b;
 }
@@ -346,27 +391,15 @@ int64_t ev_pinned_bytes(const struct ev_env *env) {
     struct node *roots[2] = { env->super_root == NULL ? NULL : &env->super_root->n,
             env->newest_written_top == NULL ? NULL : &env->newest_written_top->n };
     /* Each object once: marked (OBJ_MARK, which only the recount's and the
-     * close's walks use, never across a call) and then unmarked. */
+     * close's walks use, never across a call) as it is counted, and then
+     * unmarked, by a second walk of the same objects. */
     for (int pass = 0; pass < 2; pass++) {
         for (int r = 0; r < 2; r++) {
-            if (roots[r] != NULL) {
-                if (pass == 0) {
-                    b += pinned_of(roots[r]);
-                    roots[r]->o.flags |= OBJ_MARK;
-                } else {
-                    roots[r]->o.flags &= (uint16_t) ~OBJ_MARK;
-                }
-            }
+            b += pinned_of(roots[r], pass == 0);
         }
         for (const struct ts_info *x = env->d->first; x != NULL; x = x->next) {
             for (int32_t i = 0; i < x->ndirty; i++) {
-                struct node *n = x->gotDirtyNodes[i].node;
-                if (pass == 0) {
-                    b += pinned_of(n);
-                    n->o.flags |= OBJ_MARK;
-                } else {
-                    n->o.flags &= (uint16_t) ~OBJ_MARK;
-                }
+                b += pinned_of(x->gotDirtyNodes[i].node, pass == 0);
             }
         }
     }

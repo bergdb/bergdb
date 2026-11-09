@@ -143,6 +143,17 @@ int bergdb_open(const char *dir, const struct bergdb_options *opt, bergdb_db **o
         bergdb_options_init(&defaults);
         opt = &defaults;
     }
+    /* The test clock reads its struct, ctx (bergdb 022-06, U2-14: the
+     * creation's read of the clock dereferenced NULL). A clock of the
+     * caller's may have a NULL ctx. C's own check: Java's CoreTestClock is
+     * one object. */
+    if (opt->clock == bergdb_test_clock_time && opt->clock_ctx == NULL) {
+        if (errbuf != NULL) {
+            snprintf(errbuf, BERGDB_ERRBUF_SIZE, "IllegalArgumentException: clock_ctx == NULL "
+                    "not allowed with bergdb_test_clock_time");
+        }
+        return BERGDB_ARG;
+    }
 
     /* The database's struct, through the caller's counts or its own. */
     struct mem tmp;
@@ -185,7 +196,11 @@ int bergdb_open(const char *dir, const struct bergdb_options *opt, bergdb_db **o
             snprintf(errbuf, BERGDB_ERRBUF_SIZE, "%s: %s", e.java, e.text);
         }
         mem_free(m, db, sizeof *db, MEM_STATE);
-        return api_code(rc);
+        /* A read below the stream's first position (a front file missing)
+         * is a read's BERGDB_NOT_AVAILABLE only after the open; Java's start
+         * throws the StreamIoException, which is BERGDB_IO here (bergdb
+         * 022-06, U2-10). */
+        return rc == ERR_NOT_AVAILABLE ? BERGDB_IO : api_code(rc);
     }
     if (info != NULL) {
         info->start_pos = si.start_pos;

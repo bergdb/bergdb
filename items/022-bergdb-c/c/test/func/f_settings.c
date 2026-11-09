@@ -438,6 +438,20 @@ TEST(settings_open_checks) {
     CHECK(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_ARG);
     o.startup_distance = 10;
     CHECK_EQ(m.live_total, 0);
+    /* The test clock without its struct (bergdb 022-06, U2-14): refused at
+     * the open, in a directory and in memory, where the creation's read of
+     * the clock dereferenced NULL. A clock of the caller's may have a NULL
+     * ctx. */
+    o.clock_ctx = NULL;
+    db = (bergdb_db *) &o;
+    CHECK(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_ARG);
+    CHECK(db == NULL);
+    CHECK(strcmp(errbuf, "IllegalArgumentException: clock_ctx == NULL not allowed with "
+            "bergdb_test_clock_time") == 0);
+    CHECK(bergdb_open(NULL, &o, &db, NULL, errbuf) == BERGDB_ARG);
+    CHECK(db == NULL);
+    o.clock_ctx = &clock;
+    CHECK_EQ(m.live_total, 0);
 
     /* DbTesterJavadoc.testBuilderCacheSizeIndicatorBelowOneRefused (bergdb
      * 020-27, C3), in memory: a cache size indicator below 1 refused with

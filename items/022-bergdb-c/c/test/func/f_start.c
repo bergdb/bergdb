@@ -359,9 +359,62 @@ TEST(start_refusals) {
     st_remove_dir(src);
 }
 
+/* The files of a directory at an open (bergdb 022-06, U2-10 and U2-11): a
+ * file whose name does not end with ".bergdb" is not the database's, and
+ * the open takes it; one whose name does, but is not a stream file's, is
+ * refused (BadDirStateException: here the last stream file is then checked
+ * as a file before the last, by its size); and a first stream file deleted under a
+ * startup position in it is BERGDB_IO, the StreamIoException of Java's
+ * start, where the open gave BERGDB_NOT_AVAILABLE, a read's code. */
+TEST(start_files_of_the_directory) {
+    char dir[1024], path[1200];
+    st_temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock clock = {0};
+    struct bergdb_options o;
+    st_options(&o, &clock, &m, 30);
+    o.startup_distance = 50 * 1000000;      /* the default: the open reads from the start */
+    char errbuf[BERGDB_ERRBUF_SIZE];
+    bergdb_db *db;
+    bergdb_test_clock_set(&clock, 500);
+    REQUIRE(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_OK);
+    static uint8_t value[100000];
+    for (int i = 0; i < 5; i++) {           /* 500 KB: three files */
+        bergdb_test_clock_set(&clock, 1000 + 10 * (int64_t) i);
+        bergdb_trans *t;
+        uint8_t key[1] = { (uint8_t) (10 + i) };
+        REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+        CHECK(bergdb_trans_put(t, key, 1, value, sizeof value) == BERGDB_OK);
+        CHECK(bergdb_execute(db, t, NULL) == BERGDB_OK);
+        bergdb_trans_free(t);
+    }
+    CHECK(bergdb_close(db) == BERGDB_OK);
+
+    write_file(dir, "notes.txt", (const uint8_t *) "mine\n", 5);
+    CHECK(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_OK);
+    CHECK(bergdb_close(db) == BERGDB_OK);
+    write_file(dir, "notes.bergdb", (const uint8_t *) "mine\n", 5);
+    CHECK(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_FORMAT);
+    CHECK(strncmp(errbuf, "BadDirStateException: ", 22) == 0);
+    snprintf(path, sizeof path, "%s/notes.bergdb", dir);
+    CHECK(unlink(path) == 0);
+
+    snprintf(path, sizeof path, "%s/" FIRST_FILE, dir);
+    CHECK(unlink(path) == 0);
+    db = (bergdb_db *) &o;
+    CHECK(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_IO);
+    CHECK(db == NULL);
+    CHECK(strstr(errbuf, "StreamIoException: Cannot read at spos ") == errbuf);
+    CHECK(strstr(errbuf, ", below the first position, ") != NULL);
+    CHECK_EQ(m.live_total, 0);
+    st_remove_dir(dir);
+}
+
 const struct test start_tests[] = {
     TEST_ENTRY(start_restart_every_transaction),
     TEST_ENTRY(start_crash_cuts),
     TEST_ENTRY(start_refusals),
+    TEST_ENTRY(start_files_of_the_directory),
     TEST_END
 };

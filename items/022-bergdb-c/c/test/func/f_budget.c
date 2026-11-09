@@ -562,11 +562,71 @@ TEST(budget_large_puts) {
     CHECK_EQ(m.live_total, 0);
 }
 
+/* bergdb_stats' pinned bytes are of the resident bytes, those that must
+ * stay (bergdb 022-06). Each object counted once (U2-13): a pinned node's
+ * handle that its pinned parent holds was counted twice, so with the
+ * smallest budget, where little but the pinned objects stays, the pinned
+ * bytes exceeded the resident bytes (6,552 against 6,032 at node size 8).
+ * And no written value (U1-5): a sweep lets the values of pinned key nodes
+ * go, so after a committed transaction, whose values are all written, the
+ * pinned bytes are at most the resident bytes less the values'; they
+ * counted every value that a node of D held. */
+TEST(budget_pinned_within_resident) {
+    const int32_t sizes[] = {8, 14, 30};
+    const int64_t budgets[] = {1, 4000, BERGDB_NO_EVICT};
+    for (int n = 0; n < 3; n++) {
+        for (int b = 0; b < 3; b++) {
+            struct bergdb_mem m = {0};
+            struct bergdb_test_clock c = {0};
+            struct bergdb_options o;
+            bu_options(&o, &c, &m, budgets[b]);
+            o.max_node_size = sizes[n];
+            o.startup_distance = 10;
+            char errbuf[BERGDB_ERRBUF_SIZE];
+            bergdb_db *db;
+            bergdb_test_clock_set(&c, 500);
+            REQUIRE(bergdb_open(NULL, &o, &db, NULL, errbuf) == BERGDB_OK);
+            uint8_t v[40];
+            memset(v, 1, sizeof v);
+            int64_t bad = 0;
+            struct bergdb_stats s;
+            for (int i = 0; i < 3000; i += 10) {
+                bergdb_test_clock_set(&c, 1000 + i);
+                bergdb_trans *t;
+                REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+                for (int j = i; j < i + 10; j++) {
+                    char k[16];
+                    int kn = snprintf(k, sizeof k, "k%07d", j);
+                    CHECK(bergdb_trans_put(t, (const uint8_t *) k, (size_t) kn, v, sizeof v)
+                            == BERGDB_OK);
+                }
+                CHECK(bergdb_execute(db, t, NULL) == BERGDB_OK);
+                bergdb_trans_free(t);
+                REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
+                if (s.pinned_bytes > s.resident_bytes - m.live[BERGDB_MEM_VALUE]
+                        || s.pinned_bytes <= 0) {
+                    bad++;
+                }
+            }
+            CHECK_EQ(bad, 0);
+            if (bad != 0) {
+                printf("  node size %d, budget %lld: resident %lld, values %lld, pinned "
+                        "%lld\n", (int) sizes[n], (long long) budgets[b],
+                        (long long) s.resident_bytes, (long long) m.live[BERGDB_MEM_VALUE],
+                        (long long) s.pinned_bytes);
+            }
+            CHECK(bergdb_close(db) == BERGDB_OK);
+            CHECK_EQ(m.live_total, 0);
+        }
+    }
+}
+
 const struct test budget_tests[] = {
     TEST_ENTRY(budget_invariance),
     TEST_ENTRY(budget_setter),
     TEST_ENTRY(budget_reads_without_writes),
     TEST_ENTRY(budget_lowered_and_raised_under_reads),
     TEST_ENTRY(budget_large_puts),
+    TEST_ENTRY(budget_pinned_within_resident),
     TEST_END
 };
