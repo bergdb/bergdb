@@ -37,6 +37,13 @@ Files
   candidate: what changed, the evidence, the faults found in C and in
   Java, the departures, the size and the time; the candidate and the long
   runs to be added.
+* [05-java-tests-in-c.md](05-java-tests-in-c.md), 022-05: Java's Core
+  tests (891 methods at `main` `2566df1`) read against C's, the valuable
+  ones written in C and run, two faults of C found and fixed; the parts in
+  [05-java-tests-in-c/](05-java-tests-in-c/).
+* [06-user-apps/](06-user-apps/), 022-06: three black-box users of the C
+  library (a device store, the error paths, an audit log with retention),
+  their reports and what came of each finding.
 * [c/](c/): BergDB's Core in C.
 
 
