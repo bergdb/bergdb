@@ -20,6 +20,9 @@ public interface Action {
      * the caller gets those of the run that committed (Transaction.getOutput()).
      * If this method throws a RuntimeException, nothing is written, rw() throws it, and the
      * database goes on; an Error fails the database (Database, "Errors").
+     *
+     * <p>The environment may be used by several threads while this method runs; it is
+     * closed when this method returns or throws (RwEnvironment).</p>
      */
     public void run(RwEnvironment env);
 }

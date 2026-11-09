@@ -557,6 +557,23 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   force, as without a key; the encryption holds a buffer of the longest
   write, at most 5 MB by default. The bytes written are unchanged. In
   2026.1 to 2026.3; found by a new-user application.
+* **An rw() action may use its environment from several threads**
+  (bergdb 021-21, U11-1 and U11-3; 2026-11-09). An action that read or
+  wrote through its `RwEnvironment` from several threads, with a parallel
+  stream or a task it waited for, which the Javadoc did not forbid, read
+  another key's value, committed only part of its puts with no error (546
+  of 6,000 keys), and then failed the database ("Bad value pointer -1",
+  reported as a failure of the storage). Now the environment takes its
+  threads' calls one at a time, uncontended for one thread: every read is
+  at the transaction's read time and every put is committed. And the
+  environment is closed when the action returns, before the commit, where
+  it was closed after it: a thread left by the action could put while the
+  transaction was made, and an object was committed without its index
+  entry; now every call after the return throws the documented
+  `IllegalStateException`, from any thread, and changes nothing, and each
+  run of the action has an environment of its own. A single-threaded
+  `rw()` costs the same. In 2026.3 and before; found by a new-user
+  application (020-24-11).
 
 
 ### Core API

@@ -24,11 +24,27 @@ import bergdb.pub.util.BadFormatException;
 /**
  * Environment for a transaction.
  * 
+ * <p>Threads (bergdb 021-21, 020-24-11, U11-1 and U11-3). The action may use the
+ * environment from several threads while it runs: each call of the user's that reads or
+ * changes the state below (the read time, the read set, readData, the write maps, the
+ * outputs) does so under the environment's lock, and checks under it that the environment is
+ * open; uncontended in the normal case of one thread. A conversion, from a value read or to
+ * a value put, runs outside the lock: it may run user code. The run's thread closes the
+ * environment when the action returns, under the lock, before the commit (RwTransaction):
+ * from then on every call of the user's throws IllegalStateException, and the commit reads
+ * the state without the lock, as no call changes it any more. Until 2026-11-09 nothing was
+ * locked, and the environment was closed only after the commit: threads in the action lost
+ * puts, read another key's value and failed the database, and a thread left by the action
+ * put while the commit read the maps, which committed an object without its index entry.
+ * The internal calls (indexEntries, createTrans, getMany, set, addReadHash) take no lock:
+ * they run in the run's thread, after close() or, for an index build's step, in an
+ * environment that no user has.</p>
+ * 
  * @author Frans Lundberg
  */
 class RwEnvironmentImp implements RwEnvironment {
-    // For now, we assume one object of this class per transaction.
-    // If needed for performance, this could change. Initialization is 
+    // One object of this class per run of an rw-transaction's action (bergdb 021-21), and
+    // one per WBuilder. If needed for performance, this could change. Initialization is 
     // relatively heavy.
     
     private static final byte[] emptyByteArray = new byte[0];
@@ -50,9 +66,18 @@ class RwEnvironmentImp implements RwEnvironment {
     private HashMap<MapKey, byte[]> indexOps;
     private final ConnectionImp connection;
     private final boolean enableKeyReplace;
-    private boolean closed;                             // Set by close().
+    private volatile boolean closed;                    // Set by close(), under the lock.
     
     public RwEnvironmentImp(ConnectionImp connection) {
+        this(connection, connection.getEnableKeyReplace());
+    }
+    
+    /**
+     * An environment with key replace as given: a later run of an rw-transaction's action
+     * gets an environment of its own (nextRun()), with the setting the connection had at
+     * rw() (bergdb 020-24-02, I-6).
+     */
+    private RwEnvironmentImp(ConnectionImp connection, boolean enableKeyReplace) {
         readHashes = new MyLongSet();
         kvOps = new HashMap<MapKey, byte[]>();
         objectOps = new HashMap<String, ObjectInfo>();
@@ -61,7 +86,17 @@ class RwEnvironmentImp implements RwEnvironment {
         readTime = -1;
         this.connection = connection;
         output = null;
-        this.enableKeyReplace = connection.getEnableKeyReplace();
+        this.enableKeyReplace = enableKeyReplace;
+    }
+    
+    /**
+     * A new, open environment for the next run of an rw-transaction's action, with this one's
+     * connection and key replace (bergdb 021-21, U11-3): each run has its own, which close()
+     * ends when the run's action returns, so that a thread that a run left behind cannot
+     * write into a later run.
+     */
+    RwEnvironmentImp nextRun() {
+        return new RwEnvironmentImp(connection, enableKeyReplace);
     }
     
     public boolean exists(String ukey) {
@@ -76,8 +111,6 @@ class RwEnvironmentImp implements RwEnvironment {
         String ikey = PubKeys.u2i(ukey);
         
         long[] keySegments = Keys.toSegments(ikey);
-        addReadHash(Keys.hash(keySegments));
-        long lookupTime = firstRead ? Long.MAX_VALUE : this.readTime;
         
         // The read fixes the read time, then the value is converted: a conversion that
         // throws, which the action may catch, leaves the time fixed, so the action's reads
@@ -85,11 +118,18 @@ class RwEnvironmentImp implements RwEnvironment {
         // was fixed after the conversion: after a first get that threw, the next read was
         // at the latest time and the STM check against it, and a run that read two states
         // of one key committed.
-        byte[] value = connection.getDb().getOne(lookupTime, keySegments, readData());
-        
-        if (firstRead) {
-            readTime = readData.actualLookupTime;
-            firstRead = false;
+        // The read set, the read time and readData under the lock, the conversion, which
+        // may run user code, outside it (bergdb 021-21).
+        byte[] value;
+        synchronized (this) {
+            checkOpen();
+            addReadHash(Keys.hash(keySegments));
+            long lookupTime = firstRead ? Long.MAX_VALUE : this.readTime;
+            value = connection.getDb().getOne(lookupTime, keySegments, readData());
+            if (firstRead) {
+                readTime = readData.actualLookupTime;
+                firstRead = false;
+            }
         }
         
         return connection.getDatabaseImp().getKvToObjectConverter().createObject(clazz, ikey,
@@ -124,12 +164,15 @@ class RwEnvironmentImp implements RwEnvironment {
     }
     
     /**
-     * Ends the environment of an rw-transaction once its action has run for the last time:
-     * a call of a method of RwEnvironment then throws IllegalStateException (bergdb 005-12).
-     * Before, a put() or delete() made then was lost silently, and a setOutput() changed the
-     * outputs of the committed transaction.
+     * Ends the environment of an rw-transaction's run when its action returns, before the
+     * commit: a call of a method of RwEnvironment then throws IllegalStateException (bergdb
+     * 005-12), from any thread. Under the lock, so that a call that another thread is making
+     * has ended, and none that changes the state begins: the commit reads it as the action
+     * left it (bergdb 021-21, U11-3; until 2026-11-09 the environment was closed after the
+     * commit). Before 005-12, a put() or delete() made then was lost silently, and a
+     * setOutput() changed the outputs of the committed transaction.
      */
-    public void close() {
+    public synchronized void close() {
         closed = true;
     }
     
@@ -155,12 +198,6 @@ class RwEnvironmentImp implements RwEnvironment {
         }
     }
     
-    public void clearOutput() {
-        if (this.output != null) {
-            output.clear();
-        }
-    }
-    
     public void setOutput(String name, Object value) {
         checkOpen();
         checkOutputName(name);
@@ -169,13 +206,16 @@ class RwEnvironmentImp implements RwEnvironment {
             throw new IllegalArgumentException("value == null not allowed");
         }
         
-        if (output == null) {
-            output = new HashMap<String, Object>();
+        synchronized (this) {
+            checkOpen();
+            if (output == null) {
+                output = new HashMap<String, Object>();
+            }
+            output.put(name, value);
         }
-        
-        output.put(name, value);
     }
     
+    /** The outputs, read after close() (RwTransaction). */
     public HashMap<String, Object> getOutputMap() {
         // NOTE If we would start to reuse RwEnvironmentImp objects, we must copy 'output' before
         // returning it. Alternatively, it can be copied when this object is reset for reuse.
@@ -209,20 +249,6 @@ class RwEnvironmentImp implements RwEnvironment {
             
             indexOps.clear();
         }
-    }
-    
-    /**
-     * Prepares internal data structures for rerunning an RW-transaction.
-     */
-    public void prepareForRWRerun() {
-        // Everything done again, reset everything.
-        
-        firstRead = true;
-        readTime = -1;
-        readHashes.clear();
-        kvOps.clear();
-        objectOps.clear();
-        indexOps.clear();
     }
     
     private static KeyTransformation getKeyTransformation(String key) {
@@ -273,10 +299,25 @@ class RwEnvironmentImp implements RwEnvironment {
         
         KeyTransformation kt = enableKeyReplace ? getKeyTransformation(ikey) : null;
         if (Entries.isObjectKey(ikey)) {
-            objectOps.put(ikey, ObjectInfo.ofBytes(ikey, value, string, kt));
+            writeObject(ikey, ObjectInfo.ofBytes(ikey, value, string, kt));
         } else {
-            setKv(new MapKey(Keys.toSegments(ikey), kt), value);
+            writeKv(new MapKey(Keys.toSegments(ikey), kt), value);
         }
+    }
+    
+    /**
+     * A put or delete of the user's at an object key into objectOps: under the lock, refused
+     * once the environment is closed (bergdb 021-21).
+     */
+    private synchronized void writeObject(String ikey, ObjectInfo info) {
+        checkOpen();
+        objectOps.put(ikey, info);
+    }
+    
+    /** A put or delete of the user's at another key, as writeObject (bergdb 021-21). */
+    private synchronized void writeKv(MapKey key, byte[] value) {
+        checkOpen();
+        setKv(key, value);
     }
     
     // Used internally, no checking
@@ -305,9 +346,9 @@ class RwEnvironmentImp implements RwEnvironment {
         String ikey = PubKeys.u2i(ukey);
 
         if (Entries.isObjectKey(ikey)) {
-            objectOps.put(ikey, new ObjectInfo(ikey, null, null));
+            writeObject(ikey, new ObjectInfo(ikey, null, null));
         } else {
-            setKv(new MapKey(Keys.toSegments(ikey), null), null);   
+            writeKv(new MapKey(Keys.toSegments(ikey), null), null);   
         }
     }
     
@@ -341,7 +382,7 @@ class RwEnvironmentImp implements RwEnvironment {
                         + "object is put only at a key without a suffix or with the suffix "
                         + "\".obj\", in lower case.");
             }
-            objectOps.put(ikey, new ObjectInfo(ikey, object, 
+            writeObject(ikey, new ObjectInfo(ikey, object, 
                     enableKeyReplace ? getKeyTransformation(ikey) : null));
         }
     }

@@ -165,7 +165,8 @@ action runs, throws IllegalDbStateException and writes nothing ({@link Database#
 durable, and so does close().</li>
 <li>A Connection is for one thread: db.connection() gives each thread its own, the same object
 at each call in the thread, and is the one to use; db.newConnection() makes another, for a
-second view, such as a reader at another lookup time ({@link Connection}).</li>
+second view, such as a reader at another lookup time ({@link Connection}). An rw() action may
+use its environment from several threads, until it returns ({@link RwEnvironment}).</li>
 <li>Earlier states are kept forever, until Database.setRetainDuration() limits them: a deleted
 value stays readable at the lookup times before its delete until then.</li>
 <li>If the database fails, on an I/O error for example, the call throws DbFailedException, or

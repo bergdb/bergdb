@@ -8,6 +8,16 @@ package bergdb.pub;
  * throws IllegalStateException.
  * Of several puts and deletes of one key in the action, the last one counts, as in a
  * WBuilder (bergdb 015-40, 020-25).
+ *
+ * <p>Threads (bergdb 021-21). The action may use the environment from several threads
+ * while it runs, such as a parallel stream over keys, or a task that it hands the
+ * environment to and waits for. Their reads and writes are taken one at a time: each read
+ * is at the transaction's read time and in its read set, each put and delete is in the
+ * transaction, and of several of one key the last one taken counts. The environment is closed when the
+ * action returns or throws, before the commit, for every thread: a call after that, or one
+ * that has not made its change by then, throws IllegalStateException and changes nothing,
+ * so the action should wait for its threads before it returns. Each run of the action has
+ * an environment of its own: one kept from an earlier run stays closed.</p>
  * 
  * @author Frans Lundberg
  */

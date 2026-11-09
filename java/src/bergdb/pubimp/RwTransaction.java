@@ -85,19 +85,18 @@ class RwTransaction implements Transaction {
     public Transaction execute() 
             throws StreamFormatException, StreamIoException, InternalDataException {
         assert action != null;
-        RwEnvironmentImp env = new RwEnvironmentImp(connection);
-        try {
-            this.trans = executeRw(env, connection, this);
-        } finally {
-            env.close();        // Valid only while the action runs (bergdb 005-12).
-        }
+        // Each run of the action has an environment of its own, closed when the action
+        // returns (executeRwInner; bergdb 005-12, 021-21).
+        this.trans = executeRw(new RwEnvironmentImp(connection), connection, this);
         connection.lastSposOfLastTrans = trans.lastPos;
         return this;
     }
 
     /**
      * Internal method that executes a transaction.
-     * Both RwTransactions and WTransactions uses this method.
+     * Both RwTransactions and WTransactions uses this method. For an RwTransaction, 'env'
+     * is the environment of the action's first run; each later run gets a new one
+     * (RwEnvironmentImp.nextRun()), and each is closed when its run's action returns.
      * 
      * @throws StreamIoException
      * @throws StreamFormatException
@@ -124,7 +123,20 @@ class RwTransaction implements Transaction {
         while (true) {
             runCount++;
             if (rw != null) {
-                rw.action.run(env);                     // User reads are done here, writes are requested.
+                if (runCount > 1) {
+                    env = env.nextRun();
+                }
+                try {
+                    rw.action.run(env);                 // User reads are done here, writes are requested.
+                } finally {
+                    // Closed when the action returns or throws, before the commit, so that
+                    // every later call of it throws IllegalStateException, from any thread,
+                    // and the commit is made of what the action wrote (bergdb 021-21, U11-3:
+                    // it was closed after the commit, and a thread that the action left
+                    // behind put while the index entries and the transaction were made: an
+                    // object was committed without its index entry).
+                    env.close();
+                }
             }
             env.indexEntries(m);                        // Internal reads are done here, internal writes are requested.
             trans = env.createTrans(connection.getDb());
@@ -135,10 +147,9 @@ class RwTransaction implements Transaction {
             } catch (RerunException e) {
                 if (rw == null) {
                     env.prepareForWRerun();
-                } else {
-                    env.prepareForRWRerun();
                 }
-                env.clearOutput();
+                // An rw's next run has a new environment, without the writes or outputs of
+                // this one (bergdb 021-21).
                 
                 try {
                     Thread.sleep(sleepTime);
