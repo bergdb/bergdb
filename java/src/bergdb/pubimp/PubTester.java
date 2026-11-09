@@ -1188,6 +1188,51 @@ public class PubTester {
     }
     
     /**
+     * RwEnvironment.get: "The action's reads read one state, the latest as of its first
+     * read" (018-04, Q1), also when the first read's conversion throws and the action
+     * catches it (bergdb 020-13, bug 1): the read fixes the read time, not the conversion.
+     * Before, a first get whose conversion threw (a String get of bytes that are not UTF-8)
+     * left the time unfixed; the next read read the latest state, the STM check was against
+     * it, and the action saw two states of one key in a run that committed.
+     */
+    @Nano
+    public static void testRwFirstReadThatThrowsFixesTheReadTime() {
+        Database db = Factory.database().memory().start();
+        try {
+            Connection c = db.connection();
+            final Connection other = db.newConnection();
+            c.put("/x", new byte[] {(byte) 0xff, 1});
+            final int[] runs = {0};
+            final byte[][] second = new byte[1][];
+            final boolean[] threw = new boolean[1];
+            c.rw(new Action() {
+                public void run(RwEnvironment env) {
+                    runs[0]++;
+                    try {
+                        env.get("/x", String.class);
+                        threw[0] = false;
+                    } catch (bergdb.pub.DataFormatException e) {
+                        threw[0] = true;
+                    }
+                    if (runs[0] == 1) {
+                        other.put("/x", new byte[] {7});        // after the first read
+                    }
+                    second[0] = env.get("/x", byte[].class);
+                    env.put("/y.txt", "done");
+                }
+            });
+            // The run that committed read one state: 07 twice, after a rerun (the other
+            // put conflicts with the first run's read).
+            Assert.assertEquals("runs", 2, runs[0]);
+            Assert.assertEquals("the second read", "[7]", Arrays.toString(second[0]));
+            Assert.assertEquals("the first read of the committed run converted", false, 
+                    threw[0]);
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
      * bergdb 015-42 (016-06, S1-F3), through a w-transaction: the put of an object in a
      * directory with an index reads the object's previous value, and that read set the
      * frozen time too.

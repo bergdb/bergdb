@@ -80,14 +80,21 @@ class RwEnvironmentImp implements RwEnvironment {
         addReadHash(Keys.hash(keySegments));
         long lookupTime = firstRead ? Long.MAX_VALUE : this.readTime;
         
-        TYPE result = connection.getInTransaction(readData(), lookupTime, ikey, clazz);
+        // The read fixes the read time, then the value is converted: a conversion that
+        // throws, which the action may catch, leaves the time fixed, so the action's reads
+        // read one state (RwEnvironment.get; bergdb 020-13, bug 1). Until 2026-11-09 the time
+        // was fixed after the conversion: after a first get that threw, the next read was
+        // at the latest time and the STM check against it, and a run that read two states
+        // of one key committed.
+        byte[] value = connection.getDb().getOne(lookupTime, keySegments, readData());
         
         if (firstRead) {
             readTime = readData.actualLookupTime;
             firstRead = false;
         }
         
-        return result;
+        return connection.getDatabaseImp().getKvToObjectConverter().createObject(clazz, ikey,
+                value);
     }
     
     private <TYPE> TYPE getInternal(String ikey, Class<TYPE> clazz) {
