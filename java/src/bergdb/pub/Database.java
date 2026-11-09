@@ -153,7 +153,8 @@ public interface Database extends AutoCloseable {
      * Creates and returns a new connection to the database. The returned object is always newly
      * created in this method and is guaranteed not to be returned from subsequent calls to
      * newConnection() or connection(). Its requested lookup time is Time.MAX, the latest state
-     * (Connection.setLookupTime()).
+     * (Connection.setLookupTime()). For a second connection in a thread, such as a reader at
+     * another lookup time; a thread's own connection is connection()'s (Connection).
      */
     public Connection newConnection();
 

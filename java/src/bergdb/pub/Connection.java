@@ -11,8 +11,15 @@ import bergdb.pub.util.SyncLevel;
  * operations [<code>c.w().put(...execute()</code> or <code>c.put(...)</code>],
  * and rw-transactions [<code>c.rw(...)</code>] can be executed. A
  * Connection object assumes it and any objects returned from its methods are
- * accessed from a single thread. For multi-threaded access to the database,
- * create a Connection object for each thread by calling Database.newConnection().
+ * accessed from a single thread.
+ *
+ * <p>Each thread uses a connection of its own: Database.connection() gives the calling
+ * thread its connection, the same object at each call in that thread, and is the one to use.
+ * Database.newConnection() makes another, for a second view in a thread, such as a reader at
+ * another lookup time, which the thread keeps (bergdb 020-24-03, U3-8). connection() sets the
+ * lookup time of the thread's connection to Time.MAX at each call, also while a caller
+ * reads a frozen or an earlier state through it; code that reads at a lookup time keeps the
+ * connection it set it on, or uses one from newConnection().</p>
  * 
  * <p>Keys. A key starts with '/', has at least one more character, does not end with '/',
  * and has no "//" and no lone surrogate (bergdb 015-49); every call that takes a key refuses

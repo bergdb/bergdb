@@ -163,8 +163,9 @@ whose commit has begun completes; another call that runs at the stop, such as an
 action runs, throws IllegalDbStateException and writes nothing ({@link Database#stop()}).</li>
 <li>A transaction is written to storage soon after it returns; sync() waits until it is
 durable, and so does close().</li>
-<li>A Connection is for one thread: db.connection() gives each thread its own, and
-db.newConnection() a new one.</li>
+<li>A Connection is for one thread: db.connection() gives each thread its own, the same object
+at each call in the thread, and is the one to use; db.newConnection() makes another, for a
+second view, such as a reader at another lookup time ({@link Connection}).</li>
 <li>Earlier states are kept forever, until Database.setRetainDuration() limits them.</li>
 <li>If the database fails, on an I/O error for example, the call throws DbFailedException, or
 the Error that failed it, and the application should end its process; the next start

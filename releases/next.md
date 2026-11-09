@@ -680,3 +680,11 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   the transaction still written by `close()`; the Javadoc of `get()`,
   `exists()`, `useIndex()`, `rw()` and the two scans says what a stop does
   to them.
+* **Which connection a thread uses: one rule** (bergdb 020-24-03, U3-8):
+  `Connection` said to make one for each thread with
+  `Database.newConnection()`, the package page that `db.connection()` gives
+  each thread its own. Now both say: `connection()`, the thread's own, the
+  same object at each call in it; `newConnection()` for a second view, such
+  as a reader at another lookup time. `Connection` adds that `connection()`
+  sets the lookup time of the thread's connection to `Time.MAX` at each call,
+  so code that reads at a lookup time keeps its connection.
