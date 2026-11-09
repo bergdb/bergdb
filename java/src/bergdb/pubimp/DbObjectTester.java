@@ -9,6 +9,14 @@ import java.util.Arrays;
 import bergdb.common.Bytes;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pub.DbArray;
+import bergdb.pub.DbBoolean;
+import bergdb.pub.DbByteArray;
+import bergdb.pub.DbDouble;
+import bergdb.pub.DbLong;
+import bergdb.pub.DbObject;
+import bergdb.pub.DbString;
+import bergdb.pub.DbValue;
 import bergdb.pub.util.BadFormatException;
 
 /**

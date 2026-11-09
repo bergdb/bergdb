@@ -12,6 +12,7 @@ import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
 import bergdb.pub.DataFormatException;
+import bergdb.pub.DbObject;
 import bergdb.pub.Kv;
 import bergdb.pub.NoSuchIndexException;
 import bergdb.pub.UseIndexBuilder;

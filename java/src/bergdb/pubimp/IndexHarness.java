@@ -14,6 +14,14 @@ import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
+import bergdb.pub.DbArray;
+import bergdb.pub.DbBoolean;
+import bergdb.pub.DbByteArray;
+import bergdb.pub.DbDouble;
+import bergdb.pub.DbLong;
+import bergdb.pub.DbObject;
+import bergdb.pub.DbString;
+import bergdb.pub.DbValue;
 import bergdb.pub.Duration;
 import bergdb.pub.Factory;
 import bergdb.pub.IndexAlreadyExistsException;
@@ -28,7 +36,6 @@ import bergdb.pub.WBuilder;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
 import bergdb.pub.util.LookupTimeNotAvailableException;
-import bergdb.stream.MemoryStream;
 import bergdb.pubimp.IndexReference.Bin;
 import bergdb.pubimp.IndexReference.Call;
 import bergdb.pubimp.IndexReference.Def;
@@ -41,6 +48,7 @@ import bergdb.pubimp.IndexReference.Query;
 import bergdb.pubimp.IndexReference.State;
 import bergdb.pubimp.IndexReference.Type;
 import bergdb.pubimp.IndexReference.Write;
+import bergdb.stream.MemoryStream;
 
 /**
  * Harness H2 of the user indexes: an index is a function of the data (bergdb 020-10, section

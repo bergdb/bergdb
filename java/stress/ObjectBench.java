@@ -12,7 +12,7 @@ import bergdb.pub.WBuilder;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
 import bergdb.pubimp.DatabaseImp;
-import bergdb.pubimp.DbObject;
+import bergdb.pub.DbObject;
 
 /**
  * The measurements of stored objects, bergdb 020-08, section 7 (step 4; 020-02, section 6,

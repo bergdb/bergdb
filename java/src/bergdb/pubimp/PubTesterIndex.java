@@ -17,6 +17,7 @@ import bergdb.dag.Kvt;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.*;
+import bergdb.pub.DbObject;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
 import bergdb.stream.MemoryStream;

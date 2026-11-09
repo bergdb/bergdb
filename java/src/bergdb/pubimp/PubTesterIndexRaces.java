@@ -17,6 +17,7 @@ import bergdb.nanotest.Nano;
 import bergdb.pub.Connection;
 import bergdb.pub.DataFormatException;
 import bergdb.pub.Database;
+import bergdb.pub.DbObject;
 import bergdb.pub.Factory;
 import bergdb.pub.util.Job;
 

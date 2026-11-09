@@ -88,7 +88,7 @@ exists, the type's zero (0, false or null); a stored field that the class does n
 left out. A get never throws for the data. It throws ObjectCreationException for a class that
 is not a Data Object, for a constructor that throws (its exception the cause), and for a
 value that is not a stored object. To read a stored object exactly as it is, get it as a
-DbObject.</p>
+{@link DbObject}.</p>
 
 <h2 id="null">Null and absent fields</h2>
 
@@ -113,6 +113,8 @@ stores a placeholder.</p>
 
 <p>Depends on: common, nanotest, pub.util, pubimp. Only test code (the @Nano methods)
 uses nanotest. Factory uses pubimp to create a DatabaseBuilder: the circular package
-dependency pub -> pubimp -> pub is by design. Time also uses pubimp's TimeResolver.</p>
+dependency pub -> pubimp -> pub is by design. Time also uses pubimp's TimeResolver, and
+DbObject and its value classes pubimp's ObjectFormat (the codec of the stored object format)
+and DataObjects (the conversion of Data Objects; bergdb 020-10, step B3).</p>
 
 </body></html>

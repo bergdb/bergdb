@@ -16,6 +16,14 @@ import bergdb.nanotest.Nano;
 import bergdb.pub.Action;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
+import bergdb.pub.DbArray;
+import bergdb.pub.DbBoolean;
+import bergdb.pub.DbByteArray;
+import bergdb.pub.DbDouble;
+import bergdb.pub.DbLong;
+import bergdb.pub.DbObject;
+import bergdb.pub.DbString;
+import bergdb.pub.DbValue;
 import bergdb.pub.Factory;
 import bergdb.pub.ObjectCreationException;
 import bergdb.pub.RwEnvironment;
@@ -549,45 +557,6 @@ public class DbObjectFormatTester {
     }
 
     // ======== The review of step 2 (2026-11-09) ========
-
-    /** A value of 'size' bytes that is never written: the size checks come first. */
-    static DbValue sized(final int size) {
-        return new DbValue('b') {
-            public int getByteSize() {
-                return size;
-            }
-
-            public int write(byte[] b, int offset) {
-                throw new AssertionError("written");
-            }
-        };
-    }
-
-    /**
-     * 020-07, R15 (020-09, section 4.7, item 7): a value too large for a stored value is
-     * refused with IllegalArgumentException "size", before anything is allocated; an int
-     * size overflowed, and the Builders gave an OutOfMemoryError or a
-     * NegativeArraySizeException.
-     */
-    @Nano
-    public static void testSizesRefused() {
-        int big = Integer.MAX_VALUE - 3;
-        assertArgRefused("an element of 2^31 - 4 bytes", "size:",
-                () -> new DbArray.Builder().add(sized(big)));
-        assertArgRefused("a field of 2^31 - 4 bytes", "size:",
-                () -> new DbObject.Builder().addDbValue("v", sized(big)).build());
-        final DbObject.Builder two = new DbObject.Builder().addDbValue("a", sized(1 << 30))
-                .addDbValue("b", sized(1 << 30));
-        assertArgRefused("two fields of 2^30 bytes", "size:", () -> two.build());
-        assertArgRefused("a field near Java's largest array", "size:",
-                () -> new DbObject.Builder().addDbValue("v", sized(Integer.MAX_VALUE - 12))
-                .build());
-        ObjectFormat.checkValueSize(ObjectFormat.MAX_VALUE);
-        assertArgRefused("a value above MAX_VALUE", "size:",
-                () -> ObjectFormat.checkValueSize(ObjectFormat.MAX_VALUE + 1L));
-        assertArgRefused("a bytes value of 2^31 - 5 bytes", "size:",
-                () -> ObjectFormat.checkValueSize(5L + Integer.MAX_VALUE - 5));
-    }
 
     /**
      * The value classes are closed: no subclass of a user's can write bytes that a get then

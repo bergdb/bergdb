@@ -1,18 +1,23 @@
-package bergdb.pubimp;
+package bergdb.pub;
 
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pubimp.ObjectFormat;
 
 /**
- * The DbObject type for storing a boolean; a type that only have two possible values:
- * true or false. The type char for this type is 'n'; stored as Binson's 0x44 or 0x45
- * (bergdb 020-07).
+ * A boolean value, true or false: the type char 'n', DbObject.BOOLEAN; stored as Binson's
+ * 0x44 or 0x45 (bergdb 020-07). Immutable.
  * 
  * @author Frans Lundberg
  */
 public final class DbBoolean extends DbValue {
-    private boolean value;
+    private final boolean value;
     
+    /**
+     * A boolean value.
+     *
+     * @param value  The value.
+     */
     public DbBoolean(boolean value) {
         super('n');
         this.value = value;
@@ -26,6 +31,11 @@ public final class DbBoolean extends DbValue {
         return ObjectFormat.writeBoolean(b, offset, value);
     }
 
+    /**
+     * The value.
+     *
+     * @return The value.
+     */
     public boolean toBoolean() {
         return value;
     }
@@ -37,13 +47,13 @@ public final class DbBoolean extends DbValue {
     // ---- Tests ----
     
     @Nano
-    public static void test0() {
+    private static void test0() {
         Assert.assertEquals(true, new DbBoolean(true).toBoolean());
         Assert.assertEquals(false, new DbBoolean(false).toBoolean());
     }
     
     @Nano
-    public static void test1() {
+    private static void test1() {
         byte[] bytes = new byte[16];
         DbBoolean b0 = new DbBoolean(false);
         
@@ -56,7 +66,7 @@ public final class DbBoolean extends DbValue {
     }
     
     @Nano
-    public static void test2() {
+    private static void test2() {
         byte[] bytes = new byte[16];
         DbBoolean b0 = new DbBoolean(true);
         

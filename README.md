@@ -75,7 +75,8 @@ ships: the classes of `java/src` only, without the tests and tools of
 `java/src-dev`; `bergdb.jar` holds both, for the tests and the scripts.
 The API is the packages `bergdb.pub` and `bergdb.pub.util` and the Core's
 `Db`; the rest of the release jar is not API, whatever is public in it
-(bergdb item 020-10, section 7). See `java/readme.txt`.
+(bergdb item 020-10, section 7). The stored object, `DbObject`, and its
+value classes are in `bergdb.pub`. See `java/readme.txt`.
 
 
 

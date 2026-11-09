@@ -1,18 +1,24 @@
-package bergdb.pubimp;
+package bergdb.pub;
 
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pubimp.ObjectFormat;
 
 /**
- * The DbObject type for a double value, a 64-bit floating point value: its 64 bits, every
- * NaN stored as the one NaN, 0x7ff8000000000000, and -0.0 kept (bergdb 020-07, R12).
- * The type char for this type is 'd'.
+ * A double value, a 64-bit floating point number (IEEE 754): its 64 bits, every NaN stored
+ * as the one NaN, 0x7ff8000000000000, and -0.0 kept (bergdb 020-07, R12). The type char
+ * 'd', DbObject.DOUBLE. Immutable.
  * 
  * @author Frans Lundberg
  */
 public final class DbDouble extends DbValue {
-    private double value;
+    private final double value;
     
+    /**
+     * A double value; a NaN is stored as the one NaN.
+     *
+     * @param value  The value.
+     */
     public DbDouble(double value) {
         super('d');
         this.value = value;
@@ -30,6 +36,11 @@ public final class DbDouble extends DbValue {
         return ObjectFormat.writeDouble(b, offset, Double.doubleToRawLongBits(value));
     }
     
+    /**
+     * The value.
+     *
+     * @return The value.
+     */
     public double toDouble() {
         return value;
     }
@@ -37,14 +48,14 @@ public final class DbDouble extends DbValue {
     // ---- Tests -------------------------------------------------
     
     @Nano
-    public static void test0() {
+    private static void test0() {
         Assert.assertEquals(1.2, new DbDouble(1.2).toDouble());
         Assert.assertEquals(Double.MAX_VALUE, new DbDouble(Double.MAX_VALUE).toDouble());
         Assert.assertEquals(Double.NaN, new DbDouble(Double.NaN).toDouble());
     }
     
     @Nano
-    public static void testSerialize0() {
+    private static void testSerialize0() {
         byte[] bytes = new byte[20];
         DbDouble d0 = new DbDouble(12.34);
         Assert.assertEquals(4 + 9, d0.write(bytes, 4));

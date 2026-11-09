@@ -1,4 +1,4 @@
-package bergdb.pubimp;
+package bergdb.pub;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
@@ -7,12 +7,15 @@ import java.util.NoSuchElementException;
 
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pubimp.DataObjects;
+import bergdb.pubimp.ObjectFormat;
 
 
 /**
- * <p>An instance of this class represents an array of values as it is stored in the database.
- * A DbArray object is immutable. The array elements each have independent types.
- * Each element can be of any of the seven DbObject types:</p>
+ * <p>An array value: a list of elements, each of any of the seven types of the stored
+ * object format, independent of the others; the type char 'a', DbObject.ARRAY. A DbArray is
+ * immutable and may be read by any number of threads at the same time; its builder is not
+ * thread-safe. The element types:</p>
  * 
  * <pre>
  * n - boolean
@@ -33,7 +36,8 @@ import bergdb.nanotest.Nano;
 public final class DbArray extends DbValue implements Iterable<DbValue> {
     private final byte[] bytes;     // the array's encoding: 0x42, the elements, 0x43
     private final int elementCount;
-    private int height;             // its levels, 1 or more; 0 until computed
+    private int height;             // its levels, 1 or more; 0 until computed (a benign
+                                    // race: every thread computes the same value)
     
     private DbArray(byte[] bytes, int elementCount, int height) {
         super('a');
@@ -46,6 +50,8 @@ public final class DbArray extends DbValue implements Iterable<DbValue> {
     
     /**
      * Returns the number of elements in the array.
+     *
+     * @return The number of elements, 0 or more.
      */
     public int getSize() {
         return elementCount;
@@ -72,21 +78,42 @@ public final class DbArray extends DbValue implements Iterable<DbValue> {
         return offset;
     }
     
-    /** The elements as int values, each converted by bergdb 020-09, section 5.4. */
+    /**
+     * The elements as int values, a new array, each converted as a get converts a value
+     * into an int field, best effort (bergdb 020-09, section 5.4).
+     *
+     * @return The values.
+     */
     public int[] toIntArray() {
         return (int[]) DataObjects.convert(bytes, 0, int[].class);
     }
     
-    /** The elements as long values, each converted by bergdb 020-09, section 5.4. */
+    /**
+     * The elements as long values, a new array, each converted as a get converts a value
+     * into a long field, best effort (bergdb 020-09, section 5.4).
+     *
+     * @return The values.
+     */
     public long[] toLongArray() {
         return (long[]) DataObjects.convert(bytes, 0, long[].class);
     }
     
-    /** The elements as double values, each converted by bergdb 020-09, section 5.4. */
+    /**
+     * The elements as double values, a new array, each converted as a get converts a value
+     * into a double field, best effort (bergdb 020-09, section 5.4).
+     *
+     * @return The values.
+     */
     public double[] toDoubleArray() {
         return (double[]) DataObjects.convert(bytes, 0, double[].class);
     }
     
+    /**
+     * The elements in order, each a new DbValue of its type; a DbObject element is a view on
+     * this array's bytes. The iterator does not support remove().
+     *
+     * @return An iterator of the elements.
+     */
     public Iterator<DbValue> iterator() {
         return new ElementIterator();
     }
@@ -130,8 +157,8 @@ public final class DbArray extends DbValue implements Iterable<DbValue> {
     }
     
     /**
-     * A builder object used to create a DbArray.
-     * The builder object is not thread-safe, use it from one thread.
+     * A builder of a DbArray: elements are added in order. It is not thread-safe: use it from
+     * one thread.
      */
     public static class Builder {
         private final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -139,6 +166,7 @@ public final class DbArray extends DbValue implements Iterable<DbValue> {
         private int height = 1;
         private long size = 1;      // the bytes so far, 0x42 and the elements
         
+        /** A builder with no elements. */
         public Builder() {
             out.write(ObjectFormat.ARRAY_START);
         }
@@ -190,13 +218,13 @@ public final class DbArray extends DbValue implements Iterable<DbValue> {
     // ---- Tests ----
     
     @Nano
-    public static void test0() {
+    private static void test0() {
         DbArray a = new DbArray.Builder().build();
         Assert.assertEquals(0, a.getSize());
     }
     
     @Nano
-    public static void test1() {
+    private static void test1() {
         DbArray a = new DbArray.Builder().add(new DbDouble(1.2)).add(new DbString("hello")).build();
         Assert.assertEquals(2, a.getSize());
         Assert.assertEquals(1 + 9 + 7 + 1, a.getByteSize());
@@ -204,7 +232,7 @@ public final class DbArray extends DbValue implements Iterable<DbValue> {
     }
     
     @Nano
-    public static void testIterator0() {
+    private static void testIterator0() {
         DbArray a = new DbArray.Builder().build();
         Assert.assertEquals(0, a.getSize());
         
@@ -214,7 +242,7 @@ public final class DbArray extends DbValue implements Iterable<DbValue> {
     }
     
     @Nano
-    public static void testIterator1() {
+    private static void testIterator1() {
         DbArray a = new DbArray.Builder().add(new DbLong(3)).build();
         Assert.assertEquals(1, a.getSize());
         Assert.assertEquals(1 + 2 + 1, a.getByteSize());     // 42, the integer 10 03, 43

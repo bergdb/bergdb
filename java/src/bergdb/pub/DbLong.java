@@ -1,19 +1,25 @@
-package bergdb.pubimp;
+package bergdb.pub;
 
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pubimp.ObjectFormat;
 
 /**
- * The DbObject type for an integer, a 64-bit integer like Java's long type: the one integer
- * of format 2, for Java's byte, short, char, int and long, stored in the fewest of 1, 2, 4
- * and 8 bytes (bergdb 020-07, R9; 020-02, section 4.7).
- * The type char for this type is 'l'.
+ * An integer value, 64 bits like Java's long: the one integer type of the stored object
+ * format, for Java's byte, short, char, int and long, stored in the fewest of 1, 2, 4 and
+ * 8 bytes (bergdb 020-07, R9; 020-02, section 4.7). The type char 'l', DbObject.LONG.
+ * Immutable.
  * 
  * @author Frans Lundberg
  */
 public final class DbLong extends DbValue {
-    private long value;
+    private final long value;
     
+    /**
+     * An integer value.
+     *
+     * @param value  The value.
+     */
     public DbLong(long value) {
         super('l');
         this.value = value;
@@ -27,6 +33,11 @@ public final class DbLong extends DbValue {
         return ObjectFormat.writeInteger(b, offset, value);
     }
     
+    /**
+     * The value.
+     *
+     * @return The value.
+     */
     public long toLong() {
         return value;
     }
@@ -39,12 +50,12 @@ public final class DbLong extends DbValue {
     // ---- Tests -------------------------------------------------
     
     @Nano
-    public static void test0() {
+    private static void test0() {
         Assert.assertEquals(111222333444L, new DbLong(111222333444L).toLong());
     }
     
     @Nano
-    public static void testSerialize0() {
+    private static void testSerialize0() {
         byte[] bytes = new byte[20];
         DbLong l0 = new DbLong(111222333444L);
         Assert.assertEquals(3 + 9, l0.write(bytes, 3));

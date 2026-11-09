@@ -38,13 +38,17 @@ import bergdb.pub.util.BadFormatException;
  * an array's element is its parent's level + 1, and a scalar has no level; no level is above
  * MAX_LEVELS (Frans, 2026-11-08, 19:43: a scalar is not a level).</p>
  *
+ * <p>Internal, not API. The class and the members that bergdb.pub's DbObject, DbArray and
+ * value classes use to read and write their bytes are public, for them only (bergdb 020-10,
+ * step B3): the format stays here, its API classes there. The rest is package-private.</p>
+ *
  * @author Frans Lundberg
  */
-final class ObjectFormat {
+public final class ObjectFormat {
     private ObjectFormat() {}
 
     /** The header of format 2, before the top object (020-07, section 9). */
-    static final int HEADER = 0x82;
+    public static final int HEADER = 0x82;
 
     // The type bytes (020-07, section 4.3).
     static final int INT8 = 0x10;
@@ -57,8 +61,8 @@ final class ObjectFormat {
     static final int BYTES1 = 0x18;
     static final int BYTES2 = 0x19;
     static final int BYTES4 = 0x1a;
-    static final int ARRAY_START = 0x42;
-    static final int ARRAY_END = 0x43;
+    public static final int ARRAY_START = 0x42;
+    public static final int ARRAY_END = 0x43;
     static final int TRUE = 0x44;
     static final int FALSE = 0x45;
     static final int DOUBLE = 0x46;
@@ -67,13 +71,13 @@ final class ObjectFormat {
     static final int OBJECT4 = 0x4a;
 
     /** The most fields of an object (020-07, R3). */
-    static final int MAX_FIELDS = 32767;
+    public static final int MAX_FIELDS = 32767;
 
     /** The most levels: the top object 1, and objects and arrays below it (020-07, R14). */
-    static final int MAX_LEVELS = 16;
+    public static final int MAX_LEVELS = 16;
 
     /** The longest name, in bytes (020-07, R6). */
-    static final int MAX_NAME = 255;
+    public static final int MAX_NAME = 255;
 
     /** The largest stored value, header included: 2^31 - 1 bytes (020-07, R15). */
     static final long MAX_STORED = Integer.MAX_VALUE;
@@ -82,19 +86,19 @@ final class ObjectFormat {
      * The largest value in a stored object: MAX_STORED less the smallest object that holds
      * one field, its header, type byte, count and end of 4 bytes, and a name of 1 byte.
      */
-    static final long MAX_VALUE = MAX_STORED - 12;
+    public static final long MAX_VALUE = MAX_STORED - 12;
 
     /**
      * The largest stored value Java can hold in one array, below R15's limit: an array of
      * more than this many bytes may not be allocated (Java's soft maximum array length).
      */
-    static final int MAX_ARRAY = Integer.MAX_VALUE - 8;
+    public static final int MAX_ARRAY = Integer.MAX_VALUE - 8;
 
     /** The one NaN (020-07, R12). */
     static final long NAN = 0x7ff8000000000000L;
 
     /** The bytes of a double: its type byte and 8 bytes. */
-    static final int DOUBLE_SIZE = 9;
+    public static final int DOUBLE_SIZE = 9;
 
     /** The first bytes of format 1, BergDB 2026.3's and before (020-07, section 9). */
     private static final byte[] FORMAT_1 = {'b', 'e', 'r', 'g', 'o'};
@@ -195,7 +199,7 @@ final class ObjectFormat {
      *      starts with the condition's code (020-07, section 7.2), "format-1" for an object
      *      of BergDB 2026.3 and before, and says where.
      */
-    static void checkStored(byte[] b) {
+    public static void checkStored(byte[] b) {
         if (b.length == 0) {
             throw bad("past-end", "no bytes, not even the header");
         }
@@ -477,7 +481,7 @@ final class ObjectFormat {
      * @return  The start of the value of the field, its type byte, or -1 if absent.
      * @throws BadFormatException  If what it reads breaks a rule.
      */
-    static int find(byte[] b, int start, int end, byte[] name) {
+    public static int find(byte[] b, int start, int end, byte[] name) {
         if (start >= end) {
             throw bad("past-end", "an object expected at byte " + start
                     + ", at the end of its extent");
@@ -549,7 +553,7 @@ final class ObjectFormat {
         return t >= OBJECT1 && t <= OBJECT4;
     }
 
-    static boolean isObjectAt(byte[] b, int p) {
+    public static boolean isObjectAt(byte[] b, int p) {
         return isObjectType(b[p] & 0xff);
     }
 
@@ -559,7 +563,7 @@ final class ObjectFormat {
      *
      * @throws BadFormatException  If the byte at 'p' is not a type byte.
      */
-    static char typeAt(byte[] b, int p) {
+    public static char typeAt(byte[] b, int p) {
         int t = b[p] & 0xff;
         switch (t) {
         case INT8: case INT16: case INT32: case INT64:
@@ -581,16 +585,16 @@ final class ObjectFormat {
         }
     }
 
-    static boolean booleanAt(byte[] b, int p) {
+    public static boolean booleanAt(byte[] b, int p) {
         return (b[p] & 0xff) == TRUE;
     }
 
-    static long integerAt(byte[] b, int p) {
+    public static long integerAt(byte[] b, int p) {
         return signed(b, p + 1, 1 << ((b[p] & 0xff) - INT8));
     }
 
     /** The 64 bits of the double at 'p'. */
-    static long doubleBitsAt(byte[] b, int p) {
+    public static long doubleBitsAt(byte[] b, int p) {
         return signed(b, p + 1, 8);
     }
 
@@ -605,18 +609,18 @@ final class ObjectFormat {
     }
 
     /** The string at 'p'; its UTF-8 is well-formed, so the String holds it exactly. */
-    static String stringAt(byte[] b, int p) {
+    public static String stringAt(byte[] b, int p) {
         return new String(b, contentAt(b, p), lengthAt(b, p), StandardCharsets.UTF_8);
     }
 
     /** A copy of the bytes at 'p'. */
-    static byte[] bytesAt(byte[] b, int p) {
+    public static byte[] bytesAt(byte[] b, int p) {
         int start = contentAt(b, p);
         return Arrays.copyOfRange(b, start, start + lengthAt(b, p));
     }
 
     /** The end of the value at 'p': an object's from its head, an array's by its elements. */
-    static int valueEnd(byte[] b, int p) {
+    public static int valueEnd(byte[] b, int p) {
         int t = b[p] & 0xff;
         switch (t) {
         case INT8: case INT16: case INT32: case INT64:
@@ -646,7 +650,7 @@ final class ObjectFormat {
      * container, and one more for each level of containers below it (020-07, R14). A walk of
      * the value; at most MAX_LEVELS deep on checked bytes.
      */
-    static int heightAt(byte[] b, int p) {
+    public static int heightAt(byte[] b, int p) {
         int t = b[p] & 0xff;
         int height = 0;
         if (t == ARRAY_START) {
@@ -671,7 +675,7 @@ final class ObjectFormat {
     }
 
     /** The count of fields of the object at 'p'. */
-    static int countAt(byte[] b, int p) {
+    public static int countAt(byte[] b, int p) {
         return (int) unsigned(b, p + 1, widthAt(b, p));
     }
 
@@ -693,7 +697,7 @@ final class ObjectFormat {
     }
 
     /** The end of the object at 'p', from its head. */
-    static int objectEnd(byte[] b, int p) {
+    public static int objectEnd(byte[] b, int p) {
         int n = countAt(b, p);
         return fieldsAt(b, p) + (n == 0 ? 0 : endAt(b, p, n - 1));
     }
@@ -705,7 +709,7 @@ final class ObjectFormat {
     // that no number wraps (020-07, section 6.2).
 
     /** The bytes of an integer, its type byte included: 2, 3, 5 or 9 (020-07, R9). */
-    static int integerSize(long v) {
+    public static int integerSize(long v) {
         if (v == (byte) v) {
             return 2;
         } else if (v == (short) v) {
@@ -717,7 +721,7 @@ final class ObjectFormat {
     }
 
     /** Writes an integer in the fewest bytes (020-07, R9). */
-    static int writeInteger(byte[] b, int p, long v) {
+    public static int writeInteger(byte[] b, int p, long v) {
         int size = integerSize(v) - 1;
         b[p] = (byte) (INT8 + Integer.numberOfTrailingZeros(size));
         writeLE(b, p + 1, v, size);
@@ -730,7 +734,7 @@ final class ObjectFormat {
     }
 
     /** Writes a double given by its bits, a NaN as NAN (020-07, R12): DOUBLE_SIZE bytes. */
-    static int writeDouble(byte[] b, int p, long bits) {
+    public static int writeDouble(byte[] b, int p, long bits) {
         b[p] = (byte) DOUBLE;
         writeLE(b, p + 1, doubleBits(bits), 8);
         return p + DOUBLE_SIZE;
@@ -741,7 +745,7 @@ final class ObjectFormat {
      *
      * @throws IllegalArgumentException  If 'length' is below 0.
      */
-    static int lengthSize(int length) {
+    public static int lengthSize(int length) {
         if (length < 0) {
             throw new IllegalArgumentException("length: a length of " + length
                     + " (bergdb 020-07, R10)");
@@ -750,12 +754,12 @@ final class ObjectFormat {
     }
 
     /** Writes a string's type byte and length; its UTF-8 bytes follow. */
-    static int writeStringHead(byte[] b, int p, int length) {
+    public static int writeStringHead(byte[] b, int p, int length) {
         return writeLength(b, p, STRING1, length);
     }
 
     /** Writes a bytes value's type byte and length; its bytes follow. */
-    static int writeBytesHead(byte[] b, int p, int length) {
+    public static int writeBytesHead(byte[] b, int p, int length) {
         return writeLength(b, p, BYTES1, length);
     }
 
@@ -766,7 +770,7 @@ final class ObjectFormat {
         return p + 1 + size;
     }
 
-    static int writeBoolean(byte[] b, int p, boolean v) {
+    public static int writeBoolean(byte[] b, int p, boolean v) {
         b[p] = (byte) (v ? TRUE : FALSE);
         return p + 1;
     }
@@ -780,7 +784,7 @@ final class ObjectFormat {
     }
 
     /** The bytes of an object's frame: its type byte, count and ends (020-07, section 4.2). */
-    static int headSize(int count, long fieldsSize) {
+    public static int headSize(int count, long fieldsSize) {
         int w = width(fieldsSize);
         return 1 + w + count * w;
     }
@@ -793,7 +797,7 @@ final class ObjectFormat {
      * @throws IllegalArgumentException  If 'count' is above MAX_FIELDS, or a field has less
      *      than 3 bytes (020-07, R4 and R5).
      */
-    static int frame(byte[] b, int p, int[] ends, int count) {
+    public static int frame(byte[] b, int p, int[] ends, int count) {
         checkCount(count);
         int w = width(count == 0 ? 0 : ends[count - 1]);
         b[p] = (byte) (OBJECT1 + (w >> 1));
@@ -813,7 +817,7 @@ final class ObjectFormat {
     }
 
     /** Writes a field's name length and its name, checked by checkName(). */
-    static int writeName(byte[] b, int p, byte[] name) {
+    public static int writeName(byte[] b, int p, byte[] name) {
         b[p] = (byte) name.length;
         System.arraycopy(name, 0, b, p + 1, name.length);
         return p + 1 + name.length;
@@ -896,7 +900,7 @@ final class ObjectFormat {
      * @throws IllegalArgumentException  If a stored value, or a part of it, of 'size' bytes is
      *      above MAX_STORED (020-07, R15).
      */
-    static void checkStoredSize(long size) {
+    public static void checkStoredSize(long size) {
         if (size > MAX_STORED) {
             throw new IllegalArgumentException("size: a stored value of " + size
                     + " bytes or more; at most 2^31 - 1 (bergdb 020-07, R15)");
@@ -908,7 +912,7 @@ final class ObjectFormat {
      *      included, cannot be in a stored value: above MAX_VALUE (020-07, R15). A writer
      *      checks it in 64 bits before it allocates or writes, so that no size wraps.
      */
-    static void checkValueSize(long size) {
+    public static void checkValueSize(long size) {
         if (size > MAX_VALUE) {
             throw new IllegalArgumentException("size: a value of " + size + " bytes; a stored "
                     + "value has at most 2^31 - 1 bytes, and an object's frame some of them "

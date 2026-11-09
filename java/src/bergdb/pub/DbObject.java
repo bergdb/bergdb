@@ -1,4 +1,4 @@
-package bergdb.pubimp;
+package bergdb.pub;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -7,61 +7,87 @@ import java.util.HashMap;
 
 import bergdb.common.StringUtil;
 import bergdb.pub.util.BadFormatException;
+import bergdb.pubimp.DataObjects;
+import bergdb.pubimp.ObjectFormat;
 
 /**
- * <p>An immutable object with a map of named and typed fields.
- * The fields are typed, but the object itself has no particular schema.
- * The set of fields can vary independently between any two DbObjects.
- * The word "field" is not used as the actual Java class fields, but for the conceptual
- * fields that this object contain. The set of types available for a DbObject field does 
- * not correspond directly to Java types, but is a separate small type system with 
- * 7 distinct types, Binson's.
- * </p>
+ * <p>A stored object: an immutable set of named, typed fields, as BergDB stores an object
+ * at a key, in the stored object format, format 2 (bergdb 020-07). A get as DbObject.class
+ * gives the stored object exactly, whatever class put it; a put of a DbObject stores its
+ * bytes as they are. An object has no schema: the fields of two objects are independent.
+ * The format is the same in every language that reads or writes a database, not a detail
+ * of Java.</p>
  *
- * <p>The DbObject types with their one-character representation, name, and descriptions:</p>
- * 
+ * <p><b>The model.</b> A field has a name, 1 to 255 bytes of well-formed UTF-8, unique in
+ * its object, and a value of one of seven types, each with its type char:</p>
+ *
  * <pre>
- * n - boolean    A type that has a value of either true or false.
+ * n - boolean    true or false.
  * l - integer    A signed 64-bit integer, the one integer type: Java's byte, short, char,
  *                int and long are each stored as an integer, in the fewest bytes.
- * d - double     A 64-bit floating pointer number (IEEE-754); every NaN is one value.
- * s - string     A string stored as well-formed UTF-8.
- * b - byteArray  An array of bytes.
- * a - array      A heterogeneous array (list) of values. See class DbArray.
- * o - object     A nested DbObject.
- * z - absent     Not a type: getType() of a field that the object does not have.
+ * d - double     A 64-bit floating point number (IEEE 754); every NaN is one value, and
+ *                -0.0 is kept.
+ * s - string     Unicode text, stored as well-formed UTF-8.
+ * b - byteArray  Bytes, any.
+ * a - array      A list of values, each of any type (DbArray).
+ * o - object     A nested object, with fields of its own.
  * </pre>
- * 
- * <p>INT, 'i', is not a stored type: has(name, INT) is true, and getInt() gives the value,
- * for an integer within int's range (bergdb 020-08, section 3).</p>
- * 
- * <p>No value is null (bergdb 020-02, section 4.1): a field without a value is absent, an
- * array has no absent element, and toDbObject() leaves a null field out (the Pub API's
- * package bergdb.pub, "Null and absent fields"). The Builder, DbString and DbByteArray
- * refuse null. getString(), getByteArray(), getArray() and getObject() return null for an
- * absent field, Java's way to say absent; getInt() and the other numbers 0, getBoolean()
- * false; has() and getType() tell. The bytes are format
- * 2 of stored objects, bergdb 020-07: the header byte 0x82, then the object, its fields
- * found by a binary search on their names; names of 1 to 255 bytes; at most 16 levels of
- * objects and arrays.</p>
  *
- * <p>Strings. A string, and a field's name, is Unicode text: a sequence of Unicode scalar
- * values, stored as well-formed UTF-8 (RFC 3629), as every string BergDB stores, keys and
- * values too (the Pub API's package bergdb.pub, "Strings"; bergdb 021-04). A Java String
- * with a lone surrogate, a char of U+D800 to U+DFFF that is not part of a surrogate pair,
- * cannot be stored so: toDbObject(), the Builder and DbString refuse it with
- * IllegalArgumentException, whose message names the field and an array element's index
- * ("inner.names[3]"). A char[] field keeps any chars, as an array of ints, and reads back
- * exactly; a byte[] field keeps any bytes.</p>
- * 
- * <p>A DbObject is held in memory as its stored bytes, checked by every rule of the format
- * when it is made from bytes, and read by lookups. getBytes() gives the stored bytes, and
- * new DbObject(bytes) reads them back.</p>
- * 
- * <p>A DbObject can be created from a Data Object with the method toDbObject(), and
- * toJavaObject() converts a DbObject to a Data Object: bergdb 020-09's rules, layer 2 of
- * bergdb 020-02, section 5.1b, over this class, layer 1.</p>
- * 
+ * <p>The char 'z' is not a type: getType() gives it for a field that the object does not
+ * have. INT, 'i', is not a stored type either: has(name, INT) is true, and getInt() gives
+ * the value, for an integer within int's range. An object has at most 32,767 fields, at
+ * most 16 levels of objects and arrays (the top object is level 1, a scalar is no level),
+ * and its stored bytes at most 2^31 - 1 bytes.</p>
+ *
+ * <p><b>No null.</b> No value is null: a field without a value is absent, and an array has
+ * no absent element (the package's {@linkplain bergdb.pub##null Null and absent fields}).
+ * The Builder and the value classes refuse null, and toDbObject() leaves a null field
+ * out.</p>
+ *
+ * <p><b>The bytes.</b> getBytes() gives the stored bytes, the bytes of the value at a key:
+ * the header, HEADER (0x82), then the object. One object has one byte string: the fields
+ * in the order of their names' unsigned bytes, every number in its fewest bytes, so two
+ * objects with the same fields and values have equal bytes, and comparing getBytes() with
+ * java.util.Arrays.equals() compares the objects. new DbObject(bytes) checks every rule
+ * of the format and refuses any other bytes with BadFormatException, also an object of
+ * BergDB 2026.3 and before (format 1). No UTF-8 string starts with the byte 0x82, so a
+ * String value is never taken for an object.</p>
+ *
+ * <p><b>The lookups.</b> A field is found by its name with a binary search on the object's
+ * table of fields, so a lookup takes a time logarithmic in the number of fields, with no
+ * parse of the object. The typed getters, getBoolean(), getInt(), getLong(), getDouble(),
+ * getString(), getByteArray(), getArray() and getObject(), give the field's value if the
+ * field is there and of the getter's type, and otherwise false, 0, 0.0 or null: for a field
+ * that is absent and for one of another type alike, never a throw for the data (bergdb
+ * 020-04, Q6; 020-09). has(name, type) and getType(name) tell the cases apart. A name that
+ * no field can have (empty, longer than 255 bytes in UTF-8, or with a lone surrogate) is
+ * absent; a null name is refused with IllegalArgumentException. The getters that take
+ * String[] follow a path of nested objects, one name per level; a part that is absent or
+ * not an object makes the field absent.</p>
+ *
+ * <p><b>Views.</b> getObject() gives a view on this object's bytes: no copy is made, and the
+ * nested object's getBytes() makes a new array, its own stored bytes with the header. The
+ * other getters give copies: a byte[] from getByteArray() is the caller's, and a DbArray
+ * holds its own bytes.</p>
+ *
+ * <p><b>Immutable and thread-safe.</b> A DbObject never changes, and any number of threads
+ * may read one at the same time without synchronization. getBytes() of an object made from
+ * bytes or by the Builder returns its own array, not a copy, as Connection.get() returns a
+ * byte[]: do not change it. The Builders are not thread-safe: use one from one thread.</p>
+ *
+ * <p><b>Strings.</b> A string, and a field's name, is Unicode text stored as well-formed
+ * UTF-8, as every string BergDB stores (the package's
+ * {@linkplain bergdb.pub##strings Strings}). A Java String with a lone surrogate, a char
+ * of U+D800 to U+DFFF that is not part of a surrogate pair, cannot be stored so:
+ * toDbObject(), the Builder and DbString refuse it with IllegalArgumentException, whose
+ * message names the field and an array element's index ("inner.names[3]"). A char[] field
+ * keeps any chars, as an array of integers; a byte[] field keeps any bytes.</p>
+ *
+ * <p><b>Data Objects.</b> toDbObject() makes a DbObject from an object of a Data Object
+ * class, exactly, as a put stores it; toJavaObject() makes an object of a Data Object class
+ * from a DbObject, best effort, as a get does (the package's
+ * {@linkplain bergdb.pub##objects Objects}; bergdb 020-09).</p>
+ *
  * @author Frans Lundberg
  */
 public final class DbObject extends DbValue {
@@ -75,20 +101,31 @@ public final class DbObject extends DbValue {
     // (Frans, 2026-11-08, 19:21; bergdb 020-02, section 5.1b).
     //
     
-    /** The header of a stored object, format 2: its first byte (bergdb 020-07, R1). */
+    /** The header of a stored object, format 2: its first byte, 0x82 (bergdb 020-07, R1). */
     public static final byte HEADER = (byte) ObjectFormat.HEADER;
     
+    /** The type char of a boolean. */
     public static final char BOOLEAN = 'n';
     
     /** Not a stored type: an integer within int's range, for has() (bergdb 020-08, section 3). */
     public static final char INT = 'i';
     
-    /** The integer, 64 bits; getType() of every integer. */
+    /** The type char of an integer, 64 bits: getType() of every integer. */
     public static final char LONG = 'l';
+    
+    /** The type char of a double. */
     public static final char DOUBLE = 'd';
+    
+    /** The type char of a string. */
     public static final char STRING = 's';
+    
+    /** The type char of bytes. */
     public static final char BYTE_ARRAY = 'b';
+    
+    /** The type char of an array. */
     public static final char ARRAY = 'a';
+    
+    /** The type char of an object. */
     public static final char OBJECT = 'o';
     
     
@@ -96,19 +133,22 @@ public final class DbObject extends DbValue {
     private final int start;        // the object's type byte in 'bytes'
     private final int end;          // after its last field
     private final boolean whole;    // 'bytes' is the stored value of this object
-    private int height;             // its levels, 1 or more; 0 until computed
+    private int height;             // its levels, 1 or more; 0 until computed (a benign
+                                    // race: every thread computes the same value)
     
     /**
-     * Creates a new DbObject based in its byte array representation: a stored object of
-     * format 2, checked by every rule (bergdb 020-07, section 7.1).
+     * Reads a stored object from its bytes, as getBytes() gives them: checked by every rule of
+     * the format (bergdb 020-07, section 7.1), so that no later lookup meets bytes it cannot
+     * read.
      * 
      * @param b 
-     *      The serialized format of the DbObject. 
-     *      Will be copied. 
+     *      The stored bytes, the header first. They are copied: a later change of 'b' does
+     *      not change the object.
      * @throws BadFormatException 
      *      If the bytes are not a stored object of format 2; the message starts with the
      *      condition's code (bergdb 020-07, section 7.2), "format-1" for an object of
      *      BergDB 2026.3 and before.
+     * @throws IllegalArgumentException  If 'b' is null.
      */
     public DbObject(byte[] b) throws BadFormatException {
         super('o');
@@ -139,10 +179,12 @@ public final class DbObject extends DbValue {
     }
     
     /**
-     * Returns the stored bytes, the header first. For an object made from bytes or by the
-     * Builder, a reference to the internal byte buffer: no value copy is made, and the
-     * returned reference must not be used to modify the array. For an object nested in
-     * another, a new array.
+     * Returns the stored bytes, the header first: the bytes that a put of this object stores
+     * and that new DbObject(bytes) reads back. For an object made from bytes or by the
+     * Builder, its own array, not a copy: do not change it. For an object nested in another
+     * (getObject()), a new array.
+     *
+     * @return The stored bytes.
      */
     public byte[] getBytes() {
         if (whole) {
@@ -155,23 +197,36 @@ public final class DbObject extends DbValue {
     }
     
     /**
-     * Returns the number of fields of the typeless object.
+     * Returns the number of fields of the object, 0 to 32,767.
+     *
+     * @return The number of fields.
      */
     public int getFieldCount() {
         return ObjectFormat.countAt(bytes, start);
     }
     
     /**
-     * Returns true iff the typeless object has a field with the given name and type. For
-     * INT, a field of an integer within int's range.
+     * Returns true if the object has a field with the given name and type: tells a field
+     * that is absent from one of another type, which the typed getters do not. For INT, a
+     * field of an integer within int's range.
+     *
+     * @param name  The field's name.
+     * @param type  A type char, such as LONG; or INT.
+     * @return True if the field is there and of the type.
+     * @throws IllegalArgumentException  If 'name' is null.
      */
     public boolean has(String name, char type) {
         return is(find(name), type);
     }
     
     /**
-     * Returns true iff the typeless object has a nested field with the 
-     * given name parts and the given type.
+     * Returns true if the object has a nested field with the given name parts, one name per
+     * level of nested objects, and the given type.
+     *
+     * @param nameParts  The names, the top object's field first.
+     * @param type  A type char, such as LONG; or INT.
+     * @return True if the field is there and of the type.
+     * @throws IllegalArgumentException  If 'nameParts' is empty or holds a null.
      */
     public boolean has(String[] nameParts, char type) {
         if (nameParts.length == 1) {
@@ -273,24 +328,13 @@ public final class DbObject extends DbValue {
         return DataObjects.toJavaObject(this, c);
     }
     
-    /** The bytes of the object this one is in, for DataObjects; they must not change. */
-    byte[] bytesInternal() {
-        return bytes;
-    }
-    
-    /** The object's type byte in bytesInternal(). */
-    int startInternal() {
-        return start;
-    }
-    
-    /** The end of the object in bytesInternal(). */
-    int endInternal() {
-        return end;
-    }
-    
     /**
-     * Gets the type of a field, or returns 'z' (think 'zero', nothing) if there is no such
-     * field: absent. 'l' for every integer.
+     * Returns the type char of a field, or 'z' (think 'zero', nothing) if the object has no
+     * field of that name: absent. LONG, 'l', for every integer.
+     *
+     * @param name  The field's name.
+     * @return The type char, or 'z'.
+     * @throws IllegalArgumentException  If 'name' is null.
      */
     public char getType(String name) {
         int p = find(name);
@@ -298,7 +342,13 @@ public final class DbObject extends DbValue {
     }
     
     /**
-     * Returns the DbValue of a field with a specified name, or null if absent.
+     * Returns the value of a field as a DbValue of its type (DbBoolean, DbLong, DbDouble,
+     * DbString, DbByteArray, DbArray or DbObject), or null if the field is absent. A DbObject
+     * is a view on this object's bytes; the other values are copies.
+     *
+     * @param name  The field's name.
+     * @return The value, or null.
+     * @throws IllegalArgumentException  If 'name' is null.
      */
     public DbValue getDbValue(String name) {
         int p = find(name);
@@ -309,19 +359,40 @@ public final class DbObject extends DbValue {
     // ======== getType(name) methods ========
     //
     // Each gives the value of a field of its type: 0, false or null if the field is absent
-    // or of another type.
+    // or of another type (bergdb 020-04, Q6, decided 2026-11-09 under Frans's delegation).
     
+    /**
+     * The value of a boolean field; false if the field is absent or not a boolean.
+     *
+     * @param name  The field's name.
+     * @return The value, or false.
+     * @throws IllegalArgumentException  If 'name' is null.
+     */
     public boolean getBoolean(String name) {
         int p = find(name);
         return is(p, BOOLEAN) && ObjectFormat.booleanAt(bytes, p);
     }
     
-    /** An integer within int's range; 0 for another value. */
+    /**
+     * The value of an integer field within int's range; 0 if the field is absent, not an
+     * integer, or an integer outside int's range (has(name, INT) tells).
+     *
+     * @param name  The field's name.
+     * @return The value, or 0.
+     * @throws IllegalArgumentException  If 'name' is null.
+     */
     public int getInt(String name) {
         int p = find(name);
         return is(p, INT) ? (int) ObjectFormat.integerAt(bytes, p) : 0;
     }
     
+    /**
+     * As getInt(String), for a nested field: one name per level of nested objects.
+     *
+     * @param nameParts  The names, the top object's field first.
+     * @return The value, or 0.
+     * @throws IllegalArgumentException  If 'nameParts' is empty or holds a null.
+     */
     public int getInt(String[] nameParts) {
         if (nameParts.length == 1) {
             return getInt(nameParts[0]);
@@ -330,11 +401,25 @@ public final class DbObject extends DbValue {
         return is(p, INT) ? (int) ObjectFormat.integerAt(bytes, p) : 0;
     }
 
+    /**
+     * The value of an integer field; 0 if the field is absent or not an integer.
+     *
+     * @param name  The field's name.
+     * @return The value, or 0.
+     * @throws IllegalArgumentException  If 'name' is null.
+     */
     public long getLong(String name) {
         int p = find(name);
         return is(p, LONG) ? ObjectFormat.integerAt(bytes, p) : 0;
     }
     
+    /**
+     * As getLong(String), for a nested field: one name per level of nested objects.
+     *
+     * @param nameParts  The names, the top object's field first.
+     * @return The value, or 0.
+     * @throws IllegalArgumentException  If 'nameParts' is empty or holds a null.
+     */
     public long getLong(String[] nameParts) {
         if (nameParts.length == 1) {
             return getLong(nameParts[0]);
@@ -343,12 +428,27 @@ public final class DbObject extends DbValue {
         return is(p, LONG) ? ObjectFormat.integerAt(bytes, p) : 0;
     }
     
+    /**
+     * The value of a double field; 0.0 if the field is absent or not a double. An integer
+     * field is not a double: getLong() reads it.
+     *
+     * @param name  The field's name.
+     * @return The value, or 0.0.
+     * @throws IllegalArgumentException  If 'name' is null.
+     */
     public double getDouble(String name) {
         int p = find(name);
         return is(p, DOUBLE) ? Double.longBitsToDouble(ObjectFormat.doubleBitsAt(bytes, p)) 
                 : 0.0;
     }
     
+    /**
+     * As getDouble(String), for a nested field: one name per level of nested objects.
+     *
+     * @param nameParts  The names, the top object's field first.
+     * @return The value, or 0.0.
+     * @throws IllegalArgumentException  If 'nameParts' is empty or holds a null.
+     */
     public double getDouble(String[] nameParts) {
         if (nameParts.length == 1) {
             return getDouble(nameParts[0]);
@@ -358,11 +458,25 @@ public final class DbObject extends DbValue {
                 : 0.0;
     }
 
+    /**
+     * The value of a string field; null if the field is absent or not a string.
+     *
+     * @param name  The field's name.
+     * @return The value, or null.
+     * @throws IllegalArgumentException  If 'name' is null.
+     */
     public String getString(String name) {
         int p = find(name);
         return is(p, STRING) ? ObjectFormat.stringAt(bytes, p) : null;
     }
     
+    /**
+     * As getString(String), for a nested field: one name per level of nested objects.
+     *
+     * @param nameParts  The names, the top object's field first.
+     * @return The value, or null.
+     * @throws IllegalArgumentException  If 'nameParts' is empty or holds a null.
+     */
     public String getString(String[] nameParts) {
         if (nameParts.length == 1) {
             return getString(nameParts[0]);
@@ -371,16 +485,38 @@ public final class DbObject extends DbValue {
         return is(p, STRING) ? ObjectFormat.stringAt(bytes, p) : null;
     }
     
+    /**
+     * The value of a bytes field, a new array; null if the field is absent or not bytes.
+     *
+     * @param name  The field's name.
+     * @return The value, or null.
+     * @throws IllegalArgumentException  If 'name' is null.
+     */
     public byte[] getByteArray(String name) {
         int p = find(name);
         return is(p, BYTE_ARRAY) ? ObjectFormat.bytesAt(bytes, p) : null;
     }
     
+    /**
+     * The value of an array field; null if the field is absent or not an array.
+     *
+     * @param name  The field's name.
+     * @return The value, or null.
+     * @throws IllegalArgumentException  If 'name' is null.
+     */
     public DbArray getArray(String name) {
         int p = find(name);
         return is(p, ARRAY) ? DbArray.read(bytes, p) : null;
     }
     
+    /**
+     * The value of an object field, a view on this object's bytes; null if the field is
+     * absent or not an object.
+     *
+     * @param name  The field's name.
+     * @return The value, or null.
+     * @throws IllegalArgumentException  If 'name' is null.
+     */
     public DbObject getObject(String name) {
         int p = find(name);
         return is(p, OBJECT) ? view(bytes, p) : null;
@@ -388,11 +524,15 @@ public final class DbObject extends DbValue {
     
     // ====
     
-    /** The bytes of the object, without the header: its type byte, count, ends, fields. */
+    /**
+     * The size of the object's encoding as a value, without the header: its type byte,
+     * count, ends and fields, as it is nested in another object (bergdb 020-07, section 4).
+     */
     public int getByteSize() {
         return end - start;
     }
     
+    /** Writes the encoding that getByteSize() counts. */
     public int write(byte[] b, int offset) {
         System.arraycopy(bytes, start, b, offset, end - start);
         return offset + end - start;
@@ -423,7 +563,7 @@ public final class DbObject extends DbValue {
             
             // A name is a string too: well-formed UTF-8 (bergdb 021-04). javac refuses a
             // lone surrogate in a field's name, but a generated class or the Builder may not.
-            if (PubKeys.hasLoneSurrogate(name)) {
+            if (StringUtil.hasLoneSurrogate(name)) {
                 throw PathException.loneSurrogate("field name");
             }
             this.name = name;
@@ -441,12 +581,20 @@ public final class DbObject extends DbValue {
     }
     
     /**
-     * A builder object used to create a DbObject.
+     * A builder of a DbObject: fields are added in any order, and build() writes the
+     * object's bytes, its fields sorted by their names. A field added with the name of one
+     * added before replaces it. The builder may build again, with the fields it has. It is
+     * not thread-safe: use it from one thread.
+     *
+     * <p>Each add refuses, with IllegalArgumentException, a name that is null, empty, longer
+     * than 255 bytes in UTF-8 or that has a lone surrogate; a null value; a 32,768th field.
+     * build() refuses an object of more than 16 levels or 2^31 - 1 bytes.</p>
      */
     public static class Builder {
         private final ArrayList<DbField> fields = new ArrayList<DbField>();
         private final HashMap<String, Integer> indexes = new HashMap<String, Integer>();
         
+        /** A builder with no fields. */
         public Builder() {
         }
         
@@ -465,22 +613,50 @@ public final class DbObject extends DbValue {
             fields.add(field);
         }
         
+        /**
+         * Adds a field of any type: a DbBoolean, DbLong, DbDouble, DbString, DbByteArray,
+         * DbArray or DbObject.
+         *
+         * @param name  The field's name.
+         * @param value  The value.
+         * @return This builder.
+         */
         public Builder addDbValue(String name, DbValue value) {
             addField(new DbField(name, value));
             return this;
         }
         
-        /** Adds an integer: format 2 has one integer type, 'l' (bergdb 020-07, R9). */
+        /**
+         * Adds an integer: format 2 has one integer type, 'l' (bergdb 020-07, R9).
+         *
+         * @param name  The field's name.
+         * @param value  The value.
+         * @return This builder.
+         */
         public Builder addInt(String name, int value) {
             addField(new DbField(name, new DbLong(value)));
             return this;
         }
         
+        /**
+         * Adds an integer.
+         *
+         * @param name  The field's name.
+         * @param value  The value.
+         * @return This builder.
+         */
         public Builder addLong(String name, long value) {
             addField(new DbField(name, new DbLong(value)));
             return this;
         }
 
+        /**
+         * Adds a string.
+         *
+         * @param name  The field's name.
+         * @param value  The value: not null, and with no lone surrogate.
+         * @return This builder.
+         */
         public Builder addString(String name, String value) {
             if (value == null) {
                 throw new IllegalArgumentException("value == null not allowed (bergdb 021-07)");
@@ -489,11 +665,25 @@ public final class DbObject extends DbValue {
             return this;
         }
         
+        /**
+         * Adds a nested object: its bytes are copied in at build().
+         *
+         * @param name  The field's name.
+         * @param value  The value.
+         * @return This builder.
+         */
         public Builder addObject(String name, DbObject value) {
             addField(new DbField(name, value));
             return this;
         }
         
+        /**
+         * Adds an array.
+         *
+         * @param name  The field's name.
+         * @param value  The value.
+         * @return This builder.
+         */
         public Builder addArray(String name, DbArray value) {
             addField(new DbField(name, value));
             return this;

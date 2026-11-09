@@ -3,6 +3,7 @@ package bergdb.pubimp;
 import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pub.DbObject;
 
 /**
  * Class with functions that handles database entries; for example, this

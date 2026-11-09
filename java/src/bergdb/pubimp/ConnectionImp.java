@@ -13,6 +13,7 @@ import bergdb.dag.Keys;
 import bergdb.dag.Spos;
 import bergdb.pub.Action;
 import bergdb.pub.Connection;
+import bergdb.pub.DbObject;
 import bergdb.pub.Kv;
 import bergdb.pub.Time;
 import bergdb.pub.Transaction;

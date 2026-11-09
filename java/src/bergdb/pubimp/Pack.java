@@ -2,6 +2,14 @@ package bergdb.pubimp;
 
 import bergdb.nanotest.IPack;
 import bergdb.pub.CryptoKey;
+import bergdb.pub.DbArray;
+import bergdb.pub.DbBoolean;
+import bergdb.pub.DbByteArray;
+import bergdb.pub.DbDouble;
+import bergdb.pub.DbLong;
+import bergdb.pub.DbObject;
+import bergdb.pub.DbString;
+import bergdb.pub.DbValue;
 
 public class Pack implements IPack {
     // It's OK to include classes from bergdb.pub. Don't want

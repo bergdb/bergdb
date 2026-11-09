@@ -715,8 +715,11 @@ Core's `Db` with the types of its signatures; everything else,
 `bergdb.pubimp` included, is not API, whatever is public in it
 ([020-10](../items/020-release-2026-4/10-indexes-design.md), section 7).
 `java/build.sh` makes `build/bergdb-release.jar`, the jar a release ships:
-the classes of `src` only. `DbObject` is still in `bergdb.pubimp` until
-020-10's step B3 moves it into `bergdb.pub`.
+the classes of `src` only. The stored object is API since 020-10's step
+B3: `DbObject`, its `Builder`, `DbArray`, `DbValue` and the value classes
+(`DbBoolean`, `DbLong`, `DbDouble`, `DbString`, `DbByteArray`) are in
+`bergdb.pub`; the codec (`ObjectFormat`) and the conversion
+(`DataObjects`) stay in `bergdb.pubimp`, public there for them only.
 
 **Stored objects, format 2.** The spec is
 [020-07](../items/020-release-2026-4/07-object-spec.md), under 018-01's

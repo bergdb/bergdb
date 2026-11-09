@@ -17,6 +17,14 @@ import java.util.List;
 import java.util.Set;
 
 import bergdb.common.StringUtil;
+import bergdb.pub.DbArray;
+import bergdb.pub.DbBoolean;
+import bergdb.pub.DbByteArray;
+import bergdb.pub.DbDouble;
+import bergdb.pub.DbLong;
+import bergdb.pub.DbObject;
+import bergdb.pub.DbString;
+import bergdb.pub.DbValue;
 import bergdb.pub.ObjectCreationException;
 
 /**
@@ -42,9 +50,12 @@ import bergdb.pub.ObjectCreationException;
  * <p>No setAccessible() and no deep reflection: a Data Object's constructor and stored fields
  * are public.</p>
  *
+ * <p>Internal, not API. The class, toDbObject(), toJavaObject() and convert() are public for
+ * bergdb.pub's DbObject and DbArray, which call them (bergdb 020-10, step B3).</p>
+ *
  * @author Frans Lundberg
  */
-final class DataObjects {
+public final class DataObjects {
     private DataObjects() {}
 
     /** The field that wraps an array put at the top (020-09, section 4.6). */
@@ -367,7 +378,7 @@ final class DataObjects {
      * @throws IllegalArgumentException  If 'x' or a value in it cannot be stored exactly
      *      (020-09, section 4.7), naming the path, before anything is written.
      */
-    static DbObject toDbObject(Object x) {
+    public static DbObject toDbObject(Object x) {
         if (x == null) {
             throw new IllegalArgumentException("object == null not allowed: BergDB stores no "
                     + "null (bergdb 020-09, section 4.3)");
@@ -577,15 +588,15 @@ final class DataObjects {
      *      is not (020-09, section 3.3), or a constructor throws (section 5.2).
      */
     @SuppressWarnings("unchecked")
-    static <T> T toJavaObject(DbObject s, Class<T> c) {
+    public static <T> T toJavaObject(DbObject s, Class<T> c) {
         checkGet(c);
-        byte[] b = s.bytesInternal();
+        byte[] b = s.getBytes();        // its own array; a copy for a nested object
         if (isScalarType(c) || c.isArray()) {
             byte[] name = c.isArray() ? ARRAY_NAME : PRIMITIVE_NAME;
-            int p = ObjectFormat.find(b, s.startInternal(), s.endInternal(), name);
+            int p = ObjectFormat.find(b, 1, b.length, name);
             return p < 0 ? null : (T) convert(b, p, c);
         }
-        return (T) make(b, s.startInternal(), c);
+        return (T) make(b, 1, c);
     }
 
     /** A new 'c' with the stored fields of the object at 'p' (020-09, section 5.3). */
@@ -632,7 +643,7 @@ final class DataObjects {
      * The value at 'p' of checked bytes as the type 't', by 020-09, section 5.4: exact if it
      * fits, else the nearest value, else the type's zero; boxed for a primitive type.
      */
-    static Object convert(byte[] b, int p, Class<?> t) {
+    public static Object convert(byte[] b, int p, Class<?> t) {
         if (t == boolean.class || t == Boolean.class) {
             return toBoolean(b, p);
         } else if (t == double.class || t == Double.class) {

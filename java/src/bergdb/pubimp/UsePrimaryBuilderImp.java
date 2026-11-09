@@ -10,6 +10,7 @@ import bergdb.core.Db;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
+import bergdb.pub.DbObject;
 import bergdb.pub.Kv;
 import bergdb.pub.UsePrimaryBuilder;
 import bergdb.pub.util.BadFormatException;

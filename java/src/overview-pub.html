@@ -32,6 +32,12 @@ a get converts each stored field to its field's type, best effort. In full:
 <a href="bergdb/pub/package-summary.html#null">Null and absent fields</a>, in the package
 bergdb.pub.</p>
 
+<p>The stored object itself is bergdb.pub.DbObject: an object as BergDB stores it at a key,
+in its object format (format 2), with typed lookups of its fields; a get as DbObject.class
+gives it exactly, whatever class put it. DbObject.Builder makes one field by field, and
+DbArray and the value classes (DbBoolean, DbLong, DbDouble, DbString, DbByteArray) are its
+values.</p>
+
 <pre>
 // Example code:
 // A complete program to put/get/delete a string under the name (key) "/a".

@@ -6,6 +6,10 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
+import bergdb.pub.DbDouble;
+import bergdb.pub.DbObject;
+import bergdb.pub.DbString;
+import bergdb.pub.DbValue;
 import bergdb.pub.Factory;
 
 /**

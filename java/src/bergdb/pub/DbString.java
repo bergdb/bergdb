@@ -1,4 +1,4 @@
-package bergdb.pubimp;
+package bergdb.pub;
 
 
 import java.nio.charset.StandardCharsets;
@@ -6,14 +6,14 @@ import java.nio.charset.StandardCharsets;
 import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pubimp.ObjectFormat;
 
 /**
- * The DbObject type for a string stored in UTF-8 format.
- * The type char for this type is 's'.
+ * A string value: the type char 's', DbObject.STRING. Immutable.
  *
  * <p>A string is Unicode text, stored as well-formed UTF-8 (RFC 3629), as every string
- * BergDB stores: one with a lone surrogate is refused (bergdb 021-04; the Pub API's package
- * bergdb.pub, "Strings").</p>
+ * BergDB stores: one with a lone surrogate is refused (bergdb 021-04; the package's
+ * {@linkplain bergdb.pub##strings Strings}).</p>
  * 
  * @author Frans Lundberg
  */
@@ -36,7 +36,7 @@ public final class DbString extends DbValue {
             throw new IllegalArgumentException("value == null not allowed: BergDB stores no "
                     + "null, leave the field out (bergdb 020-04, section 2.4)");
         }
-        if (PubKeys.hasLoneSurrogate(value)) {
+        if (StringUtil.hasLoneSurrogate(value)) {
             throw PathException.loneSurrogate("string");
         }
         // Counted before it is made, if it may be too long (2026-11-09, bergdb 020-08,
@@ -74,6 +74,11 @@ public final class DbString extends DbValue {
     
     // Should we convert string to int, long, double? Could be done is string is parsable with Double.parseDouble(), Long.parseLong(), ...
     
+    /**
+     * The value.
+     *
+     * @return The string.
+     */
     public String toStringValue() {
         return value;
     }
@@ -85,7 +90,7 @@ public final class DbString extends DbValue {
     // ----
     
     @Nano
-    public static void test0() {
+    private static void test0() {
         Assert.assertEquals("abc", new DbString("abc").toStringValue());
         Assert.assertEquals("", new DbString("").toStringValue());
         try {
@@ -97,7 +102,7 @@ public final class DbString extends DbValue {
     }
     
     @Nano
-    public static void testSerialize0() {
+    private static void testSerialize0() {
         byte[] bytes = new byte[100];
         String s = "abc";
         DbString d0 = new DbString(s);
@@ -109,7 +114,7 @@ public final class DbString extends DbValue {
     }
     
     @Nano
-    public static void testSerialize1() {
+    private static void testSerialize1() {
         byte[] bytes = new byte[10];
         
         DbString d0 = new DbString("");
