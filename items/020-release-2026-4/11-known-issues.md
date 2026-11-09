@@ -49,16 +49,18 @@ A known cost, accepted, not a fault:
 
 | Row | What | State |
 |---|---|---|
-| C-M8 | A `w()` of one String or byte[] put at an object key: 2.6 µs, not 2.3 | accepted for 2026.4 |
+| C-M8 | A `w()` of one String or byte[] put at an object key: 2.6 µs, not 2.3 | accepted by Frans |
 
 C-M8 is 13 % (020-12, M8; a `.txt` key and 100 puts in one `w()` are as
 before): the cost of 020-10, section 5.1's rule (I1, 249b684: the read
 time fixed first, the directory's hash in the read set, the index
 manager's lock), which fixes 015-28, 015-43 and 015-46 for every write at
-an object key. Accepted under Frans's delegation of 22:17 for 2026.4. A
-later reduction is possible, such as a lock-free read of an immutable
-snapshot of the index set for directories without an index: Frans's to
-decide.
+an object key. Accepted under Frans's delegation of 22:17 for 2026.4, and
+by Frans on 2026-11-09, 07:18 ("Yes"): the time does not concern him, the
+coupling does (that the index layer sees every write at an object key, of
+any value), which 017-09 studies for a later release. A later reduction of
+the time is possible, such as a lock-free read of an immutable snapshot of
+the index set for directories without an index; not planned.
 
 For Frans to read: the decisions taken under his delegation (020-04 Q6;
 020-07 Q2 to Q5; 020-09's 24; 020-10's 22; C-M8; and the night's others,

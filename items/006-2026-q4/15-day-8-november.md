@@ -265,6 +265,12 @@ The night, in order (each gated with BEFORE COMMIT OK; reviews read-only):
    that fixes 015-28, 015-43 and 015-46 (020-12, 020-11). Recommended:
    accept for 2026.4; a lock-free snapshot of the index set for
    directories without an index can come later.
+   *Decided* (Frans, 2026-11-09, 07:18): accepted for 2026.4. "I am not
+   currently concerned with the cost in time. I am more concerned with
+   layers and complexity." The Core Layer knows nothing of indexes (010-01,
+   P12, written down at his request, 07:18); less coupling between the
+   index layer and the Pub layer's writes is a study for a later release
+   (017-09).
 3. **The release of 2026.4**: when to cut it, with 2026.3's candidate
    checks (`night.sh large`, the jar tests on s1, jcstress). Recommended:
    today or tomorrow, after your reading.
