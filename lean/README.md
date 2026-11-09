@@ -120,7 +120,13 @@ generation, a creation's G is new. It imports nothing of SIS. The proofs:
 BergDB/Index/Inv.lean, BergDB/Index/Steps.lean; while a build step holds the
 manager's lock, only writers that could commit when it took the lock can
 refuse it, each once (BergDB/Index/Locked.lean); runs of the model:
-BergDB/Index/Example.lean.
+BergDB/Index/Example.lean. Liveness over runs with weak and strong fairness
+(BergDB/Index/Liveness.lean): a cleanup ends (`cleanup_ends`, weak fairness
+of its thread, finitely many crashes), and a build ends, its definition
+active or deleted (`build_ends`, strong fairness of the build's thread, the
+manager's lock free again and again, finitely many crashes and retries);
+and a run in which weak fairness does not give it, with two names
+(`weak_fairness_not_enough`, BergDB/Index/Starve.lean).
 
 
 Build and run
@@ -213,10 +219,11 @@ Check/R4.lean) are checked the same way:
     #print axioms SIS.Fast.step_eq_fast
     #print axioms SIS.TopBridge.r4Fast_sound
 
-The user indexes' theorems (BergDB/Index/Theorems.lean, 020-29) the same
-way, each printing `[propext, Classical.choice, Quot.sound]`:
+The user indexes' theorems (BergDB/Index/Theorems.lean and
+BergDB/Index/Liveness.lean, 020-29) the same way, each printing
+`[propext, Classical.choice, Quot.sound]`:
 
-    import BergDB.Index.Theorems
+    import BergDB.Index.Starve
     #print axioms BergDB.Index.reach_inv
     #print axioms BergDB.Index.index_is_function
     #print axioms BergDB.Index.no_stale_entry
@@ -224,6 +231,10 @@ way, each printing `[propext, Classical.choice, Quot.sound]`:
     #print axioms BergDB.Index.gens_accounted
     #print axioms BergDB.Index.start_accepted
     #print axioms BergDB.Index.gen_fresh
+    #print axioms BergDB.Index.locked_phase
+    #print axioms BergDB.Index.cleanup_ends
+    #print axioms BergDB.Index.build_ends
+    #print axioms BergDB.Index.weak_fairness_not_enough
 
 
 What to read
