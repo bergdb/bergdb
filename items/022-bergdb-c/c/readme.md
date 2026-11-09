@@ -663,7 +663,13 @@ Raw output goes to `/Users/f/fl/bench/022/out/` by default (`OUT=`).
   against C, in batches of `cross.sh random`.
 * `test/stress/long.sh SEED N`: a long run with restarts, reclaim and a
   small budget, in both builds and under `leaks`.
-* `test/stress/corrupt.sh`: corrupt databases started by both dumpers.
+* `test/stress/corrupt.sh`: corrupt databases started by both dumpers:
+  the same status and text, and the same messages (022-02, D6): a
+  refused start's, a refused directory's and a failed read's exception,
+  its name and message, byte for byte (C's cut at 239 bytes); both run in
+  `OUT` with paths from there, and a path names each dumper's own copy.
+  C writes nothing into a database it refuses, but for 014-01's zero
+  fill, counted as the corrupt-stream set counts it.
 * `test/stress/corruptset.sh`: **the corrupt-stream set** (022-01, step
   4): damaged copies of streams that release 2026.3's Java writes, made
   by `test/cross/java/CorruptSet.java` with the release's own classes:

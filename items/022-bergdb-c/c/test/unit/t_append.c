@@ -737,6 +737,51 @@ TEST(append_dir_unlistable) {
     CHECK_MEM_ZERO(&am);
 }
 
+/* A directory in place of bergdb.lock, or of the last file: Java's
+ * FileStream opens each with new RandomAccessFile(file, "rw") (lockDir;
+ * FileStreamIo.open, by openForRw), whose FileNotFoundException's message is
+ * the path and the reason, "PATH (Is a directory)"; the open fails with
+ * Java's name and text, nothing left open; with the directory removed, the
+ * stream opens with its first file. Before,
+ * C's texts were its own, "Could not lock PATH: Is a directory" and "Cannot
+ * open PATH for writing: Is a directory", named IOException (bergdb 022-02,
+ * D6: corrupt.sh's lock-dir and last-as-dir). */
+TEST(append_dir_open_is_a_directory) {
+    struct stream s;
+    char path[512], want[600];
+    mem_init(&am);
+    REQUIRE(new_dir());
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);
+    CHECK_EQ(stream_append(&s, zeros, 250000, &ae), ERR_OK);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_OK);
+
+    snprintf(path, sizeof path, "%s/bergdb.lock", adir);
+    REQUIRE(unlink(path) == 0);
+    REQUIRE(mkdir(path, 0777) == 0);
+    snprintf(want, sizeof want, "%s (Is a directory)", path);
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_IO);
+    CHECK(strcmp(ae.java, "FileNotFoundException") == 0);
+    CHECK(strcmp(ae.text, want) == 0);
+    CHECK_MEM_ZERO(&am);
+    REQUIRE(rmdir(path) == 0);
+
+    snprintf(path, sizeof path, "%s/00000000000002.bergdb", adir);
+    REQUIRE(unlink(path) == 0);
+    REQUIRE(mkdir(path, 0777) == 0);
+    snprintf(want, sizeof want, "%s (Is a directory)", path);
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_IO);
+    CHECK(strcmp(ae.java, "FileNotFoundException") == 0);
+    CHECK(strcmp(ae.text, want) == 0);
+    CHECK_MEM_ZERO(&am);
+    REQUIRE(rmdir(path) == 0);
+
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);
+    CHECK_EQ(stream_length(&s), 200000);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_OK);
+    remove_dir();
+    CHECK_MEM_ZERO(&am);
+}
+
 const struct test append_tests[] = {
     TEST_ENTRY(append_rs_test1),
     TEST_ENTRY(append_rs_large),
@@ -755,5 +800,6 @@ const struct test append_tests[] = {
     TEST_ENTRY(append_dir_first_file),
     TEST_ENTRY(append_dir_cut_at_length),
     TEST_ENTRY(append_dir_unlistable),
+    TEST_ENTRY(append_dir_open_is_a_directory),
     TEST_END
 };

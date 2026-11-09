@@ -1189,3 +1189,66 @@ counted by `node_text`; `allocfail` 628 runs; `examples` OK. On
 `0e4e27f` with this entry, before the rebases: the whole corrupt set
 `CORRUPTSET OK` (6,253 copies, the control's counts and these six, 198
 s) and `corrupt.sh` `CORRUPT OK` (144 variants). No difference remains.
+
+2026-11-09, D6, `corrupt.sh` (worker t7). Frans's decision of 12:25
+(section 7, D6) for the second harness that compares exceptions:
+`corrupt.sh` compared a refused start's exception name, the statuses
+and a failed read's position, not the messages. It now compares, as
+`corruptset.sh` does, the name and message of a refused start (status
+1), of a refused directory (status 3: `FileStream`'s exception leaves
+Java's `Dump`, and `bergdb-dump` prints "the directory DIR: NAME,
+MESSAGE"; not compared at all before) and of a read that failed after
+the start (Java's from its stack trace, a `DbFailedException` with its
+cause's message), byte for byte, C's cut at its 239 bytes. Java's dumps
+run through `CorruptSet -dump`, one at a time, each with its own
+standard error (`Batch`'s `Dump` wrote to the JVM's). Both dumpers run
+in `OUT` with paths from there, so that `FileStream`'s texts, which name
+the directory or a file, are short (with absolute paths C's cut fell
+within the first path), and a path names the dumper's own copy,
+`v/SEED/VARIANT/a` or `.../b`, the one difference allowed. The first run
+(absolute paths, before the rule for the copies' paths): 44 differences,
+all directory refusals; 36 the paths alone, and 8 C's own texts, a
+directory in place of `bergdb.lock` or of the last file (`lock-dir` and
+`last-as-dir` in each base): Java's `new RandomAccessFile(file, "rw")`
+(`lockDir`; `FileStreamIo.open`, by `openForRw`) throws
+`FileNotFoundException`, "PATH (Is a directory)", where C gave
+`IOException`, "Could not lock PATH: Is a directory" and "Cannot open
+PATH for writing: Is a directory". Fixed: `plat.c`'s `real_open_rw` and
+`plat_lock`'s open give Java's name and text (`plat.h`); test
+`t_append.c`'s `append_dir_open_is_a_directory` (both cases, nothing
+left open, then the stream opened again), 4 checks failing before the
+fix. No
+class of messages is counted as known: every message is Java's, C's cut
+at 239 bytes where Java's is longer ("Existing files in dir ...", whose
+positions at the end are past the cut). And 014-01's zero fill is
+counted as known as `corruptset.sh` counts it (both refused with the
+same status, the two directories alike after the starts), where the
+script failed on it: `HEADERS`'s flip of a record size's low byte, as
+022-01's step 2 found it on bases 501 and 503 ("a matter for both"). The
+variants of random bytes differ from run to run: `last-longer`'s record
+size is random, refused when negative, zero-filled (up to 2 GB a copy)
+and started when positive, so the four bases split between refused and
+started anew each run; each outcome is compared as it comes, and no
+class is counted by variant.
+
+The runs, F53 under a load of about 25 to 31, `nice -n 10`, against the
+pin (`git:82edabf`) on `e4be144` with this change: the four bases
+`CORRUPT OK`, 144 variants (84 refused by both, 38 started, 22 with a
+read failing later; 106 messages compared: 40 refused starts, 44
+refused directories, 22 failed reads; 0 differ; 110 s); `HEADERS=2` on
+501 and 503, `CORRUPT OK`, 200 variants, 121 messages, 0 differ, 2 of
+014-01's case (96 s); `HEADERS=2` on 502 and 504, `CORRUPT OK`, 200
+variants, 127 messages, 0 differ, 3 of 014-01's case (285 s). Negative
+control, the new script with C at `e4be144` (`CBUILD=`): `CORRUPT
+FAILED`, 8 differences, the 8 `FileNotFoundException` refusals.
+Against this pin no other text differed, the start's and node
+validation's among them (`DbStarter`'s "startup error, node ... not
+found", checksums, "Bad lastByte"), which Java's 021-15 changes and
+worker t8 ports. `c/readme.md`, section 10's `corrupt.sh`.
+
+The gate against the pin (`git:82edabf`) on `e4be144` with this change:
+`C BEFORE COMMIT OK (455 s)`, F53 under a load of about 25; `unit` 398
+tests (397 in the release build); `func` 28; `cross quick` 0
+differences (23 workloads, 69 crash cuts, 85 corrupt variants, 2 in
+turns, 46 budget runs); `writecheck` 0; `corruptset` 63 copies;
+`allocfail` 628 runs; `examples` OK. No difference remains.

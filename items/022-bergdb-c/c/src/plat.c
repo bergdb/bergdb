@@ -244,11 +244,12 @@ enum err_code plat_mkdirs(const char *dir, struct err *e) {
     return ERR_OK;
 }
 
+/* new RandomAccessFile(file, "rw"): its FileNotFoundException's message is
+ * the path and the reason, "PATH (Is a directory)" (bergdb 022-02, D6). */
 static enum err_code real_open_rw(const char *path, int *fd, struct err *e) {
     *fd = open(path, O_RDWR | O_CREAT, 0666);
     if (*fd < 0) {
-        return err_set(e, ERR_IO, "IOException", "Cannot open %s for writing: %s", path,
-                strerror(errno));
+        return err_set(e, ERR_IO, "FileNotFoundException", "%s (%s)", path, strerror(errno));
     }
     return ERR_OK;
 }
@@ -330,10 +331,10 @@ enum err_code plat_lock(const char *dir, const char *name, const char *text, int
         return err_set(e, ERR_IO, "IOException", "Cannot create %s: %s", path,
                 strerror(errno));
     }
+    /* new RandomAccessFile(file, "rw"), as real_open_rw. */
     f = open(path, O_RDWR);
     if (f < 0) {
-        return err_set(e, ERR_IO, "IOException", "Could not lock %s: %s", path,
-                strerror(errno));
+        return err_set(e, ERR_IO, "FileNotFoundException", "%s (%s)", path, strerror(errno));
     }
     memset(&fl, 0, sizeof fl);
     fl.l_type = F_WRLCK;

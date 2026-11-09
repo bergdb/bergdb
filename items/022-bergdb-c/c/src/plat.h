@@ -75,7 +75,8 @@ void plat_random(uint8_t *buf, int32_t n);
 enum err_code plat_mkdirs(const char *dir, struct err *e);
 
 /* Opens 'path' for reading and writing, made if missing (Java's
- * RandomAccessFile "rw": mode 0666, less the umask). ERR_IO. */
+ * RandomAccessFile "rw": mode 0666, less the umask). ERR_IO, with its
+ * FileNotFoundException and text, "PATH (REASON)". */
 enum err_code plat_open_rw(const char *path, int *fd, struct err *e);
 
 /* Writes n bytes of buf at offset 'off' of the file, all of them. ERR_IO. */
@@ -117,7 +118,8 @@ enum err_code plat_force_dir(const char *dir, struct err *e);
  * waiting: fcntl's F_SETLK, as Java's FileChannel.tryLock on macOS, so
  * that Java and C exclude each other. *fd holds the lock until
  * plat_close. ERR_IN_USE ("DirectoryInUseException") if another process
- * holds it; ERR_IO. A POSIX lock is the process's: a second lock of the
+ * holds it; ERR_IO (an open that fails: FileNotFoundException, as
+ * plat_open_rw). A POSIX lock is the process's: a second lock of the
  * same file in this process is not refused, and closing either descriptor
  * releases it (Java keeps a set of its own; a C caller opens a directory
  * once). */

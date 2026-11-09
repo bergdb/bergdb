@@ -8,10 +8,24 @@
 # place of a file, bergdb.lock as garbage, missing or a directory, and bit flips near the
 # stream's end (where a start reads). Checked per variant: both dumpers give the same
 # exit status and the same text (a refused start prints "start error=NAME", Java's
-# exception's name); C never crashes (no sanitizer report, no signal); and when C
-# refuses the start, C's copy is as it was, every file and byte (C never writes into a
-# database it refuses). Java writing into a database that it refuses is reported, not
-# counted.
+# exception's name); C never crashes (no sanitizer report, no signal); when C refuses
+# the start, C's copy is as it was, every file and byte (C never writes into a database
+# it refuses), but for 014-01's known case, as corruptset.sh counts it: recovery's zero
+# fill of a damaged size written, then the start refused, by both, the two directories
+# alike (a flip in a record size's low byte, HEADERS). And the messages (bergdb 022-02,
+# D6): the exception's name and message of a refused start (status 1), of a refused
+# directory (status 3: FileStream's exception leaves Java's Dump; C's bergdb-dump prints
+# "the directory DIR: NAME, MESSAGE") and of a read that failed after the start (Java's
+# from its stack trace, a DbFailedException with its cause's message; C's "A read
+# failed: " and the cause's), Java's (standard error, each dump's own through CorruptSet's
+# -dump) and C's, byte for byte, C's cut at its 239 bytes. Both dumpers run in OUT with
+# paths from there, so that a path in a message (FileStream's texts name the directory
+# or a file) is short; it names the dumper's own copy, v/SEED/VARIANT/a or .../b, the one
+# difference allowed. The variants of random bytes (last-longer, mid-longer,
+# extra-garbage-file, lock-garbage) differ from run to run: last-longer's record size is
+# random, refused when negative, zero-filled (up to 2 GB a copy) and started when
+# positive; each outcome is compared as it comes, and no class is counted by variant.
+# Java writing into a database that it refuses is reported, not counted.
 #
 # Usage: test/stress/corrupt.sh
 #   OUT     (environment) /Users/f/fl/bench/022/out/corrupt by default
@@ -27,11 +41,12 @@ set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 CDIR=$(cd "$HERE/../.." && pwd)
 OUT=${OUT:-/Users/f/fl/bench/022/out/corrupt}
-CBUILD=${CBUILD:-$CDIR/build}
+CBUILD=$(cd "${CBUILD:-$CDIR/build}" 2> /dev/null && pwd)
 [ -n "${JAVA_HOME:-}" ] || JAVA_HOME=/opt/homebrew/opt/openjdk
 JAVA=$JAVA_HOME/bin/java
 CLASSES=$CDIR/build/java/classes
 export ASAN_OPTIONS=exitcode=86
+[ -x "$CBUILD/test/bergdb-dump" ] || { echo "no bergdb-dump in C's test build"; echo "CORRUPT FAILED"; exit 1; }
 FAILS=0
 fail() { FAILS=$((FAILS + 1)); echo "DIFFERENCE $*"; }
 T0=$(date +%s)
@@ -151,23 +166,29 @@ for b in $BASES; do
         esac
         cp -R "$s" "$d/a"; cp -R "$s" "$d/b"
         (cd "$d/b" && find . | sort && find . -type f | sort | xargs shasum 2>/dev/null) > "$d/b.before"
-        echo "dump $d/dump-a.txt -maxnode $m $d/a $OUT/base/$seed/scan.txt" >> "$OUT/dump-a.jobs"
-        echo "dump $d/dump-b.txt -maxnode $m $d/b $OUT/base/$seed/scan.txt" >> "$OUT/dump-b.jobs"
+        # Paths from OUT, where both dumpers run: the messages that name a file are short.
+        r=v/$seed/$v
+        echo "dump $r/dump-a.txt -maxnode $m $r/a base/$seed/scan.txt" >> "$OUT/dump-a.jobs"
+        echo "dump $r/dump-b.txt -maxnode $m $r/b base/$seed/scan.txt" >> "$OUT/dump-b.jobs"
         NV=$((NV + 1))
     done
 done
 echo "variants: $NV, made in $(( $(date +%s) - T0 )) s"
 
-"$JAVA" -ea -Xmx2g -cp "$CLASSES" bergdb.core.Batch "$OUT/dump-a.jobs" > "$OUT/dump-a.log" 2>&1 &
+# Both dumpers in OUT. Java's dumps one at a time, each with its standard error in
+# OUT.err (CorruptSet's -dump), as C's.
+(cd "$OUT" && exec "$JAVA" -ea -Xmx2g -cp "$CLASSES" bergdb.core.CorruptSet -dump 1 dump-a.jobs) \
+    > "$OUT/dump-a.log" 2>&1 &
 pa=$!
-while read -r kind out args; do
+(cd "$OUT" && while read -r kind out args; do
     # shellcheck disable=SC2086
     "$CBUILD/test/bergdb-dump" $args < /dev/null > "$out" 2> "$out.err"
     echo $? > "$out.exit"
-done < "$OUT/dump-b.jobs"
+done < dump-b.jobs)
 wait $pa
 
-NREF=0; NACC=0; JW=0; NREAD=0
+NREF=0; NACC=0; JW=0; NREAD=0; K014=0
+: > "$OUT/texts.jobs"
 for d in "$OUT"/v/*/*; do
     v=${d#$OUT/v/}
     ea=$(cat "$d/dump-a.txt.exit" 2> /dev/null || echo missing); eb=$(cat "$d/dump-b.txt.exit")
@@ -186,6 +207,7 @@ for d in "$OUT"/v/*/*; do
         pa=$(grep -o 'spos:* [0-9]*' "$d/dump-a.txt.err" | head -1 | tr -dc 0-9)
         pb=$(grep -o 'spos:* [0-9]*' "$d/dump-b.txt.err" | head -1 | tr -dc 0-9)
         [ -n "$pa" ] && [ "$pa" = "$pb" ] || fail "$v: the failed reads' positions: Java ${pa:-none}, C ${pb:-none}"
+        echo "$v read" >> "$OUT/texts.jobs"
         echo "read failed $v: spos $pb, $(grep -v '^bergdb-dump: start read' "$d/dump-b.txt.err" | head -1 | cut -c1-160)" >> "$OUT/refused.txt"
         continue
     fi
@@ -196,11 +218,19 @@ for d in "$OUT"/v/*/*; do
     if [ "$eb" != 0 ]; then
         NREF=$((NREF + 1))
         (cd "$d/b" && find . | sort && find . -type f | sort | xargs shasum 2>/dev/null) > "$d/b.after"
-        cmp -s "$d/b.before" "$d/b.after" || fail "$v: C refused the start and changed the directory"
         (cd "$d/a" && find . | sort && find . -type f | sort | xargs shasum 2>/dev/null) > "$d/a.after"
-        if ! cmp -s "$d/b.before" "$d/a.after"; then
+        if ! cmp -s "$d/b.before" "$d/b.after"; then
+            # 014-01's known case, as corruptset.sh counts it: recovery's zero fill of a
+            # damaged size written, then the start refused, by both, the directories alike.
+            if [ "$ea" = "$eb" ] && cmp -s "$d/a.after" "$d/b.after"; then
+                K014=$((K014 + 1)); echo "known 014-01: $v: both wrote the zero fill, then refused"
+            else
+                fail "$v: C refused the start and changed the directory"
+            fi
+        elif ! cmp -s "$d/b.before" "$d/a.after"; then
             JW=$((JW + 1)); echo "note: $v: Java refused the start and changed the directory"
         fi
+        case $eb in 1) echo "$v start" ;; 3) echo "$v open" ;; esac >> "$OUT/texts.jobs"
         echo "refused $v: exit $eb $(grep '^start error' "$d/dump-b.txt") $(grep -v '^bergdb-dump: start read' "$d/dump-b.txt.err" | head -1 | cut -c1-160)" >> "$OUT/refused.txt"
     else
         NACC=$((NACC + 1))
@@ -208,7 +238,77 @@ for d in "$OUT"/v/*/*; do
         diff -rq "$d/a" "$d/b" > /dev/null 2>&1 || fail "$v: the directories after the starts differ"
     fi
 done
-echo "starts: $NV variants, $NREF refused by both, $NACC started by both, $NREAD started by both with a read failing later; Java changed $JW directories it refused; $(( $(date +%s) - T0 )) s"
+# The messages: a refused start's, a refused directory's and a failed read's exception,
+# its name and message (texts.txt: each, Java's and C's).
+python3 -I - "$OUT" > "$OUT/texts.txt" <<'EOF2'
+import os, re, sys
+out = sys.argv[1]
+TEXT = 239                      # C's text, cut at ERR_TEXT - 1 bytes (src/err.h)
+UTF = ('utf-8', 'surrogateescape')
+
+def read(p):
+    try:
+        with open(p, 'rb') as f:
+            return f.read()
+    except OSError:
+        return b''
+
+def text(b):                    # bytes as str, and back by .encode(*UTF): exact
+    return b.decode(*UTF)
+
+def java_error(err):
+    """Java's exception: Dump's line of a refused start, or the stack trace's first line
+    (an exception that left Dump: a directory refused, status 3; a read, status 3 with C's
+    5) and a DbFailedException's cause: (simple name, message), or None."""
+    lines = text(err).splitlines()
+    for i, line in enumerate(lines):
+        m = re.match(r'Dump: the start failed: (\w+), (.*)$', line)
+        if m:
+            return m.group(1), m.group(2)
+        m = re.match(r'(?:[\w$]+\.)*(\w+(?:Exception|Error))(?:: (.*))?$', line)
+        if m:
+            name, msg = m.group(1), m.group(2) if m.group(2) is not None else 'null'
+            for c in lines[i + 1:]:
+                cm = re.match(r'Caused by: (?:[\w$]+\.)*(\w+)(?:: (.*))?$', c)
+                if cm and name == 'DbFailedException':
+                    return name, 'A read failed: ' + (cm.group(2) or 'null')
+            return name, msg
+    return None
+
+def c_error(err):
+    """C's: bergdb-dump's line of a refused start, a failed read or a refused directory."""
+    for line in text(err).splitlines():
+        m = re.match(r'bergdb-dump: (?:the start|a getMany|a getOne) failed: (\w+), (.*)$', line)
+        if m:
+            return m.group(1), m.group(2)
+        m = re.match(r'bergdb-dump: the directory .*?: (\w+), (.*)$', line)
+        if m:
+            return m.group(1), m.group(2)
+    return None
+
+nd, n = 0, 0
+for line in read(os.path.join(out, 'texts.jobs')).decode().splitlines():
+    v, kind = line.split(' ')
+    d = os.path.join(out, 'v', v)
+    j = java_error(read(os.path.join(d, 'dump-a.txt.err')))
+    c = c_error(read(os.path.join(d, 'dump-b.txt.err')))
+    if j is not None:
+        # A file's path names the dumper's own copy: Java's v/V/a, C's v/V/b.
+        j = j[0], j[1].replace('v/%s/a' % v, 'v/%s/b' % v)
+    n += 1
+    same = j is not None and c is not None and j[0] == c[0]
+    if same:
+        jm, cm = j[1].encode(*UTF), c[1].encode(*UTF)
+        same = jm == cm or (len(cm) == TEXT and jm[:TEXT] == cm)
+    print('%s %s: Java %r, C %r%s' % (v, kind, j, c, '' if same else ' DIFFERENCE'))
+    nd += not same
+print('messages: %d compared, %d differ' % (n, nd))
+EOF2
+while read -r line; do
+    case $line in *' DIFFERENCE') fail "the messages: ${line% DIFFERENCE}" ;; esac
+done < "$OUT/texts.txt"
+tail -1 "$OUT/texts.txt"
+echo "starts: $NV variants, $NREF refused by both, $NACC started by both, $NREAD started by both with a read failing later; $K014 of 014-01's known case; Java changed $JW other directories it refused; $(( $(date +%s) - T0 )) s"
 if [ $FAILS = 0 ]; then
     echo "CORRUPT OK: $NV variants"
     rm -rf "$OUT/v"
