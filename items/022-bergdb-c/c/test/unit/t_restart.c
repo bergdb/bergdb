@@ -1246,7 +1246,7 @@ TEST(restart_one_object_per_node) {
  * "/k/N" and "/long/N" for N below 300, each a put of 1 to 60 random bytes or (one in
  * five) a delete, at times 20, 30, ...; a restart every restartEvery, and after it
  * every key checked at the latest time and at ten earlier times (a transaction's,
- * one less, or one more) against the model. C's generator, not java.util.Random. */
+ * or one less) against the model. C's generator, not java.util.Random. */
 #define L2_KEYS 600
 #define L2_EVENTS 64
 

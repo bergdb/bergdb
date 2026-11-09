@@ -16,12 +16,14 @@ and `c/test/func/f_*.c`.
 
 # 1. In short
 
-185 test methods: 131 P, 37 W, 16 N, 1 L.
+185 test methods: 131 P, 38 W, 16 N, 0 L.
 
-The 37 written now are 27 new C tests, each passing in both builds; none
-failed before a fix, so they found no fault of C. Most of them are
-restarts, which C's unit tests had only for reclaim's settings, the
-refusals and the eviction:
+The 38 written now are 28 new C tests, each passing in both builds; none
+failed before a fix, so they found no fault of C (section 3.4: some of
+them fail when a fault they aim at is put into C). Most of them are
+restarts: C's unit tests restarted a database only for reclaim's
+settings and the eviction, its functional tests in `f_start.c`,
+`f_budget.c` and `f_api.c`:
 
 * `t_restart.c` (new, 19 tests): DbTesterRestart's restarts through
   `db.h`, a database in a directory restarted by `db_close` and
@@ -39,9 +41,10 @@ refusals and the eviction:
   checked at eleven times after each restart, and the stream with
   restarts the one without, byte for byte; getMany after a restart
   (DbTesterGetMany.test4); random database ids.
-* `f_restart.c` (new, 2 tests, through `bergdb.h`): the stream after a
+* `f_restart.c` (new, 3 tests, through `bergdb.h`): the stream after a
   decrease of the startup distance with restarts, byte for byte (Java's
-  f-test, smaller); values of 1 MB and of 20 MB over a restart.
+  f-test, smaller); values of 1 MB and of 20 MB over a restart; a restart
+  after 131,300 transactions, past top node 32,768 (Java's f-test).
 * `t_snode.c` (3 tests): the node parsers' refusals with Java's exception
   and text: a top node's negative or too large pointer count, an ordinal
   field that does not fit the node's slots, another format version of
@@ -52,16 +55,15 @@ refusals and the eviction:
 
 Run times in the test build on F53 under a load of 25 to 35: each unit
 test of `t_restart.c` 0.1 to 1.3 s, about 6 s in all, nearly all of it
-the forces of the opens and closes (CPU about 0.5 s); the two of
-`f_restart.c` about 5 s; the others a few milliseconds.
+the forces of the opens and closes (CPU about 0.5 s); the three of
+`f_restart.c` about 8 s; the others a few milliseconds.
 
 
 # 2. The classes
 
 ## 2.1 DbTesterRestart
 
-Written now, in `t_restart.c`, and `f_restart.c` for the one named
-`func_`:
+Written now, in `t_restart.c`, and in `f_restart.c` those named `func_`:
 
 | Method | P/W/N/L | C test, or the reason |
 |---|---|---|
@@ -83,6 +85,7 @@ Written now, in `t_restart.c`, and `f_restart.c` for the one named
 | testSameStreamAfterDecreaseWithRestartsF      | W | `func_restart_same_stream_after_decrease` |
 | testLastTransPosAfterRestart                  | W | `restart_last_trans_pos` |
 | testRestartAfterTransactionsThatChangeNothing | W | `restart_after_changing_nothing` |
+| testRestartAfterManyTopNodes                  | W | `func_restart_after_many_top_nodes` |
 | testOrdinalsAcrossBoundaries                  | W | `restart_ordinals_across_boundaries` |
 | testEndOfOrdinals                             | W | `restart_end_of_ordinals` |
 | testOrdinalsWithReclaim                       | W | `restart_ordinals_with_reclaim` |
@@ -121,7 +124,6 @@ streams with Java's and C's dumpers and compares the texts byte for byte:
 | testVersionHighBytesRefused             | P | `sdb_refusals_2026_3` |
 | testLevel2RestartsKeepAllValuesF        | P | unit size: W; f size passed once (3.3) |
 | testLevel2SameStreamWithRestartsF       | P | unit size: W; f size passed once (3.3) |
-| testRestartAfterManyTopNodes            | L | section 4 |
 
 ## 2.2 DbTesterGetMany
 
@@ -406,14 +408,30 @@ restarts every 40) were run once in the test build, the counts changed
 and nothing else: both passed, in 3 s.
 
 
+## 3.4 Negative controls
+
+Each in a copy of `c/`, the test build:
+
+* A start that leaves the meta block's last transaction as the meta block
+  on disk has it (Java's bug of 2026-10-12): `restart_last_trans_pos` and
+  `restart_level2_same_stream` fail, and `t_reclaim.c`'s
+  `reclaim_settings_kept_over_restarts`.
+* A top node's ordinal written with Java's int shift, as before its fix of
+  StoredTopNode.toLongs: `func_restart_after_many_top_nodes` fails at the
+  restart, as Java's test did.
+* Java's comments say that its Level 2 tests fail without
+  NodeCollection.resolvePointers() and without canonicalNode()'s use of
+  the stored position. In C, `restart_level2_same_stream` and
+  `restart_level2_keep_all_values` pass without either (`db.c`'s
+  `nc_resolve_pointers` of the taken nodes; `starter.c`'s `canonical_node`
+  with the stored position unused); other tests fail: `t_evict.c`'s
+  `evict_twins` and `reclaim_settings_kept_over_restarts` without the
+  first, `t_sdb.c`'s `sdb_refusals_2026_3` and `sdb_found_021_12` and
+  `reclaim_settings_kept_over_restarts` without the second.
+
+
 # 4. Left
 
-* **DbTesterRestart.testRestartAfterManyTopNodes** (an f-test in Java,
-  1.4 s): about 131,000 transactions of one key at node size 8, past top
-  node 32,768, then a restart with its history. Its bug was
-  StoredTopNode.toLongs's int shift of the ordinal, which
-  `t_tnode.c`'s `tnode_ordinals_round_trip` checks at 32,767 to 98,303
-  and `restart_ordinals_across_boundaries` across 2^30 and up with
-  restarts. It would take a functional test through `bergdb.h` (the super
-  root's ordinal from `bergdb_debug_print`'s "top ordinal="), about 5 s
-  in the test build, or a step of a stress script.
+None. testRestartAfterManyTopNodes, an f-test in Java, is
+`func_restart_after_many_top_nodes`, about 2.6 s in the test build under
+load.

@@ -1,8 +1,9 @@
 /* Functional tests of restarts (bergdb 022-05), through include/bergdb.h only:
  * Java's DbTesterRestart.testSameStreamAfterDecreaseWithRestartsF, smaller,
- * and DbTesterStream.testLargeTransactions and testLargeTransaction, which
- * take more than a unit test should; t_restart.c has DbTesterRestart's
- * others. Each test ends with the allocator's count 0. */
+ * and testRestartAfterManyTopNodes, and DbTesterStream.testLargeTransactions
+ * and testLargeTransaction, which take more than a unit test should;
+ * t_restart.c has DbTesterRestart's others. Each test ends with the
+ * allocator's count 0. */
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -251,8 +252,62 @@ TEST(func_restart_large_values) {
     free(v);
 }
 
+/* DbTesterRestart.testRestartAfterManyTopNodes (bergdb 001, WP A3): a database with more
+ * than 32,768 top nodes restarts with its history. One key updated in every transaction,
+ * at node size 8 and a startup distance of 10,000 bytes, makes a new top node about every
+ * four transactions: 131,300 of them pass top node 32,768 (131,237 make the newest
+ * written top node 32,800, where Java's loop stops). Before Java's fix of
+ * StoredTopNode.toLongs (an int shift of the ordinal), the restart failed ("Bad TopNode
+ * ID of TopNode in stream"); with that shift in C's nw_top_to_longs, this restart is
+ * refused too. The value at the time of seven transactions after the restart, and
+ * transactions after it. */
+TEST(func_restart_after_many_top_nodes) {
+    char dir[1024], errbuf[BERGDB_ERRBUF_SIZE];
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock clock = {0};
+    struct bergdb_options o;
+    bergdb_db *db;
+    const int n = 131300;
+    fr_temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    fr_options(&o, &clock, &m, 10000);
+    o.max_node_size = 8;
+    REQUIRE(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_OK);
+    int rc = BERGDB_OK;
+    for (int k = 0; k < n && rc == BERGDB_OK; k++) {
+        char v[32];
+        snprintf(v, sizeof v, "v%d", k);
+        rc = fr_put(db, &clock, 10 * (int64_t) (k + 1), "/hot", (const uint8_t *) v, strlen(v));
+    }
+    CHECK_EQ(rc, BERGDB_OK);
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    REQUIRE(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_OK);
+    const int at[7] = { 0, 1, n / 4, n / 2, (3 * n) / 4, n - 2, n - 1 };
+    bergdb_read *rd;
+    REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+    uint8_t bkey[8];
+    CHECK_EQ(bergdb_ikey_to_bkey((const uint8_t *) "/hot", 4, bkey), BERGDB_OK);
+    for (int j = 0; j < 7; j++) {
+        char v[32];
+        snprintf(v, sizeof v, "v%d", at[j]);
+        struct bergdb_one one;
+        CHECK(bergdb_get_one(db, rd, 10 * (int64_t) (at[j] + 1), bkey, 4, &one) == BERGDB_OK
+                && one.value != NULL && one.value_len == strlen(v)
+                && memcmp(one.value, v, strlen(v)) == 0);
+    }
+    bergdb_read_free(rd);
+    for (int k = n; k < n + 8; k++) {
+        CHECK_EQ(fr_put(db, &clock, 10 * (int64_t) (k + 1), "/hot", (const uint8_t *) "w", 1),
+                BERGDB_OK);
+    }
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+    fr_remove_dir(dir);
+}
+
 const struct test restart_func_tests[] = {
     TEST_ENTRY(func_restart_same_stream_after_decrease),
     TEST_ENTRY(func_restart_large_values),
+    TEST_ENTRY(func_restart_after_many_top_nodes),
     TEST_END
 };
