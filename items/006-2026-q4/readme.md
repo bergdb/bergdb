@@ -33,6 +33,7 @@ The list
 | [006-17](17-day-9-november.md) | 2026-11-09 | Day work of 9 November (a Monday), with the coordinator coord-1109: release 2026.4's bug hunts, the plan, the progress and the outcome |
 | [006-18](18-ports/readme.md) | 2026-11-09 | BergDB in languages other than Java: demand (01) and technical feasibility (02), one ranking; C on Linux as the base of bindings, Java's Core on Android as a check, then Rust and Python bindings; the licence decides the reach |
 | [006-19](19-write-amplification.md) | 2026-11-09 | Write amplification at large sizes: where a put's bytes go (867 at 10M keys and 50 MB, 92 % index nodes), the levers, what to measure |
+| [006-20](20-ai-as-the-user-testing.md) | 2026-11-09 | AI as the user: black-box application testing, the method and the 12 applications of 020-24 as its example |
 
 
 Files
@@ -110,6 +111,11 @@ Files
   amplification at large sizes: where the bytes of a put go, how they grow
   with the keys and the startup distance, other engines, the levers (with
   and without a format change), and the measurements to make.
+* [20-ai-as-the-user-testing.md](20-ai-as-the-user-testing.md). 006-20, a
+  note on testing with an AI agent as the user: black-box applications
+  written from the jar and the Javadoc alone, each with its own oracle; why it
+  finds what reviews and harnesses miss, how to run it, and the 12
+  applications of 9 November (020-24) as the worked example.
 
 
 Log
