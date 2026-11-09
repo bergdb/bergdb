@@ -31,6 +31,7 @@ public class Pack implements IPack {
         DbObjectFormatTester.class,
         DbValue.class,
         Entries.class,
+        FormatFuzzer.class,
         IndexManager.class,
         IndexDefinitionTester.class,
         IndexKeysTester.class,
