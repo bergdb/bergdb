@@ -36,6 +36,7 @@ extern const struct test dbgetmany_tests[];
 extern const struct test db_tests[];
 extern const struct test serial_tests[];
 extern const struct test sdb_tests[];
+extern const struct test restart_tests[];
 extern const struct test ncoll_tests[];
 extern const struct test recover_tests[];
 extern const struct test reclaim_tests[];
@@ -77,6 +78,7 @@ int main(int argc, char **argv) {
         db_tests,
         serial_tests,
         sdb_tests,
+        restart_tests,
         ncoll_tests,
         recover_tests,
         reclaim_tests,

@@ -137,6 +137,43 @@ TEST(serial_corrupt_got_dirty_count) {
     fx_free(&f);
 }
 
+/* testCorruptRecordSize: a record's size field that its content does not fill, or
+ * that is shorter than its header, is refused before a header, node or list is read
+ * outside the record: Integer.MIN_VALUE, -1, 0, 16, 32, 40, 41 and 47 for the 48 bytes
+ * of an empty transaction's record, in a buffer that holds them all. */
+TEST(serial_corrupt_record_size) {
+    struct fx f;
+    fx_init(&f);
+    CHECK(ser_serialize(&f.s, &f.tn, 100, 200, -1, NULL, NULL, ST_MAX_RECORD_SIZE, &f.e)
+            == ERR_OK);
+    REQUIRE(bytes_get_int_le(f.s.byte_buffer) == 48);
+    uint8_t copy[48];
+    memcpy(copy, f.s.byte_buffer, sizeof copy);
+    const int32_t sizes[8] = { INT32_MIN, -1, 0, 16, 32, 40, 41, 47 };
+    for (int i = 0; i < 8; i++) {
+        memcpy(f.s.byte_buffer, copy, sizeof copy);
+        bytes_put_int_le(sizes[i], f.s.byte_buffer);
+        CHECK(fx_parse(&f, 200) == ERR_FORMAT);
+        CHECK(strcmp(f.e.java, "StreamFormatException") == 0);
+    }
+    fx_free(&f);
+}
+
+/* testGotDirtyCountOutsideRecord: a got-dirty count of 1 in an empty transaction's
+ * record, which has no room for the pair, is refused with a StreamFormatException that
+ * names gotDirtyCount. */
+TEST(serial_got_dirty_count_outside_record) {
+    struct fx f;
+    fx_init(&f);
+    CHECK(ser_serialize(&f.s, &f.tn, 100, 200, -1, NULL, NULL, ST_MAX_RECORD_SIZE, &f.e)
+            == ERR_OK);
+    bytes_put_int_le(1, f.s.byte_buffer + 36);
+    CHECK(fx_parse(&f, 200) == ERR_FORMAT);
+    CHECK(strcmp(f.e.java, "StreamFormatException") == 0);
+    CHECK(strstr(f.e.text, "gotDirtyCount") != NULL);
+    fx_free(&f);
+}
+
 /* testRecordAboveLimit (005-17) */
 TEST(serial_record_above_limit) {
     struct fx f;
@@ -321,6 +358,8 @@ const struct test serial_tests[] = {
     TEST_ENTRY(serial_serialize1),
     TEST_ENTRY(serial_serialize2),
     TEST_ENTRY(serial_corrupt_got_dirty_count),
+    TEST_ENTRY(serial_corrupt_record_size),
+    TEST_ENTRY(serial_got_dirty_count_outside_record),
     TEST_ENTRY(serial_record_above_limit),
     TEST_ENTRY(serial_top_pos),
     TEST_ENTRY(serial_refuses_other_formats),

@@ -1261,6 +1261,7 @@ extern const struct test reclaim_func_tests[];      /* f_reclaim.c (012-11) */
 extern const struct test budget_tests[];    /* f_budget.c (012-12) */
 extern const struct test settings_tests[];  /* f_settings.c (012-13) */
 extern const struct test durable_tests[];   /* f_durable.c (012-13) */
+extern const struct test restart_func_tests[];      /* f_restart.c (022-05) */
 int durable_child(int argc, char **argv);   /* f_durable.c: func --child ... */
 const char *func_program;                   /* argv[0], for f_durable.c's children */
 
@@ -1270,6 +1271,6 @@ int main(int argc, char **argv) {
         return durable_child(argc, argv);
     }
     const struct test *const tables[] = { api_tests, start_tests, reclaim_func_tests,
-            budget_tests, settings_tests, durable_tests, NULL };
+            budget_tests, settings_tests, durable_tests, restart_func_tests, NULL };
     return test_main(argc, argv, "FUNC", tables);
 }

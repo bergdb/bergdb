@@ -470,6 +470,61 @@ TEST(records_negative_node_size) {
     CHECK_MEM_ZERO(&m);
 }
 
+/* StoredTrans.recordWithBadNodeSize: a record of 112 bytes at 128, of two delete nodes
+ * at 32 and 64, the first one's checksum right, the second's size field 'size'. */
+static void record_with_bad_node_size(uint8_t *b, int32_t size) {
+    memset(b, 0, 112);
+    bytes_put_int_le(112, b);
+    b[4] = 5;                               /* RECORD_FORMAT */
+    bytes_put_long_le(1, b + 8);
+    for (int32_t offset = 32; offset <= 64; offset += 32) {
+        bytes_put_int_le(offset == 32 ? 32 : size, b + offset);
+        b[offset + 4] = 40;                 /* Node.TYPE_DELETE */
+        b[offset + 5] = 4;
+        bytes_put_int_le(offset, b + offset + 16);
+        bytes_put_int_le(8, b + offset + 20);
+    }
+    int32_t sum = cks_sum_with_zero_replace(b, 32, 32, 38);
+    b[38] = (uint8_t) sum;
+    b[39] = (uint8_t) (sum >> 8);
+    b[111] = 10;                            /* RecoverableStream.LAST_BYTE */
+}
+
+/* StoredTrans.testNodeSizeOutsideRecord (bergdb 005-74, option A): a node must fit
+ * within its record: the second node's size 1, 6, 7 and Integer.MAX_VALUE, and the
+ * record's size field 80, shorter than the buffer, which the second node of 32 bytes
+ * passes; each a StreamFormatException that names the node size. And
+ * testNegativeNodeSize's -32 on the same record (records_negative_node_size has
+ * 012-06's). */
+TEST(records_node_size_outside_record) {
+    struct mem m;
+    struct err e;
+    struct st_record r;
+    uint8_t b[112];
+    mem_init(&m);
+    st_init(&r);
+    const int32_t sizes[5] = { 1, 6, 7, INT32_MAX, -32 };
+    for (int i = 0; i < 5; i++) {
+        record_with_bad_node_size(b, sizes[i]);
+        CHECK_EQ(st_parse(&r, 128, b, 112, &m, &e), ERR_FORMAT);
+        CHECK(strcmp(e.java, "StreamFormatException") == 0);
+        CHECK(strstr(e.text, "node size") != NULL);
+        if (strstr(e.text, "node size") == NULL) {
+            printf("    node size %d: %s\n", (int) sizes[i], e.text);
+        }
+    }
+    record_with_bad_node_size(b, 32);
+    bytes_put_int_le(80, b);                /* the array is longer than the record */
+    CHECK_EQ(st_parse(&r, 128, b, 112, &m, &e), ERR_FORMAT);
+    CHECK(strcmp(e.java, "StreamFormatException") == 0);
+    CHECK(strstr(e.text, "node size") != NULL);
+    if (strstr(e.text, "node size") == NULL) {
+        printf("    record size 80: %s\n", e.text);
+    }
+    st_free(&r, &m);
+    CHECK_MEM_ZERO(&m);
+}
+
 /* A record whose size field is larger than its content is refused (bergdb 015-72, as
  * Java's since release 2026.3; DbTesterRestart.testEnlargedRecordSizeRefused at the parser):
  * each record of the vectors followed by the next, its size made theirs together, so that
@@ -518,6 +573,7 @@ const struct test records_tests[] = {
     TEST_ENTRY(records_parse),
     TEST_ENTRY(records_walk_and_reads),
     TEST_ENTRY(records_negative_node_size),
+    TEST_ENTRY(records_node_size_outside_record),
     TEST_ENTRY(records_enlarged_size),
     TEST_ENTRY(records_bad_node_position),
     TEST_END
