@@ -82,9 +82,10 @@ import bergdb.pubimp.ObjectFormat;
  * UTF-8, as every string BergDB stores (the package's
  * {@linkplain bergdb.pub##strings Strings}). A Java String with a lone surrogate, a char
  * of U+D800 to U+DFFF that is not part of a surrogate pair, cannot be stored so:
- * toDbObject(), the Builder and DbString refuse it with IllegalArgumentException, whose
- * message names the field and an array element's index ("inner.names[3]"). A char[] field
- * keeps any chars, as an array of integers; a byte[] field keeps any bytes.</p>
+ * toDbObject(), the Builder and DbString refuse it with IllegalArgumentException; the
+ * message of toDbObject() names its place, the field and an array element's index
+ * ("inner.names[3]"). A char[] field keeps any chars, as an array of integers; a byte[]
+ * field keeps any bytes.</p>
  *
  * <p><b>Data Objects.</b> toDbObject() makes a DbObject from an object of a Data Object
  * class, exactly, as a put stores it; toJavaObject() makes an object of a Data Object class
