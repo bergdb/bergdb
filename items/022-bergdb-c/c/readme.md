@@ -785,7 +785,11 @@ call from a callback (`BERGDB_STATE`); a text is cut at C's limit
 encryption and the layers above the Core left out. Not ported (022-01's
 D4): 015-67's bounded batches (C's sweep at the end of a call has no
 bound on its work, a latency property; 012-16's proposal) and 2026.3's
-limits harness. And those of the ports to 2026.3 and 2026.4:
+limits harness. In their place, under a budget below what must stay, a
+sweep comes only after the calls have loaded at least the node table's
+own bytes over the last sweep's floor, so that the sweeps' work is
+linear in the bytes loaded (022-06, U1-4; `src/evict.h`). And those of
+the ports to 2026.3 and 2026.4:
 
 1. **NOMEM is a refusal** (Java's 019-10; 012-14's decision, kept by
    022-01's D4). A failed allocation before a transaction's go point, or

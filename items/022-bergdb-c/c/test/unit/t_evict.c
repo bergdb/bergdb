@@ -6,14 +6,16 @@
  * most the trigger; the setter's eviction in its call; the admission of a
  * large value, also of a start's rerun (015-68) and of its section's first
  * transaction (019-47); a warmup that keeps no large value (019-22); a
- * lowered budget reached after the pins fell (015-70); and the allocation
- * failures in turn under a budget of one byte. Each test ends with the
- * allocator's count 0. */
+ * lowered budget reached after the pins fell (015-70); the allocation
+ * failures in turn under a budget of one byte; eviction after a refused
+ * transaction (022-06, U1-3); and a scan under what must stay, linear in
+ * its keys (022-06, U1-4). Each test ends with the allocator's count 0. */
 #define _DARWIN_C_SOURCE        /* mkdtemp */
 #include <dirent.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include "test.h"
+#include "api.h"
 #include "bergdb.h"
 #include "db.h"
 #include "evict.h"
@@ -287,8 +289,12 @@ static void twin_run(int64_t budget, bool setter, int32_t maxNode, int32_t sd, u
         struct ev_env env = env_of(&sub);
         CHECK_EQ(ev_check_pins(&env), 0);
         CHECK(db_resident_bytes(&sub) <= sub.ev.trigger);
-        /* At most the budget plus what is pinned (the budget may be INT64_MAX). */
-        CHECK(db_resident_bytes(&sub) - db_pinned_bytes(&sub) <= sub.ev.high);
+        /* At most the budget plus what is pinned, or what is pinned plus the
+         * node table's bytes, the margin over the floor of a budget under it
+         * (022-06, U1-4; the budget may be INT64_MAX). */
+        const int64_t table = nt_bytes(&sub.node_table);
+        CHECK(db_resident_bytes(&sub) - db_pinned_bytes(&sub)
+                <= (sub.ev.high > table ? sub.ev.high : table));
         if (i % 25 == 24) {
             /* Reads at past times, each followed by the end of an API call. */
             for (int j = 0; j < 60; j++) {
@@ -891,6 +897,9 @@ TEST(evict_alloc_failures) {
                 if (rc == ERR_NOMEM && db.state == DB_ACTIVE) {
                     refused++;
                     CHECK_EQ(db_recount(&db), 0);
+                    /* The refusal's end evicts what its warmup loaded
+                     * (bergdb 022-06, U1-3). */
+                    CHECK(db_resident_bytes(&db) <= db.ev.trigger);
                     continue;
                 }
                 CHECK_EQ(rc, ERR_FAILED);
@@ -929,6 +938,257 @@ TEST(evict_alloc_failures) {
     CHECK(failed > 0);
     printf("  evict_alloc_failures: %lld runs: %lld transactions refused (NOMEM), %lld failed "
             "databases\n", (long long) runs, (long long) refused, (long long) failed);
+}
+
+/* A clock that refuses when told: -1, outside the clock's range. */
+struct refusing_clock {
+    int64_t time;
+    bool refuse;
+};
+
+static int64_t refusing_clock_time(void *ctx) {
+    const struct refusing_clock *c = ctx;
+    return c->refuse ? -1 : c->time;
+}
+
+/* n puts of the keys {0x10, i >> 8, i}, i from 0, with values of len bytes,
+ * each byte b. */
+static void api_puts(bergdb_trans *t, int n, size_t len, uint8_t b) {
+    uint8_t *v = malloc(len);
+    REQUIRE(v != NULL);
+    memset(v, b, len);
+    for (int i = 0; i < n; i++) {
+        const uint8_t k[3] = {0x10, (uint8_t) (i >> 8), (uint8_t) i};
+        CHECK(bergdb_trans_put(t, k, 3, v, len) == BERGDB_OK);
+    }
+    free(v);
+}
+
+/* bergdb 022-06, U1-3 (the black-box user u1's budget_after_refusal.c): a
+ * transaction refused before its go point leaves what its warmup loaded
+ * resident, over the budget, until a later call evicts. The warmup reads
+ * each put key's present value; Java's warmup loads wake its eviction
+ * thread (Eviction.afterLoad, not paced), which evicts to the trigger
+ * whatever the transaction's end; C evicts at the end of execute, refused
+ * or not. A database in memory with a budget of 100,000 bytes and a
+ * startup distance of 10 bytes (little is pinned), three transactions of
+ * 400 puts of 2,000 bytes, then 400 such puts refused by the clock
+ * (BERGDB_LIMIT) and by the STM (BERGDB_RERUN): after each refusal the
+ * resident bytes are at most the trigger, and the stream is as it was.
+ * Before the fix about 800 kB more stayed resident after each. */
+TEST(evict_after_refused_transaction) {
+    struct bergdb_mem m = {0};
+    struct refusing_clock clk = {INT64_C(10000000000), false};
+    struct bergdb_options o;
+    bergdb_options_init(&o);
+    o.clock = refusing_clock_time;
+    o.clock_ctx = &clk;
+    o.startup_distance = 10;
+    o.cache_size_indicator = 100000;
+    o.mem = &m;
+    memcpy(o.id, bergdb_test_id, BERGDB_ID_SIZE);
+    bergdb_db *db;
+    REQUIRE(bergdb_open(NULL, &o, &db, NULL, NULL) == BERGDB_OK);
+    const int n = 400;
+    const size_t len = 2000;
+    for (int r = 0; r < 3; r++) {
+        bergdb_trans *t;
+        REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+        api_puts(t, n, len, (uint8_t) r);
+        clk.time += 1000;
+        CHECK(bergdb_execute(db, t, NULL) == BERGDB_OK);
+        bergdb_trans_free(t);
+    }
+    struct db *d = &db->db;
+    const int64_t length = db_stream_length(d);
+    const int64_t after_commits = db_resident_bytes(d);
+    CHECK(after_commits <= d->ev.trigger);
+
+    bergdb_trans *t;
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    api_puts(t, n, len, 9);
+    clk.refuse = true;
+    CHECK_EQ(bergdb_execute(db, t, NULL), BERGDB_LIMIT);
+    clk.refuse = false;
+    bergdb_trans_free(t);
+    const int64_t after_limit = db_resident_bytes(d);
+    CHECK(after_limit <= d->ev.trigger);
+    CHECK_EQ(db_stream_length(d), length);
+
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    api_puts(t, n, len, 8);
+    const uint8_t k0[3] = {0x10, 0, 0};
+    CHECK(bergdb_trans_key_read(t, k0, 3) == BERGDB_OK);
+    CHECK(bergdb_trans_lookup_time(t, 1) == BERGDB_OK);
+    CHECK_EQ(bergdb_execute(db, t, NULL), BERGDB_RERUN);
+    bergdb_trans_free(t);
+    const int64_t after_rerun = db_resident_bytes(d);
+    CHECK(after_rerun <= d->ev.trigger);
+    CHECK_EQ(db_stream_length(d), length);
+    CHECK_EQ(db_recount(d), 0);
+    printf("  evict_after_refused_transaction: resident bytes %lld after the commits, "
+            "%lld after LIMIT, %lld after RERUN; the trigger %lld\n",
+            (long long) after_commits, (long long) after_limit, (long long) after_rerun,
+            (long long) d->ev.trigger);
+    CHECK(bergdb_close(db) == BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+}
+
+/* A stop function whose answer is out of range at a value of over 100 kB. */
+static int bad_answer_at_big(void *ctx, const struct bergdb_kvt *kvt) {
+    (void) ctx;
+    return kvt->value_len > 100000 ? 99 : BERGDB_ADD;
+}
+
+/* U1-3's kind in the reads: a getMany or getOne refused at its end (a stop
+ * function's answer out of range, BERGDB_ARG; NOMEM) evicts as one that
+ * succeeds; before, the loads stayed until a later call. A database in
+ * memory, the default startup distance (the leaves are D, pinned), a key a
+ * with 10 bytes and b with 500,000; the budget then 100,000 bytes, so b's
+ * value is out of memory. A getMany that loads b's value and is refused
+ * there, and a getOne of b with each allocation failing in turn (a new read
+ * context each time, whose buffer must grow for the value after its load):
+ * after each refusal the resident bytes are at most the trigger (before:
+ * b's value of 500 kB stayed in its pinned leaf). */
+TEST(evict_after_refused_read) {
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock clock = {0};
+    struct bergdb_options o;
+    bergdb_options_init(&o);
+    o.clock = bergdb_test_clock_time;
+    o.clock_ctx = &clock;
+    o.mem = &m;
+    memcpy(o.id, bergdb_test_id, BERGDB_ID_SIZE);
+    bergdb_test_clock_set(&clock, 500);
+    bergdb_db *db;
+    REQUIRE(bergdb_open(NULL, &o, &db, NULL, NULL) == BERGDB_OK);
+    const size_t big = 500000;
+    uint8_t *v = calloc(big, 1);
+    REQUIRE(v != NULL);
+    bergdb_trans *t;
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    const uint8_t ka[2] = {0x30, 'a'}, kb[2] = {0x30, 'b'};
+    CHECK(bergdb_trans_put(t, ka, 2, v, 10) == BERGDB_OK);
+    CHECK(bergdb_trans_put(t, kb, 2, v, big) == BERGDB_OK);
+    bergdb_test_clock_set(&clock, 1000);
+    CHECK(bergdb_execute(db, t, NULL) == BERGDB_OK);
+    bergdb_trans_free(t);
+    free(v);
+    CHECK(bergdb_set_cache_size_indicator(db, 100000) == BERGDB_OK);
+    struct db *d = &db->db;
+    CHECK(db_resident_bytes(d) <= d->ev.trigger);
+    CHECK(db_resident_bytes(d) < (int64_t) big);
+
+    bergdb_read *rd;
+    REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+    struct bergdb_range r;
+    bergdb_range_init(&r);
+    r.stop = bad_answer_at_big;
+    struct bergdb_many many;
+    CHECK_EQ(bergdb_get_many(db, rd, &r, &many), BERGDB_ARG);
+    const int64_t after_many = db_resident_bytes(d);
+    CHECK(after_many <= d->ev.trigger);
+    bergdb_read_free(rd);
+
+    int refused = 0;
+    for (int64_t k = 1; k < 1000; k++) {
+        REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+        m.fail_at = m.allocs + k;
+        struct bergdb_one one;
+        const int rc = bergdb_get_one(db, rd, BERGDB_LATEST, kb, 2, &one);
+        const bool hit = m.allocs >= m.fail_at;
+        m.fail_at = 0;
+        if (rc == BERGDB_NOMEM) {
+            refused++;
+            CHECK(db_resident_bytes(d) <= d->ev.trigger);
+        } else {
+            CHECK_EQ(rc, BERGDB_OK);
+            CHECK(one.value_len == big);
+        }
+        bergdb_read_free(rd);
+        if (!hit) {
+            break;
+        }
+    }
+    CHECK(refused > 0);
+    CHECK_EQ(db_recount(d), 0);
+    printf("  evict_after_refused_read: resident bytes %lld after the refused getMany, the "
+            "trigger %lld; %d getOnes refused (NOMEM)\n", (long long) after_many,
+            (long long) d->ev.trigger, refused);
+    CHECK(bergdb_close(db) == BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+}
+
+/* One scan of evict_scan_is_linear: n keys of 4 bytes with values of 200
+ * bytes in a database in memory, the default startup distance (50 MB: the
+ * whole index is D, pinned), the budget then lowered to one byte, and a
+ * getMany of every key through the API (a safe point after each pair). The
+ * slots the hand looked at in the scan into *examined, its sweeps into
+ * *sweeps. */
+static void scan_at_one_byte(int n, int64_t *examined, int64_t *sweeps) {
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock clock = {0};
+    struct bergdb_options o;
+    bergdb_options_init(&o);
+    o.clock = bergdb_test_clock_time;
+    o.clock_ctx = &clock;
+    o.mem = &m;
+    memcpy(o.id, bergdb_test_id, BERGDB_ID_SIZE);
+    bergdb_test_clock_set(&clock, 500);
+    bergdb_db *db;
+    REQUIRE(bergdb_open(NULL, &o, &db, NULL, NULL) == BERGDB_OK);
+    uint8_t v[200];
+    memset(v, 7, sizeof v);
+    for (int i = 0; i < n; ) {
+        bergdb_trans *t;
+        REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+        for (int j = 0; j < 100 && i < n; j++, i++) {
+            const uint8_t k[4] = {0x20, (uint8_t) (i >> 16), (uint8_t) (i >> 8), (uint8_t) i};
+            CHECK(bergdb_trans_put(t, k, 4, v, sizeof v) == BERGDB_OK);
+        }
+        bergdb_test_clock_set(&clock, clock.time + 10);
+        CHECK(bergdb_execute(db, t, NULL) == BERGDB_OK);
+        bergdb_trans_free(t);
+    }
+    struct db *d = &db->db;
+    CHECK(bergdb_set_cache_size_indicator(db, 1) == BERGDB_OK);
+    CHECK(d->ev.floor > d->ev.high);            /* under what must stay */
+    bergdb_read *rd;
+    REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+    const int64_t e0 = d->ev.examined, s0 = d->ev.sweeps;
+    struct bergdb_range r;
+    bergdb_range_init(&r);
+    struct bergdb_many many;
+    CHECK(bergdb_get_many(db, rd, &r, &many) == BERGDB_OK);
+    CHECK_EQ((int64_t) many.count, n);
+    *examined = d->ev.examined - e0;
+    *sweeps = d->ev.sweeps - s0;
+    CHECK(db_resident_bytes(d) <= d->ev.trigger);
+    CHECK_EQ(db_recount(d), 0);
+    bergdb_read_free(rd);
+    CHECK(bergdb_close(db) == BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+}
+
+/* bergdb 022-06, U1-4 (u1's evict_scan.c): with the budget under what must
+ * stay (one byte, the gap between the watermarks one byte), each pair that
+ * a full getMany loaded made a sweep of two rounds over the whole node
+ * table, which grows with D: the scan's work was quadratic in its keys
+ * (about 2 n slots per pair; 0.3 to 0.57 s for 8,000 keys against 0.001 s
+ * at the default budget). A sweep that cannot reach the budget now comes
+ * only after the calls have loaded the table's own bytes over the floor:
+ * the scan's work is linear. Two scans, of 1,000 and 4,000 keys: the second
+ * looks at most 8 times as many slots as the first (before: 16 times), and
+ * at most 64 slots per key (before: 2,048). */
+TEST(evict_scan_is_linear) {
+    int64_t e1, s1, e4, s4;
+    scan_at_one_byte(1000, &e1, &s1);
+    scan_at_one_byte(4000, &e4, &s4);
+    printf("  evict_scan_is_linear: 1,000 keys: %lld slots looked at in %lld sweeps; "
+            "4,000 keys: %lld in %lld\n", (long long) e1, (long long) s1, (long long) e4,
+            (long long) s4);
+    CHECK(e4 <= 8 * e1);
+    CHECK(e4 <= 64 * 4000);
 }
 
 /* The exact reference: clang's and gcc's 128-bit integers. */
@@ -1118,9 +1378,11 @@ static void ea_trans(struct ea_run *run, int b, int i, bool large) {
 /* The checks after a batch: the recount (every object's holders), the pins
  * in the node table, no resident pointer to a value over 1 MiB (the
  * admission rule: 015-68, 019-47), the resident bytes at most the trigger
- * and, but for the pins, the budget; 40 keys' answers right at the newest
- * time; and now and then a decrease of the budget with no write: if the
- * pins fit it, the resident bytes are at most it after the setter's call. */
+ * and, but for the pins, the budget, or the node table's bytes if more (the
+ * margin over the floor of a budget under it, 022-06, U1-4); 40 keys'
+ * answers right at the newest time; and now and then a decrease of the
+ * budget with no write: if the pins fit it, the resident bytes are at most
+ * it after the setter's call. */
 static void ea_check(struct ea_run *run, int b) {
     struct err e;
     if (db_recount(&run->db) != 0) {
@@ -1133,8 +1395,10 @@ static void ea_check(struct ea_run *run, int b) {
     if (large_resident(&run->db) != 0) {
         ea_fail(run, b, "a resident pointer holds a value over 1 MiB");
     }
+    const int64_t table = nt_bytes(&run->db.node_table);
     if (db_resident_bytes(&run->db) > run->db.ev.trigger
-            || db_resident_bytes(&run->db) - db_pinned_bytes(&run->db) > run->db.ev.high) {
+            || db_resident_bytes(&run->db) - db_pinned_bytes(&run->db)
+                    > (run->db.ev.high > table ? run->db.ev.high : table)) {
         ea_fail(run, b, "the resident bytes over the trigger, or over the budget but for the pins");
     }
     for (int q = 0; q < 40; q++) {
@@ -1315,5 +1579,8 @@ const struct test evict_tests[] = {
     TEST_ENTRY(evict_alloc_failures),
     TEST_ENTRY(evict_accounting),
     TEST_ENTRY(evict_accounting_many_restarts),
+    TEST_ENTRY(evict_after_refused_transaction),
+    TEST_ENTRY(evict_after_refused_read),
+    TEST_ENTRY(evict_scan_is_linear),
     TEST_END
 };

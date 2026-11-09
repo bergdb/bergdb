@@ -118,6 +118,7 @@ static int64_t sweep(struct ev *ev, const struct ev_env *env, bool in_call) {
         if (ev->hand >= cap) {
             ev->hand = 0;
         }
+        ev->examined++;
         struct handle *h = nt_slot(nt, ev->hand);
         if (h == NULL) {
             ev->hand++;
@@ -164,20 +165,26 @@ static int64_t sweep(struct ev *ev, const struct ev_env *env, bool in_call) {
     const int64_t after = ev_resident_bytes(ev->mem, nt);
     /* The trigger (Eviction.sweep's last step): after two rounds what is left
      * could not go; the controller runs again once the resident bytes have
-     * grown by the gap between the watermarks over it. */
+     * grown over it by the gap between the watermarks, or by the node table's
+     * own bytes if that is more (the margin, bergdb 022-06, U1-4: a sweep
+     * looks at the table's slots, two rounds, so the next sweep that cannot
+     * reach the budget waits for the calls to load at least as many bytes as
+     * the table has; evict.h). */
     const int64_t gap = ev->high - ev->low;
+    const int64_t table = nt_bytes(nt);
+    const int64_t margin = table > gap ? table : gap;
     if (in_call) {
         /* Inside a call, what the call holds (a getMany's chain, its values)
          * cannot go either, but only until the call ends: the floor so found
          * lasts for the call (call_trigger). */
         if (complete) {
-            ev->call_trigger = after > ev->high - gap ? after + gap : ev->high;
+            ev->call_trigger = after > ev->high - gap ? after + margin : ev->high;
         }
     } else if (complete) {
         ev->complete_sweeps++;
         ev->floor = after;
         ev->floor_dirty = env->d->dirtyCount;
-        ev->trigger = ev->floor > ev->high - gap ? ev->floor + gap : ev->high;
+        ev->trigger = ev->floor > ev->high - gap ? ev->floor + margin : ev->high;
     } else {
         ev->trigger = ev->high;
     }

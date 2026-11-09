@@ -45,14 +45,28 @@
  * and the trigger becomes the budget or the floor plus the gap between the
  * watermarks if that is more (Java's pinnedOfLastRound + (high - low), with
  * the floor measured by the allocator rather than summed by the hand), so
- * that pinned state above the budget does not make every call sweep. When D
+ * that pinned state above the budget does not make every call sweep. When
+ * the floor so raises the trigger, the margin over it is the gap or the node
+ * table's own bytes (nt_bytes, after the shrink), whichever is more (bergdb
+ * 022-06, U1-4): a sweep's work is the table's slots, two rounds, so a sweep
+ * that cannot reach the budget comes only after the calls have loaded at
+ * least as many bytes as the table has, and the work of such sweeps is
+ * linear in the bytes loaded. With the gap alone, a budget under what must
+ * stay (of one byte, say: a gap of one byte) made every pair that a
+ * getMany loaded sweep the whole table, which grows with D, and a full scan
+ * took time quadratic in its keys. The same margin over a call's floor
+ * (call_trigger). When D
  * has shrunk to three quarters of its nodes at that sweep (the take wrote
  * them), the floor is old: the trigger is the budget again, and the next
  * sweep measures a new floor.
- * Java's bounds of a batch in time (2 ms) and handles (4,096) and its
- * thread are left out: C evicts in the call, until the resident bytes are
- * at the low watermark or nothing more can go, and its choice depends on
- * the calls only, never on timing (12-memory-budget.md, 5).
+ * Java's bounds of a batch in time (2 ms) and handles (4,096; bergdb
+ * 015-67) and its thread are left out: C evicts in the call, until the
+ * resident bytes are at the low watermark or nothing more can go, and its
+ * choice depends on the calls only, never on timing (12-memory-budget.md,
+ * 5). The calls' safe points: the end of a transaction, committed or
+ * refused (bergdb 022-06, U1-3: a refusal's warmup loads too; Java's loads
+ * wake its eviction thread, which then evicts, whatever the transaction's
+ * end), the end of a read, and a getMany's pairs.
  *
  * Admission (Eviction.largeValueCreated and recordWritten): a value over
  * 1 MiB that the writer put into a key node is kept counted in a list until
@@ -115,10 +129,12 @@ struct ev {
     int32_t nlarge;
     int32_t cap_large;
     /* The figures (Eviction.figures, stats): the sweeps, those of two rounds,
-     * the objects evicted, the empty handles dropped, the values unswizzled,
-     * the most resident bytes seen at a sweep's start. */
+     * the slots the hand looked at (the sweeps' work), the objects evicted,
+     * the empty handles dropped, the values unswizzled, the most resident
+     * bytes seen at a sweep's start. */
     int64_t sweeps;
     int64_t complete_sweeps;
+    int64_t examined;
     int64_t evicted;
     int64_t dropped;
     int64_t unswizzled;

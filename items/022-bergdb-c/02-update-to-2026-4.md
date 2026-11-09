@@ -1623,3 +1623,52 @@ among them the 8 refusals of bad magic bytes (`meta-last-garbage` and
 difference remains. Java's build at the pin has 192 source files, one
 fewer (020-28's `BadCryptoKey`); the harness's Java compiles against it
 unchanged.
+
+2026-11-09, 022-06, u1, eviction (worker f4). Two faults of C's own
+eviction that the black-box user u1 found (022-06-1, U1-3 and U1-4),
+fixed in `evict.c`, `db.c` and `api.c`; the record is
+`06-user-apps/u1-eviction.md`. Eviction never writes, so the stream's
+bytes do not change; what is pinned or detachable, and the meaning of
+`bergdb_stats`' resident and pinned bytes, do not change either. U1-3: a
+transaction refused before its go point (`BERGDB_LIMIT`, `BERGDB_RERUN`,
+`BERGDB_NOMEM`) left what its warmup had loaded resident until a later
+call evicted it: every put key's path and present value, 10.2 MB over a
+budget of 100 kB in u1's `budget_after_refusal.c`, still there after a
+sync. `db_execute` now evicts at each refusal's exit (`refused()`), as at
+the end of a commit. Java's warmup loads wake its eviction thread
+(`Eviction.afterLoad`, not paced), which evicts to the trigger however
+the transaction ends. The reads had the same gap: `bergdb_get_one` and
+`bergdb_get_many` now evict at their end when refused too (NOMEM, a stop
+function's answer out of range). U1-4: under a budget below what must
+stay, the trigger was the floor plus the gap between the watermarks.
+That gap is one byte at a budget of one byte, so each pair that a getMany
+loaded swept the whole node table, which grows with D, and a full scan
+was quadratic in its keys. Now the margin over the floor is the gap or
+the node table's own bytes, whichever is more (`sweep`'s `ev->trigger`
+and `call_trigger`), so the sweeps' work is linear in the bytes loaded.
+Java's trigger has the same one-byte gap, but each batch is bounded
+instead (015-67: 4,096 handles, 65,536 under pressure, 2 ms) and runs on
+its own thread; this is read from the code, not run. Tests in
+`t_evict.c`, each failing before its fix:
+
+* `evict_after_refused_transaction`: 876,896 resident bytes after each
+  refusal against a trigger of 100,000; now 60,104.
+* `evict_after_refused_read`: 500,738 after a refused getMany, and
+  getOnes refused by NOMEM over the trigger; now 648.
+* `evict_alloc_failures`: a new check after each NOMEM refusal; before,
+  465 of 953 refusals failed it.
+* `evict_scan_is_linear`, using a new counter, `ev.examined`, of the
+  slots the hand looked at, at a budget of one byte: 512,000 slots in
+  1,000 sweeps for 1,000 keys and 8,192,000 in 4,000 sweeps for 4,000
+  keys; now 26,624 in 52 and 110,592 in 54.
+
+`evict_twins`' and `evict_accounting`'s bound on the resident bytes over
+the pinned ones is now the budget or the table's bytes, whichever is
+more. u1's `evict_scan` with 8,000 keys: 0.214 s before, 0.015 s now, at
+a budget of one byte; 16,000 keys 0.032 s.
+
+The gate on `2026.4` at `d51d65d` with this change: `C BEFORE COMMIT OK
+(533 s)`, F53 under a load of about 9 to 12; `unit` 519 tests (518 in
+the release build); `func` 44; `cross quick` OK (23 workloads, 69 crash
+cuts, 85 corrupt variants, 2 in turns, 46 budget runs); `writecheck` 0
+errors; `corruptset` 63 copies; `allocfail` 628 runs; `examples` OK.

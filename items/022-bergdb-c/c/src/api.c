@@ -490,6 +490,7 @@ int bergdb_get_one(bergdb_db *db, bergdb_read *rd, int64_t lookup_time,
     enum err_code rc = db_get_one(&db->db, lookup_time, seg, n, &gd, &v, &e);
     free_segments(db->mem, seg, n);
     if (rc != ERR_OK) {
+        db_evict(&db->db);      /* the end of the call, refused too (022-06, U1-3) */
         return done(db, rc, &e);
     }
     rd->used = 0;
@@ -499,6 +500,7 @@ int bergdb_get_one(bergdb_db *db, bergdb_read *rd, int64_t lookup_time,
     one.actual_lookup_time = gd.actual_lookup_time;
     if (v != NULL && v->len >= 0) {
         if (!buf_room(rd, (size_t) v->len + 1)) {
+            db_evict(&db->db);
             return fail_nomem(db);
         }
         memcpy(rd->buf, v->value, (size_t) v->len);
@@ -704,9 +706,9 @@ int bergdb_get_many(bergdb_db *db, bergdb_read *rd, const struct bergdb_range *r
         db->in_callback = true;
         rc = db_get_many(&db->db, &g, &e);
         db->in_callback = false;
-        if (rc == ERR_OK) {
-            db_evict(&db->db);
-        }
+        /* The end of the call, refused too (a stop function's answer out of
+         * range, NOMEM): eviction after its loads (022-06, U1-3). */
+        db_evict(&db->db);
         if (rc == ERR_NOMEM && mc.bad_answer) {
             rc = err_set(&e, ERR_ARG, "IllegalArgumentException", "a stop function's answer "
                     "out of range");

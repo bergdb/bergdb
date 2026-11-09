@@ -1139,6 +1139,20 @@ static enum err_code stm_record_keys(struct db *db, const struct trans *t, struc
     return ERR_OK;
 }
 
+/* The end of a transaction refused before its go point (a refusal, or a
+ * database that is not active): a safe point, and on an active database
+ * eviction (eviction.afterTransaction's place; 012-12), as the warmup may
+ * have loaded every put key's path and present value (bergdb 022-06, U1-3:
+ * 10 MB over a budget of 100 kB until a later call). Java's warmup loads
+ * wake its eviction thread (Eviction.afterLoad, not paced), which evicts to
+ * the trigger however the transaction ends. Nothing of the refused
+ * transaction is in memory: its TransInfo is freed, TransNodes empty.
+ * Returns rc. */
+static enum err_code refused(struct db *db, enum err_code rc) {
+    db_evict(db);
+    return rc;
+}
+
 enum err_code db_execute(struct db *db, struct trans *t, struct err *e) {
     enum err_code rc = db_check_active(db, "execute", e);
     if (rc != ERR_OK) {
@@ -1164,15 +1178,14 @@ enum err_code db_execute(struct db *db, struct trans *t, struct err *e) {
         rc = check_dirty_nodes(db, t, e);
     }
     if (rc != ERR_OK) {
-        obj_collect(&db->cx);
-        return rc;
+        return refused(db, rc);
     }
 
     /* x.begin(t) */
     assert(tns_size(&db->trans_nodes) == 0 && "the nodes of another transaction");
     struct ts_info *info = ts_info_new(db->mem);
     if (info == NULL) {
-        return nomem(e);
+        return refused(db, nomem(e));
     }
     db->trans = t;
     db->trans_info = info;
@@ -1190,7 +1203,7 @@ enum err_code db_execute(struct db *db, struct trans *t, struct err *e) {
         db->trans = NULL;
         db->trans_info = NULL;
         ts_info_free(info, db->mem);
-        return rc;
+        return refused(db, rc);
     }
 
     /* The go point. From here nothing refuses the transaction and nothing is
