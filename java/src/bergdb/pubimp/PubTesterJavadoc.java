@@ -9,6 +9,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import bergdb.core.Db;
 import bergdb.nanotest.Assert;
@@ -2196,5 +2198,148 @@ public class PubTesterJavadoc {
         in[0] = 9;
         Assert.assertArrayEquals(new byte[] {1, 2}, ba.getByteArray());
         Assert.assertEquals("x", new DbString("x").toStringValue());
+    }
+
+    // ======== The new users' points (bergdb 020-24) ========
+
+    /** Waits for 'latch' in an action, which cannot throw InterruptedException. */
+    private static void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(10, TimeUnit.SECONDS)) {
+                throw new AssertionError("no countDown() in 10 s");
+            }
+        } catch (InterruptedException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    /**
+     * Database.stop() and close() (bergdb 020-24-03, U3-1): an rw() whose action runs when
+     * close() is called is refused with IllegalDbStateException, which is no failure, and
+     * nothing of it is written; close() does not wait for it. The action's next read throws,
+     * or, if it reads no more, the commit.
+     */
+    @Nano
+    public static void testRwRefusedAtAStop() throws Exception {
+        for (final boolean readAfter : new boolean[] {false, true}) {
+            MemoryStream stream = new MemoryStream();
+            final Database db = start(stream);
+            db.connection().put("/a.txt", "0");
+            final CountDownLatch inAction = new CountDownLatch(1);
+            final CountDownLatch go = new CountDownLatch(1);
+            final Throwable[] thrown = new Throwable[1];
+            Thread writer = new Thread(() -> {
+                try {
+                    db.newConnection().rw(env -> {
+                        env.get("/a.txt", String.class);
+                        inAction.countDown();
+                        await(go);
+                        if (readAfter) {
+                            env.get("/b.txt", String.class);
+                        }
+                        env.put("/a.txt", "1");
+                    });
+                } catch (Throwable e) {
+                    thrown[0] = e;
+                }
+            });
+            writer.start();
+            await(inAction);
+            Thread closer = new Thread(() -> db.close());
+            closer.start();
+            closer.join(10 * 1000);
+            boolean closed = !closer.isAlive();
+            go.countDown();
+            writer.join(10 * 1000);
+            closer.join(10 * 1000);
+            Assert.assertTrue("close() waited for the action", closed);
+            Assert.assertTrue(readAfter + ": " + thrown[0],
+                    thrown[0] instanceof IllegalDbStateException
+                    && !(thrown[0] instanceof DbFailedException));
+            Database d = start(stream.copy());
+            try {
+                Assert.assertEquals("0", d.connection().get("/a.txt", String.class));
+            } finally {
+                d.close();
+            }
+        }
+    }
+
+    /**
+     * Database.sync(), Connection.sync() and Transaction.sync() (bergdb 020-24-03, U3-3): at
+     * a stop, before the transaction is durable, each throws a DbException (a
+     * StreamIoException), which is no failure; close() then writes the transaction, and a
+     * restart has it.
+     */
+    @Nano
+    public static void testSyncAtAStop() {
+        HoldStream stream = new HoldStream();
+        final Database db = start(stream);
+        try {
+            final Connection c = db.connection();
+            c.put("/a.txt", "a");
+            c.sync();
+            stream.hold = true;
+            final Transaction t = c.put("/b.txt", "b");
+            db.stop();
+            Runnable[] syncs = {() -> db.sync(), () -> c.sync(), () -> t.sync()};
+            for (int i = 0; i < syncs.length; i++) {
+                DbException e = assertThrows("sync " + i, DbException.class, syncs[i]);
+                Assert.assertFalse("sync " + i + ": " + e, e instanceof DbFailedException);
+            }
+        } finally {
+            stream.hold = false;
+            db.close();
+        }
+        Database d = start(stream.inner.copy());
+        try {
+            Assert.assertEquals("b", d.connection().get("/b.txt", String.class));
+        } finally {
+            d.close();
+        }
+    }
+
+    /**
+     * Database.stop() and the reads (bergdb 020-24-03, U3-5): after it, useIndex() and the
+     * iterators of usePrimary() and useIndex(), at their next read from the database, throw
+     * IllegalDbStateException, which is no failure; the primary scan's iterator first gives
+     * the values of the batch it has read.
+     */
+    @Nano
+    public static void testReadsAfterStop() {
+        final Database db = Factory.database().memory().start();
+        try {
+            final Connection c = db.connection();
+            WBuilder w = c.w();
+            for (int i = 0; i < 150; i++) {
+                w.put(String.format("/s/%03d", i), new Account("A" + (i % 3), i));
+            }
+            w.execute();
+            db.indexBuilder("i").dir("/s/").type("string").field("owner").start().join();
+            Iterator<Account> primary = c.usePrimary(Account.class).dir("/s/").objects()
+                    .iterator();
+            Iterator<Account> index = c.useIndex("i", Account.class).objects().iterator();
+            primary.next();
+            index.next();
+            db.stop();
+            assertThrows("useIndex()", IllegalDbStateException.class,
+                    () -> c.useIndex("i", Account.class));
+            for (Iterator<Account> it : List.of(primary, index)) {
+                int n = 1;
+                IllegalDbStateException e = null;
+                try {
+                    while (it.hasNext()) {
+                        it.next();
+                        n++;
+                    }
+                } catch (IllegalDbStateException x) {
+                    e = x;
+                }
+                Assert.assertTrue("listed " + n, e != null && !(e instanceof DbFailedException)
+                        && n < 150);
+            }
+        } finally {
+            db.close();
+        }
     }
 }

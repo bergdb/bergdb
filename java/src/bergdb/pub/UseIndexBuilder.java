@@ -32,7 +32,9 @@ package bergdb.pub;
  * says true before a next() that throws NoSuchElementException; else the value is returned,
  * converted to the scan's type as a get converts it (a conversion that throws, throws from
  * next()). A scan whose lookup time falls behind the first available lookup time while it
- * runs throws LookupTimeNotAvailableException from hasNext() or next().</p>
+ * runs throws LookupTimeNotAvailableException from hasNext() or next(). After
+ * Database.stop(), an iterator throws IllegalDbStateException from hasNext() or next() at
+ * its next read from the database (bergdb 020-24-03, U3-5).</p>
  *
  * @param <TYPE>  The type of the values returned, as for Connection.get(key, type).
  * @author Frans Lundberg

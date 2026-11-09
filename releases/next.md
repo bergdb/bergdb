@@ -667,3 +667,16 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   startup distance of heap above what the running database needs,
   whatever the cache budget (docs/levels.md, section 7); W7's 600 MB heap
   at a 200 MB startup distance was too small for a start.
+* **What a stop does to the calls that run** (bergdb 020-24-03, U3-1, U3-3
+  and U3-5, from a new user's application): `Database.stop()` and `close()`
+  said that "a transaction that runs completes"; one whose commit has begun
+  does, and another call that runs at the stop is refused with
+  `IllegalDbStateException`, nothing of it written, the database not
+  failed: an `rw()` whose action runs, which `close()` does not wait for, a
+  put not yet at its commit, `get()`, `exists()`, `useIndex()`, and a scan's
+  iterator at its next read. The three `sync()`s say that at a stop, before
+  the transaction is durable, they throw a `DbException` (a
+  `StreamIoException`, "Storage is closing."), the database not failed and
+  the transaction still written by `close()`; the Javadoc of `get()`,
+  `exists()`, `useIndex()`, `rw()` and the two scans says what a stop does
+  to them.

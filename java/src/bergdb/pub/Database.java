@@ -72,13 +72,25 @@ public interface Database extends AutoCloseable {
 
     /**
      * <p>Stops the database and closes it properly, without waiting (bergdb 005-35): no
-     * transaction or read starts after this method, and a transaction that runs completes.
-     * Every transaction that has returned is then written and the files are closed, in the
-     * background, typically within a second, also when the program returns from main right
-     * after this method. This method returns at once; close() also waits until the database
-     * is closed.
+     * transaction or read starts after this method, and a transaction whose commit has begun
+     * completes. Every transaction that has returned is then written and the files are
+     * closed, in the background, typically within a second, also when the program returns
+     * from main right after this method. This method returns at once; close() also waits
+     * until the database is closed.
      * Call close() to wait for completion and report a failed flush or storage close
      * (bergdb 005-73, F5).
+     * </p>
+     *
+     * <p>A call that runs in another thread at the stop, and has not begun its commit, is
+     * refused: it throws IllegalDbStateException, nothing of it is written, and the database
+     * has not failed (bergdb 020-24-03, U3-1). That holds for an rw() whose action runs: the
+     * action's next read throws it, or the commit does, and rw() throws it. It holds for a
+     * put(), a delete() or a WBuilder's execute() that has not reached its commit, and for
+     * a read: get(), exists(), useIndex(), and a scan's iterator at its next read from the
+     * database, which hasNext() or next() makes after the values it read before (U3-5). A
+     * read that loads from the storage as the storage closes may throw another DbException
+     * instead, a StreamIoException; the database has not failed then either. A sync() at a
+     * stop: see sync().
      * </p>
      * 
      * <p>Call sync() before stop() when the transactions must be durable when stop()
@@ -107,9 +119,11 @@ public interface Database extends AutoCloseable {
      * <p>Stops the database as stop() does, and waits until it is closed (bergdb 005-59):
      * every transaction that has returned is written, with a file storage forced to the
      * device, the files are closed, and the storage threads have ended; also when stop() or
-     * another close() began the close. After this method has been called this Database object
-     * must not be used anymore. It is safe to call it several times, also after stop(), and
-     * from different threads.
+     * another close() began the close. It waits for a transaction whose commit has begun,
+     * not for another call that runs, such as an rw() whose action runs: that call is
+     * refused, as stop() says (bergdb 020-24-03, U3-1). After this method has been called
+     * this Database object must not be used anymore. It is safe to call it several times,
+     * also after stop(), and from different threads.
      * </p>
      * 
      * <p>This is AutoCloseable's close(), without its checked exception: a try-with-resources
@@ -151,7 +165,11 @@ public interface Database extends AutoCloseable {
      *             if the database is faulty, or if the thread is interrupted while it waits
      *             (a StreamIoException whose cause is an InterruptedIOException): the
      *             transaction stays committed, the database goes on, and the thread's interrupt
-     *             flag is set (bergdb 005-46).
+     *             flag is set (bergdb 005-46). Or if the database is stopping or stopped
+     *             (stop()) and the transaction is not yet durable: a StreamIoException
+     *             ("Storage is closing."), the database has not failed, and close() still
+     *             writes the transaction (bergdb 020-24-03, U3-3). If it is durable, this
+     *             method returns, also then.
      * @throws DbFailedException
      *             If the storage has failed: the database fails (see above).
      */

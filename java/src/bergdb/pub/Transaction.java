@@ -41,7 +41,8 @@ public interface Transaction {
      * 
      * @throws DbException if the database is faulty or has failed, or if the thread is
      *             interrupted while it waits: the transaction stays committed, and the
-     *             thread's interrupt flag is set (Database.sync(); bergdb 005-46).
+     *             thread's interrupt flag is set (Database.sync(); bergdb 005-46). Or if the
+     *             database stops before this transaction is durable, as for Database.sync().
      */
     public void sync();
     

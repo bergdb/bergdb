@@ -145,7 +145,8 @@ public interface Connection extends ReadInterface {
      *             If key does not follow the allowed format, or is null, as for get()
      *             and an rw-transaction's exists() (bergdb 019-05).
      * @throws DbException
-     *             Thrown if the database is faulty.
+     *             Thrown if the database is faulty; IllegalDbStateException if it is
+     *             stopping or stopped, which is no failure (Database.stop()).
      * @throws DbFailedException
      *             If the database has failed, before or in this read (a read that fails
      *             on the storage fails it): it then refuses every transaction and read
@@ -189,7 +190,8 @@ public interface Connection extends ReadInterface {
      *            Use String.class to read a String directly from the raw value
      *            bytes assuming that the value stored consists of UTF-8 bytes.
      * @throws DbException
-     *             Thrown if the database is faulty.
+     *             Thrown if the database is faulty; IllegalDbStateException if it is
+     *             stopping or stopped, which is no failure (Database.stop()).
      * @throws DbFailedException
      *             If the database has failed, before or in this read (a read that fails
      *             on the storage fails it): it then refuses every transaction and read
@@ -325,7 +327,8 @@ public interface Connection extends ReadInterface {
      * every attempt is then refused (bergdb 015-88).</p>
      * 
      * @throws DbException
-     *             If the transaction is refused, as for put(); or if the thread is
+     *             If the transaction is refused, as for put(), also when the database stops
+     *             while the action runs (Database.stop()); or if the thread is
      *             interrupted while the transaction waits to run again after a conflict:
      *             it is not run, and the thread's interrupt flag is set (Database,
      *             "Interrupts").
@@ -371,6 +374,8 @@ public interface Connection extends ReadInterface {
      * @throws LookupTimeNotAvailableException
      *             If the lookup time is before Database.getFirstAvailableLookupTime(): the
      *             index's definition cannot be read at it.
+     * @throws bergdb.pub.util.IllegalDbStateException
+     *             If the database is stopping or stopped (Database.stop()).
      */
     public <TYPE> UseIndexBuilder<TYPE> useIndex(String indexName, Class<TYPE> type)
             throws NoSuchIndexException;
@@ -401,7 +406,8 @@ public interface Connection extends ReadInterface {
      * transaction started with this connection.
      * 
      * @throws DbException if the database is faulty, or if the thread is interrupted while
-     *             it waits: the transaction stays committed (see Database.sync()).
+     *             it waits: the transaction stays committed (see Database.sync()); or if the
+     *             database stops before the transaction is durable, as for Database.sync().
      * @throws DbFailedException
      *             If the storage has failed: the database fails. See Database.
      */

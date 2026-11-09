@@ -43,10 +43,12 @@ package bergdb.pub;
  *
  * <p>A listing whose t falls behind the first available lookup time while it runs (reclaim,
  * Database.setRetainDuration()) throws LookupTimeNotAvailableException from its iterator's
- * hasNext() or next(). A value that the type cannot be made from throws from next() what
- * get() throws: ObjectCreationException, or DataFormatException for a value read as a
- * String that is not well-formed UTF-8 (bergdb 021-06); the iterator can go on after
- * it.</p>
+ * hasNext() or next(). After Database.stop(), an iterator throws IllegalDbStateException
+ * from hasNext() or next() at its next read from the database, after the values that it
+ * read before (bergdb 020-24-03, U3-5). A value that the type cannot be made from throws
+ * from next() what get() throws: ObjectCreationException, or DataFormatException for a
+ * value read as a String that is not well-formed UTF-8 (bergdb 021-06); the iterator can
+ * go on after it.</p>
  *
  * @param <TYPE> The type of the values listed.
  * @author Frans Lundberg
