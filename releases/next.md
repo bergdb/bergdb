@@ -598,6 +598,14 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   loops with a stack of their own now, in the same order. A key's length
   still has no limit. In 2026.1 to 2026.3; found by a new-user
   application (020-24-05, U5-1 and U5-2). The stream is unchanged.
+* **A start reruns a transaction of a long key in time linear in its
+  nodes** (bergdb 021-16, Q2; 2026-11-09). The rerun of the startup
+  section looked up each node it made in the transaction's record by a
+  scan of the record (`StoredTrans.findNode`), so its time grew with the
+  product of the two counts, and a long key makes a node per 7 bytes: a
+  database with a key of 100,000 bytes and then one of 1,000,000 with the
+  same start took 4.9 to 5.9 s to start, now 0.5 to 0.6 s. Now a map from
+  id to node; the nodes found are the same. In 2026.1 to 2026.3.
 
 
 ### Format

@@ -153,17 +153,44 @@ public class StoredTrans {
     
     /**
      * Returns the node with the given id, or null if such a node
-     * does not exist.
+     * does not exist; the first of the nodes, in their order, if several have it.
+     * 
+     * <p>A scan of the nodes, as before bergdb 021-16, when they are at most
+     * FIND_NODE_SCAN_LIMIT, as in most records; otherwise a lookup in a map from id to node,
+     * made at the first call for the current array 'nodes' (021-16, Q2). The start's rerun
+     * calls it for every node it makes, a key node per 7 bytes of a new key, and with a scan
+     * only, a database with a key of 100,000 bytes and then one of 1,000,000 with the same
+     * start took 5 s to start, its rerun in this scan.</p>
      */
     public Node findNode(long id) {
-        for (StoredNode stored : nodes) {
-            if (stored.getNode().getId() == id) {
-                return stored.getNode();
+        if (nodes.length <= FIND_NODE_SCAN_LIMIT) {
+            for (StoredNode stored : nodes) {
+                if (stored.getNode().getId() == id) {
+                    return stored.getNode();
+                }
             }
+            return null;
         }
         
-        return null;
+        if (nodesById == null || nodesIndexed != nodes) {
+            final java.util.HashMap<Long, Node> map =
+                    new java.util.HashMap<Long, Node>(2 * nodes.length + 1);
+            for (StoredNode stored : nodes) {
+                map.putIfAbsent(stored.getNode().getId(), stored.getNode());
+            }
+            nodesById = map;
+            nodesIndexed = nodes;
+        }
+        
+        return nodesById.get(id);
     }
+    
+    /** The most nodes that findNode() scans; above, it makes a map. */
+    static final int FIND_NODE_SCAN_LIMIT = 64;
+    
+    /** findNode()'s map, and the array 'nodes' it was made from. */
+    private java.util.HashMap<Long, Node> nodesById = null;
+    private StoredNode[] nodesIndexed = null;
 
     /**
      * Creates and returns a list of the value nodes of the transaction.
@@ -1286,6 +1313,57 @@ public class StoredTrans {
         return transNodes;
     }
 
+    /**
+     * findNode() (bergdb 021-16, Q2): the node of an id, the first of two nodes with one id,
+     * null for an id that no node has, and the nodes of a new array after one is set; in
+     * time linear in the count of nodes, as the start's rerun calls it for each node it
+     * makes. It scanned the nodes at each call: 200,000 lookups among 100,001 nodes took
+     * seconds.
+     */
+    @Nano
+    private static void testFindNode() {
+        final int n = 100 * 1000;
+        final StoredTrans s = new StoredTrans();
+        final ValueNode[] values = new ValueNode[n];
+        s.nodes = new StoredNode[n + 1];
+        for (int i = 0; i < n; i++) {
+            values[i] = new ValueNode(new byte[] {(byte) i});
+            values[i].setId(1000 + 2L * i);
+            s.nodes[i] = StoredValueNode.create(values[i], Keys.toSegments("k" + i));
+        }
+        final ValueNode twin = new ValueNode(new byte[] {7});
+        twin.setId(1000);
+        s.nodes[n] = StoredValueNode.create(twin, Keys.toSegments("twin"));
+        
+        final long t0 = System.nanoTime();
+        for (int i = 0; i < n; i++) {
+            Assert.assertTrue("the node of id " + (1000 + 2L * i),
+                    s.findNode(1000 + 2L * i) == values[i]);
+            Assert.assertTrue("no node of id " + (1001 + 2L * i),
+                    s.findNode(1001 + 2L * i) == null);
+        }
+        final long ms = (System.nanoTime() - t0) / 1000000;
+        Assert.assertTrue("200,000 lookups took " + ms + " ms", ms < 2000);
+        
+        s.nodes = new StoredNode[] {StoredValueNode.create(twin, Keys.toSegments("twin"))};
+        Assert.assertTrue("the new array's node", s.findNode(1000) == twin);
+        Assert.assertTrue("not in the new array", s.findNode(1002) == null);
+        
+        // A scan, up to FIND_NODE_SCAN_LIMIT nodes, and a map above it: the same answers.
+        for (int size : new int[] {2, FIND_NODE_SCAN_LIMIT, FIND_NODE_SCAN_LIMIT + 1}) {
+            s.nodes = new StoredNode[size];
+            for (int i = 0; i < size - 1; i++) {
+                s.nodes[i] = StoredValueNode.create(values[i], Keys.toSegments("k" + i));
+            }
+            s.nodes[size - 1] = StoredValueNode.create(twin, Keys.toSegments("twin"));
+            Assert.assertTrue(size + " nodes: the first of id 1000",
+                    s.findNode(1000) == values[0]);
+            Assert.assertTrue(size + " nodes: the last",
+                    s.findNode(1000 + 2L * (size - 2)) == values[size - 2]);
+            Assert.assertTrue(size + " nodes: none", s.findNode(999) == null);
+        }
+    }
+    
     @Nano
     private static void testGetValueNode() {
         StoredTrans s = new StoredTrans();
