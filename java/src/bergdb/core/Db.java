@@ -45,6 +45,22 @@ import bergdb.stream.ReadBelowFirstPosException;
 import bergdb.stream.SalsaStream;
 
 /**
+ * <p><b>The Core API</b> (bergdb 020-27, Q1; Frans, 2026-11-09). The Pub API (bergdb.pub and
+ * bergdb.pub.util) is BergDB's stable, default and preferred API. The Core API is for when
+ * low-level control or the most performance is really needed. It is less stable: it may
+ * change faster between releases. It is less safe, and its writes can break the Pub API's
+ * data (see "Keys and the layers above" below; bergdb 020-22). It is mostly the layer that
+ * the Pub API is built on. The Core API is: this class, Db; DbBuilder, but for its members
+ * for tests; Trans.Builder, and Trans as a transaction to execute with its outputs tt, tpos,
+ * lastPos and nextPos; GetData; GetMany and its stop conditions; Kvt;
+ * StoredTrans as getTrans() gives it; StartInfo; the key conversions Keys.toSegments() and
+ * Keys.toBytes(); FileStream and MemoryStream as a stream for DbBuilder; and the exceptions
+ * that their Javadoc names. Everything else that is reachable from them is internal, whatever
+ * is public, and may change without notice: among others Db.internal() and Db.Internal,
+ * Db.ExecuteData, Db.TestHooks, Db.StartParams and the listeners, lookupTime(),
+ * checkNodes(), the members that their Javadoc calls internal or for tests, Trans's other
+ * fields, GetMany.Chain, and the stream classes beyond making a stream.</p>
+ * 
  * <p>An object of this class provides access to the data in the database. This
  * class is the main class of the internal low-level database implementation.
  * It should not be used directly by users unless they really 

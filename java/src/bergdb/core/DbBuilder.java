@@ -16,6 +16,11 @@ import bergdb.stream.MemoryStream;
  * defaults are the system clock, 200 MB, 50 MB and 30. Of the other methods, id() and
  * createdTxt() are for the Pub API, and the rest for tests. Db's Javadoc, "Opening a
  * database", has an example (bergdb 020-24-09, U9-6).
+ * 
+ * <p>Part of the Core API, which Db's Javadoc names ("The Core API"; bergdb 020-27, Q1): for
+ * low-level control and the most performance, less stable and less safe than the Pub API,
+ * whose DatabaseBuilder (bergdb.pub) is the stable, default and preferred way to start a
+ * database. The members that their Javadoc gives for tests are internal.</p>
  */
 public class DbBuilder {
     Clock clock;

@@ -1008,6 +1008,21 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   the Core user's keys for their meaning or changes them (K2); writes of
   BergDB's keys through the Db under a running Database are seen only in
   part until the next start (K3).
+* **What the Core API is** (bergdb 020-27, Q1; Frans, 2026-11-09):
+  `Db`'s Javadoc names it, at its top, and `DbBuilder`'s, the Core's
+  package page and `bergdb.pub`'s "The API and its jar" point there. The
+  Pub API is the stable, default and preferred API. The Core API is for
+  low-level control and the most performance, less stable (it may change
+  faster between releases) and less safe, its writes able to break the Pub
+  API's data ("Keys and the layers above"); it is mostly the layer that the
+  Pub API is built on. It is `Db`, `DbBuilder` (but for its members for
+  tests), `Trans.Builder` and `Trans`'s outputs, `GetData`, `GetMany` and
+  its stop conditions, `Kvt`, `StoredTrans` from `getTrans()`, `StartInfo`,
+  `Keys.toSegments()` and `toBytes()`, `FileStream` and `MemoryStream` as a
+  stream, and the exceptions they name; the rest, such as `Db.Internal`,
+  `ExecuteData`, `TestHooks` and `lookupTime()`, is internal and may change
+  without notice. "The API and its jar" said "Db with the types of its
+  signatures", which by the letter took in those internals.
 * **A start's heap** (bergdb 019-45): a start needs about twice the
   startup distance of heap above what the running database needs,
   whatever the cache budget (docs/levels.md, section 7); W7's 600 MB heap

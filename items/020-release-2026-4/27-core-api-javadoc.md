@@ -442,3 +442,12 @@ public method of `Db`, `DbBuilder`, `Trans.Builder` and `GetMany`'s stop conditi
 an object refuses null with `IllegalArgumentException` that names the parameter, with its
 `@throws`; tests `DbTesterJavadoc.testDbNullArguments`, `testDbBuilderNullArguments`,
 `testTransBuilderNullArguments` and `testGetManyNullArguments`, each failing before.
+
+2026-11-09. Q1 decided by Frans, 16:27: "Yes to the Javadoc proposal. This has been
+intentionally open. And still we expect Core API to change faster and be less well-defined.
+The Pub API is the stable, default, and preferred API. The Core API is for when low-level
+control and max performance is really needed. It is less stable, less safe, and can destroy
+the data for pub layer. The Core layer is mostly an internal layer to develop Pub Layer on
+top." Done by q27, commit "020-27, Q1": a paragraph "The Core API" at the top of `Db`'s
+class Javadoc that names it, and a sentence in `DbBuilder`'s, in the Core's package page and
+in `bergdb.pub`'s "The API and its jar"; Javadoc only.

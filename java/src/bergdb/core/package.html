@@ -3,6 +3,14 @@
 <p>With support from other packages, this package implements the Core Layer.
 The Db class is the main class of the package.</p>
 
+<p>The Core API, the part of the Core Layer that an application may use, is named in Db's
+Javadoc ("The Core API"; bergdb 020-27, Q1): Db, DbBuilder, Trans.Builder, the reads' classes
+and a few more. It is for low-level control and the most performance; it is less stable (it
+may change faster between releases) and less safe than the Pub API (bergdb.pub), BergDB's
+stable, default and preferred API, and its writes can break the Pub API's data. It is mostly
+the layer that the Pub API is built on. Everything else in the Core Layer is internal, whatever
+is public, and may change without notice.</p>
+
 <p>Depends on: common, dag, nanotest, pub.util, storage, stream.</p>
 
 
