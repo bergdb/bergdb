@@ -215,11 +215,98 @@ Put conversion threw `IllegalArgumentException`; conversion of a matching stored
 I reached all five requested areas, but did not exhaustively audit every other `pub/util` implementation or changed helper outside the named scope. I did not independently enumerate all concurrent schedules, inject crash images, or exercise near-2-GB limits. No prohibited heavy scripts were run.
 <!-- CODEX REPORT END -->
 
+### Fixes
+
+By x14, coord-1109's fixer (2026-11-09, 09:31 to 10:04), in the clone
+`/Users/f/fl/bench/2026-11-09/clone-x14` from `a9e5488`. Each finding:
+Codex's probe run again on the clone's build, a failing test, the cause
+and its siblings, a minimal fix, the gate (BEFORE COMMIT OK under the
+shared gate lock), one commit.
+
+* **X1, confirmed, high. Commit `a03111e`.**
+  * Cause: `RwEnvironmentImp.indexEntries` reads the directory's index set
+    (and adds its hash to the read set) and the previous value for the
+    key as written; the Core replaces `${transactionTime}` at the commit
+    (`KeyTransformation`), after.
+  * The sites where the put's key is used before it is replaced: the
+    directory (index set and its hash), wrong; the previous value, wrong
+    also for a placeholder in the name (a sibling, by a test: an object
+    stored at the key as written, `/n/${transactionTime}` with key
+    replace off, lost its index entry when a replaced put of another
+    value went to `/n/<time>`, also after a restart); the entry's K,
+    right (replaced within K since N11); the object-key check, right (the
+    18 digits leave the suffix as it is); deletes, right (taken as
+    written, 019-15); keys with a suffix, never indexed.
+  * Fix: with key replace on, a put at an object key whose directory
+    holds `${transactionTime}` is refused with `IllegalArgumentException`
+    at the call, before anything is written (the three puts, any value);
+    a replaced name takes no previous value (it lands at a key whose
+    name holds its commit's time, after R). Javadoc of
+    `Connection.setEnableKeyReplace`, 020-10 section 5.3, releases/next.md.
+  * **For Frans** (decided under the delegation, keeps data correct):
+    (a), chosen, the refusal in the directory, as his own old note in
+    src-dev's `bergdb.dev` package page proposes ("disallow key
+    replacement except in the last part of the key"); it takes away
+    per-transaction directories of objects (keys with a suffix keep
+    them). (b), the alternative: allow it, each change of an index
+    definition writes one more virtual hash that such a put reads, and
+    the put is refused only when an index's directory matches the key
+    with 18 digits in place of the placeholder; about 30 lines in
+    `IndexManager` and the maintenance, in code that 020-18 reviews.
+    Left as it was: a key written as it is whose name holds a later
+    time's digits, on which a replaced put lands, keeps its old entry; a
+    scan leaves it out (it gives only values that their entries still
+    match, 020-10, section 3.4). A full fix needs an insert-if-absent in
+    the Core.
+  * Tests: `PubTesterIndexJobs.testKeyReplaceInDirectoryRefused` and
+    `testKeyReplaceInNameKeepsTheKeyAsWritten`, each with a restart;
+    both failed before.
+* **X2, confirmed, high. Commit `987e734`.**
+  * Cause: Java wraps only an `Exception` of a static initializer in an
+    `ExceptionInInitializerError` (JLS 12.4.2); an `Error` such as an
+    `AssertionError` passes as it is. `DataObjects.make()` caught
+    `ExceptionInInitializerError`, `LinkageError` and the constructor's
+    `InvocationTargetException`, so it escaped, and in `rw()` failed the
+    database. The later gets meet "Could not initialize class", a
+    `LinkageError`, already caught.
+  * Siblings: `make()`'s `Constructor.newInstance()` is the only place
+    where production code runs user code by reflection (the constructor
+    and the static initializers of the class and its superclasses,
+    nested through `convert()`). `Field.get` and `Field.set` on an object
+    run none; the class check (`getConstructor`, `getDeclaredFields`)
+    initializes no class.
+  * Fix: an `Error` from `newInstance()` but a `VirtualMachineError` is
+    an `ObjectCreationException` with the `Error` as its cause. 020-09,
+    section 5.2; releases/next.md.
+  * Test: `DataObjectsTester.testInitializerError` (at the top and
+    through a field; a get, a get in `rw()`, `toJavaObject`, three times
+    each; the database goes on); failed before.
+* **X3, confirmed, medium. Commit `ef6a3cf`.**
+  * Cause: V6 checked only C's package; `Field.get` and `Field.set`
+    check the class that declares the field.
+  * Fix: V6 for each class that declares a stored field, in the check, so
+    the class is refused at a put (`IllegalArgumentException`) and at a
+    get (`ObjectCreationException`), also of `{}` and at a key without a
+    value, naming the field and the package. 020-09, V6; releases/next.md.
+  * A sibling found in the check (020-09, section 3.3), low:
+    `Field.getGenericType()` throws `TypeNotPresentException` (or
+    `MalformedParameterizedTypeException`) for a field whose generic type
+    names a class that is not there; it escaped the put and the get, also
+    in `rw()` (the database went on). Now the class's fault, as a
+    `LinkageError` is.
+  * Test: `DataObjectsTester.testClassesOfAModule`, a unit test: the
+    test makes a named module in a new module layer (a `ModuleDescriptor`
+    built in code, class files written by the test, no compiler), with
+    `model.Person extends hidden.Base`, `hidden` not exported, and a
+    valid `model.Person2 extends model.Base2`; and a class whose field's
+    generic type names a missing class. A few milliseconds; failed before.
+
 
 ## 4. State
 
-The review is done. X1 to X3 go to a fixer agent (x14): a failing test
-from each probe, then a fix, gated in its clone; then into `main`.
+X1 to X3 are fixed in the clone, each gated and committed alone:
+`d75d67c`, `481e1a5` and `b9a2910` on `a9e5488`, for coord-1109 to bring
+into `main`. For Frans: X1's choice, (a) or (b) (section 3, Fixes).
 
 
 Log
@@ -230,3 +317,8 @@ the brief made, Codex started.
 
 2026-11-09. Codex done in 15 minutes: X1 (high), X2 (high), X3 (medium),
 all confirmed by a run; the report copied into section 3.
+
+2026-11-09. x14, coord-1109's fixer, fixed X1 to X3 in its clone, one
+gated commit each, with a sibling of X1 (a placeholder in the name) and
+one of X3 (`TypeNotPresentException` from the check); X1's refusal is for
+Frans to confirm (section 3, Fixes).
