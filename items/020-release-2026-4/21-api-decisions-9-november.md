@@ -163,7 +163,7 @@ Javadoc, each a corner that 020-13 (section 4.2) or 020-19 (section 6) found uns
   `IllegalArgumentException`, as a negative duration is refused; one line in
   `Duration.seconds()`, and the Javadoc's "0 for NaN" changed.
 
-  **Decided** by Frans, 2026-11-09, 11:23: "Yes, as recommended." Done in `1a119cf`, on
+  **Decided** by Frans, 2026-11-09, 11:23: "Yes, as recommended." Done in `e5b6de8`, on
   `cce0ff4`: `Duration.seconds(NaN)` throws `IllegalArgumentException` (`Double.isNaN`
   before the rounding), with its `@throws` and a line in `releases/next.md`; the
   Documentation line of 3 no longer says "0 for NaN". Siblings, the API's other methods
@@ -197,7 +197,8 @@ Gates (`java/before-commit.sh`, under the shared lock, on a loaded F53):
 
 3 was gated with 4 on top; 4 adds a check and a test, so 3 alone passes what 4 passes.
 
-Q1, decided at 11:23, is `1a119cf` on `cce0ff4`; its gate is under way (section 4).
+Q1, decided at 11:23, is `e5b6de8` on `cce0ff4` (section 4): BEFORE COMMIT OK (143 s;
+unit 1477, f 86, DEMOS OK), JAVADOC PUB OK, 11:45.
 
 Left: for 020-11: the Eviction test's failure under load, if it comes again.
 
@@ -209,4 +210,4 @@ Log
 that failed first, committed in the clone and gated by 11:14; Q1 for Frans.
 
 2026-11-09. Q1 decided by Frans (11:23: "Yes, as recommended."): `Duration.seconds(NaN)`
-refused, `1a119cf`, a failing test first.
+refused, `e5b6de8`, a failing test first.
