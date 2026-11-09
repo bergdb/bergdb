@@ -182,8 +182,8 @@ public class Time {
      * <p>The parse is strict (bergdb 020-21, 1): a string is taken only as the format above
      * gives it, with each field in its range. A field is not rolled over: "2013-02-30",
      * "2013-13", "24:00" and "12:60" are refused, not taken as 2013-03-02, 2014-01, the next
-     * day's 00:00 and 13:00. A fraction of a second is rounded to Time's resolution, 100 ns,
-     * half up.</p>
+     * day's 00:00 and 13:00. A fraction of a second, and a minus time's duration, its number
+     * times its unit taken exactly, are rounded to Time's resolution, 100 ns, half up.</p>
      * 
      * @throws BadFormatException If the time string does not follow the format above, or a
      *             field is outside its range; or if the time is outside Time's range, before
@@ -386,6 +386,39 @@ public class Time {
         Assert.assertEquals(Time.utc("2020-06-15 00:00"), Time.resolve(UTC, now, "00:00"));
         Assert.assertEquals(Time.utc("2020-06-15 23:59:59.5"),
                 Time.resolve(UTC, now, "23:59:59.5"));
+    }
+    
+    /**
+     * bergdb 020-23, Y1 (Codex's review of 020-21): a minus time's duration is its decimal
+     * number times its unit, exactly, rounded to clock units half up, as a fraction of a
+     * second is. The number went through a double and the product was truncated: "-0.0000021
+     * s" was 20 units, not 21, "-900719925.4740993 s" one unit off, and Time.MAX minus
+     * MAX's own seconds was refused as negative (-1) instead of giving 1970-01-01.
+     */
+    @Nano
+    private static void testMinusTimeExact() {
+        final Time now = Time.utc("2020-06-15 12:00");
+        final String[] strings = {"-0.00000004 s", "-0.00000005 s", "-0.00000015 s",
+                "-0.00000029 s", "-0.0000021 s", "-1.00000005 s", "-900719925.4740993 s",
+                "-0.5 m", "-0.00000001 m", "-1.5 h", "-0.00000001 d", "-0 s", "-0.0 d"};
+        final long[] units = {0, 1, 2, 3, 21, 10000001, 9007199254740993L,
+                300000000, 6, 54000000000L, 8640, 0, 0};
+        for (int i = 0; i < strings.length; i++) {
+            Assert.assertEquals(strings[i], units[i],
+                    now.units() - Time.resolve(UTC, now, strings[i]).units());
+        }
+        Assert.assertEquals(Time.units(0), Time.resolve(UTC, Time.MAX, "-7205759403.7927935 s"));
+        Assert.assertEquals(Time.units(0), Time.resolve(UTC, Time.MAX, "-7205759403.79279345 s"));
+        Assert.assertEquals(Time.units(1), Time.resolve(UTC, Time.MAX, "-7205759403.7927934 s"));
+        for (String s : new String[] {"-7205759403.7927936 s", "-7205759403.79279355 s",
+                "-1" + "0".repeat(400) + " d"}) {
+            try {
+                Time t = Time.resolve(UTC, Time.MAX, s);
+                throw new AssertionError("'" + s + "' not refused: " + t);
+            } catch (BadFormatException e) {
+                // Expected: before 1970.
+            }
+        }
     }
     
     @Nano

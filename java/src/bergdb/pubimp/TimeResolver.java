@@ -1,5 +1,7 @@
 package bergdb.pubimp;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.YearMonth;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
@@ -258,19 +260,23 @@ public class TimeResolver {
                         + "'.': '" + timeString + "'.");
             }
         }
-        double number = Double.parseDouble(timeString.substring(1, end));    // Digits only
+        BigDecimal number = new BigDecimal(timeString.substring(1, end));    // Digits only
         
         if (timeString.length() < end + 2 || timeString.charAt(end) != ' ') {
             throw new BadFormatException("Bad minus time string, expected a space and a unit "
                     + "after the number: '" + timeString + "'.");
         }
-        double factor = parseUnit(timeString.charAt(end + 1), timeString);
+        long factor = parseUnit(timeString.charAt(end + 1), timeString);
         
-        long time = currentTime - ((long) (number * factor));
-        if (time < 0) {
-            throw new BadFormatException("Time out of range (negative: " + time 
-                    + "), time string was: '" + timeString + "'.");
+        // The duration exactly, rounded to clock units half up, as a fraction of a second is
+        // (bergdb 020-23, Y1): through a double and a cast, "-0.0000021 s" was 20 units.
+        BigDecimal delta = number.multiply(BigDecimal.valueOf(factor))
+                .setScale(0, RoundingMode.HALF_UP);
+        if (delta.compareTo(BigDecimal.valueOf(currentTime)) > 0) {
+            throw new BadFormatException("Time out of range, before 1970, time string was: '"
+                    + timeString + "'.");
         }
+        long time = currentTime - delta.longValueExact();
         
         // If time of day comes after minus expression.
         if (timeString.length() > end + 2) {
@@ -282,21 +288,22 @@ public class TimeResolver {
         return time;
     }
 
-    private double parseUnit(char unitChar, String timeString) {
-        double factor;
+    /** The clock units of the unit. */
+    private long parseUnit(char unitChar, String timeString) {
+        long factor;
         
         switch (unitChar) {
         case 's':
             factor = Clock.UNITS_PER_SEC;
             break;
         case 'm':
-            factor = Clock.UNITS_PER_SEC * 60.0;
+            factor = Clock.UNITS_PER_SEC * 60;
             break;
         case 'h':
-            factor = Clock.UNITS_PER_SEC * 3600.0;
+            factor = Clock.UNITS_PER_SEC * 3600;
             break;
         case 'd':
-            factor = Clock.UNITS_PER_SEC * 3600.0 * 24.0;
+            factor = Clock.UNITS_PER_SEC * 3600 * 24;
             break;
         default:
             throw new BadFormatException("Bad minus time string, bad unit, was: '" + timeString + "'.");
