@@ -240,6 +240,45 @@ static int child_fsize(char **argv) {
     return 0;
 }
 
+/* fsizebig DIR LIMIT: the files limited to LIMIT bytes, as fsize; a
+ * transaction of 1,000 bytes, then one of 11 MB, more than the write
+ * buffer's 10 MB, so that bergdb_execute writes the buffer, and that write
+ * fails; then a transaction and the close, each code printed (bergdb
+ * 022-05: DbTester.testWriterWaitingForRoomAfterFailedFlush, whose writer
+ * waits for room in Java's buffer thread). */
+static int child_fsize_big(char **argv) {
+    struct rlimit rl;
+    rl.rlim_cur = (rlim_t) atoll(argv[1]);
+    rl.rlim_max = RLIM_INFINITY;
+    signal(SIGXFSZ, SIG_IGN);
+    if (setrlimit(RLIMIT_FSIZE, &rl) != 0) {
+        printf("setrlimit failed\n");
+        return 1;
+    }
+    struct bergdb_test_clock clock = {0};
+    struct bergdb_options o;
+    struct bergdb_mem m = {0};
+    bergdb_db *db;
+    char errbuf[BERGDB_ERRBUF_SIZE];
+    du_options(&o, &clock, &m);
+    bergdb_test_clock_set(&clock, 1000);
+    if (bergdb_open(argv[0], &o, &db, NULL, errbuf) != BERGDB_OK) {
+        printf("open %s\n", errbuf);
+        return 1;
+    }
+    const size_t big = 11 * 1000 * 1000;
+    uint8_t *v = malloc(big);
+    struct bergdb_executed ex;
+    printf("execute %s\n", bergdb_errname(du_trans(db, &clock, 0, 1000, v, &ex)));
+    int rc = du_trans(db, &clock, 1, big, v, &ex);
+    printf("execute %s %s\n", bergdb_errname(rc), bergdb_errmsg(db));
+    printf("execute %s\n", bergdb_errname(du_trans(db, &clock, 2, 1000, v, &ex)));
+    printf("close %s\n", bergdb_errname(bergdb_close(db)));
+    printf("live %lld\n", (long long) m.live_total);
+    free(v);
+    return 0;
+}
+
 int durable_child(int argc, char **argv) {
     if (argc >= 8 && strcmp(argv[2], "exec") == 0) {
         return child_exec(argv + 3);
@@ -249,6 +288,9 @@ int durable_child(int argc, char **argv) {
     }
     if (argc >= 5 && strcmp(argv[2], "fsize") == 0) {
         return child_fsize(argv + 3);
+    }
+    if (argc >= 5 && strcmp(argv[2], "fsizebig") == 0) {
+        return child_fsize_big(argv + 3);
     }
     fprintf(stderr, "func --child: bad arguments\n");
     return 2;
@@ -623,6 +665,41 @@ TEST(durable_write_fails) {
     du_remove_dir(dir);
 }
 
+/* A write of the full write buffer within bergdb_execute that fails
+ * (EFBIG) fails the database (P7): the execute gives BERGDB_FAILED, and so
+ * does the next; the close gives BERGDB_IO and frees everything. A restart
+ * finds the transaction before (bergdb 022-05; DbTester's
+ * testWriterWaitingForRoomAfterFailedFlush, 005-35, in C: C has no buffer
+ * thread to wait for). */
+TEST(durable_write_fails_in_execute) {
+    char dir[1024], line[600];
+    du_temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    REQUIRE(func_program != NULL);
+    const char *args[] = { "fsizebig", dir, "150000", NULL };
+    struct child c;
+    REQUIRE(child_start(&c, args));
+    static const char *const expect[] = { "execute BERGDB_OK",
+        "execute BERGDB_FAILED DbFailedException: ", "execute BERGDB_FAILED",
+        "close BERGDB_IO", "live 0" };
+    for (size_t i = 0; i < sizeof expect / sizeof expect[0]; i++) {
+        bool got = child_line(&c, line, sizeof line);
+        CHECK(got && strncmp(line, expect[i], strlen(expect[i])) == 0);
+        if (!got || strncmp(line, expect[i], strlen(expect[i])) != 0) {
+            printf("  expected \"%s\", got \"%s\"\n", expect[i], got ? line : "(end)");
+        }
+    }
+    int status = child_wait(&c);
+    CHECK(WIFEXITED(status) && WEXITSTATUS(status) == 0);
+    CHECK(du_stream_bytes(dir) <= 150000);
+    struct bergdb_start_info info;
+    bool ok;
+    int64_t n = restart_and_go_on(dir, 1000, 3, &info, &ok);
+    CHECK(ok);
+    CHECK_EQ(n, 0);
+    du_remove_dir(dir);
+}
+
 /* The directory's entries, sorted, as "NAME NAME ...". */
 static void du_entries(const char *dir, char *out, size_t size) {
     struct dirent **list;
@@ -698,6 +775,7 @@ const struct test durable_tests[] = {
     TEST_ENTRY(durable_kill_at_random),
     TEST_ENTRY(durable_in_use),
     TEST_ENTRY(durable_write_fails),
+    TEST_ENTRY(durable_write_fails_in_execute),
     TEST_ENTRY(durable_refused_creation),
     TEST_END
 };
