@@ -97,9 +97,10 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   object, with a message that names format 1: a get as `Object`,
   `DbObject` or a class throws
   `ObjectCreationException`, and so does `next()` of a primary scan or an
-  index scan that lists it as an object; an index build over it
-  ends failed, naming the key, and the database goes on; a put or a delete
-  over it in an indexed directory throws `DataFormatException`. A start of
+  index scan that lists it as an object; an index build over it ends
+  failed, naming the key, and the database goes on. Such an object at a
+  key can be overwritten or deleted, in an indexed directory too; a
+  `byte[]` put of one there throws `DataFormatException`. A start of
   a database that holds an index definition of format 1 throws
   `VersioningStreamException`, which says to make the database again, and
   closes it. A `String` value is never taken for such an object, whatever
@@ -109,11 +110,13 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   and one whose bytes are a whole object of format 1 is refused as one
   (`Connection.get`'s Javadoc).
 * **A String value too large to store is refused at its put** (bergdb
-  020-08, with the fix of format 1's recognition): a `String` value of more
-  than 2^31 - 9 bytes of UTF-8, or a `String` field above a stored value's
-  limit, throws `IllegalArgumentException` before anything is written,
-  where its encoding met an `OutOfMemoryError`, which failed the database
-  inside `rw()`.
+  020-08, with the fix of format 1's recognition and its review): a
+  `String` value of more than 2^31 - 9 bytes of UTF-8, or a `String` field
+  above a stored value's limit, throws `IllegalArgumentException` before
+  anything is written, where its encoding met an `OutOfMemoryError`, which
+  failed the database inside `rw()`; and a `String` value or field whose
+  UTF-8 fits a stored value no longer throws `OutOfMemoryError` in its
+  encoding, whatever its size.
 * **`put(Object)` and the key field are gone** (bergdb 020-08, step 7;
   Frans, 2026-11-08, 19:21; 020-02, section 5.1b), with
   `MissingKeyFieldException`. `WBuilder` and `RwEnvironment` put at a key
