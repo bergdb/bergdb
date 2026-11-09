@@ -326,7 +326,8 @@ class IndexBuilderImp implements IndexBuilder {
      * directory's end: 015-30, S2-F16), up to the directory's last key when the build began
      * (bergdb 020-18, F4: the keys after it were put by writers that keep the index); the definition's key hash in its read set; if the index
      * was deleted, the build ends FAILED "deleted"; else each value's entry is put (a value
-     * with no entry is counted and skipped; a key without an ikey is skipped, bergdb 021-06).
+     * with no entry is counted and skipped; a key without an ikey, or whose name holds a
+     * '/', is skipped, bergdb 021-06 and 020-16, F16-3).
      * The hash of each value whose entry the step puts is in the read set, so a concurrent
      * write of one makes the step run again; a write of a value without an entry, such as one
      * at a key with a suffix, does not, as the step writes nothing for it (bergdb 020-18, F1:
@@ -354,6 +355,7 @@ class IndexBuilderImp implements IndexBuilder {
         private final Db db;
         private final long[] prefix;
         private final long[] afterPrefix;       // The least key after the directory's keys
+        private final int nameStart;        // where a key's name starts in its ikey
         private final long defKeyHash;
 
         /**
@@ -381,6 +383,7 @@ class IndexBuilderImp implements IndexBuilder {
             byte[] after = p.clone();
             after[after.length - 1]++;          // The bkey of '-' is below 0xff.
             this.afterPrefix = Keys.toSegments(after);
+            this.nameStart = def.idir().length() + 1;
             this.defKeyHash = Keys.hash(Keys.toSegments(def.key()));
         }
 
@@ -538,7 +541,11 @@ class IndexBuilderImp implements IndexBuilder {
                 lastKey = kvt.key;
                 count++;
                 String ikey = Keys.bkey2ikeyOrNull(Keys.toBytes(kvt.key));
-                if (ikey == null) {
+                if (ikey == null || ikey.indexOf('/', nameStart) != -1) {
+                    // A key without an ikey, or whose name holds a '/', written through the
+                    // Core, is no key of the directory, as usePrimary takes it (bergdb
+                    // 020-16, F16-3: IndexKeys.fileKey threw for such a key, which failed
+                    // the build as a bug).
                     continue;
                 }
                 byte[] entry = def.entry(ikey, kvt.value);

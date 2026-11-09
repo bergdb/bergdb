@@ -1583,6 +1583,42 @@ public class PubTesterIndexJobs {
         }
     }
 
+    /**
+     * A build skips a key under its directory's file prefix whose name holds a '/', written
+     * through the Core: no key of the directory, which usePrimary skips too. Before, the
+     * first ("/ditems/-a/b") failed the build with the IllegalArgumentException of
+     * IndexKeys.fileKey, as a bug, at every start, and the others got an entry, whose K
+     * names another key (bergdb 020-16, F16-3).
+     */
+    @Nano
+    public static void testBuildSkipsKeysWithASlashInTheName() {
+        for (String junk : new String[] {"/ditems/-a/b", "/ditems/-a/-b", "/ditems/-a/dq/-c"}) {
+            Database db = start(new MemoryStream());
+            try {
+                Connection c = db.newConnection();
+                c.put("/items/x", new Item(1, 2));
+                Db core = db(db);
+                core.execute(core.trans().put(Keys.toBytes(junk),
+                        bergdb.pub.DbObject.toDbObject(new Item(1, 3)).getBytes()).build());
+                JobStatus status = db.indexBuilder("by-field").dir("/items/").type("long")
+                        .field("amount").start().join();
+                Assert.assertTrue(junk + ": " + status.note(),
+                        status.state() == JobStatus.State.ACTIVE);
+                long gen = manager(db).definition("by-field").gen();
+                Assert.assertEquals(junk + ": the entries", 1,
+                        manager(db).entries("by-field", gen, Long.MAX_VALUE).size());
+                int n = 0;
+                for (Kv<Item> kv : c.useIndex("by-field", Item.class).eq(1).kvs()) {
+                    Assert.assertEquals("/items/x", kv.key());
+                    n++;
+                }
+                Assert.assertEquals(1, n);
+            } finally {
+                db.close();
+            }
+        }
+    }
+
     // ======== The start (020-10, section 4.5) ========
 
     /**
