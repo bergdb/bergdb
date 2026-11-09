@@ -167,7 +167,9 @@ A class C is a Data Object class if and only if:
   as the time of the read (S2-F18), and `java.lang.Object` has none. The
   platform types that BergDB takes are the closed list's.
 * **V6. Exported to BergDB (delegated)**: `C.getModule().isExported(
-  C.getPackageName(), M)`, M the module of BergDB's classes. True for
+  C.getPackageName(), M)`, M the module of BergDB's classes, and the same
+  for each superclass of C that declares a stored field (020-14, X3:
+  `Field.get` and `Field.set` check the declaring class). True for
   every class on the class path, and for a package of a named module that
   `exports` it (`opens` is not needed). Else `Field.get` would throw
   `IllegalAccessException` at the first use; the check says why first.
@@ -213,8 +215,9 @@ JVM's life (a `ClassValue`), so the check runs once per class.
   field.
 * A `LinkageError` while C or a field's type is loaded for the check (a
   `NoClassDefFoundError`) is the class's fault: C is not valid, with the
-  error as the cause **(delegated)**. A `VirtualMachineError` passes as
-  it is (P7, 018-01).
+  error as the cause **(delegated)**; so is a `TypeNotPresentException` or
+  a `MalformedParameterizedTypeException` from a field's generic type
+  (020-14). A `VirtualMachineError` passes as it is (P7, 018-01).
 
 
 ## 4. The put: Data Object to DbObject, exact
@@ -1007,3 +1010,7 @@ left open decided under his delegation of 22:17 (section 6); read-only at
 
 2026-11-09. Section 5.2: the Codex review's X2 (020-14) fixed, with its
 test: an `Error` of a static initializer.
+
+2026-11-09. Sections 3.2 (V6) and 3.3: the Codex review's X3 (020-14)
+fixed, with its test: V6 for each class that declares a stored field; a
+field's generic type that names a missing class.

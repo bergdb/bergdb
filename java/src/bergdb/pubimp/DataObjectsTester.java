@@ -1,18 +1,34 @@
 package bergdb.pubimp;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.module.Configuration;
+import java.lang.module.ModuleDescriptor;
+import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReader;
+import java.lang.module.ModuleReference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.math.BigInteger;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
+import java.util.Set;
+import java.util.stream.Stream;
 
+import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Action;
@@ -3022,5 +3038,192 @@ public class DataObjectsTester {
             db.close();
         }
         ch.done();
+    }
+
+    /** A generic Data Object class: valid, whatever its type argument. */
+    public static class GenericBox<T> {
+        public int n;
+        public GenericBox() {}
+    }
+
+    /**
+     * The Codex review's X3 (bergdb 020-14): a public class of an exported package that
+     * inherits a public field from a public class of a package that is not exported to BergDB
+     * is not a Data Object (V6 for each class that declares a stored field, 020-09, section
+     * 3.2): refused at a put with IllegalArgumentException and at a get with
+     * ObjectCreationException, also of {} and at a key without a value (section 3.3). Until
+     * 2026-11-09 the check took it, and Field.get and Field.set threw IllegalAccessException:
+     * an IllegalArgumentException at the put that did not say why, and an
+     * ObjectCreationException at a get only for a stored object with the field. The same with
+     * the superclass in the exported package is valid. And (section 3.3) a class whose field's
+     * generic type names a class that is not there is not valid, a LinkageError's case:
+     * Field.getGenericType() threw TypeNotPresentException from the put and the get.
+     */
+    @Nano
+    public static void testClassesOfAModule() throws Exception {
+        Map<String, byte[]> files = new HashMap<String, byte[]>();
+        files.put("hidden/Base.class", classFile("hidden/Base", "java/lang/Object", "value",
+                "I", null));
+        files.put("model/Person.class", classFile("model/Person", "hidden/Base", null, null,
+                null));
+        files.put("model/Base2.class", classFile("model/Base2", "java/lang/Object", "value",
+                "I", null));
+        files.put("model/Person2.class", classFile("model/Person2", "model/Base2", null, null,
+                null));
+        ClassLoader loader = moduleLoader("bergdb.test.x3", files, "model", "hidden");
+        Class<?> person = loader.loadClass("model.Person");
+        Class<?> person2 = loader.loadClass("model.Person2");
+        Assert.assertTrue("a named module", person.getModule().isNamed());
+        Assert.assertTrue("hidden not exported", !person.getModule().isExported("hidden"));
+
+        String box = DataObjectsTester.class.getName().replace('.', '/') + "$GenericBox";
+        final byte[] gone = classFile("gone/Holder", "java/lang/Object", "box",
+                "L" + box + ";", "L" + box + "<Lgone/Missing;>;");
+        Class<?> holder = new ClassLoader(DataObjectsTester.class.getClassLoader()) {
+            protected Class<?> findClass(String name) throws ClassNotFoundException {
+                if (name.equals("gone.Holder")) {
+                    return defineClass(name, gone, 0, gone.length);
+                }
+                throw new ClassNotFoundException(name);
+            }
+        }.loadClass("gone.Holder");
+
+        Check ch = new Check();
+        Database db = memory();
+        try {
+            Connection c = db.connection();
+            refusedClass(ch, c, "X3, Person", person, person.getConstructor().newInstance(),
+                    "value", "hidden.Base", "V6");
+            Object p2 = person2.getConstructor().newInstance();
+            person2.getField("value").setInt(p2, 42);
+            validClass(ch, c, "X3, Person2", p2);
+            refusedClass(ch, c, "gone.Holder", holder, holder.getConstructor().newInstance(),
+                    "Missing");
+        } finally {
+            db.close();
+        }
+        ch.done();
+    }
+
+    /**
+     * A class loader of a new module layer with one module, 'name', whose classes are 'files'
+     * (path to class file), that exports 'exported' and has the packages 'others' too.
+     */
+    static ClassLoader moduleLoader(String name, final Map<String, byte[]> files,
+            String exported, String... others) throws Exception {
+        ModuleDescriptor d = ModuleDescriptor.newModule(name).exports(exported)
+                .packages(Set.of(others)).build();
+        final ModuleReference ref = new ModuleReference(d, null) {
+            public ModuleReader open() {
+                return new ModuleReader() {
+                    public Optional<URI> find(String path) {
+                        return Optional.empty();
+                    }
+
+                    public Optional<InputStream> open(String path) {
+                        byte[] b = files.get(path);
+                        return b == null ? Optional.empty()
+                                : Optional.of(new ByteArrayInputStream(b));
+                    }
+
+                    public Stream<String> list() {
+                        return files.keySet().stream();
+                    }
+
+                    public void close() {}
+                };
+            }
+        };
+        ModuleFinder finder = new ModuleFinder() {
+            public Optional<ModuleReference> find(String n) {
+                return n.equals(name) ? Optional.of(ref) : Optional.empty();
+            }
+
+            public Set<ModuleReference> findAll() {
+                return Set.of(ref);
+            }
+        };
+        ModuleLayer boot = ModuleLayer.boot();
+        Configuration cf = boot.configuration().resolve(finder, ModuleFinder.of(),
+                Set.of(name));
+        return boot.defineModulesWithOneLoader(cf, ClassLoader.getSystemClassLoader())
+                .findLoader(name);
+    }
+
+    /**
+     * The bytes of a class file (version 52, Java 8): the public class 'name' (internal form,
+     * "a/B") extends 'superName', with a public constructor that calls the superclass's, and,
+     * unless 'field' is null, the public instance field 'field' of the descriptor 'type' and
+     * the generic signature 'signature' (or none if null). Written here, as the tests run
+     * without a compiler.
+     */
+    static byte[] classFile(String name, String superName, String field, String type,
+            String signature) throws IOException {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(bytes);
+        out.writeInt(0xCAFEBABE);
+        out.writeShort(0);
+        out.writeShort(52);
+        out.writeShort(14);                         // the constant pool, 1 to 13
+        utf8(out, name);                            // 1
+        out.writeByte(7);                           // 2, Class 1
+        out.writeShort(1);
+        utf8(out, superName);                       // 3
+        out.writeByte(7);                           // 4, Class 3
+        out.writeShort(3);
+        utf8(out, "<init>");                        // 5
+        utf8(out, "()V");                           // 6
+        out.writeByte(12);                          // 7, NameAndType 5 6
+        out.writeShort(5);
+        out.writeShort(6);
+        out.writeByte(10);                          // 8, Methodref 4 7
+        out.writeShort(4);
+        out.writeShort(7);
+        utf8(out, "Code");                          // 9
+        utf8(out, field == null ? "f" : field);     // 10
+        utf8(out, type == null ? "I" : type);       // 11
+        utf8(out, "Signature");                     // 12
+        utf8(out, signature == null ? "I" : signature);     // 13
+        out.writeShort(0x0021);                     // public, super
+        out.writeShort(2);
+        out.writeShort(4);
+        out.writeShort(0);                          // no interfaces
+        if (field == null) {
+            out.writeShort(0);
+        } else {
+            out.writeShort(1);
+            out.writeShort(0x0001);                 // public
+            out.writeShort(10);
+            out.writeShort(11);
+            if (signature == null) {
+                out.writeShort(0);
+            } else {
+                out.writeShort(1);
+                out.writeShort(12);
+                out.writeInt(2);
+                out.writeShort(13);
+            }
+        }
+        out.writeShort(1);                          // the constructor
+        out.writeShort(0x0001);
+        out.writeShort(5);
+        out.writeShort(6);
+        out.writeShort(1);
+        out.writeShort(9);                          // Code
+        out.writeInt(17);
+        out.writeShort(1);                          // max stack
+        out.writeShort(1);                          // max locals
+        out.writeInt(5);
+        out.write(new byte[] {0x2a, (byte) 0xb7, 0, 8, (byte) 0xb1});  // super(); return
+        out.writeShort(0);
+        out.writeShort(0);
+        out.writeShort(0);                          // no attributes of the class
+        out.flush();
+        return bytes.toByteArray();
+    }
+
+    private static void utf8(DataOutputStream out, String s) throws IOException {
+        out.writeByte(1);
+        out.writeUTF(s);
     }
 }

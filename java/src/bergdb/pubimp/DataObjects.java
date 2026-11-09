@@ -5,6 +5,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.MalformedParameterizedTypeException;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -136,7 +137,10 @@ public final class DataObjects {
         protected ClassInfo computeValue(Class<?> c) {
             try {
                 return checkClass(c);
-            } catch (LinkageError e) {      // a class that does not load: C's fault (3.3)
+            } catch (LinkageError | TypeNotPresentException
+                    | MalformedParameterizedTypeException e) {
+                // A class that does not load: C's fault (3.3). The last two from a field's
+                // generic type, Field.getGenericType() (bergdb 020-14, X3: they escaped).
                 return new ClassInfo(c, "a class it uses could not be loaded, " + e, e, null,
                         null);
             }
@@ -288,6 +292,15 @@ public final class DataObjects {
                 if (!Modifier.isPublic(d.getModifiers())) {
                     return ClassInfo.refused(c, "its field '" + name + "' is declared by "
                             + d.getName() + ", which is not public (V4)");
+                }
+                if (d != c && !d.getModule().isExported(d.getPackageName(),
+                        DataObjects.class.getModule())) {
+                    // Field.get and Field.set check the declaring class's access (the Codex
+                    // review's X3, bergdb 020-14: until 2026-11-09 only c's package was
+                    // checked, and they threw IllegalAccessException at a put and a get).
+                    return ClassInfo.refused(c, "its field '" + name + "' is declared by "
+                            + d.getName() + ", whose package " + d.getPackageName() + " is "
+                            + "not exported to BergDB (V6)");
                 }
                 if (StringUtil.hasLoneSurrogate(name)) {
                     return ClassInfo.refused(c, "its field '" + name + "' has a name with a "

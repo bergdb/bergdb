@@ -305,6 +305,15 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `VirtualMachineError` passes. Java does not wrap an `Error` of a static
   initializer, such as an `AssertionError`: it escaped the get, and inside
   `rw()` failed the database.
+* **A Data Object's stored fields must be declared in exported packages**
+  (bergdb 020-14, X3; 2026-11-09): a class that inherits a public field
+  from a public class of a package that its module does not export to
+  BergDB is not a Data Object, refused at a put with
+  `IllegalArgumentException` and at a get with `ObjectCreationException`,
+  naming the field and the package. The check took it, and the put and a
+  get of a stored object with the field threw at the field's access. A
+  class whose field's generic type names a class that is not there is
+  refused so too: a `TypeNotPresentException` escaped the put and the get.
 
 
 ### Core API
