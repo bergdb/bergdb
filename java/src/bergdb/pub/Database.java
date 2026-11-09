@@ -292,7 +292,7 @@ public interface Database extends AutoCloseable {
      * kept there, and a restart takes the builder's value, or its default, a fifth of the
      * JVM's maximum heap. A setting that changes the stream's bytes, as the startup distance,
      * is kept in the stream; one that does not lasts for the run. After stop() the method
-     * has no effect.</p>
+     * only sets the value, which getCacheSizeInMb() then gives; it evicts nothing.</p>
      *
      * @param cacheSizeInMb  The cache size indicator in megabytes (mega = 1000000).
      */
