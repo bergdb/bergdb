@@ -386,6 +386,33 @@ public class PubTesterJavadocRest {
     }
 
     /**
+     * Clock.getTime(), currentTime() with the clock out of range (bergdb 021-26): the
+     * transactions are refused while the clock is out of range, and go on when it is back.
+     * A currentTime() while it was out of range gave 2^56-1025 and kept it as the time that
+     * the next transaction must pass, so that every put after it was refused until a
+     * restart; found by a black-box user of the C port (022), U2-1.
+     */
+    @Nano
+    public static void testCurrentTimeWithTheClockOutOfRange() {
+        final AtomicLong time = new AtomicLong(1000);
+        final Clock clock = () -> time.get();
+        try (Database db = Factory.database().memory().clock(clock).start()) {
+            final Connection c = db.connection();
+            final long first = c.put("/a.txt", "a").getTime().units();
+            time.set(Time.MAX.units() + 1);
+            Assert.assertEquals(first, c.currentTime().units());
+            Assert.assertEquals(first, db.currentTime().units());
+            DbException e = assertThrows("out of range", DbException.class,
+                    () -> c.put("/b.txt", "b"));
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("outside the range"));
+            time.set(2000);
+            Assert.assertEquals(2000, c.put("/b.txt", "b").getTime().units());
+            Assert.assertEquals(2000, c.currentTime().units());
+            Assert.assertEquals("b", c.get("/b.txt", String.class));
+        }
+    }
+
+    /**
      * Clock.getTime(), a start with the clock out of range (bergdb 020-23, Z3): a start that
      * creates a database is refused, as it writes the database's first transaction; a start
      * of an existing one does not read the clock and succeeds, its reads work, and its

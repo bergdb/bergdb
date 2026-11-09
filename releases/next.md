@@ -512,6 +512,19 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   with the default clock when the system clock was set back, and since
   2026.2 (005-69) with a `Clock` of the application's
   (`DatabaseBuilder.clock()`) that goes back, as `Clock.getTime()` allows.
+* **A `currentTime()` while the clock is out of range no longer keeps
+  every transaction refused** (bergdb 021-26; 2026-11-09).
+  `Connection.currentTime()`, `Database.currentTime()` and the Core's
+  `Db.currentTime()` with the clock after 2^56-1025 (out of range, or in
+  the 1024 units kept for reclaim) gave 2^56-1025 and kept it as the time
+  that the next transaction must pass, so every user transaction after it
+  was refused ("No database time is left for a user transaction") until a
+  restart, also when the clock was back in the range. Now such a clock's
+  time is not taken: `currentTime()` gives the last time it gave or the
+  last transaction's, and the transactions, refused while the clock is out
+  of range, go on when it is back. Since 020-23's Z1 (today, never
+  released); before it, a later `currentTime()` with the clock back ended
+  the refusals. Found by a black-box user of the C port (022), U2-1.
 * **`transactionInfo()` gives the transaction that wrote a value that
   reclaim has rewritten** (bergdb 021-17; 2026-11-09). With a finite
   retain duration, reclaim rewrites live values in transactions of its

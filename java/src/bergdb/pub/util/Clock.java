@@ -34,9 +34,10 @@ public interface Clock {
      * after the last transaction's time or the last time that currentTime() gave, the next
      * unit after it, so the transactions' times are unique and increasing
      * (Transaction.getTime()). The time that currentTime() gives (Connection, Database) is
-     * the clock's, at most 2^56-1025, or, when that is earlier, the last time it gave or the
+     * the clock's, or, when that is earlier, or after 2^56-1025, the last time it gave or the
      * last transaction's time, so its times never decrease, and every later transaction's
-     * time is after them (bergdb 020-23).</p>
+     * time is after them; a currentTime() while the clock is out of range does not keep the
+     * transactions refused after the clock is back (bergdb 020-23, 021-26).</p>
      */
     public long getTime();
 }
