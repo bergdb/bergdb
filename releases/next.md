@@ -66,7 +66,12 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   null, one byte string per object (`getBytes()` compares objects), the
   lookups, which give null, 0 or false for an absent field or one of
   another kind (`has(name, type)` tells them apart), and immutability.
-  `DbByteArray.getByteArray()` now returns a copy.
+  `DbObject` is immutable: `getBytes()` returns a copy, as
+  `DbByteArray.getByteArray()` now does, and a put of a `DbObject` stores
+  a copy and checks its bytes (`IllegalArgumentException` if they break a
+  rule). `DbObject.Builder` and `DbArray.Builder` are final. The getters
+  and `has()` that take `String[]` name parts refuse a null array, an empty
+  one or a null part with `IllegalArgumentException` (B3's review).
 * **Objects are stored in format 2** (bergdb 020-08, steps 1 and 2; the
   format of 020-07, decided by Frans on 2026-11-08, 020-02, section 4). A
   stored object is the header byte 0x82 and the object: a table of its
@@ -335,6 +340,10 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   without `src-dev`'s, `jdeps` finds no class that it uses outside it and
   the JDK, and a program compiled and run with it alone on the class path
   (`java/stress/release-jar/ReleaseDemo.java`) works. The release ships it.
+* **The jars seal the packages `bergdb.pub` and `bergdb.pubimp`** (bergdb
+  020-10, B3's review): no class of another jar or directory joins them,
+  so no program extends `DbValue` or reaches their package-private
+  members; the build checks the release jar's manifest.
 * **ICU is gone** (bergdb 020-10, step B2; Frans, 2026-11-08, 22:08: no
   ICU, 020-01, section 14.1): `src-icu/` (the package `bergdb.pubimpicu`),
   `java/in/icu-for-bergdb.jar` (ICU 50 as `bergdb.icu50`) and its license,
