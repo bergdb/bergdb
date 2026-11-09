@@ -402,6 +402,17 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   forced its eviction. Now the start admits every resident key node's
   values as a written record's. In 2026.2 and 2026.3; a start with a large
   budget, whose section began with such a value's transaction, showed it.
+* **A pointer to a node of another type is refused also where it is linked
+  by node id** (bergdb 021-11; 2026-11-09). 019-32's check, that a pointer
+  names a node of the type it expects, was made where a pointer is
+  followed, but not where the Core gives a pointer the handle of the node
+  that its position names: a start's links to the nodes in memory (rule 4)
+  and the writer's links before a node is written. A damaged node, its
+  checksum right, whose pointer named a version of a node of another type
+  got that node's handle, and a read threw a `ClassCastException` (with
+  `-ea`, an `AssertionError`). Now the start refuses the stream, or the
+  write fails the database, with `StreamFormatException`. Valid streams
+  are read as before; the stream's bytes are unchanged.
 
 
 ### Format

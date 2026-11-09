@@ -705,7 +705,11 @@ public class NodeCollection implements PointerFollower {
                 Handle live = cache.liveHandle(id);
                 Node pinned = live == null ? null : live.obj;
                 if (pinned != null && pinned.isCanonical() && pinned.isDirty()) {
-                    if (h != live) node.setPointee(i, live);
+                    if (h != live) {
+                        // As a follow checks it (2026-11-09, bergdb 021-11).
+                        checkPointeeType(node, i, pinned, pos);
+                        node.setPointee(i, live);
+                    }
                     continue;
                 }
 
@@ -772,6 +776,10 @@ public class NodeCollection implements PointerFollower {
                     checkLinkById(node, i, pos, live);
                 }
                 if (live != null) {
+                    // As a follow checks it (2026-11-09, bergdb 021-11): a damaged pointer
+                    // (its node's checksum right) that named a node of another type got that
+                    // node's handle, and a read threw a ClassCastException.
+                    checkPointeeType(node, i, canonical, pos);
                     // The pointer held nothing: its holder's count takes the handle's bytes,
                     // as a follow's swizzle does (Residents.handleIn; bergdb 019-21, R5's F4
                     // of night 006-12: the start's recount runs before linkD).
@@ -791,6 +799,10 @@ public class NodeCollection implements PointerFollower {
         Handle byId = cache.liveHandle(idOf(pos));
         Node o = byId == null ? null : byId.obj;
         Handle expected = o != null && o.isCanonical() ? byId : null;
+        if (expected != null) {
+            // A damaged pointer, not the Core's fault (bergdb 021-11): no AssertionError.
+            checkPointeeType(node, i, o, pos);
+        }
         if (linked != expected) {
             throw new AssertionError("rule 4 by position is not rule 4 by node id (bergdb 005-57): "
                     + "pointer " + i + " of node " + node.getId() + " names " + pos + "; by position "
@@ -1486,5 +1498,33 @@ public class NodeCollection implements PointerFollower {
             failed = true;
         }
         Assert.assertTrue("the check found the missing link", failed);
+    }
+    
+    /**
+     * Before a node is written, a stream pointer that names, by damage (the node's checksum
+     * right), a version of a pinned node of another type is refused (bergdb 021-11), as a
+     * follow refuses it (019-32). Before, it got that node's handle: here a key node's
+     * pointer got a top node's, and a read threw a ClassCastException. The start's links
+     * are tested on streams: CorruptStreamTester.testFound021_11.
+     */
+    @Nano
+    private static void testResolvePointersChecksTheType() {
+        TestStream stream = new TestStream();
+        stream.nodes.put(100L, testParent(301, 50));        // a version of top node 301
+        NodeCollection c = new NodeCollection(testDbInfo(), stream);
+        TopNode top = testParent(301, 50);                  // its canonical object, dirty
+        top.setCanonical(true);
+        top.setDirty(true);
+        c.cache.register(top);
+        
+        KeyNode parent = testNodeOfD(103, 100);
+        boolean refused = false;
+        try {
+            c.resolvePointers(parent, AccessData.DEFAULT_ACCESS_DATA);
+        } catch (StreamFormatException e) {
+            refused = true;
+        }
+        Assert.assertTrue("refused", refused);
+        Assert.assertTrue("no handle", parent.getPointee(1) == null);
     }
 }

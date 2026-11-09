@@ -109,6 +109,17 @@ public class CorruptStreamTester {
             "/k1", "/k2", "/k3", "/k4", "/k5", "/k6", "/x/y/z"};
 
     /**
+     * Keys of three segments (Keys.toSegments), 80 in the last: key nodes that point to key
+     * nodes, which KEYS, of one segment, never make (bergdb 021-11).
+     */
+    static final String[] LONG_KEYS = new String[80];
+    static {
+        for (int i = 0; i < LONG_KEYS.length; i++) {
+            LONG_KEYS[i] = "/longkey/number-" + i;
+        }
+    }
+
+    /**
      * The most bytes a start and a transaction may append to a copy: recovery of a cut needs
      * at most a record's size. A larger one is recovery's zero fill of a damaged size, which
      * could take 2 GB (014-01, 005-83's case): the append fails.
@@ -132,15 +143,18 @@ public class CorruptStreamTester {
         final int maxValue;
         final int bigEvery;
         final int bigValue;
+        /** The keys it puts and deletes, besides COUNTER. */
+        final String[] keys;
 
         Config(String name, int startupDistance, int transactions, int maxValue,
-                int bigEvery, int bigValue) {
+                int bigEvery, int bigValue, String[] keys) {
             this.name = name;
             this.startupDistance = startupDistance;
             this.transactions = transactions;
             this.maxValue = maxValue;
             this.bigEvery = bigEvery;
             this.bigValue = bigValue;
+            this.keys = keys;
         }
 
         public String toString() {
@@ -149,19 +163,25 @@ public class CorruptStreamTester {
     }
 
     /** The startup section is the whole stream: the startup pos stays 0. */
-    static final Config ALL = new Config("all", 1000000, 30, 200, 0, 0);
+    static final Config ALL = new Config("all", 1000000, 30, 200, 0, 0, KEYS);
 
     /**
      * A short startup distance: the take moves the startup pos and writes index nodes in
      * later records; a start reads a short section and loads the rest when read.
      */
-    static final Config TAKE = new Config("take", 300, 50, 200, 0, 0);
+    static final Config TAKE = new Config("take", 300, 50, 200, 0, 0, KEYS);
 
     /**
      * Big values: records across meta blocks (every 200,000 bytes), and recovery from a
      * meta block that is not the first.
      */
-    static final Config META = new Config("meta", 50000, 30, 200, 3, 60000);
+    static final Config META = new Config("meta", 50000, 30, 200, 3, 60000, KEYS);
+
+    /**
+     * Long keys (LONG_KEYS), and a startup section of several records: key nodes that point
+     * to key nodes, written in many records. Not in CONFIGS; testFound021_11's.
+     */
+    static final Config LONG = new Config("long", 5000, 50, 200, 0, 0, LONG_KEYS);
 
     static final Config[] CONFIGS = {ALL, TAKE, META};
 
@@ -252,7 +272,7 @@ public class CorruptStreamTester {
                 Set<String> used = new HashSet<String>();
                 int ops = r.nextInt(4);
                 for (int k = 0; k < ops; k++) {
-                    String key = KEYS[r.nextInt(KEYS.length)];
+                    String key = c.keys[r.nextInt(c.keys.length)];
                     if (!used.add(key)) {
                         continue;
                     }
@@ -525,7 +545,7 @@ public class CorruptStreamTester {
         Db again = start(o, c, stream.reopen(), clock2);
         Outcome out = result;
         try {
-            String diff = compare(again, after, Long.MAX_VALUE);
+            String diff = compare(again, o.config, after, Long.MAX_VALUE);
             if (diff != null) {
                 out = Outcome.fail("after one more transaction and a start: " + diff);
             } else {
@@ -599,7 +619,7 @@ public class CorruptStreamTester {
             if (c.expected >= 0 && k != c.expected) {
                 return Outcome.fail("holds " + k + " transactions, not " + c.expected);
             }
-            String diff = compare(db, o.states.get(k), Long.MAX_VALUE);
+            String diff = compare(db, o.config, o.states.get(k), Long.MAX_VALUE);
             if (diff != null) {
                 return undetected(c, "holds " + k + " transactions by the counter, and " + diff);
             }
@@ -611,7 +631,7 @@ public class CorruptStreamTester {
                 }
             }
             for (int j = 1; j <= k; j += 1 + k / 4) {
-                diff = compare(db, o.states.get(j), TIME_STEP * j);
+                diff = compare(db, o.config, o.states.get(j), TIME_STEP * j);
                 if (diff != null) {
                     return undetected(c, "at time " + TIME_STEP * j + ", " + diff);
                 }
@@ -656,9 +676,12 @@ public class CorruptStreamTester {
         return Outcome.fail("undetected: " + what);
     }
 
-    /** null if db holds 'state' at 'time' for COUNTER and KEYS, else the first difference. */
-    static String compare(Db db, Map<String, byte[]> state, long time) {
-        List<String> keys = new ArrayList<String>(Arrays.asList(KEYS));
+    /**
+     * null if db holds 'state' at 'time' for COUNTER and the config's keys, else the first
+     * difference.
+     */
+    static String compare(Db db, Config config, Map<String, byte[]> state, long time) {
+        List<String> keys = new ArrayList<String>(Arrays.asList(config.keys));
         keys.add(COUNTER);
         keys.add("/after");
         for (String key : keys) {
@@ -1249,6 +1272,40 @@ public class CorruptStreamTester {
             if (out.failure != null) {
                 throw new AssertionError(config.name + ", seed " + seed + ", " + c.what + ": "
                         + out.failure);
+            }
+        }
+    }
+
+    /**
+     * A pointer that a start links by node id, set to a version of a node of another type,
+     * its node's checksum made right (bergdb 021-11): each refused at the start. Before, the
+     * start's rule 4 (NodeCollection.linkToCanonical) gave the pointer that node's handle,
+     * and a read threw an AssertionError ("Expected a KeyNode") or a ClassCastException, or
+     * the check of rule 4 (005-57), which runs with -ea, threw an AssertionError (without
+     * -ea, a read fails). A row: the record of LONG's original of seed 1, the node's offset
+     * in it, the pointer's byte in the node, the position it is set to.
+     */
+    @Nano
+    public static void testFound021_11() {
+        long[][] rows = {
+            {32760, 880, 112, 35936},   // a key node's pointer 1 to the newest top node
+            {35904, 32, 40, 7080},      // a top node's skip pointer 0 to a key node
+            {32760, 880, 112, 27560},   // to an older top node version: 005-57's check (-ea)
+        };
+        Original o = write(LONG, 1);
+        for (long[] row : rows) {
+            Record rec = o.recordAt(row[0]);
+            int[] node = null;
+            for (int[] n : rec.nodes) {
+                if (n[0] == row[1]) node = n;
+            }
+            byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
+            Bytes.longToBytesLE(row[3], nb, (int) row[2]);
+            Copy c = nodeCopy(o, rec, node, nb, "its byte " + row[2] + " set to " + row[3]);
+            Outcome out = check(o, c);
+            if (out.failure != null || !out.kind.startsWith("refused")) {
+                throw new AssertionError(c.what + ": " + (out.failure != null ? out.failure
+                        : out.kind));
             }
         }
     }
