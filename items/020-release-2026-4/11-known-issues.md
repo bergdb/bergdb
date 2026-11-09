@@ -27,12 +27,12 @@ section 9; 020-04's and 020-07's questions; the lists of 015, 019 and
 On `main` at `3d8b785` every fault of 020-01's, 020-08's and 020-10's
 lists is fixed, gone or not a fault, and so is every finding of the
 night's reviews (section 6). No known fault of BergDB is open. Open are
-a fault of a measurement tool, an approval, and three additions put
-after 2026.4; one known cost is accepted (below):
+an approval, and three additions put after 2026.4 (the tool fault
+T-OB was fixed in 621ee0e: `objectbench.sh` compiles ObjectBench for each
+build); one known cost is accepted (below):
 
 | Row | What | With |
 |---|---|---|
-| T-OB | `objectbench.sh` cannot run the format-1 reference since B3 (48378fe) | another agent, fixing it |
 | 020-07 | Frans's approval of the spec's text under 018-01's rule | Frans: a release step |
 | L-F6 | DbObject: the String[] (nested path) form for every typed getter | later (B3's review, F6) |
 | L-rec | Records as Data Objects (020-02, 5.1b; the coordinator's lean) | later |
@@ -351,7 +351,7 @@ widened window and fixed; 019-47 while 019-46 was reproduced.
 * 020-08, step 4, done (020-12, 3d8b785): format 2 against format 1 on a
   quiet F53, M1 to M8, every figure as fast or faster but M8 (C-M8,
   section 1); `performance.sh ab` (quick) against release 2026.3: NO
-  ALERTS. The tool fault T-OB is open (section 1).
+  ALERTS. The tool fault T-OB is fixed (621ee0e).
 * The level scripts after the last Core changes: `level4.sh` ran on
   019-46, 019-47 and 25978bc (LEVEL 4 OK); `level2.sh` on I2 and on the
   final `main` (LEVEL 2 OK); dee3e48 changed only an assert and added a
@@ -407,3 +407,6 @@ coordinator (9).
 tool fault of `objectbench.sh` since B3, open with another agent; the
 night's runs (section 9): `night.sh` NIGHT OK on 48378fe, the night tests
 and `level2.sh` on 7231771.
+
+2026-11-09, 04:36. T-OB fixed in 621ee0e (objectbench.sh compiles
+ObjectBench for each build); its open row removed (coordinator).

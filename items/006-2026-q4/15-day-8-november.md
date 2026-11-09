@@ -1,6 +1,7 @@
 # 006-15 Day work, 8 November 2026
 
-Created 2026-11-08 by Frans Lundberg. Status: open. The plan for the
+Created 2026-11-08 by Frans Lundberg. Status: done (2026-11-09; see
+Outcome). The plan for the
 coordinator's day of 2026-11-08 (coord-1108), a Sunday: the work on
 release 2026.4 (020), the progress and the outcome. The way of working is
 013-02's (the coordinator).
@@ -170,8 +171,108 @@ session continues with `/coordinator resume` (013-02).
   H0a, H0b; 28 planted faults caught), the vectors moved into `java/`;
   BEFORE COMMIT OK in the clone (119 s) and on the main tree with
   Frans's `PayDemo.java` edit (120 s, 20:18); committed.
+* 22:12 to 04:35 The unattended night: designs 020-09 and 020-10, the
+  objects' and indexes' code, reviews, 019-45 to 019-47, 021-06, 021-09,
+  021-10, NIGHT OK, the quiet measurements, the audit 020-11 (section 6;
+  the minute-by-minute record is the state file,
+  `/Users/f/fl/bench/coord/2026-11-08/state.md`).
 
 
 ## 6. Outcome
 
-Not yet.
+Written 2026-11-09, 04:35, by coord-1108 at the end of the unattended
+night (Frans away 22:20 to 07:00, all decisions delegated at 22:17).
+
+**In short.** Release 2026.4's code is done on `main` (621ee0e), with no
+known fault open (020-11): objects in format 2 with Data Objects and
+best-effort gets (020-07 to 020-09), the user indexes of 020-10 (new
+layout, jobs, scans, primary scan, no ICU, `bytes` type, the API narrowed
+and `DbObject` in `bergdb.pub`), two real Core faults found and fixed
+(019-46, 019-47), every step reviewed independently and the findings
+fixed. NIGHT OK; format 2 faster than format 1 on every path measured,
+the Core unchanged against 2026.3 (020-12). Not cut: the release itself.
+
+### 6.1. Done, in `main`
+
+The day (2026-11-08), with Frans: 020-05's option (f) and 020-06's lookup
+measurements; the twelve storage decisions (020-02, section 4); the
+spec 020-07 with its vectors and the plan 020-08; the API decisions
+(020-02, sections 2 and 5.1b: two layers, Data Objects with public fields
+only, best effort at a get, null fields left out, no key field, no
+`createFast()`; 017-07, section 6); 020-08's step 1 (9a45e06); the index
+decisions (020-01, section 14.1).
+
+The night, in order (each gated with BEFORE COMMIT OK; reviews read-only):
+
+* Design: 020-09, the conversion rules (8876480); 020-10, the indexes'
+  design (673f3d2).
+* Objects (020-08): step 2, format 2 (8185c07; level2 OK); step 7,
+  `put(Object)` and the key field out (80bc546); step 8, the binding
+  `DataObjects` by 020-09 (ca67411); step 3, format 1 refused (38afb1a);
+  step 8's review fixes (7681710); step 6, docs (9a22bd6); the format-1
+  false positive for Strings and its review (e92a95a, c9e6975); step 4,
+  the measurements (01f02db, 3d8b785, 621ee0e). 020-08 done.
+* Indexes (020-10): B1, the release jar (c88e5fa); P1, the primary scan
+  and H4 (ae68938); I0, keys and definitions (7aca256); H2 part 1
+  (559b9ac); I1, maintenance (249b684); I2 part 1, the new layout, jobs
+  and API (5b08db5); I3, the scans (8be9a95); B2 docs (9a9e920); B2 part
+  1, ICU removed (41ea870); H3, the jobs harness (57f88ea); B2 part 2,
+  `Kv.ikey()` and the narrowing (2917cdb); I2's fixes from three reviews
+  and H3 (ab06e26); H2 part 2 (fd6dd09, c25808e); B3, `DbObject` into
+  `bergdb.pub` (48378fe) and its review's fixes (7b008af); 020-10 done.
+* Entries: 021-06 (d65f5b5, 39fb346, 3cf464e), 021-09 (913ffb4), 021-10
+  (in 38afb1a), registered and fixed tonight; 019-45 answered (705a626,
+  by design, documented); 019-46, a real stale-pointer race in the Core
+  with `CACHE_NOTHING` readers since 2026.2 (68830b8; after review
+  25978bc, dee3e48); 019-47, a start kept a value over 1 MiB in memory
+  (c126d7d). The 021 and 019 lists have no open entry.
+* Tools and notes: `bergdb.dev.Run` (3483a62); `releases/next.md`
+  complete (c62e43a, 17f67f7, 9a7b429, b994487, d2de9af); ReleaseDemo
+  covers `DbObject` (6514764).
+* The audit: 020-11, the known issues of 2026.4, every row with its
+  commit and test (843e2f1 to 1a61e79 and this commit).
+
+### 6.2. The night
+
+* Agents: up to seven at a time, all xhigh; about 25 coding and review
+  tasks; each step in its own clone, gated there and again on `main`
+  where the base moved.
+* Independent reviews of every step (020-11, section 6): they found the
+  `Job.join` race, a build starving under hot writes, H3's three faults
+  after a definition's commit, a String taken for a 2026.3 object, a put
+  keeping the caller's `DbObject` array, an assert firing on a legal
+  schedule, and smaller points; all fixed with tests.
+* `night.sh` on 48378fe: NIGHT OK (65 minutes: levels 1 to 4, the Lean
+  tests, 25 night tests, conformance medium). On the final tree
+  (7231771): the night tests SUCCESS (26) and LEVEL 2 OK. `level4.sh` OK
+  after each Core fix.
+* Quiet measurements (020-12): format 2 against format 1, writer 0.29 to
+  0.66, lookups 0.13 to 0.44, gets 0.70 to 0.84, an index build 0.46 of
+  the time; a `Payment` 36 bytes against 71; `performance.sh ab` against
+  2026.3: no alerts.
+* Nothing failed that is not fixed. Usage: the week from 0 % at 17:10 to
+  17 % at 03:15 (Ultra).
+
+### 6.3. For Frans to decide
+
+1. **020-07's text**, the spec of stored objects, for your approval under
+   018-01's rule (you approved its design on 2026-11-08). Read 020-07.
+   Recommended: approve; it is checked by two codecs and the vectors.
+2. **C-M8, a known cost**: a `w()` of one String or `byte[]` put at an
+   object key is 13 % slower (2.6 µs against 2.3), the price of I1's rule
+   that fixes 015-28, 015-43 and 015-46 (020-12, 020-11). Recommended:
+   accept for 2026.4; a lock-free snapshot of the index set for
+   directories without an index can come later.
+3. **The release of 2026.4**: when to cut it, with 2026.3's candidate
+   checks (`night.sh large`, the jar tests on s1, jcstress). Recommended:
+   today or tomorrow, after your reading.
+4. **For your reading, not decisions**: the decisions taken under your
+   delegation (020-04 Q6, 020-07 Q2 to Q5; 020-09, section 6, 24; 020-10,
+   section 11, 22; and the night's in the commits and 020-11).
+
+### 6.4. Left
+
+* Later additions, not 2026.4 faults (020-11): the `String[]` form for
+  every typed getter (F6), records as Data Objects, an opt-in key field
+  (017-07, section 6).
+* The release's own checks and cut (6.3, point 3).

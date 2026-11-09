@@ -70,8 +70,8 @@ the two that are worse.
   script no longer runs the reference. The quiet run compiled the same
   source twice, the reference's copy with `import
   bergdb.pubimp.DbObject;` (the only difference), each against its jar,
-  and ran them as the script does. Not fixed here (no change in `java/`
-  in this step): the script should compile ObjectBench for each build.
+  and ran them as the script does. Fixed after this step in 621ee0e:
+  the script compiles ObjectBench for each build.
 * **A probe of M4** (section 5), after the two runs: `ProbeM4`, a get as
   `byte[]` alone; 6 JVMs a build in ABBA order; 04:19 to 04:23.
 * **Kept**: the scripts, each JVM's output, the comparison and the probe
