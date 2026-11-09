@@ -113,7 +113,10 @@ public interface IndexBuilder {
      * starts its build in a background thread. From its return, every write of the directory
      * keeps the index. Returns the build's job: start().join() waits until the index is
      * active, at once for an empty directory. If the database stops before the build ends,
-     * the next start takes it again, from the first key of the directory.
+     * the next start takes it again, from the first key of the directory. Like any
+     * transaction, the creation is written to storage soon after start() returns, and a crash
+     * before it is durable (Database.sync()) can undo it: the index is then absent, as before
+     * the call.
      *
      * <p>If the build fails, the job's join() throws an IndexBuildException, each time it is
      * called, and its getStatus() gives FAILED (Job.join()). A build fails when the index is

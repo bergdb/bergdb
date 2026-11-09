@@ -331,7 +331,9 @@ public interface Database extends AutoCloseable {
      * later lookup time and its name is free; its entries are removed in the background. A
      * build of the index ends, FAILED with the reason "deleted": its job's join() throws
      * IndexBuildException. A scan at a lookup time when the index was active still works,
-     * until reclaim's cut passes that time.
+     * until reclaim's cut passes that time. Like any transaction, the deletion is written to
+     * storage soon after this returns, and a crash before it is durable (sync()) can undo it:
+     * the index is then there again, as before the call.
      * 
      * @throws NoSuchIndexException  If there is no index of the name.
      * @throws bergdb.pub.util.DbException  If the deletion's transaction is refused; then
