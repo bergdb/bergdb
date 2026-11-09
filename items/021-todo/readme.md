@@ -72,6 +72,7 @@ Closed
 | [021-21](21-rw-environment-threads.md) | Fix | An RwEnvironment used by several threads lost puts and failed the database; used after return | none | done | 2026-11-09 |
 | [021-22](22-shared-connection-guard.md) | Fix | A Connection shared by threads gave wrong reads and failed the database; now refused | none | done | 2026-11-09 |
 | [021-23](23-huge-array-put.md) | Fix | A put of an object over 2 GB stored threw OutOfMemoryError (in rw(), failed the database) | none | done | 2026-11-09 |
+| [021-24](24-directory-check-after-force.md) | Fix | A directory replaced during the force before a new stream file got that file | none | done | 2026-11-09 |
 | [021-09](09-udir-accepts-bad-dirs.md) | Fix | `PubKeys.udir2idir` accepts "p/" and "/p//" | none | done | 2026-11-08 |
 | [021-08](08-object-reader-nesting-depth.md) | Fix | The object reader has no limit on nesting depth | none | done | 2026-11-07 |
 | [021-07](07-object-reader-format-errors.md) | Fix | The object reader's format errors are not BadFormatException | none | done | 2026-11-07 |
