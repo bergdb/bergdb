@@ -13,6 +13,7 @@ extern const struct test vectors_tests[];
 extern const struct test stream_tests[];
 extern const struct test rstream_tests[];
 extern const struct test records_tests[];
+extern const struct test snode_tests[];
 extern const struct test knode_tests[];
 extern const struct test obj_tests[];
 extern const struct test tnode_tests[];
@@ -52,6 +53,7 @@ int main(int argc, char **argv) {
         stream_tests,
         rstream_tests,
         records_tests,
+        snode_tests,
         knode_tests,
         obj_tests,
         tnode_tests,

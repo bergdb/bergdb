@@ -78,6 +78,11 @@ TEST(meta_fields) {
     CHECK_EQ(b.block[M - 1], 10);
     CHECK(memcmp(b.block, "berg", 4) == 0);
     CHECK_EQ(bytes_get_int_le(b.block + 4), 154);
+    b.block[6] = 1;                     /* the version is an int (bergdb 019-01) */
+    CHECK_EQ(meta_version(&b), 65690);
+    b.block[6] = 0;
+    b.block[7] = 1;
+    CHECK_EQ(meta_version(&b), 16777370);
 }
 
 /* checkFormat: only a valid block; the magic bytes, lastTrans, the time. */
@@ -99,13 +104,14 @@ TEST(meta_check_format) {
     CHECK_EQ(meta_check_format(&b, &e), ERR_OK);
 }
 
-/* beginsAsBlock and the fill-out template (005-33). */
+/* beginsAsBlock and the fill-out template (005-33): the magic bytes and the version, an
+ * int since bergdb 019-01 (release 2026.3), so bytes 6 and 7 are compared too. */
 TEST(meta_begins_as_block) {
     uint8_t t[M];
     for (int i = 0; i < M; i++) {
         t[i] = meta_fill_out_template(i);
     }
-    CHECK(memcmp(t, "berg\x9a\x00", 6) == 0);
+    CHECK(memcmp(t, "berg\x9a\x00\x00\x00", 8) == 0);
     CHECK_EQ(t[M - 1], 0);
     for (int n = 0; n <= M; n++) {
         CHECK(meta_begins_as_block(t, n));
@@ -113,6 +119,15 @@ TEST(meta_begins_as_block) {
     t[5] = 1;
     CHECK(meta_begins_as_block(t, 5));
     CHECK(!meta_begins_as_block(t, 6));
+    for (int at = 6; at <= 7; at++) {
+        for (int i = 0; i < M; i++) {
+            t[i] = meta_fill_out_template(i);
+        }
+        t[at] = 1;
+        CHECK(meta_begins_as_block(t, at));
+        CHECK(!meta_begins_as_block(t, at + 1));
+        CHECK(!meta_begins_as_block(t, M));
+    }
 }
 
 /* ======== RecoverableStream's positions ======== */
@@ -280,7 +295,20 @@ TEST(rs_meta_blocks) {
     CHECK_EQ(rs_read_last_valid_meta_block(&s, &out, &found, &e), ERR_FORMAT);
     CHECK(strcmp(e.java, "VersioningStreamException") == 0);
     s.bytes[2 * D + 4] = 154;
-    s.bytes[2 * D + 6] = 1;                         /* bytes 6-7 are not read */
+    /* The version is an int (bergdb 019-01, as Java's since release 2026.3): byte 6 or 7
+     * set is another version, refused valid or not. Before, they were not read. */
+    s.bytes[2 * D + 6] = 1;
+    CHECK_EQ(rs_read_last_valid_meta_block(&s, &out, &found, &e), ERR_FORMAT);
+    CHECK(strcmp(e.java, "VersioningStreamException") == 0);
+    CHECK(strcmp(e.text, "Cannot read meta block with version 65690. Version supported: 154")
+            == 0);
+    s.bytes[2 * D + 6] = 0;
+    s.bytes[2 * D + 7] = 1;
+    CHECK_EQ(rs_read_meta_block(&s, 2 * D, &out, &e), ERR_FORMAT);
+    CHECK(strcmp(e.java, "VersioningStreamException") == 0);
+    CHECK(strcmp(e.text, "Cannot read meta block with version 16777370. Version supported: "
+            "154") == 0);
+    s.bytes[2 * D + 7] = 0;
     CHECK(rs_read_last_valid_meta_block(&s, &out, &found, &e) == ERR_OK && found);
     s.bytes[D + M - 1] = 0;
     s.bytes[M - 1] = 0;
@@ -508,6 +536,84 @@ TEST(rs_incomplete_creation) {
     t_record(&s, &mb, 48, 10, 10);                 /* longer than a creation: no */
     CHECK(rs_is_incomplete_creation(&s, 264, &yes, &e) == ERR_OK && !yes);
     stream_close(&s);
+    /* A creation cut at 10 bytes whose byte 6 or 7 of the version is set: not one (bergdb
+     * 019-01; RecoverableStream.Tester.testIsIncompleteCreation's case). */
+    for (int at = 6; at <= 7; at++) {
+        meta_init(&mb);
+        stream_open_memory(&s, &m);
+        t_record(&s, &mb, 136, 10, 136);
+        stream_truncate_memory(&s, 10, &e);
+        CHECK(rs_is_incomplete_creation(&s, 264, &yes, &e) == ERR_OK && yes);
+        s.bytes[at] = 1;
+        CHECK(rs_is_incomplete_creation(&s, 264, &yes, &e) == ERR_OK && !yes);
+        stream_close(&s);
+    }
+    CHECK_MEM_ZERO(&m);
+}
+
+/* RecoverableStream.checkLastTransSpos (bergdb 019-34, as Java's since release 2026.3;
+ * DbTesterRestart.testMetaBlockLastTransPosRefused at the plan): the last valid meta block
+ * names, as its last transaction, Spos.NULL or a position from the first transaction byte
+ * up to the block; else the plan is refused, before anything is written, with a
+ * StreamFormatException that names the block and the position. Before, a position past
+ * the stream's end gave recovery's IllegalArgumentException ("spos >= streamSize"), and a
+ * position in the first meta block or after its block was walked from. */
+TEST(rs_last_trans_spos_refused) {
+    struct mem m;
+    struct err e;
+    struct stream s;
+    struct meta mb;
+    struct rs_recovery p;
+    mem_init(&m);
+
+    /* The first meta block's byte 23, the last byte of its last transaction's position
+     * (Spos.NULL as the creation wrote it), xor 0x80 and 0xff: past the stream's end. */
+    const int64_t past[2] = { INT64_C(0x7fffffffffffffff), INT64_C(0x00ffffffffffffff) };
+    for (int i = 0; i < 2; i++) {
+        meta_init(&mb);
+        stream_open_memory(&s, &m);
+        t_record(&s, &mb, 20, 10, 20);
+        t_record(&s, &mb, 20, 10, 20);
+        CHECK_EQ(bytes_get_long_le(s.bytes + 16), -1);
+        s.bytes[23] ^= (uint8_t) (i == 0 ? 0x80 : 0xff);
+        const int64_t length = s.length;
+        CHECK_EQ(rs_plan_recovery(&s, &p, &e), ERR_FORMAT);
+        CHECK(strcmp(e.java, "StreamFormatException") == 0);
+        char want[200];
+        snprintf(want, sizeof want, "The meta block at 0 names the last transaction at %lld, "
+                "which cannot be one in a stream from 0: not before the block.",
+                (long long) past[i]);
+        CHECK(strcmp(e.text, want) == 0);
+        CHECK_EQ(s.length, length);
+        stream_close(&s);
+    }
+
+    /* The second meta block, which a large record puts in the stream, naming a position in
+     * the first meta block (10) or one after itself (D + M): refused; naming the record
+     * before it, or Spos.NULL: taken. */
+    const int64_t bad[2] = { 10, D + M };
+    for (int i = 0; i < 4; i++) {
+        meta_init(&mb);
+        stream_open_memory(&s, &m);
+        int64_t first = t_record(&s, &mb, 20, 10, 20);
+        t_record(&s, &mb, D, 10, D);                   /* across the block at D */
+        int64_t named = i < 2 ? bad[i] : i == 2 ? first : SPOS_NULL;
+        bytes_put_long_le(named, s.bytes + D + 16);
+        if (i < 2) {
+            CHECK_EQ(rs_plan_recovery(&s, &p, &e), ERR_FORMAT);
+            CHECK(strcmp(e.java, "StreamFormatException") == 0);
+            char want[200];
+            snprintf(want, sizeof want, "The meta block at %d names the last transaction at "
+                    "%lld, which cannot be one in a stream from 0: not before the block.",
+                    (int) D, (long long) named);
+            CHECK(strcmp(e.text, want) == 0);
+        } else {
+            CHECK_EQ(rs_plan_recovery(&s, &p, &e), ERR_OK);
+            CHECK_EQ(p.last_valid.pos, D);
+            CHECK_EQ(p.torn, SPOS_NULL);
+        }
+        stream_close(&s);
+    }
     CHECK_MEM_ZERO(&m);
 }
 
@@ -609,6 +715,7 @@ const struct test rstream_tests[] = {
     TEST_ENTRY(rs_recovery_java_cases),
     TEST_ENTRY(rs_recovery_header_fix),
     TEST_ENTRY(rs_incomplete_creation),
+    TEST_ENTRY(rs_last_trans_spos_refused),
     TEST_ENTRY(rs_pos_of_trans_completed_before),
     TEST_ENTRY(ns_walk),
     TEST_END

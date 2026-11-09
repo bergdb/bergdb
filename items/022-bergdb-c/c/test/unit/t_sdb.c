@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "bytes.h"
 #include "getmany.h"
 #include "keys.h"
 #include "klong.h"
@@ -359,7 +360,8 @@ TEST(sdb_refusals) {
     CHECK(strcmp(e.java, "VersioningStreamException") == 0);
     stream_close(&s);
 
-    /* The last record's topPos names a key node: refused. */
+    /* The last record's topPos names a key node: refused, as Java's since release 2026.3
+     * (before, C's AssertionError of an assert was taken too). */
     memcpy(copy, v.stream, (size_t) v.len);
     const struct jtrans *last = &v.t[v.nt - 1];
     /* its first node (a top node or a key node) is at tpos + 32 */
@@ -381,8 +383,11 @@ TEST(sdb_refusals) {
         }
         open_stream(&s, &m, copy, v.len);
         CHECK(sdb_open(&b, &s, &m, 8, false, &e) != ERR_OK);
-        CHECK(strcmp(e.java, "StreamFormatException") == 0
-                || strcmp(e.java, "AssertionError") == 0);
+        CHECK(strcmp(e.java, "StreamFormatException") == 0);
+        char want[120];
+        snprintf(want, sizeof want, "topPos %lld of the last transaction names a KeyNode, not "
+                "a top node.", (long long) keyPos);
+        CHECK(strcmp(e.text, want) == 0);
         stream_close(&s);
     }
 
@@ -413,6 +418,180 @@ TEST(sdb_refusals) {
     stream_close(&s);
     free(copy);
     CHECK_MEM_ZERO(&m);
+    free(v.stream);
+}
+
+/* A copy of the vectors' stream with n bytes written at 'at', started: refused with a
+ * StreamFormatException (or 'java') whose text is 'text', or contains it if 'contains';
+ * nothing written. */
+static void refused(const struct vec *v, int64_t at, const uint8_t *bytes, int32_t n,
+        const char *java, const char *text, bool contains) {
+    struct mem m;
+    struct stream s;
+    struct sdb b;
+    struct err e;
+    mem_init(&m);
+    uint8_t *copy = malloc((size_t) v->len);
+    memcpy(copy, v->stream, (size_t) v->len);
+    memcpy(copy + at, bytes, (size_t) n);
+    open_stream(&s, &m, copy, v->len);
+    err_clear(&e);
+    enum err_code rc = sdb_open(&b, &s, &m, 8, true, &e);
+    if (rc == ERR_OK) {
+        sdb_close(&b);
+    }
+    CHECK_EQ(rc, ERR_FORMAT);
+    bool same = strcmp(e.java, java) == 0
+            && (contains ? strstr(e.text, text) != NULL : strcmp(e.text, text) == 0);
+    CHECK(same);
+    if (!same) {
+        printf("    at %lld: %s: %s\n", (long long) at, e.java, e.text);
+    }
+    CHECK_EQ(stream_length(&s), v->len);
+    CHECK(memcmp(s.bytes, copy, (size_t) v->len) == 0);
+    stream_close(&s);
+    free(copy);
+    CHECK_MEM_ZERO(&m);
+}
+
+static void le64(int64_t x, uint8_t out[8]) {
+    for (int k = 0; k < 8; k++) {
+        out[k] = (uint8_t) ((uint64_t) x >> (8 * k));
+    }
+}
+
+/* DbTesterRestart's refusals of release 2026.3, ported onto the vectors' stream (node size
+ * 8, startup distance 100: its last record, at 3960, starts at 3824, so the startup section
+ * is the records at 3824 and 3960). Each failed before its fix: C took the stream, or
+ * refused it with another exception or text (an AssertionError where Java had an assert).
+ * And the stream as it is starts. */
+TEST(sdb_refusals_2026_3) {
+    struct vec v;
+    REQUIRE(read_vec(&v));
+    REQUIRE(v.nt >= 4);
+    const struct jtrans *last = &v.t[v.nt - 1];
+    uint8_t b[8];
+    char want[300];
+
+    /* testEnlargedRecordSizeRefused (015-72): a record's size set to its own and the next
+     * one's together, so that it ends on the next one's last byte; for each record in
+     * turn. Before, C took it, and the walk skipped the record it covered. */
+    for (int32_t k = 1; k + 1 < v.nt; k++) {
+        const int64_t a = v.t[k].tpos;
+        const int64_t c = k + 2 < v.nt ? v.t[k + 2].tpos : v.len;
+        int32_t size = (int32_t) (c - a);
+        for (int i = 0; i < 4; i++) {
+            b[i] = (uint8_t) (size >> (8 * i));
+        }
+        snprintf(want, sizeof want, "The record at %lld ends at offset %lld by its content, "
+                "and its size says %d.", (long long) a, (long long) (v.t[k + 1].tpos - a),
+                (int) size);
+        refused(&v, a, b, 4, "StreamFormatException", want, false);
+    }
+
+    /* testCorruptStartupPosRefused (015-75): the last record's startupPos negative, not a
+     * multiple of 8, in the first meta block, or after the record. Before, C refused -8
+     * with an AssertionError, and walked from the others. */
+    const int64_t c = last->tpos;
+    const int64_t sps[8] = { -8, INT64_MIN, 4, 8, 120, c + 4, c + 8, c | (INT64_C(1) << 40) };
+    const char *problems[8] = { "negative", "negative", "not a multiple of 8",
+            "in the first meta block", "in the first meta block", "not a multiple of 8",
+            "after the record", "after the record" };
+    for (int i = 0; i < 8; i++) {
+        le64(sps[i], b);
+        snprintf(want, sizeof want, "The record at %lld has startupPos %lld, %s.",
+                (long long) c, (long long) sps[i], problems[i]);
+        refused(&v, c + 16, b, 8, "StreamFormatException", want, false);
+    }
+
+    /* testCorruptGotDirtyIdRefused (015-75): the id of a got-dirty entry of the last record
+     * (rerun: the section's second) whose position is a node's, 123456789. Before, C
+     * refused it with an AssertionError ("ids differ"), as Java's assert. */
+    {
+        struct mem m;
+        struct err e;
+        struct st_record r;
+        mem_init(&m);
+        st_init(&r);
+        const int32_t size = (int32_t) (v.len - last->tpos);
+        REQUIRE(st_parse(&r, last->tpos, v.stream + last->tpos, size, &m, &e) == ERR_OK);
+        int32_t entry = -1;
+        for (int32_t i = 0; i < r.got_dirty_count && entry < 0; i++) {
+            int64_t pos = st_got_dirty_pos(&r, i);
+            if (spos_is_valid(pos) && !spos_is_vpos(pos)) {
+                entry = i;
+            }
+        }
+        REQUIRE(entry >= 0);
+        const int64_t at = last->tpos + (r.got_dirty - (v.stream + last->tpos)) + 16 * entry;
+        const int64_t id = st_got_dirty_id(&r, entry), pos = st_got_dirty_pos(&r, entry);
+        st_free(&r, &m);
+        CHECK_MEM_ZERO(&m);
+        le64(123456789, b);
+        snprintf(want, sizeof want, "The got-dirty entry of node 123456789 names position "
+                "%lld, where node %lld is.", (long long) pos, (long long) id);
+        refused(&v, at, b, 8, "StreamFormatException", want, false);
+    }
+
+    /* testOlderTopPosRefused (015-75): the last record's topPos an older version of its top
+     * node (2601, at 3992; older at 2776 and 3424). Before, C refused it with an
+     * AssertionError, as Java's assert. */
+    {
+        int64_t id = -1, older = -1;
+        for (int32_t k = 0; k < v.nt; k++) {
+            if (v.t[k].top_pos == last->top_pos) {
+                continue;
+            }
+            if (v.t[k].top_pos > older && v.t[k].top_pos < last->top_pos
+                    && bytes_get_long_le(v.stream + v.t[k].top_pos + 16)
+                    == bytes_get_long_le(v.stream + last->top_pos + 16)) {
+                older = v.t[k].top_pos;
+                id = bytes_get_long_le(v.stream + last->top_pos + 16);
+            }
+        }
+        REQUIRE(older > 0);
+        le64(older, b);
+        snprintf(want, sizeof want, "The last transaction's topPos %lld is not the newest "
+                "version %lld of top node %lld.", (long long) older, (long long) last->top_pos,
+                (long long) id);
+        refused(&v, last->tpos + 24, b, 8, "StreamFormatException", want, false);
+    }
+
+    /* testMetaBlockLastTransPosRefused (019-34): the first meta block's byte 23 (its last
+     * transaction, Spos.NULL as the creation wrote it) xor 0x80 and 0xff. Before, C refused
+     * it in the recovery's walk with an IllegalArgumentException ("spos >= streamSize"). */
+    for (int i = 0; i < 2; i++) {
+        uint8_t x = (uint8_t) (v.stream[23] ^ (i == 0 ? 0x80 : 0xff));
+        int64_t named = bytes_get_long_le(v.stream + 16);
+        named = (int64_t) (((uint64_t) named & UINT64_C(0x00ffffffffffffff))
+                | ((uint64_t) x << 56));
+        snprintf(want, sizeof want, "The meta block at 0 names the last transaction at %lld, "
+                "which cannot be one in a stream from 0: not before the block.",
+                (long long) named);
+        refused(&v, 23, &x, 1, "StreamFormatException", want, false);
+    }
+
+    /* testVersionHighBytesRefused (019-01): byte 6 or 7 of the meta block set to 1: the
+     * version, an int, is not 154. Before, C read 2 bytes, and started. */
+    const uint8_t one = 1;
+    refused(&v, 6, &one, 1, "VersioningStreamException", "Cannot read meta block with version "
+            "65690. Version supported: 154", false);
+    refused(&v, 7, &one, 1, "VersioningStreamException", "Cannot read meta block with version "
+            "16777370. Version supported: 154", false);
+
+    /* The stream as it is: started. */
+    {
+        struct mem m;
+        struct stream s;
+        struct sdb d;
+        struct err e;
+        mem_init(&m);
+        open_stream(&s, &m, v.stream, v.len);
+        CHECK_EQ(sdb_open(&d, &s, &m, 8, true, &e), ERR_OK);
+        sdb_close(&d);
+        stream_close(&s);
+        CHECK_MEM_ZERO(&m);
+    }
     free(v.stream);
 }
 
@@ -467,6 +646,7 @@ const struct test sdb_tests[] = {
     TEST_ENTRY(sdb_java_stream),
     TEST_ENTRY(sdb_cut_stream),
     TEST_ENTRY(sdb_refusals),
+    TEST_ENTRY(sdb_refusals_2026_3),
     TEST_ENTRY(sdb_allocation_failures),
     TEST_END
 };

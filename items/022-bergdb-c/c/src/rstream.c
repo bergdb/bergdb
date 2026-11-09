@@ -124,9 +124,9 @@ static void hex(char *out, const uint8_t *b, int n) {
 
 enum err_code rs_read_meta_block(struct stream *s, int64_t blockPos, struct meta *out,
         struct err *e) {
-    uint8_t header[6];
+    uint8_t header[8];
     uint8_t metaBytes[M];
-    enum err_code rc = rs_stream_read(s, blockPos, header, 6, e);
+    enum err_code rc = rs_stream_read(s, blockPos, header, 8, e);
     if (rc != ERR_OK) {
         return rc;
     }
@@ -136,7 +136,7 @@ enum err_code rs_read_meta_block(struct stream *s, int64_t blockPos, struct meta
         return err_set(e, ERR_FORMAT, "BadMagicBytes",
                 "Expected magic bytes: 62657267, got: %s", got);
     }
-    int32_t version = bytes_get_ushort_le(header + 4);
+    int32_t version = bytes_get_int_le(header + 4);    /* an int, bergdb 019-01 */
     if (version != META_VERSION_154) {
         return err_set(e, ERR_FORMAT, "VersioningStreamException",
                 "Cannot read meta block with version %d. Version supported: %d", (int) version,
@@ -334,6 +334,22 @@ static int32_t trans_header_fix_bytes(const uint8_t *existing, int32_t n, uint8_
     return bytesToAdd;
 }
 
+enum err_code rs_check_last_trans_spos(struct stream *s, const struct meta *block,
+        struct err *e) {
+    const int64_t spos = meta_last_trans(block);
+    if (spos == SPOS_NULL) {
+        return ERR_OK;
+    }
+    const int64_t firstPos = stream_first_pos(s);
+    if (spos < (firstPos > M ? firstPos : M) || spos >= block->pos) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "The meta block at %lld names "
+                "the last transaction at %lld, which cannot be one in a stream from %lld: not "
+                "before the block.", (long long) block->pos, (long long) spos,
+                (long long) firstPos);
+    }
+    return ERR_OK;
+}
+
 enum err_code rs_plan_recovery(struct stream *s, struct rs_recovery *r, struct err *e) {
     enum err_code rc;
     bool found;
@@ -350,6 +366,10 @@ enum err_code rs_plan_recovery(struct stream *s, struct rs_recovery *r, struct e
     if (!found) {
         return err_set(e, ERR_FORMAT, "StreamFormatException", "Could not find *any* valid "
                 "meta block. At least the very first meta block must be valid in a db stream.");
+    }
+    rc = rs_check_last_trans_spos(s, &r->last_valid, e);
+    if (rc != ERR_OK) {
+        return rc;
     }
 
     /* fixMetaBlockIfNeeded. */

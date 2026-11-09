@@ -123,6 +123,18 @@ bool nc_newest_in_section(const struct ncoll *nc, int64_t id, int64_t *pos);
 /* pointsToIndexNode: pointer i of node leads to a key node or a top node. */
 bool nc_points_to_index_node(const struct node *node, int32_t i);
 
+/* checkPointeeType (bergdb 019-32, as Java's since release 2026.3): pointee,
+ * the node at pos that pointer i of node names, is of the type the pointer
+ * names: a top node's root pointer (0) a key node and its skip pointers top
+ * nodes; a key node's pointers key nodes, and values where
+ * nc_points_to_index_node says no. Else ERR_FORMAT, "StreamFormatException":
+ * a damaged node (its checksum right) whose pointer names a node of another
+ * type, which C read as the type it expected (Java: a ClassCastException).
+ * Called by the follows on what they read or find in the handle, and by the
+ * start's memory pointers. */
+enum err_code nc_check_pointee_type(const struct node *node, int32_t i,
+        const struct node *pointee, int64_t pos, struct err *e);
+
 /* newerPos: the newer of reference ref and position w (-1: none). */
 int64_t nc_newer_pos(int64_t ref, int64_t w);
 

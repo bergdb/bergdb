@@ -144,6 +144,10 @@ enum err_code rcv_recover(struct rs *r, struct rs_recovery *plan, struct err *e)
         return rc;
     }
     plan->last_valid = r->meta;
+    rc = rs_check_last_trans_spos(r->s, &plan->last_valid, e);     /* 019-34 */
+    if (rc != ERR_OK) {
+        return rc;
+    }
 
     rc = fix_meta_block_if_needed(r, plan, e);
     if (rc != ERR_OK) {

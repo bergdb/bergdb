@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "dag.h"
+#include "getmany.h"
+#include "handle.h"
 #include "keys.h"
 #include "klong.h"
 #include "knode.h"
@@ -765,6 +767,139 @@ TEST(dag_transaction_leaves_no_unreachable_node) {
     tdag_end(&t);
 }
 
+/* The root key node of t's Dag, through the super root's pointer 0. */
+static struct knode *root_of(struct tdag *t) {
+    struct node *root = node_pointer_node(&tds_get_super_root(&t->dag.top_ds)->n, 0);
+    CHECK(root != NULL && root->o.kind == OBJ_KEY);
+    return root != NULL && root->o.kind == OBJ_KEY ? (struct knode *) root : NULL;
+}
+
+static void check_err(const struct err *e, const char *java, const char *text) {
+    bool same = strcmp(e->java, java) == 0 && strcmp(e->text, text) == 0;
+    CHECK(same);
+    if (!same) {
+        printf("    got %s: %s\n", e->java, e->text);
+    }
+}
+
+#define CCE(from, to) "class bergdb.dag." from " cannot be cast to class bergdb.dag." to \
+        " (bergdb.dag." from " and bergdb.dag." to " are in unnamed module of loader 'app')"
+
+/* Dag.checkFound (bergdb 019-32, as Java's since release 2026.3): a put meets a key node
+ * that is not a segment leaf and has no klong at or below the key (a damaged node, its leaf
+ * flag changed and its checksum right, as harness 6.1's "first key node made a non-leaf"):
+ * refused with a DbException, where C aborted on Java's assert. A klong found there whose
+ * pointer holds a value: Java's ClassCastException (C's check of the cast, where C read the
+ * value as a key node). The Dag's errors go to the op's err (C's). */
+TEST(dag_check_found) {
+    struct tdag t;
+    tdag_init(&t, 0, MAX_NODE_SIZE, NULL);
+    struct err e;
+    err_clear(&e);
+    t.pd.op.err = &e;
+    t.pd.tt = 10;
+    CHECK(put(&t, "/b", "1"));
+    pd_clear(&t.pd);
+    struct knode *root = root_of(&t);
+    REQUIRE(root != NULL);
+    root->n.o.flags = (uint16_t) (root->n.o.flags & ~OBJ_LEAF);
+    t.pd.tt = 20;
+    CHECK(!put(&t, "/a", "2"));
+    char want[200];
+    snprintf(want, sizeof want, "Key node %lld, not a segment leaf, has no klong at or below "
+            "the key at time 20: corrupt data.", (long long) root->n.id);
+    check_err(&e, "DbException", want);
+    pd_clear(&t.pd);
+    err_clear(&e);
+    CHECK(!put(&t, "/c", "3"));
+    check_err(&e, "ClassCastException", CCE("ValueNode", "KeyNode"));
+    pd_clear(&t.pd);
+    root->n.o.flags = (uint16_t) (root->n.o.flags | OBJ_LEAF);
+    tdag_end(&t);
+}
+
+/* A key node's pointer that holds a node of another type than the code casts it to (in
+ * Java, linkToCanonical and resolvePointers link a pointer by the node id at its position
+ * without checking the type): Java's exception at each cast or assert, as C's checks give
+ * it, where C read the node as the type it expected or aborted (bergdb 019-32's class). A
+ * non-leaf root whose klong "/b" holds the super root's handle: a put (setValue's cast), a
+ * dirty-node bound (its cast), a getOne (its assert on the klong's node), a getMany (its
+ * assert); and a top node whose root pointer holds a top node (TopDs.findRoot's cast). */
+TEST(dag_wrong_pointee_type) {
+    struct tdag t;
+    tdag_init(&t, 0, MAX_NODE_SIZE, NULL);
+    struct err e;
+    err_clear(&e);
+    t.pd.op.err = &e;
+    t.gd.op.err = &e;
+    t.pd.tt = 10;
+    CHECK(put(&t, "/b", "1"));
+    pd_clear(&t.pd);
+    struct knode *root = root_of(&t);
+    REQUIRE(root != NULL);
+    struct tnode *super = tds_get_super_root(&t.dag.top_ds);
+    node_set_canonical(&super->n, true);
+    struct handle *h = hd_of(&t.f.cx, &super->n);
+    REQUIRE(h != NULL);
+    REQUIRE(root->size == 2 && kl_is_key(root->klongs[1]));
+    struct obj *value = root->pointers[1];
+    obj_retain(value);
+    const int64_t pos = root->pos[1];
+    node_set_pointer(&t.f.cx, &root->n, 1, &h->o, 1000);
+    root->n.o.flags = (uint16_t) (root->n.o.flags & ~OBJ_LEAF);
+
+    t.pd.tt = 20;
+    CHECK(!put(&t, "/c", "3"));
+    check_err(&e, "ClassCastException", CCE("TopNode", "KeyNode"));
+    pd_clear(&t.pd);
+
+    err_clear(&e);
+    struct key k = key_of("/c");
+    const int64_t *keys[1] = { k.s };
+    const int32_t keyN[1] = { k.n };
+    const bool deletes[1] = { false };
+    int64_t bound = 0;
+    CHECK(!dag_dirty_node_bound(&t.dag, 20, keys, keyN, deletes, 1, &t.gd, &t.f.m, &bound));
+    check_err(&e, "ClassCastException", CCE("TopNode", "KeyNode"));
+
+    err_clear(&e);
+    struct vnode *v = NULL;
+    CHECK(!dag_get_one(&t.dag, 20, k.s, k.n, &t.gd, &v));
+    CHECK(strcmp(e.java, "AssertionError") == 0);
+    CHECK(strncmp(e.text, "Expected a KeyNode, got TopNode, id ", 36) == 0);
+
+    err_clear(&e);
+    struct getmany g;
+    gm_init(&g, &t.dag, &t.f.m);
+    g.gd.op.pointer_follower.follow = dummy_follow;
+    g.gd.op.err = &e;
+    g.actual_lookup_time = 20;
+    CHECK(!dag_get_many(&t.dag, &g));
+    CHECK(strcmp(e.java, "AssertionError") == 0);
+    CHECK(strncmp(e.text, "TopNode, id ", 12) == 0);
+
+    root->n.o.flags = (uint16_t) (root->n.o.flags | OBJ_LEAF);
+    node_set_pointer(&t.f.cx, &root->n, 1, value, pos);
+    obj_release(&t.f.cx, value);
+
+    /* TopDs.findRoot: a top node whose root pointer holds a top node's handle. */
+    struct tnode *a = tn_new(&t.f.cx, 0, NULL, 500, 1, 100);
+    struct tnode *b = tn_new(&t.f.cx, 0, NULL, 600, 1, 200);
+    REQUIRE(a != NULL && b != NULL);
+    node_set_canonical(&b->n, true);
+    struct handle *hb = hd_of(&t.f.cx, &b->n);
+    REQUIRE(hb != NULL);
+    tn_set_pointer(&t.f.cx, a, 0, &hb->o, 200);
+    struct topds ds;
+    tds_init(&ds, a);
+    struct knode *found = NULL;
+    err_clear(&e);
+    CHECK(!tds_find_root(&ds, 5, &t.gd.op, &found));
+    check_err(&e, "ClassCastException", CCE("TopNode", "KeyNode"));
+    tds_free(&t.f.cx, &ds);
+    tdag_end(&t);
+}
+
 const struct test dag_tests[] = {
     TEST_ENTRY(dag_test0),
     TEST_ENTRY(dag_test1),
@@ -780,5 +915,7 @@ const struct test dag_tests[] = {
     TEST_ENTRY(dag_pointer_creation_listener1),
     TEST_ENTRY(dag_pointer_creation_listener2),
     TEST_ENTRY(dag_transaction_leaves_no_unreachable_node),
+    TEST_ENTRY(dag_check_found),
+    TEST_ENTRY(dag_wrong_pointee_type),
     TEST_END
 };

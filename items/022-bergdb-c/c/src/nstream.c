@@ -135,8 +135,11 @@ enum err_code ns_read_node(struct stream *s, struct mem *m, int64_t spos, struct
         struct sn_node *out, struct err *e) {
     enum err_code rc;
     uint8_t sizeBytes[4];
-    if (spos < 128) {
-        return err_set(e, ERR_ARG, "AssertionError", "bad spos, %lld", (long long) spos);
+    /* A check, not an assert (bergdb 019-32, as Java's since release 2026.3): a
+     * pointer of a damaged node reaches here. */
+    if (spos < META_BLOCK_SIZE) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad node position, %lld.",
+                (long long) spos);
     }
     rc = rs_read(s, spos, sizeBytes, 4, e);
     if (rc != ERR_OK) {

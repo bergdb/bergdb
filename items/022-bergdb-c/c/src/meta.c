@@ -50,7 +50,7 @@ enum err_code meta_check_format(const struct meta *mb, struct err *e) {
 }
 
 int32_t meta_version(const struct meta *mb) {
-    return bytes_get_ushort_le(mb->block + 4);
+    return bytes_get_int_le(mb->block + 4);     /* an int (bergdb 019-01) */
 }
 
 int64_t meta_time(const struct meta *mb) {
@@ -93,21 +93,20 @@ bool meta_set_max_node_size(struct meta *mb, int32_t max_node_size) {
     return bytes_put_ushort_le(max_node_size, mb->block + 44);
 }
 
+/* The magic bytes, then the version as an int (Bytes.intToBytesLE, bergdb
+ * 019-01: the same bytes as the unsigned short written before), then 0. */
 uint8_t meta_fill_out_template(int32_t i) {
     if (i < 4) {
         return MAGIC[i];
     }
-    if (i == 4) {
-        return (uint8_t) (META_VERSION_154 & 0xff);
-    }
-    if (i == 5) {
-        return (uint8_t) (META_VERSION_154 >> 8);
+    if (i < 8) {
+        return (uint8_t) ((uint32_t) META_VERSION_154 >> (8 * (i - 4)));
     }
     return 0;
 }
 
 bool meta_begins_as_block(const uint8_t *bytes, int32_t n) {
-    const int32_t m = n < 4 + 2 ? n : 4 + 2;
+    const int32_t m = n < 4 + 4 ? n : 4 + 4;   /* the magic and the version (019-01) */
     for (int32_t i = 0; i < m; i++) {
         if (bytes[i] != meta_fill_out_template(i)) {
             return false;

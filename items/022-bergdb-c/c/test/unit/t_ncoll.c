@@ -26,6 +26,7 @@
 #include "stream.h"
 #include "test.h"
 #include "tnode.h"
+#include "vnode.h"
 
 /* TestStream: nodes by position. */
 struct tstream {
@@ -203,9 +204,17 @@ static void test_op(struct opdata *op, int32_t *calls) {
 }
 
 static struct node *reg(struct world *w, struct node *n) {
-    struct node *out;
-    CHECK(nt_register(&w->nt, n, &out));
+    struct node *out = NULL;
+    struct err e;
+    CHECK_EQ(nt_register(&w->nt, n, &out, &e), ERR_OK);
     return out;
+}
+
+/* nt_install's result, NULL if refused. */
+static struct node *install(struct world *w, struct handle *h, struct node *n) {
+    struct node *out = NULL;
+    struct err e;
+    return nt_install(&w->nt, h, n, &out, &e) == ERR_OK ? out : NULL;
 }
 
 TEST(ncoll_follow_newer_version) {
@@ -514,6 +523,142 @@ TEST(ncoll_link_to_canonical_check) {
     world_free(&w);
 }
 
+/* A top node of the test stream: id, at pos, its root pointer a stream pointer. */
+static struct tnode *test_top_node(struct world *w, int64_t id, int64_t pos) {
+    struct tnode *t = tn_new(&w->cx, 0, NULL, 5000, 1, pos);
+    t->n.id = id;
+    return t;
+}
+
+/* A follow of pointer i of 'from' by the readers' follower: refused with a
+ * StreamFormatException whose text is 'text'. */
+static void follow_refused(struct world *w, struct node *from, int32_t i, const char *text) {
+    int32_t calls = 0;
+    struct opdata op;
+    test_op(&op, &calls);
+    err_clear(&w->nc.err);
+    struct node *got = nc_follow_reader(&w->nc, from, i, &op);
+    CHECK(got == NULL);
+    bool same = strcmp(w->nc.err.java, "StreamFormatException") == 0
+            && strcmp(w->nc.err.text, text) == 0;
+    CHECK(same);
+    if (!same) {
+        printf("    got %s: %s: %s\n", got == NULL ? "none" : "a node", w->nc.err.java,
+                w->nc.err.text);
+    }
+}
+
+/* NodeCollection.checkPointeeType and Cache3.checkType (bergdb 019-32, as Java's since
+ * release 2026.3): a pointer that names a node of another type than it points to is refused
+ * with a StreamFormatException, where C read the node as the type it expected (Java threw a
+ * ClassCastException): a top node's root pointer naming a top node; a non-leaf key node's
+ * pointer naming a value; a segment leaf's value pointer naming a key node; a handle whose
+ * object is of another type (a damaged node's id names another node). And a version read
+ * into a handle whose object is of another type, not usable, is not installed. */
+TEST(ncoll_pointee_type) {
+    struct world w;
+    world_init(&w);
+    const int64_t t10[] = { 10 };
+
+    /* A top node's root pointer: a key node expected, a top node there. */
+    stream_put(&w, 100, &test_top_node(&w, 101, 100)->n);
+    follow_refused(&w, &test_parent(&w, 301, 100)->n, 0,
+            "Pointer 0 of node 301 names a node of type 10 at 100, not 20.");
+
+    /* A non-leaf key node's pointer: a key node expected, a value there. */
+    struct vnode *v = vn_new_stored(&w.cx, (const uint8_t *) "v", 1, 200, 201, 160);
+    REQUIRE(v != NULL);
+    stream_put(&w, 200, &v->n);
+    const int64_t p200[] = { 200 };
+    follow_refused(&w, &test_node_of_d(&w, 103, 1, p200)->n, 1,
+            "Pointer 1 of node 103 names a node of type 30 at 200, not 20.");
+
+    /* A segment leaf's value pointer (its key "k10" is shorter than 7): a value expected,
+     * a key node there (the leaf's pointer is 1000 + 8 * 10). */
+    stream_put(&w, 1080, &test_key_node(&w, 105, 1080, 1, t10)->n);
+    struct knode *leaf = test_key_node(&w, 104, 300, 1, t10);
+    hold(&w, &leaf->n);
+    follow_refused(&w, &leaf->n, 1,
+            "Pointer 1 of node 104 names a node of type 20 at 1080, not 30.");
+
+    /* The live handle of the id at the pointer's position holds a canonical top node: a
+     * key node expected. */
+    struct tnode *top = test_top_node(&w, 107, 50);
+    node_set_canonical(&top->n, true);
+    reg(&w, &top->n);
+    stream_put(&w, 400, &test_key_node(&w, 107, 400, 1, t10)->n);
+    const int64_t p400[] = { 400 };
+    follow_refused(&w, &test_node_of_d(&w, 108, 1, p400)->n, 1,
+            "Pointer 1 of node 108 names a node of type 10 at 400, not 20.");
+
+    /* The handle holds a top node that is not usable (not canonical, older): the key node
+     * read is of the type the pointer names, but not installed (Cache3.install). */
+    struct tnode *old = test_top_node(&w, 109, 50);
+    reg(&w, &old->n);
+    stream_put(&w, 600, &test_key_node(&w, 109, 600, 1, t10)->n);
+    const int64_t p600[] = { 600 };
+    follow_refused(&w, &test_node_of_d(&w, 110, 1, p600)->n, 1,
+            "Two nodes with the id 109: of type 10 at 50, and of type 20 at 600.");
+    CHECK(nt_get_node(&w.nt, 109) == &old->n);
+
+    obj_collect(&w.cx);
+    world_free(&w);
+}
+
+/* As Java's (release 2026.3), linkToCanonical takes the live handle of the node id at a
+ * pointer's position without checking its object's type: a key node's pointer whose
+ * position names a top node's version (a damaged node, its checksum right) gets the top
+ * node's handle, and the readers' follower then gives the top node from memory, unchecked
+ * (019-32's checks are in the reads from the stream). C's casts refuse it where the Dag
+ * casts it (t_dag.c, dag_wrong_pointee_type); Java's would throw a ClassCastException. */
+TEST(ncoll_link_to_canonical_another_type) {
+    struct world w;
+    world_init(&w);
+    struct tnode *top = test_top_node(&w, 131, 700);
+    node_set_canonical(&top->n, true);
+    reg(&w, &top->n);
+    struct lmap ids, byPos;
+    lmap_init(&ids, &w.m);
+    CHECK(lmap_put(&ids, 700, 131));
+    const int64_t ptrs[] = { 700 };
+    struct knode *parent = test_node_of_d(&w, 132, 1, ptrs);
+    test_by_pos(&w, &byPos);
+    struct err e;
+    CHECK_EQ(nc_link_to_canonical(&w.nc, &parent->n, &ids, &byPos, &e), ERR_OK);
+    CHECK(node_pointer_node(&parent->n, 1) == &top->n);     /* linked, as Java's */
+    int32_t calls = 0;
+    struct opdata op;
+    test_op(&op, &calls);
+    CHECK(nc_follow_reader(&w.nc, &parent->n, 1, &op) == &top->n);
+    lmap_free(&ids);
+    lmap_free(&byPos);
+    world_free(&w);
+}
+
+/* Checks, not asserts (bergdb 019-32, as Java's since release 2026.3): a pointer to an index
+ * node that is negative, and a value pointer that is negative or a vpos, are refused with a
+ * StreamFormatException; before, C aborted on an assert. */
+TEST(ncoll_bad_pointers) {
+    struct world w;
+    world_init(&w);
+    follow_refused(&w, &test_parent(&w, 311, -8)->n, 0, "Bad pointer -8, index 0 of node 311.");
+    const int64_t bad[2] = { -8, 1001 };
+    for (int i = 0; i < 2; i++) {
+        struct knode *leaf = kn_new(&w.cx, true);
+        CHECK(kn_add_to_end(&w.cx, leaf, kl_create_time(10), NULL, -1));
+        CHECK(kn_add_to_end(&w.cx, leaf, key_klong("k"), NULL, bad[i]));
+        leaf->n.id = 120 + i;
+        leaf->n.spos = 300;
+        hold(&w, &leaf->n);
+        char want[100];
+        snprintf(want, sizeof want, "Bad value pointer %lld, index 1 of node %d.",
+                (long long) bad[i], 120 + i);
+        follow_refused(&w, &leaf->n, 1, want);
+    }
+    obj_collect(&w.cx);
+    world_free(&w);
+}
+
 /* Cache3's rules: register keeps a canonical object, takes a better one;
  * install takes a newer version, never over a canonical one; makeCanonical;
  * dropIfEmpty; liveOrNewHandle. */
@@ -529,13 +674,13 @@ TEST(ntable_rules) {
     REQUIRE(h != NULL);
     CHECK(v100->handle == h);
     CHECK(reg(&w, &v50->n) == &v100->n);        /* an older version: kept out */
-    CHECK(nt_install(&w.nt, h, &v200->n) == &v200->n);  /* a newer one taken */
+    CHECK(install(&w, h, &v200->n) == &v200->n);       /* a newer one taken */
     CHECK(v100->handle == NULL && (v100->n.o.flags & OBJ_LEFT) != 0);
     node_set_canonical(&v100->n, true);
     CHECK(nt_make_canonical(&w.nt, h, &v100->n) == &v200->n);  /* the newer one */
     CHECK(node_is_canonical(&v200->n));
     node_set_canonical(&v100->n, false);
-    CHECK(nt_install(&w.nt, h, &v100->n) == &v200->n);  /* never over a canonical one */
+    CHECK(install(&w, h, &v100->n) == &v200->n);       /* never over a canonical one */
     /* an empty handle is dropped; one with an object is not */
     struct handle *h2 = nt_live_or_new_handle(&w.nt, 9);
     REQUIRE(h2 != NULL);
@@ -547,6 +692,29 @@ TEST(ntable_rules) {
     nt_drop_if_empty(&w.nt, h);
     CHECK(nt_live_handle(&w.nt, 7) == h);
     CHECK_EQ(nt_size(&w.nt), 1);
+    /* One id, one type (Cache3.checkType, bergdb 019-32, as Java's since release 2026.3):
+     * a top node registered or installed where a key node is, refused, the key node kept;
+     * and the reverse. */
+    struct tnode *t7 = tn_new(&w.cx, 0, NULL, 5000, 1, 300);
+    t7->n.id = 7;
+    node_set_canonical(&t7->n, true);
+    struct node *out = NULL;
+    struct err e;
+    CHECK_EQ(nt_register(&w.nt, &t7->n, &out, &e), ERR_FORMAT);
+    CHECK(strcmp(e.java, "StreamFormatException") == 0);
+    CHECK(strcmp(e.text, "Two nodes with the id 7: of type 20 at 200, and of type 10 at 300.")
+            == 0);
+    CHECK_EQ(nt_install(&w.nt, h, &t7->n, &out, &e), ERR_FORMAT);
+    CHECK(strcmp(e.text, "Two nodes with the id 7: of type 20 at 200, and of type 10 at 300.")
+            == 0);
+    CHECK(nt_get_node(&w.nt, 7) == &v200->n);
+    t7->n.id = 11;
+    CHECK(reg(&w, &t7->n) == &t7->n);
+    struct knode *k11 = test_key_node(&w, 11, 400, 1, t10);
+    CHECK_EQ(nt_register(&w.nt, &k11->n, &out, &e), ERR_FORMAT);
+    CHECK(strcmp(e.text, "Two nodes with the id 11: of type 10 at 300, and of type 20 at 400.")
+            == 0);
+    CHECK(nt_get_node(&w.nt, 11) == &t7->n);
     obj_collect(&w.cx);
     world_free(&w);
 }
@@ -605,6 +773,9 @@ const struct test ncoll_tests[] = {
     TEST_ENTRY(ncoll_link_to_canonical_by_position),
     TEST_ENTRY(ncoll_link_to_canonical_top_node),
     TEST_ENTRY(ncoll_link_to_canonical_check),
+    TEST_ENTRY(ncoll_pointee_type),
+    TEST_ENTRY(ncoll_bad_pointers),
+    TEST_ENTRY(ncoll_link_to_canonical_another_type),
     TEST_ENTRY(ntable_rules),
     TEST_ENTRY(lmap_model),
     TEST_END

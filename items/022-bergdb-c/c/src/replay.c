@@ -72,10 +72,9 @@ static enum err_code startup_pos_from_last_transaction(struct replay *r, int64_t
             break;
         }
         result = rec.startup_pos;
-        if (result < 0) {
-            /* Java's assert: "Bad storedTrans.startupPos" */
-            rc = err_set(e, ERR_FORMAT, "AssertionError", "Bad storedTrans.startupPos: %lld",
-                    (long long) result);
+        /* Db.checkStartupPos (bergdb 015-75, as Java's since release 2026.3). */
+        rc = st_check_startup_pos(&rec, e);
+        if (rc != ERR_OK) {
             break;
         }
         lastTpos = rec.tpos;

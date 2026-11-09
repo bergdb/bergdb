@@ -131,6 +131,19 @@ bool nc_points_to_index_node(const struct node *node, int32_t i) {
     }
 }
 
+enum err_code nc_check_pointee_type(const struct node *node, int32_t i,
+        const struct node *pointee, int64_t pos, struct err *e) {
+    int32_t type = node_type(node) == NODE_TYPE_TOP_NODE
+            ? (i == 0 ? NODE_TYPE_KEY_NODE : NODE_TYPE_TOP_NODE)
+            : nc_points_to_index_node(node, i) ? NODE_TYPE_KEY_NODE : NODE_TYPE_VALUE;
+    if (node_type(pointee) != type) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "Pointer %d of node %" PRId64
+                " names a node of type %d at %" PRId64 ", not %d.", (int) i, node->id,
+                (int) node_type(pointee), pos, (int) type);
+    }
+    return ERR_OK;
+}
+
 int64_t nc_newer_pos(int64_t ref, int64_t w) {
     if (!spos_is_valid(w) || spos_is_vpos(w)) {
         return ref;
@@ -189,6 +202,10 @@ static enum err_code read_version(struct ncoll *nc, int64_t id, int64_t pos,
     }
     struct node *node;
     enum err_code rc = read_node(nc, pos, &node, e);
+    if (rc == ERR_OK) {
+        /* before an install (bergdb 019-32, as Java's since release 2026.3) */
+        rc = nc_check_pointee_type(predecessor, pointerIndex, node, pos, e);
+    }
     if (rc != ERR_OK) {
         return rc;
     }
@@ -216,9 +233,19 @@ static bool cut_back(const struct ncoll *nc, const struct node *node, int64_t po
  * pointer unless the cache policy says no (large values). */
 static struct node *follow_value_pointer(struct ncoll *nc, struct node *predecessor,
         int32_t pointerIndex, int64_t pointerPos, struct opdata *op, bool isMaintenance) {
-    assert(pointerPos >= 0 && !spos_is_vpos(pointerPos) && "bad value pointer");
+    /* Checks, not an assert (bergdb 019-32, as Java's since release 2026.3): the
+     * pointer is stream data, and the node it names is a value. */
+    if (pointerPos < 0 || spos_is_vpos(pointerPos)) {
+        err_set(&nc->err, ERR_FORMAT, "StreamFormatException", "Bad value pointer %" PRId64
+                ", index %d of node %" PRId64 ".", pointerPos, (int) pointerIndex,
+                predecessor->id);
+        return NULL;
+    }
     struct node *node;
     enum err_code rc = read_node(nc, pointerPos, &node, &nc->err);
+    if (rc == ERR_OK) {
+        rc = nc_check_pointee_type(predecessor, pointerIndex, node, pointerPos, &nc->err);
+    }
     if (rc != ERR_OK) {
         return NULL;
     }
@@ -255,7 +282,13 @@ static struct node *follow_stream_pointer(struct ncoll *nc, struct node *predece
     } else if (spos_is_vpos(pointerPos)) {
         id = pointerPos;
     } else {
-        assert(pointerPos >= 0 && "bad pointerPos, to read from stream");
+        /* A check, not an assert (bergdb 019-32, as Java's since release 2026.3). */
+        if (pointerPos < 0) {
+            err_set(&nc->err, ERR_FORMAT, "StreamFormatException", "Bad pointer %" PRId64
+                    ", index %d of node %" PRId64 ".", pointerPos, (int) pointerIndex,
+                    predecessor->id);
+            return NULL;
+        }
         int32_t type;
         enum err_code rc = nc_read_node_header(nc, pointerPos, &type, &id, &nc->err);
         if (rc != ERR_OK) {
@@ -314,13 +347,21 @@ static struct node *follow_stream_pointer(struct ncoll *nc, struct node *predece
          * in the handle (M22). */
         if (!isMaintenance && op->cache_policy.should_cache(op->cache_policy.ctx, node)
                 && (!cutBack || isWriter)) {
-            result = nt_install(nc->nt, live, node);
+            if (nt_install(nc->nt, live, node, &result, &nc->err) != ERR_OK) {
+                return NULL;
+            }
             if (!hd_usable(result, ref)) {
                 result = node;
             }
         } else {
             result = node;
         }
+    }
+
+    /* Also an object of the handle (bergdb 019-32, as Java's since release
+     * 2026.3): a damaged node's id names another. */
+    if (nc_check_pointee_type(predecessor, pointerIndex, result, ref, &nc->err) != ERR_OK) {
+        return NULL;
     }
 
     /* A read that kept nothing in a new handle leaves no empty handle. */

@@ -1,6 +1,7 @@
 /* ntable: the node table, Java's Cache3 in part; see ntable.h. */
 #include "ntable.h"
 #include <assert.h>
+#include <inttypes.h>
 #include <stddef.h>
 #include "knode.h"
 #include "tnode.h"
@@ -88,10 +89,26 @@ static bool is_better(const struct node *node, const struct node *old) {
     return node_is_canonical(node) || node->spos > old->spos;
 }
 
-bool nt_register(struct ntable *t, struct node *node, struct node **out) {
+/* Cache3.checkType: one node, one type (bergdb 019-32, as Java's since
+ * release 2026.3). A node from a damaged stream whose id was changed to that
+ * of a node of another type (its checksum right) went into that node's
+ * handle, and a pointer to the other node got it: in Java a
+ * ClassCastException, in C a read of the node as the wrong type. */
+static enum err_code check_type(const struct node *old, const struct node *node,
+        struct err *e) {
+    if (old != NULL && node_type(old) != node_type(node)) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "Two nodes with the id %" PRId64
+                ": of type %d at %" PRId64 ", and of type %d at %" PRId64 ".", node->id,
+                (int) node_type(old), old->spos, (int) node_type(node), node->spos);
+    }
+    return ERR_OK;
+}
+
+enum err_code nt_register(struct ntable *t, struct node *node, struct node **out,
+        struct err *e) {
     if (!node_is_index_node(node)) {
         *out = node;    /* Values have no handles and are not in the table (009-02, 4.8). */
-        return true;
+        return ERR_OK;
     }
     int64_t id = node->id;
     struct handle *h = nt_live_handle(t, id);
@@ -100,30 +117,41 @@ bool nt_register(struct ntable *t, struct node *node, struct node **out) {
         if (h == NULL || h->id != id || hd_is_dead(h)) {
             h = hd_new(t->cx, id);
             if (h == NULL) {
-                return false;
+                return err_set(e, ERR_NOMEM, "OutOfMemoryError", "the node table");
             }
         }
         if (!put(t, id, h)) {
-            return false;
+            return err_set(e, ERR_NOMEM, "OutOfMemoryError", "the node table");
         }
     }
     struct node *old = h->obj;
+    enum err_code rc = check_type(old, node, e);
+    if (rc != ERR_OK) {
+        return rc;
+    }
     if (old == NULL || (old != node && is_better(node, old))) {
         hd_set_obj(t->cx, h, node);
         *out = node;
-        return true;
+        return ERR_OK;
     }
     *out = old;
-    return true;
+    return ERR_OK;
 }
 
-struct node *nt_install(struct ntable *t, struct handle *h, struct node *node) {
+enum err_code nt_install(struct ntable *t, struct handle *h, struct node *node,
+        struct node **out, struct err *e) {
     struct node *old = h->obj;
+    enum err_code rc = check_type(old, node, e);
+    if (rc != ERR_OK) {
+        return rc;
+    }
     if (old == NULL || (old != node && is_better(node, old))) {
         hd_set_obj(t->cx, h, node);
-        return node;
+        *out = node;
+        return ERR_OK;
     }
-    return old;
+    *out = old;
+    return ERR_OK;
 }
 
 struct node *nt_make_canonical(struct ntable *t, struct handle *h, struct node *node) {

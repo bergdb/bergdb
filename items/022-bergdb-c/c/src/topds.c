@@ -146,10 +146,9 @@ bool tds_find_root(struct topds *ds, int64_t time, struct opdata *op, struct kno
         return true;
     }
     struct node *r = op_follow_pointer(op, &n->n, 0);
-    if (r == NULL) {
+    if (r == NULL || !op_cast_ok(op, r, NODE_TYPE_KEY_NODE)) {     /* Java's cast (KeyNode) */
         return false;
     }
-    assert(r->o.kind == OBJ_KEY);       /* Java's cast (KeyNode) */
     *out = (struct knode *) r;
     return true;
 }
@@ -224,10 +223,9 @@ bool tds_find_super_root_at_time(struct topds *ds, int64_t time, struct opdata *
         }
 
         struct node *next = op_follow_pointer(op, &n->n, pt->index);
-        if (next == NULL) {
+        if (next == NULL || !op_cast_ok(op, next, NODE_TYPE_TOP_NODE)) {
             return false;
         }
-        assert(next->o.kind == OBJ_TOP);
         n = (struct tnode *) next;
     }
 
@@ -246,10 +244,9 @@ bool tds_find_super_root_at_time(struct topds *ds, int64_t time, struct opdata *
     }
 
     struct node *n2 = op_follow_pointer(op, &n->n, pt->index);
-    if (n2 == NULL) {
+    if (n2 == NULL || !op_cast_ok(op, n2, NODE_TYPE_TOP_NODE)) {
         return false;
     }
-    assert(n2->o.kind == OBJ_TOP);
     *out = (struct tnode *) n2;
     return true;
 }

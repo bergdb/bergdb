@@ -116,8 +116,9 @@ static void set_id_of_node(struct db *db, struct node *node) {
 static bool register_new_node(struct db *db, struct node *node) {
     node_set_canonical(node, true);
     struct node *registered;
-    if (!nt_register(&db->node_table, node, &registered)) {
-        err_set(&db->op_err, ERR_NOMEM, "OutOfMemoryError", "out of memory");
+    struct err e;
+    if (nt_register(&db->node_table, node, &registered, &e) != ERR_OK) {
+        db->op_err = e;     /* NOMEM: a new node's id is a fresh vpos, of no other type */
         return false;
     }
     return true;
@@ -414,6 +415,7 @@ static void create_put_and_get_data(struct db *db) {
     struct putdata *pd = &db->put_data;
     pd->op.pointer_follower.follow = writer_follow;
     pd->op.pointer_follower.ctx = db;
+    pd->op.err = &db->op_err;       /* the Dag's own failures (019-32) */
     pd->node_change_listener.top_node_created = l_top_node_created;
     pd->node_change_listener.key_node_created = l_key_node_created;
     pd->node_change_listener.key_node_changed = l_key_node_changed;
@@ -436,12 +438,14 @@ void db_new_get_data(struct db *db, struct getdata *gd) {
     dag_new_get_data(&db->dag, gd);
     gd->op.pointer_follower.follow = reader_follow;
     gd->op.pointer_follower.ctx = db;
+    gd->op.err = &db->op_err;
 }
 
 void db_new_get_many(struct db *db, struct getmany *g) {
     gm_init(g, &db->dag, db->mem);
     g->gd.op.pointer_follower.follow = reader_follow;
     g->gd.op.pointer_follower.ctx = db;
+    g->gd.op.err = &db->op_err;
     g->collect = NULL;
 }
 
@@ -714,6 +718,7 @@ static enum err_code warmup(struct db *db, const struct trans *t, struct err *e)
     gd.op.pointer_listener = OP_DO_NOTHING_POINTER_LISTENER;
     gd.op.pointer_follower.follow = reader_follow;
     gd.op.pointer_follower.ctx = db;
+    gd.op.err = &db->op_err;
     for (int32_t i = 0; i < t->nkvs; i++) {
         struct vnode *v;
         enum err_code rc = get_one_internal(db, readTime, t->kvs[i]->key, t->kvs[i]->key_n,
@@ -832,6 +837,7 @@ static enum err_code touch_range(struct db *db, const int64_t *from, int32_t fro
     struct getmany g;
     gm_init(&g, &db->dag, db->mem);         /* dag.newGetMany() */
     g.gd.op.pointer_follower = pd->op.pointer_follower;
+    g.gd.op.err = pd->op.err;
     g.gd.op.pointer_listener = pd->op.pointer_listener;    /* makes nodes dirty */
     g.gd.op.access_data = pd->op.access_data;
     g.lookup_time = db->trans->tt;

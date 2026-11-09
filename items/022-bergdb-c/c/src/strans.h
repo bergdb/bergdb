@@ -24,7 +24,7 @@
 
 struct st_record {
     int64_t tpos;               /* the record's position */
-    int32_t size;               /* its size field, which the parser does not compare */
+    int32_t size;               /* its size field, the content's (015-72) */
     int64_t tt;                 /* the transaction's time */
     int64_t startup_pos;
     int64_t top_pos;
@@ -51,13 +51,22 @@ void st_free(struct st_record *r, struct mem *m);
  * size of 0, each size from 8 to what is left of the record ("Bad node
  * size"), and the end marker within it ("Missing node end marker"); room
  * for the got-dirty count and the last byte, and the count 0 to (size -
- * offset - 1) / 16; room for the padding; lastPos 7 modulo 8 (Java's
- * assert). Each a "StreamFormatException" but the assert's. Within the
- * record's size since bergdb 005-74 (release 2026.2): before, within the
- * buffer, and a node size below 0, which Java took (its offset went back),
- * was refused by C alone, as "none: C refuses". */
+ * offset - 1) / 16; room for the padding; the content's end, with the
+ * padding, at the size field (bergdb 015-72, release 2026.3); lastPos 7
+ * modulo 8 (Java's assert). Each a "StreamFormatException" but the
+ * assert's. Within the record's size since bergdb 005-74 (release 2026.2):
+ * before, within the buffer, and a node size below 0, which Java took (its
+ * offset went back), was refused by C alone, as "none: C refuses". */
 enum err_code st_parse(struct st_record *r, int64_t tpos, const uint8_t *buf, int32_t len,
         struct mem *m, struct err *e);
+
+/* Db.checkStartupPos (bergdb 015-75, release 2026.3): refuses a parsed
+ * record whose startupPos cannot be one that the take wrote: negative, not
+ * a multiple of 8, in the first meta block (only 0 is), or after the
+ * record's own position; a "StreamFormatException" that names the record,
+ * the position and the problem. Before, Java asserted only that it was not
+ * negative. */
+enum err_code st_check_startup_pos(const struct st_record *r, struct err *e);
 
 int64_t st_got_dirty_id(const struct st_record *r, int32_t i);
 int64_t st_got_dirty_pos(const struct st_record *r, int32_t i);

@@ -354,10 +354,12 @@ static bool chain_setup(struct chain *c, struct knode *root) {
         }
 
         struct node *next = op_follow_pointer(&g->gd.op, &node->n, kwi->pointer_index);
-        if (next == NULL) {
+        /* Java's assert "next instanceof KeyNode", a check (its AssertionError) since a
+         * damaged stream reaches it (bergdb 019-32's class): C read the node as a key
+         * node. */
+        if (next == NULL || !op_assert_key(&g->gd.op, next, "next=")) {
             return false;
         }
-        assert(next->o.kind == OBJ_KEY && "next instanceof KeyNode");
 
         if (kn_is_segment_leaf(node)) {
             int64_t compareValue = kl_get_compare_value(kwi->klong);
@@ -445,7 +447,10 @@ static bool chain_next(struct chain *c, struct kvt *out, bool *has) {
             break;  /* Done! */
 
         } else {
-            assert(next->o.kind == OBJ_KEY);
+            /* Java's assert "next instanceof KeyNode", a check, as in chain_setup. */
+            if (!op_assert_key(&g->gd.op, next, "")) {
+                return false;
+            }
             if (!add_link(c, (struct knode *) next, g->forward ? -1 : INT64_MAX)) {
                 return false;
             }

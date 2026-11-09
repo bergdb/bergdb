@@ -6,6 +6,8 @@
 #include "rstream.h"
 
 #define AIOOBE "ArrayIndexOutOfBoundsException"
+#define ST_STR_(x) #x
+#define ST_STR(x) ST_STR_(x)
 
 void st_init(struct st_record *r) {
     memset(r, 0, sizeof *r);
@@ -160,12 +162,38 @@ enum err_code st_parse(struct st_record *r, int64_t tpos, const uint8_t *buffer,
                 (long long) ((int64_t) transSizeBefore + count));
     }
     int32_t transSize = transSizeBefore + count;
+    /* The content fills the record exactly, as the serializer writes it (bergdb 015-72, as
+     * Java's since release 2026.3): a size field larger than the content made the walk
+     * skip the records it covered. */
+    if (transSize != byteSize) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "The record at %lld ends at "
+                "offset %d by its content, and its size says %d.", (long long) tpos,
+                (int) transSize, (int) byteSize);
+    }
     r->last_pos = rs_get_spos(tpos, transSize - 1);
     if (r->last_pos % RS_TRANS_ALIGNMENT != RS_TRANS_ALIGNMENT - 1) {
         return err_set(e, ERR_FORMAT, "AssertionError", "Bad lastPos: %lld, transSize:%d, "
                 "transPos: %lld", (long long) r->last_pos, (int) transSize, (long long) tpos);
     }
     return ERR_OK;
+}
+
+enum err_code st_check_startup_pos(const struct st_record *r, struct err *e) {
+    const int64_t sp = r->startup_pos;
+    const char *problem;
+    if (sp < 0) {
+        problem = "negative";
+    } else if (sp % RS_TRANS_ALIGNMENT != 0) {
+        problem = "not a multiple of " ST_STR(RS_TRANS_ALIGNMENT);
+    } else if (sp != 0 && sp < META_BLOCK_SIZE) {
+        problem = "in the first meta block";
+    } else if (sp > r->tpos) {
+        problem = "after the record";
+    } else {
+        return ERR_OK;
+    }
+    return err_set(e, ERR_FORMAT, "StreamFormatException", "The record at %lld has startupPos "
+            "%lld, %s.", (long long) r->tpos, (long long) sp, problem);
 }
 
 int64_t st_got_dirty_id(const struct st_record *r, int32_t i) {

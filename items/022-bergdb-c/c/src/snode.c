@@ -6,6 +6,7 @@
 #include "bytes.h"
 #include "checksum.h"
 #include "jsem.h"
+#include "klong.h"
 #include "rstream.h"
 #include "spos.h"
 
@@ -252,11 +253,35 @@ enum err_code sn_parse_key(const uint8_t *buf, int32_t len, int32_t offset, int6
     if (size < 0) {
         return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad Node size, %d.", (int) size);
     }
-    if (size > (nodeSize - 32) / 16) {         /* getByteSize() */
+    /* The node's size is its count's exactly, getByteSize() (bergdb 019-32, as
+     * Java's since release 2026.3; before, at most): a count below what the
+     * size holds read the pointers from the wrong bytes. */
+    if (nodeSize != 32 + 16 * size) {
         return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad key count, %d, of key node "
                 "at spos %lld, size %d.", (int) size, (long long) spos, (int) nodeSize);
     }
     NEED(offset, (int64_t) 16 * size);
+    /* Each klong's type, and a key klong's pointer (bergdb 019-32, as Java's
+     * since release 2026.3): a klong of type 2, which no klong has, or a key
+     * klong whose pointer is not a position or Spos.NULL, met an assert of
+     * the Core at a start or a read, which in C aborts. Java reads klong i
+     * and checks it with its pointer, in order. */
+    for (int32_t i = 0; i < size; i++) {
+        const int64_t klong = bytes_get_long_le(buf + offset + 8 * i);
+        const int64_t position = bytes_get_long_le(buf + offset + 8 * size + 8 * i);
+        const int32_t klongType = kl_get_int_type(klong);
+        if (klongType != KL_INT_TYPE_TIME && klongType != KL_INT_TYPE_KEY
+                && klongType != KL_INT_TYPE_DELETE_BITMAP) {
+            return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad klong type, %d, of "
+                    "klong %d of key node at spos %lld.", (int) klongType, (int) i,
+                    (long long) spos);
+        }
+        if (klongType == KL_INT_TYPE_KEY && !spos_is_valid_or_null(position)) {
+            return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad pointer, %lld, of "
+                    "klong %d of key node at spos %lld.", (long long) position, (int) i,
+                    (long long) spos);
+        }
+    }
 
     init_node(out, NODE_KEY, spos, buf + firstOffset);
     out->id = id;
@@ -264,6 +289,17 @@ enum err_code sn_parse_key(const uint8_t *buf, int32_t len, int32_t offset, int6
     out->leaf = isSegmentLeaf;
     out->n = size;
     return ERR_OK;
+}
+
+bool sn_is_key(const uint8_t *segments_le, int32_t n) {
+    for (int32_t i = 0; i < n; i++) {
+        const int64_t s = bytes_get_long_le(segments_le + 8 * i);
+        if ((s & J64(0xc000000000000007)) != 0
+                || (kl_get_length(s) == KL_MAX_SIZE) != (i < n - 1)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 enum err_code sn_parse_value(const uint8_t *buf, int32_t len, int32_t offset, int64_t spos,
@@ -329,6 +365,10 @@ enum err_code sn_parse_value(const uint8_t *buf, int32_t len, int32_t offset, in
     NEED(offset, keySize);
     const uint8_t *key = buf + offset;
     offset += keySize;
+    if (!sn_is_key(key, keySize / 8)) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad key of value node at spos "
+                "%lld.", (long long) spos);
+    }
 
     /* The stored offset is in the record's bytes (005-34). */
     int64_t tpos;

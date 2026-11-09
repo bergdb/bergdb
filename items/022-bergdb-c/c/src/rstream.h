@@ -58,9 +58,9 @@ enum err_code rs_read(struct stream *s, int64_t pos, uint8_t *buf, int32_t size,
         struct err *e);
 
 /* readMetaBlock: the block at block_pos, valid or not. Its magic bytes must
- * be "berg" (ERR_FORMAT, "BadMagicBytes") and its version, bytes 4-5, 154
- * (ERR_FORMAT, "VersioningStreamException"), checked before the rest is
- * read. */
+ * be "berg" (ERR_FORMAT, "BadMagicBytes") and its version, an int at bytes
+ * 4 to 7, 154 (ERR_FORMAT, "VersioningStreamException"; bytes 4 and 5 only
+ * until bergdb 019-01, release 2026.3), checked before the rest is read. */
 enum err_code rs_read_meta_block(struct stream *s, int64_t block_pos, struct meta *out,
         struct err *e);
 
@@ -119,8 +119,22 @@ struct rs_recovery {
                                    counted */
 };
 
+/* checkLastTransSpos (bergdb 019-34, as Java's since release 2026.3): the
+ * last transaction that block, the last valid one, names is SPOS_NULL, or
+ * from the first transaction byte (and the stream's first position) up to
+ * the block, as a valid meta block names a transaction written before it;
+ * else ERR_FORMAT, "StreamFormatException", which names the block and the
+ * position. Unaligned positions are taken: this layer does not align
+ * records. Called before recovery writes anything; before, a position past
+ * the stream's end gave the walk's IllegalArgumentException. */
+enum err_code rs_check_last_trans_spos(struct stream *s, const struct meta *block,
+        struct err *e);
+
 /* The plan of recover(): readLastValidMetaBlock (none: ERR_FORMAT, "Could
- * not find *any* valid meta block"), fixMetaBlockIfNeeded, and
+ * not find *any* valid meta block"), checkLastTransSpos (bergdb 019-34,
+ * release 2026.3: the block's lastTrans SPOS_NULL or from the first
+ * transaction byte up to the block, else ERR_FORMAT,
+ * "StreamFormatException"), fixMetaBlockIfNeeded, and
  * fixLastTransactionIfNeeded's walk by the records' sizes from the block's
  * lastTrans, with its refusals ("Bad transaction size", ERR_FORMAT; a walk
  * past the end, ERR_ARG). NodeStream.recover's check of a stream shorter

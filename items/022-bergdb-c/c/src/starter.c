@@ -181,9 +181,10 @@ static enum err_code startup_pos_from_last_transaction(struct starter *st, int64
             break;
         }
         result = rec.startup_pos;
-        if (result < 0) {
-            rc = err_set(e, ERR_FORMAT, "AssertionError", "Bad storedTrans.startupPos: %" PRId64,
-                    result);
+        /* Db.checkStartupPos: checks, not an assert of >= 0 (bergdb 015-75, as Java's since
+         * release 2026.3). */
+        rc = st_check_startup_pos(&rec, e);
+        if (rc != ERR_OK) {
             break;
         }
         lastTpos = rec.tpos;
@@ -363,10 +364,14 @@ static enum err_code do_primordial_startup(struct starter *st, struct err *e) {
     node_set_canonical(&superRoot->n, true);
     node_set_canonical(&keyNode->n, true);
     struct node *reg;
-    if (!nt_register(env->nt, &superRoot->n, &reg) || !nt_register(env->nt, &keyNode->n, &reg)) {
-        return nomem(e, "the node table");
+    enum err_code rc = nt_register(env->nt, &superRoot->n, &reg, e);
+    if (rc == ERR_OK) {
+        rc = nt_register(env->nt, &keyNode->n, &reg, e);
     }
-    enum err_code rc = set_dag(st, superRoot, e);
+    if (rc != ERR_OK) {
+        return rc;
+    }
+    rc = set_dag(st, superRoot, e);
     if (rc != ERR_OK) {
         return rc;
     }
@@ -540,6 +545,11 @@ static enum err_code create_memory_pointers(struct starter *st, struct err *e) {
             }
             struct node *pointee = pos_map_get(st, p.pos);
             if (pointee != NULL) {
+                /* As a follow checks it (bergdb 019-32, as Java's since release 2026.3). */
+                enum err_code rc = nc_check_pointee_type(node, i, pointee, p.pos, e);
+                if (rc != ERR_OK) {
+                    return rc;
+                }
                 struct obj *po;
                 if (!hd_pointee_of(st->env->cx, pointee, &po)) {
                     return nomem(e, "a handle");
@@ -559,8 +569,9 @@ static enum err_code register_section_nodes(struct starter *st, struct err *e) {
         struct node *node = st->nodes[k];
         node_set_canonical(node, true);
         struct node *reg;
-        if (!nt_register(env->nt, node, &reg)) {
-            return nomem(e, "the node table");
+        enum err_code rc = nt_register(env->nt, node, &reg, e);
+        if (rc != ERR_OK) {
+            return rc;
         }
     }
     nc_set_startup_section(env->nc, &st->new_by_id, st->startup_pos, st->startup_time);
@@ -587,28 +598,29 @@ static enum err_code top_node_of_last_transaction(struct starter *st, struct tno
             return rc;
         }
     }
+    /* topPos names the latest version (Rule R). A check, not an assert (bergdb 015-75, as
+     * Java's since release 2026.3). */
     int64_t newPos;
-    bool haveNew = nc_newest_in_section(env->nc, id, &newPos);
-    /* Java's assert: topPos names the latest version anyway */
-    if (haveNew && newPos != pos) {
-        return err_set(e, ERR_FORMAT, "AssertionError", "topPos %" PRId64 " is not the newest "
-                "version %" PRId64 " of top node %" PRId64, pos, newPos, id);
+    if (nc_newest_in_section(env->nc, id, &newPos) && newPos != pos) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "The last transaction's topPos %"
+                PRId64 " is not the newest version %" PRId64 " of top node %" PRId64 ".", pos,
+                newPos, id);
     }
-    int64_t ref = haveNew && spos_newer(newPos, pos) ? newPos : pos;
 
-    struct node *node = pos_map_get(st, ref);
+    struct node *node = pos_map_get(st, pos);
     if (node == NULL) {
         struct node *inTable = nt_get_node(env->nt, id);
         if (inTable != NULL && node_is_canonical(inTable)) {
             node = inTable;
         } else {
-            enum err_code rc = nc_read_node(env->nc, ref, &node, e);
+            enum err_code rc = nc_read_node(env->nc, pos, &node, e);
             if (rc != ERR_OK) {
                 return rc;
             }
             node_set_canonical(node, true);
-            if (!nt_register(env->nt, node, &node)) {
-                return nomem(e, "the node table");
+            rc = nt_register(env->nt, node, &node, e);
+            if (rc != ERR_OK) {
+                return rc;
             }
         }
     }
@@ -636,6 +648,8 @@ static enum err_code find_super_node_at_startup_time(struct starter *st, struct 
     dag_new_get_data(&tempDag, &gd);
     gd.op.pointer_follower.follow = nc_follow_reader;
     gd.op.pointer_follower.ctx = env->nc;
+    gd.op.err = &env->nc->err;
+    err_clear(&env->nc->err);
     struct tnode *superRoot = NULL;
     bool ok = tds_find_super_root_at_time(&tempDag.top_ds, st->startup_time, &gd.op, &superRoot);
     dag_free(&tempDag);
@@ -680,22 +694,23 @@ static enum err_code canonical_node(struct starter *st, int64_t id, int64_t spos
         *out = NULL;
         return ERR_OK;
     }
-    enum err_code rc = nc_read_node(env->nc, haveNew ? newPos : spos, &node, e);
+    const int64_t pos = haveNew ? newPos : spos;
+    enum err_code rc = nc_read_node(env->nc, pos, &node, e);
     if (rc != ERR_OK) {
         return rc;
     }
     if (node->id != id) {
-        return err_set(e, ERR_FORMAT, "AssertionError", "ids differ, %" PRId64 " != %" PRId64,
-                node->id, id);
+        /* A check, not an assert (bergdb 015-75, as Java's since release 2026.3): the
+         * got-dirty list is stream data. */
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "The got-dirty entry of node %"
+                PRId64 " names position %" PRId64 ", where node %" PRId64 " is.", id, pos,
+                node->id);
     }
     if (node_type(node) == NODE_TYPE_KEY_NODE) {
         kn_to_previous_state(env->cx, (struct knode *) node, st->startup_time);
     }
     node_set_canonical(node, true);
-    if (!nt_register(env->nt, node, out)) {
-        return nomem(e, "the node table");
-    }
-    return ERR_OK;
+    return nt_register(env->nt, node, out, e);
 }
 
 /* The rerun's NodeChangeListener: nodeCreated. */
@@ -733,8 +748,7 @@ static bool node_created(struct starter *st, struct node *node) {
         }
         node_set_canonical(node, true);
         struct node *reg;
-        if (!nt_register(env->nt, node, &reg)) {
-            err_set(&st->lerr, ERR_NOMEM, "OutOfMemoryError", "the node table");
+        if (nt_register(env->nt, node, &reg, &st->lerr) != ERR_OK) {
             return false;
         }
     }
@@ -778,6 +792,7 @@ static enum err_code rerun_transaction(struct starter *st, const struct st_recor
     dag_new_put_data(env->dag, &pd, env->mem);
     pd.op.pointer_follower.follow = nc_follow_writer;
     pd.op.pointer_follower.ctx = env->nc;
+    pd.op.err = &st->lerr;          /* the Dag's own failures (Dag.checkFound) */
     pd.node_change_listener.top_node_created = l_top_node_created;
     pd.node_change_listener.key_node_created = l_key_node_created;
     pd.node_change_listener.value_node_created = l_value_node_created;

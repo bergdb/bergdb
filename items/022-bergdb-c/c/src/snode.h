@@ -85,8 +85,11 @@ enum err_code sn_parse_top(const uint8_t *buf, int32_t len, int32_t offset, int6
 
 /* StoredKeyNode.parse: the size field at least 32 and within the buffer
  * (015-07); the format 2; prevPos a position or -1; the leaf byte 0 or 1;
- * n, a signed short, not negative and within the size field ("Bad key
- * count", 015-07), checked after the id is read, as Java does. */
+ * n, a signed short, not negative and the size field's exactly, 32 + 16 n
+ * ("Bad key count", 015-07; within it until bergdb 019-32, release 2026.3),
+ * checked after the id is read, as Java does; then each klong in turn, of
+ * type 0, 1 or 3 ("Bad klong type"), a key klong's pointer a position or -1
+ * ("Bad pointer"; both 019-32). */
 enum err_code sn_parse_key(const uint8_t *buf, int32_t len, int32_t offset, int64_t spos,
         struct sn_node *out, struct err *e);
 
@@ -98,9 +101,17 @@ enum err_code sn_parse_key(const uint8_t *buf, int32_t len, int32_t offset, int6
  * from transaction"). Each a "StreamFormatException"; the sizes against the
  * node's since bergdb 015-07 (release 2026.2; before, a negative value
  * length was a "NegativeArraySizeException" and the others were checked
- * against the buffer only). */
+ * against the buffer only). The key one that Keys.toSegments makes
+ * (sn_is_key; "Bad key of value node", bergdb 019-32, release 2026.3),
+ * before the offset. */
 enum err_code sn_parse_value(const uint8_t *buf, int32_t len, int32_t offset, int64_t spos,
         struct sn_node *out, struct err *e);
+
+/* StoredValueNode.isKey (bergdb 019-32): the n segments, little-endian at
+ * segments_le, are a key as Keys.toSegments makes it: each a compare value
+ * (bits 0 to 2, 62 and 63 zero), all but the last of length 7, the last
+ * shorter. A start reruns a value node's key into the graph. */
+bool sn_is_key(const uint8_t *segments_le, int32_t n);
 
 /* A top node's skip pointer i (0 to h - 1), as TopNode holds it: its
  * reference, or -1 if unset; its time, -1 if unset. */

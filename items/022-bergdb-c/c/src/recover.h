@@ -25,7 +25,9 @@
 /* RecoverableStream.recover on r's stream: *plan what it found and did (as
  * rs_plan_recovery's, whose numbers it must equal). Refused before anything
  * is written: no valid meta block (ERR_FORMAT, "StreamFormatException"), a
- * block with bad magic bytes or another version (rs_read_meta_block's). A
+ * block with bad magic bytes or another version (rs_read_meta_block's), a
+ * last valid block whose last transaction cannot be one
+ * (rs_check_last_trans_spos, bergdb 019-34, release 2026.3). A
  * bad size of the cut record ("Bad transaction size") is refused after the
  * meta block's fill, as Java's. The stream's errors as they are. */
 enum err_code rcv_recover(struct rs *r, struct rs_recovery *plan, struct err *e);

@@ -314,14 +314,18 @@ static bool get_eq_node_in_segment(int64_t time, struct knode *segmentRoot, int6
                 result = NULL;
                 break;
             } else {
-                assert((kwi->node == NULL || kwi->node->o.kind == OBJ_KEY)
-                        && "Expected a KeyNode");
-                struct node *nextCurrent = op_follow_pointer(&gd->op, &current->n,
-                        kwi->pointer_index);
-                if (nextCurrent == NULL) {
+                /* Java's assert, a check (its AssertionError) since a damaged stream
+                 * reaches it (bergdb 019-32's class): C aborted. */
+                if (kwi->node != NULL && !op_assert_key(&gd->op, kwi->node,
+                        "Expected a KeyNode, got ")) {
                     return false;
                 }
-                assert(nextCurrent->o.kind == OBJ_KEY);
+                struct node *nextCurrent = op_follow_pointer(&gd->op, &current->n,
+                        kwi->pointer_index);
+                if (nextCurrent == NULL || !op_cast_ok(&gd->op, nextCurrent,
+                        NODE_TYPE_KEY_NODE)) {
+                    return false;
+                }
                 current = (struct knode *) nextCurrent;
             }
         }
@@ -411,6 +415,33 @@ static bool report_new_pointers(struct knode *node, const struct op_pointer_crea
     return true;
 }
 
+/* Dag.checkFound (bergdb 019-32, as Java's since release 2026.3): a put
+ * finds a klong at or below its key in every key node on its way that is
+ * not a segment leaf (the graph's invariant). A node from a damaged stream
+ * may have none (a segment leaf's flag changed, its checksum right): the put
+ * fails, and so the database, or the start's rerun, which refuses the
+ * stream. It was an assert, on which C aborted. */
+static bool check_found(const struct knode *node, struct putdata *pd) {
+    if (pd->op.kwi.klong == KL_NULL) {
+        return op_fail(&pd->op, ERR_FORMAT, "DbException", "Key node %lld, not a segment leaf, "
+                "has no klong at or below the key at time %lld: corrupt data.",
+                (long long) node->n.id, (long long) pd->tt);
+    }
+    return true;
+}
+
+/* KeyNode.assertOk(maxNodeSize), Java's assert: a check that returns Java's
+ * AssertionError (Java's tests and harness run with -ea), as a node from a
+ * damaged stream reaches it; C aborted on it. */
+static bool assert_ok(const struct knode *node, int32_t maxNodeSize, struct putdata *pd) {
+    const char *msg = kn_check_max(node, maxNodeSize);
+    if (msg != NULL) {
+        return op_fail(&pd->op, ERR_FORMAT, "AssertionError", "%s, key node %lld", msg,
+                (long long) node->n.id);
+    }
+    return true;
+}
+
 /* Dag.setValue */
 static bool set_value(struct dag *d, struct knode *node, int64_t compareValue,
         const int64_t *key, int32_t keyN, const uint8_t *value, int32_t len,
@@ -419,13 +450,14 @@ static bool set_value(struct dag *d, struct knode *node, int64_t compareValue,
 
     while (!kn_is_segment_leaf(node)) {
         kn_search_lte(node, pd->tt, compareValue, &pd->op.kwi);
-        assert(pd->op.kwi.klong != KL_NULL && "pd.kwi.klong is Klong.NULL, non-null expected");
-
-        struct node *next = op_follow_pointer(&pd->op, &node->n, pd->op.kwi.pointer_index);
-        if (next == NULL) {
+        if (!check_found(node, pd)) {
             return false;
         }
-        assert(next->o.kind == OBJ_KEY);
+
+        struct node *next = op_follow_pointer(&pd->op, &node->n, pd->op.kwi.pointer_index);
+        if (next == NULL || !op_cast_ok(&pd->op, next, NODE_TYPE_KEY_NODE)) {
+            return false;
+        }
         node = (struct knode *) next;
     }
 
@@ -480,20 +512,25 @@ static bool set_node(struct dag *d, struct knode *segmentRoot, int64_t compareVa
     struct knode *current = segmentRoot;
     struct knode *result;
 
-    assert(kn_check_max(current, d->max_node_size) == NULL);     /* current.assertOk */
+    if (!assert_ok(current, d->max_node_size, pd)) {
+        return false;
+    }
 
     while (!kn_is_segment_leaf(current)) {
         kn_search_lte(current, pd->tt, compareValue, &pd->op.kwi);
-        assert(pd->op.kwi.klong != KL_NULL && "LTE search -> Klong.NULL");
+        if (!check_found(current, pd)) {
+            return false;
+        }
         assert(pd->op.kwi.pointer_index >= 0 && "LTE search found klong, but pointerIndex < 0");
 
         struct node *next = op_follow_pointer(&pd->op, &current->n, pd->op.kwi.pointer_index);
-        if (next == NULL) {
+        if (next == NULL || !op_cast_ok(&pd->op, next, NODE_TYPE_KEY_NODE)) {
             return false;
         }
-        assert(next->o.kind == OBJ_KEY);
         current = (struct knode *) next;
-        assert(kn_check_max(current, d->max_node_size) == NULL);
+        if (!assert_ok(current, d->max_node_size, pd)) {
+            return false;
+        }
     }
 
     kn_search_eq(current, pd->tt, compareValue, &pd->op.kwi);
@@ -532,10 +569,9 @@ static bool set_node(struct dag *d, struct knode *segmentRoot, int64_t compareVa
     } else {
         /* If found */
         struct node *next = op_follow_pointer(&pd->op, &current->n, pd->op.kwi.pointer_index);
-        if (next == NULL) {
+        if (next == NULL || !op_cast_ok(&pd->op, next, NODE_TYPE_KEY_NODE)) {
             return false;
         }
-        assert(next->o.kind == OBJ_KEY);
         result = (struct knode *) next;
     }
 
@@ -1286,7 +1322,7 @@ bool dag_dirty_node_bound(struct dag *d, int64_t time, const int64_t *const *key
                     break;
                 }
                 struct node *next = op_follow_pointer(&gd->op, &node->n, kwi->pointer_index);
-                if (next == NULL) {
+                if (next == NULL || !op_cast_ok(&gd->op, next, NODE_TYPE_KEY_NODE)) {
                     ok = false;
                     break;
                 }
@@ -1311,7 +1347,7 @@ bool dag_dirty_node_bound(struct dag *d, int64_t time, const int64_t *const *key
                 break;
             }
             struct node *next = op_follow_pointer(&gd->op, &node->n, kwi->pointer_index);
-            if (next == NULL) {
+            if (next == NULL || !op_cast_ok(&gd->op, next, NODE_TYPE_KEY_NODE)) {
                 ok = false;
                 break;
             }

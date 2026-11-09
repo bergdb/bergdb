@@ -393,6 +393,36 @@ TEST(records_walk_and_reads) {
     CHECK_MEM_ZERO(&m);
 }
 
+/* NodeStream.readNode: a position in the first meta block is refused with a
+ * StreamFormatException (bergdb 019-32, as Java's since release 2026.3: a pointer of a
+ * damaged node reaches it); before, Java's assert, which C returned as an AssertionError. */
+TEST(records_bad_node_position) {
+    struct mem m;
+    struct err e;
+    struct stream s;
+    struct ns_buf nb = { NULL, 0 };
+    struct sn_node n;
+    mem_init(&m);
+    FILE *f = open_vectors();
+    REQUIRE(f != NULL);
+    REQUIRE(load(f));
+    fclose(f);
+    stream_of_vectors(&s, &m);
+    const int64_t bad[3] = { 0, 8, 127 };
+    for (int i = 0; i < 3; i++) {
+        CHECK_EQ(ns_read_node(&s, &m, bad[i], &nb, &n, &e), ERR_FORMAT);
+        CHECK(strcmp(e.java, "StreamFormatException") == 0);
+        char want[60];
+        snprintf(want, sizeof want, "Bad node position, %lld.", (long long) bad[i]);
+        CHECK(strcmp(e.text, want) == 0);
+    }
+    CHECK_EQ(ns_read_node(&s, &m, 160, &nb, &n, &e), ERR_OK);     /* the creation's top node */
+    CHECK_EQ(n.type, NODE_TOP);
+    ns_buf_free(&nb, &m);
+    stream_close(&s);
+    CHECK_MEM_ZERO(&m);
+}
+
 /* 012-06's finding F2: a node size below 0, which Java's parser took until 005-74 (its
  * offset went back, and this record made it loop until it ran out of memory), is refused,
  * as Java's parser refuses it since release 2026.2. The record of the finding's probe. */
@@ -429,10 +459,57 @@ TEST(records_negative_node_size) {
     CHECK(strcmp(e.java, "StreamFormatException") == 0);    /* as Java's since 005-74 */
     CHECK(strncmp(e.text, "Bad node size, -32,", 19) == 0);
     bytes_put_int_le(0, b + 64);            /* the end of the nodes there, and no got-dirty */
-    bytes_put_int_le(0, b + 68);            /* pairs: taken */
+    bytes_put_int_le(0, b + 68);            /* pairs: taken, at the size of its content */
+    CHECK_EQ(st_parse(&r, 128, b, 112, &m, &e), ERR_FORMAT);       /* 015-72: 80, not 112 */
+    bytes_put_int_le(80, b);
+    b[79] = 10;
     CHECK_EQ(st_parse(&r, 128, b, 112, &m, &e), ERR_OK);
     CHECK_EQ(r.nnodes, 1);
     CHECK_EQ(r.last_pos, 128 + 32 + 32 + 4 + 4 + 8 * 0 + 1 + 7 - 1);
+    st_free(&r, &m);
+    CHECK_MEM_ZERO(&m);
+}
+
+/* A record whose size field is larger than its content is refused (bergdb 015-72, as
+ * Java's since release 2026.3; DbTesterRestart.testEnlargedRecordSizeRefused at the parser):
+ * each record of the vectors followed by the next, its size made theirs together, so that
+ * it ends on the next one's last byte. Before, it was taken, and the walk skipped the
+ * record it covered. A size of 8 bytes more than the content is refused too. */
+TEST(records_enlarged_size) {
+    struct mem m;
+    struct err e;
+    struct st_record r;
+    mem_init(&m);
+    st_init(&r);
+    FILE *f = open_vectors();
+    REQUIRE(f != NULL);
+    REQUIRE(load(f));
+    fclose(f);
+    int tried = 0;
+    for (int k = 0; k + 1 < rv.nrecords; k++) {
+        if (rv.tpos[k] + rv.len[k] != rv.tpos[k + 1]) {
+            continue;
+        }
+        const int32_t a = rv.len[k], n = rv.len[k] + rv.len[k + 1];
+        REQUIRE(n <= (int32_t) sizeof rv.work);
+        memcpy(rv.work, rv.bytes[k], (size_t) a);
+        memcpy(rv.work + a, rv.bytes[k + 1], (size_t) rv.len[k + 1]);
+        CHECK_EQ(st_parse(&r, rv.tpos[k], rv.work, n, &m, &e), ERR_OK);
+        bytes_put_int_le(n, rv.work);
+        err_clear(&e);
+        CHECK_EQ(st_parse(&r, rv.tpos[k], rv.work, n, &m, &e), ERR_FORMAT);
+        CHECK(strcmp(e.java, "StreamFormatException") == 0);
+        char want[200];
+        snprintf(want, sizeof want, "The record at %lld ends at offset %d by its content, and "
+                "its size says %d.", (long long) rv.tpos[k], (int) a, (int) n);
+        CHECK(strcmp(e.text, want) == 0);
+        bytes_put_int_le(a + 8, rv.work);
+        err_clear(&e);
+        CHECK_EQ(st_parse(&r, rv.tpos[k], rv.work, n, &m, &e), ERR_FORMAT);
+        CHECK(strncmp(e.text, "The record at ", 14) == 0);
+        tried++;
+    }
+    CHECK(tried > 5);
     st_free(&r, &m);
     CHECK_MEM_ZERO(&m);
 }
@@ -441,5 +518,7 @@ const struct test records_tests[] = {
     TEST_ENTRY(records_parse),
     TEST_ENTRY(records_walk_and_reads),
     TEST_ENTRY(records_negative_node_size),
+    TEST_ENTRY(records_enlarged_size),
+    TEST_ENTRY(records_bad_node_position),
     TEST_END
 };

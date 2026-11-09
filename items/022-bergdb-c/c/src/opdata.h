@@ -16,6 +16,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "err.h"
 #include "node.h"
 
 struct opdata;
@@ -62,7 +63,12 @@ struct op_cache_policy {
     void *ctx;
 };
 
-/* OpData: an operation's settings and scratch (Java's fields). */
+/* OpData: an operation's settings and scratch (Java's fields). err is C's:
+ * where a failure of the Dag's own code goes (Dag.checkFound's DbException,
+ * bergdb 019-32; a followed node of another type than the code casts it
+ * to, op_cast_ok), set by the one who sets the follower to where it looks
+ * for the follower's failures; NULL (op_init's): nowhere, and the caller
+ * sees a failure without its text. */
 struct opdata {
     struct op_follower pointer_follower;
     struct op_pointer_listener pointer_listener;
@@ -70,6 +76,7 @@ struct opdata {
     int64_t access_data;
     struct pointer temp_pointer;        /* borrowed node (012-07, 6.4.2) */
     struct kwp kwi;                     /* borrowed node */
+    struct err *err;                    /* not counted, not owned */
 };
 
 /* new OpData(): no functions, access data 0, the scratch reset. */
@@ -77,6 +84,25 @@ void op_init(struct opdata *op);
 
 /* OpData.followPointer */
 struct node *op_follow_pointer(struct opdata *op, struct node *predecessor, int32_t index);
+
+/* Java's cast of a node that a follow gave (KeyNode or TopNode: type
+ * NODE_TYPE_KEY_NODE or NODE_TYPE_TOP_NODE), where C cast it with an assert:
+ * true if node is of that type; else false, and Java's ClassCastException,
+ * with the JVM's text, in *op->err (C-only, bergdb 019-32's class: Java's
+ * checks of a pointer's pointee are in the follows, which do not see every
+ * pointer that a start links, NodeCollection.linkToCanonical, or the writer
+ * resolves, resolvePointers; C never reads a node as another type). */
+bool op_cast_ok(struct opdata *op, const struct node *node, int32_t type);
+
+/* Java's assert that a node that a follow gave is a KeyNode (GetMany's,
+ * "next instanceof KeyNode", whose text is prefix and the node), as
+ * op_cast_ok, with an AssertionError (Java's tests and harness run with
+ * -ea). */
+bool op_assert_key(struct opdata *op, const struct node *node, const char *prefix);
+
+/* An error of the Dag's own code into *op->err (if set and still clear),
+ * its text formatted as by printf; returns false. */
+bool op_fail(struct opdata *op, enum err_code code, const char *java, const char *format, ...);
 
 /* Dag.DO_NOTHING_POINTER_LISTENER, DO_NOTHING_POINTER_CREATED_LISTENER,
  * DO_NOTHING_NODE_CHANGE_LISTENER: every function returns true. */

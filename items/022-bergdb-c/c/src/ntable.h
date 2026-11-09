@@ -22,6 +22,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "err.h"
 #include "handle.h"
 #include "lmap.h"
 #include "mem.h"
@@ -55,13 +56,18 @@ struct node *nt_get_node(const struct ntable *t, int64_t id);
  * Handle.of's, adopted) if it has none. A canonical object already there is
  * kept; else node replaces the handle's object if it is better (canonical,
  * or a newer version). *out: the handle's object after the call; a value is
- * returned as it is. false: NOMEM. */
-bool nt_register(struct ntable *t, struct node *node, struct node **out);
+ * returned as it is. Refused (ERR_NOMEM; or ERR_FORMAT,
+ * "StreamFormatException", Cache3.checkType, bergdb 019-32, release 2026.3:
+ * the handle's object is of another type, one id with two types, which a
+ * damaged node's id gives) with nothing changed but a new empty handle. */
+enum err_code nt_register(struct ntable *t, struct node *node, struct node **out,
+        struct err *e);
 
 /* install: node, a version read from the stream, into its live handle h,
- * unless h has a better object. Returns the handle's object after the
- * call. */
-struct node *nt_install(struct ntable *t, struct handle *h, struct node *node);
+ * unless h has a better object. *out: the handle's object after the call.
+ * Refused as register (checkType, 019-32), h unchanged. */
+enum err_code nt_install(struct ntable *t, struct handle *h, struct node *node,
+        struct node **out, struct err *e);
 
 /* makeCanonical: the handle's canonical object if it has one, else the
  * newer of node and the handle's object, made canonical and the handle's

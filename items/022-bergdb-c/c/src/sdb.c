@@ -224,12 +224,14 @@ void sdb_new_get_data(struct sdb *d, struct getdata *gd) {
     dag_new_get_data(&d->dag, gd);
     gd->op.pointer_follower.follow = nc_follow_reader;
     gd->op.pointer_follower.ctx = &d->nc;
+    gd->op.err = &d->nc.err;        /* the Dag's own failures (019-32) */
 }
 
 void sdb_new_get_many(struct sdb *d, struct getmany *g) {
     gm_init(g, &d->dag, d->mem);
     g->gd.op.pointer_follower.follow = nc_follow_reader;
     g->gd.op.pointer_follower.ctx = &d->nc;
+    g->gd.op.err = &d->nc.err;
     g->collect = &d->cx;
 }
 

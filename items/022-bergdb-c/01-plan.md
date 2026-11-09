@@ -238,3 +238,69 @@ makes 628 runs where it made 379 (its workload's `set retain` is now a
 commit after the creation), 51 s. No difference remains in the gate; the
 differences that steps 2 and 3 remove do not show in the quick set (step
 0's record).
+
+2026-11-09, step 2 (worker s2). The start's checks, and damaged nodes
+refused, as 2026.3's Java refuses them (012-18, section 3.1, steps 5 to
+9), with Java's exception names and texts: 015-72 in `strans.c` (a
+record's content ends at its size field); 015-75 in `strans.c`'s
+`st_check_startup_pos` (Db.checkStartupPos: negative, not a multiple of
+8, in the first meta block, after the record), called by `starter.c` and
+`replay.c`, and in `starter.c` an older topPos and a got-dirty id that
+differs, each a `StreamFormatException` where C gave the assert's
+`AssertionError`; 019-01 in `meta.c` and `rstream.c` (the version an int,
+`beginsAsBlock` over 8 bytes); 019-34 in `rstream.c`'s
+`rs_check_last_trans_spos`, in the plan and in `recover.c`, before
+anything is written; 019-32 in `snode.c` (a key node's count its size's
+exactly, each klong's type, a key klong's pointer; a value node's key,
+`sn_is_key`), `nstream.c` (a node position in the first meta block),
+`ncoll.c` (`nc_check_pointee_type` on the version read, before an
+install, on the handle's object and on a value read; the pointer asserts
+as checks), `starter.c` (the memory pointers), `ntable.c` (one type per
+id: `nt_register` and `nt_install` return an error) and `dag.c`
+(Dag.checkFound's `DbException`). C-only, so that C never reads a node as
+another type and never aborts where Java throws: where C cast a followed
+node under an assert, a check with Java's exception at that place
+(`dag.c` and `topds.c`: a `ClassCastException` with the JVM's text;
+`getmany.c`'s asserts and getOne's on a klong's node: an
+`AssertionError`, as Java's under `-ea`; `set_node`'s `assertOk` too);
+the Dag's own errors go to `opdata`'s new `err`, set where the follower
+is set. Java's type checks are in the follows, and do not see the
+pointers that a start links (`linkToCanonical`) or that the writer
+resolves (`resolvePointers`) by the node id at their position: a damaged
+pointer that names another type's node is linked, and Java would throw a
+`ClassCastException` at the read; C, which links as Java does
+(`ncoll_link_to_canonical_another_type`), refuses it at the cast (found by
+reading, not reproduced in Java; for the session). Tests, 11 new, each
+failing before its fix (019-32's follows and the Dag's by an abort):
+`t_snode.c` (new: `testRefusesBadKlongs`, `testRefusesBadKey`),
+`t_records.c` (015-72 on the vectors' records; the node position),
+`t_rstream.c` (019-01's version and `beginsAsBlock`,
+`testIsIncompleteCreation`'s case; 019-34 on crafted blocks),
+`t_sdb.c` (DbTesterRestart's six refusals of 2026.3, on the vectors'
+stream), `t_ncoll.c` (the pointee types, one type per id, the bad
+pointers), `t_dag.c` (checkFound, the casts); and 2026.2's tests that
+took what 2026.3 refuses changed (`records_negative_node_size`,
+`rs_meta_blocks`, `meta_begins_as_block`, `sdb_refusals`'s topPos).
+
+The gate against 2026.3, on step 1's landing (`32efc37`): `C BEFORE
+COMMIT OK (280 s)`, F53 under a load of about 20 to 28 with other gates;
+`unit` 375 tests; `cross quick` 0 differences (23 workloads, 69 crash
+cuts, 85 corrupt variants, 2 in turns, 46 budget runs); `writecheck` 0;
+`allocfail` 628 runs. Before the rebase, on step 0 alone, the gate's
+steps run by hand showed only step 0's negative control (step 1's: the
+reclaim vectors, `cross quick`'s 152 differences in the workloads that
+reclaim, `clockcheck` on 7 directories) and none of this step's;
+`func`, `allocfail` and `examples` passed. `corrupt.sh` against 2026.3,
+on step 1's landing: its 144 variants, `CORRUPT OK` (84 refused by both,
+with the same exception; 38 started; 22 with a read failing later; 110
+s). On step 0 alone, with `HEADERS=2` on bases 501 and 503 (200 variants,
+every header byte of the last two records flipped), the same status and
+text in all, and 2
+differences of the script's own rule that C writes nothing into a
+database it refuses: a record's size made smaller by a flip of its byte
+0, recovery's walk from the middle of the record zero-fills to a garbage
+size (megabytes, new files), and then the start refuses the record's
+last byte ("Bad lastByte"). Java does the same (its note), and so did C
+before this step (the pre-step build gives the same files and text): not
+step 2's, for the session (corrupt.sh's rule, or a check before the fill,
+is a matter for both).

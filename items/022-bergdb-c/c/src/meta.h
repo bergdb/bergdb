@@ -4,7 +4,7 @@
  * 200,000, little-endian:
  *
  *   0   4  magic, "berg"
- *   4   4  version, 154, written as an int, read as an unsigned short (4-5)
+ *   4   4  version, 154, an int (read as an unsigned short until 019-01)
  *   8   8  time, the creation's
  *  16   8  lastTrans: the last record appended before the block, or -1
  *  24  16  the database id
@@ -49,7 +49,7 @@ bool meta_is_valid(const struct meta *mb);
  * an invalid block is not checked. ERR_FORMAT, "StreamFormatException". */
 enum err_code meta_check_format(const struct meta *mb, struct err *e);
 
-int32_t meta_version(const struct meta *mb);           /* unsigned short at 4 */
+int32_t meta_version(const struct meta *mb);           /* an int at 4 (019-01) */
 int64_t meta_time(const struct meta *mb);
 int64_t meta_last_trans(const struct meta *mb);
 const uint8_t *meta_id(const struct meta *mb);         /* 16 bytes */
@@ -64,13 +64,14 @@ void meta_set_startup_distance(struct meta *mb, int32_t startup_distance);
  * Bytes.ushortToBytesLE throws IllegalArgumentException. */
 bool meta_set_max_node_size(struct meta *mb, int32_t max_node_size);
 
-/* MetaBlock.beginsAsBlock: the first min(n, 6) bytes are the fill-out
- * template's, "berg" and 154 as an unsigned short (005-33). */
+/* MetaBlock.beginsAsBlock: the first min(n, 8) bytes are the fill-out
+ * template's, "berg" and 154 as an int (005-33; 6 bytes, the version an
+ * unsigned short, until bergdb 019-01, release 2026.3). */
 bool meta_begins_as_block(const uint8_t *bytes, int32_t n);
 
 /* Byte i (0 to 127) of MetaBlock.FILL_OUT_TEMPLATE, the bytes that complete
- * a meta block cut by a crash (4.4): "berg", 154 as an unsigned short,
- * zeros, the last byte 0. */
+ * a meta block cut by a crash (4.4): "berg", 154 as an int (the same bytes
+ * as the unsigned short of before 019-01), zeros, the last byte 0. */
 uint8_t meta_fill_out_template(int32_t i);
 
 #endif

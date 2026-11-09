@@ -58,8 +58,10 @@ enum err_code ns_iter_next(struct ns_iter *it, bool *has, struct err *e);
 
 void ns_iter_free(struct ns_iter *it);
 
-/* NodeStream.readNode: the node at spos (at least 128, Java's assert:
- * ERR_ARG); its size field above 6 ("Bad node byte size"); its bytes read
+/* NodeStream.readNode: the node at spos (at least 128, else ERR_FORMAT,
+ * "StreamFormatException", "Bad node position": a check since bergdb 019-32,
+ * release 2026.3, Java's assert before, ERR_ARG "AssertionError" in C); its
+ * size field above 6 ("Bad node byte size"); its bytes read
  * into buf, at least 1,024 of them, zeros after the node, as Java's buffer;
  * parsed by sn_bytes_to_node. *out is a view into buf. */
 enum err_code ns_read_node(struct stream *s, struct mem *m, int64_t spos, struct ns_buf *buf,
