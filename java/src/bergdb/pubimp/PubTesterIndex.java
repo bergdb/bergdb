@@ -7,9 +7,11 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import bergdb.common.EventToWaitFor;
+import bergdb.common.StringUtil;
 import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbConstants;
+import bergdb.core.InternalDataException;
 import bergdb.core.Trans;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
@@ -2313,6 +2315,49 @@ public class PubTesterIndex {
                 } catch (NoSuchElementException e) {
                     // Expected.
                 }
+            }
+        } finally {
+            db.close();
+        }
+    }
+    
+    /**
+     * A corrupt entry whose K is no ikey's bkey, written through the Core (its bytes less 2
+     * not well-formed UTF-8, or the byte 0x31): a scan that meets it throws
+     * InternalDataException naming the key (bergdb 020-10, section 4.4), not the
+     * IllegalArgumentException of the file name it has not (bergdb 020-16, F16-1).
+     */
+    @Nano
+    public static void testCorruptEntryKey() {
+        Database db = rows();
+        try {
+            Connection c = db.newConnection();
+            c.put("/r/a1", new Row("a", 1, 1, new byte[] {1}));
+            Db core = ((DatabaseImp) db).getDb();
+            IndexDefinition def = IndexDefinition.read(core, "sn", Long.MAX_VALUE);
+            byte[] levels = IndexKeysTester.concat(IndexKeys.encodeString("a"),
+                    IndexKeys.encodeLong(1));
+            for (byte[] k : new byte[][] {{0x2f, 0x63, (byte) 0xff}, {0x2f, 0x63, 0x31}}) {
+                byte[] key = IndexKeys.entryKey(def.generationPrefix(), levels, k);
+                core.execute(core.trans().put(key, new byte[0]).build());
+                for (boolean back : new boolean[] {false, true}) {
+                    UseIndexBuilder<Row> b = c.useIndex("sn", Row.class).eq("a");
+                    if (back) {
+                        b.backward();
+                    }
+                    try {
+                        for (Row row : b.objects()) {
+                            Assert.assertEquals(1, row.n);
+                        }
+                        throw new AssertionError("a corrupt entry scanned");
+                    } catch (InternalDataException e) {
+                        Assert.assertTrue(e.getMessage(), e.getMessage().contains(
+                                StringUtil.toHex(key)));
+                    }
+                }
+                core.execute(core.trans().delete(key).build());
+                Assert.assertEquals(1, c.useIndex("sn", Row.class).eq("a").objects().iterator()
+                        .next().n);
             }
         } finally {
             db.close();

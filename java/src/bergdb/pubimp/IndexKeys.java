@@ -563,7 +563,8 @@ final class IndexKeys {
     /**
      * Parses an entry's key from its start (020-10, section 4.4): the generation's prefix,
      * then each level by its type (8 bytes; or up to the 00 that ends E, every 01 followed by
-     * 01 or 02), then K (not empty, its first byte 0x2f, no byte below 2).
+     * 01 or 02), then K (not empty, its first byte 0x2f, no byte below 2, the bkey of an
+     * ikey's file part: Keys.bkey2ikeyOrNull gives its ikey, so fileName() does not throw).
      *
      * @throws InternalDataException  If the key does not parse; the message names it.
      */
@@ -615,6 +616,11 @@ final class IndexKeys {
             if ((key[i] & 0xff) < 2) {
                 throw badKey(what, key, "K has a byte below 2, at byte " + i);
             }
+        }
+        if (Keys.bkey2ikeyOrNull(Arrays.copyOfRange(key, p, key.length)) == null) {
+            // Else fileName() throws IllegalArgumentException in a scan (bergdb 020-16, F16-1).
+            throw badKey(what, key, "K is no ikey's bkey: it has the byte 0x31, or its bytes "
+                    + "less 2 are not well-formed UTF-8");
         }
         return new Entry(key, types.clone(), starts);
     }

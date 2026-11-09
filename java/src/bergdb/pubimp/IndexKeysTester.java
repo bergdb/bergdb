@@ -324,7 +324,7 @@ public class IndexKeysTester {
     /**
      * A key that does not parse is an InternalDataException naming it: another prefix, a cut
      * long or double, an E not ended or with 01 not followed by 01 or 02, K empty, K not
-     * starting with 0x2f, a byte below 2 in K.
+     * starting with 0x2f, a byte below 2 in K, K that is no ikey's bkey.
      */
     @Nano
     public static void testParseEntryRefused() {
@@ -354,6 +354,15 @@ public class IndexKeysTester {
                 IndexKeys.encodeString("x"), Keys.toBytes("-k/x")), prefix, ls);
         assertRefusedEntry("a 00 in K", concat(prefix, IndexKeys.encodeLong(1),
                 IndexKeys.encodeString("x"), new byte[] {0x2f, 0x40, 0}), prefix, ls);
+        // K that is no ikey's bkey: refused by the parse, not an IllegalArgumentException
+        // from fileName() in a scan (bergdb 020-16, F16-1): its bytes less 2 not well-formed
+        // UTF-8, or the byte 0x31 ('/' + 2, which no bkey has, '/' being 1).
+        assertRefusedEntry("K not UTF-8", concat(prefix, IndexKeys.encodeLong(1),
+                IndexKeys.encodeString("x"), new byte[] {0x2f, 0x63, (byte) 0xff}), prefix, ls);
+        assertRefusedEntry("K cut UTF-8", concat(prefix, IndexKeys.encodeLong(1),
+                IndexKeys.encodeString("x"), new byte[] {0x2f, (byte) 0xc5}), prefix, ls);
+        assertRefusedEntry("0x31 in K", concat(prefix, IndexKeys.encodeLong(1),
+                IndexKeys.encodeString("x"), new byte[] {0x2f, 0x63, 0x31}), prefix, ls);
 
         // A value that does not decode: a double that is a NaN's encoding, a string level of
         // ill-formed UTF-8 (020-07, R11).
