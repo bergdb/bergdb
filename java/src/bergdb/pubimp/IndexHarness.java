@@ -1,5 +1,7 @@
 package bergdb.pubimp;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -8,6 +10,25 @@ import java.util.Random;
 import java.util.TreeMap;
 
 import bergdb.nanotest.Nano;
+import bergdb.nanotest.TestEnvironment;
+import bergdb.pub.Connection;
+import bergdb.pub.Database;
+import bergdb.pub.DatabaseBuilder;
+import bergdb.pub.Duration;
+import bergdb.pub.Factory;
+import bergdb.pub.IndexAlreadyExistsException;
+import bergdb.pub.IndexBuilder;
+import bergdb.pub.Kv;
+import bergdb.pub.NoSuchIndexException;
+import bergdb.pub.TestClock;
+import bergdb.pub.Time;
+import bergdb.pub.Transaction;
+import bergdb.pub.UseIndexBuilder;
+import bergdb.pub.WBuilder;
+import bergdb.pub.util.Job;
+import bergdb.pub.util.JobStatus;
+import bergdb.pub.util.LookupTimeNotAvailableException;
+import bergdb.stream.MemoryStream;
 import bergdb.pubimp.IndexReference.Bin;
 import bergdb.pubimp.IndexReference.Call;
 import bergdb.pubimp.IndexReference.Def;
@@ -1045,5 +1066,549 @@ final class IndexHarness {
                         || Arrays.asList(NOT_OBJECTS).contains(v)), "a byte[] " + v);
             }
         }
+    }
+
+    // ======== The run against BergDB ========
+
+    /**
+     * A short retain duration, a second (the least a database takes), in clock units; the
+     * clock moves up to STEP_UNITS before each operation, so reclaim cuts old lookup times.
+     */
+    static final long RETAIN_UNITS = bergdb.pub.util.Clock.UNITS_PER_SEC;
+    static final int STEP_UNITS = (int) (RETAIN_UNITS / 5);
+
+    final long seed;
+    final IndexReference ref;
+    final boolean restarts;
+    final int threads;
+    final Model m = new Model();
+    final Generator gen;
+    final TestClock clock = new TestClock();
+    final StringBuilder trace = new StringBuilder();
+    final Random checks;
+    MemoryStream stream;
+    String dir;
+    Database db;
+    Connection c;
+    int step;
+    
+    /** What the run checked: active indexes, scans, scan results, raw entries compared. */
+    final long[] counts = new long[4];
+    
+    /** The counts of the last run of run(), for the tests. */
+    static long[] lastCounts = new long[4];
+
+    IndexHarness(long seed, Fault fault, boolean restarts, int threads) {
+        this.seed = seed;
+        this.ref = new IndexReference(fault);
+        this.restarts = restarts;
+        this.threads = threads;
+        this.gen = new Generator(seed);
+        this.checks = new Random(seed * 1000003 + 17);
+    }
+
+    /**
+     * Runs steps operations of seed; fails with the seed, the step and the last operations.
+     * dir null: a MemoryStream. threads > 1: the transactions in that many writer threads at
+     * once. restartEvery > 0: a restart every that many operations as well as the random ones.
+     */
+    static void run(long seed, int steps, Fault fault, File dir, int threads, int restartEvery) {
+        IndexHarness h = new IndexHarness(seed, fault, true, threads);
+        h.dir = dir == null ? null : dir.getPath();
+        try {
+            h.start(new MemoryStream());
+            for (h.step = 0; h.step < steps; h.step++) {
+                if (restartEvery > 0 && h.step > 0 && h.step % restartEvery == 0) {
+                    h.restart();
+                }
+                h.step();
+            }
+        } catch (Throwable e) {
+            AssertionError a = new AssertionError("IndexHarness, seed " + seed + ", fault "
+                    + fault + ", step " + h.step + ": " + e + "\nThe last operations:\n"
+                    + h.lastTrace());
+            a.initCause(e);
+            throw a;
+        } finally {
+            lastCounts = h.counts.clone();
+            if (h.db != null) {
+                h.db.close();
+            }
+        }
+    }
+
+    private void log(String s) {
+        trace.append(step).append(": ").append(s).append('\n');
+        if (trace.length() > 1000000) {
+            trace.delete(0, 100000);
+        }
+    }
+
+    private String lastTrace() {
+        String s = trace.toString();
+        int from = s.length();
+        for (int i = 0; i < 30 && from > 0; i++) {
+            from = s.lastIndexOf('\n', from - 2) + 1;
+        }
+        return s.substring(from);
+    }
+
+    private void start(MemoryStream ms) {
+        stream = ms;
+        DatabaseBuilder b;
+        if (dir == null) {
+            b = ((DatabaseBuilderImp) Factory.database()).mainStream(ms);
+        } else if (ms == null) {
+            b = Factory.database().open(dir);
+        } else {
+            b = Factory.database().create(dir);
+        }
+        db = b.clock(clock).start();
+        db.setRetainDuration(Duration.units(RETAIN_UNITS));
+        c = db.connection();
+    }
+
+    private void restart() {
+        log("restart");
+        db.close();
+        db = null;
+        start(dir == null ? stream.copy() : null);
+    }
+
+    /** The database's current time: after every transaction committed, before every later one. */
+    private long now() {
+        return db.currentTime().units();
+    }
+
+    private void step() {
+        clock.setTime(Time.units(clock.getTime() + checks.nextInt(STEP_UNITS)));
+        Op op = gen.op(m, restarts);
+        log(op.toString());
+        if (op instanceof Tx) {
+            if (threads > 1) {
+                txs((Tx) op);
+            } else {
+                Tx tx = (Tx) op;
+                m.commit(execute(c, tx), tx.writes);
+            }
+        } else if (op instanceof Create) {
+            create((Create) op);
+        } else if (op instanceof DeleteIndex) {
+            deleteIndex(((DeleteIndex) op).name);
+        } else if (op instanceof Join) {
+            join(((Join) op).name);
+        } else {
+            restart();
+        }
+
+        // After each operation, at the latest time and at 5 random past lookup times
+        // (bergdb 020-10, section 9.1).
+        long t = now();
+        checkAt(t, true);
+        {
+            long first = db.getFirstAvailableLookupTime().units();
+            List<Long> past = new ArrayList<Long>(m.times.tailSet(first));
+            for (int i = 0; i < 5 && !past.isEmpty(); i++) {
+                checkAt(past.get(checks.nextInt(past.size())), false);
+            }
+        }
+    }
+
+    /** Executes tx on the connection; returns its time. */
+    private static long execute(Connection c, final Tx tx) {
+        Transaction t;
+        if (tx.rw) {
+            t = c.rw(env -> {
+                for (Write w : tx.writes) {
+                    if (w.value == null) {
+                        env.delete(w.key);
+                    } else {
+                        env.put(w.key, javaValue(w.value));
+                    }
+                }
+            });
+        } else {
+            WBuilder b = c.w();
+            for (Write w : tx.writes) {
+                if (w.value == null) {
+                    b.delete(w.key);
+                } else {
+                    b.put(w.key, javaValue(w.value));
+                }
+            }
+            t = b.execute();
+        }
+        return t.getTime().units();
+    }
+
+    /** tx and threads - 1 more transactions, each in its own thread and connection, at once. */
+    private void txs(Tx first) {
+        final List<Tx> txs = new ArrayList<Tx>();
+        txs.add(first);
+        for (int i = 1; i < threads; i++) {
+            txs.add(gen.tx());
+            log(txs.get(i).toString());
+        }
+        final long[] times = new long[txs.size()];
+        final Throwable[] failed = new Throwable[1];
+        List<Thread> ts = new ArrayList<Thread>();
+        for (int i = 0; i < txs.size(); i++) {
+            final int k = i;
+            final Connection ck = k == 0 ? c : db.newConnection();
+            Thread th = new Thread(() -> {
+                try {
+                    times[k] = execute(ck, txs.get(k));
+                } catch (Throwable e) {
+                    failed[0] = e;
+                }
+            });
+            ts.add(th);
+            th.start();
+        }
+        for (Thread th : ts) {
+            try {
+                th.join();
+            } catch (InterruptedException e) {
+                throw new AssertionError(e);
+            }
+        }
+        if (failed[0] != null) {
+            throw new AssertionError("a writer thread: " + failed[0], failed[0]);
+        }
+        for (int i = 0; i < txs.size(); i++) {
+            m.commit(times[i], txs.get(i).writes);
+        }
+    }
+
+    private void create(Create op) {
+        Def def = op.def;
+        boolean used = m.live(def.name) != null;
+        long before = now();
+        Job job;
+        try {
+            IndexBuilder b = db.indexBuilder(def.name).dir(def.dir);
+            for (Level l : def.levels) {
+                b.type(l.type.string);
+                switch (l.call) {
+                case FIELD:
+                    b.field(l.path[0]);
+                    break;
+                case NESTED_STRING:
+                    b.nestedField(String.join(".", l.path));
+                    break;
+                default:
+                    b.nestedField(l.path.clone());
+                }
+            }
+            job = b.start();
+        } catch (IndexAlreadyExistsException e) {
+            check(used, "IndexAlreadyExistsException for a free name: " + e);
+            return;
+        }
+        check(!used, "a creation of a used name did not throw");
+        Generation g = m.create(def, before, now());
+        g.g = ((DatabaseImp) db).getIndexManager().definition(def.name).gen();
+        if (op.join) {
+            JobStatus s = job.join();
+            check(s.state() == JobStatus.State.ACTIVE, "start().join(): " + s.note());
+            g.activated.doneAt(now());
+        }
+    }
+
+    private void deleteIndex(String name) {
+        Generation g = m.live(name);
+        long before = now();
+        try {
+            db.deleteIndex(name);
+        } catch (NoSuchIndexException e) {
+            check(g == null, "NoSuchIndexException for an index in use: " + e);
+            return;
+        }
+        check(g != null, "deleteIndex of a free name did not throw");
+        g.deleted.set(before, now());
+    }
+
+    private void join(String name) {
+        Generation g = m.live(name);
+        JobStatus s = db.indexJob(name).join();
+        check(s.state() == JobStatus.State.ACTIVE, "join of " + name + ": " + s.note());
+        g.activated.doneAt(now());
+    }
+
+    /**
+     * The checks at the lookup time t: for each index name, useIndex at t throws
+     * NoSuchIndexException unless the model's index is active at t (a state the model does
+     * not know yet is learnt); for an active one, every scan of queries() gives the
+     * reference's kvs(), key by key and value by value; and the index's raw entries at t
+     * are the reference's (all of them for an active index, some for a building one).
+     */
+    private void checkAt(long t, boolean latest) {
+        Connection rc = db.newConnection();
+        rc.setLookupTime(Time.units(t));
+        for (String name : INDEX_NAMES) {
+            List<Generation> gs = m.at(name, t);
+            check(gs.size() <= 1, "two generations of " + name + " at " + t + ": " + gs);
+            Generation g = gs.isEmpty() ? null : gs.get(0);
+            State state = g == null ? State.ABSENT : g.stateAt(t);
+            boolean active;
+            try {
+                rc.useIndex(name, DbObject.class);
+                active = true;
+            } catch (NoSuchIndexException e) {
+                active = false;
+            } catch (LookupTimeNotAvailableException e) {
+                check(!latest, "the latest time not available");
+                return;
+            }
+            if (active) {
+                counts[0]++;
+                check(state == State.ACTIVE || state == State.UNKNOWN,
+                        "useIndex(" + name + ") at " + t + " works, the model: " + state);
+                g.activated.doneAt(t);
+                checkScans(rc, g, t);
+            } else {
+                check(state != State.ACTIVE, "useIndex(" + name + ") at " + t
+                        + ": NoSuchIndexException, the model: active, " + g);
+                if (g != null && g.created.at(t) > 0 && g.deleted.at(t) < 0) {
+                    g.activated.notDoneAt(t);
+                }
+            }
+            if (g != null && g.g >= 0) {
+                checkRawEntries(g, t, g.stateAt(t));
+            }
+        }
+    }
+
+    private void checkScans(Connection rc, Generation g, long t) {
+        Def def = g.def;
+        List<Entry> entries = ref.entries(def, m.dirAt(def.dir, t));
+        for (Query q : queries(def, entries, checks)) {
+            List<Entry> expected = ref.filter(def, entries, q);
+            List<Kv<DbObject>> got = new ArrayList<Kv<DbObject>>();
+            try {
+                for (Kv<DbObject> kv : use(rc, def, q).kvs()) {
+                    got.add(kv);
+                }
+            } catch (LookupTimeNotAvailableException e) {
+                return;
+            }
+            counts[1]++;
+            counts[2] += got.size();
+            int n = Math.min(got.size(), expected.size());
+            for (int i = 0; i < n; i++) {
+                Entry e = expected.get(i);
+                Kv<DbObject> kv = got.get(i);
+                check(e.key.equals(kv.key()), "scan " + q + " of " + def + " at " + t
+                        + ", result " + i + ": " + IndexReference.show(kv.key()) + ", not "
+                        + e + "; all: " + expected);
+                check(Arrays.equals(toDbObject(e.value).getBytes(), kv.value().getBytes()),
+                        "scan " + q + " of " + def + " at " + t + ", the value at " + e.key);
+            }
+            check(got.size() == expected.size(), "scan " + q + " of " + def + " at " + t
+                    + ": " + got.size() + " results, not " + expected.size() + ": " + expected);
+        }
+    }
+
+    /** The builder of q on the index. */
+    private static UseIndexBuilder<DbObject> use(Connection rc, Def def, Query q) {
+        UseIndexBuilder<DbObject> b = rc.useIndex(def.name, DbObject.class);
+        for (Object v : q.eq) {
+            if (v instanceof Long) {
+                b.eq((Long) v);
+            } else if (v instanceof Double) {
+                b.eq((Double) v);
+            } else if (v instanceof String) {
+                b.eq((String) v);
+            } else {
+                b.eq(((Bin) v).bytes());
+            }
+        }
+        if (q.from != null) {
+            if (q.from instanceof Long) {
+                b.from((Long) q.from, q.fromInclusive);
+            } else if (q.from instanceof Double) {
+                b.from((Double) q.from, q.fromInclusive);
+            } else if (q.from instanceof String) {
+                b.from((String) q.from, q.fromInclusive);
+            } else {
+                b.from(((Bin) q.from).bytes(), q.fromInclusive);
+            }
+        }
+        if (q.to != null) {
+            if (q.to instanceof Long) {
+                b.to((Long) q.to, q.toInclusive);
+            } else if (q.to instanceof Double) {
+                b.to((Double) q.to, q.toInclusive);
+            } else if (q.to instanceof String) {
+                b.to((String) q.to, q.toInclusive);
+            } else {
+                b.to(((Bin) q.to).bytes(), q.toInclusive);
+            }
+        }
+        if (q.prefix instanceof String) {
+            b.prefix((String) q.prefix);
+        } else if (q.prefix instanceof Bin) {
+            b.prefix(((Bin) q.prefix).bytes());
+        }
+        if (q.backward) {
+            b.backward();
+        }
+        return b;
+    }
+
+    /**
+     * The raw entries of g's generation at t equal f over the model (bergdb 020-10, section
+     * 9.1): all of them for an active index, some of them for a building one; so a stale
+     * entry that a scan's check hides still fails.
+     */
+    private void checkRawEntries(Generation g, long t, State state) {
+        if (state != State.ACTIVE && state != State.BUILDING) {
+            return;
+        }
+        List<Entry> raw;
+        try {
+            raw = rawEntries(g, t);
+        } catch (LookupTimeNotAvailableException e) {
+            return;
+        }
+        List<Entry> expected = ref.expectedEntries(m, g, t);
+        counts[3] += raw.size();
+        if (state == State.ACTIVE) {
+            check(raw.equals(expected), "the raw entries of " + g.def + " at " + t + ": " + raw
+                    + ", not " + expected);
+        } else {
+            check(expected.containsAll(raw), "a raw entry of the building " + g.def + " at " + t
+                    + " is not f of a value: " + raw + ", f: " + expected);
+        }
+    }
+
+    /**
+     * The generation's entries at t (IndexManager.entries(), for tests), each parsed by
+     * IndexKeys into the reference's Entry: its levels' values, its key (020-10, section 4).
+     */
+    private List<Entry> rawEntries(Generation g, long t) {
+        Def def = g.def;
+        char[] types = new char[def.levels.size()];
+        for (int i = 0; i < types.length; i++) {
+            types[i] = IndexKeys.type(def.type(i).string);
+        }
+        byte[] prefix = IndexKeys.generationPrefix(def.name, g.g);
+        List<Entry> result = new ArrayList<Entry>();
+        for (byte[] key : ((DatabaseImp) db).getIndexManager().entries(def.name, g.g, t)) {
+            IndexKeys.Entry e = IndexKeys.parseEntry(key, prefix, types);
+            List<Object> levels = new ArrayList<Object>();
+            for (int i = 0; i < types.length; i++) {
+                Object v = e.value(i);
+                levels.add(v instanceof byte[] ? new Bin((byte[]) v) : v);
+            }
+            result.add(new Entry(levels, def.dir + e.fileName().substring(1), null));
+        }
+        return result;
+    }
+
+    /** The model's value as the value to put: an object as a DbObject, a String, a byte[]. */
+    static Object javaValue(Object v) {
+        if (v instanceof Map) {
+            return toDbObject(v);
+        } else if (v instanceof Bin) {
+            return ((Bin) v).bytes();
+        }
+        return v;
+    }
+
+    static DbObject toDbObject(Object v) {
+        DbObject.Builder b = new DbObject.Builder();
+        for (Map.Entry<?, ?> e : ((Map<?, ?>) v).entrySet()) {
+            b.addDbValue((String) e.getKey(), dbValue(e.getValue()));
+        }
+        return b.build();
+    }
+
+    private static DbValue dbValue(Object v) {
+        if (v instanceof Long) {
+            return new DbLong((Long) v);
+        } else if (v instanceof Double) {
+            return new DbDouble((Double) v);
+        } else if (v instanceof String) {
+            return new DbString((String) v);
+        } else if (v instanceof Bin) {
+            return new DbByteArray(((Bin) v).bytes());
+        } else if (v instanceof Boolean) {
+            return new DbBoolean((Boolean) v);
+        } else if (v instanceof List) {
+            DbArray.Builder a = new DbArray.Builder();
+            for (Object x : (List<?>) v) {
+                a.add(dbValue(x));
+            }
+            return a.build();
+        }
+        return toDbObject(v);
+    }
+
+    // ======== Tests against BergDB ========
+
+    /** The unit size (bergdb 020-10, section 9.1): 4 seeds of 400 operations, at most 3 s. */
+    @Nano
+    public static void testSeeds() {
+        long[] all = new long[4];
+        for (long seed = 1; seed <= 4; seed++) {
+            run(seed, 400, Fault.NONE, null, 1, 0);
+            for (int i = 0; i < 4; i++) {
+                all[i] += lastCounts[i];
+            }
+        }
+        check(all[0] > 500 && all[1] > 2000 && all[2] > 2000 && all[3] > 2000,
+                "the run checked too little: active " + all[0] + ", scans " + all[1]
+                + ", results " + all[2] + ", raw entries " + all[3]);
+    }
+
+    /** A short run in a directory, with restarts, through the Pub API's create() and open(). */
+    @Nano
+    public static void testSeedDirectory(TestEnvironment c) throws IOException {
+        run(5, 200, Fault.NONE, new File(c.createTempDir(), "db"), 1, 50);
+    }
+
+    /** Its own check: each planted fault is found, on one of the unit's seeds. */
+    @Nano
+    public static void testPlantedFaultsFound() {
+        for (Fault f : FAULTS) {
+            boolean found = false;
+            for (long seed = 1; seed <= 4 && !found; seed++) {
+                try {
+                    run(seed, 400, f, null, 1, 0);
+                } catch (AssertionError e) {
+                    found = true;
+                }
+            }
+            check(found, "the planted fault " + f + " was not found");
+        }
+    }
+
+    /**
+     * The night's size: 40 seeds of 5,000 operations, a restart every 500, 4 writer
+     * threads; one seed in four in a directory. New seeds each day, printed.
+     */
+    @Nano("night")
+    public static void testSeedsLong(TestEnvironment c) throws IOException {
+        long base = System.currentTimeMillis() / 86400000L * 1000;
+        c.out().println("IndexHarness: seeds " + base + " to " + (base + 39)
+                + ", 5000 operations each");
+        for (long seed = base; seed < base + 40; seed++) {
+            run(seed, 5000, Fault.NONE,
+                    seed % 4 == 0 ? new File(c.createTempDir(), "db" + seed) : null, 4, 500);
+        }
+    }
+
+    /** Usage: IndexHarness [SEED [STEPS [THREADS]]]: repeats one seed. */
+    public static void main(String[] args) {
+        long seed = args.length > 0 ? Long.parseLong(args[0]) : System.nanoTime();
+        int steps = args.length > 1 ? Integer.parseInt(args[1]) : 5000;
+        int threads = args.length > 2 ? Integer.parseInt(args[2]) : 1;
+        System.out.println("IndexHarness: seed " + seed + ", " + steps + " operations, "
+                + threads + " threads");
+        run(seed, steps, Fault.NONE, null, threads, 500);
+        System.out.println("IndexHarness OK: active indexes checked " + lastCounts[0]
+                + ", scans " + lastCounts[1] + ", scan results " + lastCounts[2]
+                + ", raw entries compared " + lastCounts[3]);
     }
 }
