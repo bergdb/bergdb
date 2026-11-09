@@ -1847,3 +1847,42 @@ cut one of a replaced directory. 022-05 landed the same fix first
 `append_dir_replaced_no_delete` checks the sync and the close after the
 cut in a replaced directory, failing before (on a copy with the old
 `stream_flush`).
+
+2026-11-09, the candidate, part 3 (worker t17). 021-24 (`c66e824d`,
+18:08, a review of 021-20, W1, high), on `main` after part 2's look;
+the pin stays at `2566df1`. Java's `newFile()` checked the directory
+before its force of the last file (SWITCH, with per-append forcing off),
+which can take seconds, so a directory replaced during that force got
+the new file, and the stream went on; a cut's delete checked before the
+file's close. Now `openForRw()` checks right before the open and again
+after the file's and the directory's forces, `DbFile.delete()` right
+before the delete and again after it, and a start's last file goes
+through `openForRw()` too; what is left is said: a replacement between
+the check and the step leaves an empty stream file in the replacement
+(an open there refuses it until it is removed), or deletes the
+replacement's file of that name at a cut, and the check after fails the
+stream before a byte is written there. C had part 1's port with the
+same order as 021-20's Java (the check before the switch force), so the
+same fault. Now `stream.c`'s `new_file` checks right before
+`plat_open_rw`, after the switch force, and again after the OPEN and
+directory forces; `stream_pretruncate` right before each unlink, after
+the file's close, and again after it; `open_dir` before and after the
+open of the last file for writing; `check_directory`'s comment says what
+is left and the invariant it relies on (bergdb.lock open until
+`stream_close`, which closes it after the files: 020-23's V5-1).
+`bergdb.h`, section G, and `stream.h` say it. Tests, by the test build's
+I/O seam (Java's `FileStreamIo`), each failing before (on a copy with
+part 1's order): `t_append.c`'s `append_dir_replaced_during_the_switch`
+(`FileStream.testNoNewFileWhenReplacedDuringTheSwitch`: the directory
+moved away and a stream's of 1,000 bytes moved to the path in the
+switch force; the sync fails with Java's text, no file made in the
+replacement, which opens with its 1,000 bytes; before, the sync
+returned and file 02 was in the replacement),
+`append_dir_replaced_right_before_the_open`
+(`testReplacedRightBeforeTheOpen`: the replacement in the seam's open of
+file 02; the sync and the close fail, the empty file is in the
+replacement, an open refuses it, `BadDirStateException`, and opens
+without it) and `append_dir_replaced_right_before_a_delete` (C's own,
+for `DbFile.delete`'s check after: a cut of one file whose delete met
+the replacement fails with Java's text, the replacement's file of that
+name deleted; before, the cut returned `ERR_OK`).

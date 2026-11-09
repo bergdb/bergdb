@@ -266,13 +266,18 @@
  * bergdb_close BERGDB_IO (bergdb 022-06, U2-5).
  * Delete, move or replace a database's directory only after its
  * bergdb_close has returned. A database whose directory was deleted,
- * moved or replaced while it was open fails before it makes its next
+ * moved or replaced while it was open fails when it makes its next
  * .bergdb file or deletes one at a cut (BERGDB_FAILED; the cause Java's
  * IOException, "Directory DIR is no longer the database's directory: it
  * was deleted, moved or replaced while the database had it open. Nothing
  * more is written there."; bergdb 021-20, as Java's since release
  * 2026.4), so a new database at the path keeps its files; it may still
- * have written to its last file, in the old directory. An open at the
+ * have written to its last file, in the old directory. It checks the
+ * directory right before each such step and again after it (021-24); a
+ * replacement in the moment between the check and the step is not
+ * prevented: the step then leaves an empty .bergdb file in the new
+ * directory, which an open there refuses until the file is removed, or,
+ * at a cut, deletes the new directory's file of that name. An open at the
  * path, in this process or another, is not refused, where Java refuses a
  * start at the path within its JVM until the old database has closed.
  * Several processes may open a directory that does not exist yet at

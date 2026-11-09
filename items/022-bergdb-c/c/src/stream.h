@@ -168,12 +168,14 @@ enum err_code stream_append(struct stream *s, const uint8_t *buf, int64_t n, str
  * the new file is made (the switch force, 005-47: no file before the last
  * is ever short on the disk), then the new file's and the directory's
  * before it takes a byte (OPEN, D7: no name durable without the names
- * before it). Before each new file the directory at the stream's path
- * must be the one that the open took (FileStream.checkDirectory, bergdb
- * 021-20, as Java's since release 2026.4): if it was deleted, moved or
- * replaced, the stream fails (ERR_IO, "IOException", "Directory DIR is no
- * longer the database's directory: ...") and makes nothing there, so a
- * new database at the path keeps its files. Nothing to do for a memory
+ * before it). Right before each new file is made, and again after its
+ * forces, the directory at the stream's path must be the one that the
+ * open took (FileStream.checkDirectory, bergdb 021-20 and 021-24, as
+ * Java's since release 2026.4): if it was deleted, moved or replaced, the
+ * stream fails (ERR_IO, "IOException", "Directory DIR is no longer the
+ * database's directory: ...") before it writes a byte there, so a new
+ * database at the path keeps its files; a replacement between the check
+ * and the file's making leaves an empty file there. Nothing to do for a memory
  * stream or a read-only directory. ERR_IO after an I/O error, also with
  * nothing buffered, so that a sync or a close after a failed force or a
  * failed delete gives the failure, and forces nothing
@@ -253,8 +255,9 @@ enum err_code stream_pretruncate_memory(struct stream *s, int64_t pos, struct er
  *     (005-46), here in the call. ERR_IO (the
  *     stream's failure, as Java's) if a delete or a force fails, or the
  *     stream failed before, or the directory at the path is no longer the
- *     one that the open took (checked before each delete, as before a new
- *     file, bergdb 021-20: nothing deleted there); ERR_ARG if pos is past the bytes in the files;
+ *     one that the open took (checked right before each delete and again
+ *     after it, as at a new file, bergdb 021-20 and 021-24: nothing deleted
+ *     there, but a replacement between the check and the delete); ERR_ARG if pos is past the bytes in the files;
  *   - a memory stream: CutStream.pretruncate, the first position pos
  *     exactly, so that a read just below the cut is refused (Java's
  *     MemoryStream drops whole 1 MB arrays); ERR_IO, "IOException", for a

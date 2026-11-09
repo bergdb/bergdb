@@ -954,6 +954,190 @@ TEST(append_dir_mkdirs_refused) {
     remove_dir();
 }
 
+#ifdef BERGDB_TEST
+/* bergdb 021-24's seam: the stream's directory adir moved away to
+ * adir-moved and the replacement, adir-r, moved to its path, once, at the
+ * call that replace_at names: a force for that reason, the open of that
+ * file, or the delete of that file. */
+enum replace_at { REPLACE_AT_SWITCH, REPLACE_AT_OPEN, REPLACE_AT_DELETE };
+static enum replace_at replace_at;
+static const char *replace_name;
+static bool replaced;
+
+static void replace_now(void) {
+    char moved[300], repl[300];
+    snprintf(moved, sizeof moved, "%s-moved", adir);
+    snprintf(repl, sizeof repl, "%s-r", adir);
+    replaced = rename(adir, moved) == 0 && rename(repl, adir) == 0;
+}
+
+static bool names(const char *path, const char *name) {
+    size_t n = strlen(path), k = strlen(name);
+    return n >= k && strcmp(path + n - k, name) == 0;
+}
+
+static enum err_code replacing_force(int fd, enum plat_force_why why, struct err *e) {
+    if (replace_at == REPLACE_AT_SWITCH && why == PLAT_FORCE_SWITCH && !replaced) {
+        replace_now();
+    }
+    return plat_io_real()->force(fd, why, e);
+}
+
+static enum err_code replacing_open_rw(const char *path, int *fd, struct err *e) {
+    if (replace_at == REPLACE_AT_OPEN && names(path, replace_name) && !replaced) {
+        replace_now();
+    }
+    return plat_io_real()->open_rw(path, fd, e);
+}
+
+static enum err_code replacing_unlink(const char *path, struct err *e) {
+    if (replace_at == REPLACE_AT_DELETE && names(path, replace_name) && !replaced) {
+        replace_now();
+    }
+    return plat_io_real()->unlink(path, e);
+}
+
+/* The replacement, adir-r: a stream of 1,000 bytes, as Java's tests'
+ * "other". */
+static bool make_replacement(void) {
+    struct stream s;
+    char repl[300];
+    snprintf(repl, sizeof repl, "%s-r", adir);
+    return stream_open_dir_rw(&s, repl, 0, &am, &ae) == ERR_OK
+            && stream_append(&s, zeros, 1000, &ae) == ERR_OK
+            && stream_finish(&s, &ae) == ERR_OK;
+}
+
+/* Removes adir-moved and its files (the old directory). */
+static void remove_moved(void) {
+    char keep[256];
+    snprintf(keep, sizeof keep, "%s", adir);
+    snprintf(adir, sizeof adir, "%s-moved", keep);
+    remove_dir();
+    snprintf(adir, sizeof adir, "%s", keep);
+}
+
+/* Starts a test of 021-24: adir's stream of one full file (200,000
+ * bytes, synced), the replacement made, the seam set. */
+static bool replacing_start(struct stream *s, enum replace_at at, const char *name,
+        struct plat_io *io) {
+    replace_at = at;
+    replace_name = name;
+    replaced = false;
+    *io = *plat_io_real();
+    io->force = replacing_force;
+    io->open_rw = replacing_open_rw;
+    io->unlink = replacing_unlink;
+    if (!new_dir() || !make_replacement()
+            || stream_open_dir_rw(s, adir, 0, &am, &ae) != ERR_OK) {
+        return false;
+    }
+    plat_io_set(io);
+    return true;
+}
+#endif
+
+/* bergdb 021-24, FileStream.testNoNewFileWhenReplacedDuringTheSwitch: the
+ * directory replaced by another stream's during the switch force of the
+ * last file. 021-20's check came before that force, so the stream made its
+ * next file in the replacement and went on, and the replacement no longer
+ * opened (BadDirStateException). Now the check comes after the force,
+ * right before the file is made: the sync fails, with Java's text, the
+ * stream with it, and the replacement opens with its own bytes. In the
+ * test build, by the I/O seam (Java's FileStreamIo). */
+TEST(append_dir_replaced_during_the_switch) {
+#ifdef BERGDB_TEST
+    static struct plat_io io;
+    struct stream s;
+    char want[ERR_TEXT], path[512];
+    mem_init(&am);
+    REQUIRE(replacing_start(&s, REPLACE_AT_SWITCH, NULL, &io));
+    /* The first file filled, 200,000 bytes, and a new file after the switch
+     * force of its unforced bytes, in one write. */
+    CHECK_EQ(stream_append(&s, zeros, 200001, &ae), ERR_OK);
+    CHECK_EQ(stream_sync(&s, &ae), ERR_IO);
+    CHECK(replaced);
+    no_longer_text(want, sizeof want);
+    CHECK(strcmp(ae.text, want) == 0);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_IO);
+    plat_io_set(NULL);
+    snprintf(path, sizeof path, "%s/00000000000002.bergdb", adir);
+    CHECK(access(path, F_OK) != 0);               /* no new file in the replacement */
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);    /* the replacement */
+    CHECK_EQ(stream_length(&s), 1000);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_OK);
+    remove_dir();
+    remove_moved();
+    CHECK_MEM_ZERO(&am);
+#endif
+}
+
+/* bergdb 021-24, FileStream.testReplacedRightBeforeTheOpen: what is left,
+ * a replacement right before the new file is made, after the check (here
+ * in the seam's open). The check after the open and the forces fails the
+ * stream before it writes a byte: the sync and the close give the
+ * failure. The new file, empty, is in the replacement, which an open
+ * refuses until it is removed. Before, the stream went on there. */
+TEST(append_dir_replaced_right_before_the_open) {
+#ifdef BERGDB_TEST
+    static struct plat_io io;
+    struct stream s;
+    char want[ERR_TEXT], path[512];
+    mem_init(&am);
+    REQUIRE(replacing_start(&s, REPLACE_AT_OPEN, "/00000000000002.bergdb", &io));
+    CHECK_EQ(stream_append(&s, zeros, 200000, &ae), ERR_OK);
+    CHECK_EQ(stream_sync(&s, &ae), ERR_OK);
+    CHECK_EQ(stream_append(&s, zeros, 1, &ae), ERR_OK);
+    CHECK_EQ(stream_sync(&s, &ae), ERR_IO);
+    CHECK(replaced);
+    no_longer_text(want, sizeof want);
+    CHECK(strcmp(ae.text, want) == 0);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_IO);
+    plat_io_set(NULL);
+    snprintf(path, sizeof path, "%s/00000000000002.bergdb", adir);
+    CHECK(access(path, F_OK) == 0);
+    CHECK_EQ(plat_file_length(path), 0);
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_FORMAT);
+    CHECK(strcmp(ae.java, "BadDirStateException") == 0);
+    CHECK_EQ(unlink(path), 0);
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);
+    CHECK_EQ(stream_length(&s), 1000);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_OK);
+    remove_dir();
+    remove_moved();
+    CHECK_MEM_ZERO(&am);
+#endif
+}
+
+/* bergdb 021-24, DbFile.delete's check after the delete: a replacement
+ * right before a cut's delete, after the check, deletes the replacement's
+ * file of that name (what is left), and the check after the delete fails
+ * the stream, with Java's text, before it goes on. Before, a cut of one
+ * file returned ERR_OK, and the stream went on in the replacement. */
+TEST(append_dir_replaced_right_before_a_delete) {
+#ifdef BERGDB_TEST
+    static struct plat_io io;
+    struct stream s;
+    char want[ERR_TEXT], path[512];
+    mem_init(&am);
+    REQUIRE(replacing_start(&s, REPLACE_AT_DELETE, "/00000000000000.bergdb", &io));
+    CHECK_EQ(stream_append(&s, zeros, 250000, &ae), ERR_OK);
+    CHECK_EQ(stream_sync(&s, &ae), ERR_OK);       /* two files */
+    CHECK_EQ(stream_pretruncate(&s, 200000, &ae), ERR_IO);     /* the first deleted */
+    CHECK(replaced);
+    no_longer_text(want, sizeof want);
+    CHECK(strcmp(ae.text, want) == 0);
+    CHECK_EQ(stream_append(&s, zeros, 1, &ae), ERR_IO);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_IO);
+    plat_io_set(NULL);
+    snprintf(path, sizeof path, "%s/00000000000000.bergdb", adir);
+    CHECK(access(path, F_OK) != 0);               /* the replacement's file deleted */
+    remove_dir();
+    remove_moved();
+    CHECK_MEM_ZERO(&am);
+#endif
+}
+
 const struct test append_tests[] = {
     TEST_ENTRY(append_rs_test1),
     TEST_ENTRY(append_rs_large),
@@ -978,5 +1162,8 @@ const struct test append_tests[] = {
     TEST_ENTRY(append_dir_replaced_no_new_file),
     TEST_ENTRY(append_dir_replaced_no_delete),
     TEST_ENTRY(append_dir_mkdirs_refused),
+    TEST_ENTRY(append_dir_replaced_during_the_switch),
+    TEST_ENTRY(append_dir_replaced_right_before_the_open),
+    TEST_ENTRY(append_dir_replaced_right_before_a_delete),
     TEST_END
 };

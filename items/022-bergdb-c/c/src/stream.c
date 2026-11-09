@@ -178,9 +178,21 @@ static enum err_code force_written(struct stream *s, enum plat_force_why why, st
  * deleted, moved or replaced while the stream had it. A file is made and
  * deleted by its name in the directory's path, so a stream whose directory
  * was deleted made its next file in a new database's directory at the
- * path, and broke it, or deleted that database's files at a cut. Called
- * before each of these. A replacement between this check and the step is
- * not caught. */
+ * path, and broke it, or deleted that database's files at a cut.
+ *
+ * Called right before each of these steps, with nothing that waits in
+ * between, and again after it (bergdb 021-24, as Java's): new_file checked
+ * before the switch force, which can take long, so a directory replaced
+ * during it got the new file. Left: a replacement between the check and
+ * the step, as the step opens or deletes the file by its path; the check
+ * after it fails the stream before a byte is written there, but the step
+ * is done: an empty stream file in the replacement, which an open there
+ * refuses (BadDirStateException) until it is removed, or, at a cut, the
+ * replacement's file of that name deleted. A directory replaced and put
+ * back between the two checks is not seen. The check relies on the stream
+ * holding bergdb.lock open from the open until stream_close, which closes
+ * it after the files (Java's invariant, bergdb 020-23, V5-1): the old
+ * directory's inode is then not reused for a new directory at the path. */
 static enum err_code check_directory(struct stream *s, struct err *e) {
     struct plat_dir_key now;
     if (!plat_dir_key(s->dir, &now) || now.dev != s->dir_dev || now.ino != s->dir_ino) {
@@ -203,10 +215,6 @@ static enum err_code new_file(struct stream *s, struct err *e) {
     if (s->fileLength % STREAM_INDEX_UNIT != 0) {
         return fail(s, err_set(e, ERR_IO, "Bug", "Illegal state, length = %lld",
                 (long long) s->fileLength));
-    }
-    rc = check_directory(s, e);         /* bergdb 021-20 */
-    if (rc != ERR_OK) {
-        return rc;
     }
     /* The old last file forced before the new file's name exists (bergdb
      * 005-47, FileStream.newFile's SWITCH force): a new name may be durable
@@ -234,6 +242,13 @@ static enum err_code new_file(struct stream *s, struct err *e) {
         s->files = f2;
         s->files_cap = c2;
     }
+    /* The directory checked right before the file is made, after the switch
+     * force, and again after the file's and the directory's forces (bergdb
+     * 021-20, 021-24: openForRw's checks). */
+    rc = check_directory(s, e);
+    if (rc != ERR_OK) {
+        return rc;
+    }
     rc = plat_open_rw(path, &fd, e);
     if (rc != ERR_OK) {
         return fail(s, rc);
@@ -248,6 +263,9 @@ static enum err_code new_file(struct stream *s, struct err *e) {
     rc = plat_force(fd, PLAT_FORCE_OPEN, e);
     if (rc == ERR_OK) {
         rc = plat_force_dir(s->dir, e);
+    }
+    if (rc == ERR_OK) {
+        rc = check_directory(s, e);
     }
     /* To make sure no-one just created the file and wrote to it. */
     if (rc == ERR_OK) {
@@ -463,12 +481,20 @@ static enum err_code open_dir(struct stream *s, const char *dir, bool rw, int32_
                  * a process before wrote and did not force, one that died,
                  * is durable before this one counts it durable or cuts the
                  * files before it (bergdb 005-47; stream_pretruncate). */
-                rc = plat_open_rw(path, &s->files[i].fd, e);
+                /* The directory checked right before and again after, as
+                 * every file that Java's openForRw opens (bergdb 021-24). */
+                rc = check_directory(s, e);
+                if (rc == ERR_OK) {
+                    rc = plat_open_rw(path, &s->files[i].fd, e);
+                }
                 if (rc == ERR_OK) {
                     rc = plat_force(s->files[i].fd, PLAT_FORCE_OPEN, e);
                 }
                 if (rc == ERR_OK) {
                     rc = plat_force_dir(dir, e);
+                }
+                if (rc == ERR_OK) {
+                    rc = check_directory(s, e);
                 }
                 if (rc == ERR_OK) {
                     rc = plat_fd_length(s->files[i].fd, &s->files[i].length, e);
@@ -865,13 +891,18 @@ enum err_code stream_pretruncate(struct stream *s, int64_t pos, struct err *e) {
     for (int32_t i = 0; i <= index; i++) {
         plat_close(s->files[i].fd);
         if (rc == ERR_OK) {
-            rc = check_directory(s, e);         /* bergdb 021-20: DbFile.delete's */
+            /* Right before the delete, after the file's close, and again
+             * after it (bergdb 021-20, 021-24: DbFile.delete's). */
+            rc = check_directory(s, e);
         }
         if (rc == ERR_OK) {
             char path[4096];
             snprintf(path, sizeof path, "%s/%014lld%s", s->dir,
                     (long long) (s->files[i].start / STREAM_INDEX_UNIT), SUFFIX);
             rc = plat_unlink(path, e);
+            if (rc == ERR_OK) {
+                rc = check_directory(s, e);
+            }
             if (rc == ERR_OK) {
                 rc = plat_force_dir(s->dir, e);
             }
