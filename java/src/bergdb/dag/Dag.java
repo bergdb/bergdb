@@ -560,6 +560,9 @@ public class Dag {
         KeyNode root = topDs.findRoot(g.actualLookupTime, g.gd);
         
         if (root == null) {
+            // No state at the lookup time, before the first transaction: the end at once, and
+            // eod() says so, as StopCondition promises (bergdb 020-27; it was not called).
+            g.stopCondition.eod();
             return;
         }
 

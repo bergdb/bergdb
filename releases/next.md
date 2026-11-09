@@ -516,6 +516,11 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   N kvs". `PrefixN` keeps a copy of its prefix, as `Prefix` and `Endpoint`
   do: it kept the caller's array, as its copy went to the parameter. No
   reader of BergDB uses a count of 0.
+* **`GetMany.StopCondition.eod()` is called also for a lookup time before
+  the first transaction** (bergdb 020-27; 2026-11-09): a `getMany()` at a
+  time when the database had no state returned no KV without calling
+  `eod()`, which the interface promises at the end of the database. BergDB's
+  own readers do not depend on it.
 
 
 ### Format

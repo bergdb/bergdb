@@ -90,4 +90,51 @@ public class DbTesterJavadoc {
             db.close();
         }
     }
+
+    /**
+     * GetMany.StopCondition.eod(): called once when the end of the database is reached, and
+     * handleKvt() never after it; not called when handleKvt() stops the scan; called also
+     * for a lookup time before the first transaction, when the database has no state.
+     */
+    @Nano
+    public static void testEodOnceAtTheEnd() {
+        Db db = dbWithKeys(3);
+        try {
+            final int[] calls = new int[2];     // handleKvt, eod
+            final boolean[] afterEod = {false};
+            final int[] stopAt = {Integer.MAX_VALUE};
+            GetMany.StopCondition condition = new GetMany.StopCondition() {
+                public int handleKvt(Kvt kvt) {
+                    afterEod[0] |= calls[1] > 0;
+                    return ++calls[0] >= stopAt[0] ? STOP : ADD;
+                }
+
+                public void eod() {
+                    calls[1]++;
+                }
+            };
+            long[] times = {LATEST, 0};
+            int[] sizes = {3, 0};
+            for (int i = 0; i < times.length; i++) {
+                calls[0] = calls[1] = 0;
+                GetMany g = db.newGetMany();
+                g.lookupTime = times[i];
+                g.stopCondition = condition;
+                db.getMany(g);
+                Assert.assertEquals("time " + times[i], sizes[i], g.result.size());
+                Assert.assertEquals("eod at time " + times[i], 1, calls[1]);
+                Assert.assertFalse("handleKvt after eod", afterEod[0]);
+            }
+
+            calls[0] = calls[1] = 0;
+            stopAt[0] = 2;
+            GetMany g = db.newGetMany();
+            g.stopCondition = condition;
+            db.getMany(g);
+            Assert.assertEquals("stopped", 1, g.result.size());
+            Assert.assertEquals("no eod after STOP", 0, calls[1]);
+        } finally {
+            db.close();
+        }
+    }
 }
