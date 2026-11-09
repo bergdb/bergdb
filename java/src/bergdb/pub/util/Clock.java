@@ -22,7 +22,10 @@ public interface Clock {
      * <p>The minimum valid time value returned is 0; the maximum valid time value 
      * returned by this method is 2^56-1. A transaction that begins while the clock is outside
      * that range is refused with a DbException: nothing is written, and the database goes
-     * on; so is a start. The last 1024 units of the range are kept for the database's own
+     * on. A start that creates a database throws the DbException too, as it writes the
+     * database's first transaction; a start of an existing database does not read the
+     * clock, and succeeds, and its transactions are refused while the clock is outside the
+     * range (bergdb 020-23). The last 1024 units of the range are kept for the database's own
      * transactions, which may follow a user's: a user transaction needs a time of 2^56-1025
      * or less, and is refused in the same way when the clock, or the last transaction's
      * time, leaves it none (bergdb 005-18, 015-55, 020-25).</p>

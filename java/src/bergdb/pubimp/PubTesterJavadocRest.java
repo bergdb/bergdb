@@ -303,7 +303,8 @@ public class PubTesterJavadocRest {
     /**
      * Clock and DbException: a clock time outside 0 to 2^56 - 1 refuses the transaction
      * with a DbException that is not a DbFailedException: nothing is written, and the
-     * database goes on; a start whose clock is out of range throws a DbException. The last
+     * database goes on; a start that creates a database with the clock out of range throws
+     * a DbException (an existing one's: testStartWithTheClockOutOfRange). The last
      * 1024 clock units are kept for the database's own transactions: a user transaction
      * needs a time of 2^56 - 1025 or less (bergdb 015-55), so a TestClock at Time.MAX
      * refuses it, in the same way. A clock that goes back gives the next unit after the
@@ -381,6 +382,47 @@ public class PubTesterJavadocRest {
             Assert.assertEquals("before", c.get("/a.txt", String.class));
             c.setLookupTime(Time.MAX);
             Assert.assertEquals("after", c.get("/a.txt", String.class));
+        }
+    }
+
+    /**
+     * Clock.getTime(), a start with the clock out of range (bergdb 020-23, Z3): a start that
+     * creates a database is refused, as it writes the database's first transaction; a start
+     * of an existing one does not read the clock and succeeds, its reads work, and its
+     * transactions are refused until the clock is back in the range. Clock's Javadoc said
+     * that a start is refused.
+     */
+    @Nano
+    public static void testStartWithTheClockOutOfRange() {
+        final AtomicLong time = new AtomicLong(1L << 56);
+        final Clock clock = () -> time.get();
+        final MemoryStream stream = new MemoryStream();
+        DatabaseBuilder builder = Factory.database();
+        ((DatabaseBuilderImp) builder).getDbBuilder().testSetup(stream);
+        final DatabaseBuilder creation = builder.clock(clock);
+        DbException e = assertThrows("a creation", DbException.class,
+                () -> creation.start().close());
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains("outside the range"));
+        
+        final MemoryStream stream2 = new MemoryStream();
+        builder = Factory.database();
+        ((DatabaseBuilderImp) builder).getDbBuilder().testSetup(stream2);
+        time.set(1000);
+        try (Database db = builder.clock(clock).start()) {
+            db.connection().put("/a.txt", "a");
+        }
+        for (long t : new long[] {1L << 56, -1}) {
+            time.set(t);
+            builder = Factory.database();
+            ((DatabaseBuilderImp) builder).getDbBuilder().testSetup(stream2.copy());
+            try (Database db = builder.clock(clock).start()) {
+                final Connection c = db.connection();
+                Assert.assertEquals("a", c.get("/a.txt", String.class));
+                e = assertThrows("a put at " + t, DbException.class, () -> c.put("/b.txt", "b"));
+                Assert.assertFalse(e.toString(), e instanceof DbFailedException);
+                time.set(2000);
+                Assert.assertEquals(2000, c.put("/b.txt", "b").getTime().units());
+            }
         }
     }
 
