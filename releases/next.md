@@ -702,3 +702,14 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `LookupTimeNotAvailableException` closes its parenthesis: "Cannot lookup at
   time T (UTC): the first time available for lookup is F (UTC)."; it had
   "(T's UTC, the first time ... F (F's UTC).".
+* **Key replace: the text, where, and when it is off** (bergdb 020-24-01,
+  U1-3, U1-4 and U1-6; 020-24-02, I-6): `Connection.setEnableKeyReplace()`
+  says what replaces `${transactionTime}`, the transaction's time in clock
+  units as 18 decimal digits with leading zeros, so that such keys are in
+  time order; that every put of the connection is replaced, those of `w()`
+  and of an `rw()` action too (`WBuilder.put()` and `RwEnvironment.put()`
+  say so), with the setting as it was at `put()`, `w()` or `rw()`; that the
+  puts of one transaction at such a key are puts at one key, the last
+  counting; and that with key replace off, the default also for the
+  connection of `Database.connection()`, the text is a part of the key as
+  written.

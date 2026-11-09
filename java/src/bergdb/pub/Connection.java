@@ -46,17 +46,32 @@ import bergdb.pub.util.SyncLevel;
 public interface Connection extends ReadInterface {
 
     /**
-     * If key replace is enabled, occurrences of the string "${transactionTime}"
-     * in the key of a put will be replaced by the unique transactionTime of
-     * the transaction when it is executed. A delete's key is taken as written
+     * <p>If key replace is enabled, each "${transactionTime}" in the key of a put is replaced
+     * by the time of the transaction (Transaction.getTime()) when it is executed: its clock
+     * units (Time.units()) as 18 decimal digits with leading zeros, such as
+     * "/events/017942246172270000" (bergdb 020-24-01, U1-3). A time has at most 17 digits,
+     * so keys that differ only in the replaced text are in the order of their transactions'
+     * times. It holds for each put of the connection: put(), the puts of a WBuilder from
+     * w(), and those of an rw() action, RwEnvironment.put() (020-24-02, I-6). The setting is
+     * read when put(), w() or rw() is called: a change after w() does not change that
+     * builder's puts. A delete's key is taken as written
      * (bergdb 019-15). In an object key (no suffix, or ".obj"), "${transactionTime}" may
      * be in the name only, the part after the last '/': a put with it in the directory
      * throws IllegalArgumentException, as the indexes of the directory that the put lands
      * in would not be known before the transaction's time (bergdb 020-14, X1). A key with
-     * another suffix is never indexed, and is replaced anywhere. By default, the key
-     * replace feature of a connection is disabled. This method must be called to enable it.
-     * The transaction time of the transaction functions as a unique transaction ID.
-     * It is guaranteed to be unique for every transaction and is strictly increasing.
+     * another suffix is never indexed, and is replaced anywhere.</p>
+     *
+     * <p>The transaction time of the transaction functions as a unique transaction ID.
+     * It is guaranteed to be unique for every transaction and is strictly increasing. So the
+     * puts of one transaction at a key with "${transactionTime}" are puts at one key, and the
+     * last of them counts: a transaction that puts two such values needs another part in each
+     * key, such as "${transactionTime}-1" (bergdb 020-24-01, U1-6).</p>
+     *
+     * <p>By default, the key replace feature of a connection is disabled, also for the
+     * connection that Database.connection() gives a thread until it is enabled there. This
+     * method must be called to enable it. Disabled, "${transactionTime}" is a part of the key
+     * as any other: three puts at "/events/${transactionTime}" put the one key
+     * "/events/${transactionTime}", each over the last (bergdb 020-24-01, U1-4).</p>
      * 
      * @param enable
      *            Set to true to enable key replace.

@@ -71,6 +71,10 @@ public interface RwEnvironment extends ReadInterface {
      * IllegalArgumentException, as for WBuilder.put() (the package's
      * {@linkplain bergdb.pub##objects Objects}).</p>
      *
+     * <p>With key replace on, as the connection had it at rw(), each "${transactionTime}" in
+     * the key is replaced by the transaction's time, the time of the run that commits
+     * (Connection.setEnableKeyReplace(); bergdb 020-24-02, I-6).</p>
+     *
      * @see WBuilder#put(String, Object)
      * @throws IllegalArgumentException if 'key' is null or otherwise of an invalid format.
      * @throws IllegalArgumentException if 'object' is null, or if it is a String with a

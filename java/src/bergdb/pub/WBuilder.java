@@ -46,6 +46,10 @@ public interface WBuilder {
      * ("Bad key"). The suffix is what follows the name's last '.' (the package's
      * {@linkplain bergdb.pub##objects Objects}).</p>
      *
+     * <p>With key replace on, as the connection had it when w() made this builder, each
+     * "${transactionTime}" in the key is replaced by the transaction's time
+     * (Connection.setEnableKeyReplace(); bergdb 020-24-02, I-6).</p>
+     *
      * @throws IllegalArgumentException
      *             If 'key' is null or otherwise invalid, or if object is null; or if it
      *             is a String with a lone surrogate, a char of U+D800 to U+DFFF that is not

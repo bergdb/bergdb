@@ -2397,4 +2397,53 @@ public class PubTesterJavadoc {
             db.close();
         }
     }
+
+    /**
+     * Connection.setEnableKeyReplace() (bergdb 020-24-01, U1-3, U1-4 and U1-6; 020-24-02,
+     * I-6): "${transactionTime}" is replaced by the transaction's time as 18 decimal digits
+     * with leading zeros, in put(), in a w() and in an rw() action, so that the keys are in
+     * the order of the times; two puts at such a key in one transaction are puts at one key,
+     * and the last counts; the setting is read when w() is called; with key replace off, the
+     * text is the key as written, and each put is over the last.
+     */
+    @Nano
+    public static void testKeyReplaceText() {
+        try (final Database db = Factory.database().memory().start()) {
+            final Connection c = db.newConnection();
+            c.setEnableKeyReplace(true);
+            List<Time> times = new ArrayList<>();
+            times.add(c.put("/e/${transactionTime}", new Account("put", 1)).getTime());
+            times.add(c.w().put("/e/${transactionTime}", new Account("w", 2)).execute()
+                    .getTime());
+            times.add(c.rw(env -> env.put("/e/${transactionTime}", new Account("rw", 3)))
+                    .getTime());
+            times.add(c.w().put("/e/${transactionTime}", new Account("a", 4))
+                    .put("/e/${transactionTime}", new Account("b", 5)).execute().getTime());
+            StringBuilder expected = new StringBuilder();
+            for (Time t : times) {
+                String key = String.format("/e/%018d", t.units());
+                Assert.assertEquals(key, 21, key.length());
+                expected.append(expected.length() == 0 ? "" : " ").append(key);
+            }
+            Assert.assertEquals(expected.toString(), keys(c.usePrimary(Account.class)
+                    .dir("/e/").kvs()));
+            Assert.assertEquals("put 1 w 2 rw 3 b 5", owners(c.usePrimary(Account.class)
+                    .dir("/e/").objects()));
+
+            c.setEnableKeyReplace(false);
+            WBuilder w = c.w();
+            c.setEnableKeyReplace(true);
+            w.put("/f/${transactionTime}.txt", "as written").execute();
+            Assert.assertEquals("as written", c.get("/f/${transactionTime}.txt",
+                    String.class));
+
+            Connection off = db.newConnection();
+            for (int i = 1; i <= 3; i++) {
+                off.put("/g/${transactionTime}.txt", "v" + i);
+            }
+            Assert.assertEquals("/g/${transactionTime}.txt", keys(off.usePrimary(String.class)
+                    .dir("/g/").kvs()));
+            Assert.assertEquals("v3", off.get("/g/${transactionTime}.txt", String.class));
+        }
+    }
 }
