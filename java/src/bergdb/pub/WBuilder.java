@@ -14,6 +14,13 @@ package bergdb.pub;
  * <p>execute() spends the builder, whatever it threw: a later put(), delete() or execute()
  * throws IllegalStateException (bergdb 020-21, 2). For another transaction, get a new
  * builder.</p>
+ *
+ * <p>A builder is for one thread, as its Connection (Connection, "Threads"). One that
+ * threads share anyway takes their calls one at a time: each put() and delete() made
+ * before execute() is in the transaction, and one after it, also one that waited for it,
+ * throws IllegalStateException (bergdb 021-22). execute() is a call of the connection: it
+ * throws IllegalStateException, and leaves the builder unspent, while another thread is in
+ * a call of the connection.</p>
  * 
  * @author Frans Lundberg
  */

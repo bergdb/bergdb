@@ -170,7 +170,9 @@ public class PubTesterOutput {
     @Nano
     public static void testRerun() throws InterruptedException {
         Database db = Factory.database().memory().start();
-        final Connection c1 = db.connection();
+        final Connection c1 = db.newConnection();
+            // The other thread's; it was db.connection(), which this thread uses below: the
+            // threads shared it (bergdb 021-22).
         c1.put("/key1", "value1");
 
         final EventToWaitFor readDone = new EventToWaitFor();

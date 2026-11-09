@@ -21,9 +21,10 @@ import bergdb.pub.WBuilder;
 
 /**
  * Threads that share what BergDB keeps per connection or per transaction (bergdb 020-24-11,
- * a hurried service; 021-21): an RwEnvironment used by several threads in its action and
- * after it. Misuse ends in an exception to the caller, never in a wrong value, a lost write
- * or a failed database.
+ * a hurried service; 021-21, 021-22): an RwEnvironment used by several threads in its action
+ * and after it, a Connection, a WBuilder and an iterator shared by threads, and a Data Object
+ * constructor that reads through the connection of its get. Misuse ends in an exception to
+ * the caller, never in a wrong value, a lost write or a failed database.
  *
  * @author Frans Lundberg
  */
@@ -39,6 +40,41 @@ public class PubTesterThreads {
 
         public Obj(long n) {
             this.n = n;
+        }
+    }
+
+    /** The gates of Slow's constructor, set by a test, null else. */
+    static volatile CountDownLatch slowInside;
+    static volatile CountDownLatch slowRelease;
+
+    /**
+     * A Data Object whose constructor, when a test has set the gates, says that it runs and
+     * waits for the test: a thread then stays in the call that converts the value.
+     */
+    public static class Slow {
+        public long n;
+
+        public Slow() {
+            CountDownLatch inside = slowInside;
+            CountDownLatch release = slowRelease;
+            if (inside != null && release != null) {
+                inside.countDown();
+                await(release);
+            }
+        }
+    }
+
+    /** The connection that Configured's constructor reads through, set by a test. */
+    static volatile Connection configuredConnection;
+
+    /** U11-5: a Data Object whose constructor reads its configuration through a connection. */
+    public static class Configured {
+        public long n;
+        public String config;
+
+        public Configured() {
+            Connection c = configuredConnection;
+            config = c == null ? null : c.get("/cfg/a.txt", String.class);
         }
     }
 
@@ -210,6 +246,204 @@ public class PubTesterThreads {
             Assert.assertNull(c.get("/r/late.txt", String.class));
             Assert.assertEquals("y", c.get("/r/y.txt", String.class));
             Assert.assertTrue(t != null);
+        }
+    }
+
+    // ======== U11-2: a Connection shared by threads ========
+
+    /**
+     * U11-2 (bergdb 021-22): while a thread is in a call of a connection, a call of another
+     * thread on it throws IllegalStateException, changes nothing, and the database goes on;
+     * once the first call has returned, the other thread may use the connection. Before the
+     * fix the calls ran at once and shared the connection's GetData: reads returned another
+     * key's value, and the database failed.
+     */
+    @Nano
+    public static void testConnectionInACallOfAnotherThread() throws Exception {
+        try (Database db = Factory.database().memory().start()) {
+            final Connection c = db.newConnection();
+            c.put("/s/x.txt", "x");
+            Slow slow = new Slow();
+            slow.n = 5;
+            c.put("/s/slow", slow);
+            final CountDownLatch inside = new CountDownLatch(1);
+            final CountDownLatch release = new CountDownLatch(1);
+            slowInside = inside;
+            slowRelease = release;
+            final AtomicReference<Object> got = new AtomicReference<>();
+            Thread a = new Thread(() -> got.set(c.get("/s/slow", Slow.class)));
+            try {
+                a.start();
+                Assert.assertTrue(inside.await(10, TimeUnit.SECONDS));
+
+                expectIllegalState(() -> c.get("/s/x.txt", String.class));
+                expectIllegalState(() -> c.exists("/s/x.txt"));
+                expectIllegalState(() -> c.transactionInfo());
+                expectIllegalState(() -> c.put("/s/y.txt", "y"));
+                expectIllegalState(() -> c.delete("/s/x.txt"));
+                expectIllegalState(() -> c.w().put("/s/y.txt", "y").execute());
+                expectIllegalState(() -> c.rw(env -> env.put("/s/y.txt", "y")));
+                expectIllegalState(() -> c.usePrimary(String.class));
+                expectIllegalState(() -> c.setLookupTime(Time.MAX));
+                expectIllegalState(() -> c.freezeLookupTime());
+                expectIllegalState(() -> c.sync());
+            } finally {
+                release.countDown();
+                a.join(10_000);
+                slowInside = null;
+                slowRelease = null;
+            }
+            Assert.assertEquals(5L, ((Slow) got.get()).n);
+            Assert.assertNull(c.get("/s/y.txt", String.class));
+            Assert.assertEquals("x", c.get("/s/x.txt", String.class));
+            c.put("/s/z.txt", "z");
+            Assert.assertEquals("z", db.connection().get("/s/z.txt", String.class));
+        }
+    }
+
+    /**
+     * U11-2 (bergdb 021-22): 4 threads reading random keys through one connection: each
+     * get returns the key's value or throws IllegalStateException; none returns another
+     * value, and the database goes on. Before the fix: wrong values within a few hundred
+     * gets, then DbFailedException (020-24-11, SharedReads).
+     */
+    @Nano
+    public static void testConnectionSharedByReaders() throws Exception {
+        try (Database db = Factory.database().memory().start()) {
+            final int keys = 2000;
+            WBuilder w = db.connection().w();
+            for (int k = 0; k < keys; k++) {
+                w.put("/k/k" + k + ".txt", "value of k" + k);
+            }
+            w.execute();
+            final Connection shared = db.newConnection();
+            final AtomicInteger wrong = new AtomicInteger();
+            final AtomicInteger refused = new AtomicInteger();
+            final AtomicInteger right = new AtomicInteger();
+            final AtomicReference<Throwable> other = new AtomicReference<>();
+            inThreads(4, i -> {
+                java.util.Random random = new java.util.Random(i);
+                for (int n = 0; n < 5000 && other.get() == null; n++) {
+                    int k = random.nextInt(keys);
+                    try {
+                        String v = shared.get("/k/k" + k + ".txt", String.class);
+                        if (("value of k" + k).equals(v)) {
+                            right.incrementAndGet();
+                        } else {
+                            wrong.incrementAndGet();
+                        }
+                    } catch (IllegalStateException e) {
+                        refused.incrementAndGet();
+                    } catch (Throwable e) {
+                        other.compareAndSet(null, e);
+                    }
+                }
+            });
+            Assert.assertTrue("another throwable: " + other.get(), other.get() == null);
+            Assert.assertEquals("wrong values", 0, wrong.get());
+            Assert.assertEquals(20000, right.get() + refused.get());
+            Assert.assertEquals("value of k7", db.newConnection().get("/k/k7.txt", String.class));
+        }
+    }
+
+    /**
+     * U11-2 (bergdb 021-22): calls inside a call of the same thread are not refused: a
+     * Data Object constructor reads and writes through the connection of its get.
+     */
+    @Nano
+    public static void testConnectionInACallOfTheSameThread() {
+        try (Database db = Factory.database().memory().start()) {
+            final Connection c = db.connection();
+            c.put("/cfg/a.txt", "A");
+            c.put("/con/x", new Configured());
+            configuredConnection = c;
+            try {
+                Configured got = c.get("/con/x", Configured.class);
+                Assert.assertEquals("A", got.config);
+                c.rw(env -> {
+                    Assert.assertEquals("A", c.get("/cfg/a.txt", String.class));
+                    c.put("/cfg/b.txt", "B");
+                    env.put("/cfg/c.txt", "C");
+                });
+            } finally {
+                configuredConnection = null;
+            }
+            Assert.assertEquals("B", c.get("/cfg/b.txt", String.class));
+            Assert.assertEquals("C", c.get("/cfg/c.txt", String.class));
+        }
+    }
+
+    // ======== U11-6: a WBuilder and an iterator shared by threads ========
+
+    /**
+     * U11-6 (bergdb 021-22): 4 threads putting into one WBuilder, then execute(): every put
+     * is written. Before the fix the builder's HashMaps lost some (3,809 of 4,000 keys in
+     * 020-24-11's H1), or a thread spun in a broken HashMap.
+     */
+    @Nano
+    public static void testWBuilderSharedByThreads() throws Exception {
+        try (Database db = Factory.database().memory().start()) {
+            final Connection c = db.connection();
+            for (int round = 0; round < 10; round++) {
+                final int r = round;
+                final WBuilder w = c.w();
+                inThreads(4, i -> {
+                    for (int k = i; k < 1000; k += 4) {
+                        w.put("/w/r" + r + "-k" + k + ".txt", "v" + k);
+                    }
+                });
+                w.execute();
+            }
+            int missing = 0;
+            for (int round = 0; round < 10; round++) {
+                for (int k = 0; k < 1000; k++) {
+                    if (!("v" + k).equals(c.get("/w/r" + round + "-k" + k + ".txt",
+                            String.class))) {
+                        missing++;
+                    }
+                }
+            }
+            Assert.assertEquals("missing", 0, missing);
+        }
+    }
+
+    /**
+     * U11-6 (bergdb 021-22): while a thread is in next() of an iterator, a call of another
+     * thread on the iterator throws IllegalStateException; the first goes on, and the
+     * iterator gives every value once. Before the fix both ran: values were skipped or
+     * given twice, and internal exceptions came (020-24-11, SharedIterator).
+     */
+    @Nano
+    public static void testIteratorInACallOfAnotherThread() throws Exception {
+        try (Database db = Factory.database().memory().start()) {
+            final Connection c = db.newConnection();
+            for (int k = 0; k < 3; k++) {
+                Slow s = new Slow();
+                s.n = k;
+                c.put("/i/k" + k, s);
+            }
+            final Iterator<Slow> it = c.usePrimary(Slow.class).dir("/i/").objects().iterator();
+            final CountDownLatch inside = new CountDownLatch(1);
+            final CountDownLatch release = new CountDownLatch(1);
+            slowInside = inside;
+            slowRelease = release;
+            final AtomicReference<Slow> got = new AtomicReference<>();
+            Thread a = new Thread(() -> got.set(it.next()));
+            try {
+                a.start();
+                Assert.assertTrue(inside.await(10, TimeUnit.SECONDS));
+                expectIllegalState(() -> it.hasNext());
+                expectIllegalState(() -> it.next());
+            } finally {
+                slowInside = null;
+                slowRelease = null;
+                release.countDown();
+                a.join(10_000);
+            }
+            Assert.assertEquals(0L, got.get().n);
+            Assert.assertEquals(1L, it.next().n);
+            Assert.assertEquals(2L, it.next().n);
+            Assert.assertFalse(it.hasNext());
         }
     }
 

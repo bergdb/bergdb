@@ -3,6 +3,8 @@ package bergdb.pubimp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+
 import bergdb.core.Db;
 import bergdb.core.DbConstants;
 import bergdb.core.InternalDataException;
@@ -46,6 +48,20 @@ class ConnectionImp implements Connection {
      * (bergdb 021-17). Set with getData.tpos, by each read that finds a value.
      */
     private long[] infoKey;
+    
+    /**
+     * The thread in a call of this connection, or null (bergdb 021-22, 020-24-11, U11-2).
+     * A connection is used by one thread at a time (Connection): each call that reads or
+     * changes its state (getData, infoKey, the lookup time, lastSposOfLastTrans) or runs a
+     * transaction enters (enter(), a compare-and-set, uncontended in the normal case) and
+     * leaves (leave()); a call of another thread meanwhile throws IllegalStateException
+     * before it reads or changes anything. A call inside a call of the same thread, as a Data
+     * Object constructor's get in a get or a put in an rw() action, is not refused. Until
+     * 2026-11-09 threads that shared a connection shared its GetData: reads returned
+     * another key's value, threw ArrayIndexOutOfBoundsException, and failed the database
+     * with a message of corrupt data ("Bad value pointer -1").
+     */
+    private final AtomicReference<Thread> user = new AtomicReference<Thread>();
 
     public ConnectionImp(DatabaseImp database) {
         assert database != null;
@@ -61,11 +77,59 @@ class ConnectionImp implements Connection {
         this.lastSposOfLastTrans = 0;
     }
     
+    /**
+     * Enters a call of this connection (user): true if it is the thread's outer call, which
+     * leave() ends; false for a call inside a call of the same thread.
+     * 
+     * @throws IllegalStateException  If another thread is in a call of this connection.
+     */
+    final boolean enter() {
+        return enter(user, "A Connection");
+    }
+    
+    /** Leaves a call that enter() entered; 'outer' is what enter() returned. */
+    final void leave(boolean outer) {
+        leave(user, outer);
+    }
+    
+    /**
+     * Enters a call of an object that one thread uses at a time, whose 'user' is the thread
+     * in a call of it, or null (bergdb 021-22): true if the call is the thread's outer one,
+     * which leave(user, true) ends; false for a call inside a call of the same thread.
+     * 
+     * @throws IllegalStateException  If another thread is in a call of it; 'what' names it.
+     */
+    static boolean enter(AtomicReference<Thread> user, String what) {
+        // A lock's orders: acquire here, release in leave(). The plain read finds the
+        // thread's own outer call: only this thread sets 'user' to itself.
+        final Thread t = Thread.currentThread();
+        if (user.getPlain() == t) {
+            return false;
+        }
+        if (user.compareAndExchangeAcquire(null, t) == null) {
+            return true;
+        }
+        throw new IllegalStateException(what + " is used by one thread at a time: another "
+                + "thread is in a call of it. Nothing was read or changed (bergdb 021-22).");
+    }
+    
+    /** Leaves a call that enter(user, what) entered; 'outer' is what it returned. */
+    static void leave(AtomicReference<Thread> user, boolean outer) {
+        if (outer) {
+            user.setRelease(null);
+        }
+    }
+    
     public final void setLookupTime(Time lookupTime) {
         if (lookupTime == null) {
             throw new IllegalArgumentException("lookupTime == null not allowed");
         }
-        setLookupTime(lookupTime.units());
+        final boolean outer = enter();
+        try {
+            setLookupTime(lookupTime.units());
+        } finally {
+            leave(outer);
+        }
     }
 
     /**
@@ -83,10 +147,15 @@ class ConnectionImp implements Connection {
     }
     
     public final void freezeLookupTime() {
-        this.freezeLookupTime = true;
-        this.lookupTime = Time.MAX.units();
-            // Each call freezes anew, at the latest state as of the next read (bergdb 018-04,
-            // Q2). Before, a second call kept the first frozen time.
+        final boolean outer = enter();
+        try {
+            this.freezeLookupTime = true;
+            this.lookupTime = Time.MAX.units();
+                // Each call freezes anew, at the latest state as of the next read (bergdb
+                // 018-04, Q2). Before, a second call kept the first frozen time.
+        } finally {
+            leave(outer);
+        }
     }
     
     public Time currentTime() {
@@ -94,7 +163,9 @@ class ConnectionImp implements Connection {
     }
 
     public final void setEnableKeyReplace(boolean enable) {
+        final boolean outer = enter();
         enableKeyReplace = enable;
+        leave(outer);
     }
 
     public final boolean getEnableKeyReplace() {
@@ -118,6 +189,15 @@ class ConnectionImp implements Connection {
     }
     
     public TransactionInfo transactionInfo() {
+        final boolean outer = enter();
+        try {
+            return transactionInfoInner();
+        } finally {
+            leave(outer);
+        }
+    }
+    
+    private TransactionInfo transactionInfoInner() {
         if (getData.actualLookupTime == -1) {
             throw new IllegalStateException("No available transaction info, "
                     + "a call to get() must be made before calling transactionInfo().");
@@ -328,8 +408,13 @@ class ConnectionImp implements Connection {
         }
 
         String ikey = PubKeys.u2i(ukey);
-        byte[] bytes = getBytesAtLookupTime(lookupTime, Keys.toSegments(ikey));
-        return bytes != null;
+        final boolean outer = enter();
+        try {
+            byte[] bytes = getBytesAtLookupTime(lookupTime, Keys.toSegments(ikey));
+            return bytes != null;
+        } finally {
+            leave(outer);
+        }
     }
 
     public final Db getDb() {
@@ -351,7 +436,12 @@ class ConnectionImp implements Connection {
         if (action == null) {
             throw new IllegalArgumentException("action == null not allowed");
         }
-        return new RwTransaction(this, action).execute();
+        final boolean outer = enter();
+        try {
+            return new RwTransaction(this, action).execute();
+        } finally {
+            leave(outer);
+        }
     }
 
     public WBuilder w() {
@@ -375,8 +465,12 @@ class ConnectionImp implements Connection {
 
         String ikey = PubKeys.u2i(ukey);
 
-        TYPE result = getInternal(lookupTime, ikey, clazz);
-        return result;
+        final boolean outer = enter();
+        try {
+            return getInternal(lookupTime, ikey, clazz);
+        } finally {
+            leave(outer);
+        }
     }
 
     /**
@@ -394,11 +488,21 @@ class ConnectionImp implements Connection {
      *            If 'key' is null or otherwise invalid, or if object is null.
      */
     public Transaction put(String key, Object object) {
-        return w().put(key, object).execute();
+        final boolean outer = enter();
+        try {
+            return w().put(key, object).execute();
+        } finally {
+            leave(outer);
+        }
     }
 
     public Transaction delete(String key) {
-        return w().delete(key).execute();
+        final boolean outer = enter();
+        try {
+            return w().delete(key).execute();
+        } finally {
+            leave(outer);
+        }
     }
 
     /**
@@ -454,10 +558,13 @@ class ConnectionImp implements Connection {
             throw new IllegalArgumentException("type == null not allowed");
         }
 
-
-        UseIndexBuilderImp<TYPE> b = new UseIndexBuilderImp<TYPE>(this, indexName, type, lookupTime);
-            // throws NoSuchIndexException if index does not exists
-        return b;
+        final boolean outer = enter();
+        try {
+            return new UseIndexBuilderImp<TYPE>(this, indexName, type, lookupTime);
+                // throws NoSuchIndexException if index does not exists
+        } finally {
+            leave(outer);
+        }
     }
 
     public <TYPE> UsePrimaryBuilder<TYPE> usePrimary(Class<TYPE> type) {
@@ -466,7 +573,12 @@ class ConnectionImp implements Connection {
                 && !type.equals(DbObject.class) && !type.equals(Object.class)) {
             DataObjects.checkGet(type);
         }
-        return new UsePrimaryBuilderImp<TYPE>(this, type, lookupTime);
+        final boolean outer = enter();
+        try {
+            return new UsePrimaryBuilderImp<TYPE>(this, type, lookupTime);
+        } finally {
+            leave(outer);
+        }
     }
 
     /**
@@ -476,7 +588,7 @@ class ConnectionImp implements Connection {
      * @throws StreamIoException
      */
     public void sync() {
-        this.db.sync(lastSposOfLastTrans, SyncLevel.ORDINARY);
+        sync(SyncLevel.ORDINARY);
     }
     
     /**
@@ -486,6 +598,11 @@ class ConnectionImp implements Connection {
      * @throws StreamIoException
      */
     public void sync(SyncLevel syncLevel) {
-        this.db.sync(lastSposOfLastTrans, syncLevel);
+        final boolean outer = enter();
+        try {
+            this.db.sync(lastSposOfLastTrans, syncLevel);
+        } finally {
+            leave(outer);
+        }
     }
 }

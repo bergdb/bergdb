@@ -178,6 +178,11 @@ public interface Database extends AutoCloseable {
      * The database holds the calling threads weakly: the connection of a thread that has ended
      * goes once the thread is no longer referenced and the collector has taken it, at a later
      * call of connection() (bergdb 015-60).
+     *
+     * @throws IllegalStateException
+     *             If another thread is in a call of the thread's connection, as for its
+     *             setLookupTime(): a connection is used by one thread at a time (Connection,
+     *             "Threads"; bergdb 021-22).
      */
     public Connection connection();
 

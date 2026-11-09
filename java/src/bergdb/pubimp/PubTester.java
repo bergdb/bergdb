@@ -768,7 +768,9 @@ public class PubTester {
         //
         
         Database db = Factory.database().memory().start();
-        final Connection c1 = db.connection();
+        final Connection c1 = db.newConnection();
+            // The other thread's; it was db.connection(), this thread's, which c2 is: the
+            // threads shared it (bergdb 021-22).
         c1.w().put("/key1", "value1").put("/key2", "value2..").execute();
         
         final EventToWaitFor modifiedKey1 = new EventToWaitFor();

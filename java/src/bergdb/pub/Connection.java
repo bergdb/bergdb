@@ -13,6 +13,18 @@ import bergdb.pub.util.SyncLevel;
  * Connection object assumes it and any objects returned from its methods are
  * accessed from a single thread.
  *
+ * <p>Threads (bergdb 021-22). A connection is used by one thread at a time: a call of it
+ * while another thread is in a call of the same connection throws IllegalStateException,
+ * and reads and changes nothing. That holds for every call that reads, writes, runs a
+ * transaction (also execute() of a WBuilder from w()), syncs, starts a scan, or sets the
+ * lookup time or key replace; Database.connection() too, in the thread whose connection
+ * it is, as it sets its lookup time. A call inside a call of the same thread is taken, such
+ * as a get in a Data Object constructor that a get runs, or a put in an rw() action. An
+ * iterator of usePrimary() or useIndex() is for one thread at a time in the same way:
+ * hasNext() or next() while another thread is in one of them throws IllegalStateException.
+ * A WBuilder that threads share takes their calls one at a time (WBuilder). An rw() action
+ * may use its environment from several threads (RwEnvironment).</p>
+ *
  * <p>Each thread uses a connection of its own: Database.connection() gives the calling
  * thread its connection, the same object at each call in that thread, and is the one to use.
  * Database.newConnection() makes another, for a second view in a thread, such as a reader at

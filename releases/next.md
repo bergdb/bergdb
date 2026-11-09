@@ -574,6 +574,28 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   run of the action has an environment of its own. A single-threaded
   `rw()` costs the same. In 2026.3 and before; found by a new-user
   application (020-24-11).
+* **A Connection, an iterator or a WBuilder shared by threads refuses
+  instead of corrupting** (bergdb 021-22, U11-2 and U11-6; 2026-11-09).
+  Threads that read through one `Connection`, which the Javadoc forbids,
+  shared its read state: gets returned another key's value or null, threw
+  `ArrayIndexOutOfBoundsException`, and failed the database with a
+  message of corrupt data ("A read failed on the storage", "Bad value
+  pointer -1"), which loses an in-memory database. Now a call of a
+  connection while another thread is in a call of it throws
+  `IllegalStateException` ("A Connection is used by one thread at a
+  time") and reads and changes nothing; a call inside a call of the same
+  thread, as in a Data Object constructor or an rw() action, is taken.
+  Every call that reads, writes, runs a transaction, syncs, starts a scan
+  or sets the lookup time is checked, also `Database.connection()` of the
+  thread whose connection another thread is using. An iterator of
+  `usePrimary()` or `useIndex()` read by threads at once skipped values
+  and threw internal exceptions; it now refuses in the same way. A
+  `WBuilder` that threads put into lost puts, or a thread spun in its map
+  forever; it now takes their calls one at a time, and a put after
+  `execute()`, also one that waited for it, throws
+  `IllegalStateException`. A compare-and-set per call: no cost measured
+  for one thread. In 2026.3 and before; found by a new-user application
+  (020-24-11).
 
 
 ### Core API

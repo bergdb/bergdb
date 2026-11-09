@@ -4,6 +4,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import bergdb.common.Util;
 import bergdb.core.Db;
@@ -240,6 +241,8 @@ class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
         private Kvt next = null;
         private String nextIkey = null;
         private String nextUkey = null;
+        /** The thread in a call of this iterator, or null (bergdb 021-22). */
+        private final AtomicReference<Thread> user = new AtomicReference<Thread>();
 
         Scan() {
             if (startName != null) {
@@ -279,7 +282,31 @@ class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
             }
         }
 
+        /**
+         * One thread at a time (bergdb 021-22, 020-24-11, U11-6): a call of another thread,
+         * while one is in hasNext() or next(), throws IllegalStateException and changes
+         * nothing. Until 2026-11-09 an iterator read by threads at once skipped values and
+         * gave others twice, and threw internal exceptions.
+         */
         public boolean hasNext() {
+            final boolean outer = ConnectionImp.enter(user, "An iterator");
+            try {
+                return hasNextInner();
+            } finally {
+                ConnectionImp.leave(user, outer);
+            }
+        }
+
+        public Kv<TYPE> next() {
+            final boolean outer = ConnectionImp.enter(user, "An iterator");
+            try {
+                return nextInner();
+            } finally {
+                ConnectionImp.leave(user, outer);
+            }
+        }
+
+        private boolean hasNextInner() {
             while (next == null) {
                 if (pos < page.size()) {
                     Kvt kvt = page.get(pos++);
@@ -315,8 +342,8 @@ class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
          * @throws bergdb.pub.ObjectCreationException  If the value cannot be made into the
          *     type, as for get(); the next call goes on with the next value.
          */
-        public Kv<TYPE> next() {
-            if (!hasNext()) {
+        private Kv<TYPE> nextInner() {
+            if (!hasNextInner()) {
                 throw new NoSuchElementException();
             }
             final byte[] value = next.value;
