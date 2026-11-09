@@ -1196,7 +1196,7 @@ public class StoredTrans {
     }
     
     @Nano
-    public static void testSerializeTransWithDelete() {
+    static void testSerializeTransWithDelete() {
         Serializer s = new Serializer();
         TransNodes transNodes = new TransNodes();
         transNodes.addValueNode(ValueNode.createDelete(), Keys.toSegments("key1"));

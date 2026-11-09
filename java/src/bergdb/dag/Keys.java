@@ -329,7 +329,7 @@ public class Keys {
     /**
      * A simpler version assuming that a Klong compare value is always non-negative. 
      * Currently they are defined to be in the range [0, 2^59] (2012-08).
-     * Returns 0 if key1 == key2, returns -1 if key1 < key2, and +1 if key1 > key2.
+     * Returns 0 if key1 == key2, returns -1 if key1 &lt; key2, and +1 if key1 &gt; key2.
      */
     public static final int compareKeys(long[] key1, long[] key2) {
         //
@@ -407,7 +407,7 @@ public class Keys {
     // ======== Testing ========
     
     @Nano
-    public static void testByteSize0() {
+    static void testByteSize0() {
         int[] sizes = new int[]{0, 1, 6, 7, 8, 40, 27, 28, 29};
         
         for (int i = 0; i < sizes.length; i++) {
@@ -418,7 +418,7 @@ public class Keys {
     }
     
     @Nano
-    public static void testConversion0() {
+    static void testConversion0() {
         String[] strings = new String[] { "a", "dir/f1.txt", " ", "Stange\n\r  next line" };
         
         for (int i = 0; i < strings.length; i++) {
@@ -428,7 +428,7 @@ public class Keys {
     }
     
     @Nano
-    public static void testConversion1() {
+    static void testConversion1() {
         Exception ex = null;
         
         try {
@@ -442,7 +442,7 @@ public class Keys {
     
     /** bergdb 021-05: a lone surrogate is refused; it was written as '?', the key "a?". */
     @Nano
-    public static void testLoneSurrogate() {
+    static void testLoneSurrogate() {
         String[] refused = {"a\uD800", "\uDC00", "?\uD83D", "\uDE00\uD83D\uDE00"};
         for (String s : refused) {
             try {
@@ -463,7 +463,7 @@ public class Keys {
      * 2, which no ikey gives: '/' is 1), 0xFE or 0xFF.
      */
     @Nano
-    public static void testBkeyWithoutIkey() {
+    static void testBkeyWithoutIkey() {
         byte[] ck1 = bkey("/dd/-a", 0xef, 0xa2, 0x82);
         byte[] ck2 = toBytes("/dd/-a\uFFFD");
         Assert.assertArrayEquals(bkey("/dd/-a", 0xf1, 0xc1, 0xbf), ck2);
@@ -499,7 +499,7 @@ public class Keys {
      * edges: each has no ikey, or its ikey's bkey is itself.
      */
     @Nano
-    public static void testBkeyIkeyRoundTrip() {
+    static void testBkeyIkeyRoundTrip() {
         int[] near = {0x00, 0x01, 0x02, 0x03, 0x31, 0x33, 0x63, 0x81, 0x82, 0x91, 0x92, 0xa1, 
                 0xa2, 0xc1, 0xc2, 0xc3, 0xc4, 0xe1, 0xe2, 0xe3, 0xee, 0xef, 0xf0, 0xf1, 0xf2, 
                 0xf3, 0xf5, 0xf6, 0xf7, 0xfe, 0xff};
@@ -530,7 +530,7 @@ public class Keys {
     }
     
     @Nano
-    public static void testLongs() {
+    static void testLongs() {
         Assert.assertEquals(true, compareUnsignedLongs(3, 1) > 0);
         Assert.assertEquals(true, compareUnsignedLongs(111222333444L, 111222333444L) == 0);
         Assert.assertEquals(true, compareUnsignedLongs(-1, -1) == 0);
@@ -541,7 +541,7 @@ public class Keys {
     }
     
     @Nano
-    public static void testArrays() {
+    static void testArrays() {
         Assert.assertEquals(true, compareArrays(new long[]{}, new long[]{}) == 0);
         Assert.assertEquals(true, compareArrays(new long[]{123}, new long[]{123}) == 0);
         Assert.assertEquals(true, compareArrays(new long[]{-111222333444L}, new long[]{-111222333444L}) == 0);
@@ -559,7 +559,7 @@ public class Keys {
     }
     
     @Nano
-    public static void testPrefix1() {
+    static void testPrefix1() {
         long[] k1 = Keys.toSegments("dir/customers/");
         long[] k2 = Keys.toSegments("dir/customers/anna");
         
@@ -568,7 +568,7 @@ public class Keys {
     }
     
     @Nano
-    public static void testPrefix2() {
+    static void testPrefix2() {
         long[] k1 = Keys.toSegments("dir/customers/");
         long[] k2 = Keys.toSegments("dir/customers/anna");
         long[] k3 = Keys.toSegments("dir/customers/");
@@ -583,7 +583,7 @@ public class Keys {
         Assert.assertFalse(Keys.isPrefix(k2, k4));
     }
     
-    public static void main(String[] args) {
+    static void main(String[] args) {
         testPrefix2();
     }
 }

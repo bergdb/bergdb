@@ -66,7 +66,7 @@ public interface AppendOnlyStream {
      *      is greater than dest.length (so if 'length' is greater than dest.length); the
      *      stream is left as it was.
      * @throws IOException if there is an error when reading the data.
-     * @throws EOFException if there is not enough data to read.
+     * @throws java.io.EOFException if there is not enough data to read.
      */
     public void read(long position, byte[] dest, int destOffset, int length) throws IOException;
     

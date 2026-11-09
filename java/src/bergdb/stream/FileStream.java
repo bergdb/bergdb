@@ -39,7 +39,7 @@ import bergdb.pub.util.BadFormatException;
  * Multiple files are used to be able pretruncate (cut) the stream and reclaim disk space.
  * Files of sizes 200*1000, 1*M, 5*M, 20*M, 100*M, 500*M, 2*G, 10*G, 50*G, 200*G
  * are automatically chosen to store the stream. Decimal factors, M = 1,000,000 bytes.
- * Each file is named <14-digit index>.bergdb. The index is the file's first stream 
+ * Each file is named &lt;14-digit index&gt;.bergdb. The index is the file's first stream 
  * position divided by 100,000, padded with zeros (indexToString).
  * The first two files are: 00000000000000.bergdb, 00000000000002.bergdb. A new stream has
  * no file until its first append, which creates the first (2026-11-06, bergdb 015-06).
@@ -1619,7 +1619,7 @@ public class FileStream implements AppendOnlyStream {
     // ======== Tests ========
 
     @Nano
-    public static void test0(TestEnvironment c) throws IOException {
+    static void test0(TestEnvironment c) throws IOException {
         // Simple sanity test.
         File dir = c.createTempDir();
         assert dir != null : "dir is null";
@@ -1630,7 +1630,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void test1(TestEnvironment c) throws IOException {
+    static void test1(TestEnvironment c) throws IOException {
         // Like test0() but appends a single byte and reads it back.
         byte[] bytes = new byte[] {123};
         File dir = c.createTempDir();
@@ -1650,7 +1650,7 @@ public class FileStream implements AppendOnlyStream {
      * An empty append makes no file. Before, the constructor made an empty first file.
      */
     @Nano
-    public static void testNoFileUntilFirstAppend(TestEnvironment c) throws IOException {
+    static void testNoFileUntilFirstAppend(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         FileStream f = new FileStream(dir);
         byte[] b = new byte[1];
@@ -1685,7 +1685,7 @@ public class FileStream implements AppendOnlyStream {
      * listing (root).
      */
     @Nano
-    public static void testUnlistableDirectory(TestEnvironment c) throws IOException {
+    static void testUnlistableDirectory(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         FileStream f = new FileStream(dir);
         f.append(new byte[] {7}, 0, 1);
@@ -1726,7 +1726,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testFileSizeRules0(TestEnvironment c) throws IOException {
+    static void testFileSizeRules0(TestEnvironment c) throws IOException {
         int newIndex;
         long size;
         File dir = c.createTempDir();
@@ -1745,7 +1745,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testFileSizeRules1(TestEnvironment c) throws IOException {
+    static void testFileSizeRules1(TestEnvironment c) throws IOException {
         // Tests the max2G setting.
         // Sizes: .., 500*M, 2*G, 10*G, 50*G, ...
         
@@ -1769,7 +1769,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testRestart0(TestEnvironment c) throws IOException {
+    static void testRestart0(TestEnvironment c) throws IOException {
         byte[] bytes = new byte[] {123};
         File dir = c.createTempDir();
         FileStream f = new FileStream(dir);
@@ -1785,7 +1785,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testRestartMissingFile(TestEnvironment c) throws IOException {
+    static void testRestartMissingFile(TestEnvironment c) throws IOException {
         // Tests starting a FileStream in directory with a missing file.
         byte[] bytes = new byte[500*1000];     // 3 stream files
         File dir = c.createTempDir();
@@ -1821,7 +1821,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testBigAppend0(TestEnvironment c) throws IOException {
+    static void testBigAppend0(TestEnvironment c) throws IOException {
         byte[] bytes = new byte[10*1000];
         File dir = c.createTempDir();
         FileStream f = new FileStream(dir);
@@ -1835,7 +1835,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testConstants() {
+    static void testConstants() {
         Assert.assertTrue(SMALLEST_FILE_SIZE % BYTES_PER_INDEX_UNIT == 0);
         Assert.assertEquals(2L*1000*1000000, FILE_SIZES[INDEX_2G]);
         
@@ -1845,7 +1845,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testSeekFirstPos0(TestEnvironment c) throws IOException {
+    static void testSeekFirstPos0(TestEnvironment c) throws IOException {
         FileStream f = new FileStream(c.createTempDir());
         f.seekFirstPos(200*1000 * 30);
         Assert.assertEquals(200*1000 * 30, f.getLength());
@@ -1858,7 +1858,7 @@ public class FileStream implements AppendOnlyStream {
      * be written but not opened again; the file names were parsed as ints.
      */
     @Nano
-    public static void testReopenPast214TB(TestEnvironment c) throws IOException {
+    static void testReopenPast214TB(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         long pos = (1L << 31) * BYTES_PER_INDEX_UNIT;
         FileStream f = new FileStream(dir);
@@ -1877,7 +1877,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testSeekFirstPos1(TestEnvironment c) throws IOException {
+    static void testSeekFirstPos1(TestEnvironment c) throws IOException {
         byte[] bytes = new byte[300*1000];
         FileStream f = new FileStream(c.createTempDir());
         f.append(bytes, 0, bytes.length);
@@ -1893,7 +1893,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testPretruncate0(TestEnvironment c) throws Exception {
+    static void testPretruncate0(TestEnvironment c) throws Exception {
         FileStream f = new FileStream(c.createTempDir());            
         byte[] bytes = new byte[500*1000];
         f.append(bytes, 0, bytes.length);
@@ -1912,7 +1912,7 @@ public class FileStream implements AppendOnlyStream {
      * and close() waited for it for ever.
      */
     @Nano
-    public static void testCutThreadThatCannotStart(TestEnvironment c) throws Exception {
+    static void testCutThreadThatCannotStart(TestEnvironment c) throws Exception {
         final FileStream f = new FileStream(c.createTempDir());
         byte[] bytes = new byte[500*1000];
         f.append(bytes, 0, bytes.length);
@@ -1950,7 +1950,7 @@ public class FileStream implements AppendOnlyStream {
      * close() waited for ever (review R7, R7CutOomProbe).
      */
     @Nano
-    public static void testCutErrorRecordedAsMadeBefore(TestEnvironment c) throws Exception {
+    static void testCutErrorRecordedAsMadeBefore(TestEnvironment c) throws Exception {
         final Error error = new Error("test: a delete's Error");
         FileStream f = new FileStream(c.createTempDir(), new FileStreamIo() {
             protected boolean delete(File file) throws IOException {
@@ -1984,7 +1984,7 @@ public class FileStream implements AppendOnlyStream {
      * Now only the read fails.
      */
     @Nano
-    public static void testReadBelowFirstPosDoesNotBreakStream(TestEnvironment c)
+    static void testReadBelowFirstPosDoesNotBreakStream(TestEnvironment c)
             throws Exception {
         FileStream f = new FileStream(c.createTempDir());
         byte[] bytes = new byte[500*1000];
@@ -2015,7 +2015,7 @@ public class FileStream implements AppendOnlyStream {
      * stays usable.
      */
     @Nano
-    public static void testReadPastEnd(TestEnvironment c) throws Exception {
+    static void testReadPastEnd(TestEnvironment c) throws Exception {
         FileStream f = new FileStream(c.createTempDir());
         byte[] bytes = new byte[300 * 1000];        // two files
         new Random(3).nextBytes(bytes);
@@ -2042,7 +2042,7 @@ public class FileStream implements AppendOnlyStream {
      * Same, for a reader that found the file just before pretruncate() deleted it.
      */
     @Nano
-    public static void testReadOfFileDeletedMeanwhileDoesNotBreakStream(TestEnvironment c)
+    static void testReadOfFileDeletedMeanwhileDoesNotBreakStream(TestEnvironment c)
             throws Exception {
         FileStream f = new FileStream(c.createTempDir());
         byte[] bytes = new byte[500*1000];
@@ -2068,7 +2068,7 @@ public class FileStream implements AppendOnlyStream {
     }
 
     @Nano
-    public static void testMultiFileRead0(TestEnvironment c) throws IOException {
+    static void testMultiFileRead0(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         Random r = new Random(0);
         byte[] bytes1 = new byte[201*1000];
@@ -2085,7 +2085,7 @@ public class FileStream implements AppendOnlyStream {
     }
     
     @Nano
-    public static void testMultiFileRead1(TestEnvironment c) throws IOException {
+    static void testMultiFileRead1(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         Random r = new Random(0);
         byte[] bytes1 = new byte[201*1000];
@@ -2129,7 +2129,7 @@ public class FileStream implements AppendOnlyStream {
      * DirectoryInUseException until the JVM ended.
      */
     @Nano
-    public static void testFailedOpenClosesFileAndUnlocks(TestEnvironment c) throws IOException {
+    static void testFailedOpenClosesFileAndUnlocks(TestEnvironment c) throws IOException {
         String[] kinds = {"an IOException", "an unchecked exception", "an Error"};
         for (int kind = 0; kind < kinds.length; kind++) {
             final int k = kind;
@@ -2222,7 +2222,7 @@ public class FileStream implements AppendOnlyStream {
      * file's predecessor, a cut or close(), where nothing is left unforced (bergdb 005-47).
      */
     @Nano
-    public static void testForcingOnForcesEveryAppend(TestEnvironment c) throws IOException {
+    static void testForcingOnForcesEveryAppend(TestEnvironment c) throws IOException {
         FileStream plain = new FileStream(c.createTempDir());
         Assert.assertTrue("forcing on by default", plain.forcesAppends());
         plain.close();
@@ -2250,7 +2250,7 @@ public class FileStream implements AppendOnlyStream {
      * where another reader, after a crash of the process, finds them; reads see them at once.
      */
     @Nano
-    public static void testForcingOffWritesAppends(TestEnvironment c) throws IOException {
+    static void testForcingOffWritesAppends(TestEnvironment c) throws IOException {
         ForceLogIo io = new ForceLogIo();
         File dir = c.createTempDir();
         FileStream f = new FileStream(dir, io, false);
@@ -2278,7 +2278,7 @@ public class FileStream implements AppendOnlyStream {
      * newer one.
      */
     @Nano
-    public static void testForcingOffForcesTheFileBeforeANewFile(TestEnvironment c) 
+    static void testForcingOffForcesTheFileBeforeANewFile(TestEnvironment c) 
             throws IOException {
         ForceLogIo io = new ForceLogIo();
         FileStream f = new FileStream(c.createTempDir(), io, false);
@@ -2300,7 +2300,7 @@ public class FileStream implements AppendOnlyStream {
      * unforced for the next delete.
      */
     @Nano
-    public static void testForcingOffForcesBeforeACutDeletes(TestEnvironment c) 
+    static void testForcingOffForcesBeforeACutDeletes(TestEnvironment c) 
             throws IOException {
         ForceLogIo io = new ForceLogIo();
         FileStream f = new FileStream(c.createTempDir(), io, false);
@@ -2331,7 +2331,7 @@ public class FileStream implements AppendOnlyStream {
      * durable; a second close() forces nothing, and a restart reads the bytes.
      */
     @Nano
-    public static void testForcingOffForcesAtClose(TestEnvironment c) throws IOException {
+    static void testForcingOffForcesAtClose(TestEnvironment c) throws IOException {
         ForceLogIo io = new ForceLogIo();
         File dir = c.createTempDir();
         FileStream f = new FileStream(dir, io, false);
@@ -2526,7 +2526,7 @@ public class FileStream implements AppendOnlyStream {
      * append and its force (the file's monitor). Now it reads while the force is held.
      */
     @Nano
-    public static void testReadOfLastFileDuringForce(TestEnvironment c) throws Exception {
+    static void testReadOfLastFileDuringForce(TestEnvironment c) throws Exception {
         HeldIo io = new HeldIo();
         final FileStream f = new FileStream(c.createTempDir(), io);
         final byte[] bytes = new byte[100 * 1000];
@@ -2550,7 +2550,7 @@ public class FileStream implements AppendOnlyStream {
      * file reads while the new file's directory force is held.
      */
     @Nano
-    public static void testReadDuringNewFile(TestEnvironment c) throws Exception {
+    static void testReadDuringNewFile(TestEnvironment c) throws Exception {
         HeldIo io = new HeldIo();
         final FileStream f = new FileStream(c.createTempDir(), io);
         final byte[] bytes = new byte[300 * 1000];
@@ -2576,7 +2576,7 @@ public class FileStream implements AppendOnlyStream {
      * go on while the cut's thread is held, and close() waits for that thread.
      */
     @Nano
-    public static void testCutOnItsOwnThread(TestEnvironment c) throws Exception {
+    static void testCutOnItsOwnThread(TestEnvironment c) throws Exception {
         HeldIo io = new HeldIo();
         File dir = c.createTempDir();
         final FileStream f = new FileStream(dir, io);
@@ -2610,7 +2610,7 @@ public class FileStream implements AppendOnlyStream {
      * deleted, and the next read, cut and close() throw it.
      */
     @Nano
-    public static void testFailedDeleteOfACut(TestEnvironment c) throws Exception {
+    static void testFailedDeleteOfACut(TestEnvironment c) throws Exception {
         HeldIo io = new HeldIo();
         io.failDeleteAt = 2;
         File dir = c.createTempDir();
@@ -2647,7 +2647,7 @@ public class FileStream implements AppendOnlyStream {
      * closed, as an interrupt during a read of another thread closes it, opens it again.
      */
     @Nano
-    public static void testReadsAndInterrupts(TestEnvironment c) throws Exception {
+    static void testReadsAndInterrupts(TestEnvironment c) throws Exception {
         HeldIo io = new HeldIo();
         FileStream f = new FileStream(c.createTempDir(), io);
         byte[] bytes = new byte[100 * 1000];
@@ -2682,7 +2682,7 @@ public class FileStream implements AppendOnlyStream {
      * ClosedChannelException, reopenChannel()); a held channel stops the read between the two.
      */
     @Nano
-    public static void testReadOfClosedFileFailsAlone(TestEnvironment c) throws Exception {
+    static void testReadOfClosedFileFailsAlone(TestEnvironment c) throws Exception {
         for (int i = 0; i < 2; i++) {
             final boolean underWay = i == 1;
             HeldReadIo io = new HeldReadIo();
@@ -2724,7 +2724,7 @@ public class FileStream implements AppendOnlyStream {
      * stream failed with ClosedByInterruptException; the cut failed the database.
      */
     @Nano
-    public static void testCutAndOpenByInterruptedThread(TestEnvironment c) throws Exception {
+    static void testCutAndOpenByInterruptedThread(TestEnvironment c) throws Exception {
         File dir = c.createTempDir();
         FileStream f = new FileStream(dir);
         byte[] bytes = new byte[1000 * 1000];
@@ -2751,7 +2751,7 @@ public class FileStream implements AppendOnlyStream {
      * written; a read of bytes a cut removed throws ReadBelowFirstPosException only.
      */
     @Nano("f")
-    public static void testReadersBesideWriterAndCuts(TestEnvironment c) throws Exception {
+    static void testReadersBesideWriterAndCuts(TestEnvironment c) throws Exception {
         final FileStream f = new FileStream(c.createTempDir());
         final byte[] pattern = new byte[1000 * 1000];
         new Random(8).nextBytes(pattern);
@@ -2809,7 +2809,7 @@ public class FileStream implements AppendOnlyStream {
      * another path to it, and the first goes on; after the first's close(), a new one opens.
      */
     @Nano
-    public static void testSecondStreamRefused(TestEnvironment c) throws IOException {
+    static void testSecondStreamRefused(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         FileStream f = new FileStream(dir);
         byte[] bytes = new byte[] {1, 2, 3};
@@ -2841,7 +2841,7 @@ public class FileStream implements AppendOnlyStream {
      * nothing; the close removes it.
      */
     @Nano
-    public static void testOtherCopyRefusedFirst(TestEnvironment c) throws IOException {
+    static void testOtherCopyRefusedFirst(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         String name = PROPERTY_PREFIX + lockKey(dir);
         System.getProperties().put(name, "another copy");
@@ -2871,7 +2871,7 @@ public class FileStream implements AppendOnlyStream {
      * as from 2026.1, opens and gets one.
      */
     @Nano
-    public static void testLockFile(TestEnvironment c) throws IOException {
+    static void testLockFile(TestEnvironment c) throws IOException {
         File dir = c.createTempDir();
         File lock = new File(dir, LOCK_NAME);
         byte[] text = LOCK_TEXT.getBytes(StandardCharsets.UTF_8);
@@ -2908,7 +2908,7 @@ public class FileStream implements AppendOnlyStream {
      * released this JVM's lock on macOS and Linux, and the child opened the directory.
      */
     @Nano("f")
-    public static void testLockAcrossProcesses(TestEnvironment c) throws Exception {
+    static void testLockAcrossProcesses(TestEnvironment c) throws Exception {
         if (Util.runsAndroid()) {
             return;
         }
@@ -2954,7 +2954,7 @@ public class FileStream implements AppendOnlyStream {
      * close of its channel released this JVM's lock on macOS and Linux; the child opened.
      */
     @Nano("f")
-    public static void testLockAcrossClassLoaders(TestEnvironment c) throws Exception {
+    static void testLockAcrossClassLoaders(TestEnvironment c) throws Exception {
         if (Util.runsAndroid()) {
             return;
         }

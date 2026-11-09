@@ -21,7 +21,7 @@ public class RerunException extends RuntimeException {
     }
     
     @Nano
-    public static void test1() {
+    static void test1() {
         Assert.assertEquals(1234L, new RerunException(1234L).getKeyHash());
     }
 }

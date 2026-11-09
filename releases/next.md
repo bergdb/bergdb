@@ -1025,3 +1025,6 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   are documented; `Trans.Builder` says that a delete never replaces a put
   of the same key; a read that runs at `stop()` may throw
   `StreamIoException` ("Storage is closing."), the database not failed.
+  The test methods of `Keys`, `Trans`, `StoredTrans`, `RerunException` and
+  `FileStream` are no longer public, so the Javadoc does not list them, and
+  two `<` that the Javadoc showed as "invalid input" are escaped.

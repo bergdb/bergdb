@@ -449,7 +449,7 @@ public class Trans {
     
     /** bergdb 021-05: a lone surrogate in a String key or value is refused; it was '?'. */
     @Nano
-    public static void testLoneSurrogateRefused() {
+    static void testLoneSurrogateRefused() {
         String[][] kvs = {{"k", "a\uD800"}, {"k\uDC00", "v"}};
         for (String[] kv : kvs) {
             try {
@@ -464,7 +464,7 @@ public class Trans {
     
     /** bergdb 005-21: a negative key hash is refused when the transaction is built. */
     @Nano
-    public static void testNegativeHash() {
+    static void testNegativeHash() {
         try {
             new Trans.Builder().addVirtualWriteHash(-1);
             throw new AssertionError("no exception");
@@ -480,7 +480,7 @@ public class Trans {
     }
     
     @Nano
-    public static void testTransReuse() {
+    static void testTransReuse() {
         Trans t;
         Db db;
         
