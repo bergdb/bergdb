@@ -8,10 +8,10 @@ indexes that 020-26 checked with TLC within small bounds: the protocol of
 020-10 with 020-18's F1, F3, F4 and F5, as 020-26's IndexModel.tla states it
 and more (several index names and directories, transactions of any keys), in
 Lean, and its invariants proved by induction over the steps. And its
-liveness under fairness: cleanups and builds end and no orphan stays (020-26's
-CleanupEnds, BuildEnds and NoOrphans), with the fairness of the index
-manager's lock that a build needs when there are several names, and a run
-that shows weak fairness is not enough.
+liveness under fairness: cleanups and builds end and no orphan stays
+(020-26's CleanupEnds, BuildEnds and NoOrphans), with the fairness of the
+index manager's lock that a build needs when there are several names, and a
+run that shows weak fairness is not enough.
 
 
 Files
@@ -532,23 +532,26 @@ hypothesis 4 holds in the code, as long as its threads run.
 Hypothesis 3 is what Java does not promise. The Java Language Specification
 says nothing of the order in which threads waiting for a monitor get it
 (JLS 17.1), and HotSpot's monitors are not fair: a release wakes a waiting
-thread, but does not hand it the monitor ("competitive handoff", in
-HotSpot's `objectMonitor.cpp`); a thread that comes in the meantime can take
-it first, and the woken one waits again. So a build that waits for the lock
+thread, but does not hand it the monitor ("competitive handoff", the
+comment on succession in HotSpot's `objectMonitor.cpp`: the woken thread
+"will either acquire the lock or re-park itself"); a thread that comes in
+the meantime can take it first, and the woken one waits again. So a build that waits for the lock
 has no promise of getting it, however often the lock is free.
 
 What the code would need, one of:
 
 * **A fair lock**: `new ReentrantLock(true)` for the manager's lock, in place
   of the monitor (reentrant as the monitor is, for `isLive` within
-  `underLock`). Its waiting threads get it in the order they came, so a
-  build that waits gets it after those that waited before it, one hold each:
-  a bound, which gives hypothesis 3. Its cost: a release with threads
-  waiting hands the lock to the first of them, a wake-up, so when the lock
-  is contended the writers' map reads, one per object key, would wait for
-  wake-ups that a monitor saves. To be measured before it is chosen
-  (`java/stress/performance.sh`, writers on many threads while an index
-  builds).
+  `underLock`). Under contention it favours the thread that has waited
+  longest (its Javadoc; an untimed `tryLock` excepted, which the code would
+  not use): its waiters queue in order, so a build that waits gets it after
+  those that waited before it, one hold each, a bound, which gives
+  hypothesis 3 (with the threads scheduled, which no lock promises). Its
+  cost: a release with threads waiting hands the lock to the first of them,
+  a wake-up, so when the lock is contended the writers' map reads, one per
+  object key, would wait for wake-ups that a monitor saves. To be measured
+  before it is chosen (`java/stress/performance.sh`, writers on many threads
+  while an index builds).
 * **A bound on the definition changes while a build waits**: the starving
   run takes them without end, and with finitely many weak fairness is
   enough (section 7.4, `build_ends_weak`). For example, a definition
