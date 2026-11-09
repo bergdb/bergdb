@@ -794,6 +794,31 @@ public class PubTesterJavadoc {
     }
 
     /**
+     * DatabaseBuilder: the startup distance is 50 MB by default and clamped to 5 to 1000;
+     * the cache size is a fifth of the JVM's maximum heap by default and clamped to 4 to
+     * 100,000 (Database's getters give them).
+     */
+    @Nano
+    public static void testBuilderSettings() {
+        long max = Runtime.getRuntime().maxMemory();
+        int cache = max == Long.MAX_VALUE ? 100 : Math.max(2, (int) (max / 1000000) / 5);
+        try (Database db = Factory.database().memory().start()) {
+            Assert.assertEquals(50, db.getStartupDistanceInMb());
+            Assert.assertEquals(cache, db.getCacheSizeInMb());
+        }
+        try (Database db = Factory.database().memory().startupDistanceInMb(1).cacheSizeInMb(1)
+                .start()) {
+            Assert.assertEquals(5, db.getStartupDistanceInMb());
+            Assert.assertEquals(4, db.getCacheSizeInMb());
+        }
+        try (Database db = Factory.database().memory().startupDistanceInMb(5000)
+                .cacheSizeInMb(Integer.MAX_VALUE).start()) {
+            Assert.assertEquals(1000, db.getStartupDistanceInMb());
+            Assert.assertEquals(100000, db.getCacheSizeInMb());
+        }
+    }
+
+    /**
      * Database.indexBuilder(name): a name of 1 to 255 UTF-8 bytes, without '/', whitespace
      * or a lone surrogate, else IllegalArgumentException; "primary" is a name like any
      * other; whether an index of the name exists is checked at start(), not here.
