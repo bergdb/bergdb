@@ -380,6 +380,40 @@ public class PubTesterIndexRaces {
         }
     }
 
+    /**
+     * A w() of an object in an indexed directory read the index set, and the index is
+     * deleted before the write commits (the hook after the set): the deletion writes the
+     * directory's virtual key, so the write runs again with the new set and writes no entry
+     * into the deleted generation (020-10, section 5.1, step 2, and 6.2). No test showed it
+     * before 020-13, part 2: its fault P07 (no virtual key in the deletion's transaction)
+     * passed the gate.
+     */
+    @Nano
+    public static void testWriteRunsAgainAfterDeletion() {
+        Database database = Factory.database().memory().start();
+        try {
+            DatabaseImp d = (DatabaseImp) database;
+            IndexManager m = d.getIndexManager();
+            create(database).join();
+            Connection c = database.newConnection();
+            c.put(KEY, new Item(1));
+            int[] runs = new int[1];
+            m.testHook = p -> {
+                if (p.equals(IndexManager.WRITE_AFTER_SET) && runs[0]++ == 0) {
+                    database.deleteIndex(NAME);
+                }
+            };
+            c.w().put(KEY, new Item(2)).execute();
+            m.testHook = null;
+            Assert.assertEquals("the write's runs", 2, runs[0]);
+            awaitCleanups(m);
+            Assert.assertEquals("the deleted index's entries", "[]",
+                    rawEntries(d.getDb(), NAME).toString());
+        } finally {
+            database.close();
+        }
+    }
+
     // ======== Helpers ========
 
     /**

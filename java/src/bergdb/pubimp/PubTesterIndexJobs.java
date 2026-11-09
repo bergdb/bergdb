@@ -276,6 +276,45 @@ public class PubTesterIndexJobs {
     }
 
     /**
+     * The index is deleted in a build step, after its reads and its check that the index is
+     * live, before its commit (the hook BUILD_STEP): the deletion writes the definition's
+     * key, which the step read, so the step does not commit, and no entry of the deleted
+     * generation is written after the deletion; the build ends FAILED "deleted" (020-10,
+     * section 6.1). The cleanup waits meanwhile, so that it cannot remove such an entry
+     * first. No test showed it before 020-13, part 2: its fault P10 (no hash of the
+     * definition's key in the step's read set) passed the gate.
+     */
+    @Nano
+    public static void testBuildStepDeletedBeforeItsCommit() {
+        MemoryStream stream = new MemoryStream();
+        Database db = start(stream);
+        CountDownLatch cleanup = new CountDownLatch(1);
+        try {
+            db.newConnection().w().put("/items/old", new Item(1, 200)).execute();
+            AtomicBoolean once = new AtomicBoolean(true);
+            manager(db).testHook = p -> {
+                if (p.equals(IndexManager.CLEANUP_STEP) || p.equals(IndexManager.CLEANUP_END)) {
+                    await(cleanup);
+                } else if (p.equals(IndexManager.BUILD_STEP)
+                        && once.compareAndSet(true, false)) {
+                    db.deleteIndex("by-field");
+                }
+            };
+            Job job = db.indexBuilder("by-field").dir("/items/").type("long")
+                    .field("amount").start();
+            assertDeleted(job);
+            Assert.assertEquals("the deleted generation's entries", "[]", PubTesterIndexRaces
+                    .rawEntries(((DatabaseImp) db).getDb(), "by-field").toString());
+            cleanup.countDown();
+            PubTesterIndexRaces.awaitCleanups(manager(db));
+            manager(db).testHook = null;
+        } finally {
+            cleanup.countDown();
+            db.close();
+        }
+    }
+
+    /**
      * bergdb 015-21 (review R3-F1), S2-F12: an index deleted twice (the second call refused:
      * the name is free at the first's return), and created again at once on another field
      * while the first deletion's cleanup waits at its step. The cleanup deletes only its own

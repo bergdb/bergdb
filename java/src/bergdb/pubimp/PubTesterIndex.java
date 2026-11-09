@@ -1557,6 +1557,45 @@ public class PubTesterIndex {
         }
     }
     
+    /**
+     * An index scan reads each entry's value at the lookup time and returns it only if the
+     * value has that entry (020-10, section 3.4; S2-F23): an entry that no write left, put
+     * here through the Core for another amount of the same key, is skipped, never returned.
+     * No test showed it before 020-13, part 2: its fault P13 (no comparison of the levels)
+     * passed the gate.
+     */
+    @Nano
+    public static void testScanSkipsAStaleEntry() {
+        Database database = Factory.database().memory().start();
+        try {
+            database.indexBuilder("amount").dir("/payments/").type("long").field("amount")
+                    .start().join();
+            Connection c = database.newConnection();
+            c.put("/payments/p1", new Payment("a", "b", 5));
+            DatabaseImp d = (DatabaseImp) database;
+            IndexDefinition def = d.getIndexManager().definition("amount");
+            byte[] stale = def.entry(PubKeys.u2i("/payments/p1"),
+                    DbObject.toDbObject(new Payment("a", "b", 7)).getBytes());
+            Db db = d.getDb();
+            db.execute(db.trans().put(stale, new byte[0]).build());
+            
+            Assert.assertFalse("eq(7)", c.useIndex("amount", Payment.class).eq(7L).objects()
+                    .iterator().hasNext());
+            StringBuilder b = new StringBuilder();
+            for (Payment p : c.useIndex("amount", Payment.class).objects()) {
+                b.append(p.amount).append(' ');
+            }
+            Assert.assertEquals("every entry", "5 ", b.toString());
+            b.setLength(0);
+            for (Payment p : c.useIndex("amount", Payment.class).backward().objects()) {
+                b.append(p.amount).append(' ');
+            }
+            Assert.assertEquals("every entry, backward", "5 ", b.toString());
+        } finally {
+            database.stop();
+        }
+    }
+    
     @Nano
     public static void testStartAt1() {
         // forward, include
