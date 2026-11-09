@@ -3,6 +3,8 @@ package bergdb.core;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
@@ -531,10 +533,14 @@ public class NodeCollection implements PointerFollower {
         }
 
         // 6. The canonical object, for the writer, in its live handle, which holds an object
-        //    since step 4 and so is in the table (bergdb 019-46, after review).
+        //    since step 4 and so is in the table (bergdb 019-46, after review). The assert
+        //    does not test that the handle is not DEAD: a reader's drop of its empty handle
+        //    (Cache3.dropIfEmpty) may hold it DEAD for a moment, under the map's lock, after
+        //    the object came and before it sees it and makes the handle LIVE again; and the
+        //    state read here, without that lock, would see it (019-46, the writer's assert).
 
-        assert !isWriter || (live != null && live.obj != null && !live.isDead())
-                : "the writer's handle of node " + id + " is empty or dead";
+        assert !isWriter || (live != null && live.obj != null)
+                : "the writer's handle of node " + id + " is empty";
         if (isWriter && !result.isCanonical()) {
             result = cache.makeCanonical(live, result);
         }
@@ -1082,6 +1088,99 @@ public class NodeCollection implements PointerFollower {
         Assert.assertTrue("a live handle in the table", h != null && !h.isDead());
         Assert.assertTrue("the handle holds the canonical object", h.obj == o);
         Assert.assertTrue("the node table's object", c.cache.getNode(101) == o);
+        Assert.assertTrue("the parent's pointer holds the handle", parent.getPointee(0) == h);
+    }
+    
+    /**
+     * bergdb 019-46, the writer's assert: a reader's drop of its empty handle may hold the
+     * handle DEAD for a moment, under the map's lock, while an object that came into it in the
+     * drop's window is the writer's to use; the drop then sees the object and makes the handle
+     * LIVE again. A forced schedule: the writer takes the reader's new handle from the table
+     * (step 3) and waits at step 4 (the handle's monitor); the drop tests the handle empty and
+     * waits until the writer has installed its version (Cache3.dropIfEmptyHook); the writer
+     * waits at step 5 (the parent's monitor); the drop makes the handle DEAD and waits there
+     * (Cache3.dropIfEmptyDeadHook) while the writer goes on to step 6. The writer's assert
+     * before step 6 tested that its handle is not DEAD, and threw (with -ea): it reads the
+     * state without the map's lock, as Handle's Javadoc warns.
+     */
+    @Nano
+    private static void testWriterDuringADropsDeadWindow() throws InterruptedException {
+        TestStream stream = new TestStream();
+        stream.nodes.put(100L, testKeyNode(101, 100, 10));
+        final NodeCollection c = new NodeCollection(testDbInfo(), stream);
+        final TopNode parent = testParent(301, 100);
+        final GetData op = testGetData(new int[1]);
+        final Handle h = c.cache.liveOrNewHandle(101);     // a reader's new handle, left empty
+        final CountDownLatch tested = new CountDownLatch(1);
+        final CountDownLatch dead = new CountDownLatch(1);
+        final CountDownLatch parentHeld = new CountDownLatch(1);
+        final CountDownLatch releaseParent = new CountDownLatch(1);
+        final TimeUnit s = TimeUnit.SECONDS;
+        final Node[] followed = new Node[1];
+        final Throwable[] writerFault = new Throwable[1];
+        final Thread writer = new Thread(() -> {
+            try {
+                followed[0] = c.writer().followPointer(parent, 0, op);
+            } catch (Throwable e) {
+                writerFault[0] = e;
+            }
+        }, "NodeCollection-test-writer");
+        final Thread holder = new Thread(() -> {
+            synchronized (parent) {                         // the writer waits at step 5
+                parentHeld.countDown();
+                try {
+                    releaseParent.await(10, s);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }, "NodeCollection-test-holder");
+        final Thread drop = new Thread(() -> c.cache.dropIfEmpty(h), "NodeCollection-test-drop");
+        Cache3.dropIfEmptyHook = () -> {
+            tested.countDown();
+            long end = System.nanoTime() + 10L * 1000 * 1000 * 1000;
+            while (!(h.obj != null && h.state() == Handle.LIVE) && System.nanoTime() < end) {
+                Thread.onSpinWait();                        // until the writer installed
+            }
+        };
+        Cache3.dropIfEmptyDeadHook = () -> {
+            dead.countDown();
+            try {
+                writer.join(10000);                         // the writer's steps 5 and 6
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        };
+        try {
+            synchronized (h) {                              // the writer waits at step 4
+                writer.start();
+                long end = System.nanoTime() + 10L * 1000 * 1000 * 1000;
+                while (writer.getState() != Thread.State.BLOCKED && System.nanoTime() < end) {
+                    Thread.onSpinWait();
+                }
+                holder.start();
+                Assert.assertTrue("the parent's monitor held", parentHeld.await(10, s));
+                drop.start();
+                Assert.assertTrue("the drop tested the handle", tested.await(10, s));
+            }
+            Assert.assertTrue("the drop's DEAD window", dead.await(10, s));
+            releaseParent.countDown();
+            writer.join(10000);
+            drop.join(10000);
+            holder.join(10000);
+        } finally {
+            Cache3.dropIfEmptyHook = null;
+            Cache3.dropIfEmptyDeadHook = null;
+            releaseParent.countDown();
+        }
+        Assert.assertTrue("the threads ended", !writer.isAlive() && !drop.isAlive()
+                && !holder.isAlive());
+        Assert.assertTrue("the writer threw " + writerFault[0], writerFault[0] == null);
+        Node o = followed[0];
+        Assert.assertTrue("the writer's object is canonical", o != null && o.isCanonical());
+        Assert.assertTrue("its handle is live, the table's",
+                !h.isDead() && c.cache.liveHandle(101) == h);
+        Assert.assertTrue("the handle holds it", h.obj == o);
         Assert.assertTrue("the parent's pointer holds the handle", parent.getPointee(0) == h);
     }
     

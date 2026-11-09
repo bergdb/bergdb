@@ -201,6 +201,19 @@ two low points, taken in the commit "019-46, after review":
    and LIVE again if an object came meanwhile, before it lets the lock go.
    Both now say that the rule holds for anything that reads the state
    under that lock.
+3. **The writer's assert** (a follow-up review of the commit above,
+   2026-11-09): the assert before step 6 also tested that the writer's
+   handle is not DEAD, a read of the state without the map's lock. A
+   reader's drop that tested its handle empty before the writer's install,
+   and made it DEAD after it, holds the handle DEAD for a moment before it
+   sees the object and makes it LIVE again; a writer at its assert then
+   threw (with -ea, in a transaction after its go point, which fails the
+   database: in tests only, as production runs without -ea). The assert now
+   says what step 4 guarantees, a handle with an object, and its comment
+   why not more. Test: `NodeCollection.testWriterDuringADropsDeadWindow`, a
+   forced schedule with a new test hook in that window
+   (`Cache3.dropIfEmptyDeadHook`, null in use), failing with the assert
+   before ("the writer's handle of node 101 is empty or dead").
 
 The Lean model is left as it is: in it, a drop of an empty handle is one
 atomic step under the table's lock, which is what the fix makes it in
@@ -238,3 +251,7 @@ Lean model unchanged, and TraceExport's read without the lock noted.
 25,100 audits failed; restarts, crashes and reclaim with the audit, 0
 failed; ReclaimReaders, 0 failures; conformance, C-P and C-H 0 of 10,353
 transactions; LargerThanMemory). `BEFORE COMMIT OK`.
+
+2026-11-09. The writer's assert, after a follow-up review, by the night's
+agent of H3 (006-15): no test of DEAD in it; the forced-schedule test and
+the hook `Cache3.dropIfEmptyDeadHook`. `BEFORE COMMIT OK`.

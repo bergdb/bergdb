@@ -500,6 +500,10 @@ public class Cache3 {
             if (!h.casState(Handle.LIVE, Handle.DEAD)) {
                 return;         // a loader holds it (LOADING): not empty for long
             }
+            final Runnable deadHook = dropIfEmptyDeadHook;
+            if (deadHook != null) {
+                deadHook.run();
+            }
             if (h.obj != null) {
                 boolean live = h.casState(Handle.DEAD, Handle.LIVE);
                 assert live : "a dead handle changed state";
@@ -514,6 +518,13 @@ public class Cache3 {
      * if not null: a forced schedule of bergdb 019-46. For tests only.
      */
     static volatile Runnable dropIfEmptyHook = null;
+
+    /**
+     * Run by dropIfEmpty after its compareAndSet made the handle DEAD and before it looks for
+     * an object (and makes the handle LIVE again if one came), if not null: a forced schedule
+     * in that window (bergdb 019-46, the writer's assert). For tests only.
+     */
+    static volatile Runnable dropIfEmptyDeadHook = null;
 
     /**
      * True if 'node' should replace 'old' in a handle: never a canonical object, otherwise by
