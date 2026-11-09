@@ -564,6 +564,7 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
     } else {
         stream_open_memory(&db->stream, m);
     }
+    stream_as_storage(&db->stream);     /* StorageManager's BufferedStream (022-02, D6) */
     db->stream_open = true;
     nc_init(&db->node_coll, &db->cx, m, &db->stream, &db->node_table);
     ts_init(&db->trans_seq, m);

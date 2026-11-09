@@ -234,7 +234,7 @@ static const uint8_t *read_rec(struct scan *sc, struct ns_buf *b, int64_t pos, i
         return NULL;
     }
     if (rs_read(&sc->s, pos, b->p, n, &sc->err) != ERR_OK) {
-        throw_(sc, "StreamIoException: %s: %s", sc->err.java, sc->err.text);
+        throw_(sc, "%s: %s", sc->err.java, sc->err.text);
         return NULL;
     }
     return b->p;

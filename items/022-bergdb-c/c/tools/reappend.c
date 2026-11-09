@@ -375,11 +375,12 @@ int main(int argc, char **argv) {
     if (rc != ERR_OK) {
         /* A size beyond the stream's record bytes (NodeStream.checkReadSize,
          * 005-74, since release 2026.2), or RecoverableStream's
-         * StreamIoException of an EOFException (012-14, 6.4). */
+         * StreamIoException of an EOFException (012-14, 6.4; its cause since
+         * 022-02, D6). */
         if ((strcmp(err.java, "StreamFormatException") == 0
                     && strstr(err.text, "beyond the stream's record bytes") != NULL)
                 || (strcmp(err.java, "StreamIoException") == 0
-                    && strncmp(err.text, "EOFException: ", 14) == 0)) {
+                    && strcmp(err.cause, "EOFException") == 0)) {
             printf("reappend %s skipped: a torn last record (a crash cut; recovery is "
                     "012-10's): %s\n", srcdir, err.text);
             status = 3;

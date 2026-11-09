@@ -585,8 +585,26 @@ void stream_close(struct stream *s) {
     s->first = 0;
 }
 
+void stream_as_storage(struct stream *s) {
+    s->storage = true;
+}
+
 enum err_code stream_read(struct stream *s, int64_t pos, uint8_t *buf, int32_t n,
         struct err *e) {
+    if (s->storage) {
+        /* BufferedStream.read under Db's StorageManager: pos2 = position +
+         * length - 1, refused if pos2 >= totalLength. Where Java's sum wraps
+         * (a position within n of Long.MAX_VALUE), its read goes on into the
+         * ring buffer's bytes; C refuses it as past the end. */
+        const int64_t last = (int64_t) ((uint64_t) pos + (uint64_t) n - 1);
+        if (last >= s->length || (n > 0 && pos > INT64_MAX - (n - 1))) {
+            return err_set(e, ERR_IO, "EOFException", "Cannot read %d bytes at position %lld, "
+                    "stream size is %lld.", (int) n, (long long) pos, (long long) s->length);
+        }
+        if (n == 0) {
+            return ERR_OK;
+        }
+    }
     if (s->kind == STREAM_MEMORY) {
         /* MemoryStream.read, its checks in order. */
         if (pos < 0) {

@@ -11,8 +11,9 @@
  *
  * A record's bytes are its own, without the meta blocks between them; a
  * record's size and every offset in it count record bytes. The functions
- * that read return the stream's error as it is (Java wraps an IOException
- * in a StreamIoException: the same code here).
+ * that read wrap the stream's IOException as Java does: a
+ * StreamIoException with the inner message as its text, the inner name as
+ * its cause, and the inner code (err.h; bergdb 022-02, D6).
  */
 #ifndef BERGDB_RSTREAM_H
 #define BERGDB_RSTREAM_H

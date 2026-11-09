@@ -94,6 +94,7 @@ struct stream {
     int32_t unforced;       /* the first file written since the last force; nfiles if none */
     int64_t durable;        /* the length at the last force */
     bool failed;            /* an I/O error: FileStream's ioException, every write refused */
+    bool storage;           /* read as a database's storage (stream_as_storage) */
     /* The reads of a directory's files (012-10: what a start reads), as a stream
      * below Java's BufferedStream counts them: the calls that reach the files
      * (a read served by the write buffer alone is not one) and their bytes. */
@@ -194,9 +195,22 @@ int64_t stream_length(const struct stream *s);
  * ERR_ARG, "IllegalArgumentException"), one below the first position
  * (ERR_NOT_AVAILABLE, "ReadBelowFirstPosException"), and bytes past the
  * end (ERR_IO, "EOFException"; of a directory with no file, "the stream
- * is empty", but 0 bytes at 0, 015-06). n may be 0. */
+ * is empty", but 0 bytes at 0, 015-06). n may be 0. A database's stream
+ * (stream_as_storage) is read as Java's Db reads it, through
+ * BufferedStream: bytes past the end are refused first, with its text. */
 enum err_code stream_read(struct stream *s, int64_t pos, uint8_t *buf, int32_t n,
         struct err *e);
+
+/* Makes s a database's storage: Java's Db reads its stream through
+ * StorageManager and a BufferedStream (Db.createStorageManager), whose
+ * read refuses first, whatever the position, a read whose last byte,
+ * pos + n - 1, is at or past the stream's length: ERR_IO, "EOFException",
+ * "Cannot read N bytes at position P, stream size is S." (and a read of 0
+ * bytes before that reads nothing); the stream's own refusals then come as
+ * stream_read gives them. So a database's reads carry Java's texts (bergdb
+ * 022-02, D6), while the stream alone keeps FileStream's and MemoryStream's
+ * for their tests. db_open, sdb_open and replay_open call it. */
+void stream_as_storage(struct stream *s);
 
 /* Appends n bytes to a memory stream (MemoryStream.append). ERR_NOMEM. */
 enum err_code stream_append_memory(struct stream *s, const uint8_t *buf, int64_t n,

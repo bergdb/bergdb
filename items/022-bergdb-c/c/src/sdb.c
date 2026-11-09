@@ -180,6 +180,7 @@ enum err_code sdb_open(struct sdb *d, struct stream *s, struct mem *m, int32_t m
     d->mem = m;
     d->s = s;
     d->max_node_size = max_node_size;
+    stream_as_storage(s);               /* StorageManager's BufferedStream (022-02, D6) */
     obj_ctx_init(&d->cx, m);
     rs_init(&d->rs, s);
     nt_init(&d->nt, &d->cx, m);

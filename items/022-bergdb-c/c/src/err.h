@@ -35,6 +35,11 @@
  *   IllegalDbStateException, DbStoppingException           ERR_STATE
  *   DbFailedException (005-01, 005-30)                     ERR_FAILED
  *   DatabaseNotCreatedException (005-33)                   ERR_NOT_CREATED
+ *
+ * A wrapping exception is Java's: RecoverableStream's StreamIoException of
+ * a read's IOException has the inner exception's message as its text, as
+ * Java's (super(e.getMessage())), the inner name as its cause and the
+ * inner code (bergdb 022-02, D6).
  */
 #ifndef BERGDB_ERR_H
 #define BERGDB_ERR_H
@@ -67,11 +72,15 @@ enum err_code {
 struct err {
     enum err_code code;
     const char *java;       /* Java's exception, its simple class name; "" for ERR_OK */
+    const char *cause;      /* the simple name of the exception that this one wraps (Java's
+                               getCause()), "" if none: RecoverableStream's
+                               StreamIoException of an EOFException, whose text is the inner
+                               message, as Java's (bergdb 022-02, D6) */
     char text[ERR_TEXT];    /* what failed, as Java's message says it where it can */
 };
 
 /* Sets the error and returns its code. The text is formatted as by
- * printf. */
+ * printf. No cause. */
 enum err_code err_set(struct err *e, enum err_code code, const char *java,
         const char *format, ...);
 

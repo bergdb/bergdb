@@ -587,7 +587,8 @@ steps 1 to 3 in parallel, about 2 hours from step 0 to the last landing.
 
 # 7. Decisions for Frans
 
-Each has a default that goes ahead if Frans does not answer.
+Each has a default that goes ahead if Frans does not answer; D6 came
+later, decided by Frans.
 
 * **D1. Start now, or at the tag.** (a) Now: the steps of section 6 on a
   pinned candidate, the coding today in clones; at the tag, the diff from
@@ -632,6 +633,26 @@ Each has a default that goes ahead if Frans does not answer.
   candidate's long runs stand. (b) Step 4's runs again at 2026.4, about
   1.5 hours of a quiet F53. **Default (a)**, and (b) when the diff holds
   Core code.
+* **D6. `StreamIoException`'s text** (012-14, section 6.4, a choice left
+  open; 022-03, section 10, point 5). **Decided**: Frans, 2026-11-09,
+  12:25: "Yes, (a)." A failed read of the stream is named
+  `StreamIoException` in C, as Java's `RecoverableStream` names it
+  (012-14, section 7.4), but its text began with the inner exception's
+  name and went on in C's words ("EOFException: Cannot read at spos P,
+  past the end of a file at S."), where Java's message is the inner
+  exception's message ("Cannot read 32 bytes at position P, stream size
+  is S.", `BufferedStream`'s); the corrupt-stream set counted these as
+  known (10 of 2026.3's 6,247 copies, 022-01, step 4). (a) C gives Java's
+  message, byte for byte: the text is the inner message, the inner
+  exception's name kept apart as the error's cause, and a database's
+  stream read as Java's `Db` reads it, through `BufferedStream`, so that
+  the inner message is Java's too; `tools/reappend.c`, which told a torn
+  last record by the text's prefix, reads the cause; `t_rstream.c`'s
+  checks change with it; `corruptset.sh` compares these messages as any
+  other and fails on a difference. (b) Keep C's text, a departure
+  counted as known, as 022-03, section 7, point 5 records it: the name
+  compared, the message not. Made in the landing "022-02, D6" (this
+  file's log).
 * **D7. A new stream file and the directory forced when the file is made,
   or at the next sync, close or cut** (put to Frans by the session at
   12:43; 022-01's log, step 3, and the departure that was `c/readme.md`'s
@@ -1024,3 +1045,71 @@ quick` 0 differences (23 workloads, 69 crash cuts, 85 corrupt variants, 2
 in turns, 46 budget runs); `writecheck` 0; `corruptset` 60 copies;
 `allocfail` 628 runs; `examples` OK. No difference remains; D7 does not
 show in the cross runs, which compare bytes and files, not forces.
+
+2026-11-09, D6 (worker t4). Frans's decision of 12:25 ("Yes, (a).";
+section 7, D6): C's `StreamIoException` carries Java's message, byte for
+byte, and the corrupt-stream set fails on any difference of it. (a) The
+wrap: `rs_stream_read` (`rstream.c`) keeps the read's text and code and
+names the inner exception as the error's cause, a new field of `struct
+err` (`err.h`, "" for every other error), as Java's `StreamIoException(e)`
+takes `e.getMessage()` and `initCause(e)`; the text began with the inner
+name (012-14, section 7.4). `tools/reappend.c` tells a torn last record
+by the cause, `EOFException`, where it read the text's prefix; and
+`bergdb-scan`'s reason names a failed record read once (it said
+`StreamIoException` twice). (b) The inner message: Java's `Db` reads its
+stream through `StorageManager` and a `BufferedStream`, whose read
+refuses first, whatever the position, a read whose last byte is at or
+past the end, "Cannot read N bytes at position P, stream size is S.";
+there C gave the text of `FileStream`'s `DbFile` ("Cannot read at spos P,
+past the end of a file at S.", where Java's names the file's path). The
+new `stream_as_storage` (`stream.h`), called by `db_open`, `sdb_open` and
+`replay_open`, makes `stream_read` refuse such a read first, with that
+text; a read of 0 bytes before it reads nothing, as Java's; a position
+within n of `Long.MAX_VALUE`, where Java's sum wraps and its read goes
+on into the ring buffer's bytes, is refused as past the end. The stream
+alone keeps `FileStream`'s and `MemoryStream`'s texts, which their ported
+tests check. Tests, each failing with its fix taken out: `t_rstream.c`'s
+`rs_read_across` (the texts and causes of `MemoryStream`'s
+`EOFException` and `ReadBelowFirstPosException`, and `BufferedStream`'s
+through a database's stream; 6 checks fail with the old wrap) and
+`t_stream.c`'s new `stream_storage` (`BufferedStream.testReadOneBytePastEnd`'s
+reads on a memory stream, and a directory with the corrupt set's read of
+32 bytes at 2147483808; 10 checks fail without the check). (c)
+`corruptset.sh`: the known class gone, a `StreamIoException`'s message
+compared as any other; `iotexts.txt` no longer written. `corrupt.sh` and
+`cross.sh` count no such class and are unchanged: `corrupt.sh` compares
+the exception's name, the status and a failed read's position, and
+`cross.sh` the names, and the scans with their error lines' texts set
+aside. `c/readme.md`: section 10's corrupt set, and section 11's point
+on it (from the 2026.3 port's step 6, merged as `0e4e27f`; point 4 since
+D7): no longer a departure; 022-03, section 10, point 5: decided.
+
+The whole corrupt set against the candidate, seed 1, on this tree (on
+step 2's bases, `6f91efe`; 248 s, F53 loaded): `CORRUPTSET OK`, 6,250
+copies, 2,625 refused by both with the same exception and message, the
+10 `StreamIoException` refusals among them (4 flips, 3 headers, 3 nodes:
+a top position or a node's pointer far past the end, read as 32 bytes),
+3,560 started, 65 with a later read failing alike, 22 of 014-01's case,
+the one class still counted as known. Before step 2's bases, on step 0
+(`fd7f9e0`) with this change (327 s): `CORRUPTSET OK`, 6,247 copies; and
+on `022` at `ecc5319` merged with it, against 2026.3 (166 s): the same.
+The merge of the 2026.3 port's step 6 (`0e4e27f`) changes no part that
+the set runs. Negative control: the new script with C before D6 (`022`
+at `ecc5319`, against 2026.3): `CORRUPTSET FAILED`, 10 differences,
+those 10 copies, each a
+`StreamIoException`'s text ("EOFException: Cannot read at spos ..."
+against Java's "Cannot read 32 bytes at position ..."). `corrupt.sh`
+with this change (98 s): `CORRUPT OK`, 144 variants; its first-missing
+copy is refused by both with `StreamIoException`, C's text now
+`FileStream`'s, "Cannot read at spos 143928, below the first position,
+200000.".
+
+The gate against the candidate (`JAVA_REF=git:94a1520`), on D7's
+landing (`82ff694`), with the 2026.3 port's step 6 merged: `C BEFORE
+COMMIT OK (420 s)`, F53 under a load of about 11 to 22; `unit` 395 tests
+(394 in the release build), `func` 28; `cross quick` 0 differences (23
+workloads, 69 crash cuts, 85 corrupt variants, 2 in turns, 46 budget
+runs); `writecheck` 0; `corruptset` quick 60 copies; `allocfail` 628
+runs; `examples` OK. The same on the landings that came meanwhile (step
+1, step 2's bases, the merge of step 6), 365 to 506 s. No difference
+remains.

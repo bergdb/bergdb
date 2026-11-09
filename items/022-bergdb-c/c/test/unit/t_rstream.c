@@ -234,11 +234,32 @@ TEST(rs_read_across) {
     CHECK(memcmp(back, tbuf, 10) == 0);
     CHECK_EQ(rs_read(&s, D + 5, back, 10, &e), ERR_OK);
     CHECK(memcmp(back, tbuf + (D - M), 10) == 0);
-    /* RecoverableStream wraps the stream's IOException: StreamIoException, the
-     * inner name first in the text (012-14, 6.4). */
+    /* RecoverableStream wraps the stream's IOException: StreamIoException,
+     * Java's message, the inner one, as its text, the inner name its cause
+     * (bergdb 022-02, D6; before, the text began with the inner name, 012-14,
+     * 6.4). The last part of the read, after two meta blocks, passes the end:
+     * MemoryStream's EOFException. */
+    char want[ERR_TEXT];
     CHECK_EQ(rs_read(&s, M, back, size + 1, &e), ERR_IO);
     CHECK(strcmp(e.java, "StreamIoException") == 0);
-    CHECK(strncmp(e.text, "EOFException: ", 14) == 0);
+    CHECK(strcmp(e.cause, "EOFException") == 0);
+    snprintf(want, sizeof want, "Not enough bytes left in the stream, position is %d, length "
+            "to read is %d and stream size is %lld.", 2 * D + M, size + 1 - 2 * (D - M),
+            (long long) s.length);
+    CHECK(strcmp(e.text, want) == 0);
+    /* A database's stream (stream_as_storage) is read through Java's
+     * BufferedStream, whose EOFException comes first: Java's text of the
+     * corrupt-stream set's reads past the end (022-01, step 4). */
+    stream_as_storage(&s);
+    CHECK_EQ(rs_read(&s, M, back, size + 1, &e), ERR_IO);
+    CHECK(strcmp(e.java, "StreamIoException") == 0);
+    CHECK(strcmp(e.cause, "EOFException") == 0);
+    snprintf(want, sizeof want, "Cannot read %d bytes at position %d, stream size is %lld.",
+            size + 1 - 2 * (D - M), 2 * D + M, (long long) s.length);
+    CHECK(strcmp(e.text, want) == 0);
+    CHECK_EQ(rs_read(&s, M, back, size, &e), ERR_OK);
+    CHECK(memcmp(back, tbuf, (size_t) size) == 0);
+    s.storage = false;
     /* Below the first position: the code stays NOT_AVAILABLE (isReadBelowCut). */
     /* NodeStream's read of a record whose size passes the end: refused before
      * the buffer, NodeStream.checkReadSize's StreamFormatException (bergdb
@@ -263,7 +284,14 @@ TEST(rs_read_across) {
     REQUIRE(stream_pretruncate(&s, D, &e) == ERR_OK);
     CHECK_EQ(rs_read(&s, M, back, 10, &e), ERR_NOT_AVAILABLE);
     CHECK(strcmp(e.java, "StreamIoException") == 0);
-    CHECK(strncmp(e.text, "ReadBelowFirstPosException: ", 28) == 0);
+    CHECK(strcmp(e.cause, "ReadBelowFirstPosException") == 0);
+    snprintf(want, sizeof want, "Cannot read from position %d, first valid position is %d.",
+            M, D);
+    CHECK(strcmp(e.text, want) == 0);
+    /* An error of another kind is not wrapped and has no cause. */
+    int64_t spos;
+    CHECK_EQ(rs_get_start_spos(-1, 0, &spos, &e), ERR_ARG);
+    CHECK(strcmp(e.cause, "") == 0);
     stream_close(&s);
     CHECK_MEM_ZERO(&m);
 }

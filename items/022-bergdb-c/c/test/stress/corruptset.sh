@@ -29,11 +29,11 @@
 # name and message, Java's (Dump's line on standard error) and C's (bergdb-dump's), byte
 # for byte, C's cut at its 239 bytes; a failed read's likewise, Java's from its stack
 # trace, where Java's DbFailedException holds the read's exception as its cause and C's
-# text is "A read failed: " and the cause's message (src/sdb.c, fail_on_storage). One
-# departure is known and counted, not failed: C's StreamIoException (and a read failure
-# caused by one) names the stream's inner exception and has its own text, where Java's
-# carries the inner message (012-14, section 6.4, C's choice of how to name wrapped
-# exceptions, open). Java writing into a database that it refuses is reported, not counted.
+# text is "A read failed: " and the cause's message (src/sdb.c, fail_on_storage). A
+# StreamIoException's message is compared as any other: C's is Java's, the inner
+# exception's message (022-02, D6, Frans, 2026-11-09; until then a known departure,
+# counted, not failed: 012-14, section 6.4's open choice). Java writing into a database
+# that it refuses is reported, not counted.
 #
 # Usage: test/stress/corruptset.sh [quick]
 #   quick    the gate's set (before-commit.sh), about 60 copies, a few seconds: the refusal
@@ -54,7 +54,7 @@
 # Needs C's test build and build/java/classes (test/cross/java-build.sh). Prints
 # CORRUPTSET OK or CORRUPTSET FAILED; the copies are removed when the set passes, and OUT
 # keeps list.txt (each copy, with harness 6.1's own outcome of it), results.txt (each
-# copy's outcome here), differences.txt, and iotexts.txt (the known I/O texts). 6.1's
+# copy's outcome here) and differences.txt. 6.1's
 # copies whose start makes recovery's zero fill pass 1 MB (014-01) are left out, as the
 # tester counts them (CorruptSet.java). The script is one compound command, read whole
 # before it runs.
@@ -123,7 +123,7 @@ echo "dumps: $(( $(date +%s) - T0 )) s; Java's: $(tail -1 "$OUT/dump-a.log")"
 python3 -I - "$OUT" "$CONTROL" <<'EOF'
 import os, re, sys
 out, control = sys.argv[1], sys.argv[2]
-fails, notes, results, iotexts = [], [], [], []
+fails, notes, results = [], [], []
 counts, by_base = {}, {}
 TEXT = 239                      # C's text, cut at ERR_TEXT - 1 bytes (src/err.h)
 
@@ -171,25 +171,18 @@ def c_error(err):
     return None
 
 def same_message(j, c):
-    """True if equal; 'io' if they differ in the known departure of 012-14, 6.4; False."""
+    """True if the names are equal and the messages too, C's cut at its TEXT bytes;
+    a StreamIoException's too (022-02, D6)."""
     if j is None or c is None:
         return False
     if j[0] != c[0]:
         return False
     jm = j[1].encode('utf-8')
     cm = c[1].encode('utf-8')
-    if jm == cm or (len(cm) == TEXT and jm[:TEXT] == cm):
-        return True
-    if j[0] == 'StreamIoException' or j[2] == 'StreamIoException':
-        return 'io'
-    return False
+    return jm == cm or (len(cm) == TEXT and jm[:TEXT] == cm)
 
 def messages(j, c, what):
-    m = same_message(j, c)
-    if m == 'io':
-        count('known: a StreamIoException\'s text (012-14, 6.4)')
-        iotexts.append('%s: Java %s, C %s' % (v, j[:2], c))
-    elif not m:
+    if not same_message(j, c):
         fail('the %s: Java %s, C %s' % (what, j[:2] if j else j, c))
 
 def count(k):
@@ -264,8 +257,6 @@ with open(os.path.join(out, 'results.txt'), 'w') as f:
     f.write('\n'.join(results) + '\n')
 with open(os.path.join(out, 'differences.txt'), 'w') as f:
     f.write(''.join('DIFFERENCE %s\n' % x for x in fails))
-with open(os.path.join(out, 'iotexts.txt'), 'w') as f:
-    f.write(''.join('%s\n' % x for x in iotexts))
 for k in sorted(counts):
     print('  %5d  %s' % (counts[k], k))
 for x in notes[:10]:

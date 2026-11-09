@@ -6,6 +6,7 @@ enum err_code err_setv(struct err *e, enum err_code code, const char *java,
         const char *format, va_list args) {
     e->code = code;
     e->java = java;
+    e->cause = "";
     vsnprintf(e->text, sizeof e->text, format, args);
     return code;
 }
@@ -22,6 +23,7 @@ enum err_code err_set(struct err *e, enum err_code code, const char *java,
 void err_clear(struct err *e) {
     e->code = ERR_OK;
     e->java = "";
+    e->cause = "";
     e->text[0] = '\0';
 }
 

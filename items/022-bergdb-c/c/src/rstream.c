@@ -16,16 +16,16 @@
  * ReadBelowFirstPosException: ERR_IO and ERR_NOT_AVAILABLE) is named
  * StreamIoException, as Java names it (012-14, 6.4); the code stays, so that
  * a read below the first position is still ERR_NOT_AVAILABLE (Db's
- * isReadBelowCut looks at the cause), and the text begins with the inner
- * exception's name, as Java's message, the cause's toString(), does. */
+ * isReadBelowCut looks at the cause); the text is the inner exception's, as
+ * Java's message is (super(e.getMessage())), and the inner name is the
+ * cause (bergdb 022-02, D6: until then the text began with the inner name,
+ * 012-14, 7.4). */
 static enum err_code rs_stream_read(struct stream *s, int64_t pos, uint8_t *buf, int32_t n,
         struct err *e) {
     enum err_code rc = stream_read(s, pos, buf, n, e);
     if (rc == ERR_IO || rc == ERR_NOT_AVAILABLE) {
-        char inner[ERR_TEXT];
-        memcpy(inner, e->text, sizeof inner);
-        inner[ERR_TEXT - 1] = '\0';
-        err_set(e, rc, "StreamIoException", "%s: %s", e->java, inner);
+        e->cause = e->java;
+        e->java = "StreamIoException";
     }
     return rc;
 }

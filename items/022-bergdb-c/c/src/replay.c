@@ -249,6 +249,7 @@ enum err_code replay_open(struct replay *r, struct stream *s, struct mem *m,
     r->s = s;
     r->max_node_size = max_node_size;
     st_init(&r->gt_rec);
+    stream_as_storage(s);               /* StorageManager's BufferedStream (022-02, D6) */
 
     /* handleEmptyStream: Java creates the database (012-09). */
     if (stream_length(s) == 0) {

@@ -675,7 +675,12 @@ Raw output goes to `/Users/f/fl/bench/022/out/` by default (`OUT=`).
   each, C's with `-check` (the start's check by node id, 005-57, which
   Java's runs under `-ea`): the same status, text and messages (C's text
   cut at 239 bytes), C never crashes and writes nothing into a database
-  it refuses. `quick`
+  it refuses. A `StreamIoException`'s message is compared as any other:
+  C's text is Java's, the inner exception's message, its name kept as
+  the error's cause (`struct err`), and a database's stream is read as
+  Java's `Db` reads it, through `BufferedStream` (`stream_as_storage`);
+  022-02, D6 (Frans, 2026-11-09, 12:25), decided 012-14, section 6.4's
+  open choice so, where the set had counted C's own text as known. `quick`
   (about 60 copies) is in the gate; the whole set (`SEEDS=`, 1 by
   default, testSample's copies) by hand. `CONTROL=REV` is the negative
   control: C at REV (`86dade8`, the port of 2026.2) must differ in every
@@ -768,10 +773,16 @@ limits harness. And those of 2026.3:
    C, never a byte that a sync or a close acknowledged, and a hole within
    a file, outside 014-01's contract, has more room in C, as in Java with
    per-append forcing off.
-4. **`StreamIoException`'s text** (012-14, section 6.4, a choice left
-   open). A failed read of the stream is named `StreamIoException`, as
-   Java names it, and its text begins with the inner exception's name, as
-   Java's, and goes on in C's words, where Java's goes on with the inner
-   exception's message. `corruptset.sh`, which compares the messages byte
-   for byte, counts these as known (10 of the 6,247 copies of 022-01,
-   step 4).
+4. **`StreamIoException`'s text: no longer a departure** (022-02, D6;
+   Frans, 2026-11-09, 12:25: "Yes, (a)."). 012-14, section 6.4 left open
+   how C names a wrapped exception; decided as its option A, to wrap as
+   Java does. A failed read of the stream is named `StreamIoException`,
+   as Java's `RecoverableStream` names it, its text is the inner
+   exception's message, as Java's, and the inner name is kept as the
+   error's cause (`struct err`'s `cause`, which `tools/reappend.c` reads);
+   a database's stream is read as Java's `Db` reads it, through
+   `BufferedStream` (`stream_as_storage`, `src/stream.h`), so a read past
+   the end has that class's text. Until then the text began with the
+   inner name and went on in C's words, and `corruptset.sh` counted the
+   10 copies of 022-01, step 4 as known; now it compares them as any
+   other message and fails on a difference.

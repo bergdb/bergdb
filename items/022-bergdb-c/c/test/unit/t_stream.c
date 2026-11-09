@@ -149,6 +149,80 @@ TEST(stream_dir) {
     CHECK_MEM_ZERO(&m);
 }
 
+/* A database's stream (stream_as_storage; bergdb 022-02, D6) is read as
+ * Java's Db reads it, through StorageManager and a BufferedStream, whose
+ * read refuses first, whatever the position, a read whose last byte is at
+ * or past the end, with its EOFException and text (the reads of
+ * BufferedStream.testReadOneBytePastEnd); the stream's own refusals come
+ * after it, as before. A read far past the last file, as the corrupt-stream
+ * set's damaged pointers make, gave C's text of DbFile.read (022-01, step
+ * 4; Java names the file's path there). */
+TEST(stream_storage) {
+    struct mem m;
+    struct err e;
+    struct stream s;
+    uint8_t b[32];
+    const uint8_t ten[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    const char *tmp = getenv("TMPDIR");
+    mem_init(&m);
+    stream_open_memory(&s, &m);
+    REQUIRE(stream_append_memory(&s, ten, 10, &e) == ERR_OK);
+    CHECK_EQ(stream_read(&s, 9, b, 2, &e), ERR_IO);            /* MemoryStream's own */
+    CHECK(strcmp(e.text, "Not enough bytes left in the stream, position is 9, length to read "
+            "is 2 and stream size is 10.") == 0);
+    stream_as_storage(&s);
+    CHECK_EQ(stream_read(&s, 8, b, 2, &e), ERR_OK);
+    CHECK_EQ(b[1], 10);
+    CHECK_EQ(stream_read(&s, 9, b, 2, &e), ERR_IO);
+    CHECK(strcmp(e.java, "EOFException") == 0);
+    CHECK(strcmp(e.text, "Cannot read 2 bytes at position 9, stream size is 10.") == 0);
+    CHECK_EQ(stream_read(&s, 10, b, 1, &e), ERR_IO);
+    CHECK(strcmp(e.text, "Cannot read 1 bytes at position 10, stream size is 10.") == 0);
+    CHECK_EQ(stream_read(&s, 10, b, 0, &e), ERR_OK);           /* its last byte 9 */
+    CHECK_EQ(stream_read(&s, 11, b, 0, &e), ERR_IO);
+    CHECK(strcmp(e.text, "Cannot read 0 bytes at position 11, stream size is 10.") == 0);
+    CHECK_EQ(stream_read(&s, -1, b, 0, &e), ERR_OK);           /* nothing read, as Java's */
+    CHECK_EQ(stream_read(&s, -1, b, 1, &e), ERR_ARG);          /* MemoryStream's, below it */
+    CHECK(strcmp(e.java, "IllegalArgumentException") == 0);
+    /* Java's sum wraps here (its read takes the ring buffer's bytes); C
+     * refuses it as past the end. */
+    CHECK_EQ(stream_read(&s, INT64_MAX - 1, b, 4, &e), ERR_IO);
+    CHECK(strcmp(e.text, "Cannot read 4 bytes at position 9223372036854775806, stream size "
+            "is 10.") == 0);
+    CHECK_EQ(stream_read(&s, INT64_MIN, b, 0, &e), ERR_IO);   /* Java's sum wraps up */
+    stream_close(&s);
+
+    /* A directory of two files, from 400,000 to 601,234. */
+    snprintf(tdir, sizeof tdir, "%s/bergdb-t_stream-XXXXXX", tmp != NULL ? tmp : "/tmp");
+    REQUIRE(mkdtemp(tdir) != NULL);
+    write_file("00000000000004.bergdb", 200000, 1);
+    write_file("00000000000006.bergdb", 1234, 2);
+    REQUIRE(open_dir(&s, &m, &e) == ERR_OK);
+    CHECK_EQ(stream_read(&s, INT64_C(2147483808), b, 32, &e), ERR_IO);
+    CHECK(strcmp(e.java, "EOFException") == 0);
+    CHECK(strcmp(e.text, "Cannot read at spos 2147483808, past the end of a file at "
+            "601234.") == 0);
+    stream_as_storage(&s);
+    CHECK_EQ(stream_read(&s, INT64_C(2147483808), b, 32, &e), ERR_IO);
+    CHECK(strcmp(e.java, "EOFException") == 0);
+    CHECK(strcmp(e.text, "Cannot read 32 bytes at position 2147483808, stream size is "
+            "601234.") == 0);
+    CHECK_EQ(stream_read(&s, 601230, b, 5, &e), ERR_IO);
+    CHECK(strcmp(e.text, "Cannot read 5 bytes at position 601230, stream size is 601234.")
+            == 0);
+    CHECK_EQ(stream_read(&s, 601230, b, 4, &e), ERR_OK);
+    CHECK_EQ(b[3], (uint8_t) (2 + 1233));
+    CHECK_EQ(stream_read(&s, 399999, b, 2, &e), ERR_NOT_AVAILABLE);   /* FileStream's */
+    CHECK(strcmp(e.java, "ReadBelowFirstPosException") == 0);
+    CHECK(strcmp(e.text, "Cannot read at spos 399999, below the first position, 400000.")
+            == 0);
+    stream_close(&s);
+    remove_file("00000000000004.bergdb");
+    remove_file("00000000000006.bergdb");
+    rmdir(tdir);
+    CHECK_MEM_ZERO(&m);
+}
+
 
 #ifdef BERGDB_TEST
 /* A counting seam over the real calls (012-14, 6.5). */
@@ -449,6 +523,7 @@ TEST(stream_new_file_forces) {
 const struct test stream_tests[] = {
     TEST_ENTRY(stream_memory),
     TEST_ENTRY(stream_dir),
+    TEST_ENTRY(stream_storage),
     TEST_ENTRY(stream_seam),
     TEST_ENTRY(stream_forces),
     TEST_ENTRY(stream_new_file_forces),
