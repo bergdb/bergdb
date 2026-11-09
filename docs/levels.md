@@ -40,6 +40,13 @@ primary scan, is section 11: experimental in 2026.3
 ([018-01](../items/018-release-2026-3/01-plan.md), D2 and D6), redone for
 2026.4 as part of the API that a release promises.
 
+The Core Layer is a simple key-value datastore: both keys and values are
+byte arrays, with transactions and history. It knows nothing of objects or
+user indexes: to it an object is a byte array, and an index's definitions
+and entries are keys like any other, under `/#i/`. Objects and indexes are
+the Pub layer's (`pubimp`), built on the Core's four data methods
+([010-01](../items/010-principles/01-principles.md), P12).
+
 
 ## 2. Checks
 

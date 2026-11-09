@@ -21,6 +21,10 @@ algorithm. [README.md](README.md) describes the repo; start reading at
 
 ## Code
 
+- The Core Layer (`bergdb.core` and the packages it uses) is a simple
+  key-value datastore: both keys and values are byte arrays. It knows
+  nothing of objects or user indexes; build such features on top of it,
+  not into it (010-01, P12).
 - `java/before-commit.sh` must print `BEFORE COMMIT OK` before a change to
   the Java code is committed: the unit tests and the f-tests, about 2
   minutes. It is the only requirement. The level scripts

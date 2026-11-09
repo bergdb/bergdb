@@ -551,6 +551,18 @@ on top of the Core API is built on top, not added to it. Frans
 (2026-10-26): "I think the principle is to maintain the small core layer.
 Avoid adding more to the layer's API. Better to implement on top."
 
+The Core Layer is a simple key-value datastore: both keys and values are
+byte arrays. Frans (2026-11-09): "Describe Core as a simple key-value
+datastore, where both keys and values are byte arrays." It adds
+transactions and history (a read at a lookup time), and it never reads a
+value for its meaning. Objects, their stored format (020-07), their
+conversion to Java (020-09) and user indexes (020-10) belong to the layers
+above: to the Core Layer an object is a byte array, and an index's
+definitions and entries are keys like any other, under `/#i/`. What a
+layer above needs from the Core Layer is a general mechanism that knows
+nothing of its use; a new one widens the Core API, and is Frans's to
+decide.
+
 All data passes through four methods, the Core Data API: `getOne`,
 `getMany`, `getTrans` and `execute`. The rest of the Core API runs the
 database or reports on it, and reads or writes no data: the lifecycle
@@ -584,6 +596,18 @@ Where BergDB stands (`java/src`, 2026-10-28):
   and `java/deps.py` checks them (005-56). `pub` and `pubimp` use each
   other, by design: `Factory`, and `Time`'s `TimeResolver`.
 * `getOneInternal` is public.
+* Release 2026.4's objects (format 2) and user indexes added no code to the
+  Core Layer (2026-11-09): its changes since 2026.3 are the faults 019-46
+  and 019-47 and the UTF-8 rules for keys and strings (021-04 to 021-06).
+  The general mechanisms that the layers above use, all in the Core Layer
+  since the 2017 baseline: a transaction's lookup time and read hashes
+  (optimistic concurrency); virtual writes
+  (`Trans.Builder.addVirtualWriteHash`: a hash that conflicts as a write
+  does, with nothing stored; used by the index code alone, for
+  `/#i/div/<dir>`, 020-10, section 5.1); key and value transformations at
+  commit (`KeyTransformation`, `ValueTransformation`); and the internal key
+  space `/#i/`, where the Core Layer's own keys are Reclaim's and
+  `/#i/-dummy` (`core/doc-files/key-encoding.md`).
 * Db has 45 public methods (43 until 005-52 added `setCacheSizeIndicator`
   and `getCacheSizeIndicator`, 2026-10-28, so that `pubimp` and JMX set the
   cache size through the Core API and not through `internal()`).
