@@ -221,9 +221,48 @@ The level scripts; T1 on Linux or Windows; the pending cut during a close; the P
 
 What follows: V2-1's test and V2-2's hardening to a fixer (12:21), with `level1.sh`.
 
+### 3.4. Fixes
+
+Fixer w23 (coord-1109's agent, 12:21), clone `/Users/f/fl/bench/2026-11-09/clone-w23` from
+`dcfd175`; probe outputs in `/Users/f/fl/bench/2026-11-09/w23/`.
+
+* **V2-1**, `1a36a0c`: v2's proposed test as
+  `NodeCollection.testLinkToCanonicalChecksTheType`, in the tester's style. With
+  `linkToCanonical`'s `checkPointeeType` (line 782) taken out it fails ("refused,
+  expected true, but was false"); with it, it passes. Test only.
+* **V2-2**, `958b87f`: `BufferedStream.append` checks `exception` after its wait for room
+  (`close()`, `stop()` and a failed flush each set it) and throws an `IOException`, as an
+  append after them does; the old check before the wait, for a stop only, moved after it.
+  020-13 bug 4's protocol is unchanged (`closeWaits()` under the monitor). What an append
+  put in the buffer before its wait stays there and is written by `close()` (Javadoc).
+  Test `BufferedStream.testAppendWaitingForRoomWhenCloseBeginsThrows`, deterministic (a
+  held flush, the writer in its room wait, then `close()`); before the fix: "the append
+  returned normally after close() began".
+* v2's `CloseProbe`, mode "free", seed 1, 120 s:
+
+  | Code | Iterations | Closes over 3 s | Longest close | Lost during close() |
+  |------|------------|-----------------|---------------|---------------------|
+  | before, dcfd175 | 4,292 | 2 | 15,005 ms | 338 |
+  | after, V2-2     | 5,484 | 0 | 30 ms     | 0   |
+
+  Lost before close() and wrong bytes: 0 in both runs. After the fix, 1,354 closes wrote
+  more than the appends that returned: the part that a thrown append had put in the buffer
+  before its wait. A copy of the probe that checks every byte of the stream (seed 2, 60 s;
+  `w23/probe2/`) found 2,836 iterations, 0 wrong bytes, and that extra part in 678 of them,
+  at most 3,704 bytes.
+* Not reachable through `Db` by its close: `closeStorage` sets STOPPING and takes the write
+  lock first. One other path closes the stream beside an append: a failed read on a
+  reader's thread (`StorageManager.handleStreamException`). The storage and the database
+  have failed by then. So there is no `releases/next.md` line.
+* Gate on the tree of the two commits, under the gate lock: BEFORE COMMIT OK (183 s;
+  unit 1,503, f 86, demos); `level1.sh`: LEVEL 1 OK. Not yet on `main`.
+
 
 Log
 ===
 
 2026-11-09. Created by coord-1109; Codex's round 2 done (12:14): Y1
 (medium) and Y2 (low), both in 020-21's strict `Time` parsing.
+
+2026-11-09. Fixer w23: V2-1's test (`1a36a0c`) and V2-2's hardening (`958b87f`) in
+clone-w23, gated with `level1.sh` (section 3.4).
