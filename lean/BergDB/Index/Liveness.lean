@@ -646,6 +646,7 @@ theorem bNu_lt (sp : Spec V F L) (ws : List W) (s : Sys V F L W) (n : Name) (b :
     bNu sp ws s n b < 3 * sp.lockedAfter + 3 * ws.length + 12 :=
   nuOf_lt _ _ _ (cnt_le_length _ ws) _ _ _ _
 
+omit [DecidableEq W] in
 /-- A build's measure falls when its next key moves up, up to its end key. -/
 theorem bMeasure_next {sp : Spec V F L} {ws : List W} {s₁ s₂ : Sys V F L W} {n : Name}
     {g : Gen} {b₁ b₂ : BSt V F} {e : Key} (h₁ : s₁.m.bld n g = some b₁)
@@ -663,6 +664,7 @@ theorem bMeasure_next {sp : Spec V F L} {ws : List W} {s₁ s₂ : Sys V F L W} 
   show (e + 1 - b₂.next) * _ + _ < (e + 1 - b₁.next) * _ + _
   omega
 
+omit [DecidableEq W] in
 /-- With the same E and next, a build's measure compares as its step's part. -/
 theorem bMeasure_same {sp : Spec V F L} {ws : List W} {s₁ s₂ : Sys V F L W} {n : Name}
     {g : Gen} {b₁ b₂ : BSt V F} (h₁ : s₁.m.bld n g = some b₁) (h₂ : s₂.m.bld n g = some b₂)
