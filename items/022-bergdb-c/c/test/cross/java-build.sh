@@ -9,14 +9,27 @@
 # (--layer core). The harness's classes may be in package bergdb.core, to
 # reach the parsers. Never touches java/build/.
 #
-# Which Java (bergdb 015-02, 022-01): C matches a release of BergDB, not the
-# Java of the day (Frans, 2026-11-05). JAVA_REF chooses the Java tree:
-#   JAVA_REF=2026.3    (the default, the release that C matches, bergdb 022) the
+# Which Java (bergdb 015-02, 022-01, 022-02): C matches a release of BergDB,
+# not the Java of the day (Frans, 2026-11-05). JAVA_REF chooses the Java tree:
+#   JAVA_REF=git:HASH  the java/ of the commit HASH in this repository's Git: its
+#                      java/src, java/stress and java/deps.py by git archive, as
+#                      a release's source zip holds them, extracted once into
+#                      build/java-src/git-HASH/java/. The default, until 2026.4's
+#                      tag, is the pinned candidate of release 2026.4 (bergdb
+#                      022-02, section 2.1), main at 94a1520, 2026-11-09:
+#                      git:94a1520f21ac81fb7620b1aefba11e41b38a1b18
+#                      A clone of int.git without the commit fetches it first:
+#                      git fetch /Users/f/fl/repos/bergdb main:refs/remotes/repo/main
+#   JAVA_REF=2026.3    the release of the 2026.3 port (bergdb 022-01): the
 #                      java/ of releases/2026.3/bergdb-2026.3-src.zip, checked
 #                      against releases/2026.3/SHA256SUMS and extracted once into
-#                      build/java-src/bergdb-2026.3/java/
+#                      build/java-src/bergdb-2026.3/java/. On branch 2026.4 the
+#                      harness's CorruptSet.java does not compile against it
+#                      (CorruptStreamTester.Config takes the keys since 021-11);
+#                      branch 022 keeps 2026.3's harness
 #   JAVA_REF=REL       another release in releases/REL/ the same way: 2026.2,
-#                      the release of 012's port (bergdb 015-02)
+#                      the release of 012's port (bergdb 015-02), which has no
+#                      CorruptStreamTester for CorruptSet.java (022-01, step 4)
 #   JAVA_REF=tree      the repository's java/, as it is in the working tree
 #   JAVA_REF=DIR       the java/ directory DIR (holding src/, stress/, deps.py)
 # The classes are made again at every run. build/java/java-dir.txt names the
@@ -26,17 +39,33 @@
 # Usage: test/cross/java-build.sh      (from any directory)
 # Then:  java -ea -cp build/java/classes bergdb.core.StreamScan ...
 # Needs a JDK (JAVA_HOME or PATH), python3, and unzip and shasum for a
-# release. Prints JAVA BUILD OK.
+# release, git and tar for a commit. Prints JAVA BUILD OK.
 
 set -e
 C=$(cd "$(dirname "$0")/../.." && pwd)
 REPO=$(cd "$C/../../.." && pwd)
-REF=${JAVA_REF:-2026.3}
+REF=${JAVA_REF:-git:94a1520f21ac81fb7620b1aefba11e41b38a1b18}
 case "$REF" in
 tree)
     JAVA=$REPO/java ;;
 /*|./*|../*)
     JAVA=$(cd "$REF" && pwd) ;;
+git:*)
+    H=${REF#git:}
+    SRC=$C/build/java-src
+    JAVA=$SRC/git-$H/java
+    if [ ! -f "$SRC/git-$H.complete" ]; then
+        FULL=$(git -C "$REPO" rev-parse -q --verify "$H^{commit}") \
+            || { echo "no commit $H in $REPO's Git; fetch it, as: git fetch /Users/f/fl/repos/bergdb main:refs/remotes/repo/main"
+                 echo "JAVA BUILD FAILED"; exit 1; }
+        rm -rf "$SRC/git-$H" "$SRC/git-$H.tar"
+        mkdir -p "$SRC/git-$H"
+        git -C "$REPO" archive -o "$SRC/git-$H.tar" "$FULL" java/src java/stress java/deps.py
+        tar -x -f "$SRC/git-$H.tar" -C "$SRC/git-$H"
+        rm -f "$SRC/git-$H.tar"
+        echo "$FULL" > "$SRC/git-$H/commit.txt"
+        : > "$SRC/git-$H.complete"
+    fi ;;
 *)
     ZIP=$REPO/releases/$REF/bergdb-$REF-src.zip
     SRC=$C/build/java-src

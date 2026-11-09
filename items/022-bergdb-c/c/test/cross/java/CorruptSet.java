@@ -403,10 +403,15 @@ public final class CorruptSet {
 
     // ======== The refusal tests' cases ========
 
-    /** An original of a stream that a test wrote: its records walked. */
+    /**
+     * An original of a stream that a test wrote: its records walked. The Config's keys, a
+     * seventh argument since bergdb 021-11, are KEYS, the tester's keys of 2026.3: such an
+     * original is walked and patched, which use none of them, and never checked.
+     */
     static CorruptStreamTester.Original original(String name, MemoryStream s) throws IOException {
         CorruptStreamTester.Original o = new CorruptStreamTester.Original(
-                new CorruptStreamTester.Config(name, 1000000, 0, 0, 0, 0), 0);
+                new CorruptStreamTester.Config(name, 1000000, 0, 0, 0, 0,
+                        CorruptStreamTester.KEYS), 0);
         o.bytes = new byte[(int) s.getLength()];
         s.read(0, o.bytes, 0, o.bytes.length);
         CorruptStreamTester.walk(o);

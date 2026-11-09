@@ -783,3 +783,61 @@ load of about 13 to 27; `unit` 386 tests (385 in the release build);
 variants, 2 in turns, 46 budget runs); `writecheck` 0; `allocfail` 628
 runs. No difference remains; 021-11 does not show in the cross runs (the
 quick set's corrupt variants are bit flips), as section 4.1 expects.
+
+2026-11-09, step 0 (worker t0), on `int.git`'s branch `2026.4` (D2
+(a): `022` stays the 2026.3 port until it closes). The candidate pinned
+(section 2.1): `main` at `94a1520f21ac81fb7620b1aefba11e41b38a1b18`
+(11:57:26). `test/cross/java-build.sh` takes `JAVA_REF=git:HASH`: the
+commit's `java/src`, `java/stress` and `java/deps.py` by `git archive`
+from the clone's Git, not from its working tree, extracted once into
+`build/java-src/git-HASH/` (a `.complete` marker, the full hash in
+`commit.txt`): the commit's 339 files of those paths. `java-ref.txt`
+says `git:HASH`, so every report names it. The default on `2026.4` is the
+pinned hash until the tag. `main` is not merged: the harness needs no file
+of it but the commit's `java/`, read from the commit itself; a clone of
+`int.git` has the commit after `git fetch /Users/f/fl/repos/bergdb
+main:refs/remotes/repo/main`, which the script names when it is missing
+(section 4.1 had a merge for that). The 2026.3 port's step 4b
+(`3e3b704`, on `022` at 12:15) merged into `2026.4`, after step 3's
+landing, and `CorruptSet.java`'s `Config` given its seventh argument,
+`CorruptStreamTester.KEYS` (section 3.1, point 5); the cases' originals
+are walked and patched, which use no key. So on this branch the harness
+compiles against the candidate and no longer against 2026.3 (whose
+`Config` has six arguments; the script's header says so). It compiles
+against the candidate: 191 files, and `StatsProbe`, `PowerImages` and
+`JBench` too. Java's vectors written again from the candidate: all
+twelve files equal to the committed ones. Their two new kinds (`utf8`,
+`bkey2ikey`) are step 1's (section 6), as `t_vectors.c` fails on a kind
+it does not know. StatsProbe's lines from the candidate equal C's, so
+`f_settings.c`'s stand.
+
+The negative control (section 4.1), C at the 2026.3 port's end
+(`3e3b704`'s `c/`, unchanged) against the candidate: `C BEFORE COMMIT OK
+(550 s)`, F53 under a load of about 17 to 21 with other gates and the
+2026.3 port's `cross.sh full`; `unit` 382 tests, `func` 27, `cross quick`
+0 differences (23 workloads, 69 crash cuts, 85 corrupt variants, 2 in
+turns, 46 budget runs), `writecheck` 0, `corruptset` quick 57 copies,
+`allocfail` 628 runs, `examples` OK. Before 4b's merge, on `2929db5`'s
+C, `C BEFORE COMMIT OK (300 s)`, the same. The whole corrupt set (seed 1,
+303 s): `CORRUPTSET OK`, 6,247 copies, 2,622 refused by both with the same
+exception and message, 3,560 started, 65 with a later read failing alike,
+22 of 014-01's case and 10 I/O texts, the counts of 4b's run against
+2026.3; the candidate's tester failed none. `corrupt.sh` (166 s): `CORRUPT
+OK`, 144 variants, 82 refused by both, 40 started, 22 with a read failing
+later (step 2's run had 84 and 38: four variants append `/dev/urandom`
+bytes, and `last-longer`'s start refuses or recovers as they fall). No
+difference: 2026.4's Core changed no byte, scan, dump, recovery or
+refusal that these sets see, and none remains for a later step. What steps
+1 to 3 change shows in their ported tests, step 1's new vector kinds and
+step 2's `found-021_11` bases. Left for step 5: `c/readme.md`'s "Which
+Java" and its vectors paragraph still name a release as the default.
+
+The gate against the candidate on step 2's landing (`fb9f33b`), with 4b
+merged (`0110bc7`), steps 2, 3 and 0 together: `C BEFORE COMMIT OK (346
+s)`, F53 under a load of about 12 to 16; `unit` 387 tests (386 in the
+release build); `cross quick` 0 differences (23 workloads, 69 crash cuts,
+85 corrupt variants, 2 in turns, 46 budget runs); `writecheck` 0;
+`corruptset` 57 copies; `allocfail` 628 runs; `examples` OK. On step 3's
+landing with 4b merged, before step 2 landed: `C BEFORE COMMIT OK (359
+s)`. No difference remains. Not merged: the 2026.3 port's step 6
+(`ecc5319`, on `022` at about 12:40), for the session with D2.
