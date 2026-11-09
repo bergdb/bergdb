@@ -444,7 +444,9 @@ Why the fix is correct (Core, concurrency code):
   outside BergDB's range ("2199-01-01", "1969-12-31") throws
   `IllegalArgumentException`, which is not listed. Probe:
   `fork-scans/src/TimeProbe.java`. Cause: `TimeResolver`'s lenient
-  `GregorianCalendar`, `Integer.parseInt` and `Double.parseDouble`. Not
+  `GregorianCalendar`, `Integer.parseInt` and `Double.parseDouble`; the
+  day's overflow is on purpose (`parseDate`: "Let's allowed "overflow"
+  for now, like: 2013-02-50", 2013), the rest follows from it. Not
   2026.4's new code, but in the Pub API. Options:
   * (a) Parse by the ABNF of `Time.resolve`'s Javadoc: digits only, the
     calendar not lenient, each field in its range, a minus time's number
@@ -562,14 +564,16 @@ Promises that no test of the gate checks, each of which held in a probe:
 
 ## 5. Removal candidates (part 4)
 
-Proposals only; nothing removed. The per-test times (`-v`) of one run of
-each group, on a loaded machine (`tests-work/times/`): the f group 89 s
-in all, the unit group 56 s.
+Proposals only; nothing removed. The per-test times (`-v`) of three runs
+of the f group and six of the unit group, on a loaded machine
+(`tests-work/times/`): the f group 69 to 89 s in all, the unit group 32
+to 57 s (15 s of it bug 4's, section 4.1).
 
-* **Slow f-tests that add little.** Five classes of `bergdb.test` take 37
-  of the f group's 89 s, and cover 11 lines of production code that no
-  other test covers (`KeyFactory`'s random keys and a `DummyStream` read;
-  `tests-work/cov/run-slow.sh`):
+* **Slow f-tests that add little.** Five classes of `bergdb.test` take 33
+  to 37 s of the f group's 69 to 89 s, and cover 11 lines of production
+  code that no other test covers (`KeyFactory`'s random keys and a
+  `DummyStream` read; `tests-work/cov/run-slow.sh`). The times of the
+  first run:
 
   | Class | Tests | Time, s | What it does |
   |---|---|---|---|
