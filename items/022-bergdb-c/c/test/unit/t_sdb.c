@@ -300,6 +300,21 @@ TEST(sdb_cut_stream) {
     free(v.stream);
 }
 
+/* True if 'text' is Java's text of a record refused by the start for its
+ * time: the reason, then StoredTrans.toString of the record with time tt
+ * (Java's other fields of it, from the vectors), and nothing more, or the
+ * line of its got-dirty pairs. */
+static bool records_text(const char *text, const char *reason, int64_t tt,
+        const struct jtrans *t) {
+    char want[300];
+    int n = snprintf(want, sizeof want, "%s, tt:%lld, tpos:%lld, lastPos:%lld, startupPos:%lld, "
+            "topPos:%lld, nodeCount:%d", reason, (long long) tt, (long long) t->tpos,
+            (long long) t->last_pos, (long long) t->startup_pos, (long long) t->top_pos,
+            (int) t->nnodes);
+    return strncmp(text, want, (size_t) n) == 0
+            && (text[n] == '\0' || strncmp(text + n, "\ngot dirty: ", 12) == 0);
+}
+
 /* Java's refusals at a start, before anything is written. */
 TEST(sdb_refusals) {
     struct vec v;
@@ -395,7 +410,9 @@ TEST(sdb_refusals) {
      * since release 2026.2; before, C aborted on such a time, 012-14): the
      * last record's time beyond the 56 bits, and equal to the time of the
      * record before it, when both are in the startup section. The record's
-     * header has no checksum. */
+     * header has no checksum. The texts are Java's, StoredTrans.toString
+     * after the reason, from Java's fields of the record (022-01, step 4:
+     * the corrupt-stream set found C's, which named tpos and tt only). */
     const struct jtrans *before = &v.t[v.nt - 2];
     memcpy(copy, v.stream, (size_t) v.len);
     for (int k = 0; k < 8; k++) {
@@ -404,7 +421,7 @@ TEST(sdb_refusals) {
     open_stream(&s, &m, copy, v.len);
     CHECK_EQ(sdb_open(&b, &s, &m, 8, false, &e), ERR_FORMAT);
     CHECK(strcmp(e.java, "StreamFormatException") == 0);
-    CHECK(strncmp(e.text, "Transaction time out of range", 29) == 0);
+    CHECK(records_text(e.text, "Transaction time out of range", KL_MAX_TIME + 1, last));
     stream_close(&s);
     REQUIRE(before->tpos >= last->startup_pos && before->tt < last->tt);
     memcpy(copy, v.stream, (size_t) v.len);
@@ -414,7 +431,7 @@ TEST(sdb_refusals) {
     open_stream(&s, &m, copy, v.len);
     CHECK_EQ(sdb_open(&b, &s, &m, 8, false, &e), ERR_FORMAT);
     CHECK(strcmp(e.java, "StreamFormatException") == 0);
-    CHECK(strncmp(e.text, "non-increasing tt", 17) == 0);
+    CHECK(records_text(e.text, "non-increasing tt", before->tt, last));
     stream_close(&s);
     free(copy);
     CHECK_MEM_ZERO(&m);

@@ -71,6 +71,13 @@ enum err_code st_check_startup_pos(const struct st_record *r, struct err *e);
 int64_t st_got_dirty_id(const struct st_record *r, int32_t i);
 int64_t st_got_dirty_pos(const struct st_record *r, int32_t i);
 
+/* StoredTrans.toString, into buf (n bytes, cut there): "tt:T, tpos:P,
+ * lastPos:L, startupPos:S, topPos:O, nodeCount:N", and when the record has
+ * got-dirty pairs a line "got dirty: " with each id and position followed
+ * by a space. The start's refusals of the records' order and times end
+ * with it, as Java's (bergdb 022-01, step 4). */
+void st_to_string(const struct st_record *r, char *buf, size_t n);
+
 /* StoredTrans.computeZeroCount: the zeros that pad n bytes to a multiple
  * of 8. */
 int32_t st_compute_zero_count(int64_t n);

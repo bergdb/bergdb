@@ -82,7 +82,8 @@ failure with the tail of its output (all of it in `build/gate/`): the
 build; the rules a tool can check (section 4); the unit tests in the test
 build; the unit tests in the release build, then under macOS's `leaks`;
 the functional tests likewise; `test/cross/cross.sh quick` (012-05) and
-`writecheck.sh`; the allocation failures in turn on a small workload
+`writecheck.sh`; `test/stress/corruptset.sh quick` (022-01, step 4,
+section 10); the allocation failures in turn on a small workload
 (`bergdb-allocfail`, 012-14, section 10); and `examples/compare.sh`
 (012-13), which runs the examples under the sanitizers and compares them
 with Java (section 8).
@@ -131,7 +132,8 @@ As 012-01, 6.3:
     test/cross/          the cross tests with Java: cross.sh, the Java harness
                          (java/, compiled by java-build.sh into build/java/)
     test/stress/         the robustness runs (012-14, section 10), by hand: random.sh,
-                         long.sh, corrupt.sh, power.sh (power.c; java/PowerImages.java),
+                         long.sh, corrupt.sh, corruptset.sh (test/cross/java/CorruptSet.java),
+                         power.sh (power.c; java/PowerImages.java),
                          allocfail.sh (allocfail.c, allocfail.wl), gcc.sh
     tools/               bergdb-scan, bergdb-dump, bergdb-run
     bench/               the benchmarks against Java (012-15): bench-cbench (cbench.c),
@@ -611,15 +613,30 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
 
 # 10. Robustness runs (012-14)
 
-By hand, not in the gate (but for the short allocation-failure run); each
-script's header has its usage, and 14-robustness.md the results. Raw
-output goes to `/Users/f/fl/bench/022/out/` by default (`OUT=`).
+By hand, not in the gate (but for the short allocation-failure run and
+the corrupt-stream set's `quick`); each script's header has its usage,
+and 14-robustness.md the results. Raw output goes to
+`/Users/f/fl/bench/022/out/` by default (`OUT=`).
 
 * `test/stress/random.sh FROM TO`: Gen's seeds by the thousand, Java
   against C, in batches of `cross.sh random`.
 * `test/stress/long.sh SEED N`: a long run with restarts, reclaim and a
   small budget, in both builds and under `leaks`.
 * `test/stress/corrupt.sh`: corrupt databases started by both dumpers.
+* `test/stress/corruptset.sh`: **the corrupt-stream set** (022-01, step
+  4): damaged copies of streams that release 2026.3's Java writes, made
+  by `test/cross/java/CorruptSet.java` with the release's own classes:
+  harness 6.1's copies by class (`CorruptStreamTester`: truncation, flip,
+  header fields, a node's field with its checksum made right, a range cut
+  out), `testFound019_32`'s, and the cases of 2026.3's refusal tests
+  (`DbTesterRestart`'s six, 015-72, 015-75, 019-34, 019-01; the node
+  tests' changes, 019-32, on every node of a stream). Both dumpers start
+  each: the same status, text and messages (C's text cut at 239 bytes),
+  C never crashes and writes nothing into a database it refuses. `quick`
+  (about 60 copies) is in the gate; the whole set (`SEEDS=`, 1 by
+  default, testSample's copies) by hand. `CONTROL=REV` is the negative
+  control: C at REV (`86dade8`, the port of 2026.2) must differ in every
+  case's base.
 * `test/stress/power.sh`: **power loss**. `bergdb-power` (`power.c`, the
   test build) is `tools/run.c` under a model of the disk behind the test
   build's I/O seam (`plat.h`, `struct plat_io`: open, write, force, force of

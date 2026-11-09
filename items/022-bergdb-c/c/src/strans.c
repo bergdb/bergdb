@@ -1,5 +1,7 @@
 /* strans: ported from Java's StoredTrans.Parser; see strans.h. */
 #include "strans.h"
+#include <inttypes.h>
+#include <stdio.h>
 #include <string.h>
 #include "bytes.h"
 #include "jsem.h"
@@ -202,4 +204,17 @@ int64_t st_got_dirty_id(const struct st_record *r, int32_t i) {
 
 int64_t st_got_dirty_pos(const struct st_record *r, int32_t i) {
     return bytes_get_long_le(r->got_dirty + 16 * i + 8);
+}
+
+void st_to_string(const struct st_record *r, char *buf, size_t n) {
+    int w = snprintf(buf, n, "tt:%" PRId64 ", tpos:%" PRId64 ", lastPos:%" PRId64 ", startupPos:%"
+            PRId64 ", topPos:%" PRId64 ", nodeCount:%d", r->tt, r->tpos, r->last_pos,
+            r->startup_pos, r->top_pos, (int) r->nnodes);
+    if (r->got_dirty_count > 0 && w >= 0 && (size_t) w < n) {
+        w += snprintf(buf + w, n - (size_t) w, "\ngot dirty: ");
+        for (int32_t i = 0; i < r->got_dirty_count && w >= 0 && (size_t) w < n; i++) {
+            w += snprintf(buf + w, n - (size_t) w, "%" PRId64 " %" PRId64 " ",
+                    st_got_dirty_id(r, i), st_got_dirty_pos(r, i));
+        }
+    }
 }

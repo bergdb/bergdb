@@ -2,6 +2,8 @@
  * knode.h. Java's names are kept, and each function names its method. */
 #include "knode.h"
 #include <assert.h>
+#include <inttypes.h>
+#include <stdio.h>
 #include <string.h>
 #include "bytes.h"
 #include "handle.h"
@@ -850,8 +852,10 @@ static const char *check_last_time_index(const struct knode *k) {
 
 /* KeyNode.checkIncreasingTime: the TIME klongs' times increase strictly.
  * Since bergdb 005-75 (release 2026.2) 'time' follows the loop; before, it
- * was never updated, and no node failed (012-07, section 5). */
-static const char *check_increasing_time(const struct knode *k) {
+ * was never updated, and no node failed (012-07, section 5). With 'buf'
+ * (KN_TEXT bytes), Java's text, "Time not increasing, T, PREVIOUS,
+ * index=I", is written there and returned (022-01, step 4). */
+static const char *check_increasing_time(const struct knode *k, char *buf) {
     int64_t time = INT64_MIN;
     int16_t sz = k->size;
 
@@ -860,7 +864,12 @@ static const char *check_increasing_time(const struct knode *k) {
         if (kl_get_type(klong) == KL_TYPE_TIME) {
             int64_t klongTime = kl_get_time(klong);
             if (klongTime <= time) {
-                return "Time not increasing";
+                if (buf == NULL) {
+                    return "Time not increasing";
+                }
+                snprintf(buf, KN_TEXT, "Time not increasing, %" PRId64 ", %" PRId64
+                        ", index=%d", klongTime, time, (int) i);
+                return buf;
             }
             time = klongTime;
         }
@@ -905,7 +914,8 @@ const char *kn_check(const struct knode *k) {
     int16_t sz = k->size;
     const char *m;
     if ((m = check_sizes(k)) != NULL || (m = check_last_time_index(k)) != NULL
-            || (m = check_increasing_time(k)) != NULL || (m = check_memory_pointers(k, sz)) != NULL
+            || (m = check_increasing_time(k, NULL)) != NULL
+            || (m = check_memory_pointers(k, sz)) != NULL
             || (m = check_stream_pointers(k, sz)) != NULL) {
         return m;
     }
@@ -913,7 +923,7 @@ const char *kn_check(const struct knode *k) {
 }
 
 /* KeyNode.validateStreamNode */
-const char *kn_validate_stream_node(const struct knode *k, int64_t startupTime) {
+const char *kn_validate_stream_node(const struct knode *k, int64_t startupTime, char *buf) {
     int16_t sz = k->size;
     const char *m;
 
@@ -921,7 +931,7 @@ const char *kn_validate_stream_node(const struct knode *k, int64_t startupTime) 
         return "Key node with size 0";
     }
     if ((m = check_sizes(k)) != NULL || (m = check_last_time_index(k)) != NULL
-            || (m = check_increasing_time(k)) != NULL) {
+            || (m = check_increasing_time(k, buf)) != NULL) {
         return m;
     }
 

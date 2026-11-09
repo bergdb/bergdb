@@ -142,8 +142,13 @@ int32_t kn_get_memory_pointer_count(const struct knode *k);
  * index, increasing times (as Java's, see 012-07's notes), the pointers. */
 const char *kn_check_max(const struct knode *k, int32_t max_node_size);
 const char *kn_check(const struct knode *k);
-/* validateStreamNode: Java's KeyNode.Invalid as a message. */
-const char *kn_validate_stream_node(const struct knode *k, int64_t startup_time);
+/* The size of the buffer of kn_validate_stream_node. */
+#define KN_TEXT 120
+
+/* validateStreamNode: Java's KeyNode.Invalid as a message; a text with
+ * numbers ("Time not increasing, ...", Java's) is written into buf, KN_TEXT
+ * bytes. */
+const char *kn_validate_stream_node(const struct knode *k, int64_t startup_time, char *buf);
 
 /* getDeleteBitmap: the delete bitmap that deletes compare_value's klongs,
  * 0 if none (a delete of a key that does not exist). */

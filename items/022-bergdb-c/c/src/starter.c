@@ -264,7 +264,8 @@ static enum err_code validate_node(struct starter *st, const struct sn_node *sn,
         if (k == NULL) {
             return nomem(e, "a key node");
         }
-        const char *msg = kn_validate_stream_node(k, st->startup_time);
+        char buf[KN_TEXT];
+        const char *msg = kn_validate_stream_node(k, st->startup_time, buf);
         if (msg != NULL) {
             return err_set(e, ERR_FORMAT, "StreamFormatException", "%s", msg);
         }
@@ -282,21 +283,22 @@ static enum err_code validate_transactions(struct starter *st, struct err *e) {
     int64_t tt = -1;
     for (int32_t i = 0; i < st->nrecs; i++) {
         const struct st_record *t = &st->recs[i].st;
+        /* Java's texts end with StoredTrans.toString (022-01, step 4: they
+         * named the position and the time only). */
+        const char *why = NULL;
         if (t->tpos < M) {
-            return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad spos of transaction, "
-                    "tpos=%" PRId64, t->tpos);
+            why = "Bad spos of transaction";
+        } else if (t->tpos <= tpos) {
+            why = "non-increasing tpos";
+        } else if (t->tt < KL_MIN_TIME || t->tt > KL_MAX_TIME) {
+            why = "Transaction time out of range";
+        } else if (t->tt <= tt) {
+            why = "non-increasing tt";
         }
-        if (t->tpos <= tpos) {
-            return err_set(e, ERR_FORMAT, "StreamFormatException", "non-increasing tpos, tpos=%"
-                    PRId64, t->tpos);
-        }
-        if (t->tt < KL_MIN_TIME || t->tt > KL_MAX_TIME) {
-            return err_set(e, ERR_FORMAT, "StreamFormatException", "Transaction time out of "
-                    "range, tpos=%" PRId64 ", tt=%" PRId64, t->tpos, t->tt);
-        }
-        if (t->tt <= tt) {
-            return err_set(e, ERR_FORMAT, "StreamFormatException", "non-increasing tt, tpos=%"
-                    PRId64 ", tt=%" PRId64, t->tpos, t->tt);
+        if (why != NULL) {
+            char ts[ERR_TEXT];
+            st_to_string(t, ts, sizeof ts);
+            return err_set(e, ERR_FORMAT, "StreamFormatException", "%s, %s", why, ts);
         }
         /* Each record against the one before, and its time in the 56-bit
          * range, before replay (bergdb 005-75, as Java's since release

@@ -50,7 +50,10 @@ import bergdb.stream.FileStream;
  *   -large      for large databases: the latest state as its digest only (no kv lines),
  *               the states at latest and at the middle time only, and getTrans of at
  *               most 1,000 records, sampled
- * Exit: 0, 1 if the start failed (a line "start error=NAME"), 2 on bad usage.
+ * Exit: 0, 1 if the start failed (a line "start error=NAME"), 2 on bad usage. A failed
+ * start's exception, its name and its message, also goes to standard error, as C's
+ * bergdb-dump writes its error there ("Dump: the start failed: NAME, MESSAGE"), for
+ * test/stress/corruptset.sh, which compares the messages (bergdb 022-01, "Texts").
  * </pre>
  */
 public final class Dump {
@@ -73,6 +76,11 @@ public final class Dump {
     }
 
     public static int main(String[] args, PrintStream out) throws IOException {
+        return main(args, out, System.err);
+    }
+
+    /** As main(args, out), with standard error's lines to 'err'. */
+    public static int main(String[] args, PrintStream out, PrintStream err) throws IOException {
         int maxNode = 30, audit = 0;
         boolean large = false;
         int i = 0;
@@ -92,21 +100,24 @@ public final class Dump {
                 throw new IllegalArgumentException("DIR SCAN expected");
             }
         } catch (RuntimeException e) {
-            System.err.println("Dump: " + e.getMessage());
-            System.err.println("Usage: Dump [-maxnode N] [-audit N] [-large] DIR SCAN");
+            err.println("Dump: " + e.getMessage());
+            err.println("Usage: Dump [-maxnode N] [-audit N] [-large] DIR SCAN");
             return 2;
         }
         return new Dump(out).dump(new File(args[i]), new File(args[i + 1]), maxNode, audit,
-                large);
+                large, err);
     }
 
-    int dump(File dir, File scanFile, int maxNode, int audit, boolean large) throws IOException {
+    int dump(File dir, File scanFile, int maxNode, int audit, boolean large, PrintStream err)
+            throws IOException {
         out.println("bergdb-dump 1");
         Scan scan = Scan.read(scanFile);
         try {
             start(dir, maxNode, audit);
         } catch (RuntimeException e) {
             out.println("start error=" + e.getClass().getSimpleName());
+            err.println("Dump: the start failed: " + e.getClass().getSimpleName() + ", "
+                    + e.getMessage());
             return 1;
         }
         try {

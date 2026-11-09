@@ -30,6 +30,11 @@
 #                 (012-09, part 1): C's take replayed on every record, and the
 #                 records re-appended through C's append path, the
 #                 directories equal to Java's; C's tools of the test build
+#   corruptset    test/stress/corruptset.sh quick (022-01, step 4): damaged copies of
+#                 streams that Java writes, the cases of release 2026.3's refusal
+#                 tests and testFound019_32's copies, started by Java's Dump and
+#                 C's bergdb-dump of the test build: the same status, text and
+#                 messages (into build/corruptset)
 #   allocfail     the allocation failures in turn, short (012-14, done item 7):
 #                 build/test/bergdb-allocfail on test/stress/allocfail.wl (Gen 31,
 #                 4 transactions, a restart, reclaim, a budget of 1,000 bytes),
@@ -125,6 +130,9 @@ fi
 if [ -f test/cross/cross.sh ]; then
     step cross sh test/cross/cross.sh quick C=build/test KEEP=1
     step write sh test/cross/writecheck.sh build/cross/quick C=build/test
+fi
+if [ -f test/stress/corruptset.sh ]; then
+    step corruptset env OUT="$C/build/corruptset" sh test/stress/corruptset.sh quick
 fi
 if [ -x build/test/bergdb-allocfail ]; then
     step allocfail build/test/bergdb-allocfail -budget 1000 test/stress/allocfail.wl \

@@ -868,7 +868,37 @@ TEST(knode_new_stored) {
     CHECK(kn_get_pointee(k, 1) == NULL);
     CHECK_EQ(kn_get_pointer_pos(k, 2), 1003);
     CHECK_EQ(kn_get_serialized_ref(k, 2), 1003);
-    CHECK(kn_validate_stream_node(k, 7) == NULL);
+    char buf[KN_TEXT];
+    CHECK(kn_validate_stream_node(k, 7, buf) == NULL);
+    NFIX_END(&f);
+}
+
+/* KeyNode.validateStreamNode's text for times that do not increase, Java's
+ * with the times and the index (022-01, step 4: the corrupt-stream set
+ * found C's "Time not increasing" alone, a node of a record's start whose
+ * time klong was changed, its checksum made right); KeyNode.check's stays
+ * the short one. */
+TEST(knode_validate_time_text) {
+    struct nfix f;
+    nfix_init(&f);
+    uint8_t klongs[32], refs[32];
+    bytes_put_long_le(kl_create_time(500), klongs);
+    bytes_put_long_le(nfix_key("a"), klongs + 8);
+    bytes_put_long_le(kl_create_time(500), klongs + 16);
+    bytes_put_long_le(nfix_key("b"), klongs + 24);
+    bytes_put_long_le(-1, refs);
+    bytes_put_long_le(1000, refs + 8);
+    bytes_put_long_le(-1, refs + 16);
+    bytes_put_long_le(1003, refs + 24);
+    struct knode *k = kn_new_stored(&f.cx, false, 2048, 1001, 4, klongs, refs);
+    REQUIRE(k != NULL);
+    char buf[KN_TEXT];
+    const char *m = kn_validate_stream_node(k, 7, buf);
+    REQUIRE(m != NULL);
+    CHECK(strcmp(m, "Time not increasing, 500, 500, index=2") == 0);
+    m = kn_check(k);
+    REQUIRE(m != NULL);
+    CHECK(strcmp(m, "Time not increasing") == 0);
     NFIX_END(&f);
 }
 
@@ -892,6 +922,7 @@ const struct test knode_tests[] = {
     TEST_ENTRY(knode_check_empty_node),
     TEST_ENTRY(knode_check1),
     TEST_ENTRY(knode_check2),
+    TEST_ENTRY(knode_validate_time_text),
     TEST_ENTRY(knode_get_pointers),
     TEST_ENTRY(knode_last_version1),
     TEST_ENTRY(knode_last_version3),

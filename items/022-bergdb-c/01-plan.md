@@ -437,3 +437,70 @@ COMMIT OK (278 s)`, F53 under a load of about 15 to 25; `unit` 381 tests;
 `cross quick` 0 differences (23 workloads, 69 crash cuts, 85 corrupt
 variants, 2 in turns, 46 budget runs); `writecheck` 0; `allocfail` 628
 runs. No difference remains.
+
+2026-11-09, step 4, the corrupt-stream set (worker s4b; D4; 012-18,
+section 3.2, "The new harnesses for C", and section 4, point 5).
+`test/cross/java/CorruptSet.java` (compiled by `java-build.sh` against
+the release) writes damaged copies of streams that 2026.3's Java writes,
+as directories, with the release's own classes and nothing of Java
+changed: harness 6.1's copies, made by `CorruptStreamTester`'s methods
+with the random choices of its sample run (seed 1 gives `testSample`'s
+copies), each also checked by the tester itself (its outcome in the
+list; a copy whose start makes recovery's zero fill pass 1 MB, 014-01, is
+left out as the tester counts it); `testFound019_32`'s ten copies; and
+the cases of 2026.3's refusal tests on the streams those tests write
+(`DbTesterRestart`'s `testEnlargedRecordSizeRefused`,
+`testCorruptStartupPosRefused`, `testCorruptGotDirtyIdRefused`,
+`testOlderTopPosRefused`, `testMetaBlockLastTransPosRefused`,
+`testVersionHighBytesRefused`; `StoredKeyNode.testRefusesBadKlongs`'s and
+`StoredValueNode.testRefusesBadKey`'s changes made to every key, value and
+delete node of a stream of keys of one to four segments, at startup
+distances 1,000,000 and 300, the checksum made right).
+`test/stress/corruptset.sh` starts each copy with Java's `Dump` and C's
+`bergdb-dump` of the test build, each on its own copy, and checks as
+`corrupt.sh` does (the same status and text; Java's text a prefix of C's
+where a read fails later; no crash; C writes nothing into a database it
+refuses; the directories alike when both start), and also the messages,
+byte for byte: `Dump.java` writes a refused start's exception and message
+to standard error as `bergdb-dump` does. Two known cases are counted, not
+failed: 014-01's (both wrote recovery's zero fill, then refused, the two
+directories alike; Frans's decision, as the tester's `KNOWN`) and C's
+`StreamIoException` texts, which name the inner exception (012-14, 6.4,
+open). `CONTROL=REV` is the negative control. The set's `quick` (57
+copies: the cases, the node tests' changes on the first and the last node
+that takes each, and the ten found copies; about 2 s) is a step of the
+gate, `corruptset`.
+
+The whole set, seed 1: 6,247 copies, 6.1's 5,535 (1,402 truncations,
+1,719 flips, 2,061 header fields, 198 node fields, 155 cuts; 101 left out
+for 014-01's fill), the found 10, the cases 702; `CORRUPTSET OK` (166 s,
+F53 under a load of 20 to 29): 2,622 refused by both with the same
+exception and message, 3,560 started by both, 65 with a read failing
+later, the same position and cause; 22 of 014-01's known case, 10 of
+the I/O texts. Every case copy is refused at the start, as in Java's
+tests. C faults found, of step 2's kind, both texts: the start's refusals
+of the records' order and times (`starter.c`, Java's `DbStarter` ends
+them with `StoredTrans.toString`; C named tpos and tt only), now with
+`st_to_string` (`strans.c`); and `KeyNode.checkIncreasingTime`'s text in
+a start's `validateStreamNode` ("Time not increasing, T, PREVIOUS,
+index=I"; C had the first three words), `kn_validate_stream_node` taking
+a buffer. Tests, each failing with its fix taken out: `t_sdb.c`'s
+`sdb_refusals` (both texts against Java's fields of the record, from the
+vectors) and `t_knode.c`'s `knode_validate_time_text`. Before them, the
+first full run found 139 differences of messages (129 of these two texts,
+10 of the I/O texts) and 22 of 014-01's case, which the script now
+counts, and no difference of status or text. The
+negative control, C at `86dade8` (the port of 2026.2) on the quick set:
+`CORRUPTSET CONTROL CAUGHT`, 52 of 57 copies differ, in every base of
+the cases and of the found copies (13 aborts, `AssertionError`s and
+`IllegalArgumentException`s where Java refuses with
+`StreamFormatException`, 19 started). Java: no new fault; a damaged size
+that recovery fills to 2 GB makes Java's start throw an
+`OutOfMemoryError` (a record of 2^31 - 1 bytes) where C starts, 014-01's
+known case, which the set leaves out as the tester does.
+
+The gate against 2026.3, on s4a's landing (`714d52b`) and `2929db5`:
+`C BEFORE COMMIT OK (263 s)`, F53 under a load of about 20; `unit` 382
+tests; `cross quick` 0 differences (23 workloads, 69 crash cuts, 85
+corrupt variants, 2 in turns, 46 budget runs); `writecheck` 0;
+`corruptset` 57 copies, 2 s; `allocfail` 628 runs. No difference remains.
