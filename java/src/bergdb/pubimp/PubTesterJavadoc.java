@@ -634,6 +634,48 @@ public class PubTesterJavadoc {
     }
 
     /**
+     * WBuilder: execute() spends the builder, whatever it threw: a second execute(), and a
+     * put() or a delete() after it, throw IllegalStateException and write nothing (bergdb
+     * 020-21, 2; 020-19, Q2). Before, a second execute() ran the same writes again as a new
+     * transaction, and a put() after execute() added to them.
+     */
+    @Nano
+    public static void testWBuilderSpentByExecute() {
+        try (final Database db = Factory.database().memory().start()) {
+            final Connection c = db.connection();
+            final WBuilder w = c.w().put("/a.txt", "1").put("/b.txt", "1");
+            final Transaction t = w.execute();
+            c.put("/a.txt", "2");
+            c.delete("/b.txt");
+            assertThrows("execute() again", IllegalStateException.class, () -> w.execute());
+            assertThrows("put() after execute()", IllegalStateException.class,
+                    () -> w.put("/c.txt", "1"));
+            assertThrows("delete() after execute()", IllegalStateException.class,
+                    () -> w.delete("/a.txt"));
+            assertThrows("execute() again", IllegalStateException.class, () -> w.execute());
+            Assert.assertEquals("2", c.get("/a.txt", String.class));
+            Assert.assertNull(c.get("/b.txt", String.class));
+            Assert.assertNull(c.get("/c.txt", String.class));
+            Assert.assertTrue(t.getTime().units() < c.currentTime().units());
+
+            // Spent also when execute() threw: here a refusal, a format-1 object in an
+            // indexed directory (IndexBuilder, rule 1).
+            db.indexBuilder("i").dir("/i/").type("long").field("balance").start().join();
+            final byte[] format1 = {'b', 'e', 'r', 'g', 'o', 1, 0, 0};
+            final WBuilder refused = c.w().put("/i/x.txt", "x").put("/i/b", format1);
+            assertThrows("execute()", DataFormatException.class, () -> refused.execute());
+            assertThrows("execute() again", IllegalStateException.class,
+                    () -> refused.execute());
+            assertThrows("put() after execute()", IllegalStateException.class,
+                    () -> refused.put("/i/y.txt", "y"));
+            Assert.assertNull(c.get("/i/x.txt", String.class));
+            Assert.assertNull(c.get("/i/y.txt", String.class));
+            c.w().put("/i/z.txt", "z").execute();
+            Assert.assertEquals("z", c.get("/i/z.txt", String.class));
+        }
+    }
+
+    /**
      * Connection.put(), WBuilder.execute(), Connection.rw(): a transaction too large is
      * refused with DbException, nothing of it written, and the database goes on (DbException,
      * "A refusal"; bergdb 005-17): its values and keys take more than 7/8 of the record limit

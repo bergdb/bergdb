@@ -329,6 +329,13 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `IllegalArgumentException` for an absolute time or a time of day. A
   fraction of a second beyond 100 ns is rounded half up on its digits, not
   through a double; the strings of the format give the times they gave.
+* **`WBuilder.execute()` spends the builder** (bergdb 020-21, 2; Frans,
+  2026-11-09, 020-19's Q2): a second `execute()`, and a `put()` or a
+  `delete()` after `execute()`, throw `IllegalStateException` and write
+  nothing, also when `execute()` threw, as `IndexBuilder` is spent after
+  `start()`. Before, a second `execute()` ran the same writes again as a new
+  transaction, and a `put()` after it added to them. Get a new builder with
+  `Connection.w()` for each transaction.
 
 
 ### Core API

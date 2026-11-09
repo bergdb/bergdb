@@ -296,7 +296,8 @@ public interface Connection extends ReadInterface {
     public Transaction delete(String key);   
 
     /**
-     * Creates a builder object used to build a write-only transaction.
+     * Creates a builder object used to build a write-only transaction: a new builder at each
+     * call, for one transaction, as execute() spends it (WBuilder).
      */
     public WBuilder w();
 

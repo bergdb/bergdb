@@ -1,7 +1,16 @@
 package bergdb.pub;
 
 /**
- * A builder used to build a write-only transaction.
+ * A builder used to build a write-only transaction. Get one with Connection.w(), add the
+ * transaction's puts and deletes, and execute() it once:
+ *
+ * <pre>
+ *     c.w().put("/a.txt", "a").delete("/b.txt").execute();
+ * </pre>
+ *
+ * <p>execute() spends the builder, whatever it threw: a later put(), delete() or execute()
+ * throws IllegalStateException (bergdb 020-21, 2). For another transaction, get a new
+ * builder.</p>
  * 
  * @author Frans Lundberg
  */
@@ -10,6 +19,9 @@ public interface WBuilder {
     /**
      * Adds a delete operation to the write transaction. The operation deletes the database entry
      * with the given key if it exists, otherwise, the operation has no effect.
+     *
+     * @throws IllegalArgumentException  If 'key' is null or otherwise invalid.
+     * @throws IllegalStateException  If execute() was called: the builder is spent.
      */
     public WBuilder delete(String key);
     
@@ -45,13 +57,16 @@ public interface WBuilder {
      *             reference cycle, or is nested deeper than 16 levels of objects and arrays;
      *             or it is larger than a stored value may be. The message names the class
      *             or the place. A null field is not refused: it is left out, absent.
+     * @throws IllegalStateException  If execute() was called: the builder is spent.
      */
     public WBuilder put(String key, Object object);
     
     /** 
      * Executes the puts and deletes as one transaction, and returns it when it has
-     * committed.
+     * committed. The builder is then spent, also if this method throws: a later put(),
+     * delete() or execute() throws IllegalStateException.
      * 
+     * @throws IllegalStateException  If execute() was called before: the builder is spent.
      * @throws bergdb.pub.util.DbException
      *             If the transaction is refused, nothing of it written, and the database
      *             goes on, as for Connection.put(): it is too large, about 1.88 GB in the
