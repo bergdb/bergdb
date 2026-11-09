@@ -387,3 +387,81 @@ and tell it from a real I/O error. A `DbStoppingException` in its place would be
   from a stop condition fails only that call. A transaction at 2^56 - 1000 is refused with
   a `DbException` whose message says why, and the database goes on.
 * `getTrans(Trans.tpos)` gives exactly a transaction's KVs (with U9-9's two rules).
+
+
+## 4. Fixes
+
+By coord-1109's fixer x27, 2026-11-09, 16:00 to 16:35, in the clone
+`/Users/f/fl/bench/2026-11-09/clone-x27` from main at `62345d3`, after 020-27's check of the
+Core API's Javadoc (which this builds on). The rule of 2026.4: the Javadoc made true, no new
+API, no change of behaviour. U9-1 and U9-3 are fixed in the code by another agent (c18b);
+U9-2 by 021-16. Each documented promise below has a test, new in `DbTesterJavadoc` and
+passing on the code as it was, or an existing one.
+
+* **U9-4**. `Db`'s "Keys and the layers above" has a paragraph: the Core writes BergDB's keys
+  itself, also in a database that the Pub API never opens (`setStartupDistance()` a live value
+  of 200 kB at `/#i/-dummy`, which reclaim copies forward; `setRetainDuration()` and
+  `setReclaimInternalFraction()` the settings at `/#i/dreclaim/-settings.txt`; reclaim its
+  state under `/#i/dreclaim/`); scans return them and the counters count them; every key
+  that starts with 01 25 is BergDB's in every database; skip them with a stop condition that
+  returns CONTINUE, or two scans. `setStartupDistance()` and `setRetainDuration()` name their
+  keys. Test `testCoreWritesBergDbsKeys`.
+* **U9-5**. `Db`, new section "Keys and values": any bytes, the empty array too; the order of
+  `Arrays.compareUnsigned`; no maximum length, but a key is a path of key nodes, a level per 7
+  bytes, so it costs in proportion to its length, and a long key that shares a long start can
+  take seconds to commit (021-16, Q1); an empty value is a value, a null one refused; about
+  1.88 GB a transaction. Test `testKeysAndValues` (19 keys around 00, 61, 7F, 80 and FF, a
+  key of 3,000 bytes, both directions).
+* **U9-6**. `Db`, new section "Opening a database": `FileStream` on a directory or
+  `MemoryStream`, of which a user calls only the constructor, closed by the `Db`; the
+  builder's defaults; an example that writes, syncs, reads and scans. `DbBuilder`'s class
+  comment, `clock()` and `mainStream()`. `FileStream` is named as the stream to use; whether
+  it and `MemoryStream` are API is 020-27's Q1.
+* **U9-7**. `Db`, new sections "Threads" (what may run at once, the state a read sees) and
+  "Optimistic transactions" (the read time, `keyRead()`, the hashes, virtual write hashes, a
+  retry loop, hashes compared, a scan's range not covered, `KeyModSet`'s coverage of the last
+  96,000 to 128,000 key writes since the start); `Trans.Builder`'s `lookupTime()`,
+  `keyRead()`, `addReadHash()`, `addReadHashes()` and `addVirtualWriteHash()`. Test
+  `testOptimisticTransactions`.
+* **U9-8**. `Trans.tt`, `tpos`, `lastPos`, `nextPos`; `GetData`'s and `Kvt`'s class comments
+  (their outputs; `Kvt.time` and `GetData.kvTime` left to U9-3's fix); `GetMany`'s defaults,
+  and that a `GetMany` is for one call: with `-ea` a second `getMany()` whose result has KVs
+  is refused with an `AssertionError`, the database going on, and without it the call adds to
+  the result (not "starts its result again", as section 2 has it); `currentTime()`,
+  `getFirstAvailablePos()`, `getReclaimIterationCount()`, `getStartupDistance()`,
+  `StartInfo.startPos` and `startupDistance`; `getOne()`'s parameters. Test
+  `testGetManyDefaultsAndOneCall`.
+* **U9-9**. `getTrans()` and `StoredTrans.getValueNodes()`: a delete of a key that had no
+  value stores nothing and is not listed; for a value that reclaim copied, a get gives the
+  step's transaction, and a get at the step's time less one unit finds the original, as
+  021-17's `transactionInfo()` does. Test `testCountersAndListedDeletes` (the delete); the
+  copy by 021-17's `PubTester` tests, which use these Core calls.
+* **U9-10**. `getTransactionCount()` and `getKvCount()`: since the start, BergDB's own
+  transactions and deletes of absent keys included, 0 after a start. Test
+  `testCountersAndListedDeletes`.
+* **U9-11**. Not changed: an API wish for Frans's list (a Core call that lists the
+  transactions after a time or a position).
+* **U9-12**. `Trans.Builder`'s class comment and `delete()`: a delete never replaces a put of
+  the key, unlike a batch of most embedded stores; to delete, leave the puts out. Test
+  `testTransBuilderOneOperationPerKey` (020-27).
+* **U9-13**. The test methods of `Keys`, `Trans`, `StoredTrans`, `RerunException` and
+  `FileStream` (55 tests, and `Keys.main()`) are package-private, so that the Javadoc does
+  not list them; Nano runs them as before (the same 73 unit tests). The two `<` of
+  `Keys.compareKeys()` and `FileStream` escaped, and `AppendOnlyStream`'s `EOFException`
+  named in full: the Core API's 14 classes pass doclint (html, syntax, reference). Left:
+  `Db.testHooks`, `DbBuilder`'s test settings and `Trans`'s working fields, which their
+  Javadoc calls test-only or internal (020-27, Q1).
+* **U9-14**. `getOne()`, `getMany()` (`@throws StreamIoException`) and `stop()`: a read that
+  runs at `stop()` or `close()` can throw `StreamIoException` ("Storage is closing.") where
+  a later one throws `DbStoppingException`, the database not failed, and an I/O error of an
+  active database is a `DbFailedException`. No code change: the behaviour is designed and
+  tested (`DbTesterFailure.testReadDuringStop`); whether such a read should throw
+  `DbStoppingException` is U3-6 on Frans's list.
+
+Commits in the clone, on `62345d3`: `aa553a7` (U9-4 to U9-10, U9-12 and U9-14, with the
+five tests and the entry in `releases/next.md`, Documentation) and `0ac5851` (U9-13). Gate on
+the tip's tree, under the gate lock: BEFORE COMMIT OK (242 s; unit 1582, f 86, DEMOS OK),
+16:27; JAVADOC PUB OK. Output in `/Users/f/fl/bench/2026-11-09/x27-gate1.txt`. Not pushed;
+the coordinator takes them to the main tree. A merge with c18b's U9-1 and U9-3 may meet
+`GetMany.java` (its class comment and fields, not the stop conditions) and the comments of
+`Kvt` and `GetData` (their class comments only, not `time` or `kvTime`).
