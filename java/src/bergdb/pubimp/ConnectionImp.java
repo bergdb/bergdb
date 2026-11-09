@@ -522,8 +522,19 @@ class ConnectionImp implements Connection {
             this.lookupTime = getData.actualLookupTime;
         }
 
-        TYPE result = database.getKvToObjectConverter().createObject(clazz, ikey, value);
-        return result;
+        // What transactionInfo() describes is this get's, also when the conversion runs a
+        // Data Object constructor that reads through this connection, which sets them
+        // anew (020-24-11, U11-5: transactionInfo() then gave the constructor's read).
+        final long tpos = getData.tpos;
+        final long actualLookupTime = getData.actualLookupTime;
+        final long[] readKey = infoKey;
+        try {
+            return database.getKvToObjectConverter().createObject(clazz, ikey, value);
+        } finally {
+            getData.tpos = tpos;
+            getData.actualLookupTime = actualLookupTime;
+            infoKey = readKey;
+        }
     }
     
     /**

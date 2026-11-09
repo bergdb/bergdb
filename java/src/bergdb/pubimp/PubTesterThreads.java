@@ -447,6 +447,34 @@ public class PubTesterThreads {
         }
     }
 
+    // ======== U11-5: transactionInfo() after a constructor's own get ========
+
+    /**
+     * U11-5: transactionInfo() after a get whose Data Object constructor reads another key
+     * through the same connection describes the get's value, not the constructor's read.
+     * Before the fix it gave the transaction of /cfg/a.txt.
+     */
+    @Nano
+    public static void testTransactionInfoAfterAConstructorsGet() {
+        try (Database db = Factory.database().memory().start()) {
+            final Connection c = db.connection();
+            Time tCfg = c.put("/cfg/a.txt", "A").getTime();
+            Configured x = new Configured();
+            x.n = 3;
+            Time tX = c.put("/con/x", x).getTime();
+            Assert.assertTrue(tCfg.units() < tX.units());
+            configuredConnection = c;
+            try {
+                Configured got = c.get("/con/x", Configured.class);
+                Assert.assertEquals("A", got.config);
+            } finally {
+                configuredConnection = null;
+            }
+            Assert.assertEquals(tX.units(), c.transactionInfo().time().units());
+            Assert.assertEquals("/con/x", c.transactionInfo().kvs().get(0).key());
+        }
+    }
+
     // ======== Helpers ========
 
     interface Body {

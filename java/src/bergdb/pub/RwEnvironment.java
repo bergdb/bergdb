@@ -41,7 +41,9 @@ public interface RwEnvironment extends ReadInterface {
      * is converted to it as by Connection.get() (bergdb 020-09).</p>
      *
      * @throws ObjectCreationException  As Connection.get(): the action's exception, which
-     *             ends the action; the database goes on.
+     *             ends the action unless the action catches it; an action that catches it
+     *             and goes on commits what it wrote (bergdb 020-24-11, U11-7). The database
+     *             goes on.
      * @throws DataFormatException  As Connection.get(), for a value read as a String that
      *             is not well-formed UTF-8; as ObjectCreationException, the action's
      *             exception (bergdb 021-06).

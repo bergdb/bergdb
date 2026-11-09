@@ -596,6 +596,11 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `IllegalStateException`. A compare-and-set per call: no cost measured
   for one thread. In 2026.3 and before; found by a new-user application
   (020-24-11).
+* **`transactionInfo()` after a get whose Data Object constructor reads**
+  (bergdb 020-24-11, U11-5; 2026-11-09). A get whose class's constructor
+  read another key through the same connection left
+  `Connection.transactionInfo()` describing the constructor's read; it now
+  describes the get's value. Found by a new-user application.
 
 
 ### Core API
@@ -1124,3 +1129,14 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   The test methods of `Keys`, `Trans`, `StoredTrans`, `RerunException` and
   `FileStream` are no longer public, so the Javadoc does not list them, and
   two `<` that the Javadoc showed as "invalid input" are escaped.
+* **Calls of the database inside an rw() action, and what an action
+  throws** (bergdb 020-24-11, U11-4 and U11-7): `Action.run()` and
+  `Connection.rw()` say that a call of a Connection or the Database inside
+  the action is a transaction of its own, committed at once, not undone,
+  and made again at each run, and that one that writes what the action
+  read makes `rw()` run the action again and again until the thread is
+  interrupted or the database stops; that whatever the action throws
+  other than an Error, a checked exception too, `rw()` throws as it is,
+  nothing written; and `rw(null)`'s `IllegalArgumentException`.
+  `RwEnvironment.get()` says that an action that catches its
+  `ObjectCreationException` goes on and commits.

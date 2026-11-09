@@ -279,6 +279,8 @@ public interface Connection extends ReadInterface {
      * after one, it describes the value retrieved by an earlier get().
      * An exists() of this connection counts as a get() here: one that finds the key as
      * a get() that retrieved its value, one that does not as a get() that found no entry.
+     * A get() whose conversion runs a Data Object constructor that reads through this
+     * connection is described, not the constructor's reads (bergdb 020-24-11, U11-5).
      * This method call will always require a read from the database
      * storage, no caching for this query.
      *
@@ -405,6 +407,17 @@ public interface Connection extends ReadInterface {
      * since the conflict history covers only the last 96,000 to 128,000 written keys and
      * every attempt is then refused (bergdb 015-88).</p>
      * 
+     * <p>A call of a Connection or of the Database inside the action is not part of the
+     * transaction: it is a transaction of its own, committed at once, not undone, and made
+     * again at each run. One that writes what the action read makes rw() run the action
+     * again and again, until the thread is interrupted or the database stops (Action.run();
+     * bergdb 020-24-11, U11-4).</p>
+     * 
+     * <p>What the action throws, other than an Error, rw() throws as it is, a checked
+     * exception too, and nothing is written (Action.run()).</p>
+     * 
+     * @throws IllegalArgumentException
+     *             If action is null.
      * @throws DbException
      *             If the transaction is refused, as for put(), also when the database stops
      *             while the action runs (Database.stop()); or if the thread is
