@@ -470,9 +470,13 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   on; a later lookup time never helped. Now it follows the copy back to
   the transaction that wrote the value and gives its time and KVs, always
   when that time is at or after the first available lookup time; it throws
-  only for a transaction before that time that reclaim has removed or may
-  remove, and the message says so. The stream is unchanged. In 2026.1 to
-  2026.3; found by a new-user application (020-24-06, U6-1).
+  only for a transaction before that time that reclaim has removed, or
+  whose value it rewrote at or before that time, and the message says so.
+  A record that holds a KV under reclaim's prefix but is no copy of the
+  value, which only a write through the Core's `Db` makes, is refused with
+  `InternalDataException`, and the database goes on. The stream is
+  unchanged. In 2026.1 to 2026.3; found by a new-user application
+  (020-24-06, U6-1).
 
 
 ### Core API

@@ -3637,6 +3637,44 @@ public class PubTester {
         }
     }
     
+    /**
+     * bergdb 021-17, R17-1 (its review): a record that holds a user's value and a KV under
+     * reclaim's prefix, written through the Core's Db in one transaction, is malformed
+     * internal data (keys under /# are BergDB's, 020-22). transactionInfo() took it for a
+     * step of reclaim's and followed the value back: with no value of the key before the
+     * record, a Bug that failed the database; with one, the earlier transaction, a wrong
+     * result. Now it is refused with InternalDataException, and the database goes on.
+     */
+    @Nano
+    private static void testTransactionInfoOfAFakeReclaimRecord() {
+        for (boolean earlier : new boolean[] {true, false}) {
+            Database d = Factory.database().memory().start();
+            try {
+                Db db = ((DatabaseImp) d).getDb();
+                Connection c = d.connection();
+                if (earlier) {
+                    c.put("/x", new byte[] {1});
+                }
+                db.execute(db.trans().put(Keys.toSegments(PubKeys.u2i("/x")), new byte[] {2})
+                        .put(Keys.toSegments(DbConstants.INTERNAL_PREFIX + "dreclaim/-fake.txt"),
+                                new byte[] {9})
+                        .build());
+                Assert.assertEquals(2, c.get("/x", byte[].class)[0]);
+                try {
+                    TransactionInfo info = c.transactionInfo();
+                    throw new AssertionError("earlier put " + earlier + ": transactionInfo() "
+                            + "gave the transaction at " + info.time().units());
+                } catch (bergdb.core.InternalDataException e) {
+                    Assert.assertTrue(e.getMessage(), e.getMessage().contains("reclaim's prefix"));
+                }
+                c.put("/y", "3");               // The database goes on.
+                Assert.assertEquals("3", c.get("/y", String.class));
+            } finally {
+                d.close();
+            }
+        }
+    }
+    
     /** The time of the record that holds the value of 'key' at the latest state. */
     private static long recordTimeOfLatest(Db db, long[] key) {
         bergdb.dag.GetData gd = db.newGetData();

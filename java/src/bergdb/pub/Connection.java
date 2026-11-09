@@ -274,8 +274,9 @@ public interface Connection extends ReadInterface {
      * values, in transactions of its own, so that it can cut the front of the stream, and a
      * get then reads reclaim's copy. This method gives the transaction that wrote the value
      * even so, not reclaim's (bergdb 021-17): always when its time is at or after the first
-     * available lookup time (Database.getFirstAvailableLookupTime()), and when it is before,
-     * until reclaim removes it.</p>
+     * available lookup time (Database.getFirstAvailableLookupTime()). A transaction before
+     * that time is given only while reclaim has neither removed it nor rewritten the value
+     * at or before that time.</p>
      *
      * @throws IllegalStateException
      *             If no get() has retrieved a value: none has been made, or each found no
@@ -288,8 +289,13 @@ public interface Connection extends ReadInterface {
      * @throws LookupTimeNotAvailableException
      *             If the transaction that wrote the value is no longer available: its time
      *             is before the first available lookup time, and reclaim has removed it, or
-     *             has rewritten the value and may remove it at any time. The value stays
-     *             readable; a get at a later lookup time leads to the same refusal.
+     *             rewrote the value at or before that time and may remove it at any time.
+     *             The value stays readable; a get at a later lookup time leads to the same
+     *             refusal.
+     * @throws DbException
+     *             If the record of the value is malformed internal data: it holds a KV
+     *             under BergDB's prefix for reclaim, but is no copy of reclaim's, which only a
+     *             write through the Core's Db makes (bergdb 021-17). The database goes on.
      */
     public TransactionInfo transactionInfo();
 

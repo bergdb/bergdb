@@ -3,9 +3,9 @@ package bergdb.pubimp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import bergdb.common.Bug;
 import bergdb.core.Db;
 import bergdb.core.DbConstants;
+import bergdb.core.InternalDataException;
 import bergdb.core.Reclaim;
 import bergdb.core.StoredNode;
 import bergdb.core.StoredTrans;
@@ -154,11 +154,22 @@ class ConnectionImp implements Connection {
         // older copy, followed back in the same way; each time is smaller than the last.
         // A time before the first available lookup time is refused: the transaction that
         // wrote the value is before it then, and reclaim has cut it or is about to.
+        // A record that is no copy of reclaim's, though it holds a KV under reclaim's prefix,
+        // is malformed internal data, which only a write through the Core's Db makes (keys
+        // under /# are BergDB's, bergdb 020-22): refused with InternalDataException, and the
+        // database goes on (bergdb 021-17, R17-1). It was taken for a copy and followed back:
+        // with no value of the key before it, a Bug that failed the database; with one, a
+        // wrong transaction. So the value before must be the record's own, byte for byte,
+        // and stored before it. A Core write of the same bytes again with such a KV is still
+        // taken for a copy.
         GetData before = null;
         while (isReclaims(stored)) {
-            assert holds(stored, infoKey) : "No value of the key in reclaim's step.";
             if (before == null) {
                 before = db.newGetData();
+            }
+            final byte[] copy = valueOf(stored, infoKey);
+            if (copy == null) {
+                throw notACopy(stored, "it has no value of the key");
             }
             final long copyTime = stored.tt;
             final byte[] copied;
@@ -174,10 +185,15 @@ class ConnectionImp implements Connection {
                 ex.initCause(e);
                 throw ex;
             }
-            if (copied == null || before.tpos < 0 || before.tpos >= stored.tpos) {
-                // Cannot happen (Reclaim.step); a bug fails the database (bergdb 010-01, P7).
-                throw failed(new Bug("No value before reclaim's copy at " + stored.tpos + ": "
-                        + (copied == null ? "none" : "one at " + before.tpos) + "."));
+            if (copied == null) {
+                throw notACopy(stored, "the key has no value before it");
+            }
+            if (!Arrays.equals(copied, copy)) {
+                throw notACopy(stored, "the key's value before it is another");
+            }
+            if (before.tpos < 0 || before.tpos >= stored.tpos) {
+                throw notACopy(stored, "the key's value before it is not stored before it, "
+                        + "but at " + before.tpos);
             }
             stored = db.getTrans(before.tpos);
         }
@@ -239,15 +255,28 @@ class ConnectionImp implements Connection {
         return false;
     }
     
-    /** True if 'stored' has a value node of 'key'. For an assert. */
-    private static boolean holds(StoredTrans stored, long[] key) {
+    /** The value that 'stored' puts at 'key', or null if it has none (or deletes it). */
+    private static byte[] valueOf(StoredTrans stored, long[] key) {
         for (StoredNode node : stored.nodes) {
             if (node instanceof StoredValueNode 
                     && Arrays.equals(key, ((StoredValueNode) node).getKey())) {
-                return true;
+                return ((StoredValueNode) node).getValueNode().getValue();
             }
         }
-        return false;
+        return null;
+    }
+    
+    /**
+     * The refusal of a record with a KV under reclaim's prefix that is no copy of reclaim's
+     * of the value of infoKey (bergdb 021-17, R17-1): malformed internal data.
+     */
+    private InternalDataException notACopy(StoredTrans stored, String why) {
+        String ikey = Keys.bkey2ikeyOrNull(Keys.toBytes(infoKey));
+        String ukey = ikey == null ? null : PubKeys.i2uOrNull(ikey);
+        return new InternalDataException("No available transaction info: the record at stream "
+                + "pos " + stored.tpos + " holds a KV under reclaim's prefix, but is no copy of "
+                + "reclaim's of the value at " + (ukey == null ? "the key" : ukey) + ": " + why
+                + ". Malformed internal data, which only a write through the Core's Db makes.");
     }
 
     /**
