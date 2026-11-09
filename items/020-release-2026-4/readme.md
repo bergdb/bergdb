@@ -169,6 +169,19 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   figures over 10 % worse, neither a fault: M4's get as `byte[]` (1.34,
   the JVM's state where ObjectBench runs it; alone 0.93) and a `w()` of
   one put at an object key (1.13, 020-10's I1 rule, by design).
+* [13-test-study.md](13-test-study.md). 020-13, the test study before
+  the release cut (Frans, 2026-11-09, 08:41: "So let's go bug-hunting"):
+  the coverage of the unit and f-tests by JaCoCo (93.6 % of lines, 81.2 %
+  of branches; the Pub layer's 2026.4 classes 95 to 99 % of lines), a
+  sample of 47 faults planted by hand (43 of the 46 that a test can catch
+  were caught; tests for the other three added), a bug hunt by probes and
+  four sub-agents (format 2, scans and reads, the Javadoc's promises, a
+  stress with restarts and crashes), and slow or duplicate tests that could
+  go. Four bugs found and fixed in the study's clone, each with its test:
+  an rw() that read two states of a key, an Error of a static initializer
+  that failed the database in rw(), key replace that deleted another key's
+  index entries, and a lost wake-up that made `BufferedStream.close()` wait
+  a quarter of the buffer time; `Time`'s lenient parsing left for Frans.
 
 
 Log
@@ -218,3 +231,9 @@ and six questions or approvals for Frans.
 
 2026-11-09. 020-12, the measurements of 020-08's step 4, made on a quiet
 machine in night 006-15 by the coordinator's agent C; 020-08 done.
+
+2026-11-09. 020-13, the test study before the release cut, at Frans's
+request (08:41), by the coordinator's agent in a clone of `main` at
+`1d1b6f3`: four bugs fixed there with their tests, three tests for the
+faults of its mutation sample that the gate missed, for the coordinator
+to integrate.
