@@ -103,6 +103,14 @@ public interface DatabaseBuilder {
      * At 5, it held 21 to 42 MB and ran in 96 MB. So for a small heap set a small startup
      * distance; the budget comes on top of what must be kept.</p>
      * 
+     * <p>Every started database also holds its write buffer, 10 MB of heap, from its start
+     * until it closes, whatever its data, startup distance and budget (Database.stop(); bergdb
+     * 020-24-10, U10-2): a small file database held about 11 MB of heap, a small memory
+     * database about 12 MB. So many small databases open at once need heap accordingly: 48
+     * small ones filled a heap of 512 MB, and the next start threw OutOfMemoryError. No
+     * setting makes the buffer smaller in this release; close the databases that are not in
+     * use. A closed database releases its buffer (Database.close()).</p>
+     * 
      * @param startupDistanceInMb    The startup distance in megabytes (mega = 1000000). 
      *                               Value should be between 5 and 1000.
      */

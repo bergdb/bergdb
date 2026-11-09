@@ -160,7 +160,12 @@ for (Account x : c.useIndex("by-balance", Account.class).from(60, true).objects(
 <li>Close, or stop, every database that you start: nothing else stops it, not even the garbage
 collector. close() waits until everything is written; stop() returns at once. A transaction
 whose commit has begun completes; another call that runs at the stop, such as an rw() whose
-action runs, throws IllegalDbStateException and writes nothing ({@link Database#stop()}).</li>
+action runs, throws IllegalDbStateException and writes nothing ({@link Database#stop()}).
+Before System.exit(), and in a shutdown hook, call close(): the JVM does not wait for the
+background close of stop() then.</li>
+<li>Each started database holds a write buffer of 10 MB of heap until it closes, whatever its
+size: many small databases open at once need heap accordingly
+({@link DatabaseBuilder#startupDistanceInMb(int)}).</li>
 <li>A transaction is written to storage soon after it returns; sync() waits until it is
 durable, and so does close().</li>
 <li>A Connection is for one thread: db.connection() gives each thread its own, the same object

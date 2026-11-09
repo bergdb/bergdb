@@ -84,7 +84,10 @@ import bergdb.pub.util.SyncLevel;
  * during the call.</p>
  * 
  * <p>Stop or close each Database that is started, as a file: nothing else stops it (bergdb
- * 005-55). stop() returns at once; close() waits until the database is closed. Database is
+ * 005-55). Until it closes, a started database holds its write buffer, 10 MB of heap
+ * whatever its data and settings, one thread and three open files (a file database; bergdb
+ * 020-24-10, U10-2; DatabaseBuilder.startupDistanceInMb()). stop() returns at once; close()
+ * waits until the database is closed. Database is
  * AutoCloseable (bergdb 005-59), so a try-with-resources block closes it when the block ends,
  * also when the block throws:</p>
  * <pre>
@@ -109,6 +112,10 @@ public interface Database extends AutoCloseable {
      * closed, in the background, typically within a second, also when the program returns
      * from main right after this method. This method returns at once; close() also waits
      * until the database is closed.
+     * The background close runs in a thread that a return from main waits for, and
+     * System.exit() does not: after stop(), System.exit() can lose transactions that have
+     * returned, as a crash does, and so can stop() in a shutdown hook (bergdb 020-24-10,
+     * U10-4). Before System.exit(), and in a shutdown hook, call close().
      * Call close() to wait for completion and report a failed flush or storage close
      * (bergdb 005-73, F5).
      * </p>
@@ -138,6 +145,14 @@ public interface Database extends AutoCloseable {
      * write buffer and its memory until the JVM exits. What it has committed is still
      * written within the buffer time, as after any commit; at the exit of the JVM, what is
      * buffered and not yet written is lost, as in a crash, which the database tolerates.
+     * </p>
+     * 
+     * <p>The write buffer and the buffer time (bergdb 020-24-10, U10-9). A transaction that
+     * returns is in the write buffer, 10 MB of heap, and the database's thread writes it to
+     * the storage soon after: when a quarter of the buffer is full, when a sync() waits, or
+     * else once the buffer time, 50 ms, has passed, and with a file storage it is durable
+     * once written; a busy disk can make that longer. Neither is a setting in this release.
+     * A program that ends without stop() or close() loses what is still in the buffer.
      * </p>
      * 
      * <p>Start another database on the same directory only after this one is closed, when

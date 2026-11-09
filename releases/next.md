@@ -1188,3 +1188,15 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   says that a get as a primitive, a wrapper or an array class reads the
   field "p" or "array" of any stored object, and gives null without one;
   `IndexBuilder` says how to find a float by a "double" level.
+* **Many small databases, opened and closed** (bergdb 020-24-10, U10-2,
+  U10-4, U10-7, U10-9, from a new user's application with one database per
+  document): `DatabaseBuilder.startupDistanceInMb()`, `Database` and the
+  package's "Good to know" say that every started database holds a write
+  buffer of 10 MB of heap until it closes, whatever its data and settings,
+  so that many small databases open at once need heap accordingly, with no
+  setting in this release; `Database.stop()` and "Good to know" say that
+  `stop()` followed by `System.exit()`, or `stop()` in a shutdown hook, can
+  lose transactions that returned, as `System.exit()` does not wait for the
+  background close: call `close()` there; `Database.stop()` describes the
+  write buffer and the buffer time, 50 ms; `StartupInfo.getStartupDuration()`
+  says that it is the recovery's time, and what `start()` does besides.
