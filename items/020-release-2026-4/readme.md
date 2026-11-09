@@ -350,8 +350,10 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   `/Users/f/fl/bench/2026-11-09/clone-l29`. 020-29, a Lean proof, for
   every size, of 020-26 section 3's safety invariants (no `sorry`), in a
   wider model (several index names and directories, transactions of any
-  keys); liveness in progress. A finding on the way: with several names
-  a build needs strong fairness of the index manager's lock.
+  keys), and liveness: cleanups end; builds end under strong fairness of
+  the build thread, or under weak fairness with finitely many definition
+  changes; weak fairness alone is not enough with several names (a model
+  run shows it). 5,231 lines, head `9d33587`.
 
 
 Log

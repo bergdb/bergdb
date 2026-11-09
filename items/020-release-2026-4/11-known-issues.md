@@ -674,7 +674,11 @@ and `u3/`, `report.md`):
 * 29-fair: 020-29 (on its branch, not merged), section 7: with several
   index names a build needs strong fairness of the index manager's lock,
   which Java's `synchronized` does not promise; with one name weak
-  fairness suffices.
+  fairness suffices, and with finitely many definition changes too
+  (`build_ends_weak`). Section 7.5: `ReentrantLock(true)` (cost to measure),
+  a bound on definition changes while a build waits, or a Javadoc sentence;
+  in practice a build starves only under a loop of index creations and
+  deletions on other names.
 
 
 ## 12. Log
