@@ -39,10 +39,13 @@ import bergdb.pub.UseIndexBuilder;
 import bergdb.pub.UsePrimaryBuilder;
 import bergdb.pub.WBuilder;
 import bergdb.pub.util.BadFormatException;
+import bergdb.pub.util.DbException;
 import bergdb.pub.util.IllegalDbStateException;
+import bergdb.pub.util.IndexBuildException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.JobStatus;
 import bergdb.pub.util.LookupTimeNotAvailableException;
+import bergdb.pub.util.SyncLevel;
 import bergdb.stream.CutStream;
 import bergdb.stream.MemoryStream;
 
@@ -171,6 +174,13 @@ public class PubTesterJavadoc {
                     + e, e);
         }
         throw new AssertionError(what + ": " + expected.getSimpleName() + " expected, none");
+    }
+
+    /** A database on 'stream', which a copy of it restarts. */
+    private static Database start(MemoryStream stream) {
+        DatabaseBuilder builder = Factory.database();
+        ((DatabaseBuilderImp) builder).getDbBuilder().testSetup(stream);
+        return builder.start();
     }
 
     private static <T> List<T> list(Iterable<T> it) {
@@ -1145,7 +1155,9 @@ public class PubTesterJavadoc {
     /**
      * Job: join(millis) returns BUILDING when the time is up; getStatus() is a snapshot;
      * the reason is null unless FAILED; a job of an index that was active at the start
-     * (Database.indexJob()) is ACTIVE with count 0 and join() returns at once.
+     * (Database.indexJob()) is ACTIVE with count 0 and join() returns at once. While it
+     * builds, an index is not scanned (NoSuchIndexException) and its name is taken
+     * (IndexAlreadyExistsException).
      */
     @Nano
     public static void testJobStatus() {
@@ -1168,6 +1180,9 @@ public class PubTesterJavadoc {
             Assert.assertEquals(JobStatus.State.BUILDING, timedOut.state());
             Assert.assertNull(timedOut.reason());
             Assert.assertTrue(db.indexJob("i") == job);
+            final Database d0 = db;
+            assertThrows("building", IndexAlreadyExistsException.class,
+                    () -> d0.indexBuilder("i").dir("/b/").type("long").field("x").start());
             final Connection c0 = c;
             assertThrows("building", NoSuchIndexException.class,
                     () -> c0.useIndex("i", Account.class));
@@ -1315,6 +1330,112 @@ public class PubTesterJavadoc {
             Assert.assertEquals(keys.toString(), "[w, rw]", values.toString());
             Assert.assertFalse(keys.get(0).equals(keys.get(1)));
             Assert.assertFalse(keys.get(0).contains("$"));
+        }
+    }
+
+    /**
+     * IndexBuildException: an index whose build failed over values that it cannot index (here
+     * an object of format 1) stays, building; after the values are replaced, the next start
+     * builds it, and it is active with every value's entry.
+     */
+    @Nano
+    public static void testReplaceWhatTheBuildCannotIndex() {
+        MemoryStream stream = new MemoryStream();
+        Database db = start(stream);
+        try {
+            Connection c = db.connection();
+            c.put("/p/1", new Person("Ann"));
+            c.put("/p/2", PubTester.format1Payment());
+            c.put("/p/3", new Person("Cy"));
+            final Job job = db.indexBuilder("i").dir("/p/").type("string").field("name")
+                    .start();
+            IndexBuildException e = assertThrows("join", IndexBuildException.class,
+                    () -> job.join());
+            Assert.assertTrue(String.valueOf(e.getCause()),
+                    e.getCause() instanceof DataFormatException);
+            Assert.assertEquals(JobStatus.State.FAILED, job.getStatus().state());
+            c.put("/p/2", new Person("Bo"));
+            final Connection c0 = c;
+            assertThrows("building", NoSuchIndexException.class,
+                    () -> c0.useIndex("i", Person.class));
+        } finally {
+            db.close();
+        }
+        db = start(stream.copy());
+        try {
+            Assert.assertEquals(JobStatus.State.ACTIVE, db.indexJob("i").join().state());
+            List<String> names = new ArrayList<>();
+            for (Person p : db.connection().useIndex("i", Person.class).objects()) {
+                names.add(p.name);
+            }
+            Assert.assertEquals("[Ann, Bo, Cy]", names.toString());
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * IndexBuilder.field(): a top-level field name, one part, a '.' in it part of the name;
+     * nestedField() splits at '.'.
+     */
+    @Nano
+    public static void testFieldNameWithADot() {
+        try (final Database db = Factory.database().memory().start()) {
+            Connection c = db.connection();
+            c.put("/d/flat", new DbObject.Builder().addLong("a.b", 1).build());
+            c.put("/d/nested", new DbObject.Builder().addObject("a", new DbObject.Builder()
+                    .addLong("b", 2).build()).build());
+            db.indexBuilder("flat").dir("/d/").type("long").field("a.b").start().join();
+            db.indexBuilder("nested").dir("/d/").type("long").nestedField("a.b").start().join();
+            db.indexBuilder("parts").dir("/d/").type("long").nestedField(new String[] {"a.b"})
+                    .start().join();
+            Assert.assertEquals("/d/flat", keys(c.useIndex("flat", DbObject.class).kvs()));
+            Assert.assertEquals("/d/nested", keys(c.useIndex("nested", DbObject.class).kvs()));
+            Assert.assertEquals("/d/flat", keys(c.useIndex("parts", DbObject.class).kvs()));
+        }
+    }
+
+    /**
+     * Database, "Interrupts": sync() only waits, and an interrupt ends the wait: it throws a
+     * DbException (a StreamIoException whose cause is an InterruptedIOException), the
+     * transaction stays committed, and the flag is set. So do Connection.sync() and
+     * Transaction.sync(), with or without a level; SyncLevel.NONE does not wait.
+     */
+    @Nano
+    public static void testSyncInterrupted(TestEnvironment env) throws Exception {
+        String dir = new File(env.createTempDir(), "db").getPath();
+        Database db = Factory.database().create(dir).start();
+        try {
+            final Database d = db;
+            final Connection c = db.connection();
+            List<Runnable> syncs = new ArrayList<>();
+            for (int i = 0; i < 6; i++) {
+                final Transaction t = c.put("/a" + i + ".txt", "v" + i);
+                Runnable[] calls = {() -> d.sync(), () -> d.sync(SyncLevel.ORDINARY),
+                        () -> c.sync(), () -> c.sync(SyncLevel.ORDINARY), () -> t.sync(),
+                        () -> t.sync(SyncLevel.ORDINARY)};
+                Thread.currentThread().interrupt();
+                DbException e = assertThrows("sync " + i, DbException.class, calls[i]);
+                Assert.assertTrue("flag " + i, Thread.interrupted());
+                Assert.assertTrue(String.valueOf(e.getCause()),
+                        e.getCause() instanceof java.io.InterruptedIOException);
+                syncs.add(calls[i]);
+            }
+            Thread.currentThread().interrupt();
+            c.sync(SyncLevel.NONE);
+            Assert.assertTrue(Thread.interrupted());
+            for (Runnable r : syncs) {
+                r.run();
+            }
+        } finally {
+            Thread.interrupted();
+            db.close();
+        }
+        db = Factory.database().open(dir).start();
+        try {
+            Assert.assertEquals("v5", db.connection().get("/a5.txt", String.class));
+        } finally {
+            db.close();
         }
     }
 
