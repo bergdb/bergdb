@@ -800,6 +800,11 @@ static enum err_code rerun_transaction(struct starter *st, const struct st_recor
     pd.node_change_listener.key_node_replaced = NULL;
     pd.node_change_listener.top_node_replaced = NULL;
     pd.node_change_listener.ctx = st;
+    if (env->pointer_created != NULL) {
+        /* Db.newPutData's: the large values go on eviction's admission list,
+         * which the caller drains after the start (bergdb 015-68). */
+        pd.pointer_created_listener = *env->pointer_created;
+    }
 
     for (int32_t i = 0; i < t->nnodes && rc == ERR_OK; i++) {
         const struct sn_node *n = &t->nodes[i];

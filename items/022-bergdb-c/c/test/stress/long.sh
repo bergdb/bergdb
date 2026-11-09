@@ -11,7 +11,7 @@
 # Usage: test/stress/long.sh SEED N [BUDGET] [GENPARAMS]
 #   BUDGET     C's memory budget in bytes (20000)
 #   GENPARAMS  more of Gen's parameters, K=V,... (retain=1,restarts=20,sd=50000,huge=1,setters=6)
-#   OUT        (environment) /Users/f/fl/bench/012/14-out/long by default
+#   OUT        (environment) /Users/f/fl/bench/022/out/long by default
 #   CBUILD     (environment) C's builds, build/ by default
 # Needs C's builds (./build.sh) and build/java/classes (test/cross/java-build.sh).
 # Prints LONG RUN OK or LONG RUN FAILED and the figures; exit status 0 or 1. The
@@ -23,7 +23,7 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 CDIR=$(cd "$HERE/../.." && pwd)
 SEED=$1; N=$2; BUDGET=${3:-20000}
 P=${4:-retain=1,restarts=20,sd=50000,huge=1,setters=6}
-OUT=${OUT:-/Users/f/fl/bench/012/14-out/long}/s$SEED-n$N
+OUT=${OUT:-/Users/f/fl/bench/022/out/long}/s$SEED-n$N
 [ -n "${JAVA_HOME:-}" ] || JAVA_HOME=/opt/homebrew/opt/openjdk
 JAVA=$JAVA_HOME/bin/java
 CLASSES=$CDIR/build/java/classes

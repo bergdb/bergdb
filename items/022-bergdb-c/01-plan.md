@@ -393,3 +393,47 @@ quick`'s 152 differences in the 11 workloads that reclaim, `clockcheck`
 on 7 directories), the same counts as step 0's record, and none of this
 step's; on step 1's landing, `C BEFORE COMMIT OK (303 s)`. No difference
 remains.
+
+2026-11-09, step 4, D4's smaller parts (worker s4a). 012-18, section 3.2;
+the stream's bytes do not change. (a) 015-68: a start admits the large
+values of its rerun, as `Db.startInner` since 2026.3. The rerun's PutData
+takes `Db.newPutData`'s pointer-created listener (`struct sr_env`'s
+`pointer_created`; NULL for `sdb.c`'s start, which has no eviction), so
+each value over 1 MiB goes on eviction's admission list, and `db_open`
+drains it with `ev_record_written` and no written nodes (`tn` NULL) before
+its first eviction: their pointers become stream pointers. C's rerun had
+no such listener, so the values stayed in their leaves, counted in the
+resident bytes, until a sweep took them. Test: `t_evict.c`'s
+`evict_start_admits_large_values` (`Eviction.testStartAdmitsLargeValues`:
+three values of 1,200 KiB, a restart from a directory with a budget of
+100 MB), which failed before the fix (3 resident pointers to values over
+1 MiB, the resident bytes over 1,200 KiB, still after a read and an
+eviction), with the allocation failures in turn in that start (52 starts,
+50 refused with NOMEM, the list's growth among them, nothing left). (b)
+015-70: `t_evict.c`'s `evict_lowered_budget_after_pins_fell`
+(`Eviction.testLoweredBudgetAfterPinsFell` as 2026.3 has it, with
+019-41's few batches below the pins) passes with C unchanged: P0 4,600
+bytes, P1 3,404, budget 4,002, resident 4,468, and at most the budget
+after the setter's call. `ev_set_budget` sets the trigger to the budget,
+and a sweep goes down to the low watermark or over two rounds whatever
+the floor, so Java's fault (a batch that counted down to an old round's
+pins) was not C's. Negative control: a sweep made to stop at the old
+floor, Java's rule before 015-70, fails the test (4,468 bytes left). (c)
+`bergdb.h`: `bergdb_set_startup_distance` clamps to 400,000 to 10^9, a
+call whose clamped value is in force writes nothing, so on a database
+opened with a distance outside that range any call writes (015-76;
+`t_db.c`'s `db_set_startup_distance` and `f_settings.c` pinned it
+already); `struct bergdb_transform`: what the functions set is not
+size-checked, the caller keeps it within the value limit, and a record
+past the record limit fails the database with nothing appended (015-51).
+`t_db.c`'s `db_transformed_value_beyond_record_limit`
+(`DbTester.testTransformedValueBeyondRecordLimit`) pins that, and passes,
+as C's code was already 2026.3's. (d) `test/stress/*.sh` (corrupt, power,
+long, allocfail, gcc, random) and `readme.md`, section 10: `OUT` defaults
+to `/Users/f/fl/bench/022/out/...`, no longer 012's `14-out`.
+
+The gate against 2026.3, on step 3's landing (`604b3df`): `C BEFORE
+COMMIT OK (278 s)`, F53 under a load of about 15 to 25; `unit` 381 tests;
+`cross quick` 0 differences (23 workloads, 69 crash cuts, 85 corrupt
+variants, 2 in turns, 46 budget runs); `writecheck` 0; `allocfail` 628
+runs. No difference remains.

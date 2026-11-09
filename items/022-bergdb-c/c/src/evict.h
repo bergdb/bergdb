@@ -59,7 +59,10 @@
  * its record is written, and then its pointer, and every pointer of the
  * record's key nodes to a written value over 1 MiB, becomes a stream pointer,
  * as a read does not cache such a value either; whatever the budget, as
- * Java's (its schedule is BUDGET also with noEvict()).
+ * Java's (its schedule is BUDGET also with noEvict()). A start's rerun of
+ * the transactions puts its large values on the list too, and the open
+ * drains it before its first eviction (bergdb 015-68, as Java's since
+ * release 2026.3): a database opened for reads keeps none in memory.
  *
  * The debug check (BERGDB_TEST, ev_check_pins): after a sweep, every pinned
  * object is still its node's object in the node table.
@@ -161,7 +164,9 @@ bool ev_large_value_created(struct ev *ev, struct knode *holder, int32_t index,
 
 /* Eviction.recordWritten (the admission): after the record of tn is
  * written, the list's large values and those that the record's key nodes
- * hold become stream pointers; the list is emptied. */
+ * hold become stream pointers; the list is emptied. tn NULL: no written
+ * nodes, the start's call for the large values of its rerun, whose records
+ * are in the stream (bergdb 015-68). */
 void ev_record_written(struct ev *ev, const struct transnodes *tn);
 
 /* The bytes of what is pinned, as the allocator counts them: each pinned

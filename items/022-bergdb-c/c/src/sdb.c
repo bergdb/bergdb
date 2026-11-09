@@ -197,7 +197,7 @@ enum err_code sdb_open(struct sdb *d, struct stream *s, struct mem *m, int32_t m
         return rc;
     }
     struct sr_env env = { m, &d->cx, &d->rs, &d->nt, &d->nc, &d->dag, &d->ts, max_node_size,
-            1 };
+            1, NULL };
     rc = sr_check_and_recover(&env, &d->plan, e);
     if (rc == ERR_OK) {
         rc = sr_start(&env, &d->start, e);

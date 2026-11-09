@@ -613,7 +613,7 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
 
 By hand, not in the gate (but for the short allocation-failure run); each
 script's header has its usage, and 14-robustness.md the results. Raw
-output goes to `/Users/f/fl/bench/012/14-out/` by default (`OUT=`).
+output goes to `/Users/f/fl/bench/022/out/` by default (`OUT=`).
 
 * `test/stress/random.sh FROM TO`: Gen's seeds by the thousand, Java
   against C, in batches of `cross.sh random`.

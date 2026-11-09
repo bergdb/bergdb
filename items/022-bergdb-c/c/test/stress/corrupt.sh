@@ -14,7 +14,7 @@
 # counted.
 #
 # Usage: test/stress/corrupt.sh
-#   OUT     (environment) /Users/f/fl/bench/012/14-out/corrupt by default
+#   OUT     (environment) /Users/f/fl/bench/022/out/corrupt by default
 #   CBUILD  (environment) C's builds, build/ by default
 #   BASES   (environment) the bases, "SEED:K=V,..." each (Gen's), in place of the four
 #   HEADERS (environment) N: also a bit flipped in each header byte (32) of the last N
@@ -26,7 +26,7 @@
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 CDIR=$(cd "$HERE/../.." && pwd)
-OUT=${OUT:-/Users/f/fl/bench/012/14-out/corrupt}
+OUT=${OUT:-/Users/f/fl/bench/022/out/corrupt}
 CBUILD=${CBUILD:-$CDIR/build}
 [ -n "${JAVA_HOME:-}" ] || JAVA_HOME=/opt/homebrew/opt/openjdk
 JAVA=$JAVA_HOME/bin/java

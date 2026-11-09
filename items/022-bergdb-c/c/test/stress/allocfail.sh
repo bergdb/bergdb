@@ -5,7 +5,7 @@
 # header has the checks). The gate runs the short one (test/stress/allocfail.wl).
 #
 # Usage: test/stress/allocfail.sh
-#   OUT    (environment) /Users/f/fl/bench/012/14-out/allocfail by default
+#   OUT    (environment) /Users/f/fl/bench/022/out/allocfail by default
 #   BASES  (environment) "SEED:BUDGET:K=V,..." each (Gen's parameters), in place of
 #          the six; BUDGET 0 for none
 #   JOBS   (environment) workloads at once (3)
@@ -14,7 +14,7 @@
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 CDIR=$(cd "$HERE/../.." && pwd)
-OUT=${OUT:-/Users/f/fl/bench/012/14-out/allocfail}
+OUT=${OUT:-/Users/f/fl/bench/022/out/allocfail}
 JOBS=${JOBS:-3}
 [ -n "${JAVA_HOME:-}" ] || JAVA_HOME=/opt/homebrew/opt/openjdk
 JAVA=$JAVA_HOME/bin/java

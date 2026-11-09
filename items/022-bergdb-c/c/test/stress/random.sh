@@ -14,7 +14,7 @@
 #
 # Usage: test/stress/random.sh FROM TO [BATCH] [JOBS]
 #   BATCH   seeds a batch (40); JOBS batches at once (2)
-#   OUT     (environment) the output directory, /Users/f/fl/bench/012/14-out/random by default
+#   OUT     (environment) the output directory, /Users/f/fl/bench/022/out/random by default
 # Needs C's test build (build/test, ./build.sh) and a JDK. A batch's report is
 # OUT/b-FROM/report.txt; a failed batch keeps its directories. The summary, a line a
 # batch, is OUT/summary.txt. Stops early, after the running batches, if the file
@@ -25,7 +25,7 @@ set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 CDIR=$(cd "$HERE/../.." && pwd)
 FROM=$1; TO=$2; BATCH=${3:-40}; JOBS=${4:-2}
-OUT=${OUT:-/Users/f/fl/bench/012/14-out/random}
+OUT=${OUT:-/Users/f/fl/bench/022/out/random}
 mkdir -p "$OUT"
 [ -n "${JAVA_HOME:-}" ] || JAVA_HOME=/opt/homebrew/opt/openjdk
 export JAVA_HOME

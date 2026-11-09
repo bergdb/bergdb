@@ -22,7 +22,7 @@
 # And per workload: bergdb-power's text and files are bergdb-run's (the seam passes on).
 #
 # Usage: test/stress/power.sh
-#   OUT    (environment) /Users/f/fl/bench/012/14-out/power by default
+#   OUT    (environment) /Users/f/fl/bench/022/out/power by default
 #   BASES  (environment) the workloads, "SEED:K=V,..." each (Gen's), in place of the six
 #   SYNC   (environment) the chance of a sync after a transaction line (0.15)
 #   JOBS   (environment) workloads at once (3)
@@ -46,7 +46,7 @@
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 CDIR=$(cd "$HERE/../.." && pwd)
-OUT=${OUT:-/Users/f/fl/bench/012/14-out/power}
+OUT=${OUT:-/Users/f/fl/bench/022/out/power}
 SYNC=${SYNC:-0.15}
 JOBS=${JOBS:-3}
 OMIT=${OMIT:-}

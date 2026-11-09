@@ -39,7 +39,11 @@
  * Dag's with the writer's follower and the rerun's listener: Java's rerun
  * uses Db.newPutData, whose marking does nothing without a transaction
  * (markAtEndOfOp: x.transInfo is null), and whose pointer-created listener
- * feeds the residents and eviction only (no byte).
+ * feeds the residents and eviction only (no byte). The residents are the
+ * allocator's counts in C; eviction's part, the admission list of the large
+ * values (Eviction.largeValueCreated), is the caller's listener in struct
+ * sr_env, which Db then drains (ev_record_written with no written nodes,
+ * as Java's start since release 2026.3: bergdb 015-68).
  *
  * Memory (012-01, 4.5; 012-07, 6.4.4): sr_start makes safe points
  * (obj_collect) between the records it validates, after each put of the
@@ -85,6 +89,10 @@ struct sr_env {
     int32_t max_node_size;      /* the start's (DbBuilder's) */
     int64_t second_top_ordinal; /* DbBuilder.secondTopOrdinal (005-02, tests); 0: 1. Db's
                                    setDag gives it to the Dag's TopDs before the rerun */
+    /* The rerun's pointer-created listener, Db.newPutData's: eviction's
+     * admission list of the large values the rerun makes (bergdb 015-68);
+     * NULL for none (sdb's start, for reads, which has no eviction). */
+    const struct op_pointer_created_listener *pointer_created;
 };
 
 /* What the start sets in Db, and Java's StartInfo. */

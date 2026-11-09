@@ -5,9 +5,13 @@
  * leaving the database as it was; a failure after it (P7); and the
  * allocation failures in turn (012-01, 4.5), each run NOMEM before the go
  * point (the database as it was, the transaction then executed again) or a
- * failed database after it, and everything freed at the close. */
+ * failed database after it, and everything freed at the close; a
+ * transformed value past the record limit (015-51). */
+#define _DARWIN_C_SOURCE        /* mkdtemp */
+#include <dirent.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "test.h"
 #include "bergdb.h"
 #include "db.h"
@@ -450,6 +454,127 @@ TEST(db_top_ordinals) {
     CHECK_MEM_ZERO(&m);
 }
 
+/* A value transformation's result: 120,000 bytes, whatever the input. */
+static void value_of_120k(void *ctx, int64_t tt, const uint8_t *previous, size_t previous_len,
+        const uint8_t **value, size_t *value_len) {
+    (void) tt;
+    (void) previous;
+    (void) previous_len;
+    *value = ctx;
+    *value_len = 120000;
+}
+
+/* The value of ikey at the latest time: its length, -1 if none. */
+static int32_t latest_len(struct db *db, const char *ikey, struct err *e) {
+    uint8_t bkey[32];
+    int64_t key[8];
+    const int32_t kl = (int32_t) strlen(ikey);
+    keys_ikey_to_bkey((const uint8_t *) ikey, kl, bkey);
+    keys_to_segments(bkey, kl, key);
+    struct getdata gd;
+    struct vnode *v = NULL;
+    db_new_get_data(db, &gd);
+    if (db_get_one(db, INT64_MAX, key, keys_segment_count(kl), &gd, &v, e) != ERR_OK) {
+        return -2;
+    }
+    return v == NULL ? -1 : v->len;
+}
+
+/* A put of ikey with value (len bytes; tf NULL for none), alone in a
+ * transaction at clock time tt. */
+static enum err_code exec_put1(struct db *db, struct mem *m, struct bergdb_test_clock *clock,
+        int64_t tt, const char *ikey, const uint8_t *value, int32_t len,
+        const struct tr_transform *tf, struct err *e) {
+    struct tr_builder b;
+    struct trans t;
+    uint8_t bkey[32];
+    const int32_t kl = (int32_t) strlen(ikey);
+    keys_ikey_to_bkey((const uint8_t *) ikey, kl, bkey);
+    tr_builder_init(&b, m);
+    tr_init(&t, m);
+    bergdb_test_clock_set(clock, tt);
+    enum err_code rc = tr_put(&b, bkey, kl, value, len, tf, e);
+    if (rc == ERR_OK) {
+        rc = tr_build(&b, &t, e);
+    }
+    if (rc == ERR_OK) {
+        rc = db_execute(db, &t, e);
+    }
+    tr_free(&t);
+    tr_builder_free(&b);
+    return rc;
+}
+
+/* DbTester.testTransformedValueBeyondRecordLimit (bergdb 015-51, as Java's
+ * since release 2026.3; bergdb.h, struct bergdb_transform): a value
+ * transformation runs after the go point, so checkSize counts its input,
+ * not its result. A result that takes the transaction past the value limit
+ * is the caller's fault: one whose record does not fit the record limit,
+ * lowered to 100 kB, fails the database when the record is made, which
+ * appends nothing, and a restart has the state before the transaction. The
+ * test pins the contract that bergdb.h states; the code was not changed. */
+TEST(db_transformed_value_beyond_record_limit) {
+    const char *t = getenv("TMPDIR");
+    char dir[256];
+    snprintf(dir, sizeof dir, "%s/bergdb-t_db-XXXXXX", t != NULL ? t : "/tmp");
+    REQUIRE(mkdtemp(dir) != NULL);
+    struct mem m;
+    struct err e;
+    struct db db;
+    struct db_config cfg;
+    struct db_start_info info;
+    struct bergdb_test_clock clock = {0};
+    mem_init(&m);
+    memset(&cfg, 0, sizeof cfg);            /* testSetup */
+    cfg.max_node_size = 30;
+    cfg.startup_distance = 50000000;
+    cfg.cache_size_indicator = INT64_MAX;
+    cfg.clock = bergdb_test_clock_time;
+    cfg.clock_ctx = &clock;
+    memcpy(cfg.id, bergdb_test_id, 16);
+    cfg.record_limit = 100 * 1000;          /* StoredTrans.recordLimit, lowered */
+    bergdb_test_clock_set(&clock, 1000);
+    REQUIRE(db_open(&db, dir, &cfg, &m, &info, &e) == ERR_OK);
+    CHECK(exec_put1(&db, &m, &clock, 2000, "/a", (const uint8_t *) "a", 1, NULL, &e) == ERR_OK);
+    const int64_t len = db_stream_length(&db);
+    uint8_t *big = calloc(120000, 1);
+    REQUIRE(big != NULL);
+    const struct tr_transform tf = { NULL, value_of_120k, big };
+    CHECK(exec_put1(&db, &m, &clock, 3000, "/t", big, 0, &tf, &e) == ERR_FAILED);
+    CHECK(strcmp(e.java, "DbFailedException") == 0);
+    CHECK(strcmp(db.failure.java, "DbException") == 0);         /* the cause */
+    CHECK(strstr(db.failure.text, "more than the limit") != NULL);
+    CHECK_EQ(db_stream_length(&db), len);       /* nothing appended */
+    CHECK(exec_put1(&db, &m, &clock, 4000, "/x", (const uint8_t *) "x", 1, NULL, &e)
+            == ERR_FAILED);                     /* a failed database takes none */
+    db_close(&db, &e);
+    CHECK_MEM_ZERO(&m);
+    free(big);
+
+    cfg.record_limit = 0;
+    REQUIRE(db_open(&db, dir, &cfg, &m, &info, &e) == ERR_OK);
+    CHECK_EQ(latest_len(&db, "/a", &e), 1);
+    CHECK_EQ(latest_len(&db, "/t", &e), -1);
+    CHECK(exec_put1(&db, &m, &clock, 5000, "/x", (const uint8_t *) "x", 1, NULL, &e) == ERR_OK);
+    CHECK_EQ(latest_len(&db, "/x", &e), 1);
+    CHECK_EQ(db_recount(&db), 0);
+    CHECK(db_close(&db, &e) == ERR_OK);
+    CHECK_MEM_ZERO(&m);
+    DIR *d = opendir(dir);
+    if (d != NULL) {
+        struct dirent *x;
+        char path[512];
+        while ((x = readdir(d)) != NULL) {
+            if (x->d_name[0] != '.') {
+                snprintf(path, sizeof path, "%s/%s", dir, x->d_name);
+                unlink(path);
+            }
+        }
+        closedir(d);
+    }
+    rmdir(dir);
+}
+
 /* The allocation failures in turn over Java's transactions: each run's
  * failure refuses (NOMEM, before the go point: the database as it was, and
  * the transaction executed again gives Java's bytes) or fails the database
@@ -542,6 +667,7 @@ const struct test db_tests[] = {
     TEST_ENTRY(db_refusals),
     TEST_ENTRY(db_set_startup_distance),
     TEST_ENTRY(db_top_ordinals),
+    TEST_ENTRY(db_transformed_value_beyond_record_limit),
     TEST_ENTRY(db_alloc_failures),
     TEST_END
 };

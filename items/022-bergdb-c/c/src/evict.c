@@ -256,8 +256,9 @@ void ev_record_written(struct ev *ev, const struct transnodes *tn) {
         obj_release(ev->cx, &v->n.o);
     }
     ev->nlarge = 0;
-    /* The record's key nodes' pointers to written large values. */
-    for (int32_t k = 0; k < tn->key_count; k++) {
+    /* The record's key nodes' pointers to written large values; none for the
+     * start (tn NULL). */
+    for (int32_t k = 0; tn != NULL && k < tn->key_count; k++) {
         struct knode *x = tn->key_nodes[k];
         const int32_t size = x->size;
         for (int32_t i = 0; i < size; i++) {

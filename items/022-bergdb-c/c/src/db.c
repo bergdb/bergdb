@@ -598,10 +598,13 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
         }
         info->created = true;
     }
+    /* The rerun's pointer-created listener, Db.newPutData's: the large values
+     * on eviction's admission list (015-68). */
+    const struct op_pointer_created_listener pcl = { l_pointer_created, db };
     /* Db.startInner's checks and recovery, then handleStartParams,
      * readTransactions and DbStarter (012-10, starter.h). */
     struct sr_env env = { m, &db->cx, &db->rs, &db->node_table, &db->node_coll, &db->dag,
-            &db->trans_seq, db->max_node_size, db->second_top_ordinal };
+            &db->trans_seq, db->max_node_size, db->second_top_ordinal, &pcl };
     struct rs_recovery plan;
     struct sr_result res;
     rc = sr_check_and_recover(&env, &plan, e);
@@ -645,6 +648,13 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
         free_all(db);
         return rc;
     }
+    /* The admission of the large values that the rerun made, as after a
+     * record that this database writes: their records are in the stream, and
+     * their pointers become stream pointers; the list is empty after it
+     * (bergdb 015-68, as Java's start since release 2026.3; until 022-01, step
+     * 4, the rerun had no such listener, and its large values stayed in their
+     * leaves, counted, until eviction took them). */
+    ev_record_written(&db->ev, NULL);
     db_evict(db);       /* eviction.afterTransaction: after the startup's loads (012-12) */
     return ERR_OK;
 }

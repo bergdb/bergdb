@@ -374,7 +374,7 @@ struct bergdb_options {
     /* The startup distance in bytes (startupDistance(int)): at least 10;
      * 50,000,000 by default. A setting in the stream: an existing database
      * uses the stream's (its meta blocks'), and bergdb_set_startup_distance
-     * changes it. */
+     * changes it, to a value that it clamps to a narrower range (015-76). */
     int32_t startup_distance;
     /* The cache size indicator in bytes, the memory budget
      * (cacheSizeIndicator(long)): 200,000,000 by default; BERGDB_NO_EVICT
@@ -532,6 +532,16 @@ int bergdb_trans_put(bergdb_trans *t, const uint8_t *key, size_t key_len,
  * execute returns; the transaction copies it, and keeps it in place of the
  * put's key or value, as Java's Kv does: executed again, the transaction
  * starts from the transformed key and value.
+ *
+ * What they set is not size-checked (bergdb 015-51, as Java's Javadoc
+ * since release 2026.3): bergdb_execute checks the transaction's size
+ * before the go point (BERGDB_LIMIT, 005-17) with each put's key and value
+ * as given, before the functions run. A transformed key and value must
+ * keep the transaction's value nodes, with its other puts, within the
+ * value limit, 7/8 of the record limit (about 1.88 GB), as a key and value
+ * given directly must. A larger result is the caller's fault: one whose
+ * record does not fit the record limit fails the database (BERGDB_FAILED)
+ * when the record is made, and the transaction is not in the stream.
  */
 struct bergdb_transform {
     void (*key)(void *ctx, int64_t tt, const uint8_t **key, size_t *key_len);
@@ -818,13 +828,18 @@ int bergdb_lookup_time(bergdb_db *db, int64_t wanted, int64_t *actual);
 /* ======== Settings and status ======== */
 
 /*
- * Sets the startup distance, in bytes (Java's setStartupDistance(int)),
- * clamped to 400,000 to 1,000,000,000. A setting in the stream: unless it
- * is the one in force, the call executes Java's dummy transaction (a
- * 200,000-byte value under an internal key), whose meta block records it,
- * and the take moves the startup section towards it as transactions are
- * committed (007-03, D4). A refused or failed call leaves the setting as
- * it was (005-53).
+ * Sets the startup distance, in bytes (Java's setStartupDistance(int)).
+ * The value is clamped to 400,000 to 1,000,000,000 (twice the meta block
+ * distance to 10^9), and the clamped value is set. A setting in the
+ * stream: unless the clamped value is the one in force, the call executes
+ * Java's dummy transaction (a 200,000-byte value under an internal key),
+ * whose meta block records it, and the take moves the startup section
+ * towards it as transactions are committed (007-03, D4); a call whose
+ * clamped value is the one in force writes nothing (005-53). So on a
+ * database whose setting is outside that range, which the open allows
+ * (bergdb_options.startup_distance: 10 and up), any call writes and sets a
+ * value inside it (bergdb 015-76, as Java's Javadoc since release 2026.3).
+ * A refused or failed call leaves the setting as it was (005-53).
  *
  * Errors: BERGDB_ARG (negative), BERGDB_STATE, and the dummy transaction's,
  * as bergdb_execute's: BERGDB_LIMIT, BERGDB_NOMEM, BERGDB_FAILED.

@@ -4,9 +4,13 @@
  * byte after every transaction, the same answers at every time, the counts
  * right (the recount), the pins in the node table, the resident bytes at
  * most the trigger; the setter's eviction in its call; the admission of a
- * large value; and the allocation failures in turn under a budget of one
- * byte. Each test ends with the allocator's count 0. */
+ * large value, also of a start's rerun (015-68); a lowered budget reached
+ * after the pins fell (015-70); and the allocation failures in turn under a
+ * budget of one byte. Each test ends with the allocator's count 0. */
+#define _DARWIN_C_SOURCE        /* mkdtemp */
+#include <dirent.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "test.h"
 #include "bergdb.h"
 #include "db.h"
@@ -369,6 +373,266 @@ TEST(evict_large_value) {
     CHECK_MEM_ZERO(&m);
 }
 
+/* A temporary directory, for a database that restarts. */
+static bool temp_dir(char *out, size_t cap) {
+    const char *t = getenv("TMPDIR");
+    snprintf(out, cap, "%s/bergdb-t_evict-XXXXXX", t != NULL ? t : "/tmp");
+    return mkdtemp(out) != NULL;
+}
+
+static void remove_dir(const char *dir) {
+    DIR *d = opendir(dir);
+    struct dirent *x;
+    char path[512];
+    if (d == NULL) {
+        return;
+    }
+    while ((x = readdir(d)) != NULL) {
+        if (x->d_name[0] != '.') {
+            snprintf(path, sizeof path, "%s/%s", dir, x->d_name);
+            unlink(path);
+        }
+    }
+    closedir(d);
+    rmdir(dir);
+}
+
+/* A transaction of puts of the ikeys, each with value (len bytes), at
+ * clock time tt. */
+static enum err_code exec_puts(struct db *db, struct mem *m, struct bergdb_test_clock *clock,
+        int64_t tt, const char *const *ikeys, int n, const uint8_t *value, int32_t len,
+        struct err *e) {
+    struct tr_builder b;
+    struct trans t;
+    tr_builder_init(&b, m);
+    tr_init(&t, m);
+    bergdb_test_clock_set(clock, tt);
+    enum err_code rc = ERR_OK;
+    for (int i = 0; i < n && rc == ERR_OK; i++) {
+        uint8_t bkey[64];
+        const int32_t kl = (int32_t) strlen(ikeys[i]);
+        keys_ikey_to_bkey((const uint8_t *) ikeys[i], kl, bkey);
+        rc = tr_put(&b, bkey, kl, value, len, NULL, e);
+    }
+    if (rc == ERR_OK) {
+        rc = tr_build(&b, &t, e);
+    }
+    if (rc == ERR_OK) {
+        rc = db_execute(db, &t, e);
+    }
+    tr_free(&t);
+    tr_builder_free(&b);
+    return rc;
+}
+
+/* Eviction's largeResident: the pointers of the node table's key nodes that
+ * hold a value over 1 MiB. */
+static int large_resident(const struct db *db) {
+    int large = 0;
+    for (int64_t s = 0; s < nt_slots(&db->node_table); s++) {
+        const struct handle *h = nt_slot(&db->node_table, s);
+        if (h == NULL || h->obj == NULL || h->obj->o.kind != OBJ_KEY) {
+            continue;
+        }
+        const struct knode *x = (const struct knode *) h->obj;
+        for (int32_t i = 0; i < x->size; i++) {
+            const struct obj *p = kn_get_pointee(x, i);
+            if (p != NULL && p->kind == OBJ_VALUE
+                    && ((const struct vnode *) p)->len > EV_LARGE_VALUE) {
+                large++;
+            }
+        }
+    }
+    return large;
+}
+
+/* Eviction.testStartAdmitsLargeValues (bergdb 015-68, as Java's since
+ * release 2026.3): a start applies the admission to the large values that
+ * its rerun of the transactions made. Three values of 1,200 KiB, over 1
+ * MiB, in one transaction; the database restarted from its directory with a
+ * budget of 100 MB, so that no sweep takes them. After the open the
+ * admission list is empty, and no resident pointer holds a value over 1
+ * MiB: they are stream pointers, as after the record of a transaction that
+ * the open database writes (ev_record_written). Until 022-01, step 4, the
+ * rerun's PutData had no pointer-created listener, so the three stayed in
+ * their leaf, counted in the resident bytes, until a sweep took them. */
+TEST(evict_start_admits_large_values) {
+    char dir[256];
+    REQUIRE(temp_dir(dir, sizeof dir));
+    struct mem m;
+    struct err e;
+    struct db db;
+    struct db_config c;
+    struct db_start_info info;
+    struct bergdb_test_clock k = {0};
+    mem_init(&m);
+    config(&c, &k, 30, 50000000, INT64_MAX);       /* testSetup: no eviction */
+    bergdb_test_clock_set(&k, 500);
+    REQUIRE(db_open(&db, dir, &c, &m, &info, &e) == ERR_OK);
+    const int32_t len = 1200 * 1024;
+    uint8_t *value = calloc((size_t) len, 1);
+    REQUIRE(value != NULL);
+    const char *const keys[] = {"a", "b", "c"};
+    CHECK(exec_puts(&db, &m, &k, 1000, keys, 3, value, len, &e) == ERR_OK);
+    CHECK(db_close(&db, &e) == ERR_OK);
+    CHECK_MEM_ZERO(&m);
+
+    config(&c, &k, 30, 50000000, 100000000);
+    REQUIRE(db_open(&db, dir, &c, &m, &info, &e) == ERR_OK);
+    CHECK_EQ(info.trans_count, 2);          /* the large values' record rerun */
+    CHECK_EQ(db.ev.nlarge, 0);
+    CHECK_EQ(large_resident(&db), 0);
+    CHECK(db_resident_bytes(&db) < len);
+    CHECK_EQ(db.ev.sweeps, 0);              /* the admission, not a sweep */
+    uint8_t bkey[8];
+    keys_ikey_to_bkey((const uint8_t *) "b", 1, bkey);
+    int64_t segs[8];
+    keys_to_segments(bkey, 1, segs);
+    struct getdata gd;
+    db_new_get_data(&db, &gd);
+    struct vnode *v = NULL;
+    CHECK(db_get_one(&db, INT64_MAX, segs, keys_segment_count(1), &gd, &v, &e) == ERR_OK);
+    REQUIRE(v != NULL);
+    CHECK_EQ(v->len, len);
+    CHECK(memcmp(v->value, value, (size_t) len) == 0);
+    db_evict(&db);
+    CHECK_EQ(large_resident(&db), 0);
+    CHECK_EQ(db_recount(&db), 0);
+    CHECK(db_close(&db, &e) == ERR_OK);
+    CHECK_MEM_ZERO(&m);
+    free(value);
+
+    /* The allocation failures in turn in the start, the list's growth in the
+     * rerun among them: each open refuses (NOMEM) and leaves nothing, the
+     * list's holds released, or opens with the list drained. */
+    int64_t runs = 0, refused = 0;
+    for (int64_t at = 1; at < 100000; at++) {
+        struct mem mf;
+        mem_init(&mf);
+        mf.fail_at = at;
+        enum err_code rc = db_open(&db, dir, &c, &mf, &info, &e);
+        runs++;
+        if (rc != ERR_OK) {
+            CHECK_EQ(rc, ERR_NOMEM);
+            CHECK_MEM_ZERO(&mf);
+            refused++;
+            continue;
+        }
+        CHECK_EQ(db.ev.nlarge, 0);
+        CHECK_EQ(large_resident(&db), 0);
+        db_close(&db, &e);
+        CHECK_MEM_ZERO(&mf);
+        if (mf.allocs < at) {
+            break;
+        }
+    }
+    CHECK(refused > 0);
+    printf("  evict_start_admits_large_values: %lld starts, %lld refused (NOMEM)\n",
+            (long long) runs, (long long) refused);
+    remove_dir(dir);
+}
+
+/* Evicts the detachable objects of the node table, as a sweep does, until
+ * the resident bytes are at most target. */
+static void evict_down_to(struct db *db, int64_t target) {
+    struct ntable *nt = &db->node_table;
+    const struct tnode *superRoot = tds_get_super_root(&db->dag.top_ds);
+    int64_t s = 0;
+    while (s < nt_slots(nt) && db_resident_bytes(db) > target) {
+        struct handle *h = nt_slot(nt, s);
+        if (h != NULL && h->obj != NULL
+                && ev_detachable(h->obj, superRoot, db->newest_written_top)) {
+            nt_evict(nt, h);        /* a later entry may move into slot s */
+            obj_collect(&db->cx);
+            continue;
+        }
+        s++;
+    }
+}
+
+/* Eviction.testLoweredBudgetAfterPinsFell (bergdb 015-70, as Java's since
+ * release 2026.3; 016-06, R4-F5): a lowered budget is reached when the pins
+ * have fallen since the last sweep of two rounds, whose floor (C's measure
+ * of Java's pinnedOfLastRound) is then old. 500 transactions of one key,
+ * nodes of at most 8 entries and a startup distance of 2,000 bytes, so
+ * that much of the tree is dirty (pinned); the budget lowered to 1 byte:
+ * the call's sweeps end with the floor P0, and it stays idle after (019-41:
+ * few sweeps, none at the next call); the budget raised, and a transaction
+ * whose take writes the dirty nodes, so that the pins fall to P1, below P0.
+ * Then detachable objects are evicted, as a sweep does, until the resident
+ * bytes are at most P0, and the budget is lowered to between P1 and P0,
+ * with no other call. The call brings the resident bytes to at most the
+ * budget: the pins fit. Then a budget of half P1, below the pins: the call's
+ * sweeps end, and the next call sweeps nothing. Java's bug, a batch that
+ * counted down to the old pins and a trigger made of them, was not C's:
+ * ev_set_budget sets the trigger to the budget, and a sweep goes down to the
+ * low watermark or over two rounds whatever the floor. */
+TEST(evict_lowered_budget_after_pins_fell) {
+    struct mem m;
+    struct err e;
+    struct db db;
+    struct db_config c;
+    struct db_start_info info;
+    struct bergdb_test_clock k = {0};
+    mem_init(&m);
+    config(&c, &k, 8, 2000, INT64_MAX);
+    bergdb_test_clock_set(&k, 500);
+    REQUIRE(db_open(&db, NULL, &c, &m, &info, &e) == ERR_OK);
+    uint8_t value[100] = {0};
+    int64_t time = 1000;
+    for (int i = 0; i < 500; i++) {
+        char ikey[16];
+        snprintf(ikey, sizeof ikey, "k%d", i);
+        const char *const keys[] = {ikey};
+        REQUIRE(exec_puts(&db, &m, &k, time += 10, keys, 1, value, 100, &e) == ERR_OK);
+    }
+    int64_t sweeps = db.ev.sweeps;
+    const int64_t complete = db.ev.complete_sweeps;
+    REQUIRE(db_set_cache_size_indicator(&db, 1, &e) == ERR_OK);
+    CHECK(db.ev.complete_sweeps > complete);
+    CHECK(db.ev.sweeps - sweeps < 100);         /* below the pins: few sweeps (019-41) */
+    sweeps = db.ev.sweeps;
+    db_evict(&db);
+    CHECK_EQ(db.ev.sweeps, sweeps);             /* and idle after */
+    const int64_t p0 = db.ev.floor;
+    CHECK_EQ(db_resident_bytes(&db), p0);
+
+    REQUIRE(db_set_cache_size_indicator(&db, INT64_MAX, &e) == ERR_OK);
+    const char *const flush[] = {"flush"};
+    REQUIRE(exec_puts(&db, &m, &k, time += 10, flush, 1, value, 100, &e) == ERR_OK);
+    const int64_t p1 = db_pinned_bytes(&db);
+    evict_down_to(&db, p0);
+    int64_t bytes = db_resident_bytes(&db);
+    CHECK_EQ(db.ev.floor, p0);                  /* no sweep of two rounds since */
+    struct ev_env env = env_of(&db);
+    CHECK_EQ(ev_check_pins(&env), 0);
+    CHECK_EQ(db_recount(&db), 0);
+    const int64_t budget = (p1 + p0) / 2;
+    printf("  evict_lowered_budget_after_pins_fell: P0 %lld, P1 %lld, budget %lld, "
+            "resident %lld\n", (long long) p0, (long long) p1, (long long) budget,
+            (long long) bytes);
+    CHECK(p1 < budget);                         /* the pins fell */
+    CHECK(budget < bytes && bytes <= p0);       /* detachable objects resident */
+    REQUIRE(db_set_cache_size_indicator(&db, budget, &e) == ERR_OK);
+    bytes = db_resident_bytes(&db);
+    CHECK(bytes <= budget);
+    sweeps = db.ev.sweeps;
+    db_evict(&db);
+    CHECK_EQ(db.ev.sweeps, sweeps);             /* idle after */
+
+    /* A budget below the pins: the sweeps end, and the next call sweeps
+     * nothing. */
+    REQUIRE(db_set_cache_size_indicator(&db, p1 / 2, &e) == ERR_OK);
+    CHECK(db.ev.sweeps - sweeps < 100);
+    sweeps = db.ev.sweeps;
+    db_evict(&db);
+    CHECK_EQ(db.ev.sweeps, sweeps);
+    CHECK(db_resident_bytes(&db) > p1 / 2);
+    CHECK_EQ(db_recount(&db), 0);
+    db_close(&db, &e);
+    CHECK_MEM_ZERO(&m);
+}
+
 /* The allocation failures in turn under a budget of one byte, with reads:
  * each run's failure refuses (NOMEM: the database as it was, the
  * transaction again gives the bytes of a run without failures) or fails the
@@ -497,6 +761,8 @@ const struct test evict_tests[] = {
     TEST_ENTRY(evict_detachable),
     TEST_ENTRY(evict_twins),
     TEST_ENTRY(evict_large_value),
+    TEST_ENTRY(evict_start_admits_large_values),
+    TEST_ENTRY(evict_lowered_budget_after_pins_fell),
     TEST_ENTRY(evict_alloc_failures),
     TEST_END
 };

@@ -8,14 +8,14 @@
 #
 # Usage: test/stress/gcc.sh
 #   GCC  (environment) the compiler, gcc-16 by default
-#   OUT  (environment) /Users/f/fl/bench/012/14-out/gcc by default
+#   OUT  (environment) /Users/f/fl/bench/022/out/gcc by default
 # Prints GCC OK or GCC FAILED, with the warnings: in the library, and in all.
 {
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 CDIR=$(cd "$HERE/../.." && pwd)
 GCC=${GCC:-gcc-16}
-OUT=${OUT:-/Users/f/fl/bench/012/14-out/gcc}
+OUT=${OUT:-/Users/f/fl/bench/022/out/gcc}
 mkdir -p "$OUT"
 T0=$(date +%s)
 if ! CC=$GCC WERROR= BUILD="$OUT/build" sh "$CDIR/build.sh" > "$OUT/build.txt" 2>&1; then
