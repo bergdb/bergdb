@@ -17,6 +17,7 @@ public class ConsoleUI implements TestRunConsumer {
     private List<File> currentTempDirs = new ArrayList<File>();
     protected int total = 0;
     protected int failed = 0;
+    protected int skipped = 0;      // Platform.Skipped, counted in total (bergdb 006-18-03)
     protected long nanoTime;
     protected double exeTime;  // Time in sec to execute test method.
     protected double totalExeTime = 0.0;
@@ -136,7 +137,14 @@ public class ConsoleUI implements TestRunConsumer {
         deleteTempDirs();
         total++;
         
-        if (t == null) {
+        Throwable cause = t instanceof java.lang.reflect.InvocationTargetException 
+                ? t.getCause() : t;
+        if (cause instanceof Platform.Skipped) {
+            skipped++;
+            if (level > LEVEL_SILENT) {
+                baseOut.println("SKIPPED " + currentMethodName + ": " + cause.getMessage());
+            }
+        } else if (t == null) {
             // if test OK
             
             if (level > LEVEL_SILENT) {
@@ -221,10 +229,13 @@ public class ConsoleUI implements TestRunConsumer {
         String result;
         double rounded = Math.round(10.0 * totalExeTime) / 10.0;
         
-        if (failed == 0 && total > 0) {
-            result = "SUCCESS, " + total + " successful tests in " + rounded + " s.\n";
+        // A skipped test is neither successful nor failed (Platform; bergdb 006-18-03).
+        String skips = skipped == 0 ? "" : ", " + skipped + " skipped";
+        if (failed == 0 && total - skipped > 0) {
+            result = "SUCCESS, " + (total - skipped) + " successful tests" + skips + " in "
+                    + rounded + " s.\n";
         } else {
-            result = "FAILURE, total: " + total + ", failed: " + failed 
+            result = "FAILURE, total: " + total + ", failed: " + failed + skips
                     + ". Time: " + rounded + " s.\n";
         }
         

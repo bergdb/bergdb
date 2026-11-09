@@ -3,8 +3,6 @@ package bergdb.core;
 import java.io.File;
 import java.io.IOException;
 import java.io.InterruptedIOException;
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadInfo;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -22,6 +20,7 @@ import bergdb.dag.Kvt;
 import bergdb.dag.Spos;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.nanotest.Platform;
 import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
 import bergdb.pub.util.SyncLevel;
@@ -993,9 +992,7 @@ public class DbTesterFailure {
             throws InterruptedException {
         final long end = System.nanoTime() + 10L * 1000 * 1000 * 1000;
         while (System.nanoTime() < end) {
-            ThreadInfo info = ManagementFactory.getThreadMXBean().getThreadInfo(writer.getId());
-            if (info != null && info.getThreadState() == Thread.State.WAITING
-                    && info.getLockName() != null && info.getLockName().startsWith(
+            if (Platform.waitsFor(writer, Thread.State.WAITING,
                     bergdb.storage.BufferedStream.class.getName())) {
                 return;
             }
@@ -1012,10 +1009,7 @@ public class DbTesterFailure {
             Object[] got) throws InterruptedException {
         final long end = System.nanoTime() + 10L * 1000 * 1000 * 1000;
         while (System.nanoTime() < end) {
-            ThreadInfo info = ManagementFactory.getThreadMXBean().getThreadInfo(reader.getId());
-            if (info != null && info.getThreadState() == Thread.State.BLOCKED
-                    && info.getLockName() != null
-                    && info.getLockName().startsWith(Db.WriteLock.class.getName())) {
+            if (Platform.waitsFor(reader, Thread.State.BLOCKED, Db.WriteLock.class.getName())) {
                 return;
             }
             if (!reader.isAlive()) {
@@ -1682,10 +1676,7 @@ public class DbTesterFailure {
     private static void waitUntilBlockedOnTheWriteLock(Thread thread) {
         final long end = System.nanoTime() + 10L * 1000 * 1000 * 1000;
         while (System.nanoTime() < end) {
-            ThreadInfo info = ManagementFactory.getThreadMXBean().getThreadInfo(thread.getId());
-            if (info != null && info.getThreadState() == Thread.State.BLOCKED
-                    && info.getLockName() != null
-                    && info.getLockName().startsWith(Db.WriteLock.class.getName())) {
+            if (Platform.waitsFor(thread, Thread.State.BLOCKED, Db.WriteLock.class.getName())) {
                 return;
             }
             try {

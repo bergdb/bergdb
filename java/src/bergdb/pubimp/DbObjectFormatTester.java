@@ -13,6 +13,7 @@ import java.util.TreeMap;
 import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.nanotest.Platform;
 import bergdb.pub.Action;
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
@@ -586,6 +587,8 @@ public class DbObjectFormatTester {
      */
     @Nano
     public static void testPackagesSealed() {
+        Platform.skipOnAndroid("it reads the jar's sealing through a ProtectionDomain, which "
+                + "a dex file does not have");
         for (Class<?> c : new Class<?>[] {DbValue.class, ObjectFormat.class}) {
             java.security.CodeSource source = c.getProtectionDomain().getCodeSource();
             if (source != null && source.getLocation().getPath().endsWith(".jar")) {

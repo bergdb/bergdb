@@ -22,6 +22,7 @@ import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.nanotest.Platform;
 import bergdb.pub.util.SyncLevel;
 import bergdb.stream.MemoryStream;
 
@@ -2021,6 +2022,8 @@ public final class Eviction {
      */
     @Nano
     public static void testBatchFailureBeforeTheLockGoes() throws Exception {
+        Platform.skipOnAndroid("it waits for the owner of a lock, which only "
+                + "java.lang.management's ThreadInfo tells");
         MemoryStream s = new MemoryStream();
         CoreTestClock clock = new CoreTestClock();
         final Db db = Db.builder().testSetup(s).clock(clock).testId()
@@ -2405,6 +2408,8 @@ public final class Eviction {
      */
     @Nano
     public static void testInterruptedWhileAWriterWaits() throws Exception {
+        Platform.skipOnAndroid("it measures a thread's CPU time, which only "
+                + "java.lang.management's ThreadMXBean tells");
         CoreTestClock clock = new CoreTestClock();
         final Db db = Db.builder().testSetup(new MemoryStream()).clock(clock).testId()
                 .evictionSchedule(Schedule.BUDGET, 1).audit(0).start();

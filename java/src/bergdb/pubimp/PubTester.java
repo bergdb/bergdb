@@ -1441,7 +1441,9 @@ public class PubTester {
             }
             int kept = n;
             for (int round = 0; round < 50 && kept > 0; round++) {
-                System.gc();
+                // Runtime.gc(), which System.gc() calls on a JVM; on Android System.gc()
+                // collects only after a finalization (bergdb 006-18-03).
+                Runtime.getRuntime().gc();
                 db.connection();
                 kept = 0;
                 for (java.lang.ref.WeakReference<Connection> ref : refs) {

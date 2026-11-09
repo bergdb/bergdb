@@ -30,6 +30,7 @@ import java.util.stream.Stream;
 
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.nanotest.Platform;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Action;
 import bergdb.pub.Connection;
@@ -468,7 +469,7 @@ public class DataObjectsTester {
 
     /** The rows of 020-09, section 8.2, G1 to G108; G109 is in testGetTable. */
     private static Row[] rows() {
-        return new Row[] {
+        Row[] rows = new Row[] {
             row("G1", v(l(5)), "l", 5L),
             row("G2", v(l(5)), "i,wi", 5),
             row("G3", v(l(3000000000L)), "i", 2147483647),
@@ -580,6 +581,25 @@ public class DataObjectsTester {
             row("G107", v(o("v", l(3)), o("p", l(3))), "i", 0, "str", null),
             row("G108", v(o("v", l(3))), "ints,bytes", null),
         };
+        return Platform.android() ? g88OnAndroid(rows) : rows;
+    }
+
+    /**
+     * On Android, G88's two values in two rows: Android's UTF-8 decoder gives three U+FFFD for
+     * ed a0 80, where Java's gives one (020-09, section 5.6; releases/next.md, Platforms;
+     * bergdb 006-18-03); for e2 82 both give one.
+     */
+    private static Row[] g88OnAndroid(Row[] rows) {
+        List<Row> list = new ArrayList<Row>();
+        for (Row r : rows) {
+            if (r.id.equals("G88")) {
+                list.add(row("G88", v(b(0xe2, 0x82)), "str", "\ufffd"));
+                list.add(row("G88", v(b(0xed, 0xa0, 0x80)), "str", "\ufffd\ufffd\ufffd"));
+            } else {
+                list.add(r);
+            }
+        }
+        return list.toArray(new Row[0]);
     }
 
     /**
@@ -3241,6 +3261,8 @@ public class DataObjectsTester {
      */
     @Nano
     public static void testClassesOfAModule() throws Exception {
+        Platform.skipOnAndroid("it makes a module layer (java.lang.module), which Android "
+                + "does not have; there V6 has no modules to check");
         Map<String, byte[]> files = new HashMap<String, byte[]>();
         files.put("hidden/Base.class", classFile("hidden/Base", "java/lang/Object", "value",
                 "I", null));

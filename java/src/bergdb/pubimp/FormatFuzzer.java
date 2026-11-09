@@ -17,6 +17,7 @@ import java.util.Set;
 
 import bergdb.common.StringUtil;
 import bergdb.nanotest.Nano;
+import bergdb.nanotest.Platform;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.DbObject;
 import bergdb.pub.DbValue;
@@ -263,11 +264,17 @@ public final class FormatFuzzer {
         return colon < 0 ? m : m.substring(0, colon);
     }
 
+    /**
+     * The JVM's threads, for the allocation of the full check; null on Android, which has no
+     * java.lang.management: there the fuzzing runs, but no allocation is measured, and the
+     * bound on it is checked on a JVM only (bergdb 006-18-03).
+     */
     private static final java.lang.management.ThreadMXBean THREADS =
-            ManagementFactory.getThreadMXBean();
+            Platform.android() ? null : ManagementFactory.getThreadMXBean();
 
     static long allocated() {
-        return ((com.sun.management.ThreadMXBean) THREADS).getCurrentThreadAllocatedBytes();
+        return THREADS == null ? 0
+                : ((com.sun.management.ThreadMXBean) THREADS).getCurrentThreadAllocatedBytes();
     }
 
     /**

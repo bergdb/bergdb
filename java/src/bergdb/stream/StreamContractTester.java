@@ -9,6 +9,7 @@ import java.util.concurrent.TimeUnit;
 
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.nanotest.Platform;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.stream.StrictStream.Kind;
 
@@ -58,6 +59,8 @@ public class StreamContractTester {
 
     @Nano
     public static void testOneFileStream(final TestEnvironment c) {
+        Platform.skipOnAndroid("OneFileStream, a stream for tests, seeks to a read's position, "
+                + "and Android's lseek refuses one near Long.MAX_VALUE (EINVAL)");
         check(c, new StreamContract.Impl("OneFileStream",
                 () -> new OneFileStream(new File(c.createTempDir(), "stream")))
                 .cutBeyond(StreamContract.CutBeyond.IGNORED));
