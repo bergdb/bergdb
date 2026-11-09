@@ -2577,4 +2577,46 @@ public class PubTesterJavadoc {
             Assert.assertEquals(Integer.MAX_VALUE, c.get("/p/1", Product.class).price);
         }
     }
+
+    /**
+     * UseIndexBuilder (bergdb 020-24-02, I-8): the keys of equal levels are in the order of
+     * their names' UTF-8 bytes, as usePrimary() lists them (U+FF5E before U+1F600, which
+     * UTF-16 orders the other way), and backward() reverses them; prefix("") and an empty
+     * byte[] prefix take every value of the level, after an eq() too.
+     */
+    @Nano
+    public static void testIndexKeyOrderAndEmptyPrefix() {
+        try (final Database db = Factory.database().memory().start()) {
+            final Connection c = db.connection();
+            String[] names = {"b", "a", "é", "Z", "a.obj", "😀", "～", "10",
+                    "9"};
+            for (String name : names) {
+                Kinds k = new Kinds();
+                k.s = "same";
+                k.bs = new byte[] {1};
+                c.put("/q/" + name, k);
+            }
+            Kinds other = new Kinds();
+            other.s = "";
+            other.bs = new byte[0];
+            c.put("/q/other", other);
+            db.indexBuilder("s").dir("/q/").type("string").field("s").start().join();
+            db.indexBuilder("b").dir("/q/").type("bytes").field("bs").type("string").field("s")
+                    .start().join();
+            String order = "/q/10 /q/9 /q/Z /q/a /q/a.obj /q/b /q/é /q/～ /q/😀";
+            Assert.assertEquals(order, keys(c.useIndex("s", Kinds.class).eq("same").kvs()));
+            List<String> back = new ArrayList<>(List.of(order.split(" ")));
+            Collections.reverse(back);
+            Assert.assertEquals(String.join(" ", back), keys(c.useIndex("s", Kinds.class)
+                    .eq("same").backward().kvs()));
+            Assert.assertEquals("/q/other " + order, keys(c.useIndex("s", Kinds.class)
+                    .prefix("").kvs()));
+            Assert.assertEquals("/q/other " + order, keys(c.useIndex("b", Kinds.class)
+                    .prefix(new byte[0]).kvs()));
+            Assert.assertEquals(order, keys(c.useIndex("b", Kinds.class).eq(new byte[] {1})
+                    .prefix("").kvs()));
+            String primary = keys(c.usePrimary(Kinds.class).dir("/q/").kvs());
+            Assert.assertEquals(order.replace("/q/b ", "/q/b /q/other "), primary);
+        }
+    }
 }

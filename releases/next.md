@@ -735,3 +735,8 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   into a class and a put back store: what the object holds, so the put drops
   a stored field that the class does not have and keeps a converted value as
   converted.
+* **The order of an index scan's keys, and an empty prefix** (bergdb
+  020-24-02, I-8): `UseIndexBuilder` says that the keys of equal levels are
+  in the order of their names' UTF-8 bytes, as the primary scan lists a
+  directory, and that `prefix("")`, or an empty `byte[]`, takes every value
+  of the level.

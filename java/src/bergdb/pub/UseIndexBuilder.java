@@ -2,8 +2,9 @@ package bergdb.pub;
 
 /**
  * A scan of a user index (bergdb 020-10, section 3.4): its values in the order of the index's
- * levels, then their keys, ascending or descending. Get one with Connection.useIndex(name,
- * type), at the connection's lookup time.
+ * levels, then their keys, ascending or descending; the keys of equal levels by their names'
+ * UTF-8 bytes, as Connection.usePrimary() lists a directory (bergdb 020-24-02, I-8). Get one
+ * with Connection.useIndex(name, type), at the connection's lookup time.
  *
  * <p><b>The grammar.</b> eq() on levels 1 to k, in order (k below the index's levels for a
  * bound or a prefix; at most all levels for eq() alone); then, on level k + 1, at most one
@@ -79,13 +80,14 @@ public interface UseIndexBuilder<TYPE> {
     
     /**
      * The values of the level after the eq() levels, a "string" level, that start with
-     * 'prefix', by code points.
+     * 'prefix', by code points. prefix("") takes every value of the level (bergdb 020-24-02,
+     * I-8).
      */
     public UseIndexBuilder<TYPE> prefix(String prefix);
     
     /**
      * The values of the level after the eq() levels, a "bytes" level, that start with
-     * 'prefix'.
+     * 'prefix'. An empty prefix takes every value of the level.
      */
     public UseIndexBuilder<TYPE> prefix(byte[] prefix);
     
