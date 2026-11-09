@@ -41,7 +41,7 @@ class KvToObjectImp implements KvToObjectConverter {
         //
         
         if (c == null) {
-            throw new IllegalArgumentException("c == null is not allowed");
+            throw new IllegalArgumentException("clazz == null not allowed");
         }
         
         if (ikey == null) {

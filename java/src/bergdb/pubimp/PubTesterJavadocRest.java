@@ -446,6 +446,30 @@ public class PubTesterJavadocRest {
     }
 
     /**
+     * Time.add() and isBetween() refuse a null argument with IllegalArgumentException, as
+     * every null argument of the API (bergdb 020-25, C2; 020-21, 3): they threw a
+     * NullPointerException. RwEnvironment.get() with a null class: the message names the
+     * argument, clazz, as Connection.get()'s does.
+     */
+    @Nano
+    public static void testTimeNullArguments() {
+        final Time t = Time.units(10);
+        assertThrows("add(null)", IllegalArgumentException.class, () -> t.add(null));
+        assertThrows("isBetween(null, t)", IllegalArgumentException.class,
+                () -> t.isBetween(null, t));
+        assertThrows("isBetween(t, null)", IllegalArgumentException.class,
+                () -> t.isBetween(t, null));
+        try (Database db = Factory.database().memory().start()) {
+            final Connection c = db.connection();
+            c.put("/a.txt", "a");
+            IllegalArgumentException e = assertThrows("env.get(key, null)",
+                    IllegalArgumentException.class,
+                    () -> c.rw(env -> env.get("/a.txt", null)));
+            Assert.assertTrue(e.getMessage(), e.getMessage().startsWith("clazz == null"));
+        }
+    }
+
+    /**
      * Duration: units() refuses a negative value with IllegalArgumentException; seconds()
      * rounds to the nearest clock unit; MAX is Long.MAX_VALUE units, and seconds() of
      * infinity equals it; equal durations have equal hash codes.

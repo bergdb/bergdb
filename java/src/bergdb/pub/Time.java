@@ -203,16 +203,26 @@ public class Time {
     /**
      * Adds a Duration to this Time and returns a new Time with the result.
      * 
-     * @throws IllegalArgumentException If the result is outside Time's range.
+     * @throws IllegalArgumentException If the result is outside Time's range, or if duration
+     *             is null (bergdb 020-25, C2).
      */
     public Time add(Duration duration) {
+        if (duration == null) {
+            // As every null argument of the API (bergdb 020-25, C2; 020-21, 3).
+            throw new IllegalArgumentException("duration == null not allowed");
+        }
         return new Time(this.units + duration.units());
     }
     
     /**
      * Returns true if this time, t, satisfies: {@code t0 <= t <= t1}.
+     * 
+     * @throws IllegalArgumentException If t0 or t1 is null (bergdb 020-25, C2).
      */
     public boolean isBetween(Time t0, Time t1) {
+        if (t0 == null || t1 == null) {
+            throw new IllegalArgumentException("t0 == null or t1 == null not allowed");
+        }
         return this.units >= t0.units && this.units <= t1.units;
     }
     

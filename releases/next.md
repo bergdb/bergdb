@@ -386,6 +386,9 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   string not in `serialize()`'s format: the parts after the key data, also
   an empty one after a trailing `-`, were ignored, and the string gave the
   key. The key data's hex digits are still taken in either case.
+* **`Time.add(null)` and `Time.isBetween()` with a null throw
+  `IllegalArgumentException`** (bergdb 020-25, C2), as every null argument
+  of the API does (020-21, 3); they threw a `NullPointerException`.
 * **`transactionInfo()` leaves out a key that is no Pub key** (bergdb
   020-22, R22-1; Frans, 2026-11-09, Q5): for a transaction written through
   the Core's `Db` with a key of the Pub API and another key, such as a key
