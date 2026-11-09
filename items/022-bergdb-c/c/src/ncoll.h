@@ -130,8 +130,10 @@ bool nc_points_to_index_node(const struct node *node, int32_t i);
  * nc_points_to_index_node says no. Else ERR_FORMAT, "StreamFormatException":
  * a damaged node (its checksum right) whose pointer names a node of another
  * type, which C read as the type it expected (Java: a ClassCastException).
- * Called by the follows on what they read or find in the handle, and by the
- * start's memory pointers. */
+ * Called by the follows on what they read or find in the handle, by the
+ * start's memory pointers, and where a pointer is linked by node id:
+ * nc_resolve_pointers and nc_link_to_canonical (bergdb 021-11, as Java's
+ * since release 2026.4). */
 enum err_code nc_check_pointee_type(const struct node *node, int32_t i,
         const struct node *pointee, int64_t pos, struct err *e);
 
@@ -140,14 +142,20 @@ int64_t nc_newer_pos(int64_t ref, int64_t w);
 
 /* resolvePointers: before an index node is written, each of its pointers to
  * an index node of the pinned set (canonical and dirty) gets the node's live
- * handle; any other gets its reference after Rule R. ERR_NOMEM or a header
- * read's error. */
+ * handle, after nc_check_pointee_type (bergdb 021-11); any other gets its
+ * reference after Rule R. ERR_NOMEM, a header read's error, or ERR_FORMAT,
+ * "StreamFormatException", for a pinned node of another type, which fails
+ * the database (the writer's). */
 enum err_code nc_resolve_pointers(struct ncoll *nc, struct node *node, struct err *e);
 
 /* linkToCanonical: rule 4 by position (005-57). ids: posToId; byPos: the
  * live handle of each canonical object by its position (the handle as a
- * long). With nc->check_link, each link is checked against rule 4 by node
- * id (a header read): a difference is ERR_FORMAT, "AssertionError". */
+ * long). Each link after nc_check_pointee_type (bergdb 021-11): a pointer
+ * that names a node of another type is ERR_FORMAT, "StreamFormatException",
+ * and the start refuses the stream. With nc->check_link, each link is
+ * checked against rule 4 by node id (a header read): the node by node id of
+ * another type is that StreamFormatException; else a difference is
+ * ERR_FORMAT, "AssertionError". */
 enum err_code nc_link_to_canonical(struct ncoll *nc, struct node *node, const struct lmap *ids,
         const struct lmap *byPos, struct err *e);
 

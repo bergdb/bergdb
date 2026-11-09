@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "bytes.h"
 #include "handle.h"
 #include "keys.h"
 #include "klong.h"
@@ -518,6 +519,9 @@ TEST(ncoll_link_to_canonical_check) {
     struct err e;
     CHECK_EQ(nc_link_to_canonical(&w.nc, &parent->n, &ids, &byPos, &e), ERR_FORMAT);
     CHECK(strcmp(e.java, "AssertionError") == 0);      /* the check found the missing link */
+    CHECK(strcmp(e.text, "rule 4 by position is not rule 4 by node id (bergdb 005-57): "
+            "pointer 1 of node 103 names 100; by position no canonical object, by node id "
+            "node 101's, at 200") == 0);               /* Java's text (before 021-11, C's own) */
     lmap_free(&ids);
     lmap_free(&byPos);
     world_free(&w);
@@ -605,33 +609,158 @@ TEST(ncoll_pointee_type) {
     world_free(&w);
 }
 
-/* As Java's (release 2026.3), linkToCanonical takes the live handle of the node id at a
- * pointer's position without checking its object's type: a key node's pointer whose
- * position names a top node's version (a damaged node, its checksum right) gets the top
- * node's handle, and the readers' follower then gives the top node from memory, unchecked
- * (019-32's checks are in the reads from the stream). C's casts refuse it where the Dag
- * casts it (t_dag.c, dag_wrong_pointee_type); Java's would throw a ClassCastException. */
+/* A link by node id refused, with Java's StreamFormatException (CHECK'd text); the
+ * pointer left without a handle. */
+static void link_refused(struct world *w, struct node *node, const struct lmap *ids,
+        const struct lmap *byPos, int32_t i, const char *text) {
+    struct err e;
+    err_clear(&e);
+    CHECK_EQ(nc_link_to_canonical(&w->nc, node, ids, byPos, &e), ERR_FORMAT);
+    bool same = strcmp(e.java, "StreamFormatException") == 0 && strcmp(e.text, text) == 0;
+    CHECK(same);
+    if (!same) {
+        printf("    got %s: %s\n", e.java, e.text);
+    }
+    CHECK(node_pointee(node, i) == NULL);
+}
+
+/* NodeCollection.linkToCanonical (bergdb 021-11, as Java's since release 2026.4): a pointer
+ * that the start links by node id is checked for its node's type, as a follow checks it
+ * (019-32). A damaged pointer (its node's checksum right) that named a version of a node of
+ * another type got that node's handle (C refused it later, where the Dag cast the node:
+ * t_dag.c, dag_wrong_pointee_type; Java threw a ClassCastException), or, under the check by
+ * node id (Java's -ea), gave 005-57's AssertionError. The three ways of
+ * CorruptStreamTester.testFound021_11, on nodes: (1) a key node's pointer whose position
+ * posToId gives to a top node; (2) a top node's skip pointer in neither map, by the node's
+ * header, to a key node; (3) a key node's pointer in neither map, not linked, whose header
+ * names a top node: the check refuses it, and without the check nothing is linked. On
+ * streams: t_sdb.c, sdb_found_021_11. */
 TEST(ncoll_link_to_canonical_another_type) {
+    const int64_t t10[] = { 10 }, t2[] = { 10, 20 };
     struct world w;
+    struct lmap ids, byPos;
+
+    /* (1) By posToId: top node 131's version at 700. */
     world_init(&w);
+    stream_put(&w, 700, &test_top_node(&w, 131, 700)->n);     /* for the check */
     struct tnode *top = test_top_node(&w, 131, 700);
     node_set_canonical(&top->n, true);
     reg(&w, &top->n);
-    struct lmap ids, byPos;
     lmap_init(&ids, &w.m);
     CHECK(lmap_put(&ids, 700, 131));
-    const int64_t ptrs[] = { 700 };
-    struct knode *parent = test_node_of_d(&w, 132, 1, ptrs);
+    const int64_t p700[] = { 700 };
+    struct knode *parent = test_node_of_d(&w, 132, 1, p700);
+    test_by_pos(&w, &byPos);
+    link_refused(&w, &parent->n, &ids, &byPos, 1,
+            "Pointer 1 of node 132 names a node of type 10 at 700, not 20.");
+    w.nc.check_link = true;     /* the check's own read names the same node */
+    link_refused(&w, &parent->n, &ids, &byPos, 1,
+            "Pointer 1 of node 132 names a node of type 10 at 700, not 20.");
+    lmap_free(&ids);
+    lmap_free(&byPos);
+    world_free(&w);
+
+    /* (2) A top node's skip pointer 0 (pointer 1) by the header at 800: key node 133, whose
+     * canonical object is at 900. The root pointer is null, skipped. */
+    world_init(&w);
+    stream_put(&w, 800, &test_key_node(&w, 133, 800, 1, t10)->n);
+    struct knode *k133 = test_key_node(&w, 133, 900, 2, t2);
+    node_set_canonical(&k133->n, true);
+    reg(&w, &k133->n);
+    uint8_t skips[16];
+    bytes_put_long_le(800, skips);
+    bytes_put_long_le(5, skips + 8);
+    struct tnode *t135 = tn_new_stored(&w.cx, 1, SPOS_NULL, 10, 1000, 135, 1, skips);
+    REQUIRE(t135 != NULL);
+    hold(&w, &t135->n);
+    lmap_init(&ids, &w.m);
+    test_by_pos(&w, &byPos);
+    link_refused(&w, &t135->n, &ids, &byPos, 1,
+            "Pointer 1 of node 135 names a node of type 20 at 800, not 10.");
+    CHECK_EQ(w.ts.header_reads, 1);
+    lmap_free(&ids);
+    lmap_free(&byPos);
+    world_free(&w);
+
+    /* (3) A key node's pointer to 750, an older version of top node 131 (canonical at 700):
+     * in neither map, so rule 4 by position links nothing. */
+    world_init(&w);
+    stream_put(&w, 750, &test_top_node(&w, 131, 750)->n);
+    top = test_top_node(&w, 131, 700);
+    node_set_canonical(&top->n, true);
+    reg(&w, &top->n);
+    lmap_init(&ids, &w.m);
+    const int64_t p750[] = { 750 };
+    parent = test_node_of_d(&w, 134, 1, p750);
     test_by_pos(&w, &byPos);
     struct err e;
     CHECK_EQ(nc_link_to_canonical(&w.nc, &parent->n, &ids, &byPos, &e), ERR_OK);
-    CHECK(node_pointer_node(&parent->n, 1) == &top->n);     /* linked, as Java's */
+    CHECK(node_pointee(&parent->n, 1) == NULL);         /* without the check: not linked */
+    w.nc.check_link = true;
+    link_refused(&w, &parent->n, &ids, &byPos, 1,
+            "Pointer 1 of node 134 names a node of type 10 at 750, not 20.");
+    lmap_free(&ids);
+    lmap_free(&byPos);
+    world_free(&w);
+}
+
+/* NodeCollection.testResolvePointersChecksTheType (bergdb 021-11, as Java's since release
+ * 2026.4): before a node is written, a stream pointer that names, by damage (the node's
+ * checksum right), a version of a pinned node of another type is refused, as a follow
+ * refuses it (019-32). Before, it got that node's handle: here a key node's pointer got a
+ * top node's. */
+TEST(ncoll_resolve_pointers_checks_the_type) {
+    struct world w;
+    world_init(&w);
+    stream_put(&w, 100, &test_top_node(&w, 301, 100)->n);      /* a version of top node 301 */
+    struct tnode *top = test_top_node(&w, 301, 50);             /* its canonical object, dirty */
+    node_set_canonical(&top->n, true);
+    node_set_dirty(&top->n, true);
+    reg(&w, &top->n);
+    const int64_t p100[] = { 100 };
+    struct knode *parent = test_node_of_d(&w, 103, 1, p100);
+    struct err e;
+    err_clear(&e);
+    CHECK_EQ(nc_resolve_pointers(&w.nc, &parent->n, &e), ERR_FORMAT);
+    CHECK(strcmp(e.java, "StreamFormatException") == 0);
+    CHECK(strcmp(e.text, "Pointer 1 of node 103 names a node of type 10 at 100, not 20.") == 0);
+    CHECK(node_pointee(&parent->n, 1) == NULL);         /* no handle */
+    world_free(&w);
+}
+
+/* NodeCollection.testWriterKeepsTheNodeWhateverItsPolicy (bergdb 019-46, as Java's since
+ * release 2026.4): the writer keeps every index node it follows to in the node's handle,
+ * whatever its op's cache policy, so makeCanonical (step 6) never fills an empty handle that
+ * the follow's drop took from the table. C's writer caches every index node (dag.c's
+ * cache_all_except_large), so nothing changes for it; with a policy that cached none, the
+ * follow dropped its own empty handle and made the version canonical in that dead handle,
+ * out of the table. */
+static bool cache_nothing(void *ctx, const struct node *node) {
+    (void) ctx;
+    (void) node;
+    return false;
+}
+
+TEST(ncoll_writer_keeps_the_node_whatever_its_policy) {
+    struct world w;
+    world_init(&w);
+    const int64_t t10[] = { 10 };
+    stream_put(&w, 100, &test_key_node(&w, 101, 100, 1, t10)->n);
+    struct tnode *parent = test_parent(&w, 301, 100);
     int32_t calls = 0;
     struct opdata op;
     test_op(&op, &calls);
-    CHECK(nc_follow_reader(&w.nc, &parent->n, 1, &op) == &top->n);
-    lmap_free(&ids);
-    lmap_free(&byPos);
+    op.cache_policy.should_cache = cache_nothing;
+    struct node *o = nc_follow_writer(&w.nc, &parent->n, 0, &op);
+    REQUIRE(o != NULL);
+    CHECK_EQ(o->id, 101);                               /* the writer followed to the node */
+    CHECK(node_is_canonical(o));
+    struct handle *h = nt_live_handle(&w.nt, 101);
+    CHECK(h != NULL && !hd_is_dead(h));                 /* a live handle in the table */
+    CHECK(h != NULL && h->obj == o);                    /* holding the canonical object */
+    CHECK(nt_get_node(&w.nt, 101) == o);
+    CHECK(h != NULL && node_pointee(&parent->n, 0) == &h->o);  /* the parent's pointer */
+    obj_collect(&w.cx);
     world_free(&w);
 }
 
@@ -776,6 +905,8 @@ const struct test ncoll_tests[] = {
     TEST_ENTRY(ncoll_pointee_type),
     TEST_ENTRY(ncoll_bad_pointers),
     TEST_ENTRY(ncoll_link_to_canonical_another_type),
+    TEST_ENTRY(ncoll_resolve_pointers_checks_the_type),
+    TEST_ENTRY(ncoll_writer_keeps_the_node_whatever_its_policy),
     TEST_ENTRY(ntable_rules),
     TEST_ENTRY(lmap_model),
     TEST_END

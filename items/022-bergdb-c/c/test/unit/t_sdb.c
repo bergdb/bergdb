@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "bytes.h"
+#include "checksum.h"
 #include "getmany.h"
 #include "keys.h"
 #include "klong.h"
@@ -612,6 +613,109 @@ TEST(sdb_refusals_2026_3) {
     free(v.stream);
 }
 
+/* A copy of the vectors' stream with the 8 bytes at byte 'at' of the node at nodePos set to
+ * 'value', the node's checksum made right (CorruptStreamTester.nodeCopy). Freed by the
+ * caller. */
+static uint8_t *node_copy(const struct vec *v, int64_t nodePos, int32_t at, int64_t value) {
+    uint8_t *copy = malloc((size_t) v->len);
+    memcpy(copy, v->stream, (size_t) v->len);
+    le64(value, copy + nodePos + at);
+    const int32_t size = bytes_get_int_le(copy + nodePos);
+    const int32_t sum = cks_sum_with_zero_replace(copy, (int32_t) nodePos, size,
+            (int32_t) nodePos + 6);
+    copy[nodePos + 6] = (uint8_t) sum;
+    copy[nodePos + 7] = (uint8_t) (sum >> 8);
+    return copy;
+}
+
+/* copy started with the check by node id or without: refused at the start with Java's
+ * StreamFormatException and 'text' if 'text', else started, and a read at time t (getMany
+ * forward) refused with 'readText' (sdb.c's DbFailedException). */
+static void found_start(const struct vec *v, const uint8_t *copy, bool check,
+        const char *text, int64_t t, const char *readText) {
+    struct mem m;
+    struct stream s;
+    struct sdb d;
+    struct err e;
+    mem_init(&m);
+    open_stream(&s, &m, copy, v->len);
+    err_clear(&e);
+    enum err_code rc = sdb_open(&d, &s, &m, 8, check, &e);
+    if (text != NULL) {
+        CHECK_EQ(rc, ERR_FORMAT);
+        bool same = strcmp(e.java, "StreamFormatException") == 0 && strcmp(e.text, text) == 0;
+        CHECK(same);
+        if (!same) {
+            printf("    check %d: %s: %s\n", (int) check, e.java, e.text);
+        }
+        CHECK(memcmp(s.bytes, copy, (size_t) v->len) == 0);    /* nothing written */
+    } else {
+        CHECK_EQ(rc, ERR_OK);
+    }
+    if (rc == ERR_OK) {
+        struct getmany g;
+        sdb_new_get_many(&d, &g);
+        g.lookup_time = t;
+        g.forward = true;
+        err_clear(&e);
+        rc = sdb_get_many(&d, &g, &e);
+        if (text == NULL) {
+            CHECK(rc != ERR_OK && strcmp(e.text, readText) == 0);
+            if (rc == ERR_OK || strcmp(e.text, readText) != 0) {
+                printf("    check %d, the read: %s: %s\n", (int) check, e.java, e.text);
+            }
+        }
+        sdb_close(&d);
+    }
+    stream_close(&s);
+    CHECK_MEM_ZERO(&m);
+}
+
+/* CorruptStreamTester.testFound021_11 (bergdb 021-11, as Java's since release 2026.4), on the
+ * vectors' stream: a pointer that the start links by node id (NodeCollection.linkToCanonical,
+ * rule 4) set to a version of a node of another type, its node's checksum made right, is
+ * refused at the start with Java's text. The startup section is the records at 3824 and 3960
+ * (sdb_refusals_2026_3); the last record's nodes are of D. (a) Its top node 2601 at 3992,
+ * skip pointer 1 (pointer 2, its byte 56) set to 3496, a version of key node 1359 from before
+ * the section, linked by the header's node id: refused, with the check by node id and
+ * without. Before, the start took it, and a read at time 2030, which takes the skip pointer,
+ * refused it where it cast the node (the JVM's ClassCastException). (b) Its key node 2599 at
+ * 4064, pointer 4 set to 2776, an older version of top node 2601, in neither of the start's
+ * maps: with the check by node id (Java's -ea), refused; before, the check's AssertionError
+ * (005-57). Without the check, as Java without -ea, nothing is linked: started, and a read
+ * refuses the pointer, which Rule R makes name the newest version, 3992. Its other pointers
+ * set so are refused by the rerun's follows (019-32), and a key node's pointer that rule 4
+ * links by posToId to a top node is t_ncoll.c's ncoll_link_to_canonical_another_type. On
+ * Java's streams of LONG: the corrupt set's found-long-1 (CorruptSet.java). */
+TEST(sdb_found_021_11) {
+    struct vec v;
+    REQUIRE(read_vec(&v));
+    const int64_t top = 3992, key = 4064, keyOld = 3496, topOld = 2776;
+    REQUIRE(v.t[v.nt - 1].tpos == 3960 && v.t[v.nt - 1].top_pos == top);
+    REQUIRE(v.stream[top + 4] == NODE_TOP && bytes_get_long_le(v.stream + top + 16) == 2601);
+    REQUIRE(bytes_get_long_le(v.stream + top + 56) == 2192);           /* skip pointer 1 */
+    REQUIRE(v.stream[key + 4] == NODE_KEY && bytes_get_long_le(v.stream + key + 24) == 2599);
+    const int32_t n = bytes_get_short_le(v.stream + key + 17);
+    REQUIRE(n == 7 && bytes_get_long_le(v.stream + key + 32 + 8 * n + 8 * 4) == 4208);
+    REQUIRE(v.stream[keyOld + 4] == NODE_KEY && v.stream[topOld + 4] == NODE_TOP);
+    REQUIRE(bytes_get_long_le(v.stream + topOld + 16) == 2601);
+
+    uint8_t *copy = node_copy(&v, top, 56, keyOld);
+    for (int check = 1; check >= 0; check--) {
+        found_start(&v, copy, check == 1,
+                "Pointer 2 of node 2601 names a node of type 20 at 3496, not 10.", 0, NULL);
+    }
+    free(copy);
+
+    copy = node_copy(&v, key, 32 + 8 * n + 8 * 4, topOld);
+    found_start(&v, copy, true, "Pointer 4 of node 2599 names a node of type 10 at 2776, not 20.",
+            0, NULL);
+    found_start(&v, copy, false, NULL, 2130,
+            "A read failed: Pointer 4 of node 2599 names a node of type 10 at 3992, not 20.");
+    free(copy);
+    free(v.stream);
+}
+
 TEST(sdb_allocation_failures) {
     struct vec v;
     REQUIRE(read_vec(&v));
@@ -664,6 +768,7 @@ const struct test sdb_tests[] = {
     TEST_ENTRY(sdb_cut_stream),
     TEST_ENTRY(sdb_refusals),
     TEST_ENTRY(sdb_refusals_2026_3),
+    TEST_ENTRY(sdb_found_021_11),
     TEST_ENTRY(sdb_allocation_failures),
     TEST_END
 };

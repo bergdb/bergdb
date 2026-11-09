@@ -2,6 +2,7 @@
 #include "ncoll.h"
 #include <assert.h>
 #include <inttypes.h>
+#include <stdio.h>
 #include <string.h>
 #include "handle.h"
 #include "klong.h"
@@ -344,9 +345,12 @@ static struct node *follow_stream_pointer(struct ncoll *nc, struct node *predece
         cutBack = cut_back(nc, node, ref);
         /* A version cut back to the startup time is not the version at its
          * position: only the writer's rerun, which makes it canonical, keeps it
-         * in the handle (M22). */
-        if (!isMaintenance && op->cache_policy.should_cache(op->cache_policy.ctx, node)
-                && (!cutBack || isWriter)) {
+         * in the handle (M22). The writer keeps every index node it reaches,
+         * whatever its op's cache policy (bergdb 019-46, as Java's since release
+         * 2026.4; C's writer caches every index node anyway): its handle then
+         * holds an object, which no drop takes and step 6 makes canonical. */
+        if (!isMaintenance && (isWriter || op->cache_policy.should_cache(op->cache_policy.ctx,
+                node)) && (!cutBack || isWriter)) {
             if (nt_install(nc->nt, live, node, &result, &nc->err) != ERR_OK) {
                 return NULL;
             }
@@ -370,9 +374,9 @@ static struct node *follow_stream_pointer(struct ncoll *nc, struct node *predece
     }
 
     /* 5. Swizzle: the live handle into the pointer. */
-    if (!isMaintenance && live != NULL && op->cache_policy.should_cache(op->cache_policy.ctx,
-            result) && (!cutBack || isWriter) && node_pointee(predecessor, pointerIndex)
-            != &live->o) {
+    if (!isMaintenance && live != NULL && (isWriter
+            || op->cache_policy.should_cache(op->cache_policy.ctx, result))
+            && (!cutBack || isWriter) && node_pointee(predecessor, pointerIndex) != &live->o) {
         if (isWriter) {
             node_set_pointee(nc->cx, predecessor, pointerIndex, &live->o);
         } else {
@@ -381,7 +385,10 @@ static struct node *follow_stream_pointer(struct ncoll *nc, struct node *predece
         }
     }
 
-    /* 6. The canonical object, for the writer. */
+    /* 6. The canonical object, for the writer, in its live handle, which holds
+     *    an object since step 4 and so is in the table (bergdb 019-46). */
+    assert((!isWriter || (live != NULL && live->obj != NULL))
+            && "the writer's handle is empty");
     if (isWriter && !node_is_canonical(result)) {
         result = nt_make_canonical(nc->nt, live, result);
     }
@@ -511,6 +518,11 @@ enum err_code nc_resolve_pointers(struct ncoll *nc, struct node *node, struct er
         struct node *pinned = live == NULL ? NULL : live->obj;
         if (pinned != NULL && node_is_canonical(pinned) && node_is_dirty(pinned)) {
             if (h != live) {
+                /* As a follow checks it (bergdb 021-11, as Java's since release 2026.4). */
+                enum err_code rc = nc_check_pointee_type(node, i, pinned, pos, e);
+                if (rc != ERR_OK) {
+                    return rc;
+                }
                 node_set_pointee(nc->cx, node, i, &live->o);
             }
             continue;
@@ -541,13 +553,32 @@ static enum err_code check_link_by_id(struct ncoll *nc, struct node *node, int32
     struct handle *byId = nt_live_handle(nc->nt, id);
     struct node *o = byId == NULL ? NULL : byId->obj;
     struct handle *expected = o != NULL && node_is_canonical(o) ? byId : NULL;
+    if (expected != NULL) {
+        /* A damaged pointer, not the Core's fault (bergdb 021-11, as Java's since
+         * release 2026.4): no AssertionError. */
+        rc = nc_check_pointee_type(node, i, o, pos, e);
+        if (rc != ERR_OK) {
+            return rc;
+        }
+    }
     if (linked != expected) {
+        /* Java's text (before bergdb 021-11, C's differed) */
+        char byPosition[48], byNodeId[80];
+        if (linked == NULL) {
+            snprintf(byPosition, sizeof byPosition, "no canonical object");
+        } else {
+            snprintf(byPosition, sizeof byPosition, "node %" PRId64, linked->id);
+        }
+        if (expected == NULL) {
+            snprintf(byNodeId, sizeof byNodeId, "no canonical object");
+        } else {
+            snprintf(byNodeId, sizeof byNodeId, "node %" PRId64 "'s, at %" PRId64, expected->id,
+                    o->spos);
+        }
         return err_set(e, ERR_FORMAT, "AssertionError", "rule 4 by position is not rule 4 by "
                 "node id (bergdb 005-57): pointer %d of node %" PRId64 " names %" PRId64
-                "; by position %s %" PRId64 ", by node id %s %" PRId64, (int) i, node->id, pos,
-                linked == NULL ? "no canonical object" : "node", linked == NULL ? -1 : linked->id,
-                expected == NULL ? "no canonical object" : "node",
-                expected == NULL ? -1 : expected->id);
+                "; by position %s, by node id %s", (int) i, node->id, pos, byPosition,
+                byNodeId);
     }
     return ERR_OK;
 }
@@ -596,6 +627,13 @@ enum err_code nc_link_to_canonical(struct ncoll *nc, struct node *node, const st
             }
         }
         if (live != NULL) {
+            /* As a follow checks it (bergdb 021-11, as Java's since release 2026.4): a
+             * damaged pointer (its node's checksum right) that named a node of another type
+             * got that node's handle, and a read refused it where it cast the node. */
+            enum err_code rc = nc_check_pointee_type(node, i, canonical, pos, e);
+            if (rc != ERR_OK) {
+                return rc;
+            }
             node_set_pointee(nc->cx, node, i, &live->o);
         }
     }

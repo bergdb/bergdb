@@ -723,3 +723,63 @@ quick` 0 differences (23 workloads, 69 crash cuts, 85 corrupt variants,
 2 in turns, 46 budget runs); `writecheck` 0; `allocfail` 628 runs. No
 difference remains; neither change shows in the cross runs, as section
 4.1 expects.
+
+2026-11-09, step 2 (worker t2). Section 3.1, point 4, and D4's 019-46
+writer line (3.2), in `ncoll.c`; the stream's bytes do not change. (a)
+021-11, as `da6c5b0`: `nc_check_pointee_type` (019-32's check, Java's
+`StreamFormatException` and text, "Pointer I of node N names a node of
+type T at P, not E.") where a pointer gets a handle by node id, before the
+link: `nc_resolve_pointers`' pinned rule (the writer's; the error fails
+the database), `nc_link_to_canonical` (the start's rule 4: by posToId, by
+position, and for a top node's pointer by the header) and
+`check_link_by_id` (005-57's check, `-check`, Java's under `-ea`), before
+its comparison, so that such a pointer gives no `AssertionError`. That
+`AssertionError`'s text is now Java's (C's said "no canonical object -1"
+and left out the object's position). Before, C linked such a pointer, as
+2026.3's Java did, and refused it later, where the Dag cast the node (the
+JVM's `ClassCastException`, 022-01, step 2). (b) 019-46: the writer
+installs and swizzles every index node it reaches (`isWriter ||` the
+policy), and an assert before step 6 that its handle holds an object; no
+change for C's writer, whose policy caches every index node. Tests, each
+failing with the fix taken out: `t_ncoll.c`'s
+`ncoll_link_to_canonical_another_type` (it recorded the link; now
+`testFound021_11`'s three ways on nodes: by posToId to a top node, a top
+node's skip pointer by the header to a key node, and with the check a
+pointer in neither map, which without the check links nothing),
+`ncoll_resolve_pointers_checks_the_type`
+(`testResolvePointersChecksTheType`),
+`ncoll_writer_keeps_the_node_whatever_its_policy` (019-46's
+`testWriterKeepsTheNodeWhateverItsPolicy`: a writer whose policy cached
+nothing dropped its own empty handle and made the version canonical in
+it, out of the table) and `ncoll_link_to_canonical_check`'s text;
+`t_sdb.c`'s `sdb_found_021_11`, `testFound021_11` on the vectors' stream:
+the last record's top node's skip pointer set to a key node version from
+before the startup section (before: started, and a read at time 2030
+threw the `ClassCastException`; now refused at the start, with the check
+and without) and its root key node's pointer 4 set to an older top node
+version (with the check: the `AssertionError` before, the refusal now;
+without it, started, and a read refuses, as Java's without `-ea`). In that
+stream the rerun's follows refuse first (019-32) a key node's pointer set
+to the newest top node; the corrupt set's `LONG` copies have that case.
+(c) The corrupt set's `found-021_11` bases: not in this landing, since
+step 0 (the candidate, `CorruptSet.java`'s `Config` call) and step 4b's
+merge are not on `2026.4` yet; made and checked in a scratch tree, `022`
+at `3e3b704` with this step and the candidate's Java (`JAVA_REF=DIR`, the
+`git archive` of `94a1520`): `CorruptSet.java`'s `found021_11`, the three
+rows on `LONG`'s original of seed 1, base `found-long-1`, in `quick` too;
+and `corruptset.sh` runs C's `bergdb-dump` with `-check`, the counterpart
+of Java's `Dump` under `-ea`. `quick`: 60 copies, `CORRUPTSET OK`, the
+three refused by both with the same text; C at `3e3b704` differs in all
+three (two started and a read failed, one gave the `AssertionError`); C's
+dumps without `-check` differ in the third (Java refuses at the start, C
+starts and a read fails). The whole set with `-check`, seed 1: 6,250
+copies (`3e3b704`'s 6,247 and these 3), `CORRUPTSET OK` (262 s). They
+land in a later commit, after step 0.
+
+The gate against 2026.3 (`JAVA_REF`'s default: step 0 had not landed), on
+step 3's landing (`8e088a7`): `C BEFORE COMMIT OK (349 s)`, F53 under a
+load of about 13 to 27; `unit` 386 tests (385 in the release build);
+`cross quick` 0 differences (23 workloads, 69 crash cuts, 85 corrupt
+variants, 2 in turns, 46 budget runs); `writecheck` 0; `allocfail` 628
+runs. No difference remains; 021-11 does not show in the cross runs (the
+quick set's corrupt variants are bit flips), as section 4.1 expects.
