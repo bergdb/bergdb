@@ -284,3 +284,46 @@ The same 100,000 records (`gen`, `import`), names of 11 to 12 chars
 (`-Dshort=1`) against the main run's names of 120 to 122 chars: 42.5 MB
 of stream in 41 files and 3.4 s, against 105.3 MB in 50 files and 7.2 s
 (U13-1).
+
+
+## 5. Fixes
+
+By fixer x28 for coord-1109, 2026-11-09, in `/Users/f/fl/bench/2026-11-09/clone-x28`, branch
+`x28-rebased` (worktree `clone-x28-rb`), on main at `b3a6b05`, all in `2508989`. These are
+Javadoc changes only, with no change of behaviour, and an entry in next.md's Documentation.
+
+* U13-1: `Connection`'s "Keys" now says that a key is stored as a path of key nodes, a level
+  for each 7 bytes, and costs many times its length. The package's "Good to know" points to
+  it. Its figures come from a test of 200,000 keys with values of 11 bytes, written 1,000 to
+  a transaction:
+  * about 70 bytes of stream for a key of 13 bytes;
+  * 1,200 to 1,400 bytes for a key of 114 bytes whose first 100 differ from key to key, in
+    key order or not;
+  * about 190 bytes for keys of 120 bytes that share their first 109.
+* U13-2: `Connection.put()` now gives the limit to the byte: 1,879,048,178
+  (`StoredTrans.valueLimit()`, `(2^31 - 9) / 8 * 7` in integers). It also says what
+  `Db.checkSize` counts, which is `StoredValueNode.getByteSizeLong` for each KV, the index
+  entries included:
+  * 28 bytes and the value's bytes for a put, 24 bytes for a delete;
+  * 8 bytes for each segment of the key: its bytes / 7 + 1, the bytes being its UTF-8 and one
+    for each '/';
+  * each KV rounded up to 4 bytes.
+
+  This gives 1,908 bytes a KV for the refused `w()` of values of 1,847 bytes, as its message
+  said. `WBuilder.execute()` refers to it.
+* U13-3: `Database`'s new "What a crash keeps" holds the rules, which the code confirms:
+  * each transaction, an `rw()` too, is one record with its index entries, in commit order;
+  * a crash keeps a prefix of the transactions, each whole or absent;
+  * a `sync()` returns when every byte up to its transaction is durable (`Db.sync`), and so
+    it covers every earlier transaction.
+* U13-7: `DatabaseBuilder.startupDistanceInMb()` now says that a start reruns each
+  transaction of its startup section whole. A transaction larger than the startup distance
+  makes every start read all of it, until about twice the startup distance has been written
+  after it. A probe on the Core, at a startup distance of 5 MB, after a transaction of
+  200 MB:
+  * starts took 3.1 s, and 2.7 s after a small put, with a section of 200 MB;
+  * after 10 MB more of small puts, a start took 0.07 s, with a section of 4.6 MB.
+
+  README.md is unchanged.
+* U13-4, U13-5 and U13-6: not in this round. U13-4 and U13-5 are API wishes; U13-6 is not
+  measured.

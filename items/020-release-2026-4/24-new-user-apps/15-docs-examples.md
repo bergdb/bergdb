@@ -256,3 +256,68 @@ Checked, and in agreement with the text:
 * The many hands of today left few real contradictions in the Javadoc: four in the
   method texts (U15-2, U15-3, U15-5, U15-7). Most of what disagrees is next.md lagging
   behind the Javadoc.
+
+
+## 4. Fixes
+
+By fixer x28 for coord-1109, 2026-11-09, in `/Users/f/fl/bench/2026-11-09/clone-x28`, branch
+`x28-rebased` (worktree `clone-x28-rb`), on main at `b3a6b05`. Documentation only: no change
+of behaviour, no API added. The calls after `stop()` and `close()` were probed for U15-3; the
+others were settled by reading the code.
+
+* U15-1, the documentation part: `ebfd835`. The overview, README.md and the package's "The
+  API and its jar" say that the documentation of the Core API is its Javadoc in the source,
+  from `java/src/bergdb/core/Db.java` on, in the release's source zip; `javadoc-pub.sh` is
+  unchanged. Whether to publish it: question Q1 below.
+* U15-2: `ebfd835`. `WBuilder`'s class text, `execute()` and next.md's 020-21 entry say that
+  an `execute()` refused because another thread is in a call of the connection leaves the
+  builder unspent (`WBuilderImp.execute`: `enter()` throws before `spent` is set).
+  `execute()`'s `@throws IllegalStateException` names that case.
+* U15-3: `ebfd835`. A probe of every `Database` call after `stop()`, after the background
+  close, and after `close()`, for a file and a memory database. Every read and transaction
+  through any connection, `setRetainDuration()`, `setStartupDistanceInMb()`, `deleteIndex()`
+  and an `IndexBuilder`'s `start()` throw `IllegalDbStateException` (`DbStoppingException`).
+  `close()`, `stop()`, `sync()`, `setCacheSizeInMb()`, the getters, `connection()`,
+  `newConnection()` and `indexJob()` are taken. `stop()` and `close()` now say exactly that.
+* U15-4: `ebfd835`, next.md's 020-08 entry, as proposed.
+* U15-5: `ebfd835`. `DbException`: malformed internal data refuses the read or the start that
+  meets it, and a running database goes on. The `InternalDataException`s of a transaction's
+  index entries come before its go point (`RwTransaction`); those of reclaim's state come at
+  the start (`Reclaim.initFromDb`).
+* U15-6: left. It is an API question: Q2 below.
+* U15-7: `ebfd835`. "a path of create() that is not a directory".
+* U15-8: `ebfd835`. "neither created.txt nor a stream file (*.bergdb) with a byte".
+* U15-9: `ebfd835`. "A connection is used by one thread at a time (Threads, below)."
+* U15-10: `ebfd835`. All six next.md entries. For 021-07, a probe confirmed the text: a
+  malformed object in an indexed directory, a put over it and a delete of it worked, and the
+  index held the new value.
+* U15-11: `6cdd63f`. The three tests are package-private. Nano's `TestRunner` takes
+  `getDeclaredMethods()`, and the other tests of `FileStream` are package-private already.
+  `unit.sh -c FileStream` ran all 40 unit tests.
+* U15-12: `ebfd835`. `bergdb-2026.4.jar` in the text and in the four command lines.
+* U15-13: left. These are developer notes, and they are not wrong.
+* U15-14: `ebfd835`. `start()`'s `@throws` names the `VersioningStreamException` of a
+  database with an index of 2026.3 (`IndexManager.start`). The Data Object rules name X3.
+* From 006-18-03: `b5f6bad`, next.md's Platforms. The 200 MB default budget is the Core's
+  (`DbBuilder.cacheSizeIndicator()`; the check's `KillDemo` used `Db`), above the 192 MB
+  heap, so an application of the Core sets a smaller one, such as 50 MB. The Pub API's
+  default is a fifth of the heap (`DatabaseBuilder.cacheSizeInMb()`), about 38 MB, so it
+  fits.
+
+Questions for Frans:
+
+* Q1 (U15-1). Should the Javadoc of the Core API be published? 020-27 named its classes
+  today in `Db`'s "The Core API".
+  * Recommendation: yes, but in the release after 2026.4. `javadoc-pub.sh` would take the
+    named classes as single source files and copy `core/doc-files`.
+  * Not tonight: their doclint and their links to internal classes are untried, and 2026.4's
+    users have the pointer to the source.
+* Q2 (U15-6). The Pub Javadoc names exceptions of packages that are not API:
+  `StreamIoException`, `StreamFormatException`, `VersioningStreamException`,
+  `DirectoryInUseException` and `InternalDataException`, in 21 places. All of them are
+  `DbException`s.
+  * Recommendation, for 2026.4: one sentence in "The API and its jar" saying that they are
+    `DbException`s, named for their messages, and that an application catches `DbException`.
+  * For the next release: an API way to tell "directory in use" apart, such as
+    `bergdb.pub.util.DirectoryInUseException` or a method. An application needs it to choose
+    between a retry and a failure.
