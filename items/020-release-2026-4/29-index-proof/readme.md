@@ -360,9 +360,9 @@ Three steps were made as the code is, so that a thread's step moves it on:
 a build step reads one key at least (`bRead`; the code's read meets a value
 or the end); a cleanup's scan finds one entry at least (`cScan`), or finds
 none and ends the cleanup (`cScanEnd`); `wDrop` ends a transaction in
-flight. The steps left out (a read of no key, a scan that
-deletes nothing, a drop of no transaction) are not the code's, so section 3
-holds for the code's runs as before.
+flight. The steps left out (a read of no key, a scan that deletes nothing,
+a drop of no transaction) are not the code's, so section 3 holds for the
+code's runs as before.
 
 
 ### 7.2. Cleanups end (point 9)
@@ -401,8 +401,9 @@ before its deletion), so in TLA+'s words `Orphan ~> ~Orphan`. A corollary of
 has its marker), with what starts the cleanup: a marker has its cleanup, or
 the deletion that put it is in its maps, which start it (`CleanOk`); every
 step keeps that but a `cabort`, and a start makes it (`cleanOk_init` for the
-first). Its hypotheses: those of `cleanup_ends`, weak fairness of the
-definition changes' maps, and `CleanOk` at the run's start.
+first). Its hypotheses: those of `cleanup_ends` but a running cleanup,
+weak fairness of the definition changes' maps, and `CleanOk` at the run's
+start.
 
 
 ### 7.3. Builds end (point 8)
@@ -441,8 +442,8 @@ of a definition that is building, in its locked phase, steps on until it
 commits, by `build_ends` on the run from then, in which the lock is its own;
 a build of a deleted generation fails its check. So `build_ends_wf`:
 BuildEnds under strong fairness of the build and weak fairness of the
-others, which is 020-26's `Fairness` (its writers' part not needed) with
-the build's own made strong.
+others, which is 020-26's `Fairness` (its writers' and cleanups' parts not
+needed) with the build's own made strong.
 
 ```lean
 theorem build_ends {sp : Spec V F L} (ρ : Run sp W) {n : Name} {g : Gen}
@@ -500,7 +501,8 @@ The starving takes definition changes without end. With finitely many,
 weak fairness is enough (Finite.lean, `build_ends_finite`): in a run with
 finitely many crashes, definition changes and retries, weak fairness of the
 definition changes' maps and of every build, and finitely many keys,
-writers and builds, a build that runs ends. From some time on no definition
+writers and builds, a build that runs, and does not end without its
+activation, ends. From some time on no definition
 change holds the lock, and each build takes it finitely often: each of its
 locked phases ends with a commit that moves it on, up to its E (`phi`,
 `phi_step`, `build_lock_finite`); so from some time on no one takes the
@@ -602,8 +604,10 @@ Starve 386; the root 11).
 **Not proved**:
 
 * **Finitely many builds** in `build_ends_finite` is a hypothesis: true of
-  every run from a database's first start (each step makes one build at
-  most), but its invariant is not written.
+  every run with finitely many definition changes and crashes (a build is
+  made only by a creation's maps or by a start, for each definition that
+  builds), but the invariant it needs, finitely many definitions and builds
+  in every reachable system, is not written.
 * **What 020-26 left out and this model too**: writes through the Core
   (020-22: undefined), key replace (020-10, section 5.3).
 * **The Java code**: the theorems are about the model; the model follows
