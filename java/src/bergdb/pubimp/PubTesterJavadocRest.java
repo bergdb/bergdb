@@ -441,6 +441,37 @@ public class PubTesterJavadocRest {
     // ======== Time, Duration ========
 
     /**
+     * Time.resolve(): the examples of its Javadoc as they are written, each giving the time
+     * of its comment; and the grammar's absolute time of a year and a month with a time of
+     * day ("2013-08 14:29", with a space or "T").
+     */
+    @Nano
+    public static void testTimeExamples() {
+        final TimeZone utc = Time.UTC;
+        final Time now = Time.utc("2013-08-21 10:00");
+        String[][] examples = {
+                {"2013-08-19 14:29:10.1234567", "2013-08-19 14:29:10.1234567"},
+                {"2013-08-19 14:29", "2013-08-19 14:29:00.0000000"},
+                {"2013-08-19", "2013-08-19 00:00:00.0000000"},
+                {"2013-08", "2013-08-01 00:00:00.0000000"},
+                {"2013-01", "2013-01-01 00:00:00.0000000"},
+                {"14:29:10.1234567", "2013-08-21 14:29:10.1234567"},
+                {"14:29", "2013-08-21 14:29:00.0000000"},
+                {"-1.5 s", "2013-08-21 09:59:58.5000000"},
+                {"-30 m", "2013-08-21 09:30:00.0000000"},
+                {"-2 h", "2013-08-21 08:00:00.0000000"},
+                {"-3 d", "2013-08-18 10:00:00.0000000"},
+                {"-2 d 14:29", "2013-08-19 14:29:00.0000000"},
+                {"now", "2013-08-21 10:00:00.0000000"},
+                {"2013-08 14:29", "2013-08-01 14:29:00.0000000"},
+                {"2013-08T14:29", "2013-08-01 14:29:00.0000000"},
+        };
+        for (String[] e : examples) {
+            Assert.assertEquals(e[0], e[1], Time.resolve(utc, now, e[0]).toUtcString());
+        }
+    }
+
+    /**
      * Time.resolve(): a time of day is today in the given time zone, which may be another
      * day than in UTC; a minus time's day is 24 hours, also across a change to summer time;
      * a minus time with a time of day takes the day of the time it gives, in the zone.
