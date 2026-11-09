@@ -55,10 +55,31 @@ public class Trans {
     
     // -- Output --
     
-    public long tt;                 // Transaction time, used internally and as output.
-    public long tpos;               // Stream position of the first byte of the transaction. Available after execute().
-    public long lastPos;            // Stream position of the last byte of the transaction. Available after execute().
-    public long nextPos;            // Stream position of the first byte of the next transaction. Available after execute().
+    /**
+     * The transaction's time, set by Db.execute(): a database time (clock units), later than
+     * every transaction's before it; a read at it or later sees the transaction (Db,
+     * "Threads"). The only way to learn the time of a transaction that a Db executes.
+     */
+    public long tt;
+    
+    /**
+     * The stream position of the transaction's first byte, set by Db.execute():
+     * Db.getTrans(tpos) reads the transaction back.
+     */
+    public long tpos;
+    
+    /**
+     * The stream position of the transaction's last byte, its commit byte, set by
+     * Db.execute(): Db.sync(lastPos, level) waits until the transaction is durable.
+     */
+    public long lastPos;
+    
+    /**
+     * The stream position after the transaction, lastPos + 1, set by Db.execute(): the
+     * stream's length when it was committed.
+     */
+    public long nextPos;
+    
     public int nodeCount;           // Number of nodes written to stream. Useful for testing/debug.
     public Listener listener;       // Low-level listener, for development/debugging typically.
 
@@ -156,6 +177,13 @@ public class Trans {
      * A value's array is not copied: once put, it is the database's, and the caller must not
      * change it; the value in memory is that array. The Pub API copies a byte[] value at
      * its put (bergdb 015-47).
+     * 
+     * <p>A Builder is for one thread at a time. Of the calls on one key, the transaction
+     * keeps one operation (build()): the last put, or a delete if there is no put. A delete
+     * never replaces a put, whatever their order, unlike a batch of most embedded stores,
+     * which keeps the last operation: to delete a key, leave its puts out (bergdb 020-24-09,
+     * U9-12). The keys and values: Db's "Keys and values"; the read time and the keys read:
+     * Db's "Optimistic transactions".</p>
      */
     public static class Builder {
         // Note This class does not enforce uniqueness of elements in keyReadSet, kvs, vkeyHashes.
@@ -179,6 +207,12 @@ public class Trans {
             warmupGetData.cachePolicy = Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES;
         }
         
+        /**
+         * Puts the value at the key, both arrays of bytes; the empty array is a value, and
+         * so is an empty key (Db, "Keys and values").
+         * 
+         * @throws IllegalArgumentException  If value is null: delete() deletes.
+         */
         public Builder put(byte[] key, byte[] value) {
             if (value == null) {
                 throw new IllegalArgumentException("value == null not allowed, use delete() " +
@@ -188,6 +222,11 @@ public class Trans {
             return this;
         }
         
+        /**
+         * As put(byte[], byte[]) with the key as segments (Keys.toSegments()).
+         * 
+         * @throws IllegalArgumentException  If value is null: delete() deletes.
+         */
         public Builder put(long[] key, byte[] value) {
             if (value == null) {
                 throw new IllegalArgumentException("value == null not allowed, use delete() " +
@@ -236,6 +275,15 @@ public class Trans {
             return this;
         }
         
+        /**
+         * Sets the transaction's read time, the time at which it read the keys that keyRead()
+         * and addReadHash() give: Db.execute() refuses it with RerunException if a
+         * transaction with a later time wrote one of them (Db, "Optimistic transactions").
+         * Long.MAX_VALUE by default, which checks nothing; a time that Db.currentTime() or a
+         * read's actual lookup time gave.
+         * 
+         * @throws IllegalArgumentException  If lookupTime is negative.
+         */
         public Builder lookupTime(long lookupTime) {
             if (lookupTime < 0) {
                 throw new IllegalArgumentException("lookupTime = " + lookupTime);
@@ -245,6 +293,11 @@ public class Trans {
             return this;
         }
         
+        /**
+         * Adds a key that the transaction read, as segments (Keys.toSegments()), with a value
+         * or without: a put or a delete of it by a transaction after the read time
+         * (lookupTime()) is a conflict. Kept as its hash, Keys.hash().
+         */
         public Builder keyRead(long[] key) {
             long[] segments = key;
             long hash = Keys.hash(segments);
@@ -252,17 +305,29 @@ public class Trans {
             return this;
         }
         
+        /** As keyRead(Keys.toSegments(string)), for the bkey of a String key. */
         public Builder keyRead(String string) {
             long[] segments = Keys.toSegments(string);
             return keyRead(segments);
         }
         
+        /**
+         * Adds a hash that the transaction read: a key's, Keys.hash(), as keyRead() adds, or a
+         * virtual one, that a transaction writes with addVirtualWriteHash().
+         * 
+         * @throws IllegalArgumentException  If hash is negative.
+         */
         public final Builder addReadHash(long hash) {
             checkHash(hash);
             readHashes.add(hash);
             return this;
         }
         
+        /**
+         * As addReadHash() for each of the first 'length' hashes.
+         * 
+         * @throws IllegalArgumentException  If one of them is negative.
+         */
         public final Builder addReadHashes(long[] hashes, final int length) {
             assert length <= hashes.length : "length = " + length 
                     + ", hashes.length = " + hashes.length;
@@ -274,22 +339,34 @@ public class Trans {
             return this;
         }
         
+        /** As delete(byte[]) of the bkey of a String key, Keys.toBytes(string). */
         public Builder delete(String string) {
             return delete(Keys.toBytes(string));
         }
 
+        /**
+         * Deletes the key's value. A delete of a key without a value stores nothing
+         * (Db.getTrans()). A put of the key in this builder replaces the delete, whatever
+         * their order (build()).
+         */
         public Builder delete(byte[] key) {
             kvs.add(new Kv(Keys.toSegments(key), null));
             return this;
         }
         
+        /** As delete(byte[]) with the key as segments (Keys.toSegments()). */
         public Builder delete(long[] key) {
             kvs.add(new Kv(key, null));
             return this;
         }
 
         /**
-         * Adds a virtual write hash to the list of hashes.
+         * Adds a virtual write hash to the list of hashes: a hash that the transaction counts
+         * as written, with no key. A transaction that read it (addReadHash()) at an earlier
+         * read time then gets RerunException, so that transactions that share no key can
+         * conflict (Db, "Optimistic transactions").
+         * 
+         * @throws IllegalArgumentException  If hash is negative.
          */
         public Builder addVirtualWriteHash(long hash) {
             checkHash(hash);

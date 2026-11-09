@@ -1,6 +1,7 @@
 package bergdb.core;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -402,6 +403,235 @@ public class DbTesterJavadoc {
             Assert.assertEquals(1, db.getCacheSizeIndicator());
             db.execute(db.trans().put("k", "v").build());
             Assert.assertEquals("v", new String(get(db, "k")));
+        } finally {
+            db.close();
+        }
+    }
+
+    /** Every KV of the latest state, with the stop condition 'c', or every one if null. */
+    private static List<Kvt> scan(Db db, GetMany.StopCondition c) {
+        GetMany g = db.newGetMany();
+        if (c != null) {
+            g.stopCondition = c;
+        }
+        db.getMany(g);
+        return g.result;
+    }
+
+    /**
+     * Db, "Keys and values" (bergdb 020-24-09, U9-5): any bytes make a key, the empty array
+     * too; getMany() gives the keys in the unsigned order of their bytes, as
+     * Arrays.compareUnsigned() orders them, forward and backward; a key of 3,000 bytes works;
+     * the empty array is a value, not a delete; a put of a null value is refused with
+     * IllegalArgumentException.
+     */
+    @Nano
+    public static void testKeysAndValues() {
+        byte[][] keys = {{}, {0}, {0, 0}, {1}, {0x61}, {0x61, 0}, {0x61, 0, 0}, {0x61, 1},
+                {0x61, 0x61}, {0x62}, {0x7f}, {(byte) 0x80}, {(byte) 0xfe, 0}, {(byte) 0xff},
+                {(byte) 0xff, (byte) 0xff}, {1, 2, 3, 4, 5, 6, 7}, {1, 2, 3, 4, 5, 6, 7, 8},
+                {1, 2, 3, 4, 5, 6, 7, (byte) 0x90}, new byte[3000]};
+        final byte[] longKey = keys[keys.length - 1];
+        longKey[2999] = 5;
+        final Db db = Db.builder().testSetup().start();
+        try {
+            Trans.Builder b = db.trans();
+            for (int i = 0; i < keys.length; i++) {
+                b.put(keys[i], i == 3 ? new byte[0] : new byte[] {(byte) i});
+            }
+            db.execute(b.build());
+
+            byte[][] sorted = keys.clone();
+            Arrays.sort(sorted, Arrays::compareUnsigned);
+            List<Kvt> forward = scan(db, null);
+            GetMany g = db.newGetMany();
+            g.forward = false;
+            db.getMany(g);
+            Assert.assertEquals("forward", sorted.length, forward.size());
+            Assert.assertEquals("backward", sorted.length, g.result.size());
+            for (int i = 0; i < sorted.length; i++) {
+                Assert.assertTrue("forward, KV " + i,
+                        Arrays.equals(sorted[i], Keys.toBytes(forward.get(i).key)));
+                Assert.assertTrue("backward, KV " + i, Arrays.equals(
+                        sorted[sorted.length - 1 - i], Keys.toBytes(g.result.get(i).key)));
+            }
+
+            byte[] v = db.getOne(LATEST, Keys.toSegments(new byte[0]), db.newGetData());
+            Assert.assertTrue("the empty key", v != null && v.length == 1 && v[0] == 0);
+            v = db.getOne(LATEST, Keys.toSegments(keys[3]), db.newGetData());
+            Assert.assertTrue("the empty value is a value", v != null && v.length == 0);
+            v = db.getOne(LATEST, Keys.toSegments(longKey), db.newGetData());
+            Assert.assertTrue("the long key", v != null && v[0] == keys.length - 1);
+            assertThrows("a null value", IllegalArgumentException.class,
+                    () -> db.trans().put(new byte[] {1}, null));
+            assertThrows("a null value, a key of segments", IllegalArgumentException.class,
+                    () -> db.trans().put(Keys.toSegments(new byte[] {1}), null));
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * Db, "Keys and the layers above" (bergdb 020-24-09, U9-4): the Core writes BergDB's keys
+     * itself, with no Pub API: a new database has none; setStartupDistance() puts a value of
+     * 200 kB at "/#i/-dummy", setRetainDuration() reclaim's settings at
+     * "/#i/dreclaim/-settings.txt"; a scan returns them, getTransactionCount() counts their
+     * transactions, and a StopCondition that returns CONTINUE for the keys that start with 01
+     * 25 leaves the user's keys, those around 01 25 too.
+     */
+    @Nano
+    public static void testCoreWritesBergDbsKeys() {
+        Db db = Db.builder().testSetup().start();
+        try {
+            byte[][] mine = {{0}, {1, 0x24}, {1, 0x24, (byte) 0xff}, {1, 0x26}, {(byte) 0xff}};
+            Trans.Builder b = db.trans();
+            for (byte[] k : mine) {
+                b.put(k, new byte[] {7});
+            }
+            db.execute(b.build());
+            Assert.assertEquals("a new database", mine.length, scan(db, null).size());
+
+            db.setStartupDistance(500 * 1000);
+            db.setRetainDuration(3600 * Clock.UNITS_PER_SEC);
+            Assert.assertEquals("transactions", 3, db.getTransactionCount());
+            byte[] dummy = {1, 0x25, 0x6b, 1, 0x2f, 0x66, 0x77, 0x6f, 0x6f, 0x7b};
+            byte[] settings = Keys.toBytes("/#i/dreclaim/-settings.txt");
+            List<byte[]> bergdbs = new ArrayList<>();
+            for (Kvt kvt : scan(db, null)) {
+                byte[] k = Keys.toBytes(kvt.key);
+                if (k.length >= 2 && k[0] == 1 && k[1] == 0x25) {
+                    bergdbs.add(k);
+                    if (Arrays.equals(k, dummy)) {
+                        Assert.assertEquals("the dummy's value", 200 * 1000, kvt.value.length);
+                    }
+                }
+            }
+            Assert.assertEquals("BergDB's keys", 2, bergdbs.size());
+            Assert.assertTrue("/#i/-dummy", Arrays.equals(dummy, bergdbs.get(0)));
+            Assert.assertTrue("the settings", Arrays.equals(settings, bergdbs.get(1)));
+
+            List<Kvt> yours = scan(db, new GetMany.StopCondition() {
+                public int handleKvt(Kvt kvt) {
+                    byte[] k = Keys.toBytes(kvt.key);
+                    return k.length >= 2 && k[0] == 1 && k[1] == 0x25 ? CONTINUE : ADD;
+                }
+
+                public void eod() {}
+            });
+            Assert.assertEquals("the user's keys", mine.length, yours.size());
+            for (int i = 0; i < mine.length; i++) {
+                Assert.assertTrue("key " + i,
+                        Arrays.equals(mine[i], Keys.toBytes(yours.get(i).key)));
+            }
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * Db.getTransactionCount() and getKvCount() count since the start: each transaction's
+     * KVs, a delete of a key without a value too, and 0 after a start (bergdb 020-24-09,
+     * U9-10). Db.getTrans(): a delete of a key that had no value is not listed, a delete of a
+     * key with one is (U9-9).
+     */
+    @Nano
+    public static void testCountersAndListedDeletes() {
+        MemoryStream s = new MemoryStream();
+        Db db = Db.builder().testSetup(s).start();
+        try {
+            db.execute(db.trans().put("a", "1").put("b", "2").build());
+            Trans t = db.trans().delete("a").delete("never").put("c", "3").build();
+            db.execute(t);
+            Assert.assertEquals("transactions", 2, db.getTransactionCount());
+            Assert.assertEquals("KVs", 5, db.getKvCount());
+            Set<String> listed = new HashSet<>();
+            for (StoredValueNode n : db.getTrans(t.tpos).getValueNodes()) {
+                listed.add(Keys.toString(n.getKey()));
+            }
+            Assert.assertEquals("listed", new HashSet<>(Arrays.asList("a", "c")), listed);
+        } finally {
+            db.close();
+        }
+        db = Db.builder().testSetup(s.copy()).start();
+        try {
+            Assert.assertEquals("transactions after a start", 0, db.getTransactionCount());
+            Assert.assertEquals("KVs after a start", 0, db.getKvCount());
+            Assert.assertEquals("3", new String(get(db, "c")));
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * Db, "Optimistic transactions" (bergdb 020-24-09, U9-7): a transaction whose key read,
+     * with a value or without, a later transaction wrote after its read time is refused with
+     * RerunException, nothing changed, and runs again at a new read time; the default read
+     * time checks nothing; a virtual write hash conflicts with a read of its hash.
+     */
+    @Nano
+    public static void testOptimisticTransactions() {
+        final Db db = dbWithKeys(0);
+        try {
+            final byte[] key = {9};
+            final byte[] other = {8};
+            final long t1 = db.currentTime();
+            db.execute(db.trans().put(key, new byte[] {1}).build());
+            assertThrows("the key read, written after t1", RerunException.class,
+                    () -> db.execute(db.trans().lookupTime(t1).keyRead(Keys.toSegments(key))
+                            .put(other, new byte[] {2}).build()));
+            Assert.assertTrue("nothing changed",
+                    db.getOne(LATEST, Keys.toSegments(other), db.newGetData()) == null);
+            long t2 = db.currentTime();
+            db.execute(db.trans().lookupTime(t2).keyRead(Keys.toSegments(key))
+                    .put(other, new byte[] {2}).build());
+            Assert.assertEquals("ran", 2,
+                    db.getOne(LATEST, Keys.toSegments(other), db.newGetData())[0]);
+
+            final byte[] absent = {7};
+            final long t3 = db.currentTime();
+            db.execute(db.trans().put(absent, new byte[] {3}).build());
+            assertThrows("a key read without a value, then put", RerunException.class,
+                    () -> db.execute(db.trans().lookupTime(t3).keyRead(Keys.toSegments(absent))
+                            .put(other, new byte[] {4}).build()));
+            db.execute(db.trans().keyRead(Keys.toSegments(absent)).put(other, new byte[] {5})
+                    .build());
+
+            final long t4 = db.currentTime();
+            db.execute(db.trans().addVirtualWriteHash(12345).put(new byte[] {6}, new byte[] {6})
+                    .build());
+            assertThrows("a virtual write hash", RerunException.class,
+                    () -> db.execute(db.trans().lookupTime(t4).addReadHash(12345)
+                            .put(other, new byte[] {6}).build()));
+            Assert.assertEquals("the last that ran", 5,
+                    db.getOne(LATEST, Keys.toSegments(other), db.newGetData())[0]);
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * GetMany (bergdb 020-24-09, U9-8): Db.newGetMany()'s defaults, the latest state, from the
+     * first key, inclusive, forward, a DontStop; with -ea, a second getMany() with the same
+     * GetMany, whose result has KVs, is refused with an AssertionError, and the database goes
+     * on.
+     */
+    @Nano
+    public static void testGetManyDefaultsAndOneCall() {
+        final Db db = dbWithKeys(3);
+        try {
+            final GetMany g = db.newGetMany();
+            Assert.assertEquals("lookupTime", LATEST, g.lookupTime);
+            Assert.assertTrue("startKey", g.startKey == null);
+            Assert.assertTrue("inclusive, forward", g.inclusive && g.forward);
+            Assert.assertTrue("stopCondition", g.stopCondition instanceof GetMany.DontStop);
+            db.getMany(g);
+            Assert.assertEquals("every KV", 3, g.result.size());
+            boolean ea = false;
+            assert ea = true;
+            if (ea) {
+                assertThrows("a second call", AssertionError.class, () -> db.getMany(g));
+                Assert.assertEquals("v0", new String(get(db, "k0")));
+            }
         } finally {
             db.close();
         }

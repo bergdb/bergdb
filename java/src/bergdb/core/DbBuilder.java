@@ -10,7 +10,12 @@ import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.MemoryStream;
 
 /**
- * An object of this class is used to properly build a Db object.
+ * An object of this class is used to properly build a Db object: Db.builder() gives one, and
+ * start() builds and starts the Db. A Db's user sets the stream (mainStream()), and may set
+ * the clock, the cache size indicator, the startup distance and the maximum node size; the
+ * defaults are the system clock, 200 MB, 50 MB and 30. Of the other methods, id() and
+ * createdTxt() are for the Pub API, and the rest for tests. Db's Javadoc, "Opening a
+ * database", has an example (bergdb 020-24-09, U9-6).
  */
 public class DbBuilder {
     Clock clock;
@@ -91,8 +96,9 @@ public class DbBuilder {
     }
     
     /**
-     * Chooses a non-default clock to use for the database. A null clock is refused by build()
-     * with IllegalArgumentException.
+     * Chooses a non-default clock to use for the database; by default the system clock,
+     * System.currentTimeMillis() in clock units (systemClock()). A null clock is refused by
+     * build() with IllegalArgumentException.
      */
     public DbBuilder clock(Clock clock) {
         this.clock = clock;
@@ -259,7 +265,9 @@ public class DbBuilder {
     
     /**
      * Sets main db stream, named "main", with the default buffer parameters; it replaces a
-     * stream set before, whatever its name.
+     * stream set before, whatever its name. For a database in a directory, a
+     * bergdb.stream.FileStream on it; for one in memory, a bergdb.stream.MemoryStream (Db,
+     * "Opening a database"). The Db closes the stream at its stop() or close().
      */
     public DbBuilder mainStream(AppendOnlyStream appendOnlyStream) {
         this.streamInfo = null;

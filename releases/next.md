@@ -1000,3 +1000,28 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   process start on the same files, and that a start may write, so a full
   disk may refuse it. `Job.join()` says that ACTIVE is not yet durable.
   A stream message's typo, "Was is modified", is fixed.
+* **The Core API as an embedded key-value store** (bergdb 020-24-09, U9-4
+  to U9-10, U9-12 to U9-14, from a new user's application on `Db` alone):
+  `Db`'s Javadoc has new sections. "Opening a database": the stream to
+  give the builder (`FileStream` on a directory, `MemoryStream`), which the
+  `Db` closes, the builder's defaults, and an example that writes, reads
+  and closes. "Keys and values": any bytes make a key, the empty array too;
+  scans give the unsigned order of the bytes; no maximum length, but a long
+  key costs in proportion to its length; an empty value is a value, a null
+  one is refused. "Threads": which calls may run at once, and what state a
+  read sees. "Optimistic transactions": the read time and the keys read
+  (`Trans.Builder.lookupTime()`, `keyRead()`, the hashes), with an example
+  of a retry on `RerunException`. "Keys and the layers above" says that the
+  Core itself writes BergDB's keys, also with no Pub API
+  (`setStartupDistance()` a live 200 kB value at `/#i/-dummy`, the reclaim
+  settings at `/#i/dreclaim/-settings.txt`), which a scan returns, and how
+  to skip them (the keys that start with 01 25). `getTrans()` says that a
+  delete of a key without a value is not listed, and what a get gives for a
+  value that reclaim has copied (its step's transaction, and how to find
+  the original, as 021-17 does for the Pub API). `getTransactionCount()`
+  and `getKvCount()` count since the start; `currentTime()`,
+  `getFirstAvailablePos()`, `Trans`'s outputs, `GetData`'s, `Kvt`'s,
+  `StartInfo`'s and `GetMany`'s defaults (a new `GetMany` for each call)
+  are documented; `Trans.Builder` says that a delete never replaces a put
+  of the same key; a read that runs at `stop()` may throw
+  `StreamIoException` ("Storage is closing."), the database not failed.

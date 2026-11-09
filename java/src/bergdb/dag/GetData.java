@@ -6,6 +6,12 @@ package bergdb.dag;
  * A GetData object can be reused between serial get requests, but the same GetData 
  * object must not be used by multiple threads for concurrent get operations.
  * 
+ * <p>Its outputs after Db.getOne() (bergdb 020-24-09, U9-8): actualLookupTime, the time of
+ * the state read, the requested lookup time or the last transaction's time if that is
+ * earlier (Db, "Threads"); tpos, for a value found, the position of the transaction that
+ * wrote it, which Db.getTrans() reads, reclaim's step for a value that reclaim has copied
+ * forward (Db.getTrans()).</p>
+ * 
  * @author Frans Lundberg
  */
 public class GetData extends OpData {

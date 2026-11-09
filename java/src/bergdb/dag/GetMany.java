@@ -10,6 +10,14 @@ import java.util.List;
  * stop condition gives the end (bergdb 020-27: this comment gave an interval (key1, key2]
  * of two keys that the class does not have).
  * 
+ * <p>The defaults, as Db.newGetMany() gives it (bergdb 020-24-09, U9-8): lookupTime
+ * Long.MAX_VALUE, the latest state; startKey null, from the first key; inclusive; forward;
+ * stopCondition a DontStop, every KV to the end. The order is the unsigned order of the
+ * keys' bytes (Db, "Keys and values"). A GetMany is for one call of getMany(), by one
+ * thread: make a new one for each call. getMany() adds to result, which must be empty (with
+ * -ea a GetMany whose result has KVs is refused with an AssertionError; without, the call
+ * adds to them), and a stop condition keeps its own state, such as GetN's count.</p>
+ * 
  * @see Dag#getMany(GetMany)
  * @author Frans Lundberg
  */
@@ -18,7 +26,7 @@ public class GetMany {
     // ---- Input ----
     
     /** 
-     * Requested lookup time. 
+     * Requested lookup time; Long.MAX_VALUE, the latest state, by default.
      */
     public long lookupTime;
     
@@ -43,14 +51,15 @@ public class GetMany {
     public boolean forward;
     
     /**
-     * The condition for when to stop iterating.
+     * The condition for when to stop iterating; a DontStop, every KV to the end, by default.
      */
     public StopCondition stopCondition;
     
     // ---- Output ----
     
     /**
-     * Actual time used for the lookup. Possibly different from the requested lookup time.
+     * Actual time used for the lookup. Possibly different from the requested lookup time:
+     * the time of the last transaction, if that was earlier (Db, "Threads").
      */
     public long actualLookupTime;
     

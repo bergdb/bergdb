@@ -70,6 +70,99 @@ import bergdb.stream.SalsaStream;
  * of them. Functionality that can be provided by using the Core API,
  * should not be offered by this class.</p>
  * 
+ * <p><b>Opening a database</b> (bergdb 020-24-09, U9-6). A Db runs on one stream, the
+ * AppendOnlyStream that DbBuilder.mainStream() takes: for a database in a directory, a
+ * bergdb.stream.FileStream on the directory, the stream of the Pub API's databases; for one in
+ * memory, a bergdb.stream.MemoryStream. Their constructors are all that a Db's user calls of
+ * them: the Db reads and appends through AppendOnlyStream, and its stop() and close(), and a
+ * start that throws, close the stream, so that the application does not close it (only if
+ * DbBuilder.build() throws, before a Db is made, does the application close the stream with
+ * its close()). FileStream's constructor throws IOException, a DirectoryInUseException for a
+ * directory that another stream has open. The builder's defaults: the system clock
+ * (currentTime()), a cache budget of 200 MB, a startup distance of 50 MB and the maximum node
+ * size 30; of its other methods, id() and createdTxt() are the Pub API's, the rest for tests.
+ * An example with keys and values of bytes, which writes, reads and closes:</p>
+ * <pre>{@code
+ * try (Db db = Db.builder().mainStream(new FileStream(new File("mydb"))).start()) {
+ *     byte[] key = {0x10, 0x20};
+ *     Trans t = db.trans().put(key, new byte[] {1, 2, 3}).build();
+ *     db.execute(t);                       // committed, at the time t.tt
+ *     db.sync(SyncLevel.ORDINARY);         // durable
+ *     byte[] value = db.getOne(Long.MAX_VALUE, Keys.toSegments(key), db.newGetData());
+ *     GetMany g = db.newGetMany();         // every KV of the latest state, in key order
+ *     db.getMany(g);
+ *     for (Kvt kvt : g.result) {
+ *         byte[] k = Keys.toBytes(kvt.key);
+ *         byte[] v = kvt.value;
+ *     }
+ * }
+ * }</pre>
+ * 
+ * <p><b>Keys and values</b> (bergdb 020-24-09, U9-5). A key is an array of bytes, its bkey
+ * (doc-files/key-encoding.md), which the calls take and give as segments:
+ * Keys.toSegments(byte[]) makes them, and Keys.toBytes(long[]) gives the bytes back, as of a
+ * Kvt's key. Any bytes make a key, the empty array too, which is a key as any other (only a
+ * String key, Keys.toBytes(String), is never empty). getMany() gives the keys in the unsigned
+ * order of their bytes, as java.util.Arrays.compareUnsigned(byte[], byte[]) orders them: a key
+ * comes before its extensions, so that 61 &lt; 61 00 &lt; 61 00 00 &lt; 61 01 &lt; 61 61 &lt;
+ * 62; the empty key is first, and FF FF comes after FF. A key has no maximum length, and keys
+ * of 300 kB work in every call (bergdb 021-16). But a key is stored as a path of key nodes, a
+ * level for each 7 bytes, so that a key costs memory, stream bytes and time in proportion to
+ * its length, many times what a value of that length costs, and a commit of a long key that
+ * shares a long start with another key can take seconds (one of 1 MB after one of 100 kB with
+ * the same start: 2.6 to 5.8 s; bergdb 021-16, Q1). Keep keys short, and put large data in
+ * values. A value is an array of bytes, the empty array too, which is a value, not a delete;
+ * Trans.Builder.delete() removes a key's value. A put of a null value is refused with
+ * IllegalArgumentException. The values and keys of one transaction may take at most about 1.88
+ * GB of the stream (execute()'s DbException).</p>
+ * 
+ * <p><b>Threads</b> (bergdb 020-24-09, U9-7). A Db is for any number of threads at once:
+ * execute(), getOne(), getMany(), getTrans(), sync() and the settings may be called from
+ * several threads, with no lock of the application's. Transactions run one at a time, each
+ * whole; reads run in parallel with each other and with a transaction. A read gives the state
+ * at its actual lookup time (GetData.actualLookupTime, GetMany.actualLookupTime): the lookup
+ * time asked for, or the time of the last committed transaction if that is earlier, so that
+ * Long.MAX_VALUE gives the latest state. That state holds every transaction with a time at or
+ * before it and nothing of a later one, never a part of a transaction, and no transaction that
+ * runs or comes later has a time at or before it: a read at a time that currentTime() or a
+ * read's actual lookup time gave reads the same state whenever it runs, until reclaim cuts it
+ * (getFirstAvailableLookupTime()). A GetData, a GetMany and a Trans.Builder are for one thread
+ * at a time, so that each thread makes its own (newGetData(), newGetMany(), trans()); a GetData
+ * may be used again for the thread's next get, a GetMany is for one call (GetMany).</p>
+ * 
+ * <p><b>Optimistic transactions</b> (the STM; bergdb 020-24-09, U9-7). A transaction that
+ * writes what it computed from its reads, such as a counter's increment, and must not lose
+ * another thread's write, gives its read time and the keys it read. execute() then refuses it
+ * with RerunException, and changes nothing, if a transaction with a later time than the read
+ * time wrote one of those keys; the application reads again and retries:</p>
+ * <pre>{@code
+ * while (true) {
+ *     long t = db.currentTime();              // the read time
+ *     byte[] old = db.getOne(t, Keys.toSegments(key), db.newGetData());
+ *     Trans.Builder b = db.trans().lookupTime(t).keyRead(Keys.toSegments(key));
+ *     b.put(key, increment(old));
+ *     try {
+ *         db.execute(b.build());
+ *         break;
+ *     } catch (RerunException e) {
+ *         // Another transaction wrote the key after t: read again.
+ *     }
+ * }
+ * }</pre>
+ * <p>The read time is Trans.Builder.lookupTime(), Long.MAX_VALUE by default, which checks
+ * nothing; give a time that currentTime() or a read's actual lookup time gave. keyRead() adds a
+ * key read, with a value or without, and addReadHash() and addReadHashes() a key's hash
+ * (Keys.hash()): a put or a delete of the key by a transaction with a later time is a
+ * conflict. addVirtualWriteHash() adds a hash that the transaction counts as written, with no
+ * key, so that transactions that share no key can still conflict on it, as the Pub API's index
+ * builds do with a hash of their directory. Keys are compared by their hashes: a write of
+ * another key with the same hash gives a rerun that was not needed, never a missed one. A
+ * scan's range is not covered: a key written into the range after the read time is a
+ * conflict only if the transaction read that key or a hash that the writer wrote. The
+ * database keeps the hashes of the last 96,000 to 128,000 key writes, in memory, since its
+ * start: a read time older than they cover, or before the start's last recovered transaction,
+ * gives RerunException too, whatever was written; read again at a new time.</p>
+ * 
  * <p><b>Keys and the layers above</b> (bergdb 020-22; 010-01, P12). The Core takes any key
  * and knows nothing of the layers above it. A database of the Pub API (bergdb.pub) keeps its
  * data in the Core under keys of its own, and the Core does not stop another writer there: a
@@ -98,6 +191,18 @@ import bergdb.stream.SalsaStream;
  * BergDB did not write makes values missing from an index's scans, or an index disappear,
  * and in reclaim's keys it can lose data.</li>
  * </ul>
+ * <p>The Core writes BergDB's keys itself, also in a database that the Pub API never opens
+ * (bergdb 020-24-09, U9-4). A new database has none. setStartupDistance() puts a value of 200
+ * kB at "/#i/-dummy" (the bytes 01 25 6b 01 2f 66 77 6f 6f 7b), which stays live, so that
+ * reclaim copies it forward as any live value; setRetainDuration() and
+ * setReclaimInternalFraction() put reclaim's settings at "/#i/dreclaim/-settings.txt"; and
+ * reclaim, when it runs, keeps its state under "/#i/dreclaim/". getMany() returns these keys
+ * as any other, getTrans() lists them, getTransactionCount() counts their transactions and
+ * getKvCount() their KVs. So in every database, used by the Pub API or not, a key whose bytes
+ * start with 01 25, the bkey of "/#", is BergDB's: do not write it, and to read only the other
+ * keys, skip those, with a StopCondition that returns CONTINUE for a key that starts with 01
+ * 25 (Keys.toBytes() of the Kvt's key), or with two scans, one that stops before 01 25 and one
+ * from 01 26.</p>
  * <p>A scan of an index never returns a value that does not match its query, whatever was
  * written through Db: it checks each value against the index (bergdb 020-10, section 3.4).
  * Write through Db while no Database runs on the stream: the Db under a running Database is
@@ -374,6 +479,10 @@ public class Db implements AutoCloseable {
         }
     }
 
+    /**
+     * The startup distance in force, in bytes: after start(), the stream's, as the creation
+     * (DbBuilder.startupDistance()) or the last setStartupDistance() set it.
+     */
     public int getStartupDistance() {
         synchronized (writeLock) {
             return this.startupDistance;
@@ -394,7 +503,8 @@ public class Db implements AutoCloseable {
      * 007-07). So one call is enough, with no need to lower the distance in steps. The
      * section comes down only as transactions are committed: in 007-06's runs, over stream
      * of about 1.4 times the bytes of the dirty index nodes at the decrease. This method
-     * commits a transaction with a value of 200 kB, so that a meta block in the stream
+     * commits a transaction with a value of 200 kB, at the key "/#i/-dummy", where it stays
+     * live (Keys and the layers above), so that a meta block in the stream
      * records the new setting: a start reads it from there, as the setting decides the
      * stream's bytes (010-P2). The value is clamped to 400,000 to 1,000,000,000 bytes
      * (twice RecoverableStream.META_BLOCK_DISTANCE to 10^9), and the clamped value is set; a
@@ -496,7 +606,8 @@ public class Db implements AutoCloseable {
      * until a call sets another. A finite duration makes reclaim rewrite live values and
      * cut the front of the stream. The value decides the stream's bytes, so it is kept in
      * the stream, as the startup distance is (010-P2): the call commits a small internal
-     * transaction with reclaim's settings (Reclaim.SETTINGS_KEY_NAME), and a start reads
+     * transaction with reclaim's settings, at the key "/#i/dreclaim/-settings.txt"
+     * (Reclaim.SETTINGS_KEY_NAME; Keys and the layers above), and a start reads
      * them; a restart keeps the value, and there is no builder setting. The new value is in
      * force when the method returns, from the next transaction on. A call with the value in
      * force writes nothing. On a database that is not active the call throws as a
@@ -555,6 +666,7 @@ public class Db implements AutoCloseable {
         return reclaim.getInternalFractionUnits() / (double) Reclaim.FRACTION_ONE;
     }
     
+    /** The number of reclaim's iterations that this Db has completed since its start(). */
     public long getReclaimIterationCount() {
         return reclaim.getIterationCount();
     }
@@ -567,17 +679,33 @@ public class Db implements AutoCloseable {
         return reclaim.getFirstAvailableLookupTime();
     }
 
+    /**
+     * The first position of the stream that reclaim has not cut: 0 before the first cut, then
+     * the position of the last cut. The stream before it is removed, or may be at any time,
+     * and a transaction there is no longer available (getTrans()).
+     */
     public long getFirstAvailablePos() {
         synchronized (readSync) {}
         return reclaim.getFirstAvailablePos();
     }
     
+    /**
+     * The number of transactions that this Db has executed since its start(), BergDB's own
+     * included (the settings' commits, reclaim's steps; Keys and the layers above): 0 after a
+     * start, not the number of transactions in the database (bergdb 020-24-09, U9-10).
+     */
     public long getTransactionCount() {
         synchronized (writeLock) {
             return aux.transactionCount;
         }
     }
     
+    /**
+     * The number of KVs of the transactions that getTransactionCount() counts: each
+     * transaction's puts and deletes, one a key (Trans.Builder.build()), a delete of a key
+     * without a value included. 0 after a start; not the number of keys with a value
+     * (bergdb 020-24-09, U9-10).
+     */
     public long getKvCount() {
         synchronized (writeLock) {
             return aux.kvCount;
@@ -605,6 +733,13 @@ public class Db implements AutoCloseable {
     }
     
     /**
+     * The current database time, in clock units (100 ns since 1970; Clock): the clock's time
+     * (DbBuilder.clock(), the system clock by default), but never earlier than the last
+     * transaction's time or a time that this method gave before, and earlier than the time of
+     * every transaction that runs or comes later. So a read at it reads the same state
+     * whenever it runs, and it may be a transaction's read time ("Threads" and "Optimistic
+     * transactions" above).
+     * 
      * @see bergdb.core.DbClock
      */
     public long currentTime() {
@@ -1383,7 +1518,9 @@ public class Db implements AutoCloseable {
     /**
      * <p>Stops the database and closes it properly, without waiting (2026-10-24, bergdb
      * 005-35). No transaction or read starts after this method; a transaction that runs
-     * completes, and is written. A thread of its own then writes what is buffered, closes
+     * completes, and is written. A read that runs can complete, or throw StreamIoException
+     * ("Storage is closing.") where a later one throws DbStoppingException (getOne(),
+     * getMany()). A thread of its own then writes what is buffered, closes
      * the storage streams and their files, and ends their threads, typically within a
      * second. That thread is not a daemon, so a program that returns from main after stop()
      * still writes all it had. close() waits for it.</p>
@@ -1612,6 +1749,15 @@ public class Db implements AutoCloseable {
      * @param lookupTime
      *            The requested lookup time. The time for which to make the lookup. 
      *            Use Long.MAX_VALUE to lookup the state at the latest possible time.
+     * @param keySegments
+     *            The key, as segments: Keys.toSegments() of its bytes ("Keys and values"
+     *            above).
+     * @param gd
+     *            A GetData from newGetData(), for one thread at a time; it may be used
+     *            again. After the call, its actualLookupTime is the time of the state read
+     *            ("Threads" above), and for a value found, its tpos is the position of the
+     *            transaction that wrote the value, which getTrans() reads; for a value that
+     *            reclaim has copied forward, reclaim's (see getTrans()).
      * @return The value, or null if the key has no value at the lookup time.
      * @throws IllegalDbStateException
      *             If start() has not been called, or stop() or close() has (a
@@ -1629,8 +1775,13 @@ public class Db implements AutoCloseable {
      * @throws StreamFormatException
      *             If the database stream is corrupt, while the database is stopping.
      * @throws StreamIoException
-     *             If there was an i/o error with the database stream, while the database
-     *             is stopping.
+     *             If the database is stopping: a read that runs when stop() or close() is
+     *             called can meet the storage as it closes and throw this, such as "Storage
+     *             is closing.", where a read that begins after the call throws
+     *             DbStoppingException; the database has not failed (bergdb 020-24-09,
+     *             U9-14), and an I/O error of a read while it stops is thrown so too. While
+     *             the database is active, an I/O error is a DbFailedException, with the
+     *             StreamIoException as its cause.
      */
     public byte[] getOne(long lookupTime, long[] keySegments, GetData gd) {
         assert gd != null;
@@ -1652,10 +1803,24 @@ public class Db implements AutoCloseable {
     /**
      * Reads the transaction at stream position 'tpos': for the Pub API's
      * Connection.transactionInfo(), the transaction of the value that its last get read
-     * (GetData.tpos). 'tpos' must be the position of a transaction, as a get gives it.
+     * (GetData.tpos). 'tpos' must be the position of a transaction, as a get gives it, or
+     * Trans.tpos after execute().
      * A get can give the position of a record that the writer has not yet appended in
      * whole, as the writer sets the positions of a record's nodes before it appends it; the
      * call then waits for the writer, until the record is in the stream (bergdb 021-13).
+     * 
+     * <p>The StoredTrans gives the transaction's time (tt), its positions (tpos, lastPos)
+     * and, by getValueNodes(), its puts and deletes, a StoredValueNode each, with its key
+     * (bergdb 020-24-09, U9-9). A delete of a key that had no value at the transaction's
+     * time stores nothing and is not listed, as the Pub API's TransactionInfo leaves it out.
+     * A value that reclaim has copied forward (setRetainDuration()) is read from reclaim's
+     * step, so that a get's tpos is the step's: a transaction of reclaim's, whose value nodes
+     * are the values that it copied, each with its key, and reclaim's own keys under
+     * "/#i/dreclaim/" (Keys and the layers above). The transaction that wrote the value is
+     * found by a get of the key at the step's time less one unit, which gives the value as
+     * the step read it and that value's tpos, again a step's if reclaim had copied it before,
+     * as the Pub API's Connection.transactionInfo() does (bergdb 021-17); while that time is
+     * not before getFirstAvailableLookupTime().</p>
      *
      * @throws IllegalArgumentException
      *             If 'tpos' cannot start a transaction: negative (Spos.NULL from a get: the
@@ -1809,9 +1974,11 @@ public class Db implements AutoCloseable {
     }
 
     /**
-     * Get multiple KVs in increasing or decreasing key order.
+     * Get multiple KVs in increasing or decreasing key order: the unsigned order of the keys'
+     * bytes ("Keys and values" above), at the state of g's lookup time ("Threads" above).
      * 
-     * @param g     Input and output parameters.
+     * @param g     Input and output parameters: a new GetMany, from newGetMany(), for each
+     *              call (GetMany).
      * @throws IllegalDbStateException
      *              If start() has not been called, or stop() or close() has (a
      *              DbStoppingException then).
@@ -1827,8 +1994,13 @@ public class Db implements AutoCloseable {
      * @throws StreamFormatException
      *              If the database stream is corrupt, while the database is stopping.
      * @throws StreamIoException
-     *              If there was an i/o error with the database stream, while the
-     *              database is stopping.
+     *              If the database is stopping: a read that runs when stop() or close() is
+     *              called can meet the storage as it closes and throw this, such as
+     *              "Storage is closing.", where a read that begins after the call throws
+     *              DbStoppingException; the database has not failed (bergdb 020-24-09,
+     *              U9-14), and an I/O error of a read while it stops is thrown so too.
+     *              While the database is active, an I/O error is a DbFailedException, with
+     *              the StreamIoException as its cause.
      * @see GetMany
      */
     public void getMany(GetMany g) {

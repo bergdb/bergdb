@@ -193,7 +193,10 @@ public class StoredTrans {
     private StoredNode[] nodesIndexed = null;
 
     /**
-     * Creates and returns a list of the value nodes of the transaction.
+     * Creates and returns a list of the value nodes of the transaction: its puts and
+     * deletes, one for each key it put or deleted, with the key (getKey()). A delete of a
+     * key that had no value stores nothing and is not in the list; a step of reclaim lists
+     * the values it copied and reclaim's own keys (Db.getTrans(); bergdb 020-24-09, U9-9).
      */
     public List<StoredValueNode> getValueNodes() {
         List<StoredValueNode> storedValueNodes = new ArrayList<StoredValueNode>();

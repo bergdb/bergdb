@@ -7,7 +7,10 @@ package bergdb.core;
  * @author Frans Lundberg
  */
 public class StartInfo {
+    /** The startup position, from which the start read the startup section's transactions. */
     public long startPos;
+    
+    /** The startup distance in force, in bytes (Db.getStartupDistance()). */
     public int startupDistance;
     
     /** Transaction time of the first transaction of the startup transactions. */
