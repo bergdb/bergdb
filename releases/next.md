@@ -477,6 +477,19 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `InternalDataException`, and the database goes on. The stream is
   unchanged. In 2026.1 to 2026.3; found by a new-user application
   (020-24-06, U6-1).
+* **Messages that name the user's key** (bergdb 020-24-05, U5-9;
+  2026-11-09). A put of an object at a key with another suffix said "Bad
+  key, expected no suffix (or possibly the obsolete '.obj' suffix), key
+  was: '/dk/-x.OBJ'.": the key in BergDB's internal form, and ".obj",
+  which the Javadoc documents, called obsolete. Now it says "Bad key for an
+  object, '/k/x.OBJ': an object is put only at a key without a suffix or
+  with the suffix ".obj", in lower case.". A get as `DbObject` or as a Data
+  Object class of a value that is not a stored object ended its message
+  with " ukey=/g/str"; now the message starts "The value at /g/str cannot
+  be read as an object: ". A get as `String` of a stored object says that
+  the value is an object, not a String, where it said only that the value
+  is not well-formed UTF-8. The exceptions are as before. In 2026.1 to
+  2026.3; found by a new-user application.
 
 
 ### Core API

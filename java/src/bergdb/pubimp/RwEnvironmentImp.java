@@ -336,9 +336,10 @@ class RwEnvironmentImp implements RwEnvironment {
             setBytes(ikey, stringValue((String) object, ObjectFormat.MAX_ARRAY), true);
         } else {
             if (!Entries.isObjectKey(ikey)) {
-                throw new IllegalArgumentException(
-                        "Bad key, expected no suffix (or possibly the obsolete '.obj' suffix), "
-                        + "key was: '" + ikey + "'.");
+                // The user's key; it gave the ikey, "/dk/-x.OBJ" (bergdb 020-24-05, U5-9).
+                throw new IllegalArgumentException("Bad key for an object, '" + ukey + "': an "
+                        + "object is put only at a key without a suffix or with the suffix "
+                        + "\".obj\", in lower case.");
             }
             objectOps.put(ikey, new ObjectInfo(ikey, object, 
                     enableKeyReplace ? getKeyTransformation(ikey) : null));

@@ -59,24 +59,25 @@ class KvToObjectImp implements KvToObjectConverter {
         }
         
         String ukey = PubKeys.i2uOrNull(ikey);     // for messages; null if none (020-22)
+        String key = ukey == null ? ikey : ukey;    // the user's key, for messages
         
         TYPE result;
         
         if (c.equals(String.class)) {
-            result = (TYPE) entryToString(ukey == null ? ikey : ukey, value);
+            result = (TYPE) entryToString(key, value, isStoredObject(ikey, value));
         } else if (c.equals(byte[].class)) {
             result = (TYPE) value;      // the database's own array, bergdb 015-47
         } else if (c.equals(DbObject.class)) {
-            result = (TYPE) entryToDbObject(ukey, value);
+            result = (TYPE) entryToDbObject(key, value);
         } else if (c.equals(Object.class)) {
-            result = (TYPE) entryToMixedTypeObject(ikey, ukey, value);
+            result = (TYPE) entryToMixedTypeObject(ikey, key, value);
         } else {
             // From the stored bytes, after the full check: no DbObject, no copy (the review
             // of bergdb 020-10, B3).
             try {
                 ObjectFormat.checkStored(value);
             } catch (BadFormatException e) {
-                throw new ObjectCreationException(e.getMessage() + " ukey=" + ukey);
+                throw notAnObject(key, e);
             }
             result = DataObjects.toJavaObject(value, 1, c);
         }
@@ -88,16 +89,46 @@ class KvToObjectImp implements KvToObjectConverter {
      * Converts a database value to a String: its UTF-8 bytes decoded. Bytes that are not
      * well-formed UTF-8 (written through the Core API, or by another writer) are reported,
      * never repaired (bergdb 021-06); they were decoded with U+FFFD in place of each
-     * ill-formed sequence.
+     * ill-formed sequence. A stored object is never well-formed UTF-8 (its header, 0x82):
+     * the message says that it is an object (bergdb 020-24-05, U5-9).
      * 
+     * @param key  The user's key, for the message.
+     * @param object  True if the value is a stored object at an object key.
      * @throws DataFormatException  If the value is not well-formed UTF-8.
      */
-    private String entryToString(String key, byte[] value) {
+    private String entryToString(String key, byte[] value, boolean object) {
         if (!StringUtil.isWellFormedUtf8(value)) {
+            if (object) {
+                throw new DataFormatException("The value at " + key + " is an object, not a "
+                        + "String; it can be read as a DbObject, as a Data Object class or as "
+                        + "a byte[].");
+            }
             throw new DataFormatException("The value at " + key + " is not well-formed UTF-8, "
                     + "so it is not a String; it can be read as a byte[] (bergdb 021-06).");
         }
         return StringUtil.toString(value);
+    }
+
+    /** True if the value is a stored object at an object key, by the full check. */
+    private static boolean isStoredObject(String ikey, byte[] value) {
+        if (!Entries.isProbablyDbObject(ikey, value)) {
+            return false;
+        }
+        try {
+            ObjectFormat.checkStored(value);
+            return true;
+        } catch (BadFormatException e) {
+            return false;
+        }
+    }
+
+    /**
+     * The refusal of a value that is not a stored object, read as an object; its message
+     * names the user's key (bergdb 020-24-05, U5-9: it ended with " ukey=" and the key).
+     */
+    private static ObjectCreationException notAnObject(String key, BadFormatException e) {
+        return new ObjectCreationException("The value at " + key + " cannot be read as an "
+                + "object: " + e.getMessage());
     }
 
     /**
@@ -106,12 +137,12 @@ class KvToObjectImp implements KvToObjectConverter {
      * stays a byte[] (bergdb 020-08, section 3). An object of format 1 is refused with
      * ObjectCreationException, naming the format (bergdb 020-02, section 4.11).
      */
-    private Object entryToMixedTypeObject(String ikey, String ukey, byte[] value) {
+    private Object entryToMixedTypeObject(String ikey, String key, byte[] value) {
         Object result;
         boolean isObject = Entries.isProbablyDbObject(ikey, value);
         
         if (Entries.isFormat1Object(ikey, value)) {
-            result = entryToDbObject(ukey, value);      // throws, naming format 1
+            result = entryToDbObject(key, value);       // throws, naming format 1
         } else if (isObject) {
             try {
                 result = new DbObject(value);
@@ -119,19 +150,19 @@ class KvToObjectImp implements KvToObjectConverter {
                 result = value;     // the database's own array, bergdb 015-47
             }
         } else if (ikey.endsWith(".txt")) {
-            result = entryToString(ukey == null ? ikey : ukey, value);
+            result = entryToString(key, value, false);
         } else {
             result = value;     // the database's own array, bergdb 015-47
         }
         return result;
     }
     
-    private DbObject entryToDbObject(String ukey, byte[] value) {
+    private DbObject entryToDbObject(String key, byte[] value) {
         DbObject dbObject;
         try {
             dbObject = new DbObject(value);     // the stored object exactly (bergdb 020-02)
         } catch (BadFormatException e) {
-            throw new ObjectCreationException(e.getMessage() + " ukey=" + ukey);
+            throw notAnObject(key, e);
         }
         
         return dbObject;
