@@ -84,8 +84,7 @@ and 2014 builds run a port of Props (p16, section 1); the others their own.
    figures are of other tests on other machines (section 3).
 
 
-1. What Props measures
-----------------------
+## 1. What Props measures
 
 `bergdb.dev.props.Props` was created on 2015-01-06 (`35dac3d`, `3e4eedb`) from
 three older tools: CorePerf (`kissdb.dev.CorePerf`, 2012 to 2014, whose four
@@ -150,8 +149,7 @@ built by its own `java/build.sh`, as the release jars were. Every build runs
 on JDK 27.
 
 
-2. MEM and SS, build by build
------------------------------
+## 2. MEM and SS, build by build
 
 From [summary.txt](16-props-across-releases/summary.txt); one run of each,
 2026-11-09, 08:33 to 08:36, on a busy F53 (MEM and SS do not depend on it).
@@ -213,8 +211,7 @@ What moves SS:
   changed"; `level1.sh`'s SS limits raised after 007-07, `f6fc56b`).
 
 
-3. CORE, and the comparison with 2012 and 2013
-----------------------------------------------
+## 3. CORE, and the comparison with 2012 and 2013
 
 **Not measured today** (section 4). What is known:
 
@@ -263,8 +260,7 @@ is the factor of the machine and the JVM for the baseline's own code, and every
 build's CORE on F53 can be read against it and against cissi's column above.
 
 
-4. What is left: CORE on a quiet F53
-------------------------------------
+## 4. What is left: CORE on a quiet F53
 
 The 14 builds are in `/Users/f/fl/bench/006-16/builds/` (the work directory's
 `run.sh` and `P16.java.in` are the same as this item's). One command runs the
@@ -295,8 +291,7 @@ plan: two steps of the medians, or one step with ranges that do not overlap;
 for `get4t` only ranges that do not overlap.
 
 
-5. A yardstick going forward
-----------------------------
+## 5. A yardstick going forward
 
 * **Props is a good long-term yardstick back to 2013** for what it covers:
   MEM and SS are exact and machine-free (SS of 2015 matches cissi's to the
@@ -321,8 +316,7 @@ for `get4t` only ranges that do not overlap.
   where a release's notes already report it.
 
 
-6. Files
---------
+## 6. Files
 
 In [16-props-across-releases/](16-props-across-releases/):
 
