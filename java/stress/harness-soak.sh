@@ -1,8 +1,8 @@
 #!/bin/sh
 # Long runs of the Pub layer's randomized harnesses against their references
 # (bergdb 020-17): many seeds and larger sizes than the night's runs, until a
-# time or for a number of rounds. Not a commit gate, not a step of night.sh
-# by itself; a soak, for a spare machine (the VPS s1) or a quiet night.
+# time or for a number of rounds. Not a commit gate; night.sh runs two rounds
+# (-r 2, about 4 minutes). Longer, a soak for a spare machine (the VPS s1).
 #
 # Usage: java/stress/harness-soak.sh [-j JAR] [-o DIR] [-u HH:MM] [-r ROUNDS]
 #            [-b BASE] [-c CPUS] [-x HEAP] [-t SECONDS] [-h NAMES]
