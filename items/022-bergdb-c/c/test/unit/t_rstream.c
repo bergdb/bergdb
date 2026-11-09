@@ -750,6 +750,211 @@ TEST(ns_walk) {
     CHECK_MEM_ZERO(&m);
 }
 
+/* RecoverableStream.Tester.testIsIncompleteCreation's other cases (bergdb 005-33), which
+ * rs_incomplete_creation does not make: zero bytes (1, 100, 128 and a creation's 264) are
+ * not a creation; a block of version 155 cut at 10 bytes is not, its magic bytes alone
+ * (cut at 4) are; a complete first block that is invalid, or that names a record, is not;
+ * a creation with a record after it, committed or failed, is not; a first record of 1,000
+ * bytes cut at 300 is not (longer than a creation), cut at 200 is; a short first record,
+ * committed or failed, with more bytes after it is not. The call only reads. */
+TEST(rs_incomplete_creation_java) {
+    struct mem m;
+    struct err e;
+    struct stream s;
+    struct meta mb;
+    bool yes;
+    static uint8_t zeros[264];
+    mem_init(&m);
+    const int32_t n_zeros[4] = { 1, 100, M, 264 };
+    for (int i = 0; i < 4; i++) {
+        stream_open_memory(&s, &m);
+        REQUIRE(stream_append_memory(&s, zeros, n_zeros[i], &e) == ERR_OK);
+        CHECK(rs_is_incomplete_creation(&s, 264, &yes, &e) == ERR_OK && !yes);
+        stream_close(&s);
+    }
+    for (int c = 0; c < 6; c++) {
+        meta_init(&mb);
+        stream_open_memory(&s, &m);
+        t_record(&s, &mb, 136, 10, 136);           /* the creation: 264 bytes */
+        bool expected = false;
+        if (c == 0) {
+            s.bytes[4] = 155;
+            REQUIRE(stream_truncate_memory(&s, 10, &e) == ERR_OK);
+        } else if (c == 1) {
+            s.bytes[4] = 155;
+            REQUIRE(stream_truncate_memory(&s, 4, &e) == ERR_OK);
+            expected = true;                        /* the magic bytes only */
+        } else if (c == 2) {
+            s.bytes[M - 1] = 0;                     /* an invalid block */
+            REQUIRE(stream_truncate_memory(&s, 200, &e) == ERR_OK);
+        } else if (c == 3) {
+            bytes_put_long_le(M, s.bytes + 16);     /* a block that names a record */
+            REQUIRE(stream_truncate_memory(&s, 200, &e) == ERR_OK);
+        } else {
+            if (c == 5) {
+                s.bytes[264 - 1] = 0;               /* the creation's record failed */
+            }
+            t_record(&s, &mb, 24, 10, 24);          /* a record after it */
+        }
+        const int64_t length = s.length;
+        CHECK(rs_is_incomplete_creation(&s, 264, &yes, &e) == ERR_OK);
+        CHECK_EQ(yes, expected);
+        CHECK_EQ(s.length, length);
+        stream_close(&s);
+    }
+    meta_init(&mb);
+    stream_open_memory(&s, &m);
+    t_record(&s, &mb, 1000, 10, 300 - M);           /* a large first record, cut at 300 */
+    CHECK(rs_is_incomplete_creation(&s, 264, &yes, &e) == ERR_OK && !yes);
+    REQUIRE(stream_truncate_memory(&s, 200, &e) == ERR_OK);
+    CHECK(rs_is_incomplete_creation(&s, 264, &yes, &e) == ERR_OK && yes);
+    stream_close(&s);
+    for (int last = 0; last < 2; last++) {
+        meta_init(&mb);
+        stream_open_memory(&s, &m);
+        t_record(&s, &mb, 24, last == 0 ? 10 : 0, 24);
+        t_record(&s, &mb, 100, 10, 50);             /* 50 bytes of a record after it */
+        CHECK(rs_is_incomplete_creation(&s, 264, &yes, &e) == ERR_OK && !yes);
+        stream_close(&s);
+    }
+    CHECK_MEM_ZERO(&m);
+}
+
+/* RecoverableStream.Tester's testTransHeaderFixBytes1 to 4 and
+ * testTransHeaderFixBytesBelowMin, through recovery's plan: the bytes of a cut record's size
+ * that exist, and the size that transHeaderFixBytes completes: 0 gives 256; 40, 40; 10,
+ * below the least size, 266 (10 until 2026-10-13); 2 and 1, 258; 3 and 0, 3 + 65,536. */
+TEST(rs_trans_header_fix_bytes) {
+    struct mem m;
+    struct err e;
+    struct stream s;
+    struct meta mb;
+    struct rs_recovery p;
+    mem_init(&m);
+    const uint8_t existing[5][2] = { { 0 }, { 40 }, { 10 }, { 2, 1 }, { 3, 0 } };
+    const int32_t have[5] = { 1, 1, 1, 2, 2 };
+    const int32_t size[5] = { 256, 40, 256 + 10, 256 + 2, 3 + 256 * 256 };
+    for (int i = 0; i < 5; i++) {
+        meta_init(&mb);
+        stream_open_memory(&s, &m);
+        t_append(&s, &mb, existing[i], have[i]);
+        REQUIRE(rs_plan_recovery(&s, &p, &e) == ERR_OK);
+        CHECK_EQ(p.torn, M);
+        CHECK_EQ(p.torn_have, have[i]);
+        CHECK_EQ(p.header_fix_len, 5 - have[i]);
+        uint8_t total[5];
+        memcpy(total, existing[i], (size_t) have[i]);
+        memcpy(total + have[i], p.header_fix, (size_t) p.header_fix_len);
+        CHECK_EQ(bytes_get_int_le(total), size[i]);
+        CHECK_EQ(total[4], RS_TORN_HEADER_FILLER);
+        CHECK_EQ(p.torn_size, size[i]);
+        CHECK_EQ(p.length_after, rs_get_spos(M, size[i]));
+        stream_close(&s);
+    }
+    CHECK_MEM_ZERO(&m);
+}
+
+/* RecoverableStream.Tester.testPosOfTransCompletedBefore (bergdb 005-39): with 1,300 named
+ * records of 1,000 bytes, at every 997th position the record that the last valid block at
+ * or before it names, which is the last that ends before that block (the first, 128, at the
+ * block at 0, which names none), not in general the last completed before the position:
+ * at 399,000, 198,128. */
+TEST(rs_pos_of_trans_completed_before_java) {
+    struct mem m;
+    struct err e;
+    struct stream s;
+    struct meta mb;
+    int64_t p;
+    static int64_t starts[1300];
+    mem_init(&m);
+    meta_init(&mb);
+    stream_open_memory(&s, &m);
+    for (int i = 0; i < 1300; i++) {
+        starts[i] = t_record(&s, &mb, 1000, 10, 1000);
+    }
+    int wrong = 0;
+    for (int64_t spos = 0; spos < s.length; spos += 997) {
+        const int64_t blockPos = spos / D * D;
+        int64_t expected = M;
+        for (int i = 0; i < 1300; i++) {
+            if (rs_get_spos(starts[i], 1000) < blockPos) {
+                expected = starts[i];
+            }
+        }
+        if (rs_pos_of_trans_completed_before(&s, spos, &p, &e) != ERR_OK || p != expected) {
+            if (wrong++ < 3) {
+                printf("    spos %lld: %lld, expected %lld\n", (long long) spos, (long long) p,
+                        (long long) expected);
+            }
+        }
+    }
+    CHECK_EQ(wrong, 0);
+    CHECK(rs_pos_of_trans_completed_before(&s, 399000, &p, &e) == ERR_OK && p == 198128);
+    stream_close(&s);
+    CHECK_MEM_ZERO(&m);
+}
+
+/* RecoverableStream.Tester.testPosOfTransCompletedBeforeAfterCut (bergdb 005-39): in a
+ * stream whose front is cut (at 1,000,000, a MemoryStream's array), the meta blocks up to
+ * the first one after the cut name a record before it: every position before the block at
+ * 1,200,000 gives the record that block names, at or after the cut (a position before the
+ * first position too), and a walk from 0 begins there. With 1,100 records the last block
+ * names one before the cut: refused, StreamFormatException. */
+TEST(rs_pos_of_trans_completed_before_after_cut) {
+    struct mem m;
+    struct err e;
+    struct stream s;
+    struct meta mb;
+    int64_t p;
+    static int64_t starts[1300];
+    mem_init(&m);
+    meta_init(&mb);
+    stream_open_memory(&s, &m);
+    for (int i = 0; i < 1300; i++) {
+        starts[i] = t_record(&s, &mb, 1000, 10, 1000);
+    }
+    REQUIRE(stream_pretruncate_memory(&s, 5 * D, &e) == ERR_OK);
+    CHECK_EQ(stream_first_pos(&s), 5 * D);
+    int64_t first;
+    REQUIRE(rs_pos_of_trans_completed_before(&s, 6 * D, &first, &e) == ERR_OK);
+    CHECK(first >= 5 * D && rs_get_spos(first, 1000) < 6 * D);
+    const int64_t before[5] = { 0, 500, 5 * D, 5 * D + 50000, 6 * D - 1 };
+    for (int i = 0; i < 5; i++) {
+        CHECK(rs_pos_of_trans_completed_before(&s, before[i], &p, &e) == ERR_OK);
+        CHECK_EQ(p, first);
+    }
+    struct ns_iter it;
+    bool has = true;
+    int count = 0;
+    ns_iter_init(&it, &s, &m, 0, false);
+    while (ns_iter_next(&it, &has, &e) == ERR_OK && has) {
+        CHECK(count > 0 || it.tpos == first);
+        count++;
+    }
+    CHECK(!has);
+    ns_iter_free(&it);
+    int expected = 0;
+    for (int i = 0; i < 1300; i++) {
+        expected += starts[i] >= first ? 1 : 0;
+    }
+    CHECK_EQ(count, expected);
+    stream_close(&s);
+
+    meta_init(&mb);
+    stream_open_memory(&s, &m);
+    for (int i = 0; i < 1100; i++) {
+        t_record(&s, &mb, 1000, 10, 1000);
+    }
+    REQUIRE(stream_pretruncate_memory(&s, 5 * D, &e) == ERR_OK);
+    const int64_t refused[2] = { 0, 5 * D + 50000 };
+    for (int i = 0; i < 2; i++) {
+        CHECK_EQ(rs_pos_of_trans_completed_before(&s, refused[i], &p, &e), ERR_FORMAT);
+        CHECK(strcmp(e.java, "StreamFormatException") == 0);
+    }
+    stream_close(&s);
+    CHECK_MEM_ZERO(&m);
+}
+
 const struct test rstream_tests[] = {
     TEST_ENTRY(meta_fields),
     TEST_ENTRY(meta_check_format),
@@ -767,5 +972,9 @@ const struct test rstream_tests[] = {
     TEST_ENTRY(rs_pos_of_trans_completed_before),
     TEST_ENTRY(ns_walk),
     TEST_ENTRY(ns_read_size_near_max_value),
+    TEST_ENTRY(rs_incomplete_creation_java),
+    TEST_ENTRY(rs_trans_header_fix_bytes),
+    TEST_ENTRY(rs_pos_of_trans_completed_before_java),
+    TEST_ENTRY(rs_pos_of_trans_completed_before_after_cut),
     TEST_END
 };

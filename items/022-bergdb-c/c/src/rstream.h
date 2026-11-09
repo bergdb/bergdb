@@ -167,10 +167,11 @@ void rs_init(struct rs *r, struct stream *s);
  * record ends there: "size >= distanceToMeta"; and first, before any byte,
  * when the stream's length is at a multiple, as for the creation at 0).
  * With useChecks (always, for a record): the last byte must be 10 and the
- * size field (at buf[0], as Java reads it at 0 whatever the offset) the
- * size (ERR_ARG, "IllegalArgumentException"), and the stream must not end
- * inside a meta block (ERR_FORMAT, "StreamFormatException"), checked
- * before anything is written. The stream's errors as they are (Java's
+ * size field (at buf[0], the record's first byte, as Java reads it at the
+ * record's offset since bergdb 005-75; until then at 0, whatever the
+ * offset) the size (ERR_ARG, "IllegalArgumentException"), and the stream
+ * must not end inside a meta block (ERR_FORMAT, "StreamFormatException"),
+ * checked before anything is written. The stream's errors as they are (Java's
  * StreamIoException: ERR_IO). */
 enum err_code rs_append(struct rs *r, const uint8_t *buf, int32_t size, bool useChecks,
         struct err *e);

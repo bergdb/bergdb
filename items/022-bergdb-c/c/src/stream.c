@@ -526,11 +526,18 @@ enum err_code stream_append(struct stream *s, const uint8_t *src, int64_t n, str
 }
 
 enum err_code stream_flush(struct stream *s, struct err *e) {
-    if (s->kind != STREAM_DIR || !s->rw || s->buf_len == 0) {
+    if (s->kind != STREAM_DIR || !s->rw) {
         return ERR_OK;
     }
+    /* Also with nothing buffered: a failed stream takes no write and no
+     * force, so a sync or a close after a failed force, or a failed delete,
+     * gives the failure, as Java's checkIOException, and does not force
+     * again and count the stream durable (bergdb 022-05). */
     if (s->failed) {
         return err_set(e, ERR_IO, "IOException", "The stream has failed: no more writes.");
+    }
+    if (s->buf_len == 0) {
+        return ERR_OK;
     }
     enum err_code rc = write_files(s, s->buf, s->buf_len, e);
     if (rc != ERR_OK) {

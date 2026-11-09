@@ -254,6 +254,57 @@ TEST(append_rs_last_valid) {
     CHECK_MEM_ZERO(&am);
 }
 
+/* RecoverableStream.Tester.testAppendOffset (bergdb 005-75): the record's slice is checked
+ * and written, also when the bytes before it look like a record. C's record is a pointer to
+ * its first byte, where Java's is an array and an offset, which Java read the size at 0 of
+ * until 005-75: the size field is the slice's own, a wrong one refused before anything is
+ * written. */
+TEST(append_rs_offset) {
+    struct stream s;
+    struct rs r;
+    mem_init(&am);
+    stream_open_memory(&s, &am);
+    rs_init(&r, &s);
+    const int32_t offset = 8, size = 24;
+    uint8_t buffer[8 + 24 + 8] = {0};
+    bytes_put_int_le(size + 1, buffer);
+    bytes_put_int_le(size, buffer + offset);
+    buffer[offset + size - 1] = RS_LAST_BYTE;
+    CHECK_EQ(rs_append(&r, buffer + offset, size, true, &ae), ERR_OK);
+    uint8_t stored[24];
+    CHECK_EQ(stream_read(&s, META_BLOCK_SIZE, stored, size, &ae), ERR_OK);
+    CHECK_BYTES(stored, buffer + offset, (size_t) size);
+    const int64_t length = stream_length(&s);
+    bytes_put_int_le(size, buffer);
+    bytes_put_int_le(size + 1, buffer + offset);
+    CHECK_EQ(rs_append(&r, buffer + offset, size, true, &ae), ERR_ARG);
+    CHECK(strstr(ae.text, "Bad transactionSize") != NULL);
+    CHECK_EQ(stream_length(&s), length);
+    stream_close(&s);
+    CHECK_MEM_ZERO(&am);
+}
+
+/* RecoverableStream.Tester's testConstantMetaBlockDistance, testConstantLastByte and
+ * testConstantInFileStream: the distance of the meta blocks, 200,000, and a record's last
+ * byte, 10, cannot change without another stream; the smallest file, the first file's
+ * capacity, is a multiple of the distance. */
+TEST(append_constants) {
+    struct stream s;
+    CHECK_EQ(META_BLOCK_DISTANCE, 200000);
+    CHECK_EQ(RS_LAST_BYTE, 10);
+    mem_init(&am);
+    REQUIRE(new_dir());
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);
+    CHECK_EQ(stream_append(&s, zeros, 200001, &ae), ERR_OK);
+    CHECK_EQ(stream_flush(&s, &ae), ERR_OK);
+    CHECK_EQ(s.nfiles, 2);
+    CHECK_EQ(s.files[0].length % META_BLOCK_DISTANCE, 0);
+    CHECK_EQ(s.files[0].length, 200000);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_OK);
+    remove_dir();
+    CHECK_MEM_ZERO(&am);
+}
+
 /* ---- the directory ---- */
 
 /* FileStream.test0, test1 and testRestart0. */
@@ -801,6 +852,8 @@ const struct test append_tests[] = {
     TEST_ENTRY(append_rs_named),
     TEST_ENTRY(append_rs_checks),
     TEST_ENTRY(append_rs_last_valid),
+    TEST_ENTRY(append_rs_offset),
+    TEST_ENTRY(append_constants),
     TEST_ENTRY(append_dir_test0),
     TEST_ENTRY(append_dir_sizes),
     TEST_ENTRY(append_dir_size_rules),

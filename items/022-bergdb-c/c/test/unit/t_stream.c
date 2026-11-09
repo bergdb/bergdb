@@ -5,9 +5,12 @@
  * refusals of BadDirStateException.
  */
 #define _DARWIN_C_SOURCE        /* mkdtemp */
+#include <dirent.h>
+#include <fcntl.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include "test.h"
+#include "bergdb.h"
 #include "stream.h"
 #include "plat.h"
 
@@ -602,6 +605,848 @@ TEST(stream_new_file_forces) {
 #endif
 }
 
+/* ======== Java's tests of the stream classes (bergdb 022-05) ======== */
+
+/* A new temporary directory, made, in tdir. */
+static bool new_tdir(const char *what) {
+    const char *tmp = getenv("TMPDIR");
+    snprintf(tdir, sizeof tdir, "%s/bergdb-t_%s-XXXXXX", tmp != NULL ? tmp : "/tmp", what);
+    return mkdtemp(tdir) != NULL;
+}
+
+/* Removes tdir's entries (files only) and tdir. */
+static void remove_tdir(void) {
+    struct dirent **list;
+    int n = scandir(tdir, &list, NULL, alphasort);
+    for (int i = 0; i < n; i++) {
+        if (list[i]->d_name[0] != '.') {
+            remove_file(list[i]->d_name);
+        }
+        free(list[i]);
+    }
+    if (n >= 0) {
+        free(list);
+    }
+    rmdir(tdir);
+}
+
+/* Whether the file 'name' of tdir exists. */
+static bool tdir_has(const char *name) {
+    char path[512];
+    snprintf(path, sizeof path, "%s/%s", tdir, name);
+    return access(path, F_OK) == 0;
+}
+
+
+/* StreamContract.at: the byte at stream position pos, in the tests below. */
+static uint8_t at(int64_t pos) {
+    return (uint8_t) (pos * 31 + 7);
+}
+
+/* Appends n bytes of at() from the stream's length (StreamContract.append). */
+static enum err_code append_at(struct stream *s, int64_t n, struct err *e) {
+    static uint8_t b[100000];
+    const int64_t from = stream_length(s);
+    enum err_code rc = ERR_OK;
+    for (int64_t done = 0; done < n && rc == ERR_OK; ) {
+        int64_t k = n - done < (int64_t) sizeof b ? n - done : (int64_t) sizeof b;
+        uint8_t x = at(from + done);
+        for (int64_t i = 0; i < k; i++, x = (uint8_t) (x + 31)) {
+            b[i] = x;
+        }
+        rc = stream_append(s, b, k, e);
+        done += k;
+    }
+    return rc;
+}
+
+/* Reads n bytes at pos and compares them with at() (StreamContract.readAndCompare): true
+ * if the read succeeds with those bytes. */
+static bool read_at(struct stream *s, int64_t pos, int32_t n) {
+    static uint8_t b[1000000];
+    struct err e;
+    if (n > (int32_t) sizeof b) {
+        return false;
+    }
+    if (stream_read(s, pos, b, n, &e) != ERR_OK) {
+        printf("    read(%lld, %d): %s: %s\n", (long long) pos, (int) n, e.java, e.text);
+        return false;
+    }
+    uint8_t x = at(pos);
+    for (int32_t i = 0; i < n; i++, x = (uint8_t) (x + 31)) {
+        if (b[i] != x) {
+            printf("    read(%lld, %d): byte %d at %lld, where %d was appended\n",
+                    (long long) pos, (int) n, b[i], (long long) (pos + i), at(pos + i));
+            return false;
+        }
+    }
+    return true;
+}
+
+#ifdef BERGDB_TEST
+/* The file descriptors open in this process, below 256. */
+static int open_fds(void) {
+    int n = 0;
+    for (int fd = 0; fd < 256; fd++) {
+        n += fcntl(fd, F_GETFD) != -1;
+    }
+    return n;
+}
+
+/* A seam that fails one call with ERR_IO, "IOException", "injected": the inj_at-th call of
+ * the kind inj_kind (an open of a stream file, a write, a force for the reason inj_why, a
+ * force of the directory tdir, a delete); every other call passes on. */
+enum inj_kind { INJ_NONE, INJ_OPEN, INJ_WRITE, INJ_FORCE, INJ_DIR, INJ_DELETE };
+static enum inj_kind inj_kind;
+static enum plat_force_why inj_why;
+static int inj_at, inj_calls, inj_failed;
+
+static void inj_set(enum inj_kind kind, enum plat_force_why why, int at_call) {
+    inj_kind = kind;
+    inj_why = why;
+    inj_at = at_call;
+    inj_calls = 0;
+    inj_failed = 0;
+}
+static bool inj_now(enum inj_kind kind) {
+    if (inj_kind != kind || ++inj_calls != inj_at) {
+        return false;
+    }
+    inj_failed++;
+    return true;
+}
+static enum err_code inj_open_rw(const char *path, int *fd, struct err *e) {
+    if (flog_index(path) >= 0 && inj_now(INJ_OPEN)) {
+        *fd = -1;
+        return err_set(e, ERR_IO, "IOException", "injected");
+    }
+    return plat_io_real()->open_rw(path, fd, e);
+}
+static enum err_code inj_pwrite(int fd, int64_t off, const uint8_t *buf, int64_t n,
+        struct err *e) {
+    if (inj_now(INJ_WRITE)) {
+        return err_set(e, ERR_IO, "IOException", "injected");
+    }
+    return plat_io_real()->pwrite(fd, off, buf, n, e);
+}
+static enum err_code inj_force(int fd, enum plat_force_why why, struct err *e) {
+    if (why == inj_why && inj_now(INJ_FORCE)) {
+        return err_set(e, ERR_IO, "IOException", "injected");
+    }
+    return plat_io_real()->force(fd, why, e);
+}
+static enum err_code inj_force_dir(const char *dir, struct err *e) {
+    if (strcmp(dir, tdir) == 0 && inj_now(INJ_DIR)) {
+        return err_set(e, ERR_IO, "IOException", "injected");
+    }
+    return plat_io_real()->force_dir(dir, e);
+}
+static enum err_code inj_unlink(const char *path, struct err *e) {
+    if (inj_now(INJ_DELETE)) {
+        return err_set(e, ERR_IO, "IOException", "injected");
+    }
+    return plat_io_real()->unlink(path, e);
+}
+static void inj_close(int fd) {
+    plat_io_real()->close(fd);
+}
+static const struct plat_io INJ = {
+    inj_open_rw, inj_pwrite, inj_force, inj_force_dir, inj_unlink, inj_close
+};
+
+/* Writes and no forces, as Java's StreamContract.NoForceIo: durability is not the subject
+ * of the contract and the workload, and forces are slow. */
+static enum err_code noforce_force(int fd, enum plat_force_why why, struct err *e) {
+    (void) fd;
+    (void) why;
+    (void) e;
+    return ERR_OK;
+}
+static enum err_code noforce_force_dir(const char *dir, struct err *e) {
+    (void) dir;
+    (void) e;
+    return ERR_OK;
+}
+static const struct plat_io NOFORCE = {
+    inj_open_rw, inj_pwrite, noforce_force, noforce_force_dir, inj_unlink, inj_close
+};
+#endif
+
+/* FileStream.testFailedOpenClosesFileAndUnlocks (bergdb 015-32): an open for writing whose
+ * open of its last file, or that file's OPEN force, or the directory's force after it,
+ * fails gives the failure and leaves nothing open: no file, no lock (each descriptor
+ * closed), no memory; the next open opens the directory with its byte. */
+TEST(stream_failed_open) {
+#ifdef BERGDB_TEST
+    struct mem m;
+    struct err e;
+    struct stream s;
+    uint8_t b[1] = { 7 };
+    mem_init(&m);
+    REQUIRE(new_tdir("failopen"));
+    REQUIRE(stream_open_dir_rw(&s, tdir, 0, &m, &e) == ERR_OK);
+    REQUIRE(stream_append(&s, b, 1, &e) == ERR_OK);
+    REQUIRE(stream_finish(&s, &e) == ERR_OK);
+    const enum inj_kind kinds[3] = { INJ_OPEN, INJ_FORCE, INJ_DIR };
+    plat_io_set(&INJ);
+    for (int k = 0; k < 3; k++) {
+        const int fds = open_fds();
+        inj_set(kinds[k], PLAT_FORCE_OPEN, 1);
+        CHECK_EQ(stream_open_dir_rw(&s, tdir, 0, &m, &e), ERR_IO);
+        CHECK(strcmp(e.text, "injected") == 0);
+        CHECK_EQ(inj_failed, 1);
+        CHECK_EQ(open_fds(), fds);
+        CHECK_MEM_ZERO(&m);
+        inj_set(INJ_NONE, PLAT_FORCE_OPEN, 0);
+        REQUIRE(stream_open_dir_rw(&s, tdir, 0, &m, &e) == ERR_OK);
+        b[0] = 0;
+        CHECK_EQ(stream_read(&s, 0, b, 1, &e), ERR_OK);
+        CHECK_EQ(b[0], 7);
+        CHECK_EQ(stream_finish(&s, &e), ERR_OK);
+        CHECK_EQ(open_fds(), fds);
+    }
+    plat_io_set(NULL);
+    remove_tdir();
+    CHECK_MEM_ZERO(&m);
+#endif
+}
+
+/* A stream that an I/O failure failed takes nothing more: no write, no force, no cut, and
+ * its close gives the failure (Java's FileStream.checkIOException; c/readme.md, section 9,
+ * point 8). FileStream.testFailedDeleteOfACut (005-46: the second delete of a cut fails;
+ * the first file is gone, the second and those after it are not) and
+ * BufferedStream.testCloseAfterFailedFlush (the close gives the flush's failure and frees
+ * everything), with a failed write, force at a sync and switch force too. The switch
+ * force's failure makes no new file (005-47: no name after a file that is not forced).
+ * Before, a sync after a failed force, or after a failed delete, found its buffer empty,
+ * forced the file again or nothing, and gave ERR_OK with the durable length the stream's,
+ * and so did the close (stream_failed_force_fails_the_database). */
+TEST(stream_failure_refuses_writes) {
+#ifdef BERGDB_TEST
+    struct mem m;
+    struct err e;
+    struct stream s;
+    uint8_t b[1] = { 1 };
+    mem_init(&m);
+    const char *const names[4] = { "a write", "the sync's force", "the switch force",
+        "a cut's second delete" };
+    for (int k = 0; k < 4; k++) {
+        REQUIRE(new_tdir("failwrites"));
+        const int fds = open_fds();
+        plat_io_set(&INJ);
+        inj_set(INJ_NONE, PLAT_FORCE_SYNC, 0);
+        REQUIRE(stream_open_dir_rw(&s, tdir, 0, &m, &e) == ERR_OK);
+        int64_t durable = 0;
+        if (k == 0) {
+            REQUIRE(append_at(&s, 300, &e) == ERR_OK);
+            inj_set(INJ_WRITE, PLAT_FORCE_SYNC, 1);
+            CHECK_EQ(stream_sync(&s, &e), ERR_IO);
+        } else if (k == 1) {
+            REQUIRE(append_at(&s, 300, &e) == ERR_OK);
+            inj_set(INJ_FORCE, PLAT_FORCE_SYNC, 1);
+            CHECK_EQ(stream_sync(&s, &e), ERR_IO);
+        } else if (k == 2) {
+            REQUIRE(append_at(&s, 250000, &e) == ERR_OK);
+            inj_set(INJ_FORCE, PLAT_FORCE_SWITCH, 1);
+            CHECK_EQ(stream_flush(&s, &e), ERR_IO);
+            CHECK(tdir_has("00000000000000.bergdb"));
+            CHECK(!tdir_has("00000000000002.bergdb"));      /* no new file */
+        } else {
+            REQUIRE(append_at(&s, 1000000, &e) == ERR_OK);
+            REQUIRE(stream_sync(&s, &e) == ERR_OK);
+            durable = 1000000;
+            inj_set(INJ_DELETE, PLAT_FORCE_SYNC, 2);
+            CHECK_EQ(stream_pretruncate(&s, 800000, &e), ERR_IO);
+            CHECK(!tdir_has("00000000000000.bergdb"));      /* the first deleted */
+            CHECK(tdir_has("00000000000002.bergdb"));       /* the second not, nor later ones */
+            CHECK(tdir_has("00000000000004.bergdb"));
+            CHECK(tdir_has("00000000000006.bergdb"));
+            CHECK_EQ(stream_first_pos(&s), 800000);
+        }
+        CHECK(strcmp(e.text, "injected") == 0);
+        CHECK_EQ(inj_failed, 1);
+        inj_set(INJ_NONE, PLAT_FORCE_SYNC, 0);
+        bool ok[7];
+        ok[0] = stream_durable_length(&s) == durable;
+        ok[1] = stream_sync(&s, &e) == ERR_IO;                /* no force after the failure */
+        ok[2] = stream_durable_length(&s) == durable;
+        ok[3] = stream_flush(&s, &e) == ERR_IO;
+        ok[4] = stream_append(&s, b, 1, &e) == ERR_IO;
+        ok[5] = stream_pretruncate(&s, stream_first_pos(&s), &e) == ERR_IO;
+        ok[6] = stream_finish(&s, &e) == ERR_IO;              /* the close gives the failure */
+        for (int i = 0; i < 7; i++) {
+            if (!ok[i]) {
+                printf("    after %s: check %d failed\n", names[k], i);
+                CHECK(ok[i]);
+            }
+        }
+        CHECK_MEM_ZERO(&m);
+        CHECK_EQ(open_fds(), fds);
+        plat_io_set(NULL);
+        /* What a start finds: a stream that opens, with the bytes written. */
+        REQUIRE(stream_open_dir(&s, tdir, &m, &e) == ERR_OK);
+        const int64_t first[4] = { 0, 0, 0, 200000 };
+        const int64_t length[4] = { 0, 300, 200000, 1000000 };
+        CHECK_EQ(stream_first_pos(&s), first[k]);
+        CHECK_EQ(stream_length(&s), length[k]);
+        CHECK(read_at(&s, first[k], (int32_t) (length[k] - first[k])));
+        stream_close(&s);
+        remove_tdir();
+    }
+    CHECK_MEM_ZERO(&m);
+#endif
+}
+
+/* The failure of the force at a sync, through bergdb.h: the sync gives BERGDB_FAILED, and
+ * so does every later sync and transaction; the close gives BERGDB_IO and frees everything
+ * (c/readme.md, section 9, point 8). Before, the second sync forced the file again and gave
+ * BERGDB_OK, and so did the close. */
+TEST(stream_failed_force_fails_the_database) {
+#ifdef BERGDB_TEST
+    struct bergdb_mem bm = {0};
+    struct bergdb_test_clock clock = {0};
+    struct bergdb_options o;
+    struct bergdb_executed ex;
+    bergdb_db *db;
+    bergdb_trans *t;
+    uint8_t key[16];
+    REQUIRE(new_tdir("failforce"));
+    bergdb_options_init(&o);
+    o.clock = bergdb_test_clock_time;
+    o.clock_ctx = &clock;
+    memcpy(o.id, bergdb_test_id, BERGDB_ID_SIZE);
+    o.mem = &bm;
+    bergdb_test_clock_set(&clock, 1000);
+    REQUIRE(bergdb_open(tdir, &o, &db, NULL, NULL) == BERGDB_OK);
+    REQUIRE(bergdb_ikey_to_bkey((const uint8_t *) "/a", 2, key) == BERGDB_OK);
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    REQUIRE(bergdb_trans_put(t, key, 2, (const uint8_t *) "x", 1) == BERGDB_OK);
+    REQUIRE(bergdb_execute(db, t, &ex) == BERGDB_OK);
+    bergdb_trans_free(t);
+    plat_io_set(&INJ);
+    inj_set(INJ_FORCE, PLAT_FORCE_SYNC, 1);
+    CHECK_EQ(bergdb_sync(db, 0, BERGDB_SYNC_ORDINARY), BERGDB_FAILED);
+    CHECK_EQ(inj_failed, 1);
+    inj_set(INJ_NONE, PLAT_FORCE_SYNC, 0);
+    CHECK_EQ(bergdb_sync(db, 0, BERGDB_SYNC_ORDINARY), BERGDB_FAILED);
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    REQUIRE(bergdb_trans_put(t, key, 2, (const uint8_t *) "y", 1) == BERGDB_OK);
+    CHECK_EQ(bergdb_execute(db, t, &ex), BERGDB_FAILED);
+    bergdb_trans_free(t);
+    CHECK_EQ(bergdb_close(db), BERGDB_IO);
+    CHECK_EQ(bm.live_total, 0);
+    plat_io_set(NULL);
+    remove_tdir();
+#endif
+}
+
+/* FileStream.testReadBelowFirstPosDoesNotBreakStream and
+ * StorageManagerTester.testReadBelowFirstPosIsNotAStreamError (bergdb 011-04, W1): a read
+ * below the first position after a cut fails alone, ReadBelowFirstPosException; the stream
+ * has not failed: it reads above the cut, appends, reads the new bytes, syncs. On a
+ * directory (with a buffer of 1,000 bytes; and as a database's storage) and on a memory
+ * stream, whose cut is exact (CutStream's, a database in memory). In the test build with
+ * writes and no forces (Java's NoForceIo), here and in stream_read_past_end. */
+TEST(stream_read_below_first_pos) {
+    struct mem m;
+    struct err e;
+    struct stream s;
+    uint8_t b[10];
+    mem_init(&m);
+#ifdef BERGDB_TEST
+    inj_set(INJ_NONE, PLAT_FORCE_SYNC, 0);
+    plat_io_set(&NOFORCE);
+#endif
+    for (int kind = 0; kind < 3; kind++) {
+        int64_t cut;
+        if (kind < 2) {
+            REQUIRE(new_tdir("below"));
+            REQUIRE(stream_open_dir_rw(&s, tdir, 1000, &m, &e) == ERR_OK);
+            REQUIRE(append_at(&s, 500000, &e) == ERR_OK);
+            REQUIRE(stream_sync(&s, &e) == ERR_OK);
+            if (kind == 1) {
+                stream_as_storage(&s);
+            }
+            cut = 400000;
+        } else {
+            stream_open_memory(&s, &m);
+            REQUIRE(append_at(&s, 1000, &e) == ERR_OK);
+            cut = 600;
+        }
+        CHECK_EQ(stream_pretruncate(&s, cut, &e), ERR_OK);
+        CHECK_EQ(stream_first_pos(&s), cut);
+        CHECK_EQ(stream_read(&s, 100, b, 10, &e), ERR_NOT_AVAILABLE);
+        CHECK(strcmp(e.java, "ReadBelowFirstPosException") == 0);
+        CHECK_EQ(stream_read(&s, cut - 1, b, 10, &e), ERR_NOT_AVAILABLE);
+        CHECK(!s.failed);
+        const int64_t length = stream_length(&s);
+        CHECK(read_at(&s, cut + 50, 10));
+        CHECK_EQ(append_at(&s, 1000, &e), ERR_OK);
+        CHECK(read_at(&s, length, 10));
+        CHECK(read_at(&s, cut, (int32_t) (length + 1000 - cut)));
+        if (kind < 2) {
+            CHECK_EQ(stream_finish(&s, &e), ERR_OK);
+            REQUIRE(stream_open_dir(&s, tdir, &m, &e) == ERR_OK);
+            CHECK_EQ(stream_first_pos(&s), cut);
+            CHECK_EQ(stream_length(&s), length + 1000);
+            CHECK(read_at(&s, cut, (int32_t) (length + 1000 - cut)));
+            stream_close(&s);
+            remove_tdir();
+        } else {
+            stream_close(&s);
+        }
+    }
+#ifdef BERGDB_TEST
+    plat_io_set(NULL);
+#endif
+    CHECK_MEM_ZERO(&m);
+}
+
+/* FileStream.testReadPastEnd (bergdb 005-24): reads at the end, across it and past it, of
+ * two files (300,000 bytes), give EOFException, and the stream stays usable: it reads,
+ * appends and reads the new bytes. With the bytes in the files (a buffer of 1,000 bytes),
+ * in the write buffer (its default size), and in the files after a sync. */
+TEST(stream_read_past_end) {
+    struct mem m;
+    struct err e;
+    struct stream s;
+    uint8_t b[10];
+    mem_init(&m);
+#ifdef BERGDB_TEST
+    inj_set(INJ_NONE, PLAT_FORCE_SYNC, 0);
+    plat_io_set(&NOFORCE);
+#endif
+    for (int kind = 0; kind < 3; kind++) {
+        REQUIRE(new_tdir("pastend"));
+        REQUIRE(stream_open_dir_rw(&s, tdir, kind == 0 ? 1000 : 0, &m, &e) == ERR_OK);
+        REQUIRE(append_at(&s, 300000, &e) == ERR_OK);
+        if (kind == 2) {
+            REQUIRE(stream_sync(&s, &e) == ERR_OK);
+        }
+        CHECK_EQ(s.buf_len, kind == 1 ? 300000 : 0);
+        const int64_t positions[3] = { 300000, 300000 - 5, 300000 + 1 };
+        for (int i = 0; i < 3; i++) {
+            CHECK_EQ(stream_read(&s, positions[i], b, 10, &e), ERR_IO);
+            CHECK(strcmp(e.java, "EOFException") == 0);
+        }
+        CHECK(!s.failed);
+        CHECK(read_at(&s, 300000 - 10, 10));
+        CHECK_EQ(append_at(&s, 10, &e), ERR_OK);
+        CHECK(read_at(&s, 300000, 10));
+        CHECK_EQ(stream_read(&s, 300010, b, 1, &e), ERR_IO);
+        CHECK_EQ(stream_finish(&s, &e), ERR_OK);
+        remove_tdir();
+    }
+#ifdef BERGDB_TEST
+    plat_io_set(NULL);
+#endif
+    CHECK_MEM_ZERO(&m);
+}
+
+/* BufferedStream.testReadFromBufferOfNonEmptyStream: on a stream that has bytes in its
+ * files, a read of bytes in the write buffer, and one across the files and the buffer, give
+ * the bytes appended. */
+TEST(stream_read_from_buffer_nonempty) {
+    struct mem m;
+    struct err e;
+    struct stream s;
+    mem_init(&m);
+    REQUIRE(new_tdir("nonempty"));
+    REQUIRE(stream_open_dir_rw(&s, tdir, 100, &m, &e) == ERR_OK);
+    REQUIRE(append_at(&s, 150, &e) == ERR_OK);
+    REQUIRE(stream_finish(&s, &e) == ERR_OK);
+    REQUIRE(stream_open_dir_rw(&s, tdir, 100, &m, &e) == ERR_OK);
+    CHECK_EQ(stream_length(&s), 150);
+    REQUIRE(append_at(&s, 10, &e) == ERR_OK);
+    CHECK_EQ(s.buf_len, 10);
+    CHECK(read_at(&s, 150, 10));
+    CHECK(read_at(&s, 148, 12));
+    CHECK(read_at(&s, 0, 160));
+    CHECK_EQ(stream_finish(&s, &e), ERR_OK);
+    remove_tdir();
+    CHECK_MEM_ZERO(&m);
+}
+
+/* The stream contract (bergdb 018-02, StreamContract's checks; StreamContractTester's
+ * testFileStream, testMemoryStream and testCutStream; StorageContractTester's
+ * testBufferedStream and testStorageManager, C's write buffer being both), on C's streams:
+ * a memory stream (a database in memory; its cut exact, as CutStream's), alone and as a
+ * database's storage (stream_as_storage, Java's BufferedStream's reads); and in the test
+ * build, with writes and no forces (Java's NoForceIo), a directory for writing with a
+ * buffer of 10,000 bytes (StorageContractTester's), alone and as storage, and with the
+ * default buffer. Each check on a new stream: an empty stream; length 0; appends and reads;
+ * reads past the end, also where position + length overflows a long; a read below the first
+ * position after a cut; cuts within the length; cuts at the length, of an empty stream and
+ * of one with bytes; a cut beyond the length, refused; the close. As C's callers do, a cut
+ * of a directory follows a sync (reclaim's cut_if_durable): C cuts only the bytes in its
+ * files (ERR_ARG past them), where Java's BufferedStream holds a cut beyond the flushed
+ * bytes until they are written (testPretruncateBeyondFlushed). Not ported: the checks of a
+ * negative or long append or read, as C's stream takes no caller's ranges (012-18, 3.3). */
+#define CONTRACT_KINDS 5
+static const char *const CONTRACT_KIND[CONTRACT_KINDS] = { "memory", "memory as storage",
+    "directory, buffer 10,000", "directory, buffer 10,000, as storage", "directory" };
+
+static bool contract_open(int kind, struct stream *s, struct mem *m) {
+    struct err e;
+    if (kind < 2) {
+        stream_open_memory(s, m);
+    } else if (!new_tdir("contract")
+            || stream_open_dir_rw(s, tdir, kind == 4 ? 0 : 10000, m, &e) != ERR_OK) {
+        return false;
+    }
+    if (kind == 1 || kind == 3) {
+        stream_as_storage(s);
+    }
+    return true;
+}
+
+static void contract_close(int kind, struct stream *s) {
+    struct err e;
+    if (kind < 2) {
+        stream_close(s);
+    } else {
+        CHECK_EQ(stream_finish(s, &e), ERR_OK);
+        remove_tdir();
+    }
+}
+
+/* A cut as the database makes it: a directory's after a sync. */
+static enum err_code contract_cut(struct stream *s, int64_t pos, struct err *e) {
+    enum err_code rc = stream_sync(s, e);
+    return rc == ERR_OK ? stream_pretruncate(s, pos, e) : rc;
+}
+
+TEST(stream_contract) {
+    struct mem m;
+    struct err e;
+    struct stream s;
+    uint8_t b[16];
+    mem_init(&m);
+    int checks = 0;
+#ifdef BERGDB_TEST
+    const int kinds = CONTRACT_KINDS;
+    inj_set(INJ_NONE, PLAT_FORCE_SYNC, 0);
+    plat_io_set(&NOFORCE);
+#else
+    const int kinds = 2;        /* the directories' forces take seconds without the seam */
+#endif
+    for (int kind = 0; kind < kinds; kind++) {
+        int failed_before = (int) test_failed_checks_;
+        /* An empty stream. */
+        REQUIRE(contract_open(kind, &s, &m));
+        CHECK_EQ(stream_length(&s), 0);
+        CHECK_EQ(stream_first_pos(&s), 0);
+        CHECK_EQ(stream_read(&s, 0, b, 0, &e), ERR_OK);
+        CHECK_EQ(stream_read(&s, 0, b, 1, &e), ERR_IO);
+        CHECK(strcmp(e.java, "EOFException") == 0);
+        contract_close(kind, &s);
+
+        /* Length 0. */
+        REQUIRE(contract_open(kind, &s, &m));
+        CHECK_EQ(stream_append(&s, b, 0, &e), ERR_OK);
+        CHECK_EQ(stream_length(&s), 0);
+        CHECK_EQ(append_at(&s, 10, &e), ERR_OK);
+        CHECK_EQ(stream_append(&s, b, 0, &e), ERR_OK);
+        CHECK_EQ(stream_length(&s), 10);
+        CHECK_EQ(stream_read(&s, 10, b, 0, &e), ERR_OK);
+        CHECK_EQ(stream_read(&s, 4, b, 0, &e), ERR_OK);
+        CHECK(read_at(&s, 0, 10));
+        contract_close(kind, &s);
+
+        /* Appends and reads. */
+        REQUIRE(contract_open(kind, &s, &m));
+        const int32_t sizes[5] = { 1, 7, 1000, 70000, 3 };
+        for (int i = 0; i < 5; i++) {
+            CHECK_EQ(append_at(&s, sizes[i], &e), ERR_OK);
+        }
+        const int64_t length = stream_length(&s);
+        CHECK_EQ(length, 71011);
+        CHECK(read_at(&s, 0, (int32_t) length));
+        CHECK(read_at(&s, 5, 10));
+        CHECK(read_at(&s, length - 1, 1));
+        CHECK(read_at(&s, 1000, 50000));
+        contract_close(kind, &s);
+
+        /* Reads past the end of 10 bytes; the last two: position + length overflows a long
+         * (bergdb 021-14). */
+        const int64_t past[5][2] = { { 10, 1 }, { 8, 4 }, { 1000, 1 }, { INT64_MAX, 1 },
+            { INT64_MAX - 2, 4 } };
+        for (int i = 0; i < 5; i++) {
+            REQUIRE(contract_open(kind, &s, &m));
+            CHECK_EQ(append_at(&s, 10, &e), ERR_OK);
+            CHECK_EQ(stream_read(&s, past[i][0], b, (int32_t) past[i][1], &e), ERR_IO);
+            CHECK(strcmp(e.java, "EOFException") == 0);
+            CHECK(read_at(&s, 0, 10));
+            contract_close(kind, &s);
+        }
+
+        /* A read below the first position, after a cut. */
+        REQUIRE(contract_open(kind, &s, &m));
+        CHECK_EQ(append_at(&s, 1300000, &e), ERR_OK);
+        CHECK_EQ(append_at(&s, 1200000, &e), ERR_OK);
+        CHECK_EQ(contract_cut(&s, 2100000, &e), ERR_OK);
+        CHECK_EQ(stream_length(&s), 2500000);
+        int64_t first = stream_first_pos(&s);
+        CHECK(first <= 2100000 && first > 0);
+        CHECK(read_at(&s, 2100000, 1000));
+        CHECK_EQ(stream_read(&s, first - 1, b, 1, &e), ERR_NOT_AVAILABLE);
+        CHECK(strcmp(e.java, "ReadBelowFirstPosException") == 0);
+        CHECK_EQ(append_at(&s, 10, &e), ERR_OK);
+        CHECK(read_at(&s, 2100000, 400010));
+        contract_close(kind, &s);
+
+        /* Cuts within the length. */
+        REQUIRE(contract_open(kind, &s, &m));
+        CHECK_EQ(append_at(&s, 1000, &e), ERR_OK);
+        const int64_t cuts[4] = { 0, 300, 300, 999 };
+        for (int i = 0; i < 4; i++) {
+            CHECK_EQ(contract_cut(&s, cuts[i], &e), ERR_OK);
+            CHECK_EQ(stream_length(&s), 1000);
+            CHECK(stream_first_pos(&s) <= cuts[i]);
+            CHECK(read_at(&s, cuts[i], (int32_t) (1000 - cuts[i])));
+        }
+        CHECK_EQ(append_at(&s, 5, &e), ERR_OK);
+        CHECK(read_at(&s, 999, 6));
+        contract_close(kind, &s);
+
+        /* A cut at the length: 0, of an empty stream, and 3. */
+        REQUIRE(contract_open(kind, &s, &m));
+        CHECK_EQ(contract_cut(&s, 0, &e), ERR_OK);
+        CHECK_EQ(stream_length(&s), 0);
+        CHECK_EQ(append_at(&s, 1, &e), ERR_OK);
+        CHECK(read_at(&s, 0, 1));
+        contract_close(kind, &s);
+        REQUIRE(contract_open(kind, &s, &m));
+        CHECK_EQ(append_at(&s, 3, &e), ERR_OK);
+        CHECK_EQ(contract_cut(&s, 3, &e), ERR_OK);
+        CHECK_EQ(stream_length(&s), 3);
+        CHECK_EQ(append_at(&s, 1, &e), ERR_OK);
+        CHECK(read_at(&s, 3, 1));
+        contract_close(kind, &s);
+
+        /* A cut beyond the length: refused (ERR_ARG or ERR_IO), the stream as it was. */
+        REQUIRE(contract_open(kind, &s, &m));
+        CHECK_EQ(append_at(&s, 10, &e), ERR_OK);
+        first = stream_first_pos(&s);
+        enum err_code rc = contract_cut(&s, 11, &e);
+        CHECK(rc == ERR_ARG || rc == ERR_IO);
+        CHECK(!s.failed);
+        CHECK_EQ(stream_length(&s), 10);
+        CHECK_EQ(stream_first_pos(&s), first);
+        CHECK(read_at(&s, 0, 10));
+        CHECK_EQ(append_at(&s, 5, &e), ERR_OK);
+        CHECK(read_at(&s, 11, 4));
+        CHECK(stream_first_pos(&s) <= 11);
+        contract_close(kind, &s);
+
+        /* The close. */
+        REQUIRE(contract_open(kind, &s, &m));
+        CHECK_EQ(append_at(&s, 5, &e), ERR_OK);
+        contract_close(kind, &s);
+        checks += 14;
+        if (test_failed_checks_ != failed_before) {
+            printf("    the contract on a %s failed\n", CONTRACT_KIND[kind]);
+        }
+    }
+#ifdef BERGDB_TEST
+    plat_io_set(NULL);
+#endif
+    printf("    the contract: %d checks on %d kinds of stream\n", checks, kinds);
+    CHECK_MEM_ZERO(&m);
+}
+
+/* StorageContractTester.testWorkloadBufferedStream and testWorkloadStorageManager (seeds 1
+ * and 2): a writer appends 1 to 3,000 bytes at a time, and now and then cuts, asks for the
+ * length and the first position, and syncs; readers read what has been appended, at or
+ * after the last cut, and compare it with what was. C has one caller: the reads come
+ * between the writer's calls, two after each. On a directory with a buffer of 10,000 bytes,
+ * about 600 kB, 16 cuts (each after a sync, as the database cuts) and files deleted (in
+ * the test build with writes and no forces, as Java's NoForceIo); then the directory
+ * opened again: its first position at or before the last cut, its bytes. */
+TEST(stream_workload) {
+    struct mem m;
+    struct err e;
+    struct stream s;
+    mem_init(&m);
+#ifdef BERGDB_TEST
+    inj_set(INJ_NONE, PLAT_FORCE_SYNC, 0);
+    plat_io_set(&NOFORCE);
+#endif
+#ifdef BERGDB_TEST
+    const uint64_t seeds = 2;
+#else
+    const uint64_t seeds = 1;   /* the forces of a release build take longer */
+#endif
+    for (uint64_t seed = 1; seed <= seeds; seed++) {
+        uint64_t random = seed;
+        uint64_t rr = seed * 31;
+        REQUIRE(new_tdir("workload"));
+        REQUIRE(stream_open_dir_rw(&s, tdir, 10000, &m, &e) == ERR_OK);
+        int64_t length = 0, cut = 0;
+        int cuts = 0, reads = 0;
+        bool ok = true;
+        for (int op = 1; op <= 400 && ok; op++) {
+            int32_t n = 1 + test_random_below(&random, 3000);
+            ok &= append_at(&s, n, &e) == ERR_OK;
+            length += n;
+            if (op % 25 == 0 && length - cut > 20000) {
+                cut = cut + test_random_below(&random, (int32_t) (length - cut - 10000));
+                ok &= contract_cut(&s, cut, &e) == ERR_OK;
+                cuts++;
+            }
+            if (op % 10 == 0) {
+                ok &= stream_length(&s) == length;
+                ok &= stream_first_pos(&s) <= cut;
+            }
+            if (op % 40 == 0) {
+                ok &= stream_sync(&s, &e) == ERR_OK;
+                ok &= stream_durable_length(&s) == length;
+            }
+            for (int r = 0; r < 2 && ok && length > cut; r++) {
+                int64_t pos = cut + test_random(&rr) % (length - cut);
+                pos = pos < cut ? pos + (length - cut) : pos;
+                int64_t k = 1 + test_random_below(&rr, 4000);
+                ok &= read_at(&s, pos, (int32_t) (length - pos < k ? length - pos : k));
+                reads++;
+            }
+            if (!ok) {
+                printf("    seed %d: op %d failed: %s %s\n", (int) seed, op, e.java, e.text);
+            }
+        }
+        CHECK(ok);
+        CHECK(cuts > 10);
+        CHECK(s.files[0].start > 0);
+        printf("    seed %d: %lld bytes, %d cuts, %d reads, %d files, the first at %lld\n",
+                (int) seed, (long long) length, cuts, reads, (int) s.nfiles,
+                (long long) s.files[0].start);
+        CHECK_EQ(stream_finish(&s, &e), ERR_OK);
+        REQUIRE(stream_open_dir(&s, tdir, &m, &e) == ERR_OK);
+        CHECK_EQ(stream_length(&s), length);
+        CHECK(stream_first_pos(&s) <= cut);
+        CHECK(read_at(&s, cut, (int32_t) (length - cut)));
+        stream_close(&s);
+        remove_tdir();
+    }
+#ifdef BERGDB_TEST
+    plat_io_set(NULL);
+#endif
+    CHECK_MEM_ZERO(&m);
+}
+
+/* FileStream.testLockFile (bergdb 005-63): bergdb.lock holds its text, is not a stream
+ * file, and stays as it is through appends, a cut, a close and a new open; a directory
+ * without it (as from 2026.1) opens and gets one, with the same text. */
+TEST(stream_lock_file) {
+    struct mem m;
+    struct err e;
+    struct stream s;
+    char lock[512];
+    static uint8_t text[1024], again[1024];
+    mem_init(&m);
+    REQUIRE(new_tdir("lockfile"));
+    snprintf(lock, sizeof lock, "%s/bergdb.lock", tdir);
+    REQUIRE(stream_open_dir_rw(&s, tdir, 0, &m, &e) == ERR_OK);
+    FILE *f = fopen(lock, "rb");
+    REQUIRE(f != NULL);
+    size_t n = fread(text, 1, sizeof text, f);
+    fclose(f);
+    CHECK_EQ((int64_t) n, 225);
+    CHECK(memcmp(text, "This directory contains a BergDB database.", 42) == 0);
+    REQUIRE(append_at(&s, 500000, &e) == ERR_OK);
+    CHECK_EQ(contract_cut(&s, 200000, &e), ERR_OK);
+    CHECK_EQ(s.nfiles, 2);
+    CHECK_EQ(stream_finish(&s, &e), ERR_OK);
+    for (int round = 0; round < 3; round++) {
+        if (round == 2) {
+            CHECK_EQ(unlink(lock), 0);
+        }
+        REQUIRE(stream_open_dir_rw(&s, tdir, 0, &m, &e) == ERR_OK);
+        CHECK_EQ(s.nfiles, 2);
+        CHECK_EQ(stream_first_pos(&s), 200000);
+        CHECK(read_at(&s, 300000, 1000));
+        if (round == 0) {
+            CHECK_EQ(append_at(&s, 1000, &e), ERR_OK);
+        }
+        CHECK_EQ(stream_finish(&s, &e), ERR_OK);
+        f = fopen(lock, "rb");
+        REQUIRE(f != NULL);
+        size_t n2 = fread(again, 1, sizeof again, f);
+        fclose(f);
+        CHECK_EQ((int64_t) n2, (int64_t) n);
+        CHECK(memcmp(again, text, n) == 0);
+    }
+    remove_tdir();
+    CHECK_MEM_ZERO(&m);
+}
+
+/* FileStream.testReopenPast214TB (bergdb 005-19): a stream past 2^31 * 100,000 bytes (214.7
+ * TB) opens again; the file names were parsed as ints. Java makes the position with
+ * seekFirstPos, which C has not: here the empty file at it is made by hand, named by its
+ * index, 2^31. The stream opens at it, takes appends, makes the next file's name, and
+ * opens again, for writing and read-only, with its bytes. */
+TEST(stream_reopen_past_214tb) {
+    struct mem m;
+    struct err e;
+    struct stream s;
+    const int64_t pos = (INT64_C(1) << 31) * STREAM_INDEX_UNIT;
+    mem_init(&m);
+    REQUIRE(new_tdir("past214tb"));
+    write_file("00002147483648.bergdb", 0, 0);
+    REQUIRE(stream_open_dir_rw(&s, tdir, 0, &m, &e) == ERR_OK);
+    CHECK_EQ(stream_first_pos(&s), pos);
+    CHECK_EQ(stream_length(&s), pos);
+    uint8_t b[3] = { 1, 2, 3 };
+    CHECK_EQ(stream_append(&s, b, 3, &e), ERR_OK);
+    CHECK_EQ(stream_finish(&s, &e), ERR_OK);
+    REQUIRE(stream_open_dir_rw(&s, tdir, 0, &m, &e) == ERR_OK);
+    CHECK_EQ(stream_first_pos(&s), pos);
+    CHECK_EQ(stream_length(&s), pos + 3);
+    memset(b, 0, 3);
+    CHECK_EQ(stream_read(&s, pos, b, 3, &e), ERR_OK);
+    CHECK(b[0] == 1 && b[1] == 2 && b[2] == 3);
+    CHECK_EQ(append_at(&s, 199997 + 10, &e), ERR_OK);       /* the next file at pos + 200,000 */
+    CHECK_EQ(stream_finish(&s, &e), ERR_OK);
+    CHECK(tdir_has("00002147483650.bergdb"));
+    REQUIRE(stream_open_dir(&s, tdir, &m, &e) == ERR_OK);
+    CHECK_EQ(stream_first_pos(&s), pos);
+    CHECK_EQ(stream_length(&s), pos + 200010);
+    CHECK_EQ(s.nfiles, 2);
+    CHECK(read_at(&s, pos + 200000, 10));
+    stream_close(&s);
+    remove_tdir();
+    CHECK_MEM_ZERO(&m);
+}
+
+/* FileStream.testForcingOffForcesAtClose (bergdb 005-47): a close forces the last file, so
+ * that a clean stop is durable (C's close syncs first, stream_finish: SYNC), and the bytes
+ * are read again after a new open. Nothing is forced before: an append is buffered (C's
+ * write buffer; Java's appends are written, not forced). C has no second close. */
+TEST(stream_forces_at_close) {
+#ifdef BERGDB_TEST
+    struct mem m;
+    struct err e;
+    struct stream s;
+    uint8_t b[2] = { 4, 7 };
+    mem_init(&m);
+    REQUIRE(new_tdir("closeforce"));
+    flog[0] = '\0';
+    plat_io_set(&FLOG);
+    REQUIRE(stream_open_dir_rw(&s, tdir, 0, &m, &e) == ERR_OK);
+    CHECK_EQ(stream_append(&s, b, 2, &e), ERR_OK);
+    CHECK(strcmp(flog, "") == 0);
+    CHECK_EQ(stream_finish(&s, &e), ERR_OK);
+    CHECK(strcmp(flog, "open 0 OPEN 0 dir write 0 SYNC 0") == 0);
+    plat_io_set(NULL);
+    REQUIRE(stream_open_dir(&s, tdir, &m, &e) == ERR_OK);
+    memset(b, 0, 2);
+    CHECK_EQ(stream_read(&s, 0, b, 2, &e), ERR_OK);
+    CHECK(b[0] == 4 && b[1] == 7);
+    stream_close(&s);
+    remove_tdir();
+    CHECK_MEM_ZERO(&m);
+#endif
+}
+
 const struct test stream_tests[] = {
     TEST_ENTRY(stream_memory),
     TEST_ENTRY(stream_dir),
@@ -610,5 +1455,16 @@ const struct test stream_tests[] = {
     TEST_ENTRY(stream_seam),
     TEST_ENTRY(stream_forces),
     TEST_ENTRY(stream_new_file_forces),
+    TEST_ENTRY(stream_failed_open),
+    TEST_ENTRY(stream_failure_refuses_writes),
+    TEST_ENTRY(stream_failed_force_fails_the_database),
+    TEST_ENTRY(stream_read_below_first_pos),
+    TEST_ENTRY(stream_read_past_end),
+    TEST_ENTRY(stream_read_from_buffer_nonempty),
+    TEST_ENTRY(stream_contract),
+    TEST_ENTRY(stream_workload),
+    TEST_ENTRY(stream_lock_file),
+    TEST_ENTRY(stream_reopen_past_214tb),
+    TEST_ENTRY(stream_forces_at_close),
     TEST_END
 };

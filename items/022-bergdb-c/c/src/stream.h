@@ -161,7 +161,10 @@ enum err_code stream_append(struct stream *s, const uint8_t *buf, int64_t n, str
  * the new file is made (the switch force, 005-47: no file before the last
  * is ever short on the disk), then the new file's and the directory's
  * before it takes a byte (OPEN, D7: no name durable without the names
- * before it). Nothing to do for a memory stream or a read-only directory. */
+ * before it). Nothing to do for a memory stream or a read-only directory.
+ * ERR_IO after an I/O error, also with nothing buffered, so that a sync or
+ * a close after a failed force or a failed delete gives the failure, and
+ * forces nothing (FileStream.checkIOException; bergdb 022-05). */
 enum err_code stream_flush(struct stream *s, struct err *e);
 
 /* stream_flush, then forces the files written since the last force
