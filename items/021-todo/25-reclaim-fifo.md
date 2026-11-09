@@ -256,6 +256,41 @@ The FIFO's cuts still stop (parts 1 and 2), and so do u14's (not
 measured here).
 
 
+
+The note for the tag (draft, 19:58)
+-----------------------------------
+
+Round 6 of the new-user apps ran on the candidate (020-24-16 to 18). An ordinary
+metrics store met this fault within an hour of simulated time (020-24-18, U18-1):
+50 sensors, one sample a second, the samples deleted after 15 minutes, a retain
+duration of 20 minutes. Reclaim made one cut, at about 3,300 transactions of 100
+keys, then no more. At 12 hours the directory was 1,188 MB for 1.8 MB of live data,
+and records grew to 149 MB. The number of deleted keys sets when it starts, not
+the number of transactions. A ring of keys overwritten in place, with no deletes,
+stayed bounded.
+
+U18-2 found that the note in `releases/next.md` (69600f9) does not let a user
+recognise the fault. A draft to replace it before the tag, if 2026.4 ships without
+fix (a):
+
+> **Reclaim can stop cutting when many keys are deleted.** With a retain duration
+> set, an application that deletes many keys can make reclaim stop cutting after a
+> few thousand transactions. Examples are a log or time series that deletes its old
+> entries, a queue, and frequent index creation and deletion. The directory then
+> grows far beyond what the retention needs: in one test, 1.2 GB for 1.8 MB of live
+> data after 12 hours. Some transactions then write records of tens of MB and take
+> seconds. The number of deleted keys matters, not the number of transactions. No
+> data is lost and every read is right. The sign: the current time minus
+> `getFirstAvailableLookupTime()` grows far beyond the retain duration. A
+> workaround: overwrite a fixed set of keys, such as a ring of time slots, instead of
+> deleting old keys. The same in 2026.3; bergdb 021-25.
+
+Reads have a related cost from deleted keys (020-24-16, U16-1; 020-24-17, U17-1). A
+scan over a range from which many keys have been deleted, or past the end of a range
+followed by deleted keys, gets slower, also after a restart. An index built again is
+fast. Investigator q34 looks at a fix on the read path (branch `scan-deleted-keys`).
+
+
 Log
 ---
 
@@ -283,3 +318,6 @@ item: `69600f9` (the known issue), `c6e60ba` (part 3) and `e3b9787` (fix
 (c)); its row in 021-todo. By coord-1109.
 
 2026-11-09. Frans, 19:17: "021-25, good catch. Yes it should be for 2026.5." The fixes (a) and (b) wait for 2026.5; fix (c) is in 2026.4 (coord-1109).
+
+2026-11-09. Section "The note for the tag": round 6's evidence (U18-1, U18-2, U16-1, U17-1)
+and a draft of the known issue to replace before the tag; p33 prototypes fix (a) on a branch (coord-1109).
