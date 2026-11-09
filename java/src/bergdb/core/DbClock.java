@@ -45,8 +45,8 @@ public class DbClock {
     
     /**
      * Creates a new instance based on the given Clock.
-     * The clock's getTime() method must return non-decreasing time values, 
-     * but not necessarily strictly increasing values.
+     * The clock's getTime() may return equal or decreasing time values: the times of this
+     * object never decrease (Clock.getTime()).
      */
     public DbClock(Clock clock) {
         if (clock == null) {
@@ -90,11 +90,21 @@ public class DbClock {
      * currently executing transaction (if one is executing) and less than the 
      * transaction time of any future transaction.
      * The returned time is also greater than or equal to the transaction time of the last
-     * completed transaction.
+     * completed transaction, and to every time returned before: it is the clock's time, at
+     * most LAST_USER_TIME, or, when that is earlier, the last time returned or the last
+     * transaction's time (bergdb 020-23, Z1).
      */
     public final synchronized long currentTime() {
         //
-        // The code [transactionTime - 1] is OK. transactionTime is >= 1.
+        // The code [transactionTime - 1] is OK. transactionTime is >= 1, and greater than
+        // lastReadTime and every time returned before.
+        //
+        // 2026-11-09 (bergdb 020-23, Z1): lastReadTime never decreases. A clock that went back
+        // set it to its earlier time, so that a later transaction could take a time before a
+        // time returned, and a read at that time changed. The clock's time is taken at most
+        // as LAST_USER_TIME: a user transaction after that is refused anyway, and a time in
+        // the margin, or out of range, would take the times kept for reclaim's internal
+        // transactions after a user's (bergdb 015-55).
         //
         
         long time;
@@ -103,7 +113,9 @@ public class DbClock {
             time = transactionTime - 1;
         } else {
             time = clock.getTime();
+            time = time > LAST_USER_TIME ? LAST_USER_TIME : time;
             time = time < lastTransactionTime ? lastTransactionTime : time;
+            time = time < lastReadTime ? lastReadTime : time;
             lastReadTime = time;
         }
         
@@ -275,6 +287,55 @@ public class DbClock {
         dbClock.setLastTransTime(Klong.MAX_TIME - 1);
         assertEquals(Klong.MAX_TIME, dbClock.transactionBegin(false));
         dbClock.transactionEnd();
+    }
+    
+    /**
+     * bergdb 020-23, Z1: a clock that goes back never takes back a time that currentTime()
+     * gave: a later currentTime() gives that time or a later one, and a later transaction a
+     * later time, so that a read at that time reads the same values after it. The second
+     * currentTime() gave the clock's earlier time and kept it as the last read time, and the
+     * transaction then took a time before the first one given.
+     */
+    @Nano
+    private static void testClockGoesBack() {
+        final long[] now = {1000};
+        DbClock dbClock = new DbClock(() -> now[0]);
+        assertEquals(1000, dbClock.transactionBegin(true));
+        dbClock.transactionEnd();
+        now[0] = 2000;
+        assertEquals(2000, dbClock.currentTime());
+        now[0] = 1500;
+        assertEquals(2000, dbClock.currentTime());
+        assertEquals(2001, dbClock.transactionBegin(true));
+        dbClock.transactionEnd();
+        assertEquals(2001, dbClock.currentTime());
+        now[0] = 3000;
+        assertEquals(3000, dbClock.currentTime());
+    }
+    
+    /**
+     * bergdb 020-23, Z1: currentTime() gives no time after LAST_USER_TIME but a transaction's,
+     * also with the clock after it or out of range, so that the times kept for reclaim's
+     * internal transactions after a user transaction stay theirs (bergdb 015-55), and a
+     * later currentTime() with the clock back cannot take back a time out of range. It gave
+     * the clock's time, Klong.MAX_TIME, and an internal transaction after it had no time left.
+     */
+    @Nano
+    private static void testCurrentTimeLeavesTheMargin() {
+        final long[] now = {LAST_USER_TIME - 1};
+        DbClock dbClock = new DbClock(() -> now[0]);
+        assertEquals(LAST_USER_TIME - 1, dbClock.transactionBegin(true));
+        dbClock.transactionEnd();
+        now[0] = Klong.MAX_TIME;
+        assertEquals(LAST_USER_TIME, dbClock.currentTime());
+        now[0] = Klong.MAX_TIME + 1;
+        assertEquals(LAST_USER_TIME, dbClock.currentTime());
+        now[0] = LAST_USER_TIME - 5;
+        for (long i = 1; i <= TIME_MARGIN; i++) {
+            assertEquals(LAST_USER_TIME + i, dbClock.transactionBegin(false));
+            dbClock.transactionEnd();
+            assertEquals(LAST_USER_TIME + i, dbClock.currentTime());
+        }
     }
     
     @Nano

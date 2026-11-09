@@ -30,7 +30,10 @@ public interface Clock {
      * <p>The time may go back: a transaction's time is the clock's, or, when that is not
      * after the last transaction's time or the last time that currentTime() gave, the next
      * unit after it, so the transactions' times are unique and increasing
-     * (Transaction.getTime()).</p>
+     * (Transaction.getTime()). The time that currentTime() gives (Connection, Database) is
+     * the clock's, at most 2^56-1025, or, when that is earlier, the last time it gave or the
+     * last transaction's time, so its times never decrease, and every later transaction's
+     * time is after them (bergdb 020-23).</p>
      */
     public long getTime();
 }

@@ -437,6 +437,22 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   value before its positions were set gives the documented
   `IllegalStateException` ("call get() again"), as before. In 2026.1 to
   2026.3; found by a new-user application (020-24-01, U1-1 and U1-2).
+* **`currentTime()` keeps its promise with a clock that goes back**
+  (bergdb 020-23, Z1; 2026-11-09). `Connection.currentTime()`,
+  `Database.currentTime()` and the Core's `Db.currentTime()` gave the
+  clock's time, at least the last transaction's, and kept it as the time
+  that the next transaction must pass: after a clock that went back, a
+  later call gave an earlier time than an earlier call, and a transaction
+  after it could take a time before the earlier one, so that a read at
+  that time changed. Now the times it gives never decrease, and every
+  later transaction's time is after them. Its time is also at most
+  2^56-1025, unless a transaction's is later: with the clock in the last
+  1024 units, or out of range, it gave the clock's time, and took the
+  times kept for reclaim's transactions after a user's (015-55), or threw
+  `IllegalArgumentException` from `Time`. Since the 2017 code: in 2026.1
+  with the default clock when the system clock was set back, and since
+  2026.2 (005-69) with a `Clock` of the application's
+  (`DatabaseBuilder.clock()`) that goes back, as `Clock.getTime()` allows.
 
 
 ### Core API

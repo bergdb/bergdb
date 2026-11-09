@@ -354,6 +354,36 @@ public class PubTesterJavadocRest {
         }
     }
 
+    /**
+     * Connection.currentTime() with a clock that goes back (bergdb 020-23, Z1): the time
+     * returned is before every later transaction's time, so a read at it gives the same
+     * value after a later put; a later currentTime() is not before it. A second
+     * currentTime() with the clock back gave the clock's earlier time, and a put after it
+     * took a time before the first one returned, which then read the put's value.
+     */
+    @Nano
+    public static void testCurrentTimeWithAClockThatGoesBack() {
+        final AtomicLong time = new AtomicLong(1000);
+        final Clock clock = () -> time.get();
+        try (Database db = Factory.database().memory().clock(clock).start()) {
+            final Connection c = db.connection();
+            c.put("/a.txt", "before");
+            time.set(2000);
+            final Time first = c.currentTime();
+            Assert.assertEquals(2000, first.units());
+            time.set(1500);
+            Assert.assertEquals(2000, c.currentTime().units());
+            Assert.assertEquals(2000, db.currentTime().units());
+            final long written = c.put("/a.txt", "after").getTime().units();
+            Assert.assertTrue("a put after currentTime() " + first.units() + " at " + written,
+                    written > first.units());
+            c.setLookupTime(first);
+            Assert.assertEquals("before", c.get("/a.txt", String.class));
+            c.setLookupTime(Time.MAX);
+            Assert.assertEquals("after", c.get("/a.txt", String.class));
+        }
+    }
+
 
     // ======== DbFailedException, the exceptions ========
 
