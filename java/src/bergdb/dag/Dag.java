@@ -82,24 +82,41 @@ public class Dag {
         visitMemoryPointersOnceFromNode(superRoot, visitor, pointer, visited);
     }
     
-    private void visitMemoryPointersOnceFromNode(Node node, PointerVisitor visitor, 
+    /**
+     * Visits 'start' and the nodes below it in memory, each once, depth first: a node, then
+     * for each of its pointers in memory, in order, the pointer and the walk from its node.
+     * A loop with a stack of its own, the WalkPath, not a recursion (bergdb 021-16): a key
+     * has a level of key nodes per segment of 7 bytes, so a long key made the recursion
+     * overflow the thread's stack.
+     */
+    private void visitMemoryPointersOnceFromNode(Node start, PointerVisitor visitor, 
             Pointer pointer, HashSet<Node> visited) {
-        if (visited.contains(node)) {
+        if (visited.contains(start)) {
             return;
         }
         
-        visited.add(node);
-        visitor.visitNode(node);
+        visited.add(start);
+        visitor.visitNode(start);
         
-        int size = node.getSize();
-        
-        for (int i = 0; i < size; i++) {
+        final WalkPath path = new WalkPath(start);
+        while (!path.isEmpty()) {
+            final Node node = path.node();
+            final int i = path.nextIndex();
+            if (i < 0) {
+                path.pop();
+                continue;
+            }
+            
             node.getPointer(i, pointer);
             if (pointer.isMem()) {
                 visitor.visitPointer(node, pointer);
                 
                 Node child = pointer.getNode();
-                visitMemoryPointersOnceFromNode(child, visitor, pointer, visited);
+                if (!visited.contains(child)) {
+                    visited.add(child);
+                    visitor.visitNode(child);
+                    path.push(child);
+                }
             }
         }
     }
@@ -113,23 +130,96 @@ public class Dag {
         visitNodeWithChildren(visitor, visited, start);
     }
     
-    private void visitNodeWithChildren(NodeVisitor visitor, Set<Node> visited, Node node) {
-        if (visited.contains(node)) {
+    /**
+     * Visits 'start' and the nodes below it in memory, each once, depth first: a node, then
+     * the walks from the nodes of its pointers in memory, in order. A loop with a stack of
+     * its own, as visitMemoryPointersOnceFromNode(), not a recursion (bergdb 021-16): with
+     * the JVM's default stack, a database with a key of about 90 KB or more did not start,
+     * as the start's check (DbStarter.postStartupCheck) walks the nodes with this method.
+     */
+    private void visitNodeWithChildren(NodeVisitor visitor, Set<Node> visited, Node start) {
+        if (visited.contains(start)) {
             return;
         } else {
-            visited.add(node);
+            visited.add(start);
         }
         
-        node.accept(visitor);
+        start.accept(visitor);
         
-        Pointer p = new Pointer();
-        
-        int size = node.getSize();
-        for (int i = 0; i < size; i++) {
+        final Pointer p = new Pointer();
+        final WalkPath path = new WalkPath(start);
+        while (!path.isEmpty()) {
+            final Node node = path.node();
+            final int i = path.nextIndex();
+            if (i < 0) {
+                path.pop();
+                continue;
+            }
+            
             node.getPointer(i, p);
             if (p.isMem()) {
-                visitNodeWithChildren(visitor, visited, p.getNode());
+                final Node child = p.getNode();
+                if (!visited.contains(child)) {
+                    visited.add(child);
+                    child.accept(visitor);
+                    path.push(child);
+                }
             }
+        }
+    }
+    
+    /**
+     * The stack of a depth-first walk of nodes (bergdb 021-16): the nodes from the walk's
+     * start to the node it is at, each with its size, read when the walk came to the node
+     * (after its visit, as the recursion before read it), and the index of its next pointer
+     * to look at. It replaces the frames of a recursion, so the walk's depth is bounded by
+     * the heap, not by the thread's stack.
+     */
+    private static final class WalkPath {
+        private Node[] nodes = new Node[16];
+        private int[] sizes = new int[16];
+        private int[] next = new int[16];
+        private int depth = 0;
+        
+        WalkPath(Node start) {
+            push(start);
+        }
+        
+        boolean isEmpty() {
+            return depth == 0;
+        }
+        
+        void push(Node node) {
+            if (depth == nodes.length) {
+                nodes = java.util.Arrays.copyOf(nodes, 2 * depth);
+                sizes = java.util.Arrays.copyOf(sizes, 2 * depth);
+                next = java.util.Arrays.copyOf(next, 2 * depth);
+            }
+            nodes[depth] = node;
+            sizes[depth] = node.getSize();
+            next[depth] = 0;
+            depth++;
+        }
+        
+        void pop() {
+            depth--;
+            nodes[depth] = null;
+        }
+        
+        /** The node the walk is at. */
+        Node node() {
+            return nodes[depth - 1];
+        }
+        
+        /** The index of the next pointer of node() to look at, or -1 after its last. */
+        int nextIndex() {
+            final int top = depth - 1;
+            final int i = next[top];
+            if (i >= sizes[top]) {
+                return -1;
+            }
+            next[top] = i + 1;
+            return i;
         }
     }
     
@@ -510,28 +600,45 @@ public class Dag {
      * trees below.
      */
     private long freshTreeBound(java.util.List<long[]> keys, int level) {
-        long klongs = 0;
-        java.util.HashMap<Long, java.util.List<long[]>> below =
-                new java.util.HashMap<Long, java.util.List<long[]>>();
-        for (long[] key : keys) {
-            if (key.length == level + 1) {
-                klongs++;                       // a value
-            } else {
-                java.util.List<long[]> l = below.get(key[level]);
-                if (l == null) {
-                    l = new java.util.ArrayList<long[]>();
-                    below.put(key[level], l);
-                    klongs++;                   // the pointer to the tree below
+        //
+        // A loop over the trees, with a stack of the trees still to count, not a recursion
+        // (bergdb 021-16): a new tree has a level per segment of 7 bytes of a key, and a put
+        // of a key of 1,000,000 bytes after one of 100,000 with the same start overflowed the
+        // thread's stack, which failed the database. The count is a sum, the same in any order.
+        //
+        long count = 0;
+        final java.util.ArrayList<java.util.List<long[]>> trees =
+                new java.util.ArrayList<java.util.List<long[]>>();
+        final java.util.ArrayList<Integer> levels = new java.util.ArrayList<Integer>();
+        trees.add(keys);
+        levels.add(level);
+        while (!trees.isEmpty()) {
+            final java.util.List<long[]> treeKeys = trees.remove(trees.size() - 1);
+            final int treeLevel = levels.remove(levels.size() - 1);
+            long klongs = 0;
+            java.util.HashMap<Long, java.util.List<long[]>> below =
+                    new java.util.HashMap<Long, java.util.List<long[]>>();
+            for (long[] key : treeKeys) {
+                if (key.length == treeLevel + 1) {
+                    klongs++;                       // a value
+                } else {
+                    java.util.List<long[]> l = below.get(key[treeLevel]);
+                    if (l == null) {
+                        l = new java.util.ArrayList<long[]>();
+                        below.put(key[treeLevel], l);
+                        klongs++;                   // the pointer to the tree below
+                    }
+                    l.add(key);
                 }
-                l.add(key);
             }
-        }
-        long count = 1;
-        for (long ov = overflows(klongs, 0); ov > 0; ov = overflows(ov, 1)) {
-            count += ov + 1;                    // the splits, and a new node above them
-        }
-        for (java.util.List<long[]> l : below.values()) {
-            count += freshTreeBound(l, level + 1);
+            count += 1;
+            for (long ov = overflows(klongs, 0); ov > 0; ov = overflows(ov, 1)) {
+                count += ov + 1;                    // the splits, and a new node above them
+            }
+            for (java.util.List<long[]> l : below.values()) {
+                trees.add(l);
+                levels.add(treeLevel + 1);
+            }
         }
         return count;
     }

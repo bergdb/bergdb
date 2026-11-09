@@ -19,6 +19,11 @@ public class DagNodeIterator {
     private DagNodeIterator iter;
     private long maxLookupTime;
     private GetData gd;
+    /**
+     * For the iterator whose next() is called: the chain of iterators from it to the one
+     * at the walk's place, or null before the first call (bergdb 021-16).
+     */
+    private java.util.ArrayList<DagNodeIterator> path = null;
     
     public DagNodeIterator(Dag dag) {
         this.dag = dag;
@@ -64,23 +69,38 @@ public class DagNodeIterator {
     
     /**
      * Returns node or null when done.
+     * 
+     * <p>An iterator's next node is its root, then the nodes of the iterator of its first
+     * child, then of its next child, and so on. The iterators of the children form a chain,
+     * one per level of the walk, and next() follows the chain in a loop, kept in 'path'
+     * between the calls, not by a recursion down the chain at each call, as until bergdb
+     * 021-16: a key has a level of key nodes per segment of 7 bytes, so a long key made the
+     * recursion overflow the thread's stack, and each call took time in the depth.</p>
      */
     public Node next() {
-        if (!rootAdded) {
-            createChildIter(maxLookupTime);
-            rootAdded = true;
-            return root;
-        } else {
-            if (iter == null) return null;
-            
-            Node next = iter.next();
-            if (next == null) {
-                createChildIter(maxLookupTime);
-                return next();
-            } else {
-                return next;
+        if (path == null) {
+            path = new java.util.ArrayList<DagNodeIterator>();
+            path.add(this);
+        }
+        while (!path.isEmpty()) {
+            final DagNodeIterator it = path.get(path.size() - 1);
+            if (!it.rootAdded) {
+                it.createChildIter(it.maxLookupTime);
+                it.rootAdded = true;
+                return it.root;
+            }
+            if (it.iter != null) {
+                path.add(it.iter);
+                continue;
+            }
+            // 'it' is done: the iterator above it goes on with its next child.
+            path.remove(path.size() - 1);
+            if (!path.isEmpty()) {
+                final DagNodeIterator above = path.get(path.size() - 1);
+                above.createChildIter(above.maxLookupTime);
             }
         }
+        return null;
     }
     
     private void createChildIter(long maxLookupTime) {

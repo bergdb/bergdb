@@ -325,6 +325,176 @@ public class DagTester {
         Assert.assertEquals(4, v.valueCount);
     }
     
+    /**
+     * The walks of the nodes in memory, loops with a stack of their own since bergdb 021-16,
+     * visit the nodes in the order of the recursions they replaced (the references below):
+     * visitMemoryNodes() and visitMemoryPointersOnce() each node once, depth first, and
+     * DagNodeIterator every path. The graph has replaced nodes, so some nodes have two
+     * pointers to them in memory, and deletes.
+     */
+    @Nano
+    public static void testWalksKeepTheirOrder() {
+        Dag dag = Dag.createEmpty(10, 8, DUMMY_POINTER_FOLLOWER,
+                Dag.DO_NOTHING_POINTER_CREATED_LISTENER);
+        PutData pd = pd(dag);
+        pd.tt = 20;
+        Random random = new Random(21016);
+        for (int i = 0; i < 400; i++) {
+            String key = "/k" + random.nextInt(40) + "/" + random.nextInt(4);
+            byte[] value = random.nextInt(8) == 0 ? null : StringUtil.toBytes("v" + i);
+            dag.putKv(Keys.toSegments(key), value, pd);
+            pd.clearFast();
+            if (i % 7 == 6) {
+                pd.tt += 10;
+            }
+        }
+        final Node superRoot = dag.getTopDs().getSuperRoot();
+        
+        final List<Node> visited = new ArrayList<Node>();
+        dag.visitMemoryNodes(new NodeVisitor() {
+            public void visit(TopNode node) { visited.add(node); }
+            public void visit(KeyNode node) { visited.add(node); }
+            public void visit(ValueNode node) { visited.add(node); }
+        });
+        List<Node> expected = new ArrayList<Node>();
+        referenceVisit(superRoot, Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>()),
+                expected);
+        assertSameNodes("visitMemoryNodes()", expected, visited);
+        
+        final List<Object> events = new ArrayList<Object>();
+        dag.visitMemoryPointersOnce(new PointerVisitor() {
+            public void visitNode(Node node) {
+                events.add(node);
+            }
+            
+            public void visitPointer(Node from, Pointer pointer) {
+                events.add(from);
+                events.add(pointer.getNode());
+            }
+        });
+        List<Object> expectedEvents = new ArrayList<Object>();
+        referencePointers(superRoot,
+                Collections.newSetFromMap(new IdentityHashMap<Node, Boolean>()), expectedEvents);
+        assertSameNodes("visitMemoryPointersOnce()", expectedEvents, events);
+        
+        List<Node> iterated = new ArrayList<Node>();
+        DagNodeIterator iterator = new DagNodeIterator(dag);
+        for (Node n = iterator.next(); n != null; n = iterator.next()) {
+            iterated.add(n);
+        }
+        Assert.assertTrue("next() after the end", iterator.next() == null);
+        List<Node> expectedPaths = new ArrayList<Node>();
+        referenceIterator(superRoot, Long.MAX_VALUE, expectedPaths);
+        assertSameNodes("DagNodeIterator", expectedPaths, iterated);
+        Assert.assertTrue("a node met twice", expectedPaths.size() > expected.size());
+    }
+    
+    private static void assertSameNodes(String about, List<?> expected, List<?> actual) {
+        Assert.assertTrue(about + ": no nodes", expected.size() > 100);
+        Assert.assertEquals(about + ": the count", expected.size(), actual.size());
+        for (int i = 0; i < expected.size(); i++) {
+            Assert.assertTrue(about + ": the node at " + i, expected.get(i) == actual.get(i));
+        }
+    }
+    
+    /** visitMemoryNodes() before bergdb 021-16, a recursion. */
+    private static void referenceVisit(Node node, Set<Node> visited, List<Node> out) {
+        if (!visited.add(node)) {
+            return;
+        }
+        out.add(node);
+        Pointer p = new Pointer();
+        int size = node.getSize();
+        for (int i = 0; i < size; i++) {
+            node.getPointer(i, p);
+            if (p.isMem()) {
+                referenceVisit(p.getNode(), visited, out);
+            }
+        }
+    }
+    
+    /** visitMemoryPointersOnce() before bergdb 021-16, a recursion. */
+    private static void referencePointers(Node node, Set<Node> visited, List<Object> out) {
+        if (!visited.add(node)) {
+            return;
+        }
+        out.add(node);
+        Pointer p = new Pointer();
+        int size = node.getSize();
+        for (int i = 0; i < size; i++) {
+            node.getPointer(i, p);
+            if (p.isMem()) {
+                out.add(node);
+                out.add(p.getNode());
+                referencePointers(p.getNode(), visited, out);
+            }
+        }
+    }
+    
+    /** DagNodeIterator before bergdb 021-16, a recursion: every path, depth first. */
+    private static void referenceIterator(Node node, long maxLookupTime, List<Node> out) {
+        out.add(node);
+        int n = node.getSizeAtTime(maxLookupTime);
+        Pointer p = new Pointer();
+        for (int i = 0; i < n; i++) {
+            node.getPointer(i, p);
+            if (p.isNull()) {
+                continue;
+            }
+            long childMax = maxLookupTime;
+            if (node.isKeyNode()) {
+                childMax = Math.min(maxLookupTime, ((KeyNode) node).getMaxValidTime(i));
+            }
+            referenceIterator(p.getNode(), childMax, out);
+        }
+    }
+    
+    /**
+     * A key of 400,000 bytes, a level of key nodes per segment of 7 bytes: the walks of the
+     * nodes in memory reach every node, with the thread's default stack. Each was a
+     * recursion with a frame per level until bergdb 021-16, and threw StackOverflowError.
+     */
+    @Nano
+    public static void testLongKeyWalks() {
+        Dag dag = emptyDag(10);
+        PutData pd = pd(dag);
+        pd.tt = 20;
+        byte[] longKey = new byte[400 * 1000];
+        java.util.Arrays.fill(longKey, (byte) 'k');
+        dag.putKv(Keys.toSegments(longKey), StringUtil.toBytes("long"), pd);
+        pd.clearFast();
+        dag.putKv(Keys.toSegments("/a"), StringUtil.toBytes("short"), pd);
+        pd.clearFast();
+        
+        StatsNodeVisitor v = new StatsNodeVisitor();
+        dag.visitMemoryNodes(v);
+        Assert.assertEquals("top nodes", 1, v.topCount);
+        Assert.assertTrue("key nodes: " + v.keyCount,
+                v.keyCount >= Keys.toSegments(longKey).length);
+        Assert.assertEquals("value nodes", 2, v.valueCount);
+        final long nodes = v.topCount + v.keyCount + v.valueCount;
+        
+        final long[] count = new long[1];
+        dag.visitMemoryPointersOnce(new PointerVisitor() {
+            public void visitNode(Node node) {
+                count[0]++;
+            }
+            
+            public void visitPointer(Node from, Pointer pointer) {}
+        });
+        Assert.assertEquals("visitMemoryPointersOnce()", nodes, count[0]);
+        
+        long iterated = 0;
+        DagNodeIterator iterator = new DagNodeIterator(dag);
+        while (iterator.next() != null) {
+            iterated++;
+        }
+        Assert.assertEquals("DagNodeIterator", nodes, iterated);
+        
+        Assert.assertArrayEquals(StringUtil.toBytes("long"),
+                dag.getOne(Long.MAX_VALUE, Keys.toSegments(longKey), gd(dag)));
+    }
+    
     @Nano
     private static void testPointerCreationListener1() {
         testPointerCreationListener(200);

@@ -53,6 +53,7 @@ public class Pack implements IPack {
         PubTesterIndexJobs.class,
         PubTesterJavadoc.class,
         PubTesterJavadocRest.class,
+        PubTesterLongKeys.class,
         PubTesterNestedFields.class,
         PubTesterOutput.class,
         PubTesterPrimary.class,

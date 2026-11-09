@@ -15,6 +15,7 @@ public class Pack implements IPack {
         DbTesterFailure.class,
         DbTesterGetMany.class,
         DbTesterJavadoc.class,
+        DbTesterLongKeys.class,
         DbTesterRestart.class,
         DbTesterStream.class,
         DbUtil.class,

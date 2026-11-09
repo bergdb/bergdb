@@ -584,6 +584,20 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   one printed the whole node over many lines. Now each names it by its
   kind, id and position, as "key node 22807 at 36536" (`Node.name`), as a
   port of the Core that matches the texts needs.
+* **A long key no longer makes a start or a put overflow the stack**
+  (bergdb 021-16; 2026-11-09). A key is a tree of key nodes with a level
+  per segment of 7 bytes, and walks of that tree were recursions with a
+  frame per level. With the JVM's default stack, a database with a key of
+  about 90 KB or more (Core or Pub API) did not start: the start's check
+  of the nodes in memory (`Dag.visitMemoryNodes`) threw
+  `StackOverflowError`; with `-Xss16m` it started, and nothing was lost.
+  A put of a key of 1,000,000 bytes after one of 100,000 with the same
+  start threw `StackOverflowError` in the transaction's size check
+  (`Dag.dirtyNodeBound`, 005-31) and failed the database. These walks, and
+  `Dag.visitMemoryPointersOnce` and `DagNodeIterator` (for tests), are
+  loops with a stack of their own now, in the same order. A key's length
+  still has no limit. In 2026.1 to 2026.3; found by a new-user
+  application (020-24-05, U5-1 and U5-2). The stream is unchanged.
 
 
 ### Format
