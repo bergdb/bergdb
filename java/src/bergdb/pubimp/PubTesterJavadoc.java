@@ -1509,6 +1509,43 @@ public class PubTesterJavadoc {
         }
     }
 
+    /**
+     * Time.resolve()'s grammar: an absolute time with "T" or a space before the time of day;
+     * a time of day "HH:MM:SS.d", "HH:MM:SS" or "HH:MM"; a minus time with a time of day.
+     * IllegalArgumentException for a time outside Time's range: units(), millis(), add(),
+     * and an absolute time string before 1970 or after 2198-05-04 (bergdb 020-19, J7).
+     */
+    @Nano
+    public static void testTimeStrings() {
+        final Time now = Time.utc("2020-06-15 12:00");
+        Assert.assertEquals(Time.utc("2013-08-19 14:29"), Time.utc("2013-08-19T14:29"));
+        Assert.assertEquals(Time.utc("2013-08-19 14:29:10.0"), Time.utc("2013-08-19T14:29:10"));
+        Assert.assertEquals(Time.utc("2020-06-15 14:29:10.5"),
+                Time.resolve(Time.UTC, now, "14:29:10.5"));
+        Assert.assertEquals(Time.utc("2020-06-15 14:29:10"),
+                Time.resolve(Time.UTC, now, "14:29:10"));
+        Assert.assertEquals(Time.utc("2020-06-13 14:29:10"),
+                Time.resolve(Time.UTC, now, "-2 d 14:29:10"));
+        Assert.assertEquals(Time.utc("2020-06-15 11:59:58.5"),
+                Time.resolve(Time.UTC, now, "-1.5 s"));
+        for (final String s : new String[] {"1969-12-31", "2198-05-05", "2300-01-01 00:00"}) {
+            assertThrows(s, IllegalArgumentException.class, () -> Time.utc(s));
+            assertThrows(s, IllegalArgumentException.class,
+                    () -> Time.resolve(Time.UTC, now, s));
+        }
+        assertThrows("-1 units", IllegalArgumentException.class, () -> Time.units(-1));
+        assertThrows("2^56 units", IllegalArgumentException.class, () -> Time.units(1L << 56));
+        assertThrows("-1 ms", IllegalArgumentException.class, () -> Time.millis(-1));
+        assertThrows("MAX + 1", IllegalArgumentException.class,
+                () -> Time.MAX.add(Duration.units(1)));
+        assertThrows("MAX + MAX", IllegalArgumentException.class,
+                () -> Time.MAX.add(Duration.MAX));
+        assertThrows("a minus time before 1970", BadFormatException.class,
+                () -> Time.resolve(Time.UTC, now, "-30000 d"));
+        assertThrows("bad", BadFormatException.class, () -> Time.utc("2013-1-01"));
+        Assert.assertEquals(Time.MAX, Time.units(Time.MAX.units()));
+    }
+
     // ======== DbObject ========
 
     /**
