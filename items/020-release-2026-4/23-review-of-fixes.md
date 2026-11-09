@@ -258,6 +258,165 @@ Fixer w23 (coord-1109's agent, 12:21), clone `/Users/f/fl/bench/2026-11-09/clone
   unit 1,503, f 86, demos); `level1.sh`: LEVEL 1 OK. Not yet on `main`.
 
 
+## 4. Codex, round 3
+
+Codex CLI, GPT-6.1-Sol, effort max, on the afternoon's fixes
+(`94a1520..a593b17`, 38 commits in `java/src`), in
+`/Users/f/fl/bench/2026-11-09/clone-codex3`, 14:10 to 14:28; the brief in
+`/Users/f/fl/bench/2026-11-09/codex3/prompt.md`. Its report, verbatim:
+
+<!-- CODEX REPORT START -->
+Reviewed `94a1520..a593b17`: 38 commits touching `java/src`. **Two confirmed wrong-result cases and one Javadoc mismatch.** The underlying code faults predate this range; the new contracts expose guarantees that the implementation does not meet.
+
+Only `probes/` was added. Production code, existing tests, items, docs and `frans/` are unchanged.
+
+**1. Findings**
+
+**Z1 — high — A backward clock can invalidate a time returned by `currentTime()`**
+
+Commit: `5fafc1f`, [Clock.java:30](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/pub/util/Clock.java:30). Implementation: [DbClock.java:107](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/core/DbClock.java:107).
+
+The new Javadoc explicitly permits the clock to move backward. However, a subsequent `currentTime()` overwrites `lastReadTime` with the lower time. A future transaction can then precede an earlier `currentTime()` result, contradicting [Connection.java:150](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/pub/Connection.java:150). Reads using that returned time can change after later writes.
+
+Reproduction: [ClockContractsProbe.java](/Users/f/fl/bench/2026-11-09/clone-codex3/probes/ClockContractsProbe.java), using a thread-safe custom clock:
+
+```text
+currentTime calls: 2000, 1500
+future transaction time: 1501 (must exceed 2000)
+same lookup time 2000: before -> after
+```
+
+**Confidence:** confirmed by execution. The implementation fault is older than `5fafc1f`.
+
+**Z2 — high — A raw-byte index scan returns a format-1 object under a stale query**
+
+Commits: `fd18b6a` / `4f96446`, the guarantee in [Db.java:101](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/core/Db.java:101); scan path also touched by `dee7c66`. Fault: [UseIndexBuilderImp.java:362](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/pubimp/UseIndexBuilderImp.java:362).
+
+When `entryLevels()` refuses a format-1 object, the scan substitutes the stale entry’s levels. It assumes conversion will subsequently refuse the object. With `byte[].class`, conversion returns the bytes directly, so a value without the queried field is returned as a match.
+
+This violates 020-22’s detection floor and 020-10, section 3.4. It requires no write to forbidden internal keys.
+
+Reproduction: [Format1StaleScan.java](/Users/f/fl/bench/2026-11-09/clone-codex3/probes/Format1StaleScan.java):
+
+1. Store `/p/a` with `x=1` and build its index.
+2. Close the Pub database.
+3. Through a standalone Core database, replace it with an empty format-1 object.
+4. Close Core, reopen Pub and scan `eq(1)` as `byte[]`.
+
+```text
+after offline Core write: eq(1) = 1
+returned /p/a = 626572676f010000
+same scan as DbObject: ObjectCreationException
+```
+
+**Confidence:** confirmed by execution. The bypass predates this range; the new unconditional assurance remains false.
+
+**Z3 — low — The new clock documentation overstates startup validation**
+
+Commit: `5fafc1f`, [Clock.java:25](/Users/f/fl/bench/2026-11-09/clone-codex3/java/src/bergdb/pub/util/Clock.java:25).
+
+The sentence says an out-of-range clock refuses a start. Creation checks it, but reopening an existing database need not call the clock and succeeds.
+
+The second case in [ClockContractsProbe.java](/Users/f/fl/bench/2026-11-09/clone-codex3/probes/ClockContractsProbe.java:26) prints:
+
+```text
+existing start with clock 2^56: succeeded, value=saved
+```
+
+The sentence should distinguish creation from reopening.
+
+**Confidence:** confirmed by execution.
+
+**2. Fixes checked and found sound**
+
+Within the inspected paths and exercised cases:
+
+- `83e8e13`, 021-12: both older-key-node load paths validate before reconstruction uses them; valid histories survive bounded restarts.
+- `f66bf25`, 021-13: `appendedEnd` and the write-lock wait cover records absent or partially appended, followed by the failure/state check.
+- `8a3d191`, V2-2: the post-wait exception check prevents append from continuing after close, stop or flush failure.
+- `780dc63`, V2-1: the added test exercises canonical-link type checking with `check=false`.
+- `04b0178`: GetN/PrefixN respect zero and positive limits; PrefixN owns its prefix copy.
+- `98e39d5`: a scan before the first transaction calls `eod()` once.
+- `75f42c8`: invalid builder cache budgets are refused before assignment.
+- `afc1c1d`, Y1: exact relative-time arithmetic, half-up rounding and the epoch boundary.
+- `644c1b8`, Y2: year-month forms accept a following time through both separators.
+- `6af0f51`: CryptoKey parsing requires exactly three parts and preserves the NULL round trip.
+- `cb126ac`: Time’s null arguments receive the promised `IllegalArgumentException`.
+- `fe6d284`: default cache sizing clamps both bounds without narrowing overflow.
+- `d782915`: transaction info filters keys without an exact Pub-key round trip.
+- `dee7c66`: primary/index scans exclude keys without a Pub key; Z2 is a separate value-validation bypass.
+- `67b9e2b`: stop/close documentation correctly distinguishes an admitted commit from an action still running.
+- `1ea097b` / `95cda1f`: key-replacement timing and lookup-time inclusion match the code.
+- `b38037a`: the documented Stockholm DST examples match resolution.
+- `84848e5` / `381d26a`: conversion truncation, read-modify-write losses, UTF-8 tie ordering and empty prefixes match behavior.
+- `0b71892` / `4f96446`: the checked Core exception, builder and key-space qualifications hold, apart from Z2’s guarantee.
+
+Build and focused Core/Pub unit classes passed. Independent probes passed 489 boundary checks and, in each assertion mode, 15 bounded restarts with 135 historical scans. Reproduce the probes with `sh probes/run.sh` after building.
+
+Two rebuilds briefly overlapped accidentally; the affected checks were rerun sequentially and passed.
+
+**3. What I did not get to**
+
+- Exhaustive corruption/interleaving campaigns, full harness audits, multi-gigabyte boundaries or long-running reclaim/eviction validation.
+- Executing every Javadoc promise across every overload and environment.
+- 021-14 and 021-15: neither is present in this checkout.
+
+No before-commit, nightly or stress scripts were run.
+<!-- CODEX REPORT END -->
+
+Z1 to Z3 went to a fixer (14:29).
+
+### 4.1. Fixes
+
+Fixer z23 (coord-1109's agent, 14:29), clone `/Users/f/fl/bench/2026-11-09/clone-z23` from
+`a593b17`, rebased on `5efe3bd`; gate outputs in `/Users/f/fl/bench/2026-11-09/z23-*.txt`.
+
+* **Z1**, confirmed, `45b633e`. Cause: `DbClock.currentTime()` set `lastReadTime`, the time
+  that the next transaction must pass, to the clock's time at each call, also to a lower
+  one after the clock went back. Since the 2017 code: in 2026.1 with the default clock when
+  the system clock was set back, since 2026.2 (005-69, a strictly increasing
+  `SystemClock`) only with an application's `Clock`. Fix: `lastReadTime` never decreases;
+  the time is the clock's, taken at most as `LAST_USER_TIME`, or the last time given or the
+  last transaction's when that is later. The cap keeps the 1024 units of 015-55: with the
+  clock there or out of range, `currentTime()` gave the clock's time, which took the times
+  of reclaim's internal transactions after a user's, or made `Database.currentTime()`
+  throw `IllegalArgumentException` from `Time`; with the fix alone, such a time would have
+  been kept until the next start, refusing every transaction. The other users of the
+  clock have no such pattern: `transactionBegin()` takes the largest of the clock's time,
+  the last transaction's time + 1 and `lastReadTime` + 1; `lookupTime()` and a frozen
+  lookup time take `lastTransactionTime`, which only `transactionEnd()` raises; a start sets
+  it from the last stored transaction. `Clock.getTime()`'s Javadoc says what
+  `currentTime()` gives. Tests, each failing before: `DbClock.testClockGoesBack`,
+  `testCurrentTimeLeavesTheMargin`, `PubTesterJavadocRest.testCurrentTimeWithAClockThatGoesBack`
+  (Codex's probe). `releases/next.md`, Pub API.
+* **Z2**, confirmed, `4ab3077`. Cause: when `entryLevels()` refused the value at an entry's
+  key, an object of format 1, `UseIndexBuilderImp.Scan.hasNext()` took the entry's levels
+  as the value's and left the refusal to the conversion, which a `byte[]` scan does not
+  make. Since 020-08's step 3 (`38afb1a`, 2026-11-09, 00:02) and 020-10's I3 (`8be9a95`),
+  never in a release. Fix: such a value has no levels, as `RwEnvironmentImp` gives a
+  previous value of format 1 no entries, so its entry is stale and the key left out, for
+  every type: 020-22's W6 (a Core put that changes what the index takes is left out; Q3)
+  and `UseIndexBuilder`'s Javadoc (a stale entry is skipped). Not `InternalDataException`:
+  the entry is well formed and the value is the user's data, and Q4's B1 adds no detection.
+  A scan as `DbObject` or `Object` now leaves the key out too, where it threw
+  `ObjectCreationException` naming format 1 (8be9a95's choice under Frans's delegation,
+  22:17); a get and a primary scan still refuse the object. Test, failing before:
+  `PubTesterCoreKeys.testCorePutOfAFormat1ObjectAtAnIndexedObjectKey`. `releases/next.md`:
+  020-08 step 3's entry corrected (it said that an index scan's `next()` refuses it).
+* **Z3**, confirmed, `4c3d7b2`. `Clock.getTime()`'s Javadoc: a start that creates a
+  database throws the `DbException`, as it writes the first transaction; a start of an
+  existing one does not read the clock and succeeds, its transactions refused while the
+  clock is out of range. Javadoc only. Test `PubTesterJavadocRest.testStartWithTheClockOutOfRange`,
+  which passes on the code as it is.
+* Not fixed, seen on the way: an internal transaction takes the clock's time when that is
+  later, so a clock that passes `LAST_USER_TIME` between a user transaction and its reclaim
+  step (102 µs before 2^56 - 1, the year 2198, or a test clock) can use up the margin, and
+  the step then fails the database (015-55's design).
+* Gate on the tree of the three commits, under the gate lock: BEFORE COMMIT OK (200 s; unit
+  1,555, f 86, demos); `javadoc-pub.sh`: JAVADOC PUB OK; `level1.sh`: LEVEL 1 OK. Not yet on
+  `main`.
+
+
 Log
 ===
 
@@ -266,3 +425,10 @@ Log
 
 2026-11-09. Fixer w23: V2-1's test (`1a36a0c`) and V2-2's hardening (`958b87f`) in
 clone-w23, gated with `level1.sh` (section 3.4).
+
+2026-11-09. Codex, round 3 (14:28): Z1 (high, a backward clock),
+Z2 (high, a format-1 object through a byte[] index scan), Z3 (low, a
+Javadoc sentence); both high faults older than today's range.
+
+2026-11-09. Fixer z23: Z1 (`45b633e`), Z2 (`4ab3077`) and Z3 (`4c3d7b2`) in clone-z23,
+gated with `level1.sh` (section 4.1).
