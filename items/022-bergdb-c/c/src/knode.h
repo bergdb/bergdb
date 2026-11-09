@@ -137,23 +137,28 @@ bool kn_first_and_second(struct obj_ctx *cx, const struct knode *k, int64_t t_ti
 int32_t kn_get_mem_size(const struct knode *k);
 int32_t kn_get_memory_pointer_count(const struct knode *k);
 
+/* The size of the buffer of the checks' texts: the longest, 158 bytes with
+ * its end, fits. */
+#define KN_TEXT 200
+
 /* The checks: NULL if right, else a message. check(maxNodeSize): the size
  * at most maxNodeSize + 1, then check(); check(): the sizes, the last time
- * index, increasing times (as Java's, see 012-07's notes), the pointers. */
-const char *kn_check_max(const struct knode *k, int32_t max_node_size);
-const char *kn_check(const struct knode *k);
-/* The size of the buffer of kn_validate_stream_node. */
-#define KN_TEXT 120
+ * index, increasing times (as Java's, see 012-07's notes), the pointers.
+ * With buf (KN_TEXT bytes), Java's AssertionError's text is written there
+ * and returned, the node named by Node.name, "key node ID at SPOS" (bergdb
+ * 021-15, as Java's since release 2026.4: "Bad spos of pointer I of key
+ * node ID at SPOS: S."); with NULL, a short text without numbers (the
+ * asserts). */
+const char *kn_check_max(const struct knode *k, int32_t max_node_size, char *buf);
+const char *kn_check(const struct knode *k, char *buf);
 
-/* validateStreamNode: Java's KeyNode.Invalid as a message; a text with
- * numbers ("Time not increasing, ...", Java's) is written into buf, KN_TEXT
- * bytes. Java's texts that print the node hold KeyNode.toString, and so
- * Object.toString's identity hash, which no other program gives ("Bad spos
- * of pointer I of node " and toString, or print and the startup time; "Key
- * node with size N, " and toString): C's are its own, "Bad spos of
- * pointer", "Bad spos of pointer, at or before the startup time" and "Key
- * node with size 0" (corruptset.sh counts them; bergdb 021-12's start meets
- * them). */
+/* validateStreamNode: Java's KeyNode.Invalid as a message, written into
+ * buf, KN_TEXT bytes: Java's texts, the node named by Node.name (bergdb
+ * 021-15, as Java's since release 2026.4: "Key node ID at SPOS with size
+ * 0.", "Bad spos of pointer I of key node ID at SPOS: S." and, for a
+ * pointer at or before the startup time, "..., at or before the startup
+ * time T."; before, Java's held KeyNode.toString, with Object.toString's
+ * identity hash, and C's were its own). */
 const char *kn_validate_stream_node(const struct knode *k, int64_t startup_time, char *buf);
 
 /* getDeleteBitmap: the delete bitmap that deletes compare_value's klongs,

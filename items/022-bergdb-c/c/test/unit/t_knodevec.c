@@ -229,7 +229,7 @@ TEST(knodevec_java) {
             continue;
         }
         CHECK(ok);
-        CHECK(kn_check(node) == NULL);
+        CHECK(kn_check(node, NULL) == NULL);
         NFIX_RECOUNT(&f, NULL, 0);      /* after each change (012-01, 4.5) */
         while (*p == ' ') p++;
         if (*p == '=') p++;

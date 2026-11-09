@@ -78,4 +78,10 @@ enum err_code ns_read_node_header(struct stream *s, int64_t spos, int32_t *type,
 enum err_code ns_read_trans_bytes(struct stream *s, struct mem *m, int64_t tpos,
         struct ns_buf *buf, int32_t *size, struct err *e);
 
+/* NodeStream.checkReadSize(pos, size, length), the readers' check of a size
+ * read from the stream (also for tests): true, and the StreamFormatException
+ * ("Bad item byte size, ..."), if size is below 8, or pos is at or past the
+ * length, or the size's last byte from pos is (rs_get_spos). */
+bool ns_bad_read_size(int64_t pos, int32_t size, int64_t length, struct err *e);
+
 #endif

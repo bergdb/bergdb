@@ -172,7 +172,7 @@ static void one_run(uint64_t seed) {
             m.ops[m.nops].value = v;
             m.nops++;
         }
-        CHECK(kn_check_max(node, 62) == NULL);
+        CHECK(kn_check_max(node, 62, NULL) == NULL);
         NFIX_RECOUNT(&f, NULL, 0);      /* after each change (012-01, 4.5) */
     }
 
@@ -217,7 +217,7 @@ static void one_run(uint64_t seed) {
     /* toPreviousState at a random time: the state of that time ever after. */
     int64_t t0 = test_random_below(&rnd, (int32_t) t + 1);
     kn_to_previous_state(&f.cx, node, t0);
-    CHECK(kn_check(node) == NULL);
+    CHECK(kn_check(node, NULL) == NULL);
     for (int64_t at = 0; at <= t + 2; at++) {
         state_at(&m, at <= t0 ? at : t0, st);
         check_searches(node, &m, at, st);

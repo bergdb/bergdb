@@ -33,16 +33,23 @@ static enum err_code ensure(struct ns_buf *b, struct mem *m, int64_t n, struct e
  * not the next position: a record may end just before a meta block that a
  * crash has not written). Before, C gave the error that the read would
  * give, RecoverableStream's StreamIoException of the stream's EOFException
- * (012-14, 7.4), as Java did then. */
-static bool bad_read_size(struct stream *s, int64_t pos, int32_t size, struct err *e) {
-    const int64_t length = stream_length(s);
-    if (size >= 8 && rs_get_spos(pos, (int64_t) size - 1) < length) {
+ * (012-14, 7.4), as Java did then. A position at or past the length first
+ * (bergdb 021-14, as Java's since release 2026.4): rs_get_spos wraps for a
+ * position near Long.MAX_VALUE, and the check passed (not reached: the
+ * read of the size field refuses such a position first); for one below
+ * the length it cannot. */
+bool ns_bad_read_size(int64_t pos, int32_t size, int64_t length, struct err *e) {
+    if (size >= 8 && pos < length && rs_get_spos(pos, (int64_t) size - 1) < length) {
         return false;
     }
     err_set(e, ERR_FORMAT, "StreamFormatException", "Bad item byte size, %d, at spos %lld: "
             "beyond the stream's record bytes, length %lld.", (int) size, (long long) pos,
             (long long) length);
     return true;
+}
+
+static bool bad_read_size(struct stream *s, int64_t pos, int32_t size, struct err *e) {
+    return ns_bad_read_size(pos, size, stream_length(s), e);
 }
 
 void ns_iter_init(struct ns_iter *it, struct stream *s, struct mem *m, int64_t start_pos,

@@ -1252,3 +1252,104 @@ tests (397 in the release build); `func` 28; `cross quick` 0
 differences (23 workloads, 69 crash cuts, 85 corrupt variants, 2 in
 turns, 46 budget runs); `writecheck` 0; `corruptset` 63 copies;
 `allocfail` 628 runs; `examples` OK. No difference remains.
+
+2026-11-09, 021-15 and 021-14 (worker t8). The candidate pinned again,
+`main` at `772e09b53e59aa7b6b0189d9b5e3d544b7a20bc8` (14:40), the head
+when both of Java's commits had landed: `9bb6c0f` (021-15) and `9bf82c1`
+(021-14); `java-build.sh`'s default and `c/readme.md`'s "Which Java".
+Java's vectors written again from it: all thirteen files equal. The
+stream's bytes do not change. (a) 021-15, as `9bb6c0f`: the texts of a
+start's refusals and of the key nodes' checks name a node as Java's new
+`Node.name` does, by its kind, id and position, "key node 22807 at
+36536" (`node_kind`, `node.h`), where Java's printed `KeyNode.toString`,
+with `Object.toString`'s identity hash, or the whole node, and C's were
+its own. `kn_validate_stream_node`: "Key node I at P with size 0.", "Bad
+spos of pointer N of key node I at P: S." and "..., at or before the
+startup time T.". `kn_check` and `kn_check_max` take a buffer
+(`KN_TEXT`, now 200 bytes) for Java's `AssertionError` texts ("Bad spos
+of pointer ...", "Bad reference of pointer N of key node I at P: R.",
+"Overfull node, size=Z, maxNodeSize=M, key node I at P.", and "Time not
+increasing, ..." with its numbers), `NULL` for the asserts' short texts;
+the start's check of its nodes (`post_startup_check`) and the put's
+`assertOk` (`dag.c`'s `assert_ok`, which added ", key node I" to C's
+short text) give them. `starter.c`'s checks, made functions of
+`starter.h` as Java's `DbStarter` has them: `sr_validate_node` ("Bad
+spos of KIND I at P."), `sr_check_primordial_transaction` ("Expected
+TopNode, got KIND I at P.", "Expected KeyNode, got ..."; C named the
+type's number), `sr_check_stream_pointers` ("Unexpected stream pointer
+S, index N of KIND I at P."; C named the id) and
+`sr_check_value_nodes_have_spos` ("value node got no spos during
+startup, value node I at P."), which `post_startup_check` now runs over
+every key node before their checks, in Java's order
+(`checkThatValueNodesHaveSpos`, then `Db.checkNodes`). (b)
+`corruptset.sh`'s known class `node_text` is gone with its notes (the
+script's header, `knode.h`, `c/readme.md`, section 10): these texts are
+compared as any other. Section 11 had no departure for them. (c) 021-14,
+as `9bf82c1`: C refused a read near `Long.MAX_VALUE` already (D6's
+`stream_as_storage`; the memory stream's check without the sum; a
+directory's read past its last file). The storage's check is now
+Java's, `pos > length - n`, and a read of 0 bytes returns after it: the
+one change of outcome, a read of 0 bytes at `Long.MIN_VALUE`, which the
+wrapped sum refused, reads nothing, as Java's now. The write buffer's
+check without its sum (it wrapped, `-fwrapv`, and the read was refused
+by the files, "the stream is empty"; now past the buffer's end).
+`ns_bad_read_size` (`nstream.h`, `NodeStream.checkReadSize(pos, size,
+length)`) refuses a position at or past the length first:
+`rs_get_spos` wrapped near `Long.MAX_VALUE` and the check passed,
+unreached, as the read of the size field refuses such a position first,
+in C as in Java.
+
+Tests, each failing with its fix taken out (a copy of `c/` with the old
+texts and checks, 8 tests and 30 checks failing in it): `t_knode.c`'s
+`knode_node_texts_same_in_every_run`
+(`KeyNodeTester.testNodeTextsSameInEveryRun`, and the bad reference's,
+the overfull node's and `Node.name`'s texts) and
+`knode_validate_time_text` (`check`'s text with a buffer); `t_sdb.c`'s
+`sdb_found_021_12` (the third copy's text, as `testFound021_12` checks
+it), `sdb_starter_node_texts` (`DbStarter.testCheckStreamPointersOfKeyNode`
+and a top node's pointer, `validateNode`, `checkPrimordialTransaction`,
+`checkThatValueNodesHaveSpos`) and `sdb_section_pointer_to_a_vpos` (a
+section's key node pointing to 2001, its checksum right, on the
+vectors' stream: refused at the start; written as a directory and
+started by Java's `Dump` and C's `bergdb-dump`, both refuse it alike,
+"Unexpected stream pointer 2001, index 1 of key node 2599 at 4064.");
+`t_dag.c`'s `dag_assert_ok_text`; `t_stream.c`'s `stream_storage` (the
+read of 0 bytes at `Long.MIN_VALUE`); `t_rstream.c`'s
+`ns_read_size_near_max_value` (`NodeStreamTester.testReadSizeNearMaxValue`).
+`t_stream.c`'s `stream_read_past_end_near_max_value`
+(`BufferedStream.testReadPastEndNearMaxValue` and `StreamContract`'s two
+new reads, on a memory stream and on directories, each alone and as
+storage) passes before too. C has no `StrictStream` or `DummyStream`.
+
+The whole corrupt set against the new pin, seed 1, `nice -n 10`, F53
+under a load of about 17 to 29: `CORRUPTSET OK`, 6,253 copies (183 s),
+2,628 refused by both with the same exception and message, 3,560
+started, 65 with a later read failing alike, 22 of 014-01's case, now
+the only class counted as known. Negative control, the quick set with C
+before this entry (`CONTROL=3aa9671`): only `found-long-3971358/2`
+differs, C's "Bad spos of pointer, at or before the startup time"
+against Java's "Bad spos of pointer 0 of key node 22807 at 36536: -1, at
+or before the startup time 470.". `corrupt.sh`: `CORRUPT OK`, 144
+variants, 105 messages compared, 0 differ (85 s). Its first run failed on
+one variant, 503's `last-longer`, whose random record size made a zero
+fill to a stream of 2,146,064,565 bytes: C started it, Java's dumper
+(`-Xmx2g`) threw `OutOfMemoryError` reading that record at the start; a
+limit of the harness's heap, not of either Core.
+
+The gate against the new pin (`git:772e09b`), on `2026.4` at `3aa9671`
+(corrupt.sh's messages landed) with this entry: `C BEFORE COMMIT OK (285
+s)`, F53 under a load of about 21 to 23; `unit` 404 tests (403 in the
+release build); `func` 28; `cross quick` 0 differences (23 workloads, 69
+crash cuts, 85 corrupt variants, 2 in turns, 46 budget runs);
+`writecheck` 0; `corruptset` 63 copies, `found-long-3971358`'s three
+compared as any other; `allocfail` 628 runs; `examples` OK. No
+difference remains. The pin also brings the Core's other changes since
+`82edabf`, which no harness run here showed and which this entry does
+not port or check in C:
+020-27's C1 (`GetMany.GetN` and `PrefixN` of a count of 0, `04b0178`),
+C2 (`eod()` also before the first transaction, `98e39d5`) and C3
+(`DbBuilder.cacheSizeIndicator()` below 1 refused, `75f42c8`); 021-13
+(`Db.getTrans` waits for the writer, `f66bf25`; C has no writer
+thread); 020-24's U1-12 (`LookupTimeNotAvailableException`'s text,
+`c6be92b`; C has no such text). After the pin, `main` took 020-23's Z1
+(`6ac9708`, `DbClock.currentTime()` with a clock that goes back).

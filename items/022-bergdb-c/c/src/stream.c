@@ -592,12 +592,14 @@ void stream_as_storage(struct stream *s) {
 enum err_code stream_read(struct stream *s, int64_t pos, uint8_t *buf, int32_t n,
         struct err *e) {
     if (s->storage) {
-        /* BufferedStream.read under Db's StorageManager: pos2 = position +
-         * length - 1, refused if pos2 >= totalLength. Where Java's sum wraps
-         * (a position within n of Long.MAX_VALUE), its read goes on into the
-         * ring buffer's bytes; C refuses it as past the end. */
-        const int64_t last = (int64_t) ((uint64_t) pos + (uint64_t) n - 1);
-        if (last >= s->length || (n > 0 && pos > INT64_MAX - (n - 1))) {
+        /* BufferedStream.read under Db's StorageManager: refused if position
+         * > totalLength - length, without the sum (bergdb 021-14, as Java's
+         * since release 2026.4): Java's position + length - 1 wrapped for a
+         * position within n of Long.MAX_VALUE, and its read went on into the
+         * ring buffer's bytes, where C refused it as past the end; and a
+         * read of 0 bytes returns after the check, at any position below it
+         * (Long.MIN_VALUE's wrapped sum refused it). */
+        if (pos > s->length - n) {
             return err_set(e, ERR_IO, "EOFException", "Cannot read %d bytes at position %lld, "
                     "stream size is %lld.", (int) n, (long long) pos, (long long) s->length);
         }
@@ -619,7 +621,7 @@ enum err_code stream_read(struct stream *s, int64_t pos, uint8_t *buf, int32_t n
                     "Cannot read from position %lld, first valid position is %lld.",
                     (long long) pos, (long long) s->first);
         }
-        if (pos > s->length - n) {     /* Java's pos + len > size, without its overflow */
+        if (pos > s->length - n) {     /* without the sum, as Java's since 021-14 */
             return err_set(e, ERR_IO, "EOFException", "Not enough bytes left in the stream, "
                     "position is %lld, length to read is %d and stream size is %lld.",
                     (long long) pos, (int) n, (long long) s->length);
@@ -628,8 +630,11 @@ enum err_code stream_read(struct stream *s, int64_t pos, uint8_t *buf, int32_t n
         return ERR_OK;
     }
 
-    /* The bytes still in the write buffer (BufferedStream.readFromBuffer). */
-    if (s->buf_len > 0 && pos + n > s->fileLength && pos >= s->first) {
+    /* The bytes still in the write buffer (BufferedStream.readFromBuffer);
+     * pos + n > fileLength without the sum, which wraps near Long.MAX_VALUE
+     * (bergdb 021-14): such a read went on to the files and was refused
+     * there. */
+    if (s->buf_len > 0 && pos > s->fileLength - n && pos >= s->first) {
         if (pos > s->length - n) {
             return err_set(e, ERR_IO, "EOFException", "Cannot read %d bytes at spos %lld, the"
                     " end of the stream.", (int) n, (long long) pos);

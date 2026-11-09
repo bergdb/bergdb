@@ -27,8 +27,9 @@ keeps; 022-01 brought it to 2026.3, and 2026.4 follows (022-02; 022's
 readme). Until 2026-11-05 C followed `main` as of 2026-10-29 (`ae4aaf9`),
 then release 2026.2 until 2026-11-09. **On the way to 2026.4** (022-02):
 the harness compiles the pinned candidate of release 2026.4 by default
-(`JAVA_REF=git:82edabf`, `main` at 2026-11-09 13:04; `94a1520`, 11:57,
-until 022-02's re-pin), and
+(`JAVA_REF=git:772e09b`, `main` at 2026-11-09 14:40, with 021-15 and
+021-14; `82edabf`, 13:04, and `94a1520`, 11:57, before, until 022-02's
+re-pins), and
 `JAVA_REF=2026.3` no longer compiles (`CorruptSet.java` takes the
 candidate's `Config`); 022-02's step 5 writes this paragraph for 2026.4.
 
@@ -688,11 +689,12 @@ Raw output goes to `/Users/f/fl/bench/022/out/` by default (`OUT=`).
   the error's cause (`struct err`), and a database's stream is read as
   Java's `Db` reads it, through `BufferedStream` (`stream_as_storage`);
   022-02, D6 (Frans, 2026-11-09, 12:25), decided 012-14, section 6.4's
-  open choice so, where the set had counted C's own text as known.
-  Counted, not failed: Java's texts of `KeyNode.validateStreamNode` that
-  print the key node (its `toString`, with `Object.toString`'s identity
-  hash), which the start meets since 021-12; C's is its own text of the
-  same check. `quick`
+  open choice so, where the set had counted C's own text as known. The
+  texts of a start's refusals and of the nodes' checks name a node by its
+  kind, id and position, "key node 22807 at 36536" (021-15, as Java's
+  since release 2026.4), and are compared as any other; the set counted
+  `KeyNode.validateStreamNode`'s as known until then, as Java's printed
+  the node with `Object.toString`'s identity hash. `quick`
   (about 60 copies) is in the gate; the whole set (`SEEDS=`, 1 by
   default, testSample's copies) by hand. `CONTROL=REV` is the negative
   control: C at REV (`86dade8`, the port of 2026.2) must differ in every

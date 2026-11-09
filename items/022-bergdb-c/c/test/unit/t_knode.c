@@ -135,7 +135,7 @@ TEST(knode_eq_before_first_version) {
     nfix_init(&f);
     struct knode *n = kn_new(&f.cx, true);
     CHECK(kn_add_klong(&f.cx, n, 10, nfix_key("first"), &nfix_value(&f)->n, ACCESS_DATA_DEFAULT));
-    CHECK(kn_check(n) == NULL);
+    CHECK(kn_check(n, NULL) == NULL);
     struct kwp kwi;
     kwp_init(&kwi);
     kn_search_eq(n, 20, nfix_cv("first"), &kwi);
@@ -163,7 +163,7 @@ TEST(knode_lte1) {
     nfix_init(&f);
     struct knode *n = kn_new(&f.cx, true);
     CHECK(kn_add_klong(&f.cx, n, 10, nfix_key("first"), &nfix_value(&f)->n, ACCESS_DATA_DEFAULT));
-    CHECK(kn_check(n) == NULL);
+    CHECK(kn_check(n, NULL) == NULL);
     struct kwp kwi;
     kn_search_lte(n, 20, nfix_cv("first"), &kwi);
     CHECK(kwi.klong != KL_NULL);
@@ -222,7 +222,7 @@ TEST(knode_lt1) {
     nfix_init(&f);
     struct knode *n = kn_new(&f.cx, true);
     CHECK(kn_add_klong(&f.cx, n, 10, nfix_key("first"), &nfix_value(&f)->n, ACCESS_DATA_DEFAULT));
-    CHECK(kn_check(n) == NULL);
+    CHECK(kn_check(n, NULL) == NULL);
     struct kwp kwi;
     kn_search_lt(n, 20, nfix_cv("first"), &kwi);
     CHECK(kwi.klong == KL_NULL);
@@ -279,7 +279,7 @@ TEST(knode_gt1) {
     nfix_init(&f);
     struct knode *n = kn_new(&f.cx, true);
     CHECK(kn_add_klong(&f.cx, n, 10, nfix_key("key"), &nfix_value(&f)->n, ACCESS_DATA_DEFAULT));
-    CHECK(kn_check(n) == NULL);
+    CHECK(kn_check(n, NULL) == NULL);
     struct kwp kwi;
     kn_search_gt(n, 20, nfix_cv("a"), &kwi);
     CHECK(kwi.klong != KL_NULL);
@@ -354,7 +354,7 @@ TEST(knode_first1) {
 TEST(knode_check_empty_node) {
     struct nfix f;
     nfix_init(&f);
-    CHECK(kn_check(kn_new(&f.cx, true)) == NULL);
+    CHECK(kn_check(kn_new(&f.cx, true), NULL) == NULL);
     NFIX_END(&f);
 }
 
@@ -363,7 +363,7 @@ TEST(knode_check1) {
     nfix_init(&f);
     struct t2 t;
     create_t2(&f, &t);
-    CHECK(kn_check(t.node) == NULL);
+    CHECK(kn_check(t.node, NULL) == NULL);
     NFIX_END(&f);
 }
 
@@ -373,13 +373,13 @@ TEST(knode_check2) {
     struct t2 t;
     create_t2(&f, &t);
     struct knode *node = t.node;
-    CHECK(kn_check(node) == NULL);
+    CHECK(kn_check(node, NULL) == NULL);
     int64_t klong = kn_get_delete_bitmap(node, nfix_cv("apa"));
     CHECK(kn_add_klong(&f.cx, node, 1020, klong, NULL, ACCESS_DATA_DEFAULT));
-    CHECK(kn_check(node) == NULL);
+    CHECK(kn_check(node, NULL) == NULL);
     CHECK(kn_add_klong(&f.cx, node, 1030, nfix_key("apa"), as_node(t.pointers[5]),
             ACCESS_DATA_DEFAULT));
-    CHECK(kn_check(node) == NULL);
+    CHECK(kn_check(node, NULL) == NULL);
     NFIX_END(&f);
 }
 
@@ -876,8 +876,9 @@ TEST(knode_new_stored) {
 /* KeyNode.validateStreamNode's text for times that do not increase, Java's
  * with the times and the index (022-01, step 4: the corrupt-stream set
  * found C's "Time not increasing" alone, a node of a record's start whose
- * time klong was changed, its checksum made right); KeyNode.check's stays
- * the short one. */
+ * time klong was changed, its checksum made right); KeyNode.check's too,
+ * with a buffer (bergdb 021-15: the start's check and the put's
+ * assertOk), and the short one without (the asserts). */
 TEST(knode_validate_time_text) {
     struct nfix f;
     nfix_init(&f);
@@ -896,9 +897,97 @@ TEST(knode_validate_time_text) {
     const char *m = kn_validate_stream_node(k, 7, buf);
     REQUIRE(m != NULL);
     CHECK(strcmp(m, "Time not increasing, 500, 500, index=2") == 0);
-    m = kn_check(k);
+    char buf2[KN_TEXT];
+    m = kn_check(k, buf2);
+    REQUIRE(m != NULL);
+    CHECK(strcmp(m, "Time not increasing, 500, 500, index=2") == 0);
+    m = kn_check_max(k, 62, buf2);
+    REQUIRE(m != NULL);
+    CHECK(strcmp(m, "Time not increasing, 500, 500, index=2") == 0);
+    m = kn_check(k, NULL);
     REQUIRE(m != NULL);
     CHECK(strcmp(m, "Time not increasing") == 0);
+    NFIX_END(&f);
+}
+
+/* A key node as a start reads it (KeyNodeTester.streamNode): id 22807, at
+ * 36536, its pointers stream pointers, or pointee's where pointee[i]. */
+static struct knode *stream_node(struct nfix *f, const int64_t *klongs, const int64_t *pos,
+        struct obj *const *pointee, int32_t n) {
+    struct knode *k = kn_new(&f->cx, false);
+    if (k == NULL) {
+        return NULL;
+    }
+    k->n.id = 22807;
+    k->n.spos = 36536;
+    for (int32_t i = 0; i < n; i++) {
+        if (!kn_add_to_end(&f->cx, k, klongs[i], pointee != NULL ? pointee[i] : NULL, pos[i])) {
+            return NULL;
+        }
+    }
+    return k;
+}
+
+static bool same_text(const char *m, const char *expected) {
+    if (m != NULL && strcmp(m, expected) == 0) {
+        return true;
+    }
+    printf("    expected \"%s\", got \"%s\"\n", expected, m != NULL ? m : "(NULL)");
+    return false;
+}
+
+/* KeyNodeTester.testNodeTextsSameInEveryRun (bergdb 021-15, as Java's since
+ * release 2026.4): the texts of validateStreamNode, which a start refuses a
+ * stream with, and of check() name the node by its id and position
+ * (Node.name), the same in every run. Java's held KeyNode.toString, with
+ * Object.toString's identity hash, or printed the whole node, and C's were
+ * its own ("Key node with size 0", "Bad spos of pointer", "Bad spos of
+ * pointer, at or before the startup time"). And check()'s two other texts
+ * that name the node, a pointer's bad reference and an overfull node
+ * (check(maxNodeSize)), and Node.name's kind. */
+TEST(knode_node_texts_same_in_every_run) {
+    struct nfix f;
+    nfix_init(&f);
+    char buf[KN_TEXT];
+    const int64_t key = nfix_key("a");
+    struct knode *k = stream_node(&f, NULL, NULL, NULL, 0);
+    REQUIRE(k != NULL);
+    CHECK(same_text(kn_validate_stream_node(k, 470, buf), "Key node 22807 at 36536 with size "
+            "0."));
+    /* A key klong before every time klong is of the time 0, at or before the startup time. */
+    k = stream_node(&f, (const int64_t[]) { key }, (const int64_t[]) { SPOS_NULL }, NULL, 1);
+    REQUIRE(k != NULL);
+    CHECK(same_text(kn_validate_stream_node(k, 470, buf), "Bad spos of pointer 0 of key node "
+            "22807 at 36536: -1, at or before the startup time 470."));
+    k = stream_node(&f, (const int64_t[]) { kl_create_time(480), key },
+            (const int64_t[]) { SPOS_NULL, -5 }, NULL, 2);
+    REQUIRE(k != NULL);
+    CHECK(same_text(kn_validate_stream_node(k, 470, buf), "Bad spos of pointer 1 of key node "
+            "22807 at 36536: -5."));
+    struct knode *bad = stream_node(&f, (const int64_t[]) { kl_create_time(400), key },
+            (const int64_t[]) { SPOS_NULL, SPOS_NULL }, NULL, 2);
+    REQUIRE(bad != NULL);
+    CHECK(same_text(kn_check(bad, buf), "Bad spos of pointer 1 of key node 22807 at 36536: "
+            "-1."));
+    CHECK(same_text(kn_check(bad, NULL), "Bad spos"));
+    CHECK(same_text(node_kind(node_type(&bad->n)), "key node"));
+    /* A pointer that holds a value has a reference too: -5 is none. */
+    struct vnode *v = nfix_value(&f);
+    REQUIRE(v != NULL);
+    k = stream_node(&f, (const int64_t[]) { kl_create_time(400), key },
+            (const int64_t[]) { SPOS_NULL, -5 }, (struct obj *const[]) { NULL, &v->n.o }, 2);
+    REQUIRE(k != NULL);
+    CHECK(same_text(kn_check(k, buf), "Bad reference of pointer 1 of key node 22807 at 36536: "
+            "-5."));
+    CHECK(same_text(kn_check(k, NULL), "Bad reference"));
+    /* check(maxNodeSize): at most maxNodeSize + 1 klongs. */
+    k = stream_node(&f, (const int64_t[]) { kl_create_time(400), key, nfix_key("b") },
+            (const int64_t[]) { SPOS_NULL, 1000, 1008 }, NULL, 3);
+    REQUIRE(k != NULL);
+    CHECK(kn_check_max(k, 2, buf) == NULL);
+    CHECK(same_text(kn_check_max(k, 1, buf), "Overfull node, size=3, maxNodeSize=1, key node "
+            "22807 at 36536."));
+    CHECK(same_text(kn_check_max(k, 1, NULL), "Overfull node"));
     NFIX_END(&f);
 }
 
@@ -923,6 +1012,7 @@ const struct test knode_tests[] = {
     TEST_ENTRY(knode_check1),
     TEST_ENTRY(knode_check2),
     TEST_ENTRY(knode_validate_time_text),
+    TEST_ENTRY(knode_node_texts_same_in_every_run),
     TEST_ENTRY(knode_get_pointers),
     TEST_ENTRY(knode_last_version1),
     TEST_ENTRY(knode_last_version3),

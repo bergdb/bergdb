@@ -253,18 +253,18 @@ static enum err_code read_transactions(struct starter *st, int64_t startupPos, s
 /* ======== DbStarter ======== */
 
 /* validateNode */
-static enum err_code validate_node(struct starter *st, const struct sn_node *sn,
-        struct err *e) {
+enum err_code sr_validate_node(struct obj_ctx *cx, const struct sn_node *sn,
+        int64_t startup_time, struct err *e) {
     if (!spos_is_valid(sn->spos)) {
-        return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad spos of node, spos=%"
-                PRId64, sn->spos);
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "Bad spos of %s %" PRId64
+                " at %" PRId64 ".", node_kind(sn->type), sn->id, sn->spos);
     }
     if (sn->type == NODE_KEY) {
-        struct knode *k = (struct knode *) nc_node_from_sn(st->env->cx, sn);
+        struct knode *k = (struct knode *) nc_node_from_sn(cx, sn);
         if (k == NULL) {
             return nomem(e, "a key node");
         }
-        return nc_validate_key_node(k, st->startup_time, false, e);
+        return nc_validate_key_node(k, startup_time, false, e);
     }
     return ERR_OK;
 }
@@ -303,7 +303,8 @@ static enum err_code validate_transactions(struct starter *st, struct err *e) {
         tpos = t->tpos;
         tt = t->tt;
         for (int32_t j = 0; j < t->nnodes; j++) {
-            enum err_code rc = validate_node(st, &t->nodes[j], e);
+            enum err_code rc = sr_validate_node(st->env->cx, &t->nodes[j], st->startup_time,
+                    e);
             if (rc != ERR_OK) {
                 return rc;
             }
@@ -332,22 +333,32 @@ static enum err_code set_dag(struct starter *st, struct tnode *superRoot, struct
     return ERR_OK;
 }
 
-/* doPrimordialStartup */
-static enum err_code do_primordial_startup(struct starter *st, struct err *e) {
-    struct sr_env *env = st->env;
-    const struct st_record *t = &st->recs[0].st;
-    /* checkPrimordialTransaction */
+/* checkPrimordialTransaction */
+enum err_code sr_check_primordial_transaction(const struct st_record *t, struct err *e) {
     if (t->nnodes != 2) {
         return err_set(e, ERR_FORMAT, "StreamFormatException", "expected 2, got %d nodes.",
                 (int) t->nnodes);
     }
-    if (t->nodes[0].type != NODE_TOP) {
-        return err_set(e, ERR_FORMAT, "StreamFormatException", "Expected TopNode, got a node "
-                "of type %d", (int) t->nodes[0].type);
+    const struct sn_node *n0 = &t->nodes[0];
+    const struct sn_node *n1 = &t->nodes[1];
+    if (n0->type != NODE_TOP) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "Expected TopNode, got %s %"
+                PRId64 " at %" PRId64 ".", node_kind(n0->type), n0->id, n0->spos);
     }
-    if (t->nodes[1].type != NODE_KEY) {
-        return err_set(e, ERR_FORMAT, "StreamFormatException", "Expected KeyNode, got a node "
-                "of type %d", (int) t->nodes[1].type);
+    if (n1->type != NODE_KEY) {
+        return err_set(e, ERR_FORMAT, "StreamFormatException", "Expected KeyNode, got %s %"
+                PRId64 " at %" PRId64 ".", node_kind(n1->type), n1->id, n1->spos);
+    }
+    return ERR_OK;
+}
+
+/* doPrimordialStartup */
+static enum err_code do_primordial_startup(struct starter *st, struct err *e) {
+    struct sr_env *env = st->env;
+    const struct st_record *t = &st->recs[0].st;
+    enum err_code rc = sr_check_primordial_transaction(t, e);
+    if (rc != ERR_OK) {
+        return rc;
     }
     struct tnode *superRoot = (struct tnode *) nc_node_from_sn(env->cx, &t->nodes[0]);
     struct knode *keyNode = (struct knode *) nc_node_from_sn(env->cx, &t->nodes[1]);
@@ -362,7 +373,7 @@ static enum err_code do_primordial_startup(struct starter *st, struct err *e) {
     node_set_canonical(&superRoot->n, true);
     node_set_canonical(&keyNode->n, true);
     struct node *reg;
-    enum err_code rc = nt_register(env->nt, &superRoot->n, &reg, e);
+    rc = nt_register(env->nt, &superRoot->n, &reg, e);
     if (rc == ERR_OK) {
         rc = nt_register(env->nt, &keyNode->n, &reg, e);
     }
@@ -486,9 +497,8 @@ static void change_key_nodes_to_state_at_startup_time(struct starter *st) {
     }
 }
 
-/* checkStreamPointers(node): each stream pointer names a version in the
- * stream, not NULL or a vpos. */
-static enum err_code check_stream_pointers_of(const struct node *node, struct err *e) {
+/* checkStreamPointers(node) */
+enum err_code sr_check_stream_pointers(const struct node *node, struct err *e) {
     if (node_is_key_node(node)) {
         const struct knode *k = (const struct knode *) node;
         for (int32_t i = 0; i < k->size; i++) {
@@ -497,8 +507,8 @@ static enum err_code check_stream_pointers_of(const struct node *node, struct er
                 int64_t pos = kn_get_pointer_pos(k, i);
                 if (spos_is_null(pos) || spos_is_vpos(pos)) {
                     return err_set(e, ERR_FORMAT, "StreamFormatException", "Unexpected stream "
-                            "pointer from KeyNode, was %" PRId64 ", index %d, node: %" PRId64,
-                            pos, (int) i, node->id);
+                            "pointer %" PRId64 ", index %d of key node %" PRId64 " at %" PRId64
+                            ".", pos, (int) i, node->id, node->spos);
                 }
             }
         }
@@ -510,8 +520,8 @@ static enum err_code check_stream_pointers_of(const struct node *node, struct er
             if (!ptr_is_null(&p)) {
                 if (spos_is_null(p.pos) || spos_is_vpos(p.pos)) {
                     return err_set(e, ERR_FORMAT, "StreamFormatException", "Unexpected stream "
-                            "pointer, was %" PRId64 ", index %d, node: %" PRId64, p.pos, (int) i,
-                            node->id);
+                            "pointer %" PRId64 ", index %d of %s %" PRId64 " at %" PRId64 ".",
+                            p.pos, (int) i, node_kind(node_type(node)), node->id, node->spos);
                 }
             }
         }
@@ -521,7 +531,7 @@ static enum err_code check_stream_pointers_of(const struct node *node, struct er
 
 static enum err_code check_stream_pointers(struct starter *st, struct err *e) {
     for (int32_t k = 0; k < st->nnodes; k++) {
-        enum err_code rc = check_stream_pointers_of(st->nodes[k], e);
+        enum err_code rc = sr_check_stream_pointers(st->nodes[k], e);
         if (rc != ERR_OK) {
             return rc;
         }
@@ -945,25 +955,43 @@ static enum err_code link_d(struct starter *st, struct err *e) {
     return rc;
 }
 
-/* postStartupCheck: checkThatValueNodesHaveSpos, and Db.checkNodes (each key
- * node in memory checked); over the node table's objects. */
+/* checkThatValueNodesHaveSpos, for the value nodes of one key node */
+enum err_code sr_check_value_nodes_have_spos(const struct knode *k, struct err *e) {
+    for (int32_t j = 0; j < k->size; j++) {
+        struct obj *p = k->pointers[j];
+        if (p != NULL && p->kind == OBJ_VALUE && !(((struct node *) p)->spos >= 0)) {
+            const struct node *v = (const struct node *) p;
+            return err_set(e, ERR_FORMAT, "AssertionError", "value node got no spos during "
+                    "startup, %s %" PRId64 " at %" PRId64 ".", node_kind(node_type(v)), v->id,
+                    v->spos);
+        }
+    }
+    return ERR_OK;
+}
+
+/* postStartupCheck: checkThatValueNodesHaveSpos, then Db.checkNodes (each
+ * key node in memory checked), in Java's order; over the node table's
+ * objects. */
 static enum err_code post_startup_check(struct starter *st, struct err *e) {
     struct sr_env *env = st->env;
-    for (int64_t i = 0; i < nt_slots(env->nt); i++) {
-        struct handle *h = nt_slot(env->nt, i);
-        if (h == NULL || h->obj == NULL || node_type(h->obj) != NODE_TYPE_KEY_NODE) {
-            continue;
-        }
-        const struct knode *k = (const struct knode *) h->obj;
-        const char *msg = kn_check(k);
-        if (msg != NULL) {
-            return err_set(e, ERR_FORMAT, "AssertionError", "%s", msg);
-        }
-        for (int32_t j = 0; j < k->size; j++) {
-            struct obj *p = k->pointers[j];
-            if (p != NULL && p->kind == OBJ_VALUE && !(((struct node *) p)->spos >= 0)) {
-                return err_set(e, ERR_FORMAT, "AssertionError", "value node got no spos "
-                        "during startup");
+    for (int32_t pass = 0; pass < 2; pass++) {
+        for (int64_t i = 0; i < nt_slots(env->nt); i++) {
+            struct handle *h = nt_slot(env->nt, i);
+            if (h == NULL || h->obj == NULL || node_type(h->obj) != NODE_TYPE_KEY_NODE) {
+                continue;
+            }
+            const struct knode *k = (const struct knode *) h->obj;
+            if (pass == 0) {
+                enum err_code rc = sr_check_value_nodes_have_spos(k, e);
+                if (rc != ERR_OK) {
+                    return rc;
+                }
+                continue;
+            }
+            char buf[KN_TEXT];
+            const char *msg = kn_check(k, buf);
+            if (msg != NULL) {
+                return err_set(e, ERR_FORMAT, "AssertionError", "%s", msg);
             }
         }
     }

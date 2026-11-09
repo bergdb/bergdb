@@ -1011,7 +1011,8 @@ static void print_node(FILE *out, const struct node *n, int32_t depth) {
  * AssertionError if bad. */
 static void check_node(const struct node *n) {
     if (n->o.kind == OBJ_KEY) {
-        const char *m = kn_check((const struct knode *) n);
+        char buf[KN_TEXT];
+        const char *m = kn_check((const struct knode *) n, buf);
         if (m != NULL) {
             fprintf(stderr, "bergdb_debug_check: key node id=%lld spos=%lld: %s\n",
                     (long long) n->id, (long long) n->spos, m);

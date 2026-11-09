@@ -432,12 +432,13 @@ static bool check_found(const struct knode *node, struct putdata *pd) {
 
 /* KeyNode.assertOk(maxNodeSize), Java's assert: a check that returns Java's
  * AssertionError (Java's tests and harness run with -ea), as a node from a
- * damaged stream reaches it; C aborted on it. */
+ * damaged stream reaches it; C aborted on it. Java's text, which names the
+ * node where it names one (bergdb 021-15); C's added ", key node ID". */
 static bool assert_ok(const struct knode *node, int32_t maxNodeSize, struct putdata *pd) {
-    const char *msg = kn_check_max(node, maxNodeSize);
+    char buf[KN_TEXT];
+    const char *msg = kn_check_max(node, maxNodeSize, buf);
     if (msg != NULL) {
-        return op_fail(&pd->op, ERR_FORMAT, "AssertionError", "%s, key node %lld", msg,
-                (long long) node->n.id);
+        return op_fail(&pd->op, ERR_FORMAT, "AssertionError", "%s", msg);
     }
     return true;
 }
@@ -656,7 +657,7 @@ static bool append_klongs(struct dag *d, struct knode *node, int32_t depth,
         const struct kwp *toAppend, int32_t nAppend, struct putdata *pd) {
     assert(nAppend < 3 && "toAppend.length < 3");
     assert(nAppend > 0 && "toAppend.length > 0");
-    assert(kn_check_max(node, d->max_node_size) == NULL);
+    assert(kn_check_max(node, d->max_node_size, NULL) == NULL);
 
     /* "+1" is needed since a TIME klong could be added along with the
      * toInsert klongs. */
@@ -678,7 +679,7 @@ static bool append_klongs(struct dag *d, struct knode *node, int32_t depth,
         if (!key_node_changed(&pd->node_change_listener, node)) {
             return false;
         }
-        assert(kn_check_max(node, d->max_node_size) == NULL);
+        assert(kn_check_max(node, d->max_node_size, NULL) == NULL);
 
     } else {
         /* 'node' is full: space-full or time-full. 'last' is made, but is not
@@ -689,7 +690,7 @@ static bool append_klongs(struct dag *d, struct knode *node, int32_t depth,
         if (last == NULL) {
             return false;
         }
-        assert(kn_check_max(last, d->max_node_size) == NULL);
+        assert(kn_check_max(last, d->max_node_size, NULL) == NULL);
         if (!handle_full_node(d, node, depth, toAppend, nAppend, pd->tt, last, pd)) {
             return false;
         }
@@ -719,7 +720,7 @@ static bool time_split_in_place(struct dag *d, int64_t tTime, struct knode *node
         return false;
     }
     node_split(&pd->split_listener, DAG_TIME_SPLIT_1);
-    assert(kn_check(node) == NULL);
+    assert(kn_check(node, NULL) == NULL);
     return true;
 }
 
@@ -781,7 +782,7 @@ static bool space_split_in_place(struct dag *d, struct knode *node, struct knode
             }
             node_split(&pd->split_listener, DAG_SPACE_SPLIT_2);
         }
-        assert(kn_check(newRoot) == NULL);
+        assert(kn_check(newRoot, NULL) == NULL);
     } else {
         /* The parent already points to 'node', the first half. */
         pd->one_kwi[0].klong = secondKlong;
@@ -826,7 +827,7 @@ static bool time_split(struct dag *d, int64_t tTime, struct knode *last, int32_t
             return false;
         }
         node_split(&pd->split_listener, DAG_TIME_SPLIT_2);
-        assert(kn_check(last) == NULL);
+        assert(kn_check(last, NULL) == NULL);
 
     } else {
         /* time-split-1: there is a parent. */
@@ -841,7 +842,7 @@ static bool time_split(struct dag *d, int64_t tTime, struct knode *last, int32_t
             return false;
         }
         node_split(&pd->split_listener, DAG_TIME_SPLIT_1);
-        assert(kn_check(parent) == NULL);
+        assert(kn_check(parent, NULL) == NULL);
     }
     return true;
 }
@@ -884,7 +885,7 @@ static bool space_split(struct dag *d, struct knode *node, struct knode *last, i
             return false;
         }
         node_split(&pd->split_listener, DAG_SPACE_SPLIT_3);
-        assert(kn_check(newRoot) == NULL);
+        assert(kn_check(newRoot, NULL) == NULL);
 
     } else if (kn_is_segment_leaf(parent)) {
         /* space-split-2: 'node' is a segment root since parent is a segment leaf. */
@@ -918,8 +919,8 @@ static bool space_split(struct dag *d, struct knode *node, struct knode *last, i
             return false;
         }
         node_split(&pd->split_listener, DAG_SPACE_SPLIT_2);
-        assert(kn_check(parent) == NULL);
-        assert(kn_check(newSegmentRoot) == NULL);
+        assert(kn_check(parent, NULL) == NULL);
+        assert(kn_check(newSegmentRoot, NULL) == NULL);
 
     } else {
         /* space-split-1: 'node' is not a segment root since parent is not a
@@ -946,7 +947,7 @@ static bool space_split(struct dag *d, struct knode *node, struct knode *last, i
             return false;
         }
         node_split(&pd->split_listener, DAG_SPACE_SPLIT_1);
-        assert(kn_check(parent) == NULL);
+        assert(kn_check(parent, NULL) == NULL);
     }
     return true;
 }

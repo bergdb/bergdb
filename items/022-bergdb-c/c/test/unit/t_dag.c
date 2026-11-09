@@ -818,6 +818,36 @@ TEST(dag_check_found) {
     tdag_end(&t);
 }
 
+/* KeyNode.assertOk(maxNodeSize), a put's check of each key node it walks (Java's assert, its
+ * AssertionError under -ea): Java's text, which names the node by Node.name (bergdb 021-15,
+ * as Java's since release 2026.4); C added ", key node ID" to its own short text ("Bad
+ * reference of a pointer, key node 1"). A key of two segments: the first segment's root, a
+ * put's first check, has its pointer to the next segment's root given the reference -5. */
+TEST(dag_assert_ok_text) {
+    struct tdag t;
+    tdag_init(&t, 0, MAX_NODE_SIZE, NULL);
+    struct err e;
+    err_clear(&e);
+    t.pd.op.err = &e;
+    t.pd.tt = 10;
+    CHECK(put(&t, "/bbbbbbbbbbbbbbbbbbbb", "1"));
+    pd_clear(&t.pd);
+    struct knode *root = root_of(&t);
+    REQUIRE(root != NULL && root->size == 2 && kl_is_key(root->klongs[1])
+            && kl_get_length(root->klongs[1]) == KL_MAX_SIZE && root->pointers[1] != NULL);
+    const int64_t pos = root->pos[1];
+    root->pos[1] = -5;
+    t.pd.tt = 20;
+    CHECK(!put(&t, "/cccccccccccccccccccc", "3"));
+    char want[200];
+    snprintf(want, sizeof want, "Bad reference of pointer 1 of key node %lld at %lld: -5.",
+            (long long) root->n.id, (long long) root->n.spos);
+    check_err(&e, "AssertionError", want);
+    pd_clear(&t.pd);
+    root->pos[1] = pos;
+    tdag_end(&t);
+}
+
 /* A key node's pointer that holds a node of another type than the code casts it to (in
  * Java, linkToCanonical and resolvePointers link a pointer by the node id at its position
  * without checking the type): Java's exception at each cast or assert, as C's checks give
@@ -916,6 +946,7 @@ const struct test dag_tests[] = {
     TEST_ENTRY(dag_pointer_creation_listener2),
     TEST_ENTRY(dag_transaction_leaves_no_unreachable_node),
     TEST_ENTRY(dag_check_found),
+    TEST_ENTRY(dag_assert_ok_text),
     TEST_ENTRY(dag_wrong_pointee_type),
     TEST_END
 };

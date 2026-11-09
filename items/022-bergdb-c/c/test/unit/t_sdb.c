@@ -19,6 +19,7 @@
 #include "mdb.h"
 #include "mem.h"
 #include "meta.h"
+#include "nfix.h"
 #include "nstream.h"
 #include "recover.h"
 #include "replay.h"
@@ -26,9 +27,11 @@
 #include "sdb.h"
 #include "snode.h"
 #include "spos.h"
+#include "starter.h"
 #include "strans.h"
 #include "stream.h"
 #include "test.h"
+#include "tnode.h"
 
 #ifndef VECTORS_DIR
 #define VECTORS_DIR "test/unit/vectors"
@@ -756,10 +759,11 @@ static void start_copy(const struct vec *v, const uint8_t *copy, bool check, con
  * KeyNode.addKlong); a time after the startup time that kept the times increasing was
  * started; (c) the first klong, a time klong, made a key klong, whose pointer is Spos.NULL
  * (the int 0x7ffffff8 at the node's byte 36), gave the start's check's AssertionError. The
- * text of (c) is C's own: Java's prints the node (KeyNode.print, which begins with
- * KeyNode.toString and so with Object.toString's identity hash), which no other program
- * gives. On Java's streams of keys of three segments: the corrupt set's found-long-3971358,
- * testFound021_12's own copies (CorruptSet.java). */
+ * text of (c) names the node by its id and position (bergdb 021-15, as Java's since release
+ * 2026.4; Java's printed the node, KeyNode.print, with Object.toString's identity hash, and
+ * C's was its own, "Bad spos of pointer, at or before the startup time"). On Java's streams
+ * of keys of three segments: the corrupt set's found-long-3971358, testFound021_12's own
+ * copies (CorruptSet.java), whose texts Java's test checks exactly since 021-15. */
 TEST(sdb_found_021_12) {
     struct vec v;
     REQUIRE(read_vec(&v));
@@ -789,7 +793,8 @@ TEST(sdb_found_021_12) {
         { 3496, 1359, 80, 0xff, "Key node 1359 at 3496, before the startup section, has the "
                 "time 2241, after the startup time 2120." },
         /* (c) */
-        { 2848, 2595, 32, 0, "Bad spos of pointer, at or before the startup time" },
+        { 2848, 2595, 32, 0, "Bad spos of pointer 0 of key node 2595 at 2848: -1, at or before "
+                "the startup time 2120." },
         /* canonical_node, (a): 733's time 2040 made 1799 */
         { 1008, 733, 56, 0xff, "Time not increasing, 1799, 2030, index=3" },
         /* canonical_node: 735's last time, 2080, made 2271; before, started */
@@ -837,6 +842,136 @@ TEST(sdb_found_021_12) {
         }
         free(copy);
     }
+    free(v.stream);
+}
+
+static bool same_error(const struct err *e, const char *java, const char *text) {
+    if (strcmp(e->java, java) == 0 && strcmp(e->text, text) == 0) {
+        return true;
+    }
+    printf("    expected %s: \"%s\", got %s: \"%s\"\n", java, text, e->java, e->text);
+    return false;
+}
+
+/* DbStarter's texts that name a node (bergdb 021-15, as Java's since release 2026.4): by
+ * Node.name, "KIND ID at SPOS", the same in every run, where Java's printed the node
+ * (Object.toString's identity hash) and C's named it by its id or its type alone.
+ * DbStarter.testCheckStreamPointersOfKeyNode (a key node that points to a vpos refused, one
+ * that points to a position taken; C's key klong "a"'s), and a top node's; validateNode's
+ * position of a node (no stream gives a negative one); checkPrimordialTransaction's nodes;
+ * checkThatValueNodesHaveSpos (an AssertionError). */
+TEST(sdb_starter_node_texts) {
+    struct nfix f;
+    struct err e;
+    nfix_init(&f);
+    struct knode *good = kn_new_with_time(&f.cx, 10);
+    REQUIRE(good != NULL && kn_add_to_end(&f.cx, good, nfix_key("a"), NULL, 2000));
+    good->n.spos = 1000;
+    CHECK_EQ(sr_check_stream_pointers(&good->n, &e), ERR_OK);
+    struct knode *bad = kn_new_with_time(&f.cx, 10);
+    REQUIRE(bad != NULL && kn_add_to_end(&f.cx, bad, nfix_key("a"), NULL, 2001));
+    bad->n.id = 999;
+    bad->n.spos = 1000;
+    CHECK_EQ(sr_check_stream_pointers(&bad->n, &e), ERR_FORMAT);
+    CHECK(same_error(&e, "StreamFormatException", "Unexpected stream pointer 2001, index 1 of "
+            "key node 999 at 1000."));
+    struct tnode *top = tn_new(&f.cx, 1, NULL, 2001, 10, 1000);
+    REQUIRE(top != NULL);
+    top->n.id = 77;
+    CHECK_EQ(sr_check_stream_pointers(&top->n, &e), ERR_FORMAT);
+    CHECK(same_error(&e, "StreamFormatException", "Unexpected stream pointer 2001, index 0 of "
+            "top node 77 at 1000."));
+
+    struct sn_node nodes[2];
+    memset(nodes, 0, sizeof nodes);
+    nodes[0].type = NODE_KEY;
+    nodes[0].id = 7;
+    nodes[0].spos = -1;
+    CHECK_EQ(sr_validate_node(&f.cx, &nodes[0], 470, &e), ERR_FORMAT);
+    CHECK(same_error(&e, "StreamFormatException", "Bad spos of key node 7 at -1."));
+    nodes[0].type = NODE_DELETE;
+    nodes[0].spos = -8;
+    CHECK_EQ(sr_validate_node(&f.cx, &nodes[0], 470, &e), ERR_FORMAT);
+    CHECK(same_error(&e, "StreamFormatException", "Bad spos of value node 7 at -8."));
+
+    struct st_record r;
+    st_init(&r);
+    r.nodes = nodes;
+    r.nnodes = 2;
+    nodes[0] = (struct sn_node) { .type = NODE_KEY, .spos = 136, .id = 2 };
+    nodes[1] = (struct sn_node) { .type = NODE_TOP, .spos = 200, .id = 1 };
+    CHECK_EQ(sr_check_primordial_transaction(&r, &e), ERR_FORMAT);
+    CHECK(same_error(&e, "StreamFormatException", "Expected TopNode, got key node 2 at 136."));
+    nodes[0] = (struct sn_node) { .type = NODE_TOP, .spos = 136, .id = 1 };
+    CHECK_EQ(sr_check_primordial_transaction(&r, &e), ERR_FORMAT);
+    CHECK(same_error(&e, "StreamFormatException", "Expected KeyNode, got top node 1 at 200."));
+    nodes[1] = (struct sn_node) { .type = NODE_VALUE, .spos = 200, .id = 2 };
+    CHECK_EQ(sr_check_primordial_transaction(&r, &e), ERR_FORMAT);
+    CHECK(same_error(&e, "StreamFormatException", "Expected KeyNode, got value node 2 at 200."));
+    nodes[1] = (struct sn_node) { .type = NODE_KEY, .spos = 200, .id = 2 };
+    CHECK_EQ(sr_check_primordial_transaction(&r, &e), ERR_OK);
+
+    struct vnode *v = nfix_value(&f);
+    REQUIRE(v != NULL);
+    v->n.id = 5;
+    REQUIRE(kn_add_to_end(&f.cx, good, nfix_key("b"), &v->n.o, SPOS_NULL));
+    CHECK_EQ(sr_check_value_nodes_have_spos(good, &e), ERR_FORMAT);
+    CHECK(same_error(&e, "AssertionError", "value node got no spos during startup, value node 5 "
+            "at -1."));
+    v->n.spos = 3000;
+    CHECK_EQ(sr_check_value_nodes_have_spos(good, &e), ERR_OK);
+    NFIX_END(&f);
+}
+
+/* A key node of the startup section whose key klong points to a vpos, its checksum right:
+ * refused at the start by checkStreamPointers, after the cut back, with Java's text, which
+ * names the node by its id and position (bergdb 021-15; C named it by its id alone). On the
+ * vectors' stream (the section's records at 3824 and 3960, the startup time 2120), the first
+ * key node of the section with a key klong at or before the startup time, which the cut back
+ * keeps, that has a position: the position set to 2001. */
+TEST(sdb_section_pointer_to_a_vpos) {
+    struct vec v;
+    REQUIRE(read_vec(&v));
+    const struct jtrans *last = &v.t[v.nt - 1];
+    REQUIRE(last->tpos == 3960 && last->startup_pos == 3824 && v.t[v.nt - 2].tt == 2120);
+    struct mem m;
+    struct err e;
+    mem_init(&m);
+    int64_t pos = -1, id = -1;
+    int32_t at = -1, index = -1;
+    for (int32_t t = v.nt - 2; t < v.nt && at < 0; t++) {
+        struct st_record r;
+        st_init(&r);
+        REQUIRE(st_parse(&r, v.t[t].tpos, v.stream + v.t[t].tpos,
+                (int32_t) (v.len - v.t[t].tpos), &m, &e) == ERR_OK);
+        for (int32_t j = 0; j < r.nnodes && at < 0; j++) {
+            const struct sn_node *sn = &r.nodes[j];
+            int64_t time = 0;
+            for (int32_t i = 0; sn->type == NODE_KEY && i < sn->n && at < 0; i++) {
+                const int64_t klong = sn_klong(sn, i);
+                if (kl_get_type(klong) == KL_TYPE_TIME) {
+                    time = kl_get_time(klong);
+                } else if (kl_get_type(klong) == KL_TYPE_KEY && time <= 2120
+                        && sn_ref(sn, i) >= 0) {
+                    pos = sn->spos;
+                    id = sn->id;
+                    index = i;
+                    at = 32 + 8 * sn->n + 8 * i;
+                }
+            }
+        }
+        st_free(&r, &m);
+    }
+    CHECK_MEM_ZERO(&m);
+    REQUIRE(at > 0);
+    char text[200];
+    snprintf(text, sizeof text, "Unexpected stream pointer 2001, index %d of key node %lld at "
+            "%lld.", (int) index, (long long) id, (long long) pos);
+    uint8_t *copy = node_copy(&v, pos, at, 2001);
+    for (int check = 1; check >= 0; check--) {
+        start_copy(&v, copy, check == 1, text);
+    }
+    free(copy);
     free(v.stream);
 }
 
@@ -894,6 +1029,8 @@ const struct test sdb_tests[] = {
     TEST_ENTRY(sdb_refusals_2026_3),
     TEST_ENTRY(sdb_found_021_11),
     TEST_ENTRY(sdb_found_021_12),
+    TEST_ENTRY(sdb_starter_node_texts),
+    TEST_ENTRY(sdb_section_pointer_to_a_vpos),
     TEST_ENTRY(sdb_allocation_failures),
     TEST_END
 };

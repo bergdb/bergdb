@@ -760,7 +760,7 @@ bool kn_first_and_second(struct obj_ctx *cx, const struct knode *k, int64_t tTim
     int32_t sizeOfFirst = (lastSize - 1) / 2 + 1;
     assert(kl_get_type(last->klongs[0]) == KL_TYPE_TIME);
     assert(lastSize > 1);
-    assert(kn_check(last) == NULL);
+    assert(kn_check(last, NULL) == NULL);
 
     int64_t timeKlong = kl_create_time(tTime);
     if (!kn_add_to_end(cx, first, timeKlong, NULL, SPOS_NULL)        /* time klong, spos NULL */
@@ -877,12 +877,25 @@ static const char *check_increasing_time(const struct knode *k, char *buf) {
     return NULL;
 }
 
+/* The text of a pointer's check, "WHAT of pointer I of key node ID at SPOS:
+ * S." and 'more' (Node.name; bergdb 021-15), written into buf, or 'what'
+ * alone without buf. */
+static const char *pointer_text(const struct knode *k, char *buf, const char *what, int32_t i,
+        int64_t pos, const char *more) {
+    if (buf == NULL) {
+        return what;
+    }
+    snprintf(buf, KN_TEXT, "%s of pointer %d of key node %" PRId64 " at %" PRId64 ": %" PRId64
+            "%s.", what, (int) i, k->n.id, k->n.spos, pos, more);
+    return buf;
+}
+
 /* KeyNode.checkMemoryPointers */
-static const char *check_memory_pointers(const struct knode *k, int16_t sz) {
+static const char *check_memory_pointers(const struct knode *k, int16_t sz, char *buf) {
     for (int32_t i = 0; i < sz; i++) {
         if (kl_get_type(k->klongs[i]) == KL_TYPE_KEY) {
             if (k->pointers[i] != NULL && !spos_is_valid_or_null(k->pos[i])) {
-                return "Bad reference of a pointer";
+                return pointer_text(k, buf, "Bad reference", i, k->pos[i], "");
             }
         }
     }
@@ -890,11 +903,11 @@ static const char *check_memory_pointers(const struct knode *k, int16_t sz) {
 }
 
 /* KeyNode.checkStreamPointers */
-static const char *check_stream_pointers(const struct knode *k, int16_t sz) {
+static const char *check_stream_pointers(const struct knode *k, int16_t sz, char *buf) {
     for (int32_t i = 0; i < sz; i++) {
         if (kl_get_type(k->klongs[i]) == KL_TYPE_KEY) {
             if (k->pointers[i] == NULL && !spos_is_valid(k->pos[i])) {
-                return "Bad spos of pointer";
+                return pointer_text(k, buf, "Bad spos", i, k->pos[i], "");
             }
         }
     }
@@ -902,21 +915,26 @@ static const char *check_stream_pointers(const struct knode *k, int16_t sz) {
 }
 
 /* KeyNode.check(maxNodeSize) */
-const char *kn_check_max(const struct knode *k, int32_t maxNodeSize) {
+const char *kn_check_max(const struct knode *k, int32_t maxNodeSize, char *buf) {
     if (k->size > maxNodeSize + 1) {
-        return "Overfull node";
+        if (buf == NULL) {
+            return "Overfull node";
+        }
+        snprintf(buf, KN_TEXT, "Overfull node, size=%d, maxNodeSize=%d, key node %" PRId64
+                " at %" PRId64 ".", (int) k->size, (int) maxNodeSize, k->n.id, k->n.spos);
+        return buf;
     }
-    return kn_check(k);
+    return kn_check(k, buf);
 }
 
 /* KeyNode.check */
-const char *kn_check(const struct knode *k) {
+const char *kn_check(const struct knode *k, char *buf) {
     int16_t sz = k->size;
     const char *m;
     if ((m = check_sizes(k)) != NULL || (m = check_last_time_index(k)) != NULL
-            || (m = check_increasing_time(k, NULL)) != NULL
-            || (m = check_memory_pointers(k, sz)) != NULL
-            || (m = check_stream_pointers(k, sz)) != NULL) {
+            || (m = check_increasing_time(k, buf)) != NULL
+            || (m = check_memory_pointers(k, sz, buf)) != NULL
+            || (m = check_stream_pointers(k, sz, buf)) != NULL) {
         return m;
     }
     return NULL;
@@ -928,7 +946,9 @@ const char *kn_validate_stream_node(const struct knode *k, int64_t startupTime, 
     const char *m;
 
     if (sz < 1) {
-        return "Key node with size 0";
+        snprintf(buf, KN_TEXT, "Key node %" PRId64 " at %" PRId64 " with size %d.", k->n.id,
+                k->n.spos, (int) sz);
+        return buf;
     }
     if ((m = check_sizes(k)) != NULL || (m = check_last_time_index(k)) != NULL
             || (m = check_increasing_time(k, buf)) != NULL) {
@@ -948,11 +968,14 @@ const char *kn_validate_stream_node(const struct knode *k, int64_t startupTime, 
                 int64_t spos = k->pos[i];
                 if (klongTime > startupTime) {
                     if (!spos_is_valid_or_null(spos)) {
-                        return "Bad spos of pointer";
+                        return pointer_text(k, buf, "Bad spos", i, spos, "");
                     }
                 } else {
                     if (!spos_is_valid(spos)) {
-                        return "Bad spos of pointer, at or before the startup time";
+                        char more[60];
+                        snprintf(more, sizeof more, ", at or before the startup time %" PRId64,
+                                startupTime);
+                        return pointer_text(k, buf, "Bad spos", i, spos, more);
                     }
                 }
             }

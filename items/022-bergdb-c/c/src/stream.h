@@ -203,13 +203,15 @@ enum err_code stream_read(struct stream *s, int64_t pos, uint8_t *buf, int32_t n
 
 /* Makes s a database's storage: Java's Db reads its stream through
  * StorageManager and a BufferedStream (Db.createStorageManager), whose
- * read refuses first, whatever the position, a read whose last byte,
- * pos + n - 1, is at or past the stream's length: ERR_IO, "EOFException",
- * "Cannot read N bytes at position P, stream size is S." (and a read of 0
- * bytes before that reads nothing); the stream's own refusals then come as
- * stream_read gives them. So a database's reads carry Java's texts (bergdb
- * 022-02, D6), while the stream alone keeps FileStream's and MemoryStream's
- * for their tests. db_open, sdb_open and replay_open call it. */
+ * read refuses first, whatever the position, a read whose end, pos + n,
+ * is past the stream's length, compared without the sum, which overflows
+ * near Long.MAX_VALUE (bergdb 021-14): ERR_IO, "EOFException", "Cannot
+ * read N bytes at position P, stream size is S." (and a read of 0 bytes
+ * at any other position then reads nothing); the stream's own refusals
+ * then come as stream_read gives them. So a database's reads carry Java's
+ * texts (bergdb 022-02, D6), while the stream alone keeps FileStream's and
+ * MemoryStream's for their tests. db_open, sdb_open and replay_open call
+ * it. */
 void stream_as_storage(struct stream *s);
 
 /* Appends n bytes to a memory stream (MemoryStream.append). ERR_NOMEM. */

@@ -72,6 +72,12 @@ bool kwp_is_null_pointer(const struct kwp *k);
 
 /* Node's methods, for any of the three kinds. */
 int32_t node_type(const struct node *n);          /* getType: NODE_TYPE_... */
+/* Node.name's kind (bergdb 021-15, as Java's since release 2026.4): "key node",
+ * "top node" or "value node" for a NODE_TYPE_... (a stored node's NODE_TOP,
+ * NODE_KEY, NODE_VALUE and NODE_DELETE are the same numbers). A message
+ * names a node "KIND ID at SPOS", as "key node 22807 at 36536", the same in
+ * every run. */
+const char *node_kind(int32_t type);
 bool node_is_index_node(const struct node *n);
 bool node_is_key_node(const struct node *n);
 bool node_is_top_node(const struct node *n);

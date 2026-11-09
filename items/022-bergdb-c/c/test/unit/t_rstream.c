@@ -296,6 +296,26 @@ TEST(rs_read_across) {
     CHECK_MEM_ZERO(&m);
 }
 
+/* NodeStreamTester.testReadSizeNearMaxValue (bergdb 021-14, as Java's since release
+ * 2026.4): a size at a position near Long.MAX_VALUE is refused; the check's rs_get_spos
+ * wrapped, and the check passed, in C as in Java. Not reached from a stream: the reader's
+ * read of the size field before it refuses such a position. */
+TEST(ns_read_size_near_max_value) {
+    struct err e;
+    CHECK(!ns_bad_read_size(200, 40, 1000, &e));
+    const int64_t positions[] = { 961, 1000, 1001, INT64_MAX - 39, INT64_MAX - 7,
+        INT64_MAX - 1 };
+    for (size_t i = 0; i < sizeof positions / sizeof positions[0]; i++) {
+        err_clear(&e);
+        CHECK(ns_bad_read_size(positions[i], 40, 1000, &e));
+        CHECK(strcmp(e.java, "StreamFormatException") == 0);
+        char want[200];
+        snprintf(want, sizeof want, "Bad item byte size, 40, at spos %lld: beyond the stream's "
+                "record bytes, length 1000.", (long long) positions[i]);
+        CHECK(strcmp(e.text, want) == 0);
+    }
+}
+
 /* readMetaBlock refuses another magic (BadMagicBytes) and another version, valid or not;
  * readLastValidMetaBlock takes the last valid complete block. */
 TEST(rs_meta_blocks) {
@@ -746,5 +766,6 @@ const struct test rstream_tests[] = {
     TEST_ENTRY(rs_last_trans_spos_refused),
     TEST_ENTRY(rs_pos_of_trans_completed_before),
     TEST_ENTRY(ns_walk),
+    TEST_ENTRY(ns_read_size_near_max_value),
     TEST_END
 };

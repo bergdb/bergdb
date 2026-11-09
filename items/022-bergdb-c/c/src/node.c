@@ -64,6 +64,12 @@ int32_t node_type(const struct node *n) {
     return 0;
 }
 
+/* Node.name's kind */
+const char *node_kind(int32_t type) {
+    return type == NODE_TYPE_KEY_NODE ? "key node" : type == NODE_TYPE_TOP_NODE ? "top node"
+            : "value node";
+}
+
 bool node_is_index_node(const struct node *n) {
     return n->o.kind == OBJ_KEY || n->o.kind == OBJ_TOP;
 }

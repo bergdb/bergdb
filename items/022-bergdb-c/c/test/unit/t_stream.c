@@ -184,12 +184,12 @@ TEST(stream_storage) {
     CHECK_EQ(stream_read(&s, -1, b, 0, &e), ERR_OK);           /* nothing read, as Java's */
     CHECK_EQ(stream_read(&s, -1, b, 1, &e), ERR_ARG);          /* MemoryStream's, below it */
     CHECK(strcmp(e.java, "IllegalArgumentException") == 0);
-    /* Java's sum wraps here (its read takes the ring buffer's bytes); C
-     * refuses it as past the end. */
+    /* Java's sum wrapped here until 021-14 (its read took the ring buffer's
+     * bytes), where C refused it as past the end, as both do now. */
     CHECK_EQ(stream_read(&s, INT64_MAX - 1, b, 4, &e), ERR_IO);
     CHECK(strcmp(e.text, "Cannot read 4 bytes at position 9223372036854775806, stream size "
             "is 10.") == 0);
-    CHECK_EQ(stream_read(&s, INT64_MIN, b, 0, &e), ERR_IO);   /* Java's sum wraps up */
+    CHECK_EQ(stream_read(&s, INT64_MIN, b, 0, &e), ERR_OK);   /* nothing read (021-14) */
     stream_close(&s);
 
     /* A directory of two files, from 400,000 to 601,234. */
@@ -223,6 +223,88 @@ TEST(stream_storage) {
     CHECK_MEM_ZERO(&m);
 }
 
+/* BufferedStream.testReadPastEndNearMaxValue and StreamContract's reads past
+ * the end of 1 byte at Long.MAX_VALUE and 4 at Long.MAX_VALUE - 2 (bergdb
+ * 021-14, as Java's since release 2026.4): a read whose end, position +
+ * length, overflows a long is a read past the end, EOFException, and the
+ * stream is as it was. Java's sum wrapped and its check passed:
+ * BufferedStream's read took bytes of its ring buffer or threw
+ * IndexOutOfBoundsException, MemoryStream's returned with the array as it
+ * was. C refused each read already, and the test passes on C before
+ * 021-14: a database's stream by 022-02, D6's check, a memory stream by
+ * its check without the sum, a directory as past its last file; one read
+ * for writing, with bytes in its write buffer, wrapped its sum (-fwrapv)
+ * and refused the read as past its files ("the stream is empty"), now as
+ * past the end of its buffer. On each stream, alone and as a database's
+ * storage, with 10 bytes: a memory stream, a directory for writing with
+ * the bytes in its buffer (of 100 and of 1,024 bytes), and one read only
+ * with them in its file; every length of 1, 4, 32 and 1,000 at every
+ * position from Long.MAX_VALUE - length up. */
+TEST(stream_read_past_end_near_max_value) {
+    struct mem m;
+    struct err e;
+    struct stream s;
+    static uint8_t b[1000];
+    const uint8_t ten[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+    const int32_t lengths[] = { 1, 4, 32, 1000 };
+    const char *tmp = getenv("TMPDIR");
+    mem_init(&m);
+    snprintf(tdir, sizeof tdir, "%s/bergdb-t_stream-XXXXXX", tmp != NULL ? tmp : "/tmp");
+    REQUIRE(mkdtemp(tdir) != NULL);
+    char lock[300];
+    snprintf(lock, sizeof lock, "%s/bergdb.lock", tdir);
+    int64_t refused = 0;
+    for (int32_t kind = 0; kind < 4; kind++) {
+        for (int32_t storage = 0; storage < 2; storage++) {
+            if (kind == 0) {
+                stream_open_memory(&s, &m);
+                REQUIRE(stream_append_memory(&s, ten, 10, &e) == ERR_OK);
+            } else if (kind < 3) {
+                REQUIRE(stream_open_dir_rw(&s, tdir, kind == 1 ? 100 : 1024, &m, &e) == ERR_OK);
+                REQUIRE(stream_append(&s, ten, 10, &e) == ERR_OK);
+            } else {
+                REQUIRE(stream_open_dir_rw(&s, tdir, 0, &m, &e) == ERR_OK);
+                REQUIRE(stream_append(&s, ten, 10, &e) == ERR_OK);
+                REQUIRE(stream_finish(&s, &e) == ERR_OK);
+                REQUIRE(stream_open_dir(&s, tdir, &m, &e) == ERR_OK);
+            }
+            if (storage) {
+                stream_as_storage(&s);
+            }
+            for (size_t l = 0; l < sizeof lengths / sizeof lengths[0]; l++) {
+                const int32_t n = lengths[l];
+                for (int64_t k = 0; k <= n; k++) {
+                    const int64_t pos = INT64_MAX - k;
+                    enum err_code rc = stream_read(&s, pos, b, n, &e);
+                    CHECK_EQ(rc, ERR_IO);
+                    CHECK(strcmp(e.java, "EOFException") == 0);
+                    char text[100];
+                    snprintf(text, sizeof text, "Cannot read %d bytes at position %lld, stream "
+                            "size is 10.", (int) n, (long long) pos);
+                    if (storage && (rc != ERR_IO || strcmp(e.text, text) != 0)) {
+                        printf("    kind %d: %s\n", (int) kind, e.text);
+                        CHECK(false);
+                    }
+                    refused++;
+                }
+            }
+            memset(b, 0, 10);
+            CHECK_EQ(stream_read(&s, 0, b, 10, &e), ERR_OK);
+            CHECK(memcmp(b, ten, 10) == 0);
+            if (kind == 1 || kind == 2) {
+                CHECK_EQ(s.buf_len, 10);        /* still in the buffer */
+                REQUIRE(stream_finish(&s, &e) == ERR_OK);
+            } else {
+                stream_close(&s);
+            }
+            remove_file("00000000000000.bergdb");
+        }
+    }
+    CHECK_EQ(refused, 8 * (2 + 5 + 33 + 1001));
+    unlink(lock);
+    rmdir(tdir);
+    CHECK_MEM_ZERO(&m);
+}
 
 #ifdef BERGDB_TEST
 /* A counting seam over the real calls (012-14, 6.5). */
@@ -524,6 +606,7 @@ const struct test stream_tests[] = {
     TEST_ENTRY(stream_memory),
     TEST_ENTRY(stream_dir),
     TEST_ENTRY(stream_storage),
+    TEST_ENTRY(stream_read_past_end_near_max_value),
     TEST_ENTRY(stream_seam),
     TEST_ENTRY(stream_forces),
     TEST_ENTRY(stream_new_file_forces),

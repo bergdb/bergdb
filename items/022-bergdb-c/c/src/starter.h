@@ -128,4 +128,27 @@ enum err_code sr_check_and_recover(struct sr_env *env, struct rs_recovery *plan,
 /* The rest of the start (see above), after sr_check_and_recover. */
 enum err_code sr_start(struct sr_env *env, struct sr_result *out, struct err *e);
 
+/* DbStarter's checks that name a node, Java's texts (also for tests): each
+ * names the node by Node.name, "KIND ID at SPOS" (node_kind), the same in
+ * every run (bergdb 021-15, as Java's since release 2026.4; before, Java's
+ * printed the node, with Object.toString's identity hash, and C's were its
+ * own). StreamFormatException but where said. */
+struct sn_node;
+struct st_record;
+/* validateNode: a node of the section, its position ("Bad spos of KIND ID
+ * at SPOS.") and a key node's validation (nc_validate_key_node). */
+enum err_code sr_validate_node(struct obj_ctx *cx, const struct sn_node *sn,
+        int64_t startup_time, struct err *e);
+/* checkPrimordialTransaction: two nodes, a top node and a key node
+ * ("Expected TopNode, got KIND ID at SPOS."). */
+enum err_code sr_check_primordial_transaction(const struct st_record *t, struct err *e);
+/* checkStreamPointers(node): each stream pointer of the node names a
+ * version in the stream, not Spos.NULL or a vpos ("Unexpected stream
+ * pointer S, index I of KIND ID at SPOS."). */
+enum err_code sr_check_stream_pointers(const struct node *node, struct err *e);
+/* checkThatValueNodesHaveSpos, for the value nodes of key node k: an
+ * AssertionError ("value node got no spos during startup, value node ID at
+ * SPOS."). */
+enum err_code sr_check_value_nodes_have_spos(const struct knode *k, struct err *e);
+
 #endif
