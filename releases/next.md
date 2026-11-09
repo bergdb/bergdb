@@ -56,6 +56,17 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `DbObject.Builder`, and so a put of an object, refuses to build deeper
   with `IllegalArgumentException`: a chain of more than 2,000 arrays was
   stored. The stream is unchanged.
+* **`DbObject`, the stored object, is API** (bergdb 020-10, step B3): it
+  moved from `bergdb.pubimp` to `bergdb.pub`, with `DbObject.Builder`,
+  `DbArray`, `DbValue` and the value classes `DbBoolean`, `DbLong`,
+  `DbDouble`, `DbString` and `DbByteArray`; change the imports: a class
+  compiled against 2026.3 that uses `bergdb.pubimp.DbObject` or one of these
+  fails with `NoClassDefFoundError` until it is compiled again. Their
+  Javadoc says what a program may rely on: the model of 020-07, no stored
+  null, one byte string per object (`getBytes()` compares objects), the
+  lookups, which give null, 0 or false for an absent field or one of
+  another kind (`has(name, type)` tells them apart), and immutability.
+  `DbByteArray.getByteArray()` now returns a copy.
 * **Objects are stored in format 2** (bergdb 020-08, steps 1 and 2; the
   format of 020-07, decided by Frans on 2026-11-08, 020-02, section 4). A
   stored object is the header byte 0x82 and the object: a table of its
@@ -80,17 +91,29 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   above.
 * **Objects and index definitions of 2026.3 and before are refused**
   (bergdb 020-08, step 3; 020-02, section 4.11: an older database is not
-  read). A value of format 1 (`bergo` and the version 1) at an object key
-  is refused wherever it is read as an object, with a message that names
-  format 1: a get as `Object`, `DbObject` or a class throws
+  read). A value that 2026.3's writer wrote as an object (format 1:
+  `bergo`, the version 1 and its fields' table, recognised by the whole
+  structure) at an object key is refused wherever it is read as an
+  object, with a message that names format 1: a get as `Object`,
+  `DbObject` or a class throws
   `ObjectCreationException`, and so does `next()` of a primary scan or an
   index scan that lists it as an object; an index build over it
   ends failed, naming the key, and the database goes on; a put or a delete
   over it in an indexed directory throws `DataFormatException`. A start of
   a database that holds an index definition of format 1 throws
   `VersioningStreamException`, which says to make the database again, and
-  closes it. A `byte[]` that passes format 2's full check is taken as an
-  object.
+  closes it. A `String` value is never taken for such an object, whatever
+  its first bytes: one that began with `bergo` and the byte 1 was (a get as
+  `Object` threw, and in an indexed directory its put was refused). The
+  guess left: a `byte[]` that passes format 2's full check is an object,
+  and one whose bytes are a whole object of format 1 is refused as one
+  (`Connection.get`'s Javadoc).
+* **A String value too large to store is refused at its put** (bergdb
+  020-08, with the fix of format 1's recognition): a `String` value of more
+  than 2^31 - 9 bytes of UTF-8, or a `String` field above a stored value's
+  limit, throws `IllegalArgumentException` before anything is written,
+  where its encoding met an `OutOfMemoryError`, which failed the database
+  inside `rw()`.
 * **`put(Object)` and the key field are gone** (bergdb 020-08, step 7;
   Frans, 2026-11-08, 19:21; 020-02, section 5.1b), with
   `MissingKeyFieldException`. `WBuilder` and `RwEnvironment` put at a key
@@ -138,16 +161,18 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   Each type lists the values of its kind, as a get gives them: `byte[]`
   and `Object` every value, `String` the values that are not objects (it
   gave an object's bytes as text and left out the Strings, S2-F25),
-  `DbObject` and a class the objects; a value that a class cannot be made
-  from throws `ObjectCreationException` from `next()`, and the iterator
-  goes on. A program that listed without `dir()` must call it.
+  `DbObject` and a class the objects; an object that cannot be made into
+  the class (one of format 1, or a constructor that throws) throws
+  `ObjectCreationException` from `next()`, and the iterator goes on. A
+  program that listed without `dir()` must call it.
 * **A directory starts with '/' and has no "//"** (bergdb 021-09):
   `IndexBuilder.dir()` and `UsePrimaryBuilder.dir()` refuse "p/", "a/b/",
   "//" and "/p//" with `IllegalArgumentException`; they were taken, as
   directories that no key of the user's is in.
 * **A '.' in a directory's name no longer gives its keys a suffix**
   (bergdb 021-10, with 020-08's step 3): the suffix is the part after the
-  last '.' of the key's last part, so `/v1.2/k` is an object key. The
+  last '.' of the key's last part, so `/v1.2/k` is an object key, `/d/.h`
+  has the suffix `h` and `/d/x.` none. The
   whole key's last '.' gave every key under `/v1.2/` the suffix `2/k`, and
   an object put there was refused.
 * **A String value that is not well-formed UTF-8 is refused at a get**
@@ -188,7 +213,13 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   after a restart. `Database.indexJob(name)` gives an index's job, and
   `StartupInfo.getStartupJobs()` is gone. "primary" is a name like any
   other. An index on a directory has its own values only, not its
-  subdirectories'.
+  subdirectories'. A `join()` from any thread waits for the build's end; a
+  build ends also while writers write its directory hard (each step tries
+  again, last under the index manager's lock); an `Error` in a creation,
+  an activation or a deletion fails the database; and once a definition's
+  change has committed, the database's memory has it too, whatever is
+  thrown, so memory and stream never disagree (the reviews of I1, I2 and
+  harness H3).
 * **The scan of a user index** (bergdb 020-10, step I3; F6): with
   `UseIndexBuilder`, `eq()` on levels 1 to k, then `from()` and `to()`,
   each inclusive or not, or `prefix()` on level k + 1, and `backward()`,
@@ -210,8 +241,16 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `IndexBuilderImp`, `UseIndexBuilderImp`, `UsePrimaryBuilderImp`,
   `RwEnvironmentImp`, `WBuilderImp`, `WTransaction` and `Entries`; of the
   public ones, the methods that BergDB's tests and tools use say "Internal,
-  not API". The API is `bergdb.pub`, `bergdb.pub.util` and the Core's `Db`
-  (and `DbObject`, until it moves into `bergdb.pub`).
+  not API". So the classes behind the API's interfaces (`ConnectionImp`,
+  `WBuilderImp`, `WTransaction`, `RwTransaction`, `RwEnvironmentImp`,
+  `IndexBuilderImp`, `UseIndexBuilderImp`, `UsePrimaryBuilderImp` and
+  `StartInfoImp`) are package-private: a call by reflection through an
+  object's class (`obj.getClass().getMethod(...).invoke(...)`, as a
+  dynamic language without type hints or a bean tool may make) throws
+  `IllegalAccessException`, where 2026.3 allowed it; call through the
+  `bergdb.pub` interfaces, whose `Method` objects work. The API is
+  `bergdb.pub`, with `DbObject` since step B3, `bergdb.pub.util` and the
+  Core's `Db`.
 
 
 ### Core API
@@ -288,11 +327,10 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   B1): `java/build.sh` makes `build/bergdb-release.jar` beside
   `build/bergdb.jar` (unchanged, the jar of the tests and scripts): the
   classes and resources of `src` only, without `src-dev`'s (the packages
-  `bergdb`, `bergdb.dev`, `bergdb.test`, `bergdb.demo` and `frans`), and
-  no `Main-Class`. The build
-  fails unless its entries are `bergdb.jar`'s without `src-dev`'s, `jdeps`
-  finds no class that it uses outside it and the JDK, and a program
-  compiled and run with it alone on the class path
+  `bergdb`, `bergdb.dev`, `bergdb.test`, `bergdb.demo` and `frans`), and no
+  `Main-Class`. The build fails unless its entries are `bergdb.jar`'s
+  without `src-dev`'s, `jdeps` finds no class that it uses outside it and
+  the JDK, and a program compiled and run with it alone on the class path
   (`java/stress/release-jar/ReleaseDemo.java`) works. The release ships it.
 * **ICU is gone** (bergdb 020-10, step B2; Frans, 2026-11-08, 22:08: no
   ICU, 020-01, section 14.1): `src-icu/` (the package `bergdb.pubimpicu`),
@@ -312,9 +350,10 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
 * **The user indexes' code and its checks** (bergdb 020-10, steps I0 to
   I3): the keys and the levels' encodings (`IndexKeys`), the definition
   and the index function (`IndexDefinition`), the manager, the build and
-  the scan, rewritten; with the races' tests (`PubTesterIndexRaces`),
-  harness H4 of the primary scan (`PrimaryHarness`) and harness H2's
-  reference and generators (`IndexReference`, `IndexHarness`).
+  the scan, rewritten; with the races' tests (`PubTesterIndexRaces`) and
+  the harnesses H2, an index as a function of the data (`IndexReference`,
+  `IndexHarness`), H3, the jobs under faults (`IndexJobsHarness`), and H4,
+  the primary scan (`PrimaryHarness`).
 
 
 ### Documentation
@@ -334,15 +373,19 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   a change, and their dates, are gone from `Database`, `DatabaseBuilder`,
   `CryptoKey`, `DbException`, `DbFailedException`, `DatabaseMissingException`,
   `DatabaseNotCreatedException` and `SyncLevel`; the release notes keep the
-  history. `DataFormatException` says that it belongs to the object code
-  and the user indexes, experimental in 2026.3 (bergdb 018-01, D6), and
-  where it is thrown. `Time.utc` and both `Time.resolve` document
+  history. `DataFormatException` says where it is thrown: the objects, the
+  user indexes and String values. `Time.utc` and both `Time.resolve` document
   `BadFormatException` for a bad time string and `IllegalArgumentException`
   for a null argument.
 * **Objects and Data Objects in the Pub API's Javadoc** (bergdb 020-08,
   step 6): `bergdb.pub`'s package documentation has the sections "Objects"
   and "Null and absent fields", and `Connection`, the puts and the gets say
   what a put refuses and how a get converts.
+* **Where an object may be put** (bergdb 020-11): `Connection.put`,
+  `WBuilder.put` and `RwEnvironment.put` say that an object, neither a
+  `String` nor a `byte[]`, is put only at an object key, without a suffix
+  or with `.obj`, and is refused elsewhere with `IllegalArgumentException`
+  ("Bad key"); `bergdb.pub`'s section "Objects" says what a suffix is.
 * **The API's boundary, objects and user indexes in docs/levels.md**
   (bergdb 020-10, B2): its section 11, the README and the Javadoc's
   overview name the API (`bergdb.pub`, `bergdb.pub.util` and the Core's
