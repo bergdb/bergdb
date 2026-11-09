@@ -381,6 +381,11 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
 * **`CryptoKey.NULL` round-trips through `serialize()` and `parse()`**
   (bergdb 020-21, 3; 020-19): `parse()` refused NULL's string,
   "null-null-", with a `FormatException`; it now gives `CryptoKey.NULL`.
+* **`CryptoKey.parse()` refuses a string with more than three parts**
+  (bergdb 020-25, C1) with `FormatException`, as its Javadoc promised for a
+  string not in `serialize()`'s format: the parts after the key data, also
+  an empty one after a trailing `-`, were ignored, and the string gave the
+  key. The key data's hex digits are still taken in either case.
 * **`transactionInfo()` leaves out a key that is no Pub key** (bergdb
   020-22, R22-1; Frans, 2026-11-09, Q5): for a transaction written through
   the Core's `Db` with a key of the Pub API and another key, such as a key

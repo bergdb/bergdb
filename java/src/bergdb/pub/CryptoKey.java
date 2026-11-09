@@ -45,7 +45,7 @@ public class CryptoKey {
     }
 
     /**
-     * Returns the name of the crypto algorithm ('salsa').
+     * Returns the name of the crypto algorithm ('salsa'), or null for NULL.
      */
     public String getAlgo() {
         return algo;
@@ -88,9 +88,13 @@ public class CryptoKey {
     }
     
     /**
-     * Parses a string that was created with serialize(); NULL's string gives NULL.
+     * Parses a string that was created with serialize(); NULL's string gives NULL. The
+     * string has three parts, separated by '-': the name, the algorithm and the key data,
+     * 40 bytes in hex, whose digits are taken in either case.
      * 
-     * @throws CryptoKey.FormatException if the string is not in serialize()'s format.
+     * @throws CryptoKey.FormatException if the string is not in serialize()'s format: not
+     *             three parts (bergdb 020-25, C1), an empty name or algorithm, or key data
+     *             that is not 40 bytes in hex.
      * @throws IllegalArgumentException if serializedKey is null.
      */
     public static CryptoKey parse(String serializedKey) {
@@ -106,9 +110,13 @@ public class CryptoKey {
             return NULL;
         }
         
-        String[] parts = serializedKey.split("-");
-        if (parts.length < 3) {
-            throw new FormatException("serializedKey has too few parts (" + parts.length + ").");
+        // Exactly three parts (2026-11-09, bergdb 020-25, C1): split() without a limit left
+        // out a trailing empty part, and the parts after the third were ignored, so a
+        // string with more parts than serialize()'s gave a key.
+        String[] parts = serializedKey.split("-", -1);
+        if (parts.length != 3) {
+            throw new FormatException("serializedKey has " + parts.length + " parts, "
+                    + "expected 3: the name, the algorithm and the key data.");
         }
         
         String name = parts[0];

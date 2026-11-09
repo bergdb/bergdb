@@ -509,4 +509,27 @@ public class PubTesterJavadocRest {
         }
         assertThrows("null", IllegalArgumentException.class, () -> CryptoKey.parse(null));
     }
+
+    /**
+     * CryptoKey.parse() refuses with FormatException a string that is not in serialize()'s
+     * format by having more than its three parts, the name, the algorithm and the key data:
+     * an extra part, also an empty one after a trailing '-' (bergdb 020-25, C1). Before, the
+     * parts after the third were ignored, and such a string gave the key. The key data's hex
+     * digits are taken in either case: the same key.
+     */
+    @Nano
+    public static void testCryptoKeyParseExact() {
+        final String s = CryptoKey.generate().serialize();
+        final String[] parts = s.split("-");
+        final String hex = parts[2];
+        String[] bad = {s + "-x", s + "-", s + "--", "a-salsa-" + hex + "-" + hex};
+        for (String b : bad) {
+            assertThrows("'" + b + "'", CryptoKey.FormatException.class,
+                    () -> CryptoKey.parse(b));
+        }
+        Assert.assertEquals(s, CryptoKey.parse(s).serialize());
+        Assert.assertEquals(CryptoKey.parse(s),
+                CryptoKey.parse(parts[0] + "-salsa-" + hex.toUpperCase(java.util.Locale.US)));
+        Assert.assertNull(CryptoKey.NULL.getAlgo());
+    }
 }
