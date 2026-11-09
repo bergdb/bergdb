@@ -1533,4 +1533,33 @@ public class NodeCollection implements PointerFollower {
         Assert.assertTrue("refused", refused);
         Assert.assertTrue("no handle", parent.getPointee(1) == null);
     }
+    
+    /**
+     * Rule 4 at startup without the check, as with assertions off (DbStarter.linkD): a key
+     * node's pointer whose position the section's ids give as a version of a top node with
+     * a canonical object is refused, and gets no handle (bergdb 021-11). With the check,
+     * checkLinkById refuses it first: every test runs with assertions on, and none failed
+     * without linkToCanonical's own check (2026-11-09, bergdb 020-23, V2-1).
+     */
+    @Nano
+    private static void testLinkToCanonicalChecksTheType() {
+        TestStream stream = new TestStream();
+        stream.nodes.put(100L, testParent(301, 50));        // a version of top node 301
+        NodeCollection c = new NodeCollection(testDbInfo(), stream);
+        TopNode top = testParent(301, 50);                  // its canonical object
+        top.setCanonical(true);
+        c.cache.register(top);
+        Map<Long, Long> ids = new HashMap<Long, Long>();
+        ids.put(100L, 301L);                                // the section's id of 100
+        
+        KeyNode parent = testNodeOfD(103, 100);
+        boolean refused = false;
+        try {
+            c.linkToCanonical(parent, ids, testByPos(c), false);
+        } catch (StreamFormatException e) {
+            refused = true;
+        }
+        Assert.assertTrue("refused", refused);
+        Assert.assertTrue("no handle", parent.getPointee(1) == null);
+    }
 }
