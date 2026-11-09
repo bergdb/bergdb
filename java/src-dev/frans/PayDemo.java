@@ -11,6 +11,7 @@ import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.Factory;
 import bergdb.pub.RwEnvironment;
 import bergdb.pub.WBuilder;
+import bergdb.pub.util.JobStatus;
 
 /**
  * Pay demo, 1M accounts and a few actions: create, pay, iterate, random access.
@@ -69,13 +70,17 @@ public class PayDemo {
             builder.execute();
             
             if ((i + 1) % 100 == 0) {
-                System.out.printf("Accounts: %d.\n", (i + 1) * batchCount);
+                System.out.printf("Accounts: %d.\n", (i + 1) * batchSize);
             }
         }
         
-        database.indexBuilder("payments-from-to")
-                .dir("/payments/").type("string")
-                .field("from").field("to").start().join();
+        // One level per field, each with its type (bergdb 020-10, section 3.1).
+        JobStatus status = database.indexBuilder("payments-from-to")
+                .dir("/payments/").type("long").field("from")
+                .type("long").field("to").start().join();
+        if (status.state() != JobStatus.State.ACTIVE) {
+            throw new IllegalStateException("The index was not built: " + status);
+        }
         
         database.sync();
         
