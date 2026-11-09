@@ -751,7 +751,7 @@ public class PubTesterJavadoc {
     /**
      * The corners of the Javadoc that 020-13 (section 4.2) and 020-19 (section 6) found
      * unsaid, now said (bergdb 020-21, 3): Duration.seconds() rounds to clock units, gives
-     * MAX above it and 0 for NaN; a delete of a key without an entry commits a transaction
+     * MAX above it and refuses NaN (020-21, Q1); a delete of a key without an entry commits a transaction
      * of its own; toDbObject() wraps a String in "p" and refuses a byte[], whose message now
      * says why (it gave the class check's "a primitive or an array is not a class of
      * fields"); toJavaObject(byte[].class) reads "array", not "p"; a start of a memory()
@@ -759,7 +759,13 @@ public class PubTesterJavadoc {
      */
     @Nano
     public static void testJavadocCorners() {
-        Assert.assertEquals(0, Duration.seconds(Double.NaN).units());
+        // NaN refused (bergdb 020-21, Q1; Frans, 2026-11-09, 11:23); it gave a duration of 0.
+        assertThrows("seconds(NaN)", IllegalArgumentException.class,
+                () -> Duration.seconds(Double.NaN));
+        assertThrows("seconds(-NaN)", IllegalArgumentException.class,
+                () -> Duration.seconds(-Double.NaN));
+        assertThrows("seconds(-infinity)", IllegalArgumentException.class,
+                () -> Duration.seconds(Double.NEGATIVE_INFINITY));
         Assert.assertEquals(Duration.MAX, Duration.seconds(Double.POSITIVE_INFINITY));
         Assert.assertEquals(Duration.MAX, Duration.seconds(1e300));
         Assert.assertEquals(0, Duration.seconds(-1e-8).units());

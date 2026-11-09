@@ -348,6 +348,11 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
 * **`Job.join(millis)` refuses a negative time** (bergdb 020-21, 3; 020-19)
   with `IllegalArgumentException`, as `Thread.join(millis)` does; it
   returned at once.
+* **`Duration.seconds(NaN)` throws `IllegalArgumentException`** (bergdb
+  020-21, Q1; Frans, 2026-11-09, 11:23), as a negative duration does: it
+  gave a duration of 0, as `Math.round(NaN)` is 0. The API's other methods
+  that take a double are values (`DbDouble`, which keeps one NaN) or index
+  bounds (`UseIndexBuilder`, which refuse NaN already).
 * **`CryptoKey.NULL` round-trips through `serialize()` and `parse()`**
   (bergdb 020-21, 3; 020-19): `parse()` refused NULL's string,
   "null-null-", with a `FormatException`; it now gives `CryptoKey.NULL`.
@@ -504,8 +509,8 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   020-19, section 6): `Connection.useIndex` lists
   `LookupTimeNotAvailableException` for a lookup time behind the cut;
   `Job.join` returns BUILDING after a failure of the database, as after a
-  stop; `Duration.seconds` rounds to clock units, gives `MAX` above it and
-  0 for NaN; `Connection.delete` of a key without an entry still commits a
+  stop; `Duration.seconds` rounds to clock units and gives `MAX` above it;
+  `Connection.delete` of a key without an entry still commits a
   transaction with a time of its own; `DbObject.toDbObject` wraps a
   `String` in "p", as a wrapper, and refuses a `byte[]`, now with a message
   that says why (it gave the class check's "a primitive or an array is not

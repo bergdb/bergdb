@@ -40,12 +40,17 @@ public class Duration {
     
     /**
      * Creates a Duration specified in seconds, rounded to the nearest clock unit (100 ns).
-     * A value above MAX's, about 922 billion seconds, positive infinity included, gives MAX;
-     * NaN gives a duration of 0.
+     * A value above MAX's, about 922 billion seconds, positive infinity included, gives MAX.
      *
-     * @throws IllegalArgumentException  If the duration, rounded to clock units, is negative.
+     * @throws IllegalArgumentException  If seconds is NaN (bergdb 020-21, Q1), or the
+     *     duration, rounded to clock units, is negative.
      */
     public static Duration seconds(double seconds) {
+        if (Double.isNaN(seconds)) {
+            // Frans, 2026-11-09 (bergdb 020-21, Q1): Math.round(NaN) is 0, so NaN gave a
+            // duration of 0; a NaN means no duration, as a negative value does.
+            throw new IllegalArgumentException("seconds is NaN, not a duration");
+        }
         return new Duration(Math.round(seconds * UNITS_PER_SECOND));
     }
 
