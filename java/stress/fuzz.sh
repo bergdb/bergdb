@@ -1,8 +1,9 @@
 #!/bin/sh
-# Fuzzing of the readers of bytes that 2026.4 added (bergdb 020-16): FormatFuzzer's four
+# Fuzzing of the readers of bytes that 2026.4 added (bergdb 020-16): FormatFuzzer's six
 # areas, each against its spec: objects (ObjectFormat's full check and lookup, 020-07),
-# keys (IndexKeys and IndexDefinition, 020-10), data (DataObjects' get, 020-09) and kinds
-# (what a stored value is, through a database: every get, listing and index).
+# keys (IndexKeys and IndexDefinition, 020-10), data (DataObjects' get, 020-09), kinds
+# (what a stored value is, through a database: every get, listing and index), starts (what
+# a start reads of the indexes) and guesses (the format-1 guess, UTF-8, bkeys).
 #
 # Usage: java/stress/fuzz.sh [MINUTES [SEED]]
 #   MINUTES (default 8) is the whole run, in turns of a minute, the areas in turn, each
@@ -32,7 +33,7 @@ echo "fuzz.sh: $MINUTES minutes from seed $SEED, $(date)" | tee -a $LOG
 STATUS=0
 TURN=0
 while [ $TURN -lt "$MINUTES" ]; do
-    for AREA in objects keys data kinds; do
+    for AREA in objects keys data kinds starts guesses; do
         [ $TURN -lt "$MINUTES" ] || break
         S=$((SEED + TURN))
         $JAVA -ea -XX:ActiveProcessorCount=1 -Xmx1g -cp build/bergdb.jar \

@@ -59,15 +59,21 @@ import bergdb.pubimp.ObjectFormatTester.Str;
  *     database: Strings, byte[]s and objects whose bytes look like the other kinds, read by
  *     every get, every listing and an index, against the rules of Connection.get's
  *     Javadoc.</li>
+ * <li>starts: what a start reads of the indexes (020-10, section 4.5): one change of the
+ *     internal keys under /#i/ written through the Core, then a start, which goes on or
+ *     refuses the database as a reference says.</li>
+ * <li>guesses: the smaller readers, ObjectFormat.isFormat1 (the format-1 guess),
+ *     StringUtil.isWellFormedUtf8 and ObjectFormat.utf8Fault, Keys.bkey2ikeyOrNull, each
+ *     against a reference written from its Javadoc.</li>
  * </ul>
  *
  * <p>Each iteration has its own Random from the seed and its number, so a failure is
  * repeated alone: FormatFuzzer AREA SEED SECONDS ITERATION. java/stress/fuzz.sh runs the
  * areas for minutes, new seeds each day; the unit group runs each for a few thousand
- * iterations (40 databases for kinds), about 2 seconds in all. Planted faults, one at a time
- * in ObjectFormat, IndexKeys, IndexDefinition, DataObjects, Entries, KvToObjectImp,
- * RwEnvironmentImp and UseIndexBuilderImp (18 of them, 2 equivalent), were found by their
- * area within 10 seconds (bergdb 020-16).</p>
+ * iterations (40 databases for kinds, 200 starts), about 2 seconds in all. Planted faults,
+ * one at a time in ObjectFormat, IndexKeys, IndexDefinition, DataObjects, Entries,
+ * KvToObjectImp, RwEnvironmentImp, UseIndexBuilderImp and IndexManager (21 of them, 2
+ * equivalent), were found by their area within 10 seconds (bergdb 020-16).</p>
  *
  * @author Frans Lundberg
  */
@@ -3386,6 +3392,429 @@ public final class FormatFuzzer {
         }
     }
     
+    // ======== Area 5: what a start reads of the indexes (020-10, section 4.5) ========
+    
+    /** The Data Object of area 5. */
+    public static class Item {
+        public String s;
+        public long n;
+        
+        public Item() {}
+    }
+    
+    static bergdb.pub.Database startOn(bergdb.stream.MemoryStream stream) {
+        bergdb.pub.DatabaseBuilder builder = bergdb.pub.Factory.database();
+        ((DatabaseBuilderImp) builder).getDbBuilder().testSetup(stream);
+        return builder.start();
+    }
+    
+    /**
+     * One iteration of area 5: a database with two indexes on a memory stream, one change of
+     * its internal keys written through the Core (a definition's bytes or fields, a
+     * definition's key, a marker's key, an entry's key, a key under /#i/dii/, or a definition
+     * made through IndexBuilder with edge names, directories and paths), and a start on a
+     * copy of the stream: it starts exactly when the reference says the keys and values under
+     * /#i/ are an index's (020-10, sections 4.1, 4.2 and 4.5), else it is refused with
+     * InternalDataException (VersioningStreamException for format 1), nothing else; started,
+     * each index is scanned, and every definition read is the one written.
+     */
+    void startsOne(long i) {
+        Random r = random(seed, i);
+        String where = "starts seed " + seed + " iteration " + i;
+        stats.iterations++;
+        stats.inputs++;
+        bergdb.stream.MemoryStream stream = new bergdb.stream.MemoryStream();
+        bergdb.pub.Database db = startOn(stream);
+        String what;
+        boolean expectOk;
+        boolean scanMayRefuse = false;      // entries that a changed key or definition
+                                            // no longer parses
+        Class<?> refusal = bergdb.core.InternalDataException.class;
+        byte[] key;
+        byte[] value = new byte[0];
+        try {
+            bergdb.core.Db core = ((DatabaseImp) db).getDb();
+            bergdb.pub.Connection c = db.connection();
+            for (int k = 0; k < 4; k++) {
+                Item x = new Item();
+                x.s = "v" + r.nextInt(3);
+                x.n = k;
+                c.put("/p/x" + k, x);
+                c.put("/q/y" + k, x);
+            }
+            db.indexBuilder("a").dir("/p/").type("string").field("s").start().join();
+            db.indexBuilder("ab").dir("/q/").type("long").field("n").type("string")
+                    .field("s").start().join();
+            IndexDefinition a = IndexDefinition.read(core, "a", Long.MAX_VALUE);
+            IndexDefinition ab = IndexDefinition.read(core, "ab", Long.MAX_VALUE);
+            switch (r.nextInt(7)) {
+            case 0: {
+                byte[] b = a.toBytes();
+                value = r.nextBoolean() ? mutateBytes(b, r) : extreme(b, r);
+                key = a.key();
+                expectOk = refDefinition(value);
+                what = "a definition's bytes changed";
+                scanMayRefuse = true;
+                break;
+            }
+            case 1: {
+                Obj o = ObjectFormatTester.codecDecode(a.toBytes());
+                changeDefinition(o, r);
+                try {
+                    value = Ref.write(o, true);
+                } catch (Refused e) {
+                    value = a.toBytes();
+                }
+                key = a.key();
+                expectOk = refDefinition(value);
+                what = "a definition's field changed";
+                scanMayRefuse = true;
+                break;
+            }
+            case 2: {
+                byte[] head = IndexKeys.definitionsPrefix();
+                byte[] k0 = IndexKeys.definitionKey("c");
+                key = insert(head, head.length, mutateBytes(Arrays.copyOfRange(k0, head.length,
+                        k0.length), r));
+                String name = keyName(key, head, r);
+                if ("a".equals(name) || "ab".equals(name)) {
+                    key = k0;
+                    name = "c";
+                }
+                value = new IndexDefinition(name == null ? "c" : name, "/r/", 5, true,
+                        new String[] {"long"}, new String[][] {{"n"}}).toBytes();
+                expectOk = name != null;
+                what = "a definition's key changed";
+                break;
+            }
+            case 3: {
+                long gen = r.nextBoolean() ? a.gen() : 1 + r.nextInt(1000);
+                byte[] head = IndexKeys.markersPrefix();
+                byte[] k0 = IndexKeys.markerKey(r.nextBoolean() ? "a" : "zz", gen);
+                byte[] tail = Arrays.copyOfRange(k0, head.length, k0.length);
+                key = insert(head, head.length, r.nextInt(3) == 0 ? tail : mutateBytes(tail, r));
+                IndexKeys.Marker m;
+                try {
+                    m = IndexKeys.parseMarker(key);
+                } catch (bergdb.core.InternalDataException e) {
+                    m = null;
+                }
+                expectOk = m != null && !(m.name.equals("a") && m.gen == a.gen())
+                        && !(m.name.equals("ab") && m.gen == ab.gen());
+                what = "a marker's key changed";
+                break;
+            }
+            case 4: {       // a start reads no entry
+                byte[] p = (r.nextBoolean() ? a : ab).generationPrefix();
+                byte[] tail = new byte[r.nextInt(12)];
+                r.nextBytes(tail);
+                key = insert(p, p.length, tail);
+                expectOk = true;
+                scanMayRefuse = true;
+                what = "an entry's key changed";
+                break;
+            }
+            case 5: {
+                byte[] head = IndexKeys.format1Prefix();
+                byte[] tail = new byte[r.nextInt(4)];
+                r.nextBytes(tail);
+                key = insert(head, head.length, tail);
+                expectOk = false;
+                refusal = bergdb.storage.VersioningStreamException.class;
+                what = "a key under /#i/dii/";
+                break;
+            }
+            default: {
+                apiDefinition(db, r);
+                key = a.key();
+                value = a.toBytes();
+                expectOk = true;
+                what = "a definition made through IndexBuilder";
+                break;
+            }
+            }
+            core.execute(core.trans().put(key, value).build());
+            db.sync();
+        } finally {
+            db.close();
+        }
+        
+        bergdb.pub.Database again = null;
+        Throwable got = null;
+        try {
+            again = startOn(stream.copy());
+            bergdb.core.Db core = ((DatabaseImp) again).getDb();
+            for (String name : new String[] {"a", "ab"}) {
+                IndexDefinition d = ((DatabaseImp) again).getIndexManager().definition(name);
+                IndexDefinition stored = IndexDefinition.read(core, name, Long.MAX_VALUE);
+                Assert(d == null ? stored == null : d.equals(stored), where, what
+                        + ": the start holds " + d + ", the stream " + stored, key);
+                if (d != null && d.isActive()) {
+                    try {
+                        for (Item x : again.connection().useIndex(name, Item.class)
+                                .objects()) {
+                            Assert(x != null, where, "a null value", key);
+                        }
+                    } catch (bergdb.core.InternalDataException e) {
+                        // A changed entry's key, or an entry of a changed definition, that
+                        // does not parse: refused by the scan that meets it (020-10, section
+                        // 4.4; F16-1).
+                        Assert(scanMayRefuse, where, what + ": a scan threw " + e, key);
+                        stats.count("scan refused a changed entry");
+                    }
+                }
+            }
+        } catch (Failure e) {
+            throw e;
+        } catch (Throwable e) {
+            got = e;
+        } finally {
+            if (again != null) {
+                again.close();
+            }
+        }
+        if (expectOk ? got != null : !refusal.isInstance(got)) {
+            throw fail(where, what + ": the start " + (got == null ? "went on" : "threw " + got)
+                    + ", expected " + (expectOk ? "a start" : refusal.getSimpleName())
+                    + "; the key " + IndexKeys.show(key), value, got);
+        }
+        stats.count(what + (got == null ? ": started" : ": refused"));
+    }
+    
+    /** The name of a definition's key, or null if a start refuses it. */
+    static String keyName(byte[] key, byte[] head, Random r) {
+        try {
+            return IndexKeys.nameOfDefinitionKey(key);
+        } catch (bergdb.core.InternalDataException e) {
+            return null;
+        }
+    }
+    
+    /** Whether bytes are a definition by 020-10, section 4.2 (refValidDefinition). */
+    static boolean refDefinition(byte[] b) {
+        try {
+            return refValidDefinition(Ref.read(b));
+        } catch (Refused e) {
+            return false;
+        }
+    }
+    
+    /** An index made through IndexBuilder, of edge names, directories and paths, or refused. */
+    static void apiDefinition(bergdb.pub.Database db, Random r) {
+        try {
+            bergdb.pub.IndexBuilder b = db.indexBuilder(indexName(r)).dir(dir(r));
+            int levels = 1 + r.nextInt(r.nextBoolean() ? IndexDefinition.MAX_LEVELS : 2);
+            for (int k = 0; k < levels; k++) {
+                b.type(IndexKeys.typeName(IndexKeys.TYPES[r.nextInt(4)]));
+                String[] path = path(r);
+                if (path.length == 1 && r.nextBoolean()) {
+                    b.field(path[0]);
+                } else {
+                    b.nestedField(path);
+                }
+            }
+            b.start().join();
+        } catch (IllegalArgumentException | IllegalStateException
+                | bergdb.pub.IndexAlreadyExistsException e) {
+            // The builder's refusals; the database is as before.
+        }
+    }
+    
+    // ======== The smaller readers: the format-1 guess, UTF-8, bkeys ========
+    
+    /**
+     * One iteration of the smaller readers that 2026.4 added: ObjectFormat.isFormat1 on
+     * changed objects of format 1 against a reference written from its Javadoc;
+     * StringUtil.isWellFormedUtf8 and ObjectFormat.utf8Fault on bytes of well-formed and
+     * ill-formed UTF-8 against Java's decoder (021-06; 020-07, R11); Keys.bkey2ikeyOrNull,
+     * whose ikey's bkey is the bkey again (021-06).
+     */
+    void guessesOne(long i) {
+        Random r = random(seed, i);
+        String where = "guesses seed " + seed + " iteration " + i;
+        stats.iterations++;
+        stats.inputs++;
+        // The format-1 guess.
+        byte[] f1;
+        switch (r.nextInt(4)) {
+        case 0:
+            f1 = StringUtil.hexStringToBytes(r.nextBoolean() ? ObjectFormatTester.FORMAT_1_ALL
+                    : ObjectFormatTester.FORMAT_1_DEFAULTS);
+            break;
+        case 1:
+            f1 = new byte[] {'b', 'e', 'r', 'g', 'o', 1, (byte) (r.nextBoolean() ? 0 : 0xff),
+                    (byte) (r.nextBoolean() ? 0 : 0xff)};
+            break;
+        default:
+            f1 = format1Ascii(r);
+            break;
+        }
+        byte[] m = r.nextInt(5) == 0 ? f1 : r.nextBoolean() ? mutateBytes(f1, r)
+                : extremeFormat1(f1, r);
+        boolean got;
+        try {
+            got = ObjectFormat.isFormat1(m);
+        } catch (Throwable e) {
+            throw fail(where, "isFormat1 threw " + e, m, e);
+        }
+        boolean want = refIsFormat1(m);
+        Assert(got == want, where, "isFormat1 says " + got + ", the reference " + want, m);
+        stats.count(got ? "format 1" : "not format 1");
+        
+        // UTF-8: three readers agree.
+        byte[] u = randomString(r).getBytes(StandardCharsets.UTF_8);
+        if (r.nextBoolean()) {
+            u = illFormed(u, r);
+        }
+        if (r.nextInt(4) == 0) {
+            u = mutateBytes(u.length == 0 ? new byte[] {'a'} : u, r);
+        }
+        boolean wf = Ref.wellFormed(u);
+        Assert(StringUtil.isWellFormedUtf8(u) == wf, where, "isWellFormedUtf8 "
+                + StringUtil.isWellFormedUtf8(u) + ", Java's decoder " + wf, u);
+        Assert((ObjectFormat.utf8Fault(u, 0, u.length) < 0) == wf, where, "utf8Fault "
+                + ObjectFormat.utf8Fault(u, 0, u.length) + ", Java's decoder " + wf, u);
+        stats.count(wf ? "UTF-8 well-formed" : "UTF-8 ill-formed");
+        
+        // A bkey's ikey, and its bkey again.
+        byte[] k = u.length == 0 ? new byte[] {3} : u.clone();
+        for (int j = 0; j < k.length; j++) {
+            if (r.nextInt(4) == 0) {
+                k[j] = (byte) SPECIAL[r.nextInt(SPECIAL.length)];
+            }
+        }
+        String ikey = bergdb.dag.Keys.bkey2ikeyOrNull(k);
+        boolean has = true;
+        byte[] x = new byte[k.length];
+        for (int j = 0; j < k.length && has; j++) {
+            int c = k[j] & 0xff;
+            has = c != 0 && c != '/' + 2;
+            x[j] = (byte) (c == 1 ? '/' : c - 2);
+        }
+        has = has && Ref.wellFormed(x);
+        Assert((ikey != null) == has, where, "bkey2ikeyOrNull " + (ikey != null)
+                + ", the reference " + has, k);
+        if (ikey != null) {
+            Assert(Arrays.equals(bergdb.dag.Keys.toBytes(ikey), k), where, "the bkey of "
+                    + "bkey2ikeyOrNull's ikey is another", k);
+        }
+    }
+    
+    /** A format-1 object with a number of its table or a field changed to an extreme. */
+    static byte[] extremeFormat1(byte[] b, Random r) {
+        byte[] m = b.clone();
+        if (m.length <= 8) {
+            return m;
+        }
+        int p = 6 + r.nextInt(m.length - 6);
+        int size = 1 << r.nextInt(3);
+        long[] e = {0, 1, -1, 0x7f, 0x80, 0xff, 0x7fff, 0x8000, 0xffff, Integer.MAX_VALUE,
+                Integer.MIN_VALUE, m.length, m.length - p, r.nextInt(m.length + 4)};
+        long x = e[r.nextInt(e.length)];
+        for (int k = 0; k < size && p + k < m.length; k++) {
+            m[p + k] = (byte) (x >>> (8 * k));
+        }
+        return m;
+    }
+    
+    /**
+     * Whether 'b' is a whole object of format 1 by its structure, as ObjectFormat.isFormat1's
+     * Javadoc says, written here apart: "bergo", 1, a count n (a little-endian short): -1 or
+     * 0 and nothing after it, or 1 to 32,767 and n entries of 6 bytes (a hash, not checked,
+     * and an offset, an int) and the n fields, each starting at its offset, the first right
+     * after the table, each ending where the next starts and the last at the end; a field is
+     * a type of "nildsbao", a name's size (a short, at least 1), the name, and a value that
+     * fills the field: n 1 byte, 0 or 1; i 4; l and d 8; s, b and o a size (an int) and that
+     * many bytes, or -1 and nothing, o's a whole object's length at least (8) and starting
+     * "bergo" 1; a ends with 'z' or 'Z'.
+     */
+    static boolean refIsFormat1(byte[] b) {
+        java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(b)
+                .order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        if (b.length < 8 || !new String(b, 0, 5, StandardCharsets.ISO_8859_1).equals("bergo")
+                || b[5] != 1) {
+            return false;
+        }
+        int n = bb.getShort(6);
+        if (n == 0 || n == -1) {
+            return b.length == 8;
+        }
+        if (n < 0) {
+            return false;
+        }
+        long first = 8 + 6L * n;
+        if (first > b.length) {
+            return false;
+        }
+        long[] offsets = new long[n + 1];
+        for (int i = 0; i < n; i++) {
+            offsets[i] = bb.getInt(8 + 6 * i + 2);
+        }
+        offsets[n] = b.length;
+        if (offsets[0] != first) {
+            return false;
+        }
+        for (int i = 0; i < n; i++) {
+            long p = offsets[i];
+            long end = offsets[i + 1];
+            if (end <= p || end > b.length || p < first) {
+                return false;
+            }
+            int f = (int) p;
+            int length = (int) (end - p);
+            if (length < 4 || "nildsbao".indexOf((char) (b[f] & 0xff)) < 0) {
+                return false;
+            }
+            int nameSize = bb.getShort(f + 1);
+            if (nameSize < 1 || 3 + nameSize >= length) {
+                return false;
+            }
+            int v = f + 3 + nameSize;
+            int size = (int) end - v;
+            switch ((char) b[f]) {
+            case 'n':
+                if (size != 1 || (b[v] != 0 && b[v] != 1)) {
+                    return false;
+                }
+                break;
+            case 'i':
+                if (size != 4) {
+                    return false;
+                }
+                break;
+            case 'l':
+            case 'd':
+                if (size != 8) {
+                    return false;
+                }
+                break;
+            case 'a':
+                if (b[(int) end - 1] != 'z' && b[(int) end - 1] != 'Z') {
+                    return false;
+                }
+                break;
+            default: {
+                if (size < 4) {
+                    return false;
+                }
+                int s = bb.getInt(v);
+                if (s == -1) {
+                    if (size != 4) {
+                        return false;
+                    }
+                } else if (s != size - 4) {
+                    return false;
+                } else if (b[f] == 'o' && (s < 8 || !new String(b, v + 4, 5,
+                        StandardCharsets.ISO_8859_1).equals("bergo") || b[v + 9] != 1)) {
+                    return false;
+                }
+                break;
+            }
+            }
+        }
+        return true;
+    }
+    
     // ======== The corpus for the programs written apart ========
 
     /**
@@ -3480,7 +3909,7 @@ public final class FormatFuzzer {
     // ======== Running ========
 
     /** The areas, by name. */
-    static final String[] AREAS = {"objects", "keys", "data", "kinds"};
+    static final String[] AREAS = {"objects", "keys", "data", "kinds", "starts", "guesses"};
 
     /** One iteration of an area. */
     void one(String area, long i) {
@@ -3496,6 +3925,12 @@ public final class FormatFuzzer {
             break;
         case "kinds":
             kindsOne(i);
+            break;
+        case "starts":
+            startsOne(i);
+            break;
+        case "guesses":
+            guessesOne(i);
             break;
         default:
             throw new IllegalArgumentException("no area " + area);
@@ -3549,6 +3984,23 @@ public final class FormatFuzzer {
         f.run("data", 0, 2000, Long.MAX_VALUE);
         bergdb.nanotest.Assert.assertTrue(f.stats.toString(), f.stats.counts.get(
                 "round trip") > 100);
+    }
+    
+    /** Area starts: 200 starts of seed 1. */
+    @Nano
+    public static void testFuzzStarts() {
+        FormatFuzzer f = new FormatFuzzer(1);
+        f.run("starts", 0, 200, Long.MAX_VALUE);
+        bergdb.nanotest.Assert.assertEquals(f.stats.toString(), 200, f.stats.iterations);
+    }
+    
+    /** Area guesses: 5,000 iterations of seed 1. */
+    @Nano
+    public static void testFuzzGuesses() {
+        FormatFuzzer f = new FormatFuzzer(1);
+        f.run("guesses", 0, 5000, Long.MAX_VALUE);
+        bergdb.nanotest.Assert.assertTrue(f.stats.toString(), f.stats.counts.get(
+                "format 1") > 500 && f.stats.counts.get("UTF-8 ill-formed") > 500);
     }
     
     /** Area kinds: 40 databases of seed 1. */
