@@ -12,8 +12,23 @@ release 2026.3 (then 2026.4). This allows us to leave some history behind
 and start fresh. Call it nnn-bergdb-c. I will decide later how long to
 update it in that item, at least 2026.3 and 2026.4, maybe longer."
 
+The code is in `c/` ([c/readme.md](c/readme.md)), copied from
+`items/012-bergdb-c/c/` at `be51a78`, 012's last commit to it (the port
+of release 2026.2); 022-01, section 1.
+
+
+Files
+=====
+
+* [01-plan.md](01-plan.md), 022-01: the plan, 2026.3 and then 2026.4;
+  the steps, the clones, the gate and how the work lands.
+* [c/](c/): BergDB's Core in C.
+
 
 Log
 ===
 
 2026-11-09. Created the item, by coord-1109.
+
+2026-11-09. `c/` copied from 012 at `be51a78`; 022-01, the plan, from
+coord-1109's of 10:18. By the session `022-bergdb-c`.
