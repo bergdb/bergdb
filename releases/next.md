@@ -12,6 +12,39 @@ that keeps its digests before and after (bergdb 018-01, section 2).
 Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
 
 
+### Platforms
+
+* **BergDB runs on Android** (bergdb 006-18-03; Frans, 2026-11-09: "Is
+  this an easy fix we can get into 2026.4, let's fix it."): the Core from
+  API level 33 (Android 13), objects (Data Objects and `DbObject`) from API
+  level 34 (Android 14); checked on an emulator, not yet on a phone. Two
+  changes made it run, and change nothing on a JVM:
+  * `BufferedStream`'s wait statistics (005-46) took the JVM's uptime from
+    `java.lang.management`, which Android lacks, at the first wait for
+    room in the write buffer, and threw `NoClassDefFoundError` out of
+    `Db.execute`. They take it from there where it exists, and elsewhere
+    the time since their class was initialized.
+  * Data Objects' checks V5 and V6 (020-09) called
+    `ClassLoader.getPlatformClassLoader()` and `Class.getModule()`, which
+    no Android level has, and refused every class. V6 now checks modules
+    only where Java has them, and V5 takes Android's boot class loader as
+    the platform's.
+
+  The jar is dexed by d8, which desugars what it needs. R8 needs
+  `-dontwarn` for `java.lang.management.**`, `javax.management.**`,
+  `com.sun.management.**`, `java.lang.module.**`, `java.lang.Module` and
+  `java.lang.ModuleLayer`, and must keep the fields that `findVarHandle`
+  finds by name: `bergdb.dag.Handle.state`, `bergdb.dag.TopNode.rootPointer`
+  and `rootPointerPos` (006-18-03, section 6). An app opens a database in
+  an absolute directory, off the main thread, and syncs before it goes to
+  the background.
+* **A known difference on Android: ill-formed UTF-8 read as a String**
+  (020-09, section 5.6). The bytes are decoded by the platform's UTF-8
+  decoder, and Android's can put more U+FFFD than Java's: `ed a0 80` reads
+  as three U+FFFD where Java gives one (020-09's case G88). Well-formed
+  UTF-8, which is all that Java writes, reads the same.
+
+
 ### Pub API
 
 * **`Time.utc` and `Time.resolve` refuse a null with

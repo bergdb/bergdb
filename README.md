@@ -38,6 +38,8 @@ Needs a JDK 17 or later (the code is compiled with `--release 17`, since
 2026-10-25, bergdb 009; before, `--release 8`; release 2026.3 was tested
 on JDK 27 and 17, on macOS and Linux) and, for the proofs
 and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
+BergDB's jar also runs on Android: the Core from API level 33, objects
+from 34; checked on an emulator, not yet on a phone (bergdb 006-18-03).
 
     
     java/build.sh                  # builds java/build/bergdb.jar, bergdb-release.jar and the stress tests
