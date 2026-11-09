@@ -1039,7 +1039,6 @@ bool dag_put_kv(struct dag *d, const int64_t *key, int32_t n, const uint8_t *val
 struct walked {
     struct knode *node;
     int32_t up;                 /* the node above it on the path, -1 for the space root */
-    int32_t depth;
     int64_t klongs;             /* that it gets */
     int32_t fresh_first;        /* its fresh keys: a list through fresh_next, -1 none */
     int32_t fresh_level;        /* the segment of the keys in its fresh list missing here */
@@ -1114,7 +1113,6 @@ static bool dnb_walked(struct dnb *s, struct knode *node, int32_t up, int32_t *o
     struct walked *w = &s->w[s->nw];
     w->node = node;
     w->up = up;
-    w->depth = up < 0 ? 0 : s->w[up].depth + 1;
     w->klongs = 0;
     w->fresh_first = -1;
     w->fresh_level = 0;
@@ -1129,18 +1127,16 @@ static bool dnb_walked(struct dnb *s, struct knode *node, int32_t up, int32_t *o
 }
 
 /* Walked.fresh: key k, whose segment i is not in this leaf: a new segment
- * tree below it. One more klong for each distinct segment i. */
+ * tree below it. Java's adds one klong for each distinct segment i, the
+ * pointer to its new tree, found in a HashMap; here dag_dirty_node_bound
+ * adds them when it sorts the list by that segment, before the node's
+ * klongs are read. Until 2026-11-09 a scan of the list for each key:
+ * quadratic in the new keys of one node (bergdb 022-06: 8.3 s for 100,000
+ * new keys in one transaction, where Java took 0.7 s). */
 static void dnb_fresh(struct dnb *s, int32_t wi, int32_t k, int32_t i) {
     struct walked *w = &s->w[wi];
     if (w->fresh_first < 0) {
         w->fresh_level = i;
-    }
-    bool seen = false;
-    for (int32_t j = w->fresh_first; j >= 0 && !seen; j = s->fresh_next[j]) {
-        seen = s->keys[j][i] == s->keys[k][i];
-    }
-    if (!seen) {
-        w->klongs++;                    /* the pointer to the new segment tree */
     }
     s->fresh_next[k] = w->fresh_first;
     w->fresh_first = k;
@@ -1358,45 +1354,45 @@ bool dag_dirty_node_bound(struct dag *d, int64_t time, const int64_t *const *key
     }
 
     int64_t count = s.nw;
-    /* Deepest first: by depth, from the largest (Java sorts stably; the
-     * order within a depth does not change the sum). */
-    int32_t maxDepth = 0;
-    for (int32_t i = 0; i < s.nw; i++) {
-        maxDepth = s.w[i].depth > maxDepth ? s.w[i].depth : maxDepth;
-    }
-    for (int32_t depth = maxDepth; ok && depth >= 0; depth--) {
-        for (int32_t i = 0; ok && i < s.nw; i++) {
-            struct walked *w = &s.w[i];
-            if (w->depth != depth) {
-                continue;
+    /* Deepest first. Java sorts the walked nodes by depth, from the
+     * largest, so that each node comes after the nodes whose up it is: their
+     * overflows add to its klongs, and nothing else passes between the
+     * nodes. A node is walked after its up (dnb_walked takes an up that is
+     * walked already), so from the last walked to the first is such an order
+     * too, in one pass, and the sum is Java's. Until 2026-11-09 this went
+     * over every walked node once per depth: quadratic in a long key's chain
+     * of walked nodes (bergdb 022-06, u2's U2-3: 4.3 s for a 2 MB key after a
+     * 512 KB key with its prefix, where Java took 0.24 s). */
+    for (int32_t i = s.nw - 1; ok && i >= 0; i--) {
+        struct walked *w = &s.w[i];
+        assert(w->up < i && "a node's up is walked before it");
+        if (w->fresh_first >= 0) {
+            /* for each list of freshKeys: the keys of one segment */
+            int32_t nf = 0;
+            for (int32_t j = w->fresh_first; j >= 0; j = s.fresh_next[j]) {
+                s.order[nf++] = j;
             }
-            if (w->fresh_first >= 0) {
-                /* for each list of freshKeys: the keys of one segment */
-                int32_t nf = 0;
-                for (int32_t j = w->fresh_first; j >= 0; j = s.fresh_next[j]) {
-                    s.order[nf++] = j;
+            sort_by_segment(&s, 0, nf, w->fresh_level);
+            for (int32_t a = 0; ok && a < nf; ) {
+                int32_t b = a;
+                while (b < nf && keys[s.order[b]][w->fresh_level]
+                        == keys[s.order[a]][w->fresh_level]) {
+                    b++;
                 }
-                sort_by_segment(&s, 0, nf, w->fresh_level);
-                for (int32_t a = 0; ok && a < nf; ) {
-                    int32_t b = a;
-                    while (b < nf && keys[s.order[b]][w->fresh_level]
-                            == keys[s.order[a]][w->fresh_level]) {
-                        b++;
-                    }
-                    int64_t c;
-                    ok = fresh_tree_bound(d, &s, a, b, w->fresh_level + 1, &c);
-                    count += ok ? c : 0;
-                    a = b;
-                }
+                w->klongs++;                /* the pointer to the new segment tree */
+                int64_t c;
+                ok = fresh_tree_bound(d, &s, a, b, w->fresh_level + 1, &c);
+                count += ok ? c : 0;
+                a = b;
             }
-            const int64_t ov = overflows(d, w->klongs, w->node->size);
-            if (ov > 0) {
-                count += ov + 1;
-                if (w->up >= 0) {
-                    s.w[w->up].klongs += ov + 1;
-                } else {
-                    count += ov;                /* new roots */
-                }
+        }
+        const int64_t ov = overflows(d, w->klongs, w->node->size);
+        if (ov > 0) {
+            count += ov + 1;
+            if (w->up >= 0) {
+                s.w[w->up].klongs += ov + 1;
+            } else {
+                count += ov;                /* new roots */
             }
         }
     }

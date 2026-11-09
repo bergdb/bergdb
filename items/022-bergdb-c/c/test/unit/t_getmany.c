@@ -8,6 +8,7 @@
  * failures in turn. The counts are recounted, and nothing is left. */
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include "getmany.h"
 #include "keys.h"
 #include "klong.h"
@@ -895,6 +896,116 @@ TEST(dag_dirty_node_bound) {
     CHECK(tight > 0);
 }
 
+/* The bound of a long key that shares a long prefix with a key in the
+ * database walks the prefix's chain of key nodes once (bergdb 022-06,
+ * u2's U2-3). Java's Dag.dirtyNodeBound sorts the walked nodes by depth;
+ * C went over every walked node once per depth, so a 1 MB key after a
+ * 512 KB key with its prefix took about 75,000^2 steps: 4.3 s for u2's
+ * 2 MB key in the release build, where Java takes 0.24 s. Now a few ms;
+ * the bound below 2 s, as sdb_find_node's (t_sdb.c). */
+TEST(dag_dirty_node_bound_long_key) {
+    const int32_t lenA = 1 << 19, lenB = 1 << 20;
+    uint8_t *b = malloc((size_t) lenB);
+    REQUIRE(b != NULL);
+    const int32_t na = keys_segment_count(lenA), nb = keys_segment_count(lenB);
+    int64_t *sa = malloc((size_t) na * sizeof *sa);
+    int64_t *sb = malloc((size_t) nb * sizeof *sb);
+    REQUIRE(sa != NULL && sb != NULL);
+    memset(b, 'K', (size_t) lenB);
+    b[lenA - 1] = 0;
+    keys_to_segments(b, lenA, sa);
+    b[lenA - 1] = 'K';
+    b[lenB - 1] = 1;
+    keys_to_segments(b, lenB, sb);
+
+    struct mem m;
+    mem_init(&m);
+    struct mdb db;
+    REQUIRE(mdb_create(&db, &m, 1, 30));
+    const uint8_t v[1] = { 7 };
+    mdb_begin(&db, 10);
+    REQUIRE(mdb_put(&db, sa, na, v, 1));
+    mdb_end(&db);
+
+    struct getdata gd;
+    mdb_new_get_data(&db, &gd);
+    const int64_t *kp[1] = { sb };
+    const int32_t kn[1] = { nb };
+    const bool dels[1] = { false };
+    int64_t bound = 0;
+    struct timespec t0, t1;
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    CHECK(dag_dirty_node_bound(&db.dag, mdb_lookup_time(&db, INT64_MAX), kp, kn, dels, 1, &gd,
+            &m, &bound));
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    const int64_t ms = (int64_t) (t1.tv_sec - t0.tv_sec) * 1000
+            + (t1.tv_nsec - t0.tv_nsec) / 1000000;
+    /* at least a node for each shared segment, and one for each new one */
+    CHECK(bound >= nb);
+    CHECK(ms < 2000);
+    if (ms >= 2000) {
+        printf("  dag_dirty_node_bound_long_key: the bound took %lld ms\n", (long long) ms);
+    }
+    end(&db, &m);
+    free(sa);
+    free(sb);
+    free(b);
+}
+
+/* The bound of one transaction with many new keys whose missing segment
+ * differs, at one node: Java counts their distinct segments with a
+ * HashMap; C scanned the node's list of new keys for each key, quadratic
+ * (bergdb 022-06: 8.3 s for 100,000 new keys of 16 bytes in one transaction
+ * in the release build, where Java takes 0.7 s). Now it counts them when it
+ * sorts the list; the bound below 2 s, as above. */
+TEST(dag_dirty_node_bound_many_new_keys) {
+    const int32_t n = 100000, len = 16;
+    const int32_t ns = keys_segment_count(len);
+    int64_t *segs = malloc((size_t) n * (size_t) ns * sizeof *segs);
+    const int64_t **kp = malloc((size_t) n * sizeof *kp);
+    int32_t *kn = malloc((size_t) n * sizeof *kn);
+    bool *dels = malloc((size_t) n * sizeof *dels);
+    REQUIRE(segs != NULL && kp != NULL && kn != NULL && dels != NULL);
+    for (int32_t i = 0; i < n; i++) {
+        uint8_t b[16];
+        memset(b, 'x', sizeof b);
+        b[0] = 0x10;
+        b[1] = (uint8_t) (i >> 16);     /* the first segment: distinct */
+        b[2] = (uint8_t) (i >> 8);
+        b[3] = (uint8_t) i;
+        keys_to_segments(b, len, segs + (size_t) i * (size_t) ns);
+        kp[i] = segs + (size_t) i * (size_t) ns;
+        kn[i] = ns;
+        dels[i] = false;
+    }
+
+    struct mem m;
+    mem_init(&m);
+    struct mdb db;
+    REQUIRE(mdb_create(&db, &m, 1, 30));
+    struct getdata gd;
+    mdb_new_get_data(&db, &gd);
+    int64_t bound = 0;
+    struct timespec t0, t1;
+    clock_gettime(CLOCK_MONOTONIC, &t0);
+    CHECK(dag_dirty_node_bound(&db.dag, mdb_lookup_time(&db, INT64_MAX), kp, kn, dels, n, &gd,
+            &m, &bound));
+    clock_gettime(CLOCK_MONOTONIC, &t1);
+    const int64_t ms = (int64_t) (t1.tv_sec - t0.tv_sec) * 1000
+            + (t1.tv_nsec - t0.tv_nsec) / 1000000;
+    /* at least a node for each new key's tree below the root */
+    CHECK(bound >= n);
+    CHECK(ms < 2000);
+    if (ms >= 2000) {
+        printf("  dag_dirty_node_bound_many_new_keys: the bound took %lld ms\n", (long long) ms);
+    }
+    end(&db, &m);
+    free(segs);
+    free(kp);
+    free(kn);
+    free(dels);
+}
+
 const struct test getmany_tests[] = {
     TEST_ENTRY(gm_inclusive_start_key_with_deep_tree),
     TEST_ENTRY(gm_start_key_random),
@@ -904,5 +1015,7 @@ const struct test getmany_tests[] = {
     TEST_ENTRY(mdb_model),
     TEST_ENTRY(mdb_allocation_failures),
     TEST_ENTRY(dag_dirty_node_bound),
+    TEST_ENTRY(dag_dirty_node_bound_long_key),
+    TEST_ENTRY(dag_dirty_node_bound_many_new_keys),
     TEST_END
 };
