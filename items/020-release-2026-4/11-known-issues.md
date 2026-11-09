@@ -11,7 +11,9 @@ Frans on 2026-11-08 at 22:03: "Keep working until you have a solution for
 `3d8b785` (020-12, step 4's measurements), and to `b149d12` with the day's
 document update (2026-11-09, afternoon): the faults that the day's bug
 hunts found and fixed (section 10) and what they left for a later release
-(section 11).
+(section 11); and to `03ce6ec` by the evening's items pass: 021-13 to
+021-27, Codex's round 3 and the late fixes (section 10, "Since b149d12"),
+and the day's open questions and API wishes (section 11).
 
 How it was checked: each "fixed" by reading the test it names, not the
 commit message, and by running it on `main` (`-ea`, the unit group unless
@@ -82,6 +84,20 @@ a later release, none a broken promise of 2026.4 (section 11): O16-1,
 fine as is for 2026.4 (Frans, 11:52); 020-18's observations O1 to O3;
 020-15's coverage gaps; 020-22's writes through the Core that stay
 undefined; and test gaps.
+
+Since `b149d12`, to `03ce6ec` (section 10, "Since b149d12"): the faults
+that the new users' applications (020-24), the C port and its black-box
+users (022, 022-06) and the reviews (020-23, Codex's rounds 3 and 4)
+found, 021-13 to 021-24, 021-26 and Z1 to Z3, are fixed, or documented
+where the behaviour is meant, each with a test; several were graded high
+by their finders, most are older than 2026.4 (021-13, 021-16 and Z1 among
+them; 021-26 and Z2 were never released). Two are not fixed, each for
+Frans: 021-25, reclaim stops cutting a FIFO of keys in time order (in
+2026.3 too; a known issue in `releases/next.md`, "Known issues and
+limits"; its fix (c) ended the slowdown of puts that came with it), and
+021-27, the Core's `Db.getTrans` at a position inside a record fails the
+database (as its Javadoc says; a test keeps it). The day's open questions
+and API wishes are in section 11, each for a later release or for Frans.
 
 
 ## 2. Objects: F1, F2 (020-01) and 020-08
@@ -475,6 +491,49 @@ The harnesses (false findings, no fault of BergDB):
 | H3-O2 to O4 | A stop at the workload's read; a racing check; a bound | fixed | da97f69, 5d1adc5, 97064b2 |
 | N16-1 | 020-07's sketch F2 reads past its extent | not BergDB's | none |
 
+Since b149d12, to `03ce6ec` (the evening's items pass): the faults of
+021-13 to 021-27, found by the new users' applications (020-24), by the C
+port and its black-box users (022, 022-06), and by Codex's rounds 3 and 4
+and the reviewers (020-23); and the fixes of 020-25, 020-27 and 020-28.
+Each commit is on `main`, each test named was read, not run again for
+this update: each ran in its fix's gate under the gate lock (BEFORE
+COMMIT OK; `level1.sh` for the Core's), as each item's Log says, and the
+integrator's gate of the combined tree that landed as `03ce6ec` passed.
+
+The Core:
+
+| ID | What | State | Commit; test (read) |
+|---|---|---|---|
+| 021-13 | `transactionInfo()` during another's write failed the DB | fixed | f66bf25; testGetTransOfARecord... |
+| 021-14 | A read whose end overflows a long: no EOFException | fixed | 9bf82c1, a2fa9df; testReadPastEnd..., 3 |
+| 021-15 | A start's refusal texts named nodes by identity hash | fixed | 9bb6c0f; testNodeTextsSame..., 2 |
+| 021-16 | A key of about 90 KB or more overflowed the stack | fixed | 01d5352, 520963d; DbTesterLongKeys, 4 |
+| 021-18 | `GetMany.Prefix` stopped at the prefix's own key | fixed | a009b6a; testPrefixHasThePrefixKey |
+| 021-19 | A KV's time is its key node entry's, not the write's | said | 779a123; testKvTimeIsTheEntrysTime |
+| 021-20 | A deleted directory's database wrote into a new one | fixed | 2557286; testNoNewFileIn..., 3 |
+| 021-24 | A directory replaced during a force got the next file | fixed | c66e824, 03ce6ec; testNoNewFile..., 1 |
+| Z1 | `currentTime()` after the clock went back: earlier times | fixed | 6ac9708; DbClock.testClockGoesBack, 2 |
+| 021-26 | A `currentTime()` past the end refused later puts | fixed | 8d405c9; testCurrentTimeWith..., 1 |
+| 021-25c | Puts slowed after reclaim passed many deleted keys | fixed | e3b9787; KeyAccessPath's 3 Nano tests |
+| 021-25 | Reclaim stops cutting a FIFO of keys in time order | known | 69600f9 (releases/next.md); section 11 |
+| 021-27 | `Db.getTrans` inside a record fails the database | Frans | d0a59aa; testGetTransInsideARecord |
+| 27-C | 020-27's C1 to C3, and Q1 and Q2 as Frans decided | fixed | 04b0178 to 08a6f00, de73137 to a786e75 |
+| A-1 | Android: `java.lang.management`, modules (006-18-03) | fixed | 07df96d, 0cb5a82, 435dde7; android.sh |
+
+The Pub layer:
+
+| ID | What | State | Commit; test (read) |
+|---|---|---|---|
+| 021-17 | After reclaim's copy, `transactionInfo()` refused | fixed | 89a7e56, cf67d0c; testTransactionInfo..., 2 |
+| 021-21 | An `RwEnvironment` used by threads: lost puts, a failed DB | fixed | 1e4d349; PubTesterThreads, 4 |
+| 021-22 | A `Connection` shared by threads: wrong reads, a failed DB | refused | a39295c; PubTesterThreads, 4 |
+| 021-23 | A put of an object too large to store: OutOfMemoryError | refused | 7fec115; testPutTooLarge, 1 |
+| Z2 | A byte[] index scan returned a format-1 object | fixed | d794d06; testCorePutOfAFormat1Object... |
+| Z3 | `Clock.getTime()`: a start with the clock out of range | said | 142afa2; testStartWithTheClockOutOfRange |
+| 25-C | 020-25: C1 to C3, J1 to J7 | fixed | 2502275 to a16f756; PubTesterJavadocRest |
+| 020-28 | Encryption out of 2026.4's API (020-24-07, U7-1, U7-3) | done | b78865d; for later, 017-10 |
+| 020-24 | The new users' findings: faults fixed, Javadoc made true | done | each app's Fixes (01 to 15) |
+
 Notes:
 
 * 13-B2 and X2, and 13-B3 and X1's sibling in the name, were found apart
@@ -486,12 +545,23 @@ Notes:
   no `Db` reaches it, 020-23, section 3.4).
 * New steps of `night.sh` since today: `harness-soak.sh` (020-17),
   `fuzz.sh` (020-16) and `kill-restart.sh` (020-15).
+* 021-25 is not a regression: the same run on release 2026.3, byte for
+  byte. Its fix (c) ended 020-24-14's U14-1 (puts slowed by index churn
+  under reclaim) with no change of the stream; the cuts still stop.
+  021-27 behaves as `Db.getTrans`'s Javadoc says; only the Core API can
+  give such a position. Z2's rule, a scan leaves out a format-1 object
+  for every type, is Frans's decision (16:20; 020-23's Log).
 
 
 ## 11. Left for a later release
 
 None breaks a promise of 2026.4; each is an observation, a cost, a gap of
-the tests, or a write that the rules leave undefined.
+the tests, or a write that the rules leave undefined. The second table,
+added on the evening of 9 November, holds the day's open questions and
+API wishes, from the new users' applications (020-24), the C port's
+black-box users (022-06; an ID `C-` is theirs), the fixes left open and
+the proof of 020-29: each for a later release, or for Frans where it
+says so; 021-25 is a known issue of 2026.4 (`releases/next.md`).
 
 | ID | What | With |
 |---|---|---|
@@ -507,6 +577,28 @@ the tests, or a write that the rules leave undefined.
 | 13-cov | Coverage: level1.sh's other steps; values near 2^31 bytes | later |
 | 13-slow | Slow f-tests that add little (020-13, section 5) | Frans, if the gate should be faster |
 | 21-flake | `Eviction.testInterruptedWhileAWriterWaits` failed once at load 19 | watch; passed since |
+
+| ID | What | With |
+|---|---|---|
+| U12-4 | A field type not on the list: the message names it, not the class | Frans: API (020-24-12) |
+| U13-4 | No delete of a directory: list the keys and delete each | later: API (020-24-13) |
+| U13-5 | Paging an index of two levels takes three scan forms (U4-4) | later: a resume point |
+| U13-7 | Starts after a transaction larger than the startup distance | Frans: bounded startup (007) |
+| U14-2 | No listing of the indexes or of their definitions | later: API (020-24-14) |
+| U14-3 | No listing of subdirectories: a tenant's tree is unknown | later: API |
+| U14-4 | A rebuild under its name: queries throw until it is built | later: API |
+| U14-5 | No word on limits on the number of indexes, or their cost | later: doc |
+| U14-6 | No way to know that a deleted index's cleanup has ended | later: API |
+| U15-6 | The Pub Javadoc names exceptions of packages that are not API | Frans: 020-24-15, Q2 |
+| 15-Q1 | The Core API's Javadoc is not published | Frans: 020-24-15, Q1 |
+| 021-24 | A replacement between the check and the step; its empty file | later: SecureDirectoryStream |
+| 021-25 | Reclaim stops cutting a FIFO in time order, or under index churn | Frans: fixes (a), (b) |
+| 021-27 | `Db.getTrans` inside a record fails the database | Frans: option A after 2026.4 |
+| 16-Q1 | A long key's still-dirty loop is quadratic (C-U2-3, C-U1-1) | Frans: 021-16, Q1 |
+| C-U2-6 | A stream file deleted or cut: synced records dropped (U8-1) | Frans: U8-1's options |
+| C-U2-8 | Core puts under "/#" taken; bad reclaim settings: no start | later: Core refuses them |
+| C-U2-2 | After a full disk, the torn record's size must be free | later: 014-01 |
+| 29-fair | Builds of several names need a fair lock; `synchronized` is not | Frans: 020-29, section 7 |
 
 * O16-1 (020-16, section 3): `get(key, DbObject.class)` and `get(key,
   C)` read a value of format 2 at a key with a suffix as an object, while
@@ -544,6 +636,45 @@ the tests, or a write that the rules leave undefined.
   020-13's coverage (level1.sh's other steps, values near 2^31 bytes) and
   its proposals for slow f-tests; 020-21's timing failure of
   `Eviction.testInterruptedWhileAWriterWaits` at load 19, once.
+
+The second table's sources, one line each (020-24's findings in each
+app's table of findings; 022-06's in `items/022-bergdb-c/06-user-apps/`,
+and the C users' own reports in `/Users/f/fl/bench/022/apps/u1/`, `u2/`
+and `u3/`, `report.md`):
+
+* U12-4: 020-24-12, "U12-4" and its Fixes; one fault a class, so not
+  small.
+* U13-4, U13-5: 020-24-13; U13-5 is U4-4's resume point (020-24-04).
+* U13-7: 020-24-13, "U13-7"; said in `startupDistanceInMb()` (`2508989`);
+  a start's time bounded also then is 007's question.
+* U14-2 to U14-6: 020-24-14, section 3. U14-1's slowdown of puts ended
+  with 021-25's fix (c); its stall of the cuts under index churn is
+  021-25's cause, parts 1 and 2, not fixed (021-25, "Fix (c)").
+* U15-6 and 15-Q1: 020-24-15, "Questions for Frans" (Q2: a sentence now,
+  an API exception for "directory in use" later; Q1: publish the Core
+  API's Javadoc in the release after 2026.4).
+* 021-24: its "Left": `SecureDirectoryStream` would close the window of
+  microseconds (longer if the thread is paused) between the check and the
+  step; the empty file it can leave is refused by an exception that
+  depends on the directory; any `IOException` of the check's `stat` counts
+  as "gone" (020-23, section 7).
+* 021-25: "For Frans": (a) end the touch at `touchTo`, (b) drop index
+  nodes that hold deleted keys only; both change the stream (022's C
+  equality, StreamDigest); the known issue in `releases/next.md`, "Known
+  issues and limits", names the FIFO.
+* 021-27: options A to D; C for 2026.4 (as it is), A after it.
+* 16-Q1: 021-16, Q1, `Db.handleStillDirtyNodes` (Rule A); 022-06-2's
+  U2-3 and 022-06-1's U1-1, confirmed in Java (a 4 MB put next to 1 MB
+  keys with a shared prefix: 29 to 48 s).
+* C-U2-6: 022-06-2, U2-6, confirmed in Java, with 020-24-08's U8-1 and
+  its options (a) to (c) (020-24-08, section 4).
+* C-U2-8: 022-06-2, U2-8, confirmed in Java; under 020-22's A2 such a
+  write is undefined; a Core refusal of writes under "/#" is later work.
+* C-U2-2: 022-06-2, U2-2, confirmed in Java: 014-01's zero fill.
+* 29-fair: 020-29 (on its branch, not merged), section 7: with several
+  index names a build needs strong fairness of the index manager's lock,
+  which Java's `synchronized` does not promise; with one name weak
+  fairness suffices.
 
 
 ## 12. Log
@@ -593,3 +724,10 @@ day's bug hunts found and fixed (020-13 to 020-23, 021-11, 021-12), each
 with its commit on `main` and its test, read and run (93 tests); section
 11, what they left for a later release; section 1's summary; section 4's
 row of 020-07's approval.
+
+2026-11-09, evening. Brought up to date to `03ce6ec` by coord-1109's final
+items pass: section 10, "Since b149d12", a row for each of 021-13 to
+021-27, Z1 to Z3, and 020-25's, 020-27's, 020-28's and 020-24's fixes,
+each with its commit on `main` and its test, read (each ran in its fix's
+gate); section 11's second table, the day's open questions and API
+wishes, each with its source; section 1's summary.
