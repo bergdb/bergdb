@@ -76,6 +76,15 @@ Files
   (015-73, 019-30, 019-31, 019-33). Created on 2026-11-06 at Frans's
   decision on the last three, with 019-07 moved here. Open; notes only;
   may or may not be added in some future release, not 2026.3.
+* [017-09](09-object-keys-objects-only/readme.md). Object keys hold
+  objects only: refusing a `String` or a `byte[]` at an object key, so
+  that only object puts and deletes reach the index layer (020-10,
+  section 5.1's rule, 015-46, C-M8); today's suffix rules in 2026.3 and
+  2026.4, what the idea removes and what stays, its price (the API, the
+  users in the repo, old databases), options (a) to (f), (a1)
+  recommended, and the questions for Frans. Created on 2026-11-09 at
+  Frans's request, for a release after 2026.4. Open; a study, no code
+  changed.
 
 
 Log
@@ -141,3 +150,7 @@ from 019 by the rule for moved entries.
 `BufferedStream`'s monitor (reader scaling), added at Frans's decision on
 015-86 (11:09 to 11:11), from its Option 4: to consider after release
 2026.3, measured first.
+
+2026-11-09. 017-09, object keys hold objects only, created at Frans's
+request: a study of refusing a `String` or a `byte[]` at an object key,
+for a release after 2026.4; no code changed.
