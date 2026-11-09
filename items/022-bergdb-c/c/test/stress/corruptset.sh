@@ -6,7 +6,8 @@
 # to 018-08), by class, on its sample run's random choices: truncation, flip, header (a
 # record's size, time, startupPos, topPos, got-dirty entry or count set), node (a node's
 # field changed, its checksum made right: 019-32's damage, which corrupt.sh's bit flips do
-# not reach), cut out; testFound019_32's ten copies; and the cases of the release's refusal
+# not reach), cut out; testFound019_32's ten copies and testFound021_11's three (bergdb
+# 021-11, release 2026.4); and the cases of the release's refusal
 # tests on the streams those tests write: DbTesterRestart's testEnlargedRecordSizeRefused
 # (015-72), testCorruptStartupPosRefused, testCorruptGotDirtyIdRefused and
 # testOlderTopPosRefused (015-75), testMetaBlockLastTransPosRefused (019-34) and
@@ -14,7 +15,9 @@
 # StoredValueNode.testRefusesBadKey's changes (019-32) made to every node of a stream.
 #
 # Each copy is started by both dumpers, Java's Dump and C's bergdb-dump of the test build
-# (under AddressSanitizer and UndefinedBehaviorSanitizer), each on a copy of its own, and
+# (under AddressSanitizer and UndefinedBehaviorSanitizer), each on a copy of its own (C's
+# with -check: the start's check by node id of its links, 005-57, which Java's runs under
+# -ea, and which refuses testFound021_11's third copy), and
 # checked as corrupt.sh checks: the same exit status and the same text (a refused start
 # prints "start error=NAME", Java's exception's name); where both started and a read failed
 # later (Java's status 3, C's 5), Java's text a prefix of C's and the same position; C never
@@ -34,8 +37,8 @@
 #
 # Usage: test/stress/corruptset.sh [quick]
 #   quick    the gate's set (before-commit.sh), about 60 copies, a few seconds: the refusal
-#            tests' cases and testFound019_32's copies only, the node tests' changes on the
-#            first and the last node that takes each
+#            tests' cases and testFound019_32's and testFound021_11's copies only, the node
+#            tests' changes on the first and the last node that takes each
 #   OUT      (environment) /Users/f/fl/bench/022/out/corruptset by default, or
 #            /Users/f/fl/bench/022/out/corruptset-quick
 #   CBUILD   (environment) C's builds, build/ by default
@@ -45,7 +48,9 @@
 #            repository, such as 86dade8, the port of 2026.2 before step 2), its c/ taken
 #            by git archive into OUT/control and built there, takes C's side; it must
 #            differ from Java in every base of the refusal tests' cases and of
-#            testFound019_32. Prints CORRUPTSET CONTROL CAUGHT or CORRUPTSET CONTROL MISSED.
+#            testFound019_32 and testFound021_11 (C before 022-02, step 2, such as 3e3b704,
+#            differs in found-long-1 alone). Prints CORRUPTSET CONTROL CAUGHT or CORRUPTSET
+#            CONTROL MISSED.
 # Needs C's test build and build/java/classes (test/cross/java-build.sh). Prints
 # CORRUPTSET OK or CORRUPTSET FAILED; the copies are removed when the set passes, and OUT
 # keeps list.txt (each copy, with harness 6.1's own outcome of it), results.txt (each
@@ -102,7 +107,7 @@ done
 "$JAVA" -ea -Xmx1g -cp "$CLASSES" bergdb.core.Batch "$OUT/scan.jobs" > "$OUT/scan.log" 2>&1
 awk -v O="$OUT" '{ split($1, p, "/"); d = O "/v/" $1; s = O "/base/" p[1] "/scan.txt"
     print "dump " d "/dump-a.txt " d "/a " s > (O "/dump-a.jobs")
-    print d "/dump-b.txt " d "/b " s > (O "/dump-b.jobs") }' "$OUT/list.txt"
+    print d "/dump-b.txt -check " d "/b " s > (O "/dump-b.jobs") }' "$OUT/list.txt"
 NV=$(wc -l < "$OUT/list.txt" | tr -d ' ')
 echo "copies: $NV, made in $(( $(date +%s) - T0 )) s; $(tail -1 "$OUT/make.txt")"
 
@@ -277,7 +282,7 @@ if control:
         print('CORRUPTSET CONTROL MISSED: no difference in %s' % ' '.join(missed))
         sys.exit(1)
     print('CORRUPTSET CONTROL CAUGHT: %d differences, in every base of the cases and of '
-          'testFound019_32 (C at %s)' % (len(fails), control))
+          'the found copies (C at %s)' % (len(fails), control))
     sys.exit(0)
 for x in fails[:40]:
     print('DIFFERENCE ' + x)

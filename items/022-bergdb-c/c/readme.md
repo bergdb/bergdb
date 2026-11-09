@@ -661,11 +661,14 @@ Raw output goes to `/Users/f/fl/bench/022/out/` by default (`OUT=`).
   by `test/cross/java/CorruptSet.java` with the release's own classes:
   harness 6.1's copies by class (`CorruptStreamTester`: truncation, flip,
   header fields, a node's field with its checksum made right, a range cut
-  out), `testFound019_32`'s, and the cases of 2026.3's refusal tests
+  out), `testFound019_32`'s, `testFound021_11`'s (022-02, step 2: base
+  `found-long-1`), and the cases of 2026.3's refusal tests
   (`DbTesterRestart`'s six, 015-72, 015-75, 019-34, 019-01; the node
   tests' changes, 019-32, on every node of a stream). Both dumpers start
-  each: the same status, text and messages (C's text cut at 239 bytes),
-  C never crashes and writes nothing into a database it refuses. `quick`
+  each, C's with `-check` (the start's check by node id, 005-57, which
+  Java's runs under `-ea`): the same status, text and messages (C's text
+  cut at 239 bytes), C never crashes and writes nothing into a database
+  it refuses. `quick`
   (about 60 copies) is in the gate; the whole set (`SEEDS=`, 1 by
   default, testSample's copies) by hand. `CONTROL=REV` is the negative
   control: C at REV (`86dade8`, the port of 2026.2) must differ in every

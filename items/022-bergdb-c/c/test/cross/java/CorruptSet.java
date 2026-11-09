@@ -43,7 +43,9 @@ import bergdb.stream.MemoryStream;
  * 0x01, 0x80 or 0xff), header (a record's size, time, startupPos, topPos, got-dirty entry or
  * count set), node (a node's byte or 4-byte field changed, its checksum made right), cut out
  * (a range of bytes removed). And the ten copies of testFound019_32, the damage that found
- * 019-32 (bases "found-...").</li>
+ * 019-32 (bases "found-..."), and the three of testFound021_11 (bergdb 021-11, release
+ * 2026.4: a pointer that a start links by node id set to a version of a node of another
+ * type; base "found-long-1", the configuration LONG's original of seed 1).</li>
  * <li><b>The cases of the release's refusal tests</b> (bases "case-..."), on the streams
  * that those tests write, with the tests' changes: DbTesterRestart's
  * testEnlargedRecordSizeRefused (015-72), testCorruptStartupPosRefused,
@@ -67,8 +69,8 @@ import bergdb.stream.MemoryStream;
  * <pre>
  * Usage: java -ea -cp CLASSES bergdb.core.CorruptSet [-quick] OUT [SEED ...]
  *   -quick  the gate's set, about 60 copies: the refusal tests' cases and testFound019_32's
- *           copies only, the node tests' changes on the first and the last node that
- *           takes each
+ *           and testFound021_11's copies only, the node tests' changes on the first and the
+ *           last node that takes each
  *   SEED    the sample runs' seeds, 1 (testSample's) by default
  * Writes, for each original NAME, OUT/base/NAME/db (the stream as written), and for each
  * copy OUT/v/NAME/N/src, its damaged directory, with a and b, two copies of it for the two
@@ -133,6 +135,7 @@ public final class CorruptSet {
             set.quick = quick;
             set.cases();
             set.found019_32();
+            set.found021_11();
             if (!quick) {
                 for (long seed : seeds) {
                     set.sample(seed);
@@ -389,6 +392,45 @@ public final class CorruptSet {
                 System.out.println("the tester failed " + name + "/" + n + ": " + tester);
             }
             copy(name, n, c, tester);
+        }
+    }
+
+    /**
+     * testFound021_11's rows (bergdb 021-11, as Java's since release 2026.4), one copy each, as
+     * the test makes them: in LONG's original of seed 1 (keys of three segments, so that key
+     * nodes point to key nodes), a pointer that a start links by node id
+     * (NodeCollection.linkToCanonical) set to a version of a node of another type, its node's
+     * checksum made right. A row: the record, the node's offset in it, the pointer's byte in
+     * the node, the position it is set to. Each refused at the start, the third by the check
+     * of 005-57, which Java's Dump runs under -ea and C's bergdb-dump with -check.
+     */
+    private void found021_11() throws IOException {
+        long[][] rows = {
+            {32760, 880, 112, 35936},   // a key node's pointer 1 to the newest top node
+            {35904, 32, 40, 7080},      // a top node's skip pointer 0 to a key node
+            {32760, 880, 112, 27560},   // to an older top node version: 005-57's check (-ea)
+        };
+        CorruptStreamTester.Original o = CorruptStreamTester.write(CorruptStreamTester.LONG, 1);
+        String name = "found-" + CorruptStreamTester.LONG.name + "-1";
+        base(name, o.bytes);
+        int n = 0;
+        for (long[] row : rows) {
+            CorruptStreamTester.Record rec = o.recordAt(row[0]);
+            int[] node = null;
+            for (int[] x : rec.nodes) {
+                if (x[0] == row[1]) node = x;
+            }
+            byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
+            Bytes.longToBytesLE(row[3], nb, (int) row[2]);
+            CorruptStreamTester.Copy c = nodeCopy(o, "found", rec, node, nb,
+                    "its byte " + row[2] + " set to " + row[3]);
+            CorruptStreamTester.Outcome out = CorruptStreamTester.check(o, c);
+            String tester = out.failure == null ? out.kind : "FAILED: " + out.failure;
+            if (out.failure != null) {
+                testerFailures++;
+                System.out.println("the tester failed " + name + "/" + n + ": " + tester);
+            }
+            copy(name, n++, c, tester);
         }
     }
 

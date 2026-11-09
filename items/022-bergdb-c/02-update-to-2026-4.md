@@ -914,3 +914,21 @@ OK. Java's vectors written again by step 0's harness from the candidate:
 all thirteen files equal to the committed ones. No difference remains;
 the keys' change does not show in the cross runs, whose workloads' keys
 are well-formed (section 4.1).
+
+2026-11-09, step 2's corrupt-set bases (worker t2), on step 0 with 4b
+merged (`fd7f9e0`): `CorruptSet.java`'s `found021_11`, the three rows of
+`testFound021_11` on `LONG`'s original of seed 1, as the test makes them
+(base `found-long-1`, in `quick` too); `corruptset.sh` runs C's
+`bergdb-dump` with `-check`, the start's check by node id (005-57), which
+Java's `Dump` runs under `-ea`: without it the third copy, the pointer
+set to an older top node version, differs (Java refuses at the start, C
+starts and a read fails), as step 2's paragraph records from its scratch
+tree. `c/readme.md`, section 10, and `before-commit.sh`'s header say so.
+The gate against the candidate (`git:94a1520`), on step 1's landing
+(`b23d24e`): `C BEFORE COMMIT OK (468 s)`, F53 under a load of about 20
+to 26; `unit` 392 tests (391 in the release build); `cross quick` 0
+differences (23 workloads, 69 crash cuts, 85 corrupt variants, 2 in
+turns, 46 budget runs); `writecheck` 0; `corruptset` 60 copies, the three
+of `found-long-1` refused by both with the same exception and text;
+`allocfail` 628 runs; `examples` OK. Before, on `fd7f9e0`: `C BEFORE
+COMMIT OK (567 s)`. No difference remains.
