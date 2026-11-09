@@ -1010,6 +1010,54 @@ public class PubTesterIndexJobs {
         }
     }
 
+    /** An object with an indexed field and a large one (020-18, F3). */
+    public static class Blob {
+        public long n;
+        public byte[] data;
+
+        public Blob() {}
+
+        public Blob(long n, int size) {
+            this.n = n;
+            this.data = new byte[size];
+        }
+    }
+
+    /**
+     * 020-18, F3: a build step reads at most 25 values and stops after the value that takes
+     * it to IndexBuilderImp.STEP_BYTES of values. A step that has met writers three times
+     * runs under the index manager's lock, reads included, and every write at an object key,
+     * in any directory, waits for it: with 100 objects of 4 MB in a memory database and three
+     * writers of them, a step of 25 values took about 0.6 s, the lock was held up to 0.84 s,
+     * and a small put of another directory waited 0.83 to 1.25 s (0.13 s without the build).
+     * Ten objects of 300,000 bytes: three steps, of 4, 4 and 2 values, each of them an entry.
+     */
+    @Nano
+    public static void testBuildStepBoundedByBytes() {
+        Database db = start(new MemoryStream());
+        try {
+            Connection c = db.newConnection();
+            for (int k = 0; k < 10; k++) {
+                c.put("/blobs/b" + k, new Blob(k, 300000));
+            }
+            int[] steps = new int[1];
+            manager(db).testHook = p -> {
+                if (p.equals(IndexManager.BUILD_STEP)) {
+                    steps[0]++;
+                }
+            };
+            JobStatus status = db.indexBuilder("by-n").dir("/blobs/").type("long").field("n")
+                    .start().join(10000);
+            manager(db).testHook = null;
+            Assert.assertEquals(status.note(), JobStatus.State.ACTIVE, status.state());
+            Assert.assertEquals(10, status.count());
+            Assert.assertEquals("the build's steps", 3, steps[0]);
+            Assert.assertEquals(10, entries(db, "by-n"));
+        } finally {
+            db.close();
+        }
+    }
+
     // ======== The builder (020-10, section 3.1) ========
 
     /** S2-F20: dir() twice is refused at once; the builder needs dir() first. */

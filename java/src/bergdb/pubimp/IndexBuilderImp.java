@@ -32,6 +32,14 @@ class IndexBuilderImp implements IndexBuilder {
     /** The values a build step reads at most (020-10, section 6.1). */
     static final int STEP_VALUES = 25;
     
+    /**
+     * The bytes of values after which a build step stops: it ends after the value that takes
+     * it to this many (bergdb 020-18, F3). A step that has met writers three times reads under
+     * the index manager's lock, which every write at an object key takes; 25 values of 4 MB
+     * held it 0.8 s.
+     */
+    static final long STEP_BYTES = 1000000;
+    
     /** The refused tries of a build step before it runs under the manager's lock. */
     static final int LOCKED_AFTER = 3;
 
@@ -309,7 +317,8 @@ class IndexBuilderImp implements IndexBuilder {
      * Starts the build of a live index in state building, in a daemon thread of the lowest
      * priority, on its own connection, from the first key of its directory (020-10, section
      * 6.1). A step is an rw(): a getMany of at most STEP_VALUES values of the directory's own
-     * keys after the last key of the step before (its prefix idir and '-', so it stops at the
+     * keys, ending after the value that takes it to STEP_BYTES (bergdb 020-18, F3), after the
+     * last key of the step before (its prefix idir and '-', so it stops at the
      * directory's end: 015-30, S2-F16); the definition's key hash in its read set; if the index
      * was deleted, the build ends FAILED "deleted"; else each value's entry is put (a value
      * with no entry is counted and skipped; a key without an ikey is skipped, bergdb 021-06).
@@ -454,6 +463,7 @@ class IndexBuilderImp implements IndexBuilder {
             g.inclusive = false;
             g.stopCondition = new GetMany.StopCondition() {
                 private int n = 0;
+                private long bytes = 0;
 
                 public int handleKvt(Kvt kvt) {
                     if (!Keys.isPrefix(prefix, kvt.key)) {
@@ -461,7 +471,8 @@ class IndexBuilderImp implements IndexBuilder {
                         return GetMany.StopCondition.STOP;
                     }
                     n++;
-                    return n >= max ? GetMany.StopCondition.ADD_AND_STOP
+                    bytes += kvt.value == null ? 0 : kvt.value.length;
+                    return n >= max || bytes >= STEP_BYTES ? GetMany.StopCondition.ADD_AND_STOP
                             : GetMany.StopCondition.ADD;
                 }
 
@@ -488,7 +499,7 @@ class IndexBuilderImp implements IndexBuilder {
                     env.set(entry, new byte[0], null);
                 }
             }
-            ended = end[0] || g.result.size() < max;
+            ended = end[0];         // Not by the count: a step may stop at STEP_BYTES (F3)
         }
 
         private void activate() {
