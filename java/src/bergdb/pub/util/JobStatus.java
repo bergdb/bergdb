@@ -28,7 +28,10 @@ public interface JobStatus {
     /** The state. */
     public State state();
     
-    /** The values of the directory the build has read, in this process. */
+    /**
+     * The values of the directory the build has read, in this process: its progress, without
+     * a total (IndexBuilder.start(); bergdb 020-24-04, U4-3).
+     */
     public long count();
     
     /** If FAILED: why, in English, with the cause's class and message; else null. */

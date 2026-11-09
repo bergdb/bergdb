@@ -37,6 +37,11 @@ package bergdb.pub;
  * Database.stop(), an iterator throws IllegalDbStateException from hasNext() or next() at
  * its next read from the database (bergdb 020-24-03, U3-5).</p>
  *
+ * <p>An iterator holds nothing to release, and has no close(): no lock, no file, and no
+ * hold on reclaim, whose cuts may pass its lookup time as said above; in memory, only its
+ * current page, at most 100 entries, and the value it read last. So an iterator that is
+ * not read to its end may be dropped (bergdb 020-24-04, U4-5).</p>
+ *
  * @param <TYPE>  The type of the values returned, as for Connection.get(key, type).
  * @author Frans Lundberg
  */

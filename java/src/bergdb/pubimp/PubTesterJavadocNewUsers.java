@@ -99,6 +99,17 @@ public class PubTesterJavadocNewUsers {
         public char[] chars;
     }
 
+    /** U4-5: an indexed object. */
+    public static class Item {
+        public long price;
+
+        public Item() {}
+
+        public Item(long price) {
+            this.price = price;
+        }
+    }
+
     // ======== Tests ========
 
     /**
@@ -395,6 +406,62 @@ public class PubTesterJavadocNewUsers {
             sb.append(sb.length() == 0 ? "" : " ").append(doc.title).append('@')
                     .append(t.units());
             at = Time.units(t.units() - 1);
+        }
+    }
+
+    /**
+     * U4-5 (bergdb 020-24-04): an iterator of a scan holds nothing to release, and has no
+     * close(): many iterators of a primary scan and of an index scan, read in part and then
+     * dropped or kept, do not hold reclaim back. Reclaim cuts past their lookup time, and a
+     * kept one throws LookupTimeNotAvailableException when it reads again, before its end
+     * (UsePrimaryBuilder, UseIndexBuilder).
+     */
+    @Nano
+    public static void testDroppedIteratorsHoldNothing() {
+        TestClock clock = new TestClock();
+        Db db = Db.builder().testSetup(new CutStream()).clock(clock).maxNodeSize8()
+                .startupDistance(2000).build();
+        Database d = DatabaseImp.createAndStart(db);
+        try {
+            Connection c = d.connection();
+            long ms = Duration.seconds(0.001).units();
+            long time = Duration.seconds(1).units();
+            clock.setTime(Time.units(time));
+            d.indexBuilder("by-price").dir("/i/").type("long").field("price").start().join();
+            for (int i = 0; i < 150; i++) {
+                c.put("/i/" + (1000 + i), new Item(i));
+            }
+            d.setRetainDuration(Duration.seconds(1));
+            Time scanTime = c.currentTime();
+            List<Iterator<Kv<Item>>> kept = new ArrayList<>();
+            for (int i = 0; i < 400; i++) {
+                Iterator<Kv<Item>> it = i % 2 == 0
+                        ? c.usePrimary(Item.class).dir("/i/").kvs().iterator()
+                        : c.useIndex("by-price", Item.class).kvs().iterator();
+                Assert.assertEquals(1000L, Long.parseLong(it.next().key().substring(3)));
+                if (i < 2) {
+                    kept.add(it);       // Others are dropped.
+                }
+            }
+            int puts = 0;
+            while (d.getFirstAvailableLookupTime().units() <= scanTime.units()) {
+                Assert.assertTrue("no cut after " + puts + " puts", puts < 20000);
+                time += 10 * ms;
+                clock.setTime(Time.units(time));
+                c.put("/other/" + (puts % 50) + ".txt", "v" + puts);
+                puts++;
+            }
+            for (Iterator<Kv<Item>> it : kept) {
+                final Iterator<Kv<Item>> fit = it;
+                PubTesterJavadoc.assertThrows("kept", LookupTimeNotAvailableException.class,
+                        () -> {
+                            for (int i = 0; i < 149; i++) {
+                                fit.next();
+                            }
+                        });
+            }
+        } finally {
+            d.close();
         }
     }
 }

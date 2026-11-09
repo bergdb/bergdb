@@ -50,6 +50,11 @@ package bergdb.pub;
  * value read as a String that is not well-formed UTF-8 (bergdb 021-06); the iterator can
  * go on after it.</p>
  *
+ * <p>An iterator holds nothing to release, and has no close(): no lock, no file, and no
+ * hold on reclaim, whose cuts may pass its lookup time as said above; in memory, only its
+ * current page, at most 100 keys and their values. So an iterator that is not read to its
+ * end may be dropped, as when a page of a listing is read (bergdb 020-24-04, U4-5).</p>
+ *
  * @param <TYPE> The type of the values listed.
  * @author Frans Lundberg
  */

@@ -88,14 +88,30 @@ public interface DatabaseBuilder {
      * startup distance can improve the overall database performance.
      * For a low-end PC with 0.5 GB of RAM, a value of 5 is reasonable, while a
      * database of 10 million keys or more may use 200 to 1000 (bergdb 005-38). The
-     * default is 50: startup then takes about 0.6 s
-     * with 1000-byte values and 1.4 s with 100-byte values, on a fast SSD (measured
-     * 2026-10-13). Existing databases keep the startup distance stored in their
-     * stream; Database.setStartupDistanceInMb() changes it while the database runs, and
-     * the stream keeps the new value (bergdb 005-53). The value is clamped to 5 to 1000.
+     * default is 50: startup then took about 0.6 s with 100,000 keys of 1000-byte values
+     * and 1.4 s with 1 million keys of 100-byte values, written by single puts, with the
+     * stream in the operating system's file cache, on a fast SSD (measured 2026-10-13, before
+     * eviction; bergdb 011-04). A start's time grows with the transactions it reruns and the
+     * index nodes it reads, so with more keys: with 10 to 50 million keys of small values, a
+     * warm start takes about 62 to 104 ms a megabyte of its startup section, 3 to 5 s at 50
+     * (bergdb 006-19, 007-05); measure a start with your own data. Existing databases keep
+     * the startup distance stored in their stream; Database.setStartupDistanceInMb()
+     * changes it while the database runs, and the stream keeps the new value (bergdb
+     * 005-53). The value is clamped to 5 to 1000.
      * With a finite retain duration, the startup distance also paces reclaim: an iteration
      * begins after at least twice it of stream, so a larger distance cuts later and keeps
      * more on disk (Database.setRetainDuration(); bergdb 020-24-06, U6-2).
+     * 
+     * <p>The startup distance, not the cache budget (cacheSizeInMb()), sets the heap that a
+     * database needs. What the database must keep in memory, the index nodes changed since
+     * its startup position, which eviction never takes, is about 2 to 3 times the startup
+     * distance of heap (bergdb 006-19), and a start needs about twice the startup distance
+     * of heap above what the running database needs, whatever the budget (bergdb 019-45). A
+     * new user's catalogue of 2 million objects, 4.9 GB of stream, with a budget of 4 MB
+     * (bergdb 020-24-04, U4-2): at the default 50, the heap held 110 to 160 MB after a
+     * start; the start failed with an OutOfMemoryError in a heap of 256 MB and ran in 384 MB.
+     * At 5, it held 21 to 42 MB and ran in 96 MB. So for a small heap set a small startup
+     * distance; the budget comes on top of what must be kept.</p>
      * 
      * @param startupDistanceInMb    The startup distance in megabytes (mega = 1000000). 
      *                               Value should be between 5 and 1000.
@@ -116,6 +132,18 @@ public interface DatabaseBuilder {
      * clamped as a value given is (bergdb 020-25, C3), or 100 if the JVM has no maximum.
      * Database.setCacheSizeInMb() changes it while the database runs, for that run (bergdb
      * 005-52). The value is clamped to 4 to 100,000.
+     * 
+     * <p>A budget below what the database must keep slows it down, by design: the database
+     * is then over its budget all the time, each commit ends with a batch of eviction, and a
+     * read that loads an index node or a value from the stream waits for the eviction
+     * thread, at most 2 ms a load, whenever the loads outrun it; so while anything is
+     * written, reads go at the pace of eviction. What must be kept follows the startup
+     * distance, not the budget: about 2 to 3 times the startup distance of heap
+     * (startupDistanceInMb()). In a new user's catalogue of 2 million objects at the default
+     * startup distance, 50, the heap held 110 to 160 MB after a start with a budget of 4 MB,
+     * and gets were several times fewer than with a budget of 200 MB while a writer wrote
+     * (bergdb 020-24-04, U4-1 and U4-2). So give a budget well above what must be kept; for
+     * a small heap, make the startup distance small, not the budget.</p>
      * 
      * @param cacheSizeInMb  The cache size indicator in megabytes (mega = 1000000).
      */

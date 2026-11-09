@@ -343,7 +343,9 @@ public interface Database extends AutoCloseable {
      * writes do not wait, and the commit runs one batch at its end (bergdb 005-52); the
      * memory held may rise by what those reads load until then. What the database must keep
      * in memory (the nodes changed since its startup position) is never evicted and may
-     * exceed the budget. After an increase, the cache grows as data is read.</p>
+     * exceed the budget; a budget below it makes reads go at the pace of eviction while
+     * anything is written (DatabaseBuilder.cacheSizeInMb(); bergdb 020-24-04, U4-1). After an
+     * increase, the cache grows as data is read.</p>
      *
      * <p>The setting is for this run only: it changes no byte of the stream, so it is not
      * kept there, and a restart takes the builder's value, or its default, a fifth of the

@@ -126,6 +126,17 @@ public interface IndexBuilder {
      * database goes on; an index that was not deleted stays, and the next start builds it
      * again.</p>
      *
+     * <p>A build is paced, by design, so that the application's writers and readers go on
+     * (bergdb 020-10, section 6.1): it runs in steps, each a transaction that reads at most 25
+     * values of the directory, or about 1 MB of them, and writes their entries, and after
+     * each step it pauses for half the step's time, at most a second; so it takes about one
+     * and a half times the time of its steps. Its reads load values from the stream as other
+     * reads do, so a cache budget below what the database must keep slows it as it slows
+     * them (DatabaseBuilder.cacheSizeInMb(); bergdb 020-24-04, U4-3). The job's
+     * getStatus().count() gives the values that the build has read so far, a measure of its
+     * progress; no call gives the total to compare it with, which a listing of the
+     * directory (Connection.usePrimary()) counts.</p>
+     *
      * @throws IllegalStateException  If dir() was not called, no level was given, a level has
      *     no field, or start() was called before.
      * @throws IndexAlreadyExistsException  If an index of the name exists, building or active.

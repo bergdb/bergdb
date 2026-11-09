@@ -888,6 +888,23 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   cut, and every state from that time is readable and right.
   `Connection.get()`, `exists()` and `ReadInterface` list
   `LookupTimeNotAvailableException`, an `IllegalArgumentException`.
+* **Memory, the cache budget, an index's build and a scan's iterator**
+  (bergdb 020-24-04, U4-1 to U4-3, U4-5 and U4-6, from a new user's
+  catalogue of 2 million objects with a budget of 4 MB):
+  `DatabaseBuilder.cacheSizeInMb()` says that a budget below what the
+  database must keep (the nodes changed since its startup position, about 2
+  to 3 times the startup distance of heap) makes reads go at the pace of
+  eviction while anything is written, so that a useful budget is well above
+  it; `startupDistanceInMb()` says that the startup distance, not the
+  budget, sets the heap a database needs, with the catalogue's figures (at
+  the default 50 a start failed in 256 MB and ran in 384 MB; at 5 it ran in
+  96 MB), and the conditions of its startup times, which were measured with
+  100,000 and 1 million keys, with the larger figures of 006-19.
+  `IndexBuilder.start()` says that a build pauses after each step for half
+  its time, by design, and that `JobStatus.count()` gives its progress
+  without a total. `UsePrimaryBuilder` and `UseIndexBuilder` say that an
+  iterator holds nothing to release, so one not read to its end may be
+  dropped.
 * **Data Objects: the rules and conversions a new user met** (bergdb
   020-24-05, U5-3, U5-6 to U5-8, U5-10 and U5-11, from a new user's
   document store): the package's "Objects" says that a public final field,
