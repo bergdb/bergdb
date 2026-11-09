@@ -1262,3 +1262,20 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   background close: call `close()` there; `Database.stop()` describes the
   write buffer and the buffer time, 50 ms; `StartupInfo.getStartupDuration()`
   says that it is the recovery's time, and what `start()` does besides.
+
+
+### Known issues and limits
+
+* **Reclaim stops cutting a log keyed by time** (bergdb 021-25; found by a
+  new user of the C library, 022-06-3, U3-1 and U3-2). Under a workload
+  whose keys sort in the order of time, each transaction putting a new key
+  and deleting an old one (a FIFO, such as an audit log), with a retain
+  duration, reclaim cuts as expected at first and then falls behind until
+  it stops cutting, after some 200,000 transactions: the directory grows
+  beyond what the retention needs. With a startup distance of 2 MB, a
+  retain duration of 20 s and 1,024 live keys of 80 to 479 bytes, the last
+  cut came at about transaction 200,000; after 300,000 transactions the
+  first available time was 182 s back and the directory 135 MB, for
+  300 KB of live data. Now and then a transaction of one put and one
+  delete writes a record of 1 to 4 MB, growing with the run. No data is
+  lost and every read is right. The same in 2026.3.
