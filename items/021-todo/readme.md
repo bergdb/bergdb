@@ -64,6 +64,8 @@ Closed
 | [021-13](13-transaction-info-race.md) | Fix | transactionInfo() while another thread wrote could fail the database (2026.1 to 2026.3 too) | none | done | 2026-11-09 |
 | [021-14](14-buffered-read-overflow.md) | Fix | A read whose end overflows a long gave an array exception or stale bytes, not EOFException | none | done | 2026-11-09 |
 | [021-15](15-node-texts-not-deterministic.md) | Fix | Refusal texts of a start named nodes by identity hash, different in every run | none | done | 2026-11-09 |
+| [021-16](16-long-keys-overflow-the-stack.md) | Fix | A key of about 90 KB or more overflowed the stack: a start failed, a put failed the database | none | done | 2026-11-09 |
+| [021-17](17-transaction-info-after-reclaim.md) | Fix | transactionInfo() refused uncut transactions after reclaim had copied the value (2026.1 to 2026.3 too) | none | done | 2026-11-09 |
 | [021-09](09-udir-accepts-bad-dirs.md) | Fix | `PubKeys.udir2idir` accepts "p/" and "/p//" | none | done | 2026-11-08 |
 | [021-08](08-object-reader-nesting-depth.md) | Fix | The object reader has no limit on nesting depth | none | done | 2026-11-07 |
 | [021-07](07-object-reader-format-errors.md) | Fix | The object reader's format errors are not BadFormatException | none | done | 2026-11-07 |
