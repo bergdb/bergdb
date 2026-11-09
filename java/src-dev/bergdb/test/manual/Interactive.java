@@ -14,7 +14,6 @@ import bergdb.dag.Pointer;
 import bergdb.dag.PointerVisitor;
 import bergdb.nanotest.CommandLine;
 import bergdb.pub.Connection;
-import bergdb.pub.CryptoKey;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
 import bergdb.pub.WBuilder;
@@ -32,7 +31,6 @@ import bergdb.test.manual.CcDbTest.Stats;
  */
 public class Interactive {
     private String dirname;
-    private CryptoKey cryptoKey;
     private Database database;
     private Db db;
     private BufferedReader reader;
@@ -59,20 +57,14 @@ public class Interactive {
     private void printHelp() {
         System.out.println("Options:");
         System.out.println("  -dir <db-dir>");
-        System.out.println("  -encrypt <true-or-false>  // default is false");
         System.out.println("  -cacheSize <cache size indicator in MB> // default is 100 MB.");
     }
 
     private void handleOptions(CommandLine line) {
         dirname = "Interactive-db";
-        cryptoKey = CryptoKey.NULL;
         
         if (line.hasOne("dir")) {
             this.dirname = line.getOne("dir");
-        }
-        
-        if (line.hasOne("encrypt") && line.getOne("encrypt").equals("true")) {
-            cryptoKey = CryptoKey.parse("3925eedf-salsa-9624ae53f2484c7fa8db33141910222b94aa2224ef225bd092d4701d30aa35dbde13575d66982ff9");
         }
         
         if (line.hasOne("cacheSize")) {
@@ -86,7 +78,7 @@ public class Interactive {
 
     private void start() throws Exception {
         DatabaseBuilderImp imp = (DatabaseBuilderImp)
-                Factory.database().create(dirname).cryptoKey(cryptoKey)
+                Factory.database().create(dirname)
                 .startupDistanceInMb(startupDistance).cacheSizeInMb(cacheSize);
         
         database = imp.start();

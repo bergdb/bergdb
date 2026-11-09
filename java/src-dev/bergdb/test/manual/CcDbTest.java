@@ -7,7 +7,6 @@ import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
 import bergdb.nanotest.CommandLine;
 import bergdb.pub.Connection;
-import bergdb.pub.CryptoKey;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
 import bergdb.pub.WBuilder;
@@ -27,7 +26,6 @@ public class CcDbTest {
     int n = 100*1000;   // wanted number of cards
     String dir;
     CommandLine commandLine;
-    boolean encrypt = true;
     int[] permutation;
     boolean waitForEnter = false;
     
@@ -41,7 +39,6 @@ public class CcDbTest {
             b.append("Help for " + CcDbTest.class.getSimpleName() + ". Options:\n");
             b.append("-n  Number of cards to simulate (default = 100000)\n");
             b.append("-dir  Database data directory (default = CcDbTest).\n");
-            b.append("-noEncrypt  Don't encrypt database (encrypted by default).\n");
             b.append("-press  Pause till ENTER pressed while adding cards.\n");
             
             System.out.println(b.toString());
@@ -54,10 +51,6 @@ public class CcDbTest {
         
         if (commandLine.hasOne("dir")) {
             dir = commandLine.getOne("dir");
-        }
-        
-        if (commandLine.has("noEncrypt")) {
-            encrypt = false;
         }
         
         waitForEnter = commandLine.has("press");
@@ -91,15 +84,8 @@ public class CcDbTest {
             dir = "./" + CcDbTest.class.getSimpleName();
         }
         
-        CryptoKey key = CryptoKey.NULL;
-        if (encrypt) {
-            key = CryptoKey.parse(
-                    "7bcf4b7c-salsa-15fc30dde0914feb075a2c1f1fb95640da3e3d04da10fe9c349ad99a50deaab4aa803d057a0186cc");
-        }
-        
         database = Factory.database()
                 .create(dir)
-                .cryptoKey(key)
                 .startupDistanceInMb(5)
                 .start();
         

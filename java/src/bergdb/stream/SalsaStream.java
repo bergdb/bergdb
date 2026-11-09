@@ -13,6 +13,13 @@ import bergdb.nanotest.TestEnvironment;
  * A decorator for an AppendOnlyStream that adds Salsa20 encryption to 
  * the underlying stream.
  * 
+ * <p>Internal, not API: release 2026.4 has no encryption (bergdb 020-28). The class is kept,
+ * with its tests, for a later design (bergdb 017-10): the keystream depends only on the key,
+ * the nonce and the position in the stream, so two writes at one position with one key reuse
+ * it (020-24-07, U7-1), and nothing checks the integrity of the bytes (U7-3). Until 2026.3
+ * the Pub API's crypto key made one around the database's stream; since 2026.4 only
+ * DatabaseBuilderImp's internal cryptoKey(), for BergDB's tests, does.</p>
+ * 
  * @author Frans Lundberg
  */
 public class SalsaStream implements AppendOnlyStream {
@@ -35,6 +42,12 @@ public class SalsaStream implements AppendOnlyStream {
     static final int MAX_APPEND_BUFFER = 16*1024*1024;
     
     /**
+     * The key's line of created.txt (Db.writeCreatedTxt): its name and algorithm with the key
+     * data masked, as "3fa2c901-salsa-****" (bergdb 020-28).
+     */
+    private final String keyInfo;
+    
+    /**
      * Creates an instead by wrapping an underlying stream.
      * 
      * @param stream  The underlying stream to append encrypted data to.
@@ -43,6 +56,20 @@ public class SalsaStream implements AppendOnlyStream {
      * @throws IOException If 'stream' needs to be read and the read throws an IOException.
      */
     public SalsaStream(AppendOnlyStream stream, byte[] nonce, byte[] key) throws IOException {
+        this(stream, nonce, key, null);
+    }
+    
+    /**
+     * Creates an instance as SalsaStream(stream, nonce, key) does, with the key's line of
+     * created.txt (bergdb 020-28).
+     * 
+     * @param keyInfo  The key's name and algorithm with the key data masked, as
+     *      "3fa2c901-salsa-****", for created.txt; or null for "unnamed-salsa-****".
+     * @throws IOException If 'stream' needs to be read and the read throws an IOException.
+     */
+    public SalsaStream(AppendOnlyStream stream, byte[] nonce, byte[] key, String keyInfo) 
+            throws IOException {
+        this.keyInfo = keyInfo == null ? "unnamed-salsa-****" : keyInfo;
         if (stream == null) {
             throw new IllegalArgumentException("stream == null not allowed");
         }
@@ -82,6 +109,14 @@ public class SalsaStream implements AppendOnlyStream {
         decrypt = new Salsa(nonceCopy, keyCopy);
         
         synchronized (readLock) {}    // Could be needed, in theory.
+    }
+    
+    /**
+     * The key's line of created.txt: its name and algorithm with the key data masked (bergdb
+     * 020-28).
+     */
+    public String getKeyInfo() {
+        return keyInfo;
     }
     
     public AppendOnlyStream getUnderlyingStream() {

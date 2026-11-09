@@ -1,4 +1,4 @@
-package bergdb.pub;
+package bergdb.pubimp;
 
 import java.security.SecureRandom;
 
@@ -9,24 +9,24 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * A key for the encryption of a database's stream, with its algorithm and its name: give it
- * to DatabaseBuilder.cryptoKey() for an encrypted database. The package's
- * {@linkplain bergdb.pub##encryption Encryption} says what is encrypted and what is not, and
- * the limits of the encryption: a new key for every database, never one for two; a lost key
- * loses the database, and the key cannot be changed; the data is kept secret, not unchanged.
+ * A key for the encryption of a database's stream, with its algorithm and its name. Internal,
+ * not API: release 2026.4 has no encryption (bergdb 020-28). Until 2026.3 this class was
+ * bergdb.pub.CryptoKey, given to DatabaseBuilder.cryptoKey(); since 2026.4 only
+ * DatabaseBuilderImp's internal cryptoKey(), for BergDB's tests, takes it. It is kept, with
+ * SalsaStream, for a later design of the encryption (bergdb 017-10), which must end the
+ * keystream reuse and add integrity (020-24-07, U7-1 and U7-3).
  *
  * <p>A key has a name, the algorithm, "salsa" (Salsa20), and its key data, 40 bytes: an
  * 8-byte nonce and a 32-byte (256-bit) key, both random from generate(). The keystream
  * depends only on the key data and the position in the stream. serialize() gives the key as
- * a string that parse() takes back: keep it apart from the database's files, as a secret.
- * toString() masks the key data. The name, 8 hex digits from generate(), is for people, as
- * in the database's created.txt: the key data alone opens a database, under any name.
- * equals() compares the names too, so two keys that open one database need not be
- * equal.</p>
+ * a string that parse() takes back. toString() masks the key data. The name, 8 hex digits
+ * from generate(), is for people, as in the database's created.txt: the key data alone opens
+ * a database, under any name. equals() compares the names too, so two keys that open one
+ * database need not be equal.</p>
  * 
  * @author Frans Lundberg
  */
-public class CryptoKey {
+class CryptoKey {
     //
     // Strings are used to serialize and parse crypto keys.
     // Some consider this less secure than using char[]. However, clean
@@ -329,5 +329,51 @@ public class CryptoKey {
     @Nano private static void testNull2() {
         CryptoKey key = CryptoKey.parse("7bcf4b7c-salsa-15fc30dde0914feb075a2c1f1fb95640da3e3d04da10fe9c349ad99a50deaab4aa803d057a0186cc");
         Assert.assertFalse(key.isNull());
+    }
+    
+    /**
+     * generate() gives a 'salsa' key of 40 bytes (a nonce of 8 and a key of 32), a name of 8
+     * hex digits; serialize() and parse() round-trip, toString() masks the key data, NULL
+     * round-trips; parse() refuses a string not in serialize()'s format with FormatException,
+     * and null with IllegalArgumentException. Until 2026.3 a test of the Pub API's Javadoc
+     * (PubTesterJavadocRest); internal since 2026.4 (bergdb 020-28).
+     */
+    @Nano private static void testCryptoKeyRules() {
+        CryptoKey key = CryptoKey.generate();
+        Assert.assertEquals("salsa", key.getAlgo());
+        Assert.assertEquals(40, key.getKeyData().length);
+        String s = key.serialize();
+        String[] parts = s.split("-");
+        Assert.assertEquals(3, parts.length);
+        Assert.assertEquals(8, parts[0].length());
+        Assert.assertEquals("salsa", parts[1]);
+        String hex = parts[2];
+        Assert.assertEquals(80, hex.length());
+        CryptoKey parsed = CryptoKey.parse(s);
+        Assert.assertEquals(key, parsed);
+        Assert.assertEquals(key.hashCode(), parsed.hashCode());
+        Assert.assertArrayEquals(key.getKeyData(), parsed.getKeyData());
+        Assert.assertEquals(parts[0] + "-salsa-****", key.toString());
+        Assert.assertFalse(key.toString().contains(hex));
+        Assert.assertFalse(key.equals(CryptoKey.generate()));
+        
+        Assert.assertTrue(CryptoKey.NULL.isNull());
+        Assert.assertEquals(0, CryptoKey.NULL.getKeyData().length);
+        Assert.assertTrue(CryptoKey.parse(CryptoKey.NULL.serialize()) == CryptoKey.NULL);
+        
+        String[] bad = {"", "a", "a-salsa", "-salsa-" + hex, "a--" + hex, "a-salsa-x" + hex,
+                "a-salsa-" + hex.substring(2), "a-salsa-" + hex + "00", s + "-x", s + "-",
+                s + "--", "a-salsa-" + hex + "-" + hex};
+        for (String b : bad) {
+            try {
+                CryptoKey.parse(b);
+                throw new AssertionError("not refused: '" + b + "'");
+            } catch (FormatException e) {
+                // Expected.
+            }
+        }
+        Assert.assertEquals(CryptoKey.parse(s),
+                CryptoKey.parse(parts[0] + "-salsa-" + hex.toUpperCase(java.util.Locale.US)));
+        Assert.assertNull(CryptoKey.NULL.getAlgo());
     }
 }

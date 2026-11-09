@@ -1,7 +1,6 @@
 package bergdb.pubimp;
 
 import bergdb.nanotest.IPack;
-import bergdb.pub.CryptoKey;
 import bergdb.pub.DbArray;
 import bergdb.pub.DbBoolean;
 import bergdb.pub.DbByteArray;

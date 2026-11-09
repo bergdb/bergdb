@@ -10,12 +10,12 @@ import bergdb.core.Db;
 import bergdb.core.DbBuilder;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
-import bergdb.pub.CryptoKey;
 import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.DatabaseMissingException;
 import bergdb.storage.StreamIoException;
+import bergdb.storage.VersioningStreamException;
 import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.FileStream;
 import bergdb.stream.MemoryStream;
@@ -94,10 +94,13 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     /**
-     * CryptoKey.NULL removes a key given before (bergdb 015-44); until 015-44 it was
-     * ignored, and the database was encrypted with the earlier key.
+     * Sets the crypto key: start() encrypts the stream with it (SalsaStream). Internal, for
+     * BergDB's tests, and package-private: release 2026.4 has no encryption in its API (bergdb
+     * 020-28); until 2026.3 this was DatabaseBuilder.cryptoKey(). It is kept for a later
+     * design (bergdb 017-10). CryptoKey.NULL removes a key given before (bergdb 015-44);
+     * until 015-44 it was ignored, and the database was encrypted with the earlier key.
      */
-    public DatabaseBuilder cryptoKey(CryptoKey cryptoKey) {
+    DatabaseBuilderImp cryptoKey(CryptoKey cryptoKey) {
         if (cryptoKey == null) {
             throw new IllegalArgumentException("cryptoKey == null not allowed, "
                     + "use CryptoKey.NULL for no encryption");
@@ -226,6 +229,9 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         checkCryptoKey();
         if (dir != null) {
             refuseMissingStream(dir);
+            if (cryptoKey == null) {
+                refuseEncrypted(dir);
+            }
             if (mustExist) {
                 refuseNoDatabase(dir);
             }
@@ -352,6 +358,66 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     /**
+     * Refuses a directory whose database an earlier release encrypted (2026-11-09, bergdb
+     * 020-28): release 2026.4 has no encryption in its API, and such a stream does not read
+     * without its key. Its created.txt names the key, its data masked, on the line "crypto
+     * key:", as every release with encryption wrote it, at the creation and at a start that
+     * found the file missing; a database without encryption has "none (not encrypted)" there.
+     * Before the directory is opened, so that the start opens, creates and writes nothing;
+     * it only reads created.txt, so the lock is not needed. A directory without created.txt,
+     * or without that line, is not refused here: a stream that an earlier release encrypted
+     * is then refused by its magic bytes (Db.startInner), with a StreamFormatException whose
+     * message names this case among others. Not called with the internal crypto key
+     * (cryptoKey()), which starts such a database.
+     *
+     * @throws VersioningStreamException
+     * @throws StreamIoException  if created.txt cannot be read
+     */
+    private static void refuseEncrypted(File dir) {
+        String keyInfo = createdTxtKeyInfo(dir);
+        if (keyInfo == null || keyInfo.isEmpty() || keyInfo.startsWith("none")) {
+            return;
+        }
+        throw new VersioningStreamException("The database in " + dir + " is encrypted: its "
+                + "created.txt names the crypto key " + keyInfo + ". An earlier release of "
+                + "BergDB, 2026.3 or before, encrypted it, and this release cannot start it: "
+                + "release 2026.4 has no encryption. The start has opened, created and written "
+                + "nothing. To use the data with 2026.4, start the database with the earlier "
+                + "release and its key, and copy the data to a new database created with that "
+                + "release without a key, which 2026.4 starts; the history is not copied "
+                + "(bergdb 020-28; the release notes of 2026.4).");
+    }
+    
+    /**
+     * The value of created.txt's line "crypto key:" in 'dir', trimmed, such as "none (not
+     * encrypted)" or "3fa2c901-salsa-****"; null if the directory has no created.txt, or the
+     * file has no such line (bergdb 020-28). The file is read as ISO-8859-1, so that any bytes
+     * read: the line is ASCII.
+     *
+     * @throws StreamIoException  if created.txt cannot be read
+     */
+    static String createdTxtKeyInfo(File dir) {
+        File createdTxt = new File(dir, "created.txt");
+        if (!createdTxt.isFile()) {
+            return null;
+        }
+        byte[] bytes;
+        try {
+            bytes = java.nio.file.Files.readAllBytes(createdTxt.toPath());
+        } catch (IOException e) {
+            throw new StreamIoException(e);
+        }
+        String text = new String(bytes, java.nio.charset.StandardCharsets.ISO_8859_1);
+        final String label = "crypto key:";
+        for (String line : text.split("\\r?\\n")) {
+            if (line.startsWith(label)) {
+                return line.substring(label.length()).trim();
+            }
+        }
+        return null;
+    }
+    
+    /**
      * For open(), which never creates a database (2026-11-05, bergdb 015-05): refuses a
      * directory that is missing, is not a directory, or holds no *.bergdb file with a byte
      * (FileStream.hasStreamBytes); after refuseMissingStream, whose message tells more of a
@@ -425,7 +491,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         if (this.cryptoKey == null) {
             if (aos instanceof FileStream) {
                 FileStream fileStream = (FileStream) aos;
-                dbBuilder.createdTxt(fileStream.getDir(), null);
+                dbBuilder.createdTxt(fileStream.getDir());
             }
         } else {
             byte[] keyData = cryptoKey.getKeyData();     // checked by checkCryptoKey()
@@ -435,14 +501,14 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
             try {
                 byte[] nonce = Util.subarray(keyData, 0, 8);
                 byte[] key = Util.subarray(keyData, 8, 32);
-                salsa = new SalsaStream(aos, nonce, key);
+                salsa = new SalsaStream(aos, nonce, key, cryptoKey.toStringWithMaskedKey());
             } catch (IOException e) {
                 throw new StreamIoException(e);
             }
             
             if (aos instanceof FileStream) {
                 FileStream fileStream = (FileStream) aos;
-                dbBuilder.createdTxt(fileStream.getDir(), cryptoKey.toStringWithMaskedKey());
+                dbBuilder.createdTxt(fileStream.getDir());
             }
             
             dbBuilder.mainStream(salsa);

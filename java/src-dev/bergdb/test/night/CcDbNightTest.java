@@ -9,7 +9,6 @@ import bergdb.common.StringUtil;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
-import bergdb.pub.CryptoKey;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
 import bergdb.pub.WBuilder;
@@ -31,7 +30,6 @@ public class CcDbNightTest {
     Connection c;
     int n;   // wanted number of cards
     String dir;
-    boolean encrypt = true;
     int[] permutation;
     PrintStream out;
     //Cache2.Evictor evictor;
@@ -80,15 +78,8 @@ public class CcDbNightTest {
             dir = "./" + CcDbNightTest.class.getSimpleName();
         }
         
-        CryptoKey key = CryptoKey.NULL;
-        if (encrypt) {
-            key = CryptoKey.parse(
-                    "7bcf4b7c-salsa-15fc30dde0914feb075a2c1f1fb95640da3e3d04da10fe9c349ad99a50deaab4aa803d057a0186cc");
-        }
-        
         database = Factory.database()
                 .create(dir)
-                .cryptoKey(key)
                 .startupDistanceInMb(5)
                 .cacheSizeInMb(cacheSizeInMb)
                 .start();
@@ -206,7 +197,6 @@ public class CcDbNightTest {
         t.dir = tempDir.getAbsolutePath();
         t.n = 400*1000;
         t.cacheSizeInMb = 100;
-        t.encrypt = false;
         t.out = env.out();
         t.go();
     }
@@ -219,7 +209,6 @@ public class CcDbNightTest {
         t.dir = tempDir.getAbsolutePath();
         t.n = 1*1000000;
         t.cacheSizeInMb = 100;
-        t.encrypt = false;
         t.out = env.out();
         t.go();
     }
@@ -233,7 +222,6 @@ public class CcDbNightTest {
         t.dir = tempDir.getAbsolutePath();
         t.n = 1*1000000;
         t.cacheSizeInMb = 400;     // note
-        t.encrypt = false;
         t.out = env.out();
         t.go();
     }
@@ -246,7 +234,6 @@ public class CcDbNightTest {
         t.dir = tempDir.getAbsolutePath();
         t.n = 100 * 1000;
         t.cacheSizeInMb = 10;
-        t.encrypt = false;
         t.out = env.out();
         t.go();
     }

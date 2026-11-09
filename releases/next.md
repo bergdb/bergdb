@@ -47,6 +47,42 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
 
 ### Pub API
 
+* **Encryption is removed from the API** (bergdb 020-28; Frans,
+  2026-11-09, 16:12). `DatabaseBuilder.cryptoKey()`, `bergdb.pub.CryptoKey`
+  and `bergdb.pub.util.BadCryptoKey` are gone. A new user's password vault
+  (020-24-07) found that the encryption of 2026.3 and before was not safe:
+  its keystream depended only on the key and the position in the stream,
+  so two databases with one key, a copy of a database written on beside
+  it, and a database written on after a crash of the operating system or
+  a power loss cut its tail reused keystream, and one who saw both
+  versions of the files learned the data (U7-1); and it had no integrity:
+  one who knew a part of the data could change a value, with a checksum
+  that matched, and the database read it without an error (U7-3). A safe
+  design changes the stream's format; it is item 017-10, for a later
+  release. Instead: to keep the data secret on disk, use full-disk
+  encryption (FileVault on macOS, LUKS on Linux, BitLocker on Windows), or
+  encrypt the values in the application before it puts them. A database
+  that an earlier release encrypted is refused, and the start writes
+  nothing: with its `created.txt`, which names the key, `start()` throws a
+  `VersioningStreamException` that says so; without it, a
+  `StreamFormatException`, "Invalid magic bytes in stream: the stream is
+  not a BergDB stream, or it is damaged; or an earlier release of BergDB,
+  2026.3 or before, encrypted it, and this release cannot read it: it has
+  no encryption". To move such a database to 2026.4, export it with 2026.3
+  first: start it with 2026.3 and its key, copy its data to a new database
+  that 2026.3 creates without a key, and start that one with 2026.4; the
+  history is not copied. A start refused for the magic bytes, of a stream
+  that is not a BergDB stream or is damaged where the start reads first,
+  throws that `StreamFormatException` where it threw `BadCryptoKey`. The
+  stream's format is unchanged, and `created.txt` keeps its line "crypto
+  key: none (not encrypted)". The encryption's code, `SalsaStream` and the
+  key, stays inside BergDB with its tests, not API, for that later design,
+  with the fixes made to it for 2026.4 before the removal: `getKeyData()`
+  gives a copy (020-20, N1), `NULL` round-trips and `parse()` takes exactly
+  three parts (020-21, 020-25, C1), one write and one force per flush in
+  place of up to 50 (020-24-07, U7-2), a builder of `memory()` restarts on
+  its closed stream (U7-5), and the message with the right key on a
+  damaged stream (U7-7).
 * **`Time.utc` and `Time.resolve` refuse a null with
   `IllegalArgumentException`** (bergdb 021-01; 2026-11-07). `Time.utc(null)`
   and `Time.resolve(zone, null)` threw a `NullPointerException`, and
@@ -329,12 +365,6 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `NullPointerException` for one without it. The cause is the
   `IOException`. The Core's `FileStream` throws that `IOException` from its
   constructor, where it threw the `NullPointerException`.
-* **`CryptoKey.getKeyData()` returns a copy** (bergdb 020-20, N1; Frans,
-  2026-11-09): it returned the key's own array, so a caller that changed
-  the array changed the key: its `serialize()`, `equals()` and the key
-  data that a start with it reads. Now a change of the array leaves the
-  key as it was, as `DbByteArray.getByteArray()` and `DbObject.getBytes()`
-  give copies since 020-10's step B3.
 * **An `rw()` reads one state, also after a get whose conversion threw**
   (bergdb 020-13, bug 1; 2026-11-09): an action that caught the exception of
   its first get's conversion, such as the `DataFormatException` of a `String`
@@ -403,8 +433,7 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `Connection.w()` for each transaction.
 * **`Database.setRetainDuration(null)` throws `IllegalArgumentException`**
   (bergdb 020-21, 3; Frans, 2026-11-09, 020-13), as every null argument of
-  the API does; it threw a `NullPointerException`. So does
-  `CryptoKey.parse(null)`.
+  the API does; it threw a `NullPointerException`.
 * **`Connection.useIndex(name, String.class)` is refused at the call**
   (bergdb 020-21, 3; 020-13) with `IllegalArgumentException`, whatever the
   data and whether the index exists: an index's values are objects, which a
@@ -418,14 +447,6 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   gave a duration of 0, as `Math.round(NaN)` is 0. The API's other methods
   that take a double are values (`DbDouble`, which keeps one NaN) or index
   bounds (`UseIndexBuilder`, which refuse NaN already).
-* **`CryptoKey.NULL` round-trips through `serialize()` and `parse()`**
-  (bergdb 020-21, 3; 020-19): `parse()` refused NULL's string,
-  "null-null-", with a `FormatException`; it now gives `CryptoKey.NULL`.
-* **`CryptoKey.parse()` refuses a string with more than three parts**
-  (bergdb 020-25, C1) with `FormatException`, as its Javadoc promised for a
-  string not in `serialize()`'s format: the parts after the key data, also
-  an empty one after a trailing `-`, were ignored, and the string gave the
-  key. The key data's hex digits are still taken in either case.
 * **`Time.add(null)` and `Time.isBetween()` with a null throw
   `IllegalArgumentException`** (bergdb 020-25, C2), as every null argument
   of the API does (020-21, 3); they threw a `NullPointerException`.
@@ -537,26 +558,6 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `create()` of a path that is a regular file says "Directory P could not
   be opened: it exists and is not a directory." where it said "Not a
   directory" without the path (U8-11). Found by a new-user application.
-* **A builder of `memory()` with a crypto key starts again on its closed
-  stream** (bergdb 020-24-07, U7-5; 2026-11-09). Each `start()` wrapped the
-  builder's stream in another layer of encryption, around the one of the
-  start before, a refused start's too: a start again on the closed stream
-  of `memory()` with the right key was refused with `BadCryptoKey`, every
-  other time, as two layers of one keystream cancel; and after a start
-  with a key on a stream without encryption, refused, a start without a key
-  was refused too. Now each start encrypts the stream of `memory()` once,
-  and a refused start leaves nothing behind. A directory's start was
-  right. In 2026.1 to 2026.3; found by a new-user application.
-* **Writes with a crypto key are as fast as without one** (bergdb
-  020-24-07, U7-2; 2026-11-09). The encryption (`SalsaStream`) passed each
-  write of the database's buffer, up to 5 MB, to the files in parts of
-  100 kB, and the files force each write to the device: up to 50 forces in
-  place of one. 100,000 puts of 1 kB and a sync took 9.8 to 11.0 s with a
-  key and 1.6 to 2.5 s without one, on a laptop with a fast SSD under load;
-  now 1.3 s with a key and 1.2 to 1.5 s without. Now one write and one
-  force, as without a key; the encryption holds a buffer of the longest
-  write, at most 5 MB by default. The bytes written are unchanged. In
-  2026.1 to 2026.3; found by a new-user application.
 * **An rw() action may use its environment from several threads**
   (bergdb 021-21, U11-1 and U11-3; 2026-11-09). An action that read or
   wrote through its `RwEnvironment` from several threads, with a parallel
@@ -605,6 +606,15 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
 
 ### Core API
 
+* **`DbBuilder.createdTxt(File)` takes no crypto key** (bergdb 020-28;
+  2026-11-09): `createdTxt(File dir, String cryptoKeyInfo)` is now
+  `createdTxt(File dir)`, as release 2026.4 has no encryption in its API;
+  `created.txt`'s line "crypto key:" says "none (not encrypted)" (or, for
+  the internal `SalsaStream`, its key's name). A start whose stream's magic
+  bytes are wrong throws a `StreamFormatException`, with the
+  `BadMagicBytes` as its cause, where it threw the Pub API's
+  `BadCryptoKey`; its message names, among the causes, a stream that an
+  earlier release encrypted.
 * **The Core's String puts refuse a lone surrogate** (bergdb 021-05;
   2026-11-07) with `IllegalArgumentException`, as the Pub API does:
   `Trans.Builder.put(String, String)`, in its key and its value, and
@@ -846,42 +856,10 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   do with data that is not text (a `byte[]`, or a `char[]` in an object);
   the overview, `Connection`, `WBuilder.put` and `RwEnvironment.put` link
   to it, and the Core's `key-encoding.md` states it for keys.
-* **Encryption: what it does, its limits, and its cost** (bergdb 020-24-07,
-  U7-1, U7-3, U7-4, U7-6 and U7-8; 2026-11-09, from a new user's password
-  vault): the package `bergdb.pub` has a section "Encryption", and
-  `DatabaseBuilder.cryptoKey()` and `CryptoKey` say it in short. What is
-  encrypted (every byte of the stream's files) and what is not
-  (`created.txt`, with the key's name and its data masked; what the files
-  show by their sizes and times, so the length of a value written alone);
-  the data in memory is not. A limit of 2026.4: the keystream depends only
-  on the key and the stream position, so two databases with one key, a
-  copy of a database and the database both written on after the copy, or
-  a database written on after a crash of the OS or a power loss cut its
-  tail, reuse keystream, and one who sees both versions of the files
-  learns plaintext. The encryption keeps the data secret, not unchanged:
-  no integrity check, so one who knows a part of the plaintext can change
-  it, with a checksum that matches, and the database reads it without an
-  error; nor is a cut tail or an older copy noticed. A key belongs to one
-  database and cannot be changed; a lost key loses the database; the
-  key's name is for people. The cost, about 2.5 ns per byte written or
-  read from the files. `CryptoKey.parse()` says what it takes: the string
-  as it is, so a trailing newline is refused and a leading space is taken
-  into the name (unchanged). `getKeyData()` lost its dated note.
-* **The message of `BadCryptoKey` with a key names a damaged stream**
-  (bergdb 020-24-07, U7-7; 2026-11-09): with the right key, a stream
-  damaged where the start reads it first gave "Likely, the wrong crypto
-  key was used.", and a user took the key for wrong or lost. Now "Invalid
-  magic bytes in stream, read with the crypto key given: likely, the wrong
-  crypto key was used, or the database is not encrypted; else the stream
-  is damaged, or it is not a BergDB stream." `BadCryptoKey` and
-  `DatabaseBuilder.start()` say where the start reads first: the magic
-  bytes of the last meta block, one at every 200,000 bytes of the stream,
-  so the first bytes only in a database of less than 200 kB; they said
-  "damaged at its beginning", and only without a key.
 * **The Pub API's Javadoc says what is, not how it was** (bergdb 021-01;
   2026-11-07). The sentences on how a method or an exception behaved before
   a change, and their dates, are gone from `Database`, `DatabaseBuilder`,
-  `CryptoKey`, `DbException`, `DbFailedException`, `DatabaseMissingException`,
+  `DbException`, `DbFailedException`, `DatabaseMissingException`,
   `DatabaseNotCreatedException` and `SyncLevel`; the release notes keep the
   history. `DataFormatException` says where it is thrown: the objects, the
   user indexes and String values. `Time.utc` and both `Time.resolve` document

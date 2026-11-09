@@ -195,8 +195,6 @@ indexes, and what happens on errors.</li>
 <li>{@link IndexBuilder} and {@link UseIndexBuilder}: define a user index, and scan it.</li>
 <li>{@link UsePrimaryBuilder}: list the keys of a directory.</li>
 <li>{@link Time}: a time of the database's clock.</li>
-<li>{@link CryptoKey} and DatabaseBuilder.cryptoKey(): an encrypted database; read
-<a href="#encryption">Encryption</a> below first.</li>
 <li>The rules below: <a href="#api">The API and its jar</a>, <a href="#strings">Strings</a>,
 <a href="#objects">Objects</a>, <a href="#null">Null and absent fields</a>,
 <a href="#encryption">Encryption</a>.</li>
@@ -350,80 +348,15 @@ stores a placeholder.</p>
 
 <h3 id="encryption">Encryption</h3>
 
-<p>A database can be encrypted: {@link DatabaseBuilder#cryptoKey(CryptoKey)} gives start() a
-key, and start() creates a new database encrypted with it, or opens one that was created with
-it.</p>
-
-<pre>
-CryptoKey key = CryptoKey.generate();       // once, for this database alone
-String secret = key.serialize();            // kept apart from the database's files
-DatabaseBuilder b = Factory.database().create("vault").cryptoKey(CryptoKey.parse(secret));
-try (Database db = b.start()) {
-    db.connection().put("/a.txt", "read only with the key");
-}
-</pre>
-
-<p><b>What is encrypted.</b> Every byte of the database's stream, its files *.bergdb, from the
-first, with Salsa20 and the key's 256-bit key. Not encrypted: the file created.txt, which
-names the key with its key data masked, such as "crypto key: 3fa2c901-salsa-****", useful
-when there are many keys; the file bergdb.lock; and what the files show by their names,
-sizes and times: how much was written, and when. So one who watches the files can tell the
-size of a transaction written alone, and with it the length of a value, such as a
-password's. In memory the data is not encrypted: the database's cache and its write buffer
-hold it in the clear. A database of memory() takes a key too: its stream in memory is
-encrypted, which is of use to test an application with its key.</p>
-
-<p><b>One key, one database.</b> The keystream, which the stream's bytes are XORed with,
-depends only on the key and the position in the stream: BergDB 2026.4 keeps no nonce of its
-own per database or per write. Two different writes at one position with one key are
-encrypted with the same keystream, and one who sees both encrypted versions learns the XOR
-of their plaintexts, and from bytes known or guessed in one (BergDB's own records have many)
-the bytes of the other. That happens in three cases:</p>
-<ul>
-<li>Two databases with one key. Generate a new key for every database, and never use a key
-for a second one.</li>
-<li>A copy of a database, such as a backup, and the database both written on after the copy:
-from the copy's end on, both use the same keystream for other data. Write on one of them
-only: restore a backup only in place of the database, and keep no copy that was written on
-beside it where others can see both.</li>
-<li>A crash of the operating system, or a power loss, that cut the tail of the stream that was
-not yet durable: the database's writes after the start use the keystream of the bytes lost.
-One who saw the files before the crash (a snapshot, a backup taken then, a synced folder that
-keeps versions) and after it sees the XOR of the lost transactions and the new ones. A crash
-of the process alone loses no byte written, and no position is written twice.</li>
-</ul>
-<p>This is a limit of BergDB 2026.4's encryption. It keeps the data secret while no position
-of the stream is written twice, which the three cases avoid: then the files of the database,
-seen at one time or as they grow, show only how much was written. Where the cases cannot be
-avoided, encrypt the storage below as well, such as with an encrypted disk.</p>
-
-<p><b>Secret, not unchanged.</b> The encryption gives confidentiality only, not integrity:
-nothing in the stream proves that the key's owner wrote it. A change of an encrypted byte
-changes the same bits of the plaintext. The nodes' checksums have no key: they catch most
-changes made blindly, as damage, and the database then fails or its start is refused
-({@link Database}, "Errors"); but one who knows the plaintext of a part of the files, as in
-the cases above, can put bytes of his choice there with a checksum that matches, and the
-database reads them without an error. Nor does a start notice a cut of the files' tail, or
-an older copy of them in their place: the database starts as after a crash, at the earlier
-state. Keep the files where others cannot change them, or check them by other means, such as
-a copy signed by the application.</p>
-
-<p><b>The key.</b> A key belongs to one database, from its creation on, and cannot be changed:
-a database cannot be encrypted later, with another key or at all, nor decrypted; only its data
-can be copied by the application to a new database, without its history. A lost key loses the
-database: BergDB keeps no copy of it, and nothing else decrypts the files. Keep the key apart
-from the files and from their backups, and as safe as the data, as a string of
-CryptoKey.serialize(), which CryptoKey.parse() takes back. A start with another key, or
-without one, is refused with {@link bergdb.pub.util.BadCryptoKey} and writes nothing. The key's
-name is for people, as in created.txt: the key data alone opens the database, under any
-name.</p>
-
-<p><b>The cost.</b> Salsa20 in BergDB encrypts and decrypts about 400 MB per second on a laptop
-with a fast SSD (2026-11-09): about 2.5 ns for each byte written to the files or read from
-them; a read that the cache answers costs nothing more. On that laptop, 100,000 puts of 1 kB
-values and a sync took 1.3 s with a key and 1.2 to 1.5 s without one; a restart with a 4 MB
-cache and a scan of the values 2.1 to 2.3 s, against 1.7 to 2.2 s without a key (bergdb
-020-24-07, U7-2).</p>
+<p>Release 2026.4 has no encryption. The releases up to 2026.3 could encrypt a database's
+stream with a crypto key (DatabaseBuilder.cryptoKey()), and that encryption is removed: it
+gave every write at one position of the stream the same keystream, in two databases with one
+key, in a copy written on beside the database, and after a crash cut the stream's tail, so one
+who saw both versions of the files could learn the data; and it did not keep the data from
+being changed (bergdb 020-24-07). To keep the data secret on disk, use full-disk encryption,
+such as FileVault on macOS, LUKS on Linux or BitLocker on Windows, or encrypt the values in
+the application before it puts them. start() refuses a database that an earlier release
+encrypted, and writes nothing; the release notes of 2026.4 say how to move its data.</p>
 
 <h3 id="dependencies">The package's dependencies</h3>
 

@@ -546,9 +546,8 @@ Limits:
 * No read waits for the stream's writer since 2026-10-27 (005-46): a read
   takes no lock (positional reads on a channel of the file's own, the list
   of files replaced, never changed), a new file is made outside the
-  stream's monitor, and a cut's files are deleted by a thread of their own;
-  an encrypted database's reads no longer wait for each other. Before, a
-  read of the last file waited for the writer's append and its force,
+  stream's monitor, and a cut's files are deleted by a thread of their own.
+  Before, a read of the last file waited for the writer's append and its force,
   seconds on a slow disk, and every read for a new file's forces and a
   cut's deletes, up to 171 ms in P4's soak (009-04, section 7.3). On s1,
   under ZGC, the longest gets were the forces; since, a force of 2,500 ms

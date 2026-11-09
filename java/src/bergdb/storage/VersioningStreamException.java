@@ -12,6 +12,10 @@ package bergdb.storage;
  * as BadMagicBytes is, so that the code that handles a stream it cannot read handles this
  * one too; before, the records and the nodes threw a plain StreamFormatException.</p>
  *
+ * <p>The Pub API's start throws it too, before it reads the stream, for a database that an
+ * earlier release encrypted, as its created.txt names a crypto key: release 2026.4 has no
+ * encryption and cannot read such a stream (bergdb 020-28).</p>
+ *
  * @author Frans Lundberg
  */
 public class VersioningStreamException extends StreamFormatException {

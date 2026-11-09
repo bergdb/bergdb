@@ -1,6 +1,5 @@
 package bergdb.pub;
 
-import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.DatabaseMissingException;
 import bergdb.pub.util.DatabaseNotCreatedException;
@@ -63,33 +62,6 @@ public interface DatabaseBuilder {
      * This option may be suitable for testing.
      */
     public DatabaseBuilder memory();
-    
-    /**
-     * Sets the crypto key of the database: start() creates a new database encrypted with it,
-     * or opens one that was created with it. A database is encrypted with one key from its
-     * creation on, and the key cannot be changed. Generate a new key for every database
-     * (CryptoKey.generate()), never one for two, and keep it apart from the database's files:
-     * a lost key loses the database. A start with another key or without one on an encrypted
-     * database, or with one on a database that is not encrypted, is refused with
-     * BadCryptoKey and writes nothing (start()).
-     * 
-     * <p>The package's {@linkplain bergdb.pub##encryption Encryption} says what is encrypted,
-     * every byte of the stream's files, and what is not: created.txt, and what the files show
-     * by their sizes and times; and the limits of BergDB 2026.4's encryption, in short: the
-     * keystream depends only on the key and the position in the stream, so two databases with
-     * one key, a copy of a database written on beside it, or a database written on after a
-     * crash of the operating system or a power loss cut its tail, reuse keystream, which lets
-     * one who sees both versions of the files learn plaintext; and it keeps the data secret,
-     * not unchanged: one who knows a part of the plaintext can change it, and the database
-     * reads the change without an error. The cost: about 2.5 ns for each byte written to the
-     * files or read from them, on a laptop; puts measured about as fast as without a key.</p>
-     * 
-     * @param cryptoKey  
-     *      The crypto key to use or CryptoKey.NULL to not use any encryption.
-     *      The last call counts: CryptoKey.NULL after a key means no encryption.
-     * @throws IllegalArgumentException If cryptoKey is null.
-     */
-    public DatabaseBuilder cryptoKey(CryptoKey cryptoKey);
     
     /**
      * Sets a non-default database clock. Use this method together with a TestClock to do
@@ -200,13 +172,19 @@ public interface DatabaseBuilder {
      * stream, a sync or the background write of a transaction, fails it
      * (DbFailedException).</p>
      * 
+     * <p>Release 2026.4 has no encryption (bergdb 020-28; the package's
+     * {@linkplain bergdb.pub##encryption Encryption}). A database that an earlier release
+     * encrypted, with a crypto key, is refused, and the start has opened, created and written
+     * nothing: its created.txt names the key, and start() throws a VersioningStreamException,
+     * a StreamFormatException, that says so; without its created.txt, start() reads the stream,
+     * whose first bytes read are not those of a BergDB stream, and throws a
+     * StreamFormatException that names this case among the likely causes. Its data can be
+     * moved with the earlier release, as the release notes of 2026.4 say.</p>
+     * 
      * @throws IllegalStateException
      *             If no database was given: neither create(), open() nor memory() was
      *             called; or if the database that this builder started on its stream of
-     *             memory() has not closed (bergdb 015-65); or if the crypto key of
-     *             cryptoKey() has another algorithm than 'salsa' (CryptoKey.getAlgo()), as
-     *             one parsed from another string can: the start has then opened, created
-     *             and written nothing (bergdb 015-06, 019-44).
+     *             memory() has not closed (bergdb 015-65).
      * @throws DbException
      *             If a functioning database could not be started; among them a
      *             StreamIoException if the directory of create() or open() cannot be
@@ -216,17 +194,12 @@ public interface DatabaseBuilder {
      *             that fails on the storage during the start, as on a full disk or with a
      *             stream file missing, throws the storage's exception, a StreamIoException,
      *             or a StreamFormatException for a damaged stream (Database, "Errors";
-     *             bergdb 020-24-08, U8-2).
-     * @throws BadCryptoKey
-     *             If the wrong crypto key is used, or none is used with an encrypted
-     *             database or a crypto key is used with an unencrypted database; also, with
-     *             or without a key, the right one too, if the stream is not a BergDB stream,
-     *             or is damaged where the start reads it first: the magic bytes of its last
-     *             meta block, one of the blocks written at every 200,000 bytes of the stream,
-     *             so in a database of less than 200 kB its first bytes (bergdb 005-33,
-     *             020-25, 020-24-07). The message names the likely causes. The start has
-     *             then written nothing to the database, so it can be started with the right
-     *             key (bergdb 005-40).
+     *             bergdb 020-24-08, U8-2). A StreamFormatException also if the stream is not
+     *             a BergDB stream, or is damaged where the start reads it first: the magic
+     *             bytes of its last meta block, one of the blocks written at every 200,000
+     *             bytes of the stream, so in a database of less than 200 kB its first bytes;
+     *             or if an earlier release encrypted it (above). The message names the likely
+     *             causes, and the start has written nothing (bergdb 005-33, 005-40, 020-28).
      * @throws DatabaseNotCreatedException
      *             If the database's creation did not complete: a crash, as a power loss,
      *             while it was created left a part of it, and no data (bergdb 005-33). The

@@ -460,7 +460,7 @@ public class DbTesterStream {
         
         FileStream fileStream = new FileStream(dir);
         CoreTestClock clock = new CoreTestClock();
-        Db db = Db.builder().testSetup(fileStream).clock(clock).createdTxt(dir, null).start();
+        Db db = Db.builder().testSetup(fileStream).clock(clock).createdTxt(dir).start();
         clock.setTime(10);
         db.execute(db.trans().put("k", "k-value"));
         db.sync(SyncLevel.ORDINARY);

@@ -6,7 +6,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.Connection;
-import bergdb.pub.CryptoKey;
 import bergdb.pub.DataFormatException;
 import bergdb.pub.Database;
 import bergdb.pub.DatabaseBuilder;
@@ -20,7 +19,6 @@ import bergdb.pub.TestClock;
 import bergdb.pub.Time;
 import bergdb.pub.Transaction;
 import bergdb.pub.WBuilder;
-import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.BadFormatException;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.DatabaseMissingException;
@@ -30,13 +28,15 @@ import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.IndexBuildException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
+import bergdb.storage.StreamFormatException;
 import bergdb.stream.MemoryStream;
 
 /**
  * The Pub API's Javadoc checked against its behaviour, promise by promise, for the classes
  * that bergdb 020-19 left (bergdb 020-25): WBuilder, RwEnvironment, ReadInterface, Action,
- * Transaction, Factory, DatabaseBuilder, Time, Duration, CryptoKey, TestClock, Clock and the
- * exceptions. Each test names the class and the promise it shows; the promises that other
+ * Transaction, Factory, DatabaseBuilder, Time, Duration, TestClock, Clock and the
+ * exceptions; CryptoKey's tests are internal since 2026.4, which has no encryption in its
+ * API (bergdb 020-28). Each test names the class and the promise it shows; the promises that other
  * testers show are listed in 020-25, section 3.
  *
  * @author Frans Lundberg
@@ -462,16 +462,17 @@ public class PubTesterJavadocRest {
 
     /**
      * The exceptions' kinds, as their Javadoc gives them: a refusal or a failure is a
-     * DbException (BadCryptoKey, DatabaseMissingException, DatabaseNotCreatedException,
+     * DbException (DatabaseMissingException, DatabaseNotCreatedException,
      * DataFormatException, IllegalDbStateException; DbFailedException is an
      * IllegalDbStateException); LookupTimeNotAvailableException is an
      * IllegalArgumentException; IndexBuildException is no DbException, nor are
-     * ObjectCreationException, NoSuchIndexException, IndexAlreadyExistsException,
-     * BadFormatException and CryptoKey.FormatException.
+     * ObjectCreationException, NoSuchIndexException, IndexAlreadyExistsException and
+     * BadFormatException. BadCryptoKey and CryptoKey.FormatException left the API with the
+     * encryption (bergdb 020-28).
      */
     @Nano
     public static void testExceptionKinds() {
-        Class<?>[] dbExceptions = {BadCryptoKey.class, DatabaseMissingException.class,
+        Class<?>[] dbExceptions = {DatabaseMissingException.class,
                 DatabaseNotCreatedException.class, DataFormatException.class,
                 IllegalDbStateException.class, DbFailedException.class};
         for (Class<?> c : dbExceptions) {
@@ -483,7 +484,7 @@ public class PubTesterJavadocRest {
                 LookupTimeNotAvailableException.class));
         Class<?>[] others = {IndexBuildException.class, ObjectCreationException.class,
                 NoSuchIndexException.class, IndexAlreadyExistsException.class,
-                BadFormatException.class, CryptoKey.FormatException.class};
+                BadFormatException.class};
         for (Class<?> c : others) {
             Assert.assertFalse(c.getName(), DbException.class.isAssignableFrom(c));
             Assert.assertTrue(c.getName(), RuntimeException.class.isAssignableFrom(c));
@@ -495,7 +496,7 @@ public class PubTesterJavadocRest {
 
     /**
      * Factory.database(): a new builder at each call, whose databases are apart.
-     * DatabaseBuilder: create(null), open(null), clock(null) and cryptoKey(null) throw
+     * DatabaseBuilder: create(null), open(null) and clock(null) throw
      * IllegalArgumentException; start() without create(), open() or memory() throws
      * IllegalStateException; an existing database keeps the startup distance stored in its
      * stream, whatever the builder's.
@@ -513,8 +514,6 @@ public class PubTesterJavadocRest {
         assertThrows("create(null)", IllegalArgumentException.class, () -> b.create(null));
         assertThrows("open(null)", IllegalArgumentException.class, () -> b.open(null));
         assertThrows("clock(null)", IllegalArgumentException.class, () -> b.clock(null));
-        assertThrows("cryptoKey(null)", IllegalArgumentException.class,
-                () -> b.cryptoKey(null));
         assertThrows("no database given", IllegalStateException.class, () -> b.start());
 
         MemoryStream m = new MemoryStream();
@@ -555,23 +554,44 @@ public class PubTesterJavadocRest {
 
 
     /**
-     * BadCryptoKey and DatabaseBuilder.start(): a stream that does not begin as a BergDB
-     * stream, here 100 bytes of 'x', is refused with BadCryptoKey, with a crypto key and
-     * without one, and the start writes nothing.
+     * DatabaseBuilder.start(): a stream that does not begin as a BergDB stream, here 100 bytes
+     * of 'x', is refused with a StreamFormatException whose message names the likely causes,
+     * among them a stream that an earlier release encrypted, and the start writes nothing
+     * (bergdb 020-28; BadCryptoKey until 2026.4, with a crypto key and without one).
      */
     @Nano
-    public static void testBadCryptoKeyForAForeignStream() throws java.io.IOException {
+    public static void testForeignStreamRefused() throws java.io.IOException {
         byte[] bytes = new byte[100];
         java.util.Arrays.fill(bytes, (byte) 'x');
-        for (int k = 0; k < 2; k++) {
-            final MemoryStream m = new MemoryStream();
-            m.append(bytes, 0, bytes.length);
-            final DatabaseBuilder b = ((DatabaseBuilderImp) Factory.database()).mainStream(m);
-            if (k == 1) {
-                b.cryptoKey(CryptoKey.generate());
+        final MemoryStream m = new MemoryStream();
+        m.append(bytes, 0, bytes.length);
+        final DatabaseBuilder b = ((DatabaseBuilderImp) Factory.database()).mainStream(m);
+        StreamFormatException e = assertThrows("a foreign stream", StreamFormatException.class,
+                () -> b.start().close());
+        String message = e.getMessage();
+        Assert.assertTrue(message, message.startsWith("Invalid magic bytes in stream: the "
+                + "stream is not a BergDB stream, or it is damaged; or an earlier release"));
+        Assert.assertEquals(100, m.getLength());
+    }
+    
+    /**
+     * Release 2026.4 has no encryption in its API (bergdb 020-28): DatabaseBuilder has no
+     * cryptoKey(), and neither bergdb.pub.CryptoKey nor bergdb.pub.util.BadCryptoKey exists.
+     */
+    @Nano
+    public static void testNoEncryptionInTheApi() {
+        for (java.lang.reflect.Method method : DatabaseBuilder.class.getMethods()) {
+            Assert.assertFalse(method.toString(), 
+                    method.getName().toLowerCase(java.util.Locale.ROOT).contains("crypt"));
+        }
+        for (String name : new String[] {"bergdb.pub.CryptoKey", 
+                "bergdb.pub.util.BadCryptoKey"}) {
+            try {
+                Class.forName(name);
+                throw new AssertionError(name + " exists");
+            } catch (ClassNotFoundException e) {
+                // Expected.
             }
-            assertThrows("key " + k, BadCryptoKey.class, () -> b.start().close());
-            Assert.assertEquals(100, m.getLength());
         }
     }
 
@@ -703,72 +723,5 @@ public class PubTesterJavadocRest {
         Assert.assertEquals(Duration.seconds(1), Duration.units(Clock.UNITS_PER_SEC));
         Assert.assertEquals(Duration.seconds(1).hashCode(),
                 Duration.units(Clock.UNITS_PER_SEC).hashCode());
-    }
-
-
-    // ======== CryptoKey ========
-
-    /**
-     * CryptoKey: generate() gives a 'salsa' key of 40 bytes (a nonce of 8 and a key of 32),
-     * a copy at each getKeyData(); serialize() and parse() round-trip, the parsed key equal
-     * with an equal hash code; toString() is toStringWithMaskedKey(), which has "****" in
-     * place of the key data; NULL is null, with no key data, and round-trips; parse()
-     * refuses a string that is not of serialize()'s parts with FormatException, and null
-     * with IllegalArgumentException.
-     */
-    @Nano
-    public static void testCryptoKeyRules() {
-        CryptoKey key = CryptoKey.generate();
-        Assert.assertEquals("salsa", key.getAlgo());
-        Assert.assertFalse(key.isNull());
-        Assert.assertEquals(40, key.getKeyData().length);
-        Assert.assertTrue(key.getKeyData() != key.getKeyData());
-        String s = key.serialize();
-        String[] parts = s.split("-");
-        Assert.assertEquals(3, parts.length);
-        Assert.assertEquals("salsa", parts[1]);
-        Assert.assertEquals(80, parts[2].length());
-        CryptoKey parsed = CryptoKey.parse(s);
-        Assert.assertEquals(key, parsed);
-        Assert.assertEquals(key.hashCode(), parsed.hashCode());
-        Assert.assertEquals(key.toStringWithMaskedKey(), key.toString());
-        Assert.assertEquals(parts[0] + "-salsa-****", key.toString());
-        Assert.assertFalse(key.toString().contains(parts[2]));
-        Assert.assertFalse(key.equals(CryptoKey.generate()));
-
-        Assert.assertTrue(CryptoKey.NULL.isNull());
-        Assert.assertEquals(0, CryptoKey.NULL.getKeyData().length);
-        Assert.assertTrue(CryptoKey.parse(CryptoKey.NULL.serialize()) == CryptoKey.NULL);
-        String hex = parts[2];
-        String[] bad = {"", "a", "a-salsa", "-salsa-" + hex, "a--" + hex, "a-salsa-x" + hex,
-                "a-salsa-" + hex.substring(2), "a-salsa-" + hex + "00"};
-        for (String b : bad) {
-            assertThrows("'" + b + "'", CryptoKey.FormatException.class,
-                    () -> CryptoKey.parse(b));
-        }
-        assertThrows("null", IllegalArgumentException.class, () -> CryptoKey.parse(null));
-    }
-
-    /**
-     * CryptoKey.parse() refuses with FormatException a string that is not in serialize()'s
-     * format by having more than its three parts, the name, the algorithm and the key data:
-     * an extra part, also an empty one after a trailing '-' (bergdb 020-25, C1). Before, the
-     * parts after the third were ignored, and such a string gave the key. The key data's hex
-     * digits are taken in either case: the same key.
-     */
-    @Nano
-    public static void testCryptoKeyParseExact() {
-        final String s = CryptoKey.generate().serialize();
-        final String[] parts = s.split("-");
-        final String hex = parts[2];
-        String[] bad = {s + "-x", s + "-", s + "--", "a-salsa-" + hex + "-" + hex};
-        for (String b : bad) {
-            assertThrows("'" + b + "'", CryptoKey.FormatException.class,
-                    () -> CryptoKey.parse(b));
-        }
-        Assert.assertEquals(s, CryptoKey.parse(s).serialize());
-        Assert.assertEquals(CryptoKey.parse(s),
-                CryptoKey.parse(parts[0] + "-salsa-" + hex.toUpperCase(java.util.Locale.US)));
-        Assert.assertNull(CryptoKey.NULL.getAlgo());
     }
 }

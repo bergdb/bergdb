@@ -26,7 +26,6 @@ public class DbBuilder {
     /** The database's one stream, or null (bergdb 005-11: no replicas since 2026-11-04). */
     DbBuilder.StreamInfo streamInfo = null;
     File createdTxtDir;
-    String createdTxtCryptoKeyInfo;
     Eviction.Schedule evictionSchedule = Eviction.defaultSchedule();
     long evictionSeed = Eviction.defaultSeed();
     int auditEvery = Audit.EVERY;
@@ -345,14 +344,15 @@ public class DbBuilder {
     
     /**
      * If called, the database will (of possible) create a created.txt file in the
-     * database directory.
+     * database directory. Its line "crypto key:" says "none (not encrypted)", or, for a main
+     * stream that is a SalsaStream, internal since 2026.4, its key's name (bergdb 020-28:
+     * until then this method took the key's line as a second argument; release 2026.4 has no
+     * encryption in its API).
      * 
      * @param dir  The directory to create the file in.
-     * @param cryptoKeyInfo  Information about the crypto key used or null if encryption is not used.
      */
-    public DbBuilder createdTxt(File dir, String cryptoKeyInfo) {
+    public DbBuilder createdTxt(File dir) {
         this.createdTxtDir = dir;
-        this.createdTxtCryptoKeyInfo = cryptoKeyInfo;
         return this;
     }
 

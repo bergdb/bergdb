@@ -25,7 +25,6 @@ import bergdb.dag.Spos;
 import bergdb.dag.TopDs;
 import bergdb.dag.TopNode;
 import bergdb.dag.ValueNode;
-import bergdb.pub.util.BadCryptoKey;
 import bergdb.pub.util.DatabaseNotCreatedException;
 import bergdb.pub.util.DbException;
 import bergdb.pub.util.DbFailedException;
@@ -353,8 +352,9 @@ public class Db implements AutoCloseable {
     private Cache3 cache;
 
     /**
-     * Whether the main stream is encrypted: a SalsaStream, as the Pub API makes for a crypto
-     * key. For the message of BadCryptoKey (bergdb 005-33).
+     * Whether the main stream is encrypted: a SalsaStream, as DatabaseBuilderImp makes for its
+     * internal crypto key; for the message of a start refused for the magic bytes (bergdb
+     * 005-33). Release 2026.4 has no encryption in its API (bergdb 020-28).
      */
     private final boolean encrypted;
     
@@ -449,8 +449,12 @@ public class Db implements AutoCloseable {
         this.databaseIdFromBuilder = b.id;
         
         this.createdTxtDir = b.createdTxtDir;
-        this.createdTxtCryptoKeyInfo = b.createdTxtCryptoKeyInfo;
+        // The key's line of created.txt comes from the SalsaStream, not from the builder
+        // (2026-11-09, bergdb 020-28): DbBuilder.createdTxt took it until the encryption
+        // left the API.
         this.encrypted = b.getMainStream() instanceof SalsaStream;
+        this.createdTxtCryptoKeyInfo = encrypted
+                ? ((SalsaStream) b.getMainStream()).getKeyInfo() : null;
         
         //
         // Synch note: Synchronized blocks make sure the writes in constructor are
@@ -855,7 +859,6 @@ public class Db implements AutoCloseable {
      * @throws StreamIoException
      * @throws StreamFormatException
      * @throws IllegalDbStateException
-     * @throws BadCryptoKey
      * @throws DatabaseNotCreatedException
      */
     private StartInfo startInner(StartParams params) {
@@ -874,13 +877,20 @@ public class Db implements AutoCloseable {
             // leave one.
             // 2026-11-09 (bergdb 020-24-07, U7-7): with a key, the message named only a
             // wrong key, and a damaged stream gives it with the right key too.
-            throw new BadCryptoKey(encrypted
+            // 2026-11-09 (bergdb 020-28): a StreamFormatException, with the BadMagicBytes as
+            // its cause; it was the Pub API's BadCryptoKey, removed with the encryption from
+            // 2026.4's API. Without a key, the message names a stream that an earlier release
+            // encrypted, which this one does not read; the Pub API refuses such a database by
+            // its created.txt before (DatabaseBuilderImp.refuseEncrypted).
+            throw new StreamFormatException(encrypted
                     ? "Invalid magic bytes in stream, read with the crypto key given: likely, "
                     + "the wrong crypto key was used, or the database is not encrypted; else "
-                    + "the stream is damaged, or it is not a BergDB stream."
-                    : "Invalid magic bytes in stream, and no crypto key was used: likely, the "
-                    + "database is encrypted and needs its key; else the stream is not a "
-                    + "BergDB stream, or it is damaged.");
+                    + "the stream is damaged, or it is not a BergDB stream. The start has "
+                    + "written nothing."
+                    : "Invalid magic bytes in stream: the stream is not a BergDB stream, or it "
+                    + "is damaged; or an earlier release of BergDB, 2026.3 or before, encrypted "
+                    + "it, and this release cannot read it: it has no encryption (bergdb "
+                    + "020-28). The start has written nothing.", e);
         }
         
         handleStartParams(params);
