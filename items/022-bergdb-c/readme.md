@@ -100,3 +100,11 @@ candidate), its clones in `/Users/f/fl/bench/022/`, the landing script
 `/Users/f/fl/bench/022/land.sh` (its state in `landed.txt`), the users'
 applications in `/Users/f/fl/bench/022/apps/` and their kit in
 `/Users/f/fl/bench/022/userkit/`.
+
+2026-11-09, 19:35. coord-1109 put `runs-2026-4.sh` before `step5.sh` in
+the night's steps (the release's own checks first, then C at the
+candidate), in a window that likely leaves 2026.3's `step5.sh` for a later
+quiet block. The session agrees: C has moved on to the candidate, and the
+2026.4 runs test the code that `main` now has. 022-01 then closes either on
+`step5.sh` in a later block or on Frans's word that the 2026.4 runs stand
+for it.
