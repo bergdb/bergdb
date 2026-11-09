@@ -21,6 +21,7 @@ On the branch `020-29-index-proof`, in `lean/` (the library `BergDB`, beside
 * `lean/BergDB/Index/Theorems.lean`. The theorems' statements (section 3).
 * `lean/BergDB/Index/Inv.lean`. The invariant, its frames (section 4).
 * `lean/BergDB/Index/Steps.lean`. A lemma per kind of step, the induction.
+* `lean/BergDB/Index/Locked.lean`. A build step's locked phase (section 7).
 * `lean/BergDB/Index/Example.lean`. Two runs of the model (section 5).
 * `lean/BergDB.lean`, `lean/lakefile.toml`. The library's root, its entry.
 
@@ -282,9 +283,11 @@ and the axioms, from a file outside the library with
     #print axioms BergDB.Index.writer_sees_live
     #print axioms BergDB.Index.example_run
     #print axioms BergDB.Index.example_run2
+    #print axioms BergDB.Index.locked_phase
 
-Each prints `[propext, Classical.choice, Quot.sound]`, or a part of it
-(`example_run2`: no `Classical.choice`), 2026-11-09.
+(with `import BergDB.Index.Locked` too). Each prints
+`[propext, Classical.choice, Quot.sound]`, or a part of it (`example_run2`
+and `locked_phase`: no `Classical.choice`), 2026-11-09.
 `grep -rn sorry lean/BergDB` finds none. The full `lake build` (SIS and the
 checker too) was not run in the clone: the library is new and imports
 nothing of SIS, and a build of SIS from clean would have loaded the shared
@@ -298,7 +301,7 @@ target.
 transactions of any keys, build steps of any size, generations, deletions,
 creations again and crashes (also crashes that lose committed
 transactions): every invariant of 020-26, section 3 (section 3 above), with
-no `sorry`; 2,526 lines. So 020-26's safety results hold beyond its bounds and
+no `sorry`; 2,684 lines with section 7's `locked_phase`. So 020-26's safety results hold beyond its bounds and
 beyond its one name, one directory and one key per transaction: no design
 fault, for every size, in the protocol as modelled.
 
@@ -326,8 +329,20 @@ fault, for every size, in the protocol as modelled.
   `hi = next`; a step of the code that reads no value meets E and ends the
   build) and data with infinitely many keys (E then need not exist).
   A Lean statement could be: in every fair infinite run with finitely many
-  crashes, a definition in state building becomes active or is deleted. Not
-  started.
+  crashes, a definition in state building becomes active or is deleted.
+
+  The heart of point 8 is proved, without the fairness around it
+  (Locked.lean, `locked_phase`): over any part of a run during which a build
+  holds the lock, a writer that can commit a write of an object key at its
+  end could at its start, in the same state (a step that keeps the lock reads
+  no index set, and a transaction that starts has read none); and if an
+  object key was written in it, some writer that could commit at its start
+  cannot at its end (`locked_obj_write`: such a write is a writer's commit,
+  which ends its transaction). So a step in its locked phase is refused only
+  by writers that could commit when the lock was taken, each at most once,
+  and a write of a key with a suffix refuses it never: 020-10, section 6.1's
+  "under it only the writers that read the index set before can collide with
+  the step".
 * **What 020-26 left out and this model too**: writes through the Core
   (020-22: undefined), key replace (020-10, section 5.3).
 * **The Java code**: the theorems are about the model; the model follows
@@ -340,10 +355,13 @@ fault, for every size, in the protocol as modelled.
   model must follow (020-26, section 8).
 
 **How to continue**: liveness, for BuildEnds first (it is what TLC could
-check only within small bounds, and where 020-18 found F1 and F4): define
-fair runs (`Nat → Sys`), make a build's step read at least one key, and prove
-by a ranking on (the keys left up to E, the tries, the writers in flight
-when the lock was taken) that a build of a live definition activates it.
+check only within small bounds, and where 020-18 found F1 and F4): label the
+steps by thread, define fair runs (`Nat → Sys` with the labels), make a
+build's step read at least one key, assume finitely many keys with an entry
+and strong fairness of the lock (or one name), and prove by a ranking on
+(the keys left up to E, the tries, the writers that could commit when the
+lock was taken, `locked_phase`) that a build of a live definition activates
+it.
 
 
 Log
@@ -374,6 +392,7 @@ Log
   the deletion, the cleanup and a creation again.
 * 18:43 to 18:45: this readme: the TLA+ model and the Lean model side by
   side; liveness, and why several names need strong fairness of the lock.
+* 18:48: Locked.lean, `locked_phase`: the heart of point 8.
 
 Each step: `lake build BergDB` clean, no `sorry`, the standard axioms only.
 Nothing in 2026.4. For the coordinator: a line for this subitem in 020's

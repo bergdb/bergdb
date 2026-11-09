@@ -117,7 +117,9 @@ active index's entries are exactly f over the data (`index_is_function`), no
 entry of a live generation is stale, a build covers the keys it passed, every
 generation with entries is live or has a marker, no marker names a live
 generation, a creation's G is new. It imports nothing of SIS. The proofs:
-BergDB/Index/Inv.lean, BergDB/Index/Steps.lean; a run of the model:
+BergDB/Index/Inv.lean, BergDB/Index/Steps.lean; while a build step holds the
+manager's lock, only writers that could commit when it took the lock can
+refuse it, each once (BergDB/Index/Locked.lean); runs of the model:
 BergDB/Index/Example.lean.
 
 
