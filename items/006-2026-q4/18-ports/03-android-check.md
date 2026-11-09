@@ -34,20 +34,20 @@ This is the first of 006-18's first steps (section 6, step 1):
 | 34    | fix 1      | as on 33                            | objects, refused: V5, V6          |
 | 34    | fixes 1, 2 | Core, Pub API, objects, demos, R8   | 15 of 1,505 tests, 13 tests' own  |
 
-**The two commits.** They are on the branch `006-18-03-android` of the
-clone `/Users/f/fl/bench/2026-11-09/android/bergdb`, based on `aa55efc`.
-Each was gated under the lock, and neither changes the JVM's behaviour
-(section 5).
+**The commits.** For 2026.4, by Frans's word at 16:03 ("Is this an easy
+fix we can get into 2026.4, let's fix it."), they are on the branch
+`006-18-03-android` of the clone `/Users/f/fl/bench/2026-11-09/android/bergdb`,
+on `main` at `9ed1e6c`. Neither fix changes the JVM's behaviour (section
+5). On the tree of the three: BEFORE COMMIT OK (145 s), and LEVEL 1 OK,
+both under the lock.
 
-* `14e4b8e`, fix 1: `BufferedStream`'s wait statistics without
-  `java.lang.management`. +42, -2 lines; BEFORE COMMIT OK, 179 s.
-* `99a3c83`, fix 2: `DataObjects`' V5 and V6 without modules. +36, -4
-  lines; BEFORE COMMIT OK, 178 s.
-
-The coordinator decided on 2026-11-09 that neither goes into 2026.4.
-Frans's rule was that fix 1 goes in only if it is the only blocker. It
-is the only blocker for the Core, but objects need fix 2 as well. Frans
-decides about both.
+* `53f4f5c`, fix 1: `BufferedStream`'s wait statistics without
+  `java.lang.management`; +42, -2 lines. It was first `14e4b8e` on
+  `aa55efc`.
+* `a25a7e8`, fix 2: `DataObjects`' V5 and V6 without modules; +36, -4
+  lines. It was first `99a3c83`.
+* `3926a12`: `releases/next.md`, a Platforms section with G88 as a known
+  difference, and a line in README.md.
 
 **The floors.**
 
@@ -307,12 +307,13 @@ the missing methods into a refusal.
 
 ## 5. The fixes
 
-Both are on the branch `006-18-03-android` of
-`/Users/f/fl/bench/2026-11-09/android/bergdb`, based on `aa55efc`. Each
-was gated with `lockf /Users/f/fl/bench/006-15/gate.lock sh
-java/before-commit.sh`. Neither has a line in `releases/next.md`.
+Both were made on the branch `006-18-03-android` of
+`/Users/f/fl/bench/2026-11-09/android/bergdb`, on `aa55efc`. Each was
+gated with `lockf /Users/f/fl/bench/006-15/gate.lock sh
+java/before-commit.sh`. Since 16:25 they are `53f4f5c` and `a25a7e8` on
+`9ed1e6c`, with `3926a12` for the notes (section 9).
 
-### 5.1 Fix 1: the uptime of the wait statistics, `14e4b8e`
+### 5.1 Fix 1: the uptime of the wait statistics, `53f4f5c`
 
 * `Waits.add` takes the uptime from a new `BufferedStream.Uptime`.
 * At its initialization, `Uptime` calls
@@ -328,7 +329,7 @@ java/before-commit.sh`. Neither has a line in `releases/next.md`.
 
   It passed on both.
 
-### 5.2 Fix 2: Data Objects without modules, `99a3c83`
+### 5.2 Fix 2: Data Objects without modules, `a25a7e8`
 
 * **V5, the Java platform's classes.** `isPlatformClass` compares a
   class's loader with `PLATFORM_LOADER`, taken once at class
@@ -412,10 +413,16 @@ java/before-commit.sh`. Neither has a line in `releases/next.md`.
   leaves one of BergDB's threads (the buffer's writer, the evictor, an
   index build) ends that thread. On Android it ends the process, as
   sections 4.1 and 4.2 saw.
-* **Memory.** Each database allocates a 10 MB write buffer
-  (`StorageManager.DEFAULT_BUFFER_SIZE`), and the cache follows the cache
-  size indicator. An app's heap is 192 to 512 MB, so an app sets both
-  smaller.
+* **Memory.** An app sets the cache size; the default does not fit.
+  * Each database allocates a 10 MB write buffer
+    (`StorageManager.DEFAULT_BUFFER_SIZE`).
+  * The default cache size indicator is 200 MB (`DbBuilder`), more than
+    the 192 MB heap that `app_process` and many apps get. An app's heap is
+    192 to 512 MB.
+  * On the final tree (section 9), `KillDemo check` read all of a
+    database of 180,000 transactions (390 MB). It died of
+    `OutOfMemoryError` with the default cache, and passed with a 50 MB
+    cache.
 * **Not checked:** a real phone, its speed, power loss on its flash, an
   app's life cycle (freezing, background kills), and API levels above
   34 at run time. The static check gives 35 to 37.0 the same list as 34.
@@ -500,3 +507,64 @@ kept.
 `ANDROID_HOME=$PWD/sdk ANDROID_USER_HOME=$PWD/user
 ANDROID_AVD_HOME=$PWD/user/avd`. Delete them when they are no longer
 needed, and `~/.android` with them.
+
+
+## 9. Log
+
+* 2026-11-09, 12:44 to 13:37: sections 1 to 8. The fixes were on the
+  branch as `14e4b8e` and `99a3c83`, based on `aa55efc`.
+* 2026-11-09, 16:03, Frans: "Is this an easy fix we can get into 2026.4,
+  let's fix it."
+* 2026-11-09, 16:25: the two fixes were rebased onto `main` at `9ed1e6c`.
+  The rebase had no conflict: neither file had changed in a way that
+  touched them. A third commit adds a Platforms section to
+  `releases/next.md`, with G88 as a known difference, and a line in
+  README.md, Build and test. `docs/levels.md` lists no platforms. The
+  commits on the branch `006-18-03-android` of the clone are `53f4f5c`
+  (fix 1), `a25a7e8` (fix 2) and `3926a12` (the notes). On their tree:
+  BEFORE COMMIT OK (145 s), and LEVEL 1 OK under the lock.
+* 2026-11-09, 16:25 to 16:53, the final tree on the API 34 emulator
+  (`runs-device-final-34.txt`, `runs-unit-final-34.txt`,
+  `runs-kill-final-34.txt`):
+  * The 14 demo runs passed, and so did ReleaseDemo, with d8 and with R8.
+  * `Unit`: 17 of 1,581 failed. These are the 15 of section 4.2 and two
+    tests newer than `aa55efc`:
+    * `DbTesterFailure.testGetTransOfARecordBeingAppended`, which calls
+      `ManagementFactory` itself.
+    * `StreamContractTester.testOneFileStream`, through 021-14's read past
+      the end at a position near `Long.MAX_VALUE`. `OneFileStream`'s
+      `RandomAccessFile.seek` throws `IOException: lseek failed: EINVAL`
+      on Android, where the JVM's seeks. `OneFileStream` is the simple
+      stream, "good for testing"; `Db` uses `FileStream`.
+  * The kill loop's first run hid 12 failures, which turned out to be
+    `KillDemo`'s own, not BergDB's: its check read the whole database
+    with the default 200 MB cache in a 192 MB heap, and died of
+    `OutOfMemoryError` (section 6, Memory). The same database of 179,850
+    transactions passed the check with a 50 MB cache. A new run, with the
+    check at 50 MB, passed all 20 rounds, 157,700 transactions at the
+    end.
+  * The emulator was shut down at 16:53.
+* 2026-11-09, 16:58, Frans: "I think it makes sense to run an Android
+  test before a release. At least on the unit tests." Two more commits on
+  the branch, both on `main` at `e65678a` (hashes in the report):
+  * **Platform-neutral tests.** The new `bergdb.nanotest.Platform` has
+    `android()`, `skipOnAndroid(reason)` and `waitsFor(thread, state,
+    lockClass)`. `waitsFor` uses one `ThreadInfo` on a JVM, as before,
+    and `Thread.getState()` on Android. `ConsoleUI` counts a skipped test
+    apart, prints `SKIPPED test: reason`, and ends with "SUCCESS, N
+    successful tests, M skipped". Without skips, as on a JVM, the line is
+    unchanged.
+  * **What became of the 17 tests that failed on Android.** 12 run there
+    now, and 5 skip themselves:
+    * DbTesterFailure's two tests wait by `Platform.waitsFor`.
+    * G88 has a row of its own on Android: `ed a0 80` as three U+FFFD.
+    * `FormatFuzzer`'s six tests fuzz without the allocation bound, which
+      only a JVM measures.
+    * `testConnectionOfEndedThreadNotKept` calls `Runtime.gc()`.
+    * `databasesStopped` follows.
+    * Skipped: a lock's owner and a thread's CPU time (Eviction's two
+      tests), a module layer, the jar's sealing, and `OneFileStream` near
+      `Long.MAX_VALUE`.
+  * **`java/stress/android.sh`**, with a line in README.md's list of
+    scripts. It is not in before-commit.sh. Its first run: "ANDROID OK
+    (1584 tests, 5 skipped) in 119 s; 10 demo runs".
