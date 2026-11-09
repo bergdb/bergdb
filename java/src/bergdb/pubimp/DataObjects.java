@@ -625,6 +625,16 @@ public final class DataObjects {
         } catch (InstantiationException | IllegalAccessException e) {
             throw new ObjectCreationException("A " + c.getName() + " could not be made: " + e
                     + " (bergdb 020-09, section 5.2).", e);
+        } catch (VirtualMachineError e) {
+            throw e;
+        } catch (Error e) {
+            // An Error that a static initializer threw, of the class or of a superclass: Java
+            // passes it as it is, and wraps only an Exception in an
+            // ExceptionInInitializerError (JLS 12.4.2). The class's fault as that one (the
+            // Codex review's X2, bergdb 020-14: it escaped the get, and failed the database
+            // in rw()).
+            throw new ObjectCreationException("The class " + c.getName() + " could not be "
+                    + "initialized: " + e + " (bergdb 020-09, section 5.2).", e);
         }
         int end = ObjectFormat.objectEnd(b, p);
         for (StoredField f : info.fields) {

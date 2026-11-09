@@ -386,7 +386,8 @@ has no stored field of that name (principle 2).
      once per object made **(delegated:** the class's fault, a
      programming error; today `ObjectCreationException`, or a `Bug` after
      a first success, S2-F21**)**. An `ExceptionInInitializerError` of the class's first
-     use is the same; a `VirtualMachineError` passes as it is (P7).
+     use is the same, and so is an `Error` that a static initializer throws, which Java
+     does not wrap (020-14, X2); a `VirtualMachineError` passes as it is (P7).
 * `IllegalArgumentException`: a null class, or a key that is not valid,
   as today.
 * Nothing else, and nothing for a value of the data: no
@@ -1003,3 +1004,6 @@ so": the rules in full, with a test for each), with what the decisions
 left open decided under his delegation of 22:17 (section 6); read-only at
 `b9d87e7`, today's behaviour probed against its build. No code changed.
 020-08 brought up to date with it (its steps 7 and 8).
+
+2026-11-09. Section 5.2: the Codex review's X2 (020-14) fixed, with its
+test: an `Error` of a static initializer.

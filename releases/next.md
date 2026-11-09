@@ -298,6 +298,13 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   A put with `${transactionTime}` in its name no longer deletes the index
   entries of the object at the key as written, which it took for the
   previous value. A key with another suffix is replaced anywhere, as before.
+* **A Data Object class whose static initializer throws an `Error` is
+  refused at a get** (bergdb 020-14, X2; 2026-11-09) with
+  `ObjectCreationException`, the `Error` as its cause, as for an
+  `Exception` there (`ExceptionInInitializerError`); a
+  `VirtualMachineError` passes. Java does not wrap an `Error` of a static
+  initializer, such as an `AssertionError`: it escaped the get, and inside
+  `rw()` failed the database.
 
 
 ### Core API

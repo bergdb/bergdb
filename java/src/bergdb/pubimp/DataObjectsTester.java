@@ -2953,4 +2953,74 @@ public class DataObjectsTester {
         }
         ch.done();
     }
+
+    /**
+     * Its static initializer throws an Error, which Java passes as it is: it wraps only an
+     * Exception in an ExceptionInInitializerError (JLS 12.4.2).
+     */
+    public static class ErrorInit {
+        static {
+            if (Boolean.parseBoolean("true")) {
+                throw new AssertionError("ErrorInit");
+            }
+        }
+        public int v;
+        public ErrorInit() {}
+    }
+
+    /** As ErrorInit, reached through a field of HoldsErrorInit. */
+    public static class ErrorInitInner {
+        static {
+            if (Boolean.parseBoolean("true")) {
+                throw new AssertionError("ErrorInitInner");
+            }
+        }
+        public int v;
+        public ErrorInitInner() {}
+    }
+
+    public static class HoldsErrorInit {
+        public ErrorInitInner inner;
+        public HoldsErrorInit() {}
+    }
+
+    /**
+     * The Codex review's X2 (bergdb 020-14): a class whose static initializer throws an Error,
+     * not an Exception, is an ObjectCreationException at every get, at the top and nested,
+     * also in rw(), and the database goes on (020-09, section 5.2). Until 2026-11-09 the
+     * Error of the first use escaped the get, and in rw() failed the database.
+     */
+    @Nano
+    public static void testInitializerError() {
+        Check ch = new Check();
+        Database db = memory();
+        try {
+            final Connection c = db.connection();
+            c.put("/error-init", o("v", l(1)));
+            c.put("/holds-error-init", o("inner", o("v", l(1))));
+            for (int k = 0; k < 3; k++) {
+                ch.creationRefused("ErrorInit, get in rw() " + k, () -> c.rw(new Action() {
+                    public void run(RwEnvironment env) {
+                        env.get("/error-init", ErrorInit.class);
+                    }
+                }), null);
+                ch.creationRefused("ErrorInit, get " + k,
+                        () -> c.get("/error-init", ErrorInit.class), null);
+                ch.creationRefused("HoldsErrorInit, get in rw() " + k, () -> c.rw(new Action() {
+                    public void run(RwEnvironment env) {
+                        env.get("/holds-error-init", HoldsErrorInit.class);
+                    }
+                }), null);
+                ch.creationRefused("HoldsErrorInit, toJavaObject " + k,
+                        () -> o("inner", o()).toJavaObject(HoldsErrorInit.class), null);
+            }
+            ch.run("the database goes on", () -> {
+                c.put("/later", "x");
+                ch.eq("the database goes on", "x", c.get("/later", String.class));
+            });
+        } finally {
+            db.close();
+        }
+        ch.done();
+    }
 }
