@@ -410,3 +410,7 @@ and `level2.sh` on 7231771.
 
 2026-11-09, 04:36. T-OB fixed in 621ee0e (objectbench.sh compiles
 ObjectBench for each build); its open row removed (coordinator).
+
+2026-11-09, 05:40. `night.sh` on the final commit d6e8989: NIGHT OK
+(63 minutes; levels 1 to 4, the Lean tests, 26 night tests, conformance
+medium; java/build/night/2026-11-09-0436/report.txt) (coordinator).

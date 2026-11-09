@@ -245,7 +245,9 @@ The night, in order (each gated with BEFORE COMMIT OK; reviews read-only):
 * `night.sh` on 48378fe: NIGHT OK (65 minutes: levels 1 to 4, the Lean
   tests, 25 night tests, conformance medium). On the final tree
   (7231771): the night tests SUCCESS (26) and LEVEL 2 OK. `level4.sh` OK
-  after each Core fix.
+  after each Core fix. A second full `night.sh` on the final commit
+  d6e8989: NIGHT OK (63 minutes, 26 night tests;
+  java/build/night/2026-11-09-0436/report.txt).
 * Quiet measurements (020-12): format 2 against format 1, writer 0.29 to
   0.66, lookups 0.13 to 0.44, gets 0.70 to 0.84, an index build 0.46 of
   the time; a `Payment` 36 bytes against 71; `performance.sh ab` against
