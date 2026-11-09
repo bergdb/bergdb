@@ -210,6 +210,21 @@ public class PubKeys {
         return ukey;
     }
     
+    /**
+     * The ukey whose ikey is 'ikey', or null if 'ikey' is no ukey's ikey (bergdb 020-22,
+     * R22-1): such as "/x" or "/dq/-a/b", or "/-q/-t", which i2u() reads as "/q/t", whose
+     * ikey is "/dq/-t". Such a key is written only through the Core API, and is no key of
+     * the Pub API. When the result is not null, u2i() of it is 'ikey'.
+     */
+    static String i2uOrNull(String ikey) {
+        try {
+            String ukey = i2u(ikey);
+            return u2i(ukey).equals(ikey) ? ukey : null;
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+    
     
     // ======== Tests ========
     

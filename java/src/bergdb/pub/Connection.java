@@ -218,7 +218,9 @@ public interface Connection extends ReadInterface {
      * Returns information about the transaction that wrote the last
      * value retrieved with the get() method: its time and its KVs. The KVs
      * are the user's; those that the database writes itself in the
-     * transaction, the entries of an index, are left out.
+     * transaction, the entries of an index, are left out, and so are those at
+     * a key that is no key of this API, which only a write through the Core's
+     * Db makes (bergdb 020-22, R22-1).
      * A get() that finds no entry does not change the value this method describes:
      * after one, it describes the value retrieved by an earlier get().
      * An exists() of this connection counts as a get() here: one that finds the key as

@@ -16,7 +16,8 @@ public interface TransactionInfo {
      * A delete of a key that had no entry is left out, as it writes nothing (bergdb
      * 018-04, Q4).
      * The KVs that the database writes itself, the entries of an index, are
-     * left out.
+     * left out, and so are those at a key that is no key of the Pub API, which
+     * only a write through the Core's Db makes (bergdb 020-22).
      * Value == null is used to represent delete operations.
      */
     public List<Kv<byte[]>> kvs();

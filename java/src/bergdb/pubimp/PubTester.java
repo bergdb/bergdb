@@ -3485,6 +3485,39 @@ public class PubTester {
     }
     
     /**
+     * bergdb 020-22, R22-1: a transaction written through the Core with a user key and a key
+     * that is no Pub key's: one whose bytes are no ikey's bkey, a free key ({5, 6}, "/x"), a
+     * key of a directory that no ukey gives ("/dq/-a/b", "/dq/x"), and "/-q/-t", which
+     * PubKeys.i2u read as "/q/t", whose key is "/dq/-t". transactionInfo()'s KVs held the
+     * second key, and its key() threw IllegalArgumentException, or gave the ukey of another
+     * key. Now the KVs leave such a key out, as they leave out the internal keys (bergdb
+     * 005-42): a Pub key's KV is the user key only.
+     */
+    @Nano
+    private static void testTransactionInfoLeavesOutKeysWithNoUkey() {
+        Database d = Factory.database().memory().start();
+        try {
+            Connection c = d.connection();
+            Db core = ((DatabaseImp) d).getDb();
+            byte[][] others = {{5, 6}, {1, 0x2f, (byte) 0xff}, Keys.toBytes("/x"), 
+                    Keys.toBytes("/dq/-a/b"), Keys.toBytes("/dq/x"), Keys.toBytes("/-q/-t"), 
+                    Keys.toBytes("/dq/-")};
+            for (byte[] other : others) {
+                String name = StringUtil.toHex(other);
+                core.execute(core.trans().put(Keys.toBytes("/dq/-t.txt"), StringUtil.toBytes("hello"))
+                        .put(other, new byte[] {1}).build());
+                Assert.assertEquals("hello", c.get("/q/t.txt", String.class));
+                TransactionInfo tinfo = c.transactionInfo();
+                Assert.assertEquals(name, 1, tinfo.kvs().size());
+                Assert.assertEquals(name, "/q/t.txt", tinfo.kvs().get(0).key());
+                Assert.assertEquals(name, "hello", StringUtil.toString(tinfo.kvs().get(0).value()));
+            }
+        } finally {
+            d.stop();
+        }
+    }
+    
+    /**
      * Regression test for bergdb 005-42: for a value that reclaim had rewritten,
      * transactionInfo() described reclaim's step, with its time and its row, whose key()
      * threw. Now it throws LookupTimeNotAvailableException, as for a transaction that reclaim

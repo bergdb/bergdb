@@ -356,6 +356,15 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
 * **`CryptoKey.NULL` round-trips through `serialize()` and `parse()`**
   (bergdb 020-21, 3; 020-19): `parse()` refused NULL's string,
   "null-null-", with a `FormatException`; it now gives `CryptoKey.NULL`.
+* **`transactionInfo()` leaves out a key that is no Pub key** (bergdb
+  020-22, R22-1; Frans, 2026-11-09, Q5): for a transaction written through
+  the Core's `Db` with a key of the Pub API and another key, such as a key
+  whose first byte is not the bkey of `/`, `/x`, or `/dq/-a/b` (a name with
+  a `/`), the KVs of `Connection.transactionInfo()` held the other key, and
+  its `key()` threw `IllegalArgumentException`, or, for a key such as
+  `/-q/-t`, gave the Pub key of another key (`/q/t`, whose key is
+  `/dq/-t`). Now such a KV is left out, as the index entries are (005-42)
+  and as `usePrimary()` leaves out such keys (021-06).
 
 
 ### Core API

@@ -135,7 +135,9 @@ class ConnectionImp implements Connection {
         // an index's entries, were given too, and their key() threw, as they have no ukey.
         // And a record of reclaim's is not the transaction that wrote the value: reclaim has
         // rewritten the value, so that the transaction that wrote it can be cut. It gave the
-        // step's time and its row.
+        // step's time and its row. A key that is no ukey's, which only a write through the
+        // Core API makes, is left out too (bergdb 020-22, R22-1): its key() threw, or gave
+        // the ukey of another key.
         final ArrayList<Kv<byte[]>> kvs = new ArrayList<Kv<byte[]>>();
         for (int i = 0; i < storedTrans.nodes.length; i++) {
             StoredNode storedNode = storedTrans.nodes[i];
@@ -150,11 +152,14 @@ class ConnectionImp implements Connection {
                 if (Keys.isPrefix(DbConstants.INTERNAL_PREFIX_SKEY, storedValueNode.getKey())) {
                     continue;
                 }
+                String ikey = Keys.bkey2ikeyOrNull(Keys.toBytes(storedValueNode.getKey()));
+                final String ukey = ikey == null ? null : PubKeys.i2uOrNull(ikey);
+                if (ukey == null) {
+                    continue;
+                }
                 
                 kvs.add(new Kv<byte[]>() {
                     public String key() {
-                        byte[] bkey = Keys.toBytes(storedValueNode.getKey());
-                        String ukey = PubKeys.i2u(Keys.bkey2ikey(bkey));
                         return ukey;
                     }
 
