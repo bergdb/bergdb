@@ -58,6 +58,11 @@ public interface RwEnvironment extends ReadInterface {
      * <p>A String, and each string in an object, is Unicode text, stored as well-formed
      * UTF-8, as for WBuilder.put() (the package's {@linkplain bergdb.pub##strings Strings}).</p>
      *
+     * <p>An object, a value that is neither a String nor a byte[], is put only at an object
+     * key, one without a suffix or with ".obj"; at a key with another suffix the put throws
+     * IllegalArgumentException, as for WBuilder.put() (the package's
+     * {@linkplain bergdb.pub##objects Objects}).</p>
+     *
      * @see WBuilder#put(String, Object)
      * @throws IllegalArgumentException if 'key' is null or otherwise of an invalid format.
      * @throws IllegalArgumentException if 'object' is null, or if it is a String with a

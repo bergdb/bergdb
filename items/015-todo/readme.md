@@ -34,16 +34,6 @@ Open
 |---|---|---|---|
 | [015-03](03-lean-follows-005-79.md) | Implement | Lean follows 005-79's integer take | open |
 | [015-18](18-night-large-after-release.md) | Implement | Run night.sh large on the release, after 2026.2 | open |
-| [015-23](23-refused-index-delete.md) | Fix | A refused index deletion leaves the index active and unmaintained | open |
-| [015-28](28-write-racing-index-create.md) | Fix | A write racing an index's creation is never indexed | open |
-| [015-29](29-delete-primary-index.md) | Fix | deleteIndex(Database.PRIMARY) throws Bug and leaves the primary deleting | open |
-| [015-30](30-build-scans-past-dir.md) | Fix | An index build step scans past its directory, over non-objects | open |
-| [015-36](36-interrupted-delete-index.md) | Fix | An interrupted deleteIndex leaves the index deleting with no job | open |
-| [015-37](37-interrupted-build-step.md) | Fix | An interrupted retry of a build step ends the build for this run | open |
-| [015-39](39-job-status-mutable.md) | Fix | An index build's status object reads the worker's changing counter | open |
-| [015-43](43-object-index-read-time.md) | Fix | Index work reads the indexes before the read time: a new or ... | open |
-| [015-46](46-string-at-object-key-index.md) | Fix | A String or byte[] at an object key in an indexed directory breaks ... | open |
-| [015-49](49-review-s2-faults.md) | Fix | Review S2's 27 faults of the indexes and the objects | open |
 | [015-84](84-cap-pace-factor.md) | Investigate | Cap the pace's factor S/sd: a decrease's records grow with the keys | open |
 
 
@@ -52,6 +42,16 @@ Closed
 
 | ID | Kind | What | Status | Closed |
 |---|---|---|---|---|
+| [015-49](49-review-s2-faults.md) | Fix | Review S2's 27 faults of the indexes and the objects | done | 2026-11-09 |
+| [015-46](46-string-at-object-key-index.md) | Fix | A String or byte[] at an object key in an indexed directory breaks ... | done | 2026-11-09 |
+| [015-43](43-object-index-read-time.md) | Fix | Index work reads the indexes before the read time: a new or ... | done | 2026-11-09 |
+| [015-39](39-job-status-mutable.md) | Fix | An index build's status object reads the worker's changing counter | done | 2026-11-09 |
+| [015-37](37-interrupted-build-step.md) | Fix | An interrupted retry of a build step ends the build for this run | done | 2026-11-09 |
+| [015-36](36-interrupted-delete-index.md) | Fix | An interrupted deleteIndex leaves the index deleting with no job | done | 2026-11-09 |
+| [015-30](30-build-scans-past-dir.md) | Fix | An index build step scans past its directory, over non-objects | done | 2026-11-09 |
+| [015-29](29-delete-primary-index.md) | Fix | deleteIndex(Database.PRIMARY) throws Bug and leaves the primary deleting | done | 2026-11-09 |
+| [015-28](28-write-racing-index-create.md) | Fix | A write racing an index's creation is never indexed | done | 2026-11-09 |
+| [015-23](23-refused-index-delete.md) | Fix | A refused index deletion leaves the index active and unmaintained | done | 2026-11-09 |
 | [015-61](61-deletion-job-done-at-stop.md) | Fix | A deletion job that stop() or close() ends early reports "Done! ... | done | 2026-11-06 |
 | [015-06](06-refused-start-leaves-file.md) | Fix | A refused start leaves an empty first stream file | done | 2026-11-06 |
 | [015-86](86-gets-with-8-readers.md) | Investigate | Long gets with 8 readers: a full machine | done | 2026-11-06 |
@@ -321,3 +321,8 @@ so the Recommendation's measurements and Frans's decision are left.
 request: the list here is getting full. 019 takes short tasks, done and
 closed in about a day; open-ended, long-term and strategy topics go to
 017. The entries open here stay.
+
+2026-11-09. 015-23, 28, 29, 30, 36, 37, 39, 43, 46 and 49 done, in night
+006-15: release 2026.4's objects (020-08) and indexes (020-10) fixed them,
+each with its test in `before-commit.sh`; the commits and tests in each
+entry's log and in 020-11.

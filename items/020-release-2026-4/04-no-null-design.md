@@ -835,11 +835,19 @@ Under "Pub API", draft:
   2b.4). If running the constructor at a put is not wanted, (c), with the
   asymmetry documented. The implementation is the same for the three
   up to step B of section 9.
+  *Decided* (Frans, 2026-11-08, 21:47): (c), a null field left out at a
+  put, no put refused for it (020-02, section 5.1b).
 * **Q2. A class without a no-argument constructor**: its null fields
   left out, unchecked (recommended until question 2), or the put
   refused, since such an object cannot be read back into its class? The
   same for a constructor that throws: refuse only a put that needs it (a
   null field; recommended), or every put of the class.
+  *Decided*: a Data Object class has a public no-argument constructor
+  (Frans, 2026-11-08, 20:44, public fields only; 020-09, V2): a class
+  without one is refused at a put and at a get; a put runs no
+  constructor under (c); a get whose constructor throws gives
+  `ObjectCreationException` with it as the cause (020-09, section 5.2,
+  under Frans's delegation of 22:17).
 Note (2026-11-08): under 020-05's option (f), Q3 widens to every object
 of 2026.3 (020-02, section 4.11), Q4 is replaced by (f)'s header (020-02,
 section 4.5), and Q5 was done by 021-07, by that entry's default: every
@@ -851,18 +859,34 @@ add method of the Builder refuses null (section 11).
   null field as absent (a few lines; a null element still refused)?
   Under the recommendation such an object in an indexed directory can be
   removed only after its indexes are deleted (section 3.2).
+  *Decided* (Frans, 2026-11-08, 17:06; 020-02, section 4.11): every
+  object of 2026.3 and before is refused, with or without a null
+  (020-08, step 3, 38afb1a).
 * **Q4. The version byte**: stays 1 (recommended: the new format is a
   subset, 2026.3 reads it, and every start reads index definitions, so a
   version 2 would need a reader of both), or 2, so that an old object is
   told by its version?
+  *Replaced* by format 2's header byte 0x82 (Frans, 2026-11-08, 16:22;
+  020-02, section 4.5).
 * **Q5. `DbObject.Builder` with null** (`addString(name, null)`):
   refused (recommended; binson-java's choice, 020-03, BN1), or the field
   left out, as `toDbObject` does for a class?
+  *Done* by 021-07, by its default: every add method of the Builder
+  refuses null.
 * **Q6. `DbObject.getString` of an absent field**: null, and 0 or false
   for the numbers, as today (recommended for now; 020-02, section
   2b.5), or a throw, as binson-java's `getString` (BN2)? Part of
   `DbObject`'s API, which question 1's (D) may redesign; not needed for
   this change.
+  *Decided* (2026-11-09, under Frans's delegation of 22:17, as
+  recommended): as the code does on `main`, a typed getter of a field
+  that is absent, or of another stored kind, gives the type's zero:
+  `getString` and `getByteArray` null, `getInt`, `getLong` and `getDouble` 0,
+  `getBoolean` false; `has(name, type)` tells them apart. The reasons: a
+  throw would differ from a get into a class, which never throws for
+  the data (020-09, section 5.2), and binson-java's throw (BN2) asks a
+  caller to test first anyway, as `has` does here. Before `DbObject`
+  moves into `bergdb.pub` (020-10, step B3), its Javadoc says so.
 
 
 ## 9. The work: size and order
@@ -1052,3 +1076,7 @@ and 10. The log is now section 12. Not decided: Q1 to Q6.
 put, no put refused for it (020-02, section 5.1b); and question 1 of
 020-02: best effort on a get, for 2026.4.
 
+2026-11-09. Q2 to Q6 recorded as decided (section 8), in night 006-15
+(020-11): Q2 by Frans's decision of 20:44 and 020-09; Q3 by 020-02, 4.11;
+Q4 replaced by 4.5's header byte; Q5 done by 021-07; Q6 decided under
+Frans's delegation of 22:17, as recommended and as the code does.

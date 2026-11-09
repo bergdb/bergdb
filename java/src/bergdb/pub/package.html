@@ -53,6 +53,14 @@ BergDB 2026.3 and before (format 1) are not read: a get throws ObjectCreationExc
 maintenance DataFormatException, and a database whose index definitions are of 2026.3 does
 not start (bergdb 020-02, section 4.11); such a database is made again from its data.</p>
 
+<p>An object is put only at an object key: a key whose name, its last part, has no suffix,
+or the suffix ".obj". The suffix is what follows the name's last '.': "txt" for
+"/notes/a.txt", "h" for "/d/.h", none for "/notes/a" or "/d/x."; a '.' in a directory's name,
+as in "/v1.2/k", is not a suffix. A put of an object at a key with another suffix is refused
+with IllegalArgumentException ("Bad key"), before anything is written; a String or a byte[]
+may be put at any key. A get as Object.class, the primary scan and the indexes take a value
+as an object only at an object key.</p>
+
 <p>A Data Object class is public, with a public no-argument constructor. BergDB stores its
 public fields that are not static and not transient, and those of its superclasses; every
 other instance field must be transient. Each stored field is of a type on a closed list:

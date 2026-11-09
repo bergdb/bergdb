@@ -25,6 +25,12 @@ public interface WBuilder {
      * is refused. The rule in full: the package's
      * {@linkplain bergdb.pub##strings Strings} (bergdb 021-04).</p>
      *
+     * <p>An object, a value that is neither a String nor a byte[], is put only at an object
+     * key: one whose name, the key's last part, has no suffix, or the suffix ".obj". At a key
+     * with another suffix, such as "/notes/a.txt", the put throws IllegalArgumentException
+     * ("Bad key"). The suffix is what follows the name's last '.' (the package's
+     * {@linkplain bergdb.pub##objects Objects}).</p>
+     *
      * @throws IllegalArgumentException
      *             If 'key' is null or otherwise invalid, or if object is null; or if it
      *             is a String with a lone surrogate, a char of U+D800 to U+DFFF that is not

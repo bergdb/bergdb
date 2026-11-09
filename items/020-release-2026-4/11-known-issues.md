@@ -25,28 +25,25 @@ section 9; 020-04's and 020-07's questions; the lists of 015, 019 and
 
 At `fd6dd09` every fault of 020-01's, 020-08's and 020-10's lists is
 fixed, gone or not a fault, and so is every finding of the night's
-reviews, but the twelve open rows below; six questions or approvals are
-Frans's; the night tests, `night.sh` and step 4 are still to run. The open
-rows:
+reviews, but the open rows below; the one approval left to Frans is the
+spec's text (020-07) under 018-01's rule, a step of the release; the
+night tests, `night.sh` and step 4 are still to run. The open rows (since
+"020-11, the open rows", 2026-11-09: N10-test, N4-doc, BK-015, BK-020 and
+BK-020-10 closed, 020-04 Q6 and 020-07 Q2 to Q5 decided):
 
 | Row | What | With |
 |---|---|---|
 | R3-F1 | A String starting with "bergo" and U+0001 taken for a format-1 object | o02 (objects) |
 | R3-N3 | DbString encodes before its size check: OutOfMemoryError over 2^31 bytes | o02 |
 | R3-N2 | `Entries.suffix`: ukey and ikey differ for a name starting with '.' | o02 (Javadoc) |
-| N4-doc | The put Javadoc does not say an object at a key with a suffix is refused | o02 (Javadoc) |
-| N10-test | `testPauseCapped` never runs: `IndexBuilderImp` not in `pubimp/Pack` | unassigned, one line |
 | N5 / B3 | `DbObject` and its value classes still in `pubimp` | o02, step B3 |
 | R46-L1 | `NodeCollection.followStreamPointer`: a reader's drop also for the writer | C (low, hardening) |
 | R46-L2 | `Handle` and 009-02 words on `dropIfEmpty`'s written position | C (low, words) |
 | S4 | 020-08, step 4: the measurements (M1 to M8), a quiet run of `objectbench.sh` | the morning, F53 quiet |
-| BK-015 | 015-23 to 015-49's entries say "open"; their fixes are on `main` | coordinator (items) |
-| BK-020 | 020-04 and 020-07 do not record their questions' decisions | coordinator (items) |
-| BK-020-10 | 020-10, section 8, names two race tests that do not exist | coordinator (items) |
 
-For Frans: 020-04, Q6; 020-07, Q2 to Q5, and the spec's approval under
-018-01's rule; 020-09's and 020-10's decisions under the delegation, to
-read; the night's other decisions (006-15). To run before the release:
+For Frans: the approval of 020-07's text under 018-01's rule; to read,
+the decisions taken under his delegation (020-04 Q6; 020-07 Q2 to Q5;
+020-09's 24; 020-10's 22; the night's others in 006-15). To run before the release:
 the night tests of tonight's harnesses, `night.sh`, step 4 (section 7).
 
 
@@ -75,7 +72,7 @@ the night tests of tonight's harnesses, `night.sh`, step 4 (section 7).
 | N1 | A null String fails every start | fixed | 8185c07; PubTesterIndexJobs.testBuildOverAnObjectItCannotIndex |
 | N2 | User data gives an Error in rw() | fixed but R3-N3 | S2-F6, F8, F21, F26 gone; 7681710 (BadInit in rw()) |
 | N4 | The kind of a value is not stored | partly | 8185c07 (0x82 and the full check; the guess documented) |
-| N4-doc | Put Javadoc silent on objects at suffixed keys | open | the refusal ("Bad key") is not in the Javadoc |
+| N4-doc | Put Javadoc silent on objects at suffixed keys | fixed | 020-11's rows; ObjectKeysTester |
 | T1, H0 | The vectors; a reference codec; mutants | done | 9a45e06; ObjectFormatTester, 7 tests; night not run |
 | T2 to T7 | The vectors by DbObject; refusals; integers; sizes | done | 8185c07; DbObjectFormatTester, 15 tests |
 | T8 | Format-1 objects and definitions refused | done | 38afb1a; PubTester.testFormat1ObjectRefused and 2 more |
@@ -145,7 +142,7 @@ documented).
 | S2-F16 | A build indexes subdirectories | fixed | 5b08db5; testBuildStopsAtDir |
 | S2-F27 | A refused creation stays in memory | fixed | 5b08db5, 57f88ea; IndexJobsHarness.testCreationRefused |
 | N7 | A step refused for good, retried | fixed | 5b08db5: 4,096 bytes of levels; testLargeValueNoEntry |
-| N10 | A pause without its cap | code fixed | 5b08db5; IndexBuilderImp.testPauseCapped never runs (not in Pack) |
+| N10 | A pause without its cap | fixed | 5b08db5; IndexBuilderImp.testPauseCapped, in Pack since 020-11's rows |
 | S2-F2 | inclusive(false) alone | fixed | 8be9a95: gone; PubTesterIndex.testExclusiveBounds; H2 |
 | S2-F13 | prefix() on a secondary index | fixed | 8be9a95; PubTesterIndex.testPrefix; H2 |
 | S2-F22 | A later level alone | fixed | 8be9a95; PubTesterIndex.testGrammar; H2 |
@@ -174,14 +171,15 @@ Tonight's reviews and harnesses of the index steps:
 
 Notes:
 
-* N10's test is the only index test with `@Nano` outside `pubimp/Pack`:
-  until `IndexBuilderImp.class` is added there, 020-10's "each row has its
-  test in `before-commit.sh` passing" does not hold for N10.
-* 020-10, section 8, names `testRaceWriteCreate` and
-  `testRaceSetBeforeReadTime`; neither exists. Their scenarios are in
+* N10's test was the only index test with `@Nano` outside `pubimp/Pack`,
+  so it did not run in `before-commit.sh`; `IndexBuilderImp.class` is in
+  `Pack` since "020-11, the open rows".
+* 020-10, section 8, named `testRaceWriteCreate` and
+  `testRaceSetBeforeReadTime`, which do not exist; it names
   `PubTesterIndexRaces.testRacesCreate`, `testRacesActivate` and
-  `testRacesDelete` (36 forced orders). `testSubdirNotIndexed` tests the
-  writers; S2-F16's build is `testBuildStopsAtDir`.
+  `testRacesDelete` (36 forced orders) since "020-11, the open rows".
+  `testSubdirNotIndexed` tests the writers; S2-F16's build is
+  `testBuildStopsAtDir`.
 * `level2.sh` ran on `5b08db5` (I2): LEVEL 2 OK.
 
 
@@ -196,13 +194,13 @@ Notes:
 | 020-04 Q3 | A 2026.3 object with a null | decided: every format-1 object refused (17:06) |
 | 020-04 Q4 | The version byte | decided: header 0x82 (16:22) |
 | 020-04 Q5 | The Builder with null | decided: refused (021-07) |
-| 020-04 Q6 | `DbObject.getString` of an absent field | open for Frans; the code gives null, 0, false |
+| 020-04 Q6 | `DbObject.getString` of an absent field | decided (delegation): null, 0, false; has() tells |
 | 020-07 Q1 | Is a scalar a level | decided: containers only (19:43) |
-| 020-07 Q2 | Lookups without the full check | open for Frans; 2026.4 checks at every read |
-| 020-07 Q3 | The Binson conversion normative | open for Frans |
-| 020-07 Q4 | Top-level wrapping in "array" or "p" | open for Frans; the code follows the recommendation |
-| 020-07 Q5 | Later formats get a new header byte | open for Frans; the code follows it |
-| 020-07 Q6 | The spec's and vectors' home | decided: java/src/bergdb/pubimp/doc-files (9a45e06) |
+| 020-07 Q2 | Lookups without the full check | decided (delegation): 7.4 stays; Java checks every read |
+| 020-07 Q3 | The Binson conversion normative | decided (delegation): normative for a converter |
+| 020-07 Q4 | Top-level wrapping in "array" or "p" | decided (delegation): the API's convention |
+| 020-07 Q5 | Later formats get a new header byte | decided (delegation): as written |
+| 020-07 Q6 | The spec's and vectors' home | decided: vectors in java/ (9a45e06); 020-07 frozen |
 | 020-07 Q7 | '.' and ',' in names and index paths | settled by 020-10 (nestedField parts) |
 | 020-07 | The spec's approval under 018-01's rule | open for Frans before the release |
 | 020-09, 9 | Questions for Frans | none; 24 decisions under the delegation, to read |
@@ -222,7 +220,7 @@ Notes:
 | 021-10 | A '.' in a directory: no object key there | fixed | 38afb1a; Entries.testSuffixOfTheLastPart |
 | 021 | The list | no open entry | items/021-todo/readme.md |
 | 019 | The list | no open entry | items/019-todo/readme.md; 019-45 a limit, documented |
-| BK-015 | 015-23, 28 to 30, 36, 37, 39, 43, 46, 49 say open | open | their fixes are above; the entries need closing |
+| BK-015 | 015-23, 28 to 30, 36, 37, 39, 43, 46, 49 said open | done | closed by 020-11's rows, each with its test |
 | 015-03 | Lean follows 005-79's integer take | not 2026.4's | the Core's Lean model; no fault |
 | 015-18 | night.sh large on a release | not 2026.4's | not tonight (Frans, 22:12) |
 | 015-84 | Cap the pace's factor S/sd | not 2026.4's | an investigation of the Core's startup pace; no fault |
@@ -230,14 +228,18 @@ Notes:
 
 ## 6. Items and words
 
-* BK-015: the entries of 015 that 020's steps fixed still say "open"
-  (015-23, 28, 29, 30, 36, 37, 39, 43, 46, 49); close each with its commit.
-* BK-020: 020-04 records only Q1's decision and 020-07 none; the decisions
-  are in 020-02 (sections 4 and 5.1b) and 020-08 (section 2).
-* BK-020-10: section 8's two race test names (section 3, notes).
-* N4-doc: the put methods' Javadoc does not say that an object put at a
-  key with a suffix other than ".obj" is refused ("Bad key, expected no
-  suffix"); only the scans' and the indexes' Javadoc define an object key.
+* BK-015, done: the entries of 015 that 020's steps fixed (015-23, 28,
+  29, 30, 36, 37, 39, 43, 46, 49) are closed, each with its commit and
+  test, and their rows moved in 015's readme.
+* BK-020, done: 020-04, section 8, and 020-07, section 14, record each
+  question's decision.
+* BK-020-10, done: section 8's race test names (section 3, notes).
+* N4-doc, done: the put Javadoc of `WBuilder`, `RwEnvironment` and
+  `Connection` says that an object is put only at an object key and is
+  refused elsewhere ("Bad key"), and the package page's Objects section
+  what a suffix is (the name's last '.'; a directory's '.' is not one;
+  ".h" has "h", as the objects agent settles `Entries.suffix` for ikeys);
+  `ObjectKeysTester` pins its examples.
 
 
 ## 7. Still to run or measure
@@ -261,3 +263,10 @@ coordinator's request (Frans's 22:03), by the night's agent of 019-46 and
 two read-only helpers: every "fixed" row's test read and run; the unit
 group passed (1,399 tests). To be brought up to date when the night's last
 fixes land.
+
+2026-11-09. The open rows that were nobody's closed ("020-11, the open
+rows"): N10's test in `Pack`; N4's put Javadoc, with a test; 015's ten
+entries closed; 020-10's race test names; 020-04's Q2 to Q6 and 020-07's
+Q2 to Q7 recorded as decided, Q6 of 020-04 and Q2 to Q5 of 020-07 under
+Frans's delegation of 22:17, as recommended. Left for Frans: 020-07's
+approval.

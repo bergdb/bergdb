@@ -1,7 +1,7 @@
 015-36. Fix: an interrupted deleteIndex leaves the index deleting with no job
 =============================================================================
 
-Status: open. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
+Status: done 2026-11-09. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
 
 After release 2026.2 (a known issue of it); in 2026.1 too.
 
@@ -23,3 +23,5 @@ Log
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
 
 2026-11-04. Review R8 found the same (R8-F1, items/016-release-2026-2/06-reviews/R8.md).
+
+2026-11-09. Done by release 2026.4's indexes (020-10), in night 006-15: gone: a deletion is one transaction with no job and no state "deleting"; a cleanup in the background removes the old entries (020-10, 6.2); 5b08db5 (020-10, I2 part 1). The test: PubTesterIndexJobs.testDeleteWithInterruptFlag (the deletion done, the flag kept, no job of the name), in `before-commit.sh`, passing on `main` at `fd6dd09` (020-11). Status: done.

@@ -248,6 +248,10 @@ public interface Connection extends ReadInterface {
      *            the put: the caller may change or reuse its array afterwards.
      *            A String, and each string in an object, is stored as well-formed
      *            UTF-8 (the package's {@linkplain bergdb.pub##strings Strings}).
+     *            An object, neither a String nor a byte[], is put only at an object
+     *            key, one without a suffix or with ".obj"; at another key the put
+     *            throws IllegalArgumentException, as for WBuilder.put() (the package's
+     *            {@linkplain bergdb.pub##objects Objects}).
      * @throws DbException
      *             If the transaction could not be processed because the
      *             database is faulty.

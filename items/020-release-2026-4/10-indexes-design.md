@@ -674,9 +674,9 @@ step is where the fix and the test land (section 10).
 
 | Fault | What; how the design removes or fixes it | Test; step |
 |---|---|---|
-| 015-28 | write racing a creation: R first, vhash  | `testRaceWriteCreate`; I1            |
-| 015-43 | set read before R: R first, lock (5.2)   | `testRaceSetBeforeReadTime`; I1      |
-| S2-F12 | old entry in a new index: generations    | `testRaceDeleteRecreate`, H2; I1, I2 |
+| 015-28 | write racing a creation: R first, vhash  | `testRacesCreate`; I1                |
+| 015-43 | set read before R: R first, lock (5.2)   | `testRacesCreate`, `Activate`, `Delete`; I1 |
+| S2-F12 | old entry in a new index: generations    | `testRacesDelete`, H2; I1, I2        |
 | 015-46 | `String` over an object: all writes kept | `testStringOverObject`, H2; I1       |
 | S2-F26 | as in F3                                 | as in F3                             |
 
@@ -719,6 +719,12 @@ step is where the fix and the test land (section 10).
 | 015-29 | as in F5                               | as in F5                          |
 | N5     | the boundary a convention: section 7   | jar check, javadoc-pub.sh; B1, B2 |
 | N11    | key replace in level bytes: K only     | `testKeyReplaceIndexedText`; I2   |
+
+The race tests are `PubTesterIndexRaces.testRacesCreate`,
+`testRacesActivate` and `testRacesDelete` (section 9.2: a write at each
+point of each change, 36 forced orders); this table named them
+`testRaceWriteCreate` and `testRaceSetBeforeReadTime` until 2026-11-09
+(020-11). `testRaceDeleteRecreate` exists too, a sequential case.
 
 Also touching indexes, and settled: N2 (an `Error` from the user's data
 in `rw()`): the index path's case was S2-F26's assertion, gone with the

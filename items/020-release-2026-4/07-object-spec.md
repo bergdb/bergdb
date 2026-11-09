@@ -766,22 +766,35 @@ check at every read; the others before the release.
   pass over its bytes (020-02, section 6, point 2: to be timed by 020-08).
   Java's first steps make the full check at every read either way (020-08,
   section 4.2).
+  *Decided* (2026-11-09, under Frans's delegation of 22:17, as
+  recommended): section 7.4 stays; Java 2026.4 makes the full check at
+  every read (020-08, section 4.2), which 7.4 allows, and step 4's
+  measurements (M2, M5) may later make its lookups the faster ones.
 * **Q3. The Binson conversion: normative?** Section 10 makes the mapping
   a rule for a binding that converts, the method informative; Binson then
   is BergDB's interchange format with one result in every binding (4.2's
   consequences). *Recommended*: as written. The other choice: section 10
   informative, each binding free.
+  *Decided* (2026-11-09, under the delegation, as recommended): section
+  10 is normative for a binding that converts; Java converts only in its
+  tests (`ObjectFormatTester`), as written.
 * **Q4. Java's wrapping at the top** (`array`, `p`): a convention of the
   API, or a rule of the format that every binding keeps (a top-level
   array always read as an array)? *Recommended*: the API's (020-02,
   section 5.2 says "a rule of the API that the format keeps"), decided
   with question 5; section 12 says so. To the format they are objects.
+  *Decided* (2026-11-09, under the delegation, as recommended): the API's
+  convention, as Java's binding keeps it (020-09, section 5.9, and the
+  package page); to the format they are objects.
 * **Q5. Later formats.** Section 9 says that anything format 2 does not
   have comes with a new header byte, never as a new type byte inside a
   value of format 2, so that an old reader refuses a newer value at its
   first byte, with its version. *Recommended*: as written; it makes 4.3's
   "a hashed object type can come later under its own type byte, old
   values staying readable" exact.
+  *Decided* (2026-11-09, under the delegation, as recommended): as
+  written; Java's reader tells format 1 and format 2 by their first bytes
+  and refuses any other.
 * **Q6. The spec's home after the release, and the vectors'.** 4.12
   decided "a subitem of 020". *Recommended*: 020-07 stays the spec of
   format 2, frozen at the release (a later format gets a spec of its own,
@@ -789,6 +802,10 @@ check at every read; the others before the release.
   code that reads them, with this section pointing there; the Core's
   `doc-files/key-encoding.md` is the precedent for a format document in
   `java/`, if Frans wants the spec there too.
+  *Decided* (020-08, section 2, item 5, its default; 2026-11-09 for the
+  rest, under the delegation): the vectors are in
+  `java/src/bergdb/pubimp/doc-files/object-vectors.txt` (9a45e06); 020-07
+  stays the spec of format 2, frozen at the release.
 * **Q7. Names and index paths.** The format allows any name of 1 to 255
   bytes, `.` and `,` included (vector `names-odd`); an index definition
   names nested fields with `.` and separates names with `,` (`Data.Index`,
@@ -796,6 +813,13 @@ check at every read; the others before the release.
   *Recommended*: the format stays as it is, and an index definition refuses
   a name it cannot hold (an index question, 020-01, section 6). Java's
   field names never contain either.
+  *Settled* by 020-10 (sections 3.1 and 4.2): the format stays; an index
+  definition stores a level's path as an array of names, any name of the
+  format, '.' and ',' included (`nestedField(String[])`), so none is
+  refused.
+
+The approval of this spec's text under 018-01's rule stays with Frans: a
+step of the release, not a blocker of the code (020-11).
 
 
 ## 15. Sources
@@ -821,3 +845,7 @@ twelve decisions of 15:51 to 17:09 (020-02, section 4), with the vectors
 in `07-object-spec/vectors.txt` and the programs in
 `/Users/f/fl/bench/006-15/020-07/`. No code changed. For Frans's approval
 under 018-01's rule; questions Q1 to Q7 open.
+
+2026-11-09. Q2 to Q5 decided under Frans's delegation of 22:17, as
+recommended, and Q6 and Q7 recorded as settled (section 14), in night
+006-15 (020-11); the spec's approval stays with Frans.

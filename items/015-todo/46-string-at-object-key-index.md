@@ -1,7 +1,7 @@
 015-46. Fix: a String or byte[] at an object key in an indexed directory breaks the index
 =========================================================================================
 
-Status: open. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
+Status: done 2026-11-09. Kind: Fix. Created 2026-11-03 by Frans Lundberg.
 
 After release 2026.2 (a known issue of it); in 2026.1 too.
 
@@ -22,3 +22,5 @@ Log
 ---
 
 2026-11-03. Registered by the coordinator of release 2026.2 (016-02).
+
+2026-11-09. Done by release 2026.4's indexes (020-10), in night 006-15: every put and delete at an object key keeps the indexes, of any value: a String or a byte[] has no entry, so one put over an object deletes its entries (020-10, 3.3 and 5.1); 249b684 (020-10, I1). The test: PubTesterIndexRaces.testStringOverObject (a String and a byte[] over an object, in w() and rw(), then a delete), in `before-commit.sh`, passing on `main` at `fd6dd09` (020-11). Status: done.
