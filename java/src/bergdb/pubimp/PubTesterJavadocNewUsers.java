@@ -1,5 +1,7 @@
 package bergdb.pubimp;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -10,6 +12,7 @@ import java.util.Set;
 import bergdb.core.Db;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.Connection;
 import bergdb.pub.DataFormatException;
 import bergdb.pub.Database;
@@ -21,13 +24,20 @@ import bergdb.pub.Kv;
 import bergdb.pub.ObjectCreationException;
 import bergdb.pub.TestClock;
 import bergdb.pub.Time;
+import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.LookupTimeNotAvailableException;
+import bergdb.pub.util.SyncLevel;
+import bergdb.storage.StreamIoException;
+import bergdb.stream.AppendOnlyStream;
 import bergdb.stream.CutStream;
+import bergdb.stream.MemoryStream;
+import bergdb.stream.ReadBelowFirstPosException;
 
 /**
- * The Pub API's Javadoc and messages against what two new users' applications met (bergdb
- * 020-24-04, a catalogue larger than memory; 020-24-05, a document store). Each test names
- * the finding and the promise it shows.
+ * The Pub API's Javadoc and messages against what new users' applications met (bergdb
+ * 020-24-04, a catalogue larger than memory; 020-24-05, a document store; 020-24-08, a log
+ * store where the file system misbehaves). Each test names the finding and the promise it
+ * shows.
  *
  * @author Frans Lundberg
  */
@@ -462,6 +472,109 @@ public class PubTesterJavadocNewUsers {
             }
         } finally {
             d.close();
+        }
+    }
+
+    // ======== 020-24-08, a log store where the file system misbehaves ========
+
+    /**
+     * U8-2 (bergdb 020-24-08): a start whose read fails on the storage, here as the first
+     * stream file was deleted, throws the storage's exception, a StreamIoException whose
+     * cause is a ReadBelowFirstPosException, as DatabaseBuilder.start() says. It threw a
+     * DbFailedException, "A read failed on the storage (the cause). The database takes no
+     * more transactions or reads and must be restarted.": the index manager's first scan,
+     * after the Db's start, failed the database that was starting.
+     */
+    @Nano
+    public static void testStartWithTheFirstFileDeleted(TestEnvironment env) throws IOException {
+        File dir = env.createTempDir();
+        try (Database d = Factory.database().create(dir.getPath()).startupDistanceInMb(5)
+                .start()) {
+            Connection c = d.connection();
+            for (int i = 0; i < 2000; i++) {      // 1500 showed it; 1000 did not.
+                c.put(String.format("/log/%012d.bin", i), new byte[1000]);
+            }
+        }
+        Assert.assertTrue("deleted", new File(dir, "00000000000000.bergdb").delete());
+        for (int i = 0; i < 2; i++) {      // The second: the first closed what it opened.
+            StreamIoException e = PubTesterJavadoc.assertThrows("start " + i,
+                    StreamIoException.class,
+                    () -> Factory.database().open(dir.getPath()).start());
+            Assert.assertTrue(e.toString(), e.getCause() instanceof ReadBelowFirstPosException);
+        }
+    }
+
+    /**
+     * U8-2 (bergdb 020-24-08): a start during which the storage fails, as a write of the
+     * start's own on a full disk, throws the storage's StreamIoException, as
+     * DatabaseBuilder.start() says. It threw a DbFailedException, "Cannot call getOne(): the
+     * database failed (the cause) and must be restarted.", which named a call that the
+     * application did not make. Here a hook right after the Db's start fails a sync on a
+     * stream whose appends fail, and the index manager's scan, the start's next read, meets
+     * the failure ("Cannot call getMany()").
+     */
+    @Nano
+    public static void testStartOnAFailedStorage() {
+        final FailingStream s = new FailingStream();
+        DatabaseImp.testHookAfterStart = db -> {
+            s.failAppends = true;
+            db.execute(db.trans().put("/a", "a0").build());
+            try {
+                db.sync(SyncLevel.ORDINARY);
+                throw new AssertionError("synced");
+            } catch (DbFailedException e) {
+                // Expected: the storage failed, and the database with it.
+            }
+        };
+        try {
+            StreamIoException e = PubTesterJavadoc.assertThrows("start",
+                    StreamIoException.class,
+                    () -> ((DatabaseBuilderImp) Factory.database()).mainStream(s).start());
+            Throwable root = e;
+            while (root.getCause() != null) {
+                root = root.getCause();
+            }
+            Assert.assertEquals(FailingStream.MESSAGE, root.getMessage());
+        } finally {
+            DatabaseImp.testHookAfterStart = null;
+        }
+        Assert.assertTrue("closed", s.closed);
+    }
+
+    /** A MemoryStream whose appends fail while failAppends is set, as on a full disk. */
+    static final class FailingStream implements AppendOnlyStream {
+        static final String MESSAGE = "FailingStream: no space left, as set";
+        final MemoryStream inner = new MemoryStream();
+        volatile boolean failAppends = false;
+        volatile boolean closed = false;
+
+        public long getLength() {
+            return inner.getLength();
+        }
+
+        public long getFirstPos() {
+            return inner.getFirstPos();
+        }
+
+        public void read(long position, byte[] dest, int destOffset, int length)
+                throws IOException {
+            inner.read(position, dest, destOffset, length);
+        }
+
+        public void append(byte[] source, int sourceOffset, int length) throws IOException {
+            if (failAppends) {
+                throw new IOException(MESSAGE);
+            }
+            inner.append(source, sourceOffset, length);
+        }
+
+        public void pretruncate(long position) throws IOException {
+            inner.pretruncate(position);
+        }
+
+        public void close() throws IOException {
+            inner.close();
+            closed = true;
         }
     }
 }

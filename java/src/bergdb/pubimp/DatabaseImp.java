@@ -13,9 +13,11 @@ import bergdb.pub.StartupInfo;
 import bergdb.pub.Time;
 import bergdb.pub.util.Clock;
 import bergdb.pub.util.DbException;
+import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.Job;
 import bergdb.pub.util.SyncLevel;
+import bergdb.storage.StreamException;
 import bergdb.storage.StreamIoException;
 
 /**
@@ -61,6 +63,16 @@ public class DatabaseImp implements Database {
     }
     
     /**
+     * A start that fails on the storage throws the storage's exception, a StreamIoException
+     * or a StreamFormatException (bergdb 020-24-08, U8-2): as DatabaseBuilder.start() says,
+     * and as the start's steps before the Db is active throw it. Until 020-24-08, a read
+     * that failed in the Db's last step (Reclaim.initFromDb) or in the index manager's scans,
+     * or a failure of the storage in the background that such a read met, as the start's
+     * own write on a full disk, failed the database that was starting, and the start threw
+     * a DbFailedException, "Cannot call getOne(): the database failed (the cause) and must
+     * be restarted." or "A read failed on the storage (the cause). [...] must be
+     * restarted.", whose Javadoc is about a running database.
+     * 
      * @throws StreamIoException
      * @throws StreamFormatException
      * @throws IllegalDbStateException  If db has been started already.
@@ -88,10 +100,19 @@ public class DatabaseImp implements Database {
             database.indexManager.start(database);       // bergdb 020-10, section 4.5
             database.startupInfo = new StartInfoImp(startTime);
         } catch (RuntimeException | Error e) {
+            Throwable thrown = e;
+            if (e instanceof DbFailedException && e.getCause() instanceof StreamException) {
+                thrown = e.getCause();      // The storage's exception (bergdb 020-24-08, U8-2).
+            }
             try {
                 db.close();
             } catch (RuntimeException | Error e2) {
-                e.addSuppressed(e2);
+                if (e2 != thrown) {
+                    thrown.addSuppressed(e2);
+                }
+            }
+            if (thrown != e) {
+                throw (StreamException) thrown;
             }
             throw e;
         }

@@ -164,6 +164,11 @@ public interface DatabaseBuilder {
      * the directory has been read or changed then, and the database that has it runs on as
      * before (bergdb 015-56).</p>
      * 
+     * <p>A start may write to the stream: it completes a cut tail, as a crash leaves it, and
+     * writes created.txt if it is missing. On a full disk a start may therefore be refused,
+     * with a StreamIoException, or may work, and the database then fails at the first write
+     * that needs room (Database, "Errors"; bergdb 020-24-08, U8-2).</p>
+     * 
      * <p>One database at a time has the stream of memory() too (bergdb 015-65): while the
      * database that this builder started on it has not closed, it runs or is closing after
      * stop(), start() throws an IllegalStateException, and that database runs on as before.
@@ -184,7 +189,10 @@ public interface DatabaseBuilder {
      *             StreamIoException if the directory of create() or open() cannot be
      *             opened or listed (an I/O error, no permission to read it; bergdb 020-20),
      *             or another database has it (the cause a DirectoryInUseException, bergdb
-     *             005-63).
+     *             005-63). A read or a write that fails on the storage during the start, as
+     *             on a full disk or with a stream file missing, throws the storage's
+     *             exception, a StreamIoException, or a StreamFormatException for a damaged
+     *             stream (Database, "Errors"; bergdb 020-24-08, U8-2).
      * @throws BadCryptoKey
      *             If the wrong crypto key is used, or none is used with an encrypted
      *             database or a crypto key is used with an unencrypted database; without a

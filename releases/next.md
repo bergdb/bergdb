@@ -490,6 +490,18 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   the value is an object, not a String, where it said only that the value
   is not well-formed UTF-8. The exceptions are as before. In 2026.1 to
   2026.3; found by a new-user application.
+* **A start that fails on the storage throws the storage's exception**
+  (bergdb 020-24-08, U8-2; 2026-11-09). A start whose read failed on the
+  storage in its last steps, as with the first stream file deleted, or
+  whose read met a failure of the storage in the background, as its own
+  write on a full disk, threw a `DbFailedException`, "Cannot call
+  getOne(): the database failed (the cause) and must be restarted." or "A
+  read failed on the storage (the cause). [...] must be restarted.",
+  which named a call that the application did not make and asked for a
+  restart, which failed the same way. Now it throws the storage's `StreamIoException` (or
+  `StreamFormatException`), as `DatabaseBuilder.start()` says and as the
+  start's earlier steps did, and has closed what it opened, as before.
+  Found by a new-user application.
 
 
 ### Core API
