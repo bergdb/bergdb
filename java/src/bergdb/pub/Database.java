@@ -57,7 +57,7 @@ import bergdb.pub.util.SyncLevel;
  * also when the block throws:</p>
  * <pre>
  * try (Database db = Factory.database().memory().start()) {
- *     db.connection().w().put("/key", "value").execute();
+ *     db.connection().put("/a.txt", "Hello world!");
  * }
  * </pre>
  * 

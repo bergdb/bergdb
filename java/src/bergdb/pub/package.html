@@ -1,19 +1,201 @@
 <html><head><title>Package bergdb.pub</title></head><body>
 
-<p>Together with pub.util, this package forms the public BergDB API, "Pub".
-The package is used to store String and byte[] values by key, and Java objects of Data Object
-classes (see Objects below), and to keep user indexes over the objects of a directory
-(Database.indexBuilder(), Connection.useIndex()); the primary scan, Connection.usePrimary(),
-lists a directory's values in the order of their keys.</p>
+<p>BergDB's API for Java: start a database, put values at keys, and get them back. BergDB runs
+inside your program and keeps its data in a directory, or in memory. This page shows the main
+uses with short examples, then gives the rules in full. Together with bergdb.pub.util, this
+package is the Pub API.</p>
 
-<p>The API is the packages bergdb.pub and bergdb.pub.util, and the Core's
-bergdb.core.Db with the types of its signatures. Everything else, bergdb.pubimp included, is
-not API, whatever is public in it, and may change in any release (bergdb 020-10, section 7).
-java/build.sh makes build/bergdb-release.jar, the jar a release ships: the classes of src
-only. Objects and user indexes, experimental in 2026.3, are part of the API since 2026.4
-(bergdb 020-02, 020-10).</p>
+<h2 id="first">A first program</h2>
 
-<h2 id="strings">Strings</h2>
+<pre>
+import bergdb.pub.Connection;
+import bergdb.pub.Database;
+import bergdb.pub.Factory;
+
+public class Hello {
+    public static void main(String[] args) {
+        try (Database db = Factory.database().memory().start()) {
+            Connection c = db.connection();
+            c.put("/a.txt", "Hello world!");
+            System.out.println(c.get("/a.txt", String.class));    // Hello world!
+        }
+    }
+}
+</pre>
+
+<p>memory() gives a database in memory, gone when it closes; create(dir) keeps one in a
+directory, as the <a href="../../index.html">overview</a>'s program does. The try block
+closes the database when the block ends.</p>
+
+<p>The examples below continue that program: put them in order at the end of its try block,
+where c is the connection and db the database. Each uses the data of the ones before it and
+prints what its comments say. The class Account goes beside main, and two more imports are
+needed: bergdb.pub.Kv and bergdb.pub.Time. The examples run as shown, so an AI assistant that
+writes your code can start from them as well as you.</p>
+
+<h2 id="text">Text and bytes</h2>
+
+<p>A key is a path, such as "/notes/a.txt" in the directory "/notes/". Put text, a String, at
+a key with the suffix ".txt", and bytes, a byte[], at a key with another suffix, such as
+".bin"; a key without a suffix is for objects (next). The suffix tells a reader that does not
+know the type what the value is: a get as Object.class gives a String at a ".txt" key, a byte[]
+at a ".bin" key.</p>
+
+<pre>
+c.put("/notes/a.txt", "Hello world!");
+c.put("/data/b.bin", new byte[] {1, 2, 3});
+System.out.println(c.get("/notes/a.txt", String.class));         // Hello world!
+System.out.println(c.get("/data/b.bin", byte[].class).length);   // 3
+c.delete("/data/b.bin");
+System.out.println(c.get("/data/b.bin", byte[].class));          // null
+</pre>
+
+<h2 id="data-objects">Objects</h2>
+
+<p>An object of a Data Object class, a public class with public fields and a public
+no-argument constructor, is put at a key without a suffix, and a get gives a new object of the
+class with the same values. The class, beside main:</p>
+
+<pre>
+public static class Account {
+    public String owner;
+    public long balance;
+
+    public Account() {}
+
+    public Account(String owner, long balance) {
+        this.owner = owner;
+        this.balance = balance;
+    }
+}
+</pre>
+
+<p>And its use:</p>
+
+<pre>
+c.put("/acc/1001", new Account("Ann", 100));
+Account a = c.get("/acc/1001", Account.class);
+System.out.println(a.owner + " " + a.balance);    // Ann 100
+</pre>
+
+<h2 id="w">Several writes at once</h2>
+
+<p>A write-only transaction, w(), puts and deletes several keys at once: all of them, or none.
+Every put above was a transaction of its own.</p>
+
+<pre>
+c.w().put("/acc/1002", new Account("Bob", 20))
+     .put("/acc/1003", new Account("Cecilia", 60))
+     .execute();
+</pre>
+
+<h2 id="rw">Read, then write</h2>
+
+<p>A read-write transaction, rw(), runs an action that reads and writes through its
+environment, env. Here Ann pays Bob 30:</p>
+
+<pre>
+c.rw(env -&gt; {
+    Account from = env.get("/acc/1001", Account.class);
+    Account to = env.get("/acc/1002", Account.class);
+    from.balance -= 30;
+    to.balance += 30;
+    env.put("/acc/1001", from);
+    env.put("/acc/1002", to);
+});
+System.out.println(c.get("/acc/1002", Account.class).balance);    // 50
+</pre>
+
+<p>If another transaction changes what the action has read before the action's writes are
+made, BergDB runs the action again; so an action should have no effect but its reads and
+writes through env.</p>
+
+<h2 id="history">Earlier states</h2>
+
+<p>BergDB keeps the earlier states of the database: a connection reads at its lookup time, the
+latest state unless you set an earlier one.</p>
+
+<pre>
+Time t = c.currentTime();
+c.put("/notes/a.txt", "Hello again!");
+c.setLookupTime(t);
+System.out.println(c.get("/notes/a.txt", String.class));    // Hello world!
+c.setLookupTime(Time.MAX);                                   // the latest state again
+System.out.println(c.get("/notes/a.txt", String.class));    // Hello again!
+</pre>
+
+<h2 id="primary">The keys of a directory, in order</h2>
+
+<p>usePrimary() lists the keys of one directory in key order, with their values:</p>
+
+<pre>
+for (Kv&lt;Account&gt; kv : c.usePrimary(Account.class).dir("/acc/").kvs()) {
+    System.out.println(kv.key() + " " + kv.value().owner + " " + kv.value().balance);
+}
+// /acc/1001 Ann 70
+// /acc/1002 Bob 50
+// /acc/1003 Cecilia 60
+</pre>
+
+<h2 id="index">Indexes</h2>
+
+<p>A user index lists the objects of a directory in the order of their fields: here the
+accounts by balance, from 60 on. start() builds the index from the data there, join() waits
+until it is built, and the database keeps it as the data changes. An index is stored in the
+database: create it once.</p>
+
+<pre>
+db.indexBuilder("by-balance").dir("/acc/").type("long").field("balance").start().join();
+for (Account x : c.useIndex("by-balance", Account.class).from(60, true).objects()) {
+    System.out.println(x.owner + " " + x.balance);
+}
+// Cecilia 60
+// Ann 70
+</pre>
+
+<h2 id="good-to-know">Good to know</h2>
+
+<ul>
+<li>Close, or stop, every database that you start: nothing else stops it, not even the garbage
+collector. close() waits until everything is written; stop() returns at once.</li>
+<li>A transaction is written to storage soon after it returns; sync() waits until it is
+durable, and so does close().</li>
+<li>A Connection is for one thread: db.connection() gives each thread its own, and
+db.newConnection() a new one.</li>
+<li>Earlier states are kept forever, until Database.setRetainDuration() limits them.</li>
+<li>If the database fails, on an I/O error for example, the call throws DbFailedException, or
+the Error that failed it, and the application should end its process; the next start
+recovers the database as after a crash ({@link Database}, "Errors").</li>
+</ul>
+
+<h2 id="more">Where to read more</h2>
+
+<ul>
+<li>{@link Factory} and {@link DatabaseBuilder}: start a database, with create(), open() or
+memory().</li>
+<li>{@link Database}: the started database: its connections, close() and stop(), sync(),
+indexes, and what happens on errors.</li>
+<li>{@link Connection}: get(), put(), delete(), w(), rw(), lookup times, and the scans.</li>
+<li>{@link Action} and {@link RwEnvironment}: the read-write transaction.</li>
+<li>{@link DbObject}: an object exactly as it is stored, whatever class put it.</li>
+<li>{@link IndexBuilder} and {@link UseIndexBuilder}: define a user index, and scan it.</li>
+<li>{@link UsePrimaryBuilder}: list the keys of a directory.</li>
+<li>{@link Time}: a time of the database's clock.</li>
+<li>The rules below: <a href="#api">The API and its jar</a>, <a href="#strings">Strings</a>,
+<a href="#objects">Objects</a>, <a href="#null">Null and absent fields</a>.</li>
+</ul>
+
+<h2 id="rules">The rules in full</h2>
+
+<h3 id="api">The API and its jar</h3>
+
+<p>The API is the packages bergdb.pub and bergdb.pub.util, and the Core's bergdb.core.Db with
+the types of its signatures. Everything else, bergdb.pubimp included, is not API, whatever is
+public in it, and may change in any release. The jar that a release ships, which java/build.sh
+makes as build/bergdb-release.jar, holds the classes of BergDB's src directory only. Objects
+and user indexes, experimental in 2026.3, are part of the API since 2026.4.</p>
+
+<h3 id="strings">Strings</h3>
 
 <p>Every string that BergDB stores is Unicode text: a sequence of Unicode scalar values,
 stored as well-formed UTF-8 (RFC 3629). It is a rule of BergDB's stream, the same in every
@@ -39,7 +221,7 @@ data: as a byte[] value, or in an object as a byte[] or a char[] field; a char[]
 chars and reads back exactly. Or the application repairs such a String before the put, for
 example with U+FFFD in place of each lone surrogate.</p>
 
-<h2 id="objects">Objects</h2>
+<h3 id="objects">Objects</h3>
 
 <p>A value that is neither a String nor a byte[] is an object: a put of a Data Object stores
 it, and a get of a class reads it into a new object of the class. BergDB stores an object in
@@ -48,11 +230,12 @@ Binson's: boolean; integer, signed, 64 bits (Java's byte, short, char, int and l
 one integer, stored in the fewest bytes); double (float and double; every NaN is one value,
 its payload not kept, and -0.0 is kept); string; bytes (a byte[]); array, its elements of any
 of the types; object. A field's name has 1 to 255 bytes in UTF-8; an object is nested at most
-16 levels deep, objects and arrays counted alike, the top object level 1. Objects written by
-BergDB 2026.3 and before (format 1) are not read: a get throws ObjectCreationException, a
-byte[] put of one in an indexed directory DataFormatException, and a build over one fails; a
-put over one and a delete of one work. A database whose index definitions are of 2026.3 does
-not start (bergdb 020-02, section 4.11); such a database is made again from its data.</p>
+16 levels deep, objects and arrays counted alike, the top object level 1.</p>
+
+<p>Objects written by BergDB 2026.3 and before (format 1) are not read: a get throws
+ObjectCreationException, a byte[] put of one in an indexed directory DataFormatException, and
+a build over one fails; a put over one and a delete of one work. A database whose index
+definitions are of 2026.3 does not start; such a database is made again from its data.</p>
 
 <p>An object is put only at an object key: a key whose name, its last part, has no suffix,
 or the suffix ".obj". The suffix is what follows the name's last '.': "txt" for
@@ -60,7 +243,9 @@ or the suffix ".obj". The suffix is what follows the name's last '.': "txt" for
 as in "/v1.2/k", is not a suffix. A put of an object at a key with another suffix is refused
 with IllegalArgumentException ("Bad key"), before anything is written; a String or a byte[]
 may be put at any key. A get as Object.class, the primary scan and the indexes take a value
-as an object only at an object key.</p>
+as an object only at an object key. A get as Object.class gives a stored object at an object
+key as a DbObject, a value at a key with the suffix ".txt" as a String, and any other value
+as its bytes (Connection.get()).</p>
 
 <p>A Data Object class is public, with a public no-argument constructor. BergDB stores its
 public fields that are not static and not transient, and those of its superclasses; every
@@ -91,12 +276,12 @@ is not a Data Object, for a constructor that throws (its exception the cause), a
 value that is not a stored object. To read a stored object exactly as it is, get it as a
 {@link DbObject}.</p>
 
-<h2 id="null">Null and absent fields</h2>
+<h3 id="null">Null and absent fields</h3>
 
 <p>BergDB stores no null. An object is a set of named fields, and a field that is there holds
 a value of its type: a string, an array, a nested object, never null. A field that has no
 value is absent. It is a rule of BergDB's object format, the same in every language that
-writes or reads a database, not a detail of Java (bergdb 020-02, section 4.1).</p>
+writes or reads a database, not a detail of Java.</p>
 
 <p>A put leaves a null field of the object out, at any depth: the field is absent. A null
 Integer, or another wrapper, is absent too. A get of an absent field leaves the field as the
@@ -111,6 +296,8 @@ apart from "not written" stores it explicitly, as a field of its own; an array w
 stores a placeholder.</p>
 
 <p>A user index gives an object no entry for a field that is absent.</p>
+
+<h3 id="dependencies">The package's dependencies</h3>
 
 <p>Depends on: common, nanotest, pub.util, pubimp. Only test code (the @Nano methods)
 uses nanotest. Factory uses pubimp to create a DatabaseBuilder: the circular package

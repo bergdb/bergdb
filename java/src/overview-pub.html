@@ -2,47 +2,19 @@
 
 <body>
 
-<p>The Pub API is a small, but powerful API that should make it easy for you
-to store data. The goal is to keep things simple so that you can focus on your
-specific application rather than on struggling with database issues. 
-BergDB is a database library, it is used in-process together with your 
-application code.</p>
+<p>BergDB is a database library for Java: it runs in-process, together with your application
+code, and keeps its data in a directory, or in memory. You put values at keys, such as
+"/a.txt", and get them back. The Pub API is small, but powerful: it should make it easy for
+you to store data, so that you can focus on your application rather than on database
+issues.</p>
 
-<p>The API is the packages bergdb.pub and bergdb.pub.util, and the Core's
-bergdb.core.Db with the types of its signatures. Everything else, bergdb.pubimp included, is
-not API, whatever is public in it, and may change in any release (bergdb 020-10, section 7).
-java/build.sh makes build/bergdb-release.jar, the jar a release ships: the classes of src
-only.</p>
+<h1 id="first">A first program</h1>
 
-<p>Values are Strings, byte[]s and Java objects of Data Object classes. User indexes
-(Database.indexBuilder(), Connection.useIndex()) list the objects of a directory in the order
-of their fields, and the primary scan (Connection.usePrimary()) a directory's values in the
-order of their keys; see IndexBuilder, UseIndexBuilder and UsePrimaryBuilder.</p>
-
-<p>Every string that BergDB stores, a key, a String value and each string in an object, is
-Unicode text stored as well-formed UTF-8; a String with a lone surrogate is refused. The rule
-in full: <a href="bergdb/pub/package-summary.html#strings">Strings</a>, in the package
-bergdb.pub.</p>
-
-<p>An object that is neither a String nor a byte[] is a Data Object: a public class with a
-public no-argument constructor and public fields of types on a closed list. A put stores it
-exactly, leaving a null field out (BergDB stores no null) and refusing a null array element;
-a get converts each stored field to its field's type, best effort. In full:
-<a href="bergdb/pub/package-summary.html#objects">Objects</a> and
-<a href="bergdb/pub/package-summary.html#null">Null and absent fields</a>, in the package
-bergdb.pub.</p>
-
-<p>The stored object itself is bergdb.pub.DbObject: an object as BergDB stores it at a key,
-in its object format (format 2), with typed lookups of its fields; a get as DbObject.class
-gives it exactly, whatever class put it. DbObject.Builder makes one field by field, and
-DbArray and the value classes (DbBoolean, DbLong, DbDouble, DbString, DbByteArray) are its
-values.</p>
+<p>This complete program keeps the text "Hello world!" in a database in the directory db-demo.
+Run it with put, then get, then delete:</p>
 
 <pre>
-// Example code:
-// A complete program to put/get/delete a string under the name (key) "/a".
-
-package bergdb.demo;
+// A complete program to put/get/delete a string at the key "/a.txt".
 
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
@@ -52,31 +24,31 @@ class Demo {
     private static void put() {
         try (Database database = Factory.database().create("db-demo").start()) {
             Connection c = database.connection();
-            c.put("/a", "value");
+            c.put("/a.txt", "Hello world!");
             c.sync();
         }
     }
-    
+
     private static void get() {
         try (Database database = Factory.database().open("db-demo").start()) {
-            System.out.println(database.connection().get("/a", String.class));
+            System.out.println(database.connection().get("/a.txt", String.class));
         }
     }
 
     private static void delete() {
         try (Database database = Factory.database().open("db-demo").start()) {
             Connection c = database.connection();
-            c.delete("/a");
+            c.delete("/a.txt");
             c.sync();
         }
     }
-    
+
     public static void main(String[] args) {
         if (args.length == 0) {
             System.out.println("Use one of: put, get, delete.");
             return;
         }
-        
+
         if (args[0].equals("put")) {
             put();
         } else if (args[0].equals("get")) {
@@ -90,5 +62,31 @@ class Demo {
 }
 </pre>
 
+<p>Java 17 or later runs the file as it is, with BergDB's jar (here bergdb.jar) on the class
+path:</p>
+
+<pre>
+$ java -cp bergdb.jar Demo.java put
+$ java -cp bergdb.jar Demo.java get
+Hello world!
+$ java -cp bergdb.jar Demo.java delete
+$ java -cp bergdb.jar Demo.java get
+null
+</pre>
+
+<p>create() opens the database in the directory, or creates one there; open() only opens one
+that exists. A get of a key without a value gives null. The try block closes the database
+when the block ends: close, or stop, every database that you start.</p>
+
+<h1 id="next">Next</h1>
+
+<p>The package <a href="bergdb/pub/package-summary.html">bergdb.pub</a> goes on from here,
+with a short example of each main use: text and bytes, objects, transactions, earlier
+states, the keys of a directory in order, and indexes. The rules in full come after the
+examples.</p>
+
+<p>The API is the packages bergdb.pub and bergdb.pub.util, and the Core's bergdb.core.Db; a
+release ships them in one jar (<a href="bergdb/pub/package-summary.html#api">The API and its
+jar</a>, in the package bergdb.pub).</p>
 
 </body>
