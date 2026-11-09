@@ -70,7 +70,11 @@ public interface WBuilder {
      * @throws bergdb.pub.util.DbException
      *             If the transaction is refused, nothing of it written, and the database
      *             goes on, as for Connection.put(): it is too large, about 1.88 GB in the
-     *             stream, or the database is stopping or stopped.
+     *             stream, or the database is stopping or stopped. Or if the thread is
+     *             interrupted while the transaction waits to run again after a conflict,
+     *             which one with a put or a delete at an object key may meet, as it runs as
+     *             an rw() does (bergdb 020-10, section 5.1): it is not run, and the thread's
+     *             interrupt flag is set (Database, "Interrupts").
      * @throws bergdb.pub.util.DbFailedException
      *             If the database has failed, in this transaction or before: it then
      *             refuses every transaction and read until it is restarted. See

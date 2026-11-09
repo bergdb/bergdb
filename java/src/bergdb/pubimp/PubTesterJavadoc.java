@@ -875,6 +875,68 @@ public class PubTesterJavadoc {
         }
     }
 
+    /**
+     * Connection.put(), delete() and WBuilder.execute() (bergdb 020-23, V1-2): a write at an
+     * object key runs as an rw() does (bergdb 020-10, section 5.1), so it may wait to run
+     * again after a conflict, and an interrupt then throws a DbException, the transaction not
+     * run, the flag set, and the database goes on (Database, "Interrupts"). The conflict:
+     * another connection writes the key after the write's read time, in an indexed
+     * directory, where the write reads the key's previous value.
+     */
+    @Nano
+    public static void testWritesInterruptedAfterConflict() {
+        for (final String call : new String[] {"put", "delete", "execute"}) {
+            try (final Database db = Factory.database().memory().start()) {
+                final Connection c = db.connection();
+                final Connection other = db.newConnection();
+                c.put("/d/k", new PubTesterIndexJobs.Item(1, 1));
+                db.indexBuilder("ix").dir("/d/").type("long").field("amount").start().join();
+                final IndexManager m = ((DatabaseImp) db).getIndexManager();
+                final Thread thread = Thread.currentThread();
+                final boolean[] done = new boolean[1];
+                m.testHook = p -> {
+                    if (Thread.currentThread() == thread && !done[0]
+                            && p.equals(IndexManager.WRITE_AFTER_SET)) {
+                        done[0] = true;
+                        other.put("/d/k", new PubTesterIndexJobs.Item(2, 2));
+                        thread.interrupt();
+                    }
+                };
+                DbException e = assertThrows(call, DbException.class, () -> {
+                    if (call.equals("put")) {
+                        c.put("/d/k", new PubTesterIndexJobs.Item(3, 3));
+                    } else if (call.equals("delete")) {
+                        c.delete("/d/k");
+                    } else {
+                        c.w().put("/d/k", new PubTesterIndexJobs.Item(3, 3)).execute();
+                    }
+                });
+                m.testHook = null;
+                Assert.assertTrue(call + ": the flag", Thread.interrupted());
+                Assert.assertTrue(call + ": " + e.getMessage(),
+                        e.getMessage().contains("not run"));
+                Assert.assertEquals(call, 2L,
+                        c.get("/d/k", PubTesterIndexJobs.Item.class).amount);
+                Assert.assertEquals(call, "/d/k=2", amounts(c.useIndex("ix",
+                        PubTesterIndexJobs.Item.class).kvs()));
+                c.put("/d/k", new PubTesterIndexJobs.Item(4, 4));
+                Assert.assertEquals(call, "/d/k=4", amounts(c.useIndex("ix",
+                        PubTesterIndexJobs.Item.class).kvs()));
+            } finally {
+                Thread.interrupted();
+            }
+        }
+    }
+
+    private static String amounts(Iterable<Kv<PubTesterIndexJobs.Item>> kvs) {
+        StringBuilder sb = new StringBuilder();
+        for (Kv<PubTesterIndexJobs.Item> kv : kvs) {
+            sb.append(sb.length() == 0 ? "" : " ").append(kv.key()).append('=')
+                    .append(kv.value().amount);
+        }
+        return sb.toString();
+    }
+
     // ======== Database ========
 
     /**
