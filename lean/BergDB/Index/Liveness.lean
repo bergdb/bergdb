@@ -367,4 +367,587 @@ theorem cleanup_ends {sp : Spec V F L} (ρ : Run sp W) {n : Name} {g : Gen}
   exact descent (μ := fun j => cMeasure es (ρ.sys j) n g) (P := fun j => ρ.lbl j = .cln n g)
     (fun j hj => (hstep j hj).1) (fun j hj hp => (hstep j hj).2 hp) hinf
 
+
+/-! ### The builds (point 8) -/
+
+/-- The last write times are at most the latest time. -/
+structure TimesOk (x : Stream V F L) : Prop where
+  wk_le : ∀ k, x.wk k ≤ x.now
+  wdef_le : ∀ n, x.wdef n ≤ x.now
+
+/-- In every stream of a reachable system, the last write times are at most its
+latest time. -/
+theorem times_ok {sp : Spec V F L} {s : Sys V F L W} (h : Reach sp s) :
+    ∀ x ∈ s.st :: s.past, TimesOk x := by
+  induction h with
+  | init d0 =>
+    intro x hx
+    rcases List.mem_cons.mp hx with hx | hx
+    · rw [hx]; exact ⟨fun _ => Nat.le_refl 0, fun _ => Nat.le_refl 0⟩
+    · cases hx
+  | @step s s' l _ hst ih =>
+    have h0 := ih s.st List.mem_cons_self
+    have hc : ∀ (st' : Stream V F L) (m' : Mem V F L W), TimesOk st' →
+        ∀ x ∈ (s.commit st' m').st :: (s.commit st' m').past, TimesOk x := by
+      intro st' m' h' x hx
+      rcases List.mem_cons.mp hx with hx | hx
+      · rw [hx]; exact h'
+      · exact ih x hx
+    have hwt : ∀ (ws : Key → Bool) k, writeTimes s.st.wk ws (s.st.now + 1) k ≤ s.st.now + 1 := by
+      intro ws k
+      cases h : ws k
+      · rw [writeTimes_no h]; exact Nat.le_succ_of_le (h0.wk_le k)
+      · rw [writeTimes_yes h]; exact Nat.le_refl _
+    have hud : ∀ n0 n, upd s.st.wdef n0 (s.st.now + 1) n ≤ s.st.now + 1 := by
+      intro n0 n
+      by_cases h : n = n0
+      · rw [h, upd_same]; exact Nat.le_refl _
+      · rw [upd_ne _ _ h]; exact Nat.le_succ_of_le (h0.wdef_le n)
+    have hk1 : ∀ k, s.st.wk k ≤ s.st.now + 1 := fun k => Nat.le_succ_of_le (h0.wk_le k)
+    have hd1 : ∀ n, s.st.wdef n ≤ s.st.now + 1 := fun n => Nat.le_succ_of_le (h0.wdef_le n)
+    cases hst with
+    | wSuffix ws nv _ => exact hc _ _ ⟨fun k => hwt ws k, hd1⟩
+    | wCommit w ws nv R old S _ _ => exact hc _ _ ⟨fun k => hwt ws k, hd1⟩
+    | aCreate n fn _ _ _ => exact hc _ _ ⟨hk1, fun n' => hud n n'⟩
+    | aDelete n d _ _ _ => exact hc _ _ ⟨hk1, fun n' => hud n n'⟩
+    | bCommit n g b _ _ _ _ => exact hc _ _ ⟨hk1, hd1⟩
+    | bActivate n g b d _ _ _ _ _ => exact hc _ _ ⟨hk1, fun n' => hud n n'⟩
+    | cDel n g c _ _ => exact hc _ _ ⟨hk1, hd1⟩
+    | cEnd n g c _ _ => exact hc _ _ ⟨hk1, hd1⟩
+    | cut j =>
+      intro x hx
+      rcases List.mem_cons.mp hx with hx | hx
+      · rw [hx]; exact h0
+      · exact ih x (List.mem_cons_of_mem _ (List.mem_of_mem_take hx))
+    | crash pre x rest he =>
+      intro y hy
+      apply ih
+      rw [he]; simp [hy]
+    | _ => exact ih
+
+/-- The definition of the name n is in state building with the generation g. -/
+def Building (s : Sys V F L W) (n : Name) (g : Gen) : Prop :=
+  ∃ d, s.st.dfn n = some d ∧ d.gen = g ∧ d.active = false
+
+/-- While n's definition stays building, no definition change of n begins. -/
+theorem admin_keep {sp : Spec V F L} {s s' : Sys V F L W} {lb : Lbl W} (hi : Inv sp s)
+    (hst : Step sp s lb s') {n : Name} {g : Gen} (ha : s.m.admin.name ≠ some n)
+    (hB : Building s n g) (hB' : Building s' n g) : s'.m.admin.name ≠ some n := by
+  cases hst with
+  | aCreate n' fn _ _ hmem =>
+    intro h
+    change some n' = some n at h
+    have hn : n' = n := Option.some.inj h
+    rw [hn] at hmem
+    obtain ⟨d, hd, _, _⟩ := hB
+    rcases hi.minv.memAgrees n with hm | hm
+    · rw [hmem, hd] at hm; cases hm
+    · exact ha hm
+  | aDelete n' d _ _ _ =>
+    intro h
+    change some n' = some n at h
+    have hn : n' = n := Option.some.inj h
+    obtain ⟨d', hd', _, _⟩ := hB'
+    change upd s.st.dfn n' none n = some d' at hd'
+    rw [hn, upd_same] at hd'; cases hd'
+  | aCreateMap _ _ _ _ => intro h; cases h
+  | aDeleteMap _ _ _ => intro h; cases h
+  | crash _ _ _ _ => intro h; cases h
+  | _ => exact ha
+
+theorem upd2_some_keep {β : Type} {f : Name → Gen → Option β} {n' n : Name} {g' g : Gen} {x : β}
+    (hb : f n g ≠ none) : upd2 f n' g' (some x) n g ≠ none := by
+  by_cases h : n = n' ∧ g = g'
+  · rw [h.1, h.2, upd2_same]; intro h'; cases h'
+  · rw [upd2_ne _ _ h]; exact hb
+
+omit [DecidableEq W] in
+theorem lbl_bld_ne {n' n : Name} {g' g : Gen} (h : (Lbl.bld n' g' : Lbl W) ≠ .bld n g) :
+    ¬ (n = n' ∧ g = g') := fun hh => h (by rw [hh.1, hh.2])
+
+/-- While n's definition stays building with g and no change of n is under way,
+the build of g goes on: only its own steps change it, and only a crash or a
+retry resets it. -/
+theorem bld_keep {sp : Spec V F L} {s s' : Sys V F L W} {lb : Lbl W} (hi : Inv sp s)
+    (hst : Step sp s lb s') {n : Name} {g : Gen} (hab : lb ≠ .babort n g)
+    (ha : s.m.admin.name ≠ some n) (hB : Building s n g) (hB' : Building s' n g)
+    (hb : s.m.bld n g ≠ none) :
+    s'.m.bld n g ≠ none ∧
+      (lb ≠ .bld n g → lb ≠ .bretry n g → lb ≠ .crash → s'.m.bld n g = s.m.bld n g) := by
+  obtain ⟨d, hd, hdg, hda⟩ := hB
+  have hmem : s.m.mem n = some d := by rw [(hi.minv.memAgrees n).resolve_right ha]; exact hd
+  cases hst with
+  | aCreateMap n' g' fn ha' =>
+    show upd2 s.m.bld n' g' _ n g ≠ none ∧ (_ → _ → _ → upd2 s.m.bld n' g' _ n g = s.m.bld n g)
+    by_cases hgg : n = n' ∧ g = g'
+    · exfalso; apply ha; rw [ha', hgg.1]; rfl
+    · rw [upd2_ne _ _ hgg]; exact ⟨hb, fun _ _ _ => rfl⟩
+  | bReadE n' g' b e _ _ _ =>
+    exact ⟨upd2_some_keep hb, fun h _ _ => by
+      show upd2 s.m.bld n' g' _ n g = _; rw [upd2_ne _ _ (lbl_bld_ne h)]⟩
+  | bRead n' g' b e hi' _ _ _ _ _ =>
+    exact ⟨upd2_some_keep hb, fun h _ _ => by
+      show upd2 s.m.bld n' g' _ n g = _; rw [upd2_ne _ _ (lbl_bld_ne h)]⟩
+  | bCheck n' g' b d' _ _ _ _ _ =>
+    exact ⟨upd2_some_keep hb, fun h _ _ => by
+      show upd2 s.m.bld n' g' _ n g = _; rw [upd2_ne _ _ (lbl_bld_ne h)]⟩
+  | bCommit n' g' b _ _ _ _ =>
+    exact ⟨upd2_some_keep hb, fun h _ _ => by
+      show upd2 s.m.bld n' g' _ n g = _; rw [upd2_ne _ _ (lbl_bld_ne h)]⟩
+  | bRefused n' g' b _ _ _ =>
+    exact ⟨upd2_some_keep hb, fun h _ _ => by
+      show upd2 s.m.bld n' g' _ n g = _; rw [upd2_ne _ _ (lbl_bld_ne h)]⟩
+  | bLock n' g' b _ _ _ =>
+    exact ⟨upd2_some_keep hb, fun h _ _ => by
+      show upd2 s.m.bld n' g' _ n g = _; rw [upd2_ne _ _ (lbl_bld_ne h)]⟩
+  | bRetry n' g' b _ _ =>
+    refine ⟨upd2_some_keep hb, fun _ h _ => ?_⟩
+    show upd2 s.m.bld n' g' _ n g = _
+    have : ¬ (n = n' ∧ g = g') := fun hh => h (by rw [hh.1, hh.2])
+    rw [upd2_ne _ _ this]
+  | bCheckFail n' g' b _ _ _ hnot =>
+    show upd2 s.m.bld n' g' none n g ≠ none ∧ (_ → _ → _ → upd2 s.m.bld n' g' none n g = _)
+    by_cases hgg : n = n' ∧ g = g'
+    · exfalso; rw [← hgg.1] at hnot; exact hnot d hmem (by rw [hdg, hgg.2])
+    · rw [upd2_ne _ _ hgg]; exact ⟨hb, fun _ _ _ => rfl⟩
+  | bActivateFail n' g' b _ _ _ hnot =>
+    show upd2 s.m.bld n' g' none n g ≠ none ∧ (_ → _ → _ → upd2 s.m.bld n' g' none n g = _)
+    by_cases hgg : n = n' ∧ g = g'
+    · exfalso; rw [← hgg.1] at hnot; exact hnot d hmem (by rw [hdg, hgg.2])
+    · rw [upd2_ne _ _ hgg]; exact ⟨hb, fun _ _ _ => rfl⟩
+  | bActivate n' g' b d' _ _ _ _ _ =>
+    show upd2 s.m.bld n' g' none n g ≠ none ∧ (_ → _ → _ → upd2 s.m.bld n' g' none n g = _)
+    by_cases hgg : n = n' ∧ g = g'
+    · exfalso
+      obtain ⟨d2, hd2, _, hda2⟩ := hB'
+      change upd s.st.dfn n' (some ⟨g', b.fn, true⟩) n = some d2 at hd2
+      rw [hgg.1, upd_same] at hd2; cases hd2; cases hda2
+    · rw [upd2_ne _ _ hgg]; exact ⟨hb, fun _ _ _ => rfl⟩
+  | bAbort n' g' b _ =>
+    show upd2 s.m.bld n' g' none n g ≠ none ∧ (_ → _ → _ → upd2 s.m.bld n' g' none n g = _)
+    by_cases hgg : n = n' ∧ g = g'
+    · exact absurd (by rw [hgg.1, hgg.2]) hab
+    · rw [upd2_ne _ _ hgg]; exact ⟨hb, fun _ _ _ => rfl⟩
+  | crash pre x rest _ =>
+    refine ⟨?_, fun _ _ h => absurd rfl h⟩
+    obtain ⟨d2, hd2, hdg2, hda2⟩ := hB'
+    change (match x.dfn n with
+      | some d => if d.gen = g ∧ d.active = false then some (BSt.init d.fn) else none
+      | none => none) ≠ none
+    change x.dfn n = some d2 at hd2
+    rw [hd2]
+    dsimp only
+    rw [ite_eq_left ⟨hdg2, hda2⟩]; intro h; cases h
+  | _ => exact ⟨hb, fun _ _ _ => rfl⟩
+
+/-- A build of a definition that is building, whose change is done, can step
+whenever the lock is free or its own, if finitely many keys have a value. -/
+theorem build_enabled {sp : Spec V F L} {s : Sys V F L W} (hi : Inv sp s) {n : Name} {g : Gen}
+    (hB : Building s n g) (ha : s.m.admin.name ≠ some n) {b : BSt V F}
+    (hb : s.m.bld n g = some b) (hl : s.m.lock = .free ∨ s.m.lock = .bld n g)
+    (hfin : ∃ e, ∀ k, e < k → s.st.data k = none) : Enabled sp s (.bld n g) := by
+  obtain ⟨d, hd, hdg, _⟩ := hB
+  have hmem : s.m.mem n = some d := by rw [(hi.minv.memAgrees n).resolve_right ha]; exact hd
+  have hbi := hi.minv.bInv n g b hb
+  have hfree : b.locked = false → s.m.lock = .free := by
+    intro hlk
+    rcases hl with hl | hl
+    · exact hl
+    · obtain ⟨b', hb', hl'⟩ := hi.minv.lockBld n g hl
+      rw [hb] at hb'; cases hb'; rw [hlk] at hl'; cases hl'
+  cases hpc : b.pc with
+  | readE =>
+    obtain ⟨e, he⟩ := hfin
+    exact ⟨_, Step.bReadE s n g b e hb hpc (fun k hk => by rw [he k hk]; exact sp.f_none _ _)⟩
+  | read =>
+    obtain ⟨e, hE, hne⟩ := hbi.readNext (Or.inl hpc)
+    exact ⟨_, Step.bRead s n g b e (e + 1) hb hpc hE (by omega) (Nat.le_refl _)⟩
+  | check => exact ⟨_, Step.bCheck s n g b d hb hpc hl hmem hdg⟩
+  | commit =>
+    by_cases hA : s.st.wdef n ≤ b.R
+    · by_cases hB2 : ∀ k, b.next ≤ k → k < b.hi → sp.f b.fn k (b.snap k) ≠ none →
+          s.st.wk k ≤ b.R
+      · exact ⟨_, Step.bCommit s n g b hb hpc hA hB2⟩
+      · refine ⟨_, Step.bRefused s n g b hb hpc (Or.inr ?_)⟩
+        apply Classical.byContradiction
+        intro hno
+        apply hB2
+        intro k h1 h2 h3
+        apply Classical.byContradiction
+        intro h4
+        exact hno ⟨k, h1, h2, h3, Nat.lt_of_not_le h4⟩
+    · exact ⟨_, Step.bRefused s n g b hb hpc (Or.inl (Nat.lt_of_not_le hA))⟩
+  | lock => exact ⟨_, Step.bLock s n g b hb hpc (hfree (hbi.unlocked (Or.inl hpc)))⟩
+  | activate =>
+    exact ⟨_, Step.bActivate s n g b d hb hpc (hfree (hbi.unlocked (Or.inr hpc))) hmem hdg⟩
+
+/-- A step's conflict: the condition of its refusal. -/
+def Conflict (sp : Spec V F L) (st : Stream V F L) (n : Name) (b : BSt V F) : Prop :=
+  b.R < st.wdef n ∨ ∃ k, b.next ≤ k ∧ k < b.hi ∧ sp.f b.fn k (b.snap k) ≠ none ∧ b.R < st.wk k
+
+open Classical in
+/-- The arithmetic of a build's measure within its step: L the tries before
+the locked phase, lw the writers, c those that can commit a write of an
+object key, lk locked, pc the phase, t the tries, cf a conflict. -/
+noncomputable def nuOf (L lw c : Nat) (lk : Bool) (pc : BPc) (t : Nat) (cf : Prop) : Nat :=
+  match lk, pc with
+  | true, .read => 3 * c + 2
+  | true, .check => 3 * c + 1 + (if cf then 3 else 0)
+  | true, .commit => 3 * c + (if cf then 3 else 0)
+  | true, _ => 0
+  | false, .read => 3 * (L - t) + 2 + (3 * lw + 6)
+  | false, .check => 3 * (L - t) + 1 + (3 * lw + 6)
+  | false, .commit => 3 * (L - t) + (3 * lw + 6)
+  | false, .lock => 3 * lw + 5
+  | false, _ => 0
+
+/-- A build's measure within its step. Unlocked: its tries left, then its
+phase. Locked: three for each writer that can commit a write of an object key
+(`locked_phase`: only those can refuse the step, each once), and its phase,
+three more for a conflict already there. -/
+noncomputable def bNu (sp : Spec V F L) (ws : List W) (s : Sys V F L W) (n : Name)
+    (b : BSt V F) : Nat :=
+  nuOf sp.lockedAfter ws.length (cnt (fun w => CanCommitObj sp (s.m.wr w)) ws) b.locked b.pc
+    b.tries (Conflict sp s.st n b)
+
+/-- A build's measure: the keys left up to E, each worth more than any step. -/
+noncomputable def bMeasure (sp : Spec V F L) (ws : List W) (s : Sys V F L W) (n : Name)
+    (g : Gen) : Nat :=
+  match s.m.bld n g with
+  | some b => (b.E.getD 0 + 1 - b.next) * (3 * sp.lockedAfter + 3 * ws.length + 12) +
+      bNu sp ws s n b
+  | none => 0
+
+theorem nuOf_lt (L lw c : Nat) (hc : c ≤ lw) (lk : Bool) (pc : BPc) (t : Nat) (cf : Prop) :
+    nuOf L lw c lk pc t cf < 3 * L + 3 * lw + 12 := by
+  cases lk <;> cases pc <;> simp only [nuOf] <;> (try split) <;> omega
+
+theorem bMeasure_of {sp : Spec V F L} {ws : List W} {s : Sys V F L W} {n : Name} {g : Gen}
+    {b : BSt V F} (h : s.m.bld n g = some b) :
+    bMeasure sp ws s n g = (b.E.getD 0 + 1 - b.next) * (3 * sp.lockedAfter + 3 * ws.length + 12) +
+      bNu sp ws s n b := by
+  unfold bMeasure; rw [h]
+
+/-- While a build holds the lock, no step changes a definition's key. -/
+theorem wdef_locked {sp : Spec V F L} {s s' : Sys V F L W} {lb : Lbl W} (hst : Step sp s lb s')
+    {n : Name} {g : Gen} (hl : s.m.lock = .bld n g) (hcr : lb ≠ .crash) :
+    s'.st.wdef = s.st.wdef := by
+  cases hst with
+  | aCreate _ _ _ hf _ => rw [hl] at hf; cases hf
+  | aDelete _ _ _ hf _ => rw [hl] at hf; cases hf
+  | bActivate _ _ _ _ _ _ hf _ _ => rw [hl] at hf; cases hf
+  | crash => exact absurd rfl hcr
+  | _ => rfl
+
+
+theorem bNu_lt (sp : Spec V F L) (ws : List W) (s : Sys V F L W) (n : Name) (b : BSt V F) :
+    bNu sp ws s n b < 3 * sp.lockedAfter + 3 * ws.length + 12 :=
+  nuOf_lt _ _ _ (cnt_le_length _ ws) _ _ _ _
+
+/-- A build's measure falls when its next key moves up, up to its end key. -/
+theorem bMeasure_next {sp : Spec V F L} {ws : List W} {s₁ s₂ : Sys V F L W} {n : Name}
+    {g : Gen} {b₁ b₂ : BSt V F} {e : Key} (h₁ : s₁.m.bld n g = some b₁)
+    (h₂ : s₂.m.bld n g = some b₂) (hE₁ : b₁.E = some e) (hE₂ : b₂.E = some e)
+    (hn : b₁.next < b₂.next) (hle : b₂.next ≤ e + 1) :
+    bMeasure sp ws s₂ n g < bMeasure sp ws s₁ n g := by
+  rw [bMeasure_of h₁, bMeasure_of h₂, hE₁, hE₂]
+  have hK := bNu_lt sp ws s₂ n b₂
+  have h1 : (e + 1 - b₂.next + 1) * (3 * sp.lockedAfter + 3 * ws.length + 12) ≤
+      (e + 1 - b₁.next) * (3 * sp.lockedAfter + 3 * ws.length + 12) :=
+    Nat.mul_le_mul_right _ (by omega)
+  have h2 : (e + 1 - b₂.next + 1) * (3 * sp.lockedAfter + 3 * ws.length + 12) =
+      (e + 1 - b₂.next) * (3 * sp.lockedAfter + 3 * ws.length + 12) +
+        (3 * sp.lockedAfter + 3 * ws.length + 12) := Nat.succ_mul _ _
+  show (e + 1 - b₂.next) * _ + _ < (e + 1 - b₁.next) * _ + _
+  omega
+
+/-- With the same E and next, a build's measure compares as its step's part. -/
+theorem bMeasure_same {sp : Spec V F L} {ws : List W} {s₁ s₂ : Sys V F L W} {n : Name}
+    {g : Gen} {b₁ b₂ : BSt V F} (h₁ : s₁.m.bld n g = some b₁) (h₂ : s₂.m.bld n g = some b₂)
+    (hE : b₂.E = b₁.E) (hn : b₂.next = b₁.next) :
+    (bNu sp ws s₂ n b₂ ≤ bNu sp ws s₁ n b₁ → bMeasure sp ws s₂ n g ≤ bMeasure sp ws s₁ n g) ∧
+    (bNu sp ws s₂ n b₂ < bNu sp ws s₁ n b₁ → bMeasure sp ws s₂ n g < bMeasure sp ws s₁ n g) := by
+  rw [bMeasure_of h₁, bMeasure_of h₂, hE, hn]
+  exact ⟨fun h => by omega, fun h => by omega⟩
+
+open Classical in
+/-- One step of a run while a definition stays building: its build stays out of
+`readE`, its measure does not grow, and falls at the build's own step. -/
+theorem build_step {sp : Spec V F L} {ws : List W} (hws : ∀ w, w ∈ ws) {s s' : Sys V F L W}
+    {lb : Lbl W} (hi : Inv sp s) (hi' : Inv sp s') (htk : TimesOk s.st) (hst : Step sp s lb s')
+    {n : Name} {g : Gen} (hcr : lb ≠ .crash) (hre : lb ≠ .bretry n g) (hab : lb ≠ .babort n g)
+    (ha : s.m.admin.name ≠ some n) (hB : Building s n g) (hB' : Building s' n g)
+    {b : BSt V F} (hb : s.m.bld n g = some b) (hpc : b.pc ≠ .readE) :
+    ∃ b', s'.m.bld n g = some b' ∧ b'.pc ≠ .readE ∧
+      bMeasure sp ws s' n g ≤ bMeasure sp ws s n g ∧
+      (lb = .bld n g → bMeasure sp ws s' n g < bMeasure sp ws s n g) := by
+  have hbi := hi.minv.bInv n g b hb
+  have hcle := cnt_le_length (fun w => CanCommitObj sp (s.m.wr w)) ws
+  by_cases hl : lb = .bld n g
+  · subst hl
+    obtain ⟨d, hd, hdg, hda⟩ := hB
+    have hmem : s.m.mem n = some d := by rw [(hi.minv.memAgrees n).resolve_right ha]; exact hd
+    cases hst with
+    | bReadE _ _ b0 e hb0 hpc0 _ =>
+      rw [hb] at hb0; cases hb0; exact absurd hpc0 hpc
+    | bRead _ _ b0 e hi0 hb0 hpc0 hE hnh hhi =>
+      rw [hb] at hb0; cases hb0
+      refine ⟨_, upd2_same _ _ _ _, (fun h => by cases h), ?_⟩
+      have hlt : bNu sp ws s n
+          { b with hi := hi0, R := s.st.now, snap := s.st.data, ended := decide (hi0 = e + 1),
+                   pc := .check } < bNu sp ws s n b := by
+        have hnc : Conflict sp s.st n
+            { b with hi := hi0, R := s.st.now, snap := s.st.data, ended := decide (hi0 = e + 1),
+                     pc := .check } = False := by
+          apply propext; refine ⟨?_, False.elim⟩
+          rintro (h | ⟨k, _, _, _, h⟩)
+          · exact absurd h (Nat.not_lt.mpr (htk.wdef_le n))
+          · exact absurd h (Nat.not_lt.mpr (htk.wk_le k))
+        simp only [bNu]
+        rw [hnc, hpc0]
+        cases hlk : b.locked
+        · simp only [nuOf]; omega
+        · simp only [nuOf]; rw [ite_eq_right not_false]; omega
+      suffices hm : bMeasure sp ws _ n g < bMeasure sp ws s n g from ⟨Nat.le_of_lt hm, fun _ => hm⟩
+      exact (bMeasure_same hb (by exact upd2_same _ _ _ _) (by rfl) (by rfl)).2 hlt
+    | bCheck _ _ b0 d0 hb0 hpc0 _ _ _ =>
+      rw [hb] at hb0; cases hb0
+      refine ⟨_, upd2_same _ _ _ _, (fun h => by cases h), ?_⟩
+      have hlt : bNu sp ws s n { b with pc := .commit } < bNu sp ws s n b := by
+        have hce : Conflict sp s.st n { b with pc := .commit } = Conflict sp s.st n b := rfl
+        simp only [bNu]
+        rw [hce, hpc0]
+        cases hlk : b.locked
+        · simp only [nuOf]; omega
+        · simp only [nuOf]; split <;> omega
+      suffices hm : bMeasure sp ws _ n g < bMeasure sp ws s n g from ⟨Nat.le_of_lt hm, fun _ => hm⟩
+      exact (bMeasure_same hb (by exact upd2_same _ _ _ _) (by rfl) (by rfl)).2 hlt
+    | bCheckFail _ _ b0 hb0 _ _ hnot =>
+      exact absurd hdg (hnot d hmem)
+    | bCommit _ _ b0 hb0 hpc0 _ _ =>
+      rw [hb] at hb0; cases hb0
+      obtain ⟨e, hE, hnh, hhi, _⟩ := (hbi.inStep (Or.inr hpc0)).range
+      refine ⟨_, upd2_same _ _ _ _, ?_, ?_⟩
+      · show (if b.ended = true then BPc.activate else BPc.read) ≠ .readE
+        split <;> (intro h; cases h)
+      · suffices hm : bMeasure sp ws _ n g < bMeasure sp ws s n g from
+          ⟨Nat.le_of_lt hm, fun _ => hm⟩
+        exact bMeasure_next (b₂ := bAfter b) hb (by exact upd2_same _ _ _ _) hE hE hnh hhi
+    | bRefused _ _ b0 hb0 hpc0 hconf =>
+      rw [hb] at hb0; cases hb0
+      refine ⟨_, upd2_same _ _ _ _, ?_, ?_⟩
+      · show (if b.locked = false ∧ sp.lockedAfter ≤ b.tries + 1 then BPc.lock else BPc.read) ≠ .readE
+        split <;> (intro h; cases h)
+      · have hlt : bNu sp ws s n
+            { b with pc := if b.locked = false ∧ sp.lockedAfter ≤ b.tries + 1 then .lock else .read,
+                     tries := if b.locked = true ∨ sp.lockedAfter ≤ b.tries + 1 then 0
+                              else b.tries + 1 } < bNu sp ws s n b := by
+          have hce : Conflict sp s.st n
+              { b with pc := if b.locked = false ∧ sp.lockedAfter ≤ b.tries + 1 then .lock else .read,
+                       tries := if b.locked = true ∨ sp.lockedAfter ≤ b.tries + 1 then 0
+                                else b.tries + 1 } = Conflict sp s.st n b := rfl
+          have hcf : Conflict sp s.st n b := hconf
+          simp only [bNu]
+          rw [hce, hpc0]
+          cases hlk : b.locked
+          · by_cases hL : sp.lockedAfter ≤ b.tries + 1
+            · rw [ite_eq_left ⟨rfl, hL⟩]
+              simp only [nuOf]; omega
+            · rw [ite_eq_right (fun h => hL h.2), ite_eq_right (fun h => by
+                rcases h with h | h
+                · cases h
+                · exact hL h)]
+              simp only [nuOf]; omega
+          · rw [ite_eq_right (fun h => by cases h.1)]
+            simp only [nuOf]
+            rw [ite_eq_left hcf]; omega
+        suffices hm : bMeasure sp ws _ n g < bMeasure sp ws s n g from
+          ⟨Nat.le_of_lt hm, fun _ => hm⟩
+        exact (bMeasure_same hb (by exact upd2_same _ _ _ _) (by rfl) (by rfl)).2 hlt
+    | bLock _ _ b0 hb0 hpc0 _ =>
+      rw [hb] at hb0; cases hb0
+      have hunl := hbi.unlocked (Or.inl hpc0)
+      refine ⟨_, upd2_same _ _ _ _, (fun h => by cases h), ?_⟩
+      have hlt : bNu sp ws s n { b with locked := true, pc := .read } < bNu sp ws s n b := by
+        simp only [bNu]
+        rw [hpc0, hunl]
+        simp only [nuOf]; omega
+      suffices hm : bMeasure sp ws _ n g < bMeasure sp ws s n g from ⟨Nat.le_of_lt hm, fun _ => hm⟩
+      exact (bMeasure_same hb (by exact upd2_same _ _ _ _) (by rfl) (by rfl)).2 hlt
+    | bActivate _ _ b0 d0 hb0 _ _ _ _ =>
+      exfalso
+      obtain ⟨d2, hd2, _, hda2⟩ := hB'
+      change upd s.st.dfn n (some ⟨g, b0.fn, true⟩) n = some d2 at hd2
+      rw [upd_same] at hd2; cases hd2; cases hda2
+    | bActivateFail _ _ b0 hb0 _ _ hnot =>
+      exact absurd hdg (hnot d hmem)
+  · -- another thread's step: the build is the same
+    obtain ⟨_, hsame⟩ := bld_keep hi hst hab ha hB hB' (by rw [hb]; intro h; cases h)
+    have hb' : s'.m.bld n g = some b := by rw [hsame hl hre hcr, hb]
+    refine ⟨b, hb', hpc, ?_, fun h => absurd h hl⟩
+    apply (bMeasure_same (sp := sp) (ws := ws) hb hb' rfl rfl).1
+    simp only [bNu]
+    cases hlk : b.locked
+    · cases b.pc <;> simp only [nuOf] <;> omega
+    · -- locked: the lock is the build's, before and after
+      have hl0 : s.m.lock = .bld n g := hi.minv.bLocked n g b hb hlk
+      have hl1 : s'.m.lock = .bld n g := hi'.minv.bLocked n g b hb' hlk
+      have hcm : ∀ w, CanCommitObj sp (s'.m.wr w) → CanCommitObj sp (s.m.wr w) := by
+        intro w h; have := locked_no_new_writer hst hl0 hl1 w h; rw [this] at h; exact h
+      have hc := cnt_mono hcm ws
+      have hcf : Conflict sp s'.st n b → Conflict sp s.st n b ∨
+          cnt (fun w => CanCommitObj sp (s'.m.wr w)) ws <
+            cnt (fun w => CanCommitObj sp (s.m.wr w)) ws := by
+        intro hc'
+        by_cases hc0 : Conflict sp s.st n b
+        · exact Or.inl hc0
+        · right
+          rcases hc' with h1 | ⟨k, h1, h2, h3, h4⟩
+          · exfalso; apply hc0; left; rw [← wdef_locked hst hl0 hcr]; exact h1
+          · have hne : s'.st.wk k ≠ s.st.wk k := fun he =>
+              hc0 (Or.inr ⟨k, h1, h2, h3, by rw [← he]; exact h4⟩)
+            have hob : sp.isObj k = true := by
+              cases hk : sp.isObj k with
+              | true => rfl
+              | false => exact absurd (sp.f_suffix _ _ _ hk) h3
+            obtain ⟨w, hw1, hw2⟩ := locked_obj_write hst hl1 hob hne
+            exact cnt_lt hcm ws ⟨w, hws w, hw1, by rw [hw2]; exact id⟩
+      cases hpc' : b.pc with
+      | read => simp only [nuOf]; omega
+      | check =>
+        simp only [nuOf]
+        by_cases h1 : Conflict sp s'.st n b
+        · rcases hcf h1 with h2 | h2
+          · rw [ite_eq_left h1, ite_eq_left h2]; omega
+          · rw [ite_eq_left h1]; split <;> omega
+        · rw [ite_eq_right h1]; split <;> omega
+      | commit =>
+        simp only [nuOf]
+        by_cases h1 : Conflict sp s'.st n b
+        · rcases hcf h1 with h2 | h2
+          · rw [ite_eq_left h1, ite_eq_left h2]; omega
+          · rw [ite_eq_left h1]; split <;> omega
+        · rw [ite_eq_right h1]; split <;> omega
+      | readE => exact absurd hpc' hpc
+      | lock => simp only [nuOf]; omega
+      | activate => simp only [nuOf]; omega
+
+
+/-- A build's step from `readE` reads its end key. -/
+theorem readE_step {sp : Spec V F L} {s s' : Sys V F L W} {n : Name} {g : Gen}
+    (hst : Step sp s (.bld n g) s') {b : BSt V F} (hb : s.m.bld n g = some b)
+    (hpc : b.pc = .readE) : ∃ b', s'.m.bld n g = some b' ∧ b'.pc ≠ .readE := by
+  cases hst with
+  | bReadE _ _ b0 e hb0 _ _ =>
+    exact ⟨_, upd2_same _ _ _ _, fun h => by cases h⟩
+  | bRead _ _ b0 _ _ hb0 hpc0 _ _ _ => rw [hb] at hb0; cases hb0; rw [hpc] at hpc0; cases hpc0
+  | bCheck _ _ b0 _ hb0 hpc0 _ _ _ => rw [hb] at hb0; cases hb0; rw [hpc] at hpc0; cases hpc0
+  | bCheckFail _ _ b0 hb0 hpc0 _ _ => rw [hb] at hb0; cases hb0; rw [hpc] at hpc0; cases hpc0
+  | bCommit _ _ b0 hb0 hpc0 _ _ => rw [hb] at hb0; cases hb0; rw [hpc] at hpc0; cases hpc0
+  | bRefused _ _ b0 hb0 hpc0 _ => rw [hb] at hb0; cases hb0; rw [hpc] at hpc0; cases hpc0
+  | bLock _ _ b0 hb0 hpc0 _ => rw [hb] at hb0; cases hb0; rw [hpc] at hpc0; cases hpc0
+  | bActivate _ _ b0 _ hb0 hpc0 _ _ _ => rw [hb] at hb0; cases hb0; rw [hpc] at hpc0; cases hpc0
+  | bActivateFail _ _ b0 hb0 hpc0 _ _ =>
+    rw [hb] at hb0; cases hb0; rw [hpc] at hpc0; cases hpc0
+
+/-- **BuildEnds** (020-26, section 4, point 8): a build that runs ends: its
+definition becomes active, or is deleted. The hypotheses, plainly:
+
+* finitely many crashes and retries of the build (`bretry`, after an
+  exception), and no end of its thread without its activation (`babort`, a
+  FAILED build: then the definition stays building until the next start, by
+  design);
+* **the lock**: the build's thread is strongly fair (if it can step at times
+  without end, it steps), and the lock is free or the build's own at times
+  without end (its other holders, definition changes and other builds'
+  locked steps, release it). The steps that need no lock are then taken
+  whenever the build can take them; only those that need it (`isLive`, its
+  locked phase, its activation) need the lock's fairness;
+* finitely many keys with a value at each time (E exists), and finitely many
+  writers.
+
+Writers may write for ever: in its locked phase a step is refused at most once
+per writer that could commit when the lock was taken (`locked_phase`). -/
+theorem build_ends {sp : Spec V F L} (ρ : Run sp W) {n : Name} {g : Gen}
+    (hcr : ∃ N, ∀ j, N ≤ j → ρ.lbl j ≠ .crash ∧ ρ.lbl j ≠ .bretry n g)
+    (hab : ∀ j, ρ.lbl j ≠ .babort n g)
+    (hsf : StrongFair ρ (.bld n g))
+    (hlock : ∀ j, ∃ j', j ≤ j' ∧ ((ρ.sys j').m.lock = .free ∨ (ρ.sys j').m.lock = .bld n g))
+    (hfin : ∀ j, ∃ e, ∀ k, e < k → (ρ.sys j).st.data k = none)
+    (hW : ∃ ws : List W, ∀ w, w ∈ ws)
+    {i : Nat} (hb : (ρ.sys i).m.bld n g ≠ none) (ha : (ρ.sys i).m.admin.name ≠ some n) :
+    ∃ j, i ≤ j ∧ ¬ Building (ρ.sys j) n g := by
+  apply Classical.byContradiction
+  intro hno
+  have hBj : ∀ j, i ≤ j → Building (ρ.sys j) n g := fun j hj =>
+    Classical.byContradiction fun h => hno ⟨j, hj, h⟩
+  obtain ⟨ws, hws⟩ := hW
+  obtain ⟨N, hN⟩ := hcr
+  have hadm : ∀ d, (ρ.sys (i + d)).m.admin.name ≠ some n := by
+    intro d
+    induction d with
+    | zero => exact ha
+    | succ d ih =>
+      exact admin_keep (ρ.inv (i + d)) (ρ.step (i + d)) ih (hBj (i + d) (by omega))
+        (hBj (i + d + 1) (by omega))
+  have hbld : ∀ d, (ρ.sys (i + d)).m.bld n g ≠ none := by
+    intro d
+    induction d with
+    | zero => exact hb
+    | succ d ih =>
+      exact (bld_keep (ρ.inv (i + d)) (ρ.step (i + d)) (hab _) (hadm d) (hBj (i + d) (by omega))
+        (hBj (i + d + 1) (by omega)) ih).1
+  have hadm' : ∀ j, i ≤ j → (ρ.sys j).m.admin.name ≠ some n := by
+    intro j hj; have := hadm (j - i); rwa [show i + (j - i) = j by omega] at this
+  have hbld' : ∀ j, i ≤ j → ∃ b, (ρ.sys j).m.bld n g = some b := by
+    intro j hj
+    have := hbld (j - i)
+    rw [show i + (j - i) = j by omega] at this
+    cases h : (ρ.sys j).m.bld n g with
+    | none => exact absurd h this
+    | some b => exact ⟨b, rfl⟩
+  -- the build steps from every time on: strong fairness, the lock free or its own
+  have hinf : ∀ j, i ≤ j → ∃ j', j ≤ j' ∧ ρ.lbl j' = .bld n g := by
+    intro j hj
+    apply hsf j
+    intro i' hi'
+    obtain ⟨j', hj', hl⟩ := hlock i'
+    refine ⟨j', hj', ?_⟩
+    obtain ⟨b, hb'⟩ := hbld' j' (by omega)
+    exact build_enabled (ρ.inv j') (hBj j' (by omega)) (hadm' j' (by omega)) hb' hl (hfin j')
+  -- a time M after the crashes and retries, with the build out of readE
+  obtain ⟨M, hMi, hMN, hM⟩ : ∃ M, i ≤ M ∧ N ≤ M ∧
+      ∃ b, (ρ.sys M).m.bld n g = some b ∧ b.pc ≠ .readE := by
+    apply Classical.byContradiction
+    intro hno2
+    obtain ⟨j, hj, hlj⟩ := hinf (max i N) (Nat.le_max_left _ _)
+    obtain ⟨b, hbj⟩ := hbld' j (by omega)
+    have hpcj : b.pc = .readE := Classical.byContradiction fun h =>
+      hno2 ⟨j, by omega, by omega, b, hbj, h⟩
+    have hst := ρ.step j
+    rw [hlj] at hst
+    obtain ⟨b', hb', hpc'⟩ := readE_step hst hbj hpcj
+    exact hno2 ⟨j + 1, by omega, by omega, b', hb', hpc'⟩
+  -- from M on: the measure
+  have hstep : ∀ j, M ≤ j → (∃ b, (ρ.sys j).m.bld n g = some b ∧ b.pc ≠ .readE) →
+      (∃ b', (ρ.sys (j + 1)).m.bld n g = some b' ∧ b'.pc ≠ .readE) ∧
+      bMeasure sp ws (ρ.sys (j + 1)) n g ≤ bMeasure sp ws (ρ.sys j) n g ∧
+      (ρ.lbl j = .bld n g → bMeasure sp ws (ρ.sys (j + 1)) n g < bMeasure sp ws (ρ.sys j) n g) := by
+    intro j hj ⟨b, hbj, hpcj⟩
+    obtain ⟨b', hb', hpc', hle, hlt⟩ := build_step hws (ρ.inv j) (ρ.inv (j + 1))
+      (times_ok (ρ.reach j) _ List.mem_cons_self) (ρ.step j) (hN j (by omega)).1
+      (hN j (by omega)).2 (hab j) (hadm' j (by omega)) (hBj j (by omega)) (hBj (j + 1) (by omega))
+      hbj hpcj
+    exact ⟨⟨b', hb', hpc'⟩, hle, hlt⟩
+  have hout : ∀ d, ∃ b, (ρ.sys (M + d)).m.bld n g = some b ∧ b.pc ≠ .readE := by
+    intro d
+    induction d with
+    | zero => exact hM
+    | succ d ih => exact (hstep (M + d) (by omega) ih).1
+  have hout' : ∀ j, M ≤ j → ∃ b, (ρ.sys j).m.bld n g = some b ∧ b.pc ≠ .readE := by
+    intro j hj; have := hout (j - M); rwa [show M + (j - M) = j by omega] at this
+  exact descent (μ := fun j => bMeasure sp ws (ρ.sys j) n g) (P := fun j => ρ.lbl j = .bld n g)
+    (i := M) (fun j hj => (hstep j hj (hout' j hj)).2.1)
+    (fun j hj hp => (hstep j hj (hout' j hj)).2.2 hp) (fun j hj => hinf j (by omega))
+
 end BergDB.Index

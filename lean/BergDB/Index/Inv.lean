@@ -81,7 +81,7 @@ structure StepInv (sp : Spec V F L) (st : Stream V F L) (n : Name) (g : Gen) (b 
     Prop where
   R_le : b.R ≤ st.now
   snap : ∀ k, st.wk k ≤ b.R → st.data k = b.snap k
-  range : ∃ e, b.E = some e ∧ (b.ended = true → b.hi = e + 1)
+  range : ∃ e, b.E = some e ∧ b.next < b.hi ∧ b.hi ≤ e + 1 ∧ (b.ended = true ↔ b.hi = e + 1)
   noneCov : ∀ d, st.dfn n = some d → d.gen = g → ∀ k, b.next ≤ k → k < b.hi →
     sp.f b.fn k (b.snap k) = none → Covered sp st n g b.fn k
 
@@ -95,6 +95,12 @@ structure BInv (sp : Spec V F L) (st : Stream V F L) (n : Name) (g : Gen) (b : B
   done : b.pc = .activate → ∀ k, b.passed k
   inStep : b.pc = .check ∨ b.pc = .commit → StepInv sp st n g b
   live : b.pc = .commit → st.wdef n ≤ b.R → ∃ d, st.dfn n = some d ∧ d.gen = g
+  /-- For liveness: a build reads its end key at its start; before a step's read
+  the keys from `next` to E are left; a build waiting for the lock or for its
+  activation holds no lock. -/
+  startE : b.pc = .readE → b.next = 0
+  readNext : b.pc = .read ∨ b.pc = .lock → ∃ e, b.E = some e ∧ b.next ≤ e
+  unlocked : b.pc = .lock ∨ b.pc = .activate → b.locked = false
 
 /-- A cleanup of the generation g of the name n (point 6): g has its marker;
 at its end, g has no entry. -/
@@ -195,7 +201,7 @@ theorem BInv.frame {sp : Spec V F L} {st st' : Stream V F L} {n : Name} {g : Gen
     (hcov : ∀ d, st.dfn n = some d → d.gen = g → ∀ k,
       Covered sp st n g b.fn k → Covered sp st' n g b.fn k) :
     BInv sp st' n g b := by
-  refine ⟨?_, ?_, h.done, ?_, ?_⟩
+  refine ⟨?_, ?_, h.done, ?_, ?_, h.startE, h.readNext, h.unlocked⟩
   · intro d' hd' hg
     obtain ⟨d, hd, hdg, hdf, hda⟩ := hlive d' hd' hg
     obtain ⟨h1, h2⟩ := h.fnEq d hd hdg
@@ -390,7 +396,9 @@ theorem minv_restart {sp : Spec V F L} {st : Stream V F L} :
       split at hb
       · rename_i hc
         cases hb
-        refine ⟨?_, ?_, ?_, ?_, ?_⟩
+        refine ⟨?_, ?_, ?_, ?_, ?_, fun _ => rfl, ?_, fun _ => rfl⟩
+        rotate_left 5
+        · intro hpc; rcases hpc with hpc | hpc <;> cases hpc
         · intro d' hd' _
           rw [hd] at hd'; cases hd'
           exact ⟨rfl, hc.2⟩

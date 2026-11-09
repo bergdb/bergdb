@@ -587,7 +587,23 @@ theorem step_bCommit {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
         · rw [h0, h1, hmkg] at hmk; cases hmk)
   -- the build after its step
   have hb' : BInv sp st' n g (bAfter b) := by
-    refine ⟨?_, ?_, ?_, ?_, ?_⟩
+    refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, fun _ => rfl⟩
+    rotate_left 5
+    · intro hpc'
+      change (if b.ended = true then BPc.activate else BPc.read) = .readE at hpc'
+      by_cases hen : b.ended = true
+      · rw [ite_eq_left hen] at hpc'; cases hpc'
+      · rw [ite_eq_right hen] at hpc'; cases hpc'
+    · intro hpc'
+      obtain ⟨e, he, _, hhi, hend⟩ := hsi.range
+      by_cases hen : b.ended = true
+      · change (if b.ended = true then BPc.activate else BPc.read) = .read ∨
+          (if b.ended = true then BPc.activate else BPc.read) = .lock at hpc'
+        rw [ite_eq_left hen] at hpc'; rcases hpc' with h | h <;> cases h
+      · refine ⟨e, he, ?_⟩
+        change b.hi ≤ e
+        have : b.hi ≠ e + 1 := fun h => hen (hend.mpr h)
+        omega
     · intro d' hd' hg'; rw [e5] at hd'; exact hbi.fnEq d' hd' hg'
     · intro _ _ _ k hk
       rcases hk with hk | ⟨e, he, hek⟩
@@ -603,9 +619,9 @@ theorem step_bCommit {sp : Spec V F L} {st st' : Stream V F L} {m : Mem V F L W}
             rw [e2]; exact Or.inr ⟨rfl, rfl, by omega, hk, hl⟩
       · exact hmono _ _ _ k (hbi.cover d hd hdg k (Or.inr ⟨e, he, hek⟩))
     · intro hpc' k
-      obtain ⟨e, he, hend⟩ := hsi.range
+      obtain ⟨e, he, _, _, hend⟩ := hsi.range
       by_cases hen : b.ended = true
-      · have hhi := hend hen
+      · have hhi := hend.mp hen
         by_cases hk : k < b.hi
         · exact Or.inl hk
         · exact Or.inr ⟨e, he, by omega⟩
@@ -949,7 +965,9 @@ theorem minv_aCreateMap {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
     change upd2 m.bld n g (some (BSt.init fn)) n' g' = some b at hb
     by_cases hgg : n' = n ∧ g' = g
     · rw [hgg.1, hgg.2, upd2_same] at hb; cases hb; rw [hgg.1, hgg.2]
-      refine ⟨?_, ?_, ?_, ?_, ?_⟩
+      refine ⟨?_, ?_, ?_, ?_, ?_, fun _ => rfl, ?_, fun _ => rfl⟩
+      rotate_left 5
+      · intro hpc; rcases hpc with hpc | hpc <;> cases hpc
       · intro d hd' _; rw [hd] at hd'; cases hd'; exact ⟨rfl, rfl⟩
       · intro d _ _ k hk
         rcases hk with hk | ⟨e, he, _⟩
@@ -996,10 +1014,13 @@ theorem minv_aDeleteMap {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
 /-- `BReadE`: the keys after E have no entry, so they are covered (point 4). -/
 theorem minv_bReadE {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
     (hm : MInv sp st m) {n : Name} {g : Gen} {b : BSt V F} {e : Key} (hb : m.bld n g = some b)
-    (hE : ∀ k, e < k → sp.f b.fn k (st.data k) = none) :
+    (hpc : b.pc = .readE) (hE : ∀ k, e < k → sp.f b.fn k (st.data k) = none) :
     MInv sp st { m with bld := upd2 m.bld n g (some { b with E := some e, pc := .read }) } := by
   have hbi := hm.bInv n g b hb
-  refine hm.setB hb ⟨hbi.fnEq, ?_, ?_, ?_, ?_⟩ rfl
+  refine hm.setB hb ⟨hbi.fnEq, ?_, ?_, ?_, ?_, (fun h => by cases h),
+    fun _ => ⟨e, rfl, by rw [hbi.startE hpc]; exact Nat.zero_le _⟩, fun h => ?_⟩ rfl
+  rotate_left 4
+  · rcases h with h | h <;> cases h
   · intro d hd hg k hk
     rcases hk with hk | ⟨e', he', hek⟩
     · exact hbi.cover d hd hg k (Or.inl hk)
@@ -1012,15 +1033,19 @@ theorem minv_bReadE {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
 /-- `BRead`: the step's values are the data at its R. -/
 theorem minv_bRead {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
     (hm : MInv sp st m) {n : Name} {g : Gen} {b : BSt V F} {e hi : Key}
-    (hb : m.bld n g = some b) (hE : b.E = some e) :
+    (hb : m.bld n g = some b) (hE : b.E = some e) (hnh : b.next < hi) (hhi : hi ≤ e + 1) :
     MInv sp st { m with bld := upd2 m.bld n g (some
         { b with hi := hi, R := st.now, snap := st.data, ended := decide (hi = e + 1),
                  pc := .check }) } := by
   have hbi := hm.bInv n g b hb
-  refine hm.setB hb ⟨hbi.fnEq, hbi.cover, ?_, ?_, ?_⟩ rfl
+  refine hm.setB hb ⟨hbi.fnEq, hbi.cover, ?_, ?_, ?_, ?_, ?_, ?_⟩ rfl
+  rotate_left 3
+  · intro h; cases h
+  · intro h; rcases h with h | h <;> cases h
+  · intro h; rcases h with h | h <;> cases h
   · intro h; cases h
   · intro _
-    refine ⟨Nat.le_refl _, fun _ _ => rfl, ⟨e, hE, fun h => of_decide_eq_true h⟩, ?_⟩
+    refine ⟨Nat.le_refl _, fun _ _ => rfl, ⟨e, hE, hnh, hhi, decide_eq_true_iff⟩, ?_⟩
     intro _ _ _ k _ _ hf
     exact Covered.of_none hf
   · intro h; cases h
@@ -1034,7 +1059,11 @@ theorem minv_bCheck {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
   have hbi := hm.bInv n g b hb
   have hd : st.dfn n = some d := by
     rw [← hm.memEq (by rcases hl with hl | hl <;> rw [hl] <;> simp) n]; exact hmem
-  refine hm.setB hb ⟨hbi.fnEq, hbi.cover, ?_, ?_, ?_⟩ rfl
+  refine hm.setB hb ⟨hbi.fnEq, hbi.cover, ?_, ?_, ?_, ?_, ?_, ?_⟩ rfl
+  rotate_left 3
+  · intro h; cases h
+  · intro h; rcases h with h | h <;> cases h
+  · intro h; rcases h with h | h <;> cases h
   · intro h; cases h
   · intro _
     have hsi := hbi.inStep (Or.inl hpc)
@@ -1042,20 +1071,28 @@ theorem minv_bCheck {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
   · intro _ _; exact ⟨d, hd, hdg⟩
 
 theorem minv_bRefused {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
-    (hm : MInv sp st m) {n : Name} {g : Gen} {b : BSt V F} (hb : m.bld n g = some b) :
+    (hm : MInv sp st m) {n : Name} {g : Gen} {b : BSt V F} (hb : m.bld n g = some b)
+    (hpc : b.pc = .commit) :
     MInv sp st { m with bld := upd2 m.bld n g (some
         { b with pc := if b.locked = false ∧ sp.lockedAfter ≤ b.tries + 1 then .lock else .read,
                  tries := if b.locked = true ∨ sp.lockedAfter ≤ b.tries + 1 then 0
                           else b.tries + 1 }) } := by
   have hbi := hm.bInv n g b hb
-  refine hm.setB hb ⟨hbi.fnEq, hbi.cover, ?_, ?_, ?_⟩ rfl
+  obtain ⟨e, he, hnh, hhi, _⟩ := (hbi.inStep (Or.inr hpc)).range
+  refine hm.setB hb ⟨hbi.fnEq, hbi.cover, ?_, ?_, ?_, ?_, fun _ => ⟨e, he, by show b.next ≤ e; omega⟩, ?_⟩ rfl
   · intro h; dsimp only at h; split at h <;> cases h
   · intro h; dsimp only at h; rcases h with h | h <;> (split at h <;> cases h)
   · intro h; dsimp only at h; split at h <;> cases h
+  · intro h; dsimp only at h; split at h <;> cases h
+  · intro h
+    dsimp only at h ⊢
+    split at h
+    · rename_i hc; exact hc.1
+    · rcases h with h | h <;> cases h
 
 theorem minv_bLock {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
     (hm : MInv sp st m) {n : Name} {g : Gen} {b : BSt V F} (hb : m.bld n g = some b)
-    (hl : m.lock = .free) :
+    (hpc : b.pc = .lock) (hl : m.lock = .free) :
     MInv sp st { m with lock := .bld n g,
                         bld := upd2 m.bld n g (some { b with locked := true, pc := .read }) } := by
   have hbi := hm.bInv n g b hb
@@ -1078,10 +1115,12 @@ theorem minv_bLock {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
     change upd2 m.bld n g (some { b with locked := true, pc := .read }) n' g' = some b' at hb'
     by_cases hgg : n' = n ∧ g' = g
     · rw [hgg.1, hgg.2, upd2_same] at hb'; cases hb'; rw [hgg.1, hgg.2]
-      refine ⟨hbi.fnEq, hbi.cover, ?_, ?_, ?_⟩
+      refine ⟨hbi.fnEq, hbi.cover, ?_, ?_, ?_, (fun h => by cases h),
+        fun _ => hbi.readNext (Or.inr hpc), ?_⟩
       · intro h; cases h
       · intro h; rcases h with h | h <;> cases h
       · intro h; cases h
+      · intro h; rcases h with h | h <;> cases h
     · rw [upd2_ne _ _ hgg] at hb'; exact hm.bInv n' g' b' hb'
   · intro n' g' b' hb'
     change upd2 m.bld n g (some { b with locked := true, pc := .read }) n' g' = some b' at hb'
@@ -1160,15 +1199,23 @@ theorem MInv.relB {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
 
 /-- `bRetry`: the step again from its start, unlocked. -/
 theorem minv_bRetry {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
-    (hm : MInv sp st m) {n : Name} {g : Gen} {b : BSt V F} (hb : m.bld n g = some b) :
+    (hm : MInv sp st m) {n : Name} {g : Gen} {b : BSt V F} (hb : m.bld n g = some b)
+    (hpc : b.pc = .read ∨ b.pc = .check ∨ b.pc = .commit ∨ b.pc = .lock) :
     MInv sp st { m with
       bld := upd2 m.bld n g (some { b with pc := .read, tries := 0, locked := false }),
       lock := if b.locked = true then .free else m.lock } := by
   have hbi := hm.bInv n g b hb
-  refine hm.relB hb ⟨hbi.fnEq, hbi.cover, ?_, ?_, ?_⟩ rfl
+  have hrn : ∃ e, b.E = some e ∧ b.next ≤ e := by
+    rcases hpc with h | h | h | h
+    · exact hbi.readNext (Or.inl h)
+    · obtain ⟨e, he, hnh, hhi, _⟩ := (hbi.inStep (Or.inl h)).range; exact ⟨e, he, by omega⟩
+    · obtain ⟨e, he, hnh, hhi, _⟩ := (hbi.inStep (Or.inr h)).range; exact ⟨e, he, by omega⟩
+    · exact hbi.readNext (Or.inr h)
+  refine hm.relB hb ⟨hbi.fnEq, hbi.cover, ?_, ?_, ?_, (fun h => by cases h), fun _ => hrn, ?_⟩ rfl
   · intro h; cases h
   · intro h; rcases h with h | h <;> cases h
   · intro h; cases h
+  · intro h; rcases h with h | h <;> cases h
 
 /-- `bAbort`: a build's thread ends; its lock released if it held it. -/
 theorem minv_bAbort {sp : Spec V F L} {st : Stream V F L} {m : Mem V F L W}
@@ -1278,20 +1325,20 @@ theorem inv_step {sp : Spec V F L} {s s' : Sys V F L W} {l : Lbl W} (h : Inv sp 
   | aDelete n d _ hl hmem =>
     exact h.commit (step_aDelete h.sinv h.minv hl hmem rfl rfl rfl rfl rfl rfl rfl rfl)
   | aDeleteMap n g ha => exact h.setM (minv_aDeleteMap h.minv ha)
-  | bReadE n g b e hb _ hE => exact h.setM (minv_bReadE h.minv hb hE)
-  | bRead n g b e hi hb _ hE _ _ => exact h.setM (minv_bRead h.minv hb hE)
+  | bReadE n g b e hb hpc hE => exact h.setM (minv_bReadE h.minv hb hpc hE)
+  | bRead n g b e hi hb _ hE hnh hhi => exact h.setM (minv_bRead h.minv hb hE hnh hhi)
   | bCheck n g b d hb hpc hl hmem hdg =>
     exact h.setM (minv_bCheck h.minv hb hpc hl hmem hdg)
   | bCheckFail n g b _ _ hl _ => exact h.setM (h.minv.delB hl)
   | bCommit n g b hb hpc hdef hkeys =>
     exact h.commit (step_bCommit h.sinv h.minv hb hpc hdef hkeys rfl rfl rfl rfl rfl rfl rfl rfl)
-  | bRefused n g b hb _ _ => exact h.setM (minv_bRefused h.minv hb)
-  | bLock n g b hb _ hl => exact h.setM (minv_bLock h.minv hb hl)
+  | bRefused n g b hb hpc _ => exact h.setM (minv_bRefused h.minv hb hpc)
+  | bLock n g b hb hpc hl => exact h.setM (minv_bLock h.minv hb hpc hl)
   | bActivate n g b d hb hpc hl hmem hdg =>
     exact h.commit
       (step_bActivate h.sinv h.minv hb hpc hl hmem hdg rfl rfl rfl rfl rfl rfl rfl rfl)
   | bActivateFail n g b _ _ hl _ => exact h.setM (minv_bActivateFail h.minv hl)
-  | bRetry n g b hb _ => exact h.setM (minv_bRetry h.minv hb)
+  | bRetry n g b hb hpc => exact h.setM (minv_bRetry h.minv hb hpc)
   | bAbort n g b hb => exact h.setM (minv_bAbort h.minv hb)
   | cScan n g c keys hc _ _ _ => exact h.setM (minv_cScan h.minv hc)
   | cScanEnd n g c hc _ hno => exact h.setM (minv_cScanEnd h.minv hc hno)
