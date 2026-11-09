@@ -505,6 +505,7 @@ public class DbStarter {
                     + " names position " + pos + ", where node " + node.getId() + " is.");
         }
         if (node.getType() == Node.TYPE_KEY_NODE) {
+            validateKeyNode((KeyNode) node, startupTime, pos < startupPos);  // bergdb 021-12
             ((KeyNode) node).toPreviousState(startupTime);
         }
         node.setCanonical(true);
@@ -686,17 +687,37 @@ public class DbStarter {
         
         switch (node.getType()) {
         case Node.TYPE_KEY_NODE:
-            KeyNode knode = (KeyNode) node;
-            
-            try {
-                knode.validateStreamNode(startupTime);
-            } catch (KeyNode.Invalid e) {
-                throw new StreamFormatException(e.getMessage(), e);
-            }
-            
+            validateKeyNode((KeyNode) node, startupTime, false);
             break;
         case Node.TYPE_TOP_NODE:
             break;
+        }
+    }
+
+    /**
+     * Validates a key node version that the start reads (KeyNode.validateStreamNode): one of
+     * the startup section (validateNode), and, since 2026-11-09 (bergdb 021-12), one it reads
+     * from before the section ('before'), by a follow during the reconstruction
+     * (NodeCollection.readVersion) or as the canonical object of a node of D (canonicalNode),
+     * before it is cut back to the startup time. A version from before the section was
+     * written before the startup time, so none of its times is later: a later one made the
+     * rerun's put into the node meet an assert (KeyNode.addKlong).
+     *
+     * @throws StreamFormatException
+     */
+    static void validateKeyNode(KeyNode node, long startupTime, boolean before) {
+        try {
+            node.validateStreamNode(startupTime);
+        } catch (KeyNode.Invalid e) {
+            throw new StreamFormatException(e.getMessage(), e);
+        }
+        for (int i = 0; before && i < node.size; i++) {
+            long klong = node.klongs[i];
+            if (Klong.getType(klong) == Klong.TYPE_TIME && Klong.getTime(klong) > startupTime) {
+                throw new StreamFormatException("Key node " + node.getId() + " at "
+                        + node.getSpos() + ", before the startup section, has the time "
+                        + Klong.getTime(klong) + ", after the startup time " + startupTime + ".");
+            }
         }
     }
 

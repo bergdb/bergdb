@@ -65,7 +65,6 @@ public class CorruptStreamTester {
      * -Dbergdb.corrupt.skip=none, nothing is skipped.
      */
     static final String[] SKIP = {
-        "021-12",
     };
 
     /**
@@ -89,19 +88,9 @@ public class CorruptStreamTester {
 
     /**
      * The open entry of SKIP that a failure belongs to, or null: a new fault. Each entry
-     * says which damage and which failure are its.
+     * says which damage and which failure are its. None since 021-12's fix (2026-11-09).
      */
     static String entryOf(Copy c, String failure) {
-        // 021-12 (LONG's full set, 2026-11-09): a key node read at a start from outside the
-        // startup section, whose klongs break KeyNode's invariants (times not increasing, a
-        // key klong's pointer Spos.NULL), damaged by a flip of 0xff or a node field with its
-        // checksum right: the start's check of the nodes in memory (KeyNode.check from
-        // DbStarter.postStartupCheck, also without -ea) or the rerun's put (an assert of
-        // KeyNode.addKlong) throws an AssertionError.
-        if (failure.startsWith("the start threw java.lang.AssertionError")
-                && failure.contains("(at dag.KeyNode.")) {
-            return "021-12";
-        }
         return null;
     }
 
@@ -1319,6 +1308,39 @@ public class CorruptStreamTester {
             byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
             Bytes.longToBytesLE(row[3], nb, (int) row[2]);
             Copy c = nodeCopy(o, rec, node, nb, "its byte " + row[2] + " set to " + row[3]);
+            Outcome out = check(o, c);
+            if (out.failure != null || !out.kind.startsWith("refused")) {
+                throw new AssertionError(c.what + ": " + (out.failure != null ? out.failure
+                        : out.kind));
+            }
+        }
+    }
+
+    /**
+     * A key node that a start reads from before the startup section, damaged so that it
+     * breaks KeyNode's invariants (bergdb 021-12): each copy refused at the start. Before, the
+     * start threw an AssertionError: its check of the nodes in memory (KeyNode.check, from
+     * DbStarter.postStartupCheck, also without -ea), or an assert of KeyNode.addKlong when the
+     * rerun put into the node. Copies of LONG's first full run (seed 20766), in its node at
+     * offset 200 of the record at 36336.
+     */
+    @Nano
+    public static void testFound021_12() {
+        Original o = write(LONG, 20766L * 31 + LONG.name.hashCode());
+        Record rec = o.recordAt(36336);
+        int[] node = null;
+        for (int[] n : rec.nodes) {
+            if (n[0] == 200) node = n;
+        }
+        List<Copy> copies = new ArrayList<Copy>();
+        // A time klong's byte flipped by 0xff (019-33's flip): the times not increasing, at
+        // the start's check (36570), and at the rerun's put (36738).
+        flips(o, Arrays.asList(36570, 36738), new int[] {0xff}, copies);
+        // The first klong, a time klong, made a key klong, whose pointer is Spos.NULL.
+        byte[] nb = Arrays.copyOfRange(rec.bytes, node[0], node[0] + node[1]);
+        Bytes.intToBytesLE(0x7ffffff8, nb, 36);
+        copies.add(nodeCopy(o, rec, node, nb, "int " + 0x7ffffff8 + " at its byte 36"));
+        for (Copy c : copies) {
             Outcome out = check(o, c);
             if (out.failure != null || !out.kind.startsWith("refused")) {
                 throw new AssertionError(c.what + ": " + (out.failure != null ? out.failure

@@ -578,9 +578,15 @@ public class NodeCollection implements PointerFollower {
         if (maintenance != null) maintenance.loaded(node);
 
         final StartupSection mySection = this.section;
-        if (reconstructing && mySection != null && pos >= mySection.startPos
-                && node.getType() == Node.TYPE_KEY_NODE) {
-            ((KeyNode) node).toPreviousState(mySection.startupTime);
+        if (reconstructing && mySection != null && node.getType() == Node.TYPE_KEY_NODE) {
+            // Validated as the start validates the section's nodes (2026-11-09, bergdb
+            // 021-12): a damaged version from before the section, its checksum right, made
+            // the start's check of its nodes, or the rerun's put, throw an AssertionError.
+            DbStarter.validateKeyNode((KeyNode) node, mySection.startupTime,
+                    pos < mySection.startPos);
+            if (pos >= mySection.startPos) {
+                ((KeyNode) node).toPreviousState(mySection.startupTime);
+            }
         }
         return node;
     }

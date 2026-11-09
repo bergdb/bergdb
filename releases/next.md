@@ -432,6 +432,15 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `-ea`, an `AssertionError`). Now the start refuses the stream, or the
   write fails the database, with `StreamFormatException`. Valid streams
   are read as before; the stream's bytes are unchanged.
+* **A start validates the key nodes it reads from before its startup
+  section** (bergdb 021-12; 2026-11-09), as it validates the section's
+  (`DbStarter.validateNode`): their sizes, times increasing, the last
+  time's index and their pointers, and that no time is after the startup
+  time. A damaged one, its checksum right or a byte flipped by 0xff, made
+  the start throw an `AssertionError`, also without `-ea`, from its check
+  of the nodes in memory or from its rerun; now the start refuses the
+  stream with `StreamFormatException`. Valid streams are read as before;
+  the stream's bytes are unchanged.
 
 
 ### Format
