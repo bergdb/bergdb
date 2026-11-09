@@ -63,7 +63,10 @@ static void print(const char *title, const struct bergdb_many *many) {
     for (size_t i = 0; i < many->count; i++) {
         const struct bergdb_kvt *kvt = &many->kvts[i];
         char key[KEY_SIZE];
-        bergdb_bkey_to_ikey(kvt->key, kvt->key_len, (uint8_t *) key);
+        if (bergdb_bkey_to_ikey(kvt->key, kvt->key_len, (uint8_t *) key) != BERGDB_OK) {
+            fprintf(stderr, "get_many_prefix: a key without an ikey\n");     /* bergdb 021-06 */
+            exit(1);
+        }
         printf("  %.*s = %.*s  (time %lld, pos %lld)\n", (int) kvt->key_len, key,
                 (int) kvt->value_len, (const char *) kvt->value,
                 (long long) kvt->time, (long long) kvt->pos);

@@ -22,6 +22,7 @@
 #include "keymod.h"
 #include "klong.h"
 #include "strmap.h"
+#include "strutil.h"
 #include "transseq.h"
 
 #ifndef VECTORS_DIR
@@ -418,7 +419,8 @@ TEST(vectors_klong) {
 /* ---- keys.txt: Keys ---- */
 
 TEST(vectors_keys) {
-    static const char *const kinds[] = { "ikey", "seg", "hash", "cmp", "isprefix", NULL };
+    static const char *const kinds[] = { "ikey", "seg", "hash", "cmp", "isprefix",
+        "bkey2ikey", NULL };
     struct vfile *v = &vf;
     uint8_t k1[V_BYTES], k2[V_BYTES], out[V_BYTES];
     int64_t s1[V_LONGS], s2[V_LONGS], seg[V_LONGS];
@@ -435,8 +437,25 @@ TEST(vectors_keys) {
                 REQUIRE(m == n);
                 CHECK(keys_ikey_to_bkey(k1, n, out));
                 CHECK_BYTES(out, k2, (size_t) n);
-                keys_bkey_to_ikey(k2, n, out);      /* and back */
+                CHECK(keys_bkey_to_ikey(k2, n, out));       /* and back */
                 CHECK_BYTES(out, k1, (size_t) n);
+            }
+        } else if (v_is(v, "bkey2ikey", 2)) {
+            /* Keys.bkey2ikeyOrNull (bergdb 021-06): the ikey's UTF-8, or none. */
+            int n = v_bytes(v->tok[1], k1, V_BYTES);
+            REQUIRE(n >= 0);
+            bool has = keys_bkey_to_ikey(k1, n, out);
+            if (strcmp(v->tok[2], "none") == 0) {
+                CHECK(!has);
+            } else {
+                int m = v_bytes(v->tok[2], k2, V_BYTES);
+                REQUIRE(m == n);
+                CHECK(has);
+                CHECK_BYTES(out, k2, (size_t) n);
+                if (n > 0) {                                /* the ikey's bkey is the bkey */
+                    CHECK(keys_ikey_to_bkey(k2, n, out));
+                    CHECK_BYTES(out, k1, (size_t) n);
+                }
             }
         } else if (v_is(v, "seg", 4)) {
             int n = v_bytes(v->tok[1], k1, V_BYTES);
@@ -476,6 +495,28 @@ TEST(vectors_keys) {
             keys_to_segments(k2, n2, s2);
             CHECK(keys_is_prefix(s1, keys_segment_count(n1), s2, keys_segment_count(n2))
                     == v_bool(v->tok[3]));
+        }
+    }
+    v_end(v);
+}
+
+/* ---- strutil.txt: StringUtil ---- */
+
+TEST(vectors_strutil) {
+    static const char *const kinds[] = { "utf8", NULL };
+    struct vfile *v = &vf;
+    uint8_t b[V_BYTES], out[V_BYTES];
+    REQUIRE(v_open(v, "strutil.txt", kinds));
+
+    while (v_next(v)) {
+        if (v_is(v, "utf8", 2)) {
+            int n = v_bytes(v->tok[1], b, V_BYTES);
+            REQUIRE(n >= 0);
+            bool well = v_bool(v->tok[2]);
+            CHECK(su_is_well_formed_utf8(b, n) == well);
+            if (n > 0) {        /* as an ikey: refused unless well-formed (bergdb 021-05) */
+                CHECK(keys_ikey_to_bkey(b, n, out) == well);
+            }
         }
     }
     v_end(v);
@@ -678,6 +719,7 @@ const struct test vectors_tests[] = {
     TEST_ENTRY(vectors_checksum),
     TEST_ENTRY(vectors_klong),
     TEST_ENTRY(vectors_keys),
+    TEST_ENTRY(vectors_strutil),
     TEST_ENTRY(vectors_jsem),
     TEST_ENTRY(vectors_strmap),
     TEST_ENTRY(vectors_keymod),

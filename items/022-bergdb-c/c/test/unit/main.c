@@ -7,6 +7,7 @@ extern const struct test bytes_tests[];
 extern const struct test checksum_tests[];
 extern const struct test klong_tests[];
 extern const struct test keys_tests[];
+extern const struct test strutil_tests[];
 extern const struct test spos_tests[];
 extern const struct test mem_tests[];
 extern const struct test vectors_tests[];
@@ -47,6 +48,7 @@ int main(int argc, char **argv) {
         checksum_tests,
         klong_tests,
         keys_tests,
+        strutil_tests,
         spos_tests,
         mem_tests,
         vectors_tests,

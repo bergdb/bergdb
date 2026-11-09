@@ -486,22 +486,42 @@ TEST(settings_errors_and_keys) {
     uint8_t b[16], i2[16];
     CHECK(bergdb_ikey_to_bkey((const uint8_t *) "/a/b", 4, b) == BERGDB_OK);
     CHECK(b[0] == 1 && b[1] == 'a' + 2 && b[2] == 1 && b[3] == 'b' + 2);
-    bergdb_bkey_to_ikey(b, 4, i2);
+    CHECK(bergdb_bkey_to_ikey(b, 4, i2) == BERGDB_OK);
     CHECK(memcmp(i2, "/a/b", 4) == 0);
     memcpy(b, "x/y", 3);
     CHECK(bergdb_ikey_to_bkey(b, 3, b) == BERGDB_OK);       /* in place */
     CHECK(b[0] == 'x' + 2 && b[1] == 1);
-    bergdb_bkey_to_ikey(b, 3, b);
+    CHECK(bergdb_bkey_to_ikey(b, 3, b) == BERGDB_OK);
     CHECK(memcmp(b, "x/y", 3) == 0);
     CHECK(bergdb_ikey_to_bkey(b, 0, b) == BERGDB_ARG);      /* the empty ikey */
     const uint8_t bad[] = { 'a', 0xfe };
     CHECK(bergdb_ikey_to_bkey(bad, 2, b) == BERGDB_ARG);
     CHECK(bergdb_ikey_to_bkey(NULL, 1, b) == BERGDB_ARG);
     CHECK(bergdb_ikey_to_bkey(bad, 1, NULL) == BERGDB_ARG);
-    const uint8_t hi[] = { 0x7f, 0xfd };                    /* + 2 wraps to 0xff */
-    CHECK(bergdb_ikey_to_bkey(hi, 2, b) == BERGDB_OK && b[0] == 0x81 && b[1] == 0xff);
-    bergdb_bkey_to_ikey(b, 2, b);
-    CHECK(b[0] == 0x7f && b[1] == 0xfd);
+    const uint8_t hi[] = { 0x7f, 0xf4, 0x8f, 0xbf, 0xbf };  /* U+10FFFF, UTF-8's largest */
+    CHECK(bergdb_ikey_to_bkey(hi, 5, b) == BERGDB_OK && b[0] == 0x81 && b[1] == 0xf6
+            && b[2] == 0x91 && b[3] == 0xc1 && b[4] == 0xc1);
+    CHECK(bergdb_bkey_to_ikey(b, 5, b) == BERGDB_OK);
+    CHECK(memcmp(b, hi, 5) == 0);
+    /* Bytes that are not well-formed UTF-8 are refused, with nothing written
+     * (bergdb 021-05): 021-04's CK1 (a surrogate, ED A0 80) and CK4 (an
+     * overlong NUL, C0 80), and 0xfd, which C took before 022-02. */
+    const uint8_t ck1[] = { 'a', 0xed, 0xa0, 0x80 }, ck4[] = { 'a', 0xc0, 0x80 };
+    const uint8_t fd[] = { 0x7f, 0xfd };
+    memset(b, 0xab, sizeof b);
+    CHECK(bergdb_ikey_to_bkey(ck1, 4, b) == BERGDB_ARG && b[0] == 0xab && b[3] == 0xab);
+    CHECK(bergdb_ikey_to_bkey(ck4, 3, b) == BERGDB_ARG && b[0] == 0xab);
+    CHECK(bergdb_ikey_to_bkey(fd, 2, b) == BERGDB_ARG && b[0] == 0xab);
+    /* A bkey without an ikey (bergdb 021-06): CK1's bkey, the bytes 0x31 and
+     * 0; NULL pointers. The empty bkey gives the empty ikey, as Java's "". */
+    const uint8_t none1[] = { 'a' + 2, 0xef, 0xa2, 0x82 }, none2[] = { 0x31 },
+            none3[] = { 'a' + 2, 0 };
+    CHECK(bergdb_bkey_to_ikey(none1, 4, i2) == BERGDB_ARG);
+    CHECK(bergdb_bkey_to_ikey(none2, 1, i2) == BERGDB_ARG);
+    CHECK(bergdb_bkey_to_ikey(none3, 2, i2) == BERGDB_ARG);
+    CHECK(bergdb_bkey_to_ikey(NULL, 1, i2) == BERGDB_ARG);
+    CHECK(bergdb_bkey_to_ikey(none2, 1, NULL) == BERGDB_ARG);
+    CHECK(bergdb_bkey_to_ikey(none2, 0, i2) == BERGDB_OK);
 
     /* The test clock: forward only. */
     struct bergdb_test_clock clock = {0};

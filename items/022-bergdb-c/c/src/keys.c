@@ -2,6 +2,7 @@
 #include "keys.h"
 #include "jsem.h"
 #include "klong.h"
+#include "strutil.h"
 #include <assert.h>
 
 int64_t keys_hash(const int64_t *keySegments, int32_t n) {
@@ -20,11 +21,17 @@ bool keys_ikey_to_bkey(const uint8_t *s, int32_t n, uint8_t *bytes) {
         return false;       /* Java: "The empty string is not a valid key." */
     }
 
+    /* Java's String has no other bytes than well-formed UTF-8, and its key with a lone
+     * surrogate, whose encoding writes '?', is refused after the loop (bergdb 021-05).
+     * Here the bytes are given: those that are not well-formed are refused, before
+     * anything is written (021-04: every string BergDB stores is well-formed UTF-8). */
+    if (!su_is_well_formed_utf8(s, n)) {
+        return false;
+    }
+
     for (int32_t i = 0; i < n; i++) {
         uint8_t b = s[i];
-        if (b == 0xff || b == 0xfe) {
-            return false;
-        }
+        assert(b != 0xff && b != 0xfe);     /* Java: an Error, "Should not happen" */
 
         if (b == '/') {
             b = 0x01;
@@ -38,17 +45,18 @@ bool keys_ikey_to_bkey(const uint8_t *s, int32_t n, uint8_t *bytes) {
     return true;
 }
 
-void keys_bkey_to_ikey(const uint8_t *bytes, int32_t n, uint8_t *result) {
+bool keys_bkey_to_ikey(const uint8_t *bytes, int32_t n, uint8_t *result) {
     for (int32_t i = 0; i < n; i++) {
-        uint8_t b = bytes[i];
-        if (b == 1) {
-            b = '/';
-        } else {
-            b--;
-            b--;
+        int32_t b = bytes[i];
+        if (b == 0 || b == '/' + 2) {
+            return false;
         }
-        result[i] = b;
+        result[i] = b == 1 ? (uint8_t) '/' : (uint8_t) (b - 2);
     }
+    if (!su_is_well_formed_utf8(result, n)) {
+        return false;
+    }
+    return true;    /* Java: new String(result, StandardCharsets.UTF_8) */
 }
 
 int32_t keys_segment_count(int32_t length) {

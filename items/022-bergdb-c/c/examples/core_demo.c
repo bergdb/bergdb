@@ -130,7 +130,8 @@ static void read_all(bergdb_db *db, int64_t time1, int64_t time2, char *text) {
             const struct bergdb_kvt *kvt = &many.kvts[j];
             char key[TEXT_SIZE], value[TEXT_SIZE];
             check(kvt->key_len < TEXT_SIZE, "key too long");
-            bergdb_bkey_to_ikey(kvt->key, kvt->key_len, (uint8_t *) key);   /* Keys.toString */
+            check(bergdb_bkey_to_ikey(kvt->key, kvt->key_len, (uint8_t *) key) == BERGDB_OK,
+                    "a key without an ikey");                       /* Keys.toString */
             key[kvt->key_len] = 0;
             string(kvt->value, kvt->value_len, value);
             snprintf(line, sizeof line, " %s=%s", key, value);

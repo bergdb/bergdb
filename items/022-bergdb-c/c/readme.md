@@ -160,6 +160,7 @@ The modules so far, each ported from its Java class:
 | `checksum` | `bergdb.core.NodeChecksum` | `cks_` |
 | `klong` | `bergdb.dag.Klong` | `kl_`, `KL_` |
 | `keys` | `bergdb.dag.Keys` | `keys_` |
+| `strutil` | `bergdb.common.StringUtil`'s `isWellFormedUtf8`, for the keys (022-02) | `su_` |
 | `spos` | `bergdb.dag.Spos` | `spos_`, `SPOS_` |
 | `mem` | the allocator (012-01, 4.5) | `mem_`, `MEM_` |
 | `err` | errors: a code, Java's exception's name, a text (012-06) | `err_`, `ERR_` |

@@ -115,16 +115,42 @@
  *
  * Keys are bkeys: byte strings, compared as unsigned bytes, a shorter key
  * before a longer one with the same start; the empty key is a key (no
- * ikey gives it). The
+ * ikey gives it). Every call that takes a key takes any bkey, as Java's
+ * Core API does. The
  * library converts a bkey to segments as Java's Keys.toSegments(byte[]).
  * The Core's text keys are ikeys (UTF-8, "/" separates the parts of a
  * path), which bergdb_ikey_to_bkey converts as Java's Keys.toBytes(String);
- * bergdb_bkey_to_ikey converts back. Values are byte strings of any length
+ * bergdb_bkey_to_ikey converts back. An ikey is well-formed UTF-8, as
+ * every string that BergDB stores, in every language (bergdb 021-04):
+ * bergdb_ikey_to_bkey refuses other bytes, as Java refuses a String with a
+ * lone surrogate (021-05); and bergdb_bkey_to_ikey refuses a bkey without
+ * an ikey (021-06: one with the byte 0 or 0x31, or whose bytes converted
+ * are not well-formed), so that two bkeys never give one ikey. Such a bkey
+ * is reached by its bytes only. Values are byte strings of any length
  * up to the record limit. Keys and values are at most INT32_MAX bytes, as a
  * Java array. A key or value pointer given to a call is never NULL, also
  * for an empty key or value; a returned value pointer is NULL where Java's
  * value is null (no value: never put, or deleted), and not NULL for an
  * empty value.
+ *
+ * Keys and the layers above (bergdb 020-22; 010-01, P12). The Core takes
+ * any key and knows nothing of the layers above it; Java's Pub API
+ * (bergdb.pub) keeps its data in the Core under keys of its own, and the
+ * Core does not stop another writer there. In a database that the Pub API
+ * also uses, a key is of one of three kinds, by its first bytes. The
+ * user's keys: every key that does not start with the bytes 01 66, 01 2f
+ * or 01 25, the bkeys of "/d", "/-" and "/#"; BergDB keeps none of its
+ * own data there. The Pub API's keys, those that start with "/d" or "/-":
+ * a put or a delete there is allowed, as the Pub API's reads check what
+ * they read, but only the Pub API's own writes keep its indexes (a put at
+ * an object key of a directory with an index leaves the value out of the
+ * index's scans until the key is written again through the Pub API); the
+ * keys there that are no Pub key's are reserved. BergDB's keys, every key
+ * that starts with "/#", among them the internal prefix "/#i/" (reclaim's
+ * state, the Pub API's index definitions, entries and markers): do not
+ * write them; data there that does not parse is refused at a start or at
+ * the read that meets it. Of BergDB's keys, this library writes reclaim's,
+ * under "/#i/dreclaim/", and "/#i/-dummy" (bergdb_set_startup_distance).
  *
  *
  * F. Time and the clock (012-01, 4.4)
@@ -466,17 +492,29 @@ int bergdb_close(bergdb_db *db);
  * Converts an ikey to its bkey (Java's Keys.toBytes(String), on the
  * string's UTF-8 bytes): "/" becomes the byte 1, every other byte b
  * becomes b + 2. ikey has len bytes, and so has bkey; they may be the same
- * buffer. The bytes are not checked to be UTF-8. BERGDB_ARG for the empty
- * key (Java: "The empty string is not a valid key"), a byte 0xfe or 0xff
- * (never in UTF-8), len over INT32_MAX, or a NULL pointer; bkey may then
- * be partly written.
+ * buffer. BERGDB_ARG, with nothing written, for the empty key (Java: "The
+ * empty string is not a valid key"), for bytes that are not well-formed
+ * UTF-8 (RFC 3629: a cut sequence, an overlong form such as C0 80, a
+ * surrogate such as ED A0 80, a value above U+10FFFF, the bytes C0, C1 and
+ * F5 to FF), as Java refuses a String with a lone surrogate (section E;
+ * bergdb 021-05), for len over INT32_MAX, or a NULL pointer.
  */
 int bergdb_ikey_to_bkey(const uint8_t *ikey, size_t len, uint8_t *bkey);
 
-/* Converts a bkey to its ikey's bytes (Java's Keys.bkey2ikey before the
- * UTF-8 decoding): the byte 1 becomes "/", every other byte b becomes
- * b - 2 (modulo 256). bkey and ikey have len bytes and may be the same. */
-void bergdb_bkey_to_ikey(const uint8_t *bkey, size_t len, uint8_t *ikey);
+/*
+ * Converts a bkey to its ikey's bytes (Java's Keys.bkey2ikeyOrNull, before
+ * its UTF-8 decoding): the byte 1 becomes "/", every other byte b becomes
+ * b - 2. bkey and ikey have len bytes and may be the same buffer.
+ * BERGDB_ARG, where Java returns null, for a bkey without an ikey (section
+ * E; bergdb 021-06): one with the byte 0 or 0x31 ("/" + 2, which no ikey
+ * gives, "/" being 1), or whose bytes so converted are not well-formed
+ * UTF-8 (as bergdb_ikey_to_bkey); and for len over INT32_MAX or a NULL
+ * pointer. ikey may then be partly written, and so may bkey when they are
+ * the same buffer. Else the ikey's bkey is bkey: two bkeys never give one
+ * ikey. The empty bkey gives the empty ikey, as Java's "" (which
+ * bergdb_ikey_to_bkey refuses).
+ */
+int bergdb_bkey_to_ikey(const uint8_t *bkey, size_t len, uint8_t *ikey);
 
 
 /* ======== Transactions ======== */

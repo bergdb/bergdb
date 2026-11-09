@@ -1,6 +1,7 @@
 /* Unit tests of keys (bergdb 012-04): Java's @Nano tests of Keys, ported,
- * and the edge cases of 012-04, section 4. Java's exact outputs are in
- * t_vectors.c. */
+ * and the edge cases of 012-04, section 4; since 022-02, 021-05's and
+ * 021-06's (an ikey well-formed UTF-8, a bkey without an ikey). Java's exact
+ * outputs are in t_vectors.c. */
 #include "test.h"
 #include "keys.h"
 #include "klong.h"
@@ -40,14 +41,16 @@ TEST(keys_conversion) {
         int32_t ns = segments_of(strings[i], seg);
         REQUIRE(ns > 0);
         int32_t n = keys_to_bytes(seg, ns, bkey);
-        keys_bkey_to_ikey(bkey, n, (uint8_t *) ikey);
+        CHECK(keys_bkey_to_ikey(bkey, n, (uint8_t *) ikey));
         ikey[n] = '\0';
         CHECK(strcmp(ikey, strings[i]) == 0);
     }
 }
 
 /* Keys.testConversion1: the empty key is refused. And the bytes 0xfe and
- * 0xff, which UTF-8 never has, at any position. */
+ * 0xff, which UTF-8 never has, at any position, and since 022-02 (021-05)
+ * 0xfd and 0xf5, which it never has either; the largest bytes it has are
+ * those of U+10FFFF, F4 8F BF BF. */
 TEST(keys_refused) {
     uint8_t out[8];
     int64_t seg[MAXSEG];
@@ -59,25 +62,175 @@ TEST(keys_refused) {
         CHECK(!keys_ikey_to_bkey(k, 3, out));
         k[pos] = 0xff;
         CHECK(!keys_ikey_to_bkey(k, 3, out));
-        k[pos] = 0xfd;                      /* the largest byte allowed: bkey 0xff */
+        k[pos] = 0xfd;
+        CHECK(!keys_ikey_to_bkey(k, 3, out));
+        k[pos] = 0xf5;
+        CHECK(!keys_ikey_to_bkey(k, 3, out));
+        k[pos] = 0x7f;                      /* the largest byte alone: bkey 0x81 */
         CHECK(keys_ikey_to_bkey(k, 3, out));
-        CHECK(out[pos] == 0xff);
+        CHECK(out[pos] == 0x81);
     }
+    const uint8_t max[] = { 'a', 0xf4, 0x8f, 0xbf, 0xbf };
+    const uint8_t max_bkey[] = { 'a' + 2, 0xf6, 0x91, 0xc1, 0xc1 };
+    CHECK(keys_ikey_to_bkey(max, 5, out));
+    CHECK_BYTES(out, max_bkey, 5);
 }
 
 /* ikey bytes to bkey bytes and back: '/' is 1, every other byte plus 2. */
 TEST(keys_bkey_bytes) {
-    const uint8_t ikey[] = { 0, 1, 0x7f, 0x80, 0xfd, '/', '.', '0' };
-    const uint8_t bkey[] = { 2, 3, 0x81, 0x82, 0xff, 1, '0', '2' };
+    const uint8_t ikey[] = { 0, 1, 0x7f, 0xc2, 0x80, '/', '.', '0' };
+    const uint8_t bkey[] = { 2, 3, 0x81, 0xc4, 0x82, 1, '0', '2' };
     uint8_t out[8];
     CHECK(keys_ikey_to_bkey(ikey, 8, out));
     CHECK_BYTES(out, bkey, 8);
-    keys_bkey_to_ikey(bkey, 8, out);
+    CHECK(keys_bkey_to_ikey(bkey, 8, out));
     CHECK_BYTES(out, ikey, 8);
-    /* A bkey byte 0 has no ikey byte; Java gives (byte) -2, as C does. */
+    /* A bkey byte 0 has no ikey byte: no ikey (021-06; before, Java decoded
+     * (byte) -2 as U+FFFD, and C gave 0xfe). */
     const uint8_t zero[1] = { 0 };
-    keys_bkey_to_ikey(zero, 1, out);
-    CHECK(out[0] == 0xfe);
+    CHECK(!keys_bkey_to_ikey(zero, 1, out));
+    /* The empty bkey gives the empty ikey, as Java's "", which
+     * keys_ikey_to_bkey refuses. */
+    CHECK(keys_bkey_to_ikey(zero, 0, out));
+}
+
+/* An ikey: the given bytes after a start, ikey the start's C string; its
+ * length. */
+static int32_t ikey_of(const char *start, const uint8_t *more, int32_t nmore, uint8_t *out) {
+    int32_t n = (int32_t) strlen(start);
+    memcpy(out, start, (size_t) n);
+    memcpy(out + n, more, (size_t) nmore);
+    return n + nmore;
+}
+
+/* Keys.testLoneSurrogate (bergdb 021-05), in bytes: an ikey that is not
+ * well-formed UTF-8 is refused, with nothing written, as Java refuses a
+ * String with a lone surrogate (its encoding wrote '?'): the WTF-8 bytes of
+ * Java's four refused Strings, ED A0 80 for U+D800 among them, and
+ * 021-04's CK1 to CK5 after "/dd/-a", the ikey of the Pub key "/d/a": CK1
+ * ED A0 80 and CK4 C0 80 (an overlong NUL) refused, which C took before
+ * 022-02; CK2 EF BF BD (U+FFFD) and CK3 '?' taken; CK5 FF refused. */
+TEST(keys_lone_surrogate) {
+    static const uint8_t refused[][8] = {
+        { 0x61, 0xed, 0xa0, 0x80 },                           /* "a\uD800" */
+        { 0xed, 0xb0, 0x80 },                                 /* "\uDC00" */
+        { 0x3f, 0xed, 0xa0, 0xbd },                           /* "?\uD83D" */
+        { 0xed, 0xb8, 0x80, 0xf0, 0x9f, 0x98, 0x80 },         /* "\uDE00\uD83D\uDE00" */
+    };
+    static const int32_t refused_n[] = { 4, 3, 4, 7 };
+    uint8_t out[16], ik[16];
+    for (int i = 0; i < 4; i++) {
+        memset(out, 0xab, sizeof out);
+        CHECK(!keys_ikey_to_bkey(refused[i], refused_n[i], out));
+        CHECK(out[0] == 0xab && out[refused_n[i] - 1] == 0xab);     /* nothing written */
+    }
+    /* "a?\uD83D\uDE00": a '?' and a pair, taken, and its ikey back. */
+    const uint8_t pair[] = { 0x61, 0x3f, 0xf0, 0x9f, 0x98, 0x80 };
+    CHECK(keys_ikey_to_bkey(pair, 6, out));
+    CHECK(keys_bkey_to_ikey(out, 6, ik));
+    CHECK_BYTES(ik, pair, 6);
+
+    static const uint8_t ck1[] = { 0xed, 0xa0, 0x80 }, ck2[] = { 0xef, 0xbf, 0xbd },
+            ck3[] = { '?' }, ck4[] = { 0xc0, 0x80 }, ck5[] = { 0xff };
+    const uint8_t ck2_bkey[] = { 1, 'd' + 2, 'd' + 2, 1, '-' + 2, 'a' + 2, 0xf1, 0xc1, 0xbf };
+    int32_t n;
+    n = ikey_of("/dd/-a", ck1, 3, ik);
+    CHECK(!keys_ikey_to_bkey(ik, n, out));
+    n = ikey_of("/dd/-a", ck2, 3, ik);
+    CHECK(keys_ikey_to_bkey(ik, n, out));
+    CHECK_BYTES(out, ck2_bkey, 9);
+    n = ikey_of("/dd/-a", ck3, 1, ik);
+    CHECK(keys_ikey_to_bkey(ik, n, out));
+    CHECK(out[6] == '?' + 2);
+    n = ikey_of("/dd/-a", ck4, 2, ik);
+    CHECK(!keys_ikey_to_bkey(ik, n, out));
+    n = ikey_of("/dd/-a", ck5, 1, ik);
+    CHECK(!keys_ikey_to_bkey(ik, n, out));
+}
+
+/* The bkey of the ikey start, then the given bytes; its length. */
+static int32_t bkey_of(const char *start, const uint8_t *more, int32_t nmore, uint8_t *out) {
+    int32_t n = (int32_t) strlen(start);
+    if (n > 0 && !keys_ikey_to_bkey((const uint8_t *) start, n, out)) {
+        test_fail_(__FILE__, __LINE__, "bkey_of: bad ikey");
+    }
+    memcpy(out + n, more, (size_t) nmore);
+    return n + nmore;
+}
+
+/* An ikey, back from the bkey's segments: Java's Keys.toString(long[]);
+ * false where it throws, for a bkey without an ikey. */
+static bool ikey_of_segments(const uint8_t *bkey, int32_t n, uint8_t *ikey) {
+    int64_t seg[MAXSEG];
+    uint8_t b[MAXSEG * KL_MAX_SIZE];
+    keys_to_segments(bkey, n, seg);
+    int32_t m = keys_to_bytes(seg, keys_segment_count(n), b);
+    return m == n && keys_bkey_to_ikey(b, m, ikey);
+}
+
+/* Keys.testBkeyWithoutIkey (bergdb 021-06): CK1 of 021-04, the bkey of the
+ * ikey "/dd/-a" ED A0 80 (U+D800 in WTF-8), has no ikey; before, C gave its
+ * ikey bytes, and Java read it as CK2, the ikey with EF BF BD (U+FFFD): two
+ * keys as one String. No ikey either: an overlong form, a cut sequence, a
+ * value above U+10FFFF, the byte 0 or 0x31 ('/' + 2, which no ikey gives),
+ * 0xfe or 0xff. */
+TEST(keys_bkey_without_ikey) {
+    static const uint8_t ck1[] = { 0xef, 0xa2, 0x82 }, ck2[] = { 0xf1, 0xc1, 0xbf };
+    static const uint8_t ck2_ikey[] = { '/', 'd', 'd', '/', '-', 'a', 0xef, 0xbf, 0xbd };
+    uint8_t b[16], ik[16], back[16];
+    int32_t n = bkey_of("/dd/-a", ck2, 3, b);
+    REQUIRE(ikey_of("/dd/-a", (const uint8_t *) "\xef\xbf\xbd", 3, ik) == n);
+    CHECK(keys_ikey_to_bkey(ik, n, back));          /* toBytes("/dd/-a\uFFFD") */
+    CHECK_BYTES(back, b, (size_t) n);
+    CHECK(keys_bkey_to_ikey(b, n, ik));
+    CHECK_BYTES(ik, ck2_ikey, 9);
+    memset(ik, 0, sizeof ik);
+    CHECK(ikey_of_segments(b, n, ik));
+    CHECK_BYTES(ik, ck2_ikey, 9);
+
+    static const struct { const char *start; uint8_t more[4]; int32_t n; } none[] = {
+        { "/dd/-a", { 0xef, 0xa2, 0x82 }, 3 },              /* CK1 */
+        { "/dd/-a", { 0xc2, 0x82 }, 2 },                    /* C0 80, overlong */
+        { "/dd/-a", { 0xe4, 0x84 }, 2 },                    /* E2 82, cut */
+        { "/dd/-a", { 0xf6, 0x92, 0x82, 0x82 }, 4 },        /* F4 90 80 80, above U+10FFFF */
+        { "/dd/-a", { 0x00 }, 1 },
+        { "/dd/-a", { 0x31 }, 1 },
+        { "/dd/-a", { 0xfe }, 1 },
+        { "/dd/-a", { 0xff }, 1 },
+        { "", { 0xe4, 0x84, 0x63 }, 3 },                    /* E2 82 61, cut */
+    };
+    CHECK(memcmp(none[0].more, ck1, 3) == 0);
+    for (int i = 0; i < 9; i++) {
+        n = bkey_of(none[i].start, none[i].more, none[i].n, b);
+        CHECK(!keys_bkey_to_ikey(b, n, ik));
+        CHECK(!ikey_of_segments(b, n, ik));
+    }
+}
+
+/* Keys.testBkeyIkeyRoundTrip (bergdb 021-06): two bkeys never give one
+ * ikey. Random bkeys of 1 to 6 bytes near UTF-8's edges: each has no ikey,
+ * or its ikey's bkey is itself. Before 022-02 a bkey with 0x31 gave '/',
+ * whose bkey is 1. */
+TEST(keys_bkey_ikey_round_trip) {
+    static const uint8_t near[] = { 0x00, 0x01, 0x02, 0x03, 0x31, 0x33, 0x63, 0x81, 0x82,
+        0x91, 0x92, 0xa1, 0xa2, 0xc1, 0xc2, 0xc3, 0xc4, 0xe1, 0xe2, 0xe3, 0xee, 0xef, 0xf0,
+        0xf1, 0xf2, 0xf3, 0xf5, 0xf6, 0xf7, 0xfe, 0xff };
+    const int32_t nnear = (int32_t) sizeof near;
+    uint64_t r = 2106;
+    int32_t with_ikey = 0;
+    for (int i = 0; i < 100000; i++) {
+        uint8_t b[6], ik[6], back[6];
+        int32_t n = 1 + test_random_below(&r, 6);
+        for (int32_t j = 0; j < n; j++) {
+            b[j] = near[test_random_below(&r, nnear)];
+        }
+        if (keys_bkey_to_ikey(b, n, ik)) {
+            with_ikey++;
+            CHECK(keys_ikey_to_bkey(ik, n, back));
+            CHECK_BYTES(back, b, (size_t) n);
+        }
+    }
+    CHECK(with_ikey > 2000);
 }
 
 /* Keys.testLongs: compareUnsignedLongs, through compareArrays of one long. */
@@ -261,6 +414,9 @@ const struct test keys_tests[] = {
     TEST_ENTRY(keys_conversion),
     TEST_ENTRY(keys_refused),
     TEST_ENTRY(keys_bkey_bytes),
+    TEST_ENTRY(keys_lone_surrogate),
+    TEST_ENTRY(keys_bkey_without_ikey),
+    TEST_ENTRY(keys_bkey_ikey_round_trip),
     TEST_ENTRY(keys_compare_unsigned),
     TEST_ENTRY(keys_compare_arrays),
     TEST_ENTRY(keys_prefix1),

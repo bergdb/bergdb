@@ -543,6 +543,94 @@ TEST(api_read_nomem) {
     printf("  api_read_nomem: %lld reads refused (NOMEM) and read again\n", (long long) refused);
 }
 
+/* Every call that takes a key takes any bkey, as Java's Core API does (bergdb
+ * 022-02; 021-06): bkeys without an ikey, the byte 0, 021-04's CK1 (the bkey
+ * of "/dd/-a" ED A0 80), 0x31 and FF FF, are keys as CK2 (the bkey of
+ * "/dd/-a" EF BF BD, U+FFFD) is: put, read by getOne and by getMany in byte
+ * order, by a prefix that is no ikey's, and after a restart; CK1 and CK2
+ * stay two keys (Utf8ReadTester.testCk1AndCk2StayTwoKeys on the Core), and
+ * bergdb_bkey_to_ikey gives an ikey for CK2 only. */
+TEST(api_any_bkey) {
+    static const struct { uint8_t b[9]; size_t n; } keys[] = {    /* in byte order */
+        { { 0x00 }, 1 },
+        { { 0x01, 0x66, 0x66, 0x01, 0x2f, 0x63, 0xef, 0xa2, 0x82 }, 9 },     /* CK1 */
+        { { 0x01, 0x66, 0x66, 0x01, 0x2f, 0x63, 0xf1, 0xc1, 0xbf }, 9 },     /* CK2 */
+        { { 0x31 }, 1 },
+        { { 0xff, 0xff }, 2 },
+    };
+    static const char *const values[] = { "v0", "ck1", "ck2", "v3", "v4" };
+    static const uint8_t ck1_ikey[] = { '/', 'd', 'd', '/', '-', 'a', 0xed, 0xa0, 0x80 };
+    static const uint8_t ck2_ikey[] = { '/', 'd', 'd', '/', '-', 'a', 0xef, 0xbf, 0xbd };
+    uint8_t ik[16], bk[16];
+    for (int i = 0; i < 5; i++) {
+        CHECK_EQ(bergdb_bkey_to_ikey(keys[i].b, keys[i].n, ik), i == 2 ? BERGDB_OK : BERGDB_ARG);
+    }
+    CHECK_EQ(bergdb_bkey_to_ikey(keys[2].b, 9, ik), BERGDB_OK);
+    CHECK(memcmp(ik, ck2_ikey, 9) == 0);
+    CHECK_EQ(bergdb_ikey_to_bkey(ik, 9, bk), BERGDB_OK);
+    CHECK(memcmp(bk, keys[2].b, 9) == 0);
+    CHECK_EQ(bergdb_ikey_to_bkey(ck1_ikey, 9, bk), BERGDB_ARG);
+
+    char dir[1024], errbuf[BERGDB_ERRBUF_SIZE];
+    temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock clock = {0};
+    struct bergdb_options o;
+    options(&o, &clock, &m);
+    bergdb_test_clock_set(&clock, 1000);
+    bergdb_db *db;
+    REQUIRE(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_OK);
+    bergdb_trans *t;
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    for (int i = 4; i >= 0; i--) {
+        CHECK_EQ(bergdb_trans_put(t, keys[i].b, keys[i].n, (const uint8_t *) values[i],
+                strlen(values[i])), BERGDB_OK);
+    }
+    CHECK_EQ(bergdb_execute(db, t, NULL), BERGDB_OK);
+    bergdb_trans_free(t);
+    for (int restart = 0; restart < 2; restart++) {
+        if (restart == 1) {
+            CHECK_EQ(bergdb_close(db), BERGDB_OK);
+            CHECK_EQ(m.live_total, 0);
+            REQUIRE(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_OK);
+        }
+        bergdb_read *rd;
+        REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+        struct bergdb_one one;
+        for (int i = 0; i < 5; i++) {
+            CHECK_EQ(bergdb_get_one(db, rd, BERGDB_LATEST, keys[i].b, keys[i].n, &one),
+                    BERGDB_OK);
+            CHECK(one.value != NULL && one.value_len == strlen(values[i])
+                    && memcmp(one.value, values[i], one.value_len) == 0);
+        }
+        struct bergdb_range r;
+        struct bergdb_many many;
+        bergdb_range_init(&r);
+        CHECK_EQ(bergdb_get_many(db, rd, &r, &many), BERGDB_OK);
+        CHECK_EQ((int64_t) many.count, 5);
+        for (size_t i = 0; i < many.count && i < 5; i++) {
+            CHECK(many.kvts[i].key_len == keys[i].n
+                    && memcmp(many.kvts[i].key, keys[i].b, keys[i].n) == 0);
+        }
+        r.prefix = keys[1].b;           /* the bkey of "/dd/-a" ED: no ikey's */
+        r.prefix_len = 7;
+        r.start_key = r.prefix;
+        r.start_key_len = r.prefix_len;
+        CHECK_EQ(bergdb_get_many(db, rd, &r, &many), BERGDB_OK);
+        CHECK_EQ((int64_t) many.count, 1);
+        CHECK(many.count == 1 && memcmp(many.kvts[0].value, "ck1", 3) == 0);
+        r.prefix_len = 6;               /* the bkey of "/dd/-a": CK1 and CK2 */
+        r.start_key_len = r.prefix_len;
+        CHECK_EQ(bergdb_get_many(db, rd, &r, &many), BERGDB_OK);
+        CHECK_EQ((int64_t) many.count, 2);
+        bergdb_read_free(rd);
+    }
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+    remove_dir(dir);
+}
+
 static const struct test api_tests[] = {
     TEST_ENTRY(api_stm_after_restart),
     TEST_ENTRY(api_create_and_read),
@@ -550,6 +638,7 @@ static const struct test api_tests[] = {
     TEST_ENTRY(api_transformations),
     TEST_ENTRY(api_alloc_failures),
     TEST_ENTRY(api_read_nomem),
+    TEST_ENTRY(api_any_bkey),
     TEST_END
 };
 

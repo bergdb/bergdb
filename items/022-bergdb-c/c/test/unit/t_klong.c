@@ -21,11 +21,15 @@ static int64_t key_of_ikey(const char *s) {
     return kl_create_key(b, n);
 }
 
-/* Java's getKeyString: the klong's bkey as an ikey, into s. */
+/* Java's getKeyString: the klong's bkey as an ikey, into s (its keys here
+ * have one; Java's shows one without by Keys.toDisplayString, 021-06). */
 static void key_string(int64_t klong, char *s) {
     uint8_t b[KL_MAX_SIZE];
     int32_t n = kl_get_key(klong, b);
-    keys_bkey_to_ikey(b, n, (uint8_t *) s);
+    if (!keys_bkey_to_ikey(b, n, (uint8_t *) s)) {
+        test_fail_(__FILE__, __LINE__, "key_string: no ikey");
+        n = 0;
+    }
     s[n] = '\0';
 }
 

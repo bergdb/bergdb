@@ -620,7 +620,8 @@ Each has a default that goes ahead if Frans does not answer.
   another key's. (c) Neither: the comments only, C apart from 021-04's
   rule. **Default (a)**: 021-04's rule is for every language, 021-04 and
   021-06 name this change for C's next port, and (b) and (c) keep a
-  conversion that makes two keys one.
+  conversion that makes two keys one. **Decided (Frans, 2026-11-09,
+  12:14)**: "D3 as recommended.", (a); step 1 made it.
 * **D4. The optional parts** (3.2). **Default**: all in, each a few lines
   in a step that changes its file anyway: T1's text and test, 019-46's
   writer line, 020-22's note in `bergdb.h` (with r22b's words once they
@@ -841,3 +842,75 @@ release build); `cross quick` 0 differences (23 workloads, 69 crash cuts,
 landing with 4b merged, before step 2 landed: `C BEFORE COMMIT OK (359
 s)`. No difference remains. Not merged: the 2026.3 port's step 6
 (`ecc5319`, on `022` at about 12:40), for the session with D2.
+
+2026-11-09, step 1 (worker t1). Section 3.1, points 1 and 2, by D3 (a),
+which Frans took at 12:14 ("D3 as recommended."), and D4's note on the key
+spaces (3.2); the stream's bytes do not change. (a) A new module,
+`strutil` (`su_`): `StringUtil.isWellFormedUtf8` line for line (RFC 3629;
+a cut sequence, an overlong form, a surrogate, a value above U+10FFFF and
+the bytes C0, C1 and F5 to FF are not well-formed). (b) 021-05:
+`keys_ikey_to_bkey`, and so `bergdb_ikey_to_bkey`, refuses an ikey that is
+not well-formed UTF-8, before its loop and with nothing written
+(`BERGDB_ARG`, as for the empty key), as `Keys.toBytes(String)` refuses a
+lone surrogate; the loop's test of 0xfe and 0xff, which no longer meets
+them, is Java's "Should not happen" Error as an assert. Before, C took any
+bytes but 0xfe and 0xff, 021-04's CK1 (`ED A0 80`) and CK4 (`C0 80`)
+among them. (c) 021-06: `keys_bkey_to_ikey` is `bkey2ikeyOrNull` (false
+for a bkey with the byte 0 or 0x31, or whose bytes, mapped, are not
+well-formed), and `bergdb_bkey_to_ikey` returns `int`, `BERGDB_ARG` for
+such a bkey, a NULL pointer or a length over `INT32_MAX`; it was `void`, a
+byte map that gave CK1's bkey its bytes and 0x31 the ikey "/", whose bkey
+is 1. The empty bkey gives the empty ikey, as Java's "". Every call that
+takes a key takes any bkey, as before: `f_api.c`'s `api_any_bkey` (the
+byte 0, CK1's bkey, CK2's, 0x31 and FF FF put and read by getOne, by
+getMany in byte order and by a prefix that is no ikey's, also after a
+restart; CK1 and CK2 two keys, `Utf8ReadTester.testCk1AndCk2StayTwoKeys`
+on the Core) passed before too. (d) The callers: `t_keys.c`, `t_klong.c`,
+`t_vectors.c`, `f_settings.c`, and the examples, which now check
+`bergdb_bkey_to_ikey`'s result (`core_demo.c`, `get_many_prefix.c`; their
+output unchanged, `EXAMPLES OK`); in `src/`, `tools/` and `bench/` every
+call of the ikey conversion gives ASCII constants, digits or a workload's
+key that `tools/run.c`'s `valid_utf8` has checked (Java's decoder with
+REPORT: the same set), and none calls the bkey conversion. (e)
+`bergdb.h`: section E (any bkey; an ikey well-formed; a bkey without an
+ikey), the two declarations, and D4's paragraph "Keys and the layers
+above" (020-22): the user's keys, the Pub API's (`/d`, `/-`) and BergDB's
+(`/#`), and C's own (`/#i/dreclaim/`, `/#i/-dummy`), from the words of
+`Db`'s Javadoc in r22b's commit `d0a5f6a` (clone-r22b), which is not on
+`main` yet, so step T's diff shows any change of them; `readme.md`'s
+module table. Tests ported, each failing before its fix (shown on copies
+of `c/`): `t_strutil.c`'s `strutil_is_well_formed_utf8`
+(`StringUtil.testIsWellFormedUtf8`: every sequence of 1 and 2 bytes, and
+here of 3 bytes from C0, the edges and 50,000 random sequences, against a
+decoder of the test's own, as Java's against the JDK's); `t_keys.c`'s
+`keys_lone_surrogate` (`Keys.testLoneSurrogate` in WTF-8 bytes, and
+021-04's CK1 to CK5 after "/dd/-a"), `keys_bkey_without_ikey`
+(`testBkeyWithoutIkey`'s nine bkeys and CK2, also through the segments)
+and `keys_bkey_ikey_round_trip` (`testBkeyIkeyRoundTrip`: 100,000 random
+bkeys near UTF-8's edges, none or the ikey's bkey the bkey); changed:
+`keys_refused` and `keys_bkey_bytes` (0xfd and a lone 0x80 are no ikey's
+bytes, the byte 0 has no ikey) and `f_settings.c`'s keys. Java's vectors
+of two new kinds, written by `Vectors.java` from the candidate and read by
+`t_vectors.c`: `strutil.txt`, new, `utf8 BYTES RESULT` (2,203 lines: the
+256 bytes, the edges, 625 pairs, 1,000 random sequences and 300 of whole
+characters; as an ikey, each refused unless well-formed) and `keys.txt`'s
+`bkey2ikey BKEY IKEY` or `none` (1,077 lines: the ikeys' bkeys, the empty
+bkey, CK2, `testBkeyWithoutIkey`'s, each single byte, 600 random bkeys
+near the edges and 200 of whole characters); the other twelve files
+written again are equal. Negative controls: the old `keys_ikey_to_bkey`
+fails 3 unit tests (`keys_refused`, `keys_lone_surrogate`,
+`vectors_strutil`) and 2 functional ones; the old `keys_bkey_to_ikey` 4
+(`keys_bkey_bytes`, `keys_bkey_without_ikey`,
+`keys_bkey_ikey_round_trip`, `vectors_keys`) and 2; `strutil` without the
+surrogates' limit (ED's second byte up to BF) 5 and 2.
+
+The gate against the candidate (`git:94a1520`, step 0's default), on
+`2026.4` at `fd7f9e0` (steps 0, 2 and 3 landed): `C BEFORE COMMIT OK (531
+s)`, F53 under a load of about 19 to 31; `unit` 392 tests (391 in the
+release build); `func` 28; `cross quick` 0 differences (23 workloads, 69
+crash cuts, 85 corrupt variants, 2 in turns, 46 budget runs);
+`writecheck` 0; `corruptset` 57 copies; `allocfail` 628 runs; `examples`
+OK. Java's vectors written again by step 0's harness from the candidate:
+all thirteen files equal to the committed ones. No difference remains;
+the keys' change does not show in the cross runs, whose workloads' keys
+are well-formed (section 4.1).

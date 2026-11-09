@@ -230,8 +230,11 @@ int bergdb_ikey_to_bkey(const uint8_t *ikey, size_t len, uint8_t *bkey) {
     return keys_ikey_to_bkey(ikey, (int32_t) len, bkey) ? BERGDB_OK : BERGDB_ARG;
 }
 
-void bergdb_bkey_to_ikey(const uint8_t *bkey, size_t len, uint8_t *ikey) {
-    keys_bkey_to_ikey(bkey, (int32_t) len, ikey);
+int bergdb_bkey_to_ikey(const uint8_t *bkey, size_t len, uint8_t *ikey) {
+    if (bkey == NULL || ikey == NULL || len > INT32_MAX) {
+        return BERGDB_ARG;
+    }
+    return keys_bkey_to_ikey(bkey, (int32_t) len, ikey) ? BERGDB_OK : BERGDB_ARG;
 }
 
 /* A bkey's segments into a block of m's (MEM_CALLER); NULL on NOMEM. */

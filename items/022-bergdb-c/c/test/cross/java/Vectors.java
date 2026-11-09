@@ -13,6 +13,7 @@ import java.util.Random;
 
 import bergdb.common.Bytes;
 import bergdb.common.StringMap;
+import bergdb.common.StringUtil;
 import bergdb.dag.AccessData;
 import bergdb.dag.Dag;
 import bergdb.dag.GetData;
@@ -48,7 +49,9 @@ import bergdb.stream.MemoryStream;
  * answers), and (012-08) dag.txt (the Dag's transactions: dirtyNodeBound before each, the
  * splits and the state after it), and (012-11) reclaim.txt (runs of Db with reclaim, with
  * the default step reserve and with one of four nodes, which splits the steps: the stream
- * from the decided cut, as its SHA-256), into a directory. C's unit tests read them
+ * from the decided cut, as its SHA-256), and (022-02) strutil.txt
+ * (StringUtil.isWellFormedUtf8) and keys.txt's bkey2ikey (Keys.bkey2ikeyOrNull), the
+ * keys of bergdb 021-05 and 021-06, into a directory. C's unit tests read them
  * (c/test/unit/t_vectors.c); 012-05's cross tests run this again and compare with the
  * committed files, so that a change in Java shows.
  *
@@ -74,6 +77,7 @@ public class Vectors {
         checksum(open(dir, "checksum.txt"));
         klong(open(dir, "klong.txt"));
         keys(open(dir, "keys.txt"));
+        strutil(open(dir, "strutil.txt"));
         jsem(open(dir, "jsem.txt"));
         records(open(dir, "records.txt"));
         knode(open(dir, "knode.txt"));
@@ -405,6 +409,115 @@ public class Vectors {
                 w.print("isprefix " + hex(ka) + " " + hex(kb) + " "
                         + Keys.isPrefix(Keys.toSegments(ka), Keys.toSegments(kb)) + "\n");
             }
+        }
+
+        w.print("# bkey2ikey BKEY IKEY, or BKEY none: Keys.bkey2ikeyOrNull, the ikey's UTF-8\n"
+                + "# (bergdb 021-06); toBytes(IKEY) gives BKEY\n");
+        List<byte[]> bs = new ArrayList<>();
+        bs.add(new byte[0]);
+        for (String s : ikeys) {
+            if (!s.isEmpty()) {
+                bs.add(Keys.toBytes(s));
+            }
+        }
+        bs.add(Keys.toBytes("/dd/-a\uFFFD"));               // 021-04's CK2
+        int[][] none = {{0xef, 0xa2, 0x82}, {0xc2, 0x82}, {0xe4, 0x84}, {0xf6, 0x92, 0x82, 0x82},
+                {0x00}, {0x31}, {0xfe}, {0xff}};              // Keys.testBkeyWithoutIkey's
+        for (int[] more : none) {
+            bs.add(withBytes(Keys.toBytes("/dd/-a"), more));
+        }
+        bs.add(withBytes(new byte[0], new int[] {0xe4, 0x84, 0x63}));
+        for (int b = 0; b < 256; b++) {
+            bs.add(new byte[] {(byte) b});
+        }
+        int[] near = {0x00, 0x01, 0x02, 0x03, 0x31, 0x33, 0x63, 0x81, 0x82, 0x91, 0x92, 0xa1,
+                0xa2, 0xc1, 0xc2, 0xc3, 0xc4, 0xe1, 0xe2, 0xe3, 0xee, 0xef, 0xf0, 0xf1, 0xf2,
+                0xf3, 0xf5, 0xf6, 0xf7, 0xfe, 0xff};          // Keys.testBkeyIkeyRoundTrip's
+        Random rb = new Random(2106);
+        for (int i = 0; i < 600; i++) {
+            byte[] b = new byte[1 + rb.nextInt(6)];
+            for (int j = 0; j < b.length; j++) {
+                b[j] = (byte) near[rb.nextInt(near.length)];
+            }
+            bs.add(b);
+        }
+        for (int i = 0; i < 200; i++) {       // the bkeys of ikeys of whole characters
+            bs.add(Keys.toBytes(randomText(rb)));
+        }
+        for (byte[] b : bs) {
+            String ikey = Keys.bkey2ikeyOrNull(b);
+            if (ikey == null) {
+                w.print("bkey2ikey " + hex(b) + " none\n");
+            } else {
+                assert ikey.isEmpty() || java.util.Arrays.equals(Keys.toBytes(ikey), b);
+                w.print("bkey2ikey " + hex(b) + " " + hex(ikey.getBytes(StandardCharsets.UTF_8))
+                        + "\n");
+            }
+        }
+        w.close();
+    }
+
+    private static byte[] withBytes(byte[] start, int[] more) {
+        byte[] result = java.util.Arrays.copyOf(start, start.length + more.length);
+        for (int i = 0; i < more.length; i++) {
+            result[start.length + i] = (byte) more[i];
+        }
+        return result;
+    }
+
+    /** 1 to 4 characters, no surrogate: of 1 and 2 bytes in UTF-8 mostly, of 3 and 4 too. */
+    private static String randomText(Random r) {
+        StringBuilder s = new StringBuilder();
+        for (int j = 1 + r.nextInt(4); j > 0; j--) {
+            int cp;
+            do {
+                cp = r.nextInt(4) == 0 ? r.nextInt(0x110000) : r.nextInt(0x800);
+            } while (cp >= 0xd800 && cp <= 0xdfff);
+            s.appendCodePoint(cp);
+        }
+        return s.toString();
+    }
+
+    // ---- StringUtil ----
+
+    private static void strutil(PrintWriter w) {
+        w.print("# utf8 BYTES RESULT: StringUtil.isWellFormedUtf8 (bergdb 021-06); as an ikey,\n"
+                + "# BYTES are refused unless RESULT is true (021-05)\n");
+        List<byte[]> bs = new ArrayList<>();
+        bs.add(new byte[0]);
+        for (int a = 0; a < 256; a++) {
+            bs.add(new byte[] {(byte) a});
+        }
+        int[][] edges = {{0xed, 0x9f, 0xbf}, {0xed, 0xa0, 0x80}, {0xee, 0x80, 0x80},
+                {0xe0, 0x9f, 0xbf}, {0xe0, 0xa0, 0x80}, {0xc0, 0x80}, {0xc1, 0xbf},
+                {0xc2, 0x80}, {0xf0, 0x8f, 0xbf, 0xbf}, {0xf0, 0x90, 0x80, 0x80},
+                {0xf4, 0x8f, 0xbf, 0xbf}, {0xf4, 0x90, 0x80, 0x80}, {0xf5, 0x80, 0x80, 0x80},
+                {0xef, 0xbf, 0xbd}, {0xe2, 0x82}, {0x61, 0xe2, 0x82, 0xac, 0x62},
+                {0x61, 0xed, 0xa0, 0x80}, {0xed, 0xb0, 0x80}, {0x3f, 0xed, 0xa0, 0xbd},
+                {0xed, 0xb8, 0x80, 0xf0, 0x9f, 0x98, 0x80}, {0x61, 0x3f, 0xf0, 0x9f, 0x98, 0x80}};
+        for (int[] e : edges) {
+            bs.add(withBytes(new byte[0], e));
+        }
+        int[] near = {0x00, 0x41, 0x7f, 0x80, 0x8f, 0x90, 0x9f, 0xa0, 0xbf, 0xc0, 0xc1, 0xc2,
+                0xdf, 0xe0, 0xe1, 0xec, 0xed, 0xee, 0xef, 0xf0, 0xf1, 0xf3, 0xf4, 0xf5, 0xff};
+        for (int a : near) {
+            for (int b : near) {
+                bs.add(new byte[] {(byte) a, (byte) b});
+            }
+        }
+        Random r = new Random(2106);
+        for (int i = 0; i < 1000; i++) {
+            byte[] b = new byte[1 + r.nextInt(8)];
+            for (int j = 0; j < b.length; j++) {
+                b[j] = (byte) near[r.nextInt(near.length)];
+            }
+            bs.add(b);
+        }
+        for (int i = 0; i < 300; i++) {       // sequences of whole characters, all well-formed
+            bs.add(randomText(r).getBytes(StandardCharsets.UTF_8));
+        }
+        for (byte[] b : bs) {
+            w.print("utf8 " + hex(b) + " " + StringUtil.isWellFormedUtf8(b) + "\n");
         }
         w.close();
     }
