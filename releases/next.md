@@ -227,7 +227,13 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   an activation or a deletion fails the database; and once a definition's
   change has committed, the database's memory has it too, whatever is
   thrown, so memory and stream never disagree (the reviews of I1, I2 and
-  harness H3).
+  harness H3). A build reads its directory up to the last key it had when
+  the build began, as the writers keep the index for the keys put after it,
+  so a build ends also while writers append to the directory; a step reads
+  at most 25 values or about 1 MB of them, and a write of a key with a
+  suffix does not make it run again, so a build holds up no write at an
+  object key for long; and the cleanup of a deleted index takes a time
+  linear in its entries (bergdb 020-18, F1 and F3 to F5; 2026-11-09).
 * **`Job.join()` throws when the build failed** (bergdb 020-10, section
   3.2; Frans, 2026-11-09): `join()` and `join(millis)` of a build that
   ended FAILED throw the new `bergdb.pub.util.IndexBuildException`,
@@ -236,12 +242,14 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   the FAILED status, with the reason as before, and its cause the exception
   that failed the build: a `DataFormatException` for data that the build
   cannot take, such as an object of format 1, another `RuntimeException`
-  for a bug, none when the index was deleted during its build. Before, they
-  returned the status, and `start().join()`, the natural call, passed a
-  failed build silently. They return as before otherwise: ACTIVE, or
-  BUILDING after a stop, a time-out or an interrupt; `Job.getStatus()`
-  never throws. `IndexBuildException` is not a `DbException`: a failed
-  build is neither a refusal nor a failure of the database, which goes on.
+  for a bug, none when the index was deleted during its build, whose note
+  says so and no longer that the next start takes the build again (bergdb
+  020-19, F1; 020-18, F2). Before, they returned the status, and
+  `start().join()`, the natural call, passed a failed build silently. They
+  return as before otherwise: ACTIVE, or BUILDING after a stop, a time-out
+  or an interrupt; `Job.getStatus()` never throws. `IndexBuildException` is
+  not a `DbException`: a failed build is neither a refusal nor a failure of
+  the database, which goes on.
 * **The scan of a user index** (bergdb 020-10, step I3; F6): with
   `UseIndexBuilder`, `eq()` on levels 1 to k, then `from()` and `to()`,
   each inclusive or not, or `prefix()` on level k + 1, and `backward()`,
@@ -287,19 +295,29 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   data that a start with it reads. Now a change of the array leaves the
   key as it was, as `DbByteArray.getByteArray()` and `DbObject.getBytes()`
   give copies since 020-10's step B3.
+* **An `rw()` reads one state, also after a get whose conversion threw**
+  (bergdb 020-13, bug 1; 2026-11-09): an action that caught the exception of
+  its first get's conversion, such as the `DataFormatException` of a `String`
+  get of bytes that are not well-formed UTF-8, read its next keys at the
+  latest time and was checked against that time, so it could commit having
+  read two states of one key, where `RwEnvironment.get` promises one, the
+  latest as of the action's first read. Now the first read fixes the read
+  time before the value is converted. In 2026.3 and before too, with the
+  conversions that threw there.
 * **Key replace in an object key's directory is refused** (bergdb 020-14,
-  X1; 2026-11-09): with `setEnableKeyReplace(true)`, a put at an object
-  key (no suffix, or `.obj`) whose directory holds `${transactionTime}`
-  throws `IllegalArgumentException` at the call, before anything is
-  written; in its name it is replaced as before. The index maintenance
-  took the key as written: an index of the directory as written lost the
-  entry of an object that the put did not change, and an index of the
-  directory the put landed in missed the new object, also after a restart.
+  X1; 020-13, bug 3; 2026-11-09): with `setEnableKeyReplace(true)`, a put
+  at an object key (no suffix, or `.obj`) whose directory holds
+  `${transactionTime}` throws `IllegalArgumentException` at the call,
+  before anything is written; in its name it is replaced as before. The
+  index maintenance took the key as written: an index of the directory as
+  written lost the entry of an object that the put did not change, and an
+  index of the directory the put landed in missed the new object, also
+  after a restart.
   A put with `${transactionTime}` in its name no longer deletes the index
   entries of the object at the key as written, which it took for the
   previous value. A key with another suffix is replaced anywhere, as before.
 * **A Data Object class whose static initializer throws an `Error` is
-  refused at a get** (bergdb 020-14, X2; 2026-11-09) with
+  refused at a get** (bergdb 020-14, X2; 020-13, bug 2; 2026-11-09) with
   `ObjectCreationException`, the `Error` as its cause, as for an
   `Exception` there (`ExceptionInInitializerError`); a
   `VirtualMachineError` passes. Java does not wrap an `Error` of a static
@@ -375,6 +393,20 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   leaves out such a key too: a value and its entry written through the
   Core at a directory's own prefix, such as `/dr/-` (an empty name), were
   given under `/r/`, no key.
+* **Malformed index data written through the Core is refused, and a build
+  skips a key that is no key of its directory** (bergdb 020-16, F16-1 to
+  F16-3; 2026-11-09; 020-22's detection floor). A value at exactly
+  `/#i/didef/` or `/#i/didel/` makes a start refuse the database with
+  `InternalDataException` naming the key, and one at `/#i/dii/` with
+  `VersioningStreamException`: the start took the prefix's own key for the
+  end of its read and started without the index definitions or the
+  cleanups under it, so writes were not indexed and scans gave stale
+  results. A scan that meets an entry whose key part is no key's throws
+  `InternalDataException` naming the entry, where it threw
+  `IllegalArgumentException`. A build skips a key whose name holds a `/`,
+  such as `/dp/-a/b`, as `usePrimary()` does: for one that held an object,
+  the build failed at every start, or put an entry that named another key.
+  Only a write through the Core's `Db` makes such data.
 
 
 ### Core API
@@ -441,6 +473,13 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   of the nodes in memory or from its rerun; now the start refuses the
   stream with `StreamFormatException`. Valid streams are read as before;
   the stream's bytes are unchanged.
+* **A close no longer waits a quarter of the buffer time for nothing**
+  (bergdb 020-13, bug 4; 2026-11-09): when `close()` came while the
+  storage's writer thread wrote the buffer, that thread then waited for its
+  timer, a quarter of the buffer time, before it wrote the bytes buffered
+  since, which `close()` waited for: up to 12.5 ms more at the default
+  buffer time of 50 ms, and 15 s with a buffer time of a minute (the Core's
+  `DbBuilder`). A lost wake-up in `BufferedStream`, in 2026.3 and before.
 
 
 ### Format
@@ -507,6 +546,14 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   when a test leaves a user index's build or cleanup thread
   (`IndexBuild-*`, `IndexCleanup-*`) alive, as they did for the storage and
   eviction threads (bergdb 005-55).
+* **Three stress tools for the Pub layer, each a step of `night.sh`**
+  (bergdb 020-15 to 020-17; 2026-11-09): `java/stress/kill-restart.sh`,
+  which kills a child JVM with SIGKILL during work on objects and indexes
+  and checks every restart (`KillRestartHarness`, 1,000 kills);
+  `java/stress/fuzz.sh`, a fuzzer of 2026.4's readers of bytes, each
+  against its spec (`FormatFuzzer`, 12 minutes); and
+  `java/stress/harness-soak.sh`, long runs of the randomized harnesses with
+  new seeds (two rounds). The unit tests run `FormatFuzzer` briefly.
 
 
 ### Documentation
@@ -570,6 +617,24 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   never returns a value that does not match its query. `bergdb.pub`'s "The
   API and its jar", the Core's `key-encoding.md` and docs/levels.md,
   section 11, point to it.
+* **The Pub API's Javadoc checked against its behaviour** (bergdb 020-19;
+  2026-11-09), promise by promise for the classes that 2026.4 changed
+  most, each promise with a test (`PubTesterJavadoc`). Corrected:
+  `Database.setCacheSizeInMb()` after `stop()` sets the value (J1); only
+  `DbObject.toDbObject()`'s message names the place of a lone surrogate
+  (J2); `ReadInterface.get()` and `RwEnvironment.get()` take the class of a
+  primitive, its wrapper and an array (J3); `DbException`'s example of a
+  refusal (J4); the `DataFormatException` of a `byte[]` put of a format-1
+  object in an indexed directory, from `Connection.put()`,
+  `WBuilder.execute()` and `Connection.rw()` (J5); the `DbException` of an
+  interrupted sync (J6); `Time`'s grammar (J7, then made strict by 020-21);
+  and the `DbException` of a refused write, a transaction too large (about
+  1.88 GB in the stream), a database stopping or stopped, or an interrupt
+  while it waits to run again after a conflict, for `rw()` and, at an
+  object key, for `Connection.put()`, `delete()` and `WBuilder.execute()`
+  (J8; 020-23, V1-2). `IndexBuilder.start()` and `Database.deleteIndex()`
+  say that a crash before the change is durable can undo it, as for any
+  transaction (020-15, KR-O1).
 * **A start's heap** (bergdb 019-45): a start needs about twice the
   startup distance of heap above what the running database needs,
   whatever the cache budget (docs/levels.md, section 7); W7's 600 MB heap
