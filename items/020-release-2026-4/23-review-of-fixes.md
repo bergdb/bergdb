@@ -417,6 +417,91 @@ Fixer z23 (coord-1109's agent, 14:29), clone `/Users/f/fl/bench/2026-11-09/clone
   `main`.
 
 
+## 5. The late Core fixes: 021-20, U10-3, U10-5, U10-6
+
+Reviewer v2 (coord-1109's agent, 17:27 to 17:36), on `2557286` to `41e4da5`, clone
+`/Users/f/fl/bench/2026-11-09/clone-v2` (branch `r-u10`), probes in
+`/Users/f/fl/bench/2026-11-09/v2/probe3` to `probe5`. Result: sound, no defect.
+
+**021-20, the two lock keys and the directory check.**
+
+* `FileStream.lockDir` checks and adds both keys under `LOCKED_DIRS` before its `try`, so a
+  start refused in the same JVM never removes the keys of the stream that holds them. A
+  failure after the add removes only its own keys; the system properties go with
+  `remove(k, COPY)`, so another class loader's keys stay. `unlockDir` removes the path key
+  stored at lock time, independent of the directory still being there; it is still
+  `close()`'s last step, also when a failed stream's `close()` throws. `toRealPath()` gives
+  one key for case variants on APFS, a symlink and a relative path.
+* Probe `probe5/LifeProbe.java`, one JVM, "LIFEPROBE OK": 150 starts at once after
+  `close()` or `stop()` and `close()`, none refused; 20 rounds of stop, delete the
+  directory, `create()` again, reopen; a start failed on a damaged stream left no lock; a
+  symlink, a case variant and a relative path to an open database refused as in use, and
+  started after its close; 8 threads, 320 starts at one path: 19 started, 301 refused as
+  in use, nothing else thrown; a directory deleted while its database ran: a new `create()`
+  refused as in use, the old database failed (`DbFailedException`) at its next file and
+  wrote nothing into the new directory, which then worked and reopened.
+* `checkDirectory` costs one `stat` per new file, per deleted cut file and per reopen after
+  an interrupt; a file switch already creates and forces a file.
+* On Linux ext4 a deleted directory's inode number is reused at once (s1: `rm -rf` then
+  `mkdir` gave the same inode 50 of 50 times), which would defeat a check by file key. It
+  does not here: while a file in the old directory is open, the inode is not reused (0 of
+  30), and the stream holds `bergdb.lock` open until `unlockDir`, after its last file step.
+  **V5-1 (low, a comment)**: this invariant is not written down; a comment at
+  `checkDirectory` would keep a later change from closing the lock file earlier.
+
+**U10-3, the buffer released.** `releaseBuffer` runs only when the thread has ended or never
+started, and only after `exception` is set; `read()` checks `exception` under the monitor
+before it touches the buffer; `append()` checks it at entry and after each wait for room
+(`958b87f`, V2-2); the consumer releases only after its own last use. Probe
+`probe4/ReleaseProbe.java` (a writer waiting for room, the first flush makes room, the second
+fails and ends the thread), 3,000 iterations: no `NullPointerException`; the append returned
+962 times and threw `IOException` 2,038 times.
+
+**U10-5.** `mkdirs()` returning false throws only if the path is then not a directory; the
+lock refuses the losers. Correct.
+
+**U10-6.** `closedDurable()` runs only if no failure was set when the close began and
+`mainStream.close()` returned normally; that close has flushed everything and forced the last
+file, and `confirmedLength` came from its thread before the join. A close that failed leaves
+the durable length where it was, so a later `sync()` throws as before. Correct.
+
+**Not done.** A JVM run on Linux or Windows (another session was timing on s1); a second
+process creating a database at the path (by reading, the old process fails at its next file
+switch; the in-JVM key does not apply across processes); the commits' own tests and gates.
+
+
+## 6. Codex, round 4
+
+`codex exec`, the latest Sol model at effort max, workspace-write in
+`/Users/f/fl/bench/2026-11-09/clone-codex4`, on `5d45478..41e4da5` (the late fixes:
+021-13, 021-16 to 021-23, 020-24's U10 and U11, 020-27, 020-28, the Android changes),
+17:28 to 17:45. Prompts, logs and the report: `/Users/f/fl/bench/2026-11-09/codex4/`. The
+first run stopped at 17:37 on the provider's content filter while it studied the recursion
+of split propagation in the write path, already open as 021-16's Q1; it was resumed with
+that question left out.
+
+**W1 (high), confirmed by a probe**, `2557286` (021-20), `FileStream.newFile()`: it checks
+the directory, then forces and closes the previous file, which can block, before it makes
+the next file by path. A directory replaced during that force (the probe pauses the
+`SWITCH` force through `FileStreamIo`, moves the live directory away and moves a synced,
+closed database into its path) gets the old database's next stream file: the old
+database's `sync()` and `close()` return without an error, and the replacement then cannot
+start ("Bad size of file .../00000000000000.bergdb, should have been a multiple of 100000,
+but was 424"). It contradicts `Database`'s Javadoc that the old database writes nothing into
+the replacement directory. Probe: `clone-codex4/probes/DirectorySwitchProbe.java`. To fixer
+d24 (17:40), as 021-24.
+
+**Checked and found sound** (no defect found within the checks described): 021-21 and
+021-22 (the environment's lock, conversions outside it, closing before the commit, guards
+released on exceptions, same-thread re-entrancy kept); U11-5; 021-17 and R17-1; 021-13;
+U10-3; U10-6; 021-23; 021-16 and 021-18; 020-28 (the refusals of an encrypted database
+leave its files unchanged); the Android changes by reading; the Javadoc of 020-24 and
+020-27 against the code and focused tests.
+
+**Not done**: a run on Android; exhaustive I/O interleavings, power loss, a full disk;
+heap limits of several GB; the recursion of split propagation (021-16, Q1).
+
+
 Log
 ===
 
@@ -432,3 +517,9 @@ Javadoc sentence); both high faults older than today's range.
 
 2026-11-09. Fixer z23: Z1 (`45b633e`), Z2 (`4ab3077`) and Z3 (`4c3d7b2`) in clone-z23,
 gated with `level1.sh` (section 4.1).
+
+2026-11-09. Reviewer v2: 021-20, U10-3, U10-5 and U10-6 sound; V5-1 (low), a comment
+at `checkDirectory` (section 5).
+
+2026-11-09. Codex, round 4 (17:45): W1 (high, a directory replaced during a file
+switch's force; to 021-24); the rest of the late fixes sound (section 6).
