@@ -94,6 +94,12 @@ public interface Connection extends ReadInterface {
      * transaction time of the last transaction, the transaction time of the
      * last transaction, is used as the actual lookup time.
      * </p>
+     *
+     * <p>
+     * A read at lookup time t reads the state that the transactions of time t and earlier
+     * made: the transaction whose time is t (Transaction.getTime()) is part of it, and a read
+     * at one unit before t does not see it (bergdb 020-24-01, U1-7).
+     * </p>
      * 
      * <p>
      * A call to this method undoes the effect of a previous call to freezeLookupTime(),
@@ -112,6 +118,8 @@ public interface Connection extends ReadInterface {
      * @param lookupTime
      *            The database time to use for read operations. Use
      *            Time.MAX to read the latest database state.
+     * @throws IllegalArgumentException
+     *            If lookupTime is null (bergdb 020-24-01, U1-12).
      */
     public void setLookupTime(Time lookupTime);
     

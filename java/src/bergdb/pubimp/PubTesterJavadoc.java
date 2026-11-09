@@ -2446,4 +2446,31 @@ public class PubTesterJavadoc {
             Assert.assertEquals("v3", off.get("/g/${transactionTime}.txt", String.class));
         }
     }
+
+    /**
+     * Connection.setLookupTime() (bergdb 020-24-01, U1-7 and U1-12): a read at t sees the
+     * transaction whose time is t, and a read at one unit before t does not, for get(),
+     * exists() and usePrimary(); a null is refused with IllegalArgumentException.
+     */
+    @Nano
+    public static void testLookupTimeIncludesItsTransaction() {
+        try (final Database db = Factory.database().memory().start()) {
+            final Connection c = db.newConnection();
+            Time t1 = c.put("/a.txt", "1").getTime();
+            Time t2 = c.put("/a.txt", "2").getTime();
+            String[] expected = {null, "1", "1", "2"};
+            Time[] times = {Time.units(t1.units() - 1), t1, Time.units(t2.units() - 1), t2};
+            for (int i = 0; i < times.length; i++) {
+                c.setLookupTime(times[i]);
+                String value = c.get("/a.txt", String.class);
+                Assert.assertTrue("get " + i + ": " + value, expected[i] == null ? value == null
+                        : expected[i].equals(value));
+                Assert.assertEquals("exists " + i, expected[i] != null, c.exists("/a.txt"));
+                Assert.assertEquals("usePrimary " + i, expected[i] == null ? 0 : 1,
+                        list(c.usePrimary(String.class).dir("/").objects()).size());
+            }
+            assertThrows("null", IllegalArgumentException.class, () -> c.setLookupTime(null));
+            Assert.assertEquals(t2, c.getLookupTime());
+        }
+    }
 }

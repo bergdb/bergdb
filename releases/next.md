@@ -713,3 +713,8 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   counting; and that with key replace off, the default also for the
   connection of `Database.connection()`, the text is a part of the key as
   written.
+* **A read at a lookup time sees the transaction of that time** (bergdb
+  020-24-01, U1-7 and U1-12): `Connection.setLookupTime()` says that a read
+  at lookup time t reads the state that the transactions of time t and
+  earlier made, the one of time t included, and that a null throws
+  `IllegalArgumentException`.
