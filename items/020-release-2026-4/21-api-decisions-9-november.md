@@ -211,3 +211,11 @@ that failed first, committed in the clone and gated by 11:14; Q1 for Frans.
 
 2026-11-09. Q1 decided by Frans (11:23: "Yes, as recommended."): `Duration.seconds(NaN)`
 refused, `e5b6de8`, a failing test first.
+
+2026-11-09. Two faults in 1's strict parse (`648527f` on `main`), from Codex's review of the
+day's fixes, round 2 (020-23), fixed in the clone on `main` at `6bb14a1`, each with a test
+that failed first: Y1 (medium), a minus time's duration went through a double and was
+truncated ("-0.0000021 s" was 20 units, `Time.MAX` minus its own seconds refused), now
+exact and rounded half up, `1fa675f`, BEFORE COMMIT OK (140 s); Y2 (low), a year and a
+month refused a time of day that the grammar allows ("2020-06 12:34"), `01ed9a2`, BEFORE
+COMMIT OK (148 s).

@@ -37,6 +37,12 @@ opening 2026.3's and 2026.2's databases, not done; 6, SpotBugs.)
 * F53: 006-16's CORE timings need it quiet in gaps until 13:00; heavy
   runs wait or go to s1.
 * Nothing new into 2026.4 after the release candidate.
+* The machine's quiet work after 22:00 (Frans, 11:40: "Let's move
+  "night.sh large" and other work that needs a silent machine until
+  after 22:00. We have so much usage left before the reset at 22:00. So
+  let's reserve the time before 22:00 to coding and other AI use."):
+  the release candidate's `night.sh large`, 022's quiet checks and
+  006-16's CORE run in the night; until then, coding and reviews.
 
 
 ## 3. The work
