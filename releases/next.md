@@ -74,11 +74,23 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `IllegalArgumentException` naming the element, `DbString` and
   `DbByteArray` refuse null, and `isNull()`, `Builder.buildNull()` and
   `DbObject.MAGIC` are gone. A get as `Object` gives a `byte[]` for bytes
-  that start with 0x82 and fail the format's check. An object that 2026.3
-  stored (format 1) is not read as an object: a get of it as `DbObject` or
-  a class throws `ObjectCreationException` naming format 1. Format 2's
-  reader and writer replace format 1's, and with them the limits of
-  021-07 and 021-08 above.
+  that start with 0x82 and fail the format's check. Objects that 2026.3
+  stored (format 1) are refused (the next entry). Format 2's reader and
+  writer replace format 1's, and with them the limits of 021-07 and 021-08
+  above.
+* **Objects and index definitions of 2026.3 and before are refused**
+  (bergdb 020-08, step 3; 020-02, section 4.11: an older database is not
+  read). A value of format 1 (`bergo` and the version 1) at an object key
+  is refused wherever it is read as an object, with a message that names
+  format 1: a get as `Object`, `DbObject` or a class throws
+  `ObjectCreationException`, and so does `next()` of a primary scan or an
+  index scan that lists it as an object; an index build over it
+  ends failed, naming the key, and the database goes on; a put or a delete
+  over it in an indexed directory throws `DataFormatException`. A start of
+  a database that holds an index definition of format 1 throws
+  `VersioningStreamException`, which says to make the database again, and
+  closes it. A `byte[]` that passes format 2's full check is taken as an
+  object.
 * **`put(Object)` and the key field are gone** (bergdb 020-08, step 7;
   Frans, 2026-11-08, 19:21; 020-02, section 5.1b), with
   `MissingKeyFieldException`. `WBuilder` and `RwEnvironment` put at a key
@@ -107,7 +119,10 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   (integers clamped), else the type's zero; it never throws for the data,
   and a constructor that throws gives an `ObjectCreationException` with it
   as the cause. `DbObject.toDbObject(Object)` and `toJavaObject(Class)`
-  apply the same rules; `toJavaObject(Object, ClassToObject)` is gone.
+  apply the same rules; `toJavaObject(Object, ClassToObject)` is gone. A
+  field's class is checked with each of its superclasses below `Object`,
+  and a field of a type variable is refused; a primary scan checks its
+  class first, also over a directory without an object.
 * **The primary scan, `Connection.usePrimary()`, is no longer
   experimental** (bergdb 020-10, step P1; section 3.5). `dir()` is
   required and the first call: without it `objects()` and `kvs()` throw
@@ -130,6 +145,62 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `IndexBuilder.dir()` and `UsePrimaryBuilder.dir()` refuse "p/", "a/b/",
   "//" and "/p//" with `IllegalArgumentException`; they were taken, as
   directories that no key of the user's is in.
+* **A '.' in a directory's name no longer gives its keys a suffix**
+  (bergdb 021-10, with 020-08's step 3): the suffix is the part after the
+  last '.' of the key's last part, so `/v1.2/k` is an object key. The
+  whole key's last '.' gave every key under `/v1.2/` the suffix `2/k`, and
+  an object put there was refused.
+* **A String value that is not well-formed UTF-8 is refused at a get**
+  (bergdb 021-06, its second half): a get as `String`, or as `Object` at a
+  `.txt` key, throws `DataFormatException` for such a stored value, which
+  it read with U+FFFD in place of each ill-formed sequence; the primary
+  scan as `String` throws it from `next()` and goes on. The Pub API writes
+  only well-formed UTF-8 (021-04): such a value comes from the Core API or
+  another writer.
+* **Every write keeps the user indexes** (bergdb 020-10, step I1; F4): a
+  put or a delete at an object key, of any value, deletes the old value's
+  entry and puts the new one's, so a `String` or `byte[]` put over an
+  object removes its entry, where it removed nothing, and an object put
+  over a `String` no longer throws (015-46). A write fixes its read time
+  first and reads its directory's indexes after it, under the index
+  manager's lock, so that a creation, an activation or a deletion that
+  races with it is seen, or makes it run again (015-28, 015-43). The cost:
+  every put or delete at a key without a suffix, of any value, now takes
+  that lock and a read time, also where no index is, and a `w()` with such
+  a key may run again after a conflict, as an `rw()` does (020-08, step 4,
+  measures it).
+* **User indexes on a new layout, with jobs** (bergdb 020-10, step I2; F3
+  and F5; Frans, 2026-11-08, 22:08). `IndexBuilder`: `dir()` once and
+  first, then for each of 1 to 8 levels `type()` and `field()` or
+  `nestedField()`, each call checked at once. The types are `long`,
+  `double`, `string`, in code-point order, and the new `bytes`, in
+  unsigned byte order, for an application's own collation key;
+  `string/unicode` and `string/LANG` went with ICU. A value has one entry
+  or none: none for an absent field, a value of another kind (no kind is
+  converted), NaN, or levels of more than 4,096 bytes. `createFast()` is
+  gone: `start()` returns the build's `Job`, and `start().join()` waits.
+  A build runs in the background; its status is a snapshot, BUILDING with
+  a count, ACTIVE, or FAILED with a reason (`JobStatus.state()`, `count()`,
+  `reason()` and `note()`; `progress()` is gone); a stop leaves it
+  BUILDING, and the next start takes it again. `Database.deleteIndex(name)`
+  is one transaction and returns nothing: the name is free when it
+  returns, and a cleanup removes the old entries in the background, also
+  after a restart. `Database.indexJob(name)` gives an index's job, and
+  `StartupInfo.getStartupJobs()` is gone. "primary" is a name like any
+  other. An index on a directory has its own values only, not its
+  subdirectories'.
+* **The scan of a user index** (bergdb 020-10, step I3; F6): with
+  `UseIndexBuilder`, `eq()` on levels 1 to k, then `from()` and `to()`,
+  each inclusive or not, or `prefix()` on level k + 1, and `backward()`,
+  then `objects()` or `kvs()`; each call is checked at once
+  (`IllegalStateException` for a call out of that order,
+  `IllegalArgumentException` for a value of another type than its level's,
+  a null, NaN or a lone surrogate); `inclusive()`, `nextLevel()` and
+  `startAt()` are gone. A scan reads at the connection's lookup time,
+  fixes a frozen time as a get does, leaves `transactionInfo()` as it was,
+  and gives only the values that their entries still match: `hasNext()`
+  never says true before a `next()` that throws. `Database.PRIMARY` is
+  gone.
 
 
 ### Core API
@@ -154,17 +225,50 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `Keys.toDisplayString` shows it, for messages only, as the printers of
   key nodes do. The rule is in the Core's `key-encoding.md`, "Conversion
   bkey --> ikey".
+* **A read that keeps no index node no longer takes a writer's node from
+  it** (bergdb 019-46): a race in the Core since handles (2026.2). A read
+  whose cache policy keeps no index node (`Dag.CACHE_NOTHING`) removed the
+  empty handle it had made (`Cache3.dropIfEmpty`) while the writer could
+  take that handle, load the node into it and make it canonical; the
+  removal then evicted the writer's object in the middle of its
+  transaction, so that its record named an old version of the node, and
+  later reads gave old values. Only a program that read through the Core
+  API with a `GetData` or `GetMany` set to `Dag.CACHE_NOTHING`, while
+  another thread wrote, could meet it: no read of BergDB's own or of the
+  Pub API uses that policy. Found under load by
+  `EvictionAccountingTester`, whose reads use it.
+* **A start no longer keeps a large value of its first transaction in
+  memory** (bergdb 019-47): a start reruns every transaction of the
+  startup section but the first, whose values it links into the section's
+  node versions; its admission of large values (015-68: a value over 1 MiB
+  in the stream is reached by a stream pointer) took only those that the
+  rerun reported, so a value over 1 MiB of the section's first transaction
+  stayed in its leaf for as long as the database ran, unless the budget
+  forced its eviction. Now the start admits every resident key node's
+  values as a written record's. In 2026.2 and 2026.3; a start with a large
+  budget, whose section began with such a value's transaction, showed it.
 
 
 ### Format
 
 * **Stored objects and the index definitions are in format 2** (bergdb
-  020-08, step 2; see the Pub API): the bytes of every object
-  that the Pub layer stores change, and so do those of an index's
-  definition under `/#i/dii/`, which today's index code stores as an
-  object. The Core's records and the stream's format are unchanged.
-  StreamDigest's digests are unchanged: its workloads use the Core API and
-  put no object.
+  020-08, step 2; see the Pub API): the bytes of every object that the Pub
+  layer stores change, and so do those of an index's definition, an
+  object of format 2 (020-10, section 4.2). The Core's records and the
+  stream's format are unchanged. StreamDigest's digests are unchanged: its
+  workloads use the Core API and put no object.
+* **The user indexes' internal keys are new** (bergdb 020-10, section 4;
+  their layout approved in principle by Frans on 2026-11-08, 22:08,
+  020-01, section 14.1, its details under his delegation of 22:17): a
+  definition at `/#i/didef/-NAME`; the entries under `/#i/dient/dNAME/`
+  and the generation G, the creation's time, so that no index sees
+  another's entries; a deleted generation's marker `/#i/didel/dNAME/-G16`
+  until its cleanup ends. 2026.3's keys, `/#i/dii/` and `/#i/di/`, are no
+  longer written: a start that finds a key under `/#i/dii/` throws
+  `VersioningStreamException` (020-08, step 3). So a database of 2026.3
+  with an index does not start, and one with objects starts but refuses
+  them when they are read (the Pub API's entries); make such a database
+  again. The Core's records are unchanged.
 
 
 ### Build and tools
@@ -191,12 +295,12 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
 
 ### Internal
 
-* **The first parts of 2026.4's user indexes, used by nothing yet**
-  (bergdb 020-10, steps I0 and H2's first part): the index keys and their
-  encodings (`IndexKeys`), the definition and the index function
-  (`IndexDefinition`), and harness H2's reference and generators
-  (`IndexReference`, `IndexHarness`), with their tests. No change that a
-  user sees.
+* **The user indexes' code and its checks** (bergdb 020-10, steps I0 to
+  I3): the keys and the levels' encodings (`IndexKeys`), the definition
+  and the index function (`IndexDefinition`), the manager, the build and
+  the scan, rewritten; with the races' tests (`PubTesterIndexRaces`),
+  harness H4 of the primary scan (`PrimaryHarness`) and harness H2's
+  reference and generators (`IndexReference`, `IndexHarness`).
 
 
 ### Documentation
@@ -221,6 +325,15 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   where it is thrown. `Time.utc` and both `Time.resolve` document
   `BadFormatException` for a bad time string and `IllegalArgumentException`
   for a null argument.
+* **Objects and Data Objects in the Pub API's Javadoc** (bergdb 020-08,
+  step 6): `bergdb.pub`'s package documentation has the sections "Objects"
+  and "Null and absent fields", and `Connection`, the puts and the gets say
+  what a put refuses and how a get converts.
+* **The API's boundary, objects and user indexes in docs/levels.md**
+  (bergdb 020-10, B2): its section 11, the README and the Javadoc's
+  overview name the API (`bergdb.pub`, `bergdb.pub.util` and the Core's
+  `Db`; the release jar) and describe objects, the user indexes and the
+  primary scan, with no experimental list left.
 * **A start's heap** (bergdb 019-45): a start needs about twice the
   startup distance of heap above what the running database needs,
   whatever the cache budget (docs/levels.md, section 7); W7's 600 MB heap
