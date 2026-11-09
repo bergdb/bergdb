@@ -10,7 +10,7 @@ import bergdb.pub.WBuilder;
  * @see bergdb.pub.WBuilder
  * @author Frans Lundberg
  */
-public class WBuilderImp implements WBuilder {
+class WBuilderImp implements WBuilder {
     private ConnectionImp connection;
     private RwEnvironmentImp env;
     

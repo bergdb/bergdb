@@ -10,7 +10,7 @@ import java.lang.instrument.Instrumentation;
  * @author Frans Lundberg
  */
 public class MyInstrumentation {
-    // Note: Class name is used in build.xml.
+    // Note: Class name was used in build.xml (gone since 2026.4).
     
     private static Instrumentation inst;
 

@@ -7,7 +7,7 @@ import bergdb.pub.Time;
 import bergdb.pub.Transaction;
 import bergdb.pub.util.SyncLevel;
 
-public class WTransaction implements Transaction {
+class WTransaction implements Transaction {
     private ConnectionImp connection;
     private RwEnvironmentImp env;
     private int runCount = 0;

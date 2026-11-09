@@ -22,7 +22,7 @@ import bergdb.pub.util.BadFormatException;
  *
  * @author Frans Lundberg
  */
-public class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
+class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
     /** A page of Db.getMany visits at most this many keys, values of this many bytes... */
     static final int PAGE_KEYS = 100;
     private static final long PAGE_BYTES = 50 * 1000 * 1000;
@@ -36,15 +36,13 @@ public class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
 
     private final ConnectionImp connection;
     private final Class<TYPE> type;
-    private int kind;
+    private final int kind;
     /** The actual lookup time of every iterator. */
     private final long lookupTime;
     /** The bkey of the directory's idir and '-': the prefix of its own keys; null until dir(). */
     private byte[] prefix;
     /** The length of the prefix's ikey, idir and '-'. */
     private int prefixIkeyLength;
-    /** True after dirInternal(): every key with an ikey is listed. */
-    private boolean internal = false;
     /** The bkey bytes of startAt()'s name, or null. */
     private byte[] startName;
     private boolean inclusive = true;
@@ -94,25 +92,6 @@ public class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
         String idir = PubKeys.udir2idir(udir);      // its rules (bergdb 021-09)
         prefix = Keys.toBytes(idir + PubKeys.FILE_PREFIX);
         prefixIkeyLength = idir.length() + 1;
-        return this;
-    }
-
-    /**
-     * As dir(), for a directory given as an idir, such as an internal one; every value is
-     * listed, whatever the type, so that the type's conversion refuses a value that is not
-     * of its kind. Internal, not API: for IndexManager.initFromDatabase, until it reads the
-     * definitions with Db.getMany (bergdb 020-10, step I2).
-     */
-    public UsePrimaryBuilder<TYPE> dirInternal(String idir) {
-        checkNotListing("dirInternal");
-        if (prefix != null) {
-            throw new IllegalStateException("dir() was called before: a listing has one "
-                    + "directory.");
-        }
-        prefix = Keys.toBytes(idir + PubKeys.FILE_PREFIX);
-        prefixIkeyLength = idir.length() + 1;
-        kind = ALL;
-        internal = true;
         return this;
     }
 
@@ -312,8 +291,7 @@ public class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
                     // writer; bergdb 021-06), or a key whose name has a '/', which is no
                     // user's key of the directory, is not listed.
                     String ikey = Keys.bkey2ikeyOrNull(Keys.toBytes(kvt.key));
-                    if (ikey == null 
-                            || (!internal && ikey.indexOf('/', prefixIkeyLength) != -1)) {
+                    if (ikey == null || ikey.indexOf('/', prefixIkeyLength) != -1) {
                         continue;
                     }
                     boolean listed = kind == ALL
@@ -344,15 +322,10 @@ public class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
             next = null;
             nextIkey = null;
 
-            String ukey;
-            try {
-                ukey = PubKeys.i2u(ikey);
-            } catch (IllegalArgumentException e) {
-                ukey = null;        // an internal key, from dirInternal()
-            }
+            String ukey = PubKeys.i2u(ikey);    // a key of the directory, with no '/' in its name
             TYPE object = connection.getDatabaseImp().getKvToObjectConverter()
                     .createObject(type, ikey, value);
-            return new PrimaryKv<TYPE>(ukey, ikey, object);
+            return new PrimaryKv<TYPE>(ukey, object);
         }
 
         public void remove() {
@@ -398,21 +371,15 @@ public class UsePrimaryBuilderImp<TYPE> implements UsePrimaryBuilder<TYPE> {
 
     private static final class PrimaryKv<T> implements Kv<T> {
         private final String key;
-        private final String ikey;
         private final T value;
 
-        PrimaryKv(String key, String ikey, T value) {
+        PrimaryKv(String key, T value) {
             this.key = key;
-            this.ikey = ikey;
             this.value = value;
         }
 
         public String key() {
             return key;
-        }
-
-        public String ikey() {
-            return ikey;
         }
 
         public T value() {

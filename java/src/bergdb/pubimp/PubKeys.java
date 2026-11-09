@@ -30,6 +30,8 @@ public class PubKeys {
      * the key (Keys.toBytes) writes it as '?', so that the key and the one with '?' in its
      * place were one stored key; until 2026-11-05 it was taken.
      *
+     * <p>Internal, not API (bergdb 020-10, section 7): for BergDB's tests and tools.</p>
+     *
      * @param ukey The input ukey (user string key).
      * @return The ukey converted to an ikey.
      * @throws IllegalArgumentException  If ukey is null or invalid.
@@ -102,7 +104,7 @@ public class PubKeys {
      * UTF-8 encoding writes such a char as '?'. BergDB refuses such a string in a key, a
      * value and an object (bergdb 021-04); the check is StringUtil's, which the Core uses.
      */
-    public static boolean hasLoneSurrogate(String s) {
+    static boolean hasLoneSurrogate(String s) {
         return StringUtil.hasLoneSurrogate(s);
     }
 
@@ -116,7 +118,7 @@ public class PubKeys {
      *      with '/', or that ended with "//", was taken, such as "p/" and "/p//" (bergdb
      *      021-09): every caller relies on this method for what a directory is.
      */
-    public static final String udir2idir(String udir) throws IllegalArgumentException {
+    static final String udir2idir(String udir) throws IllegalArgumentException {
         
         if (udir == null) {
             throw new IllegalArgumentException("null is not a valid dir.");
@@ -171,7 +173,7 @@ public class PubKeys {
      * 
      * @throws IllegalArgumentException if ikey is not a valid ikey created from a ukey.
      */
-    public static String i2u(String ikey) {
+    static String i2u(String ikey) {
         if (ikey == null) {
             throw new IllegalArgumentException("ikey == null not allowed");
         }

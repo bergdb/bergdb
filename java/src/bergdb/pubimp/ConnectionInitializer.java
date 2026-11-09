@@ -8,6 +8,6 @@ import bergdb.pub.Connection;
  * @author Frans Lundberg
  */
 // Not yet moved to Pub API. Maybe not needed? We do not know yet.
-public interface ConnectionInitializer {
+interface ConnectionInitializer {
     public void initialize(Connection connection);
 }

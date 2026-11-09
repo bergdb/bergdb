@@ -10,7 +10,7 @@ import bergdb.nanotest.Nano;
  * 
  * @author Frans Lundberg
  */
-public class Entries {
+class Entries {
     private Entries() {}
 
     static final int TYPE_OBJECT = 1;

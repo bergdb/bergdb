@@ -65,7 +65,7 @@ public class DatabaseImp implements Database {
      * @throws StreamFormatException
      * @throws IllegalDbStateException  If db has been started already.
      */
-    public static synchronized DatabaseImp createAndStart(final Db db) {
+    static synchronized DatabaseImp createAndStart(final Db db) {
         @SuppressWarnings("unused")
         StartInfo startInfo;
         DatabaseImp database;
@@ -107,7 +107,8 @@ public class DatabaseImp implements Database {
     
     
     /**
-     * Not Pub API.
+     * The Core's Db under this database. Internal, not API (bergdb 020-10, section 7): for BergDB's tests and tools, which src-dev and
+     * stress hold.
      */
     public final Db getDb() {
         return db;

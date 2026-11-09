@@ -80,7 +80,7 @@ public class TimeResolver {
     //
     
     /** UTC time zone. */
-    public static final TimeZone UTC = TimeZone.getTimeZone("UTC");
+    static final TimeZone UTC = TimeZone.getTimeZone("UTC");
     private static final long UNITS_PER_MILLISECOND = Clock.UNITS_PER_SEC / 1000;
     private final TimeData td;
     private final GregorianCalendar calendar;
@@ -110,7 +110,8 @@ public class TimeResolver {
     
     /**
      * This method resolves a time string (like "yesterday", "2013-08-30" or "now") to a time
-     * value in database time units (100 ns units since epoch).
+     * value in database time units (100 ns units since epoch). Internal, not API (bergdb
+     * 020-10, section 7): for bergdb.pub.Time.resolve.
      * 
      * @param currentTime  In database units.
      * @param timeString  The time string to resolve.
@@ -122,7 +123,8 @@ public class TimeResolver {
     }
     
     /**
-     * Resolves a time string the must be absolute; no current time is needed.
+     * Resolves a time string the must be absolute; no current time is needed. Internal, not
+     * API (bergdb 020-10, section 7): for bergdb.pub.Time.utc.
      */
     public static long resolveAbsolute(TimeZone timeZone, String timeString) {
         if (timeString == null) {

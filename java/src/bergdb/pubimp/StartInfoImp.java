@@ -8,7 +8,7 @@ import bergdb.pub.StartupInfo;
  * 
  * @author Frans Lundberg
  */
-public class StartInfoImp implements StartupInfo {
+class StartInfoImp implements StartupInfo {
     private double startTime;
     
     public StartInfoImp(double startTime) {

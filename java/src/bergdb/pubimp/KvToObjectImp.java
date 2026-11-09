@@ -17,7 +17,7 @@ import bergdb.pub.util.BadFormatException;
  * 
  * @author Frans Lundberg
  */
-public class KvToObjectImp implements KvToObjectConverter {
+class KvToObjectImp implements KvToObjectConverter {
     
     public KvToObjectImp() {
     }

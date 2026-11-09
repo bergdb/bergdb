@@ -201,6 +201,17 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   and gives only the values that their entries still match: `hasNext()`
   never says true before a `next()` that throws. `Database.PRIMARY` is
   gone.
+* **`Kv.ikey()` is gone, and `bergdb.pubimp` is narrowed** (bergdb 020-10,
+  step B2; section 7): `Kv` has `key()` and `value()`; `ikey()` was "not
+  intended for the Pub API user", no caller used it, and the Kvs of
+  `transactionInfo()` threw `UnsupportedOperationException` from it. The
+  classes of `bergdb.pubimp` that nothing outside it uses are
+  package-private, among them `ConnectionImp`, `IndexManager`,
+  `IndexBuilderImp`, `UseIndexBuilderImp`, `UsePrimaryBuilderImp`,
+  `RwEnvironmentImp`, `WBuilderImp`, `WTransaction` and `Entries`; of the
+  public ones, the methods that BergDB's tests and tools use say "Internal,
+  not API". The API is `bergdb.pub`, `bergdb.pub.util` and the Core's `Db`
+  (and `DbObject`, until it moves into `bergdb.pub`).
 
 
 ### Core API
@@ -291,6 +302,9 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   MB, and the build checks that the release jar holds no class of ICU's
   packages. A string index orders its values by their code points (020-10,
   step I2).
+* **`java/build.xml` is gone** (bergdb 020-10, step B2), the Ant script of
+  2013 to 2017 that no script ran, with `java/in/jarjar-1.4.jar` and
+  `java/in/style.css`, which only it used. `java/build.sh` is the build.
 
 
 ### Internal

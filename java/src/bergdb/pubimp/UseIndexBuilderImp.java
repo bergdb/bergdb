@@ -27,7 +27,7 @@ import bergdb.pub.UseIndexBuilder;
  * @see bergdb.pub.UseIndexBuilder
  * @author Frans Lundberg
  */
-public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
+class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
 
     /** The entries a page of the iteration reads at most. */
     private static final int PAGE = 100;
@@ -423,10 +423,6 @@ public class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
             return new Kv<TYPE>() {
                 public String key() {
                     return finalUkey;
-                }
-
-                public String ikey() {
-                    return ikey;
                 }
 
                 public TYPE value() {

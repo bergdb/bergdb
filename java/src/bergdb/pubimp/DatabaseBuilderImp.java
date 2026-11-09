@@ -69,8 +69,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     /**
-     * Returns the internal Db.Builder object.
-     * Not part of Pub API.
+     * Returns the internal Db.Builder object. Internal, not API (bergdb 020-10, section 7): for BergDB's tests and tools.
      */
     public DbBuilder getDbBuilder() {
         return dbBuilder;
@@ -133,7 +132,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     /**
-     * Not part of Pub API.
+     * The database's main stream. Internal, not API (bergdb 020-10, section 7): for BergDB's tests and tools.
      */
     public DatabaseBuilder mainStream(final AppendOnlyStream stream) {
         dbBuilder.mainStream(stream);
@@ -143,7 +142,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     }
     
     /**
-     * Not part of Pub API.
+     * A stream of the database by its name. Internal, not API (bergdb 020-10, section 7): for BergDB's tests and tools.
      */
     public DatabaseBuilder stream(String name, AppendOnlyStream stream) {
         dbBuilder.stream(name, stream);

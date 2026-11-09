@@ -25,7 +25,7 @@ import bergdb.storage.StreamIoException;
  * @see bergdb.pub.IndexBuilder
  * @author Frans Lundberg
  */
-public class IndexBuilderImp implements IndexBuilder {
+class IndexBuilderImp implements IndexBuilder {
 
     /** The values a build step reads at most (020-10, section 6.1). */
     static final int STEP_VALUES = 25;

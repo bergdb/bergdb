@@ -28,7 +28,7 @@ import bergdb.pub.util.SyncLevel;
  * 
  * @author Frans Lundberg
  */
-public class ConnectionImp implements Connection {
+class ConnectionImp implements Connection {
     private final Db db;
     private final DatabaseImp database;
     private final GetData getData;
@@ -155,10 +155,6 @@ public class ConnectionImp implements Connection {
                         byte[] bkey = Keys.toBytes(storedValueNode.getKey());
                         String ukey = PubKeys.i2u(Keys.bkey2ikey(bkey));
                         return ukey;
-                    }
-
-                    public String ikey() {
-                        throw new UnsupportedOperationException("not implemented");
                     }
 
                     public byte[] value() {

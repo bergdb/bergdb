@@ -48,7 +48,7 @@ import bergdb.storage.VersioningStreamException;
  *
  * @author Frans Lundberg
  */
-public class IndexManager {
+class IndexManager {
 
     /** The keys a cleanup step deletes at most (020-10, section 6.2). */
     static final int CLEANUP_KEYS = 100;

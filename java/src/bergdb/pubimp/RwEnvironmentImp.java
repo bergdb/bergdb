@@ -25,7 +25,7 @@ import bergdb.pub.RwEnvironment;
  * 
  * @author Frans Lundberg
  */
-public class RwEnvironmentImp implements RwEnvironment {
+class RwEnvironmentImp implements RwEnvironment {
     // For now, we assume one object of this class per transaction.
     // If needed for performance, this could change. Initialization is 
     // relatively heavy.

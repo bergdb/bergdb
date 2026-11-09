@@ -17,7 +17,7 @@ import bergdb.storage.StreamFormatException;
 import bergdb.storage.StreamIoException;
 
 
-public class RwTransaction implements Transaction {
+class RwTransaction implements Transaction {
     /** The sleep before the first rerun of a conflicting transaction, ms (bergdb 015-88). */
     static final long FIRST_SLEEP = 10;
     /** The longest sleep between reruns, ms (Frans, 2026-11-05, bergdb 015-88). */

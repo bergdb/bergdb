@@ -26,7 +26,8 @@ with the types of its signatures (bergdb 020-10, section 7). The release jar
 holds the rest of src as well, which the API needs; it is not API, whatever
 is public in it.
 
-build.xml is the Ant script of 2013 to 2017; it is no longer used.
+The Ant script of 2013 to 2017, build.xml, is gone since 2026.4 (bergdb 020-10,
+step B2); release 2026.3's source has it.
 
 
 To test
@@ -41,7 +42,7 @@ repository's README.md, under "Build and test".
 Files
 -----
 
-in       - Non-source input: files of build.xml (in/readme.txt).
+in       - Non-source input: BuildInfoTemplate.txt (in/readme.txt).
 build    - Output from the build.
 src      - The main Java source code; the release jar's classes.
 src-dev  - Development and test packages (bergdb, bergdb.dev, bergdb.test,
