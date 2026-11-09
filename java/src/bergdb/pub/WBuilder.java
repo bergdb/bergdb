@@ -11,9 +11,10 @@ package bergdb.pub;
  * <p>Of several puts and deletes of one key, the last one counts: a put after a delete
  * puts, a delete after a put deletes (bergdb 015-40, 020-25).</p>
  *
- * <p>execute() spends the builder, whatever it threw: a later put(), delete() or execute()
- * throws IllegalStateException (bergdb 020-21, 2). For another transaction, get a new
- * builder.</p>
+ * <p>execute() spends the builder, also when it throws, except when it throws because
+ * another thread is in a call of the connection (below), which leaves the builder unspent:
+ * a later put(), delete() or execute() throws IllegalStateException (bergdb 020-21, 2;
+ * 021-22). For another transaction, get a new builder.</p>
  *
  * <p>A builder is for one thread, as its Connection (Connection, "Threads"). One that
  * threads share anyway takes their calls one at a time: each put() and delete() made
@@ -78,10 +79,14 @@ public interface WBuilder {
     
     /** 
      * Executes the puts and deletes as one transaction, and returns it when it has
-     * committed. The builder is then spent, also if this method throws: a later put(),
-     * delete() or execute() throws IllegalStateException.
+     * committed. The builder is then spent, also if this method throws, except for the
+     * IllegalStateException of a connection that another thread is in a call of: a later
+     * put(), delete() or execute() throws IllegalStateException.
      * 
      * @throws IllegalStateException  If execute() was called before: the builder is spent.
+     *             Or if another thread is in a call of the connection (Connection,
+     *             "Threads"; bergdb 021-22): nothing is run, and the builder is left
+     *             unspent.
      * @throws bergdb.pub.util.DbException
      *             If the transaction is refused, nothing of it written, and the database
      *             goes on, as for Connection.put(): it is too large, about 1.88 GB in the

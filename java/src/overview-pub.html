@@ -62,15 +62,15 @@ class Demo {
 }
 </pre>
 
-<p>Java 17 or later runs the file as it is, with BergDB's jar (here bergdb.jar) on the class
-path:</p>
+<p>Java 17 or later runs the file as it is, with BergDB's jar (here bergdb-2026.4.jar) on
+the class path:</p>
 
 <pre>
-$ java -cp bergdb.jar Demo.java put
-$ java -cp bergdb.jar Demo.java get
+$ java -cp bergdb-2026.4.jar Demo.java put
+$ java -cp bergdb-2026.4.jar Demo.java get
 Hello world!
-$ java -cp bergdb.jar Demo.java delete
-$ java -cp bergdb.jar Demo.java get
+$ java -cp bergdb-2026.4.jar Demo.java delete
+$ java -cp bergdb-2026.4.jar Demo.java get
 null
 </pre>
 
@@ -87,6 +87,10 @@ examples.</p>
 
 <p>The API is the packages bergdb.pub and bergdb.pub.util, and the Core's bergdb.core.Db; a
 release ships them in one jar (<a href="bergdb/pub/package-summary.html#api">The API and its
-jar</a>, in the package bergdb.pub).</p>
+jar</a>, in the package bergdb.pub). This Javadoc holds the two packages. The documentation
+of the Core API, Db and the classes that Db's Javadoc names ("The Core API"), is their
+Javadoc in the source, from java/src/bergdb/core/Db.java on, which the release's source zip
+holds, with java/src/bergdb/core/doc-files/key-encoding.md, the encoding of keys that it
+cites.</p>
 
 </body>

@@ -84,7 +84,11 @@ ships: the classes of `java/src` only, without the tests and tools of
 The API is the packages `bergdb.pub` and `bergdb.pub.util` and the Core's
 `Db`; the rest of the release jar is not API, whatever is public in it
 (bergdb item 020-10, section 7). The stored object, `DbObject`, and its
-value classes are in `bergdb.pub`. See `java/readme.txt`.
+value classes are in `bergdb.pub`. The published Javadoc
+(`java/javadoc-pub.sh`) holds `bergdb.pub` and `bergdb.pub.util`; the
+documentation of the Core API, `Db` and the classes that its Javadoc
+names, is their Javadoc in the source, from `java/src/bergdb/core/Db.java`
+on, which the release's source zip holds. See `java/readme.txt`.
 
 
 

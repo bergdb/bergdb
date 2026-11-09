@@ -103,9 +103,10 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
 * **A stored value that is not a well-formed object is refused at a get
   with `ObjectCreationException`** (bergdb 021-07; 2026-11-07), from the
   object reader's `BadFormatException`, inside `rw()` and outside, and the
-  database goes on; an index update that reads such a previous value
-  throws `DataFormatException`. A nested object of size −1, which no
-  writer writes, gave an `AssertionError` (with `-ea`), which failed the
+  database goes on; such a value has no entry in an index, so a put over
+  it and a delete of it work (`IndexBuilder`, rule 1). A nested object of
+  size −1, which no writer writes, gave an `AssertionError` (with `-ea`),
+  which failed the
   database inside `rw()`; a bad length, a bad field type byte or bytes
   that end inside a field gave a `NegativeArraySizeException`, an
   `IllegalArgumentException`, an `IndexOutOfBoundsException` or, for a
@@ -116,8 +117,10 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   or a `NullPointerException`. Well-formed objects are read and written
   as before; the stream is unchanged.
 * **An object nested deeper than the writer writes is refused** (bergdb
-  021-08; 2026-11-07) as 021-07's faults are: more than 1,001 objects
-  (`toDbObject`'s 1,000 and a null object below them), or more than 2,001
+  021-08; 2026-11-07); format 2 then replaced these limits by its 16 levels
+  of objects and arrays (020-08's entry, below). It was refused as 021-07's
+  faults are: more than 1,001 objects (`toDbObject`'s 1,000 and a null
+  object below them), or more than 2,001
   objects and arrays counted alike, on a path from the top. Before, such
   bytes from another writer gave a `StackOverflowError`, or, since the
   reader copies each nested object, an `OutOfMemoryError` (a 2.2 MB value
@@ -182,12 +185,14 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `byte[]` put of one there throws `DataFormatException`. A start of
   a database that holds an index definition of format 1 throws
   `VersioningStreamException`, which says to make the database again, and
-  closes it. A `String` value is never taken for such an object, whatever
-  its first bytes: one that began with `bergo` and the byte 1 was (a get as
-  `Object` threw, and in an indexed directory its put was refused). The
-  guess left: a `byte[]` that passes format 2's full check is an object,
-  and one whose bytes are a whole object of format 1 is refused as one
-  (`Connection.get`'s Javadoc).
+  closes it. A `String` value that only begins with `bergo` and the byte 1
+  is no longer taken for such an object: it was (a get as `Object` threw,
+  and in an indexed directory its put was refused). A `String` put into an
+  indexed directory is never refused as one; but a get as `Object`, and an
+  index's build, which read the stored bytes alone, take a `String` whose
+  bytes are a whole object of format 1 for one. The guess left: a `byte[]`
+  that passes format 2's full check is an object, and one whose bytes are a
+  whole object of format 1 is refused as one (`Connection.get`'s Javadoc).
 * **A String value too large to store is refused at its put** (bergdb
   020-08, with the fix of format 1's recognition and its review): a
   `String` value of more than 2^31 - 9 bytes of UTF-8, or a `String` field
@@ -336,7 +341,8 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `startAt()` are gone. A scan reads at the connection's lookup time,
   fixes a frozen time as a get does, leaves `transactionInfo()` as it was,
   and gives only the values that their entries still match: `hasNext()`
-  never says true before a `next()` that throws. `Database.PRIMARY` is
+  never says true before a `next()` that throws `NoSuchElementException`;
+  a conversion that throws, throws from `next()`. `Database.PRIMARY` is
   gone.
 * **`Kv.ikey()` is gone, and `bergdb.pubimp` is narrowed** (bergdb 020-10,
   step B2; section 7): `Kv` has `key()` and `value()`; `ikey()` was "not
@@ -428,9 +434,11 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   2026-11-09, 020-19's Q2): a second `execute()`, and a `put()` or a
   `delete()` after `execute()`, throw `IllegalStateException` and write
   nothing, also when `execute()` threw, as `IndexBuilder` is spent after
-  `start()`. Before, a second `execute()` ran the same writes again as a new
-  transaction, and a `put()` after it added to them. Get a new builder with
-  `Connection.w()` for each transaction.
+  `start()`; only an `execute()` refused because another thread is in a
+  call of the connection (021-22) leaves the builder unspent. Before, a
+  second `execute()` ran the same writes again as a new transaction, and a
+  `put()` after it added to them. Get a new builder with `Connection.w()`
+  for each transaction.
 * **`Database.setRetainDuration(null)` throws `IllegalArgumentException`**
   (bergdb 020-21, 3; Frans, 2026-11-09, 020-13), as every null argument of
   the API does; it threw a `NullPointerException`.
@@ -968,8 +976,8 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   String with a lone surrogate), and a reader may rely on it. The package
   `bergdb.pub`, section "Strings", holds it in full, with why and what to
   do with data that is not text (a `byte[]`, or a `char[]` in an object);
-  the overview, `Connection`, `WBuilder.put` and `RwEnvironment.put` link
-  to it, and the Core's `key-encoding.md` states it for keys.
+  `Connection`, `WBuilder.put` and `RwEnvironment.put` link to it, and the
+  Core's `key-encoding.md` states it for keys.
 * **The Pub API's Javadoc says what is, not how it was** (bergdb 021-01;
   2026-11-07). The sentences on how a method or an exception behaved before
   a change, and their dates, are gone from `Database`, `DatabaseBuilder`,
@@ -1023,12 +1031,13 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
 * **The Pub API's Javadoc checked against its behaviour** (bergdb 020-19;
   2026-11-09), promise by promise for the classes that 2026.4 changed
   most, each promise with a test (`PubTesterJavadoc`). Corrected:
-  `Database.setCacheSizeInMb()` after `stop()` sets the value (J1); only
+  `Database.setCacheSizeInMb()` after `stop()` sets the value (J1);
   `DbObject.toDbObject()`'s message names the place of a lone surrogate
-  (J2); `ReadInterface.get()` and `RwEnvironment.get()` take the class of a
-  primitive, its wrapper and an array (J3); `DbException`'s example of a
-  refusal (J4); the `DataFormatException` of a `byte[]` put of a format-1
-  object in an indexed directory, from `Connection.put()`,
+  (J2), as a put's does since 021-04; `ReadInterface.get()` and
+  `RwEnvironment.get()` take the class of a primitive, its wrapper and an
+  array (J3); `DbException`'s example of a refusal (J4); the
+  `DataFormatException` of a `byte[]` put of a format-1 object in an
+  indexed directory, from `Connection.put()`,
   `WBuilder.execute()` and `Connection.rw()` (J5); the `DbException` of an
   interrupted sync (J6); `Time`'s grammar (J7, then made strict by 020-21);
   and the `DbException` of a refused write, a transaction too large (about
@@ -1255,11 +1264,12 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   that a referenced array is stored once per reference; that a Data Object
   class is top-level or static nested, that a superclass that declares a
   stored field is public, that no class of the Java platform is a
-  superclass, and that a field of a type variable is not stored (020-09,
-  V1, V4, V5 and V9); which texts read as numbers, by Java's grammar; what
-  a float stored as a double means for an index's `eq()`, for a read as a
-  `String` and for size; and that a stored `byte[]` reads as null into an
-  `int[]` while an array reads into a `byte[]` clamped. `Connection.get()`
+  superclass, and that a class with a field of a type variable is not a
+  Data Object (020-09, V1, V4, V5 and V9); which texts read as numbers, by
+  Java's grammar; what a float stored as a double means for an index's
+  `eq()`, for a read as a `String` and for size; and that a stored
+  `byte[]` reads as null into an `int[]` while an array reads into a
+  `byte[]` clamped. `Connection.get()`
   says that a get as a primitive, a wrapper or an array class reads the
   field "p" or "array" of any stored object, and gives null without one;
   `IndexBuilder` says how to find a float by a "double" level.
@@ -1275,6 +1285,27 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   background close: call `close()` there; `Database.stop()` describes the
   write buffer and the buffer time, 50 ms; `StartupInfo.getStartupDuration()`
   says that it is the recovery's time, and what `start()` does besides.
+* **The Javadoc agrees with itself and with the code** (bergdb 020-24-15,
+  from a new user who ran every example of the documentation; 2026-11-09).
+  `Database.stop()` and `close()` name the calls that throw
+  `IllegalDbStateException` after them (every read and transaction,
+  `setRetainDuration()`, `setStartupDistanceInMb()`, `deleteIndex()` and
+  an `IndexBuilder`'s `start()`) and those that are taken, `sync()` and
+  `setCacheSizeInMb()` among them, where they said to call nothing more.
+  `WBuilder` says that an `execute()` refused because another thread is in
+  a call of the connection leaves the builder unspent. `DbException` says
+  that malformed internal data (`InternalDataException`) refuses the call
+  that meets it and the database goes on, where it said to restart.
+  `DatabaseBuilder.start()` names the refusal of a database with an index
+  of 2026.3, and the `StreamIoException` of a path that is not a directory
+  for `create()` only (`open()` throws `DatabaseMissingException`);
+  `create()` no longer says that a directory with `created.txt` and no
+  stream byte gets a new database. `Connection` says one thread at a time,
+  not a single thread; the package's Data Object rules name 020-14's X3.
+  The overview runs its program with `bergdb-2026.4.jar`, and the
+  overview, README.md and the package page say that the documentation of
+  `Db` is its Javadoc in the source, `java/src/bergdb/core/Db.java`, which
+  the published Javadoc does not hold. No change of behaviour.
 
 
 ### Known issues and limits

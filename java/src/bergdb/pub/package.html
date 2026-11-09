@@ -214,12 +214,12 @@ default and preferred API; and the Core API, bergdb.core.Db and the classes that
 names ("The Core API"; bergdb 020-27, Q1), for low-level control and the most performance,
 less stable (it may change faster between releases) and less safe, and mostly the layer that
 the Pub API is built on. The Core's Db reaches every key, the Pub API's own too; its
-Javadoc says which keys a Db may write in a database that the Pub API uses, and what a write
-of the others does to the Pub API's data (bergdb 020-22). Everything else, bergdb.pubimp
-included, is not API, whatever is public in it, and may change in any release. The jar that a
-release ships, which java/build.sh makes as build/bergdb-release.jar, holds the classes of
-BergDB's src directory only. Objects and user indexes, experimental in 2026.3, are part of the
-API since 2026.4.</p>
+Javadoc, in its source java/src/bergdb/core/Db.java and not in this Javadoc, says which keys
+a Db may write in a database that the Pub API uses, and what a write of the others does to the
+Pub API's data (bergdb 020-22). Everything else, bergdb.pubimp included, is not API, whatever
+is public in it, and may change in any release. The jar that a release ships, which
+java/build.sh makes as build/bergdb-release.jar, holds the classes of BergDB's src directory
+only. Objects and user indexes, experimental in 2026.3, are part of the API since 2026.4.</p>
 
 <h3 id="strings">Strings</h3>
 
@@ -285,9 +285,11 @@ not a Data Object, even with a public no-argument constructor in its source, and
 local or an anonymous class (V1). A superclass that declares a stored field is public too
 (V4), and no class of the Java platform is a Data Object or its superclass, so a class that
 extends ArrayList, Number or Date is not one (V5); a public abstract superclass is taken
-(bergdb 020-24-12, U12-3). Each stored field is of a type on a closed list: boolean, byte,
-short, char, int, long, float, double, their wrappers, String, byte[], arrays of these of
-any dimensions, and Data Object classes. Not on it: Object, interfaces, enums, records,
+(bergdb 020-24-12, U12-3). The class that declares a stored field is in a package that its
+module exports to BergDB, as every package on the class path is (bergdb 020-14, X3). Each
+stored field is of a type on a closed list: boolean, byte, short, char, int, long, float,
+double, their wrappers, String, byte[], arrays of these of any dimensions, and Data Object
+classes. Not on it: Object, interfaces, enums, records,
 abstract classes, the classes of the Java platform, a type variable, such as the T of a
 field <code>public T value</code> in <code>Box&lt;T&gt;</code>, whatever its bound and
 also in a subclass such as <code>StringBox extends Box&lt;String&gt;</code> (V9), and

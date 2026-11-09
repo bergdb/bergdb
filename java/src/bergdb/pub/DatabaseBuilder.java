@@ -20,10 +20,10 @@ public interface DatabaseBuilder {
      * none, as NIO's {@code StandardOpenOption.CREATE} opens a file or creates it (bergdb
      * 015-05). The database's stream is stored in files in the directory. start() opens the
      * directory, and creates it, with its missing parents, if it does not exist; a directory
-     * that holds no stream file (*.bergdb) with a byte, a missing or an empty one, or one
-     * with other files only, gets a new, empty database. This method only records the
-     * directory (bergdb 005-66), so a builder that is not started holds nothing, and start()
-     * throws what opening the directory throws.
+     * that holds neither created.txt nor a stream file (*.bergdb) with a byte, a missing or
+     * an empty one, or one with other files only, gets a new, empty database. This method
+     * only records the directory (bergdb 005-66), so a builder that is not started holds
+     * nothing, and start() throws what opening the directory throws.
      * 
      * <p>A directory that holds a database has created.txt, written once the database's
      * creation is durable; start() refuses one that has created.txt and no stream file
@@ -201,8 +201,9 @@ public interface DatabaseBuilder {
      * @throws DbException
      *             If a functioning database could not be started; among them a
      *             StreamIoException if the directory of create() or open() cannot be
-     *             opened or listed (an I/O error, no permission to read it, a path that is
-     *             not a directory; bergdb 020-20, 020-24-08), or another database has it
+     *             opened or listed (an I/O error, no permission to read it, a path of
+     *             create() that is not a directory; bergdb 020-20, 020-24-08), or another
+     *             database has it
      *             (the cause a DirectoryInUseException, bergdb 005-63). A read or a write
      *             that fails on the storage during the start, as on a full disk or with a
      *             stream file missing, throws the storage's exception, a StreamIoException,
@@ -213,6 +214,10 @@ public interface DatabaseBuilder {
      *             bytes of the stream, so in a database of less than 200 kB its first bytes;
      *             or if an earlier release encrypted it (above). The message names the likely
      *             causes, and the start has written nothing (bergdb 005-33, 005-40, 020-28).
+     *             A VersioningStreamException, a StreamFormatException, also if the database
+     *             holds an index of BergDB 2026.3 and before: such a database does not start,
+     *             and is made again from its data (the package's
+     *             {@linkplain bergdb.pub##objects Objects}; bergdb 020-08).
      * @throws DatabaseNotCreatedException
      *             If the database's creation did not complete: a crash, as a power loss,
      *             while it was created left a part of it, and no data (bergdb 005-33). The

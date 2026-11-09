@@ -10,8 +10,7 @@ import bergdb.pub.util.SyncLevel;
  * database. Given a Connection, get operations [<code>c.get(..)</code>], put
  * operations [<code>c.w().put(...execute()</code> or <code>c.put(...)</code>],
  * and rw-transactions [<code>c.rw(...)</code>] can be executed. A
- * Connection object assumes it and any objects returned from its methods are
- * accessed from a single thread.
+ * connection is used by one thread at a time (Threads, below).
  *
  * <p>Threads (bergdb 021-22). A connection is used by one thread at a time: a call of it
  * while another thread is in a call of the same connection throws IllegalStateException,

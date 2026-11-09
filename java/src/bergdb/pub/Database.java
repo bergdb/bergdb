@@ -133,10 +133,17 @@ public interface Database extends AutoCloseable {
      * </p>
      * 
      * <p>Call sync() before stop() when the transactions must be durable when stop()
-     * returns: with a file storage, sync() waits until they are forced to the device. After
-     * this method, call only close() on this Database. This method
-     * is OK to call multiple times from multiple unsynchronized threads; only the first call
-     * to this method has any effect (idempotent method).
+     * returns: with a file storage, sync() waits until they are forced to the device.
+     * This method is OK to call multiple times from multiple unsynchronized threads; only
+     * the first call to this method has any effect (idempotent method).
+     * </p>
+     * 
+     * <p>After this method, also once the database has closed, every read and every
+     * transaction, through any connection, setRetainDuration(), setStartupDistanceInMb(),
+     * deleteIndex() and an IndexBuilder's start() throw IllegalDbStateException and change
+     * nothing. The other calls are taken: close(), stop() again, sync() (see sync()),
+     * setCacheSizeInMb(), which only sets the value, the getters, which give the last
+     * values, connection(), newConnection() and indexJob() (bergdb 020-24-15, U15-3).
      * </p>
      * 
      * <p>stop() or close() must be called once the Database is no longer used, as close() for
@@ -184,8 +191,9 @@ public interface Database extends AutoCloseable {
      * device, the files are closed, and the storage threads have ended; also when stop() or
      * another close() began the close. It waits for a transaction whose commit has begun,
      * not for another call that runs, such as an rw() whose action runs: that call is
-     * refused, as stop() says (bergdb 020-24-03, U3-1). After this method has been called
-     * this Database object must not be used anymore. It is safe to call it several times,
+     * refused, as stop() says (bergdb 020-24-03, U3-1). After this method, the calls that
+     * stop() refuses are refused, and the others are taken, as after stop(); sync() returns,
+     * unless the close failed (bergdb 020-24-15, U15-3). It is safe to call it several times,
      * also after stop(), and from different threads. A closed database has released its
      * write buffer, also one closed in the background after stop(): a closed Database that
      * the application still references holds little heap (bergdb 020-24-10, U10-3).
