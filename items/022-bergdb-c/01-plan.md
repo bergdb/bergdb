@@ -304,3 +304,92 @@ last byte ("Bad lastByte"). Java does the same (its note), and so did C
 before this step (the pre-step build gives the same files and text): not
 step 2's, for the session (corrupt.sh's rule, or a check before the fill,
 is a matter for both).
+
+2026-11-09, step 3 (worker s3). 012-18, section 3.1, steps 10 and 11,
+and 015-31 (D4), in `stream.c`; the stream's bytes do not change. (a) The
+switch force, 005-47's lesson for C: `new_file` forces the old last file
+before the new file is made, whose name the file system may make durable
+at its creation, before any force of the directory; so a power loss
+cannot leave a short file before a newer one, which both opens refuse
+(`BadDirStateException`, "Bad size of file"). C forced nothing at a
+switch; 2026.2's Java forced every append. With it, C's forces are those
+of 2026.3's `FileStream` with per-append forcing off: the open for
+writing forces the last file and the directory (Java's OPEN, which C's
+port of 2026.2 lacked: `durable_length` claimed the open's length
+unforced, and a start's cut, `rc_init_from_db` and `sdb.c`, deleted front
+files after a decision that a process that died had written and not
+forced); `stream_pretruncate` forces the files written since the last
+force, and the directory after a new file, before its deletes (CUT;
+nothing after reclaim's own force in `cut_if_durable`). `plat_force`
+takes the reason, `enum plat_force_why` (Java's `FileStreamIo.Force`),
+for the seam. The cost: per open an `F_FULLFSYNC` of the last file and
+one of the directory (about 1 and 0.4 ms on F53), per new file one. (b)
+015-06: the first file is made by the first write, not by the open; a
+read of a stream with no file is Java's (0 bytes at 0, else
+`EOFException`, "the stream is empty"); a creation refused at the open
+(`BERGDB_LIMIT`) leaves only `bergdb.lock`; a NOMEM in the first file's
+making fails the stream at that write, as at any new file. (c) 015-31: a
+cut at the stream's length keeps the last file. Tests, each failing with
+its fix taken out (in copies of `c/`): `t_stream.c`'s `stream_forces`
+(SWITCH, CUT and OPEN in order, by a seam that logs them, as Java's
+`ForceLogIo`), `t_append.c`'s `append_dir_first_file`
+(`testNoFileUntilFirstAppend`) and `append_dir_cut_at_length`
+(`StreamContract`'s cuts at the length, 0 and 3 bytes, and a full last
+file), `f_durable.c`'s `durable_refused_creation` (`PubTester`'s
+`testRefusedStartAfterOpenCreatesNoStreamFile`); adjusted to 015-06:
+`stream_seam`, `append_dir_test0`, `_sizes`, `_mkdirs`, `_failure_runs`,
+and `f_reclaim.c`'s `dir_files` (no file yet: first position 0).
+`readme.md`, section 9, point 11, and `bergdb.h`, section G, say so.
+
+(d) The power model: `bergdb-power -names now` takes a new name to be
+durable at its creation, as a delete is; every image is checked for a
+short file before a newer one (`power SHORT`, `short=` in `image.txt`,
+exit 4); `-omit switch` leaves the switch force out (Java's
+`omitForce`). `power.sh`: `NAMES=now` the default (`dirforce`, Java's and
+012-14's model, by choice and for `OMIT=dir`); `OMIT=switch` must find
+short files; a torn first write of the creation before any acknowledged
+sync, which the new mode makes and both starts refuse alike (005-33's
+`DatabaseNotCreatedException`, as Java, which forces a new name before
+its first write, would leave it too), is counted, not failed. On a
+workload of 500 transactions (a sync every 15, a restart) and on
+`reclaim-sync.wl`, C without the switch force passes the old model (no
+short-file image) and fails the new one (15 and 48 images; one started
+by both: refused, with every acknowledged byte in it); with the switch
+force, none in either mode. `power.sh OMIT=switch` on 1102 and 1106:
+`POWER CONTROL CAUGHT` (220 and 175 images). `power.sh` on
+the tree of steps 0 to 3: C's images in the new mode, Gen 1101 (n=400,
+reclaim, 7 deletes), 1102, 1104, 1106 and 1107 (27, 2, 3, 3 and 9
+switches): `POWER OK`, 1,405 images started and run on by C and Java
+alike, no acknowledged byte lost, no short file, one torn creation (1104;
+362 s); Java's images (`JAVAIMG=1`), seeds 17, 19 and 23 (the default)
+and 29, 31 and 37 with 15 to 20 images per event: `POWER OK`, 984 images
+(107 s). Before step 1 landed, 1101 and Java's 29 and 37 differed only in
+the runs after, at reclaim's records (015-54, 015-87), every start, dump
+and recovered directory equal. Step 5's long runs take `power.sh` with
+the default six workloads and `NAMES=now`.
+
+2026.3's crash contract (014-01, section 7: after a crash the stream is
+a prefix of what was appended, at least up to what was forced) against
+C's stream: with these forces a power loss leaves a prefix across the
+files. Left, for the session: C forces the directory only at a sync or a
+cut, so one write of its 10 MB buffer can make several files with no
+directory force between them, and a file system that made a later name
+durable before an earlier one would leave a gap, which both opens
+refuse; Java forces each new file and the directory before the file
+takes appends. APFS keeps namespace operations in order, as 014-01's
+consequence (c) relies on for bytes, so the case is a theoretical one; if
+wanted, the fix is Java's OPEN force at each new file (one directory
+force per new file). And within a file C's unforced tail is longer than
+Java's (all since the last sync, against one append), so a hole, outside
+the contract, has more room, as with Java's per-append forcing off.
+
+The gate against 2026.3, on step 2's landing (`d56d536`), steps 0 to 3
+together: `C BEFORE COMMIT OK (335 s)`, F53 under load with other gates;
+`unit` 378 tests; `cross quick` 0 differences (23 workloads, 69 crash
+cuts, 85 corrupt variants, 2 in turns, 46 budget runs); `writecheck` 0;
+`allocfail` 628 runs. On step 0 alone, the gate's steps run by hand
+showed step 0's negative control only (the reclaim vectors, `cross
+quick`'s 152 differences in the 11 workloads that reclaim, `clockcheck`
+on 7 directories), the same counts as step 0's record, and none of this
+step's; on step 1's landing, `C BEFORE COMMIT OK (303 s)`. No difference
+remains.

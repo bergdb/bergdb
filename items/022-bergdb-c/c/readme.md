@@ -528,10 +528,13 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
    the buffer before it closes the files and releases the lock.
 5. **The creation** is in the buffer too: the first meta block and the
    primordial transaction (264 bytes) become durable at the first sync or
-   close. A process that dies before leaves an empty file, and the next
-   open creates the database again (a new random id, unless the options
-   give one). Java's start does not wait for its creation to be durable
-   either; its buffer thread writes and forces it within 20 ms.
+   close. The first stream file is made by the first write, not by the
+   open (bergdb 015-06), so a process that dies before leaves no stream
+   file, only `bergdb.lock`, and the next open creates the database again
+   (a new random id, unless the options give one); a creation that the
+   open refuses (its clock out of range, `BERGDB_LIMIT`) leaves only
+   `bergdb.lock` too. Java's start does not wait for its creation to be
+   durable either; its buffer thread writes and forces it within 20 ms.
 6. **What a start finds** after a process died: whole transactions only,
    a prefix of those committed: every synced one, and later ones as far as
    a full buffer's write took whole records, never one without those
@@ -540,8 +543,9 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
    transaction follows the last whole one.
 7. **The durable length** (`bergdb_stats.durable_length`, Java's
    `getDurableLength`) is the stream's length at the last force: the
-   open's (0 after a creation, as Java's), each sync's, each reclaim
-   cut's force (point 9), the close's.
+   open's (0 after a creation, as Java's; the open forces the last file,
+   point 11), each sync's, each reclaim cut's force (point 9), the
+   close's.
 8. **A write or a force that fails** (an I/O error, a full disk, a file
    size limit) fails the database (P7): the call returns `BERGDB_FAILED`
    (`bergdb_sync`, or `bergdb_execute` when its record filled the buffer),
@@ -573,7 +577,7 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
    database (point 8). A cut that the table marks and the files do not
    show (a process that died between the force and the deletes; a
    directory that Java's cut thread had not cut yet) is made by the next
-   open.
+   open, after the open's force (point 11).
 10. **One database per directory.** The open locks `bergdb.lock` as
     Java's `FileStream` does (an `fcntl` lock of the byte at 2^62), so
     that another process's open, C's or Java's, gets `BERGDB_IN_USE`
@@ -583,6 +587,26 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
     checks a set of the JVM's locked directories; C has no global state
     (P9), so it leaves this to its one caller (012-13's decision on
     09-write-path.md, 6.4: option A).
+11. **A power loss leaves a prefix across the files** (bergdb 014-01,
+    section 7: after a crash the stream is a prefix of what was appended,
+    at least up to what was forced; 005-47). A power loss, or a crash of
+    the operating system, can lose what was written and not forced, and
+    the file system may make a new file's name durable at once, before
+    any force of the directory. C's other forces are those of Java's
+    `FileStream` with per-append forcing off (`stream.h`; `plat.h`'s
+    reasons, Java's `FileStreamIo.Force`), so that no file before the
+    last is short on the disk, which every open refuses
+    (`BadDirStateException`): the old last file before a new file is made
+    (SWITCH; 022-01, step 3: C forced nothing at a switch before); the
+    last file and the directory at an open for writing (OPEN), so that
+    what a process that died wrote is durable before this one counts it
+    durable or cuts after it; and before a cut's deletes, the files
+    written since the last force and the directory after a new file
+    (CUT), nothing after reclaim's own force (point 9). `power.sh` checks
+    it with a new name durable at its creation (`NAMES=now`, section 10).
+    Within a file, that unforced bytes reach the disk in order is the
+    file system's part, as for Java (014-01, section 7, consequence (c)):
+    a hole in an unforced tail is outside the contract.
 
 
 # 10. Robustness runs (012-14)
@@ -602,14 +626,20 @@ output goes to `/Users/f/fl/bench/012/14-out/` by default (`OUT=`).
   the directory, delete and close, replaced for the process by
   `plat_io_set`; the release build has no seam): Java's `ModelIo` of
   `FileStreamPowerLossTester` in C, the bytes written, the bytes forced and
-  the durable names apart. At each write, tear, force and delete it writes
-  the image that a power loss leaves, and checks that the image holds the
-  stream up to the length that the last `bergdb_sync` or `bergdb_close`
-  acknowledged. The script starts every image with both dumpers and runs
-  on it with both runners: the same exits, dumps and files. `JAVAIMG=1`
-  does the other way, Java's images (`java/PowerImages.java`) started by
-  both; `OMIT=file` or `OMIT=dir` is the negative control (forces not
-  modelled: acknowledged bytes are lost, and found).
+  the durable names apart; a new name is durable at its creation, as a
+  delete is (`NAMES=now`, the default since 022-01, step 3), or after the
+  next force of the directory (`NAMES=dirforce`, Java's model and
+  012-14's runs, which could not see a short file before a newer one,
+  section 9, point 11). At each write, tear, force, new file and delete
+  it writes the image that a power loss leaves, and checks that the image
+  holds the stream up to the length that the last `bergdb_sync` or
+  `bergdb_close` acknowledged, and has no short file before a newer one.
+  The script starts every image with both dumpers and runs on it with
+  both runners: the same exits, dumps and files. `JAVAIMG=1` does the
+  other way, Java's images (`java/PowerImages.java`) started by both;
+  `OMIT=file` or `OMIT=dir` is the negative control (forces not modelled:
+  acknowledged bytes are lost, and found), and `OMIT=switch` (the force of
+  the old last file before a new file left out: short files found).
 * `test/stress/allocfail.sh`: **allocation failures in turn**.
   `bergdb-allocfail WORKLOAD OUT` (`allocfail.c`, the test build) runs the
   workload once, then once for each allocation number N in a child process

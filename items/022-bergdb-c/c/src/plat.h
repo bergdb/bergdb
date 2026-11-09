@@ -80,10 +80,23 @@ enum err_code plat_pwrite(int fd, int64_t off, const uint8_t *buf, int64_t n, st
 /* The length of an open file (fstat). ERR_IO. */
 enum err_code plat_fd_length(int fd, int64_t *length, struct err *e);
 
+/* Why the stream forces a file, Java's FileStreamIo.Force (bergdb 005-47):
+ * the test build's seam gets it, so that a model can count the forces by
+ * their reason or leave one kind out (test/stress/power.c, -omit switch);
+ * the real force does not use it. */
+enum plat_force_why {
+    PLAT_FORCE_SYNC,        /* the files written since the last force, at a sync or a
+                               close (C's; Java's per-append force is APPEND) */
+    PLAT_FORCE_OPEN,        /* the last file at an open for writing, before its directory */
+    PLAT_FORCE_SWITCH,      /* the last file, before the stream makes a new file */
+    PLAT_FORCE_CUT          /* the files written since the last force, before a cut's
+                               deletes */
+};
+
 /* Forces the file's bytes and size to the disk: F_FULLFSYNC, as Java's
  * FileChannel.force(true) on macOS (FileStreamIo.forceFile); fsync where
- * the system has none. ERR_IO. */
-enum err_code plat_force(int fd, struct err *e);
+ * the system has none. 'why' is for the seam only. ERR_IO. */
+enum err_code plat_force(int fd, enum plat_force_why why, struct err *e);
 
 /* Deletes the file at path (File.delete, for FileStream's cut, 012-11).
  * ERR_IO, "IOException", if it cannot be deleted. */
@@ -119,7 +132,7 @@ enum err_code plat_lock(const char *dir, const char *name, const char *text, int
 struct plat_io {
     enum err_code (*open_rw)(const char *path, int *fd, struct err *e);
     enum err_code (*pwrite)(int fd, int64_t off, const uint8_t *buf, int64_t n, struct err *e);
-    enum err_code (*force)(int fd, struct err *e);
+    enum err_code (*force)(int fd, enum plat_force_why why, struct err *e);
     enum err_code (*force_dir)(const char *dir, struct err *e);
     enum err_code (*unlink)(const char *path, struct err *e);
     void (*close)(int fd);

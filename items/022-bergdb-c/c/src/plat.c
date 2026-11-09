@@ -277,6 +277,12 @@ static enum err_code real_force(int fd, struct err *e) {
     return ERR_OK;
 }
 
+/* The seam's force: the reason is for a model only. */
+static enum err_code real_force_why(int fd, enum plat_force_why why, struct err *e) {
+    (void) why;
+    return real_force(fd, e);
+}
+
 static enum err_code real_force_dir(const char *dir, struct err *e) {
     int fd = open(dir, O_RDONLY);
     if (fd < 0) {
@@ -352,7 +358,7 @@ static enum err_code real_unlink(const char *path, struct err *e) {
 static const struct plat_io *plat_io_now = NULL;
 
 static const struct plat_io PLAT_IO_REAL = {
-    real_open_rw, real_pwrite, real_force, real_force_dir, real_unlink, real_close
+    real_open_rw, real_pwrite, real_force_why, real_force_dir, real_unlink, real_close
 };
 
 void plat_io_set(const struct plat_io *io) {
@@ -377,8 +383,8 @@ enum err_code plat_pwrite(int fd, int64_t off, const uint8_t *buf, int64_t n, st
     return SEAM(pwrite(fd, off, buf, n, e), real_pwrite(fd, off, buf, n, e));
 }
 
-enum err_code plat_force(int fd, struct err *e) {
-    return SEAM(force(fd, e), real_force(fd, e));
+enum err_code plat_force(int fd, enum plat_force_why why, struct err *e) {
+    return SEAM(force(fd, why, e), real_force_why(fd, why, e));
 }
 
 enum err_code plat_force_dir(const char *dir, struct err *e) {

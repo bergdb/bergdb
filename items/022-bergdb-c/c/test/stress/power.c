@@ -6,10 +6,11 @@
  * directory force and delete of the stream to a model, Java's ModelIo of
  * FileStreamPowerLossTester in C: per file, the bytes written (passed on to
  * the real file, so that the database runs as usual) and the bytes forced;
- * the durable names (a new name is durable after a force of the directory;
- * a delete survives at once, as Java's model has it, "adversarial but
- * allowed"). At each event the model takes an *image*, the files that a
- * power loss then leaves: the forced bytes of each durable name. Images:
+ * the durable names (a new name is durable after a force of the directory,
+ * or at once with -names now; a delete survives at once, as Java's model
+ * has it, "adversarial but allowed"). At each event the model takes an
+ * *image*, the files that a power loss then leaves: the forced bytes of
+ * each durable name. Images:
  *
  *   after_write       after each write (the written bytes lost)
  *   torn_half         after a write, a durable file with the unforced tail
@@ -23,25 +24,34 @@
  *
  * An image equal to an earlier one (the same names, forced lengths and tear)
  * is not written again. Each is written as a directory IMAGES/NNNNNN with
- * its .bergdb files and image.txt: "event=E ack=A first=F end=X lost=L",
- * where A is the acknowledged length (the stream's durable length after the
- * last bergdb_sync, or its length before the last bergdb_close, that
- * returned BERGDB_OK before the image: every transaction there was
+ * its .bergdb files and image.txt: "event=E ack=A first=F end=X lost=L
+ * short=S", where A is the acknowledged length (the stream's durable length
+ * after the last bergdb_sync, or its length before the last bergdb_close,
+ * that returned BERGDB_OK before the image: every transaction there was
  * committed and synced), F the image's first position, X the end of its
- * contiguous files from F, and L 1 if X < A: an acknowledged byte lost. The
- * script (test/stress/power.sh) then starts each image by C and Java and
- * compares.
+ * contiguous files from F, L 1 if X < A: an acknowledged byte lost, and S 1
+ * if a file follows X: a short file before a newer one (or a gap), which
+ * every open refuses (BadDirStateException), so the image is not a prefix
+ * of the stream (bergdb 014-01, section 7; 005-47). The script
+ * (test/stress/power.sh) then starts each image by C and Java and compares.
  *
- * Usage: bergdb-power [-seed N] [-omit file|dir] IMAGES WORKLOAD DIR
+ * Usage: bergdb-power [-seed N] [-omit file|dir|switch] [-names now] IMAGES WORKLOAD DIR
  *   -seed N     the seed of the random tear lengths (1)
  *   -omit file  the negative control: after the first acknowledged sync,
  *               file forces are not modelled (the bytes stay volatile);
  *               -omit dir: directory forces are not (new names stay
- *               volatile), as Java's testWeakenedForceOrderingIsDetected
+ *               volatile), as Java's testWeakenedForceOrderingIsDetected;
+ *               -omit switch: the stream's force of its old last file
+ *               before a new file (PLAT_FORCE_SWITCH) is left out, as
+ *               Java's testWeakenedForcesWithoutAppendForcesAreDetected
+ *   -names now  a new name is durable at its creation, as a delete is,
+ *               before any force of the directory (bergdb 022-01, step 3);
+ *               by default after the next force of the directory
  * Prints the run's text (bergdb-run's) on standard output, and on standard
- * error "power images=N lost=K ..." at the end and a "power LOST" line for
- * each image that lost an acknowledged byte. Exit status: run's; 4 if an
- * image lost an acknowledged byte (without -omit).
+ * error "power images=N lost=K short=S ..." at the end and a "power LOST"
+ * or "power SHORT" line for each image that lost an acknowledged byte or
+ * has a short file before a newer one. Exit status: run's; 4 if an image
+ * did either (without -omit).
  *
  * Built by build.sh in the test build only (the seam is BERGDB_TEST's):
  * tools/run.c compiled with its main renamed run_main and its calls of
@@ -87,11 +97,12 @@ static struct {
     int nfiles;
     int fdmap[MAXFD];
     int64_t ack;
-    int nimages, lost;
+    int nimages, lost, shorts;
     int64_t writes, forces, dirforces, unlinks, torn, dups;
+    int64_t forces_by[4];       /* by enum plat_force_why */
     uint64_t *sigs;
     int nsigs, capsigs;
-    bool omit_file, omit_dir;
+    bool omit_file, omit_dir, omit_switch, names_now;
     uint64_t rnd;
 } M;
 
@@ -216,17 +227,20 @@ static void image(const char *event, int tear, int64_t tear_len, int back, bool 
         M.dups++;
         return;
     }
-    /* The contiguous files from the first: their end. */
+    /* The contiguous files from the first: their end; a file after it is
+     * after a short file, or a gap. */
     int64_t first = n > 0 ? M.files[in[0].file].index * 100000 : 0;
     int64_t end = first;
-    for (int i = 0; i < n; i++) {
-        int64_t start = M.files[in[i].file].index * 100000;
+    int contiguous = 0;
+    for (; contiguous < n; contiguous++) {
+        int64_t start = M.files[in[contiguous].file].index * 100000;
         if (start != end) {
             break;
         }
-        end += in[i].len;
+        end += in[contiguous].len;
     }
     bool lost = end < M.ack;
+    bool short_file = contiguous < n;
     char path[4096];
     snprintf(path, sizeof path, "%s/%06d", M.images, M.nimages);
     if (mkdir(path, 0777) != 0) {
@@ -250,13 +264,18 @@ static void image(const char *event, int tear, int64_t tear_len, int back, bool 
         fprintf(stderr, "power: cannot write %s\n", path);
         exit(2);
     }
-    fprintf(o, "event=%s ack=%" PRId64 " first=%" PRId64 " end=%" PRId64 " lost=%d\n", event,
-            M.ack, first, end, lost ? 1 : 0);
+    fprintf(o, "event=%s ack=%" PRId64 " first=%" PRId64 " end=%" PRId64 " lost=%d short=%d\n",
+            event, M.ack, first, end, lost ? 1 : 0, short_file ? 1 : 0);
     fclose(o);
     if (lost) {
         M.lost++;
         fprintf(stderr, "power LOST image=%06d event=%s ack=%" PRId64 " first=%" PRId64
                 " end=%" PRId64 "\n", M.nimages, event, M.ack, first, end);
+    }
+    if (short_file) {
+        M.shorts++;
+        fprintf(stderr, "power SHORT image=%06d event=%s ack=%" PRId64 " end=%" PRId64
+                " next=%s\n", M.nimages, event, M.ack, end, M.files[in[contiguous].file].name);
     }
     M.nimages++;
 }
@@ -279,6 +298,12 @@ static enum err_code m_open_rw(const char *path, int *fd, struct err *e) {
             if (fstat(*fd, &st) == 0 && st.st_size > M.files[i].len) {
                 fprintf(stderr, "power: %s has bytes the model did not see\n", path);
                 exit(2);
+            }
+            if (M.names_now && !M.files[i].durable) {
+                /* The new name durable at once, before any force of the
+                 * directory, as the file system may make it. */
+                M.files[i].durable = true;
+                checkpoint("after_create");
             }
         }
     }
@@ -331,14 +356,18 @@ static enum err_code m_pwrite(int fd, int64_t off, const uint8_t *buf, int64_t n
     return rc;
 }
 
-static enum err_code m_force(int fd, struct err *e) {
+static enum err_code m_force(int fd, enum plat_force_why why, struct err *e) {
     int i = fd >= 0 && fd < MAXFD ? M.fdmap[fd] : -1;
-    enum err_code rc = plat_io_real()->force(fd, e);
+    if (i >= 0 && why == PLAT_FORCE_SWITCH && M.omit_switch) {
+        return ERR_OK;      /* left out: neither made nor modelled (Java's omitForce) */
+    }
+    enum err_code rc = plat_io_real()->force(fd, why, e);
     if (i < 0 || rc != ERR_OK) {
         return rc;
     }
     struct mfile *f = &M.files[i];
     M.forces++;
+    M.forces_by[why]++;
     if (!(M.omit_file && M.ack > 0)) {
         free(f->forced);
         f->forced = xalloc((size_t) f->len);
@@ -433,8 +462,16 @@ int main(int argc, char **argv) {
             i++;
             M.omit_file = strcmp(argv[i], "file") == 0;
             M.omit_dir = strcmp(argv[i], "dir") == 0;
-            if (!M.omit_file && !M.omit_dir) {
-                fprintf(stderr, "power: -omit file|dir\n");
+            M.omit_switch = strcmp(argv[i], "switch") == 0;
+            if (!M.omit_file && !M.omit_dir && !M.omit_switch) {
+                fprintf(stderr, "power: -omit file|dir|switch\n");
+                return 2;
+            }
+        } else if (strcmp(argv[i], "-names") == 0 && i + 1 < argc) {
+            i++;
+            M.names_now = strcmp(argv[i], "now") == 0;
+            if (!M.names_now && strcmp(argv[i], "dirforce") != 0) {
+                fprintf(stderr, "power: -names now|dirforce\n");
                 return 2;
             }
         } else {
@@ -442,7 +479,8 @@ int main(int argc, char **argv) {
         }
     }
     if (argc - i != 3) {
-        fprintf(stderr, "Usage: bergdb-power [-seed N] [-omit file|dir] IMAGES WORKLOAD DIR\n");
+        fprintf(stderr, "Usage: bergdb-power [-seed N] [-omit file|dir|switch] [-names now] "
+                "IMAGES WORKLOAD DIR\n");
         return 2;
     }
     M.images = argv[i];
@@ -458,16 +496,20 @@ int main(int argc, char **argv) {
     char *args[] = { argv[0], argv[i + 1], argv[i + 2], NULL };
     int status = run_main(3, args);
     plat_io_set(NULL);
-    fprintf(stderr, "power images=%d lost=%d writes=%" PRId64 " forces=%" PRId64 " dirforces=%"
-            PRId64 " unlinks=%" PRId64 " torn=%" PRId64 " dups=%" PRId64 " ack=%" PRId64 "\n",
-            M.nimages, M.lost, M.writes, M.forces, M.dirforces, M.unlinks, M.torn, M.dups,
-            M.ack);
+    fprintf(stderr, "power images=%d lost=%d short=%d writes=%" PRId64 " forces=%" PRId64
+            " (sync %" PRId64 ", open %" PRId64 ", switch %" PRId64 ", cut %" PRId64
+            ") dirforces=%" PRId64 " unlinks=%" PRId64 " torn=%" PRId64 " dups=%" PRId64
+            " ack=%" PRId64 " names=%s\n", M.nimages, M.lost, M.shorts, M.writes, M.forces,
+            M.forces_by[PLAT_FORCE_SYNC], M.forces_by[PLAT_FORCE_OPEN],
+            M.forces_by[PLAT_FORCE_SWITCH], M.forces_by[PLAT_FORCE_CUT], M.dirforces, M.unlinks,
+            M.torn, M.dups, M.ack, M.names_now ? "now" : "dirforce");
     for (int k = 0; k < M.nfiles; k++) {
         free(M.files[k].shadow);
         free(M.files[k].forced);
     }
     free(M.sigs);
-    if (status == 0 && M.lost > 0 && !M.omit_file && !M.omit_dir) {
+    if (status == 0 && (M.lost > 0 || M.shorts > 0) && !M.omit_file && !M.omit_dir
+            && !M.omit_switch) {
         return 4;
     }
     return status;

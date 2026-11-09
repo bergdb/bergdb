@@ -623,10 +623,81 @@ TEST(durable_write_fails) {
     du_remove_dir(dir);
 }
 
+/* The directory's entries, sorted, as "NAME NAME ...". */
+static void du_entries(const char *dir, char *out, size_t size) {
+    struct dirent **list;
+    int n = scandir(dir, &list, NULL, alphasort);
+    size_t at = 0;
+    out[0] = '\0';
+    for (int i = 0; i < n; i++) {
+        if (list[i]->d_name[0] != '.' && at < size) {
+            at += (size_t) snprintf(out + at, size - at, "%s%s", at > 0 ? " " : "",
+                    list[i]->d_name);
+        }
+        free(list[i]);
+    }
+    if (n >= 0) {
+        free(list);
+    }
+}
+
+/* A clock whose time is out of range. */
+static int64_t du_negative_clock(void *ctx) {
+    (void) ctx;
+    return -1;
+}
+
+/* bergdb 015-06, Java's PubTester.testRefusedStartAfterOpenCreatesNoStreamFile:
+ * a creation refused after the directory's open, its clock out of range
+ * (BERGDB_LIMIT, 005-18), on an empty directory and on a missing one,
+ * leaves only bergdb.lock, which is never deleted (005-63); an open then
+ * creates the database, in one stream file. Before, the open made an empty
+ * first stream file, 00000000000000.bergdb, and the refused creation left
+ * it. */
+TEST(durable_refused_creation) {
+    char base[1024], dir[1100], got[600];
+    du_temp_dir(base, sizeof base);
+    REQUIRE(base[0] != '\0');
+    for (int k = 0; k < 2; k++) {
+        snprintf(dir, sizeof dir, "%s/%s", base, k == 0 ? "empty" : "missing");
+        if (k == 0) {
+            REQUIRE(mkdir(dir, 0777) == 0);
+        }
+        struct bergdb_mem m = {0};
+        struct bergdb_test_clock clock = {0};
+        struct bergdb_options o;
+        struct bergdb_executed ex;
+        char errbuf[BERGDB_ERRBUF_SIZE];
+        uint8_t v[16];
+        bergdb_db *db;
+        du_options(&o, &clock, &m);
+        o.clock = du_negative_clock;
+        o.clock_ctx = NULL;
+        CHECK_EQ(bergdb_open(dir, &o, &db, NULL, errbuf), BERGDB_LIMIT);
+        CHECK(strstr(errbuf, "outside the range") != NULL);
+        CHECK_EQ(m.live_total, 0);
+        du_entries(dir, got, sizeof got);
+        CHECK(strcmp(got, "bergdb.lock") == 0);
+        if (strcmp(got, "bergdb.lock") != 0) {
+            printf("  %s: %s\n", k == 0 ? "empty" : "missing", got);
+        }
+        du_options(&o, &clock, &m);
+        bergdb_test_clock_set(&clock, 1000);
+        REQUIRE(bergdb_open(dir, &o, &db, NULL, NULL) == BERGDB_OK);
+        CHECK_EQ(du_trans(db, &clock, 1, sizeof v, v, &ex), BERGDB_OK);
+        CHECK(bergdb_close(db) == BERGDB_OK);
+        CHECK_EQ(m.live_total, 0);
+        du_entries(dir, got, sizeof got);
+        CHECK(strcmp(got, "00000000000000.bergdb bergdb.lock") == 0);
+    }
+    du_remove_dir(base);
+}
+
 const struct test durable_tests[] = {
     TEST_ENTRY(durable_kill_after_execute_and_sync),
     TEST_ENTRY(durable_kill_at_random),
     TEST_ENTRY(durable_in_use),
     TEST_ENTRY(durable_write_fails),
+    TEST_ENTRY(durable_refused_creation),
     TEST_END
 };

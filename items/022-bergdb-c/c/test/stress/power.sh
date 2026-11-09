@@ -10,7 +10,12 @@
 #   - no acknowledged byte lost: the image holds the stream, contiguously, up to the
 #     length acknowledged by the last bergdb_sync or bergdb_close that returned before it
 #     (bergdb-power's check), and C's recovered stream is at least that long;
-#   - both start it (a power loss never leaves a database that does not start), with the
+#   - no short file before a newer one (bergdb-power's check; 005-47, 022-01 step 3): with
+#     a new name durable at its creation (NAMES=now), the stream's old last file must be
+#     forced before a new file is made, else an image has a short file before a newer one;
+#   - both start it (a power loss never leaves a database that does not start; but a torn
+#     first write of the creation, before any acknowledged sync, which both refuse alike,
+#     005-33's DatabaseNotCreatedException), with the
 #     same exit status and the same dump; C's recovery writes Java's bytes (the
 #     directories after the starts, from reclaim's decided cut);
 #   - the runs after: the same text, exit 0, the same files.
@@ -21,8 +26,13 @@
 #   BASES  (environment) the workloads, "SEED:K=V,..." each (Gen's), in place of the six
 #   SYNC   (environment) the chance of a sync after a transaction line (0.15)
 #   JOBS   (environment) workloads at once (3)
-#   OMIT   (environment) file or dir: the negative control (bergdb-power -omit): then
-#          the run must find a lost acknowledged byte, and prints POWER CONTROL CAUGHT
+#   NAMES  (environment) when C's model takes a new name to be durable: now (the default:
+#          at its creation, as a delete is) or dirforce (after the next force of the
+#          directory, as Java's ModelIo; 012-14's runs)
+#   OMIT   (environment) file, dir or switch: the negative control (bergdb-power -omit):
+#          then the run must find a lost acknowledged byte (file; dir, which sets
+#          NAMES=dirforce) or a short file before a newer one (switch: the force of the old
+#          last file before a new file left out), and prints POWER CONTROL CAUGHT
 #   JAVAIMG=1  (environment) the other way: the images are Java's, from
 #          FileStreamPowerLossTester's ModelIo on Java's Db (test/stress/java/PowerImages.java,
 #          its runTrace workload: node size 30, startup distance 20,000, retain 2 s, a
@@ -40,6 +50,8 @@ OUT=${OUT:-/Users/f/fl/bench/012/14-out/power}
 SYNC=${SYNC:-0.15}
 JOBS=${JOBS:-3}
 OMIT=${OMIT:-}
+NAMES=${NAMES:-now}
+[ "$OMIT" = dir ] && NAMES=dirforce
 [ -n "${JAVA_HOME:-}" ] || JAVA_HOME=/opt/homebrew/opt/openjdk
 JAVA=$JAVA_HOME/bin/java
 CLASSES=$CDIR/build/java/classes
@@ -139,13 +151,15 @@ base() {    # SEED PARAMS: one workload and its images; OUT/SEED/result.txt
     m=$(maxnode_of "$d/w.wl")
     omit=""; [ -n "$OMIT" ] && omit="-omit $OMIT"
     # shellcheck disable=SC2086
-    "$CT/bergdb-power" -seed "$seed" $omit "$d/img" "$d/w.wl" "$d/db" > "$d/power.txt" 2> "$d/power.err"
+    "$CT/bergdb-power" -seed "$seed" $omit -names "$NAMES" "$d/img" "$d/w.wl" "$d/db" > "$d/power.txt" 2> "$d/power.err"
     pe=$?
     if [ -n "$OMIT" ]; then
-        if grep -q '^power LOST' "$d/power.err"; then
-            echo "CONTROL $seed caught: $(grep -c '^power LOST' "$d/power.err") images lost acknowledged bytes; $(tail -1 "$d/power.err")" > "$r"
+        if [ "$OMIT" = switch ]; then caught='^power SHORT'; what="had a short file before a newer one"
+        else caught='^power LOST'; what="lost acknowledged bytes"; fi
+        if grep -q "$caught" "$d/power.err"; then
+            echo "CONTROL $seed caught: $(grep -c "$caught" "$d/power.err") images $what; $(tail -1 "$d/power.err")" > "$r"
         else
-            echo "FAIL $seed: -omit $OMIT lost nothing: $(tail -1 "$d/power.err")" > "$r"
+            echo "FAIL $seed: -omit $OMIT found nothing: $(tail -1 "$d/power.err")" > "$r"
         fi
         return
     fi
@@ -194,8 +208,17 @@ check_images() {    # the images of base's $d, its workload's node size $m, into
             rm -rf "$i/a" "$i/b"; cp -R "$i/src" "$i/a"; cp -R "$i/src" "$i/b"
             continue
         fi
+        if [ "$ack" = 0 ] && grep -q '^start error=DatabaseNotCreatedException' "$i/dump-a.txt" \
+                && grep -q '^start error=DatabaseNotCreatedException' "$i/dump-b.txt"; then
+            # A torn first write of the creation, its file's name durable, before any
+            # acknowledged sync (NAMES=now): both starts refuse it, as 005-33 has it
+            # (BERGDB_NOT_CREATED; Java's FileStream, which forces a new name before the
+            # first write, gives the same image); the runs after are refused alike.
+            echo "NOTCREATED $n" >> "$r"
+            : > "$i/notcreated"
+        fi
         [ "$ea" = "$eb" ] || echo "FAIL $seed/$n ($ev): dump exits $ea and $eb" >> "$r"
-        [ "$ea" = 0 ] || echo "FAIL $seed/$n ($ev): the start refused it, exit $ea: $(head -c 300 "$i/dump-a.txt.err" 2>/dev/null)" >> "$r"
+        [ "$ea" = 0 ] || [ -f "$i/notcreated" ] || echo "FAIL $seed/$n ($ev): the start refused it, exit $ea: $(head -c 300 "$i/dump-a.txt.err" 2>/dev/null)" >> "$r"
         cmp -s "$i/dump-a.txt" "$i/dump-b.txt" || echo "FAIL $seed/$n ($ev): the dumps differ" >> "$r"
         same_db "$i/a" "$i/b" "$(decided_cut "$i/dump-a.txt")" \
             || echo "FAIL $seed/$n ($ev): the recovered directories differ" >> "$r"
@@ -216,7 +239,11 @@ check_images() {    # the images of base's $d, its workload's node size $m, into
         i=${i%/}
         n=$(basename "$i")
         ra=$(exit_of "$i/run-a.txt"); rb=$(exit_of "$i/run-b.txt")
-        [ "$ra" = 0 ] && [ "$rb" = 0 ] || echo "FAIL $seed/$n: runs after exit $ra and $rb" >> "$r"
+        if [ -f "$i/notcreated" ]; then
+            [ "$ra" = "$rb" ] || echo "FAIL $seed/$n: runs after exit $ra and $rb" >> "$r"
+        else
+            [ "$ra" = 0 ] && [ "$rb" = 0 ] || echo "FAIL $seed/$n: runs after exit $ra and $rb" >> "$r"
+        fi
         cmp -s "$i/run-a.txt" "$i/run-b.txt" || echo "FAIL $seed/$n: the runs after differ" >> "$r"
         same_db "$i/a" "$i/b" "$(decided_cut "$i/run-a.txt")" \
             || echo "FAIL $seed/$n: the files after the runs differ" >> "$r"
@@ -224,7 +251,8 @@ check_images() {    # the images of base's $d, its workload's node size $m, into
     ni=$(ls -d "$d"/img/*/ | wc -l | tr -d ' ')
     nf=$(grep -c '^FAIL' "$r")
     ne=$(grep -c '^EMPTY' "$r")
-    echo "BASE $seed: $ni images, $nf failures, $ne empty (Java creates, C's dumper refuses); $(tail -1 "$d/power.err")" >> "$r"
+    nn=$(grep -c '^NOTCREATED' "$r")
+    echo "BASE $seed: $ni images, $nf failures, $ne empty (Java creates, C's dumper refuses), $nn torn creations (both refuse, 005-33); $(tail -1 "$d/power.err")" >> "$r"
     [ "$nf" = 0 ] && [ "${KEEP:-0}" != 1 ] && rm -rf "$d/img" "$d/db-plain"
 }
 
@@ -236,21 +264,22 @@ for b in $BASES; do
 done
 wait
 
-cat "$OUT"/*/result.txt | grep -v '^EMPTY' > "$OUT/summary.txt"
+cat "$OUT"/*/result.txt | grep -v '^EMPTY\|^NOTCREATED' > "$OUT/summary.txt"
 cat "$OUT/summary.txt"
 FAILS=$(grep -c '^FAIL' "$OUT/summary.txt")
 if [ -n "$OMIT" ]; then
     CAUGHT=$(grep -c '^CONTROL' "$OUT/summary.txt")
     if [ "$FAILS" = 0 ]; then
-        echo "POWER CONTROL CAUGHT: -omit $OMIT lost acknowledged bytes in $CAUGHT workloads ($(( $(date +%s) - T0 )) s)"
+        echo "POWER CONTROL CAUGHT: -omit $OMIT (names $NAMES) caught in $CAUGHT workloads ($(( $(date +%s) - T0 )) s)"
         exit 0
     fi
-    echo "POWER CONTROL FAILED: $FAILS workloads lost nothing under -omit $OMIT"
+    echo "POWER CONTROL FAILED: $FAILS workloads found nothing under -omit $OMIT (names $NAMES)"
     exit 1
 fi
 IMAGES=$(awk '/^BASE/ { n += $3 } END { print n + 0 }' "$OUT/summary.txt")
 if [ "$FAILS" = 0 ]; then
-    echo "POWER OK: $(echo $BASES | wc -w | tr -d ' ') workloads, $IMAGES images started and run on by C and Java alike, no acknowledged byte lost ($(( $(date +%s) - T0 )) s)"
+    names=" (names $NAMES)"; [ -n "$JAVAIMG" ] && names=""
+    echo "POWER OK: $(echo $BASES | wc -w | tr -d ' ') workloads$names, $IMAGES images started and run on by C and Java alike, no acknowledged byte lost, no short file ($(( $(date +%s) - T0 )) s)"
     exit 0
 fi
 echo "POWER FAILED: $FAILS failures ($(( $(date +%s) - T0 )) s)"

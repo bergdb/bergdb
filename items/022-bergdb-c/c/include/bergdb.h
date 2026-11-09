@@ -170,9 +170,11 @@
  * the same process is not refused, and its close releases the first
  * open's lock (012-13's decision, after 012-09, 6.4: no global state, P9).
  * When the stream is empty (no .bergdb file), the open creates the
- * database, as Java's start does: the first .bergdb file, with the first
- * meta block and the primordial transaction (264 bytes), the database id
- * of the options (random by default) and the clock's time. It writes no
+ * database, as Java's start does: the first meta block and the primordial
+ * transaction (264 bytes), the database id of the options (random by
+ * default) and the clock's time; the first .bergdb file holds them from
+ * the first write (a sync, the close; 015-06), so a refused creation
+ * (BERGDB_LIMIT) leaves only bergdb.lock. It writes no
  * created.txt (the Pub API's). On an existing database, the open reads the
  * stream's tail and rebuilds the database in memory (bounded startup); it
  * may write what Java's start writes: the zero fill of a torn last record.

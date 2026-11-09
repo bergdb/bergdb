@@ -32,7 +32,9 @@ static void remove_dir(const char *dir) {
     }
 }
 
-/* The .bergdb files: their number, total size and the first one's start. */
+/* The .bergdb files: their number, total size and the first one's start, 0
+ * if there is none (a new database's creation is in the write buffer, and
+ * the first write makes the first file, 015-06). */
 static void dir_files(const char *dir, int *n, int64_t *bytes, int64_t *first) {
     DIR *d = opendir(dir);
     struct dirent *x;
@@ -58,6 +60,9 @@ static void dir_files(const char *dir, int *n, int64_t *bytes, int64_t *first) {
     }
     if (d != NULL) {
         closedir(d);
+    }
+    if (*first == INT64_MAX) {
+        *first = 0;
     }
 }
 

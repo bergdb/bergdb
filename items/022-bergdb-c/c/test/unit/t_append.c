@@ -265,13 +265,13 @@ TEST(append_dir_test0) {
     CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);
     CHECK_EQ(stream_first_pos(&s), 0);
     CHECK_EQ(stream_length(&s), 0);
-    CHECK_EQ(file_size("00000000000000.bergdb"), 0);
+    CHECK_EQ(file_size("00000000000000.bergdb"), -1);      /* made by the first write */
     CHECK_EQ(stream_append(&s, b, 1, &ae), ERR_OK);
     CHECK_EQ(stream_length(&s), 1);
     b[0] = 0;
     CHECK_EQ(stream_read(&s, 0, b, 1, &ae), ERR_OK);       /* from the buffer */
     CHECK_EQ(b[0], 123);
-    CHECK_EQ(file_size("00000000000000.bergdb"), 0);
+    CHECK_EQ(file_size("00000000000000.bergdb"), -1);
     CHECK_EQ(stream_durable_length(&s), 0);
     CHECK_EQ(stream_finish(&s, &ae), ERR_OK);
     CHECK_EQ(file_size("00000000000000.bergdb"), 1);
@@ -320,8 +320,7 @@ TEST(append_dir_sizes) {
     for (int i = 0; i < 50; i++) {
         CHECK_EQ(stream_append(&s, zeros, 100000, &ae), ERR_OK);
     }
-    CHECK_EQ(s.nfiles, 1);
-    CHECK_EQ(s.files[0].length, 0);         /* in the buffer so far */
+    CHECK_EQ(s.nfiles, 0);                  /* in the buffer so far, no file yet */
     CHECK_EQ(stream_sync(&s, &ae), ERR_OK);
     CHECK_EQ(s.nfiles, 21);
     CHECK_EQ(s.files[0].length, 200000);
@@ -533,8 +532,15 @@ TEST(append_dir_failure_runs) {
             for (int i = 0; i < 6 && rc == ERR_OK; i++) {
                 rc = stream_append(&s, zeros, 100000, &ae);
             }
+            enum err_code code = ae.code;
             enum err_code rc2 = stream_finish(&s, &ae);
-            if (rc != ERR_OK || rc2 != ERR_OK) {
+            if (rc != ERR_OK) {
+                /* A write's NOMEM, the first file's too (made by the first
+                 * write, 015-06), fails the stream: its close then refuses
+                 * the write (ERR_IO) and frees everything. */
+                CHECK_EQ(code, ERR_NOMEM);
+                failed = true;
+            } else if (rc2 != ERR_OK) {
                 CHECK_EQ(ae.code, ERR_NOMEM);
                 failed = true;
             }
@@ -557,6 +563,7 @@ TEST(append_dir_mkdirs) {
     REQUIRE(new_dir());
     snprintf(deep, sizeof deep, "%s/x/y", adir);
     CHECK_EQ(stream_open_dir_rw(&s, deep, 0, &am, &ae), ERR_OK);
+    CHECK_EQ(stream_append(&s, zeros, 1, &ae), ERR_OK);    /* the first file (015-06) */
     CHECK_EQ(stream_finish(&s, &ae), ERR_OK);
     snprintf(file, sizeof file, "%s/00000000000000.bergdb", deep);
     CHECK_EQ(stream_open_dir_rw(&s, file, 0, &am, &ae), ERR_IO);
@@ -568,6 +575,121 @@ TEST(append_dir_mkdirs) {
     snprintf(deep, sizeof deep, "%s/x", adir);
     rmdir(deep);
     remove_dir();
+}
+
+/* The directory's entries, sorted, as "NAME NAME ...". */
+static void entries(char *out, size_t size) {
+    struct dirent **list;
+    int n = scandir(adir, &list, NULL, alphasort);
+    size_t at = 0;
+    out[0] = '\0';
+    for (int i = 0; i < n; i++) {
+        if (list[i]->d_name[0] != '.' && at < size) {
+            at += (size_t) snprintf(out + at, size - at, "%s%s", at > 0 ? " " : "",
+                    list[i]->d_name);
+        }
+        free(list[i]);
+    }
+    free(list);
+}
+
+/* bergdb 015-06, FileStream.testNoFileUntilFirstAppend: a new stream has no
+ * file until its first write, and reads as an empty one: 0 bytes at 0, and
+ * an EOFException past the end, which leaves the stream usable; an empty
+ * append makes no file, and a close before the first write leaves only
+ * bergdb.lock. Before, the open made an empty first file. */
+TEST(append_dir_first_file) {
+    struct stream s;
+    uint8_t b[1] = { 0 };
+    char got[512];
+    mem_init(&am);
+    REQUIRE(new_dir());
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);
+    CHECK_EQ(stream_read(&s, 0, b, 0, &ae), ERR_OK);
+    CHECK_EQ(stream_read(&s, 0, b, 1, &ae), ERR_IO);
+    CHECK(strcmp(ae.java, "EOFException") == 0);
+    CHECK(strcmp(ae.text, "Cannot read 1 bytes at spos 0, the stream is empty.") == 0);
+    CHECK_EQ(stream_append(&s, b, 0, &ae), ERR_OK);
+    CHECK_EQ(stream_sync(&s, &ae), ERR_OK);
+    entries(got, sizeof got);
+    CHECK(strcmp(got, "bergdb.lock") == 0);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_OK);
+    entries(got, sizeof got);
+    CHECK(strcmp(got, "bergdb.lock") == 0);
+
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);
+    b[0] = 7;
+    CHECK_EQ(stream_append(&s, b, 1, &ae), ERR_OK);
+    b[0] = 0;
+    CHECK_EQ(stream_read(&s, 0, b, 1, &ae), ERR_OK);
+    CHECK_EQ(b[0], 7);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_OK);
+    entries(got, sizeof got);
+    CHECK(strcmp(got, "00000000000000.bergdb bergdb.lock") == 0);
+    CHECK_EQ(file_size("00000000000000.bergdb"), 1);
+    remove_dir();
+    CHECK_MEM_ZERO(&am);
+}
+
+/* bergdb 015-31: a cut at the stream's length keeps the last file, as a
+ * file that the cut ends in is (Java's StreamContract, "a cut at the
+ * length", 0 and 3), also a full last file, and one after the files that
+ * the cut deletes; the stream goes on. Before, the cut took every file and
+ * failed the stream (ERR_IO, "Bug"). */
+TEST(append_dir_cut_at_length) {
+    struct stream s;
+    uint8_t b[4] = { 9, 8, 7, 6 };
+    char got[512];
+    mem_init(&am);
+    REQUIRE(new_dir());
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);
+    CHECK_EQ(stream_pretruncate(&s, 0, &ae), ERR_OK);         /* empty */
+    CHECK_EQ(stream_length(&s), 0);
+    CHECK_EQ(stream_append(&s, b, 1, &ae), ERR_OK);
+    CHECK_EQ(stream_sync(&s, &ae), ERR_OK);
+    CHECK_EQ(stream_read(&s, 0, b + 3, 1, &ae), ERR_OK);
+    CHECK_EQ(b[3], 9);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_OK);
+    remove_dir();
+
+    REQUIRE(new_dir());
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);
+    CHECK_EQ(stream_append(&s, b, 3, &ae), ERR_OK);
+    CHECK_EQ(stream_sync(&s, &ae), ERR_OK);
+    CHECK_EQ(stream_pretruncate(&s, 3, &ae), ERR_OK);         /* 3 bytes */
+    CHECK_EQ(stream_length(&s), 3);
+    CHECK_EQ(stream_first_pos(&s), 0);
+    b[3] = 5;
+    CHECK_EQ(stream_append(&s, b + 3, 1, &ae), ERR_OK);
+    CHECK_EQ(stream_sync(&s, &ae), ERR_OK);
+    b[3] = 0;
+    CHECK_EQ(stream_read(&s, 3, b + 3, 1, &ae), ERR_OK);
+    CHECK_EQ(b[3], 5);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_OK);
+    CHECK_EQ(file_size("00000000000000.bergdb"), 4);
+    remove_dir();
+
+    /* A full last file, then one after the cut's files. */
+    REQUIRE(new_dir());
+    CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);
+    CHECK_EQ(stream_append(&s, zeros, 200000, &ae), ERR_OK);
+    CHECK_EQ(stream_sync(&s, &ae), ERR_OK);
+    CHECK_EQ(stream_pretruncate(&s, 200000, &ae), ERR_OK);
+    CHECK_EQ(stream_first_pos(&s), 0);
+    CHECK_EQ(stream_append(&s, b, 1, &ae), ERR_OK);
+    CHECK_EQ(stream_sync(&s, &ae), ERR_OK);
+    CHECK_EQ(stream_append(&s, zeros, 49999, &ae), ERR_OK);
+    CHECK_EQ(stream_sync(&s, &ae), ERR_OK);
+    CHECK_EQ(stream_pretruncate(&s, 250000, &ae), ERR_OK);
+    CHECK_EQ(stream_first_pos(&s), 200000);
+    CHECK_EQ(stream_length(&s), 250000);
+    CHECK_EQ(stream_read(&s, 200000, b + 3, 1, &ae), ERR_OK);
+    CHECK_EQ(b[3], 9);
+    CHECK_EQ(stream_finish(&s, &ae), ERR_OK);
+    layout(got, sizeof got);
+    CHECK(strcmp(got, "00000000000002:50000 ") == 0);
+    remove_dir();
+    CHECK_MEM_ZERO(&am);
 }
 
 const struct test append_tests[] = {
@@ -585,5 +707,7 @@ const struct test append_tests[] = {
     TEST_ENTRY(append_dir_records),
     TEST_ENTRY(append_dir_failure_runs),
     TEST_ENTRY(append_dir_mkdirs),
+    TEST_ENTRY(append_dir_first_file),
+    TEST_ENTRY(append_dir_cut_at_length),
     TEST_END
 };

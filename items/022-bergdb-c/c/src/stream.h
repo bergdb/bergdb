@@ -8,9 +8,10 @@
  * A directory is opened read-only (stream_open_dir, 012-06: as it is, with
  * no lock, and an empty one is an empty stream) or for writing
  * (stream_open_dir_rw, 012-09: as Java's FileStream opens it, the
- * directory made if missing, its lock taken, the first file made in an
- * empty one, and the last file taking appends up to the capacity that the
- * open rule gives it). Reclaim's cut is stream_pretruncate (012-11). The memory
+ * directory made if missing, its lock taken, no file made in an empty one
+ * until the first write (015-06), and the last file taking appends up to
+ * the capacity that the open rule gives it). Reclaim's cut is
+ * stream_pretruncate (012-11). The memory
  * stream takes raw appends and a pretruncate, which the tests use to make
  * streams.
  *
@@ -23,7 +24,11 @@
  * the buffered bytes. The bytes and the files are Java's; only when they
  * reach the disk differs. A close writes nothing: stream_sync first
  * (stream_finish does both), as Java's close writes and forces what the
- * buffer holds.
+ * buffer holds. The other forces are those of Java's FileStream with
+ * per-append forcing off (bergdb 005-47), so that a power loss leaves a
+ * prefix of the stream across its files: the last file and the directory
+ * at an open for writing (OPEN), the last file before a new file (SWITCH),
+ * and the files written since the last force before a cut's deletes (CUT).
  *
  * One caller at a time (012-01, 4.2), so none of Java's synchronization.
  */
@@ -127,8 +132,11 @@ enum err_code stream_open_dir(struct stream *s, const char *dir, struct mem *m, 
  *     lengths, the smallest of FILE_SIZES at or above it
  *     (determineFileSizeIndexFromFiles: so a restart can change the layout
  *     from there on, 012-02, 9.3, C1); the last file opened for writing up
- *     to that capacity; in an empty directory, 00000000000000.bergdb made,
- *     with the index 0.
+ *     to that capacity, and forced, then the directory (openForRw's OPEN
+ *     force, 005-47: what a process that died wrote is durable before this
+ *     one counts it); in an empty directory no file, and the index 0: the
+ *     first write makes 00000000000000.bergdb (015-06), so that an open
+ *     closed before one leaves only bergdb.lock.
  *
  * buffer_capacity: the write buffer's size, at least 100
  * (BufferedStream's minimum); 0 for STREAM_BUFFER_SIZE. It is allocated
@@ -143,11 +151,13 @@ enum err_code stream_open_dir_rw(struct stream *s, const char *dir, int32_t buff
  * write gives too (FileStream.checkIOException); ERR_NOMEM. */
 enum err_code stream_append(struct stream *s, const uint8_t *buf, int64_t n, struct err *e);
 
-/* Writes the buffer to the files (FileStream.append): each file filled to
- * its capacity, then a new file (FileStream.newFile: named by its first
- * position over 100,000, 14 digits; its capacity by
- * applyFileSizeChangeRules; refused if it exists with bytes). No force.
- * Nothing to do for a memory stream or a read-only directory. */
+/* Writes the buffer to the files (FileStream.append): the first file made
+ * if there is none (015-06), each file filled to its capacity, then a new
+ * file (FileStream.newFile: named by its first position over 100,000, 14
+ * digits; its capacity by applyFileSizeChangeRules; refused if it exists
+ * with bytes). No force, but the old last file's before a new file is made
+ * (the switch force, 005-47: no file before the last is ever short on the
+ * disk). Nothing to do for a memory stream or a read-only directory. */
 enum err_code stream_flush(struct stream *s, struct err *e);
 
 /* stream_flush, then forces the files written since the last force and,
@@ -180,7 +190,8 @@ int64_t stream_length(const struct stream *s);
  * Java's implementations refuse: a negative position (MemoryStream:
  * ERR_ARG, "IllegalArgumentException"), one below the first position
  * (ERR_NOT_AVAILABLE, "ReadBelowFirstPosException"), and bytes past the
- * end (ERR_IO, "EOFException"). n may be 0. */
+ * end (ERR_IO, "EOFException"; of a directory with no file, "the stream
+ * is empty", but 0 bytes at 0, 015-06). n may be 0. */
 enum err_code stream_read(struct stream *s, int64_t pos, uint8_t *buf, int32_t n,
         struct err *e);
 
@@ -197,13 +208,16 @@ enum err_code stream_pretruncate_memory(struct stream *s, int64_t pos, struct er
 /* AppendOnlyStream.pretruncate(pos), reclaim's cut (012-11; 012-02, 9.4):
  *
  *   - a directory opened for writing: FileStream.pretruncate, every file
- *     that ends before pos (start + length - 1 < pos) taken off the stream,
- *     the first position then the first remaining file's start (a file
- *     boundary at or before pos); then, as FileStream's cut thread does,
- *     each file deleted, oldest first, and the directory forced after each
- *     (005-46), here in the call. ERR_IO (the stream's failure, as Java's)
- *     if a delete or a force fails, or the stream failed before;
- *     ERR_ARG if pos is past the bytes in the files;
+ *     but the last that ends before pos (start + length - 1 < pos) taken
+ *     off the stream (the last file is kept, so a cut at the length is
+ *     one within it, 015-31), the first position then the first remaining
+ *     file's start (a file boundary at or before pos); then, as FileStream's
+ *     cut thread does, the files written since the last force forced, and
+ *     the directory after a new file (005-47's CUT force: the cut's decision
+ *     durable first), and each file deleted, oldest first, and the
+ *     directory forced after each (005-46), here in the call. ERR_IO (the
+ *     stream's failure, as Java's) if a delete or a force fails, or the
+ *     stream failed before; ERR_ARG if pos is past the bytes in the files;
  *   - a memory stream: CutStream.pretruncate, the first position pos
  *     exactly, so that a read just below the cut is refused (Java's
  *     MemoryStream drops whole 1 MB arrays); ERR_IO, "IOException", for a

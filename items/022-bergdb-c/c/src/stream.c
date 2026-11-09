@@ -157,6 +157,21 @@ static enum err_code fail(struct stream *s, enum err_code rc) {
     return rc;
 }
 
+/* FileStream's DbFile.forceWritten: forces the files written since the
+ * last force, for the reason 'why', and nothing if none was. With the
+ * switch force (new_file), only the last file can hold such bytes. A
+ * failure is the stream's. */
+static enum err_code force_written(struct stream *s, enum plat_force_why why, struct err *e) {
+    for (int32_t i = s->unforced; i < s->nfiles; i++) {
+        enum err_code rc = plat_force(s->files[i].fd, why, e);
+        if (rc != ERR_OK) {
+            return fail(s, rc);
+        }
+    }
+    s->unforced = s->nfiles;
+    return ERR_OK;
+}
+
 /* FileStream.newFile: the next file, at the stream's length in the files,
  * a multiple of 100,000. */
 static enum err_code new_file(struct stream *s, struct err *e) {
@@ -168,6 +183,16 @@ static enum err_code new_file(struct stream *s, struct err *e) {
     if (s->fileLength % STREAM_INDEX_UNIT != 0) {
         return fail(s, err_set(e, ERR_IO, "Bug", "Illegal state, length = %lld",
                 (long long) s->fileLength));
+    }
+    /* The old last file forced before the new file's name exists (bergdb
+     * 005-47, FileStream.newFile's SWITCH force): a new name may be durable
+     * at once, before any force of the directory, and a power loss must
+     * not leave a short file before a newer one, which an open refuses
+     * (BadDirStateException). So every file before the last is whole and
+     * forced. */
+    rc = force_written(s, PLAT_FORCE_SWITCH, e);
+    if (rc != ERR_OK) {
+        return rc;
     }
     int64_t index = s->fileLength / STREAM_INDEX_UNIT;
     snprintf(path, sizeof path, "%s/%014lld%s", s->dir, (long long) index, SUFFIX);
@@ -214,11 +239,19 @@ static enum err_code new_file(struct stream *s, struct err *e) {
     return ERR_OK;
 }
 
-/* FileStream.append: n bytes to the files, each filled to its capacity,
- * then a new one. */
+/* FileStream.append: n bytes (at least one) to the files, each filled to
+ * its capacity, then a new one. */
 static enum err_code write_files(struct stream *s, const uint8_t *src, int64_t len,
         struct err *e) {
     enum err_code rc;
+    if (s->nfiles == 0) {
+        /* The stream's first file, made by its first write, not at the
+         * open (bergdb 015-06). */
+        rc = new_file(s, e);
+        if (rc != ERR_OK) {
+            return rc;
+        }
+    }
     while (true) {
         struct stream_file *k = &s->files[s->nfiles - 1];
         /* DbFile.append. */
@@ -379,8 +412,18 @@ static enum err_code open_dir(struct stream *s, const char *dir, bool rw, int32_
             }
             snprintf(path, sizeof path, "%s/%s", dir, name);
             if (rw && i == n - 1) {
-                /* openForRw: the last file takes appends up to the capacity. */
+                /* openForRw: the last file takes appends up to the capacity.
+                 * It and the directory are forced first (OPEN), so that what
+                 * a process before wrote and did not force, one that died,
+                 * is durable before this one counts it durable or cuts the
+                 * files before it (bergdb 005-47; stream_pretruncate). */
                 rc = plat_open_rw(path, &s->files[i].fd, e);
+                if (rc == ERR_OK) {
+                    rc = plat_force(s->files[i].fd, PLAT_FORCE_OPEN, e);
+                }
+                if (rc == ERR_OK) {
+                    rc = plat_force_dir(dir, e);
+                }
                 if (rc == ERR_OK) {
                     rc = plat_fd_length(s->files[i].fd, &s->files[i].length, e);
                 }
@@ -403,13 +446,9 @@ static enum err_code open_dir(struct stream *s, const char *dir, bool rw, int32_
     s->fileLength = s->length;
     s->durable = s->length;
     s->unforced = s->nfiles;
-    if (rw && n == 0) {
-        /* Special case, no bergdb files: one is made. */
-        rc = new_file(s, e);
-        if (rc != ERR_OK) {
-            goto fail;
-        }
-    }
+    /* No bergdb files: none is made here; the first write makes the first
+     * (bergdb 015-06), so that a refused creation leaves only the lock
+     * file. */
     return ERR_OK;
 
 fail:
@@ -495,13 +534,10 @@ enum err_code stream_sync(struct stream *s, struct err *e) {
     if (rc != ERR_OK) {
         return rc;
     }
-    for (int32_t i = s->unforced; i < s->nfiles; i++) {
-        rc = plat_force(s->files[i].fd, e);
-        if (rc != ERR_OK) {
-            return fail(s, rc);
-        }
+    rc = force_written(s, PLAT_FORCE_SYNC, e);
+    if (rc != ERR_OK) {
+        return rc;
     }
-    s->unforced = s->nfiles;
     if (s->dir_unforced) {
         rc = plat_force_dir(s->dir, e);
         if (rc != ERR_OK) {
@@ -582,6 +618,16 @@ enum err_code stream_read(struct stream *s, int64_t pos, uint8_t *buf, int32_t n
         if (n == 0) {
             return ERR_OK;
         }
+    }
+
+    if (s->nfiles == 0 && pos >= s->first) {
+        /* FileStream.read of a stream with no file (bergdb 015-06): empty; 0
+         * bytes at 0, and any other read past the end. */
+        if (pos == 0 && n == 0) {
+            return ERR_OK;
+        }
+        return err_set(e, ERR_IO, "EOFException", "Cannot read %d bytes at spos %lld, the"
+                " stream is empty.", (int) n, (long long) pos);
     }
 
     /* FileStream.read: the file with the largest start at or before pos, then on. */
@@ -707,8 +753,11 @@ enum err_code stream_pretruncate(struct stream *s, int64_t pos, struct err *e) {
         return err_set(e, ERR_ARG, "IllegalArgumentException", "pos > length of stream (%lld).",
                 (long long) len);
     }
+    /* The last file is kept, as a file that the cut ends in is (bergdb
+     * 015-31): a cut at the length took every file and failed the stream
+     * with a "Bug". */
     int32_t index = -1;      /* index of last file to delete */
-    for (int32_t i = 0; i < s->nfiles; i++) {
+    for (int32_t i = 0; i < s->nfiles - 1; i++) {
         if (s->files[i].start + s->files[i].length - 1 < pos) {
             index = i;
         } else {
@@ -719,15 +768,23 @@ enum err_code stream_pretruncate(struct stream *s, int64_t pos, struct err *e) {
         return ERR_OK;
     }
     const int32_t newSize = s->nfiles - (index + 1);
-    if (newSize < 1) {
-        return fail(s, err_set(e, ERR_IO, "Bug", "Unexpected newSize: %d. pos=%lld, "
-                "kfiles.length=%d", (int) newSize, (long long) pos, (int) s->nfiles));
+    /* Before the deletes, the stream forced up to its length in the files
+     * (bergdb 005-47, FileStream.runCuts' CUT force), and the directory if
+     * a file was made since its last force: the cut's decision durable,
+     * named, before the files it replaces are gone. Nothing to force after
+     * reclaim's own force for the cut (cut_if_durable), or after the open's
+     * for a start's cut. Then the files are taken off at once (the first
+     * position moves now) and deleted, oldest first, the directory forced
+     * after each (runCuts, 005-46), in this call: C has no thread of its
+     * own. A failure stops the deletes; the files left are before the first
+     * position, and the next start cuts again. */
+    enum err_code rc = force_written(s, PLAT_FORCE_CUT, e);
+    if (rc == ERR_OK && s->dir_unforced) {
+        rc = plat_force_dir(s->dir, e);
+        if (rc == ERR_OK) {
+            s->dir_unforced = false;
+        }
     }
-    /* Taken off at once (the first position moves now); then deleted, oldest
-     * first, the directory forced after each (runCuts, 005-46), in this call:
-     * C has no thread of its own. A failure stops the deletes; the files left
-     * are before the first position, and the next start cuts again. */
-    enum err_code rc = ERR_OK;
     for (int32_t i = 0; i <= index; i++) {
         plat_close(s->files[i].fd);
         if (rc == ERR_OK) {
