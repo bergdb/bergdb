@@ -287,6 +287,17 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   data that a start with it reads. Now a change of the array leaves the
   key as it was, as `DbByteArray.getByteArray()` and `DbObject.getBytes()`
   give copies since 020-10's step B3.
+* **Key replace in an object key's directory is refused** (bergdb 020-14,
+  X1; 2026-11-09): with `setEnableKeyReplace(true)`, a put at an object
+  key (no suffix, or `.obj`) whose directory holds `${transactionTime}`
+  throws `IllegalArgumentException` at the call, before anything is
+  written; in its name it is replaced as before. The index maintenance
+  took the key as written: an index of the directory as written lost the
+  entry of an object that the put did not change, and an index of the
+  directory the put landed in missed the new object, also after a restart.
+  A put with `${transactionTime}` in its name no longer deletes the index
+  entries of the object at the key as written, which it took for the
+  previous value. A key with another suffix is replaced anywhere, as before.
 
 
 ### Core API

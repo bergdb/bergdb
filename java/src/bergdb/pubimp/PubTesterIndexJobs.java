@@ -1167,6 +1167,107 @@ public class PubTesterIndexJobs {
         }
     }
 
+    /**
+     * The Codex review's X1 (bergdb 020-14): with key replace, a put at an object key whose
+     * directory holds "${transactionTime}" is refused with IllegalArgumentException at the
+     * call, by Connection.put, WBuilder.put and RwEnvironment.put, for an object, a String and
+     * a byte[], before anything is written: the directory the put lands in is known only at
+     * the commit, after the maintenance (020-10, section 5.1) has read its index set. Until
+     * 2026-11-09 the maintenance took the key as written: an index of the directory as written
+     * lost the entry of an object that the put did not change, and an index of the directory
+     * the put landed in missed the new object, also after a restart. A delete's key is taken
+     * as written, so a delete there works; key replace off, the key is the key as written.
+     */
+    @Nano
+    public static void testKeyReplaceInDirectoryRefused() {
+        MemoryStream stream = new MemoryStream();
+        Database db = start(stream);
+        final String dir = "/p/${transactionTime}/";
+        try {
+            final Connection c = db.newConnection();
+            c.put(dir + "k", new Item(7, 1));             // key replace off: as written
+            c.put(dir + "d", new Item(8, 1));
+            db.indexBuilder("by-field").dir(dir).type("long").field("amount").start().join();
+            c.setEnableKeyReplace(true);
+            for (final Object value : new Object[] {new Item(9, 2), "text", new byte[] {1}}) {
+                assertArgument(() -> c.put(dir + "k", value));
+                assertArgument(() -> c.w().put(dir + "k", value));
+                assertArgument(() -> c.rw(env -> env.put(dir + "k", value)));
+                assertArgument(() -> c.put("/q/${transactionTime}/x${transactionTime}", value));
+            }
+            Assert.assertEquals(7L, c.get(dir + "k", Item.class).amount);
+            Assert.assertEquals(1, count(c.useIndex("by-field", Item.class).eq(7L).objects()));
+            c.put(dir + "k.txt", "replaced");             // a suffix: never indexed
+            c.delete(dir + "d");                          // as written
+            Assert.assertEquals(null, c.get(dir + "d", Item.class));
+            Assert.assertEquals(0, count(c.useIndex("by-field", Item.class).eq(8L).objects()));
+            c.setEnableKeyReplace(false);
+            c.put(dir + "m", new Item(9, 3));
+            Assert.assertEquals(1, count(c.useIndex("by-field", Item.class).eq(9L).objects()));
+        } finally {
+            db.close();
+        }
+        db = start(stream.copy());
+        try {
+            Connection c = db.newConnection();
+            Assert.assertEquals(7L, c.get(dir + "k", Item.class).amount);
+            Assert.assertEquals(1, count(c.useIndex("by-field", Item.class).eq(7L).objects()));
+            Assert.assertEquals(0, count(c.useIndex("by-field", Item.class).eq(8L).objects()));
+            Assert.assertEquals(1, count(c.useIndex("by-field", Item.class).eq(9L).objects()));
+            Assert.assertEquals(2, entries(db, "by-field"));
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * A sibling of X1 (bergdb 020-14): with key replace, a put at an object key whose name
+     * holds "${transactionTime}" leaves the object at the key as written, and its index
+     * entry, as they were: the put lands at a new key, whose name holds the transaction's
+     * time, after every earlier one. Until 2026-11-09 the maintenance read the previous value
+     * at the key as written and deleted that object's entry: an index lookup missed it, also
+     * after a restart.
+     */
+    @Nano
+    public static void testKeyReplaceInNameKeepsTheKeyAsWritten() {
+        MemoryStream stream = new MemoryStream();
+        Database db = start(stream);
+        String key = "/n/${transactionTime}";
+        String replaced;
+        try {
+            Connection c = db.newConnection();
+            c.put(key, new Item(7, 1));                   // key replace off: as written
+            db.indexBuilder("by-field").dir("/n/").type("long").field("amount").start().join();
+            c.setEnableKeyReplace(true);
+            long time = c.put(key, new Item(9, 2)).getTime().units();
+            replaced = "/n/" + String.format(java.util.Locale.ROOT, "%018d", time);
+            Assert.assertEquals(9L, c.get(replaced, Item.class).amount);
+            Assert.assertEquals(7L, c.get(key, Item.class).amount);
+            Assert.assertEquals("[1]", others(c, 7));
+            Assert.assertEquals("[2]", others(c, 9));
+        } finally {
+            db.close();
+        }
+        db = start(stream.copy());
+        try {
+            Connection c = db.newConnection();
+            Assert.assertEquals("[1]", others(c, 7));
+            Assert.assertEquals("[2]", others(c, 9));
+            Assert.assertEquals(2, entries(db, "by-field"));
+        } finally {
+            db.close();
+        }
+    }
+
+    /** The field 'other' of the objects that the index 'by-field' gives for 'amount'. */
+    private static String others(Connection c, long amount) {
+        List<Long> result = new ArrayList<Long>();
+        for (Item item : c.useIndex("by-field", Item.class).eq(amount).objects()) {
+            result.add(item.other);
+        }
+        return result.toString();
+    }
+
     /** An object with a String and a byte[]. */
     public static class Raw {
         public String name;

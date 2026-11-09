@@ -42,8 +42,12 @@ public interface Connection extends ReadInterface {
      * If key replace is enabled, occurrences of the string "${transactionTime}"
      * in the key of a put will be replaced by the unique transactionTime of
      * the transaction when it is executed. A delete's key is taken as written
-     * (bergdb 019-15). By default, the key replace feature
-     * of a connection is disabled. This method must be called to enable it.
+     * (bergdb 019-15). In an object key (no suffix, or ".obj"), "${transactionTime}" may
+     * be in the name only, the part after the last '/': a put with it in the directory
+     * throws IllegalArgumentException, as the indexes of the directory that the put lands
+     * in would not be known before the transaction's time (bergdb 020-14, X1). A key with
+     * another suffix is never indexed, and is replaced anywhere. By default, the key
+     * replace feature of a connection is disabled. This method must be called to enable it.
      * The transaction time of the transaction functions as a unique transaction ID.
      * It is guaranteed to be unique for every transaction and is strictly increasing.
      * 

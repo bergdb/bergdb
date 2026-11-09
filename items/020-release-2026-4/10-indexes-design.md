@@ -584,6 +584,23 @@ holds `${transactionTime}` had its level bytes replaced (N11, new, from
 the code: `RwEnvironmentImp.replaceTransformation` with
 `UnicodeCollator`'s bytes, which are the key's encoding). Fixed by step I2.
 
+The directory and the previous value (the Codex review's X1, 020-14;
+2026-11-09, decided under the delegation, for Frans to confirm): the key
+is replaced at the commit, when its time is known, after steps 1 to 4.
+So a put at an object key with `${transactionTime}` in its directory is
+refused with `IllegalArgumentException` at the call: the directory it
+lands in, and so its index set, is not known at step 3 (until then the
+directory as written was used). In the name, the put lands at a key whose
+name holds its commit's time, after R: step 4 takes no previous value,
+where it read the key as written, another key, and deleted that object's
+entries. A key written as it is, whose name holds a later time's digits,
+is not looked for: if a replaced put lands on it, its old entry stays,
+and a scan, which gives only the values that their entries still match,
+leaves it out (3.4). The alternative, kept for Frans: allow the directory,
+with each change of an index definition writing one more hash that such a
+put reads, and refuse the put only when an index's directory matches the
+key with 18 digits in place of `${transactionTime}`.
+
 
 ## 6. Jobs (F5 b)
 
@@ -1035,3 +1052,7 @@ gaps decided under his delegation of 22:17 (section 11). No code changed.
 2026-11-09. Section 3.2: `join()` of a FAILED build throws
 `IndexBuildException` (Frans, 08:29: "Do as you propose"); the code, its
 tests and the Javadoc changed with it.
+
+2026-11-09. Section 5.3: key replace in an object key's directory refused,
+and no previous value for a replaced name (the Codex review's X1, 020-14);
+the code, its tests and the Javadoc changed with it.

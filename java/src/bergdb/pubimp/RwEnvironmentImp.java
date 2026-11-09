@@ -318,6 +318,7 @@ class RwEnvironmentImp implements RwEnvironment {
         }
         
         String ikey = PubKeys.u2i(ukey);
+        checkReplaceInDirectory(ukey, ikey);
         Class<?> clazz = object.getClass();
         
         if (clazz.equals(byte[].class)) {
@@ -335,6 +336,28 @@ class RwEnvironmentImp implements RwEnvironment {
             }
             objectOps.put(ikey, new ObjectInfo(ikey, object, 
                     enableKeyReplace ? getKeyTransformation(ikey) : null));
+        }
+    }
+    
+    /**
+     * Refuses a put at an object key whose directory holds "${transactionTime}" when key
+     * replace is on (the Codex review's X1, bergdb 020-14): the directory that such a put
+     * lands in is known only at the commit, when the transaction's time is, but its index set
+     * and the previous value are read before (020-10, section 5.1). Until 2026-11-09 they were
+     * read for the key as written: an index of that directory lost the entry of an object the
+     * put did not change, and one of the directory the put landed in missed the new object.
+     * A key with a suffix is never indexed, and is replaced anywhere (015-64).
+     *
+     * @throws IllegalArgumentException  If so, before anything is written.
+     */
+    private void checkReplaceInDirectory(String ukey, String ikey) {
+        if (enableKeyReplace && Entries.isObjectKey(ikey)
+                && ikey.substring(0, ikey.lastIndexOf('/')).contains(REPLACE_ME)) {
+            throw new IllegalArgumentException("Key replace in the directory of an object "
+                    + "key is not allowed: the indexes of the directory that the put lands in "
+                    + "would not be known before the commit; \"${transactionTime}\" may be in "
+                    + "the key's name, the part after its last '/'. Key: " + ukey
+                    + " (bergdb 020-14, X1).");
         }
     }
     
@@ -414,7 +437,13 @@ class RwEnvironmentImp implements RwEnvironment {
             // no index of 2026.4 indexed one (a build fails over it, a byte[] put of it is
             // refused), so a put over it and a delete of it work (2026-11-09, the review of
             // e92a95a: they were refused, so such a key stayed while the index existed).
-            byte[] previous = getInternal(ikey, byte[].class);
+            // A put whose key is replaced ("${transactionTime}" in its name: put() refuses
+            // it in the directory) lands at a key whose name holds its commit's time, after R,
+            // which no key replace wrote before: it has no previous value. The key as written
+            // is another key; its value and entries stay (the Codex review's X1, bergdb
+            // 020-14: until 2026-11-09 its value was taken as the previous one, and its
+            // entries deleted).
+            byte[] previous = info.kt != null ? null : getInternal(ikey, byte[].class);
             boolean previousFormat1 = previous != null && ObjectFormat.isFormat1(previous);
             for (IndexDefinition def : info.indexes) {
                 byte[] old = previousFormat1 ? null : def.entry(ikey, previous);
