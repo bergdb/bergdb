@@ -847,8 +847,7 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                     System.arraycopy(longest, i, longest, i + 1, longest.length - i - 1);
                     System.arraycopy(longestUptime, i, longestUptime, i + 1, longest.length - i - 1);
                     longest[i] = nanos;
-                    longestUptime[i] = java.lang.management.ManagementFactory.getRuntimeMXBean()
-                            .getUptime();
+                    longestUptime[i] = Uptime.millis();
                     break;
                 }
             }
@@ -873,8 +872,49 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             return sb.toString();
         }
     }
+
+    /**
+     * The uptime that Waits reports, in milliseconds: the JVM's, from java.lang.management,
+     * which lines up with GC logs; where that package is missing, as on Android, the time
+     * since this class was initialized (bergdb 006-18-03).
+     */
+    static final class Uptime {
+        private static final long START = System.nanoTime();
+        private static final boolean JVM = jvm();
+
+        private static boolean jvm() {
+            try {
+                java.lang.management.ManagementFactory.getRuntimeMXBean().getUptime();
+                return true;
+            } catch (LinkageError e) {
+                return false;
+            }
+        }
+
+        static long millis() {
+            return JVM ? java.lang.management.ManagementFactory.getRuntimeMXBean().getUptime()
+                    : (System.nanoTime() - START) / 1000000;
+        }
+    }
     
     // ======== Test ========
+
+    /**
+     * bergdb 006-18-03: on a JVM, Waits takes the JVM's uptime, as before; on Android, which
+     * has no java.lang.management, the time since Uptime was initialized.
+     */
+    @Nano
+    public static void testUptimeIsTheJvms() {
+        if (Util.runsAndroid()) {
+            Assert.assertTrue(!Uptime.JVM);
+            return;
+        }
+        long before = java.lang.management.ManagementFactory.getRuntimeMXBean().getUptime();
+        long uptime = Uptime.millis();
+        long after = java.lang.management.ManagementFactory.getRuntimeMXBean().getUptime();
+        Assert.assertTrue(Uptime.JVM);
+        Assert.assertTrue(before + " " + uptime + " " + after, before <= uptime && uptime <= after);
+    }
 
     /** bergdb 005-76: reaching a quarter wakes a consumer in its timed wait. */
     @Nano
