@@ -458,6 +458,11 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   the harnesses H2, an index as a function of the data (`IndexReference`,
   `IndexHarness`), H3, the jobs under faults (`IndexJobsHarness`), and H4,
   the primary scan (`PrimaryHarness`).
+* **The tests' check that every database is stopped finds the index
+  threads** (bergdb 020-21, 4; 020-13): the unit, f and night groups fail
+  when a test leaves a user index's build or cleanup thread
+  (`IndexBuild-*`, `IndexCleanup-*`) alive, as they did for the storage and
+  eviction threads (bergdb 005-55).
 
 
 ### Documentation

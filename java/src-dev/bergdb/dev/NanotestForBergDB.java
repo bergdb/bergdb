@@ -7,14 +7,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
+import java.util.concurrent.CountDownLatch;
 
 import bergdb.common.AssertStatus;
 import bergdb.common.Util;
+import bergdb.nanotest.Assert;
 import bergdb.nanotest.ClassFilter;
 import bergdb.nanotest.CommandLine;
 import bergdb.nanotest.ConsoleUI;
 import bergdb.nanotest.IPack;
 import bergdb.nanotest.MethodFilter;
+import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestRunner;
 
 /**
@@ -38,8 +41,8 @@ public class NanotestForBergDB {
      * Makes go() check, after the tests, that every database a test started has been
      * stopped (bergdb 005-55); Unit, F and Night use it. Nothing stops a database that is
      * dropped, as Db has no finalize(): a test that does not stop or close its database
-     * leaves its storage threads, its open files and its memory until the JVM exits. See
-     * StoppedCheck.
+     * leaves its storage threads, its user indexes' build and cleanup threads, its open files
+     * and its memory until the JVM exits. See StoppedCheck.
      */
     public void checkDatabasesStopped() {
         checkStopped = true;
@@ -146,11 +149,14 @@ public class NanotestForBergDB {
     
     /**
      * The check of checkDatabasesStopped() (bergdb 005-55). After each test it notes the
-     * storage threads (BufferedStream's consumers, "BufferedStream-consumer-N") and eviction
-     * threads ("bergdb-evictor") that are alive, each with the test after which it was first
-     * seen. At the end, before the report, it waits at most 5 seconds for the closes that
-     * stop() started (bergdb 005-35), then fails a last test, databasesStopped, if any of
-     * those threads is still alive, with the tests that left them.
+     * database threads that are alive, each with the test after which it was first seen: the
+     * storage threads (BufferedStream's consumers, "BufferedStream-consumer-N"), the eviction
+     * threads ("bergdb-evictor"), and since 2026-11-09 (bergdb 020-21, 4) the user indexes'
+     * build and cleanup threads ("IndexBuild-NAME-GEN", "IndexCleanup-NAME-GEN"), which a
+     * database's close ends. At the end, before the report, it waits at most 5 seconds for
+     * the closes that stop() started (bergdb 005-35), then fails a last test,
+     * databasesStopped, if any of those threads is still alive, with the tests that left
+     * them.
      */
     private static class StoppedCheck extends ConsoleUI {
         private static final long WAIT_MILLIS = 5000;
@@ -163,7 +169,7 @@ public class NanotestForBergDB {
         }
         
         public void testDone(Throwable t) {
-            for (Thread th : storageThreads()) {
+            for (Thread th : databaseThreads()) {
                 if (!testOf.containsKey(th)) {
                     testOf.put(th, test);
                 }
@@ -179,17 +185,17 @@ public class NanotestForBergDB {
             super.done();
         }
         
-        /** Null if no storage or eviction thread is alive within WAIT_MILLIS. */
+        /** Null if no database thread is alive within WAIT_MILLIS. */
         private Throwable databasesStopped() {
             long end = System.currentTimeMillis() + WAIT_MILLIS;
-            List<Thread> alive = storageThreads();
+            List<Thread> alive = databaseThreads();
             while (!alive.isEmpty() && System.currentTimeMillis() < end) {
                 try {
                     Thread.sleep(50);
                 } catch (InterruptedException e) {
                     return e;
                 }
-                alive = storageThreads();
+                alive = databaseThreads();
             }
             
             if (alive.isEmpty()) {
@@ -202,19 +208,60 @@ public class NanotestForBergDB {
                 Integer count = byTest.get(name);
                 byTest.put(name, count == null ? 1 : count + 1);
             }
-            return new AssertionError(alive.size() + " storage or eviction threads alive after "
-                    + "the tests: databases not stopped, by the test that left them: " + byTest);
+            return new AssertionError(alive.size() + " storage, eviction or index threads alive "
+                    + "after the tests: databases not stopped, by the test that left them: "
+                    + byTest);
         }
         
-        private static List<Thread> storageThreads() {
+        /** The live threads of databases: storage, eviction, index builds and cleanups. */
+        private static List<Thread> databaseThreads() {
             List<Thread> list = new ArrayList<Thread>();
             for (Thread th : Thread.getAllStackTraces().keySet()) {
                 String name = th.getName();
-                if (name.startsWith("BufferedStream-consumer-") || name.equals("bergdb-evictor")) {
+                if (name.startsWith("BufferedStream-consumer-") || name.equals("bergdb-evictor")
+                        || name.startsWith("IndexBuild-") || name.startsWith("IndexCleanup-")) {
                     list.add(th);
                 }
             }
             return list;
+        }
+    }
+    
+    
+    // ======== Tests ========
+    
+    /**
+     * bergdb 020-21, 4 (020-13, section 6, recommendation 3): the check finds a user index's
+     * build and cleanup threads ("IndexBuild-NAME-GEN", "IndexCleanup-NAME-GEN"), which a
+     * database runs in the background and its close ends, as it finds the storage and
+     * eviction threads. It did not, so a test that left a build running passed the gate.
+     */
+    @Nano
+    private static void testIndexThreadsChecked() throws InterruptedException {
+        final CountDownLatch done = new CountDownLatch(1);
+        List<Thread> threads = new ArrayList<Thread>();
+        for (String name : new String[] {"IndexBuild-t-1", "IndexCleanup-t-1"}) {
+            Thread th = new Thread(() -> {
+                try {
+                    done.await();
+                } catch (InterruptedException e) {
+                    // Ends.
+                }
+            }, name);
+            th.setDaemon(true);
+            th.start();
+            threads.add(th);
+        }
+        try {
+            List<Thread> found = StoppedCheck.databaseThreads();
+            for (Thread th : threads) {
+                Assert.assertTrue(th.getName() + " not found", found.contains(th));
+            }
+        } finally {
+            done.countDown();
+            for (Thread th : threads) {
+                th.join();
+            }
         }
     }
 }
