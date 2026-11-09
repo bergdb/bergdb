@@ -4,6 +4,9 @@ import java.io.PrintStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+import bergdb.nanotest.Assert;
+import bergdb.nanotest.Nano;
+
 /**
  * Main entry point to run other executable classes. Useful when it is not possible to run 
  * specified classes directly, for example when BergDB is compiled to a native executable.
@@ -54,10 +57,44 @@ public class Run {
         
         Class<?> c = Class.forName(className);
         Method main = c.getMethod("main", String[].class);
+        // The class may not be public, as most of pubimp's since 2026-11-09 (bergdb 020-10,
+        // B2): the method is, but getMethod() gives it with its class's access. A tool of
+        // src-dev only; the release jar has no Main-Class.
+        main.setAccessible(true);
         main.invoke(null, new Object[]{methodArgs});
     }
     
     public static void main(String[] args) throws Exception {
         new Run().go(args);
+    }
+    
+    // ======== Tests ========
+    
+    /** What main() of 'args' prints, run through Run. */
+    private static String printed(String... args) throws Exception {
+        PrintStream saved = System.out;
+        java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+        System.setOut(new PrintStream(bytes, true, "UTF-8"));
+        try {
+            main(args);
+        } finally {
+            System.setOut(saved);
+        }
+        return bytes.toString("UTF-8");
+    }
+    
+    /**
+     * Run starts main() of a class that is not public (2026-11-09: getMethod().invoke() threw
+     * IllegalAccessException for each since 2917cdb narrowed pubimp, bergdb 020-10, B2):
+     * RwEnvironmentImp, IndexHarness (a short run) and src-dev's Demo.
+     */
+    @Nano
+    private static void testRunsMainOfAClassThatIsNotPublic() throws Exception {
+        String out = printed("bergdb.pubimp.RwEnvironmentImp");
+        Assert.assertTrue(out, out.contains("000000111222333444"));
+        out = printed("bergdb.pubimp.IndexHarness", "1", "40");
+        Assert.assertTrue(out, out.contains("IndexHarness OK"));
+        out = printed("bergdb.demo.Demo");
+        Assert.assertTrue(out, out.contains("Use one of: put, get, delete."));
     }
 }
