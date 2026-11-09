@@ -93,6 +93,9 @@ public interface DatabaseBuilder {
      * 2026-10-13). Existing databases keep the startup distance stored in their
      * stream; Database.setStartupDistanceInMb() changes it while the database runs, and
      * the stream keeps the new value (bergdb 005-53). The value is clamped to 5 to 1000.
+     * With a finite retain duration, the startup distance also paces reclaim: an iteration
+     * begins after at least twice it of stream, so a larger distance cuts later and keeps
+     * more on disk (Database.setRetainDuration(); bergdb 020-24-06, U6-2).
      * 
      * @param startupDistanceInMb    The startup distance in megabytes (mega = 1000000). 
      *                               Value should be between 5 and 1000.

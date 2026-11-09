@@ -18,6 +18,9 @@ public interface ReadInterface {
      * @throws IllegalArgumentException
      *             If key does not follow the allowed format, or is null, as for get(), in
      *             a connection and in an rw-transaction alike (bergdb 019-05).
+     * @throws bergdb.pub.util.LookupTimeNotAvailableException  As Connection.get(): the
+     *             read's lookup time is before the first available lookup time, or became so
+     *             while it ran (bergdb 020-24-06, U6-6).
      * @see Connection#exists(String)
      */
     public boolean exists(String key) throws DbException;
@@ -41,6 +44,9 @@ public interface ReadInterface {
      *             is not well-formed UTF-8 (bergdb 021-06).
      * @throws IllegalArgumentException  If key does not follow the allowed format, or is
      *             null, or if clazz is null, as for Connection.get() (bergdb 020-25).
+     * @throws bergdb.pub.util.LookupTimeNotAvailableException  As Connection.get(): the
+     *             read's lookup time is before the first available lookup time, or became so
+     *             while it ran (bergdb 020-24-06, U6-6).
      * @see Connection#get(String, Class)
      */
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);

@@ -830,3 +830,22 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   in the order of their names' UTF-8 bytes, as the primary scan lists a
   directory, and that `prefix("")`, or an empty `byte[]`, takes every value
   of the level.
+* **Reclaim's settings over a crash, the size on disk, and the first
+  available lookup time** (bergdb 020-24-06, U6-2 to U6-4, U6-6 and U6-7,
+  from a new user's metrics service): `Database.setRetainDuration()` and
+  `setStartupDistanceInMb()` say that, as for any transaction, a crash
+  before the setting is durable (`sync()`) can undo it, as
+  `IndexBuilder.start()` says. `setRetainDuration()` says what stays on
+  disk: the stream from the last cut point on, about the stream written
+  within the retain duration plus one or two iterations, each at least
+  twice the startup distance, a quarter of the duration's stream and four
+  times the live data, with sizes measured; `DatabaseBuilder` and
+  `setStartupDistanceInMb()` say that the startup distance paces reclaim.
+  `getFirstAvailableLookupTime()` says that it is `Time.units(0)`
+  (1970-01-01) before the first cut, that it moves only when reclaim
+  decides a cut, at a commit, and only forward within a run: a restart
+  after a crash can give an earlier time, if the crash came after a cut
+  was decided and before its record was durable; the stream was then not
+  cut, and every state from that time is readable and right.
+  `Connection.get()`, `exists()` and `ReadInterface` list
+  `LookupTimeNotAvailableException`, an `IllegalArgumentException`.

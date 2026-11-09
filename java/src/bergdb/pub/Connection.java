@@ -181,6 +181,9 @@ public interface Connection extends ReadInterface {
      *             If the database has failed, before or in this read (a read that fails
      *             on the storage fails it): it then refuses every transaction and read
      *             until it is restarted. See Database.
+     * @throws LookupTimeNotAvailableException
+     *             As for get(): the lookup time is before the first available lookup time,
+     *             or became so while the read ran.
      */
     public boolean exists(String key);
 
@@ -241,6 +244,13 @@ public interface Connection extends ReadInterface {
      *             object, such as one of BergDB 2026.3 and before (format 1, also as
      *             Object.class, see above). Never for a stored value that does not fit its
      *             field: it is converted (bergdb 020-09, section 5.2).
+     * @throws LookupTimeNotAvailableException
+     *             If the connection's lookup time is before the first available lookup time
+     *             (Database.getFirstAvailableLookupTime()), or became so while the read ran,
+     *             a cut overtaking it (setLookupTime(); bergdb 020-24-06, U6-6): the read is
+     *             refused, and the database goes on. The exception is an
+     *             IllegalArgumentException, so a catch of that, for a bad key, catches it
+     *             too.
      * @return The object created based on 'clazz' and the data in the database,
      *             or null if there is no entry for the key.
      */

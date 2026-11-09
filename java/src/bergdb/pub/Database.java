@@ -223,7 +223,10 @@ public interface Database extends AutoCloseable {
      * of the database's own with it, and a start reads it, so a restart keeps the value; it
      * need not, and cannot, be given to the DatabaseBuilder. The new value is in force when
      * the method returns. A call with the value in force writes nothing. A setting that
-     * changes the stream's bytes, as this one does, is kept in the stream.
+     * changes the stream's bytes, as this one does, is kept in the stream. Like any
+     * transaction, it is written to storage soon after the method returns, and a crash
+     * before it is durable (sync()) can undo it: the restart then has the value before the
+     * call, and reclaim cuts by that value (bergdb 020-24-06, U6-3).
      * </p>
      * 
      * <p>
@@ -259,6 +262,19 @@ public interface Database extends AutoCloseable {
      * </p>
      *
      * <p>
+     * What stays on disk follows from that (bergdb 020-24-06, U6-2): the stream from the
+     * last cut point on, which is where the iteration before the cut one began. That is
+     * about the stream written within the retain duration plus that of one or two
+     * iterations, and an iteration spans at least twice the startup distance, the stream of a
+     * quarter of the duration, and four times the live data, which it rewrites at a quarter
+     * of the stream's growth. Measured with small values and 3 s retained: 22 to 31 MB at a
+     * startup distance of 5 MB and 3.5 MB of stream a second; about 100 MB at 50 MB and that
+     * rate; 200 to 340 MB at 50 MB and 35 MB a second; 750 to 1,100 MB with a million live
+     * keys (92 MB of puts). So the retain duration bounds what stays readable, not the size
+     * on disk, and a smaller startup distance keeps less.
+     * </p>
+     *
+     * <p>
      * Use Duration.MAX to keep old states available forever. Note, that this will increase the
      * database storage space indefinitely even when data is deleted from the database. This could
      * be a valid setting however. The retain duration can be decreased later, also while the
@@ -289,7 +305,10 @@ public interface Database extends AutoCloseable {
      * with a small transaction of the database's own (a value of 200 kB), so a restart keeps
      * it, as it keeps the setting the database was created with; a call with the setting in
      * force writes nothing. A setting that changes the stream's bytes, as this one does, is
-     * kept in the stream; one that does not, as the cache size, lasts for the run.</p>
+     * kept in the stream; one that does not, as the cache size, lasts for the run. Like any
+     * transaction, it is written to storage soon after the method returns, and a crash
+     * before it is durable (sync()) can undo it: the restart then has the setting before
+     * the call (bergdb 020-24-06, U6-3).</p>
      *
      * <p>The startup section follows the setting as transactions are committed: after a
      * decrease, each commit writes more of the index, in proportion to its size, and no
@@ -297,7 +316,8 @@ public interface Database extends AutoCloseable {
      * about 1.4 times the index changed since the startup position (bergdb 007-06, 007-07).
      * Without commits it does not move. After an increase, commits write less of the index
      * until the section has grown to the setting. A larger distance writes fewer bytes a put
-     * and starts more slowly.</p>
+     * and starts more slowly. With a finite retain duration it also paces reclaim: a larger
+     * distance cuts later and keeps more on disk (setRetainDuration()).</p>
      *
      * @param startupDistanceInMb  The startup distance in megabytes (mega = 1000000).
      * @throws IllegalDbStateException  If the database is stopping or stopped, as a
@@ -342,11 +362,28 @@ public interface Database extends AutoCloseable {
      * </p>
      *
      * <p>
-     * The time only moves forward, and only when the database reclaims old data (the retain
-     * duration is finite). A read at an earlier lookup time throws
-     * LookupTimeNotAvailableException. The time can move while a read is running: a read that was
-     * accepted may then fail with the same exception, if it needs data that was removed; the
-     * database and other reads are not affected. The database guarantees that lookups work for
+     * Before reclaim's first cut, so always in a database whose retain duration was never
+     * finite, it is Time.units(0), 1970-01-01 00:00:00 UTC: every state is readable (bergdb
+     * 020-24-06, U6-7). It moves only when reclaim decides a cut, which it does at a commit
+     * when the retain duration is finite (setRetainDuration() says when): without commits it
+     * stays, also over a restart, and states older than the retain duration stay readable
+     * meanwhile.
+     * </p>
+     *
+     * <p>
+     * Within a run, the time only moves forward. A restart after a crash can give an earlier
+     * time (bergdb 020-24-06, U6-4): reclaim moves the time when it decides a cut, and cuts
+     * the stream only when the record of that decision is durable; a crash before then can
+     * lose that record, and the stream is then as it was: the restart gives the time before
+     * the decision, and every state from it is readable and right. A restart after stop() or
+     * close() keeps the time.
+     * </p>
+     *
+     * <p>
+     * A read at an earlier lookup time throws LookupTimeNotAvailableException. The time can
+     * move while a read is running: a read that was accepted may then fail with the same
+     * exception, if it needs data that was removed; the database and other reads are not
+     * affected. The database guarantees that lookups work for
      * every time in [now - retain duration, now] when the time is moved; a read that runs longer
      * than that may expire. Retry such a read with a later lookup time.
      * </p>

@@ -2399,6 +2399,56 @@ public class PubTesterJavadoc {
     }
 
     /**
+     * Database.setRetainDuration() and setStartupDistanceInMb() (bergdb 020-24-06, U6-3): as
+     * any transaction, a crash before the setting is durable can undo it, and the restart
+     * has the setting before; after sync() a crash keeps it. Here a crash keeps the stream up
+     * to the last sync() and loses the rest. And Database.getFirstAvailableLookupTime()
+     * (U6-7) is Time.units(0) before reclaim's first cut, also with a finite retain
+     * duration, and over a restart.
+     */
+    @Nano
+    public static void testSettingsUndoneByACrashBeforeSync() {
+        final MemoryStream m = new MemoryStream();
+        Database db = ((DatabaseBuilderImp) Factory.database()).mainStream(m)
+                .startupDistanceInMb(5).start();
+        final long synced;
+        try {
+            db.setRetainDuration(Duration.seconds(3));
+            db.connection().put("/a.txt", "1");
+            db.sync();
+            synced = m.getLength();
+            db.setRetainDuration(Duration.seconds(7));
+            db.setStartupDistanceInMb(9);
+            Assert.assertEquals(Duration.seconds(7).units(), db.getRetainDuration().units());
+            Assert.assertEquals(9, db.getStartupDistanceInMb());
+            Assert.assertEquals(Time.units(0), db.getFirstAvailableLookupTime());
+            db.sync();
+        } finally {
+            db.close();
+        }
+        
+        MemoryStream crashed = m.copy();
+        crashed.truncate(synced);           // A crash before the settings were durable.
+        db = ((DatabaseBuilderImp) Factory.database()).mainStream(crashed).start();
+        try {
+            Assert.assertEquals(Duration.seconds(3).units(), db.getRetainDuration().units());
+            Assert.assertEquals(5, db.getStartupDistanceInMb());
+            Assert.assertEquals(Time.units(0), db.getFirstAvailableLookupTime());
+            Assert.assertEquals("1", db.connection().get("/a.txt", String.class));
+        } finally {
+            db.close();
+        }
+        
+        db = ((DatabaseBuilderImp) Factory.database()).mainStream(m.copy()).start();
+        try {
+            Assert.assertEquals(Duration.seconds(7).units(), db.getRetainDuration().units());
+            Assert.assertEquals(9, db.getStartupDistanceInMb());
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
      * Connection.setEnableKeyReplace() (bergdb 020-24-01, U1-3, U1-4 and U1-6; 020-24-02,
      * I-6): "${transactionTime}" is replaced by the transaction's time as 18 decimal digits
      * with leading zeros, in put(), in a w() and in an rw() action, so that the keys are in
