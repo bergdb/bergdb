@@ -448,8 +448,8 @@ class RwEnvironmentImp implements RwEnvironment {
             // it in the directory) lands at a key whose name holds its commit's time, after R,
             // which no key replace wrote before: it has no previous value. The key as written
             // is another key; its value and entries stay (the Codex review's X1, bergdb
-            // 020-14: until 2026-11-09 its value was taken as the previous one, and its
-            // entries deleted).
+            // 020-14, and 020-13, bug 3: until 2026-11-09 its value was taken as the
+            // previous one, and its entries deleted).
             byte[] previous = info.kt != null ? null : getInternal(ikey, byte[].class);
             boolean previousFormat1 = previous != null && ObjectFormat.isFormat1(previous);
             for (IndexDefinition def : info.indexes) {

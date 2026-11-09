@@ -1525,6 +1525,38 @@ public class PubTesterIndex {
         database.stop();
     }
     
+    /**
+     * A put with key replace at /payments/${transactionTime} writes another key than the key
+     * as written (bergdb 020-13, bug 3): a value at the key as written, put with key replace
+     * off, keeps its entry. Before, the put read that value as its previous one and deleted
+     * its entry, while the value stayed.
+     */
+    @Nano
+    public static void testKeyReplaceKeepsTheEntryOfTheKeyAsWritten() {
+        TestClock clock = new TestClock();
+        Database database = Factory.database().memory().clock(clock).start();
+        try {
+            Connection c = database.newConnection();
+            String key = "/payments/${transactionTime}";
+            database.indexBuilder("payments-from").dir("/payments/").type("string")
+                    .field("from").start().join();
+            clock.setTime(Time.units(100));
+            c.w().put(key, new Payment("101", "105", 5)).execute();     // key replace off
+            c.setEnableKeyReplace(true);
+            clock.setTime(Time.units(200));
+            c.w().put(key, new Payment("100", "106", 6)).execute();
+            
+            StringBuilder b = new StringBuilder();
+            for (Kv<Payment> kv : c.useIndex("payments-from", Payment.class).kvs()) {
+                b.append(kv.key()).append('=').append(kv.value().amount).append(' ');
+            }
+            Assert.assertEquals("/payments/000000000000000200=6 /payments/${transactionTime}=5 ",
+                    b.toString());
+        } finally {
+            database.stop();
+        }
+    }
+    
     @Nano
     public static void testStartAt1() {
         // forward, include
