@@ -105,6 +105,19 @@ skips name no node with a canonical object; so the run with cuts and rule 4 by
 position is `runHandlesCut` (`runPosCut_handles`), and T12 over handles holds
 for it; SIS/Proof/HandleCutSkip.lean, SIS/Proof/HandleCutPos.lean.
 
+Since bergdb 020-29 (2026-11-09) a second library, `BergDB`, has the user
+indexes of release 2026.4 (020-10 with 020-18's fixes), the protocol that
+020-26 checked with TLC within small bounds: one index name over one
+directory, its writers, builds, activation, deletion, cleanup, crashes and
+restarts (BergDB/Index/Model.lean, the trusted part), and 020-26's safety
+invariants proved for every size (BergDB/Index/Theorems.lean): at every
+lookup time an active index's entries are exactly f over the data
+(`index_is_function`), no entry of the live generation is stale, a build
+covers the keys it passed, every generation with entries is live or has a
+marker, no marker names the live generation, a creation's G is new. It
+imports nothing of SIS. The proofs: BergDB/Index/Inv.lean,
+BergDB/Index/Steps.lean; a run of the model: BergDB/Index/Example.lean.
+
 
 Build and run
 =============
@@ -114,6 +127,7 @@ Needs elan (`brew install elan-init`). The toolchain version is in
 
     cd lean
     lake build              # checks every file but the test programs, runs the #guard tests
+    lake build BergDB       # the user indexes' library alone (020-29)
     lake exe sistest 20 40  # random runs: 20 seeds, 40 transactions each (7 min)
     lake exe phystest 20 40 # the physical layer on random runs (7 min)
     lake exe reclaimtest 20 30     # reclaim: random runs with cuts (1 min)
@@ -194,6 +208,18 @@ Check/R4.lean) are checked the same way:
     #print axioms SIS.Fast.reachList_eq_fast
     #print axioms SIS.Fast.step_eq_fast
     #print axioms SIS.TopBridge.r4Fast_sound
+
+The user indexes' theorems (BergDB/Index/Theorems.lean, 020-29) the same
+way, each printing `[propext, Classical.choice, Quot.sound]`:
+
+    import BergDB.Index.Theorems
+    #print axioms BergDB.Index.reach_inv
+    #print axioms BergDB.Index.index_is_function
+    #print axioms BergDB.Index.no_stale_entry
+    #print axioms BergDB.Index.build_covers
+    #print axioms BergDB.Index.gens_accounted
+    #print axioms BergDB.Index.start_accepted
+    #print axioms BergDB.Index.gen_fresh
 
 
 What to read

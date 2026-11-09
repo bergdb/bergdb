@@ -1,12 +1,15 @@
 name = "sis"
 version = "0.1.0"
-defaultTargets = ["SIS", "Check", "tracecheck"]
+defaultTargets = ["SIS", "Check", "tracecheck", "BergDB"]
 
 [[lean_lib]]
 name = "SIS"
 
 [[lean_lib]]
 name = "Check"
+
+[[lean_lib]]
+name = "BergDB"
 
 [[lean_exe]]
 name = "sistest"
