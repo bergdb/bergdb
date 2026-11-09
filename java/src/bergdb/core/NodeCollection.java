@@ -473,8 +473,11 @@ public class NodeCollection implements PointerFollower {
                     read = true;
                     // A version cut back to the startup time (the reconstruction) is not the
                     // version at its position: only the writer's rerun, which makes it
-                    // canonical, keeps it in the handle (M22).
-                    if (!isMaintenance && op.cachePolicy.shouldCache(node)
+                    // canonical, keeps it in the handle (M22). The writer keeps every index
+                    // node it reaches, whatever its op's cache policy (bergdb 019-46, after
+                    // review): its handle then holds an object from here on, which no drop
+                    // takes (Cache3.dropIfEmpty) and step 6 makes canonical.
+                    if (!isMaintenance && (isWriter || op.cachePolicy.shouldCache(node))
                             && (!cutBack || isWriter)) {
                         result = cache.install(live, node);
                         if (!Handle.usable(result, ref)) result = node;
@@ -512,7 +515,7 @@ public class NodeCollection implements PointerFollower {
         //    holds one now, and the predecessor is counted with it (Residents.handleIn,
         //    bergdb 015-13).
 
-        if (!isMaintenance && live != null && op.cachePolicy.shouldCache(result)
+        if (!isMaintenance && live != null && (isWriter || op.cachePolicy.shouldCache(result))
                 && (!cutBack || isWriter) && predecessor.getPointee(pointerIndex) != live) {
             synchronized (predecessor) {
                 final boolean held = predecessor.getPointee(pointerIndex) instanceof Handle;
@@ -527,8 +530,11 @@ public class NodeCollection implements PointerFollower {
             }
         }
 
-        // 6. The canonical object, for the writer.
+        // 6. The canonical object, for the writer, in its live handle, which holds an object
+        //    since step 4 and so is in the table (bergdb 019-46, after review).
 
+        assert !isWriter || (live != null && live.obj != null && !live.isDead())
+                : "the writer's handle of node " + id + " is empty or dead";
         if (isWriter && !result.isCanonical()) {
             result = cache.makeCanonical(live, result);
         }
@@ -1051,6 +1057,32 @@ public class NodeCollection implements PointerFollower {
         c.cache.dropIfEmpty(e);
         Assert.assertTrue("dead", e.isDead());
         Assert.assertTrue("out of the table", c.cache.liveHandle(102) == null);
+    }
+    
+    /**
+     * bergdb 019-46, after review: the writer keeps every index node it follows to in the
+     * node's handle, whatever its op's cache policy. makeCanonical (step 6) never fills an
+     * empty handle that a drop could have taken from the table, as the writer's handle holds
+     * its object from step 4 on. The writer's PutData caches every index node; with a policy
+     * that cached none, the follow dropped its own empty handle (Cache3.dropIfEmpty) and then
+     * made the version canonical in that dead handle, out of the table.
+     */
+    @Nano
+    private static void testWriterKeepsTheNodeWhateverItsPolicy() {
+        TestStream stream = new TestStream();
+        stream.nodes.put(100L, testKeyNode(101, 100, 10));
+        NodeCollection c = new NodeCollection(testDbInfo(), stream);
+        TopNode parent = testParent(301, 100);
+        GetData op = testGetData(new int[1]);
+        op.cachePolicy = Dag.CACHE_NOTHING;
+        Node o = c.writer().followPointer(parent, 0, op);
+        Assert.assertTrue("the writer followed to the node", o != null && o.getId() == 101);
+        Assert.assertTrue("the writer's object is canonical", o.isCanonical());
+        Handle h = c.cache.liveHandle(101);
+        Assert.assertTrue("a live handle in the table", h != null && !h.isDead());
+        Assert.assertTrue("the handle holds the canonical object", h.obj == o);
+        Assert.assertTrue("the node table's object", c.cache.getNode(101) == o);
+        Assert.assertTrue("the parent's pointer holds the handle", parent.getPointee(0) == h);
     }
     
     /**

@@ -12,7 +12,10 @@ import java.lang.invoke.VarHandle;
  *
  * <p>States: LIVE, the node table's handle for the node (Cache3), with an object or not;
  * LOADING, a loader holds the handle's monitor and reads a version from the stream (009-02,
- * T7a); DEAD, evicted: out of the table, no object, never live again. A pointer that holds a
+ * T7a); DEAD, evicted: out of the table, no object, never live again, for anything that reads
+ * the state under the map's lock (Cache3's getLock): since bergdb 019-46 a reader's drop of
+ * its empty handle (Cache3.dropIfEmpty) makes it DEAD under that lock, still in the table, and
+ * LIVE again if an object came meanwhile, before it lets the lock go. A pointer that holds a
  * dead handle finds the node's live handle again by the id (T3a).</p>
  *
  * <p>Concurrency (009-02, 3.3 and 3.4): the id is final, so a thread that sees a handle

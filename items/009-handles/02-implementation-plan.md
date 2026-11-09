@@ -27,7 +27,10 @@ that an address (section 5, phase 2).
   a resident pointer names, 32 bytes: the node id, the node's one object
   (or none), the position this process last wrote the node at, a state,
   and a CLOCK bit. A dead handle is never live again; one live handle per
-  node, in the table.
+  node, in the table. (2026-11-09, bergdb 019-46: for anything that reads
+  the state under the table's lock; `Cache3.dropIfEmpty` makes an empty
+  handle DEAD under that lock, still in the table, and LIVE again if an
+  object came meanwhile, before it lets the lock go.)
 * **Pointers** (4.2): pointer i of a key node or a top node holds a handle,
   or nothing until it is first followed, and always its serialized
   reference in `pos[i]`. The access stamp leaves `pos[i]`. Values keep
@@ -519,7 +522,10 @@ state's word could undo the evictor's CAS.
 
 * **LIVE:** in the table; `obj` set or null. **LOADING:** a loader holds
   the handle's monitor and reads the stream; the evictor skips the handle.
-  **DEAD:** evicted, out of the table, `obj` null, never live again.
+  **DEAD:** evicted, out of the table, `obj` null, never live again; for
+  anything that reads the state under the table's lock, since a drop of an
+  empty handle (`Cache3.dropIfEmpty`, bergdb 019-46, 2026-11-09) is DEAD
+  under that lock, in the table, and LIVE again if an object came.
 * The id stays (T3): a pointer whose handle is dead finds the live one by
   id, without reading a header.
 

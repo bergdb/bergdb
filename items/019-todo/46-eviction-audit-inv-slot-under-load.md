@@ -169,6 +169,48 @@ reproduces with a class in `bergdb.core` that calls
 1276 of that shape. For a new entry.
 
 
+After review
+------------
+
+An independent review of the fix in night 006-15 found it correct: no
+fault in 260,000 rounds of a jcstress-like test and 1,100 seeds. It found
+two low points, taken in the commit "019-46, after review":
+
+1. **A latent dependency.** The fix's argument that the writer's
+   `makeCanonical` never fills an empty handle held because the writer
+   caches every index node (`PutData`'s policy,
+   `Dag.CACHE_ALL_EXCEPT_LARGE_VALUE_NODES`). A writer op whose policy kept
+   no index node would have dropped its own empty handle
+   (`NodeCollection.followStreamPointer`: the drop after step 4 did not
+   test for the writer) and then made the version canonical in that dead
+   handle, out of the table (`Cache3.makeCanonical` fills an empty handle);
+   and a reader's drop could have taken the writer's empty handle between
+   its steps 4 and 6. No writer of BergDB has such a policy: latent. Now
+   the writer installs every index node it reaches in the node's handle
+   (step 4) and swizzles it (step 5) whatever its op's cache policy, so its
+   handle holds an object from step 4 on, which no drop takes; an assert
+   before step 6 says so. For BergDB's writer nothing changes: its policy
+   caches every index node. Test:
+   `NodeCollection.testWriterKeepsTheNodeWhateverItsPolicy`, the writer's
+   follower with `Dag.CACHE_NOTHING`, failing before ("a live handle in
+   the table").
+2. **The words on DEAD.** `Handle`'s class Javadoc and 009-02 (its
+   summary and section 4.1) said a DEAD handle is out of the table and
+   never live again. Since this entry's fix, `Cache3.dropIfEmpty` makes an
+   empty handle DEAD under the map's lock while it is still in the table,
+   and LIVE again if an object came meanwhile, before it lets the lock go.
+   Both now say that the rule holds for anything that reads the state
+   under that lock.
+
+The Lean model is left as it is: in it, a drop of an empty handle is one
+atomic step under the table's lock, which is what the fix makes it in
+Java, and nothing that reads under that lock sees the DEAD between.
+`java/stress/TraceExport.java` (line 1198) reads a handle's state without
+that lock when it exports a run's handles for the checker's C-H: harmless
+today, as run E has no concurrent reader that keeps nothing, so no drop
+runs while it exports.
+
+
 Log
 ---
 
@@ -187,3 +229,12 @@ crashes and reclaim with the audit, 0 failed; ReclaimReaders, 0 failures;
 conformance C-P and C-H, 0 of 10,353 transactions; LargerThanMemory).
 `BEFORE COMMIT OK`. Status: done, 2026-11-09; the line in
 `releases/next.md` is the coordinator's.
+
+2026-11-09. After review, by the night's agent C (006-15): the writer keeps
+every index node it follows to whatever its op's cache policy, with an
+assert and a test; `Handle`'s and 009-02's words on DEAD qualified; the
+Lean model unchanged, and TraceExport's read without the lock noted.
+`java/stress/level4.sh` (full): LEVEL 4 OK (EvictionInvariance, 0 of
+25,100 audits failed; restarts, crashes and reclaim with the audit, 0
+failed; ReclaimReaders, 0 failures; conformance, C-P and C-H 0 of 10,353
+transactions; LargerThanMemory). `BEFORE COMMIT OK`.
