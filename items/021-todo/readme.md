@@ -66,6 +66,12 @@ Closed
 | [021-15](15-node-texts-not-deterministic.md) | Fix | Refusal texts of a start named nodes by identity hash, different in every run | none | done | 2026-11-09 |
 | [021-16](16-long-keys-overflow-the-stack.md) | Fix | A key of about 90 KB or more overflowed the stack: a start failed, a put failed the database | none | done | 2026-11-09 |
 | [021-17](17-transaction-info-after-reclaim.md) | Fix | transactionInfo() refused uncut transactions after reclaim had copied the value (2026.1 to 2026.3 too) | none | done | 2026-11-09 |
+| [021-18](18-prefix-scan-stops-at-prefix-key.md) | Fix | GetMany.Prefix stopped at a key equal to the prefix (since 2017) | none | done | 2026-11-09 |
+| [021-19](19-kv-time-of-a-later-transaction.md) | Doc | A KV's time is its key node entry's time, not the write's: Javadoc made exact (decided 2026-10-13) | none | done | 2026-11-09 |
+| [021-20](20-database-directory-reused.md) | Fix | A database's directory deleted and made again: the old database wrote into the new one | none | done | 2026-11-09 |
+| [021-21](21-rw-environment-threads.md) | Fix | An RwEnvironment used by several threads lost puts and failed the database; used after return | none | done | 2026-11-09 |
+| [021-22](22-shared-connection-guard.md) | Fix | A Connection shared by threads gave wrong reads and failed the database; now refused | none | done | 2026-11-09 |
+| [021-23](23-huge-array-put.md) | Fix | A put of an object over 2 GB stored threw OutOfMemoryError (in rw(), failed the database) | none | done | 2026-11-09 |
 | [021-09](09-udir-accepts-bad-dirs.md) | Fix | `PubKeys.udir2idir` accepts "p/" and "/p//" | none | done | 2026-11-08 |
 | [021-08](08-object-reader-nesting-depth.md) | Fix | The object reader has no limit on nesting depth | none | done | 2026-11-07 |
 | [021-07](07-object-reader-format-errors.md) | Fix | The object reader's format errors are not BadFormatException | none | done | 2026-11-07 |
