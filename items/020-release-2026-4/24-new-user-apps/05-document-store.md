@@ -298,3 +298,39 @@ would say what the walk only implies.
   exceptions of U5-9), and a refusal writes nothing.
 * A single-file program in the overview's style (a package-private class run as
   `java -cp jar Doc.java`, its Data Object nested in it) works.
+
+
+## 4. Fixes
+
+Made 2026-11-09 for coord-1109, in `clone-x25`, by the rule for 2026.4: a
+plain bug fixed with a failing test first; elsewhere the Javadoc made true
+and complete where the code is as designed; no new API and no change of
+meaning. The tests are in `PubTesterJavadocNewUsers`. The commits, with
+020-24-04's `e91238f` after them, gated on one tree under the gate lock:
+BEFORE COMMIT OK (145 s, unit 1577, f 86), JAVADOC PUB OK.
+
+* **U5-1, U5-2**: fixed by 021-16 (`01d5352`, `520963d`).
+* **U5-3** (`084069b`): the package's "Objects" says that a get by another version
+  of a class may give an array with null elements, which a put refuses
+  (020-09, section 5.7). The alternatives of the finding (a shorter array,
+  null for the whole field) change the meaning: for Frans.
+* **U5-4, U5-5**: new API, for Frans's list; not done.
+* **U5-6** (`084069b`): "Objects" says that a public final field and a field that
+  hides a superclass's field make a class not a Data Object (V3, V8), and
+  that `DbObject` and the value classes are not on the closed list (V9). The
+  messages' "(V3)" and "bergdb 020-09, section 3" are left as they are.
+* **U5-7** (`084069b`): "Objects" gives the conversions of 020-09, sections 5.4 to
+  5.7, that a user meets: a `char` as its number, "65"; text into a `char`
+  as a number; booleans and numbers; bytes and text as UTF-8.
+* **U5-8** (`084069b`): "Objects" says that a suffix is case-sensitive.
+* **U5-9** (`b81232f`, a plain bug, tests failing first): the refusal of an object
+  at "/k/x.OBJ" names the user's key, not "/dk/-x.OBJ", and no longer calls
+  ".obj" obsolete; a get as an object of a value that is not one starts "The
+  value at KEY cannot be read as an object: " where it ended with " ukey=";
+  a get as `String` of an object says that it is an object.
+* **U5-10** (`084069b`): `DbObject` and `DbValue.toString()` say that `toString()`
+  is a short tag ("o") and that the value classes have no `equals()` of
+  their own. A `toString()` with the fields, and `equals()`, are new API:
+  for Frans's list.
+* **U5-11** (`084069b`): `Connection.transactionInfo()` says how to walk a key's
+  versions. A `versions(key)` is new API: for Frans's list.
