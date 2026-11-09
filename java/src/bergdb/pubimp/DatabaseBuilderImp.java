@@ -48,6 +48,13 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
     private Db streamDb = null;
     private AppendOnlyStream streamDbStream = null;
     
+    /**
+     * The SalsaStream that the last start with a crypto key made around the main stream and
+     * gave to the DbBuilder as its main stream, or null; a later start takes the stream under
+     * it again (handleCryptoKeyAndCreatedTxt; bergdb 020-24-07, U7-5).
+     */
+    private SalsaStream salsaMade = null;
+    
     
     public DatabaseBuilderImp() {
         // Sets some default values.
@@ -402,6 +409,19 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
         
         AppendOnlyStream aos = dbBuilder.getMainStream();
         
+        // The stream of memory() or mainStream() as given, not the SalsaStream that an
+        // earlier start of this builder made around it (2026-11-09, bergdb 020-24-07, U7-5).
+        // Each start wrapped the main stream again, also a refused one: a restart on the
+        // closed stream of memory() read it through two layers of one keystream, which
+        // cancel, and was refused with BadCryptoKey, every other time; and after a start
+        // with a key, a start without one on a stream without encryption was refused too.
+        // A directory's start opens a new FileStream, so it never meets salsaMade.
+        if (salsaMade != null && aos == salsaMade) {
+            aos = salsaMade.getUnderlyingStream();
+            dbBuilder.mainStream(aos);
+        }
+        salsaMade = null;
+        
         if (this.cryptoKey == null) {
             if (aos instanceof FileStream) {
                 FileStream fileStream = (FileStream) aos;
@@ -426,6 +446,7 @@ public class DatabaseBuilderImp implements DatabaseBuilder {
             }
             
             dbBuilder.mainStream(salsa);
+            salsaMade = salsa;
         }
     }
     

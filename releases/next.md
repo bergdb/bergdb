@@ -504,6 +504,16 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `create()` of a path that is a regular file says "Directory P could not
   be opened: it exists and is not a directory." where it said "Not a
   directory" without the path (U8-11). Found by a new-user application.
+* **A builder of `memory()` with a crypto key starts again on its closed
+  stream** (bergdb 020-24-07, U7-5; 2026-11-09). Each `start()` wrapped the
+  builder's stream in another layer of encryption, around the one of the
+  start before, a refused start's too: a start again on the closed stream
+  of `memory()` with the right key was refused with `BadCryptoKey`, every
+  other time, as two layers of one keystream cancel; and after a start
+  with a key on a stream without encryption, refused, a start without a key
+  was refused too. Now each start encrypts the stream of `memory()` once,
+  and a refused start leaves nothing behind. A directory's start was
+  right. In 2026.1 to 2026.3; found by a new-user application.
 
 
 ### Core API

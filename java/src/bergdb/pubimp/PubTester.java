@@ -551,6 +551,68 @@ public class PubTester {
     }
     
     /**
+     * Regression test for bergdb 020-24-07, U7-5: a builder of memory() with a crypto key
+     * starts a database on its closed stream again and again, and each start reads the data;
+     * a start refused for its key leaves the builder as it was, so that the next start with
+     * the right key, or with none on a stream without encryption, starts. Until U7-5 each
+     * start wrapped the builder's stream in another SalsaStream, around the one of the start
+     * before: every other start was refused with BadCryptoKey, as two layers of one keystream
+     * cancel; and the layer of a refused start stayed, so that a start without a key on a
+     * stream without encryption was refused after a start with one.
+     */
+    @Nano
+    public static void testRestartsOfMemoryBuilderWithCryptoKey() {
+        CryptoKey key = CryptoKey.generate();
+        DatabaseBuilder b = Factory.database().memory().cryptoKey(key);
+        Database d = b.start();
+        d.connection().put("/a", "secret");
+        d.close();
+        for (int i = 2; i <= 4; i++) {
+            assertStartReads("start " + i + " with the key", b, "secret");
+        }
+        assertBadCryptoKey("another key", b.cryptoKey(CryptoKey.generate()));
+        assertBadCryptoKey("no key", b.cryptoKey(CryptoKey.NULL));
+        assertStartReads("the key after another and none", b.cryptoKey(key), "secret");
+        assertStartReads("the key again", b, "secret");
+        
+        DatabaseBuilder p = Factory.database().memory();
+        d = p.start();
+        d.connection().put("/a", "plain");
+        d.close();
+        assertStartReads("no key", p, "plain");
+        assertBadCryptoKey("a key, no encryption", p.cryptoKey(key));
+        assertStartReads("no key after a key", p.cryptoKey(CryptoKey.NULL), "plain");
+        assertStartReads("no key again", p, "plain");
+    }
+    
+    /** A start of the builder reads 'expected' at /a; the database is closed. U7-5. */
+    private static void assertStartReads(String what, DatabaseBuilder b, String expected) {
+        Database d;
+        try {
+            d = b.start();
+        } catch (BadCryptoKey e) {
+            throw new AssertionError(what + ": " + e, e);
+        }
+        try {
+            Assert.assertEquals(what, expected, d.connection().get("/a", String.class));
+        } finally {
+            d.close();
+        }
+    }
+    
+    /** A start of the builder throws BadCryptoKey. U7-5. */
+    private static void assertBadCryptoKey(String what, DatabaseBuilder b) {
+        Database d;
+        try {
+            d = b.start();
+        } catch (BadCryptoKey e) {
+            return;
+        }
+        d.close();
+        throw new AssertionError(what + ": started");
+    }
+    
+    /**
      * Regression test for bergdb 015-49, S2-F24 (review S2): a key with a lone surrogate is
      * refused with IllegalArgumentException, by put(), get(), exists() and delete(); until
      * then the UTF-8 encoder stored it with '?' in the surrogate's place (005-26), so
