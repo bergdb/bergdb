@@ -107,17 +107,18 @@ for it; SIS/Proof/HandleCutSkip.lean, SIS/Proof/HandleCutPos.lean.
 
 Since bergdb 020-29 (2026-11-09) a second library, `BergDB`, has the user
 indexes of release 2026.4 (020-10 with 020-18's fixes), the protocol that
-020-26 checked with TLC within small bounds: one index name over one
-directory, its writers (transactions of any keys), builds, activation,
-deletion, cleanup, crashes and restarts (BergDB/Index/Model.lean, the trusted
-part), and 020-26's safety
-invariants proved for every size (BergDB/Index/Theorems.lean): at every
-lookup time an active index's entries are exactly f over the data
-(`index_is_function`), no entry of the live generation is stale, a build
-covers the keys it passed, every generation with entries is live or has a
-marker, no marker names the live generation, a creation's G is new. It
-imports nothing of SIS. The proofs: BergDB/Index/Inv.lean,
-BergDB/Index/Steps.lean; a run of the model: BergDB/Index/Example.lean.
+020-26 checked with TLC within small bounds, for any number of index names
+and directories: the writers (transactions of any keys, each key's index set
+read under the lock), the builds, the activation, the deletion and the
+cleanup of each name's generations, crashes and restarts
+(BergDB/Index/Model.lean, the trusted part), and 020-26's safety invariants
+proved for every size (BergDB/Index/Theorems.lean): at every lookup time an
+active index's entries are exactly f over the data (`index_is_function`), no
+entry of a live generation is stale, a build covers the keys it passed, every
+generation with entries is live or has a marker, no marker names a live
+generation, a creation's G is new. It imports nothing of SIS. The proofs:
+BergDB/Index/Inv.lean, BergDB/Index/Steps.lean; a run of the model:
+BergDB/Index/Example.lean.
 
 
 Build and run
