@@ -21,7 +21,7 @@ On the branch `020-29-index-proof`, in `lean/` (the library `BergDB`, beside
 * `lean/BergDB/Index/Theorems.lean`. The theorems' statements (section 3).
 * `lean/BergDB/Index/Inv.lean`. The invariant, its frames (section 4).
 * `lean/BergDB/Index/Steps.lean`. A lemma per kind of step, the induction.
-* `lean/BergDB/Index/Example.lean`. A run of the model (section 5).
+* `lean/BergDB/Index/Example.lean`. Two runs of the model (section 5).
 * `lean/BergDB.lean`, `lean/lakefile.toml`. The library's root, its entry.
 
 
@@ -82,8 +82,8 @@ wins, 015-41).
   set has an index of its directory (a key with a suffix adds nothing, as
   `objectOps` has object keys only). At each key written, for each index of
   its set, f(old) is deleted and f(new) put. A `w()` of keys with a suffix
-  only has no R and no read set (`wSuffix`). An `rw()`'s own reads only add keys to its
-  read set, so more refusals, which `wDrop` allows.
+  only has no R and no read set (`wSuffix`). An `rw()`'s own reads only add
+  keys to its read set, so more refusals, which `wDrop` allows.
 * **The other steps** (`Step`): `aCreate`, `aCreateMap`, `aDelete`,
   `aDeleteMap` (a definition change of a name: under the lock, its commit
   writes the definition's key and the virtual key of the index's directory,
@@ -114,6 +114,23 @@ wins, 015-41).
   format 1, as the code takes a previous value of format 1; a put of one is
   refused (`wDrop`) and a build over one fails (`bAbort`).
 
+020-26's TLA+ and the Lean model, side by side:
+
+| IndexModel.tla | Model.lean |
+|---|---|
+| `data`, `def`, `entries`, `markers`, `now` | `Stream`: `data`, `dfn`, `ent`, `mark`, `now`   |
+| `ws` of a transaction in flight            | `Stream`: `wk`, `wdef`, `wv` (last write times) |
+| `lock`, `mem`, `admin`, `wr`, `bld`, `cln` | `Mem`: the same names                           |
+| `WSuffix`, `WStart`, `WReadS`, `WCommit`   | the same; `wReadS` per key                      |
+| `WRerun`                                   | `wDrop`, then a new `wStart`                    |
+| `ACreate(Map)`, `ADelete(Map)`             | the same, per name                              |
+| `BReadE`, `BRead`, `BCheck`, `BCommit`     | the same; `bCheckFail`, `bRefused`              |
+| `BLock`, `BActivate`                       | the same; `bActivateFail`                       |
+| `CScan`, `CDel`, `CEnd`                    | `cScan`, `cScanEnd`, `cDel`, `cEnd`             |
+| `CrashRestart`                             | `crash`, also back to an earlier time           |
+| (none)                                     | `bRetry`, `bAbort`, `cAbort`, `cut`             |
+| the invariants of its section 3            | Theorems.lean (section 3 below)                 |
+
 `G` is the latest transaction's time when the creation runs, and at least 1,
 as in the code (`Math.max(1, db.lookupTime(Long.MAX_VALUE))`); 020-26's
 `TimedGen` takes the time. With one name, one directory, transactions of one
@@ -136,8 +153,9 @@ standard axioms:
   live one or has a marker.
 * `start_accepted` (MarkerNotLive, StartAccepted): no marker names a live
   generation, so no start refuses the database.
-* `gen_fresh` (GenFresh): the G a creation takes is in no definition,
-  marker, entry, build or cleanup of its name.
+* `gen_fresh` (GenFresh): the G a creation takes, max(1, the latest time),
+  is in no marker, entry, build or cleanup of a name without a live
+  definition; a live generation is at most the latest time.
 * `mem_agrees` (MemAgrees): with no definition change under way, the maps are
   the stream's definitions.
 * `lock_sane` (LockSane): the lock is held by a definition change exactly
@@ -168,11 +186,11 @@ An inductive invariant `Inv` (Inv.lean), kept by every step (`inv_step`,
 Steps.lean), so held by every reachable system (`reach_inv`). It has three
 parts:
 
-* `SInv`, of the stream alone, for each name: every generation and marker
-  before the latest time; NoStaleEntry; every key covered while the index is
-  active; GensAccounted; MarkerNotLive. Being of the stream alone, it holds of
-  every stream a crash goes back to, and a start makes memory's part anew
-  from it (`minv_restart`).
+* `SInv`, of the stream alone, for each name: a live generation at most the
+  latest time, a marker's before it; NoStaleEntry; every key covered while
+  the index is active; GensAccounted; MarkerNotLive. Being of the stream
+  alone, it holds of every stream a crash goes back to, and a start makes
+  memory's part anew from it (`minv_restart`).
 * `MInv`, of memory with the stream: MemAgrees (per name, but for the name of
   a change under way), the lock, the definition change in progress, and an
   invariant per thread: `WInv` per writer, `BInv` per build (with `StepInv`
@@ -287,12 +305,23 @@ fault, for every size, in the protocol as modelled.
 **Not proved**:
 
 * **Liveness**: 020-26's BuildEnds, CleanupEnds and NoOrphans (its points 8
-  and 9), under fairness. They need a model of fairness (weak fairness of a
-  thread's steps, finitely many crashes, writers that may write for ever) and
-  a ranking argument: the keys up to E are finitely many; a step in the
-  locked phase can be refused only by writers that read their index set
-  before the lock was taken, each at most once, as no writer reads a set
-  while the build holds the lock. Two points of the model would need care:
+  and 9), under fairness. They need labelled steps (which thread moved), a
+  model of fairness (a thread's steps, finitely many crashes, aborts and
+  retries, writers that may write for ever) and a ranking argument: the keys
+  up to E are finitely many; a step in the locked phase can be refused only
+  by writers that read the index set of the key they write before the lock
+  was taken, each at most once, as no writer reads a set while the build
+  holds the lock (a key with a suffix is in no step's read set, F1). One
+  point found on the way: with several names, weak fairness, which 020-26's
+  runs assume, is not enough. A build's steps that need the manager's lock
+  (`isLive`, its locked phase, its activation) are enabled only while the
+  lock is free or its own, and other names' definition changes and locked
+  build steps can take the lock each time it is free, so a build could wait
+  for ever while the lock is free again and again; it needs strong fairness
+  of the lock (Java's `synchronized` promises none), or a bound on the other
+  names' activity. With one name, as in 020-26, the lock's other holders are
+  the definition change and the builds of deleted generations, finitely
+  many, and weak fairness suffices. Two points of the model would need care:
   a build step that reads no key and does not reach E (`bRead` allows
   `hi = next`; a step of the code that reads no value meets E and ends the
   build) and data with infinitely many keys (E then need not exist).
@@ -302,10 +331,13 @@ fault, for every size, in the protocol as modelled.
 * **What 020-26 left out and this model too**: writes through the Core
   (020-22: undefined), key replace (020-10, section 5.3).
 * **The Java code**: the theorems are about the model; the model follows
-  020-26's and the code at `83e8e13` with 020-18's fixes
-  (`RwEnvironmentImp.indexEntries` for the writers' read sets and the
-  per-key index sets). When the code changes the read sets, the lock or the
-  order of R and the index set, the model must follow (020-26, section 8).
+  020-26's (from the code at `83e8e13` with 020-18's fixes) and the code at
+  `b0eba12` (main, 2026-11-09), read for this item:
+  `RwEnvironmentImp.indexEntries` (the writers' read sets, the index set per
+  key), `IndexBuilderImp` (the build, its tries and errors) and
+  `IndexManager` (G, the definition changes, the cleanup). When the code
+  changes the read sets, the lock or the order of R and the index set, the
+  model must follow (020-26, section 8).
 
 **How to continue**: liveness, for BuildEnds first (it is what TLC could
 check only within small bounds, and where 020-18 found F1 and F4): define
@@ -324,20 +356,24 @@ Log
 * 18:01, `12c8099`: 020-26's model in Lean (one name, one directory,
   transactions of one key), the invariant and its proof, the theorems, the
   run.
-* 18:13, `b94a25a`: transactions of any keys.
-* 18:27: several index names and directories, with each key's index set
-  read under the lock at its own time, as the code does; the proofs per name.
-  18:31, on a review of the model against `RwEnvironmentImp.indexEntries`:
-  the read set of a transaction has the virtual keys and the keys of its
-  object keys only, not of its keys with a suffix (the model asked more of
-  the transaction than the code, so it left out some of the code's runs).
-  18:37, on a review of the build, the cleanup and the definition changes
-  against `IndexBuilderImp` and `IndexManager`: the error steps `bRetry`,
-  `bAbort` and `cAbort` (runs of the code the model had not), and G as the
-  code takes it, max(1, the latest time), with the freshness invariant
-  weakened to match (a live generation at most the latest time).
-  18:41: `cut`, reclaim's cut of lookup times; a second run, with the
-  deletion, the cleanup and a creation again.
+* 18:07, `b94a25a`: transactions of any keys.
+* 18:31, `96d9ab0`: several index names and directories, with each key's
+  index set read under the lock at its own time, as the code does; the
+  proofs per name. Before it, on a review of the model against
+  `RwEnvironmentImp.indexEntries`: the read set of a transaction has the
+  virtual keys and the keys of its object keys only, not of its keys with a
+  suffix (the model asked more of the transaction than the code, so it left
+  out some of the code's runs).
+* 18:38, `63f3ae5`: on a review of the build, the cleanup and the
+  definition changes against `IndexBuilderImp` and `IndexManager`: the error
+  steps `bRetry`, `bAbort` and `cAbort` (runs of the code the model had
+  not), and G as the code takes it, max(1, the latest time), with the
+  freshness invariant weakened to match (a live generation at most the
+  latest time).
+* 18:42, `d5ba3c0`: `cut`, reclaim's cut of lookup times; a second run, with
+  the deletion, the cleanup and a creation again.
+* 18:43 to 18:45: this readme: the TLA+ model and the Lean model side by
+  side; liveness, and why several names need strong fairness of the lock.
 
 Each step: `lake build BergDB` clean, no `sorry`, the standard axioms only.
 Nothing in 2026.4. For the coordinator: a line for this subitem in 020's
