@@ -57,6 +57,17 @@ import bergdb.pub.util.SyncLevel;
  * copy, move or restore a stopped database's files all together: the stream's files and
  * created.txt.</p>
  * 
+ * <p><b>What a crash keeps</b> (bergdb 020-24-13, U13-3). The transactions are written to
+ * the stream one after another, in the order of their commits, each in a record of its own
+ * with the index entries that it makes: a put(), a delete(), a WBuilder's execute() and an
+ * rw() alike. A crash or a power loss cuts the stream's tail, and the start drops a record
+ * that the cut reached: the database then holds a prefix of the transactions, each whole
+ * or not at all, and none after one that is missing. A sync() returns when the stream is
+ * durable up to its transaction, and so every transaction committed before it, from any
+ * connection; Connection.sync() waits for the last transaction of its connection. So an
+ * import that syncs after each batch finds after a crash every batch up to the last that a
+ * sync() returned for, and goes on after the last batch that it finds.</p>
+ * 
  * <p>A power loss must leave a cut tail and no other bytes: the file storage forces each
  * append to the device before the append returns, and relies on a file system that keeps a
  * file's appends in order, as common ones do (bergdb 014-01, section 7; 005-83). A tail of

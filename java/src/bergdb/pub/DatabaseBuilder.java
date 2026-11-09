@@ -84,7 +84,12 @@ public interface DatabaseBuilder {
      * eviction; bergdb 011-04). A start's time grows with the transactions it reruns and the
      * index nodes it reads, so with more keys: with 10 to 50 million keys of small values, a
      * warm start takes about 62 to 104 ms a megabyte of its startup section, 3 to 5 s at 50
-     * (bergdb 006-19, 007-05); measure a start with your own data. Existing databases keep
+     * (bergdb 006-19, 007-05); measure a start with your own data. A start reruns each
+     * transaction of its startup section whole, so a transaction larger than the startup
+     * distance makes every start read all of it, also after small transactions after it,
+     * until about twice the startup distance has been written after it: at a startup
+     * distance of 5, after one transaction of 200 MB a start took 2.7 to 3.1 s, and 0.07 s
+     * once 10 MB more had been written (bergdb 020-24-13, U13-7). Existing databases keep
      * the startup distance stored in their stream; Database.setStartupDistanceInMb()
      * changes it while the database runs, and the stream keeps the new value (bergdb
      * 005-53). The value is clamped to 5 to 1000.

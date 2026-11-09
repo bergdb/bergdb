@@ -168,6 +168,8 @@ size: many small databases open at once need heap accordingly
 ({@link DatabaseBuilder#startupDistanceInMb(int)}).</li>
 <li>A transaction is written to storage soon after it returns; sync() waits until it is
 durable, and so does close().</li>
+<li>A long key costs many times its length in the stream and in memory, as a key is stored
+as a path of nodes, one for each 7 bytes: keep keys short ({@link Connection}, "Keys").</li>
 <li>A Connection is for one thread: db.connection() gives each thread its own, the same object
 at each call in the thread, and is the one to use; db.newConnection() makes another, for a
 second view, such as a reader at another lookup time. A call of a connection while another

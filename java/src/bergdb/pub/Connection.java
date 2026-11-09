@@ -34,7 +34,14 @@ import bergdb.pub.util.SyncLevel;
  * 
  * <p>Keys. A key starts with '/', has at least one more character, does not end with '/',
  * and has no "//" and no lone surrogate (bergdb 015-49); every call that takes a key refuses
- * another key, and null, with IllegalArgumentException.</p>
+ * another key, and null, with IllegalArgumentException. A key is stored as a path of key
+ * nodes, a level for each 7 bytes of the key, so that a key costs stream bytes, memory and
+ * time in proportion to its length, many times what a value of that length costs. In a test
+ * of 200,000 keys, each with a String value of 11 bytes, written 1,000 to a transaction, a
+ * key of 13 bytes took about 70 bytes of the stream, and a key of 114 bytes whose first 100
+ * differ from key to key about 1,200 to 1,400 bytes; keys of 120 bytes that shared their
+ * first 109 took about 190 (bergdb 020-24-13, U13-1). Keep keys short, put large data in
+ * values, and let keys that are written together share their start.</p>
  *
  * <p>Strings. Every string BergDB stores, a key, a String value and each string in an
  * object, is Unicode text stored as well-formed UTF-8; a put refuses a String with a lone
@@ -351,8 +358,15 @@ public interface Connection extends ReadInterface {
      * @throws DbException
      *             If the transaction is refused, nothing of it written, and the database
      *             goes on (DbException): it is too large, its values and keys taking more
-     *             than 7/8 of 2^31 - 9 bytes, about 1.88 GB, in the stream (bergdb 005-17);
-     *             or the database is stopping or stopped (IllegalDbStateException). Or if
+     *             than 7/8 of 2^31 - 9 bytes, rounded down, 1,879,048,178 bytes, about 1.88
+     *             GB, in the stream (bergdb 005-17); or the database is stopping or stopped
+     *             (IllegalDbStateException). The size counts each key-value pair of the
+     *             transaction, the entries of the indexes that its puts make among them: a
+     *             put counts its value's bytes and 28 bytes, a delete 24 bytes, and each its
+     *             key, 8 bytes for each whole 7 bytes of the key and 8 more, the key's bytes
+     *             being its UTF-8 and one more for each '/'; each pair rounded up to a
+     *             multiple of 4. So a pair with a key of up to 30 bytes counts 30 to 45
+     *             bytes more than its key and its value (bergdb 020-24-13, U13-2). Or if
      *             the thread is interrupted while the transaction waits to run again after
      *             a conflict, which a put at an object key may meet, as it runs as an rw()
      *             does (bergdb 020-10, section 5.1): it is not run, and the thread's

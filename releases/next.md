@@ -1312,6 +1312,22 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   overview, README.md and the package page say that the documentation of
   `Db` is its Javadoc in the source, `java/src/bergdb/core/Db.java`, which
   the published Javadoc does not hold. No change of behaviour.
+* **What a key costs, what the size limit counts, what a crash keeps, and
+  a start after a large transaction** (bergdb 020-24-13, U13-1 to U13-3
+  and U13-7, from a new user's bulk import and export; 2026-11-09).
+  `Connection`'s "Keys" and the package's "Good to know" say that a long
+  key costs many times its length: in a test, about 70 bytes of the
+  stream for a key of 13 bytes, 1,200 to 1,400 for one of 114 bytes.
+  `Connection.put()` gives the size limit of a transaction to the byte,
+  1,879,048,178, and what it counts besides the keys and values: 28 bytes
+  a put, 24 a delete, a key as 8 bytes for each 7, each pair rounded up
+  to 4 bytes, the index entries too. `Database`'s "What a
+  crash keeps" gathers what a resumable import relies on: each
+  transaction, an `rw()` too, whole or absent; a prefix of them, in commit
+  order; a `sync()` covers every transaction committed before its own.
+  `DatabaseBuilder.startupDistanceInMb()` says that a transaction larger
+  than the startup distance makes every start read all of it, until about
+  twice the startup distance has been written after it.
 
 
 ### Known issues and limits
