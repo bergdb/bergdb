@@ -13,6 +13,9 @@
 #   - no short file before a newer one (bergdb-power's check; 005-47, 022-01 step 3): with
 #     a new name durable at its creation (NAMES=now), the stream's old last file must be
 #     forced before a new file is made, else an image has a short file before a newer one;
+#     and no gap (022-02, D7): with a name that may be durable before one made earlier
+#     (NAMES=reorder), each new file and the directory must be forced before the file
+#     takes a byte, else an image has a later file without an earlier one;
 #   - both start it (a power loss never leaves a database that does not start; but a torn
 #     first write of the creation, before any acknowledged sync, which both refuse alike,
 #     005-33's DatabaseNotCreatedException), with the
@@ -26,13 +29,17 @@
 #   BASES  (environment) the workloads, "SEED:K=V,..." each (Gen's), in place of the six
 #   SYNC   (environment) the chance of a sync after a transaction line (0.15)
 #   JOBS   (environment) workloads at once (3)
-#   NAMES  (environment) when C's model takes a new name to be durable: now (the default:
-#          at its creation, as a delete is) or dirforce (after the next force of the
-#          directory, as Java's ModelIo; 012-14's runs)
-#   OMIT   (environment) file, dir or switch: the negative control (bergdb-power -omit):
-#          then the run must find a lost acknowledged byte (file; dir, which sets
-#          NAMES=dirforce) or a short file before a newer one (switch: the force of the old
-#          last file before a new file left out), and prints POWER CONTROL CAUGHT
+#   NAMES  (environment) when C's model takes a new name to be durable: reorder (the
+#          default since 022-02, D7: as now, and also images in which a name is durable
+#          before the names made before it since the last force of the directory), now
+#          (at its creation, as a delete is; 022-01, step 3) or dirforce (after the next
+#          force of the directory, as Java's ModelIo; 012-14's runs)
+#   OMIT   (environment) file, dir, switch or newfile: the negative control (bergdb-power
+#          -omit): then the run must find a lost acknowledged byte (file; dir, which sets
+#          NAMES=dirforce) or a short file before a newer one or a gap (switch: the force of
+#          the old last file before a new file left out; newfile, which sets NAMES=reorder:
+#          D7's forces of a new file and of the directory after it left out), and prints
+#          POWER CONTROL CAUGHT
 #   JAVAIMG=1  (environment) the other way: the images are Java's, from
 #          FileStreamPowerLossTester's ModelIo on Java's Db (test/stress/java/PowerImages.java,
 #          its runTrace workload: node size 30, startup distance 20,000, retain 2 s, a
@@ -50,8 +57,9 @@ OUT=${OUT:-/Users/f/fl/bench/022/out/power}
 SYNC=${SYNC:-0.15}
 JOBS=${JOBS:-3}
 OMIT=${OMIT:-}
-NAMES=${NAMES:-now}
+NAMES=${NAMES:-reorder}
 [ "$OMIT" = dir ] && NAMES=dirforce
+[ "$OMIT" = newfile ] && NAMES=reorder
 [ -n "${JAVA_HOME:-}" ] || JAVA_HOME=/opt/homebrew/opt/openjdk
 JAVA=$JAVA_HOME/bin/java
 CLASSES=$CDIR/build/java/classes
@@ -154,7 +162,8 @@ base() {    # SEED PARAMS: one workload and its images; OUT/SEED/result.txt
     "$CT/bergdb-power" -seed "$seed" $omit -names "$NAMES" "$d/img" "$d/w.wl" "$d/db" > "$d/power.txt" 2> "$d/power.err"
     pe=$?
     if [ -n "$OMIT" ]; then
-        if [ "$OMIT" = switch ]; then caught='^power SHORT'; what="had a short file before a newer one"
+        if [ "$OMIT" = switch ] || [ "$OMIT" = newfile ]; then
+            caught='^power SHORT'; what="had a short file before a newer one, or a gap"
         else caught='^power LOST'; what="lost acknowledged bytes"; fi
         if grep -q "$caught" "$d/power.err"; then
             echo "CONTROL $seed caught: $(grep -c "$caught" "$d/power.err") images $what; $(tail -1 "$d/power.err")" > "$r"
@@ -211,9 +220,10 @@ check_images() {    # the images of base's $d, its workload's node size $m, into
         if [ "$ack" = 0 ] && grep -q '^start error=DatabaseNotCreatedException' "$i/dump-a.txt" \
                 && grep -q '^start error=DatabaseNotCreatedException' "$i/dump-b.txt"; then
             # A torn first write of the creation, its file's name durable, before any
-            # acknowledged sync (NAMES=now): both starts refuse it, as 005-33 has it
-            # (BERGDB_NOT_CREATED; Java's FileStream, which forces a new name before the
-            # first write, gives the same image); the runs after are refused alike.
+            # acknowledged sync (NAMES=now or reorder): both starts refuse it, as 005-33 has
+            # it (BERGDB_NOT_CREATED; Java's FileStream, which forces a new name before the
+            # first write, as C since 022-02's D7, gives the same image); the runs after are
+            # refused alike.
             echo "NOTCREATED $n" >> "$r"
             : > "$i/notcreated"
         fi

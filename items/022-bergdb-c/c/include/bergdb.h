@@ -830,9 +830,9 @@ enum bergdb_sync_level {
  * Makes the stream durable up to and including the byte at pos, a
  * transaction's last_pos; pos 0 for the last transaction executed (Java's
  * sync(level) and sync(pos, level)): writes the buffer and forces the
- * files written since the last force (F_FULLFSYNC), and the directory
- * after a new file. With one stream, any pos before the end makes all of
- * it durable. A negative pos needs nothing; BERGDB_SYNC_NONE does nothing.
+ * files written since the last force (F_FULLFSYNC); a new file and the
+ * directory are forced when the file is made. With one stream, any pos
+ * before the end makes all of it durable. A negative pos needs nothing; BERGDB_SYNC_NONE does nothing.
  * Durability: the C directory's readme.md, section 9.
  *
  * Errors: BERGDB_ARG (level not one of the two; pos at or past the end

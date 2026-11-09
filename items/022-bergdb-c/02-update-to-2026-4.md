@@ -632,6 +632,33 @@ Each has a default that goes ahead if Frans does not answer.
   candidate's long runs stand. (b) Step 4's runs again at 2026.4, about
   1.5 hours of a quiet F53. **Default (a)**, and (b) when the diff holds
   Core code.
+* **D7. A new stream file and the directory forced when the file is made,
+  or at the next sync, close or cut** (put to Frans by the session at
+  12:43; 022-01's log, step 3, and the departure that was `c/readme.md`'s
+  section 11, point 3). C forced a new file and the directory only at the
+  next sync, close or cut, so one write of its 10 MB buffer could make
+  several files with no force of the directory between them; a file system
+  that made a later name durable before an earlier one would then leave a
+  gap in the files, which both opens refuse (`BadDirStateException`).
+  Java's `FileStream.newFile`, with per-append forcing on or off, forces
+  the old last file (SWITCH, which finds nothing unforced with forcing
+  on), makes the new file, and forces it (OPEN) and then the directory
+  before the file takes a byte (`openForRw`). (a) Force each new file and
+  the directory as Java does: `new_file` forces the new file
+  (`PLAT_FORCE_OPEN`) and then the directory after it makes the file and
+  before its first byte, and the forces of the directory at a sync and
+  before a cut's deletes are dropped, as no new name is then left
+  unforced. It costs an `F_FULLFSYNC` of the empty file and one of the
+  directory per new file, about 1.4 ms on F53 by 022-01's figures for the
+  open's forces; files grow from 200 kB to 200 GB
+  (`FileStream.FILE_SIZES`), so a stream that grows to 1 GB makes about 70
+  files, and one of 100 GB about 115. (b) Keep C's way, as a departure
+  (`c/readme.md`, section 11): no force more; APFS keeps namespace
+  operations in order, as 014-01's consequence (c) relies on for the bytes
+  of a file, so on F53 the case is a theoretical one, but not on every
+  file system that C may be ported to. **(a), the default, went ahead;
+  Frans did not answer before leaving at 12:55; he may change it.** Done
+  by worker t5 (this file's log); the stream's bytes do not change.
 
 
 # 8. Recommendation
@@ -932,3 +959,68 @@ turns, 46 budget runs); `writecheck` 0; `corruptset` 60 copies, the three
 of `found-long-1` refused by both with the same exception and text;
 `allocfail` 628 runs; `examples` OK. Before, on `fd7f9e0`: `C BEFORE
 COMMIT OK (567 s)`. No difference remains.
+
+2026-11-09, D7 (worker t5). Section 7's D7, (a), the default, which went
+ahead: C forces a new stream file and the directory when it makes the
+file, as Java's `FileStream.newFile` does with per-append forcing on or
+off (`openForRw`: OPEN, then the directory); the stream's bytes do not
+change. `new_file` (`stream.c`), after the old last file's SWITCH force
+and the open of the new file, and before its first byte: `plat_force` of
+the new file (`PLAT_FORCE_OPEN`, whose comment in `plat.h` says so) and
+`plat_force_dir`, then the check that the file is empty, in Java's order.
+So every name is durable before its file takes a byte, and no file system
+can keep a later name without an earlier one. The forces of the directory
+that C made after a new file at a sync (`stream_sync`) and before a cut's
+deletes (`stream_pretruncate`) are gone, with `struct stream`'s
+`dir_unforced`, as no new name is then unforced (Java forces none before a
+cut's deletes or at a close either); a new file counts as forced (Java's
+`forcedLength`). The cost: one `F_FULLFSYNC` of the empty file and one of
+the directory per new file. Tests, each failing before the change (in a
+copy of `c/` with `2026.4`'s `stream.c` and `stream.h`): `t_stream.c`'s
+`stream_new_file_forces` (one write of 1,000,100 bytes, six files: for
+each "open N OPEN N dir write N", after the old one's SWITCH; 6 OPEN and 6
+directory forces; the sync after forces "SYNC 10" only; before, no OPEN
+and no directory force, then "SYNC 10 dir"; Java's
+`testForcingOffWritesAppends` and the six files of
+`testForcingOffForcesBeforeACutDeletes`), `stream_forces` (its seam logs
+the writes too: each open followed by OPEN and the directory before the
+write, a cut and a sync that force no directory) and `stream_seam`'s count
+(4 file forces, 2 before). `stream.h`, `bergdb.h`'s `bergdb_sync` and
+`reclaim.c`'s `cut_if_durable`: no directory at a sync.
+
+The power model: `bergdb-power -names reorder`, `power.sh`'s new default
+`NAMES=reorder`: as `now` (a new name durable at its creation), and at
+each event at which two or more names exist that no force of the directory
+has made durable, the image with the newest of them and none of the others
+(`reordered_names`); an image that leaves out a name has a gap and counts
+as short (`power SHORT`, exit 4). The existing modes cannot show the case:
+`now` makes the names durable in the order of their creation, and
+`dirforce` all at once at a force of the directory. `-omit newfile`
+(`OMIT=newfile`, which sets `reorder`) leaves out a new file's OPEN force
+and the force of the directory after it, the negative control. On
+`power.sh`'s six workloads, and 1101 with a sync after 2 % of the
+transactions in place of 15 %, C without D7 (the copy) has short images
+under `reorder` in 1101, 1103, 1105 and the 2 % run (2, 14, 12 and 28;
+1102, 1104 and 1106 make no two files between forces of the directory),
+and none under `now`; with D7 none in either mode, and no reordered image
+at all, as no two names are ever unforced at once. Two of the copy's short
+images (1103), started by both dumpers: refused by both with
+`BadDirStateException` ("not in a correct state"), the same dump.
+`power.sh` with D7, `JOBS=2`, under `nice`: C's images, `NAMES=reorder`,
+1101 and 1102: 890 images started and run on by C and Java alike, no
+failure (the run stopped at 10 minutes, after these two of its six
+workloads, with F53 under a load of 25 to 40; 1101's last comparisons,
+from its 537th image, finished by hand with the script's own lines);
+Java's images (`JAVAIMG=1`, seeds 17, 19 and 23): `POWER OK`, 147 images
+(36 s); `OMIT=newfile`: `POWER CONTROL CAUGHT` in all six workloads (3 to
+236 images each, 52 s). `c/readme.md`: section 9, points 3, 9 and 11 (a
+new file's OPEN; one difference from Java left), section 10's `power.sh`,
+and section 11 without the departure (its points 4 and 5 now 3 and 4).
+
+The gate against the candidate (`git:94a1520`), on `2026.4` at `0e4e27f`
+(022 merged): `C BEFORE COMMIT OK (376 s)`, F53 under a load of about 15
+to 27; `unit` 394 tests (393 in the release build); `func` 28; `cross
+quick` 0 differences (23 workloads, 69 crash cuts, 85 corrupt variants, 2
+in turns, 46 budget runs); `writecheck` 0; `corruptset` 60 copies;
+`allocfail` 628 runs; `examples` OK. No difference remains; D7 does not
+show in the cross runs, which compare bytes and files, not forces.

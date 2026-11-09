@@ -527,7 +527,7 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
    Java's `BufferedStream` writes it within 20 ms from a thread of its
    own, and `FileStream` forces each write (per-append forcing, a setting
    since 2026.3 and on by default, 005-47); the bytes are the same, and
-   only when they reach the disk differs (section 11, point 4).
+   only when they reach the disk differs (section 11, point 3).
 2. **After `bergdb_execute`**, the transaction is committed: reads see it
    and the stream's length counts it, but it is not durable. A process
    that dies (a crash, `kill -9`, `abort`) loses what the buffer holds;
@@ -537,8 +537,9 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
 3. **After `bergdb_sync`** at `BERGDB_SYNC_ORDINARY` (`NONE` does
    nothing; `STRONG` is gone, as Java's), every transaction committed
    before it is durable: the buffer is written, and the files written
-   since the last force, and the directory after a new file, are forced
-   with `F_FULLFSYNC`, as Java's `force(true)` on macOS. With one stream,
+   since the last force are forced with `F_FULLFSYNC`, as Java's
+   `force(true)` on macOS (a new file and the directory were forced when
+   the file was made, point 11). With one stream,
    a sync to any position before the end makes all of it durable; a
    position at or past the end is `BERGDB_ARG` (012-03, D11).
 4. **After `bergdb_close`**, as after a sync: the close writes and forces
@@ -582,7 +583,7 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
    next transactions. C has no thread, so the `bergdb_execute` call whose
    transaction lets reclaim decide a cut forces the stream itself (as a
    `bergdb_sync` does: the buffer written, the files written since the
-   last force and a new file's directory forced, `F_FULLFSYNC`) and then
+   last force forced, `F_FULLFSYNC`) and then
    deletes the front files, in that call (11-reclaim.md, 6.4, Q1: option
    B, decided by Frans on 2026-10-29; 6.9). That is one force per cut
    decided: at most one per quarter of the retain duration, and only when
@@ -609,15 +610,14 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
     at least up to what was forced; 005-47). A power loss, or a crash of
     the operating system, can lose what was written and not forced, and
     the file system may make a new file's name durable at once, before
-    any force of the directory. C's forces, each an `F_FULLFSYNC`, are
-    those of 2026.3's `FileStream` with per-append forcing off
-    (`stream.c`; `plat.h`'s reasons, Java's `FileStreamIo.Force`), but for
-    the force of each new file and its directory (below):
+    any force of the directory, or a later name before an earlier one.
+    C's forces, each an `F_FULLFSYNC`, are those of 2026.3's `FileStream`
+    with per-append forcing off (`stream.c`; `plat.h`'s reasons, Java's
+    `FileStreamIo.Force`):
 
     * **At a sync and a close** (SYNC): the files written since the last
-      force, then the directory if a file was made since its last force
-      (points 3 and 4); a transaction that decides a reclaim cut forces
-      so too (point 9).
+      force (points 3 and 4); a transaction that decides a reclaim cut
+      forces so too (point 9).
     * **At an open for writing** (OPEN): the last file, then the
       directory, so that what a process that died wrote and did not force
       is durable before this one counts it durable (point 7) or cuts the
@@ -627,18 +627,25 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
       file is made, so that no file before the last is short on the disk,
       which every open refuses (`BadDirStateException`, "Bad size of
       file"). C forced nothing at a switch before 022-01, step 3.
+    * **At a new file** (OPEN): the new file, then the directory, before
+      the file takes a byte, as Java's `openForRw`, so that no name is
+      durable without the names before it, which would leave a gap in the
+      files that every open refuses as it refuses a short file. Before
+      022-02's D7, C forced them at the next sync, close or cut, so one
+      write of its 10 MB buffer could make several files with no force of
+      the directory between them.
     * **Before a cut's deletes** (CUT): the files written since the last
-      force, and the directory after a new file; nothing after reclaim's
-      own force (point 9). Then the directory after each delete (005-46).
+      force; nothing after reclaim's own force (point 9). Then the
+      directory after each delete (005-46).
 
     The cost: per open a force of the last file and one of the directory
-    (about 1 and 0.4 ms on F53), per new file one force of the old one.
-    `power.sh` checks it with a new name durable at its creation
-    (`NAMES=now`, section 10). Two differences from Java remain, by C's
-    design (section 11, points 3 and 4): a new file and the directory are
-    forced at the next sync, close or cut, where Java's `openForRw`
-    forces them (OPEN) before the file takes appends; and C's unforced
-    tail is all that was written since the last force. Within a file,
+    (about 1 and 0.4 ms on F53); per new file a force of the old one, of
+    the new one and of the directory, about 70 new files for a stream of
+    1 GB. `power.sh` checks it with a new name durable at its creation,
+    also before the names made before it since the last force of the
+    directory (`NAMES=reorder`, section 10). One difference from Java
+    remains, by C's design (section 11, point 3): C's unforced tail is all
+    that was written since the last force. Within a file,
     that unforced bytes reach the disk in order is the file system's
     part, as for Java (014-01, section 7, consequence (c)): a hole in an
     unforced tail is outside the contract.
@@ -680,19 +687,23 @@ Raw output goes to `/Users/f/fl/bench/022/out/` by default (`OUT=`).
   `plat_io_set`; the release build has no seam): Java's `ModelIo` of
   `FileStreamPowerLossTester` in C, the bytes written, the bytes forced and
   the durable names apart; a new name is durable at its creation, as a
-  delete is (`NAMES=now`, the default since 022-01, step 3), or after the
-  next force of the directory (`NAMES=dirforce`, Java's model and
-  012-14's runs, which could not see a short file before a newer one,
-  section 9, point 11). At each write, tear, force, new file and delete
-  it writes the image that a power loss leaves, and checks that the image
-  holds the stream up to the length that the last `bergdb_sync` or
-  `bergdb_close` acknowledged, and has no short file before a newer one.
-  The script starts every image with both dumpers and runs on it with
-  both runners: the same exits, dumps and files. `JAVAIMG=1` does the
-  other way, Java's images (`java/PowerImages.java`) started by both;
-  `OMIT=file` or `OMIT=dir` is the negative control (forces not modelled:
-  acknowledged bytes are lost, and found), and `OMIT=switch` (the force of
-  the old last file before a new file left out: short files found).
+  delete is, and may be durable before the names made before it since the
+  last force of the directory (`NAMES=reorder`, the default since 022-02,
+  D7: a file system need not make names durable in order), at its
+  creation only (`NAMES=now`, 022-01, step 3), or after the next force of
+  the directory (`NAMES=dirforce`, Java's model and 012-14's runs, which
+  could not see a short file before a newer one, section 9, point 11).
+  At each write, tear, force, new file and delete it writes the image that
+  a power loss leaves, and checks that the image holds the stream up to
+  the length that the last `bergdb_sync` or `bergdb_close` acknowledged,
+  and has no short file before a newer one, and no gap. The script starts
+  every image with both dumpers and runs on it with both runners: the same
+  exits, dumps and files. `JAVAIMG=1` does the other way, Java's images
+  (`java/PowerImages.java`) started by both; `OMIT=file` or `OMIT=dir` is
+  the negative control (forces not modelled: acknowledged bytes are lost,
+  and found), `OMIT=switch` (the force of the old last file before a new
+  file left out: short files found) and `OMIT=newfile` (the forces of a
+  new file and of the directory after it left out, D7: gaps found).
 * `test/stress/allocfail.sh`: **allocation failures in turn**.
   `bergdb-allocfail WORKLOAD OUT` (`allocfail.c`, the test build) runs the
   workload once, then once for each allocation number N in a child process
@@ -750,25 +761,14 @@ limits harness. And those of 2026.3:
    whatever the length. C's errors are fixed buffers of bytes, and a
    damaged value need not be UTF-8. The harness compares the exception's
    name there (022-01, step 1).
-3. **A new file and the directory are forced at the next sync, close or
-   cut** (section 9, point 11), where Java's `openForRw` forces each new
-   file and the directory before the file takes appends (OPEN). One
-   write of C's 10 MB buffer can make several files with no force of the
-   directory between them, and a file system that made a later name
-   durable before an earlier one would leave a gap in the files, which
-   both opens refuse. APFS keeps such namespace
-   operations in order, as 014-01's consequence (c) relies on for the
-   bytes of a file, so on F53 the case is a theoretical one; on another
-   file system the fix is Java's force at each new file, one force of the
-   directory per new file (022-01, step 3).
-4. **The unforced tail** is all that was written since the last force,
+3. **The unforced tail** is all that was written since the last force,
    by C's design (section 9, point 1): no thread forces between the
    calls. Java's per-append forcing, on by default, forces each append of
    its buffer thread, within about 20 ms. So a power loss can lose more in
    C, never a byte that a sync or a close acknowledged, and a hole within
    a file, outside 014-01's contract, has more room in C, as in Java with
    per-append forcing off.
-5. **`StreamIoException`'s text** (012-14, section 6.4, a choice left
+4. **`StreamIoException`'s text** (012-14, section 6.4, a choice left
    open). A failed read of the stream is named `StreamIoException`, as
    Java names it, and its text begins with the inner exception's name, as
    Java's, and goes on in C's words, where Java's goes on with the inner

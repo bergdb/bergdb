@@ -91,7 +91,8 @@ enum err_code plat_fd_length(int fd, int64_t *length, struct err *e);
 enum plat_force_why {
     PLAT_FORCE_SYNC,        /* the files written since the last force, at a sync or a
                                close (C's; Java's per-append force is APPEND) */
-    PLAT_FORCE_OPEN,        /* the last file at an open for writing, before its directory */
+    PLAT_FORCE_OPEN,        /* a file opened for appends, before its directory: the last
+                               file at an open for writing, and each new file (D7) */
     PLAT_FORCE_SWITCH,      /* the last file, before the stream makes a new file */
     PLAT_FORCE_CUT          /* the files written since the last force, before a cut's
                                deletes */

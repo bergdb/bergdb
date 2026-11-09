@@ -1022,7 +1022,7 @@ static enum err_code pretruncate_if_possible(struct db *db, int64_t timeNow, str
  * stream within about 20 ms, so Java cuts at one of the next transactions.
  * C has no thread: here, when the stream is not yet durable up to the
  * decision, C forces it itself (stream_sync: the buffer written, the files
- * and a new file's directory forced, F_FULLFSYNC) and cuts in the same call
+ * written since the last force forced, F_FULLFSYNC) and cuts in the same call
  * (bergdb 012-11, 6.4, Q1: option B, decided by Frans 2026-10-29). One force
  * per cut decided, at most one cut per quarter of the retain duration; the
  * bytes do not change (012-01, 3.2 point 8), only when the front files are

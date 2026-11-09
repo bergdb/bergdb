@@ -19,8 +19,8 @@
  * thread do, without a thread. An append goes to the buffer; the buffer is
  * written to the files (FileStream.append: each file filled to its
  * capacity, then a new file) when it is full, at stream_flush and at
- * stream_sync, which then forces the files written since the last force
- * and, after a new file, the directory, with F_FULLFSYNC (plat). Reads see
+ * stream_sync, which then forces the files written since the last force,
+ * with F_FULLFSYNC (plat). Reads see
  * the buffered bytes. The bytes and the files are Java's; only when they
  * reach the disk differs. A close writes nothing: stream_sync first
  * (stream_finish does both), as Java's close writes and forces what the
@@ -28,7 +28,9 @@
  * per-append forcing off (bergdb 005-47), so that a power loss leaves a
  * prefix of the stream across its files: the last file and the directory
  * at an open for writing (OPEN), the last file before a new file (SWITCH),
- * and the files written since the last force before a cut's deletes (CUT).
+ * each new file and the directory before the file takes a byte (OPEN, as
+ * Java's; bergdb 022-02, D7), and the files written since the last force
+ * before a cut's deletes (CUT).
  *
  * One caller at a time (012-01, 4.2), so none of Java's synchronization.
  */
@@ -90,7 +92,6 @@ struct stream {
     int32_t buf_cap;
     int32_t buf_len;
     int32_t unforced;       /* the first file written since the last force; nfiles if none */
-    bool dir_unforced;      /* a file made since the last force of the directory */
     int64_t durable;        /* the length at the last force */
     bool failed;            /* an I/O error: FileStream's ioException, every write refused */
     /* The reads of a directory's files (012-10: what a start reads), as a stream
@@ -155,13 +156,15 @@ enum err_code stream_append(struct stream *s, const uint8_t *buf, int64_t n, str
  * if there is none (015-06), each file filled to its capacity, then a new
  * file (FileStream.newFile: named by its first position over 100,000, 14
  * digits; its capacity by applyFileSizeChangeRules; refused if it exists
- * with bytes). No force, but the old last file's before a new file is made
- * (the switch force, 005-47: no file before the last is ever short on the
- * disk). Nothing to do for a memory stream or a read-only directory. */
+ * with bytes). No force, but at a new file: the old last file's before
+ * the new file is made (the switch force, 005-47: no file before the last
+ * is ever short on the disk), then the new file's and the directory's
+ * before it takes a byte (OPEN, D7: no name durable without the names
+ * before it). Nothing to do for a memory stream or a read-only directory. */
 enum err_code stream_flush(struct stream *s, struct err *e);
 
-/* stream_flush, then forces the files written since the last force and,
- * if a file was made since, the directory (F_FULLFSYNC). */
+/* stream_flush, then forces the files written since the last force
+ * (F_FULLFSYNC); the directory was forced at each new file. */
 enum err_code stream_sync(struct stream *s, struct err *e);
 
 /* The length that the last stream_sync made durable (the whole length of
@@ -212,10 +215,10 @@ enum err_code stream_pretruncate_memory(struct stream *s, int64_t pos, struct er
  *     off the stream (the last file is kept, so a cut at the length is
  *     one within it, 015-31), the first position then the first remaining
  *     file's start (a file boundary at or before pos); then, as FileStream's
- *     cut thread does, the files written since the last force forced, and
- *     the directory after a new file (005-47's CUT force: the cut's decision
- *     durable first), and each file deleted, oldest first, and the
- *     directory forced after each (005-46), here in the call. ERR_IO (the
+ *     cut thread does, the files written since the last force forced
+ *     (005-47's CUT force: the cut's decision durable first), and each
+ *     file deleted, oldest first, and the directory forced after each
+ *     (005-46), here in the call. ERR_IO (the
  *     stream's failure, as Java's) if a delete or a force fails, or the
  *     stream failed before; ERR_ARG if pos is past the bytes in the files;
  *   - a memory stream: CutStream.pretruncate, the first position pos

@@ -173,7 +173,8 @@ static enum err_code force_written(struct stream *s, enum plat_force_why why, st
 }
 
 /* FileStream.newFile: the next file, at the stream's length in the files,
- * a multiple of 100,000. */
+ * a multiple of 100,000; it and then the directory forced before it takes
+ * a byte. */
 static enum err_code new_file(struct stream *s, struct err *e) {
     char path[4096];
     int fd;
@@ -214,8 +215,21 @@ static enum err_code new_file(struct stream *s, struct err *e) {
     if (rc != ERR_OK) {
         return fail(s, rc);
     }
+    /* The new file and then the directory forced before the file takes a
+     * byte, as Java's openForRw (OPEN), with per-append forcing on or off
+     * (bergdb 022-02, D7): else one write of the buffer could make several
+     * files with no force of the directory between them, and a file system
+     * that made a later name durable before an earlier one would leave a
+     * gap in the files, which an open refuses (BadDirStateException). So
+     * the name of every file that holds a byte is durable. */
+    rc = plat_force(fd, PLAT_FORCE_OPEN, e);
+    if (rc == ERR_OK) {
+        rc = plat_force_dir(s->dir, e);
+    }
     /* To make sure no-one just created the file and wrote to it. */
-    rc = plat_fd_length(fd, &length, e);
+    if (rc == ERR_OK) {
+        rc = plat_fd_length(fd, &length, e);
+    }
     if (rc == ERR_OK && length != 0) {
         rc = err_set(e, ERR_IO, "IOException", "File %s already exists and has length %lld.",
                 path, (long long) length);
@@ -230,12 +244,9 @@ static enum err_code new_file(struct stream *s, struct err *e) {
     s->files[s->nfiles].start = s->fileLength;
     s->files[s->nfiles].length = 0;
     s->files[s->nfiles].fd = fd;
-    if (s->unforced > s->nfiles) {
-        s->unforced = s->nfiles;
-    }
     s->nfiles++;
+    s->unforced = s->nfiles;    /* the old files by the switch, the new one by its OPEN */
     s->maxSize = FILE_SIZES[s->fileSizeIndex];
-    s->dir_unforced = true;
     return ERR_OK;
 }
 
@@ -538,13 +549,6 @@ enum err_code stream_sync(struct stream *s, struct err *e) {
     if (rc != ERR_OK) {
         return rc;
     }
-    if (s->dir_unforced) {
-        rc = plat_force_dir(s->dir, e);
-        if (rc != ERR_OK) {
-            return fail(s, rc);
-        }
-        s->dir_unforced = false;
-    }
     s->durable = s->length;
     return ERR_OK;
 }
@@ -769,9 +773,9 @@ enum err_code stream_pretruncate(struct stream *s, int64_t pos, struct err *e) {
     }
     const int32_t newSize = s->nfiles - (index + 1);
     /* Before the deletes, the stream forced up to its length in the files
-     * (bergdb 005-47, FileStream.runCuts' CUT force), and the directory if
-     * a file was made since its last force: the cut's decision durable,
-     * named, before the files it replaces are gone. Nothing to force after
+     * (bergdb 005-47, FileStream.runCuts' CUT force; every name is durable
+     * since its file was made, D7): the cut's decision durable before the
+     * files it replaces are gone. Nothing to force after
      * reclaim's own force for the cut (cut_if_durable), or after the open's
      * for a start's cut. Then the files are taken off at once (the first
      * position moves now) and deleted, oldest first, the directory forced
@@ -779,12 +783,6 @@ enum err_code stream_pretruncate(struct stream *s, int64_t pos, struct err *e) {
      * own. A failure stops the deletes; the files left are before the first
      * position, and the next start cuts again. */
     enum err_code rc = force_written(s, PLAT_FORCE_CUT, e);
-    if (rc == ERR_OK && s->dir_unforced) {
-        rc = plat_force_dir(s->dir, e);
-        if (rc == ERR_OK) {
-            s->dir_unforced = false;
-        }
-    }
     for (int32_t i = 0; i <= index; i++) {
         plat_close(s->files[i].fd);
         if (rc == ERR_OK) {

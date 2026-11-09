@@ -208,8 +208,10 @@ TEST(stream_seam) {
     CHECK_EQ(stream_sync(&s, &e), ERR_OK);
     CHECK_EQ(seam_counts[0], 2);            /* the first file, and a second at 200,000 */
     CHECK_EQ(seam_counts[1], 225 + 250000);
-    CHECK_EQ(seam_counts[2], 2);            /* both files forced (the first at the switch) */
-    CHECK(seam_counts[3] >= 1);             /* and the directory */
+    CHECK_EQ(seam_counts[2], 4);            /* each made and forced (OPEN), then written */
+    CHECK(seam_counts[3] >= 2);             /* and forced: the first at the switch, the
+                                               second at the sync; the directory after each
+                                               new file */
     int64_t dirs = seam_counts[3];
     CHECK_EQ(stream_pretruncate(&s, 200000, &e), ERR_OK);
     CHECK_EQ(seam_counts[4], 1);            /* the first file deleted */
@@ -236,12 +238,12 @@ TEST(stream_seam) {
 }
 
 #ifdef BERGDB_TEST
-/* A seam that logs, in order, the opens of stream files, the file forces
- * with their reasons, the directory forces and the deletes, by the file's
- * index ("open 2", "SWITCH 0", "dir", "delete 0"), as Java's ForceLogIo
- * (bergdb 005-47); it passes each call on. */
+/* A seam that logs, in order, the opens of stream files, the writes, the
+ * file forces with their reasons, the directory forces and the deletes, by
+ * the file's index ("open 2", "write 2", "SWITCH 0", "dir", "delete 0"),
+ * as Java's ForceLogIo (bergdb 005-47); it passes each call on. */
 static char flog[2048];
-static int flog_fd_index[256];
+static int flog_fd_index[256];      /* a stream file's index + 1, 0 for other files */
 static void flog_add(const char *entry) {
     size_t at = strlen(flog);
     snprintf(flog + at, sizeof flog - at, "%s%s", at > 0 ? " " : "", entry);
@@ -256,7 +258,7 @@ static enum err_code flog_open_rw(const char *path, int *fd, struct err *e) {
     enum err_code rc = plat_io_real()->open_rw(path, fd, e);
     int i = flog_index(path);
     if (rc == ERR_OK && *fd >= 0 && *fd < 256) {
-        flog_fd_index[*fd] = i;
+        flog_fd_index[*fd] = i + 1;
     }
     if (rc == ERR_OK && i >= 0) {
         char entry[32];
@@ -265,10 +267,21 @@ static enum err_code flog_open_rw(const char *path, int *fd, struct err *e) {
     }
     return rc;
 }
+static enum err_code flog_pwrite(int fd, int64_t off, const uint8_t *buf, int64_t n,
+        struct err *e) {
+    int i = fd >= 0 && fd < 256 ? flog_fd_index[fd] - 1 : -1;
+    if (i >= 0) {
+        char entry[32];
+        snprintf(entry, sizeof entry, "write %d", i);
+        flog_add(entry);
+    }
+    return seam_pwrite(fd, off, buf, n, e);
+}
 static enum err_code flog_force(int fd, enum plat_force_why why, struct err *e) {
     static const char *const WHY[] = { "SYNC", "OPEN", "SWITCH", "CUT" };
     char entry[32];
-    snprintf(entry, sizeof entry, "%s %d", WHY[why], fd >= 0 && fd < 256 ? flog_fd_index[fd] : -1);
+    int i = fd >= 0 && fd < 256 ? flog_fd_index[fd] - 1 : -1;
+    snprintf(entry, sizeof entry, "%s %d", WHY[why], i);
     flog_add(entry);
     return plat_io_real()->force(fd, why, e);
 }
@@ -285,7 +298,7 @@ static enum err_code flog_unlink(const char *path, struct err *e) {
     return plat_io_real()->unlink(path, e);
 }
 static const struct plat_io FLOG = {
-    flog_open_rw, seam_pwrite, flog_force, flog_force_dir, flog_unlink, seam_close
+    flog_open_rw, flog_pwrite, flog_force, flog_force_dir, flog_unlink, seam_close
 };
 #endif
 
@@ -293,12 +306,14 @@ static const struct plat_io FLOG = {
  * its files (bergdb 005-47, FileStream's forces with per-append forcing
  * off; 022-01, step 3), in order: the old last file before a new file's
  * name exists (SWITCH: else a power loss can leave a short file before a
- * newer one, which an open refuses), once per file and never again; the
- * files written since the last force, and the directory after a new file,
- * before a cut's deletes (CUT: the cut's decision durable before the files
- * it replaces are gone), and nothing when a sync forced them; the last
- * file and the directory at an open for writing (OPEN: what a process that
- * died wrote, durable before this one counts it or cuts). */
+ * newer one, which an open refuses), once per file and never again; each
+ * new file and then the directory before the file takes a byte (OPEN, as
+ * Java's openForRw; 022-02, D7: no name durable without the names before
+ * it); the files written since the last force before a cut's deletes (CUT:
+ * the cut's decision durable before the files it replaces are gone), and
+ * nothing when a sync forced them; the last file and the directory at an
+ * open for writing (OPEN: what a process that died wrote, durable before
+ * this one counts it or cuts). */
 TEST(stream_forces) {
 #ifdef BERGDB_TEST
     struct mem m;
@@ -319,13 +334,14 @@ TEST(stream_forces) {
     /* Four files: 0, 2 and 4 full (200,000 bytes each), 6 with 50,000. */
     CHECK_EQ(stream_append(&s, data, 650000, &e), ERR_OK);
     CHECK_EQ(stream_flush(&s, &e), ERR_OK);
-    CHECK(strcmp(flog, "open 0 SWITCH 0 open 2 SWITCH 2 open 4 SWITCH 4 open 6") == 0);
-    printf("    forces at three switches: %s\n", flog);
+    CHECK(strcmp(flog, "open 0 OPEN 0 dir write 0 SWITCH 0 open 2 OPEN 2 dir write 2 "
+            "SWITCH 2 open 4 OPEN 4 dir write 4 SWITCH 4 open 6 OPEN 6 dir write 6") == 0);
+    printf("    forces at four new files: %s\n", flog);
 
-    /* A cut at 400,000 with file 6 unforced: it and the directory first. */
+    /* A cut at 400,000 with file 6 unforced: it first; the names are. */
     flog[0] = '\0';
     CHECK_EQ(stream_pretruncate(&s, 400000, &e), ERR_OK);
-    CHECK(strcmp(flog, "CUT 6 dir delete 0 dir delete 2 dir") == 0);
+    CHECK(strcmp(flog, "CUT 6 delete 0 dir delete 2 dir") == 0);
     printf("    a cut after them: %s\n", flog);
     CHECK_EQ(stream_first_pos(&s), 400000);
 
@@ -333,7 +349,7 @@ TEST(stream_forces) {
     CHECK_EQ(stream_append(&s, data, 160000, &e), ERR_OK);     /* to 810,000: file 8 */
     flog[0] = '\0';
     CHECK_EQ(stream_sync(&s, &e), ERR_OK);
-    CHECK(strcmp(flog, "SWITCH 6 open 8 SYNC 8 dir") == 0);
+    CHECK(strcmp(flog, "write 6 SWITCH 6 open 8 OPEN 8 dir write 8 SYNC 8") == 0);
     flog[0] = '\0';
     CHECK_EQ(stream_pretruncate(&s, 600000, &e), ERR_OK);
     CHECK(strcmp(flog, "delete 4 dir") == 0);
@@ -354,10 +370,87 @@ TEST(stream_forces) {
 #endif
 }
 
+#ifdef BERGDB_TEST
+/* The number of entries of flog that are 'entry' or start with it and a
+ * space. */
+static int flog_count(const char *entry) {
+    int n = 0;
+    size_t k = strlen(entry);
+    for (const char *p = flog; *p != '\0'; ) {
+        if (strncmp(p, entry, k) == 0 && (p[k] == ' ' || p[k] == '\0')
+                && (p == flog || p[-1] == ' ')) {
+            n++;
+        }
+        p++;
+    }
+    return n;
+}
+#endif
+
+/* Each new file forced, and then the directory, before the file takes a
+ * byte (bergdb 022-02, D7; Java's openForRw: OPEN, then the directory,
+ * with per-append forcing on or off): one write of the buffer that makes
+ * six files forces the directory six times, each after a file is made and
+ * before its first byte, so that no name is durable without the names
+ * before it; the sync after forces the last file only. Before D7, C forced
+ * a new file and the directory at the next sync, close or cut: here once,
+ * after the six. FileStream's testForcingOffWritesAppends (the first
+ * file's OPEN force, at length 0) and the six files of
+ * testForcingOffForcesBeforeACutDeletes. */
+TEST(stream_new_file_forces) {
+#ifdef BERGDB_TEST
+    struct mem m;
+    struct err e;
+    struct stream s;
+    static uint8_t data[1000100];
+    char expected[512] = "";
+    const char *tmp = getenv("TMPDIR");
+    mem_init(&m);
+    snprintf(tdir, sizeof tdir, "%s/bergdb-t_newfile-XXXXXX", tmp != NULL ? tmp : "/tmp");
+    REQUIRE(mkdtemp(tdir) != NULL);
+    flog[0] = '\0';
+    plat_io_set(&FLOG);
+    REQUIRE(stream_open_dir_rw(&s, tdir, 0, &m, &e) == ERR_OK);
+    /* Five files of 200,000 bytes, and a sixth at 1,000,000, in one write. */
+    CHECK_EQ(stream_append(&s, data, (int64_t) sizeof data, &e), ERR_OK);
+    CHECK_EQ(stream_flush(&s, &e), ERR_OK);
+    for (int i = 0; i <= 10; i += 2) {
+        size_t at = strlen(expected);
+        if (i > 0) {
+            snprintf(expected + at, sizeof expected - at, " SWITCH %d ", i - 2);
+            at = strlen(expected);
+        }
+        snprintf(expected + at, sizeof expected - at, "open %d OPEN %d dir write %d", i, i, i);
+    }
+    CHECK(strcmp(flog, expected) == 0);
+    CHECK_EQ(flog_count("open"), 6);
+    CHECK_EQ(flog_count("OPEN"), 6);
+    CHECK_EQ(flog_count("dir"), 6);
+    CHECK_EQ(flog_count("SWITCH"), 5);
+    printf("    one write, six files: %d OPEN, %d dir, %d SWITCH\n", flog_count("OPEN"),
+            flog_count("dir"), flog_count("SWITCH"));
+    flog[0] = '\0';
+    CHECK_EQ(stream_sync(&s, &e), ERR_OK);
+    CHECK(strcmp(flog, "SYNC 10") == 0);
+    CHECK_EQ(stream_durable_length(&s), 1000100);
+    CHECK_EQ(stream_finish(&s, &e), ERR_OK);
+    plat_io_set(NULL);
+    for (int i = 0; i <= 10; i += 2) {
+        char name[32];
+        snprintf(name, sizeof name, "%014d.bergdb", i);
+        remove_file(name);
+    }
+    remove_file("bergdb.lock");
+    rmdir(tdir);
+    CHECK_MEM_ZERO(&m);
+#endif
+}
+
 const struct test stream_tests[] = {
     TEST_ENTRY(stream_memory),
     TEST_ENTRY(stream_dir),
     TEST_ENTRY(stream_seam),
     TEST_ENTRY(stream_forces),
+    TEST_ENTRY(stream_new_file_forces),
     TEST_END
 };
