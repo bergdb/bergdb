@@ -357,7 +357,11 @@ enum bergdb_error {
     BERGDB_STATE = 6,
     /* A bad argument: NULL, a length over INT32_MAX, a value out of the
      * allowed range, a position that is not a transaction's, an object of
-     * another database (IllegalArgumentException). */
+     * another database (IllegalArgumentException). Refused before anything
+     * else, the database going on unchanged, as Java's Core API refuses a
+     * null argument and one out of its range since release 2026.4 (bergdb
+     * 020-27, Q2; it threw NullPointerException, or an AssertionError with
+     * -ea). */
     BERGDB_ARG = 7,
     /* A limit of the database refuses the transaction: its values and
      * keys, or the index nodes it can make dirty, would not fit in a
@@ -966,8 +970,10 @@ struct bergdb_many {
  * the count (bergdb 022-06, U3-5, U1-6).
  *
  * Errors: as bergdb_get_one, and BERGDB_ARG for a range NULL, a key over
- * INT32_MAX bytes, a negative max_count (GetN asserts it), or a stop
- * function's bad answer. On an error, *out is not set.
+ * INT32_MAX bytes, a negative max_count, or a stop function's answer that
+ * is none of the four, which ends the read, the database going on (as
+ * Java's GetN, PrefixN and getMany refuse them since release 2026.4,
+ * bergdb 020-27, Q2; they asserted them). On an error, *out is not set.
  */
 int bergdb_get_many(bergdb_db *db, bergdb_read *rd, const struct bergdb_range *range,
         struct bergdb_many *out);

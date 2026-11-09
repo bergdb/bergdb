@@ -1238,6 +1238,126 @@ TEST(api_optimistic_transactions) {
     CHECK_EQ(m.live_total, 0);
 }
 
+/* A stop function whose answer is none of the four. */
+static int stop_bad_answer(void *ctx, const struct bergdb_kvt *kvt) {
+    (void) ctx, (void) kvt;
+    return 7;
+}
+
+/* Whether the last call on db was refused as an argument, with Java's name. */
+static bool refused_arg(bergdb_db *db, int rc) {
+    return rc == BERGDB_ARG
+            && strncmp(bergdb_errmsg(db), "IllegalArgumentException: ", 26) == 0;
+}
+
+/* bergdb 020-27, Q2, as Java's since release 2026.4: the Core API refuses
+ * a null argument, and one out of its range, with IllegalArgumentException,
+ * before anything else, and the database goes on unchanged
+ * (DbTesterJavadoc's testDbNullArguments, testTransBuilderNullArguments
+ * and testRangeArguments, each case that C's API has). Java threw
+ * NullPointerException, or an AssertionError with -ea, and a stop
+ * condition's bad answer failed the database with -ea. C refused each of
+ * these with BERGDB_ARG already, so this passes before; the bad answer had
+ * no test. Not here, as C's API cannot say them: a key of no segments (a
+ * bkey of any length has one at least, the empty one too), a GetMany used
+ * again with its result (each bergdb_get_many fills *out anew; Java's
+ * testGetManyDefaultsAndOneCall), addReadHashes (C has none), and what C
+ * takes as "none" when NULL, by its design: the options (defaults), the
+ * options' clock (the system's), the directory (memory), the range's
+ * start key (the first key), prefix, end key and stop function (Java's
+ * GetMany.startKey null and DontStop; testGetManyNullArguments' Endpoint
+ * and Prefix have no NULL here). */
+TEST(api_null_and_range_arguments) {
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock clock = {0};
+    struct bergdb_executed ex;
+    struct bergdb_stats s0, s;
+    struct bergdb_one one;
+    struct bergdb_range r;
+    struct bergdb_many many;
+    bergdb_trans *t, *t2;
+    bergdb_read *rd;
+    uint8_t b[32], b2[32];
+    size_t kl, kl2;
+    char errbuf[BERGDB_ERRBUF_SIZE];
+    static const uint8_t v[1] = { 1 };
+    bergdb_db *db = test_setup(&clock, &m);
+    REQUIRE(db != NULL);
+    k("/k", b, &kl);
+    k("/k2", b2, &kl2);
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    REQUIRE(bergdb_trans_put(t, b, kl, (const uint8_t *) "v", 1) == BERGDB_OK);
+    REQUIRE(bergdb_execute(db, t, &ex) == BERGDB_OK);
+    bergdb_trans_free(t);
+    REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+    REQUIRE(bergdb_trans_new(db, &t2) == BERGDB_OK);
+    REQUIRE(bergdb_stats(db, &s0) == BERGDB_OK);
+    bergdb_range_init(&r);
+
+    /* start(null): the out pointer here; the options NULL are the defaults. */
+    CHECK_EQ(bergdb_open(NULL, NULL, NULL, NULL, errbuf), BERGDB_ARG);
+    CHECK(strncmp(errbuf, "IllegalArgumentException: ", 26) == 0);
+    /* getOne's keySegments and gd, and the result. */
+    CHECK(refused_arg(db, bergdb_get_one(db, rd, BERGDB_LATEST, NULL, 1, &one)));
+    CHECK(refused_arg(db, bergdb_get_one(db, rd, BERGDB_LATEST, NULL, 0, &one)));
+    CHECK(refused_arg(db, bergdb_get_one(db, NULL, BERGDB_LATEST, b, kl, &one)));
+    CHECK(refused_arg(db, bergdb_get_one(db, rd, BERGDB_LATEST, b, kl, NULL)));
+    CHECK_EQ(bergdb_get_one(NULL, rd, BERGDB_LATEST, b, kl, &one), BERGDB_ARG);
+    /* getMany's g, its read context and its result. */
+    CHECK(refused_arg(db, bergdb_get_many(db, rd, NULL, &many)));
+    CHECK(refused_arg(db, bergdb_get_many(db, NULL, &r, &many)));
+    CHECK(refused_arg(db, bergdb_get_many(db, rd, &r, NULL)));
+    CHECK_EQ(bergdb_get_many(NULL, rd, &r, &many), BERGDB_ARG);
+    /* execute(null), printDag(null), sync(null) (C's level out of range). */
+    CHECK(refused_arg(db, bergdb_execute(db, NULL, &ex)));
+    CHECK(refused_arg(db, bergdb_debug_print(db, NULL)));
+    CHECK(refused_arg(db, bergdb_sync(db, 0, 99)));
+    /* Trans.Builder: every put's and delete's key, keyRead's key, every
+     * put's value; the transformation may be NULL. */
+    CHECK(refused_arg(db, bergdb_trans_put(t2, NULL, 1, v, 1)));
+    CHECK(refused_arg(db, bergdb_trans_put(t2, NULL, 0, v, 1)));
+    CHECK(refused_arg(db, bergdb_trans_put_transformed(t2, NULL, 1, v, 1, NULL)));
+    CHECK(refused_arg(db, bergdb_trans_delete(t2, NULL, 1)));
+    CHECK(refused_arg(db, bergdb_trans_key_read(t2, NULL, 1)));
+    CHECK(refused_arg(db, bergdb_trans_put(t2, b2, kl2, NULL, 1)));
+    CHECK(refused_arg(db, bergdb_trans_put(t2, b2, kl2, NULL, 0)));
+    CHECK(refused_arg(db, bergdb_trans_put_transformed(t2, b2, kl2, NULL, 0, NULL)));
+    CHECK_EQ(bergdb_trans_put(NULL, b2, kl2, v, 1), BERGDB_ARG);
+    /* Out of range: GetN's negative count, and a stop function's answer
+     * that is none of the four, which ends the read, the database going on
+     * (Java's "handleKvt() returned 7, ..."; with -ea Java's assert failed
+     * the database). */
+    r.max_count = -1;
+    CHECK(refused_arg(db, bergdb_get_many(db, rd, &r, &many)));
+    bergdb_range_init(&r);
+    r.stop = stop_bad_answer;
+    CHECK(refused_arg(db, bergdb_get_many(db, rd, &r, &many)));
+
+    /* Nothing written, nothing added to the transaction, the database
+     * active: the transaction puts /k2 alone, and a read gives both keys. */
+    REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
+    CHECK_EQ(s.stream_length, s0.stream_length);
+    CHECK_EQ(s.transaction_count, s0.transaction_count);
+    CHECK_EQ(bergdb_trans_put(t2, b2, kl2, (const uint8_t *) "v2", 2), BERGDB_OK);
+    bergdb_test_clock_set(&clock, 2000);
+    CHECK_EQ(bergdb_execute(db, t2, &ex), BERGDB_OK);
+    bergdb_trans_free(t2);
+    REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
+    CHECK(s.stream_length > s0.stream_length);
+    CHECK_EQ(s.kv_count, s0.kv_count + 1);
+    bergdb_range_init(&r);
+    CHECK_EQ(bergdb_get_many(db, rd, &r, &many), BERGDB_OK);
+    CHECK_EQ((int64_t) many.count, 2);
+    CHECK_EQ(bergdb_get_one(db, rd, BERGDB_LATEST, b, kl, &one), BERGDB_OK);
+    CHECK(one.value != NULL && one.value_len == 1 && one.value[0] == 'v');
+    CHECK_EQ(bergdb_get_one(db, rd, BERGDB_LATEST, b2, kl2, &one), BERGDB_OK);
+    CHECK(one.value != NULL && one.value_len == 2 && memcmp(one.value, "v2", 2) == 0);
+    CHECK_EQ(bergdb_debug_check(db), BERGDB_OK);
+    bergdb_read_free(rd);
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+}
+
 static const struct test api_tests[] = {
     TEST_ENTRY(api_stm_after_restart),
     TEST_ENTRY(api_create_and_read),
@@ -1253,6 +1373,7 @@ static const struct test api_tests[] = {
     TEST_ENTRY(api_core_writes_bergdbs_keys),
     TEST_ENTRY(api_counters_and_listed_deletes),
     TEST_ENTRY(api_optimistic_transactions),
+    TEST_ENTRY(api_null_and_range_arguments),
     TEST_END
 };
 

@@ -923,7 +923,8 @@ TEST(append_dir_replaced_no_delete) {
     CHECK(strcmp(ae.text, want) == 0);
     CHECK_EQ(file_size("00000000000000.bergdb"), 3);      /* the new directory's file */
     CHECK_EQ(stream_append(&s, zeros, 1, &ae), ERR_IO);
-    stream_close(&s);
+    CHECK_EQ(stream_sync(&s, &ae), ERR_IO);       /* the buffer empty */
+    CHECK_EQ(stream_finish(&s, &ae), ERR_IO);
     remove_dir();
     CHECK_MEM_ZERO(&am);
 }

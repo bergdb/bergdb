@@ -1780,3 +1780,70 @@ before it returns, and frees the handle, so no `bergdb_sync` follows it
 (`bergdb.h`: after the close, db is not valid). (e) 020-24's U10-2,
 U10-4, U10-7 and U10-9 (`41e4da5`): the Pub API's Javadoc, nothing for
 C. 020-27's Q2 was not on `main` yet.
+
+2026-11-09, the candidate, part 2 (worker t17). The Core commits that
+reached `main` after part 1, up to `b3a6b05` (18:03), each with C's
+outcome; the pin stays at `2566df1`. (a) 020-27's Q2, the null arguments
+(`de73137`): Java's Core API refuses every null argument with
+IllegalArgumentException "PARAM == null not allowed", before anything
+else (`Db.start`, `getOne`'s key and `GetData`, `getMany`'s `GetMany`
+and its stop condition, `execute`, `printDag`; `DbBuilder`'s setters;
+`Trans.Builder`'s keys, values, read keys and read hashes; `GetMany`'s
+`Endpoint`, `Prefix` and `PrefixN`), where it threw
+NullPointerException, an AssertionError with `-ea`, or took the null.
+C's API refused each NULL that it has with `BERGDB_ARG`
+(IllegalArgumentException) already, before the state, since 012-03:
+`bergdb_open`'s database pointer, `bergdb_get_one`'s key, read context
+and result, `bergdb_get_many`'s range, read context and result,
+`bergdb_execute`'s transaction, `bergdb_debug_print`'s stream,
+`bergdb_trans_put`'s, `_put_transformed`'s, `_delete`'s and
+`_key_read`'s key (a NULL key also with a length of 0), the puts' value,
+and the level of `bergdb_sync` (Java's null `SyncLevel`). What C takes
+as "none" when NULL is its design and stays: the options (the defaults),
+their clock (the system's) and directory (memory), the range's start key
+(Java's `startKey` null), prefix, end key and stop function
+(`DontStop`); C has no `DbBuilder` setters, `addReadHashes` or
+`createdTxt`. The texts are C's own, as before (Java's name the
+parameter, C's API names its own: no harness compares them). (b) Its
+range checks (`a786e75`): a key of no segments (Java's `long[0]`) in
+`Trans.Builder` and `getOne`, and `getMany`'s start key of none: C's API
+takes bytes, and a bkey of any length, the empty one too, has a segment
+at least, so nothing for C; a `GetMany` used again with a non-empty
+result: C has no such object, as `bergdb_get_many` fills `*out` anew at
+each call and resets the read context's pairs (nothing for C); a stop
+condition's answer that is none of the four, which ended Java's read
+with an assert (with `-ea` failing the database) and now with
+IllegalArgumentException, the database going on: `api.c`'s `many_handle`
+refused it already (`BERGDB_ARG`, "a stop function's answer out of
+range", the read ended, the database active); `GetN` and `PrefixN` with
+a negative count: `bergdb_range.max_count` below 0 is refused already
+(`gm_get_n`'s assert is the library's own invariant behind it);
+`addReadHashes()`'s length: C has none. `bergdb.h`: `BERGDB_ARG` and
+`bergdb_get_many`'s errors say it, the latter no longer "GetN asserts
+it". Test `f_api.c`'s `api_null_and_range_arguments`
+(`DbTesterJavadoc`'s `testDbNullArguments`,
+`testTransBuilderNullArguments` and `testRangeArguments`, each case that
+C's API has: 24 calls, each `BERGDB_ARG` with "IllegalArgumentException:
+" where there is a database; nothing written, nothing added to the
+transaction, the database going on; the stop function's bad answer had
+no test), passing before, as C's checks were there. (c) 020-27's Q1
+(`2c615a9`): the Core API named in `Db`'s class Javadoc, Javadoc only;
+nothing for C, whose API is `bergdb.h` (its first paragraph: the
+counterpart of `Db`'s public methods, as 012-03 maps them; "Keys and the
+layers above" has 020-27's K1 and K2). (d) 006-18-03 (`2dad395`): the
+unit tests on Android (`bergdb.nanotest.Platform`, `DbTesterFailure`'s
+and `Eviction`'s and `StreamContractTester`'s tests): Java's tests only,
+nothing for C; 021-14's `OneFileStream` (`a2fa9df`, a stream for tests),
+which C does not have: nothing for C. (e) A fault of C's, found by part
+1's test of the cut and by 022-05 (`d694a0d`) at once: a failed
+stream's sync and close (`stream_finish`) gave `ERR_OK` when its buffer
+was empty, as `stream_flush` returned before it looked at the failure;
+so after a failed cut, or a force that failed at a sync, `bergdb_close`
+gave `BERGDB_OK`, where `bergdb.h` says `BERGDB_IO`, and Java's
+`FileStream.close()` throws the failure; 021-20's check makes a failed
+cut one of a replaced directory. 022-05 landed the same fix first
+(`stream_flush` refuses a failed stream first, with its tests), so part
+2's own fix and its test of a failed force went at the rebase;
+`append_dir_replaced_no_delete` checks the sync and the close after the
+cut in a replaced directory, failing before (on a copy with the old
+`stream_flush`).
