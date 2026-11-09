@@ -6,3 +6,4 @@ import BergDB.Index.Locked
 import BergDB.Index.Liveness
 import BergDB.Index.Example
 import BergDB.Index.Starve
+import BergDB.Index.Orphans
