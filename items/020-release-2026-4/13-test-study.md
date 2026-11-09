@@ -2,7 +2,7 @@
 
 Created 2026-11-09 by Frans Lundberg. Status: open.
 
-**State (2026-11-09, 10:20).** Parts 1 to 4 done and written here. The
+**State (2026-11-09, 10:30).** Parts 1 to 4 done and written here. The
 work is in the clone `/Users/f/fl/bench/2026-11-09/clone-tests`, from
 `main` at `1d1b6f3`; its commits are listed in section 1. The work
 files, scripts and outputs are outside the repository, in
@@ -405,6 +405,14 @@ layer).
   buffered, `close()` starts and wakes the busy consumer, the flush is
   released; the close must end within 5 s (before: it still waited after
   10 s, and took 15 s).
+* How often: in three unit runs at `6e99055` on the loaded machine, one of
+  the two tests `testTryWithResourcesCloses` (`DbTester`'s, `PubTester`'s;
+  both with a buffer time of 60 s) took 15,007 to 15,009 ms in two runs,
+  which made the unit group 41 to 57 s; in three runs at `ac3291e` both
+  took 1 to 5 ms, and the group 32 to 47 s (`tests-work/times/`).
+* Not run: level1.sh, as the machine's load was 23 on 10 cores; the gate
+  passed, with the 33 tests of `BufferedStream`. night.sh runs the level
+  scripts once the commit is on `main`.
 
 Why the fix is correct (Core, concurrency code):
 
