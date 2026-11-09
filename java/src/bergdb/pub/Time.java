@@ -85,9 +85,11 @@ public class Time {
     /**
      * Resolves an absolute time string using UTC time zone.
      * 
-     * @throws BadFormatException If the time string is not an absolute time string.
-     * @throws IllegalArgumentException If timeString is null, or if the time is outside
-     *             Time's range, before 1970 or after 2198-05-04 23:50:03.7927935 UTC.
+     * @throws BadFormatException If the time string is not an absolute time string by the
+     *             format of resolve(TimeZone, Time, String), a field is outside its range, or
+     *             the time is outside Time's range, before 1970 or after 2198-05-04
+     *             23:50:03.7927935 UTC.
+     * @throws IllegalArgumentException If timeString is null.
      * @see #resolve(TimeZone, Time, String)
      */
     public static Time utc(String timeString) {
@@ -99,9 +101,9 @@ public class Time {
      * Since this method takes no current time, the time string must
      * be an absolute time (time string rule ABSOLUTE-TIME).
      * 
-     * @throws BadFormatException If the time string is not an absolute time string.
-     * @throws IllegalArgumentException If timeZone or timeString is null, or if the time is
-     *             outside Time's range, as for utc().
+     * @throws BadFormatException If the time string is not an absolute time string, a field
+     *             is outside its range, or the time is outside Time's range, as for utc().
+     * @throws IllegalArgumentException If timeZone or timeString is null.
      * @see #resolve(TimeZone, Time, String)
      */
     public static Time resolve(TimeZone timeZone, String timeString) {
@@ -157,11 +159,19 @@ public class Time {
      * The syntax for a time-string can be more formally be described by this ABNF:
      * 
      * time-string = absolute / time-of-day / minus / "now" 
-     * absolute = absolute-date [(SPACE / "T") time-of-day]
-     * absolute-date = "YYYY-MM-DD" / "YYYY-MM"
-     * time-of-day = "HH:MM:SS.d" / "HH:MM:SS" / "HH:MM"
-     * minus = "-" number SPACE unit [SPACE time-of-day]
+     * absolute = date [(SPACE / "T") time-of-day]
+     * date = year "-" month ["-" day]
+     * time-of-day = hour ":" minute [":" second ["." 1*DIGIT]]
+     * minus = "-" 1*DIGIT ["." 1*DIGIT] SPACE unit [SPACE time-of-day]
      * unit = "s" / "m" / "h" / "d"
+     * year = 4DIGIT
+     * month = 2DIGIT                   -- 01 to 12.
+     * day = 2DIGIT                     -- 01 to the month's last day: 28, 29, 30 or 31.
+     * hour = 2DIGIT                    -- 00 to 23.
+     * minute = 2DIGIT                  -- 00 to 59.
+     * second = 2DIGIT                  -- 00 to 59.
+     * DIGIT = "0" to "9"               -- ASCII digits only.
+     * SPACE = " "                      -- One space, U+0020.
      * </pre>
      * 
      * <p>The format of the time string loosely follows ISO 8601.
@@ -169,10 +179,17 @@ public class Time {
      * Leap seconds are never considered. One day is always 24*3600 seconds, 
      * one minute is 60 seconds and one hour is always 3600 seconds.</p>
      * 
-     * @throws BadFormatException If the time string does not follow the format above, or
-     *             is a minus time that goes back before Unix Epoch.
-     * @throws IllegalArgumentException If timeZone, now or timeString is null, or if an
-     *             absolute time is outside Time's range, as for utc().
+     * <p>The parse is strict (bergdb 020-21, 1): a string is taken only as the format above
+     * gives it, with each field in its range. A field is not rolled over: "2013-02-30",
+     * "2013-13", "24:00" and "12:60" are refused, not taken as 2013-03-02, 2014-01, the next
+     * day's 00:00 and 13:00. A fraction of a second is rounded to Time's resolution, 100 ns,
+     * half up.</p>
+     * 
+     * @throws BadFormatException If the time string does not follow the format above, or a
+     *             field is outside its range; or if the time is outside Time's range, before
+     *             1970 or after 2198-05-04 23:50:03.7927935 UTC, as an absolute time or a
+     *             time of day, or a minus time that goes back before Unix Epoch.
+     * @throws IllegalArgumentException If timeZone, now or timeString is null.
      */
     public static Time resolve(TimeZone timeZone, Time now, String timeString) {
         if (now == null) {
@@ -294,6 +311,81 @@ public class Time {
                 // Expected.
             }
         }
+    }
+    
+    /**
+     * bergdb 020-21, 1 (020-13, section 4.2; 020-19, Q1): a time string is parsed strictly. A
+     * field outside its range is refused with BadFormatException, as is a string that breaks
+     * the format in another way, or whose time is outside Time's range; before, the calendar
+     * rolled such a field over ("2013-13-01" was 2014-01-01, "25:00" the next day), the
+     * seconds and a minus time's number were read as Java doubles ("1e1", "-1d s", "-NaN s"),
+     * and a time outside the range threw IllegalArgumentException.
+     */
+    @Nano
+    private static void testStrictTimeStrings() {
+        final Time now = Time.utc("2020-06-15 12:00");
+        final String[] bad = {
+                // A field outside its range.
+                "2013-00", "2013-13", "2013-00-10", "2013-13-01", "2013-01-00", "2013-01-32",
+                "2013-02-29", "2100-02-29", "2013-02-30", "2013-04-31",
+                "2013-01-01 24:00", "2013-01-01 25:00", "2013-01-01 12:60",
+                "2013-01-01 23:59:60", "2013-01-01 00:00:75", "2013-01-01T24:00:00",
+                "24:00", "25:00", "12:60", "00:00:60", "-1 d 25:00", "-1 d 23:60",
+                // Not ASCII digits, or not the format.
+                "2013-+1-01", "+013-01-01", "2013-1-01", "2013-01-1 ", "2013-01-01 1:00",
+                "2013-01-01 00:00:1e1", "2013-01-01 00:00:0x1p3", "2013-01-01 00:00:05.",
+                "2013-01-01 00:00:00 ", "2013-01-01 00:00:.5", "2013-01-01 00:00:00.5e3",
+                "2013-01-01 00:00:+5", "2013-01-01 00:00:5", "2013-01-01 00:00:00.-5",
+                "٢٠١٣-01-01", "2013-01-01t00:00", "now ", " now",
+                "-1d s", "-NaN s", "-Infinity s", "-0x1p3 s", "-1e3 s", "-.5 s", "-1. s",
+                "-+1 s", "--1 s", "-1 s ", "-1  s", "-1 x", "-1 s x", "-1 s 1:00",
+                "-1 s  12:00", "-1 s 12:00 ",
+                // A time outside Time's range.
+                "1969-12-31", "1969-12-31 23:59:59.9999999", "2198-05-05", "2199-01-01",
+                "0000-01-01", "9999-12-31", "-30000 d", "-99999999999999999999 d",
+        };
+        for (String s : bad) {
+            for (int call = 0; call < 3; call++) {
+                Time t;
+                try {
+                    t = call == 0 ? Time.resolve(UTC, now, s)
+                            : call == 1 ? Time.utc(s) : Time.resolve(UTC, s);
+                } catch (BadFormatException e) {
+                    continue;
+                }
+                throw new AssertionError("'" + s + "' not refused by call " + call + ": " + t);
+            }
+        }
+        try {
+            Time.resolve(TimeZone.getTimeZone("Europe/Stockholm"), "1970-01-01 00:59");
+            throw new AssertionError("1969-12-31 23:59 UTC not refused");
+        } catch (BadFormatException e) {
+            // Expected.
+        }
+        
+        // Accepted, the edges included.
+        final long day = 86400 * Clock.UNITS_PER_SEC;
+        Assert.assertEquals(0, Time.utc("1970-01-01").units());
+        Assert.assertEquals(Time.MAX, Time.utc("2198-05-04 23:50:03.7927935"));
+        Assert.assertEquals(Time.utc("2012-03-01").units() - day, Time.utc("2012-02-29").units());
+        Assert.assertEquals(Time.utc("2000-03-01").units() - day, Time.utc("2000-02-29").units());
+        Assert.assertEquals(Time.utc("2014-01-01").units() - Clock.UNITS_PER_SEC,
+                Time.utc("2013-12-31 23:59:59").units());
+        Assert.assertEquals(Time.utc("2013-12-31 23:59:59").units() + 9999999,
+                Time.utc("2013-12-31T23:59:59.9999999").units());
+        Assert.assertEquals(Time.utc("2013-06-01").units() + 1,
+                Time.utc("2013-06-01 00:00:00.00000005").units());
+        Assert.assertEquals(Time.utc("2013-06-01"), Time.utc("2013-06-01 00:00:00.00000004"));
+        Assert.assertEquals(Time.utc("2013-06-02"), Time.utc("2013-06-01 23:59:59.99999999"));
+        Assert.assertEquals(Time.utc("2013-06-01 00:00"), Time.utc("2013-06"));
+        Assert.assertEquals(now, Time.resolve(UTC, now, "now"));
+        Assert.assertEquals(now, Time.resolve(UTC, now, "-0 s"));
+        Assert.assertEquals(Time.utc("2020-06-15 11:59:58.5"), Time.resolve(UTC, now, "-1.5 s"));
+        Assert.assertEquals(Time.utc("2020-06-15 11:30"), Time.resolve(UTC, now, "-30 m"));
+        Assert.assertEquals(Time.utc("2020-06-13 14:29"), Time.resolve(UTC, now, "-2 d 14:29"));
+        Assert.assertEquals(Time.utc("2020-06-15 00:00"), Time.resolve(UTC, now, "00:00"));
+        Assert.assertEquals(Time.utc("2020-06-15 23:59:59.5"),
+                Time.resolve(UTC, now, "23:59:59.5"));
     }
     
     @Nano

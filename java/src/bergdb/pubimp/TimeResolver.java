@@ -1,5 +1,6 @@
 package bergdb.pubimp;
 
+import java.time.YearMonth;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Locale;
@@ -9,67 +10,25 @@ import bergdb.common.Util;
 import bergdb.core.SystemClock;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.pub.Time;
 import bergdb.pub.util.BadFormatException;
 import bergdb.pub.util.Clock;
 
 /**
  * <p>The methods resolve() and resolveAbsolute() resolve a <i>time string</i> to a time value
- * in clock units (100 ns units since epoch).
- * The format of the time string loosely follows ISO 8601.
- * This class is not thread-safe. The Gregorian calendar is used (the ordinary Western calendar).
- * Leap seconds are never considered. One day is always 24*3600 seconds, 
- * one minute is 60 seconds and one hour is always 3600 seconds.</p>
+ * in clock units (100 ns units since epoch), by the format and the rules of
+ * bergdb.pub.Time.resolve(TimeZone, Time, String), whose Javadoc defines them. The Gregorian
+ * calendar is used (the ordinary Western calendar). Leap seconds are never considered. One
+ * day is always 24*3600 seconds, one minute is 60 seconds and one hour is always 3600
+ * seconds.</p>
  * 
- * <pre>
- * The following examples with comments define the time format.
- * 
- * ABSOLUTE-TIME
- * 
- * "2013-08-19 14:29:10.1234567"    -- 19 Aug 2013 at 14:29:10.1234567.
- * "2013-08-19T14:29:10.1234567"    -- 19 Aug 2013 at 14:29:10.1234567.
- * "2013-08-19 14:29"               -- 19 Aug 2013 at 14:29:00. 
- * "2013-08-19"                     -- 19 Aug 2013 at 00:00:00.
- * "2013-08"                        -- 1 Aug 2013 at 00:00:00.
- * "2013-01"                        -- 1 Jan 2013 at 00:00:00.
- * 
- * TIME-OF-DAY
- * 
- * "14:29:10.1234567"               -- Today at 14:29:10.1234567.
- * "14:29"                          -- Today at 14:29.
- * 
- * MINUS-TIME
- * 
- * "Minus-time" is a negative offset to the current time in one of the following units: s, m, h, 
- * d (second, minute, hour, day).
- * 
- * "-1.5 s"                         -- 1.5 seconds ago.
- * "-30 m"                          -- 30 minutes ago.
- * "-2 h"                           -- 2 hours ago. 
- * "-3 d"                           -- 3 days ago (1 day = 24.0 hours).
- * 
- * MINUS-TIME PLUS TIME-OF-DAY
- * 
- * A minus-time expression can be followed by a TIME-OF-DAY. In this case, the resulting time
- * is the same as if the negative time duration was first subtracted from the current time, 
- * and then the resulting time was used together with the TIME-OF-DAY to resolve the time.
- * 
- * "-2 d 14:29"                     -- The day before yesterday at 14:29:00.
- * 
- * SPECIAL
- * 
- * "now"                            -- The current time.
- * 
- * MORE FORMAL
- * The syntax for a time-string can be more formally be described by this ABNF:
- * 
- * time-string = absolute / time-of-day / minus / "now" 
- * absolute = absolute-date [space-or-t time-of-day]
- * absolute-date = "YYYY-MM-DD" / "YYYY-MM"
- * time-of-day = "HH:MM:SS.d" / "HH:MM"
- * space-or-t = SPACE / "T"
- * minus = "-" number SPACE unit [SPACE time]
- * unit = "s" / "m" / "h" / "d"
- * </pre>
+ * <p>The parse is strict (bergdb 020-21, 1; Frans, 2026-11-09): each field is ASCII digits
+ * of its length, and in its range, the day within its month; a minus time's number is
+ * digits with an optional fraction; nothing else is taken, and a time outside Time's range
+ * is refused too, each with BadFormatException. Until 2026-11-09 a lenient calendar rolled a
+ * field over ("2013-13-01" was 2014-01-01, "25:00" the next day), the seconds and a minus
+ * time's number were Java doubles ("00:00:1e1", "-1d s", "-NaN s"), and a time outside the
+ * range was an IllegalArgumentException (bergdb 020-13, section 4.2; 020-19, Q1).</p>
  * 
  * @author Frans Lundberg
  */
@@ -82,6 +41,7 @@ public class TimeResolver {
     /** UTC time zone. */
     static final TimeZone UTC = TimeZone.getTimeZone("UTC");
     private static final long UNITS_PER_MILLISECOND = Clock.UNITS_PER_SEC / 1000;
+    private static final long MAX_UNITS = Time.MAX.units();
     private final TimeData td;
     private final GregorianCalendar calendar;
     
@@ -94,7 +54,8 @@ public class TimeResolver {
         int date;
         int hour;
         int minute;
-        double second;
+        int second;
+        long fraction;          // The fraction of the second in clock units, 0 to 10^7
     }
     
     /**
@@ -109,14 +70,15 @@ public class TimeResolver {
     }
     
     /**
-     * This method resolves a time string (like "yesterday", "2013-08-30" or "now") to a time
+     * This method resolves a time string (like "-1 d", "2013-08-30" or "now") to a time
      * value in database time units (100 ns units since epoch). Internal, not API (bergdb
      * 020-10, section 7): for bergdb.pub.Time.resolve.
      * 
      * @param currentTime  In database units.
      * @param timeString  The time string to resolve.
-     * @return The resolved time in database time units.
-     * @throws BadFormatException
+     * @return The resolved time in database time units, within Time's range.
+     * @throws BadFormatException  If the time string does not follow the format, or its
+     *      time is outside Time's range.
      */
     public static long resolve(TimeZone timeZone, long currentTime, String timeString) throws BadFormatException {
         return new TimeResolver(timeZone).reallyResolve(currentTime, timeString);
@@ -165,8 +127,9 @@ public class TimeResolver {
         }
     }
     
+    /** YYYY-MM, YYYY-MM-DD, or YYYY-MM-DD and a time of day after ' ' or 'T'. */
     private long reallyResolveAbsolute(String timeString) {
-        long length = timeString.length();
+        int length = timeString.length();
         
         if (length < 7) {
             throw new BadFormatException("Bad time string, too short, was: '" + timeString + "'.");
@@ -176,9 +139,8 @@ public class TimeResolver {
             throw new BadFormatException("Bad time string, expected '-' as 5th char, was: '" + timeString + "'.");
         }
         
-        parseYear(timeString);
-        
-        parseMonth(timeString);
+        td.year = digits(timeString, 0, 4, 0, 9999, "year");
+        td.month = digits(timeString, 5, 2, 1, 12, "month");
         
         if (length > 7) {
             if (length < 10) {
@@ -189,16 +151,13 @@ public class TimeResolver {
                 throw new BadFormatException("Bad absolute time string, was: '" + timeString + "'.");
             }
             
-            parseDate(timeString);
+            int days = YearMonth.of(td.year, td.month).lengthOfMonth();
+            td.date = digits(timeString, 8, 2, 1, days, "day");
         } else {
             td.date = 1;
         }
         
         if (length > 10) {
-            if (length < 16) {
-                throw new BadFormatException("Bad absolute time string, was: '" + timeString + "'.");
-            }
-            
             char c = timeString.charAt(10);
             if (c != ' ' && c != 'T') {
                 throw new BadFormatException("Bad absolute time string, was: '" + timeString + "'.");
@@ -209,196 +168,121 @@ public class TimeResolver {
         } else {
             td.hour = 0;
             td.minute = 0;
-            td.second = 0.0;
+            td.second = 0;
+            td.fraction = 0;
         }
         
-        return computeTimeUnits();
-    }
-
-    private void parseDate(String timeString) {
-        td.date = parseZeroPadded(timeString.substring(8, 10), timeString);
-        // Let's allowed "overflow" for now, like: 2013-02-50".
-    }
-
-    private void parseMonth(String timeString) {
-        td.month = parseZeroPadded(timeString.substring(5, 7), timeString);
-        if (td.month < 0) {
-            throw new BadFormatException("Bad absolute time string, bad month, was: '" + timeString + "'.");
-        }
-    }
-
-    private void parseYear(String timeString) {
-        try {
-            td.year = Integer.parseInt(timeString.substring(0, 4));
-        } catch (NumberFormatException e) {
-            throw new BadFormatException("Bad time string, was: '" + timeString + "'.");
-        }
-    }
-    
-    /**
-     * Converts from TimeData to GregorianCalendar to time units.
-     */
-    private long computeTimeUnits() {
         calendar.setTimeInMillis(0);
         calendar.set(Calendar.YEAR, td.year);
         calendar.set(Calendar.MONTH, td.month - 1);
         calendar.set(Calendar.DATE, td.date);
-        calendar.set(Calendar.HOUR_OF_DAY, td.hour);
-        calendar.set(Calendar.MINUTE, td.minute);
-        
-        double floor = Math.floor(td.second);
-        int second = (int) floor;
-        double fraction = td.second - floor;
-        if (fraction > 1.0) {
-            throw new AssertionError("fraction: " + fraction + ", td.second = " + td.second);
-        }
-        
-        fraction = 1000.0 * fraction;
-        double milliFloor = Math.floor(fraction);
-        double milliFraction = fraction - milliFloor;
-        if (milliFraction > 1.0) {
-            throw new AssertionError("milliFraction: " + milliFraction + ", td.second = " + td.second);
-        }
-        
-        int millis = (int) milliFloor;
-        long change = Math.round(milliFraction * UNITS_PER_MILLISECOND);
-        
-        calendar.set(Calendar.SECOND, second);
-        calendar.set(Calendar.MILLISECOND, millis);
-        
-        long result = calendar.getTimeInMillis() * UNITS_PER_MILLISECOND + change;
-        return result;
+        return inRange(computeTimeUnits(), timeString);
     }
     
     /**
-     * Converts from TimeData to GregorianCalendar to time units.
-     * currentTime is used to compute "today".
+     * The time of the calendar's date with td's time of day, in the calendar's time zone.
      */
-    private long computeTimeUnitsB(long currentTime) {
-        calendar.setTimeInMillis(currentTime / TimeResolver.UNITS_PER_MILLISECOND);
+    private long computeTimeUnits() {
         calendar.set(Calendar.HOUR_OF_DAY, td.hour);
         calendar.set(Calendar.MINUTE, td.minute);
-        
-        double floor = Math.floor(td.second);
-        int second = (int) floor;
-        double fraction = td.second - floor;
-        if (fraction > 1.0) {
-            throw new AssertionError("fraction: " + fraction + ", td.second = " + td.second);
-        }
-        
-        fraction = 1000.0 * fraction;
-        double milliFloor = Math.floor(fraction);
-        double milliFraction = fraction - milliFloor;
-        if (milliFraction > 1.0) {
-            throw new AssertionError("milliFraction: " + milliFraction + ", td.second = " + td.second);
-        }
-        
-        int millis = (int) milliFloor;
-        long change = Math.round(milliFraction * UNITS_PER_MILLISECOND);
-        
-        calendar.set(Calendar.SECOND, second);
-        calendar.set(Calendar.MILLISECOND, millis);
-        
-        long result = calendar.getTimeInMillis() * UNITS_PER_MILLISECOND + change;
-        return result;
+        calendar.set(Calendar.SECOND, td.second);
+        calendar.set(Calendar.MILLISECOND, 0);
+        return calendar.getTimeInMillis() * UNITS_PER_MILLISECOND + td.fraction;
+    }
+    
+    /**
+     * The time with td's time of day on the date of 'time' in the calendar's time zone.
+     */
+    private long computeTimeUnitsB(long time) {
+        calendar.setTimeInMillis(time / TimeResolver.UNITS_PER_MILLISECOND);
+        return computeTimeUnits();
     }
     
     private long timeOfDay(long currentTime, String timeString) {
         parseTime(timeString, 0);
-        return computeTimeUnitsB(currentTime);
+        return inRange(computeTimeUnitsB(currentTime), timeString);
     }
     
     /**
-     * Parses a time string of the format HH:MM[:SS.sssssss], writes result to this.td.
-     * Sets td.hour, td.minute, td.second or throws BadFormatException.
+     * Parses a time of day, HH:MM, HH:MM:SS or HH:MM:SS.d with one digit or more, from offset
+     * to the end of the string, and writes it to td: hour 00 to 23, minute and second 00 to
+     * 59, and the fraction rounded to clock units, half up, which may round up to a whole
+     * second (10^7 units).
+     * 
+     * @throws BadFormatException  If the string does not follow the format, or a field is
+     *      outside its range.
      */
     private void parseTime(String timeString, int offset) throws BadFormatException {
         int length = timeString.length() - offset;
         
-        if (length < 5) {
+        if (length != 5 && length != 8 && length < 10) {
             throw new BadFormatException("Bad time string, was: '" + timeString + "'.");
         }
         
-        td.hour = parseZeroPadded(timeString.substring(offset + 0, offset + 2), timeString);
-        offset += 2;
+        td.hour = digits(timeString, offset, 2, 0, 23, "hour");
+        expect(timeString, offset + 2, ':');
+        td.minute = digits(timeString, offset + 3, 2, 0, 59, "minute");
+        td.second = 0;
+        td.fraction = 0;
         
-        if (timeString.charAt(offset) != ':') {
-            throw new BadFormatException("Bad time string, expected ':', was: '" + timeString + "'.");
-        }
-        offset += 1;
-        
-        td.minute = parseZeroPadded(timeString.substring(offset, offset + 2), timeString);
-        offset += 2;
-        
-        // If there are seconds
         if (length > 5) {
-            if (length < 8) {
-                throw new BadFormatException("Bad time string, was: '" + timeString + "'.");
+            expect(timeString, offset + 5, ':');
+            td.second = digits(timeString, offset + 6, 2, 0, 59, "second");
+            if (length > 8) {
+                expect(timeString, offset + 8, '.');
+                td.fraction = fraction(timeString, offset + 9);
             }
-            
-            if (timeString.charAt(offset) != ':') {
-                throw new BadFormatException("Bad time string, expected ':', was: '" + timeString + "'.");
-            }
-            offset += 1;
-            
-            td.second = parseZeroPaddedDouble(timeString.substring(offset), timeString);
-            
-            // 2026-10-21 (bergdb 005-21): the seconds are cast to an int; from 2^31 on the
-            // cast gave Integer.MAX_VALUE, and NaN gave 0.
-            if (!(td.second >= 0.0 && td.second < Integer.MAX_VALUE)) {
-                throw new BadFormatException("Bad seconds in time string: '" + timeString + "'.");
-            }
-        } else {
-            td.second = 0.0;
         }
     }
     
+    /**
+     * A minus time: '-', a number of digits with an optional fraction ('.' and digits), a
+     * space and a unit; then, optionally, a space and a time of day.
+     */
     private long minus(long currentTime, String timeString) {
-        String[] parts = timeString.split(" ");
-        if (parts.length < 2) {
-            throw new BadFormatException("Bad minus time string: '" + timeString + "'.");
+        int end = 1;
+        while (end < timeString.length() && isDigit(timeString.charAt(end))) {
+            end++;
         }
+        if (end == 1) {
+            throw new BadFormatException("Bad minus time string, expected a digit after '-': '"
+                    + timeString + "'.");
+        }
+        if (end < timeString.length() && timeString.charAt(end) == '.') {
+            int start = ++end;
+            while (end < timeString.length() && isDigit(timeString.charAt(end))) {
+                end++;
+            }
+            if (end == start) {
+                throw new BadFormatException("Bad minus time string, expected a digit after "
+                        + "'.': '" + timeString + "'.");
+            }
+        }
+        double number = Double.parseDouble(timeString.substring(1, end));    // Digits only
         
-        double number = parseNumber(parts[0], timeString);
+        if (timeString.length() < end + 2 || timeString.charAt(end) != ' ') {
+            throw new BadFormatException("Bad minus time string, expected a space and a unit "
+                    + "after the number: '" + timeString + "'.");
+        }
+        double factor = parseUnit(timeString.charAt(end + 1), timeString);
         
-        double factor = parseUnit(parts[1], timeString);
-        
-        double deltaTime = number * factor;
-        long time = currentTime + ((long) deltaTime);
+        long time = currentTime - ((long) (number * factor));
         if (time < 0) {
             throw new BadFormatException("Time out of range (negative: " + time 
                     + "), time string was: '" + timeString + "'.");
         }
         
         // If time of day comes after minus expression.
-        if (parts.length > 2) {
-            parseTime(timeString, parts[0].length() + 1 + parts[1].length() + 1);
-            time = computeTimeUnitsB(time);
+        if (timeString.length() > end + 2) {
+            expect(timeString, end + 2, ' ');
+            parseTime(timeString, end + 3);
+            time = inRange(computeTimeUnitsB(time), timeString);
         }
         
         return time;
     }
 
-    private double parseNumber(String numberString, String timeString) {
-        double number = 0.0;
-        try {
-            number = Double.parseDouble(numberString);
-        } catch (NumberFormatException e) {
-            throw new BadFormatException("Bad minus time string: '" + timeString + "'.");
-        }
-        
-        if (number > 0.0) {
-            throw new BadFormatException("Bad minus time string: '" + timeString + "'.");
-        }
-        return number;
-    }
-
-    private double parseUnit(String unit, String timeString) {
-        if (unit.length() != 1) {
-            throw new BadFormatException("Bad minus time string, unexpected unit, was: '" + timeString + "'.");
-        }
-        
-        char unitChar = unit.charAt(0);
+    private double parseUnit(char unitChar, String timeString) {
         double factor;
         
         switch (unitChar) {
@@ -421,39 +305,82 @@ public class TimeResolver {
     }
     
     /**
-     * Parse a possibly zero-padded integer. Max one zero as padding assumed.
+     * The number of 'count' ASCII digits at 'offset', which must be from 'min' to 'max'.
+     * 
+     * @throws BadFormatException  If a char is not an ASCII digit, the string ends before
+     *      them, or the number is outside min to max.
      */
-    private int parseZeroPadded(String s, String timeString) {
-        if (s.startsWith("0")) {
-            s = s.substring(1);
+    private static int digits(String timeString, int offset, int count, int min, int max,
+            String field) {
+        if (timeString.length() < offset + count) {
+            throw new BadFormatException("Bad time string, the " + field + " is cut: '"
+                    + timeString + "'.");
         }
-        
-        int result = -1;
-        try {
-            result = Integer.parseInt(s);
-        } catch (NumberFormatException e) {
-            throw new BadFormatException("Bad time string: '" + timeString + "'.");
+        int result = 0;
+        for (int i = offset; i < offset + count; i++) {
+            char c = timeString.charAt(i);
+            if (!isDigit(c)) {
+                throw new BadFormatException("Bad time string, the " + field + " is not "
+                        + count + " digits: '" + timeString + "'.");
+            }
+            result = 10 * result + (c - '0');
         }
-        
+        if (result < min || result > max) {
+            throw new BadFormatException("Bad time string, the " + field + " " 
+                    + timeString.substring(offset, offset + count) + " is outside " + min 
+                    + " to " + max + ": '" + timeString + "'.");
+        }
         return result;
     }
     
     /**
-     * Parse a possibly zero-padded integer. Max one zero as padding assumed.
+     * The digits from 'offset' to the end, one at least, as a fraction of a second in clock
+     * units, rounded half up: 0 to 10^7.
      */
-    private double parseZeroPaddedDouble(String s, String timeString) {
-        if (s.startsWith("0")) {
-            s = s.substring(1);
+    private static long fraction(String timeString, int offset) {
+        int length = timeString.length();
+        if (offset >= length) {
+            throw new BadFormatException("Bad time string, expected a digit after '.': '"
+                    + timeString + "'.");
         }
-        
-        double result = -1;
-        try {
-            result = Double.parseDouble(s);
-        } catch (NumberFormatException e) {
-            throw new BadFormatException("Bad time string: '" + timeString + "'.");
+        long units = 0;
+        for (int i = offset; i < length; i++) {
+            char c = timeString.charAt(i);
+            if (!isDigit(c)) {
+                throw new BadFormatException("Bad time string, the fraction of the second is "
+                        + "not digits: '" + timeString + "'.");
+            }
+            int k = i - offset;
+            if (k < 7) {
+                units = 10 * units + (c - '0');
+            } else if (k == 7 && c >= '5') {
+                units++;
+            }
         }
-        
-        return result;
+        for (int k = length - offset; k < 7; k++) {
+            units *= 10;
+        }
+        return units;
+    }
+    
+    private static void expect(String timeString, int offset, char c) {
+        if (offset >= timeString.length() || timeString.charAt(offset) != c) {
+            throw new BadFormatException("Bad time string, expected '" + c + "' as char " 
+                    + (offset + 1) + ": '" + timeString + "'.");
+        }
+    }
+    
+    private static boolean isDigit(char c) {
+        return c >= '0' && c <= '9';
+    }
+    
+    /** The time, if within Time's range, 0 to 2^56 - 1 units. */
+    private static long inRange(long time, String timeString) {
+        if (time < 0 || time > MAX_UNITS) {
+            throw new BadFormatException("Time out of range, before 1970 or after "
+                    + Time.MAX + " UTC: '" + timeString + "'.");
+        }
+        return time;
     }
    
     
@@ -614,11 +541,16 @@ public class TimeResolver {
         Assert.assertEquals(t3, t2);
     }
 
-    /** bergdb 005-21: seconds that do not fit an int, or are not numbers, are refused. */
+    /**
+     * bergdb 005-21: seconds that do not fit an int, or are not numbers, are refused; since
+     * 2026-11-09 (bergdb 020-21, 1) also seconds of 60 or more, which rolled over to the next
+     * minute ("00:00:75" was "00:01:15").
+     */
     @Nano
     private static void testBadSeconds() {
         String[] bad = {"2013-01-01 00:00:3000000000", "2013-01-01 00:00:1e300",
-                "2013-01-01 00:00:NaN", "2013-01-01 00:00:Infinity", "2013-01-01 00:00:-5"};
+                "2013-01-01 00:00:NaN", "2013-01-01 00:00:Infinity", "2013-01-01 00:00:-5",
+                "2013-01-01 00:00:75", "2013-01-01 00:00:60", "2013-01-01 00:00:99.5"};
         for (String s : bad) {
             try {
                 resolveAbsolute(UTC, s);
@@ -627,8 +559,8 @@ public class TimeResolver {
                 // Expected.
             }
         }
-        Assert.assertEquals(resolveAbsolute(UTC, "2013-01-01 00:01:15"), 
-                resolveAbsolute(UTC, "2013-01-01 00:00:75"));
+        Assert.assertEquals(resolveAbsolute(UTC, "2013-01-01 00:01:00") - Clock.UNITS_PER_SEC,
+                resolveAbsolute(UTC, "2013-01-01 00:00:59"));
     }
     
     /** bergdb 005-21: Time.millis() refuses a value whose units overflow a long. */

@@ -1585,8 +1585,9 @@ public class PubTesterJavadoc {
     /**
      * Time.resolve()'s grammar: an absolute time with "T" or a space before the time of day;
      * a time of day "HH:MM:SS.d", "HH:MM:SS" or "HH:MM"; a minus time with a time of day.
-     * IllegalArgumentException for a time outside Time's range: units(), millis(), add(),
-     * and an absolute time string before 1970 or after 2198-05-04 (bergdb 020-19, J7).
+     * IllegalArgumentException for a time outside Time's range from units(), millis() and
+     * add() (bergdb 020-19, J7); BadFormatException for a time string whose time is outside
+     * it, before 1970 or after 2198-05-04, absolute or a minus time (bergdb 020-21, 1).
      */
     @Nano
     public static void testTimeStrings() {
@@ -1602,8 +1603,8 @@ public class PubTesterJavadoc {
         Assert.assertEquals(Time.utc("2020-06-15 11:59:58.5"),
                 Time.resolve(Time.UTC, now, "-1.5 s"));
         for (final String s : new String[] {"1969-12-31", "2198-05-05", "2300-01-01 00:00"}) {
-            assertThrows(s, IllegalArgumentException.class, () -> Time.utc(s));
-            assertThrows(s, IllegalArgumentException.class,
+            assertThrows(s, BadFormatException.class, () -> Time.utc(s));
+            assertThrows(s, BadFormatException.class,
                     () -> Time.resolve(Time.UTC, now, s));
         }
         assertThrows("-1 units", IllegalArgumentException.class, () -> Time.units(-1));

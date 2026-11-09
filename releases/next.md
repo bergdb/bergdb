@@ -314,6 +314,21 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   get of a stored object with the field threw at the field's access. A
   class whose field's generic type names a class that is not there is
   refused so too: a `TypeNotPresentException` escaped the put and the get.
+* **A time string is parsed strictly** (bergdb 020-21, 1; Frans, 2026-11-09,
+  020-13 and 020-19's Q1): `Time.utc` and both `Time.resolve` refuse with
+  `BadFormatException` a field outside its range, a month outside 01 to
+  12, a day outside its month, an hour above 23, a minute or a second above
+  59, which a lenient calendar rolled over ("2013-13-01" was 2014-01-01,
+  "2013-02-30" 2013-03-02, "25:00" the next day, "00:00:75" 00:01:15); and
+  a string that breaks the format in another way, which Java's number
+  parsers took: seconds as "1e1" or with a space after them, a minus time's
+  number as "1d", "NaN" or "0x1p3", a sign in a field. Each field is ASCII
+  digits of its length, a minus time's number digits with an optional
+  fraction. A time outside `Time`'s range, before 1970 or after 2198-05-04,
+  is a `BadFormatException` too, as a minus time before 1970 was; it was an
+  `IllegalArgumentException` for an absolute time or a time of day. A
+  fraction of a second beyond 100 ns is rounded half up on its digits, not
+  through a double; the strings of the format give the times they gave.
 
 
 ### Core API
