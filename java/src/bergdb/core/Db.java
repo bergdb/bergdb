@@ -462,7 +462,8 @@ public class Db implements AutoCloseable {
      * changes no byte of the stream (level4.sh's EvictionInvariance), so it is not kept
      * there, and a start takes the builder's value. A setting that changes the stream's
      * bytes is kept in the stream (setStartupDistance, 010-P2); one that does not lasts for
-     * the run. On a database that is not active the method only sets the value.
+     * the run. On a database that is not active the method only sets the value. A value
+     * below 1 is refused with IllegalArgumentException, and the setting stays as it was.
      */
     public void setCacheSizeIndicator(long sizeIndicator) {
         if (sizeIndicator < 1) {
@@ -625,8 +626,8 @@ public class Db implements AutoCloseable {
      * @throws DatabaseNotCreatedException
      *             If the stream holds a creation that did not complete, and no committed
      *             transaction (bergdb 005-33). The start writes nothing.
-     * @throws IllegalStateException
-     *             If start() has been called already.
+     * @throws IllegalDbStateException
+     *             If start() has been called already, or stop(): nothing is closed then.
      * @throws DbFailedException
      *             If a read of reclaim's settings or table, the last step of the startup,
      *             fails on the storage (bergdb 005-30).
@@ -658,7 +659,7 @@ public class Db implements AutoCloseable {
      * @throws DatabaseNotCreatedException
      *          If the stream holds a creation that did not complete, and no committed
      *          transaction (bergdb 005-33). The start writes nothing.
-     * @throws IllegalStateException
+     * @throws IllegalDbStateException
      *          If start() has been called already, or stop(): nothing is closed then.
      * @throws DbFailedException
      *          If a read of reclaim's settings or table, the last step of the startup,
@@ -1602,8 +1603,10 @@ public class Db implements AutoCloseable {
      * @param lookupTime
      *            The requested lookup time. The time for which to make the lookup. 
      *            Use Long.MAX_VALUE to lookup the state at the latest possible time.
+     * @return The value, or null if the key has no value at the lookup time.
      * @throws IllegalDbStateException
-     *             If start() has not been called, or stop() or close() has.
+     *             If start() has not been called, or stop() or close() has (a
+     *             DbStoppingException then).
      *             The database is not in the active state.
      * @throws DbFailedException
      *             If the database has failed, or fails now: the read failed on the storage
@@ -1801,7 +1804,8 @@ public class Db implements AutoCloseable {
      * 
      * @param g     Input and output parameters.
      * @throws IllegalDbStateException
-     *              If start() has not been called.
+     *              If start() has not been called, or stop() or close() has (a
+     *              DbStoppingException then).
      * @throws DbFailedException
      *              If the database has failed, or fails now: the read failed on the
      *              storage (an I/O error, corrupt data; the cause; bergdb 005-30).
@@ -1922,7 +1926,9 @@ public class Db implements AutoCloseable {
      * As sync(0, syncLevel): waits until the last transaction written is durable.
      *
      * @param syncLevel
-     *      The sync level.
+     *      The sync level; SyncLevel.NONE returns at once.
+     * @throws IllegalArgumentException
+     *      If syncLevel is null.
      */
     public void sync(SyncLevel syncLevel) {
         sync(0, syncLevel);
@@ -1938,7 +1944,9 @@ public class Db implements AutoCloseable {
      *      before it were, so the transaction's last byte, its commit byte, could still be in
      *      the write buffer, and a crash then lost the transaction).
      * @param syncLevel
-     *      The sync level.
+     *      The sync level; SyncLevel.NONE returns at once.
+     * @throws IllegalArgumentException
+     *      If syncLevel is null.
      * @throws DbFailedException
      *      If the storage has failed (the cause): the database fails, as on a read that
      *      fails on the storage (bergdb 005-30). After another failure, a sync of the

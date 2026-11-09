@@ -4,10 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Input/output to the Graph.getMany() method. Also data structures and algorithms to support that
- * method. We search for KVs in interval (key1, key2].
- * If key2 == null, the interval is (key1, +inf).
- * If key1 == null, the interval is (-inf, key2].
+ * Input/output to Db.getMany() and Dag.getMany(). Also data structures and algorithms to
+ * support that method. A getMany() gives the KVs at the lookup time in key order, from
+ * startKey, forward (increasing keys) or backward, while the stop condition goes on; the
+ * stop condition gives the end (bergdb 020-27: this comment gave an interval (key1, key2]
+ * of two keys that the class does not have).
  * 
  * @see Dag#getMany(GetMany)
  * @author Frans Lundberg
@@ -22,14 +23,16 @@ public class GetMany {
     public long lookupTime;
     
     /** 
-     * First key gotten with GetMany() will be the smallest key GTE 'startKey'.
-     * Use 'null' for "-inf". All keys are greater than "-inf".
+     * Forward, the first key gotten with getMany() is the smallest key GTE 'startKey' (GT
+     * if not inclusive); backward, the largest key LTE it (LT if not inclusive).
+     * Use 'null' to start at the first key, or backward at the last.
      */
     public long[] startKey;
     
     /**
-     * By default, GetMany returns keys greater than or equal to (GTE) 'startKey'. 
-     * To use strictly greater than (GT), set this field to false.
+     * By default, GetMany returns keys greater than or equal to (GTE) 'startKey', or
+     * backward less than or equal to (LTE) it. To use strictly greater than (GT), or less
+     * than (LT), set this field to false.
      */
     public boolean inclusive;
     
@@ -408,7 +411,7 @@ public class GetMany {
         public static final int ADD_AND_STOP = 4;
         
         /**
-         * Returns what to do with the KV. Three cases are possible.
+         * Returns what to do with the KV. Four cases are possible.
          * 1. Add the KV to result and continue to next KV.
          * 2. Stop iterating, do not add the KV to the result.
          * 3. Continue to next KV without adding the current KV to the result.

@@ -91,7 +91,8 @@ public class DbBuilder {
     }
     
     /**
-     * Chooses a non-default clock to use for the database.
+     * Chooses a non-default clock to use for the database. A null clock is refused by build()
+     * with IllegalArgumentException.
      */
     public DbBuilder clock(Clock clock) {
         this.clock = clock;
@@ -158,6 +159,11 @@ public class DbBuilder {
         return this;
     }
 
+    /**
+     * The startup distance in bytes for a new database, 50 MB by default; a database keeps
+     * the one in its stream (Db.setStartupDistance()). A value below 10 is refused with
+     * IllegalArgumentException.
+     */
     public DbBuilder startupDistance(int startupDistance) {
         if (startupDistance < 10) {
             throw new IllegalArgumentException("Too small, " + startupDistance);
@@ -281,10 +287,12 @@ public class DbBuilder {
      * @param stream
      *      The output database stream.
      * @param bufferSize
-     *      Buffer size in bytes.
+     *      Buffer size in bytes; a value below 100 is taken as 100.
      * @param bufferTime  
      *      Maximum time in milliseconds to buffer the data 
-     *      before the buffer is flushed.
+     *      before the buffer is flushed; a value below 10 is taken as 10.
+     * @throws IllegalArgumentException
+     *      If name or stream is null, or bufferSize or bufferTime is negative.
      */
     public DbBuilder stream(String name, AppendOnlyStream stream, int bufferSize, int bufferTime) {
         if (name == null) {
@@ -372,6 +380,12 @@ public class DbBuilder {
         testId();
     }
 
+    /**
+     * Builds the Db; start() starts it.
+     * 
+     * @throws IllegalStateException  If no stream is set.
+     * @throws IllegalArgumentException  If the clock is null.
+     */
     public Db build() {
         //
         // At this time, we know all Db settings. Time to create the Db object.
@@ -385,7 +399,7 @@ public class DbBuilder {
     }
 
     /**
-     * Same as calling done() and then start() on the returned DB object.
+     * Same as calling build() and then start() on the returned DB object.
      * 
      * @throws StreamIoException
      * @throws StreamFormatException

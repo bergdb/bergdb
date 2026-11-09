@@ -58,6 +58,196 @@ public class DbTesterJavadoc {
                 e != null && expected.isInstance(e));
     }
 
+    /**
+     * Db.getOne(): null for a key without a value at the lookup time; the array returned is
+     * the database's own while the value is in memory (Trans.Builder: "A value's array is
+     * not copied"); GetData.tpos is the position of the transaction that wrote the value,
+     * which getTrans() reads (Trans.tpos, tt, lastPos); Trans.nextPos is the stream's length
+     * after it.
+     */
+    @Nano
+    public static void testGetOneAndTheTransaction() {
+        Db db = Db.builder().testSetup().start();
+        try {
+            byte[] value = {1, 2, 3};
+            Trans t = db.trans().put(Keys.toBytes("a"), value).build();
+            db.execute(t);
+            Assert.assertEquals("nextPos", t.lastPos + 1, t.nextPos);
+            Assert.assertEquals("the stream's length", t.nextPos, db.getStreamLength());
+
+            GetData gd = db.newGetData();
+            Assert.assertNull(db.getOne(LATEST, Keys.toSegments("b"), gd));
+            Assert.assertNull(db.getOne(t.tt - 1, Keys.toSegments("a"), gd));
+            byte[] got = db.getOne(LATEST, Keys.toSegments("a"), gd);
+            Assert.assertTrue("the database's own array, the one put", got == value);
+            Assert.assertEquals("GetData.tpos", t.tpos, gd.tpos);
+
+            StoredTrans stored = db.getTrans(gd.tpos);
+            Assert.assertEquals("tt", t.tt, stored.tt);
+            Assert.assertEquals("tpos", t.tpos, stored.tpos);
+            Assert.assertEquals("lastPos", t.lastPos, stored.lastPos);
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * Trans.Builder.build(): one operation a key: the last put, or a delete if there is no
+     * put; a delete never replaces a put, whatever their order.
+     */
+    @Nano
+    public static void testTransBuilderOneOperationPerKey() {
+        Db db = dbWithKeys(0);
+        try {
+            db.execute(db.trans().put("e", "0").build());
+            db.execute(db.trans().put("a", "1").delete("a").build());
+            db.execute(db.trans().delete("b").put("b", "2").build());
+            db.execute(db.trans().put("c", "1").put("c", "2").build());
+            db.execute(db.trans().put("d", "1").delete("d").put("d", "3").build());
+            db.execute(db.trans().delete("e").delete("e").build());
+            Trans t = db.trans().put("f", "1").delete("f").put("f", "2").delete("f").build();
+            Assert.assertEquals("one KV", 1, t.kvs.length);
+            db.execute(t);
+            String[][] expected = {{"a", "1"}, {"b", "2"}, {"c", "2"}, {"d", "3"}, {"e", null},
+                    {"f", "2"}};
+            for (String[] kv : expected) {
+                byte[] value = get(db, kv[0]);
+                Object got = value == null ? null : new String(value);
+                Assert.assertEquals(kv[0], (Object) kv[1], got);
+            }
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * Db.start(): a second call, also after stop(), throws IllegalDbStateException, and
+     * nothing is closed: the database goes on.
+     */
+    @Nano
+    public static void testSecondStartRefused() {
+        Db db = dbWithKeys(1);
+        try {
+            assertThrows("start again", IllegalDbStateException.class, () -> db.start());
+            Assert.assertEquals("v0", new String(get(db, "k0")));
+            db.execute(db.trans().put("k1", "v1").build());
+            Assert.assertEquals("v1", new String(get(db, "k1")));
+            db.stop();
+            assertThrows("start after stop", IllegalDbStateException.class, () -> db.start());
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * Before start(): reads, transactions and newGetData(), newGetMany() and printDag() throw
+     * IllegalDbStateException. After stop(): reads, transactions and the settings kept in
+     * the stream throw DbStoppingException, an IllegalDbStateException, and change nothing;
+     * setCacheSizeIndicator() only sets the value. setCacheSizeIndicator() refuses a value
+     * below 1, sync() a null sync level, with IllegalArgumentException; SyncLevel.NONE
+     * returns at once.
+     */
+    @Nano
+    public static void testCallsBeforeStartAndAfterStop() {
+        final Db db = Db.builder().testSetup().build();
+        final GetMany g = new GetMany();
+        Call[] before = {
+            () -> db.getOne(LATEST, Keys.toSegments("k"), new GetData()),
+            () -> db.getMany(g),
+            () -> db.execute(db.trans().put("k", "v").build()),
+            () -> db.getTrans(128),
+            () -> db.newGetData(),
+            () -> db.newGetMany(),
+            () -> db.printDag(System.out)};
+        for (int i = 0; i < before.length; i++) {
+            Throwable e = thrown(before[i]);
+            Assert.assertTrue("before start, call " + i + ": " + e,
+                    e instanceof IllegalDbStateException && !(e instanceof DbStoppingException));
+        }
+        db.close();
+
+        final Db db2 = dbWithKeys(1);
+        try {
+            final Trans t = db2.trans().put("k1", "v1").build();
+            db2.execute(t);
+            assertThrows("below 1", IllegalArgumentException.class,
+                    () -> db2.setCacheSizeIndicator(0));
+            assertThrows("null", IllegalArgumentException.class, () -> db2.sync(null));
+            assertThrows("null", IllegalArgumentException.class, () -> db2.sync(0, null));
+            db2.sync(SyncLevel.NONE);
+            long distance = db2.getStartupDistance();
+            long retain = db2.getRetainDuration();
+            double fraction = db2.getInternalFraction();
+
+            db2.stop();
+            final GetMany g2 = db2.newGetMany();
+            Call[] after = {
+                () -> db2.getOne(LATEST, Keys.toSegments("k0"), db2.newGetData()),
+                () -> db2.getMany(g2),
+                () -> db2.execute(db2.trans().put("k", "v").build()),
+                () -> db2.getTrans(t.tpos),
+                () -> db2.setStartupDistance(1000 * 1000),
+                () -> db2.setRetainDuration(100 * Clock.UNITS_PER_SEC),
+                () -> db2.setReclaimInternalFraction(0.5),
+                () -> db2.printDag(System.out)};
+            for (int i = 0; i < after.length; i++) {
+                Throwable e = thrown(after[i]);
+                Assert.assertTrue("after stop, call " + i + ": " + e,
+                        e instanceof DbStoppingException);
+            }
+            Assert.assertEquals("distance", distance, db2.getStartupDistance());
+            Assert.assertEquals("retain", retain, db2.getRetainDuration());
+            Assert.assertTrue("fraction", fraction == db2.getInternalFraction());
+            db2.setCacheSizeIndicator(12345);
+            Assert.assertEquals("set after stop", 12345, db2.getCacheSizeIndicator());
+        } finally {
+            db2.close();
+        }
+    }
+
+    /**
+     * Db, "Db shutdown": a Db's own threads, the storage's writer and the eviction thread,
+     * are daemon threads, so they do not keep the JVM alive; what a Db that is not stopped
+     * has committed is written without stop() or sync().
+     */
+    @Nano
+    public static void testOwnThreadsAreDaemons() {
+        Set<Thread> before = new HashSet<>(Thread.getAllStackTraces().keySet());
+        Db db = Db.builder().testSetup().cacheSizeIndicator(1000 * 1000).start();
+        try {
+            byte[] value = new byte[1000];
+            for (int i = 0; i < 2000; i++) {
+                db.execute(db.trans().put(Keys.toBytes("k" + i), value).build());
+            }
+            db.setCacheSizeIndicator(100 * 1000);     // Wakes the eviction thread.
+
+            long end = System.nanoTime() + 2000L * 1000 * 1000;
+            List<String> ours = new ArrayList<>();
+            boolean written = false;
+            while (System.nanoTime() < end) {
+                ours.clear();
+                for (Thread t : Thread.getAllStackTraces().keySet()) {
+                    String name = t.getName();
+                    if (!before.contains(t) && (name.startsWith("BufferedStream-consumer")
+                            || name.equals("bergdb-evictor"))) {
+                        Assert.assertTrue(name + " is a daemon", t.isDaemon());
+                        ours.add(name.startsWith("Buffered") ? "writer" : "evictor");
+                    }
+                }
+                written = db.getDurableLength() == db.getStreamLength();
+                if (written && ours.contains("writer") && ours.contains("evictor")) {
+                    break;
+                }
+                Thread.onSpinWait();
+            }
+            Assert.assertTrue("the threads: " + ours,
+                    ours.contains("writer") && ours.contains("evictor"));
+            Assert.assertTrue("written without stop() or sync()", written);
+        } finally {
+            db.close();
+        }
+    }
+
     /** GetMany.GetN and PrefixN: at most N KVs, N = 0 too; PrefixN keeps its own prefix. */
     @Nano
     public static void testGetManyAtMostN() {
@@ -133,6 +323,48 @@ public class DbTesterJavadoc {
             db.getMany(g);
             Assert.assertEquals("stopped", 1, g.result.size());
             Assert.assertEquals("no eod after STOP", 0, calls[1]);
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * DbBuilder's refusals: id(null), startupDistance() below 10, stream() with a null name
+     * or stream or a negative buffer size or time, reclaimStepReserve() below 1, each with
+     * IllegalArgumentException; a buffer size or time of 0 taken; build() without a stream,
+     * IllegalStateException, with a null clock IllegalArgumentException. Trans.Builder's: a
+     * null value, also for a String key, and a negative lookup time, with
+     * IllegalArgumentException.
+     */
+    @Nano
+    public static void testBuilderRefusals() {
+        final MemoryStream s = new MemoryStream();
+        Call[] refused = {
+            () -> Db.builder().id(null),
+            () -> Db.builder().startupDistance(9),
+            () -> Db.builder().stream(null, s),
+            () -> Db.builder().stream("main", null),
+            () -> Db.builder().stream("main", s, -1, 10),
+            () -> Db.builder().stream("main", s, 100, -1),
+            () -> Db.builder().reclaimStepReserve(0),
+            () -> Db.builder().testSetup().clock(null).build(),
+            () -> new Trans.Builder().put(new byte[] {5}, null),
+            () -> new Trans.Builder().put(new long[] {5}, null),
+            () -> new Trans.Builder().put("k", (String) null),
+            () -> new Trans.Builder().put("k", (byte[]) null),
+            () -> new Trans.Builder().lookupTime(-1)};
+        for (int i = 0; i < refused.length; i++) {
+            assertThrows("call " + i, IllegalArgumentException.class, refused[i]);
+        }
+        assertThrows("no stream", IllegalStateException.class, () -> Db.builder().build());
+        Db.builder().startupDistance(10);
+        DbBuilder b = Db.builder();
+        b.testSetupExceptStream();
+        Db db = b.stream("main", s, 0, 0).start();
+        try {
+            db.execute(db.trans().put("k", "v").build());
+            db.sync(SyncLevel.ORDINARY);
+            Assert.assertEquals("v", new String(get(db, "k")));
         } finally {
             db.close();
         }
