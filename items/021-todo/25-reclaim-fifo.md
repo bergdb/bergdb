@@ -281,3 +281,5 @@ decision on (a) and (b).
 status values, where it said "for Frans"; the main commits of the
 item: `69600f9` (the known issue), `c6e60ba` (part 3) and `e3b9787` (fix
 (c)); its row in 021-todo. By coord-1109.
+
+2026-11-09. Frans, 19:17: "021-25, good catch. Yes it should be for 2026.5." The fixes (a) and (b) wait for 2026.5; fix (c) is in 2026.4 (coord-1109).
