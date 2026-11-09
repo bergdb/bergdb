@@ -1,0 +1,263 @@
+# 020-11 The known issues of 2026.4
+
+Created 2026-11-09 by Frans Lundberg. Status: open, to be brought up to
+date until the release. Every known fault and open question that release
+2026.4 ("a bug-free database", 020) must settle, each with its state on
+`main`: fixed (the commit and the test that shows it), open (who has it),
+gone or not a fault (why), decided or open for Frans (questions). Asked by
+Frans on 2026-11-08 at 22:03: "Keep working until you have a solution for
+2026.4 with no known issues." Written in night 006-15 from `main` at
+`fd6dd09`.
+
+How it was checked: each "fixed" by reading the test it names, not the
+commit message, and by running it on `main` (`-ea`, the unit group unless
+said otherwise): every test named in the tables passed at `fd6dd09` or
+just before, and the unit group as a whole passed at `fd6dd09` (1,399
+tests, 48 s). A night test that was not run is said so. The sources:
+020-01, section 13 (both tables) and section 12 (N1 to N11); 020-10,
+section 8 (the fault map) and 10.2; 020-03's BG1 to BG6 and 020-05's
+DB7 as 020-08 takes them; 020-08's tests and steps; 020-09's rules and
+section 9; 020-04's and 020-07's questions; the lists of 015, 019 and
+021; the night's reviews (coord-1108's state, 006-15).
+
+
+## 1. In short
+
+At `fd6dd09` every fault of 020-01's, 020-08's and 020-10's lists is
+fixed, gone or not a fault, and so is every finding of the night's
+reviews, but the twelve open rows below; six questions or approvals are
+Frans's; the night tests, `night.sh` and step 4 are still to run. The open
+rows:
+
+| Row | What | With |
+|---|---|---|
+| R3-F1 | A String starting with "bergo" and U+0001 taken for a format-1 object | o02 (objects) |
+| R3-N3 | DbString encodes before its size check: OutOfMemoryError over 2^31 bytes | o02 |
+| R3-N2 | `Entries.suffix`: ukey and ikey differ for a name starting with '.' | o02 (Javadoc) |
+| N4-doc | The put Javadoc does not say an object at a key with a suffix is refused | o02 (Javadoc) |
+| N10-test | `testPauseCapped` never runs: `IndexBuilderImp` not in `pubimp/Pack` | unassigned, one line |
+| N5 / B3 | `DbObject` and its value classes still in `pubimp` | o02, step B3 |
+| R46-L1 | `NodeCollection.followStreamPointer`: a reader's drop also for the writer | C (low, hardening) |
+| R46-L2 | `Handle` and 009-02 words on `dropIfEmpty`'s written position | C (low, words) |
+| S4 | 020-08, step 4: the measurements (M1 to M8), a quiet run of `objectbench.sh` | the morning, F53 quiet |
+| BK-015 | 015-23 to 015-49's entries say "open"; their fixes are on `main` | coordinator (items) |
+| BK-020 | 020-04 and 020-07 do not record their questions' decisions | coordinator (items) |
+| BK-020-10 | 020-10, section 8, names two race tests that do not exist | coordinator (items) |
+
+For Frans: 020-04, Q6; 020-07, Q2 to Q5, and the spec's approval under
+018-01's rule; 020-09's and 020-10's decisions under the delegation, to
+read; the night's other decisions (006-15). To run before the release:
+the night tests of tonight's harnesses, `night.sh`, step 4 (section 7).
+
+
+## 2. Objects: F1, F2 (020-01) and 020-08
+
+| ID | What | State | Commit; test (ran) |
+|---|---|---|---|
+| 015-46, S2-F3 | String or byte[] over an object, indexed | fixed | 249b684; PubTesterIndexRaces.testStringOverObject |
+| S2-F8 | An array holding itself: StackOverflowError | fixed | ca67411; DataObjectsTester K7, K9, W26 |
+| S2-F9 | A final field not stored, silently | fixed, refused | ca67411; DataObjectsTester.testClassCases1, K6 |
+| S2-F18 | Date, enum, collection, DbObject lost | fixed, refused | ca67411, 7681710; K7, K8, testReviewOfStep8 |
+| S2-F19 | A field hiding a superclass's | fixed, refused | ca67411; testClassCases1, K10 |
+| S2-F4 | A double into a String: "d:1.5" | fixed | ca67411; DataObjectsTester.testGetTable G40 to G44 |
+| S2-F5 | The double 2^63 into a long gives MAX | not a fault | the rule: 020-09, 5.4 (delegated); G29, G30 |
+| S2-F6 | Another kind into a primitive: 0 or a Bug | fixed | 8185c07, ca67411; testGetTable, testTableReference |
+| S2-F7 | An Object[] or Object field read as null | fixed, refused | ca67411; K7, K9 |
+| S2-F21 | A throwing constructor: a Bug, a second call | fixed | ca67411; DataObjectsTester.testConstructors, G121 |
+| 005-22 | A get threw DataFormatException on overflow | changed | ca67411: clamped by 020-09; G27, G31 to G33 |
+| BG1 | Typed nulls stored | fixed | 8185c07; DbObjectTester.testNullFieldsAbsent, W20 |
+| BG2 | A null over a default read as null | fixed | 8185c07, ca67411; W21 |
+| BG3 | A String into an int: 0, silently | fixed | ca67411; G54 to G65, G82; unparsable text is 0 by G61 |
+| BG4 | Null elements stored; Object[] lost | fixed | 8185c07; DbObjectTester.testNullElementsRefused, W15 to W18 |
+| BG5 | The null object 626572676f01ffff | fixed | 8185c07; DbObjectFormatTester.testNullAtTheTop, W28 |
+| BG6 | Three index behaviours for null | fixed | 8185c07, 9a22bd6; PubTester.testOneIndexRule |
+| DB7 | Raw double bits, NaN payloads, kept | fixed | 8185c07; DbObjectFormatTester.testDoubles |
+| N1 | A null String fails every start | fixed | 8185c07; PubTesterIndexJobs.testBuildOverAnObjectItCannotIndex |
+| N2 | User data gives an Error in rw() | fixed but R3-N3 | S2-F6, F8, F21, F26 gone; 7681710 (BadInit in rw()) |
+| N4 | The kind of a value is not stored | partly | 8185c07 (0x82 and the full check; the guess documented) |
+| N4-doc | Put Javadoc silent on objects at suffixed keys | open | the refusal ("Bad key") is not in the Javadoc |
+| T1, H0 | The vectors; a reference codec; mutants | done | 9a45e06; ObjectFormatTester, 7 tests; night not run |
+| T2 to T7 | The vectors by DbObject; refusals; integers; sizes | done | 8185c07; DbObjectFormatTester, 15 tests |
+| T8 | Format-1 objects and definitions refused | done | 38afb1a; PubTester.testFormat1ObjectRefused and 2 more |
+| T9 | "A String value is never an object" | claim fails | 38afb1a; testKindOfValue tests "x" only; see R3-F1 |
+| T10 | A long index over one integer | done | 8185c07; PubTester.testLongIndexOverOneInteger |
+| T11, H1 | 020-09's G1-G122, K1-K18, W1-W36 | done | ca67411; DataObjectsTester, all 176 IDs; night not run |
+| 020-04 N1-N14 | The no-null tests | done | N1 to N14 as planned under (c); N2, N6 to N8 were (d)'s, not made |
+| Step 7 | `put(Object)`, the key field, `PubUtil` gone | done | 80bc546; PubTester.testKeyIsAnOrdinaryField |
+| Step 6 | The objects' Javadoc and words | done | 9a22bd6 (JAVADOC PUB OK in its gate) |
+| Step 5 | (d)'s constructor check | dropped | Frans chose (c), 2026-11-08, 21:47 |
+
+Tonight's reviews of the objects' steps:
+
+| ID | What | State | Commit; test (ran) |
+|---|---|---|---|
+| R2-1 | Step 2 lost 019-42's restart test | fixed | 38afb1a; testBuildOverAnObjectItCannotIndex |
+| R2-2 | R15 sizes give Errors | fixed but R3-N3 | 38afb1a; DbObjectFormatTester.testSizesRefused |
+| R2-3 | DbString's UTF-8 field: a data race | fixed | 38afb1a; testValueClassesClosed |
+| R2-4 | DbValue's public constructor; DbObject not final | fixed | 38afb1a; testValueClassesClosed |
+| R2-5 | A cycle's message with an empty place | fixed | 38afb1a; testCyclePlaces |
+| R8-1 | A Number subclass stored as an integer | fixed | 7681710; DataObjectsTester.testReviewOfStep8 |
+| R8-2 | A failed static init fails the DB in rw() | fixed | 7681710; testReviewOfStep8, BadInit three times |
+| R8-3 | An assert on a null scan value | fixed | 5b08db5; PubTesterIndexJobs.testScanTypes |
+| R8-4 | V5 lets a subclass of Date through | fixed | 7681710; testReviewOfStep8 |
+| R8-5 | V9 takes a bounded type variable | fixed | 7681710; testReviewOfStep8 |
+| R8-6 | Scans do not check the class first | fixed | 7681710, 5b08db5; testReviewOfStep8, testScanTypes |
+| R8-7 | void.class gives a NullPointerException | fixed | 7681710; testReviewOfStep8 |
+| R3-F1 | A String "bergo"+U+0001 taken for format 1 | open | isFormat1Object, entryLevels: 6 bytes (below) |
+| R3-N2 | `Entries.suffix`: ukey "/d/.h" none, ikey "h" | open | its Javadoc gives the ukey's rule; callers give ikeys |
+| R3-N3 | DbString encodes, then checks the size | open | DbString.java:42; String values: StringUtil.toBytes |
+| R3-x | A bytes field into a String field repairs | not a fault | 020-09, 5.6 (delegated); not 021-06's rule |
+
+R3-F1 in detail (the review of 38afb1a, probed at `c126d7d`): a String
+value whose text starts with "bergo" and U+0001, at an object key, makes
+`get(key, Object.class)` throw `ObjectCreationException` "format-1";
+`usePrimary(String.class)` leaves it out; `usePrimary(Object.class)` and a
+class throw at it; in a directory with an index, a put of it is refused
+(`w()` and `rw()`), a build over it fails, and a put over it or a delete of
+it is refused. The objects agent has it (decided: a String put is never
+format 1; format 1 recognised by its structure, not 6 bytes; the guess
+documented).
+
+
+## 3. Indexes: F3 to F8 (020-01) and 020-10, section 8
+
+| ID | What | State | Commit; test (ran) |
+|---|---|---|---|
+| S2-F1 | An ICU collator shared by threads | gone | 5b08db5, 41ea870: no collator; H2's 4 writers: night only |
+| S2-F10 | No start without ICU | gone | 41ea870; build.sh refuses ICU in the release jar |
+| S2-F14 | A level's commas lost | fixed | 7aca256; IndexDefinitionTester.testRoundTrip |
+| S2-F15 | An empty nested part | fixed | 5b08db5; PubTesterIndexJobs.testNestedFieldEmptyPart |
+| S2-F20 | dir() twice | fixed | 5b08db5; PubTesterIndexJobs.testDirTwice |
+| S2-F26 | A null indexed String throws or stops a build | fixed | 8185c07, 5b08db5; PubTester.testOneIndexRule |
+| N9 | ICU's sort keys in the stream | gone | 41ea870; a start refuses /#i/dii/ |
+| 015-28 | A write racing a creation | fixed | 249b684; PubTesterIndexRaces.testRacesCreate |
+| 015-43 | The index set read before R | fixed | 249b684; testRacesCreate, Activate, Delete |
+| S2-F12 | An old entry in a new index of the name | fixed | 249b684, 5b08db5; testRacesDelete; H2 (fd6dd09) |
+| 015-23 | A refused deletion stops maintenance | fixed | 5b08db5; IndexJobsHarness.testDeletionRefused |
+| 015-29 | deleteIndex(PRIMARY) | gone | 5b08db5, 8be9a95: PRIMARY gone; testIndexNamedPrimary |
+| 015-30 | A build reads past its directory | fixed | 5b08db5; PubTesterIndexJobs.testBuildStopsAtDir |
+| 015-36 | An interrupted deletion | gone | 5b08db5: no deletion job; testDeleteWithInterruptFlag |
+| 015-37, N6 | An interrupt ends a build | fixed | cecaf4c (019-38); testInterruptInBuildIsNotAFailure |
+| 015-39 | A status that changes after it is read | fixed | 5b08db5; PubTesterIndexJobs.testStatusIsSnapshot |
+| 015-61 | A stopped deletion says done | gone | 5b08db5: no job; testStartResumesBuildsAndCleanups |
+| 019-40 C5 | A deletion done after a failure | gone | as 015-61; testBugInCleanupLeavesTheMarker |
+| S2-F11 | Done when the database stopped | fixed | 5b08db5, 57f88ea; IndexJobsHarness.testStopDuringBuild |
+| S2-F16 | A build indexes subdirectories | fixed | 5b08db5; testBuildStopsAtDir |
+| S2-F27 | A refused creation stays in memory | fixed | 5b08db5, 57f88ea; IndexJobsHarness.testCreationRefused |
+| N7 | A step refused for good, retried | fixed | 5b08db5: 4,096 bytes of levels; testLargeValueNoEntry |
+| N10 | A pause without its cap | code fixed | 5b08db5; IndexBuilderImp.testPauseCapped never runs (not in Pack) |
+| S2-F2 | inclusive(false) alone | fixed | 8be9a95: gone; PubTesterIndex.testExclusiveBounds; H2 |
+| S2-F13 | prefix() on a secondary index | fixed | 8be9a95; PubTesterIndex.testPrefix; H2 |
+| S2-F22 | A later level alone | fixed | 8be9a95; PubTesterIndex.testGrammar; H2 |
+| S2-F23 | hasNext() true, next() throws | fixed | 8be9a95; PubTesterIndex.testStaleLastEntries |
+| N3 | A scan changes transactionInfo() | fixed | 8be9a95; PubTesterIndex.testScanKeepsTransactionInfo |
+| S2-F17 | The primary scan without dir() | fixed | ae68938; PubTesterPrimary.testPrimaryNeedsDir; H4 |
+| S2-F25 | String.class gives objects | fixed | ae68938; PubTesterPrimary.testTypesListByKind |
+| N5 | The API's boundary a convention | partly | c88e5fa (release jar), 9a9e920, 41ea870, 2917cdb; B3 left |
+| N11 | Key replace in an entry's level bytes | fixed | 5b08db5; PubTesterIndexJobs.testKeyReplaceIndexedText |
+| N8 | No scans in rw() | not a fault | decided (020-01, 14.1) |
+| "/" build | A build over "/" failed since 021-06 | fixed | 5b08db5; testBuildStopsAtDir, index "root" |
+
+Tonight's reviews and harnesses of the index steps:
+
+| ID | What | State | Commit; test (ran) |
+|---|---|---|---|
+| I2-join | join() in another thread gave BUILDING | fixed | ab06e26; PubTesterIndexJobs.testJoinFromAnotherThread |
+| I2-Error | An Error after a definition's commit | fixed | ab06e26; testErrorInDefinitionChangeFailsTheDatabase |
+| H3-F1 | An Error in a creation: the DB runs on | fixed | ab06e26; IndexJobsHarness.testEveryPointAndFault |
+| H3-F2 | A throw after a commit: stream and memory apart | fixed | ab06e26; as H3-F1 (KNOWN empty) |
+| H3-F3 | A throw after an activation's commit | fixed | ab06e26; as H3-F1 |
+| I1-starve | A build never ends under hot writes | fixed | ab06e26; PubTesterIndexJobs.testBuildEndsUnderWriters |
+| H2 | Harness H2 against BergDB | runs | fd6dd09; IndexHarness, 8 unit tests; night not run |
+| H3 | Harness H3, the jobs under faults | runs | 57f88ea, ab06e26; IndexJobsHarness; night not run |
+| H4 | Harness H4, the primary scan | runs | ae68938; PrimaryHarness.testSeeds; night not run |
+
+Notes:
+
+* N10's test is the only index test with `@Nano` outside `pubimp/Pack`:
+  until `IndexBuilderImp.class` is added there, 020-10's "each row has its
+  test in `before-commit.sh` passing" does not hold for N10.
+* 020-10, section 8, names `testRaceWriteCreate` and
+  `testRaceSetBeforeReadTime`; neither exists. Their scenarios are in
+  `PubTesterIndexRaces.testRacesCreate`, `testRacesActivate` and
+  `testRacesDelete` (36 forced orders). `testSubdirNotIndexed` tests the
+  writers; S2-F16's build is `testBuildStopsAtDir`.
+* `level2.sh` ran on `5b08db5` (I2): LEVEL 2 OK.
+
+
+## 4. Questions
+
+| ID | Question | State |
+|---|---|---|
+| 020-01 4.5 | F1's questions of meaning (Q1 to Q6) | decided: 020-02, 4 and 5.1b; 020-09 |
+| 020-01 5.5 | F2's questions of meaning (Q1 to Q4) | decided: 020-09 (21:47 to 21:59) |
+| 020-04 Q1 | A put of a null field | decided: (c), Frans 21:47 |
+| 020-04 Q2 | No constructor; a throwing one | decided: 020-09, V2 and 5.2 |
+| 020-04 Q3 | A 2026.3 object with a null | decided: every format-1 object refused (17:06) |
+| 020-04 Q4 | The version byte | decided: header 0x82 (16:22) |
+| 020-04 Q5 | The Builder with null | decided: refused (021-07) |
+| 020-04 Q6 | `DbObject.getString` of an absent field | open for Frans; the code gives null, 0, false |
+| 020-07 Q1 | Is a scalar a level | decided: containers only (19:43) |
+| 020-07 Q2 | Lookups without the full check | open for Frans; 2026.4 checks at every read |
+| 020-07 Q3 | The Binson conversion normative | open for Frans |
+| 020-07 Q4 | Top-level wrapping in "array" or "p" | open for Frans; the code follows the recommendation |
+| 020-07 Q5 | Later formats get a new header byte | open for Frans; the code follows it |
+| 020-07 Q6 | The spec's and vectors' home | decided: java/src/bergdb/pubimp/doc-files (9a45e06) |
+| 020-07 Q7 | '.' and ',' in names and index paths | settled by 020-10 (nestedField parts) |
+| 020-07 | The spec's approval under 018-01's rule | open for Frans before the release |
+| 020-09, 9 | Questions for Frans | none; 24 decisions under the delegation, to read |
+| 020-10, 11 | Decisions under the delegation | 22, to read |
+
+
+## 5. The Core, and the lists of 015, 019 and 021
+
+| ID | What | State | Commit; test (ran) |
+|---|---|---|---|
+| 019-46 | A drop raced the writer's load | fixed | 68830b8; NodeCollection.testDropIfEmptyKeepsTheWritersObject |
+| 019-47 | A start kept a large value | fixed | c126d7d; Eviction.testStartAdmitsLargeValuesOfThe... |
+| R46-L1 | The writer could call dropIfEmpty itself | open, low | review of 019-46: NodeCollection:500 (C) |
+| R46-L2 | Handle and 009-02 words on written positions | open, low | the review of 019-46 (C) |
+| 021-06 | Ill-formed UTF-8 read: keys and String values | fixed | d65f5b5, 3cf464e; Utf8ReadTester, 3 tests |
+| 021-09 | udir2idir took "p/" and "/p//" | fixed | 913ffb4; PubKeys.testUdir2idirRefusesBadDirs |
+| 021-10 | A '.' in a directory: no object key there | fixed | 38afb1a; Entries.testSuffixOfTheLastPart |
+| 021 | The list | no open entry | items/021-todo/readme.md |
+| 019 | The list | no open entry | items/019-todo/readme.md; 019-45 a limit, documented |
+| BK-015 | 015-23, 28 to 30, 36, 37, 39, 43, 46, 49 say open | open | their fixes are above; the entries need closing |
+| 015-03 | Lean follows 005-79's integer take | not 2026.4's | the Core's Lean model; no fault |
+| 015-18 | night.sh large on a release | not 2026.4's | not tonight (Frans, 22:12) |
+| 015-84 | Cap the pace's factor S/sd | not 2026.4's | an investigation of the Core's startup pace; no fault |
+
+
+## 6. Items and words
+
+* BK-015: the entries of 015 that 020's steps fixed still say "open"
+  (015-23, 28, 29, 30, 36, 37, 39, 43, 46, 49); close each with its commit.
+* BK-020: 020-04 records only Q1's decision and 020-07 none; the decisions
+  are in 020-02 (sections 4 and 5.1b) and 020-08 (section 2).
+* BK-020-10: section 8's two race test names (section 3, notes).
+* N4-doc: the put methods' Javadoc does not say that an object put at a
+  key with a suffix other than ".obj" is refused ("Bad key, expected no
+  suffix"); only the scans' and the indexes' Javadoc define an object key.
+
+
+## 7. Still to run or measure
+
+* The night tests of tonight's harnesses: H2 (40 seeds of 5,000 with 4
+  writer threads, about 55 minutes), H3, H4, ObjectFormatTester's and
+  DataObjectsTester's night runs, EvictionAccountingTester's two new ones.
+* `java/night.sh` on a clone of `main` (the coordinator's, when the
+  machine has room; no `night.sh large`, Frans 22:12).
+* 020-08, step 4: the measurements M1 to M8 (`objectbench.sh`, about 8
+  minutes on a quiet F53; prepared in 01f02db), with I1's cost of the
+  manager's lock on every write at an object key.
+* The level scripts after the last Core change: `level4.sh` ran on
+  019-46 and 019-47 (LEVEL 4 OK); `level2.sh` on I2 (LEVEL 2 OK).
+
+
+## 8. Log
+
+2026-11-09. Written in night 006-15 from `main` at `fd6dd09`, at the
+coordinator's request (Frans's 22:03), by the night's agent of 019-46 and
+two read-only helpers: every "fixed" row's test read and run; the unit
+group passed (1,399 tests). To be brought up to date when the night's last
+fixes land.

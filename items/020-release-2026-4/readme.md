@@ -151,6 +151,13 @@ Its todo list is 021-todo (Frans, 2026-11-06, 15:51).
   each; harnesses H2 to H4; nine steps for three agents, with the files
   each owns. Section 11 lists the decisions taken under the delegation.
   No code changed.
+* [11-known-issues.md](11-known-issues.md). 020-11, the known issues of
+  2026.4: every fault and open question of 020-01 (sections 12 and 13),
+  020-08, 020-09, 020-10 (section 8), 020-04, 020-07, the lists of 015,
+  019 and 021 and the night's reviews, each with its state on `main`:
+  fixed with its commit and the test that shows it (read and run), open
+  with who has it, gone or not a fault, or Frans's question. Brought up
+  to date until the release.
 
 
 Log
@@ -190,3 +197,10 @@ under his delegation of 22:17, by coord-1108's agent; 020-08 brought up
 to date with it and with 020-10 (steps 7 and 8 added, step 5 dropped,
 the order 1, 2, 7, 8, 3, 4, 6, about 7 days in all; `createFast()` left
 to 020-10's step I2); a pointer in 020-02, section 5.1b. No code.
+
+2026-11-09. 020-11, the known issues of 2026.4, written in night 006-15
+from `main` at `fd6dd09` at the coordinator's request: twelve open rows
+(the format-1 false positive for Strings, two Javadoc points, a String's
+size checked after its encoding, N10's test outside `Pack`, B3, two low
+points of 019-46's review, step 4's measurements, three item updates)
+and six questions or approvals for Frans.
