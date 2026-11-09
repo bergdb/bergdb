@@ -320,6 +320,7 @@ and the axioms, from a file outside the library with
     #print axioms BergDB.Index.lock_released
     #print axioms BergDB.Index.build_ends_wf
     #print axioms BergDB.Index.build_ends_finite
+    #print axioms BergDB.Index.build_ends_weak
 
 (`BergDB`, the library's root, imports every file). Each prints
 `[propext, Classical.choice, Quot.sound]`, or a part of it (`example_run2`:
@@ -498,19 +499,21 @@ BuildEnds with several names; by `build_ends`, the run is not strongly fair
 for A's build, as the theorem also states.
 
 The starving takes definition changes without end. With finitely many,
-weak fairness is enough (Finite.lean, `build_ends_finite`): in a run with
+weak fairness is enough (Finite.lean, `build_ends_weak`): in a run with
 finitely many crashes, definition changes and retries, weak fairness of the
-definition changes' maps and of every build, and finitely many keys,
-writers and builds, a build that runs, and does not end without its
-activation, ends. From some time on no definition
-change holds the lock, and each build takes it finitely often: each of its
-locked phases ends with a commit that moves it on, up to its E (`phi`,
-`phi_step`, `build_lock_finite`); so from some time on no one takes the
-lock, `lock_released` frees it once more, and it stays free, which makes
-the build's steps possible at every time. One name, as in 020-26's runs, is
-such a case for the build of a live definition: while it builds, no
-creation of the name can begin (`aCreate` needs no live definition), and a
-deletion ends the build.
+definition changes' maps and of every build, and finitely many keys and
+writers, a build that runs, and does not end without its activation, ends.
+From some time on no definition change holds the lock, and each build takes
+it finitely often: each of its locked phases ends with a commit that moves
+it on, up to its E (`phi`, `phi_step`, `build_lock_finite`); the builds are
+finitely many (`run_bld_finite`: a reachable system has finitely many
+definitions and builds, `reach_finSys`, and from some time on none is made);
+so from some time on no one takes the lock, `lock_released` frees it once
+more, and it stays free, which makes the build's steps possible at every
+time (`build_ends_finite`). One name, as in 020-26's runs, is such a case
+for the build of a live definition: while it builds, no creation of the
+name can begin (`aCreate` needs no live definition), and a deletion ends the
+build.
 
 
 ### 7.5. The Java code and the lock
@@ -548,7 +551,7 @@ What the code would need, one of:
   builds).
 * **A bound on the definition changes while a build waits**: the starving
   run takes them without end, and with finitely many weak fairness is
-  enough (section 7.4, `build_ends_finite`). For example, a definition
+  enough (section 7.4, `build_ends_weak`). For example, a definition
   change of another name that finds a build waiting for the lock waits until
   the build has had it. Or no change of the code, and a sentence in the
   Javadoc: index creations and deletions in a loop can delay another
@@ -595,19 +598,19 @@ transactions), with no `sorry` and Lean's standard axioms only:
 * that weak fairness, 020-26's, does not give BuildEnds with several names:
   a build needs strong fairness of the manager's lock (section 7.4), which
   Java's `synchronized` does not promise (section 7.5); and that it does
-  when the definition changes are finitely many (`build_ends_finite`).
+  when the definition changes are finitely many (`build_ends_weak`).
 
-5,018 lines of Lean (Index/: Model 531, Inv 434, Steps 1,359, Theorems 162,
-Locked 159, Liveness 957, Orphans 194, Release 381, Finite 327, Example 117,
+5,231 lines of Lean (Index/: Model 531, Inv 434, Steps 1,359, Theorems 162,
+Locked 159, Liveness 957, Orphans 194, Release 381, Finite 540, Example 117,
 Starve 386; the root 11).
 
 **Not proved**:
 
-* **Finitely many builds** in `build_ends_finite` is a hypothesis: true of
-  every run with finitely many definition changes and crashes (a build is
-  made only by a creation's maps or by a start, for each definition that
-  builds), but the invariant it needs, finitely many definitions and builds
-  in every reachable system, is not written.
+* **Finitely many writers** is a hypothesis of every BuildEnds theorem
+  (the type of writer threads is finite; each may write for ever). What the
+  proof uses is less: the writers that can commit when a build takes the
+  lock are finitely many, true of every reachable system; the measure would
+  have to count those instead of all.
 * **What 020-26 left out and this model too**: writes through the Core
   (020-22: undefined), key replace (020-10, section 5.3).
 * **The Java code**: the theorems are about the model; the model follows
@@ -625,9 +628,8 @@ Starve 386; the root 11).
 bound on definition changes while a build waits, or a sentence in the
 Javadoc), with the measurement it needs. A merge of the branch into main,
 if Frans wants the proof kept with the code: it adds a library and changes
-no file of SIS. In Lean, if wanted: the invariant that a reachable system
-has finitely many builds, writes through the Core when 020-22 defines them,
-key replace.
+no file of SIS. In Lean, if wanted: the writers' hypothesis as above,
+writes through the Core when 020-22 defines them, key replace.
 
 Log
 ===
@@ -671,7 +673,10 @@ Log
 * 19:48, `13561de`: Release.lean, `lock_released` and `build_ends_wf`.
 * 19:50, `9f90c6b`: this readme, for both.
 * 19:57, `a98e2bc`: Finite.lean, `build_ends_finite`.
-* 20:00: this readme, for it.
+* 19:59, `900c458`, `10fc278`: this readme, for it.
+* 20:02, `fac14a1`: `reach_finSys`, `run_bld_finite`, `build_ends_weak`:
+  finitely many builds proved, not assumed.
+* 20:05: this readme, for it.
 
 Each step: `lake build BergDB` clean, no `sorry`, the standard axioms only.
 Nothing in 2026.4. For the coordinator: a line for this subitem in 020's

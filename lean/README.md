@@ -131,7 +131,7 @@ fairness of its holders (`lock_released`, `build_ends_wf`,
 BergDB/Index/Release.lean); a run in which weak fairness does not give
 BuildEnds, with two names and definition changes without end
 (`weak_fairness_not_enough`, BergDB/Index/Starve.lean), and with finitely
-many definition changes it does (`build_ends_finite`,
+many definition changes it does (`build_ends_weak`,
 BergDB/Index/Finite.lean).
 
 
@@ -245,7 +245,7 @@ way, each printing
     #print axioms BergDB.Index.no_orphans
     #print axioms BergDB.Index.lock_released
     #print axioms BergDB.Index.build_ends_wf
-    #print axioms BergDB.Index.build_ends_finite
+    #print axioms BergDB.Index.build_ends_weak
 
 
 What to read
