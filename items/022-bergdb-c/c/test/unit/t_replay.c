@@ -349,14 +349,18 @@ TEST(replay_refusals) {
     CHECK(strcmp(e.java, "DatabaseNotCreatedException") == 0);
     stream_close(&s);
 
-    /* Bad magic bytes: BadCryptoKey. */
+    /* Bad magic bytes: Db.startInner's StreamFormatException, the
+     * BadMagicBytes its cause (bergdb 020-28, as Java's since release 2026.4:
+     * BadCryptoKey before). */
     uint8_t *copy = malloc((size_t) v.len);
     memcpy(copy, v.stream, (size_t) v.len);
     copy[0] ^= 1;
     stream_open_memory(&s, &m);
     CHECK_EQ(stream_append_memory(&s, copy, v.len, &e), ERR_OK);
-    CHECK(replay_open(&r, &s, &m, 8, &e) != ERR_OK);
-    CHECK(strcmp(e.java, "BadCryptoKey") == 0);
+    CHECK_EQ(replay_open(&r, &s, &m, 8, &e), ERR_FORMAT);
+    CHECK(strcmp(e.java, "StreamFormatException") == 0);
+    CHECK(strcmp(e.cause, "BadMagicBytes") == 0);
+    CHECK(strncmp(e.text, "Invalid magic bytes in stream: the stream is not a BergDB", 57) == 0);
     stream_close(&s);
     free(copy);
 

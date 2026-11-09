@@ -53,11 +53,21 @@ enum err_code sr_check_and_recover(struct sr_env *env, struct rs_recovery *plan,
         rc = rcv_recover(env->rs, plan, e);
     }
     if (rc != ERR_OK && strcmp(e->java, "BadMagicBytes") == 0) {
-        err_set(e, ERR_FORMAT, "BadCryptoKey", "Invalid magic bytes in stream, and no crypto "
-                "key was used: likely, the database is encrypted and needs its key; else the "
-                "stream is not a BergDB stream, or it is damaged.");
+        rc = sr_bad_magic_bytes(e);
     }
     return rc;
+}
+
+enum err_code sr_bad_magic_bytes(struct err *e) {
+    /* 2026-11-09 (bergdb 020-28): a StreamFormatException, with the BadMagicBytes as
+     * its cause; it was the Pub API's BadCryptoKey, removed with the encryption from
+     * 2026.4's API. The text is longer than C's 239 bytes, and cut there. */
+    err_set(e, ERR_FORMAT, "StreamFormatException", "Invalid magic bytes in stream: the "
+            "stream is not a BergDB stream, or it is damaged; or an earlier release of BergDB, "
+            "2026.3 or before, encrypted it, and this release cannot read it: it has no "
+            "encryption (bergdb 020-28). The start has written nothing.");
+    e->cause = "BadMagicBytes";
+    return ERR_FORMAT;
 }
 
 /* ======== The start ======== */

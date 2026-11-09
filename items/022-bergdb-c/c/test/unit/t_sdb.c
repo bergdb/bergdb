@@ -354,13 +354,21 @@ TEST(sdb_refusals) {
         stream_close(&s);
     }
 
-    /* Bad magic bytes: BadCryptoKey, nothing written. */
+    /* Bad magic bytes: a StreamFormatException with Java's text, cut at 239
+     * bytes, and the BadMagicBytes its cause, nothing written (bergdb 020-28,
+     * as Java's since release 2026.4: BadCryptoKey before). */
+    static const char magic[] = "Invalid magic bytes in stream: the stream is not a BergDB stream, or it is "
+            "damaged; or an earlier release of BergDB, 2026.3 or before, encrypted it, and "
+            "this release cannot read it: it has no encryption (bergdb 020-28). The start "
+            "has written nothing.";
     uint8_t *copy = malloc((size_t) v.len);
     memcpy(copy, v.stream, (size_t) v.len);
     copy[0] ^= 1;
     open_stream(&s, &m, copy, v.len - 3);
     CHECK(sdb_open(&b, &s, &m, 8, false, &e) != ERR_OK);
-    CHECK(strcmp(e.java, "BadCryptoKey") == 0);
+    CHECK(strcmp(e.java, "StreamFormatException") == 0);
+    CHECK(strcmp(e.cause, "BadMagicBytes") == 0);
+    CHECK(strlen(e.text) == ERR_TEXT - 1 && strncmp(e.text, magic, ERR_TEXT - 1) == 0);
     CHECK_EQ(stream_length(&s), v.len - 3);
     stream_close(&s);
 

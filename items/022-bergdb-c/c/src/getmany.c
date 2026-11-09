@@ -76,10 +76,22 @@ struct gm_stop gm_get_n(struct gm_get_n *s, int32_t max_count) {
     return r;
 }
 
-/* Prefix.handleKvt */
+/* GetMany.hasPrefix: true if key starts with prefix, a strict prefix
+ * (Keys.isPrefix) or the key itself (bergdb 021-18, as Java's since release
+ * 2026.4). A key has one segment array, so equal keys have equal arrays. */
+static bool has_prefix(const int64_t *prefix, int32_t prefix_n, const int64_t *key,
+        int32_t key_n) {
+    return keys_is_prefix(prefix, prefix_n, key, key_n)
+            || keys_are_equal(prefix, prefix_n, key, key_n);
+}
+
+/* Prefix.handleKvt: adds the pairs whose keys start with the prefix, its own
+ * key too, and stops at the first that does not. It stopped at the prefix's
+ * own key (Keys.isPrefix is strict) until bergdb 021-18: a read from the
+ * prefix, inclusive, gave no pair when the prefix was a key. */
 static int32_t prefix_handle(void *ctx, const struct kvt *kvt) {
     struct gm_prefix *s = ctx;
-    return keys_is_prefix(s->prefix, s->prefix_n, kvt->key, kvt->key_n) ? GM_ADD : GM_STOP;
+    return has_prefix(s->prefix, s->prefix_n, kvt->key, kvt->key_n) ? GM_ADD : GM_STOP;
 }
 
 static void prefix_eod(void *ctx) {
@@ -95,14 +107,15 @@ struct gm_stop gm_prefix(struct gm_prefix *s, const int64_t *prefix, int32_t pre
     return r;
 }
 
-/* PrefixN.handleKvt: at most max_count, none for 0, as GetN (bergdb 020-27, C1). */
+/* PrefixN.handleKvt: as Prefix, the prefix's own key too (bergdb 021-18), and
+ * at most max_count, none for 0, as GetN (bergdb 020-27, C1). */
 static int32_t prefix_n_handle(void *ctx, const struct kvt *kvt) {
     struct gm_prefix_n *s = ctx;
     if (s->count >= s->max_count) {
         return GM_STOP;
     }
     s->count++;
-    return keys_is_prefix(s->prefix, s->prefix_n, kvt->key, kvt->key_n)
+    return has_prefix(s->prefix, s->prefix_n, kvt->key, kvt->key_n)
             ? (s->count == s->max_count ? GM_ADD_AND_STOP : GM_ADD) : GM_STOP;
 }
 

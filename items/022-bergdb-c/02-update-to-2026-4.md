@@ -1504,3 +1504,122 @@ open points for Frans. Section 7 here: D1 to D7 as taken. 022's readme:
 022-04 in `Files`, and 022-02's decisions D1 to D7. No file of `c/` but
 `readme.md` changed, so the gate was not run (022-01, section 5); the
 gate of the pin of 15:22, on `ddd75cc`, stands.
+
+2026-11-09, 021-18, `main` at 2566df1 (worker t11). The candidate pinned
+again, `main` at `2566df17ba2c99717bb8bf9a0688351203825aff` (17:18), the
+head when the pin was moved, the first `main` with 021-18 (`a009b6a`,
+`1ccc242` before its rebase) and 021-19 (`779a123`, `f134914`):
+`java-build.sh`'s default and `c/readme.md`'s "Which Java". C had to
+follow 021-18 in the same landing: with C's fix, `cross.sh quick`
+against the pin of 15:22 gave 4 differences, `coresame-n1500`'s and
+`coresame-plain-n1500`'s dumps, each by both dumpers, at `range
+at=latest start=/k/1 incl=1 fwd=1 stop=prefix10` (Java 0 pairs, C 10:
+the dumper's prefix of half a sampled key, `/k/1`, is itself a key), and
+against Java with 021-18 (a tree of `main` at `e65678a` with `1ccc242`
+and `f134914` applied) 0 differences. Java's vectors written again from
+the new pin: all thirteen files equal. The stream's bytes do not change.
+Every Core commit since `32f3832`, eleven, with C's outcome. (a) 021-18
+(`a009b6a`): `GetMany.Prefix` and `PrefixN` add the prefix's own key,
+where they stopped at it (`Keys.isPrefix` is a strict prefix), so that a
+read from the prefix, inclusive, gave no pair when the prefix was a key,
+and a backward one left it out. `getmany.c`'s `has_prefix` (Java's
+`GetMany.hasPrefix`: `keys_is_prefix` or `keys_are_equal`) decides in
+`prefix_handle` and `prefix_n_handle`, so also `bergdb_range.prefix`
+(`api.c` gives it to `gm_prefix`) and the dumper's `prefix10`
+(`gm_prefix_n`). `bergdb.h`'s point 1 of the stop conditions says it,
+where it said that a key equal to the prefix stops the read;
+`examples/get_many_prefix.c`'s comments too (its output is unchanged:
+`/user/1/` is no key; a prefix `/user/1` from `/user/1` inclusive now
+gives 5 pairs, exclusive 4, checked with a program of the API).
+`Keys.isPrefix` stays strict, and so does `keys_is_prefix` (the vectors'
+`isprefix`). Tests: `t_getmany.c`'s `gm_prefix_has_the_prefix_key`
+(`DbTesterGetMany.testPrefixHasThePrefixKey` on `mdb`: nine keys around
+a segment of 7 bytes and the empty key, twelve prefixes, `Prefix`,
+`PrefixN` of 100 and 1, exclusive, backward, at node sizes 30 and 8),
+`f_api.c`'s `api_prefix_has_the_prefix_key` (the same through
+`bergdb_range`'s prefix and `max_count`), and `mdb_model`, whose
+prefixes are now also a key's own (the start's) and whose model takes
+the prefix's own key; each failing before the fix (90 checks, 45 and
+1,449). (b) 021-19 (`779a123`): Javadoc of `Kvt.time`, `GetData.kvTime`
+and `tpos`, the time of a key node entry, not of the write: `bergdb.h`'s
+`bergdb_one.time` and `tpos`, `bergdb_kvt.time` and `bergdb_many.kvts`
+take its words; `tpos`'s follow back at the step's time less one "while
+that time can be read". Test `f_api.c`'s
+`api_kv_time_is_the_entrys_time`
+(`DbTesterJavadoc.testKvTimeIsTheEntrysTime`: 27 keys of one byte, then
+a 28th, all 28 read the second's time, 27 not their write's; the write's
+time by `bergdb_get_trans`), passing before, as Java's. (c) 020-24's
+U8-11 (`3959f9c`): `FileStream` refuses a path that exists and is not a
+directory before the lock, IOException "Directory P could not be opened:
+it exists and is not a directory."; `plat_mkdirs` gives that text, where
+C's own was "Not a directory: P". Test `t_append.c`'s
+`append_dir_mkdirs`, its text and the file unchanged, failing before.
+(d) U8-9 (`9d62587`): `DbFile.append`'s text of a file that someone else
+changed, "File F is not of expected length (N), but M bytes. Was it
+modified by someone else?" (it had "(N),but" and "Was is"); C gives
+Java's text, naming the file, where C's own named the directory. Test
+`append_dir_refusals`, its whole text, failing before. Its other parts,
+Javadoc and `pub.util`'s `Job`: nothing for C. (e) 020-24's U9
+(`2c7d531`): the Core API's Javadoc as an embedded key-value store, no
+change of behaviour. `bergdb.h` takes U9-4 (section E: every key that
+starts with 01 25 is BergDB's in every database, and the library writes
+some itself; a range returns them, the counters count them, a stop
+function can skip them), U9-9 (`bergdb_stored.values`: a delete of a key
+without a value is not listed, a reclaim step lists what it copied) and
+U9-10 (`bergdb_stats`' `transaction_count` and `kv_count`); its other
+parts `bergdb.h` says already (U9-12: a delete does not replace a put;
+U9-5's keys, section E) or are Java's (threads, `GetMany`'s one call).
+Four of its five tests ported through the API, each passing before, as
+Java's: `api_keys_and_values` (`testKeysAndValues`: nineteen keys in the
+unsigned order of their bytes, both ways, the empty key, a key of 3,000
+bytes, the empty value, a NULL value refused),
+`api_core_writes_bergdbs_keys` (`testCoreWritesBergDbsKeys`:
+`/#i/-dummy` of 200 kB and reclaim's settings, 3 transactions, a stop
+function that skips 01 25), `api_counters_and_listed_deletes`
+(`testCountersAndListedDeletes`, the restart through a directory) and
+`api_optimistic_transactions` (`testOptimisticTransactions` without its
+virtual write hash: C's API has no `addReadHash` or
+`addVirtualWriteHash`); `testGetManyDefaultsAndOneCall` has no
+counterpart (`bergdb_range_init`'s defaults are checked by
+`f_settings.c`; a read context serves one call at a time). (f) 020-28
+(`b78865d`): the encryption out of 2026.4's API, and `Db.startInner`'s
+refusal of bad magic bytes a `StreamFormatException` with the
+`BadMagicBytes` as its cause, where it was the Pub API's `BadCryptoKey`,
+with a new text: "Invalid magic bytes in stream: the stream is not a
+BergDB stream, or it is damaged; or an earlier release of BergDB, 2026.3
+or before, encrypted it, and this release cannot read it: it has no
+encryption (bergdb 020-28). The start has written nothing." The corrupt
+set and `corrupt.sh` compare it, so C had to follow in this landing:
+`starter.c`'s `sr_bad_magic_bytes` (`starter.h`) gives that name, text
+(250 bytes, cut at C's 239) and cause, for the start and for the
+replay's start (`replay.c`, which gave the name `BadCryptoKey` to the
+storage's text); `bergdb.h`'s `BERGDB_FORMAT` says it. Tests `t_sdb.c`'s
+`sdb_refusals` (the name, the cause, the text cut at 239 bytes),
+`t_replay.c`'s `replay_refusals` and `f_start.c`'s `start_refusals`,
+each failing before (3, 3 and 1 checks). The rest of 020-28
+(`DbBuilder.createdTxt`, `SalsaStream`'s key line, the Pub API's refusal
+of a database that an earlier release encrypted): nothing for C, which
+has no encryption and writes no `created.txt`. (g) Nothing for C:
+006-18-03 (`07df96d`: `BufferedStream`'s wait statistics without
+`java.lang.management`; C has no write buffer thread and no such
+statistics), 020-24's U9-13 (`279dba1`: test methods made
+package-private, Javadoc escapes), U7-2 (`1011a94`: `SalsaStream`'s
+appends) and U7-7 (`8742547`: `BadCryptoKey`'s text with a crypto key; C
+has no encryption), U4 (`e91238f`, `pub.util`'s `JobStatus` Javadoc).
+
+The gate against the new pin (`git:2566df1`), on `2026.4` at `391c3cf`
+with this entry: `C BEFORE COMMIT OK (276 s)`, F53 under a load of about
+19; `unit` 411 tests (410 in the release build); `func` 37; `cross
+quick` 0 differences (23 workloads, 69 crash cuts, 85 corrupt variants,
+2 in turns, 46 budget runs); `writecheck` 0; `corruptset` 63 copies;
+`allocfail` 628 runs; `examples` OK. The whole corrupt set, seed 1,
+`nice -n 10`: `CORRUPTSET OK`, 6,253 copies (156 s), 2,628 refused by
+both with the same exception and message, 3,560 started, 65 with a later
+read failing alike, 22 of 014-01's case. `corrupt.sh`, `nice -n 10`:
+`CORRUPT OK`, 144 variants (83 refused by both, 39 started, 22 started
+with a read failing later), 105 messages compared, 0 differ (127 s),
+among them the 8 refusals of bad magic bytes (`meta-last-garbage` and
+`meta-last-zero` on the four bases) with 020-28's name and text. No
+difference remains. Java's build at the pin has 192 source files, one
+fewer (020-28's `BadCryptoKey`); the harness's Java compiles against it
+unchanged.

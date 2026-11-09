@@ -320,7 +320,8 @@ TEST(start_refusals) {
             "DatabaseNotCreatedException" },
         { "a creation's block cut", 60, -1, 8, BERGDB_NOT_CREATED,
             "DatabaseNotCreatedException" },
-        { "bad magic bytes", -1, 0, 8, BERGDB_FORMAT, "BadCryptoKey" },
+        { "bad magic bytes", -1, 0, 8, BERGDB_FORMAT,       /* BadCryptoKey before 020-28 */
+            "StreamFormatException: Invalid magic bytes in stream: the stream is not a" },
         { "another version", -1, 4, 8, BERGDB_FORMAT, "VersioningStreamException" },
     };
     for (size_t c = 0; c < sizeof cases / sizeof cases[0]; c++) {

@@ -71,7 +71,8 @@ void plat_random(uint8_t *buf, int32_t n);
  * it is made with its missing ancestors (mode 0777, less the umask), and
  * each new directory and its parent are forced, from the deepest up.
  * ERR_IO ("IOException") if it cannot be made, or 'dir' is not a
- * directory. */
+ * directory ("Directory DIR could not be opened: it exists and is not a
+ * directory.", before the lock, as Java's since release 2026.4). */
 enum err_code plat_mkdirs(const char *dir, struct err *e);
 
 /* Opens 'path' for reading and writing, made if missing (Java's

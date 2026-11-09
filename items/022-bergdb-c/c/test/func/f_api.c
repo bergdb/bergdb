@@ -763,6 +763,481 @@ TEST(api_long_keys) {
     remove_dir(dir);
 }
 
+/* The keys of a getMany are keys[idx[0]] to keys[idx[n - 1]], in that order. */
+static bool many_is(const struct bergdb_many *many, const char *const *keys, const int *idx,
+        int n) {
+    if (many->count != (size_t) n) {
+        return false;
+    }
+    for (int i = 0; i < n; i++) {
+        size_t len = strlen(keys[idx[i]]);
+        if (many->kvts[i].key_len != len
+                || (len > 0 && memcmp(many->kvts[i].key, keys[idx[i]], len) != 0)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* DbTesterGetMany.testPrefixHasThePrefixKey (bergdb 021-18) through the API:
+ * bergdb_range's prefix (Prefix), with max_count (PrefixN's count), adds
+ * the prefix's own key, as it starts with the prefix; a key equal to the
+ * prefix stopped the read before, so that a range from the prefix,
+ * inclusive, gave no pair when the prefix was a key, and a backward one left
+ * it out. Keys around a segment of 7 bytes, and the empty key, in memory. */
+TEST(api_prefix_has_the_prefix_key) {
+    static const char *const keys[] = { "", "a", "ab", "abc", "abcdefg", "abcdefgh",
+            "abcdefghi", "abd", "b" };
+    static const char *const prefixes[] = { "", "a", "ab", "abc", "abcdefg", "abcdefgh",
+            "abcdefghi", "abd", "b", "abcd", "abcdefgx", "c" };
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock clock = {0};
+    struct bergdb_options o;
+    options(&o, &clock, &m);
+    bergdb_test_clock_set(&clock, 1000);
+    bergdb_db *db;
+    REQUIRE(bergdb_open(NULL, &o, &db, NULL, NULL) == BERGDB_OK);
+    bergdb_trans *t;
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    for (int i = 0; i < 9; i++) {
+        CHECK_EQ(bergdb_trans_put(t, (const uint8_t *) keys[i], strlen(keys[i]),
+                (const uint8_t *) "\1", 1), BERGDB_OK);
+    }
+    bergdb_test_clock_set(&clock, 1001);
+    CHECK_EQ(bergdb_execute(db, t, NULL), BERGDB_OK);
+    bergdb_trans_free(t);
+    bergdb_read *rd;
+    REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+    for (int pi = 0; pi < 12; pi++) {
+        const char *p = prefixes[pi];
+        size_t plen = strlen(p);
+        int expected[9], reversed[9], ne = 0;
+        for (int i = 0; i < 9; i++) {
+            if (strncmp(keys[i], p, plen) == 0) {       /* startsWith */
+                expected[ne++] = i;
+            }
+        }
+        for (int i = 0; i < ne; i++) {
+            reversed[i] = expected[ne - 1 - i];
+        }
+        int skip = ne > 0 && strcmp(keys[expected[0]], p) == 0 ? 1 : 0;
+        struct bergdb_range r;
+        struct bergdb_many many;
+        bergdb_range_init(&r);
+        r.prefix = (const uint8_t *) p;
+        r.prefix_len = plen;
+        r.start_key = r.prefix;
+        r.start_key_len = plen;
+        CHECK_EQ(bergdb_get_many(db, rd, &r, &many), BERGDB_OK);
+        CHECK(many_is(&many, keys, expected, ne));
+        r.max_count = 100;
+        CHECK_EQ(bergdb_get_many(db, rd, &r, &many), BERGDB_OK);
+        CHECK(many_is(&many, keys, expected, ne));
+        r.max_count = 1;
+        CHECK_EQ(bergdb_get_many(db, rd, &r, &many), BERGDB_OK);
+        CHECK(many_is(&many, keys, expected, ne < 1 ? ne : 1));
+        r.max_count = 0;
+        r.inclusive = false;
+        CHECK_EQ(bergdb_get_many(db, rd, &r, &many), BERGDB_OK);
+        CHECK(many_is(&many, keys, expected + skip, ne - skip));
+        if (ne > 0) {
+            r.inclusive = true;
+            r.forward = false;
+            r.start_key = (const uint8_t *) keys[expected[ne - 1]];
+            r.start_key_len = strlen(keys[expected[ne - 1]]);
+            CHECK_EQ(bergdb_get_many(db, rd, &r, &many), BERGDB_OK);
+            CHECK(many_is(&many, keys, reversed, ne));
+            r.max_count = 100;
+            CHECK_EQ(bergdb_get_many(db, rd, &r, &many), BERGDB_OK);
+            CHECK(many_is(&many, keys, reversed, ne));
+        }
+    }
+    bergdb_read_free(rd);
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+}
+
+/* DbTesterJavadoc.testKvTimeIsTheEntrysTime (bergdb 021-19) through the API:
+ * a pair's time, bergdb_kvt.time and bergdb_one.time, is the time of its key
+ * node's entry, not of its write. T1 puts 27 keys, and T2 a 28th, which
+ * replaces their full key node (a space split, at the node size 30 of
+ * Java's testSetup), so that T1's keys read T2's time; at or after the
+ * write's time and at or before the lookup time; a read before T2 gives
+ * T1's; the write's time is bergdb_get_trans of the tpos. It passes on the
+ * code as it is, as Java's: if the time becomes the write's, the last check
+ * fails, and bergdb.h's words are to change. */
+TEST(api_kv_time_is_the_entrys_time) {
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock clock = {0};
+    struct bergdb_options o;
+    bergdb_options_init(&o);
+    o.clock = bergdb_test_clock_time;
+    o.clock_ctx = &clock;
+    memcpy(o.id, bergdb_test_id, BERGDB_ID_SIZE);
+    o.cache_size_indicator = BERGDB_NO_EVICT;
+    o.mem = &m;
+    bergdb_test_clock_set(&clock, 1000);
+    bergdb_db *db;
+    REQUIRE(bergdb_open(NULL, &o, &db, NULL, NULL) == BERGDB_OK);
+    struct bergdb_executed x1, x2;
+    bergdb_trans *t;
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    for (int i = 0; i < 27; i++) {
+        uint8_t key = (uint8_t) (2 * i);
+        CHECK_EQ(bergdb_trans_put(t, &key, 1, (const uint8_t *) "\1", 1), BERGDB_OK);
+    }
+    bergdb_test_clock_set(&clock, 1010);
+    CHECK_EQ(bergdb_execute(db, t, &x1), BERGDB_OK);
+    bergdb_trans_free(t);
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    const uint8_t key55 = 55;
+    CHECK_EQ(bergdb_trans_put(t, &key55, 1, (const uint8_t *) "\2", 1), BERGDB_OK);
+    bergdb_test_clock_set(&clock, 1020);
+    CHECK_EQ(bergdb_execute(db, t, &x2), BERGDB_OK);
+    bergdb_trans_free(t);
+
+    bergdb_read *rd, *rd1;
+    REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+    REQUIRE(bergdb_read_new(db, &rd1) == BERGDB_OK);
+    struct bergdb_range r;
+    struct bergdb_many many;
+    bergdb_range_init(&r);
+    CHECK_EQ(bergdb_get_many(db, rd, &r, &many), BERGDB_OK);
+    CHECK_EQ((int64_t) many.count, 28);
+    int later = 0;
+    for (size_t i = 0; i < many.count; i++) {
+        const struct bergdb_kvt *kvt = &many.kvts[i];
+        bool ofT2 = kvt->key_len == 1 && kvt->key[0] == 55;
+        int64_t written = ofT2 ? x2.tt : x1.tt;
+        CHECK(kvt->time >= written);                            /* at or after the write's time */
+        CHECK(kvt->time <= many.actual_lookup_time);            /* at or before the lookup time */
+        struct bergdb_one one;
+        CHECK_EQ(bergdb_get_one(db, rd1, many.actual_lookup_time, kvt->key, kvt->key_len,
+                &one), BERGDB_OK);
+        CHECK(one.value != NULL);
+        CHECK_EQ(one.time, kvt->time);
+        struct bergdb_stored st;
+        CHECK_EQ(bergdb_get_trans(db, rd1, one.tpos, &st), BERGDB_OK);
+        CHECK_EQ(st.tt, written);                               /* the write's time */
+        if (!ofT2) {
+            CHECK_EQ(bergdb_get_one(db, rd1, x2.tt - 1, kvt->key, kvt->key_len, &one),
+                    BERGDB_OK);
+            CHECK(one.value != NULL);
+            CHECK_EQ(one.time, x1.tt);                          /* before T2 */
+        }
+        later += kvt->time != written ? 1 : 0;
+    }
+    CHECK_EQ(later, 27);                                        /* T1's keys with T2's time */
+    bergdb_read_free(rd1);
+    bergdb_read_free(rd);
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+}
+
+/* DbBuilder.testSetup() in memory: the test clock at 1000, the test id, no
+ * eviction, the builder's other defaults. */
+static bergdb_db *test_setup(struct bergdb_test_clock *clock, struct bergdb_mem *m) {
+    struct bergdb_options o;
+    bergdb_options_init(&o);
+    o.clock = bergdb_test_clock_time;
+    o.clock_ctx = clock;
+    memcpy(o.id, bergdb_test_id, BERGDB_ID_SIZE);
+    o.cache_size_indicator = BERGDB_NO_EVICT;
+    o.mem = m;
+    bergdb_test_clock_set(clock, 1000);
+    bergdb_db *db;
+    return bergdb_open(NULL, &o, &db, NULL, NULL) == BERGDB_OK ? db : NULL;
+}
+
+/* The bytes' order of getMany: unsigned, a shorter key before a longer one
+ * with its start (Arrays.compareUnsigned). */
+struct bytes_key {
+    const uint8_t *b;
+    size_t n;
+};
+
+static int compare_unsigned(const void *x, const void *y) {
+    const struct bytes_key *a = x, *b = y;
+    size_t n = a->n < b->n ? a->n : b->n;
+    int c = n == 0 ? 0 : memcmp(a->b, b->b, n);
+    return c != 0 ? c : a->n < b->n ? -1 : a->n > b->n ? 1 : 0;
+}
+
+/* DbTesterJavadoc.testKeysAndValues (bergdb 020-24-09, U9-5; Db's "Keys and
+ * values", which bergdb.h's section E says): any bytes make a key, the
+ * empty key too; getMany gives the keys in the unsigned order of their
+ * bytes, forward and backward; a key of 3,000 bytes works; the empty value
+ * is a value, not a delete; a put of a NULL value is refused (BERGDB_ARG,
+ * Java's IllegalArgumentException). Passes on the code as it is, as
+ * Java's. */
+TEST(api_keys_and_values) {
+    static uint8_t longKey[3000];
+    static const struct { uint8_t b[8]; size_t n; } shortKeys[] = {
+        { {0}, 0 }, { {0}, 1 }, { {0, 0}, 2 }, { {1}, 1 }, { {0x61}, 1 }, { {0x61, 0}, 2 },
+        { {0x61, 0, 0}, 3 }, { {0x61, 1}, 2 }, { {0x61, 0x61}, 2 }, { {0x62}, 1 },
+        { {0x7f}, 1 }, { {0x80}, 1 }, { {0xfe, 0}, 2 }, { {0xff}, 1 }, { {0xff, 0xff}, 2 },
+        { {1, 2, 3, 4, 5, 6, 7}, 7 }, { {1, 2, 3, 4, 5, 6, 7, 8}, 8 },
+        { {1, 2, 3, 4, 5, 6, 7, 0x90}, 8 },
+    };
+    enum { NK = 19 };
+    struct bytes_key keys[NK], sorted[NK];
+    for (int i = 0; i < NK - 1; i++) {
+        keys[i].b = shortKeys[i].b;
+        keys[i].n = shortKeys[i].n;
+    }
+    longKey[2999] = 5;
+    keys[NK - 1].b = longKey;
+    keys[NK - 1].n = sizeof longKey;
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock clock = {0};
+    bergdb_db *db = test_setup(&clock, &m);
+    REQUIRE(db != NULL);
+    bergdb_trans *t;
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    for (int i = 0; i < NK; i++) {
+        uint8_t v = (uint8_t) i;
+        CHECK_EQ(bergdb_trans_put(t, keys[i].b, keys[i].n, &v, i == 3 ? 0 : 1), BERGDB_OK);
+    }
+    bergdb_test_clock_set(&clock, 1010);
+    CHECK_EQ(bergdb_execute(db, t, NULL), BERGDB_OK);
+    CHECK_EQ(bergdb_trans_put(t, keys[1].b, 1, NULL, 0), BERGDB_ARG);  /* a NULL value */
+    bergdb_trans_free(t);
+
+    memcpy(sorted, keys, sizeof keys);
+    qsort(sorted, NK, sizeof sorted[0], compare_unsigned);
+    bergdb_read *rd;
+    REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+    struct bergdb_range r;
+    struct bergdb_many many;
+    for (int forward = 1; forward >= 0; forward--) {
+        bergdb_range_init(&r);
+        r.forward = forward;
+        CHECK_EQ(bergdb_get_many(db, rd, &r, &many), BERGDB_OK);
+        CHECK_EQ((int64_t) many.count, NK);
+        for (int i = 0; i < NK && i < (int) many.count; i++) {
+            const struct bytes_key *e = &sorted[forward ? i : NK - 1 - i];
+            CHECK(many.kvts[i].key_len == e->n
+                    && (e->n == 0 || memcmp(many.kvts[i].key, e->b, e->n) == 0));
+        }
+    }
+    struct bergdb_one one;
+    CHECK_EQ(bergdb_get_one(db, rd, BERGDB_LATEST, keys[0].b, 0, &one), BERGDB_OK);
+    CHECK(one.value != NULL && one.value_len == 1 && one.value[0] == 0);   /* the empty key */
+    CHECK_EQ(bergdb_get_one(db, rd, BERGDB_LATEST, keys[3].b, 1, &one), BERGDB_OK);
+    CHECK(one.value != NULL && one.value_len == 0);         /* the empty value is a value */
+    CHECK_EQ(bergdb_get_one(db, rd, BERGDB_LATEST, longKey, sizeof longKey, &one), BERGDB_OK);
+    CHECK(one.value != NULL && one.value_len == 1 && one.value[0] == NK - 1);
+    bergdb_read_free(rd);
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+}
+
+/* The stop function of api_core_writes_bergdbs_keys: CONTINUE for BergDB's
+ * keys, those that start with 01 25 ("/#"), else ADD. */
+static int skip_bergdbs(void *ctx, const struct bergdb_kvt *kvt) {
+    (void) ctx;
+    return kvt->key_len >= 2 && kvt->key[0] == 1 && kvt->key[1] == 0x25 ? BERGDB_CONTINUE
+            : BERGDB_ADD;
+}
+
+/* DbTesterJavadoc.testCoreWritesBergDbsKeys (bergdb 020-24-09, U9-4; Db's
+ * "Keys and the layers above", which bergdb.h's section E says): the Core
+ * writes BergDB's keys itself, with no Pub API: a new database has none;
+ * bergdb_set_startup_distance puts a value of 200 kB at "/#i/-dummy",
+ * bergdb_set_retain_duration reclaim's settings at
+ * "/#i/dreclaim/-settings.txt"; a scan returns them, transaction_count
+ * counts their transactions, and a stop function that returns CONTINUE for
+ * the keys that start with 01 25 leaves the user's keys, those around 01 25
+ * too. Passes on the code as it is, as Java's. */
+TEST(api_core_writes_bergdbs_keys) {
+    static const struct { uint8_t b[3]; size_t n; } mine[] = {
+        { {0}, 1 }, { {1, 0x24}, 2 }, { {1, 0x24, 0xff}, 3 }, { {1, 0x26}, 2 }, { {0xff}, 1 },
+    };
+    static const uint8_t dummy[] = { 1, 0x25, 0x6b, 1, 0x2f, 0x66, 0x77, 0x6f, 0x6f, 0x7b };
+    uint8_t settings[64];
+    size_t settingsLen;
+    k("/#i/dreclaim/-settings.txt", settings, &settingsLen);
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock clock = {0};
+    bergdb_db *db = test_setup(&clock, &m);
+    REQUIRE(db != NULL);
+    bergdb_trans *t;
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    for (int i = 0; i < 5; i++) {
+        CHECK_EQ(bergdb_trans_put(t, mine[i].b, mine[i].n, (const uint8_t *) "\7", 1),
+                BERGDB_OK);
+    }
+    bergdb_test_clock_set(&clock, 1010);
+    CHECK_EQ(bergdb_execute(db, t, NULL), BERGDB_OK);
+    bergdb_trans_free(t);
+    bergdb_read *rd;
+    REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+    struct bergdb_range r;
+    struct bergdb_many many;
+    bergdb_range_init(&r);
+    CHECK_EQ(bergdb_get_many(db, rd, &r, &many), BERGDB_OK);
+    CHECK_EQ((int64_t) many.count, 5);                          /* a new database */
+
+    bergdb_test_clock_set(&clock, 1020);
+    CHECK_EQ(bergdb_set_startup_distance(db, 500 * 1000), BERGDB_OK);
+    bergdb_test_clock_set(&clock, 1030);
+    CHECK_EQ(bergdb_set_retain_duration(db, 3600 * BERGDB_UNITS_PER_SEC), BERGDB_OK);
+    struct bergdb_stats s;
+    CHECK_EQ(bergdb_stats(db, &s), BERGDB_OK);
+    CHECK_EQ(s.transaction_count, 3);
+    CHECK_EQ(bergdb_get_many(db, rd, &r, &many), BERGDB_OK);
+    int bergdbs = 0;
+    for (size_t i = 0; i < many.count; i++) {
+        const struct bergdb_kvt *kvt = &many.kvts[i];
+        if (kvt->key_len >= 2 && kvt->key[0] == 1 && kvt->key[1] == 0x25) {
+            if (bergdbs == 0) {
+                CHECK(kvt->key_len == sizeof dummy && memcmp(kvt->key, dummy, sizeof dummy) == 0);
+                CHECK_EQ((int64_t) kvt->value_len, 200 * 1000);  /* the dummy's value */
+            } else if (bergdbs == 1) {
+                CHECK(kvt->key_len == settingsLen
+                        && memcmp(kvt->key, settings, settingsLen) == 0);
+            }
+            bergdbs++;
+        }
+    }
+    CHECK_EQ(bergdbs, 2);                                       /* BergDB's keys */
+    r.stop = skip_bergdbs;
+    CHECK_EQ(bergdb_get_many(db, rd, &r, &many), BERGDB_OK);
+    CHECK_EQ((int64_t) many.count, 5);                          /* the user's keys */
+    for (int i = 0; i < 5 && i < (int) many.count; i++) {
+        CHECK(many.kvts[i].key_len == mine[i].n
+                && memcmp(many.kvts[i].key, mine[i].b, mine[i].n) == 0);
+    }
+    bergdb_read_free(rd);
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+}
+
+/* DbTesterJavadoc.testCountersAndListedDeletes (bergdb 020-24-09, U9-9 and
+ * U9-10): transaction_count and kv_count count since the open, each
+ * transaction's pairs, a delete of a key without a value too, and 0 after
+ * an open; bergdb_get_trans lists a delete of a key with a value, not one
+ * of a key that had none. The restart through a directory, where Java's
+ * copies its MemoryStream. Passes on the code as it is, as Java's. */
+TEST(api_counters_and_listed_deletes) {
+    char dir[1024];
+    temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock clock = {0};
+    struct bergdb_options o;
+    options(&o, &clock, &m);
+    bergdb_test_clock_set(&clock, 1000);
+    bergdb_db *db;
+    REQUIRE(bergdb_open(dir, &o, &db, NULL, NULL) == BERGDB_OK);
+    uint8_t a[4], b[4], c[4], never[8];
+    size_t al, bl, cl, nl;
+    k("a", a, &al);
+    k("b", b, &bl);
+    k("c", c, &cl);
+    k("never", never, &nl);
+    bergdb_trans *t;
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    CHECK_EQ(bergdb_trans_put(t, a, al, (const uint8_t *) "1", 1), BERGDB_OK);
+    CHECK_EQ(bergdb_trans_put(t, b, bl, (const uint8_t *) "2", 1), BERGDB_OK);
+    bergdb_test_clock_set(&clock, 1010);
+    CHECK_EQ(bergdb_execute(db, t, NULL), BERGDB_OK);
+    bergdb_trans_free(t);
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    CHECK_EQ(bergdb_trans_delete(t, a, al), BERGDB_OK);
+    CHECK_EQ(bergdb_trans_delete(t, never, nl), BERGDB_OK);
+    CHECK_EQ(bergdb_trans_put(t, c, cl, (const uint8_t *) "3", 1), BERGDB_OK);
+    struct bergdb_executed x;
+    bergdb_test_clock_set(&clock, 1020);
+    CHECK_EQ(bergdb_execute(db, t, &x), BERGDB_OK);
+    bergdb_trans_free(t);
+    struct bergdb_stats s;
+    CHECK_EQ(bergdb_stats(db, &s), BERGDB_OK);
+    CHECK_EQ(s.transaction_count, 2);
+    CHECK_EQ(s.kv_count, 5);
+    bergdb_read *rd;
+    REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+    struct bergdb_stored st;
+    CHECK_EQ(bergdb_get_trans(db, rd, x.tpos, &st), BERGDB_OK);
+    CHECK_EQ((int64_t) st.count, 2);                            /* listed: a and c */
+    if (st.count == 2) {
+        CHECK(st.values[0].key_len == al && memcmp(st.values[0].key, a, al) == 0);
+        CHECK(st.values[0].value == NULL);                      /* the delete of a */
+        CHECK(st.values[1].key_len == cl && memcmp(st.values[1].key, c, cl) == 0);
+    }
+    bergdb_read_free(rd);
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    REQUIRE(bergdb_open(dir, &o, &db, NULL, NULL) == BERGDB_OK);
+    CHECK_EQ(bergdb_stats(db, &s), BERGDB_OK);
+    CHECK_EQ(s.transaction_count, 0);                           /* after a start */
+    CHECK_EQ(s.kv_count, 0);
+    CHECK(value_is(db, c, cl, "3"));
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+    remove_dir(dir);
+}
+
+/* DbTesterJavadoc.testOptimisticTransactions (bergdb 020-24-09, U9-7): a
+ * transaction whose key read, with a value or without, a later transaction
+ * wrote after its read time is refused with BERGDB_RERUN, nothing changed,
+ * and runs at a new read time; the default read time checks nothing. Its
+ * virtual write hash has no counterpart: C's API has no addReadHash or
+ * addVirtualWriteHash. Passes on the code as it is, as Java's. */
+TEST(api_optimistic_transactions) {
+    struct bergdb_mem m = {0};
+    struct bergdb_test_clock clock = {0};
+    bergdb_db *db = test_setup(&clock, &m);
+    REQUIRE(db != NULL);
+    const uint8_t key[] = { 9 }, other[] = { 8 }, absent[] = { 7 };
+    int64_t t1, t2, t3;
+    bergdb_trans *t;
+    CHECK_EQ(bergdb_current_time(db, &t1), BERGDB_OK);
+    bergdb_test_clock_set(&clock, 1010);
+    CHECK_EQ(put_one(db, key, 1, "\1"), BERGDB_OK);
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    CHECK_EQ(bergdb_trans_lookup_time(t, t1), BERGDB_OK);
+    CHECK_EQ(bergdb_trans_key_read(t, key, 1), BERGDB_OK);
+    CHECK_EQ(bergdb_trans_put(t, other, 1, (const uint8_t *) "\2", 1), BERGDB_OK);
+    bergdb_test_clock_set(&clock, 1020);
+    CHECK_EQ(bergdb_execute(db, t, NULL), BERGDB_RERUN);       /* the key read, written after t1 */
+    bergdb_trans_free(t);
+    bergdb_read *rd;
+    REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+    struct bergdb_one one;
+    CHECK_EQ(bergdb_get_one(db, rd, BERGDB_LATEST, other, 1, &one), BERGDB_OK);
+    CHECK(one.value == NULL);                                   /* nothing changed */
+    CHECK_EQ(bergdb_current_time(db, &t2), BERGDB_OK);
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    CHECK_EQ(bergdb_trans_lookup_time(t, t2), BERGDB_OK);
+    CHECK_EQ(bergdb_trans_key_read(t, key, 1), BERGDB_OK);
+    CHECK_EQ(bergdb_trans_put(t, other, 1, (const uint8_t *) "\2", 1), BERGDB_OK);
+    bergdb_test_clock_set(&clock, 1030);
+    CHECK_EQ(bergdb_execute(db, t, NULL), BERGDB_OK);          /* ran */
+    bergdb_trans_free(t);
+    CHECK(value_is(db, other, 1, "\2"));
+
+    CHECK_EQ(bergdb_current_time(db, &t3), BERGDB_OK);
+    bergdb_test_clock_set(&clock, 1040);
+    CHECK_EQ(put_one(db, absent, 1, "\3"), BERGDB_OK);
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    CHECK_EQ(bergdb_trans_lookup_time(t, t3), BERGDB_OK);
+    CHECK_EQ(bergdb_trans_key_read(t, absent, 1), BERGDB_OK);
+    CHECK_EQ(bergdb_trans_put(t, other, 1, (const uint8_t *) "\4", 1), BERGDB_OK);
+    bergdb_test_clock_set(&clock, 1050);
+    CHECK_EQ(bergdb_execute(db, t, NULL), BERGDB_RERUN);       /* read without a value, then put */
+    bergdb_trans_free(t);
+    REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+    CHECK_EQ(bergdb_trans_key_read(t, absent, 1), BERGDB_OK);  /* the default read time */
+    CHECK_EQ(bergdb_trans_put(t, other, 1, (const uint8_t *) "\5", 1), BERGDB_OK);
+    bergdb_test_clock_set(&clock, 1060);
+    CHECK_EQ(bergdb_execute(db, t, NULL), BERGDB_OK);
+    bergdb_trans_free(t);
+    CHECK(value_is(db, other, 1, "\5"));                        /* the last that ran */
+    bergdb_read_free(rd);
+    CHECK_EQ(bergdb_close(db), BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+}
+
 static const struct test api_tests[] = {
     TEST_ENTRY(api_stm_after_restart),
     TEST_ENTRY(api_create_and_read),
@@ -772,6 +1247,12 @@ static const struct test api_tests[] = {
     TEST_ENTRY(api_read_nomem),
     TEST_ENTRY(api_any_bkey),
     TEST_ENTRY(api_long_keys),
+    TEST_ENTRY(api_prefix_has_the_prefix_key),
+    TEST_ENTRY(api_kv_time_is_the_entrys_time),
+    TEST_ENTRY(api_keys_and_values),
+    TEST_ENTRY(api_core_writes_bergdbs_keys),
+    TEST_ENTRY(api_counters_and_listed_deletes),
+    TEST_ENTRY(api_optimistic_transactions),
     TEST_END
 };
 

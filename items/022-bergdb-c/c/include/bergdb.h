@@ -174,7 +174,12 @@
  * no Database runs on the stream holds here by the directory's lock: this
  * library and Java do not open one directory at once (BERGDB_IN_USE). Of
  * BergDB's keys, this library writes reclaim's, under "/#i/dreclaim/", and
- * "/#i/-dummy" (bergdb_set_startup_distance).
+ * "/#i/-dummy" (bergdb_set_startup_distance), also in a database that no
+ * Pub API uses: every key that starts with 01 25 is BergDB's in every
+ * database. A range returns them, and the counters of bergdb_stats count
+ * their transactions; a stop function that answers BERGDB_CONTINUE for a
+ * key that starts with 01 25 leaves them out (bergdb 020-24-09, U9-4, as
+ * Java's Db says since release 2026.4).
  *
  *
  * F. Time and the clock (012-01, 4.4)
@@ -278,10 +283,11 @@ enum bergdb_error {
      * record format or meta block version, a database written before
      * 2026-10-27, another maximum node size than the options', an
      * encrypted database, corrupt data, foreign files in the directory
-     * (StreamFormatException, VersioningStreamException, BadMagicBytes as
-     * BadCryptoKey, StreamChecksumException, InternalDataException,
-     * BadDirStateException). At the open only; after it, corrupt data
-     * fails the database. */
+     * (StreamFormatException, also for bad magic bytes, which was
+     * BadCryptoKey until release 2026.4, bergdb 020-28;
+     * VersioningStreamException, StreamChecksumException,
+     * InternalDataException, BadDirStateException). At the open only;
+     * after it, corrupt data fails the database. */
     BERGDB_FORMAT = 5,
     /* A call from a callback of the same database (section D)
      * (IllegalDbStateException, DbStoppingException). */
@@ -700,10 +706,29 @@ struct bergdb_one {
      * NULL. */
     const uint8_t *value;
     size_t value_len;
-    int64_t time;       /* GetData.kvTime: the time of the key node's entry, not the
-                           time the value was written; when value is not NULL */
-    int64_t tpos;       /* GetData.tpos: the position of the transaction that wrote
-                           the value, for bergdb_get_trans; when value is not NULL */
+    /* GetData.kvTime, when value is not NULL: the time of the key node entry
+     * that points to the value, not the time of the write, but the time of
+     * the transaction that made the entry, the write's or a later one, as
+     * Java's says since release 2026.4 (bergdb 021-19). A transaction that
+     * replaces a full key node, by a time split or a space split, makes
+     * every entry that the node keeps anew, at its own time, also those of
+     * keys that it does not write; and reclaim, which copies a value
+     * forward, writes it anew (see tpos). So the time is at or after the
+     * time of the write and at or before the lookup time, and two reads of a
+     * value that did not change, at lookup times before and after such a
+     * transaction, may give two times. For the time of the write, read the
+     * transaction: bergdb_get_trans of tpos, its tt (for a value that
+     * reclaim has copied, the step's). No exact value time exists (bergdb
+     * 011-01, Q9). */
+    int64_t time;
+    /* GetData.tpos, when value is not NULL: the position of the transaction
+     * that stored the value, for bergdb_get_trans: the transaction that
+     * wrote it, or, for a value that reclaim has copied forward, reclaim's
+     * step, whose time is the step's (bergdb 021-19). A get of the key at
+     * the step's time less one, while that time can be read, gives the same
+     * value and the position of the transaction that stored it before, the
+     * write's or an earlier step's (bergdb 021-17). */
+    int64_t tpos;
     int64_t actual_lookup_time;  /* GetData.actualLookupTime (bergdb_lookup_time) */
 };
 
@@ -733,8 +758,14 @@ struct bergdb_kvt {
     size_t key_len;
     const uint8_t *value;   /* the value; NULL for a delete (bergdb_get_trans only) */
     size_t value_len;
-    int64_t time;           /* getMany: Kvt.time, the key node entry's time, not the
-                               write time; bergdb_get_trans: the transaction's time */
+    /* getMany: Kvt.time, the time of the key node entry that points to the
+     * value, not the time of the write, but at or after it and at or before
+     * the lookup time, as bergdb_one.time says (bergdb 021-19). For the time
+     * of the write: bergdb_get_one of the key at the read's
+     * actual_lookup_time gives the position of the value's transaction, its
+     * tpos, and bergdb_get_trans of it its tt. bergdb_get_trans: the
+     * transaction's time. */
+    int64_t time;
     int64_t pos;            /* the value node's position (Kvt.spos) */
 };
 
@@ -765,9 +796,13 @@ typedef int (*bergdb_stop_fn)(void *ctx, const struct bergdb_kvt *kvt);
  * pair goes through those given in this order, and the first answer that
  * is not BERGDB_ADD decides, else the pair is added:
  *
- *   1. prefix: BERGDB_STOP unless prefix is a strict prefix of the key
- *      (Keys.isPrefix: the key itself is not, so a key equal to the
- *      prefix stops the read; start after it, inclusive false);
+ *   1. prefix: BERGDB_STOP at the first key that does not start with
+ *      prefix (Prefix, PrefixN); a key that starts with it is read, the
+ *      prefix's own key too. So a read from the prefix, inclusive
+ *      (start_key the prefix, inclusive's default), gives every key that
+ *      starts with it, and exclusive every one but the prefix's own. Until
+ *      release 2026.4 a key equal to the prefix stopped the read, as
+ *      Keys.isPrefix is a strict prefix (bergdb 021-18);
  *   2. end_key: BERGDB_STOP for a key past it in the read's direction, or
  *      at it if end_inclusive is false (Endpoint, with the read's
  *      direction as its backward flag);
@@ -802,7 +837,8 @@ void bergdb_range_init(struct bergdb_range *r);
 /* What bergdb_get_many gives (GetMany's output fields). */
 struct bergdb_many {
     const struct bergdb_kvt *kvts;  /* the pairs added (GetMany.result), in the read's order,
-                                       in the read context's buffer */
+                                       in the read context's buffer; a pair's time is its
+                                       key node entry's, not its write's (bergdb 021-19) */
     size_t count;
     int64_t actual_lookup_time;     /* GetMany.actualLookupTime */
     int32_t get_op_count;           /* GetMany.getOpCount: the pairs the stop conditions saw */
@@ -831,8 +867,11 @@ struct bergdb_stored {
     int64_t top_pos;        /* the position of the newest written top node's latest
                                version (011-11, 8.3), or BERGDB_NULL_POS */
     /* Its value and delete nodes, in record order (getValueNodes()), in the
-     * read context's buffer. Index nodes and the got-dirty list are left
-     * out (012-03, 6.4). */
+     * read context's buffer: one for each key it put or deleted. A delete of
+     * a key that had no value stores nothing and is not listed; a step of
+     * reclaim lists the values it copied and reclaim's own keys (bergdb
+     * 020-24-09, U9-9, as Java's Javadoc since release 2026.4). Index nodes
+     * and the got-dirty list are left out (012-03, 6.4). */
     const struct bergdb_kvt *values;
     size_t count;
 };
@@ -995,8 +1034,12 @@ struct bergdb_stats {
     double internal_fraction;           /* getInternalFraction(): reclaim's units of 2^-16
                                            over 65,536, exact (005-79) */
     int64_t reclaim_iteration_count;    /* getReclaimIterationCount() */
-    int64_t transaction_count;          /* getTransactionCount(): since the open, reclaim's too */
-    int64_t kv_count;                   /* getKvCount(): the puts and deletes since the open */
+    int64_t transaction_count;          /* getTransactionCount(): since the open, BergDB's own
+                                           too: reclaim's, and those of
+                                           bergdb_set_startup_distance and of reclaim's
+                                           settings (bergdb 020-24-09, U9-10) */
+    int64_t kv_count;                   /* getKvCount(): the puts and deletes since the open,
+                                           a delete of a key without a value too (U9-10) */
     int64_t get_op_count;               /* getGetOpCount(): since the open, one per getOne,
                                            one per pair a getMany's stop conditions saw, and
                                            the transactions' own reads (warm-up, previous

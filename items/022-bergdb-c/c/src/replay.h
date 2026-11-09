@@ -74,7 +74,7 @@ struct replay {
  * then the full replay. Refused as Java's start refuses, with Java's
  * exception: DatabaseNotCreatedException (005-33), StreamFormatException or
  * VersioningStreamException (another node size, 005-50; no valid meta
- * block; a walk's refusal), BadCryptoKey (bad magic bytes), the stream's
+ * block; a walk's refusal; bad magic bytes, sr_bad_magic_bytes), the stream's
  * read errors; and the unsupported cases above. On an error the replay is
  * closed already. */
 enum err_code replay_open(struct replay *r, struct stream *s, struct mem *m,

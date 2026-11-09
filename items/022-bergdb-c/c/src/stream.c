@@ -272,12 +272,15 @@ static enum err_code write_files(struct stream *s, const uint8_t *src, int64_t l
                     (long long) s->maxSize, (long long) k->length));
         }
         int64_t toAppend = len > available ? available : len;
-        /* 130818 Frans: detects another user appending to this file. */
+        /* 130818 Frans: detects another user appending to this file. Java's
+         * text, which names the file, with its words as release 2026.4 fixed
+         * them (bergdb 020-24-08, U8-9); C's own text named the directory. */
         int64_t rfileLength;
         rc = plat_fd_length(k->fd, &rfileLength, e);
         if (rc == ERR_OK && rfileLength != k->length) {
-            rc = err_set(e, ERR_IO, "IOException", "A file of %s is not of expected length "
-                    "(%lld), but %lld bytes. Was is modified by someone else?", s->dir,
+            rc = err_set(e, ERR_IO, "IOException", "File %s/%014lld%s is not of expected "
+                    "length (%lld), but %lld bytes. Was it modified by someone else?", s->dir,
+                    (long long) (k->start / STREAM_INDEX_UNIT), SUFFIX,
                     (long long) k->length, (long long) rfileLength);
         }
         if (rc == ERR_OK && toAppend > 0) {

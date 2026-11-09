@@ -27,8 +27,9 @@
  *     /user/1/name = Anna  (time 10010000000, pos 404)
  *
  * And, in the same database, a Prefix of "/user/1" from "/user/1"
- * inclusive gives 0 pairs (the key equal to the prefix stops the read),
- * exclusive 4 (with "/user/10/name").
+ * inclusive gives 5 pairs, the prefix's own key first, exclusive 4 (with
+ * "/user/10/name"); until release 2026.4, inclusive gave 0 pairs, as the
+ * key equal to the prefix stopped the read (bergdb 021-18).
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -134,9 +135,10 @@ int main(void) {
     ok(db, bergdb_read_new(db, &rd), "newGetMany");
 
     /* The keys under "/user/1/": from the prefix forward, Prefix. The start
-     * is the prefix, exclusive: the prefix is a strict prefix of a key it
-     * keeps (Keys.isPrefix), so a pair with the prefix itself as key would
-     * stop the read at once. */
+     * is the prefix, exclusive, as Java's probe had it: "/user/1/" is no key
+     * here, so inclusive gives the same. Prefix reads the prefix's own key
+     * too since release 2026.4 (bergdb 021-18); before, a key equal to the
+     * prefix stopped the read at once. */
     size_t prefix_len = bkey("/user/1/", prefix);
     bergdb_range_init(&r);
     r.start_key = prefix;

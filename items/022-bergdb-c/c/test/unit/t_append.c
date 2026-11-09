@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include "test.h"
 #include "bytes.h"
+#include "plat.h"
 #include "rstream.h"
 #include "stream.h"
 
@@ -432,11 +433,13 @@ TEST(append_dir_buffer) {
 
 /* FileStream.testRestartMissingFile: a missing file is refused, and the
  * failed open leaves nothing open (the lock released). And a file that
- * someone else changed fails the stream (DbFile.append's check), which
- * then refuses every write. */
+ * someone else changed fails the stream (DbFile.append's check), with
+ * Java's text, its words as release 2026.4 fixed them (bergdb 020-24-08,
+ * U8-9; C's own text named the directory), and the stream then refuses
+ * every write. */
 TEST(append_dir_refusals) {
     struct stream s;
-    char path[512];
+    char path[512], want[700];
     mem_init(&am);
     REQUIRE(new_dir());
     CHECK_EQ(stream_open_dir_rw(&s, adir, 0, &am, &ae), ERR_OK);
@@ -461,7 +464,10 @@ TEST(append_dir_refusals) {
     fclose(f);
     CHECK_EQ(stream_append(&s, zeros, 50, &ae), ERR_OK);       /* buffered */
     CHECK_EQ(stream_sync(&s, &ae), ERR_IO);
-    CHECK(strstr(ae.text, "is not of expected length (50), but 51 bytes") != NULL);
+    snprintf(want, sizeof want, "File %s is not of expected length (50), but 51 bytes. Was it "
+            "modified by someone else?", path);
+    CHECK(strcmp(ae.java, "IOException") == 0);
+    CHECK(strcmp(ae.text, want) == 0);
     CHECK_EQ(stream_append(&s, zeros, 1, &ae), ERR_IO);
     CHECK_EQ(stream_sync(&s, &ae), ERR_IO);
     stream_close(&s);
@@ -555,10 +561,12 @@ TEST(append_dir_failure_runs) {
 }
 
 /* createDirIfNeeded: missing ancestors are made too; a path that is a
- * file is refused. */
+ * file is refused, with Java's text since release 2026.4 (bergdb 020-24-08,
+ * U8-11; C's own text named the path after the reason), and the file is
+ * left as it was. */
 TEST(append_dir_mkdirs) {
     struct stream s;
-    char deep[512], file[512];
+    char deep[512], file[512], want[600];
     mem_init(&am);
     REQUIRE(new_dir());
     snprintf(deep, sizeof deep, "%s/x/y", adir);
@@ -567,6 +575,11 @@ TEST(append_dir_mkdirs) {
     CHECK_EQ(stream_finish(&s, &ae), ERR_OK);
     snprintf(file, sizeof file, "%s/00000000000000.bergdb", deep);
     CHECK_EQ(stream_open_dir_rw(&s, file, 0, &am, &ae), ERR_IO);
+    snprintf(want, sizeof want, "Directory %s could not be opened: it exists and is not a "
+            "directory.", file);
+    CHECK(strcmp(ae.java, "IOException") == 0);
+    CHECK(strcmp(ae.text, want) == 0);
+    CHECK_EQ(plat_file_length(file), 1);
     CHECK_MEM_ZERO(&am);
     unlink(file);
     snprintf(file, sizeof file, "%s/bergdb.lock", deep);

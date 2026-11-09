@@ -201,7 +201,10 @@ enum err_code plat_mkdirs(const char *dir, struct err *e) {
     if (stat(dir, &st) == 0) {
         char parent[1024];
         if (!S_ISDIR(st.st_mode)) {
-            return err_set(e, ERR_IO, "IOException", "Not a directory: %s", dir);
+            /* Java's text since release 2026.4 (bergdb 020-24-08, U8-11); C's own
+             * was "Not a directory: DIR". */
+            return err_set(e, ERR_IO, "IOException", "Directory %s could not be opened: it "
+                    "exists and is not a directory.", dir);
         }
         if (parent_of(dir, parent, sizeof parent)) {
             return plat_force_dir(parent, e);

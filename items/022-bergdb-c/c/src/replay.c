@@ -6,6 +6,7 @@
 #include "keys.h"
 #include "snode.h"
 #include "spos.h"
+#include "starter.h"
 
 /* Db.CREATION_LENGTH: the creation's record ends at 264. */
 #define CREATION_LENGTH 264
@@ -275,7 +276,7 @@ enum err_code replay_open(struct replay *r, struct stream *s, struct mem *m,
     }
     if (rc != ERR_OK) {
         if (strcmp(e->java, "BadMagicBytes") == 0) {
-            e->java = "BadCryptoKey";
+            rc = sr_bad_magic_bytes(e);     /* Db.startInner's (bergdb 020-28) */
         }
         goto fail;
     }

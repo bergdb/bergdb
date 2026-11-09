@@ -17,10 +17,10 @@
 #                      build/java-src/git-HASH/java/. The default, until 2026.4's
 #                      tag, is the pinned candidate of release 2026.4 (bergdb
 #                      022-02, section 2.1, and its log's re-pins), main at
-#                      32f3832, 2026-11-09 15:22, with 020-27, 021-13, 020-23 Z1
-#                      and 021-16 (772e09b, 14:40, 82edabf, 13:04, and 94a1520,
-#                      11:57, before):
-#                      git:32f383282d57ebfa18ccedeea9b0891dd70c4dc1
+#                      2566df1, 2026-11-09 17:18, with 021-18, 021-19, 020-28
+#                      and 020-24's U7 to U9 (32f3832, 15:22, 772e09b, 14:40,
+#                      82edabf, 13:04, and 94a1520, 11:57, before):
+#                      git:2566df17ba2c99717bb8bf9a0688351203825aff
 #                      A clone of int.git without the commit fetches it first:
 #                      git fetch /Users/f/fl/repos/bergdb main:refs/remotes/repo/main
 #   JAVA_REF=2026.3    the release of the 2026.3 port (bergdb 022-01): the
@@ -47,7 +47,7 @@
 set -e
 C=$(cd "$(dirname "$0")/../.." && pwd)
 REPO=$(cd "$C/../../.." && pwd)
-REF=${JAVA_REF:-git:32f383282d57ebfa18ccedeea9b0891dd70c4dc1}
+REF=${JAVA_REF:-git:2566df17ba2c99717bb8bf9a0688351203825aff}
 case "$REF" in
 tree)
     JAVA=$REPO/java ;;

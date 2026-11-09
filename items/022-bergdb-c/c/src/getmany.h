@@ -89,6 +89,9 @@ struct gm_stop gm_endpoint(struct gm_endpoint *s, const int64_t *key, int32_t ke
 /* new GetN(maxCount): maxCount >= 0 (asserted). GetN and PrefixN give at most
  * maxCount pairs, none for 0 (bergdb 020-27, C1). */
 struct gm_stop gm_get_n(struct gm_get_n *s, int32_t max_count);
+/* new Prefix(prefix) and PrefixN(prefix, maxCount): the pairs whose keys
+ * start with the prefix, the prefix's own key included (bergdb 021-18), up
+ * to the first that does not; PrefixN at most maxCount of them. */
 struct gm_stop gm_prefix(struct gm_prefix *s, const int64_t *prefix, int32_t prefix_n);
 struct gm_stop gm_prefix_n(struct gm_prefix_n *s, const int64_t *prefix, int32_t prefix_n,
         int32_t max_count);

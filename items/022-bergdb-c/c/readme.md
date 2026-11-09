@@ -24,7 +24,7 @@ in every report. The candidate is cut from `main` on 2026-11-09 at about
 checked (each pin, with what it brought, is in 022-02's log). The pin,
 here and as `java-build.sh`'s default:
 
-    JAVA_REF=git:32f383282d57ebfa18ccedeea9b0891dd70c4dc1   main at 2026-11-09 15:22
+    JAVA_REF=git:2566df17ba2c99717bb8bf9a0688351203825aff   main at 2026-11-09 17:18
 
 Once 2026.4 is tagged, the default becomes `JAVA_REF=2026.4`, the
 release's `releases/2026.4/bergdb-2026.4-src.zip`, checked against its

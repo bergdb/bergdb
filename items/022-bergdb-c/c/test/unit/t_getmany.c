@@ -1,6 +1,7 @@
 /* The tests of GetMany and of the database of Level 0 (bergdb 012-08):
- * Java's DbTesterGetMany.testInclusiveStartKeyWithDeepTree and
- * testStartKeyRandom (with java.util.Random's draws), on mdb as Java's on
+ * Java's DbTesterGetMany.testInclusiveStartKeyWithDeepTree,
+ * testStartKeyRandom (with java.util.Random's draws) and
+ * testPrefixHasThePrefixKey (bergdb 021-18), on mdb as Java's on
  * Db; a random test of the database against a model map (key to its
  * versions) with getOne and getMany at random times, both ways, from start
  * keys inclusive or not, with each stop condition; and the allocation
@@ -257,6 +258,105 @@ TEST(gm_start_key_random) {
     }
 }
 
+/* A key of testPrefixHasThePrefixKey: the ASCII string's bytes as the bkey,
+ * as Java's getBytes(US_ASCII). */
+static struct key bkey_of(const char *s) {
+    struct key k;
+    int32_t len = (int32_t) strlen(s);
+    k.n = keys_segment_count(len);
+    keys_to_segments((const uint8_t *) s, len, k.s);
+    return k;
+}
+
+/* got's keys are those of keys[], by their indexes in idx[0 .. n - 1]. */
+static bool got_is(const struct got *got, const struct key *keys, const int32_t *idx,
+        int32_t n) {
+    if (got->n != n) {
+        return false;
+    }
+    for (int32_t i = 0; i < n; i++) {
+        const struct key *k = &keys[idx[i]];
+        if (keys_compare_keys(k->s, k->n, got->k[i].s, got->k[i].n) != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/* DbTesterGetMany.testPrefixHasThePrefixKey (bergdb 021-18): Prefix and
+ * PrefixN add the prefix's own key, as it starts with the prefix; they
+ * stopped at it, as Keys.isPrefix is a strict prefix, so that a scan from
+ * the prefix, inclusive, gave no pair when the prefix was a key, and a
+ * backward scan left it out. Keys around a segment of 7 bytes, and the
+ * empty key; at Java's node size and a small one, for a deeper tree. */
+TEST(gm_prefix_has_the_prefix_key) {
+    static const char *const keyStrings[] = { "", "a", "ab", "abc", "abcdefg", "abcdefgh",
+            "abcdefghi", "abd", "b" };
+    static const char *const prefixes[] = { "", "a", "ab", "abc", "abcdefg", "abcdefgh",
+            "abcdefghi", "abd", "b", "abcd", "abcdefgx", "c" };
+    const int32_t nk = 9;
+    const int32_t sizes[] = { 30, 8 };
+    struct key keys[9];
+    for (int32_t i = 0; i < nk; i++) {
+        keys[i] = bkey_of(keyStrings[i]);
+    }
+    for (int si = 0; si < 2; si++) {
+        struct mem m;
+        struct mdb db;
+        mem_init(&m);
+        REQUIRE(mdb_create(&db, &m, 1, sizes[si]));
+        const uint8_t one[] = { 1 };
+        mdb_begin(&db, 1000);
+        for (int32_t i = 0; i < nk; i++) {
+            CHECK(mdb_put(&db, keys[i].s, keys[i].n, one, 1));
+        }
+        mdb_end(&db);
+
+        for (int pi = 0; pi < 12; pi++) {
+            const char *prefix = prefixes[pi];
+            size_t plen = strlen(prefix);
+            int32_t expected[9], reversed[9], ne = 0;
+            for (int32_t i = 0; i < nk; i++) {
+                if (strncmp(keyStrings[i], prefix, plen) == 0) {     /* startsWith */
+                    expected[ne++] = i;
+                }
+            }
+            for (int32_t i = 0; i < ne; i++) {
+                reversed[i] = expected[ne - 1 - i];
+            }
+            bool first = ne > 0 && strcmp(keyStrings[expected[0]], prefix) == 0;
+            struct key p = bkey_of(prefix);
+            struct gm_prefix px;
+            struct gm_prefix_n pn;
+            struct gm_stop stop;
+            struct got got;
+
+            stop = gm_prefix(&px, p.s, p.n);
+            many(&db, INT64_MAX, &p, true, true, &stop, &got);
+            CHECK(got_is(&got, keys, expected, ne));
+            stop = gm_prefix_n(&pn, p.s, p.n, 100);
+            many(&db, INT64_MAX, &p, true, true, &stop, &got);
+            CHECK(got_is(&got, keys, expected, ne));
+            stop = gm_prefix_n(&pn, p.s, p.n, 1);
+            many(&db, INT64_MAX, &p, true, true, &stop, &got);
+            CHECK(got_is(&got, keys, expected, ne < 1 ? ne : 1));
+            stop = gm_prefix(&px, p.s, p.n);                        /* exclusive */
+            many(&db, INT64_MAX, &p, false, true, &stop, &got);
+            CHECK(got_is(&got, keys, expected + (first ? 1 : 0), ne - (first ? 1 : 0)));
+            if (ne > 0) {
+                const struct key *last = &keys[expected[ne - 1]];
+                stop = gm_prefix(&px, p.s, p.n);                    /* backward */
+                many(&db, INT64_MAX, last, true, false, &stop, &got);
+                CHECK(got_is(&got, keys, reversed, ne));
+                stop = gm_prefix_n(&pn, p.s, p.n, 100);
+                many(&db, INT64_MAX, last, true, false, &stop, &got);
+                CHECK(got_is(&got, keys, reversed, ne));
+            }
+        }
+        end(&db, &m);
+    }
+}
+
 /* ======== DbTesterJavadoc (bergdb 020-27) ======== */
 
 /* A database with the keys k0 to k(n-1), as DbTesterJavadoc.dbWithKeys. */
@@ -442,7 +542,12 @@ static void model_check_at(struct mdb *db, const struct model *mo, int64_t t, ui
         } else if (kind == 2) {
             stop = gm_endpoint(&ep, mo->keys[ek].s, mo->keys[ek].n, endIncl, !forward);
         } else if (kind == 3 || kind == 4) {
-            prefix = key_of(test_random_below(rs, 2) == 0 ? "/k/" : "/k/1");
+            /* "/k/", "/k/1" (a key in some runs), or a key's own, the start's if
+             * there is one: Prefix and PrefixN add the prefix's own key (bergdb
+             * 021-18). */
+            int32_t pk = test_random_below(rs, 3);
+            prefix = pk == 0 ? key_of("/k/") : pk == 1 ? key_of("/k/1")
+                    : start != NULL ? *start : mo->keys[ek];
             stop = kind == 3 ? gm_prefix(&px, prefix.s, prefix.n)
                     : gm_prefix_n(&pn, prefix.s, prefix.n, maxCount);
         }
@@ -478,7 +583,8 @@ static void model_check_at(struct mdb *db, const struct model *mo, int64_t t, ui
                 }
                 expected[ne++] = k;
             } else if (kind == 3 || kind == 4) {
-                if (!keys_is_prefix(prefix.s, prefix.n, mo->keys[k].s, mo->keys[k].n)) {
+                if (!keys_is_prefix(prefix.s, prefix.n, mo->keys[k].s, mo->keys[k].n)
+                        && !keys_are_equal(prefix.s, prefix.n, mo->keys[k].s, mo->keys[k].n)) {
                     break;
                 }
                 expected[ne++] = k;
@@ -792,6 +898,7 @@ TEST(dag_dirty_node_bound) {
 const struct test getmany_tests[] = {
     TEST_ENTRY(gm_inclusive_start_key_with_deep_tree),
     TEST_ENTRY(gm_start_key_random),
+    TEST_ENTRY(gm_prefix_has_the_prefix_key),
     TEST_ENTRY(gm_at_most_n),
     TEST_ENTRY(gm_eod_once_at_the_end),
     TEST_ENTRY(mdb_model),

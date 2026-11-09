@@ -6,8 +6,9 @@
  *
  *   1. sr_check_and_recover (Db.startInner before handleStartParams):
  *      refuseIncompleteCreation (005-33), refuseOtherNodeSize (005-50),
- *      nodeStream.recover() with its fill (recover.h), BadMagicBytes as
- *      BadCryptoKey. The creation on an empty stream (handleEmptyStream)
+ *      nodeStream.recover() with its fill (recover.h), BadMagicBytes as a
+ *      StreamFormatException (sr_bad_magic_bytes; BadCryptoKey until
+ *      release 2026.4). The creation on an empty stream (handleEmptyStream)
  *      is the caller's (012-09), before this.
  *   2. sr_start: handleStartParams (the format of the in-memory meta block,
  *      the startup position from the last record, walked from the record
@@ -57,7 +58,7 @@
  *
  * Errors: Java's, as codes with Java's exception names (err.h): a stream
  * that Java refuses is refused here with the same name (ERR_FORMAT
- * "StreamFormatException", "VersioningStreamException", "BadCryptoKey";
+ * "StreamFormatException", "VersioningStreamException";
  * ERR_NOT_CREATED "DatabaseNotCreatedException"), the stream's errors, or
  * ERR_NOMEM. On an error the caller frees what the env holds (close's walk).
  * Prefix sr_.
@@ -120,6 +121,14 @@ struct sr_result {
     int64_t section_bytes;
     int64_t rerun_pairs;        /* value and delete nodes rerun */
 };
+
+/* Db.startInner's refusal of a stream whose magic bytes are wrong (the
+ * storage's BadMagicBytes, ERR_FORMAT): a StreamFormatException with Java's
+ * text, the BadMagicBytes its cause (bergdb 020-28, as Java's since release
+ * 2026.4; it was the Pub API's BadCryptoKey, which 2026.4 removed with the
+ * encryption). C has no encryption, so the text is Java's for a start
+ * without a key. Returns ERR_FORMAT. */
+enum err_code sr_bad_magic_bytes(struct err *e);
 
 /* Db.startInner's checks and the recovery, before the startup position is
  * read (see above). *plan: what the recovery found and appended. */
