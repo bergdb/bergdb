@@ -50,6 +50,7 @@ Open
 
 | ID | Kind | What | Frans | Status |
 |---|---|---|---|---|
+| [021-27](27-gettrans-inside-record.md) | Decide | getTrans inside a record fails the database | decision | waiting |
 
 
 Closed

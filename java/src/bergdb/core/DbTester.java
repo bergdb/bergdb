@@ -2533,6 +2533,45 @@ public class DbTester {
         db.stop();
     }
     
+    /**
+     * bergdb 021-27, open (found by a black-box user of the C port (022), U2-4): getTrans at
+     * a multiple of 8 inside a committed transaction's record, not at its start, passes the
+     * checks of testGetTransRefusesBadPositions, reads the bytes there as a record, and fails
+     * the database, as the Javadoc says ("the bytes at 'tpos' are not a committed
+     * transaction"): DbFailedException, and every later call throws it until a restart. A
+     * caller's wrong position is not told apart from damage at a transaction's position;
+     * 021-27 has the options. This test keeps today's behaviour: a fix that refuses such a
+     * position with IllegalArgumentException, the database going on, changes it.
+     */
+    @Nano
+    public static void testGetTransInsideARecord() {
+        final String value = new String(new char[1000]).replace('\0', 'x');
+        final long[] offsets = {8, 16, 24, 512};
+        for (long offset : offsets) {
+            Db db = Db.builder().testSetup().start();
+            try {
+                Trans t = db.trans().put("/a", value).build();
+                db.execute(t);
+                assertTrue("inside, " + offset, t.tpos + offset < t.lastPos);
+                Throwable e = null;
+                try {
+                    db.getTrans(t.tpos + offset);
+                } catch (Throwable x) {
+                    e = x;
+                }
+                assertTrue("tpos + " + offset + ": " + e, e instanceof DbFailedException);
+                try {
+                    DbUtil.getString(db, "/a");
+                    throw new AssertionError("the database went on, tpos + " + offset);
+                } catch (DbFailedException expected) {
+                    // The database has failed.
+                }
+            } finally {
+                db.stop();
+            }
+        }
+    }
+    
     // ======== sync(), bergdb 005-44 ========
     
     /**
