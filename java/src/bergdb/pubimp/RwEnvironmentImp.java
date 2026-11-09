@@ -49,7 +49,6 @@ class RwEnvironmentImp implements RwEnvironment {
     private HashMap<MapKey, byte[]> kvOps;
     private HashMap<String, ObjectInfo> objectOps;
     private HashMap<MapKey, byte[]> indexOps;
-    private MyLongSet vkeyWriteHashes;                  // Writes of virtual KVs.
     private final ConnectionImp connection;
     private final boolean enableKeyReplace;
     private boolean closed;                             // Set by close().
@@ -470,7 +469,7 @@ class RwEnvironmentImp implements RwEnvironment {
     
     /**
      * This method creates the transaction (core.Trans) based on the values set to readHashes, 
-     * kvOps, objectOps, indexOps, vkeyWriteHashes. If this transaction is an RW transaction
+     * kvOps, objectOps, indexOps. If this transaction is an RW transaction
      * (Connection.rw()), the Action.run() method has been run already.
      */
     public Trans createTrans(Db db) {
@@ -519,12 +518,6 @@ class RwEnvironmentImp implements RwEnvironment {
                 b.delete(key);
             } else {
                 b.put(key, kt, value, null);
-            }
-        }
-        
-        if (this.vkeyWriteHashes != null) {
-            for (long hash : vkeyWriteHashes) {
-                b.addVirtualWriteHash(hash);
             }
         }
         

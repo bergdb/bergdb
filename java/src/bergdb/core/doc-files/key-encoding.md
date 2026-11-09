@@ -128,11 +128,14 @@ used for IKP, internal data prefix. The IKP ikey is:
 
 Example internal data (ikey)
 
-    /#i/di/-indexEntry1     -- index entry, binary data at the end.
-
-    /#i/dii/-indexA.obj     -- index info for "indexA"
-
     /#i/dreclaim/-table.txt -- reclaim information, see core.Reclaim.
+
+The Core Layer's own internal keys are those of Reclaim, under
+/#i/dreclaim/, and /#i/-dummy (Db). The rest of the internal space belongs
+to the layers above, whose keys are to the Core Layer keys like any other:
+the Pub API keeps its user indexes under /#i/didef/, /#i/dient/ and
+/#i/didel/ (bergdb 020-10, section 4.1). Until release 2026.4 they were
+under /#i/dii/ and /#i/di/, the examples given here until then.
 
 
 ### Conversion ikey --> bkey ###
