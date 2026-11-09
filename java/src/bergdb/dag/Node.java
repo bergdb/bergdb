@@ -167,4 +167,16 @@ public interface Node {
     
     /** Sets isCanonical(). No effect for value nodes. */
     public void setCanonical(boolean isCanonical);
+    
+    /**
+     * The node's name in a message: its kind, id and position, as "key node 22807 at 36536",
+     * the same in every run (bergdb 021-15). Not toString(), which shows the object's identity
+     * hash, nor print(), the whole node: the texts of a start's refusals and of the nodes'
+     * checks name a node so, and a port of the Core matches them byte for byte.
+     */
+    public static String name(Node node) {
+        String kind = node.isKeyNode() ? "key node" : node.isTopNode() ? "top node"
+                : "value node";
+        return kind + " " + node.getId() + " at " + node.getSpos();
+    }
 }

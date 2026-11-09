@@ -22,6 +22,7 @@ import java.util.function.Supplier;
 import bergdb.common.Bytes;
 import bergdb.common.StringUtil;
 import bergdb.dag.Klong;
+import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.nanotest.TestEnvironment;
 import bergdb.pub.util.DatabaseNotCreatedException;
@@ -1346,6 +1347,33 @@ public class CorruptStreamTester {
                 throw new AssertionError(c.what + ": " + (out.failure != null ? out.failure
                         : out.kind));
             }
+        }
+        // The refusals' texts, the same in every run (bergdb 021-15), as a port of the Core
+        // matches them byte for byte. The third named the node by KeyNode.toString, which
+        // holds the object's identity hash ("K/44" in one run, "K/ab" in the next), and
+        // printed the whole node over many lines.
+        String[] texts = {
+            "Time not increasing, 400, 16712050, index=13",
+            "Key node 22807 at 36536, before the startup section, has the time 16712120, after "
+                    + "the startup time 470.",
+            "Bad spos of pointer 0 of key node 22807 at 36536: -1, at or before the startup "
+                    + "time 470.",
+        };
+        for (int i = 0; i < copies.size(); i++) {
+            Assert.assertEquals(copies.get(i).what, texts[i], refusal(o, copies.get(i)));
+        }
+    }
+
+    /** The message of the exception that a start of the copy throws, or null if it starts. */
+    static String refusal(Original o, Copy c) {
+        byte[] bytes = c.bytes.get();
+        CopyStream stream = new CopyStream(bytes, c.length < 0 ? bytes.length : c.length);
+        CoreTestClock clock = new CoreTestClock();
+        clock.setTime(TIME_STEP * (o.n + 5));
+        try (Db db = start(o, c, stream, clock)) {
+            return null;
+        } catch (DbException e) {
+            return e.getMessage();
         }
     }
 

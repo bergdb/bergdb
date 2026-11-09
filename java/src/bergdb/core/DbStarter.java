@@ -565,7 +565,8 @@ public class DbStarter {
             public void visit(ValueNode node) {
                 long pos = node.getSpos();
                 if (!(pos >= 0)) {
-                    throw new AssertionError("value node got no spos during startup, " + node);
+                    throw new AssertionError("value node got no spos during startup, "
+                            + Node.name(node) + ".");
                 }
             }
         });
@@ -682,7 +683,7 @@ public class DbStarter {
         
         long spos = node.getSpos();
         if (!Spos.isValid(spos)) {
-            throw new StreamFormatException("Bad spos of node, spos=" + spos + ", node: " + node);
+            throw new StreamFormatException("Bad spos of " + Node.name(node) + ".");
         }
         
         switch (node.getType()) {
@@ -746,8 +747,8 @@ public class DbStarter {
                 if (Klong.isKey(klong) && k.getPointerNode(i) == null) {
                     long pos = k.getPointerPos(i);
                     if (Spos.isNull(pos) || Spos.isVpos(pos)) {
-                        throw new StreamFormatException("Unexpected stream pointer from KeyNode, was " 
-                                + pos + ", index " + i + ", node: " + node);
+                        throw new StreamFormatException("Unexpected stream pointer " + pos
+                                + ", index " + i + " of " + Node.name(node) + ".");
                     }
                 }
             }
@@ -759,8 +760,8 @@ public class DbStarter {
                 if (!p.isNull()) {
                     long pos = p.getPos();
                     if (Spos.isNull(pos) || Spos.isVpos(pos)) {
-                        throw new StreamFormatException("Unexpected stream pointer, was " 
-                                + pos + ", index " + i + ", node: " + node);
+                        throw new StreamFormatException("Unexpected stream pointer " + pos
+                                + ", index " + i + " of " + Node.name(node) + ".");
                     }
                 }
             }
@@ -779,11 +780,11 @@ public class DbStarter {
         Node n1 = nodes[1].getNode();
         
         if (!n0.isTopNode()) {
-            throw new StreamFormatException("Expected TopNode, got " + n0);
+            throw new StreamFormatException("Expected TopNode, got " + Node.name(n0) + ".");
         }
         
         if (!n1.isKeyNode()) {
-            throw new StreamFormatException("Expected KeyNode, got " + n1);
+            throw new StreamFormatException("Expected KeyNode, got " + Node.name(n1) + ".");
         }
     }
     
@@ -897,11 +898,15 @@ public class DbStarter {
         
         KeyNode bad = KeyNode.nodeWithTime(10);
         bad.addToEnd(Klong.compareValueToKeyKlong(Keys.toSegments("a")[0]), null, 2001);
+        bad.setId(999);
         bad.setSpos(1000);
         boolean rejected = false;
         try {
             checkStreamPointers(bad);
         } catch (StreamFormatException e) {
+            // The node named by id and position, the same in every run (bergdb 021-15).
+            Assert.assertEquals("Unexpected stream pointer 2001, index 1 of key node 999 at 1000.",
+                    e.getMessage());
             rejected = true;
         }
         Assert.assertTrue("key node pointing to vpos 2001 rejected", rejected);

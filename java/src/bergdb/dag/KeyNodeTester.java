@@ -71,6 +71,52 @@ public class KeyNodeTester {
         Assert.assertTrue(printed, printed.contains("c"));
     }
     
+    /**
+     * bergdb 021-15: the texts of validateStreamNode, which a start refuses a stream with,
+     * and of check() name the node by its id and position (Node.name), the same in every
+     * run, as a port of the Core matches them byte for byte. They held toString(), with the
+     * object's identity hash ("K/44" in one run, "K/ab" in the next), and one the whole node.
+     */
+    @Nano
+    public static void testNodeTextsSameInEveryRun() {
+        long key = Klong.createKey(StringUtil.toBytes("a"));
+        Assert.assertEquals("Key node 22807 at 36536 with size 0.",
+                invalid(streamNode(new long[0], new long[0]), 470));
+        // A key klong before every time klong is of the time 0, at or before the startup time.
+        Assert.assertEquals("Bad spos of pointer 0 of key node 22807 at 36536: -1, at or before "
+                + "the startup time 470.",
+                invalid(streamNode(new long[] {key}, new long[] {Spos.NULL}), 470));
+        Assert.assertEquals("Bad spos of pointer 1 of key node 22807 at 36536: -5.",
+                invalid(streamNode(new long[] {Klong.createTime(480), key},
+                        new long[] {Spos.NULL, -5}), 470));
+        KeyNode bad = streamNode(new long[] {Klong.createTime(400), key},
+                new long[] {Spos.NULL, Spos.NULL});
+        Assert.assertEquals("java.lang.AssertionError: Bad spos of pointer 1 of key node 22807 "
+                + "at 36536: -1.", bad.checkWithMessage());
+        Assert.assertEquals("key node 22807 at 36536", Node.name(bad));
+    }
+    
+    /** The message of validateStreamNode, or null if the node is valid. */
+    private static String invalid(KeyNode node, long startupTime) {
+        try {
+            node.validateStreamNode(startupTime);
+            return null;
+        } catch (KeyNode.Invalid e) {
+            return e.getMessage();
+        }
+    }
+    
+    /** A key node as a start reads it: id 22807, at 36536, its pointers stream pointers. */
+    private static KeyNode streamNode(long[] klongs, long[] positions) {
+        KeyNode node = new KeyNode();
+        node.id = 22807;
+        node.spos = 36536;
+        for (int i = 0; i < klongs.length; i++) {
+            node.addToEnd(klongs[i], null, positions[i]);
+        }
+        return node;
+    }
+    
     @Nano
     public static void testSanity2() {
         KeyNodeTester t = new KeyNodeTester();

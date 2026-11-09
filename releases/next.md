@@ -538,6 +538,16 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   failed, as at any read past the end, but with an
   `IndexOutOfBoundsException` as the cause. Now such a read throws
   `EOFException`, as `AppendOnlyStream.read()` says. In 2026.3 and before.
+* **A start's refusals name a node the same way in every run** (bergdb
+  021-15; 2026-11-09): the texts of the `StreamFormatException` of a key
+  node's validation at a start (`KeyNode.validateStreamNode`: a pointer's
+  bad position, a node of size 0) and of `DbStarter` (a node's position,
+  an unexpected stream pointer, the first record's nodes), and of
+  `KeyNode.check`'s `AssertionError`, named the node by its `toString()`,
+  which holds the object's identity hash, so that two runs gave two texts;
+  one printed the whole node over many lines. Now each names it by its
+  kind, id and position, as "key node 22807 at 36536" (`Node.name`), as a
+  port of the Core that matches the texts needs.
 
 
 ### Format

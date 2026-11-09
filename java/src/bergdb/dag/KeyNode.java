@@ -1545,7 +1545,8 @@ public class KeyNode implements Node {
     public void check(int maxNodeSize) {
         short sz = this.size;
         if (sz > maxNodeSize + 1) {
-            throw new AssertionError("Overfull node, size=" + sz + ", maxNodeSize=" + maxNodeSize + ", KeyNode: " + toString());
+            throw new AssertionError("Overfull node, size=" + sz + ", maxNodeSize=" + maxNodeSize
+                    + ", " + Node.name(this) + ".");
         }
         
         check();
@@ -1585,8 +1586,8 @@ public class KeyNode implements Node {
                 }
                 if (pointer == null) {
                     if (!Spos.isValid(spos)) {
-                        throw new AssertionError("Bad spos of pointer " + i + " of node " 
-                                + this + ". Spos: " + spos);
+                        throw new AssertionError("Bad spos of pointer " + i + " of "
+                                + Node.name(this) + ": " + spos + ".");
                     }
                 }
             }
@@ -1607,8 +1608,8 @@ public class KeyNode implements Node {
                     // A pointer that holds a handle or a value has a reference too (bergdb
                     // item 009, step 3a; before, access data).
                     if (!Spos.isValidOrNull(ref)) {
-                        throw new AssertionError("Bad reference (" + ref 
-                                + ") of pointer " + i + " of node " + this + ".");
+                        throw new AssertionError("Bad reference of pointer " + i + " of "
+                                + Node.name(this) + ": " + ref + ".");
                     }
                 }
             }
@@ -1664,13 +1665,17 @@ public class KeyNode implements Node {
      * Validates this node. Stream pointers for time > startupTime are 
      * allowed to be Spos.NULL (-1).
      * 
+     * The texts name the node by Node.name, the same in every run (bergdb 021-15): a start
+     * refuses a stream with them, and a port of the Core matches them byte for byte. Before,
+     * they held toString(), with the object's identity hash, and one the whole node.
+     * 
      * @throws Invalid
      */
     public void validateStreamNode(long startupTime) {
         short sz = this.size;
         
         if (sz < 1) {
-            throw new Invalid("Key node with size " + sz + ", " + toString() + ".");
+            throw new Invalid("Key node " + id + " at " + getSpos() + " with size " + sz + ".");
         }
         
         try {
@@ -1696,12 +1701,14 @@ public class KeyNode implements Node {
                     
                     if (klongTime > startupTime) {
                         if (!Spos.isValidOrNull(spos)) {
-                            throw new Invalid("Bad spos of pointer " + i + " of node " 
-                                    + this + ".");
+                            throw new Invalid("Bad spos of pointer " + i + " of "
+                                    + Node.name(this) + ": " + spos + ".");
                         }
                     } else {
                         if (!Spos.isValid(spos)) {
-                            throw new Invalid("Bad spos of pointer " + i + " of node " + this.print() + ". Startup time: " + startupTime);
+                            throw new Invalid("Bad spos of pointer " + i + " of "
+                                    + Node.name(this) + ": " + spos
+                                    + ", at or before the startup time " + startupTime + ".");
                         }
                     }
                 } else {
