@@ -138,36 +138,55 @@ Two parts. Places in main (a2fa9df); the same code is in 2026.3, from
    time and the cuts keep up, which is why 60,000 transactions cut as
    expected.
 
+3. **Every transaction afterwards pays for the largest touch.**
+   `Db.touchRange()` follows the nodes with the transaction's
+   `x.putData.pointerListener` (Db.java:2947), which appends every key
+   node followed to `PutData.keyAccessPath` (Dag.newPutData(),
+   Dag.java:303 and 307), and its arrays grow and never shrink
+   (KeyAccessPath.add, enlargeArrays). `PutData.clear()`, at the end of
+   every transaction (Db.putKvs), calls `KeyAccessPath.clear()`
+   (KeyAccessPath.java:29), which nulls the whole array, not the `size`
+   used. In the FIFO the array grew to 4,356 entries at transaction
+   30,000, 17,840 at 120,000 and 28,544 from 180,000 on, so from then
+   every transaction of one put and one delete cleared 28,544 references.
+   A writer's cost per transaction, not a change of the stream. The same
+   code in 2026.3.
+
 With hashed keys the deleted keys lie among the live ones, so part 2 has
-little to pass, but part 1 makes every write dearer as the deletes add
-up.
+little to pass, but part 1 makes every write dearer as the deletes add up.
 
 022-06-3's report has the same in the C library's own index counts
 (probe_dag.c: 22,134 key nodes for 1,024 live keys after 80,000
 transactions).
 
-App u14's finding (2026-11-09, user indexes created and deleted again and
-again with a retain duration of 2 s: puts slow down with the cycles, from
-155k/s to 6.3k/s, and reclaim stops cutting) is probably the same
-mechanism, deleted keys that reclaim's scans and touches pass again and
-again; not checked (`PutCost.java`, `ReclaimChurn.java` in
-`/Users/f/fl/bench/2026-11-09/app-u14/app/`).
+App u14's finding (2026-11-09: user indexes created and deleted again and
+again, a retain duration of 2 s; puts in another directory slow down with
+the cycles, from 155k/s to 6.3k/s, and reclaim stops cutting) is the same
+mechanism, its put cost mostly part 3: `PutCost.java` (in
+`/Users/f/fl/bench/2026-11-09/app-u14/app/`) changed to put 400,000 times
+after 150 cycles ran 31,845 puts/s, and 6 of 10 stack samples of the
+writer were in `KeyAccessPath.clear()` under `PutData.clear()`, none in a
+touch; its stopped cuts are likely parts 1 and 2 (not checked).
 
 
 For Frans
 ---------
 
 * For tonight's candidate: no revert (nothing of today's is involved), a
-  known issue in `releases/next.md` ("Known issues and limits", in this
-  commit).
-* A fix is two pieces of work, both in the Core and both changing what
-  reclaim writes (the stream's bytes, so StreamDigest's digests and the C
-  library's equality, 022): (a) end the touch at `touchTo`, not at the
-  next live key, which needs a stop on the keys passed, not only on live
-  KVs; (b) drop index nodes and segment subtrees that hold deleted keys
-  only, so that the index of a key range shrinks after its deletes. (a)
+  known issue in `releases/next.md` ("Known issues and limits", commit
+  ef46ffb in `clone-g30`).
+* A fix is three pieces of work in the Core: (a) end the touch at
+  `touchTo`, not at the next live key, which needs a stop on the keys
+  passed, not only on live KVs; (b) drop index nodes and segment subtrees
+  that hold deleted keys only, so that the index of a key range shrinks
+  after its deletes; (a) and (b) change what reclaim writes (the stream's
+  bytes, so StreamDigest's digests and the C library's equality, 022). (a)
   alone would likely restore the cuts of this FIFO; (b) is what keeps the
-  cost of deletes bounded, also with hashed keys and for u14.
+  cost of deletes bounded, also with hashed keys and for u14. (c)
+  `KeyAccessPath.clear()` nulls only what was used since the last clear (a
+  high-water mark), or the touch does not record its path; no change of
+  the stream, small, and likely much of u14's slowdown of puts (not
+  tried).
 
 
 Log
@@ -178,4 +197,9 @@ by investigator g30 (clone `clone-g30` on main's a2fa9df, and a worktree
 of `release-2026.3`). The Java workload reproduces the C library's run on
 main and on 2026.3 alike: not a regression. Cause found (parts 1 and 2
 above) from reclaim's table and statistics; no fix made. A known issue in
-`releases/next.md`.
+`releases/next.md` (ef46ffb).
+
+2026-11-09. Part 3 (the key access path that every transaction clears)
+from u14's put cost (coord-1109: is u14 the same?): stack samples of
+`PutCost.java` changed to a long put phase, and the array's length in the
+FIFO. Investigation ended; the item stays for Frans's decision.
