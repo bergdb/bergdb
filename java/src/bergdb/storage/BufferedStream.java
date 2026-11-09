@@ -598,7 +598,10 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     /**
      * This method may return before the data has been written to the underlying
      * stream. If that is the case, the AppendListener will not be notified of
-     * until after this method returns.
+     * until after this method returns. An append that waits for room in the buffer throws
+     * an IOException when stop(), close() or a failed flush comes during its wait, as an
+     * append after them does (bergdb 020-23, V2-2); what it had put in the buffer before the
+     * wait stays there.
      */
     public void append(byte[] source, int sourceOffset, int length) throws IOException {
         boolean interrupted = false;
@@ -618,13 +621,6 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                 while (length > 0) {
                     int available = availableBufferSize();
                     if (available < length && available < tenPercentOfBufferCapacity) {
-                        // The thread that makes room has stopped: after stop() or a failed flush
-                        // (2026-10-24, bergdb 005-35). The writer waited here for ever, with the
-                        // database's write lock, so a failing disk hung the database.
-                        if (stop) {
-                            throw new IOException("The stream has stopped while an append waited "
-                                    + "for room in its buffer.", failure);
-                        }
                         if (waitStart == 0) {
                             waitStart = System.nanoTime();
                         }
@@ -635,6 +631,25 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                             // an IOException, which failed the storage, and so the database: the
                             // wait comes after the transaction's go point.
                             interrupted = true;
+                        }
+                        // The thread that makes room has stopped: after stop() or a failed flush
+                        // (2026-10-24, bergdb 005-35). The writer waited here for ever, with the
+                        // database's write lock, so a failing disk hung the database.
+                        // After the wait, and for close() too, as an append after them throws
+                        // (2026-11-09, bergdb 020-23, V2-2): close(), stop() and a failed flush
+                        // each set 'exception'. Checked before the wait, for a stop only, it
+                        // missed a stop that came while the thread made room, and every close():
+                        // the append went on, and could return normally with bytes that close()
+                        // never wrote, as close() had found the buffer empty, or leave close()
+                        // waiting a whole wait time for bytes that did not wake the thread.
+                        // Outside AppendOnlyStream's CONCURRENCY rule 2: Db closes the storage
+                        // after its last append; only a failure closes it beside an append
+                        // (StorageManager.handleStreamException, from a read), and then the
+                        // storage and the database have failed.
+                        if (this.exception != null) {
+                            throw new IOException("The stream has stopped, or begun to close, "
+                                    + "while an append waited for room in its buffer.",
+                                    failure != null ? failure : exception);
                         }
                     } else {
                         int len = length <= available ? length : available;
@@ -948,6 +963,85 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             Assert.assertEquals(612, m.getLength());
         } finally {
             release.countDown();
+            if (closer != null) {
+                closer.join();
+            }
+            b.close();
+        }
+    }
+
+    /**
+     * bergdb 020-23, V2-2: an append that waits for room in the buffer when close() begins
+     * throws, as an append after close() does, and adds nothing; close() writes what was
+     * buffered before it began, without waiting for the timer. The append went on after its
+     * wait: it could return normally with bytes that close() never wrote, as close() had
+     * found the buffer empty, or leave close() waiting a whole wait time (a quarter of the
+     * buffer time; 15 s here) for bytes that did not wake the thread. Outside
+     * AppendOnlyStream's CONCURRENCY rule 2, which Db keeps: it closes the storage after
+     * the last append.
+     */
+    @Nano
+    public static void testAppendWaitingForRoomWhenCloseBeginsThrows() throws Exception {
+        final HeldStream m = new HeldStream();
+        m.hold = new java.util.concurrent.CountDownLatch(1);
+        final BufferedStream b = new BufferedStream(m, 1000, 60000);
+        b.append(new byte[950], 0, 950);
+        b.flushSoon(950);
+        b.start();
+        Thread writer = null;
+        Thread closer = null;
+        try {
+            Assert.assertTrue("first flush did not start",
+                    m.held.await(2, java.util.concurrent.TimeUnit.SECONDS));
+            final Throwable[] appendFailure = new Throwable[1];
+            writer = new Thread(() -> {
+                try {
+                    b.append(new byte[200], 0, 200);   // 50 bytes of room: it waits for room
+                } catch (Throwable e) {
+                    appendFailure[0] = e;
+                }
+            });
+            writer.start();
+            long deadline = System.nanoTime() + 2000000000L;
+            while (writer.getState() != Thread.State.WAITING) {
+                Assert.assertTrue("the writer did not wait for room", System.nanoTime() < deadline);
+                Thread.sleep(1);
+            }
+            final IOException[] closeFailure = new IOException[1];
+            closer = new Thread(() -> {
+                try {
+                    b.close();
+                } catch (IOException e) {
+                    closeFailure[0] = e;
+                }
+            });
+            closer.start();
+            deadline = System.nanoTime() + 2000000000L;
+            while (true) {          // close() has begun, and waits for the held flush
+                synchronized (b) {
+                    if (b.flushAndClose) {
+                        break;
+                    }
+                }
+                Assert.assertTrue("close() did not start", System.nanoTime() < deadline);
+                Thread.sleep(1);
+            }
+            long t0 = System.nanoTime();
+            m.hold.countDown();
+            writer.join(10000);
+            closer.join(10000);
+            long ms = (System.nanoTime() - t0) / 1000000;
+            Assert.assertTrue("the append returned normally after close() began: "
+                    + appendFailure[0], appendFailure[0] instanceof IOException);
+            Assert.assertFalse("close() waits after " + ms + " ms", closer.isAlive());
+            Assert.assertTrue("close() took " + ms + " ms, the timer's wait", ms < 5000);
+            Assert.assertTrue("close() threw " + closeFailure[0], closeFailure[0] == null);
+            Assert.assertEquals("the bytes appended before close()", 950, m.getLength());
+        } finally {
+            m.hold.countDown();
+            if (writer != null) {
+                writer.join();
+            }
             if (closer != null) {
                 closer.join();
             }
