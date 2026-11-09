@@ -30,6 +30,8 @@ On the branch `020-29-index-proof`, in `lean/` (the library `BergDB`, beside
   BuildEnds (section 7).
 * `lean/BergDB/Index/Release.lean`. The lock is released, under weak
   fairness of its holders (section 7.3).
+* `lean/BergDB/Index/Finite.lean`. With finitely many definition changes,
+  weak fairness is enough (section 7.4).
 * `lean/BergDB/Index/Orphans.lean`. NoOrphans (section 7.2).
 * `lean/BergDB/Index/Starve.lean`. A run in which weak fairness is not
   enough (section 7.4).
@@ -317,6 +319,7 @@ and the axioms, from a file outside the library with
     #print axioms BergDB.Index.no_orphans
     #print axioms BergDB.Index.lock_released
     #print axioms BergDB.Index.build_ends_wf
+    #print axioms BergDB.Index.build_ends_finite
 
 (`BergDB`, the library's root, imports every file). Each prints
 `[propext, Classical.choice, Quot.sound]`, or a part of it (`example_run2`:
@@ -330,11 +333,11 @@ target.
 
 ## 7. Liveness
 
-Liveness.lean, Orphans.lean, Release.lean and Starve.lean: 020-26's
-CleanupEnds, NoOrphans and BuildEnds (its section 3), whose arguments are its
-section 4, points 9 and 8, each under the fairness it needs, stated as
-hypotheses of its theorem; and a run in which weak fairness, which 020-26's
-runs assume, does not give BuildEnds.
+Liveness.lean, Orphans.lean, Release.lean, Finite.lean and Starve.lean:
+020-26's CleanupEnds, NoOrphans and BuildEnds (its section 3), whose
+arguments are its section 4, points 9 and 8, each under the fairness it
+needs, stated as hypotheses of its theorem; and a run in which weak
+fairness, which 020-26's runs assume, does not give BuildEnds.
 
 
 ### 7.1. Runs and fairness
@@ -493,14 +496,19 @@ the lock is free, and never does. Weak fairness alone does not give
 BuildEnds with several names; by `build_ends`, the run is not strongly fair
 for A's build, as the theorem also states.
 
-The starving takes definition changes without end. With finitely many from
-some time on, and finitely many crashes and retries, weak fairness of every
-build would do, by an argument not written in Lean (section 8): the lock's
-other holders are then finitely many builds, each with finitely many locked
-steps up to its E, so the lock is free from some time on but in the build's
-own locked phase. One name, as in 020-26's runs, is such a case: while its
-definition builds, no creation of the name can begin (`aCreate` needs no
-live definition), and a deletion ends the build.
+The starving takes definition changes without end. With finitely many,
+weak fairness is enough (Finite.lean, `build_ends_finite`): in a run with
+finitely many crashes, definition changes and retries, weak fairness of the
+definition changes' maps and of every build, and finitely many keys,
+writers and builds, a build that runs ends. From some time on no definition
+change holds the lock, and each build takes it finitely often: each of its
+locked phases ends with a commit that moves it on, up to its E (`phi`,
+`phi_step`, `build_lock_finite`); so from some time on no one takes the
+lock, `lock_released` frees it once more, and it stays free, which makes
+the build's steps possible at every time. One name, as in 020-26's runs, is
+such a case for the build of a live definition: while it builds, no
+creation of the name can begin (`aCreate` needs no live definition), and a
+deletion ends the build.
 
 
 ### 7.5. The Java code and the lock
@@ -537,10 +545,12 @@ What the code would need, one of:
   (`java/stress/performance.sh`, writers on many threads while an index
   builds).
 * **A bound on the definition changes while a build waits**: the starving
-  run takes them without end (section 7.4). For example, a definition change
-  of another name that finds a build waiting for the lock waits until the
-  build has had it. Or no change of the code, and a sentence in the Javadoc:
-  index creations and deletions in a loop can delay another index's build.
+  run takes them without end, and with finitely many weak fairness is
+  enough (section 7.4, `build_ends_finite`). For example, a definition
+  change of another name that finds a build waiting for the lock waits until
+  the build has had it. Or no change of the code, and a sentence in the
+  Javadoc: index creations and deletions in a loop can delay another
+  index's build.
 * A bound on retries does not do it. The code bounds the refused tries
   before the locked phase (`LOCKED_AFTER`), and `locked_phase` bounds those
   in it: that bounds the refusals, not the waits for the lock. A bound on the
@@ -582,16 +592,18 @@ transactions), with no `sorry` and Lean's standard axioms only:
   weak fairness of its holders;
 * that weak fairness, 020-26's, does not give BuildEnds with several names:
   a build needs strong fairness of the manager's lock (section 7.4), which
-  Java's `synchronized` does not promise (section 7.5).
+  Java's `synchronized` does not promise (section 7.5); and that it does
+  when the definition changes are finitely many (`build_ends_finite`).
 
-4,690 lines of Lean (Index/: Model 531, Inv 434, Steps 1,359, Theorems 162,
-Locked 159, Liveness 957, Orphans 194, Release 381, Example 117, Starve 386;
-the root 10).
+5,018 lines of Lean (Index/: Model 531, Inv 434, Steps 1,359, Theorems 162,
+Locked 159, Liveness 957, Orphans 194, Release 381, Finite 327, Example 117,
+Starve 386; the root 11).
 
 **Not proved**:
 
-* **Weak fairness with finitely many definition changes** (section 7.4): an
-  argument in words. It would make section 7.5's second way exact.
+* **Finitely many builds** in `build_ends_finite` is a hypothesis: true of
+  every run from a database's first start (each step makes one build at
+  most), but its invariant is not written.
 * **What 020-26 left out and this model too**: writes through the Core
   (020-22: undefined), key replace (020-10, section 5.3).
 * **The Java code**: the theorems are about the model; the model follows
@@ -607,12 +619,11 @@ the root 10).
 
 **How to continue**: for Frans, the choice of section 7.5 (a fair lock, a
 bound on definition changes while a build waits, or a sentence in the
-Javadoc), with the measurement it needs. In Lean: BuildEnds under weak
-fairness when the definition changes are finitely many (each other build
-then takes the lock finitely often: its locked steps commit and move it on
-up to its E), with `build_step`, `descent` and `lock_released`'s cases. A
-merge of the branch into main, if Frans wants the proof kept with the code:
-it adds a library and changes no file of SIS.
+Javadoc), with the measurement it needs. A merge of the branch into main,
+if Frans wants the proof kept with the code: it adds a library and changes
+no file of SIS. In Lean, if wanted: the invariant that a reachable system
+has finitely many builds, writes through the Core when 020-22 defines them,
+key replace.
 
 Log
 ===
@@ -654,7 +665,9 @@ Log
 * 19:38, `e8659ff`: this readme: section 7, the State; lean/README.md.
 * 19:41, `c5e3fa3`: Orphans.lean, `no_orphans`.
 * 19:48, `13561de`: Release.lean, `lock_released` and `build_ends_wf`.
-* 19:55: this readme, for both.
+* 19:50, `9f90c6b`: this readme, for both.
+* 19:57, `a98e2bc`: Finite.lean, `build_ends_finite`.
+* 20:00: this readme, for it.
 
 Each step: `lake build BergDB` clean, no `sorry`, the standard axioms only.
 Nothing in 2026.4. For the coordinator: a line for this subitem in 020's

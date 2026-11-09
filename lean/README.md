@@ -128,9 +128,11 @@ build ends, its definition active or deleted (`build_ends`, strong fairness
 of the build's thread, the manager's lock free again and again, finitely
 many crashes and retries); the lock is free again and again under weak
 fairness of its holders (`lock_released`, `build_ends_wf`,
-BergDB/Index/Release.lean); and a run in which weak fairness does not give
-BuildEnds, with two names (`weak_fairness_not_enough`,
-BergDB/Index/Starve.lean).
+BergDB/Index/Release.lean); a run in which weak fairness does not give
+BuildEnds, with two names and definition changes without end
+(`weak_fairness_not_enough`, BergDB/Index/Starve.lean), and with finitely
+many definition changes it does (`build_ends_finite`,
+BergDB/Index/Finite.lean).
 
 
 Build and run
@@ -224,7 +226,8 @@ Check/R4.lean) are checked the same way:
     #print axioms SIS.TopBridge.r4Fast_sound
 
 The user indexes' theorems (BergDB/Index/Theorems.lean, Liveness.lean,
-Orphans.lean, Release.lean and Starve.lean, 020-29) the same way, each printing
+Orphans.lean, Release.lean, Finite.lean and Starve.lean, 020-29) the same
+way, each printing
 `[propext, Classical.choice, Quot.sound]`:
 
     import BergDB
@@ -242,6 +245,7 @@ Orphans.lean, Release.lean and Starve.lean, 020-29) the same way, each printing
     #print axioms BergDB.Index.no_orphans
     #print axioms BergDB.Index.lock_released
     #print axioms BergDB.Index.build_ends_wf
+    #print axioms BergDB.Index.build_ends_finite
 
 
 What to read
