@@ -231,6 +231,50 @@ public class PubTesterJavadocRest {
     }
 
 
+    /**
+     * RwEnvironment: put(), delete() and exists() refuse a null or invalid key, put() a
+     * null value and an object at a key with a suffix other than ".obj" ("Bad key"), and
+     * setOutput() a null or empty name and a null value, each with IllegalArgumentException,
+     * which ends the action: rw() throws it, nothing is written, and the database goes on.
+     */
+    @Nano
+    public static void testRwEnvironmentRefusals() {
+        try (Database db = Factory.database().memory().start()) {
+            final Connection c = db.connection();
+            final Object account = new PubTesterJavadoc.Account("A", 1);
+            final String[] cases = {"put null key", "put bad key", "put null value",
+                    "put object at .txt", "delete null key", "delete bad key",
+                    "exists null key", "exists bad key", "setOutput null name",
+                    "setOutput empty name", "setOutput null value"};
+            for (final String what : cases) {
+                IllegalArgumentException e = assertThrows(what,
+                        IllegalArgumentException.class, () -> c.rw(env -> {
+                            env.put("/written.txt", "x");
+                            switch (what) {
+                            case "put null key": env.put(null, "v"); break;
+                            case "put bad key": env.put("a.txt", "v"); break;
+                            case "put null value": env.put("/a.txt", null); break;
+                            case "put object at .txt": env.put("/a.txt", account); break;
+                            case "delete null key": env.delete(null); break;
+                            case "delete bad key": env.delete("/a/"); break;
+                            case "exists null key": env.exists(null); break;
+                            case "exists bad key": env.exists("//a"); break;
+                            case "setOutput null name": env.setOutput(null, "v"); break;
+                            case "setOutput empty name": env.setOutput("", "v"); break;
+                            default: env.setOutput("x", null); break;
+                            }
+                        }));
+                if (what.equals("put object at .txt")) {
+                    Assert.assertTrue(e.getMessage(), e.getMessage().startsWith("Bad key"));
+                }
+                Assert.assertFalse(what, c.exists("/written.txt"));
+            }
+            c.put("/written.txt", "y");
+            Assert.assertEquals("y", c.get("/written.txt", String.class));
+        }
+    }
+
+
     // ======== Clock, TestClock ========
 
     /**
