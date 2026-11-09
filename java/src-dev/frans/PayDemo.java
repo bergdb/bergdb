@@ -105,10 +105,18 @@ public class PayDemo {
             random = new Random();
         }
         
+        /** A payment of 1 to 100 from one account to another. */
         Payment createPayment() {
             Payment p = new Payment();
             p.from = random.nextInt((int) n);
-            p.to = random.nextInt((int) n);
+            
+            // Another account: with to == from, the second put of go()'s rw would
+            // win and create the amount.
+            do {
+                p.to = random.nextInt((int) n);
+            } while (p.to == p.from);
+            
+            p.amount = 1 + random.nextInt(100);
             p.message = "invoice:2304870";
             return p;
         }

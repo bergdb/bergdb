@@ -21,7 +21,8 @@
 #     10,000 accounts, frans.WebsiteCode, and bergdb.demo's Demo (put, get, delete,
 #     get) and GetStarted1 to 5. A demo fails when it exits with an error, prints an
 #     exception, is not done in 60 s, or lacks the line that shows its work, such as
-#     iter's count of the accounts that create made.
+#     iter's count of the accounts that create made and the sum of their balances,
+#     1 each from create and unchanged by pay's payments.
 # Logs go to build/before-commit/. Exits with status 1 unless deps.py and
 # doubles.py pass, both tests print SUCCESS and the demos DEMOS OK. Set JAVA_HOME
 # or PATH for the JDK; the build needs javac too; deps.py and doubles.py need
@@ -90,11 +91,11 @@ demos() {
     PAY="-Dpay.accounts=10000 -Dpay.count=2000 -Dpay.dir=pay"
     demo "PayDemo create" 'Total time: .*' $PAY frans.PayDemo create &&
     demo "PayDemo pay" 'Payments: 2000, .*' $PAY frans.PayDemo pay &&
-    demo "PayDemo iter" 'Iterate\. sum: [0-9]+, count: 10000\. .*' $PAY frans.PayDemo iter &&
+    demo "PayDemo iter" 'Iterate\. sum: 10000, count: 10000\. .*' $PAY frans.PayDemo iter &&
     demo "PayDemo access" 'Retrieved 2000 accounts, .*' $PAY frans.PayDemo access &&
     demo WebsiteCode 'v1 = v1' frans.WebsiteCode &&
     demo "Demo put" '' bergdb.demo.Demo put &&
-    demo "Demo get" 'value' bergdb.demo.Demo get &&
+    demo "Demo get" 'Hello world!' bergdb.demo.Demo get &&
     demo "Demo delete" '' bergdb.demo.Demo delete &&
     demo "Demo get after delete" 'null' bergdb.demo.Demo get &&
     demo GetStarted1 'Adam' bergdb.demo.GetStarted1 &&

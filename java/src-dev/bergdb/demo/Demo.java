@@ -1,40 +1,40 @@
 package bergdb.demo;
 
+// A complete program to put/get/delete a string at the key "/a.txt".
+
 import bergdb.pub.Connection;
 import bergdb.pub.Database;
 import bergdb.pub.Factory;
 
-// Example code:
-// A complete program to put/get/delete a string under the name (key) "/a".
 class Demo {
     private static void put() {
-        Connection c = createDatabase();
-        c.put("/a", "value");
-        c.sync();
+        try (Database database = Factory.database().create("db-demo").start()) {
+            Connection c = database.connection();
+            c.put("/a.txt", "Hello world!");
+            c.sync();
+        }
     }
-    
+
     private static void get() {
-        Connection c = createDatabase();
-        System.out.println(c.get("/a", String.class));
+        try (Database database = Factory.database().open("db-demo").start()) {
+            System.out.println(database.connection().get("/a.txt", String.class));
+        }
     }
 
     private static void delete() {
-        Connection c = createDatabase();
-        c.delete("/a");
-        c.sync();        
+        try (Database database = Factory.database().open("db-demo").start()) {
+            Connection c = database.connection();
+            c.delete("/a.txt");
+            c.sync();
+        }
     }
-    
-    private static Connection createDatabase() {
-        Database database = Factory.database().create("db-demo").start();
-        return database.connection();
-    }
-    
+
     public static void main(String[] args) {
         if (args.length == 0) {
             System.out.println("Use one of: put, get, delete.");
             return;
         }
-        
+
         if (args[0].equals("put")) {
             put();
         } else if (args[0].equals("get")) {
@@ -49,6 +49,11 @@ class Demo {
 
 /*
 
-Example is used in overview-pub.html. Included in Javadoc for Pub API.
+The example of overview-pub.html, the Pub API's Javadoc overview ("A first
+program"): the same code and output, with this package line added, as the
+overview's Demo.java is in the default package, run as
+"java -cp bergdb.jar Demo.java put". before-commit.sh runs this one as
+bergdb.demo.Demo with put, get, delete and get, and checks its output. Keep
+the two the same.
 
 */
