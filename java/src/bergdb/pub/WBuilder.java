@@ -52,6 +52,10 @@ public interface WBuilder {
      * Executes the puts and deletes as one transaction, and returns it when it has
      * committed.
      * 
+     * @throws bergdb.pub.util.DbException
+     *             If the transaction is refused, nothing of it written, and the database
+     *             goes on, as for Connection.put(): it is too large, about 1.88 GB in the
+     *             stream, or the database is stopping or stopped.
      * @throws bergdb.pub.util.DbFailedException
      *             If the database has failed, in this transaction or before: it then
      *             refuses every transaction and read until it is restarted. See

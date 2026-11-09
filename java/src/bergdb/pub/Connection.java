@@ -257,8 +257,10 @@ public interface Connection extends ReadInterface {
      *            throws IllegalArgumentException, as for WBuilder.put() (the package's
      *            {@linkplain bergdb.pub##objects Objects}).
      * @throws DbException
-     *             If the transaction could not be processed because the
-     *             database is faulty.
+     *             If the transaction is refused, nothing of it written, and the database
+     *             goes on (DbException): it is too large, its values and keys taking more
+     *             than 7/8 of 2^31 - 9 bytes, about 1.88 GB, in the stream (bergdb 005-17);
+     *             or the database is stopping or stopped (IllegalDbStateException).
      * @throws DbFailedException
      *             If the database has failed, in this transaction or before: it then
      *             refuses every transaction and read until it is restarted. See
@@ -283,8 +285,7 @@ public interface Connection extends ReadInterface {
      * @param key
      *             The key of the key-value entry. Must begin with "/".
      * @throws DbException
-     *             If the transaction could not be processed because the
-     *             database is faulty.
+     *             If the transaction is refused, as for put().
      * @throws DbFailedException
      *             If the database has failed, in this transaction or before: it then
      *             refuses every transaction and read until it is restarted. See
@@ -311,6 +312,11 @@ public interface Connection extends ReadInterface {
      * since the conflict history covers only the last 96,000 to 128,000 written keys and
      * every attempt is then refused (bergdb 015-88).</p>
      * 
+     * @throws DbException
+     *             If the transaction is refused, as for put(); or if the thread is
+     *             interrupted while the transaction waits to run again after a conflict:
+     *             it is not run, and the thread's interrupt flag is set (Database,
+     *             "Interrupts").
      * @throws DbFailedException
      *             If the database has failed, in this transaction or before: it then
      *             refuses every transaction and read until it is restarted. See
