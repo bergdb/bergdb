@@ -1,6 +1,7 @@
 package bergdb.dag;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -532,7 +533,21 @@ public class GetMany {
     }
     
     /**
-     * Stops when the key is no longer has a given prefix.
+     * True if 'key' starts with 'prefix': a strict prefix (Keys.isPrefix) or the key itself
+     * (bergdb 021-18). A key has one segment array (Keys.toSegments), so equal keys have
+     * equal arrays.
+     */
+    static boolean hasPrefix(long[] prefix, long[] key) {
+        return Keys.isPrefix(prefix, key) || Arrays.equals(prefix, key);
+    }
+    
+    /**
+     * Adds the KVs whose keys start with a given prefix, the prefix's own key included, and
+     * stops at the first KV whose key does not, which may be the scan's first. So a forward
+     * scan from the prefix, inclusive (startKey the prefix, inclusive's default), gives every
+     * key that starts with the prefix; exclusive, every one but the prefix's own. Until bergdb
+     * 021-18 it stopped at the prefix's own key, as Keys.isPrefix() is a strict prefix, and
+     * such a scan gave no KV when the prefix was a key.
      */
     public static class Prefix implements StopCondition {
         private long[] prefix;
@@ -544,7 +559,7 @@ public class GetMany {
         }
         
         public int handleKvt(Kvt kvt) {
-            return Keys.isPrefix(prefix, kvt.key) ? ADD : STOP;
+            return hasPrefix(prefix, kvt.key) ? ADD : STOP;
         }
 
         public void eod() {
@@ -553,7 +568,9 @@ public class GetMany {
     }
     
     /**
-     * Stops at maxCount keys or when key no longer has a given prefix.
+     * As Prefix, and at most maxCount KVs, none for 0: stops after maxCount KVs or at the
+     * first key that does not start with the prefix (the prefix's own key does; bergdb
+     * 021-18).
      */
     public static class PrefixN implements StopCondition {
         private long[] prefix;
@@ -573,7 +590,7 @@ public class GetMany {
                 return STOP;        // At most maxCount, none for 0, as GetN (bergdb 020-27).
             }
             count++;
-            return Keys.isPrefix(prefix, kvt.key) ? (count == maxCount ? ADD_AND_STOP : ADD) : STOP;
+            return hasPrefix(prefix, kvt.key) ? (count == maxCount ? ADD_AND_STOP : ADD) : STOP;
         }
 
         public void eod() {

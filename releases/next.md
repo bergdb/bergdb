@@ -657,6 +657,16 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   database with a key of 100,000 bytes and then one of 1,000,000 with the
   same start took 4.9 to 5.9 s to start, now 0.5 to 0.6 s. Now a map from
   id to node; the nodes found are the same. In 2026.1 to 2026.3.
+* **`GetMany.Prefix` and `GetMany.PrefixN` give the prefix's own key**
+  (bergdb 021-18; 2026-11-09). They stopped at a key equal to the prefix,
+  as `Keys.isPrefix` is a strict prefix, so that the usual prefix scan,
+  `startKey` the prefix and `inclusive` true (its default), gave no KV at
+  all whenever the prefix was itself a key, and a backward scan left that
+  key out. Now they add it, as a key that starts with the prefix, and stop
+  at the first key that does not. No reader of BergDB's own uses them: the
+  Pub API's listings, index builds and index scans have bounds of their
+  own, and a directory's prefix is no key of the Pub API. In 2026.1 to
+  2026.3; found by a new-user application (020-24-09, U9-1).
 
 
 ### Format

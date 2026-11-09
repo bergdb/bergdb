@@ -1,5 +1,6 @@
 package bergdb.core;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -1087,6 +1088,78 @@ public class DbTesterGetMany {
         
         Assert.assertEquals(4, g.getOpCount);
         db.close();
+    }
+    
+    /**
+     * GetMany.Prefix and PrefixN add the prefix's own key, as it starts with the prefix
+     * (bergdb 021-18): they stopped at it, as Keys.isPrefix() is a strict prefix, so that a
+     * scan from the prefix, inclusive, gave no KV at all when the prefix was a key, and a
+     * backward scan left it out. Keys around a segment of 7 bytes, and the empty key.
+     */
+    @Nano
+    public static void testPrefixHasThePrefixKey() {
+        String[] keys = {"", "a", "ab", "abc", "abcdefg", "abcdefgh", "abcdefghi", "abd", "b"};
+        String[] prefixes = {"", "a", "ab", "abc", "abcdefg", "abcdefgh", "abcdefghi", "abd",
+                "b", "abcd", "abcdefgx", "c"};
+        Db db = Db.builder().testSetup().start();
+        try {
+            Trans.Builder b = db.trans();
+            for (String key : keys) {
+                b.put(key.getBytes(StandardCharsets.US_ASCII), new byte[] {1});
+            }
+            db.execute(b.build());
+            
+            for (String prefix : prefixes) {
+                List<String> expected = new ArrayList<String>();
+                for (String key : keys) {
+                    if (key.startsWith(prefix)) {
+                        expected.add(key);
+                    }
+                }
+                List<String> reversed = new ArrayList<String>(expected);
+                Collections.reverse(reversed);
+                List<String> afterPrefix = expected.isEmpty() || !expected.get(0).equals(prefix)
+                        ? expected : expected.subList(1, expected.size());
+                long[] p = Keys.toSegments(prefix.getBytes(StandardCharsets.US_ASCII));
+                String about = "prefix \"" + prefix + "\"";
+                
+                Assert.assertEquals(about + ", Prefix", expected,
+                        prefixScan(db, p, true, true, new GetMany.Prefix(p)));
+                Assert.assertEquals(about + ", PrefixN", expected,
+                        prefixScan(db, p, true, true, new GetMany.PrefixN(p, 100)));
+                Assert.assertEquals(about + ", PrefixN 1", expected.subList(0,
+                        Math.min(1, expected.size())),
+                        prefixScan(db, p, true, true, new GetMany.PrefixN(p, 1)));
+                Assert.assertEquals(about + ", exclusive", afterPrefix,
+                        prefixScan(db, p, false, true, new GetMany.Prefix(p)));
+                if (!expected.isEmpty()) {
+                    long[] last = Keys.toSegments(expected.get(expected.size() - 1)
+                            .getBytes(StandardCharsets.US_ASCII));
+                    Assert.assertEquals(about + ", backward", reversed,
+                            prefixScan(db, last, true, false, new GetMany.Prefix(p)));
+                    Assert.assertEquals(about + ", backward PrefixN", reversed,
+                            prefixScan(db, last, true, false, new GetMany.PrefixN(p, 100)));
+                }
+            }
+        } finally {
+            db.close();
+        }
+    }
+    
+    /** The keys, as ASCII strings, of a scan from 'start' with the stop condition. */
+    private static List<String> prefixScan(Db db, long[] start, boolean inclusive,
+            boolean forward, GetMany.StopCondition stop) {
+        GetMany g = db.newGetMany();
+        g.startKey = start;
+        g.inclusive = inclusive;
+        g.forward = forward;
+        g.stopCondition = stop;
+        db.getMany(g);
+        List<String> keys = new ArrayList<String>();
+        for (Kvt kvt : g.result) {
+            keys.add(new String(Keys.toBytes(kvt.key), StandardCharsets.US_ASCII));
+        }
+        return keys;
     }
     
     // ======== Helpers ========
