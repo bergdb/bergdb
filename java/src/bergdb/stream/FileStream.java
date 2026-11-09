@@ -96,7 +96,8 @@ import bergdb.pub.util.BadFormatException;
  * Within the JVM, so is one at the path while a stream that opened the directory at that
  * path is open, also when the directory was deleted, moved or replaced since; and such a
  * stream fails before it makes, deletes or opens again a file by its name there
- * (checkDirectory(), 2026-11-09, bergdb 021-20).
+ * (checkDirectory(), 2026-11-09, bergdb 021-20), but for a replacement in the microseconds
+ * right before such a step (bergdb 021-24).
  * The operating system holds the lock and drops it when the process ends, also at a crash,
  * so a lock is never stale; the file is never deleted, and its text is for people. The lock
  * is on one byte far beyond the end of the file: on Windows a lock is mandatory, and the text
@@ -899,9 +900,31 @@ public class FileStream implements AppendOnlyStream {
      * was deleted, moved or replaced while the stream had it. A stream file is made, deleted
      * and opened again by its name in the directory's path; so a stream whose directory was
      * deleted made its next files in a new database's directory at the path, and broke it,
-     * or deleted that database's files at a cut. Called before each of these. A replacement
-     * between this check and the step is not caught. Where the key is the path (Windows), a
+     * or deleted that database's files at a cut. Where the key is the path (Windows), a
      * replacement is not seen, but there a directory with open files cannot be deleted.
+     * 
+     * Called right before each of these steps, with nothing that waits in between, and again
+     * after it (2026-11-09, bergdb 021-24). newFile() checked before its force of the last
+     * file (Force.SWITCH, with per-append forcing off), which can take seconds, so a
+     * directory replaced during that force got the new file, and the stream went on without
+     * an error; a cut's delete checked before closing the file, which waits for the reads in
+     * progress. Left: a replacement in the microseconds between the check and the step, as
+     * the step opens or deletes the file by its path. The check after the step then fails
+     * the stream before it writes a byte there, but the step is done: a new, empty stream
+     * file in the replacement, which a stream there refuses (BadDirStateException) until the
+     * file is removed, or, at a cut, the replacement's file of that name deleted. A directory
+     * replaced and put back between the two checks is not seen. SecureDirectoryStream (macOS
+     * and Linux), which opens and deletes relative to an open directory, could close the
+     * window; not used here.
+     * 
+     * The invariant that the check relies on (bergdb 020-23, section 5, V5-1): while the
+     * stream holds bergdb.lock open, from lockDir() until unlockDir(), which close() calls
+     * after its last file step, the old directory's inode cannot be reused, so a new
+     * directory at the path has another file key. Without an open file in it, a deleted
+     * directory's inode number is reused at once on Linux ext4: on s1, rm -rf and then mkdir
+     * gave the same inode 50 of 50 times, and 0 of 30 with a file of it open. So the lock
+     * file must stay open until the stream has made, deleted and opened its last file; do
+     * not close it earlier.
      */
     private void checkDirectory() throws IOException {
         Object now;
@@ -1194,13 +1217,15 @@ public class FileStream implements AppendOnlyStream {
      * With per-append forcing off, it forces the old last file first (2026-11-04, bergdb
      * 005-47): a power loss must not leave a short file before a newer one, which the
      * constructor refuses (BadDirStateException). With forcing on, it is forced already.
+     * 
+     * openForRw() checks the directory (checkDirectory()), after that force (2026-11-09,
+     * bergdb 021-24): the check came first, and a directory replaced while the force waited
+     * got the new file.
      */
     private void newFile() throws IOException {
         if (this.length % BYTES_PER_INDEX_UNIT != 0) {
             throw new Bug("Illegal state, length = " + length);
         }
-        
-        checkDirectory();       // Bergdb 021-20.
         
         DbFile[] files = dbFiles;
         if (files.length > 0) {
@@ -1323,8 +1348,15 @@ public class FileStream implements AppendOnlyStream {
         return k;
     }
     
+    /**
+     * Opens a file for appends, and makes it if it is not there: the last file at a start,
+     * and newFile()'s. The directory is checked right before the open, with nothing that
+     * waits in between, and again after the steps by name (2026-11-09, bergdb 021-24; see
+     * checkDirectory()).
+     */
     private DbFile openForRw(long spos, File file, long maxSize) throws IOException {
         DbFile k = new DbFile(spos, file, maxSize);
+        checkDirectory();
         k.rfile = io.open(file);
         try {
             // Persist both the file and its directory entry before it can
@@ -1334,6 +1366,7 @@ public class FileStream implements AppendOnlyStream {
             k.fileLength = k.rfile.length();
             k.forcedLength = k.fileLength;
             k.channel = io.openRead(file);
+            checkDirectory();
         } catch (IOException | RuntimeException | Error e) {
             // The file is closed whatever is thrown (2026-11-05, bergdb 015-32): it stayed open
             // after an unchecked exception or an Error, as 'k' is in no list that a close or
@@ -1342,6 +1375,13 @@ public class FileStream implements AppendOnlyStream {
                 k.rfile.close();
             } catch (IOException closeFailure) {
                 e.addSuppressed(closeFailure);
+            }
+            if (k.channel != null) {
+                try {
+                    k.channel.close();
+                } catch (IOException closeFailure) {
+                    e.addSuppressed(closeFailure);
+                }
             }
             if (e instanceof IOException) {
                 ioException = (IOException) e;
@@ -1469,10 +1509,12 @@ public class FileStream implements AppendOnlyStream {
          * @throws IOException
          */
         synchronized void delete() throws IOException {
-            checkDirectory();       // Bergdb 021-20.
             isDeleted = true;
             close();
             
+            // Right before the delete, after close(), which waits for the reads in progress
+            // (bergdb 021-20; 2026-11-09, bergdb 021-24: it came before close()).
+            checkDirectory();
             if (renameAsDelete) {
                 boolean ok = io.rename(file, new File(dir, file.getName() + ".deleted"));
                 if (!ok) {
@@ -1486,6 +1528,7 @@ public class FileStream implements AppendOnlyStream {
                     throw ioException;
                 }
             }
+            checkDirectory();       // A replacement since the check fails the stream.
         }
         
         /**
@@ -1578,8 +1621,21 @@ public class FileStream implements AppendOnlyStream {
                     throw closedException();
                 }
                 if (channel == closed) {
-                    checkDirectory();       // Bergdb 021-20.
-                    channel = io.openRead(file);
+                    // Before and after the open; no read gets the channel before the second
+                    // check (bergdb 021-20, 021-24).
+                    checkDirectory();
+                    FileChannel reopened = io.openRead(file);
+                    try {
+                        checkDirectory();
+                    } catch (IOException e) {
+                        try {
+                            reopened.close();
+                        } catch (IOException closeFailure) {
+                            e.addSuppressed(closeFailure);
+                        }
+                        throw e;
+                    }
+                    channel = reopened;
                 }
             }
         }
@@ -1616,8 +1672,9 @@ public class FileStream implements AppendOnlyStream {
                     } catch (ClosedByInterruptException e) {
                         Thread.interrupted();
                         interrupted = true;
-                        checkDirectory();       // Bergdb 021-20.
+                        checkDirectory();       // Bergdb 021-20, 021-24: before and after.
                         rfile = io.open(file);
+                        checkDirectory();       // close() closes the handle.
                     }
                 }
             } finally {
@@ -3207,6 +3264,149 @@ public class FileStream implements AppendOnlyStream {
                 throw new AssertionError("round " + round + ": " + failures, failures.get(0));
             }
             Assert.assertTrue("opened", opened.get() >= 1);
+        }
+    }
+    
+    /**
+     * bergdb 021-24 (a review of 021-20): the directory replaced by another stream's while
+     * newFile() forces the last file (Force.SWITCH, per-append forcing off). 021-20's check
+     * came before that force, so the stream made its next file in the replacement: its
+     * append and close() returned, and the replacement no longer opened (BadDirStateException).
+     * Now the check comes after the force, right before the file is made: the append fails,
+     * the stream with it, and the replacement opens with its own bytes.
+     */
+    @Nano
+    public static void testNoNewFileWhenReplacedDuringTheSwitch(TestEnvironment c)
+            throws Exception {
+        File root = c.createTempDir();
+        File dir = new File(root, "db");
+        File replacement = new File(root, "replacement");
+        final byte[] bytes = new byte[200 * 1000];
+        FileStream other = new FileStream(replacement);
+        other.append(bytes, 0, 1000);
+        other.close();
+        
+        final java.util.concurrent.CountDownLatch inSwitch = 
+                new java.util.concurrent.CountDownLatch(1);
+        final java.util.concurrent.CountDownLatch resume = 
+                new java.util.concurrent.CountDownLatch(1);
+        FileStreamIo io = new FileStreamIo() {
+            @Override
+            protected void forceFile(File file, RandomAccessFile handle, Force why)
+                    throws IOException {
+                if (why == Force.SWITCH) {
+                    inSwitch.countDown();
+                    try {
+                        if (!resume.await(10, java.util.concurrent.TimeUnit.SECONDS)) {
+                            throw new IOException("test: not resumed");
+                        }
+                    } catch (InterruptedException e) {
+                        throw new IOException(e);
+                    }
+                }
+                super.forceFile(file, handle, why);
+            }
+        };
+        final FileStream f = new FileStream(dir, io, false);
+        f.append(bytes, 0, bytes.length);       // The first file is full: 200,000 bytes.
+        final Throwable[] thrown = new Throwable[1];
+        Thread appender = new Thread(() -> {
+            try {
+                f.append(bytes, 0, 1);      // A new file, after the SWITCH force.
+            } catch (Throwable e) {
+                thrown[0] = e;
+            }
+        });
+        appender.start();
+        try {
+            Assert.assertTrue("in the switch", 
+                    inSwitch.await(10, java.util.concurrent.TimeUnit.SECONDS));
+            Files.move(dir.toPath(), new File(root, "moved").toPath());
+            Files.move(replacement.toPath(), dir.toPath());
+        } finally {
+            resume.countDown();
+            appender.join();
+        }
+        IOException closeFailure = null;
+        try {
+            f.close();
+        } catch (IOException e) {
+            closeFailure = e;
+        }
+        
+        Assert.assertFalse("a new file in the replacement", 
+                new File(dir, indexToString(2) + SUFFIX).exists());
+        Assert.assertTrue("the append threw: " + thrown[0], thrown[0] instanceof IOException
+                && thrown[0].getMessage().contains("no longer"));
+        Assert.assertTrue("close() threw the failure: " + closeFailure, closeFailure != null
+                && closeFailure.getMessage().contains("no longer"));
+        FileStream f2 = new FileStream(dir);    // The replacement, with its own bytes.
+        try {
+            Assert.assertEquals(1000L, f2.getLength());
+        } finally {
+            f2.close();
+        }
+    }
+    
+    /**
+     * bergdb 021-24: what is left, a replacement right before the new file is made, after
+     * the check (here inside FileStreamIo.open()). The check after the open fails the
+     * stream before it writes a byte: the append and close() throw. The new file, empty, is
+     * in the replacement, which a stream refuses until it is removed.
+     */
+    @Nano
+    public static void testReplacedRightBeforeTheOpen(TestEnvironment c) throws Exception {
+        final File root = c.createTempDir();
+        final File dir = new File(root, "db");
+        final File replacement = new File(root, "replacement");
+        final byte[] bytes = new byte[200 * 1000];
+        FileStream other = new FileStream(replacement);
+        other.append(bytes, 0, 1000);
+        other.close();
+        
+        FileStreamIo io = new FileStreamIo() {
+            boolean replaced = false;
+            
+            @Override
+            protected RandomAccessFile open(File file) throws IOException {
+                if (file.getName().equals(indexToString(2) + SUFFIX) && !replaced) {
+                    replaced = true;
+                    Files.move(dir.toPath(), new File(root, "moved").toPath());
+                    Files.move(replacement.toPath(), dir.toPath());
+                }
+                return super.open(file);
+            }
+        };
+        FileStream f = new FileStream(dir, io, false);
+        f.append(bytes, 0, bytes.length);
+        try {
+            f.append(bytes, 0, 1);
+            throw new AssertionError("the stream went on in the replacement");
+        } catch (IOException e) {
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("no longer"));
+        } finally {
+            try {
+                f.close();
+                throw new AssertionError("close() of the failed stream did not throw");
+            } catch (IOException e) {
+                Assert.assertTrue(e.getMessage(), e.getMessage().contains("no longer"));
+            }
+        }
+        
+        File made = new File(dir, indexToString(2) + SUFFIX);
+        Assert.assertEquals(0L, made.length());
+        try {
+            new FileStream(dir).close();
+            throw new AssertionError("opened with the empty file");
+        } catch (BadDirStateException e) {
+            // Expected.
+        }
+        Assert.assertTrue(made.delete());
+        FileStream f2 = new FileStream(dir);
+        try {
+            Assert.assertEquals(1000L, f2.getLength());
+        } finally {
+            f2.close();
         }
     }
     

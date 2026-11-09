@@ -637,6 +637,22 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `StreamIoException` of `close()`). `Database.stop()` says to delete a
   database's directory only after `close()` has returned. In 2026.1 to
   2026.3. Found by a new-user application.
+* **A database's directory replaced while the database moved to its next
+  stream file** (bergdb 021-24; 2026-11-09). The check of 021-20 came
+  before the database forced its last file, which with per-append forcing
+  off (a Core option; a database of the Pub API forces each append) can
+  take seconds: a directory replaced during that force got the next stream
+  file, the old database's `sync()` and `close()` returned, and the
+  database at the path no longer started. A cut's check came before the
+  close of the file, which waits for reads in progress. Now the database
+  checks its directory right before it makes, deletes or opens again a
+  stream file, with nothing that waits in between, and again after.
+  Still not prevented: a replacement in the microseconds between the
+  check and the step, which can leave an empty stream file in the new
+  directory (a start there is refused until it is removed) or, at a cut,
+  delete the new directory's file of the same name; the database then
+  fails. `Database.stop()` says so. Found by a Codex review (round 4) of
+  021-20.
 * **A closed database releases its write buffer** (bergdb 020-24-10,
   U10-3; 2026-11-09). A closed `Database` that the application still
   referenced held its write buffer, 10 MB, until the object was dropped:

@@ -164,10 +164,16 @@ public interface Database extends AutoCloseable {
      * 021-20, from 020-24-10, U10-1). In this process, a start at the directory's path is
      * refused until this database has closed, also when the directory was deleted and made
      * again since. A database whose directory is deleted, moved or replaced while it runs, or
-     * after stop() while it closes, writes nothing into the directory that is then at the
-     * path: it fails instead (DbFailedException, or a StreamIoException of close()), at
-     * the latest when it needs its next stream file; what it wrote after the delete is lost
-     * with the directory.
+     * after stop() while it closes, fails (DbFailedException, or a StreamIoException of
+     * close()), at the latest when it needs its next stream file; what it wrote after the
+     * delete is lost with the directory. It checks the directory right before it makes or
+     * deletes a stream file, with nothing that waits in between, and again after (bergdb
+     * 021-24). A replacement in the microseconds between the check and the step is not
+     * prevented: the step then leaves an empty stream file in the new directory, which a
+     * start there refuses until the file is removed, or, at a cut, deletes the new
+     * directory's file of the same name; the check after the step fails the database if
+     * the directory is still replaced. Otherwise it writes nothing into the directory that
+     * is then at the path.
      * </p>
      */
     public void stop();
