@@ -7,6 +7,7 @@ import bergdb.common.Salsa;
 import bergdb.common.Util;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
+import bergdb.nanotest.TestEnvironment;
 
 /**
  * A decorator for an AppendOnlyStream that adds Salsa20 encryption to 
@@ -19,7 +20,19 @@ public class SalsaStream implements AppendOnlyStream {
     private final Salsa encrypt;
     private final Salsa decrypt;
     private final Object readLock = new Object();
-    private final byte[] appendBuffer = new byte[100*1024];
+    
+    /**
+     * The encrypted bytes of an append, before they go to the stream under this one. It grows
+     * to the longest append so far, up to MAX_APPEND_BUFFER (bergdb 020-24-07, U7-2).
+     */
+    private byte[] appendBuffer = new byte[100*1024];
+    
+    /**
+     * The longest append that goes to the stream under this one as one append; a longer one
+     * goes in parts of this length (bergdb 020-24-07, U7-2). The database's appends are its
+     * write buffer's flushes, at most half of the buffer: 5 MB by default.
+     */
+    static final int MAX_APPEND_BUFFER = 16*1024*1024;
     
     /**
      * Creates an instead by wrapping an underlying stream.
@@ -118,14 +131,26 @@ public class SalsaStream implements AppendOnlyStream {
     }
 
     /**
-     * Encrypts and appends data to the stream.
+     * Encrypts and appends data to the stream: one append to the stream under this one, so a
+     * FileStream that forces each append forces it once, as it does an append of the bytes
+     * without encryption (2026-11-09, bergdb 020-24-07, U7-2); an append of more than
+     * MAX_APPEND_BUFFER bytes goes in parts of that length. Until U7-2 it went in parts of
+     * 100 kB, each a forced append of the FileStream: a flush of the database's write
+     * buffer, up to 5 MB, made up to 50 forces, and puts with a crypto key were 6 to 8 times
+     * slower than without it (on F53). The encrypted bytes are the same, as the keystream
+     * depends only on the key and the stream position.
      */
     public void append(byte[] source, int sourceOffset, int length) throws IOException {
         // 150804 Frans: Memory management substantially improved.
-        // no memory allocation in this method.
+        // No memory allocation in this method, but when an append is longer than the buffer:
+        // it then grows, at least to twice its length, up to MAX_APPEND_BUFFER (U7-2).
         
         // Bergdb 019-02: a negative length returned, a long one threw an array exception.
         Util.checkRange(source, sourceOffset, length);
+        if (length > appendBuffer.length && appendBuffer.length < MAX_APPEND_BUFFER) {
+            long grown = Math.max(length, 2L * appendBuffer.length);
+            appendBuffer = new byte[(int) Math.min(grown, MAX_APPEND_BUFFER)];
+        }
         int remainingBytes = length;
         int offset = sourceOffset;
         
@@ -313,6 +338,59 @@ public class SalsaStream implements AppendOnlyStream {
         s = new SalsaStream(m, new byte[8], new byte[32]);
         s.append(new byte[10], 0, 10);
         Assert.assertEquals(160, s.getLength());
+    }
+    
+    /**
+     * Regression test for bergdb 020-24-07, U7-2: an append is one append to the stream under
+     * it, so a FileStream that forces each append forces it as often as it does the same
+     * bytes appended to it directly. Until U7-2 an append went down in chunks of 100 kB, each
+     * forced: a flush of the database's write buffer, up to 5 MB, made up to 50 forces, and
+     * puts with a crypto key were 6 to 8 times slower than without (on F53). The encrypted
+     * bytes are those of appends of any size, here of 777 bytes each: the keystream depends
+     * only on the key and the stream position.
+     */
+    @Nano
+    private static void testOneForcePerAppend(TestEnvironment env) throws IOException {
+        Random r = new Random(7);
+        byte[] nonce = new byte[8];
+        r.nextBytes(nonce);
+        byte[] key = new byte[32];
+        r.nextBytes(key);
+        byte[] data = new byte[450 * 1000];     // Past the first two files, of 200 kB.
+        r.nextBytes(data);
+        
+        FileStream.ForceLogIo plainIo = new FileStream.ForceLogIo();
+        FileStream plain = new FileStream(env.createTempDir(), plainIo, true);
+        plain.append(data, 0, 1000);
+        plain.append(data, 1000, data.length - 1000);
+        int expected = plainIo.starting("APPEND").size();
+        plain.close();
+        
+        FileStream.ForceLogIo io = new FileStream.ForceLogIo();
+        FileStream file = new FileStream(env.createTempDir(), io, true);
+        try {
+            SalsaStream s = new SalsaStream(file, nonce, key);
+            s.append(data, 0, 1000);
+            s.append(data, 1000, data.length - 1000);
+            Assert.assertEquals("the appends' forces", expected, io.starting("APPEND").size());
+            
+            MemoryStream m = new MemoryStream();
+            SalsaStream small = new SalsaStream(m, nonce, key);
+            for (int pos = 0; pos < data.length; pos += 777) {
+                small.append(data, pos, Math.min(777, data.length - pos));
+            }
+            byte[] encrypted = new byte[data.length];
+            file.read(0, encrypted, 0, encrypted.length);
+            byte[] encryptedSmall = new byte[data.length];
+            m.read(0, encryptedSmall, 0, encryptedSmall.length);
+            Assert.assertArrayEquals("the encrypted bytes", encryptedSmall, encrypted);
+            
+            byte[] back = new byte[data.length];
+            new SalsaStream(file, nonce, key).read(0, back, 0, back.length);
+            Assert.assertArrayEquals("the bytes read back", data, back);
+        } finally {
+            file.close();
+        }
     }
     
     @Nano

@@ -514,6 +514,16 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   was refused too. Now each start encrypts the stream of `memory()` once,
   and a refused start leaves nothing behind. A directory's start was
   right. In 2026.1 to 2026.3; found by a new-user application.
+* **Writes with a crypto key are as fast as without one** (bergdb
+  020-24-07, U7-2; 2026-11-09). The encryption (`SalsaStream`) passed each
+  write of the database's buffer, up to 5 MB, to the files in parts of
+  100 kB, and the files force each write to the device: up to 50 forces in
+  place of one. 100,000 puts of 1 kB and a sync took 9.8 to 11.0 s with a
+  key and 1.6 to 2.5 s without one, on a laptop with a fast SSD under load;
+  now 1.3 s with a key and 1.2 to 1.5 s without. Now one write and one
+  force, as without a key; the encryption holds a buffer of the longest
+  write, at most 5 MB by default. The bytes written are unchanged. In
+  2026.1 to 2026.3; found by a new-user application.
 
 
 ### Core API
