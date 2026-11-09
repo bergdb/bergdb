@@ -510,6 +510,12 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   since, which `close()` waited for: up to 12.5 ms more at the default
   buffer time of 50 ms, and 15 s with a buffer time of a minute (the Core's
   `DbBuilder`). A lost wake-up in `BufferedStream`, in 2026.3 and before.
+* **`GetMany.GetN` and `GetMany.PrefixN` give at most their count, none for
+  0** (bergdb 020-27; 2026-11-09): with a count of 0 they gave every KV (of
+  the prefix), as the count passed 0 before it was compared; "Gets at most
+  N kvs". `PrefixN` keeps a copy of its prefix, as `Prefix` and `Endpoint`
+  do: it kept the caller's array, as its copy went to the parameter. No
+  reader of BergDB uses a count of 0.
 
 
 ### Format

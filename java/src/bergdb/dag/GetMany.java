@@ -496,6 +496,11 @@ public class GetMany {
         }
         
         public int handleKvt(Kvt kvt) {
+            // At most maxCount, none for 0 (bergdb 020-27): GetN(0) gave every KV, as the
+            // count passed 0 before it was compared.
+            if (count >= maxCount) {
+                return STOP;
+            }
             count++;
             return count == maxCount ? ADD_AND_STOP : ADD;
         }
@@ -545,14 +550,16 @@ public class GetMany {
         private boolean eod;
         
         public PrefixN(long[] prefix, int maxCount) {
-            this.prefix = prefix;
+            this.prefix = prefix.clone();     // The parameter's clone until bergdb 020-27.
             this.maxCount = maxCount;
-            prefix = prefix.clone();
             count = 0;
             eod = false;
         }
         
         public int handleKvt(Kvt kvt) {
+            if (count >= maxCount) {
+                return STOP;        // At most maxCount, none for 0, as GetN (bergdb 020-27).
+            }
             count++;
             return Keys.isPrefix(prefix, kvt.key) ? (count == maxCount ? ADD_AND_STOP : ADD) : STOP;
         }
