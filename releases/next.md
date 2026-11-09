@@ -336,6 +336,21 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `start()`. Before, a second `execute()` ran the same writes again as a new
   transaction, and a `put()` after it added to them. Get a new builder with
   `Connection.w()` for each transaction.
+* **`Database.setRetainDuration(null)` throws `IllegalArgumentException`**
+  (bergdb 020-21, 3; Frans, 2026-11-09, 020-13), as every null argument of
+  the API does; it threw a `NullPointerException`. So does
+  `CryptoKey.parse(null)`.
+* **`Connection.useIndex(name, String.class)` is refused at the call**
+  (bergdb 020-21, 3; 020-13) with `IllegalArgumentException`, whatever the
+  data and whether the index exists: an index's values are objects, which a
+  get does not give as a `String`. The call was taken, and every `next()`
+  threw `DataFormatException`.
+* **`Job.join(millis)` refuses a negative time** (bergdb 020-21, 3; 020-19)
+  with `IllegalArgumentException`, as `Thread.join(millis)` does; it
+  returned at once.
+* **`CryptoKey.NULL` round-trips through `serialize()` and `parse()`**
+  (bergdb 020-21, 3; 020-19): `parse()` refused NULL's string,
+  "null-null-", with a `FormatException`; it now gives `CryptoKey.NULL`.
 
 
 ### Core API
@@ -480,6 +495,19 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   overview name the API (`bergdb.pub`, `bergdb.pub.util` and the Core's
   `Db`; the release jar) and describe objects, the user indexes and the
   primary scan, with no experimental list left.
+* **The Pub API's corners said** (bergdb 020-21, 3; 020-13, section 4.2;
+  020-19, section 6): `Connection.useIndex` lists
+  `LookupTimeNotAvailableException` for a lookup time behind the cut;
+  `Job.join` returns BUILDING after a failure of the database, as after a
+  stop; `Duration.seconds` rounds to clock units, gives `MAX` above it and
+  0 for NaN; `Connection.delete` of a key without an entry still commits a
+  transaction with a time of its own; `DbObject.toDbObject` wraps a
+  `String` in "p", as a wrapper, and refuses a `byte[]`, now with a message
+  that says why (it gave the class check's "a primitive or an array is not
+  a class of fields"), and `toJavaObject(byte[].class)` reads "array", not
+  "p"; `DatabaseBuilder.start()` of a `memory()` builder whose database has
+  closed starts on the closed stream, reads the data and fails at its first
+  write.
 * **A start's heap** (bergdb 019-45): a start needs about twice the
   startup distance of heap above what the running database needs,
   whatever the cache budget (docs/levels.md, section 7); W7's 600 MB heap

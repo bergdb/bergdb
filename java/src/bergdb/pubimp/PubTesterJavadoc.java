@@ -42,6 +42,7 @@ import bergdb.pub.UsePrimaryBuilder;
 import bergdb.pub.WBuilder;
 import bergdb.pub.util.BadFormatException;
 import bergdb.pub.util.DbException;
+import bergdb.pub.util.DbFailedException;
 import bergdb.pub.util.IllegalDbStateException;
 import bergdb.pub.util.IndexBuildException;
 import bergdb.pub.util.Job;
@@ -672,6 +673,129 @@ public class PubTesterJavadoc {
             Assert.assertNull(c.get("/i/y.txt", String.class));
             c.w().put("/i/z.txt", "z").execute();
             Assert.assertEquals("z", c.get("/i/z.txt", String.class));
+        }
+    }
+
+    /**
+     * Database.setRetainDuration(null) throws IllegalArgumentException, as every null
+     * argument of the API does, also after stop(), and changes nothing (bergdb 020-21, 3;
+     * 020-13, section 4.2; 020-19, section 6): it threw NullPointerException.
+     */
+    @Nano
+    public static void testSetRetainDurationNull() {
+        final Database db = Factory.database().memory().start();
+        try {
+            assertThrows("setRetainDuration(null)", IllegalArgumentException.class,
+                    () -> db.setRetainDuration(null));
+            Assert.assertEquals(Duration.MAX, db.getRetainDuration());
+            db.setRetainDuration(Duration.seconds(10));
+            assertThrows("setRetainDuration(null)", IllegalArgumentException.class,
+                    () -> db.setRetainDuration(null));
+            Assert.assertEquals(Duration.seconds(10), db.getRetainDuration());
+            db.stop();
+            assertThrows("setRetainDuration(null) after stop()",
+                    IllegalArgumentException.class, () -> db.setRetainDuration(null));
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * Connection.useIndex() refuses String.class at the call with IllegalArgumentException,
+     * whatever the data and whether the index exists: an index's values are objects, which
+     * a get does not give as a String (bergdb 020-21, 3; 020-13, section 4.2). Before, the
+     * call was taken and every next() threw DataFormatException. The other kinds of type
+     * that a get takes are taken.
+     */
+    @Nano
+    public static void testUseIndexOfStringRefused() {
+        try (final Database db = Factory.database().memory().start()) {
+            final Connection c = db.connection();
+            c.put("/acc/1", new Account("A", 1));
+            db.indexBuilder("i").dir("/acc/").type("long").field("balance").start().join();
+            assertThrows("useIndex(i, String.class)", IllegalArgumentException.class,
+                    () -> c.useIndex("i", String.class));
+            assertThrows("useIndex(none, String.class)", IllegalArgumentException.class,
+                    () -> c.useIndex("none", String.class));
+            Assert.assertEquals("A 1", owners(c.useIndex("i", Account.class).objects()));
+            Assert.assertEquals("A", c.useIndex("i", DbObject.class).objects().iterator()
+                    .next().getString("owner"));
+            Assert.assertTrue(c.useIndex("i", Object.class).objects().iterator().next()
+                    instanceof DbObject);
+            Assert.assertEquals(DbObject.HEADER, c.useIndex("i", byte[].class).objects()
+                    .iterator().next()[0]);
+        }
+    }
+
+    /**
+     * Job.join(millis) refuses a negative time with IllegalArgumentException, as
+     * Thread.join(millis) does, while the build runs and after it ended; it returned at once
+     * (bergdb 020-21, 3; 020-19, section 6). join(0) waits as join().
+     */
+    @Nano
+    public static void testJoinNegativeRefused() {
+        try (final Database db = Factory.database().memory().start()) {
+            db.connection().put("/acc/1", new Account("A", 1));
+            final Job job = db.indexBuilder("i").dir("/acc/").type("long").field("balance")
+                    .start();
+            assertThrows("join(-1)", IllegalArgumentException.class, () -> job.join(-1));
+            Assert.assertEquals(JobStatus.State.ACTIVE, job.join(0).state());
+            assertThrows("join(-1) after the end", IllegalArgumentException.class,
+                    () -> job.join(-1));
+            assertThrows("join(MIN_VALUE)", IllegalArgumentException.class,
+                    () -> job.join(Integer.MIN_VALUE));
+            Assert.assertEquals(JobStatus.State.ACTIVE, job.join().state());
+        }
+    }
+
+    /**
+     * The corners of the Javadoc that 020-13 (section 4.2) and 020-19 (section 6) found
+     * unsaid, now said (bergdb 020-21, 3): Duration.seconds() rounds to clock units, gives
+     * MAX above it and 0 for NaN; a delete of a key without an entry commits a transaction
+     * of its own; toDbObject() wraps a String in "p" and refuses a byte[], whose message now
+     * says why (it gave the class check's "a primitive or an array is not a class of
+     * fields"); toJavaObject(byte[].class) reads "array", not "p"; a start of a memory()
+     * builder whose database has closed reads the data and fails at its first sync.
+     */
+    @Nano
+    public static void testJavadocCorners() {
+        Assert.assertEquals(0, Duration.seconds(Double.NaN).units());
+        Assert.assertEquals(Duration.MAX, Duration.seconds(Double.POSITIVE_INFINITY));
+        Assert.assertEquals(Duration.MAX, Duration.seconds(1e300));
+        Assert.assertEquals(0, Duration.seconds(-1e-8).units());
+        Assert.assertEquals(2, Duration.seconds(1.6e-7).units());
+        assertThrows("seconds(-1)", IllegalArgumentException.class, () -> Duration.seconds(-1));
+
+        try (final Database db = Factory.database().memory().start()) {
+            final Connection c = db.connection();
+            Transaction t0 = c.put("/a.txt", "a");
+            Transaction t1 = c.delete("/none.txt");
+            Assert.assertTrue(t1.getTime().units() > t0.getTime().units());
+        }
+
+        Assert.assertEquals("abc", DbObject.toDbObject("abc").getString("p"));
+        IllegalArgumentException e = assertThrows("toDbObject(byte[])",
+                IllegalArgumentException.class, () -> DbObject.toDbObject(new byte[] {1}));
+        Assert.assertTrue(e.getMessage(), e.getMessage().contains("byte[]"));
+        DbObject array = DbObject.toDbObject(new int[] {1, 2});
+        Assert.assertArrayEquals(new byte[] {1, 2}, array.toJavaObject(byte[].class));
+        DbObject p = new DbObject.Builder().addDbValue("p", new DbByteArray(new byte[] {7}))
+                .build();
+        Assert.assertNull(p.toJavaObject(byte[].class));
+
+        DatabaseBuilder builder = Factory.database().memory();
+        Database first = builder.start();
+        first.connection().put("/a.txt", "a");
+        first.close();
+        final Database second = builder.start();
+        try {
+            Assert.assertEquals("a", second.connection().get("/a.txt", String.class));
+            assertThrows("sync on the closed stream", DbFailedException.class, () -> {
+                second.connection().put("/b.txt", "b");
+                second.connection().sync();
+            });
+        } finally {
+            second.close();
         }
     }
 

@@ -319,7 +319,8 @@ public final class DbObject extends DbValue {
      * Converts a Data Object to a DbObject, exactly (bergdb 020-09, section 4): a Data Object
      * class stores its public, non-static, non-transient fields, each by its declared type; a
      * null field is left out (absent); an array put at the top is wrapped in the field
-     * "array", a primitive or a wrapper in the field "p". A DbObject is returned as it is.
+     * "array", a primitive, a wrapper or a String in the field "p". A DbObject is returned as
+     * it is. A byte[] is refused: a put stores it as it is, its bytes, not as an object.
      *
      * @throws IllegalArgumentException  If 'object' is null, or is not a Data Object, or a
      *      class it reaches is not (bergdb 020-09, section 3); if an array in it has a null
@@ -327,7 +328,8 @@ public final class DbObject extends DbValue {
      *      if a String in the object, at any depth, has a lone surrogate (see "Strings" above;
      *      bergdb 021-04); if the object has a reference cycle (bergdb 005-23), or is nested
      *      deeper than 16 levels of objects and arrays (bergdb 020-07, R14). The message
-     *      names the class or the place: the field, and an array element's index.
+     *      names the class or the place: the field, and an array element's index. If
+     *      'object' is a byte[].
      */
     public static DbObject toDbObject(Object object) {
         return DataObjects.toDbObject(object);
@@ -338,11 +340,12 @@ public final class DbObject extends DbValue {
      * section 5): each stored field with a matching field of the class is converted to the
      * field's type, the nearest value where it does not fit, the type's zero where no
      * sensible conversion exists; a field of the class that is not stored keeps the value its
-     * constructor gives. A primitive class or a wrapper reads the field "p", an array class
-     * the field "array"; null if it is absent.
+     * constructor gives. A primitive class, a wrapper or String reads the field "p", an array
+     * class the field "array", byte[] too, as an array of integers, not a byte string in "p";
+     * null if it is absent.
      * 
      * @param c     The wanted Class of the Java object that is created and returned: a Data
-     *              Object class, a primitive or a wrapper, or an array class.
+     *              Object class, a primitive, a wrapper or String, or an array class.
      * @return      The newly created object of class c.
      * @throws bergdb.pub.ObjectCreationException  If 'c', or a class it reaches through its
      *              fields' types, is not a Data Object class (bergdb 020-09, section 3), or

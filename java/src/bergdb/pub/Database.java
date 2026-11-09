@@ -230,7 +230,7 @@ public interface Database extends AutoCloseable {
      * 
      * @param duration
      *            The duration to retain historic data states available for lookup operations.
-     * @throws IllegalArgumentException  If duration is shorter than one second.
+     * @throws IllegalArgumentException  If duration is null or shorter than one second.
      * @throws IllegalDbStateException  If the database is stopping or stopped, as a
      *     transaction does; the retain duration is then unchanged.
      * @throws DbFailedException  If the database has failed, as a transaction does; the

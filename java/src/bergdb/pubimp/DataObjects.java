@@ -400,9 +400,15 @@ public final class DataObjects {
             return (DbObject) x;
         }
         Class<?> c = x.getClass();
+        if (c == byte[].class) {
+            // bergdb 020-21, 3 (020-13, section 4.2): the message was the check's "a primitive
+            // or an array is not a class of fields", though other arrays are taken.
+            throw new IllegalArgumentException("A byte[] is not converted to an object: a put "
+                    + "stores it as it is, its bytes (bergdb 020-09, section 4.6).");
+        }
         Put put = new Put();
         DbObject.Builder b = new DbObject.Builder();
-        if (c.isArray() && c != byte[].class) {
+        if (c.isArray()) {
             Class<?> e = base(c);
             Fault f = isScalarType(e) ? null : fault(e);
             if (f != null) {

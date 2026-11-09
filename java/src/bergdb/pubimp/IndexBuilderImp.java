@@ -229,6 +229,10 @@ class IndexBuilderImp implements IndexBuilder {
         }
 
         public synchronized JobStatus join(int millis) {
+            if (millis < 0) {
+                // As Thread.join(millis) (bergdb 020-21, 3); it returned at once.
+                throw new IllegalArgumentException("millis < 0 not allowed: " + millis);
+            }
             long deadline = millis == 0 ? 0 : System.nanoTime() + millis * 1000000L;
             while (!ended) {
                 long ms = 0;

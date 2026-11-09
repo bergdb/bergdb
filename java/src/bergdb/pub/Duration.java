@@ -39,7 +39,11 @@ public class Duration {
     }
     
     /**
-     * Creates a Duration specified in seconds.
+     * Creates a Duration specified in seconds, rounded to the nearest clock unit (100 ns).
+     * A value above MAX's, about 922 billion seconds, positive infinity included, gives MAX;
+     * NaN gives a duration of 0.
+     *
+     * @throws IllegalArgumentException  If the duration, rounded to clock units, is negative.
      */
     public static Duration seconds(double seconds) {
         return new Duration(Math.round(seconds * UNITS_PER_SECOND));

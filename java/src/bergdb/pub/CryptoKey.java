@@ -24,7 +24,8 @@ public class CryptoKey {
     //
     
     /**
-     * A CryptoKey instance that represents 'null' - no crypto key.
+     * A CryptoKey instance that represents 'null' - no crypto key. Its serialize() string,
+     * "null-null-", parses to it.
      */
     public static final CryptoKey NULL = new CryptoKey("null", null, new byte[0]);
     
@@ -87,13 +88,23 @@ public class CryptoKey {
     }
     
     /**
-     * Parses a string that was created with serialize().
+     * Parses a string that was created with serialize(); NULL's string gives NULL.
      * 
      * @throws CryptoKey.FormatException if the string is not in serialize()'s format.
+     * @throws IllegalArgumentException if serializedKey is null.
      */
     public static CryptoKey parse(String serializedKey) {
         // Note: think about not printing serializedKey in log messages
         // and error messages.
+        
+        if (serializedKey == null) {
+            // bergdb 020-21, 3: as every null argument of the API, not a NullPointerException.
+            throw new IllegalArgumentException("serializedKey == null not allowed");
+        }
+        if (serializedKey.equals(NULL.serialize())) {
+            // bergdb 020-21, 3 (020-19, section 6): NULL round-trips, as every key does.
+            return NULL;
+        }
         
         String[] parts = serializedKey.split("-");
         if (parts.length < 3) {
@@ -261,6 +272,26 @@ public class CryptoKey {
         Assert.assertEquals("serialize()", serialized, key.serialize());
         Assert.assertTrue("equal to the key parsed from its serialized form", 
                 key.equals(CryptoKey.parse(serialized)));
+    }
+    
+    /**
+     * bergdb 020-21, 3 (020-19, section 6): CryptoKey.NULL round-trips through serialize()
+     * and parse(), as every key does: parse() refused its string, "null-null-", with a
+     * FormatException. parse(null) throws IllegalArgumentException, as every null argument
+     * of the API does, not NullPointerException.
+     */
+    @Nano private static void testNullRoundTrip() {
+        CryptoKey key = CryptoKey.parse(CryptoKey.NULL.serialize());
+        Assert.assertTrue(key.isNull());
+        Assert.assertTrue(key == CryptoKey.NULL);
+        try {
+            CryptoKey.parse(null);
+            throw new AssertionError("parse(null) not refused");
+        } catch (IllegalArgumentException e) {
+            // Expected.
+        }
+        CryptoKey generated = CryptoKey.generate();
+        Assert.assertEquals(generated, CryptoKey.parse(generated.serialize()));
     }
     
     @Nano private static void testNull1() {

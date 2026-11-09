@@ -105,8 +105,9 @@ public interface Connection extends ReadInterface {
      * Freezes the lookup time at the latest state as of the next read. It sets the lookup
      * time to Time.MAX; the next read of this connection, a get(), an exists(), a useIndex()
      * or a usePrimary(), sets it to the time it read at, and later reads read at that time,
-     * until setLookupTime() or this method is called again (bergdb 020-10, section 3.6). Each call freezes anew, at the latest state as of the next read,
-     * also after setLookupTime(t): it does not freeze t (bergdb 018-04, Q2).
+     * until setLookupTime() or this method is called again (bergdb 020-10, section 3.6).
+     * Each call freezes anew, at the latest state as of the next read, also after
+     * setLookupTime(t): it does not freeze t (bergdb 018-04, Q2).
      * This method is useful for reading a consistent state of the data
      * at one particular time using multiple read operations. The state stays readable
      * for the retain duration of the database (Database.setRetainDuration()); after that,
@@ -279,8 +280,9 @@ public interface Connection extends ReadInterface {
     public Transaction put(String key, Object object);
 
     /**
-     * Deletes a key-value entry from the database. If an entry with the given key
-     * does not exists this method does nothing.
+     * Deletes a key-value entry from the database. If no entry has the key, nothing is
+     * deleted, but the delete is still a transaction of its own, with a time of its own,
+     * which this method commits and returns, as for a key with an entry.
      * 
      * @param key
      *             The key of the key-value entry. Must begin with "/".
@@ -353,7 +355,12 @@ public interface Connection extends ReadInterface {
      *             If 'type' is not a class that a get takes (bergdb 020-09, section 3.3),
      *             whatever the data.
      * @throws IllegalArgumentException
-     *             If 'indexName' or 'type' is null.
+     *             If 'indexName' or 'type' is null; or if 'type' is String.class, whatever
+     *             the data: an index's values are objects, which a get does not give as a
+     *             String (bergdb 020-21, 3).
+     * @throws LookupTimeNotAvailableException
+     *             If the lookup time is before Database.getFirstAvailableLookupTime(): the
+     *             index's definition cannot be read at it.
      */
     public <TYPE> UseIndexBuilder<TYPE> useIndex(String indexName, Class<TYPE> type)
             throws NoSuchIndexException;

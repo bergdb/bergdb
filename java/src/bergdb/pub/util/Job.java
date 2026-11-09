@@ -19,10 +19,10 @@ public interface Job {
     
     /**
      * Waits until the build ends in this process, and returns its status: ACTIVE when the
-     * index is built, or BUILDING if the database stopped (the next start takes the build
-     * again). If the build ended already, returns at once. An interrupt of the calling thread
-     * ends the wait: the method returns the status, BUILDING while the build goes on, and the
-     * thread's interrupt flag is set (bergdb 005-46).
+     * index is built, or BUILDING if the database stopped or failed (the next start takes
+     * the build again). If the build ended already, returns at once. An interrupt of the
+     * calling thread ends the wait: the method returns the status, BUILDING while the build
+     * goes on, and the thread's interrupt flag is set (bergdb 005-46).
      *
      * <p>If the build failed, the method throws IndexBuildException instead, each time it is
      * called, also on the job that Database.indexJob(name) gives later. A build fails when
@@ -32,7 +32,8 @@ public interface Job {
      * exception that failed the build (none for a deletion). The database goes on; see
      * IndexBuildException. getStatus() tells of a failure without an exception.</p>
      *
-     * @return The status: ACTIVE, or BUILDING after a stop of the database or an interrupt.
+     * @return The status: ACTIVE, or BUILDING after a stop or a failure of the database, or
+     *     an interrupt.
      * @throws IndexBuildException  If the build failed: its status is FAILED.
      */
     public JobStatus join();
@@ -41,8 +42,11 @@ public interface Job {
      * As join(), but waits at most 'millis' milliseconds; 0 waits as join(). When the time
      * is up, it returns the status, BUILDING while the build goes on.
      *
-     * @return The status: ACTIVE, or BUILDING after a stop, an interrupt or the time.
+     * @return The status: ACTIVE, or BUILDING after a stop or a failure of the database, an
+     *     interrupt or the time.
      * @throws IndexBuildException  If the build failed, as join().
+     * @throws IllegalArgumentException  If millis is negative, as Thread.join(millis)
+     *     refuses it (bergdb 020-21, 3).
      */
     public JobStatus join(int millis);
 }

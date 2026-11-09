@@ -60,6 +60,8 @@ class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
      *      is building then.
      * @throws ObjectCreationException  If 'type' is not a class a get takes (bergdb 020-09,
      *      section 3.3), whatever the data.
+     * @throws IllegalArgumentException  If 'indexName' or 'type' is null, or 'type' is
+     *      String.class (bergdb 020-21, 3), whatever the data.
      */
     public UseIndexBuilderImp(ConnectionImp connection, String indexName, Class<TYPE> type,
             long wantedLookupTime) {
@@ -71,7 +73,14 @@ class UseIndexBuilderImp<TYPE> implements UseIndexBuilder<TYPE> {
         if (type == null) {
             throw new IllegalArgumentException("type == null not allowed");
         }
-        if (!type.equals(String.class) && !type.equals(byte[].class)
+        if (type.equals(String.class)) {
+            // bergdb 020-21, 3 (020-13, section 4.2): refused at the call, whatever the data;
+            // until 2026-11-09 every next() threw DataFormatException.
+            throw new IllegalArgumentException("String.class is not a type of an index's "
+                    + "values: they are objects, which a get does not give as a String. Use "
+                    + "a Data Object class, DbObject.class, Object.class or byte[].class.");
+        }
+        if (!type.equals(byte[].class)
                 && !type.equals(DbObject.class) && !type.equals(Object.class)) {
             DataObjects.checkGet(type);
         }

@@ -193,6 +193,10 @@ public class DatabaseImp implements Database {
     }
     
     public void setRetainDuration(Duration retainDuration) {
+        if (retainDuration == null) {
+            // bergdb 020-21, 3: as every null argument of the API, not a NullPointerException.
+            throw new IllegalArgumentException("retainDuration == null not allowed");
+        }
         long units = retainDuration.units();
         
         if (units < 1 * Clock.UNITS_PER_SEC) {

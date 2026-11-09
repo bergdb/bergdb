@@ -135,7 +135,10 @@ public interface DatabaseBuilder {
      * <p>One database at a time has the stream of memory() too (bergdb 015-65): while the
      * database that this builder started on it has not closed, it runs or is closing after
      * stop(), start() throws an IllegalStateException, and that database runs on as before.
-     * Call memory() again for a new, empty database.</p>
+     * Call memory() again for a new, empty database. Once that database has closed, start()
+     * starts a database on its closed stream: it reads the data, but its first write to the
+     * stream, a sync or the background write of a transaction, fails it
+     * (DbFailedException).</p>
      * 
      * @throws IllegalStateException
      *             If no database was given: neither create(), open() nor memory() was
