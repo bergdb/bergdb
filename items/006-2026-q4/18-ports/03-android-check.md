@@ -521,7 +521,8 @@ needed, and `~/.android` with them.
   `releases/next.md`, with G88 as a known difference, and a line in
   README.md, Build and test. `docs/levels.md` lists no platforms. The
   commits on the branch `006-18-03-android` of the clone are `53f4f5c`
-  (fix 1), `a25a7e8` (fix 2) and `3926a12` (the notes). On their tree:
+  (fix 1), `a25a7e8` (fix 2) and `3926a12` (the notes); on `main`, `07df96d`,
+  `0cb5a82` and `435dde7`. On their tree:
   BEFORE COMMIT OK (145 s), and LEVEL 1 OK under the lock.
 * 2026-11-09, 16:25 to 16:53, the final tree on the API 34 emulator
   (`runs-device-final-34.txt`, `runs-unit-final-34.txt`,
@@ -546,7 +547,11 @@ needed, and `~/.android` with them.
   * The emulator was shut down at 16:53.
 * 2026-11-09, 16:58, Frans: "I think it makes sense to run an Android
   test before a release. At least on the unit tests." Two more commits on
-  the branch, both on `main` at `e65678a` (hashes in the report):
+  the branch, on `main` at `e65678a`, which the first three were rebased
+  onto without conflict: `c5835a2`, `787cbf1`, `cfc2a29`, then `61e63cc`
+  (the tests) and `a3c56cf` (`android.sh`); on `main`, the first three are
+  `07df96d`, `0cb5a82` and `435dde7`, the last two `2dad395` and `7406674`.
+  BEFORE COMMIT OK (230 s) on the five.
   * **Platform-neutral tests.** The new `bergdb.nanotest.Platform` has
     `android()`, `skipOnAndroid(reason)` and `waitsFor(thread, state,
     lockClass)`. `waitsFor` uses one `ThreadInfo` on a JVM, as before,
@@ -567,4 +572,6 @@ needed, and `~/.android` with them.
       `Long.MAX_VALUE`.
   * **`java/stress/android.sh`**, with a line in README.md's list of
     scripts. It is not in before-commit.sh. Its first run: "ANDROID OK
-    (1584 tests, 5 skipped) in 119 s; 10 demo runs".
+    (1584 tests, 5 skipped) in 119 s; 10 demo runs". On the committed
+    tree: "ANDROID OK (1584 tests, 5 skipped) in 151 s; 10 demo runs". The
+    JVM runs the same 1,589 tests, none skipped.
