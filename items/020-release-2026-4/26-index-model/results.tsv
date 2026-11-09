@@ -1,0 +1,29 @@
+d1-crash	OK	2,415,244	36	41s	2026-11-09 13:15
+d2-recreate	STOPPED	20,863,415+	25+	300s	2026-11-09 13:20
+d2b-recreate	STOPPED	9,730,439+	23+	266s	2026-11-09 13:27
+d3-writers	STOPPED	12,534,109+	20+	180s	2026-11-09 13:30
+d3c-writers-1key	OK	4167820	31	66s	2026-11-09 13:31
+d2c-recreate-1key	OK	50844430	44	597s	2026-11-09 13:41
+d5-step2	OK	7749300	41	85s	2026-11-09 13:43
+d4c-timed-1key	STOPPED	73,745,822+	33+	907s	2026-11-09 13:58
+l1-live	OK	4162448	38	832s	2026-11-09 14:12
+l1-live-AllHashes	VIOLATED temporal	691287	-	100s	2026-11-09 14:14
+l1-live-NoLockedPhase	VIOLATED temporal	401645	-	81s	2026-11-09 14:15
+min-SBeforeR	VIOLATED Invariant_BuildCovers_is_violated	580	7	5s	2026-11-09 14:15
+min-NoVhash	VIOLATED Invariant_BuildCovers_is_violated	561	7	5s	2026-11-09 14:15
+min-NoLock	VIOLATED Invariant_BuildCovers_is_violated	807	7	5s	2026-11-09 14:15
+min-NoPrevHash	VIOLATED Invariant_NoStaleEntry_is_violated	63569	9	5s	2026-11-09 14:15
+min-NoDefHash	VIOLATED Invariant_GensAccounted_is_violated	32173	14	5s	2026-11-09 14:15
+min-NoIsLive	VIOLATED Invariant_GensAccounted_is_violated	38812	14	5s	2026-11-09 14:15
+min-NoValueHash	VIOLATED Invariant_NoStaleEntry_is_violated	22429	13	5s	2026-11-09 14:15
+min-ConstGen-1key	VIOLATED Invariant_MarkerNotLive_is_violated	176	6	5s	2026-11-09 14:16
+min-NoActCheck	VIOLATED Invariant_MarkerNotLive_is_violated	6128	10	5s	2026-11-09 14:16
+d4d-timed-small	OK	11870108	36	145s	2026-11-09 14:19
+l3-live-1key-recreate	STOPPED	1,120,994+	23+	600s	2026-11-09 14:29
+l4-live-1key-recreate	OK	1949904	44	1370s	2026-11-09 14:51
+l4-live-1key-2w	OK	449476	31	60s	2026-11-09 14:52
+sim	NO VIOLATION (simulation, stopped)	857,169,264 states checked	-	908s	2026-11-09 15:07
+d6-none	OK	8324896	38	60s	2026-11-09 15:08
+d6-NoEndKey	OK	4388496	36	35s	2026-11-09 15:09
+d6-NoFinalCheck	OK	8963712	38	75s	2026-11-09 15:10
+d6-AllHashes	OK	8784040	38	70s	2026-11-09 15:11
