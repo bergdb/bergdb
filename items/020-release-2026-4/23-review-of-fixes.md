@@ -255,7 +255,7 @@ Fixer w23 (coord-1109's agent, 12:21), clone `/Users/f/fl/bench/2026-11-09/clone
   reader's thread (`StorageManager.handleStreamException`). The storage and the database
   have failed by then. So there is no `releases/next.md` line.
 * Gate on the tree of the two commits, under the gate lock: BEFORE COMMIT OK (183 s;
-  unit 1,503, f 86, demos); `level1.sh`: LEVEL 1 OK. Not yet on `main`.
+  unit 1,503, f 86, demos); `level1.sh`: LEVEL 1 OK. On `main` as `780dc63` and `8a3d191`.
 
 
 ## 4. Codex, round 3
@@ -413,8 +413,8 @@ Fixer z23 (coord-1109's agent, 14:29), clone `/Users/f/fl/bench/2026-11-09/clone
   step (102 µs before 2^56 - 1, the year 2198, or a test clock) can use up the margin, and
   the step then fails the database (015-55's design).
 * Gate on the tree of the three commits, under the gate lock: BEFORE COMMIT OK (200 s; unit
-  1,555, f 86, demos); `javadoc-pub.sh`: JAVADOC PUB OK; `level1.sh`: LEVEL 1 OK. Not yet on
-  `main`.
+  1,555, f 86, demos); `javadoc-pub.sh`: JAVADOC PUB OK; `level1.sh`: LEVEL 1 OK. On
+  `main` as `6ac9708`, `d794d06` and `142afa2`.
 
 
 ## 5. The late Core fixes: 021-20, U10-3, U10-5, U10-6
@@ -489,7 +489,7 @@ database's `sync()` and `close()` return without an error, and the replacement t
 start ("Bad size of file .../00000000000000.bergdb, should have been a multiple of 100000,
 but was 424"). It contradicts `Database`'s Javadoc that the old database writes nothing into
 the replacement directory. Probe: `clone-codex4/probes/DirectorySwitchProbe.java`. To fixer
-d24 (17:40), as 021-24.
+d24 (17:40), as 021-24; fixed, on `main` as `c66e824`, and reviewed (section 7).
 
 **Checked and found sound** (no defect found within the checks described): 021-21 and
 021-22 (the environment's lock, conversions outside it, closing before the commit, guards
@@ -500,6 +500,44 @@ leave its files unchanged); the Android changes by reading; the Javadoc of 020-2
 
 **Not done**: a run on Android; exhaustive I/O interleavings, power loss, a full disk;
 heap limits of several GB; the recursion of split propagation (021-16, Q1).
+
+
+## 7. The review of 021-24
+
+Reviewer v2 (coord-1109's agent, until 18:18), on d24's fix of W1, `4ebd063` in
+`clone-d24`, on `main` as `c66e824`; probes in `/Users/f/fl/bench/2026-11-09/v2/`. Result:
+sound, no defect; two low points of wording, V7-1 and V7-2, done by d24 in `604841a`, on
+`main` as `03ce6ec`.
+
+* **Checks before each step.** Every step that opens, creates or deletes a file by its path
+  is checked right before the call: `openForRw`, `DbFile.delete`, `reopenChannel`, and the
+  writer's reopen in `force()`. `FileStreamIo` makes those calls directly, with nothing
+  between the check and the call that can wait. The slow steps come before the first check
+  or after the step: the `SWITCH` force, the writer's close, `close()` in `delete`, and
+  `forceDirectory`. The checks after the step cover a replacement during the file's force,
+  the directory's force and the read channel's open. The start's read-only opens of earlier
+  files are not checked, but they create nothing.
+* **Codex's probe** (`DirectorySwitchProbe`, section 6): the old database now fails at its
+  `sync()` (`DbFailedException`, its cause "no longer the database's directory"), and
+  nothing is made in the replacement.
+* **The read channel.** A reopened read channel is published only after its second check,
+  under `channelLock`, and closed if that check fails.
+* **V7-1 (low, wording): the window that is left**, between the check and the step: the
+  comments and `Database.stop()` said "microseconds"; it is usually microseconds, longer if
+  the thread is paused, as by a GC, and no bound. Said so in `604841a` (`03ce6ec`).
+* **V7-2 (low, wording): the empty file the window can leave** is refused with an exception
+  that depends on what else is in the directory: `BadDirStateException` beside the
+  replacement's own stream files; in a directory without others `StreamFormatException` from
+  `create()` and `DatabaseMissingException` from `open()` (probe `v2/probe6`). Said so in
+  `604841a` (`03ce6ec`); a clearer refusal is for Frans (020-11, section 11).
+* **No case found where a legal database fails:** a symlink, a relative path, a case
+  variant, a slow disk, a start. `LifeProbe`, "LIFEPROBE OK": 150 starts at once, 20 rounds
+  of stop, delete and create, a failed start, 8 threads on one path, a directory deleted
+  while its database ran. The 86 unit tests of the streams passed.
+* **A remote risk.** Any `IOException` of the check's `stat` counts as "gone", so a
+  transient error of `stat` on a network file system would fail a legal database. Not seen.
+
+**Not done.** The full gate, a run on Linux, a stress race inside the window.
 
 
 Log
@@ -518,8 +556,17 @@ Javadoc sentence); both high faults older than today's range.
 2026-11-09. Fixer z23: Z1 (`45b633e`), Z2 (`4ab3077`) and Z3 (`4c3d7b2`) in clone-z23,
 gated with `level1.sh` (section 4.1).
 
+2026-11-09, 16:20. Frans decided Z2 as recommended: a scan of an index leaves out an
+object of format 1, for every type (section 4.1; on `main` as `d794d06`, with Z1 as
+`6ac9708` and Z3 as `142afa2`).
+
 2026-11-09. Reviewer v2: 021-20, U10-3, U10-5 and U10-6 sound; V5-1 (low), a comment
 at `checkDirectory` (section 5).
 
 2026-11-09. Codex, round 4 (17:45): W1 (high, a directory replaced during a file
 switch's force; to 021-24); the rest of the late fixes sound (section 6).
+
+2026-11-09. Reviewer v2: 021-24's fix (`4ebd063`, on `main` as `c66e824`) sound; V7-1
+and V7-2 (low, wording), done by d24 in `604841a` (`03ce6ec` on `main`) (section 7).
+Section 7 and the main hashes of sections 3.4 and 4.1 written by coord-1109's final items
+pass.
