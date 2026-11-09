@@ -1974,4 +1974,7 @@ started, 65 with a later read failing alike, 22 of 014-01's case; and
 `corrupt.sh`, `nice -n 10`: `CORRUPT OK`, 144 variants (84 refused by
 both, 38 started, 22 started with a read failing later), 106 messages
 compared, 0 differ (195 s). No difference remains. 022-04, section 8.2,
-filled.
+filled. Landed as `8772b93` (19:21), on `453ad16`, 022-06's index, which
+changed no file of `c/`. Both again on the landed tree, `nice -n 10`:
+`CORRUPTSET OK`, 6,253 copies (213 s), every count the same;
+`CORRUPT OK`, 144 variants, 106 messages compared, 0 differ (210 s).
