@@ -11,6 +11,7 @@ import bergdb.core.Db;
 import bergdb.core.InternalDataException;
 import bergdb.core.RerunException;
 import bergdb.core.Trans;
+import bergdb.dag.Dag;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
@@ -119,6 +120,9 @@ class IndexManager {
     
     /** For tests only: the values of a build step, if above 0; else STEP_VALUES. */
     volatile int testStepValues;
+    
+    /** For tests only: if set, the pointer listener of scan()'s reads (020-18, F5). */
+    volatile Dag.PointerListener testScanListener;
 
     /** Calls the test hook, if any, with 'point'. */
     void hook(String point) {
@@ -465,8 +469,9 @@ class IndexManager {
 
     /**
      * Starts the cleanup of a deleted generation, in a daemon thread: steps of a getMany of
-     * up to CLEANUP_KEYS entry keys of the generation at the latest time and one transaction
-     * that deletes them, with no read set (no one writes a deleted generation); when a step
+     * up to CLEANUP_KEYS entry keys of the generation at the latest time, after the last key
+     * deleted (bergdb 020-18, F5), and one transaction that deletes them, with no read set (no
+     * one writes a deleted generation); when a step finds none, and a read from the prefix
      * finds none, one transaction deletes the marker, and the thread ends. A stop of the
      * database ends it (the next start resumes it); a refusal or an expiry waits and takes
      * the step again; any other RuntimeException ends it, the marker staying; an Error fails
@@ -477,11 +482,21 @@ class IndexManager {
         final byte[] marker = IndexKeys.markerKey(name, gen);
         Thread thread = new Thread(() -> {
             long retryWait = RwTransaction.FIRST_SLEEP;
+            // The last key deleted, or null: a step reads the keys after it, not from the
+            // prefix, as a read visits the deleted keys before it (the Core keeps them for
+            // earlier lookup times), and the cleanup took the square of the entries' number
+            // (bergdb 020-18, F5). When none is left after it, one read from the prefix, then
+            // the marker's deletion.
+            long[] after = null;
             while (true) {
                 long t0 = System.nanoTime();
                 try {
-                    List<Kvt> keys = scan(prefix, Long.MAX_VALUE, CLEANUP_KEYS);
+                    List<Kvt> keys = scan(prefix, after, Long.MAX_VALUE, CLEANUP_KEYS);
                     if (keys.isEmpty()) {
+                        if (after != null) {
+                            after = null;
+                            continue;
+                        }
                         hook(CLEANUP_END);
                         db.execute(db.trans().delete(marker).build());
                         return;
@@ -492,6 +507,7 @@ class IndexManager {
                         b.delete(kvt.key);
                     }
                     db.execute(b.build());
+                    after = keys.get(keys.size() - 1).key;
                     retryWait = RwTransaction.FIRST_SLEEP;
                 } catch (StreamIoException | IllegalDbStateException e) {
                     return;         // A stop of the database; the next start resumes it.
@@ -521,10 +537,15 @@ class IndexManager {
      * The KVs whose keys start with 'prefix' at 'lookupTime', at most 'max', in key order.
      */
     List<Kvt> scan(byte[] prefix, long lookupTime, final int max) {
+        return scan(prefix, null, lookupTime, max);
+    }
+
+    /** As scan(prefix, lookupTime, max), the keys after 'after' only, if not null. */
+    List<Kvt> scan(byte[] prefix, long[] after, long lookupTime, final int max) {
         final long[] prefixSegments = Keys.toSegments(prefix);
         List<Kvt> result = new ArrayList<>();
-        long[] start = prefixSegments;
-        boolean inclusive = true;
+        long[] start = after == null ? prefixSegments : after;
+        boolean inclusive = after == null;
         while (result.size() < max) {
             final int room = max - result.size();
             final boolean[] ended = new boolean[1];
@@ -549,6 +570,10 @@ class IndexManager {
                     ended[0] = true;
                 }
             };
+            Dag.PointerListener listener = testScanListener;
+            if (listener != null) {
+                g.gd.pointerListener = listener;
+            }
             db.getMany(g);
             result.addAll(g.result);
             if (ended[0] || g.result.isEmpty()) {

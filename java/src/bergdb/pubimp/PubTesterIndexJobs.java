@@ -1099,6 +1099,63 @@ public class PubTesterIndexJobs {
         }
     }
 
+    /**
+     * 020-18, F5: a cleanup step goes on after the key that the step before deleted. It read
+     * from the generation's prefix each time, and a read visits the deleted keys before the
+     * live ones (the Core keeps them for earlier lookup times), so the cleanup's work grew as
+     * the square of the entries' number: its reads followed 3.9 times the pointers of one
+     * read of all the entries for 1,000 entries, 6.4 times for 2,000, 53 times for 20,000
+     * (100,000 entries: a step's read took 0.23 ms at the start and 9.8 ms at the end on F53;
+     * 10,000,000 would take about 13 hours). Now 1.6 times, whatever the number. Counted with
+     * IndexManager's test listener, for 2,000 entries: at most three times.
+     */
+    @Nano
+    public static void testCleanupWorkIsLinear() throws InterruptedException {
+        Database db = start(new MemoryStream());
+        try {
+            Connection c = db.newConnection();
+            for (int i = 0; i < 2000; i += 500) {
+                bergdb.pub.WBuilder w = c.w();
+                for (int k = i; k < i + 500; k++) {
+                    w.put(String.format("/many/k%06d", k), new Item(k, k));
+                }
+                w.execute();
+            }
+            db.indexBuilder("by-field").dir("/many/").type("long").field("amount").start()
+                    .join();
+            IndexManager m = manager(db);
+            long gen = m.definition("by-field").gen();
+            java.util.concurrent.atomic.AtomicLong all = new java.util.concurrent.atomic.AtomicLong();
+            java.util.concurrent.atomic.AtomicLong cleanup =
+                    new java.util.concurrent.atomic.AtomicLong();
+            m.testScanListener = new bergdb.dag.Dag.PointerListener() {
+                public void superRootAccessed(bergdb.dag.TopNode superRoot) {}
+
+                public void pointerFollowed(bergdb.dag.Node predecessor, int pointerIndex,
+                        bergdb.dag.Node result, int pointerType) {
+                    all.incrementAndGet();
+                    if (Thread.currentThread().getName().startsWith("IndexCleanup-")) {
+                        cleanup.incrementAndGet();
+                    }
+                }
+            };
+            Assert.assertEquals(2000, m.entries("by-field", gen, Long.MAX_VALUE).size());
+            long oneRead = all.get();
+            db.deleteIndex("by-field");
+            long end = System.currentTimeMillis() + 10000;
+            while (!m.markers(Long.MAX_VALUE).isEmpty()) {
+                Assert.assertTrue("the cleanup ended in 10 s", System.currentTimeMillis() < end);
+                Thread.sleep(2);
+            }
+            m.testScanListener = null;
+            Assert.assertEquals(0, m.entries("by-field", gen, Long.MAX_VALUE).size());
+            Assert.assertTrue("the cleanup's reads followed " + cleanup.get() + " pointers, one "
+                    + "read of the entries " + oneRead, cleanup.get() <= 3 * oneRead);
+        } finally {
+            db.close();
+        }
+    }
+
     // ======== The builder (020-10, section 3.1) ========
 
     /** S2-F20: dir() twice is refused at once; the builder needs dir() first. */
