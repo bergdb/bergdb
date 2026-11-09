@@ -3,9 +3,10 @@ The user indexes of BergDB 2026.4 in Lean: the theorems (bergdb 020-29).
 
 The invariants that bergdb 020-26 checked with TLC for small bounds (its
 section 3), proved for every reachable system of the model of
-BergDB/Index/Model.lean: any number of keys, values, writers, steps of any
-size, generations, deletions, creations again and crashes, also crashes that
-lose committed transactions. The proofs are in BergDB/Index/Inv.lean and
+BergDB/Index/Model.lean: any number of keys, values, directories, index
+names, writers, transactions of any keys, steps of any size, generations,
+deletions, creations again and crashes, also crashes that lose committed
+transactions. The proofs are in BergDB/Index/Inv.lean and
 BergDB/Index/Steps.lean: an inductive invariant, `Inv`, kept by every step
 (`inv_step`), after 020-26, section 4's argument.
 -/
