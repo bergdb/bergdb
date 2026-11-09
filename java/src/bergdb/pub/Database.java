@@ -166,6 +166,8 @@ public interface Database extends AutoCloseable {
      *             as for sync().
      * @throws DbFailedException
      *             If the storage has failed: the database fails (see above).
+     * @throws IllegalArgumentException
+     *             If syncLevel is null (bergdb 020-25).
      */
     public void sync(SyncLevel syncLevel);
 

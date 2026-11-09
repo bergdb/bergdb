@@ -126,7 +126,8 @@ public class PubTesterJavadocRest {
      * database's transactions: with a TestClock, the clock's time when it is later than the
      * last transaction's, else the next clock unit; a put, a delete, a w(), an empty w() and
      * an rw() each have a time of their own, increasing. Connection.transactionInfo() gives
-     * the same time for the value it wrote.
+     * the same time for the value it wrote. sync(SyncLevel) of a Transaction, a Connection
+     * and a Database refuses null with IllegalArgumentException.
      */
     @Nano
     public static void testTransactionTimes() {
@@ -146,6 +147,14 @@ public class PubTesterJavadocRest {
             Assert.assertEquals("the clock's time", t0 + 1000, t.getTime().units());
             c.get("/c.txt", String.class);
             Assert.assertEquals(ts[4].getTime(), c.transactionInfo().time());
+
+            final Transaction last = t;
+            assertThrows("Transaction.sync(null)", IllegalArgumentException.class,
+                    () -> last.sync(null));
+            assertThrows("Connection.sync(null)", IllegalArgumentException.class,
+                    () -> c.sync(null));
+            assertThrows("Database.sync(null)", IllegalArgumentException.class,
+                    () -> db.sync(null));
         }
     }
 

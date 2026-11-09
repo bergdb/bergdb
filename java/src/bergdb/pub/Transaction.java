@@ -50,6 +50,7 @@ public interface Transaction {
      * 
      * @throws DbException if the database is faulty or has failed, or if the thread is
      *             interrupted while it waits, as for sync().
+     * @throws IllegalArgumentException if syncLevel is null (bergdb 020-25).
      */
     public void sync(SyncLevel syncLevel);
 }

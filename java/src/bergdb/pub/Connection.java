@@ -415,6 +415,7 @@ public interface Connection extends ReadInterface {
      *             it waits, as for sync().
      * @throws DbFailedException
      *             If the storage has failed: the database fails. See Database.
+     * @throws IllegalArgumentException If syncLevel is null (bergdb 020-25).
      */
     public void sync(SyncLevel syncLevel);
 }
