@@ -793,8 +793,10 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `EOFException`. A damaged stream, its checksums right, can carry such a
   position in a node's pointer: the start was refused, or the database
   failed, as at any read past the end, but with an
-  `IndexOutOfBoundsException` as the cause. Now such a read throws
-  `EOFException`, as `AppendOnlyStream.read()` says. In 2026.3 and before.
+  `IndexOutOfBoundsException` as the cause. On Linux and Android,
+  `OneFileStream`, the simple stream for tests, threw the `IOException` of
+  `lseek`'s `EINVAL`. Now such a read throws `EOFException`, as
+  `AppendOnlyStream.read()` says. In 2026.3 and before.
 * **A start's refusals name a node the same way in every run** (bergdb
   021-15; 2026-11-09): the texts of the `StreamFormatException` of a key
   node's validation at a start (`KeyNode.validateStreamNode`: a pointer's

@@ -1,5 +1,6 @@
 package bergdb.stream;
 
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -56,6 +57,15 @@ public class OneFileStream implements AppendOnlyStream {
     public void read(long position, byte[] dest, int destOffset, int length) throws IOException {
         Util.checkRange(dest, destOffset, length);     // Bergdb 019-02.
         synchronized (rfile) {
+            // The end is checked before the seek since 2026-11-09 (bergdb 021-14): Linux's and
+            // Android's lseek refuse a position near Long.MAX_VALUE, beyond the file system's
+            // largest file, with EINVAL, an IOException that is not the EOFException of a
+            // read past the end. size and length are not negative: no overflow.
+            long size = getLength();
+            if (position > size - length) {
+                throw new EOFException("Cannot read " + length + " bytes at position " + position
+                        + ", stream size is " + size + ".");
+            }
             rfile.seek(position);
             rfile.readFully(dest, destOffset, length);
         }
