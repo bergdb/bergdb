@@ -394,6 +394,34 @@ TEST(tnode_to_longs) {
     NFIX_END(&f);
 }
 
+/* TopNode.testPointerInPlace (bergdb 015-14): the root pointer and a skip
+ * pointer changed in place (raiseRef, swizzle, setPointer, setRef) and read
+ * as a follow reads them (getPointee, getPointerPos). */
+TEST(tnode_pointer_in_place) {
+    struct nfix f;
+    nfix_init(&f);
+    struct tnode *t = tn_new(&f.cx, 1, NULL, 200, 5, SPOS_NULL);
+    struct handle *a = hd_new(&f.cx, 7);
+    struct handle *b = hd_new(&f.cx, 7);
+    REQUIRE(t != NULL && a != NULL && b != NULL);
+    for (int32_t i = 0; i <= 1; i++) {
+        tn_set_pointer(&f.cx, t, i, &a->o, 200);
+        tn_raise_ref(t, i, 100);
+        CHECK_EQ(tn_get_pointer_pos(t, i), 200);            /* never lowered */
+        tn_raise_ref(t, i, 300);
+        CHECK_EQ(tn_get_pointer_pos(t, i), 300);
+        CHECK(!tn_swizzle(&f.cx, t, i, &b->o, &b->o));
+        CHECK(tn_swizzle(&f.cx, t, i, &a->o, &b->o));
+        CHECK(tn_get_pointee(t, i) == &b->o);
+        tn_set_ref(t, i, 400);
+        CHECK_EQ(tn_get_pointer_pos(t, i), 400);
+    }
+    CHECK(t->root_pointer == b && t->skip[0].p == b);
+    CHECK_EQ(t->root_pointer_pos, 400);
+    CHECK_EQ(t->skip[0].pos, 400);
+    NFIX_END(&f);
+}
+
 /* TopNode.createDummy: skip pointers at the ordinal's set bits. */
 TEST(tnode_create_dummy) {
     struct nfix f;
@@ -423,6 +451,7 @@ const struct test tnode_tests[] = {
     TEST_ENTRY(tnode_ordinals_round_trip),
     TEST_ENTRY(tnode_ordinal_field),
     TEST_ENTRY(tnode_to_longs),
+    TEST_ENTRY(tnode_pointer_in_place),
     TEST_ENTRY(tnode_create_dummy),
     TEST_END
 };

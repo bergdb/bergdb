@@ -846,6 +846,53 @@ TEST(knode_pointer_test1) {
     CHECK_EQ(ptr_spos_for_stream(&p), 80);
 }
 
+/* KeyNodeTester.testPointerInPlace (bergdb 015-14): pointer 0 changed in
+ * place (raiseRef, swizzle, setPointer, setPointee) and read as the
+ * searches read it (getPointee, getPointerNode, getPointerPos), before and
+ * after a growth copies it. Java's are for a reader beside the writer; C
+ * has one caller, and the same results. */
+TEST(knode_pointer_in_place) {
+    struct nfix f;
+    nfix_init(&f);
+    struct knode *x = kn_new(&f.cx, false);
+    struct handle *a = hd_new(&f.cx, 7);
+    struct handle *b = hd_new(&f.cx, 7);
+    struct knode *v = kn_new(&f.cx, true);
+    REQUIRE(x != NULL && a != NULL && b != NULL && v != NULL);
+    v->n.spos = 300;
+    hd_set_obj(&f.cx, b, &v->n);
+    const uint8_t first[1] = { 1 };
+    REQUIRE(kn_add_to_end(&f.cx, x, kl_create_key(first, 1), &a->o, 200));
+    kn_raise_ref(x, 0, 100);
+    CHECK_EQ(kn_get_pointer_pos(x, 0), 200);                /* never lowered */
+    kn_raise_ref(x, 0, 300);
+    CHECK(!kn_swizzle(&f.cx, x, 0, &b->o, &b->o));          /* expects what it read */
+    CHECK(kn_swizzle(&f.cx, x, 0, &a->o, &b->o));
+    CHECK(kn_get_pointee(x, 0) == &b->o);
+    CHECK(kn_get_pointer_node(x, 0) == &v->n);
+    for (int32_t i = 2; i <= 30; i++) {
+        const uint8_t key[1] = { (uint8_t) i };
+        REQUIRE(kn_add_to_end(&f.cx, x, kl_create_key(key, 1), NULL, 8 * i));
+    }
+    CHECK(x->cap >= 30);
+    CHECK(kn_get_pointee(x, 0) == &b->o);
+    CHECK_EQ(kn_get_pointer_pos(x, 0), 300);
+    CHECK_EQ(kn_get_pointer_pos(x, 29), 8 * 30);
+    struct kwp kwi;
+    kn_search_eq(x, INT64_MAX, kl_get_compare_value(kn_get_klong(x, 0)), &kwi);
+    CHECK_EQ(kwi.pointer_index, 0);
+    CHECK(kwi.node == &v->n);
+    CHECK_EQ(kwi.pos, 300);
+    kn_set_pointer(&f.cx, x, 0, NULL, 400);
+    CHECK(kn_get_pointee(x, 0) == NULL);
+    CHECK_EQ(kn_get_pointer_pos(x, 0), 400);
+    CHECK(kn_get_pointer_node(x, 0) == NULL);
+    hd_set_obj(&f.cx, b, NULL);
+    kn_set_pointee(&f.cx, x, 0, &b->o);
+    CHECK(kn_get_pointer_node(x, 0) == NULL);               /* no object: the slow path */
+    NFIX_END(&f);
+}
+
 /* A key node made from a stored one (StoredKeyNode.parse): stream
  * pointers, its id and position, the last time index. */
 TEST(knode_new_stored) {
@@ -1041,6 +1088,7 @@ const struct test knode_tests[] = {
     TEST_ENTRY(knode_add_delete_klong),
     TEST_ENTRY(knode_search_first_takes_first),
     TEST_ENTRY(knode_pointer_test1),
+    TEST_ENTRY(knode_pointer_in_place),
     TEST_ENTRY(knode_new_stored),
     TEST_END
 };
