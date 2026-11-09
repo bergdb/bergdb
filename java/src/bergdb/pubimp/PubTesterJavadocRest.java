@@ -438,6 +438,28 @@ public class PubTesterJavadocRest {
     }
 
 
+    /**
+     * BadCryptoKey and DatabaseBuilder.start(): a stream that does not begin as a BergDB
+     * stream, here 100 bytes of 'x', is refused with BadCryptoKey, with a crypto key and
+     * without one, and the start writes nothing.
+     */
+    @Nano
+    public static void testBadCryptoKeyForAForeignStream() throws java.io.IOException {
+        byte[] bytes = new byte[100];
+        java.util.Arrays.fill(bytes, (byte) 'x');
+        for (int k = 0; k < 2; k++) {
+            final MemoryStream m = new MemoryStream();
+            m.append(bytes, 0, bytes.length);
+            final DatabaseBuilder b = ((DatabaseBuilderImp) Factory.database()).mainStream(m);
+            if (k == 1) {
+                b.cryptoKey(CryptoKey.generate());
+            }
+            assertThrows("key " + k, BadCryptoKey.class, () -> b.start().close());
+            Assert.assertEquals(100, m.getLength());
+        }
+    }
+
+
     // ======== Time, Duration ========
 
     /**

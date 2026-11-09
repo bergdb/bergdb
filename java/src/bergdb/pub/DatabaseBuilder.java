@@ -156,9 +156,10 @@ public interface DatabaseBuilder {
      *             005-63).
      * @throws BadCryptoKey
      *             If the wrong crypto key is used, or none is used with an encrypted
-     *             database or a crypto key is used with an unencrypted database. The
-     *             start has then written nothing to the database, so it can be started
-     *             with the right key (bergdb 005-40).
+     *             database or a crypto key is used with an unencrypted database; without a
+     *             key, also if the stream is not a BergDB stream, or is damaged at its
+     *             beginning (bergdb 005-33, 020-25). The start has then written nothing to
+     *             the database, so it can be started with the right key (bergdb 005-40).
      * @throws DatabaseNotCreatedException
      *             If the database's creation did not complete: a crash, as a power loss,
      *             while it was created left a part of it, and no data (bergdb 005-33). The
