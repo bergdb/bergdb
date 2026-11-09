@@ -10,7 +10,7 @@
 # as launchd's job was before ProcessType Interactive (2026-10-22) or a
 # background process is (nice, taskpolicy -b), the timing tests fail.
 #
-# Usage: java/night.sh          the night run, about 60 minutes on F53
+# Usage: java/night.sh          the night run, about 70 minutes on F53
 #        java/night.sh large    the same and the large conformance set,
 #                               about 6 hours; by hand
 #        java/night.sh tests [-c classPattern] [-m methodPattern] [-v | -vv | -d | -s]
@@ -42,8 +42,11 @@
 #      harnesses (IndexHarness, IndexJobsHarness, PrimaryHarness, the object
 #      codec's and the Data Objects' properties) with other seeds and larger
 #      sizes than the night tests' runs; about 4 minutes (bergdb 020-17).
-#   7. stress/conformance.sh medium: 9 traces of 120 to 500 transactions.
-#   8. With "large": stress/conformance.sh large, 12 traces of 1,000 to 5,000
+#   7. stress/fuzz.sh 12: FormatFuzzer's six areas, the readers of bytes that
+#      2026.4 added, each against its spec, for 12 minutes, with new seeds
+#      each day (bergdb 020-16).
+#   8. stress/conformance.sh medium: 9 traces of 120 to 500 transactions.
+#   9. With "large": stress/conformance.sh large, 12 traces of 1,000 to 5,000
 #      transactions at node sizes 8 to 62; about 5 hours, most of it the two
 #      l-big62 traces.
 # It writes build/night/RUN/report.txt (the commit, the JDK, each step's last
@@ -118,6 +121,7 @@ step level4 sh stress/level4.sh
 step lean-tests sh stress/lean-tests.sh
 step night-tests night_tests
 step harness-soak sh stress/harness-soak.sh -r 2
+step fuzz sh stress/fuzz.sh 12
 step conformance-medium sh stress/conformance.sh medium
 if [ $LARGE = 1 ]; then
     step conformance-large sh stress/conformance.sh large

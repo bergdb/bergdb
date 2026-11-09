@@ -46,7 +46,7 @@ and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
     java/f.sh                      # runs the f-tests
     java/perf.sh                   # runs the perf-tests
     java/props.sh                  # runs the Props tests: MEM, CORE, SS (about 50 s)
-    java/night.sh                  # the night run: all of the below (about 50 minutes)
+    java/night.sh                  # the night run: all of the below (about 70 minutes)
     java/night.sh large            # the same and the large conformance set (about 6 hours)
     java/night.sh tests            # only the night-tests (about 4.5 minutes)
     java/stress/core-build.sh      # the Core Layer built alone, its tests on it (about 15 s; unit f: 50 s)
@@ -54,6 +54,8 @@ and `level2.sh` to `level4.sh`, [elan](https://github.com/leanprover/elan).
     java/stress/level2.sh          # bounded startup      (about 17 minutes; quick: 2)
     java/stress/level3.sh          # reclaim              (about 8 minutes)
     java/stress/level4.sh          # eviction             (about 16 minutes; quick: 4)
+    java/stress/harness-soak.sh    # the Pub layer's randomized harnesses (night: -r 2, about 4 minutes)
+    java/stress/fuzz.sh            # fuzzing of 2026.4's readers of bytes (8 minutes; night: 12)
     cd lean && lake build          # checks all proofs
 
 `java/before-commit.sh` must print `BEFORE COMMIT OK` before a change to
@@ -64,7 +66,8 @@ depending on the job; work on performance, for example, runs the
 performance tests. `java/night.sh`, the night run, is not a gate either:
 on a clean clone of the committed code, the check before a commit, the Core
 Layer built alone (`core-build.sh`), the four level scripts, the night tests
-(the long-running tests of 2013 to 2015) and the medium conformance set;
+(the long-running tests of 2013 to 2015), two rounds of the harnesses'
+soak, 12 minutes of fuzzing and the medium conformance set;
 it is started when the machine has room for it, at no fixed time, and its
 report is in `java/build/night/`. `java/night.sh large` adds the large
 conformance set; it is started by hand. Set `JAVA_HOME`, or `JAVA`,
