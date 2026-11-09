@@ -69,8 +69,9 @@ public interface WBuilder {
      *             class, or a class it reaches, is not a Data Object class; an array in it
      *             has a null element; a value's class is not its field's type; it has a
      *             reference cycle, or is nested deeper than 16 levels of objects and arrays;
-     *             or it is larger than a stored value may be. The message names the class
-     *             or the place. A null field is not refused: it is left out, absent.
+     *             or it is larger than a stored value may be in Java, 2^31 - 9 bytes,
+     *             counted before anything is copied (bergdb 021-23). The message names the
+     *             class or the place. A null field is not refused: it is left out, absent.
      * @throws IllegalStateException  If execute() was called: the builder is spent.
      */
     public WBuilder put(String key, Object object);

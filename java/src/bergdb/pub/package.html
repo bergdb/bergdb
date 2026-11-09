@@ -286,9 +286,13 @@ reads it back equal. It refuses, with IllegalArgumentException and before anythi
 written, what cannot be stored so, naming its place from the top object, such as
 "inner.names[3]": a null array element (see below); a value whose class is not its field's
 type, such as a subclass; a reference cycle; nesting deeper than 16 levels; a string with a
-lone surrogate (see Strings); a stored value of more than 2^31 - 1 bytes. An array put at a
-key is stored as an object with the field "array", a primitive's wrapper with the field
-"p".</p>
+lone surrogate (see Strings); a stored value of more than 2^31 - 9 bytes, the largest Java
+array (the format allows 2^31 - 1), counted before anything is copied, the message naming
+the place where the count passes it (bergdb 021-23). An object or an array that the object
+refers to twice is stored twice, and a get makes two equal ones: a stored object holds no
+references (bergdb 020-09, section 4.5), so an array of a thousand references to one array
+of 1 MB stores 1 GB. An array put at a key is stored as an object with the field "array", a
+primitive's wrapper with the field "p".</p>
 
 <p>A get is best effort: a stored field is matched to the class's field of its name; a value
 that fits the field's type is set exactly, else the nearest value (an integer clamped, never

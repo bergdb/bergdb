@@ -331,9 +331,10 @@ public final class DbObject extends DbValue {
      *      element (bergdb 020-04, section 2.1); if a value's class is not its field's type;
      *      if a String in the object, at any depth, has a lone surrogate (see "Strings" above;
      *      bergdb 021-04); if the object has a reference cycle (bergdb 005-23), or is nested
-     *      deeper than 16 levels of objects and arrays (bergdb 020-07, R14). The message
-     *      names the class or the place: the field, and an array element's index. If
-     *      'object' is a byte[].
+     *      deeper than 16 levels of objects and arrays (bergdb 020-07, R14); if its bytes
+     *      would pass 2^31 - 9, the largest Java array, counted before anything is copied
+     *      (bergdb 021-23). The message names the class or the place: the field, and an
+     *      array element's index. If 'object' is a byte[].
      */
     public static DbObject toDbObject(Object object) {
         return DataObjects.toDbObject(object);

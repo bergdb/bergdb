@@ -602,6 +602,24 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   read another key through the same connection left
   `Connection.transactionInfo()` describing the constructor's read; it now
   describes the get's value. Found by a new-user application.
+* **A put of an object too large to store is refused before anything is
+  copied** (bergdb 021-23; 2026-11-09). A put copied each element of an
+  array into the array's buffer and checked the array's size only then, so
+  an object small in memory and too large to store, such as an array of
+  2,100 references to one 1 MiB `byte[]` (2.2 GB stored), threw
+  `OutOfMemoryError` with a heap below about 5 GB, from `put()`, `w()` and
+  `DbObject.toDbObject()`, and inside `rw()` the error failed the
+  database; with 8 GB of heap the refusal came at a resident size of 4.6
+  GB, its message "size: a value of 2147493890 bytes; ..." without the
+  place. An object of 25 fields of one 100 MiB array was cloned, 2.6 GB,
+  before its refusal. Now a put counts the object's stored bytes first, without a
+  copy, and refuses it with `IllegalArgumentException` where the count
+  passes 2^31 - 9 bytes, the largest Java array, in about 10 ms: "The
+  object is too large: its stored value passes 2147483639 bytes at
+  'parts[2047]'. ..."; nothing written, and the database goes on. The
+  count adds a walk of the object to each put of one, without a copy. In
+  2026.4's Data Objects (020-09); found by a new-user application
+  (020-24-12, U12-1).
 
 
 ### Core API

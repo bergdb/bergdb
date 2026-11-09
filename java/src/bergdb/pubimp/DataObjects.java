@@ -421,9 +421,16 @@ public final class DataObjects {
      * of its stored fields; a DbObject as it is.
      *
      * @throws IllegalArgumentException  If 'x' or a value in it cannot be stored exactly
-     *      (020-09, section 4.7), naming the path, before anything is written.
+     *      (020-09, section 4.7), naming the path, before anything is written; if its stored
+     *      value would take more than MAX_ARRAY bytes, before anything is copied (bergdb
+     *      021-23).
      */
     public static DbObject toDbObject(Object x) {
+        return toDbObject(x, ObjectFormat.MAX_ARRAY);
+    }
+
+    /** toDbObject(x) with 'limit' for MAX_ARRAY: a test's smaller limit (bergdb 021-23). */
+    static DbObject toDbObject(Object x, long limit) {
         if (x == null) {
             throw new IllegalArgumentException("object == null not allowed: BergDB stores no "
                     + "null (bergdb 020-09, section 4.3)");
@@ -438,7 +445,7 @@ public final class DataObjects {
             throw new IllegalArgumentException("A byte[] is not converted to an object: a put "
                     + "stores it as it is, its bytes (bergdb 020-09, section 4.6).");
         }
-        Put put = new Put();
+        Put put = new Put(limit);
         DbObject.Builder b = new DbObject.Builder();
         if (c.isArray()) {
             Class<?> e = base(c);
@@ -446,10 +453,12 @@ public final class DataObjects {
             if (f != null) {
                 throw new IllegalArgumentException(f.message(""));
             }
+            put.storedSize(c, x, ARRAY_NAME);
             put.enter(null);
             b.addArray(ARRAY_FIELD, (DbArray) put.value(c, x));
             put.leave();
         } else if (isScalarType(c)) {
+            put.storedSize(c, x, PRIMITIVE_NAME);
             put.enter(null);
             b.addDbValue(PRIMITIVE_FIELD, put.value(c, x));
             put.leave();
@@ -458,6 +467,7 @@ public final class DataObjects {
             if (f != null) {
                 throw new IllegalArgumentException(f.message(""));
             }
+            put.storedSize(c, x, null);
             return put.object(info(c), x);
         }
         return b.build();
@@ -466,12 +476,20 @@ public final class DataObjects {
     /**
      * A put's walk: the containers on the path from the top, one a level (020-07, R14), with
      * the step taken from each, a field's name or an element's index; and the objects on it,
-     * for the cycle check (005-23).
+     * for the cycle check (005-23). Two walks: storedSize() counts the bytes first, without a
+     * copy, then value() and object() build the DbObject (bergdb 021-23).
      */
     private static final class Put {
         private final List<Object> objects = new ArrayList<Object>();
-        private final List<String> steps = new ArrayList<String>();
+        private final List<String> steps = new ArrayList<String>();    // null: an index
+        private final int[] indexes = new int[ObjectFormat.MAX_LEVELS + 1];
         private final IdentityHashMap<Object, Boolean> set = new IdentityHashMap<Object, Boolean>();
+        private final long limit;       // the most bytes of the stored value
+        private long counted;           // its bytes counted so far by storedSize()
+
+        Put(long limit) {
+            this.limit = limit;
+        }
 
         /**
          * Enters a container, one level deeper, reached by the step set in the level above;
@@ -516,9 +534,22 @@ public final class DataObjects {
             steps.set(steps.size() - 1, step);
         }
 
+        /** Sets the step to element 'i' in the innermost container, made text only if named. */
+        void index(int i) {
+            int last = steps.size() - 1;
+            steps.set(last, null);
+            indexes[last] = i;
+        }
+
+        /** The step taken at level 'i' + 1. */
+        private String stepAt(int i) {
+            String s = steps.get(i);
+            return s != null ? s : "[" + indexes[i] + "]";
+        }
+
         /** The path to the container at level 'depth' + 1 (0: the top). */
         String describe(int depth) {
-            if (depth == 0 || (depth == 1 && steps.get(0).isEmpty())) {
+            if (depth == 0 || (depth == 1 && stepAt(0).isEmpty())) {
                 return "the top";
             }
             StringBuilder b = new StringBuilder();
@@ -527,7 +558,7 @@ public final class DataObjects {
                     append(b, "(" + (depth - 10) + " more)");
                     i = depth - 5;
                 }
-                append(b, steps.get(i));
+                append(b, stepAt(i));
             }
             return b.toString();
         }
@@ -551,13 +582,7 @@ public final class DataObjects {
             enter(o);
             for (StoredField f : info.fields) {
                 step(f.name);
-                Object v;
-                try {
-                    v = f.field.get(o);
-                } catch (IllegalAccessException e) {
-                    throw new IllegalArgumentException("The field '" + here() + "' cannot be "
-                            + "read: " + e, e);
-                }
+                Object v = read(f, o);
                 if (v == null) {
                     continue;       // left out: absent (020-09, section 4.3)
                 }
@@ -595,9 +620,7 @@ public final class DataObjects {
                 return array(t, v);
             }
             if (v.getClass() != t) {
-                throw new IllegalArgumentException("The value at '" + here() + "' is a "
-                        + v.getClass().getName() + ", not a " + t.getName() + ", the field's "
-                        + "type (bergdb 020-09, section 4.5).");
+                throw notTheFieldsClass(t, v);
             }
             return object(info(t), v);
         }
@@ -605,26 +628,215 @@ public final class DataObjects {
         /** The array 'v' of the declared type 't', element by element (020-09, 4.4). */
         DbArray array(Class<?> t, Object v) {
             if (v.getClass() != t) {
-                throw new IllegalArgumentException("The value at '" + here() + "' is a "
-                        + v.getClass().getTypeName() + ", not a " + t.getTypeName()
-                        + ", the field's type (bergdb 020-09, section 4.4).");
+                throw notTheFieldsArrayClass(t, v);
             }
             Class<?> e = t.getComponentType();
             DbArray.Builder b = new DbArray.Builder();
             int n = Array.getLength(v);
             enter(v);
             for (int i = 0; i < n; i++) {
-                step("[" + i + "]");
+                index(i);
                 Object element = Array.get(v, i);
                 if (element == null) {
-                    throw new IllegalArgumentException("The array element at '" + here()
-                            + "' is null: BergDB stores no null, and an array has no absent "
-                            + "element (bergdb 020-09, section 4.3).");
+                    throw nullElement();
                 }
                 b.add(value(e, element));
             }
             leave();
             return b.build();
+        }
+
+        /** The value of the stored field 'f' of the object 'o'. */
+        private Object read(StoredField f, Object o) {
+            try {
+                return f.field.get(o);
+            } catch (IllegalAccessException e) {
+                throw new IllegalArgumentException("The field '" + here() + "' cannot be "
+                        + "read: " + e, e);
+            }
+        }
+
+        private IllegalArgumentException notTheFieldsClass(Class<?> t, Object v) {
+            return new IllegalArgumentException("The value at '" + here() + "' is a "
+                    + v.getClass().getName() + ", not a " + t.getName() + ", the field's "
+                    + "type (bergdb 020-09, section 4.5).");
+        }
+
+        private IllegalArgumentException notTheFieldsArrayClass(Class<?> t, Object v) {
+            return new IllegalArgumentException("The value at '" + here() + "' is a "
+                    + v.getClass().getTypeName() + ", not a " + t.getTypeName()
+                    + ", the field's type (bergdb 020-09, section 4.4).");
+        }
+
+        private IllegalArgumentException nullElement() {
+            return new IllegalArgumentException("The array element at '" + here()
+                    + "' is null: BergDB stores no null, and an array has no absent "
+                    + "element (bergdb 020-09, section 4.3).");
+        }
+
+        // ---- The size first (bergdb 021-23) ----
+
+        /**
+         * The bytes of the stored value of 'v' of the class 't', put as the top object, or
+         * as the field 'wrap' of one if not null (section 4.6), counted without a copy;
+         * refused at the place where the count passes the limit, before anything is copied.
+         * A put copied the value element by element into its array's buffer before it
+         * checked the array's size, so that an array of many references to one large array
+         * or string, small in memory, threw OutOfMemoryError in place of the refusal, and
+         * inside rw() failed the database (020-24-12, U12-1). The walk makes the build's
+         * checks that keep it finite and exact, a cycle, the depth, a value of another
+         * class and a null element, with the build's messages; a lone surrogate is left to
+         * the build.
+         *
+         * @throws IllegalArgumentException  If the stored value would take more than the
+         *      limit, MAX_ARRAY: the most that one Java array holds.
+         */
+        long storedSize(Class<?> t, Object v, byte[] wrap) {
+            counted = 0;
+            count(1);                               // the header
+            if (wrap == null) {
+                return 1 + size(t, v);
+            }
+            enter(null);
+            count(1 + wrap.length);
+            long fields = 1 + wrap.length + size(t, v);
+            leave();
+            long frame = ObjectFormat.headSize(1, fields);
+            count(frame);
+            return 1 + frame + fields;
+        }
+
+        /**
+         * The bytes of the value 'v', not null, of the declared type 't', as value() writes
+         * them, each byte counted once, when found.
+         */
+        long size(Class<?> t, Object v) {
+            long size;
+            if (t == boolean.class || t == Boolean.class) {
+                size = 1;
+            } else if (t == char.class || t == Character.class) {
+                size = ObjectFormat.integerSize((Character) v);
+            } else if (t == float.class || t == Float.class || t == double.class
+                    || t == Double.class) {
+                size = ObjectFormat.DOUBLE_SIZE;
+            } else if (isIntegerType(t)) {
+                size = ObjectFormat.integerSize(((Number) v).longValue());
+            } else if (t == String.class) {
+                size = withLength(StringUtil.utf8Size((String) v));
+            } else if (t == byte[].class) {
+                size = withLength(((byte[]) v).length);
+            } else if (t.isArray()) {
+                return sizeOfArray(t, v);
+            } else {
+                if (v.getClass() != t) {
+                    throw notTheFieldsClass(t, v);
+                }
+                return sizeOfObject(info(t), v);
+            }
+            count(size);
+            return size;
+        }
+
+        /** The object 'o' of Data Object class 'info': its frame and its fields. */
+        private long sizeOfObject(ClassInfo info, Object o) {
+            enter(o);
+            long fields = 0;
+            int n = 0;
+            for (StoredField f : info.fields) {
+                step(f.name);
+                Object v = read(f, o);
+                if (v == null) {
+                    continue;
+                }
+                count(1 + f.nameBytes.length);
+                fields += 1 + f.nameBytes.length + size(f.type, v);
+                n++;
+            }
+            leave();
+            long frame = ObjectFormat.headSize(n, fields);
+            count(frame);
+            return frame + fields;
+        }
+
+        /** The array 'v' of the declared type 't', not byte[]: 0x42, its elements, 0x43. */
+        private long sizeOfArray(Class<?> t, Object v) {
+            if (v.getClass() != t) {
+                throw notTheFieldsArrayClass(t, v);
+            }
+            count(2);
+            Class<?> e = t.getComponentType();
+            long size = 2;
+            enter(v);
+            if (e.isPrimitive()) {
+                long elements = primitiveElements(e, v);
+                leave();
+                count(elements);
+                return size + elements;
+            }
+            Object[] a = (Object[]) v;
+            for (int i = 0; i < a.length; i++) {
+                index(i);
+                Object element = a[i];
+                if (element == null) {
+                    throw nullElement();
+                }
+                size += size(e, element);
+            }
+            leave();
+            return size;
+        }
+
+        /** The bytes of the elements of 'v', an array of the primitive type 'e'. */
+        private static long primitiveElements(Class<?> e, Object v) {
+            long size = 0;
+            if (e == boolean.class) {
+                size = ((boolean[]) v).length;
+            } else if (e == double.class) {
+                size = (long) ObjectFormat.DOUBLE_SIZE * ((double[]) v).length;
+            } else if (e == float.class) {
+                size = (long) ObjectFormat.DOUBLE_SIZE * ((float[]) v).length;
+            } else if (e == int.class) {
+                for (int x : (int[]) v) {
+                    size += ObjectFormat.integerSize(x);
+                }
+            } else if (e == long.class) {
+                for (long x : (long[]) v) {
+                    size += ObjectFormat.integerSize(x);
+                }
+            } else if (e == short.class) {
+                for (short x : (short[]) v) {
+                    size += ObjectFormat.integerSize(x);
+                }
+            } else if (e == char.class) {
+                for (char x : (char[]) v) {
+                    size += ObjectFormat.integerSize(x);
+                }
+            } else if (e == byte.class) {
+                for (byte x : (byte[]) v) {
+                    size += ObjectFormat.integerSize(x);
+                }
+            } else {
+                throw new IllegalStateException("not a primitive element type: " + e);
+            }
+            return size;
+        }
+
+        /** A string's or bytes' size: its type byte, its length and its 'n' bytes (R10). */
+        private static long withLength(long n) {
+            return (n <= Byte.MAX_VALUE ? 2 : n <= Short.MAX_VALUE ? 3 : 5) + n;
+        }
+
+        /** Counts 'n' bytes more of the stored value; refuses it here if they pass the limit. */
+        private void count(long n) {
+            counted += n;
+            if (counted > limit) {
+                String at = here();
+                throw new IllegalArgumentException("The object is too large: its stored value "
+                        + "passes " + limit + " bytes at " + (at.isEmpty() ? "the top"
+                        : "'" + at + "'") + ". A stored value has at most 2^31 - 1 bytes, and "
+                        + "in Java at most 2^31 - 9, the largest Java array (bergdb 020-07, "
+                        + "R15; 020-09, section 4.7).");
+            }
         }
     }
 

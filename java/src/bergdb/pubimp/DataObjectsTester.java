@@ -1578,6 +1578,137 @@ public class DataObjectsTester {
         ch.done();
     }
 
+    // ======== A stored value too large, refused before a copy (bergdb 021-23) ========
+
+    public static class Parts {
+        public byte[][] parts;
+        public Parts() {}
+    }
+
+    public static class PartsArray {
+        public Parts[] all;
+        public PartsArray() {}
+    }
+
+    public static class Rows {
+        public double[][] rows;
+        public Rows() {}
+    }
+
+    public static class Texts {
+        public String[] texts;
+        public Texts() {}
+    }
+
+    /**
+     * A put of an object whose stored value would pass 2^31 - 9 bytes, Java's largest array,
+     * is refused with IllegalArgumentException that names the place and the limit, before
+     * anything is copied: here objects of 1 to 8 MiB in memory, 2.2 GB stored, as many
+     * references to one array (bergdb 021-23; 020-24-12, U12-1). The put copied each element
+     * into its array's buffer and checked the array's size only then: OutOfMemoryError with
+     * a heap below about 5 GB, which in rw() failed the database; above it, "size: a value
+     * of ..." without the place. By toDbObject(), put(), w() and rw(): nothing written, and
+     * the database goes on.
+     */
+    @Nano
+    public static void testPutTooLarge() {
+        Check ch = new Check();
+        Database db = memory();
+        try {
+            Connection c = db.connection();
+            byte[] mib = new byte[1 << 20];
+            Parts parts = new Parts();
+            parts.parts = new byte[2100][];
+            Arrays.fill(parts.parts, mib);
+            tooLarge(ch, c, "021-23, 2100 references to 1 MiB of bytes", parts, "parts[2047]");
+
+            Rows rows = new Rows();
+            rows.rows = new double[240][];
+            Arrays.fill(rows.rows, new double[1 << 20]);
+            tooLarge(ch, c, "021-23, 240 references to 2^20 doubles", rows, "rows[227]");
+
+            Parts one = new Parts();
+            one.parts = new byte[][] {mib};
+            PartsArray all = new PartsArray();
+            all.all = new Parts[2100];
+            Arrays.fill(all.all, one);
+            tooLarge(ch, c, "021-23, 2100 references to an object", all, "all[2047].parts[0]");
+
+            byte[][] top = new byte[2100][];
+            Arrays.fill(top, mib);
+            tooLarge(ch, c, "021-23, an array at the top", top, "[2047]");
+        } finally {
+            db.close();
+        }
+        ch.done();
+    }
+
+    /** 'x' refused as too large, at 'at', in each way; nothing written; the database on. */
+    private static void tooLarge(Check ch, Connection c, String id, Object x, String at) {
+        String[] mentions = {"too large", "'" + at + "'", ObjectFormat.MAX_ARRAY + " bytes",
+                "2^31 - 1"};
+        refusedPut(ch, c, id, null, x, mentions);
+        String key = ch.key();
+        ch.argRefused(id + ", w()", () -> c.w().put(key, x).execute(), null, mentions);
+        ch.argRefused(id + ", rw()", () -> c.rw(env -> env.put(key, x)), null, mentions);
+        ch.run(id + ", after", () -> {
+            ch.eq(id + ", nothing written", null, c.get(key, byte[].class));
+            c.put(key + "/after", "x");
+            ch.eq(id + ", the database goes on", "x", c.get(key + "/after", String.class));
+        });
+    }
+
+    /**
+     * The size counted first is the size written, exactly: with the limit at the stored
+     * value's size the put is taken, with one byte less refused, at the top and in each kind
+     * of field and array (bergdb 021-23); r1() checks it for each random object. The place
+     * named is where the count passes the limit: in a string, a nested object, a frame.
+     */
+    @Nano
+    public static void testStoredSizeExact() {
+        Check ch = new Check();
+        String text = "a\u00e9\u20ac\ud83d\ude00".repeat(40);
+        Texts texts = new Texts();
+        texts.texts = new String[] {text, "", text};
+        Rows rows = new Rows();
+        rows.rows = new double[][] {{}, {1.5, Double.NaN}};
+        Object[] values = {5, 'A', -1L, true, 2.5f, text, "", new int[] {1, 300, 70000, -1},
+                new long[] {Long.MIN_VALUE, 0}, new short[] {-129, 128}, new char[] {'a', 0xffff},
+                new boolean[] {true}, new float[] {1}, new double[0], new String[] {"x", text},
+                new Integer[] {1, 128}, new byte[][] {{}, new byte[200], new byte[40000]},
+                nestedIntArray(15), chain(16), texts, rows, new Parts(), new Empty()};
+        for (Object x : values) {
+            exactSize(ch, "021-23, " + x.getClass().getTypeName(), x);
+        }
+        ch.run("021-23, the place", () -> {
+            // 822 bytes: the header, "texts", 0x42, strings of 403, 2 and 403 bytes, 0x43
+            // (counted first), the frame of 5 bytes last; Node's object of 34: the frame of
+            // its "next" counted at 22 to 26.
+            int size = DbObject.toDbObject(texts).getBytes().length;
+            ch.eq("021-23, the size of texts", 822, size);
+            ch.argRefused("021-23, in a string",
+                    () -> DataObjects.toDbObject(texts, size - 200), null, "'texts[2]'");
+            ch.argRefused("021-23, the frame",
+                    () -> DataObjects.toDbObject(texts, size - 1), null, "at the top");
+            Node n = chain(3);
+            ch.eq("021-23, the size of a Node", 34, DbObject.toDbObject(n).getBytes().length);
+            ch.argRefused("021-23, a nested frame",
+                    () -> DataObjects.toDbObject(n, 24), null, "'next'");
+        });
+        ch.done();
+    }
+
+    /** The stored size of 'x', with the limit at it and one byte below. */
+    static void exactSize(Check ch, String id, Object x) {
+        ch.run(id, () -> {
+            byte[] stored = DbObject.toDbObject(x).getBytes();
+            ch.eq(id + ", at the limit", stored,
+                    DataObjects.toDbObject(x, stored.length).getBytes());
+            ch.argRefused(id + ", a byte below",
+                    () -> DataObjects.toDbObject(x, stored.length - 1), null, "too large");
+        });
+    }
+
     // ======== R1: the round trip (020-09, section 8.5) ========
 
     /** R1 with the unit group's seed. */
@@ -1606,6 +1737,7 @@ public class DataObjectsTester {
             Class<?> cl = x.getClass();
             String id = "R1, seed " + seed + ", object " + k + " (" + cl.getSimpleName() + ")";
             boolean viaDb = c != null && k % 10 == 0;
+            exactSize(ch, id + ", its size", x);
             ch.run(id, () -> {
                 DbObject stored = DbObject.toDbObject(x);
                 Object r;
