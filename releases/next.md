@@ -683,6 +683,21 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   (J8; 020-23, V1-2). `IndexBuilder.start()` and `Database.deleteIndex()`
   say that a crash before the change is durable can undo it, as for any
   transaction (020-15, KR-O1).
+* **The Core API's Javadoc checked against its behaviour** (bergdb 020-27;
+  2026-11-09), promise by promise for `Db`, `DbBuilder`, `Trans.Builder`
+  and `GetMany`, each promise with a test (`DbTesterJavadoc`,
+  `PubTesterCoreKeys`). Corrected: a second `Db.start()` throws
+  `IllegalDbStateException` (J1); `Db.getMany()` is refused after `stop()`
+  too (J2); `setCacheSizeIndicator()` below 1 and `sync()` of a null level
+  are refused, and `SyncLevel.NONE` returns at once (J3); `getOne()` gives
+  null for a key without a value (J4); `DbBuilder`'s refusals and its
+  buffer's least size and time (J5); `GetMany`'s order and its four
+  answers (J6). In "Keys and the layers above" (020-22): a Core put at an
+  indexed object key can leave the value out of the index's scans, and one
+  that keeps the indexed fields changes nothing (K1); BergDB never reads
+  the Core user's keys for their meaning or changes them (K2); writes of
+  BergDB's keys through the Db under a running Database are seen only in
+  part until the next start (K3).
 * **A start's heap** (bergdb 019-45): a start needs about twice the
   startup distance of heap above what the running database needs,
   whatever the cache budget (docs/levels.md, section 7); W7's 600 MB heap

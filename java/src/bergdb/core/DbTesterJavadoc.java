@@ -331,7 +331,9 @@ public class DbTesterJavadoc {
     /**
      * DbBuilder's refusals: id(null), startupDistance() below 10, stream() with a null name
      * or stream or a negative buffer size or time, reclaimStepReserve() below 1, each with
-     * IllegalArgumentException; a buffer size or time of 0 taken; build() without a stream,
+     * IllegalArgumentException, and a second stream's name with IllegalStateException;
+     * mainStream() replaces a stream of any name, stream() one of the same name; a buffer
+     * size or time of 0 taken; build() without a stream,
      * IllegalStateException, with a null clock IllegalArgumentException. Trans.Builder's: a
      * null value, also for a String key, and a negative lookup time, with
      * IllegalArgumentException.
@@ -357,14 +359,28 @@ public class DbTesterJavadoc {
             assertThrows("call " + i, IllegalArgumentException.class, refused[i]);
         }
         assertThrows("no stream", IllegalStateException.class, () -> Db.builder().build());
+        assertThrows("a second name", IllegalStateException.class, 
+                () -> Db.builder().stream("a", new MemoryStream()).stream("b", s));
         Db.builder().startupDistance(10);
+        
+        // mainStream() replaces a stream of any name; stream() one of the same name.
+        Db other = Db.builder().stream("other", new MemoryStream()).mainStream(s).testId()
+                .start();
+        try {
+            other.execute(other.trans().put("m", "1").build());
+        } finally {
+            other.close();
+        }
+        Assert.assertTrue("on the main stream", s.getLength() > 0);
+        final MemoryStream s2 = s.copy();
         DbBuilder b = Db.builder();
         b.testSetupExceptStream();
-        Db db = b.stream("main", s, 0, 0).start();
+        Db db = b.stream("main", new MemoryStream()).stream("main", s2, 0, 0).start();
         try {
             db.execute(db.trans().put("k", "v").build());
             db.sync(SyncLevel.ORDINARY);
             Assert.assertEquals("v", new String(get(db, "k")));
+            Assert.assertEquals("1", new String(get(db, "m")));
         } finally {
             db.close();
         }
