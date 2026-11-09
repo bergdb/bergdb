@@ -49,7 +49,7 @@ public class Time {
     
     private Time(long units) {
         if (units < MIN_IN_UNITS || units > MAX_IN_UNITS) {
-            throw new IllegalArgumentException("Time ouf of range, units: " + units + ".");
+            throw new IllegalArgumentException("Time out of range, units: " + units + ".");
         }
         this.units = units;
     }
@@ -57,6 +57,8 @@ public class Time {
     /**
      * Creates and returns a Time instance based on the number of clock units 
      * that has passed since Unix Epoch.
+     * 
+     * @throws IllegalArgumentException If units is outside Time's range, 0 to 2^56 - 1.
      */
     public static Time units(long units) {
         return new Time(units);
@@ -65,6 +67,8 @@ public class Time {
     /**
      * Creates and returns a Time instance based on the number of milliseconds
      * that has passed since Unix Epoch.
+     * 
+     * @throws IllegalArgumentException If the time is outside Time's range (bergdb 005-21).
      */
     public static Time millis(long millis) {
         // Checked (2026-10-21, bergdb 005-21): the product wrapped, so a large value could
@@ -82,7 +86,8 @@ public class Time {
      * Resolves an absolute time string using UTC time zone.
      * 
      * @throws BadFormatException If the time string is not an absolute time string.
-     * @throws IllegalArgumentException If timeString is null.
+     * @throws IllegalArgumentException If timeString is null, or if the time is outside
+     *             Time's range, before 1970 or after 2198-05-04 23:50:03.7927935 UTC.
      * @see #resolve(TimeZone, Time, String)
      */
     public static Time utc(String timeString) {
@@ -95,7 +100,8 @@ public class Time {
      * be an absolute time (time string rule ABSOLUTE-TIME).
      * 
      * @throws BadFormatException If the time string is not an absolute time string.
-     * @throws IllegalArgumentException If timeZone or timeString is null.
+     * @throws IllegalArgumentException If timeZone or timeString is null, or if the time is
+     *             outside Time's range, as for utc().
      * @see #resolve(TimeZone, Time, String)
      */
     public static Time resolve(TimeZone timeZone, String timeString) {
@@ -151,10 +157,10 @@ public class Time {
      * The syntax for a time-string can be more formally be described by this ABNF:
      * 
      * time-string = absolute / time-of-day / minus / "now" 
-     * absolute = absolute-date [SPACE time-of-day]
+     * absolute = absolute-date [(SPACE / "T") time-of-day]
      * absolute-date = "YYYY-MM-DD" / "YYYY-MM"
-     * time-of-day = "HH:MM:SS.d" / "HH:MM"
-     * minus = "-" number SPACE unit [SPACE time]
+     * time-of-day = "HH:MM:SS.d" / "HH:MM:SS" / "HH:MM"
+     * minus = "-" number SPACE unit [SPACE time-of-day]
      * unit = "s" / "m" / "h" / "d"
      * </pre>
      * 
@@ -165,7 +171,8 @@ public class Time {
      * 
      * @throws BadFormatException If the time string does not follow the format above, or
      *             is a minus time that goes back before Unix Epoch.
-     * @throws IllegalArgumentException If timeZone, now or timeString is null.
+     * @throws IllegalArgumentException If timeZone, now or timeString is null, or if an
+     *             absolute time is outside Time's range, as for utc().
      */
     public static Time resolve(TimeZone timeZone, Time now, String timeString) {
         if (now == null) {
@@ -177,6 +184,8 @@ public class Time {
     
     /**
      * Adds a Duration to this Time and returns a new Time with the result.
+     * 
+     * @throws IllegalArgumentException If the result is outside Time's range.
      */
     public Time add(Duration duration) {
         return new Time(this.units + duration.units());
