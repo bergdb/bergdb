@@ -1886,3 +1886,41 @@ without it) and `append_dir_replaced_right_before_a_delete` (C's own,
 for `DbFile.delete`'s check after: a cut of one file whose delete met
 the replacement fails with Java's text, the replacement's file of that
 name deleted; before, the cut returned `ERR_OK`).
+
+2026-11-09, the candidate, part 4 (worker t17). 021-26 and 021-27, at
+the session's word (18:40), from Java's `e7a3b02` and `57cb00a` in
+coord-1109's clone `clone-h31`, before they reached `main`; the pin
+stays at `2566df1`. (a) 021-26: `DbClock.currentTime()` took the clock's
+time at most as `LAST_USER_TIME` (020-23's Z1) and kept it as the time
+that the next transaction must pass, so one call while the clock was
+out of range, or in the 1024 units kept for reclaim, gave
+`LAST_USER_TIME`, and every later user transaction was refused until a
+restart, also with the clock back in the range; found by a black-box
+user of this port, 022's U2-1 (`apps/u2/repro_clock_poison.c`). Now a
+clock's time after `LAST_USER_TIME` is not taken: the time is the last
+time given or the last transaction's. C's `dbclock_current_time` had
+Z1's cap, ported at the pin of 15:22, and follows: `clock.c`, its
+comment and `clock.h`'s; `bergdb.h`'s `bergdb_current_time` and section
+F. Tests, each failing before (on a copy with the cap): `t_clock.c`'s
+`clock_dbclock_current_time_with_the_clock_past_the_end`
+(`DbClock.testCurrentTimeWithTheClockPastTheEnd`: the clock past
+`MAX_TIME`, then past `LAST_USER_TIME`, each time the last transaction's
+time and the user transaction refused with its text; the clock at 2000,
+a transaction at 2000), `clock_dbclock_current_time_leaves_the_margin`
+as Java's now (the last transaction's time with the clock after
+`LAST_USER_TIME`; at it, `LAST_USER_TIME`; the margin's internal
+transactions as before), and `f_settings.c`'s
+`settings_current_time_with_the_clock_out_of_range`
+(`PubTesterJavadocRest.testCurrentTimeWithTheClockOutOfRange` through
+the API: `bergdb_current_time` gives the put's time while the clock is
+past `BERGDB_MAX_TIME`, the put is refused with `BERGDB_LIMIT`, "outside
+the range", and with the clock at 2000 the put takes 2000; before, the
+current time was 2^56 - 1025 and the put at 2000 was refused). (b)
+021-27 (U2-4, open, kept for 2026.4): `bergdb_get_trans` at a multiple
+of 8 inside a committed transaction's record reads the bytes there as a
+record and fails the database, as Java's; no Javadoc word changed, and
+`bergdb.h` says it already ("the bytes at tpos are not a committed
+transaction"). Test `f_api.c`'s `api_get_trans_inside_a_record`
+(`DbTester.testGetTransInsideARecord`: a put of 1,000 bytes, offsets 8,
+16, 24 and 512, each `BERGDB_FAILED` and a read after it too), passing
+before, as Java's.

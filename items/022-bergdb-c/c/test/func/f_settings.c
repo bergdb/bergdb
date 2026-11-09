@@ -755,6 +755,39 @@ TEST(settings_current_time_with_a_clock_that_goes_back) {
     CHECK_EQ(m.live_total, 0);
 }
 
+/* PubTesterJavadocRest.testCurrentTimeWithTheClockOutOfRange (bergdb
+ * 021-26; Clock.getTime()'s Javadoc): the transactions are refused while
+ * the clock is out of range, and go on when it is back. A
+ * bergdb_current_time while it was out of range gave 2^56 - 1025 and kept
+ * it as the time that the next transaction must pass, so that every put
+ * after it was refused until a restart; found by a black-box user of this
+ * port, 022's U2-1 (apps/u2's repro_clock_poison.c). */
+TEST(settings_current_time_with_the_clock_out_of_range) {
+    struct bergdb_mem m = {0};
+    struct bergdb_options o;
+    int64_t now = 1000, first = -1, t = -1, written = -1;
+    bergdb_db *db;
+    bergdb_options_init(&o);
+    o.clock = se_now;
+    o.clock_ctx = &now;
+    o.mem = &m;
+    REQUIRE(bergdb_open(NULL, &o, &db, NULL, NULL) == BERGDB_OK);
+    CHECK(se_put(db, "/a.txt", "a", &first) == BERGDB_OK);
+    now = BERGDB_MAX_TIME + 1;
+    CHECK(bergdb_current_time(db, &t) == BERGDB_OK);
+    CHECK_EQ(t, first);
+    CHECK(se_put(db, "/b.txt", "b", NULL) == BERGDB_LIMIT);
+    CHECK(strstr(bergdb_errmsg(db), "outside the range") != NULL);
+    now = 2000;
+    CHECK(se_put(db, "/b.txt", "b", &written) == BERGDB_OK);
+    CHECK_EQ(written, 2000);
+    CHECK(bergdb_current_time(db, &t) == BERGDB_OK);
+    CHECK_EQ(t, 2000);
+    CHECK(se_value_is(db, BERGDB_LATEST, "/b.txt", "b"));
+    CHECK(bergdb_close(db) == BERGDB_OK);
+    CHECK_EQ(m.live_total, 0);
+}
+
 /* PubTesterJavadocRest.testStartWithTheClockOutOfRange (bergdb 020-23, Z3;
  * Clock's Javadoc since 2026.4): an open that creates a database with the
  * clock out of range is refused, as it writes the database's first
@@ -992,6 +1025,7 @@ const struct test settings_tests[] = {
     TEST_ENTRY(settings_errors_and_keys),
     TEST_ENTRY(settings_sync_and_times),
     TEST_ENTRY(settings_current_time_with_a_clock_that_goes_back),
+    TEST_ENTRY(settings_current_time_with_the_clock_out_of_range),
     TEST_ENTRY(settings_open_with_the_clock_out_of_range),
     TEST_ENTRY(settings_debug),
     TEST_ENTRY(settings_debug_after_start),

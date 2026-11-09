@@ -128,10 +128,14 @@ int64_t dbclock_lookup_time(const struct dbclock *c, int64_t wantedLookupTime) {
 /* bergdb 020-23, Z1 (as Java's since release 2026.4): lastReadTime never
  * decreases. A clock that went back set it to its earlier time, so that a
  * later transaction could take a time before a time returned, and a read at
- * that time changed. The clock's time is taken at most as LAST_USER_TIME: a
- * user transaction after that is refused anyway, and a time in the margin,
- * or out of range, would take the times kept for reclaim's internal
- * transactions after a user's (bergdb 015-55). */
+ * that time changed. A clock's time after LAST_USER_TIME is not taken: a
+ * user transaction then is refused anyway, and a time in the margin, or out
+ * of range, would take the times kept for reclaim's internal transactions
+ * after a user's (bergdb 015-55); the time is then the last time returned
+ * or the last transaction's (bergdb 021-26, as Java's: capped, it gave
+ * LAST_USER_TIME and kept it as lastReadTime, so every user transaction
+ * after it was refused until a restart, also with the clock back in the
+ * range; found by a black-box user of this port, 022's U2-1). */
 int64_t dbclock_current_time(struct dbclock *c) {
     int64_t time;
 
@@ -139,7 +143,7 @@ int64_t dbclock_current_time(struct dbclock *c) {
         time = c->transactionTime - 1;
     } else {
         time = get_time(c);
-        time = time > DBCLOCK_LAST_USER_TIME ? DBCLOCK_LAST_USER_TIME : time;
+        time = time > DBCLOCK_LAST_USER_TIME ? c->lastTransactionTime : time;
         time = time < c->lastTransactionTime ? c->lastTransactionTime : time;
         time = time < c->lastReadTime ? c->lastReadTime : time;
         c->lastReadTime = time;

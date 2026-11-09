@@ -1358,6 +1358,47 @@ TEST(api_null_and_range_arguments) {
     CHECK_EQ(m.live_total, 0);
 }
 
+/* DbTester.testGetTransInsideARecord (bergdb 021-27, open; found by a
+ * black-box user of this port, 022's U2-4): bergdb_get_trans at a multiple
+ * of 8 inside a committed transaction's record, not at its start, passes
+ * the position's checks, reads the bytes there as a record, and fails the
+ * database, as bergdb.h says ("the bytes at tpos are not a committed
+ * transaction"): BERGDB_FAILED, and every later call gives it until a
+ * restart. A caller's wrong position is not told apart from damage at a
+ * transaction's position; 021-27 has the options, and 2026.4 keeps this,
+ * as Java's test does. Passes before, as Java's. */
+TEST(api_get_trans_inside_a_record) {
+    static const int64_t offsets[] = { 8, 16, 24, 512 };
+    static uint8_t value[1000];
+    memset(value, 'x', sizeof value);
+    for (size_t i = 0; i < sizeof offsets / sizeof offsets[0]; i++) {
+        struct bergdb_mem m = {0};
+        struct bergdb_test_clock clock = {0};
+        struct bergdb_executed ex;
+        struct bergdb_stored st;
+        struct bergdb_one one;
+        bergdb_trans *t;
+        bergdb_read *rd;
+        uint8_t b[32];
+        size_t kl;
+        bergdb_db *db = test_setup(&clock, &m);
+        REQUIRE(db != NULL);
+        k("/a", b, &kl);
+        REQUIRE(bergdb_trans_new(db, &t) == BERGDB_OK);
+        CHECK_EQ(bergdb_trans_put(t, b, kl, value, sizeof value), BERGDB_OK);
+        CHECK_EQ(bergdb_execute(db, t, &ex), BERGDB_OK);
+        bergdb_trans_free(t);
+        CHECK(ex.tpos + offsets[i] < ex.last_pos);
+        REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
+        CHECK_EQ(bergdb_get_trans(db, rd, ex.tpos + offsets[i], &st), BERGDB_FAILED);
+        CHECK(strncmp(bergdb_errmsg(db), "DbFailedException: ", 19) == 0);
+        CHECK_EQ(bergdb_get_one(db, rd, BERGDB_LATEST, b, kl, &one), BERGDB_FAILED);
+        bergdb_read_free(rd);
+        CHECK_EQ(bergdb_close(db), BERGDB_OK);
+        CHECK_EQ(m.live_total, 0);
+    }
+}
+
 static const struct test api_tests[] = {
     TEST_ENTRY(api_stm_after_restart),
     TEST_ENTRY(api_create_and_read),
@@ -1374,6 +1415,7 @@ static const struct test api_tests[] = {
     TEST_ENTRY(api_counters_and_listed_deletes),
     TEST_ENTRY(api_optimistic_transactions),
     TEST_ENTRY(api_null_and_range_arguments),
+    TEST_ENTRY(api_get_trans_inside_a_record),
     TEST_END
 };
 

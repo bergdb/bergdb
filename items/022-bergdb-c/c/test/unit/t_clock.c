@@ -233,7 +233,8 @@ TEST(clock_dbclock_clock_goes_back) {
  * clock after it or out of range, so that the times kept for reclaim's
  * internal transactions after a user transaction stay theirs (015-55). It
  * gave the clock's time, Klong.MAX_TIME, and an internal transaction after
- * it had no time left. */
+ * it had no time left. With the clock after LAST_USER_TIME it gives the
+ * last transaction's time (bergdb 021-26; it gave LAST_USER_TIME). */
 TEST(clock_dbclock_current_time_leaves_the_margin) {
     int64_t now = DBCLOCK_LAST_USER_TIME - 1;
     struct dbclock d;
@@ -244,8 +245,10 @@ TEST(clock_dbclock_current_time_leaves_the_margin) {
     CHECK_EQ(t, DBCLOCK_LAST_USER_TIME - 1);
     dbclock_transaction_end(&d);
     now = KL_MAX_TIME;
-    CHECK_EQ(dbclock_current_time(&d), DBCLOCK_LAST_USER_TIME);
+    CHECK_EQ(dbclock_current_time(&d), DBCLOCK_LAST_USER_TIME - 1);
     now = KL_MAX_TIME + 1;
+    CHECK_EQ(dbclock_current_time(&d), DBCLOCK_LAST_USER_TIME - 1);
+    now = DBCLOCK_LAST_USER_TIME;
     CHECK_EQ(dbclock_current_time(&d), DBCLOCK_LAST_USER_TIME);
     now = DBCLOCK_LAST_USER_TIME - 5;
     for (int64_t i = 1; i <= DBCLOCK_TIME_MARGIN; i++) {
@@ -254,6 +257,41 @@ TEST(clock_dbclock_current_time_leaves_the_margin) {
         dbclock_transaction_end(&d);
         CHECK_EQ(dbclock_current_time(&d), DBCLOCK_LAST_USER_TIME + i);
     }
+}
+
+/* DbClock.testCurrentTimeWithTheClockPastTheEnd (bergdb 021-26): a
+ * currentTime while the clock is after LAST_USER_TIME, out of range or in
+ * the last 1024 units, uses up no time, as a transaction then is refused
+ * and uses up none: when the clock is back, user transactions go on. It
+ * gave LAST_USER_TIME and kept it as the time that the next transaction
+ * must pass, so every user transaction after it was refused until a
+ * restart ("No database time is left for a user transaction"); found by a
+ * black-box user of this port, 022's U2-1. */
+TEST(clock_dbclock_current_time_with_the_clock_past_the_end) {
+    int64_t now = 1000;
+    struct dbclock d;
+    struct err e;
+    int64_t t = -1;
+    dbclock_init(&d, now_time, &now);
+    CHECK_EQ(dbclock_transaction_begin(&d, true, &t, &e), ERR_OK);
+    CHECK_EQ(t, 1000);
+    dbclock_transaction_end(&d);
+    now = KL_MAX_TIME + 1;
+    CHECK_EQ(dbclock_current_time(&d), 1000);
+    CHECK_EQ(dbclock_transaction_begin(&d, true, &t, &e), ERR_LIMIT);
+    CHECK(strstr(e.text, "outside the range") != NULL);
+    now = DBCLOCK_LAST_USER_TIME + 1;
+    CHECK_EQ(dbclock_current_time(&d), 1000);
+    CHECK_EQ(dbclock_transaction_begin(&d, true, &t, &e), ERR_LIMIT);
+    CHECK(strstr(e.text, "for a user transaction") != NULL);
+    now = 2000;
+    const enum err_code rc = dbclock_transaction_begin(&d, true, &t, &e);
+    CHECK_EQ(rc, ERR_OK);
+    if (rc == ERR_OK) {
+        CHECK_EQ(t, 2000);
+        dbclock_transaction_end(&d);
+    }
+    CHECK_EQ(dbclock_current_time(&d), 2000);
 }
 
 /* DbUtil.dbTimeToUtc (bergdb 020-24, U1-12): Java's strings,
@@ -369,6 +407,7 @@ const struct test clock_tests[] = {
     TEST_ENTRY(clock_dbclock_rules),
     TEST_ENTRY(clock_dbclock_clock_goes_back),
     TEST_ENTRY(clock_dbclock_current_time_leaves_the_margin),
+    TEST_ENTRY(clock_dbclock_current_time_with_the_clock_past_the_end),
     TEST_ENTRY(clock_time_to_utc),
     TEST_ENTRY(clock_test_clock),
     TEST_ENTRY(clock_system_clock),

@@ -76,10 +76,11 @@ void dbclock_init(struct dbclock *c, clk_fn clock, void *ctx);
 int64_t dbclock_lookup_time(const struct dbclock *c, int64_t wantedLookupTime);
 
 /* DbClock.currentTime: while a transaction runs, its time minus 1; else
- * the clock's time, at most DBCLOCK_LAST_USER_TIME, or, when that is
- * earlier, the last read time or the last transaction's time, which it
- * keeps as the last read time (so the next transaction's time is later,
- * and the times returned never decrease: bergdb 020-23, Z1, as Java's
+ * the clock's time, or, when that is earlier, or after
+ * DBCLOCK_LAST_USER_TIME, the last read time or the last transaction's
+ * time, which it keeps as the last read time (so the next transaction's
+ * time is later, and the times returned never decrease: bergdb 020-23, Z1;
+ * a clock after DBCLOCK_LAST_USER_TIME uses up no time: 021-26; as Java's
  * since release 2026.4). */
 int64_t dbclock_current_time(struct dbclock *c);
 

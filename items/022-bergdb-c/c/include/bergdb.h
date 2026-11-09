@@ -218,7 +218,9 @@
  *     returned. So a call of bergdb_current_time can move the next
  *     transaction's time when the clock has not moved since. The clock may
  *     go back: bergdb_current_time's times never decrease (bergdb 020-23,
- *     Z1, as Java's since release 2026.4).
+ *     Z1, as Java's since release 2026.4), and a call while the clock is
+ *     out of range does not keep the transactions refused after the clock
+ *     is back (021-26).
  *   - A clock time outside 0 to BERGDB_MAX_TIME, or no time left after the
  *     last transaction's, refuses the transaction (BERGDB_LIMIT; 005-18).
  *   - A user transaction's time is at most BERGDB_MAX_TIME - 1024 (Java's
@@ -1055,10 +1057,14 @@ int bergdb_sync(bergdb_db *db, int64_t pos, int level);
 
 /*
  * The database's time now (Java's currentTime(), DbClock.currentTime): the
- * clock's time, at most BERGDB_MAX_TIME - 1024, or, when that is earlier,
+ * clock's time, or, when that is earlier, or after BERGDB_MAX_TIME - 1024,
  * the last time it gave or the last transaction's time, so its times never
- * decrease (bergdb 020-23, Z1). The next transaction's time is later than
- * it (section F). Errors: BERGDB_ARG (NULL), BERGDB_STATE.
+ * decrease (bergdb 020-23, Z1), and a call while the clock is out of range
+ * uses up no time: the transactions go on when the clock is back (bergdb
+ * 021-26, as Java's since release 2026.4; it gave BERGDB_MAX_TIME - 1024
+ * and refused every later user transaction until a restart). The next
+ * transaction's time is later than it (section F). Errors: BERGDB_ARG
+ * (NULL), BERGDB_STATE.
  */
 int bergdb_current_time(bergdb_db *db, int64_t *time);
 
