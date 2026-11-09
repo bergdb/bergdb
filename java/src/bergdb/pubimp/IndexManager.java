@@ -534,7 +534,8 @@ class IndexManager {
     // ======== Reads of the internal keys ========
 
     /**
-     * The KVs whose keys start with 'prefix' at 'lookupTime', at most 'max', in key order.
+     * The KVs whose keys start with 'prefix' at 'lookupTime', the prefix's own key included,
+     * at most 'max', in key order.
      */
     List<Kvt> scan(byte[] prefix, long lookupTime, final int max) {
         return scan(prefix, null, lookupTime, max);
@@ -557,7 +558,12 @@ class IndexManager {
                 private int count = 0;
 
                 public int handleKvt(Kvt kvt) {
-                    if (!Keys.isPrefix(prefixSegments, kvt.key)) {
+                    // The prefix's own key is under it too (isPrefix is false for it), the
+                    // first a scan from it meets: a value there, written through the Core,
+                    // ended the scan, which then read nothing after it, every definition or
+                    // marker (bergdb 020-16, F16-2); now a start refuses it.
+                    if (!Keys.isPrefix(prefixSegments, kvt.key)
+                            && !Arrays.equals(prefixSegments, kvt.key)) {
                         ended[0] = true;
                         return GetMany.StopCondition.STOP;
                     }

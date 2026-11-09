@@ -1589,7 +1589,11 @@ public class PubTesterIndexJobs {
      * A start reads the definitions and the markers: a key under /#i/dii/ (a definition of
      * format 1, 2026.3's) refuses the database with VersioningStreamException (020-08,
      * section 5); a definition that breaks 4.2 and a marker of a live generation are
-     * InternalDataExceptions; each refused start closes its database.
+     * InternalDataExceptions; each refused start closes its database. A value at exactly
+     * /#i/dii/, /#i/didef/ or /#i/didel/, written through the Core, is refused too: it ended
+     * the start's scan of its prefix, so every definition (or marker) after it was not read,
+     * the database started without its indexes, and a write was not indexed (bergdb 020-16,
+     * F16-2).
      */
     @Nano
     public static void testStartRefusesBadIndexData() {
@@ -1608,8 +1612,13 @@ public class PubTesterIndexJobs {
             {Keys.toBytes("/#i/dii/-old"), new byte[] {'b', 'e', 'r', 'g', 'o', 1, 0, 0}},
             {IndexKeys.definitionKey("bad"), new byte[] {(byte) 0x82, 0x48, 0}},
             {IndexKeys.markerKey("by-field", gen), new byte[0]},
+            {IndexKeys.format1Prefix(), new byte[] {1}},
+            {IndexKeys.definitionsPrefix(), new byte[] {1}},
+            {IndexKeys.markersPrefix(), new byte[0]},
         };
         Class<?>[] refusals = {bergdb.storage.VersioningStreamException.class,
+                bergdb.core.InternalDataException.class, bergdb.core.InternalDataException.class,
+                bergdb.storage.VersioningStreamException.class,
                 bergdb.core.InternalDataException.class, bergdb.core.InternalDataException.class};
         for (int i = 0; i < bad.length; i++) {
             MemoryStream copy = stream.copy();
