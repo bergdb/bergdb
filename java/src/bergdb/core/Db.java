@@ -1641,6 +1641,9 @@ public class Db implements AutoCloseable {
      * Reads the transaction at stream position 'tpos': for the Pub API's
      * Connection.transactionInfo(), the transaction of the value that its last get read
      * (GetData.tpos). 'tpos' must be the position of a transaction, as a get gives it.
+     * A get can give the position of a record that the writer has not yet appended in
+     * whole, as the writer sets the positions of a record's nodes before it appends it; the
+     * call then waits for the writer, until the record is in the stream (bergdb 021-13).
      *
      * @throws IllegalArgumentException
      *             If 'tpos' cannot start a transaction: negative (Spos.NULL from a get: the
@@ -1674,6 +1677,21 @@ public class Db implements AutoCloseable {
         if (tpos < 0 || tpos % NodeStream.TRANS_ALIGNMENT != 0 
                 || inBlock < RecoverableStream.META_BLOCK_SIZE) {
             throw new IllegalArgumentException("Not a position of a transaction, " + tpos + ".");
+        }
+        
+        // A record that the writer has not appended in whole waits for the writer (2026-11-09,
+        // bergdb 021-13). A get gives a value's position as soon as the writer has set the
+        // positions of the record's nodes, before it appends the record, which can take
+        // several appends (a meta block in the record) and wait for room in the storage's
+        // buffer. The read found none of the record, at or past the end of the stream, and
+        // threw IllegalArgumentException; or a part of it, whose size went beyond the
+        // stream's length: a StreamFormatException, which failed the database. The writer
+        // appends the record under writeLock, so after the lock it is in the stream in whole,
+        // or the database has failed, which the state check below finds. Only a position at or
+        // after the end of the records appended in whole waits, a bad one too (refused after
+        // it as before); the wait is for the rest of the writer's transaction.
+        if (tpos >= nodeStream.getAppendedEnd()) {
+            synchronized (writeLock) {}
         }
         
         // The state checked since bergdb 005-30 (it read on after a failure). Publication: the

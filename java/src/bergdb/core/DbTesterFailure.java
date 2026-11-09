@@ -15,9 +15,11 @@ import java.util.concurrent.TimeUnit;
 import bergdb.common.Bytes;
 import bergdb.common.Util;
 import bergdb.common.StringUtil;
+import bergdb.dag.GetData;
 import bergdb.dag.GetMany;
 import bergdb.dag.Keys;
 import bergdb.dag.Kvt;
+import bergdb.dag.Spos;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 import bergdb.pub.util.DbFailedException;
@@ -892,6 +894,139 @@ public class DbTesterFailure {
             s.failReads = false;
             db.close();
         }
+    }
+
+    /**
+     * bergdb 021-13 (020-24-01, U1-1 and U1-2): Db.getTrans of the position that a get gives
+     * while the writer appends the value's record. The writer sets the positions of the
+     * record's nodes before it appends the record, and a get gives the value's position from
+     * then on. getTrans read the record: with none of it in the stream it threw
+     * IllegalArgumentException ("at or past the end of the stream"); with a part, the
+     * record's size went beyond the stream's length, a StreamFormatException that failed the
+     * database. Now it waits for the writer and gives the transaction. The writer is held in
+     * its append by the storage's buffer, full as the flush is held (FaultStream): before
+     * any of the record (case none, a buffer of 100,000 bytes), or after the record's part
+     * before a meta block, whose append waits (case part, a buffer that is full just there).
+     */
+    @Nano
+    public static void testGetTransOfARecordBeingAppended() throws Exception {
+        for (int i = 0; i < 2; i++) {
+            final boolean part = i == 1;
+            final String what = part ? "part" : "none";
+            final int d = RecoverableStream.META_BLOCK_DISTANCE;
+            final int bufferSize = part ? d - (int) Db.CREATION_LENGTH + 64 : 100 * 1000;
+            final FaultStream s = new FaultStream();
+            final DbBuilder b = Db.builder();
+            b.testSetupExceptStream();
+            b.stream("main", s, bufferSize, 10);
+            final Db db = b.start();
+            final Throwable[] thrown = new Throwable[1];
+            Thread writer = null;
+            try {
+                db.sync(SyncLevel.ORDINARY);     // The buffer is empty.
+                Assert.assertEquals(Db.CREATION_LENGTH, db.getStreamLength());
+                s.holdAppends = true;            // The flush waits; the buffer fills.
+                
+                // A record that fills the buffer but about 3,000 bytes, then one of 6,000. In
+                // case part, the buffer holds the bytes from the end of the creation's record
+                // to the meta block at d, and 64 more: the second record begins about 3,000
+                // bytes before d, and after its part before d the buffer has room for 64
+                // bytes, too few for the meta block.
+                db.execute(db.trans().put("/f", new byte[bufferSize - 3200]).build());
+                final Trans t1 = db.trans().put("/a", new byte[6000]).build();
+                writer = new Thread(() -> {
+                    try {
+                        db.execute(t1);
+                    } catch (Throwable e) {
+                        thrown[0] = e;
+                    }
+                });
+                writer.start();
+                waitUntilWaitingForRoom(writer, what);
+                
+                final GetData gd = db.newGetData();
+                final long[] key = Keys.toSegments("/a");
+                final long end = System.nanoTime() + 10L * 1000 * 1000 * 1000;
+                while (db.getOne(Long.MAX_VALUE, key, gd) == null || gd.tpos == Spos.NULL) {
+                    Assert.assertTrue(what + ": the get gives the position", 
+                            System.nanoTime() < end);
+                    Thread.sleep(1);
+                }
+                final long tpos = gd.tpos;
+                Assert.assertTrue(what + ": the record is not appended in whole, " + tpos,
+                        tpos >= db.internal().nodeStream().getAppendedEnd());
+                Assert.assertTrue(what + ": the record and the meta block, " + tpos,
+                        part == (tpos < d && tpos + 6000 > d));
+                
+                final Object[] got = new Object[1];
+                Thread reader = new Thread(() -> {
+                    try {
+                        got[0] = db.getTrans(tpos);
+                    } catch (Throwable e) {
+                        got[0] = e;
+                    }
+                });
+                reader.start();
+                waitUntilBlockedOnTheWriteLockOrDone(reader, what, got);
+                
+                s.holdAppends = false;
+                writer.join(10 * 1000);
+                reader.join(10 * 1000);
+                Assert.assertTrue(what + ": the writer, " + thrown[0], 
+                        !writer.isAlive() && thrown[0] == null);
+                Assert.assertTrue(what + ": the transaction, " + got[0],
+                        got[0] instanceof StoredTrans && ((StoredTrans) got[0]).tt == t1.tt);
+                db.execute(db.trans().put("/b", "b0").build());
+                Assert.assertEquals("b0", DbUtil.getString(db, "/b"));
+            } finally {
+                s.holdAppends = false;
+                if (writer != null) {
+                    writer.join(10 * 1000);
+                }
+                db.close();
+            }
+        }
+    }
+    
+    /** Waits, up to 10 s, until the writer waits for room in the storage's buffer. */
+    private static void waitUntilWaitingForRoom(Thread writer, String what) 
+            throws InterruptedException {
+        final long end = System.nanoTime() + 10L * 1000 * 1000 * 1000;
+        while (System.nanoTime() < end) {
+            ThreadInfo info = ManagementFactory.getThreadMXBean().getThreadInfo(writer.getId());
+            if (info != null && info.getThreadState() == Thread.State.WAITING
+                    && info.getLockName() != null && info.getLockName().startsWith(
+                    bergdb.storage.BufferedStream.class.getName())) {
+                return;
+            }
+            Thread.sleep(1);
+        }
+        throw new AssertionError(what + ": the writer did not come to wait for room");
+    }
+    
+    /** 
+     * Waits, up to 10 s, until the reader waits for the write lock of a Db; fails if it is
+     * done first (bergdb 021-13).
+     */
+    private static void waitUntilBlockedOnTheWriteLockOrDone(Thread reader, String what,
+            Object[] got) throws InterruptedException {
+        final long end = System.nanoTime() + 10L * 1000 * 1000 * 1000;
+        while (System.nanoTime() < end) {
+            ThreadInfo info = ManagementFactory.getThreadMXBean().getThreadInfo(reader.getId());
+            if (info != null && info.getThreadState() == Thread.State.BLOCKED
+                    && info.getLockName() != null
+                    && info.getLockName().startsWith(Db.WriteLock.class.getName())) {
+                return;
+            }
+            if (!reader.isAlive()) {
+                final Throwable cause = got[0] instanceof Throwable 
+                        ? ((Throwable) got[0]).getCause() : null;
+                throw new AssertionError(what + ": getTrans did not wait for the writer, "
+                        + "it gave " + got[0] + (cause != null ? ", the cause " + cause : ""));
+            }
+            Thread.sleep(1);
+        }
+        throw new AssertionError(what + ": the reader did not come to wait for the write lock");
     }
 
     /**

@@ -420,6 +420,21 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   such as `/dp/-a/b`, as `usePrimary()` does: for one that held an object,
   the build failed at every start, or put an entry that named another key.
   Only a write through the Core's `Db` makes such data.
+* **`transactionInfo()` while another thread writes no longer fails the
+  database** (bergdb 021-13; 2026-11-09). A get that read a value just
+  after another thread's put could give the position of the put's record
+  before the record was in the stream in whole: the writer sets its
+  nodes' positions before it appends it. `Connection.transactionInfo()`
+  (the Core's `Db.getTrans`) then read the record in part, took it for
+  corrupt data and failed the database (`DbFailedException`, the cause a
+  `StreamFormatException`, "Bad item byte size ... beyond the stream's
+  record bytes"), so that every later call threw until a restart, which
+  lost nothing; or it found none of the record and threw
+  `IllegalArgumentException`, which its Javadoc does not name. Now the call
+  waits until the writer has appended the record. A get that read the
+  value before its positions were set gives the documented
+  `IllegalStateException` ("call get() again"), as before. In 2026.1 to
+  2026.3; found by a new-user application (020-24-01, U1-1 and U1-2).
 
 
 ### Core API

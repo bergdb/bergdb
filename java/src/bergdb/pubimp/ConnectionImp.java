@@ -129,6 +129,8 @@ class ConnectionImp implements Connection {
                     + "no entry, and no get() before it retrieved a value.");
         }
         
+        // A record that the writer has not appended in whole yet: getTrans waits for it
+        // (bergdb 021-13). It threw IllegalArgumentException, or failed the database.
         final StoredTrans storedTrans = db.getTrans(getData.tpos);
         
         // The user's KVs only (2026-10-25, bergdb 005-42): those under the internal prefix,

@@ -17,7 +17,7 @@ import bergdb.storage.StreamFormatException;
  * appendNodes() and reads nodes with readNode(). 
  * Concurrency assumption: one write thread holding writeLock and calling appendNodes(), 
  * getLength(), recover(), getPosOfLastCompletedTrans() and multiple concurrent 
- * threads calling readNode().
+ * threads calling readNode() and getAppendedEnd().
  * 
  * @author Frans Lundberg
  */
@@ -30,6 +30,10 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         // For asserting that caller of some methods holds the required Db.writeLock.
     
     private final StoredTrans.Serializer serializer;
+
+    private volatile long appendedEnd;
+        // The end of the records appended in whole (bergdb 021-13): see getAppendedEnd().
+        // Written by the writer, after the append; read by any thread.
 
     /** Byte array with 64 zero bytes, useful for zero-fill of transaction buffer. */
     public static final byte[] ZEROS64 = new byte[64];
@@ -66,6 +70,19 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
         assert Thread.holdsLock(writeLock);
         
         rstream.recover();
+        appendedEnd = rstream.getLength();      // Whole records only, after the recovery.
+    }
+    
+    /**
+     * The end of the records appended in whole (bergdb 021-13): the position after the last
+     * record that appendNodes() has appended, or, after recover(), the stream's length; 0
+     * before either. A record that starts before it is in the stream in whole. One at or
+     * after it may be in part, or not at all, while its nodes' positions are set already:
+     * appendNodes() sets them before it appends the record (StoredTrans.Serializer), and
+     * a reader can see them (ValueNode.getTpos(), a get's tpos). Any thread may call it.
+     */
+    public long getAppendedEnd() {
+        return appendedEnd;
     }
 
     /**
@@ -141,6 +158,7 @@ public class NodeStream implements bergdb.dag.Dag.NodeReader {
 
         rstream.append(buffer, 0, bufferSize, true, trans.tt);
         rstream.getMetaBlock().setLastTransSpos(pos);
+        appendedEnd = trans.nextPos;        // After the append (bergdb 021-13).
     }
     
     public NodeHeader readNodeHeader(long spos) {

@@ -56,7 +56,8 @@ public final class ValueNode implements Node, Pointee {
     /**
      * Returns the stream position of the transaction that wrote this node, or Spos.NULL if
      * the node is not written yet: its spos is NULL, or a vpos while its transaction is
-     * stored (bergdb 005-34).
+     * stored (bergdb 005-34). The position is set before the record is appended in whole
+     * (bergdb 021-13; NodeStream.getAppendedEnd()).
      */
     public long getTpos() {
         final long p = spos;      // Read once, before offsetFromTrans.
