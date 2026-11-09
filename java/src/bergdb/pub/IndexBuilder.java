@@ -40,7 +40,9 @@ import bergdb.pub.util.Job;
  * <li>Each level's field is followed in the stored object; each part of a nested path but
  *     the last must name a field that holds an object. The value found must be of the
  *     level's stored kind: an integer for "long" (Java's long, int, short, byte and char
- *     fields), a double but NaN for "double" (Java's double and float), a string for
+ *     fields), a double but NaN for "double" (Java's double and float; a float is stored as
+ *     the double of its value, exactly, so a float field of 0.1f is found by eq(0.1f), not
+ *     by eq(0.1), as 0.1f is 0.10000000149011612; bergdb 020-24-12, U12-6), a string for
  *     "string", bytes for "bytes" (byte[]). No kind is converted to another; a boolean, an
  *     array or an object gives no entry; an absent field gives no entry.</li>
  * <li>If the levels' encodings take more than 4,096 bytes in all, v has no entry.</li>

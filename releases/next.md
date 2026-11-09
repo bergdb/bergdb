@@ -1136,3 +1136,19 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   nothing written; and `rw(null)`'s `IllegalArgumentException`.
   `RwEnvironment.get()` says that an action that catches its
   `ObjectCreationException` goes on and commits.
+* **Data Objects: the class rules, the conversions and the heap of a put**
+  (bergdb 020-24-12, U12-2, U12-3 and U12-5 to U12-8, from a new user's
+  domain model of Java types): the package's "Objects" says that a put of
+  a large object needs heap of about 4 to 5 times its stored size, and
+  which `OutOfMemoryError` fails the database (also at `Connection.put()`);
+  that a referenced array is stored once per reference; that a Data Object
+  class is top-level or static nested, that a superclass that declares a
+  stored field is public, that no class of the Java platform is a
+  superclass, and that a field of a type variable is not stored (020-09,
+  V1, V4, V5 and V9); which texts read as numbers, by Java's grammar; what
+  a float stored as a double means for an index's `eq()`, for a read as a
+  `String` and for size; and that a stored `byte[]` reads as null into an
+  `int[]` while an array reads into a `byte[]` clamped. `Connection.get()`
+  says that a get as a primitive, a wrapper or an array class reads the
+  field "p" or "array" of any stored object, and gives null without one;
+  `IndexBuilder` says how to find a float by a "double" level.

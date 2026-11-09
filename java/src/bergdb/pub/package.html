@@ -272,10 +272,18 @@ public fields that are not static and not transient, and those of its superclass
 other instance field must be transient. A public field is not final, as a get could not
 set it (so an immutable class with public final fields is not a Data Object), and no field
 hides a field of a superclass of the same name (bergdb 020-09, V3 and V8; 020-24-05,
-U5-6). Each stored field is of a type on a closed list: boolean, byte, short, char, int,
-long, float, double, their wrappers, String, byte[], arrays of these of any dimensions, and
-Data Object classes. Not on it: Object, interfaces, enums, records, abstract classes, the
-classes of the Java platform, and DbObject and the other value classes (DbValue). A class
+U5-6). It is a top-level class or a static nested class: an inner class, one not static, is
+not a Data Object, even with a public no-argument constructor in its source, and neither is a
+local or an anonymous class (V1). A superclass that declares a stored field is public too
+(V4), and no class of the Java platform is a Data Object or its superclass, so a class that
+extends ArrayList, Number or Date is not one (V5); a public abstract superclass is taken
+(bergdb 020-24-12, U12-3). Each stored field is of a type on a closed list: boolean, byte,
+short, char, int, long, float, double, their wrappers, String, byte[], arrays of these of
+any dimensions, and Data Object classes. Not on it: Object, interfaces, enums, records,
+abstract classes, the classes of the Java platform, a type variable, such as the T of a
+field <code>public T value</code> in <code>Box&lt;T&gt;</code>, whatever its bound and
+also in a subclass such as <code>StringBox extends Box&lt;String&gt;</code> (V9), and
+DbObject and the other value classes (DbValue). A class
 that is not a Data Object, or that reaches one through its fields' types, is refused at a
 put with IllegalArgumentException and at a get with ObjectCreationException, also at a key
 without a value; the message names the class, where it is, and why. The rules in full:
@@ -293,6 +301,15 @@ refers to twice is stored twice, and a get makes two equal ones: a stored object
 references (bergdb 020-09, section 4.5), so an array of a thousand references to one array
 of 1 MB stores 1 GB. An array put at a key is stored as an object with the field "array", a
 primitive's wrapper with the field "p".</p>
+
+<p>A put of a large object needs heap for its copies while it runs: about 4 to 5 times the
+object's stored size, beside the object itself. With a heap of 4 GB, an object of 0.5 GB was
+stored and one of 1.05 GB was not; with 5 GB it was (bergdb 020-24-12, U12-2). put() and
+WBuilder.put() convert the object at the call, so an OutOfMemoryError there fails only the
+call; an OutOfMemoryError in an rw(), whose action converts it, or in the transaction of
+any of them, fails the database, as any Error there does (Database, "Errors"). Either way
+the application should end its process. So keep an object's stored size below a fifth of
+the heap that the application leaves free.</p>
 
 <p>A get is best effort: a stored field is matched to the class's field of its name; a value
 that fits the field's type is set exactly, else the nearest value (an integer clamped, never
@@ -313,6 +330,32 @@ reads into a boolean as true if it is not 0 (NaN as false), and a text only if i
 "true", in any case; bytes read into a String are decoded as UTF-8, each ill-formed part as
 U+FFFD, and a String read into a byte[] gives its UTF-8 bytes; a scalar read into an array
 other than a byte[], or an array or an object into a scalar, gives the type's zero.</p>
+
+<p>A text read into a number (bergdb 020-09, section 5.5; 020-24-12, U12-5) is read by
+Java's grammar, not a portable one. Into an integer field or a char: the text is trimmed of
+the chars up to U+0020 at both ends; an optional sign and ASCII digits give the number
+exactly, clamped; else, if Double.parseDouble() reads it, the double, cut toward zero and
+clamped; else 0. Into a double, Double.parseDouble() of the text, and into a float,
+Float.parseFloat(); else 0. So "042", "4.2e1", "42d", "42f" and "\t42\n" read as 42,
+"0x1p4", a hexadecimal number with a binary exponent, as 16, "Infinity" as the type's
+greatest and "1e3" into a byte as 127; and "", "0x2A", "42L", "4_2", "1,5", "inf", "nan", a
+text with a no-break space and one with digits of another script, such as Arabic-Indic,
+read as 0. A text read into a boolean is not trimmed: " true" reads as false.</p>
+
+<p>A float is stored as a double, its value exactly, (double) f (bergdb 020-09, section
+4.2; 020-24-12, U12-6): 0.1f is stored as 0.10000000149011612. So an index of type "double"
+on a float field finds it by eq(0.1f), not by eq(0.1); a float field read into a String
+gives the double's text, "0.10000000149011612", not Float.toString()'s "0.1"; an element of
+a float[] takes 9 bytes, as a double's. A double read into a float field is Java's (float)
+cast, the nearest float: beyond the float's range it is an infinity, so 1e300 reads as
+Infinity, not as Float.MAX_VALUE, and 1e-300 as 0.0.</p>
+
+<p>Bytes count as a scalar here (bergdb 020-09, sections 5.4 and 5.7; 020-24-12, U12-8): a
+stored byte[] read into an array field other than a byte[], such as an int[], a Byte[] or a
+String[], gives null. The other way, a stored array read into a byte[] field is converted
+element by element, each as into a byte, clamped: an int[] of {1, -1, 300, 70000} reads as
+{1, -1, 127, 127}, a char[] {'A', '\uD800'} as {65, 127}. So a field changed from byte[] to
+int[] reads null, and a read-modify-write of an object written before then drops it.</p>
 
 <p>A get and a put of the object back, the usual read-modify-write, store what the object
 holds, no more: a stored field that the class does not have is not in the object, so the put

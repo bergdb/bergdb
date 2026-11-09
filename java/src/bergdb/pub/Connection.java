@@ -208,6 +208,13 @@ public interface Connection extends ReadInterface {
      * set from it, converted to the field's type best effort; a field that the stored
      * object does not have keeps the constructor's value (bergdb 020-09).
      *
+     * <p>A primitive class or its wrapper, such as int.class or Integer.class, reads the
+     * field "p" of the stored object, where a put of a wrapper stores it, and an array class
+     * other than byte[] the field "array", converted to the class. It reads that field of any
+     * stored object, so an object of a Data Object class with a field named "p" reads as that
+     * field's value. If the stored object has no such field, the get gives null, as for a key
+     * without an entry (bergdb 020-09, section 5.9; 020-24-12, U12-7).</p>
+     *
      * <p>A byte[] returned (by byte[].class, or by Object.class at a value of bytes) is
      * the database's own array, not a copy: do not change it. A change of it changes
      * what later reads return, in every connection, until the value leaves memory or
@@ -264,7 +271,8 @@ public interface Connection extends ReadInterface {
      *             IllegalArgumentException, so a catch of that, for a bad key, catches it
      *             too.
      * @return The object created based on 'clazz' and the data in the database,
-     *             or null if there is no entry for the key.
+     *             or null if there is no entry for the key; for a primitive, a wrapper or
+     *             an array class, also if the stored object has no field "p" or "array".
      */
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);
     
@@ -338,7 +346,9 @@ public interface Connection extends ReadInterface {
      *            An object, neither a String nor a byte[], is put only at an object
      *            key, one without a suffix or with ".obj"; at another key the put
      *            throws IllegalArgumentException, as for WBuilder.put() (the package's
-     *            {@linkplain bergdb.pub##objects Objects}).
+     *            {@linkplain bergdb.pub##objects Objects}). A put of a large object needs
+     *            heap of about 4 to 5 times its stored size while it runs; an
+     *            OutOfMemoryError in its transaction fails the database (the same).
      * @throws DbException
      *             If the transaction is refused, nothing of it written, and the database
      *             goes on (DbException): it is too large, its values and keys taking more
