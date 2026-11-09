@@ -49,7 +49,11 @@ import bergdb.pubimp.ObjectFormat;
  * the header, HEADER (0x82), then the object. One object has one byte string: the fields
  * in the order of their names' unsigned bytes, every number in its fewest bytes, so two
  * objects with the same fields and values have equal bytes, and comparing getBytes() with
- * java.util.Arrays.equals() compares the objects. new DbObject(bytes) checks every rule
+ * java.util.Arrays.equals() compares the objects. DbObject, like the other value classes,
+ * does not override equals() and hashCode(): two objects with equal bytes are not equal(),
+ * and a Set or a Map tells them apart; compare getBytes() with Arrays.equals(), and hash it
+ * with Arrays.hashCode(). Nor does toString() give the fields: it gives "o" (DbValue's
+ * toString(); bergdb 020-24-05, U5-10). new DbObject(bytes) checks every rule
  * of the format and refuses any other bytes with BadFormatException, also an object of
  * BergDB 2026.3 and before (format 1). No UTF-8 string starts with the byte 0x82, so a
  * String value is never taken for an object.</p>

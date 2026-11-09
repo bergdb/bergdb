@@ -278,6 +278,16 @@ public interface Connection extends ReadInterface {
      * that time is given only while reclaim has neither removed it nor rewritten the value
      * at or before that time.</p>
      *
+     * <p>No call lists the versions of a key; a walk gives them, newest first: a get(), then
+     * this method's time() t, then a get() at the lookup time Time.units(t.units() - 1), the
+     * state just before that transaction, and so on, until a get() finds no value: at the
+     * key's first put, or at a delete. No call gives a delete's time, so the walk stops
+     * there; a get() at a lookup time before the delete goes on. Each step reads the storage
+     * for this method, and the walk sets the lookup time, so use a connection of its own
+     * (Database.newConnection()); with a finite retain duration the walk ends with
+     * LookupTimeNotAvailableException at the first available lookup time (bergdb 020-24-05,
+     * U5-11).</p>
+     *
      * @throws IllegalStateException
      *             If no get() has retrieved a value: none has been made, or each found no
      *             entry. Or if the transaction that wrote the value was still being stored

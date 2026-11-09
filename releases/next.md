@@ -888,3 +888,16 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   cut, and every state from that time is readable and right.
   `Connection.get()`, `exists()` and `ReadInterface` list
   `LookupTimeNotAvailableException`, an `IllegalArgumentException`.
+* **Data Objects: the rules and conversions a new user met** (bergdb
+  020-24-05, U5-3, U5-6 to U5-8, U5-10 and U5-11, from a new user's
+  document store): the package's "Objects" says that a public final field,
+  and a field that hides a superclass's field, make a class not a Data
+  Object (020-09, V3 and V8), and that `DbObject` is not a field type; which
+  conversions a get makes (a `char` read into a `String` gives its number,
+  "65"; bytes into a `String` are decoded as UTF-8; booleans and numbers);
+  that a get by another version of a class may give an array with null
+  elements, which a put refuses (020-09, section 5.7); and that the suffixes
+  are case-sensitive. `DbObject` and `DbValue.toString()` say that
+  `toString()` gives a short tag, "o" for an object, and that the value
+  classes have no `equals()` of their own. `Connection.transactionInfo()`
+  says how to walk the versions of a key, newest first.

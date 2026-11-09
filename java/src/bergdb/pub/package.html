@@ -254,23 +254,28 @@ definitions are of 2026.3 does not start; such a database is made again from its
 <p>An object is put only at an object key: a key whose name, its last part, has no suffix,
 or the suffix ".obj". The suffix is what follows the name's last '.': "txt" for
 "/notes/a.txt", "h" for "/d/.h", none for "/notes/a" or "/d/x."; a '.' in a directory's name,
-as in "/v1.2/k", is not a suffix. A put of an object at a key with another suffix is refused
-with IllegalArgumentException ("Bad key"), before anything is written; a String or a byte[]
-may be put at any key. A get as Object.class, the primary scan and the indexes take a value
-as an object only at an object key. A get as Object.class gives a stored object at an object
-key as a DbObject, a value at a key with the suffix ".txt" as a String, and any other value
-as its bytes (Connection.get()).</p>
+as in "/v1.2/k", is not a suffix. A suffix is case-sensitive: "/k/x.OBJ" is not an object
+key, and "/k/notes.TXT" is not a key with the suffix ".txt" (bergdb 020-24-05, U5-8). A put
+of an object at a key with another suffix is refused with IllegalArgumentException ("Bad
+key"), before anything is written; a String or a byte[] may be put at any key. A get as
+Object.class, the primary scan and the indexes take a value as an object only at an object
+key. A get as Object.class gives a stored object at an object key as a DbObject, a value at
+a key with the suffix ".txt" as a String, and any other value as its bytes
+(Connection.get()).</p>
 
 <p>A Data Object class is public, with a public no-argument constructor. BergDB stores its
 public fields that are not static and not transient, and those of its superclasses; every
-other instance field must be transient. Each stored field is of a type on a closed list:
-boolean, byte, short, char, int, long, float, double, their wrappers, String, byte[], arrays
-of these of any dimensions, and Data Object classes. Not on it: Object, interfaces, enums,
-records, abstract classes and the classes of the Java platform. A class that is not a Data
-Object, or that reaches one through its fields' types, is refused at a put with
-IllegalArgumentException and at a get with ObjectCreationException, also at a key without a
-value; the message names the class, where it is, and why. The rules in full: bergdb
-020-09.</p>
+other instance field must be transient. A public field is not final, as a get could not
+set it (so an immutable class with public final fields is not a Data Object), and no field
+hides a field of a superclass of the same name (bergdb 020-09, V3 and V8; 020-24-05,
+U5-6). Each stored field is of a type on a closed list: boolean, byte, short, char, int,
+long, float, double, their wrappers, String, byte[], arrays of these of any dimensions, and
+Data Object classes. Not on it: Object, interfaces, enums, records, abstract classes, the
+classes of the Java platform, and DbObject and the other value classes (DbValue). A class
+that is not a Data Object, or that reaches one through its fields' types, is refused at a
+put with IllegalArgumentException and at a get with ObjectCreationException, also at a key
+without a value; the message names the class, where it is, and why. The rules in full:
+bergdb 020-09.</p>
 
 <p>A put is exact: each field is stored by its declared type, and a get into the same class
 reads it back equal. It refuses, with IllegalArgumentException and before anything is
@@ -292,6 +297,15 @@ throws ObjectCreationException for a class that is not a Data Object, for a cons
 throws (its exception the cause), and for a value that is not a stored object. To read a
 stored object exactly as it is, get it as a {@link DbObject}.</p>
 
+<p>Among the conversions of a get (bergdb 020-09, sections 5.4 to 5.7; 020-24-05, U5-7): a
+char is stored as an integer, its code, so a char read into a String gives its number, "65"
+for 'A', and a text read into a char is read as a number, "66" as 'B' and "B" as 0; a
+boolean reads into a number as 1 or 0, and into a String as "true" or "false"; a number
+reads into a boolean as true if it is not 0 (NaN as false), and a text only if it is
+"true", in any case; bytes read into a String are decoded as UTF-8, each ill-formed part as
+U+FFFD, and a String read into a byte[] gives its UTF-8 bytes; a scalar read into an array
+other than a byte[], or an array or an object into a scalar, gives the type's zero.</p>
+
 <p>A get and a put of the object back, the usual read-modify-write, store what the object
 holds, no more: a stored field that the class does not have is not in the object, so the put
 drops it, and a value that the get converted is stored as converted, such as a long clamped
@@ -299,6 +313,13 @@ into an int field. So after a change of a class, a field renamed or removed or i
 narrowed, a read-modify-write of an object written before loses what the class does not
 keep, and the object leaves the user indexes of the fields it lost (bergdb 020-24-02,
 I-4).</p>
+
+<p>A get may give an array with null elements, which a put refuses: an element that has
+no sensible conversion gets its type's zero, null for an object, a String or an array, as a
+stored String in a Tag[] field or a stored object in a String[] field. So an object that a
+get of another version of its class made, the usual case after a change of a class, can be
+put back only after its null elements are set (bergdb 020-09, section 5.7; 020-24-05,
+U5-3).</p>
 
 <h3 id="null">Null and absent fields</h3>
 

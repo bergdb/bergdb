@@ -80,6 +80,13 @@ public abstract class DbValue {
         return 0;
     }
     
+    /**
+     * A short tag of the value, for a log or a debugger, not the value in full: "o" for an
+     * object, whatever its fields; "a:" and the size for an array, "a:2"; "b:" and the
+     * length for bytes; "d:" and the number for a double; the value for a boolean, an
+     * integer and a string (bergdb 020-24-05, U5-10). The value classes do not override
+     * equals() and hashCode(): see DbObject, "The bytes".
+     */
     public String toString() {
         return String.valueOf(type);
     }
