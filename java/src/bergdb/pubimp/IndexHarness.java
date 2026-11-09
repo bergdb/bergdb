@@ -1400,7 +1400,15 @@ final class IndexHarness {
             txs.add(gen.tx());
             log(txs.get(i).toString());
         }
-        runTxs(txs, null);
+        if (gen.wide) {
+            // The checks at the time before the transactions, in this thread while they run
+            // (020-17, B17): scans of several pages, and the raw entries, at a lookup time
+            // while later transactions commit, and eviction and reclaim go on.
+            final long t0 = now();
+            runTxs(txs, () -> checkAt(t0, false));
+        } else {
+            runTxs(txs, null);
+        }
     }
 
     /**
