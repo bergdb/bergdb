@@ -683,4 +683,155 @@ public class DbTesterJavadoc {
             db.close();
         }
     }
+
+    private static void assertNullRefused(String[] params, Call[] calls) {
+        Assert.assertEquals("cases", params.length, calls.length);
+        for (int i = 0; i < calls.length; i++) {
+            assertNullRefused("call " + i + ", " + params[i], params[i], calls[i]);
+        }
+    }
+
+    /** Asserts that the call throws IllegalArgumentException with "PARAM == null" first. */
+    private static void assertNullRefused(String about, String param, Call call) {
+        Throwable e = thrown(call);
+        Assert.assertTrue(about + ": expected IllegalArgumentException, got " + e,
+                e instanceof IllegalArgumentException);
+        Assert.assertTrue(about + ": the message names it, " + e.getMessage(),
+                e.getMessage() != null && e.getMessage().startsWith(param + " == null"));
+    }
+
+    /**
+     * Db refuses a null argument with IllegalArgumentException that names it, as every null
+     * argument of the API (bergdb 020-27, Q2; Frans's decision for the Pub API, 020-21, 3),
+     * before anything else: start(null) closes nothing (a NullPointerException closed the
+     * storage), and a start after it works; a refused read or transaction leaves the database
+     * active and unchanged; getMany() refuses a null stop condition; after stop() the same.
+     */
+    @Nano
+    public static void testDbNullArguments() {
+        final Db db = Db.builder().testSetup().build();
+        try {
+            assertNullRefused("start(null)", "params", () -> db.start(null));
+            db.start();
+            db.execute(db.trans().put("k", "v"));
+            final GetData gd = db.newGetData();
+            final GetMany noStop = db.newGetMany();
+            noStop.stopCondition = null;
+            String[] params = {"keySegments", "gd", "g", "g.stopCondition", "t", "b", "out",
+                "syncLevel", "syncLevel", "params"};
+            Call[] calls = {
+                () -> db.getOne(LATEST, null, gd),
+                () -> db.getOne(LATEST, Keys.toSegments("k"), null),
+                () -> db.getMany(null),
+                () -> db.getMany(noStop),
+                () -> db.execute((Trans) null),
+                () -> db.execute((Trans.Builder) null),
+                () -> db.printDag(null),
+                () -> db.sync(null),
+                () -> db.sync(0, null),
+                () -> db.start(null)};
+            long length = db.getStreamLength();
+            assertNullRefused(params, calls);
+            Assert.assertEquals("nothing written", length, db.getStreamLength());
+            Assert.assertEquals("v", new String(get(db, "k")));
+            db.execute(db.trans().put("k", "v2"));
+            Assert.assertEquals("v2", new String(get(db, "k")));
+
+            db.stop();
+            assertNullRefused(params, calls);
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * DbBuilder refuses a null argument with IllegalArgumentException that names it, at the
+     * call (bergdb 020-27, Q2): clock(null) was taken and refused by build(), mainStream(null)
+     * removed the stream before its refusal, evictionSchedule(null) and createdTxt(null)
+     * were taken. Nothing is changed by a refusal: the builder starts its database after them
+     * on its stream.
+     */
+    @Nano
+    public static void testDbBuilderNullArguments() {
+        final MemoryStream s = new MemoryStream();
+        final DbBuilder b = Db.builder().testSetup(s);
+        String[] params = {"clock", "id", "schedule", "stream", "stream", "name", "stream",
+            "name", "stream", "dir"};
+        Call[] calls = {
+            () -> b.clock(null),
+            () -> b.id(null),
+            () -> b.evictionSchedule(null, 1),
+            () -> b.mainStream(null),
+            () -> b.stream("main", null),
+            () -> b.stream(null, s),
+            () -> b.stream("main", null, 100, 10),
+            () -> b.stream(null, s, 100, 10),
+            () -> b.testSetup(null),
+            () -> b.createdTxt(null)};
+        assertNullRefused(params, calls);
+        Db db = b.start();
+        try {
+            db.execute(db.trans().put("k", "v"));
+            db.sync(SyncLevel.ORDINARY);
+            Assert.assertTrue("on the builder's stream", s.getLength() > 0);
+        } finally {
+            db.close();
+        }
+    }
+
+    /**
+     * Trans.Builder refuses a null key, value, read key or hash array with
+     * IllegalArgumentException that names it (bergdb 020-27, Q2): a null key threw
+     * NullPointerException, or AssertionError with -ea, and delete((long[]) null) was taken,
+     * and build() threw. Nothing is added by a refusal. The transformations of put(long[],
+     * KeyTransformation, byte[], ValueTransformation) may be null.
+     */
+    @Nano
+    public static void testTransBuilderNullArguments() {
+        final Trans.Builder b = new Trans.Builder();
+        b.put("k", "v");
+        final byte[] v = {1};
+        final long[] k = Keys.toSegments("k2");
+        String[] params = {"key", "key", "key", "key", "key", "key", "key", "key", "key",
+            "key", "hashes", "value", "value", "value", "value", "value"};
+        Call[] calls = {
+            () -> b.put((byte[]) null, v),
+            () -> b.put((long[]) null, v),
+            () -> b.put((long[]) null, null, v, null),
+            () -> b.put((String) null, "v"),
+            () -> b.put((String) null, v),
+            () -> b.delete((byte[]) null),
+            () -> b.delete((long[]) null),
+            () -> b.delete((String) null),
+            () -> b.keyRead((long[]) null),
+            () -> b.keyRead((String) null),
+            () -> b.addReadHashes(null, 0),
+            () -> b.put(Keys.toBytes("k2"), null),
+            () -> b.put(k, null),
+            () -> b.put(k, null, null, null),
+            () -> b.put("k2", (String) null),
+            () -> b.put("k2", (byte[]) null)};
+        assertNullRefused(params, calls);
+        b.put(k, null, v, null);
+        Trans t = b.build();
+        Assert.assertEquals("kvs", 2, t.kvs.length);
+        Assert.assertEquals("read hashes", 0, t.readKeyHashes.length);
+    }
+
+    /**
+     * GetMany's stop conditions refuse a null key or prefix with IllegalArgumentException
+     * that names it (bergdb 020-27, Q2): Endpoint and Prefix asserted it, PrefixN threw
+     * NullPointerException.
+     */
+    @Nano
+    public static void testGetManyNullArguments() {
+        String[] params = {"key", "key", "key", "prefix", "prefix"};
+        Call[] calls = {
+            () -> new GetMany.Endpoint(null),
+            () -> new GetMany.Endpoint(null, false),
+            () -> new GetMany.Endpoint(null, true, true),
+            () -> new GetMany.Prefix(null),
+            () -> new GetMany.PrefixN(null, 3)};
+        assertNullRefused(params, calls);
+    }
 }

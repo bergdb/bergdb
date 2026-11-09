@@ -435,3 +435,10 @@ Log
 2026-11-09. Created by coord-1109's agent j27, 13:23. Every listed class checked, C1 to C3,
 J1 to J6 and K1 to K3 fixed in the clone with their tests, 6 commits on `cf287ad`, the tip
 gated (BEFORE COMMIT OK and LEVEL 1 OK, 13:59). Stopped at 14:00: every listed class done.
+
+2026-11-09. Q2 decided by Frans, 16:20: "Yes, as recommended. Absolutely." Done by
+coord-1109's agent q27 in `/Users/f/fl/bench/2026-11-09/clone-q27`, commit "020-27, Q2": every
+public method of `Db`, `DbBuilder`, `Trans.Builder` and `GetMany`'s stop conditions that takes
+an object refuses null with `IllegalArgumentException` that names the parameter, with its
+`@throws`; tests `DbTesterJavadoc.testDbNullArguments`, `testDbBuilderNullArguments`,
+`testTransBuilderNullArguments` and `testGetManyNullArguments`, each failing before.

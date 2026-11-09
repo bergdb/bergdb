@@ -53,6 +53,8 @@ public class GetMany {
     
     /**
      * The condition for when to stop iterating; a DontStop, every KV to the end, by default.
+     * Not null: Db.getMany() refuses a null one with IllegalArgumentException (bergdb 020-27,
+     * Q2).
      */
     public StopCondition stopCondition;
     
@@ -462,17 +464,33 @@ public class GetMany {
         
         /**
          * Inclusive, forward direction end point.
+         * 
+         * @throws IllegalArgumentException  If key is null.
          */
         public Endpoint(long[] key) {
             this(key, true, false);
         }
         
+        /**
+         * Forward direction end point.
+         * 
+         * @throws IllegalArgumentException  If key is null.
+         */
         public Endpoint(long[] key, boolean inclusive) {
             this(key, inclusive, false);
         }
         
+        /**
+         * The end point: the scan stops at the first key after it (before it, backward), or
+         * at it if not inclusive. The key is copied.
+         * 
+         * @throws IllegalArgumentException  If key is null (bergdb 020-27, Q2: an
+         *      AssertionError with -ea, else NullPointerException).
+         */
         public Endpoint(long[] key, boolean inclusive, boolean backward) {
-            assert key != null;
+            if (key == null) {
+                throw new IllegalArgumentException("key == null not allowed");
+            }
             this.inclusive = inclusive;
             this.key = key.clone();
             this.backward = backward;
@@ -554,8 +572,16 @@ public class GetMany {
         private long[] prefix;
         private boolean eod;
         
+        /**
+         * The prefix is copied.
+         * 
+         * @throws IllegalArgumentException  If prefix is null (bergdb 020-27, Q2: an
+         *      AssertionError with -ea, else NullPointerException).
+         */
         public Prefix(long[] prefix) {
-            assert prefix != null;
+            if (prefix == null) {
+                throw new IllegalArgumentException("prefix == null not allowed");
+            }
             this.prefix = prefix.clone();
         }
         
@@ -579,7 +605,16 @@ public class GetMany {
         private int count;
         private boolean eod;
         
+        /**
+         * The prefix is copied.
+         * 
+         * @throws IllegalArgumentException  If prefix is null (bergdb 020-27, Q2: it threw
+         *      NullPointerException).
+         */
         public PrefixN(long[] prefix, int maxCount) {
+            if (prefix == null) {
+                throw new IllegalArgumentException("prefix == null not allowed");
+            }
             this.prefix = prefix.clone();     // The parameter's clone until bergdb 020-27.
             this.maxCount = maxCount;
             count = 0;

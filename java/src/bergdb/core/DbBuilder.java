@@ -96,10 +96,15 @@ public class DbBuilder {
     
     /**
      * Chooses a non-default clock to use for the database; by default the system clock,
-     * System.currentTimeMillis() in clock units (systemClock()). A null clock is refused by
-     * build() with IllegalArgumentException.
+     * System.currentTimeMillis() in clock units (systemClock()).
+     * 
+     * @throws IllegalArgumentException  If clock is null: at the call since bergdb 020-27,
+     *      Q2; before, build() refused it.
      */
     public DbBuilder clock(Clock clock) {
+        if (clock == null) {
+            throw new IllegalArgumentException("clock == null not allowed");
+        }
         this.clock = clock;
         return this;
     }
@@ -107,6 +112,8 @@ public class DbBuilder {
     /**
      * Sets the database ID. This method is suitable for deterministic
      * testing. This setting only applies for non-existent databases.
+     * 
+     * @throws IllegalArgumentException  If id is null.
      */
     public DbBuilder id(DatabaseId id) {
         if (id == null) {
@@ -208,8 +215,14 @@ public class DbBuilder {
      * tests, none, every detachable value after every transaction, every detachable object
      * after every transaction, or each slot to one with probability 0.3 (seeded). The
      * system property evict sets the default.
+     * 
+     * @throws IllegalArgumentException  If schedule is null (bergdb 020-27, Q2: it was taken,
+     *      and the start threw NullPointerException).
      */
     public DbBuilder evictionSchedule(Eviction.Schedule schedule, long seed) {
+        if (schedule == null) {
+            throw new IllegalArgumentException("schedule == null not allowed");
+        }
         this.evictionSchedule = schedule;
         this.evictionSeed = seed;
         return this;
@@ -267,18 +280,26 @@ public class DbBuilder {
      * stream set before, whatever its name. For a database in a directory, a
      * bergdb.stream.FileStream on it; for one in memory, a bergdb.stream.MemoryStream (Db,
      * "Opening a database"). The Db closes the stream at its stop() or close().
+     * 
+     * @throws IllegalArgumentException  If stream is null; the stream set before is kept
+     *      (bergdb 020-27, Q2: it was removed).
      */
-    public DbBuilder mainStream(AppendOnlyStream appendOnlyStream) {
+    public DbBuilder mainStream(AppendOnlyStream stream) {
+        if (stream == null) {
+            throw new IllegalArgumentException("stream == null not allowed");
+        }
         this.streamInfo = null;
-        return stream("main", appendOnlyStream);
+        return stream("main", stream);
     }
     
     /** 
      * Sets the database's stream, default buffer parameters are used.
      * If 'name' is the same as the stream set before, that one is replaced.
+     * 
+     * @throws IllegalArgumentException  If name or stream is null.
      */
-    public DbBuilder stream(String name, AppendOnlyStream aos) {
-        return stream(name, aos, 
+    public DbBuilder stream(String name, AppendOnlyStream stream) {
+        return stream(name, stream, 
                 StorageManager.DEFAULT_BUFFER_SIZE, 
                 StorageManager.DEFAULT_BUFFER_TIME);
     }
@@ -350,8 +371,13 @@ public class DbBuilder {
      * encryption in its API).
      * 
      * @param dir  The directory to create the file in.
+     * @throws IllegalArgumentException  If dir is null (bergdb 020-27, Q2: it was taken, as no
+     *      created.txt).
      */
     public DbBuilder createdTxt(File dir) {
+        if (dir == null) {
+            throw new IllegalArgumentException("dir == null not allowed");
+        }
         this.createdTxtDir = dir;
         return this;
     }
@@ -370,8 +396,13 @@ public class DbBuilder {
     /**
      * Use the default unit test setup and a specified stream.
      * Short buffer time (10 ms) for fast tests.
+     * 
+     * @throws IllegalArgumentException  If stream is null; nothing is set then.
      */
     public DbBuilder testSetup(AppendOnlyStream stream) {
+        if (stream == null) {
+            throw new IllegalArgumentException("stream == null not allowed");
+        }
         testSetupExceptStream();
         stream("main", stream, 100*1000, 10);
         return this;
@@ -392,7 +423,6 @@ public class DbBuilder {
      * Builds the Db; start() starts it.
      * 
      * @throws IllegalStateException  If no stream is set.
-     * @throws IllegalArgumentException  If the clock is null.
      */
     public Db build() {
         //

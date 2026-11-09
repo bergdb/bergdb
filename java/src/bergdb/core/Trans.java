@@ -184,6 +184,10 @@ public class Trans {
      * which keeps the last operation: to delete a key, leave its puts out (bergdb 020-24-09,
      * U9-12). The keys and values: Db's "Keys and values"; the read time and the keys read:
      * Db's "Optimistic transactions".</p>
+     * <p>A null key, value, read key or hash array is refused with IllegalArgumentException,
+     * and nothing is added (bergdb 020-27, Q2: a null key threw NullPointerException, or
+     * AssertionError with -ea, and delete((long[]) null) was taken, so that build() threw);
+     * delete() removes a key's value.</p>
      */
     public static class Builder {
         // Note This class does not enforce uniqueness of elements in keyReadSet, kvs, vkeyHashes.
@@ -211,13 +215,12 @@ public class Trans {
          * Puts the value at the key, both arrays of bytes; the empty array is a value, and
          * so is an empty key (Db, "Keys and values").
          * 
-         * @throws IllegalArgumentException  If value is null: delete() deletes.
+         * @throws IllegalArgumentException  If key or value is null; for a null value, delete()
+         *      deletes.
          */
         public Builder put(byte[] key, byte[] value) {
-            if (value == null) {
-                throw new IllegalArgumentException("value == null not allowed, use delete() " +
-                		"to delete a key-value pair.");
-            }
+            checkKey(key);
+            checkValue(value);
             kvs.add(new Kv(Keys.toSegments(key), value));
             return this;
         }
@@ -225,27 +228,25 @@ public class Trans {
         /**
          * As put(byte[], byte[]) with the key as segments (Keys.toSegments()).
          * 
-         * @throws IllegalArgumentException  If value is null: delete() deletes.
+         * @throws IllegalArgumentException  If key or value is null; for a null value, delete()
+         *      deletes.
          */
         public Builder put(long[] key, byte[] value) {
-            if (value == null) {
-                throw new IllegalArgumentException("value == null not allowed, use delete() " +
-                		"to delete a key-value pair.");
-            }
+            checkKey(key);
+            checkValue(value);
             kvs.add(new Kv(key, value));
             return this;
         }
         
+        /**
+         * Puts the value at the key, with a key transformation and a value transformation,
+         * each null for none.
+         * 
+         * @throws IllegalArgumentException  If key or value is null.
+         */
         public Builder put(long[] key, KeyTransformation kt, byte[] value, ValueTransformation vt) {
-            if (key == null) {
-                throw new IllegalArgumentException("key == null not allowed");
-            }
-            
-            if (value == null) {
-                throw new IllegalArgumentException("value == null not allowed, use delete() " +
-                		"to delete a key-value pair.");
-            }
-            
+            checkKey(key);
+            checkValue(value);
             Kv kv = new Kv(key, value, kt, vt);
             kvs.add(kv);
             return this;
@@ -257,20 +258,31 @@ public class Trans {
          *
          * @throws IllegalArgumentException  If the key or the value has a lone surrogate, a
          *      char of U+D800 to U+DFFF that is not part of a surrogate pair: UTF-8 cannot
-         *      hold it, and its encoding would write '?' (bergdb 021-05). If value is null.
+         *      hold it, and its encoding would write '?' (bergdb 021-05). If key or value is
+         *      null, or the key is empty (Keys.toBytes()).
          */
         public Builder put(String key, String value) {
-            if (value != null && StringUtil.hasLoneSurrogate(value)) {
+            checkKey(key);
+            checkValue(value);
+            if (StringUtil.hasLoneSurrogate(value)) {
                 throw new IllegalArgumentException("The value has a lone surrogate, a char "
                         + "of U+D800 to U+DFFF that is not part of a surrogate pair. BergDB "
                         + "stores every string as well-formed UTF-8, which cannot hold one "
                         + "(bergdb 021-04, 021-05).");
             }
-            put(Keys.toBytes(key), value == null ? null : StringUtil.toBytes(value));
+            put(Keys.toBytes(key), StringUtil.toBytes(value));
             return this;
         }
         
+        /**
+         * Puts the value at the key's bkey (Keys.toBytes()).
+         * 
+         * @throws IllegalArgumentException  If key or value is null, or the key is empty or has
+         *      a lone surrogate, as for put(String, String).
+         */
         public Builder put(String key, byte[] value) {
+            checkKey(key);
+            checkValue(value);
             put(Keys.toBytes(key), value);
             return this;
         }
@@ -297,17 +309,26 @@ public class Trans {
          * Adds a key that the transaction read, as segments (Keys.toSegments()), with a value
          * or without: a put or a delete of it by a transaction after the read time
          * (lookupTime()) is a conflict. Kept as its hash, Keys.hash().
+         * 
+         * @throws IllegalArgumentException  If key is null.
          */
         public Builder keyRead(long[] key) {
+            checkKey(key);
             long[] segments = key;
             long hash = Keys.hash(segments);
             readHashes.add(hash);
             return this;
         }
         
-        /** As keyRead(Keys.toSegments(string)), for the bkey of a String key. */
-        public Builder keyRead(String string) {
-            long[] segments = Keys.toSegments(string);
+        /**
+         * As keyRead(long[]) of the key's segments (Keys.toSegments()).
+         * 
+         * @throws IllegalArgumentException  If key is null, empty or has a lone surrogate
+         *      (Keys.toBytes()).
+         */
+        public Builder keyRead(String key) {
+            checkKey(key);
+            long[] segments = Keys.toSegments(key);
             return keyRead(segments);
         }
         
@@ -326,9 +347,12 @@ public class Trans {
         /**
          * As addReadHash() for each of the first 'length' hashes.
          * 
-         * @throws IllegalArgumentException  If one of them is negative.
+         * @throws IllegalArgumentException  If hashes is null, or one of them is negative.
          */
         public final Builder addReadHashes(long[] hashes, final int length) {
+            if (hashes == null) {
+                throw new IllegalArgumentException("hashes == null not allowed");
+            }
             assert length <= hashes.length : "length = " + length 
                     + ", hashes.length = " + hashes.length;
             
@@ -339,23 +363,36 @@ public class Trans {
             return this;
         }
         
-        /** As delete(byte[]) of the bkey of a String key, Keys.toBytes(string). */
-        public Builder delete(String string) {
-            return delete(Keys.toBytes(string));
+        /**
+         * Deletes the key's value; the key is the String's bkey (Keys.toBytes()).
+         * 
+         * @throws IllegalArgumentException  If key is null, empty or has a lone surrogate.
+         */
+        public Builder delete(String key) {
+            checkKey(key);
+            return delete(Keys.toBytes(key));
         }
 
         /**
          * Deletes the key's value. A delete of a key without a value stores nothing
          * (Db.getTrans()). A put of the key in this builder replaces the delete, whatever
          * their order (build()).
+         * 
+         * @throws IllegalArgumentException  If key is null.
          */
         public Builder delete(byte[] key) {
+            checkKey(key);
             kvs.add(new Kv(Keys.toSegments(key), null));
             return this;
         }
         
-        /** As delete(byte[]) with the key as segments (Keys.toSegments()). */
+        /**
+         * As delete(byte[]) with the key as segments (Keys.toSegments()).
+         * 
+         * @throws IllegalArgumentException  If key is null.
+         */
         public Builder delete(long[] key) {
+            checkKey(key);
             kvs.add(new Kv(key, null));
             return this;
         }
@@ -372,6 +409,20 @@ public class Trans {
             checkHash(hash);
             virtualWriteHashes.add(hash);
             return this;
+        }
+        
+        /** A null key refused (bergdb 020-27, Q2). */
+        private static void checkKey(Object key) {
+            if (key == null) {
+                throw new IllegalArgumentException("key == null not allowed");
+            }
+        }
+        
+        private static void checkValue(Object value) {
+            if (value == null) {
+                throw new IllegalArgumentException("value == null not allowed, use delete() "
+                        + "to delete a key-value pair.");
+            }
         }
         
         /**

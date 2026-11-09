@@ -237,7 +237,9 @@ import bergdb.stream.SalsaStream;
  * 
  * <p>Everything else the database throws fails only that call, and the database goes on: a
  * transaction refused before its go point, a lookup time no longer available, a bad
- * argument.</p>
+ * argument. A null argument is refused with an IllegalArgumentException that names it,
+ * before anything else, as in the Pub API: by Db, DbBuilder, Trans.Builder and GetMany's stop
+ * conditions, and a GetMany whose stop condition is null (bergdb 020-27, Q2).</p>
  * 
  * <p>Db shutdown. The Db typically has allocated resources besides memory: 
  * open files, running threads, open sockets for example. The Db user must call stop() or
@@ -795,6 +797,8 @@ public class Db implements AutoCloseable {
      * 
      * @param params  
      *          Used for testing, normally set to StartParams.NULL as default.
+     * @throws IllegalArgumentException
+     *          If params is null: nothing is closed then (bergdb 020-27, Q2).
      * @throws StreamIoException
      * @throws StreamFormatException
      *          Among others, if the database has another maximum node size than this
@@ -810,6 +814,10 @@ public class Db implements AutoCloseable {
      *          fails on the storage (bergdb 005-30).
      */
     public StartInfo start(StartParams params) {
+        if (params == null) {
+            // Before the locks and the state: a null closed the storage (bergdb 020-27, Q2).
+            throw new IllegalArgumentException("params == null not allowed");
+        }
         Throwable failure;
         synchronized (writeLock) {
             synchronized (readSync) {
@@ -1711,8 +1719,13 @@ public class Db implements AutoCloseable {
     /**
      * Prints the in memory part of the dag. Useful for test and
      * development.
+     * 
+     * @throws IllegalArgumentException  If out is null (bergdb 020-27, Q2).
      */
     public void printDag(PrintStream out) {
+        if (out == null) {
+            throw new IllegalArgumentException("out == null not allowed");
+        }
         assertDbStateIsActive("printDag");
         dag.printGraph(out);
     }
@@ -1769,6 +1782,8 @@ public class Db implements AutoCloseable {
      *            transaction that wrote the value, which getTrans() reads; for a value that
      *            reclaim has copied forward, reclaim's (see getTrans()).
      * @return The value, or null if the key has no value at the lookup time.
+     * @throws IllegalArgumentException
+     *             If keySegments or gd is null (bergdb 020-27, Q2).
      * @throws IllegalDbStateException
      *             If start() has not been called, or stop() or close() has (a
      *             DbStoppingException then).
@@ -1794,7 +1809,14 @@ public class Db implements AutoCloseable {
      *             StreamIoException as its cause.
      */
     public byte[] getOne(long lookupTime, long[] keySegments, GetData gd) {
-        assert gd != null;
+        // A null argument refused (bergdb 020-27, Q2): it threw NullPointerException, a null gd
+        // an AssertionError with -ea.
+        if (keySegments == null) {
+            throw new IllegalArgumentException("keySegments == null not allowed");
+        }
+        if (gd == null) {
+            throw new IllegalArgumentException("gd == null not allowed");
+        }
         assert gd.kwi != null;
         
         // Publication (bergdb item 009, step 1c): the read of the volatile state above, then
@@ -1989,6 +2011,8 @@ public class Db implements AutoCloseable {
      * 
      * @param g     Input and output parameters: a new GetMany, from newGetMany(), for each
      *              call (GetMany).
+     * @throws IllegalArgumentException
+     *              If g or its stopCondition is null (bergdb 020-27, Q2).
      * @throws IllegalDbStateException
      *              If start() has not been called, or stop() or close() has (a
      *              DbStoppingException then).
@@ -2019,9 +2043,16 @@ public class Db implements AutoCloseable {
         // Operation-local data is stored in the 'g' object.
         //
 
+        // A null refused (bergdb 020-27, Q2): it threw NullPointerException, a null stop
+        // condition an AssertionError with -ea.
+        if (g == null) {
+            throw new IllegalArgumentException("g == null not allowed");
+        }
+        if (g.stopCondition == null) {
+            throw new IllegalArgumentException("g.stopCondition == null not allowed");
+        }
         assert g.result != null;
         assert g.result.size() == 0 : "g.result.size() not 0, but " + g.result.size();
-        assert g.stopCondition != null;
 
         try {
             getManyInner(g);
@@ -2222,8 +2253,13 @@ public class Db implements AutoCloseable {
     
     /**
      * Same as "execute(b.build())"; AVOID using this method.
+     * 
+     * @throws IllegalArgumentException  If b is null (bergdb 020-27, Q2).
      */
     public final void execute(Trans.Builder b) {
+        if (b == null) {
+            throw new IllegalArgumentException("b == null not allowed");
+        }
         //
         // This little method does not comply with the Minimal Core Layer rule.
         // Should be be avoided, but is currently (2015-08) called from 90 places.
@@ -2246,6 +2282,8 @@ public class Db implements AutoCloseable {
      * go point, fails the database too (bergdb 005-30), and so does an Error anywhere in the
      * call (bergdb 019-10; "Errors" above).</p>
      * 
+     * @throws IllegalArgumentException
+     *             If t is null (bergdb 020-27, Q2).
      * @throws IllegalDbStateException
      *             If start() has not been called or database is stopping.
      * @throws DbFailedException
@@ -2288,6 +2326,11 @@ public class Db implements AutoCloseable {
         // t.transTime while the synchronized(writeLock) clause is executing. 
         // This is handled by dbClock.
         //
+
+        if (t == null) {
+            // Before the state (bergdb 020-27, Q2): it threw NullPointerException.
+            throw new IllegalArgumentException("t == null not allowed");
+        }
 
         // Makes sure writes from startup and previous execute() calls are visible.
         // We do not hold DB.writeLock yet.

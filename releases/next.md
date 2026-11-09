@@ -755,6 +755,21 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   `AssertionError` (with `-ea`) or ran with a budget of 0 or less. The Pub
   API's `DatabaseBuilder` clamps its value to 4 to 100,000 MB and never
   passed one.
+* **The Core API refuses a null argument with `IllegalArgumentException`**
+  (bergdb 020-27, Q2; Frans, 2026-11-09), as the Pub API does, with a
+  message that names the parameter, before anything else, also after
+  `stop()`: `Db`'s `start(params)`, `getOne()`'s key and `GetData`,
+  `getMany()` and a `GetMany` whose `stopCondition` is null, `execute()`
+  and `printDag()`; `DbBuilder`'s `clock()` (at the call; `build()` refused
+  it), `evictionSchedule()`, `mainStream()` (it removed the stream set
+  before), `createdTxt()`'s directory and `testSetup(stream)`; every key,
+  value, read key and hash array of `Trans.Builder`; the key or prefix of
+  `GetMany`'s `Endpoint`, `Prefix` and `PrefixN`. They threw
+  `NullPointerException`, or `AssertionError` with `-ea`;
+  `Trans.Builder.delete((long[]) null)` was taken and `build()` threw;
+  `start(null)` closed the storage; a null eviction schedule or
+  `createdTxt()` directory was taken, and the start threw or wrote no
+  `created.txt`. None failed the database. Each method's Javadoc says it.
 * **A read at a position near `Long.MAX_VALUE` is a read past the end**
   (bergdb 021-14; 2026-11-09). The storage's check of a read's end,
   `position + length`, overflowed for a position within `length` of
