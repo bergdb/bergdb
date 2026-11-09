@@ -46,7 +46,7 @@
 #         seed times 1000; its bounds of a join and a cleanup multiplied by
 #         1 + OBJECTS / 2000, and by 5 with the audit (harness.slow).
 #   h4    PrimaryHarness (020-10, section 9.4): SEED STEPS 1 RECLAIM, steps 500
-#         to 20,000, reclaim on in half the jobs.
+#         to 20,000, reclaim on in half the jobs, always with harness.sd.
 #   obj   ObjectFormatTester's H0a and H0b against its reference codec (020-08,
 #         section 6.3): SEED TREES SAMPLES.
 #   dobj  DataObjectsTester's properties R1 to R3 (020-09, section 8.5): SEED
@@ -274,7 +274,10 @@ while [ $r -lt "$ROUNDS" ]; do
         steps=$(pick $r 5000 500 10000 2000 20000)
         reclaim=$(pick $((r / 2)) 1 0)
         saved=$PROPS
-        PROPS="$PROPS${sd:+ $sd}"
+        # Reclaim cuts only with a small startup distance (harness.sd).
+        hsd=$sd
+        [ $reclaim = 1 ] && hsd="-Dharness.sd=400000"
+        PROPS="$PROPS${hsd:+ $hsd}"
         PROPS=${PROPS# }
         job h4 '^PrimaryHarness OK' bergdb.pubimp.PrimaryHarness $seed $steps 1 $reclaim
         PROPS=$saved
