@@ -65,11 +65,11 @@ in the hunt's clone. SpotBugs is not added to the build.
 
 | ID | Severity | File and line | Tests | Fix (clone) |
 |----|----------|---------------|-------|-------------|
-| T1 | low | FileStream.java:997 | FileStream and PubTester's testUnlistableDirectory | `9244d57` |
+| T1 | low | FileStream.java:997 | FileStream and PubTester's testUnlistableDirectory | `6db1ac3` (clone `9244d57`) |
 
 T1's other sites: `FileStream.hasStreamBytes` (FileStream.java:685) and
 its caller `DatabaseBuilderImp.refuseMissingStream` (line 333). The
-commit `9244d57` is in the clone, gated: BEFORE COMMIT OK (unit 1419, f
+commit `6db1ac3 (9244d57 in clone-t20)` is in the clone, gated: BEFORE COMMIT OK (unit 1419, f
 86, demos OK, 131 s), JAVADOC PUB OK.
 
 **T1. A directory that cannot be listed.** SpotBugs:
@@ -350,7 +350,7 @@ API shape and style:
 2026-11-09, by t20 for coord-1109. Every kept warning has a verdict: no
 true defect among the 655. One true defect outside the kept set, T1,
 fixed with its tests in the clone
-`/Users/f/fl/bench/2026-11-09/clone-t20`, commit `9244d57` on
+`/Users/f/fl/bench/2026-11-09/clone-t20`, commit `6db1ac3 (9244d57 in clone-t20)` on
 `a9e5488`, gated (BEFORE COMMIT OK). Not on `main`: the coordinator
 takes the commit. Left: N1, for Frans; the other 1,063 warnings were
 glanced at, not triaged.
@@ -362,5 +362,11 @@ Log
 2026-11-09. Created by t20 (coord-1109's hunt 020-20). SpotBugs 4.10.5
 downloaded and checked; one run over `a9e5488`, 1,718 warnings; 655 kept
 and triaged, none a true defect; T1 found outside the kept set, with a
-failing test for each symptom, then the fix: commit `9244d57` in the
+failing test for each symptom, then the fix: commit `6db1ac3 (9244d57 in clone-t20)` in the
 clone, BEFORE COMMIT OK (131 s), JAVADOC PUB OK.
+
+2026-11-09. N1 decided by Frans (09:47: "N1, as recommended. I see no
+reason for not making a copy"): `CryptoKey.getKeyData()` returns a
+copy, by coord-1109's agent n20: b70ea77 in clone-n20, with
+`CryptoKey.testGetKeyDataGivesACopy` failing before the fix; BEFORE
+COMMIT OK (140 s), JAVADOC PUB OK; into `main` by the integrator.
