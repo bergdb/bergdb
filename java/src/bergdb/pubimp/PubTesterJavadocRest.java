@@ -262,7 +262,8 @@ public class PubTesterJavadocRest {
      * database goes on; a start whose clock is out of range throws a DbException. The last
      * 1024 clock units are kept for the database's own transactions: a user transaction
      * needs a time of 2^56 - 1025 or less (bergdb 015-55), so a TestClock at Time.MAX
-     * refuses it, in the same way.
+     * refuses it, in the same way. A clock that goes back gives the next unit after the
+     * last transaction's time.
      */
     @Nano
     public static void testClockOutOfRangeRefused() {
@@ -286,6 +287,11 @@ public class PubTesterJavadocRest {
             time.set(2000);
             c.put("/b.txt", "b");
             Assert.assertEquals("b", c.get("/b.txt", String.class));
+            time.set(500);
+            Assert.assertEquals("a clock that goes back", 2001, c.put("/c.txt", "c").getTime()
+                    .units());
+            Assert.assertEquals(2001, c.currentTime().units());
+            Assert.assertEquals(2002, c.put("/c.txt", "c").getTime().units());
         }
 
         final TestClock testClock = new TestClock();

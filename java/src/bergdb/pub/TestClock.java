@@ -25,6 +25,9 @@ public final class TestClock implements Clock {
     /**
      * Sets the time of this test clock.
      * The time must be larger than or equal to the current time of the clock.
+     * 
+     * @throws IllegalArgumentException  If time is null, or before the clock's current
+     *             time; the clock's time is then unchanged (bergdb 020-25).
      */
     public void setTime(Time time) {
         if (time == null) {

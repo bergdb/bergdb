@@ -59,6 +59,7 @@ public class Duration {
      * 
      * @see Clock
      * @param units  Clock units.
+     * @throws IllegalArgumentException  If units is negative (bergdb 020-25).
      */
     public static Duration units(long units) {
         return new Duration(units);
