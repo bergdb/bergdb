@@ -6,6 +6,8 @@ package bergdb.pub;
  * and to set the outputs of the transaction: its results for the caller.
  * The environment is valid only while Action.run() runs; a call to it after that
  * throws IllegalStateException.
+ * Of several puts and deletes of one key in the action, the last one counts, as in a
+ * WBuilder (bergdb 015-40, 020-25).
  * 
  * @author Frans Lundberg
  */
@@ -30,6 +32,11 @@ public interface RwEnvironment extends ReadInterface {
      *
      * @throws ObjectCreationException  As Connection.get(): the action's exception, which
      *             ends the action; the database goes on.
+     * @throws DataFormatException  As Connection.get(), for a value read as a String that
+     *             is not well-formed UTF-8; as ObjectCreationException, the action's
+     *             exception (bergdb 021-06).
+     * @throws IllegalArgumentException  If key does not follow the allowed format, or is
+     *             null, or if clazz is null, as for Connection.get() (bergdb 020-25).
      * @see Connection#get(String, Class)
      */
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);

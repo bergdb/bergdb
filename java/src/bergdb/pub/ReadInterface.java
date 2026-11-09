@@ -37,6 +37,10 @@ public interface ReadInterface {
      * is converted to it as by Connection.get() (bergdb 020-09).</p>
      *
      * @throws ObjectCreationException  As Connection.get().
+     * @throws DataFormatException  As Connection.get(), for a value read as a String that
+     *             is not well-formed UTF-8 (bergdb 021-06).
+     * @throws IllegalArgumentException  If key does not follow the allowed format, or is
+     *             null, or if clazz is null, as for Connection.get() (bergdb 020-25).
      * @see Connection#get(String, Class)
      */
     public <TYPE> TYPE get(String key, Class<TYPE> clazz);

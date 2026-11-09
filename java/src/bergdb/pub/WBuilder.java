@@ -8,6 +8,9 @@ package bergdb.pub;
  *     c.w().put("/a.txt", "a").delete("/b.txt").execute();
  * </pre>
  *
+ * <p>Of several puts and deletes of one key, the last one counts: a put after a delete
+ * puts, a delete after a put deletes (bergdb 015-40, 020-25).</p>
+ *
  * <p>execute() spends the builder, whatever it threw: a later put(), delete() or execute()
  * throws IllegalStateException (bergdb 020-21, 2). For another transaction, get a new
  * builder.</p>

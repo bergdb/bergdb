@@ -61,7 +61,8 @@ public class PubTesterJavadocRest {
      * at once; a delete of a key without an entry has no effect; a byte[] is copied at the
      * put, so a change of the array before execute() is not stored; put() refuses an object
      * at a key with a suffix other than ".obj" ("Bad key"), a null value, and a null or
-     * invalid key, at once, and delete() a null or invalid key. Transaction: a
+     * invalid key, at once, and delete() a null or invalid key; of several puts and deletes
+     * of one key, the last one counts. Transaction: a
      * w-transaction has no outputs, null for every name; getOutput() refuses a null or empty
      * name and a null class.
      */
@@ -111,6 +112,12 @@ public class PubTesterJavadocRest {
             }
             assertThrows("null value", IllegalArgumentException.class,
                     () -> w2.put("/w/e.txt", null));
+
+            c.w().put("/w/f.txt", "f").delete("/w/f.txt").delete("/w/g.txt").put("/w/g.txt", "g")
+                    .put("/w/h.txt", "1").put("/w/h.txt", "2").execute();
+            Assert.assertNull(c.get("/w/f.txt", String.class));
+            Assert.assertEquals("g", c.get("/w/g.txt", String.class));
+            Assert.assertEquals("2", c.get("/w/h.txt", String.class));
         }
     }
 
