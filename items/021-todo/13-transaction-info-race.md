@@ -107,3 +107,16 @@ taken by its agent f13 (clone `clone-f13`, on main's 82edabf).
 Runs, under the gate lock (2026-11-09, 13:24 to 13:37):
 `BEFORE COMMIT OK (227 s)` (unit 1507, f 86, demos);
 `java/stress/level1.sh`: `LEVEL 1 OK`.
+
+2026-11-09. Independent review of f98ac76 by coord-1109's Core reviewer v2
+(13:44): sound, no defect. appendedEnd is set only after the whole append
+(meta blocks included) and by recover(); a low value only adds a wait; a
+failed append, a storage failure, reclaim's cut and close()/stop() all end
+in the documented refusals; no deadlock (getTrans takes writeLock holding
+no lock; writeLock holders wait only for the storage thread, readSync in
+order, or a bounded eviction batch); the get path unchanged. Its probe
+(/Users/f/fl/bench/2026-11-09/v2/probe2/InfoProbe.java, records across meta
+blocks, 3 readers, close() at the end): at f98ac76 60 s, 453,203 infos, 0
+wrong, 115 documented IllegalStateExceptions, longest 179 ms; at f98ac76^
+every reader failed at once. Informational: under nonstop writes a
+waiter may wait over several transactions (the monitor is not fair).
