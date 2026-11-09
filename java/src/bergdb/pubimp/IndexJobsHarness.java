@@ -457,6 +457,12 @@ public final class IndexJobsHarness {
          */
         volatile boolean broken;
         Writer writer;
+        /**
+         * Held by the writer thread for a write and its model's update, and by a check of the
+         * entries against the model while the writer runs, so that the check's values and
+         * entries are of one moment (020-17, H3-O3).
+         */
+        final Object quiet = new Object();
         final Set<Thread> before = bergdbThreads();
 
         Run(Config cfg) {
@@ -1006,7 +1012,9 @@ public final class IndexJobsHarness {
                 Map<String, Object> w = new LinkedHashMap<String, Object>();
                 w.put(key(3), new Item(-1, "a"));
                 write(db.newConnection(), w, "a write after the refusal");
-                checkEntries(memBefore, ownValues(), "after a refused deletion and a write");
+                synchronized (quiet) {
+                    checkEntries(memBefore, ownValues(), "after a refused deletion and a write");
+                }
             }
         }
 
@@ -1616,7 +1624,9 @@ public final class IndexJobsHarness {
                             STRINGS[r.nextInt(STRINGS.length)]));
                 }
                 try {
-                    run.write(c, w, "the writer");
+                    synchronized (run.quiet) {
+                        run.write(c, w, "the writer");
+                    }
                 } catch (RuntimeException e) {
                     if (isStopOrFailure(e)) {
                         return;
