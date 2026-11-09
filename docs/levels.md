@@ -739,7 +739,7 @@ Javadoc
 section 5; Frans, 2026-11-09): keys that start with neither `/d`, `/-` nor
 `/#` are the Core user's; the Pub API's keys may be written, but only the
 Pub API's writes keep its indexes, so a Core put at an object key of an
-indexed directory is left out of its scans until the key is written again
+indexed directory can be left out of its scans until the key is written again
 through the Pub API or the index is made again; keys under `/#` are
 BergDB's. Malformed internal data is refused with `InternalDataException`
 at a start or at the read that meets it (with 020-16's fixes F16-1 and

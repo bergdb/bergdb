@@ -48,6 +48,7 @@ public class Pack implements IPack {
         PubPromiseTester.class,
         PubTester.class,
         PubTesterComposite.class,
+        PubTesterCoreKeys.class,
         PubTesterIndex.class,
         PubTesterIndexJobs.class,
         PubTesterJavadoc.class,

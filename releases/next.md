@@ -655,15 +655,16 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   (bergdb 020-22; Frans, 2026-11-09, A2: "Core is root, with a detection
   floor"). `Db`'s Javadoc, "Keys and the layers above", says which keys a
   `Db` may write: every key that does not start with the bkey of `/d`, `/-`
-  or `/#` is the Core user's, never read or written by BergDB; the Pub
-  API's keys may be written, but only the Pub API's writes keep its
-  indexes, so a Core put at an object key of an indexed directory is left
-  out of the index's scans until the key is written again through the Pub
-  API or the index is made again; keys under `/#` are BergDB's. Malformed
-  internal data is refused with `InternalDataException`; a scan of an index
-  never returns a value that does not match its query. `bergdb.pub`'s "The
-  API and its jar", the Core's `key-encoding.md` and docs/levels.md,
-  section 11, point to it.
+  or `/#` is the Core user's, never read for its meaning or changed by
+  BergDB; the Pub API's keys may be written, but only the Pub API's writes
+  keep its indexes, so a Core put at an object key of an indexed directory
+  can be left out of the index's scans until the key is written again
+  through the Pub API or the index is made again (bergdb 020-27: a put that
+  keeps the indexed fields changes nothing); keys under `/#` are BergDB's.
+  Malformed internal data is refused with `InternalDataException`; a scan
+  of an index never returns a value that does not match its query.
+  `bergdb.pub`'s "The API and its jar", the Core's `key-encoding.md` and
+  docs/levels.md, section 11, point to it.
 * **The Pub API's Javadoc checked against its behaviour** (bergdb 020-19;
   2026-11-09), promise by promise for the classes that 2026.4 changed
   most, each promise with a test (`PubTesterJavadoc`). Corrected:

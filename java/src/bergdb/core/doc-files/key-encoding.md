@@ -142,7 +142,8 @@ first two bytes, written here as the ikeys whose bkeys they are (/d is
   /#i/didel/ for its user indexes, and /#i/div/, hashed only, never stored
   (bergdb 020-10, section 4.1); /#i/dii/ and /#i/di/, release 2026.3's,
   are refused at a start and never read. The rest of /# is reserved.
-* **The Core user's**: every other key. BergDB never reads or writes them.
+* **The Core user's**: every other key. BergDB never reads them for their
+  meaning or changes them.
 
 The Core Layer takes the keys of all three as keys like any other. What a
 Core user may write in each, and what such a write does to the Pub API's

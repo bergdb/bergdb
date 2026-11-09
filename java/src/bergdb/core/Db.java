@@ -79,15 +79,18 @@ import bergdb.stream.SalsaStream;
  * <ul>
  * <li><b>Your keys</b>: every key that does not start with the bytes 01 66, 01 2f or 01 25,
  * the bkeys of "/d", "/-" and "/#": a key whose first byte is not 01, or a String key such
- * as "/k1". BergDB never reads or writes them, in this release or a later one.</li>
+ * as "/k1". BergDB never reads them for their meaning or changes them, in this release or a
+ * later one: the Core keeps them as any key (reclaim copies a live value forward, as it copies
+ * every value).</li>
  * <li><b>The Pub API's keys</b>: the bkey of the ikey of a Pub key, such as "/da/-b" for
  * "/a/b". A put or a delete there is allowed: the Pub API's reads check what they read. But
  * only the Pub API's own writes keep its indexes. A put at an object key (no suffix, or
- * ".obj") of a directory that has an index, building or active, leaves the value out of the
- * index's scans until the key is written again through the Pub API (a put of its own bytes
- * will do), or the index is deleted and created again: write such keys before the index is
- * created, or make it again after. A delete there leaves an entry that scans skip. Any other
- * key that starts with "/d" or "/-" is reserved.</li>
+ * ".obj") of a directory that has an index, building or active, can leave the value out of
+ * the index's scans until the key is written again through the Pub API (a put of its own
+ * bytes will do), or the index is deleted and created again: write such keys before the index
+ * is created, or make it again after. (A put that keeps what the index takes from the value,
+ * the fields of its levels, changes nothing in the index.) A delete there leaves an entry
+ * that scans skip. Any other key that starts with "/d" or "/-" is reserved.</li>
  * <li><b>BergDB's keys</b>: every key that starts with "/#", among them the internal prefix
  * "/#i/" (DbConstants.INTERNAL_PREFIX): reclaim's state and the Pub API's index definitions,
  * entries and markers. Do not write them. Data there that does not parse is refused with
@@ -98,7 +101,9 @@ import bergdb.stream.SalsaStream;
  * <p>A scan of an index never returns a value that does not match its query, whatever was
  * written through Db: it checks each value against the index (bergdb 020-10, section 3.4).
  * Write through Db while no Database runs on the stream: the Db under a running Database is
- * not API, and its writes of BergDB's keys are not seen until the next start.</p>
+ * not API, and BergDB reads some of its keys only at a start (the index manager its index
+ * definitions), so that such a Db's writes of BergDB's keys are seen only in part until the
+ * next start.</p>
  * 
  * <p><b>Errors</b> (2026-11-06, bergdb 019-10; 010-01, P7). BergDB assumes a sound
  * environment: correct storage, a stream that returns the bytes appended to it, and enough
