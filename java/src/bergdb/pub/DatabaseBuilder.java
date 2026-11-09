@@ -65,8 +65,24 @@ public interface DatabaseBuilder {
     public DatabaseBuilder memory();
     
     /**
-     * Provide a CryptoKey to use an existing encrypted database, or start a
-     * new one using the provided encryption key.
+     * Sets the crypto key of the database: start() creates a new database encrypted with it,
+     * or opens one that was created with it. A database is encrypted with one key from its
+     * creation on, and the key cannot be changed. Generate a new key for every database
+     * (CryptoKey.generate()), never one for two, and keep it apart from the database's files:
+     * a lost key loses the database. A start with another key or without one on an encrypted
+     * database, or with one on a database that is not encrypted, is refused with
+     * BadCryptoKey and writes nothing (start()).
+     * 
+     * <p>The package's {@linkplain bergdb.pub##encryption Encryption} says what is encrypted,
+     * every byte of the stream's files, and what is not: created.txt, and what the files show
+     * by their sizes and times; and the limits of BergDB 2026.4's encryption, in short: the
+     * keystream depends only on the key and the position in the stream, so two databases with
+     * one key, a copy of a database written on beside it, or a database written on after a
+     * crash of the operating system or a power loss cut its tail, reuse keystream, which lets
+     * one who sees both versions of the files learn plaintext; and it keeps the data secret,
+     * not unchanged: one who knows a part of the plaintext can change it, and the database
+     * reads the change without an error. The cost: about 2.5 ns for each byte written to the
+     * files or read from them, on a laptop; puts measured about as fast as without a key.</p>
      * 
      * @param cryptoKey  
      *      The crypto key to use or CryptoKey.NULL to not use any encryption.
@@ -203,10 +219,14 @@ public interface DatabaseBuilder {
      *             bergdb 020-24-08, U8-2).
      * @throws BadCryptoKey
      *             If the wrong crypto key is used, or none is used with an encrypted
-     *             database or a crypto key is used with an unencrypted database; without a
-     *             key, also if the stream is not a BergDB stream, or is damaged at its
-     *             beginning (bergdb 005-33, 020-25). The start has then written nothing to
-     *             the database, so it can be started with the right key (bergdb 005-40).
+     *             database or a crypto key is used with an unencrypted database; also, with
+     *             or without a key, the right one too, if the stream is not a BergDB stream,
+     *             or is damaged where the start reads it first: the magic bytes of its last
+     *             meta block, one of the blocks written at every 200,000 bytes of the stream,
+     *             so in a database of less than 200 kB its first bytes (bergdb 005-33,
+     *             020-25, 020-24-07). The message names the likely causes. The start has
+     *             then written nothing to the database, so it can be started with the right
+     *             key (bergdb 005-40).
      * @throws DatabaseNotCreatedException
      *             If the database's creation did not complete: a crash, as a power loss,
      *             while it was created left a part of it, and no data (bergdb 005-33). The

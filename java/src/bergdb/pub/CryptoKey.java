@@ -9,8 +9,20 @@ import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
 /**
- * A key for the encryption of the database stream, with its algorithm and the name of
- * the key.
+ * A key for the encryption of a database's stream, with its algorithm and its name: give it
+ * to DatabaseBuilder.cryptoKey() for an encrypted database. The package's
+ * {@linkplain bergdb.pub##encryption Encryption} says what is encrypted and what is not, and
+ * the limits of the encryption: a new key for every database, never one for two; a lost key
+ * loses the database, and the key cannot be changed; the data is kept secret, not unchanged.
+ *
+ * <p>A key has a name, the algorithm, "salsa" (Salsa20), and its key data, 40 bytes: an
+ * 8-byte nonce and a 32-byte (256-bit) key, both random from generate(). The keystream
+ * depends only on the key data and the position in the stream. serialize() gives the key as
+ * a string that parse() takes back: keep it apart from the database's files, as a secret.
+ * toString() masks the key data. The name, 8 hex digits from generate(), is for people, as
+ * in the database's created.txt: the key data alone opens a database, under any name.
+ * equals() compares the names too, so two keys that open one database need not be
+ * equal.</p>
  * 
  * @author Frans Lundberg
  */
@@ -60,8 +72,7 @@ public class CryptoKey {
     
     /**
      * Returns the key data specific for the algorithm used, a new array: a change of it does
-     * not change this key (2026-11-09, bergdb 020-20, N1: the key's own array, so a caller
-     * could change the key).
+     * not change this key. For "salsa", 40 bytes: the 8-byte nonce, then the 32-byte key.
      *
      * @return A copy of the key data.
      */
@@ -70,7 +81,8 @@ public class CryptoKey {
     }
     
     /**
-     * Generates a new 256-bit key.
+     * Generates a new key, for one database: a 256-bit key and its 8-byte nonce, random, and
+     * a random name of 8 hex digits.
      */
     public static CryptoKey generate() {
         SecureRandom random = createSecureRandom();
@@ -90,7 +102,12 @@ public class CryptoKey {
     /**
      * Parses a string that was created with serialize(); NULL's string gives NULL. The
      * string has three parts, separated by '-': the name, the algorithm and the key data,
-     * 40 bytes in hex, whose digits are taken in either case.
+     * 40 bytes in hex, whose digits are taken in either case. The name and the algorithm are
+     * any text without '-', not empty; start() refuses an algorithm other than "salsa". The
+     * string is taken as it is, whitespace too: a string read from a file, which may end with
+     * a newline, is to be stripped first (String.strip()). A trailing newline or space makes
+     * the key data bad (FormatException), and a leading one is taken into the name, which
+     * does not matter for the key.
      * 
      * @throws CryptoKey.FormatException if the string is not in serialize()'s format: not
      *             three parts (bergdb 020-25, C1), an empty name or algorithm, or key data
@@ -146,7 +163,9 @@ public class CryptoKey {
     }
     
     /**
-     * Returns the key and key info serialized to a String.
+     * Returns the key as a string that parse() takes back: the name, the algorithm and the
+     * key data in 80 hex digits, separated by '-', such as "3fa2c901-salsa-" and the digits;
+     * NULL's is "null-null-". It holds the key data: keep it as a secret.
      */
     public String serialize() {
         StringBuilder b = new StringBuilder();

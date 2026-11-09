@@ -737,8 +737,12 @@ public class Db implements AutoCloseable {
             // 2026-10-25 (bergdb 005-33): without a crypto key, the message said that the
             // wrong key was used too, also for a stream of zero bytes, as a power loss can
             // leave one.
+            // 2026-11-09 (bergdb 020-24-07, U7-7): with a key, the message named only a
+            // wrong key, and a damaged stream gives it with the right key too.
             throw new BadCryptoKey(encrypted
-                    ? "Likely, the wrong crypto key was used. Invalid magic bytes in stream."
+                    ? "Invalid magic bytes in stream, read with the crypto key given: likely, "
+                    + "the wrong crypto key was used, or the database is not encrypted; else "
+                    + "the stream is damaged, or it is not a BergDB stream."
                     : "Invalid magic bytes in stream, and no crypto key was used: likely, the "
                     + "database is encrypted and needs its key; else the stream is not a "
                     + "BergDB stream, or it is damaged.");

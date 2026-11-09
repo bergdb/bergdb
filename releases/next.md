@@ -745,6 +745,38 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   do with data that is not text (a `byte[]`, or a `char[]` in an object);
   the overview, `Connection`, `WBuilder.put` and `RwEnvironment.put` link
   to it, and the Core's `key-encoding.md` states it for keys.
+* **Encryption: what it does, its limits, and its cost** (bergdb 020-24-07,
+  U7-1, U7-3, U7-4, U7-6 and U7-8; 2026-11-09, from a new user's password
+  vault): the package `bergdb.pub` has a section "Encryption", and
+  `DatabaseBuilder.cryptoKey()` and `CryptoKey` say it in short. What is
+  encrypted (every byte of the stream's files) and what is not
+  (`created.txt`, with the key's name and its data masked; what the files
+  show by their sizes and times, so the length of a value written alone);
+  the data in memory is not. A limit of 2026.4: the keystream depends only
+  on the key and the stream position, so two databases with one key, a
+  copy of a database and the database both written on after the copy, or
+  a database written on after a crash of the OS or a power loss cut its
+  tail, reuse keystream, and one who sees both versions of the files
+  learns plaintext. The encryption keeps the data secret, not unchanged:
+  no integrity check, so one who knows a part of the plaintext can change
+  it, with a checksum that matches, and the database reads it without an
+  error; nor is a cut tail or an older copy noticed. A key belongs to one
+  database and cannot be changed; a lost key loses the database; the
+  key's name is for people. The cost, about 2.5 ns per byte written or
+  read from the files. `CryptoKey.parse()` says what it takes: the string
+  as it is, so a trailing newline is refused and a leading space is taken
+  into the name (unchanged). `getKeyData()` lost its dated note.
+* **The message of `BadCryptoKey` with a key names a damaged stream**
+  (bergdb 020-24-07, U7-7; 2026-11-09): with the right key, a stream
+  damaged where the start reads it first gave "Likely, the wrong crypto
+  key was used.", and a user took the key for wrong or lost. Now "Invalid
+  magic bytes in stream, read with the crypto key given: likely, the wrong
+  crypto key was used, or the database is not encrypted; else the stream
+  is damaged, or it is not a BergDB stream." `BadCryptoKey` and
+  `DatabaseBuilder.start()` say where the start reads first: the magic
+  bytes of the last meta block, one at every 200,000 bytes of the stream,
+  so the first bytes only in a database of less than 200 kB; they said
+  "damaged at its beginning", and only without a key.
 * **The Pub API's Javadoc says what is, not how it was** (bergdb 021-01;
   2026-11-07). The sentences on how a method or an exception behaved before
   a change, and their dates, are gone from `Database`, `DatabaseBuilder`,

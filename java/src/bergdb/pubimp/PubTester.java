@@ -2920,6 +2920,41 @@ public class PubTester {
     }
     
     /** A builder of a database on the stream m, with the crypto key unless it is null. */
+    /**
+     * Regression test for bergdb 020-24-07, U7-7: with the right crypto key, a stream damaged
+     * where the start reads it first, the magic bytes of its last meta block (in a small
+     * database its first bytes), gives a BadCryptoKey whose message names a damaged stream
+     * too, not only a wrong key: it said "Likely, the wrong crypto key was used.", and a user
+     * then took the key for wrong or lost. The start writes nothing; the undamaged stream
+     * starts with the key.
+     */
+    @Nano
+    private static void testDamagedStreamWithTheRightKey() throws IOException {
+        CryptoKey key = CryptoKey.generate();
+        MemoryStream m = new MemoryStream();
+        Database d = builderOn(m, key).start();
+        d.connection().put("/a", "v");
+        d.close();
+        byte[] bytes = new byte[(int) m.getLength()];
+        m.read(0, bytes, 0, bytes.length);
+        bytes[0] ^= 1;
+        MemoryStream damaged = new MemoryStream();
+        damaged.append(bytes, 0, bytes.length);
+        try {
+            builderOn(damaged, key).start().close();
+            throw new AssertionError("started on a damaged stream");
+        } catch (BadCryptoKey e) {
+            String message = e.getMessage();
+            Assert.assertTrue(message, message.contains("wrong crypto key"));
+            Assert.assertTrue(message, message.contains("the stream is damaged"));
+        }
+        Assert.assertEquals("the stream as it was", bytes.length, damaged.getLength());
+        
+        Database again = builderOn(m.copy(), key).start();
+        Assert.assertEquals("v", again.connection().get("/a", String.class));
+        again.close();
+    }
+    
     private static DatabaseBuilder builderOn(MemoryStream m, CryptoKey key) {
         DatabaseBuilderImp b = (DatabaseBuilderImp) Factory.database();
         b.mainStream(m);
