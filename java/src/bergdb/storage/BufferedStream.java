@@ -209,7 +209,11 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
                     }
                     // No wait while a sync waits (bergdb 005-48), or with a quarter ready
                     // (bergdb 005-76). An append's wake may arrive during the last flush.
-                    if (!syncWaits() && pStart - cStart < twentyFivePercentOfBufferCapacity) {
+                    // Nor while a close waits for buffered bytes (bergdb 020-13, bug 4): its
+                    // wake came during a flush, and the close waited a whole wait time, a
+                    // quarter of the buffer time, for nothing.
+                    if (!syncWaits() && !closeWaits()
+                            && pStart - cStart < twentyFivePercentOfBufferCapacity) {
                         wait(waitTime);
                     }
                 } catch (InterruptedException e) {
@@ -304,6 +308,12 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
     private boolean syncWaits() {
         assert Thread.holdsLock(this);
         return flushTo > cStart && pStart > cStart;
+    }
+    
+    /** True when close() waits for bytes that are still buffered (bergdb 020-13, bug 4). */
+    private boolean closeWaits() {
+        assert Thread.holdsLock(this);
+        return flushAndClose && pStart > cStart;
     }
 
     /**
@@ -871,6 +881,76 @@ public class BufferedStream implements AppendOnlyStream, Closeable {
             m.read(0, bytes, 0, bytes.length);
             Assert.assertEquals((byte) 42, bytes[255]);
         } finally {
+            b.close();
+        }
+    }
+
+    /**
+     * bergdb 020-13, bug 4: a close() that comes while the consumer flushes, with bytes
+     * buffered after the flush's, flushes them at once. Its wake came while the consumer was
+     * not waiting, and the consumer then waited a whole wait time (a quarter of the buffer
+     * time; 15 s here) before it flushed them: PubTester.testTryWithResourcesCloses took 15 s
+     * now and then in a loaded gate.
+     */
+    @Nano
+    public static void testCloseDuringAFlushDoesNotWaitForTheTimer() throws Exception {
+        final java.util.concurrent.CountDownLatch entered = new java.util.concurrent.CountDownLatch(1);
+        final java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+        MemoryStream m = new MemoryStream() {
+            @Override public void append(byte[] source, int offset, int length) throws IOException {
+                if (getLength() == 0) {
+                    entered.countDown();
+                    try {
+                        if (!release.await(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                            throw new IOException("test did not release the first flush");
+                        }
+                    } catch (InterruptedException e) {
+                        throw new IOException(e);
+                    }
+                }
+                super.append(source, offset, length);
+            }
+        };
+        final BufferedStream b = new BufferedStream(m, 1024, 60000);
+        b.append(new byte[512], 0, 512);
+        b.flushSoon(512);
+        b.start();
+        Thread closer = null;
+        try {
+            Assert.assertTrue("first flush did not start",
+                    entered.await(2, java.util.concurrent.TimeUnit.SECONDS));
+            b.append(new byte[100], 0, 100);   // Below a quarter: the timer's wait applies.
+            final IOException[] closeFailure = new IOException[1];
+            closer = new Thread(() -> {
+                try {
+                    b.close();
+                } catch (IOException e) {
+                    closeFailure[0] = e;
+                }
+            });
+            closer.start();
+            long deadline = System.nanoTime() + 2000000000L;
+            while (true) {          // close() has woken the busy consumer, and waits
+                synchronized (b) {
+                    if (b.flushAndClose) {
+                        break;
+                    }
+                }
+                Assert.assertTrue("close() did not start", System.nanoTime() < deadline);
+                Thread.sleep(1);
+            }
+            long t0 = System.nanoTime();
+            release.countDown();
+            closer.join(10000);
+            long ms = (System.nanoTime() - t0) / 1000000;
+            Assert.assertFalse("close() waits after " + ms + " ms", closer.isAlive());
+            Assert.assertTrue("close() took " + ms + " ms, the timer's wait", ms < 5000);
+            Assert.assertEquals(612, m.getLength());
+        } finally {
+            release.countDown();
+            if (closer != null) {
+                closer.join();
+            }
             b.close();
         }
     }
