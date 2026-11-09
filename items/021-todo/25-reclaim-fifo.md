@@ -189,6 +189,73 @@ For Frans
   tried).
 
 
+Fix (c)
+-------
+
+Fix (c) only, by fixer k32 for coord-1109: the slowdown of puts of part
+3. Parts 1 and 2, and so the cuts, are unchanged.
+
+The change: `KeyAccessPath.clear()` nulls only the entries that `add()`
+set since the last `clear()`, below a high-water mark, `used`, that
+`add()` raises to `size` and `clear()` sets to 0. Entries left by
+`clearFast()` before later, shorter adds lie below it, and an enlargement
+copies only entries below it, so no key node reference outlives the
+transaction, as before. The callers: `clear()` from `PutData.clear()`, at
+the end of `Db.putKvs()`, and from `DagTester`; `clearFast()` from
+`PutData.clearFast()`, after the touch and after each put
+(`Db.putKvs()`), after each rerun put (`DbStarter`, on a `PutData` of its
+own that it never clears) and in `DagTester`. Nothing else in the code
+writes the arrays. The touch still records its path; the stream and
+reclaim are as before.
+
+The test: three Nano tests in `KeyAccessPath` (in the unit tests by its
+`Pack`), `testClearNullsTheNodes`, `testClearAfterClearFast` and
+`testClearAfterEnlargement`: after `clear()`, `size` is 0 and no entry of
+the array holds a node, also after `clearFast()` and later, shorter or
+longer adds, and after enlargements of the arrays (16 entries at first,
+then 25, 40 and 64). They pass on the old `clear()` too, which nulled every
+entry; they are there to keep the high-water mark right.
+
+Measured on F53, loaded by other sessions (load 8 to 13), one JVM at a
+time and one run each, with the jars of this clone before and after the
+change (main's a2fa9df and the change), no `-ea`:
+
+App u14's `PutCost` (`java PutCost DIR retain`: startup distance 5 MB,
+retain duration 2 s; the rate of puts in `/w/` after K creations and
+deletions of an index on `/c/`), puts per second:
+
+| Cycles        | Before  | After   |
+|---|---|---|
+| 0             | 224,052 | 165,550 |
+| 10            | 140,232 | 190,918 |
+| 100           | 32,998  | 170,046 |
+| 300           | 9,931   | 172,677 |
+| 1,000         | 6,131   | 202,406 |
+| after restart | 243,130 | 237,983 |
+
+The rate no longer falls with the cycles; the spread among the after
+figures, and at 0 cycles, where the change does nothing, is the noise of
+the loaded machine.
+
+The FIFO (`ReclaimFifo.java`, 300,000 transactions, in a copy that keeps
+the directory when `KEEP` is set): 6.2 s before, 4.9 s after (its own wall
+time at transaction 299,999). The run is the same: every line of the
+output but the wall time and, before the end, the directory's bytes
+(files written and deleted in the background; g30's runs differ there
+too) is the same: the stream's length at every 5,000 transactions and
+226,557,072 bytes at the end, the first available position, 15 cuts, 16
+iterations, the 20 records over 1 MB and the largest, 4,170,176 bytes, and
+the directory, 134,375,552 bytes, at the end. The 22 files left in the
+directory (136,557,297 bytes) are the same names and sizes and equal byte
+for byte but for 683 runs of 16 bytes, each at offset 24 of a 200,000-byte
+block, one value in each run: the meta blocks' database id
+(`Db.java:1364`), random for each new database. So the stream is
+unchanged.
+
+The FIFO's cuts still stop (parts 1 and 2), and so do u14's (not
+measured here).
+
+
 Log
 ---
 
@@ -203,3 +270,9 @@ above) from reclaim's table and statistics; no fix made. A known issue in
 from u14's put cost (coord-1109: is u14 the same?): stack samples of
 `PutCost.java` changed to a long put phase, and the array's length in the
 FIFO. Investigation ended; the item stays for Frans's decision.
+
+2026-11-09. Fix (c) by fixer k32 (clone `clone-k32` on g30's 4daeff8):
+`KeyAccessPath.clear()` with a high-water mark, three Nano tests, u14's
+`PutCost` and the FIFO before and after (section "Fix (c)"); the stream
+unchanged. A line in `releases/next.md`. The item stays for Frans's
+decision on (a) and (b).

@@ -1345,3 +1345,12 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   300 KB of live data. Now and then a transaction of one put and one
   delete writes a record of 1 to 4 MB, growing with the run. No data is
   lost and every read is right. The same in 2026.3.
+
+* **Fixed: puts no longer slow down after reclaim has passed many deleted
+  keys** (bergdb 021-25, fix (c); 020-24-14, U14-1). Every transaction
+  cleared the longest key access path that a reclaim step had ever
+  followed (28,544 entries from transaction 180,000 of the FIFO above), so
+  with index creations and deletions under a retain duration of 2 s, puts
+  in another directory fell from 224,000 to 6,100 per second after 1,000
+  cycles; now 202,000. The stream is unchanged, and so is the known issue
+  above: reclaim still stops cutting there.
