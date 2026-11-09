@@ -1,0 +1,17 @@
+version: 2017-07-29
+commit: dbf131ae0b2dab1e615068035b5270c73aaed343
+classes: 454338f3da461af8334d2ff2c4f05516d325f1860e6c52ec5b86c83764523d6d
+props: own
+label: memss
+class: bergdb.dev.props.MEM 
+flags: 
+start: 2026-11-09 08:34:36 CET
+timed: no (waited 0 s for quiet)
+quiet: load1=8.64 jvms=[] markers=[] runners=[/bin/zsh -c source /Users/f/.claude/shell-snapshots/snapshot;sh java/before-commit.sh;] gate=free busy-sessions=1
+----
+Error: Could not find or load main class bergdb.dev.props.MEM
+Caused by: java.lang.NoClassDefFoundError: bergdb/dev/props/MEM (wrong name: bergdb/dev/props/Mem)
+EXIT CODE 1
+----
+seconds: 0
+load after: { 8.64 8.81 6.23 }

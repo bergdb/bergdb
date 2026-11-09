@@ -29,6 +29,8 @@ The list
 | [006-13](13-day-and-night-6-november.md) | 2026-11-06 | Day and night work of 6 to 7 November, with the coordinator coord-1106: 006-12's decisions with Frans, the plan, the progress and the outcome |
 | [006-14](14-day-7-november.md) | 2026-11-07 | Day work of 7 November (a Saturday), with the coordinator coord-1107: release 2026.4's work, the plan, the progress and the outcome |
 | [006-15](15-day-8-november.md) | 2026-11-08 | Day work of 8 November (a Sunday), with the coordinator coord-1108: release 2026.4's work, the plan, the progress and the outcome |
+| [006-16](16-props-across-releases.md) | 2026-11-09 | Props (MEM, CORE, SS) across BergDB's history, 2013.1 to the 2026.4 candidate, 14 builds on F53: MEM 144 (2013) to 129-130 (2026.2 on), SS 1.83 to 1.51; CORE not run yet, needs a quiet F53 |
+| [006-17](17-day-9-november.md) | 2026-11-09 | Day work of 9 November (a Monday), with the coordinator coord-1109: release 2026.4's bug hunts, the plan, the progress and the outcome |
 
 
 Files
@@ -88,6 +90,15 @@ Files
 * [15-day-8-november.md](15-day-8-november.md). 006-15: the plan for the
   day of 8 November (coord-1108): release 2026.4's work, the progress and
   the outcome.
+* [16-props-across-releases.md](16-props-across-releases.md). 006-16, the
+  report: Props on 14 builds from 2013 to the 2026.4 candidate, what it
+  measures and how it changed, MEM and SS of each build, cissi's figures of
+  2013 to 2017 and 2012's, and what is left (CORE). The plan, the scripts
+  (`run.sh`, the port `P16.java.in`, `summary.py`) and the runs are in
+  [16-props-across-releases/](16-props-across-releases/).
+* [17-day-9-november.md](17-day-9-november.md). 006-17: the plan for the
+  day of 9 November (coord-1109): release 2026.4's bug hunts, the progress
+  and the outcome.
 
 
 Log

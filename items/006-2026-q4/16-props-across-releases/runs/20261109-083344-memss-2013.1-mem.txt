@@ -1,0 +1,16 @@
+version: 2013.1
+commit: 9ffbdf9720cc969b69d9aac4da3e75436a14ae4c
+classes: 224defac4853307412bd45cec7b226a7a977b01eafdd97a5088a6ed37cddb26a
+props: p16 (kissdb kissdb.core.Keys set sync0 runMethod)
+label: memss
+class: p16.P16 mem
+flags: 
+start: 2026-11-09 08:33:44 CET
+timed: no (waited 0 s for quiet)
+quiet: load1=14.23 jvms=[] markers=[] runners=[/bin/zsh -c source /Users/f/.claude/shell-snapshots/snapshot;sh java/before-commit.sh;] gate=free busy-sessions=1
+----
+==== p16.P16 (bergdb 006-16), mem ====
+MEM:144
+----
+seconds: 1
+load after: { 14.23 9.61 6.34 }

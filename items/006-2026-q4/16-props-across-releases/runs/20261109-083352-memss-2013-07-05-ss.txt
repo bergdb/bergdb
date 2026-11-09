@@ -1,0 +1,16 @@
+version: 2013-07-05
+commit: 550ce4eb6c035c18e040fb13fbd4f97fd60c5e30
+classes: 44599b5723d1ebe374521c6153a939497d316e1a788ecafe1ef1d4bd3cf1e52a
+props: p16 (bergdb bergdb.core.Keys set sync0 runMethod)
+label: memss
+class: p16.P16 ss
+flags: 
+start: 2026-11-09 08:33:52 CET
+timed: no (waited 0 s for quiet)
+quiet: load1=12.89 jvms=[] markers=[] runners=[/bin/zsh -c source /Users/f/.claude/shell-snapshots/snapshot;sh java/before-commit.sh;] gate=free busy-sessions=1
+----
+==== p16.P16 (bergdb 006-16), ss ====
+SS:1.83 (1.14, 1.58, 1.50, 4.12)
+----
+seconds: 6
+load after: { 12.18 9.38 6.31 }

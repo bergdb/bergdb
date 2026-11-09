@@ -1,0 +1,20 @@
+version: 2013.1
+commit: 9ffbdf9720cc969b69d9aac4da3e75436a14ae4c
+classes: 224defac4853307412bd45cec7b226a7a977b01eafdd97a5088a6ed37cddb26a
+props: p16 (kissdb kissdb.core.Keys set sync0 runMethod)
+label: smoke
+class: p16.P16 all
+flags: 
+start: 2026-11-09 08:36:38 CET
+timed: no (waited 0 s for quiet)
+quiet: load1=5.11 jvms=[] markers=[] runners=[] gate=free busy-sessions=1
+----
+==== p16.P16 (bergdb 006-16), all ====
+MEM:144
+....................
+CORE:0.37 (0.29, 0.49, 0.25, 0.52)
+CORE best times, us: get 0.2893, get4t 0.1967, getmany 0.0496, set 2.5866
+SS:1.83 (1.14, 1.58, 1.50, 4.12)
+----
+seconds: 39
+load after: { 4.65 7.37 6.11 }

@@ -1,0 +1,201 @@
+package p16;
+
+import java.util.Locale;
+import java.util.Map;
+import java.util.TreeMap;
+
+import @P@.core.Db;
+import @P@.core.Trans;
+import @KEYS@;
+import @P@.nanotest.BasicCollector;
+import @P@.nanotest.TestRunner;
+import @P@.stream.MemoryStream;
+import @P@.stream.NullStream;
+import @P@.test.Get;
+import @P@.test.GetThreaded;
+import @P@.test.PerfGetMany;
+import @P@.test.Set;
+
+/**
+ * bergdb 006-16: Props (bergdb.dev.props.Props of 2015-12-28, the same as 2026's) for
+ * the code of 2013 and 2014, which has no Props package. Made from P16.java.in by
+ * run.sh, one copy per API of the time (the tokens: package, Keys, set or put, sync,
+ * TestRunner's method).
+ *
+ * MEM: a port of Mem.go(): one million KVs, keys "0" to "999999", empty values, 100 per
+ * transaction, testSetup() with a NullStream (DummyStream's name until 2014) as the main
+ * stream; heap after System.gc() minus before, per KV.
+ *
+ * CORE: the code's own four Core tests, the ones that CorePerf ran in 2013 and 2014 and
+ * that Props's Core runs since 2015 (get, get4t, getmany, set: Get.run,
+ * GetThreaded.get4t, PerfGetMany.standard, Set.normal), called the way CorePerf called
+ * them (TestRunner, BasicCollector); five rounds, the best time of each test divided by
+ * cissi's of July 2013 (1.0, 0.4, 0.2 and 5.0 us), the geometric mean of the four.
+ * CorePerf's fifth test, set2, is left out, as in Props.
+ *
+ * SS: a port of SS1 to SS4: 100 MB of KVs of 1,000 or 100 bytes, keys "k-N", 100 KVs or
+ * one per transaction, into a MemoryStream with the default builder and retainForever(),
+ * the default from 2013-07-07 (8cbd702) on; before, the default kept 7 days and ran
+ * reclaim, which fails in 2013.1's GetMany; stream length over user bytes after a sync;
+ * the geometric mean of the four.
+ *
+ * Usage: java p16.P16 [all|mem|core|ss]   (all: MEM, CORE, SS in one JVM, as Props)
+ */
+public class P16 {
+
+    public static void main(String[] args) throws Exception {
+        String what = args.length > 0 ? args[0] : "all";
+        System.out.println("==== p16.P16 (bergdb 006-16), " + what + " ====");
+        if (what.equals("all") || what.equals("mem")) {
+            System.out.println(mem());
+        }
+        if (what.equals("all") || what.equals("core")) {
+            System.out.println(core());
+        }
+        if (what.equals("all") || what.equals("ss")) {
+            System.out.println(ss());
+        }
+    }
+
+    // ---- MEM, as Mem.go() of 2015-12-28 ----
+
+    static String mem() {
+        int n = 1000*1000;
+        int valueSize = 0;
+        Db db = Db.builder().testSetup().mainStream(new NullStream()).start();
+
+        System.gc(); System.gc(); System.gc();
+        long emptyMem = usedMem();
+
+        int batchSize = 100;
+        for (int i = 0; i < n/batchSize; i++) {
+            Trans.Builder b = Trans.builder();
+            for (int j = 0; j < batchSize; j++) {
+                String key = "" + (i*batchSize + j);
+                byte[] value = new byte[valueSize];
+                b.@PUT@(key, value);
+            }
+            Trans t = b.build();
+            db.execute(t);
+        }
+
+        System.gc(); System.gc(); System.gc();
+        long fullMem = usedMem();
+
+        double memPerKv = (double)(fullMem - emptyMem) / (double) n;
+        db.stop();
+        return String.format(Locale.US, "MEM:%.0f", memPerKv);
+    }
+
+    static long usedMem() {
+        Runtime rt = Runtime.getRuntime();
+        System.gc(); System.gc(); System.gc();
+        return rt.totalMemory() - rt.freeMemory();
+    }
+
+    // ---- CORE, as Core.go() of 2015-12-28, with the tests as CorePerf ran them ----
+
+    static Map<String, Double> best = new TreeMap<String, Double>();
+
+    static void runMethod(Class<?> clazz, String methodName, String propName, String shortName) {
+        BasicCollector collector = new BasicCollector();
+        collector.setPrintProps(false);
+        collector.setPrintMethods(false);
+        collector.setPrintOutput(false);
+
+        TestRunner.@RUNM@(clazz, methodName, collector);
+
+        String fullPropName = clazz.getCanonicalName() + "." + methodName + "." + propName;
+        Object value = collector.getProp(fullPropName);
+        if (!(value instanceof Double)) {
+            throw new Error("No Double for property " + fullPropName + ": " + value);
+        }
+        double d = ((Double) value).doubleValue();
+        Double previous = best.get(shortName);
+        if (previous == null || d < previous.doubleValue()) {
+            best.put(shortName, d);
+        }
+        System.out.print(".");
+    }
+
+    static String core() {
+        Map<String, Double> baseline = new TreeMap<String, Double>();
+        baseline.put("get",      1.0e-6);
+        baseline.put("get4t",    0.4e-6);
+        baseline.put("getmany",  0.2e-6);
+        baseline.put("set",      5.0e-6);
+
+        for (int i = 0; i < 5; i++) {
+            runMethod(Get.class, "run", "get-time", "get");
+            runMethod(GetThreaded.class, "get4t", "get-time-4", "get4t");
+            runMethod(PerfGetMany.class, "standard", "time-per-kv", "getmany");
+            runMethod(Set.class, "normal", "time-per-trans", "set");
+        }
+        System.out.println();
+
+        double product = 1.0;
+        StringBuilder parts = new StringBuilder();
+        StringBuilder us = new StringBuilder();
+        for (Map.Entry<String, Double> e : best.entrySet()) {
+            double normalized = e.getValue() / baseline.get(e.getKey());
+            product *= normalized;
+            if (parts.length() > 0) {
+                parts.append(", ");
+                us.append(", ");
+            }
+            parts.append(twoDecimals(normalized));
+            us.append(e.getKey() + " " + String.format(Locale.US, "%.4f", e.getValue() * 1e6));
+        }
+        double geoMean = Math.pow(product, 1.0 / best.size());
+        return String.format(Locale.US, "CORE:%.2f", geoMean) + " (" + parts + ")\n"
+                + "CORE best times, us: " + us;
+    }
+
+    /** As bergdb.common.StringUtil.twoDecimals. */
+    static String twoDecimals(double value) {
+        double d = Math.round(value * 100.0) / 100.0;
+        String s = "" + d;
+        int index = s.indexOf('.');
+        if (index == -1) {
+            return s + ".00";
+        }
+        int decimals = s.length() - index - 1;
+        if (decimals == 1) {
+            return s + "0";
+        }
+        return s;
+    }
+
+    // ---- SS, as SS and SS1 to SS4 of 2015-12-28 ----
+
+    static double ssOne(int keySize, int valueSize, int kvsPerTrans, int transCount) {
+        MemoryStream stream = new MemoryStream();
+        Db db = Db.builder().retainForever().mainStream(stream).start();
+
+        int counter = 0;
+        for (int i = 0; i < transCount; i++) {
+            Trans.Builder b = Trans.builder();
+            for (int j = 0; j < kvsPerTrans; j++) {
+                long[] key = Keys.toSegments("k-" + counter);
+                b.@PUT@(key, new byte[valueSize]);
+                counter++;
+            }
+            db.execute(b.build());
+        }
+        @SYNC@
+
+        long length = db.getStreamLength();
+        long dataSize = transCount * kvsPerTrans * (keySize + valueSize);
+        return ((double) length) / dataSize;
+    }
+
+    static String ss() {
+        double ss1 = ssOne(10, 1000 - 10, 100, 100*1000 / 100);
+        double ss2 = ssOne(10, 1000 - 10, 1, 100*1000 / 1);
+        double ss3 = ssOne(10, 100 - 10, 100, 1000*1000 / 100);
+        double ss4 = ssOne(10, 100 - 10, 1, 1000*1000 / 1);
+        double geoMean = Math.pow(ss1 * ss2 * ss3 * ss4, 1.0 / 4.0);
+        return String.format(Locale.US, "SS:%.2f (%.2f, %.2f, %.2f, %.2f)",
+                geoMean, ss1, ss2, ss3, ss4);
+    }
+}

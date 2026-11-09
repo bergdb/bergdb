@@ -1,0 +1,15 @@
+version: 2015-12-28
+commit: bc11dbfe737a103eebc3beed0ebfde498e4ec610
+classes: add6f9189a19a81caf80c921ce562bc8fbb6a6976cbebebc82b268327f450e99
+props: own
+label: memss
+class: bergdb.dev.props.Mem 
+flags: 
+start: 2026-11-09 08:36:08 CET
+timed: no (waited 0 s for quiet)
+quiet: load1=6.01 jvms=[] markers=[] runners=[] gate=free busy-sessions=1
+----
+MEM:158
+----
+seconds: 2
+load after: { 6.01 8.19 6.28 }

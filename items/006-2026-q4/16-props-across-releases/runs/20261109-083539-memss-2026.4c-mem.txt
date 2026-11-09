@@ -1,0 +1,15 @@
+version: 2026.4c
+commit: f3af680529644405415dd58ed756bb89ec51e52d
+classes: bd67def9ddb6f3742506e9ee7007025e4dd308ec742cf8fcf93cf66614a76f01
+props: own
+label: memss
+class: bergdb.dev.props.Mem 
+flags: 
+start: 2026-11-09 08:35:39 CET
+timed: no (waited 0 s for quiet)
+quiet: load1=8.33 jvms=[53893] markers=[] runners=[/bin/zsh -c source /Users/f/.claude/shell-snapshots/snapshot;sh java/before-commit.sh;] gate=free busy-sessions=1
+----
+MEM:130
+----
+seconds: 2
+load after: { 8.33 8.78 6.41 }
