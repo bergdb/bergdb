@@ -102,6 +102,88 @@ final class ObjectFormat {
     private static final long EXPONENT = 0x7ff0000000000000L;
     private static final long FRACTION = 0x000fffffffffffffL;
 
+    // ======== Format 1, BergDB 2026.3's (020-08, section 3) ========
+
+    /** Format 1's type bytes: boolean, int, long, double, string, bytes, array, object. */
+    private static final String FORMAT_1_TYPES = "nildsbao";
+
+    /**
+     * True if 'b' is a whole object of format 1, BergDB 2026.3's and before, by its structure,
+     * as 2026.3's writer wrote it (DbObject.Builder at release-2026.3; 020-07, section 9),
+     * each field checked as its reader checked it. It is "bergo", the version 1 and a field
+     * count n, a little-endian short: -1 (a null object) or 0 with nothing after it, or 1 to
+     * 32,767 and a table of n entries of 6 bytes (a hash of the name, not checked, and the
+     * field's offset, an int) and the n fields in order, the first right after the table and
+     * the last ending at the end of 'b'. A field is a type byte of FORMAT_1_TYPES, the name's
+     * size (a short, at least 1), the name, and a value that fills the field: a boolean 1
+     * byte, 0 or 1; an int 4; a long and a double 8; a string, bytes and an object a size
+     * (an int) and that many bytes, or -1 and nothing (null), an object's starting with
+     * "bergo" and the version 1; an array ends with 'z' or 'Z'. A nested object's and an
+     * array's elements are not checked: no recursion, so no depth to bound.
+     *
+     * <p>The stored value has no type of its own, so this is a guess (bergdb 020-08, section
+     * 3): a value that only starts with "bergo" and the version 1, such as the String "bergo"
+     * + U+0001 + " text", is not taken for format 1, but one whose bytes happen to be a whole
+     * object of it, such as "bergo" + U+0001 + U+0000 + U+0000, is.</p>
+     */
+    static boolean isFormat1(byte[] b) {
+        if (b.length < 8 || !startsWith(b, FORMAT_1) || b[5] != 1) {
+            return false;
+        }
+        int n = (int) signed(b, 6, 2);
+        if (n <= 0) {
+            return n >= -1 && b.length == 8;
+        }
+        int at = 8 + 6 * n;
+        if (b.length < at) {
+            return false;
+        }
+        for (int i = 0; i < n; i++) {
+            int offset = (int) signed(b, 8 + 6 * i + 2, 4);
+            int end = i + 1 < n ? (int) signed(b, 8 + 6 * (i + 1) + 2, 4) : b.length;
+            if (offset != at || end <= offset || end > b.length 
+                    || !isFormat1Field(b, offset, end)) {
+                return false;
+            }
+            at = end;
+        }
+        return true;
+    }
+
+    /** True if b[p..end) is a field of format 1, by isFormat1()'s rules. */
+    private static boolean isFormat1Field(byte[] b, int p, int end) {
+        if (end - p < 4 || FORMAT_1_TYPES.indexOf(b[p] & 0xff) < 0) {
+            return false;
+        }
+        int nameSize = (int) signed(b, p + 1, 2);
+        if (nameSize < 1 || nameSize > end - p - 4) {
+            return false;
+        }
+        int v = p + 3 + nameSize;
+        int size = end - v;
+        switch (b[p]) {
+        case 'n':
+            return size == 1 && (b[v] == 0 || b[v] == 1);
+        case 'i':
+            return size == 4;
+        case 'l':
+        case 'd':
+            return size == 8;
+        case 'a':
+            return b[end - 1] == 'z' || b[end - 1] == 'Z';
+        default:        // 's', 'b', 'o': a size and its bytes, or -1 for null
+            if (size < 4) {
+                return false;
+            }
+            long length = signed(b, v, 4);
+            if (length == -1) {
+                return size == 4;
+            }
+            return length == size - 4 && (b[p] != 'o' || (length >= 8 
+                    && Arrays.equals(b, v + 4, v + 9, FORMAT_1, 0, 5) && b[v + 9] == 1));
+        }
+    }
+
     // ======== The full check (020-07, section 7.1) ========
 
     /**

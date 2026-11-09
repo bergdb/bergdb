@@ -391,6 +391,95 @@ public class ObjectFormatTester {
         }
     }
 
+    // ======== Format 1, BergDB 2026.3's (020-08, section 3) ========
+
+    /**
+     * Objects that 2026.3's writer made (DbObject.toDbObject of release-2026.3, run on its
+     * jar): a class with a field of each type, int, long, double, float, char, short, Integer,
+     * boolean, String, byte[], arrays of int, String, objects and long[][], a nested object, an
+     * empty array, and nulls of a String, a byte[], an object and an array.
+     */
+    static final String FORMAT_1_ALL =
+            "626572676f0114004519800000009f1985000000241c910000008719a0000000c919a80000006b1db400"
+            + "00004d1abd000000131bc90000009a1cd1000000c61c09010000c41c4a010000d91b5c010000f91d6801"
+            + "00003c1d8a010000111d9a0100003d1db2010000391bc0010000a71dd1010000cf1bdd010000ad1de601"
+            + "00006e01006201690500626f786564040000006205006279746573030000000102036901006371000000"
+            + "640100640000000000000440610500656d7074797a64010066000000000000f83f69010069f9ffffff6f"
+            + "0500696e6e65722c000000626572676f010200dd1a140000001b1e210000007304006e616d6502000000"
+            + "696e610200787369090000007a610600696e6e6572736f25000000626572676f010200dd1a140000001b"
+            + "1e1f0000007304006e616d65ffffffff61020078735a6f08000000626572676f01ffff7a610400696e74"
+            + "73690100000069feffffff7a6c01006c00000000000100006106006d6174726978616c01000000000000"
+            + "006c02000000000000007a617a615a7a6209006e756c6c4279746573ffffffff6f09006e756c6c496e6e"
+            + "657208000000626572676f01ffff610a006e756c6c496e6e6572735a730a006e756c6c537472696e67ff"
+            + "ffffff730100730400000068c3a96a690200736803000000610700737472696e677373010000006173ff"
+            + "ffffff7301000000637a";
+
+    /** The same class with every field at its default: null objects, arrays and Strings. */
+    static final String FORMAT_1_DEFAULTS =
+            "626572676f0114004519800000009f1985000000241c990000008719a5000000c919ad0000006b1db900"
+            + "00004d1ac2000000131bce0000009a1cd6000000c61cea000000c41cf4000000d91bfc000000f91d0801"
+            + "00003c1d12010000111d220100003d1d3a010000391b48010000a71d59010000cf1b61010000ad1d6a01"
+            + "00006e010062006f0500626f78656408000000626572676f01ffff6205006279746573ffffffff690100"
+            + "6300000000640100640000000000000000610500656d7074795a64010066000000000000000069010069"
+            + "000000006f0500696e6e657208000000626572676f01ffff610600696e6e6572735a610400696e74735a"
+            + "6c01006c00000000000000006106006d61747269785a6209006e756c6c4279746573ffffffff6f09006e"
+            + "756c6c496e6e657208000000626572676f01ffff610a006e756c6c496e6e6572735a730a006e756c6c53"
+            + "7472696e67ffffffff73010073ffffffff690200736800000000610700737472696e67735a";
+
+    /**
+     * Format 1 by its structure (bergdb 020-08, section 3): the objects that 2026.3's writer
+     * made are format 1, the empty object and the null one too; no cut of them is, nor one
+     * with a byte more, nor one with a field's type, name size, size or offset changed; a
+     * value that only starts with "bergo" and the version 1, as a user's String may, is not.
+     * A value whose bytes are a whole object of format 1 is taken for one: the guess that
+     * Connection.get documents.
+     */
+    @Nano
+    public static void testIsFormat1() {
+        String[][] written = {{"all", FORMAT_1_ALL}, {"defaults", FORMAT_1_DEFAULTS}, 
+            {"empty", "626572676f010000"}, {"null", "626572676f01ffff"}, 
+            {"two nulls", "626572676f010200dd1a140000001b1e1f0000007304006e616d65ffffffff6102"
+                + "0078735a"}, 
+            {"an int[] put", "626572676f0101000f1d0e0000006105006172726179690100000069020000"
+                + "0069030000007a"}};
+        for (String[] w : written) {
+            byte[] b = unhex(w[1]);
+            Assert.assertTrue(w[0], ObjectFormat.isFormat1(b));
+            for (int n = 0; n < b.length; n++) {
+                Assert.assertFalse(w[0] + " cut at " + n, ObjectFormat.isFormat1(
+                        Arrays.copyOf(b, n)));
+            }
+            Assert.assertFalse(w[0] + " and a byte", ObjectFormat.isFormat1(
+                    Arrays.copyOf(b, b.length + 1)));
+        }
+        byte[] payment = PubTester.format1Payment();
+        Assert.assertTrue(ObjectFormat.isFormat1(payment));
+        int[][] changes = {
+            {26, 'x'},      // the first field's type
+            {26, 's'},      // a type whose value does not fit
+            {27, 0},        // a name size of 0
+            {27, 20},       // a name size past the field
+            {10, 27},       // the first offset, not right after the table
+            {16, 42},       // the second offset, inside the first field
+            {50, 5},        // a string's size
+            {5, 2},         // the version
+            {6, 2},         // the field count
+            {0, 'B'},       // "bergo"
+        };
+        for (int[] change : changes) {
+            byte[] b = payment.clone();
+            b[change[0]] = (byte) change[1];
+            Assert.assertFalse("byte " + change[0], ObjectFormat.isFormat1(b));
+        }
+        for (String s : new String[] {"bergo\u0001 a user's text", "bergo\u0001", 
+                "bergo\u0001\u0000\u0000 and more", "bergo\u0001\u0001\u0000 a table that "
+                + "is not there", "bergo\u0002\u0000\u0000", "bergo\u0001\ufffe"}) {
+            Assert.assertFalse(s, ObjectFormat.isFormat1(s.getBytes(StandardCharsets.UTF_8)));
+        }
+        Assert.assertTrue("the guess", ObjectFormat.isFormat1(
+                "bergo\u0001\u0000\u0000".getBytes(StandardCharsets.UTF_8)));
+    }
+
     // ======== H0: the harness of the format (020-08, section 6.3) ========
 
     /** H0a in the unit group: random values of seed 1. */

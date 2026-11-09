@@ -162,6 +162,17 @@ public interface Connection extends ReadInterface {
      * what later reads return, in every connection, until the value leaves memory or
      * the database restarts, while the stream keeps the committed bytes. To change
      * the bytes, copy them first, with clone() (bergdb 015-47).</p>
+     *
+     * <p>Object.class gives a DbObject for a stored object: a value at an object key (no
+     * suffix, or ".obj") that starts with the object format's header, 0x82, and passes the
+     * format's full check; a String at a key with the suffix ".txt"; else the value's bytes.
+     * A value has no type of its own, so this is a guess: a byte[] put whose bytes are a
+     * stored object is read as one. An object of BergDB 2026.3 and before (format 1) is told
+     * by its structure, "bergo", the version 1, a field count and a field table that fits
+     * the value, and refused: a value that only starts with "bergo" and the version 1, as a
+     * String may, is not one, but a String or a byte[] whose bytes happen to be a whole
+     * object of format 1, such as "bergo" and the chars U+0001, U+0000 and U+0000, is
+     * (bergdb 020-08, section 3).</p>
      * 
      * @param key
      *            Database key of the object.
@@ -190,9 +201,9 @@ public interface Connection extends ReadInterface {
      *             If clazz is not a Data Object class, or reaches one that is not through
      *             its fields' types, checked also when the key has no value; if a
      *             constructor throws (its exception the cause); if the value is not a stored
-     *             object, such as one of BergDB 2026.3 and before (format 1). Never for a
-     *             stored value that does not fit its field: it is converted (bergdb 020-09,
-     *             section 5.2).
+     *             object, such as one of BergDB 2026.3 and before (format 1, also as
+     *             Object.class, see above). Never for a stored value that does not fit its
+     *             field: it is converted (bergdb 020-09, section 5.2).
      * @return The object created based on 'clazz' and the data in the database,
      *             or null if there is no entry for the key.
      */

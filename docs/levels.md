@@ -828,5 +828,8 @@ are measured against 2026.3's format in 020-08's step 4, which waits for a
 quiet machine. A `byte[]` put at an object key whose bytes happen to be a
 stored object of format 2 is read as an object by a get as `Object` and by
 a scan, as the format's header is a guess there (020-08, section 3; 020-01,
-N4).
+N4). Format 1 is told by its structure (`bergo`, the version 1, a field
+count and a field table that fits the value), not by its first six bytes:
+a `String` put is never taken for it, but a stored value whose bytes happen
+to be a whole object of format 1, a `String`'s too, is refused as one.
 

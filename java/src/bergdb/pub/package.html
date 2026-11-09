@@ -27,7 +27,9 @@ U+DFFF that is not part of a surrogate pair (a high surrogate followed by a low 
 a String cut between the two chars of a pair, or <code>"\ud800"</code> decoded from JSON.
 The reason: UTF-8 cannot hold a lone surrogate, so the string read back would differ from
 the one put, in Java and in every other language, and BergDB does not change data silently.
-A call that takes a key, a get too, refuses a key with one in the same way.</p>
+A call that takes a key, a get too, refuses a key with one in the same way. A put refuses
+also a String value whose UTF-8 takes more than 2^31 - 9 bytes, the most that a Java array
+holds.</p>
 
 <p>A reader may rely on the rule: a string in the database is well-formed UTF-8, and a
 string put reads back equal, in any language.</p>

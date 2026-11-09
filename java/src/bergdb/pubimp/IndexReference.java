@@ -27,8 +27,9 @@ import bergdb.nanotest.Nano;
  * String, a Bin (a byte[]), a Boolean, a List (an array) or a Map (an object). A key's value
  * is an object, a String, a Bin, or null (no value). A Bin is never an object: bytes that
  * start with 0x82 are taken as bytes that fail format 2's full check (bergdb 020-08,
- * section 3), and a Bin that starts with format 1's "bergo" is refused (020-08, step 3), so
- * IndexHarness's generator makes neither of the others.</p>
+ * section 3), and a Bin that is a whole object of format 1 (ObjectFormat.isFormat1) is
+ * refused (020-08, step 3 and section 3), so IndexHarness's generator makes neither of the
+ * others: no Bin of it starts with 0x82 or "bergo".</p>
  *
  * <p>A reference may hold a planted fault (Fault), so that a harness can show that it
  * finds such a fault (bergdb 020-10, section 9.1, "its own check").</p>
@@ -371,12 +372,13 @@ final class IndexReference {
     }
 
     /**
-     * Whether key is an object key: no suffix, or .obj, as Entries.isObjectKey (the suffix
-     * is the part after the key's last '.').
+     * Whether key is an object key: no suffix, or .obj, as Entries.isObjectKey (the suffix is
+     * what follows the last '.' of the key's last part, a name that starts with '.' too; a '.'
+     * in a directory's name is not one, bergdb 021-10).
      */
     static boolean isObjectKey(String key) {
         int i = key.lastIndexOf('.');
-        String suffix = i <= 0 ? "" : key.substring(i + 1);
+        String suffix = i <= key.lastIndexOf('/') ? "" : key.substring(i + 1);
         return suffix.isEmpty() || suffix.equals("obj");
     }
 
@@ -881,7 +883,7 @@ final class IndexReference {
         checkF(ref, d, "/h/k", Bin.of(0x82, 0xff), null);
         checkF(ref, d, "/h/k", null, null);
         check(isObjectKey("/h/k") && isObjectKey("/h/k.obj") && !isObjectKey("/h/.k")
-                && !isObjectKey("/h/k.txt"), "isObjectKey");
+                && !isObjectKey("/h/k.txt") && isObjectKey("/h.1/k"), "isObjectKey");
     }
 
     /** Paths: nested objects, a '.' in a name, absent parts and parts that are not objects. */

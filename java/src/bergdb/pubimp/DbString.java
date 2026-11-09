@@ -3,6 +3,7 @@ package bergdb.pubimp;
 
 import java.nio.charset.StandardCharsets;
 
+import bergdb.common.StringUtil;
 import bergdb.nanotest.Assert;
 import bergdb.nanotest.Nano;
 
@@ -38,9 +39,14 @@ public final class DbString extends DbValue {
         if (PubKeys.hasLoneSurrogate(value)) {
             throw PathException.loneSurrogate("string");
         }
+        // Counted before it is made, if it may be too long (2026-11-09, bergdb 020-08,
+        // section 3): a char takes at most 3 bytes in UTF-8, and the encoding of a String of
+        // more than about 2^31 bytes threw OutOfMemoryError.
+        if (5L + 3L * value.length() > ObjectFormat.MAX_VALUE) {
+            ObjectFormat.checkValueSize(5L + StringUtil.utf8Size(value));
+        }
         this.value = value;
         this.utf8 = value.getBytes(StandardCharsets.UTF_8);
-        ObjectFormat.checkValueSize(5L + utf8.length);
     }
     
     /** A string read from well-formed UTF-8, and its bytes: no check. */

@@ -27,7 +27,12 @@ package bergdb.pub;
  * <p>An object is a value at an object key (a key without a suffix, or with ".obj") that
  * is a stored object: it starts with the object format's header and passes the format's
  * full check. A byte[] put at an object key that passes that check is taken as an
- * object.</p>
+ * object. So is an object of BergDB 2026.3 and before (format 1), told by its structure,
+ * "bergo", the version 1, a field count and a field table that fits the value: next()
+ * refuses it as get() does, and String.class leaves it out. A value that only starts with
+ * "bergo" and the version 1, as a String may, is not one; a String or a byte[] whose bytes
+ * happen to be a whole object of format 1, such as "bergo" and the chars U+0001, U+0000
+ * and U+0000, is (bergdb 020-08, section 3).</p>
  *
  * <p><b>The lookup time.</b> t is the connection's lookup time, resolved to an actual time
  * at the call of Connection.usePrimary(), as a get() resolves it; every iterator of the

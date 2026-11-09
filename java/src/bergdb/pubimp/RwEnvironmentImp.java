@@ -222,20 +222,48 @@ class RwEnvironmentImp implements RwEnvironment {
         return key.contains("${transactionTime}") ? replaceTransformation : null;
     }
     
+    /**
+     * The UTF-8 of a String value, checked before it is made. A lone surrogate is refused, as
+     * in a key (bergdb 015-49): its UTF-8 bytes would have '?' in its place, and a get would
+     * return another string (bergdb 019-44). So is a String whose UTF-8 takes more than
+     * 'limit' bytes, ObjectFormat.MAX_ARRAY for a put, counted first (2026-11-09, bergdb
+     * 020-08, section 3: the encoding of a String of more than about 2^31 bytes in UTF-8 threw
+     * OutOfMemoryError, an Error that fails the database in rw(), bergdb 019-10).
+     *
+     * @throws IllegalArgumentException  If 's' has a lone surrogate or too many bytes.
+     */
+    static byte[] stringValue(String s, long limit) {
+        if (PubKeys.hasLoneSurrogate(s)) {
+            throw new IllegalArgumentException("String value has a lone surrogate, a "
+                    + "char of U+D800 to U+DFFF that is not part of a surrogate pair "
+                    + "(bergdb 019-44).");
+        }
+        if (3L * s.length() > limit) {       // a char takes at most 3 bytes in UTF-8
+            long size = StringUtil.utf8Size(s);
+            if (size > limit) {
+                throw new IllegalArgumentException("String value of " + size + " bytes in "
+                        + "UTF-8; a value has at most " + limit + ", the most bytes a Java "
+                        + "array holds (bergdb 020-08, section 3).");
+            }
+        }
+        return StringUtil.toBytes(s);
+    }
+
     private static final byte[] TRANSACTION_TIME_BYTES = Keys.toBytes("${transactionTime}");
     
     /**
      * A put of a String's or a byte[]'s bytes: at an object key in objectOps, which keeps the
-     * indexes (bergdb 020-10, section 5.1; 015-46), else in kvOps.
+     * indexes (bergdb 020-10, section 5.1; 015-46), else in kvOps. A String's is never an
+     * object (bergdb 020-08, section 3).
      */
-    private void setBytes(String ikey, byte[] value) {        
+    private void setBytes(String ikey, byte[] value, boolean string) {        
         if (value == null) {
             throw new IllegalArgumentException("value == null not allowed.");
         }
         
         KeyTransformation kt = enableKeyReplace ? getKeyTransformation(ikey) : null;
         if (Entries.isObjectKey(ikey)) {
-            objectOps.put(ikey, ObjectInfo.ofBytes(ikey, value, kt));
+            objectOps.put(ikey, ObjectInfo.ofBytes(ikey, value, string, kt));
         } else {
             setKv(new MapKey(Keys.toSegments(ikey), kt), value);
         }
@@ -292,16 +320,9 @@ class RwEnvironmentImp implements RwEnvironment {
             // NOTE, No check here, but we could force suffix != EMPTY.
             // A copy: the value in memory must not be the caller's array, which the caller
             // may change after the put (bergdb 015-47).
-            setBytes(ikey, ((byte[]) object).clone());
+            setBytes(ikey, ((byte[]) object).clone(), false);
         } else if (clazz.equals(String.class)) {
-            // A lone surrogate is refused, as in a key (bergdb 015-49): its UTF-8 bytes would
-            // have '?' in its place, and a get would return another string (bergdb 019-44).
-            if (PubKeys.hasLoneSurrogate((String) object)) {
-                throw new IllegalArgumentException("String value has a lone surrogate, a "
-                        + "char of U+D800 to U+DFFF that is not part of a surrogate pair "
-                        + "(bergdb 019-44).");
-            }
-            setBytes(ikey, StringUtil.toBytes((String) object));
+            setBytes(ikey, stringValue((String) object, ObjectFormat.MAX_ARRAY), true);
         } else {
             if (!Entries.isObjectKey(ikey)) {
                 throw new IllegalArgumentException(
@@ -346,16 +367,18 @@ class RwEnvironmentImp implements RwEnvironment {
      *     put. A value that is not a stored object of format 2 (a String's bytes, a byte[]
      *     that fails 020-07's full check) has no entries, so a String or a byte[] put over an
      *     object deletes its entries (015-46); a byte[] that passes the check is an object
-     *     (020-10, section 3.3).</li>
+     *     (020-10, section 3.3). A String put's new value is not looked at: a String is never
+     *     an object, of format 2 or 1 (020-08, section 3).</li>
      * <li>The index definitions' keys are not in the read set: an activation does not change
      *     the set.</li>
      * </ol>
      * 
      * @throws DataFormatException  If, in a directory with an index, the previous value or
-     *      the new one is an object of format 1 (BergDB 2026.3's, "bergo" and the version 1):
-     *      such a write is refused, a byte[] put of such bytes included; in a directory
-     *      without an index they are stored as they are (bergdb 020-08, step 3; 020-10,
-     *      section 5.1).
+     *      the new one of a byte[] put is an object of format 1 (BergDB 2026.3's, by its
+     *      structure, ObjectFormat.isFormat1): such a write is refused; in a directory
+     *      without an index they are stored as they are (bergdb 020-08, step 3 and section
+     *      3; 020-10, section 5.1). A String put's new value never is one; the previous
+     *      value is told by its bytes alone, a String's too.
      */
     public void indexEntries(IndexManager m) throws DataFormatException {
         assert m != null : "m is null";
@@ -387,7 +410,7 @@ class RwEnvironmentImp implements RwEnvironment {
             byte[] previous = getInternal(ikey, byte[].class);
             for (IndexDefinition def : info.indexes) {
                 byte[] old = def.entry(ikey, previous);
-                byte[] put = def.entry(ikey, info.value);
+                byte[] put = info.string ? null : def.entry(ikey, info.value);
                 if (old != null) {
                     deleteIndexEntry(old);
                 }
@@ -566,6 +589,7 @@ class RwEnvironmentImp implements RwEnvironment {
         String name;             // short object name
         DbObject dbo;            // The object of an object put, else null
         byte[] value;            // The value to store, null for a delete
+        boolean string;          // A String put: never an object (bergdb 020-08, section 3)
         IndexDefinition[] indexes;
         KeyTransformation kt;    // If non-null, the key transformation to use.
         
@@ -597,9 +621,11 @@ class RwEnvironmentImp implements RwEnvironment {
         }
         
         /** A put of a String's or a byte[]'s bytes at an object key. */
-        static ObjectInfo ofBytes(String ikey, byte[] value, KeyTransformation kt) {
+        static ObjectInfo ofBytes(String ikey, byte[] value, boolean string, 
+                KeyTransformation kt) {
             ObjectInfo info = new ObjectInfo(ikey, null, kt);
             info.value = value;
+            info.string = string;
             return info;
         }
     }

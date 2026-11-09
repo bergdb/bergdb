@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 
 import bergdb.common.Bytes;
 import bergdb.common.EventToWaitFor;
+import bergdb.common.StringUtil;
 import bergdb.common.Util;
 import bergdb.core.Db;
 import bergdb.core.DbConstants;
@@ -3941,6 +3942,141 @@ public class PubTester {
                 n++;
             }
             Assert.assertEquals(1, n);
+        } finally {
+            d.close();
+        }
+    }
+    
+    /** The keys that a primary scan of 'type' lists in 'dir', in order, and the values' kinds. */
+    private static String listed(Connection c, Class<?> type, String dir) {
+        StringBuilder b = new StringBuilder();
+        for (Kv<?> kv : c.usePrimary(type).dir(dir).kvs()) {
+            b.append(b.length() == 0 ? "" : " ").append(kv.key()).append(':')
+                    .append(kv.value().getClass().getSimpleName());
+        }
+        return b.toString();
+    }
+    
+    /**
+     * A String value that starts with format 1's first six bytes, "bergo" and the version 1,
+     * is a String (bergdb 020-08, section 3; the review of step 3, night 006-15): format 1 is
+     * told by its structure, and a String put is never taken for it. A get as String, byte[]
+     * and Object (bytes); a primary scan as String, Object, DbObject and a class; in an indexed
+     * directory a put of it, in rw() too, a byte[] put of its bytes, a put over it and a
+     * delete of it; a build over a directory that holds it. Last, the guess that remains: a
+     * stored value whose bytes are a whole object of format 1 is taken for one, also a String
+     * put; the put itself is not refused.
+     */
+    @Nano
+    public static void testStringThatStartsAsFormat1() {
+        final String text = "bergo\u0001 a user's text";
+        final byte[] bytes = StringUtil.toBytes(text);
+        Database d = Factory.database().memory().start();
+        try {
+            final Connection c = d.connection();
+            c.put("/s/a", text);
+            c.put("/s/b", "plain");
+            c.put("/s/c", new Payment("1", "2", 3));
+            Assert.assertEquals(text, c.get("/s/a", String.class));
+            Assert.assertArrayEquals(bytes, c.get("/s/a", byte[].class));
+            Assert.assertArrayEquals(bytes, (byte[]) c.get("/s/a", Object.class));
+            Assert.assertEquals("/s/a:String /s/b:String", listed(c, String.class, "/s/"));
+            Assert.assertEquals("/s/a:byte[] /s/b:byte[] /s/c:DbObject", 
+                    listed(c, Object.class, "/s/"));
+            Assert.assertEquals("/s/c:DbObject", listed(c, DbObject.class, "/s/"));
+            Assert.assertEquals("/s/c:Payment", listed(c, Payment.class, "/s/"));
+            
+            c.put("/i/x", new Payment("x", "y", 1));
+            JobStatus status = d.indexBuilder("from").dir("/i/").type("string").field("from")
+                    .start().join();
+            Assert.assertTrue(status.note(), status.state() == JobStatus.State.ACTIVE);
+            c.put("/i/a", text);
+            c.rw(new Action() {
+                public void run(RwEnvironment env) {
+                    env.put("/i/b", text);
+                }
+            });
+            c.put("/i/c", bytes);
+            c.put("/i/a", "new");
+            c.delete("/i/b");
+            c.put("/i/c", new Payment("c", "y", 2));
+            Assert.assertEquals("new", c.get("/i/a", String.class));
+            Assert.assertNull(c.get("/i/b", String.class));
+            int n = 0;
+            for (Payment p : c.useIndex("from", Payment.class).objects()) {
+                Assert.assertEquals(n == 0 ? "c" : "x", p.from);
+                n++;
+            }
+            Assert.assertEquals(2, n);
+            
+            c.put("/j/a", text);
+            c.put("/j/x", new Payment("x", "y", 1));
+            status = d.indexBuilder("j").dir("/j/").type("string").field("from").start().join();
+            Assert.assertTrue(status.note(), status.state() == JobStatus.State.ACTIVE);
+            Assert.assertEquals(1L, c.useIndex("j", Payment.class).eq("x").kvs().iterator()
+                    .next().value().amount);
+            c.put("/j/a", text + " again");
+            c.delete("/j/a");
+            Assert.assertNull(c.get("/j/a", String.class));
+            
+            final String whole = "bergo\u0001\u0000\u0000";     // an empty object of format 1
+            c.put("/i/g", whole);
+            Assert.assertEquals(whole, c.get("/i/g", String.class));
+            assertFormat1("a get as Object of the guess", ObjectCreationException.class, 
+                    () -> c.get("/i/g", Object.class));
+            assertFormat1("a put over the guess", bergdb.pub.DataFormatException.class,
+                    () -> c.put("/i/g", "x"));
+            
+            c.put("/later", "x");       // not failed
+            Assert.assertEquals("x", c.get("/later", String.class));
+        } finally {
+            d.close();
+        }
+    }
+    
+    /**
+     * A String value's UTF-8 is counted before it is made (bergdb 020-08, section 3; the
+     * review of step 3, night 006-15): above the limit, IllegalArgumentException, not the
+     * OutOfMemoryError of an encoding past Java's largest array. Here with small limits;
+     * testHugeStringRefused (night) with 2^31 bytes.
+     */
+    @Nano
+    public static void testStringValueCountedFirst() {
+        Assert.assertArrayEquals(new byte[] {'a', 'b'}, RwEnvironmentImp.stringValue("ab", 2));
+        Assert.assertEquals(3, RwEnvironmentImp.stringValue("a\u00e9", 3).length);
+        Assert.assertEquals(4, RwEnvironmentImp.stringValue("\ud83d\ude00", 4).length);
+        for (final String[] t : new String[][] {{"abc", "2"}, {"a\u00e9", "2"}, 
+                {"\ud83d\ude00", "3"}, {"\u0800", "2"}}) {
+            PubTesterPrimary.assertThrows(IllegalArgumentException.class, 
+                    () -> RwEnvironmentImp.stringValue(t[0], Long.parseLong(t[1])));
+        }
+        PubTesterPrimary.assertThrows(IllegalArgumentException.class,      // lone surrogate
+                () -> RwEnvironmentImp.stringValue("x\ud800", 100));
+    }
+    
+    /**
+     * A String of 2^31 UTF-8 bytes (2^30 chars of U+00E9, a String of 1 GiB): a put of it as
+     * a value and as an object's field throws IllegalArgumentException before it is encoded,
+     * not an OutOfMemoryError in rw(), an Error that fails the database (bergdb 019-10), and
+     * the database goes on (bergdb 020-08, section 3; the review of step 3, night 006-15).
+     * Skipped in a JVM of less than 3 GiB of heap.
+     */
+    @Nano("night")
+    public static void testHugeStringRefused() {
+        if (Runtime.getRuntime().maxMemory() < (3L << 30)) {
+            System.out.println("PubTester.testHugeStringRefused: skipped, heap below 3 GiB");
+            return;
+        }
+        final String huge = "\u00e9".repeat(1 << 30);
+        Database d = Factory.database().memory().start();
+        try {
+            final Connection c = d.connection();
+            PubTesterPrimary.assertThrows(IllegalArgumentException.class,      // a value
+                    () -> c.put("/v", huge));
+            PubTesterPrimary.assertThrows(IllegalArgumentException.class,      // a field
+                    () -> c.put("/o", new Payment(huge, "2", 3)));
+            c.put("/later", "x");       // not failed
+            Assert.assertEquals("x", c.get("/later", String.class));
         } finally {
             d.close();
         }

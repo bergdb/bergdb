@@ -67,9 +67,6 @@ final class IndexDefinition {
     private static final byte[][] FIELD_BYTES = utf8(FIELDS);
     private static final byte[][] LEVEL_FIELD_BYTES = utf8(LEVEL_FIELDS);
 
-    /** The first bytes of an object of format 1, 2026.3's: "bergo" and the version 1. */
-    private static final byte[] FORMAT_1 = {'b', 'e', 'r', 'g', 'o', 1};
-
     private final String name;
     private final String dir;
     private final String idir;
@@ -413,15 +410,16 @@ final class IndexDefinition {
      * value is its stored bytes; an object's must pass 020-07's full check. Null, no value
      * (the old value of a new key, the new value of a delete), has no entry.
      *
-     * @throws DataFormatException  If the value is an object of format 1, "bergo" and the
-     *      version 1, of BergDB 2026.3 and before, at an object key: a write over it is
-     *      refused, and a build fails (020-10, sections 3.3, 5.1 and 6.1).
+     * @throws DataFormatException  If the value is an object of format 1, of BergDB 2026.3
+     *      and before, at an object key, by its structure (ObjectFormat.isFormat1; 020-08,
+     *      section 3): a write over it is refused, and a build fails (020-10, sections 3.3,
+     *      5.1 and 6.1).
      */
     byte[] entryLevels(String ikey, byte[] value) {
         if (value == null || !Entries.isObjectKey(ikey)) {
             return null;
         }
-        if (IndexKeys.startsWith(value, FORMAT_1)) {
+        if (ObjectFormat.isFormat1(value)) {
             throw new DataFormatException("The value at " + ukeyOf(ikey) + " is an object in "
                     + "format 1, written by BergDB 2026.3 or before, which this version does "
                     + "not read; the index " + IndexKeys.quote(name) + " cannot take it (bergdb "

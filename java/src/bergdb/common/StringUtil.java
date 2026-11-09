@@ -129,20 +129,22 @@ public class StringUtil {
     }
 
     /**
-     * Returns the number of bytes needed to encoding the string in UTF-8 encoding.
+     * Returns the number of bytes needed to encoding the string in UTF-8 encoding: a long,
+     * as a String may need more than 2^31 - 1 bytes, up to 3 a char (2026-11-09, bergdb
+     * 020-08, section 3: an int, which wrapped).
      * 
      * @param s
      *            The string, cannot be null.
      * @throws NullPointerException
      *             if s == null.
      */
-    public static final int utf8Size(String s) {
+    public static final long utf8Size(String s) {
         // Inspired by:
         // http://stackoverflow.com/questions/8511490/calculating-length-in-utf-8-of-java-string-without-actually-encoding-it
         //
     
         int length = s.length();
-        int count = 0;
+        long count = 0;
         
         for (int i = 0; i < length; i++) {
             char ch = s.charAt(i);

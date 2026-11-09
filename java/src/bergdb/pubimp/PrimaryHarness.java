@@ -164,10 +164,13 @@ public class PrimaryHarness {
         }
     }
 
-    /** An object key: no suffix, or ".obj" (Entries.isObjectKey, written again). */
+    /**
+     * An object key: no suffix, or ".obj" (Entries.isObjectKey, written again): the suffix
+     * follows the last '.' of the key's last part, a '.' in a directory's name is not one.
+     */
     static boolean isObjectKey(String key) {
         int i = key.lastIndexOf('.');
-        String suffix = i <= 0 ? "" : key.substring(i + 1);
+        String suffix = i <= key.lastIndexOf('/') ? "" : key.substring(i + 1);
         return suffix.isEmpty() || suffix.equals("obj");
     }
 
