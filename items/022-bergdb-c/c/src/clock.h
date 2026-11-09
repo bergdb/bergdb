@@ -35,6 +35,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "err.h"
+#include "klong.h"
 
 /* Clock.getTime: the time now, in 100 ns units since 1970; the type of the
  * API's bergdb_clock_fn. */
@@ -79,13 +80,24 @@ int64_t dbclock_lookup_time(const struct dbclock *c, int64_t wantedLookupTime);
  * as the last read time (so the next transaction's time is later). */
 int64_t dbclock_current_time(struct dbclock *c);
 
-/* DbClock.transactionBegin: reads the clock once; the time is the clock's,
- * but later than the last transaction's and the last read time. A clock
- * time outside 0 to 2^56 - 1, or a time above 2^56 - 1, refuses the
- * transaction before it begins (005-18): ERR_LIMIT, "DbException", with
- * Java's texts; nothing changes. Else *time is the transaction's time (at
- * least 1) and a transaction runs. Asserts that none runs. */
-enum err_code dbclock_transaction_begin(struct dbclock *c, int64_t *time, struct err *e);
+/* DbClock.TIME_MARGIN: the database times below 2^56 - 1 that are left when
+ * user transactions are refused (bergdb 015-55): room for reclaim's
+ * internal transactions after a user transaction, as Db's top ordinal
+ * margin (005-02). DBCLOCK_LAST_USER_TIME, LAST_USER_TIME: the last time of
+ * a user transaction; the later ones are reclaim's. */
+#define DBCLOCK_TIME_MARGIN INT64_C(1024)
+#define DBCLOCK_LAST_USER_TIME (KL_MAX_TIME - DBCLOCK_TIME_MARGIN)
+
+/* DbClock.transactionBegin(user): reads the clock once; the time is the
+ * clock's, but later than the last transaction's and the last read time. A
+ * clock time outside 0 to 2^56 - 1, or a time above 2^56 - 1, refuses the
+ * transaction before it begins (005-18), and so does a time after
+ * DBCLOCK_LAST_USER_TIME for a user transaction (user true; 015-55, as
+ * Java's since release 2026.3): ERR_LIMIT, "DbException", with Java's
+ * texts; nothing changes. Else *time is the transaction's time (at least
+ * 1) and a transaction runs. Asserts that none runs. */
+enum err_code dbclock_transaction_begin(struct dbclock *c, bool user, int64_t *time,
+        struct err *e);
 
 /* DbClock.transactionEnd: the running transaction's time becomes the last
  * transaction's. Asserts that one runs. */

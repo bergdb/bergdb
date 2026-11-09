@@ -11,9 +11,11 @@
  * model and refused before it (getOne, getMany, getTrans of a removed
  * record), the step reserve splitting steps, and the allocation failures in
  * turn over iterations, steps, a table store and a cut. */
+#define _DARWIN_C_SOURCE        /* mkdtemp */
 #include <errno.h>
 #include <math.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "test.h"
 #include "../../tools/sha256.h"
 #include "bergdb.h"
@@ -21,6 +23,7 @@
 #include "jsem.h"
 #include "keys.h"
 #include "nstream.h"
+#include "nwrite.h"
 #include "reclaim.h"
 #include "strmap.h"
 #include "trans.h"
@@ -212,6 +215,9 @@ TEST(reclaim_table_text) {
     CHECK_MEM_ZERO(&m);
 }
 
+/* The defaults, the checks of the settings (checkRetainDuration,
+ * checkInternalFraction: 66 to 58,982, 0.001 and 0.90 rounded) with Java's
+ * texts, and the settings' text (serializeSettings, 015-87). */
 TEST(reclaim_settings) {
     struct mem m;
     struct err e;
@@ -221,20 +227,25 @@ TEST(reclaim_settings) {
     CHECK_EQ(r.retainDuration, INT64_MAX);
     CHECK_EQ(r.internalFraction, 16384);       /* 0.25 in units of 2^-16 (005-79) */
     CHECK_EQ(r.stepReserve, INT64_C(4) << 20);
-    CHECK(rc_set_retain_duration(&r, CLK_UNITS_PER_SEC - 1, &e) == ERR_ARG);
-    CHECK(rc_set_retain_duration(&r, CLK_UNITS_PER_SEC, &e) == ERR_OK);
-    CHECK_EQ(r.retainDuration, CLK_UNITS_PER_SEC);
-    /* Reclaim.setInternalFractionUnits: 66 to 58,982 (0.001 and 0.90
-     * rounded); the setting stays after a refusal. */
-    CHECK(rc_set_internal_fraction_units(&r, 65, &e) == ERR_ARG);
-    CHECK(rc_set_internal_fraction_units(&r, 58983, &e) == ERR_ARG);
-    CHECK_EQ(r.internalFraction, 16384);
-    CHECK(rc_set_internal_fraction_units(&r, 66, &e) == ERR_OK);
-    CHECK_EQ(r.internalFraction, 66);
-    CHECK(rc_set_internal_fraction_units(&r, 58982, &e) == ERR_OK);
-    CHECK_EQ(r.internalFraction, 58982);
+    CHECK(rc_check_retain_duration(CLK_UNITS_PER_SEC - 1, &e) == ERR_ARG);
+    CHECK(strcmp(e.java, "IllegalArgumentException") == 0);
+    CHECK(strcmp(e.text, "retainDuration = 9999999 is too small, must be at least one second "
+            "(10000000 time units).") == 0);
+    CHECK(rc_check_retain_duration(-1, &e) == ERR_ARG);
+    CHECK(rc_check_retain_duration(CLK_UNITS_PER_SEC, &e) == ERR_OK);
+    CHECK(rc_check_retain_duration(INT64_MAX, &e) == ERR_OK);
+    CHECK(rc_check_internal_fraction(65, &e) == ERR_ARG);
+    CHECK(strcmp(e.text, "Illegal internalFraction value, 65") == 0);
+    CHECK(rc_check_internal_fraction(58983, &e) == ERR_ARG);
+    CHECK(rc_check_internal_fraction(66, &e) == ERR_OK);
+    CHECK(rc_check_internal_fraction(58982, &e) == ERR_OK);
     CHECK(rc_set_step_reserve(&r, 0, &e) == ERR_ARG);
     CHECK(rc_set_step_reserve(&r, 1, &e) == ERR_OK);
+    char text[RC_SETTINGS_TEXT_CAP];
+    CHECK_EQ((int64_t) rc_settings_text(INT64_MAX, 16384, text), 42);
+    CHECK(strcmp(text, "retain=9223372036854775807\nfraction=16384\n") == 0);
+    CHECK_EQ((int64_t) rc_settings_text(CLK_UNITS_PER_SEC, 6554, text), 30);
+    CHECK(strcmp(text, "retain=10000000\nfraction=6554\n") == 0);
     rc_free(&r);
     CHECK_MEM_ZERO(&m);
 }
@@ -287,6 +298,9 @@ static int64_t rdb_clock(void *ctx) {
     return *(int64_t *) ctx;
 }
 
+/* A new database in memory, and its retain duration set after the start, as
+ * Java's tests do since release 2026.3 (setRetainDuration, 015-87): a record
+ * of reclaim's settings unless it is forever. */
 static enum err_code rdb_open(struct rdb *r, int32_t node, int32_t sd, int64_t reserve,
         int64_t retain) {
     struct db_config cfg;
@@ -296,12 +310,19 @@ static enum err_code rdb_open(struct rdb *r, int32_t node, int32_t sd, int64_t r
     cfg.max_node_size = node;
     cfg.startup_distance = sd;
     cfg.cache_size_indicator = INT64_MAX;
-    cfg.retain_duration = retain;
     cfg.clock = rdb_clock;
     cfg.clock_ctx = &r->time;
     cfg.step_reserve = reserve;
     memcpy(cfg.id, bergdb_test_id, sizeof cfg.id);      /* testSetup's DatabaseId.TEST_ID */
-    return db_open(&r->db, NULL, &cfg, &r->m, &info, &e);
+    enum err_code rc = db_open(&r->db, NULL, &cfg, &r->m, &info, &e);
+    if (rc == ERR_OK) {
+        rc = db_set_retain_duration(&r->db, retain, &e);
+        if (rc != ERR_OK) {
+            struct err e2;
+            db_close(&r->db, &e2);
+        }
+    }
+    return rc;
 }
 
 static void ikey_segments(const char *ikey, int64_t *seg, int32_t *n) {
@@ -829,6 +850,608 @@ TEST(reclaim_java_vectors) {
     CHECK_EQ(cases, 2);
 }
 
+/* ======== Reclaim's settings in the stream (015-87), and 015-54, 015-50, 015-55 ======== */
+
+/* A temporary directory, for a database that restarts. */
+static void rs_temp_dir(char *out, size_t cap) {
+    const char *t = getenv("TMPDIR");
+    snprintf(out, cap, "%s/bergdb-t_reclaim-XXXXXX", t != NULL ? t : "/tmp");
+    if (mkdtemp(out) == NULL) {
+        out[0] = '\0';
+    }
+}
+
+static void rs_remove_dir(const char *dir) {
+    char cmd[1200];
+    snprintf(cmd, sizeof cmd, "rm -rf '%s'", dir);
+    if (system(cmd) != 0) {
+        printf("could not remove %s\n", dir);
+    }
+}
+
+/* Opens r's database in dir (NULL: in memory) with no setter: a creation,
+ * or a start of the database there (testSetup: the test id, no eviction). A
+ * record limit of 0 is the default. */
+static enum err_code rdb_start(struct rdb *r, const char *dir, int32_t node, int32_t sd,
+        int64_t record_limit, struct err *e) {
+    struct db_config cfg;
+    struct db_start_info info;
+    memset(&cfg, 0, sizeof cfg);
+    cfg.max_node_size = node;
+    cfg.startup_distance = sd;
+    cfg.cache_size_indicator = INT64_MAX;
+    cfg.clock = rdb_clock;
+    cfg.clock_ctx = &r->time;
+    cfg.record_limit = record_limit;
+    memcpy(cfg.id, bergdb_test_id, sizeof cfg.id);
+    return db_open(&r->db, dir, &cfg, &r->m, &info, e);
+}
+
+/* A restart: the close (which writes and forces all) and a start. */
+static enum err_code rdb_restart(struct rdb *r, const char *dir, int32_t node, int32_t sd,
+        int64_t record_limit, struct err *e) {
+    enum err_code rc = db_close(&r->db, e);
+    return rc != ERR_OK ? rc : rdb_start(r, dir, node, sd, record_limit, e);
+}
+
+/* An internal transaction of one put, as only the database writes reclaim's
+ * KVs. */
+static enum err_code rdb_put_internal(struct rdb *r, const char *ikey, const char *value) {
+    struct tr_builder b;
+    struct trans t;
+    struct err e;
+    int64_t seg[64];
+    int32_t n;
+    ikey_segments(ikey, seg, &n);
+    tr_builder_init(&b, &r->m);
+    tr_init(&t, &r->m);
+    enum err_code rc = tr_put_segments(&b, seg, n, (const uint8_t *) value,
+            (int32_t) strlen(value), &e);
+    if (rc == ERR_OK) {
+        rc = tr_build(&b, &t, &e);
+    }
+    if (rc == ERR_OK) {
+        t.is_internal = true;
+        rc = db_execute(&r->db, &t, &e);
+    }
+    tr_free(&t);
+    tr_builder_free(&b);
+    return rc;
+}
+
+/* The settings' KV as text, or "" for none. */
+static void settings_kv(struct rdb *r, char *out, size_t cap) {
+    uint8_t v[RC_SETTINGS_TEXT_CAP];
+    int32_t len;
+    out[0] = '\0';
+    if (rdb_get(r, INT64_MAX, RC_SETTINGS_KEY_NAME, v, &len, NULL) == ERR_OK && len >= 0
+            && (size_t) len < cap) {
+        memcpy(out, v, (size_t) len);
+        out[len] = '\0';
+    }
+}
+
+/* SHA-256 of r's stream from pos to its end. */
+static void stream_digest(struct rdb *r, int64_t pos, char hex[65]) {
+    struct sha256 h;
+    struct err e;
+    uint8_t buf[4096];
+    uint8_t d[32];
+    sha256_init(&h);
+    for (int64_t p = pos; p < db_stream_length(&r->db); ) {
+        int64_t k = db_stream_length(&r->db) - p;
+        int32_t m = (int32_t) (k < (int64_t) sizeof buf ? k : (int64_t) sizeof buf);
+        CHECK(stream_read(&r->db.stream, p, buf, m, &e) == ERR_OK);
+        sha256_update(&h, buf, (size_t) m);
+        p += m;
+    }
+    sha256_final(&h, d);
+    for (int i = 0; i < 32; i++) {
+        snprintf(hex + 2 * i, 3, "%02x", d[i]);
+    }
+}
+
+/* DbTesterRestart.testReclaimSettingsKeptOverRestarts' workload: 2000
+ * commits, one every 0.1 s, the retain duration 1 s and the fraction 0.1
+ * set once, after commit 100; with restarts, one every 50 commits from 100
+ * on, the settings not set again. The decided cut, the length and the
+ * stream's digest from the cut. */
+static void settings_run(bool restarts, int64_t *cut, int64_t *length, char hex[65]) {
+    struct rdb r;
+    struct err e;
+    char dir[1024];
+    mem_init(&r.m);
+    r.time = 0;
+    *cut = -1;
+    if (restarts) {
+        rs_temp_dir(dir, sizeof dir);
+        REQUIRE(dir[0] != '\0');
+    }
+    REQUIRE(rdb_start(&r, restarts ? dir : NULL, 8, 1000, 0, &e) == ERR_OK);
+    uint64_t rnd = 1;
+    for (int i = 1; i <= 2000; i++) {
+        r.time = i * CLK_UNITS_PER_SEC / 10;
+        uint8_t v[48];
+        int32_t len = 1 + test_random_below(&rnd, 40);
+        for (int j = 0; j < len; j++) {
+            v[j] = (uint8_t) test_random(&rnd);
+        }
+        char key[32];
+        snprintf(key, sizeof key, "/k/%d", test_random_below(&rnd, 500));
+        REQUIRE(rdb_put(&r, key, v, len, NULL) == ERR_OK);
+        if (i == 100) {
+            REQUIRE(db_set_retain_duration(&r.db, CLK_UNITS_PER_SEC, &e) == ERR_OK);
+            REQUIRE(db_set_reclaim_internal_fraction(&r.db, 0.1, &e) == ERR_OK);
+        }
+        if (restarts && i >= 100 && i % 50 == 0 && i < 2000) {
+            REQUIRE(rdb_restart(&r, dir, 8, 1000, 0, &e) == ERR_OK);
+            CHECK_EQ(r.db.reclaim.retainDuration, CLK_UNITS_PER_SEC);
+            CHECK_EQ(r.db.reclaim.internalFraction, 6554);
+        }
+    }
+    CHECK(db_first_available_pos(&r.db) > 0);
+    *cut = stream_first_pos(&r.db.stream) > db_first_available_pos(&r.db)
+            ? stream_first_pos(&r.db.stream) : db_first_available_pos(&r.db);
+    *length = db_stream_length(&r.db);
+    stream_digest(&r, *cut, hex);
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+    if (restarts) {
+        rs_remove_dir(dir);
+    }
+}
+
+/* DbTesterRestart.testReclaimSettingsKeptOverRestarts (015-87): the
+ * settings, set once, are kept over restarts, so the stream from the
+ * decided cut is the one of the run without restarts (010-P2). Before, a
+ * start took the open's retain duration and the default fraction. */
+TEST(reclaim_settings_kept_over_restarts) {
+    int64_t cut1, length1, cut2, length2;
+    char hex1[65], hex2[65];
+    settings_run(false, &cut1, &length1, hex1);
+    settings_run(true, &cut2, &length2, hex2);
+    REQUIRE(cut1 > 0 && cut2 > 0);
+    CHECK_EQ(cut1, cut2);
+    CHECK_EQ(length1, length2);
+    CHECK(strcmp(hex1, hex2) == 0);
+}
+
+/* DbTesterRestart.testRefusedReclaimSettingChangesNothing (015-87, F6): a
+ * refused call writes nothing and changes nothing, also after a restart.
+ * (C has no stop(); a failed database and a callback refuse the setters,
+ * f_settings.c.) */
+TEST(reclaim_settings_refused_change_nothing) {
+    struct rdb r;
+    struct err e;
+    char dir[1024];
+    mem_init(&r.m);
+    rs_temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    r.time = 0;
+    REQUIRE(rdb_start(&r, dir, 30, 50000000, 0, &e) == ERR_OK);
+    r.time = 10;
+    REQUIRE(rdb_put(&r, "/k", (const uint8_t *) "1", 1, NULL) == ERR_OK);
+    REQUIRE(db_set_retain_duration(&r.db, 5 * CLK_UNITS_PER_SEC, &e) == ERR_OK);
+    REQUIRE(db_set_reclaim_internal_fraction(&r.db, 0.5, &e) == ERR_OK);
+    const int64_t length = db_stream_length(&r.db);
+    CHECK(db_set_retain_duration(&r.db, CLK_UNITS_PER_SEC - 1, &e) == ERR_ARG);
+    CHECK(db_set_retain_duration(&r.db, -1, &e) == ERR_ARG);
+    CHECK(db_set_reclaim_internal_fraction(&r.db, 0.95, &e) == ERR_ARG);
+    CHECK(db_set_reclaim_internal_fraction(&r.db, NAN, &e) == ERR_ARG);
+    CHECK_EQ(db_stream_length(&r.db), length);
+    CHECK_EQ(r.db.reclaim.retainDuration, 5 * CLK_UNITS_PER_SEC);
+    CHECK_EQ(r.db.reclaim.internalFraction, 32768);
+    REQUIRE(rdb_restart(&r, dir, 30, 50000000, 0, &e) == ERR_OK);
+    CHECK_EQ(r.db.reclaim.retainDuration, 5 * CLK_UNITS_PER_SEC);
+    CHECK_EQ(r.db.reclaim.internalFraction, 32768);
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+    rs_remove_dir(dir);
+}
+
+/* DbTesterRestart.testReclaimSettingInForceWritesNothing (015-87, F6): a
+ * call with the value in force writes nothing; one with another value
+ * writes one record, and the value is in force when it returns; the KV
+ * holds both settings. */
+TEST(reclaim_settings_in_force_write_nothing) {
+    struct rdb r;
+    struct err e;
+    char kv[RC_SETTINGS_TEXT_CAP];
+    mem_init(&r.m);
+    r.time = 0;
+    REQUIRE(rdb_start(&r, NULL, 30, 50000000, 0, &e) == ERR_OK);
+    r.time = 10;
+    REQUIRE(rdb_put(&r, "/k", (const uint8_t *) "1", 1, NULL) == ERR_OK);
+    CHECK_EQ(r.db.reclaim.retainDuration, INT64_MAX);
+    CHECK(db_internal_fraction(&r.db) == 0.25);
+    int64_t length = db_stream_length(&r.db);
+    CHECK(db_set_retain_duration(&r.db, INT64_MAX, &e) == ERR_OK);
+    CHECK(db_set_reclaim_internal_fraction(&r.db, 0.25, &e) == ERR_OK);
+    CHECK_EQ(db_stream_length(&r.db), length);
+    settings_kv(&r, kv, sizeof kv);
+    CHECK(strcmp(kv, "") == 0);
+
+    CHECK(db_set_retain_duration(&r.db, 3 * CLK_UNITS_PER_SEC, &e) == ERR_OK);
+    CHECK(db_stream_length(&r.db) > length);
+    CHECK_EQ(r.db.reclaim.retainDuration, 3 * CLK_UNITS_PER_SEC);
+    length = db_stream_length(&r.db);
+    CHECK(db_set_retain_duration(&r.db, 3 * CLK_UNITS_PER_SEC, &e) == ERR_OK);
+    CHECK_EQ(db_stream_length(&r.db), length);
+    CHECK(db_set_reclaim_internal_fraction(&r.db, 0.1, &e) == ERR_OK);
+    CHECK(db_stream_length(&r.db) > length);
+    length = db_stream_length(&r.db);
+    CHECK(db_set_reclaim_internal_fraction(&r.db, 0.1, &e) == ERR_OK);
+    CHECK_EQ(db_stream_length(&r.db), length);
+    settings_kv(&r, kv, sizeof kv);
+    CHECK(strcmp(kv, "retain=30000000\nfraction=6554\n") == 0);
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+}
+
+/* DbTesterRestart.testReclaimSettingsKeptAcrossRestart (015-87): the
+ * fraction is kept across a restart, and so is the retain duration forever
+ * after a finite one (the KV holds both, whatever was set last). */
+TEST(reclaim_settings_kept_across_restart) {
+    struct rdb r;
+    struct err e;
+    char dir[1024];
+    mem_init(&r.m);
+    rs_temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    r.time = 0;
+    REQUIRE(rdb_start(&r, dir, 30, 50000000, 0, &e) == ERR_OK);
+    r.time = 10;
+    REQUIRE(db_set_reclaim_internal_fraction(&r.db, 0.001, &e) == ERR_OK);
+    REQUIRE(rdb_restart(&r, dir, 30, 50000000, 0, &e) == ERR_OK);
+    CHECK_EQ(r.db.reclaim.internalFraction, 66);
+    CHECK_EQ(r.db.reclaim.retainDuration, INT64_MAX);
+    REQUIRE(db_set_retain_duration(&r.db, 2 * CLK_UNITS_PER_SEC, &e) == ERR_OK);
+    REQUIRE(db_set_retain_duration(&r.db, INT64_MAX, &e) == ERR_OK);
+    REQUIRE(rdb_restart(&r, dir, 30, 50000000, 0, &e) == ERR_OK);
+    CHECK_EQ(r.db.reclaim.internalFraction, 66);
+    CHECK_EQ(r.db.reclaim.retainDuration, INT64_MAX);
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+    rs_remove_dir(dir);
+}
+
+/* DbTesterRestart.testReclaimSettingsSurviveCuts (015-87, 005-78 Q6): the
+ * settings' KV, written once at the start of the stream, survives reclaim's
+ * cuts (the steps rewrite it as any live value): found after three cuts or
+ * more, past its record, and a restart on the cut stream finds it and goes
+ * on cutting. The directory cuts whole files. */
+TEST(reclaim_settings_survive_cuts) {
+    struct rdb r;
+    struct err e;
+    char dir[1024];
+    char kv[RC_SETTINGS_TEXT_CAP];
+    mem_init(&r.m);
+    rs_temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    r.time = CLK_UNITS_PER_SEC;
+    REQUIRE(rdb_start(&r, dir, 8, 1000, 0, &e) == ERR_OK);
+    REQUIRE(db_set_retain_duration(&r.db, CLK_UNITS_PER_SEC, &e) == ERR_OK);
+    const int64_t settingsEnd = db_stream_length(&r.db);
+    uint64_t rnd = 2;
+    int i = 0;
+    int cuts = 0;
+    int64_t firstPos = stream_first_pos(&r.db.stream);
+    while (cuts < 3 || firstPos <= settingsEnd || i < 1000) {
+        REQUIRE(i < 20000);
+        i++;
+        r.time = CLK_UNITS_PER_SEC + i * CLK_UNITS_PER_SEC / 10;
+        char key[32];
+        char v[32];
+        snprintf(key, sizeof key, "/k/%d", test_random_below(&rnd, 100));
+        snprintf(v, sizeof v, "v%d", i);
+        REQUIRE(rdb_put(&r, key, (const uint8_t *) v, (int32_t) strlen(v), NULL) == ERR_OK);
+        if (stream_first_pos(&r.db.stream) != firstPos) {
+            cuts++;
+            firstPos = stream_first_pos(&r.db.stream);
+        }
+    }
+    CHECK(stream_first_pos(&r.db.stream) > settingsEnd);
+    settings_kv(&r, kv, sizeof kv);
+    CHECK(strcmp(kv, "retain=10000000\nfraction=16384\n") == 0);
+    REQUIRE(rdb_restart(&r, dir, 8, 1000, 0, &e) == ERR_OK);
+    CHECK_EQ(r.db.reclaim.retainDuration, CLK_UNITS_PER_SEC);
+    const int64_t firstPosAtRestart = stream_first_pos(&r.db.stream);
+    for (int k = 0; k < 4000 && stream_first_pos(&r.db.stream) == firstPosAtRestart; k++) {
+        i++;
+        r.time = CLK_UNITS_PER_SEC + i * CLK_UNITS_PER_SEC / 10;
+        char key[32];
+        char v[32];
+        snprintf(key, sizeof key, "/k/%d", test_random_below(&rnd, 100));
+        snprintf(v, sizeof v, "v%d", i);
+        REQUIRE(rdb_put(&r, key, (const uint8_t *) v, (int32_t) strlen(v), NULL) == ERR_OK);
+    }
+    CHECK(stream_first_pos(&r.db.stream) > firstPosAtRestart);
+    settings_kv(&r, kv, sizeof kv);
+    CHECK(strcmp(kv, "retain=10000000\nfraction=16384\n") == 0);
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+    rs_remove_dir(dir);
+}
+
+/* DbTesterRestart.testStreamWithoutSettingsHasDefaults (015-87, F5's option
+ * 1): a database whose settings were never set has no settings' KV, and a
+ * start on its stream runs with the defaults, forever and 16,384 units. */
+TEST(reclaim_settings_none_defaults) {
+    struct rdb r;
+    struct err e;
+    char dir[1024];
+    char kv[RC_SETTINGS_TEXT_CAP];
+    mem_init(&r.m);
+    rs_temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    r.time = 0;
+    REQUIRE(rdb_start(&r, dir, 30, 50000000, 0, &e) == ERR_OK);
+    for (int i = 1; i <= 20; i++) {
+        r.time = 10 * i;
+        char key[32];
+        snprintf(key, sizeof key, "/k/%d", i);
+        REQUIRE(rdb_put(&r, key, (const uint8_t *) "v", 1, NULL) == ERR_OK);
+    }
+    settings_kv(&r, kv, sizeof kv);
+    CHECK(strcmp(kv, "") == 0);
+    REQUIRE(rdb_restart(&r, dir, 30, 50000000, 0, &e) == ERR_OK);
+    settings_kv(&r, kv, sizeof kv);
+    CHECK(strcmp(kv, "") == 0);
+    CHECK_EQ(r.db.reclaim.retainDuration, INT64_MAX);
+    CHECK_EQ(r.db.reclaim.internalFraction, RC_DEFAULT_INTERNAL_FRACTION);
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+    rs_remove_dir(dir);
+}
+
+/* DbTesterRestart.testMalformedSettingsRefusedAtStart (015-87): a start
+ * refuses a settings' KV in another form than the one the setters write,
+ * "InternalDataException" (ERR_FORMAT) naming the key, as it refuses a bad
+ * table: a number that is not one, or out of range; a line missing, of its
+ * own, or out of order; a sign, a leading zero, or no newline at the end.
+ * The KV is put by an internal transaction; the well-formed value starts. */
+TEST(reclaim_settings_malformed_refused_at_start) {
+    static const char *const bad[] = {
+        "retain=x\nfraction=16384\n",
+        "retain=9999999\nfraction=16384\n",
+        "retain=10000000\nfraction=65\n",
+        "retain=10000000\nfraction=58983\n",
+        "retain=10000000\n",
+        "fraction=16384\n",
+        "",
+        "retain=10000000\nfraction=16384\nother=1\n",
+        "fraction=16384\nretain=10000000\n",
+        "retain=+10000000\nfraction=16384\n",
+        "retain=010000000\nfraction=16384\n",
+        "retain=10000000\nfraction=16384",
+        "retain=10000000\r\nfraction=16384\r\n",
+    };
+    const char *good = "retain=10000000\nfraction=16384\n";
+    const int nbad = (int) (sizeof bad / sizeof bad[0]);
+    for (int i = -1; i < nbad; i++) {
+        struct rdb r;
+        struct err e;
+        char dir[1024];
+        mem_init(&r.m);
+        rs_temp_dir(dir, sizeof dir);
+        REQUIRE(dir[0] != '\0');
+        r.time = 0;
+        REQUIRE(rdb_start(&r, dir, 30, 50000000, 0, &e) == ERR_OK);
+        r.time = 10;
+        REQUIRE(rdb_put_internal(&r, RC_SETTINGS_KEY_NAME, i < 0 ? good : bad[i]) == ERR_OK);
+        REQUIRE(db_close(&r.db, &e) == ERR_OK);
+        enum err_code rc = rdb_start(&r, dir, 30, 50000000, 0, &e);
+        if (i < 0) {
+            CHECK_EQ(rc, ERR_OK);
+            if (rc == ERR_OK) {
+                CHECK_EQ(r.db.reclaim.retainDuration, CLK_UNITS_PER_SEC);
+                close_rdb(&r);
+            }
+        } else {
+            CHECK_EQ(rc, ERR_FORMAT);
+            CHECK(strcmp(e.java, "InternalDataException") == 0);
+            CHECK(strncmp(e.text, "Bad value of /#i/dreclaim/-settings.txt, reclaim's settings: "
+                    "not the two lines retain=<time units> and fraction=<units of 2^-16>, in "
+                    "range, that this version writes (bergdb 015-87): '", 177) == 0);
+            if (rc == ERR_OK) {
+                close_rdb(&r);
+            }
+        }
+        CHECK_MEM_ZERO(&r.m);
+        rs_remove_dir(dir);
+    }
+}
+
+/* Reclaim.Tester.testSafePosAfterTheCallsRecords (015-54, 016-06 R7-F5):
+ * pSafe is the stream length when it is set, after the internal records
+ * that the same call appended before it (the table of an iteration
+ * started, a step, the table of the iteration done): at least past the
+ * user record's end when the call made such a record, and never past the
+ * stream's length. Five markings in calls that made a step are checked. */
+TEST(reclaim_safe_pos_after_the_calls_records) {
+    struct rdb r;
+    mem_init(&r.m);
+    r.time = CLK_UNITS_PER_SEC;
+    REQUIRE(rdb_open(&r, 30, 2000, 0, CLK_UNITS_PER_SEC) == ERR_OK);
+    uint64_t rnd = 1;
+    int64_t marked[512];            /* the pStart of each row marked, its identity */
+    int nmarked = 0;
+    int markings = 0, afterRecords = 0;
+    for (int i = 0; i < 4000 && afterRecords < 5; i++) {
+        r.time += CLK_UNITS_PER_SEC / 20;
+        const int64_t steps = r.db.reclaim.steps;
+        const int32_t rows = r.db.reclaim.nrows;
+        uint8_t v[64];
+        int32_t len = 1 + test_random_below(&rnd, 60);
+        memset(v, 0, (size_t) len);
+        char key[32];
+        snprintf(key, sizeof key, "/k/%d", test_random_below(&rnd, 50));
+        struct trans t;
+        REQUIRE(rdb_put(&r, key, v, len, &t) == ERR_OK);
+        /* The call's records before the marking: a step's, or the table of
+         * an iteration it started. */
+        const bool records = r.db.reclaim.steps > steps || r.db.reclaim.nrows > rows;
+        const int64_t atLeast = t.next_pos + (records ? 1 : 0);
+        for (int32_t k = 0; k < r.db.reclaim.nrows; k++) {
+            const struct rc_row *row = &r.db.reclaim.rows[k];
+            bool seen = false;
+            for (int j = 0; j < nmarked && !seen; j++) {
+                seen = marked[j] == row->pStart;
+            }
+            if (row->pSafe != -1 && !seen && nmarked < 512) {
+                marked[nmarked++] = row->pStart;
+                markings++;
+                if (records) {
+                    afterRecords++;
+                }
+                CHECK(row->pSafe >= atLeast);
+                CHECK(row->pSafe <= db_stream_length(&r.db));
+            }
+        }
+    }
+    CHECK(afterRecords >= 5);
+    CHECK(markings >= afterRecords);
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+}
+
+/* Reclaim.Tester.testStepWithinValueLimit (015-50, 016-06 R7-F1), the
+ * record limit lowered to 100 kB: ten old values of 4 kB, then /b, whose
+ * node takes the value limit minus slack bytes (a step's scan takes the
+ * last of the ten and /b), with slack 1000 and 0 (alone with the step's row
+ * it passes the limit). The steps end before a value that would take them
+ * past the limit, so the puts go on, reclaim cuts past /b's record three
+ * times, and a restart reads every value. Before: "The transaction is too
+ * large", the database failed. */
+static void step_within_value_limit(int64_t slack) {
+    struct rdb r;
+    struct err e;
+    char dir[1024];
+    mem_init(&r.m);
+    rs_temp_dir(dir, sizeof dir);
+    REQUIRE(dir[0] != '\0');
+    const int64_t recordLimit = 100 * 1000;
+    r.time = CLK_UNITS_PER_SEC;
+    REQUIRE(rdb_start(&r, dir, 30, 2000, recordLimit, &e) == ERR_OK);
+    const int64_t limit = db_value_limit(&r.db);
+    CHECK_EQ(limit, 87500);
+    REQUIRE(db_set_retain_duration(&r.db, CLK_UNITS_PER_SEC, &e) == ERR_OK);
+    static uint8_t zeros[100000];
+    for (int i = 0; i < 10; i++) {
+        r.time += CLK_UNITS_PER_SEC / 20;
+        char key[32];
+        snprintf(key, sizeof key, "/a/%d", i);
+        REQUIRE(rdb_put(&r, key, zeros, 4000, NULL) == ERR_OK);
+    }
+    int64_t seg[8];
+    int32_t key_n;
+    ikey_segments("/b", seg, &key_n);
+    int32_t n = (int32_t) (limit - slack);
+    while (nw_value_byte_size_long(n, key_n) > limit - slack) {
+        n--;
+    }
+    r.time += CLK_UNITS_PER_SEC / 20;
+    REQUIRE(rdb_put(&r, "/b", zeros, n, NULL) == ERR_OK);
+    const int64_t bEnd = db_stream_length(&r.db);
+    uint64_t rnd = 1;
+    int64_t cut = 0;
+    int cuts = 0;
+    for (int i = 0; i < 4000 && cuts < 3; i++) {
+        r.time += CLK_UNITS_PER_SEC / 20;
+        char key[32];
+        snprintf(key, sizeof key, "/k/%d", test_random_below(&rnd, 50));
+        REQUIRE(rdb_put(&r, key, zeros, 1 + test_random_below(&rnd, 60), NULL) == ERR_OK);
+        if (db_first_available_pos(&r.db) > cut) {
+            cut = db_first_available_pos(&r.db);
+            cuts++;
+        }
+    }
+    CHECK(cuts >= 3);
+    CHECK(cut > bEnd);
+    REQUIRE(rdb_restart(&r, dir, 30, 2000, recordLimit, &e) == ERR_OK);
+    for (int j = 0; j < 20; j++) {
+        r.time += CLK_UNITS_PER_SEC / 20;
+        char key[32];
+        snprintf(key, sizeof key, "/k/%d", j);
+        REQUIRE(rdb_put(&r, key, zeros, 10, NULL) == ERR_OK);
+    }
+    int32_t len;
+    CHECK(rdb_get(&r, INT64_MAX, "/b", NULL, &len, NULL) == ERR_OK);
+    CHECK_EQ(len, n);
+    for (int i = 0; i < 10; i++) {
+        char key[32];
+        snprintf(key, sizeof key, "/a/%d", i);
+        CHECK(rdb_get(&r, INT64_MAX, key, NULL, &len, NULL) == ERR_OK);
+        CHECK_EQ(len, 4000);
+    }
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+    rs_remove_dir(dir);
+}
+
+TEST(reclaim_step_within_value_limit) {
+    step_within_value_limit(1000);
+    step_within_value_limit(0);
+}
+
+/* Reclaim.Tester.testUserTransactionLeavesTimesForReclaim (015-55, 016-06
+ * R7-F6): a user transaction at the last database time was taken, and the
+ * reclaim step it allowed found no time left, inside its go point: the
+ * database failed. Now a user transaction after DBCLOCK_LAST_USER_TIME is
+ * refused before its go point and the database goes on; one at it is
+ * taken, and its step runs in the times kept for it. The clock can go
+ * back, as CoreTestClock cannot. */
+TEST(reclaim_user_transaction_leaves_times) {
+    struct rdb r;
+    struct err e;
+    mem_init(&r.m);
+    r.time = CLK_UNITS_PER_SEC;
+    REQUIRE(rdb_start(&r, NULL, 30, 2000, 0, &e) == ERR_OK);
+    REQUIRE(db_set_retain_duration(&r.db, CLK_UNITS_PER_SEC, &e) == ERR_OK);
+    uint64_t rnd = 1;
+    bool armed = false;
+    uint8_t zeros[64];
+    memset(zeros, 0, sizeof zeros);
+    for (int i = 0; i < 4000 && !armed; i++) {
+        r.time += CLK_UNITS_PER_SEC / 20;
+        const struct reclaim *rc = &r.db.reclaim;
+        const struct rc_row *cur = rc->nrows > 0 && !rc->rows[rc->nrows - 1].done
+                ? &rc->rows[rc->nrows - 1] : NULL;
+        armed = cur != NULL && rc_fraction_of(db_stream_length(&r.db) + 150 - cur->pStart,
+                RC_DEFAULT_INTERNAL_FRACTION) - cur->rewritten > 10000;
+        if (!armed) {
+            char key[32];
+            snprintf(key, sizeof key, "/k/%d", test_random_below(&rnd, 50));
+            REQUIRE(rdb_put(&r, key, zeros, 1 + test_random_below(&rnd, 60), NULL) == ERR_OK);
+        }
+    }
+    REQUIRE(armed);
+
+    /* The next put makes a step. At Klong.MAX_TIME it is refused before its
+     * go point, and the database goes on. */
+    r.time = KL_MAX_TIME;
+    int64_t length = db_stream_length(&r.db);
+    CHECK_EQ(rdb_put(&r, "/last", (const uint8_t *) "a", 1, NULL), ERR_LIMIT);
+    CHECK_EQ((int) r.db.state, (int) DB_ACTIVE);
+    CHECK_EQ(db_stream_length(&r.db), length);
+    int32_t len;
+    CHECK(rdb_get(&r, INT64_MAX, "/last", NULL, &len, NULL) == ERR_OK);
+    CHECK_EQ(len, -1);
+
+    /* At the last user time it is taken, and its step has times after it. */
+    r.time = DBCLOCK_LAST_USER_TIME;
+    const int64_t count = r.db.transaction_count;
+    struct trans t;
+    CHECK_EQ(rdb_put(&r, "/last", (const uint8_t *) "b", 1, &t), ERR_OK);
+    CHECK_EQ(t.tt, DBCLOCK_LAST_USER_TIME);
+    CHECK(r.db.transaction_count > count + 1);
+    uint8_t v[8];
+    CHECK(rdb_get(&r, INT64_MAX, "/last", v, &len, NULL) == ERR_OK);
+    CHECK(len == 1 && v[0] == 'b');
+    close_rdb(&r);
+    CHECK_MEM_ZERO(&r.m);
+}
+
 const struct test reclaim_tests[] = {
     TEST_ENTRY(reclaim_row_text),
     TEST_ENTRY(reclaim_row_parse),
@@ -842,5 +1465,15 @@ const struct test reclaim_tests[] = {
     TEST_ENTRY(reclaim_table_in_stream),
     TEST_ENTRY(reclaim_alloc_failures),
     TEST_ENTRY(reclaim_java_vectors),
+    TEST_ENTRY(reclaim_settings_kept_over_restarts),
+    TEST_ENTRY(reclaim_settings_refused_change_nothing),
+    TEST_ENTRY(reclaim_settings_in_force_write_nothing),
+    TEST_ENTRY(reclaim_settings_kept_across_restart),
+    TEST_ENTRY(reclaim_settings_survive_cuts),
+    TEST_ENTRY(reclaim_settings_none_defaults),
+    TEST_ENTRY(reclaim_settings_malformed_refused_at_start),
+    TEST_ENTRY(reclaim_safe_pos_after_the_calls_records),
+    TEST_ENTRY(reclaim_step_within_value_limit),
+    TEST_ENTRY(reclaim_user_transaction_leaves_times),
     TEST_END
 };

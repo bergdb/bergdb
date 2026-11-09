@@ -297,7 +297,6 @@ static int run(int argc, char **argv) {
     opt.max_node_size = 30;
     opt.startup_distance = p.sd;
     opt.cache_size_indicator = BERGDB_NO_EVICT;
-    opt.retain_duration = BERGDB_FOREVER;
     c.clock.time = 0;
     c.time = SEC;
     bergdb_test_clock_set(&c.clock, c.time);
@@ -519,7 +518,6 @@ static int memrun(const char *dir) {
     struct bergdb_options opt;
     bergdb_options_init(&opt);
     opt.cache_size_indicator = BERGDB_NO_EVICT;
-    opt.retain_duration = BERGDB_FOREVER;
     struct bergdb_test_clock clock = {0};
     opt.clock = bergdb_test_clock_time;
     opt.clock_ctx = &clock;

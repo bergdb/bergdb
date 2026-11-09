@@ -197,9 +197,17 @@ public final class Run {
             // The header's retain duration and fraction once, after the creation's start
             // (bergdb 022-01, D3): the stream keeps them (015-87), as in StreamDigest's
             // restarts-once; a later start takes the stream's. Each setter commits reclaim's
-            // settings if its value is not the one in force.
-            if (w.retain >= 0) db.setRetainDuration(w.retain);
-            if (w.fraction != null) db.setReclaimInternalFraction(Double.parseDouble(w.fraction));
+            // settings if its value is not the one in force. A refused one closes the
+            // database, as bergdb-run does, and the start prints its error.
+            try {
+                if (w.retain >= 0) db.setRetainDuration(w.retain);
+                if (w.fraction != null) {
+                    db.setReclaimInternalFraction(Double.parseDouble(w.fraction));
+                }
+            } catch (RuntimeException e) {
+                d.close();
+                throw e;
+            }
         }
         out.println("start create=" + (create ? 1 : 0) + " startPos=" + si.startPos
                 + " startupDistance=" + si.startupDistance + " startTime=" + si.startTime

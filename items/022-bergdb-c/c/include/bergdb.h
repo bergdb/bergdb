@@ -58,11 +58,11 @@
  *
  * What a failed database still does: bergdb_close; bergdb_sync, for the
  * transactions before the failure, while the storage works; bergdb_stats;
- * bergdb_current_time and bergdb_lookup_time; the setters of the cache
- * size indicator (it only sets the value), the retain duration and the
- * internal fraction; making and freeing transactions and read contexts,
- * and building transactions; bergdb_errmsg. Everything else returns
- * BERGDB_FAILED.
+ * bergdb_current_time and bergdb_lookup_time; the setter of the cache
+ * size indicator (it only sets the value); making and freeing transactions
+ * and read contexts, and building transactions; bergdb_errmsg. Everything
+ * else returns BERGDB_FAILED, the setters of the retain duration and the
+ * internal fraction too, which commit as a transaction does (015-87).
  *
  *
  * C. Ownership and lifetimes (012-01, 4.5)
@@ -278,7 +278,7 @@ const char *bergdb_errname(int code);
 #define BERGDB_MIN_TIME INT64_C(0)                      /* Klong.MIN_TIME */
 #define BERGDB_MAX_TIME INT64_C(0x00ffffffffffffff)     /* Klong.MAX_TIME, 2^56 - 1 */
 #define BERGDB_LATEST INT64_MAX     /* the lookup time of the latest state, Long.MAX_VALUE */
-#define BERGDB_FOREVER INT64_MAX    /* the retain duration "forever" (retainForever) */
+#define BERGDB_FOREVER INT64_MAX    /* the retain duration "forever", a new database's */
 #define BERGDB_NULL_POS INT64_C(-1) /* no position (Spos.NULL) */
 
 /*
@@ -382,9 +382,6 @@ struct bergdb_options {
      * this, but for what must stay: the nodes changed since the startup
      * position and the newest top nodes (Level 4, 012-12). */
     int64_t cache_size_indicator;
-    /* The retain duration in time units (retainDuration(long)): at least
-     * BERGDB_UNITS_PER_SEC; BERGDB_FOREVER by default. */
-    int64_t retain_duration;
     /* The clock (clock(Clock)): NULL for the system clock (the default,
      * Java's SystemClock), or a function and its ctx: the test clock's
      * (bergdb_test_clock_time and a struct bergdb_test_clock) or the
@@ -427,12 +424,14 @@ struct bergdb_start_info {
  * "" after a success.
  *
  * Errors: BERGDB_ARG (db NULL; a setting out of range: the node size, a
- * startup distance under 10, a retain duration under one second);
+ * startup distance under 10);
  * BERGDB_IN_USE (another process); BERGDB_IO; BERGDB_FORMAT; BERGDB_NOT_CREATED;
  * BERGDB_LIMIT (the clock's time out of range at the creation);
  * BERGDB_NOMEM. Java's start throws DbFailedException when the read of
- * reclaim's table fails on the storage; here that is BERGDB_IO or
- * BERGDB_FORMAT, as no database is left to fail.
+ * reclaim's table or settings fails on the storage; here that is
+ * BERGDB_IO or BERGDB_FORMAT, as no database is left to fail. Reclaim's
+ * settings in any other form than the one the setters write are
+ * BERGDB_FORMAT, "InternalDataException" (015-87).
  */
 int bergdb_open(const char *dir, const struct bergdb_options *opt, bergdb_db **db,
         struct bergdb_start_info *info, char *errbuf);
@@ -770,12 +769,11 @@ int bergdb_get_trans(bergdb_db *db, bergdb_read *rd, int64_t tpos, struct bergdb
 
 /* ======== Durability ======== */
 
-/* The sync levels (Java's SyncLevel, with its numbers). */
+/* The sync levels (Java's SyncLevel, with its numbers; STRONG, 30, for a
+ * replica, is gone as Java's since release 2026.3, which has no replicas). */
 enum bergdb_sync_level {
     BERGDB_SYNC_NONE = 10,      /* nothing */
-    BERGDB_SYNC_ORDINARY = 20,  /* durable on the device */
-    BERGDB_SYNC_STRONG = 30     /* durable on the main storage and a replica; with no
-                                   replica, as here, ORDINARY */
+    BERGDB_SYNC_ORDINARY = 20   /* durable on the device */
 };
 
 /*
@@ -787,7 +785,7 @@ enum bergdb_sync_level {
  * it durable. A negative pos needs nothing; BERGDB_SYNC_NONE does nothing.
  * Durability: the C directory's readme.md, section 9.
  *
- * Errors: BERGDB_ARG (level not one of the three; pos at or past the end
+ * Errors: BERGDB_ARG (level not one of the two; pos at or past the end
  * of the stream, which Java waits for, as another thread's transaction can
  * reach it: here nothing could), BERGDB_STATE, BERGDB_FAILED (the write or
  * the force failed, which fails the database; or the database failed on
@@ -843,23 +841,37 @@ int bergdb_set_cache_size_indicator(bergdb_db *db, int64_t size);
 
 /* Sets the retain duration in time units (Java's setRetainDuration(long)):
  * how long the history stays available for lookups; reclaim removes what
- * is older. BERGDB_FOREVER stops new iterations and cuts; an iteration in
- * progress goes on to its end, as Java's. The front files of a cut are
- * deleted once the stream is durable up to the cut's decision: the library
- * has no thread, so the bergdb_execute call that decides a cut forces the
- * stream itself (as a bergdb_sync does; one force per cut, a few per
- * retention period) and deletes them, whether the application syncs or
- * not (012-11, Q1, option B). Errors: BERGDB_ARG (under
- * BERGDB_UNITS_PER_SEC), BERGDB_STATE. */
+ * is older. BERGDB_FOREVER (the value of a new database) stops new
+ * iterations and cuts; an iteration in progress goes on to its end, as
+ * Java's. The front files of a cut are deleted once the stream is durable
+ * up to the cut's decision: the library has no thread, so the
+ * bergdb_execute call that decides a cut forces the stream itself (as a
+ * bergdb_sync does; one force per cut, a few per retention period) and
+ * deletes them, whether the application syncs or not (012-11, Q1, option
+ * B).
+ *
+ * Kept in the stream, with the internal fraction (bergdb 015-87, as Java's
+ * since release 2026.3; no option of the open): unless the value is the one
+ * in force, the call commits a small internal transaction with reclaim's
+ * settings, and a start reads them, so a restart keeps them. The value is
+ * in force when the call returns. A call with the value in force writes
+ * nothing; a refused call, or one whose commit fails, leaves the value as
+ * it was.
+ *
+ * Errors: BERGDB_ARG (under BERGDB_UNITS_PER_SEC), BERGDB_STATE, and the
+ * commit's, as bergdb_execute's: BERGDB_LIMIT (the clock out of range; the
+ * top node ordinals used up), BERGDB_NOMEM, BERGDB_FAILED (a failed
+ * database, or the commit failed it). */
 int bergdb_set_retain_duration(bergdb_db *db, int64_t duration);
 
 /* Sets reclaim's internal fraction (Java's setReclaimInternalFraction;
- * 0.25 at the open), with Java's check: BERGDB_ARG for NaN, under 0.001 or
- * over 0.90, and the setting stays (bergdb 005-73). Reclaim keeps the
- * nearest multiple of 2^-16, an integer, and the double decides nothing
- * (bergdb 005-79): 0.25 exactly, 0.1 as 6,554 / 65,536, which
- * bergdb_stats' internal_fraction gives. As Java's since release 2026.2.
- * BERGDB_STATE. */
+ * 0.25 in a new database), with Java's check: BERGDB_ARG for NaN, under
+ * 0.001 or over 0.90, and the setting stays (bergdb 005-73). Reclaim keeps
+ * the nearest multiple of 2^-16, an integer, and the double decides
+ * nothing (bergdb 005-79): 0.25 exactly, 0.1 as 6,554 / 65,536, which
+ * bergdb_stats' internal_fraction gives. Kept in the stream as the retain
+ * duration is (bergdb_set_retain_duration; 015-87), with the same errors
+ * but for the range. As Java's since release 2026.3. */
 int bergdb_set_reclaim_internal_fraction(bergdb_db *db, double fraction);
 
 /* The status, Db's getters, each a field (012-03, 6.2). */

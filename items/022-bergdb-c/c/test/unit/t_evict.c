@@ -24,7 +24,6 @@ static void config(struct db_config *cfg, struct bergdb_test_clock *clock, int32
     cfg->max_node_size = maxNode;
     cfg->startup_distance = sd;
     cfg->cache_size_indicator = budget;
-    cfg->retain_duration = INT64_MAX;
     cfg->clock = bergdb_test_clock_time;
     cfg->clock_ctx = clock;
     memcpy(cfg->id, bergdb_test_id, 16);

@@ -194,3 +194,47 @@ No difference of steps 2 and 3 shows in the quick set: its corrupt
 variants are bit flips, which 019-32's damage does not reach (012-18,
 section 3.2), and 015-72, 015-75, 019-01 and 019-34 need records or meta
 blocks made for them.
+
+2026-11-09, step 1 (worker s0). 012-18, section 3.1, steps 1 to 4, D2 and
+D3 on C's side. 015-87: reclaim's settings in the stream, the KV
+`/#i/dreclaim/-settings.txt`, `retain=<d>\nfraction=<f>\n` byte for byte
+as `serializeSettings` (`rc_settings_text`); `rc_set_settings` commits it
+in an internal transaction unless the values are in force, refused first
+once the top ordinals are used up (`db_refuse_if_top_ordinals_used`), the
+fields set after the commit; `rc_settings_parse` refuses any other form
+with an `InternalDataException` (ERR_FORMAT) as `parseSettings`, at every
+start (`rc_init_from_db`, before the table) and in `bergdb-dump`'s start
+(`sdb.c`); the two setters check the argument, then the state, then
+commit. 015-54: pSafe is the stream's length at the marking. 015-50: a
+step ends before a value that would take its value nodes past the value
+limit (`db_value_limit`), and `check_size` is for user transactions only.
+015-55: `dbclock_transaction_begin(user)`, user transactions refused after
+`DBCLOCK_LAST_USER_TIME`. D2: `bergdb_options.retain_duration` and
+`BERGDB_SYNC_STRONG` removed with every use (`bergdb_sync` takes 10 and 20
+only); `bergdb.h` and `readme.md` say that the two setters commit, with a
+transaction's errors, and are refused on a failed database. D3:
+`bergdb-run` applies the header's retain and fraction once, after the
+creation's start; `bergdb-clockcheck` meets the setters' records (after
+the creation, and at `setretain` and `setfraction` lines). Java's tests
+ported: `DbTesterRestart`'s eight on the settings and
+`testReclaimSettingRefusedAtGoPoint` (`t_reclaim.c`, `t_db.c`'s top
+ordinals, `f_settings.c`), `testSafePosAfterTheCallsRecords`,
+`testStepWithinValueLimit` (`record_limit` 100 kB),
+`testUserTransactionLeavesTimesForReclaim` and `testTimeMarginForInternal`;
+`f_settings.c` holds StatsProbe's lines of 2026.3, which C prints.
+`Run.java` closes the database when a header setter is refused, as
+`bergdb-run` does. Departures: the refusal's text is cut at C's 240
+bytes, and holds the value's bytes as they are (Java decodes them as
+UTF-8); the harness compares only the exception's name. C has no
+`stop()`: the setters' "not active" is a failed database (BERGDB_FAILED)
+or a call from a callback (BERGDB_STATE).
+
+The gate against 2026.3: `C BEFORE COMMIT OK (399 s)`, F53 under a load
+of about 20 with other gates; `cross quick` 0 differences (23 workloads,
+69 crash cuts, 85 corrupt variants, 2 in turns, 46 budget runs),
+`writecheck` 0 (clock: 19 workloads' times equal, 4 skipped for a cut),
+the vectors' lines all passing, StatsProbe's lines equal. `allocfail`
+makes 628 runs where it made 379 (its workload's `set retain` is now a
+commit after the creation), 51 s. No difference remains in the gate; the
+differences that steps 2 and 3 remove do not show in the quick set (step
+0's record).

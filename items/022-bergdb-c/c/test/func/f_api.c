@@ -231,7 +231,7 @@ TEST(api_create_and_read) {
     bergdb_read_free(rd);
 
     struct bergdb_stats s;
-    CHECK(bergdb_sync(db, 0, BERGDB_SYNC_STRONG) == BERGDB_OK);
+    CHECK(bergdb_sync(db, 0, BERGDB_SYNC_ORDINARY) == BERGDB_OK);
     CHECK(bergdb_stats(db, &s) == BERGDB_OK);
     CHECK_EQ(s.durable_length, s.stream_length);
     CHECK_EQ(s.transaction_count, 4);
@@ -476,7 +476,7 @@ TEST(api_alloc_failures) {
                             == BERGDB_FAILED);
                     bergdb_read_free(rd);
                 }
-                CHECK(bergdb_sync(db, 0, BERGDB_SYNC_STRONG) == BERGDB_OK);
+                CHECK(bergdb_sync(db, 0, BERGDB_SYNC_ORDINARY) == BERGDB_OK);
             } else {
                 CHECK_EQ(rc, BERGDB_OK);
             }

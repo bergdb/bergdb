@@ -28,7 +28,10 @@
  * stream start the existing database, 012-10; reclaim, 012-11).
  *
  * The workload is parsed whole first, as Java's Workload.read: a bad line
- * anywhere exits 2 before anything runs. The names of Java's exceptions
+ * anywhere exits 2 before anything runs. Its settings: maxnode, sd and
+ * budget at every start; retain and fraction once, after the creation's
+ * start, by the setters, as the stream keeps them (015-87; 022-01, D3, as
+ * Run since then). The names of Java's exceptions
  * that refused lines and starts print come from bergdb_errmsg, whose text
  * begins with them.
  */
@@ -673,12 +676,11 @@ static bool start(struct run *r) {
     bool create = !has_stream(r->dir);
     struct bergdb_options opt;
     bergdb_options_init(&opt);
-    /* testSetupExceptStream: the test clock (Run's), no eviction, retain
-     * forever, the test id. */
+    /* testSetupExceptStream: the test clock (Run's), no eviction, the test
+     * id. */
     opt.clock = bergdb_test_clock_time;
     opt.clock_ctx = &r->clock;
     opt.cache_size_indicator = BERGDB_NO_EVICT;
-    opt.retain_duration = BERGDB_FOREVER;
     memcpy(opt.id, bergdb_test_id, BERGDB_ID_SIZE);
     opt.max_node_size = r->w->max_node;
     if (r->w->startup_distance >= 0) {
@@ -693,15 +695,21 @@ static bool start(struct run *r) {
     if (r->mem_report) {
         opt.mem = &r->mem;
     }
-    if (r->w->retain >= 0) {
-        opt.retain_duration = r->w->retain;
-    }
     char errbuf[BERGDB_ERRBUF_SIZE];
     struct bergdb_start_info si;
     char name[128];
     int rc = bergdb_open(r->dir, &opt, &r->db, &si, errbuf);
-    if (rc == BERGDB_OK && r->w->fraction != NULL) {
-        rc = bergdb_set_reclaim_internal_fraction(r->db, need_double(0, r->w->fraction));
+    if (rc == BERGDB_OK && create) {
+        /* The header's retain duration and fraction once, after the
+         * creation's start (bergdb 022-01, D3): the stream keeps them
+         * (015-87); a later start takes the stream's. Each setter commits
+         * reclaim's settings if its value is not the one in force. */
+        if (r->w->retain >= 0) {
+            rc = bergdb_set_retain_duration(r->db, r->w->retain);
+        }
+        if (rc == BERGDB_OK && r->w->fraction != NULL) {
+            rc = bergdb_set_reclaim_internal_fraction(r->db, need_double(0, r->w->fraction));
+        }
         if (rc != BERGDB_OK) {
             java_name(r->db, NULL, name, sizeof name);
             bergdb_close(r->db);
@@ -953,7 +961,7 @@ static int execute(struct run *r, const struct line *l) {
         return rc;
     }
     if (strcmp(c, "sync") == 0) {
-        int rc = bergdb_sync(r->db, 0, BERGDB_SYNC_STRONG);
+        int rc = bergdb_sync(r->db, 0, BERGDB_SYNC_ORDINARY);
         if (rc == BERGDB_OK) {
             status(r);
         }

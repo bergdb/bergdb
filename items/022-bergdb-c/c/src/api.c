@@ -111,7 +111,6 @@ void bergdb_options_init(struct bergdb_options *opt) {
     opt->max_node_size = 30;
     opt->startup_distance = 50 * 1000000;
     opt->cache_size_indicator = 200 * 1000000;
-    opt->retain_duration = BERGDB_FOREVER;
     opt->clock = NULL;
     opt->clock_ctx = NULL;
     opt->mem = NULL;
@@ -172,7 +171,6 @@ int bergdb_open(const char *dir, const struct bergdb_options *opt, bergdb_db **o
     cfg.max_node_size = opt->max_node_size;
     cfg.startup_distance = opt->startup_distance;
     cfg.cache_size_indicator = opt->cache_size_indicator;
-    cfg.retain_duration = opt->retain_duration;
     cfg.clock = opt->clock;
     cfg.clock_ctx = opt->clock_ctx;
     cfg.random_id = all_zero(opt->id, BERGDB_ID_SIZE);
@@ -846,8 +844,7 @@ int bergdb_sync(bergdb_db *db, int64_t pos, int level) {
     if (db == NULL) {
         return BERGDB_ARG;
     }
-    if (level != BERGDB_SYNC_NONE && level != BERGDB_SYNC_ORDINARY
-            && level != BERGDB_SYNC_STRONG) {
+    if (level != BERGDB_SYNC_NONE && level != BERGDB_SYNC_ORDINARY) {
         return fail_arg(db, "a bad sync level");
     }
     if (db->in_callback) {

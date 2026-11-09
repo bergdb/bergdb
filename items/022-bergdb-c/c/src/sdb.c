@@ -10,6 +10,8 @@
 
 /* Reclaim.TABLE_KEY_NAME, the ikey of reclaim's table (012-02, 8.13). */
 static const char TABLE_KEY_NAME[] = "/#i/dreclaim/-table.txt";
+/* Reclaim.SETTINGS_KEY_NAME, reclaim's settings (015-87). */
+static const char SETTINGS_KEY_NAME[] = RC_SETTINGS_KEY_NAME;
 
 static enum err_code unsupported(struct err *e, const char *why) {
     return err_set(e, ERR_ARG, "UnsupportedOperationException", "%s", why);
@@ -107,7 +109,31 @@ static void free_all(struct sdb *d) {
     st_free(&d->gt_rec, d->mem);
 }
 
-/* Reclaim.initFromDb: the table read at the latest time, as Java's (a
+/* The value of an internal key at the latest time, as Java's getOne
+ * through the readers' follower: *v NULL if none. */
+static enum err_code get_latest(struct sdb *d, const char *ikey, size_t len,
+        struct vnode **v, struct err *e) {
+    uint8_t bkey[64];
+    bool ok = len <= sizeof bkey && keys_ikey_to_bkey((const uint8_t *) ikey, (int32_t) len,
+            bkey);
+    assert(ok);
+    (void) ok;
+    int64_t segs[8];
+    int32_t n = keys_segment_count((int32_t) len);
+    assert(n <= 8);
+    keys_to_segments(bkey, (int32_t) len, segs);
+    struct getdata gd;
+    sdb_new_get_data(d, &gd);
+    enum err_code rc = sdb_get_one(d, INT64_MAX, segs, n, &gd, v, e);
+    if (rc == ERR_OK && *v != NULL && (*v)->len < 0) {
+        *v = NULL;
+    }
+    return rc;
+}
+
+/* Reclaim.initFromDb: reclaim's settings checked, as a start refuses any
+ * other form than the one the setters write (rc_settings_parse, 015-87),
+ * though sdb uses none; the table read at the latest time, as Java's (a
  * getOne through the readers' follower); the first available position and
  * time from the row marked cut with the largest pStart (rc_first_available_
  * of_table), or 0 and 0 without the table; and a cut that the table marks
@@ -115,22 +141,20 @@ static void free_all(struct sdb *d) {
  * (012-11). The current row matters for the steps only, which sdb does not
  * make. */
 static enum err_code init_from_db(struct sdb *d, struct err *e) {
-    uint8_t bkey[sizeof TABLE_KEY_NAME];
-    int32_t len = (int32_t) (sizeof TABLE_KEY_NAME - 1);
-    bool ok = keys_ikey_to_bkey((const uint8_t *) TABLE_KEY_NAME, len, bkey);
-    assert(ok);
-    (void) ok;
-    int64_t segs[8];
-    int32_t n = keys_segment_count(len);
-    assert(n <= 8);
-    keys_to_segments(bkey, len, segs);
-    struct getdata gd;
     struct vnode *v;
-    sdb_new_get_data(d, &gd);
     d->first_available_pos = 0;
     d->first_available_time = 0;
-    enum err_code rc = sdb_get_one(d, INT64_MAX, segs, n, &gd, &v, e);
-    if (rc != ERR_OK || v == NULL || v->len < 0) {
+    enum err_code rc = get_latest(d, SETTINGS_KEY_NAME, sizeof SETTINGS_KEY_NAME - 1, &v, e);
+    if (rc == ERR_OK && v != NULL) {
+        int64_t retain;
+        int32_t fraction;
+        rc = rc_settings_parse(d->mem, (const char *) v->value, (size_t) v->len, &retain,
+                &fraction, e);
+    }
+    if (rc == ERR_OK) {
+        rc = get_latest(d, TABLE_KEY_NAME, sizeof TABLE_KEY_NAME - 1, &v, e);
+    }
+    if (rc != ERR_OK || v == NULL) {
         return rc;
     }
     int64_t pos, time;

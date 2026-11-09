@@ -17,7 +17,13 @@
  *          table), each at the clock as it is;
  *   now    currentTime(), against Run's "now time=T";
  *   setsd  when the next record holds /#i/-dummy: the dummy transaction,
- *          and the internal ones after it.
+ *          and the internal ones after it;
+ *   setretain, setfraction
+ *          when the next record holds reclaim's settings
+ *          (/#i/dreclaim/-settings.txt, 015-87): the setter's internal
+ *          transaction. The header's set retain and set fraction are
+ *          applied once, after the creation (022-01, D3): the settings'
+ *          records right after the creation's are met there.
  *
  * Every record of the stream must be met, in order. A stream that reclaim
  * cut at the front is skipped (its first records are gone), as is a
@@ -47,6 +53,7 @@ struct rec {
     int64_t tpos;
     int64_t tt;
     bool dummy;
+    bool settings;      /* a setter's record of reclaim's settings (015-87) */
 };
 
 static struct rec recs[MAX_ITEMS];
@@ -62,17 +69,16 @@ static const char *dir;
 static struct mem mem;
 static struct err err;
 
-static bool has_dummy(const struct st_record *r) {
-    static const char ikey[] = "/#i/-dummy";
-    uint8_t bkey[sizeof ikey];
-    int64_t seg[4];
+/* A record of one value, of the key ikey: setStartupDistance's dummy
+ * transaction (/#i/-dummy), or a setter's of reclaim's settings. Reclaim's
+ * steps rewrite these values too, among others, with their row. */
+static bool has_only(const struct st_record *r, const char *ikey) {
+    uint8_t bkey[64];
+    int64_t seg[8];
     const int32_t n = (int32_t) strlen(ikey);
     keys_ikey_to_bkey((const uint8_t *) ikey, n, bkey);
     const int32_t ns = keys_segment_count(n);
     keys_to_segments(bkey, n, seg);
-    /* setStartupDistance's dummy transaction puts one value: a record of
-     * one value node of the dummy key (reclaim's steps rewrite the dummy's
-     * value too, among others). */
     int32_t values = 0;
     for (int32_t i = 0; i < r->nnodes; i++) {
         values += r->nodes[i].type == NODE_VALUE || r->nodes[i].type == NODE_DELETE;
@@ -101,14 +107,15 @@ static int differ(const char *what, int64_t c, int64_t java) {
     return 1;
 }
 
-/* One transaction through DbClock: its time against record k's. */
-static int transaction(const char *what) {
+/* One transaction through DbClock, a user transaction or an internal one
+ * (015-55): its time against record k's. */
+static int transaction(const char *what, bool user) {
     int64_t t;
     if (k >= nrecs) {
         printf("clockcheck %s DIFFERENCE %s: no record left\n", dir, what);
         return 1;
     }
-    if (dbclock_transaction_begin(&dbc, &t, &err) != ERR_OK) {
+    if (dbclock_transaction_begin(&dbc, user, &t, &err) != ERR_OK) {
         printf("clockcheck %s DIFFERENCE %s refused: %s\n", dir, what, err.text);
         return 1;
     }
@@ -124,10 +131,21 @@ static int transaction(const char *what) {
 }
 
 /* The internal transactions that follow: records that are neither the
- * next user transaction's nor a dummy. */
+ * next user transaction's nor a dummy nor a setter's. */
 static int internal_after(void) {
-    while (k < nrecs && !(ui < nusers && recs[k].tpos == user_tpos[ui]) && !recs[k].dummy) {
-        if (transaction("an internal transaction") != 0) {
+    while (k < nrecs && !(ui < nusers && recs[k].tpos == user_tpos[ui]) && !recs[k].dummy
+            && !recs[k].settings) {
+        if (transaction("an internal transaction", false) != 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* The settings' records that follow: a setter's internal transaction each. */
+static int settings_after(const char *what) {
+    while (k < nrecs && recs[k].settings) {
+        if (transaction(what, false) != 0) {
             return 1;
         }
     }
@@ -137,7 +155,8 @@ static int internal_after(void) {
 static int start(void) {
     if (k == 0) {
         dbclock_init(&dbc, bergdb_test_clock_time, &clk);
-        return transaction("the creation");
+        int status = transaction("the creation", true);
+        return status != 0 ? status : settings_after("the header's settings");
     }
     dbclock_init(&dbc, bergdb_test_clock_time, &clk);
     dbclock_set_last_trans_time(&dbc, recs[k - 1].tt);
@@ -163,7 +182,8 @@ static bool read_stream(void) {
         }
         recs[nrecs].tpos = r.tpos;
         recs[nrecs].tt = r.tt;
-        recs[nrecs].dummy = has_dummy(&r);
+        recs[nrecs].dummy = has_only(&r, "/#i/-dummy");
+        recs[nrecs].settings = has_only(&r, "/#i/dreclaim/-settings.txt");
         nrecs++;
     }
     bool ok = rc == ERR_OK && stream_first_pos(&s) == 0;
@@ -286,7 +306,7 @@ int main(int argc, char **argv) {
                 status = 1;
                 break;
             }
-            status = transaction("a transaction");
+            status = transaction("a transaction", true);
             if (status == 0 && recs[k - 1].tt != user_tt[ui]) {
                 status = differ("Run's time", recs[k - 1].tt, user_tt[ui]);
             }
@@ -306,11 +326,13 @@ int main(int argc, char **argv) {
             nows++;
         } else if (strcmp(w1, "setsd") == 0) {
             if (k < nrecs && recs[k].dummy) {
-                status = transaction("setStartupDistance's dummy");
+                status = transaction("setStartupDistance's dummy", true);
                 if (status == 0) {
                     status = internal_after();
                 }
             }
+        } else if (strcmp(w1, "setretain") == 0 || strcmp(w1, "setfraction") == 0) {
+            status = settings_after("a setter's settings");
         }
     }
     fclose(wl);

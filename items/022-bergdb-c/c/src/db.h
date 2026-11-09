@@ -79,7 +79,6 @@ struct db_config {
     int32_t max_node_size;          /* 8, 14, 30 or 62 */
     int32_t startup_distance;       /* at least 10 */
     int64_t cache_size_indicator;   /* the memory budget, for this run only (012-12) */
-    int64_t retain_duration;        /* at least one second; INT64_MAX: forever */
     clk_fn clock;                   /* NULL: the system clock */
     void *clock_ctx;
     bool random_id;                 /* DatabaseId.createRandom; else id */
@@ -182,14 +181,29 @@ enum err_code db_execute(struct db *db, struct trans *t, struct err *e);
 /* setStartupDistance(n) (005-53). */
 enum err_code db_set_startup_distance(struct db *db, int32_t n, struct err *e);
 
-/* setRetainDuration: under one second ERR_ARG (Reclaim's check). */
+/* StoredTrans.valueLimit(): 7/8 of the record limit, the most that a
+ * transaction's value nodes may take (005-17). */
+int64_t db_value_limit(const struct db *db);
+
+/* refuseIfTopOrdinalsUsed: ERR_LIMIT ("DbException") once the super root's
+ * ordinal has reached DB_LAST_TOP_ORDINAL (005-02): user transactions and
+ * the setters of reclaim's settings (015-87) are refused from there. */
+enum err_code db_refuse_if_top_ordinals_used(const struct db *db, struct err *e);
+
+/* setRetainDuration, kept in the stream (bergdb 015-87, as Java's since
+ * release 2026.3): under one second ERR_ARG (Reclaim.checkRetainDuration);
+ * on a database that is not active db_check_active's error; else
+ * rc_set_settings with the fraction in force, which commits reclaim's
+ * settings unless they are in force. A refused call changes nothing. */
 enum err_code db_set_retain_duration(struct db *db, int64_t d, struct err *e);
 
 /* setReclaimInternalFraction: NaN and values outside 0.001 to 0.90 are
  * ERR_ARG ("IllegalArgumentException"), and the setting stays (bergdb
  * 005-73); else reclaim keeps the nearest multiple of 2^-16, in units,
  * (int) Math.round(f * 65536) (bergdb 005-79), used from the next step. The
- * API's double is converted here, at once: no double decides the stream. */
+ * API's double is converted here, at once: no double decides the stream.
+ * Kept in the stream as the retain duration is (015-87): the state checked,
+ * then rc_set_settings with the retain duration in force. */
 enum err_code db_set_reclaim_internal_fraction(struct db *db, double f, struct err *e);
 
 /* getInternalFraction: reclaim's units over 65,536, exact (bergdb 005-79):

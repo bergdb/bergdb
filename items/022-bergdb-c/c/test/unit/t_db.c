@@ -143,7 +143,6 @@ static void config_of_java(struct db_config *cfg, struct bergdb_test_clock *cloc
     cfg->max_node_size = jv.node_size;
     cfg->startup_distance = jv.sd;
     cfg->cache_size_indicator = INT64_MAX;
-    cfg->retain_duration = INT64_MAX;
     cfg->clock = bergdb_test_clock_time;
     cfg->clock_ctx = clock;
     cfg->random_id = false;
@@ -283,7 +282,6 @@ static void small_config(struct db_config *cfg, struct bergdb_test_clock *clock)
     cfg->max_node_size = 8;
     cfg->startup_distance = 100;
     cfg->cache_size_indicator = INT64_MAX;
-    cfg->retain_duration = INT64_MAX;
     cfg->clock = bergdb_test_clock_time;
     cfg->clock_ctx = clock;
     memcpy(cfg->id, bergdb_test_id, 16);
@@ -424,6 +422,20 @@ TEST(db_top_ordinals) {
     int64_t len = db_stream_length(&db);
     CHECK(exec_puts(&db, &m, &clock, 100000, 0, 1, 4, &e) == ERR_LIMIT);
     CHECK_EQ(db_stream_length(&db), len);
+    /* DbTesterRestart.testReclaimSettingAtEndOfOrdinals (015-87): a setter
+     * that would write is refused as a user transaction is, and changes
+     * nothing; one with the value in force writes nothing and is not
+     * refused. */
+    CHECK(db_set_retain_duration(&db, 5 * CLK_UNITS_PER_SEC, &e) == ERR_LIMIT);
+    CHECK(strncmp(e.text, "The database has used its top node ordinals", 43) == 0);
+    CHECK(db_set_reclaim_internal_fraction(&db, 0.5, &e) == ERR_LIMIT);
+    CHECK(strncmp(e.text, "The database has used its top node ordinals", 43) == 0);
+    CHECK_EQ(db.reclaim.retainDuration, INT64_MAX);
+    CHECK_EQ(db.reclaim.internalFraction, RC_DEFAULT_INTERNAL_FRACTION);
+    CHECK(db_set_retain_duration(&db, INT64_MAX, &e) == ERR_OK);       /* in force */
+    CHECK(db_set_reclaim_internal_fraction(&db, 0.25, &e) == ERR_OK);
+    CHECK_EQ(db_stream_length(&db), len);
+    CHECK_EQ(tds_get_super_root(&db.dag.top_ds)->top_node_id, DB_LAST_TOP_ORDINAL);
     struct getdata gd;
     struct vnode *v = NULL;
     db_new_get_data(&db, &gd);

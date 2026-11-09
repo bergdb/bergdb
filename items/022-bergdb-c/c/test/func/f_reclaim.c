@@ -93,11 +93,12 @@ TEST(api_reclaim_directory) {
     memcpy(o.id, bergdb_test_id, BERGDB_ID_SIZE);
     o.max_node_size = 8;
     o.startup_distance = 2000;
-    o.retain_duration = BERGDB_UNITS_PER_SEC;
     o.mem = &m;
     int64_t time = BERGDB_UNITS_PER_SEC;
     bergdb_test_clock_set(&clock, time);
     REQUIRE(bergdb_open(dir, &o, &db, NULL, NULL) == BERGDB_OK);
+    /* The retain duration after the creation, kept in the stream (015-87). */
+    REQUIRE(bergdb_set_retain_duration(db, BERGDB_UNITS_PER_SEC) == BERGDB_OK);
 
     /* The settings' checks. */
     CHECK(bergdb_set_retain_duration(db, BERGDB_UNITS_PER_SEC - 1) == BERGDB_ARG);
@@ -224,11 +225,12 @@ TEST(api_reclaim_directory_no_sync) {
     memcpy(o.id, bergdb_test_id, BERGDB_ID_SIZE);
     o.max_node_size = 8;
     o.startup_distance = 2000;
-    o.retain_duration = BERGDB_UNITS_PER_SEC;
     o.mem = &m;
     int64_t time = BERGDB_UNITS_PER_SEC;
     bergdb_test_clock_set(&clock, time);
     REQUIRE(bergdb_open(dir, &o, &db, NULL, NULL) == BERGDB_OK);
+    /* The retain duration after the creation, kept in the stream (015-87). */
+    REQUIRE(bergdb_set_retain_duration(db, BERGDB_UNITS_PER_SEC) == BERGDB_OK);
 
     uint64_t rnd = 11;
     uint8_t v[200];
@@ -349,7 +351,6 @@ TEST(api_reclaim_pending_cut_at_open) {
     memcpy(o.id, bergdb_test_id, BERGDB_ID_SIZE);
     o.max_node_size = 8;
     o.startup_distance = 2000;
-    o.retain_duration = BERGDB_UNITS_PER_SEC;
     o.mem = &m;
     int64_t time = BERGDB_UNITS_PER_SEC;
     bergdb_test_clock_set(&clock, time);
@@ -357,6 +358,8 @@ TEST(api_reclaim_pending_cut_at_open) {
     snprintf(keep, sizeof keep, "%s-keep", dir);
     REQUIRE(mkdir(keep, 0700) == 0);
     REQUIRE(bergdb_open(dir, &o, &db, NULL, NULL) == BERGDB_OK);
+    /* The retain duration after the creation, kept in the stream (015-87). */
+    REQUIRE(bergdb_set_retain_duration(db, BERGDB_UNITS_PER_SEC) == BERGDB_OK);
     uint64_t rnd = 3;
     uint8_t v[200];
     struct bergdb_executed ex;
@@ -387,6 +390,7 @@ TEST(api_reclaim_pending_cut_at_open) {
     REQUIRE(bergdb_stats(db, &s2) == BERGDB_OK);
     CHECK_EQ(s2.first_available_pos, s.first_available_pos);
     CHECK_EQ(s2.first_available_lookup_time, s.first_available_lookup_time);
+    CHECK_EQ(s2.retain_duration, BERGDB_UNITS_PER_SEC);    /* the stream's (015-87) */
     dir_files(dir, &n, &bytes, &first);
     CHECK(first > 0 && first <= s.first_available_pos);     /* the cut, made at the open */
     CHECK(s.first_available_pos - first < 2000000);

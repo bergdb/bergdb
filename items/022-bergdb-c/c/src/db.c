@@ -454,7 +454,7 @@ static enum err_code write_primordial_transaction(struct db *db, struct err *e) 
     int64_t tt;
     /* transactionBegin() before the try (005-18): when it throws, no
      * transaction has begun. */
-    enum err_code rc = dbclock_transaction_begin(&db->clock, &tt, e);
+    enum err_code rc = dbclock_transaction_begin(&db->clock, true, &tt, e);
     if (rc != ERR_OK) {
         return rc;
     }
@@ -540,12 +540,9 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
         return err_set(e, ERR_ARG, "IllegalArgumentException", "Too small, %d",
                 (int) cfg->startup_distance);
     }
-    if (cfg->retain_duration < CLK_UNITS_PER_SEC) {
-        return err_set(e, ERR_ARG, "IllegalArgumentException", "retainDuration is too small,"
-                " must be at least one second (%lld), was %lld.",
-                (long long) CLK_UNITS_PER_SEC, (long long) cfg->retain_duration);
-    }
-    /* reclaim.setStepReserve(b.reclaimStepReserve), setRetainDuration(b's) */
+    /* reclaim.setStepReserve(b.reclaimStepReserve). The retain duration is
+     * no setting of the open since release 2026.3 (015-87): the stream keeps
+     * it, rc_init_from_db reads it, and db_set_retain_duration sets it. */
     if (cfg->step_reserve < 0) {
         return err_set(e, ERR_ARG, "IllegalArgumentException", "Illegal step reserve, %lld",
                 (long long) cfg->step_reserve);
@@ -553,7 +550,6 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
     if (cfg->step_reserve > 0) {
         db->reclaim.stepReserve = cfg->step_reserve;
     }
-    db->reclaim.retainDuration = cfg->retain_duration;
 
     /* The Db constructor. */
     if (dir != NULL) {
@@ -651,13 +647,31 @@ enum err_code db_open(struct db *db, const char *dir, const struct db_config *cf
 
 /* ======== execute ======== */
 
-/* checkSize (005-17): the value nodes at most StoredTrans.valueLimit(). */
+int64_t db_value_limit(const struct db *db) {
+    return db->record_limit / 8 * 7;
+}
+
+enum err_code db_refuse_if_top_ordinals_used(const struct db *db, struct err *e) {
+    if (tds_get_super_root(&db->dag.top_ds)->top_node_id >= DB_LAST_TOP_ORDINAL) {
+        return err_set(e, ERR_LIMIT, "DbException", "The database has used its top node "
+                "ordinals (up to %lld); it takes no more transactions.",
+                (long long) DB_LAST_TOP_ORDINAL);
+    }
+    return ERR_OK;
+}
+
+/* checkSize (005-17): the value nodes at most StoredTrans.valueLimit(). For
+ * user transactions only (015-50, as Java's since release 2026.3): an
+ * internal one runs within a user transaction's go point, where a refusal
+ * fails the database; a reclaim step keeps its value nodes within the
+ * limit itself (reclaim.c, step), and adds its row; the table and the
+ * settings are small. */
 static enum err_code check_size(const struct db *db, const struct trans *t, struct err *e) {
     int64_t bytes = 0;
     for (int32_t i = 0; i < t->nkvs; i++) {
         bytes += nw_value_byte_size_long(t->kvs[i]->len, t->kvs[i]->key_n);
     }
-    const int64_t limit = db->record_limit / 8 * 7;
+    const int64_t limit = db_value_limit(db);
     if (bytes > limit) {
         return err_set(e, ERR_LIMIT, "DbException", "The transaction is too large: its values "
                 "and keys take %lld bytes in the stream, more than %lld.", (long long) bytes,
@@ -1096,18 +1110,20 @@ enum err_code db_execute(struct db *db, struct trans *t, struct err *e) {
         return rc;
     }
     /* executeInner */
-    rc = check_size(db, t, e);
+    if (!t->is_internal) {
+        rc = check_size(db, t, e);
+    }
     if (rc == ERR_OK) {
         rc = warmup(db, t, e);
     }
     if (rc == ERR_OK) {
         rc = db_check_active(db, "execute", e);
     }
-    if (rc == ERR_OK && !t->is_internal
-            && tds_get_super_root(&db->dag.top_ds)->top_node_id >= DB_LAST_TOP_ORDINAL) {
-        rc = err_set(e, ERR_LIMIT, "DbException", "The database has used its top node "
-                "ordinals (up to %lld); it takes no more transactions.",
-                (long long) DB_LAST_TOP_ORDINAL);
+    /* The end of the top node ordinals (005-02): user transactions, and the
+     * setters of reclaim's settings (rc_set_settings, 015-87), are refused
+     * before it; reclaim's internal transactions run within the margin. */
+    if (rc == ERR_OK && !t->is_internal) {
+        rc = db_refuse_if_top_ordinals_used(db, e);
     }
     if (rc == ERR_OK && !t->is_internal) {
         rc = check_dirty_nodes(db, t, e);
@@ -1130,8 +1146,10 @@ enum err_code db_execute(struct db *db, struct trans *t, struct err *e) {
 
     rc = stm_check_conflicts(db, t, e);
     if (rc == ERR_OK) {
-        /* transactionBegin() refuses a clock out of range (005-18). */
-        rc = dbclock_transaction_begin(&db->clock, &t->tt, e);
+        /* transactionBegin() refuses a clock out of range (005-18), and a
+         * user transaction in the times kept for reclaim's internal
+         * transactions after it (015-55). */
+        rc = dbclock_transaction_begin(&db->clock, !t->is_internal, &t->tt, e);
     }
     if (rc != ERR_OK) {
         db->trans = NULL;
@@ -1237,7 +1255,16 @@ enum err_code db_set_startup_distance(struct db *db, int32_t newDistance, struct
 }
 
 enum err_code db_set_retain_duration(struct db *db, int64_t d, struct err *e) {
-    return rc_set_retain_duration(&db->reclaim, d, e);
+    enum err_code rc = rc_check_retain_duration(d, e);
+    if (rc != ERR_OK) {
+        return rc;
+    }
+    /* The state first, so that a refused call changes nothing (015-87, F6). */
+    rc = db_check_active(db, "setRetainDuration", e);
+    if (rc != ERR_OK) {
+        return rc;
+    }
+    return rc_set_settings(db, d, db->reclaim.internalFraction, e);
 }
 
 enum err_code db_set_reclaim_internal_fraction(struct db *db, double f, struct err *e) {
@@ -1245,8 +1272,12 @@ enum err_code db_set_reclaim_internal_fraction(struct db *db, double f, struct e
         return err_set(e, ERR_ARG, "IllegalArgumentException", "Illegal internalFraction "
                 "value, %.17g", f);
     }
-    return rc_set_internal_fraction_units(&db->reclaim,
-            j_l2i(j_round(f * (double) RC_FRACTION_ONE)), e);
+    const int32_t units = j_l2i(j_round(f * (double) RC_FRACTION_ONE));
+    enum err_code rc = db_check_active(db, "setReclaimInternalFraction", e);
+    if (rc != ERR_OK) {
+        return rc;
+    }
+    return rc_set_settings(db, db->reclaim.retainDuration, units, e);
 }
 
 double db_internal_fraction(const struct db *db) {

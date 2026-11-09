@@ -71,7 +71,8 @@ int64_t dbclock_current_time(struct dbclock *c) {
     return time;
 }
 
-enum err_code dbclock_transaction_begin(struct dbclock *c, int64_t *out, struct err *e) {
+enum err_code dbclock_transaction_begin(struct dbclock *c, bool user, int64_t *out,
+        struct err *e) {
     assert(!c->transactionRunning);
     const int64_t clockTime = get_time(c);
     int64_t time = clockTime;
@@ -89,6 +90,16 @@ enum err_code dbclock_transaction_begin(struct dbclock *c, int64_t *out, struct 
     if (time > KL_MAX_TIME) {
         return err_set(e, ERR_LIMIT, "DbException", "No database time is left after %lld; the "
                 "largest is %lld. No transaction is executed.", (long long) (time - 1),
+                (long long) KL_MAX_TIME);
+    }
+    /* 2026-11-05 (bergdb 015-55): a user transaction leaves the last times
+     * to reclaim's internal transactions after it, which run after its go
+     * point; one of them that found no time left failed the database. */
+    if (user && time > DBCLOCK_LAST_USER_TIME) {
+        return err_set(e, ERR_LIMIT, "DbException", "No database time is left for a user "
+                "transaction: its time would be %lld, after the last, %lld (the times up to "
+                "%lld are kept for reclaim's internal transactions). No transaction is "
+                "executed.", (long long) time, (long long) DBCLOCK_LAST_USER_TIME,
                 (long long) KL_MAX_TIME);
     }
 

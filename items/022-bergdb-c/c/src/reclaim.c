@@ -9,6 +9,7 @@
 #include "jsem.h"
 #include "keys.h"
 #include "node.h"
+#include "nwrite.h"
 #include "spos.h"
 #include "strmap.h"
 #include "trans.h"
@@ -35,6 +36,7 @@ void rc_init(struct reclaim *r, struct mem *m) {
     r->mem = m;
     key_segments(RC_TABLE_KEY_NAME, r->tableKey, &r->tableKey_n);
     key_segments(RC_CURRENT_KEY_NAME, r->currentKey, &r->currentKey_n);
+    key_segments(RC_SETTINGS_KEY_NAME, r->settingsKey, &r->settingsKey_n);
     r->retainDuration = INT64_MAX;
     r->internalFraction = RC_DEFAULT_INTERNAL_FRACTION;
     r->iterationCount = 0;
@@ -91,23 +93,63 @@ static void row_move(struct mem *m, struct rc_row *row, struct rc_row *o) {
 
 /* ======== Settings ======== */
 
-enum err_code rc_set_retain_duration(struct reclaim *r, int64_t d, struct err *e) {
-    const int64_t SMALLEST = 1 * INT64_C(10000000);     /* 1 * Clock.UNITS_PER_SEC */
-    if (d < SMALLEST) {
+enum err_code rc_check_retain_duration(int64_t d, struct err *e) {
+    const int64_t SECOND = INT64_C(10000000);       /* Clock.UNITS_PER_SEC */
+    if (d < 1 * SECOND) {
         return err_set(e, ERR_ARG, "IllegalArgumentException", "retainDuration = %" PRId64
-                " is too small.", d);
+                " is too small, must be at least one second (%" PRId64 " time units).", d,
+                SECOND);
     }
-    r->retainDuration = d;
     return ERR_OK;
 }
 
-enum err_code rc_set_internal_fraction_units(struct reclaim *r, int32_t units,
-        struct err *e) {
+enum err_code rc_check_internal_fraction(int32_t units, struct err *e) {
     if (units < RC_MIN_INTERNAL_FRACTION || units > RC_MAX_INTERNAL_FRACTION) {
         return err_set(e, ERR_ARG, "IllegalArgumentException", "Illegal internalFraction "
                 "value, %d", (int) units);
     }
-    r->internalFraction = units;
+    return ERR_OK;
+}
+
+size_t rc_settings_text(int64_t retainDuration, int32_t internalFraction, char *buf) {
+    int n = snprintf(buf, RC_SETTINGS_TEXT_CAP, "retain=%" PRId64 "\nfraction=%d\n",
+            retainDuration, (int) internalFraction);
+    assert(n > 0 && n < RC_SETTINGS_TEXT_CAP);
+    return (size_t) n;
+}
+
+enum err_code rc_settings_parse(struct mem *mem, const char *value, size_t n,
+        int64_t *retainDuration, int32_t *internalFraction, struct err *e) {
+    struct sm m;
+    sm_init(&m, mem);
+    enum err_code rc = sm_parse(&m, value, n, e);
+    int64_t retain = -1;
+    int64_t fraction = -1;
+    if (rc == ERR_OK && sm_has_long(&m, "retain")) {
+        rc = sm_get_long(&m, "retain", &retain, e);
+    }
+    if (rc == ERR_OK && sm_has_long(&m, "fraction")) {
+        rc = sm_get_long(&m, "fraction", &fraction, e);
+    }
+    sm_free(&m);
+    if (rc == ERR_NOMEM) {
+        return rc;
+    }
+    char text[RC_SETTINGS_TEXT_CAP];
+    /* sm_parse's ERR_ARG (a bucket of nine keys, which Java's HashMap makes
+     * a tree and C does not port) means many lines, never the two that the
+     * setters write: refused, as Java refuses them. */
+    if (rc != ERR_OK || retain < INT64_C(10000000) || fraction < RC_MIN_INTERNAL_FRACTION
+            || fraction > RC_MAX_INTERNAL_FRACTION
+            || rc_settings_text(retain, (int32_t) fraction, text) != n
+            || memcmp(text, value, n) != 0) {
+        return err_set(e, ERR_FORMAT, "InternalDataException", "Bad value of %s, reclaim's "
+                "settings: not the two lines retain=<time units> and fraction=<units of "
+                "2^-16>, in range, that this version writes (bergdb 015-87): '%.*s%s'.",
+                RC_SETTINGS_KEY_NAME, (int) (n <= 200 ? n : 200), value, n <= 200 ? "" : "...");
+    }
+    *retainDuration = retain;
+    *internalFraction = (int32_t) fraction;
     return ERR_OK;
 }
 
@@ -412,6 +454,55 @@ static enum err_code store_table(struct db *db, struct err *e) {
     return rc;
 }
 
+/* ======== The settings in the stream (015-87) ======== */
+
+enum err_code rc_set_settings(struct db *db, int64_t retainDuration, int32_t internalFraction,
+        struct err *e) {
+    struct reclaim *r = &db->reclaim;
+    enum err_code rc = rc_check_retain_duration(retainDuration, e);
+    if (rc == ERR_OK) {
+        rc = rc_check_internal_fraction(internalFraction, e);
+    }
+    if (rc != ERR_OK) {
+        return rc;
+    }
+    if (retainDuration == r->retainDuration && internalFraction == r->internalFraction) {
+        return ERR_OK;      /* In force: nothing is written. */
+    }
+    rc = db_refuse_if_top_ordinals_used(db, e);     /* As a user transaction is refused. */
+    if (rc != ERR_OK) {
+        return rc;
+    }
+
+    char text[RC_SETTINGS_TEXT_CAP];
+    const size_t n = rc_settings_text(retainDuration, internalFraction, text);
+    struct tr_builder b;
+    struct trans t;
+    tr_builder_init(&b, db->mem);
+    tr_init(&t, db->mem);
+    rc = tr_put_segments(&b, r->settingsKey, r->settingsKey_n, (const uint8_t *) text,
+            (int32_t) n, e);
+    if (rc == ERR_OK) {
+        rc = tr_build(&b, &t, e);
+    }
+    if (rc == ERR_OK) {
+        rc = execute_internal(db, &t, e);
+        if (rc == ERR_RERUN) {
+            char why[ERR_TEXT];
+            snprintf(why, sizeof why, "%s", e->text);
+            rc = err_set(e, ERR_ARG, "Bug", "RerunException for write-only trans unexpected, "
+                    "%s", why);
+        }
+    }
+    tr_free(&t);
+    tr_builder_free(&b);
+    if (rc == ERR_OK) {
+        r->retainDuration = retainDuration;
+        r->internalFraction = internalFraction;
+    }
+    return rc;
+}
+
 /* ======== Iterations ======== */
 
 /* currentIteration: the index of the last row if it is not done, or -1. */
@@ -678,6 +769,26 @@ static enum err_code step(struct db *db, int32_t iti, const int64_t writeSize, s
     size_t textCap = 0;
     int64_t stepLookupTime = -1;
     int64_t rewritten = 0;
+    int64_t values = 0;
+
+    /* 015-50 (016-06's R7-F1, as Java's since release 2026.3): the step's
+     * value nodes stay within StoredTrans.valueLimit(), as a user
+     * transaction's do (db.c, check_size). The scan adds KVs until their
+     * size passes writeSize, so its last one can be a value of any size; the
+     * step's internal transaction, refused for its size inside the go point
+     * of the user transaction that allowed it, failed the database, and
+     * again after every restart. A value that would take the step's value
+     * nodes past the limit ends the step before it, unless it is the step's
+     * first: then it is the first of the next step. Alone, it is within the
+     * limit, as its user transaction was; the step's row comes on top of it,
+     * so check_size does not apply to internal transactions. A step that did
+     * not pass the limit is the same as before. eod and the last key are the
+     * scan's unless the step ends so (lastKeyOfStep, eod[0]). */
+    const int64_t valueLimit = db_value_limit(db);
+    int64_t valueNodeBytes = 0;
+    int32_t kvs = 0;                    /* the KVs of the scan that the step covers */
+    int32_t lastOfStep = sc.n - 1;      /* lastKeyOfStep's index in the scan, or -1 */
+    bool eod = sc.eod;
 
     for (int32_t i = 0; rc == ERR_OK && i < sc.n; i++) {
         const int64_t *key = sc.segs + sc.offs[i];
@@ -701,12 +812,21 @@ static enum err_code step(struct db *db, int32_t iti, const int64_t writeSize, s
          * 005-34) is after the cut. */
         const struct rc_row *it = &r->rows[iti];
         if (value != NULL && value->len >= 0 && gd.tpos != SPOS_NULL && gd.tpos < it->pCut) {
+            const int64_t nodeBytes = nw_value_byte_size_long(value->len, key_n);
+            if (values > 0 && valueNodeBytes + nodeBytes > valueLimit) {
+                lastOfStep = kvs - 1;
+                eod = false;
+                break;
+            }
+            valueNodeBytes += nodeBytes;
             rc = tr_key_read_segments(&b, key, key_n, e);
             if (rc == ERR_OK) {
                 rc = tr_put_segments(&b, key, key_n, value->value, value->len, e);
             }
             rewritten += key_n * 8 + value->len + RC_VALUE_NODE_BYTES;
+            values++;
         }
+        kvs++;
     }
 
     /* next = it.copy(); next.lastKey = lastKeyOfStep; kvCount, rewritten. */
@@ -717,15 +837,16 @@ static enum err_code step(struct db *db, int32_t iti, const int64_t writeSize, s
         next.lastKey_n = 0;
         next.lastKeyNull = true;
         bool ok;
-        if (sc.n > 0) {
-            ok = row_set_last_key(m, &next, sc.segs + sc.offs[sc.n - 1], sc.ns[sc.n - 1], false);
+        if (lastOfStep >= 0) {
+            ok = row_set_last_key(m, &next, sc.segs + sc.offs[lastOfStep], sc.ns[lastOfStep],
+                    false);
         } else {
             ok = row_set_last_key(m, &next, it->lastKey, it->lastKey_n, it->lastKeyNull);
         }
         if (!ok) {
             rc = nomem(e);
         }
-        next.kvCount += sc.n;
+        next.kvCount += kvs;
         next.rewritten += rewritten;
     }
     struct row_transform rt;
@@ -762,7 +883,7 @@ static enum err_code step(struct db *db, int32_t iti, const int64_t writeSize, s
         t.touch = true;
         t.touch_from = it->lastKeyNull ? NULL : it->lastKey;
         t.touch_from_n = it->lastKeyNull ? 0 : it->lastKey_n;
-        if (sc.eod) {
+        if (eod) {
             t.touch_to = NULL;
             t.touch_to_n = 0;
         } else {
@@ -784,7 +905,7 @@ static enum err_code step(struct db *db, int32_t iti, const int64_t writeSize, s
         if (sc.split) {
             r->splitSteps++;
         }
-        if (sc.eod) {
+        if (eod) {
             /* The row is stored as done together with tEnd and pEnd
              * (Reclaim.Tester.testCrashBeforeIterationEnd). */
             it->done = true;
@@ -801,22 +922,27 @@ static enum err_code step(struct db *db, int32_t iti, const int64_t writeSize, s
     tr_builder_free(&b);
     scan_free(&sc);
     maintenance_free(&mf);
-    if (rc == ERR_OK && executed && sc.eod) {
+    if (rc == ERR_OK && executed && eod) {
         rc = store_table(db, e);
     }
     return rc;
 }
 
 /* markSafePositions: pSafe of the done rows whose last step the startup
- * pos has passed, the stream length now (streamSize). */
-static enum err_code mark_safe_positions(struct db *db, int64_t streamSize, struct err *e) {
+ * pos has passed, the stream length now, after the internal records that
+ * the call of rc_transaction_completed appended before it (015-54, as
+ * Java's since release 2026.3; it was the user record's end, read before
+ * them, so the cut did not wait for the nodes that those records wrote
+ * before their children). */
+static enum err_code mark_safe_positions(struct db *db, struct err *e) {
     struct reclaim *r = &db->reclaim;
     const int64_t startupPos = ts_startup_pos_get(&db->startup_pos);
+    const int64_t streamLength = db_stream_length(db);
     bool changed = false;
     for (int32_t i = 0; i < r->nrows; i++) {
         struct rc_row *row = &r->rows[i];
         if (row->done && row->pSafe == -1 && startupPos >= row->pEnd) {
-            row->pSafe = streamSize;
+            row->pSafe = streamLength;
             changed = true;
         }
     }
@@ -964,7 +1090,7 @@ enum err_code rc_transaction_completed(struct db *db, const struct trans *t, str
         }
     }
 
-    rc = mark_safe_positions(db, streamSize, e);
+    rc = mark_safe_positions(db, e);    /* The length after the records above (015-54). */
     if (rc == ERR_OK) {
         rc = pretruncate_if_possible(db, t->tt, e);
     }
@@ -1004,7 +1130,21 @@ enum err_code rc_init_from_db(struct db *db, struct err *e) {
     struct reclaim *r = &db->reclaim;
     char *text;
     size_t n, cap;
-    enum err_code rc = read_text(db, r->tableKey, r->tableKey_n, &text, &n, &cap, e);
+
+    /* The settings kept in the stream (015-87). */
+    enum err_code rc = read_text(db, r->settingsKey, r->settingsKey_n, &text, &n, &cap, e);
+    if (rc != ERR_OK) {
+        return rc;
+    }
+    if (text != NULL) {
+        rc = rc_settings_parse(db->mem, text, n, &r->retainDuration, &r->internalFraction, e);
+        mem_free(db->mem, text, cap, MEM_BUFFER);
+        if (rc != ERR_OK) {
+            return rc;
+        }
+    }
+
+    rc = read_text(db, r->tableKey, r->tableKey_n, &text, &n, &cap, e);
     if (rc != ERR_OK) {
         return rc;
     }

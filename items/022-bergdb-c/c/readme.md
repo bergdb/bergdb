@@ -442,11 +442,14 @@ bergdb_close(db);                               /* writes, forces, frees all */
   database in an empty directory and starts an existing one (Java's or
   C's) by the bounded startup; `dir` NULL is a database in memory, lost
   at the close. `bergdb_options_init` gives Java's defaults (node size
-  30, startup distance 50 MB, cache budget 200 MB, retain forever, the
-  system clock, a random id); the test clock (`struct
-  bergdb_test_clock`) and `bergdb_test_id` make times and bytes
-  deterministic. A failed open leaves nothing open, and its text is in
-  `errbuf`.
+  30, startup distance 50 MB, cache budget 200 MB, the system clock, a
+  random id); the test clock (`struct bergdb_test_clock`) and
+  `bergdb_test_id` make times and bytes deterministic. A failed open
+  leaves nothing open, and its text is in `errbuf`. Reclaim's settings,
+  the retain duration (forever in a new database) and the internal
+  fraction, are no options: the stream keeps them, and
+  `bergdb_set_retain_duration` and `bergdb_set_reclaim_internal_fraction`
+  commit them (015-87, as Java's since release 2026.3).
 * **Write.** A transaction holds puts, deletes and a read set
   (`bergdb_trans_key_read`, `bergdb_trans_lookup_time`: the STM's
   conflict gives `BERGDB_RERUN`); `bergdb_execute` commits it at one new
@@ -514,8 +517,8 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
    what a full buffer wrote stays. The one exception is a transaction
    whose call decides a reclaim cut (point 9): that call forces the stream,
    so it and every transaction before it are durable when it returns.
-3. **After `bergdb_sync`** at `BERGDB_SYNC_ORDINARY` or `STRONG` (the same
-   with one stream; `NONE` does nothing), every transaction committed
+3. **After `bergdb_sync`** at `BERGDB_SYNC_ORDINARY` (`NONE` does
+   nothing; `STRONG` is gone, as Java's), every transaction committed
    before it is durable: the buffer is written, and the files written
    since the last force, and the directory after a new file, are forced
    with `F_FULLFSYNC`, as Java's `force(true)` on macOS. With one stream,
@@ -544,8 +547,9 @@ and at random moments; a write that fails). Power loss: `test/stress/power.sh`
    (`bergdb_sync`, or `bergdb_execute` when its record filled the buffer),
    and so does every later transaction, read and sync, as the stream takes
    no write after an error (Java's `FileStream.checkIOException`);
-   `bergdb_stats` and the setters of the cache size indicator, the retain
-   duration and the internal fraction still work, and `bergdb_close` gives
+   `bergdb_stats` and the setter of the cache size indicator still work
+   (the setters of reclaim's settings commit, and are refused), and
+   `bergdb_close` gives
    `BERGDB_IO` and frees everything. The next open finds a prefix, as in
    point 6. A database that failed for another reason (memory after a
    transaction's go point, corrupt data in a read) still syncs and closes

@@ -77,18 +77,22 @@ static void stats_line(bergdb_db *db, const char *at, bool durable, char *text, 
     strncat(text, line, cap - strlen(text) - 1);
 }
 
-/* StatsProbe's lines on Java's Db (release 2026.2, bergdb 015-02: the fraction 0.1 is
- * kept as 6,554 units of 2^-16, 005-79). */
+/* StatsProbe's lines on Java's Db (release 2026.3, bergdb 022-01, step 1:
+ * the retain duration set after the creation and kept in the stream, the
+ * settings' records, a get more at each start as initFromDb reads the
+ * settings, 015-87; the fraction 0.1 is kept as 6,554 units of 2^-16,
+ * 005-79). */
 static const char java_stats[] =
-    "at=open length=264 durable=0 lastMeta=-1 firstTime=0 firstPos=0 sd=1000 cache=9223372036854775807 retain=10000000 fraction=0.25 iterations=0 trans=0 kvs=0 gets=1\n"
-    "at=t50 length=58712 lastMeta=-1 firstTime=0 firstPos=0 sd=1000 cache=9223372036854775807 retain=10000000 fraction=0.25 iterations=1 trans=56 kvs=118 gets=179\n"
-    "at=setsd length=273296 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=9223372036854775807 retain=10000000 fraction=0.25 iterations=2 trans=70 kvs=144 gets=309\n"
-    "at=setsd-same length=273296 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=9223372036854775807 retain=10000000 fraction=0.25 iterations=2 trans=70 kvs=144 gets=309\n"
-    "at=setters length=276680 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=150000000 retain=20000000 fraction=0.100006103515625 iterations=2 trans=80 kvs=166 gets=338\n"
-    "at=sync length=286592 durable=286592 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=150000000 retain=20000000 fraction=0.100006103515625 iterations=2 trans=110 kvs=230 gets=423\n"
-    "at=end length=303864 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=150000000 retain=20000000 fraction=0.100006103515625 iterations=2 trans=159 kvs=336 gets=557\n"
-    "at=reopen length=303864 durable=303864 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=9223372036854775807 retain=10000000 fraction=0.25 iterations=0 trans=0 kvs=0 gets=2\n"
-    "at=reopen-sync length=304088 durable=304088 lastMeta=68848 firstTime=45000001 firstPos=2464 sd=400000 cache=9223372036854775807 retain=10000000 fraction=0.25 iterations=0 trans=2 kvs=2 gets=4\n";
+    "at=open length=264 durable=0 lastMeta=-1 firstTime=0 firstPos=0 sd=1000 cache=9223372036854775807 retain=9223372036854775807 fraction=0.25 iterations=0 trans=0 kvs=0 gets=2\n"
+    "at=setretain length=480 lastMeta=-1 firstTime=0 firstPos=0 sd=1000 cache=9223372036854775807 retain=10000000 fraction=0.25 iterations=0 trans=1 kvs=1 gets=3\n"
+    "at=t50 length=58376 lastMeta=-1 firstTime=0 firstPos=0 sd=1000 cache=9223372036854775807 retain=10000000 fraction=0.25 iterations=1 trans=57 kvs=118 gets=175\n"
+    "at=setsd length=272816 lastMeta=68592 firstTime=45000001 firstPos=2024 sd=400000 cache=9223372036854775807 retain=10000000 fraction=0.25 iterations=2 trans=71 kvs=144 gets=307\n"
+    "at=setsd-same length=272816 lastMeta=68592 firstTime=45000001 firstPos=2024 sd=400000 cache=9223372036854775807 retain=10000000 fraction=0.25 iterations=2 trans=71 kvs=144 gets=307\n"
+    "at=setters length=276440 lastMeta=68592 firstTime=45000001 firstPos=2024 sd=400000 cache=150000000 retain=20000000 fraction=0.100006103515625 iterations=2 trans=83 kvs=168 gets=338\n"
+    "at=sync length=286416 durable=286416 lastMeta=68592 firstTime=45000001 firstPos=2024 sd=400000 cache=150000000 retain=20000000 fraction=0.100006103515625 iterations=2 trans=113 kvs=232 gets=423\n"
+    "at=end length=303576 lastMeta=68592 firstTime=45000001 firstPos=2024 sd=400000 cache=150000000 retain=20000000 fraction=0.100006103515625 iterations=2 trans=162 kvs=338 gets=557\n"
+    "at=reopen length=303576 durable=303576 lastMeta=68592 firstTime=45000001 firstPos=2024 sd=400000 cache=9223372036854775807 retain=20000000 fraction=0.100006103515625 iterations=0 trans=0 kvs=0 gets=3\n"
+    "at=reopen-sync length=303784 durable=303784 lastMeta=68592 firstTime=45000001 firstPos=2024 sd=400000 cache=9223372036854775807 retain=20000000 fraction=0.100006103515625 iterations=0 trans=2 kvs=2 gets=5\n";
 
 static void probe_options(struct bergdb_options *o, struct bergdb_test_clock *clock,
         struct bergdb_mem *m) {
@@ -99,7 +103,6 @@ static void probe_options(struct bergdb_options *o, struct bergdb_test_clock *cl
     o->cache_size_indicator = BERGDB_NO_EVICT;      /* testSetupExceptStream */
     o->max_node_size = 8;
     o->startup_distance = 1000;
-    o->retain_duration = 10000000;
     o->mem = m;
 }
 
@@ -159,6 +162,10 @@ TEST(settings_and_status_as_java) {
     bergdb_test_clock_set(&clock, 1000);
     REQUIRE(bergdb_open(dir, &o, &db, NULL, NULL) == BERGDB_OK);
     stats_line(db, "open", true, text, sizeof text);
+    /* The retain duration once, after the creation: the stream keeps it
+     * (015-87; 022-01, D3). */
+    CHECK(bergdb_set_retain_duration(db, 10000000) == BERGDB_OK);
+    stats_line(db, "setretain", false, text, sizeof text);
     bergdb_read *rd;
     REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
     for (int i = 0; i < 150; i++) {
@@ -198,7 +205,7 @@ TEST(settings_and_status_as_java) {
             stats_line(db, "setters", false, text, sizeof text);
         }
         if (i == 100) {
-            CHECK(bergdb_sync(db, 0, BERGDB_SYNC_STRONG) == BERGDB_OK);
+            CHECK(bergdb_sync(db, 0, BERGDB_SYNC_ORDINARY) == BERGDB_OK);
             stats_line(db, "sync", true, text, sizeof text);
         }
     }
@@ -309,6 +316,18 @@ TEST(settings_setters) {
     REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
     CHECK_EQ(s.startup_distance, 400000);
     CHECK_EQ(s.stream_length, s0.stream_length);
+    /* So are the setters of reclaim's settings, which commit (015-87;
+     * DbTesterRestart.testReclaimSettingRefusedAtGoPoint): nothing written,
+     * the values in force stay, and the database goes on. */
+    CHECK(bergdb_set_retain_duration(db, 5 * BERGDB_UNITS_PER_SEC) == BERGDB_LIMIT);
+    CHECK(strstr(bergdb_errmsg(db), "outside the range") != NULL);
+    CHECK(bergdb_set_reclaim_internal_fraction(db, 0.5) == BERGDB_LIMIT);
+    CHECK(strstr(bergdb_errmsg(db), "outside the range") != NULL);
+    REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
+    CHECK_EQ(s.retain_duration, BERGDB_FOREVER);
+    CHECK(s.internal_fraction == 0.25);
+    CHECK_EQ(s.stream_length, s0.stream_length);
+    clock.time = 3000;      /* back in range: a caller's clock may give anything */
 
     /* setCacheSizeIndicator: at least 1; for the run, no byte (the
      * eviction it starts is 012-12's, and not tested here). */
@@ -319,14 +338,25 @@ TEST(settings_setters) {
     CHECK_EQ(s.cache_size_indicator, 300000000);
     CHECK_EQ(s.stream_length, s0.stream_length);
 
-    /* setRetainDuration: at least a second, or forever. */
+    /* setRetainDuration: at least a second, or forever; kept in the stream
+     * (015-87): a record of reclaim's settings when the value changes, none
+     * when it is in force. */
     CHECK(bergdb_set_retain_duration(db, BERGDB_UNITS_PER_SEC - 1) == BERGDB_ARG);
+    CHECK(strcmp(bergdb_errmsg(db), "IllegalArgumentException: retainDuration = 9999999 is "
+            "too small, must be at least one second (10000000 time units).") == 0);
+    REQUIRE(bergdb_stats(db, &s0) == BERGDB_OK);
+    CHECK(bergdb_set_retain_duration(db, BERGDB_FOREVER) == BERGDB_OK);     /* in force */
+    REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
+    CHECK_EQ(s.stream_length, s0.stream_length);
     CHECK(bergdb_set_retain_duration(db, BERGDB_UNITS_PER_SEC) == BERGDB_OK);
     REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
     CHECK_EQ(s.retain_duration, BERGDB_UNITS_PER_SEC);
+    CHECK(s.stream_length > s0.stream_length);
+    CHECK_EQ(s.transaction_count, s0.transaction_count + 1);
     CHECK(bergdb_set_retain_duration(db, BERGDB_FOREVER) == BERGDB_OK);
     REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
     CHECK_EQ(s.retain_duration, BERGDB_FOREVER);
+    CHECK_EQ(s.transaction_count, s0.transaction_count + 2);
 
     /* setReclaimInternalFraction: 0.001 to 0.90; NaN refused, and the
      * setting stays (bergdb 005-73, F4, as Java's since release 2026.2;
@@ -360,8 +390,10 @@ TEST(settings_setters) {
     CHECK(bergdb_stats(NULL, &s) == BERGDB_ARG);
     CHECK(bergdb_stats(db, NULL) == BERGDB_ARG);
 
-    /* On a failed database (P7): setStartupDistance is refused as a
-     * transaction (FAILED); the other three set their value (bergdb.h, B). */
+    /* On a failed database (P7): setStartupDistance, setRetainDuration and
+     * setReclaimInternalFraction are refused as a transaction (FAILED;
+     * the last two since 015-87); the cache size indicator sets its value
+     * (bergdb.h, B). */
     bergdb_read *rd;
     struct bergdb_stored st;
     REQUIRE(bergdb_read_new(db, &rd) == BERGDB_OK);
@@ -369,13 +401,16 @@ TEST(settings_setters) {
     bergdb_read_free(rd);
     CHECK(bergdb_set_startup_distance(db, 600000) == BERGDB_FAILED);
     CHECK(bergdb_set_cache_size_indicator(db, 123456789) == BERGDB_OK);
-    CHECK(bergdb_set_retain_duration(db, 5 * BERGDB_UNITS_PER_SEC) == BERGDB_OK);
-    CHECK(bergdb_set_reclaim_internal_fraction(db, 0.2) == BERGDB_OK);
+    CHECK(bergdb_set_retain_duration(db, 5 * BERGDB_UNITS_PER_SEC) == BERGDB_FAILED);
+    CHECK(strncmp(bergdb_errmsg(db), "DbFailedException: Cannot call setRetainDuration()", 50)
+            == 0);
+    CHECK(bergdb_set_reclaim_internal_fraction(db, 0.2) == BERGDB_FAILED);
+    CHECK(bergdb_set_retain_duration(db, 0) == BERGDB_ARG);    /* the argument first */
     REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
     CHECK_EQ(s.startup_distance, 400000);
     CHECK_EQ(s.cache_size_indicator, 123456789);
-    CHECK_EQ(s.retain_duration, 5 * BERGDB_UNITS_PER_SEC);
-    CHECK(s.internal_fraction == 13107 / 65536.0);     /* 0.2 to units of 2^-16 (005-79) */
+    CHECK_EQ(s.retain_duration, BERGDB_FOREVER);
+    CHECK(s.internal_fraction == 0.25);
     CHECK(bergdb_close(db) == BERGDB_OK);
     CHECK_EQ(m.live_total, 0);
 }
@@ -402,9 +437,6 @@ TEST(settings_open_checks) {
     o.startup_distance = 9;
     CHECK(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_ARG);
     o.startup_distance = 10;
-    o.retain_duration = BERGDB_UNITS_PER_SEC - 1;
-    CHECK(bergdb_open(dir, &o, &db, NULL, errbuf) == BERGDB_ARG);
-    o.retain_duration = BERGDB_FOREVER;
     CHECK_EQ(m.live_total, 0);
 
     /* Created with node size 8 and startup distance 10; opened again with
@@ -435,7 +467,6 @@ TEST(settings_open_checks) {
     CHECK_EQ(o.max_node_size, 30);
     CHECK_EQ(o.startup_distance, 50000000);
     CHECK_EQ(o.cache_size_indicator, 200000000);
-    CHECK_EQ(o.retain_duration, BERGDB_FOREVER);
     CHECK(o.clock == NULL && o.clock_ctx == NULL && o.mem == NULL);
     se_remove_dir(dir);
 }
@@ -538,7 +569,7 @@ TEST(settings_sync_and_times) {
     REQUIRE(bergdb_stats(db, &s) == BERGDB_OK);
     CHECK(s.durable_length >= ex1.last_pos + 1);
     CHECK_EQ(s.durable_length, s.stream_length);
-    CHECK(bergdb_sync(db, 0, BERGDB_SYNC_STRONG) == BERGDB_OK);
+    CHECK(bergdb_sync(db, 0, 30) == BERGDB_ARG);    /* STRONG, gone as Java's (2026.3) */
 
     /* currentTime: the clock's time, not before the last transaction's;
      * lookupTime: at most the last transaction's time. */

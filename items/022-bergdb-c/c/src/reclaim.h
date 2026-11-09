@@ -30,6 +30,13 @@
  * needs no allocation; t_reclaim.c checks it against sm_serialize. Rows are
  * read back with sm_parse (IterationInfo.deserialize).
  *
+ * Reclaim's settings, the retain duration and the internal fraction, are
+ * kept in the stream (bergdb 015-87, as Java's since release 2026.3): the
+ * internal KV RC_SETTINGS_KEY_NAME, "retain=<time units>\nfraction=<units
+ * of 2^-16>\n", which rc_set_settings commits when a setting changes and
+ * rc_init_from_db reads at every start; a stream without it runs with the
+ * defaults, forever and 16,384. They are no settings of the open.
+ *
  * Left out: Reclaim.Stats, the TouchCounter and recordWritten (statistics,
  * off unless enableStats(); no byte depends on them).
  */
@@ -64,6 +71,10 @@ struct trans;
  * CURRENT_KEY_NAME). */
 #define RC_TABLE_KEY_NAME "/#i/dreclaim/-table.txt"
 #define RC_CURRENT_KEY_NAME "/#i/dreclaim/-current.txt"
+/* SETTINGS_KEY_NAME: reclaim's settings (015-87). */
+#define RC_SETTINGS_KEY_NAME "/#i/dreclaim/-settings.txt"
+/* The bytes of the settings' value at most: two lines of a long each. */
+#define RC_SETTINGS_TEXT_CAP 64
 
 /* IterationInfo: a row of the table. */
 struct rc_row {
@@ -91,6 +102,8 @@ struct reclaim {
     int32_t tableKey_n;
     int64_t currentKey[8];          /* Keys.toSegments(CURRENT_KEY_NAME) */
     int32_t currentKey_n;
+    int64_t settingsKey[8];         /* Keys.toSegments(SETTINGS_KEY_NAME) */
+    int32_t settingsKey_n;
     int32_t internalFraction;       /* in units of 2^-16 (005-79) */
     int64_t retainDuration;         /* Long.MAX_VALUE: forever */
     int64_t stepReserve;
@@ -111,16 +124,42 @@ void rc_init(struct reclaim *r, struct mem *m);
 /* Frees the rows. */
 void rc_free(struct reclaim *r);
 
-/* setRetainDuration: at least one second, else ERR_ARG
+/* checkRetainDuration: at least one second, else ERR_ARG
  * ("IllegalArgumentException"). */
-enum err_code rc_set_retain_duration(struct reclaim *r, int64_t d, struct err *e);
+enum err_code rc_check_retain_duration(int64_t d, struct err *e);
 
-/* setInternalFractionUnits: in units of 2^-16, RC_MIN_INTERNAL_FRACTION to
- * RC_MAX_INTERNAL_FRACTION inclusive, else ERR_ARG ("IllegalArgumentException")
- * and the setting stays (bergdb 005-79). db_set_reclaim_internal_fraction
- * converts the API's double. */
-enum err_code rc_set_internal_fraction_units(struct reclaim *r, int32_t units,
+/* checkInternalFraction: in units of 2^-16, RC_MIN_INTERNAL_FRACTION to
+ * RC_MAX_INTERNAL_FRACTION inclusive, else ERR_ARG
+ * ("IllegalArgumentException"). db_set_reclaim_internal_fraction converts
+ * the API's double. */
+enum err_code rc_check_internal_fraction(int32_t units, struct err *e);
+
+/* serializeSettings: the value of RC_SETTINGS_KEY_NAME for the settings,
+ * "retain=<d>\nfraction=<f>\n", into buf (RC_SETTINGS_TEXT_CAP bytes),
+ * NUL-terminated; returns its length. */
+size_t rc_settings_text(int64_t retainDuration, int32_t internalFraction, char *buf);
+
+/* setSettings (015-87): the settings checked (ERR_ARG); if they are those
+ * in force, nothing; else, refused once the top node ordinals are used up
+ * (db_refuse_if_top_ordinals_used), an internal transaction puts
+ * RC_SETTINGS_KEY_NAME with both, and the fields are set after its commit,
+ * so the next transaction uses them. A commit refused before its go point
+ * (the clock, NOMEM) or failed after it leaves them as they were; a
+ * failure has failed the database, and a start takes what the stream
+ * holds. The caller has checked that the database is active. */
+enum err_code rc_set_settings(struct db *db, int64_t retainDuration, int32_t internalFraction,
         struct err *e);
+
+/* parseSettings (015-87): the settings from a value of RC_SETTINGS_KEY_NAME
+ * (n bytes), which must be in the one form that rc_settings_text writes,
+ * byte for byte: the two lines in their order, the numbers in range; any
+ * other value is damage, or the settings of a later version, and is
+ * refused: ERR_FORMAT, "InternalDataException", with Java's text (as far as
+ * the error's text holds it, and the value's bytes as they are where Java
+ * decodes them as UTF-8). ERR_NOMEM. Also for a start that reads the
+ * database without a struct reclaim (sdb.h). */
+enum err_code rc_settings_parse(struct mem *m, const char *value, size_t n,
+        int64_t *retainDuration, int32_t *internalFraction, struct err *e);
 
 /* Reclaim.fractionOf: floor(g * f / 2^16), the part f (in units of 2^-16,
  * 0 to 2^16 - 1) of g bytes, exact for every int64_t g without overflow
@@ -136,10 +175,13 @@ enum err_code rc_set_step_reserve(struct reclaim *r, int64_t bytes, struct err *
  * fails the database with it (Db.fail). */
 enum err_code rc_transaction_completed(struct db *db, const struct trans *t, struct err *e);
 
-/* initFromDb: the table and the current row read back at the latest time,
- * the first available position and time from the cut row with the largest
+/* initFromDb: reclaim's settings (015-87; the defaults if the stream has
+ * none), the table and the current row read back at the latest time, the
+ * first available position and time from the cut row with the largest
  * pStart, and a cut that the table marks but the stream does not show yet
- * made. The database active. ERR_FORMAT ("InternalDataException") for a
+ * made. The database active; the start calls it last, before any
+ * transaction. ERR_FORMAT ("InternalDataException") for bad settings (any
+ * other form than rc_settings_text's, byte for byte: parseSettings) or a
  * bad table; a read's errors as db_get_one's; ERR_NOMEM. */
 enum err_code rc_init_from_db(struct db *db, struct err *e);
 
