@@ -5,9 +5,12 @@ package bergdb.pub.util;
  * 
  * <p>A refusal: the database checked the request and refused it before it changed
  * anything, for example a transaction that is too large (its values, or the index nodes
- * it can make dirty: bergdb 005-17, 005-31), a clock time out of range, or
- * a stored value that does not fit its Java field (DataFormatException). The database
- * is as it was and can be used on. Each such case says so where it is thrown.</p>
+ * it can make dirty: bergdb 005-17, 005-31), a clock time out of range, or data that the
+ * call cannot take (DataFormatException): a value read as a String that is not well-formed
+ * UTF-8, or an object of BergDB 2026.3 and before put in an indexed directory. A get never
+ * refuses a stored value that does not fit its Java field: it converts it, best effort
+ * (bergdb 020-09). The database is as it was and can be used on. Each such case says so
+ * where it is thrown.</p>
  * 
  * <p>A failure: the storage, the JVM or memory failed, or there is a bug. A failure in
  * a transaction fails the database: every later transaction and read throws a
