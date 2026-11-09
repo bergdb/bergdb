@@ -105,3 +105,17 @@ session (022-01, step 2), and taken by its agent p11 (clone
 
 `BEFORE COMMIT OK (134 s)` and `java/stress/level1.sh`: `LEVEL 1 OK`,
 under the gate lock (2026-11-09, 11:47 to 11:52).
+
+2026-11-09. At coord-1109's request, `LONG` joins harness 6.1's full set
+(`testFull`, the night tests: `FULL_CONFIGS`), not the unit tests' sample
+(`CONFIGS`), so `before-commit.sh` keeps its time; commit 7c872e5 in
+`clone-p11`, on 1035b64. Its first full run (seed 20766, 4 threads, F53):
+332,291 copies in 82 s, the night's added time, and 51 failures of one
+new fault, registered as 021-12 (a key node read at a start from outside
+the startup section is not validated), with its line in
+`CorruptStreamTester.SKIP` until its fix: all 51 skipped, none left.
+`BEFORE COMMIT OK (135 s)`.
+
+2026-11-09. 021-12 fixed (bdebaef in `clone-p11`, on 7c872e5): the line
+"021-12" left `CorruptStreamTester.SKIP`, and the night's full set with
+`LONG` (seed 20766) passed with nothing skipped, in 160 s.

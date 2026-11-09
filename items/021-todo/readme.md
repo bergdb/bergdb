@@ -60,6 +60,7 @@ Closed
 | [021-06](06-read-side-ill-formed-utf8.md) | Investigate | Ill-formed UTF-8 from another writer, read by Java | answers | done | 2026-11-09 |
 | [021-10](10-entries-suffix-dot-in-dir.md) | Fix | A '.' in a directory makes no key there an object key | none | done | 2026-11-09 |
 | [021-11](11-pointer-type-at-start.md) | Fix | A damaged pointer naming a node of another type was linked at a start (three sites) | none | done | 2026-11-09 |
+| [021-12](12-key-node-outside-section-unchecked.md) | Fix | A damaged key node read before the startup section made a start throw AssertionError | none | done | 2026-11-09 |
 | [021-09](09-udir-accepts-bad-dirs.md) | Fix | `PubKeys.udir2idir` accepts "p/" and "/p//" | none | done | 2026-11-08 |
 | [021-08](08-object-reader-nesting-depth.md) | Fix | The object reader has no limit on nesting depth | none | done | 2026-11-07 |
 | [021-07](07-object-reader-format-errors.md) | Fix | The object reader's format errors are not BadFormatException | none | done | 2026-11-07 |
