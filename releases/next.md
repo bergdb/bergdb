@@ -644,6 +644,11 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   buffer is released when the database's storage thread ends, at
   `close()` or at the end of the background close after `stop()`; such a
   database now holds about 0.5 MB (a memory database its data too).
+* **Starts at once on a directory that does not exist** (bergdb 020-24-10,
+  U10-5; 2026-11-09): the starts that lost the race to make the directory
+  threw `StreamIoException` "Directory ... could not be created.", as
+  `mkdirs()` returns false when another thread made it; now they are
+  refused as in use, as `DatabaseBuilder.start()` says.
 
 
 ### Core API

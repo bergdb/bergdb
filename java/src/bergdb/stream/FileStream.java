@@ -745,7 +745,10 @@ public class FileStream implements AppendOnlyStream {
         boolean created;
         try {
             created = dir.mkdirs();
-            if (!created) {
+            // 2026-11-09 (bergdb 020-24-10, U10-5): mkdirs() returns false when another
+            // thread or process made the directory meanwhile, and the start threw this,
+            // not the lock's refusal (DirectoryInUseException), which lockDir() gives.
+            if (!created && !dir.isDirectory()) {
                 throw new IOException("Directory " + dir.getPath() + " could not be created.");
             }
         } catch (SecurityException e) {
@@ -3161,6 +3164,49 @@ public class FileStream implements AppendOnlyStream {
             throw new AssertionError("close() of the failed stream did not throw");
         } catch (IOException e) {
             // Expected: the stream's failure.
+        }
+    }
+    
+    /**
+     * bergdb 020-24-10, U10-5: FileStreams opened at once by several threads on a directory
+     * that does not exist: one opens it, the others are refused as in use. Those whose
+     * mkdirs() found the directory made by another thread threw "Directory ... could not be
+     * created.", though it was there.
+     */
+    @Nano
+    public static void testConcurrentOpensOfANewDirectory(TestEnvironment c) throws Exception {
+        File root = c.createTempDir();
+        final int threads = 8;
+        for (int round = 0; round < 10; round++) {
+            final File dir = new File(root, "r" + round + "/a/b");
+            final java.util.concurrent.CyclicBarrier barrier = 
+                    new java.util.concurrent.CyclicBarrier(threads);
+            final List<Throwable> failures = Collections.synchronizedList(new ArrayList<Throwable>());
+            final java.util.concurrent.atomic.AtomicInteger opened = 
+                    new java.util.concurrent.atomic.AtomicInteger();
+            Thread[] ts = new Thread[threads];
+            for (int i = 0; i < threads; i++) {
+                ts[i] = new Thread(() -> {
+                    try {
+                        barrier.await();
+                        FileStream f = new FileStream(dir);
+                        opened.incrementAndGet();
+                        f.close();
+                    } catch (DirectoryInUseException e) {
+                        // Expected: another thread has it.
+                    } catch (Throwable e) {
+                        failures.add(e);
+                    }
+                });
+                ts[i].start();
+            }
+            for (Thread t : ts) {
+                t.join();
+            }
+            if (!failures.isEmpty()) {
+                throw new AssertionError("round " + round + ": " + failures, failures.get(0));
+            }
+            Assert.assertTrue("opened", opened.get() >= 1);
         }
     }
     
