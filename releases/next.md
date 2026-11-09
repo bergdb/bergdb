@@ -37,7 +37,13 @@ Emptied at release 2026.3 (2026-11-07), whose notes hold what was there.
   finds by name: `bergdb.dag.Handle.state`, `bergdb.dag.TopNode.rootPointer`
   and `rootPointerPos` (006-18-03, section 6). An app opens a database in
   an absolute directory, off the main thread, and syncs before it goes to
-  the background.
+  the background. The Core's default cache budget, 200 MB
+  (`DbBuilder.cacheSizeIndicator()`), is above a typical Android heap,
+  192 MB (an app's is 192 to 512 MB), and a read of a large database then
+  fails with `OutOfMemoryError`: an application of the Core sets a smaller
+  one, such as 50 MB, which the check's did; each database also holds its
+  10 MB write buffer. The Pub API's default, a fifth of the heap
+  (`DatabaseBuilder.cacheSizeInMb()`), fits.
 * **A known difference on Android: ill-formed UTF-8 read as a String**
   (020-09, section 5.6). The bytes are decoded by the platform's UTF-8
   decoder, and Android's can put more U+FFFD than Java's: `ed a0 80` reads
