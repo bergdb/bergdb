@@ -3162,7 +3162,7 @@ public class FileStream implements AppendOnlyStream {
      * new directory, by name: a new database there was broken.
      */
     @Nano
-    public static void testNoNewFileInAReplacedDirectory(TestEnvironment c) throws IOException {
+    static void testNoNewFileInAReplacedDirectory(TestEnvironment c) throws IOException {
         File dir = new File(c.createTempDir(), "db");
         FileStream f = new FileStream(dir);
         byte[] bytes = new byte[100 * 1000];
@@ -3199,7 +3199,7 @@ public class FileStream implements AppendOnlyStream {
      * and the stream fails. It deleted the new directory's file of the same name.
      */
     @Nano
-    public static void testNoDeleteInAReplacedDirectory(TestEnvironment c) throws Exception {
+    static void testNoDeleteInAReplacedDirectory(TestEnvironment c) throws Exception {
         File dir = new File(c.createTempDir(), "db");
         FileStream f = new FileStream(dir);
         byte[] bytes = new byte[1000 * 1000];
@@ -3231,7 +3231,7 @@ public class FileStream implements AppendOnlyStream {
      * created.", though it was there.
      */
     @Nano
-    public static void testConcurrentOpensOfANewDirectory(TestEnvironment c) throws Exception {
+    static void testConcurrentOpensOfANewDirectory(TestEnvironment c) throws Exception {
         File root = c.createTempDir();
         final int threads = 8;
         for (int round = 0; round < 10; round++) {
