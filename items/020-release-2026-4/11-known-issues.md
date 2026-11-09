@@ -7,8 +7,11 @@ date until the release. Every known fault and open question that release
 gone or not a fault (why), decided or open for Frans (questions). Asked by
 Frans on 2026-11-08 at 22:03: "Keep working until you have a solution for
 2026.4 with no known issues." Written in night 006-15 from `main` at
-`fd6dd09`; brought up to date to `dee3e48` (2026-11-09, about 02:30) and
-to `3d8b785` (020-12, step 4's measurements).
+`fd6dd09`; brought up to date to `dee3e48` (2026-11-09, about 02:30), to
+`3d8b785` (020-12, step 4's measurements), and to `b149d12` with the day's
+document update (2026-11-09, afternoon): the faults that the day's bug
+hunts found and fixed (section 10) and what they left for a later release
+(section 11).
 
 How it was checked: each "fixed" by reading the test it names, not the
 commit message, and by running it on `main` (`-ea`, the unit group unless
@@ -65,6 +68,20 @@ the index set for directories without an index; not planned.
 For Frans to read: the decisions taken under his delegation (020-04 Q6;
 020-07 Q2 to Q5; 020-09's 24; 020-10's 22; C-M8; and the night's others,
 each in its commit and in 006-15).
+
+The bug hunts of 9 November (020-13 to 020-23, 021-11, 021-12) found
+faults in 2026.4's new code and in older code, all now fixed on `main` at
+`b149d12` and in this update, each with a test (section 10): high, X1
+(key replace in an object key's directory left an index wrong) and X2
+(with 020-13's bug 2: an `Error` of a Data Object class's static
+initializer failed the database in `rw()`); medium, X3, Y1, J8 and
+020-18's F1, F3, F4 and F5 (a build that stalled writes or never ended, a
+cleanup of square cost); the rest low, or not graded (020-13's bugs,
+021-11, 021-12). No known fault is open. What the hunts left is for
+a later release, none a broken promise of 2026.4 (section 11): O16-1,
+fine as is for 2026.4 (Frans, 11:52); 020-18's observations O1 to O3;
+020-15's coverage gaps; 020-22's writes through the Core that stay
+undefined; and test gaps.
 
 
 ## 2. Objects: F1, F2 (020-01) and 020-08
@@ -244,7 +261,7 @@ Notes:
 | 020-07 Q5 | Later formats get a new header byte | decided (delegation): as written |
 | 020-07 Q6 | The spec's and vectors' home | decided: vectors in java/ (9a45e06); 020-07 frozen |
 | 020-07 Q7 | '.' and ',' in names and index paths | settled by 020-10 (nestedField parts) |
-| 020-07 | The spec's approval under 018-01's rule | open for Frans before the release |
+| 020-07 | The spec's approval under 018-01's rule | approved by Frans, 2026-11-09, 07:33 |
 | 020-09, 9 | Questions for Frans | none; 24 decisions under the delegation, to read |
 | 020-10, 11 | Decisions under the delegation | 22, to read |
 
@@ -376,7 +393,160 @@ widened window and fixed; 019-47 while 019-46 was reproduced.
 `main`, 26 tests.
 
 
-## 10. Log
+## 10. The bug hunts of 9 November
+
+The hunts before the release candidate (Frans, 08:41 and 09:21), each in
+a clone of its own (020-13 to 020-20), Frans's API decisions (020-21),
+the rules for writes through the Core (020-22), the reviews of the day's
+fixes (020-23), and 021-11 and 021-12; on `main` from `a9e5488` to
+`b149d12`, and this update's commits (020-23's V1-2 to V1-4). Each test
+named was read, and run at `b149d12` with this update: the 43 tests named
+outside `PubTesterJavadoc` in one unit run, and `PubTesterJavadoc`'s 50,
+`-ea`, all passed; the gate on that tree passed (BEFORE COMMIT OK, unit
+1,507, f 86, demos 14), and JAVADOC PUB OK.
+
+The Pub layer:
+
+| ID | What | State | Commit; test (ran) |
+|---|---|---|---|
+| 13-B1 | An rw() read two states after a get's conversion threw | fixed | c950612; testRwFirstReadThatThrows... |
+| X2, 13-B2 | A static initializer's Error failed the DB in rw() | fixed | 987e734, 42201c2; testInitializerError |
+| X1 | Key replace in an object key's directory: a wrong index | refused | a03111e; testKeyReplaceInDirectory... |
+| 13-B3 | A replaced name deleted the literal key's entries | fixed | a03111e, 3f61a74; testKeyReplaceKeeps... |
+| X3 | A field of a package not exported passed the check | refused | ef6a3cf; testClassesOfAModule |
+| 13-M | Three planted faults that the gate missed | tests | efe1bec; testWriteRunsAgainAfterDeletion and 2 more |
+| F16-1 | A corrupt entry key: a scan's IllegalArgumentException | fixed | 87a1f83; testCorruptEntryKey and 1 more |
+| F16-2 | A value at `/#i/didef/` hid the definitions from a start | refused | 2fcc546; testStartRefusesBadIndexData |
+| F16-3 | A build failed over a Core key such as `/dp/-a/b` | fixed | d2f86f4; testBuildSkipsKeysWithASlashInTheName |
+| 18-F1 | A build step collided with suffix writes under the lock | fixed | 1eb6390; testSuffixWriteDoesNotRerun... |
+| 18-F2, 19-F1 | A deleted build's note: "The next start takes it" | fixed | 55da329, 2d409c9; testNoteOfADeletedBuild |
+| 18-F3 | A locked build step read 25 large values under the lock | fixed | bac75ce; testBuildStepBoundedByBytes |
+| 18-F4 | A build chased the writers appending to its directory | fixed | e2941c2; testBuildReadsUpToItsStarts... |
+| 18-F5 | A cleanup's work grew as the square of its entries | fixed | 4e3bae2; testCleanupWorkIsLinear |
+| 20-N1 | `CryptoKey.getKeyData()` gave the key's own array | fixed | a3bb07b; CryptoKey.testGetKeyDataGivesACopy |
+| 21-1 | `Time` took strings that break its format, rolled over | fixed | 648527f; Time.testStrictTimeStrings |
+| Y1 | A minus time's duration through a double, truncated | fixed | afc1c1d; Time.testMinusTimeExact |
+| Y2, V1-1 | "2020-06 12:34", which the grammar allows, refused | fixed | 644c1b8; Time.testMonthWithTimeOfDay |
+| 21-2 | `WBuilder.execute()` twice ran the writes twice | fixed | 3f102f2; testWBuilderSpentByExecute |
+| 21-3 | `setRetainDuration(null)`, `useIndex(String.class)`, `join(-1)` | fixed | 656decb; testSetRetainDurationNull, 2 |
+| 21-3b | `CryptoKey.NULL`'s round trip; `parse(null)` | fixed | 656decb; CryptoKey.testNullRoundTrip |
+| 21-Q1 | `Duration.seconds(NaN)` gave 0 | refused | 2e4c77d; PubTesterJavadoc.testJavadocCorners |
+| 21-4 | The gate's StoppedCheck did not see the index threads | fixed | 28a6085; testIndexThreadsChecked |
+| R22-1 | `transactionInfo()`: a key that is no Pub key's | fixed | d782915; testTransactionInfoLeavesOut... |
+| R22-2 | An index scan gave a Core value under `/r/`, no key | fixed | dee7c66; testScanLeavesOutAKeyWithNoUkey |
+
+The Core:
+
+| ID | What | State | Commit; test (ran) |
+|---|---|---|---|
+| 13-B4 | `BufferedStream.close()` waited a quarter of the buffer time | fixed | 4b520f9; testCloseDuringAFlush... |
+| V2-2 | An append that waited for room when close() began returned | fixed | 8a3d191; testAppendWaitingForRoom... |
+| T1 | A directory that cannot be listed: an NPE, bad advice | fixed | 6db1ac3; testUnlistableDirectory, 2 |
+| 021-11 | A pointer to a node of another type, linked by node id | fixed | da6c5b0, c2bb988; testFound021_11 |
+| V2-1 | `linkToCanonical`'s own type check had no test | test | 780dc63; testLinkToCanonicalChecks... |
+| 021-12 | A damaged key node before the section: an AssertionError | fixed | 83e8e13; testFound021_12 |
+
+The Javadoc and the documents:
+
+| ID | What | State | Commit; test (ran) |
+|---|---|---|---|
+| J1 | `setCacheSizeInMb()` after `stop()`: "no effect" | fixed | b40dd2f; PubTesterJavadoc.testCallsAfterStop |
+| J2 | Only `toDbObject()`'s message names a lone surrogate's place | fixed | 2b155a3; testLoneSurrogateRefusals |
+| J3 | A get takes a primitive's class, its wrapper, an array | fixed | e129e99; testGetOfPrimitivesAndArrays |
+| J4 | `DbException`'s example was 2026.3's rule | fixed | b41e116; testFormat1PutRefusedInEveryPath |
+| J5 | A format-1 byte[] put's DataFormatException not listed | fixed | 246a33f; testFormat1PutRefusedInEveryPath |
+| J6 | An interrupted sync's DbException not listed | fixed | 500d06a; testSyncInterrupted |
+| J7 | `Time`'s grammar short of the code | fixed | 5162e44, then 648527f (21-1); testTimeStrings |
+| J8 | A refused write's DbException: too large, stopped, interrupt | fixed | 60f824e; testTooLargeRefused and 2 |
+| V1-2 | put(), delete(), execute(): the interrupt after a conflict | fixed | this update; testWritesInterrupted... |
+| 21-3c | Six corners of the Javadoc (020-13, 4.2; 020-19, 6) | fixed | 656decb; PubTesterJavadoc.testJavadocCorners |
+| KR-O1 | A creation or deletion that returned, undone by a crash | said | f99f4c6 (Javadoc); KillRestartHarness |
+| R22-r | The rules for writes through the Core, in five places | done | fd18b6a; Javadoc, levels.md, 3 more |
+| V1-3 | 020-10, 6.1 and 6.2: the build before 020-18's fixes | done | this update (020-10's sections 6.1, 6.2, 3.2) |
+| V1-4 | No release note for 13-B1; next.md against the day | done | this update (releases/next.md) |
+| K-empty | `bkey2ikeyOrNull` of the empty bkey: "", no key | said | this update (`Keys`' Javadoc) |
+| 47-doc | 019-47's test: its comment named the wrong case | fixed | this update (Eviction's test Javadoc) |
+
+The harnesses (false findings, no fault of BergDB):
+
+| ID | What | State | Commit; test (ran) |
+|---|---|---|---|
+| H3-O1 | A deletion during a build taken for a fault taken again | fixed | 0aed7f3; testRetriedFaultThenDeleted... |
+| H3-O2 to O4 | A stop at the workload's read; a racing check; a bound | fixed | da97f69, 5d1adc5, 97064b2 |
+| N16-1 | 020-07's sketch F2 reads past its extent | not BergDB's | none |
+
+Notes:
+
+* 13-B2 and X2, and 13-B3 and X1's sibling in the name, were found apart
+  and are one fix each: X's code, with 020-13's tests added.
+* 18-F2 and 19-F1 are one fault: 020-19's code, with 020-18's check of
+  the note in `assertDeleted`, which every test of a deleted build calls.
+* Release notes: each user-visible fix has its line in
+  `releases/next.md` (V1-4 checked them all; the Core's V2-2 has none, as
+  no `Db` reaches it, 020-23, section 3.4).
+* New steps of `night.sh` since today: `harness-soak.sh` (020-17),
+  `fuzz.sh` (020-16) and `kill-restart.sh` (020-15).
+
+
+## 11. Left for a later release
+
+None breaks a promise of 2026.4; each is an observation, a cost, a gap of
+the tests, or a write that the rules leave undefined.
+
+| ID | What | With |
+|---|---|---|
+| O16-1 | A get as DbObject or a class reads format 2 at a key with a suffix | Frans, 11:52: fine as is |
+| 18-O1 | One thread per build and per cleanup; thousands at once could OOM | later: a queue, one thread |
+| 18-O2 | A job's status lags its index by a moment (BUILDING, then ACTIVE) | later; as the stream says |
+| 18-O3 | A scan visits the keys deleted in its range: slow after churn | later; large databases |
+| 18-F3r | One value of tens of MB makes a locked build step that long | later: reads out of the lock |
+| KR-lit | A literal key with a later time's digits keeps its old entry | later: an insert-if-absent |
+| 15-gaps | Kill-restart: APFS only; no format-1 build; no power loss | later: s1's ext4, the cases |
+| 22-W | Core writes that rules forbid, unseen: W6, W12, W16, W25 | undefined (A2); B4 later |
+| 17-B | Harness blind spots: B9's String, B18, B19, H3's one index | later, tests only |
+| 13-cov | Coverage: level1.sh's other steps; values near 2^31 bytes | later |
+| 13-slow | Slow f-tests that add little (020-13, section 5) | Frans, if the gate should be faster |
+| 21-flake | `Eviction.testInterruptedWhileAWriterWaits` failed once at load 19 | watch; passed since |
+
+* O16-1 (020-16, section 3): `get(key, DbObject.class)` and `get(key,
+  C)` read a value of format 2 at a key with a suffix as an object, while
+  `get(key, Object.class)` gives the `byte[]` and `usePrimary()` leaves
+  the key out. Frans (11:52): fine as is for 2026.4; storing objects,
+  bytes and strings at the Pub layer, indexing them and the relation to
+  the Core are for a later release.
+* 020-18's observations (section 2.5): O1, a burst of deletions or a
+  start with many markers starts a thread each, and a thread's creation
+  could throw `OutOfMemoryError`, which fails the database (P7); O2,
+  between the activation's commit and the job's update `getStatus()` says
+  BUILDING, and a deletion then gives a job that ends ACTIVE; O3, a read
+  at the latest time visits the keys deleted in its range (the Core keeps
+  them for earlier lookup times): an `eq()` with no result over a range
+  that 100,000 entries left takes 2 to 12 ms against 0.1 ms, linear in
+  the range's history, the primary scan likewise. F3's rest: a step under
+  the manager's lock still reads one value whole.
+* KR-lit (020-13, bug 3; 020-14, X1): a value written at a key as it is,
+  whose name holds digits that a later replaced put's time gives, keeps
+  its old entry when that put lands on it; a scan never returns it (it
+  gives only the values that their entries still match).
+* 020-15's gaps (section 4): only macOS's APFS ran (not s1's ext4); no
+  values that a build cannot take (a FAILED build over format 1, taken
+  again at a start); no power loss (the Core's PowerLossTest has its
+  model).
+* 020-22's undefined writes (sections 5 and 6, A2 as Frans decided): a
+  Core put at an object key of an indexed directory (W6, allowed with
+  care: no index while writing, or a repair after), a well-formed
+  definition that the Pub layer did not write (W12), a deleted entry
+  (W16), a definition written while the database runs (W25): values left
+  out of scans, never a wrong result; no cheap check finds them. B4, a
+  `src-dev` check of an index's content, after the release if wanted.
+* Test gaps: 020-17's B9 (`String` scans), B18 (no refused writer in
+  H2), B19 (no listing while transactions commit) and H3's single index;
+  020-13's coverage (level1.sh's other steps, values near 2^31 bytes) and
+  its proposals for slow f-tests; 020-21's timing failure of
+  `Eviction.testInterruptedWhileAWriterWaits` at load 19, once.
+
+
+## 12. Log
 
 2026-11-09. Written in night 006-15 from `main` at `fd6dd09`, at the
 coordinator's request (Frans's 22:03), by the night's agent of 019-46 and
@@ -416,3 +586,10 @@ ObjectBench for each build); its open row removed (coordinator).
 2026-11-09, 05:40. `night.sh` on the final commit d6e8989: NIGHT OK
 (63 minutes; levels 1 to 4, the Lean tests, 26 night tests, conformance
 medium; java/build/night/2026-11-09-0436/report.txt) (coordinator).
+
+2026-11-09, afternoon. Brought up to date to `b149d12` by coord-1109's
+agent d27, the day's document update: section 10, every fault that the
+day's bug hunts found and fixed (020-13 to 020-23, 021-11, 021-12), each
+with its commit on `main` and its test, read and run (93 tests); section
+11, what they left for a later release; section 1's summary; section 4's
+row of 020-07's approval.
