@@ -1262,8 +1262,8 @@ theorem inv_init (sp : Spec V F L) (d0 : Key → Option V) : Inv sp (Sys.init (W
 variable [DecidableEq W]
 
 /-- Every step keeps the invariant. -/
-theorem inv_step {sp : Spec V F L} {s s' : Sys V F L W} (h : Inv sp s) (hst : Step sp s s') :
-    Inv sp s' := by
+theorem inv_step {sp : Spec V F L} {s s' : Sys V F L W} {l : Lbl W} (h : Inv sp s)
+    (hst : Step sp s l s') : Inv sp s' := by
   cases hst with
   | wSuffix ws nv hsuf =>
     exact h.commit (step_wSuffix h.sinv h.minv hsuf rfl rfl rfl rfl rfl rfl rfl rfl)
@@ -1271,7 +1271,7 @@ theorem inv_step {sp : Spec V F L} {s s' : Sys V F L W} (h : Inv sp s) (hst : St
   | wReadS w k ws nv R old S hw hl => exact h.setM (minv_wReadS h.minv hw hl)
   | wCommit w ws nv R old S hw hc =>
     exact h.commit (step_wCommit h.sinv h.minv hw hc rfl rfl rfl rfl rfl rfl rfl rfl)
-  | wDrop w => exact h.setM (h.minv.setW w trivial)
+  | wDrop w _ => exact h.setM (h.minv.setW w trivial)
   | aCreate n fn _ hl hmem =>
     exact h.commit (step_aCreate h.sinv h.minv hl hmem rfl rfl rfl rfl rfl rfl rfl rfl)
   | aCreateMap n g fn ha => exact h.setM (minv_aCreateMap h.minv ha)
@@ -1293,7 +1293,7 @@ theorem inv_step {sp : Spec V F L} {s s' : Sys V F L W} (h : Inv sp s) (hst : St
   | bActivateFail n g b _ _ hl _ => exact h.setM (minv_bActivateFail h.minv hl)
   | bRetry n g b hb _ => exact h.setM (minv_bRetry h.minv hb)
   | bAbort n g b hb => exact h.setM (minv_bAbort h.minv hb)
-  | cScan n g c keys hc _ => exact h.setM (minv_cScan h.minv hc)
+  | cScan n g c keys hc _ _ _ => exact h.setM (minv_cScan h.minv hc)
   | cScanEnd n g c hc _ hno => exact h.setM (minv_cScanEnd h.minv hc hno)
   | cDel n g c hc _ =>
     exact h.commit (step_cDel h.sinv h.minv hc rfl rfl rfl rfl rfl rfl rfl rfl)

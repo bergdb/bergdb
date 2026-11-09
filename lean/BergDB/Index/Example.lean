@@ -80,7 +80,12 @@ theorem example_run2 :
   have r8 := Reach.step r7 (Step.aDelete _ 0 ⟨1, (), true⟩ rfl rfl rfl)
   have r9 := Reach.step r8 (Step.aDeleteMap _ 0 1 rfl)
   -- the cleanup: a scan that finds the entry (7, key 0), its deletion
-  have r10 := Reach.step r9 (Step.cScan _ 0 1 _ (fun k l => k = 0 ∧ l = 7) rfl rfl)
+  have r10 := Reach.step r9 (Step.cScan _ 0 1 _ (fun k l => k = 0 ∧ l = 7) rfl rfl
+    ⟨0, 7, rfl, rfl⟩ (by
+      intro k l hkl
+      obtain ⟨hk, hl⟩ := hkl
+      subst hk; subst hl
+      exact Or.inr ⟨rfl, rfl, Nat.le_refl 0, by decide, rfl⟩))
   have r11 := Reach.step r10 (Step.cDel _ 0 1 _ rfl rfl)
   -- a scan from the prefix that finds none, and the marker's deletion
   have r12 := Reach.step r11 (Step.cScanEnd _ 0 1 _ rfl rfl (by

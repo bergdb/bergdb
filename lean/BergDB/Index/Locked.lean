@@ -31,7 +31,8 @@ variable [DecidableEq W]
 /-- While a build holds the lock, a writer that can commit a write of an object
 key after a step could before it, in the same state: a step that keeps the
 lock reads no index set, and a transaction that starts has read none. -/
-theorem locked_no_new_writer {sp : Spec V F L} {s s' : Sys V F L W} (hst : Step sp s s')
+theorem locked_no_new_writer {sp : Spec V F L} {s s' : Sys V F L W} {lb : Lbl W}
+    (hst : Step sp s lb s')
     {n : Name} {g : Gen} (hl : s.m.lock = .bld n g) (hl' : s'.m.lock = .bld n g) (w : W)
     (hc : CanCommitObj sp (s'.m.wr w)) : s'.m.wr w = s.m.wr w := by
   cases hst with
@@ -53,7 +54,7 @@ theorem locked_no_new_writer {sp : Spec V F L} {s s' : Sys V F L W} (hst : Step 
       change CanCommitObj sp (upd s.m.wr w' .idle w) at hc
       rw [hw, upd_same] at hc; exact hc
     · exact upd_ne _ _ hw
-  | wDrop w' =>
+  | wDrop w' _ =>
     show upd s.m.wr w' _ w = s.m.wr w
     by_cases hw : w = w'
     · exfalso
@@ -65,7 +66,8 @@ theorem locked_no_new_writer {sp : Spec V F L} {s s' : Sys V F L W} (hst : Step 
 
 /-- While a build holds the lock, a step that writes an object key is the commit
 of a writer that could commit a write of an object key, which it ends. -/
-theorem locked_obj_write {sp : Spec V F L} {s s' : Sys V F L W} (hst : Step sp s s')
+theorem locked_obj_write {sp : Spec V F L} {s s' : Sys V F L W} {lb : Lbl W}
+    (hst : Step sp s lb s')
     {n : Name} {g : Gen} (hl' : s'.m.lock = .bld n g)
     {k : Key} (hk : sp.isObj k = true) (hw : s'.st.wk k ≠ s.st.wk k) :
     ∃ w, CanCommitObj sp (s.m.wr w) ∧ s'.m.wr w = .idle := by
@@ -96,7 +98,7 @@ theorem locked_obj_write {sp : Spec V F L} {s s' : Sys V F L W} (hst : Step sp s
 /-- The locked phase over `d` steps from `r i`, by induction on `d`. -/
 theorem locked_phase_aux {sp : Spec V F L} (r : Nat → Sys V F L W) (i : Nat)
     {n : Name} {g : Gen} :
-    ∀ d, (∀ t, i ≤ t → t < i + d → Step sp (r t) (r (t + 1))) →
+    ∀ d, (∀ t, i ≤ t → t < i + d → ∃ lb, Step sp (r t) lb (r (t + 1))) →
       (∀ t, i ≤ t → t ≤ i + d → (r t).m.lock = .bld n g) →
       (∀ w, CanCommitObj sp ((r (i + d)).m.wr w) → (r (i + d)).m.wr w = (r i).m.wr w) ∧
       (∀ k, sp.isObj k = true → (r (i + d)).st.wk k ≠ (r i).st.wk k →
@@ -108,18 +110,18 @@ theorem locked_phase_aux {sp : Spec V F L} (r : Nat → Sys V F L W) (i : Nat)
     exact ⟨fun _ _ => rfl, fun _ _ h => absurd rfl h⟩
   | succ d ih =>
     intro hst hlock
-    have hst' : ∀ t, i ≤ t → t < i + d → Step sp (r t) (r (t + 1)) :=
+    have hst' : ∀ t, i ≤ t → t < i + d → ∃ lb, Step sp (r t) lb (r (t + 1)) :=
       fun t h1 h2 => hst t h1 (by omega)
     have hlock' : ∀ t, i ≤ t → t ≤ i + d → (r t).m.lock = .bld n g :=
       fun t h1 h2 => hlock t h1 (by omega)
     obtain ⟨ih1, ih2⟩ := ih hst' hlock'
-    have hstep : Step sp (r (i + d)) (r (i + d + 1)) := hst (i + d) (by omega) (by omega)
+    have hstep : ∃ lb, Step sp (r (i + d)) lb (r (i + d + 1)) := hst (i + d) (by omega) (by omega)
     have hlj := hlock (i + d) (by omega) (by omega)
     have hlj1 : (r (i + d + 1)).m.lock = .bld n g := hlock (i + d + 1) (by omega) (by omega)
     -- a writer that can commit at the next state could before, in the same state
     have hkeep : ∀ w, CanCommitObj sp ((r (i + d + 1)).m.wr w) →
         (r (i + d + 1)).m.wr w = (r (i + d)).m.wr w :=
-      fun w hc => locked_no_new_writer hstep hlj hlj1 w hc
+      fun w hc => locked_no_new_writer hstep.choose_spec hlj hlj1 w hc
     show (∀ w, CanCommitObj sp ((r (i + d + 1)).m.wr w) → (r (i + d + 1)).m.wr w = (r i).m.wr w) ∧
       (∀ k, sp.isObj k = true → (r (i + d + 1)).st.wk k ≠ (r i).st.wk k →
         ∃ w, CanCommitObj sp ((r i).m.wr w) ∧ ¬ CanCommitObj sp ((r (i + d + 1)).m.wr w))
@@ -132,7 +134,7 @@ theorem locked_phase_aux {sp : Spec V F L} (r : Nat → Sys V F L W) (i : Nat)
         obtain ⟨w, hci, hcj⟩ := ih2 k hk hne
         refine ⟨w, hci, fun hc => hcj ?_⟩
         rw [← hkeep w hc]; exact hc
-      · obtain ⟨w, hcj, hidle⟩ := locked_obj_write hstep hlj1 hk hsame
+      · obtain ⟨w, hcj, hidle⟩ := locked_obj_write hstep.choose_spec hlj1 hk hsame
         refine ⟨w, ?_, ?_⟩
         · rw [← ih1 w hcj]; exact hcj
         · rw [hidle]; exact id
@@ -146,7 +148,7 @@ step refused, only by a writer that could commit when the lock was taken, and
 by each of them at most once. -/
 theorem locked_phase {sp : Spec V F L} (r : Nat → Sys V F L W) {i j : Nat} (hij : i ≤ j)
     {n : Name} {g : Gen}
-    (hst : ∀ t, i ≤ t → t < j → Step sp (r t) (r (t + 1)))
+    (hst : ∀ t, i ≤ t → t < j → ∃ lb, Step sp (r t) lb (r (t + 1)))
     (hlock : ∀ t, i ≤ t → t ≤ j → (r t).m.lock = .bld n g) :
     (∀ w, CanCommitObj sp ((r j).m.wr w) → (r j).m.wr w = (r i).m.wr w) ∧
       (∀ k, sp.isObj k = true → (r j).st.wk k ≠ (r i).st.wk k →

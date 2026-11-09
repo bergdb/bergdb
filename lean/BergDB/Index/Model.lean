@@ -267,24 +267,43 @@ def bAfter (b : BSt V F) : BSt V F :=
   { b with pc := if b.ended = true then .activate else .read, next := b.hi, tries := 0,
            locked := false }
 
+/-- Which thread takes a step, for fairness (BergDB/Index/Liveness.lean):
+a writer that begins a transaction (its choice) or one in flight; a `w()` of
+keys with a suffix; a definition change that begins (a user's choice) or ends
+(its maps); a build's step, its retry after an exception or its end without
+an activation; a cleanup's step or its end; a crash; a cut of lookup times. -/
+inductive Lbl (W : Type) where
+  | wbegin (w : W)
+  | wr (w : W)
+  | suffix
+  | achange
+  | amap
+  | bld (n : Name) (g : Gen)
+  | bretry (n : Name) (g : Gen)
+  | babort (n : Name) (g : Gen)
+  | cln (n : Name) (g : Gen)
+  | cabort (n : Name) (g : Gen)
+  | crash
+  | cut
+
 variable [DecidableEq W]
 
 /-- The steps, each atomic; a thread's steps interleave with every other
 thread's (020-26, section 2.3). A step that commits a transaction moves the
 time by one. -/
-inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
+inductive Step (sp : Spec V F L) : Sys V F L W → Lbl W → Sys V F L W → Prop where
   /-- `WSuffix`: a `w()` of keys with a suffix only: no read time, no read
   set, no lock, no index (5.1, "Which writes"); it cannot be refused. -/
   | wSuffix (s : Sys V F L W) (ws : Key → Bool) (nv : Key → Option V) :
       (∀ k, ws k = true → sp.isObj k = false) →
-      Step sp s (s.commit
+      Step sp s .suffix (s.commit
         { s.st with data := writeData s.st.data ws nv,
                     wk := writeTimes s.st.wk ws (s.st.now + 1), now := s.st.now + 1 } s.m)
   /-- `WStart`: R fixed first, the latest transaction's time (5.1, step 1);
   the previous values are those at R. Any keys, those with a suffix too. -/
   | wStart (s : Sys V F L W) (w : W) (ws : Key → Bool) (nv : Key → Option V) :
       s.m.wr w = .idle →
-      Step sp s
+      Step sp s (.wbegin w)
         { s with m :=
           { s.m with wr := upd s.m.wr w (.run ws nv s.st.now s.st.data (fun _ => none)) } }
   /-- `WReadS`: the index set of the key k's directory read from the maps,
@@ -292,7 +311,7 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
   | wReadS (s : Sys V F L W) (w : W) (k : Key) (ws : Key → Bool) (nv : Key → Option V)
       (R : Time) (old : Key → Option V) (S : Key → Option (Name → Option (Def F))) :
       s.m.wr w = .run ws nv R old S → s.m.lock = .free →
-      Step sp s
+      Step sp s (.wr w)
         { s with m :=
           { s.m with wr := upd s.m.wr w (.run ws nv R old (upd S k (some s.m.mem))) } }
   /-- `WCommit`: each object key written has its index set read; the read set
@@ -308,7 +327,7 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
       s.m.wr w = .run ws nv R old S →
       (∀ k, ws k = true → sp.isObj k = true → ∃ m, S k = some m ∧
         s.st.wv (sp.dirOf k) ≤ R ∧ (hasIdx sp m (sp.dirOf k) → s.st.wk k ≤ R)) →
-      Step sp s (s.commit
+      Step sp s (.wr w) (s.commit
         { s.st with data := writeData s.st.data ws nv, ent := wEntries sp s.st.ent ws S old nv,
                     wk := writeTimes s.st.wk ws (s.st.now + 1), now := s.st.now + 1 }
         { s.m with wr := upd s.m.wr w .idle })
@@ -316,13 +335,14 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
   check (it runs again, a new `wStart`), or ended by an exception. Allowed at
   any time: more than the code does. -/
   | wDrop (s : Sys V F L W) (w : W) :
-      Step sp s { s with m := { s.m with wr := upd s.m.wr w .idle } }
+      s.m.wr w ≠ .idle →
+      Step sp s (.wr w) { s with m := { s.m with wr := upd s.m.wr w .idle } }
   /-- `ACreate`: under the lock, G the latest transaction's time, at least 1
   (4.3; `Math.max(1, ...)` in the code); the definition (building), and the
   virtual key of its directory, written in one transaction. -/
   | aCreate (s : Sys V F L W) (n : Name) (fn : F) :
       s.m.admin = .idle → s.m.lock = .free → s.m.mem n = none →
-      Step sp s (s.commit
+      Step sp s .achange (s.commit
         { s.st with dfn := upd s.st.dfn n (some ⟨max 1 s.st.now, fn, false⟩),
                     wdef := upd s.st.wdef n (s.st.now + 1),
                     wv := upd s.st.wv (sp.dirF fn) (s.st.now + 1), now := s.st.now + 1 }
@@ -330,7 +350,7 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
   /-- `ACreateMap`: the maps, the lock released, the build's thread started. -/
   | aCreateMap (s : Sys V F L W) (n : Name) (g : Gen) (fn : F) :
       s.m.admin = .create n g fn →
-      Step sp s
+      Step sp s .amap
         { s with m :=
           { s.m with
             mem := upd s.m.mem n (s.st.dfn n), lock := .free, admin := .idle,
@@ -339,7 +359,7 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
   the virtual key of its directory written in one transaction (6.2). -/
   | aDelete (s : Sys V F L W) (n : Name) (d : Def F) :
       s.m.admin = .idle → s.m.lock = .free → s.m.mem n = some d →
-      Step sp s (s.commit
+      Step sp s .achange (s.commit
         { s.st with dfn := upd s.st.dfn n none, mark := upd2 s.st.mark n d.gen true,
                     wdef := upd s.st.wdef n (s.st.now + 1),
                     wv := upd s.st.wv (sp.dirF d.fn) (s.st.now + 1), now := s.st.now + 1 }
@@ -347,7 +367,7 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
   /-- `ADeleteMap`: the maps, the lock released, the cleanup's thread started. -/
   | aDeleteMap (s : Sys V F L W) (n : Name) (g : Gen) :
       s.m.admin = .delete n g →
-      Step sp s
+      Step sp s .amap
         { s with m :=
           { s.m with
             mem := upd s.m.mem n none, lock := .free, admin := .idle,
@@ -358,15 +378,15 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
   | bReadE (s : Sys V F L W) (n : Name) (g : Gen) (b : BSt V F) (e : Key) :
       s.m.bld n g = some b → b.pc = .readE →
       (∀ k, e < k → sp.f b.fn k (s.st.data k) = none) →
-      Step sp s
+      Step sp s (.bld n g)
         { s with m :=
           { s.m with bld := upd2 s.m.bld n g (some { b with E := some e, pc := .read }) } }
   /-- `BRead`: a step's read at its read time R, the latest time: the keys from
   `next` to below `hi`, up to E. Any `hi` is allowed (the code's: 25 values or
   1 MB, 020-18, F3); the step that reaches E ends the build. -/
   | bRead (s : Sys V F L W) (n : Name) (g : Gen) (b : BSt V F) (e hi : Key) :
-      s.m.bld n g = some b → b.pc = .read → b.E = some e → b.next ≤ hi → hi ≤ e + 1 →
-      Step sp s
+      s.m.bld n g = some b → b.pc = .read → b.E = some e → b.next < hi → hi ≤ e + 1 →
+      Step sp s (.bld n g)
         { s with m :=
           { s.m with
             bld := upd2 s.m.bld n g (some
@@ -376,14 +396,14 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
   | bCheck (s : Sys V F L W) (n : Name) (g : Gen) (b : BSt V F) (d : Def F) :
       s.m.bld n g = some b → b.pc = .check → (s.m.lock = .free ∨ s.m.lock = .bld n g) →
       s.m.mem n = some d → d.gen = g →
-      Step sp s
+      Step sp s (.bld n g)
         { s with m := { s.m with bld := upd2 s.m.bld n g (some { b with pc := .commit }) } }
   /-- `BCheck` of a deleted index: the build ends, FAILED "deleted", its lock
   released. -/
   | bCheckFail (s : Sys V F L W) (n : Name) (g : Gen) (b : BSt V F) :
       s.m.bld n g = some b → b.pc = .check → (s.m.lock = .free ∨ s.m.lock = .bld n g) →
       (∀ d, s.m.mem n = some d → d.gen ≠ g) →
-      Step sp s
+      Step sp s (.bld n g)
         { s with m := { s.m with bld := upd2 s.m.bld n g none, lock := .free } }
   /-- `BCommit`: the step's read set is the definition's key and the keys of
   the values whose entries it puts (020-18, F1); accepted if none was written
@@ -391,7 +411,7 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
   | bCommit (s : Sys V F L W) (n : Name) (g : Gen) (b : BSt V F) :
       s.m.bld n g = some b → b.pc = .commit → s.st.wdef n ≤ b.R →
       (∀ k, b.next ≤ k → k < b.hi → sp.f b.fn k (b.snap k) ≠ none → s.st.wk k ≤ b.R) →
-      Step sp s (s.commit
+      Step sp s (.bld n g) (s.commit
         { s.st with ent := bEntries sp s.st.ent n g b, now := s.st.now + 1 }
         { s.m with bld := upd2 s.m.bld n g (some (bAfter b)),
                    lock := if b.locked = true then .free else s.m.lock })
@@ -401,7 +421,7 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
       s.m.bld n g = some b → b.pc = .commit →
       (b.R < s.st.wdef n ∨ ∃ k, b.next ≤ k ∧ k < b.hi ∧ sp.f b.fn k (b.snap k) ≠ none ∧
         b.R < s.st.wk k) →
-      Step sp s
+      Step sp s (.bld n g)
         { s with m :=
           { s.m with
             bld := upd2 s.m.bld n g (some
@@ -412,7 +432,7 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
   /-- `BLock`: the locked phase takes the lock. -/
   | bLock (s : Sys V F L W) (n : Name) (g : Gen) (b : BSt V F) :
       s.m.bld n g = some b → b.pc = .lock → s.m.lock = .free →
-      Step sp s
+      Step sp s (.bld n g)
         { s with m :=
           { s.m with
             lock := .bld n g,
@@ -422,7 +442,7 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
   | bActivate (s : Sys V F L W) (n : Name) (g : Gen) (b : BSt V F) (d : Def F) :
       s.m.bld n g = some b → b.pc = .activate → s.m.lock = .free → s.m.mem n = some d →
       d.gen = g →
-      Step sp s (s.commit
+      Step sp s (.bld n g) (s.commit
         { s.st with dfn := upd s.st.dfn n (some ⟨g, b.fn, true⟩),
                     wdef := upd s.st.wdef n (s.st.now + 1), now := s.st.now + 1 }
         { s.m with mem := upd s.m.mem n (some ⟨g, b.fn, true⟩),
@@ -431,14 +451,14 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
   | bActivateFail (s : Sys V F L W) (n : Name) (g : Gen) (b : BSt V F) :
       s.m.bld n g = some b → b.pc = .activate → s.m.lock = .free →
       (∀ d, s.m.mem n = some d → d.gen ≠ g) →
-      Step sp s { s with m := { s.m with bld := upd2 s.m.bld n g none } }
+      Step sp s (.bld n g) { s with m := { s.m with bld := upd2 s.m.bld n g none } }
   /-- A step's try ended by an exception that the build takes again (a
   `DbException` other than a conflict, an expired read; 6.1, "Errors"): the
   step again from its start, unlocked, its tries from 0; `underLock` released
   the lock if the step held it. -/
   | bRetry (s : Sys V F L W) (n : Name) (g : Gen) (b : BSt V F) :
       s.m.bld n g = some b → (b.pc = .read ∨ b.pc = .check ∨ b.pc = .commit ∨ b.pc = .lock) →
-      Step sp s
+      Step sp s (.bretry n g)
         { s with m :=
           { s.m with
             bld := upd2 s.m.bld n g (some { b with pc := .read, tries := 0, locked := false }),
@@ -448,7 +468,7 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
   released if it held it. The definition stays building until the next start. -/
   | bAbort (s : Sys V F L W) (n : Name) (g : Gen) (b : BSt V F) :
       s.m.bld n g = some b →
-      Step sp s
+      Step sp s (.babort n g)
         { s with m :=
           { s.m with
             bld := upd2 s.m.bld n g none,
@@ -458,49 +478,50 @@ inductive Step (sp : Spec V F L) : Sys V F L W → Sys V F L W → Prop where
   last deleted, 020-18, F5). -/
   | cScan (s : Sys V F L W) (n : Name) (g : Gen) (c : CSt L) (keys : Key → L → Prop) :
       s.m.cln n g = some c → c.pc = .scan →
-      Step sp s
+      (∃ k l, keys k l) → (∀ k l, keys k l → s.st.ent n g k l) →
+      Step sp s (.cln n g)
         { s with m :=
           { s.m with cln := upd2 s.m.cln n g (some { c with pc := .del, keys := keys }) } }
   /-- `CScan` from the generation's prefix that finds no entry: the end. -/
   | cScanEnd (s : Sys V F L W) (n : Name) (g : Gen) (c : CSt L) :
       s.m.cln n g = some c → c.pc = .scan → (∀ k l, ¬ s.st.ent n g k l) →
-      Step sp s
+      Step sp s (.cln n g)
         { s with m := { s.m with cln := upd2 s.m.cln n g (some { c with pc := .done }) } }
   /-- `CDel`: the deletion, a transaction with no read set. -/
   | cDel (s : Sys V F L W) (n : Name) (g : Gen) (c : CSt L) :
       s.m.cln n g = some c → c.pc = .del →
-      Step sp s (s.commit
+      Step sp s (.cln n g) (s.commit
         { s.st with ent := fun n' g' k l => s.st.ent n' g' k l ∧ ¬ (n' = n ∧ g' = g ∧ c.keys k l),
                     now := s.st.now + 1 }
         { s.m with cln := upd2 s.m.cln n g (some { c with pc := .scan }) })
   /-- `CEnd`: the marker deleted, the thread ends. -/
   | cEnd (s : Sys V F L W) (n : Name) (g : Gen) (c : CSt L) :
       s.m.cln n g = some c → c.pc = .done →
-      Step sp s (s.commit { s.st with mark := upd2 s.st.mark n g false, now := s.st.now + 1 }
+      Step sp s (.cln n g) (s.commit { s.st with mark := upd2 s.st.mark n g false, now := s.st.now + 1 }
         { s.m with cln := upd2 s.m.cln n g none })
   /-- A cleanup's thread ends without its end: an exception that it does not take
   again, or a stop (6.2, "Errors"); the marker stays, and the next start
   resumes the cleanup. -/
   | cAbort (s : Sys V F L W) (n : Name) (g : Gen) (c : CSt L) :
       s.m.cln n g = some c →
-      Step sp s { s with m := { s.m with cln := upd2 s.m.cln n g none } }
+      Step sp s (.cabort n g) { s with m := { s.m with cln := upd2 s.m.cln n g none } }
   /-- Reclaim's cut of lookup times: the oldest times are gone; a lookup at
   one of them is refused (`LookupTimeNotAvailableException`), and so is a
   transaction whose R is one of them, which `wDrop` and `bRetry` allow. -/
   | cut (s : Sys V F L W) (j : Nat) :
-      Step sp s { s with past := s.past.take j }
+      Step sp s .cut { s with past := s.past.take j }
   /-- A crash or a stop, then a start: memory lost. The stream is the latest
   one or, as a crash may lose the last committed transactions (levels.md,
   section 8), one of an earlier time; the times after it are gone. -/
   | crash (s : Sys V F L W) (pre : List (Stream V F L)) (x : Stream V F L)
       (rest : List (Stream V F L)) :
       s.st :: s.past = pre ++ x :: rest →
-      Step sp s ⟨x, rest, restart x⟩
+      Step sp s .crash ⟨x, rest, restart x⟩
 
 /-- The reachable systems: from a database with any data and no index. -/
 inductive Reach (sp : Spec V F L) : Sys V F L W → Prop where
   | init (d0 : Key → Option V) : Reach sp (Sys.init d0)
-  | step {s s' : Sys V F L W} : Reach sp s → Step sp s s' → Reach sp s'
+  | step {s s' : Sys V F L W} {l : Lbl W} : Reach sp s → Step sp s l s' → Reach sp s'
 
 /-- The stream at the lookup time t, if the system has it: the stream of the
 latest time t. -/
